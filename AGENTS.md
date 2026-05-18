@@ -1,0 +1,57 @@
+# Meridian Agent Guide
+
+This project follows the LLM Wiki development pattern.
+
+Before planning, designing, implementing, or reviewing changes that affect raw source ingestion, generated wiki pages, schema conventions, Obsidian vault layout, page frontmatter, indexing, logging, query behavior, lint behavior, citations, or cross-links, load and follow the project skill at:
+
+`/Users/shawn/Desktop/meridian/.codex/skills/llm-wiki/SKILL.md`
+
+Current MVP direction:
+
+- Build a personally usable paper wiki, not a general multi-agent platform.
+- Optimize for internalizing raw papers, incorporating the user's Zotero annotations and reading insights, evolving paper analysis through feedback, and feeding the accumulated wiki back into idea generation.
+- Treat the system as a well-defined workflow with strong request handling, retrieval, storage, and review boundaries.
+- Use `/Users/shawn/Desktop/meridian/docs/mvp-paper-wiki-workflow.md` as the current product/workflow reference.
+
+Default architecture:
+
+- Raw sources are immutable.
+- The Markdown wiki is the durable, LLM-maintained compiled knowledge layer.
+- `AGENTS.md`, templates, and page frontmatter define the operating schema.
+- Important queries and ingests should compound into wiki pages, index updates, and append-only log entries.
+
+Prefer small, auditable Markdown-first changes before adding custom infrastructure.
+
+## Startup Protocol
+
+On fresh or resumed sessions, load Arbor project context before making project-level decisions:
+
+1. Read this `AGENTS.md`.
+2. Check git history when the project is a git repository.
+3. Read `.arbor/memory.md`.
+4. Check current workspace status when available.
+
+## Project Map
+
+- `.arbor/memory.md`: short-term Arbor session memory and in-flight workflow pointer.
+- `.arbor/workflow/features.json`: Arbor workflow status index for the active planning/development queue.
+- `.codex/hooks.json`: project-local Arbor hook intents.
+- `.codex/skills/llm-wiki/SKILL.md`: project skill for LLM Wiki development principles.
+- `pyproject.toml`: Python package metadata and `meridian` console script entrypoint.
+- `src/meridian/`: Paper Wiki prototype CLI implementation for `meridian wiki ...`.
+- `tests/`: unit tests for CLI ingest, eval, and human review recording.
+- `wiki/`: draft and eventual canonical Markdown wiki artifacts; v0 ingest writes review-only drafts under `wiki/.drafts/`.
+- `eval/`: Paper Wiki evaluation case examples and LLM-as-Judge rubrics.
+- `README.md`: minimal CLI usage note.
+- `docs/mvp-paper-wiki-workflow.md`: current MVP product/workflow reference.
+- `docs/mvp-paper-wiki-plan.md`: current brainstormed MVP boundary, development plan, and test plan.
+- `docs/paper-wiki-prototype-evaluation-plan.md`: Paper Wiki-first prototype, manual review, evaluation case, and refine loop plan.
+- `docs/wiki-evaluation-set-and-judge-rubric.md`: current evaluation set strategy and LLM-as-Judge rubric contract.
+- `docs/mvp-workflow.html`: simplified visual workflow diagram.
+- `docs/research-coding-framework.md`: lightweight end-to-end research coding framework that combines LLM Wiki state, Arbor continuity ideas, and bounded multi-agent research bursts.
+- `docs/research-coding-framework.html`: visual diagram for the research coding loop.
+- `docs/full-system-architecture.md`: two-product boundary for Paper Wiki Workflow and Research Dev Agent.
+- `docs/full-system-architecture.html`: full visual architecture showing standalone and integrated usage modes.
+- `docs/source-grounded-development-principles.md`: source-grounded design principles from Karpathy's LLM Wiki gist, Anthropic agent engineering posts, and selected community followup lessons.
+- `docs/research-event-map.md`: research coding event taxonomy and MVP high-leverage workflow boundary.
+- `docs/review/`: Arbor review/context artifacts for managed planning and later develop/evaluate rounds.

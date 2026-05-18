@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meridian LLM Wiki System Architecture</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --ink: #182230;
+      --muted: #667085;
+      --line: #cbd5e1;
+      --paper: #ffffff;
+      --raw: #e9f5ff;
+      --wiki: #fff3cf;
+      --agent: #e9f7ef;
+      --control: #f3ecff;
+      --output: #fceeee;
+      --accent: #d89100;
+      --blue: #2775b6;
+      --green: #28805d;
+      --red: #b64b4b;
+      --purple: #6d55b8;
+      --shadow: 0 14px 34px rgba(16, 24, 40, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    main {
+      width: min(1440px, calc(100vw - 36px));
+      margin: 0 auto;
+      padding: 34px 0 56px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: end;
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(34px, 5vw, 58px);
+      line-height: 1.02;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 0 0 6px;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .subtitle {
+      max-width: 850px;
+      color: #475467;
+      font-size: 17px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+      max-width: 430px;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 28px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: #475467;
+      font-size: 12px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--ink);
+    }
+
+    .dot.raw { background: var(--blue); }
+    .dot.agent { background: var(--green); }
+    .dot.wiki { background: var(--accent); }
+    .dot.control { background: var(--purple); }
+    .dot.output { background: var(--red); }
+
+    .architecture {
+      display: grid;
+      grid-template-columns: 1.04fr 1.18fr 1.48fr 1fr;
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .lane {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .lane-title {
+      min-height: 58px;
+      padding: 13px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .lane-title strong {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 15px;
+    }
+
+    .card {
+      position: relative;
+      min-height: 96px;
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      box-shadow: 0 8px 20px rgba(16, 24, 40, 0.05);
+    }
+
+    .card.raw { background: var(--raw); border-color: #b6ddff; }
+    .card.agent { background: var(--agent); border-color: #b7dfc5; }
+    .card.output { background: var(--output); border-color: #efcaca; }
+    .card.control { background: var(--control); border-color: #d4c4f6; }
+
+    .stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .vault {
+      display: grid;
+      gap: 12px;
+      min-height: 680px;
+      padding: 18px;
+      border: 3px solid var(--accent);
+      border-radius: 8px;
+      background: var(--wiki);
+      box-shadow: var(--shadow);
+    }
+
+    .vault-head {
+      padding-bottom: 13px;
+      border-bottom: 1px solid rgba(216, 145, 0, 0.35);
+    }
+
+    .vault-head h2 {
+      margin-bottom: 6px;
+      font-size: 28px;
+    }
+
+    .vault-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .vault-part {
+      min-height: 104px;
+      padding: 14px;
+      border: 1px solid rgba(216, 145, 0, 0.35);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.78);
+    }
+
+    .vault-part.primary {
+      grid-column: 1 / -1;
+      min-height: 118px;
+      border-color: var(--accent);
+      background: #fff;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .step {
+      min-height: 122px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      position: relative;
+    }
+
+    .step::after {
+      content: ">";
+      position: absolute;
+      top: 50%;
+      right: -11px;
+      transform: translateY(-50%);
+      color: #98a2b3;
+      font-weight: 850;
+    }
+
+    .step:last-child::after {
+      content: "";
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 24px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      background: var(--ink);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .callout {
+      margin-top: 18px;
+      padding: 16px 18px;
+      border-left: 4px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      background: #fffaf0;
+      color: #59400f;
+      box-shadow: 0 8px 20px rgba(16, 24, 40, 0.04);
+    }
+
+    .callout strong {
+      color: #3b2b0d;
+    }
+
+    .connector {
+      display: grid;
+      place-items: center;
+      min-height: 44px;
+      color: #667085;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .connector::before,
+    .connector::after {
+      content: "";
+      display: block;
+      width: 100%;
+      height: 1px;
+      background: var(--line);
+    }
+
+    .section-title {
+      margin: 28px 0 12px;
+      font-size: 22px;
+    }
+
+    @media (max-width: 1120px) {
+      header,
+      .architecture,
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .legend {
+        justify-content: flex-start;
+      }
+
+      .vault {
+        min-height: auto;
+      }
+
+      .connector {
+        min-height: 26px;
+      }
+
+      .connector::before,
+      .connector::after {
+        display: none;
+      }
+
+      .step::after {
+        content: "v";
+        top: auto;
+        right: 16px;
+        bottom: -21px;
+        transform: none;
+      }
+    }
+
+    @media (max-width: 680px) {
+      main {
+        width: min(100vw - 24px, 760px);
+        padding-top: 24px;
+      }
+
+      .vault-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .vault-part.primary {
+        grid-column: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Meridian LLM Wiki Architecture</h1>
+        <p class="subtitle">
+          一个 Markdown-first 的 research state compiler：原始材料保持不可变，LLM 把它们持续编译进 Obsidian 友好的 wiki，
+          schema 和日志保证每次维护都可审查、可追踪、可继续。
+        </p>
+      </div>
+      <div class="legend" aria-label="Legend">
+        <span><i class="dot raw"></i>Raw Inputs</span>
+        <span><i class="dot agent"></i>Agent Work</span>
+        <span><i class="dot wiki"></i>Compiled Wiki</span>
+        <span><i class="dot control"></i>Control Plane</span>
+        <span><i class="dot output"></i>Human Surface</span>
+      </div>
+    </header>
+
+    <section class="architecture" aria-label="System architecture">
+      <div class="lane">
+        <div class="lane-title">
+          <strong>1. Input Channels</strong>
+          <p>科研信号从多个工具进入，但不直接成为最终状态。</p>
+        </div>
+        <article class="card raw">
+          <h3>Conversations</h3>
+          <p>GPT、Claude、Codex 讨论里的 idea、判断、路线选择、next action。</p>
+        </article>
+        <article class="card raw">
+          <h3>Zotero / Reading Notes</h3>
+          <p>paper critique、疑问、摘要、人工洞见、Better BibTeX 或 Markdown export。</p>
+        </article>
+        <article class="card raw">
+          <h3>Papers / Web / NotebookLM</h3>
+          <p>论文、网页剪藏、NotebookLM grounded analysis、外部报告。</p>
+        </article>
+        <article class="card raw">
+          <h3>Experiments</h3>
+          <p>实验计划、代码 repo、日志、图表、失败记录、结果解释。</p>
+        </article>
+      </div>
+
+      <div class="lane">
+        <div class="lane-title">
+          <strong>2. Integration Workspace</strong>
+          <p>把输入变成可审查的 wiki 更新，而不是一次性回答。</p>
+        </div>
+        <article class="card agent">
+          <h3>Capture Inbox</h3>
+          <p>低摩擦收集材料，先分类为 source、idea、claim、project、decision 或 synthesis 候选。</p>
+        </article>
+        <div class="connector">normalize and classify</div>
+        <article class="card agent">
+          <h3>Integration Agent</h3>
+          <p>识别新增对象、更新旧页面、合并重复、建立双链、标记冲突和证据缺口。</p>
+        </article>
+        <div class="connector">produce reviewable diff</div>
+        <article class="card agent">
+          <h3>Provenance Guard</h3>
+          <p>区分 source fact、wiki synthesis、user decision；claim 必须尽量指回来源。</p>
+        </article>
+      </div>
+
+      <section class="vault" aria-label="Compiled wiki vault">
+        <div class="vault-head">
+          <h2>3. Compiled Markdown Wiki</h2>
+          <p>唯一长期可信的研究状态层。LLM 维护结构，人类在 Obsidian 中阅读、导航和判断。</p>
+        </div>
+        <div class="vault-grid">
+          <article class="vault-part primary">
+            <h3>Research Objects</h3>
+            <p>Idea、Paper、Claim、Concept、Project、Decision、Synthesis。每个页面都有 frontmatter、状态、来源、链接和下一步。</p>
+          </article>
+          <article class="vault-part">
+            <h3>Raw Source References</h3>
+            <p>`raw/` 保持不可变；wiki 中的 source page 解释材料价值、范围和引用位置。</p>
+          </article>
+          <article class="vault-part">
+            <h3>Evidence Graph</h3>
+            <p>supports、contradicts、related、derived-from 等关系通过 Markdown 双链和 frontmatter 表达。</p>
+          </article>
+          <article class="vault-part">
+            <h3>Index</h3>
+            <p>`wiki/index.md` 是内容目录，agent 查询时先读它，再用 `rg` 定位具体页面。</p>
+          </article>
+          <article class="vault-part">
+            <h3>Log</h3>
+            <p>`wiki/log.md` 记录 ingest、query、lint、plan 的时间线，append-only 且可用简单命令解析。</p>
+          </article>
+          <article class="vault-part">
+            <h3>Templates</h3>
+            <p>页面模板固定最小 frontmatter，避免 wiki 演化成不可维护的自由文本集合。</p>
+          </article>
+          <article class="vault-part">
+            <h3>Dataview / Graph View</h3>
+            <p>Obsidian 负责浏览、图谱、动态表格；Meridian 不急着重做这些界面能力。</p>
+          </article>
+        </div>
+      </section>
+
+      <div class="lane">
+        <div class="lane-title">
+          <strong>4. Control and Outputs</strong>
+          <p>控制面让 agent 有纪律；输出面让研究继续推进。</p>
+        </div>
+        <article class="card control">
+          <h3>Schema Control</h3>
+          <p>`AGENTS.md`、`SKILL.md`、templates、frontmatter 规则定义 agent 如何写入。</p>
+        </article>
+        <article class="card control">
+          <h3>Maintenance Policies</h3>
+          <p>diff-first、source-readonly、log append-only、claim provenance、human judgment boundary。</p>
+        </article>
+        <article class="card output">
+          <h3>Human Review Surface</h3>
+          <p>Obsidian、git diff、graph view、Dataview dashboard、Markdown pages。</p>
+        </article>
+        <article class="card output">
+          <h3>Derived Outputs</h3>
+          <p>answers、comparison tables、research plans、experiment plans、Marp slides、charts、canvas。</p>
+        </article>
+      </div>
+    </section>
+
+    <h2 class="section-title">Lifecycle Operations</h2>
+    <section class="flow" aria-label="Lifecycle operations">
+      <article class="step">
+        <span class="tag">C</span>
+        <h3>Capture</h3>
+        <p>把材料放进 raw 或 inbox；只做轻量分类，不急着过度抽象。</p>
+      </article>
+      <article class="step">
+        <span class="tag">I</span>
+        <h3>Ingest</h3>
+        <p>一次处理一个 source，生成 source page，并更新相关对象页、index 和 log。</p>
+      </article>
+      <article class="step">
+        <span class="tag">Q</span>
+        <h3>Query</h3>
+        <p>先查 wiki，而不是重新读全部 raw source；有价值的 synthesis 反写入 wiki。</p>
+      </article>
+      <article class="step">
+        <span class="tag">L</span>
+        <h3>Lint</h3>
+        <p>找冲突、孤页、缺证据 claim、停滞 project、未整合 inbox。</p>
+      </article>
+      <article class="step">
+        <span class="tag">P</span>
+        <h3>Plan</h3>
+        <p>从当前研究状态推出下一轮阅读、实验、暂停条件或决策更新。</p>
+      </article>
+    </section>
+
+    <div class="callout">
+      <strong>Architecture rule:</strong>
+      Meridian 不是文档上传问答工具。它的核心是把每次阅读、讨论和实验观察编译成可审查、可链接、可持续维护的 Markdown 研究状态。
+    </div>
+  </main>
+</body>
+</html>

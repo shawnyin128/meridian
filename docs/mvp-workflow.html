@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meridian MVP Paper Wiki Workflow</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #cbd5e1;
+      --paper: #ffffff;
+      --soft-blue: #e9f4ff;
+      --soft-green: #eaf7ef;
+      --soft-gold: #fff4d6;
+      --soft-purple: #f1edff;
+      --soft-red: #fdeeee;
+      --blue: #2d74b8;
+      --green: #2f805a;
+      --gold: #d89614;
+      --purple: #6b55b8;
+      --red: #b64b4b;
+      --shadow: 0 14px 34px rgba(16, 24, 40, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    main {
+      width: min(1320px, calc(100vw - 36px));
+      margin: 0 auto;
+      padding: 34px 0 56px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(34px, 5vw, 58px);
+      line-height: 1.02;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 0 0 8px;
+      font-size: 21px;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 0 0 7px;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .subtitle {
+      max-width: 900px;
+      color: #475467;
+      font-size: 17px;
+    }
+
+    .top {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 330px;
+      gap: 22px;
+      align-items: end;
+      margin-bottom: 22px;
+    }
+
+    .boundary {
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--gold);
+      border-radius: 0 8px 8px 0;
+      background: #fffaf0;
+      box-shadow: 0 8px 20px rgba(16, 24, 40, 0.04);
+    }
+
+    .input-row,
+    .output-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .panel,
+    .step,
+    .gate,
+    .store {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      box-shadow: 0 8px 20px rgba(16, 24, 40, 0.045);
+    }
+
+    .panel {
+      padding: 15px;
+      min-height: 112px;
+    }
+
+    .panel.input { background: var(--soft-blue); border-color: #b9dcff; }
+    .panel.tool { background: var(--soft-purple); border-color: #d2c8f2; }
+    .panel.output { background: var(--soft-red); border-color: #efc9c9; }
+
+    .workflow {
+      padding: 18px;
+      border: 3px solid var(--gold);
+      border-radius: 8px;
+      background: var(--soft-gold);
+      box-shadow: var(--shadow);
+    }
+
+    .workflow-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: start;
+      padding-bottom: 14px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid rgba(216, 150, 20, 0.36);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border-radius: 7px;
+      background: #fff;
+      border: 1px solid rgba(216, 150, 20, 0.45);
+      color: #5a3d08;
+      font-size: 12px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .spine {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .step {
+      position: relative;
+      min-height: 154px;
+      padding: 15px;
+      background: #fff;
+    }
+
+    .step::after {
+      content: ">";
+      position: absolute;
+      top: 50%;
+      right: -11px;
+      transform: translateY(-50%);
+      color: #98a2b3;
+      font-weight: 850;
+    }
+
+    .step:last-child::after { content: ""; }
+
+    .num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 24px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      background: var(--ink);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .step.route { border-top: 4px solid var(--blue); }
+    .step.extract { border-top: 4px solid var(--green); }
+    .step.retrieve { border-top: 4px solid var(--purple); }
+    .step.review { border-top: 4px solid var(--red); }
+    .step.publish { border-top: 4px solid var(--gold); }
+
+    .gates {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .gate {
+      min-height: 86px;
+      padding: 13px;
+      background: #fff;
+    }
+
+    .gate h3 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--gold);
+      flex: 0 0 auto;
+    }
+
+    .dot.red { background: var(--red); }
+    .dot.purple { background: var(--purple); }
+
+    .stores {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .store {
+      min-height: 92px;
+      padding: 13px;
+      background: rgba(255, 255, 255, 0.78);
+      border-color: rgba(216, 150, 20, 0.36);
+    }
+
+    .note {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-left: 4px solid var(--green);
+      border-radius: 0 8px 8px 0;
+      background: #f1fbf5;
+      color: #27563f;
+    }
+
+    @media (max-width: 760px) {
+      .top,
+      .input-row,
+      .output-row,
+      .spine,
+      .gates,
+      .stores {
+        grid-template-columns: 1fr;
+      }
+
+      .step::after {
+        content: "v";
+        top: auto;
+        right: 16px;
+        bottom: -21px;
+        transform: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="top">
+      <div>
+        <h1>MVP Paper Wiki Workflow</h1>
+        <p class="subtitle">
+          一条固定 workflow：把 raw paper 和你的阅读 insight 变成可演化的 Obsidian wiki，
+          再通过可靠 retrieval 反哺你的 research idea。
+        </p>
+      </div>
+      <aside class="boundary">
+        <h3>Product Boundary</h3>
+        <p>这是 workflow，不是 agents 平台。LLM 参与每一步，但流程、gates 和落盘规则是预定义的。</p>
+      </aside>
+    </section>
+
+    <section class="input-row" aria-label="Inputs and tools">
+      <article class="panel input">
+        <h3>Inputs</h3>
+        <p>PDF、arXiv、DOI、本地 paper、Zotero 批注、你的读后 insight、一个新 research idea。</p>
+      </article>
+      <article class="panel input">
+        <h3>User Intent</h3>
+        <p>ingest paper、补充我的理解、改进已有分析、找相关页面、基于 wiki 生成 idea。</p>
+      </article>
+      <article class="panel tool">
+        <h3>Tools and Stores</h3>
+        <p>paper parser、Zotero export、Obsidian CLI / Markdown files、search、graph/index/log updater。</p>
+      </article>
+    </section>
+
+    <section class="workflow" aria-label="Main workflow">
+      <div class="workflow-head">
+        <div>
+          <h2>Main Workflow</h2>
+          <p>按 Anthropic 的 workflow 思路：routing、prompt chaining、parallel extraction、evaluator-optimizer、gated write。</p>
+        </div>
+        <span class="badge">predefined path</span>
+      </div>
+
+      <div class="spine" aria-label="Workflow steps">
+        <article class="step route">
+          <span class="num">1</span>
+          <h3>Route Request</h3>
+          <p>判断请求类型：读新 paper、加入批注、修正分析、检索上下文，还是生成 idea。</p>
+        </article>
+        <article class="step extract">
+          <span class="num">2</span>
+          <h3>Build Paper Model</h3>
+          <p>并行抽取 problem、method、claims、experiments、limitations；把你的 insight 单独标成 user judgment。</p>
+        </article>
+        <article class="step retrieve">
+          <span class="num">3</span>
+          <h3>Retrieve Context</h3>
+          <p>用 index、frontmatter、lexical/BM25、graph links 找少量真正相关的 wiki pages。</p>
+        </article>
+        <article class="step review">
+          <span class="num">4</span>
+          <h3>Review Draft</h3>
+          <p>生成可审查 draft；用 citation、schema、link、你的反馈检查是否能发布。</p>
+        </article>
+        <article class="step publish">
+          <span class="num">5</span>
+          <h3>Publish and Feed Ideas</h3>
+          <p>写入 Obsidian wiki，更新 index/log/graph；把可用结论反哺到 ideas 和 experiments。</p>
+        </article>
+      </div>
+
+      <div class="gates" aria-label="Quality gates">
+        <article class="gate">
+          <h3><i class="dot"></i>Source Boundary</h3>
+          <p>paper 原文事实、你的判断、wiki synthesis 必须分开。</p>
+        </article>
+        <article class="gate">
+          <h3><i class="dot purple"></i>Retrieval Quality</h3>
+          <p>必须说明为什么选这些 pages，以及还缺什么证据。</p>
+        </article>
+        <article class="gate">
+          <h3><i class="dot red"></i>Publish Gate</h3>
+          <p>大改动先 draft；通过检查或用户确认后再写 canonical wiki。</p>
+        </article>
+      </div>
+
+      <div class="stores" aria-label="State stores">
+        <article class="store">
+          <h3>Raw Store</h3>
+          <p>`raw/papers`, `raw/zotero`, `raw/notes` 保持不可变。</p>
+        </article>
+        <article class="store">
+          <h3>Canonical Wiki</h3>
+          <p>`wiki/papers`, `claims`, `methods`, `concepts`, `ideas`, `experiments`。</p>
+        </article>
+        <article class="store">
+          <h3>Control Files</h3>
+          <p>`index.md`, `log.md`, `graph/*.jsonl`, templates, `AGENTS.md`。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="output-row" aria-label="Outputs">
+      <article class="panel output">
+        <h3>Paper Analysis</h3>
+        <p>一页可持续演化的 paper model：问题、方法、claims、实验、局限、你的批注、open questions。</p>
+      </article>
+      <article class="panel output">
+        <h3>Context Packet</h3>
+        <p>面向当前问题的小上下文包：相关页面、选择原因、证据、冲突、缺口。</p>
+      </article>
+      <article class="panel output">
+        <h3>Idea Feedback</h3>
+        <p>research angle、hypothesis、下一批 paper、实验草案、失败路径记忆。</p>
+      </article>
+    </section>
+
+    <div class="note">
+      MVP 成功标准：你给一篇 paper 和一些自己的批注，它能形成可追踪、可修改、可检索的 wiki 状态；之后你提出 idea，它能找回真正相关的 paper/claim/method，并给出有根据的下一步。
+    </div>
+  </main>
+</body>
+</html>

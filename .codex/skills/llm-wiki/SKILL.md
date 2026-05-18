@@ -1,0 +1,216 @@
+---
+name: llm-wiki
+description: Maintain this project as an LLM-maintained Markdown wiki system. Use when planning, designing, implementing, or reviewing features that affect raw source ingestion, generated wiki pages, schema or AGENTS conventions, Obsidian vault structure, page frontmatter, indexing, logging, query workflows, lint workflows, citations, cross-links, or persistent knowledge-base behavior.
+---
+
+# LLM Wiki
+
+## Purpose
+
+Use this skill to keep the project aligned with the LLM Wiki pattern: an LLM incrementally builds and maintains a persistent, interlinked Markdown wiki from curated raw sources. The wiki is a compounding artifact, not a temporary retrieval cache.
+
+The central product promise is accumulated research state: summaries, entities, concepts, claims, contradictions, decisions, and next steps should become durable Markdown structure instead of disappearing into chat history.
+
+For Meridian's current MVP, apply this pattern as a personal paper wiki workflow. Do not frame the product as a multi-agent platform. The first useful version should help the user internalize raw papers, incorporate their Zotero annotations and reading insights, evolve paper analysis through feedback, and feed the wiki back into stronger research ideas.
+
+When architecture or implementation choices are ambiguous, consult `docs/source-grounded-development-principles.md` for the project's source-grounded principles from Karpathy's LLM Wiki gist, Anthropic agent engineering posts, and selected community followup lessons.
+
+## Core Model
+
+Preserve three layers:
+
+1. Raw sources: immutable source material such as articles, papers, notes, transcripts, images, exports, data files, and experiment logs. The agent reads this layer but does not rewrite it.
+2. Wiki: LLM-generated Markdown pages such as summaries, entity pages, concept pages, claim pages, comparisons, overviews, decisions, and syntheses. The agent owns maintenance of this layer.
+3. Schema: project instructions such as `AGENTS.md`, templates, frontmatter conventions, directory rules, and workflows. The human and agent co-evolve this layer as usage patterns become clear.
+
+Do not replace this model with generic RAG unless the user explicitly asks. Search and retrieval can support the workflow, but the durable output is a maintained wiki.
+
+## MCP Delivery
+
+For Meridian, the Paper Wiki may be delivered as an MCP server so agents and clients can use the wiki without coupling to its internal vault layout.
+
+Treat MCP as a delivery surface, not the source of truth:
+
+- raw sources remain immutable
+- Markdown wiki pages remain the durable compiled knowledge layer
+- schema, templates, frontmatter, index, and log remain the operating contract
+- MCP tools expose stable access to search, context packets, page reads, ingest entrypoints, and write-back proposals
+
+Prefer conservative MCP boundaries:
+
+- read/query/context tools before broad write tools
+- propose/apply separation for wiki updates
+- explicit provenance and uncertainty in returned context
+- no client should need to know physical page locations to request research context
+- agent-ergonomic tool responses: concise by default, detailed on request, with semantic IDs and selection reasons
+
+The Research Dev Agent should consume paper/wiki memory through this MCP surface whenever available.
+
+## Source-Grounded Principles
+
+Follow these principles while the project is still design-heavy:
+
+- progressive disclosure beats loading everything up front
+- context packets beat retrieval dumps
+- MCP is a delivery surface, not the source of truth
+- tools should be few, high-signal, well-namespaced, and evaluated on realistic tasks
+- write operations should start as proposals before canonical wiki mutation
+- Research Dev Agent autonomy should be constrained by evidence contracts, not by brittle route machines
+- research-grade code is clear, inspectable, extensible, and sometimes purposefully redundant
+- wiki lookup should be a first-class dev action when method definitions, prior work, failed paths, or user insights matter
+- git checkpoints should preserve research uncertainty: hypothesis code, probes, ablations, results, and risky refactors should be recoverable by impact
+- community followups are experience signals, not implementation templates
+
+## Design Rules
+
+- Treat the wiki as compiled knowledge. New sources and important queries should update the wiki, not only produce chat answers.
+- Keep raw sources read-only. If source cleanup is needed, create derived notes or metadata instead of mutating the original.
+- Make edits auditable. Prefer clear diffs, provenance links, and log entries over silent rewrites.
+- Keep the human in charge of source selection, emphasis, and judgment. Let the agent handle summarizing, cross-referencing, filing, and maintenance.
+- Favor Markdown files, Obsidian links, plain directories, git history, and simple Unix-readable logs before adding databases or custom infrastructure.
+- Preserve source provenance on claims. Any synthesized claim should point back to one or more source pages or raw source references when possible.
+- Distinguish source facts, wiki synthesis, and user decisions. Do not blur "the source says", "the wiki currently infers", and "we decided".
+- File valuable query outputs back into the wiki when they represent durable analysis, comparison, synthesis, or planning.
+
+## Meridian Paper Ingest Flow
+
+For the current prototype, use the confidence-gated flow as the default shape:
+
+```text
+PDF or source export
+  -> extraction artifacts
+  -> draft paper model and candidate records
+  -> quality gate
+  -> canonical draft publish when allowed
+  -> bounded LLM-as-Judge packet
+  -> recorded judge result
+  -> convergence decision
+```
+
+Do not make mandatory human review the steady-state path. Human review is for calibration, high-impact papers, conflicts, user-insight integration, low-confidence extraction, or sampled audits.
+
+Default command path:
+
+```bash
+meridian wiki flow <paper.pdf> \
+  --out wiki/.drafts/ingests/<paper-slug>/ \
+  --wiki-root wiki \
+  --rubric eval/rubrics/paper_wiki_quality_v0.md
+```
+
+The canonical wiki page may be auto-published only as a draft. It must preserve machine-readable state such as `status`, `review_state`, `quality_gate`, provenance fields, source links, and artifact links. A converged automatic ingest can move to `review_state: auto_converged`; this means the workflow accepted the packet, not that a human personally reviewed every claim.
+
+When an LLM-as-Judge result is available, record it and converge:
+
+```bash
+meridian wiki judge-record <run.json> <judge-result.json>
+meridian wiki converge <run.json>
+```
+
+If convergence says refinement is needed, update the ingest skill/schema/content generation before scaling to scenario-specific evaluation.
+
+## Page Frontmatter
+
+Use YAML frontmatter on wiki pages unless the user chooses a different schema. Keep it simple and machine-readable.
+
+Recommended baseline:
+
+```yaml
+---
+type: idea | paper | claim | concept | entity | project | decision | source | synthesis
+title: "Human-readable page title"
+status: inbox | active | draft | reviewed | superseded | archived
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+sources:
+  - "[[source-page-or-id]]"
+tags:
+  - llm-wiki
+aliases: []
+confidence: low | medium | high
+---
+```
+
+Add fields only when they support an actual workflow. Good additions include `contradicts`, `supports`, `related`, `next_actions`, `source_count`, `owner`, or `review_after`. Avoid decorative metadata.
+
+## Suggested Structure
+
+Adapt names to the project, but keep the responsibilities separate:
+
+```text
+raw/              immutable source files and exports
+raw/assets/       locally downloaded images and attachments
+wiki/             generated Markdown wiki
+wiki/index.md     content catalog and navigation
+wiki/log.md       append-only chronological activity log
+wiki/templates/   page templates and frontmatter examples
+AGENTS.md         schema and operating rules for Codex agents
+```
+
+At small scale, `index.md` plus `rg` is enough. Add search tools only after the index becomes a real bottleneck.
+
+## Operations
+
+### Ingest
+
+When processing a new source:
+
+1. Read the source and identify durable information, claims, entities, concepts, contradictions, and possible next actions.
+2. Decide whether to discuss interpretation with the user before writing broad wiki changes.
+3. Create or update the source summary page.
+4. Update affected entity, concept, claim, project, decision, or synthesis pages.
+5. Add cross-links and provenance.
+6. Update `wiki/index.md`.
+7. Append a parseable entry to `wiki/log.md`.
+
+A single source may touch many pages. Keep updates coherent rather than dumping everything into one summary.
+
+### Query
+
+When answering from the wiki:
+
+1. Read `wiki/index.md` first if it exists.
+2. Use `rg` or another local search tool to locate relevant pages.
+3. Read the smallest sufficient set of wiki pages and source references.
+4. Answer with citations or page references.
+5. If the answer creates durable synthesis, ask whether to file it or file it directly when the user has already asked for wiki maintenance.
+
+### Lint
+
+Periodically health-check the wiki for:
+
+- contradictions between pages
+- stale claims superseded by newer sources
+- orphan pages with no inbound or outbound links
+- important concepts mentioned repeatedly but lacking their own pages
+- missing cross-references
+- claims without provenance
+- projects without next actions
+- inbox items not yet integrated
+
+Prefer actionable fixes or a compact review report over broad commentary.
+
+## Logging
+
+Keep `wiki/log.md` chronological and append-only. Use a consistent heading prefix so simple tools can parse it:
+
+```markdown
+## [YYYY-MM-DD] ingest | Source title
+## [YYYY-MM-DD] query | Question or output title
+## [YYYY-MM-DD] lint | Scope
+```
+
+Each entry should state what changed, which pages were touched, and any unresolved follow-ups.
+
+## Implementation Bias
+
+For this project, prefer the smallest useful system:
+
+- Markdown before databases.
+- Obsidian-compatible links before custom graph storage.
+- Templates and `AGENTS.md` before framework code.
+- Local scripts before services.
+- Human-reviewable diffs before opaque automation.
+- A well-defined workflow before an agents platform.
+
+Only add infrastructure when it clearly reduces repeated manual work or protects consistency at a scale the current wiki has actually reached.

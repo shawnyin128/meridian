@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Research Coding Loop Framework</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #cbd5e1;
+      --paper: #ffffff;
+      --wiki: #fff4d6;
+      --code: #e9f4ff;
+      --run: #eaf7ef;
+      --idea: #fdeeee;
+      --control: #f1edff;
+      --gold: #d89614;
+      --blue: #2d74b8;
+      --green: #2f805a;
+      --red: #b64b4b;
+      --purple: #6b55b8;
+      --shadow: 0 14px 34px rgba(16, 24, 40, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    main {
+      width: min(1380px, calc(100vw - 36px));
+      margin: 0 auto;
+      padding: 34px 0 56px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(34px, 5vw, 58px);
+      line-height: 1.02;
+      letter-spacing: 0;
+    }
+
+    h2 { margin: 0 0 8px; font-size: 21px; letter-spacing: 0; }
+    h3 { margin: 0 0 7px; font-size: 15px; letter-spacing: 0; }
+    p { margin: 0; color: var(--muted); font-size: 13px; }
+
+    .subtitle {
+      max-width: 920px;
+      color: #475467;
+      font-size: 17px;
+    }
+
+    .top {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 22px;
+      align-items: end;
+      margin-bottom: 20px;
+    }
+
+    .boundary {
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--gold);
+      border-radius: 0 8px 8px 0;
+      background: #fffaf0;
+      box-shadow: 0 8px 20px rgba(16, 24, 40, 0.04);
+    }
+
+    .state-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .state, .step, .guard, .output {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      box-shadow: 0 8px 20px rgba(16, 24, 40, 0.045);
+    }
+
+    .state { min-height: 122px; padding: 15px; }
+    .state.wiki { background: var(--wiki); border-color: #e8c56b; }
+    .state.code { background: var(--code); border-color: #b9dcff; }
+    .state.run { background: var(--run); border-color: #bbdfc6; }
+
+    .workflow {
+      padding: 18px;
+      border: 3px solid var(--gold);
+      border-radius: 8px;
+      background: #fff7e2;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+    }
+
+    .workflow-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: start;
+      padding-bottom: 14px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid rgba(216, 150, 20, 0.36);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border-radius: 7px;
+      background: #fff;
+      border: 1px solid rgba(216, 150, 20, 0.45);
+      color: #5a3d08;
+      font-size: 12px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .spine {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .step {
+      position: relative;
+      min-height: 160px;
+      padding: 15px;
+      background: #fff;
+    }
+
+    .step::after {
+      content: ">";
+      position: absolute;
+      top: 50%;
+      right: -11px;
+      transform: translateY(-50%);
+      color: #98a2b3;
+      font-weight: 850;
+    }
+
+    .step:last-child::after { content: ""; }
+
+    .num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 24px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      background: var(--ink);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .s1 { border-top: 4px solid var(--purple); }
+    .s2 { border-top: 4px solid var(--gold); }
+    .s3 { border-top: 4px solid var(--blue); }
+    .s4 { border-top: 4px solid var(--green); }
+    .s5 { border-top: 4px solid var(--red); }
+    .s6 { border-top: 4px solid var(--gold); }
+
+    .bottom {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .guard {
+      min-height: 156px;
+      padding: 15px;
+      background: var(--control);
+      border-color: #d2c8f2;
+    }
+
+    .guard ul {
+      margin: 8px 0 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .output-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .output {
+      min-height: 118px;
+      padding: 15px;
+      background: var(--idea);
+      border-color: #efc9c9;
+    }
+
+    .focus-row {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .focus {
+      min-height: 112px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-top: 4px solid var(--red);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 8px 20px rgba(16, 24, 40, 0.045);
+    }
+
+    @media (max-width: 900px) {
+      .top,
+      .state-row,
+      .spine,
+      .bottom,
+      .output-row,
+      .focus-row {
+        grid-template-columns: 1fr;
+      }
+
+      .step::after {
+        content: "v";
+        top: auto;
+        right: 16px;
+        bottom: -21px;
+        transform: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="top">
+      <div>
+        <h1>Research Coding Loop</h1>
+        <p class="subtitle">
+          一个轻量科研写码框架：用 LLM Wiki 保存研究状态，用 Arbor 的 evidence/checkpoint 思想保持续航，
+          只在真正开放、可并行的研究问题上使用 multi-agent burst。
+        </p>
+      </div>
+      <aside class="boundary">
+        <h3>Boundary</h3>
+        <p>不是 Arbor for science，也不是默认多 agent 编码。核心是一条 paper、idea、code、experiment、result 互相更新的 workflow。</p>
+      </aside>
+    </section>
+
+    <section class="state-row" aria-label="Core state layers">
+      <article class="state wiki">
+        <h3>Research Wiki State</h3>
+        <p>papers、claims、methods、ideas、hypotheses、experiments、results、open questions。保存研究理解。</p>
+      </article>
+      <article class="state code">
+        <h3>Code Work State</h3>
+        <p>repo map、active slice、changed files、command plan、test plan、environment constraints。约束写码范围。</p>
+      </article>
+      <article class="state run">
+        <h3>Experiment Result State</h3>
+        <p>configs、commands、logs、metrics、plots、failed runs、interpretation。把运行结果变成证据。</p>
+      </article>
+    </section>
+
+    <section class="focus-row" aria-label="MVP high leverage workflows">
+      <article class="focus">
+        <h3>Experiment Design</h3>
+        <p>把 hypothesis 拆成最小可跑实验、controls、ablation 和 stop condition。</p>
+      </article>
+      <article class="focus">
+        <h3>Sanity Check</h3>
+        <p>先证明训练 loop、metric、data split、config 开关没有明显坏掉。</p>
+      </article>
+      <article class="focus">
+        <h3>Result Interpretation</h3>
+        <p>把 logs、metrics、plots、失败原因转成下一步 research decision。</p>
+      </article>
+      <article class="focus">
+        <h3>Experiment Memory</h3>
+        <p>记录跑过什么、为什么跑、说明什么、还缺什么，避免跑过但忘了。</p>
+      </article>
+      <article class="focus">
+        <h3>Reproduction Diagnosis</h3>
+        <p>定位 paper、repo、data、hyperparam、hardware、metric 之间哪里对不上。</p>
+      </article>
+    </section>
+
+    <section class="workflow" aria-label="Main workflow">
+      <div class="workflow-head">
+        <div>
+          <h2>Main Loop</h2>
+          <p>每一步都产出可落盘状态；失败实验也必须回写为研究记忆。</p>
+        </div>
+        <span class="badge">workflow first</span>
+      </div>
+
+      <div class="spine">
+        <article class="step s1">
+          <span class="num">1</span>
+          <h3>Classify Event</h3>
+          <p>判断是实验设计、sanity check、结果解释、实验记忆、复现诊断，还是普通 coding。</p>
+        </article>
+        <article class="step s2">
+          <span class="num">2</span>
+          <h3>Retrieve Context</h3>
+          <p>从 paper wiki、claim/method、旧 idea、失败路线、实验结果和代码入口生成 context packet。</p>
+        </article>
+        <article class="step s3">
+          <span class="num">3</span>
+          <h3>Select Workflow</h3>
+          <p>只选一个主链路，避免把一次请求膨胀成设计、实现、debug、记录全包。</p>
+        </article>
+        <article class="step s4">
+          <span class="num">4</span>
+          <h3>Plan Slice</h3>
+          <p>定义最小动作：research question、expected learning、文件/命令、证据和停止条件。</p>
+        </article>
+        <article class="step s5">
+          <span class="num">5</span>
+          <h3>Run Or Diagnose</h3>
+          <p>执行最小代码/实验/诊断动作，并保留 config、command、metric、output 和失败信息。</p>
+        </article>
+        <article class="step s6">
+          <span class="num">6</span>
+          <h3>Interpret And Update</h3>
+          <p>解释结果，更新 wiki、lab log、hypothesis、failed-path memory 和下一步。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="bottom" aria-label="Borrowed ideas and multi-agent boundary">
+      <article class="guard">
+        <h3>Keep From Arbor</h3>
+        <ul>
+          <li>project guide and short-term memory</li>
+          <li>decision trace and evidence artifacts</li>
+          <li>done-when, adapted to research learning</li>
+          <li>outcome-first evaluation and resume discipline</li>
+        </ul>
+      </article>
+      <article class="guard">
+        <h3>Use Multi-Agent Only For Research Burst</h3>
+        <ul>
+          <li>literature breadth and method search</li>
+          <li>benchmark or dataset landscape</li>
+          <li>independent claim/result review</li>
+          <li>not for tightly coupled code edits</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="output-row" aria-label="User-facing outputs">
+      <article class="output">
+        <h3>Context Packet</h3>
+        <p>少量真正相关的 paper、claim、method、code entrypoint 和 gaps。</p>
+      </article>
+      <article class="output">
+        <h3>Research-Code Slice</h3>
+        <p>一个最小可验证的实验或代码动作，带学习目标和停止条件。</p>
+      </article>
+      <article class="output">
+        <h3>Updated Research Memory</h3>
+        <p>wiki、result、hypothesis、failed path 和下一步 idea 都被持续更新。</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

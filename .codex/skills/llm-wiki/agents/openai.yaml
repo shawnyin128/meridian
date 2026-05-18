@@ -1,0 +1,4 @@
+interface:
+  display_name: "LLM Wiki"
+  short_description: "Maintain compounding Markdown knowledge bases"
+  default_prompt: "Use $llm-wiki to design or update this project around a persistent LLM-maintained Markdown wiki."
