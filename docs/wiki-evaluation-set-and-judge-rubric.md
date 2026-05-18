@@ -114,6 +114,23 @@ meridian wiki eval eval/cases/paper_ingest_quality.example.jsonl \
 
 Each case writes a `*.case.json` snapshot next to the eval manifest and a per-case directory containing `flow.json`, `run.json`, `judge-packet.md`, draft artifacts, and extraction artifacts. This keeps the judge input replayable without making the expected path unique in the case definition.
 
+After judge JSON files are available, record and converge the whole run:
+
+```bash
+meridian wiki eval-converge eval/runs/<run-id>/eval_manifest.json
+meridian wiki eval-summary eval/runs/<run-id>/eval_manifest.json
+```
+
+Human calibration is appended separately:
+
+```bash
+meridian wiki eval-calibrate eval/runs/<run-id>/eval_manifest.json \
+  --case-id <case-id> \
+  --human-decision agree \
+  --bucket paper_model \
+  --notes "Judge matched human review."
+```
+
 ## Rubric Dimensions
 
 Score each dimension from 1 to 5.

@@ -6,6 +6,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from meridian.wiki.eval import iter_cases, write_eval_manifest
+from meridian.wiki.eval_run import (
+    EvalConvergeResult,
+    append_human_calibration,
+    converge_eval_run,
+    write_eval_summary,
+)
 from meridian.wiki.flow import WikiFlowResult, run_wiki_flow
 from meridian.wiki.ingest import IngestResult, run_ingest
 from meridian.wiki.judge import build_judge_packet
@@ -215,3 +221,30 @@ def record_judge(run_manifest: Path, judge_result_path: Path, out_path: Path | N
 
 def converge_run(run_manifest: Path, out_path: Path | None = None) -> WikiConvergenceResult:
     return converge_wiki_run(run_manifest=run_manifest, out_path=out_path)
+
+
+def converge_eval(manifest_path: Path, judge_dir: Path | None = None) -> EvalConvergeResult:
+    return converge_eval_run(manifest_path=manifest_path, judge_dir=judge_dir)
+
+
+def calibrate_eval(
+    *,
+    manifest_path: Path,
+    case_id: str,
+    human_decision: str,
+    bucket: str,
+    notes: str = "",
+    should_require_human_review_next_time: bool | None = None,
+) -> Path:
+    return append_human_calibration(
+        manifest_path=manifest_path,
+        case_id=case_id,
+        human_decision=human_decision,
+        bucket=bucket,
+        notes=notes,
+        should_require_human_review_next_time=should_require_human_review_next_time,
+    )
+
+
+def summarize_eval(manifest_path: Path, out_path: Path | None = None) -> Path:
+    return write_eval_summary(manifest_path=manifest_path, out_path=out_path)

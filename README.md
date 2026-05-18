@@ -63,3 +63,22 @@ meridian wiki eval eval/cases/paper_ingest_quality.example.jsonl \
 `--mode flow` writes per-case `flow.json`, `run.json`, `judge-packet.md`, a
 case snapshot, and a shared draft wiki under `<out-dir>/wiki` unless `--wiki-root`
 is provided.
+
+After an LLM judge writes per-case results, e.g.
+`eval/runs/<run-id>/<case-id>/judge-result.json`, converge the run and summarize
+it:
+
+```bash
+meridian wiki eval-converge eval/runs/<run-id>/eval_manifest.json
+meridian wiki eval-summary eval/runs/<run-id>/eval_manifest.json
+```
+
+Human calibration records judge quality without re-reviewing every artifact:
+
+```bash
+meridian wiki eval-calibrate eval/runs/<run-id>/eval_manifest.json \
+  --case-id <case-id> \
+  --human-decision agree \
+  --bucket paper_model \
+  --notes "Judge found the main issue."
+```

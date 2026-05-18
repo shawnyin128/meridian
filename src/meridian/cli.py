@@ -5,13 +5,16 @@ import sys
 from pathlib import Path
 
 from meridian.wiki.commands import (
+    calibrate_eval,
     converge_run,
+    converge_eval,
     create_judge_packet,
     eval_cases,
     ingest_pdf,
     record_judge,
     record_review,
     run_flow,
+    summarize_eval,
 )
 
 
@@ -127,6 +130,64 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Shared wiki root for --mode flow. Defaults to <out-dir>/wiki.",
     )
+
+    eval_converge = wiki_subparsers.add_parser(
+        "eval-converge",
+        help="Record per-case judge results for an eval run and converge each case.",
+    )
+    eval_converge.add_argument("manifest", type=Path, help="Path to eval_manifest.json.")
+    eval_converge.add_argument(
+        "--judge-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Optional directory containing judge JSON files. Defaults also check each "
+            "case directory for judge-result.json."
+        ),
+    )
+
+    eval_calibrate = wiki_subparsers.add_parser(
+        "eval-calibrate",
+        help="Append a human calibration record for a judged eval case.",
+    )
+    eval_calibrate.add_argument("manifest", type=Path, help="Path to eval_manifest.json.")
+    eval_calibrate.add_argument("--case-id", required=True, help="Evaluation case id.")
+    eval_calibrate.add_argument(
+        "--human-decision",
+        choices=["agree", "too_harsh", "too_lenient", "missed_key_issue"],
+        required=True,
+        help="Human calibration judgment about the LLM judge result.",
+    )
+    eval_calibrate.add_argument(
+        "--bucket",
+        choices=[
+            "workflow",
+            "schema",
+            "extraction",
+            "multimodal_understanding",
+            "paper_model",
+            "retrieval",
+            "judge_rubric",
+            "human_gate",
+            "other",
+        ],
+        required=True,
+        help="Primary refinement bucket from human calibration.",
+    )
+    eval_calibrate.add_argument("--notes", default="", help="Short calibration note.")
+    eval_calibrate.add_argument(
+        "--require-human-review-next-time",
+        choices=["true", "false"],
+        default=None,
+        help="Whether this kind of case should require human review next time.",
+    )
+
+    eval_summary = wiki_subparsers.add_parser(
+        "eval-summary",
+        help="Write aggregate metrics for an eval manifest.",
+    )
+    eval_summary.add_argument("manifest", type=Path, help="Path to eval_manifest.json.")
+    eval_summary.add_argument("--out", type=Path, default=None, help="Optional summary JSON path.")
 
     review = wiki_subparsers.add_parser(
         "review",
@@ -268,6 +329,34 @@ def main(argv: list[str] | None = None) -> int:
                 notes=args.notes,
             )
             print(f"Recorded human review: {record_path}")
+            return 0
+
+        if args.product == "wiki" and args.command == "eval-converge":
+            result = converge_eval(manifest_path=args.manifest, judge_dir=args.judge_dir)
+            print(f"Updated eval manifest: {result.manifest_path}")
+            print(f"Wrote eval summary: {result.summary_path}")
+            print(f"Recorded judge results: {result.recorded_count}")
+            print(f"Awaiting judge results: {result.missing_count}")
+            return 0
+
+        if args.product == "wiki" and args.command == "eval-calibrate":
+            require_next = None
+            if args.require_human_review_next_time is not None:
+                require_next = args.require_human_review_next_time == "true"
+            path = calibrate_eval(
+                manifest_path=args.manifest,
+                case_id=args.case_id,
+                human_decision=args.human_decision,
+                bucket=args.bucket,
+                notes=args.notes,
+                should_require_human_review_next_time=require_next,
+            )
+            print(f"Recorded human calibration: {path}")
+            return 0
+
+        if args.product == "wiki" and args.command == "eval-summary":
+            path = summarize_eval(manifest_path=args.manifest, out_path=args.out)
+            print(f"Wrote eval summary: {path}")
             return 0
 
         if args.product == "wiki" and args.command == "judge-pack":

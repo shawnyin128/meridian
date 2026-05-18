@@ -238,6 +238,81 @@ class CliTests(unittest.TestCase):
             self.assertTrue(Path(result["case_snapshot"]).exists())
             self.assertIn("canonical_artifacts", result)
 
+    def test_eval_converge_summary_and_calibration(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pdf = root / "paper.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            rubric = root / "rubric.md"
+            rubric.write_text("# Rubric\n", encoding="utf-8")
+            cases = root / "cases.jsonl"
+            case = {
+                "id": "case-flow-1",
+                "category": "paper_ingest",
+                "paper_path": str(pdf),
+                "problem_description": "Run and judge the full Paper Wiki flow.",
+                "expected_result": "Judge result is recorded and converged.",
+                "acceptable_paths": ["Any path that records judge evidence."],
+                "must_not_do": ["Do not skip convergence."],
+                "evaluation_rubric": ["source_fidelity"],
+            }
+            cases.write_text(json.dumps(case) + "\n", encoding="utf-8")
+            out_dir = root / "eval-output"
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "eval",
+                        str(cases),
+                        "--out-dir",
+                        str(out_dir),
+                        "--mode",
+                        "flow",
+                        "--rubric",
+                        str(rubric),
+                    ]
+                ),
+                0,
+            )
+
+            judge_path = out_dir / "case-flow-1" / "judge-result.json"
+            judge_path.write_text(json.dumps(_passing_judge_result("case-flow-1")) + "\n", encoding="utf-8")
+            manifest_path = out_dir / "eval_manifest.json"
+
+            self.assertEqual(main(["wiki", "eval-converge", str(manifest_path)]), 0)
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            result = manifest["results"][0]
+            self.assertEqual(result["evaluation_status"], "converged")
+            self.assertEqual(result["judge_decision"], "pass")
+            self.assertEqual(result["convergence_status"], "converged")
+            self.assertTrue((out_dir / "eval_summary.json").exists())
+
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "eval-calibrate",
+                        str(manifest_path),
+                        "--case-id",
+                        "case-flow-1",
+                        "--human-decision",
+                        "agree",
+                        "--bucket",
+                        "paper_model",
+                        "--notes",
+                        "Judge result matches the human calibration.",
+                        "--require-human-review-next-time",
+                        "false",
+                    ]
+                ),
+                0,
+            )
+            calibration = (out_dir / "human_calibration.jsonl").read_text(encoding="utf-8")
+            self.assertIn("case-flow-1", calibration)
+            summary = json.loads((out_dir / "eval_summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(summary["human_calibration_count"], 1)
+            self.assertEqual(summary["judge_decisions"]["pass"], 1)
+
     def test_review_records_human_decision(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             review = Path(tmp) / "review.md"
