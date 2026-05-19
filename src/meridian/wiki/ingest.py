@@ -182,10 +182,54 @@ def _prepare_out_dir(out_dir: Path, overwrite: bool) -> None:
 
 def _title_from_metadata_or_path(extraction: PdfExtraction, pdf_path: Path) -> str:
     metadata_title = str(extraction.metadata.get("title") or "").strip()
-    if metadata_title:
+    if metadata_title and not _looks_like_arxiv_filename(metadata_title):
         return metadata_title
+    page_title = _title_from_first_page(extraction)
+    if page_title:
+        return page_title
     stem = re.sub(r"[-_]+", " ", pdf_path.stem).strip()
     return stem.title() if stem else "Untitled Paper"
+
+
+def _looks_like_arxiv_filename(title: str) -> bool:
+    return bool(re.fullmatch(r"\d{4}\.\d{4,5}v\d+", title.strip(), flags=re.IGNORECASE))
+
+
+def _title_from_first_page(extraction: PdfExtraction) -> str | None:
+    if not extraction.pages:
+        return None
+    lines = [line.strip() for line in extraction.pages[0].text.splitlines() if line.strip()]
+    cleaned_lines = []
+    for line in lines[:8]:
+        line = re.sub(r"^Published as a conference paper at .*?\s+", "", line, flags=re.IGNORECASE)
+        if not line or line.lower() in {"abstract", "keywords"}:
+            continue
+        if "@" in line or line.startswith("http"):
+            continue
+        cleaned_lines.append(line)
+
+    for line in cleaned_lines:
+        if 8 <= len(line) <= 180 and _looks_like_title_line(line):
+            return _clean_title_line(line)
+    return None
+
+
+def _looks_like_title_line(line: str) -> bool:
+    lowered = line.lower()
+    if any(marker in lowered for marker in ("university", "school of", "department", "institute")):
+        return False
+    alpha_count = sum(character.isalpha() for character in line)
+    if alpha_count < 8:
+        return False
+    uppercase_count = sum(character.isupper() for character in line)
+    return ":" in line or uppercase_count / max(alpha_count, 1) > 0.35 or len(line.split()) >= 4
+
+
+def _clean_title_line(line: str) -> str:
+    line = re.sub(r"\s+", " ", line).strip(" .")
+    if sum(character.isupper() for character in line) / max(sum(character.isalpha() for character in line), 1) > 0.65:
+        return line.title().replace("Llm", "LLM").replace("Ptq", "PTQ")
+    return line
 
 
 def _maybe_publish(

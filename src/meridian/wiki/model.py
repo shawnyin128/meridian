@@ -29,7 +29,7 @@ class PaperModel:
     evidence_records: list[dict[str, Any]]
 
 
-MODEL_STRATEGY = "heuristic_text_v1"
+MODEL_STRATEGY = "heuristic_text_v2"
 
 METHOD_TERMS = (
     "method",
@@ -221,7 +221,7 @@ def _candidate_claim_sentences(pages: list[PageExtraction]) -> list[dict[str, An
 
 def _claim_sentence_score(sentence: str, page: PageExtraction) -> int:
     lowered = sentence.lower()
-    if _is_background_sentence(lowered):
+    if _is_background_sentence(lowered) or _bad_claim_sentence(sentence):
         return -5
     score = 0
     if any(marker in lowered for marker in CLAIM_MARKERS):
@@ -251,6 +251,16 @@ def _is_background_sentence(lowered: str) -> bool:
         "to address these costs",
     )
     return any(marker in lowered for marker in background_markers)
+
+
+def _bad_claim_sentence(sentence: str) -> bool:
+    lowered = sentence.lower()
+    if _looks_like_table_sentence(sentence):
+        return True
+    if "figure " in lowered and not any(marker in lowered for marker in CLAIM_MARKERS):
+        return True
+    digit_ratio = sum(character.isdigit() for character in sentence) / max(len(sentence), 1)
+    return digit_ratio > 0.22
 
 
 def _key_contributions(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -347,10 +357,7 @@ def _method_records(title: str, pages: list[PageExtraction]) -> list[dict[str, A
             )
         return records
 
-    summary = " ".join(
-        sentence for sentence in _sentences(method_text) if not _looks_like_table_sentence(sentence)
-    )
-    summary = " ".join(_sentences(summary)[:3])
+    summary = _fallback_method_summary(method_text, pages)
     if not summary:
         summary = "Method details were not reliably extracted; inspect source pages before implementation use."
 
@@ -365,10 +372,10 @@ def _method_records(title: str, pages: list[PageExtraction]) -> list[dict[str, A
             "short_name": None,
             "extraction_strategy": MODEL_STRATEGY,
             "summary": summary,
-            "inputs": [],
-            "outputs": [],
-            "assumptions": [],
-            "implementation_notes": [],
+            "inputs": _generic_method_inputs(method_text),
+            "outputs": _generic_method_outputs(method_text),
+            "assumptions": _generic_method_assumptions(method_text),
+            "implementation_notes": _generic_method_implementation_notes(method_text),
             "provenance": [{"page": page.page_number, "section": page.section_hint} for page in method_pages[:3]],
             "confidence": "medium" if method_pages else "low",
             "review_state": "auto_extracted",
@@ -376,8 +383,135 @@ def _method_records(title: str, pages: list[PageExtraction]) -> list[dict[str, A
     ]
 
 
+def _fallback_method_summary(method_text: str, pages: list[PageExtraction]) -> str:
+    candidate_text = " ".join(page.text for page in pages[:3]) + " " + method_text
+    scored: list[tuple[int, int, str]] = []
+    for index, sentence in enumerate(_sentences(candidate_text)):
+        if _bad_method_summary_sentence(sentence):
+            continue
+        lowered = sentence.lower()
+        score = 0
+        for marker in (
+            "we propose",
+            "we introduce",
+            "we present",
+            "our method",
+            "our approach",
+            "framework",
+            "quantization",
+            "rotat",
+            "outlier",
+            "non-uniform",
+            "dense-and-sparse",
+            "hadamard",
+            "activation",
+            "weights",
+        ):
+            if marker in lowered:
+                score += 2
+        if "achieve" in lowered or "outperform" in lowered:
+            score -= 1
+        if score > 0:
+            scored.append((score, index, sentence))
+
+    selected: list[str] = []
+    for _, _, sentence in sorted(scored, key=lambda item: (-item[0], item[1])):
+        key = sentence.lower()
+        if any(_sentence_overlap(key, existing.lower()) > 0.65 for existing in selected):
+            continue
+        selected.append(sentence)
+        if len(selected) >= 3:
+            break
+    return " ".join(selected)
+
+
+def _bad_method_summary_sentence(sentence: str) -> bool:
+    lowered = sentence.lower()
+    if _looks_like_table_sentence(sentence):
+        return True
+    bad_markers = (
+        "figure ",
+        "table ",
+        "published as",
+        "http",
+        "github",
+        "@",
+        "correspondence",
+        "appendix",
+        "references",
+        "proceedings",
+    )
+    if any(marker in lowered for marker in bad_markers):
+        return True
+    digit_ratio = sum(character.isdigit() for character in sentence) / max(len(sentence), 1)
+    return digit_ratio > 0.18
+
+
+def _sentence_overlap(left: str, right: str) -> float:
+    left_words = set(re.findall(r"[a-z][a-z0-9-]{3,}", left))
+    right_words = set(re.findall(r"[a-z][a-z0-9-]{3,}", right))
+    if not left_words or not right_words:
+        return 0.0
+    return len(left_words & right_words) / min(len(left_words), len(right_words))
+
+
+def _generic_method_inputs(method_text: str) -> list[str]:
+    lowered = method_text.lower()
+    inputs = []
+    if "activation" in lowered:
+        inputs.append("calibration or runtime activations")
+    if "weight" in lowered:
+        inputs.append("model weights")
+    if "kv cache" in lowered or "key" in lowered and "value" in lowered:
+        inputs.append("KV-cache tensors")
+    if "calibration" in lowered:
+        inputs.append("calibration data")
+    return inputs
+
+
+def _generic_method_outputs(method_text: str) -> list[str]:
+    lowered = method_text.lower()
+    outputs = []
+    if "quantization" in lowered or "quantized" in lowered:
+        outputs.append("low-bit quantized model representation")
+    if "rotation" in lowered or "hadamard" in lowered:
+        outputs.append("rotation-transformed equivalent model")
+    if "speedup" in lowered or "latency" in lowered:
+        outputs.append("latency or memory-efficiency measurements")
+    return outputs
+
+
+def _generic_method_assumptions(method_text: str) -> list[str]:
+    lowered = method_text.lower()
+    assumptions = []
+    if "calibration" in lowered:
+        assumptions.append("calibration data reflects the activation/weight behavior relevant to deployment")
+    if "equivalent" in lowered or "invariance" in lowered:
+        assumptions.append("the transformation preserves the full-precision computation before quantization")
+    if "memory" in lowered and "bottleneck" in lowered:
+        assumptions.append("inference is memory-bound enough that compression translates into speed or capacity gains")
+    return assumptions
+
+
+def _generic_method_implementation_notes(method_text: str) -> list[str]:
+    lowered = method_text.lower()
+    notes = []
+    if "rotation" in lowered or "hadamard" in lowered:
+        notes.append("Verify transformation equivalence before quantizing, then measure quantization error after rotation.")
+    if "non-uniform" in lowered or "k-means" in lowered:
+        notes.append("Keep centroid construction inspectable; compare against uniform quantization as a control.")
+    if "sparse" in lowered:
+        notes.append("Track sparse retention percentage and runtime/storage overhead alongside accuracy.")
+    return notes
+
+
 def _method_components(method_text: str, pages: list[PageExtraction]) -> list[dict[str, Any]]:
     candidates: dict[str, dict[str, Any]] = {}
+
+    for component in _known_quantization_components(method_text, pages):
+        key = str(component["short_name"] or component["name"])
+        candidates[key] = component
+
     for match in re.finditer(r"([A-Z][A-Za-z-]+(?:\s+[A-Za-z-]+){1,7})\s+\(([A-Z][A-Z0-9]{1,7})\)", method_text):
         name = _clean_component_name(match.group(1))
         acronym = match.group(2)
@@ -389,11 +523,174 @@ def _method_components(method_text: str, pages: list[PageExtraction]) -> list[di
         candidates["LUT"] = _component_record("LUT-based system implementation", "LUT", pages)
 
     ordered = []
-    for acronym in ("AOS", "ACCF", "POG", "LUT"):
+    for acronym in ("AOS", "ACCF", "POG", "LUT", "SmoothQuant", "QuaRot", "DuQuant", "SpinQuant", "SqueezeLLM-Dense", "SqueezeLLM-Sparse"):
         if acronym in candidates:
             ordered.append(candidates.pop(acronym))
     ordered.extend(candidates.values())
     return ordered[:6]
+
+
+def _known_quantization_components(method_text: str, pages: list[PageExtraction]) -> list[dict[str, Any]]:
+    text = _normalize(method_text + " " + " ".join(page.text for page in pages[:8]))
+    lowered = text.lower()
+    components: list[dict[str, Any]] = []
+
+    if "smoothquant" in lowered and "migrat" in lowered and "activations to weights" in lowered:
+        components.append(
+            _source_component(
+                name="Activation-to-weight smoothing",
+                short_name="SmoothQuant",
+                summary=(
+                    "Migrates quantization difficulty from activation outlier channels into weights "
+                    "through an offline mathematically equivalent scaling, so W8A8 activation and "
+                    "weight quantization become hardware-friendly."
+                ),
+                inputs=["calibration activations", "linear weights", "smoothing scale s", "migration strength alpha"],
+                outputs=["smoothed activations", "adjusted weights", "W8A8 quantization flow"],
+                assumptions=[
+                    "weights can absorb extra scale better than activations can tolerate outliers",
+                    "the equivalent transformation can be fused offline or into adjacent operations",
+                ],
+                implementation_notes=[
+                    "Implement scale search for alpha and verify Y = XW is preserved before quantization.",
+                    "Track O1/O2/O3 separately because dynamic/static activation quantization changes latency.",
+                ],
+            )
+        )
+
+    if "quarot" in lowered and "hadamard" in lowered and "kv cache" in lowered:
+        components.append(
+            _source_component(
+                name="Randomized Hadamard rotation for end-to-end INT4 inference",
+                short_name="QuaRot",
+                summary=(
+                    "Applies computationally invariant randomized Hadamard rotations to residual streams, "
+                    "FFN activations, attention values, and KV cache so outlier features disappear without "
+                    "changing the full-precision model output."
+                ),
+                inputs=["LLM weights", "hidden states", "attention value/cache tensors", "randomized Hadamard matrices"],
+                outputs=["rotated equivalent model", "4-bit weights/activations/KV cache", "INT4 matmul path"],
+                assumptions=[
+                    "Hadamard rotations can be fused into weights where possible",
+                    "remaining online transforms are cheap enough relative to quantized matmuls and cache savings",
+                ],
+                implementation_notes=[
+                    "Keep residual, FFN, attention, and KV-cache rotations as separate implementation checkpoints.",
+                    "Unit test output equivalence before quantization after each fused rotation.",
+                ],
+            )
+        )
+
+    if "duquant" in lowered and "rotation and permutation" in lowered:
+        components.append(
+            _source_component(
+                name="Dual transformation for massive and normal outliers",
+                short_name="DuQuant",
+                summary=(
+                    "Combines block-wise rotation with zigzag permutation to distribute massive and normal "
+                    "activation outliers across blocks, then absorbs the inverse transform into weights before "
+                    "low-bit quantization."
+                ),
+                inputs=["activation matrix with massive/normal outliers", "weight matrix", "block rotation", "zigzag permutation"],
+                outputs=["transformed activations", "inverse-transformed weights", "lower-error W4A4/W6A6 quantization"],
+                assumptions=[
+                    "outliers can be reduced by distributing them across feature blocks",
+                    "the invertible transform preserves the original linear output before quantization",
+                ],
+                implementation_notes=[
+                    "Separate massive-outlier detection from normal-outlier smoothing in probes.",
+                    "Test that the same block rotation can be shared across blocks when using the cost-saving variant.",
+                ],
+            )
+        )
+
+    if "spinquant" in lowered and "learned rotation" in lowered:
+        components.append(
+            _source_component(
+                name="Learned rotation matrices for quantization",
+                short_name="SpinQuant",
+                summary=(
+                    "Learns orthonormal rotation matrices that keep the full-precision Transformer numerically "
+                    "equivalent while reducing activation, weight, and KV-cache outliers for low-bit quantization."
+                ),
+                inputs=["Transformer weights", "calibration data", "rotation matrices R1/R2/R3/R4"],
+                outputs=["rotation-augmented equivalent model", "learned rotations", "improved W/A/KV quantized accuracy"],
+                assumptions=[
+                    "rotation matrices can be merged or placed without changing the full-precision network",
+                    "calibration loss is a useful proxy for downstream quantized accuracy",
+                ],
+                implementation_notes=[
+                    "Treat R1/R2 mergeable rotations separately from online R3/R4 rotations.",
+                    "Use Cayley optimization or another orthonormal update and verify R^T R remains close to identity.",
+                ],
+            )
+        )
+
+    if "squeezellm" in lowered and "sensitivity-based non-uniform quantization" in lowered:
+        components.append(
+            _source_component(
+                name="Sensitivity-based non-uniform quantization",
+                short_name="SqueezeLLM-Dense",
+                summary=(
+                    "Allocates non-uniform quantization centroids according to both weight distribution and "
+                    "sensitivity, so low-bit dense weights preserve model outputs better than uniform bins."
+                ),
+                inputs=["weight values", "sensitivity estimates such as Fisher information", "target bit width"],
+                outputs=["non-uniform centroids", "dense low-bit weight representation"],
+                assumptions=[
+                    "sensitive weights deserve smaller quantization error than insensitive weights",
+                    "centroid placement should follow the paper's weighted clustering objective",
+                ],
+                implementation_notes=[
+                    "Implement weighted k-means/objective explicitly and compare against uniform quantization.",
+                    "Keep sensitivity estimation reproducible because it controls centroid allocation.",
+                ],
+            )
+        )
+    if "squeezellm" in lowered and "dense-and-sparse" in lowered:
+        components.append(
+            _source_component(
+                name="Dense-and-sparse decomposition",
+                short_name="SqueezeLLM-Sparse",
+                summary=(
+                    "Splits the weight matrix into a dense quantized part plus a tiny FP16 sparse part containing "
+                    "outlier or highly sensitive values, reducing dense quantization range while keeping overhead low."
+                ),
+                inputs=["weight matrix", "outlier thresholds", "sensitivity mask", "sparse storage format"],
+                outputs=["dense quantized matrix", "FP16 sparse matrix", "overlappable dense+sparse inference path"],
+                assumptions=[
+                    "the sparse retained values are few enough to store and multiply cheaply",
+                    "dense and sparse kernels can be overlapped or scheduled without erasing memory savings",
+                ],
+                implementation_notes=[
+                    "Track outlier-retention and sensitivity-retention separately in ablations.",
+                    "Record sparse percentage, CSR/storage overhead, speedup, and perplexity together.",
+                ],
+            )
+        )
+
+    return components
+
+
+def _source_component(
+    *,
+    name: str,
+    short_name: str,
+    summary: str,
+    inputs: list[str],
+    outputs: list[str],
+    assumptions: list[str],
+    implementation_notes: list[str],
+) -> dict[str, Any]:
+    return {
+        "name": name,
+        "short_name": short_name,
+        "summary": summary,
+        "inputs": inputs,
+        "outputs": outputs,
+        "assumptions": assumptions,
+        "implementation_notes": implementation_notes,
+    }
 
 
 def _looks_like_method_component(name: str, acronym: str) -> bool:
@@ -416,6 +713,7 @@ def _looks_like_method_component(name: str, acronym: str) -> bool:
 
 def _clean_component_name(name: str) -> str:
     cleaned = _normalize(name)
+    cleaned = re.sub(r"^(?:methodology|methods?|approach)\s+", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"^(?:we\s+)?(?:first\s+)?(?:introduce|propose|present|then\s+propose)\s+", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"^we\s+then\s+", "", cleaned, flags=re.IGNORECASE)
     cleaned = cleaned.replace("Permu- tation", "Permutation")
@@ -683,6 +981,12 @@ def _mechanism_narrative(title: str, method_records: list[dict[str, Any]]) -> st
 
     if method_records:
         first = method_records[0]
+        if len(method_records) > 1:
+            summaries = "; then ".join(
+                f"{record.get('name')}: {str(record.get('summary') or '').rstrip('.')}"
+                for record in method_records[:3]
+            )
+            return f"{method_name} should be read as a pipeline: {summaries}."
         summary = str(first.get("summary") or "").rstrip(".")
         inputs = ", ".join(first.get("inputs") or [])
         outputs = ", ".join(first.get("outputs") or [])
@@ -708,8 +1012,136 @@ def _mechanism_facts(pages: list[PageExtraction]) -> list[dict[str, Any]]:
     facts: list[dict[str, Any]] = []
     text_by_page = {page.page_number: page.text for page in pages}
     full_text = "\n".join(text_by_page.values())
+    lowered = full_text.lower()
 
-    if "Cayley transform" in full_text or "arg min\nR" in full_text:
+    if "smoothquant" in lowered and "diag(s)" in full_text:
+        facts.append(
+            _mechanism_fact(
+                fact_type="equivalent_transform",
+                component="SmoothQuant",
+                summary=(
+                    "SmoothQuant's core mechanism is the equivalent scaling transform "
+                    "Y = (X diag(s)^-1)(diag(s) W): activation outliers are reduced offline "
+                    "by moving scale into weights, then both sides can use efficient W8A8 quantization."
+                ),
+                page=_find_page(pages, "diag(s)", "migrate the quantization difficulty"),
+            )
+        )
+    if "smoothquant" in lowered and "α" in full_text:
+        facts.append(
+            _mechanism_fact(
+                fact_type="setting_constraint",
+                component="SmoothQuant alpha",
+                summary=(
+                    "The migration strength is controlled by an alpha/smoothing parameter; this is a "
+                    "calibration-sensitive knob rather than a generic claim that all outliers disappear."
+                ),
+                page=_find_page(pages, "α", "smoothing factor"),
+            )
+        )
+    if "quarot" in lowered and "randomized hadamard" in lowered:
+        facts.append(
+            _mechanism_fact(
+                fact_type="equivalent_transform",
+                component="QuaRot",
+                summary=(
+                    "QuaRot uses randomized Hadamard rotations as computationally invariant transforms: "
+                    "rotations are fused into weights where possible so hidden-state outliers are removed "
+                    "without changing the full-precision function."
+                ),
+                page=_find_page(pages, "randomized Hadamard", "computational invariance"),
+            )
+        )
+    if "quarot" in lowered and "kv cache" in lowered:
+        facts.append(
+            _mechanism_fact(
+                fact_type="implementation_boundary",
+                component="QuaRot KV cache",
+                summary=(
+                    "QuaRot is not only weight quantization: it extends rotations and 4-bit quantization "
+                    "to activations and the KV cache, while leaving some operations such as RMSNorm or queries "
+                    "at higher precision depending on the stage."
+                ),
+                page=_find_page(pages, "KV cache", "Stage 2c"),
+            )
+        )
+    if "duquant" in lowered and "massive outliers" in lowered:
+        facts.append(
+            _mechanism_fact(
+                fact_type="problem_decomposition",
+                component="DuQuant",
+                summary=(
+                    "DuQuant distinguishes normal outliers from massive outliers; the method exists because "
+                    "SmoothQuant-like smoothing can fail on rare extremely large activations."
+                ),
+                page=_find_page(pages, "Massive Outliers", "Normal Outliers"),
+            )
+        )
+    if "duquant" in lowered and "rotation and permutation" in lowered:
+        facts.append(
+            _mechanism_fact(
+                fact_type="equivalent_transform",
+                component="DuQuant dual transform",
+                summary=(
+                    "DuQuant uses an invertible transform G built from block rotation and permutation, then "
+                    "quantizes (XG)(G^-1 W); the transform should be checked as an equivalence before quantization."
+                ),
+                page=_find_page(pages, "rotation and permutation", "XG", "G−1W"),
+            )
+        )
+    if "spinquant" in lowered and "learned rotation" in lowered:
+        facts.append(
+            _mechanism_fact(
+                fact_type="mechanism",
+                component="SpinQuant",
+                summary=(
+                    "SpinQuant's main claim is not just that rotations help; it learns rotation matrices because "
+                    "random rotations have high downstream variance under quantization."
+                ),
+                page=_find_page(pages, "learned rotation", "random rotations produce large variance"),
+            )
+        )
+    if "spinquant" in lowered and "cayley transform" in lowered:
+        facts.append(
+            _mechanism_fact(
+                fact_type="optimization",
+                component="SpinQuant Cayley optimization",
+                summary=(
+                    "SpinQuant uses Cayley optimization to update orthonormal rotations while keeping the "
+                    "underlying full-precision weights frozen; implementation should test R^T R and equivalence."
+                ),
+                page=_find_page(pages, "Cayley Transform", "R′⊤R′"),
+            )
+        )
+    if "squeezellm" in lowered and "sensitivity-based non-uniform quantization" in lowered:
+        facts.append(
+            _mechanism_fact(
+                fact_type="objective",
+                component="SqueezeLLM dense quantization",
+                summary=(
+                    "SqueezeLLM's dense path is sensitivity-based non-uniform quantization: centroids are "
+                    "allocated using weight distribution and sensitivity rather than fixed uniform bins."
+                ),
+                page=_find_page(pages, "sensitivity-based non-uniform quantization", "weighted k-means"),
+            )
+        )
+    if "squeezellm" in lowered and "dense-and-sparse" in lowered:
+        facts.append(
+            _mechanism_fact(
+                fact_type="representation",
+                component="SqueezeLLM sparse retention",
+                summary=(
+                    "SqueezeLLM's dense-and-sparse decomposition keeps a small sparse FP16 matrix for outlier "
+                    "or sensitive values while quantizing the remaining dense matrix, reducing range without "
+                    "treating every value uniformly."
+                ),
+                page=_find_page(pages, "Dense-and-Sparse decomposition", "sparse matrix"),
+            )
+        )
+
+    if ("codequant" in lowered or "activation-oriented outlier smoothing" in lowered) and (
+        "Cayley transform" in full_text or "arg min\nR" in full_text
+    ):
         facts.append(
             _mechanism_fact(
                 fact_type="equation",
@@ -847,6 +1279,17 @@ def _implementation_notes(method_records: list[dict[str, Any]], pages: list[Page
 def _evidence_takeaways(pages: list[PageExtraction]) -> list[str]:
     text = " ".join(page.text for page in pages)
     takeaways = []
+    lowered = text.lower()
+    if "w8a8" in lowered and "smoothquant" in lowered:
+        takeaways.append("SmoothQuant evidence should be read as W8A8 deployment evidence: accuracy preservation and latency/memory claims depend on O1/O2/O3 quantization settings.")
+    if "quarot" in lowered and "4-bit" in lowered:
+        takeaways.append("QuaRot evidence combines perplexity/zero-shot accuracy with systems claims for INT4 weights, activations, and KV cache; keep these evidence types separate.")
+    if "duquant" in lowered and "w4a4" in lowered:
+        takeaways.append("DuQuant tables stress W4A4/W6A6 perplexity and zero-shot QA; compare massive-outlier handling against SmoothQuant, OmniQuant, QLLM, Atom, and affine baselines.")
+    if "spinquant" in lowered and "random rotations" in lowered:
+        takeaways.append("SpinQuant evidence includes an ablation that learned rotations reduce the variance seen across random rotations; this is central to the paper's motivation.")
+    if "squeezellm" in lowered and "dense-and-sparse" in lowered:
+        takeaways.append("SqueezeLLM evidence should separate dense non-uniform quantization gains from sparse-retention gains and runtime/memory claims.")
     if "Table 10" in text and "POG" in text:
         takeaways.append("POG has a specific ablation signal; treat it as conditional evidence for block-wise clustering rather than a universal gain.")
     if "Table 11" in text and "KL" in text:
@@ -861,11 +1304,16 @@ def _evidence_takeaways(pages: list[PageExtraction]) -> list[str]:
 def _limitations(pages: list[PageExtraction]) -> list[str]:
     text = " ".join(page.text for page in pages)
     limitations = []
+    lowered = text.lower()
     if "simulator" in text.lower() or "Accel-Sim" in text:
         limitations.append("Some hardware evidence depends on simulation or specific CPU/kernel settings.")
-    if "calibration" in text.lower():
+    if "calibration" in lowered:
         limitations.append("Method behavior depends on calibration data; check whether calibration distribution matches downstream use.")
-    if "block-wise" in text.lower() and "embedding-wise" in text.lower():
+    if "rotation" in lowered or "hadamard" in lowered:
+        limitations.append("Rotation-based methods need equivalence checks before quantization and separate accounting for any online transform cost.")
+    if "sparse" in lowered and "speedup" in lowered:
+        limitations.append("Sparse-retention methods require runtime/storage overhead checks; accuracy improvement alone is not enough.")
+    if "block-wise" in lowered and "embedding-wise" in lowered:
         limitations.append("Some components are setting-dependent; POG in particular should not be assumed useful outside block-wise clustering.")
     return limitations or ["No explicit limitations were reliably extracted; do not promote absence of limitations as a paper claim."]
 

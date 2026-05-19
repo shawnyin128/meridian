@@ -6,6 +6,10 @@ Before planning, designing, implementing, or reviewing changes that affect raw s
 
 `/Users/shawn/Desktop/meridian/.codex/skills/llm-wiki/SKILL.md`
 
+Before generating, evaluating, or refining paper ingest outputs such as `paper.md`, claim/method/evidence records, reader self-check packets, retrieval metadata, or calibration-driven ingest quality, also load:
+
+`/Users/shawn/Desktop/meridian/.codex/skills/paper-ingest/SKILL.md`
+
 Current MVP direction:
 
 - Build a personally usable paper wiki, not a general multi-agent platform.
@@ -37,6 +41,7 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `.arbor/workflow/features.json`: Arbor workflow status index for the active planning/development queue.
 - `.codex/hooks.json`: project-local Arbor hook intents.
 - `.codex/skills/llm-wiki/SKILL.md`: project skill for LLM Wiki development principles.
+- `.codex/skills/paper-ingest/SKILL.md`: project skill for high-quality paper ingest outputs and reader self-check convergence.
 - `pyproject.toml`: Python package metadata and `meridian` console script entrypoint.
 - `src/meridian/`: Paper Wiki prototype CLI implementation for `meridian wiki ...`.
 - `tests/`: unit tests for CLI ingest, eval, and human review recording.
