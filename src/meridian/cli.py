@@ -16,6 +16,9 @@ from meridian.wiki.commands import (
     record_judge,
     record_review,
     run_flow,
+    self_check_aggregate,
+    self_check_eval,
+    self_check_run,
     structural_check_run,
     summarize_eval,
 )
@@ -291,6 +294,54 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional output JSON path. Defaults to structural-self-check.json beside run.json.",
     )
 
+    self_check = wiki_subparsers.add_parser(
+        "self-check-run",
+        help="Run or prepare the full three-agent paper ingest self-check flow.",
+    )
+    self_check.add_argument("run_manifest", type=Path, help="Path to run.json.")
+    self_check.add_argument(
+        "--backend",
+        choices=["agent-executed", "fake", "api", "vllm"],
+        default="agent-executed",
+        help=(
+            "Judge execution backend. agent-executed prepares packets for Codex/Claude; "
+            "fake is deterministic for tests; api/vllm are reserved backend contracts."
+        ),
+    )
+    self_check.add_argument(
+        "--out-dir",
+        type=Path,
+        default=None,
+        help="Output directory. Defaults to <run-dir>/self-check/.",
+    )
+    self_check.add_argument("--overwrite", action="store_true", help="Overwrite existing self-check output.")
+
+    self_check_aggregate_cmd = wiki_subparsers.add_parser(
+        "self-check-aggregate",
+        help="Validate and aggregate three-agent self-check result JSON.",
+    )
+    self_check_aggregate_cmd.add_argument("manifest", type=Path, help="Path to self-check-manifest.json.")
+    self_check_aggregate_cmd.add_argument("--out", type=Path, default=None, help="Optional summary JSON path.")
+
+    self_check_eval_cmd = wiki_subparsers.add_parser(
+        "self-check-eval",
+        help="Run or prepare three-agent self-checks for every case in an eval manifest.",
+    )
+    self_check_eval_cmd.add_argument("manifest", type=Path, help="Path to eval_manifest.json.")
+    self_check_eval_cmd.add_argument(
+        "--backend",
+        choices=["agent-executed", "fake", "api", "vllm"],
+        default="agent-executed",
+        help="Judge execution backend. Matches self-check-run.",
+    )
+    self_check_eval_cmd.add_argument(
+        "--out-dir",
+        type=Path,
+        default=None,
+        help="Output directory. Defaults to <eval-manifest-dir>/self-check/.",
+    )
+    self_check_eval_cmd.add_argument("--overwrite", action="store_true", help="Overwrite existing per-case self-check output.")
+
     converge = wiki_subparsers.add_parser(
         "converge",
         help="Converge a wiki ingest run from quality gate and recorded judge result.",
@@ -440,6 +491,40 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Wrote structural self-check: {result.path}")
             print(f"Structural decision: {result.decision}")
             print(f"Weighted score: {result.weighted_score:.3f}")
+            return 0
+
+        if args.product == "wiki" and args.command == "self-check-run":
+            result = self_check_run(
+                run_manifest=args.run_manifest,
+                out_dir=args.out_dir,
+                backend=args.backend,
+                overwrite=args.overwrite,
+            )
+            print(f"Wrote self-check manifest: {result.manifest_path}")
+            if result.summary_path is not None:
+                print(f"Wrote self-check summary: {result.summary_path}")
+            print(f"Self-check status: {result.status}")
+            return 0
+
+        if args.product == "wiki" and args.command == "self-check-aggregate":
+            result = self_check_aggregate(manifest_path=args.manifest, out_path=args.out)
+            print(f"Wrote self-check summary: {result.summary_path}")
+            print(f"Self-check decision: {result.decision}")
+            print(f"Weighted score: {result.weighted_score:.3f}")
+            return 0
+
+        if args.product == "wiki" and args.command == "self-check-eval":
+            result = self_check_eval(
+                eval_manifest=args.manifest,
+                out_dir=args.out_dir,
+                backend=args.backend,
+                overwrite=args.overwrite,
+            )
+            print(f"Wrote self-check eval summary: {result.summary_path}")
+            print(f"Total cases: {result.total_cases}")
+            print(f"Completed cases: {result.completed_cases}")
+            print(f"Awaiting agent cases: {result.awaiting_cases}")
+            print(f"Failed cases: {result.failed_cases}")
             return 0
 
         if args.product == "wiki" and args.command == "converge":

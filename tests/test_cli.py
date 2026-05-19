@@ -11,6 +11,7 @@ from meridian.cli import main
 from meridian.wiki.extract import PageExtraction, PdfExtraction
 from meridian.wiki.ingest import _title_from_first_page
 from meridian.wiki.packet import _trusted_metadata_authors
+from meridian.wiki.rubrics import complete_result_template, rubric_for
 
 
 class FakePixmap:
@@ -701,6 +702,268 @@ class CliTests(unittest.TestCase):
             dimensions = {item["dimension"]: item for item in payload["dimension_scores"]}
             self.assertLess(dimensions["section_schema"]["score"], 3)
 
+    def test_three_agent_rubrics_are_complete(self) -> None:
+        for agent in ("understanding", "quality", "structural"):
+            rubric = rubric_for(agent)
+            self.assertTrue(rubric.schema_version.endswith(".v1") or rubric.output_schema_version.endswith(".v0"))
+            self.assertGreaterEqual(len(rubric.dimensions), 6)
+            self.assertGreaterEqual(len(rubric.hard_fail_rules), 4)
+            for dimension in rubric.dimensions:
+                self.assertGreater(dimension.weight, 0)
+                self.assertEqual(set(dimension.anchors), {1, 2, 3, 4, 5})
+                self.assertTrue(dimension.evidence_required)
+                self.assertTrue(dimension.failure_examples)
+
+    def test_self_check_run_fake_completes_and_aggregates(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pdf = root / "fake.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            out = root / "wiki/.drafts/ingests/fake-paper"
+            self_check_dir = root / "self-check"
+
+            self.assertEqual(main(["wiki", "ingest", str(pdf), "--out", str(out)]), 0)
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "self-check-run",
+                        str(out / "run.json"),
+                        "--backend",
+                        "fake",
+                        "--out-dir",
+                        str(self_check_dir),
+                    ]
+                ),
+                0,
+            )
+
+            manifest = json.loads((self_check_dir / "self-check-manifest.json").read_text(encoding="utf-8"))
+            summary = json.loads((self_check_dir / "self-check-summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["backend"], "fake")
+            self.assertEqual(manifest["status"], "completed")
+            self.assertEqual(set(manifest["agents"]), {"understanding", "quality", "structural"})
+            self.assertEqual(summary["schema_version"], "paper_wiki_self_check_summary.v0")
+            self.assertEqual(summary["decision"], "pass")
+            self.assertIn("understanding", summary["agents"])
+            self.assertIn("quality", summary["agents"])
+            self.assertIn("structural", summary["agents"])
+
+    def test_self_check_eval_runs_calibration_manifest_with_fake_backend(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pdf = root / "fake.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            cases = root / "cases.jsonl"
+            records = [
+                {
+                    "id": "case-a",
+                    "category": "paper_ingest",
+                    "paper_path": str(pdf),
+                    "problem_description": "First calibration case.",
+                    "expected_result": "Self-check can run over eval output.",
+                    "acceptable_paths": ["Any path that writes a self-check summary."],
+                    "must_not_do": [],
+                    "evaluation_rubric": ["three agent decisions are summarized"],
+                },
+                {
+                    "id": "case-b",
+                    "category": "paper_ingest",
+                    "paper_path": str(pdf),
+                    "problem_description": "Second calibration case.",
+                    "expected_result": "Batch summary includes per-case results.",
+                    "acceptable_paths": ["Any path that runs the same rubric contract."],
+                    "must_not_do": [],
+                    "evaluation_rubric": ["batch does not require human review"],
+                },
+            ]
+            cases.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+            eval_out = root / "eval-output"
+            self_check_out = root / "self-check-eval"
+
+            self.assertEqual(main(["wiki", "eval", str(cases), "--out-dir", str(eval_out)]), 0)
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "self-check-eval",
+                        str(eval_out / "eval_manifest.json"),
+                        "--backend",
+                        "fake",
+                        "--out-dir",
+                        str(self_check_out),
+                    ]
+                ),
+                0,
+            )
+
+            summary = json.loads((self_check_out / "self-check-eval-summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(summary["schema_version"], "paper_wiki_self_check_eval_summary.v0")
+            self.assertEqual(summary["total_cases"], 2)
+            self.assertEqual(summary["completed_cases"], 2)
+            self.assertEqual(summary["awaiting_cases"], 0)
+            self.assertEqual({case["decision"] for case in summary["case_results"]}, {"pass"})
+
+    def test_self_check_run_agent_executed_prepares_portable_packets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pdf = root / "fake.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            out = root / "wiki/.drafts/ingests/fake-paper"
+            self_check_dir = root / "self-check"
+
+            self.assertEqual(main(["wiki", "ingest", str(pdf), "--out", str(out)]), 0)
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "self-check-run",
+                        str(out / "run.json"),
+                        "--backend",
+                        "agent-executed",
+                        "--out-dir",
+                        str(self_check_dir),
+                    ]
+                ),
+                0,
+            )
+
+            manifest = json.loads((self_check_dir / "self-check-manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["status"], "awaiting_agent_results")
+            self.assertTrue((self_check_dir / "understanding-agent.md").exists())
+            self.assertTrue((self_check_dir / "quality-agent.md").exists())
+            self.assertTrue((self_check_dir / "structural-self-check.json").exists())
+            self.assertTrue((self_check_dir / "agent-execution-instructions.md").exists())
+            understanding_packet = (self_check_dir / "understanding-agent.md").read_text(encoding="utf-8")
+            quality_packet = (self_check_dir / "quality-agent.md").read_text(encoding="utf-8")
+            self.assertIn("paper_wiki_understanding_rubric.v1", understanding_packet)
+            self.assertIn("paper_wiki_quality_rubric.v1", quality_packet)
+            self.assertIn("paper_wiki_understanding_result.v1", understanding_packet)
+            self.assertIn("paper_wiki_quality_result.v1", quality_packet)
+            self.assertFalse((self_check_dir / "self-check-summary.json").exists())
+
+    def test_self_check_aggregate_fails_missing_agent_results(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pdf = root / "fake.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            out = root / "wiki/.drafts/ingests/fake-paper"
+            self_check_dir = root / "self-check"
+
+            self.assertEqual(main(["wiki", "ingest", str(pdf), "--out", str(out)]), 0)
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "self-check-run",
+                        str(out / "run.json"),
+                        "--backend",
+                        "agent-executed",
+                        "--out-dir",
+                        str(self_check_dir),
+                    ]
+                ),
+                0,
+            )
+            self.assertEqual(main(["wiki", "self-check-aggregate", str(self_check_dir / "self-check-manifest.json")]), 0)
+
+            summary = json.loads((self_check_dir / "self-check-summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(summary["decision"], "fail")
+            self.assertTrue(summary["hard_failures"])
+
+    def test_self_check_aggregate_hard_fail_overrides_high_score(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pdf = root / "fake.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            out = root / "wiki/.drafts/ingests/fake-paper"
+            self_check_dir = root / "self-check"
+
+            self.assertEqual(main(["wiki", "ingest", str(pdf), "--out", str(out)]), 0)
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "self-check-run",
+                        str(out / "run.json"),
+                        "--backend",
+                        "agent-executed",
+                        "--out-dir",
+                        str(self_check_dir),
+                    ]
+                ),
+                0,
+            )
+            manifest = json.loads((self_check_dir / "self-check-manifest.json").read_text(encoding="utf-8"))
+            Path(manifest["agents"]["understanding"]["expected_result"]).write_text(
+                json.dumps(_complete_self_check_result("understanding", score=4.8)) + "\n",
+                encoding="utf-8",
+            )
+            quality = _complete_self_check_result("quality", score=4.8)
+            quality["hard_failures"] = [
+                {
+                    "rule_id": "keyword_stuffed_retrieval",
+                    "severity": "blocking",
+                    "evidence": "frontmatter has keywords but scenarios cannot retrieve mechanism.",
+                    "repair_bucket": "retrieval_metadata",
+                    "testable_fix": "Remove noisy anchors and add mechanism-specific retrieval keys.",
+                }
+            ]
+            Path(manifest["agents"]["quality"]["expected_result"]).write_text(
+                json.dumps(quality) + "\n",
+                encoding="utf-8",
+            )
+
+            self.assertEqual(main(["wiki", "self-check-aggregate", str(self_check_dir / "self-check-manifest.json")]), 0)
+
+            summary = json.loads((self_check_dir / "self-check-summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(summary["decision"], "fail")
+            self.assertGreater(summary["weighted_score"], 4.0)
+            self.assertEqual(summary["hard_failures"][0]["rule_id"], "keyword_stuffed_retrieval")
+
+    def test_self_check_aggregate_rejects_malformed_agent_dimension(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pdf = root / "fake.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            out = root / "wiki/.drafts/ingests/fake-paper"
+            self_check_dir = root / "self-check"
+
+            self.assertEqual(main(["wiki", "ingest", str(pdf), "--out", str(out)]), 0)
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "self-check-run",
+                        str(out / "run.json"),
+                        "--backend",
+                        "agent-executed",
+                        "--out-dir",
+                        str(self_check_dir),
+                    ]
+                ),
+                0,
+            )
+            manifest = json.loads((self_check_dir / "self-check-manifest.json").read_text(encoding="utf-8"))
+            understanding = _complete_self_check_result("understanding", score=4.5)
+            understanding["dimension_scores"][0].pop("rationale")
+            Path(manifest["agents"]["understanding"]["expected_result"]).write_text(
+                json.dumps(understanding) + "\n",
+                encoding="utf-8",
+            )
+            Path(manifest["agents"]["quality"]["expected_result"]).write_text(
+                json.dumps(_complete_self_check_result("quality", score=4.5)) + "\n",
+                encoding="utf-8",
+            )
+
+            self.assertEqual(main(["wiki", "self-check-aggregate", str(self_check_dir / "self-check-manifest.json")]), 0)
+
+            summary = json.loads((self_check_dir / "self-check-summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(summary["decision"], "fail")
+            self.assertTrue(
+                any(finding["problem"] == "dimension score missing fields" for finding in summary["validation_findings"])
+            )
+
     def test_judge_record_and_converge_update_run_and_canonical_page(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -764,6 +1027,31 @@ def _passing_judge_result(case_id: str) -> dict[str, object]:
         "calibration_questions_for_human": [],
         "recommended_refine_bucket": "other",
     }
+
+
+def _complete_self_check_result(agent: str, score: float = 4.5) -> dict[str, object]:
+    result = complete_result_template(agent)
+    result["decision"] = "pass"
+    result["weighted_score"] = score
+    result["confidence"] = "high"
+    result["one_sentence_verdict"] = f"{agent} result is schema-complete."
+    result["dimension_scores"] = [
+        {
+            "dimension": dimension.id,
+            "score": score,
+            "weight": dimension.weight,
+            "anchor": "5",
+            "evidence": f"{dimension.id} evidence",
+            "rationale": f"{dimension.id} rationale",
+            "repair_bucket": "judge_rubric",
+        }
+        for dimension in rubric_for(agent).dimensions
+    ]
+    result["hard_failures"] = []
+    result["findings"] = []
+    result["recommended_repairs"] = []
+    result["calibration_notes"] = ["unit-test synthetic result"]
+    return result
 
 
 if __name__ == "__main__":

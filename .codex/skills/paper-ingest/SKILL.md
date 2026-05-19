@@ -99,6 +99,23 @@ Use three separately inspectable self-check roles as the convergence loop:
 
 Keep these roles separate. Do not let structural pass/fail replace semantic understanding or quality evaluation, and do not bury schema completeness failures inside prose-quality findings.
 
+All three roles must use complete rubric contracts:
+
+- every dimension has a weight, 1-5 score anchors, evidence requirements, and failure examples;
+- hard-fail rules override weighted averages;
+- outputs must include evidence, rationale, repair bucket, recommended fixes, and calibration notes;
+- packets and result JSON must be portable across Codex/Claude direct execution, future API execution, and local vLLM execution.
+
+The first executable backend is `agent-executed`: Meridian generates rubric packets and expected JSON paths, then the active Codex or Claude Code agent reads the packet, reasons with the current model, writes the result JSON, and asks Meridian to aggregate. The `fake` backend exists only for deterministic tests. API and vLLM backends are reserved extension points and must preserve the same packet/result contract.
+
+Use these CLI surfaces for the three-agent loop:
+
+- `meridian wiki self-check-run <run.json> --backend agent-executed` prepares per-paper packets and deterministic structural results.
+- `meridian wiki self-check-aggregate <self-check-manifest.json>` validates understanding/quality result JSON plus structural output and writes the combined decision.
+- `meridian wiki self-check-eval <eval_manifest.json> --backend agent-executed` prepares the same loop across a calibration set; with `--backend fake` it runs a deterministic orchestration smoke test.
+
+Self-check artifacts live under `self-check/` and include `self-check-manifest.json`, `understanding-agent.md`, `quality-agent.md`, `structural-self-check.json`, optional `understanding-result.json` / `quality-result.json`, and `self-check-summary.json`. Calibration runs write `self-check-eval-summary.json`.
+
 The understanding agent loop is:
 
 1. Reader A explains the paper from `paper.md` only.

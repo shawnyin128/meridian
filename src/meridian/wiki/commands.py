@@ -19,6 +19,14 @@ from meridian.wiki.converge import WikiConvergenceResult, converge_wiki_run, rec
 from meridian.wiki.quality_check import QualitySelfCheckResult, run_quality_self_check
 from meridian.wiki.reader_check import build_reader_check_packet
 from meridian.wiki.review import append_review_record
+from meridian.wiki.self_check import (
+    SelfCheckAggregateResult,
+    SelfCheckEvalResult,
+    SelfCheckRunResult,
+    aggregate_self_check,
+    run_self_check,
+    run_self_check_eval,
+)
 from meridian.wiki.structural_check import StructuralSelfCheckResult, run_structural_self_check
 
 
@@ -202,6 +210,38 @@ def quality_check_run(run_manifest: Path, out_path: Path | None = None) -> Quali
 
 def structural_check_run(run_manifest: Path, out_path: Path | None = None) -> StructuralSelfCheckResult:
     return run_structural_self_check(run_manifest=run_manifest, out_path=out_path)
+
+
+def self_check_run(
+    run_manifest: Path,
+    out_dir: Path | None = None,
+    backend: str = "agent-executed",
+    overwrite: bool = False,
+) -> SelfCheckRunResult:
+    return run_self_check(
+        run_manifest=run_manifest,
+        out_dir=out_dir,
+        backend=backend,
+        overwrite=overwrite,
+    )
+
+
+def self_check_aggregate(manifest_path: Path, out_path: Path | None = None) -> SelfCheckAggregateResult:
+    return aggregate_self_check(manifest_path=manifest_path, out_path=out_path)
+
+
+def self_check_eval(
+    eval_manifest: Path,
+    out_dir: Path | None = None,
+    backend: str = "agent-executed",
+    overwrite: bool = False,
+) -> SelfCheckEvalResult:
+    return run_self_check_eval(
+        eval_manifest=eval_manifest,
+        out_dir=out_dir,
+        backend=backend,
+        overwrite=overwrite,
+    )
 
 
 def run_flow(
