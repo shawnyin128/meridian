@@ -13,6 +13,7 @@ from meridian.wiki.model import build_paper_model
 from meridian.wiki.packet import render_paper_draft, render_review_packet
 from meridian.wiki.publish import PublishResult, publish_canonical_draft
 from meridian.wiki.quality import QualityGate, evaluate_ingest_quality
+from meridian.wiki.sources import SourceRecord, infer_wiki_root_from_out_dir, register_pdf_source
 
 
 @dataclass(frozen=True)
@@ -26,6 +27,7 @@ class IngestResult:
     run_path: Path
     quality_gate: QualityGate
     publish_result: PublishResult | None
+    source_record: SourceRecord | None
 
 
 def run_ingest(
@@ -43,6 +45,13 @@ def run_ingest(
 
     title = title_override or _title_from_metadata_or_path(extraction, pdf_path)
     created_date = datetime.now(timezone.utc).date().isoformat()
+    effective_wiki_root = wiki_root or infer_wiki_root_from_out_dir(out_dir)
+    source_record = (
+        register_pdf_source(pdf_path=pdf_path, wiki_root=effective_wiki_root, title=title)
+        if effective_wiki_root is not None
+        else None
+    )
+    source_pdf = source_record.managed_path if source_record is not None else pdf_path
     review_path = out_dir / "review.md"
     paper_path = out_dir / "paper.md"
     claims_path = out_dir / "claims.jsonl"
@@ -54,21 +63,23 @@ def run_ingest(
     review_path.write_text(
         render_review_packet(
             title=title,
-            pdf_path=pdf_path,
+            pdf_path=source_pdf,
             extraction=extraction,
             model=model,
             case_metadata=case_metadata,
             created_date=created_date,
+            source_record=source_record,
         ),
         encoding="utf-8",
     )
     paper_path.write_text(
         render_paper_draft(
             title=title,
-            pdf_path=pdf_path,
+            pdf_path=source_pdf,
             extraction=extraction,
             model=model,
             created_date=created_date,
+            source_record=source_record,
         ),
         encoding="utf-8",
     )
@@ -84,10 +95,10 @@ def run_ingest(
         evidence_path=evidence_path,
     )
     publish_result = _maybe_publish(
-        wiki_root=wiki_root,
+        wiki_root=effective_wiki_root,
         publish_mode=publish_mode,
         title=title,
-        pdf_path=pdf_path,
+        pdf_path=source_pdf,
         out_dir=out_dir,
         paper_path=paper_path,
         quality_gate=quality_gate,
@@ -98,7 +109,19 @@ def run_ingest(
     run_payload: dict[str, Any] = {
         "schema_version": "paper_wiki_ingest.v0",
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "source_pdf": str(pdf_path),
+        "source_pdf": str(source_pdf),
+        "input_pdf": str(pdf_path),
+        "source_management": (
+            {
+                "mode": "managed",
+                "source_id": source_record.source_id,
+                "registry": str(source_record.registry_path),
+                "managed_path": str(source_record.managed_path),
+                "sha256": source_record.sha256,
+            }
+            if source_record is not None
+            else {"mode": "unmanaged"}
+        ),
         "title": title,
         "write_policy": "draft_only" if publish_result is None else "auto_publish_draft",
         "draft_artifacts": {
@@ -144,6 +167,7 @@ def run_ingest(
         run_path=run_path,
         quality_gate=quality_gate,
         publish_result=publish_result,
+        source_record=source_record,
     )
 
 

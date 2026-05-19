@@ -10,6 +10,12 @@ meridian wiki ingest /path/to/paper.pdf --out wiki/.drafts/ingests/<paper-slug>/
 The default command creates draft-only artifacts and does not publish canonical
 wiki pages, update indexes, or run the later Research Dev Agent.
 
+When the output path is inside `wiki/.drafts/...`, Meridian treats `wiki/` as
+the vault root and registers the PDF under `wiki/raw/sources/papers/` with a
+hash-based source ID. The original input path is preserved in
+`wiki/raw/sources/sources.jsonl`, but future wiki pages point at the managed raw
+source instead of indexing arbitrary desktop/download paths.
+
 To exercise the confidence-gated wiki path, provide a wiki root and publish
 mode:
 
@@ -23,6 +29,12 @@ meridian wiki ingest /path/to/paper.pdf \
 This publishes a canonical draft paper page when the quality gate does not fail,
 updates `wiki/index.md` and `wiki/log.md`, and records whether the page still
 needs review.
+
+The generated `paper.md` is intended to be a mechanism-level reading object, not
+an abstract summary. It should answer: what problem the paper actually attacks,
+what method objects exist, what each component consumes and produces, what
+assumptions matter for implementation, what evidence backs the claims, and what
+caveats should block premature promotion.
 
 The preferred prototype path is the full flow:
 

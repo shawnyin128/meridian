@@ -52,6 +52,49 @@ class FakeDocument:
         return self.pages[index]
 
 
+class CodeQuantLikeDocument:
+    metadata = {"title": "CodeQuant: Unified Clustering and Quantization", "author": "A. Researcher"}
+
+    def __init__(self) -> None:
+        self.pages = [
+            FakePage(
+                "Abstract\nOutliers have emerged as background filler. "
+                "In this work, we tackle MoE post-training quantization with CodeQuant.",
+                images=0,
+                drawings=1,
+            ),
+            FakePage(
+                "Figure 1: Stage 1 applies learnable rotations to smooth activation outliers; "
+                "Stage 2 permutes weights; Stage 3 fine-tunes centroids; Stage 4 deploys a LUT kernel. "
+                "We first introduce Activation-oriented Outlier Smoothing (AOS), which suppresses activation outliers. "
+                "We then propose Adaptive Weight Clustering with Centroid Finetuning (ACCF) and "
+                "Permutation Invariant Outlier Grouping (POG). We develop a LUT kernel.",
+                images=1,
+                drawings=200,
+            ),
+            FakePage(
+                "Methodology\nActivation-Oriented Outlier Smoothing (AOS) applies a rotation matrix R to activations X. "
+                "Adaptive Weight Clustering and Centroid Finetuning (ACCF) optimizes centroids C and assignments A. "
+                "Permutation-Invariant Outlier Grouping (POG) reorders columns for block-wise clustering. "
+                "The LUT-based system implementation uses centroids and assignments for inference.",
+                images=0,
+                drawings=2,
+            ),
+            FakePage(
+                "Experiments\nTable 10 shows POG helps block-wise clustering. Table 11 shows KL penalty reduces router change. "
+                "On CPU, CodeQuant achieves up to 4.15x speedup.",
+                images=0,
+                drawings=20,
+            ),
+        ]
+
+    def __len__(self) -> int:
+        return len(self.pages)
+
+    def load_page(self, index: int) -> FakePage:
+        return self.pages[index]
+
+
 class CliTests(unittest.TestCase):
     def setUp(self) -> None:
         fake_fitz = types.ModuleType("fitz")
@@ -91,13 +134,15 @@ class CliTests(unittest.TestCase):
             self.assertEqual(run["write_policy"], "draft_only")
             self.assertEqual(run["draft_artifacts"]["paper_page"], str(out / "paper.md"))
             self.assertEqual(run["quality_gate"]["decision"], "warn")
-            self.assertEqual(run["paper_model"]["strategy"], "heuristic_text_v0")
+            self.assertEqual(run["paper_model"]["strategy"], "heuristic_text_v1")
             self.assertEqual(run["paper_model"]["evidence_candidates"], 3)
+            self.assertEqual(run["source_management"]["mode"], "managed")
+            self.assertTrue((root / "wiki/raw/sources/sources.jsonl").exists())
 
             review = (out / "review.md").read_text(encoding="utf-8")
             self.assertTrue(review.startswith("---\n"))
             self.assertIn("type: \"ingest_review\"", review)
-            self.assertIn("model_strategy: \"heuristic_text_v0\"", review)
+            self.assertIn("model_strategy: \"heuristic_text_v1\"", review)
             self.assertIn("## Paper Identity", review)
             self.assertIn("## Figures / Tables / Equations Notes", review)
             self.assertIn("## Publish Proposal", review)
@@ -107,8 +152,9 @@ class CliTests(unittest.TestCase):
             paper = (out / "paper.md").read_text(encoding="utf-8")
             self.assertTrue(paper.startswith("---\n"))
             self.assertIn("type: \"paper\"", paper)
-            self.assertIn("model_strategy: \"heuristic_text_v0\"", paper)
-            self.assertIn("## Retrieval Summary", paper)
+            self.assertIn("model_strategy: \"heuristic_text_v1\"", paper)
+            self.assertIn("## Paper Positioning", paper)
+            self.assertIn("## Mechanism", paper)
             self.assertNotIn("Agent task:", paper)
 
             claim_lines = (out / "claims.jsonl").read_text(encoding="utf-8").splitlines()
@@ -119,7 +165,38 @@ class CliTests(unittest.TestCase):
             self.assertEqual(len(evidence_lines), 3)
             first_evidence = json.loads(evidence_lines[0])
             self.assertEqual(first_evidence["id"], "evidence-p0001")
-            self.assertEqual(first_evidence["extraction_strategy"], "heuristic_text_v0")
+            self.assertEqual(first_evidence["extraction_strategy"], "heuristic_text_v1")
+
+    def test_codequant_like_ingest_builds_deeper_method_page(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_fitz = sys.modules["fitz"]
+            fake_fitz.open = lambda path: CodeQuantLikeDocument()
+            root = Path(tmp)
+            pdf = root / "codequant.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            out = root / "wiki/.drafts/ingests/codequant"
+
+            self.assertEqual(main(["wiki", "ingest", str(pdf), "--out", str(out)]), 0)
+
+            methods = [
+                json.loads(line)
+                for line in (out / "methods.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+            method_names = {record["short_name"]: record for record in methods}
+            self.assertIn("AOS", method_names)
+            self.assertIn("ACCF", method_names)
+            self.assertIn("POG", method_names)
+            self.assertIn("LUT", method_names)
+            self.assertTrue(method_names["AOS"]["inputs"])
+            self.assertTrue(method_names["ACCF"]["outputs"])
+            self.assertTrue(method_names["POG"]["assumptions"])
+
+            paper = (out / "paper.md").read_text(encoding="utf-8")
+            self.assertIn("This is a MoE post-training quantization paper", paper)
+            self.assertIn("## What To Remember", paper)
+            self.assertIn("## Implementation Notes", paper)
+            self.assertIn("Router KL evidence should be tracked separately", paper)
+            self.assertNotIn("Outliers have emerged as background filler", paper)
 
     def test_wiki_ingest_can_publish_canonical_draft(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

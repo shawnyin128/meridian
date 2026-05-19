@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+
+.arbor/
+.codex/hooks.json
+
+eval/runs/
+eval/cases/*_calibration_*.jsonl
+
+wiki/.drafts/
+wiki/raw/sources/
