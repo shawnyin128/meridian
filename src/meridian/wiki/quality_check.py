@@ -258,7 +258,7 @@ def _retrieval_intent_quality_score(sections: dict[str, str]) -> dict[str, Any]:
         findings.append("too_few_canonical_query_examples")
     if len(use_reasons) < len(query_examples):
         findings.append("missing_use_because_reasons")
-    if any(re.search(r"\b(this paper|the mechanism|this method)\b", query.lower()) for query in query_texts):
+    if any(re.search(r"\b(this paper|the paper|the mechanism|this method|target page)\b|paper's", query.lower()) for query in query_texts):
         findings.append("query_assumes_paper_already_retrieved")
     if any(_looks_like_retrofit_component_query(query) for query in query_texts):
         findings.append("query_is_retrofit_to_component_list")
@@ -487,7 +487,7 @@ def _retrieval_scenarios(
     claims: list[dict[str, Any]],
     pages: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    title = str(frontmatter.get("title") or "this paper")
+    title = str(frontmatter.get("title") or "")
     method_families = [str(item) for item in frontmatter.get("methods") or []]
     method_names = [str(item.get("short_name") or item.get("name")) for item in methods if item.get("name")]
     datasets = [str(item) for item in frontmatter.get("datasets") or []]
@@ -495,7 +495,8 @@ def _retrieval_scenarios(
     topics = [str(item) for item in frontmatter.get("topics") or []]
     settings = [str(item) for item in frontmatter.get("settings") or []]
     evidence_pages = [page.get("page_number") for page in pages if page.get("drawing_count", 0) or "Table" in str(page.get("text") or "")]
-    method_label = ", ".join(method_names[:3]) or title
+    method_label = ", ".join(method_names[:3]) or _scenario_method_label(title, method_families)
+    implementation_target = _scenario_implementation_target(title, method_families)
     return [
         {
             "id": "idea_to_prior_work_context",
@@ -509,7 +510,7 @@ def _retrieval_scenarios(
         {
             "id": "implementation_probe_planning",
             "query": (
-                f"I want to implement or probe {method_label}. Retrieve the page that tells me the first functions to code, "
+                f"I am modifying {implementation_target} and need pages that tell me how to probe {method_label}: the first functions to code, "
                 "which tensors/configs to log, what ablations isolate each component, and which sanity checks prevent false positives."
             ),
             "required_retrieval_keys": _dedupe(method_names[:4] + ["implementation", "ablation", "sanity check"]),
@@ -527,7 +528,7 @@ def _retrieval_scenarios(
         {
             "id": "failure_mode_and_scope_review",
             "query": (
-                "Before citing or building on this paper, retrieve limitations and uncertainty: calibration dependence, hardware/runtime scope, "
+                "Before citing or building on prior work in this area, retrieve pages that expose limitations and uncertainty: calibration dependence, hardware/runtime scope, "
                 "equivalence assumptions, model-family restrictions, and claims that should not be generalized."
             ),
             "required_retrieval_keys": _dedupe(topics[:4] + settings[:3] + ["limitations", "uncertainty", "calibration", "hardware"]),
@@ -536,7 +537,7 @@ def _retrieval_scenarios(
         {
             "id": "multimodal_evidence_drilldown",
             "query": (
-                "I need the figures, tables, algorithms, or equations that actually carry the paper's argument, not a prose summary. "
+                "I need prior work where figures, tables, algorithms, or equations carry the core argument, not only prose summaries. "
                 "Retrieve the pages and candidate records that tell me where to inspect visual/math evidence."
             ),
             "required_retrieval_keys": _dedupe(["figure", "table", "algorithm", "equation"] + [f"p. {page}" for page in evidence_pages[:3]]),
@@ -715,6 +716,28 @@ def _bullets_after(text: str, start_header: str) -> list[str]:
 def _query_text(line: str) -> str:
     match = re.search(r'^- Query:\s+"(.+)"$', line.strip())
     return match.group(1) if match else line
+
+
+def _scenario_method_label(title: str, method_families: list[str]) -> str:
+    short_name = _short_title_label(title)
+    if short_name:
+        return short_name
+    return _human_list(method_families[:2], "the target method")
+
+
+def _scenario_implementation_target(title: str, method_families: list[str]) -> str:
+    short_name = _short_title_label(title)
+    if short_name:
+        return f"a {short_name} implementation"
+    method_family = _human_list(method_families[:1], "research method")
+    return f"a {method_family} implementation"
+
+
+def _short_title_label(title: str) -> str:
+    candidate = title.split(":", 1)[0].strip()
+    if candidate and len(candidate.split()) <= 4:
+        return candidate
+    return ""
 
 
 def _looks_like_retrofit_component_query(query: str) -> bool:

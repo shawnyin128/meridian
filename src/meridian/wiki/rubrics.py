@@ -275,10 +275,10 @@ QUALITY_RUBRIC = AgentRubric(
         RubricDimension(
             "retrieval_intent_quality",
             1.3,
-            "The when-to-retrieve section gives diverse canonical query examples plus fit-distance notes for human readers, rerankers, and future context builders.",
+            "The when-to-retrieve section gives diverse canonical query examples that are plausible standalone retrieval requests before the page is already in context, plus fit-distance notes for human readers, rerankers, and future context builders.",
             _anchors("retrieval intent quality"),
             ["When To Retrieve This Paper", "complex retrieval scenarios", "frontmatter settings/methods/topics"],
-            ["Section only says to consult frontmatter.", "Uses a negative-rule laundry list.", "Examples are generic and do not show query plus use-because behavior."],
+            ["Section only says to consult frontmatter.", "Uses a negative-rule laundry list.", "Examples say `this paper`, `the mechanism`, or a component-only probes list that assumes the target page is already known."],
         ),
         RubricDimension(
             "retrieval_coverage",

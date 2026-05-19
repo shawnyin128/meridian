@@ -494,7 +494,7 @@ def _routing_method_focus(methods: list[str]) -> str:
         return "layer-wise post-training quantization"
     if "rotation-based quantization" in lowered and "post-training quantization" in lowered:
         return "rotation-based post-training quantization"
-    return _human_list(methods[:2], "this method family")
+    return _human_list(methods[:2], "the relevant method family")
 
 
 def _paper_short_name(title: str) -> str:
@@ -518,7 +518,7 @@ def _routing_topic_focus(topics: list[str], methods: list[str]) -> str:
         "calibration data selection",
     ]
     selected = sorted(selected, key=lambda item: priority.index(item.lower()) if item.lower() in priority else len(priority))
-    return _human_list(selected[:3] or topics[:3], "the paper's target failure mode")
+    return _human_list(selected[:3] or topics[:3], "the target failure mode")
 
 
 def _routing_setting_focus(settings: list[str]) -> str:
@@ -531,7 +531,7 @@ def _routing_setting_focus(settings: list[str]) -> str:
         return "weight-only quantization"
     if "weight-activation quantization" in lowered:
         return "weight-activation quantization"
-    return _human_list(settings[:2], "the paper's reported setting")
+    return _human_list(settings[:2], "the reported setting")
 
 
 def _human_list(items: list[str], fallback: str) -> str:

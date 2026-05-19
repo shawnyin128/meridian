@@ -312,7 +312,7 @@ def _comparison_dimensions_markdown() -> str:
         ("retrieval_future_use", "Would future wiki queries retrieve and use this paper for the right concepts?"),
         ("retrieval_taxonomy_boundary", "Do methods/topics/settings have non-overlapping meanings, or are they mixed into one noisy keyword list?"),
         ("frontmatter_body_duplication", "Does the body explain when-to-retrieve intent instead of repeating frontmatter lists?"),
-        ("when_to_retrieve_quality", "Does the body give useful canonical query examples and fit-distance notes, or only generic template text?"),
+        ("when_to_retrieve_quality", "Does the body give standalone canonical query examples that make sense before retrieval, plus fit-distance notes, or only generic/post-hit template text?"),
     ]
     return "\n".join(f"- `{dimension}`: {description}" for dimension, description in rows)
 
@@ -362,7 +362,7 @@ def _rubric_markdown() -> str:
         (
             "when_to_retrieve_quality",
             1.0,
-            "The when-to-retrieve section gives concrete canonical query examples and fit-distance notes for future human readers and context builders.",
+            "The when-to-retrieve section gives concrete standalone canonical query examples and fit-distance notes for future human readers and context builders.",
         ),
         (
             "uncertainty_calibration",

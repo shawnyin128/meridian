@@ -324,6 +324,10 @@ def _frontmatter_body_source_score(frontmatter: dict[str, Any], sections: dict[s
         findings.append("missing_scope_notes_header")
     if "do not use it when:" in lower:
         findings.append("negative_rule_list_present")
+    query_examples = re.findall(r"^- Query: .+", retrieval_intent, flags=re.MULTILINE)
+    query_texts = [_query_text(line) for line in query_examples]
+    if any(re.search(r"\b(this paper|the paper|the mechanism|this method|target page)\b|paper's", query.lower()) for query in query_texts):
+        findings.append("query_assumes_already_retrieved_page")
     for field in ("methods", "topics", "settings"):
         values = frontmatter.get(field)
         if field == "settings" and values == []:
@@ -335,6 +339,7 @@ def _frontmatter_body_source_score(frontmatter: dict[str, Any], sections: dict[s
         "legacy_retrieval_anchors_section_present" in findings
         or "legacy_retrieval_notes_section_present" in findings
         or "body_copies_frontmatter_field_lists" in findings
+        or "query_assumes_already_retrieved_page" in findings
     ):
         score = min(score, 3.0)
     return _dimension(
@@ -344,6 +349,11 @@ def _frontmatter_body_source_score(frontmatter: dict[str, Any], sections: dict[s
         "Frontmatter is the machine-readable retrieval source of truth and body when-to-retrieve examples do not duplicate field lists.",
         findings,
     )
+
+
+def _query_text(line: str) -> str:
+    match = re.search(r'^- Query:\s+"(.+)"$', line.strip())
+    return match.group(1) if match else line
 
 
 def _section_score(sections: dict[str, str]) -> dict[str, Any]:

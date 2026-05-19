@@ -452,3 +452,55 @@ Sample output:
 ### Convergence Note
 
 This round closes the "retrieval example after-the-fact" failure for CodeQuant. Canonical examples now have to be standalone retrieval requests, and the quality agent has explicit checks for the failure mode.
+
+## Developer Round 7
+
+### Cross-Retrieval Audit
+
+After the CodeQuant-specific fix, the user asked whether the same failure existed elsewhere in retrieval-related surfaces. The audit found:
+
+- `paper.md` canonical query generation no longer used the three rejected CodeQuant patterns.
+- Generator fallbacks could still emit deictic phrases such as `this method family`, `the paper's target failure mode`, or `the paper's reported setting` when metadata was missing.
+- Quality-agent retrieval scenarios still contained post-hit language such as `Before citing or building on this paper` and `paper's argument`.
+- Understanding/quality rubric text did not explicitly require canonical examples to make sense before the target page is already in context.
+- Structural checks verified canonical section shape but did not reject deictic query examples.
+
+### Changes
+
+- Replaced generator fallback labels with standalone phrases: `the relevant method family`, `the target failure mode`, and `the reported setting`.
+- Rewrote quality-agent retrieval scenarios so they describe natural pre-retrieval needs:
+  - implementation scenarios now use a concrete codebase/implementation context;
+  - limitation scenarios retrieve prior work in an area, not "this paper";
+  - multimodal evidence scenarios retrieve prior work where figures/tables/equations carry the argument.
+- Added quality and structural checks for query examples that assume the page has already been retrieved: `this paper`, `the paper`, `the mechanism`, `this method`, `target page`, or `paper's`.
+- Updated understanding and quality rubric wording so standalone retrieval behavior is part of the expected quality bar.
+- Added regression tests for standalone retrieval scenarios and structural rejection of non-standalone query examples.
+
+### Validation
+
+Commands:
+
+```bash
+PYTHONPATH=src python3 -m unittest discover -s tests
+PYTHONPYCACHEPREFIX=/private/tmp/meridian-pycache PYTHONPATH=src python3 -m compileall src tests
+PYTHONPATH=src python3 -c 'from meridian.cli import main; raise SystemExit(main(["wiki","ingest","/Users/shawn/Desktop/2604.10496v1.pdf","--out","/private/tmp/meridian-codequant-after12","--overwrite"]))'
+PYTHONPATH=src python3 -c 'from meridian.cli import main; raise SystemExit(main(["wiki","quality-check","/private/tmp/meridian-codequant-after12/run.json","--out","/private/tmp/meridian-codequant-after12/quality-self-check.json"]))'
+PYTHONPATH=src python3 -c 'from meridian.cli import main; raise SystemExit(main(["wiki","structural-check","/private/tmp/meridian-codequant-after12/run.json","--out","/private/tmp/meridian-codequant-after12/structural-self-check.json"]))'
+```
+
+Results:
+
+- Unit tests: 30 passed.
+- Compile check: passed.
+- CodeQuant real ingest: generated successfully.
+- CodeQuant quality self-check: pass, weighted score 4.547.
+- CodeQuant structural self-check: pass, weighted score 4.740.
+- Grep check found no generated canonical query or quality scenario containing the post-hit retrieval markers.
+
+Sample output:
+
+- `/private/tmp/meridian-codequant-after12/paper.md`
+
+### Convergence Note
+
+The issue was common in two places: generated canonical examples and internal evaluator scenarios. This round makes "standalone before retrieval" a first-class invariant across generation, quality evaluation, structural evaluation, and rubric guidance.

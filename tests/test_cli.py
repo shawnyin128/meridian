@@ -11,7 +11,11 @@ from meridian.cli import main
 from meridian.wiki.extract import PageExtraction, PdfExtraction
 from meridian.wiki.ingest import _title_from_first_page
 from meridian.wiki.packet import _trusted_metadata_authors
-from meridian.wiki.quality_check import _retrieval_intent_quality_score, _retrieval_taxonomy_boundary_score
+from meridian.wiki.quality_check import (
+    _retrieval_intent_quality_score,
+    _retrieval_scenarios,
+    _retrieval_taxonomy_boundary_score,
+)
 from meridian.wiki.rubrics import complete_result_template, rubric_for
 
 
@@ -741,6 +745,28 @@ class CliTests(unittest.TestCase):
         self.assertIn("query_assumes_paper_already_retrieved", score["findings"])
         self.assertIn("query_is_retrofit_to_component_list", score["findings"])
 
+    def test_retrieval_scenarios_are_standalone_before_page_retrieval(self) -> None:
+        scenarios = _retrieval_scenarios(
+            {
+                "title": "CodeQuant: Unified Clustering and Quantization",
+                "methods": ["MoE post-training quantization"],
+                "topics": ["activation outliers", "quantization error"],
+                "settings": ["weight-activation quantization"],
+                "datasets": ["WikiText2"],
+                "metrics": ["perplexity"],
+            },
+            [{"name": "Activation-Oriented Outlier Smoothing", "short_name": "AOS"}],
+            [],
+            [],
+        )
+        scenario_text = "\n".join(str(item["query"]) for item in scenarios).lower()
+
+        self.assertIn("modifying a codequant implementation", scenario_text)
+        self.assertNotIn("this paper", scenario_text)
+        self.assertNotIn("the paper", scenario_text)
+        self.assertNotIn("the mechanism", scenario_text)
+        self.assertNotIn("this method", scenario_text)
+
     def test_structural_check_command_scores_ingest_structure(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -764,6 +790,34 @@ class CliTests(unittest.TestCase):
             self.assertIn("frontmatter_schema", dimensions)
             self.assertIn("candidate_jsonl_schema", dimensions)
             self.assertIn("source_management", dimensions)
+
+    def test_structural_check_flags_non_standalone_retrieval_examples(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pdf = root / "fake.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            out = root / "wiki/.drafts/ingests/fake-paper"
+            packet = root / "structural-self-check.json"
+
+            self.assertEqual(main(["wiki", "ingest", str(pdf), "--out", str(out)]), 0)
+            paper = out / "paper.md"
+            text = paper.read_text(encoding="utf-8")
+            text = text.replace(
+                'Query: "I want to compare or adapt',
+                'Query: "I need to check whether this paper supports',
+                1,
+            )
+            paper.write_text(text, encoding="utf-8")
+            self.assertEqual(
+                main(["wiki", "structural-check", str(out / "run.json"), "--out", str(packet)]),
+                0,
+            )
+
+            payload = json.loads(packet.read_text(encoding="utf-8"))
+            dimensions = {item["dimension"]: item for item in payload["dimension_scores"]}
+            source_dimension = dimensions["frontmatter_body_source_of_truth"]
+            self.assertLessEqual(source_dimension["score"], 3.0)
+            self.assertIn("query_assumes_already_retrieved_page", source_dimension["findings"])
 
     def test_structural_check_fails_missing_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
