@@ -11,6 +11,7 @@ from meridian.cli import main
 from meridian.wiki.extract import PageExtraction, PdfExtraction
 from meridian.wiki.ingest import _title_from_first_page
 from meridian.wiki.packet import _trusted_metadata_authors
+from meridian.wiki.quality_check import _retrieval_taxonomy_boundary_score
 from meridian.wiki.rubrics import complete_result_template, rubric_for
 
 
@@ -212,7 +213,7 @@ class CliTests(unittest.TestCase):
             self.assertIn("type: \"paper\"", paper)
             self.assertIn("model_strategy: \"heuristic_text_v2\"", paper)
             self.assertIn("## Paper Positioning", paper)
-            self.assertIn("## Retrieval Anchors", paper)
+            self.assertIn("## Retrieval Notes", paper)
             self.assertIn("## Mechanism", paper)
             self.assertIn("## Candidate Records", paper)
             self.assertNotIn("## Extracted Contribution Sentences", paper)
@@ -255,7 +256,8 @@ class CliTests(unittest.TestCase):
             paper = (out / "paper.md").read_text(encoding="utf-8")
             self.assertIn("This is a MoE post-training quantization paper", paper)
             self.assertIn("## What To Remember", paper)
-            self.assertIn("## Retrieval Anchors", paper)
+            self.assertIn("## Retrieval Notes", paper)
+            self.assertIn("Frontmatter is the machine-readable retrieval source of truth", paper)
             frontmatter = paper.split("---", 2)[1]
             methods_frontmatter = frontmatter.split("methods:", 1)[1].split("settings:", 1)[0]
             self.assertIn("post-training quantization", methods_frontmatter)
@@ -643,6 +645,36 @@ class CliTests(unittest.TestCase):
             dimensions = {item["dimension"] for item in payload["dimension_scores"]}
             self.assertIn("retrieval_scenario_coverage", dimensions)
             self.assertIn("metadata_routing_integrity", dimensions)
+
+    def test_retrieval_taxonomy_allows_descriptive_title_topics(self) -> None:
+        score = _retrieval_taxonomy_boundary_score(
+            {
+                "title": "Quantization Error Propagation: Revisiting Layer-Wise Post-Training Quantization",
+                "aliases": ["Quantization Error Propagation", "QEP"],
+                "methods": ["post-training quantization", "layer-wise PTQ"],
+                "topics": ["post-training quantization", "quantization error", "error propagation"],
+                "settings": ["weight-only quantization"],
+            },
+            [{"name": "Quantization Error Propagation", "short_name": "QEP"}],
+        )
+
+        self.assertEqual(score["score"], 5.0)
+        self.assertEqual(score["findings"], [])
+
+    def test_retrieval_taxonomy_rejects_alias_topics(self) -> None:
+        score = _retrieval_taxonomy_boundary_score(
+            {
+                "title": "CodeQuant: Unified Clustering and Quantization",
+                "aliases": ["CodeQuant", "AOS"],
+                "methods": ["post-training quantization"],
+                "topics": ["codequant", "activation outliers"],
+                "settings": ["weight-activation quantization"],
+            },
+            [{"name": "Activation-Oriented Outlier Smoothing", "short_name": "AOS"}],
+        )
+
+        self.assertLessEqual(score["score"], 3.0)
+        self.assertIn("topics_contain_title_or_alias:codequant", score["findings"])
 
     def test_structural_check_command_scores_ingest_structure(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

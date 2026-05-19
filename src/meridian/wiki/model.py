@@ -2017,11 +2017,6 @@ def _method_families(
         families.append("hardware-aware quantization")
     if "sparse" in text and "outlier" in text:
         families.append("sparse outlier retention")
-    if "weight-only quantization" in settings:
-        families.append("weight-only PTQ")
-    if "weight-activation quantization" in settings:
-        families.append("weight-activation PTQ")
-
     return _dedupe(families)[:8] or [_method_name_from_title(title)]
 
 
@@ -2130,8 +2125,12 @@ def _method_record_text(method_records: list[dict[str, Any]]) -> str:
 
 def _controlled_topics(text: str, settings: list[str]) -> list[str]:
     lowered = f" {_normalize(text).lower()} "
+    setting_topics = {"weight-only quantization", "weight-activation quantization", "KV-cache quantization"}
+    setting_set = set(settings)
     topics = []
     for topic, needles in CONTROLLED_TOPIC_RULES:
+        if topic in setting_topics or topic in setting_set:
+            continue
         if topic in settings or any(needle in lowered for needle in needles):
             topics.append(topic)
     return topics

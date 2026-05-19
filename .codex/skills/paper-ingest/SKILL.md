@@ -61,7 +61,7 @@ Use this order:
 
 1. frontmatter with retrieval metadata
 2. `What To Remember`: one concrete mechanism-centered paragraph
-3. `Retrieval Anchors`: method/concepts/datasets/metrics/source pointers
+3. `Retrieval Notes`: human-readable retrieval use-cases; do not repeat frontmatter lists
 4. `Mechanism`: component contracts
 5. `Mechanism Details To Verify`: source-grounded equations/algorithms/figures/settings
 6. `Evidence Map`: only high-value claims and evidence takeaways
@@ -77,17 +77,27 @@ Avoid:
 - visual index for every page
 - repeated contribution sentences already represented as claim records
 - prose that says "read it as a mechanism paper" without giving the mechanism
+- a `Retrieval Anchors` section that copies `methods`, `topics`, `settings`, `datasets`, or `metrics` from frontmatter
 
 ## Retrieval Metadata
+
+Frontmatter is the machine-readable retrieval source of truth. Body prose can explain why the page should be retrieved, but it must not become a second metadata source.
 
 Frontmatter should support future idea-driven retrieval:
 
 - `type`, `title`, `status`, `created`, `updated`
 - `source_id`, `source_pdf`, `source_registry`, `sources`
-- `tags`, `aliases`, `topics`, `methods`, `datasets`, `metrics`
+- `tags`, `aliases`, `topics`, `methods`, `settings`, `datasets`, `metrics`
 - `claims`, `confidence`, `review_state` or equivalent publish state when available
 
-Prefer semantic aliases such as method acronyms and title variants. Avoid decorative metadata.
+Use distinct retrieval fields:
+
+- `methods`: reusable technique families such as `post-training quantization`, `rotation-based quantization`, `non-uniform weight quantization`, `expert-aware quantization`. Do not put only paper-specific components here.
+- `topics`: research problems, objects, or phenomena such as `activation outliers`, `quantization error`, `expert routing`, `calibration data selection`.
+- `settings`: experimental, model, or deployment conditions such as `weight-only quantization`, `weight-activation quantization`, `KV-cache quantization`, `MoE setting`, `LUT/kernel setting`.
+- `aliases`: paper title variants, acronyms, and exact component names such as `CodeQuant`, `AOS`, `EBSS`, `QEP`.
+
+Prefer controlled/global vocabulary entries before inventing a paper-specific topic. Avoid title-as-topic, generic one-word topics such as `error`, `design`, `outliers`, or labels that duplicate another field.
 
 ## Self-Check
 
@@ -96,6 +106,12 @@ Use three separately inspectable self-check roles as the convergence loop:
 - Understanding agent: uses `reader-check.md` to compare a `paper.md`-only teach-back with a source-grounded reading and attributes mismatches to skill/generation buckets.
 - Quality agent: uses `quality-self-check.json` to score human readability, information density, and retrieval coverage under complex downstream research scenarios.
 - Structural agent: uses `structural-self-check.json` to score structural completeness of run manifests, artifacts, frontmatter, sections, candidate records, provenance, extraction outputs, and source management.
+
+All three agents must cover retrieval schema quality:
+
+- Understanding agent checks whether a reader can explain why the page should be retrieved and whether `methods`, `topics`, `settings`, `aliases`, and candidate records have distinct roles.
+- Quality agent scores retrieval taxonomy boundaries and frontmatter/body non-duplication; it should fail pages where paper-specific method components replace reusable method families or where topics are generic/title-derived.
+- Structural agent checks that frontmatter is the source of truth and that body `Retrieval Notes` do not duplicate frontmatter field lists.
 
 Keep these roles separate. Do not let structural pass/fail replace semantic understanding or quality evaluation, and do not bury schema completeness failures inside prose-quality findings.
 

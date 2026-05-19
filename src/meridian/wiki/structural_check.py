@@ -19,6 +19,7 @@ DIMENSION_WEIGHTS = {
     "run_manifest_contract": 1.4,
     "artifact_existence": 1.5,
     "frontmatter_schema": 1.4,
+    "frontmatter_body_source_of_truth": 1.1,
     "section_schema": 1.2,
     "candidate_jsonl_schema": 1.4,
     "provenance_linkage": 1.3,
@@ -62,6 +63,7 @@ REQUIRED_FRONTMATTER_FIELDS = {
     "tags",
     "topics",
     "methods",
+    "settings",
     "datasets",
     "metrics",
     "claims",
@@ -76,6 +78,7 @@ LIST_FRONTMATTER_FIELDS = {
     "tags",
     "topics",
     "methods",
+    "settings",
     "datasets",
     "metrics",
     "claims",
@@ -92,12 +95,13 @@ CRITICAL_FRONTMATTER_FIELDS = {
     "sources",
     "page_count",
     "model_strategy",
+    "settings",
     "claims",
 }
 
 REQUIRED_SECTIONS = [
     "What To Remember",
-    "Retrieval Anchors",
+    "Retrieval Notes",
     "Mechanism",
     "Mechanism Details To Verify",
     "Evidence Map",
@@ -182,6 +186,7 @@ def run_structural_self_check(*, run_manifest: Path, out_path: Path | None = Non
             pages_path=pages_path,
         ),
         _frontmatter_score(frontmatter, run),
+        _frontmatter_body_source_score(frontmatter, sections),
         _section_score(sections),
         _candidate_score(claims, methods, evidence),
         _provenance_score(claims, methods, evidence, sections, pages),
@@ -299,6 +304,35 @@ def _frontmatter_score(frontmatter: dict[str, Any], run: dict[str, Any]) -> dict
     if frontmatter.get("type") != "paper":
         score -= 1
     return _dimension("frontmatter_schema", score, "frontmatter", "paper.md frontmatter is complete and machine-routable.", findings)
+
+
+def _frontmatter_body_source_score(frontmatter: dict[str, Any], sections: dict[str, str]) -> dict[str, Any]:
+    retrieval_notes = sections.get("Retrieval Notes", "")
+    findings: list[str] = []
+    if "Retrieval Anchors" in sections:
+        findings.append("legacy_retrieval_anchors_section_present")
+    if not retrieval_notes:
+        findings.append("missing_retrieval_notes")
+    if re.search(r"^- (Methods|Topics|Settings|Datasets|Metrics):", retrieval_notes, flags=re.MULTILINE):
+        findings.append("body_copies_frontmatter_field_lists")
+    if "frontmatter is the machine-readable retrieval source of truth" not in retrieval_notes.lower():
+        findings.append("retrieval_notes_missing_source_of_truth_statement")
+    for field in ("methods", "topics", "settings"):
+        values = frontmatter.get(field)
+        if field == "settings" and values == []:
+            continue
+        if not isinstance(values, list):
+            findings.append(f"{field}_not_list")
+    score = 5 - 0.9 * len(findings)
+    if "legacy_retrieval_anchors_section_present" in findings or "body_copies_frontmatter_field_lists" in findings:
+        score = min(score, 3.0)
+    return _dimension(
+        "frontmatter_body_source_of_truth",
+        score,
+        "paper_page_template",
+        "Frontmatter is the machine-readable retrieval source of truth and body retrieval notes do not duplicate field lists.",
+        findings,
+    )
 
 
 def _section_score(sections: dict[str, str]) -> dict[str, Any]:

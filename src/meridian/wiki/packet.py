@@ -224,7 +224,7 @@ def render_paper_draft(
     open_questions = "\n".join(f"- {question}" for question in model.open_questions)
     source_block = _render_source_block(source_record)
     metadata_authors = _trusted_metadata_authors(extraction)
-    retrieval_anchors = _render_retrieval_anchors(model)
+    retrieval_notes = _render_retrieval_notes(model)
     visual_pointers = _render_visual_pointers(extraction.pages)
     record_pointers = _render_record_pointers()
     mechanism_contracts = _render_mechanism_contracts(model.method_records)
@@ -238,9 +238,9 @@ def render_paper_draft(
 
 {model.one_line_takeaway}
 
-## Retrieval Anchors
+## Retrieval Notes
 
-{retrieval_anchors}
+{retrieval_notes}
 
 Source:
 
@@ -408,20 +408,25 @@ def _join_or_unknown(value: object, fallback: str) -> str:
     return text if text else fallback
 
 
-def _render_retrieval_anchors(model: PaperModel) -> str:
-    anchors = [
-        ("Methods", model.methods),
-        ("Topics", model.topics),
-        ("Settings", model.settings),
-        ("Datasets", model.datasets),
-        ("Metrics", model.metrics),
-    ]
-    lines = []
-    for label, values in anchors:
-        if values:
-            lines.append(f"- {label}: {', '.join(values[:10])}")
-    if not lines:
-        return "- No reliable retrieval anchors extracted."
+def _render_retrieval_notes(model: PaperModel) -> str:
+    lines = ["Frontmatter is the machine-readable retrieval source of truth. Retrieve this page for questions about:"]
+    scenarios = []
+    if model.settings:
+        scenarios.append(f"scope conditions such as {', '.join(model.settings[:3])}")
+    if model.methods:
+        scenarios.append(f"method-family comparisons involving {', '.join(model.methods[:3])}")
+    if model.topics:
+        scenarios.append(f"research questions around {', '.join(model.topics[:4])}")
+    if model.datasets or model.metrics:
+        scenario = "evidence checks"
+        if model.datasets:
+            scenario += f" on {', '.join(model.datasets[:3])}"
+        if model.metrics:
+            scenario += f" using {', '.join(model.metrics[:3])}"
+        scenarios.append(scenario)
+    if not scenarios:
+        scenarios.append("the method, evidence, and uncertainty described in the sections below")
+    lines.extend(f"- {scenario}." for scenario in scenarios[:4])
     return "\n".join(lines)
 
 

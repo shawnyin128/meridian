@@ -188,3 +188,84 @@ Sample outputs:
 ### Convergence Note
 
 This round improves retrieval readiness without removing implementation detail: broad method families and controlled topics now support cross-paper retrieval, while exact component names remain available through aliases and candidate method records.
+
+## Developer Round 3
+
+### User Calibration Feedback
+
+The user identified an evaluator/schema failure rather than only an output failure:
+
+- `methods`, `topics`, and `settings` were still not governed by a strict enough taxonomy.
+- `settings` needed an explicit purpose: model, experiment, or deployment scope such as weight-only, weight-activation, MoE, KV-cache, or kernel/LUT conditions.
+- `Retrieval Anchors` duplicated frontmatter and made the body a second machine metadata source.
+- Because frontmatter is available to retrieval, body text should explain retrieval use-cases, not repeat metadata lists.
+- The three self-check agents should have caught this automatically.
+
+### Root Cause
+
+The previous agents could score general retrieval coverage but did not encode the exact LLM Wiki retrieval contract:
+
+- Quality agent: missing a dimension for taxonomy boundaries and frontmatter/body non-duplication.
+- Structural agent: missing a source-of-truth check for frontmatter versus body sections.
+- Understanding agent packet: did not force the reader comparison to audit whether future retrieval would interpret `methods`, `topics`, `settings`, `aliases`, and candidate records differently.
+
+### Changes
+
+- Replaced body `Retrieval Anchors` with `Retrieval Notes`.
+- Made frontmatter the explicit machine-readable retrieval source of truth.
+- Kept body retrieval prose as human-readable use-cases: scope conditions, method-family comparisons, research questions, and evidence checks.
+- Removed quantization scope labels from frontmatter `methods`; `weight-only quantization`, `weight-activation quantization`, and related scope constraints now live in `settings`.
+- Added quality-agent dimensions:
+  - `retrieval_taxonomy_boundary`
+  - `frontmatter_body_nonduplication`
+- Added structural-agent dimension:
+  - `frontmatter_body_source_of_truth`
+- Added understanding-agent checklist and rubric entries for retrieval taxonomy and frontmatter/body duplication.
+- Added hard-fail rules for collapsed retrieval taxonomy and duplicated retrieval metadata contracts.
+- Added regression tests for:
+  - descriptive title topics such as `quantization error` and `error propagation` being allowed;
+  - paper-specific aliases such as `codequant` being rejected as topics.
+
+### Calibration Results
+
+Commands:
+
+```bash
+PYTHONPATH=src python3 -m unittest discover -s tests
+PYTHONPATH=src python3 -c 'from meridian.cli import main; raise SystemExit(main(["wiki","eval","/private/tmp/meridian-calibration-papers.jsonl","--out-dir","/private/tmp/meridian-calibration-after6","--overwrite"]))'
+PYTHONPATH=src python3 -c 'from meridian.cli import main; raise SystemExit(main(["wiki","self-check-eval","/private/tmp/meridian-calibration-after6/eval_manifest.json","--backend","fake","--out-dir","/private/tmp/meridian-calibration-after6-selfcheck","--overwrite"]))'
+PYTHONPATH=src python3 - <<'PY'
+from pathlib import Path
+from meridian.wiki.quality_check import run_quality_self_check
+from meridian.wiki.structural_check import run_structural_self_check
+root = Path("/private/tmp/meridian-calibration-after6")
+for run in sorted(root.glob("*/run.json")):
+    run_quality_self_check(run_manifest=run, out_path=run.parent / "quality-self-check.json")
+    run_structural_self_check(run_manifest=run, out_path=run.parent / "structural-self-check.json")
+PY
+PYTHONPYCACHEPREFIX=/private/tmp/meridian-pycache PYTHONPATH=src python3 -m compileall src tests
+```
+
+Results:
+
+- Unit tests: 26 passed.
+- Full 15-paper ingest calibration: generated successfully.
+- Fake self-check orchestration: 15 completed, 0 failed.
+- Deterministic quality self-check: 15/15 pass.
+- Deterministic structural self-check: 15/15 pass.
+- CodeQuant, MoEQuant, and QEP all score 5.0 on:
+  - `retrieval_taxonomy_boundary`
+  - `frontmatter_body_nonduplication`
+  - `metadata_routing_integrity`
+- Structural check scores 5.0 on `frontmatter_body_source_of_truth` for CodeQuant, MoEQuant, and QEP.
+- Compile check: passed.
+
+Sample outputs:
+
+- `/private/tmp/meridian-calibration-after6/2604-10496v1/paper.md`
+- `/private/tmp/meridian-calibration-after6/2505-03804v1/paper.md`
+- `/private/tmp/meridian-calibration-after6/2504-09629v3/paper.md`
+
+### Convergence Note
+
+This round closes the specific evaluator gap the user found: the three self-check agents now have explicit, scored, and test-backed criteria for retrieval taxonomy boundaries and frontmatter source-of-truth behavior. The remaining known non-blocker is source management in unmanaged `/Users/shawn/Desktop/*.pdf` calibration runs; that should be handled as a separate raw-source registry feature.

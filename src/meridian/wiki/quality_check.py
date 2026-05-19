@@ -17,6 +17,8 @@ class QualitySelfCheckResult:
 
 DIMENSION_WEIGHTS = {
     "retrieval_scenario_coverage": 1.6,
+    "retrieval_taxonomy_boundary": 1.5,
+    "frontmatter_body_nonduplication": 1.2,
     "mechanism_teachability": 1.8,
     "component_contracts": 1.4,
     "evidence_selectivity": 1.4,
@@ -97,6 +99,8 @@ def _score_dimensions(
 ) -> list[dict[str, Any]]:
     return [
         _scenario_coverage_score(frontmatter, sections, scenarios),
+        _retrieval_taxonomy_boundary_score(frontmatter, methods),
+        _frontmatter_body_nonduplication_score(frontmatter, sections),
         _mechanism_teachability_score(sections),
         _component_contract_score(methods, sections),
         _evidence_selectivity_score(sections, claims),
@@ -119,9 +123,10 @@ def _scenario_coverage_score(
             _as_text(frontmatter.get("aliases")),
             _as_text(frontmatter.get("topics")),
             _as_text(frontmatter.get("methods")),
+            _as_text(frontmatter.get("settings")),
             _as_text(frontmatter.get("datasets")),
             _as_text(frontmatter.get("metrics")),
-            sections.get("Retrieval Anchors", ""),
+            sections.get("Retrieval Notes", ""),
             sections.get("Mechanism", ""),
             sections.get("Implementation Hooks", ""),
             sections.get("Limitations / Uncertainty", ""),
@@ -143,6 +148,90 @@ def _scenario_coverage_score(
         "retrieval_metadata",
         "Complex downstream retrieval scenarios are covered by frontmatter and body anchors.",
         misses,
+    )
+
+
+def _retrieval_taxonomy_boundary_score(frontmatter: dict[str, Any], method_records: list[dict[str, Any]]) -> dict[str, Any]:
+    methods = [str(item) for item in frontmatter.get("methods") or []]
+    topics = [str(item) for item in frontmatter.get("topics") or []]
+    settings = [str(item) for item in frontmatter.get("settings") or []]
+    aliases = [str(item) for item in frontmatter.get("aliases") or []]
+    component_names = {
+        str(value).lower()
+        for record in method_records
+        for value in (record.get("name"), record.get("short_name"))
+        if value
+    }
+    paper_specific_aliases = {alias.lower() for alias in aliases if alias and alias.lower() not in {"ptq", "llm"}}
+    settings_set = {item.lower() for item in settings}
+    method_set = {item.lower() for item in methods}
+    topic_set = {item.lower() for item in topics}
+
+    findings: list[str] = []
+    method_component_leaks = sorted(method_set & component_names)
+    if method_component_leaks:
+        findings.append(f"methods_contain_specific_components:{','.join(method_component_leaks[:5])}")
+    title_topic_leaks = sorted(topic_set & paper_specific_aliases)
+    if title_topic_leaks:
+        findings.append(f"topics_contain_title_or_alias:{','.join(title_topic_leaks[:5])}")
+    generic_topics = sorted(topic for topic in topic_set if topic in {"error", "errors", "outliers", "design", "models", "methods", "language", "existing", "performance"})
+    if generic_topics:
+        findings.append(f"generic_topics:{','.join(generic_topics[:8])}")
+    settings_in_methods = sorted(settings_set & method_set)
+    settings_in_topics = sorted(settings_set & topic_set)
+    if settings_in_methods:
+        findings.append(f"settings_duplicated_in_methods:{','.join(settings_in_methods[:5])}")
+    if settings_in_topics:
+        findings.append(f"settings_duplicated_in_topics:{','.join(settings_in_topics[:5])}")
+    if not methods:
+        findings.append("missing_method_families")
+    if not topics:
+        findings.append("missing_research_topics")
+    if not settings and any("quantization" in value.lower() for value in methods + topics):
+        findings.append("missing_quantization_setting")
+
+    score = 5 - 0.75 * len(findings)
+    if method_component_leaks or title_topic_leaks or generic_topics:
+        score = min(score, 3.0)
+    return _dimension(
+        "retrieval_taxonomy_boundary",
+        score,
+        "retrieval_metadata",
+        "Frontmatter separates method families, research topics, and experimental/deployment settings without paper-specific or generic noise.",
+        findings,
+    )
+
+
+def _frontmatter_body_nonduplication_score(frontmatter: dict[str, Any], sections: dict[str, str]) -> dict[str, Any]:
+    retrieval_notes = sections.get("Retrieval Notes", "")
+    legacy_anchors = sections.get("Retrieval Anchors", "")
+    findings: list[str] = []
+    if legacy_anchors:
+        findings.append("legacy_retrieval_anchors_section_repeats_frontmatter")
+    if not retrieval_notes:
+        findings.append("missing_retrieval_notes_section")
+    if re.search(r"^- (Methods|Topics|Settings|Datasets|Metrics):", retrieval_notes, flags=re.MULTILINE):
+        findings.append("retrieval_notes_contains_frontmatter_field_copy")
+    frontmatter_values = {
+        str(item).lower()
+        for field in ("methods", "topics", "settings", "datasets", "metrics")
+        for item in (frontmatter.get(field) or [])
+    }
+    note_lines = [line.lower() for line in retrieval_notes.splitlines() if line.strip().startswith("-")]
+    copied_values = sorted(value for value in frontmatter_values if value and sum(value in line for line in note_lines) >= 2)
+    if len(copied_values) >= 4:
+        findings.append(f"retrieval_notes_repeats_frontmatter_values:{','.join(copied_values[:6])}")
+    if "frontmatter is the machine-readable retrieval source of truth" not in retrieval_notes.lower():
+        findings.append("retrieval_notes_do_not_declare_frontmatter_source_of_truth")
+    score = 5 - 0.8 * len(findings)
+    if legacy_anchors or "retrieval_notes_contains_frontmatter_field_copy" in findings:
+        score = min(score, 3.0)
+    return _dimension(
+        "frontmatter_body_nonduplication",
+        score,
+        "paper_page_template",
+        "Body retrieval notes explain retrieval use-cases while frontmatter remains the machine-readable source of truth.",
+        findings,
     )
 
 
@@ -259,9 +348,13 @@ def _limitation_specificity_score(sections: dict[str, str], frontmatter: dict[st
 
 
 def _metadata_routing_score(frontmatter: dict[str, Any], paper_text: str) -> dict[str, Any]:
-    required = ["type", "title", "status", "source_pdf", "source_id", "source_registry", "aliases", "topics", "methods", "datasets", "metrics", "claims"]
+    required = ["type", "title", "status", "source_pdf", "source_id", "source_registry", "aliases", "topics", "methods", "settings", "datasets", "metrics", "claims"]
     missing = [field for field in required if not frontmatter.get(field)]
-    noisy_topics = [topic for topic in frontmatter.get("topics") or [] if str(topic).lower() in {"find", "large", "achieves", "values", "figure", "models"}]
+    noisy_topics = [
+        topic
+        for topic in frontmatter.get("topics") or []
+        if str(topic).lower() in {"find", "large", "achieves", "values", "figure", "models", "error", "errors", "outliers", "design", "methods", "language"}
+    ]
     untrusted = "Metadata authors: not trusted" in paper_text
     score = 5 - 0.35 * len(missing) - 0.2 * len(noisy_topics)
     findings = []
@@ -325,12 +418,13 @@ def _retrieval_scenarios(
     pages: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     title = str(frontmatter.get("title") or "this paper")
+    method_families = [str(item) for item in frontmatter.get("methods") or []]
     method_names = [str(item.get("short_name") or item.get("name")) for item in methods if item.get("name")]
     datasets = [str(item) for item in frontmatter.get("datasets") or []]
     metrics = [str(item) for item in frontmatter.get("metrics") or []]
     topics = [str(item) for item in frontmatter.get("topics") or []]
+    settings = [str(item) for item in frontmatter.get("settings") or []]
     evidence_pages = [page.get("page_number") for page in pages if page.get("drawing_count", 0) or "Table" in str(page.get("text") or "")]
-    core_keys = _dedupe(method_names + topics[:5] + datasets[:4] + metrics[:4])
     method_label = ", ".join(method_names[:3]) or title
     return [
         {
@@ -339,7 +433,7 @@ def _retrieval_scenarios(
                 "I have a new idea that changes the quantization/calibration objective and need papers that explain "
                 "which mechanism is being modified, which assumptions must remain true, and what evidence would falsify the idea."
             ),
-            "required_retrieval_keys": _dedupe(method_names[:3] + topics[:5] + ["quantization", "calibration"]),
+            "required_retrieval_keys": _dedupe(method_families[:4] + topics[:5] + settings[:3] + ["quantization", "calibration"]),
             "expected_answer_shape": "context packet with mechanism, assumptions, evidence, and uncertainty separated",
         },
         {
@@ -366,7 +460,7 @@ def _retrieval_scenarios(
                 "Before citing or building on this paper, retrieve limitations and uncertainty: calibration dependence, hardware/runtime scope, "
                 "equivalence assumptions, model-family restrictions, and claims that should not be generalized."
             ),
-            "required_retrieval_keys": _dedupe(topics[:4] + ["limitations", "uncertainty", "calibration", "hardware"]),
+            "required_retrieval_keys": _dedupe(topics[:4] + settings[:3] + ["limitations", "uncertainty", "calibration", "hardware"]),
             "expected_answer_shape": "scope and caveat checklist that separates paper evidence from wiki synthesis",
         },
         {
