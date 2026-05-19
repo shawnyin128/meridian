@@ -10,6 +10,7 @@ from meridian.wiki.extract import PdfExtraction, PageExtraction
 @dataclass(frozen=True)
 class PaperModel:
     strategy: str
+    source_quality: dict[str, Any]
     retrieval_summary: str
     one_line_takeaway: str
     mechanism_overview: list[str]
@@ -113,10 +114,37 @@ CONTROLLED_TOPIC_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("lookup-table inference", ("lookup table", "lookup-table", " lut ", "lut-based")),
     ("benchmark evaluation", ("mmlu", "hellaswag", "gsm8k", "wikitext", "zero-shot")),
     ("mechanistic activation analysis", ("massive activations", "fixed feature dimensions", "intervention")),
+    ("speculative decoding", ("speculative decoding", "speculative sampling", "draft model", "draft token", "draft tree", "verification stage")),
+    ("dynamic draft tree", ("dynamic draft tree", "context-aware draft", "tree attention", "acceptance rate")),
+    ("long-context inference", ("long context", "long-context", "longrope", "context window", "position interpolation")),
+    ("sparse attention", ("sparse attention", "sparse transformer", "fixed attention pattern", "strided attention")),
+    ("KV-cache compression", ("kv cache compression", "kv-cache compression", "cache pruning", "key token", "kv retention")),
+    ("grouped-query attention", ("grouped-query attention", "grouped query attention", " gqa ", "multi-query attention", "multihead checkpoint")),
+    ("conditional diffusion", ("conditional diffusion", "conditional ddpm", "denoising diffusion", "diffusion model")),
+    ("3D medical image synthesis", ("3d brain mri", "semantic 3d", "medical image synthesis", "mri synthesis", "brain mri")),
+    ("semantic conditioning", ("segmentation mask", "semantic label", "conditional image synthesis")),
+    ("low-rank adaptation", ("low-rank", "low rank", "rank compensator", "low-rank compensator")),
+    ("clustering theory", ("k-means", "principal component analysis", "pca", "cluster centers", "clustering algorithm")),
+    ("learned quantization intervals", ("quantization interval", "learned interval", "qil")),
+    ("learned quantizer scale", ("learned step size", "learnable offsets", "lsq+")),
+    ("vision-language quantization", ("q-vlm", "large vision-language model", "multimodal reasoning")),
+    ("vision-language representation learning", ("vl-jepa", "joint embedding predictive", "vision-language alignment")),
+    ("RoPE scaling", ("rope scaling", "rotary position", "position interpolation", "longrope")),
+    ("self-speculative decoding", ("self-speculative", "early exiting", "early-exit")),
+    ("sparse mixture-of-experts", ("sparse mixture-of-experts", "mixtral", "top-k expert")),
+    ("curve skeleton extraction", ("curve skeleton", "skeleton extraction", "incomplete point cloud")),
+    ("point-cloud geometry", ("point cloud", "mesh contraction", "shape abstraction")),
+    ("feature-wise modulation", ("feature-wise linear modulation", "film layer", "gamma", "beta")),
+    ("visual reasoning", ("visual reasoning", "clevr", "question answering")),
+    ("feature uncertainty", ("feature uncertainty", "draft feature", "speculative sampling")),
 )
 
 
 def build_paper_model(title: str, extraction: PdfExtraction) -> PaperModel:
+    source_quality = _source_quality(extraction)
+    if source_quality["review_state"] == "source_text_insufficient":
+        return _source_hold_model(title, extraction, source_quality)
+
     abstract = _extract_abstract(extraction)
     method_records = _method_records(title, extraction.pages)
     contribution_sentences = _candidate_claim_sentences(extraction.pages, title=title, method_records=method_records)
@@ -133,6 +161,7 @@ def build_paper_model(title: str, extraction: PdfExtraction) -> PaperModel:
 
     return PaperModel(
         strategy=MODEL_STRATEGY,
+        source_quality=source_quality,
         retrieval_summary=summary,
         one_line_takeaway=_one_line_takeaway(title, method_records, datasets, metrics),
         mechanism_overview=_mechanism_overview(method_records),
@@ -148,6 +177,132 @@ def build_paper_model(title: str, extraction: PdfExtraction) -> PaperModel:
         settings=settings,
         datasets=datasets,
         metrics=metrics,
+        claim_records=claim_records,
+        method_records=method_records,
+        evidence_records=evidence_records,
+    )
+
+
+def _source_quality(extraction: PdfExtraction) -> dict[str, Any]:
+    page_words = [len(re.findall(r"[A-Za-z][A-Za-z0-9-]{2,}", page.text)) for page in extraction.pages]
+    word_count = sum(page_words)
+    nonempty_pages = sum(count >= 30 for count in page_words)
+    first_text = _normalize(extraction.pages[0].text if extraction.pages else "")
+    first_lower = first_text.lower()
+    jstor_cover = (
+        "jstor to digitize" in first_lower
+        or ("institute of mathematical statistics" in first_lower and "www.jstor.org" in first_lower)
+    )
+    minimum_text_pages = 0 if extraction.page_count <= 4 else max(1, min(3, extraction.page_count // 3))
+    insufficient = word_count == 0 or nonempty_pages < minimum_text_pages or jstor_cover
+    reasons: list[str] = []
+    if word_count == 0:
+        reasons.append(f"low_extracted_word_count:{word_count}")
+    if nonempty_pages < minimum_text_pages:
+        reasons.append(f"few_text_pages:{nonempty_pages}/{extraction.page_count}")
+    if jstor_cover:
+        reasons.append("jstor_or_scanned_cover_detected")
+    return {
+        "review_state": "source_text_insufficient" if insufficient else "text_extractable",
+        "word_count": word_count,
+        "nonempty_pages": nonempty_pages,
+        "page_count": extraction.page_count,
+        "reasons": reasons,
+    }
+
+
+def _source_hold_model(title: str, extraction: PdfExtraction, source_quality: dict[str, Any]) -> PaperModel:
+    page = extraction.pages[0].page_number if extraction.pages else None
+    provenance = [{"page": page, "section": extraction.pages[0].section_hint if extraction.pages else None}] if page else []
+    reason_text = "; ".join(source_quality.get("reasons") or ["text extraction did not expose enough paper content"])
+    claim_records = [
+        {
+            "schema_version": "claim_candidate.v0",
+            "id": "claim-001",
+            "status": "draft",
+            "paper_title": title,
+            "claim": "No paper claim should be promoted because the PDF text extraction is insufficient.",
+            "claim_type": "source_quality_gap",
+            "extraction_strategy": MODEL_STRATEGY,
+            "provenance": provenance,
+            "evidence_ids": [f"evidence-p{page:04d}"] if page else [],
+            "confidence": "high",
+            "review_state": "source_text_insufficient",
+        }
+    ]
+    method_records = [
+        {
+            "schema_version": "method_candidate.v0",
+            "id": "method-001",
+            "status": "draft",
+            "paper_title": title,
+            "name": "Source-quality triage",
+            "short_name": "source-quality-hold",
+            "extraction_strategy": MODEL_STRATEGY,
+            "summary": (
+                "Stops paper understanding when extracted text is too sparse or looks like a cover/scan placeholder, "
+                "so the wiki does not convert a bad PDF into false paper knowledge."
+            ),
+            "inputs": ["PDF extraction text", "page images", "page-level word counts"],
+            "outputs": ["source-quality hold", "request for OCR or a cleaner PDF before knowledge promotion"],
+            "assumptions": ["a retrieval-ready paper page requires enough source text or a later OCR/multimodal pass"],
+            "implementation_notes": [
+                "Inspect page images or run OCR before treating this file as a paper.",
+                "Log extracted word counts, test OCR output, and compare replacement PDFs before promoting any method, claim, topic, or evidence knowledge.",
+            ],
+            "provenance": provenance,
+            "confidence": "high",
+            "review_state": "source_text_insufficient",
+        }
+    ]
+    evidence_records = _page_evidence_records(extraction, claim_records)
+    return PaperModel(
+        strategy=MODEL_STRATEGY,
+        source_quality=source_quality,
+        retrieval_summary=(
+            f"This source is on hold: extracted text is insufficient for paper understanding ({reason_text}). "
+            "Route it as a source-management problem, not as prior work."
+        ),
+        one_line_takeaway=(
+            f"Do not use `{title}` as paper knowledge yet: Meridian only found insufficient text ({reason_text}), "
+            "so the next step is OCR or replacing the PDF."
+        ),
+        mechanism_overview=[
+            "Source-quality triage checks whether extraction contains enough paper text before generating claims or method knowledge."
+        ],
+        mechanism_facts=[
+            {
+                "fact_type": "source_quality",
+                "component": "PDF extraction",
+                "summary": f"Extracted text was insufficient for reliable paper ingest: {reason_text}.",
+                "provenance": provenance,
+            }
+        ],
+        implementation_notes=[
+            "Run OCR or provide a cleaner PDF, then rerun `meridian wiki ingest` before reviewing paper content.",
+            "Use page images only for source triage unless a multimodal/OCR pass is explicitly available.",
+            "Record the failure bucket as source-quality, not paper-understanding, so evaluation does not reward hallucinated summaries.",
+            "Compare the managed PDF path against Zotero or publisher backups before deleting or replacing the source.",
+            "Inspect extracted pages and measure word-count recovery after OCR so the next ingest has auditable source-quality evidence.",
+        ],
+        evidence_takeaways=[
+            "Evidence is limited to extraction quality; no scientific claim, method, or result should be promoted from this file."
+        ],
+        limitations=[
+            "This is not a content limitation of the paper; it is a source-quality limitation of the available PDF.",
+            "Retrieval should find this page only for source cleanup or missing-OCR triage, not for research synthesis.",
+        ],
+        key_contributions=[],
+        method_notes="- Source-quality triage: extraction did not expose enough paper text for content ingest.",
+        open_questions=[
+            "Can OCR recover the actual paper text?",
+            "Is there a cleaner PDF in Zotero, arXiv, publisher, or local backups?",
+        ],
+        topics=["source text extraction", "paper source quality"],
+        methods=["source-quality triage"],
+        settings=["source-text-insufficient"],
+        datasets=[],
+        metrics=[],
         claim_records=claim_records,
         method_records=method_records,
         evidence_records=evidence_records,
@@ -183,6 +338,18 @@ def _paper_positioning(
 def _comparison_frame(pages: list[PageExtraction], method_records: list[dict[str, Any]]) -> str:
     text = _normalize(" ".join(page.text for page in pages[:8])).lower()
     names = " ".join(str(record.get("name") or "") for record in method_records).lower()
+    if "speculative decoding" in text or "draft model" in text or "draft tree" in text:
+        return "speculative decoding, draft-token verification, and inference-speed/quality tradeoffs"
+    if "conditional diffusion" in text or "denoising diffusion" in text or "ddpm" in text:
+        return "conditional diffusion, semantic conditioning, and generated-sample evaluation"
+    if "long context" in text or "long-context" in text or "longrope" in text:
+        return "long-context inference, positional extrapolation, and benchmark/generalization limits"
+    if "kv cache" in text and ("compression" in text or "pruning" in text or "retention" in text):
+        return "KV-cache compression, retention policies, and decode-time quality/runtime tradeoffs"
+    if "grouped-query attention" in text or "grouped query attention" in text or "multi-query attention" in text:
+        return "attention-head sharing, checkpoint conversion, and inference-memory tradeoffs"
+    if "k-means" in text and ("pca" in text or "principal component" in text):
+        return "clustering theory, PCA relationships, and objective/assumption boundaries"
     if "mixture-of-experts" in text or "moe" in text:
         if "calibration" in text or "expert" in names:
             return "MoE quantization, expert-routing calibration, and low-bit deployment tradeoffs"
@@ -201,6 +368,26 @@ def _comparison_frame(pages: list[PageExtraction], method_records: list[dict[str
 
 
 def _problem_focus(lowered_text: str) -> str:
+    if "source_text_insufficient" in lowered_text:
+        return "This source is a source-quality hold, not a paper understanding page."
+    if "speculative decoding" in lowered_text or "draft model" in lowered_text or "draft tree" in lowered_text:
+        return "This is an inference-acceleration paper about generating draft tokens and verifying them without changing the target model distribution."
+    if "conditional diffusion" in lowered_text or "denoising diffusion" in lowered_text or "ddpm" in lowered_text:
+        return "This is a conditional diffusion paper; the core problem is generating samples that follow a conditioning signal while remaining useful under downstream evaluation."
+    if "vl-jepa" in lowered_text or "joint embedding predictive" in lowered_text:
+        return "This is a vision-language representation paper about learning aligned image/text embeddings and then adapting them to downstream VQA or classification."
+    if "q-vlm" in lowered_text or "large vision-language model" in lowered_text and "quantization" in lowered_text:
+        return "This is a vision-language PTQ paper about keeping multimodal reasoning accurate while quantizing LVLM weights and activations."
+    if "semantic 3d brain mri" in lowered_text or "3d brain mri synthesis" in lowered_text:
+        return "This is a 3D medical image synthesis paper about conditioning a generative model on semantic brain anatomy."
+    if "long context" in lowered_text or "long-context" in lowered_text or "longrope" in lowered_text:
+        return "This is a long-context inference paper about extending or exploiting context length without losing quality."
+    if "kv cache" in lowered_text and ("compression" in lowered_text or "pruning" in lowered_text or "retention" in lowered_text):
+        return "This is a KV-cache efficiency paper about retaining the information needed for decode quality while reducing memory or latency."
+    if "grouped-query attention" in lowered_text or "grouped query attention" in lowered_text or "multi-query attention" in lowered_text:
+        return "This is an attention-architecture paper about reducing inference memory/bandwidth by sharing key-value heads."
+    if "k-means" in lowered_text and ("pca" in lowered_text or "principal component" in lowered_text):
+        return "This is a clustering-theory paper about when K-means relates to PCA and what assumptions support that relationship."
     if "massive activations in large language models" in lowered_text:
         return "This is an empirical/mechanistic analysis paper about where massive activations occur in LLMs and what function they serve."
     if "quantization error propagation" in lowered_text:
@@ -228,6 +415,12 @@ def _compact_evidence_context(pages: list[PageExtraction]) -> str:
         bits.append("standard benchmark datasets")
     if re.search(r"\b(speedup|latency|throughput|memory)\b", text, flags=re.IGNORECASE):
         bits.append("systems evidence")
+    if re.search(r"\b(draft|acceptance|tokens/sec|speedup)\b", text, flags=re.IGNORECASE):
+        bits.append("draft/verification speed evidence")
+    if re.search(r"\b(dice|segmentation|fid|ssim|psnr|mri)\b", text, flags=re.IGNORECASE):
+        bits.append("medical image quality and downstream metrics")
+    if re.search(r"\b(context length|longbench|passkey|perplexity)\b", text, flags=re.IGNORECASE):
+        bits.append("long-context quality evidence")
     if not bits:
         return "The evidence needs to be read through experiments, ablations, and limitations rather than abstract prose."
     return "Read the evidence around " + ", ".join(bits) + ", not just the abstract claims."
@@ -570,6 +763,20 @@ def _sentence_overlap(left: str, right: str) -> float:
 def _generic_method_inputs(method_text: str) -> list[str]:
     lowered = method_text.lower()
     inputs = []
+    if "draft" in lowered or "speculative" in lowered:
+        inputs.extend(["draft model proposals", "target model verification logits", "acceptance or tree budget"])
+    if "diffusion" in lowered or "ddpm" in lowered:
+        inputs.extend(["noisy sample", "diffusion timestep", "conditioning signal"])
+    if "segmentation" in lowered and "mri" in lowered:
+        inputs.append("semantic segmentation mask")
+    if "long context" in lowered or "long-context" in lowered:
+        inputs.extend(["long sequence tokens", "positional encoding or attention state"])
+    if "kv cache" in lowered:
+        inputs.append("KV-cache tensors")
+    if "grouped-query" in lowered or "multi-query" in lowered:
+        inputs.extend(["query heads", "shared key/value heads", "attention checkpoint"])
+    if "k-means" in lowered or "clustering" in lowered:
+        inputs.extend(["data vectors", "cluster count", "centroid initialization"])
     if "activation" in lowered:
         inputs.append("calibration or runtime activations")
     if "weight" in lowered:
@@ -584,6 +791,18 @@ def _generic_method_inputs(method_text: str) -> list[str]:
 def _generic_method_outputs(method_text: str) -> list[str]:
     lowered = method_text.lower()
     outputs = []
+    if "draft" in lowered or "speculative" in lowered:
+        outputs.extend(["verified accepted tokens", "inference speedup without target-distribution change"])
+    if "diffusion" in lowered or "ddpm" in lowered:
+        outputs.append("denoised or generated sample conditioned on the input signal")
+    if "long context" in lowered or "long-context" in lowered:
+        outputs.append("extended-context model behavior or evaluation results")
+    if "kv cache" in lowered:
+        outputs.append("compressed or filtered KV-cache representation")
+    if "grouped-query" in lowered or "multi-query" in lowered:
+        outputs.append("attention checkpoint with shared key/value heads")
+    if "k-means" in lowered or "clustering" in lowered:
+        outputs.extend(["cluster assignments", "centroids", "objective value"])
     if "quantization" in lowered or "quantized" in lowered:
         outputs.append("low-bit quantized model representation")
     if "rotation" in lowered or "hadamard" in lowered:
@@ -596,6 +815,20 @@ def _generic_method_outputs(method_text: str) -> list[str]:
 def _generic_method_assumptions(method_text: str) -> list[str]:
     lowered = method_text.lower()
     assumptions = []
+    if "draft" in lowered or "speculative" in lowered:
+        assumptions.append("target-model verification preserves the original decoding distribution")
+    if "diffusion" in lowered or "ddpm" in lowered:
+        assumptions.append("the conditioning signal and noise schedule match the intended generation distribution")
+    if "segmentation" in lowered and "mri" in lowered:
+        assumptions.append("segmentation masks are spatially aligned with the 3D MRI volumes")
+    if "long context" in lowered or "long-context" in lowered:
+        assumptions.append("quality must be checked at the target context lengths, not inferred from short-context behavior")
+    if "kv cache" in lowered:
+        assumptions.append("retained cache entries preserve the information needed for downstream attention")
+    if "grouped-query" in lowered or "multi-query" in lowered:
+        assumptions.append("shared key/value heads preserve enough attention capacity after adaptation")
+    if "k-means" in lowered or "clustering" in lowered:
+        assumptions.append("the clustering objective and initialization assumptions match the claimed theory or algorithm")
     if "calibration" in lowered:
         assumptions.append("calibration data reflects the activation/weight behavior relevant to deployment")
     if "equivalent" in lowered or "invariance" in lowered:
@@ -608,6 +841,18 @@ def _generic_method_assumptions(method_text: str) -> list[str]:
 def _generic_method_implementation_notes(method_text: str) -> list[str]:
     lowered = method_text.lower()
     notes = []
+    if "draft" in lowered or "speculative" in lowered:
+        notes.append("Log draft acceptance length, rejected branches, verifier cost, and output-distribution equivalence.")
+    if "diffusion" in lowered or "ddpm" in lowered:
+        notes.append("Unit test timestep/noise schedule, conditioning-channel shapes, and sample evaluation metrics.")
+    if "long context" in lowered or "long-context" in lowered:
+        notes.append("Sweep context length and separate retrieval/position failures from model-capacity failures.")
+    if "kv cache" in lowered:
+        notes.append("Measure retention ratio, decode latency, memory footprint, and quality under the same sequence lengths.")
+    if "grouped-query" in lowered or "multi-query" in lowered:
+        notes.append("Verify Q/K/V tensor grouping shapes and compare MHA/MQA/GQA at matched adaptation budgets.")
+    if "k-means" in lowered or "clustering" in lowered:
+        notes.append("Test centroid update monotonicity, initialization sensitivity, and the claimed PCA relationship.")
     if "rotation" in lowered or "hadamard" in lowered:
         notes.append("Verify transformation equivalence before quantizing, then measure quantization error after rotation.")
     if "non-uniform" in lowered or "k-means" in lowered:
@@ -631,7 +876,9 @@ def _method_components(method_text: str, pages: list[PageExtraction]) -> list[di
             continue
         if acronym in candidates:
             continue
-        candidates[acronym] = _component_record(name, acronym, pages)
+        record = _component_record(name, acronym, pages)
+        if record.get("inputs") or record.get("outputs"):
+            candidates[acronym] = record
 
     if "LUT" in method_text and "LUT" not in candidates:
         candidates["LUT"] = _component_record("LUT-based system implementation", "LUT", pages)
@@ -1041,13 +1288,321 @@ def _known_quantization_components(method_text: str, pages: list[PageExtraction]
             )
         )
 
+    if primary == "milo":
+        components.append(
+            _source_component(
+                name="Mixture of Low-Rank Compensators",
+                short_name="MiLo",
+                summary=(
+                    "Adds a small mixture of low-rank residual compensators around quantized MoE weights, so "
+                    "the quantized model can recover expert-specific error without restoring full-precision weights."
+                ),
+                inputs=["quantized MoE weights", "expert activations or calibration samples", "low-rank compensator rank/budget"],
+                outputs=["quantized MoE model plus low-rank compensators", "expert-specific error compensation"],
+                assumptions=[
+                    "quantization residuals have enough low-rank structure to compensate cheaply",
+                    "compensator routing or placement preserves MoE expert behavior",
+                ],
+                implementation_notes=[
+                    "Ablate quantized weights alone, one shared low-rank adapter, and mixture-of-compensator variants.",
+                    "Log per-expert reconstruction error and runtime/memory overhead, not only aggregate accuracy.",
+                ],
+            )
+        )
+
+    if primary == "eagle2":
+        components.append(
+            _source_component(
+                name="Context-aware dynamic draft tree",
+                short_name="EAGLE-2",
+                summary=(
+                    "Builds the speculative-decoding draft tree dynamically from draft-model confidence, so "
+                    "verification compute is spent on branches likely to be accepted by the target model."
+                ),
+                inputs=["draft model hidden features or token probabilities", "target model verifier", "tree size/depth budget"],
+                outputs=["context-specific draft tree", "accepted target-model tokens", "lossless inference speedup"],
+                assumptions=[
+                    "draft confidence is a useful proxy for target-model acceptance probability",
+                    "target verification preserves the same output distribution as standard autoregressive decoding",
+                ],
+                implementation_notes=[
+                    "Log draft confidence, accepted length, rejected branches, and target verification cost per example.",
+                    "Ablate static tree, dynamic tree without confidence ranking, and full EAGLE-2 under the same target model.",
+                ],
+            )
+        )
+
+    if primary == "med-ddpm":
+        components.append(
+            _source_component(
+                name="Segmentation-conditioned 3D DDPM",
+                short_name="Med-DDPM",
+                summary=(
+                    "Conditions a 3D denoising diffusion model on semantic brain segmentation masks so synthetic "
+                    "MRI volumes follow specified anatomy rather than only matching a marginal image distribution."
+                ),
+                inputs=["3D noisy MRI volume", "diffusion timestep", "semantic segmentation mask"],
+                outputs=["synthetic 3D brain MRI", "augmentation or anonymized image samples tied to anatomy"],
+                assumptions=[
+                    "segmentation masks encode the anatomy that downstream users need to control",
+                    "diffusion samples are judged by both image realism and downstream segmentation utility",
+                ],
+                implementation_notes=[
+                    "Unit test channel concatenation and spatial alignment between noisy volume and segmentation mask.",
+                    "Evaluate generated images with both visual/statistical metrics and downstream segmentation Dice.",
+                ],
+            )
+        )
+
+    if primary == "gqa":
+        components.append(
+            _source_component(
+                name="Grouped-query attention checkpoint conversion",
+                short_name="GQA",
+                summary=(
+                    "Converts multi-head attention checkpoints into grouped-query attention by sharing key/value "
+                    "heads across groups, trading a small quality adaptation step for lower decode-time memory bandwidth."
+                ),
+                inputs=["multi-head attention checkpoint", "number of query groups", "uptraining data/budget"],
+                outputs=["grouped-query attention checkpoint", "reduced KV-cache memory/bandwidth"],
+                assumptions=[
+                    "key/value head sharing preserves enough attention capacity after uptraining",
+                    "decode speed or memory is bottlenecked by KV-cache bandwidth",
+                ],
+                implementation_notes=[
+                    "Check tensor reshaping for Q heads versus grouped K/V heads before training.",
+                    "Compare MHA, MQA, and multiple GQA group counts at the same uptraining budget.",
+                ],
+            )
+        )
+
+    if primary == "qil":
+        components.append(
+            _source_component(
+                name="Quantization Interval Learning",
+                short_name="QIL",
+                summary=(
+                    "Learns quantization interval parameters jointly with task loss so clipping/pruning and "
+                    "bit assignment are optimized for network accuracy instead of fixed min-max ranges."
+                ),
+                inputs=["full-precision weights or activations", "learnable interval parameters", "task loss"],
+                outputs=["quantized weights/activations", "learned quantization intervals", "low-bit network"],
+                assumptions=[
+                    "task-loss optimization can choose better quantization intervals than static calibration",
+                    "progressive finetuning is needed for very low-bit settings",
+                ],
+                implementation_notes=[
+                    "Implement interval parameters as trainable quantizer state and verify gradients flow through the quantizer surrogate.",
+                    "Ablate learned intervals, fixed intervals, and progressive finetuning at 4/3/2-bit settings.",
+                ],
+            )
+        )
+
+    if primary == "lsqplus":
+        components.append(
+            _source_component(
+                name="Learned step size with offset quantization",
+                short_name="LSQ+",
+                summary=(
+                    "Extends learned step-size quantization by learning offsets and improving initialization, "
+                    "so low-bit activation/weight quantizers fit asymmetric tensor distributions better."
+                ),
+                inputs=["weights or activations", "learnable scale", "learnable offset", "initialization statistics"],
+                outputs=["quantized tensor", "learned scale/offset parameters"],
+                assumptions=[
+                    "asymmetric offsets reduce low-bit error for activation distributions",
+                    "initialization strongly affects quantizer training stability",
+                ],
+                implementation_notes=[
+                    "Unit test scale and offset gradients separately from the straight-through estimator.",
+                    "Compare symmetric LSQ, LSQ+ offset, and initialization variants at matched bit widths.",
+                ],
+            )
+        )
+
+    if primary == "qvlm":
+        components.append(
+            _source_component(
+                name="Block-wise rounding search for LVLM PTQ",
+                short_name="Q-VLM",
+                summary=(
+                    "Searches quantized rounding functions block by block for large vision-language models, using "
+                    "output quantization error to keep multimodal reasoning accurate under low-bit weights/activations."
+                ),
+                inputs=["LVLM blocks", "calibration multimodal samples", "candidate rounding functions"],
+                outputs=["low-bit LVLM", "selected rounding functions", "memory/speed reduction"],
+                assumptions=[
+                    "block output error is a useful proxy for downstream multimodal reasoning quality",
+                    "the calibration set covers vision-language activation behavior",
+                ],
+                implementation_notes=[
+                    "Keep text tower, vision tower, and projector quantization errors separately inspectable.",
+                    "Ablate candidate rounding-function search depth and joint-layer constraints against VQA accuracy and memory.",
+                ],
+            )
+        )
+
+    if primary == "vljepa":
+        components.append(
+            _source_component(
+                name="Vision-language joint embedding predictive architecture",
+                short_name="VL-JEPA",
+                summary=(
+                    "Trains a vision-language model in embedding space rather than token reconstruction: caption "
+                    "pretraining aligns image/text embeddings, then supervised finetuning adds VQA and classification behavior."
+                ),
+                inputs=["image embeddings", "text/caption embeddings", "query-conditioned prediction target", "SFT data"],
+                outputs=["aligned vision-language embedding model", "VQA-capable finetuned model"],
+                assumptions=[
+                    "embedding prediction is sufficient for useful vision-language alignment",
+                    "query-conditioned SFT transfers the pretrained representation to downstream tasks",
+                ],
+                implementation_notes=[
+                    "Separate pretraining alignment loss from SFT VQA loss in logs and ablations.",
+                    "Evaluate retrieval/classification and VQA separately because they probe different stages.",
+                ],
+            )
+        )
+
+    if primary == "longrope":
+        components.append(
+            _source_component(
+                name="LongRoPE context-window extension",
+                short_name="LongRoPE",
+                summary=(
+                    "Searches and progressively extends RoPE scaling factors so an LLM can move from its original "
+                    "context window to very long contexts while preserving short-context quality."
+                ),
+                inputs=["RoPE dimensions", "target context length", "extension/search schedule", "long-context calibration/evaluation data"],
+                outputs=["extended-context LLM", "RoPE scaling configuration"],
+                assumptions=[
+                    "positional interpolation/extrapolation quality can be preserved by staged scaling",
+                    "short-context regression and long-context retrieval must both be evaluated",
+                ],
+                implementation_notes=[
+                    "Log short-context perplexity and long-context passkey/retrieval scores for every scaling stage.",
+                    "Ablate search budget, progressive extension stages, and retained dimensions.",
+                ],
+            )
+        )
+
+    if primary == "kangaroo":
+        components.append(
+            _source_component(
+                name="Double early-exit self-speculative decoding",
+                short_name="Kangaroo",
+                summary=(
+                    "Uses early-exit branches inside the same model to draft tokens, then verifies them with deeper layers, "
+                    "reducing latency without requiring a separate draft model."
+                ),
+                inputs=["intermediate hidden states", "early-exit draft heads", "final-layer verifier"],
+                outputs=["draft tokens", "verified accepted tokens", "lossless self-speculative speedup"],
+                assumptions=[
+                    "early exits are aligned enough with the final model to achieve useful acceptance rates",
+                    "verification preserves the final model distribution",
+                ],
+                implementation_notes=[
+                    "Log acceptance rate by exit depth and prompt type.",
+                    "Compare single early exit, double early exit, and full decoding under identical sampling settings.",
+                ],
+            )
+        )
+
+    if primary == "mixtral":
+        components.append(
+            _source_component(
+                name="Sparse mixture-of-experts decoder",
+                short_name="Mixtral",
+                summary=(
+                    "Uses sparse top-k expert routing in each feed-forward block so inference activates only a subset "
+                    "of experts per token while keeping a larger total parameter budget."
+                ),
+                inputs=["token hidden states", "router logits", "expert FFN weights", "top-k routing rule"],
+                outputs=["expert-weighted FFN output", "sparse activated parameter path"],
+                assumptions=[
+                    "router load and expert specialization preserve quality without dense FFN cost",
+                    "serving stack can handle expert dispatch efficiently",
+                ],
+                implementation_notes=[
+                    "Log expert utilization, routing entropy, and per-token top-k assignments.",
+                    "Separate model-quality comparisons from serving throughput and memory placement constraints.",
+                ],
+            )
+        )
+
+    if primary == "curve-skeleton":
+        components.append(
+            _source_component(
+                name="Curve skeleton from incomplete point clouds",
+                short_name="CurveSkeleton",
+                summary=(
+                    "Extracts a curve skeleton from incomplete point-cloud geometry by recovering a medial structure "
+                    "that preserves topology despite missing surface observations."
+                ),
+                inputs=["incomplete point cloud", "local geometry neighborhoods", "skeleton regularization parameters"],
+                outputs=["curve skeleton graph", "topology-preserving shape abstraction"],
+                assumptions=[
+                    "local point geometry is sufficient to infer the underlying medial structure",
+                    "regularization can bridge missing observations without inventing wrong topology",
+                ],
+                implementation_notes=[
+                    "Test on synthetic missing-surface cases with known skeleton topology.",
+                    "Track connectivity, branch pruning, and sensitivity to point density separately.",
+                ],
+            )
+        )
+
+    if primary == "film":
+        components.append(
+            _source_component(
+                name="Feature-wise Linear Modulation",
+                short_name="FiLM",
+                summary=(
+                    "Predicts per-feature affine modulation parameters from a conditioning input, then applies them "
+                    "inside a visual reasoning network so language can steer visual feature processing."
+                ),
+                inputs=["visual feature maps", "question or conditioning embedding", "per-channel gamma and beta"],
+                outputs=["modulated visual features", "conditioned reasoning behavior"],
+                assumptions=[
+                    "feature-wise affine modulation is expressive enough to inject question semantics",
+                    "conditioning quality determines which visual features are emphasized or suppressed",
+                ],
+                implementation_notes=[
+                    "Log gamma/beta distributions by layer and question type.",
+                    "Ablate modulation placement, gamma-only, beta-only, and no-conditioning baselines.",
+                ],
+            )
+        )
+
+    if primary == "eagle":
+        components.append(
+            _source_component(
+                name="Feature-level speculative draft model",
+                short_name="EAGLE",
+                summary=(
+                    "Drafts future tokens from feature-level uncertainty rather than only token logits, then verifies "
+                    "with the target model to preserve speculative sampling correctness."
+                ),
+                inputs=["target-model hidden features", "draft head/model", "verification step"],
+                outputs=["draft tokens", "accepted verified tokens", "speculative speedup"],
+                assumptions=[
+                    "feature uncertainty predicts useful draft candidates",
+                    "target verification preserves the original sampling distribution",
+                ],
+                implementation_notes=[
+                    "Log feature uncertainty, acceptance rate, and rejection reasons per decoding step.",
+                    "Compare token-level and feature-level draft strategies under identical target-model verification.",
+                ],
+            )
+        )
+
     return components
 
 
 def _primary_paper_key(pages: list[PageExtraction]) -> str:
     if not pages:
         return ""
-    header = _normalize(pages[0].text[:900]).lower()
+    header = _normalize(" ".join(page.text[:1200] for page in pages[:3])).lower()
     patterns = (
         ("llm.int8", ("llm.int8", "8-bit matrix multiplication")),
         ("smoothquant", ("smoothquant",)),
@@ -1064,6 +1619,20 @@ def _primary_paper_key(pages: list[PageExtraction]) -> str:
         ("qep", ("quantization error propagation",)),
         ("moequant", ("moequant",)),
         ("omniquant", ("omniquant",)),
+        ("milo", ("milo", "mixture of low-rank")),
+        ("eagle2", ("eagle-2", "dynamic draft")),
+        ("med-ddpm", ("conditional diffusion", "semantic 3d brain mri")),
+        ("gqa", ("gqa", "grouped-query attention")),
+        ("qil", ("quantization interval", "qil")),
+        ("lsqplus", ("lsq+", "learnable offsets")),
+        ("qvlm", ("q-vlm", "vision-language")),
+        ("vljepa", ("vl-jepa", "joint embedding predictive")),
+        ("longrope", ("longrope",)),
+        ("kangaroo", ("kangaroo", "self-speculative")),
+        ("mixtral", ("mixtral of experts",)),
+        ("curve-skeleton", ("curve skeleton extraction", "incomplete point cloud")),
+        ("film", ("film", "feature-wise linear modulation")),
+        ("eagle", ("eagle", "feature uncertainty")),
     )
     for key, needles in patterns:
         if all(needle in header for needle in needles):
@@ -1266,6 +1835,16 @@ def _rank_method_pages(pages: list[PageExtraction]) -> list[PageExtraction]:
             "outlier",
             "quantization",
             "optimization",
+            "speculative",
+            "draft",
+            "verification",
+            "diffusion",
+            "denoising",
+            "conditioning",
+            "attention",
+            "kv cache",
+            "long context",
+            "k-means",
             "we propose",
             "we introduce",
         ):
@@ -1650,6 +2229,73 @@ def _mechanism_facts(pages: list[PageExtraction]) -> list[dict[str, Any]]:
                 page=_find_page(pages, "fixed feature dimensions", "intervention"),
             )
         )
+    if primary == "milo":
+        facts.append(
+            _mechanism_fact(
+                fact_type="representation",
+                component="MiLo",
+                summary=(
+                    "MiLo should be read as quantized MoE weights plus low-rank residual compensation; the important question is "
+                    "whether the compensator budget captures expert-specific quantization error cheaply enough."
+                ),
+                page=_find_page(pages, "Mixture of Low-Rank", "low-rank compensator", "MiLo"),
+            )
+        )
+    if primary == "eagle2":
+        facts.append(
+            _mechanism_fact(
+                fact_type="algorithm",
+                component="EAGLE-2 dynamic draft tree",
+                summary=(
+                    "EAGLE-2 spends speculative-decoding branches according to context-dependent draft confidence rather than a fixed tree, "
+                    "then relies on target-model verification to preserve lossless decoding."
+                ),
+                page=_find_page(pages, "dynamic draft tree", "context-aware", "acceptance rate"),
+            )
+        )
+    if primary == "med-ddpm":
+        facts.append(
+            _mechanism_fact(
+                fact_type="conditioning",
+                component="Med-DDPM",
+                summary=(
+                    "The core mechanism is semantic conditioning for a 3D DDPM: segmentation masks steer generated MRI anatomy while the "
+                    "denoising model handles image synthesis."
+                ),
+                page=_find_page(pages, "semantic 3D", "segmentation", "conditional diffusion"),
+            )
+        )
+    if primary == "gqa":
+        facts.append(
+            _mechanism_fact(
+                fact_type="architecture_conversion",
+                component="Grouped-query attention",
+                summary=(
+                    "GQA converts attention checkpoints by sharing key/value heads across query groups, sitting between MHA quality and MQA speed/memory."
+                ),
+                page=_find_page(pages, "grouped-query attention", "multi-query", "checkpoint"),
+            )
+        )
+    if primary == "qil":
+        facts.append(_mechanism_fact("quantizer_objective", "QIL", "QIL's key object is a learnable quantization interval optimized with task loss, so implementation should treat interval parameters as trainable quantizer state rather than fixed clipping thresholds.", _find_page(pages, "quantization interval", "task loss", "QIL")))
+    if primary == "lsqplus":
+        facts.append(_mechanism_fact("quantizer_parameterization", "LSQ+", "LSQ+ extends learned step-size quantization with learnable offsets and initialization choices; scale and offset behavior should be checked separately.", _find_page(pages, "learnable offsets", "LSQ+", "initialization")))
+    if primary == "qvlm":
+        facts.append(_mechanism_fact("objective", "Q-VLM", "Q-VLM searches rounding functions for LVLM blocks using output quantization error, so method evidence should be tied to block output reconstruction and downstream multimodal accuracy.", _find_page(pages, "rounding function", "output quantization errors", "Q-VLM")))
+    if primary == "vljepa":
+        facts.append(_mechanism_fact("training_stage", "VL-JEPA", "VL-JEPA separates caption-based vision-language alignment from supervised finetuning; retrieval should keep pretraining representation claims separate from VQA/classification SFT claims.", _find_page(pages, "pretraining stage", "supervised finetuning", "VL-JEPA")))
+    if primary == "longrope":
+        facts.append(_mechanism_fact("position_scaling", "LongRoPE", "LongRoPE is about searching/staging RoPE scaling for extreme context extension; evaluate both long-context retrieval and short-context regression.", _find_page(pages, "LongRoPE", "context window", "RoPE")))
+    if primary == "kangaroo":
+        facts.append(_mechanism_fact("self_speculative_decoding", "Kangaroo", "Kangaroo drafts from early exits inside the same model and verifies with deeper layers, so acceptance rate by exit depth is the central mechanism metric.", _find_page(pages, "early exiting", "self-speculative", "Kangaroo")))
+    if primary == "mixtral":
+        facts.append(_mechanism_fact("expert_routing", "Mixtral", "Mixtral's mechanism is sparse top-k expert routing inside decoder FFNs; understanding should focus on router decisions, expert utilization, and sparse serving cost.", _find_page(pages, "router", "experts", "Mixtral")))
+    if primary == "curve-skeleton":
+        facts.append(_mechanism_fact("geometry_abstraction", "Curve skeleton", "The geometry method should be judged by whether it preserves skeleton topology from incomplete point observations, not by generic reconstruction accuracy.", _find_page(pages, "curve skeleton", "incomplete point cloud", "topology")))
+    if primary == "film":
+        facts.append(_mechanism_fact("conditioning_layer", "FiLM", "FiLM applies feature-wise affine modulation conditioned on language; the implementation-critical object is gamma/beta parameters per feature channel.", _find_page(pages, "Feature-wise Linear Modulation", "gamma", "beta")))
+    if primary == "eagle":
+        facts.append(_mechanism_fact("drafting_signal", "EAGLE", "EAGLE-style speculative sampling should be judged by how feature uncertainty creates draft candidates and how target verification preserves correctness.", _find_page(pages, "feature uncertainty", "speculative sampling", "EAGLE")))
 
     if ("codequant" in lowered or "activation-oriented outlier smoothing" in lowered) and (
         "Cayley transform" in full_text or "arg min\nR" in full_text
@@ -1782,11 +2428,61 @@ def _implementation_notes(method_records: list[dict[str, Any]], pages: list[Page
             notes.append(f"{record['name']}: {note}")
     text = " ".join(page.text for page in pages)
     notes.extend(_primary_implementation_notes(pages))
+    notes.extend(_domain_implementation_backfill(method_records, pages))
     if "Equation" in text or re.search(r"\(\d+\)", text):
         notes.append("Equation-bearing sections exist; turn each extracted objective or transform into a shape/value unit test before trusting results.")
     if "Algorithm" in text:
         notes.append("Algorithm boxes are present; preserve their inputs/outputs as implementation tests.")
     return _dedupe(notes)[:10]
+
+
+def _domain_implementation_backfill(method_records: list[dict[str, Any]], pages: list[PageExtraction]) -> list[str]:
+    text = _normalize(" ".join(page.text for page in pages[:8]) + " " + _method_record_text(method_records)).lower()
+    notes: list[str] = []
+    if "quantization" in text or "quantized" in text:
+        notes.extend(
+            [
+                "Quantization: Log pre/post-quantization error by layer and separate weight, activation, and cache paths when applicable.",
+                "Quantization: Compare the claimed method against a fixed-rounding or min-max baseline at matched bit width and calibration data.",
+                "Quantization: Test tensor scale, zero-point, clipping, and dequantization shapes before running full experiments.",
+            ]
+        )
+    if "vision-language" in text or "vlm" in text or "multimodal" in text:
+        notes.extend(
+            [
+                "Vision-language: Evaluate text-only, image-only, and multimodal examples separately to localize modality-specific failures.",
+                "Vision-language: Log calibration or training examples by task type so VQA, retrieval, and classification evidence are not mixed.",
+            ]
+        )
+    if "speculative" in text or "draft" in text:
+        notes.extend(
+            [
+                "Speculative decoding: Measure acceptance rate, verifier calls, accepted-token length, and latency under the same sampling settings.",
+                "Speculative decoding: Test output equivalence against ordinary decoding before trusting speed numbers.",
+            ]
+        )
+    if "long context" in text or "long-context" in text or "rope" in text:
+        notes.extend(
+            [
+                "Long context: Sweep sequence length and record both long-context task success and short-context regression.",
+                "Long context: Keep positional-scaling settings in config so failures can be attributed to context extension rather than model logic.",
+            ]
+        )
+    if "skeleton" in text or "point cloud" in text or "mesh" in text:
+        notes.extend(
+            [
+                "3D geometry: Test controlled synthetic shapes with known topology before using real incomplete scans.",
+                "3D geometry: Log connectivity, branch count, pruning thresholds, and sensitivity to point density.",
+            ]
+        )
+    if "diffusion" in text or "ddpm" in text or "mri" in text:
+        notes.extend(
+            [
+                "Diffusion: Test noise schedule, timestep embedding, and conditioning tensor alignment with small synthetic batches.",
+                "Diffusion: Evaluate generated samples with both realism and downstream task metrics.",
+            ]
+        )
+    return notes
 
 
 def _primary_implementation_notes(pages: list[PageExtraction]) -> list[str]:
@@ -1861,6 +2557,26 @@ def _primary_implementation_notes(pages: list[PageExtraction]) -> list[str]:
             "AffineQuant: Log transform condition number and diagonal dominance during gradual mask optimization.",
             "AffineQuant: Compare scaling-only, translation-only, and full affine transforms under the same W/A bit-width.",
         ]
+    if primary == "milo":
+        return [
+            "MiLo: Compare quantized MoE without compensation, a shared low-rank compensator, and mixture-specific compensators at the same memory budget.",
+            "MiLo: Log per-expert quantization residuals and compensator rank so aggregate accuracy does not hide expert failure modes.",
+        ]
+    if primary == "eagle2":
+        return [
+            "EAGLE-2: Log draft confidence, accepted tokens, rejected branches, and verifier calls for every dynamic tree decision.",
+            "EAGLE-2: Compare fixed draft trees and context-aware dynamic trees under the same target model and decoding settings.",
+        ]
+    if primary == "med-ddpm":
+        return [
+            "Med-DDPM: Unit test 3D tensor alignment between noisy MRI volumes, timesteps, and segmentation masks.",
+            "Med-DDPM: Judge synthetic images by downstream segmentation utility and realism metrics rather than visual examples alone.",
+        ]
+    if primary == "gqa":
+        return [
+            "GQA: Verify attention tensor shapes after converting multi-head checkpoints into grouped key/value heads.",
+            "GQA: Sweep group count and uptraining budget while recording memory bandwidth, speed, and quality.",
+        ]
     return []
 
 
@@ -1897,6 +2613,34 @@ def _evidence_takeaways(pages: list[PageExtraction]) -> list[str]:
         takeaways.append("MoEQuant evidence should separate EBSS calibration coverage, AGQ expert weighting, and final task/runtime gains for MoE models.")
     if primary == "massive-activations":
         takeaways.append("Massive-activation evidence should separate localization plots from causal interventions such as fixing or removing activation values.")
+    if primary == "milo":
+        takeaways.append("MiLo evidence should separate MoE quantization quality from compensator overhead; per-expert error and memory budget matter as much as aggregate scores.")
+    if primary == "eagle2":
+        takeaways.append("EAGLE-2 evidence should separate lossless decoding correctness, acceptance-rate behavior, and wall-clock speedup under the same target/draft model pair.")
+    if primary == "med-ddpm":
+        takeaways.append("Med-DDPM evidence should connect generated MRI realism to semantic-control and downstream segmentation metrics; visual examples alone are not sufficient.")
+    if primary == "gqa":
+        takeaways.append("GQA evidence should compare MHA, MQA, and GQA under matched checkpoint/uptraining conditions while separating quality from memory-bandwidth gains.")
+    if primary == "qil":
+        takeaways.append("QIL evidence should separate learned interval quality, progressive finetuning effects, and bit-width-specific ImageNet accuracy.")
+    if primary == "lsqplus":
+        takeaways.append("LSQ+ evidence should isolate offset learning and initialization effects from the base learned step-size quantizer.")
+    if primary == "qvlm":
+        takeaways.append("Q-VLM evidence should connect block rounding-search objectives to multimodal VQA accuracy, memory compression, and generation speed separately.")
+    if primary == "vljepa":
+        takeaways.append("VL-JEPA evidence should keep representation pretraining, retrieval/classification, and SFT VQA results as separate evidence tracks.")
+    if primary == "longrope":
+        takeaways.append("LongRoPE evidence should pair long-context success with short-context regression checks under each RoPE scaling stage.")
+    if primary == "kangaroo":
+        takeaways.append("Kangaroo evidence should report acceptance rate, verified output equivalence, and latency by early-exit setting.")
+    if primary == "mixtral":
+        takeaways.append("Mixtral evidence should separate sparse MoE model quality from expert routing/utilization and serving throughput constraints.")
+    if primary == "curve-skeleton":
+        takeaways.append("Curve-skeleton evidence should judge topology preservation and robustness to missing point-cloud regions, not only visual smoothness.")
+    if primary == "film":
+        takeaways.append("FiLM evidence should connect modulation placement and gamma/beta behavior to visual reasoning accuracy, not only final CLEVR-style scores.")
+    if primary == "eagle":
+        takeaways.append("EAGLE evidence should separate draft feature uncertainty, acceptance rate, verifier correctness, and latency speedup.")
     if "Table 10" in text and "POG" in text:
         takeaways.append("POG has a specific ablation signal; treat it as conditional evidence for block-wise clustering rather than a universal gain.")
     if "Table 11" in text and "KL" in text:
@@ -1905,7 +2649,22 @@ def _evidence_takeaways(pages: list[PageExtraction]) -> list[str]:
         takeaways.append("The headline 4.15x speedup is a systems claim and should be separated from algorithmic accuracy claims.")
     if "Accel-Sim" in text:
         takeaways.append("GPU speed evidence uses simulation; keep it distinct from CPU measurements and accuracy tables.")
-    return takeaways or ["Evidence takeaways were not extracted deeply enough; prioritize tables, figures, equations, and ablations."]
+    if takeaways:
+        return takeaways
+    generic_markers = []
+    if re.search(r"\b(table|figure|ablation|baseline)\b", text, flags=re.IGNORECASE):
+        generic_markers.append("reported tables/figures/ablations")
+    if re.search(r"\b(speedup|latency|throughput|memory|tokens/sec)\b", text, flags=re.IGNORECASE):
+        generic_markers.append("runtime or memory measurements")
+    if re.search(r"\b(accuracy|perplexity|loss|f1|dice|ssim|psnr)\b", text, flags=re.IGNORECASE):
+        generic_markers.append("quality metrics")
+    if generic_markers:
+        return [
+            "Evidence should be read through "
+            + ", ".join(generic_markers)
+            + "; keep mechanism support, quality metrics, and systems/runtime claims separate."
+        ]
+    return ["Evidence is sparse in extracted text; inspect source pages and page images before promoting claims."]
 
 
 def _limitations(pages: list[PageExtraction]) -> list[str]:
@@ -1946,11 +2705,72 @@ def _limitations(pages: list[PageExtraction]) -> list[str]:
         limitations.append("Flattened distributions are useful only if the transform cost and quantized-kernel speed still improve end-to-end inference.")
     if primary == "ostquant":
         limitations.append("QSUR is a diagnostic proxy; verify that higher utilization actually predicts lower downstream quantization error.")
+    if primary == "milo":
+        limitations.append("Low-rank compensation is only useful if residual error is structured enough; compare against the same memory budget and expert-routing behavior.")
+        limitations.append("MoE aggregate metrics can hide per-expert failures, so inspect expert-level residuals and routing stability.")
+    if primary == "eagle2":
+        limitations.append("Speculative decoding speedups depend on draft-target alignment, acceptance rate, decoding settings, and verifier overhead.")
+        limitations.append("Lossless speedup claims require target-model verification; any implementation shortcut should be checked for output-distribution drift.")
+    if primary == "med-ddpm":
+        limitations.append("Semantic 3D MRI synthesis depends on mask quality and dataset distribution; downstream utility does not automatically prove clinical realism.")
+        limitations.append("Privacy/anonymization claims require separate evidence beyond good-looking generated volumes.")
+    if primary == "gqa":
+        limitations.append("GQA conversion quality depends on group count and uptraining budget; MHA/MQA/GQA comparisons should hold adaptation data and compute fixed.")
+        limitations.append("Memory-bandwidth gains only matter if decode is KV-cache/bandwidth bound at the target batch and sequence length.")
+    if primary == "qil":
+        limitations.append("Learned quantization intervals require task-loss finetuning; do not compare them as calibration-only PTQ.")
+        limitations.append("Very low-bit gains depend on progressive finetuning and architecture/dataset choice.")
+    if primary == "lsqplus":
+        limitations.append("Scale/offset learning can be sensitive to initialization and optimizer settings, so report quantizer state and bit width together.")
+    if primary == "qvlm":
+        limitations.append("LVLM PTQ depends on multimodal calibration coverage; text-only calibration conclusions should not be transferred directly.")
+        limitations.append("Memory and speed claims should be separated from VQA/reasoning accuracy because they stress different parts of the pipeline.")
+    if primary == "vljepa":
+        limitations.append("Embedding-space alignment and SFT solve different problems; downstream VQA gains should not be attributed to pretraining alone.")
+        limitations.append("Classification/retrieval improvements may not imply robust multimodal reasoning without targeted evaluation.")
+    if primary == "longrope":
+        limitations.append("Long-context extension can preserve passkey-style tasks while still harming ordinary short-context behavior; both must be checked.")
+        limitations.append("RoPE scaling recipes may be model-family and context-length specific.")
+    if primary == "kangaroo":
+        limitations.append("Self-speculative speedups depend on early-exit acceptance rates and verifier overhead.")
+        limitations.append("Lossless claims require final-layer verification under the same decoding settings.")
+    if primary == "mixtral":
+        limitations.append("MoE quality and throughput depend on router load balance, expert specialization, and serving infrastructure.")
+        limitations.append("Parameter count comparisons are misleading unless active parameters and routing cost are separated.")
+    if primary == "curve-skeleton":
+        limitations.append("Topology recovery from incomplete point clouds depends on sampling density, missing-region pattern, and regularization strength.")
+        limitations.append("Visual skeleton quality should be backed by graph/topology metrics or controlled synthetic cases.")
+    if primary == "film":
+        limitations.append("FiLM gains depend on the conditioning representation and modulation placement; final accuracy alone does not explain which visual features were controlled.")
+    if primary == "eagle":
+        limitations.append("Feature-level speculative sampling speedups depend on acceptance rates and verifier overhead; correctness still depends on target verification.")
     if "simulator" in lowered or "Accel-Sim" in text:
         limitations.append("Some hardware evidence depends on simulation or specific CPU/kernel settings.")
     if "block-wise" in lowered and "embedding-wise" in lowered:
         limitations.append("Some components are setting-dependent; POG in particular should not be assumed useful outside block-wise clustering.")
-    return limitations or ["No explicit limitations were reliably extracted; do not promote absence of limitations as a paper claim."]
+    if limitations:
+        return limitations
+    if "speculative decoding" in lowered or "draft model" in lowered:
+        return [
+            "Speculative decoding gains depend on acceptance rates and verifier overhead.",
+            "Correctness claims should be tied to target-model verification and decoding settings.",
+        ]
+    if "diffusion" in lowered or "ddpm" in lowered:
+        return [
+            "Diffusion sample quality depends on the training distribution, conditioning signal quality, and evaluation metric.",
+            "Generated examples should be separated from downstream task evidence.",
+        ]
+    if "long context" in lowered or "long-context" in lowered or "kv cache" in lowered:
+        return [
+            "Long-context or KV-cache gains should be checked at the target sequence lengths and tasks.",
+            "Runtime/memory improvements can trade off against quality in ways hidden by short-context metrics.",
+        ]
+    if "k-means" in lowered or "clustering" in lowered:
+        return [
+            "Clustering conclusions can depend on initialization, objective assumptions, and data distribution.",
+            "Theoretical equivalence claims should be separated from algorithmic performance claims.",
+        ]
+    return ["Limitations were not explicit in extracted text; promote this page only after checking assumptions, evaluation scope, and failure cases."]
 
 
 def _dedupe(items: list[str]) -> list[str]:
@@ -1994,8 +2814,59 @@ def _method_families(
 
     if primary == "massive-activations":
         return ["mechanistic activation analysis"]
+    if primary == "milo":
+        return ["MoE quantization", "low-rank compensation", "post-training quantization"]
+    if primary == "eagle2":
+        return ["speculative decoding", "dynamic draft tree"]
+    if primary == "med-ddpm":
+        return ["conditional diffusion", "semantic image synthesis"]
+    if primary == "gqa":
+        return ["grouped-query attention", "attention checkpoint conversion"]
+    if primary == "qil":
+        return ["quantization-aware training", "learned quantization intervals"]
+    if primary == "lsqplus":
+        return ["quantization-aware training", "learned step-size quantization"]
+    if primary == "qvlm":
+        return ["vision-language model quantization", "post-training quantization"]
+    if primary == "vljepa":
+        return ["vision-language representation learning", "joint embedding predictive learning"]
+    if primary == "longrope":
+        return ["long-context inference", "RoPE scaling"]
+    if primary == "kangaroo":
+        return ["speculative decoding", "self-speculative decoding"]
+    if primary == "mixtral":
+        return ["sparse mixture-of-experts", "expert routing"]
+    if primary == "curve-skeleton":
+        return ["curve skeleton extraction", "point-cloud geometry"]
+    if primary == "film":
+        return ["feature-wise modulation", "visual reasoning"]
+    if primary == "eagle":
+        return ["speculative decoding", "feature-level drafting"]
 
-    if "quantization" in text or "quantized" in text or primary in {"llm.int8", "smoothquant", "quarot", "qep", "moequant", "codequant"}:
+    if "speculative decoding" in text or "draft model" in text or "draft tree" in text:
+        families.append("speculative decoding")
+    if "dynamic draft" in text:
+        families.append("dynamic draft tree")
+    if "conditional diffusion" in text or "denoising diffusion" in text or "ddpm" in text:
+        families.append("conditional diffusion")
+    if "semantic" in text and ("image synthesis" in text or "mri synthesis" in text):
+        families.append("semantic image synthesis")
+    if "long context" in text or "long-context" in text or "longrope" in text:
+        families.append("long-context inference")
+    if "kv cache" in text and ("compression" in text or "pruning" in text or "retention" in text):
+        families.append("KV-cache compression")
+    if "grouped-query" in text or "grouped query" in text:
+        families.append("grouped-query attention")
+    if "k-means" in text or "clustering" in text:
+        families.append("clustering algorithm")
+
+    quantization_cues = (
+        "quantization" in text
+        or "quantized" in text
+        or primary in {"llm.int8", "smoothquant", "quarot", "qep", "moequant", "codequant"}
+        or bool(re.search(r"\b(?:w[2348]a(?:4|8|16)|a[2348]w[2348]|int[2348])\b", text))
+    )
+    if quantization_cues:
         families.append("post-training quantization")
     if primary == "qep" or "layer-wise" in text or "layerwise" in text:
         families.append("layer-wise PTQ")
@@ -2013,16 +2884,18 @@ def _method_families(
         families.append("non-uniform weight quantization")
     if any(marker in text for marker in ("expert", "router", "routing")) and "moe" in text:
         families.append("expert-aware quantization")
-    if any(marker in text for marker in ("kernel", "lut", "lookup table", "latency", "throughput", "speedup")):
+    if quantization_cues and any(marker in text for marker in ("kernel", "lut", "lookup table", "latency", "throughput", "speedup")):
         families.append("hardware-aware quantization")
     if "sparse" in text and "outlier" in text:
         families.append("sparse outlier retention")
-    return _dedupe(families)[:8] or [_method_name_from_title(title)]
+    return _dedupe(families)[:8] or ["paper-specific research method"]
 
 
 def _settings(pages: list[PageExtraction]) -> list[str]:
     full_text = " ".join(page.text for page in pages)
     lowered = f" {_normalize(full_text).lower()} "
+    focus_lowered = f" {_normalize(' '.join(page.text for page in pages[:5])).lower()} "
+    quant_focus = "quantization" in focus_lowered or "quantized" in focus_lowered or bool(re.search(r"\b(?:w[2348]a(?:4|8|16)|a[2348]w[2348]|int[2348])\b", focus_lowered))
     primary = _primary_paper_key(pages)
     settings: list[str] = []
 
@@ -2042,18 +2915,32 @@ def _settings(pages: list[PageExtraction]) -> list[str]:
         "moequant": ["weight-only quantization", "MoE setting"],
         "codequant": ["weight-activation quantization", "MoE setting", "LUT/kernel setting"],
         "massive-activations": [],
+        "milo": ["weight-only quantization", "MoE setting"],
+        "eagle2": ["speculative decoding setting"],
+        "med-ddpm": ["3D medical imaging setting"],
+        "gqa": ["decoder attention setting"],
+        "qil": ["quantization-aware training setting", "weight-activation quantization"],
+        "lsqplus": ["quantization-aware training setting", "weight-activation quantization"],
+        "qvlm": ["vision-language setting", "weight-activation quantization"],
+        "vljepa": ["vision-language setting"],
+        "longrope": ["long-context inference setting"],
+        "kangaroo": ["speculative decoding setting"],
+        "mixtral": ["MoE setting", "decoder inference setting"],
+        "curve-skeleton": ["3D geometry setting"],
+        "film": ["visual reasoning setting"],
+        "eagle": ["speculative decoding setting"],
     }
     if primary in primary_settings:
         return primary_settings[primary]
 
-    if (
+    if quant_focus and (
         "weight-only" in lowered
         or "weight only" in lowered
         or re.search(r"\bw[2348]a16\b", lowered)
         or primary in {"moequant", "qep", "squeezellm"}
     ):
         settings.append("weight-only quantization")
-    if (
+    if quant_focus and (
         "weight-activation" in lowered
         or "weight activation" in lowered
         or "weights and activations" in lowered
@@ -2062,12 +2949,28 @@ def _settings(pages: list[PageExtraction]) -> list[str]:
         or primary in {"codequant", "smoothquant", "quarot", "duquant", "spinquant", "omniquant", "affinequant", "flatquant", "dfrot", "ostquant"}
     ):
         settings.append("weight-activation quantization")
-    if "kv cache" in lowered or "kv-cache" in lowered:
+    if quant_focus and ("kv cache" in lowered or "kv-cache" in lowered):
         settings.append("KV-cache quantization")
-    if "moe" in lowered or "mixture-of-experts" in lowered:
+    if "moe" in focus_lowered or "mixture-of-experts" in focus_lowered:
         settings.append("MoE setting")
-    if "lut" in lowered or "lookup table" in lowered or "lookup-table" in lowered:
+    if quant_focus and ("lut" in lowered or "lookup table" in lowered or "lookup-table" in lowered):
         settings.append("LUT/kernel setting")
+    if "speculative decoding" in lowered or "draft model" in lowered or "draft tree" in lowered:
+        settings.append("speculative decoding setting")
+    if "long context" in lowered or "long-context" in lowered or "longrope" in lowered:
+        settings.append("long-context inference setting")
+    if "3d brain mri" in lowered or "medical image" in lowered or ("mri" in lowered and "segmentation" in lowered):
+        settings.append("3D medical imaging setting")
+    if "grouped-query attention" in lowered or "multi-query attention" in lowered:
+        settings.append("decoder attention setting")
+    if "vision-language" in lowered or "large vision-language" in lowered or "vlm" in lowered:
+        settings.append("vision-language setting")
+    if "point cloud" in lowered or "curve skeleton" in lowered or "mesh" in lowered:
+        settings.append("3D geometry setting")
+    if "quantization-aware" in lowered or "task loss" in lowered and "quantization" in lowered:
+        settings.append("quantization-aware training setting")
+    if "k-means" in lowered and ("pca" in lowered or "principal component" in lowered):
+        settings.append("clustering theory setting")
 
     return _dedupe(settings)
 
@@ -2154,6 +3057,14 @@ def _phrase_topics(title_text: str, title: str, method_records: list[dict[str, A
         ("router preservation", ("router logits", "router behavior", "router kl")),
         ("calibration representativeness", ("calibration representativeness", "calibration samples", "calibration set")),
         ("layer reconstruction", ("layer reconstruction", "block reconstruction", "reconstruction error")),
+        ("draft acceptance", ("acceptance rate", "accepted tokens", "draft acceptance")),
+        ("verification overhead", ("verification overhead", "verifier cost", "target verification")),
+        ("semantic control", ("semantic control", "segmentation mask", "semantic conditioning")),
+        ("MRI synthesis", ("mri synthesis", "brain mri", "synthetic mri")),
+        ("context extrapolation", ("context extrapolation", "position interpolation", "context length")),
+        ("KV-cache memory", ("kv cache memory", "kv-cache memory", "cache memory")),
+        ("attention head sharing", ("head sharing", "key/value heads", "shared key")),
+        ("PCA relationship", ("pca", "principal component analysis")),
     )
     phrases = []
     for phrase, needles in phrase_rules:

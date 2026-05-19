@@ -112,6 +112,25 @@ Prefer controlled/global vocabulary entries before inventing a paper-specific to
 - Avoid `Do not use it when:` as a section header; prefer canonical examples and fit-distance notes.
 - Do not say only "see frontmatter"; retrieval code can already read frontmatter.
 
+## Source Management
+
+Every ingest or calibration run should register the raw PDF as managed source state when a wiki root is available, even when canonical publishing is disabled. Source management is separate from canonical wiki mutation:
+
+- `source_pdf`, `source_id`, `source_registry`, and `sources` belong in frontmatter.
+- The managed raw source and registry make the ingest replayable and prevent PDFs from being indexed only by ad hoc desktop paths.
+- Eval/calibration runs may use a per-case wiki root for source registration while still keeping `publish_mode=never`.
+- If extracted text is too sparse, scanned, or only a cover/notice page, generate a source-quality hold instead of paper knowledge. The hold should be retrievable for OCR/replacement/source-cleanup workflows and must not promote scientific claims.
+
+## Calibration Lessons
+
+Optimize the ingest mechanism, not one paper at a time. Library-scale calibration should check at least:
+
+- title extraction from PDF metadata, first useful page text, and Zotero-style filenames;
+- controlled/global vocabulary reuse for methods, topics, and settings;
+- source-quality holds for bad PDFs instead of hallucinated summaries;
+- morphology-robust retrieval examples that read like plausible standalone user requests;
+- structural source-management completeness alongside content quality.
+
 ## Self-Check
 
 Use three separately inspectable self-check roles as the convergence loop:

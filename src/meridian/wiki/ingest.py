@@ -187,15 +187,15 @@ def _title_from_metadata_or_path(extraction: PdfExtraction, pdf_path: Path) -> s
         page_title
         and metadata_title
         and not _looks_like_arxiv_filename(metadata_title)
-        and (_looks_truncated_title(metadata_title) or _page_title_is_better(metadata_title, page_title))
+        and (_bad_metadata_title(metadata_title) or _looks_truncated_title(metadata_title) or _page_title_is_better(metadata_title, page_title))
     ):
         return page_title
-    if metadata_title and not _looks_like_arxiv_filename(metadata_title):
+    if metadata_title and not _looks_like_arxiv_filename(metadata_title) and not _bad_metadata_title(metadata_title):
         return _clean_title_line(metadata_title)
-    if page_title:
+    if page_title and not _bad_page_title(page_title):
         return page_title
-    stem = re.sub(r"[-_]+", " ", pdf_path.stem).strip()
-    return stem.title() if stem else "Untitled Paper"
+    stem_title = _title_from_filename(pdf_path)
+    return stem_title or "Untitled Paper"
 
 
 def _looks_like_arxiv_filename(title: str) -> bool:
@@ -204,7 +204,40 @@ def _looks_like_arxiv_filename(title: str) -> bool:
 
 def _looks_truncated_title(title: str) -> bool:
     normalized = title.strip()
-    return normalized.endswith("-") or normalized.endswith(":")
+    if normalized.endswith("-") or normalized.endswith(":"):
+        return True
+    words = normalized.split()
+    if not words:
+        return True
+    return words[-1].lower().strip(":-,") in {"of", "for", "with", "via", "and", "from", "beyond", "speculative"}
+
+
+def _bad_metadata_title(title: str) -> bool:
+    lowered = title.lower()
+    if _looks_like_arxiv_filename(title):
+        return True
+    bad_markers = (
+        "[width",
+        "./figs",
+        "arxiv:",
+        "anonymous authors",
+        "the annals of statistics",
+        "icml2_format",
+        "preprint",
+        "untitled",
+    )
+    return any(marker in lowered for marker in bad_markers) or len(title.strip()) < 8
+
+
+def _bad_page_title(title: str) -> bool:
+    words = title.split()
+    if len(words) <= 1:
+        return True
+    if _looks_truncated_title(title):
+        return True
+    if "," in title and _looks_author_line(title):
+        return True
+    return False
 
 
 def _page_title_is_better(metadata_title: str, page_title: str) -> bool:
@@ -216,13 +249,18 @@ def _page_title_is_better(metadata_title: str, page_title: str) -> bool:
 def _title_from_first_page(extraction: PdfExtraction) -> str | None:
     if not extraction.pages:
         return None
-    lines = [line.strip() for line in extraction.pages[0].text.splitlines() if line.strip()]
-    cleaned_lines = []
-    for line in lines[:8]:
-        line = re.sub(r"^Published as a conference paper at .*?\s+", "", line, flags=re.IGNORECASE)
-        if not line or line.lower() in {"abstract", "keywords"}:
+    lines: list[str] = []
+    for page in extraction.pages[:3]:
+        page_lines = [line.strip() for line in page.text.splitlines() if line.strip()]
+        if _page_looks_like_notice(page_lines):
             continue
-        if "@" in line or line.startswith("http"):
+        lines.extend(page_lines[:12])
+        if lines:
+            break
+    cleaned_lines = []
+    for line in lines[:10]:
+        line = re.sub(r"^Published as a conference paper at .*?\s+", "", line, flags=re.IGNORECASE)
+        if _skip_title_line(line):
             continue
         cleaned_lines.append(line)
 
@@ -233,6 +271,44 @@ def _title_from_first_page(extraction: PdfExtraction) -> str | None:
         if 8 <= len(line) <= 180 and _looks_like_title_line(line):
             return _clean_title_line(line)
     return None
+
+
+def _page_looks_like_notice(lines: list[str]) -> bool:
+    text = " ".join(lines[:8]).lower()
+    notice_markers = (
+        "is collaborating with jstor",
+        "digitize, preserve, and extend access",
+        "downloaded from",
+        "published by",
+        "all rights reserved",
+        "doi:",
+        "license",
+    )
+    if any(marker in text for marker in notice_markers) and not any(marker in text for marker in ("abstract", "introduction", "we propose")):
+        return True
+    return len(" ".join(lines).split()) < 12
+
+
+def _skip_title_line(line: str) -> bool:
+    lowered = line.lower().strip()
+    if not lowered or lowered in {"abstract", "keywords"}:
+        return True
+    if "@" in line or lowered.startswith(("http", "www.", "doi:", "arxiv:")):
+        return True
+    if any(
+        marker in lowered
+        for marker in (
+            "published as",
+            "proceedings of",
+            "downloaded from",
+            "all rights reserved",
+            "is collaborating with jstor",
+            "digitize, preserve, and extend access",
+            "institute of mathematical statistics",
+        )
+    ):
+        return True
+    return False
 
 
 def _multi_line_title(lines: list[str]) -> str | None:
@@ -293,22 +369,28 @@ def _looks_title_continuation(line: str, title_parts: list[str]) -> bool:
     previous = title_parts[-1].strip()
     if previous.endswith(("-", ":")):
         return True
-    if previous.split()[-1].lower() in {"of", "for", "with", "via", "and", "dual", "model"}:
+    if previous.split()[-1].lower() in {"of", "for", "with", "via", "and", "dual", "model", "from", "beyond"}:
         return True
     technical_terms = {
         "activation",
         "activations",
+        "brain",
         "calibrated",
+        "checkpoints",
+        "conditional",
         "inference",
         "language",
         "llm",
         "llms",
         "matrix",
+        "mri",
         "model",
         "models",
+        "multi-head",
         "multiplication",
         "outlier",
         "outliers",
+        "semantic",
         "quantization",
         "quantized",
         "refining",
@@ -333,10 +415,17 @@ def _looks_like_title_line(line: str) -> bool:
 
 def _clean_title_line(line: str) -> str:
     line = re.sub(r"\s+", " ", line).strip(" .")
+    line = _strip_author_tail(line)
     if sum(character.isupper() for character in line) / max(sum(character.isalpha() for character in line), 1) > 0.65:
         line = line.title()
     replacements = {
+        "Gqa": "GQA",
+        "Mha": "MHA",
+        "Mqa": "MQA",
+        "Kv": "KV",
+        "Kvcapsule": "KVCapsule",
         "Llm": "LLM",
+        "LvLM": "LVLM",
         "Ptq": "PTQ",
         "Ostquant": "OSTQuant",
         "Qsur": "QSUR",
@@ -354,6 +443,37 @@ def _clean_title_line(line: str) -> str:
     for source, target in replacements.items():
         line = line.replace(source, target)
     return line
+
+
+def _title_from_filename(pdf_path: Path) -> str:
+    stem = re.sub(r"[_]+", " ", pdf_path.stem).strip()
+    stem = re.sub(r"\s+", " ", stem)
+    stem = re.sub(r"^\d+\s+", "", stem)
+    stem = re.sub(
+        r"^[A-Za-zÀ-ÖØ-öø-ÿ]+(?:\s+et\s+al\.?|(?:\s+等)|(?:\s+and\s+[A-Za-zÀ-ÖØ-öø-ÿ]+)?)\s*-\s*\d{4}\s*-\s*",
+        "",
+        stem,
+        flags=re.IGNORECASE,
+    )
+    stem = re.sub(
+        r"^[A-Za-zÀ-ÖØ-öø-ÿ]+(?:\s+et\s+al\.?|(?:\s+等)|(?:\s+and\s+[A-Za-zÀ-ÖØ-öø-ÿ]+)?)\s*-\s*",
+        "",
+        stem,
+        flags=re.IGNORECASE,
+    )
+    stem = re.sub(r"\s+-\s+", " ", stem)
+    stem = _clean_title_line(stem)
+    if sum(character.isupper() for character in stem) / max(sum(character.isalpha() for character in stem), 1) < 0.35:
+        stem = stem[:1].upper() + stem[1:]
+    return stem
+
+
+def _strip_author_tail(line: str) -> str:
+    if ":" in line:
+        line = re.sub(r"\s+[A-Z][A-Za-z.-]+\s+[A-Z][A-Za-z.-]+[0-9♠‡*†,].*$", "", line)
+    line = re.sub(r"\s+[A-Z][A-Za-z.-]+(?:\s+[A-Z]\.)?\s+[A-Z][A-Za-z.-]+[0-9♠‡*†,].*$", "", line)
+    line = re.sub(r"\s+[A-Z]\.\s+[A-Z][A-Za-z.-]+,\s+[A-Z].*$", "", line)
+    return line.strip(" ,")
 
 
 def _maybe_publish(

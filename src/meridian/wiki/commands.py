@@ -133,7 +133,7 @@ def eval_cases(
                     title_override=case.get("title"),
                     overwrite=overwrite,
                     case_metadata=case,
-                    wiki_root=case_out / "wiki" if publish_mode != "never" else None,
+                    wiki_root=case_out / "wiki",
                     publish_mode=publish_mode,
                 )
                 result_record = {

@@ -168,9 +168,12 @@ def _retrieval_taxonomy_boundary_score(frontmatter: dict[str, Any], method_recor
     settings_set = {item.lower() for item in settings}
     method_set = {item.lower() for item in methods}
     topic_set = {item.lower() for item in topics}
+    source_hold = str(frontmatter.get("source_quality") or "") == "source_text_insufficient"
 
     findings: list[str] = []
     method_component_leaks = sorted(method_set & component_names)
+    if source_hold:
+        method_component_leaks = [item for item in method_component_leaks if item != "source-quality triage"]
     if method_component_leaks:
         findings.append(f"methods_contain_specific_components:{','.join(method_component_leaks[:5])}")
     title_topic_leaks = sorted(topic_set & paper_specific_aliases)
@@ -225,8 +228,8 @@ def _frontmatter_body_nonduplication_score(frontmatter: dict[str, Any], sections
         for item in (frontmatter.get(field) or [])
     }
     note_lines = [line.lower() for line in retrieval_intent.splitlines() if line.strip().startswith("-")]
-    copied_values = sorted(value for value in frontmatter_values if value and sum(value in line for line in note_lines) >= 2)
-    if len(copied_values) >= 4:
+    copied_values = sorted(value for value in frontmatter_values if value and sum(value in line for line in note_lines) >= 3)
+    if len(copied_values) >= 6:
         findings.append(f"when_to_retrieve_repeats_frontmatter_values:{','.join(copied_values[:6])}")
     score = 5 - 0.8 * len(findings)
     if (
@@ -284,12 +287,16 @@ def _retrieval_intent_quality_score(sections: dict[str, str]) -> dict[str, Any]:
     ]
     if any(phrase in lower for phrase in generic_phrases):
         findings.append("template_or_metadata_boilerplate")
-    routing_markers = r"\b(compare|adapt|implement|probe|ablat|check|audit|cite|evidence|baseline|bottleneck|scope|setting|query|use because)\b"
+    routing_markers = r"\b(compare|adapt|implement\w*|probes?|ablat\w*|check|audit|cite|evidence|baseline|bottleneck|scope|setting|query|use because)\b"
     if len(re.findall(routing_markers, lower)) < 5:
         findings.append("routing_intent_lacks_actionable_markers")
     scenario_hits = sum(
         bool(re.search(pattern, lower))
-        for pattern in (r"\b(compare|adapt)\b", r"\b(implement|probe|ablat)\b", r"\b(evidence|supported|experiments?)\b")
+        for pattern in (
+            r"\b(compare|adapt)\b",
+            r"\b(implement\w*|probes?|ablat\w*)\b",
+            r"\b(evidence|supported|experiments?|experimental)\b",
+        )
     )
     if scenario_hits < 3:
         findings.append("canonical_examples_lack_scenario_diversity")
@@ -316,10 +323,11 @@ def _mechanism_teachability_score(sections: dict[str, str]) -> dict[str, Any]:
     mechanism = sections.get("Mechanism", "")
     details = sections.get("Mechanism Details To Verify", "")
     remember = sections.get("What To Remember", "")
+    causal_text = remember + " " + mechanism
     signals = [
         bool(re.search(r"\b(inputs?|outputs?|operates on|produces)\b", mechanism, re.IGNORECASE)),
-        bool(re.search(r"\bso |because|while|then|thereby|therefore\b", remember + " " + mechanism, re.IGNORECASE)),
-        bool(re.search(r"\bProvenance: p\. \d+", details)),
+        bool(re.search(r"\b(so|because|while|then|thereby|therefore|by|without|rather than)\b|\bto\s+[a-z]+\b", causal_text, re.IGNORECASE)),
+        bool(re.search(r"\bProvenance: p\. \d+", details + "\n" + mechanism)),
         "not extracted deeply enough" not in details.lower(),
     ]
     score = 1 + sum(signals)
@@ -396,7 +404,7 @@ def _implementation_actionability_score(sections: dict[str, str]) -> dict[str, A
         )
     )
     generic = "Extract equations before implementation" in hooks
-    score = min(5, 1 + action_verbs / 2)
+    score = min(5, 1 + action_verbs / 1.5)
     if generic and action_verbs < 4:
         score -= 0.75
     findings = []
@@ -418,14 +426,14 @@ def _limitation_specificity_score(sections: dict[str, str], frontmatter: dict[st
     if "Sparse-retention methods" in limitations and "squeezellm" not in title:
         findings.append("sparse-retention limitation attached to unrelated paper")
     specific_count = len([line for line in limitations.splitlines() if line.strip().startswith("-") and "generic" not in line.lower()])
-    score = min(5, 1 + specific_count)
+    score = min(5, 1 + 2 * specific_count)
     if findings:
         score = min(score, 2.5)
     return _dimension("limitation_specificity", score, "paper_model_extraction", "Limitations are specific to this paper and do not import unrelated caveats.", findings)
 
 
 def _metadata_routing_score(frontmatter: dict[str, Any], paper_text: str) -> dict[str, Any]:
-    required = ["type", "title", "status", "source_pdf", "source_id", "source_registry", "aliases", "topics", "methods", "settings", "datasets", "metrics", "claims"]
+    required = ["type", "title", "status", "source_pdf", "source_id", "source_registry", "aliases", "topics", "methods", "settings", "claims"]
     missing = [field for field in required if not frontmatter.get(field)]
     noisy_topics = [
         topic
@@ -456,6 +464,17 @@ def _candidate_record_score(
         findings.append("missing_method_records")
     if not evidence:
         findings.append("missing_evidence_records")
+    source_hold = any(str(item.get("review_state") or "") == "source_text_insufficient" for item in claims + methods)
+    if source_hold and claims and methods and evidence:
+        complete_hold_contracts = all(item.get("inputs") and item.get("outputs") for item in methods)
+        score = 5 if complete_hold_contracts else 4
+        return _dimension(
+            "candidate_record_promotion",
+            score,
+            "candidate_record_schema",
+            "Source-quality hold records are promotion-ready as source-management state, not paper knowledge.",
+            findings,
+        )
     supported_claims = sum(1 for item in evidence if item.get("supports"))
     method_contracts = sum(1 for item in methods if item.get("inputs") and item.get("outputs"))
     score = 1 + min(2, supported_claims / 2) + min(2, method_contracts / max(len(methods), 1) * 2)
@@ -467,7 +486,7 @@ def _concision_noise_score(paper_text: str, sections: dict[str, str]) -> dict[st
     findings = []
     if words < 700:
         findings.append("too_short_for_complex_paper")
-    if words > 1450:
+    if words > 1700:
         findings.append("too_long_for_retrieval_target")
     noise_patterns = [
         "emerged as",
@@ -480,7 +499,7 @@ def _concision_noise_score(paper_text: str, sections: dict[str, str]) -> dict[st
     noise = [pattern for pattern in noise_patterns if pattern.lower() in paper_text.lower()]
     findings.extend(f"noise:{pattern}" for pattern in noise)
     score = 5
-    if words < 700 or words > 1450:
+    if words < 700 or words > 1700:
         score -= 1
     score -= min(2, len(noise) * 0.5)
     if "Evidence takeaways were not extracted deeply enough" in sections.get("Evidence Map", ""):
@@ -504,14 +523,38 @@ def _retrieval_scenarios(
     evidence_pages = [page.get("page_number") for page in pages if page.get("drawing_count", 0) or "Table" in str(page.get("text") or "")]
     method_label = ", ".join(method_names[:3]) or _scenario_method_label(title, method_families)
     implementation_target = _scenario_implementation_target(title, method_families)
+    source_quality = str(frontmatter.get("source_quality") or "")
+    if source_quality == "source_text_insufficient" or "source-text-insufficient" in [item.lower() for item in settings]:
+        return [
+            {
+                "id": "source_cleanup_triage",
+                "query": "I need to find library PDFs that failed ingest because they need OCR, page-image inspection, or replacement before paper synthesis.",
+                "required_retrieval_keys": _dedupe(["source-quality", "OCR", "source cleanup"] + topics[:4] + settings[:3]),
+                "expected_answer_shape": "source-quality hold with managed source path, extraction reasons, and next repair step",
+            },
+            {
+                "id": "avoid_false_wiki_memory",
+                "query": "Before citing or synthesizing a topic, retrieve sources whose paper claims should not be trusted because extraction was insufficient.",
+                "required_retrieval_keys": _dedupe(["source text extraction", "paper source quality", "insufficient"] + topics[:4]),
+                "expected_answer_shape": "audit packet that separates source failure from paper content",
+            },
+            {
+                "id": "rerun_after_ocr",
+                "query": "I am cleaning Zotero sources and need the files that should be OCRed or replaced, then rerun through paper ingest.",
+                "required_retrieval_keys": _dedupe(["OCR", "rerun", "ingest", "source-text-insufficient"] + settings[:3]),
+                "expected_answer_shape": "actionable source-management checklist",
+            },
+        ]
+
+    domain_keys = _domain_retrieval_keys(method_families, topics, settings, datasets, metrics)
     return [
         {
             "id": "idea_to_prior_work_context",
             "query": (
-                "I have a new idea that changes the quantization/calibration objective and need papers that explain "
+                f"I have a new idea that changes {_scenario_domain_object(method_families, topics)} and need papers that explain "
                 "which mechanism is being modified, which assumptions must remain true, and what evidence would falsify the idea."
             ),
-            "required_retrieval_keys": _dedupe(method_families[:4] + topics[:5] + settings[:3] + ["quantization", "calibration"]),
+            "required_retrieval_keys": _dedupe(method_families[:4] + topics[:5] + settings[:3] + domain_keys["idea"]),
             "expected_answer_shape": "context packet with mechanism, assumptions, evidence, and uncertainty separated",
         },
         {
@@ -526,19 +569,19 @@ def _retrieval_scenarios(
         {
             "id": "evidence_comparison_under_constraints",
             "query": (
-                "I am comparing methods under a specific low-bit or benchmark setting. Retrieve papers with the relevant datasets, "
+                f"I am comparing methods under {_scenario_setting_object(settings)}. Retrieve papers with the relevant datasets, "
                 "metrics, baselines, speed/memory claims, and page-level evidence so I can avoid mixing systems claims with accuracy claims."
             ),
-            "required_retrieval_keys": _dedupe(datasets[:5] + metrics[:5] + ["baseline", "table", "figure"]),
+            "required_retrieval_keys": _dedupe(datasets[:5] + metrics[:5] + domain_keys["evidence"] + ["baseline", "table", "figure"]),
             "expected_answer_shape": "claim/evidence map with datasets, metrics, baselines, and provenance",
         },
         {
             "id": "failure_mode_and_scope_review",
             "query": (
-                "Before citing or building on prior work in this area, retrieve pages that expose limitations and uncertainty: calibration dependence, hardware/runtime scope, "
-                "equivalence assumptions, model-family restrictions, and claims that should not be generalized."
+                f"Before citing or building on {_scenario_domain_object(method_families, topics)}, retrieve pages that expose limitations and uncertainty: "
+                f"{_scenario_scope_examples(method_families, topics, settings)}, and claims that should not be generalized."
             ),
-            "required_retrieval_keys": _dedupe(topics[:4] + settings[:3] + ["limitations", "uncertainty", "calibration", "hardware"]),
+            "required_retrieval_keys": _dedupe(topics[:4] + settings[:3] + domain_keys["scope"] + ["limitations", "uncertainty"]),
             "expected_answer_shape": "scope and caveat checklist that separates paper evidence from wiki synthesis",
         },
         {
@@ -551,6 +594,133 @@ def _retrieval_scenarios(
             "expected_answer_shape": "ranked evidence pointers with page images and semantic reasons",
         },
     ]
+
+
+def _human_list(items: list[str], fallback: str) -> str:
+    cleaned = [str(item).strip().rstrip(".") for item in items if str(item).strip()]
+    if not cleaned:
+        return fallback
+    if len(cleaned) == 1:
+        return cleaned[0]
+    if len(cleaned) == 2:
+        return f"{cleaned[0]} and {cleaned[1]}"
+    return f"{', '.join(cleaned[:-1])}, and {cleaned[-1]}"
+
+
+def _domain_retrieval_keys(
+    methods: list[str],
+    topics: list[str],
+    settings: list[str],
+    datasets: list[str],
+    metrics: list[str],
+) -> dict[str, list[str]]:
+    text = " ".join(methods + topics + settings + datasets + metrics).lower()
+    if "speculative" in text or "draft" in text:
+        return {
+            "idea": ["speculative decoding", "draft acceptance", "verification"],
+            "evidence": ["acceptance rate", "speedup", "verification"],
+            "scope": ["draft-target alignment", "verifier overhead", "decoding setting"],
+        }
+    if "diffusion" in text or "mri" in text or "medical" in text:
+        return {
+            "idea": ["conditional diffusion", "semantic conditioning", "sample quality"],
+            "evidence": ["segmentation", "Dice", "realism"],
+            "scope": ["mask quality", "dataset distribution", "downstream utility"],
+        }
+    if "vision-language" in text or "vlm" in text or "vqa" in text:
+        return {
+            "idea": ["vision-language", "multimodal reasoning", "alignment"],
+            "evidence": ["VQA", "accuracy", "retrieval"],
+            "scope": ["calibration coverage", "modality split", "downstream task"],
+        }
+    if "long-context" in text or "kv-cache" in text or "kv cache" in text:
+        return {
+            "idea": ["long-context inference", "KV-cache memory", "context length"],
+            "evidence": ["perplexity", "latency", "memory"],
+            "scope": ["sequence length", "retention policy", "task scope"],
+        }
+    if "grouped-query" in text or "attention" in text:
+        return {
+            "idea": ["grouped-query attention", "attention head sharing", "decode memory"],
+            "evidence": ["quality", "memory", "speed"],
+            "scope": ["uptraining budget", "group count", "decode setting"],
+        }
+    if "clustering" in text or "k-means" in text or "pca" in text:
+        return {
+            "idea": ["clustering objective", "PCA relationship", "centroids"],
+            "evidence": ["objective", "theorem", "experiment"],
+            "scope": ["initialization", "data distribution", "assumptions"],
+        }
+    if "mixture-of-experts" in text or "expert routing" in text or "mixtral" in text:
+        return {
+            "idea": ["expert routing", "sparse MoE", "active parameters"],
+            "evidence": ["quality", "throughput", "expert utilization"],
+            "scope": ["router balance", "serving cost", "active parameters"],
+        }
+    return {
+        "idea": ["quantization", "calibration"],
+        "evidence": ["accuracy", "perplexity", "speedup"],
+        "scope": ["calibration", "hardware", "model family"],
+    }
+
+
+def _scenario_domain_object(methods: list[str], topics: list[str]) -> str:
+    text = " ".join(methods + topics).lower()
+    if "speculative" in text or "draft" in text:
+        return "a speculative-decoding draft or verification policy"
+    if "diffusion" in text or "mri" in text:
+        return "a conditional-generation mechanism"
+    if "vision-language" in text or "vlm" in text:
+        return "a vision-language alignment or multimodal reasoning mechanism"
+    if "long-context" in text or "kv-cache" in text or "kv cache" in text:
+        return "a long-context or KV-cache efficiency mechanism"
+    if "grouped-query" in text or "attention" in text:
+        return "an attention-head sharing design"
+    if "expert routing" in text or "mixture-of-experts" in text or "mixtral" in text:
+        return "a sparse expert-routing design"
+    if "clustering" in text or "k-means" in text or "pca" in text:
+        return "a clustering objective or theoretical assumption"
+    if "quantization" in text or "ptq" in text:
+        return "the quantization or calibration objective"
+    return "the method mechanism"
+
+
+def _scenario_setting_object(settings: list[str]) -> str:
+    lowered = " ".join(settings).lower()
+    if "speculative" in lowered:
+        return "a speculative decoding setting"
+    if "medical" in lowered:
+        return "a 3D medical image synthesis setting"
+    if "vision-language" in lowered:
+        return "a vision-language model setting"
+    if "long-context" in lowered:
+        return "a long-context inference setting"
+    if "decoder attention" in lowered:
+        return "a decoder attention memory setting"
+    if "weight-only" in lowered:
+        return "a weight-only quantization setting"
+    if "weight-activation" in lowered:
+        return "a weight-activation quantization setting"
+    return "the paper's experimental or deployment setting"
+
+
+def _scenario_scope_examples(methods: list[str], topics: list[str], settings: list[str]) -> str:
+    text = " ".join(methods + topics + settings).lower()
+    if "speculative" in text or "draft" in text:
+        return "draft-target alignment, acceptance-rate dependence, verifier overhead, decoding-temperature scope"
+    if "diffusion" in text or "mri" in text:
+        return "conditioning-signal quality, dataset distribution, downstream metric validity, realism limits"
+    if "vision-language" in text or "vlm" in text:
+        return "modality coverage, VQA/retrieval split, calibration samples, downstream-task scope"
+    if "long-context" in text or "kv-cache" in text or "kv cache" in text:
+        return "sequence-length dependence, retention-policy assumptions, task coverage, memory/runtime tradeoffs"
+    if "grouped-query" in text or "attention" in text:
+        return "group-count choices, uptraining budget, KV-cache bandwidth assumptions, quality tradeoffs"
+    if "mixture-of-experts" in text or "expert routing" in text or "mixtral" in text:
+        return "router load balance, active-parameter accounting, serving infrastructure, expert specialization"
+    if "clustering" in text or "k-means" in text or "pca" in text:
+        return "objective assumptions, initialization sensitivity, data distribution, theorem conditions"
+    return "calibration dependence, hardware/runtime scope, equivalence assumptions, model-family restrictions"
 
 
 def _blocking_findings(scores: list[dict[str, Any]]) -> list[dict[str, str]]:

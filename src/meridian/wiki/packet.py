@@ -201,6 +201,8 @@ def render_paper_draft(
             "source_registry": str(source_record.registry_path) if source_record else None,
             "sources": [str(pdf_path)],
             "page_count": extraction.page_count,
+            "source_quality": model.source_quality.get("review_state"),
+            "source_quality_reasons": model.source_quality.get("reasons", []),
             "model_strategy": model.strategy,
             "tags": ["llm-wiki", "paper", "paper-ingest"],
             "topics": model.topics,
@@ -398,6 +400,23 @@ def _join_or_unknown(value: object, fallback: str) -> str:
 
 
 def _render_retrieval_intent(model: PaperModel, title: str) -> str:
+    if model.source_quality.get("review_state") == "source_text_insufficient":
+        return "\n".join(
+            [
+                "Canonical retrieval fits:",
+                '- Query: "Which papers in my library failed ingest because the PDF needs OCR or a cleaner source file?"',
+                "  Use because: This page records a source-quality hold, not scientific paper knowledge.",
+                '- Query: "Before building a synthesis, show me sources whose claims should not be trusted because extraction was insufficient."',
+                "  Use because: The page prevents bad PDF text from becoming false wiki memory.",
+                '- Query: "I am cleaning my Zotero library and need files that should be replaced or OCRed before paper analysis."',
+                "  Use because: It preserves the managed source path, extraction artifacts, and source-quality reasons.",
+                "",
+                "Scope notes:",
+                "- Primary fit: source cleanup, OCR triage, and ingest failure analysis.",
+                "- Adjacent fit: audit of untrusted source artifacts before building a paper wiki synthesis.",
+                "- Weak fit: research claims, method comparisons, or evidence synthesis until a readable PDF/OCR pass exists.",
+            ]
+        )
     method_family = _routing_method_focus(model.methods)
     topic_scope = _routing_topic_focus(model.topics, model.methods)
     topic_verb = "are" if _is_plural_phrase(topic_scope) else "is"
@@ -423,14 +442,14 @@ def _render_retrieval_intent(model: PaperModel, title: str) -> str:
         component_focus = components if paper_name == "this paper" else f"{paper_name}'s {components}"
         examples.append(
             (
-                f"I am modifying a {implementation_target} and need probes or ablations that isolate {component_focus}.",
+                f"I am modifying a {implementation_target} and need implementation probes, ablations, and sanity checks that isolate {component_focus}.",
                 "The Mechanism section turns each named component into inputs, outputs, dependencies, and first checks.",
             )
         )
     if model.datasets or model.metrics:
         examples.append(
             (
-                f"I need papers that connect {topic_scope} claims in {method_family} to {metrics} evidence on {datasets}.",
+                f"I need papers that connect {topic_scope} claims in {method_family} to experimental evidence, {metrics}, and results on {datasets}.",
                 f"The Evidence Map connects claims to {metrics} on {datasets}, plus source-page provenance.",
             )
         )
@@ -483,6 +502,30 @@ def _routing_method_focus(methods: list[str]) -> str:
         return "layer-wise post-training quantization"
     if "rotation-based quantization" in lowered and "post-training quantization" in lowered:
         return "rotation-based post-training quantization"
+    if "speculative decoding" in lowered:
+        return "speculative decoding"
+    if "conditional diffusion" in lowered:
+        return "conditional diffusion"
+    if "grouped-query attention" in lowered:
+        return "grouped-query attention"
+    if "long-context inference" in lowered:
+        return "long-context inference"
+    if "kv-cache compression" in lowered:
+        return "KV-cache compression"
+    if "clustering algorithm" in lowered:
+        return "clustering algorithm"
+    if "vision-language model quantization" in lowered:
+        return "vision-language model quantization"
+    if "vision-language representation learning" in lowered:
+        return "vision-language representation learning"
+    if "quantization-aware training" in lowered:
+        return "quantization-aware training"
+    if "sparse mixture-of-experts" in lowered:
+        return "sparse mixture-of-experts"
+    if "curve skeleton extraction" in lowered:
+        return "curve skeleton extraction"
+    if "rope scaling" in lowered:
+        return "RoPE scaling"
     return _human_list(methods[:2], "the relevant method family")
 
 
@@ -512,6 +555,24 @@ def _routing_topic_focus(topics: list[str], methods: list[str]) -> str:
 
 def _routing_setting_focus(settings: list[str]) -> str:
     lowered = {setting.lower() for setting in settings}
+    if "speculative decoding setting" in lowered:
+        return "speculative decoding inference"
+    if "3d medical imaging setting" in lowered:
+        return "3D medical imaging"
+    if "decoder attention setting" in lowered:
+        return "decoder attention inference"
+    if "long-context inference setting" in lowered:
+        return "long-context inference"
+    if "clustering theory setting" in lowered:
+        return "clustering theory"
+    if "vision-language setting" in lowered:
+        return "vision-language model evaluation"
+    if "quantization-aware training setting" in lowered:
+        return "quantization-aware training"
+    if "3d geometry setting" in lowered:
+        return "3D geometry processing"
+    if "decoder inference setting" in lowered:
+        return "decoder inference"
     if {"weight-activation quantization", "moe setting", "lut/kernel setting"} <= lowered:
         return "weight-activation MoE deployment with LUT/kernel constraints"
     if {"weight-only quantization", "moe setting"} <= lowered:
