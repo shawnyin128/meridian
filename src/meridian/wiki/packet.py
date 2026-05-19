@@ -406,7 +406,7 @@ def _render_retrieval_intent(model: PaperModel, title: str) -> str:
                 "Canonical retrieval fits:",
                 '- Query: "Which papers in my library failed ingest because the PDF needs OCR or a cleaner source file?"',
                 "  Use because: This page records a source-quality hold, not scientific paper knowledge.",
-                '- Query: "Before building a synthesis, show me sources whose claims should not be trusted because extraction was insufficient."',
+                '- Query: "Before building a synthesis, show me source-quality holds that need OCR, page-image inspection, or replacement first."',
                 "  Use because: The page prevents bad PDF text from becoming false wiki memory.",
                 '- Query: "I am cleaning my Zotero library and need files that should be replaced or OCRed before paper analysis."',
                 "  Use because: It preserves the managed source path, extraction artifacts, and source-quality reasons.",
@@ -423,13 +423,12 @@ def _render_retrieval_intent(model: PaperModel, title: str) -> str:
     setting_scope = _routing_setting_focus(model.settings)
     datasets = _human_list(model.datasets[:3], "the reported benchmark datasets")
     metrics = _human_list(model.metrics[:3], "the reported metrics")
-    paper_name = _paper_short_name(title)
     component_names = [
         str(record.get("short_name") or record.get("name"))
         for record in model.method_records[:4]
         if record.get("short_name") or record.get("name")
     ]
-    components = ", ".join(component_names)
+    component_focus = _routing_component_focus(component_names, title, method_family, topic_scope)
 
     examples: list[tuple[str, str]] = [
         (
@@ -437,12 +436,10 @@ def _render_retrieval_intent(model: PaperModel, title: str) -> str:
             f"It explains a concrete {method_family} design for {setting_scope}, with assumptions and caveats separated below.",
         )
     ]
-    if components:
-        implementation_target = f"{paper_name} implementation" if paper_name != "this paper" else f"{method_family} implementation"
-        component_focus = components if paper_name == "this paper" else f"{paper_name}'s {components}"
+    if component_focus:
         examples.append(
             (
-                f"I am modifying a {implementation_target} and need implementation probes, ablations, and sanity checks that isolate {component_focus}.",
+                f"I am implementing or modifying {method_family} and need probes, ablations, and sanity checks for {component_focus}.",
                 "The Mechanism section turns each named component into inputs, outputs, dependencies, and first checks.",
             )
         )
@@ -492,6 +489,45 @@ def _render_retrieval_intent(model: PaperModel, title: str) -> str:
             f"- Weak fit: {weak_fit}.",
         ]
     )
+
+
+def _routing_component_focus(component_names: list[str], title: str, method_family: str, topic_scope: str) -> str:
+    title_norm = _norm_phrase(title)
+    method_norm = _norm_phrase(method_family)
+    cleaned: list[str] = []
+    for name in component_names:
+        item = str(name).strip()
+        if not item:
+            continue
+        item_norm = _norm_phrase(item)
+        if not item_norm or item_norm in {"method", "model", "paper"}:
+            continue
+        if item_norm == title_norm or (len(item_norm) > 8 and item_norm in title_norm):
+            continue
+        if item_norm == method_norm or (len(item_norm) > 8 and item_norm in method_norm):
+            continue
+        cleaned.append(item)
+    cleaned = _dedupe_preserve(cleaned)
+    if cleaned:
+        return f"the component contracts around {_human_list(cleaned[:4], 'the core method')}"
+    if topic_scope and topic_scope != "the target failure mode":
+        return f"{topic_scope} within {method_family}"
+    return f"the core {method_family} mechanism"
+
+
+def _norm_phrase(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+
+
+def _dedupe_preserve(items: list[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for item in items:
+        key = _norm_phrase(item)
+        if key and key not in seen:
+            seen.add(key)
+            result.append(item)
+    return result
 
 
 def _routing_method_focus(methods: list[str]) -> str:

@@ -31,7 +31,7 @@ class PaperModel:
     evidence_records: list[dict[str, Any]]
 
 
-MODEL_STRATEGY = "heuristic_text_v2"
+MODEL_STRATEGY = "heuristic_text_v3"
 
 METHOD_TERMS = (
     "method",
@@ -81,6 +81,9 @@ KNOWN_DATASETS = (
     "MMLU",
     "GSM8K",
     "MATH500",
+    "MT-Bench",
+    "HumanEval",
+    "AlpacaEval",
     "HellaSwag",
     "PIQA",
     "WinoGrande",
@@ -242,7 +245,7 @@ def _source_hold_model(title: str, extraction: PdfExtraction, source_quality: di
             "id": "claim-001",
             "status": "draft",
             "paper_title": title,
-            "claim": "No paper claim should be promoted because the PDF text extraction is insufficient.",
+            "claim": "Scientific claims are on source-quality hold because the PDF text extraction is insufficient.",
             "claim_type": "source_quality_gap",
             "extraction_strategy": MODEL_STRATEGY,
             "provenance": provenance,
@@ -285,8 +288,8 @@ def _source_hold_model(title: str, extraction: PdfExtraction, source_quality: di
             "Route it as a source-management problem, not as prior work."
         ),
         one_line_takeaway=(
-            f"Do not use `{title}` as paper knowledge yet: Meridian only found insufficient text ({reason_text}), "
-            "so the next step is OCR or replacing the PDF."
+            f"`{title}` is source-quality state rather than paper knowledge: Meridian only found insufficient text ({reason_text}), "
+            "so the next step is OCR or PDF replacement."
         ),
         mechanism_overview=[
             "Source-quality triage checks whether extraction contains enough paper text before generating claims or method knowledge."
@@ -439,7 +442,7 @@ def _problem_focus(lowered_text: str) -> str:
     if "retrieval" in lowered_text:
         return "This is a retrieval paper; the core question is how to retrieve better context for downstream reasoning."
     if "human preference" in lowered_text or "human feedback" in lowered_text or "reward model" in lowered_text or "reward predictor" in lowered_text:
-        return "This is a preference-learning paper: the core mechanism is to turn human comparisons or judgments into a reward/evaluation signal that can improve model or policy behavior."
+        return "This is a preference-learning paper: it turns human comparisons or judgments into a reward/evaluation signal that can improve model or policy behavior."
     if "ppo" in lowered_text or "proximal policy optimization" in lowered_text:
         return "This is a policy-optimization paper about improving a policy under clipped or constrained reinforcement-learning updates."
     if "self-attention" in lowered_text or "attention is all you need" in lowered_text or "relative position" in lowered_text:
@@ -549,6 +552,10 @@ def _claim_sentence_score(sentence: str, page: PageExtraction, own_terms: list[s
         score += 3
     if any(marker in lowered for marker in CLAIM_MARKERS):
         score += 2
+    if _claim_has_evidence_anchor(sentence):
+        score += 2
+    elif _is_broad_result_claim(sentence):
+        score -= 5
     for marker in ("table", "figure", "ablation", "outperform", "achieve", "speedup", "latency", "perplexity", "accuracy"):
         if marker in lowered:
             score += 2
@@ -563,6 +570,56 @@ def _claim_sentence_score(sentence: str, page: PageExtraction, own_terms: list[s
     if "introduction" == (page.section_hint or "").lower():
         score -= 1
     return score
+
+
+def _claim_has_evidence_anchor(sentence: str) -> bool:
+    lowered = sentence.lower()
+    if re.search(r"\b\d+(?:\.\d+)?\s*(?:x|×|%|gb|mb|ms|s|tokens/sec|bit|bits)\b", lowered):
+        return True
+    if re.search(r"\bsection\s+\d+(?:\.\d+)*\b", lowered):
+        return True
+    if any(term.lower() in lowered for term in KNOWN_DATASETS + KNOWN_METRICS):
+        return True
+    evidence_markers = (
+        "table",
+        "figure",
+        "ablation",
+        "baseline",
+        "baselines",
+        "gptq",
+        "awq",
+        "ppo",
+        "sft baseline",
+        "benchmark",
+        "experiment",
+        "evaluation",
+        "perplexity",
+        "accuracy",
+        "latency",
+        "throughput",
+        "speedup",
+        "memory",
+        "human evaluation",
+        "held-out",
+        "zero-shot",
+    )
+    return any(marker in lowered for marker in evidence_markers)
+
+
+def _is_broad_result_claim(sentence: str) -> bool:
+    lowered = sentence.lower()
+    result_markers = (
+        "outperform",
+        "improve",
+        "achieve",
+        "state-of-the-art",
+        "competitive",
+        "superior",
+        "significant",
+    )
+    if not any(marker in lowered for marker in result_markers):
+        return False
+    return not _claim_has_evidence_anchor(sentence)
 
 
 def _is_background_sentence(lowered: str) -> bool:
@@ -594,6 +651,8 @@ def _bad_claim_sentence(sentence: str) -> bool:
     if "figure " in lowered and not any(marker in lowered for marker in CLAIM_MARKERS):
         return True
     if any(marker in lowered for marker in ("model decoder speed", "memory use (gb)", "tokens/sec", "fp quantized speed up")):
+        return True
+    if _is_broad_result_claim(sentence):
         return True
     digit_ratio = sum(character.isdigit() for character in sentence) / max(len(sentence), 1)
     return digit_ratio > 0.22
@@ -2137,7 +2196,7 @@ def _mechanism_facts(pages: list[PageExtraction]) -> list[dict[str, Any]]:
                 fact_type="equivalent_transform",
                 component="SmoothQuant",
                 summary=(
-                    "SmoothQuant's core mechanism is the equivalent scaling transform "
+                    "SmoothQuant uses the equivalent scaling transform "
                     "Y = (X diag(s)^-1)(diag(s) W): activation outliers are reduced offline "
                     "by moving scale into weights, then both sides can use efficient W8A8 quantization."
                 ),
@@ -2382,7 +2441,7 @@ def _mechanism_facts(pages: list[PageExtraction]) -> list[dict[str, Any]]:
                 fact_type="conditioning",
                 component="Med-DDPM",
                 summary=(
-                    "The core mechanism is semantic conditioning for a 3D DDPM: segmentation masks steer generated MRI anatomy while the "
+                    "Med-DDPM conditions a 3D DDPM with semantic masks: segmentation masks steer generated MRI anatomy while the "
                     "denoising model handles image synthesis."
                 ),
                 page=_find_page(pages, "semantic 3D", "segmentation", "conditional diffusion"),
@@ -2480,7 +2539,7 @@ def _mechanism_facts(pages: list[PageExtraction]) -> list[dict[str, Any]]:
                 fact_type="setting_constraint",
                 component="Quantization setting",
                 summary=(
-                    "CodeQuant A4W4 should not be read as ordinary 4-bit weight quantization: "
+                    "CodeQuant A4W4 is a weight-activation MoE quantization setting rather than ordinary 4-bit weight-only quantization: "
                     "activations are 4-bit while weights are represented by 16 learned centroids."
                 ),
                 page=_find_page(pages, "A4W4", "16 centroids"),
@@ -2556,7 +2615,38 @@ def _implementation_notes(method_records: list[dict[str, Any]], pages: list[Page
         notes.append("Equation-bearing sections exist; turn each extracted objective or transform into a shape/value unit test before trusting results.")
     if "Algorithm" in text:
         notes.append("Algorithm boxes are present; preserve their inputs/outputs as implementation tests.")
+    notes.extend(_research_workflow_fallback_notes(method_records, pages, current_count=len(notes)))
     return _dedupe(notes)[:10]
+
+
+def _research_workflow_fallback_notes(
+    method_records: list[dict[str, Any]],
+    pages: list[PageExtraction],
+    *,
+    current_count: int,
+) -> list[str]:
+    if current_count >= 5:
+        return []
+    method_label = _human_list(
+        [
+            str(record.get("short_name") or record.get("name"))
+            for record in method_records[:2]
+            if record.get("short_name") or record.get("name")
+        ],
+        "the core method",
+    )
+    text = _normalize(" ".join(page.text for page in pages[:8]) + " " + _method_record_text(method_records)).lower()
+    notes = [
+        f"Trace one small example through {method_label}: record inputs, intermediate states, outputs, and the exact metric or qualitative behavior it changes.",
+        f"Compare {method_label} against the simplest credible baseline under the same data split, seed, configuration, and evaluation script.",
+        f"Ablate the strongest assumption behind {method_label} and label which claim the ablation would support, weaken, or falsify.",
+        "Store command, config, commit hash, seed, source page, and representative failure cases so later wiki retrieval can connect code results back to paper evidence.",
+    ]
+    if "table" in text or "figure" in text:
+        notes.append("Recreate the most decision-relevant table or figure from logs before treating the implementation as faithful.")
+    if "dataset" in text or any(dataset.lower() in text for dataset in KNOWN_DATASETS):
+        notes.append("Validate dataset preprocessing, split boundaries, label mapping, and metric definitions before comparing against reported results.")
+    return notes
 
 
 def _domain_implementation_backfill(method_records: list[dict[str, Any]], pages: list[PageExtraction]) -> list[str]:
@@ -2806,10 +2896,10 @@ def _limitations(pages: list[PageExtraction]) -> list[str]:
     if primary == "squeezellm":
         limitations.append("Sparse retention changes runtime/storage accounting; accuracy gains should be judged against sparse-index and kernel overhead.")
     if primary == "moequant":
-        limitations.append("MoE gains depend on expert-routing coverage in calibration; dense-LLM PTQ conclusions should not be transferred without checking expert imbalance.")
+        limitations.append("MoE gains depend on expert-routing coverage in calibration; transfer dense-LLM PTQ conclusions only after checking expert imbalance.")
         limitations.append("Expert-specific improvements can be hidden by aggregate accuracy; inspect expert usage variance and per-task results before generalizing.")
     if primary == "massive-activations":
-        limitations.append("This is primarily a mechanistic analysis paper; localization findings should not be treated as a compression method without separate intervention evidence.")
+        limitations.append("This is primarily a mechanistic analysis paper; use localization findings as compression evidence only after separate intervention tests.")
         limitations.append("Claims about functional importance depend on intervention design; descriptive magnitude plots alone are not causal evidence.")
         limitations.append("Model-family coverage matters because fixed feature dimensions and token positions may not transfer across architectures.")
     if primary == "qep":
@@ -2846,10 +2936,10 @@ def _limitations(pages: list[PageExtraction]) -> list[str]:
     if primary == "lsqplus":
         limitations.append("Scale/offset learning can be sensitive to initialization and optimizer settings, so report quantizer state and bit width together.")
     if primary == "qvlm":
-        limitations.append("LVLM PTQ depends on multimodal calibration coverage; text-only calibration conclusions should not be transferred directly.")
+        limitations.append("LVLM PTQ depends on multimodal calibration coverage; transfer text-only calibration conclusions only after multimodal checks.")
         limitations.append("Memory and speed claims should be separated from VQA/reasoning accuracy because they stress different parts of the pipeline.")
     if primary == "vljepa":
-        limitations.append("Embedding-space alignment and SFT solve different problems; downstream VQA gains should not be attributed to pretraining alone.")
+        limitations.append("Embedding-space alignment and SFT solve different problems; attribute downstream VQA gains with ablations that separate pretraining from SFT.")
         limitations.append("Classification/retrieval improvements may not imply robust multimodal reasoning without targeted evaluation.")
     if primary == "longrope":
         limitations.append("Long-context extension can preserve passkey-style tasks while still harming ordinary short-context behavior; both must be checked.")
@@ -2870,7 +2960,7 @@ def _limitations(pages: list[PageExtraction]) -> list[str]:
     if "simulator" in lowered or "Accel-Sim" in text:
         limitations.append("Some hardware evidence depends on simulation or specific CPU/kernel settings.")
     if "block-wise" in lowered and "embedding-wise" in lowered:
-        limitations.append("Some components are setting-dependent; POG in particular should not be assumed useful outside block-wise clustering.")
+        limitations.append("Some components are setting-dependent; treat POG as a block-wise clustering mechanism until other settings have direct ablations.")
     if limitations:
         return limitations
     if "human preference" in lowered or "human feedback" in lowered or "reward model" in lowered or "reward predictor" in lowered:
@@ -2965,6 +3055,9 @@ def _method_families(
     text = _method_family_text(title, method_records, settings).lower()
     families: list[str] = []
 
+    if _is_long_form_reference(title, pages):
+        return ["reference synthesis", "performance evaluation"]
+
     if primary == "massive-activations":
         return ["mechanistic activation analysis"]
     if primary == "milo":
@@ -3057,7 +3150,7 @@ def _method_families(
         families.append("rotation-based quantization")
     if any(marker in text for marker in ("affine transform", "equivalent transformation", "invariant transform", "computationally invariant")):
         families.append("equivalent-transform PTQ")
-    if any(marker in text for marker in ("non-uniform", "centroid", "clustering", "k-means", "codebook")):
+    if quantization_cues and any(marker in text for marker in ("non-uniform", "centroid", "clustering", "k-means", "codebook")):
         families.append("non-uniform weight quantization")
     if any(marker in text for marker in ("expert", "router", "routing")) and "moe" in text:
         families.append("expert-aware quantization")
@@ -3076,6 +3169,9 @@ def _settings(pages: list[PageExtraction]) -> list[str]:
     primary = _primary_paper_key(pages)
     settings: list[str] = []
 
+    if _is_long_form_reference("", pages):
+        return ["long-form reference setting"]
+
     primary_settings = {
         "llm.int8": ["weight-activation quantization"],
         "smoothquant": ["weight-activation quantization"],
@@ -3091,7 +3187,7 @@ def _settings(pages: list[PageExtraction]) -> list[str]:
         "qep": ["weight-only quantization"],
         "moequant": ["weight-only quantization", "MoE setting"],
         "codequant": ["weight-activation quantization", "MoE setting", "LUT/kernel setting"],
-        "massive-activations": [],
+        "massive-activations": ["mechanistic activation analysis setting"],
         "milo": ["weight-only quantization", "MoE setting"],
         "eagle2": ["speculative decoding setting"],
         "med-ddpm": ["3D medical imaging setting"],
@@ -3146,7 +3242,7 @@ def _settings(pages: list[PageExtraction]) -> list[str]:
         settings.append("3D geometry setting")
     if "quantization-aware" in lowered or "task loss" in lowered and "quantization" in lowered:
         settings.append("quantization-aware training setting")
-    if "k-means" in lowered and ("pca" in lowered or "principal component" in lowered):
+    if "k-means" in lowered and ("pca" in lowered or "principal component" in lowered or "matrix factorization" in lowered):
         settings.append("clustering theory setting")
     if "human feedback" in lowered or "human preference" in lowered or "reward model" in lowered or "preference optimization" in lowered:
         settings.append("preference-learning setting")
@@ -3172,10 +3268,26 @@ def _topics(
     method_records: list[dict[str, Any]],
     settings: list[str],
 ) -> list[str]:
+    if _is_long_form_reference(title, pages):
+        if "computer architecture" in title.lower():
+            return ["computer architecture", "performance evaluation", "hardware systems"]
+        return ["reference synthesis", "survey synthesis"]
     text = _topic_text(title, abstract, candidates, method_records, settings)
     controlled = _controlled_topics(text, settings)
     phrase_topics = _phrase_topics(text, title, method_records)
     return _dedupe(controlled + phrase_topics)[:10]
+
+
+def _is_long_form_reference(title: str, pages: list[PageExtraction]) -> bool:
+    if len(pages) < 300:
+        return False
+    title_lower = title.lower()
+    first_pages = _normalize(" ".join(page.text for page in pages[:3])).lower()
+    return (
+        "computer architecture" in title_lower
+        or "textbook" in first_pages
+        or "contents" in first_pages and ("chapter" in first_pages or "appendix" in first_pages)
+    )
 
 
 def _method_family_text(title: str, method_records: list[dict[str, Any]], settings: list[str]) -> str:
@@ -3354,6 +3466,17 @@ def _sentences(text: str) -> list[str]:
         if 30 <= len(cleaned) <= 500:
             sentences.append(cleaned)
     return sentences
+
+
+def _human_list(items: list[str], fallback: str) -> str:
+    cleaned = [str(item).strip().rstrip(".") for item in items if str(item).strip()]
+    if not cleaned:
+        return fallback
+    if len(cleaned) == 1:
+        return cleaned[0]
+    if len(cleaned) == 2:
+        return f"{cleaned[0]} and {cleaned[1]}"
+    return f"{', '.join(cleaned[:-1])}, and {cleaned[-1]}"
 
 
 def _clean_sentence(sentence: str) -> str:

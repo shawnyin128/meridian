@@ -183,18 +183,25 @@ def _prepare_out_dir(out_dir: Path, overwrite: bool) -> None:
 def _title_from_metadata_or_path(extraction: PdfExtraction, pdf_path: Path) -> str:
     metadata_title = str(extraction.metadata.get("title") or "").strip()
     page_title = _title_from_first_page(extraction)
+    stem_title = _title_from_filename(pdf_path)
+    if _prefer_filename_title(metadata_title, page_title, stem_title):
+        return stem_title
     if (
         page_title
         and metadata_title
         and not _looks_like_arxiv_filename(metadata_title)
-        and (_bad_metadata_title(metadata_title) or _looks_truncated_title(metadata_title) or _page_title_is_better(metadata_title, page_title))
+        and not _bad_page_title(page_title)
+        and (
+            _bad_metadata_title(metadata_title)
+            or _looks_truncated_title(metadata_title)
+            or _page_title_is_better(metadata_title, page_title)
+        )
     ):
         return page_title
     if metadata_title and not _looks_like_arxiv_filename(metadata_title) and not _bad_metadata_title(metadata_title):
         return _clean_title_line(metadata_title)
     if page_title and not _bad_page_title(page_title):
         return page_title
-    stem_title = _title_from_filename(pdf_path)
     return stem_title or "Untitled Paper"
 
 
@@ -209,7 +216,7 @@ def _looks_truncated_title(title: str) -> bool:
     words = normalized.split()
     if not words:
         return True
-    return words[-1].lower().strip(":-,") in {"of", "for", "with", "via", "and", "from", "beyond", "speculative"}
+    return words[-1].lower().strip(":-,") in {"of", "for", "with", "via", "and", "from", "beyond", "speculative", "all"}
 
 
 def _bad_metadata_title(title: str) -> bool:
@@ -222,6 +229,10 @@ def _bad_metadata_title(title: str) -> bool:
         "arxiv:",
         "anonymous authors",
         "the annals of statistics",
+        "journal of machine learning research",
+        "submitted",
+        "revised",
+        "published",
         "icml2_format",
         "preprint",
         "untitled",
@@ -235,6 +246,8 @@ def _bad_page_title(title: str) -> bool:
         return True
     if _looks_truncated_title(title):
         return True
+    if _title_has_venue_leak(title) or _title_has_author_leak(title):
+        return True
     if "," in title and _looks_author_line(title):
         return True
     return False
@@ -244,6 +257,55 @@ def _page_title_is_better(metadata_title: str, page_title: str) -> bool:
     metadata_norm = re.sub(r"[^a-z0-9]+", "", metadata_title.lower())
     page_norm = re.sub(r"[^a-z0-9]+", "", page_title.lower())
     return len(page_title) >= len(metadata_title) + 12 and page_norm.startswith(metadata_norm[:24])
+
+
+def _prefer_filename_title(metadata_title: str, page_title: str | None, stem_title: str) -> bool:
+    if not stem_title or _bad_page_title(stem_title):
+        return False
+    candidates = [candidate for candidate in (metadata_title, page_title) if candidate]
+    for candidate in candidates:
+        cleaned = _clean_title_line(candidate)
+        if _bad_metadata_title(candidate) or _bad_page_title(cleaned):
+            return True
+        if _title_has_venue_leak(candidate) or _title_has_author_leak(candidate):
+            return True
+        if _title_completes_candidate(stem_title, cleaned):
+            return True
+    return False
+
+
+def _title_completes_candidate(stem_title: str, candidate: str) -> bool:
+    stem_norm = re.sub(r"[^a-z0-9]+", "", stem_title.lower())
+    candidate_norm = re.sub(r"[^a-z0-9]+", "", candidate.lower())
+    if not stem_norm or not candidate_norm:
+        return False
+    if candidate_norm.startswith(stem_norm) and len(candidate_norm) > len(stem_norm) + 36:
+        return _title_has_venue_leak(candidate) or _title_has_author_leak(candidate)
+    if stem_norm.endswith(candidate_norm) and len(stem_norm) > len(candidate_norm) + 5:
+        return True
+    return stem_norm.startswith(candidate_norm) and len(stem_norm) > len(candidate_norm) + 8
+
+
+def _title_has_venue_leak(title: str) -> bool:
+    lowered = title.lower()
+    markers = (
+        "journal of machine learning research",
+        "proceedings of",
+        "published as",
+        "submitted ",
+        "revised ",
+        "conference on",
+        "transactions on",
+    )
+    return any(marker in lowered for marker in markers)
+
+
+def _title_has_author_leak(title: str) -> bool:
+    if re.search(r"\s+[A-Z][A-Za-z.-]+\s+[A-Z][A-Za-z.-]+[0-9♠♣♡♢‡*†,]", title):
+        return True
+    if re.search(r"[♠♣♡♢‡*†]\s+[A-Z]", title):
+        return True
+    return False
 
 
 def _title_from_first_page(extraction: PdfExtraction) -> str | None:
@@ -335,11 +397,11 @@ def _multi_line_title(lines: list[str]) -> str | None:
 
 
 def _looks_author_line(line: str) -> bool:
-    if any(marker in line for marker in ("∗", "†", "λ", "§", "∓")) and ":" not in line:
+    if any(marker in line for marker in ("∗", "†", "λ", "§", "∓", "♠", "♣", "♡", "♢", "‡", "*")) and ":" not in line:
         return True
     if "," in line and len(line.split()) >= 4:
         return True
-    tokens = line.replace("∗", "").replace("†", "").split()
+    tokens = _strip_author_symbols(line).split()
     uppercase_count = sum(character.isupper() for character in line)
     alpha_count = sum(character.isalpha() for character in line)
     if uppercase_count / max(alpha_count, 1) > 0.55:
@@ -351,7 +413,7 @@ def _looks_author_line(line: str) -> bool:
 def _looks_author_continuation(line: str) -> bool:
     if any(character.isdigit() for character in line) or any(marker in line for marker in (":", "(", ")", "/")):
         return False
-    tokens = line.replace("∗", "").replace("†", "").split()
+    tokens = _strip_author_symbols(line).split()
     if not 2 <= len(tokens) <= 5:
         return False
     uppercase_count = sum(character.isupper() for character in line)
@@ -366,6 +428,8 @@ def _looks_author_continuation(line: str) -> bool:
 
 
 def _looks_title_continuation(line: str, title_parts: list[str]) -> bool:
+    if _looks_author_line(line):
+        return False
     previous = title_parts[-1].strip()
     if previous.endswith(("-", ":")):
         return True
@@ -470,10 +534,14 @@ def _title_from_filename(pdf_path: Path) -> str:
 
 def _strip_author_tail(line: str) -> str:
     if ":" in line:
-        line = re.sub(r"\s+[A-Z][A-Za-z.-]+\s+[A-Z][A-Za-z.-]+[0-9♠‡*†,].*$", "", line)
-    line = re.sub(r"\s+[A-Z][A-Za-z.-]+(?:\s+[A-Z]\.)?\s+[A-Z][A-Za-z.-]+[0-9♠‡*†,].*$", "", line)
+        line = re.sub(r"\s+[A-Z][A-Za-z.-]+\s+[A-Z][A-Za-z.-]+[0-9♠♣♡♢‡*†,].*$", "", line)
+    line = re.sub(r"\s+[A-Z][A-Za-z.-]+(?:\s+[A-Z]\.)?\s+[A-Z][A-Za-z.-]+[0-9♠♣♡♢‡*†,].*$", "", line)
     line = re.sub(r"\s+[A-Z]\.\s+[A-Z][A-Za-z.-]+,\s+[A-Z].*$", "", line)
     return line.strip(" ,")
+
+
+def _strip_author_symbols(line: str) -> str:
+    return re.sub(r"[∗†λ§∓♠♣♡♢‡*]", "", line)
 
 
 def _maybe_publish(

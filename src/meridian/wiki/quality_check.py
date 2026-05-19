@@ -176,7 +176,14 @@ def _retrieval_taxonomy_boundary_score(frontmatter: dict[str, Any], method_recor
         method_component_leaks = [item for item in method_component_leaks if item != "source-quality triage"]
     if method_component_leaks:
         findings.append(f"methods_contain_specific_components:{','.join(method_component_leaks[:5])}")
-    title_topic_leaks = sorted(topic_set & paper_specific_aliases)
+    reusable_title_topics = {
+        "computer architecture",
+        "performance evaluation",
+        "clustering theory",
+        "transformer architecture",
+        "reward modeling",
+    }
+    title_topic_leaks = sorted((topic_set & paper_specific_aliases) - reusable_title_topics)
     if title_topic_leaks:
         findings.append(f"topics_contain_title_or_alias:{','.join(title_topic_leaks[:5])}")
     generic_topics = sorted(topic for topic in topic_set if topic in {"error", "errors", "outliers", "design", "models", "methods", "language", "existing", "performance"})
@@ -376,7 +383,14 @@ def _evidence_selectivity_score(sections: dict[str, str], claims: list[dict[str,
     if broad_claims:
         findings.append(f"broad_or_noisy_claims:{','.join(str(item) for item in broad_claims[:5])}")
     has_takeaway = "Evidence takeaways:" in evidence_map and "not extracted deeply enough" not in evidence_map
-    has_specific_evidence_type = bool(re.search(r"\b(table|figure|ablation|latency|perplexity|accuracy|speedup|baseline|W\d+A\d+|INT\d+)\b", evidence_map, re.IGNORECASE))
+    has_specific_evidence_type = bool(
+        re.search(
+            r"\b(table|figure|ablation|latency|perplexity|accuracy|speedup|baseline|benchmark|dataset|"
+            r"experiment|theorem|objective|section|result|W\d+A\d+|INT\d+)\b",
+            evidence_map,
+            re.IGNORECASE,
+        )
+    )
     score = 1 + sum([has_takeaway, has_specific_evidence_type, not broad_claims, len(claims) >= 2])
     return _dimension("evidence_selectivity", score, "evidence_linking", "Evidence is selective, concrete, and not just abstract claim prose.", findings)
 
@@ -398,7 +412,7 @@ def _implementation_actionability_score(sections: dict[str, str]) -> dict[str, A
     hooks = sections.get("Implementation Hooks", "")
     action_verbs = len(
         re.findall(
-            r"\b(implement|track|ablate|compare|verify|record|test|inspect|separate|cache|add|use|log|profile|sweep|store|measure)\b",
+            r"\b(implement|track|ablate|compare|verify|record|test|inspect|separate|cache|add|use|log|profile|sweep|store|measure|evaluate|localize|preserve|recreate|validate)\b",
             hooks,
             re.IGNORECASE,
         )
@@ -540,7 +554,7 @@ def _retrieval_scenarios(
             },
             {
                 "id": "avoid_false_wiki_memory",
-                "query": "Before citing or synthesizing a topic, retrieve sources whose paper claims should not be trusted because extraction was insufficient.",
+                "query": "Before citing or synthesizing a topic, retrieve source-quality holds that need OCR, page-image inspection, or replacement before scientific claims enter the wiki.",
                 "required_retrieval_keys": _dedupe(["source text extraction", "paper source quality", "insufficient"] + topics[:4]),
                 "expected_answer_shape": "audit packet that separates source failure from paper content",
             },
@@ -585,7 +599,7 @@ def _retrieval_scenarios(
             "id": "failure_mode_and_scope_review",
             "query": (
                 f"Before citing or building on {_scenario_domain_object(method_families, topics)}, retrieve pages that expose limitations and uncertainty: "
-                f"{_scenario_scope_examples(method_families, topics, settings)}, and claims that should not be generalized."
+                f"{_scenario_scope_examples(method_families, topics, settings)}, plus the scope conditions that bound generalization."
             ),
             "required_retrieval_keys": _dedupe(topics[:4] + settings[:3] + domain_keys["scope"] + ["limitations", "uncertainty"]),
             "expected_answer_shape": "scope and caveat checklist that separates paper evidence from wiki synthesis",
@@ -998,7 +1012,12 @@ def _is_broad_or_noisy_claim(text: str) -> bool:
             "outperforms",
         )
     )
-    if broad and not re.search(r"\b(table|figure|w\d|a\d|int\d|\d+(?:\.\d+)?\s*[×x%])\b", lowered):
+    anchor_pattern = (
+        r"\b(table|figure|section\s+\d+(?:\.\d+)*|baseline|benchmark|perplexity|accuracy|"
+        r"human evaluation|humaneval|mt-bench|alpacaeval|gptq|awq|ppo|sft|w\d|a\d|int\d)\b"
+    )
+    numeric_anchor = r"\d+(?:\.\d+)?\s*(?:[×x%]|points?|absolute)"
+    if broad and not (re.search(anchor_pattern, lowered) or re.search(numeric_anchor, lowered)):
         return True
     return bool(re.search(r"\bin-\s+ference|consumer-\s+grade|per-\s+formance|wikitext2\(", lowered))
 
