@@ -504,3 +504,28 @@ Sample output:
 ### Convergence Note
 
 The issue was common in two places: generated canonical examples and internal evaluator scenarios. This round makes "standalone before retrieval" a first-class invariant across generation, quality evaluation, structural evaluation, and rubric guidance.
+
+## Developer Round 8
+
+### User Calibration Feedback
+
+The user pointed out that the body `Source` block in `paper.md` duplicated frontmatter source metadata.
+
+### Changes
+
+- Removed the body `Source` block from `paper.md`; source identity stays in frontmatter, `run.json`, source registry, and `review.md`.
+- Updated the paper-ingest skill to treat body source metadata blocks as duplication.
+- Added quality and structural findings for `Source`, `PDF`, `Source ID`, `Source registry`, `Page count`, `Metadata title`, `Metadata authors`, or `Model strategy` leaking into the body retrieval section.
+- Added tests asserting generated `paper.md` no longer includes the repeated source metadata block.
+
+### Validation
+
+- Unit tests: 30 passed.
+- Compile check: passed.
+- CodeQuant real ingest: generated successfully at `/private/tmp/meridian-codequant-after13/paper.md`.
+- CodeQuant quality self-check: pass, weighted score 4.659.
+- CodeQuant structural self-check: pass, weighted score 4.740.
+
+### Convergence Note
+
+`paper.md` now keeps source management machine-readable instead of duplicating it in the human retrieval body.

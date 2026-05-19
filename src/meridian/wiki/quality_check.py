@@ -215,6 +215,8 @@ def _frontmatter_body_nonduplication_score(frontmatter: dict[str, Any], sections
         findings.append("legacy_retrieval_notes_section_present")
     if not retrieval_intent:
         findings.append("missing_when_to_retrieve_section")
+    if re.search(r"(?m)^Source:\s*$|^- (PDF|Source ID|Source registry|Page count|Metadata title|Metadata authors|Model strategy):", retrieval_intent):
+        findings.append("body_source_metadata_block_repeats_frontmatter")
     if re.search(r"^- (Methods|Topics|Settings|Datasets|Metrics):", retrieval_intent, flags=re.MULTILINE):
         findings.append("when_to_retrieve_contains_frontmatter_field_copy")
     frontmatter_values = {
@@ -227,7 +229,12 @@ def _frontmatter_body_nonduplication_score(frontmatter: dict[str, Any], sections
     if len(copied_values) >= 4:
         findings.append(f"when_to_retrieve_repeats_frontmatter_values:{','.join(copied_values[:6])}")
     score = 5 - 0.8 * len(findings)
-    if legacy_anchors or legacy_notes or "when_to_retrieve_contains_frontmatter_field_copy" in findings:
+    if (
+        legacy_anchors
+        or legacy_notes
+        or "when_to_retrieve_contains_frontmatter_field_copy" in findings
+        or "body_source_metadata_block_repeats_frontmatter" in findings
+    ):
         score = min(score, 3.0)
     return _dimension(
         "frontmatter_body_nonduplication",

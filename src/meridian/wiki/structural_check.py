@@ -316,6 +316,8 @@ def _frontmatter_body_source_score(frontmatter: dict[str, Any], sections: dict[s
         findings.append("legacy_retrieval_notes_section_present")
     if not retrieval_intent:
         findings.append("missing_when_to_retrieve")
+    if re.search(r"(?m)^Source:\s*$|^- (PDF|Source ID|Source registry|Page count|Metadata title|Metadata authors|Model strategy):", retrieval_intent):
+        findings.append("body_source_metadata_block_present")
     if re.search(r"^- (Methods|Topics|Settings|Datasets|Metrics):", retrieval_intent, flags=re.MULTILINE):
         findings.append("body_copies_frontmatter_field_lists")
     if "canonical retrieval fits:" not in lower:
@@ -338,6 +340,7 @@ def _frontmatter_body_source_score(frontmatter: dict[str, Any], sections: dict[s
     if (
         "legacy_retrieval_anchors_section_present" in findings
         or "legacy_retrieval_notes_section_present" in findings
+        or "body_source_metadata_block_present" in findings
         or "body_copies_frontmatter_field_lists" in findings
         or "query_assumes_already_retrieved_page" in findings
     ):

@@ -222,6 +222,9 @@ class CliTests(unittest.TestCase):
             self.assertIn("Scope notes:", paper)
             self.assertIn("## Mechanism", paper)
             self.assertIn("## Candidate Records", paper)
+            self.assertNotIn("\nSource:\n", paper)
+            self.assertNotIn("- Metadata title:", paper)
+            self.assertNotIn("- Model strategy:", paper)
             self.assertNotIn("## Extracted Contribution Sentences", paper)
             self.assertNotIn("Agent task:", paper)
 
@@ -277,6 +280,9 @@ class CliTests(unittest.TestCase):
             self.assertIn("Weak fit:", paper)
             self.assertNotIn("## Retrieval Notes", paper)
             self.assertNotIn("Do not use it when:", paper)
+            self.assertNotIn("\nSource:\n", paper)
+            self.assertNotIn("- Metadata title:", paper)
+            self.assertNotIn("- Model strategy:", paper)
             frontmatter = paper.split("---", 2)[1]
             methods_frontmatter = frontmatter.split("methods:", 1)[1].split("settings:", 1)[0]
             self.assertIn("post-training quantization", methods_frontmatter)

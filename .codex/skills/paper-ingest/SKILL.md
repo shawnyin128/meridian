@@ -79,6 +79,7 @@ Avoid:
 - prose that says "read it as a mechanism paper" without giving the mechanism
 - a `Retrieval Anchors` section that copies `methods`, `topics`, `settings`, `datasets`, or `metrics` from frontmatter
 - a `Retrieval Notes` section that only says to consult frontmatter or repeats metadata without semantic routing value
+- a body `Source` block in `paper.md` that repeats `source_pdf`, `source_id`, `source_registry`, `page_count`, or `model_strategy` already present in frontmatter/run artifacts
 
 ## Retrieval Metadata
 

@@ -222,8 +222,6 @@ def render_paper_draft(
     methods = _render_method_index(model.method_records)
     mechanism_facts = _render_mechanism_facts(model.mechanism_facts)
     open_questions = "\n".join(f"- {question}" for question in model.open_questions)
-    source_block = _render_source_block(source_record)
-    metadata_authors = _trusted_metadata_authors(extraction)
     retrieval_intent = _render_retrieval_intent(model, title)
     visual_pointers = _render_visual_pointers(extraction.pages)
     record_pointers = _render_record_pointers()
@@ -241,15 +239,6 @@ def render_paper_draft(
 ## When To Retrieve This Paper
 
 {retrieval_intent}
-
-Source:
-
-- PDF: `{pdf_path}`
-{source_block}
-- Page count: {extraction.page_count}
-- Metadata title: {extraction.metadata.get("title") or "not provided"}
-- Metadata authors: {metadata_authors}
-- Model strategy: `{model.strategy}`
 
 ## Paper Positioning
 
