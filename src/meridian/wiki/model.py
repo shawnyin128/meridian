@@ -13,6 +13,7 @@ class PaperModel:
     retrieval_summary: str
     one_line_takeaway: str
     mechanism_overview: list[str]
+    mechanism_facts: list[dict[str, Any]]
     implementation_notes: list[str]
     evidence_takeaways: list[str]
     limitations: list[str]
@@ -108,6 +109,7 @@ def build_paper_model(title: str, extraction: PdfExtraction) -> PaperModel:
         retrieval_summary=summary,
         one_line_takeaway=_one_line_takeaway(title, method_records, datasets, metrics),
         mechanism_overview=_mechanism_overview(method_records),
+        mechanism_facts=_mechanism_facts(extraction.pages),
         implementation_notes=_implementation_notes(method_records, extraction.pages),
         evidence_takeaways=_evidence_takeaways(extraction.pages),
         limitations=_limitations(extraction.pages),
@@ -700,6 +702,133 @@ def _mechanism_overview(method_records: list[dict[str, Any]]) -> list[str]:
         io = f" Inputs: {inputs}. Outputs: {outputs}." if inputs or outputs else ""
         bullets.append(f"{record['name']}: {record['summary']}{io}")
     return bullets or ["No reliable method mechanism was extracted; inspect the methodology pages before using this paper."]
+
+
+def _mechanism_facts(pages: list[PageExtraction]) -> list[dict[str, Any]]:
+    facts: list[dict[str, Any]] = []
+    text_by_page = {page.page_number: page.text for page in pages}
+    full_text = "\n".join(text_by_page.values())
+
+    if "Cayley transform" in full_text or "arg min\nR" in full_text:
+        facts.append(
+            _mechanism_fact(
+                fact_type="equation",
+                component="AOS",
+                summary=(
+                    "AOS is not just a rotation label: it uses a differentiable orthogonal "
+                    "parameterization via Cayley transform and optimizes rotated activation "
+                    "quantization error, roughly Eq. 3: min_R ||XR - Q(XR)||^2."
+                ),
+                page=_find_page(pages, "Cayley transform", "arg min\nR"),
+            )
+        )
+    if "router logits" in full_text or "DKL" in full_text:
+        facts.append(
+            _mechanism_fact(
+                fact_type="equation",
+                component="ACCF",
+                summary=(
+                    "ACCF has separate objectives for attention weights and MoE FFN weights; "
+                    "the MoE objective adds router KL divergence so clustering does not silently "
+                    "change token-expert assignments."
+                ),
+                page=_find_page(pages, "router logits", "DKL", "Equation 5"),
+            )
+        )
+    if "assignment matrix A" in full_text and "centroid matrix C" in full_text:
+        facts.append(
+            _mechanism_fact(
+                fact_type="algorithm_step",
+                component="ACCF",
+                summary=(
+                    "The ACCF update is alternating rather than a single clustering call: fix "
+                    "assignments to optimize centroids, then update assignments against the output "
+                    "objective instead of plain nearest-neighbor K-means."
+                ),
+                page=_find_page(pages, "assignment matrix A", "centroid matrix C"),
+            )
+        )
+    if "Algorithm 1: POG Algorithm" in full_text:
+        facts.append(
+            _mechanism_fact(
+                fact_type="algorithm",
+                component="POG",
+                summary=(
+                    "POG Algorithm 1 builds a column permutation by sorting columns by mean "
+                    "absolute value, partitioning into small subgroups, then pairing high-variance "
+                    "subgroups with low-variance subgroups before fusing the permutation into weights."
+                ),
+                page=_find_page(pages, "Algorithm 1: POG Algorithm"),
+            )
+        )
+    if "A4W4" in full_text and "16 centroids" in full_text:
+        facts.append(
+            _mechanism_fact(
+                fact_type="setting_constraint",
+                component="Quantization setting",
+                summary=(
+                    "CodeQuant A4W4 should not be read as ordinary 4-bit weight quantization: "
+                    "activations are 4-bit while weights are represented by 16 learned centroids."
+                ),
+                page=_find_page(pages, "A4W4", "16 centroids"),
+            )
+        )
+    if "Accel-Sim" in full_text:
+        facts.append(
+            _mechanism_fact(
+                fact_type="hardware_evidence",
+                component="GPU LUT evidence",
+                summary=(
+                    "GPU speed evidence is simulation-based with Accel-Sim and modified tensor-core "
+                    "configuration; do not merge it with CPU runtime evidence."
+                ),
+                page=_find_page(pages, "Accel-Sim"),
+            )
+        )
+    if "T-MAC" in full_text and "Llama.cpp" in full_text:
+        facts.append(
+            _mechanism_fact(
+                fact_type="hardware_evidence",
+                component="CPU LUT evidence",
+                summary=(
+                    "CPU speed evidence uses an A8W4 T-MAC kernel inside Llama.cpp on Intel CPU; "
+                    "the 4.15x headline belongs to this systems setting, not to algorithmic accuracy."
+                ),
+                page=_find_page_with_all(pages, "T-MAC", "Llama.cpp", "4.15"),
+            )
+        )
+    return facts
+
+
+def _mechanism_fact(fact_type: str, component: str, summary: str, page: PageExtraction | None) -> dict[str, Any]:
+    return {
+        "fact_type": fact_type,
+        "component": component,
+        "summary": summary,
+        "provenance": (
+            [{"page": page.page_number, "section": page.section_hint}]
+            if page is not None
+            else []
+        ),
+    }
+
+
+def _find_page(pages: list[PageExtraction], *needles: str) -> PageExtraction | None:
+    for needle in needles:
+        lowered = needle.lower()
+        for page in pages:
+            if lowered in page.text.lower():
+                return page
+    return None
+
+
+def _find_page_with_all(pages: list[PageExtraction], *needles: str) -> PageExtraction | None:
+    lowered_needles = [needle.lower() for needle in needles]
+    for page in pages:
+        lowered_text = page.text.lower()
+        if all(needle in lowered_text for needle in lowered_needles):
+            return page
+    return _find_page(pages, *needles)
 
 
 def _implementation_notes(method_records: list[dict[str, Any]], pages: list[PageExtraction]) -> list[str]:

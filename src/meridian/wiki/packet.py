@@ -66,6 +66,7 @@ def render_review_packet(
     contributions = _render_contributions(model.key_contributions)
     claims = _render_claim_index(model.claim_records)
     methods = _render_method_index(model.method_records)
+    mechanism_facts = _render_mechanism_facts(model.mechanism_facts)
     evidence = _render_evidence_index(model.evidence_records)
     open_questions = "\n".join(f"- {question}" for question in model.open_questions)
     datasets = ", ".join(model.datasets) if model.datasets else "No known dataset names were detected."
@@ -103,6 +104,10 @@ The paper should be understandable from the method objects below without rereadi
 Primary method candidates:
 
 {methods}
+
+Mechanism details to verify:
+
+{mechanism_facts}
 
 ## Assumptions
 
@@ -212,6 +217,7 @@ def render_paper_draft(
     contributions = _render_contributions(model.key_contributions)
     claims = _render_claim_index(model.claim_records)
     methods = _render_method_index(model.method_records)
+    mechanism_facts = _render_mechanism_facts(model.mechanism_facts)
     open_questions = "\n".join(f"- {question}" for question in model.open_questions)
     source_block = _render_source_block(source_record)
 
@@ -240,6 +246,12 @@ def render_paper_draft(
 ## Mechanism
 
 {_render_list(model.mechanism_overview)}
+
+## Mechanism Details To Verify
+
+These are source-grounded details that prevent `paper.md` from becoming a high-level component list.
+
+{mechanism_facts}
 
 ## Implementation Notes
 
@@ -354,6 +366,19 @@ def _render_method_index(records: list[dict[str, Any]]) -> str:
             io = f" Inputs: {inputs or 'unknown'}. Outputs: {outputs or 'unknown'}."
         lines.append(f"- `{record['id']}`: {record['name']} - {record['summary']}{io} {provenance}".rstrip())
     return "\n".join(lines) if lines else "- No method candidates extracted."
+
+
+def _render_mechanism_facts(records: list[dict[str, Any]]) -> str:
+    if not records:
+        return "- No equation, algorithm, setting, or hardware-evidence details were extracted."
+    lines = []
+    for record in records:
+        provenance = _format_provenance(record.get("provenance", []))
+        fact_type = record.get("fact_type", "mechanism")
+        component = record.get("component", "unknown")
+        summary = record.get("summary", "")
+        lines.append(f"- `{fact_type}` / {component}: {summary} {provenance}".rstrip())
+    return "\n".join(lines)
 
 
 def _render_evidence_index(records: list[dict[str, Any]]) -> str:

@@ -16,6 +16,7 @@ from meridian.wiki.flow import WikiFlowResult, run_wiki_flow
 from meridian.wiki.ingest import IngestResult, run_ingest
 from meridian.wiki.judge import build_judge_packet
 from meridian.wiki.converge import WikiConvergenceResult, converge_wiki_run, record_judge_result
+from meridian.wiki.reader_check import build_reader_check_packet
 from meridian.wiki.review import append_review_record
 
 
@@ -106,6 +107,7 @@ def eval_cases(
                     "flow_manifest": str(flow_result.flow_path),
                     "run_manifest": str(flow_result.run_path),
                     "judge_packet": str(flow_result.judge_packet_path),
+                    "reader_check_packet": str(flow_result.reader_check_packet_path),
                     "case_snapshot": str(case_json_path),
                 }
                 canonical = dict(run_payload.get("canonical_artifacts") or {})
@@ -184,6 +186,10 @@ def create_judge_packet(
         out_path=out_path,
         case_path=case_path,
     )
+
+
+def create_reader_check_packet(run_manifest: Path, out_path: Path) -> Path:
+    return build_reader_check_packet(run_manifest=run_manifest, out_path=out_path)
 
 
 def run_flow(

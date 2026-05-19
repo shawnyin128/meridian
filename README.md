@@ -46,8 +46,12 @@ meridian wiki flow /path/to/paper.pdf \
 ```
 
 This runs ingest, publishes a canonical draft when allowed, builds a bounded
-LLM-as-Judge packet, and writes `flow.json`. After a judge produces JSON, record
-and converge it:
+LLM-as-Judge packet, builds a reader self-check packet, and writes `flow.json`.
+The reader self-check is the mechanism-level guardrail: one reader explains the
+paper from `paper.md` only, another explains it from source excerpts, and the
+reconciliation must attribute mismatches to generation-mechanism buckets.
+
+After a judge produces JSON, record and converge it:
 
 ```bash
 meridian wiki judge-record wiki/.drafts/ingests/<paper-slug>/run.json judge-result.json
@@ -60,6 +64,13 @@ To prepare an LLM-as-Judge input packet:
 meridian wiki judge-pack wiki/.drafts/ingests/<paper-slug>/run.json \
   --rubric eval/rubrics/paper_wiki_quality_v0.md \
   --out wiki/.drafts/ingests/<paper-slug>/judge-packet.md
+```
+
+To prepare only the two-reader self-check packet:
+
+```bash
+meridian wiki reader-check wiki/.drafts/ingests/<paper-slug>/run.json \
+  --out wiki/.drafts/ingests/<paper-slug>/reader-check.md
 ```
 
 To run a JSONL evaluation set through the full flow and prepare one judge packet

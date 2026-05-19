@@ -8,6 +8,7 @@ from pathlib import Path
 from meridian.wiki.converge import WikiConvergenceResult, converge_wiki_run, record_judge_result
 from meridian.wiki.ingest import IngestResult, run_ingest
 from meridian.wiki.judge import build_judge_packet
+from meridian.wiki.reader_check import build_reader_check_packet
 
 
 @dataclass(frozen=True)
@@ -15,6 +16,7 @@ class WikiFlowResult:
     flow_path: Path
     run_path: Path
     judge_packet_path: Path
+    reader_check_packet_path: Path
     convergence_path: Path | None
     status: str
 
@@ -45,6 +47,10 @@ def run_wiki_flow(
         out_path=out_dir / "judge-packet.md",
         case_path=case_path,
     )
+    reader_check_packet_path = build_reader_check_packet(
+        run_manifest=ingest_result.run_path,
+        out_path=out_dir / "reader-check.md",
+    )
 
     convergence: WikiConvergenceResult | None = None
     status = "awaiting_judge"
@@ -66,6 +72,7 @@ def run_wiki_flow(
         "rubric": str(rubric_path),
         "run_manifest": str(ingest_result.run_path),
         "judge_packet": str(judge_packet_path),
+        "reader_check_packet": str(reader_check_packet_path),
         "convergence": str(convergence.convergence_path) if convergence else None,
         "next_action": _next_action(status),
     }
@@ -74,6 +81,7 @@ def run_wiki_flow(
         flow_path=flow_path,
         run_path=ingest_result.run_path,
         judge_packet_path=judge_packet_path,
+        reader_check_packet_path=reader_check_packet_path,
         convergence_path=convergence.convergence_path if convergence else None,
         status=status,
     )
@@ -81,7 +89,10 @@ def run_wiki_flow(
 
 def _next_action(status: str) -> str:
     if status == "awaiting_judge":
-        return "Run an LLM-as-Judge on judge-packet.md, then record the result with meridian wiki judge-record."
+        return (
+            "Run a reader self-check on reader-check.md, run an LLM-as-Judge on judge-packet.md, "
+            "then record the judge result with meridian wiki judge-record."
+        )
     if status == "converged":
         return "No mandatory human review. Sample or inspect only if this paper is high impact."
     if status == "needs_refine":

@@ -9,6 +9,7 @@ from meridian.wiki.commands import (
     converge_run,
     converge_eval,
     create_judge_packet,
+    create_reader_check_packet,
     eval_cases,
     ingest_pdf,
     record_judge,
@@ -252,6 +253,18 @@ def build_parser() -> argparse.ArgumentParser:
     judge_record.add_argument("judge_result", type=Path, help="Path to judge result JSON.")
     judge_record.add_argument("--out", type=Path, default=None, help="Optional stored result path.")
 
+    reader_check = wiki_subparsers.add_parser(
+        "reader-check",
+        help="Build a two-reader self-check packet for paper.md understanding quality.",
+    )
+    reader_check.add_argument("run_manifest", type=Path, help="Path to run.json.")
+    reader_check.add_argument(
+        "--out",
+        type=Path,
+        required=True,
+        help="Output markdown packet for paper.md-only vs source-grounded reader comparison.",
+    )
+
     converge = wiki_subparsers.add_parser(
         "converge",
         help="Converge a wiki ingest run from quality gate and recorded judge result.",
@@ -303,6 +316,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Wrote flow manifest: {result.flow_path}")
             print(f"Wrote run manifest: {result.run_path}")
             print(f"Wrote judge packet: {result.judge_packet_path}")
+            print(f"Wrote reader check packet: {result.reader_check_packet_path}")
             if result.convergence_path is not None:
                 print(f"Wrote convergence record: {result.convergence_path}")
             print(f"Flow status: {result.status}")
@@ -376,6 +390,14 @@ def main(argv: list[str] | None = None) -> int:
                 out_path=args.out,
             )
             print(f"Recorded judge result: {record_path}")
+            return 0
+
+        if args.product == "wiki" and args.command == "reader-check":
+            packet = create_reader_check_packet(
+                run_manifest=args.run_manifest,
+                out_path=args.out,
+            )
+            print(f"Wrote reader check packet: {packet}")
             return 0
 
         if args.product == "wiki" and args.command == "converge":

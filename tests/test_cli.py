@@ -74,14 +74,19 @@ class CodeQuantLikeDocument:
             ),
             FakePage(
                 "Methodology\nActivation-Oriented Outlier Smoothing (AOS) applies a rotation matrix R to activations X. "
+                "The Cayley transform keeps R orthogonal and Eq. 3 minimizes ||XR - Q(XR)||^2. "
                 "Adaptive Weight Clustering and Centroid Finetuning (ACCF) optimizes centroids C and assignments A. "
+                "The ACCF objective adds router logits KL divergence for MoE FFN weights. "
                 "Permutation-Invariant Outlier Grouping (POG) reorders columns for block-wise clustering. "
                 "The LUT-based system implementation uses centroids and assignments for inference.",
                 images=0,
                 drawings=2,
             ),
             FakePage(
-                "Experiments\nTable 10 shows POG helps block-wise clustering. Table 11 shows KL penalty reduces router change. "
+                "Experiments\nAlgorithm 1: POG Algorithm sorts columns by mean absolute value and pairs high-variance subgroups with low-variance subgroups. "
+                "A4W4 uses 4-bit activations and 16 centroids for weights. "
+                "Table 10 shows POG helps block-wise clustering. Table 11 shows KL penalty reduces router change. "
+                "Accel-Sim is used for GPU evidence. T-MAC in Llama.cpp is used for CPU evidence. "
                 "On CPU, CodeQuant achieves up to 4.15x speedup.",
                 images=0,
                 drawings=20,
@@ -136,6 +141,7 @@ class CliTests(unittest.TestCase):
             self.assertEqual(run["quality_gate"]["decision"], "warn")
             self.assertEqual(run["paper_model"]["strategy"], "heuristic_text_v1")
             self.assertEqual(run["paper_model"]["evidence_candidates"], 3)
+            self.assertIn("mechanism_fact_candidates", run["paper_model"])
             self.assertEqual(run["source_management"]["mode"], "managed")
             self.assertTrue((root / "wiki/raw/sources/sources.jsonl").exists())
 
@@ -197,6 +203,12 @@ class CliTests(unittest.TestCase):
             self.assertIn("First it learns rotations", paper)
             self.assertIn("POG is the conditional piece", paper)
             self.assertIn("makes the clustered representation executable", paper)
+            self.assertIn("## Mechanism Details To Verify", paper)
+            self.assertIn("Eq. 3", paper)
+            self.assertIn("Algorithm 1", paper)
+            self.assertIn("16 learned centroids", paper)
+            self.assertIn("Accel-Sim", paper)
+            self.assertIn("T-MAC", paper)
             self.assertIn("## Implementation Notes", paper)
             self.assertIn("Router KL evidence should be tracked separately", paper)
             self.assertNotIn("The core mechanism is CodeQuant:", paper)
@@ -316,6 +328,7 @@ class CliTests(unittest.TestCase):
             self.assertEqual(result["mode"], "flow")
             self.assertTrue(Path(result["flow_manifest"]).exists())
             self.assertTrue(Path(result["judge_packet"]).exists())
+            self.assertTrue(Path(result["reader_check_packet"]).exists())
             self.assertTrue(Path(result["case_snapshot"]).exists())
             self.assertIn("canonical_artifacts", result)
 
@@ -476,7 +489,35 @@ class CliTests(unittest.TestCase):
             flow = json.loads((out / "flow.json").read_text(encoding="utf-8"))
             self.assertEqual(flow["status"], "awaiting_judge")
             self.assertTrue((out / "judge-packet.md").exists())
+            self.assertTrue((out / "reader-check.md").exists())
+            self.assertEqual(flow["reader_check_packet"], str(out / "reader-check.md"))
+            reader_check = (out / "reader-check.md").read_text(encoding="utf-8")
+            self.assertIn("## Reader A Task: paper.md Only", reader_check)
+            self.assertIn("## Reader B Task: source-grounded", reader_check)
+            self.assertIn("## Reconciliation Task", reader_check)
+            self.assertIn("generation_bucket", reader_check)
             self.assertTrue((wiki_root / "papers/Fake-Research-Paper.md").exists())
+
+    def test_reader_check_command_builds_two_reader_packet(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pdf = root / "paper.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            out = root / "wiki/.drafts/ingests/fake-paper"
+            packet = root / "reader-check.md"
+
+            self.assertEqual(main(["wiki", "ingest", str(pdf), "--out", str(out)]), 0)
+            self.assertEqual(
+                main(["wiki", "reader-check", str(out / "run.json"), "--out", str(packet)]),
+                0,
+            )
+
+            text = packet.read_text(encoding="utf-8")
+            self.assertIn("# Paper Wiki Reader Check Packet", text)
+            self.assertIn("Reader A using only the `paper.md`", text)
+            self.assertIn("Reader B using the source-grounded excerpt", text)
+            self.assertIn("mechanism_refine_plan", text)
+            self.assertIn("Fake Research Paper", text)
 
     def test_judge_record_and_converge_update_run_and_canonical_page(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

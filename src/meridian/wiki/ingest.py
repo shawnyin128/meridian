@@ -136,6 +136,7 @@ def run_ingest(
             "strategy": model.strategy,
             "claim_candidates": len(model.claim_records),
             "method_candidates": len(model.method_records),
+            "mechanism_fact_candidates": len(model.mechanism_facts),
             "evidence_candidates": len(model.evidence_records),
             "topics": model.topics,
             "datasets": model.datasets,
