@@ -16,6 +16,7 @@ from meridian.wiki.commands import (
     record_judge,
     record_review,
     run_flow,
+    structural_check_run,
     summarize_eval,
 )
 
@@ -278,6 +279,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional output JSON path. Defaults to quality-self-check.json beside run.json.",
     )
 
+    structural_check = wiki_subparsers.add_parser(
+        "structural-check",
+        help="Run the scored structural self-check agent against an ingest run.",
+    )
+    structural_check.add_argument("run_manifest", type=Path, help="Path to run.json.")
+    structural_check.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="Optional output JSON path. Defaults to structural-self-check.json beside run.json.",
+    )
+
     converge = wiki_subparsers.add_parser(
         "converge",
         help="Converge a wiki ingest run from quality gate and recorded judge result.",
@@ -331,6 +344,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Wrote judge packet: {result.judge_packet_path}")
             print(f"Wrote reader check packet: {result.reader_check_packet_path}")
             print(f"Wrote quality self-check: {result.quality_self_check_path}")
+            print(f"Wrote structural self-check: {result.structural_self_check_path}")
             if result.convergence_path is not None:
                 print(f"Wrote convergence record: {result.convergence_path}")
             print(f"Flow status: {result.status}")
@@ -418,6 +432,13 @@ def main(argv: list[str] | None = None) -> int:
             result = quality_check_run(run_manifest=args.run_manifest, out_path=args.out)
             print(f"Wrote quality self-check: {result.path}")
             print(f"Quality decision: {result.decision}")
+            print(f"Weighted score: {result.weighted_score:.3f}")
+            return 0
+
+        if args.product == "wiki" and args.command == "structural-check":
+            result = structural_check_run(run_manifest=args.run_manifest, out_path=args.out)
+            print(f"Wrote structural self-check: {result.path}")
+            print(f"Structural decision: {result.decision}")
             print(f"Weighted score: {result.weighted_score:.3f}")
             return 0
 

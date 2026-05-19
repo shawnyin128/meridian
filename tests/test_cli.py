@@ -385,6 +385,7 @@ class CliTests(unittest.TestCase):
             self.assertTrue(Path(result["judge_packet"]).exists())
             self.assertTrue(Path(result["reader_check_packet"]).exists())
             self.assertTrue(Path(result["quality_self_check"]).exists())
+            self.assertTrue(Path(result["structural_self_check"]).exists())
             self.assertTrue(Path(result["case_snapshot"]).exists())
             self.assertIn("canonical_artifacts", result)
 
@@ -547,12 +548,22 @@ class CliTests(unittest.TestCase):
             self.assertTrue((out / "judge-packet.md").exists())
             self.assertTrue((out / "reader-check.md").exists())
             self.assertTrue((out / "quality-self-check.json").exists())
+            self.assertTrue((out / "structural-self-check.json").exists())
             quality = json.loads((out / "quality-self-check.json").read_text(encoding="utf-8"))
             self.assertEqual(quality["schema_version"], "paper_wiki_quality_self_check.v0")
             self.assertIn("retrieval_scenarios", quality)
             self.assertIn("dimension_scores", quality)
+            structural = json.loads((out / "structural-self-check.json").read_text(encoding="utf-8"))
+            self.assertEqual(structural["schema_version"], "paper_wiki_structural_self_check.v0")
+            self.assertEqual(structural["agent_role"], "structural")
+            self.assertIn("managed_agent_architecture", structural)
             self.assertEqual(flow["reader_check_packet"], str(out / "reader-check.md"))
             self.assertEqual(flow["quality_self_check"], str(out / "quality-self-check.json"))
+            self.assertEqual(flow["structural_self_check"], str(out / "structural-self-check.json"))
+            self.assertEqual(
+                set(flow["managed_self_check_agents"]),
+                {"understanding", "quality", "structural"},
+            )
             reader_check = (out / "reader-check.md").read_text(encoding="utf-8")
             self.assertIn("Schema version: `paper_wiki_reader_check.v2`", reader_check)
             self.assertIn("## Mandatory Checklist", reader_check)
@@ -620,6 +631,75 @@ class CliTests(unittest.TestCase):
             dimensions = {item["dimension"] for item in payload["dimension_scores"]}
             self.assertIn("retrieval_scenario_coverage", dimensions)
             self.assertIn("metadata_routing_integrity", dimensions)
+
+    def test_structural_check_command_scores_ingest_structure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pdf = root / "fake.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            out = root / "wiki/.drafts/ingests/fake-paper"
+            packet = root / "structural-self-check.json"
+
+            self.assertEqual(main(["wiki", "ingest", str(pdf), "--out", str(out)]), 0)
+            self.assertEqual(
+                main(["wiki", "structural-check", str(out / "run.json"), "--out", str(packet)]),
+                0,
+            )
+
+            payload = json.loads(packet.read_text(encoding="utf-8"))
+            self.assertEqual(payload["schema_version"], "paper_wiki_structural_self_check.v0")
+            self.assertIn(payload["decision"], {"pass", "needs_refine", "fail"})
+            self.assertIn("weighted_score", payload)
+            dimensions = {item["dimension"] for item in payload["dimension_scores"]}
+            self.assertIn("run_manifest_contract", dimensions)
+            self.assertIn("frontmatter_schema", dimensions)
+            self.assertIn("candidate_jsonl_schema", dimensions)
+            self.assertIn("source_management", dimensions)
+
+    def test_structural_check_fails_missing_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pdf = root / "fake.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            out = root / "wiki/.drafts/ingests/fake-paper"
+            packet = root / "structural-self-check.json"
+
+            self.assertEqual(main(["wiki", "ingest", str(pdf), "--out", str(out)]), 0)
+            (out / "methods.jsonl").unlink()
+            self.assertEqual(
+                main(["wiki", "structural-check", str(out / "run.json"), "--out", str(packet)]),
+                0,
+            )
+
+            payload = json.loads(packet.read_text(encoding="utf-8"))
+            self.assertIn(payload["decision"], {"needs_refine", "fail"})
+            dimensions = {item["dimension"]: item for item in payload["dimension_scores"]}
+            self.assertLess(dimensions["artifact_existence"]["score"], 5)
+            self.assertLess(dimensions["candidate_jsonl_schema"]["score"], 3)
+
+    def test_structural_check_fails_missing_required_section(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pdf = root / "fake.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            out = root / "wiki/.drafts/ingests/fake-paper"
+            packet = root / "structural-self-check.json"
+
+            self.assertEqual(main(["wiki", "ingest", str(pdf), "--out", str(out)]), 0)
+            paper = out / "paper.md"
+            paper.write_text(
+                paper.read_text(encoding="utf-8").replace("## Mechanism\n", ""),
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                main(["wiki", "structural-check", str(out / "run.json"), "--out", str(packet)]),
+                0,
+            )
+
+            payload = json.loads(packet.read_text(encoding="utf-8"))
+            self.assertIn(payload["decision"], {"needs_refine", "fail"})
+            dimensions = {item["dimension"]: item for item in payload["dimension_scores"]}
+            self.assertLess(dimensions["section_schema"]["score"], 3)
 
     def test_judge_record_and_converge_update_run_and_canonical_page(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

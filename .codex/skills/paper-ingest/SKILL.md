@@ -91,7 +91,15 @@ Prefer semantic aliases such as method acronyms and title variants. Avoid decora
 
 ## Self-Check
 
-Use reader self-check as the convergence loop:
+Use three separately inspectable self-check roles as the convergence loop:
+
+- Understanding agent: uses `reader-check.md` to compare a `paper.md`-only teach-back with a source-grounded reading and attributes mismatches to skill/generation buckets.
+- Quality agent: uses `quality-self-check.json` to score human readability, information density, and retrieval coverage under complex downstream research scenarios.
+- Structural agent: uses `structural-self-check.json` to score structural completeness of run manifests, artifacts, frontmatter, sections, candidate records, provenance, extraction outputs, and source management.
+
+Keep these roles separate. Do not let structural pass/fail replace semantic understanding or quality evaluation, and do not bury schema completeness failures inside prose-quality findings.
+
+The understanding agent loop is:
 
 1. Reader A explains the paper from `paper.md` only.
 2. Reader B explains it from source excerpts.
@@ -112,4 +120,3 @@ The ingest workflow is converged for a calibration round when:
 - claims are not dominated by raw table rows or generic background
 - `paper.md` is concise and non-redundant
 - reader self-check would identify only paper-specific gaps, not repeated workflow failures
-
