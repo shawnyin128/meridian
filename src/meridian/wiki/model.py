@@ -153,6 +153,10 @@ def _paper_positioning(
 
 
 def _problem_focus(lowered_text: str) -> str:
+    if "massive activations in large language models" in lowered_text:
+        return "This is an empirical/mechanistic analysis paper about where massive activations occur in LLMs and what function they serve."
+    if "quantization error propagation" in lowered_text:
+        return "This is a layer-wise PTQ paper about accumulated quantization error across layers."
     if "mixture-of-experts" in lowered_text or "moe" in lowered_text:
         if "quantization" in lowered_text and "outlier" in lowered_text:
             return (
@@ -517,6 +521,8 @@ def _method_components(method_text: str, pages: list[PageExtraction]) -> list[di
         acronym = match.group(2)
         if not _looks_like_method_component(name, acronym):
             continue
+        if acronym in candidates:
+            continue
         candidates[acronym] = _component_record(name, acronym, pages)
 
     if "LUT" in method_text and "LUT" not in candidates:
@@ -533,9 +539,52 @@ def _method_components(method_text: str, pages: list[PageExtraction]) -> list[di
 def _known_quantization_components(method_text: str, pages: list[PageExtraction]) -> list[dict[str, Any]]:
     text = _normalize(method_text + " " + " ".join(page.text for page in pages[:8]))
     lowered = text.lower()
+    primary = _primary_paper_key(pages)
     components: list[dict[str, Any]] = []
 
-    if "smoothquant" in lowered and "migrat" in lowered and "activations to weights" in lowered:
+    if primary == "llm.int8":
+        components.append(
+            _source_component(
+                name="Vector-wise int8 quantization",
+                short_name="LLM.int8-vector",
+                summary=(
+                    "Uses row-wise activation scales and column-wise weight scales for int8 matrix "
+                    "multiplication so transformer linear layers can run in 8-bit with limited error."
+                ),
+                inputs=["activation matrix", "weight matrix", "row/column absmax scales"],
+                outputs=["int8 operands", "int32 matmul result", "dequantized output"],
+                assumptions=[
+                    "vector-wise scaling is enough for non-outlier dimensions",
+                    "hardware kernels can exploit int8 matrix multiplication efficiently",
+                ],
+                implementation_notes=[
+                    "Unit test the scale/dequantization path against FP16 matmul on non-outlier tensors.",
+                    "Track row/column scale shapes explicitly to avoid silent broadcasting errors.",
+                ],
+            )
+        )
+        components.append(
+            _source_component(
+                name="Mixed-precision decomposition for outlier features",
+                short_name="LLM.int8-outliers",
+                summary=(
+                    "Separates sparse high-magnitude outlier feature dimensions into a higher-precision path "
+                    "while using int8 multiplication for the dense majority."
+                ),
+                inputs=["outlier feature threshold", "hidden states", "projection weights"],
+                outputs=["int8 dense path", "FP16 outlier path", "combined output"],
+                assumptions=[
+                    "outlier dimensions are sparse enough that the FP16 path is cheap",
+                    "the selected threshold preserves model quality across scale",
+                ],
+                implementation_notes=[
+                    "Ablate the outlier threshold and record both perplexity and latency.",
+                    "Keep the dense and outlier matmul outputs separately inspectable before summation.",
+                ],
+            )
+        )
+
+    if primary == "smoothquant":
         components.append(
             _source_component(
                 name="Activation-to-weight smoothing",
@@ -558,7 +607,7 @@ def _known_quantization_components(method_text: str, pages: list[PageExtraction]
             )
         )
 
-    if "quarot" in lowered and "hadamard" in lowered and "kv cache" in lowered:
+    if primary == "quarot":
         components.append(
             _source_component(
                 name="Randomized Hadamard rotation for end-to-end INT4 inference",
@@ -581,7 +630,7 @@ def _known_quantization_components(method_text: str, pages: list[PageExtraction]
             )
         )
 
-    if "duquant" in lowered and "rotation and permutation" in lowered:
+    if primary == "duquant":
         components.append(
             _source_component(
                 name="Dual transformation for massive and normal outliers",
@@ -604,7 +653,7 @@ def _known_quantization_components(method_text: str, pages: list[PageExtraction]
             )
         )
 
-    if "spinquant" in lowered and "learned rotation" in lowered:
+    if primary == "spinquant":
         components.append(
             _source_component(
                 name="Learned rotation matrices for quantization",
@@ -626,7 +675,7 @@ def _known_quantization_components(method_text: str, pages: list[PageExtraction]
             )
         )
 
-    if "squeezellm" in lowered and "sensitivity-based non-uniform quantization" in lowered:
+    if primary == "squeezellm":
         components.append(
             _source_component(
                 name="Sensitivity-based non-uniform quantization",
@@ -647,7 +696,6 @@ def _known_quantization_components(method_text: str, pages: list[PageExtraction]
                 ],
             )
         )
-    if "squeezellm" in lowered and "dense-and-sparse" in lowered:
         components.append(
             _source_component(
                 name="Dense-and-sparse decomposition",
@@ -669,7 +717,229 @@ def _known_quantization_components(method_text: str, pages: list[PageExtraction]
             )
         )
 
+    if primary == "omniquant":
+        components.append(
+            _source_component(
+                name="Block-wise error minimization with learnable quantization parameters",
+                short_name="OmniQuant",
+                summary=(
+                    "Freezes full-precision weights but learns a small set of clipping and equivalent-transform "
+                    "parameters by minimizing block output error across weight-only and weight-activation settings."
+                ),
+                inputs=["full-precision transformer block", "calibration samples", "learnable clipping/scaling/shifting parameters"],
+                outputs=["calibrated quantization parameters", "quantized block with reduced reconstruction error"],
+                assumptions=[
+                    "block-wise reconstruction is a useful proxy for final LLM quality",
+                    "a restrained parameter set can approach QAT quality without full fine-tuning cost",
+                ],
+                implementation_notes=[
+                    "Keep learnable weight clipping and equivalent transformation as separate ablations.",
+                    "Record calibration sample count, optimizer settings, and block reconstruction loss.",
+                ],
+            )
+        )
+
+    if primary == "affinequant":
+        components.append(
+            _source_component(
+                name="Equivalent affine transformation quantization",
+                short_name="AffineQuant",
+                summary=(
+                    "Optimizes invertible affine transformations around linear layers so transformed weights "
+                    "and activations are easier to quantize while preserving the original matrix product before quantization."
+                ),
+                inputs=["activation matrix", "weight matrix", "invertible affine transform"],
+                outputs=["transformed activation/weight pair", "lower-error PTQ result"],
+                assumptions=[
+                    "the affine transform remains invertible and numerically stable",
+                    "equivalence before quantization carries over to lower quantization error after quantization",
+                ],
+                implementation_notes=[
+                    "Test strict diagonal dominance or condition-number safeguards for transform invertibility.",
+                    "Verify transformed full-precision output before measuring quantized error.",
+                ],
+            )
+        )
+
+    if primary == "flatquant":
+        components.append(
+            _source_component(
+                name="Fast learnable affine transformation for flat distributions",
+                short_name="FlatQuant",
+                summary=(
+                    "Learns affine transformations that flatten weight and activation distributions before quantization, "
+                    "using decomposed transforms to balance quantization error reduction against online overhead."
+                ),
+                inputs=["weights", "activations", "learnable affine transforms", "calibration data"],
+                outputs=["flatter transformed tensors", "quantized model", "speed/accuracy trade-off by transform size"],
+                assumptions=[
+                    "flatter distributions reduce error under equally spaced quantization points",
+                    "decomposed affine transforms keep online cost acceptable",
+                ],
+                implementation_notes=[
+                    "Track transform decomposition size as a speed/accuracy hyperparameter.",
+                    "Separate offline-merged transforms from online transforms in profiling.",
+                ],
+            )
+        )
+
+    if primary == "dfrot":
+        components.append(
+            _source_component(
+                name="Refined rotation with weighted loss for massive activations",
+                short_name="DFRot",
+                summary=(
+                    "Refines rotated-LLM quantization by treating massive activations as a long-tail optimization "
+                    "problem and weighting the rotation/quantization loss toward hard tokens."
+                ),
+                inputs=["rotated LLM", "token activations", "weighted quantization loss", "activation quantizer parameters"],
+                outputs=["massive-activation-aware rotation", "W4A4 quantized model"],
+                assumptions=[
+                    "massive activation tokens require different weighting than ordinary tokens",
+                    "the refined loss improves activation quantization without high-precision token escape paths",
+                ],
+                implementation_notes=[
+                    "Inspect the weighting function and hard-token selection separately from rotation placement.",
+                    "Compare randomized Hadamard, random orthogonal, and refined rotations under the same W4A4 setting.",
+                ],
+            )
+        )
+
+    if primary == "ostquant":
+        components.append(
+            _source_component(
+                name="QSUR-guided orthogonal and scaling transformations",
+                short_name="OSTQuant",
+                summary=(
+                    "Introduces Quantization Space Utilization Rate as a quantizability metric, then learns "
+                    "orthogonal and scaling transformations to better fit weights/activations to the quantization space."
+                ),
+                inputs=["weight/activation distributions", "QSUR metric", "orthogonal matrix", "scaling matrix"],
+                outputs=["distribution-fitted transformed tensors", "improved PTQ accuracy"],
+                assumptions=[
+                    "QSUR predicts quantization friendliness better than raw outlier magnitude alone",
+                    "orthogonal plus scaling transforms can be optimized without breaking inference equivalence",
+                ],
+                implementation_notes=[
+                    "Implement QSUR as a measured diagnostic before using it as an optimization signal.",
+                    "Track orthogonal and scaling contributions in separate ablations.",
+                ],
+            )
+        )
+
+    if primary == "qep":
+        components.append(
+            _source_component(
+                name="Quantization Error Propagation",
+                short_name="QEP",
+                summary=(
+                    "Revisits layer-wise PTQ by explicitly propagating previous-layer quantization error into "
+                    "the next layer's optimization target, reducing accumulated error across the network."
+                ),
+                inputs=["layer-wise PTQ activations", "quantized previous-layer outputs", "propagation strength"],
+                outputs=["error-aware layer-wise quantization objective", "compensated quantized weights"],
+                assumptions=[
+                    "propagating upstream error improves downstream reconstruction",
+                    "propagation strength must be tuned to avoid overfitting or instability",
+                ],
+                implementation_notes=[
+                    "Test QEP as a wrapper around RTN/GPTQ/AWQ-style layer-wise quantizers.",
+                    "Ablate propagation strength and measure both layer reconstruction error and end-task accuracy.",
+                ],
+            )
+        )
+
+    if primary == "moequant":
+        components.append(
+            _source_component(
+                name="Expert-Balanced Self-Sampling",
+                short_name="EBSS",
+                summary=(
+                    "Builds calibration data from the model itself while balancing expert usage, so MoE quantization "
+                    "does not overfit calibration samples to a small subset of experts."
+                ),
+                inputs=["MoE model vocabulary/log-probabilities", "expert usage statistics", "calibration budget"],
+                outputs=["expert-balanced calibration set"],
+                assumptions=[
+                    "self-sampled sequences can cover expert routing behavior without external data",
+                    "balanced expert activation improves calibration representativeness",
+                ],
+                implementation_notes=[
+                    "Track expert usage variance before and after sampling.",
+                    "Compare EBSS against random or perplexity-only calibration selection.",
+                ],
+            )
+        )
+        components.append(
+            _source_component(
+                name="Affinity-Guided Quantization",
+                short_name="AGQ",
+                summary=(
+                    "Uses affinities between samples and experts to weight quantization impact, so different "
+                    "experts are calibrated according to the samples that actually affect them."
+                ),
+                inputs=["expert-sample affinities", "MoE layer weights", "calibration samples"],
+                outputs=["affinity-weighted expert quantization"],
+                assumptions=[
+                    "sample-expert affinity identifies which calibration examples matter for each expert",
+                    "expert-specific weighting improves quantization over treating MoE layers as dense layers",
+                ],
+                implementation_notes=[
+                    "Keep expert affinity computation inspectable and cacheable.",
+                    "Ablate AGQ independently from EBSS to separate sampling and quantization effects.",
+                ],
+            )
+        )
+
+    if primary == "massive-activations":
+        components.append(
+            _source_component(
+                name="Massive activation localization and mechanism analysis",
+                short_name="MassiveActivations",
+                summary=(
+                    "Identifies rare but extremely large activation dimensions/tokens across LLMs and studies "
+                    "their role in attention, bias-like behavior, and downstream model quality."
+                ),
+                inputs=["hidden states across layers/tokens", "model families", "intervention values"],
+                outputs=["massive-activation locations", "intervention effects", "mechanism hypotheses"],
+                assumptions=[
+                    "massive activations are a model behavior to analyze, not a quantization method by itself",
+                    "intervention experiments can reveal whether they are functionally important",
+                ],
+                implementation_notes=[
+                    "Record layer, feature dimension, token position, and intervention target separately.",
+                    "Separate descriptive localization from causal intervention evidence.",
+                ],
+            )
+        )
+
     return components
+
+
+def _primary_paper_key(pages: list[PageExtraction]) -> str:
+    if not pages:
+        return ""
+    header = _normalize(pages[0].text[:900]).lower()
+    patterns = (
+        ("llm.int8", ("llm.int8", "8-bit matrix multiplication")),
+        ("smoothquant", ("smoothquant",)),
+        ("squeezellm", ("squeezellm",)),
+        ("massive-activations", ("massive activations in large language models",)),
+        ("affinequant", ("affinequant",)),
+        ("quarot", ("quarot",)),
+        ("spinquant", ("spinquant",)),
+        ("duquant", ("duquant",)),
+        ("flatquant", ("flatquant",)),
+        ("dfrot", ("dfrot",)),
+        ("ostquant", ("ostquant",)),
+        ("qep", ("quantization error propagation",)),
+        ("moequant", ("moequant",)),
+        ("omniquant", ("omniquant",)),
+    )
+    for key, needles in patterns:
+        if all(needle in header for needle in needles):
+            return key
+    return ""
 
 
 def _source_component(
@@ -694,7 +964,7 @@ def _source_component(
 
 
 def _looks_like_method_component(name: str, acronym: str) -> bool:
-    if acronym in {"LLM", "MoE", "PTQ", "FFN", "GPU", "CPU", "GEMM"}:
+    if acronym in {"LLM", "MoE", "PTQ", "QAT", "RTN", "FFN", "GPU", "CPU", "GEMM"}:
         return False
     lowered = name.lower()
     method_words = (
@@ -952,11 +1222,11 @@ def _one_line_takeaway(
     method = _mechanism_narrative(title, method_records)
     eval_hint = ""
     if datasets or metrics:
-        eval_hint = f" It should be judged by {', '.join(metrics[:4] or ['reported metrics'])}"
+        eval_hint = f" Judge it by {', '.join(metrics[:4] or ['reported metrics'])}"
         if datasets:
             eval_hint += f" on {', '.join(datasets[:4])}"
         eval_hint += "."
-    return f"{method} Read it as a mechanism paper, not as generic background.{eval_hint}"
+    return f"{method}{eval_hint}"
 
 
 def _mechanism_narrative(title: str, method_records: list[dict[str, Any]]) -> str:
@@ -986,16 +1256,16 @@ def _mechanism_narrative(title: str, method_records: list[dict[str, Any]]) -> st
                 f"{record.get('name')}: {str(record.get('summary') or '').rstrip('.')}"
                 for record in method_records[:3]
             )
-            return f"{method_name} should be read as a pipeline: {summaries}."
+            return f"{method_name} is a pipeline: {summaries}."
         summary = str(first.get("summary") or "").rstrip(".")
         inputs = ", ".join(first.get("inputs") or [])
         outputs = ", ".join(first.get("outputs") or [])
         io = ""
         if inputs or outputs:
             io = f" It operates on {inputs or 'the paper inputs'} and produces {outputs or 'the reported outputs'}."
-        return f"{method_name} should be read through its mechanism, not its name: {summary}.{io}"
+        return f"{method_name}: {summary}.{io}"
 
-    return f"{method_name} should be read through its mechanism, but this ingest did not extract enough method structure yet."
+    return f"{method_name}: method structure was not extracted deeply enough yet."
 
 
 def _mechanism_overview(method_records: list[dict[str, Any]]) -> list[str]:
@@ -1013,8 +1283,22 @@ def _mechanism_facts(pages: list[PageExtraction]) -> list[dict[str, Any]]:
     text_by_page = {page.page_number: page.text for page in pages}
     full_text = "\n".join(text_by_page.values())
     lowered = full_text.lower()
+    primary = _primary_paper_key(pages)
 
-    if "smoothquant" in lowered and "diag(s)" in full_text:
+    if primary == "llm.int8":
+        facts.append(
+            _mechanism_fact(
+                fact_type="representation",
+                component="LLM.int8 mixed precision",
+                summary=(
+                    "LLM.int8 combines vector-wise int8 matmul for most dimensions with a sparse higher-precision "
+                    "path for systematic outlier features; the outlier threshold is an implementation-critical knob."
+                ),
+                page=_find_page(pages, "mixed-precision decomposition", "outlier features"),
+            )
+        )
+
+    if primary == "smoothquant" and "diag(s)" in full_text:
         facts.append(
             _mechanism_fact(
                 fact_type="equivalent_transform",
@@ -1027,7 +1311,7 @@ def _mechanism_facts(pages: list[PageExtraction]) -> list[dict[str, Any]]:
                 page=_find_page(pages, "diag(s)", "migrate the quantization difficulty"),
             )
         )
-    if "smoothquant" in lowered and "α" in full_text:
+    if primary == "smoothquant" and "α" in full_text:
         facts.append(
             _mechanism_fact(
                 fact_type="setting_constraint",
@@ -1039,7 +1323,7 @@ def _mechanism_facts(pages: list[PageExtraction]) -> list[dict[str, Any]]:
                 page=_find_page(pages, "α", "smoothing factor"),
             )
         )
-    if "quarot" in lowered and "randomized hadamard" in lowered:
+    if primary == "quarot" and "randomized hadamard" in lowered:
         facts.append(
             _mechanism_fact(
                 fact_type="equivalent_transform",
@@ -1052,7 +1336,7 @@ def _mechanism_facts(pages: list[PageExtraction]) -> list[dict[str, Any]]:
                 page=_find_page(pages, "randomized Hadamard", "computational invariance"),
             )
         )
-    if "quarot" in lowered and "kv cache" in lowered:
+    if primary == "quarot" and "kv cache" in lowered:
         facts.append(
             _mechanism_fact(
                 fact_type="implementation_boundary",
@@ -1065,7 +1349,7 @@ def _mechanism_facts(pages: list[PageExtraction]) -> list[dict[str, Any]]:
                 page=_find_page(pages, "KV cache", "Stage 2c"),
             )
         )
-    if "duquant" in lowered and "massive outliers" in lowered:
+    if primary == "duquant" and "massive outliers" in lowered:
         facts.append(
             _mechanism_fact(
                 fact_type="problem_decomposition",
@@ -1077,7 +1361,7 @@ def _mechanism_facts(pages: list[PageExtraction]) -> list[dict[str, Any]]:
                 page=_find_page(pages, "Massive Outliers", "Normal Outliers"),
             )
         )
-    if "duquant" in lowered and "rotation and permutation" in lowered:
+    if primary == "duquant" and "rotation and permutation" in lowered:
         facts.append(
             _mechanism_fact(
                 fact_type="equivalent_transform",
@@ -1089,7 +1373,7 @@ def _mechanism_facts(pages: list[PageExtraction]) -> list[dict[str, Any]]:
                 page=_find_page(pages, "rotation and permutation", "XG", "G−1W"),
             )
         )
-    if "spinquant" in lowered and "learned rotation" in lowered:
+    if primary == "spinquant" and "learned rotation" in lowered:
         facts.append(
             _mechanism_fact(
                 fact_type="mechanism",
@@ -1101,7 +1385,7 @@ def _mechanism_facts(pages: list[PageExtraction]) -> list[dict[str, Any]]:
                 page=_find_page(pages, "learned rotation", "random rotations produce large variance"),
             )
         )
-    if "spinquant" in lowered and "cayley transform" in lowered:
+    if primary == "spinquant" and "cayley transform" in lowered:
         facts.append(
             _mechanism_fact(
                 fact_type="optimization",
@@ -1113,7 +1397,7 @@ def _mechanism_facts(pages: list[PageExtraction]) -> list[dict[str, Any]]:
                 page=_find_page(pages, "Cayley Transform", "R′⊤R′"),
             )
         )
-    if "squeezellm" in lowered and "sensitivity-based non-uniform quantization" in lowered:
+    if primary == "squeezellm" and "sensitivity-based non-uniform quantization" in lowered:
         facts.append(
             _mechanism_fact(
                 fact_type="objective",
@@ -1125,7 +1409,7 @@ def _mechanism_facts(pages: list[PageExtraction]) -> list[dict[str, Any]]:
                 page=_find_page(pages, "sensitivity-based non-uniform quantization", "weighted k-means"),
             )
         )
-    if "squeezellm" in lowered and "dense-and-sparse" in lowered:
+    if primary == "squeezellm" and "dense-and-sparse" in lowered:
         facts.append(
             _mechanism_fact(
                 fact_type="representation",
@@ -1136,6 +1420,103 @@ def _mechanism_facts(pages: list[PageExtraction]) -> list[dict[str, Any]]:
                     "treating every value uniformly."
                 ),
                 page=_find_page(pages, "Dense-and-Sparse decomposition", "sparse matrix"),
+            )
+        )
+
+    if primary == "omniquant":
+        facts.append(
+            _mechanism_fact(
+                fact_type="objective",
+                component="OmniQuant",
+                summary=(
+                    "OmniQuant optimizes a small set of learnable clipping and equivalent-transform parameters "
+                    "against block output reconstruction, keeping PTQ efficiency instead of full QAT."
+                ),
+                page=_find_page(pages, "block-wise error minimization", "learnable weight clipping", "equivalent transformation"),
+            )
+        )
+    if primary == "affinequant":
+        facts.append(
+            _mechanism_fact(
+                fact_type="equivalent_transform",
+                component="AffineQuant",
+                summary=(
+                    "AffineQuant right-multiplies activations and left-multiplies weights with an invertible "
+                    "affine transform so the full-precision matrix product is preserved before quantization."
+                ),
+                page=_find_page(pages, "affine transform", "invariance", "invertible"),
+            )
+        )
+    if primary == "flatquant":
+        facts.append(
+            _mechanism_fact(
+                fact_type="optimization",
+                component="FlatQuant",
+                summary=(
+                    "FlatQuant learns affine transformations to flatten weights and activations; transform "
+                    "decomposition is part of the method because it controls online cost."
+                ),
+                page=_find_page(pages, "Fast and Learnable Affine Transformation", "decomposed matrix", "flatness"),
+            )
+        )
+    if primary == "dfrot":
+        facts.append(
+            _mechanism_fact(
+                fact_type="loss_design",
+                component="DFRot",
+                summary=(
+                    "DFRot treats massive activations as a long-tail problem and uses a weighted quantization "
+                    "loss plus alternating optimization for rotation and activation quantizer parameters."
+                ),
+                page=_find_page(pages, "weighted loss", "alternate between solving", "long-tail"),
+            )
+        )
+    if primary == "ostquant":
+        facts.append(
+            _mechanism_fact(
+                fact_type="diagnostic_metric",
+                component="QSUR",
+                summary=(
+                    "OSTQuant uses Quantization Space Utilization Rate to judge whether transformed weights or "
+                    "activations fit the available quantization space before learning orthogonal/scaling transforms."
+                ),
+                page=_find_page(pages, "Quantization Space Utilization Rate", "QSUR"),
+            )
+        )
+    if primary == "qep":
+        facts.append(
+            _mechanism_fact(
+                fact_type="objective",
+                component="QEP",
+                summary=(
+                    "QEP changes layer-wise PTQ from independent reconstruction to error-aware reconstruction "
+                    "by propagating previous-layer quantization error into the next layer's input objective."
+                ),
+                page=_find_page(pages, "Quantization Error Propagation", "previous-layer quantization error", "propagation strength"),
+            )
+        )
+    if primary == "moequant":
+        facts.append(
+            _mechanism_fact(
+                fact_type="moe_calibration",
+                component="MoEQuant",
+                summary=(
+                    "MoEQuant's core issue is MoE imbalance: EBSS tries to balance expert coverage in calibration "
+                    "data, while AGQ weights quantization by expert-sample affinity."
+                ),
+                page=_find_page(pages, "Expert-Balanced Self-Sampling", "Affinity-Guided Quantization"),
+            )
+        )
+    if primary == "massive-activations":
+        facts.append(
+            _mechanism_fact(
+                fact_type="empirical_finding",
+                component="Massive activations",
+                summary=(
+                    "The paper is an empirical/mechanistic analysis: massive activations appear in fixed feature "
+                    "dimensions and specific token positions, and intervention experiments test whether they matter."
+                ),
+                page=_find_page(pages, "fixed feature dimensions", "intervention"),
             )
         )
 
@@ -1280,15 +1661,16 @@ def _evidence_takeaways(pages: list[PageExtraction]) -> list[str]:
     text = " ".join(page.text for page in pages)
     takeaways = []
     lowered = text.lower()
-    if "w8a8" in lowered and "smoothquant" in lowered:
+    primary = _primary_paper_key(pages)
+    if primary == "smoothquant" and "w8a8" in lowered:
         takeaways.append("SmoothQuant evidence should be read as W8A8 deployment evidence: accuracy preservation and latency/memory claims depend on O1/O2/O3 quantization settings.")
-    if "quarot" in lowered and "4-bit" in lowered:
+    if primary == "quarot" and "4-bit" in lowered:
         takeaways.append("QuaRot evidence combines perplexity/zero-shot accuracy with systems claims for INT4 weights, activations, and KV cache; keep these evidence types separate.")
-    if "duquant" in lowered and "w4a4" in lowered:
+    if primary == "duquant" and "w4a4" in lowered:
         takeaways.append("DuQuant tables stress W4A4/W6A6 perplexity and zero-shot QA; compare massive-outlier handling against SmoothQuant, OmniQuant, QLLM, Atom, and affine baselines.")
-    if "spinquant" in lowered and "random rotations" in lowered:
+    if primary == "spinquant" and "random rotations" in lowered:
         takeaways.append("SpinQuant evidence includes an ablation that learned rotations reduce the variance seen across random rotations; this is central to the paper's motivation.")
-    if "squeezellm" in lowered and "dense-and-sparse" in lowered:
+    if primary == "squeezellm" and "dense-and-sparse" in lowered:
         takeaways.append("SqueezeLLM evidence should separate dense non-uniform quantization gains from sparse-retention gains and runtime/memory claims.")
     if "Table 10" in text and "POG" in text:
         takeaways.append("POG has a specific ablation signal; treat it as conditional evidence for block-wise clustering rather than a universal gain.")

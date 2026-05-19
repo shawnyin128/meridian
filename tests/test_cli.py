@@ -8,6 +8,9 @@ import unittest
 from pathlib import Path
 
 from meridian.cli import main
+from meridian.wiki.extract import PageExtraction, PdfExtraction
+from meridian.wiki.ingest import _title_from_first_page
+from meridian.wiki.packet import _trusted_metadata_authors
 
 
 class FakePixmap:
@@ -113,6 +116,54 @@ class CliTests(unittest.TestCase):
             sys.modules.pop("fitz", None)
         else:
             sys.modules["fitz"] = self.previous_fitz
+
+    def test_title_extraction_keeps_multiline_technical_title(self) -> None:
+        extraction = PdfExtraction(
+            metadata={},
+            page_count=1,
+            pages=[
+                PageExtraction(
+                    page_number=1,
+                    text=(
+                        "AFFINEQUANT: AFFINE TRANSFORMATION QUANTI-\n"
+                        "ZATION FOR LARGE LANGUAGE MODELS\n"
+                        "Yuexiao Ma1*, Huixia Li2, Rui Wang2\n"
+                        "ABSTRACT\n"
+                        "The paper studies quantization."
+                    ),
+                    section_hint=None,
+                    image_path="page.png",
+                    image_count=0,
+                    drawing_count=0,
+                )
+            ],
+        )
+
+        self.assertEqual(
+            _title_from_first_page(extraction),
+            "AffineQuant: Affine Transformation Quantization For Large Language Models",
+        )
+
+    def test_metadata_authors_are_only_trusted_when_seen_on_first_page(self) -> None:
+        extraction = PdfExtraction(
+            metadata={"author": "A. Researcher"},
+            page_count=1,
+            pages=[
+                PageExtraction(
+                    page_number=1,
+                    text="Real Author\nAbstract\nThis paper studies a method.",
+                    section_hint=None,
+                    image_path="page.png",
+                    image_count=0,
+                    drawing_count=0,
+                )
+            ],
+        )
+
+        self.assertEqual(
+            _trusted_metadata_authors(extraction),
+            "not trusted (PDF metadata says: A. Researcher)",
+        )
 
     def test_wiki_ingest_writes_draft_only_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

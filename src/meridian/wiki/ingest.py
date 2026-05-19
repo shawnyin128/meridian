@@ -182,9 +182,16 @@ def _prepare_out_dir(out_dir: Path, overwrite: bool) -> None:
 
 def _title_from_metadata_or_path(extraction: PdfExtraction, pdf_path: Path) -> str:
     metadata_title = str(extraction.metadata.get("title") or "").strip()
-    if metadata_title and not _looks_like_arxiv_filename(metadata_title):
-        return metadata_title
     page_title = _title_from_first_page(extraction)
+    if (
+        page_title
+        and metadata_title
+        and not _looks_like_arxiv_filename(metadata_title)
+        and (_looks_truncated_title(metadata_title) or _page_title_is_better(metadata_title, page_title))
+    ):
+        return page_title
+    if metadata_title and not _looks_like_arxiv_filename(metadata_title):
+        return _clean_title_line(metadata_title)
     if page_title:
         return page_title
     stem = re.sub(r"[-_]+", " ", pdf_path.stem).strip()
@@ -193,6 +200,17 @@ def _title_from_metadata_or_path(extraction: PdfExtraction, pdf_path: Path) -> s
 
 def _looks_like_arxiv_filename(title: str) -> bool:
     return bool(re.fullmatch(r"\d{4}\.\d{4,5}v\d+", title.strip(), flags=re.IGNORECASE))
+
+
+def _looks_truncated_title(title: str) -> bool:
+    normalized = title.strip()
+    return normalized.endswith("-") or normalized.endswith(":")
+
+
+def _page_title_is_better(metadata_title: str, page_title: str) -> bool:
+    metadata_norm = re.sub(r"[^a-z0-9]+", "", metadata_title.lower())
+    page_norm = re.sub(r"[^a-z0-9]+", "", page_title.lower())
+    return len(page_title) >= len(metadata_title) + 12 and page_norm.startswith(metadata_norm[:24])
 
 
 def _title_from_first_page(extraction: PdfExtraction) -> str | None:
@@ -208,10 +226,98 @@ def _title_from_first_page(extraction: PdfExtraction) -> str | None:
             continue
         cleaned_lines.append(line)
 
+    multiline = _multi_line_title(cleaned_lines)
+    if multiline:
+        return multiline
     for line in cleaned_lines:
         if 8 <= len(line) <= 180 and _looks_like_title_line(line):
             return _clean_title_line(line)
     return None
+
+
+def _multi_line_title(lines: list[str]) -> str | None:
+    title_parts: list[str] = []
+    for line in lines[:6]:
+        lowered = line.lower()
+        if lowered == "abstract":
+            break
+        if any(marker in lowered for marker in ("university", "department", "institute", "laboratory", "research†")):
+            break
+        is_title_continuation = bool(title_parts and _looks_title_continuation(line, title_parts))
+        if not is_title_continuation and (
+            _looks_author_line(line) or (title_parts and _looks_author_continuation(line))
+        ):
+            break
+        if _looks_like_title_line(line) or title_parts:
+            title_parts.append(line)
+    if not title_parts:
+        return None
+    title = " ".join(title_parts)
+    title = title.replace("- ", "")
+    title = _clean_title_line(title)
+    return title if 8 <= len(title) <= 220 else None
+
+
+def _looks_author_line(line: str) -> bool:
+    if any(marker in line for marker in ("∗", "†", "λ", "§", "∓")) and ":" not in line:
+        return True
+    if "," in line and len(line.split()) >= 4:
+        return True
+    tokens = line.replace("∗", "").replace("†", "").split()
+    uppercase_count = sum(character.isupper() for character in line)
+    alpha_count = sum(character.isalpha() for character in line)
+    if uppercase_count / max(alpha_count, 1) > 0.55:
+        return False
+    capitalized = sum(bool(re.match(r"^[A-Z][a-zA-Z.-]+$", token)) for token in tokens)
+    return len(tokens) >= 3 and capitalized / max(len(tokens), 1) > 0.7 and ":" not in line
+
+
+def _looks_author_continuation(line: str) -> bool:
+    if any(character.isdigit() for character in line) or any(marker in line for marker in (":", "(", ")", "/")):
+        return False
+    tokens = line.replace("∗", "").replace("†", "").split()
+    if not 2 <= len(tokens) <= 5:
+        return False
+    uppercase_count = sum(character.isupper() for character in line)
+    alpha_count = sum(character.isalpha() for character in line)
+    if uppercase_count / max(alpha_count, 1) > 0.55:
+        return False
+    title_stopwords = {"of", "for", "with", "via", "and", "in", "on", "at", "to", "from"}
+    if any(token.lower() in title_stopwords for token in tokens):
+        return False
+    capitalized = sum(bool(re.match(r"^[A-Z][a-zA-Z.-]+$", token)) for token in tokens)
+    return capitalized == len(tokens)
+
+
+def _looks_title_continuation(line: str, title_parts: list[str]) -> bool:
+    previous = title_parts[-1].strip()
+    if previous.endswith(("-", ":")):
+        return True
+    if previous.split()[-1].lower() in {"of", "for", "with", "via", "and", "dual", "model"}:
+        return True
+    technical_terms = {
+        "activation",
+        "activations",
+        "calibrated",
+        "inference",
+        "language",
+        "llm",
+        "llms",
+        "matrix",
+        "model",
+        "models",
+        "multiplication",
+        "outlier",
+        "outliers",
+        "quantization",
+        "quantized",
+        "refining",
+        "rotations",
+        "scale",
+        "transformations",
+        "transformers",
+    }
+    return any(token.lower().strip(":-,") in technical_terms for token in line.split())
 
 
 def _looks_like_title_line(line: str) -> bool:
@@ -228,7 +334,25 @@ def _looks_like_title_line(line: str) -> bool:
 def _clean_title_line(line: str) -> str:
     line = re.sub(r"\s+", " ", line).strip(" .")
     if sum(character.isupper() for character in line) / max(sum(character.isalpha() for character in line), 1) > 0.65:
-        return line.title().replace("Llm", "LLM").replace("Ptq", "PTQ")
+        line = line.title()
+    replacements = {
+        "Llm": "LLM",
+        "Ptq": "PTQ",
+        "Ostquant": "OSTQuant",
+        "Qsur": "QSUR",
+        "Affinequant": "AffineQuant",
+        "Spinquant": "SpinQuant",
+        "Duquant": "DuQuant",
+        "Flatquant": "FlatQuant",
+        "D F Rot": "DFRot",
+        "Dfrot": "DFRot",
+        "Quarot": "QuaRot",
+        "Omniquant": "OmniQuant",
+        "Squeezellm": "SqueezeLLM",
+        "Moequant": "MoEQuant",
+    }
+    for source, target in replacements.items():
+        line = line.replace(source, target)
     return line
 
 

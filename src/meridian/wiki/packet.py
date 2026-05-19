@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +40,7 @@ def render_review_packet(
     visual_notes = _render_visual_notes(extraction.pages)
     case_block = _render_case_block(case_metadata)
     source_block = _render_source_block(source_record)
+    metadata_authors = _trusted_metadata_authors(extraction)
 
     frontmatter = _render_frontmatter(
         {
@@ -84,7 +86,7 @@ def render_review_packet(
 {source_block}
 - Page count: {extraction.page_count}
 - Metadata title: {extraction.metadata.get("title") or "not provided"}
-- Metadata authors: {extraction.metadata.get("author") or "not provided"}
+- Metadata authors: {metadata_authors}
 - Model strategy: `{model.strategy}`
 
 {case_block}## Extraction Overview
@@ -220,6 +222,7 @@ def render_paper_draft(
     mechanism_facts = _render_mechanism_facts(model.mechanism_facts)
     open_questions = "\n".join(f"- {question}" for question in model.open_questions)
     source_block = _render_source_block(source_record)
+    metadata_authors = _trusted_metadata_authors(extraction)
     retrieval_anchors = _render_retrieval_anchors(model)
     visual_pointers = _render_visual_pointers(extraction.pages)
     record_pointers = _render_record_pointers()
@@ -243,7 +246,7 @@ Source:
 {source_block}
 - Page count: {extraction.page_count}
 - Metadata title: {extraction.metadata.get("title") or "not provided"}
-- Metadata authors: {extraction.metadata.get("author") or "not provided"}
+- Metadata authors: {metadata_authors}
 - Model strategy: `{model.strategy}`
 
 ## Paper Positioning
@@ -554,3 +557,16 @@ def _render_page_summary(page: PageExtraction) -> str:
         f"- Drawing objects: {page.drawing_count}\n"
         f"- Text preview: {preview}\n"
     )
+
+
+def _trusted_metadata_authors(extraction: PdfExtraction) -> str:
+    authors = str(extraction.metadata.get("author") or "").strip()
+    if not authors:
+        return "not provided"
+    first_page = extraction.pages[0].text.lower() if extraction.pages else ""
+    first_author = re.split(r"[,;]", authors, maxsplit=1)[0].strip()
+    first_author_norm = re.sub(r"[^a-z]+", " ", first_author.lower()).strip()
+    page_norm = re.sub(r"[^a-z]+", " ", first_page).strip()
+    if first_author_norm and first_author_norm in page_norm:
+        return authors
+    return f"not trusted (PDF metadata says: {authors})"
