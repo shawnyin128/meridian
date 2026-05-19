@@ -51,8 +51,8 @@ The reader self-check is the mechanism-level guardrail: one reader explains the
 paper from `paper.md` only, another explains it from source excerpts, and the
 reconciliation must attribute mismatches to generation-mechanism buckets. The
 packet also forces checklist results, comparison-dimension gaps,
-frontmatter/retrieval audit, candidate-record audit, false-confidence flags, and
-regression tests to add.
+frontmatter/retrieval audit, candidate-record audit, detailed weighted rubric
+scores, false-confidence flags, hard-failure checks, and regression tests to add.
 
 After a judge produces JSON, record and converge it:
 

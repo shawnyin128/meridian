@@ -18,7 +18,7 @@ def build_reader_check_packet(*, run_manifest: Path, out_path: Path) -> Path:
     packet = [
         "# Paper Wiki Reader Check Packet",
         "",
-        "Schema version: `paper_wiki_reader_check.v1`",
+        "Schema version: `paper_wiki_reader_check.v2`",
         "",
         "This packet is for self-iteration of the ingest mechanism. It is not asking whether the prose sounds nice.",
         "It asks whether `paper.md` can teach the paper to a new researcher, and if not, which generation mechanism failed.",
@@ -32,9 +32,10 @@ def build_reader_check_packet(*, run_manifest: Path, out_path: Path) -> Path:
         "1. Run Reader A using only the `paper.md` section below. Reader A must write a teach-back explanation without opening source text or candidate JSONL.",
         "2. Run Reader B using the source-grounded excerpt section below. Reader B must write a fresh paper explanation from paper evidence, ignoring Reader A.",
         "3. Run the mandatory checklist. Every item must be marked `pass`, `weak`, `fail`, or `not_applicable`; `weak` and `fail` require evidence and a generation bucket.",
-        "4. Compare Reader A and Reader B across all comparison dimensions. Missing causality, missing implementation detail, vague mechanism names, or unsupported confidence are mismatches.",
-        "5. Audit retrieval/frontmatter and candidate records. A packet can teach the paper but still fail as LLM Wiki state if future retrieval would miss or distort it.",
-        "6. Produce the output JSON only. Do not rewrite `paper.md`; recommend mechanism-level fixes and tests.",
+        "4. Score the rubric dimensions using the anchored 1-5 scale. Scores must cite packet evidence and explain the gap between Reader A and Reader B.",
+        "5. Compare Reader A and Reader B across all comparison dimensions. Missing causality, missing implementation detail, vague mechanism names, or unsupported confidence are mismatches.",
+        "6. Audit retrieval/frontmatter and candidate records. A packet can teach the paper but still fail as LLM Wiki state if future retrieval would miss or distort it.",
+        "7. Produce the output JSON only. Do not rewrite `paper.md`; recommend mechanism-level fixes and tests.",
         "",
         "## Minimum Bar",
         "",
@@ -51,11 +52,17 @@ def build_reader_check_packet(*, run_manifest: Path, out_path: Path) -> Path:
         "",
         _comparison_dimensions_markdown(),
         "",
+        "## Detailed Rubric",
+        "",
+        _rubric_markdown(),
+        "",
         "## Scoring and Decision",
         "",
-        "- `pass`: no blocking checklist failure, no major Reader A/B mechanism gap, and retrieval/frontmatter audit is at least `weak`.",
-        "- `needs_refine`: one or more major gaps that are fixable by ingest/schema/rubric changes, but the page is not actively misleading.",
-        "- `fail`: fabricated source fact, missing core method, broken provenance, invalid schema, or retrieval metadata likely routes future work to the wrong context.",
+        "- Use rubric scores from 1 to 5. A score of 3 means minimally usable but not yet good enough for scaling.",
+        "- Compute `weighted_score` as the weighted average of rubric dimension scores.",
+        "- `pass`: weighted score >= 4.2, no blocking checklist failure, no major Reader A/B mechanism gap, and retrieval/frontmatter audit is at least `weak`.",
+        "- `needs_refine`: weighted score 3.0-4.19 or one or more major gaps that are fixable by ingest/schema/rubric changes.",
+        "- `fail`: weighted score < 3.0, fabricated source fact, missing core method, broken provenance, invalid schema, or retrieval metadata likely routes future work to the wrong context.",
         "- Use `blocking` severity when a future researcher could implement, cite, or decide incorrectly from `paper.md` alone.",
         "",
         "## Output JSON Schema",
@@ -127,16 +134,31 @@ def build_reader_check_packet(*, run_manifest: Path, out_path: Path) -> Path:
 
 def _output_schema() -> dict[str, Any]:
     return {
-        "schema_version": "paper_wiki_reader_check.v1",
+        "schema_version": "paper_wiki_reader_check.v2",
         "decision": "pass | needs_refine | fail",
         "case_id": "",
+        "weighted_score": 0.0,
+        "calibration_confidence": "low | medium | high",
         "one_sentence_verdict": "",
         "paper_md_only_explanation": ["..."],
         "source_grounded_explanation": ["..."],
+        "rubric_scores": [
+            {
+                "dimension": "mechanism_depth",
+                "score": 0,
+                "weight": 2.0,
+                "anchor": "1 | 2 | 3 | 4 | 5",
+                "paper_md_evidence": "",
+                "source_evidence": "page / section / table / figure / equation",
+                "gap_reason": "",
+                "generation_bucket": "paper_model_extraction",
+            }
+        ],
         "checklist_results": [
             {
                 "check_id": "mechanism_causality",
                 "status": "pass | weak | fail | not_applicable",
+                "score": "0 | 1 | 2 | not_applicable",
                 "severity": "minor | major | blocking",
                 "reader_a_evidence": "",
                 "source_evidence": "page / section / table / figure / equation",
@@ -178,6 +200,13 @@ def _output_schema() -> dict[str, Any]:
                 "generation_bucket": "paper_model_extraction",
                 "mechanism_failure": "",
                 "testable_fix": "",
+            }
+        ],
+        "hard_failures": [
+            {
+                "failure_type": "fabrication | missing_core_method | broken_provenance | invalid_schema | misleading_retrieval",
+                "evidence": "",
+                "generation_bucket": "paper_model_extraction",
             }
         ],
         "false_confidence_flags": ["..."],
@@ -262,6 +291,68 @@ def _comparison_dimensions_markdown() -> str:
         ("retrieval_future_use", "Would future wiki queries retrieve and use this paper for the right concepts?"),
     ]
     return "\n".join(f"- `{dimension}`: {description}" for dimension, description in rows)
+
+
+def _rubric_markdown() -> str:
+    rows = [
+        (
+            "teachback_completeness",
+            1.5,
+            "Reader A recovers the paper's problem, method, evidence, limitations, and next-use value from `paper.md` alone.",
+        ),
+        (
+            "mechanism_depth",
+            2.0,
+            "The page explains causal mechanism, component contracts, dependencies, and failure modes rather than listing names.",
+        ),
+        (
+            "evidence_alignment",
+            1.5,
+            "Claims are tied to the right experiments, metrics, baselines, figures, tables, algorithms, or equations.",
+        ),
+        (
+            "provenance_auditability",
+            1.25,
+            "Important statements can be audited back to page, section, table, figure, equation, or source record.",
+        ),
+        (
+            "implementation_usefulness",
+            1.5,
+            "A researcher/developer can infer what to implement, probe, ablate, or sanity-check first.",
+        ),
+        (
+            "retrieval_readiness",
+            1.25,
+            "Frontmatter, aliases, tags, topics, and candidate records make future idea-driven retrieval likely to find this page for the right reasons.",
+        ),
+        (
+            "uncertainty_calibration",
+            1.0,
+            "The page exposes uncertainty, caveats, weak evidence, and scope boundaries without false confidence.",
+        ),
+        (
+            "candidate_record_quality",
+            1.0,
+            "Claims, methods, and evidence JSONL represent useful objects with enough structure for later promotion.",
+        ),
+    ]
+    scale = [
+        "1 = unusable or misleading; core paper understanding is absent.",
+        "2 = partial; important facts appear, but causal understanding or provenance is missing.",
+        "3 = minimally usable; a reader can orient, but must reopen the paper for key method/evidence details.",
+        "4 = strong; the page can teach the paper with only local uncertainties or missing edge details.",
+        "5 = excellent; the page is source-grounded, retrieval-ready, and directly useful for research decisions.",
+    ]
+    lines = [
+        "Score each dimension from 1 to 5 with the listed weight. Do not give a 4 or 5 unless Reader A's `paper.md`-only explanation demonstrates that level.",
+        "",
+        "Anchors:",
+        *[f"- {anchor}" for anchor in scale],
+        "",
+        "Dimensions:",
+    ]
+    lines.extend(f"- `{dimension}` (weight {weight:g}): {description}" for dimension, weight, description in rows)
+    return "\n".join(lines)
 
 
 def _source_excerpts(pages_path: Path) -> str:
