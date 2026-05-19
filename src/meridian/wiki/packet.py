@@ -224,7 +224,7 @@ def render_paper_draft(
     open_questions = "\n".join(f"- {question}" for question in model.open_questions)
     source_block = _render_source_block(source_record)
     metadata_authors = _trusted_metadata_authors(extraction)
-    retrieval_notes = _render_retrieval_notes(model)
+    retrieval_intent = _render_retrieval_intent(model)
     visual_pointers = _render_visual_pointers(extraction.pages)
     record_pointers = _render_record_pointers()
     mechanism_contracts = _render_mechanism_contracts(model.method_records)
@@ -238,9 +238,9 @@ def render_paper_draft(
 
 {model.one_line_takeaway}
 
-## Retrieval Notes
+## When To Retrieve This Paper
 
-{retrieval_notes}
+{retrieval_intent}
 
 Source:
 
@@ -408,26 +408,114 @@ def _join_or_unknown(value: object, fallback: str) -> str:
     return text if text else fallback
 
 
-def _render_retrieval_notes(model: PaperModel) -> str:
-    lines = ["Frontmatter is the machine-readable retrieval source of truth. Retrieve this page for questions about:"]
-    scenarios = []
-    if model.settings:
-        scenarios.append(f"scope conditions such as {', '.join(model.settings[:3])}")
-    if model.methods:
-        scenarios.append(f"method-family comparisons involving {', '.join(model.methods[:3])}")
-    if model.topics:
-        scenarios.append(f"research questions around {', '.join(model.topics[:4])}")
+def _render_retrieval_intent(model: PaperModel) -> str:
+    method_family = _routing_method_focus(model.methods)
+    topic_scope = _routing_topic_focus(model.topics, model.methods)
+    topic_verb = "are" if _is_plural_phrase(topic_scope) else "is"
+    setting_scope = _routing_setting_focus(model.settings)
+    datasets = _human_list(model.datasets[:3], "the reported benchmark datasets")
+    metrics = _human_list(model.metrics[:3], "the reported metrics")
+    component_names = [
+        str(record.get("short_name") or record.get("name"))
+        for record in model.method_records[:4]
+        if record.get("short_name") or record.get("name")
+    ]
+    components = ", ".join(component_names)
+
+    use_cases = [
+        f"- Compare or adapt {method_family} when {topic_scope} {topic_verb} the suspected bottleneck in {setting_scope}.",
+    ]
+    if components:
+        use_cases.append(
+            f"- Turn the paper's named components ({components}) into implementation probes, ablations, or sanity checks using the contracts below."
+        )
     if model.datasets or model.metrics:
-        scenario = "evidence checks"
-        if model.datasets:
-            scenario += f" on {', '.join(model.datasets[:3])}"
-        if model.metrics:
-            scenario += f" using {', '.join(model.metrics[:3])}"
-        scenarios.append(scenario)
-    if not scenarios:
-        scenarios.append("the method, evidence, and uncertainty described in the sections below")
-    lines.extend(f"- {scenario}." for scenario in scenarios[:4])
-    return "\n".join(lines)
+        use_cases.append(
+            f"- Check whether mechanism claims are backed by {metrics} on {datasets}, rather than relying on abstract plausibility."
+        )
+    if model.limitations:
+        use_cases.append("- Audit the scope caveats before using this paper as support for a new research direction or baseline comparison.")
+
+    non_use_cases = []
+    lowered_methods = " ".join(model.methods).lower()
+    lowered_settings = " ".join(model.settings).lower()
+    if "post-training quantization" in lowered_methods or "ptq" in lowered_methods:
+        non_use_cases.append("- You need evidence for training-time quantization or QAT unless the Evidence Map explicitly compares those settings.")
+    if "weight-only quantization" in lowered_settings and "weight-activation quantization" not in lowered_settings:
+        non_use_cases.append("- You need activation or KV-cache quantization evidence without a separate paper that covers those settings.")
+    elif "weight-activation quantization" in lowered_settings:
+        non_use_cases.append("- You want a weight-only PTQ citation; activation behavior is part of the reported scope.")
+    if "lut/kernel setting" in lowered_settings or "hardware-aware quantization" in lowered_methods:
+        non_use_cases.append("- You want to generalize systems or kernel claims outside the reported implementation stack without rechecking hardware evidence.")
+    else:
+        non_use_cases.append("- You need deployment speed or kernel evidence and the Evidence Map has no direct systems measurement.")
+    non_use_cases.append("- You need a generic survey page rather than a mechanism-specific paper; use frontmatter to retrieve neighboring papers.")
+
+    return "\n".join(
+        [
+            "Use this paper when you need to:",
+            *use_cases[:4],
+            "",
+            "Do not use it when:",
+            *non_use_cases[:4],
+        ]
+    )
+
+
+def _routing_method_focus(methods: list[str]) -> str:
+    lowered = {method.lower(): method for method in methods}
+    if "moe quantization" in lowered and "post-training quantization" in lowered:
+        return "MoE post-training quantization"
+    if "layer-wise ptq" in lowered:
+        return "layer-wise post-training quantization"
+    if "rotation-based quantization" in lowered and "post-training quantization" in lowered:
+        return "rotation-based post-training quantization"
+    return _human_list(methods[:2], "this method family")
+
+
+def _routing_topic_focus(topics: list[str], methods: list[str]) -> str:
+    method_keys = {method.lower() for method in methods}
+    generic = {"post-training quantization", "low-bit quantization", "moe quantization", "layer-wise ptq"}
+    selected = [topic for topic in topics if topic.lower() not in method_keys and topic.lower() not in generic]
+    priority = [
+        "activation outliers",
+        "quantization error",
+        "error propagation",
+        "expert imbalance",
+        "calibration representativeness",
+        "expert routing",
+        "calibration data selection",
+    ]
+    selected = sorted(selected, key=lambda item: priority.index(item.lower()) if item.lower() in priority else len(priority))
+    return _human_list(selected[:3] or topics[:3], "the paper's target failure mode")
+
+
+def _routing_setting_focus(settings: list[str]) -> str:
+    lowered = {setting.lower() for setting in settings}
+    if {"weight-activation quantization", "moe setting", "lut/kernel setting"} <= lowered:
+        return "weight-activation MoE deployment with LUT/kernel constraints"
+    if {"weight-only quantization", "moe setting"} <= lowered:
+        return "weight-only MoE calibration"
+    if "weight-only quantization" in lowered:
+        return "weight-only quantization"
+    if "weight-activation quantization" in lowered:
+        return "weight-activation quantization"
+    return _human_list(settings[:2], "the paper's reported setting")
+
+
+def _human_list(items: list[str], fallback: str) -> str:
+    cleaned = [str(item).strip().rstrip(".") for item in items if str(item).strip()]
+    if not cleaned:
+        return fallback
+    if len(cleaned) == 1:
+        return cleaned[0]
+    if len(cleaned) == 2:
+        return f"{cleaned[0]} and {cleaned[1]}"
+    return f"{', '.join(cleaned[:-1])}, and {cleaned[-1]}"
+
+
+def _is_plural_phrase(text: str) -> bool:
+    return "," in text or " and " in text
 
 
 def _render_mechanism_facts(records: list[dict[str, Any]]) -> str:

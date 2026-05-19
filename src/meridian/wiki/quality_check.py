@@ -19,6 +19,7 @@ DIMENSION_WEIGHTS = {
     "retrieval_scenario_coverage": 1.6,
     "retrieval_taxonomy_boundary": 1.5,
     "frontmatter_body_nonduplication": 1.2,
+    "retrieval_intent_quality": 1.4,
     "mechanism_teachability": 1.8,
     "component_contracts": 1.4,
     "evidence_selectivity": 1.4,
@@ -101,6 +102,7 @@ def _score_dimensions(
         _scenario_coverage_score(frontmatter, sections, scenarios),
         _retrieval_taxonomy_boundary_score(frontmatter, methods),
         _frontmatter_body_nonduplication_score(frontmatter, sections),
+        _retrieval_intent_quality_score(sections),
         _mechanism_teachability_score(sections),
         _component_contract_score(methods, sections),
         _evidence_selectivity_score(sections, claims),
@@ -126,7 +128,7 @@ def _scenario_coverage_score(
             _as_text(frontmatter.get("settings")),
             _as_text(frontmatter.get("datasets")),
             _as_text(frontmatter.get("metrics")),
-            sections.get("Retrieval Notes", ""),
+            sections.get("When To Retrieve This Paper", ""),
             sections.get("Mechanism", ""),
             sections.get("Implementation Hooks", ""),
             sections.get("Limitations / Uncertainty", ""),
@@ -203,34 +205,82 @@ def _retrieval_taxonomy_boundary_score(frontmatter: dict[str, Any], method_recor
 
 
 def _frontmatter_body_nonduplication_score(frontmatter: dict[str, Any], sections: dict[str, str]) -> dict[str, Any]:
-    retrieval_notes = sections.get("Retrieval Notes", "")
+    retrieval_intent = sections.get("When To Retrieve This Paper", "")
     legacy_anchors = sections.get("Retrieval Anchors", "")
+    legacy_notes = sections.get("Retrieval Notes", "")
     findings: list[str] = []
     if legacy_anchors:
         findings.append("legacy_retrieval_anchors_section_repeats_frontmatter")
-    if not retrieval_notes:
-        findings.append("missing_retrieval_notes_section")
-    if re.search(r"^- (Methods|Topics|Settings|Datasets|Metrics):", retrieval_notes, flags=re.MULTILINE):
-        findings.append("retrieval_notes_contains_frontmatter_field_copy")
+    if legacy_notes:
+        findings.append("legacy_retrieval_notes_section_present")
+    if not retrieval_intent:
+        findings.append("missing_when_to_retrieve_section")
+    if re.search(r"^- (Methods|Topics|Settings|Datasets|Metrics):", retrieval_intent, flags=re.MULTILINE):
+        findings.append("when_to_retrieve_contains_frontmatter_field_copy")
     frontmatter_values = {
         str(item).lower()
         for field in ("methods", "topics", "settings", "datasets", "metrics")
         for item in (frontmatter.get(field) or [])
     }
-    note_lines = [line.lower() for line in retrieval_notes.splitlines() if line.strip().startswith("-")]
+    note_lines = [line.lower() for line in retrieval_intent.splitlines() if line.strip().startswith("-")]
     copied_values = sorted(value for value in frontmatter_values if value and sum(value in line for line in note_lines) >= 2)
     if len(copied_values) >= 4:
-        findings.append(f"retrieval_notes_repeats_frontmatter_values:{','.join(copied_values[:6])}")
-    if "frontmatter is the machine-readable retrieval source of truth" not in retrieval_notes.lower():
-        findings.append("retrieval_notes_do_not_declare_frontmatter_source_of_truth")
+        findings.append(f"when_to_retrieve_repeats_frontmatter_values:{','.join(copied_values[:6])}")
     score = 5 - 0.8 * len(findings)
-    if legacy_anchors or "retrieval_notes_contains_frontmatter_field_copy" in findings:
+    if legacy_anchors or legacy_notes or "when_to_retrieve_contains_frontmatter_field_copy" in findings:
         score = min(score, 3.0)
     return _dimension(
         "frontmatter_body_nonduplication",
         score,
         "paper_page_template",
-        "Body retrieval notes explain retrieval use-cases while frontmatter remains the machine-readable source of truth.",
+        "Body retrieval intent explains use-cases while frontmatter remains the machine-readable source of truth.",
+        findings,
+    )
+
+
+def _retrieval_intent_quality_score(sections: dict[str, str]) -> dict[str, Any]:
+    intent = sections.get("When To Retrieve This Paper", "")
+    lower = intent.lower()
+    findings: list[str] = []
+    positive_lines = _bullets_between(intent, "Use this paper when you need to:", "Do not use it when:")
+    negative_lines = _bullets_after(intent, "Do not use it when:")
+    if not intent:
+        findings.append("missing_when_to_retrieve_section")
+    if "use this paper when you need to:" not in lower:
+        findings.append("missing_positive_routing_header")
+    if "do not use it when:" not in lower:
+        findings.append("missing_negative_routing_header")
+    if len(positive_lines) < 2:
+        findings.append("too_few_positive_routing_cases")
+    if len(negative_lines) < 2:
+        findings.append("too_few_negative_routing_cases")
+    if any(line.count(";") >= 2 for line in positive_lines + negative_lines):
+        findings.append("routing_cases_look_like_metadata_list")
+    generic_phrases = [
+        "questions about",
+        "the method, evidence, and uncertainty described",
+        "source of truth",
+        "scope conditions such as",
+    ]
+    if any(phrase in lower for phrase in generic_phrases):
+        findings.append("template_or_metadata_boilerplate")
+    routing_markers = r"\b(compare|adapt|implement|probe|ablat|check|audit|cite|generalize|evidence|baseline|bottleneck|scope|setting)\b"
+    if len(re.findall(routing_markers, lower)) < 5:
+        findings.append("routing_intent_lacks_actionable_markers")
+    if not re.search(r"\b(do not|without|unless|outside|rather than)\b", lower):
+        findings.append("missing_negative_or_contrastive_scope")
+    score = 5 - 0.65 * len(findings)
+    if (
+        "missing_when_to_retrieve_section" in findings
+        or "template_or_metadata_boilerplate" in findings
+        or "routing_cases_look_like_metadata_list" in findings
+    ):
+        score = min(score, 3.0)
+    return _dimension(
+        "retrieval_intent_quality",
+        score,
+        "paper_page_template",
+        "When-to-retrieve prose gives positive and negative semantic routing guidance rather than metadata boilerplate.",
         findings,
     )
 
@@ -623,6 +673,23 @@ def _as_text(value: object) -> str:
     if isinstance(value, list):
         return " ".join(str(item) for item in value)
     return str(value or "")
+
+
+def _bullets_between(text: str, start_header: str, end_header: str) -> list[str]:
+    start = text.lower().find(start_header.lower())
+    if start == -1:
+        return []
+    end = text.lower().find(end_header.lower(), start + len(start_header))
+    block = text[start + len(start_header) : end if end != -1 else len(text)]
+    return [line.strip() for line in block.splitlines() if line.strip().startswith("-")]
+
+
+def _bullets_after(text: str, start_header: str) -> list[str]:
+    start = text.lower().find(start_header.lower())
+    if start == -1:
+        return []
+    block = text[start + len(start_header) :]
+    return [line.strip() for line in block.splitlines() if line.strip().startswith("-")]
 
 
 def _is_broad_or_noisy_claim(text: str) -> bool:

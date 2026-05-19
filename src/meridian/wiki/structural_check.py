@@ -101,7 +101,7 @@ CRITICAL_FRONTMATTER_FIELDS = {
 
 REQUIRED_SECTIONS = [
     "What To Remember",
-    "Retrieval Notes",
+    "When To Retrieve This Paper",
     "Mechanism",
     "Mechanism Details To Verify",
     "Evidence Map",
@@ -307,16 +307,21 @@ def _frontmatter_score(frontmatter: dict[str, Any], run: dict[str, Any]) -> dict
 
 
 def _frontmatter_body_source_score(frontmatter: dict[str, Any], sections: dict[str, str]) -> dict[str, Any]:
-    retrieval_notes = sections.get("Retrieval Notes", "")
+    retrieval_intent = sections.get("When To Retrieve This Paper", "")
+    lower = retrieval_intent.lower()
     findings: list[str] = []
     if "Retrieval Anchors" in sections:
         findings.append("legacy_retrieval_anchors_section_present")
-    if not retrieval_notes:
-        findings.append("missing_retrieval_notes")
-    if re.search(r"^- (Methods|Topics|Settings|Datasets|Metrics):", retrieval_notes, flags=re.MULTILINE):
+    if "Retrieval Notes" in sections:
+        findings.append("legacy_retrieval_notes_section_present")
+    if not retrieval_intent:
+        findings.append("missing_when_to_retrieve")
+    if re.search(r"^- (Methods|Topics|Settings|Datasets|Metrics):", retrieval_intent, flags=re.MULTILINE):
         findings.append("body_copies_frontmatter_field_lists")
-    if "frontmatter is the machine-readable retrieval source of truth" not in retrieval_notes.lower():
-        findings.append("retrieval_notes_missing_source_of_truth_statement")
+    if "use this paper when you need to:" not in lower:
+        findings.append("missing_positive_routing_header")
+    if "do not use it when:" not in lower:
+        findings.append("missing_negative_routing_header")
     for field in ("methods", "topics", "settings"):
         values = frontmatter.get(field)
         if field == "settings" and values == []:
@@ -324,13 +329,17 @@ def _frontmatter_body_source_score(frontmatter: dict[str, Any], sections: dict[s
         if not isinstance(values, list):
             findings.append(f"{field}_not_list")
     score = 5 - 0.9 * len(findings)
-    if "legacy_retrieval_anchors_section_present" in findings or "body_copies_frontmatter_field_lists" in findings:
+    if (
+        "legacy_retrieval_anchors_section_present" in findings
+        or "legacy_retrieval_notes_section_present" in findings
+        or "body_copies_frontmatter_field_lists" in findings
+    ):
         score = min(score, 3.0)
     return _dimension(
         "frontmatter_body_source_of_truth",
         score,
         "paper_page_template",
-        "Frontmatter is the machine-readable retrieval source of truth and body retrieval notes do not duplicate field lists.",
+        "Frontmatter is the machine-readable retrieval source of truth and body when-to-retrieve intent does not duplicate field lists.",
         findings,
     )
 

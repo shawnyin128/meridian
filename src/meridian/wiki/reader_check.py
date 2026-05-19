@@ -36,7 +36,7 @@ def build_reader_check_packet(*, run_manifest: Path, out_path: Path) -> Path:
         "5. Compare Reader A and Reader B across all comparison dimensions. Missing causality, missing implementation detail, vague mechanism names, or unsupported confidence are mismatches.",
         "6. Audit retrieval/frontmatter and candidate records. A packet can teach the paper but still fail as LLM Wiki state if future retrieval would miss or distort it.",
         "7. Specifically audit the retrieval taxonomy: `methods` are reusable method families, `topics` are research problems/objects, `settings` are experimental/deployment/model conditions, and exact component names belong in aliases or candidate method records.",
-        "8. Specifically audit frontmatter/body duplication: frontmatter is the machine-readable retrieval source of truth; body retrieval notes should explain retrieval use-cases, not copy frontmatter lists.",
+        "8. Specifically audit frontmatter/body duplication: frontmatter is the machine-readable retrieval source of truth; `When To Retrieve This Paper` should explain positive and negative semantic routing intent, not copy frontmatter lists.",
         "9. Produce the output JSON only. Do not rewrite `paper.md`; recommend mechanism-level fixes and tests.",
         "",
         "## Minimum Bar",
@@ -46,7 +46,8 @@ def build_reader_check_packet(*, run_manifest: Path, out_path: Path) -> Path:
         "- Claims and evidence must stay separate. Do not let a polished source-grounded explanation hide that `paper.md` failed to teach the same thing.",
         "- Retrieval must be tested as future use: would a later idea/query about method, dataset, metric, limitation, or implementation retrieve this page for the right reason?",
         "- Retrieval schema must be tested as taxonomy: paper-specific titles/components are aliases or records, not reusable topics/method families; weight-only, weight-activation, KV-cache, MoE, hardware, and similar conditions belong in settings.",
-        "- Body retrieval prose must not duplicate frontmatter. If `Retrieval Anchors` simply repeats methods/topics/settings/datasets/metrics, mark the template at least `weak`.",
+        "- Body retrieval prose must not duplicate frontmatter. If `Retrieval Anchors` or `Retrieval Notes` simply repeats methods/topics/settings/datasets/metrics, mark the template at least `weak`.",
+        "- `When To Retrieve This Paper` must contain both positive use cases and negative routing cases; a section that only says to consult frontmatter is template noise.",
         "",
         "## Mandatory Checklist",
         "",
@@ -187,6 +188,7 @@ def _output_schema() -> dict[str, Any]:
             "retrieval_key_status": "pass | weak | fail",
             "taxonomy_boundary_status": "pass | weak | fail",
             "frontmatter_body_duplication_status": "pass | weak | fail",
+            "when_to_retrieve_quality_status": "pass | weak | fail",
             "missing_keys": ["..."],
             "overlapping_or_misplaced_keys": ["..."],
             "notes": "",
@@ -250,7 +252,11 @@ def _checklist_markdown() -> str:
         ),
         (
             "frontmatter_body_source_of_truth",
-            "Frontmatter is the machine-readable retrieval source of truth; body retrieval notes do not duplicate frontmatter field lists.",
+            "Frontmatter is the machine-readable retrieval source of truth; `When To Retrieve This Paper` gives semantic routing intent and does not duplicate frontmatter field lists.",
+        ),
+        (
+            "when_to_retrieve_quality",
+            "`When To Retrieve This Paper` contains concrete positive and negative routing cases that clarify when this paper should and should not be used.",
         ),
         (
             "paper_positioning",
@@ -305,7 +311,8 @@ def _comparison_dimensions_markdown() -> str:
         ("implementation_probe_value", "Could Reader A guide coding, probes, ablations, or sanity checks?"),
         ("retrieval_future_use", "Would future wiki queries retrieve and use this paper for the right concepts?"),
         ("retrieval_taxonomy_boundary", "Do methods/topics/settings have non-overlapping meanings, or are they mixed into one noisy keyword list?"),
-        ("frontmatter_body_duplication", "Does the body explain retrieval scenarios instead of repeating frontmatter lists?"),
+        ("frontmatter_body_duplication", "Does the body explain when-to-retrieve intent instead of repeating frontmatter lists?"),
+        ("when_to_retrieve_quality", "Does the body give useful positive and negative routing cases, or only generic template text?"),
     ]
     return "\n".join(f"- `{dimension}`: {description}" for dimension, description in rows)
 
@@ -350,7 +357,12 @@ def _rubric_markdown() -> str:
         (
             "frontmatter_body_source_of_truth",
             1.0,
-            "Frontmatter is the machine-readable retrieval source of truth; body retrieval notes explain use-cases rather than copying metadata lists.",
+            "Frontmatter is the machine-readable retrieval source of truth; body when-to-retrieve intent explains use-cases rather than copying metadata lists.",
+        ),
+        (
+            "when_to_retrieve_quality",
+            1.0,
+            "The when-to-retrieve section gives concrete positive and negative routing guidance for future human readers and context builders.",
         ),
         (
             "uncertainty_calibration",

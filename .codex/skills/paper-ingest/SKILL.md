@@ -61,7 +61,7 @@ Use this order:
 
 1. frontmatter with retrieval metadata
 2. `What To Remember`: one concrete mechanism-centered paragraph
-3. `Retrieval Notes`: human-readable retrieval use-cases; do not repeat frontmatter lists
+3. `When To Retrieve This Paper`: semantic positive/negative routing intent; do not repeat frontmatter lists
 4. `Mechanism`: component contracts
 5. `Mechanism Details To Verify`: source-grounded equations/algorithms/figures/settings
 6. `Evidence Map`: only high-value claims and evidence takeaways
@@ -78,10 +78,11 @@ Avoid:
 - repeated contribution sentences already represented as claim records
 - prose that says "read it as a mechanism paper" without giving the mechanism
 - a `Retrieval Anchors` section that copies `methods`, `topics`, `settings`, `datasets`, or `metrics` from frontmatter
+- a `Retrieval Notes` section that only says to consult frontmatter or repeats metadata without semantic routing value
 
 ## Retrieval Metadata
 
-Frontmatter is the machine-readable retrieval source of truth. Body prose can explain why the page should be retrieved, but it must not become a second metadata source.
+Frontmatter is the machine-readable retrieval source of truth. Body prose can explain when the page should or should not be retrieved, but it must not become a second metadata source.
 
 Frontmatter should support future idea-driven retrieval:
 
@@ -99,6 +100,14 @@ Use distinct retrieval fields:
 
 Prefer controlled/global vocabulary entries before inventing a paper-specific topic. Avoid title-as-topic, generic one-word topics such as `error`, `design`, `outliers`, or labels that duplicate another field.
 
+`When To Retrieve This Paper` quality bar:
+
+- Start with `Use this paper when you need to:` and include 2-4 concrete positive routing cases.
+- Include `Do not use it when:` and 2-4 concrete negative routing cases.
+- Positive cases should mention research actions such as compare, adapt, implement, probe, ablate, check evidence, audit scope, or decide whether a setting applies.
+- Negative cases should prevent over-broad use, especially across PTQ vs QAT, weight-only vs weight-activation/KV-cache, MoE vs dense, or hardware/kernel scope.
+- Do not say only "see frontmatter"; retrieval code can already read frontmatter.
+
 ## Self-Check
 
 Use three separately inspectable self-check roles as the convergence loop:
@@ -110,8 +119,8 @@ Use three separately inspectable self-check roles as the convergence loop:
 All three agents must cover retrieval schema quality:
 
 - Understanding agent checks whether a reader can explain why the page should be retrieved and whether `methods`, `topics`, `settings`, `aliases`, and candidate records have distinct roles.
-- Quality agent scores retrieval taxonomy boundaries and frontmatter/body non-duplication; it should fail pages where paper-specific method components replace reusable method families or where topics are generic/title-derived.
-- Structural agent checks that frontmatter is the source of truth and that body `Retrieval Notes` do not duplicate frontmatter field lists.
+- Quality agent scores retrieval taxonomy boundaries, frontmatter/body non-duplication, and the quality of `When To Retrieve This Paper`; it should fail pages where paper-specific method components replace reusable method families, topics are generic/title-derived, or body retrieval text is only boilerplate.
+- Structural agent checks that frontmatter is the source of truth and that body `When To Retrieve This Paper` has both positive and negative routing headers without duplicating frontmatter field lists.
 
 Keep these roles separate. Do not let structural pass/fail replace semantic understanding or quality evaluation, and do not bury schema completeness failures inside prose-quality findings.
 

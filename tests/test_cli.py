@@ -11,7 +11,7 @@ from meridian.cli import main
 from meridian.wiki.extract import PageExtraction, PdfExtraction
 from meridian.wiki.ingest import _title_from_first_page
 from meridian.wiki.packet import _trusted_metadata_authors
-from meridian.wiki.quality_check import _retrieval_taxonomy_boundary_score
+from meridian.wiki.quality_check import _retrieval_intent_quality_score, _retrieval_taxonomy_boundary_score
 from meridian.wiki.rubrics import complete_result_template, rubric_for
 
 
@@ -213,7 +213,9 @@ class CliTests(unittest.TestCase):
             self.assertIn("type: \"paper\"", paper)
             self.assertIn("model_strategy: \"heuristic_text_v2\"", paper)
             self.assertIn("## Paper Positioning", paper)
-            self.assertIn("## Retrieval Notes", paper)
+            self.assertIn("## When To Retrieve This Paper", paper)
+            self.assertIn("Use this paper when you need to:", paper)
+            self.assertIn("Do not use it when:", paper)
             self.assertIn("## Mechanism", paper)
             self.assertIn("## Candidate Records", paper)
             self.assertNotIn("## Extracted Contribution Sentences", paper)
@@ -256,8 +258,11 @@ class CliTests(unittest.TestCase):
             paper = (out / "paper.md").read_text(encoding="utf-8")
             self.assertIn("This is a MoE post-training quantization paper", paper)
             self.assertIn("## What To Remember", paper)
-            self.assertIn("## Retrieval Notes", paper)
-            self.assertIn("Frontmatter is the machine-readable retrieval source of truth", paper)
+            self.assertIn("## When To Retrieve This Paper", paper)
+            self.assertIn("Use this paper when you need to:", paper)
+            self.assertIn("Do not use it when:", paper)
+            self.assertIn("You want a weight-only PTQ citation", paper)
+            self.assertNotIn("## Retrieval Notes", paper)
             frontmatter = paper.split("---", 2)[1]
             methods_frontmatter = frontmatter.split("methods:", 1)[1].split("settings:", 1)[0]
             self.assertIn("post-training quantization", methods_frontmatter)
@@ -644,6 +649,7 @@ class CliTests(unittest.TestCase):
             self.assertEqual(len(payload["retrieval_scenarios"]), 5)
             dimensions = {item["dimension"] for item in payload["dimension_scores"]}
             self.assertIn("retrieval_scenario_coverage", dimensions)
+            self.assertIn("retrieval_intent_quality", dimensions)
             self.assertIn("metadata_routing_integrity", dimensions)
 
     def test_retrieval_taxonomy_allows_descriptive_title_topics(self) -> None:
@@ -675,6 +681,26 @@ class CliTests(unittest.TestCase):
 
         self.assertLessEqual(score["score"], 3.0)
         self.assertIn("topics_contain_title_or_alias:codequant", score["findings"])
+
+    def test_retrieval_intent_quality_rejects_metadata_lists(self) -> None:
+        score = _retrieval_intent_quality_score(
+            {
+                "When To Retrieve This Paper": "\n".join(
+                    [
+                        "Use this paper when you need to:",
+                        "- Compare post-training quantization; MoE quantization; outlier-aware quantization in weight-activation quantization; MoE setting.",
+                        "- Check accuracy; perplexity; latency on WikiText2; C4; MMLU.",
+                        "",
+                        "Do not use it when:",
+                        "- You need QAT evidence unless directly compared.",
+                        "- You need a generic survey page.",
+                    ]
+                )
+            }
+        )
+
+        self.assertLessEqual(score["score"], 3.0)
+        self.assertIn("routing_cases_look_like_metadata_list", score["findings"])
 
     def test_structural_check_command_scores_ingest_structure(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
