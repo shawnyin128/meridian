@@ -49,7 +49,10 @@ This runs ingest, publishes a canonical draft when allowed, builds a bounded
 LLM-as-Judge packet, builds a reader self-check packet, and writes `flow.json`.
 The reader self-check is the mechanism-level guardrail: one reader explains the
 paper from `paper.md` only, another explains it from source excerpts, and the
-reconciliation must attribute mismatches to generation-mechanism buckets.
+reconciliation must attribute mismatches to generation-mechanism buckets. The
+packet also forces checklist results, comparison-dimension gaps,
+frontmatter/retrieval audit, candidate-record audit, false-confidence flags, and
+regression tests to add.
 
 After a judge produces JSON, record and converge it:
 

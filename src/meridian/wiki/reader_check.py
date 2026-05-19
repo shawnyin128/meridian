@@ -9,20 +9,54 @@ def build_reader_check_packet(*, run_manifest: Path, out_path: Path) -> Path:
     run = json.loads(run_manifest.read_text(encoding="utf-8"))
     artifacts = dict(run.get("draft_artifacts") or {})
     paper_path = Path(str(artifacts.get("paper_page") or run.get("paper_page") or ""))
+    claims_path = Path(str(artifacts.get("claims") or ""))
+    methods_path = Path(str(artifacts.get("methods") or ""))
+    evidence_path = Path(str(artifacts.get("evidence") or ""))
     extraction_dir = Path(str(run.get("extraction_dir") or ""))
     pages_path = extraction_dir / "pages.jsonl"
 
     packet = [
         "# Paper Wiki Reader Check Packet",
         "",
+        "Schema version: `paper_wiki_reader_check.v1`",
+        "",
         "This packet is for self-iteration of the ingest mechanism. It is not asking whether the prose sounds nice.",
         "It asks whether `paper.md` can teach the paper to a new researcher, and if not, which generation mechanism failed.",
         "",
+        "## Run Context",
+        "",
+        _fenced("json", json.dumps(_run_context(run), indent=2)),
+        "",
         "## Required Procedure",
         "",
-        "1. Run Reader A using only the `paper.md` section below. Reader A writes a paper explanation without opening source text.",
-        "2. Run Reader B using the source-grounded excerpt section below. Reader B writes a fresh paper explanation from the paper evidence.",
-        "3. Compare the two explanations. Any mismatch must be attributed to a generation mechanism bucket, not fixed by hand-editing one sentence.",
+        "1. Run Reader A using only the `paper.md` section below. Reader A must write a teach-back explanation without opening source text or candidate JSONL.",
+        "2. Run Reader B using the source-grounded excerpt section below. Reader B must write a fresh paper explanation from paper evidence, ignoring Reader A.",
+        "3. Run the mandatory checklist. Every item must be marked `pass`, `weak`, `fail`, or `not_applicable`; `weak` and `fail` require evidence and a generation bucket.",
+        "4. Compare Reader A and Reader B across all comparison dimensions. Missing causality, missing implementation detail, vague mechanism names, or unsupported confidence are mismatches.",
+        "5. Audit retrieval/frontmatter and candidate records. A packet can teach the paper but still fail as LLM Wiki state if future retrieval would miss or distort it.",
+        "6. Produce the output JSON only. Do not rewrite `paper.md`; recommend mechanism-level fixes and tests.",
+        "",
+        "## Minimum Bar",
+        "",
+        "- A new researcher should understand what problem the paper solves, how the method works, why each component exists, what evidence supports it, and what remains uncertain.",
+        "- Mechanism names alone are not explanations. If a component is named but its inputs, transformation, output, dependency, and failure mode are absent, mark it at least `weak`.",
+        "- Claims and evidence must stay separate. Do not let a polished source-grounded explanation hide that `paper.md` failed to teach the same thing.",
+        "- Retrieval must be tested as future use: would a later idea/query about method, dataset, metric, limitation, or implementation retrieve this page for the right reason?",
+        "",
+        "## Mandatory Checklist",
+        "",
+        _checklist_markdown(),
+        "",
+        "## Comparison Dimensions",
+        "",
+        _comparison_dimensions_markdown(),
+        "",
+        "## Scoring and Decision",
+        "",
+        "- `pass`: no blocking checklist failure, no major Reader A/B mechanism gap, and retrieval/frontmatter audit is at least `weak`.",
+        "- `needs_refine`: one or more major gaps that are fixable by ingest/schema/rubric changes, but the page is not actively misleading.",
+        "- `fail`: fabricated source fact, missing core method, broken provenance, invalid schema, or retrieval metadata likely routes future work to the wrong context.",
+        "- Use `blocking` severity when a future researcher could implement, cite, or decide incorrectly from `paper.md` alone.",
         "",
         "## Output JSON Schema",
         "",
@@ -40,11 +74,13 @@ def build_reader_check_packet(*, run_manifest: Path, out_path: Path) -> Path:
         "- `evidence_linking`: the page names concepts but does not connect them to figures, tables, equations, or ablations.",
         "- `retrieval_metadata`: frontmatter, tags, aliases, source ids, or method names will retrieve the wrong context later.",
         "- `judge_rubric`: the evaluator would pass shallow output because the rubric does not demand teach-back depth.",
+        "- `source_management`: raw source identity, managed path, registry, or immutable source contract is missing or confusing.",
+        "- `candidate_record_schema`: claims/methods/evidence JSONL lacks fields needed for downstream promotion or retrieval.",
         "",
         "## Reader A Task: paper.md Only",
         "",
-        "You are onboarding a new researcher. Read only this generated `paper.md` and explain the paper in 8-12 bullets.",
-        "Your explanation must cover: core problem, mechanism, why each component exists, what evidence supports it, what remains uncertain, and what a developer would implement or test first.",
+        "You are onboarding a new researcher. Read only this generated `paper.md` and explain the paper in 10-14 bullets.",
+        "Your explanation must cover: core problem, mechanism, why each component exists, component dependencies, key equations/algorithms/figures/tables, evidence, limitations, uncertainty, and what a developer would implement or test first.",
         "If `paper.md` does not let you answer something, write `unknown_from_paper_md` instead of guessing.",
         "",
         f"Path: `{paper_path}`",
@@ -60,10 +96,27 @@ def build_reader_check_packet(*, run_manifest: Path, out_path: Path) -> Path:
         "",
         _fenced("markdown", _source_excerpts(pages_path)),
         "",
+        "## Candidate Record Audit Inputs",
+        "",
+        "Use these only after Reader A and Reader B are written. They test whether downstream wiki promotion and retrieval have enough structured state.",
+        "",
+        f"Claims: `{claims_path}`",
+        "",
+        _fenced("jsonl", _jsonl_preview(claims_path, max_records=8)),
+        "",
+        f"Methods: `{methods_path}`",
+        "",
+        _fenced("jsonl", _jsonl_preview(methods_path, max_records=8)),
+        "",
+        f"Evidence: `{evidence_path}`",
+        "",
+        _fenced("jsonl", _jsonl_preview(evidence_path, max_records=10)),
+        "",
         "## Reconciliation Task",
         "",
         "Compare Reader A and Reader B.",
         "For every missing, vague, or misleading point in Reader A, identify the source evidence, the likely generation mechanism failure bucket, and a testable fix.",
+        "Then compare the candidate records against both explanations: check whether important methods, claims, evidence, limitations, and retrieval keys have structured records.",
         "A good result should tell the developer how to improve the ingest system, not merely rewrite the current paper page.",
     ]
 
@@ -74,11 +127,48 @@ def build_reader_check_packet(*, run_manifest: Path, out_path: Path) -> Path:
 
 def _output_schema() -> dict[str, Any]:
     return {
-        "schema_version": "paper_wiki_reader_check.v0",
+        "schema_version": "paper_wiki_reader_check.v1",
         "decision": "pass | needs_refine | fail",
         "case_id": "",
+        "one_sentence_verdict": "",
         "paper_md_only_explanation": ["..."],
         "source_grounded_explanation": ["..."],
+        "checklist_results": [
+            {
+                "check_id": "mechanism_causality",
+                "status": "pass | weak | fail | not_applicable",
+                "severity": "minor | major | blocking",
+                "reader_a_evidence": "",
+                "source_evidence": "page / section / table / figure / equation",
+                "generation_bucket": "paper_model_extraction",
+                "testable_fix": "",
+            }
+        ],
+        "dimension_comparison": [
+            {
+                "dimension": "mechanism_causality",
+                "paper_md_score": 0,
+                "source_grounded_score": 0,
+                "gap": "none | minor | major | blocking",
+                "missing_or_misleading_detail": "",
+                "source_evidence": "",
+                "generation_bucket": "paper_model_extraction",
+            }
+        ],
+        "retrieval_metadata_audit": {
+            "frontmatter_status": "pass | weak | fail",
+            "source_management_status": "pass | weak | fail",
+            "retrieval_key_status": "pass | weak | fail",
+            "missing_keys": ["..."],
+            "notes": "",
+        },
+        "candidate_record_audit": {
+            "claims_status": "pass | weak | fail",
+            "methods_status": "pass | weak | fail",
+            "evidence_status": "pass | weak | fail",
+            "missing_records": ["..."],
+            "overbroad_records": ["..."],
+        },
         "mismatches": [
             {
                 "severity": "minor | major | blocking",
@@ -90,8 +180,88 @@ def _output_schema() -> dict[str, Any]:
                 "testable_fix": "",
             }
         ],
+        "false_confidence_flags": ["..."],
         "mechanism_refine_plan": ["..."],
+        "regression_tests_to_add": ["..."],
     }
+
+
+def _run_context(run: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": run.get("schema_version"),
+        "case_id": run.get("eval_case_id"),
+        "title": run.get("title"),
+        "quality_gate": run.get("quality_gate"),
+        "paper_model": run.get("paper_model"),
+        "source_management": run.get("source_management"),
+        "canonical_wiki_mutated": run.get("canonical_wiki_mutated"),
+    }
+
+
+def _checklist_markdown() -> str:
+    rows = [
+        (
+            "source_identity",
+            "Raw source identity is stable: source id/path/registry/hash are visible when managed.",
+        ),
+        (
+            "frontmatter_retrieval",
+            "Frontmatter has type/status/review state/source ids/tags/aliases/topics enough for future retrieval.",
+        ),
+        (
+            "paper_positioning",
+            "The page states the exact problem, scope, target setting, and non-goals without generic filler.",
+        ),
+        (
+            "mechanism_causality",
+            "The core method is explained as a causal chain, not a list of named components.",
+        ),
+        (
+            "component_contracts",
+            "Each key component has inputs, transformation, outputs, dependency, and why it exists.",
+        ),
+        (
+            "equation_algorithm_grounding",
+            "Important equations, algorithms, figures, and tables are tied to mechanism meaning and provenance.",
+        ),
+        (
+            "evidence_mapping",
+            "Main claims are mapped to experiments, datasets, metrics, baselines, tables, or ablations.",
+        ),
+        (
+            "implementation_readiness",
+            "A developer could identify the first implementation/probe/sanity checks from the page.",
+        ),
+        (
+            "limitations_uncertainty",
+            "Limitations, caveats, missing evidence, and confidence gaps are explicit.",
+        ),
+        (
+            "source_vs_synthesis",
+            "Source facts, wiki synthesis, and user insight are not collapsed into one voice.",
+        ),
+        (
+            "candidate_records",
+            "Claims/methods/evidence JSONL contain the important objects without broad filler records dominating.",
+        ),
+    ]
+    return "\n".join(f"- `{check_id}`: {description}" for check_id, description in rows)
+
+
+def _comparison_dimensions_markdown() -> str:
+    rows = [
+        ("problem_scope", "Does Reader A recover the same target problem and scope as Reader B?"),
+        ("mechanism_causality", "Does Reader A explain why the method works, or only name components?"),
+        ("component_dependencies", "Does Reader A know which components depend on or condition each other?"),
+        ("math_algorithm_semantics", "Does Reader A know what the important formulas/algorithms do?"),
+        ("visual_table_semantics", "Does Reader A preserve the meaning of key figures/tables?"),
+        ("claim_evidence_alignment", "Does Reader A connect each main claim to the right evidence type?"),
+        ("experimental_setting", "Does Reader A retain datasets, metrics, baselines, quantization/eval settings, or task constraints when important?"),
+        ("limitations_and_scope", "Does Reader A avoid overgeneralizing beyond the paper evidence?"),
+        ("implementation_probe_value", "Could Reader A guide coding, probes, ablations, or sanity checks?"),
+        ("retrieval_future_use", "Would future wiki queries retrieve and use this paper for the right concepts?"),
+    ]
+    return "\n".join(f"- `{dimension}`: {description}" for dimension, description in rows)
 
 
 def _source_excerpts(pages_path: Path) -> str:
@@ -160,6 +330,22 @@ def _read_optional(path: Path) -> str:
     if not path or not path.exists():
         return f"[missing: {path}]"
     return path.read_text(encoding="utf-8").rstrip()
+
+
+def _jsonl_preview(path: Path, *, max_records: int) -> str:
+    if not path or not path.exists() or path.is_dir():
+        return f"[missing: {path}]"
+
+    records: list[str] = []
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            records.append(stripped)
+            if len(records) >= max_records:
+                break
+    return "\n".join(records) if records else "[no records]"
 
 
 def _fenced(language: str, content: str) -> str:
