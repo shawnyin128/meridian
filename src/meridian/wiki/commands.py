@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from meridian.wiki.corpus import CatalogResult, RetrievalResult, build_paper_catalog, retrieve_papers
 from meridian.wiki.eval import iter_cases, write_eval_manifest
 from meridian.wiki.eval_run import (
     EvalConvergeResult,
@@ -306,3 +307,26 @@ def calibrate_eval(
 
 def summarize_eval(manifest_path: Path, out_path: Path | None = None) -> Path:
     return write_eval_summary(manifest_path=manifest_path, out_path=out_path)
+
+
+def catalog_wiki(wiki_root: Path, out_path: Path | None = None) -> CatalogResult:
+    return build_paper_catalog(wiki_root=wiki_root, out_path=out_path)
+
+
+def retrieve_wiki(
+    *,
+    query: str,
+    wiki_root: Path,
+    catalog_path: Path | None = None,
+    top_k: int = 5,
+    packet_path: Path | None = None,
+    result_path: Path | None = None,
+) -> RetrievalResult:
+    return retrieve_papers(
+        query=query,
+        wiki_root=wiki_root,
+        catalog_path=catalog_path,
+        top_k=top_k,
+        packet_path=packet_path,
+        result_path=result_path,
+    )

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from meridian.wiki.commands import (
     calibrate_eval,
+    catalog_wiki,
     converge_run,
     converge_eval,
     create_judge_packet,
@@ -15,6 +16,7 @@ from meridian.wiki.commands import (
     quality_check_run,
     record_judge,
     record_review,
+    retrieve_wiki,
     run_flow,
     self_check_aggregate,
     self_check_eval,
@@ -349,6 +351,44 @@ def build_parser() -> argparse.ArgumentParser:
     converge.add_argument("run_manifest", type=Path, help="Path to run.json.")
     converge.add_argument("--out", type=Path, default=None, help="Optional convergence record path.")
 
+    catalog = wiki_subparsers.add_parser(
+        "catalog",
+        help="Build the machine-readable paper catalog for canonical wiki pages.",
+    )
+    catalog.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    catalog.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="Output JSONL catalog path. Defaults to <wiki-root>/.index/papers.jsonl.",
+    )
+
+    retrieve = wiki_subparsers.add_parser(
+        "retrieve",
+        help="Retrieve paper wiki context for a research query.",
+    )
+    retrieve.add_argument("query", help="Standalone research question or retrieval intent.")
+    retrieve.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    retrieve.add_argument(
+        "--catalog",
+        type=Path,
+        default=None,
+        help="Optional paper catalog path. Defaults to <wiki-root>/.index/papers.jsonl.",
+    )
+    retrieve.add_argument("--top-k", type=int, default=5, help="Maximum paper pages to return.")
+    retrieve.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="Optional Markdown context packet path.",
+    )
+    retrieve.add_argument(
+        "--json-out",
+        type=Path,
+        default=None,
+        help="Optional machine-readable retrieval result JSON path.",
+    )
+
     return parser
 
 
@@ -531,6 +571,30 @@ def main(argv: list[str] | None = None) -> int:
             result = converge_run(run_manifest=args.run_manifest, out_path=args.out)
             print(f"Wrote convergence record: {result.convergence_path}")
             print(f"Convergence status: {result.status}")
+            return 0
+
+        if args.product == "wiki" and args.command == "catalog":
+            result = catalog_wiki(wiki_root=args.wiki_root, out_path=args.out)
+            print(f"Wrote paper catalog: {result.catalog_path}")
+            print(f"Catalog entries: {result.count}")
+            return 0
+
+        if args.product == "wiki" and args.command == "retrieve":
+            result = retrieve_wiki(
+                query=args.query,
+                wiki_root=args.wiki_root,
+                catalog_path=args.catalog,
+                top_k=args.top_k,
+                packet_path=args.out,
+                result_path=args.json_out,
+            )
+            if result.packet_path is not None:
+                print(f"Wrote retrieval context packet: {result.packet_path}")
+            if result.result_path is not None:
+                print(f"Wrote retrieval JSON: {result.result_path}")
+            print(f"Retrieved papers: {len(result.results)}")
+            for item in result.results:
+                print(f"- {item['score']}: {item['title']} ({item.get('relative_path') or item['path']})")
             return 0
 
     except Exception as exc:  # noqa: BLE001 - CLI should render concise failures.

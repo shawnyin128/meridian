@@ -108,3 +108,29 @@ meridian wiki eval-calibrate eval/runs/<run-id>/eval_manifest.json \
   --bucket paper_model \
   --notes "Judge found the main issue."
 ```
+
+## Retrieval v0
+
+Canonical draft paper pages can be wrapped into a machine-readable corpus catalog:
+
+```bash
+meridian wiki catalog --wiki-root wiki
+```
+
+This scans `wiki/papers/*.md` and writes `wiki/.index/papers.jsonl`. The catalog
+keeps frontmatter as the routing source of truth, plus section previews for
+context-packet construction.
+
+Retrieve research context with:
+
+```bash
+meridian wiki retrieve "I need MoE PTQ papers for activation outlier ablations" \
+  --wiki-root wiki \
+  --top-k 5 \
+  --out wiki/.drafts/retrieval/context.md \
+  --json-out wiki/.drafts/retrieval/context.json
+```
+
+The output is a ranked context packet, not a final answer. Each hit explains the
+matched frontmatter fields, selected sections, and read-first snippets so an
+agent can inspect the smallest useful set of wiki pages before synthesis.

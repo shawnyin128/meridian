@@ -348,6 +348,148 @@ class CliTests(unittest.TestCase):
             self.assertIn("## [", log)
             self.assertIn("Quality gate: `warn`", log)
 
+    def test_wiki_catalog_indexes_canonical_paper_frontmatter(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            pdf = root / "paper.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            out = wiki_root / ".drafts/ingests/fake-paper"
+
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "ingest",
+                        str(pdf),
+                        "--out",
+                        str(out),
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--publish-mode",
+                        "auto",
+                    ]
+                ),
+                0,
+            )
+            self.assertEqual(main(["wiki", "catalog", "--wiki-root", str(wiki_root)]), 0)
+
+            catalog = wiki_root / ".index/papers.jsonl"
+            self.assertTrue(catalog.exists())
+            records = [json.loads(line) for line in catalog.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(len(records), 1)
+            self.assertEqual(records[0]["schema_version"], "meridian.paper_catalog.v0")
+            self.assertEqual(records[0]["page_id"], "papers/Fake-Research-Paper")
+            self.assertEqual(records[0]["routing"]["methods"][0], "paper-specific research method")
+            self.assertIn("What To Remember", records[0]["section_previews"])
+
+    def test_wiki_retrieve_outputs_context_packet_from_frontmatter_and_sections(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            papers.mkdir(parents=True)
+            (papers / "MoE-PTQ.md").write_text(
+                """---
+type: "paper"
+title: "MoE PTQ Paper"
+status: "draft"
+aliases:
+  - "CodeQuant"
+topics:
+  - "activation outliers"
+  - "quantization error"
+methods:
+  - "MoE post-training quantization"
+settings:
+  - "weight-activation quantization"
+datasets:
+  - "WikiText2"
+metrics:
+  - "perplexity"
+claims:
+  - "claim-001"
+confidence: "medium"
+review_state: "auto_converged"
+quality_gate: "pass"
+---
+# MoE PTQ Paper
+
+## What To Remember
+
+This page explains a MoE post-training quantization design for activation outliers and quantization error.
+
+## Mechanism
+
+The method smooths activation outliers, clusters weights, and keeps component contracts testable.
+
+## Implementation Hooks
+
+- Add ablations for activation outlier smoothing and weight clustering.
+""",
+                encoding="utf-8",
+            )
+            (papers / "Alignment.md").write_text(
+                """---
+type: "paper"
+title: "Alignment Paper"
+status: "draft"
+aliases:
+  - "DPO"
+topics:
+  - "preference optimization"
+methods:
+  - "direct preference optimization"
+settings:
+  - "RLHF setting"
+datasets: []
+metrics: []
+claims: []
+confidence: "medium"
+review_state: "auto_converged"
+quality_gate: "pass"
+---
+# Alignment Paper
+
+## What To Remember
+
+This page explains preference optimization for alignment.
+""",
+                encoding="utf-8",
+            )
+            packet = root / "context.md"
+            result_json = root / "context.json"
+
+            self.assertEqual(main(["wiki", "catalog", "--wiki-root", str(wiki_root)]), 0)
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "retrieve",
+                        "I need MoE post-training quantization papers for activation outlier ablations",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--top-k",
+                        "2",
+                        "--out",
+                        str(packet),
+                        "--json-out",
+                        str(result_json),
+                    ]
+                ),
+                0,
+            )
+
+            text = packet.read_text(encoding="utf-8")
+            payload = json.loads(result_json.read_text(encoding="utf-8"))
+            self.assertIn("Retrieval Context Packet", text)
+            self.assertIn("MoE PTQ Paper", text)
+            self.assertIn("frontmatter methods", text)
+            self.assertIn("Implementation Hooks", text)
+            self.assertEqual(payload["schema_version"], "meridian.retrieval_context.v0")
+            self.assertEqual(payload["results"][0]["title"], "MoE PTQ Paper")
+            self.assertIn("methods", payload["results"][0]["matched_frontmatter"])
+
     def test_eval_iterates_jsonl_cases(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

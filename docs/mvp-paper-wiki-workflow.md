@@ -143,13 +143,19 @@ When drawing Meridian workflows:
 Retrieval should be a workflow, not a single search call:
 
 1. Parse the user's request into intent, objects, constraints, and desired output.
-2. Read `wiki/index.md` and relevant frontmatter.
-3. Use lexical search first (`rg`, BM25, or Obsidian search).
+2. Read `wiki/.index/papers.jsonl`, `wiki/index.md`, and relevant frontmatter.
+3. Use lexical search first (`rg`, BM25, Obsidian search, or Meridian's local catalog scorer).
 4. Expand through graph links: paper-to-claim, claim-to-method, method-to-idea, topic-to-paper.
 5. Apply filters: status, source count, confidence, recency, user-marked importance.
 6. Rerank for usefulness to the current request.
 7. Return a context packet with chosen pages, why each page was selected, and what gaps remain.
 8. Cite or link every major claim in the final answer.
+
+Retrieval v0 is intentionally thin: `meridian wiki catalog` builds
+`wiki/.index/papers.jsonl` from canonical paper pages, and
+`meridian wiki retrieve` produces a ranked context packet from frontmatter and
+high-value sections. It does not synthesize an answer, mutate canonical wiki
+state, or require a vector database.
 
 ## Workflow Contract
 
