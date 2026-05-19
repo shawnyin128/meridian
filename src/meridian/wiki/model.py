@@ -145,12 +145,9 @@ def _paper_positioning(
     text = _normalize(f"{title} {abstract} " + " ".join(page.text for page in pages[:4]))
     lowered = text.lower()
     problem = _problem_focus(lowered)
-    method = _method_name_from_title(title)
-    if method_records:
-        components = ", ".join(record["name"] for record in method_records[:4])
-        method = f"{method} via {components}"
+    method = _mechanism_narrative(title, method_records)
     evidence = _compact_evidence_context(pages)
-    return f"{problem} The paper's actual move is {method}. {evidence}".strip()
+    return f"{problem} {method} {evidence}".strip()
 
 
 def _problem_focus(lowered_text: str) -> str:
@@ -652,18 +649,47 @@ def _one_line_takeaway(
     datasets: list[str],
     metrics: list[str],
 ) -> str:
-    method = _method_name_from_title(title)
-    if method_records:
-        method = f"The core mechanism is {method}: " + ", ".join(record["name"] for record in method_records[:4])
-    else:
-        method = f"The core mechanism is {method}"
+    method = _mechanism_narrative(title, method_records)
     eval_hint = ""
     if datasets or metrics:
         eval_hint = f" It should be judged by {', '.join(metrics[:4] or ['reported metrics'])}"
         if datasets:
             eval_hint += f" on {', '.join(datasets[:4])}"
         eval_hint += "."
-    return f"{method}. Read it as a mechanism paper, not as generic background.{eval_hint}"
+    return f"{method} Read it as a mechanism paper, not as generic background.{eval_hint}"
+
+
+def _mechanism_narrative(title: str, method_records: list[dict[str, Any]]) -> str:
+    method_name = _method_name_from_title(title)
+    by_acronym = {
+        str(record.get("short_name") or "").upper(): record
+        for record in method_records
+        if record.get("short_name")
+    }
+    if {"AOS", "ACCF", "POG", "LUT"}.issubset(by_acronym):
+        return (
+            f"{method_name} is a post-training quantization pipeline for MoE models that treats "
+            "outliers as a calibration-and-representation problem. First it learns rotations that "
+            "make activations less dominated by extreme channels while absorbing the inverse effect "
+            "into weights, so inference does not pay an online rotation cost. Then it replaces plain "
+            "uniform weight quantization with centroid clustering and fine-tunes the centroids and "
+            "assignments to preserve layer outputs and MoE router behavior. POG is the conditional "
+            "piece: it only matters when weights are clustered block-wise, because the column order "
+            "decides which values share a clustering group. The LUT kernel is the systems endpoint "
+            "that makes the clustered representation executable rather than just accurate offline."
+        )
+
+    if method_records:
+        first = method_records[0]
+        summary = str(first.get("summary") or "").rstrip(".")
+        inputs = ", ".join(first.get("inputs") or [])
+        outputs = ", ".join(first.get("outputs") or [])
+        io = ""
+        if inputs or outputs:
+            io = f" It operates on {inputs or 'the paper inputs'} and produces {outputs or 'the reported outputs'}."
+        return f"{method_name} should be read through its mechanism, not its name: {summary}.{io}"
+
+    return f"{method_name} should be read through its mechanism, but this ingest did not extract enough method structure yet."
 
 
 def _mechanism_overview(method_records: list[dict[str, Any]]) -> list[str]:

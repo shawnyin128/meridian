@@ -194,8 +194,12 @@ class CliTests(unittest.TestCase):
             paper = (out / "paper.md").read_text(encoding="utf-8")
             self.assertIn("This is a MoE post-training quantization paper", paper)
             self.assertIn("## What To Remember", paper)
+            self.assertIn("First it learns rotations", paper)
+            self.assertIn("POG is the conditional piece", paper)
+            self.assertIn("makes the clustered representation executable", paper)
             self.assertIn("## Implementation Notes", paper)
             self.assertIn("Router KL evidence should be tracked separately", paper)
+            self.assertNotIn("The core mechanism is CodeQuant:", paper)
             self.assertNotIn("Outliers have emerged as background filler", paper)
 
     def test_wiki_ingest_can_publish_canonical_draft(self) -> None:
