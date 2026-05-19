@@ -104,6 +104,7 @@ Prefer controlled/global vocabulary entries before inventing a paper-specific to
 
 - Start with `Canonical retrieval fits:` and include 3-4 diverse examples.
 - Each example should have a `Query: "..."` line and a `Use because:` line.
+- Query examples must be plausible standalone retrieval requests before the page is already in context. Avoid deictic prompts such as `this paper`, `the mechanism`, or component-only probes that read like the generator already knew the target page.
 - Examples should portray expected behavior across idea/design comparison, implementation/probe/ablation, and evidence/comparison scenarios.
 - Include `Scope notes:` with `Primary fit`, `Adjacent fit`, and `Weak fit`.
 - Scope notes should express retrieval distance, not a laundry list of negative rules.

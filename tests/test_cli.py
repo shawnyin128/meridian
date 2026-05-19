@@ -262,6 +262,11 @@ class CliTests(unittest.TestCase):
             self.assertIn("Canonical retrieval fits:", paper)
             self.assertIn("Scope notes:", paper)
             self.assertIn('Query: "I want to compare or adapt MoE post-training quantization', paper)
+            self.assertIn('Query: "I am modifying a CodeQuant implementation', paper)
+            self.assertIn("CodeQuant's AOS, ACCF, POG, LUT", paper)
+            self.assertNotIn("I am implementing probes or ablations around AOS, ACCF, POG, LUT", paper)
+            self.assertNotIn("whether the mechanism is supported by experiments", paper)
+            self.assertNotIn("whether this paper is strong enough support", paper)
             self.assertIn("Use because:", paper)
             self.assertIn("Primary fit:", paper)
             self.assertIn("Adjacent fit:", paper)
@@ -709,6 +714,32 @@ class CliTests(unittest.TestCase):
         self.assertLessEqual(score["score"], 3.0)
         self.assertIn("negative_rule_list_present", score["findings"])
         self.assertIn("routing_cases_look_like_metadata_list", score["findings"])
+
+    def test_retrieval_intent_quality_rejects_non_standalone_queries(self) -> None:
+        score = _retrieval_intent_quality_score(
+            {
+                "When To Retrieve This Paper": "\n".join(
+                    [
+                        "Canonical retrieval fits:",
+                        '- Query: "I am implementing probes or ablations around AOS, ACCF, POG, LUT."',
+                        "  Use because: The component list is below.",
+                        '- Query: "I need to check whether the mechanism is supported by experiments rather than just plausible."',
+                        "  Use because: It has evidence.",
+                        '- Query: "I am deciding whether this paper is strong enough support for a new research direction."',
+                        "  Use because: It has caveats.",
+                        "",
+                        "Scope notes:",
+                        "- Primary fit: MoE post-training quantization.",
+                        "- Adjacent fit: weight-only PTQ comparisons.",
+                        "- Weak fit: QAT.",
+                    ]
+                )
+            }
+        )
+
+        self.assertLessEqual(score["score"], 3.0)
+        self.assertIn("query_assumes_paper_already_retrieved", score["findings"])
+        self.assertIn("query_is_retrofit_to_component_list", score["findings"])
 
     def test_structural_check_command_scores_ingest_structure(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

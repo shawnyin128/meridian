@@ -391,3 +391,64 @@ Sample outputs:
 ### Convergence Note
 
 This round converges the behavior description style: retrieval intent is now shaped by canonical examples and fit-distance notes instead of negative boundary lists.
+
+## Developer Round 6
+
+### User Calibration Feedback
+
+The user reviewed CodeQuant and found that three canonical retrieval examples were not real retrieval queries:
+
+- A query around `AOS, ACCF, POG, LUT` was retrofitted to the already selected paper rather than something a researcher would naturally ask.
+- A query about whether "the mechanism" is supported by experiments was not standalone; outside the page context, the mechanism is undefined.
+- A query about whether "this paper" supports a research direction assumes the paper is already in context, so it is not a retrieval query.
+
+### Changes
+
+- Updated query generation so examples must be plausible before the paper is retrieved.
+- For component/probe scenarios, generated exact-paper queries only when they have a natural user context such as modifying a `CodeQuant implementation`.
+- Replaced deictic generic queries with specific retrieval queries:
+  - evidence queries name the method family, target phenomena, metrics, and datasets;
+  - research-direction queries ask for prior work around target phenomena and setting, not whether "this paper" is useful.
+- Added quality-agent rejection for:
+  - `this paper`, `the mechanism`, or `this method` inside query examples;
+  - acronym-list probe queries that lack implementation/codebase context.
+- Added a regression test for the exact failure shape the user identified.
+
+### Calibration Results
+
+Commands:
+
+```bash
+PYTHONPATH=src python3 -m unittest discover -s tests
+PYTHONPATH=src python3 -c 'from meridian.cli import main; raise SystemExit(main(["wiki","ingest","/Users/shawn/Desktop/2604.10496v1.pdf","--out","/private/tmp/meridian-codequant-after10","--overwrite"]))'
+PYTHONPATH=src python3 -c 'from meridian.cli import main; raise SystemExit(main(["wiki","quality-check","/private/tmp/meridian-codequant-after10/run.json","--out","/private/tmp/meridian-codequant-after10/quality-self-check.json"]))'
+PYTHONPATH=src python3 -c 'from meridian.cli import main; raise SystemExit(main(["wiki","eval","/private/tmp/meridian-calibration-papers.jsonl","--out-dir","/private/tmp/meridian-calibration-after10","--overwrite"]))'
+PYTHONPATH=src python3 - <<'PY'
+from pathlib import Path
+from meridian.wiki.quality_check import run_quality_self_check
+from meridian.wiki.structural_check import run_structural_self_check
+root = Path("/private/tmp/meridian-calibration-after10")
+for run in sorted(root.glob("*/run.json")):
+    run_quality_self_check(run_manifest=run, out_path=run.parent / "quality-self-check.json")
+    run_structural_self_check(run_manifest=run, out_path=run.parent / "structural-self-check.json")
+PY
+PYTHONPYCACHEPREFIX=/private/tmp/meridian-pycache PYTHONPATH=src python3 -m compileall src tests
+```
+
+Results:
+
+- Unit tests: 28 passed.
+- CodeQuant real ingest: generated successfully.
+- CodeQuant quality self-check: pass, weighted score 4.547.
+- Full 15-paper calibration: generated successfully.
+- Deterministic quality self-check: 15/15 pass.
+- Deterministic structural self-check: 15/15 pass.
+- Grep check found no generated query containing the three flagged stale patterns: `I am implementing probes or ablations around`, `whether the mechanism`, or `whether this paper`.
+
+Sample output:
+
+- `/private/tmp/meridian-codequant-after10/paper.md`
+
+### Convergence Note
+
+This round closes the "retrieval example after-the-fact" failure for CodeQuant. Canonical examples now have to be standalone retrieval requests, and the quality agent has explicit checks for the failure mode.

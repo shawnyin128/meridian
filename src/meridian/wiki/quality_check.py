@@ -243,6 +243,7 @@ def _retrieval_intent_quality_score(sections: dict[str, str]) -> dict[str, Any]:
     lower = intent.lower()
     findings: list[str] = []
     query_examples = re.findall(r"^- Query: .+", intent, flags=re.MULTILINE)
+    query_texts = [_query_text(line) for line in query_examples]
     use_reasons = re.findall(r"^\s+Use because: .+", intent, flags=re.MULTILINE)
     scope_lines = _bullets_after(intent, "Scope notes:")
     if not intent:
@@ -257,6 +258,10 @@ def _retrieval_intent_quality_score(sections: dict[str, str]) -> dict[str, Any]:
         findings.append("too_few_canonical_query_examples")
     if len(use_reasons) < len(query_examples):
         findings.append("missing_use_because_reasons")
+    if any(re.search(r"\b(this paper|the mechanism|this method)\b", query.lower()) for query in query_texts):
+        findings.append("query_assumes_paper_already_retrieved")
+    if any(_looks_like_retrofit_component_query(query) for query in query_texts):
+        findings.append("query_is_retrofit_to_component_list")
     if len(scope_lines) < 3:
         findings.append("missing_fit_distance_notes")
     for label in ("primary fit", "adjacent fit", "weak fit"):
@@ -287,6 +292,8 @@ def _retrieval_intent_quality_score(sections: dict[str, str]) -> dict[str, Any]:
         or "template_or_metadata_boilerplate" in findings
         or "routing_cases_look_like_metadata_list" in findings
         or "negative_rule_list_present" in findings
+        or "query_assumes_paper_already_retrieved" in findings
+        or "query_is_retrofit_to_component_list" in findings
     ):
         score = min(score, 3.0)
     return _dimension(
@@ -703,6 +710,21 @@ def _bullets_after(text: str, start_header: str) -> list[str]:
         return []
     block = text[start + len(start_header) :]
     return [line.strip() for line in block.splitlines() if line.strip().startswith("-")]
+
+
+def _query_text(line: str) -> str:
+    match = re.search(r'^- Query:\s+"(.+)"$', line.strip())
+    return match.group(1) if match else line
+
+
+def _looks_like_retrofit_component_query(query: str) -> bool:
+    lowered = query.lower()
+    if "codebase" in lowered or "implementation" in lowered or "modifying" in lowered:
+        return False
+    if not re.search(r"\b(probes?|ablations?)\b", lowered):
+        return False
+    acronyms = re.findall(r"\b[A-Z][A-Z0-9-]{1,}\b", query)
+    return len(acronyms) >= 2
 
 
 def _is_broad_or_noisy_claim(text: str) -> bool:

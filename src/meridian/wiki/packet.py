@@ -224,7 +224,7 @@ def render_paper_draft(
     open_questions = "\n".join(f"- {question}" for question in model.open_questions)
     source_block = _render_source_block(source_record)
     metadata_authors = _trusted_metadata_authors(extraction)
-    retrieval_intent = _render_retrieval_intent(model)
+    retrieval_intent = _render_retrieval_intent(model, title)
     visual_pointers = _render_visual_pointers(extraction.pages)
     record_pointers = _render_record_pointers()
     mechanism_contracts = _render_mechanism_contracts(model.method_records)
@@ -408,13 +408,14 @@ def _join_or_unknown(value: object, fallback: str) -> str:
     return text if text else fallback
 
 
-def _render_retrieval_intent(model: PaperModel) -> str:
+def _render_retrieval_intent(model: PaperModel, title: str) -> str:
     method_family = _routing_method_focus(model.methods)
     topic_scope = _routing_topic_focus(model.topics, model.methods)
     topic_verb = "are" if _is_plural_phrase(topic_scope) else "is"
     setting_scope = _routing_setting_focus(model.settings)
     datasets = _human_list(model.datasets[:3], "the reported benchmark datasets")
     metrics = _human_list(model.metrics[:3], "the reported metrics")
+    paper_name = _paper_short_name(title)
     component_names = [
         str(record.get("short_name") or record.get("name"))
         for record in model.method_records[:4]
@@ -422,30 +423,32 @@ def _render_retrieval_intent(model: PaperModel) -> str:
     ]
     components = ", ".join(component_names)
 
-    examples = [
+    examples: list[tuple[str, str]] = [
         (
             f'I want to compare or adapt {method_family} when {topic_scope} {topic_verb} the suspected bottleneck.',
-            f"It explains how the paper's mechanism is meant to work in {setting_scope}, with assumptions and caveats separated below.",
+            f"It explains a concrete {method_family} design for {setting_scope}, with assumptions and caveats separated below.",
         )
     ]
     if components:
+        implementation_target = f"{paper_name} implementation" if paper_name != "this paper" else f"{method_family} implementation"
+        component_focus = components if paper_name == "this paper" else f"{paper_name}'s {components}"
         examples.append(
             (
-                f"I am implementing probes or ablations around {components}.",
+                f"I am modifying a {implementation_target} and need probes or ablations that isolate {component_focus}.",
                 "The Mechanism section turns each named component into inputs, outputs, dependencies, and first checks.",
             )
         )
     if model.datasets or model.metrics:
         examples.append(
             (
-                "I need to check whether the mechanism is supported by experiments rather than just plausible.",
+                f"I need papers that connect {topic_scope} claims in {method_family} to {metrics} evidence on {datasets}.",
                 f"The Evidence Map connects claims to {metrics} on {datasets}, plus source-page provenance.",
             )
         )
     if model.limitations:
         examples.append(
             (
-                "I am deciding whether this paper is strong enough support for a new research direction or baseline comparison.",
+                f"I have a new idea around {topic_scope} in {setting_scope}; which prior work gives mechanism constraints before I design experiments?",
                 "The page keeps scope caveats, uncertainty, and implementation hooks close to the mechanism summary.",
             )
         )
@@ -492,6 +495,13 @@ def _routing_method_focus(methods: list[str]) -> str:
     if "rotation-based quantization" in lowered and "post-training quantization" in lowered:
         return "rotation-based post-training quantization"
     return _human_list(methods[:2], "this method family")
+
+
+def _paper_short_name(title: str) -> str:
+    candidate = title.split(":", 1)[0].strip()
+    if candidate and len(candidate.split()) <= 4:
+        return candidate
+    return "this paper"
 
 
 def _routing_topic_focus(topics: list[str], methods: list[str]) -> str:
