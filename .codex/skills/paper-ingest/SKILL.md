@@ -130,6 +130,9 @@ Optimize the ingest mechanism, not one paper at a time. Library-scale calibratio
 - source-quality holds for bad PDFs instead of hallucinated summaries;
 - morphology-robust retrieval examples that read like plausible standalone user requests;
 - structural source-management completeness alongside content quality.
+- full-library runs, not only representative samples; optimize against rare domains, books, surveys, and non-ML technical PDFs that appear in the user's real Zotero library.
+- domain-agnostic fallback contracts: if a paper is outside the known controlled vocabulary, still produce inputs, outputs, assumptions, and implementation checks grounded in the extracted method pages instead of leaving `paper-specific research method` empty.
+- retrieval scenarios must not default to quantization/calibration. Use domain-specific scenarios when the page is alignment/RL, attention/Transformer, agents, continuous-depth models, surveys, audio-language models, systems, or other non-quantization work; otherwise fall back to generic research mechanism/evidence/scope scenarios.
 
 ## Self-Check
 

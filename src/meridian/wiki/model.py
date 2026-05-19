@@ -137,6 +137,27 @@ CONTROLLED_TOPIC_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("feature-wise modulation", ("feature-wise linear modulation", "film layer", "gamma", "beta")),
     ("visual reasoning", ("visual reasoning", "clevr", "question answering")),
     ("feature uncertainty", ("feature uncertainty", "draft feature", "speculative sampling")),
+    ("human preference feedback", ("human preference", "human feedback", "preference feedback", "trajectory comparisons")),
+    ("reward modeling", ("reward model", "reward predictor", "predicted reward", "reward function")),
+    ("RLHF", ("reinforcement learning from human feedback", "rlhf")),
+    ("preference optimization", ("preference optimization", "direct preference", "preference learning")),
+    ("self-rewarding models", ("self-rewarding", "self rewarding", "meta-reward", "llm-as-a-judge", "meta-judge")),
+    ("policy optimization", ("policy optimization", "ppo", "proximal policy optimization", "policy gradient")),
+    ("test-time reinforcement learning", ("test-time reinforcement learning", "test time reinforcement learning", "ttrl")),
+    ("instruction tuning", ("self-instruct", "instruction tuning", "self-generated instructions")),
+    ("transformer architecture", ("transformer", "self-attention", "attention is all you need")),
+    ("relative position representation", ("relative position", "relative positional", "positional representations")),
+    ("recurrent computation", ("universal transformer", "adaptive computation time", "recurrent steps")),
+    ("continuous-depth models", ("neural ordinary differential", "neural ode", "ordinary differential equation", "adjoint sensitivity")),
+    ("agent planning", ("agent planning", "autonomous agent", "generative agent", "agent-based modeling")),
+    ("LLM agents", ("llm agent", "large language model based autonomous agents", "generative agents")),
+    ("multi-agent simulation", ("multi-agent", "agent society", "simulation of llm-driven")),
+    ("audio-language modeling", ("audio-language", "qwen-audio", "qwen2-audio", "audio understanding")),
+    ("model training dynamics", ("training dynamics", "continual improving", "sft", "upt")),
+    ("survey synthesis", ("survey on", "in-depth survey", "technical report", "opportunities")),
+    ("root-system digitization", ("root system", "root-system", "root excavation", "digitization")),
+    ("computer architecture", ("computer architecture", "quantitative approach", "processor", "memory hierarchy")),
+    ("performance evaluation", ("performance evaluation", "quantitative evaluation", "benchmarking", "measurement")),
 )
 
 
@@ -348,6 +369,20 @@ def _comparison_frame(pages: list[PageExtraction], method_records: list[dict[str
         return "KV-cache compression, retention policies, and decode-time quality/runtime tradeoffs"
     if "grouped-query attention" in text or "grouped query attention" in text or "multi-query attention" in text:
         return "attention-head sharing, checkpoint conversion, and inference-memory tradeoffs"
+    if "human preference" in text or "human feedback" in text or "reward model" in text or "reward predictor" in text:
+        return "preference learning, reward modeling, and policy optimization evidence"
+    if "ppo" in text or "proximal policy optimization" in text or "policy gradient" in text:
+        return "policy optimization, reward design, and rollout/evaluation stability"
+    if "self-attention" in text or "attention is all you need" in text or "relative position" in text:
+        return "attention mechanisms, positional representations, and sequence-modeling ablations"
+    if "universal transformer" in text or "adaptive computation time" in text:
+        return "recurrent transformer computation, adaptive depth, and sequence-modeling tradeoffs"
+    if "neural ordinary differential" in text or "neural ode" in text or "ordinary differential equation" in text:
+        return "continuous-depth models, ODE solver assumptions, and memory/accuracy tradeoffs"
+    if "autonomous agent" in text or "generative agent" in text or "agent planning" in text:
+        return "agent planning, environment interaction, and evaluation protocol limitations"
+    if "survey" in text or "technical report" in text:
+        return "survey taxonomy, evidence gaps, and pointers to primary methods"
     if "k-means" in text and ("pca" in text or "principal component" in text):
         return "clustering theory, PCA relationships, and objective/assumption boundaries"
     if "mixture-of-experts" in text or "moe" in text:
@@ -403,6 +438,18 @@ def _problem_focus(lowered_text: str) -> str:
         return "This is a low-bit quantization paper whose core problem is outlier-induced error."
     if "retrieval" in lowered_text:
         return "This is a retrieval paper; the core question is how to retrieve better context for downstream reasoning."
+    if "human preference" in lowered_text or "human feedback" in lowered_text or "reward model" in lowered_text or "reward predictor" in lowered_text:
+        return "This is a preference-learning paper: the core mechanism is to turn human comparisons or judgments into a reward/evaluation signal that can improve model or policy behavior."
+    if "ppo" in lowered_text or "proximal policy optimization" in lowered_text:
+        return "This is a policy-optimization paper about improving a policy under clipped or constrained reinforcement-learning updates."
+    if "self-attention" in lowered_text or "attention is all you need" in lowered_text or "relative position" in lowered_text:
+        return "This is an attention/Transformer architecture paper about how sequence representations are computed and what positional or attention structure matters."
+    if "universal transformer" in lowered_text:
+        return "This is a recurrent Transformer architecture paper about reusing computation across depth and optionally adapting the number of computation steps."
+    if "neural ordinary differential" in lowered_text or "neural ode" in lowered_text:
+        return "This is a continuous-depth modeling paper about replacing discrete layers with ODE dynamics and solver-based training/inference."
+    if "autonomous agent" in lowered_text or "generative agent" in lowered_text or "agent planning" in lowered_text:
+        return "This is an agent paper about planning, acting, or simulating behavior in an environment; evidence depends heavily on the evaluation setup."
     return "This paper proposes a method for the problem stated in its title and abstract."
 
 
@@ -421,6 +468,14 @@ def _compact_evidence_context(pages: list[PageExtraction]) -> str:
         bits.append("medical image quality and downstream metrics")
     if re.search(r"\b(context length|longbench|passkey|perplexity)\b", text, flags=re.IGNORECASE):
         bits.append("long-context quality evidence")
+    if re.search(r"\b(human feedback|preference|reward model|labeler|rlhf)\b", text, flags=re.IGNORECASE):
+        bits.append("preference/reward-model evidence")
+    if re.search(r"\b(return|policy|ppo|rollout|environment)\b", text, flags=re.IGNORECASE):
+        bits.append("policy rollout evidence")
+    if re.search(r"\b(attention|transformer|position|bleu|translation)\b", text, flags=re.IGNORECASE):
+        bits.append("sequence-modeling ablations")
+    if re.search(r"\b(agent|planning|simulation|tool use|benchmark)\b", text, flags=re.IGNORECASE):
+        bits.append("agent-environment evaluation")
     if not bits:
         return "The evidence needs to be read through experiments, ablations, and limitations rather than abstract prose."
     return "Read the evidence around " + ", ".join(bits) + ", not just the abstract claims."
@@ -763,6 +818,18 @@ def _sentence_overlap(left: str, right: str) -> float:
 def _generic_method_inputs(method_text: str) -> list[str]:
     lowered = method_text.lower()
     inputs = []
+    if "human preference" in lowered or "human feedback" in lowered or "reward model" in lowered or "reward predictor" in lowered:
+        inputs.extend(["trajectory or response pairs", "human preference labels", "policy rollouts"])
+    if "reinforcement learning" in lowered or "policy optimization" in lowered or "ppo" in lowered:
+        inputs.extend(["policy parameters", "reward signal", "rollout trajectories"])
+    if "self-attention" in lowered or "transformer" in lowered or "relative position" in lowered:
+        inputs.extend(["token embeddings", "query/key/value projections", "positional or attention bias terms"])
+    if "neural ordinary" in lowered or "neural ode" in lowered or "differential equation" in lowered:
+        inputs.extend(["hidden state", "time variable", "ODE solver configuration"])
+    if "agent" in lowered or "planning" in lowered:
+        inputs.extend(["task state", "agent policy or prompt", "environment feedback"])
+    if "audio" in lowered and ("language" in lowered or "speech" in lowered):
+        inputs.extend(["audio features", "text prompts or labels", "audio-language training data"])
     if "draft" in lowered or "speculative" in lowered:
         inputs.extend(["draft model proposals", "target model verification logits", "acceptance or tree budget"])
     if "diffusion" in lowered or "ddpm" in lowered:
@@ -785,12 +852,28 @@ def _generic_method_inputs(method_text: str) -> list[str]:
         inputs.append("KV-cache tensors")
     if "calibration" in lowered:
         inputs.append("calibration data")
+    if not inputs:
+        inputs.extend(["the source paper's target system or dataset", "method assumptions from the cited method pages"])
     return inputs
 
 
 def _generic_method_outputs(method_text: str) -> list[str]:
     lowered = method_text.lower()
     outputs = []
+    if "human preference" in lowered or "human feedback" in lowered or "reward model" in lowered or "reward predictor" in lowered:
+        outputs.extend(["learned reward model", "policy optimized against predicted preference reward"])
+    if "reinforcement learning" in lowered or "policy optimization" in lowered or "ppo" in lowered:
+        outputs.extend(["updated policy", "measured return or task success"])
+    if "self-attention" in lowered or "transformer" in lowered:
+        outputs.extend(["contextual token representations", "sequence-model predictions"])
+    if "relative position" in lowered:
+        outputs.append("attention logits or values augmented with relative position information")
+    if "neural ordinary" in lowered or "neural ode" in lowered or "differential equation" in lowered:
+        outputs.extend(["continuous-depth hidden trajectory", "predictions from ODE solver integration"])
+    if "agent" in lowered or "planning" in lowered:
+        outputs.extend(["planned actions", "task outcomes", "interaction trace"])
+    if "audio" in lowered and ("language" in lowered or "speech" in lowered):
+        outputs.extend(["audio-language representations", "speech/audio understanding predictions"])
     if "draft" in lowered or "speculative" in lowered:
         outputs.extend(["verified accepted tokens", "inference speedup without target-distribution change"])
     if "diffusion" in lowered or "ddpm" in lowered:
@@ -809,12 +892,28 @@ def _generic_method_outputs(method_text: str) -> list[str]:
         outputs.append("rotation-transformed equivalent model")
     if "speedup" in lowered or "latency" in lowered:
         outputs.append("latency or memory-efficiency measurements")
+    if not outputs:
+        outputs.extend(["the proposed analysis, method, or artifact", "evaluation results tied to the paper's stated problem"])
     return outputs
 
 
 def _generic_method_assumptions(method_text: str) -> list[str]:
     lowered = method_text.lower()
     assumptions = []
+    if "human preference" in lowered or "human feedback" in lowered or "reward model" in lowered or "reward predictor" in lowered:
+        assumptions.append("preference labels are consistent enough for a reward model to guide policy optimization")
+    if "reinforcement learning" in lowered or "policy optimization" in lowered or "ppo" in lowered:
+        assumptions.append("rollout reward and evaluation environment match the behavior being optimized")
+    if "self-attention" in lowered or "transformer" in lowered:
+        assumptions.append("attention computation and positional representation capture the dependencies required by the sequence task")
+    if "relative position" in lowered:
+        assumptions.append("relative distance information improves sequence modeling without breaking attention computation")
+    if "neural ordinary" in lowered or "neural ode" in lowered or "differential equation" in lowered:
+        assumptions.append("continuous-time dynamics and solver tolerances are appropriate for the modeled transformation")
+    if "agent" in lowered or "planning" in lowered:
+        assumptions.append("the environment, tools, and evaluation protocol expose the planning behavior the paper claims to study")
+    if "survey" in lowered or "technical report" in lowered:
+        assumptions.append("the page is useful as a synthesis map; individual claims still require checking cited primary evidence")
     if "draft" in lowered or "speculative" in lowered:
         assumptions.append("target-model verification preserves the original decoding distribution")
     if "diffusion" in lowered or "ddpm" in lowered:
@@ -835,12 +934,28 @@ def _generic_method_assumptions(method_text: str) -> list[str]:
         assumptions.append("the transformation preserves the full-precision computation before quantization")
     if "memory" in lowered and "bottleneck" in lowered:
         assumptions.append("inference is memory-bound enough that compression translates into speed or capacity gains")
+    if not assumptions:
+        assumptions.append("the paper's stated setting and evaluation protocol are the right scope for reusing the method")
     return assumptions
 
 
 def _generic_method_implementation_notes(method_text: str) -> list[str]:
     lowered = method_text.lower()
     notes = []
+    if "human preference" in lowered or "human feedback" in lowered or "reward model" in lowered or "reward predictor" in lowered:
+        notes.append("Log preference-pair construction, labeler agreement, reward-model accuracy, policy reward, and held-out human evaluation separately.")
+    if "reinforcement learning" in lowered or "policy optimization" in lowered or "ppo" in lowered:
+        notes.append("Track rollout length, reward normalization, KL/clip constraints, seed variance, and baseline policy performance.")
+    if "self-attention" in lowered or "transformer" in lowered or "relative position" in lowered:
+        notes.append("Unit test attention mask, positional bias shape, Q/K/V projection shapes, and sequence-length extrapolation cases.")
+    if "neural ordinary" in lowered or "neural ode" in lowered or "differential equation" in lowered:
+        notes.append("Log solver tolerance, number of function evaluations, adjoint gradients, and stability on controlled toy dynamics.")
+    if "agent" in lowered or "planning" in lowered:
+        notes.append("Record environment state, available tools/actions, planner outputs, execution traces, and success/failure buckets.")
+    if "survey" in lowered or "technical report" in lowered:
+        notes.append("Use the page as a routing map: extract taxonomy, representative methods, evidence gaps, and primary-paper followups.")
+    if "audio" in lowered and ("language" in lowered or "speech" in lowered):
+        notes.append("Separate audio encoder, language model, alignment layer, and task-head errors when probing failures.")
     if "draft" in lowered or "speculative" in lowered:
         notes.append("Log draft acceptance length, rejected branches, verifier cost, and output-distribution equivalence.")
     if "diffusion" in lowered or "ddpm" in lowered:
@@ -859,6 +974,14 @@ def _generic_method_implementation_notes(method_text: str) -> list[str]:
         notes.append("Keep centroid construction inspectable; compare against uniform quantization as a control.")
     if "sparse" in lowered:
         notes.append("Track sparse retention percentage and runtime/storage overhead alongside accuracy.")
+    if not notes:
+        notes.extend(
+            [
+                "Implement the smallest reproducible version of the claimed method or analysis before scaling experiments.",
+                "Log inputs, preprocessing choices, intermediate outputs, and final metrics so failures can be localized.",
+                "Ablate the central assumption against a simple baseline and compare qualitative errors, not only aggregate scores.",
+            ]
+        )
     return notes
 
 
@@ -2750,6 +2873,36 @@ def _limitations(pages: list[PageExtraction]) -> list[str]:
         limitations.append("Some components are setting-dependent; POG in particular should not be assumed useful outside block-wise clustering.")
     if limitations:
         return limitations
+    if "human preference" in lowered or "human feedback" in lowered or "reward model" in lowered or "reward predictor" in lowered:
+        return [
+            "Preference-learning results depend on labeler consistency, comparison design, and whether the learned reward transfers beyond the sampled trajectories or responses.",
+            "Reward-model optimization can create reward hacking or distribution shift, so policy results need held-out human or task evaluation.",
+        ]
+    if "ppo" in lowered or "proximal policy optimization" in lowered or "policy gradient" in lowered:
+        return [
+            "Policy-optimization behavior is sensitive to reward normalization, clipping/KL settings, rollout length, and seed variance.",
+            "Reported gains should be separated from environment-specific exploration and baseline tuning.",
+        ]
+    if "self-attention" in lowered or "transformer" in lowered or "relative position" in lowered:
+        return [
+            "Attention architecture claims can depend on sequence length, mask convention, positional encoding, and training compute.",
+            "Quality improvements should be checked against ablations that isolate architecture from data scale and optimization changes.",
+        ]
+    if "neural ordinary differential" in lowered or "neural ode" in lowered or "ordinary differential equation" in lowered:
+        return [
+            "Continuous-depth model behavior depends on solver tolerance, number of function evaluations, and gradient/adjoint assumptions.",
+            "Memory savings or accuracy gains should be separated from solver instability and runtime cost.",
+        ]
+    if "autonomous agent" in lowered or "generative agent" in lowered or "agent planning" in lowered:
+        return [
+            "Agent results depend heavily on environment fidelity, tool/action availability, prompt policy, and evaluation leakage.",
+            "Behavioral claims should be tied to trace-level evidence rather than only aggregate benchmark scores.",
+        ]
+    if "survey" in lowered or "technical report" in lowered:
+        return [
+            "Survey pages are useful routing maps, but individual empirical claims should be checked against primary papers before promotion.",
+            "Taxonomy boundaries may reflect the authors' framing; compare against other surveys or primary evidence before using it as canonical structure.",
+        ]
     if "speculative decoding" in lowered or "draft model" in lowered:
         return [
             "Speculative decoding gains depend on acceptance rates and verifier overhead.",
@@ -2859,6 +3012,30 @@ def _method_families(
         families.append("grouped-query attention")
     if "k-means" in text or "clustering" in text:
         families.append("clustering algorithm")
+    if "human preference" in text or "human feedback" in text or "reward model" in text or "reward predictor" in text:
+        families.extend(["preference-based reinforcement learning", "reward modeling"])
+    if "rlhf" in text or "reinforcement learning from human feedback" in text:
+        families.append("RLHF")
+    if "self-reward" in text or "meta-reward" in text or "llm-as-a-judge" in text or "meta-judge" in text:
+        families.extend(["self-rewarding model training", "LLM-as-judge reward modeling"])
+    if "ppo" in text or "proximal policy optimization" in text or "policy gradient" in text:
+        families.append("policy optimization")
+    if "test-time reinforcement learning" in text or "ttrl" in text:
+        families.append("test-time reinforcement learning")
+    if "self-instruct" in text or "instruction tuning" in text or "self-generated instructions" in text:
+        families.append("instruction tuning")
+    if "self-attention" in text or "attention is all you need" in text or "transformer" in text:
+        families.append("transformer architecture")
+    if "relative position" in text or "relative positional" in text:
+        families.append("relative position encoding")
+    if "universal transformer" in text or "adaptive computation time" in text:
+        families.append("recurrent transformer")
+    if "neural ordinary differential" in text or "neural ode" in text or "ordinary differential equation" in text:
+        families.append("continuous-depth neural network")
+    if "autonomous agent" in text or "generative agent" in text or "agent planning" in text or "agent-based" in text:
+        families.append("agent workflow modeling")
+    if "survey" in text or "technical report" in text:
+        families.append("survey synthesis")
 
     quantization_cues = (
         "quantization" in text
@@ -2971,6 +3148,18 @@ def _settings(pages: list[PageExtraction]) -> list[str]:
         settings.append("quantization-aware training setting")
     if "k-means" in lowered and ("pca" in lowered or "principal component" in lowered):
         settings.append("clustering theory setting")
+    if "human feedback" in lowered or "human preference" in lowered or "reward model" in lowered or "preference optimization" in lowered:
+        settings.append("preference-learning setting")
+    if "ppo" in lowered or "proximal policy optimization" in lowered or "policy gradient" in lowered:
+        settings.append("reinforcement-learning setting")
+    if "self-attention" in lowered or "transformer" in lowered or "relative position" in lowered:
+        settings.append("transformer sequence-modeling setting")
+    if "autonomous agent" in lowered or "generative agent" in lowered or "agent planning" in lowered or "agent-based" in lowered:
+        settings.append("agent evaluation setting")
+    if "neural ordinary differential" in lowered or "neural ode" in lowered or "ordinary differential equation" in lowered:
+        settings.append("continuous-depth modeling setting")
+    if "survey" in lowered or "technical report" in lowered:
+        settings.append("survey/synthesis setting")
 
     return _dedupe(settings)
 

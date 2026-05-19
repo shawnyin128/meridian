@@ -404,7 +404,7 @@ def _implementation_actionability_score(sections: dict[str, str]) -> dict[str, A
         )
     )
     generic = "Extract equations before implementation" in hooks
-    score = min(5, 1 + action_verbs / 1.5)
+    score = min(5, 1 + action_verbs)
     if generic and action_verbs < 4:
         score -= 0.75
     findings = []
@@ -476,8 +476,14 @@ def _candidate_record_score(
             findings,
         )
     supported_claims = sum(1 for item in evidence if item.get("supports"))
+    claim_provenance = sum(1 for item in claims if item.get("provenance") or item.get("evidence_ids"))
     method_contracts = sum(1 for item in methods if item.get("inputs") and item.get("outputs"))
-    score = 1 + min(2, supported_claims / 2) + min(2, method_contracts / max(len(methods), 1) * 2)
+    score = (
+        1
+        + min(1.5, supported_claims / 2)
+        + min(1.0, claim_provenance / max(len(claims), 1))
+        + min(2.5, method_contracts / max(len(methods), 1) * 2.5)
+    )
     return _dimension("candidate_record_promotion", score, "candidate_record_schema", "Candidate records are promotion-ready for wiki pages.", findings)
 
 
@@ -651,6 +657,36 @@ def _domain_retrieval_keys(
             "evidence": ["objective", "theorem", "experiment"],
             "scope": ["initialization", "data distribution", "assumptions"],
         }
+    if "preference" in text or "reward model" in text or "rlhf" in text or "alignment" in text:
+        return {
+            "idea": ["preference learning", "reward modeling", "alignment objective"],
+            "evidence": ["human feedback", "policy performance", "evaluation"],
+            "scope": ["labeler behavior", "reward hacking", "evaluation protocol"],
+        }
+    if "reinforcement learning" in text or "policy optimization" in text or "test-time rl" in text:
+        return {
+            "idea": ["policy optimization", "reward signal", "rollout"],
+            "evidence": ["return", "success rate", "baseline"],
+            "scope": ["environment distribution", "exploration", "reward specification"],
+        }
+    if "attention" in text or "transformer" in text or "position" in text:
+        return {
+            "idea": ["attention mechanism", "positional representation", "sequence modeling"],
+            "evidence": ["translation quality", "perplexity", "ablation"],
+            "scope": ["sequence length", "architecture choice", "training compute"],
+        }
+    if "agent" in text or "planning" in text or "simulation" in text:
+        return {
+            "idea": ["agent planning", "tool use", "environment interaction"],
+            "evidence": ["task success", "simulation behavior", "benchmark"],
+            "scope": ["environment fidelity", "prompt policy", "evaluation leakage"],
+        }
+    if "neural ordinary" in text or "differential equation" in text or "ode" in text:
+        return {
+            "idea": ["continuous-depth model", "ODE solver", "adjoint sensitivity"],
+            "evidence": ["accuracy", "NFE", "memory"],
+            "scope": ["solver tolerance", "stability", "continuous dynamics assumption"],
+        }
     if "mixture-of-experts" in text or "expert routing" in text or "mixtral" in text:
         return {
             "idea": ["expert routing", "sparse MoE", "active parameters"],
@@ -658,9 +694,9 @@ def _domain_retrieval_keys(
             "scope": ["router balance", "serving cost", "active parameters"],
         }
     return {
-        "idea": ["quantization", "calibration"],
-        "evidence": ["accuracy", "perplexity", "speedup"],
-        "scope": ["calibration", "hardware", "model family"],
+        "idea": ["method mechanism", "research hypothesis", "assumptions"],
+        "evidence": ["benchmark", "ablation", "evaluation"],
+        "scope": ["limitations", "failure mode", "setting"],
     }
 
 
@@ -676,6 +712,14 @@ def _scenario_domain_object(methods: list[str], topics: list[str]) -> str:
         return "a long-context or KV-cache efficiency mechanism"
     if "grouped-query" in text or "attention" in text:
         return "an attention-head sharing design"
+    if "preference" in text or "reward model" in text or "rlhf" in text or "alignment" in text:
+        return "a preference-learning or alignment objective"
+    if "reinforcement learning" in text or "policy optimization" in text or "test-time rl" in text:
+        return "a policy optimization or reward-learning loop"
+    if "agent" in text or "planning" in text or "simulation" in text:
+        return "an agent planning or environment-interaction workflow"
+    if "neural ordinary" in text or "differential equation" in text or "ode" in text:
+        return "a continuous-depth modeling assumption"
     if "expert routing" in text or "mixture-of-experts" in text or "mixtral" in text:
         return "a sparse expert-routing design"
     if "clustering" in text or "k-means" in text or "pca" in text:
@@ -697,6 +741,14 @@ def _scenario_setting_object(settings: list[str]) -> str:
         return "a long-context inference setting"
     if "decoder attention" in lowered:
         return "a decoder attention memory setting"
+    if "preference" in lowered or "alignment" in lowered or "human feedback" in lowered:
+        return "a preference-learning alignment setting"
+    if "reinforcement learning" in lowered or "policy" in lowered:
+        return "a reinforcement-learning setting"
+    if "agent" in lowered or "simulation" in lowered:
+        return "an agent evaluation setting"
+    if "transformer" in lowered or "attention" in lowered:
+        return "a transformer sequence-modeling setting"
     if "weight-only" in lowered:
         return "a weight-only quantization setting"
     if "weight-activation" in lowered:
@@ -716,6 +768,14 @@ def _scenario_scope_examples(methods: list[str], topics: list[str], settings: li
         return "sequence-length dependence, retention-policy assumptions, task coverage, memory/runtime tradeoffs"
     if "grouped-query" in text or "attention" in text:
         return "group-count choices, uptraining budget, KV-cache bandwidth assumptions, quality tradeoffs"
+    if "preference" in text or "reward model" in text or "alignment" in text:
+        return "labeler preference noise, reward hacking, policy optimization stability, evaluation protocol"
+    if "reinforcement learning" in text or "policy optimization" in text or "test-time rl" in text:
+        return "reward specification, exploration coverage, environment shift, baseline fairness"
+    if "agent" in text or "planning" in text or "simulation" in text:
+        return "environment fidelity, tool availability, prompt policy, benchmark leakage"
+    if "neural ordinary" in text or "differential equation" in text or "ode" in text:
+        return "solver tolerance, stability, adjoint assumptions, dynamics mismatch"
     if "mixture-of-experts" in text or "expert routing" in text or "mixtral" in text:
         return "router load balance, active-parameter accounting, serving infrastructure, expert specialization"
     if "clustering" in text or "k-means" in text or "pca" in text:
