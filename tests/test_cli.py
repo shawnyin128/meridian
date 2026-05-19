@@ -256,6 +256,13 @@ class CliTests(unittest.TestCase):
             self.assertIn("This is a MoE post-training quantization paper", paper)
             self.assertIn("## What To Remember", paper)
             self.assertIn("## Retrieval Anchors", paper)
+            frontmatter = paper.split("---", 2)[1]
+            methods_frontmatter = frontmatter.split("methods:", 1)[1].split("settings:", 1)[0]
+            self.assertIn("post-training quantization", methods_frontmatter)
+            self.assertIn("MoE quantization", methods_frontmatter)
+            self.assertNotIn("Activation-Oriented Outlier Smoothing", methods_frontmatter)
+            self.assertIn("settings:", frontmatter)
+            self.assertIn("weight-activation quantization", frontmatter)
             self.assertIn("First it learns rotations", paper)
             self.assertIn("POG is the conditional piece", paper)
             self.assertIn("makes the clustered representation executable", paper)

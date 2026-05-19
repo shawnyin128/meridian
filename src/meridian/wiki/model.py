@@ -22,6 +22,7 @@ class PaperModel:
     open_questions: list[str]
     topics: list[str]
     methods: list[str]
+    settings: list[str]
     datasets: list[str]
     metrics: list[str]
     claim_records: list[dict[str, Any]]
@@ -89,6 +90,31 @@ KNOWN_DATASETS = (
     "SQuAD",
 )
 
+CONTROLLED_TOPIC_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("post-training quantization", ("post-training quantization", " ptq ", "ptq")),
+    ("layer-wise PTQ", ("layer-wise ptq", "layer-wise post-training quantization", "layerwise ptq")),
+    ("low-bit quantization", ("low-bit", "4-bit", "3-bit", "2-bit", "int4", "int8", "w4a", "a4w", "w8a8")),
+    ("weight-only quantization", ("weight-only", "weight only", "w4a16", "w3a16", "w2a16")),
+    ("weight-activation quantization", ("weight-activation", "weight activation", "weights and activations", "w8a8", "w4a4", "w6a6", "a4w4", "activation quantization")),
+    ("KV-cache quantization", ("kv cache", "kv-cache")),
+    ("MoE quantization", ("mixture-of-experts", "mixture of experts", " moe ", "moe llm", "moe model")),
+    ("expert routing", ("expert routing", "router", "routing", "token-expert", "expert usage")),
+    ("calibration data selection", ("calibration data", "calibration set", "calibration samples", "self-sampling", "sampling")),
+    ("activation outliers", ("activation outlier", "activation outliers", "outlier activations")),
+    ("LLM outliers", ("large language model outlier", "large language models outlier", "llm outlier", "llm outliers", "massive activations")),
+    ("quantization error", ("quantization error", "quantization errors")),
+    ("error propagation", ("error propagation", "propagating quantization error", "propagated error")),
+    ("equivalent transformation", ("equivalent transformation", "equivalence transformation", "computationally invariant", "invariant transformation")),
+    ("rotation-based quantization", ("rotation", "rotations", "hadamard", "orthogonal rotation", "orthogonal transform")),
+    ("affine transformation", ("affine transform", "affine transformation")),
+    ("non-uniform quantization", ("non-uniform", "nonuniform", "centroid", "centroids", "k-means", "clustering")),
+    ("sparse outlier retention", ("dense-and-sparse", "sparse retention", "sparse matrix", "outlier retention")),
+    ("hardware-aware quantization", ("hardware", "kernel", "latency", "throughput", "speedup", "memory saving")),
+    ("lookup-table inference", ("lookup table", "lookup-table", " lut ", "lut-based")),
+    ("benchmark evaluation", ("mmlu", "hellaswag", "gsm8k", "wikitext", "zero-shot")),
+    ("mechanistic activation analysis", ("massive activations", "fixed feature dimensions", "intervention")),
+)
+
 
 def build_paper_model(title: str, extraction: PdfExtraction) -> PaperModel:
     abstract = _extract_abstract(extraction)
@@ -96,11 +122,12 @@ def build_paper_model(title: str, extraction: PdfExtraction) -> PaperModel:
     contribution_sentences = _candidate_claim_sentences(extraction.pages, title=title, method_records=method_records)
     key_contributions = _key_contributions(contribution_sentences)
     claim_records = _claim_records(title, key_contributions)
-    methods = [record["name"] for record in method_records]
+    settings = _settings(extraction.pages)
+    methods = _method_families(title, extraction.pages, method_records, settings)
     evidence_records = _page_evidence_records(extraction, claim_records)
     method_notes = _method_notes(method_records, extraction.pages)
     summary = _paper_positioning(title, abstract, extraction.pages, method_records)
-    topics = _topics(title, abstract, contribution_sentences)
+    topics = _topics(title, abstract, contribution_sentences, extraction.pages, method_records, settings)
     datasets = _known_terms(extraction, KNOWN_DATASETS)
     metrics = _known_terms(extraction, KNOWN_METRICS)
 
@@ -118,6 +145,7 @@ def build_paper_model(title: str, extraction: PdfExtraction) -> PaperModel:
         open_questions=_open_questions(claim_records, method_records, evidence_records),
         topics=topics,
         methods=methods,
+        settings=settings,
         datasets=datasets,
         metrics=metrics,
         claim_records=claim_records,
@@ -147,9 +175,29 @@ def _paper_positioning(
     text = _normalize(f"{title} {abstract} " + " ".join(page.text for page in pages[:4]))
     lowered = text.lower()
     problem = _problem_focus(lowered)
-    method = _mechanism_narrative(title, method_records)
     evidence = _compact_evidence_context(pages)
-    return f"{problem} {method} {evidence}".strip()
+    comparison = _comparison_frame(pages, method_records)
+    return f"{problem} Route this paper with other work on {comparison}. {evidence}".strip()
+
+
+def _comparison_frame(pages: list[PageExtraction], method_records: list[dict[str, Any]]) -> str:
+    text = _normalize(" ".join(page.text for page in pages[:8])).lower()
+    names = " ".join(str(record.get("name") or "") for record in method_records).lower()
+    if "mixture-of-experts" in text or "moe" in text:
+        if "calibration" in text or "expert" in names:
+            return "MoE quantization, expert-routing calibration, and low-bit deployment tradeoffs"
+        return "MoE systems and model-quality tradeoffs"
+    if "quantization error propagation" in text or "layer-wise" in text:
+        return "layer-wise PTQ, quantization error accumulation, and reconstruction-objective design"
+    if any(marker in text for marker in ("rotation", "hadamard", "orthogonal")):
+        return "rotation-based PTQ, equivalent transforms, and activation/weight outlier control"
+    if any(marker in text for marker in ("non-uniform", "centroid", "clustering", "sparse")):
+        return "non-uniform weight quantization, outlier retention, and memory/accuracy tradeoffs"
+    if "massive activation" in text:
+        return "LLM activation outliers and mechanistic intervention evidence"
+    if "quantization" in text:
+        return "post-training quantization, calibration assumptions, and benchmark evidence"
+    return "the method family, experimental setting, and limitations named in its retrieval anchors"
 
 
 def _problem_focus(lowered_text: str) -> str:
@@ -1012,6 +1060,7 @@ def _primary_paper_key(pages: list[PageExtraction]) -> str:
         ("flatquant", ("flatquant",)),
         ("dfrot", ("dfrot",)),
         ("ostquant", ("ostquant",)),
+        ("codequant", ("codequant",)),
         ("qep", ("quantization error propagation",)),
         ("moequant", ("moequant",)),
         ("omniquant", ("omniquant",)),
@@ -1933,7 +1982,196 @@ def _open_questions(
     return questions
 
 
-def _topics(title: str, abstract: str, candidates: list[dict[str, Any]]) -> list[str]:
+def _method_families(
+    title: str,
+    pages: list[PageExtraction],
+    method_records: list[dict[str, Any]],
+    settings: list[str],
+) -> list[str]:
+    primary = _primary_paper_key(pages)
+    text = _method_family_text(title, method_records, settings).lower()
+    families: list[str] = []
+
+    if primary == "massive-activations":
+        return ["mechanistic activation analysis"]
+
+    if "quantization" in text or "quantized" in text or primary in {"llm.int8", "smoothquant", "quarot", "qep", "moequant", "codequant"}:
+        families.append("post-training quantization")
+    if primary == "qep" or "layer-wise" in text or "layerwise" in text:
+        families.append("layer-wise PTQ")
+    if primary in {"moequant", "codequant"} or "mixture-of-experts" in text or "moe" in text:
+        families.append("MoE quantization")
+    if "outlier" in text or "massive activation" in text:
+        families.append("outlier-aware quantization")
+    if "calibration" in text or "self-sampling" in text:
+        families.append("calibration-aware PTQ")
+    if any(marker in text for marker in ("rotation", "hadamard", "orthogonal")):
+        families.append("rotation-based quantization")
+    if any(marker in text for marker in ("affine transform", "equivalent transformation", "invariant transform", "computationally invariant")):
+        families.append("equivalent-transform PTQ")
+    if any(marker in text for marker in ("non-uniform", "centroid", "clustering", "k-means", "codebook")):
+        families.append("non-uniform weight quantization")
+    if any(marker in text for marker in ("expert", "router", "routing")) and "moe" in text:
+        families.append("expert-aware quantization")
+    if any(marker in text for marker in ("kernel", "lut", "lookup table", "latency", "throughput", "speedup")):
+        families.append("hardware-aware quantization")
+    if "sparse" in text and "outlier" in text:
+        families.append("sparse outlier retention")
+    if "weight-only quantization" in settings:
+        families.append("weight-only PTQ")
+    if "weight-activation quantization" in settings:
+        families.append("weight-activation PTQ")
+
+    return _dedupe(families)[:8] or [_method_name_from_title(title)]
+
+
+def _settings(pages: list[PageExtraction]) -> list[str]:
+    full_text = " ".join(page.text for page in pages)
+    lowered = f" {_normalize(full_text).lower()} "
+    primary = _primary_paper_key(pages)
+    settings: list[str] = []
+
+    primary_settings = {
+        "llm.int8": ["weight-activation quantization"],
+        "smoothquant": ["weight-activation quantization"],
+        "quarot": ["weight-activation quantization", "KV-cache quantization"],
+        "spinquant": ["weight-activation quantization", "KV-cache quantization"],
+        "duquant": ["weight-activation quantization"],
+        "squeezellm": ["weight-only quantization"],
+        "omniquant": ["weight-only quantization", "weight-activation quantization"],
+        "affinequant": ["weight-activation quantization"],
+        "flatquant": ["weight-activation quantization"],
+        "dfrot": ["weight-activation quantization"],
+        "ostquant": ["weight-activation quantization"],
+        "qep": ["weight-only quantization"],
+        "moequant": ["weight-only quantization", "MoE setting"],
+        "codequant": ["weight-activation quantization", "MoE setting", "LUT/kernel setting"],
+        "massive-activations": [],
+    }
+    if primary in primary_settings:
+        return primary_settings[primary]
+
+    if (
+        "weight-only" in lowered
+        or "weight only" in lowered
+        or re.search(r"\bw[2348]a16\b", lowered)
+        or primary in {"moequant", "qep", "squeezellm"}
+    ):
+        settings.append("weight-only quantization")
+    if (
+        "weight-activation" in lowered
+        or "weight activation" in lowered
+        or "weights and activations" in lowered
+        or "activation quantization" in lowered
+        or re.search(r"\b(?:w[2468]a[2468]|a[2468]w[2468])\b", lowered)
+        or primary in {"codequant", "smoothquant", "quarot", "duquant", "spinquant", "omniquant", "affinequant", "flatquant", "dfrot", "ostquant"}
+    ):
+        settings.append("weight-activation quantization")
+    if "kv cache" in lowered or "kv-cache" in lowered:
+        settings.append("KV-cache quantization")
+    if "moe" in lowered or "mixture-of-experts" in lowered:
+        settings.append("MoE setting")
+    if "lut" in lowered or "lookup table" in lowered or "lookup-table" in lowered:
+        settings.append("LUT/kernel setting")
+
+    return _dedupe(settings)
+
+
+def _topics(
+    title: str,
+    abstract: str,
+    candidates: list[dict[str, Any]],
+    pages: list[PageExtraction],
+    method_records: list[dict[str, Any]],
+    settings: list[str],
+) -> list[str]:
+    text = _topic_text(title, abstract, candidates, method_records, settings)
+    controlled = _controlled_topics(text, settings)
+    phrase_topics = _phrase_topics(text, title, method_records)
+    return _dedupe(controlled + phrase_topics)[:10]
+
+
+def _method_family_text(title: str, method_records: list[dict[str, Any]], settings: list[str]) -> str:
+    return _normalize(f"{title} {' '.join(settings)} " + _method_record_text(method_records))
+
+
+def _topic_text(
+    title: str,
+    abstract: str,
+    candidates: list[dict[str, Any]],
+    method_records: list[dict[str, Any]],
+    settings: list[str],
+) -> str:
+    return _normalize(
+        f"{title} {abstract} {' '.join(settings)} "
+        + " ".join(str(item["sentence"]) for item in candidates)
+        + " "
+        + _method_record_text(method_records)
+    )
+
+
+def _method_record_text(method_records: list[dict[str, Any]]) -> str:
+    return " ".join(
+        " ".join(
+            str(value)
+            for value in (
+                record.get("name"),
+                record.get("short_name"),
+                record.get("summary"),
+                " ".join(record.get("inputs") or []),
+                " ".join(record.get("outputs") or []),
+                " ".join(record.get("assumptions") or []),
+            )
+            if value
+        )
+        for record in method_records
+    )
+
+
+def _controlled_topics(text: str, settings: list[str]) -> list[str]:
+    lowered = f" {_normalize(text).lower()} "
+    topics = []
+    for topic, needles in CONTROLLED_TOPIC_RULES:
+        if topic in settings or any(needle in lowered for needle in needles):
+            topics.append(topic)
+    return topics
+
+
+def _phrase_topics(title_text: str, title: str, method_records: list[dict[str, Any]]) -> list[str]:
+    lowered = _normalize(title_text).lower()
+    method_terms = {
+        str(value).lower()
+        for record in method_records
+        for value in (record.get("name"), record.get("short_name"))
+        if value
+    }
+    title_terms = {term for term in re.findall(r"[a-z][a-z0-9-]{2,}", title.lower()) if term}
+    phrase_rules = (
+        ("quantization error", ("quantization error", "quantization errors")),
+        ("LLM outliers", ("llm outlier", "llm outliers", "large language model outlier", "massive activations")),
+        ("activation outliers", ("activation outlier", "activation outliers")),
+        ("hardware co-design", ("hardware co-design", "kernel design", "dedicated kernel")),
+        ("expert imbalance", ("expert imbalance", "expert-balanced", "expert usage")),
+        ("router preservation", ("router logits", "router behavior", "router kl")),
+        ("calibration representativeness", ("calibration representativeness", "calibration samples", "calibration set")),
+        ("layer reconstruction", ("layer reconstruction", "block reconstruction", "reconstruction error")),
+    )
+    phrases = []
+    for phrase, needles in phrase_rules:
+        if any(needle in lowered for needle in needles) and not _is_title_or_method_topic(phrase, title_terms, method_terms):
+            phrases.append(phrase)
+    return phrases
+
+
+def _is_title_or_method_topic(topic: str, title_terms: set[str], method_terms: set[str]) -> bool:
+    lowered = topic.lower()
+    if lowered in method_terms:
+        return True
+    topic_terms = set(re.findall(r"[a-z][a-z0-9-]{2,}", lowered))
+    return bool(topic_terms) and topic_terms <= title_terms
+
+
+def _legacy_word_topics(title: str, abstract: str, candidates: list[dict[str, Any]]) -> list[str]:
     text = f"{title} {abstract} " + " ".join(str(item["sentence"]) for item in candidates)
     words = re.findall(r"[A-Za-z][A-Za-z0-9-]{3,}", text)
     stop = {

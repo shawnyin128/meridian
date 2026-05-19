@@ -205,6 +205,7 @@ def render_paper_draft(
             "tags": ["llm-wiki", "paper", "paper-ingest"],
             "topics": model.topics,
             "methods": model.methods,
+            "settings": model.settings,
             "models": [],
             "datasets": model.datasets,
             "metrics": model.metrics,
@@ -411,6 +412,7 @@ def _render_retrieval_anchors(model: PaperModel) -> str:
     anchors = [
         ("Methods", model.methods),
         ("Topics", model.topics),
+        ("Settings", model.settings),
         ("Datasets", model.datasets),
         ("Metrics", model.metrics),
     ]
@@ -506,7 +508,10 @@ def _paper_aliases(title: str, model: PaperModel) -> list[str]:
     aliases: list[str] = []
     if ":" in title:
         aliases.append(title.split(":", 1)[0].strip())
-    aliases.extend(method for method in model.methods if method and method not in aliases)
+    for record in model.method_records:
+        for value in (record.get("short_name"), record.get("name")):
+            if value and str(value) not in aliases:
+                aliases.append(str(value))
     return aliases[:8]
 
 

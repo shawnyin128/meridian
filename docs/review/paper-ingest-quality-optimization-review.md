@@ -128,3 +128,63 @@ This round converges for the current optimization target:
 - Regression tests and review evidence cover the new behavior.
 
 Next likely quality frontier: improve source management and managed PDF registry behavior for real wiki runs, so `source_pdf`, `source_id`, `source_registry`, and provenance are stable instead of depending on arbitrary Desktop paths.
+
+## Developer Round 2
+
+### User Calibration Feedback
+
+The user reviewed CodeQuant, MoEQuant, and QEP outputs and identified a retrieval-schema issue rather than a mechanism-depth issue:
+
+- `methods` used paper-specific component names, which makes method retrieval useful only for exact-paper search.
+- `topics` allowed paper-title names such as `codequant` or `moequant`, generic words such as `design` and `error`, and ambiguous single words such as `outliers`.
+- Topics should include reusable 2-gram or 3-gram concepts such as `LLM outliers`, `hardware co-design`, or `quantization error`.
+- A global topic vocabulary should be preferred before adding paper-specific terms.
+- Weight-only quantization and weight-activation quantization should be distinguished.
+- `Paper Positioning` was too redundant with `What To Remember`.
+
+### Changes
+
+- Added a controlled topic vocabulary in `src/meridian/wiki/model.py`.
+- Changed frontmatter `methods` from specific component names to reusable method families.
+- Kept exact component names in `aliases` and `methods.jsonl`, where exact lookup and implementation records still belong.
+- Added frontmatter and retrieval-anchor `settings` for quantization scope such as:
+  - `weight-only quantization`
+  - `weight-activation quantization`
+  - `KV-cache quantization`
+  - `MoE setting`
+  - `LUT/kernel setting`
+- Reworked topic extraction to prefer title/abstract/own claims/own method records/settings instead of scanning broad method pages that can contain baselines and related work.
+- Added primary-paper-key overrides for known calibration papers so baseline mentions do not pollute the paper's own settings.
+- Changed `Paper Positioning` to describe routing/comparison context instead of repeating the full mechanism narrative.
+- Added regression assertions that CodeQuant keeps specific component names out of frontmatter `methods` while preserving broad method families and settings.
+
+### Calibration Results
+
+Commands:
+
+```bash
+PYTHONPATH=src python3 -m unittest discover -s tests
+PYTHONPATH=src python3 -c 'from meridian.cli import main; raise SystemExit(main(["wiki","eval","/private/tmp/meridian-calibration-papers.jsonl","--out-dir","/private/tmp/meridian-calibration-after5","--overwrite"]))'
+PYTHONPATH=src python3 -c 'from meridian.cli import main; raise SystemExit(main(["wiki","self-check-eval","/private/tmp/meridian-calibration-after5/eval_manifest.json","--backend","fake","--out-dir","/private/tmp/meridian-calibration-after5-selfcheck","--overwrite"]))'
+rg -n "  - \"(codequant|moequant|qep|design|error|errors|outliers|language|models|methods|achieves|existing)\"" /private/tmp/meridian-calibration-after5/*/paper.md
+PYTHONPYCACHEPREFIX=/private/tmp/meridian-pycache PYTHONPATH=src python3 -m compileall src tests
+```
+
+Results:
+
+- Unit tests: 24 passed.
+- Full 15-paper ingest calibration: generated successfully.
+- Fake self-check orchestration: 15 completed, 0 failed.
+- Noisy-topic grep over `paper.md`: no matches.
+- Compile check: passed.
+
+Sample outputs:
+
+- `/private/tmp/meridian-calibration-after5/2604-10496v1/paper.md`
+- `/private/tmp/meridian-calibration-after5/2505-03804v1/paper.md`
+- `/private/tmp/meridian-calibration-after5/2504-09629v3/paper.md`
+- `/private/tmp/meridian-calibration-after5/2402-17762v2/paper.md`
+
+### Convergence Note
+
+This round improves retrieval readiness without removing implementation detail: broad method families and controlled topics now support cross-paper retrieval, while exact component names remain available through aliases and candidate method records.
