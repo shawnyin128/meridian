@@ -214,8 +214,8 @@ class CliTests(unittest.TestCase):
             self.assertIn("model_strategy: \"heuristic_text_v2\"", paper)
             self.assertIn("## Paper Positioning", paper)
             self.assertIn("## When To Retrieve This Paper", paper)
-            self.assertIn("Use this paper when you need to:", paper)
-            self.assertIn("Do not use it when:", paper)
+            self.assertIn("Canonical retrieval fits:", paper)
+            self.assertIn("Scope notes:", paper)
             self.assertIn("## Mechanism", paper)
             self.assertIn("## Candidate Records", paper)
             self.assertNotIn("## Extracted Contribution Sentences", paper)
@@ -259,10 +259,15 @@ class CliTests(unittest.TestCase):
             self.assertIn("This is a MoE post-training quantization paper", paper)
             self.assertIn("## What To Remember", paper)
             self.assertIn("## When To Retrieve This Paper", paper)
-            self.assertIn("Use this paper when you need to:", paper)
-            self.assertIn("Do not use it when:", paper)
-            self.assertIn("You want a weight-only PTQ citation", paper)
+            self.assertIn("Canonical retrieval fits:", paper)
+            self.assertIn("Scope notes:", paper)
+            self.assertIn('Query: "I want to compare or adapt MoE post-training quantization', paper)
+            self.assertIn("Use because:", paper)
+            self.assertIn("Primary fit:", paper)
+            self.assertIn("Adjacent fit:", paper)
+            self.assertIn("Weak fit:", paper)
             self.assertNotIn("## Retrieval Notes", paper)
+            self.assertNotIn("Do not use it when:", paper)
             frontmatter = paper.split("---", 2)[1]
             methods_frontmatter = frontmatter.split("methods:", 1)[1].split("settings:", 1)[0]
             self.assertIn("post-training quantization", methods_frontmatter)
@@ -682,14 +687,16 @@ class CliTests(unittest.TestCase):
         self.assertLessEqual(score["score"], 3.0)
         self.assertIn("topics_contain_title_or_alias:codequant", score["findings"])
 
-    def test_retrieval_intent_quality_rejects_metadata_lists(self) -> None:
+    def test_retrieval_intent_quality_rejects_negative_rule_lists(self) -> None:
         score = _retrieval_intent_quality_score(
             {
                 "When To Retrieve This Paper": "\n".join(
                     [
-                        "Use this paper when you need to:",
-                        "- Compare post-training quantization; MoE quantization; outlier-aware quantization in weight-activation quantization; MoE setting.",
-                        "- Check accuracy; perplexity; latency on WikiText2; C4; MMLU.",
+                        "Canonical retrieval fits:",
+                        '- Query: "Compare post-training quantization; MoE quantization; outlier-aware quantization."',
+                        "  Use because: It says to inspect frontmatter.",
+                        '- Query: "Check accuracy; perplexity; latency."',
+                        "  Use because: It says to inspect frontmatter.",
                         "",
                         "Do not use it when:",
                         "- You need QAT evidence unless directly compared.",
@@ -700,6 +707,7 @@ class CliTests(unittest.TestCase):
         )
 
         self.assertLessEqual(score["score"], 3.0)
+        self.assertIn("negative_rule_list_present", score["findings"])
         self.assertIn("routing_cases_look_like_metadata_list", score["findings"])
 
     def test_structural_check_command_scores_ingest_structure(self) -> None:

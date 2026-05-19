@@ -318,10 +318,12 @@ def _frontmatter_body_source_score(frontmatter: dict[str, Any], sections: dict[s
         findings.append("missing_when_to_retrieve")
     if re.search(r"^- (Methods|Topics|Settings|Datasets|Metrics):", retrieval_intent, flags=re.MULTILINE):
         findings.append("body_copies_frontmatter_field_lists")
-    if "use this paper when you need to:" not in lower:
-        findings.append("missing_positive_routing_header")
-    if "do not use it when:" not in lower:
-        findings.append("missing_negative_routing_header")
+    if "canonical retrieval fits:" not in lower:
+        findings.append("missing_canonical_examples_header")
+    if "scope notes:" not in lower:
+        findings.append("missing_scope_notes_header")
+    if "do not use it when:" in lower:
+        findings.append("negative_rule_list_present")
     for field in ("methods", "topics", "settings"):
         values = frontmatter.get(field)
         if field == "settings" and values == []:
@@ -339,7 +341,7 @@ def _frontmatter_body_source_score(frontmatter: dict[str, Any], sections: dict[s
         "frontmatter_body_source_of_truth",
         score,
         "paper_page_template",
-        "Frontmatter is the machine-readable retrieval source of truth and body when-to-retrieve intent does not duplicate field lists.",
+        "Frontmatter is the machine-readable retrieval source of truth and body when-to-retrieve examples do not duplicate field lists.",
         findings,
     )
 

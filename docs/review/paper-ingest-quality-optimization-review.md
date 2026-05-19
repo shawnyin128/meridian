@@ -331,3 +331,63 @@ Sample outputs:
 ### Convergence Note
 
 This round converges for the retrieval-intent section: frontmatter remains the machine retrieval source, and the body now contributes human/reranker value by stating when the paper should and should not be used.
+
+## Developer Round 5
+
+### User Calibration Feedback
+
+The user pointed out that strong agent behavior is usually better shaped by diverse canonical examples than by long negative-rule lists. The previous `Do not use it when` section risked turning retrieval intent into another boundary checklist.
+
+### Changes
+
+- Kept the `When To Retrieve This Paper` section, but changed its internal contract.
+- Replaced positive/negative routing lists with:
+  - `Canonical retrieval fits:` examples.
+  - Each example has `Query: "..."` plus `Use because: ...`.
+  - `Scope notes:` with `Primary fit`, `Adjacent fit`, and `Weak fit`.
+- Updated quality checks to require:
+  - at least three canonical query examples;
+  - matching `Use because` reasons;
+  - scenario diversity across comparison/adaptation, implementation/probing/ablation, and evidence checking;
+  - fit-distance notes instead of exclusion rules.
+- Updated structural and understanding agents to expect canonical examples plus scope notes.
+- Updated rubrics and regression tests to reject `Do not use it when` rule-list sections.
+
+### Calibration Results
+
+Commands:
+
+```bash
+PYTHONPATH=src python3 -m unittest discover -s tests
+PYTHONPATH=src python3 -c 'from meridian.cli import main; raise SystemExit(main(["wiki","eval","/private/tmp/meridian-calibration-papers.jsonl","--out-dir","/private/tmp/meridian-calibration-after9","--overwrite"]))'
+PYTHONPATH=src python3 -c 'from meridian.cli import main; raise SystemExit(main(["wiki","self-check-eval","/private/tmp/meridian-calibration-after9/eval_manifest.json","--backend","fake","--out-dir","/private/tmp/meridian-calibration-after9-selfcheck","--overwrite"]))'
+PYTHONPATH=src python3 - <<'PY'
+from pathlib import Path
+from meridian.wiki.quality_check import run_quality_self_check
+from meridian.wiki.structural_check import run_structural_self_check
+root = Path("/private/tmp/meridian-calibration-after9")
+for run in sorted(root.glob("*/run.json")):
+    run_quality_self_check(run_manifest=run, out_path=run.parent / "quality-self-check.json")
+    run_structural_self_check(run_manifest=run, out_path=run.parent / "structural-self-check.json")
+PY
+PYTHONPYCACHEPREFIX=/private/tmp/meridian-pycache PYTHONPATH=src python3 -m compileall src tests
+```
+
+Results:
+
+- Unit tests: 27 passed.
+- Full 15-paper ingest calibration: generated successfully.
+- Fake self-check orchestration: 15 completed, 0 failed.
+- Deterministic quality self-check: 15/15 pass.
+- Deterministic structural self-check: 15/15 pass.
+- Grep check found no legacy `Retrieval Notes`, `Retrieval Anchors`, `Do not use it when`, `Use this paper when you need to`, source-of-truth boilerplate, `scope conditions such as`, or `questions about` in generated paper outputs.
+
+Sample outputs:
+
+- `/private/tmp/meridian-calibration-after9/2604-10496v1/paper.md`
+- `/private/tmp/meridian-calibration-after9/2505-03804v1/paper.md`
+- `/private/tmp/meridian-calibration-after9/2504-09629v3/paper.md`
+
+### Convergence Note
+
+This round converges the behavior description style: retrieval intent is now shaped by canonical examples and fit-distance notes instead of negative boundary lists.

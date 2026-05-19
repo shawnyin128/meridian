@@ -61,7 +61,7 @@ Use this order:
 
 1. frontmatter with retrieval metadata
 2. `What To Remember`: one concrete mechanism-centered paragraph
-3. `When To Retrieve This Paper`: semantic positive/negative routing intent; do not repeat frontmatter lists
+3. `When To Retrieve This Paper`: canonical retrieval examples plus fit-distance notes; do not repeat frontmatter lists
 4. `Mechanism`: component contracts
 5. `Mechanism Details To Verify`: source-grounded equations/algorithms/figures/settings
 6. `Evidence Map`: only high-value claims and evidence takeaways
@@ -102,10 +102,12 @@ Prefer controlled/global vocabulary entries before inventing a paper-specific to
 
 `When To Retrieve This Paper` quality bar:
 
-- Start with `Use this paper when you need to:` and include 2-4 concrete positive routing cases.
-- Include `Do not use it when:` and 2-4 concrete negative routing cases.
-- Positive cases should mention research actions such as compare, adapt, implement, probe, ablate, check evidence, audit scope, or decide whether a setting applies.
-- Negative cases should prevent over-broad use, especially across PTQ vs QAT, weight-only vs weight-activation/KV-cache, MoE vs dense, or hardware/kernel scope.
+- Start with `Canonical retrieval fits:` and include 3-4 diverse examples.
+- Each example should have a `Query: "..."` line and a `Use because:` line.
+- Examples should portray expected behavior across idea/design comparison, implementation/probe/ablation, and evidence/comparison scenarios.
+- Include `Scope notes:` with `Primary fit`, `Adjacent fit`, and `Weak fit`.
+- Scope notes should express retrieval distance, not a laundry list of negative rules.
+- Avoid `Do not use it when:` as a section header; prefer canonical examples and fit-distance notes.
 - Do not say only "see frontmatter"; retrieval code can already read frontmatter.
 
 ## Self-Check
@@ -119,8 +121,8 @@ Use three separately inspectable self-check roles as the convergence loop:
 All three agents must cover retrieval schema quality:
 
 - Understanding agent checks whether a reader can explain why the page should be retrieved and whether `methods`, `topics`, `settings`, `aliases`, and candidate records have distinct roles.
-- Quality agent scores retrieval taxonomy boundaries, frontmatter/body non-duplication, and the quality of `When To Retrieve This Paper`; it should fail pages where paper-specific method components replace reusable method families, topics are generic/title-derived, or body retrieval text is only boilerplate.
-- Structural agent checks that frontmatter is the source of truth and that body `When To Retrieve This Paper` has both positive and negative routing headers without duplicating frontmatter field lists.
+- Quality agent scores retrieval taxonomy boundaries, frontmatter/body non-duplication, and the quality of `When To Retrieve This Paper`; it should fail pages where paper-specific method components replace reusable method families, topics are generic/title-derived, or body retrieval text is only boilerplate or negative-rule laundry lists.
+- Structural agent checks that frontmatter is the source of truth and that body `When To Retrieve This Paper` has canonical retrieval examples plus scope notes without duplicating frontmatter field lists.
 
 Keep these roles separate. Do not let structural pass/fail replace semantic understanding or quality evaluation, and do not bury schema completeness failures inside prose-quality findings.
 

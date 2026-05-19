@@ -422,42 +422,63 @@ def _render_retrieval_intent(model: PaperModel) -> str:
     ]
     components = ", ".join(component_names)
 
-    use_cases = [
-        f"- Compare or adapt {method_family} when {topic_scope} {topic_verb} the suspected bottleneck in {setting_scope}.",
+    examples = [
+        (
+            f'I want to compare or adapt {method_family} when {topic_scope} {topic_verb} the suspected bottleneck.',
+            f"It explains how the paper's mechanism is meant to work in {setting_scope}, with assumptions and caveats separated below.",
+        )
     ]
     if components:
-        use_cases.append(
-            f"- Turn the paper's named components ({components}) into implementation probes, ablations, or sanity checks using the contracts below."
+        examples.append(
+            (
+                f"I am implementing probes or ablations around {components}.",
+                "The Mechanism section turns each named component into inputs, outputs, dependencies, and first checks.",
+            )
         )
     if model.datasets or model.metrics:
-        use_cases.append(
-            f"- Check whether mechanism claims are backed by {metrics} on {datasets}, rather than relying on abstract plausibility."
+        examples.append(
+            (
+                "I need to check whether the mechanism is supported by experiments rather than just plausible.",
+                f"The Evidence Map connects claims to {metrics} on {datasets}, plus source-page provenance.",
+            )
         )
     if model.limitations:
-        use_cases.append("- Audit the scope caveats before using this paper as support for a new research direction or baseline comparison.")
+        examples.append(
+            (
+                "I am deciding whether this paper is strong enough support for a new research direction or baseline comparison.",
+                "The page keeps scope caveats, uncertainty, and implementation hooks close to the mechanism summary.",
+            )
+        )
 
-    non_use_cases = []
     lowered_methods = " ".join(model.methods).lower()
     lowered_settings = " ".join(model.settings).lower()
+    primary_fit = f"{method_family} in {setting_scope}"
+    adjacent_fit = f"related work on {topic_scope}, if the setting difference is made explicit"
+    weak_fit = "generic quantization surveys or training-time quantization"
     if "post-training quantization" in lowered_methods or "ptq" in lowered_methods:
-        non_use_cases.append("- You need evidence for training-time quantization or QAT unless the Evidence Map explicitly compares those settings.")
+        weak_fit = "training-time quantization or QAT, unless the query is explicitly comparing against PTQ"
     if "weight-only quantization" in lowered_settings and "weight-activation quantization" not in lowered_settings:
-        non_use_cases.append("- You need activation or KV-cache quantization evidence without a separate paper that covers those settings.")
+        adjacent_fit = f"{topic_scope} in activation or KV-cache quantization, but only as a contrast to this weight-only setting"
     elif "weight-activation quantization" in lowered_settings:
-        non_use_cases.append("- You want a weight-only PTQ citation; activation behavior is part of the reported scope.")
+        adjacent_fit = f"weight-only PTQ comparisons, but only if activation behavior is treated as a setting difference"
     if "lut/kernel setting" in lowered_settings or "hardware-aware quantization" in lowered_methods:
-        non_use_cases.append("- You want to generalize systems or kernel claims outside the reported implementation stack without rechecking hardware evidence.")
+        weak_fit = "systems or kernel claims outside the reported implementation stack unless hardware evidence is rechecked"
     else:
-        non_use_cases.append("- You need deployment speed or kernel evidence and the Evidence Map has no direct systems measurement.")
-    non_use_cases.append("- You need a generic survey page rather than a mechanism-specific paper; use frontmatter to retrieve neighboring papers.")
+        weak_fit = "deployment speed or kernel claims if the Evidence Map has no direct systems measurement"
 
+    example_lines = []
+    for query, reason in examples[:4]:
+        example_lines.append(f'- Query: "{query}"')
+        example_lines.append(f"  Use because: {reason}")
     return "\n".join(
         [
-            "Use this paper when you need to:",
-            *use_cases[:4],
+            "Canonical retrieval fits:",
+            *example_lines,
             "",
-            "Do not use it when:",
-            *non_use_cases[:4],
+            "Scope notes:",
+            f"- Primary fit: {primary_fit}.",
+            f"- Adjacent fit: {adjacent_fit}.",
+            f"- Weak fit: {weak_fit}.",
         ]
     )
 

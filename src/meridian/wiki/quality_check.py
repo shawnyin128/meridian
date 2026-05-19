@@ -242,19 +242,27 @@ def _retrieval_intent_quality_score(sections: dict[str, str]) -> dict[str, Any]:
     intent = sections.get("When To Retrieve This Paper", "")
     lower = intent.lower()
     findings: list[str] = []
-    positive_lines = _bullets_between(intent, "Use this paper when you need to:", "Do not use it when:")
-    negative_lines = _bullets_after(intent, "Do not use it when:")
+    query_examples = re.findall(r"^- Query: .+", intent, flags=re.MULTILINE)
+    use_reasons = re.findall(r"^\s+Use because: .+", intent, flags=re.MULTILINE)
+    scope_lines = _bullets_after(intent, "Scope notes:")
     if not intent:
         findings.append("missing_when_to_retrieve_section")
-    if "use this paper when you need to:" not in lower:
-        findings.append("missing_positive_routing_header")
-    if "do not use it when:" not in lower:
-        findings.append("missing_negative_routing_header")
-    if len(positive_lines) < 2:
-        findings.append("too_few_positive_routing_cases")
-    if len(negative_lines) < 2:
-        findings.append("too_few_negative_routing_cases")
-    if any(line.count(";") >= 2 for line in positive_lines + negative_lines):
+    if "canonical retrieval fits:" not in lower:
+        findings.append("missing_canonical_examples_header")
+    if "scope notes:" not in lower:
+        findings.append("missing_scope_notes_header")
+    if "do not use it when:" in lower:
+        findings.append("negative_rule_list_present")
+    if len(query_examples) < 3:
+        findings.append("too_few_canonical_query_examples")
+    if len(use_reasons) < len(query_examples):
+        findings.append("missing_use_because_reasons")
+    if len(scope_lines) < 3:
+        findings.append("missing_fit_distance_notes")
+    for label in ("primary fit", "adjacent fit", "weak fit"):
+        if label not in lower:
+            findings.append(f"missing_{label.replace(' ', '_')}")
+    if any(line.count(";") >= 2 for line in query_examples + use_reasons + scope_lines):
         findings.append("routing_cases_look_like_metadata_list")
     generic_phrases = [
         "questions about",
@@ -264,23 +272,28 @@ def _retrieval_intent_quality_score(sections: dict[str, str]) -> dict[str, Any]:
     ]
     if any(phrase in lower for phrase in generic_phrases):
         findings.append("template_or_metadata_boilerplate")
-    routing_markers = r"\b(compare|adapt|implement|probe|ablat|check|audit|cite|generalize|evidence|baseline|bottleneck|scope|setting)\b"
+    routing_markers = r"\b(compare|adapt|implement|probe|ablat|check|audit|cite|evidence|baseline|bottleneck|scope|setting|query|use because)\b"
     if len(re.findall(routing_markers, lower)) < 5:
         findings.append("routing_intent_lacks_actionable_markers")
-    if not re.search(r"\b(do not|without|unless|outside|rather than)\b", lower):
-        findings.append("missing_negative_or_contrastive_scope")
+    scenario_hits = sum(
+        bool(re.search(pattern, lower))
+        for pattern in (r"\b(compare|adapt)\b", r"\b(implement|probe|ablat)\b", r"\b(evidence|supported|experiments?)\b")
+    )
+    if scenario_hits < 3:
+        findings.append("canonical_examples_lack_scenario_diversity")
     score = 5 - 0.65 * len(findings)
     if (
         "missing_when_to_retrieve_section" in findings
         or "template_or_metadata_boilerplate" in findings
         or "routing_cases_look_like_metadata_list" in findings
+        or "negative_rule_list_present" in findings
     ):
         score = min(score, 3.0)
     return _dimension(
         "retrieval_intent_quality",
         score,
         "paper_page_template",
-        "When-to-retrieve prose gives positive and negative semantic routing guidance rather than metadata boilerplate.",
+        "When-to-retrieve prose gives diverse canonical query examples and fit-distance notes rather than metadata boilerplate or negative rule lists.",
         findings,
     )
 

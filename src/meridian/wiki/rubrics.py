@@ -189,7 +189,7 @@ UNDERSTANDING_RUBRIC = AgentRubric(
         RubricDimension(
             "retrieval_schema_understanding",
             1.1,
-            "Reader A understands why the page should be retrieved from frontmatter plus the positive/negative when-to-retrieve intent, and does not confuse method families, research topics, settings, aliases, or exact component records.",
+            "Reader A understands why the page should be retrieved from frontmatter plus canonical query examples and fit-distance notes, and does not confuse method families, research topics, settings, aliases, or exact component records.",
             _anchors("retrieval schema understanding"),
             ["paper.md frontmatter", "When To Retrieve This Paper", "candidate method records", "Reader A retrieval explanation"],
             ["Reader A treats a paper title as a topic.", "Reader A cannot distinguish weight-only from weight-activation setting.", "Specific components appear as the only method family."],
@@ -275,10 +275,10 @@ QUALITY_RUBRIC = AgentRubric(
         RubricDimension(
             "retrieval_intent_quality",
             1.3,
-            "The when-to-retrieve section gives high-quality positive and negative semantic routing guidance for human readers, rerankers, and future context builders.",
+            "The when-to-retrieve section gives diverse canonical query examples plus fit-distance notes for human readers, rerankers, and future context builders.",
             _anchors("retrieval intent quality"),
             ["When To Retrieve This Paper", "complex retrieval scenarios", "frontmatter settings/methods/topics"],
-            ["Section only says to consult frontmatter.", "No negative routing cases.", "Use-cases are generic and do not mention compare/adapt/implement/check/audit decisions."],
+            ["Section only says to consult frontmatter.", "Uses a negative-rule laundry list.", "Examples are generic and do not show query plus use-because behavior."],
         ),
         RubricDimension(
             "retrieval_coverage",
@@ -319,7 +319,7 @@ QUALITY_RUBRIC = AgentRubric(
         HardFailRule("misleading_retrieval_metadata", "Frontmatter routes future queries to the wrong method, setting, dataset, or claim.", "frontmatter and source evidence", "retrieval_metadata"),
         HardFailRule("collapsed_retrieval_taxonomy", "Methods, topics, and settings collapse into overlapping or paper-specific labels that make cross-paper retrieval unreliable.", "frontmatter and retrieval scenario evidence", "retrieval_metadata"),
         HardFailRule("frontmatter_body_duplicate_contract", "The body duplicates frontmatter retrieval lists instead of treating frontmatter as source of truth.", "paper.md section evidence", "paper_page_template"),
-        HardFailRule("missing_negative_retrieval_intent", "The page has no negative routing guidance and is likely to be retrieved or cited outside its valid scope.", "When To Retrieve This Paper section", "paper_page_template"),
+        HardFailRule("missing_canonical_retrieval_examples", "The page lacks diverse canonical query examples and therefore does not teach the expected retrieval behavior.", "When To Retrieve This Paper section", "paper_page_template"),
         HardFailRule("unsupported_action_guidance", "Implementation or research advice is not grounded in source facts or candidate records.", "hook text and missing provenance", "evidence_linking"),
     ],
 )
@@ -340,7 +340,7 @@ STRUCTURAL_RUBRIC = AgentRubric(
         RubricDimension("run_manifest_contract", 1.4, "run.json exposes stable paths, schema version, quality gate, paper model counts, and source management.", _anchors("run manifest contract"), ["run.json"], ["Missing draft_artifacts.", "Alias paths disagree."]),
         RubricDimension("artifact_existence", 1.5, "All required draft/canonical artifacts exist, are non-empty, and are linked from the manifest.", _anchors("artifact existence"), ["run.json paths", "filesystem"], ["methods.jsonl missing.", "canonical path declared but absent."]),
         RubricDimension("frontmatter_schema", 1.4, "paper.md frontmatter contains complete machine-routing metadata with correct scalar/list types.", _anchors("frontmatter schema"), ["paper.md frontmatter"], ["source_id missing.", "claims is scalar instead of list."]),
-        RubricDimension("frontmatter_body_source_of_truth", 1.1, "Frontmatter remains the machine-readable retrieval source of truth and body when-to-retrieve intent does not duplicate its field lists.", _anchors("frontmatter/body source of truth"), ["paper.md frontmatter", "When To Retrieve This Paper section"], ["Retrieval Anchors repeats methods/topics/settings.", "When-to-retrieve section lacks positive or negative routing headers."]),
+        RubricDimension("frontmatter_body_source_of_truth", 1.1, "Frontmatter remains the machine-readable retrieval source of truth and body when-to-retrieve examples do not duplicate its field lists.", _anchors("frontmatter/body source of truth"), ["paper.md frontmatter", "When To Retrieve This Paper section"], ["Retrieval Anchors repeats methods/topics/settings.", "When-to-retrieve section lacks canonical examples or scope notes."]),
         RubricDimension("section_schema", 1.2, "paper.md preserves required durable sections in the expected order with non-empty content.", _anchors("section schema"), ["paper.md headings"], ["Mechanism section missing.", "Candidate Records empty."]),
         RubricDimension("candidate_jsonl_schema", 1.4, "claims/methods/evidence JSONL records have required fields for later promotion.", _anchors("candidate JSONL schema"), ["claims.jsonl", "methods.jsonl", "evidence.jsonl"], ["method has no inputs/outputs.", "invalid JSONL line."]),
         RubricDimension("provenance_linkage", 1.3, "Records and prose link claims/methods/evidence to valid pages and evidence ids.", _anchors("provenance linkage"), ["provenance fields", "pages.jsonl"], ["claim links to missing evidence id.", "page reference outside page range."]),
