@@ -93,7 +93,7 @@ KNOWN_DATASETS = (
 def build_paper_model(title: str, extraction: PdfExtraction) -> PaperModel:
     abstract = _extract_abstract(extraction)
     method_records = _method_records(title, extraction.pages)
-    contribution_sentences = _candidate_claim_sentences(extraction.pages)
+    contribution_sentences = _candidate_claim_sentences(extraction.pages, title=title, method_records=method_records)
     key_contributions = _key_contributions(contribution_sentences)
     claim_records = _claim_records(title, key_contributions)
     methods = [record["name"] for record in method_records]
@@ -185,12 +185,18 @@ def _compact_evidence_context(pages: list[PageExtraction]) -> str:
     return "Read the evidence around " + ", ".join(bits) + ", not just the abstract claims."
 
 
-def _candidate_claim_sentences(pages: list[PageExtraction]) -> list[dict[str, Any]]:
+def _candidate_claim_sentences(
+    pages: list[PageExtraction],
+    *,
+    title: str,
+    method_records: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
     scored: list[tuple[int, dict[str, Any]]] = []
+    own_terms = _own_claim_terms(title, method_records)
     for page in pages[:18]:
         for sentence in _sentences(page.text):
-            score = _claim_sentence_score(sentence, page)
+            score = _claim_sentence_score(sentence, page, own_terms)
             if score <= 0:
                 continue
             scored.append(
@@ -223,11 +229,28 @@ def _candidate_claim_sentences(pages: list[PageExtraction]) -> list[dict[str, An
     return candidates
 
 
-def _claim_sentence_score(sentence: str, page: PageExtraction) -> int:
+def _own_claim_terms(title: str, method_records: list[dict[str, Any]]) -> list[str]:
+    terms = [_method_name_from_title(title), title.split(":", 1)[0]]
+    for record in method_records:
+        for value in (record.get("short_name"), record.get("name")):
+            if value:
+                terms.append(str(value))
+    cleaned = []
+    for term in terms:
+        term = str(term).strip()
+        if len(term) >= 3 and term.lower() not in {"method", "model", "paper"}:
+            cleaned.append(term)
+    return _dedupe(cleaned)
+
+
+def _claim_sentence_score(sentence: str, page: PageExtraction, own_terms: list[str]) -> int:
     lowered = sentence.lower()
     if _is_background_sentence(lowered) or _bad_claim_sentence(sentence):
         return -5
     score = 0
+    mentions_own_work = any(term.lower() in lowered for term in own_terms)
+    if mentions_own_work:
+        score += 3
     if any(marker in lowered for marker in CLAIM_MARKERS):
         score += 2
     for marker in ("table", "figure", "ablation", "outperform", "achieve", "speedup", "latency", "perplexity", "accuracy"):
@@ -237,6 +260,8 @@ def _claim_sentence_score(sentence: str, page: PageExtraction) -> int:
         score += 3
     if "codequant" in lowered:
         score += 1
+    if not mentions_own_work and not any(marker in lowered for marker in ("our method", "our approach", "we propose", "we introduce", "we show", "we demonstrate")):
+        score -= 3
     if page.page_number <= 2 and score < 4:
         score -= 2
     if "introduction" == (page.section_hint or "").lower():
@@ -246,13 +271,20 @@ def _claim_sentence_score(sentence: str, page: PageExtraction) -> int:
 
 def _is_background_sentence(lowered: str) -> bool:
     background_markers = (
+        "ablation study in this section",
+        "in this section, we provide",
         "has emerged",
         "have emerged",
+        "large language models (llms) have achieved",
+        "large language models have achieved",
         "this specialization enables",
         "by representing weights and activations",
         "recent hardware innovations",
         "consequently",
         "to address these costs",
+        "to achieve accurate quantization",
+        "notable examples include",
+        "among these methods",
     )
     return any(marker in lowered for marker in background_markers)
 
@@ -264,6 +296,8 @@ def _bad_claim_sentence(sentence: str) -> bool:
     if _looks_like_table_sentence(sentence):
         return True
     if "figure " in lowered and not any(marker in lowered for marker in CLAIM_MARKERS):
+        return True
+    if any(marker in lowered for marker in ("model decoder speed", "memory use (gb)", "tokens/sec", "fp quantized speed up")):
         return True
     digit_ratio = sum(character.isdigit() for character in sentence) / max(len(sentence), 1)
     return digit_ratio > 0.22
@@ -296,7 +330,26 @@ def _key_contributions(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]
 
 def _clean_claim_sentence(sentence: str) -> str:
     sentence = re.sub(r"([A-Za-z])-\s+([A-Za-z])", r"\1\2", sentence)
+    sentence = re.sub(r"^\d+\s+Introduction\s+", "", sentence, flags=re.IGNORECASE)
+    sentence = re.sub(
+        r"^([A-Z][A-Za-z0-9.]+)\s+In this paper,\s+we present\s+\1,",
+        r"The paper presents \1,",
+        sentence,
+    )
+    sentence = re.sub(r"^demonstrate that\s+", "The paper demonstrates that ", sentence, flags=re.IGNORECASE)
+    sentence = _strip_table_prefix_before_claim(sentence)
     return _normalize(sentence)
+
+
+def _strip_table_prefix_before_claim(sentence: str) -> str:
+    markers = ("MoEQuant", "CodeQuant", "QEP", "SmoothQuant", "QuaRot", "DuQuant", "SpinQuant", "SqueezeLLM", "OmniQuant", "AffineQuant", "FlatQuant", "DFRot", "OSTQuant", "LLM.int8")
+    lowered = sentence.lower()
+    if not any(marker in lowered for marker in ("tokens/sec", "memory use", "speed up", "fp quantized")):
+        return sentence
+    positions = [sentence.find(marker) for marker in markers if sentence.find(marker) > 0]
+    if positions:
+        return sentence[min(positions):]
+    return sentence
 
 
 def _claim_records(title: str, contributions: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1678,8 +1731,6 @@ def _implementation_notes(method_records: list[dict[str, Any]], pages: list[Page
     for record in method_records:
         for note in record.get("implementation_notes") or []:
             notes.append(f"{record['name']}: {note}")
-        for assumption in record.get("assumptions") or []:
-            notes.append(f"{record['name']}: Add a sanity check for this dependency: {assumption}.")
     text = " ".join(page.text for page in pages)
     notes.extend(_primary_implementation_notes(pages))
     if "Equation" in text or re.search(r"\(\d+\)", text):
@@ -1907,6 +1958,26 @@ def _topics(title: str, abstract: str, candidates: list[dict[str, Any]]) -> list
         "through",
         "have",
         "been",
+        "large",
+        "language",
+        "models",
+        "model",
+        "methods",
+        "method",
+        "existing",
+        "achieve",
+        "achieves",
+        "achieved",
+        "performance",
+        "results",
+        "result",
+        "llms",
+        "using",
+        "based",
+        "approach",
+        "approaches",
+        "address",
+        "when",
     }
     counts: dict[str, int] = {}
     for word in words:

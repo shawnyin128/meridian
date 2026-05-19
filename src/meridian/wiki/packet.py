@@ -226,6 +226,7 @@ def render_paper_draft(
     retrieval_anchors = _render_retrieval_anchors(model)
     visual_pointers = _render_visual_pointers(extraction.pages)
     record_pointers = _render_record_pointers()
+    mechanism_contracts = _render_mechanism_contracts(model.method_records)
 
     return f"""{frontmatter}
 # {title}
@@ -255,7 +256,7 @@ Source:
 
 ## Mechanism
 
-{_render_list(model.mechanism_overview)}
+{mechanism_contracts}
 
 ## Mechanism Details To Verify
 
@@ -368,6 +369,42 @@ def _render_method_index(records: list[dict[str, Any]]) -> str:
             io = f" Inputs: {inputs or 'unknown'}. Outputs: {outputs or 'unknown'}."
         lines.append(f"- `{record['id']}`: {record['name']} - {record['summary']}{io} {provenance}".rstrip())
     return "\n".join(lines) if lines else "- No method candidates extracted."
+
+
+def _render_mechanism_contracts(records: list[dict[str, Any]]) -> str:
+    if not records:
+        return "- No reliable method mechanism was extracted; inspect the methodology pages before using this paper."
+    blocks = []
+    for record in records:
+        provenance = _format_provenance(record.get("provenance", []))
+        inputs = _join_or_unknown(record.get("inputs"), "source objects not confidently extracted")
+        outputs = _join_or_unknown(record.get("outputs"), "target representation or behavior not confidently extracted")
+        assumptions = _join_or_unknown(record.get("assumptions"), "dependency not confidently extracted")
+        checks = _join_or_unknown((record.get("implementation_notes") or [])[:2], "derive a small probe from the cited method pages before implementation")
+        blocks.append(
+            "\n".join(
+                [
+                    f"### {record['name']}",
+                    "",
+                    f"- Purpose: {record['summary']}",
+                    f"- Operates on: {inputs}.",
+                    f"- Produces: {outputs}.",
+                    f"- Depends on: {assumptions}.",
+                    f"- First checks: {checks}.",
+                    f"- Source: {provenance or 'provenance not confidently extracted.'}",
+                ]
+            )
+        )
+    return "\n\n".join(blocks)
+
+
+def _join_or_unknown(value: object, fallback: str) -> str:
+    if isinstance(value, list):
+        cleaned = [str(item).strip().rstrip(".") for item in value if str(item).strip()]
+        if cleaned:
+            return "; ".join(cleaned)
+    text = str(value or "").strip().rstrip(".")
+    return text if text else fallback
 
 
 def _render_retrieval_anchors(model: PaperModel) -> str:

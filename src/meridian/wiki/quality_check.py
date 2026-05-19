@@ -180,7 +180,11 @@ def _component_contract_score(methods: list[dict[str, Any]], sections: dict[str,
             complete += 1
         else:
             incomplete.append(str(method.get("short_name") or method.get("name") or method.get("id")))
-    section_bonus = 1 if "Inputs:" in sections.get("Mechanism", "") and "Outputs:" in sections.get("Mechanism", "") else 0
+    mechanism_text = sections.get("Mechanism", "")
+    section_bonus = 1 if (
+        ("Inputs:" in mechanism_text and "Outputs:" in mechanism_text)
+        or ("Operates on:" in mechanism_text and "Produces:" in mechanism_text)
+    ) else 0
     score = min(5, 1 + 3 * complete / len(methods) + section_bonus)
     return _dimension("component_contracts", score, "candidate_record_schema", "Method records and prose expose component contracts.", incomplete)
 

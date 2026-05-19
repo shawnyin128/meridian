@@ -259,6 +259,9 @@ class CliTests(unittest.TestCase):
             self.assertIn("First it learns rotations", paper)
             self.assertIn("POG is the conditional piece", paper)
             self.assertIn("makes the clustered representation executable", paper)
+            self.assertIn("Operates on:", paper)
+            self.assertIn("Depends on:", paper)
+            self.assertIn("First checks:", paper)
             self.assertIn("## Mechanism Details To Verify", paper)
             self.assertIn("Eq. 3", paper)
             self.assertIn("Algorithm 1", paper)
@@ -267,6 +270,7 @@ class CliTests(unittest.TestCase):
             self.assertIn("T-MAC", paper)
             self.assertIn("## Implementation Hooks", paper)
             self.assertIn("Router KL evidence should be tracked separately", paper)
+            self.assertNotIn("Add a sanity check for this dependency", paper)
             self.assertNotIn("The core mechanism is CodeQuant:", paper)
             self.assertNotIn("Outliers have emerged as background filler", paper)
 
