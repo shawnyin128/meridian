@@ -259,6 +259,8 @@ def _is_background_sentence(lowered: str) -> bool:
 
 def _bad_claim_sentence(sentence: str) -> bool:
     lowered = sentence.lower()
+    if re.search(r"[a-z]-\s+[a-z]", lowered):
+        return True
     if _looks_like_table_sentence(sentence):
         return True
     if "figure " in lowered and not any(marker in lowered for marker in CLAIM_MARKERS):
@@ -271,7 +273,7 @@ def _key_contributions(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]
     seen: set[str] = set()
     contributions: list[dict[str, Any]] = []
     for candidate in candidates:
-        sentence = str(candidate["sentence"])
+        sentence = _clean_claim_sentence(str(candidate["sentence"]))
         key = sentence.lower()
         if key in seen:
             continue
@@ -290,6 +292,11 @@ def _key_contributions(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]
         if len(contributions) >= 5:
             break
     return contributions
+
+
+def _clean_claim_sentence(sentence: str) -> str:
+    sentence = re.sub(r"([A-Za-z])-\s+([A-Za-z])", r"\1\2", sentence)
+    return _normalize(sentence)
 
 
 def _claim_records(title: str, contributions: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -826,6 +833,26 @@ def _known_quantization_components(method_text: str, pages: list[PageExtraction]
                 ],
             )
         )
+        components.append(
+            _source_component(
+                name="Quantization Space Utilization Rate",
+                short_name="QSUR",
+                summary=(
+                    "Measures how well transformed values occupy the available quantization levels, giving "
+                    "OSTQuant an explicit optimization signal instead of relying only on outlier magnitude."
+                ),
+                inputs=["transformed tensor values", "quantization levels", "value distribution"],
+                outputs=["quantization-space utilization diagnostic", "optimization signal for transform search"],
+                assumptions=[
+                    "higher space utilization corresponds to lower quantization error",
+                    "the metric is computed on calibration tensors representative of deployment inputs",
+                ],
+                implementation_notes=[
+                    "Implement QSUR as a standalone diagnostic and compare it against raw max/min range statistics.",
+                    "Log QSUR before and after each transform ablation to verify that the objective moves the intended distribution.",
+                ],
+            )
+        )
 
     if primary == "qep":
         components.append(
@@ -964,6 +991,8 @@ def _source_component(
 
 
 def _looks_like_method_component(name: str, acronym: str) -> bool:
+    if re.fullmatch(r"R\d+", acronym):
+        return False
     if acronym in {"LLM", "MoE", "PTQ", "QAT", "RTN", "FFN", "GPU", "CPU", "GEMM"}:
         return False
     lowered = name.lower()
@@ -1649,12 +1678,90 @@ def _implementation_notes(method_records: list[dict[str, Any]], pages: list[Page
     for record in method_records:
         for note in record.get("implementation_notes") or []:
             notes.append(f"{record['name']}: {note}")
+        for assumption in record.get("assumptions") or []:
+            notes.append(f"{record['name']}: Add a sanity check for this dependency: {assumption}.")
     text = " ".join(page.text for page in pages)
+    notes.extend(_primary_implementation_notes(pages))
     if "Equation" in text or re.search(r"\(\d+\)", text):
-        notes.append("Extract equations before implementation; the current note is not a full mathematical transcription.")
+        notes.append("Equation-bearing sections exist; turn each extracted objective or transform into a shape/value unit test before trusting results.")
     if "Algorithm" in text:
         notes.append("Algorithm boxes are present; preserve their inputs/outputs as implementation tests.")
     return _dedupe(notes)[:10]
+
+
+def _primary_implementation_notes(pages: list[PageExtraction]) -> list[str]:
+    primary = _primary_paper_key(pages)
+    if primary == "llm.int8":
+        return [
+            "LLM.int8: Track the outlier threshold sweep separately from int8 kernel speed because accuracy and runtime move through different mechanisms.",
+            "LLM.int8: Test dense-path and outlier-path matmul outputs before summing them.",
+        ]
+    if primary == "smoothquant":
+        return [
+            "SmoothQuant: Sweep alpha and record activation range, weight range, perplexity, and latency for each O1/O2/O3 setting.",
+            "SmoothQuant: Verify the equivalent transform in full precision before quantizing either side.",
+        ]
+    if primary == "quarot":
+        return [
+            "QuaRot: Test every inserted rotation pair for full-precision output invariance before INT4 quantization.",
+            "QuaRot: Profile KV-cache quantization separately from weight/activation matmul because it affects memory and decoding paths differently.",
+        ]
+    if primary == "spinquant":
+        return [
+            "SpinQuant: Compare learned rotations against multiple random rotation seeds under the same W/A/KV bit setting.",
+            "SpinQuant: Log orthogonality error after Cayley updates so rotation learning does not silently break invariance.",
+        ]
+    if primary == "duquant":
+        return [
+            "DuQuant: Measure massive-outlier and normal-outlier dispersion before and after block rotation plus zigzag permutation.",
+            "DuQuant: Ablate first rotation, permutation, and second rotation independently under W4A4 and W6A6.",
+        ]
+    if primary == "flatquant":
+        return [
+            "FlatQuant: Log distribution flatness before and after each affine transform and tie it to quantization error.",
+            "FlatQuant: Profile decomposed transform overhead separately from quantized matmul speedup.",
+        ]
+    if primary == "dfrot":
+        return [
+            "DFRot: Inspect hard-token weights in the long-tail loss and verify they align with massive activation positions.",
+            "DFRot: Compare refined rotation against randomized Hadamard and SpinQuant-style learned rotations under the same W4A4 protocol.",
+        ]
+    if primary == "ostquant":
+        return [
+            "OSTQuant: Treat QSUR as a first-class metric; log it before/after orthogonal and scaling transforms.",
+            "OSTQuant: Separate orthogonal-only, scaling-only, and combined transform ablations before reporting final PTQ gains.",
+        ]
+    if primary == "qep":
+        return [
+            "QEP: Store previous-layer quantization error tensors and verify the next-layer objective actually consumes them.",
+            "QEP: Sweep propagation strength and compare layer reconstruction error against end-task metrics.",
+        ]
+    if primary == "moequant":
+        return [
+            "MoEQuant: Track expert usage entropy before and after EBSS to confirm calibration is expert-balanced.",
+            "MoEQuant: Ablate EBSS and AGQ separately because one changes sample selection and the other changes expert weighting.",
+        ]
+    if primary == "massive-activations":
+        return [
+            "Massive activations: Record layer, feature dimension, token type, and intervention value for every localization claim.",
+            "Massive activations: Separate descriptive plots from causal interventions when deciding whether the activation is functional.",
+        ]
+    if primary == "squeezellm":
+        return [
+            "SqueezeLLM: Compare dense non-uniform quantization against dense+sparse retention at the same memory budget.",
+            "SqueezeLLM: Track sparse index overhead separately from centroid/codebook storage.",
+        ]
+    if primary == "omniquant":
+        return [
+            "OmniQuant: Log block reconstruction loss for learnable clipping and equivalent-transform parameters separately.",
+            "OmniQuant: Compare weight-only and weight-activation settings with the same calibration samples.",
+        ]
+    if primary == "affinequant":
+        return [
+            "AffineQuant: Log transform condition number and diagonal dominance during gradual mask optimization.",
+            "AffineQuant: Compare scaling-only, translation-only, and full affine transforms under the same W/A bit-width.",
+        ]
+    return []
 
 
 def _evidence_takeaways(pages: list[PageExtraction]) -> list[str]:
@@ -1672,6 +1779,24 @@ def _evidence_takeaways(pages: list[PageExtraction]) -> list[str]:
         takeaways.append("SpinQuant evidence includes an ablation that learned rotations reduce the variance seen across random rotations; this is central to the paper's motivation.")
     if primary == "squeezellm" and "dense-and-sparse" in lowered:
         takeaways.append("SqueezeLLM evidence should separate dense non-uniform quantization gains from sparse-retention gains and runtime/memory claims.")
+    if primary == "llm.int8":
+        takeaways.append("LLM.int8 evidence should separate scale-quality claims from mixed-precision outlier handling and from kernel/runtime gains.")
+    if primary == "omniquant":
+        takeaways.append("OmniQuant evidence should be read as block-wise PTQ calibration evidence; compare weight-only and weight-activation settings without treating it as full QAT.")
+    if primary == "affinequant":
+        takeaways.append("AffineQuant evidence should tie gains to the larger affine transform search space, especially very low-bit W4A4 settings against OmniQuant/AWQ-style baselines.")
+    if primary == "flatquant":
+        takeaways.append("FlatQuant evidence should keep flatness/quantization-error reductions separate from transform-overhead and speed claims.")
+    if primary == "dfrot":
+        takeaways.append("DFRot evidence should focus on whether refined weighted rotation improves massive-activation-heavy tokens beyond randomized rotation baselines.")
+    if primary == "ostquant":
+        takeaways.append("OSTQuant evidence should verify that QSUR improvement correlates with downstream PTQ accuracy rather than only better-looking distributions.")
+    if primary == "qep":
+        takeaways.append("QEP evidence should compare layer-wise reconstruction with and without propagated previous-layer error, then check whether that reduces end-task degradation.")
+    if primary == "moequant":
+        takeaways.append("MoEQuant evidence should separate EBSS calibration coverage, AGQ expert weighting, and final task/runtime gains for MoE models.")
+    if primary == "massive-activations":
+        takeaways.append("Massive-activation evidence should separate localization plots from causal interventions such as fixing or removing activation values.")
     if "Table 10" in text and "POG" in text:
         takeaways.append("POG has a specific ablation signal; treat it as conditional evidence for block-wise clustering rather than a universal gain.")
     if "Table 11" in text and "KL" in text:
@@ -1687,14 +1812,42 @@ def _limitations(pages: list[PageExtraction]) -> list[str]:
     text = " ".join(page.text for page in pages)
     limitations = []
     lowered = text.lower()
-    if "simulator" in text.lower() or "Accel-Sim" in text:
+    primary = _primary_paper_key(pages)
+    if primary in {"llm.int8", "smoothquant", "squeezellm", "omniquant", "affinequant", "flatquant", "ostquant", "qep", "moequant"}:
+        limitations.append("Calibration-set representativeness is a scope condition; check whether the calibration distribution matches the deployment/evaluation distribution.")
+        limitations.append("Reported gains should be rechecked under the exact bit-width, model family, and evaluation protocol because PTQ results often change sharply across these settings.")
+    if primary in {"quarot", "spinquant", "duquant", "dfrot"}:
+        limitations.append("Rotation or transform equivalence must be verified before quantization; otherwise accuracy changes may come from the transform implementation rather than quantization quality.")
+        limitations.append("Rotation results should be compared under identical W/A/KV bit settings because weight-only, activation, and KV-cache quantization stress different failure modes.")
+    if primary in {"quarot", "duquant", "flatquant", "ostquant"}:
+        limitations.append("Online transform or decomposition overhead should be accounted for separately from quantized matmul speedups.")
+    if primary == "squeezellm":
+        limitations.append("Sparse retention changes runtime/storage accounting; accuracy gains should be judged against sparse-index and kernel overhead.")
+    if primary == "moequant":
+        limitations.append("MoE gains depend on expert-routing coverage in calibration; dense-LLM PTQ conclusions should not be transferred without checking expert imbalance.")
+        limitations.append("Expert-specific improvements can be hidden by aggregate accuracy; inspect expert usage variance and per-task results before generalizing.")
+    if primary == "massive-activations":
+        limitations.append("This is primarily a mechanistic analysis paper; localization findings should not be treated as a compression method without separate intervention evidence.")
+        limitations.append("Claims about functional importance depend on intervention design; descriptive magnitude plots alone are not causal evidence.")
+        limitations.append("Model-family coverage matters because fixed feature dimensions and token positions may not transfer across architectures.")
+    if primary == "qep":
+        limitations.append("Layer-wise error propagation can overfit the reconstruction objective; end-task metrics are needed to validate propagation strength.")
+        limitations.append("Propagation changes the independence assumption in layer-wise PTQ, so compare against the same base quantizer with and without propagated error.")
+    if primary == "llm.int8":
+        limitations.append("The mixed-precision outlier path is only cheap if outlier dimensions remain sparse under the chosen threshold.")
+        limitations.append("Hardware benefit depends on the int8 kernel and on whether outlier routing overhead is amortized at the target batch/sequence length.")
+    if primary == "smoothquant":
+        limitations.append("The smoothing alpha trades activation difficulty against weight difficulty; a setting that preserves one model may not transfer unchanged.")
+    if primary == "omniquant":
+        limitations.append("Block reconstruction is a proxy objective; verify that lower block error translates to downstream perplexity or task accuracy.")
+    if primary == "affinequant":
+        limitations.append("Affine transforms must remain well-conditioned; otherwise equivalence before quantization can still produce unstable quantized behavior.")
+    if primary == "flatquant":
+        limitations.append("Flattened distributions are useful only if the transform cost and quantized-kernel speed still improve end-to-end inference.")
+    if primary == "ostquant":
+        limitations.append("QSUR is a diagnostic proxy; verify that higher utilization actually predicts lower downstream quantization error.")
+    if "simulator" in lowered or "Accel-Sim" in text:
         limitations.append("Some hardware evidence depends on simulation or specific CPU/kernel settings.")
-    if "calibration" in lowered:
-        limitations.append("Method behavior depends on calibration data; check whether calibration distribution matches downstream use.")
-    if "rotation" in lowered or "hadamard" in lowered:
-        limitations.append("Rotation-based methods need equivalence checks before quantization and separate accounting for any online transform cost.")
-    if "sparse" in lowered and "speedup" in lowered:
-        limitations.append("Sparse-retention methods require runtime/storage overhead checks; accuracy improvement alone is not enough.")
     if "block-wise" in lowered and "embedding-wise" in lowered:
         limitations.append("Some components are setting-dependent; POG in particular should not be assumed useful outside block-wise clustering.")
     return limitations or ["No explicit limitations were reliably extracted; do not promote absence of limitations as a paper claim."]

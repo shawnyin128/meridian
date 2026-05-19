@@ -12,6 +12,7 @@ from meridian.wiki.commands import (
     create_reader_check_packet,
     eval_cases,
     ingest_pdf,
+    quality_check_run,
     record_judge,
     record_review,
     run_flow,
@@ -265,6 +266,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output markdown packet for paper.md-only vs source-grounded reader comparison.",
     )
 
+    quality_check = wiki_subparsers.add_parser(
+        "quality-check",
+        help="Run the scored quality self-check agent against an ingest run.",
+    )
+    quality_check.add_argument("run_manifest", type=Path, help="Path to run.json.")
+    quality_check.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="Optional output JSON path. Defaults to quality-self-check.json beside run.json.",
+    )
+
     converge = wiki_subparsers.add_parser(
         "converge",
         help="Converge a wiki ingest run from quality gate and recorded judge result.",
@@ -317,6 +330,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Wrote run manifest: {result.run_path}")
             print(f"Wrote judge packet: {result.judge_packet_path}")
             print(f"Wrote reader check packet: {result.reader_check_packet_path}")
+            print(f"Wrote quality self-check: {result.quality_self_check_path}")
             if result.convergence_path is not None:
                 print(f"Wrote convergence record: {result.convergence_path}")
             print(f"Flow status: {result.status}")
@@ -398,6 +412,13 @@ def main(argv: list[str] | None = None) -> int:
                 out_path=args.out,
             )
             print(f"Wrote reader check packet: {packet}")
+            return 0
+
+        if args.product == "wiki" and args.command == "quality-check":
+            result = quality_check_run(run_manifest=args.run_manifest, out_path=args.out)
+            print(f"Wrote quality self-check: {result.path}")
+            print(f"Quality decision: {result.decision}")
+            print(f"Weighted score: {result.weighted_score:.3f}")
             return 0
 
         if args.product == "wiki" and args.command == "converge":

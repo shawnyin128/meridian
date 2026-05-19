@@ -384,6 +384,7 @@ class CliTests(unittest.TestCase):
             self.assertTrue(Path(result["flow_manifest"]).exists())
             self.assertTrue(Path(result["judge_packet"]).exists())
             self.assertTrue(Path(result["reader_check_packet"]).exists())
+            self.assertTrue(Path(result["quality_self_check"]).exists())
             self.assertTrue(Path(result["case_snapshot"]).exists())
             self.assertIn("canonical_artifacts", result)
 
@@ -545,7 +546,13 @@ class CliTests(unittest.TestCase):
             self.assertEqual(flow["status"], "awaiting_judge")
             self.assertTrue((out / "judge-packet.md").exists())
             self.assertTrue((out / "reader-check.md").exists())
+            self.assertTrue((out / "quality-self-check.json").exists())
+            quality = json.loads((out / "quality-self-check.json").read_text(encoding="utf-8"))
+            self.assertEqual(quality["schema_version"], "paper_wiki_quality_self_check.v0")
+            self.assertIn("retrieval_scenarios", quality)
+            self.assertIn("dimension_scores", quality)
             self.assertEqual(flow["reader_check_packet"], str(out / "reader-check.md"))
+            self.assertEqual(flow["quality_self_check"], str(out / "quality-self-check.json"))
             reader_check = (out / "reader-check.md").read_text(encoding="utf-8")
             self.assertIn("Schema version: `paper_wiki_reader_check.v2`", reader_check)
             self.assertIn("## Mandatory Checklist", reader_check)
@@ -590,6 +597,29 @@ class CliTests(unittest.TestCase):
             self.assertIn("retrieval_metadata_audit", text)
             self.assertIn("mechanism_refine_plan", text)
             self.assertIn("Fake Research Paper", text)
+
+    def test_quality_check_command_scores_ingest_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pdf = root / "fake.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            out = root / "wiki/.drafts/ingests/fake-paper"
+            packet = root / "quality-self-check.json"
+
+            self.assertEqual(main(["wiki", "ingest", str(pdf), "--out", str(out)]), 0)
+            self.assertEqual(
+                main(["wiki", "quality-check", str(out / "run.json"), "--out", str(packet)]),
+                0,
+            )
+
+            payload = json.loads(packet.read_text(encoding="utf-8"))
+            self.assertEqual(payload["schema_version"], "paper_wiki_quality_self_check.v0")
+            self.assertIn(payload["decision"], {"pass", "needs_refine", "fail"})
+            self.assertIn("weighted_score", payload)
+            self.assertEqual(len(payload["retrieval_scenarios"]), 5)
+            dimensions = {item["dimension"] for item in payload["dimension_scores"]}
+            self.assertIn("retrieval_scenario_coverage", dimensions)
+            self.assertIn("metadata_routing_integrity", dimensions)
 
     def test_judge_record_and_converge_update_run_and_canonical_page(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

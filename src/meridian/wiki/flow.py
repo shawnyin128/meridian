@@ -8,6 +8,7 @@ from pathlib import Path
 from meridian.wiki.converge import WikiConvergenceResult, converge_wiki_run, record_judge_result
 from meridian.wiki.ingest import IngestResult, run_ingest
 from meridian.wiki.judge import build_judge_packet
+from meridian.wiki.quality_check import QualitySelfCheckResult, run_quality_self_check
 from meridian.wiki.reader_check import build_reader_check_packet
 
 
@@ -17,6 +18,7 @@ class WikiFlowResult:
     run_path: Path
     judge_packet_path: Path
     reader_check_packet_path: Path
+    quality_self_check_path: Path
     convergence_path: Path | None
     status: str
 
@@ -51,6 +53,10 @@ def run_wiki_flow(
         run_manifest=ingest_result.run_path,
         out_path=out_dir / "reader-check.md",
     )
+    quality_self_check: QualitySelfCheckResult = run_quality_self_check(
+        run_manifest=ingest_result.run_path,
+        out_path=out_dir / "quality-self-check.json",
+    )
 
     convergence: WikiConvergenceResult | None = None
     status = "awaiting_judge"
@@ -73,6 +79,9 @@ def run_wiki_flow(
         "run_manifest": str(ingest_result.run_path),
         "judge_packet": str(judge_packet_path),
         "reader_check_packet": str(reader_check_packet_path),
+        "quality_self_check": str(quality_self_check.path),
+        "quality_self_check_decision": quality_self_check.decision,
+        "quality_self_check_score": round(quality_self_check.weighted_score, 3),
         "convergence": str(convergence.convergence_path) if convergence else None,
         "next_action": _next_action(status),
     }
@@ -82,6 +91,7 @@ def run_wiki_flow(
         run_path=ingest_result.run_path,
         judge_packet_path=judge_packet_path,
         reader_check_packet_path=reader_check_packet_path,
+        quality_self_check_path=quality_self_check.path,
         convergence_path=convergence.convergence_path if convergence else None,
         status=status,
     )
