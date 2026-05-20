@@ -224,17 +224,20 @@ Implemented v0:
 
 - `meridian wiki retrieval-eval` executes `catalog` and `retrieve` per retrieval case, writes context packets, writes judge packets, and computes deterministic metrics.
 - `meridian wiki retrieval-eval-summary` aggregates deterministic metrics plus optional per-case `judge-result.json` files.
+- `meridian wiki retrieval-audit` audits every canonical paper with generated research-intent queries and writes per-query context packets plus aggregate self-recall/neighbor metrics.
 - `eval/cases/wiki_retrieval_quantization_smoke.jsonl` runs a representative quantization retrieval smoke set over the current canonical calibration wiki.
 - `eval/cases/wiki_retrieval_generalization.example.jsonl` defines broader alignment/RLHF, agent tool-use, audio-language, survey/synthesis, and source-quality cleanup scenarios.
 - Unit coverage now includes generalized cross-domain retrieval fixtures and source-quality cleanup routing, so retrieval eval is not only validated on quantization examples.
 - `docs/retrieval-smoke-quality-brief.md` records the first smoke result and remaining gaps.
+- `docs/real-library-retrieval-audit-brief.md` records the first per-paper audit over the current real canonical wiki.
 
 Next implementation steps:
 
 1. Add deterministic tests for duplicate source registration, source-audit failure modes, publish idempotency, and stale catalog detection.
-2. Turn the generalized example cases into a real broad canonical fixture built from the user's library, then run them as a tracked smoke suite.
-3. Record LLM-as-Judge outputs for retrieval eval packets and calibrate against sampled human review.
-4. Convert every retrieval miss into a controlled vocabulary, scoring, or ingest metadata regression.
+2. Improve generated `evidence_scope` audit queries by including mechanism discriminators when datasets/metrics are too common.
+3. Turn the generalized example cases into a real broad canonical fixture built from the user's library, then run them as a tracked smoke suite.
+4. Record LLM-as-Judge outputs for retrieval eval packets and calibrate against sampled human review.
+5. Convert every retrieval miss into a controlled vocabulary, scoring, or ingest metadata regression.
 
 ## Non-Goals
 

@@ -226,6 +226,7 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
         "matched_frontmatter": matched_fields,
         "matched_sections": sorted(section_hits, key=lambda item: -item["score"])[:5],
         "selection_reasons": _dedupe(reasons),
+        "routing": record.get("routing") or {},
         "review_state": record.get("review_state"),
         "quality_gate": record.get("quality_gate"),
         "confidence": record.get("confidence"),

@@ -59,6 +59,7 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `docs/wiki-evaluation-set-and-judge-rubric.md`: current evaluation set strategy and LLM-as-Judge rubric contract.
 - `docs/wiki-layer-test-strategy.md`: layered source/canonical/retrieval test strategy, retrieval scenario metrics, judge rubric usage, calibration, and release gates.
 - `docs/retrieval-smoke-quality-brief.md`: latest tracked retrieval smoke quality summary over representative canonical quantization wiki pages.
+- `docs/real-library-retrieval-audit-brief.md`: latest tracked per-paper retrieval audit over the current real canonical wiki.
 - `docs/paper-wiki-mvp-delivery-boundaries.md`: current boundaries for query write-back, Obsidian CLI, future MCP delivery, Zotero/user notes, and MVP release gates.
 - `docs/mvp-workflow.html`: simplified visual workflow diagram.
 - `docs/research-coding-framework.md`: lightweight end-to-end research coding framework that combines LLM Wiki state, Arbor continuity ideas, and bounded multi-agent research bursts.

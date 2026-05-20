@@ -200,6 +200,20 @@ meridian wiki retrieval-eval eval/cases/wiki_retrieval_quality.example.jsonl \
 meridian wiki retrieval-eval-summary eval/runs/<run-id>/retrieval_manifest.json
 ```
 
+Audit whether each canonical paper can be found from generated research-intent
+queries:
+
+```bash
+meridian wiki retrieval-audit \
+  --wiki-root wiki \
+  --out-dir eval/runs/<run-id>/ \
+  --top-k 5 \
+  --queries-per-paper 3
+```
+
+This writes per-paper retrieval contexts plus aggregate self-recall, target-rank,
+metadata-sparsity, and neighbor-reasonableness metrics.
+
 File durable query outputs back as draft proposals:
 
 ```bash

@@ -22,6 +22,7 @@ from meridian.wiki.commands import (
     record_review,
     rebuild_index_wiki,
     retrieval_eval_summary,
+    retrieval_audit_wiki,
     retrieval_eval_wiki,
     retrieve_wiki,
     run_flow,
@@ -475,6 +476,33 @@ def build_parser() -> argparse.ArgumentParser:
     retrieval_eval_summary_cmd.add_argument("manifest", type=Path, help="Path to retrieval_manifest.json.")
     retrieval_eval_summary_cmd.add_argument("--out", type=Path, default=None, help="Optional summary JSON path.")
 
+    retrieval_audit = wiki_subparsers.add_parser(
+        "retrieval-audit",
+        help="Audit whether each canonical paper can be retrieved from generated research-intent queries.",
+    )
+    retrieval_audit.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    retrieval_audit.add_argument(
+        "--out-dir",
+        type=Path,
+        required=True,
+        help="Directory where per-paper retrieval contexts and audit summaries are written.",
+    )
+    retrieval_audit.add_argument(
+        "--catalog",
+        type=Path,
+        default=None,
+        help="Optional catalog path. Defaults to <wiki-root>/.index/papers.jsonl.",
+    )
+    retrieval_audit.add_argument("--top-k", type=int, default=5, help="Maximum paper pages per generated query.")
+    retrieval_audit.add_argument(
+        "--queries-per-paper",
+        type=int,
+        default=3,
+        help="Number of generated research-intent queries to run for each paper.",
+    )
+    retrieval_audit.add_argument("--max-papers", type=int, default=None, help="Optional audit subset size for smoke runs.")
+    retrieval_audit.add_argument("--overwrite", action="store_true", help="Overwrite an existing audit output directory.")
+
     propose_writeback = wiki_subparsers.add_parser(
         "propose-writeback",
         help="Create a draft wiki write-back proposal from a retrieval context packet.",
@@ -775,6 +803,24 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Wrote retrieval summary: {result.summary_path}")
             print(f"Total cases: {result.total_cases}")
             print(f"Judge results: {result.judge_results}")
+            return 0
+
+        if args.product == "wiki" and args.command == "retrieval-audit":
+            result = retrieval_audit_wiki(
+                wiki_root=args.wiki_root,
+                out_dir=args.out_dir,
+                catalog_path=args.catalog,
+                top_k=args.top_k,
+                queries_per_paper=args.queries_per_paper,
+                max_papers=args.max_papers,
+                overwrite=args.overwrite,
+            )
+            print(f"Wrote retrieval audit manifest: {result.manifest_path}")
+            print(f"Wrote retrieval audit summary: {result.summary_path}")
+            print(f"Wrote retrieval audit report: {result.summary_markdown_path}")
+            print(f"Audited papers: {result.paper_count}")
+            print(f"Queries run: {result.query_count}")
+            print(f"Query recall at k: {result.query_recall_at_k:.3f}")
             return 0
 
         if args.product == "wiki" and args.command == "propose-writeback":

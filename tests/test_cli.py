@@ -1824,6 +1824,77 @@ This page explains preference optimization for alignment.
             self.assertEqual(metrics["source_quality_routing"]["reliable_evidence_hits"], [])
             self.assertEqual(summary["source_quality_routing_pass_rate"], 1.0)
 
+    def test_retrieval_audit_runs_generated_queries_for_each_paper(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            papers.mkdir(parents=True)
+            _write_test_paper(
+                papers / "Alignment-RLHF.md",
+                title="Alignment RLHF Paper",
+                aliases=["DPO"],
+                topics=["preference data", "policy alignment"],
+                methods=["direct preference optimization", "reward modeling"],
+                settings=["RLHF setting"],
+                body_sections={
+                    "What To Remember": "A preference optimization page for policy alignment.",
+                    "Mechanism": "The method turns preference pairs into a policy objective.",
+                    "Evidence Map": "Reports win rate and reward model agreement.",
+                    "Limitations / Uncertainty": "Preference data quality controls transfer.",
+                },
+            )
+            _write_test_paper(
+                papers / "Agent-Tool-Use.md",
+                title="Agent Tool Use Paper",
+                aliases=["toolformer"],
+                topics=["tool use", "agent planning"],
+                methods=["tool-augmented language modeling"],
+                settings=["agent setting", "tool calling"],
+                body_sections={
+                    "What To Remember": "A tool-use page about external action selection.",
+                    "Mechanism": "The agent calls tools and conditions later reasoning on observations.",
+                    "Implementation Hooks": "Ablate tool availability and log failed calls.",
+                    "Limitations / Uncertainty": "Tool reliability bounds usefulness.",
+                },
+            )
+            out_dir = root / "audit"
+
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "retrieval-audit",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--out-dir",
+                        str(out_dir),
+                        "--top-k",
+                        "2",
+                        "--queries-per-paper",
+                        "3",
+                    ]
+                ),
+                0,
+            )
+
+            manifest = json.loads((out_dir / "retrieval_audit_manifest.json").read_text(encoding="utf-8"))
+            summary = json.loads((out_dir / "retrieval_audit_summary.json").read_text(encoding="utf-8"))
+            report = (out_dir / "retrieval_audit_summary.md").read_text(encoding="utf-8")
+            self.assertEqual(manifest["schema_version"], "meridian.wiki_retrieval_audit.v0")
+            self.assertEqual(manifest["audited_papers"], 2)
+            self.assertEqual(summary["paper_count"], 2)
+            self.assertEqual(summary["query_count"], 6)
+            self.assertEqual(summary["query_recall_at_k"], 1.0)
+            self.assertIn("Retrieval Audit Summary", report)
+            for paper in manifest["papers"]:
+                self.assertEqual(paper["target_recall"], 1.0)
+                self.assertEqual(paper["query_count"], 3)
+                for query in paper["queries"]:
+                    self.assertTrue(Path(query["context_packet"]).exists())
+                    self.assertTrue(Path(query["context_json"]).exists())
+                    self.assertIn(query["target_page"], query["retrieved_pages"])
+
     def test_propose_writeback_creates_draft_without_canonical_publish(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

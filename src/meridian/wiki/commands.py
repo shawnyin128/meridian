@@ -27,6 +27,7 @@ from meridian.wiki.retrieval_eval import (
     run_retrieval_eval,
     summarize_retrieval_eval,
 )
+from meridian.wiki.retrieval_audit import RetrievalAuditResult, run_retrieval_audit
 from meridian.wiki.review import append_review_record
 from meridian.wiki.self_check import (
     SelfCheckAggregateResult,
@@ -372,6 +373,27 @@ def retrieval_eval_wiki(
 
 def retrieval_eval_summary(manifest_path: Path, out_path: Path | None = None) -> RetrievalEvalSummaryResult:
     return summarize_retrieval_eval(manifest_path=manifest_path, out_path=out_path)
+
+
+def retrieval_audit_wiki(
+    *,
+    wiki_root: Path,
+    out_dir: Path,
+    catalog_path: Path | None = None,
+    top_k: int = 5,
+    queries_per_paper: int = 3,
+    max_papers: int | None = None,
+    overwrite: bool = False,
+) -> RetrievalAuditResult:
+    return run_retrieval_audit(
+        wiki_root=wiki_root,
+        out_dir=out_dir,
+        catalog_path=catalog_path,
+        top_k=top_k,
+        queries_per_paper=queries_per_paper,
+        max_papers=max_papers,
+        overwrite=overwrite,
+    )
 
 
 def propose_writeback_wiki(
