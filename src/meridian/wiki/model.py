@@ -152,6 +152,8 @@ CONTROLLED_TOPIC_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("relative position representation", ("relative position", "relative positional", "positional representations")),
     ("recurrent computation", ("universal transformer", "adaptive computation time", "recurrent steps")),
     ("continuous-depth models", ("neural ordinary differential", "neural ode", "ordinary differential equation", "adjoint sensitivity")),
+    ("physics-informed neural networks", ("physics-informed neural network", "physics informed neural network", "pinn")),
+    ("partial differential equations", ("partial differential equation", "partial differential equations", "nonlinear pde", "pde")),
     ("agent planning", ("agent planning", "autonomous agent", "generative agent", "agent-based modeling")),
     ("LLM agents", ("llm agent", "large language model based autonomous agents", "generative agents")),
     ("multi-agent simulation", ("multi-agent", "agent society", "simulation of llm-driven")),
@@ -161,6 +163,11 @@ CONTROLLED_TOPIC_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("root-system digitization", ("root system", "root-system", "root excavation", "digitization")),
     ("computer architecture", ("computer architecture", "quantitative approach", "processor", "memory hierarchy")),
     ("performance evaluation", ("performance evaluation", "quantitative evaluation", "benchmarking", "measurement")),
+    ("parameter-efficient adaptation", ("lora", "low-rank adaptation", "fine-tuning", "parameter-efficient")),
+    ("chain-of-thought reasoning", ("chain-of-thought", "chain of thought", "faithful reasoning")),
+    ("single-view 3D reconstruction", ("single-view 3d", "single view 3d", "3d reconstruction", "gaussian splatting")),
+    ("world model learning", ("world model", "autonomous machine intelligence", "joint embedding architecture")),
+    ("root system analysis", ("root image", "root architecture", "root bimodality", "root system")),
 )
 
 
@@ -351,12 +358,65 @@ def _paper_positioning(
     pages: list[PageExtraction],
     method_records: list[dict[str, Any]],
 ) -> str:
+    primary = _primary_paper_key(pages)
+    primary_positioning = _primary_positioning(primary)
+    if primary_positioning:
+        return primary_positioning
     text = _normalize(f"{title} {abstract} " + " ".join(page.text for page in pages[:4]))
     lowered = text.lower()
     problem = _problem_focus(lowered)
-    evidence = _compact_evidence_context(pages)
+    evidence = _compact_evidence_context(pages, primary=primary)
     comparison = _comparison_frame(pages, method_records)
     return f"{problem} Route this paper with other work on {comparison}. {evidence}".strip()
+
+
+def _primary_positioning(primary: str) -> str | None:
+    positioning = {
+        "smoothquant": (
+            "This is a W8A8 post-training quantization paper about moving activation outlier difficulty into weights through an equivalent smoothing transform. "
+            "Route it with activation-outlier smoothing, calibration-sensitive PTQ, and hardware-friendly W8A8 deployment. "
+            "Read evidence around alpha sensitivity, O1/O2/O3 quantization settings, accuracy/perplexity, and latency or memory claims."
+        ),
+        "quarot": (
+            "This is a rotation-based PTQ paper about using computationally invariant Hadamard rotations to remove LLM outliers for end-to-end low-bit inference. "
+            "Route it with equivalent-transform quantization, activation/KV-cache quantization, and systems-aware INT4 inference. "
+            "Read evidence around transform equivalence, W/A/KV bit-width settings, perplexity/accuracy, and online rotation overhead."
+        ),
+        "duquant": (
+            "This is an outlier-aware PTQ paper about distributing massive and normal activation outliers with dual transforms before low-bit weight-activation quantization. "
+            "Route it with rotation/permutation-based PTQ, activation-outlier handling, and W4A4/W6A6 quantization comparisons. "
+            "Read evidence around massive-outlier detection, permutation/rotation ablations, perplexity/zero-shot accuracy, and prefill/decode speed claims."
+        ),
+        "flatquant": (
+            "This is an affine-transform PTQ paper about learning transformations that make weight and activation distributions flatter before low-bit quantization. "
+            "Route it with equivalent-transform PTQ, calibration-aware transform search, and transform-overhead versus accuracy tradeoffs. "
+            "Read evidence around flatness/error reduction, transform decomposition, W/A bit-widths, perplexity/accuracy, and kernel-fused latency."
+        ),
+        "affinequant": (
+            "This is an affine-transformation PTQ paper about expanding the equivalent-transform search space for low-bit LLM quantization. "
+            "Route it with calibration-aware equivalent transforms, activation/weight outlier control, and W4A4-style accuracy comparisons. "
+            "Read evidence around affine search ablations, calibration assumptions, quantization error, and matched-bit benchmark results."
+        ),
+        "dfrot": (
+            "This is a refined rotation-based PTQ paper about handling massive activation features more carefully than generic randomized rotations. "
+            "Route it with LLM activation outliers, rotation-based quantization, and equivalent-transform implementation checks. "
+            "Read evidence around token/feature outlier analysis, rotation refinements, bit-width settings, and downstream accuracy."
+        ),
+        "ostquant": (
+            "This is an orthogonal/scaling PTQ paper about improving quantization robustness through structured equivalent transformations. "
+            "Route it with rotation-based and scaling-based PTQ, distribution-shape diagnostics, and low-bit LLM evaluation. "
+            "Read evidence around QSUR or distribution metrics, transform ablations, perplexity/accuracy, and deployment overhead."
+        ),
+    }
+    return positioning.get(primary)
+
+
+def _focus_text(title: str, pages: list[PageExtraction], page_limit: int = 5) -> str:
+    return _normalize(f"{title} " + " ".join(page.text for page in pages[:page_limit])).lower()
+
+
+def _has_ppo(text: str) -> bool:
+    return re.search(r"\bppo\b", text, flags=re.IGNORECASE) is not None
 
 
 def _comparison_frame(pages: list[PageExtraction], method_records: list[dict[str, Any]]) -> str:
@@ -374,7 +434,7 @@ def _comparison_frame(pages: list[PageExtraction], method_records: list[dict[str
         return "attention-head sharing, checkpoint conversion, and inference-memory tradeoffs"
     if "human preference" in text or "human feedback" in text or "reward model" in text or "reward predictor" in text:
         return "preference learning, reward modeling, and policy optimization evidence"
-    if "ppo" in text or "proximal policy optimization" in text or "policy gradient" in text:
+    if _has_ppo(text) or "proximal policy optimization" in text or "policy gradient" in text:
         return "policy optimization, reward design, and rollout/evaluation stability"
     if "self-attention" in text or "attention is all you need" in text or "relative position" in text:
         return "attention mechanisms, positional representations, and sequence-modeling ablations"
@@ -382,6 +442,8 @@ def _comparison_frame(pages: list[PageExtraction], method_records: list[dict[str
         return "recurrent transformer computation, adaptive depth, and sequence-modeling tradeoffs"
     if "neural ordinary differential" in text or "neural ode" in text or "ordinary differential equation" in text:
         return "continuous-depth models, ODE solver assumptions, and memory/accuracy tradeoffs"
+    if "physics-informed neural network" in text or "physics informed neural network" in text or "partial differential equation" in text:
+        return "physics-informed neural networks, PDE constraints, and forward/inverse problem evaluation"
     if "autonomous agent" in text or "generative agent" in text or "agent planning" in text:
         return "agent planning, environment interaction, and evaluation protocol limitations"
     if "survey" in text or "technical report" in text:
@@ -443,7 +505,7 @@ def _problem_focus(lowered_text: str) -> str:
         return "This is a retrieval paper; the core question is how to retrieve better context for downstream reasoning."
     if "human preference" in lowered_text or "human feedback" in lowered_text or "reward model" in lowered_text or "reward predictor" in lowered_text:
         return "This is a preference-learning paper: it turns human comparisons or judgments into a reward/evaluation signal that can improve model or policy behavior."
-    if "ppo" in lowered_text or "proximal policy optimization" in lowered_text:
+    if _has_ppo(lowered_text) or "proximal policy optimization" in lowered_text:
         return "This is a policy-optimization paper about improving a policy under clipped or constrained reinforcement-learning updates."
     if "self-attention" in lowered_text or "attention is all you need" in lowered_text or "relative position" in lowered_text:
         return "This is an attention/Transformer architecture paper about how sequence representations are computed and what positional or attention structure matters."
@@ -451,13 +513,64 @@ def _problem_focus(lowered_text: str) -> str:
         return "This is a recurrent Transformer architecture paper about reusing computation across depth and optionally adapting the number of computation steps."
     if "neural ordinary differential" in lowered_text or "neural ode" in lowered_text:
         return "This is a continuous-depth modeling paper about replacing discrete layers with ODE dynamics and solver-based training/inference."
+    if (
+        "physics-informed neural network" in lowered_text
+        or "physics informed neural network" in lowered_text
+        or "partial differential equation" in lowered_text
+        or "nonlinear pde" in lowered_text
+    ):
+        return "This is a physics-informed neural network paper: the core problem is solving or identifying PDE systems by training neural networks against data plus differential-equation residual constraints."
     if "autonomous agent" in lowered_text or "generative agent" in lowered_text or "agent planning" in lowered_text:
         return "This is an agent paper about planning, acting, or simulating behavior in an environment; evidence depends heavily on the evaluation setup."
     return "This paper proposes a method for the problem stated in its title and abstract."
 
 
-def _compact_evidence_context(pages: list[PageExtraction]) -> str:
-    text = " ".join(page.text for page in pages)
+def _compact_evidence_context(pages: list[PageExtraction], *, primary: str = "") -> str:
+    text = _paper_body_text(pages)
+    lowered = text.lower()
+    quantization_primaries = {
+        "llm.int8",
+        "smoothquant",
+        "quarot",
+        "spinquant",
+        "duquant",
+        "squeezellm",
+        "omniquant",
+        "affinequant",
+        "flatquant",
+        "dfrot",
+        "ostquant",
+        "qep",
+        "moequant",
+        "codequant",
+        "milo",
+    }
+    if primary in quantization_primaries:
+        bits = []
+        if re.search(r"\bA\d+W\d+\b|\bW\d+A\d+\b|\b\d+-bit\b|\blow-bit\b", text, flags=re.IGNORECASE):
+            bits.append("bit-width settings")
+        if any(term in text for term in KNOWN_DATASETS):
+            bits.append("standard benchmark datasets")
+        if re.search(r"\b(perplexity|accuracy|zero-shot|mmlu|hellaswag|piqa|winogrande)\b", text, flags=re.IGNORECASE):
+            bits.append("quality metrics")
+        if re.search(r"\b(speedup|latency|throughput|memory|kernel|prefill|decode)\b", text, flags=re.IGNORECASE):
+            bits.append("systems/runtime evidence")
+        if re.search(r"\b(ablation|sensitivity|alpha|rotation|permutation|transform|calibration)\b", text, flags=re.IGNORECASE):
+            bits.append("mechanism ablations")
+        if not bits:
+            bits.append("matched-bit quantization evidence")
+        return "Read the evidence around " + ", ".join(_dedupe(bits)) + ", not unrelated broad task claims."
+    if (
+        "physics-informed neural network" in lowered
+        or "physics informed neural network" in lowered
+        or "partial differential equation" in lowered
+        or "nonlinear pde" in lowered
+        or "pde residual" in lowered
+    ):
+        return (
+            "Read the evidence around PDE residual loss, boundary/initial-condition constraints, "
+            "collocation sampling, forward-solution accuracy, and inverse-parameter identification, not just the abstract claims."
+        )
     bits = []
     if re.search(r"\bA\d+W\d+\b|\b\d+-bit\b|\blow-bit\b", text, flags=re.IGNORECASE):
         bits.append("low-bit settings")
@@ -473,7 +586,7 @@ def _compact_evidence_context(pages: list[PageExtraction]) -> str:
         bits.append("long-context quality evidence")
     if re.search(r"\b(human feedback|preference|reward model|labeler|rlhf)\b", text, flags=re.IGNORECASE):
         bits.append("preference/reward-model evidence")
-    if re.search(r"\b(return|policy|ppo|rollout|environment)\b", text, flags=re.IGNORECASE):
+    if re.search(r"\b(policy|rollout|environment)\b", text, flags=re.IGNORECASE) or _has_ppo(text):
         bits.append("policy rollout evidence")
     if re.search(r"\b(attention|transformer|position|bleu|translation)\b", text, flags=re.IGNORECASE):
         bits.append("sequence-modeling ablations")
@@ -874,12 +987,107 @@ def _sentence_overlap(left: str, right: str) -> float:
     return len(left_words & right_words) / min(len(left_words), len(right_words))
 
 
+def _domain_specific_contract(method_text: str) -> dict[str, list[str]] | None:
+    lowered = method_text.lower()
+    if (
+        "physics-informed neural network" in lowered
+        or "physics informed neural network" in lowered
+        or "partial differential equation" in lowered
+        or "nonlinear pde" in lowered
+        or "pde residual" in lowered
+    ):
+        return {
+            "inputs": ["boundary/initial condition data", "collocation points", "PDE residual terms", "neural network approximator"],
+            "outputs": ["solution field approximation", "identified PDE parameters", "residual-constrained predictions"],
+            "assumptions": [
+                "the PDE residual, boundary conditions, and sampled collocation points match the physical system being modeled"
+            ],
+            "implementation_notes": [
+                "Unit test PDE residual computation, boundary/initial-condition losses, collocation sampling, and gradient/autodiff shapes on a toy PDE before scaling.",
+                "Track data loss and physics residual loss separately so poor predictions can be attributed to data fit, residual weighting, or sampling.",
+            ],
+        }
+    if "human preference" in lowered or "human feedback" in lowered or "reward model" in lowered or "reward predictor" in lowered:
+        return {
+            "inputs": ["trajectory or response pairs", "human preference labels", "policy rollouts"],
+            "outputs": ["learned reward model", "policy optimized against predicted preference reward"],
+            "assumptions": ["preference labels are consistent enough for a reward model to guide policy optimization"],
+            "implementation_notes": [
+                "Log preference-pair construction, labeler agreement, reward-model accuracy, policy reward, and held-out human evaluation separately."
+            ],
+        }
+    if "reinforcement learning" in lowered or "policy optimization" in lowered or _has_ppo(lowered):
+        return {
+            "inputs": ["policy parameters", "reward signal", "rollout trajectories"],
+            "outputs": ["updated policy", "measured return or task success"],
+            "assumptions": ["rollout reward and evaluation environment match the behavior being optimized"],
+            "implementation_notes": [
+                "Track rollout length, reward normalization, KL/clip constraints, seed variance, and baseline policy performance."
+            ],
+        }
+    if "neural ordinary" in lowered or "neural ode" in lowered:
+        return {
+            "inputs": ["hidden state", "time variable", "ODE solver configuration"],
+            "outputs": ["continuous-depth hidden trajectory", "predictions from ODE solver integration"],
+            "assumptions": ["continuous-time dynamics and solver tolerances are appropriate for the modeled transformation"],
+            "implementation_notes": [
+                "Log solver tolerance, number of function evaluations, adjoint gradients, and stability on controlled toy dynamics."
+            ],
+        }
+    if "conditional diffusion" in lowered or "denoising diffusion" in lowered or "ddpm" in lowered:
+        return {
+            "inputs": ["noisy sample", "diffusion timestep", "conditioning signal"],
+            "outputs": ["denoised or generated sample conditioned on the input signal"],
+            "assumptions": ["the conditioning signal and noise schedule match the intended generation distribution"],
+            "implementation_notes": ["Unit test timestep/noise schedule, conditioning-channel shapes, and sample evaluation metrics."],
+        }
+    if "speculative decoding" in lowered or "draft model" in lowered or "draft tree" in lowered:
+        return {
+            "inputs": ["draft model proposals", "target model verification logits", "acceptance or tree budget"],
+            "outputs": ["verified accepted tokens", "inference speedup without target-distribution change"],
+            "assumptions": ["target-model verification preserves the original decoding distribution"],
+            "implementation_notes": ["Log draft acceptance length, rejected branches, verifier cost, and output-distribution equivalence."],
+        }
+    if "long context" in lowered or "long-context" in lowered:
+        return {
+            "inputs": ["long sequence tokens", "positional encoding or attention state"],
+            "outputs": ["extended-context model behavior or evaluation results"],
+            "assumptions": ["quality must be checked at the target context lengths, not inferred from short-context behavior"],
+            "implementation_notes": ["Sweep context length and separate retrieval/position failures from model-capacity failures."],
+        }
+    if "kv cache" in lowered:
+        return {
+            "inputs": ["KV-cache tensors", "retention or compression budget", "decode-time attention state"],
+            "outputs": ["compressed or filtered KV-cache representation"],
+            "assumptions": ["retained cache entries preserve the information needed for downstream attention"],
+            "implementation_notes": ["Measure retention ratio, decode latency, memory footprint, and quality under the same sequence lengths."],
+        }
+    if "grouped-query" in lowered or "multi-query" in lowered:
+        return {
+            "inputs": ["query heads", "shared key/value heads", "attention checkpoint"],
+            "outputs": ["attention checkpoint with shared key/value heads"],
+            "assumptions": ["shared key/value heads preserve enough attention capacity after adaptation"],
+            "implementation_notes": ["Verify Q/K/V tensor grouping shapes and compare MHA/MQA/GQA at matched adaptation budgets."],
+        }
+    if "k-means" in lowered or "clustering" in lowered:
+        return {
+            "inputs": ["data vectors", "cluster count", "centroid initialization"],
+            "outputs": ["cluster assignments", "centroids", "objective value"],
+            "assumptions": ["the clustering objective and initialization assumptions match the claimed theory or algorithm"],
+            "implementation_notes": ["Test centroid update monotonicity, initialization sensitivity, and the claimed PCA relationship."],
+        }
+    return None
+
+
 def _generic_method_inputs(method_text: str) -> list[str]:
+    contract = _domain_specific_contract(method_text)
+    if contract is not None:
+        return contract["inputs"]
     lowered = method_text.lower()
     inputs = []
     if "human preference" in lowered or "human feedback" in lowered or "reward model" in lowered or "reward predictor" in lowered:
         inputs.extend(["trajectory or response pairs", "human preference labels", "policy rollouts"])
-    if "reinforcement learning" in lowered or "policy optimization" in lowered or "ppo" in lowered:
+    if "reinforcement learning" in lowered or "policy optimization" in lowered or _has_ppo(lowered):
         inputs.extend(["policy parameters", "reward signal", "rollout trajectories"])
     if "self-attention" in lowered or "transformer" in lowered or "relative position" in lowered:
         inputs.extend(["token embeddings", "query/key/value projections", "positional or attention bias terms"])
@@ -917,11 +1125,14 @@ def _generic_method_inputs(method_text: str) -> list[str]:
 
 
 def _generic_method_outputs(method_text: str) -> list[str]:
+    contract = _domain_specific_contract(method_text)
+    if contract is not None:
+        return contract["outputs"]
     lowered = method_text.lower()
     outputs = []
     if "human preference" in lowered or "human feedback" in lowered or "reward model" in lowered or "reward predictor" in lowered:
         outputs.extend(["learned reward model", "policy optimized against predicted preference reward"])
-    if "reinforcement learning" in lowered or "policy optimization" in lowered or "ppo" in lowered:
+    if "reinforcement learning" in lowered or "policy optimization" in lowered or _has_ppo(lowered):
         outputs.extend(["updated policy", "measured return or task success"])
     if "self-attention" in lowered or "transformer" in lowered:
         outputs.extend(["contextual token representations", "sequence-model predictions"])
@@ -957,11 +1168,14 @@ def _generic_method_outputs(method_text: str) -> list[str]:
 
 
 def _generic_method_assumptions(method_text: str) -> list[str]:
+    contract = _domain_specific_contract(method_text)
+    if contract is not None:
+        return contract["assumptions"]
     lowered = method_text.lower()
     assumptions = []
     if "human preference" in lowered or "human feedback" in lowered or "reward model" in lowered or "reward predictor" in lowered:
         assumptions.append("preference labels are consistent enough for a reward model to guide policy optimization")
-    if "reinforcement learning" in lowered or "policy optimization" in lowered or "ppo" in lowered:
+    if "reinforcement learning" in lowered or "policy optimization" in lowered or _has_ppo(lowered):
         assumptions.append("rollout reward and evaluation environment match the behavior being optimized")
     if "self-attention" in lowered or "transformer" in lowered:
         assumptions.append("attention computation and positional representation capture the dependencies required by the sequence task")
@@ -999,11 +1213,14 @@ def _generic_method_assumptions(method_text: str) -> list[str]:
 
 
 def _generic_method_implementation_notes(method_text: str) -> list[str]:
+    contract = _domain_specific_contract(method_text)
+    if contract is not None:
+        return contract["implementation_notes"]
     lowered = method_text.lower()
     notes = []
     if "human preference" in lowered or "human feedback" in lowered or "reward model" in lowered or "reward predictor" in lowered:
         notes.append("Log preference-pair construction, labeler agreement, reward-model accuracy, policy reward, and held-out human evaluation separately.")
-    if "reinforcement learning" in lowered or "policy optimization" in lowered or "ppo" in lowered:
+    if "reinforcement learning" in lowered or "policy optimization" in lowered or _has_ppo(lowered):
         notes.append("Track rollout length, reward normalization, KL/clip constraints, seed variance, and baseline policy performance.")
     if "self-attention" in lowered or "transformer" in lowered or "relative position" in lowered:
         notes.append("Unit test attention mask, positional bias shape, Q/K/V projection shapes, and sequence-length extrapolation cases.")
@@ -1786,21 +2003,21 @@ def _primary_paper_key(pages: list[PageExtraction]) -> str:
         return ""
     header = _normalize(" ".join(page.text[:1200] for page in pages[:3])).lower()
     patterns = (
-        ("llm.int8", ("llm.int8", "8-bit matrix multiplication")),
-        ("smoothquant", ("smoothquant",)),
-        ("squeezellm", ("squeezellm",)),
-        ("massive-activations", ("massive activations in large language models",)),
+        ("codequant", ("codequant",)),
+        ("moequant", ("moequant",)),
+        ("duquant", ("duquant",)),
+        ("flatquant", ("flatquant",)),
         ("affinequant", ("affinequant",)),
         ("quarot", ("quarot",)),
         ("spinquant", ("spinquant",)),
-        ("duquant", ("duquant",)),
-        ("flatquant", ("flatquant",)),
         ("dfrot", ("dfrot",)),
         ("ostquant", ("ostquant",)),
-        ("codequant", ("codequant",)),
         ("qep", ("quantization error propagation",)),
-        ("moequant", ("moequant",)),
         ("omniquant", ("omniquant",)),
+        ("squeezellm", ("squeezellm",)),
+        ("smoothquant", ("smoothquant",)),
+        ("llm.int8", ("llm.int8", "8-bit matrix multiplication")),
+        ("massive-activations", ("massive activations in large language models",)),
         ("milo", ("milo", "mixture of low-rank")),
         ("eagle2", ("eagle-2", "dynamic draft")),
         ("med-ddpm", ("conditional diffusion", "semantic 3d brain mri")),
@@ -2674,7 +2891,7 @@ def _domain_implementation_backfill(method_records: list[dict[str, Any]], pages:
                 "Speculative decoding: Test output equivalence against ordinary decoding before trusting speed numbers.",
             ]
         )
-    if "long context" in text or "long-context" in text or "rope" in text:
+    if "long context" in text or "long-context" in text or "longrope" in text or re.search(r"\brope\b", text):
         notes.extend(
             [
                 "Long context: Sweep sequence length and record both long-context task success and short-context regression.",
@@ -2688,7 +2905,7 @@ def _domain_implementation_backfill(method_records: list[dict[str, Any]], pages:
                 "3D geometry: Log connectivity, branch count, pruning thresholds, and sensitivity to point density.",
             ]
         )
-    if "diffusion" in text or "ddpm" in text or "mri" in text:
+    if "conditional diffusion" in text or "denoising diffusion" in text or "ddpm" in text or ("mri" in text and "segmentation" in text):
         notes.extend(
             [
                 "Diffusion: Test noise schedule, timestep embedding, and conditioning tensor alignment with small synthetic batches.",
@@ -2881,7 +3098,7 @@ def _evidence_takeaways(pages: list[PageExtraction]) -> list[str]:
 
 
 def _limitations(pages: list[PageExtraction]) -> list[str]:
-    text = " ".join(page.text for page in pages)
+    text = _paper_body_text(pages)
     limitations = []
     lowered = text.lower()
     primary = _primary_paper_key(pages)
@@ -2963,12 +3180,22 @@ def _limitations(pages: list[PageExtraction]) -> list[str]:
         limitations.append("Some components are setting-dependent; treat POG as a block-wise clustering mechanism until other settings have direct ablations.")
     if limitations:
         return limitations
+    if (
+        "physics-informed neural network" in lowered
+        or "physics informed neural network" in lowered
+        or "partial differential equation" in lowered
+        or "nonlinear pde" in lowered
+    ):
+        return [
+            "PINN quality depends on how data loss and physics residual loss are balanced; aggregate accuracy can hide residual or boundary-condition failure.",
+            "Forward and inverse PDE settings should be evaluated separately because parameter identification and solution approximation stress different assumptions.",
+        ]
     if "human preference" in lowered or "human feedback" in lowered or "reward model" in lowered or "reward predictor" in lowered:
         return [
             "Preference-learning results depend on labeler consistency, comparison design, and whether the learned reward transfers beyond the sampled trajectories or responses.",
             "Reward-model optimization can create reward hacking or distribution shift, so policy results need held-out human or task evaluation.",
         ]
-    if "ppo" in lowered or "proximal policy optimization" in lowered or "policy gradient" in lowered:
+    if _has_ppo(lowered) or "proximal policy optimization" in lowered or "policy gradient" in lowered:
         return [
             "Policy-optimization behavior is sensitive to reward normalization, clipping/KL settings, rollout length, and seed variance.",
             "Reported gains should be separated from environment-specific exploration and baseline tuning.",
@@ -2998,7 +3225,7 @@ def _limitations(pages: list[PageExtraction]) -> list[str]:
             "Speculative decoding gains depend on acceptance rates and verifier overhead.",
             "Correctness claims should be tied to target-model verification and decoding settings.",
         ]
-    if "diffusion" in lowered or "ddpm" in lowered:
+    if "conditional diffusion" in lowered or "denoising diffusion" in lowered or "ddpm" in lowered:
         return [
             "Diffusion sample quality depends on the training distribution, conditioning signal quality, and evaluation metric.",
             "Generated examples should be separated from downstream task evidence.",
@@ -3053,10 +3280,13 @@ def _method_families(
 ) -> list[str]:
     primary = _primary_paper_key(pages)
     text = _method_family_text(title, method_records, settings).lower()
+    focus = _focus_text(title, pages)
     families: list[str] = []
 
     if _is_long_form_reference(title, pages):
         return ["reference synthesis", "performance evaluation"]
+    if _is_non_llm_clustering_text(focus):
+        return ["clustering algorithm"]
 
     if primary == "massive-activations":
         return ["mechanistic activation analysis"]
@@ -3088,6 +3318,13 @@ def _method_families(
         return ["feature-wise modulation", "visual reasoning"]
     if primary == "eagle":
         return ["speculative decoding", "feature-level drafting"]
+    if (
+        "physics-informed neural network" in focus
+        or "physics informed neural network" in focus
+        or "partial differential equation" in focus
+        or "nonlinear pde" in focus
+    ):
+        return ["physics-informed neural networks", "PDE-constrained learning"]
 
     if "speculative decoding" in text or "draft model" in text or "draft tree" in text:
         families.append("speculative decoding")
@@ -3111,7 +3348,7 @@ def _method_families(
         families.append("RLHF")
     if "self-reward" in text or "meta-reward" in text or "llm-as-a-judge" in text or "meta-judge" in text:
         families.extend(["self-rewarding model training", "LLM-as-judge reward modeling"])
-    if "ppo" in text or "proximal policy optimization" in text or "policy gradient" in text:
+    if _has_ppo(text) or "proximal policy optimization" in text or "policy gradient" in text:
         families.append("policy optimization")
     if "test-time reinforcement learning" in text or "ttrl" in text:
         families.append("test-time reinforcement learning")
@@ -3127,7 +3364,7 @@ def _method_families(
         families.append("continuous-depth neural network")
     if "autonomous agent" in text or "generative agent" in text or "agent planning" in text or "agent-based" in text:
         families.append("agent workflow modeling")
-    if "survey" in text or "technical report" in text:
+    if "survey" in focus or "technical report" in focus:
         families.append("survey synthesis")
 
     quantization_cues = (
@@ -3171,6 +3408,8 @@ def _settings(pages: list[PageExtraction]) -> list[str]:
 
     if _is_long_form_reference("", pages):
         return ["long-form reference setting"]
+    if _is_non_llm_clustering_text(focus_lowered):
+        return ["clustering theory setting"]
 
     primary_settings = {
         "llm.int8": ["weight-activation quantization"],
@@ -3228,36 +3467,79 @@ def _settings(pages: list[PageExtraction]) -> list[str]:
         settings.append("MoE setting")
     if quant_focus and ("lut" in lowered or "lookup table" in lowered or "lookup-table" in lowered):
         settings.append("LUT/kernel setting")
-    if "speculative decoding" in lowered or "draft model" in lowered or "draft tree" in lowered:
+    if "speculative decoding" in focus_lowered or "draft model" in focus_lowered or "draft tree" in focus_lowered:
         settings.append("speculative decoding setting")
-    if "long context" in lowered or "long-context" in lowered or "longrope" in lowered:
+    if "long context" in focus_lowered or "long-context" in focus_lowered or "longrope" in focus_lowered:
         settings.append("long-context inference setting")
-    if "3d brain mri" in lowered or "medical image" in lowered or ("mri" in lowered and "segmentation" in lowered):
+    if "3d brain mri" in focus_lowered or "medical image" in focus_lowered or ("mri" in focus_lowered and "segmentation" in focus_lowered):
         settings.append("3D medical imaging setting")
-    if "grouped-query attention" in lowered or "multi-query attention" in lowered:
+    if "grouped-query attention" in focus_lowered or "multi-query attention" in focus_lowered:
         settings.append("decoder attention setting")
-    if "vision-language" in lowered or "large vision-language" in lowered or "vlm" in lowered:
+    if "vision-language" in focus_lowered or "large vision-language" in focus_lowered or "vlm" in focus_lowered:
         settings.append("vision-language setting")
-    if "point cloud" in lowered or "curve skeleton" in lowered or "mesh" in lowered:
+    if "point cloud" in focus_lowered or "curve skeleton" in focus_lowered or "mesh" in focus_lowered:
         settings.append("3D geometry setting")
-    if "quantization-aware" in lowered or "task loss" in lowered and "quantization" in lowered:
+    if "quantization-aware" in focus_lowered or "task loss" in focus_lowered and "quantization" in focus_lowered:
         settings.append("quantization-aware training setting")
-    if "k-means" in lowered and ("pca" in lowered or "principal component" in lowered or "matrix factorization" in lowered):
+    if "k-means" in focus_lowered and ("pca" in focus_lowered or "principal component" in focus_lowered or "matrix factorization" in focus_lowered):
         settings.append("clustering theory setting")
-    if "human feedback" in lowered or "human preference" in lowered or "reward model" in lowered or "preference optimization" in lowered:
+    if "human feedback" in focus_lowered or "human preference" in focus_lowered or "reward model" in focus_lowered or "preference optimization" in focus_lowered:
         settings.append("preference-learning setting")
-    if "ppo" in lowered or "proximal policy optimization" in lowered or "policy gradient" in lowered:
+    if _has_ppo(focus_lowered) or "proximal policy optimization" in focus_lowered or "policy gradient" in focus_lowered:
         settings.append("reinforcement-learning setting")
-    if "self-attention" in lowered or "transformer" in lowered or "relative position" in lowered:
+    if "self-attention" in focus_lowered or "transformer" in focus_lowered or "relative position" in focus_lowered:
         settings.append("transformer sequence-modeling setting")
-    if "autonomous agent" in lowered or "generative agent" in lowered or "agent planning" in lowered or "agent-based" in lowered:
+    if "autonomous agent" in focus_lowered or "generative agent" in focus_lowered or "agent planning" in focus_lowered or "agent-based" in focus_lowered:
         settings.append("agent evaluation setting")
-    if "neural ordinary differential" in lowered or "neural ode" in lowered or "ordinary differential equation" in lowered:
+    if "neural ordinary differential" in focus_lowered or "neural ode" in focus_lowered or "ordinary differential equation" in focus_lowered:
         settings.append("continuous-depth modeling setting")
-    if "survey" in lowered or "technical report" in lowered:
+    if (
+        "physics-informed neural network" in focus_lowered
+        or "physics informed neural network" in focus_lowered
+        or "partial differential equation" in focus_lowered
+        or "nonlinear pde" in focus_lowered
+    ):
+        settings.append("physics-informed PDE setting")
+    if "survey" in focus_lowered or "technical report" in focus_lowered:
         settings.append("survey/synthesis setting")
 
+    if not settings:
+        settings.extend(_fallback_settings(focus_lowered))
+
     return _dedupe(settings)
+
+
+def _fallback_settings(focus_lowered: str) -> list[str]:
+    settings = []
+    if "lora" in focus_lowered or "low-rank adaptation" in focus_lowered or "fine-tuning" in focus_lowered:
+        settings.append("parameter-efficient adaptation setting")
+    if "chain-of-thought" in focus_lowered or "chain of thought" in focus_lowered or "reasoning" in focus_lowered:
+        settings.append("reasoning evaluation setting")
+    if "react" in focus_lowered or "reasoning and acting" in focus_lowered or "tool" in focus_lowered and "language model" in focus_lowered:
+        settings.append("agent/tool-use setting")
+    if "root system" in focus_lowered or "root image" in focus_lowered or "root architecture" in focus_lowered:
+        settings.append("root-system analysis setting")
+    if "diffusion model" in focus_lowered or "diffusion modeling" in focus_lowered or "classifier-free diffusion" in focus_lowered:
+        settings.append("diffusion modeling setting")
+    if "3d reconstruction" in focus_lowered or "single-view 3d" in focus_lowered or "single view 3d" in focus_lowered:
+        settings.append("3D reconstruction setting")
+    if "k-means" in focus_lowered or "clustering" in focus_lowered:
+        settings.append("clustering analysis setting")
+    if "computer architecture" in focus_lowered or "quantitative approach" in focus_lowered:
+        settings.append("computer architecture reference setting")
+    if "atmospheric downscaling" in focus_lowered or "weather" in focus_lowered or "climate" in focus_lowered:
+        settings.append("scientific ML setting")
+    if "hierarchical" in focus_lowered or "gaussian process" in focus_lowered:
+        settings.append("hierarchical modeling setting")
+    if "autonomous machine intelligence" in focus_lowered or "world model" in focus_lowered:
+        settings.append("world-modeling setting")
+    if "test-time reinforcement learning" in focus_lowered or "test time reinforcement learning" in focus_lowered or "ttrl" in focus_lowered:
+        settings.append("test-time RL setting")
+    if "distributional shift" in focus_lowered or "rlvr" in focus_lowered:
+        settings.append("RL fine-tuning analysis setting")
+    if "prompt engineering" in focus_lowered or "in-context learning" in focus_lowered:
+        settings.append("prompting/in-context learning setting")
+    return settings or ["general research evaluation setting"]
 
 
 def _topics(
@@ -3273,9 +3555,14 @@ def _topics(
             return ["computer architecture", "performance evaluation", "hardware systems"]
         return ["reference synthesis", "survey synthesis"]
     text = _topic_text(title, abstract, candidates, method_records, settings)
+    if _is_non_llm_clustering_text(text):
+        return ["clustering theory"]
     controlled = _controlled_topics(text, settings)
     phrase_topics = _phrase_topics(text, title, method_records)
-    return _dedupe(controlled + phrase_topics)[:10]
+    topics = _dedupe(controlled + phrase_topics)
+    if not topics:
+        topics.extend(_fallback_topics(title, abstract, settings))
+    return _dedupe(topics)[:10]
 
 
 def _is_long_form_reference(title: str, pages: list[PageExtraction]) -> bool:
@@ -3292,6 +3579,51 @@ def _is_long_form_reference(title: str, pages: list[PageExtraction]) -> bool:
 
 def _method_family_text(title: str, method_records: list[dict[str, Any]], settings: list[str]) -> str:
     return _normalize(f"{title} {' '.join(settings)} " + _method_record_text(method_records))
+
+
+def _fallback_topics(title: str, abstract: str, settings: list[str]) -> list[str]:
+    text = _normalize(f"{title} {abstract} {' '.join(settings)}").lower()
+    topics = []
+    if "autonomous machine intelligence" in text or "world model" in text:
+        topics.extend(["world model learning", "autonomous machine intelligence"])
+    if "single-view 3d" in text or "single view 3d" in text or "3d reconstruction" in text:
+        topics.append("single-view 3D reconstruction")
+    if "root" in text and ("system" in text or "image" in text):
+        topics.append("root system analysis")
+    if "lora" in text or "low-rank adaptation" in text:
+        topics.append("parameter-efficient adaptation")
+    if "reasoning" in text or "chain-of-thought" in text or "chain of thought" in text:
+        topics.append("chain-of-thought reasoning")
+    if "diffusion" in text:
+        topics.append("diffusion modeling")
+    if "clustering" in text or "k-means" in text:
+        topics.append("clustering analysis")
+    return topics
+
+
+def _is_non_llm_clustering_text(text: str) -> bool:
+    lowered = _normalize(text).lower()
+    has_clustering = "k-means" in lowered or "k means" in lowered or "deep clustering" in lowered or "clustering" in lowered
+    if not has_clustering:
+        return False
+    llm_quantization_markers = (
+        "large language model",
+        "llm",
+        "transformer language model",
+        "weight-only",
+        "weight activation",
+        "weight-activation",
+        "activation quantization",
+        "low-bit",
+        "4-bit",
+        "2-bit",
+        "int4",
+        "w4a",
+        "w8a",
+        "kv cache",
+        "llm inference",
+    )
+    return not any(marker in lowered for marker in llm_quantization_markers)
 
 
 def _topic_text(
@@ -3439,12 +3771,24 @@ def _legacy_word_topics(title: str, abstract: str, candidates: list[dict[str, An
 
 
 def _known_terms(extraction: PdfExtraction, terms: tuple[str, ...]) -> list[str]:
-    text = "\n".join(page.text for page in extraction.pages)
+    text = _paper_body_text(extraction.pages)
     found = []
     for term in terms:
         if re.search(rf"\b{re.escape(term)}\b", text, flags=re.IGNORECASE):
             found.append(term)
     return found
+
+
+def _paper_body_text(pages: list[PageExtraction]) -> str:
+    body_pages = []
+    for page in pages:
+        lowered = page.text.lower()
+        if re.search(r"^\s*(references|bibliography)\b", lowered, flags=re.MULTILINE):
+            break
+        body_pages.append(page.text)
+    if not body_pages:
+        body_pages = [page.text for page in pages[: min(len(pages), 20)]]
+    return "\n".join(body_pages)
 
 
 def _method_name_from_title(title: str) -> str:

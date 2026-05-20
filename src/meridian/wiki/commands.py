@@ -69,6 +69,7 @@ def ingest_pdf(
     overwrite: bool = False,
     wiki_root: Path | None = None,
     publish_mode: str = "never",
+    render_page_images: bool = True,
 ) -> CommandIngestResult:
     result = run_ingest(
         pdf_path=pdf_path,
@@ -77,6 +78,7 @@ def ingest_pdf(
         overwrite=overwrite,
         wiki_root=wiki_root,
         publish_mode=publish_mode,
+        render_page_images=render_page_images,
     )
     return CommandIngestResult(
         review_path=result.review_path,
@@ -99,6 +101,7 @@ def eval_cases(
     mode: str = "ingest",
     rubric_path: Path | None = None,
     wiki_root: Path | None = None,
+    render_page_images: bool = True,
 ) -> Path:
     if mode not in {"ingest", "flow"}:
         raise ValueError("eval mode must be ingest or flow")
@@ -125,6 +128,7 @@ def eval_cases(
                     overwrite=overwrite,
                     publish_mode="auto" if publish_mode == "never" else publish_mode,
                     case_path=case_json_path,
+                    render_page_images=render_page_images,
                 )
                 run_payload = json.loads(flow_result.run_path.read_text(encoding="utf-8"))
                 result_record = {
@@ -154,6 +158,7 @@ def eval_cases(
                     case_metadata=case,
                     wiki_root=case_out / "wiki",
                     publish_mode=publish_mode,
+                    render_page_images=render_page_images,
                 )
                 result_record = {
                     "id": case_id,
@@ -274,6 +279,7 @@ def run_flow(
     publish_mode: str = "auto",
     case_path: Path | None = None,
     judge_result_path: Path | None = None,
+    render_page_images: bool = True,
 ) -> WikiFlowResult:
     return run_wiki_flow(
         pdf_path=pdf_path,
@@ -285,6 +291,7 @@ def run_flow(
         publish_mode=publish_mode,
         case_path=case_path,
         judge_result_path=judge_result_path,
+        render_page_images=render_page_images,
     )
 
 

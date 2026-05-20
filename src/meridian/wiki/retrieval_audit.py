@@ -128,9 +128,10 @@ def generate_audit_queries(record: dict[str, Any]) -> list[dict[str, Any]]:
     aliases = _clean_values(routing.get("aliases"))
     claims = _clean_values(routing.get("claims"))
 
+    identity = _identity_term(title, aliases)
     method_terms = _join_terms(methods[:2] + topics[:2] + settings[:1], fallback=title)
-    implementation_terms = _join_terms(methods[:2] + aliases[:1] + settings[:1], fallback=method_terms)
-    evidence_terms = _join_terms(topics[:2] + datasets[:2] + metrics[:2], fallback=method_terms)
+    implementation_terms = _join_terms([identity] + methods[:2] + aliases[:1] + settings[:1], fallback=method_terms)
+    evidence_terms = _join_terms(methods[:1] + topics[:2] + settings[:1] + datasets[:1] + metrics[:1], fallback=method_terms)
     scope_terms = _join_terms(settings[:2] + topics[:2] + claims[:1], fallback=method_terms)
     sparse = not (methods or topics or settings or datasets or metrics)
     sparsity_note = " This page has sparse routing metadata, so retrieval may depend on title/body text." if sparse else ""
@@ -139,7 +140,7 @@ def generate_audit_queries(record: dict[str, Any]) -> list[dict[str, Any]]:
         {
             "intent": "method_design",
             "query": (
-                f"I am looking for papers about {method_terms}. "
+                f"I am looking for the paper or closely related work on {identity} about {method_terms}. "
                 "Retrieve pages that explain the core mechanism, what problem the method is meant to solve, "
                 f"and how it relates to nearby methods.{sparsity_note}"
             ),
@@ -158,16 +159,22 @@ def generate_audit_queries(record: dict[str, Any]) -> list[dict[str, Any]]:
         {
             "intent": "evidence_scope",
             "query": (
-                f"I need evidence and scope limits for {evidence_terms}. "
+                f"I need evidence and scope limits for {identity} and {evidence_terms}. "
                 "Retrieve papers that show the relevant datasets, metrics, baselines, limitations, or regimes where the result should not be overgeneralized."
             ),
-            "source_fields": _source_fields(topics=topics, datasets=datasets, metrics=metrics, settings=settings),
+            "source_fields": _source_fields(
+                methods=methods[:1],
+                topics=topics,
+                settings=settings[:1],
+                datasets=datasets,
+                metrics=metrics,
+            ),
             "metadata_sparse": sparse,
         },
         {
             "intent": "limitation_boundary",
             "query": (
-                f"I am checking whether {scope_terms} transfers to a new research setting. "
+                f"I am checking whether {identity} and {scope_terms} transfer to a new research setting. "
                 "Retrieve papers with limitations, assumptions, or taxonomy boundaries that would prevent invalid comparisons."
             ),
             "source_fields": _source_fields(settings=settings, topics=topics, claims=claims),
@@ -396,6 +403,63 @@ def _routing_terms(record: dict[str, Any]) -> set[str]:
 
 def _source_fields(**fields: list[str]) -> dict[str, list[str]]:
     return {key: values for key, values in fields.items() if values}
+
+
+def _identity_term(title: str, aliases: list[str]) -> str:
+    title_lower = title.lower()
+    for alias in aliases:
+        cleaned = alias.strip()
+        if len(cleaned) >= 3 and cleaned.lower() in title_lower and not cleaned.lower().startswith("untitled"):
+            return cleaned
+    title_aliases = _title_specific_aliases(title)
+    if title_aliases:
+        return title_aliases[0]
+    for alias in aliases:
+        cleaned = alias.strip()
+        if len(cleaned) >= 3 and not cleaned.lower().startswith("untitled"):
+            return cleaned
+    return title
+
+
+def _title_specific_aliases(title: str) -> list[str]:
+    generic = {
+        "LLM",
+        "LLMs",
+        "KV",
+        "CPU",
+        "GPU",
+        "PTQ",
+        "QAT",
+        "AI",
+        "ML",
+        "NLP",
+        "VLM",
+        "LUT",
+        "Post-Training",
+        "Quantization-Aware",
+        "Outlier-Free",
+        "Training-Free",
+        "Activation-aware",
+        "Weight-Only",
+        "Low-Bit",
+        "Technical",
+        "Report",
+        "Survey",
+    }
+    cleaned_title = re.sub(r"^[A-Z][A-Za-z]+(?: et al\.)? - \d{4} - ", "", title)
+    aliases = []
+    for match in re.findall(r"\b[A-Z][A-Za-z0-9]*(?:[-#][A-Za-z0-9]+)?\b", cleaned_title):
+        if match in generic:
+            continue
+        has_method_shape = (
+            any(character.isupper() for character in match[1:])
+            or match.isupper()
+            or "#" in match
+            or bool(re.fullmatch(r"[A-Z]+-[A-Z0-9]+", match))
+        )
+        if has_method_shape:
+            aliases.append(match)
+    return _clean_values(aliases)[:4]
 
 
 def _clean_values(values: Any) -> list[str]:

@@ -263,7 +263,8 @@ def _artifact_existence_score(
         findings.append(f"missing_paths:{';'.join(missing[:8])}")
     if empty:
         findings.append(f"empty_paths:{';'.join(empty[:8])}")
-    if not (extraction_dir / "page-images").exists():
+    render_page_images = bool(dict(run.get("extraction_options") or {}).get("render_page_images", True))
+    if render_page_images and not (extraction_dir / "page-images").exists():
         findings.append("missing_page_images_dir")
     if run.get("canonical_wiki_mutated"):
         canonical = dict(run.get("canonical_artifacts") or {})
@@ -441,6 +442,7 @@ def _provenance_score(
 
 def _extraction_score(run: dict[str, Any], pages: list[dict[str, Any]], extraction_dir: Path) -> dict[str, Any]:
     page_count = _as_int(run.get("page_count")) or 0
+    render_page_images = bool(dict(run.get("extraction_options") or {}).get("render_page_images", True))
     findings = []
     if len(pages) != page_count:
         findings.append(f"page_count_mismatch:pages_jsonl={len(pages)},run={page_count}")
@@ -449,14 +451,21 @@ def _extraction_score(run: dict[str, Any], pages: list[dict[str, Any]], extracti
         for field in ("page_number", "text", "image_path", "image_count", "drawing_count"):
             if field not in page:
                 missing_fields.append(f"p{page.get('page_number')}:{field}")
-        image_path = Path(str(page.get("image_path") or ""))
-        if image_path and not image_path.exists():
+        image_path_text = str(page.get("image_path") or "").strip()
+        image_path = Path(image_path_text) if image_path_text else None
+        if render_page_images and image_path is not None and not image_path.exists():
             findings.append(f"missing_page_image:{image_path}")
+        if render_page_images and image_path is None:
+            findings.append(f"missing_page_image_path:p{page.get('page_number')}")
+        if not render_page_images and image_path is not None:
+            findings.append(f"unexpected_page_image_path_when_disabled:p{page.get('page_number')}")
     if missing_fields:
         findings.append(f"page_record_missing_fields:{','.join(missing_fields[:8])}")
     rendered_images = list((extraction_dir / "page-images").glob("page-*.png"))
-    if page_count and len(rendered_images) != page_count:
+    if render_page_images and page_count and len(rendered_images) != page_count:
         findings.append(f"page_image_count_mismatch:images={len(rendered_images)},run={page_count}")
+    if not render_page_images and rendered_images:
+        findings.append(f"unexpected_page_images_when_disabled:images={len(rendered_images)}")
     if not (extraction_dir / "figures" / "README.md").exists():
         findings.append("missing_figures_readme")
     if not (extraction_dir / "tables" / "README.md").exists():

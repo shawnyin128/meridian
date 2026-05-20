@@ -6,6 +6,7 @@ from datetime import date
 from pathlib import Path
 
 from meridian.wiki.quality import QualityGate
+from meridian.wiki.vault import init_wiki_vault
 
 
 @dataclass(frozen=True)
@@ -26,6 +27,7 @@ def publish_canonical_draft(
     created_date: str,
     overwrite: bool = False,
 ) -> PublishResult:
+    init_wiki_vault(wiki_root=wiki_root)
     papers_dir = wiki_root / "papers"
     papers_dir.mkdir(parents=True, exist_ok=True)
     canonical_paper_path = papers_dir / f"{_slugify(title)}.md"

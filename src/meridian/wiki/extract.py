@@ -33,7 +33,12 @@ SECTION_RE = re.compile(
 )
 
 
-def extract_pdf(pdf_path: Path, extraction_dir: Path) -> PdfExtraction:
+def extract_pdf(
+    pdf_path: Path,
+    extraction_dir: Path,
+    *,
+    render_page_images: bool = True,
+) -> PdfExtraction:
     if not pdf_path.exists():
         raise FileNotFoundError(f"PDF does not exist: {pdf_path}")
     if pdf_path.suffix.lower() != ".pdf":
@@ -63,9 +68,13 @@ def extract_pdf(pdf_path: Path, extraction_dir: Path) -> PdfExtraction:
         page_number = page_index + 1
         text = page.get_text("text").strip()
         image_path = page_images_dir / f"page-{page_number:04d}.png"
+        image_path_value = str(image_path)
 
-        pixmap = page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5), alpha=False)
-        pixmap.save(image_path)
+        if render_page_images:
+            pixmap = page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5), alpha=False)
+            pixmap.save(image_path)
+        else:
+            image_path_value = ""
 
         images = page.get_images(full=True)
         drawings = page.get_drawings()
@@ -75,7 +84,7 @@ def extract_pdf(pdf_path: Path, extraction_dir: Path) -> PdfExtraction:
                 page_number=page_number,
                 text=text,
                 section_hint=_section_hint(text),
-                image_path=str(image_path),
+                image_path=image_path_value,
                 image_count=len(images),
                 drawing_count=len(drawings),
             )
@@ -113,4 +122,3 @@ def _write_placeholder_readme(path: Path, label: str) -> None:
         f"Standalone {label} extraction is intentionally deferred.\n",
         encoding="utf-8",
     )
-

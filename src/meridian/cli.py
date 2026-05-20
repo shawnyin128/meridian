@@ -79,6 +79,11 @@ def build_parser() -> argparse.ArgumentParser:
             "a canonical draft even when it needs review."
         ),
     )
+    ingest.add_argument(
+        "--no-page-images",
+        action="store_true",
+        help="Skip rendering page PNGs for large batch runs while keeping page-level text extraction.",
+    )
 
     init = wiki_subparsers.add_parser(
         "init",
@@ -113,6 +118,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="Optional LLM-as-Judge JSON result to record and converge immediately.",
+    )
+    flow.add_argument(
+        "--no-page-images",
+        action="store_true",
+        help="Skip rendering page PNGs for large batch runs while keeping page-level text extraction.",
     )
 
     eval_cmd = wiki_subparsers.add_parser(
@@ -157,6 +167,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="Shared wiki root for --mode flow. Defaults to <out-dir>/wiki.",
+    )
+    eval_cmd.add_argument(
+        "--no-page-images",
+        action="store_true",
+        help="Skip rendering page PNGs for large batch runs while keeping page-level text extraction.",
     )
 
     eval_converge = wiki_subparsers.add_parser(
@@ -550,6 +565,7 @@ def main(argv: list[str] | None = None) -> int:
                 overwrite=args.overwrite,
                 wiki_root=args.wiki_root,
                 publish_mode=args.publish_mode,
+                render_page_images=not args.no_page_images,
             )
             print(f"Wrote draft review packet: {result.review_path}")
             print(f"Wrote draft paper page: {result.paper_path}")
@@ -574,6 +590,7 @@ def main(argv: list[str] | None = None) -> int:
                 publish_mode=args.publish_mode,
                 case_path=args.case,
                 judge_result_path=args.judge_result,
+                render_page_images=not args.no_page_images,
             )
             print(f"Wrote flow manifest: {result.flow_path}")
             print(f"Wrote run manifest: {result.run_path}")
@@ -595,6 +612,7 @@ def main(argv: list[str] | None = None) -> int:
                 mode=args.mode,
                 rubric_path=args.rubric,
                 wiki_root=args.wiki_root,
+                render_page_images=not args.no_page_images,
             )
             print(f"Wrote eval manifest: {manifest}")
             return 0

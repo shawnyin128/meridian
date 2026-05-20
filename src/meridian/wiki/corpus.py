@@ -178,6 +178,10 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
     if title_hits > 0:
         score += title_hits
         reasons.append("title/alias match")
+    identity_hits = _identity_boost(query_norm, title, _as_list((record.get("routing") or {}).get("aliases")))
+    if identity_hits > 0:
+        score += identity_hits
+        reasons.append("exact identity match")
 
     routing = record.get("routing") or {}
     field_weights = {
@@ -303,6 +307,67 @@ def _phrase_score(query_tokens: set[str], query_norm: str, value: str, *, weight
     if overlap == 0:
         return 0.0
     return weight * (overlap / max(len(value_tokens), 1))
+
+
+def _identity_boost(query_norm: str, title: str, aliases: list[Any]) -> float:
+    candidates = [str(alias) for alias in aliases]
+    candidates.extend(_title_specific_aliases(title))
+    boost = 0.0
+    for candidate in _dedupe(candidates):
+        if not _is_discriminative_identity(candidate):
+            continue
+        candidate_norm = _norm(candidate)
+        if not candidate_norm:
+            continue
+        if re.search(rf"\b{re.escape(candidate_norm)}\b", query_norm):
+            boost = max(boost, 90.0)
+        elif candidate_norm in query_norm:
+            boost = max(boost, 60.0)
+    return boost
+
+
+def _title_specific_aliases(title: str) -> list[str]:
+    cleaned_title = re.sub(r"^[A-Z][A-Za-z]+(?: et al\.)? - \d{4} - ", "", title)
+    aliases = []
+    for match in re.findall(r"\b[A-Z][A-Za-z0-9]*(?:[-#][A-Za-z0-9]+)?\b", cleaned_title):
+        if _is_discriminative_identity(match):
+            aliases.append(match)
+    return _dedupe(aliases)[:4]
+
+
+def _is_discriminative_identity(value: str) -> bool:
+    normalized = _norm(value)
+    if not normalized or len(normalized) < 4:
+        return False
+    generic = {
+        "post training",
+        "quantization aware",
+        "outlier free",
+        "training free",
+        "large language",
+        "low bit",
+        "weight only",
+        "weight activation",
+        "activation aware",
+        "efficient",
+        "fast",
+        "simple",
+        "technical report",
+        "survey",
+        "llm",
+        "llms",
+        "ptq",
+        "qat",
+        "cpu",
+        "gpu",
+        "lut",
+    }
+    if normalized in generic:
+        return False
+    tokens = normalized.split()
+    if len(tokens) > 4:
+        return False
+    return any(character.isupper() for character in value[1:]) or value.isupper() or any(character.isdigit() for character in value) or "#" in value
 
 
 def _text_score(query_tokens: set[str], query_norm: str, text: str, *, weight: float) -> float:

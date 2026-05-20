@@ -718,11 +718,53 @@ def _paper_aliases(title: str, model: PaperModel) -> list[str]:
     aliases: list[str] = []
     if ":" in title:
         aliases.append(title.split(":", 1)[0].strip())
+    aliases.extend(_title_specific_aliases(title))
     for record in model.method_records:
         for value in (record.get("short_name"), record.get("name")):
             if value and str(value) not in aliases:
                 aliases.append(str(value))
     return aliases[:8]
+
+
+def _title_specific_aliases(title: str) -> list[str]:
+    aliases: list[str] = []
+    generic = {
+        "LLM",
+        "LLMs",
+        "KV",
+        "CPU",
+        "GPU",
+        "PTQ",
+        "QAT",
+        "AI",
+        "ML",
+        "NLP",
+        "VLM",
+        "LUT",
+        "Post-Training",
+        "Quantization-Aware",
+        "Outlier-Free",
+        "Training-Free",
+        "Activation-aware",
+        "Weight-Only",
+        "Low-Bit",
+        "Technical",
+        "Report",
+        "Survey",
+    }
+    cleaned_title = re.sub(r"^[A-Z][A-Za-z]+ et al\. - \d{4} - ", "", title)
+    for match in re.findall(r"\b[A-Z][A-Za-z0-9]*(?:[-#][A-Za-z0-9]+)?\b", cleaned_title):
+        if match in generic:
+            continue
+        has_method_shape = (
+            any(character.isupper() for character in match[1:])
+            or match.isupper()
+            or "#" in match
+            or bool(re.fullmatch(r"[A-Z]+-[A-Z0-9]+", match))
+        )
+        if has_method_shape:
+            aliases.append(match)
+    return _dedupe_preserve(aliases)[:4]
 
 
 def _format_provenance(provenance: object) -> str:

@@ -38,10 +38,15 @@ def run_ingest(
     case_metadata: dict[str, object] | None = None,
     wiki_root: Path | None = None,
     publish_mode: str = "never",
+    render_page_images: bool = True,
 ) -> IngestResult:
     _prepare_out_dir(out_dir, overwrite=overwrite)
     extraction_dir = out_dir / "extraction"
-    extraction: PdfExtraction = extract_pdf(pdf_path=pdf_path, extraction_dir=extraction_dir)
+    extraction: PdfExtraction = extract_pdf(
+        pdf_path=pdf_path,
+        extraction_dir=extraction_dir,
+        render_page_images=render_page_images,
+    )
 
     title = title_override or _title_from_metadata_or_path(extraction, pdf_path)
     created_date = datetime.now(timezone.utc).date().isoformat()
@@ -145,6 +150,9 @@ def run_ingest(
         "review_packet": str(review_path),
         "paper_page": str(paper_path),
         "extraction_dir": str(extraction_dir),
+        "extraction_options": {
+            "render_page_images": render_page_images,
+        },
         "page_count": extraction.page_count,
         "canonical_wiki_mutated": publish_result is not None,
     }

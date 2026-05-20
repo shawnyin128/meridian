@@ -8,14 +8,17 @@ import unittest
 from pathlib import Path
 
 from meridian.cli import main
+from meridian.wiki.corpus import retrieve_papers
 from meridian.wiki.extract import PageExtraction, PdfExtraction
 from meridian.wiki.ingest import _title_from_first_page
+from meridian.wiki.model import _primary_paper_key, build_paper_model
 from meridian.wiki.packet import _trusted_metadata_authors
 from meridian.wiki.quality_check import (
     _retrieval_intent_quality_score,
     _retrieval_scenarios,
     _retrieval_taxonomy_boundary_score,
 )
+from meridian.wiki.retrieval_audit import generate_audit_queries
 from meridian.wiki.rubrics import complete_result_template, rubric_for
 
 
@@ -171,6 +174,96 @@ class CliTests(unittest.TestCase):
             "not trusted (PDF metadata says: A. Researcher)",
         )
 
+    def test_domain_detection_does_not_treat_support_as_ppo(self) -> None:
+        extraction = PdfExtraction(
+            metadata={"title": "Physics-informed neural networks"},
+            page_count=3,
+            pages=[
+                PageExtraction(
+                    page_number=1,
+                    text=(
+                        "Abstract\nPhysics-informed neural networks solve forward and inverse "
+                        "problems involving nonlinear partial differential equations."
+                    ),
+                    section_hint="Abstract",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+                PageExtraction(
+                    page_number=2,
+                    text=(
+                        "Method\nThe framework uses collocation points to support PDE residual "
+                        "losses, boundary conditions, and data observations."
+                    ),
+                    section_hint="Method",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+                PageExtraction(
+                    page_number=3,
+                    text=(
+                        "Experiments\nThe paper reports predictive accuracy for forward solution "
+                        "and inverse parameter discovery."
+                    ),
+                    section_hint="Experiments",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+            ],
+        )
+
+        model = build_paper_model(
+            "Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations",
+            extraction,
+        )
+
+        self.assertIn("physics-informed neural networks", model.methods)
+        self.assertIn("physics-informed PDE setting", model.settings)
+        self.assertNotIn("reinforcement-learning setting", model.settings)
+        self.assertNotIn("policy optimization", model.methods)
+        self.assertIn("PDE residual", " ".join(model.implementation_notes))
+
+    def test_non_llm_clustering_does_not_inherit_quantization_routing(self) -> None:
+        extraction = PdfExtraction(
+            metadata={"title": "Deep clustering with concrete k-means"},
+            page_count=2,
+            pages=[
+                PageExtraction(
+                    page_number=1,
+                    text=(
+                        "Abstract\nWe propose concrete k-means, an end-to-end solution to the "
+                        "k-means objective jointly with representation learning."
+                    ),
+                    section_hint="Abstract",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+                PageExtraction(
+                    page_number=2,
+                    text=(
+                        "Method\nThe model learns representations and cluster assignments for "
+                        "deep clustering benchmarks such as MNIST and Reuters."
+                    ),
+                    section_hint="Method",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+            ],
+        )
+
+        model = build_paper_model("Deep clustering with concrete k-means", extraction)
+
+        self.assertEqual(model.methods, ["clustering algorithm"])
+        self.assertEqual(model.settings, ["clustering theory setting"])
+        self.assertEqual(model.topics, ["clustering theory"])
+        self.assertNotIn("non-uniform quantization", model.topics)
+        self.assertNotIn("LUT/kernel setting", model.settings)
+
     def test_wiki_ingest_writes_draft_only_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -227,6 +320,38 @@ class CliTests(unittest.TestCase):
             self.assertNotIn("- Model strategy:", paper)
             self.assertNotIn("## Extracted Contribution Sentences", paper)
             self.assertNotIn("Agent task:", paper)
+
+    def test_wiki_ingest_can_skip_page_images_for_batch_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pdf = root / "paper.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            out = root / "wiki/.drafts/ingests/fake-paper"
+
+            exit_code = main(["wiki", "ingest", str(pdf), "--out", str(out), "--no-page-images"])
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue((out / "extraction/pages.jsonl").exists())
+            self.assertFalse((out / "extraction/page-images/page-0001.png").exists())
+            pages = [
+                json.loads(line)
+                for line in (out / "extraction/pages.jsonl").read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            self.assertEqual(len(pages), 3)
+            self.assertEqual(pages[0]["image_path"], "")
+
+            run = json.loads((out / "run.json").read_text(encoding="utf-8"))
+            self.assertEqual(run["extraction_options"]["render_page_images"], False)
+
+            structural_path = root / "structural-self-check.json"
+            self.assertEqual(
+                main(["wiki", "structural-check", str(out / "run.json"), "--out", str(structural_path)]),
+                0,
+            )
+            structural = json.loads(structural_path.read_text(encoding="utf-8"))
+            dimensions = {item["dimension"]: item for item in structural["dimension_scores"]}
+            self.assertNotIn("page_image_count_mismatch", " ".join(dimensions["extraction_consistency"]["findings"]))
 
             claim_lines = (out / "claims.jsonl").read_text(encoding="utf-8").splitlines()
             method_lines = (out / "methods.jsonl").read_text(encoding="utf-8").splitlines()
@@ -347,6 +472,8 @@ class CliTests(unittest.TestCase):
             self.assertIn("[[papers/Fake-Research-Paper|Fake Research Paper]]", index)
             self.assertIn("## [", log)
             self.assertIn("Quality gate: `warn`", log)
+            self.assertTrue((wiki_root / ".drafts/retrieval").is_dir())
+            self.assertTrue((wiki_root / "templates/paper.md").exists())
 
     def test_wiki_catalog_indexes_canonical_paper_frontmatter(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -632,6 +759,70 @@ This page explains preference optimization for alignment.
             self.assertEqual(payload["schema_version"], "meridian.retrieval_context.v0")
             self.assertEqual(payload["results"][0]["title"], "MoE PTQ Paper")
             self.assertIn("methods", payload["results"][0]["matched_frontmatter"])
+
+    def test_wiki_retrieve_exact_identity_beats_crowded_shared_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            papers.mkdir(parents=True)
+            _write_test_paper(
+                papers / "DuQuant.md",
+                title="Lin et al. - 2024 - DuQuant Distributing Outliers via Dual Transformation",
+                aliases=["DuQuant"],
+                topics=["post-training quantization", "low-bit quantization", "activation outliers"],
+                methods=["post-training quantization", "outlier-aware quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "DuQuant distributes massive and normal activation outliers before W4A4 quantization.",
+                    "Mechanism": "Dual rotation and permutation transforms preserve the linear layer before quantization.",
+                    "Implementation Hooks": "Probe massive-outlier detection separately from normal-outlier smoothing.",
+                },
+            )
+            _write_test_paper(
+                papers / "Generic-PTQ.md",
+                title="Generic Accurate Post-Training Quantization for Transformers",
+                aliases=["Post-Training"],
+                topics=["post-training quantization", "low-bit quantization", "activation outliers"],
+                methods=["post-training quantization", "outlier-aware quantization", "calibration-aware PTQ"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "A broad PTQ page with many shared quantization terms.",
+                    "Mechanism": "Quantization uses calibration data and generic activation outlier handling.",
+                    "Evidence Map": "Reports accuracy, perplexity, and latency on common benchmarks.",
+                },
+            )
+
+            result = retrieve_papers(
+                query=(
+                    "I am looking for the paper or closely related work on DuQuant about "
+                    "post-training quantization, outlier-aware quantization, low-bit quantization, "
+                    "and weight-activation quantization."
+                ),
+                wiki_root=wiki_root,
+                top_k=2,
+            )
+
+            self.assertEqual(result.results[0]["relative_path"], "papers/DuQuant.md")
+            self.assertIn("exact identity match", result.results[0]["selection_reasons"])
+
+    def test_primary_paper_key_prefers_target_method_over_baseline_mentions(self) -> None:
+        pages = [
+            PageExtraction(
+                page_number=1,
+                text=(
+                    "DuQuant: Distributing Outliers via Dual Transformation Makes Stronger Quantized LLMs\n"
+                    "Abstract\nExisting methods such as SmoothQuant and QuaRot motivate the problem, "
+                    "but DuQuant is the method proposed in this paper."
+                ),
+                section_hint="Abstract",
+                image_path="",
+                image_count=0,
+                drawing_count=0,
+            )
+        ]
+
+        self.assertEqual(_primary_paper_key(pages), "duquant")
 
     def test_eval_iterates_jsonl_cases(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1894,6 +2085,32 @@ This page explains preference optimization for alignment.
                     self.assertTrue(Path(query["context_packet"]).exists())
                     self.assertTrue(Path(query["context_json"]).exists())
                     self.assertIn(query["target_page"], query["retrieved_pages"])
+
+    def test_retrieval_audit_evidence_queries_include_method_discriminator(self) -> None:
+        queries = generate_audit_queries(
+            {
+                "title": "FlatQuant",
+                "routing": {
+                    "methods": ["rotation-based quantization", "post-training quantization"],
+                    "topics": ["activation outliers", "quantization error"],
+                    "settings": ["weight-activation quantization"],
+                    "datasets": ["WikiText2"],
+                    "metrics": ["perplexity"],
+                },
+            }
+        )
+
+        evidence_query = next(query for query in queries if query["intent"] == "evidence_scope")
+        method_query = next(query for query in queries if query["intent"] == "method_design")
+        implementation_query = next(query for query in queries if query["intent"] == "implementation_probe")
+        self.assertIn("FlatQuant", method_query["query"])
+        self.assertIn("FlatQuant", implementation_query["query"])
+        self.assertIn("rotation-based quantization", evidence_query["query"])
+        self.assertIn("FlatQuant", evidence_query["query"])
+        self.assertIn("activation outliers", evidence_query["query"])
+        self.assertIn("WikiText2", evidence_query["query"])
+        self.assertIn("methods", evidence_query["source_fields"])
+        self.assertEqual(evidence_query["source_fields"]["methods"], ["rotation-based quantization"])
 
     def test_propose_writeback_creates_draft_without_canonical_publish(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

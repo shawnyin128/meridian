@@ -36,6 +36,7 @@ def run_wiki_flow(
     publish_mode: str = "auto",
     case_path: Path | None = None,
     judge_result_path: Path | None = None,
+    render_page_images: bool = True,
 ) -> WikiFlowResult:
     ingest_result: IngestResult = run_ingest(
         pdf_path=pdf_path,
@@ -44,6 +45,7 @@ def run_wiki_flow(
         overwrite=overwrite,
         wiki_root=wiki_root,
         publish_mode=publish_mode,
+        render_page_images=render_page_images,
     )
     judge_packet_path = build_judge_packet(
         run_manifest=ingest_result.run_path,
