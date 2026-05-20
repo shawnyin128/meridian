@@ -226,5 +226,6 @@ Retrieval quality examples and rubric:
 ```bash
 eval/cases/wiki_retrieval_quality.example.jsonl
 eval/cases/wiki_retrieval_quantization_smoke.jsonl
+eval/cases/wiki_retrieval_generalization.example.jsonl
 eval/rubrics/wiki_retrieval_quality_v0.md
 ```

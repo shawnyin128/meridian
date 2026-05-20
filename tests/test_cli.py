@@ -1586,6 +1586,244 @@ This page explains preference optimization for alignment.
             self.assertEqual(summary["judge_results"], 0)
             self.assertFalse(judge_result_path.exists())
 
+    def test_retrieval_eval_runner_generalizes_across_domains_and_intents(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            papers.mkdir(parents=True)
+            _write_test_paper(
+                papers / "Alignment-RLHF.md",
+                title="Alignment RLHF Paper",
+                aliases=["DPO", "preference optimization"],
+                topics=["preference data", "reward hacking", "policy alignment"],
+                methods=["direct preference optimization", "reward modeling"],
+                settings=["RLHF setting", "instruction tuning"],
+                body_sections={
+                    "What To Remember": "A preference optimization page for aligning policies from comparison data.",
+                    "Mechanism": "The method transforms preference pairs into a policy update without an online reward model.",
+                    "Evidence Map": "Reports win rate, reward model agreement, and benchmark comparisons against supervised fine-tuning.",
+                    "Limitations / Uncertainty": "Scope depends on preference data quality and can fail under reward hacking or distribution shift.",
+                },
+            )
+            _write_test_paper(
+                papers / "Agent-Tool-Use.md",
+                title="Agent Tool Use Paper",
+                aliases=["toolformer", "function calling"],
+                topics=["tool use", "agent planning", "external memory"],
+                methods=["tool-augmented language modeling", "planning with tools"],
+                settings=["agent setting", "tool calling"],
+                body_sections={
+                    "What To Remember": "A tool-use agent page about deciding when to call external tools.",
+                    "Mechanism": "The agent inserts tool calls, observes outputs, and conditions later reasoning on returned evidence.",
+                    "Implementation Hooks": "Log tool-call decisions, failed calls, observation use, and ablate tool availability.",
+                    "Limitations / Uncertainty": "Tool-use gains depend on reliable tool outputs and task distributions with useful external actions.",
+                },
+            )
+            _write_test_paper(
+                papers / "Audio-Language-Model.md",
+                title="Audio Language Model Paper",
+                aliases=["speech LLM", "audio instruction tuning"],
+                topics=["audio-language modeling", "speech understanding", "multimodal evaluation"],
+                methods=["audio-language instruction tuning", "speech encoder adapter"],
+                settings=["multimodal audio setting", "speech evaluation"],
+                body_sections={
+                    "What To Remember": "An audio-language model page about adapting speech encoders into language models.",
+                    "Mechanism": "The method maps acoustic representations into a language model token interface.",
+                    "Evidence Map": "Evaluates speech recognition, spoken question answering, and audio instruction-following benchmarks.",
+                    "Limitations / Uncertainty": "Evidence may not transfer to noisy long-form audio or unseen languages.",
+                },
+            )
+            _write_test_paper(
+                papers / "Quantization-Distractor.md",
+                title="Quantization Distractor",
+                aliases=["CodeQuant"],
+                topics=["activation outliers", "quantization error"],
+                methods=["post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "A quantization page that should not satisfy alignment, agents, or audio queries.",
+                    "Mechanism": "The method smooths outliers for low-bit inference.",
+                },
+            )
+            cases = root / "generalized-retrieval-cases.jsonl"
+            cases.write_text(
+                "\n".join(
+                    json.dumps(case)
+                    for case in [
+                        {
+                            "id": "general-alignment-scope-001",
+                            "category": "wiki_retrieval_quality",
+                            "query": "I am deciding whether preference optimization evidence is strong enough for an RLHF alignment baseline, and I need limitations around reward hacking and preference data quality.",
+                            "intent": "scope_limit",
+                            "wiki_fixture": "unit-test",
+                            "required_pages": ["papers/Alignment-RLHF.md"],
+                            "acceptable_pages": [],
+                            "distractor_pages": ["papers/Quantization-Distractor.md"],
+                            "required_sections": [
+                                {"page": "papers/Alignment-RLHF.md", "sections": ["Evidence Map", "Limitations / Uncertainty"]}
+                            ],
+                            "expected_context_properties": [
+                                "Surface preference optimization evidence and limitations, not quantization mechanics."
+                            ],
+                            "must_not_do": ["Do not rank quantization pages for RLHF alignment scope queries."],
+                            "judge_rubric": ["scope_reasoning", "evidence_alignment"],
+                        },
+                        {
+                            "id": "general-agent-implementation-001",
+                            "category": "wiki_retrieval_quality",
+                            "query": "Before implementing a tool-use agent baseline, I need papers that explain when the agent should call tools, how observations feed back into reasoning, and which ablations would show whether tool access is actually used.",
+                            "intent": "implementation_probe",
+                            "wiki_fixture": "unit-test",
+                            "required_pages": ["papers/Agent-Tool-Use.md"],
+                            "acceptable_pages": [],
+                            "distractor_pages": ["papers/Quantization-Distractor.md"],
+                            "required_sections": [
+                                {"page": "papers/Agent-Tool-Use.md", "sections": ["Mechanism", "Implementation Hooks"]}
+                            ],
+                            "expected_context_properties": [
+                                "Surface mechanism and implementation hooks for tool-use decisions."
+                            ],
+                            "must_not_do": ["Do not satisfy an agent implementation query with generic model optimization pages."],
+                            "judge_rubric": ["implementation_usefulness", "section_selection"],
+                        },
+                        {
+                            "id": "general-audio-evidence-001",
+                            "category": "wiki_retrieval_quality",
+                            "query": "I need audio-language model papers with evidence on speech understanding and spoken question answering, plus caveats about transfer to noisy or multilingual audio.",
+                            "intent": "evidence_check",
+                            "wiki_fixture": "unit-test",
+                            "required_pages": ["papers/Audio-Language-Model.md"],
+                            "acceptable_pages": [],
+                            "distractor_pages": ["papers/Quantization-Distractor.md"],
+                            "required_sections": [
+                                {"page": "papers/Audio-Language-Model.md", "sections": ["Evidence Map", "Limitations / Uncertainty"]}
+                            ],
+                            "expected_context_properties": [
+                                "Surface audio evaluation evidence and transfer caveats."
+                            ],
+                            "must_not_do": ["Do not over-retrieve unrelated low-bit inference pages."],
+                            "judge_rubric": ["evidence_alignment", "uncertainty_reporting"],
+                        },
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            out_dir = root / "retrieval-eval"
+
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "retrieval-eval",
+                        str(cases),
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--out-dir",
+                        str(out_dir),
+                        "--top-k",
+                        "3",
+                    ]
+                ),
+                0,
+            )
+
+            summary = json.loads((out_dir / "retrieval_summary.json").read_text(encoding="utf-8"))
+            manifest = json.loads((out_dir / "retrieval_manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(summary["deterministic_decisions"]["pass"], 3)
+            self.assertEqual(summary["average_required_recall_at_k"], 1.0)
+            self.assertEqual(summary["average_section_hit_rate"], 1.0)
+            for result in manifest["results"]:
+                self.assertNotEqual(result["metrics"]["retrieved_pages"][0], "papers/Quantization-Distractor.md")
+                self.assertNotIn("top_result_is_declared_distractor", result["metrics"]["hard_fails"])
+                context = Path(result["context_packet"]).read_text(encoding="utf-8")
+                self.assertIn("Read first:", context)
+
+    def test_retrieval_eval_runner_routes_source_quality_cleanup(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            papers.mkdir(parents=True)
+            _write_test_paper(
+                papers / "Scanned-PDF-Hold.md",
+                title="Scanned PDF Hold",
+                aliases=["bad extraction"],
+                topics=["source quality", "OCR cleanup", "metadata repair"],
+                methods=["source-quality triage"],
+                settings=["scanned PDF", "missing provenance"],
+                body_sections={
+                    "What To Remember": "This is a source-quality hold, not reliable paper knowledge.",
+                    "Mechanism": "Do OCR or obtain a cleaner PDF before extracting claims.",
+                    "Limitations / Uncertainty": "Scientific synthesis is blocked because extraction text is too weak.",
+                },
+                review_state="source_text_insufficient",
+                quality_gate="fail",
+                confidence="low",
+            )
+            _write_test_paper(
+                papers / "Reliable-Paper.md",
+                title="Reliable Paper",
+                aliases=["clean source"],
+                topics=["language model evaluation"],
+                methods=["benchmark evaluation"],
+                settings=["clean PDF"],
+                body_sections={
+                    "What To Remember": "A reliable paper page about benchmark methodology.",
+                    "Evidence Map": "The paper reports benchmark results with standard dataset splits.",
+                },
+                review_state="auto_converged",
+                quality_gate="pass",
+                confidence="high",
+            )
+            cases = root / "source-quality-cases.jsonl"
+            case = {
+                "id": "source-quality-cleanup-unit-001",
+                "category": "wiki_retrieval_quality",
+                "query": "Find source quality cleanup targets with bad OCR, missing provenance, weak metadata, or scanned PDF extraction holds. I want cleanup work, not scientific evidence.",
+                "intent": "source_quality",
+                "wiki_fixture": "unit-test",
+                "required_pages": ["papers/Scanned-PDF-Hold.md"],
+                "acceptable_pages": [],
+                "distractor_pages": ["papers/Reliable-Paper.md"],
+                "required_sections": [
+                    {"page": "papers/Scanned-PDF-Hold.md", "sections": ["Limitations / Uncertainty"]}
+                ],
+                "expected_context_properties": [
+                    "Return low-confidence source-quality holds as cleanup targets."
+                ],
+                "must_not_do": ["Do not present reliable high-confidence pages as cleanup targets."],
+                "judge_rubric": ["source_quality_routing", "uncertainty_reporting"],
+            }
+            cases.write_text(json.dumps(case) + "\n", encoding="utf-8")
+            out_dir = root / "retrieval-eval"
+
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "retrieval-eval",
+                        str(cases),
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--out-dir",
+                        str(out_dir),
+                        "--top-k",
+                        "1",
+                    ]
+                ),
+                0,
+            )
+
+            manifest = json.loads((out_dir / "retrieval_manifest.json").read_text(encoding="utf-8"))
+            summary = json.loads((out_dir / "retrieval_summary.json").read_text(encoding="utf-8"))
+            metrics = manifest["results"][0]["metrics"]
+            self.assertEqual(metrics["deterministic_decision"], "pass")
+            self.assertEqual(metrics["source_quality_routing"]["quality_hits"], ["papers/Scanned-PDF-Hold.md"])
+            self.assertEqual(metrics["source_quality_routing"]["reliable_evidence_hits"], [])
+            self.assertEqual(summary["source_quality_routing_pass_rate"], 1.0)
+
     def test_propose_writeback_creates_draft_without_canonical_publish(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1720,6 +1958,9 @@ def _write_test_paper(
     methods: list[str],
     settings: list[str],
     body_sections: dict[str, str],
+    review_state: str = "auto_converged",
+    quality_gate: str = "pass",
+    confidence: str = "medium",
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frontmatter = [
@@ -1738,9 +1979,9 @@ def _write_test_paper(
         "datasets: []",
         "metrics: []",
         "claims: []",
-        'confidence: "medium"',
-        'review_state: "auto_converged"',
-        'quality_gate: "pass"',
+        f'confidence: "{confidence}"',
+        f'review_state: "{review_state}"',
+        f'quality_gate: "{quality_gate}"',
         "---",
         f"# {title}",
         "",
