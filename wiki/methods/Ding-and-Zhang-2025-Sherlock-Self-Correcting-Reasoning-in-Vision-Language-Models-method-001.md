@@ -1,0 +1,18 @@
+---
+type: "method"
+title: "Ding and Zhang - 2025 - Sherlock Self-Correcting Reasoning in Vision-Language Models"
+status: "draft"
+sources:
+  - "[[papers/Ding-and-Zhang-2025-Sherlock-Self-Correcting-Reasoning-in-Vision-Language-Models|Ding and Zhang - 2025 - Sherlock Self-Correcting Reasoning in Vision-Language Models]]"
+confidence: "medium"
+review_state: "auto_extracted"
+candidate_id: "method-001"
+---
+# Ding and Zhang - 2025 - Sherlock Self-Correcting Reasoning in Vision-Language Models
+
+- Source paper: [[papers/Ding-and-Zhang-2025-Sherlock-Self-Correcting-Reasoning-in-Vision-Language-Models|Ding and Zhang - 2025 - Sherlock Self-Correcting Reasoning in Vision-Language Models]]
+- Summary: Based on our findings, we introduce Sherlock, a self-correction and self-improvement training framework. To enable self-correction in reasoning VLMs, we introduce Sherlock: a self-correction and self- improvement training framework to enhance reasoning. To further stabilize preference training, we introduce a dynamic β that adapts to the quality gap between each sample pair.
+- Inputs: policy parameters, reward signal, rollout trajectories
+- Outputs: updated policy, measured return or task success
+- Assumptions: rollout reward and evaluation environment match the behavior being optimized
+- Provenance: p. 2; p. 5; p. 1

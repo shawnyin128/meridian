@@ -1,0 +1,2382 @@
+{
+  "schema_version": "meridian.source_audit.v0",
+  "wiki_root": "wiki",
+  "created_at": "2026-05-20T17:32:22.088373+00:00",
+  "registry": "wiki/raw/sources/sources.jsonl",
+  "total": 237,
+  "missing_managed": 0,
+  "sha_mismatches": 0,
+  "duplicate_sha_groups": 0,
+  "sources": [
+    {
+      "source_id": "paper-pdf-4c2b5a0ff6f9",
+      "title": "Christiano et al. - 2023 - Deep reinforcement learning from human preferences",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-4c2b5a0ff6f9-Christiano-et-al-2023-Deep-reinforcement-learning-from-human-preferences.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1000/Christiano et al. - 2023 - Deep reinforcement learning from human preferences.pdf",
+      "sha256": "4c2b5a0ff6f9cd6696d3e9c8263efbbe701123d4fa09f22bf28d6ef861b73a2a",
+      "actual_sha256": "4c2b5a0ff6f9cd6696d3e9c8263efbbe701123d4fa09f22bf28d6ef861b73a2a"
+    },
+    {
+      "source_id": "paper-pdf-e78feadadbdb",
+      "title": "Schulman et al. - 2017 - Proximal Policy Optimization Algorithms",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-e78feadadbdb-Schulman-et-al-2017-Proximal-Policy-Optimization-Algorithms.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1012/Schulman et al. - 2017 - Proximal Policy Optimization Algorithms.pdf",
+      "sha256": "e78feadadbdbb0b601b3c2bcc81404722cd431a489b307545f9b7bea1e8c4f5b",
+      "actual_sha256": "e78feadadbdbb0b601b3c2bcc81404722cd431a489b307545f9b7bea1e8c4f5b"
+    },
+    {
+      "source_id": "paper-pdf-c228ad36d9d4",
+      "title": "Schulman et al. - 2017 - Trust Region Policy Optimization",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-c228ad36d9d4-Schulman-et-al-2017-Trust-Region-Policy-Optimization.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1019/Schulman et al. - 2017 - Trust Region Policy Optimization.pdf",
+      "sha256": "c228ad36d9d46972b898c96d58b5929c51b54cc43fd42f01d751b36f434bfa4a",
+      "actual_sha256": "c228ad36d9d46972b898c96d58b5929c51b54cc43fd42f01d751b36f434bfa4a"
+    },
+    {
+      "source_id": "paper-pdf-4a2f9e715c90",
+      "title": "Azar et al. - 2023 - A General Theoretical Paradigm to Understand Learning from Human Preferences",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-4a2f9e715c90-Azar-et-al-2023-A-General-Theoretical-Paradigm-to-Understand-Learning-from-Human-Preferences.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1023/Azar et al. - 2023 - A General Theoretical Paradigm to Understand Learning from Human Preferences.pdf",
+      "sha256": "4a2f9e715c9031dfe4623df0f82df5dafedc94ede51568122cdf495a10d0630b",
+      "actual_sha256": "4a2f9e715c9031dfe4623df0f82df5dafedc94ede51568122cdf495a10d0630b"
+    },
+    {
+      "source_id": "paper-pdf-797c4a507586",
+      "title": "Lasby et al. - 2025 - REAP the Experts Why Pruning Prevails for One-Shot MoE compression",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-797c4a507586-Lasby-et-al-2025-REAP-the-Experts-Why-Pruning-Prevails-for-One-Shot-MoE-compression.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1025/Lasby et al. - 2025 - REAP the Experts Why Pruning Prevails for One-Shot MoE compression.pdf",
+      "sha256": "797c4a507586f6e440ea3aff2e4842e28d41783f5e2766783cdafcc218343fdb",
+      "actual_sha256": "797c4a507586f6e440ea3aff2e4842e28d41783f5e2766783cdafcc218343fdb"
+    },
+    {
+      "source_id": "paper-pdf-e4036f5b554f",
+      "title": "Chen et al. - 2025 - EfficientQAT Efficient Quantization-Aware Training for Large Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-e4036f5b554f-Chen-et-al-2025-EfficientQAT-Efficient-Quantization-Aware-Training-for-Large-Language-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1041/Chen et al. - 2025 - EfficientQAT Efficient Quantization-Aware Training for Large Language Models.pdf",
+      "sha256": "e4036f5b554fa94299121ad68a974ebd91eb23dae8200fa6f921159fabef80e9",
+      "actual_sha256": "e4036f5b554fa94299121ad68a974ebd91eb23dae8200fa6f921159fabef80e9"
+    },
+    {
+      "source_id": "paper-pdf-782982b03b97",
+      "title": "Chee et al. - 2024 - QuIP 2-Bit Quantization of Large Language Models With Guarantees",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-782982b03b97-Chee-et-al-2024-QuIP-2-Bit-Quantization-of-Large-Language-Models-With-Guarantees.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1044/Chee et al. - 2024 - QuIP 2-Bit Quantization of Large Language Models With Guarantees.pdf",
+      "sha256": "782982b03b97f6437df021d122ed15779454318032888db38d24b038e2062d93",
+      "actual_sha256": "782982b03b97f6437df021d122ed15779454318032888db38d24b038e2062d93"
+    },
+    {
+      "source_id": "paper-pdf-3731cd40d471",
+      "title": "Szymanowicz et al. - 2024 - Splatter Image Ultra-Fast Single-View 3D Reconstruction",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-3731cd40d471-Szymanowicz-et-al-2024-Splatter-Image-Ultra-Fast-Single-View-3D-Reconstruction.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1048/Szymanowicz et al. - 2024 - Splatter Image Ultra-Fast Single-View 3D Reconstruction.pdf",
+      "sha256": "3731cd40d471a0fe9dc93c9bc34cf2d9dc8fb32ef038a4fd6004792897b2a776",
+      "actual_sha256": "3731cd40d471a0fe9dc93c9bc34cf2d9dc8fb32ef038a4fd6004792897b2a776"
+    },
+    {
+      "source_id": "paper-pdf-0370f4b21b2e",
+      "title": "7194_FlexHiNM_GP_Flexible_Hier",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-0370f4b21b2e-7194-FlexHiNM-GP-Flexible-Hier.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1051/7194_FlexHiNM_GP_Flexible_Hier.pdf",
+      "sha256": "0370f4b21b2ebbf19be4e6315ef2b3255a3907082d5546c71c19d223fad90967",
+      "actual_sha256": "0370f4b21b2ebbf19be4e6315ef2b3255a3907082d5546c71c19d223fad90967"
+    },
+    {
+      "source_id": "paper-pdf-f83a3d740cf1",
+      "title": "3549_Train_Freeze_or_Exit_Dyna",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-f83a3d740cf1-3549-Train-Freeze-or-Exit-Dyna.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1052/3549_Train_Freeze_or_Exit_Dyna.pdf",
+      "sha256": "f83a3d740cf1208ccaec0a5f469b0974487b80575822ba3a2a51cb74b8b2093a",
+      "actual_sha256": "f83a3d740cf1208ccaec0a5f469b0974487b80575822ba3a2a51cb74b8b2093a"
+    },
+    {
+      "source_id": "paper-pdf-511c5a78af60",
+      "title": "Wang et al. - 2023 - BitNet Scaling 1-bit Transformers for Large Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-511c5a78af60-Wang-et-al-2023-BitNet-Scaling-1-bit-Transformers-for-Large-Language-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1069/Wang et al. - 2023 - BitNet Scaling 1-bit Transformers for Large Language Models.pdf",
+      "sha256": "511c5a78af60371b94957ec24a9ea6ad2a41472d33bdff84f44f28c790a99f2f",
+      "actual_sha256": "511c5a78af60371b94957ec24a9ea6ad2a41472d33bdff84f44f28c790a99f2f"
+    },
+    {
+      "source_id": "paper-pdf-777058eb085a",
+      "title": "Wang et al. - 2024 - BitNet a4.8 4-bit Activations for 1-bit LLMs",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-777058eb085a-Wang-et-al-2024-BitNet-a4-8-4-bit-Activations-for-1-bit-LLMs.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1074/Wang et al. - 2024 - BitNet a4.8 4-bit Activations for 1-bit LLMs.pdf",
+      "sha256": "777058eb085a1d19fbfa9b142411d6853d9c3a37d5cbc7e54e49bb696efdfdc6",
+      "actual_sha256": "777058eb085a1d19fbfa9b142411d6853d9c3a37d5cbc7e54e49bb696efdfdc6"
+    },
+    {
+      "source_id": "paper-pdf-f164273472bd",
+      "title": "Wang et al. - 2025 - BitNet v2 Native 4-bit Activations with Hadamard Transformation for 1-bit LLMs",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-f164273472bd-Wang-et-al-2025-BitNet-v2-Native-4-bit-Activations-with-Hadamard-Transformation-for-1-bit-LLMs.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1076/Wang et al. - 2025 - BitNet v2 Native 4-bit Activations with Hadamard Transformation for 1-bit LLMs.pdf",
+      "sha256": "f164273472bd3bad7228281de23d03dd78cd1993e6e199648908a0cca86ffcce",
+      "actual_sha256": "f164273472bd3bad7228281de23d03dd78cd1993e6e199648908a0cca86ffcce"
+    },
+    {
+      "source_id": "paper-pdf-b4d897db78c7",
+      "title": "Chitsaz et al. - 2024 - Exploring Quantization for Efficient Pre-Training of Transformer Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-b4d897db78c7-Chitsaz-et-al-2024-Exploring-Quantization-for-Efficient-Pre-Training-of-Transformer-Language-Mod.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1104/Chitsaz et al. - 2024 - Exploring Quantization for Efficient Pre-Training of Transformer Language Models.pdf",
+      "sha256": "b4d897db78c7c789742b7e26e0c06f98af9c76dfdec1f60690c6a0d773ead20f",
+      "actual_sha256": "b4d897db78c7c789742b7e26e0c06f98af9c76dfdec1f60690c6a0d773ead20f"
+    },
+    {
+      "source_id": "paper-pdf-c79460471ea0",
+      "title": "Jung et al. - 2018 - Learning to Quantize Deep Networks by Optimizing Quantization Intervals with Task Loss",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-c79460471ea0-Jung-et-al-2018-Learning-to-Quantize-Deep-Networks-by-Optimizing-Quantization-Intervals-with-Tas.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1198/Jung et al. - 2018 - Learning to Quantize Deep Networks by Optimizing Quantization Intervals with Task Loss.pdf",
+      "sha256": "c79460471ea0b1a3c3e2605c9214a9d9c009b85b3f38a63ca900a661bd931833",
+      "actual_sha256": "c79460471ea0b1a3c3e2605c9214a9d9c009b85b3f38a63ca900a661bd931833"
+    },
+    {
+      "source_id": "paper-pdf-595dcf023036",
+      "title": "Li et al. - 2020 - Additive Powers-of-Two Quantization An Efficient Non-uniform Discretization for Neural Networks",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-595dcf023036-Li-et-al-2020-Additive-Powers-of-Two-Quantization-An-Efficient-Non-uniform-Discretization-for-Ne.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1199/Li et al. - 2020 - Additive Powers-of-Two Quantization An Efficient Non-uniform Discretization for Neural Networks.pdf",
+      "sha256": "595dcf02303637ca800b356c9838f19b53f31f148bf1f3ce7425598c3596f20e",
+      "actual_sha256": "595dcf02303637ca800b356c9838f19b53f31f148bf1f3ce7425598c3596f20e"
+    },
+    {
+      "source_id": "paper-pdf-ea54ea14ca61",
+      "title": "Bhalgat et al. - 2020 - LSQ+ Improving low-bit quantization through learnable offsets and better initialization",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-ea54ea14ca61-Bhalgat-et-al-2020-LSQ-Improving-low-bit-quantization-through-learnable-offsets-and-better-initi.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1207/Bhalgat et al. - 2020 - LSQ+ Improving low-bit quantization through learnable offsets and better initialization.pdf",
+      "sha256": "ea54ea14ca61c5f985d89cb38d94ca9aac8046677954e39798707c056686759a",
+      "actual_sha256": "ea54ea14ca61c5f985d89cb38d94ca9aac8046677954e39798707c056686759a"
+    },
+    {
+      "source_id": "paper-pdf-d4c14820bc1e",
+      "title": "D'Oosterlinck et al. - 2024 - Anchored Preference Optimization and Contrastive Revisions Addressing Underspecification in Alignme",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-d4c14820bc1e-D-Oosterlinck-et-al-2024-Anchored-Preference-Optimization-and-Contrastive-Revisions-Addressing-U.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1211/D'Oosterlinck et al. - 2024 - Anchored Preference Optimization and Contrastive Revisions Addressing Underspecification in Alignme.pdf",
+      "sha256": "d4c14820bc1e18de49ec5e5c60ec10bf097dfd39e3795d799e2d362f31fbecbc",
+      "actual_sha256": "d4c14820bc1e18de49ec5e5c60ec10bf097dfd39e3795d799e2d362f31fbecbc"
+    },
+    {
+      "source_id": "paper-pdf-fb6c41214c2a",
+      "title": "Hu et al. - 2025 - OstQuant Refining Large Language Model Quantization with Orthogonal and Scaling Transformations for",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-fb6c41214c2a-Hu-et-al-2025-OstQuant-Refining-Large-Language-Model-Quantization-with-Orthogonal-and-Scaling-Tr.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1213/Hu et al. - 2025 - OstQuant Refining Large Language Model Quantization with Orthogonal and Scaling Transformations for.pdf",
+      "sha256": "fb6c41214c2a4986c3fad21bbc29b228292da0173ad2357d123c45cac96c95b9",
+      "actual_sha256": "fb6c41214c2a4986c3fad21bbc29b228292da0173ad2357d123c45cac96c95b9"
+    },
+    {
+      "source_id": "paper-pdf-be97d9021b49",
+      "title": "Li et al. - 2025 - Uni-LoRA One Vector is All You Need",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-be97d9021b49-Li-et-al-2025-Uni-LoRA-One-Vector-is-All-You-Need.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1226/Li et al. - 2025 - Uni-LoRA One Vector is All You Need.pdf",
+      "sha256": "be97d9021b49512ec3c77703a3cc6146e07f823f8bbf08d8f6758ebfe7a9f825",
+      "actual_sha256": "be97d9021b49512ec3c77703a3cc6146e07f823f8bbf08d8f6758ebfe7a9f825"
+    },
+    {
+      "source_id": "paper-pdf-4a8aeb3c9a8a",
+      "title": "Rahmati et al. - 2025 - C-LoRA Contextual Low-Rank Adaptation for Uncertainty Estimation in Large Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-4a8aeb3c9a8a-Rahmati-et-al-2025-C-LoRA-Contextual-Low-Rank-Adaptation-for-Uncertainty-Estimation-in-Large-Lan.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1227/Rahmati et al. - 2025 - C-LoRA Contextual Low-Rank Adaptation for Uncertainty Estimation in Large Language Models.pdf",
+      "sha256": "4a8aeb3c9a8a756206d75b27b36b909d2beb9ecd8255a01c66cba56f5aeb68f7",
+      "actual_sha256": "4a8aeb3c9a8a756206d75b27b36b909d2beb9ecd8255a01c66cba56f5aeb68f7"
+    },
+    {
+      "source_id": "paper-pdf-61b681d7c8b1",
+      "title": "Zhang et al. - 2025 - RefLoRA Refactored Low-Rank Adaptation for Efficient Fine-Tuning of Large Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-61b681d7c8b1-Zhang-et-al-2025-RefLoRA-Refactored-Low-Rank-Adaptation-for-Efficient-Fine-Tuning-of-Large-Model.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1228/Zhang et al. - 2025 - RefLoRA Refactored Low-Rank Adaptation for Efficient Fine-Tuning of Large Models.pdf",
+      "sha256": "61b681d7c8b17187f5fa662a700be7b8f3e14dd85946ab0db11644355c4ac442",
+      "actual_sha256": "61b681d7c8b17187f5fa662a700be7b8f3e14dd85946ab0db11644355c4ac442"
+    },
+    {
+      "source_id": "paper-pdf-943a5f2efd04",
+      "title": "Dong et al. - 2025 - AuroRA Breaking Low-Rank Bottleneck of LoRA with Nonlinear Mapping",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-943a5f2efd04-Dong-et-al-2025-AuroRA-Breaking-Low-Rank-Bottleneck-of-LoRA-with-Nonlinear-Mapping.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1229/Dong et al. - 2025 - AuroRA Breaking Low-Rank Bottleneck of LoRA with Nonlinear Mapping.pdf",
+      "sha256": "943a5f2efd04446695d8f591b2089e9302ab508f45e6830b2666e1ef83403858",
+      "actual_sha256": "943a5f2efd04446695d8f591b2089e9302ab508f45e6830b2666e1ef83403858"
+    },
+    {
+      "source_id": "paper-pdf-a89c625e873c",
+      "title": "Shuttleworth et al. - 2025 - LoRA vs Full Fine-tuning An Illusion of Equivalence",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-a89c625e873c-Shuttleworth-et-al-2025-LoRA-vs-Full-Fine-tuning-An-Illusion-of-Equivalence.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1230/Shuttleworth et al. - 2025 - LoRA vs Full Fine-tuning An Illusion of Equivalence.pdf",
+      "sha256": "a89c625e873cedec6dfde1c667ec3c761a6f147cbd3223bc255f59fc4513555f",
+      "actual_sha256": "a89c625e873cedec6dfde1c667ec3c761a6f147cbd3223bc255f59fc4513555f"
+    },
+    {
+      "source_id": "paper-pdf-0416b0ce56d6",
+      "title": "2511.10645v1",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-0416b0ce56d6-2511-10645v1.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1239/2511.10645v1.pdf",
+      "sha256": "0416b0ce56d62d4780e7c66e3023f3c828f2849e563b09d372f5fd4d728cf25a",
+      "actual_sha256": "0416b0ce56d62d4780e7c66e3023f3c828f2849e563b09d372f5fd4d728cf25a"
+    },
+    {
+      "source_id": "paper-pdf-67f3f5a7d738",
+      "title": "Liang et al. - 2025 - ParoQuant Pairwise Rotation Quantization for Efficient Reasoning LLM Inference",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-67f3f5a7d738-Liang-et-al-2025-ParoQuant-Pairwise-Rotation-Quantization-for-Efficient-Reasoning-LLM-Inference.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1240/Liang et al. - 2025 - ParoQuant Pairwise Rotation Quantization for Efficient Reasoning LLM Inference.pdf",
+      "sha256": "67f3f5a7d738cd23d4bcac7c62716f57ba38c768b459bf915e111b4d94ceada3",
+      "actual_sha256": "67f3f5a7d738cd23d4bcac7c62716f57ba38c768b459bf915e111b4d94ceada3"
+    },
+    {
+      "source_id": "paper-pdf-bdd2a5f513ba",
+      "title": "Ding and He - 2004 - K -means clustering via principal component analysis",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-bdd2a5f513ba-Ding-and-He-2004-K-means-clustering-via-principal-component-analysis.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1250/Ding and He - 2004 - K -means clustering via principal component analysis.pdf",
+      "sha256": "bdd2a5f513ba87e64c2259d949768a365a6debfa5f2d4b1f57c9b04f5871d81b",
+      "actual_sha256": "bdd2a5f513ba87e64c2259d949768a365a6debfa5f2d4b1f57c9b04f5871d81b"
+    },
+    {
+      "source_id": "paper-pdf-c41188c010e2",
+      "title": "Bauckhage - 2015 - k-Means Clustering Is Matrix Factorization",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-c41188c010e2-Bauckhage-2015-k-Means-Clustering-Is-Matrix-Factorization.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1251/Bauckhage - 2015 - k-Means Clustering Is Matrix Factorization.pdf",
+      "sha256": "c41188c010e23daeed9b8b0dd0b43999383660324af599bc3927f8714ca81201",
+      "actual_sha256": "c41188c010e23daeed9b8b0dd0b43999383660324af599bc3927f8714ca81201"
+    },
+    {
+      "source_id": "paper-pdf-bd0d0b1ce60a",
+      "title": "Hong et al. - 2025 - A Geometric Approach to $k$-means",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-bd0d0b1ce60a-Hong-et-al-2025-A-Geometric-Approach-to-k-means.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1252/Hong et al. - 2025 - A Geometric Approach to $k$-means.pdf",
+      "sha256": "bd0d0b1ce60a41bee2f453014520a92886b03b3d3a018bab13816b86e7632425",
+      "actual_sha256": "bd0d0b1ce60a41bee2f453014520a92886b03b3d3a018bab13816b86e7632425"
+    },
+    {
+      "source_id": "paper-pdf-50d1989bdb7f",
+      "title": "Dicks and Wales - 2022 - Elucidating the solution structure of the K-means cost function using energy landscape theory",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-50d1989bdb7f-Dicks-and-Wales-2022-Elucidating-the-solution-structure-of-the-K-means-cost-function-using-energ.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1253/Dicks and Wales - 2022 - Elucidating the solution structure of the K-means cost function using energy landscape theory.pdf",
+      "sha256": "50d1989bdb7f99719540e9b72fab2863e37eb743a45bbdf98ccfd91702e4d734",
+      "actual_sha256": "50d1989bdb7f99719540e9b72fab2863e37eb743a45bbdf98ccfd91702e4d734"
+    },
+    {
+      "source_id": "paper-pdf-5afdede6df08",
+      "title": "Download",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-5afdede6df08-Download.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1254/Download.pdf",
+      "sha256": "5afdede6df0880018f918efc5f6c97ffa4ee79fc0cde8f356baf890b3f72404b",
+      "actual_sha256": "5afdede6df0880018f918efc5f6c97ffa4ee79fc0cde8f356baf890b3f72404b"
+    },
+    {
+      "source_id": "paper-pdf-b43867987830",
+      "title": "Tarpey - 2007 - A parametric k-means algorithm",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-b43867987830-Tarpey-2007-A-parametric-k-means-algorithm.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1255/Tarpey - 2007 - A parametric k-means algorithm.pdf",
+      "sha256": "b43867987830d3795b710c391e06286ae925be641375fc09baaa8965e235b6ac",
+      "actual_sha256": "b43867987830d3795b710c391e06286ae925be641375fc09baaa8965e235b6ac"
+    },
+    {
+      "source_id": "paper-pdf-d46f6a3e1b90",
+      "title": "Woody Root System Excavation and Digitization",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-d46f6a3e1b90-Woody-Root-System-Excavation-and-Digitization.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1272/Woody Root System Excavation and Digitization.pdf",
+      "sha256": "d46f6a3e1b90760520dff3ba2c191bcf4067be200080aab0aed8c3de76e0983d",
+      "actual_sha256": "d46f6a3e1b90760520dff3ba2c191bcf4067be200080aab0aed8c3de76e0983d"
+    },
+    {
+      "source_id": "paper-pdf-facd3901dd57",
+      "title": "3D Root Data for Machine Learning",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-facd3901dd57-3D-Root-Data-for-Machine-Learning.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1273/3D Root Data for Machine Learning.pdf",
+      "sha256": "facd3901dd575dbb480b87ff4038d2d7db9110be8c788e0ec147b3eff67e99e6",
+      "actual_sha256": "facd3901dd575dbb480b87ff4038d2d7db9110be8c788e0ec147b3eff67e99e6"
+    },
+    {
+      "source_id": "paper-pdf-efc267d7643b",
+      "title": "Bouda et al. - 2016 - Box-Counting Dimension Revisited Presenting an Efficient Method of Minimizing Quantization Error an",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-efc267d7643b-Bouda-et-al-2016-Box-Counting-Dimension-Revisited-Presenting-an-Efficient-Method-of-Minimizing-Q.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1274/Bouda et al. - 2016 - Box-Counting Dimension Revisited Presenting an Efficient Method of Minimizing Quantization Error an.pdf",
+      "sha256": "efc267d7643b6729b9fa1a2b1e16b6e54a6c54cbcd678dcb96a95f8153d32ea7",
+      "actual_sha256": "efc267d7643b6729b9fa1a2b1e16b6e54a6c54cbcd678dcb96a95f8153d32ea7"
+    },
+    {
+      "source_id": "paper-pdf-77a80b2f807a",
+      "title": "Lu et al. - 2022 - A continental scale analysis reveals widespread root bimodality",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-77a80b2f807a-Lu-et-al-2022-A-continental-scale-analysis-reveals-widespread-root-bimodality.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1275/Lu et al. - 2022 - A continental scale analysis reveals widespread root bimodality.pdf",
+      "sha256": "77a80b2f807a441ed2dd7f0ef3b91afd94863a4d2c5639f1a873bbd585c63dab",
+      "actual_sha256": "77a80b2f807a441ed2dd7f0ef3b91afd94863a4d2c5639f1a873bbd585c63dab"
+    },
+    {
+      "source_id": "paper-pdf-1e879d552105",
+      "title": "Roy - 2024 - An Approach Towards Learning K-means-friendly Deep Latent Representation",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-1e879d552105-Roy-2024-An-Approach-Towards-Learning-K-means-friendly-Deep-Latent-Representation.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1279/Roy - 2024 - An Approach Towards Learning K-means-friendly Deep Latent Representation.pdf",
+      "sha256": "1e879d5521054cce92c5c381dc58d7ec41ee0123afd823527f575f136f60f235",
+      "actual_sha256": "1e879d5521054cce92c5c381dc58d7ec41ee0123afd823527f575f136f60f235"
+    },
+    {
+      "source_id": "paper-pdf-07c2caa49300",
+      "title": "Gao et al. - 2019 - Deep clustering with concrete k-means",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-07c2caa49300-Gao-et-al-2019-Deep-clustering-with-concrete-k-means.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1280/Gao et al. - 2019 - Deep clustering with concrete k-means.pdf",
+      "sha256": "07c2caa49300904a6f8fbadca6826b9312e879aaa4537b4bea7c51bd6ecc2f16",
+      "actual_sha256": "07c2caa49300904a6f8fbadca6826b9312e879aaa4537b4bea7c51bd6ecc2f16"
+    },
+    {
+      "source_id": "paper-pdf-0379b04b79e4",
+      "title": "Yang et al. - Towards K-means-friendly Spaces Simultaneous Deep Learning and Clustering",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-0379b04b79e4-Yang-et-al-Towards-K-means-friendly-Spaces-Simultaneous-Deep-Learning-and-Clustering.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1281/Yang et al. - Towards K-means-friendly Spaces Simultaneous Deep  Learning and Clustering.pdf",
+      "sha256": "0379b04b79e4b7c4f8965b46163c52593a19868fea3dedcd23e80d3b77200838",
+      "actual_sha256": "0379b04b79e4b7c4f8965b46163c52593a19868fea3dedcd23e80d3b77200838"
+    },
+    {
+      "source_id": "paper-pdf-61a5dee51ec1",
+      "title": "Wei et al. - 2025 - First SFT, Second RL, Third UPT Continual Improving Multi-Modal LLM Reasoning via Unsupervised Post",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-61a5dee51ec1-Wei-et-al-2025-First-SFT-Second-RL-Third-UPT-Continual-Improving-Multi-Modal-LLM-Reasoning-via-U.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1297/Wei et al. - 2025 - First SFT, Second RL, Third UPT Continual Improving Multi-Modal LLM Reasoning via Unsupervised Post.pdf",
+      "sha256": "61a5dee51ec19db989ebf619da288bdd7dd7e79bf9fd44669cf9270ad30bad62",
+      "actual_sha256": "61a5dee51ec19db989ebf619da288bdd7dd7e79bf9fd44669cf9270ad30bad62"
+    },
+    {
+      "source_id": "paper-pdf-15e5ebea5960",
+      "title": "Qi et al. - 2025 - EvoLM In Search of Lost Language Model Training Dynamics",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-15e5ebea5960-Qi-et-al-2025-EvoLM-In-Search-of-Lost-Language-Model-Training-Dynamics.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1301/Qi et al. - 2025 - EvoLM In Search of Lost Language Model Training Dynamics.pdf",
+      "sha256": "15e5ebea59606b5e2a23358a9f17eac0d0c92bd4052db269ac0a99c05e6bea61",
+      "actual_sha256": "15e5ebea59606b5e2a23358a9f17eac0d0c92bd4052db269ac0a99c05e6bea61"
+    },
+    {
+      "source_id": "paper-pdf-4f6cd3bd8b53",
+      "title": "Wang et al. - 2025 - SVD-LLM Truncation-aware Singular Value Decomposition for Large Language Model Compression",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-4f6cd3bd8b53-Wang-et-al-2025-SVD-LLM-Truncation-aware-Singular-Value-Decomposition-for-Large-Language-Model-C.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1312/Wang et al. - 2025 - SVD-LLM Truncation-aware Singular Value Decomposition for Large Language Model Compression.pdf",
+      "sha256": "4f6cd3bd8b53208f297b0f6e50889ea1e9e4355fbb12af343dd3a09f9b2f4189",
+      "actual_sha256": "4f6cd3bd8b53208f297b0f6e50889ea1e9e4355fbb12af343dd3a09f9b2f4189"
+    },
+    {
+      "source_id": "paper-pdf-6cc20b3c5b8d",
+      "title": "Shao et al. - 2024 - DeepSeekMath Pushing the Limits of Mathematical Reasoning in Open Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-6cc20b3c5b8d-Shao-et-al-2024-DeepSeekMath-Pushing-the-Limits-of-Mathematical-Reasoning-in-Open-Language-Model.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1325/Shao et al. - 2024 - DeepSeekMath Pushing the Limits of Mathematical Reasoning in Open Language Models.pdf",
+      "sha256": "6cc20b3c5b8d25b8b53868fc4ec1792c144f07d67bdf7395138efd4422197e7b",
+      "actual_sha256": "6cc20b3c5b8d25b8b53868fc4ec1792c144f07d67bdf7395138efd4422197e7b"
+    },
+    {
+      "source_id": "paper-pdf-5dda279009be",
+      "title": "LeCun - A Path Towards Autonomous Machine Intelligence Version 0.9.2, 2022-06-27",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-5dda279009be-LeCun-A-Path-Towards-Autonomous-Machine-Intelligence-Version-0-9-2-2022-06-27.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1327/LeCun - A Path Towards Autonomous Machine Intelligence Version 0.9.2, 2022-06-27.pdf",
+      "sha256": "5dda279009beae358f08b18b2a4374bfbe65f8c9ed773ea0b9b49f9068566022",
+      "actual_sha256": "5dda279009beae358f08b18b2a4374bfbe65f8c9ed773ea0b9b49f9068566022"
+    },
+    {
+      "source_id": "paper-pdf-14a8d45a3e7f",
+      "title": "Assran et al. - 2023 - Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-14a8d45a3e7f-Assran-et-al-2023-Self-Supervised-Learning-from-Images-with-a-Joint-Embedding-Predictive-Archite.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1330/Assran et al. - 2023 - Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture.pdf",
+      "sha256": "14a8d45a3e7f38e2647b26c2755c6c8ee1f76c658c817eed7fabd689c45ad03e",
+      "actual_sha256": "14a8d45a3e7f38e2647b26c2755c6c8ee1f76c658c817eed7fabd689c45ad03e"
+    },
+    {
+      "source_id": "paper-pdf-356098da1eb6",
+      "title": "Assran et al. - 2025 - V-JEPA 2 Self-Supervised Video Models Enable Understanding, Prediction and Planning",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-356098da1eb6-Assran-et-al-2025-V-JEPA-2-Self-Supervised-Video-Models-Enable-Understanding-Prediction-and-Plan.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1333/Assran et al. - 2025 - V-JEPA 2 Self-Supervised Video Models Enable Understanding, Prediction and Planning.pdf",
+      "sha256": "356098da1eb6afe64e41817eb135ae1e09eec041a84bdc5f7d2a2aec38157294",
+      "actual_sha256": "356098da1eb6afe64e41817eb135ae1e09eec041a84bdc5f7d2a2aec38157294"
+    },
+    {
+      "source_id": "paper-pdf-a3a22db87578",
+      "title": "Bai et al. - 2025 - Whole-Body Conditioned Egocentric Video Prediction",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-a3a22db87578-Bai-et-al-2025-Whole-Body-Conditioned-Egocentric-Video-Prediction.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1336/Bai et al. - 2025 - Whole-Body Conditioned Egocentric Video Prediction.pdf",
+      "sha256": "a3a22db87578cc786f9140c9e3b87ff2cc67ca02f3bb26dad55387a1aa48b71b",
+      "actual_sha256": "a3a22db87578cc786f9140c9e3b87ff2cc67ca02f3bb26dad55387a1aa48b71b"
+    },
+    {
+      "source_id": "paper-pdf-c36362205936",
+      "title": "Ho and Salimans - 2022 - Classifier-Free Diffusion Guidance",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-c36362205936-Ho-and-Salimans-2022-Classifier-Free-Diffusion-Guidance.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1339/Ho and Salimans - 2022 - Classifier-Free Diffusion Guidance.pdf",
+      "sha256": "c36362205936db46760f9681fd0accfab724990ac535f4ec6a34f3c1c205a9ba",
+      "actual_sha256": "c36362205936db46760f9681fd0accfab724990ac535f4ec6a34f3c1c205a9ba"
+    },
+    {
+      "source_id": "paper-pdf-654ef597e183",
+      "title": "Blattmann et al. - 2023 - Stable Video Diffusion Scaling Latent Video Diffusion Models to Large Datasets",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-654ef597e183-Blattmann-et-al-2023-Stable-Video-Diffusion-Scaling-Latent-Video-Diffusion-Models-to-Large-Datas.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1340/Blattmann et al. - 2023 - Stable Video Diffusion Scaling Latent Video Diffusion Models to Large Datasets.pdf",
+      "sha256": "654ef597e183c0544cd753494cb442125bc42b17dd2477481b6799114482a92e",
+      "actual_sha256": "654ef597e183c0544cd753494cb442125bc42b17dd2477481b6799114482a92e"
+    },
+    {
+      "source_id": "paper-pdf-ec7d0191e186",
+      "title": "Kraabel et al. - 2025 - StefaLand An Efficient Geoscience Foundation Model That Improves Dynamic Land-Surface Predictions",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-ec7d0191e186-Kraabel-et-al-2025-StefaLand-An-Efficient-Geoscience-Foundation-Model-That-Improves-Dynamic-Land.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1345/Kraabel et al. - 2025 - StefaLand An Efficient Geoscience Foundation Model That Improves Dynamic Land-Surface Predictions.pdf",
+      "sha256": "ec7d0191e186361464186267a9e6cf38cc7a9cf1d4664ebbc6c33d8befad621d",
+      "actual_sha256": "ec7d0191e186361464186267a9e6cf38cc7a9cf1d4664ebbc6c33d8befad621d"
+    },
+    {
+      "source_id": "paper-pdf-143018d71dfb",
+      "title": "Zhao et al. - 2024 - Artificial intelligence for geoscience Progress, challenges, and perspectives",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-143018d71dfb-Zhao-et-al-2024-Artificial-intelligence-for-geoscience-Progress-challenges-and-perspectives.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1346/Zhao et al. - 2024 - Artificial intelligence for geoscience Progress, challenges, and perspectives.pdf",
+      "sha256": "143018d71dfbc99d1b8e238e08dd82dd6abff8cc06cff0dffa3098587e4e2787",
+      "actual_sha256": "143018d71dfbc99d1b8e238e08dd82dd6abff8cc06cff0dffa3098587e4e2787"
+    },
+    {
+      "source_id": "paper-pdf-66def5494ca6",
+      "title": "Bodnar et al. - 2025 - A foundation model for the Earth system",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-66def5494ca6-Bodnar-et-al-2025-A-foundation-model-for-the-Earth-system.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1347/Bodnar et al. - 2025 - A foundation model for the Earth system.pdf",
+      "sha256": "66def5494ca66c3aa1bf1ad42c4501b1daa471e51ab887160e978fc8a8acd590",
+      "actual_sha256": "66def5494ca66c3aa1bf1ad42c4501b1daa471e51ab887160e978fc8a8acd590"
+    },
+    {
+      "source_id": "paper-pdf-bc4b2730575f",
+      "title": "Raissi et al. - 2019 - Physics-informed neural networks A deep learning framework for solving forward and inverse problems",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-bc4b2730575f-Raissi-et-al-2019-Physics-informed-neural-networks-A-deep-learning-framework-for-solving-forward.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1361/Raissi et al. - 2019 - Physics-informed neural networks A deep learning framework for solving forward and inverse problems.pdf",
+      "sha256": "bc4b2730575f4c8b24bf210687a8da6be98bec73bb130ad7762e15e4bdaf98b6",
+      "actual_sha256": "bc4b2730575f4c8b24bf210687a8da6be98bec73bb130ad7762e15e4bdaf98b6"
+    },
+    {
+      "source_id": "paper-pdf-893779fb4224",
+      "title": "Cuomo et al. - 2022 - Scientific Machine Learning Through Physics–Informed Neural Networks Where we are and What’s Next",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-893779fb4224-Cuomo-et-al-2022-Scientific-Machine-Learning-Through-Physics-Informed-Neural-Networks-Where-we-a.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1362/Cuomo et al. - 2022 - Scientific Machine Learning Through Physics–Informed Neural Networks Where we are and What’s Next.pdf",
+      "sha256": "893779fb4224db40396710d6f8ecb413977b9c79b01e9b3fd62d20c5ca4bed93",
+      "actual_sha256": "893779fb4224db40396710d6f8ecb413977b9c79b01e9b3fd62d20c5ca4bed93"
+    },
+    {
+      "source_id": "paper-pdf-633cdbcfa739",
+      "title": "Livny et al. - Automatic Reconstruction of Tree Skeletal Structures from Point Clouds",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-633cdbcfa739-Livny-et-al-Automatic-Reconstruction-of-Tree-Skeletal-Structures-from-Point-Clouds.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1372/Livny et al. - Automatic Reconstruction of Tree Skeletal Structures from Point Clouds.pdf",
+      "sha256": "633cdbcfa739fb86b551f387fb8f9a6d6c0cfd63fc1f4b3c587c65b22ab3124f",
+      "actual_sha256": "633cdbcfa739fb86b551f387fb8f9a6d6c0cfd63fc1f4b3c587c65b22ab3124f"
+    },
+    {
+      "source_id": "paper-pdf-f0d44c2e196d",
+      "title": "Tagliasacchi et al. - Curve Skeleton Extraction from Incomplete Point Cloud",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-f0d44c2e196d-Tagliasacchi-et-al-Curve-Skeleton-Extraction-from-Incomplete-Point-Cloud.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1373/Tagliasacchi et al. - Curve Skeleton Extraction from Incomplete Point Cloud.pdf",
+      "sha256": "f0d44c2e196d72cfa770b42ffca296a52157425a1eda611e1fdc2f53989d6d4e",
+      "actual_sha256": "f0d44c2e196d72cfa770b42ffca296a52157425a1eda611e1fdc2f53989d6d4e"
+    },
+    {
+      "source_id": "paper-pdf-27b65ee044c2",
+      "title": "Au et al. - 2008 - Skeleton extraction by mesh contraction",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-27b65ee044c2-Au-et-al-2008-Skeleton-extraction-by-mesh-contraction.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1374/Au et al. - 2008 - Skeleton extraction by mesh contraction.pdf",
+      "sha256": "27b65ee044c23eeddb1f167e757e838622fa12ad92eeb20a9c724e9e49730a6f",
+      "actual_sha256": "27b65ee044c23eeddb1f167e757e838622fa12ad92eeb20a9c724e9e49730a6f"
+    },
+    {
+      "source_id": "paper-pdf-508887ced746",
+      "title": "Qiu et al. - 2025 - Gated Attention for Large Language Models Non-linearity, Sparsity, and Attention-Sink-Free",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-508887ced746-Qiu-et-al-2025-Gated-Attention-for-Large-Language-Models-Non-linearity-Sparsity-and-Attention-Si.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1385/Qiu et al. - 2025 - Gated Attention for Large Language Models Non-linearity, Sparsity, and Attention-Sink-Free.pdf",
+      "sha256": "508887ced746088430c2edf1612311f1bfed7087bc24c292659463694ff5c578",
+      "actual_sha256": "508887ced746088430c2edf1612311f1bfed7087bc24c292659463694ff5c578"
+    },
+    {
+      "source_id": "paper-pdf-ea51d441d7b7",
+      "title": "Vaswani et al. - 2023 - Attention Is All You Need",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-ea51d441d7b7-Vaswani-et-al-2023-Attention-Is-All-You-Need.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1392/Vaswani et al. - 2023 - Attention Is All You Need.pdf",
+      "sha256": "ea51d441d7b79cc3e7d60f48370b5ba871155eed3f35f742e48536dcec48ad11",
+      "actual_sha256": "ea51d441d7b79cc3e7d60f48370b5ba871155eed3f35f742e48536dcec48ad11"
+    },
+    {
+      "source_id": "paper-pdf-d4b8c752b7ad",
+      "title": "Dehghani et al. - 2019 - Universal Transformers",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-d4b8c752b7ad-Dehghani-et-al-2019-Universal-Transformers.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1395/Dehghani et al. - 2019 - Universal Transformers.pdf",
+      "sha256": "d4b8c752b7ad28b6df67bab764ba6744c575ffe8e2f09879c750b05c7daf3e90",
+      "actual_sha256": "d4b8c752b7ad28b6df67bab764ba6744c575ffe8e2f09879c750b05c7daf3e90"
+    },
+    {
+      "source_id": "paper-pdf-6aa192b22820",
+      "title": "Dai et al. - 2019 - Transformer-XL Attentive Language Models Beyond a Fixed-Length Context",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-6aa192b22820-Dai-et-al-2019-Transformer-XL-Attentive-Language-Models-Beyond-a-Fixed-Length-Context.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1398/Dai et al. - 2019 - Transformer-XL Attentive Language Models Beyond a Fixed-Length Context.pdf",
+      "sha256": "6aa192b22820267309e8e7c501c514a3a3055256d9c8691b106c7f53f9098671",
+      "actual_sha256": "6aa192b22820267309e8e7c501c514a3a3055256d9c8691b106c7f53f9098671"
+    },
+    {
+      "source_id": "paper-pdf-5692a5514787",
+      "title": "Devlin et al. - 2019 - BERT Pre-training of Deep Bidirectional Transformers for Language Understanding",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-5692a5514787-Devlin-et-al-2019-BERT-Pre-training-of-Deep-Bidirectional-Transformers-for-Language-Understandin.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1401/Devlin et al. - 2019 - BERT Pre-training of Deep Bidirectional Transformers for Language Understanding.pdf",
+      "sha256": "5692a5514787a8c6727b4ff3b726a3385798bc68e12138d1d4af83947e2acf6e",
+      "actual_sha256": "5692a5514787a8c6727b4ff3b726a3385798bc68e12138d1d4af83947e2acf6e"
+    },
+    {
+      "source_id": "paper-pdf-ad07e47cedf4",
+      "title": "Raffel et al. - 2023 - Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-ad07e47cedf4-Raffel-et-al-2023-Exploring-the-Limits-of-Transfer-Learning-with-a-Unified-Text-to-Text-Transfor.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1403/Raffel et al. - 2023 - Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer.pdf",
+      "sha256": "ad07e47cedf437a4156419ce5d3076e08a3e59bbfd6dac7cc53df1009cdcbe7f",
+      "actual_sha256": "ad07e47cedf437a4156419ce5d3076e08a3e59bbfd6dac7cc53df1009cdcbe7f"
+    },
+    {
+      "source_id": "paper-pdf-949c7ed67dea",
+      "title": "Qiu et al. - 2025 - Gated Attention for Large Language Models Non-linearity, Sparsity, and Attention-Sink-Free",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-949c7ed67dea-Qiu-et-al-2025-Gated-Attention-for-Large-Language-Models-Non-linearity-Sparsity-and-Attention-Si.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1405/Qiu et al. - 2025 - Gated Attention for Large Language Models Non-linearity, Sparsity, and Attention-Sink-Free.pdf",
+      "sha256": "949c7ed67dea3ddc6b88854cf72631ed2e1f466ad4c824c8aa1286739bcf2359",
+      "actual_sha256": "949c7ed67dea3ddc6b88854cf72631ed2e1f466ad4c824c8aa1286739bcf2359"
+    },
+    {
+      "source_id": "paper-pdf-3250947d7be3",
+      "title": "Shazeer - 2019 - Fast Transformer Decoding One Write-Head is All You Need",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-3250947d7be3-Shazeer-2019-Fast-Transformer-Decoding-One-Write-Head-is-All-You-Need.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1407/Shazeer - 2019 - Fast Transformer Decoding One Write-Head is All You Need.pdf",
+      "sha256": "3250947d7be32f1a15531ab3062134edd431b9cf79e669d324ab5cbddd9a2094",
+      "actual_sha256": "3250947d7be32f1a15531ab3062134edd431b9cf79e669d324ab5cbddd9a2094"
+    },
+    {
+      "source_id": "paper-pdf-b9a42b071a0a",
+      "title": "Shazeer et al. - 2020 - Talking-Heads Attention",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-b9a42b071a0a-Shazeer-et-al-2020-Talking-Heads-Attention.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1408/Shazeer et al. - 2020 - Talking-Heads Attention.pdf",
+      "sha256": "b9a42b071a0a70db241dd491fc30402f8f890f1112d742a65c298e60b20719eb",
+      "actual_sha256": "b9a42b071a0a70db241dd491fc30402f8f890f1112d742a65c298e60b20719eb"
+    },
+    {
+      "source_id": "paper-pdf-f47955ececb4",
+      "title": "Michel et al. - 2019 - Are Sixteen Heads Really Better than One",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-f47955ececb4-Michel-et-al-2019-Are-Sixteen-Heads-Really-Better-than-One.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1409/Michel et al. - 2019 - Are Sixteen Heads Really Better than One.pdf",
+      "sha256": "f47955ececb443ded32e995d82a9e3fd936f7e85815e7831d4dfcb0cae46d10c",
+      "actual_sha256": "f47955ececb443ded32e995d82a9e3fd936f7e85815e7831d4dfcb0cae46d10c"
+    },
+    {
+      "source_id": "paper-pdf-01426973545b",
+      "title": "Ding et al. - 2024 - LongRoPE Extending LLM Context Window Beyond 2 Million Tokens",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-01426973545b-Ding-et-al-2024-LongRoPE-Extending-LLM-Context-Window-Beyond-2-Million-Tokens.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1417/Ding et al. - 2024 - LongRoPE Extending LLM Context Window Beyond 2 Million Tokens.pdf",
+      "sha256": "01426973545b0158f6a20f6c73e5c3ccc6bd58382a1df60f4bc737dc6271cdbf",
+      "actual_sha256": "01426973545b0158f6a20f6c73e5c3ccc6bd58382a1df60f4bc737dc6271cdbf"
+    },
+    {
+      "source_id": "paper-pdf-ce1933b7d00e",
+      "title": "Peng et al. - 2023 - YaRN Efficient Context Window Extension of Large Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-ce1933b7d00e-Peng-et-al-2023-YaRN-Efficient-Context-Window-Extension-of-Large-Language-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1418/Peng et al. - 2023 - YaRN Efficient Context Window Extension of Large Language Models.pdf",
+      "sha256": "ce1933b7d00eed2c6f146a73bb437930f6b66f3f69b19bc3ed6acfca42e5a744",
+      "actual_sha256": "ce1933b7d00eed2c6f146a73bb437930f6b66f3f69b19bc3ed6acfca42e5a744"
+    },
+    {
+      "source_id": "paper-pdf-26223f5ecbc5",
+      "title": "Press et al. - 2022 - Train Short, Test Long Attention with Linear Biases Enables Input Length Extrapolation",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-26223f5ecbc5-Press-et-al-2022-Train-Short-Test-Long-Attention-with-Linear-Biases-Enables-Input-Length-Extrapo.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1419/Press et al. - 2022 - Train Short, Test Long Attention with Linear Biases Enables Input Length Extrapolation.pdf",
+      "sha256": "26223f5ecbc5983d0cb183c5fd61d09c814247a57b855b2b15717009664db70a",
+      "actual_sha256": "26223f5ecbc5983d0cb183c5fd61d09c814247a57b855b2b15717009664db70a"
+    },
+    {
+      "source_id": "paper-pdf-e9a481fbe1c8",
+      "title": "Su et al. - 2023 - RoFormer Enhanced Transformer with Rotary Position Embedding",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-e9a481fbe1c8-Su-et-al-2023-RoFormer-Enhanced-Transformer-with-Rotary-Position-Embedding.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1420/Su et al. - 2023 - RoFormer Enhanced Transformer with Rotary Position Embedding.pdf",
+      "sha256": "e9a481fbe1c8a20b7b1fa566b13102a1896c7829fa9a8b4c80528452a5ddaf79",
+      "actual_sha256": "e9a481fbe1c8a20b7b1fa566b13102a1896c7829fa9a8b4c80528452a5ddaf79"
+    },
+    {
+      "source_id": "paper-pdf-8086e2e5e139",
+      "title": "Shaw et al. - 2018 - Self-Attention with Relative Position Representations",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-8086e2e5e139-Shaw-et-al-2018-Self-Attention-with-Relative-Position-Representations.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1421/Shaw et al. - 2018 - Self-Attention with Relative Position Representations.pdf",
+      "sha256": "8086e2e5e139fd576631ce0ec4560c5ee66225bec260d631a3e8fe7f1f13d50b",
+      "actual_sha256": "8086e2e5e139fd576631ce0ec4560c5ee66225bec260d631a3e8fe7f1f13d50b"
+    },
+    {
+      "source_id": "paper-pdf-2314e53e3c12",
+      "title": "Yuan et al. - 2025 - Native Sparse Attention Hardware-Aligned and Natively Trainable Sparse Attention",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-2314e53e3c12-Yuan-et-al-2025-Native-Sparse-Attention-Hardware-Aligned-and-Natively-Trainable-Sparse-Attention.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1429/Yuan et al. - 2025 - Native Sparse Attention Hardware-Aligned and Natively Trainable Sparse Attention.pdf",
+      "sha256": "2314e53e3c122a839b14724e4a5096a208f0317d02cca21cc6962e52e070c74e",
+      "actual_sha256": "2314e53e3c122a839b14724e4a5096a208f0317d02cca21cc6962e52e070c74e"
+    },
+    {
+      "source_id": "paper-pdf-a54cb8dc8c90",
+      "title": "Ainslie et al. - 2020 - ETC Encoding Long and Structured Inputs in Transformers",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-a54cb8dc8c90-Ainslie-et-al-2020-ETC-Encoding-Long-and-Structured-Inputs-in-Transformers.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1430/Ainslie et al. - 2020 - ETC Encoding Long and Structured Inputs in Transformers.pdf",
+      "sha256": "a54cb8dc8c903f964457a346c761a3ebcdce69a427a3f5f269454d74783d6e3d",
+      "actual_sha256": "a54cb8dc8c903f964457a346c761a3ebcdce69a427a3f5f269454d74783d6e3d"
+    },
+    {
+      "source_id": "paper-pdf-158b9d3435f6",
+      "title": "Roy et al. - 2020 - Efficient Content-Based Sparse Attention with Routing Transformers",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-158b9d3435f6-Roy-et-al-2020-Efficient-Content-Based-Sparse-Attention-with-Routing-Transformers.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1431/Roy et al. - 2020 - Efficient Content-Based Sparse Attention with Routing Transformers.pdf",
+      "sha256": "158b9d3435f665267f5ff6a4a20da10a8a655b583a9d6344864a13d769ac6f15",
+      "actual_sha256": "158b9d3435f665267f5ff6a4a20da10a8a655b583a9d6344864a13d769ac6f15"
+    },
+    {
+      "source_id": "paper-pdf-9dc448464532",
+      "title": "Zaheer et al. - 2021 - Big Bird Transformers for Longer Sequences",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-9dc448464532-Zaheer-et-al-2021-Big-Bird-Transformers-for-Longer-Sequences.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1432/Zaheer et al. - 2021 - Big Bird Transformers for Longer Sequences.pdf",
+      "sha256": "9dc448464532d61f084de6a224b84acf3b421142e05a40ebfb982b4eca5834a2",
+      "actual_sha256": "9dc448464532d61f084de6a224b84acf3b421142e05a40ebfb982b4eca5834a2"
+    },
+    {
+      "source_id": "paper-pdf-053756b54e2d",
+      "title": "Beltagy et al. - 2020 - Longformer The Long-Document Transformer",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-053756b54e2d-Beltagy-et-al-2020-Longformer-The-Long-Document-Transformer.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1433/Beltagy et al. - 2020 - Longformer The Long-Document Transformer.pdf",
+      "sha256": "053756b54e2d3462d4690b3aed489c962f17df7c3531865e47374c4a651f526c",
+      "actual_sha256": "053756b54e2d3462d4690b3aed489c962f17df7c3531865e47374c4a651f526c"
+    },
+    {
+      "source_id": "paper-pdf-5b6a655a4935",
+      "title": "Child et al. - 2019 - Generating Long Sequences with Sparse Transformers",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-5b6a655a4935-Child-et-al-2019-Generating-Long-Sequences-with-Sparse-Transformers.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1434/Child et al. - 2019 - Generating Long Sequences with Sparse Transformers.pdf",
+      "sha256": "5b6a655a493557f38d2a40fc6ed4f88f0f111ee32197cebddceb4f4fdd10b415",
+      "actual_sha256": "5b6a655a493557f38d2a40fc6ed4f88f0f111ee32197cebddceb4f4fdd10b415"
+    },
+    {
+      "source_id": "paper-pdf-b75fdb67fdcc",
+      "title": "Sun et al. - 2023 - Retentive Network A Successor to Transformer for Large Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-b75fdb67fdcc-Sun-et-al-2023-Retentive-Network-A-Successor-to-Transformer-for-Large-Language-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1444/Sun et al. - 2023 - Retentive Network A Successor to Transformer for Large Language Models.pdf",
+      "sha256": "b75fdb67fdcc760609a38d28171a785f336ece30f750d210c7379306bb483fa7",
+      "actual_sha256": "b75fdb67fdcc760609a38d28171a785f336ece30f750d210c7379306bb483fa7"
+    },
+    {
+      "source_id": "paper-pdf-2e655ef4a8d8",
+      "title": "Katharopoulos et al. - 2020 - Transformers are RNNs Fast Autoregressive Transformers with Linear Attention",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-2e655ef4a8d8-Katharopoulos-et-al-2020-Transformers-are-RNNs-Fast-Autoregressive-Transformers-with-Linear-Atte.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1445/Katharopoulos et al. - 2020 - Transformers are RNNs Fast Autoregressive Transformers with Linear Attention.pdf",
+      "sha256": "2e655ef4a8d85428b576c8e0827d68f1c97950318ba03c9887c5b019a9a332fd",
+      "actual_sha256": "2e655ef4a8d85428b576c8e0827d68f1c97950318ba03c9887c5b019a9a332fd"
+    },
+    {
+      "source_id": "paper-pdf-a14aa7a0fb61",
+      "title": "Xiong et al. - 2021 - Nyströmformer A Nyström-Based Algorithm for Approximating Self-Attention",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-a14aa7a0fb61-Xiong-et-al-2021-Nystr-mformer-A-Nystr-m-Based-Algorithm-for-Approximating-Self-Attention.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1446/Xiong et al. - 2021 - Nyströmformer A Nyström-Based Algorithm for Approximating Self-Attention.pdf",
+      "sha256": "a14aa7a0fb6143da3af2dfeeff18b2384d14b08b139169c11148c53425c3ce2e",
+      "actual_sha256": "a14aa7a0fb6143da3af2dfeeff18b2384d14b08b139169c11148c53425c3ce2e"
+    },
+    {
+      "source_id": "paper-pdf-2634d0985b5e",
+      "title": "Choromanski et al. - 2022 - Rethinking Attention with Performers",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-2634d0985b5e-Choromanski-et-al-2022-Rethinking-Attention-with-Performers.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1447/Choromanski et al. - 2022 - Rethinking Attention with Performers.pdf",
+      "sha256": "2634d0985b5ebc5235d983e388ec012883369eb1c39b351a024c31ee718b2e25",
+      "actual_sha256": "2634d0985b5ebc5235d983e388ec012883369eb1c39b351a024c31ee718b2e25"
+    },
+    {
+      "source_id": "paper-pdf-1c4e089b6108",
+      "title": "Wang et al. - 2020 - Linformer Self-Attention with Linear Complexity",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-1c4e089b6108-Wang-et-al-2020-Linformer-Self-Attention-with-Linear-Complexity.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1448/Wang et al. - 2020 - Linformer Self-Attention with Linear Complexity.pdf",
+      "sha256": "1c4e089b6108f5ed0a2f8301ab07a64eab9851dcb471348b88739a6458e2f215",
+      "actual_sha256": "1c4e089b6108f5ed0a2f8301ab07a64eab9851dcb471348b88739a6458e2f215"
+    },
+    {
+      "source_id": "paper-pdf-e9504910654b",
+      "title": "Adnan et al. - 2024 - Keyformer KV Cache Reduction through Key Tokens Selection for Efficient Generative Inference",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-e9504910654b-Adnan-et-al-2024-Keyformer-KV-Cache-Reduction-through-Key-Tokens-Selection-for-Efficient-Generat.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1457/Adnan et al. - 2024 - Keyformer KV Cache Reduction through Key Tokens Selection for Efficient Generative Inference.pdf",
+      "sha256": "e9504910654bb33fbf077824871124d5b0cf9b95f47569dbae60d67d4464cac5",
+      "actual_sha256": "e9504910654bb33fbf077824871124d5b0cf9b95f47569dbae60d67d4464cac5"
+    },
+    {
+      "source_id": "paper-pdf-98364bcd99e3",
+      "title": "Poli et al. - 2023 - Hyena Hierarchy Towards Larger Convolutional Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-98364bcd99e3-Poli-et-al-2023-Hyena-Hierarchy-Towards-Larger-Convolutional-Language-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1459/Poli et al. - 2023 - Hyena Hierarchy Towards Larger Convolutional Language Models.pdf",
+      "sha256": "98364bcd99e339208d1044f5ea8d965acf6fb5c8eeba5bee69b7a11a5ec7dcf1",
+      "actual_sha256": "98364bcd99e339208d1044f5ea8d965acf6fb5c8eeba5bee69b7a11a5ec7dcf1"
+    },
+    {
+      "source_id": "paper-pdf-adf70ed1803c",
+      "title": "Gu and Dao - 2024 - Mamba Linear-Time Sequence Modeling with Selective State Spaces",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-adf70ed1803c-Gu-and-Dao-2024-Mamba-Linear-Time-Sequence-Modeling-with-Selective-State-Spaces.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1462/Gu and Dao - 2024 - Mamba Linear-Time Sequence Modeling with Selective State Spaces.pdf",
+      "sha256": "adf70ed1803c85b1899dec3e21f3af0b124411439e8654b840ea65f7b9f52b2e",
+      "actual_sha256": "adf70ed1803c85b1899dec3e21f3af0b124411439e8654b840ea65f7b9f52b2e"
+    },
+    {
+      "source_id": "paper-pdf-c5c22109fa9e",
+      "title": "Garg et al. - 2023 - What Can Transformers Learn In-Context A Case Study of Simple Function Classes",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-c5c22109fa9e-Garg-et-al-2023-What-Can-Transformers-Learn-In-Context-A-Case-Study-of-Simple-Function-Classes.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1545/Garg et al. - 2023 - What Can Transformers Learn In-Context A Case Study of Simple Function Classes.pdf",
+      "sha256": "c5c22109fa9eb38e8585bd227f50920e544772eeebd7a42f0119cce98b0ede65",
+      "actual_sha256": "c5c22109fa9eb38e8585bd227f50920e544772eeebd7a42f0119cce98b0ede65"
+    },
+    {
+      "source_id": "paper-pdf-0391b7fd3e64",
+      "title": "Lyu et al. - 2023 - Faithful Chain-of-Thought Reasoning",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-0391b7fd3e64-Lyu-et-al-2023-Faithful-Chain-of-Thought-Reasoning.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1546/Lyu et al. - 2023 - Faithful Chain-of-Thought Reasoning.pdf",
+      "sha256": "0391b7fd3e6436a94ccd9843d3852f0f4720793c78f04aec60149e68ab1b1423",
+      "actual_sha256": "0391b7fd3e6436a94ccd9843d3852f0f4720793c78f04aec60149e68ab1b1423"
+    },
+    {
+      "source_id": "paper-pdf-3a102db11f71",
+      "title": "Zhou et al. - 2024 - Batch Calibration Rethinking Calibration for In-Context Learning and Prompt Engineering",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-3a102db11f71-Zhou-et-al-2024-Batch-Calibration-Rethinking-Calibration-for-In-Context-Learning-and-Prompt-Engi.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1547/Zhou et al. - 2024 - Batch Calibration Rethinking Calibration for In-Context Learning and Prompt Engineering.pdf",
+      "sha256": "3a102db11f71c3f45d8ce83ffe57d3ebb55ab794cdb892ee1a08a0b94ddffb5c",
+      "actual_sha256": "3a102db11f71c3f45d8ce83ffe57d3ebb55ab794cdb892ee1a08a0b94ddffb5c"
+    },
+    {
+      "source_id": "paper-pdf-f285b0971ae4",
+      "title": "Yao et al. - 2023 - ReAct Synergizing Reasoning and Acting in Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-f285b0971ae4-Yao-et-al-2023-ReAct-Synergizing-Reasoning-and-Acting-in-Language-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1548/Yao et al. - 2023 - ReAct Synergizing Reasoning and Acting in Language Models.pdf",
+      "sha256": "f285b0971ae4a790e402fb93966bed3adde2cf0a04977d08b2b40d6ab0cace69",
+      "actual_sha256": "f285b0971ae4a790e402fb93966bed3adde2cf0a04977d08b2b40d6ab0cace69"
+    },
+    {
+      "source_id": "paper-pdf-7d9f878c23b4",
+      "title": "Wei et al. - 2023 - Chain-of-Thought Prompting Elicits Reasoning in Large Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-7d9f878c23b4-Wei-et-al-2023-Chain-of-Thought-Prompting-Elicits-Reasoning-in-Large-Language-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1550/Wei et al. - 2023 - Chain-of-Thought Prompting Elicits Reasoning in Large Language Models.pdf",
+      "sha256": "7d9f878c23b460e4566aa4ec9201b1abfb3b8faefb2b1356e411cb90fef72a12",
+      "actual_sha256": "7d9f878c23b460e4566aa4ec9201b1abfb3b8faefb2b1356e411cb90fef72a12"
+    },
+    {
+      "source_id": "paper-pdf-1d132920d78f",
+      "title": "Oswald et al. - 2023 - Transformers learn in-context by gradient descent",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-1d132920d78f-Oswald-et-al-2023-Transformers-learn-in-context-by-gradient-descent.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1551/Oswald et al. - 2023 - Transformers learn in-context by gradient descent.pdf",
+      "sha256": "1d132920d78f7680d13290d410671c8c6a14018d6c241717ef63338a44fb7c31",
+      "actual_sha256": "1d132920d78f7680d13290d410671c8c6a14018d6c241717ef63338a44fb7c31"
+    },
+    {
+      "source_id": "paper-pdf-9fa4a667e559",
+      "title": "2209.11895v1",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-9fa4a667e559-2209-11895v1.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1552/2209.11895v1.pdf",
+      "sha256": "9fa4a667e559431efac5bf1d9463f3b0005633e0b78f3ebbacfb901e4ed36e50",
+      "actual_sha256": "9fa4a667e559431efac5bf1d9463f3b0005633e0b78f3ebbacfb901e4ed36e50"
+    },
+    {
+      "source_id": "paper-pdf-ad9be01798fc",
+      "title": "Xie et al. - 2022 - An Explanation of In-context Learning as Implicit Bayesian Inference",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-ad9be01798fc-Xie-et-al-2022-An-Explanation-of-In-context-Learning-as-Implicit-Bayesian-Inference.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1553/Xie et al. - 2022 - An Explanation of In-context Learning as Implicit Bayesian Inference.pdf",
+      "sha256": "ad9be01798fcf4fdc66ff3630f7a6f1cc157c04d51d0821d7798e028cb175c4b",
+      "actual_sha256": "ad9be01798fcf4fdc66ff3630f7a6f1cc157c04d51d0821d7798e028cb175c4b"
+    },
+    {
+      "source_id": "paper-pdf-5a0fc5998552",
+      "title": "Brown et al. - 2020 - Language Models are Few-Shot Learners",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-5a0fc5998552-Brown-et-al-2020-Language-Models-are-Few-Shot-Learners.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1554/Brown et al. - 2020 - Language Models are Few-Shot Learners.pdf",
+      "sha256": "5a0fc59985522c2f4b737415916211fa2c12762678d883299f78eefdc8e1faf4",
+      "actual_sha256": "5a0fc59985522c2f4b737415916211fa2c12762678d883299f78eefdc8e1faf4"
+    },
+    {
+      "source_id": "paper-pdf-94aaedb837a0",
+      "title": "Srivastava et al. - Precipitation Downscaling with Spatiotemporal Video Diffusion",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-94aaedb837a0-Srivastava-et-al-Precipitation-Downscaling-with-Spatiotemporal-Video-Diffusion.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1597/Srivastava et al. - Precipitation Downscaling with Spatiotemporal Video Diffusion.pdf",
+      "sha256": "94aaedb837a0c2bc04b426016e1028b4a234c786d02a9035f54d7bdb7bfffafa",
+      "actual_sha256": "94aaedb837a0c2bc04b426016e1028b4a234c786d02a9035f54d7bdb7bfffafa"
+    },
+    {
+      "source_id": "paper-pdf-8bc06a7a9b08",
+      "title": "Mardani et al. - 2024 - Residual Corrective Diffusion Modeling for Km-scale Atmospheric Downscaling",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-8bc06a7a9b08-Mardani-et-al-2024-Residual-Corrective-Diffusion-Modeling-for-Km-scale-Atmospheric-Downscaling.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1598/Mardani et al. - 2024 - Residual Corrective Diffusion Modeling for Km-scale Atmospheric Downscaling.pdf",
+      "sha256": "8bc06a7a9b080b81e1c47e7ba85ae6cc1c77c2d4d17aebf108ee218c73902259",
+      "actual_sha256": "8bc06a7a9b080b81e1c47e7ba85ae6cc1c77c2d4d17aebf108ee218c73902259"
+    },
+    {
+      "source_id": "paper-pdf-64ab5cb56c2d",
+      "title": "Xie et al. - 2022 - Crystal Diffusion Variational Autoencoder for Periodic Material Generation",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-64ab5cb56c2d-Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1599/Xie et al. - 2022 - Crystal Diffusion Variational Autoencoder for Periodic Material Generation.pdf",
+      "sha256": "64ab5cb56c2de23cee92a45f9b238015655741cc4a75958c695e1735fb179a8d",
+      "actual_sha256": "64ab5cb56c2de23cee92a45f9b238015655741cc4a75958c695e1735fb179a8d"
+    },
+    {
+      "source_id": "paper-pdf-feb850106c54",
+      "title": "Trippe et al. - 2023 - Diffusion probabilistic modeling of protein backbones in 3D for the motif-scaffolding problem",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-feb850106c54-Trippe-et-al-2023-Diffusion-probabilistic-modeling-of-protein-backbones-in-3D-for-the-motif-scaf.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1600/Trippe et al. - 2023 - Diffusion probabilistic modeling of protein backbones in 3D for the motif-scaffolding problem.pdf",
+      "sha256": "feb850106c54ba199c5134c4187e4830ae9be56fcea39cd2040185fe824f829b",
+      "actual_sha256": "feb850106c54ba199c5134c4187e4830ae9be56fcea39cd2040185fe824f829b"
+    },
+    {
+      "source_id": "paper-pdf-92ba1c01b33a",
+      "title": "Schneuing et al. - 2024 - Structure-based Drug Design with Equivariant Diffusion Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-92ba1c01b33a-Schneuing-et-al-2024-Structure-based-Drug-Design-with-Equivariant-Diffusion-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1601/Schneuing et al. - 2024 - Structure-based Drug Design with Equivariant Diffusion Models.pdf",
+      "sha256": "92ba1c01b33abb47b67410cca4ec749be4790aaa2d2bda6682bab38724b74f5b",
+      "actual_sha256": "92ba1c01b33abb47b67410cca4ec749be4790aaa2d2bda6682bab38724b74f5b"
+    },
+    {
+      "source_id": "paper-pdf-bba4abf94d79",
+      "title": "Wolleb et al. - 2022 - Diffusion Models for Medical Anomaly Detection",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-bba4abf94d79-Wolleb-et-al-2022-Diffusion-Models-for-Medical-Anomaly-Detection.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1602/Wolleb et al. - 2022 - Diffusion Models for Medical Anomaly Detection.pdf",
+      "sha256": "bba4abf94d79c8497fe5287c2e6bc488451b96b1fcff8137a0878183434b4c1f",
+      "actual_sha256": "bba4abf94d79c8497fe5287c2e6bc488451b96b1fcff8137a0878183434b4c1f"
+    },
+    {
+      "source_id": "paper-pdf-29db583e6086",
+      "title": "Dorjsembe et al. - 2024 - Conditional Diffusion Models for Semantic 3D Brain MRI Synthesis",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-29db583e6086-Dorjsembe-et-al-2024-Conditional-Diffusion-Models-for-Semantic-3D-Brain-MRI-Synthesis.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1603/Dorjsembe et al. - 2024 - Conditional Diffusion Models for Semantic 3D Brain MRI Synthesis.pdf",
+      "sha256": "29db583e6086920e4a3821e9486d298932a019e9805dc8c7316d693368f4f5a2",
+      "actual_sha256": "29db583e6086920e4a3821e9486d298932a019e9805dc8c7316d693368f4f5a2"
+    },
+    {
+      "source_id": "paper-pdf-c881805616f7",
+      "title": "Watson et al. - 2023 - De novo design of protein structure and function with RFdiffusion",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-c881805616f7-Watson-et-al-2023-De-novo-design-of-protein-structure-and-function-with-RFdiffusion.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1604/Watson et al. - 2023 - De novo design of protein structure and function with RFdiffusion.pdf",
+      "sha256": "c881805616f7034577682a0b38b043f379a9973aaf02aec2393ab91c79fddc58",
+      "actual_sha256": "c881805616f7034577682a0b38b043f379a9973aaf02aec2393ab91c79fddc58"
+    },
+    {
+      "source_id": "paper-pdf-9c52e2c92ef6",
+      "title": "Meng et al. - 2022 - SDEdit Guided Image Synthesis and Editing with Stochastic Differential Equations",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-9c52e2c92ef6-Meng-et-al-2022-SDEdit-Guided-Image-Synthesis-and-Editing-with-Stochastic-Differential-Equations.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1617/Meng et al. - 2022 - SDEdit Guided Image Synthesis and Editing with Stochastic Differential Equations.pdf",
+      "sha256": "9c52e2c92ef6ae97afa1fcfcaf4b7c31ceea2abfee16b6fd23551f8fb06a2cc5",
+      "actual_sha256": "9c52e2c92ef6ae97afa1fcfcaf4b7c31ceea2abfee16b6fd23551f8fb06a2cc5"
+    },
+    {
+      "source_id": "paper-pdf-17962cadd033",
+      "title": "Yang et al. - 2025 - Diffusion Models A Comprehensive Survey of Methods and Applications",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-17962cadd033-Yang-et-al-2025-Diffusion-Models-A-Comprehensive-Survey-of-Methods-and-Applications.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1625/Yang et al. - 2025 - Diffusion Models A Comprehensive Survey of Methods and Applications.pdf",
+      "sha256": "17962cadd033b4e7bcce7453963bf17b35d23463c0f2f758b5028f39d0086fda",
+      "actual_sha256": "17962cadd033b4e7bcce7453963bf17b35d23463c0f2f758b5028f39d0086fda"
+    },
+    {
+      "source_id": "paper-pdf-afebe1470eb5",
+      "title": "Lobet et al. - 2017 - Using a Structural Root System Model to Evaluate and Improve the Accuracy of Root Image Analysis Pip",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-afebe1470eb5-Lobet-et-al-2017-Using-a-Structural-Root-System-Model-to-Evaluate-and-Improve-the-Accuracy-of-Ro.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1674/Lobet et al. - 2017 - Using a Structural Root System Model to Evaluate and Improve the Accuracy of Root Image Analysis Pip.pdf",
+      "sha256": "afebe1470eb57445780e8eaabcb7861e228aa150c255e558bb9c55b7bedade4b",
+      "actual_sha256": "afebe1470eb57445780e8eaabcb7861e228aa150c255e558bb9c55b7bedade4b"
+    },
+    {
+      "source_id": "paper-pdf-9375580faef7",
+      "title": "Computer Architecture A Quantitative Approach (5th edition)",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-9375580faef7-Computer-Architecture-A-Quantitative-Approach-5th-edition.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1690/Computer Architecture A Quantitative Approach (5th edition).pdf",
+      "sha256": "9375580faef77ffce8cee4a3983ce4c4de413d622640a98d1e33cd44815fe0f8",
+      "actual_sha256": "9375580faef77ffce8cee4a3983ce4c4de413d622640a98d1e33cd44815fe0f8"
+    },
+    {
+      "source_id": "paper-pdf-df96c7f5e5ba",
+      "title": "Huang et al. - 2025 - LLM-JEPA Large Language Models Meet Joint Embedding Predictive Architectures",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-df96c7f5e5ba-Huang-et-al-2025-LLM-JEPA-Large-Language-Models-Meet-Joint-Embedding-Predictive-Architectures.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1692/Huang et al. - 2025 - LLM-JEPA Large Language Models Meet Joint Embedding Predictive Architectures.pdf",
+      "sha256": "df96c7f5e5badbcb79e5c0da286c8a8c82191ef33b91a4b14c16312f3533a233",
+      "actual_sha256": "df96c7f5e5badbcb79e5c0da286c8a8c82191ef33b91a4b14c16312f3533a233"
+    },
+    {
+      "source_id": "paper-pdf-fb3da086e1ac",
+      "title": "Arai and Ichikawa - 2025 - Quantization Error Propagation Revisiting Layer-Wise Post-Training Quantization",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-fb3da086e1ac-Arai-and-Ichikawa-2025-Quantization-Error-Propagation-Revisiting-Layer-Wise-Post-Training-Quanti.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1695/Arai and Ichikawa - 2025 - Quantization Error Propagation Revisiting Layer-Wise Post-Training Quantization.pdf",
+      "sha256": "fb3da086e1ac0baf94887165c8d1442b88f05eb794d034c3a4b99c654235f829",
+      "actual_sha256": "fb3da086e1ac0baf94887165c8d1442b88f05eb794d034c3a4b99c654235f829"
+    },
+    {
+      "source_id": "paper-pdf-1542c2e5ee9f",
+      "title": "Bo et al. - 2020 - Structural Deep Clustering Network",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-1542c2e5ee9f-Bo-et-al-2020-Structural-Deep-Clustering-Network.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1703/Bo et al. - 2020 - Structural Deep Clustering Network.pdf",
+      "sha256": "1542c2e5ee9f9ea39e6be017a5a54527c267d7ef446d974cb3d25ad454c58117",
+      "actual_sha256": "1542c2e5ee9f9ea39e6be017a5a54527c267d7ef446d974cb3d25ad454c58117"
+    },
+    {
+      "source_id": "paper-pdf-2976bfa354c7",
+      "title": "Ren et al. - 2025 - Deep Clustering A Comprehensive Survey",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-2976bfa354c7-Ren-et-al-2025-Deep-Clustering-A-Comprehensive-Survey.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1706/Ren et al. - 2025 - Deep Clustering A Comprehensive Survey.pdf",
+      "sha256": "2976bfa354c7839bfbb74f63e9f79f41f692571860028e54c0a9422524c1e553",
+      "actual_sha256": "2976bfa354c7839bfbb74f63e9f79f41f692571860028e54c0a9422524c1e553"
+    },
+    {
+      "source_id": "paper-pdf-47ae9dc0242a",
+      "title": "3520_V_JEPA_Latent_Video_Predi",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-47ae9dc0242a-3520-V-JEPA-Latent-Video-Predi.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1740/3520_V_JEPA_Latent_Video_Predi.pdf",
+      "sha256": "47ae9dc0242ab47ff9bb805d167354cce5631db7f2625993045cda1e419bd5ee",
+      "actual_sha256": "47ae9dc0242ab47ff9bb805d167354cce5631db7f2625993045cda1e419bd5ee"
+    },
+    {
+      "source_id": "paper-pdf-1e262fb1c45e",
+      "title": "Bardes et al. - 2024 - Revisiting Feature Prediction for Learning Visual Representations from Video",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-1e262fb1c45e-Bardes-et-al-2024-Revisiting-Feature-Prediction-for-Learning-Visual-Representations-from-Video.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1741/Bardes et al. - 2024 - Revisiting Feature Prediction for Learning Visual Representations from Video.pdf",
+      "sha256": "1e262fb1c45e33e53c684332b0925d41819e7dee6b9d8670234481ebc8d548e6",
+      "actual_sha256": "1e262fb1c45e33e53c684332b0925d41819e7dee6b9d8670234481ebc8d548e6"
+    },
+    {
+      "source_id": "paper-pdf-2be30ce7293b",
+      "title": "Zhang et al. - 2024 - Vision-Language Models for Vision Tasks A Survey",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-2be30ce7293b-Zhang-et-al-2024-Vision-Language-Models-for-Vision-Tasks-A-Survey.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1778/Zhang et al. - 2024 - Vision-Language Models for Vision Tasks A Survey.pdf",
+      "sha256": "2be30ce7293b2ab4d954dd1e3bc86c94c20a83a1eca9a7ae0c7643ca9db641ee",
+      "actual_sha256": "2be30ce7293b2ab4d954dd1e3bc86c94c20a83a1eca9a7ae0c7643ca9db641ee"
+    },
+    {
+      "source_id": "paper-pdf-b3cdc6b39f78",
+      "title": "Hennessy - Computer Architecture A Quantitative Approach",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-b3cdc6b39f78-Hennessy-Computer-Architecture-A-Quantitative-Approach.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1799/Hennessy - Computer Architecture A Quantitative Approach.pdf",
+      "sha256": "b3cdc6b39f78705184722583fbbbbfc0ad91f8c26f131ba1d45806f09dda66a9",
+      "actual_sha256": "b3cdc6b39f78705184722583fbbbbfc0ad91f8c26f131ba1d45806f09dda66a9"
+    },
+    {
+      "source_id": "paper-pdf-51d84ff8f9b8",
+      "title": "Yin et al. - 2024 - A Survey on Multimodal Large Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-51d84ff8f9b8-Yin-et-al-2024-A-Survey-on-Multimodal-Large-Language-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1831/Yin et al. - 2024 - A Survey on Multimodal Large Language Models.pdf",
+      "sha256": "51d84ff8f9b8b7908ca1e6161952633e137deb28f2be4dd929c17461c425558f",
+      "actual_sha256": "51d84ff8f9b8b7908ca1e6161952633e137deb28f2be4dd929c17461c425558f"
+    },
+    {
+      "source_id": "paper-pdf-4ddac6d6b779",
+      "title": "Chu et al. - 2024 - Qwen2-Audio Technical Report",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-4ddac6d6b779-Chu-et-al-2024-Qwen2-Audio-Technical-Report.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1836/Chu et al. - 2024 - Qwen2-Audio Technical Report.pdf",
+      "sha256": "4ddac6d6b779f567efffb06144a4a9030e8524168ca54e504e26c81767758826",
+      "actual_sha256": "4ddac6d6b779f567efffb06144a4a9030e8524168ca54e504e26c81767758826"
+    },
+    {
+      "source_id": "paper-pdf-b49db894e3cb",
+      "title": "Chu et al. - 2023 - Qwen-Audio Advancing Universal Audio Understanding via Unified Large-Scale Audio-Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-b49db894e3cb-Chu-et-al-2023-Qwen-Audio-Advancing-Universal-Audio-Understanding-via-Unified-Large-Scale-Audio-.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1837/Chu et al. - 2023 - Qwen-Audio Advancing Universal Audio Understanding via Unified Large-Scale Audio-Language Models.pdf",
+      "sha256": "b49db894e3cb8cc7ee8ada34af73e6e025e44801a8d0011fad731f75fedfa970",
+      "actual_sha256": "b49db894e3cb8cc7ee8ada34af73e6e025e44801a8d0011fad731f75fedfa970"
+    },
+    {
+      "source_id": "paper-pdf-d92d79319950",
+      "title": "Deshmukh et al. - 2024 - Pengi An Audio Language Model for Audio Tasks",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-d92d79319950-Deshmukh-et-al-2024-Pengi-An-Audio-Language-Model-for-Audio-Tasks.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1838/Deshmukh et al. - 2024 - Pengi An Audio Language Model for Audio Tasks.pdf",
+      "sha256": "d92d79319950d0d7ead768e6c214c5494995d320e57d56e7800a0952ccabc054",
+      "actual_sha256": "d92d79319950d0d7ead768e6c214c5494995d320e57d56e7800a0952ccabc054"
+    },
+    {
+      "source_id": "paper-pdf-3cb97287e46b",
+      "title": "Xu et al. - 2025 - RSAVQ Riemannian Sensitivity-Aware Vector Quantization for Large Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-3cb97287e46b-Xu-et-al-2025-RSAVQ-Riemannian-Sensitivity-Aware-Vector-Quantization-for-Large-Language-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1850/Xu et al. - 2025 - RSAVQ Riemannian Sensitivity-Aware Vector Quantization for Large Language Models.pdf",
+      "sha256": "3cb97287e46bdadd964e29059b8c833d277e55e412a129f92bcd422e8c41424b",
+      "actual_sha256": "3cb97287e46bdadd964e29059b8c833d277e55e412a129f92bcd422e8c41424b"
+    },
+    {
+      "source_id": "paper-pdf-7c34e5ea23c7",
+      "title": "Kuroki et al. - 2025 - Binary Quadratic Quantization Beyond First-Order Quantization for Real-Valued Matrix Compression",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-7c34e5ea23c7-Kuroki-et-al-2025-Binary-Quadratic-Quantization-Beyond-First-Order-Quantization-for-Real-Valued-.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1851/Kuroki et al. - 2025 - Binary Quadratic Quantization Beyond First-Order Quantization for Real-Valued Matrix Compression.pdf",
+      "sha256": "7c34e5ea23c7810f7020816103c3664056f3b82083c5d726d6b8c9495867d5c9",
+      "actual_sha256": "7c34e5ea23c7810f7020816103c3664056f3b82083c5d726d6b8c9495867d5c9"
+    },
+    {
+      "source_id": "paper-pdf-836985037568",
+      "title": "Dong et al. - 2024 - Self-Boosting Large Language Models with Synthetic Preference Data",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-836985037568-Dong-et-al-2024-Self-Boosting-Large-Language-Models-with-Synthetic-Preference-Data.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1882/Dong et al. - 2024 - Self-Boosting Large Language Models with Synthetic Preference Data.pdf",
+      "sha256": "836985037568df1094eeaa6902d60c0837de4f9cf1e6bca4612a1a14fd4723f5",
+      "actual_sha256": "836985037568df1094eeaa6902d60c0837de4f9cf1e6bca4612a1a14fd4723f5"
+    },
+    {
+      "source_id": "paper-pdf-1a49ce0373af",
+      "title": "Wang et al. - 2023 - Self-Consistency Improves Chain of Thought Reasoning in Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-1a49ce0373af-Wang-et-al-2023-Self-Consistency-Improves-Chain-of-Thought-Reasoning-in-Language-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1891/Wang et al. - 2023 - Self-Consistency Improves Chain of Thought Reasoning in Language Models.pdf",
+      "sha256": "1a49ce0373afc89d2d6e97fb1aa8230f6b818c70590d732a3187f753f4df6aba",
+      "actual_sha256": "1a49ce0373afc89d2d6e97fb1aa8230f6b818c70590d732a3187f753f4df6aba"
+    },
+    {
+      "source_id": "paper-pdf-a17d3b26831f",
+      "title": "Huang et al. - 2022 - Large Language Models Can Self-Improve",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-a17d3b26831f-Huang-et-al-2022-Large-Language-Models-Can-Self-Improve.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1894/Huang et al. - 2022 - Large Language Models Can Self-Improve.pdf",
+      "sha256": "a17d3b26831f8c5a3b6461b3a9d852a387d1f2c384da3f11b772afeef6545cff",
+      "actual_sha256": "a17d3b26831f8c5a3b6461b3a9d852a387d1f2c384da3f11b772afeef6545cff"
+    },
+    {
+      "source_id": "paper-pdf-c60c70baea5e",
+      "title": "Wu et al. - 2024 - Meta-Rewarding Language Models Self-Improving Alignment with LLM-as-a-Meta-Judge",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-c60c70baea5e-Wu-et-al-2024-Meta-Rewarding-Language-Models-Self-Improving-Alignment-with-LLM-as-a-Meta-Judge.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1896/Wu et al. - 2024 - Meta-Rewarding Language Models Self-Improving Alignment with LLM-as-a-Meta-Judge.pdf",
+      "sha256": "c60c70baea5e863a225df552b763d4f751ec5b11ae734c5648dc9ef0b124fdb6",
+      "actual_sha256": "c60c70baea5e863a225df552b763d4f751ec5b11ae734c5648dc9ef0b124fdb6"
+    },
+    {
+      "source_id": "paper-pdf-3828cc886a01",
+      "title": "Zuo et al. - 2025 - TTRL Test-Time Reinforcement Learning",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-3828cc886a01-Zuo-et-al-2025-TTRL-Test-Time-Reinforcement-Learning.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1899/Zuo et al. - 2025 - TTRL Test-Time Reinforcement Learning.pdf",
+      "sha256": "3828cc886a0133749fe857dc12fff190f76c17dd7421dccfca01c96ec1dd5882",
+      "actual_sha256": "3828cc886a0133749fe857dc12fff190f76c17dd7421dccfca01c96ec1dd5882"
+    },
+    {
+      "source_id": "paper-pdf-26beb0a6ab70",
+      "title": "Ding and Zhang - 2025 - Sherlock Self-Correcting Reasoning in Vision-Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-26beb0a6ab70-Ding-and-Zhang-2025-Sherlock-Self-Correcting-Reasoning-in-Vision-Language-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1902/Ding and Zhang - 2025 - Sherlock Self-Correcting Reasoning in Vision-Language Models.pdf",
+      "sha256": "26beb0a6ab701d14da08e53b814d4d3a4a712758b76df90a46c260cef38360e8",
+      "actual_sha256": "26beb0a6ab701d14da08e53b814d4d3a4a712758b76df90a46c260cef38360e8"
+    },
+    {
+      "source_id": "paper-pdf-157498284515",
+      "title": "Zheng et al. - 2023 - Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-157498284515-Zheng-et-al-2023-Judging-LLM-as-a-Judge-with-MT-Bench-and-Chatbot-Arena.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1906/Zheng et al. - 2023 - Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena.pdf",
+      "sha256": "1574982845157569b85c1214bfa9987000384d7a5e3b5fbdcc5a29afec59cb81",
+      "actual_sha256": "1574982845157569b85c1214bfa9987000384d7a5e3b5fbdcc5a29afec59cb81"
+    },
+    {
+      "source_id": "paper-pdf-61bed62389be",
+      "title": "Yuan et al. - 2025 - Self-Rewarding Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-61bed62389be-Yuan-et-al-2025-Self-Rewarding-Language-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1907/Yuan et al. - 2025 - Self-Rewarding Language Models.pdf",
+      "sha256": "61bed62389be6445c7a8dc6608641e86a3cc1a4d9b0b19a1f8645fc425997a96",
+      "actual_sha256": "61bed62389be6445c7a8dc6608641e86a3cc1a4d9b0b19a1f8645fc425997a96"
+    },
+    {
+      "source_id": "paper-pdf-1f14747af9bb",
+      "title": "Wang et al. - 2023 - Self-Instruct Aligning Language Models with Self-Generated Instructions",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-1f14747af9bb-Wang-et-al-2023-Self-Instruct-Aligning-Language-Models-with-Self-Generated-Instructions.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1913/Wang et al. - 2023 - Self-Instruct Aligning Language Models with Self-Generated Instructions.pdf",
+      "sha256": "1f14747af9bb8faee2221965449d7685174da18f3421efd4f38ef9bc57d6944e",
+      "actual_sha256": "1f14747af9bb8faee2221965449d7685174da18f3421efd4f38ef9bc57d6944e"
+    },
+    {
+      "source_id": "paper-pdf-63395b609c77",
+      "title": "Huang et al. - 2025 - MiLo Efficient Quantized MoE Inference with Mixture of Low-Rank Compensators",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-63395b609c77-Huang-et-al-2025-MiLo-Efficient-Quantized-MoE-Inference-with-Mixture-of-Low-Rank-Compensators.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1918/Huang et al. - 2025 - MiLo Efficient Quantized MoE Inference with Mixture of Low-Rank Compensators.pdf",
+      "sha256": "63395b609c7701e6f0620fddf5c06b738cd29494c67ac0be282282af8fa256de",
+      "actual_sha256": "63395b609c7701e6f0620fddf5c06b738cd29494c67ac0be282282af8fa256de"
+    },
+    {
+      "source_id": "paper-pdf-9f29b3a50c02",
+      "title": "Li et al. - MoE-SVD Structured Mixture-of-Experts LLMs Compression via Singular Value Decomposition",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-9f29b3a50c02-Li-et-al-MoE-SVD-Structured-Mixture-of-Experts-LLMs-Compression-via-Singular-Value-Decomposition.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1919/Li et al. - MoE-SVD Structured Mixture-of-Experts LLMs Compression via  Singular Value Decomposition.pdf",
+      "sha256": "9f29b3a50c0216290610204d73495df63cb6c21a3921fc7914f8cd7ab671d4e8",
+      "actual_sha256": "9f29b3a50c0216290610204d73495df63cb6c21a3921fc7914f8cd7ab671d4e8"
+    },
+    {
+      "source_id": "paper-pdf-bd4fac39f14e",
+      "title": "Caffagni et al. - 2025 - Seeing Beyond Words Self-Supervised Visual Learning for Multimodal Large Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-bd4fac39f14e-Caffagni-et-al-2025-Seeing-Beyond-Words-Self-Supervised-Visual-Learning-for-Multimodal-Large-Lan.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1932/Caffagni et al. - 2025 - Seeing Beyond Words Self-Supervised Visual Learning for Multimodal Large Language Models.pdf",
+      "sha256": "bd4fac39f14e81a06b836e8d4f23ee127309878823986d73415e5de954bceece",
+      "actual_sha256": "bd4fac39f14e81a06b836e8d4f23ee127309878823986d73415e5de954bceece"
+    },
+    {
+      "source_id": "paper-pdf-277bb6968397",
+      "title": "Teoh et al. - 2025 - Next-Latent Prediction Transformers Learn Compact World Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-277bb6968397-Teoh-et-al-2025-Next-Latent-Prediction-Transformers-Learn-Compact-World-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1933/Teoh et al. - 2025 - Next-Latent Prediction Transformers Learn Compact World Models.pdf",
+      "sha256": "277bb6968397c2b5344df4742ec8919f117258c6e94057f72f38beb641f6c643",
+      "actual_sha256": "277bb6968397c2b5344df4742ec8919f117258c6e94057f72f38beb641f6c643"
+    },
+    {
+      "source_id": "paper-pdf-6b59f7eb8028",
+      "title": "Xu et al. - 2025 - SpeContext Enabling Efficient Long-context Reasoning with Speculative Context Sparsity in LLMs",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-6b59f7eb8028-Xu-et-al-2025-SpeContext-Enabling-Efficient-Long-context-Reasoning-with-Speculative-Context-Spar.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1944/Xu et al. - 2025 - SpeContext Enabling Efficient Long-context Reasoning with Speculative Context Sparsity in LLMs.pdf",
+      "sha256": "6b59f7eb8028ed90ff31d219d7fb7f00a5fa138403211bd2229047c4fed4f13d",
+      "actual_sha256": "6b59f7eb8028ed90ff31d219d7fb7f00a5fa138403211bd2229047c4fed4f13d"
+    },
+    {
+      "source_id": "paper-pdf-5eac2e5ce47f",
+      "title": "Hu et al. - 2025 - Speculative Decoding and Beyond An In-Depth Survey of Techniques",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-5eac2e5ce47f-Hu-et-al-2025-Speculative-Decoding-and-Beyond-An-In-Depth-Survey-of-Techniques.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1947/Hu et al. - 2025 - Speculative Decoding and Beyond An In-Depth Survey of Techniques.pdf",
+      "sha256": "5eac2e5ce47f4d6640d120de95afc9822686fcefbb5b4fa5c88f2167b363337d",
+      "actual_sha256": "5eac2e5ce47f4d6640d120de95afc9822686fcefbb5b4fa5c88f2167b363337d"
+    },
+    {
+      "source_id": "paper-pdf-78fab1d14bd1",
+      "title": "Tiwari et al. - 2025 - QuantSpec Self-Speculative Decoding with Hierarchical Quantized KV Cache",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-78fab1d14bd1-Tiwari-et-al-2025-QuantSpec-Self-Speculative-Decoding-with-Hierarchical-Quantized-KV-Cache.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1950/Tiwari et al. - 2025 - QuantSpec Self-Speculative Decoding with Hierarchical Quantized KV Cache.pdf",
+      "sha256": "78fab1d14bd1465ad3667db808600ec742cfc325e93196505f3e3dfcd2666606",
+      "actual_sha256": "78fab1d14bd1465ad3667db808600ec742cfc325e93196505f3e3dfcd2666606"
+    },
+    {
+      "source_id": "paper-pdf-3e494e8a41d9",
+      "title": "Chen et al. - 2026 - VL-JEPA Joint Embedding Predictive Architecture for Vision-language",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-3e494e8a41d9-Chen-et-al-2026-VL-JEPA-Joint-Embedding-Predictive-Architecture-for-Vision-language.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1963/Chen et al. - 2026 - VL-JEPA Joint Embedding Predictive Architecture for Vision-language.pdf",
+      "sha256": "3e494e8a41d9b541857e3261ddd152fd93a58e69215177a962546001a0953a16",
+      "actual_sha256": "3e494e8a41d9b541857e3261ddd152fd93a58e69215177a962546001a0953a16"
+    },
+    {
+      "source_id": "paper-pdf-38764bfe741d",
+      "title": "Miao et al. - 2024 - SpecInfer Accelerating Generative Large Language Model Serving with Tree-based Speculative Inferenc",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-38764bfe741d-Miao-et-al-2024-SpecInfer-Accelerating-Generative-Large-Language-Model-Serving-with-Tree-based-S.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1988/Miao et al. - 2024 - SpecInfer Accelerating Generative Large Language Model Serving with Tree-based Speculative Inferenc.pdf",
+      "sha256": "38764bfe741d39c9a309d1b715e8dc2cea6ea6c965337752b3562b1785afd9f1",
+      "actual_sha256": "38764bfe741d39c9a309d1b715e8dc2cea6ea6c965337752b3562b1785afd9f1"
+    },
+    {
+      "source_id": "paper-pdf-e4606f3e4162",
+      "title": "Liu et al. - 2025 - PEARL Parallel Speculative Decoding with Adaptive Draft Length",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-e4606f3e4162-Liu-et-al-2025-PEARL-Parallel-Speculative-Decoding-with-Adaptive-Draft-Length.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1989/Liu et al. - 2025 - PEARL Parallel Speculative Decoding with Adaptive Draft Length.pdf",
+      "sha256": "e4606f3e41628bdccebff3a14bcb91c0aabf1068db28b653a6b927eafb2eace8",
+      "actual_sha256": "e4606f3e41628bdccebff3a14bcb91c0aabf1068db28b653a6b927eafb2eace8"
+    },
+    {
+      "source_id": "paper-pdf-f448d302916d",
+      "title": "Fu et al. - 2024 - Break the Sequential Dependency of LLM Inference Using Lookahead Decoding",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-f448d302916d-Fu-et-al-2024-Break-the-Sequential-Dependency-of-LLM-Inference-Using-Lookahead-Decoding.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1990/Fu et al. - 2024 - Break the Sequential Dependency of LLM Inference Using Lookahead Decoding.pdf",
+      "sha256": "f448d302916d213547abc262397c004b093f3d493ee0a5a365791d64b0cf8218",
+      "actual_sha256": "f448d302916d213547abc262397c004b093f3d493ee0a5a365791d64b0cf8218"
+    },
+    {
+      "source_id": "paper-pdf-93d98f2e858c",
+      "title": "Cai et al. - 2024 - Medusa Simple LLM Inference Acceleration Framework with Multiple Decoding Heads",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-93d98f2e858c-Cai-et-al-2024-Medusa-Simple-LLM-Inference-Acceleration-Framework-with-Multiple-Decoding-Heads.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1991/Cai et al. - 2024 - Medusa Simple LLM Inference Acceleration Framework with Multiple Decoding Heads.pdf",
+      "sha256": "93d98f2e858c87ee04be440ee81ab8ad93700652ed759227d25fcf75cfdd5ef0",
+      "actual_sha256": "93d98f2e858c87ee04be440ee81ab8ad93700652ed759227d25fcf75cfdd5ef0"
+    },
+    {
+      "source_id": "paper-pdf-2a94fc5013c0",
+      "title": "Li et al. - 2025 - EAGLE-3 Scaling up Inference Acceleration of Large Language Models via Training-Time Test",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-2a94fc5013c0-Li-et-al-2025-EAGLE-3-Scaling-up-Inference-Acceleration-of-Large-Language-Models-via-Training-Ti.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1992/Li et al. - 2025 - EAGLE-3 Scaling up Inference Acceleration of Large Language Models via Training-Time Test.pdf",
+      "sha256": "2a94fc5013c0d534c302e1a29013e151fdb4a7b06d4fa1c6c9d0b1ec7ab414ca",
+      "actual_sha256": "2a94fc5013c0d534c302e1a29013e151fdb4a7b06d4fa1c6c9d0b1ec7ab414ca"
+    },
+    {
+      "source_id": "paper-pdf-712a5af2ca19",
+      "title": "Li et al. - 2024 - EAGLE-2 Faster Inference of Language Models with Dynamic Draft Trees",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-712a5af2ca19-Li-et-al-2024-EAGLE-2-Faster-Inference-of-Language-Models-with-Dynamic-Draft-Trees.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1993/Li et al. - 2024 - EAGLE-2 Faster Inference of Language Models with Dynamic Draft Trees.pdf",
+      "sha256": "712a5af2ca1936d60eaa22cbebaaed36029777661dd61b2fab56de06eb931f6b",
+      "actual_sha256": "712a5af2ca1936d60eaa22cbebaaed36029777661dd61b2fab56de06eb931f6b"
+    },
+    {
+      "source_id": "paper-pdf-b8ccc9ba7882",
+      "title": "Li et al. - 2025 - EAGLE Speculative Sampling Requires Rethinking Feature Uncertainty",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-b8ccc9ba7882-Li-et-al-2025-EAGLE-Speculative-Sampling-Requires-Rethinking-Feature-Uncertainty.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1994/Li et al. - 2025 - EAGLE Speculative Sampling Requires Rethinking Feature Uncertainty.pdf",
+      "sha256": "b8ccc9ba7882827b3481c4f3858f6e12fcdd385ae2ecf736924e4a76b15a8bc4",
+      "actual_sha256": "b8ccc9ba7882827b3481c4f3858f6e12fcdd385ae2ecf736924e4a76b15a8bc4"
+    },
+    {
+      "source_id": "paper-pdf-a6b750e25a61",
+      "title": "13979_STAR_Speculative_Decodin",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-a6b750e25a61-13979-STAR-Speculative-Decodin.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2005/13979_STAR_Speculative_Decodin.pdf",
+      "sha256": "a6b750e25a618d5bf368515875931bff2bfcac85e2a39256fd53484d139b229d",
+      "actual_sha256": "a6b750e25a618d5bf368515875931bff2bfcac85e2a39256fd53484d139b229d"
+    },
+    {
+      "source_id": "paper-pdf-b0b23b521163",
+      "title": "Hu et al. - 2025 - DREAM Drafting with Refined Target Features and Entropy-Adaptive Cross-Attention Fusion for Multimo",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-b0b23b521163-Hu-et-al-2025-DREAM-Drafting-with-Refined-Target-Features-and-Entropy-Adaptive-Cross-Attention-F.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2006/Hu et al. - 2025 - DREAM Drafting with Refined Target Features and Entropy-Adaptive Cross-Attention Fusion for Multimo.pdf",
+      "sha256": "b0b23b521163bc1797370b2b3df089f107bfc0480c802996e031a2ca1be1109d",
+      "actual_sha256": "b0b23b521163bc1797370b2b3df089f107bfc0480c802996e031a2ca1be1109d"
+    },
+    {
+      "source_id": "paper-pdf-30eab3c20824",
+      "title": "Zhang et al. - 2023 - H$_2$O Heavy-Hitter Oracle for Efficient Generative Inference of Large Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-30eab3c20824-Zhang-et-al-2023-H-2-O-Heavy-Hitter-Oracle-for-Efficient-Generative-Inference-of-Large-Language-.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2011/Zhang et al. - 2023 - H$_2$O Heavy-Hitter Oracle for Efficient Generative Inference of Large Language Models.pdf",
+      "sha256": "30eab3c2082480f5fac959763afabbfc8ce73999470e88a81155fa8d39b6d0bf",
+      "actual_sha256": "30eab3c2082480f5fac959763afabbfc8ce73999470e88a81155fa8d39b6d0bf"
+    },
+    {
+      "source_id": "paper-pdf-d17ce59a5a33",
+      "title": "Li et al. - 2024 - SnapKV LLM Knows What You are Looking for Before Generation",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-d17ce59a5a33-Li-et-al-2024-SnapKV-LLM-Knows-What-You-are-Looking-for-Before-Generation.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2012/Li et al. - 2024 - SnapKV LLM Knows What You are Looking for Before Generation.pdf",
+      "sha256": "d17ce59a5a3342c9b0560c3503b0136f794fae92910421aa07dbca32e4279bf4",
+      "actual_sha256": "d17ce59a5a3342c9b0560c3503b0136f794fae92910421aa07dbca32e4279bf4"
+    },
+    {
+      "source_id": "paper-pdf-0bcd6c0fba46",
+      "title": "Cai et al. - 2025 - PyramidKV Dynamic KV Cache Compression based on Pyramidal Information Funneling",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-0bcd6c0fba46-Cai-et-al-2025-PyramidKV-Dynamic-KV-Cache-Compression-based-on-Pyramidal-Information-Funneling.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2013/Cai et al. - 2025 - PyramidKV Dynamic KV Cache Compression based on Pyramidal Information Funneling.pdf",
+      "sha256": "0bcd6c0fba461e76a746a91316847b7552b441a4ea4d6481e9561a0f7fa9fb01",
+      "actual_sha256": "0bcd6c0fba461e76a746a91316847b7552b441a4ea4d6481e9561a0f7fa9fb01"
+    },
+    {
+      "source_id": "paper-pdf-e8a7de67c7c5",
+      "title": "Xiao et al. - 2024 - Efficient Streaming Language Models with Attention Sinks",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-e8a7de67c7c5-Xiao-et-al-2024-Efficient-Streaming-Language-Models-with-Attention-Sinks.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2014/Xiao et al. - 2024 - Efficient Streaming Language Models with Attention Sinks.pdf",
+      "sha256": "e8a7de67c7c57642648362651b4cf64fd852467e18865a298916a36098314819",
+      "actual_sha256": "e8a7de67c7c57642648362651b4cf64fd852467e18865a298916a36098314819"
+    },
+    {
+      "source_id": "paper-pdf-b6690bd93951",
+      "title": "Sun et al. - 2024 - A Simple and Effective Pruning Approach for Large Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-b6690bd93951-Sun-et-al-2024-A-Simple-and-Effective-Pruning-Approach-for-Large-Language-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2015/Sun et al. - 2024 - A Simple and Effective Pruning Approach for Large Language Models.pdf",
+      "sha256": "b6690bd939513926d7ffc1a14eb68932eab5e4ab8e7f969ceb3d39cc46c84131",
+      "actual_sha256": "b6690bd939513926d7ffc1a14eb68932eab5e4ab8e7f969ceb3d39cc46c84131"
+    },
+    {
+      "source_id": "paper-pdf-0cad29e6a260",
+      "title": "Ge et al. - 2024 - Model Tells You What to Discard Adaptive KV Cache Compression for LLMs",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-0cad29e6a260-Ge-et-al-2024-Model-Tells-You-What-to-Discard-Adaptive-KV-Cache-Compression-for-LLMs.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2016/Ge et al. - 2024 - Model Tells You What to Discard Adaptive KV Cache Compression for LLMs.pdf",
+      "sha256": "0cad29e6a2604be35f14503fdd00d9b08d63b931f94052bd351fee8945201318",
+      "actual_sha256": "0cad29e6a2604be35f14503fdd00d9b08d63b931f94052bd351fee8945201318"
+    },
+    {
+      "source_id": "paper-pdf-765acea6f2a7",
+      "title": "Perez et al. - 2017 - FiLM Visual Reasoning with a General Conditioning Layer",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-765acea6f2a7-Perez-et-al-2017-FiLM-Visual-Reasoning-with-a-General-Conditioning-Layer.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2069/Perez et al. - 2017 - FiLM Visual Reasoning with a General Conditioning Layer.pdf",
+      "sha256": "765acea6f2a78b1d76961392099cd0af49cb2e7d6f06d0b3d82f1dbe9cdcd363",
+      "actual_sha256": "765acea6f2a78b1d76961392099cd0af49cb2e7d6f06d0b3d82f1dbe9cdcd363"
+    },
+    {
+      "source_id": "paper-pdf-435299cc42b7",
+      "title": "Chen et al. - 2019 - Neural Ordinary Differential Equations",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-435299cc42b7-Chen-et-al-2019-Neural-Ordinary-Differential-Equations.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2070/Chen et al. - 2019 - Neural Ordinary Differential Equations.pdf",
+      "sha256": "435299cc42b75f9ad43d9aa246c96d3d7bdcc3297aa57f419bdc571b9c25137c",
+      "actual_sha256": "435299cc42b75f9ad43d9aa246c96d3d7bdcc3297aa57f419bdc571b9c25137c"
+    },
+    {
+      "source_id": "paper-pdf-842dd648faad",
+      "title": "Liu et al. - 2024 - Kangaroo Lossless Self-Speculative Decoding via Double Early Exiting",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-842dd648faad-Liu-et-al-2024-Kangaroo-Lossless-Self-Speculative-Decoding-via-Double-Early-Exiting.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2071/Liu et al. - 2024 - Kangaroo Lossless Self-Speculative Decoding via Double Early Exiting.pdf",
+      "sha256": "842dd648faadede3ba652720cafafa0f87cbebede24108399c5dfa42827a8f61",
+      "actual_sha256": "842dd648faadede3ba652720cafafa0f87cbebede24108399c5dfa42827a8f61"
+    },
+    {
+      "source_id": "paper-pdf-ba93507c489f",
+      "title": "Schuster et al. - 2022 - Confident Adaptive Language Modeling",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-ba93507c489f-Schuster-et-al-2022-Confident-Adaptive-Language-Modeling.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2072/Schuster et al. - 2022 - Confident Adaptive Language Modeling.pdf",
+      "sha256": "ba93507c489f44c7deed92ded872c62996b7d1b11c523f59337c6d73a75d6afa",
+      "actual_sha256": "ba93507c489f44c7deed92ded872c62996b7d1b11c523f59337c6d73a75d6afa"
+    },
+    {
+      "source_id": "paper-pdf-04359327efd4",
+      "title": "Elhoushi et al. - 2024 - LayerSkip Enabling Early Exit Inference and Self-Speculative Decoding",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-04359327efd4-Elhoushi-et-al-2024-LayerSkip-Enabling-Early-Exit-Inference-and-Self-Speculative-Decoding.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2073/Elhoushi et al. - 2024 - LayerSkip Enabling Early Exit Inference and Self-Speculative Decoding.pdf",
+      "sha256": "04359327efd434b5b06a46ce280a37f88044d45f58c42d2fc99088165b1a6ead",
+      "actual_sha256": "04359327efd434b5b06a46ce280a37f88044d45f58c42d2fc99088165b1a6ead"
+    },
+    {
+      "source_id": "paper-pdf-7dd5058cdc19",
+      "title": "Guan et al. - 2025 - Dynamic Speculative Agent Planning",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-7dd5058cdc19-Guan-et-al-2025-Dynamic-Speculative-Agent-Planning.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2085/Guan et al. - 2025 - Dynamic Speculative Agent Planning.pdf",
+      "sha256": "7dd5058cdc195b1b6f7b9a5b910ac56ea6513efa4673b0cbbca8899e9c1978d9",
+      "actual_sha256": "7dd5058cdc195b1b6f7b9a5b910ac56ea6513efa4673b0cbbca8899e9c1978d9"
+    },
+    {
+      "source_id": "paper-pdf-f8f5acc3167e",
+      "title": "Ye et al. - 2025 - Speculative Actions A Lossless Framework for Faster Agentic Systems",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-f8f5acc3167e-Ye-et-al-2025-Speculative-Actions-A-Lossless-Framework-for-Faster-Agentic-Systems.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2086/Ye et al. - 2025 - Speculative Actions A Lossless Framework for Faster Agentic Systems.pdf",
+      "sha256": "f8f5acc3167e51a731c611ddca3abd314d05d2fce5118afad9b5ded70369e213",
+      "actual_sha256": "f8f5acc3167e51a731c611ddca3abd314d05d2fce5118afad9b5ded70369e213"
+    },
+    {
+      "source_id": "paper-pdf-e8170ba9b5c4",
+      "title": "27323_KVCapsule_Efficient_Temp",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-e8170ba9b5c4-27323-KVCapsule-Efficient-Temp.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2093/27323_KVCapsule_Efficient_Temp.pdf",
+      "sha256": "e8170ba9b5c411ebfaa44aed1fb598c14f9fd0b49795f285d2a9a1593ba7d103",
+      "actual_sha256": "e8170ba9b5c411ebfaa44aed1fb598c14f9fd0b49795f285d2a9a1593ba7d103"
+    },
+    {
+      "source_id": "paper-pdf-efacf6829477",
+      "title": "Samarin et al. - 2026 - LK Losses Direct Acceptance Rate Optimization for Speculative Decoding",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-efacf6829477-Samarin-et-al-2026-LK-Losses-Direct-Acceptance-Rate-Optimization-for-Speculative-Decoding.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2094/Samarin et al. - 2026 - LK Losses Direct Acceptance Rate Optimization for Speculative Decoding.pdf",
+      "sha256": "efacf68294774654bd3f811e0990c459ef191e91c78958e1368729fdc315a0f7",
+      "actual_sha256": "efacf68294774654bd3f811e0990c459ef191e91c78958e1368729fdc315a0f7"
+    },
+    {
+      "source_id": "paper-pdf-58ef8aa453cd",
+      "title": "Li et al. - 2025 - Gumiho A Hybrid Architecture to Prioritize Early Tokens in Speculative Decoding",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-58ef8aa453cd-Li-et-al-2025-Gumiho-A-Hybrid-Architecture-to-Prioritize-Early-Tokens-in-Speculative-Decoding.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2095/Li et al. - 2025 - Gumiho A Hybrid Architecture to Prioritize Early Tokens in Speculative Decoding.pdf",
+      "sha256": "58ef8aa453cdd727571e499bcc3e62bb6945c1b249723823e8d0ca21f972fd4e",
+      "actual_sha256": "58ef8aa453cdd727571e499bcc3e62bb6945c1b249723823e8d0ca21f972fd4e"
+    },
+    {
+      "source_id": "paper-pdf-a790569abe30",
+      "title": "Sadhukhan et al. - 2025 - MagicDec Breaking the Latency-Throughput Tradeoff for Long Context Generation with Speculative Deco",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-a790569abe30-Sadhukhan-et-al-2025-MagicDec-Breaking-the-Latency-Throughput-Tradeoff-for-Long-Context-Generati.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2096/Sadhukhan et al. - 2025 - MagicDec Breaking the Latency-Throughput Tradeoff for Long Context Generation with Speculative Deco.pdf",
+      "sha256": "a790569abe3000955becc89de7faecb613180a2e87131d3a34e2d114aa018ea5",
+      "actual_sha256": "a790569abe3000955becc89de7faecb613180a2e87131d3a34e2d114aa018ea5"
+    },
+    {
+      "source_id": "paper-pdf-a66fb13e3879",
+      "title": "Yang et al. - 2025 - LongSpec Long-Context Lossless Speculative Decoding with Efficient Drafting and Verification",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-a66fb13e3879-Yang-et-al-2025-LongSpec-Long-Context-Lossless-Speculative-Decoding-with-Efficient-Drafting-and-.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2101/Yang et al. - 2025 - LongSpec Long-Context Lossless Speculative Decoding with Efficient Drafting and Verification.pdf",
+      "sha256": "a66fb13e38796899cac035d2c14696edab2d1681a4f3ff7466eb4bf5d48bef66",
+      "actual_sha256": "a66fb13e38796899cac035d2c14696edab2d1681a4f3ff7466eb4bf5d48bef66"
+    },
+    {
+      "source_id": "paper-pdf-670f8e2850a5",
+      "title": "Xu et al. - 2025 - Speculative Knowledge Distillation Bridging the Teacher-Student Gap Through Interleaved Sampling",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-670f8e2850a5-Xu-et-al-2025-Speculative-Knowledge-Distillation-Bridging-the-Teacher-Student-Gap-Through-Interl.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2104/Xu et al. - 2025 - Speculative Knowledge Distillation Bridging the Teacher-Student Gap Through Interleaved Sampling.pdf",
+      "sha256": "670f8e2850a5818bcb4b85b36d4ba9d76135afaa33675eea5db62420547736b2",
+      "actual_sha256": "670f8e2850a5818bcb4b85b36d4ba9d76135afaa33675eea5db62420547736b2"
+    },
+    {
+      "source_id": "paper-pdf-0b0e050a0d39",
+      "title": "Hu et al. - 2026 - Bridging Draft Policy Misalignment Group Tree Optimization for Speculative Decoding",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-0b0e050a0d39-Hu-et-al-2026-Bridging-Draft-Policy-Misalignment-Group-Tree-Optimization-for-Speculative-Decodin.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2105/Hu et al. - 2026 - Bridging Draft Policy Misalignment Group Tree Optimization for Speculative Decoding.pdf",
+      "sha256": "0b0e050a0d39dc166adee5382804bcf0d55920de40946336390a15a0f4081847",
+      "actual_sha256": "0b0e050a0d39dc166adee5382804bcf0d55920de40946336390a15a0f4081847"
+    },
+    {
+      "source_id": "paper-pdf-d9571fc4fe92",
+      "title": "2603.19835v3",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-d9571fc4fe92-2603-19835v3.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2110/2603.19835v3.pdf",
+      "sha256": "d9571fc4fe923258b29e3f56bc8a072ce2e174646c232152ace4fbd33e6b7ad8",
+      "actual_sha256": "d9571fc4fe923258b29e3f56bc8a072ce2e174646c232152ace4fbd33e6b7ad8"
+    },
+    {
+      "source_id": "paper-pdf-731eb8790714",
+      "title": "Ma et al. - 2026 - FIPO Eliciting Deep Reasoning with Future-KL Influenced Policy Optimization",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-731eb8790714-Ma-et-al-2026-FIPO-Eliciting-Deep-Reasoning-with-Future-KL-Influenced-Policy-Optimization.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2111/Ma et al. - 2026 - FIPO Eliciting Deep Reasoning with Future-KL Influenced Policy Optimization.pdf",
+      "sha256": "731eb8790714b0d1d7f65b5b9af320c22e91cd7d84f468e42110ad15bf51a91f",
+      "actual_sha256": "731eb8790714b0d1d7f65b5b9af320c22e91cd7d84f468e42110ad15bf51a91f"
+    },
+    {
+      "source_id": "paper-pdf-f01e4fd34753",
+      "title": "Yu et al. - 2025 - DAPO An Open-Source LLM Reinforcement Learning System at Scale",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-f01e4fd34753-Yu-et-al-2025-DAPO-An-Open-Source-LLM-Reinforcement-Learning-System-at-Scale.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2114/Yu et al. - 2025 - DAPO An Open-Source LLM Reinforcement Learning System at Scale.pdf",
+      "sha256": "f01e4fd347530cadd68e5c36b1998532a6d1adb272c817e73b927453c26e9d79",
+      "actual_sha256": "f01e4fd347530cadd68e5c36b1998532a6d1adb272c817e73b927453c26e9d79"
+    },
+    {
+      "source_id": "paper-pdf-44b8d1ed8f8b",
+      "title": "Meng et al. - 2026 - Sparse but Critical A Token-Level Analysis of Distributional Shifts in RLVR Fine-Tuning of LLMs",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-44b8d1ed8f8b-Meng-et-al-2026-Sparse-but-Critical-A-Token-Level-Analysis-of-Distributional-Shifts-in-RLVR-Fine.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2133/Meng et al. - 2026 - Sparse but Critical A Token-Level Analysis of Distributional Shifts in RLVR Fine-Tuning of LLMs.pdf",
+      "sha256": "44b8d1ed8f8b54591de4655f97c99dda5d2d69cec49632411eeebe31dade26dc",
+      "actual_sha256": "44b8d1ed8f8b54591de4655f97c99dda5d2d69cec49632411eeebe31dade26dc"
+    },
+    {
+      "source_id": "paper-pdf-ccd757c9ccca",
+      "title": "Huang et al. - 2026 - On the Direction of RLVR Updates for LLM Reasoning Identification and Exploitation",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-ccd757c9ccca-Huang-et-al-2026-On-the-Direction-of-RLVR-Updates-for-LLM-Reasoning-Identification-and-Exploitat.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2136/Huang et al. - 2026 - On the Direction of RLVR Updates for LLM Reasoning Identification and Exploitation.pdf",
+      "sha256": "ccd757c9ccca6c9a33acc8974100aa660a74f6920a6a765a5bfb6cd206881849",
+      "actual_sha256": "ccd757c9ccca6c9a33acc8974100aa660a74f6920a6a765a5bfb6cd206881849"
+    },
+    {
+      "source_id": "paper-pdf-a413610718e9",
+      "title": "Gao et al. - 2025 - Soft Adaptive Policy Optimization",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-a413610718e9-Gao-et-al-2025-Soft-Adaptive-Policy-Optimization.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2139/Gao et al. - 2025 - Soft Adaptive Policy Optimization.pdf",
+      "sha256": "a413610718e93f3519de9ce3cf31511ec07a283784d8fb68b3d61b9891efdd0f",
+      "actual_sha256": "a413610718e93f3519de9ce3cf31511ec07a283784d8fb68b3d61b9891efdd0f"
+    },
+    {
+      "source_id": "paper-pdf-5aa736ccf351",
+      "title": "Schulman et al. - 2018 - High-Dimensional Continuous Control Using Generalized Advantage Estimation",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-5aa736ccf351-Schulman-et-al-2018-High-Dimensional-Continuous-Control-Using-Generalized-Advantage-Estimation.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2142/Schulman et al. - 2018 - High-Dimensional Continuous Control Using Generalized Advantage Estimation.pdf",
+      "sha256": "5aa736ccf3517a1f36d0ca8146982e69beaf9a2bdccac2ae324f780743bc045e",
+      "actual_sha256": "5aa736ccf3517a1f36d0ca8146982e69beaf9a2bdccac2ae324f780743bc045e"
+    },
+    {
+      "source_id": "paper-pdf-de7e85846268",
+      "title": "Zhang et al. - 2026 - Learning to Draft Adaptive Speculative Decoding with Reinforcement Learning",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-de7e85846268-Zhang-et-al-2026-Learning-to-Draft-Adaptive-Speculative-Decoding-with-Reinforcement-Learning.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2147/Zhang et al. - 2026 - Learning to Draft Adaptive Speculative Decoding with Reinforcement Learning.pdf",
+      "sha256": "de7e85846268ff309d76b88b443291dd8df1e97ab1cdd60e304ce208be8bce80",
+      "actual_sha256": "de7e85846268ff309d76b88b443291dd8df1e97ab1cdd60e304ce208be8bce80"
+    },
+    {
+      "source_id": "paper-pdf-1b31e77fb24d",
+      "title": "Park 等 - 2023 - Generative Agents Interactive Simulacra of Human Behavior",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-1b31e77fb24d-Park-2023-Generative-Agents-Interactive-Simulacra-of-Human-Behavior.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2155/Park 等 - 2023 - Generative Agents Interactive Simulacra of Human Behavior.pdf",
+      "sha256": "1b31e77fb24d25d7598f2c49e955d12a28b95a6dabad34acdac40f44bfb7a139",
+      "actual_sha256": "1b31e77fb24d25d7598f2c49e955d12a28b95a6dabad34acdac40f44bfb7a139"
+    },
+    {
+      "source_id": "paper-pdf-82513420e1c6",
+      "title": "Piao 等 - 2026 - AgentSociety Large-Scale Simulation of LLM-Driven Generative Agents Advances Understanding of Human",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-82513420e1c6-Piao-2026-AgentSociety-Large-Scale-Simulation-of-LLM-Driven-Generative-Agents-Advances-Understan.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2158/Piao 等 - 2026 - AgentSociety Large-Scale Simulation of LLM-Driven Generative Agents Advances Understanding of Human.pdf",
+      "sha256": "82513420e1c66acf509141fe78597780ac0b1d862057a8e6c6c4db9ca1923b95",
+      "actual_sha256": "82513420e1c66acf509141fe78597780ac0b1d862057a8e6c6c4db9ca1923b95"
+    },
+    {
+      "source_id": "paper-pdf-e97d1cac5580",
+      "title": "Vezhnevets 等 - 2023 - Generative agent-based modeling with actions grounded in physical, social, or digital space using Co",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-e97d1cac5580-Vezhnevets-2023-Generative-agent-based-modeling-with-actions-grounded-in-physical-social-or-digi.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2159/Vezhnevets 等 - 2023 - Generative agent-based modeling with actions grounded in physical, social, or digital space using Co.pdf",
+      "sha256": "e97d1cac55800e6cef32e93c74f91c1e429b094a3d38931184546874a686d4f9",
+      "actual_sha256": "e97d1cac55800e6cef32e93c74f91c1e429b094a3d38931184546874a686d4f9"
+    },
+    {
+      "source_id": "paper-pdf-218188e1d66a",
+      "title": "Maharana 等 - 2024 - Evaluating Very Long-Term Conversational Memory of LLM Agents",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-218188e1d66a-Maharana-2024-Evaluating-Very-Long-Term-Conversational-Memory-of-LLM-Agents.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2164/Maharana 等 - 2024 - Evaluating Very Long-Term Conversational Memory of LLM Agents.pdf",
+      "sha256": "218188e1d66a553afe324491e3e5e5d0af107196c9ff32c65bb3640ebf638539",
+      "actual_sha256": "218188e1d66a553afe324491e3e5e5d0af107196c9ff32c65bb3640ebf638539"
+    },
+    {
+      "source_id": "paper-pdf-05c5d0552014",
+      "title": "Wu 等 - 2025 - LONGMEMEVAL BENCHMARKING CHAT ASSIST- ANTS ON LONG-TERM INTERACTIVE MEMORY",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-05c5d0552014-Wu-2025-LONGMEMEVAL-BENCHMARKING-CHAT-ASSIST-ANTS-ON-LONG-TERM-INTERACTIVE-MEMORY.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2165/Wu 等 - 2025 - LONGMEMEVAL BENCHMARKING CHAT ASSIST- ANTS ON LONG-TERM INTERACTIVE MEMORY.pdf",
+      "sha256": "05c5d055201466a241a56e082cdd02d39ad566fa04b3804891983e4e069a3fda",
+      "actual_sha256": "05c5d055201466a241a56e082cdd02d39ad566fa04b3804891983e4e069a3fda"
+    },
+    {
+      "source_id": "paper-pdf-b35ec0edb900",
+      "title": "DeepSeek_V4",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-b35ec0edb900-DeepSeek-V4.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2169/DeepSeek_V4.pdf",
+      "sha256": "b35ec0edb9002aa9db7c0da4c05e4ac611fc777be78092c40b60e56bf173957a",
+      "actual_sha256": "b35ec0edb9002aa9db7c0da4c05e4ac611fc777be78092c40b60e56bf173957a"
+    },
+    {
+      "source_id": "paper-pdf-e20742ff36e0",
+      "title": "GLM-5-Team 等 - 2026 - GLM-5 from Vibe Coding to Agentic Engineering",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-e20742ff36e0-GLM-5-Team-2026-GLM-5-from-Vibe-Coding-to-Agentic-Engineering.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2170/GLM-5-Team 等 - 2026 - GLM-5 from Vibe Coding to Agentic Engineering.pdf",
+      "sha256": "e20742ff36e08dc361de6973f7f72ad38e107edf8fd92d2a777a8428fc9b8f0e",
+      "actual_sha256": "e20742ff36e08dc361de6973f7f72ad38e107edf8fd92d2a777a8428fc9b8f0e"
+    },
+    {
+      "source_id": "paper-pdf-b191b0a365a6",
+      "title": "DeepSeek-AI 等 - 2025 - DeepSeek-R1 Incentivizing Reasoning Capability in LLMs via Reinforcement Learning",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-b191b0a365a6-DeepSeek-AI-2025-DeepSeek-R1-Incentivizing-Reasoning-Capability-in-LLMs-via-Reinforcement-Learni.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2178/DeepSeek-AI 等 - 2025 - DeepSeek-R1 Incentivizing Reasoning Capability in LLMs via Reinforcement Learning.pdf",
+      "sha256": "b191b0a365a64b4ab2791d117069ed17a2933d03554a662ced58b37df52018f4",
+      "actual_sha256": "b191b0a365a64b4ab2791d117069ed17a2933d03554a662ced58b37df52018f4"
+    },
+    {
+      "source_id": "paper-pdf-812a3fd645c8",
+      "title": "DeepSeek-AI 等 - 2025 - DeepSeek-V3 Technical Report",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-812a3fd645c8-DeepSeek-AI-2025-DeepSeek-V3-Technical-Report.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2179/DeepSeek-AI 等 - 2025 - DeepSeek-V3 Technical Report.pdf",
+      "sha256": "812a3fd645c80725354de9d831a6785503007a60681461407f64e97305fa9330",
+      "actual_sha256": "812a3fd645c80725354de9d831a6785503007a60681461407f64e97305fa9330"
+    },
+    {
+      "source_id": "paper-pdf-61d464ddd646",
+      "title": "DeepSeek-AI 等 - 2024 - DeepSeek-V2 A Strong, Economical, and Efficient Mixture-of-Experts Language Model",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-61d464ddd646-DeepSeek-AI-2024-DeepSeek-V2-A-Strong-Economical-and-Efficient-Mixture-of-Experts-Language-Model.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2183/DeepSeek-AI 等 - 2024 - DeepSeek-V2 A Strong, Economical, and Efficient Mixture-of-Experts Language Model.pdf",
+      "sha256": "61d464ddd6468cca01d7e671b7903eca827a6c3283e9f344641efdc47a80b378",
+      "actual_sha256": "61d464ddd6468cca01d7e671b7903eca827a6c3283e9f344641efdc47a80b378"
+    },
+    {
+      "source_id": "paper-pdf-a64b509e1410",
+      "title": "Dai 等 - 2024 - DeepSeekMoE Towards Ultimate Expert Specialization in Mixture-of-Experts Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-a64b509e1410-Dai-2024-DeepSeekMoE-Towards-Ultimate-Expert-Specialization-in-Mixture-of-Experts-Language-Model.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2187/Dai 等 - 2024 - DeepSeekMoE Towards Ultimate Expert Specialization in Mixture-of-Experts Language Models.pdf",
+      "sha256": "a64b509e1410d09cf5b70570788d27790985fb9808ce436b9da8de73f2eed651",
+      "actual_sha256": "a64b509e1410d09cf5b70570788d27790985fb9808ce436b9da8de73f2eed651"
+    },
+    {
+      "source_id": "paper-pdf-531abbb2b0b9",
+      "title": "Wang 等 - LSVD Loss-Aware Low-Rank Approximation for Efficient Low-Precision Vision-Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-531abbb2b0b9-Wang-LSVD-Loss-Aware-Low-Rank-Approximation-for-Efficient-Low-Precision-Vision-Language-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2190/Wang 等 - LSVD Loss-Aware Low-Rank Approximation for Efficient Low-Precision Vision-Language Models.pdf",
+      "sha256": "531abbb2b0b9d25875bd8f8e932718a89dfdafa4a13fc0271fc6615423d34a90",
+      "actual_sha256": "531abbb2b0b9d25875bd8f8e932718a89dfdafa4a13fc0271fc6615423d34a90"
+    },
+    {
+      "source_id": "paper-pdf-b283569a2e43",
+      "title": "Wang 等 - 2025 - QSVD Efficient Low-rank Approximation for Unified Query-Key-Value Weight Compression in Low-Precisi",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-b283569a2e43-Wang-2025-QSVD-Efficient-Low-rank-Approximation-for-Unified-Query-Key-Value-Weight-Compression-i.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2192/Wang 等 - 2025 - QSVD Efficient Low-rank Approximation for Unified Query-Key-Value Weight Compression in Low-Precisi.pdf",
+      "sha256": "b283569a2e43300d85287a9a923742b6c9fc67d247f314505fdc45aa525f4c0d",
+      "actual_sha256": "b283569a2e43300d85287a9a923742b6c9fc67d247f314505fdc45aa525f4c0d"
+    },
+    {
+      "source_id": "paper-pdf-49f407c32358",
+      "title": "Wang 等 - 2026 - WSVD Weighted Low-Rank Approximation for Fast and Efficient Execution of Low-Precision Vision-Langu",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-49f407c32358-Wang-2026-WSVD-Weighted-Low-Rank-Approximation-for-Fast-and-Efficient-Execution-of-Low-Precision.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2193/Wang 等 - 2026 - WSVD Weighted Low-Rank Approximation for Fast and Efficient Execution of Low-Precision Vision-Langu.pdf",
+      "sha256": "49f407c3235885705f93aee1347d13f2ace6bc58431bd4bf703317031e3896fb",
+      "actual_sha256": "49f407c3235885705f93aee1347d13f2ace6bc58431bd4bf703317031e3896fb"
+    },
+    {
+      "source_id": "paper-pdf-fac8ff9de894",
+      "title": "DeepSeek-V3 Technical Report",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-fac8ff9de894-DeepSeek-V3-Technical-Report.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/223/DeepSeek-V3 Technical Report.pdf",
+      "sha256": "fac8ff9de894d7133fe3cc481752cc893ed1f6947a665c61e8663c185d89d0ba",
+      "actual_sha256": "fac8ff9de894d7133fe3cc481752cc893ed1f6947a665c61e8663c185d89d0ba"
+    },
+    {
+      "source_id": "paper-pdf-8709507742c2",
+      "title": "Wang 等 - 2024 - A Survey on Large Language Model based Autonomous Agents",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-8709507742c2-Wang-2024-A-Survey-on-Large-Language-Model-based-Autonomous-Agents.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/2264/Wang 等 - 2024 - A Survey on Large Language Model based Autonomous Agents.pdf",
+      "sha256": "8709507742c260a5a92b4690ffc0459a0ab9af16dc7a5478d253a6e7b57bf23a",
+      "actual_sha256": "8709507742c260a5a92b4690ffc0459a0ab9af16dc7a5478d253a6e7b57bf23a"
+    },
+    {
+      "source_id": "paper-pdf-f8bbf0e9d979",
+      "title": "Jiang et al. - 2024 - Mixtral of Experts",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-f8bbf0e9d979-Jiang-et-al-2024-Mixtral-of-Experts.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/416/Jiang et al. - 2024 - Mixtral of Experts.pdf",
+      "sha256": "f8bbf0e9d979b7a8ce7be65119266545a229a85b57e077d8bd048e458bb642da",
+      "actual_sha256": "f8bbf0e9d979b7a8ce7be65119266545a229a85b57e077d8bd048e458bb642da"
+    },
+    {
+      "source_id": "paper-pdf-84a5e2b1fa04",
+      "title": "Yang et al. - 2025 - Qwen3 Technical Report",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-84a5e2b1fa04-Yang-et-al-2025-Qwen3-Technical-Report.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/418/Yang et al. - 2025 - Qwen3 Technical Report.pdf",
+      "sha256": "84a5e2b1fa04bb774bf12ae606d1e6d9dd2147ed2ebe78a4cfeb91ba380ffdd5",
+      "actual_sha256": "84a5e2b1fa04bb774bf12ae606d1e6d9dd2147ed2ebe78a4cfeb91ba380ffdd5"
+    },
+    {
+      "source_id": "paper-pdf-62e8de392f11",
+      "title": "Xi et al. - 2023 - Training Transformers with 4-bit Integers",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-62e8de392f11-Xi-et-al-2023-Training-Transformers-with-4-bit-Integers.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/422/Xi et al. - 2023 - Training Transformers with 4-bit Integers.pdf",
+      "sha256": "62e8de392f11efb8f7d565905b11f01be9619702b11a7b6de4e10ae7fa3e1e90",
+      "actual_sha256": "62e8de392f11efb8f7d565905b11f01be9619702b11a7b6de4e10ae7fa3e1e90"
+    },
+    {
+      "source_id": "paper-pdf-9781d343dbe7",
+      "title": "Kim et al. - 2024 - SqueezeLLM Dense-and-Sparse Quantization",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-9781d343dbe7-Kim-et-al-2024-SqueezeLLM-Dense-and-Sparse-Quantization.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/424/Kim et al. - 2024 - SqueezeLLM Dense-and-Sparse Quantization.pdf",
+      "sha256": "9781d343dbe73e5353f5500d0e0732006c941bf3fdcd0d70cbc59f89622ec821",
+      "actual_sha256": "9781d343dbe73e5353f5500d0e0732006c941bf3fdcd0d70cbc59f89622ec821"
+    },
+    {
+      "source_id": "paper-pdf-d70a385cb207",
+      "title": "Liu et al. - 2025 - SpinQuant LLM quantization with learned rotations",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-d70a385cb207-Liu-et-al-2025-SpinQuant-LLM-quantization-with-learned-rotations.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/425/Liu et al. - 2025 - SpinQuant LLM quantization with learned rotations.pdf",
+      "sha256": "d70a385cb20765dfb977db6fcfe88d0485ce191abca9fe73105618da84e8d561",
+      "actual_sha256": "d70a385cb20765dfb977db6fcfe88d0485ce191abca9fe73105618da84e8d561"
+    },
+    {
+      "source_id": "paper-pdf-426edb29aaeb",
+      "title": "Yi et al. - 2024 - Rotated Runtime Smooth Training-Free Activation Smoother for accurate INT4 inference",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-426edb29aaeb-Yi-et-al-2024-Rotated-Runtime-Smooth-Training-Free-Activation-Smoother-for-accurate-INT4-inferen.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/429/Yi et al. - 2024 - Rotated Runtime Smooth Training-Free Activation Smoother for accurate INT4 inference.pdf",
+      "sha256": "426edb29aaebb9736b61095923cc644640ea68bb08baedc3710f9a222b08a153",
+      "actual_sha256": "426edb29aaebb9736b61095923cc644640ea68bb08baedc3710f9a222b08a153"
+    },
+    {
+      "source_id": "paper-pdf-2a5c4c103ba3",
+      "title": "Tseng et al. - 2024 - QuIP# Even Better LLM Quantization with Hadamard Incoherence and Lattice Codebooks",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-2a5c4c103ba3-Tseng-et-al-2024-QuIP-Even-Better-LLM-Quantization-with-Hadamard-Incoherence-and-Lattice-Codeboo.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/430/Tseng et al. - 2024 - QuIP# Even Better LLM Quantization with Hadamard Incoherence and Lattice Codebooks.pdf",
+      "sha256": "2a5c4c103ba31f4a889344d95059c40e96841761e725500829f00b5a16c3d825",
+      "actual_sha256": "2a5c4c103ba31f4a889344d95059c40e96841761e725500829f00b5a16c3d825"
+    },
+    {
+      "source_id": "paper-pdf-8021849f1bfc",
+      "title": "Ashkboos et al. - 2024 - QuaRot Outlier-Free 4-Bit Inference in Rotated LLMs",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-8021849f1bfc-Ashkboos-et-al-2024-QuaRot-Outlier-Free-4-Bit-Inference-in-Rotated-LLMs.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/432/Ashkboos et al. - 2024 - QuaRot Outlier-Free 4-Bit Inference in Rotated LLMs.pdf",
+      "sha256": "8021849f1bfc171c51baf05ac2dfd26c1e82000d0042f871f1345e8422fbb345",
+      "actual_sha256": "8021849f1bfc171c51baf05ac2dfd26c1e82000d0042f871f1345e8422fbb345"
+    },
+    {
+      "source_id": "paper-pdf-289b8108e8ca",
+      "title": "Wang et al. - 2025 - Q-VLM Post-training Quantization for Large Vision-Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-289b8108e8ca-Wang-et-al-2025-Q-VLM-Post-training-Quantization-for-Large-Vision-Language-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/434/Wang et al. - 2025 - Q-VLM Post-training Quantization for Large Vision-Language Models.pdf",
+      "sha256": "289b8108e8cabb133e475912201a812a1fd2e275102149df0943855eb509b15c",
+      "actual_sha256": "289b8108e8cabb133e475912201a812a1fd2e275102149df0943855eb509b15c"
+    },
+    {
+      "source_id": "paper-pdf-8aa575f85ffb",
+      "title": "Shao et al. - 2024 - OmniQuant Omnidirectionally Calibrated Quantization for Large Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-8aa575f85ffb-Shao-et-al-2024-OmniQuant-Omnidirectionally-Calibrated-Quantization-for-Large-Language-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/435/Shao et al. - 2024 - OmniQuant Omnidirectionally Calibrated Quantization for Large Language Models.pdf",
+      "sha256": "8aa575f85ffb4da0a4bcfd4143c2c3ddbd4805cbdac4d39448c9960d5a29036f",
+      "actual_sha256": "8aa575f85ffb4da0a4bcfd4143c2c3ddbd4805cbdac4d39448c9960d5a29036f"
+    },
+    {
+      "source_id": "paper-pdf-014363b294cb",
+      "title": "Li et al. - 2025 - MBQ Modality-Balanced Quantization for Large Vision-Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-014363b294cb-Li-et-al-2025-MBQ-Modality-Balanced-Quantization-for-Large-Vision-Language-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/437/Li et al. - 2025 - MBQ Modality-Balanced Quantization for Large Vision-Language Models.pdf",
+      "sha256": "014363b294cbe054aaaff55d4b3783eb31fee95754a49aca8dd0ba8561cad4e9",
+      "actual_sha256": "014363b294cbe054aaaff55d4b3783eb31fee95754a49aca8dd0ba8561cad4e9"
+    },
+    {
+      "source_id": "paper-pdf-b1968881ef95",
+      "title": "Xiang and Zhang - 2024 - DFRot Achieving Outlier-Free and Massive Activation-Free for Rotated LLMs with Refined Rotation",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-b1968881ef95-Xiang-and-Zhang-2024-DFRot-Achieving-Outlier-Free-and-Massive-Activation-Free-for-Rotated-LLMs-w.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/440/Xiang and Zhang - 2024 - DFRot Achieving Outlier-Free and Massive Activation-Free for Rotated LLMs with Refined Rotation.pdf",
+      "sha256": "b1968881ef9545710caa2b41ced0d4601afa09034e641c2cf0467a6f2cd5f3a2",
+      "actual_sha256": "b1968881ef9545710caa2b41ced0d4601afa09034e641c2cf0467a6f2cd5f3a2"
+    },
+    {
+      "source_id": "paper-pdf-11fbbaa34223",
+      "title": "Lin et al. - 2024 - AWQ Activation-aware Weight Quantization for LLM Compression and Acceleration",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-11fbbaa34223-Lin-et-al-2024-AWQ-Activation-aware-Weight-Quantization-for-LLM-Compression-and-Acceleration.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/442/Lin et al. - 2024 - AWQ Activation-aware Weight Quantization for LLM Compression and Acceleration.pdf",
+      "sha256": "11fbbaa34223e0cac11ad8612cf76242e5373a7ab1510a5899d998bce0cc063c",
+      "actual_sha256": "11fbbaa34223e0cac11ad8612cf76242e5373a7ab1510a5899d998bce0cc063c"
+    },
+    {
+      "source_id": "paper-pdf-845331f6fde4",
+      "title": "Ma et al. - 2024 - AffineQuant Affine Transformation Quantization for Large Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-845331f6fde4-Ma-et-al-2024-AffineQuant-Affine-Transformation-Quantization-for-Large-Language-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/444/Ma et al. - 2024 - AffineQuant Affine Transformation Quantization for Large Language Models.pdf",
+      "sha256": "845331f6fde4ddf086676b0b4bfaf260fac86f39ee93293a89a6c1eac33ffc22",
+      "actual_sha256": "845331f6fde4ddf086676b0b4bfaf260fac86f39ee93293a89a6c1eac33ffc22"
+    },
+    {
+      "source_id": "paper-pdf-a122bbca9e42",
+      "title": "Xie et al. - 2024 - Advancing Multimodal Large Language Models with Quantization-Aware Scale Learning for Efficient Adap",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-a122bbca9e42-Xie-et-al-2024-Advancing-Multimodal-Large-Language-Models-with-Quantization-Aware-Scale-Learning.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/445/Xie et al. - 2024 - Advancing Multimodal Large Language Models with Quantization-Aware Scale Learning for Efficient Adap.pdf",
+      "sha256": "a122bbca9e4262725a45d53802c1a7e382d1573d0f54e1ad50ee67a73b53ea57",
+      "actual_sha256": "a122bbca9e4262725a45d53802c1a7e382d1573d0f54e1ad50ee67a73b53ea57"
+    },
+    {
+      "source_id": "paper-pdf-0957be7a0ab0",
+      "title": "Dettmers et al. - 2022 - LLM.int8() 8-bit Matrix Multiplication for Transformers at Scale",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-0957be7a0ab0-Dettmers-et-al-2022-LLM-int8-8-bit-Matrix-Multiplication-for-Transformers-at-Scale.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/449/Dettmers et al. - 2022 - LLM.int8() 8-bit Matrix Multiplication for Transformers at Scale.pdf",
+      "sha256": "0957be7a0ab0ad4a093dd0ae653ce4224857db62542f150f15f1730ee4af493e",
+      "actual_sha256": "0957be7a0ab0ad4a093dd0ae653ce4224857db62542f150f15f1730ee4af493e"
+    },
+    {
+      "source_id": "paper-pdf-d69cfcf8fe22",
+      "title": "Frantar et al. - 2023 - GPTQ Accurate Post-Training Quantization for Generative Pre-trained Transformers",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-d69cfcf8fe22-Frantar-et-al-2023-GPTQ-Accurate-Post-Training-Quantization-for-Generative-Pre-trained-Transform.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/452/Frantar et al. - 2023 - GPTQ Accurate Post-Training Quantization for Generative Pre-trained Transformers.pdf",
+      "sha256": "d69cfcf8fe2203f74f86f094229efa6c0ea108828276a8ceffb9018981213ba6",
+      "actual_sha256": "d69cfcf8fe2203f74f86f094229efa6c0ea108828276a8ceffb9018981213ba6"
+    },
+    {
+      "source_id": "paper-pdf-9ead37151490",
+      "title": "Lin et al. - 2024 - DuQuant Distributing Outliers via Dual Transformation Makes Stronger Quantized LLMs",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-9ead37151490-Lin-et-al-2024-DuQuant-Distributing-Outliers-via-Dual-Transformation-Makes-Stronger-Quantized-LL.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/503/Lin et al. - 2024 - DuQuant Distributing Outliers via Dual Transformation Makes Stronger Quantized LLMs.pdf",
+      "sha256": "9ead3715149060ce7f20cf68d6d126143b678198389e59bcb9329ed0bc90ce39",
+      "actual_sha256": "9ead3715149060ce7f20cf68d6d126143b678198389e59bcb9329ed0bc90ce39"
+    },
+    {
+      "source_id": "paper-pdf-13cf5837688e",
+      "title": "Xiao et al. - 2024 - SmoothQuant Accurate and Efficient Post-Training Quantization for Large Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-13cf5837688e-Xiao-et-al-2024-SmoothQuant-Accurate-and-Efficient-Post-Training-Quantization-for-Large-Language.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/505/Xiao et al. - 2024 - SmoothQuant Accurate and Efficient Post-Training Quantization for Large Language Models.pdf",
+      "sha256": "13cf5837688eab978b101d14af7a5693a3d17d106bd8e4dbf201808d31c26ed3",
+      "actual_sha256": "13cf5837688eab978b101d14af7a5693a3d17d106bd8e4dbf201808d31c26ed3"
+    },
+    {
+      "source_id": "paper-pdf-740e66971ae7",
+      "title": "Sun et al. - 2024 - Massive Activations in Large Language Models",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-740e66971ae7-Sun-et-al-2024-Massive-Activations-in-Large-Language-Models.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/506/Sun et al. - 2024 - Massive Activations in Large Language Models.pdf",
+      "sha256": "740e66971ae769371bc0e55ccffaec2387f1f03389b8f9614d8eaec2f7e7cd7c",
+      "actual_sha256": "740e66971ae769371bc0e55ccffaec2387f1f03389b8f9614d8eaec2f7e7cd7c"
+    },
+    {
+      "source_id": "paper-pdf-b4207b13e124",
+      "title": "Mo 等 - 2025 - LUT Tensor Core A Software-Hardware Co-Design for LUT-Based Low-Bit LLM Inference",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-b4207b13e124-Mo-2025-LUT-Tensor-Core-A-Software-Hardware-Co-Design-for-LUT-Based-Low-Bit-LLM-Inference.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/733/Mo 等 - 2025 - LUT Tensor Core A Software-Hardware Co-Design for LUT-Based Low-Bit LLM Inference.pdf",
+      "sha256": "b4207b13e124234095b30fac659e5d9f7a2e6edb279e440682e32420de3842e6",
+      "actual_sha256": "b4207b13e124234095b30fac659e5d9f7a2e6edb279e440682e32420de3842e6"
+    },
+    {
+      "source_id": "paper-pdf-ab4ffba26980",
+      "title": "Guo 等 - 2025 - Fast Matrix Multiplications for Lookup Table-Quantized LLMs",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-ab4ffba26980-Guo-2025-Fast-Matrix-Multiplications-for-Lookup-Table-Quantized-LLMs.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/735/Guo 等 - 2025 - Fast Matrix Multiplications for Lookup Table-Quantized LLMs.pdf",
+      "sha256": "ab4ffba2698069d6121be2073d079803356f3b67ec19feebb2e618a13dd6f220",
+      "actual_sha256": "ab4ffba2698069d6121be2073d079803356f3b67ec19feebb2e618a13dd6f220"
+    },
+    {
+      "source_id": "paper-pdf-5229a344d147",
+      "title": "Blumenberg et al. - 2025 - Improving Block-Wise LLM Quantization by 4-bit Block-Wise Optimal Float (BOF4) Analysis and Variati",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-5229a344d147-Blumenberg-et-al-2025-Improving-Block-Wise-LLM-Quantization-by-4-bit-Block-Wise-Optimal-Float-BO.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/745/Blumenberg et al. - 2025 - Improving Block-Wise LLM Quantization by 4-bit Block-Wise Optimal Float (BOF4) Analysis and Variati.pdf",
+      "sha256": "5229a344d14787c1203a5ca8f7ef6cae550fea60e3fe914f1c44c49794ce1308",
+      "actual_sha256": "5229a344d14787c1203a5ca8f7ef6cae550fea60e3fe914f1c44c49794ce1308"
+    },
+    {
+      "source_id": "paper-pdf-33a4e757c19d",
+      "title": "Dettmers et al. - 2023 - QLoRA Efficient Finetuning of Quantized LLMs",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-33a4e757c19d-Dettmers-et-al-2023-QLoRA-Efficient-Finetuning-of-Quantized-LLMs.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/746/Dettmers et al. - 2023 - QLoRA Efficient Finetuning of Quantized LLMs.pdf",
+      "sha256": "33a4e757c19d6ea8d3cca8958fce8fe405e290272e135c99ee66065c775d5bd1",
+      "actual_sha256": "33a4e757c19d6ea8d3cca8958fce8fe405e290272e135c99ee66065c775d5bd1"
+    },
+    {
+      "source_id": "paper-pdf-044df40b60a2",
+      "title": "Dettmers et al. - 2022 - 8-bit Optimizers via Block-wise Quantization",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-044df40b60a2-Dettmers-et-al-2022-8-bit-Optimizers-via-Block-wise-Quantization.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/758/Dettmers et al. - 2022 - 8-bit Optimizers via Block-wise Quantization.pdf",
+      "sha256": "044df40b60a2eea23eac792c77bf71d62448611ecb7a2b6a39c909f33fdf7e81",
+      "actual_sha256": "044df40b60a2eea23eac792c77bf71d62448611ecb7a2b6a39c909f33fdf7e81"
+    },
+    {
+      "source_id": "paper-pdf-9a3e809e7f6d",
+      "title": "Team et al. - 2025 - Kimi K2 Open Agentic Intelligence",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-9a3e809e7f6d-Team-et-al-2025-Kimi-K2-Open-Agentic-Intelligence.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/766/Team et al. - 2025 - Kimi K2 Open Agentic Intelligence.pdf",
+      "sha256": "9a3e809e7f6d54e73b36c074300cf82203f792c740ae21f3f8182898de204011",
+      "actual_sha256": "9a3e809e7f6d54e73b36c074300cf82203f792c740ae21f3f8182898de204011"
+    },
+    {
+      "source_id": "paper-pdf-7ab20ebf5cb9",
+      "title": "ERNIE_Technical_Report",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-7ab20ebf5cb9-ERNIE-Technical-Report.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/774/ERNIE_Technical_Report.pdf",
+      "sha256": "7ab20ebf5cb908779d6e334aa8894ccc66f799eda51677e56d9b832b0cc383a6",
+      "actual_sha256": "7ab20ebf5cb908779d6e334aa8894ccc66f799eda51677e56d9b832b0cc383a6"
+    },
+    {
+      "source_id": "paper-pdf-70b2e5e6f260",
+      "title": "Kim et al. - 2024 - SqueezeLLM Dense-and-Sparse Quantization",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-70b2e5e6f260-Kim-et-al-2024-SqueezeLLM-Dense-and-Sparse-Quantization.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/878/Kim et al. - 2024 - SqueezeLLM Dense-and-Sparse Quantization.pdf",
+      "sha256": "70b2e5e6f2601b887f1d477146d5b3ef9e026a8d453ef79bec57d1b7c60f2124",
+      "actual_sha256": "70b2e5e6f2601b887f1d477146d5b3ef9e026a8d453ef79bec57d1b7c60f2124"
+    },
+    {
+      "source_id": "paper-pdf-2663da58e91d",
+      "title": "Gope et al. - 2024 - Highly Optimized Kernels and Fine-Grained Codebooks for LLM Inference on Arm CPUs",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-2663da58e91d-Gope-et-al-2024-Highly-Optimized-Kernels-and-Fine-Grained-Codebooks-for-LLM-Inference-on-Arm-CPU.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/882/Gope et al. - 2024 - Highly Optimized Kernels and Fine-Grained Codebooks for LLM Inference on Arm CPUs.pdf",
+      "sha256": "2663da58e91db072e9f4602b7a3000cd002c3d7a614a79a14024c331fdd1cd91",
+      "actual_sha256": "2663da58e91db072e9f4602b7a3000cd002c3d7a614a79a14024c331fdd1cd91"
+    },
+    {
+      "source_id": "paper-pdf-2f5898d90f62",
+      "title": "Hu et al. - 2025 - MoEQuant Enhancing Quantization for Mixture-of-Experts Large Language Models via Expert-Balanced Sa",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-2f5898d90f62-Hu-et-al-2025-MoEQuant-Enhancing-Quantization-for-Mixture-of-Experts-Large-Language-Models-via-E.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/909/Hu et al. - 2025 - MoEQuant Enhancing Quantization for Mixture-of-Experts Large Language Models via Expert-Balanced Sa.pdf",
+      "sha256": "2f5898d90f6263bd469c09253b1f8f43f8e7e206f87394cd6d453366b50c1153",
+      "actual_sha256": "2f5898d90f6263bd469c09253b1f8f43f8e7e206f87394cd6d453366b50c1153"
+    },
+    {
+      "source_id": "paper-pdf-f1c2998bde40",
+      "title": "Wei et al. - 2025 - T-MAC CPU Renaissance via Table Lookup for Low-Bit LLM Deployment on Edge",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-f1c2998bde40-Wei-et-al-2025-T-MAC-CPU-Renaissance-via-Table-Lookup-for-Low-Bit-LLM-Deployment-on-Edge.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/923/Wei et al. - 2025 - T-MAC CPU Renaissance via Table Lookup for Low-Bit LLM Deployment on Edge.pdf",
+      "sha256": "f1c2998bde40793dc599dad50c67e710272d4aab6290969424e1ce0c76343d47",
+      "actual_sha256": "f1c2998bde40793dc599dad50c67e710272d4aab6290969424e1ce0c76343d47"
+    },
+    {
+      "source_id": "paper-pdf-06a3ac8f82c5",
+      "title": "Sun et al. - 2025 - FlatQuant Flatness Matters for LLM Quantization",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-06a3ac8f82c5-Sun-et-al-2025-FlatQuant-Flatness-Matters-for-LLM-Quantization.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/928/Sun et al. - 2025 - FlatQuant Flatness Matters for LLM Quantization.pdf",
+      "sha256": "06a3ac8f82c56c55c86b3fe8800bbab08a68058fb088fffc05d78efa03da9a68",
+      "actual_sha256": "06a3ac8f82c56c55c86b3fe8800bbab08a68058fb088fffc05d78efa03da9a68"
+    },
+    {
+      "source_id": "paper-pdf-e85b50600925",
+      "title": "Dao et al. - 2022 - FlashAttention Fast and Memory-Efficient Exact Attention with IO-Awareness",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-e85b50600925-Dao-et-al-2022-FlashAttention-Fast-and-Memory-Efficient-Exact-Attention-with-IO-Awareness.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/932/Dao et al. - 2022 - FlashAttention Fast and Memory-Efficient Exact Attention with IO-Awareness.pdf",
+      "sha256": "e85b50600925bdd877395f5d77c238ff4b8842684850f7ad455561528066e90c",
+      "actual_sha256": "e85b50600925bdd877395f5d77c238ff4b8842684850f7ad455561528066e90c"
+    },
+    {
+      "source_id": "paper-pdf-4aa8935dfaca",
+      "title": "Dao - 2023 - FlashAttention-2 Faster Attention with Better Parallelism and Work Partitioning",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-4aa8935dfaca-Dao-2023-FlashAttention-2-Faster-Attention-with-Better-Parallelism-and-Work-Partitioning.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/934/Dao - 2023 - FlashAttention-2 Faster Attention with Better Parallelism and Work Partitioning.pdf",
+      "sha256": "4aa8935dfacaf6ae8c68f772ca92f730154a0dd0e1bceeb59c7bc56c512d5868",
+      "actual_sha256": "4aa8935dfacaf6ae8c68f772ca92f730154a0dd0e1bceeb59c7bc56c512d5868"
+    },
+    {
+      "source_id": "paper-pdf-3d05ca102802",
+      "title": "Shah et al. - 2024 - FlashAttention-3 Fast and Accurate Attention with Asynchrony and Low-precision",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-3d05ca102802-Shah-et-al-2024-FlashAttention-3-Fast-and-Accurate-Attention-with-Asynchrony-and-Low-precision.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/936/Shah et al. - 2024 - FlashAttention-3 Fast and Accurate Attention with Asynchrony and Low-precision.pdf",
+      "sha256": "3d05ca102802e6b8ebbae5181efe777b7d258cd75e2fe9cca209efd2f5e6c6cb",
+      "actual_sha256": "3d05ca102802e6b8ebbae5181efe777b7d258cd75e2fe9cca209efd2f5e6c6cb"
+    },
+    {
+      "source_id": "paper-pdf-4046f5a46033",
+      "title": "Yang et al. - 2023 - Foundation Models for Decision Making Problems, Methods, and Opportunities",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-4046f5a46033-Yang-et-al-2023-Foundation-Models-for-Decision-Making-Problems-Methods-and-Opportunities.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/938/Yang et al. - 2023 - Foundation Models for Decision Making Problems, Methods, and Opportunities.pdf",
+      "sha256": "4046f5a460339144bb67765b6e1fef5295fb76faf5e3429d9a787afd7037141d",
+      "actual_sha256": "4046f5a460339144bb67765b6e1fef5295fb76faf5e3429d9a787afd7037141d"
+    },
+    {
+      "source_id": "paper-pdf-25a23046f2aa",
+      "title": "Arai and Ichikawa - 2025 - Quantization Error Propagation Revisiting Layer-Wise Post-Training Quantization",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-25a23046f2aa-Arai-and-Ichikawa-2025-Quantization-Error-Propagation-Revisiting-Layer-Wise-Post-Training-Quanti.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/956/Arai and Ichikawa - 2025 - Quantization Error Propagation Revisiting Layer-Wise Post-Training Quantization.pdf",
+      "sha256": "25a23046f2aa2ed27792bbf058df47670abe4136623dbe9c77778de8c2068f33",
+      "actual_sha256": "25a23046f2aa2ed27792bbf058df47670abe4136623dbe9c77778de8c2068f33"
+    },
+    {
+      "source_id": "paper-pdf-389eec940851",
+      "title": "Wu et al. - 2025 - PolarQuant Leveraging Polar Transformation for Efficient Key Cache Quantization and Decoding Accele",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-389eec940851-Wu-et-al-2025-PolarQuant-Leveraging-Polar-Transformation-for-Efficient-Key-Cache-Quantization-an.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/957/Wu et al. - 2025 - PolarQuant Leveraging Polar Transformation for Efficient Key Cache Quantization and Decoding Accele.pdf",
+      "sha256": "389eec94085138d28c1d8f49179205e6aac614453cc9bcde34a1d49282fbbede",
+      "actual_sha256": "389eec94085138d28c1d8f49179205e6aac614453cc9bcde34a1d49282fbbede"
+    },
+    {
+      "source_id": "paper-pdf-cc9a179b3bf9",
+      "title": "Tian et al. - 2025 - Irrational Complex Rotations Empower Low-bit Optimizers",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-cc9a179b3bf9-Tian-et-al-2025-Irrational-Complex-Rotations-Empower-Low-bit-Optimizers.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/958/Tian et al. - 2025 - Irrational Complex Rotations Empower Low-bit Optimizers.pdf",
+      "sha256": "cc9a179b3bf979828f4909b3c42f677a9c30678c9ea5dc330cd6c4bf968b7992",
+      "actual_sha256": "cc9a179b3bf979828f4909b3c42f677a9c30678c9ea5dc330cd6c4bf968b7992"
+    },
+    {
+      "source_id": "paper-pdf-52ef2bfd0ce5",
+      "title": "Liu et al. - 2025 - ParetoQ Scaling Laws in Extremely Low-bit LLM Quantization",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-52ef2bfd0ce5-Liu-et-al-2025-ParetoQ-Scaling-Laws-in-Extremely-Low-bit-LLM-Quantization.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/959/Liu et al. - 2025 - ParetoQ Scaling Laws in Extremely Low-bit LLM Quantization.pdf",
+      "sha256": "52ef2bfd0ce55a6ef08a6dc9dd2e685cdd5631bfcf0249d4a7dd30c67431cf80",
+      "actual_sha256": "52ef2bfd0ce55a6ef08a6dc9dd2e685cdd5631bfcf0249d4a7dd30c67431cf80"
+    },
+    {
+      "source_id": "paper-pdf-206ef16f4cfb",
+      "title": "Lee et al. - 2025 - LittleBit Ultra Low-Bit Quantization via Latent Factorization",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-206ef16f4cfb-Lee-et-al-2025-LittleBit-Ultra-Low-Bit-Quantization-via-Latent-Factorization.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/960/Lee et al. - 2025 - LittleBit Ultra Low-Bit Quantization via Latent Factorization.pdf",
+      "sha256": "206ef16f4cfb23195dc89ca100cb02eccca0990bd395ad5e6522f6e2539f4d10",
+      "actual_sha256": "206ef16f4cfb23195dc89ca100cb02eccca0990bd395ad5e6522f6e2539f4d10"
+    },
+    {
+      "source_id": "paper-pdf-a8ead587ce1b",
+      "title": "Son et al. - 2025 - NSNQuant A Double Normalization Approach for Calibration-Free Low-Bit Vector Quantization of KV Cac",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-a8ead587ce1b-Son-et-al-2025-NSNQuant-A-Double-Normalization-Approach-for-Calibration-Free-Low-Bit-Vector-Quan.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/961/Son et al. - 2025 - NSNQuant A Double Normalization Approach for Calibration-Free Low-Bit Vector Quantization of KV Cac.pdf",
+      "sha256": "a8ead587ce1b177c1fddc1f329127bbea214323cff13915de4078c69f5477ca2",
+      "actual_sha256": "a8ead587ce1b177c1fddc1f329127bbea214323cff13915de4078c69f5477ca2"
+    },
+    {
+      "source_id": "paper-pdf-0b3a028cb72e",
+      "title": "Ma et al. - 2024 - The Era of 1-bit LLMs All Large Language Models are in 1.58 Bits",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-0b3a028cb72e-Ma-et-al-2024-The-Era-of-1-bit-LLMs-All-Large-Language-Models-are-in-1-58-Bits.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/984/Ma et al. - 2024 - The Era of 1-bit LLMs All Large Language Models are in 1.58 Bits.pdf",
+      "sha256": "0b3a028cb72e45f76ea659d69785f2ef7b3d40d2bdd69c971f7bd7c523ae2224",
+      "actual_sha256": "0b3a028cb72e45f76ea659d69785f2ef7b3d40d2bdd69c971f7bd7c523ae2224"
+    },
+    {
+      "source_id": "paper-pdf-1133208176a3",
+      "title": "Zhang et al. - 2024 - KV Cache is 1 Bit Per Channel Efficient Large Language Model Inference with Coupled Quantization",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-1133208176a3-Zhang-et-al-2024-KV-Cache-is-1-Bit-Per-Channel-Efficient-Large-Language-Model-Inference-with-Cou.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/989/Zhang et al. - 2024 - KV Cache is 1 Bit Per Channel Efficient Large Language Model Inference with Coupled Quantization.pdf",
+      "sha256": "1133208176a3b1667322adee00b9fc5c1981accfa5b34dd28e408f4313f869cd",
+      "actual_sha256": "1133208176a3b1667322adee00b9fc5c1981accfa5b34dd28e408f4313f869cd"
+    },
+    {
+      "source_id": "paper-pdf-6696ee6a7ad0",
+      "title": "Rafailov et al. - 2024 - Direct Preference Optimization Your Language Model is Secretly a Reward Model",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-6696ee6a7ad0-Rafailov-et-al-2024-Direct-Preference-Optimization-Your-Language-Model-is-Secretly-a-Reward-Mode.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/992/Rafailov et al. - 2024 - Direct Preference Optimization Your Language Model is Secretly a Reward Model.pdf",
+      "sha256": "6696ee6a7ad0b49b1a23ed2114a5dd386e12d2223c6e215bd42cee63464582ee",
+      "actual_sha256": "6696ee6a7ad0b49b1a23ed2114a5dd386e12d2223c6e215bd42cee63464582ee"
+    },
+    {
+      "source_id": "paper-pdf-ba9094fe73db",
+      "title": "GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-ba9094fe73db-GQA-Training-Generalized-Multi-Query-Transformer-Models-from-Multi-Head-Checkpoints.pdf",
+      "original_path": "/Users/shawn/Desktop/我的文库/files/1406/Ainslie et al. - 2023 - GQA Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints.pdf",
+      "sha256": "ba9094fe73db9bf515d47ae8b2d502fee9d8a6c7b1327e197ddb160f4c63b94a",
+      "actual_sha256": "ba9094fe73db9bf515d47ae8b2d502fee9d8a6c7b1327e197ddb160f4c63b94a"
+    }
+  ]
+}

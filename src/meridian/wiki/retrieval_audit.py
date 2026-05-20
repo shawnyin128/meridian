@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from meridian.wiki.corpus import build_paper_catalog, retrieve_papers
+from meridian.wiki.corpus import build_paper_catalog, retrieve_papers, split_sections, strip_frontmatter
 
 
 RETRIEVAL_AUDIT_SCHEMA_VERSION = "meridian.wiki_retrieval_audit.v0"
@@ -51,6 +51,7 @@ def run_retrieval_audit(
     records = _load_catalog(catalog.catalog_path)
     if max_papers is not None:
         records = records[:max_papers]
+    _attach_section_cache(records=records, wiki_root=wiki_root)
 
     paper_results: list[dict[str, Any]] = []
     for record in records:
@@ -67,6 +68,7 @@ def run_retrieval_audit(
                 query=query_spec["query"],
                 wiki_root=wiki_root,
                 catalog_path=catalog.catalog_path,
+                catalog_records=records,
                 top_k=top_k,
                 packet_path=context_path,
                 result_path=context_json_path,
@@ -115,6 +117,30 @@ def run_retrieval_audit(
         query_count=int(summary["query_count"]),
         query_recall_at_k=float(summary["query_recall_at_k"]),
     )
+
+
+def _attach_section_cache(*, records: list[dict[str, Any]], wiki_root: Path) -> None:
+    for record in records:
+        path = Path(str(record.get("path") or ""))
+        if not path.is_absolute() and not path.exists():
+            path = wiki_root / path
+        if not path.exists():
+            continue
+        body = strip_frontmatter(path.read_text(encoding="utf-8"))
+        record["_section_contents"] = {
+            heading: content
+            for heading, content in split_sections(body).items()
+            if heading in {
+                "What To Remember",
+                "When To Retrieve This Paper",
+                "Paper Positioning",
+                "Mechanism",
+                "Mechanism Details To Verify",
+                "Evidence Map",
+                "Implementation Hooks",
+                "Limitations / Uncertainty",
+            }
+        }
 
 
 def generate_audit_queries(record: dict[str, Any]) -> list[dict[str, Any]]:

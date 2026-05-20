@@ -1,0 +1,16 @@
+{
+  "papers": 235,
+  "sources": 237,
+  "topics": 91,
+  "methods": 302,
+  "claims": 1135,
+  "evidence": 2737,
+  "paper_pages_with_wikilinks": 235,
+  "review_state": {
+    "auto_converged": 234,
+    "source_quality_hold": 1
+  },
+  "quality_gate": {
+    "warn": 235
+  }
+}

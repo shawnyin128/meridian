@@ -1,0 +1,17 @@
+---
+type: "claim"
+title: "Bit-width (A/W) Method Accuracy (%) Top-1 Top-5 32/32 FP-ours 70.2 89.6 32/4 QIL (Ours) 70.3 89.5 LQ-Nets [26] 70.0 89.1 32/3 QIL (Ours) 69.9 89.3 LQ-Nets [26] 69.3 88.8 32/2 QIL†(Ours) 68.1 88.3 LQ-Nets [26] 68.0 88.0 TTQ-B† [29] 66.6 87.2 TWN-B† [16] 65.3 86.2 TWN† [16] 61.8 84.2 Weight quantization To demonstrate the effectiveness of our method on weight quantization, we only quantize the weights and leave the activations as full-precision."
+status: "draft"
+sources:
+  - "[[papers/Jung-et-al-2018-Learning-to-Quantize-Deep-Networks-by-Optimizing-Quantization-Intervals-with-Task-Loss|Jung et al. - 2018 - Learning to Quantize Deep Networks by Optimizing Quantization Intervals with Task Loss]]"
+confidence: "medium"
+review_state: "auto_extracted"
+candidate_id: "claim-001"
+---
+# Bit-width (A/W) Method Accuracy (%) Top-1 Top-5 32/32 FP-ours 70.2 89.6 32/4 QIL (Ours) 70.3 89.5 LQ-Nets [26] 70.0 89.1 32/3 QIL (Ours) 69.9 89.3 LQ-Nets [26] 69.3 88.8 32/2 QIL†(Ours) 68.1 88.3 LQ-Nets [26] 68.0 88.0 TTQ-B† [29] 66.6 87.2 TWN-B† [16] 65.3 86.2 TWN† [16] 61.8 84.2 Weight quantization To demonstrate the effectiveness of our method on weight quantization, we only quantize the weights and leave the activations as full-precision.
+
+- Source paper: [[papers/Jung-et-al-2018-Learning-to-Quantize-Deep-Networks-by-Optimizing-Quantization-Intervals-with-Task-Loss|Jung et al. - 2018 - Learning to Quantize Deep Networks by Optimizing Quantization Intervals with Task Loss]]
+- Claim: Bit-width (A/W) Method Accuracy (%) Top-1 Top-5 32/32 FP-ours 70.2 89.6 32/4 QIL (Ours) 70.3 89.5 LQ-Nets [26] 70.0 89.1 32/3 QIL (Ours) 69.9 89.3 LQ-Nets [26] 69.3 88.8 32/2 QIL†(Ours) 68.1 88.3 LQ-Nets [26] 68.0 88.0 TTQ-B† [29] 66.6 87.2 TWN-B† [16] 65.3 86.2 TWN† [16] 61.8 84.2 Weight quantization To demonstrate the effectiveness of our method on weight quantization, we only quantize the weights and leave the activations as full-precision.
+- Claim type: source_claim
+- Evidence IDs: evidence-p0008
+- Provenance: p. 8

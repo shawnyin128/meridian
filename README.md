@@ -11,6 +11,11 @@ This creates an Obsidian-compatible Markdown vault scaffold: `papers/`,
 `claims/`, `methods/`, `evidence/`, `topics/`, `syntheses/`, immutable
 `raw/sources/`, generated `.index/`, draft areas, and reusable templates.
 
+The project main vault is `wiki/`. It is intended to be opened directly in
+Obsidian and is the default root for source audit, catalog, retrieval, and
+write-back proposal commands. The current main-vault productization status is
+tracked in `docs/main-wiki-productization-quality-brief.md`.
+
 ```bash
 meridian wiki ingest /path/to/paper.pdf --out wiki/.drafts/ingests/<paper-slug>/
 ```

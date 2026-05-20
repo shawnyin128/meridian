@@ -86,13 +86,14 @@ def _canonicalize_paper_text(
     for old, new in replacements.items():
         text = text.replace(old, new, 1)
 
-    insert = (
-        f"review_state: \"{quality_gate.review_state}\"\n"
-        f"quality_gate: \"{quality_gate.decision}\"\n"
-        f"raw_source: \"{source_pdf}\"\n"
-        f"draft_artifact_root: \"{draft_out_dir}\"\n"
-    )
-    return text.replace("---\n# ", f"{insert}---\n# ", 1)
+    for key, value in (
+        ("review_state", quality_gate.review_state),
+        ("quality_gate", quality_gate.decision),
+        ("raw_source", str(source_pdf)),
+        ("draft_artifact_root", str(draft_out_dir)),
+    ):
+        text = _upsert_scalar_frontmatter_field(text, key, value)
+    return text
 
 
 def _upsert_index_entry(
@@ -145,11 +146,47 @@ def _append_log_entry(
         f"- Review state: `{quality_gate.review_state}`\n"
     )
     if quality_gate.warnings:
-        entry += "- Warnings: " + ", ".join(f"`{warning}`" for warning in quality_gate.warnings) + "\n"
+        entry += "- Warnings: " + _summarize_messages(quality_gate.warnings) + "\n"
     if quality_gate.errors:
-        entry += "- Errors: " + ", ".join(f"`{error}`" for error in quality_gate.errors) + "\n"
+        entry += "- Errors: " + _summarize_messages(quality_gate.errors) + "\n"
 
     log_path.write_text(existing + entry, encoding="utf-8")
+
+
+def _upsert_scalar_frontmatter_field(text: str, key: str, value: str) -> str:
+    lines = text.splitlines()
+    if not lines or lines[0] != "---":
+        return text
+    rendered = f'{key}: "{_escape_scalar(value)}"'
+    out = [lines[0]]
+    inserted = False
+    frontmatter_closed = False
+    for line in lines[1:]:
+        if not frontmatter_closed and line == "---":
+            if not inserted:
+                out.append(rendered)
+                inserted = True
+            out.append(line)
+            frontmatter_closed = True
+            continue
+        if not frontmatter_closed and line.startswith(f"{key}:"):
+            if not inserted:
+                out.append(rendered)
+                inserted = True
+            continue
+        out.append(line)
+    return "\n".join(out) + ("\n" if text.endswith("\n") else "")
+
+
+def _escape_scalar(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _summarize_messages(messages: list[str], *, limit: int = 8) -> str:
+    shown = ", ".join(f"`{message}`" for message in messages[:limit])
+    if len(messages) <= limit:
+        return shown
+    return f"{shown}, ... ({len(messages) - limit} more)"
 
 
 def _slugify(title: str) -> str:

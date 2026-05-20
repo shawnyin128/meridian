@@ -13,6 +13,7 @@ from meridian.wiki.extract import PageExtraction, PdfExtraction
 from meridian.wiki.ingest import _title_from_first_page
 from meridian.wiki.model import _primary_paper_key, build_paper_model
 from meridian.wiki.packet import _trusted_metadata_authors
+from meridian.wiki.promote import _records_for_promotion
 from meridian.wiki.quality_check import (
     _candidate_record_score,
     _retrieval_intent_quality_score,
@@ -1017,16 +1018,33 @@ Evidence takeaways:
 
             canonical = wiki_root / "papers/CodeQuant-Unified-Clustering-and-Quantization.md"
             self.assertTrue(canonical.exists())
-            self.assertEqual(len(list((wiki_root / "methods").glob("*.md"))), 4)
+            self.assertGreaterEqual(len(list((wiki_root / "methods").glob("*.md"))), 4)
+            self.assertTrue((wiki_root / "methods/CodeQuant-Unified-Clustering-and-Quantization-method-001.md").exists())
             self.assertGreaterEqual(len(list((wiki_root / "claims").glob("*.md"))), 4)
             self.assertGreaterEqual(len(list((wiki_root / "evidence").glob("*.md"))), 4)
             self.assertTrue((wiki_root / "topics/activation-outliers.md").exists())
+            canonical_text = canonical.read_text(encoding="utf-8")
+            self.assertIn("## Wiki Graph Links", canonical_text)
+            self.assertIn("[[topics/activation-outliers|activation outliers]]", canonical_text)
+            self.assertIn("[[methods/CodeQuant-Unified-Clustering-and-Quantization-method-001|", canonical_text)
             self.assertTrue((wiki_root / ".index/papers.jsonl").exists())
             index = (wiki_root / "index.md").read_text(encoding="utf-8")
             self.assertIn("[[papers/CodeQuant-Unified-Clustering-and-Quantization|CodeQuant", index)
             run = json.loads((out / "run.json").read_text(encoding="utf-8"))
             self.assertIn("promotion", run)
             self.assertEqual(len(run["promotion"]["methods"]), 4)
+
+    def test_evidence_promotion_is_capped_for_large_documents(self) -> None:
+        records = [
+            {"id": f"evidence-{index:04d}", "page": index, "supports": []}
+            for index in range(1, 40)
+        ]
+        records.append({"id": "supported", "page": 35, "supports": ["claim-001"]})
+
+        selected = _records_for_promotion(records, type_name="evidence", max_records=12)
+
+        self.assertEqual(len(selected), 12)
+        self.assertIn("supported", {record["id"] for record in selected})
 
     def test_source_audit_and_lint_report_wiki_management_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1110,6 +1128,73 @@ This draft came from an unmanaged source.
             self.assertIn("raw/sources/papers", text)
             self.assertEqual(updated_run["source_management"]["mode"], "managed")
             self.assertTrue((wiki_root / "raw/sources/sources.jsonl").exists())
+
+    def test_publish_run_uses_deterministic_convergence_review_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            draft = root / "draft"
+            draft.mkdir()
+            pdf = root / "paper.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            (draft / "paper.md").write_text(
+                """---
+type: "paper"
+title: "Converged Draft"
+status: "draft"
+topics:
+  - "agent workflow"
+methods:
+  - "workflow orchestration"
+settings: []
+claims: []
+confidence: "low"
+review_state: "needs_review"
+---
+# Converged Draft
+
+## What To Remember
+
+This draft has deterministic convergence evidence.
+""",
+                encoding="utf-8",
+            )
+            for name in ("claims.jsonl", "methods.jsonl", "evidence.jsonl"):
+                (draft / name).write_text("", encoding="utf-8")
+            run = {
+                "schema_version": "paper_wiki_ingest.v0",
+                "created_at": "2026-05-20T00:00:00+00:00",
+                "source_pdf": str(pdf),
+                "title": "Converged Draft",
+                "draft_artifacts": {
+                    "paper_page": str(draft / "paper.md"),
+                    "claims": str(draft / "claims.jsonl"),
+                    "methods": str(draft / "methods.jsonl"),
+                    "evidence": str(draft / "evidence.jsonl"),
+                },
+                "quality_gate": {
+                    "decision": "warn",
+                    "review_state": "needs_review",
+                    "confidence": "low",
+                    "errors": [],
+                    "warnings": ["evidence_missing_page_image:evidence-p0001"],
+                },
+                "deterministic_convergence": {
+                    "review_state": "auto_converged",
+                    "convergence_state": "deterministic_text_converged",
+                },
+            }
+            (draft / "run.json").write_text(json.dumps(run), encoding="utf-8")
+
+            self.assertEqual(
+                main(["wiki", "publish-run", str(draft / "run.json"), "--wiki-root", str(wiki_root)]),
+                0,
+            )
+
+            text = (wiki_root / "papers/Converged-Draft.md").read_text(encoding="utf-8")
+            self.assertEqual(text.count('review_state: "auto_converged"'), 1)
+            self.assertNotIn('review_state: "needs_review"', text)
+            self.assertIn('convergence_state: "deterministic_text_converged"', text)
 
     def test_wiki_retrieve_outputs_context_packet_from_frontmatter_and_sections(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1593,6 +1678,7 @@ This page explains preference optimization for alignment.
             self.assertEqual(flow["reader_check_packet"], str(out / "reader-check.md"))
             self.assertEqual(flow["quality_self_check"], str(out / "quality-self-check.json"))
             self.assertEqual(flow["structural_self_check"], str(out / "structural-self-check.json"))
+            self.assertIn("deterministic_review_state", flow)
             self.assertEqual(
                 set(flow["managed_self_check_agents"]),
                 {"understanding", "quality", "structural"},

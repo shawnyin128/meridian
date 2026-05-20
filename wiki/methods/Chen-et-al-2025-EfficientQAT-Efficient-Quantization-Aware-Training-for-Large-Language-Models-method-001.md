@@ -1,0 +1,18 @@
+---
+type: "method"
+title: "Chen et al. - 2025 - EfficientQAT Efficient Quantization-Aware Training for Large Language Models"
+status: "draft"
+sources:
+  - "[[papers/Chen-et-al-2025-EfficientQAT-Efficient-Quantization-Aware-Training-for-Large-Language-Models|Chen et al. - 2025 - EfficientQAT Efficient Quantization-Aware Training for Large Language Models]]"
+confidence: "medium"
+review_state: "auto_extracted"
+candidate_id: "method-001"
+---
+# Chen et al. - 2025 - EfficientQAT Efficient Quantization-Aware Training for Large Language Models
+
+- Source paper: [[papers/Chen-et-al-2025-EfficientQAT-Efficient-Quantization-Aware-Training-for-Large-Language-Models|Chen et al. - 2025 - EfficientQAT Efficient Quantization-Aware Training for Large Language Models]]
+- Summary: To address these challenges, we introduce a novel quantization-aware training framework called EfficientQAT. Con- versely, weight-activation quantization compresses both weights and activations, thus further decreas- ing the overhead associated with matrix multipli- cations (Lin et al., 2024). 3 EfficientQAT 3.1 Method Overview In this section, we introduce EfficientQAT, a novel quantization-aware training framework for LLMs that enhances memory efficiency.
+- Inputs: token embeddings, query/key/value projections, positional or attention bias terms, task state, agent policy or prompt, environment feedback, calibration or runtime activations, model weights, calibration data
+- Outputs: contextual token representations, sequence-model predictions, planned actions, task outcomes, interaction trace, low-bit quantized model representation
+- Assumptions: attention computation and positional representation capture the dependencies required by the sequence task, the environment, tools, and evaluation protocol expose the planning behavior the paper claims to study, calibration data reflects the activation/weight behavior relevant to deployment
+- Provenance: p. 3; p. 1; p. 2

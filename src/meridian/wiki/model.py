@@ -2297,7 +2297,9 @@ def _primary_paper_key(pages: list[PageExtraction]) -> str:
         ("milo", ("milo", "mixture of low-rank")),
         ("eagle2", ("eagle-2", "dynamic draft")),
         ("med-ddpm", ("conditional diffusion", "semantic 3d brain mri")),
-        ("gqa", ("gqa", "grouped-query attention")),
+        ("gqa", ("gqa",)),
+        ("gqa", ("generalized multi-query transformer",)),
+        ("gqa", ("grouped-query attention",)),
         ("qil", ("quantization interval", "qil")),
         ("lsqplus", ("lsq+", "learnable offsets")),
         ("qvlm", ("q-vlm", "vision-language")),
@@ -2664,6 +2666,14 @@ def _single_method_domain_narrative(method_name: str, record: dict[str, Any]) ->
     input_text = " ".join(inputs).lower()
     output_text = " ".join(outputs).lower()
     assumption_text = " ".join(assumptions).lower()
+    method_lower = method_name.lower()
+    if "gqa" in method_lower or "grouped-query" in method_lower or "grouped query" in method_lower:
+        return (
+            f"{method_name} converts a multi-head attention checkpoint into grouped-query attention by sharing "
+            "key/value heads across query groups, then uptrains the converted checkpoint to recover quality. "
+            "Its reusable contract is MHA checkpoint plus group count plus uptraining budget -> GQA checkpoint "
+            "-> lower decode-time KV-cache bandwidth with explicit MHA/MQA/GQA quality and speed comparisons."
+        )
     if "kv-cache tensors" in input_text or "kv-cache" in output_text:
         return (
             f"{method_name} is a KV-cache compression method: it decides which cached key/value entries to retain "
@@ -3752,6 +3762,8 @@ def _method_families(
         return ["reference synthesis", "performance evaluation"]
     if _is_non_llm_clustering_text(focus):
         return ["clustering algorithm"]
+    if primary == "gqa":
+        return ["grouped-query attention", "attention checkpoint conversion"]
 
     if "survey" in focus and ("autonomous agent" in focus or "llm-based autonomous agent" in focus or "large language model based autonomous agent" in focus):
         return ["survey synthesis", "agent workflow modeling", "LLM-agent taxonomy"]
@@ -3772,8 +3784,6 @@ def _method_families(
         return ["speculative decoding", "dynamic draft tree"]
     if primary == "med-ddpm":
         return ["conditional diffusion", "semantic image synthesis"]
-    if primary == "gqa":
-        return ["grouped-query attention", "attention checkpoint conversion"]
     if primary == "qil":
         return ["quantization-aware training", "learned quantization intervals"]
     if primary == "lsqplus":
@@ -3891,6 +3901,8 @@ def _settings(pages: list[PageExtraction]) -> list[str]:
         return ["long-form reference setting"]
     if _is_clustering_research_context(focus_lowered):
         return ["clustering theory setting"]
+    if primary == "gqa":
+        return ["decoder attention setting"]
     if "survey" in focus_lowered and ("autonomous agent" in focus_lowered or "llm-based autonomous agent" in focus_lowered):
         return ["agent survey/synthesis setting", "survey/synthesis setting"]
     if "flashattention" in focus_lowered or ("hopper" in focus_lowered and "attention" in focus_lowered):

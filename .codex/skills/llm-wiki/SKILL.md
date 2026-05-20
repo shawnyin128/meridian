@@ -13,6 +13,8 @@ The central product promise is accumulated research state: summaries, entities, 
 
 For Meridian's current MVP, apply this pattern as a personal paper wiki workflow. Do not frame the product as a multi-agent platform. The first useful version should help the user internalize raw papers, incorporate their Zotero annotations and reading insights, evolve paper analysis through feedback, and feed the wiki back into stronger research ideas.
 
+The project main vault is `wiki/` at the repository root. Treat it as the daily Obsidian vault and source-managed canonical Paper Wiki, not as a disposable eval run. Eval runs may create temporary wiki roots, but product-facing source audit, retrieval, graph, and write-back work should target `--wiki-root wiki` unless the user explicitly asks for an isolated fixture.
+
 When architecture or implementation choices are ambiguous, consult `docs/source-grounded-development-principles.md` for the project's source-grounded principles from Karpathy's LLM Wiki gist, Anthropic agent engineering posts, and selected community followup lessons.
 
 ## Core Model

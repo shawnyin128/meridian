@@ -75,11 +75,13 @@ def publish_run_to_wiki(
             "managed_path": str(source_record.managed_path),
             "sha256": source_record.sha256,
         }
+    _patch_canonical_quality_frontmatter(canonical_paper_path, quality_gate, run)
 
     promoted_claims: list[Path] = []
     promoted_methods: list[Path] = []
     promoted_evidence: list[Path] = []
     topic_pages: list[Path] = []
+    method_family_pages: list[Path] = []
     if promote_candidates:
         promoted_methods = _promote_records(
             records_path=Path(str(draft.get("methods") or "")),
@@ -101,8 +103,19 @@ def publish_run_to_wiki(
             directory="evidence",
             type_name="evidence",
             paper_path=canonical_paper_path,
+            max_records=12,
         )
         topic_pages = _upsert_topic_pages(wiki_root=wiki_root, paper_path=canonical_paper_path)
+        method_family_pages = _upsert_method_family_pages(wiki_root=wiki_root, paper_path=canonical_paper_path)
+        _update_paper_graph_links(
+            wiki_root=wiki_root,
+            paper_path=canonical_paper_path,
+            topic_pages=topic_pages,
+            method_family_pages=method_family_pages,
+            promoted_methods=promoted_methods,
+            promoted_claims=promoted_claims,
+            promoted_evidence=promoted_evidence,
+        )
 
     index_path = rebuild_wiki_index(wiki_root=wiki_root)
     catalog = build_paper_catalog(wiki_root=wiki_root)
@@ -116,6 +129,7 @@ def publish_run_to_wiki(
             f"Promoted claims: {len(promoted_claims)}",
             f"Promoted evidence records: {len(promoted_evidence)}",
             f"Topic pages touched: {len(topic_pages)}",
+            f"Method family pages touched: {len(method_family_pages)}",
         ],
     )
     run["promotion"] = {
@@ -126,6 +140,7 @@ def publish_run_to_wiki(
         "claims": [str(path) for path in promoted_claims],
         "evidence": [str(path) for path in promoted_evidence],
         "topics": [str(path) for path in topic_pages],
+        "method_families": [str(path) for path in method_family_pages],
         "catalog": str(catalog.catalog_path),
     }
     _write_json(run_manifest, run)
@@ -148,20 +163,38 @@ def _promote_records(
     directory: str,
     type_name: str,
     paper_path: Path,
+    max_records: int | None = None,
 ) -> list[Path]:
     if not records_path.exists():
         return []
-    records = _read_jsonl(records_path)
+    records = _records_for_promotion(_read_jsonl(records_path), type_name=type_name, max_records=max_records)
     out_dir = wiki_root / directory
     out_dir.mkdir(parents=True, exist_ok=True)
     paths = []
     for record in records:
         record_id = str(record.get("id") or slugify(str(record.get("name") or record.get("claim") or "record")))
         title = _record_title(record, type_name)
-        path = out_dir / f"{slugify(record_id)}.md"
+        path = out_dir / f"{paper_path.stem}-{slugify(record_id)}.md"
         path.write_text(_render_record_page(record, type_name=type_name, title=title, paper_path=paper_path), encoding="utf-8")
         paths.append(path)
     return paths
+
+
+def _records_for_promotion(records: list[dict[str, Any]], *, type_name: str, max_records: int | None) -> list[dict[str, Any]]:
+    if max_records is None or len(records) <= max_records:
+        return records
+    if type_name != "evidence":
+        return records[:max_records]
+
+    def priority(record: dict[str, Any]) -> tuple[int, int]:
+        supports = record.get("supports") or []
+        evidence_type = str(record.get("evidence_type") or "").lower()
+        page = record.get("page")
+        page_number = int(page) if isinstance(page, int) else 9999
+        high_signal = any(marker in evidence_type for marker in ("table", "figure", "result", "experiment", "ablation", "metric"))
+        return (0 if supports or high_signal else 1, page_number)
+
+    return sorted(records, key=priority)[:max_records]
 
 
 def _upsert_topic_pages(*, wiki_root: Path, paper_path: Path) -> list[Path]:
@@ -187,6 +220,96 @@ def _upsert_topic_pages(*, wiki_root: Path, paper_path: Path) -> list[Path]:
             )
         paths.append(path)
     return paths
+
+
+def _upsert_method_family_pages(*, wiki_root: Path, paper_path: Path) -> list[Path]:
+    text = paper_path.read_text(encoding="utf-8")
+    frontmatter = parse_frontmatter(text)
+    methods = [str(item) for item in frontmatter.get("methods") or []]
+    topics = [str(item) for item in frontmatter.get("topics") or []]
+    title = str(frontmatter.get("title") or paper_path.stem)
+    paths = []
+    for method in methods:
+        path = wiki_root / "methods" / f"{slugify(method)}.md"
+        existing = path.read_text(encoding="utf-8") if path.exists() else ""
+        link = f"[[papers/{paper_path.stem}|{title}]]"
+        if existing:
+            body = existing.rstrip()
+            if link not in body:
+                body += f"\n- {link}\n"
+            path.write_text(body + "\n", encoding="utf-8")
+        else:
+            path.write_text(
+                _method_family_page(method=method, paper_link=link, topics=topics),
+                encoding="utf-8",
+            )
+        paths.append(path)
+    return paths
+
+
+def _update_paper_graph_links(
+    *,
+    wiki_root: Path,
+    paper_path: Path,
+    topic_pages: list[Path],
+    method_family_pages: list[Path],
+    promoted_methods: list[Path],
+    promoted_claims: list[Path],
+    promoted_evidence: list[Path],
+) -> None:
+    text = paper_path.read_text(encoding="utf-8")
+    frontmatter = parse_frontmatter(text)
+    topics = [str(item) for item in frontmatter.get("topics") or []]
+    methods = [str(item) for item in frontmatter.get("methods") or []]
+
+    lines = [
+        "## Wiki Graph Links",
+        "",
+        "These links are maintained for Obsidian navigation and graph structure; frontmatter remains the retrieval source of truth.",
+        "",
+    ]
+    if topic_pages:
+        lines.append("- Topics: " + _link_list(topic_pages, labels=topics, wiki_root=wiki_root))
+    if method_family_pages:
+        lines.append("- Method families: " + _link_list(method_family_pages, labels=methods, wiki_root=wiki_root))
+    if promoted_methods:
+        lines.append("- Candidate method records: " + _link_list(promoted_methods[:8], wiki_root=wiki_root))
+    if promoted_claims:
+        lines.append("- Candidate claim records: " + _link_list(promoted_claims[:8], wiki_root=wiki_root))
+    if promoted_evidence:
+        lines.append("- Evidence records: " + _link_list(promoted_evidence[:8], wiki_root=wiki_root))
+
+    graph_section = "\n".join(lines).rstrip() + "\n"
+    updated = _replace_section(text, "Wiki Graph Links", graph_section)
+    paper_path.write_text(updated, encoding="utf-8")
+
+
+def _replace_section(text: str, heading: str, replacement: str) -> str:
+    marker = f"## {heading}"
+    lines = text.splitlines()
+    start = None
+    for index, line in enumerate(lines):
+        if line.strip() == marker:
+            start = index
+            break
+    if start is None:
+        return text.rstrip() + "\n\n" + replacement
+    end = len(lines)
+    for index in range(start + 1, len(lines)):
+        if lines[index].startswith("## "):
+            end = index
+            break
+    lines[start:end] = replacement.rstrip().splitlines()
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _link_list(paths: list[Path], *, wiki_root: Path, labels: list[str] | None = None) -> str:
+    rendered = []
+    for index, path in enumerate(paths):
+        relative = path.relative_to(wiki_root).with_suffix("").as_posix()
+        label = labels[index] if labels and index < len(labels) else path.stem
+        rendered.append(f"[[{relative}|{label}]]")
+    return ", ".join(rendered)
 
 
 def _render_record_page(record: dict[str, Any], *, type_name: str, title: str, paper_path: Path) -> str:
@@ -262,11 +385,40 @@ def _topic_page(*, topic: str, paper_link: str, methods: list[str]) -> str:
     ).rstrip() + "\n"
 
 
+def _method_family_page(*, method: str, paper_link: str, topics: list[str]) -> str:
+    return "\n".join(
+        [
+            "---",
+            'type: "method"',
+            f'title: "{_escape(method)}"',
+            'status: "active"',
+            "related_papers:",
+            f'  - "{paper_link}"',
+            "topics:",
+            *[f'  - "{_escape(topic)}"' for topic in topics],
+            'confidence: "medium"',
+            'review_state: "active"',
+            "---",
+            f"# {method}",
+            "",
+            "## Related Papers",
+            "",
+            f"- {paper_link}",
+        ]
+    ).rstrip() + "\n"
+
+
 def _quality_gate_from_run(run: dict[str, Any]) -> QualityGate:
     payload = dict(run.get("quality_gate") or {})
+    deterministic = dict(run.get("deterministic_convergence") or {})
+    review_state = str(
+        deterministic.get("review_state")
+        or payload.get("review_state")
+        or "needs_review"
+    )
     return QualityGate(
         decision=str(payload.get("decision") or "warn"),
-        review_state=str(payload.get("review_state") or "needs_review"),
+        review_state=review_state,
         confidence=str(payload.get("confidence") or "low"),
         errors=[str(item) for item in payload.get("errors") or []],
         warnings=[str(item) for item in payload.get("warnings") or []],
@@ -282,6 +434,22 @@ def _ensure_managed_source(*, run: dict[str, Any], wiki_root: Path, title: str) 
     if not source_pdf.exists():
         return None
     return register_pdf_source(pdf_path=source_pdf, wiki_root=wiki_root, title=title)
+
+
+def _patch_canonical_quality_frontmatter(
+    path: Path,
+    quality_gate: QualityGate,
+    run: dict[str, Any],
+) -> None:
+    text = path.read_text(encoding="utf-8")
+    text = _replace_or_insert_frontmatter_scalar(text, "review_state", quality_gate.review_state)
+    text = _replace_or_insert_frontmatter_scalar(text, "quality_gate", quality_gate.decision)
+    deterministic = dict(run.get("deterministic_convergence") or {})
+    convergence_state = deterministic.get("convergence_state")
+    if convergence_state:
+        text = _replace_or_insert_frontmatter_scalar(text, "convergence_state", str(convergence_state))
+        text = _replace_or_insert_frontmatter_scalar(text, "judge_decision", "not_run")
+    path.write_text(text, encoding="utf-8")
 
 
 def _patch_canonical_source_frontmatter(path: Path, source_record: SourceRecord) -> None:
@@ -302,15 +470,24 @@ def _replace_or_insert_frontmatter_scalar(text: str, key: str, value: str) -> st
     if not lines or lines[0] != "---":
         return text
     rendered = f'{key}: "{_escape(value)}"'
-    for index in range(1, len(lines)):
-        if lines[index] == "---":
-            lines.insert(index, rendered)
-            return "\n".join(lines) + "\n"
-        if lines[index].startswith(f"{key}:"):
-            lines[index] = rendered
-            return "\n".join(lines) + "\n"
-    return text
-
+    out = [lines[0]]
+    inserted = False
+    frontmatter_closed = False
+    for line in lines[1:]:
+        if not frontmatter_closed and line == "---":
+            if not inserted:
+                out.append(rendered)
+                inserted = True
+            out.append(line)
+            frontmatter_closed = True
+            continue
+        if not frontmatter_closed and line.startswith(f"{key}:"):
+            if not inserted:
+                out.append(rendered)
+                inserted = True
+            continue
+        out.append(line)
+    return "\n".join(out) + "\n"
 
 def _replace_or_insert_frontmatter_list(text: str, key: str, values: list[str]) -> str:
     lines = text.splitlines()

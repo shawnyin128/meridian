@@ -114,6 +114,7 @@ def retrieve_papers(
     query: str,
     wiki_root: Path,
     catalog_path: Path | None = None,
+    catalog_records: list[dict[str, Any]] | None = None,
     top_k: int = 5,
     packet_path: Path | None = None,
     result_path: Path | None = None,
@@ -123,7 +124,7 @@ def retrieve_papers(
     if top_k < 1:
         raise ValueError("top_k must be >= 1")
 
-    catalog = _load_or_build_catalog(wiki_root=wiki_root, catalog_path=catalog_path)
+    catalog = catalog_records if catalog_records is not None else _load_or_build_catalog(wiki_root=wiki_root, catalog_path=catalog_path)
     scored = [_score_record(record, query=query, wiki_root=wiki_root) for record in catalog]
     results = [item for item in sorted(scored, key=lambda payload: (-payload["score"], payload["title"])) if item["score"] > 0]
     results = results[:top_k]
@@ -204,8 +205,12 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
     path = Path(str(record["path"]))
     if not path.is_absolute() and not path.exists():
         path = wiki_root / path
-    body = strip_frontmatter(path.read_text(encoding="utf-8"))
-    sections = split_sections(body)
+    if "_section_contents" in record:
+        sections = dict(record.get("_section_contents") or {})
+    else:
+        body = strip_frontmatter(path.read_text(encoding="utf-8"))
+        sections = split_sections(body)
+    section_search = _section_search(record, sections)
 
     score = 0.0
     matched_fields: dict[str, list[str]] = {}
@@ -246,7 +251,12 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
     section_hits = []
     for heading, weight in SECTION_WEIGHTS.items():
         content = sections.get(heading, "")
-        section_score = _text_score(query_tokens, query_norm, content, weight=weight)
+        cached = section_search.get(heading)
+        section_score = (
+            _cached_text_score(query_tokens, query_norm, cached, weight=weight)
+            if cached is not None
+            else _text_score(query_tokens, query_norm, content, weight=weight)
+        )
         intent_boost = _section_intent_boost(query_tokens, heading, weight=weight, content=content)
         section_score += intent_boost
         if section_score > 0:
@@ -255,7 +265,7 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
                 {
                     "heading": heading,
                     "score": round(section_score, 3),
-                    "snippet": _best_snippet(content, query_tokens),
+                    "snippet": _preview(content[:1200], limit=260),
                 }
             )
 
@@ -274,6 +284,22 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
         "confidence": record.get("confidence"),
         "source_id": record.get("source_id"),
     }
+
+
+def _section_search(record: dict[str, Any], sections: dict[str, str]) -> dict[str, dict[str, Any]]:
+    cached = record.get("_section_search")
+    if isinstance(cached, dict):
+        return cached
+    cached = {
+        heading: {
+            "content": content,
+            "norm": _norm(content),
+            "tokens": _tokens(content),
+        }
+        for heading, content in sections.items()
+    }
+    record["_section_search"] = cached
+    return cached
 
 
 def _section_intent_boost(query_tokens: set[str], heading: str, *, weight: float, content: str) -> float:
@@ -416,6 +442,26 @@ def _text_score(query_tokens: set[str], query_norm: str, text: str, *, weight: f
     for token in query_tokens:
         if len(token) > 2 and re.search(rf"\b{re.escape(token)}\b", text_norm):
             score += weight
+    if query_norm and query_norm in text_norm:
+        score += weight * 4
+    return score
+
+
+def _cached_text_score(
+    query_tokens: set[str],
+    query_norm: str,
+    cached: dict[str, Any],
+    *,
+    weight: float,
+) -> float:
+    text_norm = str(cached.get("norm") or "")
+    if not text_norm:
+        return 0.0
+    tokens = cached.get("tokens")
+    if not isinstance(tokens, set):
+        tokens = set(tokens or [])
+        cached["tokens"] = tokens
+    score = sum(weight for token in query_tokens if len(token) > 2 and token in tokens)
     if query_norm and query_norm in text_norm:
         score += weight * 4
     return score

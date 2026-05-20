@@ -1,0 +1,17 @@
+---
+type: "claim"
+title: "Moreover, while FIPO achieves superior performance over o1-mini on mathematical benchmarks, this advantage is inherently domain-specific."
+status: "draft"
+sources:
+  - "[[papers/Ma-et-al-2026-FIPO-Eliciting-Deep-Reasoning-with-Future-KL-Influenced-Policy-Optimization|Ma et al. - 2026 - FIPO Eliciting Deep Reasoning with Future-KL Influenced Policy Optimization]]"
+confidence: "medium"
+review_state: "auto_extracted"
+candidate_id: "claim-004"
+---
+# Moreover, while FIPO achieves superior performance over o1-mini on mathematical benchmarks, this advantage is inherently domain-specific.
+
+- Source paper: [[papers/Ma-et-al-2026-FIPO-Eliciting-Deep-Reasoning-with-Future-KL-Influenced-Policy-Optimization|Ma et al. - 2026 - FIPO Eliciting Deep Reasoning with Future-KL Influenced Policy Optimization]]
+- Claim: Moreover, while FIPO achieves superior performance over o1-mini on mathematical benchmarks, this advantage is inherently domain-specific.
+- Claim type: source_claim
+- Evidence IDs: evidence-p0013
+- Provenance: p. 13

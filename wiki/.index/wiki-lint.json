@@ -1,0 +1,7 @@
+{
+  "schema_version": "meridian.wiki_lint.v0",
+  "wiki_root": "wiki",
+  "created_at": "2026-05-20T17:32:20.013037+00:00",
+  "status": "pass",
+  "findings": []
+}
