@@ -10,6 +10,7 @@ from typing import Any
 
 
 CATALOG_SCHEMA_VERSION = "meridian.paper_catalog.v0"
+SYNTHESIS_CATALOG_SCHEMA_VERSION = "meridian.synthesis_catalog.v1"
 CONTEXT_PACKET_SCHEMA_VERSION = "meridian.retrieval_context.v0"
 
 ROUTING_FIELDS = (
@@ -32,6 +33,13 @@ SECTION_WEIGHTS = {
     "Evidence Map": 2.2,
     "Implementation Hooks": 2.4,
     "Limitations / Uncertainty": 1.6,
+    "What This Page Is For": 2.2,
+    "Source Facts": 2.8,
+    "Wiki Synthesis": 3.0,
+    "User Ideas / Decisions": 1.6,
+    "Open Questions": 2.0,
+    "Retrieval Hooks": 2.8,
+    "Publish / Review Notes": 1.2,
 }
 
 INTENT_SECTION_TERMS = {
@@ -218,6 +226,25 @@ def build_paper_catalog(*, wiki_root: Path, out_path: Path | None = None) -> Cat
     return CatalogResult(catalog_path=catalog_path, count=len(records))
 
 
+def build_synthesis_catalog(*, wiki_root: Path, out_path: Path | None = None) -> CatalogResult:
+    syntheses_dir = wiki_root / "syntheses"
+    if not syntheses_dir.exists():
+        raise FileNotFoundError(f"wiki syntheses directory does not exist: {syntheses_dir}")
+
+    catalog_path = out_path or wiki_root / ".index" / "syntheses.jsonl"
+    catalog_path.parent.mkdir(parents=True, exist_ok=True)
+
+    records = [
+        _catalog_record(path, wiki_root=wiki_root, schema_version=SYNTHESIS_CATALOG_SCHEMA_VERSION)
+        for path in sorted(syntheses_dir.glob("*.md"))
+    ]
+    with catalog_path.open("w", encoding="utf-8") as handle:
+        for record in records:
+            handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
+
+    return CatalogResult(catalog_path=catalog_path, count=len(records))
+
+
 def retrieve_papers(
     *,
     query: str,
@@ -277,7 +304,12 @@ def retrieve_papers(
     return RetrievalResult(packet_path=packet_path, result_path=result_path, results=results)
 
 
-def _catalog_record(path: Path, *, wiki_root: Path) -> dict[str, Any]:
+def _catalog_record(
+    path: Path,
+    *,
+    wiki_root: Path,
+    schema_version: str = CATALOG_SCHEMA_VERSION,
+) -> dict[str, Any]:
     text = path.read_text(encoding="utf-8")
     frontmatter = parse_frontmatter(text)
     body = strip_frontmatter(text)
@@ -286,7 +318,7 @@ def _catalog_record(path: Path, *, wiki_root: Path) -> dict[str, Any]:
     title = str(frontmatter.get("title") or path.stem)
 
     return {
-        "schema_version": CATALOG_SCHEMA_VERSION,
+        "schema_version": schema_version,
         "page_id": rel_path.with_suffix("").as_posix(),
         "path": str(path),
         "relative_path": rel_path.as_posix(),
@@ -299,6 +331,7 @@ def _catalog_record(path: Path, *, wiki_root: Path) -> dict[str, Any]:
         "source_id": frontmatter.get("source_id"),
         "source_pdf": frontmatter.get("source_pdf"),
         "source_registry": frontmatter.get("source_registry"),
+        "source_quality_risk": frontmatter.get("source_quality_risk"),
         "updated": frontmatter.get("updated"),
         "routing": {field: _as_list(frontmatter.get(field)) for field in ROUTING_FIELDS},
         "section_headings": list(sections.keys()),
@@ -320,6 +353,15 @@ def _load_or_build_catalog(*, wiki_root: Path, catalog_path: Path | None) -> lis
             stripped = line.strip()
             if stripped:
                 records.append(json.loads(stripped))
+    if catalog_path is None and (wiki_root / "syntheses").exists():
+        synthesis_path = wiki_root / ".index" / "syntheses.jsonl"
+        if not synthesis_path.exists():
+            build_synthesis_catalog(wiki_root=wiki_root, out_path=synthesis_path)
+        with synthesis_path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                stripped = line.strip()
+                if stripped:
+                    records.append(json.loads(stripped))
     return records
 
 
@@ -406,7 +448,10 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
         "review_state": record.get("review_state"),
         "quality_gate": record.get("quality_gate"),
         "confidence": record.get("confidence"),
+        "type": record.get("type") or "paper",
+        "result_type": record.get("type") or "paper",
         "source_id": record.get("source_id"),
+        "source_quality_risk": record.get("source_quality_risk"),
     }
 
 
@@ -568,10 +613,11 @@ def _score_record_v1(
     quality_gate = str(record.get("quality_gate") or "").lower()
     review_state = str(record.get("review_state") or "").lower()
     confidence = str(record.get("confidence") or "").lower()
+    source_quality_risk = str(record.get("source_quality_risk") or "").lower()
     is_source_quality_problem = any(
         token in " ".join([quality_gate, review_state, confidence])
         for token in ("hold", "fail", "low", "source_quality")
-    )
+    ) or source_quality_risk == "true"
     if query_analysis.get("source_quality_query"):
         if is_source_quality_problem:
             score += 35.0
@@ -775,7 +821,7 @@ def _render_context_packet(
             ]
         )
     if not results:
-        lines.extend(["## Results", "", "- No matching paper pages found."])
+        lines.extend(["## Results", "", "- No matching wiki pages found."])
         return "\n".join(lines).rstrip() + "\n"
 
     lines.extend(["## Results", ""])
@@ -785,6 +831,7 @@ def _render_context_packet(
                 f"### {index}. {result['title']}",
                 "",
                 f"- Page: `{result.get('relative_path') or result['path']}`",
+                f"- Result type: `{result.get('result_type') or result.get('type') or 'paper'}`",
                 f"- Score: `{result['score']}`",
                 f"- Review state: `{result.get('review_state')}`; quality gate: `{result.get('quality_gate')}`; confidence: `{result.get('confidence')}`",
                 f"- Selection reasons: {', '.join(result.get('selection_reasons') or ['lexical overlap'])}",

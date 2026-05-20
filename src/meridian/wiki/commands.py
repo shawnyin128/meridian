@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from meridian.wiki.corpus import CatalogResult, RetrievalResult, build_paper_catalog, retrieve_papers
+from meridian.wiki.corpus import CatalogResult, RetrievalResult, build_paper_catalog, build_synthesis_catalog, retrieve_papers
 from meridian.wiki.eval import iter_cases, write_eval_manifest
 from meridian.wiki.eval_run import (
     EvalConvergeResult,
@@ -16,7 +16,14 @@ from meridian.wiki.eval_run import (
 from meridian.wiki.flow import WikiFlowResult, run_wiki_flow
 from meridian.wiki.ingest import IngestResult, run_ingest
 from meridian.wiki.judge import build_judge_packet
-from meridian.wiki.proposals import QueryWritebackProposalResult, propose_query_writeback
+from meridian.wiki.proposals import (
+    ProposalLintResult,
+    PublishProposalResult,
+    QueryWritebackProposalResult,
+    lint_query_writeback_proposal,
+    propose_query_writeback,
+    publish_query_writeback_proposal,
+)
 from meridian.wiki.promote import PublishRunResult, publish_run_to_wiki
 from meridian.wiki.converge import WikiConvergenceResult, converge_wiki_run, record_judge_result
 from meridian.wiki.quality_check import QualitySelfCheckResult, run_quality_self_check
@@ -337,7 +344,10 @@ def summarize_eval(manifest_path: Path, out_path: Path | None = None) -> Path:
 
 
 def catalog_wiki(wiki_root: Path, out_path: Path | None = None) -> CatalogResult:
-    return build_paper_catalog(wiki_root=wiki_root, out_path=out_path)
+    result = build_paper_catalog(wiki_root=wiki_root, out_path=out_path)
+    if (wiki_root / "syntheses").exists():
+        build_synthesis_catalog(wiki_root=wiki_root)
+    return result
 
 
 def retrieve_wiki(
@@ -444,6 +454,8 @@ def propose_writeback_wiki(
     body_path: Path | None = None,
     out_dir: Path | None = None,
     notes: str = "",
+    user_note: str = "",
+    user_note_path: Path | None = None,
     overwrite: bool = False,
     update_log: bool = True,
 ) -> QueryWritebackProposalResult:
@@ -456,8 +468,38 @@ def propose_writeback_wiki(
         body_path=body_path,
         out_dir=out_dir,
         notes=notes,
+        user_note=user_note,
+        user_note_path=user_note_path,
         overwrite=overwrite,
         update_log=update_log,
+    )
+
+
+def proposal_lint_wiki(
+    *,
+    proposal_manifest: Path,
+    wiki_root: Path,
+    out_path: Path | None = None,
+    overwrite: bool = False,
+) -> ProposalLintResult:
+    return lint_query_writeback_proposal(
+        proposal_manifest=proposal_manifest,
+        wiki_root=wiki_root,
+        out_path=out_path,
+        overwrite=overwrite,
+    )
+
+
+def publish_proposal_wiki(
+    *,
+    proposal_manifest: Path,
+    wiki_root: Path,
+    overwrite: bool = False,
+) -> PublishProposalResult:
+    return publish_query_writeback_proposal(
+        proposal_manifest=proposal_manifest,
+        wiki_root=wiki_root,
+        overwrite=overwrite,
     )
 
 

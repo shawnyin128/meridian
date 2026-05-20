@@ -16,7 +16,9 @@ from meridian.wiki.commands import (
     init_wiki,
     lint_wiki_command,
     publish_run,
+    publish_proposal_wiki,
     quality_check_run,
+    proposal_lint_wiki,
     propose_writeback_wiki,
     record_judge,
     record_review,
@@ -422,19 +424,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     catalog = wiki_subparsers.add_parser(
         "catalog",
-        help="Build the machine-readable paper catalog for canonical wiki pages.",
+        help="Build machine-readable paper and synthesis catalogs for canonical wiki pages.",
     )
     catalog.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
     catalog.add_argument(
         "--out",
         type=Path,
         default=None,
-        help="Output JSONL catalog path. Defaults to <wiki-root>/.index/papers.jsonl.",
+        help="Output paper JSONL catalog path. Defaults to <wiki-root>/.index/papers.jsonl.",
     )
 
     retrieve = wiki_subparsers.add_parser(
         "retrieve",
-        help="Retrieve paper wiki context for a research query.",
+        help="Retrieve paper and synthesis wiki context for a research query.",
     )
     retrieve.add_argument("query", help="Standalone research question or retrieval intent.")
     retrieve.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
@@ -442,9 +444,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--catalog",
         type=Path,
         default=None,
-        help="Optional paper catalog path. Defaults to <wiki-root>/.index/papers.jsonl.",
+        help="Optional catalog path. Defaults to paper plus synthesis catalogs under <wiki-root>/.index/.",
     )
-    retrieve.add_argument("--top-k", type=int, default=5, help="Maximum paper pages to return.")
+    retrieve.add_argument("--top-k", type=int, default=5, help="Maximum wiki pages to return.")
     retrieve.add_argument(
         "--strategy",
         choices=["v0", "v1"],
@@ -565,19 +567,42 @@ def build_parser() -> argparse.ArgumentParser:
     propose_writeback.add_argument("--title", required=True, help="Proposal title.")
     propose_writeback.add_argument(
         "--proposal-type",
-        choices=["synthesis", "comparison", "decision", "idea"],
+        choices=["synthesis", "comparison", "method-family", "decision", "research-question", "idea"],
         default="synthesis",
         help="Draft wiki artifact type.",
     )
     propose_writeback.add_argument("--body-file", type=Path, default=None, help="Optional markdown body for the synthesis draft.")
     propose_writeback.add_argument("--out-dir", type=Path, default=None, help="Optional proposal output directory.")
-    propose_writeback.add_argument("--notes", default="", help="Optional user idea or decision note.")
+    propose_writeback.add_argument("--notes", default="", help="Deprecated alias for --user-note.")
+    propose_writeback.add_argument("--user-note", default="", help="Optional user idea or decision note.")
+    propose_writeback.add_argument("--user-note-file", type=Path, default=None, help="Optional markdown file with user ideas or decisions.")
     propose_writeback.add_argument("--overwrite", action="store_true", help="Overwrite an existing proposal directory.")
     propose_writeback.add_argument(
         "--no-log",
         action="store_true",
         help="Do not append a draft proposal entry to wiki/log.md.",
     )
+
+    proposal_lint = wiki_subparsers.add_parser(
+        "proposal-lint",
+        help="Validate a query write-back proposal before canonical publish.",
+    )
+    proposal_lint.add_argument("proposal_manifest", type=Path, help="Path to proposal.json.")
+    proposal_lint.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    proposal_lint.add_argument("--out", type=Path, default=None, help="Optional lint JSON report path.")
+    proposal_lint.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Allow lint to pass when the publish target already exists.",
+    )
+
+    publish_proposal = wiki_subparsers.add_parser(
+        "publish-proposal",
+        help="Publish a lint-passing write-back proposal into the canonical synthesis layer.",
+    )
+    publish_proposal.add_argument("proposal_manifest", type=Path, help="Path to proposal.json.")
+    publish_proposal.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    publish_proposal.add_argument("--overwrite", action="store_true", help="Allow overwriting an existing synthesis page.")
 
     return parser
 
@@ -722,6 +747,7 @@ def main(argv: list[str] | None = None) -> int:
             path = rebuild_index_wiki(wiki_root=args.wiki_root)
             print(f"Rebuilt wiki index: {path}")
             print(f"Rebuilt paper catalog: {args.wiki_root / '.index/papers.jsonl'}")
+            print(f"Rebuilt synthesis catalog: {args.wiki_root / '.index/syntheses.jsonl'}")
             return 0
 
         if args.product == "wiki" and args.command == "lint":
@@ -815,6 +841,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.product == "wiki" and args.command == "catalog":
             result = catalog_wiki(wiki_root=args.wiki_root, out_path=args.out)
             print(f"Wrote paper catalog: {result.catalog_path}")
+            print(f"Wrote synthesis catalog: {args.wiki_root / '.index/syntheses.jsonl'}")
             print(f"Catalog entries: {result.count}")
             return 0
 
@@ -832,9 +859,10 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"Wrote retrieval context packet: {result.packet_path}")
             if result.result_path is not None:
                 print(f"Wrote retrieval JSON: {result.result_path}")
-            print(f"Retrieved papers: {len(result.results)}")
+            print(f"Retrieved wiki pages: {len(result.results)}")
             for item in result.results:
-                print(f"- {item['score']}: {item['title']} ({item.get('relative_path') or item['path']})")
+                result_type = item.get("result_type") or item.get("type") or "paper"
+                print(f"- {item['score']}: [{result_type}] {item['title']} ({item.get('relative_path') or item['path']})")
             return 0
 
         if args.product == "wiki" and args.command == "retrieval-eval":
@@ -910,13 +938,41 @@ def main(argv: list[str] | None = None) -> int:
                 body_path=args.body_file,
                 out_dir=args.out_dir,
                 notes=args.notes,
+                user_note=args.user_note,
+                user_note_path=args.user_note_file,
                 overwrite=args.overwrite,
                 update_log=not args.no_log,
             )
             print(f"Wrote write-back proposal: {result.proposal_path}")
             print(f"Wrote proposal manifest: {result.manifest_path}")
+            print(f"Wrote source context: {result.source_context_path}")
+            print(f"Wrote publish plan: {result.publish_plan_path}")
             if result.log_path is not None:
                 print(f"Updated wiki log: {result.log_path}")
+            return 0
+
+        if args.product == "wiki" and args.command == "proposal-lint":
+            result = proposal_lint_wiki(
+                proposal_manifest=args.proposal_manifest,
+                wiki_root=args.wiki_root,
+                out_path=args.out,
+                overwrite=args.overwrite,
+            )
+            print(f"Wrote proposal lint report: {result.report_path}")
+            print(f"Proposal lint status: {result.status}")
+            print(f"Findings: {len(result.findings)}")
+            return 0 if result.status == "pass" else 1
+
+        if args.product == "wiki" and args.command == "publish-proposal":
+            result = publish_proposal_wiki(
+                proposal_manifest=args.proposal_manifest,
+                wiki_root=args.wiki_root,
+                overwrite=args.overwrite,
+            )
+            print(f"Published synthesis page: {result.page_path}")
+            print(f"Updated synthesis catalog: {result.catalog_path}")
+            print(f"Proposal lint report: {result.lint_report_path}")
+            print(f"Updated wiki log: {result.log_path}")
             return 0
 
     except Exception as exc:  # noqa: BLE001 - CLI should render concise failures.

@@ -3003,14 +3003,194 @@ This page explains preference optimization for alignment.
             self.assertTrue(proposal.exists())
             self.assertTrue(manifest.exists())
             text = proposal.read_text(encoding="utf-8")
-            self.assertIn('type: "wiki_update_proposal"', text)
-            self.assertIn("## Source Facts To Preserve", text)
-            self.assertIn("## Wiki Synthesis Draft", text)
+            self.assertIn('type: "synthesis"', text)
+            self.assertIn('proposal_id: "MoE-PTQ-Ablation-Reading-Plan"', text)
+            self.assertIn("source_papers:", text)
+            self.assertIn("## What This Page Is For", text)
+            self.assertIn("## Source Facts", text)
+            self.assertIn("## Wiki Synthesis", text)
             self.assertIn("## User Ideas / Decisions", text)
+            self.assertIn("## Evidence Map", text)
+            self.assertIn("## Retrieval Hooks", text)
             self.assertIn("[[papers/MoE-PTQ|MoE PTQ Paper]]", text)
+            self.assertTrue((wiki_root / ".drafts/proposals/MoE-PTQ-Ablation-Reading-Plan/source_context.json").exists())
+            self.assertTrue((wiki_root / ".drafts/proposals/MoE-PTQ-Ablation-Reading-Plan/publish_plan.md").exists())
             self.assertFalse((wiki_root / "syntheses/MoE-PTQ-Ablation-Reading-Plan.md").exists())
             log = (wiki_root / "log.md").read_text(encoding="utf-8")
             self.assertIn("query | MoE PTQ Ablation Reading Plan", log)
+
+    def test_proposal_lint_and_publish_create_retrievable_synthesis(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            papers.mkdir(parents=True)
+            _write_test_paper(
+                papers / "MoE-PTQ.md",
+                title="MoE PTQ Paper",
+                aliases=["CodeQuant"],
+                topics=["activation outliers", "quantization error"],
+                methods=["MoE post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "A MoE PTQ page.",
+                    "Mechanism": "Activation smoothing and clustering reduce quantization error.",
+                    "Implementation Hooks": "Add ablations for activation outlier smoothing.",
+                    "Evidence Map": "Reports perplexity and kernel speedups.",
+                },
+            )
+            context_json = root / "context.json"
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "retrieve",
+                        "MoE PTQ activation outlier ablations",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--json-out",
+                        str(context_json),
+                    ]
+                ),
+                0,
+            )
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "propose-writeback",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--query",
+                        "MoE PTQ activation outlier ablations",
+                        "--context",
+                        str(context_json),
+                        "--title",
+                        "MoE PTQ Ablation Reading Plan",
+                        "--proposal-type",
+                        "method-family",
+                        "--user-note",
+                        "I want probes that separate smoothing from clustering.",
+                    ]
+                ),
+                0,
+            )
+            manifest = wiki_root / ".drafts/proposals/MoE-PTQ-Ablation-Reading-Plan/proposal.json"
+            lint_path = root / "proposal-lint.json"
+            self.assertEqual(
+                main(["wiki", "proposal-lint", str(manifest), "--wiki-root", str(wiki_root), "--out", str(lint_path)]),
+                0,
+            )
+            lint_payload = json.loads(lint_path.read_text(encoding="utf-8"))
+            self.assertEqual(lint_payload["status"], "pass")
+
+            self.assertEqual(main(["wiki", "publish-proposal", str(manifest), "--wiki-root", str(wiki_root)]), 0)
+            synthesis = wiki_root / "syntheses/MoE-PTQ-Ablation-Reading-Plan.md"
+            self.assertTrue(synthesis.exists())
+            synthesis_text = synthesis.read_text(encoding="utf-8")
+            self.assertIn('type: "method-family"', synthesis_text)
+            self.assertIn("review_state: \"published_proposal\"", synthesis_text)
+            self.assertIn("I want probes that separate smoothing from clustering.", synthesis_text)
+            self.assertIn("[[papers/MoE-PTQ|MoE PTQ Paper]]", synthesis_text)
+            self.assertTrue((wiki_root / ".index/syntheses.jsonl").exists())
+            self.assertIn("[[syntheses/MoE-PTQ-Ablation-Reading-Plan|MoE PTQ Ablation Reading Plan]]", (wiki_root / "index.md").read_text(encoding="utf-8"))
+
+            retrieve_json = root / "synthesis-retrieval.json"
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "retrieve",
+                        "cross-paper synthesis for activation outlier ablation probes",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--json-out",
+                        str(retrieve_json),
+                        "--top-k",
+                        "3",
+                    ]
+                ),
+                0,
+            )
+            retrieved = json.loads(retrieve_json.read_text(encoding="utf-8"))
+            self.assertTrue(
+                any(item.get("relative_path") == "syntheses/MoE-PTQ-Ablation-Reading-Plan.md" for item in retrieved["results"])
+            )
+
+            self.assertEqual(
+                main(["wiki", "proposal-lint", str(manifest), "--wiki-root", str(wiki_root)]),
+                1,
+            )
+            collision_report = json.loads((manifest.parent / "proposal-lint.json").read_text(encoding="utf-8"))
+            self.assertIn("publish_target_exists", {item["code"] for item in collision_report["findings"]})
+            self.assertEqual(main(["wiki", "publish-proposal", str(manifest), "--wiki-root", str(wiki_root)]), 1)
+
+    def test_proposal_lint_blocks_source_quality_hold_as_scientific_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            papers.mkdir(parents=True)
+            _write_test_paper(
+                papers / "Bad-Metadata.md",
+                title="Bad Metadata Paper",
+                aliases=["metadata hold"],
+                topics=["source cleanup"],
+                methods=["metadata repair"],
+                settings=["source-quality cleanup"],
+                body_sections={
+                    "What To Remember": "This page is a source-quality hold, not a scientific source.",
+                    "Implementation Hooks": "Fix metadata and OCR before using.",
+                },
+                quality_gate="fail",
+                review_state="source_quality_hold",
+            )
+            context_json = root / "context.json"
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "retrieve",
+                        "source metadata cleanup hold",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--json-out",
+                        str(context_json),
+                    ]
+                ),
+                0,
+            )
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "propose-writeback",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--query",
+                        "source metadata cleanup hold",
+                        "--context",
+                        str(context_json),
+                        "--title",
+                        "Bad Metadata Cleanup",
+                        "--proposal-type",
+                        "research-question",
+                    ]
+                ),
+                0,
+            )
+            manifest = wiki_root / ".drafts/proposals/Bad-Metadata-Cleanup/proposal.json"
+            proposal = wiki_root / ".drafts/proposals/Bad-Metadata-Cleanup/proposal.md"
+            text = proposal.read_text(encoding="utf-8")
+            self.assertIn("not scientific evidence", text)
+            proposal.write_text(text.replace("not scientific evidence", "scientific support"), encoding="utf-8")
+            self.assertEqual(
+                main(["wiki", "proposal-lint", str(manifest), "--wiki-root", str(wiki_root)]),
+                1,
+            )
+            report = json.loads((wiki_root / ".drafts/proposals/Bad-Metadata-Cleanup/proposal-lint.json").read_text(encoding="utf-8"))
+            self.assertEqual(report["status"], "fail")
+            self.assertIn("source_quality_as_scientific_evidence", {item["code"] for item in report["findings"]})
 
 
 def _passing_judge_result(case_id: str) -> dict[str, object]:

@@ -41,7 +41,16 @@ meridian wiki propose-writeback \
   --proposal-type synthesis
 ```
 
-Write-back proposals stay under `wiki/.drafts/proposals/`. They separate source facts, wiki synthesis, user ideas/decisions, uncertainty, and publish plan. Do not publish canonical synthesis directly from retrieval output.
+Write-back proposals stay under `wiki/.drafts/proposals/` and now include `proposal.md`, `proposal.json`, `source_context.json`, and `publish_plan.md`. They separate source facts, wiki synthesis, user ideas/decisions, uncertainty, and publish plan. Do not publish canonical synthesis directly from retrieval output.
+
+Before canonical publish, validate and apply explicitly:
+
+```bash
+meridian wiki proposal-lint wiki/.drafts/proposals/<slug>/proposal.json --wiki-root wiki
+meridian wiki publish-proposal wiki/.drafts/proposals/<slug>/proposal.json --wiki-root wiki
+```
+
+Use `--proposal-type method-family`, `comparison`, `decision`, or `research-question` when those better describe the durable artifact. Put the user's hypothesis or decision in `--user-note` or `--user-note-file`; it must remain in `User Ideas / Decisions`, not `Source Facts`.
 
 ## Retrieval Discipline
 
@@ -49,6 +58,7 @@ Write-back proposals stay under `wiki/.drafts/proposals/`. They separate source 
 - Treat `paper.md` as the concise reading target.
 - Prefer context packets over raw search dumps.
 - Use retrieval v1 by default. v1 adds field-weighted scoring, section-aware ranking, controlled-vocabulary normalization, capped graph/facet expansion, source-quality routing, hard-distractor suppression, and compact context packet construction. Use `--strategy v0` only for baseline comparison.
+- Retrieval now searches paper pages and published synthesis-layer pages by default. Check `result_type` before treating a hit as source evidence; synthesis pages are higher-level interpretation and should point back to source papers.
 - Do not cite a paper only because its title matched; inspect the chosen section snippets.
 - Distinguish source facts, wiki synthesis, and the user's own ideas.
 - For coding tasks, always look for `Implementation Hooks`, `Mechanism`, and `Limitations / Uncertainty`.

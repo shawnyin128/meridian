@@ -73,6 +73,7 @@ Follow these principles while the project is still design-heavy:
 - Preserve source provenance on claims. Any synthesized claim should point back to one or more source pages or raw source references when possible.
 - Distinguish source facts, wiki synthesis, and user decisions. Do not blur "the source says", "the wiki currently infers", and "we decided".
 - File valuable query outputs back into the wiki when they represent durable analysis, comparison, synthesis, or planning.
+- Use proposal-first write-back for retrieval outputs. A valuable query should become `wiki/.drafts/proposals/<slug>/` first, pass `proposal-lint`, and only then publish to the canonical synthesis layer.
 
 ## Meridian Paper Ingest Flow
 
@@ -176,6 +177,28 @@ When answering from the wiki:
 3. Read the smallest sufficient set of wiki pages and source references.
 4. Answer with citations or page references.
 5. If the answer creates durable synthesis, ask whether to file it or file it directly when the user has already asked for wiki maintenance.
+
+Durable write-back path:
+
+```bash
+meridian wiki propose-writeback \
+  --wiki-root wiki \
+  --query "<standalone research query>" \
+  --context wiki/.drafts/retrieval/<slug>/context.json \
+  --title "<synthesis title>" \
+  --proposal-type synthesis
+meridian wiki proposal-lint wiki/.drafts/proposals/<slug>/proposal.json --wiki-root wiki
+meridian wiki publish-proposal wiki/.drafts/proposals/<slug>/proposal.json --wiki-root wiki
+```
+
+Proposal and canonical synthesis pages must preserve the section boundary:
+
+- `Source Facts`: directly supported facts from retrieved pages/source artifacts.
+- `Wiki Synthesis`: cross-source interpretation or comparison.
+- `User Ideas / Decisions`: user notes, hypotheses, preferences, and decisions.
+- `Open Questions`: uncertainty, weak retrieval, and checks before use.
+
+Never promote source-quality holds as scientific evidence. They can only support cleanup/provenance decisions.
 
 ### Lint
 

@@ -176,8 +176,9 @@ Canonical draft paper pages can be wrapped into a machine-readable corpus catalo
 meridian wiki catalog --wiki-root wiki
 ```
 
-This scans `wiki/papers/*.md` and writes `wiki/.index/papers.jsonl`. The catalog
-keeps frontmatter as the routing source of truth, plus section previews for
+This scans `wiki/papers/*.md` and `wiki/syntheses/*.md`, writing
+`wiki/.index/papers.jsonl` and `wiki/.index/syntheses.jsonl`. The catalogs keep
+frontmatter as the routing source of truth, plus section previews for
 context-packet construction.
 
 Retrieve research context with:
@@ -191,11 +192,60 @@ meridian wiki retrieve "I need MoE PTQ papers for activation outlier ablations" 
   --json-out wiki/.drafts/retrieval/context.json
 ```
 
-The output is a ranked context packet, not a final answer. Retrieval v1 combines
+The output is a ranked context packet, not a final answer. Results can include
+paper pages and published synthesis/comparison/method-family pages, each marked
+with a result type. Retrieval v1 combines
 frontmatter/facet routing, deterministic BM25-style field weighting,
 section-aware scoring, capped graph expansion, source-quality guards, hard
 distractor suppression, and compact read-first snippets. v0 remains available
 for comparison with `--strategy v0`.
+
+## Query Write-back and Synthesis Layer
+
+When a retrieval result produces durable understanding, turn it into a draft
+proposal instead of leaving it only in chat:
+
+```bash
+meridian wiki propose-writeback \
+  --wiki-root wiki \
+  --query "<research intent>" \
+  --context wiki/.drafts/retrieval/context.json \
+  --title "<synthesis title>" \
+  --proposal-type synthesis \
+  --user-note "Optional user interpretation or decision."
+```
+
+Supported proposal types are `synthesis`, `comparison`, `method-family`,
+`decision`, and `research-question`. The command writes:
+
+- `wiki/.drafts/proposals/<slug>/proposal.md`
+- `wiki/.drafts/proposals/<slug>/proposal.json`
+- `wiki/.drafts/proposals/<slug>/source_context.json`
+- `wiki/.drafts/proposals/<slug>/publish_plan.md`
+
+Lint before publishing:
+
+```bash
+meridian wiki proposal-lint wiki/.drafts/proposals/<slug>/proposal.json \
+  --wiki-root wiki
+```
+
+Publish only after lint passes:
+
+```bash
+meridian wiki publish-proposal wiki/.drafts/proposals/<slug>/proposal.json \
+  --wiki-root wiki
+```
+
+Published synthesis-layer pages live in `wiki/syntheses/`, update
+`wiki/index.md`, append to `wiki/log.md`, rebuild `.index/syntheses.jsonl`, and
+become retrievable by future `meridian wiki retrieve` calls. The schema forces
+separate sections for `Source Facts`, `Wiki Synthesis`, `User Ideas /
+Decisions`, `Evidence Map`, `Open Questions`, and `Retrieval Hooks`; user notes
+must not be mixed into source facts. Source-quality holds can only support
+cleanup/provenance notes, not scientific evidence.
+
+See `docs/wiki-writeback-synthesis-layer.md` for the full contract.
 
 Run side-by-side retrieval optimization evaluation:
 
