@@ -23,9 +23,9 @@ meridian wiki retrieve "<standalone research query>" \
 4. If Obsidian is open and live-vault inspection is useful, use Obsidian CLI for complementary navigation:
 
 ```bash
-obsidian search query="<keyword or method>" limit=10
-obsidian read path="papers/<paper-page>.md"
-obsidian backlinks path="papers/<paper-page>.md"
+obsidian vault="wiki" search query="<keyword or method>" limit=10
+obsidian vault="wiki" read path="papers/<paper-page>.md"
+obsidian vault="wiki" backlinks path="papers/<paper-page>.md"
 ```
 
 5. Answer with page references and explain why each paper matters for the user's task.

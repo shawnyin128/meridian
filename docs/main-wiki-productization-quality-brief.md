@@ -57,7 +57,20 @@ Graph foundation:
 - evidence promotion is capped per paper to prevent books or long reports from flooding the graph;
 - `wiki/log.md` is compact and chronological rather than a full batch warning dump.
 
-The `obsidian` CLI is installed, but CLI commands require a running Obsidian app instance. In this run the CLI could not attach to Obsidian, so validation used Markdown/frontmatter/wikilink checks plus Meridian lint/catalog/source gates.
+The `obsidian` CLI is installed and the main vault is registered as `wiki` at `/Users/shawn/Desktop/meridian/wiki`. Live validation uses explicit vault targeting because the user may have multiple Obsidian vaults open:
+
+```bash
+obsidian vault="wiki" read path="index.md"
+obsidian vault="wiki" search query="KV-cache compression" path="papers" limit=8
+obsidian vault="wiki" backlinks path="topics/long-context-inference.md" counts
+```
+
+Verified live Obsidian checks:
+
+- `vaults verbose` lists `wiki	/Users/shawn/Desktop/meridian/wiki`;
+- `read path="index.md"` succeeds;
+- `files folder="papers" total` reports 235 canonical paper pages;
+- search and backlinks work on the registered vault.
 
 ## Retrieval Gate
 

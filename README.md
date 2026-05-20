@@ -163,9 +163,9 @@ meridian wiki lint --wiki-root wiki
 Use Obsidian CLI as a live vault navigation layer when Obsidian is open:
 
 ```bash
-obsidian search query="activation outliers" limit=10
-obsidian read path="papers/<paper-page>.md"
-obsidian backlinks path="papers/<paper-page>.md"
+obsidian vault="wiki" search query="activation outliers" limit=10
+obsidian vault="wiki" read path="papers/<paper-page>.md"
+obsidian vault="wiki" backlinks path="papers/<paper-page>.md"
 ```
 
 ## Retrieval v0
