@@ -56,6 +56,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-44b8d1ed8f8b-Meng-et-al-2026-Spar
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-178"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Meng et al. - 2026 - Sparse but Critical A Token-Level Analysis of Distributional Shifts in RLVR Fine-Tuning of LLMs
 

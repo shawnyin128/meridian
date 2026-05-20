@@ -76,6 +76,14 @@ meridian wiki propose-refine \
   --change-class user_insight_integration
 ```
 
+In the final LLM Wiki product loop, user insight is an evolution signal. After publishing an insight, check whether it should also create:
+
+- a refinement proposal for the target paper;
+- a synthesis/update proposal if the insight changes a cross-paper idea;
+- a retrieval hint if it should affect future research-intent routing.
+
+Do not promote it into `Source Facts` without source re-check.
+
 ## Retrieval
 
 Published insights become retrievable through the canonical paper page. When retrieval matches `User Insights`, treat it as personalized context and preserve the boundary warning. It can guide implementation or idea work, but it is not scientific evidence.

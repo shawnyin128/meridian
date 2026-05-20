@@ -73,3 +73,144 @@
 - Skipped repairs: 0
 - High-risk proposal-only repairs: 239
 - Repair manifest: `.drafts/knowledge-repair/main-knowledge-repair-r1/repair.json`
+
+## [2026-05-20] migrate | Final LLM Wiki status semantics
+
+- Updated paper quality-state fields on 236 pages.
+- Preserved legacy `quality_gate` while adding retrieval-visible `quality_state`, `validation_state`, and `trust_state`.
+- Status counts: `{"multimodal_pending": 234, "source_quality_hold": 1, "text_converged": 1}`
+
+## [2026-05-20] publish | Transformer Architecture Method Family Synthesis
+
+- Published write-back proposal: `wiki/syntheses/Transformer-Architecture-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/final-synthesis-growth-r1/Transformer-Architecture-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-20] publish | Post-Training Quantization Method Family Synthesis
+
+- Published write-back proposal: `wiki/syntheses/Post-Training-Quantization-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/final-synthesis-growth-r1/Post-Training-Quantization-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-20] publish | Kv-Cache Compression Method Family Synthesis
+
+- Published write-back proposal: `wiki/syntheses/Kv-Cache-Compression-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/final-synthesis-growth-r1/Kv-Cache-Compression-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-20] publish | Transformer Architecture Topic Overview
+
+- Published write-back proposal: `wiki/syntheses/Transformer-Architecture-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/final-synthesis-growth-r1/Transformer-Architecture-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-20] publish | Low-Bit Quantization Topic Overview
+
+- Published write-back proposal: `wiki/syntheses/Low-Bit-Quantization-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/final-synthesis-growth-r1/Low-Bit-Quantization-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-20] publish | Hardware-Aware Quantization Topic Overview
+
+- Published write-back proposal: `wiki/syntheses/Hardware-Aware-Quantization-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/final-synthesis-growth-r1/Hardware-Aware-Quantization-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-20] navigation | Obsidian navigation pages
+
+- Updated `Map of Content.md`
+- Updated `Paper Index.md`
+- Updated `Method Index.md`
+- Updated `Topic Index.md`
+- Updated `Synthesis Index.md`
+- Updated `Claim Evidence Index.md`
+
+## [2026-05-20] publish | Transformer Architecture Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Transformer-Architecture-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/final-synthesis-growth-r1/Transformer-Architecture-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-20] publish | Post-Training Quantization Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Post-Training-Quantization-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/final-synthesis-growth-r1/Post-Training-Quantization-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-20] publish | Kv-Cache Compression Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Kv-Cache-Compression-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/final-synthesis-growth-r1/Kv-Cache-Compression-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-20] publish | Transformer Architecture Topic Overview
+
+- Published write-back proposal: `syntheses/Transformer-Architecture-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/final-synthesis-growth-r1/Transformer-Architecture-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-20] publish | Low-Bit Quantization Topic Overview
+
+- Published write-back proposal: `syntheses/Low-Bit-Quantization-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/final-synthesis-growth-r1/Low-Bit-Quantization-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-20] publish | Hardware-Aware Quantization Topic Overview
+
+- Published write-back proposal: `syntheses/Hardware-Aware-Quantization-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/final-synthesis-growth-r1/Hardware-Aware-Quantization-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-20] publish | Transformer Architecture Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Transformer-Architecture-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/final-synthesis-growth-r1/Transformer-Architecture-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-20] publish | Post-Training Quantization Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Post-Training-Quantization-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/final-synthesis-growth-r1/Post-Training-Quantization-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-20] publish | Kv-Cache Compression Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Kv-Cache-Compression-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/final-synthesis-growth-r1/Kv-Cache-Compression-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-20] publish | Transformer Architecture Topic Overview
+
+- Published write-back proposal: `syntheses/Transformer-Architecture-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/final-synthesis-growth-r1/Transformer-Architecture-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-20] publish | Low-Bit Quantization Topic Overview
+
+- Published write-back proposal: `syntheses/Low-Bit-Quantization-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/final-synthesis-growth-r1/Low-Bit-Quantization-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-20] publish | Hardware-Aware Quantization Topic Overview
+
+- Published write-back proposal: `syntheses/Hardware-Aware-Quantization-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/final-synthesis-growth-r1/Hardware-Aware-Quantization-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`

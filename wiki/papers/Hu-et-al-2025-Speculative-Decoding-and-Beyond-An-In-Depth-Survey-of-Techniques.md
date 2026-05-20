@@ -68,6 +68,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-5eac2e5ce47f-Hu-et-al-2025-Specul
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-141"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Hu et al. - 2025 - Speculative Decoding and Beyond An In-Depth Survey of Techniques
 

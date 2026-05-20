@@ -59,6 +59,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-3e494e8a41d9-Chen-et-al-2026-VL-J
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-143"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Chen et al. - 2026 - VL-JEPA Joint Embedding Predictive Architecture for Vision-language
 

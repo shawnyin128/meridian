@@ -454,7 +454,17 @@ def _uses_source_quality_hold_as_evidence(page: dict[str, Any]) -> bool:
     text = _norm(json.dumps(page["frontmatter"]) + " " + page["body"])
     if "source quality hold" not in text or page["type"] not in {"claim", "evidence", "synthesis"}:
         return False
-    if any(marker in text for marker in ("source quality gap", "source text insufficient", "claims are on source quality hold")):
+    if any(
+        marker in text
+        for marker in (
+            "source quality gap",
+            "source text insufficient",
+            "claims are on source quality hold",
+            "not scientific evidence",
+            "cleanup provenance",
+            "do not promote source quality holds as scientific evidence",
+        )
+    ):
         return False
     return True
 

@@ -51,6 +51,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-765acea6f2a7-Perez-et-al-2017-FiL
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-159"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Perez et al. - 2017 - FiLM Visual Reasoning with a General Conditioning Layer
 

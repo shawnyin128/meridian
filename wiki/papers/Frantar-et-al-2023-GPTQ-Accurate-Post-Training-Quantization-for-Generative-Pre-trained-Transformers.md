@@ -69,6 +69,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-d69cfcf8fe22-Frantar-et-al-2023-G
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-215"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Frantar et al. - 2023 - GPTQ Accurate Post-Training Quantization for Generative Pre-trained Transformers
 

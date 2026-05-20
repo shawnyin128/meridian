@@ -64,6 +64,16 @@ Normal retrieval uses latest canonical pages only. `.versions/` snapshots are au
 
 When retrieval context shows evolution warnings, carry them into the answer. A stale or source-recheck page can still be useful, but do not use the affected section as settled evidence.
 
+Final-product quality fields should travel with evolution:
+
+- `quality_state`: product-level trust bucket.
+- `validation_state`: what has been validated.
+- `trust_state`: how downstream agents may use the page.
+- `evolution_state`: latest revision health.
+- `evolution_markers`: section/page-level warnings such as stale, superseded, conflicting synthesis, or needs source re-check.
+
+If refinement changes these fields, keep the old version in `.versions/` and make the reason explicit in `Evolution Notes`.
+
 ## Knowledge Layer Repair
 
 For broad structural issues across method/topic/claim/evidence/synthesis pages, prefer knowledge repair over many direct refinements:

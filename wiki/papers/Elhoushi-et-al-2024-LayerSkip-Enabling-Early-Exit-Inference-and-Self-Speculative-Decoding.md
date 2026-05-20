@@ -69,6 +69,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-04359327efd4-Elhoushi-et-al-2024-
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-163"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Elhoushi et al. - 2024 - LayerSkip Enabling Early Exit Inference and Self-Speculative Decoding
 

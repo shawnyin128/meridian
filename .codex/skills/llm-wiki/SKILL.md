@@ -17,6 +17,8 @@ The project main vault is `wiki/` at the repository root. Treat it as the daily 
 
 Product-facing wiki artifacts are canonical pages and retrieval/write-back context, not pipeline debug files. Follow `docs/wiki-product-dataflow-and-artifact-boundaries.md`: `wiki/papers/*.md` and `wiki/syntheses/*.md` are user-facing retrieval targets; `wiki/.drafts/ingests/<run>/paper.md` is an internal canonical-page candidate; `review.md`, judge packets, reader checks, and self-check JSON are validation/debug artifacts.
 
+Final-product convergence is documented in `docs/final-llm-wiki-product-spec.md`. Treat the product as a compiled knowledge network: papers, methods, topics, claims, evidence, syntheses, user insights, and evolution state should all participate in retrieval and Obsidian navigation. Use `meridian wiki final-product-check --wiki-root wiki` as the deterministic readiness smoke.
+
 When architecture or implementation choices are ambiguous, consult `docs/source-grounded-development-principles.md` for the project's source-grounded principles from Karpathy's LLM Wiki gist, Anthropic agent engineering posts, and selected community followup lessons.
 
 ## Core Model
@@ -78,6 +80,7 @@ Follow these principles while the project is still design-heavy:
 - File valuable query outputs back into the wiki when they represent durable analysis, comparison, synthesis, or planning.
 - Use proposal-first write-back for retrieval outputs. A valuable query should become `wiki/.drafts/proposals/<slug>/` first, pass `proposal-lint`, and only then publish to the canonical synthesis layer.
 - Keep product output boundaries clean. Default CLI/user guidance should report the managed source PDF, canonical wiki page, quality/review state, and retrieval/proposal paths. Internal `review.md`, draft `paper.md`, self-check, judge, and extraction artifacts are available for audit but should not be presented as normal wiki entries.
+- Prefer final quality semantics over legacy `quality_gate` alone. Retrieval-visible fields are `quality_state`, `validation_state`, `trust_state`, `review_state`, and `evolution_state`; `quality_gate: warn` can coexist with `quality_state: multimodal_pending` when a text-grounded page is usable but not fully multimodal-reviewed.
 
 ## Meridian Paper Ingest Flow
 
@@ -205,6 +208,22 @@ Proposal and canonical synthesis pages must preserve the section boundary:
 - `Open Questions`: uncertainty, weak retrieval, and checks before use.
 
 Never promote source-quality holds as scientific evidence. They can only support cleanup/provenance decisions.
+
+### Final Product Convergence
+
+When the task is to make the wiki more like the final LLM Wiki product rather than fixing one page, use the convergence loop:
+
+```bash
+meridian wiki final-status-migrate --wiki-root wiki
+meridian wiki propose-synthesis-batch --wiki-root wiki --out-dir wiki/.drafts/proposals/<batch>/
+meridian wiki publish-synthesis-batch wiki/.drafts/proposals/<batch>/batch.json --wiki-root wiki
+meridian wiki propose-method-consolidation --wiki-root wiki --out-dir wiki/.drafts/knowledge-repair/<batch>/
+meridian wiki propose-contradiction-review --wiki-root wiki --out-dir wiki/.drafts/knowledge-repair/<batch>/
+meridian wiki build-navigation --wiki-root wiki
+meridian wiki final-product-check --wiki-root wiki
+```
+
+Publish low-confidence synthesis scaffolds only when they preserve `Source Facts`, `Wiki Synthesis`, `User Ideas / Decisions`, `Evidence Map`, and source-quality guardrails. Keep method-family consolidation and contradiction/stale detection proposal-first unless a low-risk linted repair is available.
 
 ### Personalize
 

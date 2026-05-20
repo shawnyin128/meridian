@@ -220,6 +220,38 @@ for comparison with `--strategy v0`.
 The compiled knowledge layer keeps method/topic/claim/evidence/synthesis pages
 useful for retrieval instead of leaving the vault as a paper dump. Audit it with:
 
+## Final LLM Wiki Product Loop
+
+The main vault now has a final-product convergence path:
+
+```bash
+meridian wiki final-status-migrate --wiki-root wiki
+meridian wiki propose-synthesis-batch --wiki-root wiki --out-dir wiki/.drafts/proposals/final-synthesis-growth-r1
+meridian wiki publish-synthesis-batch wiki/.drafts/proposals/final-synthesis-growth-r1/batch.json --wiki-root wiki
+meridian wiki propose-method-consolidation --wiki-root wiki --out-dir wiki/.drafts/knowledge-repair/final-method-consolidation-r1
+meridian wiki propose-contradiction-review --wiki-root wiki --out-dir wiki/.drafts/knowledge-repair/final-contradiction-review-r1
+meridian wiki build-navigation --wiki-root wiki
+meridian wiki final-product-check --wiki-root wiki
+```
+
+This loop preserves the final LLM Wiki boundary:
+
+- paper pages are source-grounded understanding;
+- method/topic/claim/evidence pages are the compiled knowledge layer;
+- synthesis pages are durable query/write-back outputs;
+- user insights are personalized but source-separated;
+- evolution/revision keeps canonical pages auditable;
+- retrieval v1 should return compiled context with `corpus_type`,
+  `result_type`, `knowledge_role`, `quality_state`, `validation_state`,
+  `trust_state`, provenance, and read-first sections.
+
+See:
+
+- `docs/final-llm-wiki-product-spec.md`
+- `docs/final-llm-wiki-product-quality-brief.md`
+- `eval/cases/final_llm_wiki_product.jsonl`
+- `eval/rubrics/final_llm_wiki_product_quality.md`
+
 ```bash
 meridian wiki knowledge-audit --wiki-root wiki
 ```

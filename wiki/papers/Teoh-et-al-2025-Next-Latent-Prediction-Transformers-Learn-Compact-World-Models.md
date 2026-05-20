@@ -52,6 +52,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-277bb6968397-Teoh-et-al-2025-Next
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-139"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Teoh et al. - 2025 - Next-Latent Prediction Transformers Learn Compact World Models
 

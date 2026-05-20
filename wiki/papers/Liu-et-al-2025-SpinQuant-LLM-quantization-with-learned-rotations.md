@@ -69,6 +69,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-d70a385cb207-Liu-et-al-2025-SpinQ
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-203"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Liu et al. - 2025 - SpinQuant LLM quantization with learned rotations
 

@@ -1,0 +1,98 @@
+---
+type: "navigation"
+title: "Topic Index"
+updated: "2026-05-20"
+---
+# Topic Index
+
+- [[topics/3D-medical-image-synthesis|3D medical image synthesis]] - `auto_structured`
+- [[topics/IO-aware-attention|IO-aware attention]] - `auto_structured`
+- [[topics/KV-cache-compression|KV-cache compression]] - `auto_structured`
+- [[topics/KV-cache-memory|KV-cache memory]] - `auto_structured`
+- [[topics/LLM-agents|LLM agents]] - `auto_structured`
+- [[topics/LLM-outliers|LLM outliers]] - `auto_structured`
+- [[topics/MoE-quantization|MoE quantization]] - `auto_structured`
+- [[topics/RLHF|RLHF]] - `auto_structured`
+- [[topics/RoPE-scaling|RoPE scaling]] - `auto_structured`
+- [[topics/activation-outliers|activation outliers]] - `auto_structured`
+- [[topics/affine-transformation|affine transformation]] - `auto_structured`
+- [[topics/agent-planning|agent planning]] - `auto_structured`
+- [[topics/agent-workflow-acceleration|agent workflow acceleration]] - `auto_structured`
+- [[topics/attention-head-sharing|attention head sharing]] - `auto_structured`
+- [[topics/attention-kernel-scheduling|attention kernel scheduling]] - `auto_structured`
+- [[topics/audio-encoder-alignment|audio encoder alignment]] - `auto_structured`
+- [[topics/audio-language-modeling|audio-language modeling]] - `auto_structured`
+- [[topics/benchmark-evaluation|benchmark evaluation]] - `auto_structured`
+- [[topics/calibration-data-selection|calibration data selection]] - `auto_structured`
+- [[topics/calibration-representativeness|calibration representativeness]] - `auto_structured`
+- [[topics/chain-of-thought-reasoning|chain-of-thought reasoning]] - `auto_structured`
+- [[topics/clustering-theory|clustering theory]] - `auto_structured`
+- [[topics/computer-architecture|computer architecture]] - `auto_structured`
+- [[topics/conditional-diffusion|conditional diffusion]] - `auto_structured`
+- [[topics/context-extrapolation|context extrapolation]] - `auto_structured`
+- [[topics/continuous-depth-models|continuous-depth models]] - `auto_structured`
+- [[topics/draft-acceptance|draft acceptance]] - `auto_structured`
+- [[topics/dynamic-draft-tree|dynamic draft tree]] - `auto_structured`
+- [[topics/equivalent-transformation|equivalent transformation]] - `auto_structured`
+- [[topics/error-propagation|error propagation]] - `auto_structured`
+- [[topics/expert-imbalance|expert imbalance]] - `auto_structured`
+- [[topics/expert-routing|expert routing]] - `auto_structured`
+- [[topics/feature-uncertainty|feature uncertainty]] - `auto_structured`
+- [[topics/feature-wise-modulation|feature-wise modulation]] - `auto_structured`
+- [[topics/grouped-query-attention|grouped-query attention]] - `auto_structured`
+- [[topics/hardware-aware-quantization|hardware-aware quantization]] - `auto_structured`
+- [[topics/hardware-co-design|hardware co-design]] - `auto_structured`
+- [[topics/hardware-systems|hardware systems]] - `auto_structured`
+- [[topics/human-preference-feedback|human preference feedback]] - `auto_structured`
+- [[topics/instruction-tuning|instruction tuning]] - `auto_structured`
+- [[topics/joint-embedding-predictive-learning|joint embedding predictive learning]] - `auto_structured`
+- [[topics/layer-reconstruction|layer reconstruction]] - `auto_structured`
+- [[topics/layer-wise-PTQ|layer-wise PTQ]] - `auto_structured`
+- [[topics/learned-quantization-intervals|learned quantization intervals]] - `auto_structured`
+- [[topics/learned-quantizer-scale|learned quantizer scale]] - `auto_structured`
+- [[topics/long-context-inference|long-context inference]] - `auto_structured`
+- [[topics/lookup-table-inference|lookup-table inference]] - `auto_structured`
+- [[topics/low-bit-quantization|low-bit quantization]] - `auto_structured`
+- [[topics/low-precision-attention|low-precision attention]] - `auto_structured`
+- [[topics/low-rank-adaptation|low-rank adaptation]] - `auto_structured`
+- [[topics/mechanistic-activation-analysis|mechanistic activation analysis]] - `auto_structured`
+- [[topics/model-training-dynamics|model training dynamics]] - `auto_structured`
+- [[topics/multi-agent-simulation|multi-agent simulation]] - `auto_structured`
+- [[topics/non-uniform-quantization|non-uniform quantization]] - `auto_structured`
+- [[topics/paper-source-quality|paper source quality]] - `auto_structured`
+- [[topics/parameter-efficient-adaptation|parameter-efficient adaptation]] - `auto_structured`
+- [[topics/partial-differential-equations|partial differential equations]] - `auto_structured`
+- [[topics/performance-evaluation|performance evaluation]] - `auto_structured`
+- [[topics/physics-informed-neural-networks|physics-informed neural networks]] - `auto_structured`
+- [[topics/point-cloud-geometry|point-cloud geometry]] - `auto_structured`
+- [[topics/policy-optimization|policy optimization]] - `auto_structured`
+- [[topics/post-training-quantization|post-training quantization]] - `auto_structured`
+- [[topics/preference-optimization|preference optimization]] - `auto_structured`
+- [[topics/quantization-error|quantization error]] - `auto_structured`
+- [[topics/recurrent-computation|recurrent computation]] - `auto_structured`
+- [[topics/relative-position-representation|relative position representation]] - `auto_structured`
+- [[topics/reward-modeling|reward modeling]] - `auto_structured`
+- [[topics/root-system-analysis|root system analysis]] - `auto_structured`
+- [[topics/root-system-digitization|root-system digitization]] - `auto_structured`
+- [[topics/rotation-based-quantization|rotation-based quantization]] - `auto_structured`
+- [[topics/router-preservation|router preservation]] - `auto_structured`
+- [[topics/self-rewarding-models|self-rewarding models]] - `auto_structured`
+- [[topics/self-speculative-decoding|self-speculative decoding]] - `auto_structured`
+- [[topics/semantic-conditioning|semantic conditioning]] - `auto_structured`
+- [[topics/semantic-control|semantic control]] - `auto_structured`
+- [[topics/single-view-3D-reconstruction|single-view 3D reconstruction]] - `auto_structured`
+- [[topics/source-text-extraction|source text extraction]] - `auto_structured`
+- [[topics/sparse-attention|sparse attention]] - `auto_structured`
+- [[topics/sparse-mixture-of-experts|sparse mixture-of-experts]] - `auto_structured`
+- [[topics/sparse-outlier-retention|sparse outlier retention]] - `auto_structured`
+- [[topics/speculative-action-execution|speculative action execution]] - `auto_structured`
+- [[topics/speculative-decoding|speculative decoding]] - `auto_structured`
+- [[topics/survey-synthesis|survey synthesis]] - `auto_structured`
+- [[topics/test-time-reinforcement-learning|test-time reinforcement learning]] - `auto_structured`
+- [[topics/transformer-architecture|transformer architecture]] - `auto_structured`
+- [[topics/verification-overhead|verification overhead]] - `auto_structured`
+- [[topics/video-representation-learning|video representation learning]] - `auto_structured`
+- [[topics/vision-language-quantization|vision-language quantization]] - `auto_structured`
+- [[topics/vision-language-representation-learning|vision-language representation learning]] - `auto_structured`
+- [[topics/visual-reasoning|visual reasoning]] - `auto_structured`
+- [[topics/world-model-learning|world model learning]] - `auto_structured`

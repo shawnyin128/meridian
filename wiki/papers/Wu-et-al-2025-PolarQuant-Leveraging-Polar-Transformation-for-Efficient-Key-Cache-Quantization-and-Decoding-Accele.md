@@ -64,6 +64,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-389eec940851-Wu-et-al-2025-PolarQ
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-237"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Wu et al. - 2025 - PolarQuant Leveraging Polar Transformation for Efficient Key Cache Quantization and Decoding Accele
 

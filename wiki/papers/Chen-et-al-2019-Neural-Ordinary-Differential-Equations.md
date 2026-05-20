@@ -47,6 +47,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-435299cc42b7-Chen-et-al-2019-Neur
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-160"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Chen et al. - 2019 - Neural Ordinary Differential Equations
 

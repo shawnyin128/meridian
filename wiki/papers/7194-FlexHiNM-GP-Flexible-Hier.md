@@ -54,6 +54,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-0370f4b21b2e-7194-FlexHiNM-GP-Fle
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-009"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # 7194_FlexHiNM_GP_Flexible_Hier
 

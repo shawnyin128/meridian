@@ -49,6 +49,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-d4b8c752b7ad-Dehghani-et-al-2019-
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-063"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Dehghani et al. - 2019 - Universal Transformers
 

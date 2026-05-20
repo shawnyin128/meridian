@@ -47,6 +47,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-17962cadd033-Yang-et-al-2025-Diff
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-110"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Yang et al. - 2025 - Diffusion Models A Comprehensive Survey of Methods and Applications
 

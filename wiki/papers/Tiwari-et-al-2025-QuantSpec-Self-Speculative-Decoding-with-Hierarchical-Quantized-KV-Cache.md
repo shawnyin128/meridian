@@ -67,6 +67,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-78fab1d14bd1-Tiwari-et-al-2025-Qu
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-142"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Tiwari et al. - 2025 - QuantSpec Self-Speculative Decoding with Hierarchical Quantized KV Cache
 

@@ -63,6 +63,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-511c5a78af60-Wang-et-al-2023-BitN
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-011"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Wang et al. - 2023 - BitNet Scaling 1-bit Transformers for Large Language Models
 

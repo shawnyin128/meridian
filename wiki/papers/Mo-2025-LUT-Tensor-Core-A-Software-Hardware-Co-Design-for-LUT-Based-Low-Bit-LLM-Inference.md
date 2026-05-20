@@ -73,6 +73,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-b4207b13e124-Mo-2025-LUT-Tensor-C
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-220"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Mo 等 - 2025 - LUT Tensor Core A Software-Hardware Co-Design for LUT-Based Low-Bit LLM Inference
 

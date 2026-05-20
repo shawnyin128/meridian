@@ -1,13 +1,13 @@
 # Knowledge Layer Quality Audit
 
-- Generated: `2026-05-20T23:08:35.867471+00:00`
+- Generated: `2026-05-20T23:55:39.029800+00:00`
 - Status: `warn`
 - Papers: 236
 - Methods: 302
 - Topics: 91
 - Claims: 1135
 - Evidence: 2737
-- Syntheses: 0
+- Syntheses: 6
 
 ## Health Metrics
 
@@ -21,7 +21,7 @@
 - duplicate_method_topic_alias_groups: 41
 - source_quality_misuse: 0
 - pages_with_required_section_gaps: 239
-- pages_with_frontmatter_gaps: 0
+- pages_with_frontmatter_gaps: 3
 
 ## Interpretation
 

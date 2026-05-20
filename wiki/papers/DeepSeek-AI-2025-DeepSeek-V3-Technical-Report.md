@@ -81,6 +81,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-812a3fd645c8-DeepSeek-AI-2025-Dee
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-191"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # DeepSeek-AI 等 - 2025 - DeepSeek-V3 Technical Report
 

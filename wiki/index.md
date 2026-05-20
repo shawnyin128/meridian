@@ -4520,4 +4520,9 @@
 
 ## Syntheses
 
-- None yet.
+- [[syntheses/Hardware-Aware-Quantization-Topic-Overview|Hardware-Aware Quantization Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Kv-Cache-Compression-Method-Family-Synthesis|Kv-Cache Compression Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Low-Bit-Quantization-Topic-Overview|Low-Bit Quantization Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Post-Training-Quantization-Method-Family-Synthesis|Post-Training Quantization Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Transformer-Architecture-Method-Family-Synthesis|Transformer Architecture Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Transformer-Architecture-Topic-Overview|Transformer Architecture Topic Overview]] - status: draft; published_proposal

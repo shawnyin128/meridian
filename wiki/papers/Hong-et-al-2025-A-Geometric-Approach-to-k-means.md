@@ -45,6 +45,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-bd0d0b1ce60a-Hong-et-al-2025-A-Ge
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-031"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Hong et al. - 2025 - A Geometric Approach to $k$-means
 

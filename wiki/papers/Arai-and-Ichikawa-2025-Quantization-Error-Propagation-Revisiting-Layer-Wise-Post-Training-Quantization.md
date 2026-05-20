@@ -60,6 +60,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-25a23046f2aa-Arai-and-Ichikawa-20
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-236"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Arai and Ichikawa - 2025 - Quantization Error Propagation Revisiting Layer-Wise Post-Training Quantization
 

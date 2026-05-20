@@ -53,6 +53,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-1a49ce0373af-Wang-et-al-2023-Self
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-128"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Wang et al. - 2023 - Self-Consistency Improves Chain of Thought Reasoning in Language Models
 

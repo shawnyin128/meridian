@@ -56,6 +56,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-ad07e47cedf4-Raffel-et-al-2023-Ex
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-066"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Raffel et al. - 2023 - Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer
 

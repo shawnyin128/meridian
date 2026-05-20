@@ -45,6 +45,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-feb850106c54-Trippe-et-al-2023-Di
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-104"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Trippe et al. - 2023 - Diffusion probabilistic modeling of protein backbones in 3D for the motif-scaffolding problem
 

@@ -47,6 +47,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-9c52e2c92ef6-Meng-et-al-2022-SDEd
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-109"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Meng et al. - 2022 - SDEdit Guided Image Synthesis and Editing with Stochastic Differential Equations
 

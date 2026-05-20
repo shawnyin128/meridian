@@ -78,6 +78,9 @@ revision_count: 1
 previous_revision: "base-5f473a12ca"
 evolution_state: "active"
 last_refinement_id: "refinement-2026-05-20-569ed606f5"
+quality_state: "text_converged"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 
 # STS: Efficient Sparse Attention with Speculative Token Sparsity

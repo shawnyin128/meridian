@@ -59,6 +59,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-a6b750e25a61-13979-STAR-Speculati
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-151"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # 13979_STAR_Speculative_Decodin
 

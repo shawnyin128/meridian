@@ -4092,6 +4092,411 @@ This hidden unique zeta candidate should never enter retrieval.
             self.assertEqual(exit_code, 1)
             self.assertIn("Knowledge repair lint status: fail", stdout)
 
+    def test_final_status_migration_adds_retrieval_visible_quality_states(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            _write_test_paper(
+                papers / "Sparse-Attention.md",
+                title="Sparse Attention Paper",
+                aliases=["SparseKV"],
+                topics=["long-context attention"],
+                methods=["sparse attention"],
+                settings=["long-context decoding"],
+                body_sections={"What To Remember": "Sparse attention reduces KV-cache pressure."},
+                quality_gate="warn",
+                review_state="auto_converged",
+            )
+            self.assertEqual(main(["wiki", "final-status-migrate", "--wiki-root", str(wiki_root)]), 0)
+            text = (papers / "Sparse-Attention.md").read_text(encoding="utf-8")
+            self.assertIn('quality_state: "multimodal_pending"', text)
+            self.assertIn('validation_state: "text_converged"', text)
+            self.assertIn('trust_state: "source_grounded_text"', text)
+
+            result_json = root / "retrieve.json"
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "retrieve",
+                        "long-context sparse attention decoding",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--json-out",
+                        str(result_json),
+                    ]
+                ),
+                0,
+            )
+            result = json.loads(result_json.read_text(encoding="utf-8"))
+            self.assertEqual(result["results"][0]["quality_state"], "multimodal_pending")
+
+    def test_synthesis_growth_batch_publishes_retrievable_compiled_context(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            _write_test_paper(
+                papers / "Quant-Paper.md",
+                title="Quant Paper",
+                aliases=["QuantProbe"],
+                topics=["low-bit quantization"],
+                methods=["post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "Post-training quantization reduces deployment cost.",
+                    "Mechanism": "Calibration and reconstruction reduce quantization error.",
+                    "Implementation Hooks": "Probe activation outliers and quantization error.",
+                    "Evidence Map": "Reports perplexity and latency evidence.",
+                },
+            )
+            method = wiki_root / "methods/post-training-quantization.md"
+            method.parent.mkdir(parents=True)
+            method.write_text(
+                "\n".join(
+                    [
+                        "---",
+                        'type: "method"',
+                        'title: "post-training quantization"',
+                        'status: "active"',
+                        "source_papers:",
+                        '  - "papers/Quant-Paper"',
+                        "related_papers:",
+                        '  - "papers/Quant-Paper"',
+                        "related_topics:",
+                        '  - "low-bit quantization"',
+                        'confidence: "medium"',
+                        'review_state: "auto_structured"',
+                        'evolution_state: "active"',
+                        'revision_id: "method-test"',
+                        "---",
+                        "# post-training quantization",
+                        "",
+                        "## What It Is",
+                        "",
+                        "Compiled PTQ method family.",
+                        "",
+                        "## Mechanism",
+                        "",
+                        "Calibration and reconstruction reduce quantization error.",
+                        "",
+                        "## Implementation Hooks",
+                        "",
+                        "Probe outliers, calibration data, and latency.",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            batch = wiki_root / ".drafts/proposals/test-synthesis-batch"
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "propose-synthesis-batch",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--out-dir",
+                        str(batch),
+                        "--max-items",
+                        "1",
+                    ]
+                ),
+                0,
+            )
+            manifest = batch / "batch.json"
+            self.assertTrue(manifest.exists())
+            self.assertEqual(main(["wiki", "publish-synthesis-batch", str(manifest), "--wiki-root", str(wiki_root)]), 0)
+            self.assertTrue(list((wiki_root / "syntheses").glob("*.md")))
+
+            result = retrieve_papers(
+                query="cross-paper synthesis for post-training quantization implementation evidence",
+                wiki_root=wiki_root,
+                top_k=3,
+                strategy="v1",
+            )
+            self.assertTrue(any(item.get("result_type") == "method-family" for item in result.results))
+
+    def test_method_consolidation_and_contradiction_review_are_proposal_first(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            compiled = wiki_root / "methods/post-training-quantization.md"
+            compiled.parent.mkdir(parents=True)
+            compiled.write_text(
+                "\n".join(
+                    [
+                        "---",
+                        'type: "method"',
+                        'title: "post-training quantization"',
+                        'status: "active"',
+                        "source_papers:",
+                        '  - "papers/Quant-Paper"',
+                        "related_papers:",
+                        '  - "papers/Quant-Paper"',
+                        "related_topics:",
+                        '  - "low-bit quantization"',
+                        'confidence: "medium"',
+                        'review_state: "auto_structured"',
+                        'evolution_state: "active"',
+                        'revision_id: "method-test"',
+                        "---",
+                        "# post-training quantization",
+                        "",
+                        "## What It Is",
+                        "",
+                        "Compiled method page.",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            candidate = wiki_root / "methods/Quant-Paper-method-001.md"
+            candidate.write_text(
+                "\n".join(
+                    [
+                        "---",
+                        'type: "method"',
+                        'title: "Quant Paper post-training quantization method"',
+                        'status: "candidate"',
+                        "related_topics:",
+                        '  - "low-bit quantization"',
+                        'review_state: "candidate"',
+                        "---",
+                        "# Candidate",
+                        "",
+                        "This paper-specific record describes post-training quantization.",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            out = wiki_root / ".drafts/knowledge-repair/method-consolidation-test"
+            self.assertEqual(main(["wiki", "propose-method-consolidation", "--wiki-root", str(wiki_root), "--out-dir", str(out)]), 0)
+            manifest = json.loads((out / "method-consolidation.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["candidate_count"], 1)
+            self.assertEqual(manifest["grouped_count"], 1)
+            self.assertIn("consolidation_target", manifest["groups"][0]["publishable_low_risk_update"]["fields"])
+            self.assertNotIn("consolidation_target", candidate.read_text(encoding="utf-8"))
+
+            claims = wiki_root / "claims"
+            claims.mkdir(parents=True, exist_ok=True)
+            (claims / "Unsupported.md").write_text(
+                "\n".join(
+                    [
+                        "---",
+                        'type: "claim"',
+                        'title: "Unsupported Claim"',
+                        'status: "candidate"',
+                        "source_papers: []",
+                        "supports: []",
+                        'confidence: "low"',
+                        'review_state: "candidate"',
+                        'evolution_state: "active"',
+                        'revision_id: "claim-test"',
+                        "---",
+                        "# Unsupported Claim",
+                        "",
+                        "## Claim",
+                        "",
+                        "This claim needs evidence.",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            review_out = wiki_root / ".drafts/knowledge-repair/contradiction-test"
+            self.assertEqual(
+                main(["wiki", "propose-contradiction-review", "--wiki-root", str(wiki_root), "--out-dir", str(review_out)]),
+                0,
+            )
+            review = json.loads((review_out / "contradiction-review.json").read_text(encoding="utf-8"))
+            self.assertGreaterEqual(review["candidate_count"], 1)
+            self.assertIn("claim_without_evidence", {item["candidate_type"] for item in review["candidates"]})
+
+    def test_navigation_and_final_product_check(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            _write_test_paper(
+                papers / "Agent-Workflow.md",
+                title="Agent Workflow Paper",
+                aliases=["WorkflowAgent"],
+                topics=["LLM agents"],
+                methods=["agent workflow modeling"],
+                settings=["tool-use agents"],
+                body_sections={"What To Remember": "Agent workflow pages support tool-use research."},
+            )
+            synthesis = wiki_root / "syntheses/Agent-Workflow-Overview.md"
+            synthesis.parent.mkdir(parents=True)
+            synthesis.write_text(
+                "\n".join(
+                    [
+                        "---",
+                        'type: "synthesis"',
+                        'title: "Agent Workflow Overview"',
+                        'status: "draft"',
+                        "source_papers:",
+                        '  - "papers/Agent-Workflow"',
+                        "related_papers:",
+                        '  - "papers/Agent-Workflow"',
+                        "related_methods:",
+                        '  - "agent workflow modeling"',
+                        "related_topics:",
+                        '  - "LLM agents"',
+                        'confidence: "low"',
+                        'review_state: "published_proposal"',
+                        'evolution_state: "active"',
+                        'revision_id: "synthesis-test"',
+                        "---",
+                        "# Agent Workflow Overview",
+                        "",
+                        "## Source Facts",
+                        "",
+                        "- [[papers/Agent-Workflow|Agent Workflow Paper]] is the source page.",
+                        "",
+                        "## Wiki Synthesis",
+                        "",
+                        "- Scaffold synthesis.",
+                        "",
+                        "## User Ideas / Decisions",
+                        "",
+                        "- None.",
+                        "",
+                        "## Evidence Map",
+                        "",
+                        "- Needs review.",
+                        "",
+                        "## Open Questions",
+                        "",
+                        "- What should be tested?",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(main(["wiki", "final-status-migrate", "--wiki-root", str(wiki_root)]), 0)
+            self.assertEqual(main(["wiki", "build-navigation", "--wiki-root", str(wiki_root)]), 0)
+            self.assertTrue((wiki_root / "Map of Content.md").exists())
+            self.assertTrue((wiki_root / "Synthesis Index.md").exists())
+
+            check = root / "final-check.json"
+            brief = root / "final-brief.md"
+            self.assertEqual(main(["wiki", "final-product-check", "--wiki-root", str(wiki_root), "--out", str(check), "--brief", str(brief)]), 0)
+            payload = json.loads(check.read_text(encoding="utf-8"))
+            self.assertIn(payload["status"], {"pass", "warn"})
+            self.assertEqual(payload["metrics"]["counts"]["syntheses"], 1)
+            self.assertTrue(brief.exists())
+
+    def test_final_retrieval_eval_uses_full_corpus_and_suppresses_source_quality_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            _write_test_paper(
+                wiki_root / "papers/Good-PTQ.md",
+                title="Good PTQ Paper",
+                aliases=["GoodPTQ"],
+                topics=["post-training quantization"],
+                methods=["post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "Evidence Map": "Good PTQ evidence is source-grounded and supports implementation probes.",
+                    "Implementation Hooks": "Inspect quantization error and calibration probes.",
+                },
+            )
+            _write_test_paper(
+                wiki_root / "papers/Bad-Source.md",
+                title="Bad Source",
+                aliases=["BadSource"],
+                topics=["paper source quality"],
+                methods=["source-quality triage"],
+                settings=["source-text-insufficient"],
+                body_sections={"Evidence Map": "Do not use this as scientific evidence."},
+                review_state="source_quality_hold",
+                quality_gate="warn",
+            )
+            _prepend_frontmatter_field(wiki_root / "papers/Bad-Source.md", 'quality_state: "source_quality_hold"\nvalidation_state: "needs_source_recheck"')
+            _write_knowledge_page(
+                wiki_root / "methods/post-training-quantization.md",
+                page_type="method",
+                title="Post-training Quantization",
+                body="## What It Is\n\nA method family for quantizing trained models.\n\n## Implementation Hooks\n\nProbe calibration and quantization error.",
+            )
+            _write_knowledge_page(
+                wiki_root / "topics/post-training-quantization.md",
+                page_type="topic",
+                title="Post-training Quantization",
+                body="## Scope\n\nQuantization methods and evidence boundaries.",
+            )
+            _write_knowledge_page(
+                wiki_root / "syntheses/Post-Training-Quantization-Overview.md",
+                page_type="synthesis",
+                title="Post-training Quantization Overview",
+                body="## Source Facts\n\n- [[papers/Good-PTQ]] supports this overview.\n\n## Wiki Synthesis\n\nUse method-family context before paper details.\n\n## Evidence Map\n\nTrace claims to source pages.",
+                source_papers=["papers/Good-PTQ.md"],
+            )
+            _write_knowledge_page(
+                wiki_root / "evidence/Bad-evidence.md",
+                page_type="evidence",
+                title="Bad Source Evidence",
+                body="## Evidence Item\n\npost-training quantization implementation evidence from a bad source.\n\n## Source\n\n[[papers/Bad-Source]]\n\n## Reliability\n\nSource-quality hold.",
+                source_papers=["papers/Bad-Source.md"],
+            )
+            _write_knowledge_page(
+                wiki_root / "evidence/Good-evidence.md",
+                page_type="evidence",
+                title="Good PTQ Evidence",
+                body="## Evidence Item\n\npost-training quantization implementation evidence with provenance.\n\n## Source\n\n[[papers/Good-PTQ]]\n\n## Reliability\n\nUsable source-grounded evidence.",
+                source_papers=["papers/Good-PTQ.md"],
+            )
+            cases = root / "cases.jsonl"
+            cases.write_text(
+                json.dumps(
+                    {
+                        "id": "full_corpus",
+                        "category": "final_llm_wiki_product",
+                        "intent": "method_probe_design",
+                        "query": "I need an overview of post-training quantization implementation probes with evidence and synthesis context.",
+                        "problem_description": "Final retrieval should use compiled knowledge pages and avoid source-quality evidence.",
+                        "required_page_families": ["type:method", "type:evidence", "corpus:syntheses", "type:paper"],
+                        "acceptable_adjacent_pages": ["type:topic"],
+                        "hard_distractors": ["evidence/Bad-evidence.md"],
+                        "must_not_retrieve_as_evidence": ["quality:source_quality_hold"],
+                        "context_packet_expectations": [],
+                        "rubric": [],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            out = root / "retrieval-final"
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "retrieval-optimize-eval",
+                        str(cases),
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--out-dir",
+                        str(out),
+                        "--top-k",
+                        "5",
+                    ]
+                ),
+                0,
+            )
+            summary = json.loads((out / "summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(summary["metrics"]["v1"]["decisions"], {"pass": 1})
+            context = json.loads((out / "full_corpus/context.v1.json").read_text(encoding="utf-8"))
+            paths = [item["relative_path"] for item in context["results"]]
+            self.assertIn("syntheses/Post-Training-Quantization-Overview.md", paths)
+            self.assertIn("evidence/Good-evidence.md", paths)
+            self.assertNotIn("evidence/Bad-evidence.md", paths)
+
 
 def _passing_judge_result(case_id: str) -> dict[str, object]:
     return {
@@ -4184,6 +4589,57 @@ def _write_test_paper(
     for heading, content in body_sections.items():
         body.extend([f"## {heading}", "", content, ""])
     path.write_text("\n".join(frontmatter + body), encoding="utf-8")
+
+
+def _write_knowledge_page(
+    path: Path,
+    *,
+    page_type: str,
+    title: str,
+    body: str,
+    source_papers: list[str] | None = None,
+) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    source_papers = source_papers or []
+    frontmatter = [
+        "---",
+        f'type: "{page_type}"',
+        f'title: "{title}"',
+        'status: "draft"',
+        "aliases: []",
+        "sources:",
+        *[f'  - "{item}"' for item in source_papers],
+        "source_papers:",
+        *[f'  - "{item}"' for item in source_papers],
+        "related_papers:",
+        *[f'  - "{item}"' for item in source_papers],
+        "related_methods: []",
+        "related_topics: []",
+        "supports: []",
+        "contradicts: []",
+        "supersedes: []",
+        "superseded_by: []",
+        'confidence: "medium"',
+        'review_state: "auto_converged"',
+        'evolution_state: "active"',
+        f'revision_id: "{page_type}-test"',
+        "---",
+        f"# {title}",
+        "",
+        body,
+        "",
+    ]
+    path.write_text("\n".join(frontmatter), encoding="utf-8")
+
+
+def _prepend_frontmatter_field(path: Path, field_text: str) -> None:
+    text = path.read_text(encoding="utf-8")
+    marker = "---\n"
+    first = text.find(marker)
+    second = text.find(marker, first + len(marker))
+    if first != 0 or second < 0:
+        raise AssertionError("test fixture missing frontmatter")
+    path.write_text(text[:second] + field_text + "\n" + text[second:], encoding="utf-8")
 
 
 if __name__ == "__main__":

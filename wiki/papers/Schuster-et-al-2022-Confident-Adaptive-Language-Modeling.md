@@ -56,6 +56,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-ba93507c489f-Schuster-et-al-2022-
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-162"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Schuster et al. - 2022 - Confident Adaptive Language Modeling
 

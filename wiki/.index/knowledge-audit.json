@@ -1,6 +1,6 @@
 {
   "schema_version": "meridian.knowledge_audit.v1",
-  "created_at": "2026-05-20T23:08:35.867471+00:00",
+  "created_at": "2026-05-20T23:55:39.029800+00:00",
   "wiki_root": "wiki",
   "status": "warn",
   "metrics": {
@@ -10,7 +10,7 @@
       "topics": 91,
       "claims": 1135,
       "evidence": 2737,
-      "syntheses": 0
+      "syntheses": 6
     },
     "low_information_pages": 239,
     "paper_without_outbound_links": 1,
@@ -22,7 +22,7 @@
     "duplicate_method_topic_alias_groups": 41,
     "source_quality_misuse": 0,
     "pages_with_required_section_gaps": 239,
-    "pages_with_frontmatter_gaps": 0
+    "pages_with_frontmatter_gaps": 3
   },
   "findings": [
     {
@@ -4570,6 +4570,30 @@
       "severity": "warn",
       "code": "claim_without_evidence",
       "path": "claims/Xi-et-al-2023-Training-Transformers-with-4-bit-Integers-claim-004.md"
+    },
+    {
+      "severity": "warn",
+      "code": "missing_frontmatter_fields",
+      "path": "syntheses/Hardware-Aware-Quantization-Topic-Overview.md",
+      "missing": [
+        "sources"
+      ]
+    },
+    {
+      "severity": "warn",
+      "code": "missing_frontmatter_fields",
+      "path": "syntheses/Low-Bit-Quantization-Topic-Overview.md",
+      "missing": [
+        "sources"
+      ]
+    },
+    {
+      "severity": "warn",
+      "code": "missing_frontmatter_fields",
+      "path": "syntheses/Transformer-Architecture-Topic-Overview.md",
+      "missing": [
+        "sources"
+      ]
     },
     {
       "severity": "info",

@@ -50,6 +50,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-5dda279009be-LeCun-A-Path-Towards
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-046"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # LeCun - A Path Towards Autonomous Machine Intelligence Version 0.9.2, 2022-06-27
 

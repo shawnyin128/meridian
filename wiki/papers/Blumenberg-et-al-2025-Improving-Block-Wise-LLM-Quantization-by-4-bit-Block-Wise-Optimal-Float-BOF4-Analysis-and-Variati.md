@@ -67,6 +67,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-5229a344d147-Blumenberg-et-al-202
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-222"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Blumenberg et al. - 2025 - Improving Block-Wise LLM Quantization by 4-bit Block-Wise Optimal Float (BOF4) Analysis and Variati
 

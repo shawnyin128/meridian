@@ -431,6 +431,8 @@ def _render_proposal(
         f'query: "{_escape(query)}"',
         "source_papers:",
         *_yaml_list(source_papers),
+        "sources:",
+        *_yaml_list(source_papers),
         "source_sections:",
         *_yaml_list(source_sections),
         f'source_context: "{_escape(_relative_or_absolute(source_context_path, wiki_root))}"',
@@ -572,7 +574,15 @@ def _render_canonical_page(*, proposal_text: str, manifest: dict[str, Any], wiki
         *_yaml_list(methods),
         "related:",
         *_yaml_list(related),
+        "related_papers:",
+        *_yaml_list(related),
+        "related_methods:",
+        *_yaml_list(methods),
+        "related_topics:",
+        *_yaml_list(topics),
         f"source_quality_risk: {str(_has_source_quality_hold(sources)).lower()}",
+        'evolution_state: "active"',
+        f'revision_id: "synthesis-{_escape(str(manifest.get("proposal_id") or ""))}"',
         "---",
         f"# {title}",
         "",
@@ -724,6 +734,12 @@ def _resolve_path(value: Any, *, base: Path) -> Path | None:
         return None
     path = Path(str(value))
     if path.is_absolute():
+        return path
+    if not base.exists() and path.exists():
+        return path
+    if path.exists():
+        return path
+    if path.parts and path.parts[0] == base.parts[0] if not base.is_absolute() and base.parts else False:
         return path
     return base / path
 

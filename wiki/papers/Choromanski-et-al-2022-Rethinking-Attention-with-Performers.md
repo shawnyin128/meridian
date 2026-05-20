@@ -51,6 +51,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-2634d0985b5e-Choromanski-et-al-20
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-086"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Choromanski et al. - 2022 - Rethinking Attention with Performers
 

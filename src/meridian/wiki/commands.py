@@ -22,6 +22,22 @@ from meridian.wiki.evolution import (
     publish_refinement,
 )
 from meridian.wiki.flow import WikiFlowResult, run_wiki_flow
+from meridian.wiki.final_product import (
+    ContradictionReviewResult,
+    FinalProductCheckResult,
+    FinalStatusMigrationResult,
+    MethodConsolidationResult,
+    NavigationBuildResult,
+    PublishSynthesisBatchResult,
+    SynthesisBatchProposalResult,
+    build_obsidian_navigation,
+    final_product_check,
+    migrate_final_statuses,
+    propose_contradiction_review,
+    propose_method_consolidation,
+    propose_synthesis_batch,
+    publish_synthesis_batch,
+)
 from meridian.wiki.ingest import IngestResult, run_ingest
 from meridian.wiki.insights import (
     InsightLintResult,
@@ -427,6 +443,69 @@ def publish_knowledge_repair_wiki(
     wiki_root: Path,
 ) -> PublishKnowledgeRepairResult:
     return publish_knowledge_repair(repair_manifest=repair_manifest, wiki_root=wiki_root)
+
+
+def final_status_migrate_wiki(
+    *,
+    wiki_root: Path,
+    out_path: Path | None = None,
+) -> FinalStatusMigrationResult:
+    return migrate_final_statuses(wiki_root=wiki_root, out_path=out_path)
+
+
+def propose_synthesis_batch_wiki(
+    *,
+    wiki_root: Path,
+    out_dir: Path | None = None,
+    max_items: int = 6,
+    overwrite: bool = False,
+) -> SynthesisBatchProposalResult:
+    return propose_synthesis_batch(wiki_root=wiki_root, out_dir=out_dir, max_items=max_items, overwrite=overwrite)
+
+
+def publish_synthesis_batch_wiki(
+    *,
+    batch_manifest: Path,
+    wiki_root: Path,
+    limit: int | None = None,
+    overwrite: bool = False,
+) -> PublishSynthesisBatchResult:
+    return publish_synthesis_batch(batch_manifest=batch_manifest, wiki_root=wiki_root, limit=limit, overwrite=overwrite)
+
+
+def propose_method_consolidation_wiki(
+    *,
+    wiki_root: Path,
+    out_dir: Path | None = None,
+    overwrite: bool = False,
+) -> MethodConsolidationResult:
+    return propose_method_consolidation(wiki_root=wiki_root, out_dir=out_dir, overwrite=overwrite)
+
+
+def propose_contradiction_review_wiki(
+    *,
+    wiki_root: Path,
+    out_dir: Path | None = None,
+    overwrite: bool = False,
+) -> ContradictionReviewResult:
+    return propose_contradiction_review(wiki_root=wiki_root, out_dir=out_dir, overwrite=overwrite)
+
+
+def build_navigation_wiki(
+    *,
+    wiki_root: Path,
+    out_path: Path | None = None,
+) -> NavigationBuildResult:
+    return build_obsidian_navigation(wiki_root=wiki_root, out_path=out_path)
+
+
+def final_product_check_wiki(
+    *,
+    wiki_root: Path,
+    out_path: Path | None = None,
+    brief_path: Path | None = None,
+) -> FinalProductCheckResult:
+    return final_product_check(wiki_root=wiki_root, out_path=out_path, brief_path=brief_path)
 
 
 def add_insight_wiki(

@@ -62,6 +62,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-426edb29aaeb-Yi-et-al-2024-Rotate
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-204"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Yi et al. - 2024 - Rotated Runtime Smooth Training-Free Activation Smoother for accurate INT4 inference
 

@@ -133,6 +133,7 @@ def run_retrieval_optimization_eval(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     catalog = build_paper_catalog(wiki_root=wiki_root, out_path=catalog_path)
+    retrieval_catalog_path = catalog.catalog_path if catalog_path is not None else None
     source_audit = _safe_source_audit(wiki_root)
     lint = _safe_lint(wiki_root)
     results: list[dict[str, Any]] = []
@@ -150,7 +151,7 @@ def run_retrieval_optimization_eval(
             retrieval = retrieve_papers(
                 query=str(case["query"]),
                 wiki_root=wiki_root,
-                catalog_path=catalog.catalog_path,
+                catalog_path=retrieval_catalog_path,
                 top_k=top_k,
                 strategy=strategy,
                 packet_path=context_path,
@@ -241,6 +242,7 @@ def run_retrieval_eval(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     catalog = build_paper_catalog(wiki_root=wiki_root, out_path=catalog_path)
+    retrieval_catalog_path = catalog.catalog_path if catalog_path is not None else None
     source_audit = _safe_source_audit(wiki_root)
     lint = _safe_lint(wiki_root)
     results: list[dict[str, Any]] = []
@@ -257,7 +259,7 @@ def run_retrieval_eval(
             retrieval = retrieve_papers(
                 query=str(case["query"]),
                 wiki_root=wiki_root,
-                catalog_path=catalog.catalog_path,
+                catalog_path=retrieval_catalog_path,
                 top_k=top_k,
                 strategy=strategy,
                 packet_path=context_path,
@@ -856,6 +858,8 @@ def _matches_any(result: dict[str, Any], patterns: list[str]) -> bool:
 def _matches_page(result: dict[str, Any], pattern: str) -> bool:
     if not pattern:
         return False
+    if _matches_selector(result, pattern):
+        return True
     candidates = {
         str(result.get("relative_path") or ""),
         str(result.get("page_id") or ""),
@@ -869,6 +873,43 @@ def _matches_page(result: dict[str, Any], pattern: str) -> bool:
         if fnmatch.fnmatch(candidate, pattern) or fnmatch.fnmatch(candidate, pattern_no_suffix):
             return True
     return False
+
+
+def _matches_selector(result: dict[str, Any], pattern: str) -> bool:
+    selector, _, expected = pattern.partition(":")
+    if not expected:
+        return False
+    selector = selector.strip().lower()
+    expected = expected.strip().lower()
+    if not selector or not expected:
+        return False
+
+    if selector in {"type", "result_type"}:
+        values = {str(result.get("result_type") or ""), str(result.get("type") or "")}
+    elif selector in {"corpus", "corpus_type"}:
+        values = {str(result.get("corpus_type") or "")}
+        rel_path = str(result.get("relative_path") or "")
+        if "/" in rel_path:
+            values.add(rel_path.split("/", 1)[0])
+    elif selector in {"role", "knowledge_role"}:
+        values = {str(result.get("knowledge_role") or "")}
+    elif selector in {"quality", "quality_state"}:
+        values = {
+            str(result.get("quality_state") or ""),
+            str(result.get("quality_gate") or ""),
+            str(result.get("review_state") or ""),
+        }
+    elif selector in {"validation", "validation_state"}:
+        values = {str(result.get("validation_state") or "")}
+    elif selector in {"trust", "trust_state"}:
+        values = {str(result.get("trust_state") or ""), str(result.get("confidence") or "")}
+    elif selector == "section":
+        values = {str(item.get("heading") or "") for item in result.get("matched_sections") or []}
+    else:
+        return False
+
+    normalized = {value.lower() for value in values if value}
+    return any(value == expected or fnmatch.fnmatch(value, expected) for value in normalized)
 
 
 def _result_has_section(result: dict[str, Any], section: str) -> bool:
@@ -959,14 +1000,15 @@ def _mean_reciprocal_rank(required_patterns: list[str], results: list[dict[str, 
 
 def _source_quality_failure(*, case: dict[str, Any], results: list[dict[str, Any]]) -> bool:
     intent = str(case.get("intent") or "")
-    if "source_quality" in intent:
+    allowed_intent_tokens = ("source_quality", "uncertainty", "stale", "contradiction", "recheck", "cleanup")
+    if any(token in intent for token in allowed_intent_tokens):
         return False
     for result in results:
         quality_text = " ".join(
             str(result.get(field) or "")
-            for field in ("review_state", "quality_gate", "confidence")
+            for field in ("review_state", "quality_gate", "confidence", "quality_state", "validation_state", "trust_state")
         ).lower()
-        if any(token in quality_text for token in ("hold", "fail", "source_quality")):
+        if any(token in quality_text for token in ("hold", "fail", "source_quality", "untrusted_source_text")) or result.get("source_quality_linked"):
             return True
     return False
 

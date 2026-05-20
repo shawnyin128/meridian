@@ -60,6 +60,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-efacf6829477-Samarin-et-al-2026-L
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-169"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Samarin et al. - 2026 - LK Losses Direct Acceptance Rate Optimization for Speculative Decoding
 

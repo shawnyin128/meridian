@@ -49,6 +49,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-4c2b5a0ff6f9-Christiano-et-al-202
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-001"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Christiano et al. - 2023 - Deep reinforcement learning from human preferences
 

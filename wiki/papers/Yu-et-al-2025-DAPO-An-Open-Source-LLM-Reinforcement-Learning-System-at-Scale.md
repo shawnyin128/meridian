@@ -56,6 +56,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-f01e4fd34753-Yu-et-al-2025-DAPO-A
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-177"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Yu et al. - 2025 - DAPO An Open-Source LLM Reinforcement Learning System at Scale
 

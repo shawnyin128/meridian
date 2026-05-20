@@ -44,6 +44,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-5afdede6df08-Download.pdf"
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-033"
 convergence_state: "source_quality_hold"
 judge_decision: "not_run"
+quality_state: "source_quality_hold"
+validation_state: "needs_source_recheck"
+trust_state: "untrusted_source_text"
 ---
 # Download
 

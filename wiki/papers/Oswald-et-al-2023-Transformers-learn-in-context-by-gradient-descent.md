@@ -48,6 +48,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-1d132920d78f-Oswald-et-al-2023-Tr
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-097"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Oswald et al. - 2023 - Transformers learn in-context by gradient descent
 

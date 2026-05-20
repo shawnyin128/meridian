@@ -45,6 +45,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-0379b04b79e4-Yang-et-al-Towards-K
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-041"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Yang et al. - Towards K-means-friendly Spaces Simultaneous Deep Learning and Clustering
 

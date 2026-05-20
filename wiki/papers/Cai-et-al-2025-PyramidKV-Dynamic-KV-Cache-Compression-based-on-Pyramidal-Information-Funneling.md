@@ -56,6 +56,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-0bcd6c0fba46-Cai-et-al-2025-Pyram
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-155"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Cai et al. - 2025 - PyramidKV Dynamic KV Cache Compression based on Pyramidal Information Funneling
 

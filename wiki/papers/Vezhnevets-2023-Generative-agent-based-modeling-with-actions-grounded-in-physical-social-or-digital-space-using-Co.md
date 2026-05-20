@@ -43,6 +43,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-e97d1cac5580-Vezhnevets-2023-Gene
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-185"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Vezhnevets 等 - 2023 - Generative agent-based modeling with actions grounded in physical, social, or digital space using Co
 

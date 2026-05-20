@@ -66,6 +66,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-b0b23b521163-Hu-et-al-2025-DREAM-
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-152"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Hu et al. - 2025 - DREAM Drafting with Refined Target Features and Entropy-Adaptive Cross-Attention Fusion for Multimo
 

@@ -58,6 +58,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-6b59f7eb8028-Xu-et-al-2025-SpeCon
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-140"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Xu et al. - 2025 - SpeContext Enabling Efficient Long-context Reasoning with Speculative Context Sparsity in LLMs
 

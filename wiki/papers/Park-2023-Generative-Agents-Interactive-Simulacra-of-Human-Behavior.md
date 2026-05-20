@@ -49,6 +49,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-1b31e77fb24d-Park-2023-Generative
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-183"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Park 等 - 2023 - Generative Agents Interactive Simulacra of Human Behavior
 

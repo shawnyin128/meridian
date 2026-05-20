@@ -49,6 +49,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-14a8d45a3e7f-Assran-et-al-2023-Se
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-048"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Assran et al. - 2023 - Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture
 

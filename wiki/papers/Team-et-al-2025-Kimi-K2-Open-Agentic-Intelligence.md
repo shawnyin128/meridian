@@ -61,6 +61,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-9a3e809e7f6d-Team-et-al-2025-Kimi
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-225"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Team et al. - 2025 - Kimi K2 Open Agentic Intelligence
 

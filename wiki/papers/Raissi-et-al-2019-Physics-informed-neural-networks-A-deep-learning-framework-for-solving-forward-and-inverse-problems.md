@@ -48,6 +48,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-bc4b2730575f-Raissi-et-al-2019-Ph
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-056"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Raissi et al. - 2019 - Physics-informed neural networks A deep learning framework for solving forward and inverse problems
 

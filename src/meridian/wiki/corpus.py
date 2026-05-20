@@ -376,6 +376,7 @@ def _catalog_record(
     sections = split_sections(body)
     rel_path = path.relative_to(wiki_root)
     title = str(frontmatter.get("title") or path.stem)
+    linked_source_quality = _linked_source_quality(frontmatter, wiki_root=wiki_root)
 
     return {
         "schema_version": schema_version,
@@ -383,16 +384,25 @@ def _catalog_record(
         "path": str(path),
         "relative_path": rel_path.as_posix(),
         "title": title,
+        "corpus_type": rel_path.parts[0] if rel_path.parts else "",
         "type": frontmatter.get("type"),
         "knowledge_role": _knowledge_role(path=path, frontmatter=frontmatter),
         "status": frontmatter.get("status"),
         "review_state": frontmatter.get("review_state"),
         "quality_gate": frontmatter.get("quality_gate"),
+        "quality_state": frontmatter.get("quality_state"),
+        "validation_state": frontmatter.get("validation_state"),
+        "trust_state": frontmatter.get("trust_state"),
         "confidence": frontmatter.get("confidence"),
         "source_id": frontmatter.get("source_id"),
         "source_pdf": frontmatter.get("source_pdf"),
         "source_registry": frontmatter.get("source_registry"),
         "source_quality_risk": frontmatter.get("source_quality_risk"),
+        "source_quality_linked": linked_source_quality["linked"],
+        "source_quality_sources": linked_source_quality["sources"],
+        "sources": _as_list(frontmatter.get("sources")),
+        "source_papers": _as_list(frontmatter.get("source_papers")),
+        "related_papers": _as_list(frontmatter.get("related_papers")),
         "personalized": frontmatter.get("personalized"),
         "user_insights": _as_list(frontmatter.get("user_insights")),
         "revision_id": frontmatter.get("revision_id"),
@@ -412,6 +422,29 @@ def _catalog_record(
     }
 
 
+def _linked_source_quality(frontmatter: dict[str, Any], *, wiki_root: Path) -> dict[str, Any]:
+    linked_paths = []
+    for field in ("sources", "source_papers", "related_papers"):
+        linked_paths.extend(str(item) for item in _as_list(frontmatter.get(field)))
+    source_quality_sources = []
+    for linked in _dedupe(linked_paths):
+        if not linked or not linked.startswith("papers/"):
+            continue
+        path = wiki_root / linked
+        if path.suffix != ".md":
+            path = path.with_suffix(".md")
+        if not path.exists():
+            continue
+        linked_frontmatter = parse_frontmatter(path.read_text(encoding="utf-8"))
+        quality_text = " ".join(
+            str(linked_frontmatter.get(field) or "")
+            for field in ("review_state", "quality_gate", "quality_state", "validation_state", "trust_state")
+        ).lower()
+        if any(token in quality_text for token in ("source_quality_hold", "needs_source_recheck", "untrusted_source_text")):
+            source_quality_sources.append(linked)
+    return {"linked": bool(source_quality_sources), "sources": source_quality_sources}
+
+
 def _load_or_build_catalog(*, wiki_root: Path, catalog_path: Path | None) -> list[dict[str, Any]]:
     effective_path = catalog_path or wiki_root / ".index" / "papers.jsonl"
     if not effective_path.exists():
@@ -424,8 +457,7 @@ def _load_or_build_catalog(*, wiki_root: Path, catalog_path: Path | None) -> lis
                 records.append(json.loads(stripped))
     if catalog_path is None and (wiki_root / "syntheses").exists():
         synthesis_path = wiki_root / ".index" / "syntheses.jsonl"
-        if not synthesis_path.exists():
-            build_synthesis_catalog(wiki_root=wiki_root, out_path=synthesis_path)
+        build_synthesis_catalog(wiki_root=wiki_root, out_path=synthesis_path)
         with synthesis_path.open("r", encoding="utf-8") as handle:
             for line in handle:
                 stripped = line.strip()
@@ -454,7 +486,7 @@ def _knowledge_role(*, path: Path, frontmatter: dict[str, Any]) -> str:
         frontmatter.get("candidate_id") or review_state in {"candidate", "auto_extracted", "source_text_insufficient"}
     ):
         return "candidate_record"
-    if page_type in {"method", "topic", "claim", "evidence", "synthesis"}:
+    if page_type in {"method", "topic", "claim", "evidence", "synthesis", "method-family", "comparison", "decision", "research-question"}:
         return "compiled_knowledge"
     return "source_page"
 
@@ -543,12 +575,19 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
         "routing": record.get("routing") or {},
         "review_state": record.get("review_state"),
         "quality_gate": record.get("quality_gate"),
+        "quality_state": record.get("quality_state"),
+        "validation_state": record.get("validation_state"),
+        "trust_state": record.get("trust_state"),
         "confidence": record.get("confidence"),
         "type": record.get("type") or "paper",
         "result_type": record.get("type") or "paper",
+        "corpus_type": record.get("corpus_type"),
         "knowledge_role": record.get("knowledge_role"),
         "source_id": record.get("source_id"),
         "source_quality_risk": record.get("source_quality_risk"),
+        "source_quality_linked": record.get("source_quality_linked"),
+        "source_quality_sources": record.get("source_quality_sources") or [],
+        "source_papers": record.get("source_papers") or [],
         "matched_source_types": matched_source_types,
         "revision_id": record.get("revision_id"),
         "revision_count": record.get("revision_count"),
@@ -715,13 +754,15 @@ def _score_record_v1(
         reasons.append("unrequested method-family penalty")
 
     quality_gate = str(record.get("quality_gate") or "").lower()
+    quality_state = str(record.get("quality_state") or "").lower()
+    validation_state = str(record.get("validation_state") or "").lower()
     review_state = str(record.get("review_state") or "").lower()
     confidence = str(record.get("confidence") or "").lower()
     source_quality_risk = str(record.get("source_quality_risk") or "").lower()
     is_source_quality_problem = any(
         token in " ".join([quality_gate, review_state, confidence])
         for token in ("hold", "fail", "low", "source_quality")
-    ) or source_quality_risk == "true"
+    ) or source_quality_risk == "true" or quality_state == "source_quality_hold" or validation_state == "needs_source_recheck" or bool(record.get("source_quality_linked"))
     if query_analysis.get("source_quality_query"):
         if is_source_quality_problem:
             score += 35.0
@@ -737,7 +778,19 @@ def _score_record_v1(
         reasons.append("candidate method-record suppression")
 
     result_type = str(record.get("type") or "")
+    corpus_type = str(record.get("corpus_type") or record.get("relative_path") or "")
     desired_sections = set(query_analysis.get("desired_sections") or [])
+    if corpus_type.startswith("syntheses") and desired_sections & {
+        "Scope",
+        "Key Papers",
+        "Method Families",
+        "Evidence Map",
+        "Source Facts",
+        "Wiki Synthesis",
+        "Retrieval Hooks",
+    }:
+        score += 760.0
+        reasons.append("synthesis-layer route")
     if knowledge_role == "compiled_knowledge":
         if result_type == "method" and desired_sections & {"Mechanism", "Implementation Hooks", "Failure Modes", "What It Is"}:
             score += 700.0
@@ -745,7 +798,14 @@ def _score_record_v1(
         if result_type == "topic" and desired_sections & {"Scope", "Key Papers", "Method Families", "Retrieval Hooks"}:
             score += 420.0
             reasons.append("knowledge-layer topic route")
-    if result_type in {"claim", "evidence"} and knowledge_role in {"compiled_knowledge", "candidate_record"} and desired_sections & {"Evidence Map", "Supporting Evidence", "Evidence Item", "Provenance"}:
+    if result_type in {"claim", "evidence"} and knowledge_role in {"compiled_knowledge", "candidate_record"} and desired_sections & {
+        "Evidence Map",
+        "Supporting Evidence",
+        "Evidence Item",
+        "Provenance",
+        "Claims",
+        "Contradictions",
+    }:
         score += 520.0
         reasons.append("knowledge-layer evidence route")
 
@@ -818,14 +878,43 @@ def _diversify_v1(
     if desired_sections & {"Mechanism", "Implementation Hooks", "Failure Modes", "What It Is"}:
         forced_types.append({"method"})
     if desired_sections & {"Scope", "Key Papers", "Method Families"}:
-        forced_types.append({"topic", "synthesis"})
-    if desired_sections & {"Evidence Map", "Supporting Evidence", "Evidence Item", "Provenance"}:
-        forced_types.append({"claim", "evidence"})
+        forced_types.append({"synthesis", "method-family", "comparison", "research-question", "decision"})
+        forced_types.append({"topic"})
+    if desired_sections & {"Evidence Map", "Supporting Evidence", "Evidence Item", "Provenance", "Claims", "Contradictions"}:
+        forced_types.append({"claim"})
+        forced_types.append({"evidence"})
+    if desired_sections & {"Evidence Map", "Implementation Hooks", "Key Papers", "Source", "Provenance"}:
+        forced_types.append({"paper"})
     remaining = list(ranked)
     for result_types in forced_types:
         if len(selected) >= top_k:
             break
-        candidate = next((item for item in remaining if str(item.get("result_type") or item.get("type") or "") in result_types), None)
+        allow_source_quality = bool(query_analysis.get("source_quality_query"))
+        candidate = next(
+            (
+                item
+                for item in remaining
+                if str(item.get("result_type") or item.get("type") or "") in result_types
+                or (str(item.get("corpus_type") or "").startswith("syntheses") and result_types & {"synthesis", "method-family"})
+            ),
+            None,
+        )
+        if candidate is not None and _is_source_quality_result(candidate) and not allow_source_quality:
+            candidate = next(
+                (
+                    item
+                    for item in remaining
+                    if (
+                        str(item.get("result_type") or item.get("type") or "") in result_types
+                        or (
+                            str(item.get("corpus_type") or "").startswith("syntheses")
+                            and result_types & {"synthesis", "method-family"}
+                        )
+                    )
+                    and not _is_source_quality_result(item)
+                ),
+                None,
+            )
         if candidate is not None:
             remaining.remove(candidate)
             candidate["selection_reasons"] = _dedupe(list(candidate.get("selection_reasons") or []) + ["knowledge-layer intent preselection"])
@@ -878,6 +967,18 @@ def _diversify_v1(
             best["coverage_facets"] = sorted(best_facets - covered)
         covered |= best_facets
     return selected
+
+
+def _is_source_quality_result(item: dict[str, Any]) -> bool:
+    quality_text = " ".join(
+        str(item.get(field) or "")
+        for field in ("review_state", "quality_gate", "quality_state", "validation_state", "trust_state")
+    ).lower()
+    return (
+        any(token in quality_text for token in ("source_quality_hold", "needs_source_recheck", "untrusted_source_text"))
+        or bool(item.get("source_quality_linked"))
+        or str(item.get("source_quality_risk") or "").lower() == "true"
+    )
 
 
 def _coverage_facets(
@@ -976,12 +1077,13 @@ def _render_context_packet(
                 "",
                 f"- Page: `{result.get('relative_path') or result['path']}`",
                 f"- Canonical path: `{result.get('canonical_path') or result.get('relative_path') or result['path']}`",
+                f"- Corpus type: `{result.get('corpus_type') or 'canonical'}`",
                 f"- Result type: `{result.get('result_type') or result.get('type') or 'paper'}`",
                 f"- Knowledge role: `{result.get('knowledge_role') or 'canonical'}`",
                 f"- Source types matched: {', '.join(result.get('matched_source_types') or ['source_or_wiki'])}",
                 f"- Revision: `{result.get('revision_id') or 'unversioned'}`; evolution state: `{result.get('evolution_state') or 'none'}`",
                 f"- Score: `{result['score']}`",
-                f"- Review state: `{result.get('review_state')}`; quality gate: `{result.get('quality_gate')}`; confidence: `{result.get('confidence')}`",
+                f"- Review state: `{result.get('review_state')}`; quality gate: `{result.get('quality_gate')}`; quality state: `{result.get('quality_state')}`; validation state: `{result.get('validation_state')}`; trust state: `{result.get('trust_state')}`; confidence: `{result.get('confidence')}`",
                 f"- Selection reasons: {', '.join(result.get('selection_reasons') or ['lexical overlap'])}",
                 f"- Detected domains: {', '.join(result.get('detected_domains') or ['unknown'])}",
                 f"- Matched frontmatter: {_format_matched_frontmatter(result.get('matched_frontmatter') or {})}",
@@ -995,6 +1097,9 @@ def _render_context_packet(
             lines.append("  - `What To Remember`: inspect the page summary before using this result.")
         if "user_insight" in set(result.get("matched_source_types") or []):
             lines.append("- Boundary warning: matched `User Insights`; this is user-supplied context, not paper source fact or scientific evidence.")
+        if result.get("source_quality_linked"):
+            linked = ", ".join(str(item) for item in (result.get("source_quality_sources") or []))
+            lines.append(f"- Source-quality warning: this result links to source-quality hold material ({linked}); do not use it as scientific evidence.")
         evolution_markers = {str(item) for item in result.get("evolution_markers") or []}
         evolution_state = str(result.get("evolution_state") or "")
         if evolution_state in {"stale", "needs_source_recheck", "superseded"} or evolution_markers & {"stale", "superseded", "conflicting_synthesis", "needs_source_recheck"}:

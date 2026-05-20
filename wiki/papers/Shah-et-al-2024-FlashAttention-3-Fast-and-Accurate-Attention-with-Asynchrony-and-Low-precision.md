@@ -59,6 +59,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-3d05ca102802-Shah-et-al-2024-Flas
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-234"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Shah et al. - 2024 - FlashAttention-3 Fast and Accurate Attention with Asynchrony and Low-precision
 

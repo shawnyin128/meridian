@@ -72,6 +72,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-797c4a507586-Lasby-et-al-2025-REA
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-005"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Lasby et al. - 2025 - REAP the Experts Why Pruning Prevails for One-Shot MoE compression
 

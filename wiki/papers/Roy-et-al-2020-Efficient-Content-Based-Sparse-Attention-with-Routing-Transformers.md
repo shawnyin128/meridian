@@ -49,6 +49,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-158b9d3435f6-Roy-et-al-2020-Effic
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-079"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Roy et al. - 2020 - Efficient Content-Based Sparse Attention with Routing Transformers
 

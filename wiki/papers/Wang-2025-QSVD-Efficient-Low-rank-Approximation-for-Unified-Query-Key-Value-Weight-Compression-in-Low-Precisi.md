@@ -73,6 +73,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-b283569a2e43-Wang-2025-QSVD-Effic
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-195"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Wang 等 - 2025 - QSVD Efficient Low-rank Approximation for Unified Query-Key-Value Weight Compression in Low-Precisi
 

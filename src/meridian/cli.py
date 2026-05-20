@@ -9,11 +9,14 @@ from meridian.wiki.commands import (
     calibrate_eval,
     catalog_wiki,
     add_insight_wiki,
+    build_navigation_wiki,
     converge_run,
     converge_eval,
     create_judge_packet,
     create_reader_check_packet,
     eval_cases,
+    final_product_check_wiki,
+    final_status_migrate_wiki,
     ingest_pdf,
     init_wiki,
     knowledge_audit_wiki,
@@ -21,6 +24,7 @@ from meridian.wiki.commands import (
     insight_lint_wiki,
     lint_wiki_command,
     publish_run,
+    publish_synthesis_batch_wiki,
     publish_proposal_wiki,
     publish_insight_wiki,
     publish_knowledge_repair_wiki,
@@ -28,7 +32,10 @@ from meridian.wiki.commands import (
     quality_check_run,
     proposal_lint_wiki,
     propose_knowledge_repair_wiki,
+    propose_contradiction_review_wiki,
+    propose_method_consolidation_wiki,
     propose_refine_wiki,
+    propose_synthesis_batch_wiki,
     propose_writeback_wiki,
     record_judge,
     record_review,
@@ -325,6 +332,62 @@ def build_parser() -> argparse.ArgumentParser:
     )
     publish_knowledge_repair.add_argument("repair_manifest", type=Path, help="Path to repair.json.")
     publish_knowledge_repair.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+
+    final_status = wiki_subparsers.add_parser(
+        "final-status-migrate",
+        help="Add final-product quality-state semantics to canonical paper pages.",
+    )
+    final_status.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    final_status.add_argument("--out", type=Path, default=None, help="Optional migration manifest path.")
+
+    synthesis_batch = wiki_subparsers.add_parser(
+        "propose-synthesis-batch",
+        help="Seed proposal-first synthesis pages from compiled method/topic clusters.",
+    )
+    synthesis_batch.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    synthesis_batch.add_argument("--out-dir", type=Path, default=None, help="Optional synthesis batch directory.")
+    synthesis_batch.add_argument("--max-items", type=int, default=6, help="Maximum synthesis proposals to create.")
+    synthesis_batch.add_argument("--overwrite", action="store_true", help="Overwrite an existing synthesis batch directory.")
+
+    publish_syntheses = wiki_subparsers.add_parser(
+        "publish-synthesis-batch",
+        help="Lint and publish low-risk synthesis proposals from a synthesis growth batch.",
+    )
+    publish_syntheses.add_argument("batch_manifest", type=Path, help="Path to batch.json.")
+    publish_syntheses.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    publish_syntheses.add_argument("--limit", type=int, default=None, help="Optional maximum proposals to publish.")
+    publish_syntheses.add_argument("--overwrite", action="store_true", help="Overwrite existing synthesis pages.")
+
+    method_consolidation = wiki_subparsers.add_parser(
+        "propose-method-consolidation",
+        help="Group paper-specific method candidate records under compiled method-family pages.",
+    )
+    method_consolidation.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    method_consolidation.add_argument("--out-dir", type=Path, default=None, help="Optional consolidation proposal directory.")
+    method_consolidation.add_argument("--overwrite", action="store_true", help="Overwrite an existing consolidation proposal.")
+
+    contradiction_review = wiki_subparsers.add_parser(
+        "propose-contradiction-review",
+        help="Generate conservative contradiction/stale/source-quality review candidates.",
+    )
+    contradiction_review.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    contradiction_review.add_argument("--out-dir", type=Path, default=None, help="Optional review proposal directory.")
+    contradiction_review.add_argument("--overwrite", action="store_true", help="Overwrite an existing review proposal.")
+
+    navigation = wiki_subparsers.add_parser(
+        "build-navigation",
+        help="Build Obsidian-friendly Map of Content and knowledge-layer navigation pages.",
+    )
+    navigation.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    navigation.add_argument("--out", type=Path, default=None, help="Optional navigation manifest path.")
+
+    final_check = wiki_subparsers.add_parser(
+        "final-product-check",
+        help="Run deterministic final LLM Wiki product readiness checks.",
+    )
+    final_check.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    final_check.add_argument("--out", type=Path, default=None, help="Optional final check JSON path.")
+    final_check.add_argument("--brief", type=Path, default=None, help="Optional markdown quality brief path.")
 
     review = wiki_subparsers.add_parser(
         "review",
@@ -932,6 +995,78 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Updated wiki log: {result.log_path}")
             print(f"Knowledge repair lint report: {result.lint_report_path}")
             return 0
+
+        if args.product == "wiki" and args.command == "final-status-migrate":
+            result = final_status_migrate_wiki(wiki_root=args.wiki_root, out_path=args.out)
+            print(f"Wrote final status migration: {result.manifest_path}")
+            print(f"Updated pages: {result.updated_pages}")
+            print(f"Status counts: {json.dumps(result.status_counts, sort_keys=True)}")
+            print(f"Updated catalog: {result.catalog_path}")
+            print(f"Updated wiki log: {result.log_path}")
+            return 0
+
+        if args.product == "wiki" and args.command == "propose-synthesis-batch":
+            result = propose_synthesis_batch_wiki(
+                wiki_root=args.wiki_root,
+                out_dir=args.out_dir,
+                max_items=args.max_items,
+                overwrite=args.overwrite,
+            )
+            print(f"Wrote synthesis batch: {result.manifest_path}")
+            print(f"Batch directory: {result.batch_dir}")
+            print(f"Proposal count: {result.proposal_count}")
+            return 0
+
+        if args.product == "wiki" and args.command == "publish-synthesis-batch":
+            result = publish_synthesis_batch_wiki(
+                batch_manifest=args.batch_manifest,
+                wiki_root=args.wiki_root,
+                limit=args.limit,
+                overwrite=args.overwrite,
+            )
+            print(f"Updated synthesis batch: {result.manifest_path}")
+            print(f"Published syntheses: {result.published_count}")
+            print(f"Skipped syntheses: {result.skipped_count}")
+            print(f"Failed syntheses: {result.failed_count}")
+            return 0 if result.failed_count == 0 else 1
+
+        if args.product == "wiki" and args.command == "propose-method-consolidation":
+            result = propose_method_consolidation_wiki(
+                wiki_root=args.wiki_root,
+                out_dir=args.out_dir,
+                overwrite=args.overwrite,
+            )
+            print(f"Wrote method consolidation proposal: {result.manifest_path}")
+            print(f"Candidate method records: {result.candidate_count}")
+            print(f"Grouped candidates: {result.grouped_count}")
+            print(f"High-risk candidates: {result.high_risk_count}")
+            return 0
+
+        if args.product == "wiki" and args.command == "propose-contradiction-review":
+            result = propose_contradiction_review_wiki(
+                wiki_root=args.wiki_root,
+                out_dir=args.out_dir,
+                overwrite=args.overwrite,
+            )
+            print(f"Wrote contradiction review proposal: {result.manifest_path}")
+            print(f"Candidate reviews: {result.candidate_count}")
+            return 0
+
+        if args.product == "wiki" and args.command == "build-navigation":
+            result = build_navigation_wiki(wiki_root=args.wiki_root, out_path=args.out)
+            print(f"Wrote navigation manifest: {result.manifest_path}")
+            print(f"Navigation pages: {len(result.pages)}")
+            for path in result.pages:
+                print(f"- {path}")
+            return 0
+
+        if args.product == "wiki" and args.command == "final-product-check":
+            result = final_product_check_wiki(wiki_root=args.wiki_root, out_path=args.out, brief_path=args.brief)
+            print(f"Wrote final product check: {result.report_path}")
+            print(f"Wrote final product brief: {result.brief_path}")
+            print(f"Final product status: {result.status}")
+            print(f"Findings: {len(result.findings)}")
+            return 0 if result.status != "fail" else 1
 
         if args.product == "wiki" and args.command == "judge-pack":
             packet = create_judge_packet(

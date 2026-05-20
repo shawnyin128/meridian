@@ -54,6 +54,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-7dd5058cdc19-Guan-et-al-2025-Dyna
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-166"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Guan et al. - 2025 - Dynamic Speculative Agent Planning
 

@@ -58,6 +58,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-0b0e050a0d39-Hu-et-al-2026-Bridgi
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-174"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Hu et al. - 2026 - Bridging Draft Policy Misalignment Group Tree Optimization for Speculative Decoding
 

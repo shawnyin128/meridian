@@ -63,6 +63,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-2e655ef4a8d8-Katharopoulos-et-al-
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-084"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Katharopoulos et al. - 2020 - Transformers are RNNs Fast Autoregressive Transformers with Linear Attention
 

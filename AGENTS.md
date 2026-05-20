@@ -72,6 +72,8 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `docs/mvp-paper-wiki-plan.md`: current brainstormed MVP boundary, development plan, and test plan.
 - `docs/paper-wiki-prototype-evaluation-plan.md`: Paper Wiki-first prototype, manual review, evaluation case, and refine loop plan.
 - `docs/wiki-evaluation-set-and-judge-rubric.md`: current evaluation set strategy and LLM-as-Judge rubric contract.
+- `docs/final-llm-wiki-product-spec.md`: final Paper Wiki product specification for compiled knowledge, synthesis growth, retrieval policy, quality states, and artifact boundaries.
+- `docs/final-llm-wiki-product-quality-brief.md`: latest deterministic final-product readiness brief and residual bottlenecks.
 - `docs/wiki-layer-test-strategy.md`: layered source/canonical/retrieval test strategy, retrieval scenario metrics, judge rubric usage, calibration, and release gates.
 - `docs/wiki-product-dataflow-and-artifact-boundaries.md`: product-level source/canonical/draft/debug/retrieval artifact taxonomy and dataflow boundaries.
 - `docs/user-insight-personalization-mvp.md`: user insight schema, add/lint/publish workflow, source-fact boundary, retrieval behavior, and future Zotero adapter boundary.

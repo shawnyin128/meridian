@@ -51,6 +51,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-c36362205936-Ho-and-Salimans-2022
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-051"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Ho and Salimans - 2022 - Classifier-Free Diffusion Guidance
 

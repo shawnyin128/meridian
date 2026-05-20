@@ -62,6 +62,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-93d98f2e858c-Cai-et-al-2024-Medus
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-147"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+quality_state: "multimodal_pending"
+validation_state: "text_converged"
+trust_state: "source_grounded_text"
 ---
 # Cai et al. - 2024 - Medusa Simple LLM Inference Acceleration Framework with Multiple Decoding Heads
 
