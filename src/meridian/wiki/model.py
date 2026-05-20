@@ -118,6 +118,11 @@ CONTROLLED_TOPIC_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("benchmark evaluation", ("mmlu", "hellaswag", "gsm8k", "wikitext", "zero-shot")),
     ("mechanistic activation analysis", ("massive activations", "fixed feature dimensions", "intervention")),
     ("speculative decoding", ("speculative decoding", "speculative sampling", "draft model", "draft token", "draft tree", "verification stage")),
+    ("speculative action execution", ("speculative actions", "agentic systems", "tentatively pursue", "ground-truth executor", "rollback")),
+    ("agent workflow acceleration", ("faster agentic systems", "speculative framework for agentic", "action-level speculation")),
+    ("attention kernel scheduling", ("flashattention", "warp-specialization", "asynchrony", "tensor cores", "tma")),
+    ("IO-aware attention", ("io-aware", "memory movement", "block-wise matmul", "softmax")),
+    ("low-precision attention", ("fp8 attention", "low-precision attention", "block quantization and incoherent processing")),
     ("dynamic draft tree", ("dynamic draft tree", "context-aware draft", "tree attention", "acceptance rate")),
     ("long-context inference", ("long context", "long-context", "longrope", "context window", "position interpolation")),
     ("sparse attention", ("sparse attention", "sparse transformer", "fixed attention pattern", "strided attention")),
@@ -158,6 +163,7 @@ CONTROLLED_TOPIC_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("LLM agents", ("llm agent", "large language model based autonomous agents", "generative agents")),
     ("multi-agent simulation", ("multi-agent", "agent society", "simulation of llm-driven")),
     ("audio-language modeling", ("audio-language", "qwen-audio", "qwen2-audio", "audio understanding")),
+    ("audio encoder alignment", ("audio encoder", "audio-text", "audio text", "audio-language training")),
     ("model training dynamics", ("training dynamics", "continual improving", "sft", "upt")),
     ("survey synthesis", ("survey on", "in-depth survey", "technical report", "opportunities")),
     ("root-system digitization", ("root system", "root-system", "root excavation", "digitization")),
@@ -167,6 +173,8 @@ CONTROLLED_TOPIC_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("chain-of-thought reasoning", ("chain-of-thought", "chain of thought", "faithful reasoning")),
     ("single-view 3D reconstruction", ("single-view 3d", "single view 3d", "3d reconstruction", "gaussian splatting")),
     ("world model learning", ("world model", "autonomous machine intelligence", "joint embedding architecture")),
+    ("video representation learning", ("self-supervised video", "video models", "latent video", "video representation")),
+    ("joint embedding predictive learning", ("jepa", "joint embedding predictive")),
     ("root system analysis", ("root image", "root architecture", "root bimodality", "root system")),
 )
 
@@ -188,6 +196,8 @@ def build_paper_model(title: str, extraction: PdfExtraction) -> PaperModel:
     summary = _paper_positioning(title, abstract, extraction.pages, method_records)
     topics = _topics(title, abstract, contribution_sentences, extraction.pages, method_records, settings)
     datasets = _known_terms(extraction, KNOWN_DATASETS)
+    if _is_non_llm_clustering_text(_focus_text(title, extraction.pages)):
+        datasets = []
     metrics = _known_terms(extraction, KNOWN_METRICS)
 
     return PaperModel(
@@ -419,17 +429,83 @@ def _has_ppo(text: str) -> bool:
     return re.search(r"\bppo\b", text, flags=re.IGNORECASE) is not None
 
 
+def _contains_phrase(text: str, needle: str) -> bool:
+    normalized = f" {_normalize(text).lower()} "
+    target = _normalize(needle).lower()
+    if not target:
+        return False
+    if len(target) <= 4 and re.fullmatch(r"[a-z0-9.+#-]+", target):
+        return re.search(rf"(?<![a-z0-9]){re.escape(target)}(?![a-z0-9])", normalized) is not None
+    return target in normalized
+
+
+def _is_quantization_research_context(text: str, pages: list[PageExtraction]) -> bool:
+    lowered = f" {_normalize(text + ' ' + ' '.join(page.text[:1500] for page in pages[:4])).lower()} "
+    primary = _primary_paper_key(pages)
+    if primary in {
+        "llm.int8",
+        "smoothquant",
+        "quarot",
+        "spinquant",
+        "duquant",
+        "squeezellm",
+        "omniquant",
+        "affinequant",
+        "flatquant",
+        "dfrot",
+        "ostquant",
+        "qep",
+        "moequant",
+        "codequant",
+        "milo",
+        "qil",
+        "lsqplus",
+        "qvlm",
+    }:
+        return True
+    if "flashattention" in lowered or ("attention" in lowered and "hopper" in lowered):
+        return False
+    if "jepa" in lowered and ("video" in lowered or "joint embedding" in lowered):
+        return False
+    if _is_non_llm_clustering_text(lowered):
+        return False
+    research_markers = (
+        "post-training quantization",
+        "quantization-aware training",
+        "weight-only quantization",
+        "weight activation quantization",
+        "weight-activation quantization",
+        "activation quantization",
+        "quantized llm",
+        "llm quantization",
+        "model quantization",
+        "quantized model",
+        "low-bit llm",
+        "low-bit quantization",
+        "calibration data",
+        "round-to-nearest",
+    )
+    bit_markers = re.search(r"\b(?:w[2348]a(?:4|8|16)|a[2348]w[2348]|int[2348]|[2348]-bit)\b", lowered)
+    return any(marker in lowered for marker in research_markers) or bool(bit_markers)
+
+
 def _comparison_frame(pages: list[PageExtraction], method_records: list[dict[str, Any]]) -> str:
     text = _normalize(" ".join(page.text for page in pages[:8])).lower()
     names = " ".join(str(record.get("name") or "") for record in method_records).lower()
+    if "speculative actions" in text or "agentic systems" in text:
+        return "agent workflow acceleration, speculative action execution, and correctness/latency tradeoffs"
+    if "flashattention" in text or ("hopper" in text and "attention" in text):
+        return "attention-kernel scheduling, IO/memory movement, low-precision numerical checks, and GPU throughput"
+    if "survey" in text and ("autonomous agent" in text or "llm-based autonomous agent" in text or "large language model based autonomous agent" in text):
+        return "LLM-agent survey taxonomy, agent architecture components, evaluation gaps, and primary-paper followups"
     if "speculative decoding" in text or "draft model" in text or "draft tree" in text:
         return "speculative decoding, draft-token verification, and inference-speed/quality tradeoffs"
     if "conditional diffusion" in text or "denoising diffusion" in text or "ddpm" in text:
         return "conditional diffusion, semantic conditioning, and generated-sample evaluation"
+    if _is_kv_cache_efficiency_text(text):
+        return "KV-cache compression, retention policies, and decode-time quality/runtime tradeoffs"
     if "long context" in text or "long-context" in text or "longrope" in text:
         return "long-context inference, positional extrapolation, and benchmark/generalization limits"
-    if "kv cache" in text and ("compression" in text or "pruning" in text or "retention" in text):
-        return "KV-cache compression, retention policies, and decode-time quality/runtime tradeoffs"
     if "grouped-query attention" in text or "grouped query attention" in text or "multi-query attention" in text:
         return "attention-head sharing, checkpoint conversion, and inference-memory tradeoffs"
     if "human preference" in text or "human feedback" in text or "reward model" in text or "reward predictor" in text:
@@ -470,6 +546,16 @@ def _comparison_frame(pages: list[PageExtraction], method_records: list[dict[str
 def _problem_focus(lowered_text: str) -> str:
     if "source_text_insufficient" in lowered_text:
         return "This source is a source-quality hold, not a paper understanding page."
+    if "survey" in lowered_text and ("autonomous agent" in lowered_text or "llm-based autonomous agent" in lowered_text or "large language model based autonomous agent" in lowered_text):
+        return "This is a survey of LLM-based autonomous agents; use it as a taxonomy and gap map, not as a primary method paper."
+    if "speculative actions" in lowered_text or "agentic systems" in lowered_text:
+        return "This is an agent workflow acceleration paper about speculating future actions, executing them tentatively, and preserving correctness through a slower ground-truth executor or verifier."
+    if "flashattention" in lowered_text or ("hopper" in lowered_text and "attention" in lowered_text):
+        return "This is an attention-kernel systems paper about using hardware asynchrony, memory movement, and low-precision attention computation to improve throughput while preserving numerical accuracy."
+    if "qwen-audio" in lowered_text or "audio-language" in lowered_text or "audio understanding" in lowered_text:
+        return "This is an audio-language model paper about connecting audio representations to language-model behavior across multiple audio understanding tasks."
+    if "v-jepa" in lowered_text or "jepa" in lowered_text and "video" in lowered_text:
+        return "This is a video representation learning paper about predicting in latent space so learned representations support understanding, prediction, and planning."
     if "speculative decoding" in lowered_text or "draft model" in lowered_text or "draft tree" in lowered_text:
         return "This is an inference-acceleration paper about generating draft tokens and verifying them without changing the target model distribution."
     if "conditional diffusion" in lowered_text or "denoising diffusion" in lowered_text or "ddpm" in lowered_text:
@@ -480,10 +566,10 @@ def _problem_focus(lowered_text: str) -> str:
         return "This is a vision-language PTQ paper about keeping multimodal reasoning accurate while quantizing LVLM weights and activations."
     if "semantic 3d brain mri" in lowered_text or "3d brain mri synthesis" in lowered_text:
         return "This is a 3D medical image synthesis paper about conditioning a generative model on semantic brain anatomy."
+    if _is_kv_cache_efficiency_text(lowered_text):
+        return "This is a KV-cache efficiency paper about retaining the information needed for decode quality while reducing memory or latency."
     if "long context" in lowered_text or "long-context" in lowered_text or "longrope" in lowered_text:
         return "This is a long-context inference paper about extending or exploiting context length without losing quality."
-    if "kv cache" in lowered_text and ("compression" in lowered_text or "pruning" in lowered_text or "retention" in lowered_text):
-        return "This is a KV-cache efficiency paper about retaining the information needed for decode quality while reducing memory or latency."
     if "grouped-query attention" in lowered_text or "grouped query attention" in lowered_text or "multi-query attention" in lowered_text:
         return "This is an attention-architecture paper about reducing inference memory/bandwidth by sharing key-value heads."
     if "k-means" in lowered_text and ("pca" in lowered_text or "principal component" in lowered_text):
@@ -570,6 +656,36 @@ def _compact_evidence_context(pages: list[PageExtraction], *, primary: str = "")
         return (
             "Read the evidence around PDE residual loss, boundary/initial-condition constraints, "
             "collocation sampling, forward-solution accuracy, and inverse-parameter identification, not just the abstract claims."
+        )
+    if "survey" in lowered and ("autonomous agent" in lowered or "llm-based autonomous agent" in lowered):
+        return (
+            "Read the evidence as a survey taxonomy: architecture dimensions, cited primary papers, evaluation gaps, "
+            "and limitations of the survey scope, not as primary experimental evidence."
+        )
+    if "speculative actions" in lowered or "agentic systems" in lowered:
+        return (
+            "Read the evidence around action-trace correctness, verifier or ground-truth executor behavior, rollback or commit logic, "
+            "latency, and task-success preservation, not as token-level speculative decoding evidence."
+        )
+    if "flashattention" in lowered or ("hopper" in lowered and "attention" in lowered):
+        return (
+            "Read the evidence around kernel throughput, memory movement, precision/numerical error, GPU architecture, "
+            "and exact-attention comparisons, not as generic model-compression evidence."
+        )
+    if "qwen-audio" in lowered or "audio-language" in lowered:
+        return (
+            "Read the evidence around audio task families, audio encoder alignment, instruction tuning, and task-specific metrics, "
+            "not as generic sequence-modeling evidence."
+        )
+    if "kv cache" in lowered or "kv-cache" in lowered:
+        return (
+            "Read the evidence around retention ratio, cache budget, sequence length, memory footprint, latency, and long-context quality, "
+            "not as generic context-extension evidence."
+        )
+    if "jepa" in lowered and "video" in lowered:
+        return (
+            "Read the evidence around latent video prediction, representation probes, downstream perception, and planning/control tasks, "
+            "not as long-context or language-model evidence."
         )
     bits = []
     if re.search(r"\bA\d+W\d+\b|\b\d+-bit\b|\blow-bit\b", text, flags=re.IGNORECASE):
@@ -923,22 +1039,34 @@ def _fallback_method_summary(method_text: str, pages: list[PageExtraction]) -> s
             continue
         lowered = sentence.lower()
         score = 0
-        for marker in (
+        quant_focus = _is_quantization_research_context(method_text, pages)
+        base_markers = (
             "we propose",
             "we introduce",
             "we present",
             "our method",
             "our approach",
             "framework",
+            "activation",
+            "weights",
+            "attention",
+            "agent",
+            "audio",
+            "diffusion",
+            "clustering",
+            "pde",
+            "residual",
+            "preference",
+        )
+        quant_markers = (
             "quantization",
             "rotat",
             "outlier",
             "non-uniform",
             "dense-and-sparse",
             "hadamard",
-            "activation",
-            "weights",
-        ):
+        )
+        for marker in base_markers + (quant_markers if quant_focus else ()):
             if marker in lowered:
                 score += 2
         if "achieve" in lowered or "outperform" in lowered:
@@ -989,6 +1117,66 @@ def _sentence_overlap(left: str, right: str) -> float:
 
 def _domain_specific_contract(method_text: str) -> dict[str, list[str]] | None:
     lowered = method_text.lower()
+    if "survey" in lowered and ("autonomous agent" in lowered or "llm-based autonomous agent" in lowered or "large language model based autonomous agent" in lowered):
+        return {
+            "inputs": ["surveyed primary papers", "agent architecture dimensions", "planning/memory/tool-use/evaluation taxonomy"],
+            "outputs": ["literature map", "taxonomy of LLM-agent components", "research gaps and primary-paper followups"],
+            "assumptions": [
+                "survey claims summarize the cited literature and should be checked against primary papers before being treated as experimental evidence"
+            ],
+            "implementation_notes": [
+                "Use the survey to route to primary agent papers by memory, planning, tool-use, and evaluation dimension.",
+                "Do not implement a single algorithm from the survey; extract comparison axes and then inspect cited primary methods.",
+            ],
+        }
+    if "flashattention" in lowered or ("hopper" in lowered and "attention" in lowered):
+        return {
+            "inputs": ["query/key/value tiles", "attention mask or sequence layout", "GPU memory hierarchy", "precision mode"],
+            "outputs": ["attention outputs", "kernel throughput/latency measurements", "numerical-error profile"],
+            "assumptions": [
+                "the target GPU exposes the asynchronous copy/compute and tensor-core behavior that the kernel schedule relies on"
+            ],
+            "implementation_notes": [
+                "Profile matmul, softmax, memory movement, and synchronization separately before trusting end-to-end throughput.",
+                "Compare FP16/FP8 or low-precision modes against exact-attention outputs to separate numerical error from scheduling wins.",
+            ],
+        }
+    if "speculative actions" in lowered or "agentic systems" in lowered:
+        return {
+            "inputs": ["agent state", "candidate future actions", "fast speculative model", "slow ground-truth executor or verifier"],
+            "outputs": ["tentatively executed action trace", "verified committed actions", "latency or wall-clock speedup"],
+            "assumptions": [
+                "speculated actions can be checked or rolled back so faster execution remains lossless with respect to the ground-truth executor"
+            ],
+            "implementation_notes": [
+                "Record action traces with speculation, verification, rollback, tool/environment state, and latency for each step.",
+                "Test equivalence against sequential execution before reporting speedups or task-success gains.",
+            ],
+        }
+    if "qwen-audio" in lowered or "audio-language" in lowered or "audio understanding" in lowered:
+        return {
+            "inputs": ["audio waveform or features", "audio encoder outputs", "text prompts or task tags", "language-model decoder"],
+            "outputs": ["audio-language representations", "task-conditioned text responses", "audio understanding predictions"],
+            "assumptions": [
+                "task tags, audio preprocessing, and encoder-language alignment cover the audio task family being evaluated"
+            ],
+            "implementation_notes": [
+                "Separate audio preprocessing, encoder alignment, decoder prompting, and task-head errors in logs.",
+                "Evaluate speech, music, sound, and instruction-following tasks separately instead of mixing them into one score.",
+            ],
+        }
+    if "jepa" in lowered and ("video" in lowered or "joint embedding predictive" in lowered):
+        return {
+            "inputs": ["video or image observations", "masked or target latent regions", "joint embedding predictor"],
+            "outputs": ["latent predictive representations", "downstream perception or planning behavior"],
+            "assumptions": [
+                "predicting in representation space learns useful structure without requiring pixel reconstruction"
+            ],
+            "implementation_notes": [
+                "Log representation probes, downstream task splits, masking strategy, and predictor-target alignment separately.",
+                "Ablate latent prediction target, encoder freezing, and finetuning protocol before attributing downstream gains.",
+            ],
+        }
     if (
         "physics-informed neural network" in lowered
         or "physics informed neural network" in lowered
@@ -1048,19 +1236,22 @@ def _domain_specific_contract(method_text: str) -> dict[str, list[str]] | None:
             "assumptions": ["target-model verification preserves the original decoding distribution"],
             "implementation_notes": ["Log draft acceptance length, rejected branches, verifier cost, and output-distribution equivalence."],
         }
+    if "kv cache" in lowered or "kv-cache" in lowered:
+        return {
+            "inputs": ["KV-cache tensors", "retention or compression budget", "decode-time attention state", "sequence-length target"],
+            "outputs": ["compressed or filtered KV-cache representation", "memory/latency profile", "long-context quality measurements"],
+            "assumptions": ["retained cache entries preserve the information needed for downstream attention at the tested context length"],
+            "implementation_notes": [
+                "Measure retention ratio, decode latency, memory footprint, and quality under the same sequence lengths.",
+                "Ablate scoring/selection policy, cache budget, and layer/head placement while checking tensor shapes after pruning.",
+            ],
+        }
     if "long context" in lowered or "long-context" in lowered:
         return {
             "inputs": ["long sequence tokens", "positional encoding or attention state"],
             "outputs": ["extended-context model behavior or evaluation results"],
             "assumptions": ["quality must be checked at the target context lengths, not inferred from short-context behavior"],
             "implementation_notes": ["Sweep context length and separate retrieval/position failures from model-capacity failures."],
-        }
-    if "kv cache" in lowered:
-        return {
-            "inputs": ["KV-cache tensors", "retention or compression budget", "decode-time attention state"],
-            "outputs": ["compressed or filtered KV-cache representation"],
-            "assumptions": ["retained cache entries preserve the information needed for downstream attention"],
-            "implementation_notes": ["Measure retention ratio, decode latency, memory footprint, and quality under the same sequence lengths."],
         }
     if "grouped-query" in lowered or "multi-query" in lowered:
         return {
@@ -1109,7 +1300,7 @@ def _generic_method_inputs(method_text: str) -> list[str]:
         inputs.append("KV-cache tensors")
     if "grouped-query" in lowered or "multi-query" in lowered:
         inputs.extend(["query heads", "shared key/value heads", "attention checkpoint"])
-    if "k-means" in lowered or "clustering" in lowered:
+    if _is_clustering_research_context(lowered):
         inputs.extend(["data vectors", "cluster count", "centroid initialization"])
     if "activation" in lowered:
         inputs.append("calibration or runtime activations")
@@ -1154,7 +1345,7 @@ def _generic_method_outputs(method_text: str) -> list[str]:
         outputs.append("compressed or filtered KV-cache representation")
     if "grouped-query" in lowered or "multi-query" in lowered:
         outputs.append("attention checkpoint with shared key/value heads")
-    if "k-means" in lowered or "clustering" in lowered:
+    if _is_clustering_research_context(lowered):
         outputs.extend(["cluster assignments", "centroids", "objective value"])
     if "quantization" in lowered or "quantized" in lowered:
         outputs.append("low-bit quantized model representation")
@@ -1199,7 +1390,7 @@ def _generic_method_assumptions(method_text: str) -> list[str]:
         assumptions.append("retained cache entries preserve the information needed for downstream attention")
     if "grouped-query" in lowered or "multi-query" in lowered:
         assumptions.append("shared key/value heads preserve enough attention capacity after adaptation")
-    if "k-means" in lowered or "clustering" in lowered:
+    if _is_clustering_research_context(lowered):
         assumptions.append("the clustering objective and initialization assumptions match the claimed theory or algorithm")
     if "calibration" in lowered:
         assumptions.append("calibration data reflects the activation/weight behavior relevant to deployment")
@@ -1232,7 +1423,7 @@ def _generic_method_implementation_notes(method_text: str) -> list[str]:
         notes.append("Use the page as a routing map: extract taxonomy, representative methods, evidence gaps, and primary-paper followups.")
     if "audio" in lowered and ("language" in lowered or "speech" in lowered):
         notes.append("Separate audio encoder, language model, alignment layer, and task-head errors when probing failures.")
-    if "draft" in lowered or "speculative" in lowered:
+    if ("draft" in lowered or "speculative" in lowered) and "speculative actions" not in lowered and "agentic systems" not in lowered:
         notes.append("Log draft acceptance length, rejected branches, verifier cost, and output-distribution equivalence.")
     if "diffusion" in lowered or "ddpm" in lowered:
         notes.append("Unit test timestep/noise schedule, conditioning-channel shapes, and sample evaluation metrics.")
@@ -1242,11 +1433,11 @@ def _generic_method_implementation_notes(method_text: str) -> list[str]:
         notes.append("Measure retention ratio, decode latency, memory footprint, and quality under the same sequence lengths.")
     if "grouped-query" in lowered or "multi-query" in lowered:
         notes.append("Verify Q/K/V tensor grouping shapes and compare MHA/MQA/GQA at matched adaptation budgets.")
-    if "k-means" in lowered or "clustering" in lowered:
+    if _is_clustering_research_context(lowered):
         notes.append("Test centroid update monotonicity, initialization sensitivity, and the claimed PCA relationship.")
-    if "rotation" in lowered or "hadamard" in lowered:
+    if ("rotation" in lowered or "hadamard" in lowered) and "quantization" in lowered:
         notes.append("Verify transformation equivalence before quantizing, then measure quantization error after rotation.")
-    if "non-uniform" in lowered or "k-means" in lowered:
+    if "non-uniform" in lowered or ("k-means" in lowered and _is_clustering_research_context(lowered)):
         notes.append("Keep centroid construction inspectable; compare against uniform quantization as a control.")
     if "sparse" in lowered:
         notes.append("Track sparse retention percentage and runtime/storage overhead alongside accuracy.")
@@ -1841,6 +2032,28 @@ def _known_quantization_components(method_text: str, pages: list[PageExtraction]
             )
         )
 
+    if primary == "vjepa":
+        components.append(
+            _source_component(
+                name="Latent video joint embedding predictive learning",
+                short_name="V-JEPA",
+                summary=(
+                    "Learns video representations by predicting masked or future latent embeddings rather than reconstructing pixels, "
+                    "then uses those representations for downstream understanding, prediction, or planning."
+                ),
+                inputs=["video frames or clips", "masked latent targets", "joint embedding predictor", "downstream task data"],
+                outputs=["latent video representations", "perception or planning task predictions"],
+                assumptions=[
+                    "latent-space prediction captures useful world structure without requiring pixel-level generation",
+                    "downstream gains should be separated by pretraining, probing, and finetuning stage",
+                ],
+                implementation_notes=[
+                    "Track masking strategy, latent prediction loss, probe accuracy, and downstream finetuning metrics separately.",
+                    "Ablate representation pretraining, predictor depth, and action-conditioning before attributing planning gains.",
+                ],
+            )
+        )
+
     if primary == "vljepa":
         components.append(
             _source_component(
@@ -2025,6 +2238,7 @@ def _primary_paper_key(pages: list[PageExtraction]) -> str:
         ("qil", ("quantization interval", "qil")),
         ("lsqplus", ("lsq+", "learnable offsets")),
         ("qvlm", ("q-vlm", "vision-language")),
+        ("vjepa", ("v-jepa", "video")),
         ("vljepa", ("vl-jepa", "joint embedding predictive")),
         ("longrope", ("longrope",)),
         ("kangaroo", ("kangaroo", "self-speculative")),
@@ -2366,6 +2580,9 @@ def _mechanism_narrative(title: str, method_records: list[dict[str, Any]]) -> st
                 for record in method_records[:3]
             )
             return f"{method_name} is a pipeline: {summaries}."
+        domain_narrative = _single_method_domain_narrative(method_name, first)
+        if domain_narrative:
+            return domain_narrative
         summary = str(first.get("summary") or "").rstrip(".")
         inputs = ", ".join(first.get("inputs") or [])
         outputs = ", ".join(first.get("outputs") or [])
@@ -2375,6 +2592,67 @@ def _mechanism_narrative(title: str, method_records: list[dict[str, Any]]) -> st
         return f"{method_name}: {summary}.{io}"
 
     return f"{method_name}: method structure was not extracted deeply enough yet."
+
+
+def _single_method_domain_narrative(method_name: str, record: dict[str, Any]) -> str:
+    inputs = [str(item) for item in record.get("inputs") or []]
+    outputs = [str(item) for item in record.get("outputs") or []]
+    assumptions = [str(item) for item in record.get("assumptions") or []]
+    input_text = " ".join(inputs).lower()
+    output_text = " ".join(outputs).lower()
+    assumption_text = " ".join(assumptions).lower()
+    if "kv-cache tensors" in input_text or "kv-cache" in output_text:
+        return (
+            f"{method_name} is a KV-cache compression method: it decides which cached key/value entries to retain "
+            "under a memory or cache-budget constraint, then checks whether the retained cache still preserves "
+            "long-context attention behavior. Its reusable contract is cache selection policy -> compressed KV cache "
+            "-> quality/runtime tradeoff, with retention ratio, tensor-shape correctness, sequence length, memory, "
+            "latency, and task quality logged together."
+        )
+    if "query/key/value tiles" in input_text or "kernel throughput" in output_text:
+        return (
+            f"{method_name} is an attention-kernel systems method: it changes how Q/K/V tiles move through GPU "
+            "memory and compute units so attention runs faster without changing the attention result. Treat the "
+            "core contract as schedule/precision/memory movement -> attention output -> throughput plus numerical-error checks."
+        )
+    if "agent state" in input_text and "verified committed actions" in output_text:
+        return (
+            f"{method_name} accelerates agent workflows by speculating future actions with a faster model, executing "
+            "or preparing them tentatively, and then using a slower executor or verifier to commit or roll back the trace. "
+            "The important checks are equivalence to sequential execution, rollback behavior, environment/tool state, latency, and task success."
+        )
+    if "audio" in input_text and "language" in output_text:
+        return (
+            f"{method_name} connects audio representations to language-model behavior. Read it as an audio encoder/alignment/"
+            "decoder contract, where task tags and audio preprocessing determine whether speech, music, sound, and audio-QA evidence transfer."
+        )
+    if "video" in input_text and "latent predictive representations" in output_text:
+        return (
+            f"{method_name} learns video representations by predicting masked targets in latent space rather than reconstructing pixels. "
+            "The reusable question is whether latent prediction, masking, encoder freezing, and finetuning protocol produce representations "
+            "that help downstream perception or planning."
+        )
+    if "pde residual" in input_text:
+        return (
+            f"{method_name} constrains a neural approximator with PDE residuals and boundary/initial conditions. "
+            "Judge it by whether residual computation, collocation sampling, data loss, physics loss, and inverse-parameter recovery are separately inspectable."
+        )
+    if "cluster count" in input_text and "centroids" in output_text:
+        return (
+            f"{method_name} is a clustering method/theory paper: it studies how data vectors are assigned to centroids "
+            "and which objective or initialization assumptions make the PCA or representation-learning connection valid."
+        )
+    if "surveyed primary papers" in input_text:
+        return (
+            f"{method_name} is a literature-map page, not a primary algorithm: it organizes primary papers by taxonomy dimensions "
+            "and should be used to choose follow-up sources, comparison axes, and evidence gaps."
+        )
+    if "preference labels" in input_text or "reference-policy" in assumption_text:
+        return (
+            f"{method_name} turns preference data into a policy-optimization objective. The reusable contract is preference pairs "
+            "and a reference policy -> loss/reward signal -> aligned policy behavior, with KL/reference-model assumptions kept explicit."
+        )
+    return ""
 
 
 def _mechanism_overview(method_records: list[dict[str, Any]]) -> list[str]:
@@ -2869,12 +3147,47 @@ def _research_workflow_fallback_notes(
 def _domain_implementation_backfill(method_records: list[dict[str, Any]], pages: list[PageExtraction]) -> list[str]:
     text = _normalize(" ".join(page.text for page in pages[:8]) + " " + _method_record_text(method_records)).lower()
     notes: list[str] = []
-    if "quantization" in text or "quantized" in text:
+    if _is_quantization_research_context(text, pages):
         notes.extend(
             [
                 "Quantization: Log pre/post-quantization error by layer and separate weight, activation, and cache paths when applicable.",
                 "Quantization: Compare the claimed method against a fixed-rounding or min-max baseline at matched bit width and calibration data.",
                 "Quantization: Test tensor scale, zero-point, clipping, and dequantization shapes before running full experiments.",
+            ]
+        )
+    if "flashattention" in text or ("hopper" in text and "attention" in text):
+        notes.extend(
+            [
+                "Attention kernel: Profile memory movement, matmul, softmax, synchronization, and end-to-end throughput separately.",
+                "Attention kernel: Compare low-precision outputs against exact attention to isolate numerical error from scheduling changes.",
+            ]
+        )
+    if "speculative actions" in text or "agentic systems" in text:
+        notes.extend(
+            [
+                "Agent workflow: Record speculative action traces, verifier decisions, rollback/replay events, and environment/tool state.",
+                "Agent workflow: Compare against sequential ground-truth execution before treating speedup as lossless.",
+            ]
+        )
+    if "qwen-audio" in text or "audio-language" in text or "audio understanding" in text:
+        notes.extend(
+            [
+                "Audio-language: Separate audio preprocessing, encoder alignment, decoder prompting, and task-specific evaluation errors.",
+                "Audio-language: Evaluate speech, music, sound-event, and audio-QA tasks separately before aggregating results.",
+            ]
+        )
+    if "jepa" in text and ("video" in text or "joint embedding" in text):
+        notes.extend(
+            [
+                "Representation learning: Log masked-target construction, latent prediction loss, representation probes, and downstream task splits.",
+                "Representation learning: Ablate encoder freezing, predictor depth, and finetuning protocol before attributing planning or perception gains.",
+            ]
+        )
+    if _is_kv_cache_efficiency_text(text):
+        notes.extend(
+            [
+                "KV-cache: Verify K/V tensor shapes, position indices, attention masks, and cache updates after compression.",
+                "KV-cache: Sweep retention ratio, cache budget, and sequence length while logging memory, latency, and task quality.",
             ]
         )
     if "vision-language" in text or "vlm" in text or "multimodal" in text:
@@ -2884,14 +3197,20 @@ def _domain_implementation_backfill(method_records: list[dict[str, Any]], pages:
                 "Vision-language: Log calibration or training examples by task type so VQA, retrieval, and classification evidence are not mixed.",
             ]
         )
-    if "speculative" in text or "draft" in text:
+    if ("speculative" in text or "draft" in text) and "speculative actions" not in text and "agentic systems" not in text:
         notes.extend(
             [
                 "Speculative decoding: Measure acceptance rate, verifier calls, accepted-token length, and latency under the same sampling settings.",
                 "Speculative decoding: Test output equivalence against ordinary decoding before trusting speed numbers.",
             ]
         )
-    if "long context" in text or "long-context" in text or "longrope" in text or re.search(r"\brope\b", text):
+    if (
+        "long-context" in text
+        or "longrope" in text
+        or "context window" in text
+        or ("long context" in text and ("language model" in text or "llm" in text or "sequence length" in text))
+        or re.search(r"\brope\b", text)
+    ) and not ("survey" in text and "autonomous agent" in text):
         notes.extend(
             [
                 "Long context: Sweep sequence length and record both long-context task success and short-context regression.",
@@ -3057,6 +3376,8 @@ def _evidence_takeaways(pages: list[PageExtraction]) -> list[str]:
         takeaways.append("LSQ+ evidence should isolate offset learning and initialization effects from the base learned step-size quantizer.")
     if primary == "qvlm":
         takeaways.append("Q-VLM evidence should connect block rounding-search objectives to multimodal VQA accuracy, memory compression, and generation speed separately.")
+    if primary == "vjepa":
+        takeaways.append("V-JEPA evidence should separate latent video pretraining, representation probes, downstream perception, and planning/control evaluations.")
     if primary == "vljepa":
         takeaways.append("VL-JEPA evidence should keep representation pretraining, retrieval/classification, and SFT VQA results as separate evidence tracks.")
     if primary == "longrope":
@@ -3174,6 +3495,9 @@ def _limitations(pages: list[PageExtraction]) -> list[str]:
         limitations.append("FiLM gains depend on the conditioning representation and modulation placement; final accuracy alone does not explain which visual features were controlled.")
     if primary == "eagle":
         limitations.append("Feature-level speculative sampling speedups depend on acceptance rates and verifier overhead; correctness still depends on target verification.")
+    if "speculative actions" in lowered or "agentic systems" in lowered:
+        limitations.append("Action-level speculation is only safe if verifier, rollback, and environment/tool-state semantics preserve the sequential execution outcome.")
+        limitations.append("Latency gains should be reported together with task success, rollback frequency, verifier lag, and cases where speculative branches become wasted work.")
     if "simulator" in lowered or "Accel-Sim" in text:
         limitations.append("Some hardware evidence depends on simulation or specific CPU/kernel settings.")
     if "block-wise" in lowered and "embedding-wise" in lowered:
@@ -3288,6 +3612,17 @@ def _method_families(
     if _is_non_llm_clustering_text(focus):
         return ["clustering algorithm"]
 
+    if "survey" in focus and ("autonomous agent" in focus or "llm-based autonomous agent" in focus or "large language model based autonomous agent" in focus):
+        return ["survey synthesis", "agent workflow modeling", "LLM-agent taxonomy"]
+    if "flashattention" in focus or ("hopper" in focus and "attention" in focus):
+        return ["attention kernel optimization", "IO-aware attention", "hardware-aware attention"]
+    if "speculative actions" in focus or "agentic systems" in focus:
+        return ["agent workflow acceleration", "speculative action execution"]
+    if "qwen-audio" in focus or "audio-language" in focus or "audio understanding" in focus:
+        return ["audio-language modeling", "multimodal instruction tuning"]
+    if "jepa" in focus and ("video" in focus or "joint embedding" in focus):
+        return ["video representation learning", "joint embedding predictive learning"]
+
     if primary == "massive-activations":
         return ["mechanistic activation analysis"]
     if primary == "milo":
@@ -3304,6 +3639,8 @@ def _method_families(
         return ["quantization-aware training", "learned step-size quantization"]
     if primary == "qvlm":
         return ["vision-language model quantization", "post-training quantization"]
+    if primary == "vjepa":
+        return ["video representation learning", "joint embedding predictive learning"]
     if primary == "vljepa":
         return ["vision-language representation learning", "joint embedding predictive learning"]
     if primary == "longrope":
@@ -3326,6 +3663,14 @@ def _method_families(
     ):
         return ["physics-informed neural networks", "PDE-constrained learning"]
 
+    if "flashattention" in text or ("hopper" in text and "attention" in text):
+        families.extend(["attention kernel optimization", "IO-aware attention", "hardware-aware attention"])
+    if "speculative actions" in text or "agentic systems" in text:
+        families.extend(["agent workflow acceleration", "speculative action execution"])
+    if "qwen-audio" in text or "audio-language" in text or "audio understanding" in text:
+        families.extend(["audio-language modeling", "multimodal instruction tuning"])
+    if "jepa" in text and ("video" in text or "joint embedding" in text):
+        families.extend(["video representation learning", "joint embedding predictive learning"])
     if "speculative decoding" in text or "draft model" in text or "draft tree" in text:
         families.append("speculative decoding")
     if "dynamic draft" in text:
@@ -3336,11 +3681,11 @@ def _method_families(
         families.append("semantic image synthesis")
     if "long context" in text or "long-context" in text or "longrope" in text:
         families.append("long-context inference")
-    if "kv cache" in text and ("compression" in text or "pruning" in text or "retention" in text):
+    if _is_kv_cache_efficiency_text(text):
         families.append("KV-cache compression")
     if "grouped-query" in text or "grouped query" in text:
         families.append("grouped-query attention")
-    if "k-means" in text or "clustering" in text:
+    if _is_clustering_research_context(text):
         families.append("clustering algorithm")
     if "human preference" in text or "human feedback" in text or "reward model" in text or "reward predictor" in text:
         families.extend(["preference-based reinforcement learning", "reward modeling"])
@@ -3367,33 +3712,28 @@ def _method_families(
     if "survey" in focus or "technical report" in focus:
         families.append("survey synthesis")
 
-    quantization_cues = (
-        "quantization" in text
-        or "quantized" in text
-        or primary in {"llm.int8", "smoothquant", "quarot", "qep", "moequant", "codequant"}
-        or bool(re.search(r"\b(?:w[2348]a(?:4|8|16)|a[2348]w[2348]|int[2348])\b", text))
-    )
+    quantization_cues = _is_quantization_research_context(text, pages)
     if quantization_cues:
         families.append("post-training quantization")
-    if primary == "qep" or "layer-wise" in text or "layerwise" in text:
+    if quantization_cues and (primary == "qep" or "layer-wise" in text or "layerwise" in text):
         families.append("layer-wise PTQ")
-    if primary in {"moequant", "codequant"} or "mixture-of-experts" in text or "moe" in text:
+    if quantization_cues and (primary in {"moequant", "codequant"} or "mixture-of-experts" in text or "moe" in text):
         families.append("MoE quantization")
-    if "outlier" in text or "massive activation" in text:
+    if quantization_cues and ("outlier" in text or "massive activation" in text):
         families.append("outlier-aware quantization")
-    if "calibration" in text or "self-sampling" in text:
+    if quantization_cues and ("calibration" in text or "self-sampling" in text):
         families.append("calibration-aware PTQ")
-    if any(marker in text for marker in ("rotation", "hadamard", "orthogonal")):
+    if quantization_cues and any(marker in text for marker in ("rotation", "hadamard", "orthogonal")):
         families.append("rotation-based quantization")
-    if any(marker in text for marker in ("affine transform", "equivalent transformation", "invariant transform", "computationally invariant")):
+    if quantization_cues and any(marker in text for marker in ("affine transform", "equivalent transformation", "invariant transform", "computationally invariant")):
         families.append("equivalent-transform PTQ")
     if quantization_cues and any(marker in text for marker in ("non-uniform", "centroid", "clustering", "k-means", "codebook")):
         families.append("non-uniform weight quantization")
-    if any(marker in text for marker in ("expert", "router", "routing")) and "moe" in text:
+    if quantization_cues and any(marker in text for marker in ("expert", "router", "routing")) and "moe" in text:
         families.append("expert-aware quantization")
     if quantization_cues and any(marker in text for marker in ("kernel", "lut", "lookup table", "latency", "throughput", "speedup")):
         families.append("hardware-aware quantization")
-    if "sparse" in text and "outlier" in text:
+    if quantization_cues and "sparse" in text and "outlier" in text:
         families.append("sparse outlier retention")
     return _dedupe(families)[:8] or ["paper-specific research method"]
 
@@ -3402,14 +3742,24 @@ def _settings(pages: list[PageExtraction]) -> list[str]:
     full_text = " ".join(page.text for page in pages)
     lowered = f" {_normalize(full_text).lower()} "
     focus_lowered = f" {_normalize(' '.join(page.text for page in pages[:5])).lower()} "
-    quant_focus = "quantization" in focus_lowered or "quantized" in focus_lowered or bool(re.search(r"\b(?:w[2348]a(?:4|8|16)|a[2348]w[2348]|int[2348])\b", focus_lowered))
+    quant_focus = _is_quantization_research_context(focus_lowered, pages)
     primary = _primary_paper_key(pages)
     settings: list[str] = []
 
     if _is_long_form_reference("", pages):
         return ["long-form reference setting"]
-    if _is_non_llm_clustering_text(focus_lowered):
+    if _is_clustering_research_context(focus_lowered):
         return ["clustering theory setting"]
+    if "survey" in focus_lowered and ("autonomous agent" in focus_lowered or "llm-based autonomous agent" in focus_lowered):
+        return ["agent survey/synthesis setting", "survey/synthesis setting"]
+    if "flashattention" in focus_lowered or ("hopper" in focus_lowered and "attention" in focus_lowered):
+        return ["GPU attention-kernel setting", "low-precision attention setting"]
+    if "speculative actions" in focus_lowered or "agentic systems" in focus_lowered:
+        return ["agent workflow setting", "speculative action execution setting"]
+    if "qwen-audio" in focus_lowered or "audio-language" in focus_lowered or "audio understanding" in focus_lowered:
+        return ["audio-language setting", "multimodal instruction setting"]
+    if "jepa" in focus_lowered and ("video" in focus_lowered or "joint embedding" in focus_lowered):
+        return ["video representation learning setting"]
 
     primary_settings = {
         "llm.int8": ["weight-activation quantization"],
@@ -3434,6 +3784,7 @@ def _settings(pages: list[PageExtraction]) -> list[str]:
         "qil": ["quantization-aware training setting", "weight-activation quantization"],
         "lsqplus": ["quantization-aware training setting", "weight-activation quantization"],
         "qvlm": ["vision-language setting", "weight-activation quantization"],
+        "vjepa": ["video representation learning setting"],
         "vljepa": ["vision-language setting"],
         "longrope": ["long-context inference setting"],
         "kangaroo": ["speculative decoding setting"],
@@ -3469,6 +3820,8 @@ def _settings(pages: list[PageExtraction]) -> list[str]:
         settings.append("LUT/kernel setting")
     if "speculative decoding" in focus_lowered or "draft model" in focus_lowered or "draft tree" in focus_lowered:
         settings.append("speculative decoding setting")
+    if _is_kv_cache_efficiency_text(focus_lowered):
+        settings.append("KV-cache compression setting")
     if "long context" in focus_lowered or "long-context" in focus_lowered or "longrope" in focus_lowered:
         settings.append("long-context inference setting")
     if "3d brain mri" in focus_lowered or "medical image" in focus_lowered or ("mri" in focus_lowered and "segmentation" in focus_lowered):
@@ -3477,6 +3830,8 @@ def _settings(pages: list[PageExtraction]) -> list[str]:
         settings.append("decoder attention setting")
     if "vision-language" in focus_lowered or "large vision-language" in focus_lowered or "vlm" in focus_lowered:
         settings.append("vision-language setting")
+    if "audio-language" in focus_lowered or "audio understanding" in focus_lowered or "speech" in focus_lowered:
+        settings.append("audio-language setting")
     if "point cloud" in focus_lowered or "curve skeleton" in focus_lowered or "mesh" in focus_lowered:
         settings.append("3D geometry setting")
     if "quantization-aware" in focus_lowered or "task loss" in focus_lowered and "quantization" in focus_lowered:
@@ -3489,7 +3844,9 @@ def _settings(pages: list[PageExtraction]) -> list[str]:
         settings.append("reinforcement-learning setting")
     if "self-attention" in focus_lowered or "transformer" in focus_lowered or "relative position" in focus_lowered:
         settings.append("transformer sequence-modeling setting")
-    if "autonomous agent" in focus_lowered or "generative agent" in focus_lowered or "agent planning" in focus_lowered or "agent-based" in focus_lowered:
+    if "survey" in focus_lowered and ("autonomous agent" in focus_lowered or "llm-based autonomous agent" in focus_lowered):
+        settings.append("agent survey/synthesis setting")
+    elif "autonomous agent" in focus_lowered or "generative agent" in focus_lowered or "agent planning" in focus_lowered or "agent-based" in focus_lowered:
         settings.append("agent evaluation setting")
     if "neural ordinary differential" in focus_lowered or "neural ode" in focus_lowered or "ordinary differential equation" in focus_lowered:
         settings.append("continuous-depth modeling setting")
@@ -3523,7 +3880,7 @@ def _fallback_settings(focus_lowered: str) -> list[str]:
         settings.append("diffusion modeling setting")
     if "3d reconstruction" in focus_lowered or "single-view 3d" in focus_lowered or "single view 3d" in focus_lowered:
         settings.append("3D reconstruction setting")
-    if "k-means" in focus_lowered or "clustering" in focus_lowered:
+    if _is_clustering_research_context(focus_lowered):
         settings.append("clustering analysis setting")
     if "computer architecture" in focus_lowered or "quantitative approach" in focus_lowered:
         settings.append("computer architecture reference setting")
@@ -3555,9 +3912,29 @@ def _topics(
             return ["computer architecture", "performance evaluation", "hardware systems"]
         return ["reference synthesis", "survey synthesis"]
     text = _topic_text(title, abstract, candidates, method_records, settings)
-    if _is_non_llm_clustering_text(text):
+    if _is_clustering_research_context(text):
         return ["clustering theory"]
     controlled = _controlled_topics(text, settings)
+    if not _is_quantization_research_context(text, pages):
+        controlled = [
+            topic
+            for topic in controlled
+            if "quantization" not in topic.lower()
+            and "ptq" not in topic.lower()
+            and topic not in {"activation outliers", "LLM outliers", "quantization error", "hardware-aware quantization"}
+        ]
+    if "survey" in text.lower() and ("autonomous agent" in text.lower() or "llm-based autonomous agent" in text.lower()):
+        controlled = [
+            topic
+            for topic in controlled
+            if topic not in {"human preference feedback", "reward modeling", "policy optimization"}
+        ]
+    if "speculative actions" in text.lower() or "agentic systems" in text.lower():
+        controlled = [
+            topic
+            for topic in controlled
+            if topic not in {"speculative decoding", "computer architecture"}
+        ]
     phrase_topics = _phrase_topics(text, title, method_records)
     topics = _dedupe(controlled + phrase_topics)
     if not topics:
@@ -3596,7 +3973,7 @@ def _fallback_topics(title: str, abstract: str, settings: list[str]) -> list[str
         topics.append("chain-of-thought reasoning")
     if "diffusion" in text:
         topics.append("diffusion modeling")
-    if "clustering" in text or "k-means" in text:
+    if _is_clustering_research_context(text):
         topics.append("clustering analysis")
     return topics
 
@@ -3624,6 +4001,46 @@ def _is_non_llm_clustering_text(text: str) -> bool:
         "llm inference",
     )
     return not any(marker in lowered for marker in llm_quantization_markers)
+
+
+def _is_kv_cache_efficiency_text(text: str) -> bool:
+    lowered = _normalize(text).lower()
+    has_cache = (
+        "kv cache" in lowered
+        or "kv-cache" in lowered
+        or "key-value cache" in lowered
+        or "key value cache" in lowered
+        or "kv caches" in lowered
+        or "pyramidkv" in lowered
+    )
+    has_efficiency = any(
+        marker in lowered
+        for marker in (
+            "compression",
+            "compressing",
+            "compress",
+            "pruning",
+            "prune",
+            "retention",
+            "retain",
+            "cache budget",
+            "memory",
+            "decode",
+            "longbench",
+        )
+    )
+    return has_cache and has_efficiency
+
+
+def _is_clustering_research_context(text: str) -> bool:
+    lowered = _normalize(text).lower()
+    if "k-means" not in lowered and "k means" not in lowered and "deep clustering" not in lowered and "clustering" not in lowered:
+        return False
+    if _is_kv_cache_efficiency_text(lowered):
+        return False
+    if "attention" in lowered and any(marker in lowered for marker in ("kv", "key-value", "cache", "long-context")):
+        return False
+    return _is_non_llm_clustering_text(lowered)
 
 
 def _topic_text(
@@ -3667,7 +4084,7 @@ def _controlled_topics(text: str, settings: list[str]) -> list[str]:
     for topic, needles in CONTROLLED_TOPIC_RULES:
         if topic in setting_topics or topic in setting_set:
             continue
-        if topic in settings or any(needle in lowered for needle in needles):
+        if topic in settings or any(_contains_phrase(lowered, needle) for needle in needles):
             topics.append(topic)
     return topics
 

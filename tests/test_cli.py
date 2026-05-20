@@ -17,6 +17,7 @@ from meridian.wiki.quality_check import (
     _retrieval_intent_quality_score,
     _retrieval_scenarios,
     _retrieval_taxonomy_boundary_score,
+    run_quality_self_check,
 )
 from meridian.wiki.retrieval_audit import generate_audit_queries
 from meridian.wiki.rubrics import complete_result_template, rubric_for
@@ -263,6 +264,411 @@ class CliTests(unittest.TestCase):
         self.assertEqual(model.topics, ["clustering theory"])
         self.assertNotIn("non-uniform quantization", model.topics)
         self.assertNotIn("LUT/kernel setting", model.settings)
+
+    def test_kv_cache_compression_does_not_become_clustering_algorithm(self) -> None:
+        extraction = PdfExtraction(
+            metadata={"title": "PyramidKV"},
+            page_count=3,
+            pages=[
+                PageExtraction(
+                    page_number=1,
+                    text=(
+                        "Abstract\nPyramidKV compresses KV caches for long-context LLM decoding. "
+                        "It retains only a cache budget of key tokens while preserving accuracy and memory."
+                    ),
+                    section_hint="Abstract",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+                PageExtraction(
+                    page_number=2,
+                    text=(
+                        "Method\nSnapKV improves efficiency by selecting/clustering significant KV positions "
+                        "based on attention scores. PyramidKV uses pyramidal information funneling to decide "
+                        "which key-value cache entries to retain across layers."
+                    ),
+                    section_hint="Method",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+                PageExtraction(
+                    page_number=3,
+                    text=(
+                        "Experiments\nThe evaluation sweeps retention ratio, KV cache size, LongBench accuracy, "
+                        "Needle In A Haystack success, memory footprint, and decode latency."
+                    ),
+                    section_hint="Experiments",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+            ],
+        )
+
+        model = build_paper_model("PyramidKV: Dynamic KV Cache Compression based on Pyramidal Information Funneling", extraction)
+
+        self.assertIn("KV-cache compression", model.methods)
+        self.assertIn("long-context inference", model.methods)
+        self.assertNotIn("clustering algorithm", model.methods)
+        self.assertIn("KV-cache compression setting", model.settings)
+        self.assertIn("KV-cache tensors", model.method_records[0]["inputs"])
+        self.assertIn("KV-cache compression method", model.one_line_takeaway)
+        self.assertNotIn("SnapKV improves efficiency by selecting/clustering", model.one_line_takeaway)
+        self.assertIn("retention ratio", " ".join(model.implementation_notes).lower())
+        self.assertNotIn("Test centroid update monotonicity", "\n".join(model.implementation_notes))
+
+    def test_attention_kernel_low_precision_does_not_become_ptq(self) -> None:
+        extraction = PdfExtraction(
+            metadata={"title": "FlashAttention-3"},
+            page_count=3,
+            pages=[
+                PageExtraction(
+                    page_number=1,
+                    text=(
+                        "Abstract\nFlashAttention-3 speeds up attention on Hopper GPUs with asynchrony, "
+                        "warp-specialization, TMA memory movement, and FP8 low-precision attention."
+                    ),
+                    section_hint="Abstract",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+                PageExtraction(
+                    page_number=2,
+                    text=(
+                        "Method\nThe kernel overlaps Tensor Core matmul, softmax, and memory movement. "
+                        "Low-precision attention requires numerical checks against exact attention."
+                    ),
+                    section_hint="Method",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+                PageExtraction(
+                    page_number=3,
+                    text="Experiments\nThe evaluation reports throughput, latency, and numerical accuracy.",
+                    section_hint="Experiments",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+            ],
+        )
+
+        model = build_paper_model("FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision", extraction)
+
+        self.assertIn("attention kernel optimization", model.methods)
+        self.assertIn("GPU attention-kernel setting", model.settings)
+        self.assertIn("attention kernel scheduling", model.topics)
+        self.assertNotIn("post-training quantization", model.methods)
+        self.assertNotIn("hardware-aware quantization", model.methods)
+        self.assertNotIn("KV-cache quantization", model.settings)
+        self.assertNotIn("Quantization:", "\n".join(model.implementation_notes))
+
+    def test_agent_speculative_actions_are_not_token_decoding(self) -> None:
+        extraction = PdfExtraction(
+            metadata={"title": "Speculative Actions"},
+            page_count=3,
+            pages=[
+                PageExtraction(
+                    page_number=1,
+                    text=(
+                        "Abstract\nSpeculative Actions is a lossless framework for faster agentic systems. "
+                        "Agents predict likely future actions with faster models while slower ground-truth "
+                        "executors or external tools verify and commit the trace."
+                    ),
+                    section_hint="Abstract",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+                PageExtraction(
+                    page_number=2,
+                    text=(
+                        "Method\nThe workflow records agent state, speculative actions, verifier decisions, "
+                        "rollback events, environment state, and latency."
+                    ),
+                    section_hint="Method",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+                PageExtraction(
+                    page_number=3,
+                    text="Experiments\nThe paper compares task success and speedup against sequential execution.",
+                    section_hint="Experiments",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+            ],
+        )
+
+        model = build_paper_model("Speculative Actions: A Lossless Framework for Faster Agentic Systems", extraction)
+
+        self.assertIn("agent workflow acceleration", model.methods)
+        self.assertIn("speculative action execution", model.methods)
+        self.assertIn("agent workflow setting", model.settings)
+        self.assertNotIn("speculative decoding", model.methods)
+        self.assertNotIn("hardware-aware quantization", model.topics)
+        self.assertNotIn("computer architecture", model.topics)
+        self.assertIn("rollback", " ".join(model.implementation_notes).lower())
+        self.assertNotIn("Speculative decoding:", "\n".join(model.implementation_notes))
+
+    def test_audio_language_paper_gets_audio_route(self) -> None:
+        extraction = PdfExtraction(
+            metadata={"title": "Qwen-Audio"},
+            page_count=3,
+            pages=[
+                PageExtraction(
+                    page_number=1,
+                    text=(
+                        "Abstract\nQwen-Audio is a large-scale audio-language model for universal audio understanding."
+                    ),
+                    section_hint="Abstract",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+                PageExtraction(
+                    page_number=2,
+                    text=(
+                        "Method\nThe model connects an audio encoder to a language-model decoder and uses "
+                        "hierarchical task tags for speech, music, sound, and audio question answering."
+                    ),
+                    section_hint="Method",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+                PageExtraction(
+                    page_number=3,
+                    text="Evaluation\nAudio understanding tasks are evaluated separately by task family.",
+                    section_hint="Evaluation",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+            ],
+        )
+
+        model = build_paper_model("Qwen-Audio: Advancing Universal Audio Understanding", extraction)
+
+        self.assertIn("audio-language modeling", model.methods)
+        self.assertIn("audio-language setting", model.settings)
+        self.assertIn("audio-language modeling", model.topics)
+        self.assertNotIn("policy optimization", model.topics)
+        self.assertNotIn("transformer architecture", model.methods)
+
+    def test_agent_survey_uses_taxonomy_not_reward_model_contract(self) -> None:
+        extraction = PdfExtraction(
+            metadata={"title": "A Survey on LLM-based Autonomous Agents"},
+            page_count=3,
+            pages=[
+                PageExtraction(
+                    page_number=1,
+                    text=(
+                        "Abstract\nThis survey reviews large language model based autonomous agents, "
+                        "covering memory, planning, tool use, action, and evaluation."
+                    ),
+                    section_hint="Abstract",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+                PageExtraction(
+                    page_number=2,
+                    text=(
+                        "Survey\nWe organize LLM-based autonomous agent papers into a taxonomy of profile, "
+                        "memory, planning, action, and evaluation modules."
+                    ),
+                    section_hint="Survey",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+                PageExtraction(
+                    page_number=3,
+                    text="Discussion\nSurvey claims should route readers to primary agent papers.",
+                    section_hint="Discussion",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+            ],
+        )
+
+        model = build_paper_model("A Survey on Large Language Model based Autonomous Agents", extraction)
+
+        self.assertIn("survey synthesis", model.methods)
+        self.assertIn("LLM-agent taxonomy", model.methods)
+        self.assertIn("agent survey/synthesis setting", model.settings)
+        self.assertNotIn("preference-learning setting", model.settings)
+        self.assertNotIn("reward modeling", model.methods)
+        self.assertNotIn("preference-based reinforcement learning", model.methods)
+        self.assertIn("primary agent papers", " ".join(model.implementation_notes).lower())
+
+    def test_video_jepa_uses_representation_route_not_rotation_quantization(self) -> None:
+        extraction = PdfExtraction(
+            metadata={"title": "V-JEPA 2"},
+            page_count=3,
+            pages=[
+                PageExtraction(
+                    page_number=1,
+                    text=(
+                        "Abstract\nV-JEPA 2 trains self-supervised video models with joint embedding predictive "
+                        "learning for understanding, prediction, and planning."
+                    ),
+                    section_hint="Abstract",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+                PageExtraction(
+                    page_number=2,
+                    text=(
+                        "Method\nThe model predicts masked latent video representations rather than pixels and "
+                        "uses downstream probes and planning tasks."
+                    ),
+                    section_hint="Method",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+                PageExtraction(
+                    page_number=3,
+                    text="Evaluation\nRepresentation probes and downstream tasks evaluate learned video features.",
+                    section_hint="Evaluation",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+            ],
+        )
+
+        model = build_paper_model("V-JEPA 2: Self-Supervised Video Models", extraction)
+
+        self.assertIn("video representation learning", model.methods)
+        self.assertIn("joint embedding predictive learning", model.methods)
+        self.assertIn("video representation learning setting", model.settings)
+        self.assertIn("video representation learning", model.topics)
+        self.assertNotIn("rotation-based quantization", model.methods)
+        self.assertNotIn("rotation-based quantization", model.topics)
+        self.assertNotIn("Long context:", "\n".join(model.implementation_notes))
+
+    def test_quality_check_flags_cross_domain_contamination(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paper = root / "paper.md"
+            claims = root / "claims.jsonl"
+            methods = root / "methods.jsonl"
+            evidence = root / "evidence.jsonl"
+            extraction = root / "extraction"
+            extraction.mkdir()
+            paper.write_text(
+                """---
+type: "paper"
+title: "FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision"
+status: "draft"
+source_pdf: "paper.pdf"
+source_id: "paper-pdf-test"
+source_registry: "sources.jsonl"
+aliases:
+  - "FlashAttention-3"
+topics:
+  - "hardware-aware quantization"
+methods:
+  - "post-training quantization"
+settings:
+  - "KV-cache quantization"
+claims:
+  - "claim-001"
+confidence: "medium"
+review_state: "needs_review"
+---
+# FlashAttention-3
+
+## What To Remember
+This page incorrectly routes an attention kernel as PTQ.
+
+## When To Retrieve This Paper
+Canonical retrieval fits:
+- Query: "I want to compare attention kernels."
+  Use because: It should be an attention kernel page.
+- Query: "I am implementing attention kernels."
+  Use because: It should mention profiling.
+- Query: "I need evidence for throughput."
+  Use because: It should route to runtime evidence.
+
+Scope notes:
+- Primary fit: attention kernels.
+- Adjacent fit: GPU kernels.
+- Weak fit: model compression.
+
+## Mechanism
+### Bad
+- Operates on: Q/K/V.
+- Produces: attention output.
+- Depends on: GPU setting.
+- First checks: profile.
+
+## Evidence Map
+Evidence takeaways:
+- Runtime evidence.
+
+## Implementation Hooks
+- Profile kernels.
+
+## Limitations / Uncertainty
+- GPU-specific.
+
+## Candidate Records
+- Claims: `claims.jsonl`
+""",
+                encoding="utf-8",
+            )
+            claims.write_text(
+                json.dumps({"id": "claim-001", "claim": "Runtime evidence.", "provenance": [{"page": 1}], "evidence_ids": ["evidence-p0001"]}) + "\n",
+                encoding="utf-8",
+            )
+            methods.write_text(
+                json.dumps({"id": "method-001", "name": "Bad", "inputs": ["Q"], "outputs": ["O"], "assumptions": ["GPU"], "implementation_notes": ["profile"], "provenance": [{"page": 1}]}) + "\n",
+                encoding="utf-8",
+            )
+            evidence.write_text(
+                json.dumps({"id": "evidence-p0001", "page": 1, "supports": ["claim-001"]}) + "\n",
+                encoding="utf-8",
+            )
+            (extraction / "pages.jsonl").write_text(
+                json.dumps({"page_number": 1, "text": "FlashAttention kernel", "drawing_count": 0}) + "\n",
+                encoding="utf-8",
+            )
+            run = root / "run.json"
+            run.write_text(
+                json.dumps(
+                    {
+                        "title": "FlashAttention-3",
+                        "draft_artifacts": {
+                            "paper_page": str(paper),
+                            "claims": str(claims),
+                            "methods": str(methods),
+                            "evidence": str(evidence),
+                        },
+                        "extraction_dir": str(extraction),
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = run_quality_self_check(run_manifest=run)
+            payload = json.loads(result.path.read_text(encoding="utf-8"))
+            findings = " ".join(
+                " ".join(str(item) for item in (score.get("findings") or []))
+                for score in payload["dimension_scores"]
+            )
+            self.assertIn("cross_domain_quantization_contamination", findings)
 
     def test_wiki_ingest_writes_draft_only_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -823,6 +1229,66 @@ This page explains preference optimization for alignment.
         ]
 
         self.assertEqual(_primary_paper_key(pages), "duquant")
+
+    def test_retrieval_section_intent_covers_tradeoff_and_evaluation_language(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            papers.mkdir(parents=True)
+            _write_test_paper(
+                papers / "KV-Cache-Method.md",
+                title="KV Cache Method",
+                aliases=["KV cache compression"],
+                topics=["KV-cache compression", "long-context inference"],
+                methods=["KV-cache compression"],
+                settings=["KV-cache compression setting"],
+                body_sections={
+                    "What To Remember": "A KV-cache compression page.",
+                    "Mechanism": "The method keeps a subset of key/value cache entries.",
+                    "Evidence Map": "Evaluation reports memory, latency, quality, and sequence length.",
+                    "Limitations / Uncertainty": "Failure boundaries include retention tradeoffs and task-specific quality loss.",
+                },
+            )
+
+            result = retrieve_papers(
+                query=(
+                    "I need KV-cache memory tradeoffs, failure boundaries, evaluation metrics, "
+                    "and quality risks before changing a long-context decoding cache budget."
+                ),
+                wiki_root=wiki_root,
+                top_k=1,
+            )
+
+            headings = {item["heading"] for item in result.results[0]["matched_sections"]}
+            self.assertIn("Evidence Map", headings)
+            self.assertIn("Limitations / Uncertainty", headings)
+
+    def test_domain_general_eval_cases_are_parseable(self) -> None:
+        ingest_cases = Path("eval/cases/domain_general_paper_ingest.jsonl")
+        retrieval_cases = Path("eval/cases/domain_general_idea_retrieval.jsonl")
+        rubric = Path("eval/rubrics/domain_general_paper_wiki_quality_v0.md")
+        self.assertTrue(ingest_cases.exists())
+        self.assertTrue(retrieval_cases.exists())
+        self.assertTrue(rubric.exists())
+
+        ingest_domains = set()
+        for line in ingest_cases.read_text(encoding="utf-8").splitlines():
+            case = json.loads(line)
+            ingest_domains.add(case["domain"])
+            self.assertIn("expected_result", case)
+            self.assertIn("must_not_do", case)
+        self.assertGreaterEqual(len(ingest_domains), 10)
+
+        retrieval_ids = []
+        for line in retrieval_cases.read_text(encoding="utf-8").splitlines():
+            case = json.loads(line)
+            retrieval_ids.append(case["id"])
+            self.assertEqual(case["category"], "domain_general_idea_retrieval")
+            self.assertTrue(case["required_pages"])
+            self.assertTrue(case["required_sections"])
+            self.assertIn("judge_rubric", case)
+        self.assertGreaterEqual(len(retrieval_ids), 6)
 
     def test_eval_iterates_jsonl_cases(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

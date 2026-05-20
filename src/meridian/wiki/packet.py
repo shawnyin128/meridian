@@ -373,12 +373,13 @@ def _render_mechanism_contracts(records: list[dict[str, Any]]) -> str:
         outputs = _join_or_unknown(record.get("outputs"), "target representation or behavior not confidently extracted")
         assumptions = _join_or_unknown(record.get("assumptions"), "dependency not confidently extracted")
         checks = _join_or_unknown((record.get("implementation_notes") or [])[:2], "derive a small probe from the cited method pages before implementation")
+        purpose = _mechanism_purpose(record)
         blocks.append(
             "\n".join(
                 [
                     f"### {record['name']}",
                     "",
-                    f"- Purpose: {record['summary']}",
+                    f"- Purpose: {purpose}",
                     f"- Operates on: {inputs}.",
                     f"- Produces: {outputs}.",
                     f"- Depends on: {assumptions}.",
@@ -388,6 +389,34 @@ def _render_mechanism_contracts(records: list[dict[str, Any]]) -> str:
             )
         )
     return "\n\n".join(blocks)
+
+
+def _mechanism_purpose(record: dict[str, Any]) -> str:
+    inputs = " ".join(str(item) for item in record.get("inputs") or []).lower()
+    outputs = " ".join(str(item) for item in record.get("outputs") or []).lower()
+    name = str(record.get("name") or "This method")
+    if "kv-cache tensors" in inputs or "kv-cache" in outputs:
+        return "Compress or filter cached key/value entries while preserving long-context quality and exposing the memory/runtime tradeoff."
+    if "query/key/value tiles" in inputs or "kernel throughput" in outputs:
+        return "Schedule attention tiles, memory movement, and precision on the target GPU so attention is faster without changing the intended output."
+    if "agent state" in inputs and "verified committed actions" in outputs:
+        return "Predict future agent actions with a fast path, then verify, commit, or roll back them against a slower trusted executor."
+    if "audio" in inputs and "language" in outputs:
+        return "Align audio representations with language-model behavior for task-conditioned audio understanding."
+    if "video" in inputs and "latent predictive representations" in outputs:
+        return "Learn latent predictive video representations that transfer to downstream perception or planning tasks."
+    if "pde residual" in inputs:
+        return "Constrain a neural approximator with PDE residual and boundary/initial-condition losses."
+    if "cluster count" in inputs and "centroids" in outputs:
+        return "Analyze or optimize assignments to centroids under the stated clustering objective and assumptions."
+    if "surveyed primary papers" in inputs:
+        return "Organize primary papers into a taxonomy and expose gaps or follow-up sources rather than defining one algorithm."
+    summary = str(record.get("summary") or "").strip()
+    if len(summary) > 260:
+        sentences = re.split(r"(?<=[.!?])\s+", summary)
+        compact = " ".join(sentence for sentence in sentences[:2] if sentence).strip()
+        summary = compact if compact and len(compact) <= 320 else summary[:257].rstrip() + "..."
+    return summary or f"Explain the role of {name} in the paper's mechanism."
 
 
 def _join_or_unknown(value: object, fallback: str) -> str:
@@ -534,6 +563,22 @@ def _routing_method_focus(methods: list[str]) -> str:
     lowered = {method.lower(): method for method in methods}
     if "moe quantization" in lowered and "post-training quantization" in lowered:
         return "MoE post-training quantization"
+    if "attention kernel optimization" in lowered:
+        return "attention kernel optimization"
+    if "agent workflow acceleration" in lowered:
+        return "agent workflow acceleration"
+    if "llm-agent taxonomy" in lowered and "survey synthesis" in lowered:
+        return "LLM-agent survey synthesis"
+    if "speculative action execution" in lowered:
+        return "speculative action execution"
+    if "audio-language modeling" in lowered:
+        return "audio-language modeling"
+    if "video representation learning" in lowered:
+        return "video representation learning"
+    if "joint embedding predictive learning" in lowered:
+        return "joint embedding predictive learning"
+    if "kv-cache compression" in lowered:
+        return "KV-cache compression"
     if "layer-wise ptq" in lowered:
         return "layer-wise post-training quantization"
     if "rotation-based quantization" in lowered and "post-training quantization" in lowered:
@@ -546,8 +591,6 @@ def _routing_method_focus(methods: list[str]) -> str:
         return "grouped-query attention"
     if "long-context inference" in lowered:
         return "long-context inference"
-    if "kv-cache compression" in lowered:
-        return "KV-cache compression"
     if "clustering algorithm" in lowered:
         return "clustering algorithm"
     if "vision-language model quantization" in lowered:
@@ -576,7 +619,21 @@ def _routing_topic_focus(topics: list[str], methods: list[str]) -> str:
     method_keys = {method.lower() for method in methods}
     generic = {"post-training quantization", "low-bit quantization", "moe quantization", "layer-wise ptq"}
     selected = [topic for topic in topics if topic.lower() not in method_keys and topic.lower() not in generic]
+    if any(method.lower() in {"agent workflow acceleration", "speculative action execution"} for method in methods):
+        selected = [topic for topic in selected if topic.lower() != "speculative decoding"]
     priority = [
+        "speculative action execution",
+        "agent workflow acceleration",
+        "attention kernel scheduling",
+        "IO-aware attention",
+        "low-precision attention",
+        "audio-language modeling",
+        "audio encoder alignment",
+        "video representation learning",
+        "joint embedding predictive learning",
+        "KV-cache compression",
+        "KV-cache memory",
+        "context extrapolation",
         "activation outliers",
         "quantization error",
         "error propagation",
@@ -593,6 +650,18 @@ def _routing_setting_focus(settings: list[str]) -> str:
     lowered = {setting.lower() for setting in settings}
     if "speculative decoding setting" in lowered:
         return "speculative decoding inference"
+    if "agent workflow setting" in lowered or "speculative action execution setting" in lowered:
+        return "agent workflow execution"
+    if "agent survey/synthesis setting" in lowered:
+        return "agent literature synthesis"
+    if "gpu attention-kernel setting" in lowered:
+        return "GPU attention-kernel execution"
+    if "audio-language setting" in lowered:
+        return "audio-language evaluation"
+    if "video representation learning setting" in lowered:
+        return "video representation learning"
+    if "kv-cache compression setting" in lowered:
+        return "long-context decoding with compressed KV cache"
     if "3d medical imaging setting" in lowered:
         return "3D medical imaging"
     if "decoder attention setting" in lowered:
@@ -751,6 +820,9 @@ def _title_specific_aliases(title: str) -> list[str]:
         "Technical",
         "Report",
         "Survey",
+        "A",
+        "An",
+        "The",
     }
     cleaned_title = re.sub(r"^[A-Z][A-Za-z]+ et al\. - \d{4} - ", "", title)
     for match in re.findall(r"\b[A-Z][A-Za-z0-9]*(?:[-#][A-Za-z0-9]+)?\b", cleaned_title):

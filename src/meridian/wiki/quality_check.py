@@ -201,9 +201,11 @@ def _retrieval_taxonomy_boundary_score(frontmatter: dict[str, Any], method_recor
         findings.append("missing_research_topics")
     if not settings and any("quantization" in value.lower() for value in methods + topics):
         findings.append("missing_quantization_setting")
+    contamination = _domain_contamination_findings(frontmatter)
+    findings.extend(contamination)
 
     score = 5 - 0.75 * len(findings)
-    if method_component_leaks or title_topic_leaks or generic_topics:
+    if method_component_leaks or title_topic_leaks or generic_topics or contamination:
         score = min(score, 3.0)
     return _dimension(
         "retrieval_taxonomy_boundary",
@@ -463,7 +465,34 @@ def _metadata_routing_score(frontmatter: dict[str, Any], paper_text: str) -> dic
         findings.append(f"noisy_topics:{','.join(map(str, noisy_topics[:6]))}")
     if untrusted:
         findings.append("untrusted_pdf_metadata_visible")
+    contamination = _domain_contamination_findings(frontmatter)
+    findings.extend(contamination)
+    if contamination:
+        score = min(score, 3.0)
     return _dimension("metadata_routing_integrity", max(1, score), "retrieval_metadata", "Frontmatter routes future retrieval without noisy or missing keys.", findings)
+
+
+def _domain_contamination_findings(frontmatter: dict[str, Any]) -> list[str]:
+    title = str(frontmatter.get("title") or "").lower()
+    routing_values = [
+        str(item).lower()
+        for field in ("topics", "methods", "settings")
+        for item in (frontmatter.get(field) or [])
+    ]
+    routing_text = " | ".join(routing_values)
+    findings: list[str] = []
+    quant_tokens = ("post-training quantization", "weight-activation quantization", "weight-only quantization", "rotation-based quantization", "hardware-aware quantization", "outlier-aware quantization", "kv-cache quantization")
+    if any(key in title for key in ("flashattention", "jepa", "qwen-audio", "k-means", "clustering via principal component", "speculative actions")):
+        leaked = [token for token in quant_tokens if token in routing_text]
+        if leaked:
+            findings.append(f"cross_domain_quantization_contamination:{','.join(leaked[:5])}")
+    if "speculative actions" in title and "speculative decoding" in routing_text and "agent workflow" not in routing_text:
+        findings.append("agent_workflow_collapsed_to_token_decoding")
+    if "qwen-audio" in title and ("vision-language" in routing_text or "transformer architecture" in routing_text and "audio-language modeling" not in routing_text):
+        findings.append("audio_language_route_missing_or_contaminated")
+    if "jepa" in title and "video representation learning" not in routing_text and "joint embedding predictive" not in routing_text:
+        findings.append("representation_learning_route_missing")
+    return findings
 
 
 def _candidate_record_score(
@@ -636,6 +665,12 @@ def _domain_retrieval_keys(
 ) -> dict[str, list[str]]:
     text = " ".join(methods + topics + settings + datasets + metrics).lower()
     if "speculative" in text or "draft" in text:
+        if "agent" in text or "action" in text:
+            return {
+                "idea": ["speculative action execution", "agent workflow", "verification"],
+                "evidence": ["latency", "task success", "rollback"],
+                "scope": ["environment state", "tool side effects", "lossless execution"],
+            }
         return {
             "idea": ["speculative decoding", "draft acceptance", "verification"],
             "evidence": ["acceptance rate", "speedup", "verification"],
@@ -652,6 +687,24 @@ def _domain_retrieval_keys(
             "idea": ["vision-language", "multimodal reasoning", "alignment"],
             "evidence": ["VQA", "accuracy", "retrieval"],
             "scope": ["calibration coverage", "modality split", "downstream task"],
+        }
+    if "audio-language" in text or "audio" in text:
+        return {
+            "idea": ["audio-language", "audio encoder", "task tags"],
+            "evidence": ["audio understanding", "task metrics", "speech"],
+            "scope": ["audio preprocessing", "task family", "modality alignment"],
+        }
+    if "video representation" in text or "joint embedding predictive" in text or "jepa" in text:
+        return {
+            "idea": ["latent prediction", "representation learning", "video understanding"],
+            "evidence": ["linear probe", "downstream task", "planning"],
+            "scope": ["masking strategy", "finetuning protocol", "task split"],
+        }
+    if "attention kernel" in text or "io-aware attention" in text:
+        return {
+            "idea": ["attention kernel", "memory movement", "asynchrony"],
+            "evidence": ["throughput", "latency", "numerical error"],
+            "scope": ["GPU architecture", "precision mode", "sequence length"],
         }
     if "long-context" in text or "kv-cache" in text or "kv cache" in text:
         return {
@@ -716,6 +769,14 @@ def _domain_retrieval_keys(
 
 def _scenario_domain_object(methods: list[str], topics: list[str]) -> str:
     text = " ".join(methods + topics).lower()
+    if "speculative action" in text or "agent workflow" in text:
+        return "an agent speculative-action workflow"
+    if "attention kernel" in text or "io-aware attention" in text:
+        return "an attention-kernel schedule or memory-movement design"
+    if "audio-language" in text:
+        return "an audio-language alignment or task-conditioning mechanism"
+    if "video representation" in text or "joint embedding predictive" in text or "jepa" in text:
+        return "a latent video representation learning mechanism"
     if "speculative" in text or "draft" in text:
         return "a speculative-decoding draft or verification policy"
     if "diffusion" in text or "mri" in text:
@@ -745,6 +806,14 @@ def _scenario_domain_object(methods: list[str], topics: list[str]) -> str:
 
 def _scenario_setting_object(settings: list[str]) -> str:
     lowered = " ".join(settings).lower()
+    if "agent workflow" in lowered or "speculative action" in lowered:
+        return "an agent workflow execution setting"
+    if "attention-kernel" in lowered:
+        return "a GPU attention-kernel setting"
+    if "audio-language" in lowered:
+        return "an audio-language evaluation setting"
+    if "video representation" in lowered:
+        return "a video representation learning setting"
     if "speculative" in lowered:
         return "a speculative decoding setting"
     if "medical" in lowered:
@@ -772,6 +841,14 @@ def _scenario_setting_object(settings: list[str]) -> str:
 
 def _scenario_scope_examples(methods: list[str], topics: list[str], settings: list[str]) -> str:
     text = " ".join(methods + topics + settings).lower()
+    if "speculative action" in text or "agent workflow" in text:
+        return "environment state fidelity, tool side effects, rollback correctness, verifier lag, task-success preservation"
+    if "attention kernel" in text or "io-aware attention" in text:
+        return "GPU architecture, memory hierarchy, precision mode, sequence length, numerical-error tolerance"
+    if "audio-language" in text:
+        return "audio preprocessing, task-tag coverage, encoder-language alignment, task-family aggregation"
+    if "video representation" in text or "joint embedding predictive" in text or "jepa" in text:
+        return "masking strategy, latent target choice, downstream task split, finetuning protocol"
     if "speculative" in text or "draft" in text:
         return "draft-target alignment, acceptance-rate dependence, verifier overhead, decoding-temperature scope"
     if "diffusion" in text or "mri" in text:
