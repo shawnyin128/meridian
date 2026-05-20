@@ -55,10 +55,12 @@ Use `--proposal-type method-family`, `comparison`, `decision`, or `research-ques
 ## Retrieval Discipline
 
 - Treat frontmatter as the machine-routing source of truth.
-- Treat `paper.md` as the concise reading target.
+- Treat canonical `wiki/papers/*.md` and `wiki/syntheses/*.md` pages as the retrieval corpus and concise reading targets.
+- Do not retrieve from `wiki/.drafts/ingests/**`, draft `paper.md` / `paper_candidate`, `review.md`, judge packets, self-check packets, or extraction files. Those are pipeline/debug artifacts.
 - Prefer context packets over raw search dumps.
 - Use retrieval v1 by default. v1 adds field-weighted scoring, section-aware ranking, controlled-vocabulary normalization, capped graph/facet expansion, source-quality routing, hard-distractor suppression, and compact context packet construction. Use `--strategy v0` only for baseline comparison.
 - Retrieval now searches paper pages and published synthesis-layer pages by default. Check `result_type` before treating a hit as source evidence; synthesis pages are higher-level interpretation and should point back to source papers.
+- Check `canonical_path` in retrieval JSON/context packets before opening pages. It should point to a canonical paper or synthesis path, not a draft ingest artifact.
 - Do not cite a paper only because its title matched; inspect the chosen section snippets.
 - Distinguish source facts, wiki synthesis, and the user's own ideas.
 - For coding tasks, always look for `Implementation Hooks`, `Mechanism`, and `Limitations / Uncertainty`.

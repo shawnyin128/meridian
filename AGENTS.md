@@ -58,6 +58,7 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `docs/paper-wiki-prototype-evaluation-plan.md`: Paper Wiki-first prototype, manual review, evaluation case, and refine loop plan.
 - `docs/wiki-evaluation-set-and-judge-rubric.md`: current evaluation set strategy and LLM-as-Judge rubric contract.
 - `docs/wiki-layer-test-strategy.md`: layered source/canonical/retrieval test strategy, retrieval scenario metrics, judge rubric usage, calibration, and release gates.
+- `docs/wiki-product-dataflow-and-artifact-boundaries.md`: product-level source/canonical/draft/debug/retrieval artifact taxonomy and dataflow boundaries.
 - `docs/retrieval-smoke-quality-brief.md`: latest tracked retrieval smoke quality summary over representative canonical quantization wiki pages.
 - `docs/real-library-retrieval-audit-brief.md`: latest tracked per-paper retrieval audit over the current real canonical wiki.
 - `docs/retrieval-optimization-research.md`: retrieval v1 design research, option tradeoffs, and backend roadmap for Markdown-first paper-wiki retrieval.

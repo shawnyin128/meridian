@@ -5,6 +5,8 @@ import sys
 import tempfile
 import types
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from io import StringIO
 from pathlib import Path
 
 from meridian.cli import main
@@ -23,6 +25,14 @@ from meridian.wiki.quality_check import (
 )
 from meridian.wiki.retrieval_audit import generate_audit_queries
 from meridian.wiki.rubrics import complete_result_template, rubric_for
+
+
+def _run_cli_capture(args: list[str]) -> tuple[int, str, str]:
+    stdout = StringIO()
+    stderr = StringIO()
+    with redirect_stdout(stdout), redirect_stderr(stderr):
+        exit_code = main(args)
+    return exit_code, stdout.getvalue(), stderr.getvalue()
 
 
 class FakePixmap:
@@ -774,6 +784,9 @@ Evidence takeaways:
             self.assertIn("Scope notes:", paper)
             self.assertIn("## Mechanism", paper)
             self.assertIn("## Candidate Records", paper)
+            self.assertNotIn("Review packet: `review.md`", paper)
+            self.assertNotIn("Full extraction and review details live", paper)
+            self.assertNotIn("\nartifacts:\n", paper)
             self.assertNotIn("\nSource:\n", paper)
             self.assertNotIn("- Metadata title:", paper)
             self.assertNotIn("- Model strategy:", paper)
@@ -802,6 +815,11 @@ Evidence takeaways:
 
             run = json.loads((out / "run.json").read_text(encoding="utf-8"))
             self.assertEqual(run["extraction_options"]["render_page_images"], False)
+            self.assertEqual(run["draft_artifacts"]["paper_candidate"], str(out / "paper.md"))
+            self.assertEqual(run["internal_artifacts"]["paper_candidate"], str(out / "paper.md"))
+            self.assertEqual(run["debug_artifacts"]["review_packet"], str(out / "review.md"))
+            self.assertEqual(run["retrieval_visibility"]["draft_candidate_indexed"], False)
+            self.assertEqual(run["retrieval_visibility"]["retrieval_targets"], ["wiki/papers/*.md", "wiki/syntheses/*.md"])
 
             structural_path = root / "structural-self-check.json"
             self.assertEqual(
@@ -919,12 +937,24 @@ Evidence takeaways:
             self.assertTrue(run["canonical_wiki_mutated"])
             self.assertEqual(run["write_policy"], "auto_publish_draft")
             self.assertIn("canonical_artifacts", run)
+            self.assertIn("product_artifacts", run)
+            self.assertIn("internal_artifacts", run)
+            self.assertIn("debug_artifacts", run)
+            self.assertIn("retrieval_visibility", run)
 
             canonical = Path(run["canonical_artifacts"]["paper_page"])
             self.assertTrue(canonical.exists())
+            self.assertEqual(run["product_artifacts"]["canonical_paper_page"], str(canonical))
+            self.assertEqual(run["internal_artifacts"]["paper_candidate"], str(out / "paper.md"))
+            self.assertEqual(run["debug_artifacts"]["review_packet"], str(out / "review.md"))
+            self.assertEqual(run["retrieval_visibility"]["canonical_page"], str(canonical))
+            self.assertTrue(run["retrieval_visibility"]["canonical_corpus_only"])
             canonical_text = canonical.read_text(encoding="utf-8")
             self.assertIn("review_state: \"needs_review\"", canonical_text)
             self.assertIn("quality_gate: \"warn\"", canonical_text)
+            self.assertNotIn("Review packet: `review.md`", canonical_text)
+            self.assertNotIn("Full extraction and review details live", canonical_text)
+            self.assertNotIn("\nartifacts:\n", canonical_text)
 
             index = (wiki_root / "index.md").read_text(encoding="utf-8")
             log = (wiki_root / "log.md").read_text(encoding="utf-8")
@@ -933,6 +963,125 @@ Evidence takeaways:
             self.assertIn("Quality gate: `warn`", log)
             self.assertTrue((wiki_root / ".drafts/retrieval").is_dir())
             self.assertTrue((wiki_root / "templates/paper.md").exists())
+
+    def test_wiki_ingest_default_output_is_product_oriented(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            pdf = root / "paper.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            out = wiki_root / ".drafts/ingests/fake-paper"
+
+            exit_code, stdout, stderr = _run_cli_capture(
+                [
+                    "wiki",
+                    "ingest",
+                    str(pdf),
+                    "--out",
+                    str(out),
+                    "--wiki-root",
+                    str(wiki_root),
+                    "--publish-mode",
+                    "auto",
+                ]
+            )
+
+            self.assertEqual(exit_code, 0, stderr)
+            self.assertIn("Managed source PDF:", stdout)
+            self.assertIn("Canonical wiki page:", stdout)
+            self.assertIn("Quality gate:", stdout)
+            self.assertIn("Internal artifact root:", stdout)
+            self.assertNotIn("review.md", stdout)
+            self.assertNotIn("judge-packet.md", stdout)
+            self.assertNotIn("reader-check.md", stdout)
+            self.assertNotIn("quality-self-check.json", stdout)
+            self.assertNotIn("Wrote draft paper page", stdout)
+
+            verbose_out = wiki_root / ".drafts/ingests/fake-paper-verbose"
+            exit_code, verbose_stdout, stderr = _run_cli_capture(
+                [
+                    "wiki",
+                    "ingest",
+                    str(pdf),
+                    "--out",
+                    str(verbose_out),
+                    "--wiki-root",
+                    str(wiki_root),
+                    "--publish-mode",
+                    "auto",
+                    "--overwrite",
+                    "--verbose-artifacts",
+                ]
+            )
+
+            self.assertEqual(exit_code, 0, stderr)
+            self.assertIn("Debug artifacts:", verbose_stdout)
+            self.assertIn("review.md", verbose_stdout)
+            self.assertIn("paper_candidate", verbose_stdout)
+
+    def test_wiki_flow_default_output_hides_validation_debug_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            pdf = root / "paper.pdf"
+            rubric = root / "rubric.md"
+            pdf.write_bytes(b"%PDF fake")
+            rubric.write_text("# Rubric\n", encoding="utf-8")
+            out = wiki_root / ".drafts/ingests/fake-flow"
+
+            exit_code, stdout, stderr = _run_cli_capture(
+                [
+                    "wiki",
+                    "flow",
+                    str(pdf),
+                    "--out",
+                    str(out),
+                    "--wiki-root",
+                    str(wiki_root),
+                    "--rubric",
+                    str(rubric),
+                ]
+            )
+
+            self.assertEqual(exit_code, 0, stderr)
+            self.assertIn("Managed source PDF:", stdout)
+            self.assertIn("Canonical wiki page:", stdout)
+            self.assertIn("Quality gate:", stdout)
+            self.assertIn("Review state:", stdout)
+            self.assertIn("Internal artifact root:", stdout)
+            self.assertIn("Flow status:", stdout)
+            self.assertNotIn("judge-packet.md", stdout)
+            self.assertNotIn("reader-check.md", stdout)
+            self.assertNotIn("quality-self-check.json", stdout)
+            self.assertNotIn("structural-self-check.json", stdout)
+            self.assertNotIn("review.md", stdout)
+
+            flow = json.loads((out / "flow.json").read_text(encoding="utf-8"))
+            run = json.loads((out / "run.json").read_text(encoding="utf-8"))
+            self.assertIn("validation_artifacts", flow)
+            self.assertIn("validation_artifacts", run)
+            self.assertEqual(flow["product_artifacts"]["canonical_paper_page"], run["product_artifacts"]["canonical_paper_page"])
+
+            verbose_out = wiki_root / ".drafts/ingests/fake-flow-verbose"
+            exit_code, verbose_stdout, stderr = _run_cli_capture(
+                [
+                    "wiki",
+                    "flow",
+                    str(pdf),
+                    "--out",
+                    str(verbose_out),
+                    "--wiki-root",
+                    str(wiki_root),
+                    "--rubric",
+                    str(rubric),
+                    "--overwrite",
+                    "--verbose-artifacts",
+                ]
+            )
+            self.assertEqual(exit_code, 0, stderr)
+            self.assertIn("Validation artifacts:", verbose_stdout)
+            self.assertIn("judge-packet.md", verbose_stdout)
+            self.assertIn("reader-check.md", verbose_stdout)
 
     def test_wiki_catalog_indexes_canonical_paper_frontmatter(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1302,6 +1451,66 @@ This page explains preference optimization for alignment.
             self.assertEqual(payload["schema_version"], "meridian.retrieval_context.v0")
             self.assertEqual(payload["results"][0]["title"], "MoE PTQ Paper")
             self.assertIn("methods", payload["results"][0]["matched_frontmatter"])
+            self.assertEqual(payload["results"][0]["canonical_path"], "papers/MoE-PTQ.md")
+            self.assertIn("Canonical path: `papers/MoE-PTQ.md`", text)
+
+    def test_wiki_retrieve_ignores_draft_ingest_candidates(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            drafts = wiki_root / ".drafts/ingests/noisy-run"
+            papers.mkdir(parents=True)
+            drafts.mkdir(parents=True)
+            (drafts / "paper.md").write_text(
+                """---
+type: "paper"
+title: "Draft Only Secret Mechanism"
+aliases:
+  - "DraftOnlySecret"
+topics:
+  - "hidden unique zeta"
+methods:
+  - "secret candidate method"
+---
+# Draft Only Secret Mechanism
+
+## What To Remember
+
+This hidden unique zeta candidate should never enter retrieval.
+""",
+                encoding="utf-8",
+            )
+            _write_test_paper(
+                papers / "Canonical-Target.md",
+                title="Canonical Target",
+                aliases=["CanonicalTarget"],
+                topics=["canonical retrieval boundary"],
+                methods=["canonical method"],
+                settings=["paper wiki"],
+                body_sections={
+                    "What To Remember": "The canonical page is the retrieval target.",
+                    "Mechanism": "Draft ingest candidates are internal and excluded from catalog.",
+                },
+            )
+
+            self.assertEqual(main(["wiki", "catalog", "--wiki-root", str(wiki_root)]), 0)
+            draft_only = retrieve_papers(
+                query="DraftOnlySecret hidden unique zeta",
+                wiki_root=wiki_root,
+                top_k=5,
+            )
+            self.assertEqual(draft_only.results, [])
+
+            canonical = retrieve_papers(
+                query="canonical retrieval boundary",
+                wiki_root=wiki_root,
+                top_k=5,
+            )
+            self.assertEqual(canonical.results[0]["canonical_path"], "papers/Canonical-Target.md")
+            self.assertFalse(
+                any(str(item.get("relative_path") or "").startswith(".drafts/") for item in canonical.results)
+            )
 
     def test_wiki_retrieve_exact_identity_beats_crowded_shared_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

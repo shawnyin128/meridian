@@ -40,12 +40,6 @@ confidence: "medium"
 review_state: "auto_converged"
 write_policy: "auto_publish_draft"
 canonical_wiki_mutated: true
-artifacts:
-  - "review.md"
-  - "claims.jsonl"
-  - "methods.jsonl"
-  - "evidence.jsonl"
-  - "extraction/pages.jsonl"
 quality_gate: "warn"
 raw_source: "wiki/raw/sources/papers/paper-pdf-8086e2e5e139-Shaw-et-al-2018-Self-Attention-with-Relative-Position-Representations.pdf"
 draft_artifact_root: "eval/runs/2026-05-20-main-wiki-productization-flow/library-076"
@@ -141,7 +135,6 @@ Open questions:
 - Claims: `claims.jsonl`
 - Methods: `methods.jsonl`
 - Evidence pages: `evidence.jsonl`
-- Review packet: `review.md`
 
 Method candidates:
 
@@ -155,7 +148,6 @@ Evidence candidates:
 - `evidence-p0004`: p. 4
 - `evidence-p0005`: p. 5
 
-Full extraction and review details live in `review.md`, `extraction/pages.jsonl`, and page images. Keep this page concise enough to be a future retrieval target.
 
 ## Wiki Graph Links
 

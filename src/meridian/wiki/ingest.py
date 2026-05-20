@@ -111,6 +111,33 @@ def run_ingest(
         overwrite=overwrite,
     )
 
+    canonical_artifacts = (
+        {
+            "paper_page": str(publish_result.paper_path),
+            "index": str(publish_result.index_path),
+            "log": str(publish_result.log_path),
+        }
+        if publish_result is not None
+        else None
+    )
+    source_artifacts = _source_artifacts(
+        input_pdf=pdf_path,
+        source_pdf=source_pdf,
+        source_record=source_record,
+    )
+    role_artifacts = _artifact_role_manifest(
+        out_dir=out_dir,
+        extraction_dir=extraction_dir,
+        review_path=review_path,
+        paper_path=paper_path,
+        claims_path=claims_path,
+        methods_path=methods_path,
+        evidence_path=evidence_path,
+        run_path=run_path,
+        source_artifacts=source_artifacts,
+        canonical_artifacts=canonical_artifacts,
+    )
+
     run_payload: dict[str, Any] = {
         "schema_version": "paper_wiki_ingest.v0",
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -131,6 +158,7 @@ def run_ingest(
         "write_policy": "draft_only" if publish_result is None else "auto_publish_draft",
         "draft_artifacts": {
             "review_packet": str(review_path),
+            "paper_candidate": str(paper_path),
             "paper_page": str(paper_path),
             "claims": str(claims_path),
             "methods": str(methods_path),
@@ -155,13 +183,10 @@ def run_ingest(
         },
         "page_count": extraction.page_count,
         "canonical_wiki_mutated": publish_result is not None,
+        **role_artifacts,
     }
-    if publish_result is not None:
-        run_payload["canonical_artifacts"] = {
-            "paper_page": str(publish_result.paper_path),
-            "index": str(publish_result.index_path),
-            "log": str(publish_result.log_path),
-        }
+    if canonical_artifacts is not None:
+        run_payload["canonical_artifacts"] = canonical_artifacts
     if case_metadata:
         run_payload["eval_case_id"] = case_metadata.get("id")
 
@@ -178,6 +203,73 @@ def run_ingest(
         publish_result=publish_result,
         source_record=source_record,
     )
+
+
+def _source_artifacts(
+    *,
+    input_pdf: Path,
+    source_pdf: Path,
+    source_record: SourceRecord | None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "input_pdf": str(input_pdf),
+        "managed_pdf": str(source_pdf),
+        "mode": "managed" if source_record is not None else "unmanaged",
+    }
+    if source_record is not None:
+        payload.update(
+            {
+                "source_id": source_record.source_id,
+                "source_registry": str(source_record.registry_path),
+                "sha256": source_record.sha256,
+            }
+        )
+    return payload
+
+
+def _artifact_role_manifest(
+    *,
+    out_dir: Path,
+    extraction_dir: Path,
+    review_path: Path,
+    paper_path: Path,
+    claims_path: Path,
+    methods_path: Path,
+    evidence_path: Path,
+    run_path: Path,
+    source_artifacts: dict[str, Any],
+    canonical_artifacts: dict[str, str] | None,
+) -> dict[str, Any]:
+    return {
+        "source_artifacts": source_artifacts,
+        "product_artifacts": {
+            "managed_source_pdf": source_artifacts.get("managed_pdf"),
+            "canonical_paper_page": (canonical_artifacts or {}).get("paper_page"),
+            "wiki_index": (canonical_artifacts or {}).get("index"),
+            "wiki_log": (canonical_artifacts or {}).get("log"),
+        },
+        "internal_artifacts": {
+            "artifact_root": str(out_dir),
+            "paper_candidate": str(paper_path),
+            "claims": str(claims_path),
+            "methods": str(methods_path),
+            "evidence": str(evidence_path),
+            "extraction_dir": str(extraction_dir),
+            "run_manifest": str(run_path),
+        },
+        "debug_artifacts": {
+            "review_packet": str(review_path),
+            "page_images_dir": str(extraction_dir / "page-images"),
+            "page_text_jsonl": str(extraction_dir / "pages.jsonl"),
+        },
+        "retrieval_visibility": {
+            "canonical_corpus_only": True,
+            "retrieval_targets": ["wiki/papers/*.md", "wiki/syntheses/*.md"],
+            "excluded": ["wiki/.drafts/ingests/**"],
+            "draft_candidate_indexed": False,
+            "canonical_page": (canonical_artifacts or {}).get("paper_page"),
+        },
+    }
 
 
 def _prepare_out_dir(out_dir: Path, overwrite: bool) -> None:

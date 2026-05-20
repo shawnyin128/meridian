@@ -42,3 +42,11 @@
 - Proposal: `wiki/.drafts/proposals/Agent-Speculative-Execution-Reading-Plan/proposal.md`
 - Source context: `eval/runs/2026-05-20-main-wiki-idea-retrieval/idea-agent-speculative-execution/context.json`
 - Policy: draft-only; canonical synthesis publish requires review.
+
+## [2026-05-20] ingest | STS: Efficient Sparse Attention with Speculative Token Sparsity
+
+- Source PDF: `wiki/raw/sources/papers/paper-pdf-00d120e46b19-STS-Efficient-Sparse-Attention-with-Speculative-Token-Sparsity.pdf`
+- Canonical draft: [[papers/STS-Efficient-Sparse-Attention-with-Speculative-Token-Sparsity|STS: Efficient Sparse Attention with Speculative Token Sparsity]]
+- Draft artifacts: `wiki/.drafts/ingests/2605-15508v2`
+- Quality gate: `pass`
+- Review state: `auto_ingested`

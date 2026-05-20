@@ -14,7 +14,8 @@ This creates an Obsidian-compatible Markdown vault scaffold: `papers/`,
 The project main vault is `wiki/`. It is intended to be opened directly in
 Obsidian and is the default root for source audit, catalog, retrieval, and
 write-back proposal commands. The current main-vault productization status is
-tracked in `docs/main-wiki-productization-quality-brief.md`.
+tracked in `docs/main-wiki-productization-quality-brief.md`. Product artifact
+roles are defined in `docs/wiki-product-dataflow-and-artifact-boundaries.md`.
 
 ```bash
 meridian wiki ingest /path/to/paper.pdf --out wiki/.drafts/ingests/<paper-slug>/
@@ -43,11 +44,18 @@ This publishes a canonical draft paper page when the quality gate does not fail,
 updates `wiki/index.md` and `wiki/log.md`, and records whether the page still
 needs review.
 
-The generated `paper.md` is intended to be a mechanism-level reading object, not
-an abstract summary. It should answer: what problem the paper actually attacks,
-what method objects exist, what each component consumes and produces, what
-assumptions matter for implementation, what evidence backs the claims, and what
-caveats should block premature promotion.
+The user-facing reading object is the canonical page in `wiki/papers/<paper>.md`.
+The similarly shaped file under `wiki/.drafts/ingests/<run>/paper.md` is only an
+internal canonical-page candidate kept for audit and publish replay. It is not
+the daily wiki entry and is not a retrieval target. `review.md`, judge packets,
+and self-check files are debug/eval artifacts; use `--verbose-artifacts` when
+you need those internal paths.
+
+A canonical paper page should be mechanism-level, not an abstract summary. It
+should answer: what problem the paper actually attacks, what method objects
+exist, what each component consumes and produces, what assumptions matter for
+implementation, what evidence backs the claims, and what caveats should block
+premature promotion.
 
 The preferred prototype path is the full flow:
 
@@ -60,6 +68,10 @@ meridian wiki flow /path/to/paper.pdf \
 
 This runs ingest, publishes a canonical draft when allowed, builds a bounded
 LLM-as-Judge packet, builds a reader self-check packet, and writes `flow.json`.
+Default CLI output is product-oriented: managed source PDF, canonical wiki page,
+quality/review state, index/log updates, and the internal artifact root. It does
+not present `review.md`, `judge-packet.md`, or self-check JSON as product
+outputs unless `--verbose-artifacts` is set.
 The reader self-check is the mechanism-level guardrail: one reader explains the
 paper from `paper.md` only, another explains it from source excerpts, and the
 reconciliation must attribute mismatches to generation-mechanism buckets. The
@@ -179,7 +191,9 @@ meridian wiki catalog --wiki-root wiki
 This scans `wiki/papers/*.md` and `wiki/syntheses/*.md`, writing
 `wiki/.index/papers.jsonl` and `wiki/.index/syntheses.jsonl`. The catalogs keep
 frontmatter as the routing source of truth, plus section previews for
-context-packet construction.
+context-packet construction. Draft ingest candidates under
+`wiki/.drafts/ingests/**` are intentionally excluded even when their text matches
+the query.
 
 Retrieve research context with:
 

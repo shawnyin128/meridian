@@ -84,6 +84,18 @@ def run_wiki_flow(
         status = convergence.status
 
     flow_path = out_dir / "flow.json"
+    run_payload = _read_json(ingest_result.run_path)
+    validation_artifacts = {
+        "judge_packet": str(judge_packet_path),
+        "reader_check_packet": str(reader_check_packet_path),
+        "quality_self_check": str(quality_self_check.path),
+        "structural_self_check": str(structural_self_check.path),
+        "convergence": str(convergence.convergence_path) if convergence else None,
+    }
+    run_payload["validation_artifacts"] = validation_artifacts
+    run_payload["flow_manifest"] = str(flow_path)
+    _write_json(ingest_result.run_path, run_payload)
+
     payload = {
         "schema_version": "paper_wiki_flow.v0",
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -106,6 +118,13 @@ def run_wiki_flow(
             "quality": str(quality_self_check.path),
             "structural": str(structural_self_check.path),
         },
+        "source_artifacts": run_payload.get("source_artifacts") or {},
+        "product_artifacts": run_payload.get("product_artifacts") or {},
+        "internal_artifacts": run_payload.get("internal_artifacts") or {},
+        "debug_artifacts": run_payload.get("debug_artifacts") or {},
+        "validation_artifacts": validation_artifacts,
+        "canonical_artifacts": run_payload.get("canonical_artifacts") or {},
+        "retrieval_visibility": run_payload.get("retrieval_visibility") or {},
         "convergence": str(convergence.convergence_path) if convergence else None,
         "next_action": _next_action(status),
     }

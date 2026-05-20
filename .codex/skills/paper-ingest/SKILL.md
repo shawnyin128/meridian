@@ -1,21 +1,21 @@
 ---
 name: paper-ingest
-description: Use when generating, evaluating, or refining Meridian Paper Wiki ingest outputs from research papers, especially paper.md, claim/method/evidence records, reader self-check packets, retrieval metadata, and calibration-driven ingest quality improvements.
+description: Use when generating, evaluating, or refining Meridian Paper Wiki ingest outputs from research papers, especially canonical paper pages, internal paper candidates, claim/method/evidence records, reader self-check packets, retrieval metadata, and calibration-driven ingest quality improvements.
 ---
 
 # Paper Ingest
 
 ## Purpose
 
-Turn a raw research paper into retrieval-ready Paper Wiki state. The output should help a researcher understand and reuse the paper without rereading it, while keeping source facts, synthesis, and uncertainty separable.
+Turn a raw research paper into retrieval-ready Paper Wiki state. The product output is the canonical paper page under `wiki/papers/`, plus managed source state and catalog/index/log updates. Draft ingest files remain audit artifacts. The output should help a researcher understand and reuse the paper without rereading it, while keeping source facts, synthesis, and uncertainty separable.
 
 This skill governs the cognitive workflow. Python code should handle deterministic extraction, source management, frontmatter, JSONL records, and file writes.
 
 ## Quality Bar
 
-`paper.md` must pass the new-researcher test:
+The canonical paper page must pass the new-researcher test:
 
-> If a capable new researcher reads only `paper.md`, can they explain what the paper does, why it works, what evidence supports it, what is uncertain, and what they would implement or test first?
+> If a capable new researcher reads only `wiki/papers/<paper>.md`, can they explain what the paper does, why it works, what evidence supports it, what is uncertain, and what they would implement or test first?
 
 Fail outputs that rely on generic claims such as "addresses outliers", "improves quantization", or a list of component names without mechanism.
 
@@ -53,9 +53,9 @@ For each important method/component, capture:
 
 Mechanism names alone are not content. If the page says "AOS, ACCF, POG, LUT" or "rotation, permutation, quantization" without the contract above, the ingest has not succeeded.
 
-## paper.md Shape
+## Canonical Page Shape
 
-Keep `paper.md` concise. It is the durable retrieval target, not the full review packet.
+Keep the canonical paper page concise. It is the durable retrieval target, not the full review packet. The draft run file `wiki/.drafts/ingests/<run>/paper.md` currently mirrors this shape as an internal `paper_candidate` for publish replay, but it is not the product page and should not be used as a user-facing reading target.
 
 Use this order:
 
@@ -67,7 +67,7 @@ Use this order:
 6. `Evidence Map`: only high-value claims and evidence takeaways
 7. `Implementation Hooks`: coding/probe/ablation notes
 8. `Limitations / Uncertainty`
-9. `Candidate Records`: paths to JSONL records and full review artifacts
+9. `Candidate Records`: paths to candidate JSONL records only; keep review/debug packets in manifests, not the canonical page body
 
 Avoid:
 
@@ -80,6 +80,28 @@ Avoid:
 - a `Retrieval Anchors` section that copies `methods`, `topics`, `settings`, `datasets`, or `metrics` from frontmatter
 - a `Retrieval Notes` section that only says to consult frontmatter or repeats metadata without semantic routing value
 - a body `Source` block in `paper.md` that repeats `source_pdf`, `source_id`, `source_registry`, `page_count`, or `model_strategy` already present in frontmatter/run artifacts
+
+## Artifact Boundary
+
+Default user-facing ingest/flow output should report:
+
+- managed source PDF
+- canonical paper wiki page when published
+- quality gate and review state
+- index/log/catalog update status
+- internal artifact root for audit
+
+Do not present these as product outputs unless debugging is explicitly requested:
+
+- `review.md`
+- `judge-packet.md`
+- `reader-check.md`
+- `quality-self-check.json`
+- `structural-self-check.json`
+- extraction page files
+- draft `paper.md` / `paper_candidate`
+
+Use `--verbose-artifacts` when internal paths are needed. The run/flow manifest must classify artifact roles with `source_artifacts`, `product_artifacts`, `internal_artifacts`, `debug_artifacts`, `validation_artifacts`, and `retrieval_visibility`.
 
 ## Retrieval Metadata
 
@@ -147,6 +169,7 @@ All three agents must cover retrieval schema quality:
 - Understanding agent checks whether a reader can explain why the page should be retrieved and whether `methods`, `topics`, `settings`, `aliases`, and candidate records have distinct roles.
 - Quality agent scores retrieval taxonomy boundaries, frontmatter/body non-duplication, and the quality of `When To Retrieve This Paper`; it should fail pages where paper-specific method components replace reusable method families, topics are generic/title-derived, or body retrieval text is only boilerplate or negative-rule laundry lists.
 - Structural agent checks that frontmatter is the source of truth and that body `When To Retrieve This Paper` has canonical retrieval examples plus scope notes without duplicating frontmatter field lists.
+- Structural agent checks product-boundary integrity: canonical page is the retrieval target, draft `paper.md` is an internal candidate, and `review.md`/self-check/judge files are not exposed as daily wiki entries.
 
 Keep these roles separate. Do not let structural pass/fail replace semantic understanding or quality evaluation, and do not bury schema completeness failures inside prose-quality findings.
 

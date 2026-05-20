@@ -217,7 +217,6 @@ def render_paper_draft(
             "review_state": "needs_review",
             "write_policy": "review_before_publish",
             "canonical_wiki_mutated": False,
-            "artifacts": ["review.md", "claims.jsonl", "methods.jsonl", "evidence.jsonl", "extraction/pages.jsonl"],
         }
     )
     claims = _render_claim_index(model.claim_records)
@@ -291,8 +290,6 @@ Method candidates:
 Evidence candidates:
 
 {_render_evidence_index(model.evidence_records)}
-
-Full extraction and review details live in `review.md`, `extraction/pages.jsonl`, and page images. Keep this page concise enough to be a future retrieval target.
 """
 
 
@@ -738,7 +735,7 @@ def _render_visual_pointers(pages: list[PageExtraction]) -> str:
         key=lambda page: (-(page.image_count + page.drawing_count), page.page_number),
     )[:6]
     if not candidates:
-        return "- No high-signal visual/table/equation pages detected; inspect `review.md` if visual semantics matter."
+        return "- No high-signal visual/table/equation pages detected in the extracted paper model."
 
     lines = []
     for page in sorted(candidates, key=lambda item: item.page_number):
@@ -798,7 +795,6 @@ def _render_record_pointers() -> str:
             "- Claims: `claims.jsonl`",
             "- Methods: `methods.jsonl`",
             "- Evidence pages: `evidence.jsonl`",
-            "- Review packet: `review.md`",
         ]
     )
 

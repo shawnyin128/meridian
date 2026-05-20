@@ -15,6 +15,8 @@ For Meridian's current MVP, apply this pattern as a personal paper wiki workflow
 
 The project main vault is `wiki/` at the repository root. Treat it as the daily Obsidian vault and source-managed canonical Paper Wiki, not as a disposable eval run. Eval runs may create temporary wiki roots, but product-facing source audit, retrieval, graph, and write-back work should target `--wiki-root wiki` unless the user explicitly asks for an isolated fixture.
 
+Product-facing wiki artifacts are canonical pages and retrieval/write-back context, not pipeline debug files. Follow `docs/wiki-product-dataflow-and-artifact-boundaries.md`: `wiki/papers/*.md` and `wiki/syntheses/*.md` are user-facing retrieval targets; `wiki/.drafts/ingests/<run>/paper.md` is an internal canonical-page candidate; `review.md`, judge packets, reader checks, and self-check JSON are validation/debug artifacts.
+
 When architecture or implementation choices are ambiguous, consult `docs/source-grounded-development-principles.md` for the project's source-grounded principles from Karpathy's LLM Wiki gist, Anthropic agent engineering posts, and selected community followup lessons.
 
 ## Core Model
@@ -74,6 +76,7 @@ Follow these principles while the project is still design-heavy:
 - Distinguish source facts, wiki synthesis, and user decisions. Do not blur "the source says", "the wiki currently infers", and "we decided".
 - File valuable query outputs back into the wiki when they represent durable analysis, comparison, synthesis, or planning.
 - Use proposal-first write-back for retrieval outputs. A valuable query should become `wiki/.drafts/proposals/<slug>/` first, pass `proposal-lint`, and only then publish to the canonical synthesis layer.
+- Keep product output boundaries clean. Default CLI/user guidance should report the managed source PDF, canonical wiki page, quality/review state, and retrieval/proposal paths. Internal `review.md`, draft `paper.md`, self-check, judge, and extraction artifacts are available for audit but should not be presented as normal wiki entries.
 
 ## Meridian Paper Ingest Flow
 
@@ -102,6 +105,8 @@ meridian wiki flow <paper.pdf> \
 ```
 
 The canonical wiki page may be auto-published only as a draft. It must preserve machine-readable state such as `status`, `review_state`, `quality_gate`, provenance fields, source links, and artifact links. A converged automatic ingest can move to `review_state: auto_converged`; this means the workflow accepted the packet, not that a human personally reviewed every claim.
+
+The draft run file at `wiki/.drafts/ingests/<paper-slug>/paper.md` is a `paper_candidate` for publish/replay compatibility. Do not tell the user to read it as the final wiki product. The daily reading and retrieval target is the canonical page under `wiki/papers/`.
 
 When an LLM-as-Judge result is available, record it and converge:
 
@@ -172,9 +177,9 @@ A single source may touch many pages. Keep updates coherent rather than dumping 
 
 When answering from the wiki:
 
-1. Read `wiki/index.md` first if it exists.
-2. Use `rg` or another local search tool to locate relevant pages.
-3. Read the smallest sufficient set of wiki pages and source references.
+1. Run `meridian wiki retrieve` against the canonical corpus when the question is research intent, comparison, implementation/probe planning, evidence lookup, or limitation lookup.
+2. Read `wiki/index.md` or Obsidian navigation only as complementary orientation.
+3. Read the smallest sufficient set of canonical wiki pages and source references.
 4. Answer with citations or page references.
 5. If the answer creates durable synthesis, ask whether to file it or file it directly when the user has already asked for wiki maintenance.
 

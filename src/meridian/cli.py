@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -87,6 +88,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Skip rendering page PNGs for large batch runs while keeping page-level text extraction.",
     )
+    ingest.add_argument(
+        "--verbose-artifacts",
+        action="store_true",
+        help="Print internal/debug artifact paths in addition to product-facing output.",
+    )
 
     init = wiki_subparsers.add_parser(
         "init",
@@ -126,6 +132,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-page-images",
         action="store_true",
         help="Skip rendering page PNGs for large batch runs while keeping page-level text extraction.",
+    )
+    flow.add_argument(
+        "--verbose-artifacts",
+        action="store_true",
+        help="Print internal/debug/validation artifact paths in addition to product-facing output.",
     )
 
     eval_cmd = wiki_subparsers.add_parser(
@@ -629,16 +640,7 @@ def main(argv: list[str] | None = None) -> int:
                 publish_mode=args.publish_mode,
                 render_page_images=not args.no_page_images,
             )
-            print(f"Wrote draft review packet: {result.review_path}")
-            print(f"Wrote draft paper page: {result.paper_path}")
-            print(f"Wrote candidate claims: {result.claims_path}")
-            print(f"Wrote candidate methods: {result.methods_path}")
-            print(f"Wrote candidate evidence: {result.evidence_path}")
-            if result.canonical_paper_path is not None:
-                print(f"Published canonical draft paper page: {result.canonical_paper_path}")
-                print(f"Updated wiki index: {result.index_path}")
-                print(f"Updated wiki log: {result.log_path}")
-            print(f"Wrote run manifest: {result.run_path}")
+            _print_ingest_summary(result.run_path, verbose_artifacts=args.verbose_artifacts)
             return 0
 
         if args.product == "wiki" and args.command == "flow":
@@ -654,14 +656,11 @@ def main(argv: list[str] | None = None) -> int:
                 judge_result_path=args.judge_result,
                 render_page_images=not args.no_page_images,
             )
-            print(f"Wrote flow manifest: {result.flow_path}")
-            print(f"Wrote run manifest: {result.run_path}")
-            print(f"Wrote judge packet: {result.judge_packet_path}")
-            print(f"Wrote reader check packet: {result.reader_check_packet_path}")
-            print(f"Wrote quality self-check: {result.quality_self_check_path}")
-            print(f"Wrote structural self-check: {result.structural_self_check_path}")
-            if result.convergence_path is not None:
-                print(f"Wrote convergence record: {result.convergence_path}")
+            _print_flow_summary(
+                flow_path=result.flow_path,
+                run_path=result.run_path,
+                verbose_artifacts=args.verbose_artifacts,
+            )
             print(f"Flow status: {result.status}")
             return 0
 
@@ -981,3 +980,73 @@ def main(argv: list[str] | None = None) -> int:
 
     parser.error("unknown command")
     return 2
+
+
+def _print_ingest_summary(run_path: Path, *, verbose_artifacts: bool) -> None:
+    run = _read_manifest(run_path)
+    source = dict(run.get("source_artifacts") or {})
+    product = dict(run.get("product_artifacts") or {})
+    internal = dict(run.get("internal_artifacts") or {})
+    quality_gate = dict(run.get("quality_gate") or {})
+    canonical = product.get("canonical_paper_page")
+
+    print(f"Managed source PDF: {source.get('managed_pdf') or run.get('source_pdf')}")
+    print(f"Canonical wiki page: {canonical or 'not published'}")
+    print(f"Quality gate: {quality_gate.get('decision') or 'unknown'}")
+    deterministic = dict(run.get("deterministic_convergence") or {})
+    review_state = deterministic.get("review_state") or "not_run"
+    print(f"Review state: {review_state}")
+    if product.get("wiki_index"):
+        print(f"Updated wiki index: {product['wiki_index']}")
+    if product.get("wiki_log"):
+        print(f"Updated wiki log: {product['wiki_log']}")
+    print(f"Internal artifact root: {internal.get('artifact_root') or run_path.parent}")
+
+    if verbose_artifacts:
+        _print_artifact_group("Internal artifacts", dict(run.get("internal_artifacts") or {}))
+        _print_artifact_group("Debug artifacts", dict(run.get("debug_artifacts") or {}))
+        print(f"Run manifest: {run_path}")
+
+
+def _print_flow_summary(*, flow_path: Path, run_path: Path, verbose_artifacts: bool) -> None:
+    flow = _read_manifest(flow_path)
+    run = _read_manifest(run_path)
+    source = dict(flow.get("source_artifacts") or run.get("source_artifacts") or {})
+    product = dict(flow.get("product_artifacts") or run.get("product_artifacts") or {})
+    internal = dict(flow.get("internal_artifacts") or run.get("internal_artifacts") or {})
+    quality_gate = dict(run.get("quality_gate") or {})
+
+    print(f"Managed source PDF: {source.get('managed_pdf') or run.get('source_pdf')}")
+    print(f"Canonical wiki page: {product.get('canonical_paper_page') or 'not published'}")
+    print(f"Quality gate: {quality_gate.get('decision') or 'unknown'}")
+    print(f"Review state: {flow.get('deterministic_review_state') or 'not_run'}")
+    if product.get("wiki_index"):
+        print(f"Updated wiki index: {product['wiki_index']}")
+    if product.get("wiki_log"):
+        print(f"Updated wiki log: {product['wiki_log']}")
+    print(f"Internal artifact root: {internal.get('artifact_root') or run_path.parent}")
+
+    if verbose_artifacts:
+        _print_artifact_group("Internal artifacts", dict(flow.get("internal_artifacts") or {}))
+        _print_artifact_group("Debug artifacts", dict(flow.get("debug_artifacts") or {}))
+        _print_artifact_group("Validation artifacts", dict(flow.get("validation_artifacts") or {}))
+        print(f"Run manifest: {run_path}")
+        print(f"Flow manifest: {flow_path}")
+
+
+def _print_artifact_group(label: str, artifacts: dict[str, object]) -> None:
+    print(f"{label}:")
+    if not artifacts:
+        print("  - none")
+        return
+    for key, value in sorted(artifacts.items()):
+        if value is None:
+            continue
+        print(f"  - {key}: {value}")
+
+
+def _read_manifest(path: Path) -> dict[str, object]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"expected JSON object: {path}")
+    return payload
