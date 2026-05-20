@@ -188,3 +188,17 @@ meridian wiki retrieve "I need MoE PTQ papers for activation outlier ablations" 
 The output is a ranked context packet, not a final answer. Each hit explains the
 matched frontmatter fields, selected sections, and read-first snippets so an
 agent can inspect the smallest useful set of wiki pages before synthesis.
+
+## Testing Strategy
+
+The wiki layer test plan lives in `docs/wiki-layer-test-strategy.md`. It covers
+source management tests, canonical wiki management tests, retrieval scenario
+evaluation, LLM-as-Judge rubric expectations, human calibration, and release
+gates.
+
+Retrieval quality examples and rubric:
+
+```bash
+eval/cases/wiki_retrieval_quality.example.jsonl
+eval/rubrics/wiki_retrieval_quality_v0.md
+```
