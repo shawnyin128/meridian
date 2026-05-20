@@ -55,18 +55,18 @@ Use `--proposal-type method-family`, `comparison`, `decision`, or `research-ques
 ## Retrieval Discipline
 
 - Treat frontmatter as the machine-routing source of truth.
-- Treat canonical `wiki/papers/*.md` and `wiki/syntheses/*.md` pages as the retrieval corpus and concise reading targets.
+- Treat canonical `wiki/papers/*.md`, `wiki/syntheses/*.md`, `wiki/methods/*.md`, `wiki/topics/*.md`, `wiki/claims/*.md`, and `wiki/evidence/*.md` pages as the normal retrieval corpus and concise reading targets.
 - Do not retrieve from `wiki/.drafts/ingests/**`, draft `paper.md` / `paper_candidate`, `review.md`, judge packets, self-check packets, or extraction files. Those are pipeline/debug artifacts.
 - Prefer context packets over raw search dumps.
 - Use retrieval v1 by default. v1 adds field-weighted scoring, section-aware ranking, controlled-vocabulary normalization, capped graph/facet expansion, source-quality routing, hard-distractor suppression, and compact context packet construction. Use `--strategy v0` only for baseline comparison.
-- Retrieval now searches paper pages and published synthesis-layer pages by default. Check `result_type` before treating a hit as source evidence; synthesis pages are higher-level interpretation and should point back to source papers.
+- Retrieval now searches paper pages, published synthesis-layer pages, and compiled knowledge-layer pages by default. Check `result_type` and `knowledge_role` before treating a hit as source evidence; synthesis pages are higher-level interpretation, method/topic pages are compiled wiki navigation/synthesis, and claim/evidence candidate records are provenance-bearing but not full reviewed synthesis.
 - Check `canonical_path` in retrieval JSON/context packets before opening pages. It should point to a canonical paper or synthesis path, not a draft ingest artifact.
 - Do not cite a paper only because its title matched; inspect the chosen section snippets.
 - Distinguish source facts, wiki synthesis, and the user's own ideas.
 - If the context packet reports `Source types matched: user_insight`, use it as personalized context only. Do not treat it as paper evidence.
 - Check `Revision` and `evolution state` in context packets. If retrieval reports an evolution warning such as `stale`, `superseded`, `conflicting_synthesis`, or `needs_source_recheck`, use the page as context but do not treat the affected section as settled evidence.
-- For coding tasks, always look for `Implementation Hooks`, `Mechanism`, and `Limitations / Uncertainty`.
-- For evidence tasks, inspect `Evidence Map`, candidate claims, and provenance before relying on a claim.
+- For coding tasks, expect method/topic pages to appear when available, then read `Implementation Hooks`, `Mechanism`, and `Limitations / Uncertainty` from the linked canonical papers.
+- For evidence tasks, inspect claim/evidence records and their provenance together with source paper `Evidence Map` before relying on a claim.
 
 ## Evaluation / Regression
 

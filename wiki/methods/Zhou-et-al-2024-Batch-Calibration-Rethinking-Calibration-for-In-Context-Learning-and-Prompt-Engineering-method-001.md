@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Zhou-et-al-2024-Batch-Calibration-Rethinking-Calibration-for-In-Context-Learning-and-Prompt-Engineering.md"
+related_papers:
+  - "papers/Zhou-et-al-2024-Batch-Calibration-Rethinking-Calibration-for-In-Context-Learning-and-Prompt-Engineering.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-3deb8e1a12"
 ---
 # Zhou et al. - 2024 - Batch Calibration Rethinking Calibration for In-Context Learning and Prompt Engineering
 

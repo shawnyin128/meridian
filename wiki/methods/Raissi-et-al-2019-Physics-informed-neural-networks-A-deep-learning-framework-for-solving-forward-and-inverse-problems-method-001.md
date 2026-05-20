@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Raissi-et-al-2019-Physics-informed-neural-networks-A-deep-learning-framework-for-solving-forward-and-inverse-problems.md"
+related_papers:
+  - "papers/Raissi-et-al-2019-Physics-informed-neural-networks-A-deep-learning-framework-for-solving-forward-and-inverse-problems.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-0d29bb2ded"
 ---
 # Raissi et al. - 2019 - Physics-informed neural networks A deep learning framework for solving forward and inverse problems
 

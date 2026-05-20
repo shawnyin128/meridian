@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Wang-et-al-2023-Self-Instruct-Aligning-Language-Models-with-Self-Generated-Instructions.md"
+related_papers:
+  - "papers/Wang-et-al-2023-Self-Instruct-Aligning-Language-Models-with-Self-Generated-Instructions.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-fef833a41e"
 ---
 # Wang et al. - 2023 - Self-Instruct Aligning Language Models with Self-Generated Instructions
 

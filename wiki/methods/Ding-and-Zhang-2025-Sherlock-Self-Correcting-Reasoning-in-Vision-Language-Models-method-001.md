@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Ding-and-Zhang-2025-Sherlock-Self-Correcting-Reasoning-in-Vision-Language-Models.md"
+related_papers:
+  - "papers/Ding-and-Zhang-2025-Sherlock-Self-Correcting-Reasoning-in-Vision-Language-Models.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-48bb539e63"
 ---
 # Ding and Zhang - 2025 - Sherlock Self-Correcting Reasoning in Vision-Language Models
 

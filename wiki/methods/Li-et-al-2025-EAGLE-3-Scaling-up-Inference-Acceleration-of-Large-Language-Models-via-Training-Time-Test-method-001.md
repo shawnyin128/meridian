@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Li-et-al-2025-EAGLE-3-Scaling-up-Inference-Acceleration-of-Large-Language-Models-via-Training-Time-Test.md"
+related_papers:
+  - "papers/Li-et-al-2025-EAGLE-3-Scaling-up-Inference-Acceleration-of-Large-Language-Models-via-Training-Time-Test.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-1fe56d19c6"
 ---
 # Li et al. - 2025 - EAGLE-3 Scaling up Inference Acceleration of Large Language Models via Training-Time Test
 

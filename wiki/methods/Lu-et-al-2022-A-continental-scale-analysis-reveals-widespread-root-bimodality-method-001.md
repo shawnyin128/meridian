@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Lu-et-al-2022-A-continental-scale-analysis-reveals-widespread-root-bimodality.md"
+related_papers:
+  - "papers/Lu-et-al-2022-A-continental-scale-analysis-reveals-widespread-root-bimodality.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-0f4ddb1136"
 ---
 # Lu et al. - 2022 - A continental scale analysis reveals widespread root bimodality
 

@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Mardani-et-al-2024-Residual-Corrective-Diffusion-Modeling-for-Km-scale-Atmospheric-Downscaling.md"
+related_papers:
+  - "papers/Mardani-et-al-2024-Residual-Corrective-Diffusion-Modeling-for-Km-scale-Atmospheric-Downscaling.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-e31183eb49"
 ---
 # Mardani et al. - 2024 - Residual Corrective Diffusion Modeling for Km-scale Atmospheric Downscaling
 

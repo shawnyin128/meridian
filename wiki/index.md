@@ -340,17 +340,17 @@
 - [[methods/Huang-et-al-2025-LLM-JEPA-Large-Language-Models-Meet-Joint-Embedding-Predictive-Architectures-method-001|Huang et al. - 2025 - LLM-JEPA Large Language Models Meet Joint Embedding Predictive Architectures]] - status: draft; auto_extracted
 - [[methods/Huang-et-al-2025-MiLo-Efficient-Quantized-MoE-Inference-with-Mixture-of-Low-Rank-Compensators-method-001|Mixture of Low-Rank Compensators]] - status: draft; auto_extracted
 - [[methods/Huang-et-al-2026-On-the-Direction-of-RLVR-Updates-for-LLM-Reasoning-Identification-and-Exploitation-method-001|Huang et al. - 2026 - On the Direction of RLVR Updates for LLM Reasoning Identification and Exploitation]] - status: draft; auto_extracted
-- [[methods/IO-aware-attention|IO-aware attention]] - status: active; active
+- [[methods/IO-aware-attention|IO-aware attention]] - status: active; auto_structured
 - [[methods/Jiang-et-al-2024-Mixtral-of-Experts-method-001|Sparse mixture-of-experts decoder]] - status: draft; auto_extracted
 - [[methods/Jung-et-al-2018-Learning-to-Quantize-Deep-Networks-by-Optimizing-Quantization-Intervals-with-Task-Loss-method-001|Quantization Interval Learning]] - status: draft; auto_extracted
-- [[methods/KV-cache-compression|KV-cache compression]] - status: active; active
+- [[methods/KV-cache-compression|KV-cache compression]] - status: active; auto_structured
 - [[methods/Katharopoulos-et-al-2020-Transformers-are-RNNs-Fast-Autoregressive-Transformers-with-Linear-Attention-method-001|Katharopoulos et al. - 2020 - Transformers are RNNs Fast Autoregressive Transformers with Linear Attention]] - status: draft; auto_extracted
 - [[methods/Kim-et-al-2024-SqueezeLLM-Dense-and-Sparse-Quantization-method-001|Sensitivity-based non-uniform quantization]] - status: draft; auto_extracted
 - [[methods/Kim-et-al-2024-SqueezeLLM-Dense-and-Sparse-Quantization-method-002|Dense-and-sparse decomposition]] - status: draft; auto_extracted
 - [[methods/Kraabel-et-al-2025-StefaLand-An-Efficient-Geoscience-Foundation-Model-That-Improves-Dynamic-Land-Surface-Predictions-method-001|Kraabel et al. - 2025 - StefaLand An Efficient Geoscience Foundation Model That Improves Dynamic Land-Surface Predictions]] - status: draft; auto_extracted
 - [[methods/Kuroki-et-al-2025-Binary-Quadratic-Quantization-Beyond-First-Order-Quantization-for-Real-Valued-Matrix-Compression-method-001|Kuroki et al. - 2025 - Binary Quadratic Quantization Beyond First-Order Quantization for Real-Valued Matrix Compression]] - status: draft; auto_extracted
-- [[methods/LLM-agent-taxonomy|LLM-agent taxonomy]] - status: active; active
-- [[methods/LLM-as-judge-reward-modeling|LLM-as-judge reward modeling]] - status: active; active
+- [[methods/LLM-agent-taxonomy|LLM-agent taxonomy]] - status: active; auto_structured
+- [[methods/LLM-as-judge-reward-modeling|LLM-as-judge reward modeling]] - status: active; auto_structured
 - [[methods/Lasby-et-al-2025-REAP-the-Experts-Why-Pruning-Prevails-for-One-Shot-MoE-compression-method-001|Lasby et al. - 2025 - REAP the Experts Why Pruning Prevails for One-Shot MoE compression]] - status: draft; auto_extracted
 - [[methods/LeCun-A-Path-Towards-Autonomous-Machine-Intelligence-Version-0-9-2-2022-06-27-method-001|LeCun - A Path Towards Autonomous Machine Intelligence Version 0.9.2, 2022-06-27]] - status: draft; auto_extracted
 - [[methods/Lee-et-al-2025-LittleBit-Ultra-Low-Bit-Quantization-via-Latent-Factorization-method-001|Block-wise error minimization with learnable quantization parameters]] - status: draft; auto_extracted
@@ -384,9 +384,9 @@
 - [[methods/Miao-et-al-2024-SpecInfer-Accelerating-Generative-Large-Language-Model-Serving-with-Tree-based-Speculative-Inferenc-method-001|Miao et al. - 2024 - SpecInfer Accelerating Generative Large Language Model Serving with Tree-based Speculative Inferenc]] - status: draft; auto_extracted
 - [[methods/Michel-et-al-2019-Are-Sixteen-Heads-Really-Better-than-One-method-001|Michel et al. - 2019 - Are Sixteen Heads Really Better than One]] - status: draft; auto_extracted
 - [[methods/Mo-2025-LUT-Tensor-Core-A-Software-Hardware-Co-Design-for-LUT-Based-Low-Bit-LLM-Inference-method-001|LUT-based system implementation]] - status: draft; auto_extracted
-- [[methods/MoE-quantization|MoE quantization]] - status: active; active
+- [[methods/MoE-quantization|MoE quantization]] - status: active; auto_structured
 - [[methods/Oswald-et-al-2023-Transformers-learn-in-context-by-gradient-descent-method-001|Oswald et al. - 2023 - Transformers learn in-context by gradient descent]] - status: draft; auto_extracted
-- [[methods/PDE-constrained-learning|PDE-constrained learning]] - status: active; active
+- [[methods/PDE-constrained-learning|PDE-constrained learning]] - status: active; auto_structured
 - [[methods/Park-2023-Generative-Agents-Interactive-Simulacra-of-Human-Behavior-method-001|Park 等 - 2023 - Generative Agents Interactive Simulacra of Human Behavior]] - status: draft; auto_extracted
 - [[methods/Peng-et-al-2023-YaRN-Efficient-Context-Window-Extension-of-Large-Language-Models-method-001|Peng et al. - 2023 - YaRN Efficient Context Window Extension of Large Language Models]] - status: draft; auto_extracted
 - [[methods/Perez-et-al-2017-FiLM-Visual-Reasoning-with-a-General-Conditioning-Layer-method-001|Feature-wise Linear Modulation]] - status: draft; auto_extracted
@@ -395,13 +395,13 @@
 - [[methods/Press-et-al-2022-Train-Short-Test-Long-Attention-with-Linear-Biases-Enables-Input-Length-Extrapolation-method-001|Press et al. - 2022 - Train Short, Test Long Attention with Linear Biases Enables Input Length Extrapolation]] - status: draft; auto_extracted
 - [[methods/Qi-et-al-2025-EvoLM-In-Search-of-Lost-Language-Model-Training-Dynamics-method-001|Qi et al. - 2025 - EvoLM In Search of Lost Language Model Training Dynamics]] - status: draft; auto_extracted
 - [[methods/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Models-Non-linearity-Sparsity-and-Attention-Sink-Free-method-001|Qiu et al. - 2025 - Gated Attention for Large Language Models Non-linearity, Sparsity, and Attention-Sink-Free]] - status: draft; auto_extracted
-- [[methods/RLHF|RLHF]] - status: active; active
+- [[methods/RLHF|RLHF]] - status: active; auto_structured
 - [[methods/Rafailov-et-al-2024-Direct-Preference-Optimization-Your-Language-Model-is-Secretly-a-Reward-Model-method-001|Rafailov et al. - 2024 - Direct Preference Optimization Your Language Model is Secretly a Reward Model]] - status: draft; auto_extracted
 - [[methods/Raffel-et-al-2023-Exploring-the-Limits-of-Transfer-Learning-with-a-Unified-Text-to-Text-Transformer-method-001|Raffel et al. - 2023 - Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer]] - status: draft; auto_extracted
 - [[methods/Rahmati-et-al-2025-C-LoRA-Contextual-Low-Rank-Adaptation-for-Uncertainty-Estimation-in-Large-Language-Models-method-001|Rahmati et al. - 2025 - C-LoRA Contextual Low-Rank Adaptation for Uncertainty Estimation in Large Language Models]] - status: draft; auto_extracted
 - [[methods/Raissi-et-al-2019-Physics-informed-neural-networks-A-deep-learning-framework-for-solving-forward-and-inverse-problems-method-001|Raissi et al. - 2019 - Physics-informed neural networks A deep learning framework for solving forward and inverse problems]] - status: draft; auto_extracted
 - [[methods/Ren-et-al-2025-Deep-Clustering-A-Comprehensive-Survey-method-001|Ren et al. - 2025 - Deep Clustering A Comprehensive Survey]] - status: draft; auto_extracted
-- [[methods/RoPE-scaling|RoPE scaling]] - status: active; active
+- [[methods/RoPE-scaling|RoPE scaling]] - status: active; auto_structured
 - [[methods/Roy-2024-An-Approach-Towards-Learning-K-means-friendly-Deep-Latent-Representation-method-001|Roy - 2024 - An Approach Towards Learning K-means-friendly Deep Latent Representation]] - status: draft; auto_extracted
 - [[methods/Roy-et-al-2020-Efficient-Content-Based-Sparse-Attention-with-Routing-Transformers-method-001|Roy et al. - 2020 - Efficient Content-Based Sparse Attention with Routing Transformers]] - status: draft; auto_extracted
 - [[methods/Sadhukhan-et-al-2025-MagicDec-Breaking-the-Latency-Throughput-Tradeoff-for-Long-Context-Generation-with-Speculative-Deco-method-001|Sadhukhan et al. - 2025 - MagicDec Breaking the Latency-Throughput Tradeoff for Long Context Generation with Speculative Deco]] - status: draft; auto_extracted
@@ -490,61 +490,61 @@
 - [[methods/Zheng-et-al-2023-Judging-LLM-as-a-Judge-with-MT-Bench-and-Chatbot-Arena-method-001|Zheng et al. - 2023 - Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena]] - status: draft; auto_extracted
 - [[methods/Zhou-et-al-2024-Batch-Calibration-Rethinking-Calibration-for-In-Context-Learning-and-Prompt-Engineering-method-001|Zhou et al. - 2024 - Batch Calibration Rethinking Calibration for In-Context Learning and Prompt Engineering]] - status: draft; auto_extracted
 - [[methods/Zuo-et-al-2025-TTRL-Test-Time-Reinforcement-Learning-method-001|Zuo et al. - 2025 - TTRL Test-Time Reinforcement Learning]] - status: draft; auto_extracted
-- [[methods/agent-workflow-acceleration|agent workflow acceleration]] - status: active; active
-- [[methods/agent-workflow-modeling|agent workflow modeling]] - status: active; active
-- [[methods/attention-checkpoint-conversion|attention checkpoint conversion]] - status: active; active
-- [[methods/attention-kernel-optimization|attention kernel optimization]] - status: active; active
-- [[methods/audio-language-modeling|audio-language modeling]] - status: active; active
-- [[methods/calibration-aware-PTQ|calibration-aware PTQ]] - status: active; active
-- [[methods/clustering-algorithm|clustering algorithm]] - status: active; active
-- [[methods/conditional-diffusion|conditional diffusion]] - status: active; active
-- [[methods/continuous-depth-neural-network|continuous-depth neural network]] - status: active; active
-- [[methods/dynamic-draft-tree|dynamic draft tree]] - status: active; active
-- [[methods/equivalent-transform-PTQ|equivalent-transform PTQ]] - status: active; active
-- [[methods/expert-aware-quantization|expert-aware quantization]] - status: active; active
-- [[methods/expert-routing|expert routing]] - status: active; active
-- [[methods/feature-level-drafting|feature-level drafting]] - status: active; active
-- [[methods/feature-wise-modulation|feature-wise modulation]] - status: active; active
-- [[methods/grouped-query-attention|grouped-query attention]] - status: active; active
-- [[methods/hardware-aware-attention|hardware-aware attention]] - status: active; active
-- [[methods/hardware-aware-quantization|hardware-aware quantization]] - status: active; active
-- [[methods/instruction-tuning|instruction tuning]] - status: active; active
-- [[methods/joint-embedding-predictive-learning|joint embedding predictive learning]] - status: active; active
-- [[methods/layer-wise-PTQ|layer-wise PTQ]] - status: active; active
-- [[methods/learned-quantization-intervals|learned quantization intervals]] - status: active; active
-- [[methods/learned-step-size-quantization|learned step-size quantization]] - status: active; active
-- [[methods/long-context-inference|long-context inference]] - status: active; active
-- [[methods/low-rank-compensation|low-rank compensation]] - status: active; active
-- [[methods/mechanistic-activation-analysis|mechanistic activation analysis]] - status: active; active
-- [[methods/multimodal-instruction-tuning|multimodal instruction tuning]] - status: active; active
-- [[methods/non-uniform-weight-quantization|non-uniform weight quantization]] - status: active; active
-- [[methods/outlier-aware-quantization|outlier-aware quantization]] - status: active; active
-- [[methods/paper-specific-research-method|paper-specific research method]] - status: active; active
-- [[methods/performance-evaluation|performance evaluation]] - status: active; active
-- [[methods/physics-informed-neural-networks|physics-informed neural networks]] - status: active; active
-- [[methods/policy-optimization|policy optimization]] - status: active; active
-- [[methods/post-training-quantization|post-training quantization]] - status: active; active
-- [[methods/preference-based-reinforcement-learning|preference-based reinforcement learning]] - status: active; active
-- [[methods/quantization-aware-training|quantization-aware training]] - status: active; active
-- [[methods/recurrent-transformer|recurrent transformer]] - status: active; active
-- [[methods/reference-synthesis|reference synthesis]] - status: active; active
-- [[methods/relative-position-encoding|relative position encoding]] - status: active; active
-- [[methods/reward-modeling|reward modeling]] - status: active; active
-- [[methods/rotation-based-quantization|rotation-based quantization]] - status: active; active
-- [[methods/self-rewarding-model-training|self-rewarding model training]] - status: active; active
-- [[methods/self-speculative-decoding|self-speculative decoding]] - status: active; active
-- [[methods/semantic-image-synthesis|semantic image synthesis]] - status: active; active
-- [[methods/source-quality-triage|source-quality triage]] - status: active; active
-- [[methods/sparse-mixture-of-experts|sparse mixture-of-experts]] - status: active; active
-- [[methods/sparse-outlier-retention|sparse outlier retention]] - status: active; active
-- [[methods/speculative-action-execution|speculative action execution]] - status: active; active
-- [[methods/speculative-decoding|speculative decoding]] - status: active; active
-- [[methods/survey-synthesis|survey synthesis]] - status: active; active
-- [[methods/test-time-reinforcement-learning|test-time reinforcement learning]] - status: active; active
-- [[methods/transformer-architecture|transformer architecture]] - status: active; active
-- [[methods/video-representation-learning|video representation learning]] - status: active; active
-- [[methods/vision-language-model-quantization|vision-language model quantization]] - status: active; active
-- [[methods/visual-reasoning|visual reasoning]] - status: active; active
+- [[methods/agent-workflow-acceleration|agent workflow acceleration]] - status: active; auto_structured
+- [[methods/agent-workflow-modeling|agent workflow modeling]] - status: active; auto_structured
+- [[methods/attention-checkpoint-conversion|attention checkpoint conversion]] - status: active; auto_structured
+- [[methods/attention-kernel-optimization|attention kernel optimization]] - status: active; auto_structured
+- [[methods/audio-language-modeling|audio-language modeling]] - status: active; auto_structured
+- [[methods/calibration-aware-PTQ|calibration-aware PTQ]] - status: active; auto_structured
+- [[methods/clustering-algorithm|clustering algorithm]] - status: active; auto_structured
+- [[methods/conditional-diffusion|conditional diffusion]] - status: active; auto_structured
+- [[methods/continuous-depth-neural-network|continuous-depth neural network]] - status: active; auto_structured
+- [[methods/dynamic-draft-tree|dynamic draft tree]] - status: active; auto_structured
+- [[methods/equivalent-transform-PTQ|equivalent-transform PTQ]] - status: active; auto_structured
+- [[methods/expert-aware-quantization|expert-aware quantization]] - status: active; auto_structured
+- [[methods/expert-routing|expert routing]] - status: active; auto_structured
+- [[methods/feature-level-drafting|feature-level drafting]] - status: active; auto_structured
+- [[methods/feature-wise-modulation|feature-wise modulation]] - status: active; auto_structured
+- [[methods/grouped-query-attention|grouped-query attention]] - status: active; auto_structured
+- [[methods/hardware-aware-attention|hardware-aware attention]] - status: active; auto_structured
+- [[methods/hardware-aware-quantization|hardware-aware quantization]] - status: active; auto_structured
+- [[methods/instruction-tuning|instruction tuning]] - status: active; auto_structured
+- [[methods/joint-embedding-predictive-learning|joint embedding predictive learning]] - status: active; auto_structured
+- [[methods/layer-wise-PTQ|layer-wise PTQ]] - status: active; auto_structured
+- [[methods/learned-quantization-intervals|learned quantization intervals]] - status: active; auto_structured
+- [[methods/learned-step-size-quantization|learned step-size quantization]] - status: active; auto_structured
+- [[methods/long-context-inference|long-context inference]] - status: active; auto_structured
+- [[methods/low-rank-compensation|low-rank compensation]] - status: active; auto_structured
+- [[methods/mechanistic-activation-analysis|mechanistic activation analysis]] - status: active; auto_structured
+- [[methods/multimodal-instruction-tuning|multimodal instruction tuning]] - status: active; auto_structured
+- [[methods/non-uniform-weight-quantization|non-uniform weight quantization]] - status: active; auto_structured
+- [[methods/outlier-aware-quantization|outlier-aware quantization]] - status: active; auto_structured
+- [[methods/paper-specific-research-method|paper-specific research method]] - status: active; auto_structured
+- [[methods/performance-evaluation|performance evaluation]] - status: active; auto_structured
+- [[methods/physics-informed-neural-networks|physics-informed neural networks]] - status: active; auto_structured
+- [[methods/policy-optimization|policy optimization]] - status: active; auto_structured
+- [[methods/post-training-quantization|post-training quantization]] - status: active; auto_structured
+- [[methods/preference-based-reinforcement-learning|preference-based reinforcement learning]] - status: active; auto_structured
+- [[methods/quantization-aware-training|quantization-aware training]] - status: active; auto_structured
+- [[methods/recurrent-transformer|recurrent transformer]] - status: active; auto_structured
+- [[methods/reference-synthesis|reference synthesis]] - status: active; auto_structured
+- [[methods/relative-position-encoding|relative position encoding]] - status: active; auto_structured
+- [[methods/reward-modeling|reward modeling]] - status: active; auto_structured
+- [[methods/rotation-based-quantization|rotation-based quantization]] - status: active; auto_structured
+- [[methods/self-rewarding-model-training|self-rewarding model training]] - status: active; auto_structured
+- [[methods/self-speculative-decoding|self-speculative decoding]] - status: active; auto_structured
+- [[methods/semantic-image-synthesis|semantic image synthesis]] - status: active; auto_structured
+- [[methods/source-quality-triage|source-quality triage]] - status: active; auto_structured
+- [[methods/sparse-mixture-of-experts|sparse mixture-of-experts]] - status: active; auto_structured
+- [[methods/sparse-outlier-retention|sparse outlier retention]] - status: active; auto_structured
+- [[methods/speculative-action-execution|speculative action execution]] - status: active; auto_structured
+- [[methods/speculative-decoding|speculative decoding]] - status: active; auto_structured
+- [[methods/survey-synthesis|survey synthesis]] - status: active; auto_structured
+- [[methods/test-time-reinforcement-learning|test-time reinforcement learning]] - status: active; auto_structured
+- [[methods/transformer-architecture|transformer architecture]] - status: active; auto_structured
+- [[methods/video-representation-learning|video representation learning]] - status: active; auto_structured
+- [[methods/vision-language-model-quantization|vision-language model quantization]] - status: active; auto_structured
+- [[methods/visual-reasoning|visual reasoning]] - status: active; auto_structured
 
 ## Claims
 
@@ -4426,97 +4426,97 @@
 
 ## Topics
 
-- [[topics/3D-medical-image-synthesis|3D medical image synthesis]] - status: active
-- [[topics/IO-aware-attention|IO-aware attention]] - status: active
-- [[topics/KV-cache-compression|KV-cache compression]] - status: active
-- [[topics/KV-cache-memory|KV-cache memory]] - status: active
-- [[topics/LLM-agents|LLM agents]] - status: active
-- [[topics/LLM-outliers|LLM outliers]] - status: active
-- [[topics/MoE-quantization|MoE quantization]] - status: active
-- [[topics/RLHF|RLHF]] - status: active
-- [[topics/RoPE-scaling|RoPE scaling]] - status: active
-- [[topics/activation-outliers|activation outliers]] - status: active
-- [[topics/affine-transformation|affine transformation]] - status: active
-- [[topics/agent-planning|agent planning]] - status: active
-- [[topics/agent-workflow-acceleration|agent workflow acceleration]] - status: active
-- [[topics/attention-head-sharing|attention head sharing]] - status: active
-- [[topics/attention-kernel-scheduling|attention kernel scheduling]] - status: active
-- [[topics/audio-encoder-alignment|audio encoder alignment]] - status: active
-- [[topics/audio-language-modeling|audio-language modeling]] - status: active
-- [[topics/benchmark-evaluation|benchmark evaluation]] - status: active
-- [[topics/calibration-data-selection|calibration data selection]] - status: active
-- [[topics/calibration-representativeness|calibration representativeness]] - status: active
-- [[topics/chain-of-thought-reasoning|chain-of-thought reasoning]] - status: active
-- [[topics/clustering-theory|clustering theory]] - status: active
-- [[topics/computer-architecture|computer architecture]] - status: active
-- [[topics/conditional-diffusion|conditional diffusion]] - status: active
-- [[topics/context-extrapolation|context extrapolation]] - status: active
-- [[topics/continuous-depth-models|continuous-depth models]] - status: active
-- [[topics/draft-acceptance|draft acceptance]] - status: active
-- [[topics/dynamic-draft-tree|dynamic draft tree]] - status: active
-- [[topics/equivalent-transformation|equivalent transformation]] - status: active
-- [[topics/error-propagation|error propagation]] - status: active
-- [[topics/expert-imbalance|expert imbalance]] - status: active
-- [[topics/expert-routing|expert routing]] - status: active
-- [[topics/feature-uncertainty|feature uncertainty]] - status: active
-- [[topics/feature-wise-modulation|feature-wise modulation]] - status: active
-- [[topics/grouped-query-attention|grouped-query attention]] - status: active
-- [[topics/hardware-aware-quantization|hardware-aware quantization]] - status: active
-- [[topics/hardware-co-design|hardware co-design]] - status: active
-- [[topics/hardware-systems|hardware systems]] - status: active
-- [[topics/human-preference-feedback|human preference feedback]] - status: active
-- [[topics/instruction-tuning|instruction tuning]] - status: active
-- [[topics/joint-embedding-predictive-learning|joint embedding predictive learning]] - status: active
-- [[topics/layer-reconstruction|layer reconstruction]] - status: active
-- [[topics/layer-wise-PTQ|layer-wise PTQ]] - status: active
-- [[topics/learned-quantization-intervals|learned quantization intervals]] - status: active
-- [[topics/learned-quantizer-scale|learned quantizer scale]] - status: active
-- [[topics/long-context-inference|long-context inference]] - status: active
-- [[topics/lookup-table-inference|lookup-table inference]] - status: active
-- [[topics/low-bit-quantization|low-bit quantization]] - status: active
-- [[topics/low-precision-attention|low-precision attention]] - status: active
-- [[topics/low-rank-adaptation|low-rank adaptation]] - status: active
-- [[topics/mechanistic-activation-analysis|mechanistic activation analysis]] - status: active
-- [[topics/model-training-dynamics|model training dynamics]] - status: active
-- [[topics/multi-agent-simulation|multi-agent simulation]] - status: active
-- [[topics/non-uniform-quantization|non-uniform quantization]] - status: active
-- [[topics/paper-source-quality|paper source quality]] - status: active
-- [[topics/parameter-efficient-adaptation|parameter-efficient adaptation]] - status: active
-- [[topics/partial-differential-equations|partial differential equations]] - status: active
-- [[topics/performance-evaluation|performance evaluation]] - status: active
-- [[topics/physics-informed-neural-networks|physics-informed neural networks]] - status: active
-- [[topics/point-cloud-geometry|point-cloud geometry]] - status: active
-- [[topics/policy-optimization|policy optimization]] - status: active
-- [[topics/post-training-quantization|post-training quantization]] - status: active
-- [[topics/preference-optimization|preference optimization]] - status: active
-- [[topics/quantization-error|quantization error]] - status: active
-- [[topics/recurrent-computation|recurrent computation]] - status: active
-- [[topics/relative-position-representation|relative position representation]] - status: active
-- [[topics/reward-modeling|reward modeling]] - status: active
-- [[topics/root-system-analysis|root system analysis]] - status: active
-- [[topics/root-system-digitization|root-system digitization]] - status: active
-- [[topics/rotation-based-quantization|rotation-based quantization]] - status: active
-- [[topics/router-preservation|router preservation]] - status: active
-- [[topics/self-rewarding-models|self-rewarding models]] - status: active
-- [[topics/self-speculative-decoding|self-speculative decoding]] - status: active
-- [[topics/semantic-conditioning|semantic conditioning]] - status: active
-- [[topics/semantic-control|semantic control]] - status: active
-- [[topics/single-view-3D-reconstruction|single-view 3D reconstruction]] - status: active
-- [[topics/source-text-extraction|source text extraction]] - status: active
-- [[topics/sparse-attention|sparse attention]] - status: active
-- [[topics/sparse-mixture-of-experts|sparse mixture-of-experts]] - status: active
-- [[topics/sparse-outlier-retention|sparse outlier retention]] - status: active
-- [[topics/speculative-action-execution|speculative action execution]] - status: active
-- [[topics/speculative-decoding|speculative decoding]] - status: active
-- [[topics/survey-synthesis|survey synthesis]] - status: active
-- [[topics/test-time-reinforcement-learning|test-time reinforcement learning]] - status: active
-- [[topics/transformer-architecture|transformer architecture]] - status: active
-- [[topics/verification-overhead|verification overhead]] - status: active
-- [[topics/video-representation-learning|video representation learning]] - status: active
-- [[topics/vision-language-quantization|vision-language quantization]] - status: active
-- [[topics/vision-language-representation-learning|vision-language representation learning]] - status: active
-- [[topics/visual-reasoning|visual reasoning]] - status: active
-- [[topics/world-model-learning|world model learning]] - status: active
+- [[topics/3D-medical-image-synthesis|3D medical image synthesis]] - status: active; auto_structured
+- [[topics/IO-aware-attention|IO-aware attention]] - status: active; auto_structured
+- [[topics/KV-cache-compression|KV-cache compression]] - status: active; auto_structured
+- [[topics/KV-cache-memory|KV-cache memory]] - status: active; auto_structured
+- [[topics/LLM-agents|LLM agents]] - status: active; auto_structured
+- [[topics/LLM-outliers|LLM outliers]] - status: active; auto_structured
+- [[topics/MoE-quantization|MoE quantization]] - status: active; auto_structured
+- [[topics/RLHF|RLHF]] - status: active; auto_structured
+- [[topics/RoPE-scaling|RoPE scaling]] - status: active; auto_structured
+- [[topics/activation-outliers|activation outliers]] - status: active; auto_structured
+- [[topics/affine-transformation|affine transformation]] - status: active; auto_structured
+- [[topics/agent-planning|agent planning]] - status: active; auto_structured
+- [[topics/agent-workflow-acceleration|agent workflow acceleration]] - status: active; auto_structured
+- [[topics/attention-head-sharing|attention head sharing]] - status: active; auto_structured
+- [[topics/attention-kernel-scheduling|attention kernel scheduling]] - status: active; auto_structured
+- [[topics/audio-encoder-alignment|audio encoder alignment]] - status: active; auto_structured
+- [[topics/audio-language-modeling|audio-language modeling]] - status: active; auto_structured
+- [[topics/benchmark-evaluation|benchmark evaluation]] - status: active; auto_structured
+- [[topics/calibration-data-selection|calibration data selection]] - status: active; auto_structured
+- [[topics/calibration-representativeness|calibration representativeness]] - status: active; auto_structured
+- [[topics/chain-of-thought-reasoning|chain-of-thought reasoning]] - status: active; auto_structured
+- [[topics/clustering-theory|clustering theory]] - status: active; auto_structured
+- [[topics/computer-architecture|computer architecture]] - status: active; auto_structured
+- [[topics/conditional-diffusion|conditional diffusion]] - status: active; auto_structured
+- [[topics/context-extrapolation|context extrapolation]] - status: active; auto_structured
+- [[topics/continuous-depth-models|continuous-depth models]] - status: active; auto_structured
+- [[topics/draft-acceptance|draft acceptance]] - status: active; auto_structured
+- [[topics/dynamic-draft-tree|dynamic draft tree]] - status: active; auto_structured
+- [[topics/equivalent-transformation|equivalent transformation]] - status: active; auto_structured
+- [[topics/error-propagation|error propagation]] - status: active; auto_structured
+- [[topics/expert-imbalance|expert imbalance]] - status: active; auto_structured
+- [[topics/expert-routing|expert routing]] - status: active; auto_structured
+- [[topics/feature-uncertainty|feature uncertainty]] - status: active; auto_structured
+- [[topics/feature-wise-modulation|feature-wise modulation]] - status: active; auto_structured
+- [[topics/grouped-query-attention|grouped-query attention]] - status: active; auto_structured
+- [[topics/hardware-aware-quantization|hardware-aware quantization]] - status: active; auto_structured
+- [[topics/hardware-co-design|hardware co-design]] - status: active; auto_structured
+- [[topics/hardware-systems|hardware systems]] - status: active; auto_structured
+- [[topics/human-preference-feedback|human preference feedback]] - status: active; auto_structured
+- [[topics/instruction-tuning|instruction tuning]] - status: active; auto_structured
+- [[topics/joint-embedding-predictive-learning|joint embedding predictive learning]] - status: active; auto_structured
+- [[topics/layer-reconstruction|layer reconstruction]] - status: active; auto_structured
+- [[topics/layer-wise-PTQ|layer-wise PTQ]] - status: active; auto_structured
+- [[topics/learned-quantization-intervals|learned quantization intervals]] - status: active; auto_structured
+- [[topics/learned-quantizer-scale|learned quantizer scale]] - status: active; auto_structured
+- [[topics/long-context-inference|long-context inference]] - status: active; auto_structured
+- [[topics/lookup-table-inference|lookup-table inference]] - status: active; auto_structured
+- [[topics/low-bit-quantization|low-bit quantization]] - status: active; auto_structured
+- [[topics/low-precision-attention|low-precision attention]] - status: active; auto_structured
+- [[topics/low-rank-adaptation|low-rank adaptation]] - status: active; auto_structured
+- [[topics/mechanistic-activation-analysis|mechanistic activation analysis]] - status: active; auto_structured
+- [[topics/model-training-dynamics|model training dynamics]] - status: active; auto_structured
+- [[topics/multi-agent-simulation|multi-agent simulation]] - status: active; auto_structured
+- [[topics/non-uniform-quantization|non-uniform quantization]] - status: active; auto_structured
+- [[topics/paper-source-quality|paper source quality]] - status: active; auto_structured
+- [[topics/parameter-efficient-adaptation|parameter-efficient adaptation]] - status: active; auto_structured
+- [[topics/partial-differential-equations|partial differential equations]] - status: active; auto_structured
+- [[topics/performance-evaluation|performance evaluation]] - status: active; auto_structured
+- [[topics/physics-informed-neural-networks|physics-informed neural networks]] - status: active; auto_structured
+- [[topics/point-cloud-geometry|point-cloud geometry]] - status: active; auto_structured
+- [[topics/policy-optimization|policy optimization]] - status: active; auto_structured
+- [[topics/post-training-quantization|post-training quantization]] - status: active; auto_structured
+- [[topics/preference-optimization|preference optimization]] - status: active; auto_structured
+- [[topics/quantization-error|quantization error]] - status: active; auto_structured
+- [[topics/recurrent-computation|recurrent computation]] - status: active; auto_structured
+- [[topics/relative-position-representation|relative position representation]] - status: active; auto_structured
+- [[topics/reward-modeling|reward modeling]] - status: active; auto_structured
+- [[topics/root-system-analysis|root system analysis]] - status: active; auto_structured
+- [[topics/root-system-digitization|root-system digitization]] - status: active; auto_structured
+- [[topics/rotation-based-quantization|rotation-based quantization]] - status: active; auto_structured
+- [[topics/router-preservation|router preservation]] - status: active; auto_structured
+- [[topics/self-rewarding-models|self-rewarding models]] - status: active; auto_structured
+- [[topics/self-speculative-decoding|self-speculative decoding]] - status: active; auto_structured
+- [[topics/semantic-conditioning|semantic conditioning]] - status: active; auto_structured
+- [[topics/semantic-control|semantic control]] - status: active; auto_structured
+- [[topics/single-view-3D-reconstruction|single-view 3D reconstruction]] - status: active; auto_structured
+- [[topics/source-text-extraction|source text extraction]] - status: active; auto_structured
+- [[topics/sparse-attention|sparse attention]] - status: active; auto_structured
+- [[topics/sparse-mixture-of-experts|sparse mixture-of-experts]] - status: active; auto_structured
+- [[topics/sparse-outlier-retention|sparse outlier retention]] - status: active; auto_structured
+- [[topics/speculative-action-execution|speculative action execution]] - status: active; auto_structured
+- [[topics/speculative-decoding|speculative decoding]] - status: active; auto_structured
+- [[topics/survey-synthesis|survey synthesis]] - status: active; auto_structured
+- [[topics/test-time-reinforcement-learning|test-time reinforcement learning]] - status: active; auto_structured
+- [[topics/transformer-architecture|transformer architecture]] - status: active; auto_structured
+- [[topics/verification-overhead|verification overhead]] - status: active; auto_structured
+- [[topics/video-representation-learning|video representation learning]] - status: active; auto_structured
+- [[topics/vision-language-quantization|vision-language quantization]] - status: active; auto_structured
+- [[topics/vision-language-representation-learning|vision-language representation learning]] - status: active; auto_structured
+- [[topics/visual-reasoning|visual reasoning]] - status: active; auto_structured
+- [[topics/world-model-learning|world model learning]] - status: active; auto_structured
 
 ## Syntheses
 

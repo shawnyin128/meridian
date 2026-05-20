@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Chen-et-al-2019-Neural-Ordinary-Differential-Equations.md"
+related_papers:
+  - "papers/Chen-et-al-2019-Neural-Ordinary-Differential-Equations.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-42a2ff96b8"
 ---
 # Chen et al. - 2019 - Neural Ordinary Differential Equations
 

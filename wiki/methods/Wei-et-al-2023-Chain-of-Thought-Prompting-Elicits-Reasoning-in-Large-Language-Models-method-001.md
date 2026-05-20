@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Wei-et-al-2023-Chain-of-Thought-Prompting-Elicits-Reasoning-in-Large-Language-Models.md"
+related_papers:
+  - "papers/Wei-et-al-2023-Chain-of-Thought-Prompting-Elicits-Reasoning-in-Large-Language-Models.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-47b389481f"
 ---
 # Wei et al. - 2023 - Chain-of-Thought Prompting Elicits Reasoning in Large Language Models
 

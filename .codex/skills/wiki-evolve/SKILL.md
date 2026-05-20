@@ -63,3 +63,16 @@ If the target page changed after proposal creation, lint fails with `stale_targe
 Normal retrieval uses latest canonical pages only. `.versions/` snapshots are audit artifacts and must not enter standard retrieval.
 
 When retrieval context shows evolution warnings, carry them into the answer. A stale or source-recheck page can still be useful, but do not use the affected section as settled evidence.
+
+## Knowledge Layer Repair
+
+For broad structural issues across method/topic/claim/evidence/synthesis pages, prefer knowledge repair over many direct refinements:
+
+```bash
+meridian wiki knowledge-audit --wiki-root wiki
+meridian wiki propose-knowledge-repair --wiki-root wiki --out wiki/.drafts/knowledge-repair/<slug>/
+meridian wiki knowledge-repair-lint wiki/.drafts/knowledge-repair/<slug>/repair.json --wiki-root wiki
+meridian wiki publish-knowledge-repair wiki/.drafts/knowledge-repair/<slug>/repair.json --wiki-root wiki
+```
+
+Publishing a knowledge repair creates snapshots before updating existing canonical knowledge pages. It is only for low-risk structural repairs; contradiction declarations, claim confidence changes, and synthesis rewrites still require proposal/refinement review.

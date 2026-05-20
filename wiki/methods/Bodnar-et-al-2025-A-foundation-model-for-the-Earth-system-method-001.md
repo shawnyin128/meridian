@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Bodnar-et-al-2025-A-foundation-model-for-the-Earth-system.md"
+related_papers:
+  - "papers/Bodnar-et-al-2025-A-foundation-model-for-the-Earth-system.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-fda04d4616"
 ---
 # Bodnar et al. - 2025 - A foundation model for the Earth system
 

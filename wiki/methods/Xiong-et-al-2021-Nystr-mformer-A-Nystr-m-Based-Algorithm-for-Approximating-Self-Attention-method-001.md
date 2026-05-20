@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Xiong-et-al-2021-Nystr-mformer-A-Nystr-m-Based-Algorithm-for-Approximating-Self-Attention.md"
+related_papers:
+  - "papers/Xiong-et-al-2021-Nystr-mformer-A-Nystr-m-Based-Algorithm-for-Approximating-Self-Attention.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-c8ec521865"
 ---
 # Xiong et al. - 2021 - Nyströmformer A Nyström-Based Algorithm for Approximating Self-Attention
 

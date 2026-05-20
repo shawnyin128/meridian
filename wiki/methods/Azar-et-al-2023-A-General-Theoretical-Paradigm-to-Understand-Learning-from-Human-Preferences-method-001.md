@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Azar-et-al-2023-A-General-Theoretical-Paradigm-to-Understand-Learning-from-Human-Preferences.md"
+related_papers:
+  - "papers/Azar-et-al-2023-A-General-Theoretical-Paradigm-to-Understand-Learning-from-Human-Preferences.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-70bcd0a2ba"
 ---
 # Azar et al. - 2023 - A General Theoretical Paradigm to Understand Learning from Human Preferences
 

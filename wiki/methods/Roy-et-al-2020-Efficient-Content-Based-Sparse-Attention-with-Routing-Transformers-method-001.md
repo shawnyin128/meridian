@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Roy-et-al-2020-Efficient-Content-Based-Sparse-Attention-with-Routing-Transformers.md"
+related_papers:
+  - "papers/Roy-et-al-2020-Efficient-Content-Based-Sparse-Attention-with-Routing-Transformers.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-af632c9d50"
 ---
 # Roy et al. - 2020 - Efficient Content-Based Sparse Attention with Routing Transformers
 

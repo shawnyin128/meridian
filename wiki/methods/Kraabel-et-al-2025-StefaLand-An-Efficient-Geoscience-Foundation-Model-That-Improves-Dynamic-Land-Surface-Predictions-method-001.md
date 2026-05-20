@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Kraabel-et-al-2025-StefaLand-An-Efficient-Geoscience-Foundation-Model-That-Improves-Dynamic-Land-Surface-Predictions.md"
+related_papers:
+  - "papers/Kraabel-et-al-2025-StefaLand-An-Efficient-Geoscience-Foundation-Model-That-Improves-Dynamic-Land-Surface-Predictions.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-23e92ac199"
 ---
 # Kraabel et al. - 2025 - StefaLand An Efficient Geoscience Foundation Model That Improves Dynamic Land-Surface Predictions
 

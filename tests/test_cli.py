@@ -3970,6 +3970,128 @@ This hidden unique zeta candidate should never enter retrieval.
             self.assertEqual(report["status"], "fail")
             self.assertIn("source_quality_as_scientific_evidence", {item["code"] for item in report["findings"]})
 
+    def test_knowledge_audit_repair_publish_and_retrieval_use_compiled_method_pages(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            _write_test_paper(
+                papers / "Quant-Paper.md",
+                title="Quant Paper",
+                aliases=["QuantProbe"],
+                topics=["low-bit quantization"],
+                methods=["post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "Post-training quantization reduces deployment cost.",
+                    "Mechanism": "The method calibrates activations and weights before low-bit inference.",
+                    "Implementation Hooks": "Log calibration set, quantization error, activation outliers, and latency.",
+                    "Limitations / Uncertainty": "Fails when calibration misses deployment distributions.",
+                    "Evidence Map": "Reports perplexity, latency, and ablation evidence.",
+                },
+            )
+            method_page = wiki_root / "methods/post-training-quantization.md"
+            method_page.parent.mkdir(parents=True)
+            method_page.write_text(
+                "\n".join(
+                    [
+                        "---",
+                        'type: "method"',
+                        'title: "post-training quantization"',
+                        'status: "active"',
+                        "related_papers:",
+                        '  - "[[papers/Quant-Paper|Quant Paper]]"',
+                        'confidence: "medium"',
+                        'review_state: "active"',
+                        "---",
+                        "# post-training quantization",
+                        "",
+                        "## Related Papers",
+                        "",
+                        "- [[papers/Quant-Paper|Quant Paper]]",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "knowledge-audit",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--out",
+                        str(wiki_root / ".index/knowledge-audit.json"),
+                        "--brief",
+                        str(root / "brief.md"),
+                    ]
+                ),
+                0,
+            )
+            before = json.loads((wiki_root / ".index/knowledge-audit.json").read_text(encoding="utf-8"))
+            self.assertGreater(before["metrics"]["low_information_pages"], 0)
+
+            out = wiki_root / ".drafts/knowledge-repair/test"
+            self.assertEqual(main(["wiki", "propose-knowledge-repair", "--wiki-root", str(wiki_root), "--out", str(out)]), 0)
+            self.assertEqual(main(["wiki", "knowledge-repair-lint", str(out / "repair.json"), "--wiki-root", str(wiki_root)]), 0)
+            self.assertEqual(main(["wiki", "publish-knowledge-repair", str(out / "repair.json"), "--wiki-root", str(wiki_root)]), 0)
+
+            updated = method_page.read_text(encoding="utf-8")
+            self.assertIn("## Mechanism", updated)
+            self.assertIn("## Implementation Hooks", updated)
+            self.assertTrue(list((wiki_root / ".versions/methods/post-training-quantization").glob("*.md")))
+
+            result = retrieve_papers(
+                query="I need implementation hooks and failure modes for post-training quantization methods.",
+                wiki_root=wiki_root,
+                top_k=3,
+                strategy="v1",
+            )
+            self.assertEqual(result.results[0]["result_type"], "method")
+            self.assertEqual(result.results[0]["knowledge_role"], "compiled_knowledge")
+            self.assertEqual(result.results[0]["relative_path"], "methods/post-training-quantization.md")
+
+    def test_knowledge_repair_lint_rejects_high_risk_deterministic_action(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            repair_dir = wiki_root / ".drafts/knowledge-repair/bad"
+            repair_dir.mkdir(parents=True)
+            (repair_dir / "repair.md").write_text("# Bad\n", encoding="utf-8")
+            (repair_dir / "publish_plan.md").write_text("# Plan\n", encoding="utf-8")
+            (wiki_root / ".index").mkdir(parents=True)
+            audit = wiki_root / ".index/knowledge-audit.json"
+            audit.write_text('{"schema_version":"meridian.knowledge_audit.v1"}\n', encoding="utf-8")
+            manifest = repair_dir / "repair.json"
+            manifest.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "meridian.knowledge_repair.v1",
+                        "status": "draft",
+                        "publish_state": "draft",
+                        "repair_path": str(repair_dir / "repair.md"),
+                        "publish_plan_path": str(repair_dir / "publish_plan.md"),
+                        "audit_path": str(audit),
+                        "deterministic_repairs": [
+                            {
+                                "action_type": "declare_contradiction",
+                                "risk": "high",
+                                "target_path": "claims/Unsafe.md",
+                            }
+                        ],
+                        "high_risk_repairs": [],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            exit_code, stdout, _ = _run_cli_capture(["wiki", "knowledge-repair-lint", str(manifest), "--wiki-root", str(wiki_root)])
+            self.assertEqual(exit_code, 1)
+            self.assertIn("Knowledge repair lint status: fail", stdout)
+
 
 def _passing_judge_result(case_id: str) -> dict[str, object]:
     return {

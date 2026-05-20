@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Dicks-and-Wales-2022-Elucidating-the-solution-structure-of-the-K-means-cost-function-using-energy-landscape-theory.md"
+related_papers:
+  - "papers/Dicks-and-Wales-2022-Elucidating-the-solution-structure-of-the-K-means-cost-function-using-energy-landscape-theory.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-d788d2d528"
 ---
 # Dicks and Wales - 2022 - Elucidating the solution structure of the K-means cost function using energy landscape theory
 

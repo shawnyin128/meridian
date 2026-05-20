@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Lyu-et-al-2023-Faithful-Chain-of-Thought-Reasoning.md"
+related_papers:
+  - "papers/Lyu-et-al-2023-Faithful-Chain-of-Thought-Reasoning.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-a8a830dc12"
 ---
 # Lyu et al. - 2023 - Faithful Chain-of-Thought Reasoning
 

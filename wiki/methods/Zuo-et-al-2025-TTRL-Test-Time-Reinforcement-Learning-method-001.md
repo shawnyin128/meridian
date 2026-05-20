@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Zuo-et-al-2025-TTRL-Test-Time-Reinforcement-Learning.md"
+related_papers:
+  - "papers/Zuo-et-al-2025-TTRL-Test-Time-Reinforcement-Learning.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-e2d541cc0b"
 ---
 # Zuo et al. - 2025 - TTRL Test-Time Reinforcement Learning
 

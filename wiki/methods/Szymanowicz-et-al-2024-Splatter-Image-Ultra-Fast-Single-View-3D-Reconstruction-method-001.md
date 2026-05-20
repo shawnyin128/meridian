@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Szymanowicz-et-al-2024-Splatter-Image-Ultra-Fast-Single-View-3D-Reconstruction.md"
+related_papers:
+  - "papers/Szymanowicz-et-al-2024-Splatter-Image-Ultra-Fast-Single-View-3D-Reconstruction.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-9ae4c972f1"
 ---
 # Szymanowicz et al. - 2024 - Splatter Image Ultra-Fast Single-View 3D Reconstruction
 

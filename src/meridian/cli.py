@@ -16,14 +16,18 @@ from meridian.wiki.commands import (
     eval_cases,
     ingest_pdf,
     init_wiki,
+    knowledge_audit_wiki,
+    knowledge_repair_lint_wiki,
     insight_lint_wiki,
     lint_wiki_command,
     publish_run,
     publish_proposal_wiki,
     publish_insight_wiki,
+    publish_knowledge_repair_wiki,
     publish_refinement_wiki,
     quality_check_run,
     proposal_lint_wiki,
+    propose_knowledge_repair_wiki,
     propose_refine_wiki,
     propose_writeback_wiki,
     record_judge,
@@ -285,6 +289,43 @@ def build_parser() -> argparse.ArgumentParser:
     lint.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
     lint.add_argument("--out", type=Path, default=None, help="Optional lint JSON report path.")
 
+    knowledge_audit = wiki_subparsers.add_parser(
+        "knowledge-audit",
+        help="Audit the compiled method/topic/claim/evidence/synthesis knowledge layer.",
+    )
+    knowledge_audit.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    knowledge_audit.add_argument("--out", type=Path, default=None, help="Optional audit JSON report path.")
+    knowledge_audit.add_argument(
+        "--brief",
+        type=Path,
+        default=None,
+        help="Optional markdown brief path. Defaults to docs/knowledge-layer-quality-audit.md.",
+    )
+
+    propose_knowledge_repair = wiki_subparsers.add_parser(
+        "propose-knowledge-repair",
+        help="Create a low-risk knowledge-layer repair proposal from the latest audit.",
+    )
+    propose_knowledge_repair.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    propose_knowledge_repair.add_argument("--out", type=Path, default=None, help="Output repair directory.")
+    propose_knowledge_repair.add_argument("--audit", type=Path, default=None, help="Optional existing knowledge audit JSON.")
+    propose_knowledge_repair.add_argument("--overwrite", action="store_true", help="Overwrite an existing repair directory.")
+
+    knowledge_repair_lint = wiki_subparsers.add_parser(
+        "knowledge-repair-lint",
+        help="Validate a knowledge repair proposal before publishing low-risk changes.",
+    )
+    knowledge_repair_lint.add_argument("repair_manifest", type=Path, help="Path to repair.json.")
+    knowledge_repair_lint.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    knowledge_repair_lint.add_argument("--out", type=Path, default=None, help="Optional lint JSON report path.")
+
+    publish_knowledge_repair = wiki_subparsers.add_parser(
+        "publish-knowledge-repair",
+        help="Publish lint-passing low-risk knowledge repairs into the canonical wiki.",
+    )
+    publish_knowledge_repair.add_argument("repair_manifest", type=Path, help="Path to repair.json.")
+    publish_knowledge_repair.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+
     review = wiki_subparsers.add_parser(
         "review",
         help="Record a human-led review decision for a draft review packet.",
@@ -441,7 +482,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     catalog = wiki_subparsers.add_parser(
         "catalog",
-        help="Build machine-readable paper and synthesis catalogs for canonical wiki pages.",
+        help="Build machine-readable paper, synthesis, and knowledge-layer catalogs for canonical wiki pages.",
     )
     catalog.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
     catalog.add_argument(
@@ -846,6 +887,52 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Findings: {len(result.findings)}")
             return 0
 
+        if args.product == "wiki" and args.command == "knowledge-audit":
+            result = knowledge_audit_wiki(wiki_root=args.wiki_root, out_path=args.out, brief_path=args.brief)
+            print(f"Wrote knowledge audit: {result.report_path}")
+            print(f"Wrote knowledge audit brief: {result.brief_path}")
+            print(f"Knowledge audit status: {result.status}")
+            print(f"Findings: {len(result.findings)}")
+            return 0 if result.status != "fail" else 1
+
+        if args.product == "wiki" and args.command == "propose-knowledge-repair":
+            result = propose_knowledge_repair_wiki(
+                wiki_root=args.wiki_root,
+                out_dir=args.out,
+                audit_path=args.audit,
+                overwrite=args.overwrite,
+            )
+            print(f"Wrote knowledge repair proposal: {result.repair_path}")
+            print(f"Wrote repair manifest: {result.manifest_path}")
+            print(f"Wrote publish plan: {result.publish_plan_path}")
+            print(f"Deterministic repairs: {result.deterministic_repairs}")
+            print(f"High-risk proposal-only repairs: {result.high_risk_repairs}")
+            return 0
+
+        if args.product == "wiki" and args.command == "knowledge-repair-lint":
+            result = knowledge_repair_lint_wiki(
+                repair_manifest=args.repair_manifest,
+                wiki_root=args.wiki_root,
+                out_path=args.out,
+            )
+            print(f"Wrote knowledge repair lint report: {result.report_path}")
+            print(f"Knowledge repair lint status: {result.status}")
+            print(f"Findings: {len(result.findings)}")
+            return 0 if result.status == "pass" else 1
+
+        if args.product == "wiki" and args.command == "publish-knowledge-repair":
+            result = publish_knowledge_repair_wiki(
+                repair_manifest=args.repair_manifest,
+                wiki_root=args.wiki_root,
+            )
+            print(f"Published knowledge repair: {result.manifest_path}")
+            print(f"Applied actions: {result.applied_actions}")
+            print(f"Skipped actions: {result.skipped_actions}")
+            print(f"Updated index: {result.index_path}")
+            print(f"Updated wiki log: {result.log_path}")
+            print(f"Knowledge repair lint report: {result.lint_report_path}")
+            return 0
+
         if args.product == "wiki" and args.command == "judge-pack":
             packet = create_judge_packet(
                 run_manifest=args.run_manifest,
@@ -931,6 +1018,7 @@ def main(argv: list[str] | None = None) -> int:
             result = catalog_wiki(wiki_root=args.wiki_root, out_path=args.out)
             print(f"Wrote paper catalog: {result.catalog_path}")
             print(f"Wrote synthesis catalog: {args.wiki_root / '.index/syntheses.jsonl'}")
+            print(f"Wrote knowledge catalogs: {args.wiki_root / '.index'}")
             print(f"Catalog entries: {result.count}")
             return 0
 

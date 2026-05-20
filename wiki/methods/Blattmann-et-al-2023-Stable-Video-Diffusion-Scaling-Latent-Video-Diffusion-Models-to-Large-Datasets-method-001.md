@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Blattmann-et-al-2023-Stable-Video-Diffusion-Scaling-Latent-Video-Diffusion-Models-to-Large-Datasets.md"
+related_papers:
+  - "papers/Blattmann-et-al-2023-Stable-Video-Diffusion-Scaling-Latent-Video-Diffusion-Models-to-Large-Datasets.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-e986daa8b2"
 ---
 # Blattmann et al. - 2023 - Stable Video Diffusion Scaling Latent Video Diffusion Models to Large Datasets
 

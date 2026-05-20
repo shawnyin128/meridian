@@ -66,3 +66,10 @@
 - Change class: `retrieval_metadata_update`
 - Updated index: `index.md`
 - Updated catalog: `.index/papers.jsonl`
+
+## [2026-05-20] knowledge-repair | knowledge-repair-2026-05-20-a41a95e036
+
+- Applied low-risk knowledge repairs: 400
+- Skipped repairs: 0
+- High-risk proposal-only repairs: 239
+- Repair manifest: `.drafts/knowledge-repair/main-knowledge-repair-r1/repair.json`

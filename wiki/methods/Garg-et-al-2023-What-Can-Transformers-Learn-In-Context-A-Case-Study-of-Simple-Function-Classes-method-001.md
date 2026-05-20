@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Garg-et-al-2023-What-Can-Transformers-Learn-In-Context-A-Case-Study-of-Simple-Function-Classes.md"
+related_papers:
+  - "papers/Garg-et-al-2023-What-Can-Transformers-Learn-In-Context-A-Case-Study-of-Simple-Function-Classes.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-3862842e43"
 ---
 # Garg et al. - 2023 - What Can Transformers Learn In-Context A Case Study of Simple Function Classes
 

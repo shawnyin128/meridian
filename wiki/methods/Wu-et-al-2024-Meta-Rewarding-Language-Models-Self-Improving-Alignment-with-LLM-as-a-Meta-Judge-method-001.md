@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Wu-et-al-2024-Meta-Rewarding-Language-Models-Self-Improving-Alignment-with-LLM-as-a-Meta-Judge.md"
+related_papers:
+  - "papers/Wu-et-al-2024-Meta-Rewarding-Language-Models-Self-Improving-Alignment-with-LLM-as-a-Meta-Judge.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-89985b51c8"
 ---
 # Wu et al. - 2024 - Meta-Rewarding Language Models Self-Improving Alignment with LLM-as-a-Meta-Judge
 

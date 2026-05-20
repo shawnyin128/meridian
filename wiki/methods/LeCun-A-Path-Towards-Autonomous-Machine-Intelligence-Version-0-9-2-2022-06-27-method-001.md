@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/LeCun-A-Path-Towards-Autonomous-Machine-Intelligence-Version-0-9-2-2022-06-27.md"
+related_papers:
+  - "papers/LeCun-A-Path-Towards-Autonomous-Machine-Intelligence-Version-0-9-2-2022-06-27.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-b65149dbac"
 ---
 # LeCun - A Path Towards Autonomous Machine Intelligence Version 0.9.2, 2022-06-27
 

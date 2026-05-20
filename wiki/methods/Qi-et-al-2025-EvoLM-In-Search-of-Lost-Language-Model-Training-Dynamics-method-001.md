@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Qi-et-al-2025-EvoLM-In-Search-of-Lost-Language-Model-Training-Dynamics.md"
+related_papers:
+  - "papers/Qi-et-al-2025-EvoLM-In-Search-of-Lost-Language-Model-Training-Dynamics.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-e1c7a094a9"
 ---
 # Qi et al. - 2025 - EvoLM In Search of Lost Language Model Training Dynamics
 

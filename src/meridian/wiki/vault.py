@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from meridian.wiki.corpus import build_paper_catalog, build_synthesis_catalog, parse_frontmatter, strip_frontmatter
+from meridian.wiki.corpus import build_knowledge_catalogs, build_paper_catalog, build_synthesis_catalog, parse_frontmatter, strip_frontmatter
 
 
 WIKI_DIRS = (
@@ -174,6 +174,7 @@ def rebuild_wiki_index(*, wiki_root: Path) -> Path:
         build_paper_catalog(wiki_root=wiki_root)
     if (wiki_root / "syntheses").exists():
         build_synthesis_catalog(wiki_root=wiki_root)
+    build_knowledge_catalogs(wiki_root=wiki_root)
     return index_path
 
 

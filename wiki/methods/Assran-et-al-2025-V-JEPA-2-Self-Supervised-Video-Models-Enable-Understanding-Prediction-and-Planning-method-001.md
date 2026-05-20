@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Assran-et-al-2025-V-JEPA-2-Self-Supervised-Video-Models-Enable-Understanding-Prediction-and-Planning.md"
+related_papers:
+  - "papers/Assran-et-al-2025-V-JEPA-2-Self-Supervised-Video-Models-Enable-Understanding-Prediction-and-Planning.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-cc5d1e0c91"
 ---
 # Latent video joint embedding predictive learning
 

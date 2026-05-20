@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Vezhnevets-2023-Generative-agent-based-modeling-with-actions-grounded-in-physical-social-or-digital-space-using-Co.md"
+related_papers:
+  - "papers/Vezhnevets-2023-Generative-agent-based-modeling-with-actions-grounded-in-physical-social-or-digital-space-using-Co.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-e6697102b5"
 ---
 # Vezhnevets 等 - 2023 - Generative agent-based modeling with actions grounded in physical, social, or digital space using Co
 

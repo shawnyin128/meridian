@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Ma-et-al-2026-FIPO-Eliciting-Deep-Reasoning-with-Future-KL-Influenced-Policy-Optimization.md"
+related_papers:
+  - "papers/Ma-et-al-2026-FIPO-Eliciting-Deep-Reasoning-with-Future-KL-Influenced-Policy-Optimization.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-c432966aa7"
 ---
 # Ma et al. - 2026 - FIPO Eliciting Deep Reasoning with Future-KL Influenced Policy Optimization
 

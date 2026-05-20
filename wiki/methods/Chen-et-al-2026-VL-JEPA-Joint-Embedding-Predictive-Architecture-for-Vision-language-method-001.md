@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Chen-et-al-2026-VL-JEPA-Joint-Embedding-Predictive-Architecture-for-Vision-language.md"
+related_papers:
+  - "papers/Chen-et-al-2026-VL-JEPA-Joint-Embedding-Predictive-Architecture-for-Vision-language.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-f38859344b"
 ---
 # Vision-language joint embedding predictive architecture
 

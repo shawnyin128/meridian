@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Yin-et-al-2024-A-Survey-on-Multimodal-Large-Language-Models.md"
+related_papers:
+  - "papers/Yin-et-al-2024-A-Survey-on-Multimodal-Large-Language-Models.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-38d747c7a9"
 ---
 # Yin et al. - 2024 - A Survey on Multimodal Large Language Models
 

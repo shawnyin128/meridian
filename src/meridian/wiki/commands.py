@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from meridian.wiki.corpus import CatalogResult, RetrievalResult, build_paper_catalog, build_synthesis_catalog, retrieve_papers
+from meridian.wiki.corpus import CatalogResult, RetrievalResult, build_knowledge_catalogs, build_paper_catalog, build_synthesis_catalog, retrieve_papers
 from meridian.wiki.eval import iter_cases, write_eval_manifest
 from meridian.wiki.eval_run import (
     EvalConvergeResult,
@@ -32,6 +32,16 @@ from meridian.wiki.insights import (
     publish_user_insight,
 )
 from meridian.wiki.judge import build_judge_packet
+from meridian.wiki.knowledge import (
+    KnowledgeAuditResult,
+    KnowledgeRepairLintResult,
+    KnowledgeRepairProposalResult,
+    PublishKnowledgeRepairResult,
+    lint_knowledge_repair,
+    propose_knowledge_repair,
+    publish_knowledge_repair,
+    run_knowledge_audit,
+)
 from meridian.wiki.proposals import (
     ProposalLintResult,
     PublishProposalResult,
@@ -363,6 +373,7 @@ def catalog_wiki(wiki_root: Path, out_path: Path | None = None) -> CatalogResult
     result = build_paper_catalog(wiki_root=wiki_root, out_path=out_path)
     if (wiki_root / "syntheses").exists():
         build_synthesis_catalog(wiki_root=wiki_root)
+    build_knowledge_catalogs(wiki_root=wiki_root)
     return result
 
 
@@ -385,6 +396,37 @@ def retrieve_wiki(
         packet_path=packet_path,
         result_path=result_path,
     )
+
+
+def knowledge_audit_wiki(wiki_root: Path, out_path: Path | None = None, brief_path: Path | None = None) -> KnowledgeAuditResult:
+    return run_knowledge_audit(wiki_root=wiki_root, out_path=out_path, brief_path=brief_path)
+
+
+def propose_knowledge_repair_wiki(
+    *,
+    wiki_root: Path,
+    out_dir: Path | None = None,
+    audit_path: Path | None = None,
+    overwrite: bool = False,
+) -> KnowledgeRepairProposalResult:
+    return propose_knowledge_repair(wiki_root=wiki_root, out_dir=out_dir, audit_path=audit_path, overwrite=overwrite)
+
+
+def knowledge_repair_lint_wiki(
+    *,
+    repair_manifest: Path,
+    wiki_root: Path,
+    out_path: Path | None = None,
+) -> KnowledgeRepairLintResult:
+    return lint_knowledge_repair(repair_manifest=repair_manifest, wiki_root=wiki_root, out_path=out_path)
+
+
+def publish_knowledge_repair_wiki(
+    *,
+    repair_manifest: Path,
+    wiki_root: Path,
+) -> PublishKnowledgeRepairResult:
+    return publish_knowledge_repair(repair_manifest=repair_manifest, wiki_root=wiki_root)
 
 
 def add_insight_wiki(

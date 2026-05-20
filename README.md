@@ -189,8 +189,9 @@ meridian wiki catalog --wiki-root wiki
 ```
 
 This scans `wiki/papers/*.md` and `wiki/syntheses/*.md`, writing
-`wiki/.index/papers.jsonl` and `wiki/.index/syntheses.jsonl`. The catalogs keep
-frontmatter as the routing source of truth, plus section previews for
+`wiki/.index/papers.jsonl` and `wiki/.index/syntheses.jsonl`; it also writes
+knowledge-layer catalogs for `methods/`, `topics/`, `claims/`, and `evidence/`.
+The catalogs keep frontmatter as the routing source of truth, plus section previews for
 context-packet construction. Draft ingest candidates under
 `wiki/.drafts/ingests/**` are intentionally excluded even when their text matches
 the query.
@@ -207,12 +208,43 @@ meridian wiki retrieve "I need MoE PTQ papers for activation outlier ablations" 
 ```
 
 The output is a ranked context packet, not a final answer. Results can include
-paper pages and published synthesis/comparison/method-family pages, each marked
-with a result type. Retrieval v1 combines
+paper, synthesis, method, topic, claim, and evidence pages, each marked with
+`result_type` and `knowledge_role`. Retrieval v1 combines
 frontmatter/facet routing, deterministic BM25-style field weighting,
 section-aware scoring, capped graph expansion, source-quality guards, hard
 distractor suppression, and compact read-first snippets. v0 remains available
 for comparison with `--strategy v0`.
+
+## Knowledge Layer
+
+The compiled knowledge layer keeps method/topic/claim/evidence/synthesis pages
+useful for retrieval instead of leaving the vault as a paper dump. Audit it with:
+
+```bash
+meridian wiki knowledge-audit --wiki-root wiki
+```
+
+Generate a proposal for low-risk structural repairs:
+
+```bash
+meridian wiki propose-knowledge-repair --wiki-root wiki \
+  --out wiki/.drafts/knowledge-repair/<slug>/
+meridian wiki knowledge-repair-lint wiki/.drafts/knowledge-repair/<slug>/repair.json \
+  --wiki-root wiki
+```
+
+Publish only lint-passing low-risk repairs:
+
+```bash
+meridian wiki publish-knowledge-repair wiki/.drafts/knowledge-repair/<slug>/repair.json \
+  --wiki-root wiki
+```
+
+Low-risk repairs can add machine-readable frontmatter, create missing
+method/topic pages from canonical paper metadata, and restructure aggregate
+method/topic pages with linked paper snippets. High-risk actions such as merging
+pages, changing claim confidence, declaring contradictions, rewriting syntheses,
+or promoting user insight into source-grounded claims stay proposal-only.
 
 ## Query Write-back and Synthesis Layer
 

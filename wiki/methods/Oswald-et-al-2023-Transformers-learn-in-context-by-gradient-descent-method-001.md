@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Oswald-et-al-2023-Transformers-learn-in-context-by-gradient-descent.md"
+related_papers:
+  - "papers/Oswald-et-al-2023-Transformers-learn-in-context-by-gradient-descent.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-ea7da2a28b"
 ---
 # Oswald et al. - 2023 - Transformers learn in-context by gradient descent
 

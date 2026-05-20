@@ -7,6 +7,21 @@ sources:
 confidence: "high"
 review_state: "source_text_insufficient"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Download.md"
+related_papers:
+  - "papers/Download.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-768cc98fe1"
 ---
 # Source-quality triage
 

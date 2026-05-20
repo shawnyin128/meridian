@@ -240,6 +240,21 @@ Publishing a refinement creates a `.versions/` snapshot before updating the cano
 
 If a refinement affects source facts, it must require source re-check. User insight can motivate a refinement, but it cannot become source fact without source provenance.
 
+### Knowledge Layer
+
+When method/topic/claim/evidence/synthesis pages are sparse, duplicated, disconnected, or too stub-like to support retrieval, route through the knowledge-layer workflow:
+
+```bash
+meridian wiki knowledge-audit --wiki-root wiki
+meridian wiki propose-knowledge-repair --wiki-root wiki --out wiki/.drafts/knowledge-repair/<slug>/
+meridian wiki knowledge-repair-lint wiki/.drafts/knowledge-repair/<slug>/repair.json --wiki-root wiki
+meridian wiki publish-knowledge-repair wiki/.drafts/knowledge-repair/<slug>/repair.json --wiki-root wiki
+```
+
+Low-risk repairs may add frontmatter, create missing method/topic pages from canonical paper metadata, and enrich aggregate method/topic pages using snippets from linked canonical papers. High-risk repairs stay proposal-only: page merges, claim confidence changes, contradiction declarations, synthesis rewrites, and user-insight promotion into source-grounded claims.
+
+Normal retrieval searches papers, syntheses, methods, topics, claims, and evidence. Check `result_type` and `knowledge_role`: a `candidate_record` can be useful provenance, but it is not reviewed wiki synthesis.
+
 ### Lint
 
 Periodically health-check the wiki for:

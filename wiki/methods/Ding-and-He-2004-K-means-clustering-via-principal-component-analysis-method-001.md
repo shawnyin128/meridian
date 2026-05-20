@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Ding-and-He-2004-K-means-clustering-via-principal-component-analysis.md"
+related_papers:
+  - "papers/Ding-and-He-2004-K-means-clustering-via-principal-component-analysis.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-968d5508b2"
 ---
 # Ding and He - 2004 - K -means clustering via principal component analysis
 

@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Zaheer-et-al-2021-Big-Bird-Transformers-for-Longer-Sequences.md"
+related_papers:
+  - "papers/Zaheer-et-al-2021-Big-Bird-Transformers-for-Longer-Sequences.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-17452237d2"
 ---
 # Zaheer et al. - 2021 - Big Bird Transformers for Longer Sequences
 

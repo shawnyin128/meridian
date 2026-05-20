@@ -1,9 +1,9 @@
 {
   "schema_version": "meridian.source_audit.v0",
   "wiki_root": "wiki",
-  "created_at": "2026-05-20T17:32:22.088373+00:00",
+  "created_at": "2026-05-20T23:08:29.261678+00:00",
   "registry": "wiki/raw/sources/sources.jsonl",
-  "total": 237,
+  "total": 238,
   "missing_managed": 0,
   "sha_mismatches": 0,
   "duplicate_sha_groups": 0,
@@ -2377,6 +2377,16 @@
       "original_path": "/Users/shawn/Desktop/我的文库/files/1406/Ainslie et al. - 2023 - GQA Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints.pdf",
       "sha256": "ba9094fe73db9bf515d47ae8b2d502fee9d8a6c7b1327e197ddb160f4c63b94a",
       "actual_sha256": "ba9094fe73db9bf515d47ae8b2d502fee9d8a6c7b1327e197ddb160f4c63b94a"
+    },
+    {
+      "source_id": "paper-pdf-00d120e46b19",
+      "title": "STS: Efficient Sparse Attention with Speculative Token Sparsity",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "wiki/raw/sources/papers/paper-pdf-00d120e46b19-STS-Efficient-Sparse-Attention-with-Speculative-Token-Sparsity.pdf",
+      "original_path": "/Users/shawn/Desktop/2605.15508v2.pdf",
+      "sha256": "00d120e46b19370611e3a2a454e2b552f86800609115e502357fffda33eef505",
+      "actual_sha256": "00d120e46b19370611e3a2a454e2b552f86800609115e502357fffda33eef505"
     }
   ]
 }

@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Meng-et-al-2026-Sparse-but-Critical-A-Token-Level-Analysis-of-Distributional-Shifts-in-RLVR-Fine-Tuning-of-LLMs.md"
+related_papers:
+  - "papers/Meng-et-al-2026-Sparse-but-Critical-A-Token-Level-Analysis-of-Distributional-Shifts-in-RLVR-Fine-Tuning-of-LLMs.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-f5cf396c03"
 ---
 # Meng et al. - 2026 - Sparse but Critical A Token-Level Analysis of Distributional Shifts in RLVR Fine-Tuning of LLMs
 

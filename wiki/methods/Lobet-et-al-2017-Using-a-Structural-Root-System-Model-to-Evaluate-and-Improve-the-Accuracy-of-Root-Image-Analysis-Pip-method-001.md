@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Lobet-et-al-2017-Using-a-Structural-Root-System-Model-to-Evaluate-and-Improve-the-Accuracy-of-Root-Image-Analysis-Pip.md"
+related_papers:
+  - "papers/Lobet-et-al-2017-Using-a-Structural-Root-System-Model-to-Evaluate-and-Improve-the-Accuracy-of-Root-Image-Analysis-Pip.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-92fcbb853f"
 ---
 # Lobet et al. - 2017 - Using a Structural Root System Model to Evaluate and Improve the Accuracy of Root Image Analysis Pip
 

@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Schneuing-et-al-2024-Structure-based-Drug-Design-with-Equivariant-Diffusion-Models.md"
+related_papers:
+  - "papers/Schneuing-et-al-2024-Structure-based-Drug-Design-with-Equivariant-Diffusion-Models.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-81a4310a62"
 ---
 # Schneuing et al. - 2024 - Structure-based Drug Design with Equivariant Diffusion Models
 

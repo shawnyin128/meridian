@@ -11,7 +11,10 @@ from typing import Any
 
 CATALOG_SCHEMA_VERSION = "meridian.paper_catalog.v0"
 SYNTHESIS_CATALOG_SCHEMA_VERSION = "meridian.synthesis_catalog.v1"
+KNOWLEDGE_CATALOG_SCHEMA_VERSION = "meridian.knowledge_catalog.v1"
 CONTEXT_PACKET_SCHEMA_VERSION = "meridian.retrieval_context.v0"
+
+KNOWLEDGE_DIRECTORIES = ("methods", "topics", "claims", "evidence")
 
 ROUTING_FIELDS = (
     "aliases",
@@ -41,6 +44,25 @@ SECTION_WEIGHTS = {
     "Retrieval Hooks": 2.8,
     "Publish / Review Notes": 1.2,
     "User Insights": 2.9,
+    "What It Is": 2.7,
+    "Used By Papers": 2.4,
+    "Failure Modes": 2.0,
+    "Scope": 2.2,
+    "Key Papers": 2.5,
+    "Method Families": 2.4,
+    "Claims": 2.2,
+    "Contradictions": 2.4,
+    "Claim": 2.8,
+    "Supporting Evidence": 3.0,
+    "Contradicting Evidence": 2.8,
+    "Provenance": 2.4,
+    "Evidence Item": 3.0,
+    "Source": 2.6,
+    "Metric or Observation": 2.8,
+    "Supports": 2.7,
+    "Limits": 2.4,
+    "Reliability": 2.3,
+    "Related Papers": 2.0,
 }
 
 INTENT_SECTION_TERMS = {
@@ -88,6 +110,23 @@ INTENT_SECTION_TERMS = {
         "caveats",
     },
     "User Insights": {"insight", "note", "idea", "implement", "implementation", "ablation", "retrieve", "remember", "connection"},
+    "What It Is": {"what", "method", "topic", "mechanism", "overview", "definition"},
+    "Used By Papers": {"paper", "papers", "uses", "used", "family", "compare", "survey"},
+    "Failure Modes": {"failure", "failures", "limitation", "limitations", "boundary", "risk", "risks"},
+    "Scope": {"scope", "overview", "survey", "topic", "family", "boundaries"},
+    "Key Papers": {"paper", "papers", "survey", "overview", "baseline", "related"},
+    "Claims": {"claim", "claims", "evidence", "support", "contradict"},
+    "Contradictions": {"contradict", "conflict", "stale", "superseded", "disagree"},
+    "Claim": {"claim", "proves", "argues", "supports", "evidence"},
+    "Supporting Evidence": {"support", "supports", "evidence", "metric", "observation"},
+    "Contradicting Evidence": {"contradict", "contradicts", "conflict", "negative", "counter"},
+    "Provenance": {"provenance", "source", "paper", "section", "page"},
+    "Evidence Item": {"evidence", "metric", "observation", "result", "table", "figure"},
+    "Source": {"source", "paper", "section", "page", "provenance"},
+    "Metric or Observation": {"metric", "observation", "result", "table", "figure", "benchmark"},
+    "Supports": {"support", "supports", "claim", "evidence"},
+    "Limits": {"limit", "limits", "limitation", "scope", "boundary"},
+    "Reliability": {"reliable", "reliability", "confidence", "source", "quality"},
 }
 
 DOMAIN_LEXICON = {
@@ -247,6 +286,25 @@ def build_synthesis_catalog(*, wiki_root: Path, out_path: Path | None = None) ->
     return CatalogResult(catalog_path=catalog_path, count=len(records))
 
 
+def build_knowledge_catalogs(*, wiki_root: Path) -> list[CatalogResult]:
+    results: list[CatalogResult] = []
+    for directory in KNOWLEDGE_DIRECTORIES:
+        source_dir = wiki_root / directory
+        if not source_dir.exists():
+            continue
+        catalog_path = wiki_root / ".index" / f"{directory}.jsonl"
+        catalog_path.parent.mkdir(parents=True, exist_ok=True)
+        records = [
+            _catalog_record(path, wiki_root=wiki_root, schema_version=KNOWLEDGE_CATALOG_SCHEMA_VERSION)
+            for path in sorted(source_dir.glob("*.md"))
+        ]
+        with catalog_path.open("w", encoding="utf-8") as handle:
+            for record in records:
+                handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
+        results.append(CatalogResult(catalog_path=catalog_path, count=len(records)))
+    return results
+
+
 def retrieve_papers(
     *,
     query: str,
@@ -326,6 +384,7 @@ def _catalog_record(
         "relative_path": rel_path.as_posix(),
         "title": title,
         "type": frontmatter.get("type"),
+        "knowledge_role": _knowledge_role(path=path, frontmatter=frontmatter),
         "status": frontmatter.get("status"),
         "review_state": frontmatter.get("review_state"),
         "quality_gate": frontmatter.get("quality_gate"),
@@ -372,7 +431,32 @@ def _load_or_build_catalog(*, wiki_root: Path, catalog_path: Path | None) -> lis
                 stripped = line.strip()
                 if stripped:
                     records.append(json.loads(stripped))
+    if catalog_path is None:
+        build_knowledge_catalogs(wiki_root=wiki_root)
+        for directory in KNOWLEDGE_DIRECTORIES:
+            knowledge_path = wiki_root / ".index" / f"{directory}.jsonl"
+            if not knowledge_path.exists():
+                continue
+            with knowledge_path.open("r", encoding="utf-8") as handle:
+                for line in handle:
+                    stripped = line.strip()
+                    if stripped:
+                        records.append(json.loads(stripped))
     return records
+
+
+def _knowledge_role(*, path: Path, frontmatter: dict[str, Any]) -> str:
+    page_type = str(frontmatter.get("type") or "")
+    review_state = str(frontmatter.get("review_state") or "").lower()
+    if page_type == "method" and re.search(r"-method-\d+$", path.stem):
+        return "candidate_method_record"
+    if page_type in {"claim", "evidence"} and (
+        frontmatter.get("candidate_id") or review_state in {"candidate", "auto_extracted", "source_text_insufficient"}
+    ):
+        return "candidate_record"
+    if page_type in {"method", "topic", "claim", "evidence", "synthesis"}:
+        return "compiled_knowledge"
+    return "source_page"
 
 
 def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dict[str, Any]:
@@ -462,6 +546,7 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
         "confidence": record.get("confidence"),
         "type": record.get("type") or "paper",
         "result_type": record.get("type") or "paper",
+        "knowledge_role": record.get("knowledge_role"),
         "source_id": record.get("source_id"),
         "source_quality_risk": record.get("source_quality_risk"),
         "matched_source_types": matched_source_types,
@@ -645,6 +730,25 @@ def _score_record_v1(
         score *= 0.25
         reasons.append("source-quality evidence guard")
 
+    knowledge_role = str(record.get("knowledge_role") or "")
+    identity_match = _identity_boost(str(query_analysis["norm"]), title, _as_list((record.get("routing") or {}).get("aliases")))
+    if knowledge_role == "candidate_method_record" and not identity_match:
+        score *= 0.2
+        reasons.append("candidate method-record suppression")
+
+    result_type = str(record.get("type") or "")
+    desired_sections = set(query_analysis.get("desired_sections") or [])
+    if knowledge_role == "compiled_knowledge":
+        if result_type == "method" and desired_sections & {"Mechanism", "Implementation Hooks", "Failure Modes", "What It Is"}:
+            score += 700.0
+            reasons.append("knowledge-layer method route")
+        if result_type == "topic" and desired_sections & {"Scope", "Key Papers", "Method Families", "Retrieval Hooks"}:
+            score += 420.0
+            reasons.append("knowledge-layer topic route")
+    if result_type in {"claim", "evidence"} and knowledge_role in {"compiled_knowledge", "candidate_record"} and desired_sections & {"Evidence Map", "Supporting Evidence", "Evidence Item", "Provenance"}:
+        score += 520.0
+        reasons.append("knowledge-layer evidence route")
+
     base_sections = {str(item.get("heading") or ""): item for item in base.get("matched_sections") or []}
     for item in section_hits:
         previous = base_sections.get(str(item.get("heading") or ""))
@@ -655,6 +759,7 @@ def _score_record_v1(
         {
             "score": round(max(score, 0.0), 3),
             "strategy": "v1",
+            "knowledge_role": knowledge_role or base.get("knowledge_role"),
             "matched_frontmatter": matched_fields,
             "matched_sections": sorted(base_sections.values(), key=lambda item: -float(item.get("score") or 0.0))[
                 : len(SECTION_WEIGHTS)
@@ -707,6 +812,24 @@ def _diversify_v1(
 ) -> list[dict[str, Any]]:
     if len(ranked) <= top_k:
         return ranked
+    selected: list[dict[str, Any]] = []
+    desired_sections = set(query_analysis.get("desired_sections") or [])
+    forced_types: list[set[str]] = []
+    if desired_sections & {"Mechanism", "Implementation Hooks", "Failure Modes", "What It Is"}:
+        forced_types.append({"method"})
+    if desired_sections & {"Scope", "Key Papers", "Method Families"}:
+        forced_types.append({"topic", "synthesis"})
+    if desired_sections & {"Evidence Map", "Supporting Evidence", "Evidence Item", "Provenance"}:
+        forced_types.append({"claim", "evidence"})
+    remaining = list(ranked)
+    for result_types in forced_types:
+        if len(selected) >= top_k:
+            break
+        candidate = next((item for item in remaining if str(item.get("result_type") or item.get("type") or "") in result_types), None)
+        if candidate is not None:
+            remaining.remove(candidate)
+            candidate["selection_reasons"] = _dedupe(list(candidate.get("selection_reasons") or []) + ["knowledge-layer intent preselection"])
+            selected.append(candidate)
     query_phrases = [str(phrase) for phrase in query_analysis.get("phrases") or [] if _is_high_value_phrase(str(phrase))]
     query_tokens = set(query_analysis.get("tokens") or [])
     coverage_targets = set(query_phrases)
@@ -736,11 +859,9 @@ def _diversify_v1(
         }:
             coverage_targets.add(token)
     if not coverage_targets:
-        return ranked[:top_k]
+        return (selected + remaining)[:top_k]
 
-    selected: list[dict[str, Any]] = []
     covered: set[str] = set()
-    remaining = list(ranked)
     while remaining and len(selected) < top_k:
         def rerank_score(item: dict[str, Any]) -> tuple[float, str]:
             item_facets = _coverage_facets(item, coverage_targets=coverage_targets, contrast_settings=contrast_settings)
@@ -856,6 +977,7 @@ def _render_context_packet(
                 f"- Page: `{result.get('relative_path') or result['path']}`",
                 f"- Canonical path: `{result.get('canonical_path') or result.get('relative_path') or result['path']}`",
                 f"- Result type: `{result.get('result_type') or result.get('type') or 'paper'}`",
+                f"- Knowledge role: `{result.get('knowledge_role') or 'canonical'}`",
                 f"- Source types matched: {', '.join(result.get('matched_source_types') or ['source_or_wiki'])}",
                 f"- Revision: `{result.get('revision_id') or 'unversioned'}`; evolution state: `{result.get('evolution_state') or 'none'}`",
                 f"- Score: `{result['score']}`",

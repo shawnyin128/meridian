@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/7194-FlexHiNM-GP-Flexible-Hier.md"
+related_papers:
+  - "papers/7194-FlexHiNM-GP-Flexible-Hier.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-25460ffb11"
 ---
 # 7194_FlexHiNM_GP_Flexible_Hier
 

@@ -1,0 +1,18 @@
+---
+type: "method"
+title: "Liang et al. - 2025 - ParoQuant Pairwise Rotation Quantization for Efficient Reasoning LLM Inference"
+status: "draft"
+sources:
+  - "[[papers/Liang-et-al-2025-ParoQuant-Pairwise-Rotation-Quantization-for-Efficient-Reasoning-LLM-Inference|Liang et al. - 2025 - ParoQuant Pairwise Rotation Quantization for Efficient Reasoning LLM Inference]]"
+confidence: "medium"
+review_state: "auto_extracted"
+candidate_id: "method-001"
+---
+# Liang et al. - 2025 - ParoQuant Pairwise Rotation Quantization for Efficient Reasoning LLM Inference
+
+- Source paper: [[papers/Liang-et-al-2025-ParoQuant-Pairwise-Rotation-Quantization-for-Efficient-Reasoning-LLM-Inference|Liang et al. - 2025 - ParoQuant Pairwise Rotation Quantization for Efficient Reasoning LLM Inference]]
+- Summary: However, the presence of outliers in weights and activations often leads to large quantization errors and severe accuracy degradation, especially in recent reasoning LLMs where errors accumulate across long chains of thought. Nevertheless, both activations and weights in LLMs possess many outliers (Dettmers et al., 2022; Xiao et al., 2023; Lin et al., 2024b), making it challenging to preserve the original precision under low-bit quantization. Technical Report PAROQUANT: PAIRWISE ROTATION QUANTIZATION FOR EFFICIENT REASONING LLM INFERENCE Yesheng Liang3,† Haisheng Chen3,‡ Song Han1,2 Zhijian Liu1,3 1NVIDIA 2MIT 3UC San Diego †Algorithm lead ‡System lead ABSTRACT Weight-only post-training quantization (PTQ) compresses the weights of Large Language Models (LLMs) into low-precision representations to reduce memory footprint and accelerate inference.
+- Inputs: calibration or runtime activations, model weights
+- Outputs: low-bit quantized model representation, rotation-transformed equivalent model
+- Assumptions: the page is useful as a synthesis map; individual claims still require checking cited primary evidence
+- Provenance: p. 4; p. 6; p. 1

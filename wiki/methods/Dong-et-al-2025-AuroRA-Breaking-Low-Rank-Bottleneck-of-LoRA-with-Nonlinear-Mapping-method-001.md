@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Dong-et-al-2025-AuroRA-Breaking-Low-Rank-Bottleneck-of-LoRA-with-Nonlinear-Mapping.md"
+related_papers:
+  - "papers/Dong-et-al-2025-AuroRA-Breaking-Low-Rank-Bottleneck-of-LoRA-with-Nonlinear-Mapping.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-ea01d692b4"
 ---
 # Dong et al. - 2025 - AuroRA Breaking Low-Rank Bottleneck of LoRA with Nonlinear Mapping
 

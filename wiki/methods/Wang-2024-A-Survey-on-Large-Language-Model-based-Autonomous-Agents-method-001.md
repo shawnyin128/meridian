@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Wang-2024-A-Survey-on-Large-Language-Model-based-Autonomous-Agents.md"
+related_papers:
+  - "papers/Wang-2024-A-Survey-on-Large-Language-Model-based-Autonomous-Agents.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-87b38f655e"
 ---
 # Wang 等 - 2024 - A Survey on Large Language Model based Autonomous Agents
 

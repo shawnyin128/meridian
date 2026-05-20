@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Child-et-al-2019-Generating-Long-Sequences-with-Sparse-Transformers.md"
+related_papers:
+  - "papers/Child-et-al-2019-Generating-Long-Sequences-with-Sparse-Transformers.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-e8ae236685"
 ---
 # Child et al. - 2019 - Generating Long Sequences with Sparse Transformers
 

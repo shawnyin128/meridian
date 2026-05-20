@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Yang-et-al-Towards-K-means-friendly-Spaces-Simultaneous-Deep-Learning-and-Clustering.md"
+related_papers:
+  - "papers/Yang-et-al-Towards-K-means-friendly-Spaces-Simultaneous-Deep-Learning-and-Clustering.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-8eafd76d54"
 ---
 # Yang et al. - Towards K-means-friendly Spaces Simultaneous Deep Learning and Clustering
 

@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Ainslie-et-al-2020-ETC-Encoding-Long-and-Structured-Inputs-in-Transformers.md"
+related_papers:
+  - "papers/Ainslie-et-al-2020-ETC-Encoding-Long-and-Structured-Inputs-in-Transformers.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-a1b515d837"
 ---
 # Ainslie et al. - 2020 - ETC Encoding Long and Structured Inputs in Transformers
 

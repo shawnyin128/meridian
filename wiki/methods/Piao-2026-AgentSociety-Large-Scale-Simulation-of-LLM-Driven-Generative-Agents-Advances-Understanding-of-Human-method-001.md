@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Piao-2026-AgentSociety-Large-Scale-Simulation-of-LLM-Driven-Generative-Agents-Advances-Understanding-of-Human.md"
+related_papers:
+  - "papers/Piao-2026-AgentSociety-Large-Scale-Simulation-of-LLM-Driven-Generative-Agents-Advances-Understanding-of-Human.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-9fbb576981"
 ---
 # Piao 等 - 2026 - AgentSociety Large-Scale Simulation of LLM-Driven Generative Agents Advances Understanding of Human
 

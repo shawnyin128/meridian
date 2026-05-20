@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/3549-Train-Freeze-or-Exit-Dyna.md"
+related_papers:
+  - "papers/3549-Train-Freeze-or-Exit-Dyna.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-cbb72f3b4e"
 ---
 # 3549_Train_Freeze_or_Exit_Dyna
 

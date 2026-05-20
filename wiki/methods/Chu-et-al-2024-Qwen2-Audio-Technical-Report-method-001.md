@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Chu-et-al-2024-Qwen2-Audio-Technical-Report.md"
+related_papers:
+  - "papers/Chu-et-al-2024-Qwen2-Audio-Technical-Report.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-9e62e2f85d"
 ---
 # Chu et al. - 2024 - Qwen2-Audio Technical Report
 

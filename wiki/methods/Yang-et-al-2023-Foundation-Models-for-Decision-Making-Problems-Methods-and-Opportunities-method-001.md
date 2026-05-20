@@ -7,6 +7,21 @@ sources:
 confidence: "medium"
 review_state: "auto_extracted"
 candidate_id: "method-001"
+created: "2026-05-20"
+updated: "2026-05-20"
+aliases:
+source_papers:
+  - "papers/Yang-et-al-2023-Foundation-Models-for-Decision-Making-Problems-Methods-and-Opportunities.md"
+related_papers:
+  - "papers/Yang-et-al-2023-Foundation-Models-for-Decision-Making-Problems-Methods-and-Opportunities.md"
+related_methods:
+related_topics:
+supports:
+contradicts:
+supersedes:
+superseded_by:
+evolution_state: "active"
+revision_id: "knowledge-eb3961b8f6"
 ---
 # Yang et al. - 2023 - Foundation Models for Decision Making Problems, Methods, and Opportunities
 
