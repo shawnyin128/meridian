@@ -16,6 +16,7 @@ from meridian.wiki.eval_run import (
 from meridian.wiki.flow import WikiFlowResult, run_wiki_flow
 from meridian.wiki.ingest import IngestResult, run_ingest
 from meridian.wiki.judge import build_judge_packet
+from meridian.wiki.promote import PublishRunResult, publish_run_to_wiki
 from meridian.wiki.converge import WikiConvergenceResult, converge_wiki_run, record_judge_result
 from meridian.wiki.quality_check import QualitySelfCheckResult, run_quality_self_check
 from meridian.wiki.reader_check import build_reader_check_packet
@@ -29,6 +30,15 @@ from meridian.wiki.self_check import (
     run_self_check_eval,
 )
 from meridian.wiki.structural_check import StructuralSelfCheckResult, run_structural_self_check
+from meridian.wiki.vault import (
+    SourceAuditResult,
+    WikiInitResult,
+    WikiLintResult,
+    audit_sources,
+    init_wiki_vault,
+    lint_wiki,
+    rebuild_wiki_index,
+)
 
 
 @dataclass(frozen=True)
@@ -329,4 +339,35 @@ def retrieve_wiki(
         top_k=top_k,
         packet_path=packet_path,
         result_path=result_path,
+    )
+
+
+def init_wiki(wiki_root: Path, overwrite_templates: bool = False) -> WikiInitResult:
+    return init_wiki_vault(wiki_root=wiki_root, overwrite_templates=overwrite_templates)
+
+
+def source_audit_wiki(wiki_root: Path, out_path: Path | None = None) -> SourceAuditResult:
+    return audit_sources(wiki_root=wiki_root, out_path=out_path)
+
+
+def rebuild_index_wiki(wiki_root: Path) -> Path:
+    return rebuild_wiki_index(wiki_root=wiki_root)
+
+
+def lint_wiki_command(wiki_root: Path, out_path: Path | None = None) -> WikiLintResult:
+    return lint_wiki(wiki_root=wiki_root, out_path=out_path)
+
+
+def publish_run(
+    *,
+    run_manifest: Path,
+    wiki_root: Path,
+    promote_candidates: bool = True,
+    overwrite: bool = False,
+) -> PublishRunResult:
+    return publish_run_to_wiki(
+        run_manifest=run_manifest,
+        wiki_root=wiki_root,
+        promote_candidates=promote_candidates,
+        overwrite=overwrite,
     )

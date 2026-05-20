@@ -4,6 +4,14 @@ Meridian is a Paper Wiki prototype. The first implemented path is one-paper
 ingest:
 
 ```bash
+meridian wiki init --wiki-root wiki
+```
+
+This creates an Obsidian-compatible Markdown vault scaffold: `papers/`,
+`claims/`, `methods/`, `evidence/`, `topics/`, `syntheses/`, immutable
+`raw/sources/`, generated `.index/`, draft areas, and reusable templates.
+
+```bash
 meridian wiki ingest /path/to/paper.pdf --out wiki/.drafts/ingests/<paper-slug>/
 ```
 
@@ -107,6 +115,52 @@ meridian wiki eval-calibrate eval/runs/<run-id>/eval_manifest.json \
   --human-decision agree \
   --bucket paper_model \
   --notes "Judge found the main issue."
+```
+
+## Canonical Wiki Management
+
+Publish an existing draft run and promote candidate records into the wiki graph:
+
+```bash
+meridian wiki publish-run wiki/.drafts/ingests/<paper-slug>/run.json \
+  --wiki-root wiki
+```
+
+This creates or updates:
+
+- `wiki/papers/<paper>.md`
+- `wiki/methods/*.md`
+- `wiki/claims/*.md`
+- `wiki/evidence/*.md`
+- `wiki/topics/*.md`
+- `wiki/index.md`
+- `wiki/log.md`
+- `wiki/.index/papers.jsonl`
+
+Audit raw source management:
+
+```bash
+meridian wiki source-audit --wiki-root wiki
+```
+
+This checks managed PDFs in `wiki/raw/sources/papers/` against
+`wiki/raw/sources/sources.jsonl` and writes both
+`wiki/.index/source-audit.json` and an Obsidian-readable
+`wiki/raw/sources/index.md`.
+
+Rebuild or health-check the canonical wiki:
+
+```bash
+meridian wiki rebuild-index --wiki-root wiki
+meridian wiki lint --wiki-root wiki
+```
+
+Use Obsidian CLI as a live vault navigation layer when Obsidian is open:
+
+```bash
+obsidian search query="activation outliers" limit=10
+obsidian read path="papers/<paper-page>.md"
+obsidian backlinks path="papers/<paper-page>.md"
 ```
 
 ## Retrieval v0

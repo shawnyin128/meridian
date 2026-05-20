@@ -10,6 +10,10 @@ Before generating, evaluating, or refining paper ingest outputs such as `paper.m
 
 `/Users/shawn/Desktop/meridian/.codex/skills/paper-ingest/SKILL.md`
 
+Before using the accumulated wiki to retrieve papers, claims, methods, or implementation hooks for a research/coding request, load:
+
+`/Users/shawn/Desktop/meridian/.codex/skills/wiki-retrieve/SKILL.md`
+
 Current MVP direction:
 
 - Build a personally usable paper wiki, not a general multi-agent platform.
@@ -42,10 +46,11 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `.codex/hooks.json`: project-local Arbor hook intents.
 - `.codex/skills/llm-wiki/SKILL.md`: project skill for LLM Wiki development principles.
 - `.codex/skills/paper-ingest/SKILL.md`: project skill for high-quality paper ingest outputs and reader self-check convergence.
+- `.codex/skills/wiki-retrieve/SKILL.md`: project skill for using Meridian retrieval and Obsidian CLI to find paper-wiki context for research work.
 - `pyproject.toml`: Python package metadata and `meridian` console script entrypoint.
 - `src/meridian/`: Paper Wiki prototype CLI implementation for `meridian wiki ...`.
 - `tests/`: unit tests for CLI ingest, eval, and human review recording.
-- `wiki/`: draft and eventual canonical Markdown wiki artifacts; v0 ingest writes review-only drafts under `wiki/.drafts/`.
+- `wiki/`: Obsidian-compatible Markdown wiki artifacts, managed raw sources, canonical pages, generated indexes, and draft workspaces.
 - `eval/`: Paper Wiki evaluation case examples and LLM-as-Judge rubrics.
 - `README.md`: minimal CLI usage note.
 - `docs/mvp-paper-wiki-workflow.md`: current MVP product/workflow reference.

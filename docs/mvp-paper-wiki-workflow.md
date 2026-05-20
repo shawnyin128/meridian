@@ -91,25 +91,31 @@ Evaluation cases should not overspecify the unique path. They should define what
 ## Proposed Vault Shape
 
 ```text
-raw/
-  papers/
-  zotero/
-  notes/
-  assets/
 wiki/
   .drafts/
+    ingests/
+    retrieval/
+    proposals/
+  .index/
+    papers.jsonl
+    source-audit.json
+    wiki-lint.json
+  raw/
+    sources/
+      papers/
+      sources.jsonl
+      index.md
   inbox/
   papers/
   claims/
   methods/
-  concepts/
+  evidence/
   topics/
   ideas/
   experiments/
+  syntheses/
   index.md
   log.md
-  context_brief.md
-  open_questions.md
   graph/
     edges.jsonl
     citations.jsonl
@@ -168,3 +174,14 @@ Canonical wiki writes should usually pass through a draft stage:
 5. Update `wiki/index.md`, `wiki/log.md`, and graph files.
 
 Small additive updates may skip the draft stage when the user explicitly asks for direct maintenance and the provenance is clear.
+
+## Implemented Wiki Management Surface
+
+The current full-wiki layer starts with a Markdown/Obsidian-compatible scaffold:
+
+- `meridian wiki init --wiki-root wiki` creates the vault directories and templates.
+- `meridian wiki publish-run <run.json> --wiki-root wiki` publishes a paper page and promotes candidate claims, methods, evidence, and topics.
+- `meridian wiki source-audit --wiki-root wiki` checks managed raw sources and writes a source index.
+- `meridian wiki rebuild-index --wiki-root wiki` rebuilds `wiki/index.md` and `.index/papers.jsonl`.
+- `meridian wiki lint --wiki-root wiki` checks source registry, required directories, paper frontmatter, and basic link health.
+- `.codex/skills/wiki-retrieve/SKILL.md` is the agent-facing retrieval workflow: run Meridian retrieval, optionally inspect with Obsidian CLI, then answer from the smallest useful set of pages.

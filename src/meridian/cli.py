@@ -13,14 +13,19 @@ from meridian.wiki.commands import (
     create_reader_check_packet,
     eval_cases,
     ingest_pdf,
+    init_wiki,
+    lint_wiki_command,
+    publish_run,
     quality_check_run,
     record_judge,
     record_review,
+    rebuild_index_wiki,
     retrieve_wiki,
     run_flow,
     self_check_aggregate,
     self_check_eval,
     self_check_run,
+    source_audit_wiki,
     structural_check_run,
     summarize_eval,
 )
@@ -69,6 +74,17 @@ def build_parser() -> argparse.ArgumentParser:
             "'auto' publishes when the quality gate does not fail; 'always' publishes "
             "a canonical draft even when it needs review."
         ),
+    )
+
+    init = wiki_subparsers.add_parser(
+        "init",
+        help="Initialize an Obsidian-compatible Paper Wiki vault.",
+    )
+    init.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    init.add_argument(
+        "--overwrite-templates",
+        action="store_true",
+        help="Rewrite wiki/templates/*.md with the current Meridian templates.",
     )
 
     flow = wiki_subparsers.add_parser(
@@ -196,6 +212,39 @@ def build_parser() -> argparse.ArgumentParser:
     )
     eval_summary.add_argument("manifest", type=Path, help="Path to eval_manifest.json.")
     eval_summary.add_argument("--out", type=Path, default=None, help="Optional summary JSON path.")
+
+    publish = wiki_subparsers.add_parser(
+        "publish-run",
+        help="Publish an existing ingest run into the canonical wiki and promote candidate records.",
+    )
+    publish.add_argument("run_manifest", type=Path, help="Path to run.json.")
+    publish.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    publish.add_argument("--overwrite", action="store_true", help="Allow overwriting the canonical paper page.")
+    publish.add_argument(
+        "--no-promote-candidates",
+        action="store_true",
+        help="Only publish the paper page; do not create claim/method/evidence/topic pages.",
+    )
+
+    source_audit = wiki_subparsers.add_parser(
+        "source-audit",
+        help="Audit managed source files and write an Obsidian-readable source index.",
+    )
+    source_audit.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    source_audit.add_argument("--out", type=Path, default=None, help="Optional audit JSON path.")
+
+    rebuild_index = wiki_subparsers.add_parser(
+        "rebuild-index",
+        help="Rebuild wiki/index.md and the paper catalog from canonical pages.",
+    )
+    rebuild_index.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+
+    lint = wiki_subparsers.add_parser(
+        "lint",
+        help="Run a lightweight health check over the canonical wiki layer.",
+    )
+    lint.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    lint.add_argument("--out", type=Path, default=None, help="Optional lint JSON report path.")
 
     review = wiki_subparsers.add_parser(
         "review",
@@ -397,6 +446,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
+        if args.product == "wiki" and args.command == "init":
+            result = init_wiki(wiki_root=args.wiki_root, overwrite_templates=args.overwrite_templates)
+            print(f"Initialized wiki vault: {result.wiki_root}")
+            print(f"Created directories: {len(result.created_dirs)}")
+            print(f"Created files: {len(result.created_files)}")
+            return 0
+
         if args.product == "wiki" and args.command == "ingest":
             result = ingest_pdf(
                 pdf_path=args.pdf,
@@ -490,6 +546,45 @@ def main(argv: list[str] | None = None) -> int:
         if args.product == "wiki" and args.command == "eval-summary":
             path = summarize_eval(manifest_path=args.manifest, out_path=args.out)
             print(f"Wrote eval summary: {path}")
+            return 0
+
+        if args.product == "wiki" and args.command == "publish-run":
+            result = publish_run(
+                run_manifest=args.run_manifest,
+                wiki_root=args.wiki_root,
+                promote_candidates=not args.no_promote_candidates,
+                overwrite=args.overwrite,
+            )
+            print(f"Published canonical paper: {result.canonical_paper_path}")
+            print(f"Promoted methods: {len(result.promoted_methods)}")
+            print(f"Promoted claims: {len(result.promoted_claims)}")
+            print(f"Promoted evidence: {len(result.promoted_evidence)}")
+            print(f"Updated topics: {len(result.topic_pages)}")
+            print(f"Updated index: {result.index_path}")
+            print(f"Updated catalog: {result.catalog_path}")
+            return 0
+
+        if args.product == "wiki" and args.command == "source-audit":
+            result = source_audit_wiki(wiki_root=args.wiki_root, out_path=args.out)
+            print(f"Wrote source audit: {result.audit_path}")
+            print(f"Wrote source index: {result.source_index_path}")
+            print(f"Sources: {result.total}")
+            print(f"Missing managed files: {result.missing_managed}")
+            print(f"SHA mismatches: {result.sha_mismatches}")
+            print(f"Duplicate SHA groups: {result.duplicate_sha_groups}")
+            return 0
+
+        if args.product == "wiki" and args.command == "rebuild-index":
+            path = rebuild_index_wiki(wiki_root=args.wiki_root)
+            print(f"Rebuilt wiki index: {path}")
+            print(f"Rebuilt paper catalog: {args.wiki_root / '.index/papers.jsonl'}")
+            return 0
+
+        if args.product == "wiki" and args.command == "lint":
+            result = lint_wiki_command(wiki_root=args.wiki_root, out_path=args.out)
+            print(f"Wrote wiki lint report: {result.report_path}")
+            print(f"Wiki lint status: {result.status}")
+            print(f"Findings: {len(result.findings)}")
             return 0
 
         if args.product == "wiki" and args.command == "judge-pack":

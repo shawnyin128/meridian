@@ -383,6 +383,149 @@ class CliTests(unittest.TestCase):
             self.assertEqual(records[0]["routing"]["methods"][0], "paper-specific research method")
             self.assertIn("What To Remember", records[0]["section_previews"])
 
+    def test_wiki_init_creates_obsidian_compatible_vault_scaffold(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            wiki_root = Path(tmp) / "wiki"
+
+            self.assertEqual(main(["wiki", "init", "--wiki-root", str(wiki_root)]), 0)
+
+            for relative in (
+                "papers",
+                "claims",
+                "methods",
+                "evidence",
+                "topics",
+                "syntheses",
+                "templates",
+                "raw/sources/papers",
+                ".drafts/retrieval",
+                ".index",
+            ):
+                self.assertTrue((wiki_root / relative).exists(), relative)
+            self.assertTrue((wiki_root / "index.md").exists())
+            self.assertTrue((wiki_root / "log.md").exists())
+            self.assertIn('type: "paper"', (wiki_root / "templates/paper.md").read_text(encoding="utf-8"))
+
+    def test_project_has_wiki_retrieval_skill(self) -> None:
+        skill = Path(".codex/skills/wiki-retrieve/SKILL.md")
+        self.assertTrue(skill.exists())
+        text = skill.read_text(encoding="utf-8")
+        self.assertIn("meridian wiki retrieve", text)
+        self.assertIn("obsidian search", text)
+        self.assertIn("Implementation Hooks", text)
+
+    def test_publish_run_promotes_candidate_records_into_wiki_graph(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_fitz = sys.modules["fitz"]
+            fake_fitz.open = lambda path: CodeQuantLikeDocument()
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            pdf = root / "codequant.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            out = wiki_root / ".drafts/ingests/codequant"
+
+            self.assertEqual(main(["wiki", "ingest", str(pdf), "--out", str(out)]), 0)
+            self.assertEqual(
+                main(["wiki", "publish-run", str(out / "run.json"), "--wiki-root", str(wiki_root)]),
+                0,
+            )
+
+            canonical = wiki_root / "papers/CodeQuant-Unified-Clustering-and-Quantization.md"
+            self.assertTrue(canonical.exists())
+            self.assertEqual(len(list((wiki_root / "methods").glob("*.md"))), 4)
+            self.assertGreaterEqual(len(list((wiki_root / "claims").glob("*.md"))), 4)
+            self.assertGreaterEqual(len(list((wiki_root / "evidence").glob("*.md"))), 4)
+            self.assertTrue((wiki_root / "topics/activation-outliers.md").exists())
+            self.assertTrue((wiki_root / ".index/papers.jsonl").exists())
+            index = (wiki_root / "index.md").read_text(encoding="utf-8")
+            self.assertIn("[[papers/CodeQuant-Unified-Clustering-and-Quantization|CodeQuant", index)
+            run = json.loads((out / "run.json").read_text(encoding="utf-8"))
+            self.assertIn("promotion", run)
+            self.assertEqual(len(run["promotion"]["methods"]), 4)
+
+    def test_source_audit_and_lint_report_wiki_management_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            pdf = root / "paper.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            out = wiki_root / ".drafts/ingests/fake-paper"
+
+            self.assertEqual(main(["wiki", "init", "--wiki-root", str(wiki_root)]), 0)
+            self.assertEqual(main(["wiki", "ingest", str(pdf), "--out", str(out)]), 0)
+            self.assertEqual(main(["wiki", "source-audit", "--wiki-root", str(wiki_root)]), 0)
+            self.assertEqual(main(["wiki", "lint", "--wiki-root", str(wiki_root)]), 0)
+
+            audit = json.loads((wiki_root / ".index/source-audit.json").read_text(encoding="utf-8"))
+            lint = json.loads((wiki_root / ".index/wiki-lint.json").read_text(encoding="utf-8"))
+            self.assertEqual(audit["total"], 1)
+            self.assertEqual(audit["missing_managed"], 0)
+            self.assertTrue((wiki_root / "raw/sources/index.md").exists())
+            self.assertIn(lint["status"], {"pass", "warn"})
+
+    def test_publish_run_registers_unmanaged_source_before_canonical_write(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            draft = root / "draft"
+            draft.mkdir()
+            pdf = root / "paper.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            (draft / "paper.md").write_text(
+                """---
+type: "paper"
+title: "Old Draft"
+status: "draft"
+sources:
+  - "/tmp/random.pdf"
+topics:
+  - "activation outliers"
+methods:
+  - "post-training quantization"
+settings:
+  - "weight-only quantization"
+claims: []
+confidence: "low"
+review_state: "needs_review"
+---
+# Old Draft
+
+## What To Remember
+
+This draft came from an unmanaged source.
+""",
+                encoding="utf-8",
+            )
+            for name in ("claims.jsonl", "methods.jsonl", "evidence.jsonl"):
+                (draft / name).write_text("", encoding="utf-8")
+            run = {
+                "schema_version": "paper_wiki_ingest.v0",
+                "created_at": "2026-05-19T00:00:00+00:00",
+                "source_pdf": str(pdf),
+                "title": "Old Draft",
+                "draft_artifacts": {
+                    "paper_page": str(draft / "paper.md"),
+                    "claims": str(draft / "claims.jsonl"),
+                    "methods": str(draft / "methods.jsonl"),
+                    "evidence": str(draft / "evidence.jsonl"),
+                },
+                "quality_gate": {"decision": "warn", "review_state": "needs_review", "confidence": "low", "errors": [], "warnings": []},
+            }
+            (draft / "run.json").write_text(json.dumps(run), encoding="utf-8")
+
+            self.assertEqual(
+                main(["wiki", "publish-run", str(draft / "run.json"), "--wiki-root", str(wiki_root)]),
+                0,
+            )
+
+            canonical = wiki_root / "papers/Old-Draft.md"
+            text = canonical.read_text(encoding="utf-8")
+            updated_run = json.loads((draft / "run.json").read_text(encoding="utf-8"))
+            self.assertIn('source_id: "paper-pdf-', text)
+            self.assertIn("raw/sources/papers", text)
+            self.assertEqual(updated_run["source_management"]["mode"], "managed")
+            self.assertTrue((wiki_root / "raw/sources/sources.jsonl").exists())
+
     def test_wiki_retrieve_outputs_context_packet_from_frontmatter_and_sections(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
