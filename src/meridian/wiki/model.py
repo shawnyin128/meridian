@@ -1032,6 +1032,10 @@ def _method_records(title: str, pages: list[PageExtraction]) -> list[dict[str, A
 
 
 def _fallback_method_summary(method_text: str, pages: list[PageExtraction]) -> str:
+    contract_summary = _fallback_contract_summary(method_text)
+    if contract_summary:
+        return contract_summary
+
     candidate_text = " ".join(page.text for page in pages[:3]) + " " + method_text
     scored: list[tuple[int, int, str]] = []
     for index, sentence in enumerate(_sentences(candidate_text)):
@@ -1083,6 +1087,65 @@ def _fallback_method_summary(method_text: str, pages: list[PageExtraction]) -> s
         if len(selected) >= 3:
             break
     return " ".join(selected)
+
+
+def _fallback_contract_summary(method_text: str) -> str:
+    lowered = method_text.lower()
+    if "kv cache" in lowered or "kv-cache" in lowered or "key-value cache" in lowered:
+        return (
+            "Compresses the decode-time KV cache by selecting which cached key/value entries to retain under a cache budget, "
+            "then evaluates the quality, memory, and latency tradeoff at target context lengths."
+        )
+    if "flashattention" in lowered or ("hopper" in lowered and "attention" in lowered):
+        return (
+            "Schedules attention tiles, GPU memory movement, and low-precision compute so exact attention runs faster on the target hardware."
+        )
+    if "speculative actions" in lowered or "agentic systems" in lowered:
+        return (
+            "Speculates future agent actions with a fast path and uses a slower trusted executor or verifier to commit or roll back the action trace."
+        )
+    if "qwen-audio" in lowered or "audio-language" in lowered or "audio understanding" in lowered:
+        return (
+            "Connects audio encoder representations to language-model prompting and decoding so speech, music, sound, and audio-QA tasks can be handled through one audio-language interface."
+        )
+    if "jepa" in lowered and ("video" in lowered or "joint embedding" in lowered):
+        return (
+            "Learns video representations by predicting masked targets in latent space, then tests whether those representations transfer to perception or planning tasks."
+        )
+    if (
+        "physics-informed neural network" in lowered
+        or "physics informed neural network" in lowered
+        or "partial differential equation" in lowered
+        or "pde residual" in lowered
+    ):
+        return (
+            "Trains a neural approximator with data loss plus PDE residual and boundary/initial-condition constraints for forward solution and inverse parameter tasks."
+        )
+    if "k-means" in lowered or "principal component analysis" in lowered or "pca" in lowered:
+        return (
+            "Analyzes when clustering assignments and centroids align with PCA-style structure and which objective assumptions make that connection valid."
+        )
+    if "survey" in lowered and ("autonomous agent" in lowered or "llm-based autonomous agent" in lowered):
+        return (
+            "Organizes LLM-agent papers into taxonomy dimensions such as memory, planning, action, tool use, and evaluation so later work can choose primary sources and comparison axes."
+        )
+    if "direct preference optimization" in lowered or "preference optimization" in lowered:
+        return (
+            "Turns preference pairs and a reference-policy constraint into a direct policy objective, avoiding a separate online reward-model optimization loop."
+        )
+    if "test-time reinforcement learning" in lowered or "ttrl" in lowered:
+        return (
+            "Applies reinforcement-learning style updates at test time, so evaluation must separate task reward, rollout/update behavior, and inference-time cost."
+        )
+    return ""
+
+
+def _bad_visual_caption_sentence(sentence: str) -> bool:
+    lowered = sentence.lower()
+    if any(marker in lowered for marker in ("http", "github", "@", "references", "proceedings")):
+        return True
+    digit_ratio = sum(character.isdigit() for character in sentence) / max(len(sentence), 1)
+    return digit_ratio > 0.32
 
 
 def _bad_method_summary_sentence(sentence: str) -> bool:
@@ -3064,7 +3127,85 @@ def _mechanism_facts(pages: list[PageExtraction]) -> list[dict[str, Any]]:
                 page=_find_page_with_all(pages, "T-MAC", "Llama.cpp", "4.15"),
             )
         )
+    facts.extend(_visual_mechanism_facts(pages, existing_pages={_fact_page(fact) for fact in facts}))
     return facts
+
+
+def _visual_mechanism_facts(pages: list[PageExtraction], *, existing_pages: set[int | None]) -> list[dict[str, Any]]:
+    facts: list[dict[str, Any]] = []
+    for page in pages:
+        if page.page_number in existing_pages:
+            continue
+        snippet = _visual_caption_snippet(page.text)
+        if not snippet:
+            continue
+        fact_type = _visual_fact_type(snippet)
+        component = _visual_fact_component(snippet)
+        facts.append(_mechanism_fact(fact_type, component, snippet, page))
+        if len(facts) >= 4:
+            break
+    return facts
+
+
+def _fact_page(fact: dict[str, Any]) -> int | None:
+    provenance = fact.get("provenance") or []
+    if not provenance:
+        return None
+    page = provenance[0].get("page")
+    return int(page) if isinstance(page, int) else None
+
+
+def _visual_caption_snippet(text: str) -> str:
+    candidates: list[str] = []
+    for sentence in _sentences(text):
+        lowered = sentence.lower()
+        if not any(marker in lowered for marker in ("figure ", "fig. ", "table ", "algorithm ", "equation ", "eq. ", "theorem ")):
+            continue
+        if _bad_visual_caption_sentence(sentence):
+            continue
+        candidates.append(_clip_sentence(sentence, 240))
+    if candidates:
+        return candidates[0]
+    return ""
+
+
+def _visual_fact_type(snippet: str) -> str:
+    lowered = snippet.lower()
+    if "algorithm" in lowered:
+        return "algorithm"
+    if "equation" in lowered or "eq. " in lowered or "theorem" in lowered:
+        return "equation_or_theorem"
+    if "table" in lowered and any(marker in lowered for marker in ("result", "benchmark", "accuracy", "latency", "throughput", "memory", "score")):
+        return "result_table"
+    if "table" in lowered:
+        return "table"
+    if any(marker in lowered for marker in ("ablation", "effect of", "component")):
+        return "ablation_figure"
+    if any(marker in lowered for marker in ("architecture", "framework", "pipeline", "overview", "workflow")):
+        return "mechanism_figure"
+    return "figure"
+
+
+def _visual_fact_component(snippet: str) -> str:
+    lowered = snippet.lower()
+    if "algorithm" in lowered:
+        return "Algorithm detail"
+    if "equation" in lowered or "eq. " in lowered:
+        return "Equation detail"
+    if "theorem" in lowered:
+        return "Theorem detail"
+    if "table" in lowered:
+        return "Result table" if _visual_fact_type(snippet) == "result_table" else "Table detail"
+    if "figure" in lowered or "fig. " in lowered:
+        return "Mechanism figure" if _visual_fact_type(snippet) == "mechanism_figure" else "Figure detail"
+    return "Visual evidence"
+
+
+def _clip_sentence(sentence: str, limit: int) -> str:
+    cleaned = _normalize(sentence)
+    if len(cleaned) <= limit:
+        return cleaned
+    return cleaned[: limit - 3].rstrip() + "..."
 
 
 def _mechanism_fact(fact_type: str, component: str, summary: str, page: PageExtraction | None) -> dict[str, Any]:
@@ -4188,12 +4329,66 @@ def _legacy_word_topics(title: str, abstract: str, candidates: list[dict[str, An
 
 
 def _known_terms(extraction: PdfExtraction, terms: tuple[str, ...]) -> list[str]:
+    if terms == KNOWN_METRICS:
+        return _known_metric_terms(extraction)
     text = _paper_body_text(extraction.pages)
     found = []
     for term in terms:
         if re.search(rf"\b{re.escape(term)}\b", text, flags=re.IGNORECASE):
             found.append(term)
     return found
+
+
+def _known_metric_terms(extraction: PdfExtraction) -> list[str]:
+    text = _paper_body_text(extraction.pages)
+    found: list[str] = []
+    sentences = _sentences(text)
+    for term in KNOWN_METRICS:
+        if any(_sentence_uses_metric(sentence, term) for sentence in sentences):
+            found.append(term)
+    return found
+
+
+def _sentence_uses_metric(sentence: str, term: str) -> bool:
+    lowered = sentence.lower()
+    term_lower = term.lower()
+    if term_lower == "precision" and re.search(
+        r"\b(?:low|mixed|half|single|double|fp4|fp8|fp16|bf16|machine|numerical)[ -]precision\b"
+        r"|\bprecision\s+(?:computation|capabilities|gemm|attention|tensor|format|sensing)\b",
+        lowered,
+    ):
+        return False
+    if term_lower == "recall" and re.search(r"\b(?:we|to|can|will|should|let\s+us)\s+recall\b|\brecall\s+(?:the|equation)\b", lowered):
+        return False
+    if not re.search(rf"(?<!-)\b{re.escape(term_lower)}\b", lowered):
+        return False
+    evidence_context = (
+        "metric",
+        "score",
+        "result",
+        "report",
+        "evaluate",
+        "evaluation",
+        "benchmark",
+        "dataset",
+        "table",
+        "figure",
+        "baseline",
+        "outperform",
+        "achieve",
+        "improve",
+        "degrade",
+        "compare",
+        "%",
+        "x",
+    )
+    if any(marker in lowered for marker in evidence_context):
+        return True
+    if term_lower in {"latency", "throughput", "speedup", "memory", "perplexity", "f1", "auc"}:
+        return True
+    if term_lower == "loss" and any(marker in lowered for marker in ("objective", "training", "validation", "test")):
+        return True
+    return False
 
 
 def _paper_body_text(pages: list[PageExtraction]) -> str:

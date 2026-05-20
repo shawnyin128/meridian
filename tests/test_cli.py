@@ -14,6 +14,7 @@ from meridian.wiki.ingest import _title_from_first_page
 from meridian.wiki.model import _primary_paper_key, build_paper_model
 from meridian.wiki.packet import _trusted_metadata_authors
 from meridian.wiki.quality_check import (
+    _candidate_record_score,
     _retrieval_intent_quality_score,
     _retrieval_scenarios,
     _retrieval_taxonomy_boundary_score,
@@ -314,6 +315,8 @@ class CliTests(unittest.TestCase):
         self.assertNotIn("clustering algorithm", model.methods)
         self.assertIn("KV-cache compression setting", model.settings)
         self.assertIn("KV-cache tensors", model.method_records[0]["inputs"])
+        self.assertLess(len(model.method_records[0]["summary"]), 260)
+        self.assertNotIn("Our observations reveal", model.method_records[0]["summary"])
         self.assertIn("KV-cache compression method", model.one_line_takeaway)
         self.assertNotIn("SnapKV improves efficiency by selecting/clustering", model.one_line_takeaway)
         self.assertIn("retention ratio", " ".join(model.implementation_notes).lower())
@@ -348,7 +351,10 @@ class CliTests(unittest.TestCase):
                 ),
                 PageExtraction(
                     page_number=3,
-                    text="Experiments\nThe evaluation reports throughput, latency, and numerical accuracy.",
+                    text=(
+                        "Experiments\nThe evaluation reports throughput, latency, and numerical accuracy. "
+                        "Baseline FP16 precision and FP8 precision are compared with RMSE."
+                    ),
                     section_hint="Experiments",
                     image_path="",
                     image_count=0,
@@ -365,7 +371,51 @@ class CliTests(unittest.TestCase):
         self.assertNotIn("post-training quantization", model.methods)
         self.assertNotIn("hardware-aware quantization", model.methods)
         self.assertNotIn("KV-cache quantization", model.settings)
+        self.assertNotIn("precision", model.metrics)
         self.assertNotIn("Quantization:", "\n".join(model.implementation_notes))
+
+    def test_visual_table_equation_pages_create_semantic_mechanism_facts(self) -> None:
+        extraction = PdfExtraction(
+            metadata={"title": "Pipeline Method"},
+            page_count=3,
+            pages=[
+                PageExtraction(
+                    page_number=1,
+                    text="Abstract\nWe present a method for robust evaluation.",
+                    section_hint="Abstract",
+                    image_path="",
+                    image_count=0,
+                    drawing_count=0,
+                ),
+                PageExtraction(
+                    page_number=2,
+                    text=(
+                        "Method\nFigure 2 illustrates the framework pipeline: inputs are encoded, "
+                        "a planner selects actions, and a verifier checks outputs before commit."
+                    ),
+                    section_hint="Method",
+                    image_path="page-0002.png",
+                    image_count=1,
+                    drawing_count=45,
+                ),
+                PageExtraction(
+                    page_number=3,
+                    text="Results\nTable 1 reports accuracy, latency, and memory against baselines.",
+                    section_hint="Results",
+                    image_path="page-0003.png",
+                    image_count=0,
+                    drawing_count=22,
+                ),
+            ],
+        )
+
+        model = build_paper_model("Pipeline Method", extraction)
+
+        fact_types = {fact["fact_type"] for fact in model.mechanism_facts}
+        summaries = " ".join(fact["summary"] for fact in model.mechanism_facts)
+        self.assertIn("mechanism_figure", fact_types)
+        self.assertIn("result_table", fact_types)
+        self.assertIn("framework pipeline", summaries)
 
     def test_agent_speculative_actions_are_not_token_decoding(self) -> None:
         extraction = PdfExtraction(
@@ -414,6 +464,8 @@ class CliTests(unittest.TestCase):
         self.assertNotIn("speculative decoding", model.methods)
         self.assertNotIn("hardware-aware quantization", model.topics)
         self.assertNotIn("computer architecture", model.topics)
+        self.assertLess(len(model.method_records[0]["summary"]), 240)
+        self.assertNotIn("Inspired by speculative execution", model.method_records[0]["summary"])
         self.assertIn("rollback", " ".join(model.implementation_notes).lower())
         self.assertNotIn("Speculative decoding:", "\n".join(model.implementation_notes))
 
@@ -1613,6 +1665,23 @@ This page explains preference optimization for alignment.
             self.assertIn("retrieval_scenario_coverage", dimensions)
             self.assertIn("retrieval_intent_quality", dimensions)
             self.assertIn("metadata_routing_integrity", dimensions)
+
+    def test_quality_check_penalizes_noisy_method_summaries(self) -> None:
+        score = _candidate_record_score(
+            claims=[{"id": "claim-1", "provenance": [{"page": 1}]}],
+            methods=[
+                {
+                    "id": "method-1",
+                    "summary": "Our observations reveal " + ("generic background sentence. " * 25),
+                    "inputs": ["input"],
+                    "outputs": ["output"],
+                }
+            ],
+            evidence=[{"id": "evidence-1", "supports": ["claim-1"]}],
+        )
+
+        self.assertLessEqual(score["score"], 3.5)
+        self.assertIn("noisy_method_summaries:method-1", score["findings"])
 
     def test_retrieval_taxonomy_allows_descriptive_title_topics(self) -> None:
         score = _retrieval_taxonomy_boundary_score(

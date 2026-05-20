@@ -507,6 +507,13 @@ def _candidate_record_score(
         findings.append("missing_method_records")
     if not evidence:
         findings.append("missing_evidence_records")
+    noisy_method_summaries = [
+        str(item.get("id") or item.get("name") or index)
+        for index, item in enumerate(methods, start=1)
+        if _is_noisy_method_summary(str(item.get("summary") or ""))
+    ]
+    if noisy_method_summaries:
+        findings.append(f"noisy_method_summaries:{','.join(noisy_method_summaries[:5])}")
     source_hold = any(str(item.get("review_state") or "") == "source_text_insufficient" for item in claims + methods)
     if source_hold and claims and methods and evidence:
         complete_hold_contracts = all(item.get("inputs") and item.get("outputs") for item in methods)
@@ -527,7 +534,23 @@ def _candidate_record_score(
         + min(1.0, claim_provenance / max(len(claims), 1))
         + min(2.5, method_contracts / max(len(methods), 1) * 2.5)
     )
+    if noisy_method_summaries:
+        score = min(score, 3.5)
     return _dimension("candidate_record_promotion", score, "candidate_record_schema", "Candidate records are promotion-ready for wiki pages.", findings)
+
+
+def _is_noisy_method_summary(summary: str) -> bool:
+    if len(summary) > 360:
+        return True
+    lowered = summary.lower()
+    noisy_phrases = (
+        "has received broad attention",
+        "scaling attention to longer context will unlock",
+        "inspired by speculative execution",
+        "our observations reveal",
+        "effectiveness of the proposed framework is demonstrated",
+    )
+    return any(phrase in lowered for phrase in noisy_phrases)
 
 
 def _concision_noise_score(paper_text: str, sections: dict[str, str]) -> dict[str, Any]:

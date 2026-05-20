@@ -757,6 +757,9 @@ def _page_has_visual_keywords(page: PageExtraction) -> bool:
 def _visual_pointer_reason(page: PageExtraction) -> str:
     lowered = page.text.lower()
     reasons = []
+    semantic = _visual_semantic_hint(page.text)
+    if semantic:
+        reasons.append(semantic)
     for label, keyword in (
         ("figure", "figure "),
         ("table", "table "),
@@ -770,6 +773,23 @@ def _visual_pointer_reason(page: PageExtraction) -> str:
     if page.drawing_count:
         reasons.append(f"{page.drawing_count} drawing object(s)")
     return ", ".join(reasons[:4]) if reasons else "visual/layout signal"
+
+
+def _visual_semantic_hint(text: str) -> str:
+    lowered = text.lower()
+    if "algorithm" in lowered:
+        return "algorithm/pseudocode detail"
+    if "equation" in lowered or "eq. " in lowered or "theorem" in lowered:
+        return "math/objective detail"
+    if "ablation" in lowered:
+        return "ablation evidence"
+    if "throughput" in lowered or "latency" in lowered or "memory" in lowered:
+        return "systems evidence"
+    if "accuracy" in lowered or "benchmark" in lowered or "result" in lowered:
+        return "result evidence"
+    if "architecture" in lowered or "framework" in lowered or "pipeline" in lowered:
+        return "mechanism diagram"
+    return ""
 
 
 def _render_record_pointers() -> str:
