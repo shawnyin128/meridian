@@ -15,12 +15,13 @@ Use this skill when the user's request could benefit from the accumulated Paper 
 ```bash
 meridian wiki retrieve "<standalone research query>" \
   --wiki-root wiki \
+  --strategy v1 \
   --out wiki/.drafts/retrieval/context.md \
   --json-out wiki/.drafts/retrieval/context.json
 ```
 
 3. Read the context packet and then the smallest useful set of linked wiki pages/sections.
-4. If Obsidian is open and live-vault inspection is useful, use Obsidian CLI for complementary navigation:
+4. If Obsidian is open and live-vault inspection is useful, use Obsidian CLI for complementary navigation. This includes `obsidian search` for live keyword checks:
 
 ```bash
 obsidian vault="wiki" search query="<keyword or method>" limit=10
@@ -47,10 +48,26 @@ Write-back proposals stay under `wiki/.drafts/proposals/`. They separate source 
 - Treat frontmatter as the machine-routing source of truth.
 - Treat `paper.md` as the concise reading target.
 - Prefer context packets over raw search dumps.
+- Use retrieval v1 by default. v1 adds field-weighted scoring, section-aware ranking, controlled-vocabulary normalization, capped graph/facet expansion, source-quality routing, hard-distractor suppression, and compact context packet construction. Use `--strategy v0` only for baseline comparison.
 - Do not cite a paper only because its title matched; inspect the chosen section snippets.
 - Distinguish source facts, wiki synthesis, and the user's own ideas.
 - For coding tasks, always look for `Implementation Hooks`, `Mechanism`, and `Limitations / Uncertainty`.
 - For evidence tasks, inspect `Evidence Map`, candidate claims, and provenance before relying on a claim.
+
+## Evaluation / Regression
+
+When retrieval behavior changes, run the optimization evaluator against the main wiki:
+
+```bash
+meridian wiki retrieval-optimize-eval eval/cases/retrieval_optimization_v1.jsonl \
+  --wiki-root wiki \
+  --out-dir eval/runs/<run-id>/ \
+  --rubric eval/rubrics/retrieval_optimization_quality.md \
+  --top-k 8 \
+  --overwrite
+```
+
+Use the generated judge packets to review whether v1 improves research usefulness over v0. Prefer generalized fixes to query parsing, facets, section scoring, graph expansion, source-quality routing, or packet construction over hand-editing a single case result.
 
 ## When Retrieval Is Weak
 

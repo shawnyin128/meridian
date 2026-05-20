@@ -24,6 +24,7 @@ from meridian.wiki.commands import (
     retrieval_eval_summary,
     retrieval_audit_wiki,
     retrieval_eval_wiki,
+    retrieval_optimization_eval_wiki,
     retrieve_wiki,
     run_flow,
     self_check_aggregate,
@@ -445,6 +446,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     retrieve.add_argument("--top-k", type=int, default=5, help="Maximum paper pages to return.")
     retrieve.add_argument(
+        "--strategy",
+        choices=["v0", "v1"],
+        default="v1",
+        help="Retrieval strategy. v0 is the legacy lexical/frontmatter scorer; v1 is the optimized deterministic hybrid scorer.",
+    )
+    retrieve.add_argument(
         "--out",
         type=Path,
         default=None,
@@ -482,7 +489,37 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional catalog path. Defaults to <wiki-root>/.index/papers.jsonl.",
     )
     retrieval_eval.add_argument("--top-k", type=int, default=5, help="Maximum paper pages per case.")
+    retrieval_eval.add_argument(
+        "--strategy",
+        choices=["v0", "v1"],
+        default="v1",
+        help="Retrieval strategy to evaluate.",
+    )
     retrieval_eval.add_argument("--overwrite", action="store_true", help="Overwrite an existing eval output directory.")
+
+    retrieval_optimization_eval = wiki_subparsers.add_parser(
+        "retrieval-optimize-eval",
+        help="Run side-by-side retrieval optimization evaluation over a canonical Paper Wiki.",
+    )
+    retrieval_optimization_eval.add_argument("cases", type=Path, help="JSONL retrieval optimization case file.")
+    retrieval_optimization_eval.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    retrieval_optimization_eval.add_argument(
+        "--out-dir",
+        type=Path,
+        required=True,
+        help="Directory where side-by-side contexts, judge packets, and summary are written.",
+    )
+    retrieval_optimization_eval.add_argument("--rubric", type=Path, default=None, help="Optional judge rubric markdown.")
+    retrieval_optimization_eval.add_argument(
+        "--catalog",
+        type=Path,
+        default=None,
+        help="Optional catalog path. Defaults to <wiki-root>/.index/papers.jsonl.",
+    )
+    retrieval_optimization_eval.add_argument("--top-k", type=int, default=8, help="Maximum paper pages per case.")
+    retrieval_optimization_eval.add_argument("--baseline-strategy", choices=["v0", "v1"], default="v0")
+    retrieval_optimization_eval.add_argument("--candidate-strategy", choices=["v0", "v1"], default="v1")
+    retrieval_optimization_eval.add_argument("--overwrite", action="store_true", help="Overwrite an existing eval output directory.")
 
     retrieval_eval_summary_cmd = wiki_subparsers.add_parser(
         "retrieval-eval-summary",
@@ -787,6 +824,7 @@ def main(argv: list[str] | None = None) -> int:
                 wiki_root=args.wiki_root,
                 catalog_path=args.catalog,
                 top_k=args.top_k,
+                strategy=args.strategy,
                 packet_path=args.out,
                 result_path=args.json_out,
             )
@@ -807,6 +845,7 @@ def main(argv: list[str] | None = None) -> int:
                 rubric_path=args.rubric,
                 top_k=args.top_k,
                 catalog_path=args.catalog,
+                strategy=args.strategy,
                 overwrite=args.overwrite,
             )
             print(f"Wrote retrieval manifest: {result.manifest_path}")
@@ -821,6 +860,26 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Wrote retrieval summary: {result.summary_path}")
             print(f"Total cases: {result.total_cases}")
             print(f"Judge results: {result.judge_results}")
+            return 0
+
+        if args.product == "wiki" and args.command == "retrieval-optimize-eval":
+            result = retrieval_optimization_eval_wiki(
+                cases_path=args.cases,
+                wiki_root=args.wiki_root,
+                out_dir=args.out_dir,
+                rubric_path=args.rubric,
+                top_k=args.top_k,
+                catalog_path=args.catalog,
+                baseline_strategy=args.baseline_strategy,
+                candidate_strategy=args.candidate_strategy,
+                overwrite=args.overwrite,
+            )
+            print(f"Wrote retrieval optimization manifest: {result.manifest_path}")
+            print(f"Wrote retrieval optimization summary: {result.summary_path}")
+            print(f"Wrote retrieval optimization report: {result.summary_markdown_path}")
+            print(f"Total cases: {result.total_cases}")
+            print(f"Baseline strategy: {result.baseline_strategy}")
+            print(f"Candidate strategy: {result.candidate_strategy}")
             return 0
 
         if args.product == "wiki" and args.command == "retrieval-audit":

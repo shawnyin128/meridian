@@ -82,3 +82,7 @@ Converged for MVP productization. The main `wiki/` is usable as the daily Obsidi
 - full-library page images were skipped, so `quality_gate: warn` remains advisory across canonical pages;
 - Obsidian CLI live navigation was not verified because Obsidian was not running;
 - duplicate source-identity prevention should become automatic before future publishes.
+
+## Release Round
+
+Feature F15 was finalized in commit `29c6911` (`docs: verify main wiki obsidian vault registration`). The remaining retrieval-specific follow-up moved to F16.

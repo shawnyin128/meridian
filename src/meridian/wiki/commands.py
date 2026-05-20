@@ -24,6 +24,8 @@ from meridian.wiki.reader_check import build_reader_check_packet
 from meridian.wiki.retrieval_eval import (
     RetrievalEvalResult,
     RetrievalEvalSummaryResult,
+    RetrievalOptimizationEvalResult,
+    run_retrieval_optimization_eval,
     run_retrieval_eval,
     summarize_retrieval_eval,
 )
@@ -344,6 +346,7 @@ def retrieve_wiki(
     wiki_root: Path,
     catalog_path: Path | None = None,
     top_k: int = 5,
+    strategy: str = "v1",
     packet_path: Path | None = None,
     result_path: Path | None = None,
 ) -> RetrievalResult:
@@ -352,6 +355,7 @@ def retrieve_wiki(
         wiki_root=wiki_root,
         catalog_path=catalog_path,
         top_k=top_k,
+        strategy=strategy,
         packet_path=packet_path,
         result_path=result_path,
     )
@@ -365,6 +369,7 @@ def retrieval_eval_wiki(
     rubric_path: Path | None = None,
     top_k: int = 5,
     catalog_path: Path | None = None,
+    strategy: str = "v1",
     overwrite: bool = False,
 ) -> RetrievalEvalResult:
     return run_retrieval_eval(
@@ -374,12 +379,38 @@ def retrieval_eval_wiki(
         rubric_path=rubric_path,
         top_k=top_k,
         catalog_path=catalog_path,
+        strategy=strategy,
         overwrite=overwrite,
     )
 
 
 def retrieval_eval_summary(manifest_path: Path, out_path: Path | None = None) -> RetrievalEvalSummaryResult:
     return summarize_retrieval_eval(manifest_path=manifest_path, out_path=out_path)
+
+
+def retrieval_optimization_eval_wiki(
+    *,
+    cases_path: Path,
+    wiki_root: Path,
+    out_dir: Path,
+    rubric_path: Path | None = None,
+    top_k: int = 8,
+    catalog_path: Path | None = None,
+    baseline_strategy: str = "v0",
+    candidate_strategy: str = "v1",
+    overwrite: bool = False,
+) -> RetrievalOptimizationEvalResult:
+    return run_retrieval_optimization_eval(
+        cases_path=cases_path,
+        wiki_root=wiki_root,
+        out_dir=out_dir,
+        rubric_path=rubric_path,
+        top_k=top_k,
+        catalog_path=catalog_path,
+        baseline_strategy=baseline_strategy,
+        candidate_strategy=candidate_strategy,
+        overwrite=overwrite,
+    )
 
 
 def retrieval_audit_wiki(

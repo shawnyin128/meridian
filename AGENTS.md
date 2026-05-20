@@ -60,6 +60,8 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `docs/wiki-layer-test-strategy.md`: layered source/canonical/retrieval test strategy, retrieval scenario metrics, judge rubric usage, calibration, and release gates.
 - `docs/retrieval-smoke-quality-brief.md`: latest tracked retrieval smoke quality summary over representative canonical quantization wiki pages.
 - `docs/real-library-retrieval-audit-brief.md`: latest tracked per-paper retrieval audit over the current real canonical wiki.
+- `docs/retrieval-optimization-research.md`: retrieval v1 design research, option tradeoffs, and backend roadmap for Markdown-first paper-wiki retrieval.
+- `docs/retrieval-v1-quality-brief.md`: current v0 versus optimized v1 quality evidence, run artifacts, convergence conclusion, and remaining bottlenecks.
 - `docs/paper-wiki-mvp-delivery-boundaries.md`: current boundaries for query write-back, Obsidian CLI, future MCP delivery, Zotero/user notes, and MVP release gates.
 - `docs/main-wiki-productization-quality-brief.md`: current main Obsidian vault productization status, source/canonical/retrieval gates, graph health, quality deltas, and remaining limitations.
 - `docs/mvp-workflow.html`: simplified visual workflow diagram.

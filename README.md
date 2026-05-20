@@ -168,7 +168,7 @@ obsidian vault="wiki" read path="papers/<paper-page>.md"
 obsidian vault="wiki" backlinks path="papers/<paper-page>.md"
 ```
 
-## Retrieval v0
+## Retrieval v1
 
 Canonical draft paper pages can be wrapped into a machine-readable corpus catalog:
 
@@ -185,14 +185,31 @@ Retrieve research context with:
 ```bash
 meridian wiki retrieve "I need MoE PTQ papers for activation outlier ablations" \
   --wiki-root wiki \
+  --strategy v1 \
   --top-k 5 \
   --out wiki/.drafts/retrieval/context.md \
   --json-out wiki/.drafts/retrieval/context.json
 ```
 
-The output is a ranked context packet, not a final answer. Each hit explains the
-matched frontmatter fields, selected sections, and read-first snippets so an
-agent can inspect the smallest useful set of wiki pages before synthesis.
+The output is a ranked context packet, not a final answer. Retrieval v1 combines
+frontmatter/facet routing, deterministic BM25-style field weighting,
+section-aware scoring, capped graph expansion, source-quality guards, hard
+distractor suppression, and compact read-first snippets. v0 remains available
+for comparison with `--strategy v0`.
+
+Run side-by-side retrieval optimization evaluation:
+
+```bash
+meridian wiki retrieval-optimize-eval eval/cases/retrieval_optimization_v1.jsonl \
+  --wiki-root wiki \
+  --out-dir eval/runs/<run-id>/ \
+  --rubric eval/rubrics/retrieval_optimization_quality.md \
+  --top-k 8 \
+  --overwrite
+```
+
+This writes `context.v0.md`, `context.v1.md`, JSON payloads, judge packets,
+`retrieval_manifest.json`, `summary.json`, and `summary.md` for every case.
 
 Run scenario-based retrieval evaluation:
 

@@ -1401,6 +1401,211 @@ This page explains preference optimization for alignment.
             self.assertIn("Evidence Map", headings)
             self.assertIn("Limitations / Uncertainty", headings)
 
+    def test_wiki_retrieve_v1_suppresses_source_quality_hold_for_scientific_query(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            papers.mkdir(parents=True)
+            _write_test_paper(
+                papers / "Good-PINN.md",
+                title="Physics-informed Neural Networks",
+                aliases=["PINN"],
+                topics=["physics-informed neural networks", "partial differential equations"],
+                methods=["PDE residual loss"],
+                settings=["scientific ML"],
+                body_sections={
+                    "What To Remember": "PINNs fit neural networks with PDE residual losses and boundary conditions.",
+                    "Mechanism": "Autodiff computes PDE residuals at collocation points.",
+                    "Implementation Hooks": "Test residual shapes, boundary losses, and inverse-problem parameters.",
+                },
+            )
+            _write_test_paper(
+                papers / "Bad-PINN-OCR.md",
+                title="Broken OCR Physics Paper",
+                aliases=["PINN OCR"],
+                topics=["physics-informed neural networks", "partial differential equations"],
+                methods=["PDE residual loss"],
+                settings=["scientific ML"],
+                body_sections={
+                    "What To Remember": "OCR text is too weak to trust.",
+                    "Mechanism": "The extracted mechanism is incomplete.",
+                },
+                review_state="source_quality_hold",
+                quality_gate="warn",
+                confidence="low",
+            )
+
+            result = retrieve_papers(
+                query="I need PDE residual losses and boundary condition implementation tests for scientific ML.",
+                wiki_root=wiki_root,
+                top_k=2,
+                strategy="v1",
+            )
+
+            self.assertEqual(result.results[0]["relative_path"], "papers/Good-PINN.md")
+            self.assertIn("source-quality evidence guard", result.results[1]["selection_reasons"])
+
+    def test_retrieval_optimization_eval_writes_side_by_side_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            papers.mkdir(parents=True)
+            _write_test_paper(
+                papers / "KV-Cache.md",
+                title="KV Cache Compression",
+                aliases=["KV cache compression"],
+                topics=["KV-cache compression", "long-context inference"],
+                methods=["KV-cache compression"],
+                settings=["long-context decoding"],
+                body_sections={
+                    "What To Remember": "Reduces long-context decoding memory by selecting cache entries.",
+                    "Mechanism": "A retention budget controls which key/value entries remain.",
+                    "Evidence Map": "Reports memory, latency, quality, and sequence length tradeoffs.",
+                    "Implementation Hooks": "Probe retention ratio, cache budget, tensor shapes, and quality loss.",
+                    "Limitations / Uncertainty": "Failure boundaries depend on task and retention budget.",
+                },
+            )
+            _write_test_paper(
+                papers / "MoEQuant.md",
+                title="MoE Quantization",
+                aliases=["MoEQuant"],
+                topics=["MoE quantization"],
+                methods=["post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "Quantization paper unrelated to KV-cache retention.",
+                    "Mechanism": "Balances experts for quantization.",
+                },
+            )
+            cases = root / "cases.jsonl"
+            case = {
+                "id": "kv-memory-optimization",
+                "category": "retrieval_optimization",
+                "query": "I want to reduce long-context decoding memory with KV-cache compression and need retention budget evidence.",
+                "problem_description": "Find KV-cache papers, not quantization distractors.",
+                "required_page_families": ["papers/*KV-Cache*"],
+                "acceptable_adjacent_pages": [],
+                "required_sections": [{"page": "papers/*KV-Cache*", "sections": ["Mechanism", "Evidence Map", "Implementation Hooks"]}],
+                "expected_evidence_types": ["memory", "latency", "quality"],
+                "hard_distractors": ["papers/*MoEQuant*"],
+                "must_not_retrieve_as_evidence": [],
+                "context_packet_expectations": ["retention budget", "cache budget", "quality tradeoffs"],
+                "rubric": ["Required family is retrieved and distractor is suppressed."],
+            }
+            cases.write_text(json.dumps(case) + "\n", encoding="utf-8")
+            rubric = root / "rubric.md"
+            rubric.write_text("# Rubric\n", encoding="utf-8")
+            out_dir = root / "retrieval-opt"
+
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "retrieval-optimize-eval",
+                        str(cases),
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--out-dir",
+                        str(out_dir),
+                        "--rubric",
+                        str(rubric),
+                        "--overwrite",
+                    ]
+                ),
+                0,
+            )
+
+            case_dir = out_dir / "kv-memory-optimization"
+            self.assertTrue((case_dir / "context.v0.md").exists())
+            self.assertTrue((case_dir / "context.v1.md").exists())
+            self.assertTrue((case_dir / "judge-packet.md").exists())
+            summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(summary["total_cases"], 1)
+            self.assertIn("query_intent_coverage", summary["metrics"]["v1"])
+
+    def test_retrieval_optimization_eval_accepts_family_groups(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            papers.mkdir(parents=True)
+            _write_test_paper(
+                papers / "WeightOnly.md",
+                title="Weight-only Quantization Exemplar",
+                aliases=["weight-only exemplar"],
+                topics=["low-bit quantization"],
+                methods=["post-training quantization"],
+                settings=["weight-only quantization"],
+                body_sections={
+                    "What To Remember": "A weight-only quantization method for LLM inference.",
+                    "Mechanism": "Quantizes weights while leaving activations outside the quantized path.",
+                    "Limitations / Uncertainty": "Do not treat this as an activation quantization method.",
+                },
+            )
+            _write_test_paper(
+                papers / "WeightActivation.md",
+                title="Weight Activation Quantization Exemplar",
+                aliases=["weight-activation exemplar"],
+                topics=["low-bit quantization", "activation outliers"],
+                methods=["outlier-aware quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "A weight-activation quantization method for LLM inference.",
+                    "Mechanism": "Quantizes activations and weights together under an activation-smoothing contract.",
+                    "Limitations / Uncertainty": "Activation range assumptions do not transfer to weight-only methods.",
+                },
+            )
+            cases = root / "cases.jsonl"
+            case = {
+                "id": "regime-groups",
+                "category": "retrieval_optimization",
+                "query": "Compare weight-only quantization with weight-activation quantization for LLM inference.",
+                "problem_description": "The result should cover both regimes without requiring one unique paper path.",
+                "required_page_families": [],
+                "required_page_family_groups": [
+                    ["papers/*WeightOnly*"],
+                    ["papers/*WeightActivation*"],
+                ],
+                "required_sections": [],
+                "required_section_groups": [
+                    {"id": "weight-only", "page_families": ["papers/*WeightOnly*"], "sections": ["Mechanism"]},
+                    {
+                        "id": "weight-activation",
+                        "page_families": ["papers/*WeightActivation*"],
+                        "sections": ["Mechanism"],
+                    },
+                ],
+                "acceptable_adjacent_pages": [],
+                "expected_evidence_types": ["weight-only", "activation"],
+                "hard_distractors": [],
+                "must_not_retrieve_as_evidence": [],
+                "context_packet_expectations": ["regime distinction"],
+                "rubric": ["At least one page from each required family group should be present."],
+            }
+            cases.write_text(json.dumps(case) + "\n", encoding="utf-8")
+            out_dir = root / "retrieval-opt"
+
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "retrieval-optimize-eval",
+                        str(cases),
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--out-dir",
+                        str(out_dir),
+                        "--overwrite",
+                    ]
+                ),
+                0,
+            )
+
+            summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(summary["metrics"]["v1"]["decisions"], {"pass": 1})
+
     def test_domain_general_eval_cases_are_parseable(self) -> None:
         ingest_cases = Path("eval/cases/domain_general_paper_ingest.jsonl")
         retrieval_cases = Path("eval/cases/domain_general_idea_retrieval.jsonl")
