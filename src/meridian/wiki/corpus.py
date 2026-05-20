@@ -336,6 +336,12 @@ def _catalog_record(
         "source_quality_risk": frontmatter.get("source_quality_risk"),
         "personalized": frontmatter.get("personalized"),
         "user_insights": _as_list(frontmatter.get("user_insights")),
+        "revision_id": frontmatter.get("revision_id"),
+        "revision_count": frontmatter.get("revision_count"),
+        "previous_revision": frontmatter.get("previous_revision"),
+        "evolution_state": frontmatter.get("evolution_state"),
+        "evolution_markers": _as_list(frontmatter.get("evolution_markers")),
+        "last_refinement_id": frontmatter.get("last_refinement_id"),
         "updated": frontmatter.get("updated"),
         "routing": {field: _as_list(frontmatter.get(field)) for field in ROUTING_FIELDS},
         "section_headings": list(sections.keys()),
@@ -459,6 +465,12 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
         "source_id": record.get("source_id"),
         "source_quality_risk": record.get("source_quality_risk"),
         "matched_source_types": matched_source_types,
+        "revision_id": record.get("revision_id"),
+        "revision_count": record.get("revision_count"),
+        "previous_revision": record.get("previous_revision"),
+        "evolution_state": record.get("evolution_state"),
+        "evolution_markers": record.get("evolution_markers") or [],
+        "last_refinement_id": record.get("last_refinement_id"),
     }
 
 
@@ -845,6 +857,7 @@ def _render_context_packet(
                 f"- Canonical path: `{result.get('canonical_path') or result.get('relative_path') or result['path']}`",
                 f"- Result type: `{result.get('result_type') or result.get('type') or 'paper'}`",
                 f"- Source types matched: {', '.join(result.get('matched_source_types') or ['source_or_wiki'])}",
+                f"- Revision: `{result.get('revision_id') or 'unversioned'}`; evolution state: `{result.get('evolution_state') or 'none'}`",
                 f"- Score: `{result['score']}`",
                 f"- Review state: `{result.get('review_state')}`; quality gate: `{result.get('quality_gate')}`; confidence: `{result.get('confidence')}`",
                 f"- Selection reasons: {', '.join(result.get('selection_reasons') or ['lexical overlap'])}",
@@ -860,6 +873,11 @@ def _render_context_packet(
             lines.append("  - `What To Remember`: inspect the page summary before using this result.")
         if "user_insight" in set(result.get("matched_source_types") or []):
             lines.append("- Boundary warning: matched `User Insights`; this is user-supplied context, not paper source fact or scientific evidence.")
+        evolution_markers = {str(item) for item in result.get("evolution_markers") or []}
+        evolution_state = str(result.get("evolution_state") or "")
+        if evolution_state in {"stale", "needs_source_recheck", "superseded"} or evolution_markers & {"stale", "superseded", "conflicting_synthesis", "needs_source_recheck"}:
+            markers = sorted(evolution_markers | ({evolution_state} if evolution_state else set()))
+            lines.append(f"- Evolution warning: this page has active evolution markers: {', '.join(markers)}.")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 

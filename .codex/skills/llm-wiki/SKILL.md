@@ -222,6 +222,24 @@ meridian wiki publish-insight wiki/.drafts/insights/<slug>/insight.json --wiki-r
 
 The publish path appends to `## User Insights` on the canonical paper page and updates `user_insights` / `personalized` frontmatter. It must not rewrite `What To Remember`, `Mechanism`, or `Evidence Map` from user input alone. If the user says a source-grounded section is wrong, record the insight and require source re-check before changing source facts.
 
+### Evolve
+
+When a canonical paper, synthesis, topic, method, claim, or evidence page should improve, route the change through refinement:
+
+```bash
+meridian wiki propose-refine \
+  --wiki-root wiki \
+  --target "<canonical page path, title, alias, or query>" \
+  --reason "<why refine>" \
+  --note "<refinement note>"
+meridian wiki refinement-lint wiki/.drafts/refinements/<slug>/refinement.json --wiki-root wiki
+meridian wiki publish-refinement wiki/.drafts/refinements/<slug>/refinement.json --wiki-root wiki
+```
+
+Publishing a refinement creates a `.versions/` snapshot before updating the canonical page, appends `## Evolution Notes`, updates revision frontmatter, and rebuilds index/catalog state. Normal retrieval uses the latest canonical page only; `.versions/` is audit/rollback state, not the retrieval corpus.
+
+If a refinement affects source facts, it must require source re-check. User insight can motivate a refinement, but it cannot become source fact without source provenance.
+
 ### Lint
 
 Periodically health-check the wiki for:

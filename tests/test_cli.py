@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import types
@@ -1781,6 +1782,304 @@ This hidden unique zeta candidate should never enter retrieval.
             self.assertIn("Insight lint status: fail", stdout)
             report = json.loads((out / "insight-lint.json").read_text(encoding="utf-8"))
             self.assertIn("source_fact_contamination", {item["code"] for item in report["findings"]})
+
+    def test_propose_refine_creates_draft_for_canonical_paper(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            paper = wiki_root / "papers/MoE-PTQ.md"
+            _write_test_paper(
+                paper,
+                title="MoE PTQ Paper",
+                aliases=["CodeQuant"],
+                topics=["activation outliers"],
+                methods=["MoE post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "This paper studies MoE PTQ.",
+                    "Mechanism": "The method smooths activation outliers.",
+                    "When To Retrieve This Paper": "Use for MoE quantization.",
+                },
+            )
+            out = wiki_root / ".drafts/refinements/mechanism-depth"
+            exit_code, stdout, stderr = _run_cli_capture(
+                [
+                    "wiki",
+                    "propose-refine",
+                    "--wiki-root",
+                    str(wiki_root),
+                    "--target",
+                    str(paper),
+                    "--reason",
+                    "Mechanism section is too shallow for implementation planning.",
+                    "--note",
+                    "Clarify that future readers should inspect the smoothing mechanism before using it for ablation design.",
+                    "--out-dir",
+                    str(out),
+                ]
+            )
+
+            self.assertEqual(exit_code, 0, stderr)
+            self.assertIn("Refinement target match status: matched", stdout)
+            manifest = json.loads((out / "refinement.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["target_page"], "papers/MoE-PTQ.md")
+            self.assertEqual(manifest["refinement_type"], "paper-refinement")
+            self.assertIn("Mechanism", manifest["affected_sections"])
+            self.assertIn("target_revision_before", manifest)
+            self.assertTrue((out / "refinement.md").exists())
+            self.assertTrue((out / "diff.md").exists())
+            self.assertTrue((out / "source_context.json").exists())
+            self.assertTrue((out / "publish_plan.md").exists())
+
+    def test_refinement_lint_resolves_cwd_relative_artifact_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            previous_cwd = Path.cwd()
+            try:
+                os.chdir(tmp)
+                wiki_root = Path("wiki")
+                paper = wiki_root / "papers/MoE-PTQ.md"
+                _write_test_paper(
+                    paper,
+                    title="MoE PTQ Paper",
+                    aliases=["CodeQuant"],
+                    topics=["activation outliers"],
+                    methods=["MoE post-training quantization"],
+                    settings=["weight-activation quantization"],
+                    body_sections={"What To Remember": "This paper studies MoE PTQ."},
+                )
+                out = wiki_root / ".drafts/refinements/relative-path"
+                self.assertEqual(
+                    main(
+                        [
+                            "wiki",
+                            "propose-refine",
+                            "--wiki-root",
+                            str(wiki_root),
+                            "--target",
+                            str(paper),
+                            "--reason",
+                            "Cwd-relative artifact paths should lint.",
+                            "--note",
+                            "Keep manifest paths usable when Meridian is run from the project root.",
+                            "--out-dir",
+                            str(out),
+                        ]
+                    ),
+                    0,
+                )
+                self.assertEqual(main(["wiki", "refinement-lint", str(out / "refinement.json"), "--wiki-root", str(wiki_root)]), 0)
+            finally:
+                os.chdir(previous_cwd)
+
+    def test_refinement_lint_publish_creates_snapshot_and_latest_retrieval_warning(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            paper = wiki_root / "papers/MoE-PTQ.md"
+            _write_test_paper(
+                paper,
+                title="MoE PTQ Paper",
+                aliases=["CodeQuant"],
+                topics=["activation outliers"],
+                methods=["MoE post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "This paper studies MoE PTQ.",
+                    "Mechanism": "The method smooths activation outliers.",
+                    "Evidence Map": "Reports quantization quality.",
+                },
+            )
+            out = wiki_root / ".drafts/refinements/stale-claim"
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "propose-refine",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--target",
+                        str(paper),
+                        "--reason",
+                        "The evidence claim is stale and needs warning before use.",
+                        "--note",
+                        "Mark this as stale for future retrieval until the evidence section is checked against newer papers.",
+                        "--change-class",
+                        "stale_claim_update",
+                        "--out-dir",
+                        str(out),
+                    ]
+                ),
+                0,
+            )
+            self.assertEqual(main(["wiki", "refinement-lint", str(out / "refinement.json"), "--wiki-root", str(wiki_root)]), 0)
+            self.assertEqual(main(["wiki", "publish-refinement", str(out / "refinement.json"), "--wiki-root", str(wiki_root)]), 0)
+
+            text = paper.read_text(encoding="utf-8")
+            self.assertIn("revision_id:", text)
+            self.assertIn("revision_count: 1", text)
+            self.assertIn('evolution_state: "stale"', text)
+            self.assertIn("last_refinement_id:", text)
+            self.assertIn("## Evolution Notes", text)
+            snapshots = list((wiki_root / ".versions/papers/MoE-PTQ").glob("*.md"))
+            self.assertEqual(len(snapshots), 1)
+            self.assertIn("The method smooths activation outliers.", snapshots[0].read_text(encoding="utf-8"))
+
+            result = retrieve_papers(
+                query="stale evidence warning for MoE PTQ",
+                wiki_root=wiki_root,
+                top_k=5,
+                packet_path=root / "context.md",
+                result_path=root / "context.json",
+            )
+            self.assertEqual(result.results[0]["relative_path"], "papers/MoE-PTQ.md")
+            self.assertEqual(result.results[0]["evolution_state"], "stale")
+            packet = (root / "context.md").read_text(encoding="utf-8")
+            self.assertIn("Revision:", packet)
+            self.assertIn("Evolution warning:", packet)
+            self.assertFalse(any(".versions/" in str(item.get("relative_path") or "") for item in result.results))
+
+    def test_refinement_lint_blocks_stale_target_and_source_fact_without_recheck(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            paper = wiki_root / "papers/MoE-PTQ.md"
+            _write_test_paper(
+                paper,
+                title="MoE PTQ Paper",
+                aliases=["CodeQuant"],
+                topics=["activation outliers"],
+                methods=["MoE post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={"What To Remember": "This paper studies MoE PTQ."},
+            )
+            out = wiki_root / ".drafts/refinements/source-fact"
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "propose-refine",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--target",
+                        str(paper),
+                        "--reason",
+                        "Source fact correction: the paper says a different mechanism.",
+                        "--note",
+                        "Correct the source-grounded mechanism after checking the PDF.",
+                        "--change-class",
+                        "source_fact_correction",
+                        "--out-dir",
+                        str(out),
+                    ]
+                ),
+                0,
+            )
+            manifest_path = out / "refinement.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["source_recheck_required"] = False
+            manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+            exit_code, stdout, _ = _run_cli_capture(["wiki", "refinement-lint", str(manifest_path), "--wiki-root", str(wiki_root)])
+            self.assertEqual(exit_code, 1)
+            self.assertIn("Refinement lint status: fail", stdout)
+            report = json.loads((out / "refinement-lint.json").read_text(encoding="utf-8"))
+            self.assertIn("source_recheck_required", {item["code"] for item in report["findings"]})
+
+            manifest["source_recheck_required"] = True
+            manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+            paper.write_text(paper.read_text(encoding="utf-8") + "\nchanged after proposal\n", encoding="utf-8")
+            exit_code, _, _ = _run_cli_capture(["wiki", "refinement-lint", str(manifest_path), "--wiki-root", str(wiki_root)])
+            self.assertEqual(exit_code, 1)
+            report = json.loads((out / "refinement-lint.json").read_text(encoding="utf-8"))
+            self.assertIn("stale_target_revision", {item["code"] for item in report["findings"]})
+
+    def test_refinement_supports_synthesis_pages(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            synthesis = wiki_root / "syntheses/MoE-Comparison.md"
+            synthesis.parent.mkdir(parents=True)
+            synthesis.write_text(
+                "\n".join(
+                    [
+                        "---",
+                        'type: "synthesis"',
+                        'title: "MoE Comparison"',
+                        'status: "draft"',
+                        'aliases:',
+                        '  - "MoE comparison"',
+                        'topics:',
+                        '  - "MoE quantization"',
+                        'methods:',
+                        '  - "post-training quantization"',
+                        'confidence: "low"',
+                        'review_state: "published_proposal"',
+                        "---",
+                        "# MoE Comparison",
+                        "",
+                        "## Wiki Synthesis",
+                        "",
+                        "Current comparison is thin.",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            out = wiki_root / ".drafts/refinements/synthesis"
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "propose-refine",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--target",
+                        "MoE comparison",
+                        "--reason",
+                        "New user note changes the synthesis comparison.",
+                        "--note",
+                        "Add a decision note that this synthesis is for choosing ablations, not claiming paper evidence.",
+                        "--change-class",
+                        "decision_update",
+                        "--out-dir",
+                        str(out),
+                    ]
+                ),
+                0,
+            )
+            manifest = json.loads((out / "refinement.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["refinement_type"], "synthesis-refinement")
+            self.assertEqual(main(["wiki", "refinement-lint", str(out / "refinement.json"), "--wiki-root", str(wiki_root)]), 0)
+            self.assertEqual(main(["wiki", "publish-refinement", str(out / "refinement.json"), "--wiki-root", str(wiki_root)]), 0)
+            self.assertTrue(list((wiki_root / ".versions/syntheses/MoE-Comparison").glob("*.md")))
+            updated = synthesis.read_text(encoding="utf-8")
+            self.assertIn("## Evolution Notes", updated)
+            self.assertIn("revision_count: 1", updated)
+
+    def test_propose_refine_blocks_internal_draft_target(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            draft = wiki_root / ".drafts/ingests/run/paper.md"
+            draft.parent.mkdir(parents=True)
+            draft.write_text("# Draft Candidate\n", encoding="utf-8")
+            out = wiki_root / ".drafts/refinements/draft-target"
+            exit_code, stdout, _ = _run_cli_capture(
+                [
+                    "wiki",
+                    "propose-refine",
+                    "--wiki-root",
+                    str(wiki_root),
+                    "--target",
+                    str(draft),
+                    "--reason",
+                    "Do not refine internal candidates.",
+                    "--note",
+                    "This should not publish.",
+                    "--out-dir",
+                    str(out),
+                ]
+            )
+            self.assertEqual(exit_code, 1)
+            self.assertIn("Refinement target match status: no_match", stdout)
 
     def test_wiki_retrieve_exact_identity_beats_crowded_shared_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

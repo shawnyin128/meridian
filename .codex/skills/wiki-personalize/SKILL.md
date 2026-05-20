@@ -65,6 +65,17 @@ Publishing appends to the target paper page's `## User Insights` section and upd
 
 It does not rewrite source-grounded sections in the MVP path. If the user says a page is wrong, record the note and require source re-check before changing source-grounded claims.
 
+If a published insight should change the canonical page's broader interpretation or retrieval behavior, route it through evolution instead of editing directly:
+
+```bash
+meridian wiki propose-refine \
+  --wiki-root wiki \
+  --target "<canonical paper page>" \
+  --from-insight "<insight_id>" \
+  --reason "<why the page should evolve>" \
+  --change-class user_insight_integration
+```
+
 ## Retrieval
 
 Published insights become retrievable through the canonical paper page. When retrieval matches `User Insights`, treat it as personalized context and preserve the boundary warning. It can guide implementation or idea work, but it is not scientific evidence.

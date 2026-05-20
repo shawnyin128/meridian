@@ -13,6 +13,14 @@ from meridian.wiki.eval_run import (
     converge_eval_run,
     write_eval_summary,
 )
+from meridian.wiki.evolution import (
+    PublishRefinementResult,
+    RefinementDraftResult,
+    RefinementLintResult,
+    lint_refinement,
+    propose_refinement,
+    publish_refinement,
+)
 from meridian.wiki.flow import WikiFlowResult, run_wiki_flow
 from meridian.wiki.ingest import IngestResult, run_ingest
 from meridian.wiki.insights import (
@@ -415,6 +423,48 @@ def publish_insight_wiki(
     wiki_root: Path,
 ) -> PublishInsightResult:
     return publish_user_insight(insight_manifest=insight_manifest, wiki_root=wiki_root)
+
+
+def propose_refine_wiki(
+    *,
+    wiki_root: Path,
+    target: str,
+    reason: str,
+    note: str = "",
+    note_file: Path | None = None,
+    change_class: str = "wiki_synthesis_update",
+    from_insight: str | None = None,
+    out_dir: Path | None = None,
+    overwrite: bool = False,
+) -> RefinementDraftResult:
+    return propose_refinement(
+        wiki_root=wiki_root,
+        target=target,
+        reason=reason,
+        note=note,
+        note_file=note_file,
+        change_class=change_class,
+        from_insight=from_insight,
+        out_dir=out_dir,
+        overwrite=overwrite,
+    )
+
+
+def refinement_lint_wiki(
+    *,
+    refinement_manifest: Path,
+    wiki_root: Path,
+    out_path: Path | None = None,
+) -> RefinementLintResult:
+    return lint_refinement(refinement_manifest=refinement_manifest, wiki_root=wiki_root, out_path=out_path)
+
+
+def publish_refinement_wiki(
+    *,
+    refinement_manifest: Path,
+    wiki_root: Path,
+) -> PublishRefinementResult:
+    return publish_refinement(refinement_manifest=refinement_manifest, wiki_root=wiki_root)
 
 
 def retrieval_eval_wiki(

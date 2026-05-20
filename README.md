@@ -293,6 +293,44 @@ evidence.
 See `docs/user-insight-personalization-mvp.md` for the schema, source-fact
 boundary, and future Zotero annotation adapter design.
 
+## Wiki Evolution and Revisions
+
+Refine a canonical paper or synthesis page through a proposal rather than a
+silent edit:
+
+```bash
+meridian wiki propose-refine \
+  --wiki-root wiki \
+  --target wiki/papers/<paper>.md \
+  --reason "method section is too shallow" \
+  --note "Clarify the mechanism before using this page for ablation planning."
+```
+
+This writes:
+
+- `wiki/.drafts/refinements/<slug>/refinement.md`
+- `wiki/.drafts/refinements/<slug>/refinement.json`
+- `wiki/.drafts/refinements/<slug>/diff.md`
+- `wiki/.drafts/refinements/<slug>/source_context.json`
+- `wiki/.drafts/refinements/<slug>/publish_plan.md`
+
+Lint and publish:
+
+```bash
+meridian wiki refinement-lint wiki/.drafts/refinements/<slug>/refinement.json --wiki-root wiki
+meridian wiki publish-refinement wiki/.drafts/refinements/<slug>/refinement.json --wiki-root wiki
+```
+
+Publishing creates a pre-change snapshot under `wiki/.versions/`, appends a
+canonical `## Evolution Notes` entry, updates `revision_id`, `revision_count`,
+`previous_revision`, `evolution_state`, and `last_refinement_id` frontmatter,
+then rebuilds index/catalog state. Normal retrieval uses the latest canonical
+page and ignores `.versions/`, but context packets show revision/evolution
+warnings when a page is stale, superseded, conflicting, or needs source re-check.
+
+See `docs/wiki-evolution-mvp.md` for the schema and source-fact correction
+rules.
+
 Run side-by-side retrieval optimization evaluation:
 
 ```bash

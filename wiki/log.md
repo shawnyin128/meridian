@@ -57,3 +57,12 @@
 - Target page: `papers/STS-Efficient-Sparse-Attention-with-Speculative-Token-Sparsity.md`
 - Boundary: user-supplied insight; not paper source fact.
 - Updated index: `index.md`
+
+## [2026-05-20] refine | STS: Efficient Sparse Attention with Speculative Token Sparsity
+
+- Published refinement `refinement-2026-05-20-569ed606f5`.
+- Target page: `papers/STS-Efficient-Sparse-Attention-with-Speculative-Token-Sparsity.md`
+- Snapshot: `.versions/papers/STS-Efficient-Sparse-Attention-with-Speculative-Token-Sparsity/base-5f473a12ca.md`
+- Change class: `retrieval_metadata_update`
+- Updated index: `index.md`
+- Updated catalog: `.index/papers.jsonl`

@@ -21,11 +21,14 @@ from meridian.wiki.commands import (
     publish_run,
     publish_proposal_wiki,
     publish_insight_wiki,
+    publish_refinement_wiki,
     quality_check_run,
     proposal_lint_wiki,
+    propose_refine_wiki,
     propose_writeback_wiki,
     record_judge,
     record_review,
+    refinement_lint_wiki,
     rebuild_index_wiki,
     retrieval_eval_summary,
     retrieval_audit_wiki,
@@ -521,6 +524,49 @@ def build_parser() -> argparse.ArgumentParser:
     publish_insight.add_argument("insight_manifest", type=Path, help="Path to insight.json.")
     publish_insight.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
 
+    propose_refine = wiki_subparsers.add_parser(
+        "propose-refine",
+        help="Create a draft refinement proposal for an existing canonical wiki page.",
+    )
+    propose_refine.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    propose_refine.add_argument("--target", required=True, help="Canonical page path, title, alias, or natural-language query.")
+    propose_refine.add_argument("--reason", required=True, help="Why this page needs refinement.")
+    propose_refine.add_argument("--note", default="", help="Natural-language refinement note.")
+    propose_refine.add_argument("--note-file", type=Path, default=None, help="Markdown/text file containing the refinement note.")
+    propose_refine.add_argument(
+        "--change-class",
+        choices=[
+            "source_fact_correction",
+            "wiki_synthesis_update",
+            "user_insight_integration",
+            "retrieval_metadata_update",
+            "structure_cleanup",
+            "stale_claim_update",
+            "crosslink_update",
+            "decision_update",
+        ],
+        default="wiki_synthesis_update",
+        help="Type of page evolution being proposed.",
+    )
+    propose_refine.add_argument("--from-insight", default=None, help="Optional user insight id that motivates this refinement.")
+    propose_refine.add_argument("--out-dir", type=Path, default=None, help="Optional refinement draft output directory.")
+    propose_refine.add_argument("--overwrite", action="store_true", help="Overwrite an existing refinement draft directory.")
+
+    refinement_lint = wiki_subparsers.add_parser(
+        "refinement-lint",
+        help="Validate a refinement proposal before canonical publish.",
+    )
+    refinement_lint.add_argument("refinement_manifest", type=Path, help="Path to refinement.json.")
+    refinement_lint.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    refinement_lint.add_argument("--out", type=Path, default=None, help="Optional lint JSON report path.")
+
+    publish_refinement = wiki_subparsers.add_parser(
+        "publish-refinement",
+        help="Publish a lint-passing refinement as a new canonical page revision.",
+    )
+    publish_refinement.add_argument("refinement_manifest", type=Path, help="Path to refinement.json.")
+    publish_refinement.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+
     retrieval_eval = wiki_subparsers.add_parser(
         "retrieval-eval",
         help="Run scenario-based retrieval evaluation over a canonical Paper Wiki.",
@@ -950,6 +996,56 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Published user insight to: {result.page_path}")
             print(f"Updated paper catalog: {result.catalog_path}")
             print(f"Insight lint report: {result.lint_report_path}")
+            print(f"Updated wiki log: {result.log_path}")
+            return 0
+
+        if args.product == "wiki" and args.command == "propose-refine":
+            result = propose_refine_wiki(
+                wiki_root=args.wiki_root,
+                target=args.target,
+                reason=args.reason,
+                note=args.note,
+                note_file=args.note_file,
+                change_class=args.change_class,
+                from_insight=args.from_insight,
+                out_dir=args.out_dir,
+                overwrite=args.overwrite,
+            )
+            print(f"Refinement target match status: {result.status}")
+            print(f"Wrote source context: {result.source_context_path}")
+            print(f"Wrote refinement manifest: {result.manifest_path}")
+            if result.refinement_path is not None:
+                print(f"Wrote refinement draft: {result.refinement_path}")
+            if result.diff_path is not None:
+                print(f"Wrote semantic diff: {result.diff_path}")
+            if result.publish_plan_path is not None:
+                print(f"Wrote publish plan: {result.publish_plan_path}")
+            if result.target_page is not None:
+                print(f"Matched canonical page: {result.target_page}")
+            else:
+                print(f"Candidate pages: {result.candidate_count}")
+            return 0 if result.status == "matched" else 1
+
+        if args.product == "wiki" and args.command == "refinement-lint":
+            result = refinement_lint_wiki(
+                refinement_manifest=args.refinement_manifest,
+                wiki_root=args.wiki_root,
+                out_path=args.out,
+            )
+            print(f"Wrote refinement lint report: {result.report_path}")
+            print(f"Refinement lint status: {result.status}")
+            print(f"Findings: {len(result.findings)}")
+            return 0 if result.status == "pass" else 1
+
+        if args.product == "wiki" and args.command == "publish-refinement":
+            result = publish_refinement_wiki(
+                refinement_manifest=args.refinement_manifest,
+                wiki_root=args.wiki_root,
+            )
+            print(f"Published refinement to: {result.page_path}")
+            print(f"Snapshot before publish: {result.snapshot_path}")
+            print(f"Updated catalog: {result.catalog_path}")
+            print(f"Refinement lint report: {result.lint_report_path}")
             print(f"Updated wiki log: {result.log_path}")
             return 0
 

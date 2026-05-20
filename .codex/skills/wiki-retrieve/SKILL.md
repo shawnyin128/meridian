@@ -64,6 +64,7 @@ Use `--proposal-type method-family`, `comparison`, `decision`, or `research-ques
 - Do not cite a paper only because its title matched; inspect the chosen section snippets.
 - Distinguish source facts, wiki synthesis, and the user's own ideas.
 - If the context packet reports `Source types matched: user_insight`, use it as personalized context only. Do not treat it as paper evidence.
+- Check `Revision` and `evolution state` in context packets. If retrieval reports an evolution warning such as `stale`, `superseded`, `conflicting_synthesis`, or `needs_source_recheck`, use the page as context but do not treat the affected section as settled evidence.
 - For coding tasks, always look for `Implementation Hooks`, `Mechanism`, and `Limitations / Uncertainty`.
 - For evidence tasks, inspect `Evidence Map`, candidate claims, and provenance before relying on a claim.
 
