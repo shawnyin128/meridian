@@ -220,12 +220,19 @@ Before the wiki layer is considered stable:
 
 ## Immediate Implementation Plan
 
+Implemented v0:
+
+- `meridian wiki retrieval-eval` executes `catalog` and `retrieve` per retrieval case, writes context packets, writes judge packets, and computes deterministic metrics.
+- `meridian wiki retrieval-eval-summary` aggregates deterministic metrics plus optional per-case `judge-result.json` files.
+- `eval/cases/wiki_retrieval_quantization_smoke.jsonl` runs a representative quantization retrieval smoke set over the current canonical calibration wiki.
+- `docs/retrieval-smoke-quality-brief.md` records the first smoke result and remaining gaps.
+
+Next implementation steps:
+
 1. Add deterministic tests for duplicate source registration, source-audit failure modes, publish idempotency, and stale catalog detection.
-2. Add a retrieval quality case schema and example cases.
-3. Add a retrieval judge rubric and result schema.
-4. Implement a retrieval eval runner that executes `catalog` and `retrieve` per case, writes packets, and computes deterministic metrics.
-5. Run the first retrieval suite on the current quantization calibration wiki.
-6. Convert every human-identified retrieval miss into a controlled vocabulary, scoring, or ingest metadata regression.
+2. Expand retrieval cases beyond quantization into alignment/RL, agents, audio-language models, surveys, and source-quality cleanup.
+3. Record LLM-as-Judge outputs for retrieval eval packets and calibrate against sampled human review.
+4. Convert every retrieval miss into a controlled vocabulary, scoring, or ingest metadata regression.
 
 ## Non-Goals
 

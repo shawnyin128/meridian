@@ -17,9 +17,12 @@ from meridian.wiki.commands import (
     lint_wiki_command,
     publish_run,
     quality_check_run,
+    propose_writeback_wiki,
     record_judge,
     record_review,
     rebuild_index_wiki,
+    retrieval_eval_summary,
+    retrieval_eval_wiki,
     retrieve_wiki,
     run_flow,
     self_check_aggregate,
@@ -438,6 +441,64 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional machine-readable retrieval result JSON path.",
     )
 
+    retrieval_eval = wiki_subparsers.add_parser(
+        "retrieval-eval",
+        help="Run scenario-based retrieval evaluation over a canonical Paper Wiki.",
+    )
+    retrieval_eval.add_argument("cases", type=Path, help="JSONL retrieval evaluation case file.")
+    retrieval_eval.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    retrieval_eval.add_argument(
+        "--out-dir",
+        type=Path,
+        required=True,
+        help="Directory where context packets, judge packets, and retrieval manifest are written.",
+    )
+    retrieval_eval.add_argument(
+        "--rubric",
+        type=Path,
+        default=None,
+        help="Optional retrieval LLM-as-Judge rubric markdown.",
+    )
+    retrieval_eval.add_argument(
+        "--catalog",
+        type=Path,
+        default=None,
+        help="Optional catalog path. Defaults to <wiki-root>/.index/papers.jsonl.",
+    )
+    retrieval_eval.add_argument("--top-k", type=int, default=5, help="Maximum paper pages per case.")
+    retrieval_eval.add_argument("--overwrite", action="store_true", help="Overwrite an existing eval output directory.")
+
+    retrieval_eval_summary_cmd = wiki_subparsers.add_parser(
+        "retrieval-eval-summary",
+        help="Summarize deterministic and optional judge results for a retrieval eval manifest.",
+    )
+    retrieval_eval_summary_cmd.add_argument("manifest", type=Path, help="Path to retrieval_manifest.json.")
+    retrieval_eval_summary_cmd.add_argument("--out", type=Path, default=None, help="Optional summary JSON path.")
+
+    propose_writeback = wiki_subparsers.add_parser(
+        "propose-writeback",
+        help="Create a draft wiki write-back proposal from a retrieval context packet.",
+    )
+    propose_writeback.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    propose_writeback.add_argument("--query", required=True, help="Original research query.")
+    propose_writeback.add_argument("--context", type=Path, required=True, help="Retrieval context JSON path.")
+    propose_writeback.add_argument("--title", required=True, help="Proposal title.")
+    propose_writeback.add_argument(
+        "--proposal-type",
+        choices=["synthesis", "comparison", "decision", "idea"],
+        default="synthesis",
+        help="Draft wiki artifact type.",
+    )
+    propose_writeback.add_argument("--body-file", type=Path, default=None, help="Optional markdown body for the synthesis draft.")
+    propose_writeback.add_argument("--out-dir", type=Path, default=None, help="Optional proposal output directory.")
+    propose_writeback.add_argument("--notes", default="", help="Optional user idea or decision note.")
+    propose_writeback.add_argument("--overwrite", action="store_true", help="Overwrite an existing proposal directory.")
+    propose_writeback.add_argument(
+        "--no-log",
+        action="store_true",
+        help="Do not append a draft proposal entry to wiki/log.md.",
+    )
+
     return parser
 
 
@@ -690,6 +751,49 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Retrieved papers: {len(result.results)}")
             for item in result.results:
                 print(f"- {item['score']}: {item['title']} ({item.get('relative_path') or item['path']})")
+            return 0
+
+        if args.product == "wiki" and args.command == "retrieval-eval":
+            result = retrieval_eval_wiki(
+                cases_path=args.cases,
+                wiki_root=args.wiki_root,
+                out_dir=args.out_dir,
+                rubric_path=args.rubric,
+                top_k=args.top_k,
+                catalog_path=args.catalog,
+                overwrite=args.overwrite,
+            )
+            print(f"Wrote retrieval manifest: {result.manifest_path}")
+            print(f"Wrote retrieval summary: {result.summary_path}")
+            print(f"Total cases: {result.total_cases}")
+            print(f"Deterministic passes: {result.deterministic_passes}")
+            print(f"Deterministic failures: {result.deterministic_failures}")
+            return 0
+
+        if args.product == "wiki" and args.command == "retrieval-eval-summary":
+            result = retrieval_eval_summary(manifest_path=args.manifest, out_path=args.out)
+            print(f"Wrote retrieval summary: {result.summary_path}")
+            print(f"Total cases: {result.total_cases}")
+            print(f"Judge results: {result.judge_results}")
+            return 0
+
+        if args.product == "wiki" and args.command == "propose-writeback":
+            result = propose_writeback_wiki(
+                wiki_root=args.wiki_root,
+                query=args.query,
+                context_path=args.context,
+                title=args.title,
+                proposal_type=args.proposal_type,
+                body_path=args.body_file,
+                out_dir=args.out_dir,
+                notes=args.notes,
+                overwrite=args.overwrite,
+                update_log=not args.no_log,
+            )
+            print(f"Wrote write-back proposal: {result.proposal_path}")
+            print(f"Wrote proposal manifest: {result.manifest_path}")
+            if result.log_path is not None:
+                print(f"Updated wiki log: {result.log_path}")
             return 0
 
     except Exception as exc:  # noqa: BLE001 - CLI should render concise failures.

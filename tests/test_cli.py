@@ -1456,6 +1456,210 @@ This page explains preference optimization for alignment.
             self.assertIn("review_state: \"auto_converged\"", canonical)
             self.assertIn("judge_decision: \"pass\"", canonical)
 
+    def test_retrieval_eval_runner_writes_metrics_and_judge_packets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            papers.mkdir(parents=True)
+            _write_test_paper(
+                papers / "MoE-PTQ.md",
+                title="MoE PTQ Paper",
+                aliases=["CodeQuant"],
+                topics=["activation outliers", "quantization error"],
+                methods=["MoE post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "A MoE post-training quantization page about activation outliers.",
+                    "Mechanism": "The method smooths activation outliers and clusters weights.",
+                    "Implementation Hooks": "Add ablations for activation outlier smoothing and weight clustering.",
+                },
+            )
+            _write_test_paper(
+                papers / "Alignment.md",
+                title="Alignment Paper",
+                aliases=["DPO"],
+                topics=["preference optimization"],
+                methods=["direct preference optimization"],
+                settings=["RLHF setting"],
+                body_sections={"What To Remember": "A preference optimization paper."},
+            )
+            cases = root / "retrieval-cases.jsonl"
+            case = {
+                "id": "retrieval-moe-001",
+                "category": "wiki_retrieval_quality",
+                "query": "I need MoE post-training quantization papers for activation outlier ablations.",
+                "intent": "implementation_probe",
+                "wiki_fixture": "unit-test",
+                "required_pages": ["papers/MoE-PTQ.md"],
+                "acceptable_pages": [],
+                "distractor_pages": ["papers/Alignment.md"],
+                "required_sections": [
+                    {"page": "papers/MoE-PTQ.md", "sections": ["Mechanism", "Implementation Hooks"]}
+                ],
+                "expected_context_properties": ["Surface implementation hooks and mechanism sections."],
+                "must_not_do": ["Do not rank alignment papers above MoE PTQ."],
+                "judge_rubric": ["page_selection", "section_selection"],
+            }
+            cases.write_text(json.dumps(case) + "\n", encoding="utf-8")
+            rubric = root / "retrieval-rubric.md"
+            rubric.write_text("# Retrieval Rubric\n", encoding="utf-8")
+            out_dir = root / "retrieval-eval"
+
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "retrieval-eval",
+                        str(cases),
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--out-dir",
+                        str(out_dir),
+                        "--rubric",
+                        str(rubric),
+                        "--top-k",
+                        "2",
+                    ]
+                ),
+                0,
+            )
+
+            manifest = json.loads((out_dir / "retrieval_manifest.json").read_text(encoding="utf-8"))
+            summary = json.loads((out_dir / "retrieval_summary.json").read_text(encoding="utf-8"))
+            result = manifest["results"][0]
+            metrics = result["metrics"]
+            self.assertEqual(manifest["schema_version"], "meridian.wiki_retrieval_eval.v0")
+            self.assertEqual(result["status"], "evaluated")
+            self.assertEqual(metrics["deterministic_decision"], "pass")
+            self.assertEqual(metrics["required_recall_at_k"], 1.0)
+            self.assertEqual(metrics["section_hit_rate"], 1.0)
+            self.assertEqual(metrics["distractor_hits"], [])
+            self.assertTrue(Path(result["context_packet"]).exists())
+            self.assertTrue(Path(result["context_json"]).exists())
+            judge_packet = Path(result["judge_packet"]).read_text(encoding="utf-8")
+            self.assertIn("# Wiki Retrieval Judge Packet", judge_packet)
+            self.assertIn("Retrieval Rubric", judge_packet)
+            self.assertEqual(summary["deterministic_decisions"]["pass"], 1)
+
+            judge_result_path = Path(result["judge_result_expected_path"])
+            judge_result_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "meridian.wiki_retrieval_judge_result.v0",
+                        "case_id": "retrieval-moe-001",
+                        "decision": "pass",
+                        "weighted_score": 4.5,
+                        "dimension_scores": {},
+                        "hard_fails": [],
+                        "findings": [],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(main(["wiki", "retrieval-eval-summary", str(out_dir / "retrieval_manifest.json")]), 0)
+            summary = json.loads((out_dir / "retrieval_summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(summary["judge_results"], 1)
+            self.assertEqual(summary["judge_decisions"]["pass"], 1)
+
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "retrieval-eval",
+                        str(cases),
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--out-dir",
+                        str(out_dir),
+                        "--rubric",
+                        str(rubric),
+                        "--top-k",
+                        "2",
+                        "--overwrite",
+                    ]
+                ),
+                0,
+            )
+            summary = json.loads((out_dir / "retrieval_summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(summary["judge_results"], 0)
+            self.assertFalse(judge_result_path.exists())
+
+    def test_propose_writeback_creates_draft_without_canonical_publish(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            papers.mkdir(parents=True)
+            _write_test_paper(
+                papers / "MoE-PTQ.md",
+                title="MoE PTQ Paper",
+                aliases=["CodeQuant"],
+                topics=["activation outliers"],
+                methods=["MoE post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "A MoE PTQ page.",
+                    "Implementation Hooks": "Add ablations for activation outlier smoothing.",
+                },
+            )
+            context_json = root / "context.json"
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "retrieve",
+                        "MoE PTQ activation outlier ablations",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--json-out",
+                        str(context_json),
+                    ]
+                ),
+                0,
+            )
+            body = root / "body.md"
+            body.write_text("Compare MoE PTQ outlier smoothing papers before implementing ablations.", encoding="utf-8")
+
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "propose-writeback",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--query",
+                        "MoE PTQ activation outlier ablations",
+                        "--context",
+                        str(context_json),
+                        "--title",
+                        "MoE PTQ Ablation Reading Plan",
+                        "--proposal-type",
+                        "synthesis",
+                        "--body-file",
+                        str(body),
+                        "--notes",
+                        "User wants this as a research planning synthesis.",
+                    ]
+                ),
+                0,
+            )
+
+            proposal = wiki_root / ".drafts/proposals/MoE-PTQ-Ablation-Reading-Plan/proposal.md"
+            manifest = wiki_root / ".drafts/proposals/MoE-PTQ-Ablation-Reading-Plan/proposal.json"
+            self.assertTrue(proposal.exists())
+            self.assertTrue(manifest.exists())
+            text = proposal.read_text(encoding="utf-8")
+            self.assertIn('type: "wiki_update_proposal"', text)
+            self.assertIn("## Source Facts To Preserve", text)
+            self.assertIn("## Wiki Synthesis Draft", text)
+            self.assertIn("## User Ideas / Decisions", text)
+            self.assertIn("[[papers/MoE-PTQ|MoE PTQ Paper]]", text)
+            self.assertFalse((wiki_root / "syntheses/MoE-PTQ-Ablation-Reading-Plan.md").exists())
+            log = (wiki_root / "log.md").read_text(encoding="utf-8")
+            self.assertIn("query | MoE PTQ Ablation Reading Plan", log)
+
 
 def _passing_judge_result(case_id: str) -> dict[str, object]:
     return {
@@ -1505,6 +1709,46 @@ def _complete_self_check_result(agent: str, score: float = 4.5) -> dict[str, obj
     result["recommended_repairs"] = []
     result["calibration_notes"] = ["unit-test synthetic result"]
     return result
+
+
+def _write_test_paper(
+    path: Path,
+    *,
+    title: str,
+    aliases: list[str],
+    topics: list[str],
+    methods: list[str],
+    settings: list[str],
+    body_sections: dict[str, str],
+) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    frontmatter = [
+        "---",
+        'type: "paper"',
+        f'title: "{title}"',
+        'status: "draft"',
+        "aliases:",
+        *[f'  - "{item}"' for item in aliases],
+        "topics:",
+        *[f'  - "{item}"' for item in topics],
+        "methods:",
+        *[f'  - "{item}"' for item in methods],
+        "settings:",
+        *[f'  - "{item}"' for item in settings],
+        "datasets: []",
+        "metrics: []",
+        "claims: []",
+        'confidence: "medium"',
+        'review_state: "auto_converged"',
+        'quality_gate: "pass"',
+        "---",
+        f"# {title}",
+        "",
+    ]
+    body = []
+    for heading, content in body_sections.items():
+        body.extend([f"## {heading}", "", content, ""])
+    path.write_text("\n".join(frontmatter + body), encoding="utf-8")
 
 
 if __name__ == "__main__":

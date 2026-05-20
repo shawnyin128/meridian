@@ -29,7 +29,18 @@ obsidian backlinks path="papers/<paper-page>.md"
 ```
 
 5. Answer with page references and explain why each paper matters for the user's task.
-6. If the answer creates durable synthesis, propose a wiki write-back rather than leaving it only in chat.
+6. If the answer creates durable synthesis, comparison, decision, or idea state, create a draft write-back proposal rather than leaving it only in chat:
+
+```bash
+meridian wiki propose-writeback \
+  --wiki-root wiki \
+  --query "<standalone research query>" \
+  --context wiki/.drafts/retrieval/context.json \
+  --title "<draft synthesis title>" \
+  --proposal-type synthesis
+```
+
+Write-back proposals stay under `wiki/.drafts/proposals/`. They separate source facts, wiki synthesis, user ideas/decisions, uncertainty, and publish plan. Do not publish canonical synthesis directly from retrieval output.
 
 ## Retrieval Discipline
 

@@ -16,10 +16,17 @@ from meridian.wiki.eval_run import (
 from meridian.wiki.flow import WikiFlowResult, run_wiki_flow
 from meridian.wiki.ingest import IngestResult, run_ingest
 from meridian.wiki.judge import build_judge_packet
+from meridian.wiki.proposals import QueryWritebackProposalResult, propose_query_writeback
 from meridian.wiki.promote import PublishRunResult, publish_run_to_wiki
 from meridian.wiki.converge import WikiConvergenceResult, converge_wiki_run, record_judge_result
 from meridian.wiki.quality_check import QualitySelfCheckResult, run_quality_self_check
 from meridian.wiki.reader_check import build_reader_check_packet
+from meridian.wiki.retrieval_eval import (
+    RetrievalEvalResult,
+    RetrievalEvalSummaryResult,
+    run_retrieval_eval,
+    summarize_retrieval_eval,
+)
 from meridian.wiki.review import append_review_record
 from meridian.wiki.self_check import (
     SelfCheckAggregateResult,
@@ -339,6 +346,58 @@ def retrieve_wiki(
         top_k=top_k,
         packet_path=packet_path,
         result_path=result_path,
+    )
+
+
+def retrieval_eval_wiki(
+    *,
+    cases_path: Path,
+    wiki_root: Path,
+    out_dir: Path,
+    rubric_path: Path | None = None,
+    top_k: int = 5,
+    catalog_path: Path | None = None,
+    overwrite: bool = False,
+) -> RetrievalEvalResult:
+    return run_retrieval_eval(
+        cases_path=cases_path,
+        wiki_root=wiki_root,
+        out_dir=out_dir,
+        rubric_path=rubric_path,
+        top_k=top_k,
+        catalog_path=catalog_path,
+        overwrite=overwrite,
+    )
+
+
+def retrieval_eval_summary(manifest_path: Path, out_path: Path | None = None) -> RetrievalEvalSummaryResult:
+    return summarize_retrieval_eval(manifest_path=manifest_path, out_path=out_path)
+
+
+def propose_writeback_wiki(
+    *,
+    wiki_root: Path,
+    query: str,
+    context_path: Path,
+    title: str,
+    proposal_type: str = "synthesis",
+    body_path: Path | None = None,
+    out_dir: Path | None = None,
+    notes: str = "",
+    overwrite: bool = False,
+    update_log: bool = True,
+) -> QueryWritebackProposalResult:
+    return propose_query_writeback(
+        wiki_root=wiki_root,
+        query=query,
+        context_path=context_path,
+        title=title,
+        proposal_type=proposal_type,
+        body_path=body_path,
+        out_dir=out_dir,
+        notes=notes,
+        overwrite=overwrite,
+        update_log=update_log,
     )
 
 

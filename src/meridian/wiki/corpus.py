@@ -33,6 +33,14 @@ SECTION_WEIGHTS = {
     "Limitations / Uncertainty": 1.6,
 }
 
+INTENT_SECTION_TERMS = {
+    "Mechanism": {"mechanism", "design", "method", "component", "how"},
+    "Mechanism Details To Verify": {"verify", "equivalent", "invariant", "equation", "transform", "preserve", "detail"},
+    "Evidence Map": {"evidence", "throughput", "speedup", "memory", "latency", "systems", "kernel", "cpu", "gpu", "benchmark"},
+    "Implementation Hooks": {"implement", "implementation", "ablation", "ablations", "probe", "sanity", "code", "baseline"},
+    "Limitations / Uncertainty": {"scope", "limitation", "limitations", "valid", "regime", "assumption", "transfer", "distinction"},
+}
+
 
 @dataclass(frozen=True)
 class CatalogResult:
@@ -156,7 +164,7 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
     query_tokens = _tokens(query)
     query_norm = _norm(query)
     path = Path(str(record["path"]))
-    if not path.is_absolute():
+    if not path.is_absolute() and not path.exists():
         path = wiki_root / path
     body = strip_frontmatter(path.read_text(encoding="utf-8"))
     sections = split_sections(body)
@@ -197,6 +205,8 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
     for heading, weight in SECTION_WEIGHTS.items():
         content = sections.get(heading, "")
         section_score = _text_score(query_tokens, query_norm, content, weight=weight)
+        intent_boost = _section_intent_boost(query_tokens, heading, weight=weight, content=content)
+        section_score += intent_boost
         if section_score > 0:
             score += section_score
             section_hits.append(
@@ -214,13 +224,23 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
         "relative_path": record.get("relative_path"),
         "score": round(score, 3),
         "matched_frontmatter": matched_fields,
-        "matched_sections": sorted(section_hits, key=lambda item: -item["score"])[:4],
+        "matched_sections": sorted(section_hits, key=lambda item: -item["score"])[:5],
         "selection_reasons": _dedupe(reasons),
         "review_state": record.get("review_state"),
         "quality_gate": record.get("quality_gate"),
         "confidence": record.get("confidence"),
         "source_id": record.get("source_id"),
     }
+
+
+def _section_intent_boost(query_tokens: set[str], heading: str, *, weight: float, content: str) -> float:
+    if not content:
+        return 0.0
+    intent_terms = INTENT_SECTION_TERMS.get(heading, set())
+    overlap = query_tokens & intent_terms
+    if not overlap:
+        return 0.0
+    return weight * (3.0 + min(len(overlap), 3) * 1.25)
 
 
 def _render_context_packet(*, query: str, results: list[dict[str, Any]], wiki_root: Path) -> str:

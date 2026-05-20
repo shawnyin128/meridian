@@ -189,6 +189,31 @@ The output is a ranked context packet, not a final answer. Each hit explains the
 matched frontmatter fields, selected sections, and read-first snippets so an
 agent can inspect the smallest useful set of wiki pages before synthesis.
 
+Run scenario-based retrieval evaluation:
+
+```bash
+meridian wiki retrieval-eval eval/cases/wiki_retrieval_quality.example.jsonl \
+  --wiki-root wiki \
+  --out-dir eval/runs/<run-id>/ \
+  --rubric eval/rubrics/wiki_retrieval_quality_v0.md
+
+meridian wiki retrieval-eval-summary eval/runs/<run-id>/retrieval_manifest.json
+```
+
+File durable query outputs back as draft proposals:
+
+```bash
+meridian wiki propose-writeback \
+  --wiki-root wiki \
+  --query "I need MoE PTQ papers for activation outlier ablations" \
+  --context wiki/.drafts/retrieval/context.json \
+  --title "MoE PTQ Outlier Ablation Reading Plan" \
+  --proposal-type synthesis
+```
+
+This writes to `wiki/.drafts/proposals/` and records the event in `wiki/log.md`;
+it does not publish canonical synthesis pages.
+
 ## Testing Strategy
 
 The wiki layer test plan lives in `docs/wiki-layer-test-strategy.md`. It covers
@@ -200,5 +225,6 @@ Retrieval quality examples and rubric:
 
 ```bash
 eval/cases/wiki_retrieval_quality.example.jsonl
+eval/cases/wiki_retrieval_quantization_smoke.jsonl
 eval/rubrics/wiki_retrieval_quality_v0.md
 ```
