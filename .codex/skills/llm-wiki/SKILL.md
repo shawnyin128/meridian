@@ -74,6 +74,7 @@ Follow these principles while the project is still design-heavy:
 - Favor Markdown files, Obsidian links, plain directories, git history, and simple Unix-readable logs before adding databases or custom infrastructure.
 - Preserve source provenance on claims. Any synthesized claim should point back to one or more source pages or raw source references when possible.
 - Distinguish source facts, wiki synthesis, and user decisions. Do not blur "the source says", "the wiki currently infers", and "we decided".
+- Treat user reading notes as first-class personalized wiki state, but keep them in `User Insights` or proposal sections until source re-check justifies source-grounded edits.
 - File valuable query outputs back into the wiki when they represent durable analysis, comparison, synthesis, or planning.
 - Use proposal-first write-back for retrieval outputs. A valuable query should become `wiki/.drafts/proposals/<slug>/` first, pass `proposal-lint`, and only then publish to the canonical synthesis layer.
 - Keep product output boundaries clean. Default CLI/user guidance should report the managed source PDF, canonical wiki page, quality/review state, and retrieval/proposal paths. Internal `review.md`, draft `paper.md`, self-check, judge, and extraction artifacts are available for audit but should not be presented as normal wiki entries.
@@ -204,6 +205,22 @@ Proposal and canonical synthesis pages must preserve the section boundary:
 - `Open Questions`: uncertainty, weak retrieval, and checks before use.
 
 Never promote source-quality holds as scientific evidence. They can only support cleanup/provenance decisions.
+
+### Personalize
+
+When the user gives a paper-reading insight, correction, implementation note, retrieval hint, or future question, route it through the user insight workflow:
+
+```bash
+meridian wiki add-insight \
+  --wiki-root wiki \
+  --paper "<paper identifier or query>" \
+  --note "<user note>" \
+  --insight-type paper-note
+meridian wiki insight-lint wiki/.drafts/insights/<slug>/insight.json --wiki-root wiki
+meridian wiki publish-insight wiki/.drafts/insights/<slug>/insight.json --wiki-root wiki
+```
+
+The publish path appends to `## User Insights` on the canonical paper page and updates `user_insights` / `personalized` frontmatter. It must not rewrite `What To Remember`, `Mechanism`, or `Evidence Map` from user input alone. If the user says a source-grounded section is wrong, record the insight and require source re-check before changing source facts.
 
 ### Lint
 

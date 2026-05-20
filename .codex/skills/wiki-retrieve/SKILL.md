@@ -63,6 +63,7 @@ Use `--proposal-type method-family`, `comparison`, `decision`, or `research-ques
 - Check `canonical_path` in retrieval JSON/context packets before opening pages. It should point to a canonical paper or synthesis path, not a draft ingest artifact.
 - Do not cite a paper only because its title matched; inspect the chosen section snippets.
 - Distinguish source facts, wiki synthesis, and the user's own ideas.
+- If the context packet reports `Source types matched: user_insight`, use it as personalized context only. Do not treat it as paper evidence.
 - For coding tasks, always look for `Implementation Hooks`, `Mechanism`, and `Limitations / Uncertainty`.
 - For evidence tasks, inspect `Evidence Map`, candidate claims, and provenance before relying on a claim.
 

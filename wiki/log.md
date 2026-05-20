@@ -50,3 +50,10 @@
 - Draft artifacts: `wiki/.drafts/ingests/2605-15508v2`
 - Quality gate: `pass`
 - Review state: `auto_ingested`
+
+## [2026-05-20] insight | STS: Efficient Sparse Attention with Speculative Token Sparsity
+
+- Published user insight `insight-2026-05-20-71538c7e52` to `User Insights`.
+- Target page: `papers/STS-Efficient-Sparse-Attention-with-Speculative-Token-Sparsity.md`
+- Boundary: user-supplied insight; not paper source fact.
+- Updated index: `index.md`

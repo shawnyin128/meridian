@@ -14,6 +14,10 @@ Before using the accumulated wiki to retrieve papers, claims, methods, or implem
 
 `/Users/shawn/Desktop/meridian/.codex/skills/wiki-retrieve/SKILL.md`
 
+Before adding or publishing user paper-reading insights, corrections, implementation notes, retrieval hints, or Zotero-style annotation imports, load:
+
+`/Users/shawn/Desktop/meridian/.codex/skills/wiki-personalize/SKILL.md`
+
 Current MVP direction:
 
 - Build a personally usable paper wiki, not a general multi-agent platform.
@@ -47,6 +51,7 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `.codex/skills/llm-wiki/SKILL.md`: project skill for LLM Wiki development principles.
 - `.codex/skills/paper-ingest/SKILL.md`: project skill for high-quality paper ingest outputs and reader self-check convergence.
 - `.codex/skills/wiki-retrieve/SKILL.md`: project skill for using Meridian retrieval and Obsidian CLI to find paper-wiki context for research work.
+- `.codex/skills/wiki-personalize/SKILL.md`: project skill for adding, linting, publishing, and retrieving user-supplied paper insights without source-fact contamination.
 - `pyproject.toml`: Python package metadata and `meridian` console script entrypoint.
 - `src/meridian/`: Paper Wiki prototype CLI implementation for `meridian wiki ...`.
 - `tests/`: unit tests for CLI ingest, eval, and human review recording.
@@ -59,6 +64,7 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `docs/wiki-evaluation-set-and-judge-rubric.md`: current evaluation set strategy and LLM-as-Judge rubric contract.
 - `docs/wiki-layer-test-strategy.md`: layered source/canonical/retrieval test strategy, retrieval scenario metrics, judge rubric usage, calibration, and release gates.
 - `docs/wiki-product-dataflow-and-artifact-boundaries.md`: product-level source/canonical/draft/debug/retrieval artifact taxonomy and dataflow boundaries.
+- `docs/user-insight-personalization-mvp.md`: user insight schema, add/lint/publish workflow, source-fact boundary, retrieval behavior, and future Zotero adapter boundary.
 - `docs/retrieval-smoke-quality-brief.md`: latest tracked retrieval smoke quality summary over representative canonical quantization wiki pages.
 - `docs/real-library-retrieval-audit-brief.md`: latest tracked per-paper retrieval audit over the current real canonical wiki.
 - `docs/retrieval-optimization-research.md`: retrieval v1 design research, option tradeoffs, and backend roadmap for Markdown-first paper-wiki retrieval.

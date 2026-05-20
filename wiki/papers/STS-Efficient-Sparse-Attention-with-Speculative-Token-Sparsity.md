@@ -70,6 +70,9 @@ raw_source: "wiki/raw/sources/papers/paper-pdf-00d120e46b19-STS-Efficient-Sparse
 draft_artifact_root: "wiki/.drafts/ingests/2605-15508v2"
 convergence_state: "deterministic_text_converged"
 judge_decision: "not_run"
+user_insights:
+  - "insight-2026-05-20-71538c7e52"
+personalized: true
 ---
 # STS: Efficient Sparse Attention with Speculative Token Sparsity
 
@@ -182,3 +185,16 @@ Evidence candidates:
 - `evidence-p0006`: p. 6
 - `evidence-p0007`: p. 7; supports: claim-001, claim-002
 - `evidence-p0008`: p. 8
+
+## User Insights
+
+### insight-2026-05-20-71538c7e52
+
+- Type: `implementation-note`
+- Source type: `user_insight`; provenance: `user_supplied`
+- Date: `2026-05-20`
+- Summary: For my research notes, use STS when thinking about speculative token sparsity probes: the useful hook is to log accepted sparse tokens, verifier overhead, and when sparsity hurts long-context quality.
+- Original user note: `.drafts/insights/smoke-sts-routing-probe/insight.md`
+- Affected sections: User Insights, When To Retrieve This Paper, Implementation Hooks
+- Retrieval hook: Use this page for implementation/probe planning when the user asks about: For my research notes, use STS when thinking about speculative token sparsity probes: the useful hook is to log accepted sparse tokens, verifier overhead, and when sparsity hurts long-context quality.
+- Boundary: user-supplied insight, not paper source fact or scientific evidence.

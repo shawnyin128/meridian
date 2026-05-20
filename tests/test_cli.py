@@ -1512,6 +1512,276 @@ This hidden unique zeta candidate should never enter retrieval.
                 any(str(item.get("relative_path") or "").startswith(".drafts/") for item in canonical.results)
             )
 
+    def test_add_insight_creates_draft_for_exact_canonical_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            paper = wiki_root / "papers/MoE-PTQ.md"
+            _write_test_paper(
+                paper,
+                title="MoE PTQ Paper",
+                aliases=["CodeQuant"],
+                topics=["activation outliers"],
+                methods=["MoE post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "This paper studies MoE PTQ.",
+                    "Mechanism": "The method smooths activation outliers.",
+                },
+            )
+
+            exit_code, stdout, stderr = _run_cli_capture(
+                [
+                    "wiki",
+                    "add-insight",
+                    "--wiki-root",
+                    str(wiki_root),
+                    "--paper",
+                    str(paper),
+                    "--note",
+                    "My reading: this is most useful as a probe design paper for expert-level routing stability.",
+                ]
+            )
+
+            self.assertEqual(exit_code, 0, stderr)
+            self.assertIn("Insight match status: matched", stdout)
+            manifest_path = next((wiki_root / ".drafts/insights").glob("*/insight.json"))
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            self.assertEqual(manifest["source_type"], "user_insight")
+            self.assertEqual(manifest["provenance"], "user_supplied")
+            self.assertEqual(manifest["target_page"], "papers/MoE-PTQ.md")
+            self.assertIn("user_input_raw", manifest)
+            self.assertIn("not paper source fact", manifest["source_fact_boundary"])
+            self.assertTrue((manifest_path.parent / "insight.md").exists())
+            self.assertTrue((manifest_path.parent / "target_context.json").exists())
+
+    def test_add_insight_matches_title_alias_and_natural_language(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            _write_test_paper(
+                papers / "MoE-PTQ.md",
+                title="MoE PTQ Paper",
+                aliases=["CodeQuant"],
+                topics=["activation outliers", "quantization error"],
+                methods=["MoE post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "MoE PTQ handles activation outliers.",
+                    "Mechanism": "The paper studies outlier smoothing and expert routing stability.",
+                },
+            )
+            _write_test_paper(
+                papers / "Alignment.md",
+                title="Alignment Paper",
+                aliases=["DPO"],
+                topics=["preference optimization"],
+                methods=["direct preference optimization"],
+                settings=["RLHF setting"],
+                body_sections={"What To Remember": "Preference optimization paper."},
+            )
+
+            title_out = wiki_root / ".drafts/insights/title-match"
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "add-insight",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--paper",
+                        "CodeQuant",
+                        "--note",
+                        "Remember this when comparing expert-routing quantization failures.",
+                        "--out-dir",
+                        str(title_out),
+                    ]
+                ),
+                0,
+            )
+            title_manifest = json.loads((title_out / "insight.json").read_text(encoding="utf-8"))
+            self.assertEqual(title_manifest["match"]["target"]["match_type"], "exact alias:CodeQuant match")
+
+            natural_out = wiki_root / ".drafts/insights/natural-match"
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "add-insight",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--paper",
+                        "paper about MoE activation outliers and expert routing stability",
+                        "--note",
+                        "This is the right page for my MoE outlier ablation idea.",
+                        "--out-dir",
+                        str(natural_out),
+                    ]
+                ),
+                0,
+            )
+            natural_manifest = json.loads((natural_out / "insight.json").read_text(encoding="utf-8"))
+            self.assertEqual(natural_manifest["target_page"], "papers/MoE-PTQ.md")
+            self.assertEqual(natural_manifest["match"]["target"]["match_type"], "retrieval match")
+
+    def test_add_insight_blocks_ambiguous_and_no_match(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            for name in ("First", "Second"):
+                _write_test_paper(
+                    papers / f"{name}.md",
+                    title="Shared Title",
+                    aliases=["SharedAlias"],
+                    topics=["shared topic"],
+                    methods=["shared method"],
+                    settings=["shared setting"],
+                    body_sections={"What To Remember": f"{name} paper."},
+                )
+
+            ambiguous_out = wiki_root / ".drafts/insights/ambiguous"
+            exit_code, stdout, _ = _run_cli_capture(
+                [
+                    "wiki",
+                    "add-insight",
+                    "--wiki-root",
+                    str(wiki_root),
+                    "--paper",
+                    "SharedAlias",
+                    "--note",
+                    "This note should not be attached until the paper is disambiguated.",
+                    "--out-dir",
+                    str(ambiguous_out),
+                ]
+            )
+            self.assertEqual(exit_code, 1)
+            self.assertIn("Insight match status: ambiguous", stdout)
+            ambiguous = json.loads((ambiguous_out / "insight.json").read_text(encoding="utf-8"))
+            self.assertEqual(ambiguous["publish_state"], "blocked_disambiguation")
+
+            missing_out = wiki_root / ".drafts/insights/missing"
+            exit_code, stdout, _ = _run_cli_capture(
+                [
+                    "wiki",
+                    "add-insight",
+                    "--wiki-root",
+                    str(wiki_root),
+                    "--paper",
+                    "totally unrelated nonmatching paper",
+                    "--note",
+                    "No canonical paper should match this.",
+                    "--out-dir",
+                    str(missing_out),
+                ]
+            )
+            self.assertEqual(exit_code, 1)
+            self.assertIn("Insight match status: no_match", stdout)
+
+    def test_insight_lint_publish_and_retrieval_marks_user_supplied(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            paper = wiki_root / "papers/MoE-PTQ.md"
+            _write_test_paper(
+                paper,
+                title="MoE PTQ Paper",
+                aliases=["CodeQuant"],
+                topics=["activation outliers"],
+                methods=["MoE post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "This paper studies MoE PTQ.",
+                    "Mechanism": "The method smooths activation outliers.",
+                    "Implementation Hooks": "Probe expert routing variance.",
+                },
+            )
+            out = wiki_root / ".drafts/insights/moe-routing"
+            note = "For my project, use this paper when designing a routing entropy probe for MoE quantization."
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "add-insight",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--paper",
+                        "CodeQuant",
+                        "--note",
+                        note,
+                        "--insight-type",
+                        "implementation-note",
+                        "--out-dir",
+                        str(out),
+                    ]
+                ),
+                0,
+            )
+            self.assertEqual(main(["wiki", "insight-lint", str(out / "insight.json"), "--wiki-root", str(wiki_root)]), 0)
+            self.assertEqual(main(["wiki", "publish-insight", str(out / "insight.json"), "--wiki-root", str(wiki_root)]), 0)
+
+            text = paper.read_text(encoding="utf-8")
+            self.assertIn("personalized: true", text)
+            self.assertIn("user_insights:", text)
+            self.assertIn("## User Insights", text)
+            self.assertIn("Boundary: user-supplied insight, not paper source fact or scientific evidence.", text)
+            self.assertNotIn("## Source Facts", text)
+
+            result = retrieve_papers(
+                query="routing entropy probe for MoE quantization",
+                wiki_root=wiki_root,
+                top_k=1,
+                packet_path=root / "context.md",
+                result_path=root / "context.json",
+            )
+            self.assertEqual(result.results[0]["relative_path"], "papers/MoE-PTQ.md")
+            self.assertIn("user_insight", result.results[0]["matched_source_types"])
+            packet = (root / "context.md").read_text(encoding="utf-8")
+            self.assertIn("Boundary warning: matched `User Insights`", packet)
+            self.assertIn("not paper source fact", packet)
+
+    def test_insight_lint_rejects_source_fact_contamination(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            paper = wiki_root / "papers/MoE-PTQ.md"
+            _write_test_paper(
+                paper,
+                title="MoE PTQ Paper",
+                aliases=["CodeQuant"],
+                topics=["activation outliers"],
+                methods=["MoE post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={"What To Remember": "This paper studies MoE PTQ."},
+            )
+            out = wiki_root / ".drafts/insights/bad"
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "add-insight",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--paper",
+                        "CodeQuant",
+                        "--note",
+                        "The paper proves this method is always stable.",
+                        "--out-dir",
+                        str(out),
+                    ]
+                ),
+                0,
+            )
+            manifest = json.loads((out / "insight.json").read_text(encoding="utf-8"))
+            manifest["normalized_summary"] = "The paper proves this method is always stable."
+            (out / "insight.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+            exit_code, stdout, _ = _run_cli_capture(["wiki", "insight-lint", str(out / "insight.json"), "--wiki-root", str(wiki_root)])
+            self.assertEqual(exit_code, 1)
+            self.assertIn("Insight lint status: fail", stdout)
+            report = json.loads((out / "insight-lint.json").read_text(encoding="utf-8"))
+            self.assertIn("source_fact_contamination", {item["code"] for item in report["findings"]})
+
     def test_wiki_retrieve_exact_identity_beats_crowded_shared_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

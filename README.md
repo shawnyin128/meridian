@@ -261,6 +261,38 @@ cleanup/provenance notes, not scientific evidence.
 
 See `docs/wiki-writeback-synthesis-layer.md` for the full contract.
 
+## User Insight Personalization
+
+Add a personal reading note without confusing it with paper source facts:
+
+```bash
+meridian wiki add-insight \
+  --wiki-root wiki \
+  --paper "CodeQuant" \
+  --note "For my project, this is most useful for expert-routing probe design." \
+  --insight-type implementation-note
+```
+
+The command matches a canonical paper page and writes a draft under
+`wiki/.drafts/insights/<slug>/`. Ambiguous or missing paper matches produce a
+disambiguation artifact and do not mutate canonical pages.
+
+Validate and publish:
+
+```bash
+meridian wiki insight-lint wiki/.drafts/insights/<slug>/insight.json --wiki-root wiki
+meridian wiki publish-insight wiki/.drafts/insights/<slug>/insight.json --wiki-root wiki
+```
+
+Publishing appends to the target paper page's `## User Insights` section,
+updates `user_insights` / `personalized` frontmatter, rebuilds index/catalog,
+and appends to `wiki/log.md`. Retrieval can match `User Insights`, but context
+packets mark the hit as user-supplied, not paper source fact or scientific
+evidence.
+
+See `docs/user-insight-personalization-mvp.md` for the schema, source-fact
+boundary, and future Zotero annotation adapter design.
+
 Run side-by-side retrieval optimization evaluation:
 
 ```bash

@@ -40,6 +40,7 @@ SECTION_WEIGHTS = {
     "Open Questions": 2.0,
     "Retrieval Hooks": 2.8,
     "Publish / Review Notes": 1.2,
+    "User Insights": 2.9,
 }
 
 INTENT_SECTION_TERMS = {
@@ -86,6 +87,7 @@ INTENT_SECTION_TERMS = {
         "caveat",
         "caveats",
     },
+    "User Insights": {"insight", "note", "idea", "implement", "implementation", "ablation", "retrieve", "remember", "connection"},
 }
 
 DOMAIN_LEXICON = {
@@ -332,6 +334,8 @@ def _catalog_record(
         "source_pdf": frontmatter.get("source_pdf"),
         "source_registry": frontmatter.get("source_registry"),
         "source_quality_risk": frontmatter.get("source_quality_risk"),
+        "personalized": frontmatter.get("personalized"),
+        "user_insights": _as_list(frontmatter.get("user_insights")),
         "updated": frontmatter.get("updated"),
         "routing": {field: _as_list(frontmatter.get(field)) for field in ROUTING_FIELDS},
         "section_headings": list(sections.keys()),
@@ -435,6 +439,7 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
                 }
             )
 
+    matched_source_types = ["user_insight"] if any(item.get("heading") == "User Insights" for item in section_hits) else []
     return {
         "page_id": record["page_id"],
         "title": title,
@@ -453,6 +458,7 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
         "result_type": record.get("type") or "paper",
         "source_id": record.get("source_id"),
         "source_quality_risk": record.get("source_quality_risk"),
+        "matched_source_types": matched_source_types,
     }
 
 
@@ -643,6 +649,10 @@ def _score_record_v1(
             ],
             "selection_reasons": _dedupe(reasons),
             "detected_domains": sorted(record_domains),
+            "matched_source_types": _dedupe(
+                list(base.get("matched_source_types") or [])
+                + (["user_insight"] if any(item.get("heading") == "User Insights" for item in base_sections.values()) else [])
+            ),
         }
     )
     return base
@@ -834,6 +844,7 @@ def _render_context_packet(
                 f"- Page: `{result.get('relative_path') or result['path']}`",
                 f"- Canonical path: `{result.get('canonical_path') or result.get('relative_path') or result['path']}`",
                 f"- Result type: `{result.get('result_type') or result.get('type') or 'paper'}`",
+                f"- Source types matched: {', '.join(result.get('matched_source_types') or ['source_or_wiki'])}",
                 f"- Score: `{result['score']}`",
                 f"- Review state: `{result.get('review_state')}`; quality gate: `{result.get('quality_gate')}`; confidence: `{result.get('confidence')}`",
                 f"- Selection reasons: {', '.join(result.get('selection_reasons') or ['lexical overlap'])}",
@@ -847,6 +858,8 @@ def _render_context_packet(
             lines.append(f"  - `{section['heading']}`: {snippet}")
         if not result.get("matched_sections"):
             lines.append("  - `What To Remember`: inspect the page summary before using this result.")
+        if "user_insight" in set(result.get("matched_source_types") or []):
+            lines.append("- Boundary warning: matched `User Insights`; this is user-supplied context, not paper source fact or scientific evidence.")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 

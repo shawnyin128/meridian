@@ -15,6 +15,14 @@ from meridian.wiki.eval_run import (
 )
 from meridian.wiki.flow import WikiFlowResult, run_wiki_flow
 from meridian.wiki.ingest import IngestResult, run_ingest
+from meridian.wiki.insights import (
+    InsightLintResult,
+    PublishInsightResult,
+    UserInsightDraftResult,
+    add_user_insight,
+    lint_user_insight,
+    publish_user_insight,
+)
 from meridian.wiki.judge import build_judge_packet
 from meridian.wiki.proposals import (
     ProposalLintResult,
@@ -369,6 +377,44 @@ def retrieve_wiki(
         packet_path=packet_path,
         result_path=result_path,
     )
+
+
+def add_insight_wiki(
+    *,
+    wiki_root: Path,
+    paper: str,
+    note: str = "",
+    note_file: Path | None = None,
+    insight_type: str = "paper-note",
+    out_dir: Path | None = None,
+    overwrite: bool = False,
+) -> UserInsightDraftResult:
+    return add_user_insight(
+        wiki_root=wiki_root,
+        paper=paper,
+        note=note,
+        note_file=note_file,
+        insight_type=insight_type,
+        out_dir=out_dir,
+        overwrite=overwrite,
+    )
+
+
+def insight_lint_wiki(
+    *,
+    insight_manifest: Path,
+    wiki_root: Path,
+    out_path: Path | None = None,
+) -> InsightLintResult:
+    return lint_user_insight(insight_manifest=insight_manifest, wiki_root=wiki_root, out_path=out_path)
+
+
+def publish_insight_wiki(
+    *,
+    insight_manifest: Path,
+    wiki_root: Path,
+) -> PublishInsightResult:
+    return publish_user_insight(insight_manifest=insight_manifest, wiki_root=wiki_root)
 
 
 def retrieval_eval_wiki(

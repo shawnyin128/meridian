@@ -143,6 +143,10 @@ Every ingest or calibration run should register the raw PDF as managed source st
 - Eval/calibration runs may use a per-case wiki root for source registration while still keeping `publish_mode=never`.
 - If extracted text is too sparse, scanned, or only a cover/notice page, generate a source-quality hold instead of paper knowledge. The hold should be retrievable for OCR/replacement/source-cleanup workflows and must not promote scientific claims.
 
+## User Insight Boundary
+
+User insights are added after canonical ingest through `meridian wiki add-insight`, not by editing source-grounded paper sections directly. If a user says `paper.md` is shallow, wrong, or missing something, preserve their raw note, publish it to `## User Insights`, and require source re-check before rewriting `What To Remember`, `Mechanism`, or `Evidence Map`.
+
 ## Calibration Lessons
 
 Optimize the ingest mechanism, not one paper at a time. Library-scale calibration should check at least:

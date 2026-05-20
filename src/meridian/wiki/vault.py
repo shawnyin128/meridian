@@ -15,6 +15,7 @@ WIKI_DIRS = (
     ".drafts/ingests",
     ".drafts/retrieval",
     ".drafts/proposals",
+    ".drafts/insights",
     ".index",
     "raw/sources/papers",
     "papers",
