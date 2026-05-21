@@ -36,21 +36,30 @@ Internal support skills:
 - `.codex/skills/wiki-evolve/SKILL.md`
 - `.codex/skills/wiki-knowledge/SKILL.md`
 - `.codex/skills/wiki-concept/SKILL.md`
+- `.codex/skills/meridian-research-dev/SKILL.md`
 
 Clean vault template:
 
 - `src/meridian/templates/wiki-vault/`
+
+Research Dev templates:
+
+- `src/meridian/templates/research-dev/`
 
 Minimal product docs:
 
 - `docs/daily-use-walkthrough.md`
 - `docs/final-llm-wiki-product-spec.md`
 - `docs/paper-wiki-release-readiness-checklist.md`
+- `docs/research-coding-framework.md`
+- `docs/research-dev-mvp-plan.md`
+- `docs/research-dev-use-cases.md`
 - `docs/wiki-entry-demo.md`
 - `docs/wiki-mcp-entry-design.md`
 - `docs/wiki-mcp-server-setup.md`
 - `docs/wiki-product-dataflow-and-artifact-boundaries.md`
 - `docs/wiki-product-entry-contract.md`
+- `docs/examples/research-dev-context-packet-example.md`
 
 Representative evaluation assets:
 
@@ -113,6 +122,8 @@ Then inspect the file list produced by the release build or source archive:
 - release includes `src/meridian/`
 - release includes `.codex/skills/meridian-paper-wiki/SKILL.md`
 - release includes `src/meridian/templates/wiki-vault/Map of Content.md`
+- release includes `.codex/skills/meridian-research-dev/SKILL.md`
+- release includes `src/meridian/templates/research-dev/research-dev-context-packet.md`
 - release excludes `wiki/raw/sources/`
 - release excludes `wiki/.drafts/`
 - release excludes `eval/runs/`

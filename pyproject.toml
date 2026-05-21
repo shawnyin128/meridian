@@ -20,4 +20,9 @@ meridian-mcp = "meridian.mcp.server:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-meridian = ["templates/wiki-vault/**/*.md", "templates/wiki-vault/**/*.gitkeep", "templates/wiki-vault/**/*.jsonl"]
+meridian = [
+  "templates/wiki-vault/**/*.md",
+  "templates/wiki-vault/**/*.gitkeep",
+  "templates/wiki-vault/**/*.jsonl",
+  "templates/research-dev/**/*.md",
+]

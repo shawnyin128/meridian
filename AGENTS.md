@@ -36,6 +36,10 @@ Before adding, auditing, publishing, retrieving, or evaluating preliminary-knowl
 
 `/Users/shawn/Desktop/meridian/.codex/skills/wiki-concept/SKILL.md`
 
+Before handling research coding requests that should use Paper Wiki context for experiment design, paper-method implementation, sanity checks, debugging, result interpretation, or wiki write-back, load:
+
+`/Users/shawn/Desktop/meridian/.codex/skills/meridian-research-dev/SKILL.md`
+
 Current MVP direction:
 
 - Build a personally usable paper wiki, not a general multi-agent platform.
@@ -74,9 +78,11 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `.codex/skills/wiki-evolve/SKILL.md`: project skill for refinement proposals, revision snapshots, evolution-state warnings, and canonical page versioning.
 - `.codex/skills/wiki-knowledge/SKILL.md`: project skill for knowledge-layer audit, repair proposal, safe publish, and retrieval discipline across method/topic/claim/evidence/synthesis pages.
 - `.codex/skills/wiki-concept/SKILL.md`: project skill for preliminary-knowledge concept-layer audit, publish, retrieval, and evaluation.
+- `.codex/skills/meridian-research-dev/SKILL.md`: product-facing Research Dev skill for wiki-aware experiment design, paper-method implementation, and broken-run sanity/debug workflows.
 - `pyproject.toml`: Python package metadata and `meridian` console script entrypoint.
 - `src/meridian/`: Paper Wiki prototype CLI implementation for `meridian wiki ...`.
 - `src/meridian/mcp/`: scenario-facing MCP adapter and stdio server exposing `context`, `read`, `trace`, `update`, `propose`, `apply`, and `audit`.
+- `src/meridian/templates/research-dev/`: Markdown templates for Research Dev context packets, experiment/evidence plans, and dev write-back packets.
 - `tests/`: unit tests for CLI ingest, eval, and human review recording.
 - `wiki/`: Obsidian-compatible Markdown wiki artifacts, managed raw sources, canonical pages, generated indexes, and draft workspaces.
 - `eval/`: Paper Wiki evaluation case examples and LLM-as-Judge rubrics.
@@ -105,6 +111,8 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `docs/main-wiki-productization-quality-brief.md`: current main Obsidian vault productization status, source/canonical/retrieval gates, graph health, quality deltas, and remaining limitations.
 - `docs/mvp-workflow.html`: simplified visual workflow diagram.
 - `docs/research-coding-framework.md`: lightweight end-to-end research coding framework that combines LLM Wiki state, Arbor continuity ideas, and bounded multi-agent research bursts.
+- `docs/research-dev-use-cases.md`: Research Dev scenario map defining idea-to-experiment, paper-to-implementation, broken-run debug, result interpretation, reproduction diagnosis, and write-back use cases.
+- `docs/research-dev-mvp-plan.md`: lightweight Research Dev MVP plan covering artifact schemas, skill behavior, wiki retrieval, write-back, checkpointing, and evaluation.
 - `docs/research-coding-framework.html`: visual diagram for the research coding loop.
 - `docs/full-system-architecture.md`: two-product boundary for Paper Wiki Workflow and Research Dev Agent.
 - `docs/full-system-architecture.html`: full visual architecture showing standalone and integrated usage modes.

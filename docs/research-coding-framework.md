@@ -160,6 +160,11 @@ Research development is a trial-and-error loop between ideas and evidence. The f
 
 The framework should not own all of those as first-class MVP workflows. Many are ordinary coding or data-engineering tasks that should be handled directly when they are small.
 
+The scenario-level product contract lives in `docs/research-dev-use-cases.md`,
+and the implementation plan lives in `docs/research-dev-mvp-plan.md`. Treat
+those documents as the Research Dev MVP's user-facing use-case map before
+implementing skills, MCP usage patterns, or evaluation cases.
+
 The high-leverage MVP workflows are:
 
 1. **Experiment design**: turn a hypothesis into the smallest useful experiment.

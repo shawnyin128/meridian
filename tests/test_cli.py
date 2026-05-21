@@ -2483,6 +2483,33 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertIn('"templates/wiki-vault/**/*.gitkeep"', pyproject)
         self.assertIn('"templates/wiki-vault/**/*.jsonl"', pyproject)
 
+    def test_research_dev_mvp_assets_exist(self) -> None:
+        skill = Path(".codex/skills/meridian-research-dev/SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("Idea To Experiment Design", skill)
+        self.assertIn("Paper Or Method To Implementation", skill)
+        self.assertIn("Broken Run To Sanity Check / Debug", skill)
+        self.assertIn("meridian.context", skill)
+
+        template = Path("src/meridian/templates/research-dev")
+        self.assertTrue((template / "research-dev-context-packet.md").exists())
+        self.assertTrue((template / "experiment-evidence-plan.md").exists())
+        self.assertTrue((template / "dev-writeback-packet.md").exists())
+
+        pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
+        self.assertIn('"templates/research-dev/**/*.md"', pyproject)
+
+    def test_research_dev_eval_assets_parse(self) -> None:
+        cases = Path("eval/cases/research_dev_mvp.jsonl")
+        parsed = [json.loads(line) for line in cases.read_text(encoding="utf-8").splitlines() if line.strip()]
+        self.assertGreaterEqual(len(parsed), 7)
+        self.assertTrue(all(case.get("category") == "research_dev_mvp" for case in parsed))
+        self.assertTrue(all("expected_result" in case and "rubric" in case for case in parsed))
+
+        rubric = Path("eval/rubrics/research_dev_mvp_quality.md").read_text(encoding="utf-8")
+        self.assertIn("Wiki Retrieval Usage", rubric)
+        self.assertIn("Write-back Boundary", rubric)
+        self.assertIn("Lightweight Behavior", rubric)
+
     def test_add_insight_creates_draft_for_exact_canonical_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

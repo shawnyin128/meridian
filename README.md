@@ -72,6 +72,29 @@ Design details:
 - `docs/paper-wiki-release-readiness-checklist.md`
 - `docs/paper-wiki-product-maturity-brief.md`
 
+## Research Dev
+
+Research Dev is the lightweight upper layer for wiki-aware research coding. It
+is not a general coding agent or Arbor clone. Use it when a coding task depends
+on paper methods, prerequisite concepts, evidence, prior user insights, or
+experiment interpretation.
+
+Agent-facing entry:
+
+```text
+.codex/skills/meridian-research-dev/SKILL.md
+```
+
+MVP workflows:
+
+- Idea to Experiment Design
+- Paper or Method to Implementation
+- Broken Run to Sanity Check / Debug
+
+Research Dev consumes Paper Wiki through MCP context/read/trace and writes back
+through proposal-first wiki updates. The plan and scenarios are documented in
+`docs/research-dev-mvp-plan.md` and `docs/research-dev-use-cases.md`.
+
 ## Execution Primitives
 
 Initialize a wiki vault:

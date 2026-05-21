@@ -11,11 +11,15 @@ include docs/daily-use-walkthrough.md
 include docs/final-llm-wiki-product-spec.md
 include docs/paper-wiki-release-readiness-checklist.md
 include docs/release-packaging.md
+include docs/research-coding-framework.md
+include docs/research-dev-mvp-plan.md
+include docs/research-dev-use-cases.md
 include docs/wiki-entry-demo.md
 include docs/wiki-mcp-entry-design.md
 include docs/wiki-mcp-server-setup.md
 include docs/wiki-product-dataflow-and-artifact-boundaries.md
 include docs/wiki-product-entry-contract.md
+graft docs/examples
 prune .arbor
 prune .git
 prune eval/runs
