@@ -101,6 +101,7 @@ from meridian.wiki.self_check import (
     run_self_check_eval,
 )
 from meridian.wiki.structural_check import StructuralSelfCheckResult, run_structural_self_check
+from meridian.wiki.system_eval import SystemEvaluationResult, run_system_evaluation
 from meridian.wiki.vault import (
     SourceAuditResult,
     WikiInitResult,
@@ -687,6 +688,31 @@ def retrieval_optimization_eval_wiki(
         catalog_path=catalog_path,
         baseline_strategy=baseline_strategy,
         candidate_strategy=candidate_strategy,
+        overwrite=overwrite,
+    )
+
+
+def system_evaluate_wiki(
+    *,
+    wiki_root: Path,
+    case_path: Path,
+    context_path: Path,
+    out_dir: Path,
+    rubric_path: Path | None = None,
+    selected_pages: list[str] | None = None,
+    proposal_path: Path | None = None,
+    audit_paths: list[Path] | None = None,
+    overwrite: bool = False,
+) -> SystemEvaluationResult:
+    return run_system_evaluation(
+        wiki_root=wiki_root,
+        case_path=case_path,
+        context_path=context_path,
+        out_dir=out_dir,
+        rubric_path=rubric_path,
+        selected_pages=selected_pages,
+        proposal_path=proposal_path,
+        audit_paths=audit_paths,
         overwrite=overwrite,
     )
 

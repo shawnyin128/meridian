@@ -58,6 +58,7 @@ from meridian.wiki.commands import (
     source_audit_wiki,
     structural_check_run,
     summarize_eval,
+    system_evaluate_wiki,
 )
 
 
@@ -777,6 +778,31 @@ def build_parser() -> argparse.ArgumentParser:
     retrieval_optimization_eval.add_argument("--candidate-strategy", choices=["v0", "v1"], default="v1")
     retrieval_optimization_eval.add_argument("--overwrite", action="store_true", help="Overwrite an existing eval output directory.")
 
+    system_evaluate = wiki_subparsers.add_parser(
+        "system-evaluate",
+        help="Evaluate a real Paper Wiki use case with a system-level rubric.",
+    )
+    system_evaluate.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    system_evaluate.add_argument("--case", type=Path, required=True, help="Single JSON case file or JSONL case file.")
+    system_evaluate.add_argument("--context", type=Path, required=True, help="Retrieval context JSON path.")
+    system_evaluate.add_argument("--out", type=Path, required=True, help="Output directory for evaluation artifacts.")
+    system_evaluate.add_argument("--rubric", type=Path, default=None, help="Optional system evaluation rubric markdown.")
+    system_evaluate.add_argument(
+        "--selected-page",
+        action="append",
+        default=[],
+        help="Optional canonical page path to include as selected read context. Can be repeated.",
+    )
+    system_evaluate.add_argument("--proposal", type=Path, default=None, help="Optional proposal or synthesis output to evaluate.")
+    system_evaluate.add_argument(
+        "--audit",
+        type=Path,
+        action="append",
+        default=[],
+        help="Optional audit summary path to include. Can be repeated.",
+    )
+    system_evaluate.add_argument("--overwrite", action="store_true", help="Overwrite an existing system evaluation output directory.")
+
     retrieval_eval_summary_cmd = wiki_subparsers.add_parser(
         "retrieval-eval-summary",
         help="Summarize deterministic and optional judge results for a retrieval eval manifest.",
@@ -1423,6 +1449,27 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Baseline strategy: {result.baseline_strategy}")
             print(f"Candidate strategy: {result.candidate_strategy}")
             return 0
+
+        if args.product == "wiki" and args.command == "system-evaluate":
+            result = system_evaluate_wiki(
+                wiki_root=args.wiki_root,
+                case_path=args.case,
+                context_path=args.context,
+                out_dir=args.out,
+                rubric_path=args.rubric,
+                selected_pages=args.selected_page,
+                proposal_path=args.proposal,
+                audit_paths=args.audit,
+                overwrite=args.overwrite,
+            )
+            print(f"Wrote system evaluation: {result.report_path}")
+            print(f"Wrote system evaluation brief: {result.markdown_path}")
+            print(f"Wrote judge packet: {result.judge_packet_path}")
+            print(f"Decision: {result.decision}")
+            print(f"Weighted score: {result.weighted_score:.3f}")
+            print(f"Hard failures: {len(result.hard_failures)}")
+            print(f"Findings: {len(result.findings)}")
+            return 0 if result.decision != "fail" else 1
 
         if args.product == "wiki" and args.command == "retrieval-audit":
             result = retrieval_audit_wiki(

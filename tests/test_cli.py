@@ -1848,6 +1848,294 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertTrue(result["summary"]["blocked_internal_read"])
             self.assertEqual(result["summary"]["fixture_apply_status"], "published")
 
+    def test_system_evaluation_agent_writes_schema_and_judge_packet(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            self.assertEqual(main(["wiki", "init", "--wiki-root", str(wiki_root)]), 0)
+            _write_test_paper(
+                wiki_root / "papers/KV-Compression.md",
+                title="KV Compression",
+                aliases=["KV compression"],
+                topics=["long-context attention"],
+                methods=["KV-cache compression"],
+                settings=["long-context decoding"],
+                body_sections={
+                    "What To Remember": "KV-cache compression trades memory for accuracy in long-context decoding.",
+                    "Implementation Hooks": "Measure retention policy effects with cache hit and latency probes.",
+                    "Evidence Map": "Evidence links compression decisions to latency and memory observations.",
+                    "Retrieval Hooks": "Use for KV-cache compression implementation probes.",
+                },
+            )
+            _write_knowledge_page(
+                wiki_root / "syntheses/KV-Compression-Failure-Boundaries.md",
+                page_type="synthesis",
+                title="KV Compression Failure Boundaries",
+                source_papers=["papers/KV-Compression.md"],
+                body="\n".join(
+                    [
+                        "## Source Facts",
+                        "KV compression changes memory pressure and decoding behavior.",
+                        "## Wiki Synthesis",
+                        "Failure boundaries depend on retained context and attention behavior.",
+                        "## Evidence Map",
+                        "Trace to KV Compression evidence and paper sections.",
+                        "## Open Questions",
+                        "Which retention policy fails first?",
+                        "## Retrieval Hooks",
+                        "Use for KV-cache compression failure-boundary probes.",
+                    ]
+                ),
+            )
+            _write_knowledge_page(
+                wiki_root / "concepts/KV-Cache-Memory-Bandwidth.md",
+                page_type="concept",
+                title="KV Cache Memory Bandwidth",
+                source_papers=["papers/KV-Compression.md"],
+                body="\n".join(
+                    [
+                        "## What It Is",
+                        "The memory movement constraint around KV-cache reads.",
+                        "## Why It Matters",
+                        "It controls long-context decoding latency.",
+                        "## Implementation Implications",
+                        "Profile memory bandwidth before claiming algorithmic speedup.",
+                        "## Common Failure Modes",
+                        "A compute-side win can be hidden by memory traffic.",
+                        "## Minimal Checks / Probes",
+                        "Measure cache traffic, latency, and retained-token sensitivity.",
+                        "## Evidence / Provenance",
+                        "Supported by KV Compression paper observations.",
+                    ]
+                ),
+            )
+            _write_knowledge_page(
+                wiki_root / "evidence/KV-Cache-Latency-Evidence.md",
+                page_type="evidence",
+                title="KV Cache Latency Evidence",
+                source_papers=["papers/KV-Compression.md"],
+                body="\n".join(
+                    [
+                        "## Evidence Item",
+                        "Latency and memory observations change under compression.",
+                        "## Source",
+                        "KV Compression paper.",
+                        "## Metric or Observation",
+                        "Latency and memory footprint.",
+                        "## Provenance",
+                        "papers/KV-Compression.md.",
+                    ]
+                ),
+            )
+            case = {
+                "id": "kv_context",
+                "query": "I want a durable synthesis for KV-cache compression failure boundaries.",
+                "required_page_families": ["corpus:syntheses", "type:concept", "type:evidence"],
+                "required_section_groups": [
+                    {
+                        "id": "synthesis",
+                        "page_families": ["corpus:syntheses"],
+                        "sections": ["Source Facts", "Wiki Synthesis", "Evidence Map", "Open Questions"],
+                    },
+                    {
+                        "id": "concept",
+                        "page_families": ["type:concept"],
+                        "sections": ["Implementation Implications", "Minimal Checks / Probes"],
+                    },
+                ],
+            }
+            context = {
+                "schema_version": "meridian.retrieval_context.v0",
+                "query": case["query"],
+                "strategy": "v1",
+                "results": [
+                    _system_eval_context_result(
+                        "syntheses/KV-Compression-Failure-Boundaries.md",
+                        page_type="synthesis",
+                        corpus_type="syntheses",
+                        sections=["Source Facts", "Wiki Synthesis", "Evidence Map", "Open Questions", "Retrieval Hooks"],
+                    ),
+                    _system_eval_context_result(
+                        "concepts/KV-Cache-Memory-Bandwidth.md",
+                        page_type="concept",
+                        corpus_type="concepts",
+                        sections=["Implementation Implications", "Common Failure Modes", "Minimal Checks / Probes", "Evidence / Provenance"],
+                    ),
+                    _system_eval_context_result(
+                        "evidence/KV-Cache-Latency-Evidence.md",
+                        page_type="evidence",
+                        corpus_type="evidence",
+                        sections=["Evidence Item", "Source", "Metric or Observation", "Provenance"],
+                    ),
+                    _system_eval_context_result(
+                        "papers/KV-Compression.md",
+                        page_type="paper",
+                        corpus_type="papers",
+                        sections=["What To Remember", "Implementation Hooks", "Evidence Map"],
+                    ),
+                ],
+            }
+            case_path = root / "case.json"
+            context_path = root / "context.json"
+            case_path.write_text(json.dumps(case), encoding="utf-8")
+            context_path.write_text(json.dumps(context), encoding="utf-8")
+
+            exit_code, stdout, stderr = _run_cli_capture(
+                [
+                    "wiki",
+                    "system-evaluate",
+                    "--wiki-root",
+                    str(wiki_root),
+                    "--case",
+                    str(case_path),
+                    "--context",
+                    str(context_path),
+                    "--out",
+                    str(root / "eval"),
+                    "--rubric",
+                    "eval/rubrics/system_evaluation_agent_quality.md",
+                ]
+            )
+
+            self.assertEqual(exit_code, 0, stderr)
+            self.assertIn("Decision: pass", stdout)
+            report = json.loads((root / "eval/system-evaluation.json").read_text(encoding="utf-8"))
+            self.assertEqual(report["schema_version"], "meridian.system_evaluation.v1")
+            self.assertEqual(report["decision"], "pass")
+            self.assertGreaterEqual(report["weighted_score"], 4.0)
+            self.assertTrue((root / "eval/system-evaluation.md").exists())
+            self.assertIn("System Evaluation Judge Packet", (root / "eval/judge-packet.md").read_text(encoding="utf-8"))
+
+    def test_system_evaluation_hard_fails_debug_artifact_leakage(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            self.assertEqual(main(["wiki", "init", "--wiki-root", str(wiki_root)]), 0)
+            case_path = root / "case.json"
+            context_path = root / "context.json"
+            case_path.write_text(json.dumps({"id": "leak", "query": "Use product context only."}), encoding="utf-8")
+            context_path.write_text(
+                json.dumps(
+                    {
+                        "query": "Use product context only.",
+                        "results": [
+                            _system_eval_context_result(
+                                ".drafts/ingests/example/paper_candidate.md",
+                                page_type="paper",
+                                corpus_type=".drafts",
+                                sections=["What To Remember"],
+                            )
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            exit_code, _, _ = _run_cli_capture(
+                ["wiki", "system-evaluate", "--wiki-root", str(wiki_root), "--case", str(case_path), "--context", str(context_path), "--out", str(root / "eval")]
+            )
+
+            self.assertEqual(exit_code, 1)
+            report = json.loads((root / "eval/system-evaluation.json").read_text(encoding="utf-8"))
+            self.assertEqual(report["decision"], "fail")
+            self.assertIn("debug_artifact_leakage", {item["code"] for item in report["hard_failures"]})
+            self.assertIn("artifact_boundary", report["repair_buckets"])
+
+    def test_system_evaluation_hard_fails_source_quality_contamination(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            self.assertEqual(main(["wiki", "init", "--wiki-root", str(wiki_root)]), 0)
+            case_path = root / "case.json"
+            context_path = root / "context.json"
+            case_path.write_text(json.dumps({"id": "source-quality", "query": "Does this evidence support a scientific claim?"}), encoding="utf-8")
+            context_path.write_text(
+                json.dumps(
+                    {
+                        "query": "Does this evidence support a scientific claim?",
+                        "results": [
+                            {
+                                **_system_eval_context_result(
+                                    "papers/Bad-Metadata.md",
+                                    page_type="paper",
+                                    corpus_type="papers",
+                                    sections=["Evidence Map"],
+                                ),
+                                "review_state": "source_quality_hold",
+                                "quality_state": "untrusted_source_text",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            exit_code, _, _ = _run_cli_capture(
+                ["wiki", "system-evaluate", "--wiki-root", str(wiki_root), "--case", str(case_path), "--context", str(context_path), "--out", str(root / "eval")]
+            )
+
+            self.assertEqual(exit_code, 1)
+            report = json.loads((root / "eval/system-evaluation.json").read_text(encoding="utf-8"))
+            self.assertIn("source_quality_contamination", {item["code"] for item in report["hard_failures"]})
+            self.assertIn("source_quality_routing", report["repair_buckets"])
+
+    def test_system_evaluation_assigns_repair_bucket_for_missing_required_family(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            self.assertEqual(main(["wiki", "init", "--wiki-root", str(wiki_root)]), 0)
+            case_path = root / "case.json"
+            context_path = root / "context.json"
+            case_path.write_text(
+                json.dumps(
+                    {
+                        "id": "missing-evidence",
+                        "query": "Trace claim support.",
+                        "required_page_families": ["type:evidence"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            context_path.write_text(
+                json.dumps(
+                    {
+                        "query": "Trace claim support.",
+                        "results": [
+                            _system_eval_context_result(
+                                "papers/Relevant-Paper.md",
+                                page_type="paper",
+                                corpus_type="papers",
+                                sections=["What To Remember"],
+                            )
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            exit_code, _, _ = _run_cli_capture(
+                ["wiki", "system-evaluate", "--wiki-root", str(wiki_root), "--case", str(case_path), "--context", str(context_path), "--out", str(root / "eval")]
+            )
+
+            self.assertEqual(exit_code, 0)
+            report = json.loads((root / "eval/system-evaluation.json").read_text(encoding="utf-8"))
+            self.assertEqual(report["decision"], "needs_refine")
+            self.assertIn("retrieval_ranking", report["repair_buckets"])
+            self.assertIn("missing_required_page_families", {item["code"] for item in report["findings"]})
+
+    def test_system_evaluation_cases_and_rubric_are_parseable(self) -> None:
+        cases = Path("eval/cases/system_evaluation_agent_mvp.jsonl")
+        rubric = Path("eval/rubrics/system_evaluation_agent_quality.md")
+        self.assertTrue(cases.exists())
+        self.assertTrue(rubric.exists())
+        parsed = [json.loads(line) for line in cases.read_text(encoding="utf-8").splitlines() if line.strip()]
+        self.assertGreaterEqual(len(parsed), 6)
+        self.assertTrue(all("query" in case and "rubric" in case for case in parsed))
+        rubric_text = rubric.read_text(encoding="utf-8")
+        self.assertIn("Task Usefulness", rubric_text)
+        self.assertIn("Hard Fail Rules", rubric_text)
+        self.assertIn("Repair Buckets", rubric_text)
+
     def test_add_insight_creates_draft_for_exact_canonical_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -5562,6 +5850,31 @@ def _write_knowledge_page(
         "",
     ]
     path.write_text("\n".join(frontmatter), encoding="utf-8")
+
+
+def _system_eval_context_result(
+    relative_path: str,
+    *,
+    page_type: str,
+    corpus_type: str,
+    sections: list[str],
+) -> dict[str, object]:
+    return {
+        "page_id": str(Path(relative_path).with_suffix("")),
+        "title": Path(relative_path).stem.replace("-", " "),
+        "relative_path": relative_path,
+        "canonical_path": relative_path,
+        "type": page_type,
+        "result_type": page_type,
+        "corpus_type": corpus_type,
+        "knowledge_role": "compiled_knowledge" if corpus_type != "papers" else "source_page",
+        "score": 10.0,
+        "source_papers": ["papers/KV-Compression.md"] if corpus_type != "papers" else [],
+        "sources": ["papers/KV-Compression.md"],
+        "matched_sections": [{"heading": section, "score": 2.0, "snippet": f"{section} snippet."} for section in sections],
+        "section_headings": sections,
+        "selection_reasons": ["test fixture"],
+    }
 
 
 def _prepend_frontmatter_field(path: Path, field_text: str) -> None:
