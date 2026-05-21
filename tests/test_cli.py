@@ -2494,9 +2494,41 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertTrue((template / "research-dev-context-packet.md").exists())
         self.assertTrue((template / "experiment-evidence-plan.md").exists())
         self.assertTrue((template / "dev-writeback-packet.md").exists())
+        self.assertTrue((template / "idea-card.md").exists())
 
         pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
         self.assertIn('"templates/research-dev/**/*.md"', pyproject)
+
+    def test_research_dev_idea_management_assets_parse(self) -> None:
+        skill = Path(".codex/skills/meridian-research-dev/SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("Idea Capture / Triage / Evolution", skill)
+        self.assertIn("Write back only through a Paper Wiki proposal", skill)
+
+        template = Path("src/meridian/templates/research-dev/idea-card.md").read_text(encoding="utf-8")
+        for section in [
+            "## Raw Idea",
+            "## Hypothesis",
+            "## Wiki Grounding",
+            "## Feasibility Read",
+            "## Minimal Test",
+            "## Evidence Log",
+            "## Decision",
+            "## Write-back Candidate",
+        ]:
+            self.assertIn(section, template)
+        self.assertIn("type: research_dev_idea", template)
+        self.assertIn("evidence_state", template)
+
+        cases = Path("eval/cases/research_dev_idea_management_mvp.jsonl")
+        parsed = [json.loads(line) for line in cases.read_text(encoding="utf-8").splitlines() if line.strip()]
+        self.assertGreaterEqual(len(parsed), 8)
+        self.assertTrue(all(case.get("category") == "research_dev_idea_management_mvp" for case in parsed))
+        self.assertTrue(all("expected_result" in case and "rubric" in case for case in parsed))
+
+        rubric = Path("eval/rubrics/research_dev_idea_management_quality.md").read_text(encoding="utf-8")
+        self.assertIn("Raw Idea Fidelity", rubric)
+        self.assertIn("Wiki Grounding Quality", rubric)
+        self.assertIn("Write-back Boundary", rubric)
 
     def test_research_dev_eval_assets_parse(self) -> None:
         cases = Path("eval/cases/research_dev_mvp.jsonl")

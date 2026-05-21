@@ -59,6 +59,7 @@ Minimal product docs:
 - `docs/wiki-mcp-server-setup.md`
 - `docs/wiki-product-dataflow-and-artifact-boundaries.md`
 - `docs/wiki-product-entry-contract.md`
+- `docs/examples/research-dev-idea-card-example.md`
 - `docs/examples/research-dev-context-packet-example.md`
 
 Representative evaluation assets:
@@ -123,6 +124,7 @@ Then inspect the file list produced by the release build or source archive:
 - release includes `.codex/skills/meridian-paper-wiki/SKILL.md`
 - release includes `src/meridian/templates/wiki-vault/Map of Content.md`
 - release includes `.codex/skills/meridian-research-dev/SKILL.md`
+- release includes `src/meridian/templates/research-dev/idea-card.md`
 - release includes `src/meridian/templates/research-dev/research-dev-context-packet.md`
 - release excludes `wiki/raw/sources/`
 - release excludes `wiki/.drafts/`

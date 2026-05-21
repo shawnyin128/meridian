@@ -11,6 +11,31 @@ normally.
 
 ## Workflows
 
+### Idea Capture / Triage / Evolution
+
+Use when the user shares a research idea, intuition, or possible direction that
+is not yet a committed experiment.
+
+Minimum completion:
+
+- Preserve the raw idea.
+- Normalize it into a testable hypothesis.
+- Retrieve Paper Wiki context when prior work, methods, concepts, evidence, or
+  failure modes matter.
+- Summarize support, contradiction, novelty risk, and implementation risk.
+- Decide the next state: `inbox`, `test_next`, `revise`, `pause`, `kill`, or
+  `promote`.
+- Create or update an Idea Card when the idea is durable enough to track.
+- Write back only through a Paper Wiki proposal when a durable finding emerges.
+
+Example:
+
+```text
+The user has a new KV-cache compression idea. Preserve the raw idea, use the
+wiki to check related cache-retention concepts and evidence, then decide whether
+to kill it, revise it, or turn it into a minimal experiment plan.
+```
+
 ### Idea To Experiment Design
 
 Use when the user has a research idea or suspected mechanism.
@@ -91,6 +116,7 @@ Use Markdown artifacts when a task has durable value:
 - `Research Dev Context Packet`
 - `Experiment / Evidence Plan`
 - `Dev Write-back Packet`
+- `Idea Card`
 
 Templates live in:
 
@@ -110,6 +136,7 @@ Keep boundaries clear:
 - paper source facts come from papers and evidence records
 - wiki synthesis is revisable interpretation
 - user insight is user-supplied context
+- research ideas are dev working state until promoted through proposal review
 - local experiment results are evidence from the user's repo, not paper facts
 
 ## Git Checkpoints
@@ -117,4 +144,3 @@ Keep boundaries clear:
 Suggest a checkpoint when a hypothesis implementation becomes runnable, a probe
 or ablation layer is added, a result changes the next decision, or a risky
 refactor could erase useful exploratory state.
-

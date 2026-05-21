@@ -27,6 +27,7 @@ research-friendly code and durable evidence.
 It owns:
 
 - research intent classification
+- lightweight idea capture and triage
 - wiki-aware context gathering
 - repo/code/config/log inspection
 - experiment and sanity-check planning
@@ -38,6 +39,7 @@ It does not own:
 
 - Paper Wiki ingestion internals
 - canonical wiki mutation outside proposal-first flows
+- canonical `wiki/ideas/` pages for every raw idea
 - general repo cleanup as a primary product
 - full experiment orchestration
 - broad autonomous multi-agent coding
@@ -45,7 +47,26 @@ It does not own:
 
 ## MVP Workflows
 
-### 1. Idea To Experiment Design
+### 1. Idea Capture / Triage / Evolution
+
+Use when a user shares a research idea, debug intuition, paper-reading spark, or
+possible direction that is not yet ready to become an experiment.
+
+Minimum completion:
+
+- preserve the raw idea faithfully
+- normalize it into a testable hypothesis
+- retrieve Paper Wiki context when prior work, methods, concepts, evidence, or
+  failure modes matter
+- summarize support, contradiction, novelty risk, implementation risk, and
+  missing evidence
+- choose the next decision: `inbox`, `test_next`, `revise`, `pause`, `kill`, or
+  `promote`
+- create an Idea Card under the target repo's `.meridian/ideas/` when the idea
+  is durable enough to track
+- write back only durable findings through Paper Wiki proposals
+
+### 2. Idea To Experiment Design
 
 Use when a user has a research idea or suspected mechanism and wants the
 smallest useful experiment.
@@ -60,7 +81,7 @@ Minimum completion:
 - name command/config/output identity when known
 - suggest a git checkpoint before risky implementation
 
-### 2. Paper Or Method To Implementation
+### 3. Paper Or Method To Implementation
 
 Use when a user wants to implement or adapt a paper/method in a codebase.
 
@@ -74,7 +95,7 @@ Minimum completion:
 - document assumptions and sanity checks
 - create a write-back packet when implementation reveals hidden details or wiki gaps
 
-### 3. Broken Run To Sanity Check / Debug
+### 4. Broken Run To Sanity Check / Debug
 
 Use when a result, metric, training loop, baseline, or reproduction is broken.
 
@@ -89,6 +110,28 @@ Minimum completion:
 - preserve durable discoveries as write-back proposals
 
 ## Artifact Schema
+
+### Idea Card
+
+Purpose: keep a research idea as lightweight dev working state before it becomes
+an experiment or wiki proposal.
+
+Default target-repo path:
+
+```text
+.meridian/ideas/<idea-slug>.md
+```
+
+Required sections:
+
+- Raw Idea
+- Hypothesis
+- Wiki Grounding
+- Feasibility Read
+- Minimal Test
+- Evidence Log
+- Decision
+- Write-back Candidate
 
 ### Research Dev Context Packet
 
@@ -151,7 +194,7 @@ The product-facing skill is `.codex/skills/meridian-research-dev/SKILL.md`.
 
 The skill should:
 
-- start from one of the three MVP workflows
+- start from one of the four MVP workflows
 - retrieve wiki context when the task depends on prior papers, methods, concepts, evidence, failed paths, or user insights
 - keep context packets compact
 - let the agent choose code-reading, commands, probes, tests, or edits
@@ -162,6 +205,32 @@ The skill should:
 It should not force every request through a managed Arbor loop. Arbor remains
 useful for durable project evidence, release gates, and larger implementation
 features, but Research Dev should stay lightweight during ordinary exploration.
+
+## Idea Management Contract
+
+Idea management belongs to Research Dev, not the canonical Paper Wiki layer.
+Raw or half-formed ideas are active hypotheses, experiment candidates, or debug
+intuitions. They should stay in an Idea Card until they generate durable
+research memory.
+
+Use Paper Wiki to ground an idea before investing in code when the idea depends
+on prior work, method details, prerequisite concepts, evidence, or known failure
+modes. The grounding should answer:
+
+- what supports the idea
+- what contradicts or weakens it
+- whether it looks novel or already covered
+- what implementation risk or missing evidence remains
+- what smallest test could change the decision
+
+Promotion and write-back are proposal-first:
+
+- failed path worth remembering -> synthesis proposal
+- cross-paper judgment -> synthesis proposal
+- method understanding changed -> refinement proposal
+- prerequisite concept clarified -> concept proposal
+- personal interpretation -> user insight
+- recurring open problem -> research-question synthesis
 
 ## Wiki Retrieval Contract
 
@@ -255,4 +324,3 @@ The MVP does not add a `meridian dev` CLI yet. Skill + templates are enough for
 the first usable flow and preserve agent freedom. A deterministic `meridian dev
 scaffold` command can be added later if repeated template generation becomes
 friction.
-

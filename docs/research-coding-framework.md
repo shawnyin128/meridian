@@ -148,6 +148,12 @@ Meridian should evolve from a paper wiki into a lightweight end-to-end research 
 read papers -> form ideas -> write code -> run experiments -> interpret results -> update research memory -> generate better ideas
 ```
 
+Idea management sits on the development side of this loop. A raw idea is not a
+canonical wiki fact; it is active research working state. Meridian should capture
+the raw idea, ground it with Paper Wiki context, turn it into a testable
+hypothesis, connect it to code and experiment evidence, and only write durable
+findings back to the wiki through proposal-first paths.
+
 The shared system surface is still the LLM-maintained research state, but the products around it have different control models:
 
 - The paper wiki is workflow-first: predictable ingest, evolve, retrieve, lint, and write-back paths.
@@ -167,11 +173,12 @@ implementing skills, MCP usage patterns, or evaluation cases.
 
 The high-leverage MVP workflows are:
 
-1. **Experiment design**: turn a hypothesis into the smallest useful experiment.
-2. **Sanity check**: prevent wasting GPU on broken code, wrong metrics, or inactive configs.
-3. **Result interpretation**: convert logs, metrics, plots, and failures into research decisions.
-4. **Experiment memory**: record what ran, why it ran, what it showed, and what should happen next.
-5. **Reproduction diagnosis**: locate why a paper, repo, baseline, or reported number does not line up.
+1. **Idea capture and triage**: preserve raw ideas, wiki-ground them, and decide whether to test, revise, pause, kill, or promote.
+2. **Experiment design**: turn a hypothesis into the smallest useful experiment.
+3. **Sanity check**: prevent wasting GPU on broken code, wrong metrics, or inactive configs.
+4. **Result interpretation**: convert logs, metrics, plots, and failures into research decisions.
+5. **Experiment memory**: record what ran, why it ran, what it showed, and what should happen next.
+6. **Reproduction diagnosis**: locate why a paper, repo, baseline, or reported number does not line up.
 
 These five matter because they sit at the boundary between paper knowledge, implementation, experiment evidence, and the user's next idea. Other tasks enter the framework only when they support one of these workflows.
 

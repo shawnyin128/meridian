@@ -35,6 +35,7 @@ Paper Wiki owns:
 Research Dev owns:
 
 - research coding intent handling
+- lightweight idea capture, triage, and evolution
 - repo/code/config/log inspection
 - experiment and sanity-check planning
 - research-friendly implementation
@@ -83,19 +84,43 @@ Research Dev Request
 
 The system classifies the request into one primary scenario:
 
-1. Idea to Experiment Design
-2. Paper or Method to Implementation
-3. Broken Run to Sanity Check / Debug
-4. Logs or Results to Interpretation
-5. Paper Repo to Reproduction Diagnosis
-6. Experiment to Memory / Wiki Write-back
+1. Idea Capture / Triage / Evolution
+2. Idea to Experiment Design
+3. Paper or Method to Implementation
+4. Broken Run to Sanity Check / Debug
+5. Logs or Results to Interpretation
+6. Paper Repo to Reproduction Diagnosis
+7. Experiment to Memory / Wiki Write-back
 
-MVP should prioritize the first three scenarios. They provide the shortest path
-to proving that Paper Wiki can actively improve research coding.
+MVP should prioritize the first four scenarios. They provide the shortest path
+to proving that Paper Wiki can actively improve research coding without turning
+every half-formed idea into canonical wiki state.
 
 ## Shared Dev Artifacts
 
 Every non-trivial Research Dev scenario may produce these artifacts.
+
+### Idea Card
+
+Purpose: keep a research idea as dev working state while it is grounded,
+tested, revised, killed, or promoted.
+
+Default target-repo path:
+
+```text
+.meridian/ideas/<idea-slug>.md
+```
+
+Minimum fields:
+
+- raw idea
+- normalized hypothesis
+- wiki grounding
+- support, contradiction, novelty risk, and implementation risk
+- minimal test
+- evidence log
+- current decision
+- write-back candidate
 
 ### Research Dev Context Packet
 
@@ -159,7 +184,50 @@ Minimum fields:
 - proposed wiki update
 - next decision
 
-## Scenario 1: Idea To Experiment Design
+## Scenario 1: Idea Capture / Triage / Evolution
+
+User examples:
+
+```text
+I have a hunch that KV-cache compression should preserve attention sink tokens differently from retrieval-critical tokens.
+```
+
+```text
+This failure makes me suspect the method depends on calibration outliers. Track this idea and decide whether it is worth testing.
+```
+
+Workflow:
+
+1. Preserve the raw idea.
+2. Normalize it into a testable hypothesis.
+3. Retrieve Paper Wiki context when prior work, methods, concepts, evidence, or failure modes matter.
+4. Summarize support, contradiction, novelty risk, implementation risk, and missing evidence.
+5. Decide whether to keep it in inbox, test next, revise, pause, kill, or promote.
+6. Create or update an Idea Card when the idea is durable enough to track.
+7. Write back only durable findings through Paper Wiki proposals.
+
+Wiki use:
+
+- `meridian.context` for related papers, methods, concepts, evidence, and syntheses.
+- `meridian.read` for the pages that materially affect the feasibility read.
+- `meridian.trace` when the idea depends on a claim or evidence item.
+
+Outputs:
+
+- Idea Card
+- optional Research Dev Context Packet
+- optional Experiment / Evidence Plan
+- optional Dev Write-back Packet after evidence exists
+
+Done when:
+
+- raw idea and normalized hypothesis are separated
+- wiki grounding is present when it matters
+- feasibility is explicit instead of assumed
+- the next decision is named
+- raw idea does not become a Paper Wiki source fact
+
+## Scenario 2: Idea To Experiment Design
 
 User examples:
 
@@ -199,7 +267,7 @@ Done when:
 - the expected learning is clear
 - wiki evidence and uncertainty are separated
 
-## Scenario 2: Paper Or Method To Implementation
+## Scenario 3: Paper Or Method To Implementation
 
 User examples:
 
@@ -244,7 +312,7 @@ Done when:
 - assumptions are visible
 - implementation choices are traceable to wiki context or repo constraints
 
-## Scenario 3: Broken Run To Sanity Check / Debug
+## Scenario 4: Broken Run To Sanity Check / Debug
 
 User examples:
 
