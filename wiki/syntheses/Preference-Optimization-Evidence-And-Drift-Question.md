@@ -7,12 +7,14 @@ updated: "2026-05-21"
 proposal_id: "Preference-Optimization-Evidence-And-Drift-Question"
 query: "I need to compare preference optimization, RLHF, reward modeling, and test-time RL evidence while tracking KL drift, preference data underspecification, and reward overoptimization."
 source_papers:
-  - "methods/reward-modeling"
-  - "concepts/Preference-data-underspecification"
-  - "claims/Rafailov-et-al-2024-Direct-Preference-Optimization-Your-Language-Model-is-Secretly-a-Reward-Model-claim-001"
-  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
-  - "papers/Rafailov-et-al-2024-Direct-Preference-Optimization-Your-Language-Model-is-Secretly-a-Reward-Model"
-  - "methods/test-time-reinforcement-learning"
+  - "papers/Rafailov-et-al-2024-Direct-Preference-Optimization-Your-Language-Model-is-Secretly-a-Reward-Model.md"
+  - "papers/D-Oosterlinck-et-al-2024-Anchored-Preference-Optimization-and-Contrastive-Revisions-Addressing-Underspecification-in-Alignme.md"
+  - "papers/Christiano-et-al-2023-Deep-reinforcement-learning-from-human-preferences.md"
+  - "papers/Azar-et-al-2023-A-General-Theoretical-Paradigm-to-Understand-Learning-from-Human-Preferences.md"
+  - "papers/D-Oosterlinck-et-al-2024-Anchored-Preference-Optimization....md"
+  - "papers/Blattmann-et-al-2023-Stable-Video-Diffusion-Scaling-Latent-Video-Diffusion-Models-to-Large-Datasets.md"
+  - "papers/Cai-et-al-2024-Medusa-Simple-L....md"
+  - "papers/Zuo-et-al-2025-TTRL-Test-Time-Reinforcement-Learning.md"
 source_sections:
   - "methods/reward-modeling#Prerequisite Concepts"
   - "methods/reward-modeling#Mechanism"
@@ -78,12 +80,14 @@ related:
   - "papers/Rafailov-et-al-2024-Direct-Preference-Optimization-Your-Language-Model-is-Secretly-a-Reward-Model"
   - "methods/test-time-reinforcement-learning"
 related_papers:
-  - "methods/reward-modeling"
-  - "concepts/Preference-data-underspecification"
-  - "claims/Rafailov-et-al-2024-Direct-Preference-Optimization-Your-Language-Model-is-Secretly-a-Reward-Model-claim-001"
-  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
-  - "papers/Rafailov-et-al-2024-Direct-Preference-Optimization-Your-Language-Model-is-Secretly-a-Reward-Model"
-  - "methods/test-time-reinforcement-learning"
+  - "papers/Rafailov-et-al-2024-Direct-Preference-Optimization-Your-Language-Model-is-Secretly-a-Reward-Model.md"
+  - "papers/D-Oosterlinck-et-al-2024-Anchored-Preference-Optimization-and-Contrastive-Revisions-Addressing-Underspecification-in-Alignme.md"
+  - "papers/Christiano-et-al-2023-Deep-reinforcement-learning-from-human-preferences.md"
+  - "papers/Azar-et-al-2023-A-General-Theoretical-Paradigm-to-Understand-Learning-from-Human-Preferences.md"
+  - "papers/D-Oosterlinck-et-al-2024-Anchored-Preference-Optimization....md"
+  - "papers/Blattmann-et-al-2023-Stable-Video-Diffusion-Scaling-Latent-Video-Diffusion-Models-to-Large-Datasets.md"
+  - "papers/Cai-et-al-2024-Medusa-Simple-L....md"
+  - "papers/Zuo-et-al-2025-TTRL-Test-Time-Reinforcement-Learning.md"
 related_methods:
   - "preference-based reinforcement learning"
   - "reward modeling"
@@ -97,6 +101,26 @@ related_topics:
 source_quality_risk: false
 evolution_state: "active"
 revision_id: "synthesis-Preference-Optimization-Evidence-And-Drift-Question"
+sources:
+  - "papers/Rafailov-et-al-2024-Direct-Preference-Optimization-Your-Language-Model-is-Secretly-a-Reward-Model.md"
+  - "papers/D-Oosterlinck-et-al-2024-Anchored-Preference-Optimization-and-Contrastive-Revisions-Addressing-Underspecification-in-Alignme.md"
+  - "papers/Christiano-et-al-2023-Deep-reinforcement-learning-from-human-preferences.md"
+  - "papers/Azar-et-al-2023-A-General-Theoretical-Paradigm-to-Understand-Learning-from-Human-Preferences.md"
+  - "papers/D-Oosterlinck-et-al-2024-Anchored-Preference-Optimization....md"
+  - "papers/Blattmann-et-al-2023-Stable-Video-Diffusion-Scaling-Latent-Video-Diffusion-Models-to-Large-Datasets.md"
+  - "papers/Cai-et-al-2024-Medusa-Simple-L....md"
+  - "papers/Zuo-et-al-2025-TTRL-Test-Time-Reinforcement-Learning.md"
+  - "methods/reward-modeling.md"
+  - "concepts/Preference-data-underspecification.md"
+  - "claims/Rafailov-et-al-2024-Direct-Preference-Optimization-Your-Language-Model-is-Secretly-a-Reward-Model-claim-001.md"
+  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001.md"
+  - "methods/test-time-reinforcement-learning.md"
+  - "concepts/Reward-model-overoptimization.md"
+  - "concepts/KL-regularization.md"
+supports:
+contradicts:
+supersedes:
+superseded_by:
 ---
 # Preference Optimization Evidence And Drift Question
 

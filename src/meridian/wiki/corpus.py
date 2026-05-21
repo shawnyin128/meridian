@@ -147,7 +147,7 @@ INTENT_SECTION_TERMS = {
     "Why It Matters": {"why", "matter", "matters", "motivation", "important", "background", "preliminary", "prerequisite"},
     "Where It Appears": {"where", "appears", "paper", "papers", "source", "provenance"},
     "Implementation Implications": {"implement", "implementation", "code", "coding", "baseline", "debug", "design", "ablation", "probe"},
-    "Common Failure Modes": {"failure", "failures", "debug", "bug", "risk", "risks", "mismatch", "unstable"},
+    "Common Failure Modes": {"failure", "failures", "debug", "bug", "risk", "risks", "mismatch", "unstable", "weak", "unsupported"},
     "Minimal Checks / Probes": {"check", "checks", "probe", "probes", "sanity", "debug", "ablation", "validate"},
     "Evidence / Provenance": {"evidence", "provenance", "source", "paper", "claim", "support"},
     "Related Concepts": {"concept", "concepts", "background", "preliminary", "prerequisite"},
@@ -858,6 +858,7 @@ def _score_record_v1(
         if result_type == "topic" and desired_sections & {"Scope", "Key Papers", "Method Families", "Retrieval Hooks"}:
             score += 420.0
             reasons.append("knowledge-layer topic route")
+    evidence_trace_intent = _has_evidence_trace_intent(query_analysis)
     if result_type in {"claim", "evidence"} and knowledge_role in {"compiled_knowledge", "candidate_record"} and desired_sections & {
         "Evidence Map",
         "Supporting Evidence",
@@ -866,8 +867,11 @@ def _score_record_v1(
         "Claims",
         "Contradictions",
     }:
-        score += 520.0
+        score += 680.0 if evidence_trace_intent else 520.0
         reasons.append("knowledge-layer evidence route")
+    if result_type == "concept" and evidence_trace_intent and desired_sections & {"Common Failure Modes", "Evidence / Provenance"}:
+        score += 420.0
+        reasons.append("risk-concept evidence route")
 
     base_sections = {str(item.get("heading") or ""): item for item in base.get("matched_sections") or []}
     for item in section_hits:
@@ -935,6 +939,7 @@ def _diversify_v1(
     selected: list[dict[str, Any]] = []
     desired_sections = set(query_analysis.get("desired_sections") or [])
     forced_types: list[set[str]] = []
+    evidence_trace_intent = _has_evidence_trace_intent(query_analysis)
     if desired_sections & {"Implementation Implications", "Common Failure Modes", "Minimal Checks / Probes", "Prerequisite Concepts", "Concept Dependencies"}:
         forced_types.append({"concept"})
     if desired_sections & {"Mechanism", "Implementation Hooks", "Failure Modes", "What It Is"}:
@@ -947,6 +952,8 @@ def _diversify_v1(
     if desired_sections & {"Evidence Map", "Supporting Evidence", "Evidence Item", "Provenance", "Claims", "Contradictions"}:
         forced_types.append({"claim"})
         forced_types.append({"evidence"})
+        if evidence_trace_intent:
+            forced_types.append({"concept"})
     if desired_sections & {"Evidence Map", "Implementation Hooks", "Key Papers", "Source", "Provenance"}:
         forced_types.append({"paper"})
     deduped_forced_types = []
@@ -1039,6 +1046,14 @@ def _diversify_v1(
             best["coverage_facets"] = sorted(best_facets - covered)
         covered |= best_facets
     return selected
+
+
+def _has_evidence_trace_intent(query_analysis: dict[str, Any]) -> bool:
+    tokens = set(query_analysis.get("tokens") or [])
+    norm = str(query_analysis.get("norm") or "")
+    if {"claim", "claims", "evidence", "provenance", "trace", "tracing"} & tokens:
+        return bool({"support", "supports", "supported", "unsupported", "weak", "decide", "decision"} & tokens) or "source fact" in norm
+    return False
 
 
 def _is_source_quality_result(item: dict[str, Any]) -> bool:

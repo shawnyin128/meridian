@@ -107,24 +107,34 @@ def run_knowledge_audit(*, wiki_root: Path, out_path: Path | None = None, brief_
     claims_without_evidence = []
     evidence_without_provenance = []
     syntheses_without_sources = []
+    syntheses_with_nonpaper_source_papers = []
     source_quality_misuse = []
+    consolidated_method_candidates = []
 
     for page in knowledge_pages:
+        consolidated_candidate = _is_consolidated_method_candidate(page)
+        if consolidated_candidate:
+            consolidated_method_candidates.append(page["relative_path"])
         page_type = page["type"]
         required_fields = _required_frontmatter_for_page(page)
         missing_fields = [field for field in required_fields if field not in page["frontmatter"]]
-        if missing_fields:
+        if missing_fields and not consolidated_candidate:
             missing_frontmatter_pages.append(page["relative_path"])
             findings.append(_finding("warn", "missing_frontmatter_fields", page["relative_path"], missing=missing_fields))
         required_sections = _required_sections_for_page(page)
         missing_sections = [section for section in required_sections if section not in page["sections"]]
-        if missing_sections:
+        if missing_sections and not consolidated_candidate:
             missing_section_pages.append(page["relative_path"])
             findings.append(_finding("warn", "missing_knowledge_sections", page["relative_path"], missing=missing_sections))
-        if _is_low_information(page):
+        if _is_low_information(page) and not consolidated_candidate:
             low_info_pages.append(page["relative_path"])
             findings.append(_finding("warn", "low_information_knowledge_page", page["relative_path"]))
-        if page["directory"] in {"methods", "topics", "claims", "evidence"} and inbound_links.get(page["page_id"], 0) == 0 and not _page_has_related_paper(page):
+        if (
+            not consolidated_candidate
+            and page["directory"] in {"methods", "topics", "claims", "evidence"}
+            and inbound_links.get(page["page_id"], 0) == 0
+            and not _page_has_related_paper(page)
+        ):
             orphan_pages.append(page["relative_path"])
             findings.append(_finding("warn", "orphan_knowledge_page", page["relative_path"]))
         if page_type == "claim" and not _claim_has_evidence(page):
@@ -136,6 +146,22 @@ def run_knowledge_audit(*, wiki_root: Path, out_path: Path | None = None, brief_
         if page["directory"] == "syntheses" and not _as_list(page["frontmatter"].get("source_papers")):
             syntheses_without_sources.append(page["relative_path"])
             findings.append(_finding("warn", "synthesis_without_source_papers", page["relative_path"]))
+        if page["directory"] == "syntheses":
+            invalid_source_papers = [
+                str(item)
+                for item in _as_list(page["frontmatter"].get("source_papers"))
+                if not str(item).startswith("papers/")
+            ]
+            if invalid_source_papers:
+                syntheses_with_nonpaper_source_papers.append(page["relative_path"])
+                findings.append(
+                    _finding(
+                        "warn",
+                        "synthesis_source_papers_contains_nonpaper_pages",
+                        page["relative_path"],
+                        sources=invalid_source_papers[:10],
+                    )
+                )
         if _uses_source_quality_hold_as_evidence(page):
             source_quality_misuse.append(page["relative_path"])
             findings.append(_finding("error", "source_quality_hold_as_evidence", page["relative_path"]))
@@ -148,7 +174,7 @@ def run_knowledge_audit(*, wiki_root: Path, out_path: Path | None = None, brief_
     for relative in paper_without_outbound[:50]:
         findings.append(_finding("info", "paper_missing_knowledge_outbound_links", relative))
 
-    duplicates = _duplicate_alias_groups(knowledge_pages)
+    duplicates = _duplicate_alias_groups([page for page in knowledge_pages if not _is_consolidated_method_candidate(page)])
     for group in duplicates:
         findings.append(_finding("warn", "duplicate_method_or_topic_alias", ",".join(group["pages"]), alias=group["alias"]))
 
@@ -165,8 +191,10 @@ def run_knowledge_audit(*, wiki_root: Path, out_path: Path | None = None, brief_
         "claims_without_evidence": len(claims_without_evidence),
         "evidence_without_source_provenance": len(evidence_without_provenance),
         "syntheses_without_source_papers": len(syntheses_without_sources),
+        "syntheses_with_nonpaper_source_papers": len(syntheses_with_nonpaper_source_papers),
         "duplicate_method_topic_alias_groups": len(duplicates),
         "source_quality_misuse": len(source_quality_misuse),
+        "consolidated_method_candidate_records": len(consolidated_method_candidates),
         "pages_with_required_section_gaps": len(missing_section_pages),
         "pages_with_frontmatter_gaps": len(missing_frontmatter_pages),
     }
@@ -185,7 +213,9 @@ def run_knowledge_audit(*, wiki_root: Path, out_path: Path | None = None, brief_
             "claims_without_evidence": claims_without_evidence[:25],
             "evidence_without_source_provenance": evidence_without_provenance[:25],
             "syntheses_without_source_papers": syntheses_without_sources[:25],
+            "syntheses_with_nonpaper_source_papers": syntheses_with_nonpaper_source_papers[:25],
             "duplicate_alias_groups": duplicates[:10],
+            "consolidated_method_candidate_records": consolidated_method_candidates[:25],
         },
     }
     report_path = out_path or wiki_root / ".index/knowledge-audit.json"
@@ -255,7 +285,11 @@ def propose_knowledge_repair(
             structured_targets.add(page["relative_path"])
 
     for page in pages:
-        if page["relative_path"] not in structured_targets and page["directory"] in KNOWLEDGE_DIRS and _frontmatter_gaps(page):
+        if (
+            page["relative_path"] not in structured_targets
+            and page["directory"] in KNOWLEDGE_DIRS
+            and (_frontmatter_gaps(page) or _source_papers_need_normalization(page))
+        ):
             deterministic.append(_frontmatter_action(page=page, wiki_root=wiki_root))
 
     manifest = {
@@ -423,10 +457,21 @@ def _is_low_information(page: dict[str, Any]) -> bool:
         return True
     if set(sections).issubset({"Related Papers", "Wiki Graph Links", "Evolution Notes"}):
         return True
-    if page["type"] in REQUIRED_SECTIONS:
-        present = sum(1 for section in REQUIRED_SECTIONS[page["type"]] if section in sections and len(sections[section].strip()) > 40)
-        return present < max(2, min(4, len(REQUIRED_SECTIONS[page["type"]]) // 2))
+    schema_type = _schema_type(page)
+    if schema_type in REQUIRED_SECTIONS:
+        present = sum(1 for section in REQUIRED_SECTIONS[schema_type] if section in sections and len(sections[section].strip()) > 40)
+        return present < max(2, min(4, len(REQUIRED_SECTIONS[schema_type]) // 2))
     return False
+
+
+def _is_consolidated_method_candidate(page: dict[str, Any]) -> bool:
+    if page["directory"] != "methods" or page["type"] != "method":
+        return False
+    fm = page["frontmatter"]
+    return (
+        str(fm.get("retrieval_visibility") or "").lower() == "suppressed_unless_exact_identity"
+        and bool(str(fm.get("consolidation_target") or "").strip())
+    )
 
 
 def _page_has_related_paper(page: dict[str, Any]) -> bool:
@@ -575,13 +620,13 @@ def _frontmatter_gaps(page: dict[str, Any]) -> list[str]:
 def _required_frontmatter_for_page(page: dict[str, Any]) -> tuple[str, ...]:
     if _is_compact_candidate_record(page):
         return ("type", "title", "status", "sources", "confidence", "review_state", "candidate_id")
-    return REQUIRED_FRONTMATTER.get(page["type"], ())
+    return REQUIRED_FRONTMATTER.get(_schema_type(page), ())
 
 
 def _required_sections_for_page(page: dict[str, Any]) -> tuple[str, ...]:
     if _is_compact_candidate_record(page):
         return ()
-    return REQUIRED_SECTIONS.get(page["type"], ())
+    return REQUIRED_SECTIONS.get(_schema_type(page), ())
 
 
 def _is_compact_candidate_record(page: dict[str, Any]) -> bool:
@@ -596,6 +641,12 @@ def _is_compact_candidate_record(page: dict[str, Any]) -> bool:
     return "source paper" in body and ("summary" in body or "evidence type" in body) and ("page" in body or "locator" in body)
 
 
+def _schema_type(page: dict[str, Any]) -> str:
+    if page["directory"] == "syntheses":
+        return "synthesis"
+    return page["type"]
+
+
 def _frontmatter_action(*, page: dict[str, Any], wiki_root: Path) -> dict[str, Any]:
     return {
         "action_type": "update_frontmatter",
@@ -604,6 +655,7 @@ def _frontmatter_action(*, page: dict[str, Any], wiki_root: Path) -> dict[str, A
         "title": page["title"],
         "page_type": page["type"],
         "missing_fields": _frontmatter_gaps(page),
+        "sources": _related_source_paths(page),
         "source_papers": _related_paper_paths(page),
         "reason": "Knowledge page is missing machine-readable schema fields required for audit/retrieval.",
     }
@@ -664,10 +716,34 @@ def _related_paper_paths(page: dict[str, Any]) -> list[str]:
     values.extend(str(item) for item in _as_list(fm.get("related_papers")))
     values.extend(str(item) for item in _as_list(fm.get("source_papers")))
     values.extend(str(item) for item in _as_list(fm.get("sources")))
-    values.extend(re.findall(r"\[\[(papers/[^|\]#]+)", page["body"]))
+    values.extend(re.findall(r"\[\[(papers/[^\s|\]#\r\n]+)", page["body"]))
     cleaned = []
     for value in values:
-        match = re.search(r"papers/[^|\]#]+", value)
+        match = re.search(r"papers/[^\s|\]#\r\n]+", value)
+        if match:
+            relative = match.group(0)
+            if not relative.endswith(".md"):
+                relative += ".md"
+            cleaned.append(relative)
+    return _dedupe(cleaned)
+
+
+def _source_papers_need_normalization(page: dict[str, Any]) -> bool:
+    if page["directory"] != "syntheses":
+        return False
+    return any(not str(item).startswith("papers/") for item in _as_list(page["frontmatter"].get("source_papers")))
+
+
+def _related_source_paths(page: dict[str, Any]) -> list[str]:
+    values = []
+    fm = page["frontmatter"]
+    values.extend(str(item) for item in _as_list(fm.get("sources")))
+    values.extend(str(item) for item in _as_list(fm.get("source_papers")))
+    values.extend(str(item) for item in _as_list(fm.get("related_papers")))
+    values.extend(re.findall(r"\[\[((?:papers|methods|topics|claims|evidence|concepts|syntheses)/[^\s|\]#\r\n]+)", page["body"]))
+    cleaned = []
+    for value in values:
+        match = re.search(r"(?:papers|methods|topics|claims|evidence|concepts|syntheses)/[^\s|\]#\r\n]+", value)
         if match:
             relative = match.group(0)
             if not relative.endswith(".md"):
@@ -843,6 +919,7 @@ def _render_topic_page(*, action: dict[str, Any]) -> str:
 
 def _render_claim_page(*, action: dict[str, Any]) -> str:
     title = str(action.get("title") or "Claim")
+    sources = [str(item) for item in action.get("sources") or []]
     source_papers = [str(item) for item in action.get("source_papers") or []]
     evidence_ids = [str(item) for item in action.get("evidence_ids") or []]
     fm = {
@@ -965,6 +1042,7 @@ def _patch_frontmatter(path: Path, *, action: dict[str, Any]) -> None:
     fm = parse_frontmatter(text)
     body = strip_frontmatter(text)
     page_type = str(action.get("page_type") or fm.get("type") or path.parent.name.rstrip("s"))
+    sources = [str(item) for item in action.get("sources") or []]
     source_papers = [str(item) for item in action.get("source_papers") or []]
     defaults: dict[str, Any] = {
         "type": page_type,
@@ -973,9 +1051,9 @@ def _patch_frontmatter(path: Path, *, action: dict[str, Any]) -> None:
         "created": str(fm.get("created") or datetime.now(timezone.utc).date().isoformat()),
         "updated": datetime.now(timezone.utc).date().isoformat(),
         "aliases": _as_list(fm.get("aliases")),
-        "sources": _as_list(fm.get("sources")) or source_papers,
-        "source_papers": _as_list(fm.get("source_papers")) or source_papers,
-        "related_papers": _as_list(fm.get("related_papers")) or source_papers,
+        "sources": sources or _as_list(fm.get("sources")) or source_papers,
+        "source_papers": source_papers or _as_list(fm.get("source_papers")),
+        "related_papers": source_papers or _as_list(fm.get("related_papers")),
         "related_methods": _as_list(fm.get("related_methods")) or _as_list(fm.get("methods")),
         "related_topics": _as_list(fm.get("related_topics")) or _as_list(fm.get("topics")),
         "supports": _as_list(fm.get("supports")),
@@ -990,6 +1068,11 @@ def _patch_frontmatter(path: Path, *, action: dict[str, Any]) -> None:
     for key, value in defaults.items():
         if key not in fm:
             fm[key] = value
+    if sources:
+        fm["sources"] = sources
+    if source_papers:
+        fm["source_papers"] = source_papers
+        fm["related_papers"] = source_papers
     path.write_text(_render_frontmatter(fm) + "\n" + body.lstrip(), encoding="utf-8")
 
 

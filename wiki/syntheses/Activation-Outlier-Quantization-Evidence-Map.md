@@ -7,12 +7,9 @@ updated: "2026-05-21"
 proposal_id: "Activation-Outlier-Quantization-Evidence-Map"
 query: "I need an evidence map for activation outliers in low-bit LLM quantization, including which papers support smoothing, scaling, routing, and error-propagation claims."
 source_papers:
-  - "claims/Lin-et-al-2024-DuQuant-Distributing-Outliers-via-Dual-Transformation-Makes-Stronger-Quantized-LLMs-claim-003"
-  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
-  - "papers/Wang-LSVD-Loss-Aware-Low-Rank-Approximation-for-Efficient-Low-Precision-Vision-Language-Models"
-  - "syntheses/Outlier-Aware-Quantization-Method-Family-Synthesis"
-  - "papers/Yi-et-al-2024-Rotated-Runtime-Smooth-Training-Free-Activation-Smoother-for-accurate-INT4-inference"
-  - "syntheses/Low-Bit-Quantization-Topic-Overview"
+  - "papers/Wang-LSVD-Loss-Aware-Low-Rank-Approximation-for-Efficient-Low-Precision-Vision-Language-Models.md"
+  - "papers/Yi-et-al-2024-Rotated-Runtime-Smooth-Training-Free-Activation-Smoother-for-accurate-INT4-inference.md"
+  - "papers/Bhalgat-et-al-2020-LSQ-Improving-low-bit-quantization-through-learnable-offsets-and-better-initialization.md"
 source_sections:
   - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001#Supports"
   - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001#Evidence Item"
@@ -81,12 +78,9 @@ related:
   - "papers/Yi-et-al-2024-Rotated-Runtime-Smooth-Training-Free-Activation-Smoother-for-accurate-INT4-inference"
   - "syntheses/Low-Bit-Quantization-Topic-Overview"
 related_papers:
-  - "claims/Lin-et-al-2024-DuQuant-Distributing-Outliers-via-Dual-Transformation-Makes-Stronger-Quantized-LLMs-claim-003"
-  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
-  - "papers/Wang-LSVD-Loss-Aware-Low-Rank-Approximation-for-Efficient-Low-Precision-Vision-Language-Models"
-  - "syntheses/Outlier-Aware-Quantization-Method-Family-Synthesis"
-  - "papers/Yi-et-al-2024-Rotated-Runtime-Smooth-Training-Free-Activation-Smoother-for-accurate-INT4-inference"
-  - "syntheses/Low-Bit-Quantization-Topic-Overview"
+  - "papers/Wang-LSVD-Loss-Aware-Low-Rank-Approximation-for-Efficient-Low-Precision-Vision-Language-Models.md"
+  - "papers/Yi-et-al-2024-Rotated-Runtime-Smooth-Training-Free-Activation-Smoother-for-accurate-INT4-inference.md"
+  - "papers/Bhalgat-et-al-2020-LSQ-Improving-low-bit-quantization-through-learnable-offsets-and-better-initialization.md"
 related_methods:
   - "post-training quantization"
   - "outlier-aware quantization"
@@ -101,6 +95,20 @@ related_topics:
 source_quality_risk: false
 evolution_state: "active"
 revision_id: "synthesis-Activation-Outlier-Quantization-Evidence-Map"
+sources:
+  - "papers/Wang-LSVD-Loss-Aware-Low-Rank-Approximation-for-Efficient-Low-Precision-Vision-Language-Models.md"
+  - "papers/Yi-et-al-2024-Rotated-Runtime-Smooth-Training-Free-Activation-Smoother-for-accurate-INT4-inference.md"
+  - "papers/Bhalgat-et-al-2020-LSQ-Improving-low-bit-quantization-through-learnable-offsets-and-better-initialization.md"
+  - "claims/Lin-et-al-2024-DuQuant-Distributing-Outliers-via-Dual-Transformation-Makes-Stronger-Quantized-LLMs-claim-003.md"
+  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001.md"
+  - "syntheses/Outlier-Aware-Quantization-Method-Family-Synthesis.md"
+  - "syntheses/Low-Bit-Quantization-Topic-Overview.md"
+  - "concepts/Quantization-error-propagation.md"
+  - "topics/low-bit-quantization.md"
+supports:
+contradicts:
+supersedes:
+superseded_by:
 ---
 # Activation Outlier Quantization Evidence Map
 

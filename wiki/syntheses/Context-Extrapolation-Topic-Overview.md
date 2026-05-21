@@ -7,12 +7,11 @@ updated: "2026-05-21"
 proposal_id: "Context-Extrapolation-Topic-Overview"
 query: "I need a topic overview for context extrapolation that connects key papers, method families, claims, evidence, and open questions."
 source_papers:
-  - "methods/long-context-inference"
-  - "concepts/Attention-sink"
-  - "syntheses/Benchmark-Evaluation-Topic-Overview"
-  - "topics/context-extrapolation"
-  - "claims/Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation-claim-004"
-  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
+  - "papers/Wang-et-al-2024-BitNet-a4-8-4-bit-Activations-for-1-bit-LLMs.md"
+  - "papers/Wang-et-al-2025-SVD-LLM-Truncation-aware-Singular-Value-Decomposition-for-Large-Language-Model-Compression.md"
+  - "papers/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Model....md"
+  - "papers/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Models-Non-linearity-Sparsity-and-Attention-Sink-Free.md"
+  - "papers/Dai-et-al-20....md"
 source_sections:
   - "methods/long-context-inference#What It Is"
   - "methods/long-context-inference#Failure Modes"
@@ -64,17 +63,36 @@ related:
   - "claims/Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation-claim-004"
   - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
 related_papers:
-  - "methods/long-context-inference"
-  - "concepts/Attention-sink"
-  - "syntheses/Benchmark-Evaluation-Topic-Overview"
-  - "topics/context-extrapolation"
-  - "claims/Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation-claim-004"
-  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
+  - "papers/Wang-et-al-2024-BitNet-a4-8-4-bit-Activations-for-1-bit-LLMs.md"
+  - "papers/Wang-et-al-2025-SVD-LLM-Truncation-aware-Singular-Value-Decomposition-for-Large-Language-Model-Compression.md"
+  - "papers/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Model....md"
+  - "papers/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Models-Non-linearity-Sparsity-and-Attention-Sink-Free.md"
+  - "papers/Dai-et-al-20....md"
 related_methods:
 related_topics:
 source_quality_risk: false
 evolution_state: "active"
 revision_id: "synthesis-Context-Extrapolation-Topic-Overview"
+sources:
+  - "papers/Wang-et-al-2024-BitNet-a4-8-4-bit-Activations-for-1-bit-LLMs.md"
+  - "papers/Wang-et-al-2025-SVD-LLM-Truncation-aware-Singular-Value-Decomposition-for-Large-Language-Model-Compression.md"
+  - "papers/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Model....md"
+  - "papers/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Models-Non-linearity-Sparsity-and-Attention-Sink-Free.md"
+  - "papers/Dai-et-al-20....md"
+  - "methods/long-context-inference.md"
+  - "concepts/Attention-sink.md"
+  - "syntheses/Benchmark-Evaluation-Topic-Overview.md"
+  - "topics/context-extrapolation.md"
+  - "claims/Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation-claim-004.md"
+  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001.md"
+  - "syntheses/Transformer-Architecture-Topic-Overview.md"
+  - "methods/KV-cache-compression.md"
+  - "methods/post-training-quantization.md"
+  - "methods/hardware-aware-quantization.md"
+supports:
+contradicts:
+supersedes:
+superseded_by:
 ---
 # Context Extrapolation Topic Overview
 

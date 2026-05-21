@@ -7,12 +7,9 @@ updated: "2026-05-21"
 proposal_id: "Long-Context-Inference-Topic-Overview"
 query: "I need a topic overview for long-context inference that connects key papers, method families, claims, evidence, and open questions."
 source_papers:
-  - "methods/long-context-inference"
-  - "concepts/Attention-sink"
-  - "syntheses/Benchmark-Evaluation-Topic-Overview"
-  - "topics/long-context-inference"
-  - "claims/GLM-5-Team-2026-GLM-5-from-Vibe-Coding-to-Agentic-Engineering-claim-003"
-  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
+  - "papers/Wang-et-al-2024-BitNet-a4-8-4-bit-Activations-for-1-bit-LLMs.md"
+  - "papers/Wang-et-al-2025-SVD-LLM-Truncation-aware-Singular-Value-Decomposition-for-Large-Language-Model-Compression.md"
+  - "papers/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Model....md"
 source_sections:
   - "methods/long-context-inference#What It Is"
   - "methods/long-context-inference#Failure Modes"
@@ -64,17 +61,33 @@ related:
   - "claims/GLM-5-Team-2026-GLM-5-from-Vibe-Coding-to-Agentic-Engineering-claim-003"
   - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
 related_papers:
-  - "methods/long-context-inference"
-  - "concepts/Attention-sink"
-  - "syntheses/Benchmark-Evaluation-Topic-Overview"
-  - "topics/long-context-inference"
-  - "claims/GLM-5-Team-2026-GLM-5-from-Vibe-Coding-to-Agentic-Engineering-claim-003"
-  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
+  - "papers/Wang-et-al-2024-BitNet-a4-8-4-bit-Activations-for-1-bit-LLMs.md"
+  - "papers/Wang-et-al-2025-SVD-LLM-Truncation-aware-Singular-Value-Decomposition-for-Large-Language-Model-Compression.md"
+  - "papers/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Model....md"
 related_methods:
 related_topics:
 source_quality_risk: false
 evolution_state: "active"
 revision_id: "synthesis-Long-Context-Inference-Topic-Overview"
+sources:
+  - "papers/Wang-et-al-2024-BitNet-a4-8-4-bit-Activations-for-1-bit-LLMs.md"
+  - "papers/Wang-et-al-2025-SVD-LLM-Truncation-aware-Singular-Value-Decomposition-for-Large-Language-Model-Compression.md"
+  - "papers/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Model....md"
+  - "methods/long-context-inference.md"
+  - "concepts/Attention-sink.md"
+  - "syntheses/Benchmark-Evaluation-Topic-Overview.md"
+  - "topics/long-context-inference.md"
+  - "claims/GLM-5-Team-2026-GLM-5-from-Vibe-Coding-to-Agentic-Engineering-claim-003.md"
+  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001.md"
+  - "syntheses/Transformer-Architecture-Topic-Overview.md"
+  - "methods/KV-cache-compression.md"
+  - "methods/transformer-architecture.md"
+  - "methods/post-training-quantization.md"
+  - "methods/....md"
+supports:
+contradicts:
+supersedes:
+superseded_by:
 ---
 # Long-Context Inference Topic Overview
 

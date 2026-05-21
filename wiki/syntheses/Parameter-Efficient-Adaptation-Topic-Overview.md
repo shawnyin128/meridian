@@ -7,12 +7,16 @@ updated: "2026-05-21"
 proposal_id: "Parameter-Efficient-Adaptation-Topic-Overview"
 query: "I need a topic overview for parameter-efficient adaptation that connects key papers, method families, claims, evidence, and open questions."
 source_papers:
-  - "methods/rotation-based-quantization"
-  - "concepts/Attention-sink"
-  - "syntheses/Performance-Evaluation-Topic-Overview"
-  - "topics/parameter-efficient-adaptation"
-  - "claims/Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation-claim-004"
-  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
+  - "papers/Zhang-et-al-2025-RefLoRA-Refactored-Low-Rank-Adaptation-for-Efficient-Fine-Tuning-of-Large-Models.md"
+  - "papers/Lasby-et-al-2025-REAP-the-Experts-Why-Pruning-Prevails-for-One-Shot-MoE-compression.md"
+  - "papers/Wang-et-al-2025-BitNet-v2-Native-4-bit-Activations-with-Hadamard-Transformation-for-1-bit-LLMs.md"
+  - "papers/Hu-et-al-2025-OstQuant-Refining-Large-Langua....md"
+  - "papers/Cai-et-al-2025-PyramidKV-Dynamic-KV-Cache-Compression-based-on-Pyramidal-Information-Funneling.md"
+  - "papers/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Models-Non-linearity-Sparsity-and-Attention-Sink-Free.md"
+  - "papers/Xiao-et-al-2024-Efficien....md"
+  - "papers/Chen-et-al-2025-EfficientQAT-Efficient-Quantization-Aware-Training-for-Large-Language-Models.md"
+  - "papers/3549-Train-Freeze-or-Exit-Dyna.md"
+  - "papers/Chitsaz-et-al-2024-Exploring-Quantization-for-Efficient-Pre-Training-of-Transformer-Language-Models....md"
 source_sections:
   - "methods/rotation-based-quantization#What It Is"
   - "methods/rotation-based-quantization#Failure Modes"
@@ -62,17 +66,44 @@ related:
   - "claims/Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation-claim-004"
   - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
 related_papers:
-  - "methods/rotation-based-quantization"
-  - "concepts/Attention-sink"
-  - "syntheses/Performance-Evaluation-Topic-Overview"
-  - "topics/parameter-efficient-adaptation"
-  - "claims/Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation-claim-004"
-  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
+  - "papers/Zhang-et-al-2025-RefLoRA-Refactored-Low-Rank-Adaptation-for-Efficient-Fine-Tuning-of-Large-Models.md"
+  - "papers/Lasby-et-al-2025-REAP-the-Experts-Why-Pruning-Prevails-for-One-Shot-MoE-compression.md"
+  - "papers/Wang-et-al-2025-BitNet-v2-Native-4-bit-Activations-with-Hadamard-Transformation-for-1-bit-LLMs.md"
+  - "papers/Hu-et-al-2025-OstQuant-Refining-Large-Langua....md"
+  - "papers/Cai-et-al-2025-PyramidKV-Dynamic-KV-Cache-Compression-based-on-Pyramidal-Information-Funneling.md"
+  - "papers/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Models-Non-linearity-Sparsity-and-Attention-Sink-Free.md"
+  - "papers/Xiao-et-al-2024-Efficien....md"
+  - "papers/Chen-et-al-2025-EfficientQAT-Efficient-Quantization-Aware-Training-for-Large-Language-Models.md"
+  - "papers/3549-Train-Freeze-or-Exit-Dyna.md"
+  - "papers/Chitsaz-et-al-2024-Exploring-Quantization-for-Efficient-Pre-Training-of-Transformer-Language-Models....md"
 related_methods:
 related_topics:
 source_quality_risk: false
 evolution_state: "active"
 revision_id: "synthesis-Parameter-Efficient-Adaptation-Topic-Overview"
+sources:
+  - "papers/Zhang-et-al-2025-RefLoRA-Refactored-Low-Rank-Adaptation-for-Efficient-Fine-Tuning-of-Large-Models.md"
+  - "papers/Lasby-et-al-2025-REAP-the-Experts-Why-Pruning-Prevails-for-One-Shot-MoE-compression.md"
+  - "papers/Wang-et-al-2025-BitNet-v2-Native-4-bit-Activations-with-Hadamard-Transformation-for-1-bit-LLMs.md"
+  - "papers/Hu-et-al-2025-OstQuant-Refining-Large-Langua....md"
+  - "papers/Cai-et-al-2025-PyramidKV-Dynamic-KV-Cache-Compression-based-on-Pyramidal-Information-Funneling.md"
+  - "papers/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Models-Non-linearity-Sparsity-and-Attention-Sink-Free.md"
+  - "papers/Xiao-et-al-2024-Efficien....md"
+  - "papers/Chen-et-al-2025-EfficientQAT-Efficient-Quantization-Aware-Training-for-Large-Language-Models.md"
+  - "papers/3549-Train-Freeze-or-Exit-Dyna.md"
+  - "papers/Chitsaz-et-al-2024-Exploring-Quantization-for-Efficient-Pre-Training-of-Transformer-Language-Models....md"
+  - "methods/rotation-based-quantization.md"
+  - "concepts/Attention-sink.md"
+  - "syntheses/Performance-Evaluation-Topic-Overview.md"
+  - "topics/parameter-efficient-adaptation.md"
+  - "claims/Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation-claim-004.md"
+  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001.md"
+  - "syntheses/Transformer-Architecture-Topic-Overview.md"
+  - "concepts/KL-regularization.md"
+supports:
+contradicts:
+supersedes:
+superseded_by:
 ---
 # Parameter-Efficient Adaptation Topic Overview
 

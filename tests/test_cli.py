@@ -4675,6 +4675,8 @@ Compare recency-only retention with attention-based and oracle retention policie
             synthesis_text = next((wiki_root / "syntheses").glob("*.md")).read_text(encoding="utf-8")
             self.assertIn("Working synthesis target", synthesis_text)
             self.assertIn("Retrieval contract", synthesis_text)
+            self.assertIn("sources:", synthesis_text)
+            self.assertIn("source_papers:", synthesis_text)
 
             result = retrieve_papers(
                 query="cross-paper synthesis for post-training quantization implementation evidence",
@@ -4871,6 +4873,212 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertIn("## Prerequisite Concepts", method_text)
             self.assertIn("[[concepts/Activation-outliers|Activation outliers]]", method_text)
 
+    def test_audits_treat_consolidated_method_candidates_as_suppressed_records(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            method = wiki_root / "methods/Quant-Paper-method-001.md"
+            method.parent.mkdir(parents=True)
+            method.write_text(
+                "\n".join(
+                    [
+                        "---",
+                        'type: "method"',
+                        'title: "Quant Paper PTQ method candidate"',
+                        'status: "candidate"',
+                        'review_state: "candidate"',
+                        'consolidation_target: "methods/post-training-quantization"',
+                        'candidate_scope: "paper_specific_method_record"',
+                        'retrieval_visibility: "suppressed_unless_exact_identity"',
+                        "---",
+                        "# Quant Paper PTQ method candidate",
+                        "",
+                        "Compact paper-specific method record.",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "knowledge-audit",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--out",
+                        str(wiki_root / ".index/knowledge-audit.json"),
+                        "--brief",
+                        str(root / "knowledge-brief.md"),
+                    ]
+                ),
+                0,
+            )
+            knowledge = json.loads((wiki_root / ".index/knowledge-audit.json").read_text(encoding="utf-8"))
+            self.assertEqual(knowledge["metrics"]["consolidated_method_candidate_records"], 1)
+            self.assertEqual(knowledge["metrics"]["low_information_pages"], 0)
+            self.assertEqual(knowledge["metrics"]["pages_with_required_section_gaps"], 0)
+            self.assertNotIn("low_information_knowledge_page", {item["code"] for item in knowledge["findings"]})
+
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "concept-audit",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--out",
+                        str(wiki_root / ".index/concept-audit.json"),
+                        "--brief",
+                        str(root / "concept-brief.md"),
+                    ]
+                ),
+                0,
+            )
+            concept = json.loads((wiki_root / ".index/concept-audit.json").read_text(encoding="utf-8"))
+            self.assertEqual(concept["metrics"]["methods_total"], 1)
+            self.assertEqual(concept["metrics"]["methods_requiring_prerequisite_concepts"], 0)
+            self.assertEqual(concept["metrics"]["consolidated_method_candidate_records"], 1)
+            self.assertEqual(concept["metrics"]["methods_with_prerequisite_concepts"], 0)
+            self.assertNotIn("method_missing_prerequisite_concepts", {item["code"] for item in concept["findings"]})
+
+    def test_concept_audit_info_only_findings_do_not_degrade_status(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            _write_knowledge_page(
+                wiki_root / "methods/post-training-quantization.md",
+                page_type="method",
+                title="post-training quantization",
+                body="\n".join(
+                    [
+                        "## What It Is",
+                        "",
+                        "A compiled method family with enough text to avoid low-information concept checks.",
+                        "",
+                        "## Mechanism",
+                        "",
+                        "Calibration and reconstruction reduce quantization error.",
+                    ]
+                ),
+                source_papers=["papers/Quant-Paper.md"],
+            )
+
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "concept-audit",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--out",
+                        str(wiki_root / ".index/concept-audit.json"),
+                        "--brief",
+                        str(root / "concept-brief.md"),
+                    ]
+                ),
+                0,
+            )
+            concept = json.loads((wiki_root / ".index/concept-audit.json").read_text(encoding="utf-8"))
+            self.assertEqual(concept["status"], "pass")
+            self.assertIn("method_missing_prerequisite_concepts", {item["code"] for item in concept["findings"]})
+
+    def test_knowledge_repair_source_extraction_does_not_cross_wikilink_lines(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            synthesis = wiki_root / "syntheses/Agent-Workflow-Overview.md"
+            synthesis.parent.mkdir(parents=True)
+            synthesis.write_text(
+                "\n".join(
+                    [
+                        "---",
+                        'type: "synthesis"',
+                        'title: "Agent Workflow Overview"',
+                        'status: "draft"',
+                        "source_papers:",
+                        '  - "papers/Agent-A.md"',
+                        'confidence: "low"',
+                        'review_state: "published_proposal"',
+                        'evolution_state: "active"',
+                        'revision_id: "synthesis-test"',
+                        "---",
+                        "# Agent Workflow Overview",
+                        "",
+                        "## Source Links",
+                        "",
+                        "- [[papers/Agent-A|Agent A]]",
+                        "- [[claims/Agent-claim-001|Claim should not enter source path]]",
+                        "- [[papers/Agent-B|Agent B]]",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            out = wiki_root / ".drafts/knowledge-repair/source-extraction"
+            self.assertEqual(main(["wiki", "propose-knowledge-repair", "--wiki-root", str(wiki_root), "--out", str(out)]), 0)
+            manifest = json.loads((out / "repair.json").read_text(encoding="utf-8"))
+            source_updates = [
+                action
+                for action in manifest["deterministic_repairs"]
+                if action["action_type"] == "update_frontmatter" and action["target_path"] == "syntheses/Agent-Workflow-Overview.md"
+            ]
+            self.assertEqual(len(source_updates), 1)
+            self.assertEqual(source_updates[0]["source_papers"], ["papers/Agent-A.md", "papers/Agent-B.md"])
+
+    def test_knowledge_audit_applies_synthesis_schema_to_method_family_pages(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            synthesis = wiki_root / "syntheses/PTQ-Method-Family.md"
+            synthesis.parent.mkdir(parents=True)
+            synthesis.write_text(
+                "\n".join(
+                    [
+                        "---",
+                        'type: "method-family"',
+                        'title: "PTQ Method Family"',
+                        'status: "draft"',
+                        "source_papers:",
+                        '  - "papers/Quant-Paper.md"',
+                        'confidence: "low"',
+                        'review_state: "published_proposal"',
+                        'evolution_state: "active"',
+                        'revision_id: "synthesis-test"',
+                        "---",
+                        "# PTQ Method Family",
+                        "",
+                        "## Source Facts",
+                        "",
+                        "- Source-grounded fact.",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "knowledge-audit",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--out",
+                        str(wiki_root / ".index/knowledge-audit.json"),
+                        "--brief",
+                        str(root / "knowledge-brief.md"),
+                    ]
+                ),
+                0,
+            )
+            knowledge = json.loads((wiki_root / ".index/knowledge-audit.json").read_text(encoding="utf-8"))
+            findings = {item["code"] for item in knowledge["findings"]}
+            self.assertIn("missing_frontmatter_fields", findings)
+            self.assertIn("missing_knowledge_sections", findings)
+
     def test_navigation_and_final_product_check(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -5051,6 +5259,175 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertIn("syntheses/Post-Training-Quantization-Overview.md", paths)
             self.assertIn("evidence/Good-evidence.md", paths)
             self.assertNotIn("evidence/Bad-evidence.md", paths)
+
+    def test_evidence_trace_query_preserves_claim_evidence_and_risk_concept_slots(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            wiki_root = Path(tmp) / "wiki"
+            _write_test_paper(
+                wiki_root / "papers/DPO.md",
+                title="DPO Paper",
+                aliases=["DPO"],
+                topics=["preference optimization"],
+                methods=["direct preference optimization"],
+                settings=["RLHF"],
+                body_sections={
+                    "Evidence Map": "Preference optimization evidence compares reward modeling and policy objectives.",
+                    "Limitations / Uncertainty": "Weak claims need preference-data and reward-model provenance checks.",
+                },
+            )
+            _write_knowledge_page(
+                wiki_root / "claims/Preference-support.md",
+                page_type="claim",
+                title="Preference optimization supports reward-model-free training",
+                body="\n".join(
+                    [
+                        "## Claim",
+                        "",
+                        "DPO-style evidence supports some reward-model-free preference optimization settings.",
+                        "",
+                        "## Supporting Evidence",
+                        "",
+                        "- [[evidence/DPO-evidence]] links the claim to a source paper.",
+                        "",
+                        "## Provenance",
+                        "",
+                        "- Source paper: [[papers/DPO]]",
+                    ]
+                ),
+                source_papers=["papers/DPO.md"],
+            )
+            _write_knowledge_page(
+                wiki_root / "evidence/DPO-evidence.md",
+                page_type="evidence",
+                title="DPO preference evidence",
+                body="\n".join(
+                    [
+                        "## Evidence Item",
+                        "",
+                        "The paper reports preference optimization evidence against reward-model baselines.",
+                        "",
+                        "## Source",
+                        "",
+                        "- [[papers/DPO]]",
+                        "",
+                        "## Supports",
+                        "",
+                        "- [[claims/Preference-support]]",
+                    ]
+                ),
+                source_papers=["papers/DPO.md"],
+            )
+            _write_knowledge_page(
+                wiki_root / "concepts/Preference-data-underspecification.md",
+                page_type="concept",
+                title="Preference data underspecification",
+                body="\n".join(
+                    [
+                        "## What It Is",
+                        "",
+                        "Preference data can underspecify the intended reward behavior.",
+                        "",
+                        "## Common Failure Modes",
+                        "",
+                        "Weak or unsupported claims can follow from incomplete preference data.",
+                        "",
+                        "## Evidence / Provenance",
+                        "",
+                        "- [[papers/DPO]] discusses preference evidence boundaries.",
+                    ]
+                ),
+                source_papers=["papers/DPO.md"],
+            )
+            result = retrieve_papers(
+                query="I need to decide whether reward modeling and preference optimization evidence supports a research direction, while tracing unsupported or weak claims separately.",
+                wiki_root=wiki_root,
+                top_k=5,
+                strategy="v1",
+            )
+            by_type = {item["result_type"]: item for item in result.results}
+            self.assertIn("claim", by_type)
+            self.assertIn("evidence", by_type)
+            self.assertIn("concept", by_type)
+            concept_sections = {section["heading"] for section in by_type["concept"]["matched_sections"]}
+            self.assertIn("Common Failure Modes", concept_sections)
+            self.assertIn("Evidence / Provenance", concept_sections)
+
+    def test_query_writeback_keeps_source_papers_paper_only(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            wiki_root = Path(tmp) / "wiki"
+            _write_test_paper(
+                wiki_root / "papers/Agent-Paper.md",
+                title="Agent Paper",
+                aliases=["AgentPaper"],
+                topics=["agent workflow"],
+                methods=["tool-use agent"],
+                settings=["agent workflow"],
+                body_sections={"Evidence Map": "Agent evidence is source-grounded."},
+            )
+            _write_knowledge_page(
+                wiki_root / "concepts/Tool-State-Grounding.md",
+                page_type="concept",
+                title="Tool-state grounding",
+                body="## What It Is\n\nA concept used by tool-use agents.\n\n## Evidence / Provenance\n\n- [[papers/Agent-Paper]]",
+                source_papers=["papers/Agent-Paper.md"],
+            )
+            context = wiki_root / ".drafts/retrieval/context.json"
+            context.parent.mkdir(parents=True)
+            context.write_text(
+                json.dumps(
+                    {
+                        "results": [
+                            {
+                                "title": "Tool-state grounding",
+                                "relative_path": "concepts/Tool-State-Grounding.md",
+                                "page_id": "concepts/Tool-State-Grounding",
+                                "result_type": "concept",
+                                "matched_sections": [{"heading": "Evidence / Provenance", "score": 1.0, "snippet": "concept"}],
+                            },
+                            {
+                                "title": "Agent Paper",
+                                "relative_path": "papers/Agent-Paper.md",
+                                "page_id": "papers/Agent-Paper",
+                                "result_type": "paper",
+                                "matched_sections": [{"heading": "Evidence Map", "score": 1.0, "snippet": "paper"}],
+                            },
+                        ]
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            proposal_dir = wiki_root / ".drafts/proposals/source-paper-boundary"
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "propose-writeback",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--query",
+                        "agent workflow source boundary",
+                        "--context",
+                        str(context),
+                        "--title",
+                        "Agent Workflow Boundary",
+                        "--proposal-type",
+                        "synthesis",
+                        "--out-dir",
+                        str(proposal_dir),
+                    ]
+                ),
+                0,
+            )
+            self.assertEqual(
+                main(["wiki", "publish-proposal", str(proposal_dir / "proposal.json"), "--wiki-root", str(wiki_root)]),
+                0,
+            )
+            text = (wiki_root / "syntheses/Agent-Workflow-Boundary.md").read_text(encoding="utf-8")
+            self.assertIn("sources:\n  - \"concepts/Tool-State-Grounding\"\n  - \"papers/Agent-Paper\"", text)
+            self.assertIn("source_papers:\n  - \"papers/Agent-Paper\"", text)
+            source_papers_block = text.split("source_papers:", 1)[1].split("source_sections:", 1)[0]
+            self.assertNotIn("concepts/Tool-State-Grounding", source_papers_block)
 
 
 def _passing_judge_result(case_id: str) -> dict[str, object]:

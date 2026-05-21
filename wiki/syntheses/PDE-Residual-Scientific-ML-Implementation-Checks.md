@@ -7,12 +7,11 @@ updated: "2026-05-21"
 proposal_id: "PDE-Residual-Scientific-ML-Implementation-Checks"
 query: "I need an implementation-check synthesis for scientific ML and PINN papers covering PDE residuals, boundary conditions, collocation points, and source-grounded sanity checks."
 source_papers:
-  - "concepts/Boundary-conditions"
-  - "methods/PDE-constrained-learning"
-  - "concepts/Collocation-points"
-  - "claims/7194-FlexHiNM-GP-Flexible-Hier-claim-002"
-  - "evidence/Download-evidence-p0002"
-  - "papers/Cuomo-et-al-2022-Scientific-Machine-Learning-Through-Physics-Informed-Neural-Networks-Where-we-are-and-What-s-Next"
+  - "papers/Cuomo-et-al-2022-Scientific-Machine-Learning-Through-Physics-Informed-Neural-Networks-Where-we-are-and-What-s-Next.md"
+  - "papers/Raissi-et-al-2019-Physics-informed-neural-networks-A-deep-learning-framework-for-solving-forward-and-inverse-problems.md"
+  - "papers/Zhao-et-al-2024-Artificial-intelligence-for-geoscience-Progress-challenges-and-perspectives.md"
+  - "papers/Cuomo-et-al-2....md"
+  - "papers/Download.md"
 source_sections:
   - "concepts/Boundary-conditions#Retrieval Hooks"
   - "concepts/Boundary-conditions#Implementation Implications"
@@ -74,18 +73,33 @@ related:
   - "evidence/Download-evidence-p0002"
   - "papers/Cuomo-et-al-2022-Scientific-Machine-Learning-Through-Physics-Informed-Neural-Networks-Where-we-are-and-What-s-Next"
 related_papers:
-  - "concepts/Boundary-conditions"
-  - "methods/PDE-constrained-learning"
-  - "concepts/Collocation-points"
-  - "claims/7194-FlexHiNM-GP-Flexible-Hier-claim-002"
-  - "evidence/Download-evidence-p0002"
-  - "papers/Cuomo-et-al-2022-Scientific-Machine-Learning-Through-Physics-Informed-Neural-Networks-Where-we-are-and-What-s-Next"
+  - "papers/Cuomo-et-al-2022-Scientific-Machine-Learning-Through-Physics-Informed-Neural-Networks-Where-we-are-and-What-s-Next.md"
+  - "papers/Raissi-et-al-2019-Physics-informed-neural-networks-A-deep-learning-framework-for-solving-forward-and-inverse-problems.md"
+  - "papers/Zhao-et-al-2024-Artificial-intelligence-for-geoscience-Progress-challenges-and-perspectives.md"
+  - "papers/Cuomo-et-al-2....md"
+  - "papers/Download.md"
 related_methods:
   - "PDE-constrained learning"
 related_topics:
 source_quality_risk: false
 evolution_state: "active"
 revision_id: "synthesis-PDE-Residual-Scientific-ML-Implementation-Checks"
+sources:
+  - "papers/Cuomo-et-al-2022-Scientific-Machine-Learning-Through-Physics-Informed-Neural-Networks-Where-we-are-and-What-s-Next.md"
+  - "papers/Raissi-et-al-2019-Physics-informed-neural-networks-A-deep-learning-framework-for-solving-forward-and-inverse-problems.md"
+  - "papers/Zhao-et-al-2024-Artificial-intelligence-for-geoscience-Progress-challenges-and-perspectives.md"
+  - "papers/Cuomo-et-al-2....md"
+  - "papers/Download.md"
+  - "concepts/Boundary-conditions.md"
+  - "methods/PDE-constrained-learning.md"
+  - "concepts/Collocation-points.md"
+  - "claims/7194-FlexHiNM-GP-Flexible-Hier-claim-002.md"
+  - "evidence/Download-evidence-p0002.md"
+  - "concepts/PDE-residual.md"
+supports:
+contradicts:
+supersedes:
+superseded_by:
 ---
 # PDE Residual Scientific ML Implementation Checks
 

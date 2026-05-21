@@ -7,12 +7,13 @@ updated: "2026-05-21"
 proposal_id: "Calibration-Data-Selection-Topic-Overview"
 query: "I need a topic overview for calibration data selection that connects key papers, method families, claims, evidence, and open questions."
 source_papers:
-  - "methods/calibration-aware-PTQ"
-  - "concepts/Activation-outliers"
-  - "syntheses/Transformer-Architecture-Topic-Overview"
-  - "topics/calibration-data-selection"
-  - "claims/Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation-claim-004"
-  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
+  - "papers/Lasby-et-al-2025-REAP-the-Experts-Why-Pruning-Prevails-for-One-Shot-MoE-compression.md"
+  - "papers/Chen-et-al-2025-EfficientQAT-Efficient-Quantization-Aware-Training-for-Large-Language-Models.md"
+  - "papers/3549-Train-Freeze-or-Exit-Dyna.md"
+  - "papers/Wa....md"
+  - "papers/Schulman-et-al-2017-Proximal-Policy-Optimization-Algorithms.md"
+  - "papers/Schulman-et-al-2017-Trust-Region-Policy-Optimization.md"
+  - "papers/Chen-et-al-20....md"
 source_sections:
   - "methods/calibration-aware-PTQ#What It Is"
   - "methods/calibration-aware-PTQ#Failure Modes"
@@ -64,17 +65,44 @@ related:
   - "claims/Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation-claim-004"
   - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
 related_papers:
-  - "methods/calibration-aware-PTQ"
-  - "concepts/Activation-outliers"
-  - "syntheses/Transformer-Architecture-Topic-Overview"
-  - "topics/calibration-data-selection"
-  - "claims/Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation-claim-004"
-  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
+  - "papers/Lasby-et-al-2025-REAP-the-Experts-Why-Pruning-Prevails-for-One-Shot-MoE-compression.md"
+  - "papers/Chen-et-al-2025-EfficientQAT-Efficient-Quantization-Aware-Training-for-Large-Language-Models.md"
+  - "papers/3549-Train-Freeze-or-Exit-Dyna.md"
+  - "papers/Wa....md"
+  - "papers/Schulman-et-al-2017-Proximal-Policy-Optimization-Algorithms.md"
+  - "papers/Schulman-et-al-2017-Trust-Region-Policy-Optimization.md"
+  - "papers/Chen-et-al-20....md"
 related_methods:
 related_topics:
 source_quality_risk: false
 evolution_state: "active"
 revision_id: "synthesis-Calibration-Data-Selection-Topic-Overview"
+sources:
+  - "papers/Lasby-et-al-2025-REAP-the-Experts-Why-Pruning-Prevails-for-One-Shot-MoE-compression.md"
+  - "papers/Chen-et-al-2025-EfficientQAT-Efficient-Quantization-Aware-Training-for-Large-Language-Models.md"
+  - "papers/3549-Train-Freeze-or-Exit-Dyna.md"
+  - "papers/Wa....md"
+  - "papers/Schulman-et-al-2017-Proximal-Policy-Optimization-Algorithms.md"
+  - "papers/Schulman-et-al-2017-Trust-Region-Policy-Optimization.md"
+  - "papers/Chen-et-al-20....md"
+  - "methods/calibration-aware-PTQ.md"
+  - "concepts/Activation-outliers.md"
+  - "syntheses/Transformer-Architecture-Topic-Overview.md"
+  - "topics/calibration-data-selection.md"
+  - "claims/Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation-claim-004.md"
+  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001.md"
+  - "topics/transformer-architecture.md"
+  - "concepts/K-means-objective-landscape.md"
+  - "concepts/Speculative-decoding-acceptance-rate.md"
+  - "concepts/KL-regularization.md"
+  - "methods/policy-optimization.md"
+  - "methods/paper-specific-research-method.md"
+  - "methods/transformer-architecture.md"
+  - "methods/post-training-quantization.md"
+supports:
+contradicts:
+supersedes:
+superseded_by:
 ---
 # Calibration Data Selection Topic Overview
 

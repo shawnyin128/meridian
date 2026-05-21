@@ -4548,32 +4548,62 @@
 ## Syntheses
 
 - [[syntheses/Activation-Outlier-Quantization-Evidence-Map|Activation Outlier Quantization Evidence Map]] - status: draft; published_proposal
+- [[syntheses/Agent-Workflow-Modeling-Method-Family-Synthesis|Agent Workflow Modeling Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Agent-Workflow-Tool-State-Grounding-Overview|Agent Workflow Tool-State Grounding Overview]] - status: draft; published_proposal
+- [[syntheses/Attention-Kernel-Optimization-Method-Family-Synthesis|Attention Kernel Optimization Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Audio-Language-Modeling-Method-Family-Synthesis|Audio-Language Modeling Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Benchmark-Evaluation-Topic-Overview|Benchmark Evaluation Topic Overview]] - status: draft; published_proposal
 - [[syntheses/Calibration-Aware-Ptq-Method-Family-Synthesis|Calibration-Aware Ptq Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Calibration-Data-Selection-Topic-Overview|Calibration Data Selection Topic Overview]] - status: draft; published_proposal
 - [[syntheses/Clustering-Algorithm-Method-Family-Synthesis|Clustering Algorithm Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Clustering-Objective-Representation-Probe-Plan|Clustering Objective Representation Probe Plan]] - status: draft; published_proposal
+- [[syntheses/Clustering-Theory-Topic-Overview|Clustering Theory Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Conditional-Diffusion-Method-Family-Synthesis|Conditional Diffusion Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Context-Extrapolation-Topic-Overview|Context Extrapolation Topic Overview]] - status: draft; published_proposal
 - [[syntheses/Diffusion-Conditioning-Representation-Synthesis|Diffusion Conditioning Representation Synthesis]] - status: draft; published_proposal
+- [[syntheses/Draft-Acceptance-Topic-Overview|Draft Acceptance Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Equivalent-Transform-Ptq-Method-Family-Synthesis|Equivalent-Transform Ptq Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Expert-Aware-Quantization-Method-Family-Synthesis|Expert-Aware Quantization Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Hardware-Aware-Attention-Method-Family-Synthesis|Hardware-Aware Attention Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Hardware-Aware-Quantization-Method-Family-Synthesis|Hardware-Aware Quantization Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Hardware-Aware-Quantization-Topic-Overview|Hardware-Aware Quantization Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Human-Preference-Feedback-Topic-Overview|Human Preference Feedback Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Io-Aware-Attention-Method-Family-Synthesis|Io-Aware Attention Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Io-Aware-Attention-Topic-Overview|Io-Aware Attention Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Joint-Embedding-Predictive-Learning-Method-Family-Synthesis|Joint Embedding Predictive Learning Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/KV-Cache-Compression-Failure-Boundary-Summary|KV-Cache Compression Failure Boundary Summary]] - status: draft; published_proposal
 - [[syntheses/Kv-Cache-Compression-Method-Family-Synthesis|Kv-Cache Compression Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Kv-Cache-Compression-Topic-Overview|Kv-Cache Compression Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Llm-As-Judge-Reward-Modeling-Method-Family-Synthesis|Llm-As-Judge Reward Modeling Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Long-Context-Inference-Method-Family-Synthesis|Long-Context Inference Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Long-Context-Inference-Topic-Overview|Long-Context Inference Topic Overview]] - status: draft; published_proposal
 - [[syntheses/Lookup-Table-Inference-Topic-Overview|Lookup-Table Inference Topic Overview]] - status: draft; published_proposal
 - [[syntheses/Low-Bit-Quantization-Topic-Overview|Low-Bit Quantization Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Low-Rank-Adaptation-Topic-Overview|Low-Rank Adaptation Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Moe-Quantization-Method-Family-Synthesis|Moe Quantization Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Multimodal-Instruction-Tuning-Method-Family-Synthesis|Multimodal Instruction Tuning Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Non-Uniform-Weight-Quantization-Method-Family-Synthesis|Non-Uniform Weight Quantization Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Outlier-Aware-Quantization-Method-Family-Synthesis|Outlier-Aware Quantization Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/PDE-Residual-Scientific-ML-Implementation-Checks|PDE Residual Scientific ML Implementation Checks]] - status: draft; published_proposal
+- [[syntheses/Paper-Specific-Research-Method-Method-Family-Synthesis|Paper-Specific Research Method Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Parameter-Efficient-Adaptation-Topic-Overview|Parameter-Efficient Adaptation Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Pde-Constrained-Learning-Method-Family-Synthesis|Pde-Constrained Learning Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Performance-Evaluation-Topic-Overview|Performance Evaluation Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Policy-Optimization-Topic-Overview|Policy Optimization Topic Overview]] - status: draft; published_proposal
 - [[syntheses/Post-Training-Quantization-Method-Family-Synthesis|Post-Training Quantization Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Post-Training-Quantization-Topic-Overview|Post-Training Quantization Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Preference-Based-Reinforcement-Learning-Method-Family-Synthesis|Preference-Based Reinforcement Learning Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Preference-Optimization-Evidence-And-Drift-Question|Preference Optimization Evidence And Drift Question]] - status: draft; published_proposal
+- [[syntheses/Quantization-Error-Topic-Overview|Quantization Error Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Relative-Position-Encoding-Method-Family-Synthesis|Relative Position Encoding Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Reward-Modeling-Method-Family-Synthesis|Reward Modeling Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Reward-Modeling-Topic-Overview|Reward Modeling Topic Overview]] - status: draft; published_proposal
 - [[syntheses/Rotation-Based-Quantization-Method-Family-Synthesis|Rotation-Based Quantization Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Rotation-Based-Quantization-Topic-Overview|Rotation-Based Quantization Topic Overview]] - status: draft; published_proposal
 - [[syntheses/Speculative-Decoding-Method-Family-Synthesis|Speculative Decoding Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Speculative-Decoding-Probe-Planning-Page|Speculative Decoding Probe Planning Page]] - status: draft; published_proposal
 - [[syntheses/Speculative-Decoding-Topic-Overview|Speculative Decoding Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Survey-Synthesis-Method-Family-Synthesis|Survey Synthesis Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Transformer-Architecture-Method-Family-Synthesis|Transformer Architecture Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Transformer-Architecture-Topic-Overview|Transformer Architecture Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Video-Representation-Learning-Method-Family-Synthesis|Video Representation Learning Method Family Synthesis]] - status: draft; published_proposal

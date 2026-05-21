@@ -7,12 +7,11 @@ updated: "2026-05-21"
 proposal_id: "Benchmark-Evaluation-Topic-Overview"
 query: "I need a topic overview for benchmark evaluation that connects key papers, method families, claims, evidence, and open questions."
 source_papers:
-  - "methods/performance-evaluation"
-  - "concepts/Per-channel-scaling"
-  - "syntheses/Transformer-Architecture-Topic-Overview"
-  - "topics/benchmark-evaluation"
-  - "claims/1909-13144v2-claim-005"
-  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
+  - "papers/Computer-Architecture-A-Quantitative-Approach-5th-edition.md"
+  - "papers/2511-10645v1.md"
+  - "papers/Wang-et-al-2023-BitNet-Scaling-1-bit-Transformers-for-Large-Language-Models.md"
+  - "papers/Wang-et-al-2024-BitNet-a4-8-4-bit-Activations-for-1-bit-LLMs.md"
+  - "papers/Chitsaz-et-al-2024-Exploring-Quantization-for-Efficient-Pre-Training-of-Transformer-La....md"
 source_sections:
   - "methods/performance-evaluation#What It Is"
   - "methods/performance-evaluation#Failure Modes"
@@ -58,17 +57,33 @@ related:
   - "claims/1909-13144v2-claim-005"
   - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
 related_papers:
-  - "methods/performance-evaluation"
-  - "concepts/Per-channel-scaling"
-  - "syntheses/Transformer-Architecture-Topic-Overview"
-  - "topics/benchmark-evaluation"
-  - "claims/1909-13144v2-claim-005"
-  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
+  - "papers/Computer-Architecture-A-Quantitative-Approach-5th-edition.md"
+  - "papers/2511-10645v1.md"
+  - "papers/Wang-et-al-2023-BitNet-Scaling-1-bit-Transformers-for-Large-Language-Models.md"
+  - "papers/Wang-et-al-2024-BitNet-a4-8-4-bit-Activations-for-1-bit-LLMs.md"
+  - "papers/Chitsaz-et-al-2024-Exploring-Quantization-for-Efficient-Pre-Training-of-Transformer-La....md"
 related_methods:
 related_topics:
 source_quality_risk: false
 evolution_state: "active"
 revision_id: "synthesis-Benchmark-Evaluation-Topic-Overview"
+sources:
+  - "papers/Computer-Architecture-A-Quantitative-Approach-5th-edition.md"
+  - "papers/2511-10645v1.md"
+  - "papers/Wang-et-al-2023-BitNet-Scaling-1-bit-Transformers-for-Large-Language-Models.md"
+  - "papers/Wang-et-al-2024-BitNet-a4-8-4-bit-Activations-for-1-bit-LLMs.md"
+  - "papers/Chitsaz-et-al-2024-Exploring-Quantization-for-Efficient-Pre-Training-of-Transformer-La....md"
+  - "methods/performance-evaluation.md"
+  - "concepts/Per-channel-scaling.md"
+  - "syntheses/Transformer-Architecture-Topic-Overview.md"
+  - "topics/benchmark-evaluation.md"
+  - "claims/1909-13144v2-claim-005.md"
+  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001.md"
+  - "topics/transformer-architecture.md"
+supports:
+contradicts:
+supersedes:
+superseded_by:
 ---
 # Benchmark Evaluation Topic Overview
 

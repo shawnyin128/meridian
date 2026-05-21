@@ -73,7 +73,9 @@ def run_concept_audit(*, wiki_root: Path, out_path: Path | None = None, brief_pa
     init_wiki_vault(wiki_root=wiki_root)
     pages = _load_pages(wiki_root)
     concept_pages = [page for page in pages if page["directory"] == "concepts"]
-    method_pages = [page for page in pages if page["directory"] == "methods"]
+    method_pages_all = [page for page in pages if page["directory"] == "methods"]
+    consolidated_method_candidates = [page for page in method_pages_all if _is_consolidated_method_candidate(page)]
+    method_pages = [page for page in method_pages_all if not _is_consolidated_method_candidate(page)]
     topic_pages = [page for page in pages if page["directory"] == "topics"]
     findings: list[dict[str, Any]] = []
 
@@ -146,7 +148,9 @@ def run_concept_audit(*, wiki_root: Path, out_path: Path | None = None, brief_pa
         "concept_pages": len(concept_pages),
         "candidate_concepts": len(candidates),
         "unpromoted_candidate_concepts": len(unpromoted),
-        "methods_total": len(method_pages),
+        "methods_total": len(method_pages_all),
+        "methods_requiring_prerequisite_concepts": len(method_pages),
+        "consolidated_method_candidate_records": len(consolidated_method_candidates),
         "methods_with_prerequisite_concepts": len(method_pages) - len(method_missing_prereqs),
         "topics_total": len(topic_pages),
         "topics_with_key_concepts": len(topic_pages) - len(topic_missing_key_concepts),
@@ -158,7 +162,13 @@ def run_concept_audit(*, wiki_root: Path, out_path: Path | None = None, brief_pa
         "duplicate_concept_alias_groups": len(duplicates),
         "source_quality_contamination": len(source_quality_contamination),
     }
-    status = "fail" if source_quality_contamination else "warn" if findings else "pass"
+    status = (
+        "fail"
+        if source_quality_contamination
+        else "warn"
+        if any(item["severity"] == "warn" for item in findings)
+        else "pass"
+    )
     payload = {
         "schema_version": CONCEPT_AUDIT_SCHEMA_VERSION,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -169,6 +179,7 @@ def run_concept_audit(*, wiki_root: Path, out_path: Path | None = None, brief_pa
         "samples": {
             "unpromoted_candidate_concepts": [candidate["title"] for candidate in unpromoted[:20]],
             "method_missing_prerequisite_concepts": method_missing_prereqs[:20],
+            "consolidated_method_candidate_records": [page["relative_path"] for page in consolidated_method_candidates[:20]],
             "topic_missing_key_concepts": topic_missing_key_concepts[:20],
             "low_information_concept_stubs": low_information[:20],
         },
@@ -833,6 +844,16 @@ def _matching_pages(pages: list[dict[str, Any]], terms: list[str]) -> list[dict[
         if any(_term_matches(text, term) for term in normalized_terms):
             matches.append(page)
     return matches
+
+
+def _is_consolidated_method_candidate(page: dict[str, Any]) -> bool:
+    if page["directory"] != "methods" or page["type"] != "method":
+        return False
+    fm = page["frontmatter"]
+    return (
+        str(fm.get("retrieval_visibility") or "").lower() == "suppressed_unless_exact_identity"
+        and bool(str(fm.get("consolidation_target") or "").strip())
+    )
 
 
 def _concept_search_text(*, frontmatter: dict[str, Any], sections: dict[str, str], body: str) -> str:

@@ -7,12 +7,11 @@ updated: "2026-05-21"
 proposal_id: "Performance-Evaluation-Topic-Overview"
 query: "I need a topic overview for performance evaluation that connects key papers, method families, claims, evidence, and open questions."
 source_papers:
-  - "methods/performance-evaluation"
-  - "concepts/Attention-sink"
-  - "syntheses/Transformer-Architecture-Topic-Overview"
-  - "topics/performance-evaluation"
-  - "claims/1909-13144v2-claim-005"
-  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
+  - "papers/Computer-Architecture-A-Quantitative-Approach-5th-edition.md"
+  - "papers/3549-Train-Freeze-or-Exit-Dyna.md"
+  - "papers/Chee-et-al-2024-QuIP-2-Bit-Quantization-of-Large-Language-Models-With-Guarantees.md"
+  - "papers/Wang-et-al-2023-BitNet-Scaling-1-bit-Transformers-for-Large-Language-Models.md"
+  - "papers/Wang-et-al-2024-BitNet....md"
 source_sections:
   - "methods/performance-evaluation#What It Is"
   - "methods/performance-evaluation#Failure Modes"
@@ -58,17 +57,33 @@ related:
   - "claims/1909-13144v2-claim-005"
   - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
 related_papers:
-  - "methods/performance-evaluation"
-  - "concepts/Attention-sink"
-  - "syntheses/Transformer-Architecture-Topic-Overview"
-  - "topics/performance-evaluation"
-  - "claims/1909-13144v2-claim-005"
-  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
+  - "papers/Computer-Architecture-A-Quantitative-Approach-5th-edition.md"
+  - "papers/3549-Train-Freeze-or-Exit-Dyna.md"
+  - "papers/Chee-et-al-2024-QuIP-2-Bit-Quantization-of-Large-Language-Models-With-Guarantees.md"
+  - "papers/Wang-et-al-2023-BitNet-Scaling-1-bit-Transformers-for-Large-Language-Models.md"
+  - "papers/Wang-et-al-2024-BitNet....md"
 related_methods:
 related_topics:
 source_quality_risk: false
 evolution_state: "active"
 revision_id: "synthesis-Performance-Evaluation-Topic-Overview"
+sources:
+  - "papers/Computer-Architecture-A-Quantitative-Approach-5th-edition.md"
+  - "papers/3549-Train-Freeze-or-Exit-Dyna.md"
+  - "papers/Chee-et-al-2024-QuIP-2-Bit-Quantization-of-Large-Language-Models-With-Guarantees.md"
+  - "papers/Wang-et-al-2023-BitNet-Scaling-1-bit-Transformers-for-Large-Language-Models.md"
+  - "papers/Wang-et-al-2024-BitNet....md"
+  - "methods/performance-evaluation.md"
+  - "concepts/Attention-sink.md"
+  - "syntheses/Transformer-Architecture-Topic-Overview.md"
+  - "topics/performance-evaluation.md"
+  - "claims/1909-13144v2-claim-005.md"
+  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001.md"
+  - "topics/transformer-architecture.md"
+supports:
+contradicts:
+supersedes:
+superseded_by:
 ---
 # Performance Evaluation Topic Overview
 

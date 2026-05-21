@@ -415,10 +415,11 @@ def _render_proposal(
     target_path: Path,
     wiki_root: Path,
 ) -> str:
-    source_papers = [source["page_id"] for source in sources]
+    source_page_ids = _source_page_ids(sources)
+    source_papers = _paper_source_ids(sources)
     topics = _routing_values(sources, "topics")[:12]
     methods = _routing_values(sources, "methods")[:12]
-    related = _dedupe([source["page_id"] for source in sources])[:12]
+    related = _dedupe(source_page_ids)[:12]
     aliases = _dedupe([title, query])[:4]
     frontmatter = [
         "---",
@@ -432,7 +433,7 @@ def _render_proposal(
         "source_papers:",
         *_yaml_list(source_papers),
         "sources:",
-        *_yaml_list(source_papers),
+        *_yaml_list(source_page_ids),
         "source_sections:",
         *_yaml_list(source_sections),
         f'source_context: "{_escape(_relative_or_absolute(source_context_path, wiki_root))}"',
@@ -537,7 +538,8 @@ def _render_canonical_page(*, proposal_text: str, manifest: dict[str, Any], wiki
     created = str(manifest.get("created_at") or datetime.now(timezone.utc).isoformat())[:10]
     updated = datetime.now(timezone.utc).date().isoformat()
     sources = list(manifest.get("sources") or [])
-    source_papers = [str(source.get("page_id") or Path(str(source.get("relative_path"))).with_suffix("").as_posix()) for source in sources]
+    source_page_ids = _source_page_ids(sources)
+    source_papers = _paper_source_ids(sources)
     source_sections = list(manifest.get("source_sections") or _source_sections(sources))
     user_inputs = list(manifest.get("user_inputs") or [])
     proposal_type = str(manifest.get("proposal_type") or "synthesis")
@@ -545,7 +547,7 @@ def _render_canonical_page(*, proposal_text: str, manifest: dict[str, Any], wiki
     source_context = str(manifest.get("source_context_path") or "")
     topics = _routing_values(sources, "topics")[:12]
     methods = _routing_values(sources, "methods")[:12]
-    related = _dedupe(source_papers)[:12]
+    related = _dedupe(source_page_ids)[:12]
     fm = [
         "---",
         f'type: "{_escape(proposal_type)}"',
@@ -555,6 +557,8 @@ def _render_canonical_page(*, proposal_text: str, manifest: dict[str, Any], wiki
         f'updated: "{updated}"',
         f'proposal_id: "{_escape(str(manifest.get("proposal_id") or ""))}"',
         f'query: "{_escape(str(manifest.get("query") or ""))}"',
+        "sources:",
+        *_yaml_list(source_page_ids),
         "source_papers:",
         *_yaml_list(source_papers),
         "source_sections:",
@@ -575,7 +579,7 @@ def _render_canonical_page(*, proposal_text: str, manifest: dict[str, Any], wiki
         "related:",
         *_yaml_list(related),
         "related_papers:",
-        *_yaml_list(related),
+        *_yaml_list(source_papers),
         "related_methods:",
         *_yaml_list(methods),
         "related_topics:",
@@ -662,6 +666,25 @@ def _source_sections(sources: list[dict[str, Any]]) -> list[str]:
             if heading:
                 sections.append(f"{page_id}#{heading}")
     return _dedupe(sections)
+
+
+def _source_page_ids(sources: list[dict[str, Any]]) -> list[str]:
+    page_ids = []
+    for source in sources:
+        relative_path = str(source.get("relative_path") or "")
+        page_ids.append(str(source.get("page_id") or Path(relative_path).with_suffix("").as_posix()))
+    return _dedupe(page_ids)
+
+
+def _paper_source_ids(sources: list[dict[str, Any]]) -> list[str]:
+    paper_ids = []
+    for source in sources:
+        relative_path = str(source.get("relative_path") or "")
+        page_id = str(source.get("page_id") or Path(relative_path).with_suffix("").as_posix())
+        result_type = str(source.get("result_type") or "")
+        if result_type == "paper" or relative_path.startswith("papers/") or page_id.startswith("papers/"):
+            paper_ids.append(page_id)
+    return _dedupe(paper_ids)
 
 
 def _routing_values(sources: list[dict[str, Any]], field: str) -> list[str]:

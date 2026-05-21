@@ -1,6 +1,6 @@
 {
   "schema_version": "meridian.final_product_check.v1",
-  "created_at": "2026-05-21T06:10:56.833838+00:00",
+  "created_at": "2026-05-21T07:25:13.978656+00:00",
   "wiki_root": "wiki",
   "status": "warn",
   "metrics": {
@@ -11,7 +11,7 @@
       "concepts": 24,
       "claims": 1135,
       "evidence": 2737,
-      "syntheses": 30
+      "syntheses": 60
     },
     "papers_with_quality_state": 236,
     "navigation_pages_missing": 0,
@@ -19,11 +19,11 @@
       "method",
       "concept",
       "evidence",
-      "synthesis",
+      "method-family",
       "topic",
       "claim",
       "paper",
-      "method-family"
+      "concept"
     ],
     "retrieval_corpus_types": [
       "methods",
@@ -33,7 +33,7 @@
       "topics",
       "claims",
       "papers",
-      "syntheses"
+      "concepts"
     ],
     "knowledge_audit_status": "warn",
     "knowledge_audit_metrics": {
@@ -44,19 +44,21 @@
         "claims": 1135,
         "evidence": 2737,
         "concepts": 24,
-        "syntheses": 30
+        "syntheses": 60
       },
-      "low_information_pages": 239,
+      "low_information_pages": 0,
       "paper_without_outbound_links": 1,
       "orphan_knowledge_pages": 0,
       "method_topic_without_inbound_paper_links": 0,
       "claims_without_evidence": 1,
       "evidence_without_source_provenance": 0,
       "syntheses_without_source_papers": 0,
-      "duplicate_method_topic_alias_groups": 41,
+      "syntheses_with_nonpaper_source_papers": 0,
+      "duplicate_method_topic_alias_groups": 35,
       "source_quality_misuse": 0,
-      "pages_with_required_section_gaps": 239,
-      "pages_with_frontmatter_gaps": 18
+      "consolidated_method_candidate_records": 239,
+      "pages_with_required_section_gaps": 0,
+      "pages_with_frontmatter_gaps": 0
     }
   },
   "findings": []

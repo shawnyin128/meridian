@@ -7,12 +7,13 @@ updated: "2026-05-21"
 proposal_id: "Kv-Cache-Compression-Topic-Overview"
 query: "I need a topic overview for KV-cache compression that connects key papers, method families, claims, evidence, and open questions."
 source_papers:
-  - "methods/KV-cache-compression"
-  - "concepts/Attention-sink"
-  - "syntheses/Benchmark-Evaluation-Topic-Overview"
-  - "topics/KV-cache-compression"
-  - "claims/Li-et-al-2024-SnapKV-LLM-Knows-What-You-are-Looking-for-Before-Generation-claim-002"
-  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
+  - "papers/Adnan-et-al-2024-Keyformer-KV-Cache-Reduction-through-Key-Tokens-Selection-for-Efficient-Generative-Inference.md"
+  - "papers/Wang-et-al-2024-BitNet-a4-8-4-bit-Activations-for-1-bit-LLMs.md"
+  - "papers/Wang-et-al-2025-BitNet-v2-Native-4-bit-Activations-with-Hadamard-Transformation-for-1-bit-LLMs.md"
+  - "papers/Wang-et-al-2025-SVD-LLM-Truncation-aware-Singular-Value-Decompositi....md"
+  - "papers/Cai-et-al-2025-PyramidKV-Dynamic-KV-Cache-Compression-based-on-Pyramidal-Information-Funneling.md"
+  - "papers/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Models-Non-linearity-Sparsity-and-Attention-Sink-Free.md"
+  - "papers/Xiao-et-al-2024-Efficien....md"
 source_sections:
   - "methods/KV-cache-compression#What It Is"
   - "methods/KV-cache-compression#Prerequisite Concepts"
@@ -69,17 +70,46 @@ related:
   - "claims/Li-et-al-2024-SnapKV-LLM-Knows-What-You-are-Looking-for-Before-Generation-claim-002"
   - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
 related_papers:
-  - "methods/KV-cache-compression"
-  - "concepts/Attention-sink"
-  - "syntheses/Benchmark-Evaluation-Topic-Overview"
-  - "topics/KV-cache-compression"
-  - "claims/Li-et-al-2024-SnapKV-LLM-Knows-What-You-are-Looking-for-Before-Generation-claim-002"
-  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
+  - "papers/Adnan-et-al-2024-Keyformer-KV-Cache-Reduction-through-Key-Tokens-Selection-for-Efficient-Generative-Inference.md"
+  - "papers/Wang-et-al-2024-BitNet-a4-8-4-bit-Activations-for-1-bit-LLMs.md"
+  - "papers/Wang-et-al-2025-BitNet-v2-Native-4-bit-Activations-with-Hadamard-Transformation-for-1-bit-LLMs.md"
+  - "papers/Wang-et-al-2025-SVD-LLM-Truncation-aware-Singular-Value-Decompositi....md"
+  - "papers/Cai-et-al-2025-PyramidKV-Dynamic-KV-Cache-Compression-based-on-Pyramidal-Information-Funneling.md"
+  - "papers/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Models-Non-linearity-Sparsity-and-Attention-Sink-Free.md"
+  - "papers/Xiao-et-al-2024-Efficien....md"
 related_methods:
 related_topics:
 source_quality_risk: false
 evolution_state: "active"
 revision_id: "synthesis-Kv-Cache-Compression-Topic-Overview"
+sources:
+  - "papers/Adnan-et-al-2024-Keyformer-KV-Cache-Reduction-through-Key-Tokens-Selection-for-Efficient-Generative-Inference.md"
+  - "papers/Wang-et-al-2024-BitNet-a4-8-4-bit-Activations-for-1-bit-LLMs.md"
+  - "papers/Wang-et-al-2025-BitNet-v2-Native-4-bit-Activations-with-Hadamard-Transformation-for-1-bit-LLMs.md"
+  - "papers/Wang-et-al-2025-SVD-LLM-Truncation-aware-Singular-Value-Decompositi....md"
+  - "papers/Cai-et-al-2025-PyramidKV-Dynamic-KV-Cache-Compression-based-on-Pyramidal-Information-Funneling.md"
+  - "papers/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Models-Non-linearity-Sparsity-and-Attention-Sink-Free.md"
+  - "papers/Xiao-et-al-2024-Efficien....md"
+  - "methods/KV-cache-compression.md"
+  - "concepts/Attention-sink.md"
+  - "syntheses/Benchmark-Evaluation-Topic-Overview.md"
+  - "topics/KV-cache-compression.md"
+  - "claims/Li-et-al-2024-SnapKV-LLM-Knows-What-You-are-Looking-for-Before-Generation-claim-002.md"
+  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001.md"
+  - "concepts/KV-cache-memory-bandwidth.md"
+  - "concepts/Retention-policy.md"
+  - "syntheses/Transformer-Architecture-Topic-Overview.md"
+  - "methods/long-context-inference.md"
+  - "methods/transformer-architecture.md"
+  - "methods/post-training-quantization.md"
+  - "methods/....md"
+  - "concepts/Quantization-error-propagation.md"
+  - "concepts/Activation-outliers.md"
+  - "concepts/Per-channel-scaling.md"
+supports:
+contradicts:
+supersedes:
+superseded_by:
 ---
 # Kv-Cache Compression Topic Overview
 

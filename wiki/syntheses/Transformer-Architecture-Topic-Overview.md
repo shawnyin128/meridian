@@ -7,12 +7,16 @@ updated: "2026-05-20"
 proposal_id: "Transformer-Architecture-Topic-Overview"
 query: "I need a topic overview for transformer architecture that connects key papers, method families, claims, evidence, and open questions."
 source_papers:
-  - "methods/transformer-architecture"
-  - "topics/transformer-architecture"
-  - "claims/Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation-claim-004"
-  - "methods/relative-position-encoding"
-  - "methods/learned-quantization-intervals"
-  - "methods/long-context-inference"
+  - "papers/Lasby-et-al-2025-REAP-the-Experts-Why-Pruning-Prevails-for-One-Shot-MoE-compression.md"
+  - "papers/Chen-et-al-2025-EfficientQAT-Efficient-Quantization-Aware-Training-for-Large-Language-Models.md"
+  - "papers/3549-Train-Freeze-or-Exit-Dyna.md"
+  - "papers/Wa....md"
+  - "papers/Dai-et-al-2019-Transformer-XL-Attentive-Language-Models-Beyond-a-Fixed-Length-Context.md"
+  - "papers/Press-et-al-2022-Train-Short-Test-Long-Attention-with-Linear-Biases-Enables-Input-Length-Extrapolation.md"
+  - "papers/Su-et-al-2023-RoFormer-Enhanced-Tr....md"
+  - "papers/Wang-et-al-2024-BitNet-a4-8-4-bit-Activations-for-1-bit-LLMs.md"
+  - "papers/Wang-et-al-2025-SVD-LLM-Truncation-aware-Singular-Value-Decomposition-for-Large-Language-Model-Compression.md"
+  - "papers/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Model....md"
 source_sections:
   - "methods/transformer-architecture#What It Is"
   - "methods/transformer-architecture#Failure Modes"
@@ -60,17 +64,46 @@ related:
   - "methods/learned-quantization-intervals"
   - "methods/long-context-inference"
 related_papers:
-  - "methods/transformer-architecture"
-  - "topics/transformer-architecture"
-  - "claims/Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation-claim-004"
-  - "methods/relative-position-encoding"
-  - "methods/learned-quantization-intervals"
-  - "methods/long-context-inference"
+  - "papers/Lasby-et-al-2025-REAP-the-Experts-Why-Pruning-Prevails-for-One-Shot-MoE-compression.md"
+  - "papers/Chen-et-al-2025-EfficientQAT-Efficient-Quantization-Aware-Training-for-Large-Language-Models.md"
+  - "papers/3549-Train-Freeze-or-Exit-Dyna.md"
+  - "papers/Wa....md"
+  - "papers/Dai-et-al-2019-Transformer-XL-Attentive-Language-Models-Beyond-a-Fixed-Length-Context.md"
+  - "papers/Press-et-al-2022-Train-Short-Test-Long-Attention-with-Linear-Biases-Enables-Input-Length-Extrapolation.md"
+  - "papers/Su-et-al-2023-RoFormer-Enhanced-Tr....md"
+  - "papers/Wang-et-al-2024-BitNet-a4-8-4-bit-Activations-for-1-bit-LLMs.md"
+  - "papers/Wang-et-al-2025-SVD-LLM-Truncation-aware-Singular-Value-Decomposition-for-Large-Language-Model-Compression.md"
+  - "papers/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Model....md"
 related_methods:
 related_topics:
 source_quality_risk: false
 evolution_state: "active"
 revision_id: "synthesis-Transformer-Architecture-Topic-Overview"
+sources:
+  - "papers/Lasby-et-al-2025-REAP-the-Experts-Why-Pruning-Prevails-for-One-Shot-MoE-compression.md"
+  - "papers/Chen-et-al-2025-EfficientQAT-Efficient-Quantization-Aware-Training-for-Large-Language-Models.md"
+  - "papers/3549-Train-Freeze-or-Exit-Dyna.md"
+  - "papers/Wa....md"
+  - "papers/Dai-et-al-2019-Transformer-XL-Attentive-Language-Models-Beyond-a-Fixed-Length-Context.md"
+  - "papers/Press-et-al-2022-Train-Short-Test-Long-Attention-with-Linear-Biases-Enables-Input-Length-Extrapolation.md"
+  - "papers/Su-et-al-2023-RoFormer-Enhanced-Tr....md"
+  - "papers/Wang-et-al-2024-BitNet-a4-8-4-bit-Activations-for-1-bit-LLMs.md"
+  - "papers/Wang-et-al-2025-SVD-LLM-Truncation-aware-Singular-Value-Decomposition-for-Large-Language-Model-Compression.md"
+  - "papers/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Model....md"
+  - "methods/transformer-architecture.md"
+  - "topics/transformer-architecture.md"
+  - "claims/Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation-claim-004.md"
+  - "methods/relative-position-encoding.md"
+  - "methods/learned-quantization-intervals.md"
+  - "methods/long-context-inference.md"
+  - "methods/post-training-quantization.md"
+  - "methods/MoE-quantization.md"
+  - "methods/calibration-aware-PTQ.md"
+  - "methods/rotation-b....md"
+supports:
+contradicts:
+supersedes:
+superseded_by:
 ---
 # Transformer Architecture Topic Overview
 

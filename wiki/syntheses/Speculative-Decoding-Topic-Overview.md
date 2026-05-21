@@ -7,12 +7,16 @@ updated: "2026-05-21"
 proposal_id: "Speculative-Decoding-Topic-Overview"
 query: "I need a topic overview for speculative decoding that connects key papers, method families, claims, evidence, and open questions."
 source_papers:
-  - "methods/speculative-decoding"
-  - "concepts/Speculative-decoding-acceptance-rate"
-  - "syntheses/Calibration-Data-Selection-Topic-Overview"
-  - "topics/speculative-decoding"
-  - "claims/Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation-claim-004"
-  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
+  - "papers/Hu-et-al-2025-Speculative-Decoding-and-Beyond-An-In-Depth-Survey-of-Techniques.md"
+  - "papers/Miao-et-al-2024-SpecInfer-Accelerating-Generative-Large-Language-Model-Serving-with-Tree-based-Speculative-Inferenc.md"
+  - "papers/Liu-et-al-2025-PEARL-Paralle....md"
+  - "papers/13979-STAR-Speculative-Decodin.md"
+  - "papers/Cai-et-al-2024-Medusa-Simple-LLM-Inference-Acceleration-Framework-with-Multiple-Decoding-Heads.md"
+  - "papers/DeepSeek-AI-2025-DeepSeek-V3-Technical-Report.md"
+  - "papers/ERNIE-Technical-Report.md"
+  - "papers/El....md"
+  - "papers/Lu-et-al-2022-A-continental-scale-analysis-reveals-widespread-root-bimodality.md"
+  - "papers/Tiwari-et-al-2025-QuantSpec-Self-Speculative-Decoding-with-Hierarc....md"
 source_sections:
   - "methods/speculative-decoding#What It Is"
   - "methods/speculative-decoding#Prerequisite Concepts"
@@ -66,17 +70,47 @@ related:
   - "claims/Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation-claim-004"
   - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
 related_papers:
-  - "methods/speculative-decoding"
-  - "concepts/Speculative-decoding-acceptance-rate"
-  - "syntheses/Calibration-Data-Selection-Topic-Overview"
-  - "topics/speculative-decoding"
-  - "claims/Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation-claim-004"
-  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001"
+  - "papers/Hu-et-al-2025-Speculative-Decoding-and-Beyond-An-In-Depth-Survey-of-Techniques.md"
+  - "papers/Miao-et-al-2024-SpecInfer-Accelerating-Generative-Large-Language-Model-Serving-with-Tree-based-Speculative-Inferenc.md"
+  - "papers/Liu-et-al-2025-PEARL-Paralle....md"
+  - "papers/13979-STAR-Speculative-Decodin.md"
+  - "papers/Cai-et-al-2024-Medusa-Simple-LLM-Inference-Acceleration-Framework-with-Multiple-Decoding-Heads.md"
+  - "papers/DeepSeek-AI-2025-DeepSeek-V3-Technical-Report.md"
+  - "papers/ERNIE-Technical-Report.md"
+  - "papers/El....md"
+  - "papers/Lu-et-al-2022-A-continental-scale-analysis-reveals-widespread-root-bimodality.md"
+  - "papers/Tiwari-et-al-2025-QuantSpec-Self-Speculative-Decoding-with-Hierarc....md"
 related_methods:
 related_topics:
 source_quality_risk: false
 evolution_state: "active"
 revision_id: "synthesis-Speculative-Decoding-Topic-Overview"
+sources:
+  - "papers/Hu-et-al-2025-Speculative-Decoding-and-Beyond-An-In-Depth-Survey-of-Techniques.md"
+  - "papers/Miao-et-al-2024-SpecInfer-Accelerating-Generative-Large-Language-Model-Serving-with-Tree-based-Speculative-Inferenc.md"
+  - "papers/Liu-et-al-2025-PEARL-Paralle....md"
+  - "papers/13979-STAR-Speculative-Decodin.md"
+  - "papers/Cai-et-al-2024-Medusa-Simple-LLM-Inference-Acceleration-Framework-with-Multiple-Decoding-Heads.md"
+  - "papers/DeepSeek-AI-2025-DeepSeek-V3-Technical-Report.md"
+  - "papers/ERNIE-Technical-Report.md"
+  - "papers/El....md"
+  - "papers/Lu-et-al-2022-A-continental-scale-analysis-reveals-widespread-root-bimodality.md"
+  - "papers/Tiwari-et-al-2025-QuantSpec-Self-Speculative-Decoding-with-Hierarc....md"
+  - "methods/speculative-decoding.md"
+  - "concepts/Speculative-decoding-acceptance-rate.md"
+  - "syntheses/Calibration-Data-Selection-Topic-Overview.md"
+  - "topics/speculative-decoding.md"
+  - "claims/Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation-claim-004.md"
+  - "evidence/Computer-Architecture-A-Quantitative-Approach-5th-edition-evidence-p0001.md"
+  - "syntheses/Transformer-Architecture-Topic-Overview.md"
+  - "methods/clustering-algorithm.md"
+  - "methods/audio-language-modeling.md"
+  - "methods/multimodal-instruction-tuning.md"
+  - "methods/....md"
+supports:
+contradicts:
+supersedes:
+superseded_by:
 ---
 # Speculative Decoding Topic Overview
 

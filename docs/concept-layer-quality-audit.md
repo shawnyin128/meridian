@@ -1,7 +1,7 @@
 # Concept Layer Quality Audit
 
-- Generated: `2026-05-21T06:11:04.950217+00:00`
-- Status: `warn`
+- Generated: `2026-05-21T07:24:47.431398+00:00`
+- Status: `pass`
 - Concept pages: 24
 - Candidate concepts: 24
 - Unpromoted candidate concepts: 0
@@ -14,6 +14,8 @@
 - candidate_concepts: 24
 - unpromoted_candidate_concepts: 0
 - methods_total: 302
+- methods_requiring_prerequisite_concepts: 63
+- consolidated_method_candidate_records: 239
 - methods_with_prerequisite_concepts: 31
 - topics_total: 91
 - topics_with_key_concepts: 45
@@ -34,6 +36,21 @@ Concept pages are preliminary knowledge pages for implementation and research-de
 - None.
 
 ## Sample: method_missing_prerequisite_concepts
+
+- `methods/MoE-quantization.md`
+- `methods/RoPE-scaling.md`
+- `methods/agent-workflow-acceleration.md`
+- `methods/attention-checkpoint-conversion.md`
+- `methods/audio-language-modeling.md`
+- `methods/continuous-depth-neural-network.md`
+- `methods/dynamic-draft-tree.md`
+- `methods/expert-aware-quantization.md`
+- `methods/expert-routing.md`
+- `methods/feature-level-drafting.md`
+- `methods/feature-wise-modulation.md`
+- `methods/grouped-query-attention.md`
+
+## Sample: consolidated_method_candidate_records
 
 - `methods/13979-STAR-Speculative-Decodin-method-001.md`
 - `methods/1808-05779v3-method-001.md`

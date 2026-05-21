@@ -1,13 +1,15 @@
 {
   "schema_version": "meridian.concept_audit.v1",
-  "created_at": "2026-05-21T06:11:04.950217+00:00",
+  "created_at": "2026-05-21T07:24:47.431398+00:00",
   "wiki_root": "wiki",
-  "status": "warn",
+  "status": "pass",
   "metrics": {
     "concept_pages": 24,
     "candidate_concepts": 24,
     "unpromoted_candidate_concepts": 0,
     "methods_total": 302,
+    "methods_requiring_prerequisite_concepts": 63,
+    "consolidated_method_candidate_records": 239,
     "methods_with_prerequisite_concepts": 31,
     "topics_total": 91,
     "topics_with_key_concepts": 45,
@@ -23,252 +25,162 @@
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/13979-STAR-Speculative-Decodin-method-001.md"
+      "path": "methods/MoE-quantization.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/1808-05779v3-method-001.md"
+      "path": "methods/RoPE-scaling.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/1909-13144v2-method-001.md"
+      "path": "methods/agent-workflow-acceleration.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/2209-11895v1-method-001.md"
+      "path": "methods/attention-checkpoint-conversion.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/2511-10645v1-method-001.md"
+      "path": "methods/audio-language-modeling.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/2603-19835v3-method-001.md"
+      "path": "methods/continuous-depth-neural-network.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/27323-KVCapsule-Efficient-Temp-method-001.md"
+      "path": "methods/dynamic-draft-tree.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/3520-V-JEPA-Latent-Video-Predi-method-001.md"
+      "path": "methods/expert-aware-quantization.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/3549-Train-Freeze-or-Exit-Dyna-method-001.md"
+      "path": "methods/expert-routing.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/3D-Root-Data-for-Machine-Learning-method-001.md"
+      "path": "methods/feature-level-drafting.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/7194-FlexHiNM-GP-Flexible-Hier-method-001.md"
+      "path": "methods/feature-wise-modulation.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Adnan-et-al-2024-Keyformer-KV-Cache-Reduction-through-Key-Tokens-Selection-for-Efficient-Generative-Inference-method-001.md"
+      "path": "methods/grouped-query-attention.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Ainslie-et-al-2020-ETC-Encoding-Long-and-Structured-Inputs-in-Transformers-method-001.md"
+      "path": "methods/instruction-tuning.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Arai-and-Ichikawa-2025-Quantization-Error-Propagation-Revisiting-Layer-Wise-Post-Training-Quantization-method-001.md"
+      "path": "methods/learned-step-size-quantization.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Ashkboos-et-al-2024-QuaRot-Outlier-Free-4-Bit-Inference-in-Rotated-LLMs-method-001.md"
+      "path": "methods/long-context-inference.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Assran-et-al-2023-Self-Supervised-Learning-from-Images-with-a-Joint-Embedding-Predictive-Architecture-method-001.md"
+      "path": "methods/low-rank-compensation.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Assran-et-al-2025-V-JEPA-2-Self-Supervised-Video-Models-Enable-Understanding-Prediction-and-Planning-method-001.md"
+      "path": "methods/mechanistic-activation-analysis.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Au-et-al-2008-Skeleton-extraction-by-mesh-contraction-method-001.md"
+      "path": "methods/multimodal-instruction-tuning.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Azar-et-al-2023-A-General-Theoretical-Paradigm-to-Understand-Learning-from-Human-Preferences-method-001.md"
+      "path": "methods/paper-specific-research-method.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Bai-et-al-2025-Whole-Body-Conditioned-Egocentric-Video-Prediction-method-001.md"
+      "path": "methods/performance-evaluation.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Bardes-et-al-2024-Revisiting-Feature-Prediction-for-Learning-Visual-Representations-from-Video-method-001.md"
+      "path": "methods/policy-optimization.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Bauckhage-2015-k-Means-Clustering-Is-Matrix-Factorization-method-001.md"
+      "path": "methods/recurrent-transformer.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Beltagy-et-al-2020-Longformer-The-Long-Document-Transformer-method-001.md"
+      "path": "methods/reference-synthesis.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Bhalgat-et-al-2020-LSQ-Improving-low-bit-quantization-through-learnable-offsets-and-better-initialization-method-001.md"
+      "path": "methods/relative-position-encoding.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Blattmann-et-al-2023-Stable-Video-Diffusion-Scaling-Latent-Video-Diffusion-Models-to-Large-Datasets-method-001.md"
+      "path": "methods/self-rewarding-model-training.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Blumenberg-et-al-2025-Improving-Block-Wise-LLM-Quantization-by-4-bit-Block-Wise-Optimal-Float-BOF4-Analysis-and-Variati-method-001.md"
+      "path": "methods/source-quality-triage.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Bo-et-al-2020-Structural-Deep-Clustering-Network-method-001.md"
+      "path": "methods/sparse-mixture-of-experts.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Bodnar-et-al-2025-A-foundation-model-for-the-Earth-system-method-001.md"
+      "path": "methods/sparse-outlier-retention.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Bouda-et-al-2016-Box-Counting-Dimension-Revisited-Presenting-an-Efficient-Method-of-Minimizing-Quantization-Error-an-method-001.md"
+      "path": "methods/survey-synthesis.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Brown-et-al-2020-Language-Models-are-Few-Shot-Learners-method-001.md"
+      "path": "methods/test-time-reinforcement-learning.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Caffagni-et-al-2025-Seeing-Beyond-Words-Self-Supervised-Visual-Learning-for-Multimodal-Large-Language-Models-method-001.md"
+      "path": "methods/transformer-architecture.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Cai-et-al-2024-Medusa-Simple-LLM-Inference-Acceleration-Framework-with-Multiple-Decoding-Heads-method-001.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Cai-et-al-2025-PyramidKV-Dynamic-KV-Cache-Compression-based-on-Pyramidal-Information-Funneling-method-001.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Chee-et-al-2024-QuIP-2-Bit-Quantization-of-Large-Language-Models-With-Guarantees-method-001.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Chen-et-al-2019-Neural-Ordinary-Differential-Equations-method-001.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Chen-et-al-2025-EfficientQAT-Efficient-Quantization-Aware-Training-for-Large-Language-Models-method-001.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Chen-et-al-2026-VL-JEPA-Joint-Embedding-Predictive-Architecture-for-Vision-language-method-001.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Child-et-al-2019-Generating-Long-Sequences-with-Sparse-Transformers-method-001.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Chitsaz-et-al-2024-Exploring-Quantization-for-Efficient-Pre-Training-of-Transformer-Language-Models-method-001.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Choromanski-et-al-2022-Rethinking-Attention-with-Performers-method-001.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Christiano-et-al-2023-Deep-reinforcement-learning-from-human-preferences-method-001.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Chu-et-al-2023-Qwen-Audio-Advancing-Universal-Audio-Understanding-via-Unified-Large-Scale-Audio-Language-Models-method-001.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Chu-et-al-2024-Qwen2-Audio-Technical-Report-method-001.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Computer-Architecture-A-Quantitative-Approach-5th-edition-method-001.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Cuomo-et-al-2022-Scientific-Machine-Learning-Through-Physics-Informed-Neural-Networks-Where-we-are-and-What-s-Next-method-001.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/D-Oosterlinck-et-al-2024-Anchored-Preference-Optimization-and-Contrastive-Revisions-Addressing-Underspecification-in-Alignme-method-001.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Dai-2024-DeepSeekMoE-Towards-Ultimate-Expert-Specialization-in-Mixture-of-Experts-Language-Models-method-001.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Dai-et-al-2019-Transformer-XL-Attentive-Language-Models-Beyond-a-Fixed-Length-Context-method-001.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Dao-2023-FlashAttention-2-Faster-Attention-with-Better-Parallelism-and-Work-Partitioning-method-001.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/Dao-et-al-2022-FlashAttention-Fast-and-Memory-Efficient-Exact-Attention-with-IO-Awareness-method-001.md"
+      "path": "methods/vision-language-model-quantization.md"
     },
     {
       "severity": "info",
@@ -504,6 +416,28 @@
   "samples": {
     "unpromoted_candidate_concepts": [],
     "method_missing_prerequisite_concepts": [
+      "methods/MoE-quantization.md",
+      "methods/RoPE-scaling.md",
+      "methods/agent-workflow-acceleration.md",
+      "methods/attention-checkpoint-conversion.md",
+      "methods/audio-language-modeling.md",
+      "methods/continuous-depth-neural-network.md",
+      "methods/dynamic-draft-tree.md",
+      "methods/expert-aware-quantization.md",
+      "methods/expert-routing.md",
+      "methods/feature-level-drafting.md",
+      "methods/feature-wise-modulation.md",
+      "methods/grouped-query-attention.md",
+      "methods/instruction-tuning.md",
+      "methods/learned-step-size-quantization.md",
+      "methods/long-context-inference.md",
+      "methods/low-rank-compensation.md",
+      "methods/mechanistic-activation-analysis.md",
+      "methods/multimodal-instruction-tuning.md",
+      "methods/paper-specific-research-method.md",
+      "methods/performance-evaluation.md"
+    ],
+    "consolidated_method_candidate_records": [
       "methods/13979-STAR-Speculative-Decodin-method-001.md",
       "methods/1808-05779v3-method-001.md",
       "methods/1909-13144v2-method-001.md",

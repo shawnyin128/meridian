@@ -7,12 +7,18 @@ updated: "2026-05-21"
 proposal_id: "Clustering-Algorithm-Method-Family-Synthesis"
 query: "I need a cross-paper method-family synthesis for clustering algorithm with mechanism, implementation hooks, evidence boundaries, and failure modes."
 source_papers:
-  - "concepts/K-means-objective-landscape"
-  - "methods/clustering-algorithm"
-  - "concepts/Diffusion-conditioning-signal"
-  - "syntheses/Clustering-Algorithm-Method-Family-Synthesis"
-  - "topics/clustering-theory"
-  - "claims/Yang-et-al-2025-Diffusion-Models-A-Comprehensive-Survey-of-Methods-and-Applications-claim-003"
+  - "papers/7194-FlexHiNM-GP-Flexible-Hier.md"
+  - "papers/Ainslie-et-al-2020-ETC-Encoding-Long-and-Structured-Inputs-in-Transformers.md"
+  - "papers/Assran-et-al-2023-Self-Supervised-Learning-from-Images-with-a-Joint-Embedding-Predictive-Architecture.md"
+  - "papers/Au....md"
+  - "papers/Tarpey-2007-A-parametric-k-means-algorithm.md"
+  - "papers/Dong-et-al-2025-AuroRA-Breaking-Low-Rank-Bottleneck-of-LoRA-with-Nonlinear-Mapping.md"
+  - "papers/Ding-and-He-2004-K-means-clustering-via-principal-component-analysis.md"
+  - "papers/Bauckhage-2015-k-Means-Clus....md"
+  - "papers/Dorjsembe-et-al-2024-Conditional-Diffusion-Models-for-Semantic-3D-Brain-MRI-Synthesis.md"
+  - "papers/Bai-et-al-2025-Whole-Body-Conditioned-Egocentric-Video-Prediction.md"
+  - "papers/Blattmann-et-al-2023-Stable-Video-Diffusion-Scaling-Latent-Video-Diffusion-Models-to-Large-Datasets.md"
+  - "papers/Dorjsembe-et-al-2024-Conditional-Diffusion-Models-for-Sem....md"
 source_sections:
   - "concepts/K-means-objective-landscape#Evidence / Provenance"
   - "concepts/K-means-objective-landscape#What It Is"
@@ -69,17 +75,46 @@ related:
   - "topics/clustering-theory"
   - "claims/Yang-et-al-2025-Diffusion-Models-A-Comprehensive-Survey-of-Methods-and-Applications-claim-003"
 related_papers:
-  - "concepts/K-means-objective-landscape"
-  - "methods/clustering-algorithm"
-  - "concepts/Diffusion-conditioning-signal"
-  - "syntheses/Clustering-Algorithm-Method-Family-Synthesis"
-  - "topics/clustering-theory"
-  - "claims/Yang-et-al-2025-Diffusion-Models-A-Comprehensive-Survey-of-Methods-and-Applications-claim-003"
+  - "papers/7194-FlexHiNM-GP-Flexible-Hier.md"
+  - "papers/Ainslie-et-al-2020-ETC-Encoding-Long-and-Structured-Inputs-in-Transformers.md"
+  - "papers/Assran-et-al-2023-Self-Supervised-Learning-from-Images-with-a-Joint-Embedding-Predictive-Architecture.md"
+  - "papers/Au....md"
+  - "papers/Tarpey-2007-A-parametric-k-means-algorithm.md"
+  - "papers/Dong-et-al-2025-AuroRA-Breaking-Low-Rank-Bottleneck-of-LoRA-with-Nonlinear-Mapping.md"
+  - "papers/Ding-and-He-2004-K-means-clustering-via-principal-component-analysis.md"
+  - "papers/Bauckhage-2015-k-Means-Clus....md"
+  - "papers/Dorjsembe-et-al-2024-Conditional-Diffusion-Models-for-Semantic-3D-Brain-MRI-Synthesis.md"
+  - "papers/Bai-et-al-2025-Whole-Body-Conditioned-Egocentric-Video-Prediction.md"
+  - "papers/Blattmann-et-al-2023-Stable-Video-Diffusion-Scaling-Latent-Video-Diffusion-Models-to-Large-Datasets.md"
+  - "papers/Dorjsembe-et-al-2024-Conditional-Diffusion-Models-for-Sem....md"
 related_methods:
 related_topics:
 source_quality_risk: false
 evolution_state: "active"
 revision_id: "synthesis-Clustering-Algorithm-Method-Family-Synthesis"
+sources:
+  - "papers/7194-FlexHiNM-GP-Flexible-Hier.md"
+  - "papers/Ainslie-et-al-2020-ETC-Encoding-Long-and-Structured-Inputs-in-Transformers.md"
+  - "papers/Assran-et-al-2023-Self-Supervised-Learning-from-Images-with-a-Joint-Embedding-Predictive-Architecture.md"
+  - "papers/Au....md"
+  - "papers/Tarpey-2007-A-parametric-k-means-algorithm.md"
+  - "papers/Dong-et-al-2025-AuroRA-Breaking-Low-Rank-Bottleneck-of-LoRA-with-Nonlinear-Mapping.md"
+  - "papers/Ding-and-He-2004-K-means-clustering-via-principal-component-analysis.md"
+  - "papers/Bauckhage-2015-k-Means-Clus....md"
+  - "papers/Dorjsembe-et-al-2024-Conditional-Diffusion-Models-for-Semantic-3D-Brain-MRI-Synthesis.md"
+  - "papers/Bai-et-al-2025-Whole-Body-Conditioned-Egocentric-Video-Prediction.md"
+  - "papers/Blattmann-et-al-2023-Stable-Video-Diffusion-Scaling-Latent-Video-Diffusion-Models-to-Large-Datasets.md"
+  - "papers/Dorjsembe-et-al-2024-Conditional-Diffusion-Models-for-Sem....md"
+  - "concepts/K-means-objective-landscape.md"
+  - "methods/clustering-algorithm.md"
+  - "concepts/Diffusion-conditioning-signal.md"
+  - "syntheses/Clustering-Algorithm-Method-Family-Synthesis.md"
+  - "topics/clustering-theory.md"
+  - "claims/Yang-et-al-2025-Diffusion-Models-A-Comprehensive-Survey-of-Methods-and-Applications-claim-003.md"
+supports:
+contradicts:
+supersedes:
+superseded_by:
 ---
 # Clustering Algorithm Method Family Synthesis
 

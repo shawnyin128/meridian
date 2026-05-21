@@ -541,3 +541,234 @@
 - Updated `Concept Index.md`
 - Updated `Synthesis Index.md`
 - Updated `Claim Evidence Index.md`
+
+## [2026-05-21] publish | Survey Synthesis Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Survey-Synthesis-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Survey-Synthesis-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Paper-Specific Research Method Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Paper-Specific-Research-Method-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Paper-Specific-Research-Method-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Preference-Based Reinforcement Learning Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Preference-Based-Reinforcement-Learning-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Preference-Based-Reinforcement-Learning-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Reward Modeling Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Reward-Modeling-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Reward-Modeling-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Attention Kernel Optimization Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Attention-Kernel-Optimization-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Attention-Kernel-Optimization-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Hardware-Aware Attention Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Hardware-Aware-Attention-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Hardware-Aware-Attention-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Io-Aware Attention Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Io-Aware-Attention-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Io-Aware-Attention-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Audio-Language Modeling Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Audio-Language-Modeling-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Audio-Language-Modeling-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Moe Quantization Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Moe-Quantization-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Moe-Quantization-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Multimodal Instruction Tuning Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Multimodal-Instruction-Tuning-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Multimodal-Instruction-Tuning-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Non-Uniform Weight Quantization Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Non-Uniform-Weight-Quantization-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Non-Uniform-Weight-Quantization-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Joint Embedding Predictive Learning Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Joint-Embedding-Predictive-Learning-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Joint-Embedding-Predictive-Learning-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Video Representation Learning Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Video-Representation-Learning-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Video-Representation-Learning-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Agent Workflow Modeling Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Agent-Workflow-Modeling-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Agent-Workflow-Modeling-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Conditional Diffusion Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Conditional-Diffusion-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Conditional-Diffusion-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Equivalent-Transform Ptq Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Equivalent-Transform-Ptq-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Equivalent-Transform-Ptq-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Relative Position Encoding Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Relative-Position-Encoding-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Relative-Position-Encoding-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Expert-Aware Quantization Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Expert-Aware-Quantization-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Expert-Aware-Quantization-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Llm-As-Judge Reward Modeling Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Llm-As-Judge-Reward-Modeling-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Llm-As-Judge-Reward-Modeling-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Pde-Constrained Learning Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Pde-Constrained-Learning-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Pde-Constrained-Learning-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Clustering Theory Topic Overview
+
+- Published write-back proposal: `syntheses/Clustering-Theory-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Clustering-Theory-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Policy Optimization Topic Overview
+
+- Published write-back proposal: `syntheses/Policy-Optimization-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Policy-Optimization-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Post-Training Quantization Topic Overview
+
+- Published write-back proposal: `syntheses/Post-Training-Quantization-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Post-Training-Quantization-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Quantization Error Topic Overview
+
+- Published write-back proposal: `syntheses/Quantization-Error-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Quantization-Error-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Rotation-Based Quantization Topic Overview
+
+- Published write-back proposal: `syntheses/Rotation-Based-Quantization-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Rotation-Based-Quantization-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Draft Acceptance Topic Overview
+
+- Published write-back proposal: `syntheses/Draft-Acceptance-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Draft-Acceptance-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Human Preference Feedback Topic Overview
+
+- Published write-back proposal: `syntheses/Human-Preference-Feedback-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Human-Preference-Feedback-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Io-Aware Attention Topic Overview
+
+- Published write-back proposal: `syntheses/Io-Aware-Attention-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Io-Aware-Attention-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Low-Rank Adaptation Topic Overview
+
+- Published write-back proposal: `syntheses/Low-Rank-Adaptation-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Low-Rank-Adaptation-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Reward Modeling Topic Overview
+
+- Published write-back proposal: `syntheses/Reward-Modeling-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/continuous-synthesis-r1/Reward-Modeling-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] knowledge-repair | knowledge-repair-2026-05-21-8558316216
+
+- Applied low-risk knowledge repairs: 18
+- Skipped repairs: 0
+- High-risk proposal-only repairs: 239
+- Repair manifest: `.drafts/knowledge-repair/continuous-knowledge-r2/repair.json`
+
+## [2026-05-21] knowledge-repair | knowledge-repair-2026-05-21-dc6f36acbb
+
+- Applied low-risk knowledge repairs: 12
+- Skipped repairs: 0
+- High-risk proposal-only repairs: 239
+- Repair manifest: `.drafts/knowledge-repair/continuous-knowledge-r3/repair.json`
+
+## [2026-05-21] knowledge-repair | knowledge-repair-2026-05-21-a830ef7bea
+
+- Applied low-risk knowledge repairs: 60
+- Skipped repairs: 0
+- High-risk proposal-only repairs: 239
+- Repair manifest: `.drafts/knowledge-repair/continuous-source-role-r4/repair.json`
