@@ -86,3 +86,9 @@ For MCP-facing usage, the equivalent tools are:
 
 - Use Wiki: `meridian.context`, `meridian.read`, `meridian.trace`.
 - Update Wiki: `meridian.update`, `meridian.propose`, `meridian.apply`, `meridian.audit`.
+
+MCP server entry:
+
+```bash
+PYTHONPATH=src python3 -m meridian.mcp serve --wiki-root wiki
+```

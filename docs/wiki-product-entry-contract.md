@@ -43,7 +43,12 @@ Update Wiki tools:
 - `meridian.apply`: lint and publish an approved proposal.
 - `meridian.audit`: return health summaries and maintenance actions.
 
-The current implementation provides a Python adapter under `src/meridian/mcp/` so a real MCP server can wrap the same functions.
+The current implementation provides both:
+
+- a Python adapter under `src/meridian/mcp/adapter.py` for direct calls and JSON bridge smoke tests;
+- a stdio MCP server under `src/meridian/mcp/server.py` for MCP client registration.
+
+Both surfaces wrap the same Meridian core functions.
 
 ## Workflow Completion Criteria
 
@@ -115,4 +120,4 @@ CLI commands stay stable because they are easy to test and compose:
 - `meridian wiki knowledge-audit`
 - `meridian wiki concept-audit`
 
-They are execution primitives for Prompt/Skill and MCP entries. The product entry should choose the workflow and call only the commands or adapter functions needed for the current request.
+They are execution primitives for Prompt/Skill and MCP entries. The product entry should choose the workflow and call only the commands, adapter functions, or MCP tools needed for the current request.

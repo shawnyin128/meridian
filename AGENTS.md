@@ -76,7 +76,7 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `.codex/skills/wiki-concept/SKILL.md`: project skill for preliminary-knowledge concept-layer audit, publish, retrieval, and evaluation.
 - `pyproject.toml`: Python package metadata and `meridian` console script entrypoint.
 - `src/meridian/`: Paper Wiki prototype CLI implementation for `meridian wiki ...`.
-- `src/meridian/mcp/`: scenario-facing MCP adapter/prototype exposing `context`, `read`, `trace`, `update`, `propose`, `apply`, and `audit`.
+- `src/meridian/mcp/`: scenario-facing MCP adapter and stdio server exposing `context`, `read`, `trace`, `update`, `propose`, `apply`, and `audit`.
 - `tests/`: unit tests for CLI ingest, eval, and human review recording.
 - `wiki/`: Obsidian-compatible Markdown wiki artifacts, managed raw sources, canonical pages, generated indexes, and draft workspaces.
 - `eval/`: Paper Wiki evaluation case examples and LLM-as-Judge rubrics.

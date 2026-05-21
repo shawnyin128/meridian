@@ -24,7 +24,13 @@ The Prompt/Skill entry starts at:
 .codex/skills/meridian-paper-wiki/SKILL.md
 ```
 
-The MCP adapter prototype starts at:
+The MCP entry can be started as a stdio server for MCP clients:
+
+```bash
+PYTHONPATH=src python3 -m meridian.mcp serve --wiki-root wiki
+```
+
+The JSON bridge remains available for smoke tests and local debugging:
 
 ```bash
 PYTHONPATH=src python3 -m meridian.mcp capabilities --detail full
@@ -34,6 +40,7 @@ Design details:
 
 - `docs/wiki-product-entry-contract.md`
 - `docs/wiki-mcp-entry-design.md`
+- `docs/wiki-mcp-server-setup.md`
 - `docs/wiki-entry-demo.md`
 
 ## Execution Primitives

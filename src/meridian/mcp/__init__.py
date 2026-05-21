@@ -14,14 +14,17 @@ from meridian.mcp.adapter import (
     trace,
     update,
 )
+from meridian.mcp.server import MeridianMCPServer, tool_definitions
 
 __all__ = [
+    "MeridianMCPServer",
     "apply",
     "audit",
     "capabilities",
     "context",
     "propose",
     "read",
+    "tool_definitions",
     "trace",
     "update",
 ]

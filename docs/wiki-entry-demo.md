@@ -50,6 +50,14 @@ meridian wiki retrieve "debug speculative decoding acceptance rate" \
 
 ## MCP Entry
 
+The MCP server entry starts with:
+
+```bash
+PYTHONPATH=src python3 -m meridian.mcp serve --wiki-root wiki
+```
+
+For local smoke tests, the same tools can be exercised through the JSON bridge.
+
 ### Use Wiki
 
 ```bash
@@ -68,7 +76,7 @@ PYTHONPATH=src python3 -m meridian.mcp read \
 
 ### Update Wiki Proposal
 
-Use `meridian.propose` through the adapter/API to turn retrieved context into a proposal:
+Use `meridian.propose` through MCP, or directly through the adapter in a local test, to turn retrieved context into a proposal:
 
 ```python
 from pathlib import Path

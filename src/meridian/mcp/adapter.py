@@ -364,12 +364,22 @@ def audit(*, wiki_root: Path, scope: str = "summary") -> dict[str, Any]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Meridian MCP adapter JSON bridge")
-    parser.add_argument("tool", choices=["capabilities", "context", "read", "trace", "audit"])
+    parser.add_argument("tool", choices=["capabilities", "context", "read", "trace", "update", "propose", "apply", "audit"])
     parser.add_argument("--wiki-root", default="wiki")
     parser.add_argument("--query")
     parser.add_argument("--page")
     parser.add_argument("--detail", default="summary")
     parser.add_argument("--top-k", type=int, default=6)
+    parser.add_argument("--source-path")
+    parser.add_argument("--paper")
+    parser.add_argument("--note")
+    parser.add_argument("--insight-type", default="paper-note")
+    parser.add_argument("--title")
+    parser.add_argument("--proposal-type", default="synthesis")
+    parser.add_argument("--context-path")
+    parser.add_argument("--proposal-manifest")
+    parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--scope", default="summary")
     args = parser.parse_args(argv)
 
     wiki_root = Path(args.wiki_root)
@@ -387,8 +397,36 @@ def main(argv: list[str] | None = None) -> int:
         if not args.page:
             parser.error("--page is required for trace")
         payload = trace(page=args.page, wiki_root=wiki_root)
+    elif args.tool == "update":
+        payload = update(
+            wiki_root=wiki_root,
+            source_path=Path(args.source_path) if args.source_path else None,
+            paper=args.paper,
+            note=args.note,
+            insight_type=args.insight_type,
+        )
+    elif args.tool == "propose":
+        if not args.query:
+            parser.error("--query is required for propose")
+        if not args.title:
+            parser.error("--title is required for propose")
+        payload = propose(
+            wiki_root=wiki_root,
+            query=args.query,
+            title=args.title,
+            proposal_type=args.proposal_type,
+            context_path=Path(args.context_path) if args.context_path else None,
+        )
+    elif args.tool == "apply":
+        if not args.proposal_manifest:
+            parser.error("--proposal-manifest is required for apply")
+        payload = apply(
+            proposal_manifest=Path(args.proposal_manifest),
+            wiki_root=wiki_root,
+            overwrite=args.overwrite,
+        )
     else:
-        payload = audit(wiki_root=wiki_root)
+        payload = audit(wiki_root=wiki_root, scope=args.scope)
     print(json.dumps(payload, indent=2, ensure_ascii=False))
     return 0
 

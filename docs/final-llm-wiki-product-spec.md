@@ -12,8 +12,9 @@ Meridian has two product entries:
 | MCP | `update`, `propose`, `apply`, `audit` | `context`, `read`, `trace` |
 
 The Prompt/Skill entry starts at `.codex/skills/meridian-paper-wiki/SKILL.md`.
-The MCP entry is designed in `docs/wiki-mcp-entry-design.md` and prototyped in
-`src/meridian/mcp/`. CLI commands are execution primitives for those entries.
+The MCP entry is implemented under `src/meridian/mcp/` and starts with
+`python3 -m meridian.mcp serve`. CLI commands are execution primitives for
+those entries.
 
 Obsidian daily navigation still starts from:
 
@@ -110,15 +111,18 @@ The graph should expose:
 - user insight -> target paper and optional refinement/synthesis chain.
 - contradiction/stale candidates as proposal artifacts until reviewed.
 
-## Future MCP/API/Local Model Surface
+## MCP/API/Local Model Surface
 
-MCP, API, and local-vLLM delivery should wrap the same Markdown corpus rather than replacing it. Minimal future tool surfaces:
+MCP, API, and local-vLLM delivery should wrap the same Markdown corpus rather than replacing it. The current MCP stdio server exposes:
 
-- `search(query, strategy, top_k)`
-- `context(query)`
-- `read(page_id)`
-- `propose_writeback(context_id, type, title)`
-- `propose_refine(page_id, reason, note)`
-- `apply_proposal(proposal_id)` after lint
+- `meridian.context(query)`
+- `meridian.read(page_id)`
+- `meridian.trace(page_id)`
+- `meridian.update(source_path | note)`
+- `meridian.propose(query, title, proposal_type)`
+- `meridian.apply(proposal_id)` after lint
+- `meridian.audit(scope)`
+
+Future API and local-vLLM wrappers should preserve the same Update Wiki / Use Wiki workflow split.
 
 The Markdown vault remains the source of truth.

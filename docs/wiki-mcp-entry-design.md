@@ -111,15 +111,24 @@ Lints and publishes an existing proposal.
 
 Returns health summary commands and report paths for maintenance.
 
-## Current Prototype
+## Current Server
 
-The current repo implements a dependency-light adapter at:
+The current repo implements a dependency-light adapter and stdio MCP server:
 
 ```text
-src/meridian/mcp/
+src/meridian/mcp/adapter.py
+src/meridian/mcp/server.py
 ```
 
-It can be exercised as Python functions or through a JSON bridge:
+Start the MCP server with:
+
+```bash
+PYTHONPATH=src python3 -m meridian.mcp serve --wiki-root wiki
+```
+
+Register that command in an MCP client config. The server speaks JSON-RPC over stdio and exposes the tool surface above.
+
+The JSON bridge remains useful for smoke tests:
 
 ```bash
 PYTHONPATH=src python3 -m meridian.mcp capabilities --detail full
@@ -128,4 +137,4 @@ PYTHONPATH=src python3 -m meridian.mcp read --wiki-root wiki --page concepts/KV-
 PYTHONPATH=src python3 -m meridian.mcp trace --wiki-root wiki --page papers/<paper>.md
 ```
 
-Future packaging can wrap these functions in a concrete MCP SDK server without changing the vault or core workflow.
+The implementation uses a small in-repo stdio protocol wrapper instead of making an external SDK a hard runtime dependency. Future packaging can swap in an official MCP SDK server while keeping the same adapter functions and vault contract.

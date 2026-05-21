@@ -12,6 +12,7 @@ from pathlib import Path
 
 from meridian.cli import main
 from meridian.mcp import adapter as mcp_adapter
+from meridian.mcp import server as mcp_server
 from meridian.wiki.corpus import retrieve_papers
 from meridian.wiki.extract import PageExtraction, PdfExtraction
 from meridian.wiki.ingest import _title_from_first_page
@@ -1615,8 +1616,174 @@ Plot per-channel activation maxima and run an ablation without smoothing.
             self.assertTrue(Path(proposal["proposal_manifest"]).exists())
             self.assertEqual(proposal["lint_status"], "pass")
 
+            (wiki_root / "syntheses").mkdir(exist_ok=True)
+            (wiki_root / "syntheses/Activation-Outlier-Probe-Plan.md").write_text(
+                "# Existing target\n",
+                encoding="utf-8",
+            )
+            blocked = mcp_adapter.apply(
+                proposal_manifest=Path(proposal["proposal_manifest"]),
+                wiki_root=wiki_root,
+            )
+            self.assertEqual(blocked["status"], "blocked_by_lint")
+            self.assertIn("publish_target_exists", {item["code"] for item in blocked["findings"]})
+
             with self.assertRaises(ValueError):
                 mcp_adapter.read(page=".drafts/ingests/noisy/paper.md", wiki_root=wiki_root)
+
+    def test_mcp_stdio_server_registry_and_tool_calls_share_adapter(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            concepts = wiki_root / "concepts"
+            papers.mkdir(parents=True)
+            concepts.mkdir(parents=True)
+            _write_test_paper(
+                papers / "MoE-PTQ.md",
+                title="MoE PTQ Paper",
+                aliases=["CodeQuant"],
+                topics=["activation outliers", "quantization error"],
+                methods=["MoE post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "This paper studies MoE PTQ.",
+                    "Mechanism": "The method smooths activation outliers and tracks quantization error.",
+                    "Evidence Map": "Table 1 supports the outlier smoothing claim.",
+                    "Implementation Hooks": "Probe activation outlier smoothing before changing quantization kernels.",
+                },
+            )
+            (concepts / "Activation-outliers.md").write_text(
+                """---
+type: "concept"
+title: "Activation outliers"
+status: "active"
+source_papers:
+  - "papers/MoE-PTQ.md"
+related_methods:
+  - "MoE post-training quantization"
+confidence: "medium"
+review_state: "auto_converged"
+---
+# Activation outliers
+
+## What It Is
+
+Activation outliers are high-magnitude activation features that stress low-bit quantization.
+
+## Implementation Implications
+
+Check activation magnitude distributions before choosing calibration and smoothing.
+
+## Minimal Checks / Probes
+
+Plot per-channel activation maxima and run an ablation without smoothing.
+
+## Evidence / Provenance
+
+- Source paper: [[papers/MoE-PTQ]].
+""",
+                encoding="utf-8",
+            )
+            drafts = wiki_root / ".drafts/ingests/noisy"
+            drafts.mkdir(parents=True)
+            (drafts / "paper.md").write_text("# Draft artifact\n\nNot canonical.", encoding="utf-8")
+
+            server = mcp_server.MeridianMCPServer(default_wiki_root=wiki_root)
+            init_response = server.handle_message(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "initialize",
+                    "params": {"protocolVersion": "2024-11-05"},
+                }
+            )
+            self.assertEqual(init_response["result"]["serverInfo"]["name"], "meridian-paper-wiki")
+            self.assertIn("tools", init_response["result"]["capabilities"])
+
+            tools_response = server.handle_message({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
+            tool_names = {tool["name"] for tool in tools_response["result"]["tools"]}
+            self.assertEqual(
+                {
+                    "meridian.capabilities",
+                    "meridian.context",
+                    "meridian.read",
+                    "meridian.trace",
+                    "meridian.update",
+                    "meridian.propose",
+                    "meridian.apply",
+                    "meridian.audit",
+                },
+                tool_names,
+            )
+
+            context_response = server.handle_message(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 3,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "meridian.context",
+                        "arguments": {
+                            "query": "activation outlier implementation probes for MoE PTQ",
+                            "top_k": 3,
+                        },
+                    },
+                }
+            )
+            context_payload = json.loads(context_response["result"]["content"][0]["text"])
+            self.assertEqual(context_payload["workflow"], "Use Wiki")
+            self.assertFalse(any("drafts/" in str(item.get("canonical_path")) for item in context_payload["results_summary"]))
+
+            read_response = server.handle_message(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 4,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "meridian.read",
+                        "arguments": {"page": "concepts/Activation-outliers.md"},
+                    },
+                }
+            )
+            read_payload = json.loads(read_response["result"]["content"][0]["text"])
+            self.assertEqual(read_payload["result_type"], "concept")
+            self.assertIn("Implementation Implications", read_payload["sections"])
+
+            blocked_read = server.handle_message(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 5,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "meridian.read",
+                        "arguments": {"page": ".drafts/ingests/noisy/paper.md"},
+                    },
+                }
+            )
+            self.assertTrue(blocked_read["result"]["isError"])
+            blocked_payload = json.loads(blocked_read["result"]["content"][0]["text"])
+            self.assertIn("not a canonical retrieval page", blocked_payload["message"])
+
+            update_response = server.handle_message(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 6,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "meridian.update",
+                        "arguments": {
+                            "paper": "CodeQuant",
+                            "note": "Use this paper when designing activation outlier probes.",
+                            "insight_type": "implementation-note",
+                        },
+                    },
+                }
+            )
+            update_payload = json.loads(update_response["result"]["content"][0]["text"])
+            self.assertEqual(update_payload["workflow"], "Update Wiki")
+            self.assertEqual(update_payload["update_type"], "user_insight")
+            self.assertIn(update_payload["lint_status"], {"pass", "fail"})
 
     def test_add_insight_creates_draft_for_exact_canonical_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
