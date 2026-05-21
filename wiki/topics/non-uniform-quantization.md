@@ -135,3 +135,8 @@ This topic page compiles canonical paper pages around `non-uniform quantization`
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `non-uniform quantization`.
+## Key Concepts
+
+- [[concepts/K-means-objective-landscape|K-means objective landscape]]
+- [[concepts/Speculative-decoding-acceptance-rate|Speculative decoding acceptance rate]]
+- [[concepts/KV-cache-memory-bandwidth|KV-cache memory bandwidth]]

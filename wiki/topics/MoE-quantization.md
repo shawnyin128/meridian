@@ -127,3 +127,9 @@ This topic page compiles canonical paper pages around `MoE quantization`. It is 
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `MoE quantization`.
+## Key Concepts
+
+- [[concepts/K-means-objective-landscape|K-means objective landscape]]
+- [[concepts/Quantization-error-propagation|Quantization error propagation]]
+- [[concepts/Activation-outliers|Activation outliers]]
+- [[concepts/Per-channel-scaling|Per-channel scaling]]

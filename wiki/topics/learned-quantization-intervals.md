@@ -73,3 +73,8 @@ This topic page compiles canonical paper pages around `learned quantization inte
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `learned quantization intervals`.
+## Key Concepts
+
+- [[concepts/Speculative-decoding-acceptance-rate|Speculative decoding acceptance rate]]
+- [[concepts/Attention-sink|Attention sink]]
+- [[concepts/KV-cache-memory-bandwidth|KV-cache memory bandwidth]]

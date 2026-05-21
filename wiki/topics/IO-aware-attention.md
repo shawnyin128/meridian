@@ -151,3 +151,9 @@ This topic page compiles canonical paper pages around `IO-aware attention`. It i
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `IO-aware attention`.
+## Key Concepts
+
+- [[concepts/Quantization-error-propagation|Quantization error propagation]]
+- [[concepts/Activation-outliers|Activation outliers]]
+- [[concepts/Attention-sink|Attention sink]]
+- [[concepts/Per-channel-scaling|Per-channel scaling]]

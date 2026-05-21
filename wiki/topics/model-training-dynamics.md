@@ -129,3 +129,6 @@ This topic page compiles canonical paper pages around `model training dynamics`.
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `model training dynamics`.
+## Key Concepts
+
+- [[concepts/KL-regularization|KL regularization]]

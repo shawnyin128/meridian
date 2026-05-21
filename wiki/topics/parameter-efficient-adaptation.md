@@ -231,3 +231,6 @@ This topic page compiles canonical paper pages around `parameter-efficient adapt
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `parameter-efficient adaptation`.
+## Key Concepts
+
+- [[concepts/KL-regularization|KL regularization]]

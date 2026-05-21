@@ -17,7 +17,7 @@ The project main vault is `wiki/` at the repository root. Treat it as the daily 
 
 Product-facing wiki artifacts are canonical pages and retrieval/write-back context, not pipeline debug files. Follow `docs/wiki-product-dataflow-and-artifact-boundaries.md`: `wiki/papers/*.md` and `wiki/syntheses/*.md` are user-facing retrieval targets; `wiki/.drafts/ingests/<run>/paper.md` is an internal canonical-page candidate; `review.md`, judge packets, reader checks, and self-check JSON are validation/debug artifacts.
 
-Final-product convergence is documented in `docs/final-llm-wiki-product-spec.md`. Treat the product as a compiled knowledge network: papers, methods, topics, claims, evidence, syntheses, user insights, and evolution state should all participate in retrieval and Obsidian navigation. Use `meridian wiki final-product-check --wiki-root wiki` as the deterministic readiness smoke.
+Final-product convergence is documented in `docs/final-llm-wiki-product-spec.md`. Treat the product as a compiled knowledge network: papers, methods, topics, concepts, claims, evidence, syntheses, user insights, and evolution state should all participate in retrieval and Obsidian navigation. Use `meridian wiki final-product-check --wiki-root wiki` as the deterministic readiness smoke.
 
 When architecture or implementation choices are ambiguous, consult `docs/source-grounded-development-principles.md` for the project's source-grounded principles from Karpathy's LLM Wiki gist, Anthropic agent engineering posts, and selected community followup lessons.
 
@@ -77,6 +77,7 @@ Follow these principles while the project is still design-heavy:
 - Preserve source provenance on claims. Any synthesized claim should point back to one or more source pages or raw source references when possible.
 - Distinguish source facts, wiki synthesis, and user decisions. Do not blur "the source says", "the wiki currently infers", and "we decided".
 - Treat user reading notes as first-class personalized wiki state, but keep them in `User Insights` or proposal sections until source re-check justifies source-grounded edits.
+- Treat preliminary knowledge as first-class concept state under `wiki/concepts/`. Concept pages should explain prerequisite mechanisms, implementation implications, failure modes, minimal checks/probes, and source provenance; do not collapse them into method pages or generic textbook notes.
 - File valuable query outputs back into the wiki when they represent durable analysis, comparison, synthesis, or planning.
 - Use proposal-first write-back for retrieval outputs. A valuable query should become `wiki/.drafts/proposals/<slug>/` first, pass `proposal-lint`, and only then publish to the canonical synthesis layer.
 - Keep product output boundaries clean. Default CLI/user guidance should report the managed source PDF, canonical wiki page, quality/review state, and retrieval/proposal paths. Internal `review.md`, draft `paper.md`, self-check, judge, and extraction artifacts are available for audit but should not be presented as normal wiki entries.

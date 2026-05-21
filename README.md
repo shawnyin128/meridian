@@ -8,7 +8,7 @@ meridian wiki init --wiki-root wiki
 ```
 
 This creates an Obsidian-compatible Markdown vault scaffold: `papers/`,
-`claims/`, `methods/`, `evidence/`, `topics/`, `syntheses/`, immutable
+`claims/`, `methods/`, `evidence/`, `topics/`, `concepts/`, `syntheses/`, immutable
 `raw/sources/`, generated `.index/`, draft areas, and reusable templates.
 
 The project main vault is `wiki/`. It is intended to be opened directly in
@@ -150,6 +150,7 @@ This creates or updates:
 - `wiki/claims/*.md`
 - `wiki/evidence/*.md`
 - `wiki/topics/*.md`
+- `wiki/concepts/*.md` once the concept layer is proposed/published
 - `wiki/index.md`
 - `wiki/log.md`
 - `wiki/.index/papers.jsonl`
@@ -190,11 +191,31 @@ meridian wiki catalog --wiki-root wiki
 
 This scans `wiki/papers/*.md` and `wiki/syntheses/*.md`, writing
 `wiki/.index/papers.jsonl` and `wiki/.index/syntheses.jsonl`; it also writes
-knowledge-layer catalogs for `methods/`, `topics/`, `claims/`, and `evidence/`.
+knowledge-layer catalogs for `methods/`, `topics/`, `claims/`, `evidence/`, and `concepts/`.
 The catalogs keep frontmatter as the routing source of truth, plus section previews for
 context-packet construction. Draft ingest candidates under
 `wiki/.drafts/ingests/**` are intentionally excluded even when their text matches
 the query.
+
+## Preliminary Knowledge / Concept Layer
+
+Concept pages are canonical preliminary-knowledge pages under `wiki/concepts/`.
+They capture recurring background mechanisms that matter for research coding,
+debugging, ablation design, and probes, such as activation outliers, KV-cache
+memory bandwidth, KL regularization, PDE residuals, or k-means objective
+landscapes. They are source-provenanced compiled knowledge, not generic textbook
+notes.
+
+```bash
+meridian wiki concept-audit --wiki-root wiki
+meridian wiki propose-concept-layer --wiki-root wiki --out-dir wiki/.drafts/knowledge-repair/<slug>/
+meridian wiki concept-layer-lint wiki/.drafts/knowledge-repair/<slug>/concept-layer-proposal.json --wiki-root wiki
+meridian wiki publish-concept-layer wiki/.drafts/knowledge-repair/<slug>/concept-layer-proposal.json --wiki-root wiki
+```
+
+Published concept pages are retrievable with `result_type: concept`. For
+method/probe/debug queries, retrieval should return method pages together with
+prerequisite concepts and source/evidence pages.
 
 Retrieve research context with:
 

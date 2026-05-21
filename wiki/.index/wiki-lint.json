@@ -1,7 +1,7 @@
 {
   "schema_version": "meridian.wiki_lint.v0",
   "wiki_root": "wiki",
-  "created_at": "2026-05-20T23:55:18.913822+00:00",
+  "created_at": "2026-05-21T00:37:18.251632+00:00",
   "status": "pass",
   "findings": [
     {

@@ -61,3 +61,8 @@ This topic page compiles canonical paper pages around `LLM outliers`. It is a na
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `LLM outliers`.
+## Key Concepts
+
+- [[concepts/Quantization-error-propagation|Quantization error propagation]]
+- [[concepts/Activation-outliers|Activation outliers]]
+- [[concepts/Per-channel-scaling|Per-channel scaling]]

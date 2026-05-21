@@ -25,6 +25,7 @@ WIKI_DIRS = (
     "methods",
     "evidence",
     "topics",
+    "concepts",
     "syntheses",
     "templates",
 )
@@ -154,6 +155,7 @@ def rebuild_wiki_index(*, wiki_root: Path) -> Path:
         ("Claims", "claims"),
         ("Evidence", "evidence"),
         ("Topics", "topics"),
+        ("Concepts", "concepts"),
         ("Syntheses", "syntheses"),
     ):
         pages = sorted((wiki_root / directory).glob("*.md"))
@@ -257,6 +259,7 @@ def _initial_files(wiki_root: Path) -> dict[Path, str]:
         wiki_root / "templates/claim.md": _template("claim"),
         wiki_root / "templates/method.md": _template("method"),
         wiki_root / "templates/topic.md": _template("topic"),
+        wiki_root / "templates/concept.md": _template("concept"),
         wiki_root / "templates/synthesis.md": _template("synthesis"),
         wiki_root / "raw/sources/index.md": "# Source Index\n\nNo registered sources yet.\n",
     }
@@ -317,6 +320,49 @@ related_methods: []
 confidence: "medium"
 ---
 # Topic
+"""
+    if kind == "concept":
+        return """---
+type: "concept"
+title: ""
+status: "active"
+sources: []
+source_papers: []
+related_methods: []
+related_topics: []
+related_claims: []
+related_evidence: []
+prerequisite_for: []
+supports: []
+contradicts: []
+confidence: "low"
+review_state: "candidate"
+evolution_state: "active"
+revision_id: ""
+---
+# Concept
+
+## What It Is
+
+## Why It Matters
+
+## Where It Appears
+
+## Used By Methods
+
+## Implementation Implications
+
+## Common Failure Modes
+
+## Minimal Checks / Probes
+
+## Evidence / Provenance
+
+## Related Concepts
+
+## Open Questions
+
+## Retrieval Hooks
 """
     return """---
 type: "synthesis"

@@ -70,3 +70,6 @@ This is a compiled method-family page for `PDE-constrained learning`. It groups 
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/PDE-residual|PDE residual]]

@@ -1,7 +1,7 @@
 ---
 type: "navigation"
 title: "Method Index"
-updated: "2026-05-20"
+updated: "2026-05-21"
 ---
 # Method Index
 

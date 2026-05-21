@@ -55,3 +55,6 @@ This topic page compiles canonical paper pages around `physics-informed neural n
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `physics-informed neural networks`.
+## Key Concepts
+
+- [[concepts/PDE-residual|PDE residual]]

@@ -183,3 +183,6 @@ This topic page compiles canonical paper pages around `speculative decoding`. It
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `speculative decoding`.
+## Key Concepts
+
+- [[concepts/Speculative-decoding-acceptance-rate|Speculative decoding acceptance rate]]

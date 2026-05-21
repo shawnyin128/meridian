@@ -62,3 +62,6 @@ This topic page compiles canonical paper pages around `preference optimization`.
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `preference optimization`.
+## Key Concepts
+
+- [[concepts/KL-regularization|KL regularization]]

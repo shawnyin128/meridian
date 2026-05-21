@@ -56,3 +56,6 @@ This is a compiled method-family page for `layer-wise PTQ`. It groups canonical 
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Quantization-error-propagation|Quantization error propagation]]

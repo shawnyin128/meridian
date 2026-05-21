@@ -17,6 +17,7 @@ User-facing canonical artifacts:
 - `wiki/papers/*.md`: source-grounded paper understanding.
 - `wiki/methods/*.md`: compiled method-family pages plus explicitly marked paper-specific method records.
 - `wiki/topics/*.md`: topic hubs connecting methods, papers, claims, and open questions.
+- `wiki/concepts/*.md`: preliminary knowledge and prerequisite mechanisms needed for implementation, debugging, probes, and ablations.
 - `wiki/claims/*.md`: claim records with supporting/contradicting evidence.
 - `wiki/evidence/*.md`: source-grounded evidence records.
 - `wiki/syntheses/*.md`: durable query write-back, comparison, method-family, decision, and research-question pages.
@@ -33,6 +34,7 @@ Internal artifacts:
 - `paper`: explain what a paper does, what mechanism objects exist, what evidence supports claims, and what should block premature use.
 - `method`: compile a method family across papers, including mechanism, implementation hooks, failure modes, and key evidence.
 - `topic`: organize a research area, key papers, method families, contradictions, and retrieval hooks.
+- `concept`: explain recurring prerequisite knowledge, why it matters, implementation implications, failure modes, minimal checks/probes, and source provenance.
 - `claim`: state one claim, its scope, confidence, supporting evidence, contradicting evidence, and provenance.
 - `evidence`: record one metric/observation/result with source paper, section/page, reliability, and limits.
 - `synthesis`: preserve a valuable query result or research thought as durable cross-paper interpretation.
@@ -78,7 +80,7 @@ Legacy `quality_gate` is retained for backward compatibility. Final retrieval sh
 Retrieval should return compiled context before raw paper dumps:
 
 - overview query: synthesis/topic pages first, then key papers and evidence.
-- method/probe query: method-family pages first, then implementation-relevant papers/evidence.
+- method/probe/debug query: method-family pages plus prerequisite concept pages first, then implementation-relevant papers/evidence.
 - evidence query: claim/evidence pages first, then source paper sections.
 - personal idea query: user insight and synthesis pages can participate, but must be labeled user-supplied.
 - contradiction/stale query: claim/synthesis/evolution warnings first.
@@ -90,7 +92,8 @@ Context packets must show `result_type`, `corpus_type`, `knowledge_role`, `sourc
 The graph should expose:
 
 - paper -> method/topic/claim/evidence links.
-- method/topic -> related papers and syntheses.
+- method/topic -> related papers, concepts, and syntheses.
+- concept -> source papers, prerequisite methods, related concepts, and evidence.
 - synthesis -> source papers/claims/evidence.
 - user insight -> target paper and optional refinement/synthesis chain.
 - contradiction/stale candidates as proposal artifacts until reviewed.

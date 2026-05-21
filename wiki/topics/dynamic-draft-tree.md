@@ -121,3 +121,6 @@ This topic page compiles canonical paper pages around `dynamic draft tree`. It i
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `dynamic draft tree`.
+## Key Concepts
+
+- [[concepts/Speculative-decoding-acceptance-rate|Speculative decoding acceptance rate]]

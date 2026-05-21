@@ -6,6 +6,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from meridian.wiki.corpus import CatalogResult, RetrievalResult, build_knowledge_catalogs, build_paper_catalog, build_synthesis_catalog, retrieve_papers
+from meridian.wiki.concepts import (
+    ConceptAuditResult,
+    ConceptLayerLintResult,
+    ConceptLayerProposalResult,
+    PublishConceptLayerResult,
+    lint_concept_layer,
+    propose_concept_layer,
+    publish_concept_layer,
+    run_concept_audit,
+)
 from meridian.wiki.eval import iter_cases, write_eval_manifest
 from meridian.wiki.eval_run import (
     EvalConvergeResult,
@@ -416,6 +426,37 @@ def retrieve_wiki(
 
 def knowledge_audit_wiki(wiki_root: Path, out_path: Path | None = None, brief_path: Path | None = None) -> KnowledgeAuditResult:
     return run_knowledge_audit(wiki_root=wiki_root, out_path=out_path, brief_path=brief_path)
+
+
+def concept_audit_wiki(wiki_root: Path, out_path: Path | None = None, brief_path: Path | None = None) -> ConceptAuditResult:
+    return run_concept_audit(wiki_root=wiki_root, out_path=out_path, brief_path=brief_path)
+
+
+def propose_concept_layer_wiki(
+    *,
+    wiki_root: Path,
+    out_dir: Path | None = None,
+    overwrite: bool = False,
+    max_concepts: int = 24,
+) -> ConceptLayerProposalResult:
+    return propose_concept_layer(wiki_root=wiki_root, out_dir=out_dir, overwrite=overwrite, max_concepts=max_concepts)
+
+
+def concept_layer_lint_wiki(
+    *,
+    proposal_manifest: Path,
+    wiki_root: Path,
+    out_path: Path | None = None,
+) -> ConceptLayerLintResult:
+    return lint_concept_layer(proposal_manifest=proposal_manifest, wiki_root=wiki_root, out_path=out_path)
+
+
+def publish_concept_layer_wiki(
+    *,
+    proposal_manifest: Path,
+    wiki_root: Path,
+) -> PublishConceptLayerResult:
+    return publish_concept_layer(proposal_manifest=proposal_manifest, wiki_root=wiki_root)
 
 
 def propose_knowledge_repair_wiki(

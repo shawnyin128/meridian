@@ -14,7 +14,7 @@ SYNTHESIS_CATALOG_SCHEMA_VERSION = "meridian.synthesis_catalog.v1"
 KNOWLEDGE_CATALOG_SCHEMA_VERSION = "meridian.knowledge_catalog.v1"
 CONTEXT_PACKET_SCHEMA_VERSION = "meridian.retrieval_context.v0"
 
-KNOWLEDGE_DIRECTORIES = ("methods", "topics", "claims", "evidence")
+KNOWLEDGE_DIRECTORIES = ("methods", "topics", "claims", "evidence", "concepts")
 
 ROUTING_FIELDS = (
     "aliases",
@@ -25,6 +25,10 @@ ROUTING_FIELDS = (
     "datasets",
     "metrics",
     "claims",
+    "prerequisite_for",
+    "related_methods",
+    "related_topics",
+    "related_concepts",
 )
 
 SECTION_WEIGHTS = {
@@ -63,6 +67,16 @@ SECTION_WEIGHTS = {
     "Limits": 2.4,
     "Reliability": 2.3,
     "Related Papers": 2.0,
+    "Why It Matters": 2.6,
+    "Where It Appears": 2.1,
+    "Implementation Implications": 2.8,
+    "Common Failure Modes": 2.5,
+    "Minimal Checks / Probes": 2.9,
+    "Evidence / Provenance": 2.6,
+    "Related Concepts": 2.0,
+    "Prerequisite Concepts": 2.8,
+    "Key Concepts": 2.6,
+    "Concept Dependencies": 2.6,
 }
 
 INTENT_SECTION_TERMS = {
@@ -127,6 +141,16 @@ INTENT_SECTION_TERMS = {
     "Supports": {"support", "supports", "claim", "evidence"},
     "Limits": {"limit", "limits", "limitation", "scope", "boundary"},
     "Reliability": {"reliable", "reliability", "confidence", "source", "quality"},
+    "Why It Matters": {"why", "matter", "matters", "motivation", "important", "background", "preliminary", "prerequisite"},
+    "Where It Appears": {"where", "appears", "paper", "papers", "source", "provenance"},
+    "Implementation Implications": {"implement", "implementation", "code", "coding", "baseline", "debug", "design", "ablation", "probe"},
+    "Common Failure Modes": {"failure", "failures", "debug", "bug", "risk", "risks", "mismatch", "unstable"},
+    "Minimal Checks / Probes": {"check", "checks", "probe", "probes", "sanity", "debug", "ablation", "validate"},
+    "Evidence / Provenance": {"evidence", "provenance", "source", "paper", "claim", "support"},
+    "Related Concepts": {"concept", "concepts", "background", "preliminary", "prerequisite"},
+    "Prerequisite Concepts": {"concept", "concepts", "background", "preliminary", "prerequisite", "before"},
+    "Key Concepts": {"concept", "concepts", "overview", "topic", "background", "preliminary"},
+    "Concept Dependencies": {"concept", "concepts", "dependency", "dependencies", "prerequisite", "background"},
 }
 
 DOMAIN_LEXICON = {
@@ -403,6 +427,12 @@ def _catalog_record(
         "sources": _as_list(frontmatter.get("sources")),
         "source_papers": _as_list(frontmatter.get("source_papers")),
         "related_papers": _as_list(frontmatter.get("related_papers")),
+        "related_methods": _as_list(frontmatter.get("related_methods")),
+        "related_topics": _as_list(frontmatter.get("related_topics")),
+        "related_claims": _as_list(frontmatter.get("related_claims")),
+        "related_evidence": _as_list(frontmatter.get("related_evidence")),
+        "related_concepts": _as_list(frontmatter.get("related_concepts")),
+        "prerequisite_for": _as_list(frontmatter.get("prerequisite_for")),
         "personalized": frontmatter.get("personalized"),
         "user_insights": _as_list(frontmatter.get("user_insights")),
         "revision_id": frontmatter.get("revision_id"),
@@ -486,7 +516,7 @@ def _knowledge_role(*, path: Path, frontmatter: dict[str, Any]) -> str:
         frontmatter.get("candidate_id") or review_state in {"candidate", "auto_extracted", "source_text_insufficient"}
     ):
         return "candidate_record"
-    if page_type in {"method", "topic", "claim", "evidence", "synthesis", "method-family", "comparison", "decision", "research-question"}:
+    if page_type in {"method", "topic", "claim", "evidence", "concept", "synthesis", "method-family", "comparison", "decision", "research-question"}:
         return "compiled_knowledge"
     return "source_page"
 
@@ -588,6 +618,12 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
         "source_quality_linked": record.get("source_quality_linked"),
         "source_quality_sources": record.get("source_quality_sources") or [],
         "source_papers": record.get("source_papers") or [],
+        "related_methods": record.get("related_methods") or [],
+        "related_topics": record.get("related_topics") or [],
+        "related_claims": record.get("related_claims") or [],
+        "related_evidence": record.get("related_evidence") or [],
+        "related_concepts": record.get("related_concepts") or [],
+        "prerequisite_for": record.get("prerequisite_for") or [],
         "matched_source_types": matched_source_types,
         "revision_id": record.get("revision_id"),
         "revision_count": record.get("revision_count"),
@@ -795,6 +831,17 @@ def _score_record_v1(
         if result_type == "method" and desired_sections & {"Mechanism", "Implementation Hooks", "Failure Modes", "What It Is"}:
             score += 700.0
             reasons.append("knowledge-layer method route")
+        if result_type == "concept" and desired_sections & {
+            "What It Is",
+            "Why It Matters",
+            "Implementation Implications",
+            "Common Failure Modes",
+            "Minimal Checks / Probes",
+            "Prerequisite Concepts",
+            "Concept Dependencies",
+        }:
+            score += 640.0
+            reasons.append("knowledge-layer concept route")
         if result_type == "topic" and desired_sections & {"Scope", "Key Papers", "Method Families", "Retrieval Hooks"}:
             score += 420.0
             reasons.append("knowledge-layer topic route")
@@ -875,8 +922,11 @@ def _diversify_v1(
     selected: list[dict[str, Any]] = []
     desired_sections = set(query_analysis.get("desired_sections") or [])
     forced_types: list[set[str]] = []
+    if desired_sections & {"Implementation Implications", "Common Failure Modes", "Minimal Checks / Probes", "Prerequisite Concepts", "Concept Dependencies"}:
+        forced_types.append({"concept"})
     if desired_sections & {"Mechanism", "Implementation Hooks", "Failure Modes", "What It Is"}:
         forced_types.append({"method"})
+        forced_types.append({"concept"})
     if desired_sections & {"Scope", "Key Papers", "Method Families"}:
         forced_types.append({"synthesis", "method-family", "comparison", "research-question", "decision"})
         forced_types.append({"topic"})
@@ -1090,6 +1140,17 @@ def _render_context_packet(
                 "- Read first:",
             ]
         )
+        if result.get("result_type") == "concept":
+            source_papers = ", ".join(str(item) for item in (result.get("source_papers") or [])[:5]) or "none"
+            related_methods = ", ".join(str(item) for item in (result.get("related_methods") or [])[:5]) or "none"
+            prerequisite_for = ", ".join(str(item) for item in (result.get("prerequisite_for") or [])[:5]) or "none"
+            lines.extend(
+                [
+                    f"- Concept provenance papers: {source_papers}",
+                    f"- Related methods: {related_methods}",
+                    f"- Prerequisite for: {prerequisite_for}",
+                ]
+            )
         for section in (result.get("matched_sections") or [])[:CONTEXT_PACKET_SECTION_LIMIT]:
             snippet = str(section.get("snippet") or "").replace("\n", " ")
             lines.append(f"  - `{section['heading']}`: {snippet}")

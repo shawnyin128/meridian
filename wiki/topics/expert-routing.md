@@ -108,3 +108,7 @@ This topic page compiles canonical paper pages around `expert routing`. It is a 
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `expert routing`.
+## Key Concepts
+
+- [[concepts/K-means-objective-landscape|K-means objective landscape]]
+- [[concepts/Attention-sink|Attention sink]]

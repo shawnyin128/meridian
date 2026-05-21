@@ -125,3 +125,6 @@ This topic page compiles canonical paper pages around `computer architecture`. I
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `computer architecture`.
+## Key Concepts
+
+- [[concepts/Attention-sink|Attention sink]]

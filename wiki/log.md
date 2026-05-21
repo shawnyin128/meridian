@@ -214,3 +214,41 @@
 - Proposal manifest: `.drafts/proposals/final-synthesis-growth-r1/Hardware-Aware-Quantization-Topic-Overview/proposal.json`
 - Updated index: `index.md`
 - Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] concept-layer | concept-layer-2026-05-21-6f642c4c03
+
+- Created concept pages: 9
+- Added method/topic concept backlinks: 86
+- Skipped low-risk actions: 0
+- Concept proposal: `.drafts/knowledge-repair/concept-layer-mvp/concept-layer-proposal.json`
+
+## [2026-05-21] concept-layer | concept-layer-2026-05-21-5033d76f92
+
+- Created concept pages: 9
+- Added method/topic concept backlinks: 25
+- Skipped low-risk actions: 18
+- Concept proposal: `.drafts/knowledge-repair/concept-layer-mvp/concept-layer-proposal.json`
+
+## [2026-05-21] concept-layer | concept-layer-2026-05-21-2d0f4ac12b
+
+- Created concept pages: 9
+- Added method/topic concept backlinks: 1
+- Skipped low-risk actions: 38
+- Concept proposal: `.drafts/knowledge-repair/concept-layer-mvp/concept-layer-proposal.json`
+
+## [2026-05-21] concept-layer | concept-layer-2026-05-21-4d0cf2d57d
+
+- Created concept pages: 9
+- Added method/topic concept backlinks: 0
+- Skipped low-risk actions: 9
+- Concept proposal: `.drafts/knowledge-repair/concept-layer-mvp/concept-layer-proposal.json`
+
+## [2026-05-21] navigation | Obsidian navigation pages
+
+- Updated `Map of Content.md`
+- Updated `Paper Index.md`
+- Updated `Method Index.md`
+- Updated `Topic Index.md`
+- Updated `Concept Index.md`
+- Updated `Synthesis Index.md`
+- Updated `Claim Evidence Index.md`

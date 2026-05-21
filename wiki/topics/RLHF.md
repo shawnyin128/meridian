@@ -68,3 +68,6 @@ This topic page compiles canonical paper pages around `RLHF`. It is a navigation
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `RLHF`.
+## Key Concepts
+
+- [[concepts/KL-regularization|KL regularization]]

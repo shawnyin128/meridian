@@ -139,3 +139,11 @@ This is a compiled method-family page for `IO-aware attention`. It groups canoni
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Quantization-error-propagation|Quantization error propagation]]
+- [[concepts/Speculative-decoding-acceptance-rate|Speculative decoding acceptance rate]]
+- [[concepts/Activation-outliers|Activation outliers]]
+- [[concepts/Attention-sink|Attention sink]]
+- [[concepts/Per-channel-scaling|Per-channel scaling]]
+- [[concepts/KV-cache-memory-bandwidth|KV-cache memory bandwidth]]

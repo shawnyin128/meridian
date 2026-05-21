@@ -1,7 +1,7 @@
 ---
 type: "navigation"
 title: "Paper Index"
-updated: "2026-05-20"
+updated: "2026-05-21"
 ---
 # Paper Index
 

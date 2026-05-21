@@ -173,3 +173,8 @@ This topic page compiles canonical paper pages around `KV-cache compression`. It
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `KV-cache compression`.
+## Key Concepts
+
+- [[concepts/Quantization-error-propagation|Quantization error propagation]]
+- [[concepts/Activation-outliers|Activation outliers]]
+- [[concepts/Per-channel-scaling|Per-channel scaling]]

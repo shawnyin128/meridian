@@ -57,3 +57,8 @@ This topic page compiles canonical paper pages around `affine transformation`. I
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `affine transformation`.
+## Key Concepts
+
+- [[concepts/Quantization-error-propagation|Quantization error propagation]]
+- [[concepts/Activation-outliers|Activation outliers]]
+- [[concepts/Per-channel-scaling|Per-channel scaling]]

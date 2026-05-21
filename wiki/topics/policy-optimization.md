@@ -163,3 +163,6 @@ This topic page compiles canonical paper pages around `policy optimization`. It 
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `policy optimization`.
+## Key Concepts
+
+- [[concepts/KL-regularization|KL regularization]]

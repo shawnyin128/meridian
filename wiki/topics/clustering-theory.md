@@ -147,3 +147,6 @@ This topic page compiles canonical paper pages around `clustering theory`. It is
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `clustering theory`.
+## Key Concepts
+
+- [[concepts/K-means-objective-landscape|K-means objective landscape]]

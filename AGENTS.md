@@ -26,6 +26,10 @@ Before auditing, repairing, publishing, retrieving, or evolving method/topic/cla
 
 `/Users/shawn/Desktop/meridian/.codex/skills/wiki-knowledge/SKILL.md`
 
+Before adding, auditing, publishing, retrieving, or evaluating preliminary-knowledge concept pages, load:
+
+`/Users/shawn/Desktop/meridian/.codex/skills/wiki-concept/SKILL.md`
+
 Current MVP direction:
 
 - Build a personally usable paper wiki, not a general multi-agent platform.
@@ -62,6 +66,7 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `.codex/skills/wiki-personalize/SKILL.md`: project skill for adding, linting, publishing, and retrieving user-supplied paper insights without source-fact contamination.
 - `.codex/skills/wiki-evolve/SKILL.md`: project skill for refinement proposals, revision snapshots, evolution-state warnings, and canonical page versioning.
 - `.codex/skills/wiki-knowledge/SKILL.md`: project skill for knowledge-layer audit, repair proposal, safe publish, and retrieval discipline across method/topic/claim/evidence/synthesis pages.
+- `.codex/skills/wiki-concept/SKILL.md`: project skill for preliminary-knowledge concept-layer audit, publish, retrieval, and evaluation.
 - `pyproject.toml`: Python package metadata and `meridian` console script entrypoint.
 - `src/meridian/`: Paper Wiki prototype CLI implementation for `meridian wiki ...`.
 - `tests/`: unit tests for CLI ingest, eval, and human review recording.
@@ -94,4 +99,6 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `docs/full-system-architecture.html`: full visual architecture showing standalone and integrated usage modes.
 - `docs/source-grounded-development-principles.md`: source-grounded design principles from Karpathy's LLM Wiki gist, Anthropic agent engineering posts, and selected community followup lessons.
 - `docs/research-event-map.md`: research coding event taxonomy and MVP high-leverage workflow boundary.
+- `docs/concept-layer-schema.md`: canonical schema for preliminary-knowledge concept pages under `wiki/concepts/`.
+- `docs/concept-layer-optimization-brief.md`: latest concept-layer main-wiki audit, publish, and retrieval evaluation summary.
 - `docs/review/`: Arbor review/context artifacts for managed planning and later develop/evaluate rounds.

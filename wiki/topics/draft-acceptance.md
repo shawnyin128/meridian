@@ -155,3 +155,7 @@ This topic page compiles canonical paper pages around `draft acceptance`. It is 
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `draft acceptance`.
+## Key Concepts
+
+- [[concepts/K-means-objective-landscape|K-means objective landscape]]
+- [[concepts/Speculative-decoding-acceptance-rate|Speculative decoding acceptance rate]]

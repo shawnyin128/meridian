@@ -259,3 +259,8 @@ This topic page compiles canonical paper pages around `calibration data selectio
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `calibration data selection`.
+## Key Concepts
+
+- [[concepts/K-means-objective-landscape|K-means objective landscape]]
+- [[concepts/Speculative-decoding-acceptance-rate|Speculative decoding acceptance rate]]
+- [[concepts/KL-regularization|KL regularization]]

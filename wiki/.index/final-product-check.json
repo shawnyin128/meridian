@@ -1,6 +1,6 @@
 {
   "schema_version": "meridian.final_product_check.v1",
-  "created_at": "2026-05-20T23:55:40.805349+00:00",
+  "created_at": "2026-05-21T00:34:12.111651+00:00",
   "wiki_root": "wiki",
   "status": "warn",
   "metrics": {
@@ -8,6 +8,7 @@
       "papers": 236,
       "methods": 302,
       "topics": 91,
+      "concepts": 9,
       "claims": 1135,
       "evidence": 2737,
       "syntheses": 6
@@ -16,22 +17,22 @@
     "navigation_pages_missing": 0,
     "retrieval_result_types": [
       "method",
+      "concept",
       "method-family",
       "topic",
       "claim",
       "evidence",
       "paper",
-      "synthesis",
-      "method-family"
+      "synthesis"
     ],
     "retrieval_corpus_types": [
       "methods",
+      "concepts",
       "syntheses",
       "topics",
       "claims",
       "evidence",
       "papers",
-      "syntheses",
       "syntheses"
     ],
     "knowledge_audit_status": "warn",
@@ -42,6 +43,7 @@
         "topics": 91,
         "claims": 1135,
         "evidence": 2737,
+        "concepts": 9,
         "syntheses": 6
       },
       "low_information_pages": 239,

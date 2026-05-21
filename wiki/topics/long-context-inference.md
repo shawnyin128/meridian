@@ -225,3 +225,6 @@ This topic page compiles canonical paper pages around `long-context inference`. 
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `long-context inference`.
+## Key Concepts
+
+- [[concepts/Attention-sink|Attention sink]]

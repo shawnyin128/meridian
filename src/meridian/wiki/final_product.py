@@ -33,7 +33,7 @@ NAVIGATION_SCHEMA_VERSION = "meridian.obsidian_navigation.v1"
 FINAL_CHECK_SCHEMA_VERSION = "meridian.final_product_check.v1"
 
 
-CANONICAL_DIRS = ("papers", "methods", "topics", "claims", "evidence", "syntheses")
+CANONICAL_DIRS = ("papers", "methods", "topics", "concepts", "claims", "evidence", "syntheses")
 
 
 @dataclass(frozen=True)
@@ -420,6 +420,7 @@ def build_obsidian_navigation(*, wiki_root: Path, out_path: Path | None = None) 
         "Paper Index.md": _render_directory_index(wiki_root, directory="papers", heading="Paper Index", limit=500),
         "Method Index.md": _render_directory_index(wiki_root, directory="methods", heading="Method Index", limit=500),
         "Topic Index.md": _render_directory_index(wiki_root, directory="topics", heading="Topic Index", limit=500),
+        "Concept Index.md": _render_directory_index(wiki_root, directory="concepts", heading="Concept Index", limit=500),
         "Synthesis Index.md": _render_directory_index(wiki_root, directory="syntheses", heading="Synthesis Index", limit=500),
         "Claim Evidence Index.md": _render_claim_evidence_index(wiki_root),
     }
@@ -449,7 +450,7 @@ def final_product_check(*, wiki_root: Path, out_path: Path | None = None, brief_
     init_wiki_vault(wiki_root=wiki_root)
     audit = run_knowledge_audit(wiki_root=wiki_root)
     counts = {directory: len(list((wiki_root / directory).glob("*.md"))) for directory in CANONICAL_DIRS}
-    navigation_pages = ["Map of Content.md", "Paper Index.md", "Method Index.md", "Topic Index.md", "Synthesis Index.md", "Claim Evidence Index.md"]
+    navigation_pages = ["Map of Content.md", "Paper Index.md", "Method Index.md", "Topic Index.md", "Concept Index.md", "Synthesis Index.md", "Claim Evidence Index.md"]
     missing_navigation = [page for page in navigation_pages if not (wiki_root / page).exists()]
     papers_with_quality_state = 0
     source_quality_misuse = 0
@@ -757,6 +758,7 @@ def _render_map_of_content(wiki_root: Path) -> str:
             "- [[Paper Index]] - source-grounded paper pages.",
             "- [[Method Index]] - compiled method families and paper-specific candidates.",
             "- [[Topic Index]] - research topics and paper clusters.",
+            "- [[Concept Index]] - preliminary knowledge for implementation, debugging, probes, and ablations.",
             "- [[Synthesis Index]] - durable cross-paper synthesis pages.",
             "- [[Claim Evidence Index]] - claim/evidence traceability overview.",
             "- [[raw/sources/index|Source Index]] - managed immutable PDF registry.",

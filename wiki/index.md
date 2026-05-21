@@ -4518,6 +4518,18 @@
 - [[topics/visual-reasoning|visual reasoning]] - status: active; auto_structured
 - [[topics/world-model-learning|world model learning]] - status: active; auto_structured
 
+## Concepts
+
+- [[concepts/Activation-outliers|Activation outliers]] - status: active; auto_structured
+- [[concepts/Attention-sink|Attention sink]] - status: active; auto_structured
+- [[concepts/K-means-objective-landscape|K-means objective landscape]] - status: active; auto_structured
+- [[concepts/KL-regularization|KL regularization]] - status: active; auto_structured
+- [[concepts/KV-cache-memory-bandwidth|KV-cache memory bandwidth]] - status: active; auto_structured
+- [[concepts/PDE-residual|PDE residual]] - status: active; auto_structured
+- [[concepts/Per-channel-scaling|Per-channel scaling]] - status: active; auto_structured
+- [[concepts/Quantization-error-propagation|Quantization error propagation]] - status: active; auto_structured
+- [[concepts/Speculative-decoding-acceptance-rate|Speculative decoding acceptance rate]] - status: active; auto_structured
+
 ## Syntheses
 
 - [[syntheses/Hardware-Aware-Quantization-Topic-Overview|Hardware-Aware Quantization Topic Overview]] - status: draft; published_proposal

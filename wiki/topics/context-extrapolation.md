@@ -223,3 +223,6 @@ This topic page compiles canonical paper pages around `context extrapolation`. I
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `context extrapolation`.
+## Key Concepts
+
+- [[concepts/Attention-sink|Attention sink]]

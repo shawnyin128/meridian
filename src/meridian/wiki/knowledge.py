@@ -24,14 +24,15 @@ KNOWLEDGE_REPAIR_SCHEMA_VERSION = "meridian.knowledge_repair.v1"
 KNOWLEDGE_REPAIR_LINT_SCHEMA_VERSION = "meridian.knowledge_repair_lint.v1"
 KNOWLEDGE_REPAIR_PUBLISH_SCHEMA_VERSION = "meridian.knowledge_repair_publish.v1"
 
-KNOWLEDGE_DIRS = ("methods", "topics", "claims", "evidence", "syntheses")
-CANONICAL_DIRS = ("papers", "methods", "topics", "claims", "evidence", "syntheses")
+KNOWLEDGE_DIRS = ("methods", "topics", "claims", "evidence", "concepts", "syntheses")
+CANONICAL_DIRS = ("papers", "methods", "topics", "claims", "evidence", "concepts", "syntheses")
 
 REQUIRED_FRONTMATTER = {
     "method": ("type", "title", "status", "sources", "source_papers", "related_papers", "related_topics", "confidence", "review_state", "evolution_state", "revision_id"),
     "topic": ("type", "title", "status", "sources", "source_papers", "related_papers", "related_methods", "confidence", "review_state", "evolution_state", "revision_id"),
     "claim": ("type", "title", "status", "sources", "source_papers", "supports", "contradicts", "confidence", "review_state", "evolution_state", "revision_id"),
     "evidence": ("type", "title", "status", "sources", "source_papers", "supports", "confidence", "review_state", "evolution_state", "revision_id"),
+    "concept": ("type", "title", "status", "sources", "source_papers", "related_methods", "related_topics", "prerequisite_for", "confidence", "review_state", "evolution_state", "revision_id"),
     "synthesis": ("type", "title", "status", "sources", "source_papers", "related_papers", "related_methods", "related_topics", "confidence", "review_state", "evolution_state", "revision_id"),
 }
 
@@ -40,6 +41,7 @@ REQUIRED_SECTIONS = {
     "topic": ("Scope", "Key Papers", "Method Families", "Claims", "Contradictions", "Retrieval Hooks"),
     "claim": ("Claim", "Supporting Evidence", "Contradicting Evidence", "Scope", "Confidence", "Provenance"),
     "evidence": ("Evidence Item", "Source", "Metric or Observation", "Supports", "Limits", "Reliability"),
+    "concept": ("What It Is", "Why It Matters", "Where It Appears", "Used By Methods", "Implementation Implications", "Common Failure Modes", "Minimal Checks / Probes", "Evidence / Provenance", "Related Concepts", "Open Questions", "Retrieval Hooks"),
     "synthesis": ("Source Facts", "Wiki Synthesis", "User Ideas / Decisions", "Evidence Map", "Open Questions"),
 }
 
@@ -1019,6 +1021,7 @@ def _render_audit_brief(payload: dict[str, Any]) -> str:
         f"- Papers: {counts.get('papers', 0)}",
         f"- Methods: {counts.get('methods', 0)}",
         f"- Topics: {counts.get('topics', 0)}",
+        f"- Concepts: {counts.get('concepts', 0)}",
         f"- Claims: {counts.get('claims', 0)}",
         f"- Evidence: {counts.get('evidence', 0)}",
         f"- Syntheses: {counts.get('syntheses', 0)}",

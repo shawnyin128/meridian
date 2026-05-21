@@ -1,12 +1,13 @@
 # Knowledge Layer Schema
 
-Meridian's knowledge layer is the compiled wiki layer above individual paper pages. It keeps Markdown as the source of truth while making methods, topics, claims, evidence, syntheses, and decisions retrievable as first-class pages.
+Meridian's knowledge layer is the compiled wiki layer above individual paper pages. It keeps Markdown as the source of truth while making methods, topics, concepts, claims, evidence, syntheses, and decisions retrievable as first-class pages.
 
 ## Canonical Page Types
 
 - `paper`: source-grounded paper model under `wiki/papers/`.
 - `method`: cross-paper method family or candidate method record under `wiki/methods/`.
 - `topic`: research topic/navigation surface under `wiki/topics/`.
+- `concept`: preliminary knowledge/prerequisite mechanism under `wiki/concepts/`.
 - `claim`: source-grounded or candidate claim under `wiki/claims/`.
 - `evidence`: paper-local evidence item under `wiki/evidence/`.
 - `synthesis`: query write-back or comparison under `wiki/syntheses/`.
@@ -19,6 +20,7 @@ Compiled knowledge pages should expose:
 - `type`, `title`, `status`, `created`, `updated`
 - `aliases`, `sources`, `source_papers`
 - `related_papers`, `related_methods`, `related_topics`
+- for concepts: `related_claims`, `related_evidence`, `prerequisite_for`
 - `supports`, `contradicts`, `supersedes`, `superseded_by`
 - `confidence`, `review_state`, `evolution_state`, `revision_id`
 
@@ -43,6 +45,20 @@ Topic pages:
 - `Method Families`
 - `Claims`
 - `Contradictions`
+- `Retrieval Hooks`
+
+Concept pages:
+
+- `What It Is`
+- `Why It Matters`
+- `Where It Appears`
+- `Used By Methods`
+- `Implementation Implications`
+- `Common Failure Modes`
+- `Minimal Checks / Probes`
+- `Evidence / Provenance`
+- `Related Concepts`
+- `Open Questions`
 - `Retrieval Hooks`
 
 Claim pages:
@@ -73,4 +89,4 @@ Synthesis pages:
 
 ## Write Boundary
 
-Low-risk repairs may add backlinks, create missing method/topic pages, add missing machine-readable fields, or reshape compact candidate text into canonical sections without changing source meaning. High-risk changes stay proposal-only: merges, contradiction declarations, claim confidence changes, synthesis rewrites, and user-insight promotion into source-grounded claims.
+Low-risk repairs may add backlinks, create missing method/topic/concept pages, add missing machine-readable fields, or reshape compact candidate text into canonical sections without changing source meaning. High-risk changes stay proposal-only: merges, contradiction declarations, claim confidence changes, synthesis rewrites, method-mechanism rewrites from concepts, and user-insight promotion into source-grounded claims.

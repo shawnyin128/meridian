@@ -60,3 +60,6 @@ This topic page compiles canonical paper pages around `partial differential equa
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `partial differential equations`.
+## Key Concepts
+
+- [[concepts/PDE-residual|PDE residual]]

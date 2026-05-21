@@ -10,6 +10,8 @@ from meridian.wiki.commands import (
     catalog_wiki,
     add_insight_wiki,
     build_navigation_wiki,
+    concept_audit_wiki,
+    concept_layer_lint_wiki,
     converge_run,
     converge_eval,
     create_judge_packet,
@@ -28,10 +30,12 @@ from meridian.wiki.commands import (
     publish_proposal_wiki,
     publish_insight_wiki,
     publish_knowledge_repair_wiki,
+    publish_concept_layer_wiki,
     publish_refinement_wiki,
     quality_check_run,
     proposal_lint_wiki,
     propose_knowledge_repair_wiki,
+    propose_concept_layer_wiki,
     propose_contradiction_review_wiki,
     propose_method_consolidation_wiki,
     propose_refine_wiki,
@@ -332,6 +336,43 @@ def build_parser() -> argparse.ArgumentParser:
     )
     publish_knowledge_repair.add_argument("repair_manifest", type=Path, help="Path to repair.json.")
     publish_knowledge_repair.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+
+    concept_audit = wiki_subparsers.add_parser(
+        "concept-audit",
+        help="Audit preliminary-knowledge concept pages and prerequisite links.",
+    )
+    concept_audit.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    concept_audit.add_argument("--out", type=Path, default=None, help="Optional concept audit JSON report path.")
+    concept_audit.add_argument(
+        "--brief",
+        type=Path,
+        default=None,
+        help="Optional markdown brief path. Defaults to docs/concept-layer-quality-audit.md.",
+    )
+
+    concept_proposal = wiki_subparsers.add_parser(
+        "propose-concept-layer",
+        help="Create proposal-first canonical concept pages from recurring preliminary knowledge.",
+    )
+    concept_proposal.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    concept_proposal.add_argument("--out-dir", type=Path, default=None, help="Optional concept proposal directory.")
+    concept_proposal.add_argument("--max-concepts", type=int, default=24, help="Maximum new concept pages to propose.")
+    concept_proposal.add_argument("--overwrite", action="store_true", help="Overwrite an existing concept proposal directory.")
+
+    concept_lint = wiki_subparsers.add_parser(
+        "concept-layer-lint",
+        help="Validate a concept-layer proposal before publishing low-risk pages/backlinks.",
+    )
+    concept_lint.add_argument("proposal_manifest", type=Path, help="Path to concept-layer-proposal.json.")
+    concept_lint.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    concept_lint.add_argument("--out", type=Path, default=None, help="Optional lint JSON report path.")
+
+    concept_publish = wiki_subparsers.add_parser(
+        "publish-concept-layer",
+        help="Publish lint-passing low-risk concept pages and prerequisite links.",
+    )
+    concept_publish.add_argument("proposal_manifest", type=Path, help="Path to concept-layer-proposal.json.")
+    concept_publish.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
 
     final_status = wiki_subparsers.add_parser(
         "final-status-migrate",
@@ -994,6 +1035,53 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Updated index: {result.index_path}")
             print(f"Updated wiki log: {result.log_path}")
             print(f"Knowledge repair lint report: {result.lint_report_path}")
+            return 0
+
+        if args.product == "wiki" and args.command == "concept-audit":
+            result = concept_audit_wiki(wiki_root=args.wiki_root, out_path=args.out, brief_path=args.brief)
+            print(f"Wrote concept audit: {result.report_path}")
+            print(f"Wrote concept audit brief: {result.brief_path}")
+            print(f"Concept audit status: {result.status}")
+            print(f"Findings: {len(result.findings)}")
+            return 0 if result.status != "fail" else 1
+
+        if args.product == "wiki" and args.command == "propose-concept-layer":
+            result = propose_concept_layer_wiki(
+                wiki_root=args.wiki_root,
+                out_dir=args.out_dir,
+                overwrite=args.overwrite,
+                max_concepts=args.max_concepts,
+            )
+            print(f"Wrote concept layer proposal: {result.proposal_path}")
+            print(f"Wrote concept layer manifest: {result.manifest_path}")
+            print(f"Wrote publish plan: {result.publish_plan_path}")
+            print(f"Candidate concepts: {result.candidate_count}")
+            print(f"Proposed concepts: {result.proposed_count}")
+            return 0
+
+        if args.product == "wiki" and args.command == "concept-layer-lint":
+            result = concept_layer_lint_wiki(
+                proposal_manifest=args.proposal_manifest,
+                wiki_root=args.wiki_root,
+                out_path=args.out,
+            )
+            print(f"Wrote concept layer lint report: {result.report_path}")
+            print(f"Concept layer lint status: {result.status}")
+            print(f"Findings: {len(result.findings)}")
+            return 0 if result.status == "pass" else 1
+
+        if args.product == "wiki" and args.command == "publish-concept-layer":
+            result = publish_concept_layer_wiki(
+                proposal_manifest=args.proposal_manifest,
+                wiki_root=args.wiki_root,
+            )
+            print(f"Published concept layer: {result.manifest_path}")
+            print(f"Created concepts: {result.concepts_created}")
+            print(f"Backlinks added: {result.backlinks_added}")
+            print(f"Skipped actions: {result.skipped_actions}")
+            print(f"Updated index: {result.index_path}")
+            print(f"Updated wiki log: {result.log_path}")
+            print(f"Concept layer lint report: {result.lint_report_path}")
             return 0
 
         if args.product == "wiki" and args.command == "final-status-migrate":

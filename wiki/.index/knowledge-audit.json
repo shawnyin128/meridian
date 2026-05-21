@@ -1,6 +1,6 @@
 {
   "schema_version": "meridian.knowledge_audit.v1",
-  "created_at": "2026-05-20T23:55:39.029800+00:00",
+  "created_at": "2026-05-21T00:37:46.750719+00:00",
   "wiki_root": "wiki",
   "status": "warn",
   "metrics": {
@@ -10,6 +10,7 @@
       "topics": 91,
       "claims": 1135,
       "evidence": 2737,
+      "concepts": 9,
       "syntheses": 6
     },
     "low_information_pages": 239,

@@ -1,10 +1,11 @@
 # Knowledge Layer Quality Audit
 
-- Generated: `2026-05-20T23:55:39.029800+00:00`
+- Generated: `2026-05-21T00:37:46.750719+00:00`
 - Status: `warn`
 - Papers: 236
 - Methods: 302
 - Topics: 91
+- Concepts: 9
 - Claims: 1135
 - Evidence: 2737
 - Syntheses: 6

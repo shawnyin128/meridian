@@ -131,3 +131,6 @@ This topic page compiles canonical paper pages around `survey synthesis`. It is 
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `survey synthesis`.
+## Key Concepts
+
+- [[concepts/PDE-residual|PDE residual]]

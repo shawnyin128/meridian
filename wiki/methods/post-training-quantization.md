@@ -355,3 +355,8 @@ This is a compiled method-family page for `post-training quantization`. It group
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Quantization-error-propagation|Quantization error propagation]]
+- [[concepts/Activation-outliers|Activation outliers]]
+- [[concepts/Per-channel-scaling|Per-channel scaling]]

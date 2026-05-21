@@ -139,3 +139,6 @@ This topic page compiles canonical paper pages around `reward modeling`. It is a
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `reward modeling`.
+## Key Concepts
+
+- [[concepts/KL-regularization|KL regularization]]

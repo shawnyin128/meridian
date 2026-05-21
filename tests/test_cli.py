@@ -1131,6 +1131,7 @@ Evidence takeaways:
                 "methods",
                 "evidence",
                 "topics",
+                "concepts",
                 "syntheses",
                 "templates",
                 "raw/sources/papers",
@@ -4091,6 +4092,133 @@ This hidden unique zeta candidate should never enter retrieval.
             exit_code, stdout, _ = _run_cli_capture(["wiki", "knowledge-repair-lint", str(manifest), "--wiki-root", str(wiki_root)])
             self.assertEqual(exit_code, 1)
             self.assertIn("Knowledge repair lint status: fail", stdout)
+
+    def test_concept_layer_propose_publish_and_retrieve(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            self.assertEqual(main(["wiki", "init", "--wiki-root", str(wiki_root)]), 0)
+            _write_test_paper(
+                wiki_root / "papers/Quant-Paper.md",
+                title="Quant Paper",
+                aliases=["QuantProbe"],
+                topics=["quantization"],
+                methods=["post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "The paper studies PTQ and activation outliers in low-bit LLM inference.",
+                    "Mechanism": "Activation outliers drive quantization error propagation in post-training quantization.",
+                    "Implementation Hooks": "Debug activation outliers, per-channel scaling, and layer-wise quantization error before coding an ablation.",
+                    "Limitations / Uncertainty": "Calibration failures can hide activation outlier regimes.",
+                    "Evidence Map": "The evidence links activation outliers to quantization error changes.",
+                },
+            )
+            _write_knowledge_page(
+                wiki_root / "methods/post-training-quantization.md",
+                page_type="method",
+                title="post-training quantization",
+                body="\n".join(
+                    [
+                        "## What It Is",
+                        "",
+                        "A quantization method family for deployment.",
+                        "",
+                        "## Mechanism",
+                        "",
+                        "Uses calibration data to choose low-bit representations.",
+                        "",
+                        "## Implementation Hooks",
+                        "",
+                        "Inspect activation outliers and quantization error propagation.",
+                    ]
+                ),
+                source_papers=["papers/Quant-Paper.md"],
+            )
+
+            self.assertEqual(main(["wiki", "concept-audit", "--wiki-root", str(wiki_root), "--brief", str(root / "concept-audit.md")]), 0)
+            audit = json.loads((wiki_root / ".index/concept-audit.json").read_text(encoding="utf-8"))
+            self.assertGreaterEqual(audit["metrics"]["candidate_concepts"], 1)
+
+            proposal_dir = wiki_root / ".drafts/knowledge-repair/concepts"
+            self.assertEqual(
+                main(["wiki", "propose-concept-layer", "--wiki-root", str(wiki_root), "--out-dir", str(proposal_dir), "--max-concepts", "3"]),
+                0,
+            )
+            manifest = proposal_dir / "concept-layer-proposal.json"
+            self.assertEqual(main(["wiki", "concept-layer-lint", str(manifest), "--wiki-root", str(wiki_root)]), 0)
+            self.assertEqual(main(["wiki", "publish-concept-layer", str(manifest), "--wiki-root", str(wiki_root)]), 0)
+
+            concept_page = wiki_root / "concepts/Activation-outliers.md"
+            self.assertTrue(concept_page.exists())
+            concept_text = concept_page.read_text(encoding="utf-8")
+            self.assertIn("## Implementation Implications", concept_text)
+            self.assertIn("## Minimal Checks / Probes", concept_text)
+            method_text = (wiki_root / "methods/post-training-quantization.md").read_text(encoding="utf-8")
+            self.assertIn("## Prerequisite Concepts", method_text)
+
+            result = retrieve_papers(
+                query="I am debugging a PTQ ablation and need preliminary knowledge about activation outliers and sanity probes.",
+                wiki_root=wiki_root,
+                top_k=5,
+                strategy="v1",
+            )
+            result_types = [item["result_type"] for item in result.results]
+            self.assertIn("concept", result_types)
+            concept = next(item for item in result.results if item["result_type"] == "concept")
+            self.assertEqual(concept["relative_path"], "concepts/Activation-outliers.md")
+            self.assertIn("source_papers", concept)
+
+    def test_concept_layer_lint_rejects_unprovenanced_concept(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            self.assertEqual(main(["wiki", "init", "--wiki-root", str(wiki_root)]), 0)
+            proposal_dir = wiki_root / ".drafts/knowledge-repair/bad-concept"
+            proposal_dir.mkdir(parents=True)
+            (proposal_dir / "concept-layer-proposal.md").write_text("# Bad Concept\n", encoding="utf-8")
+            (proposal_dir / "publish_plan.md").write_text("# Plan\n", encoding="utf-8")
+            manifest = proposal_dir / "concept-layer-proposal.json"
+            manifest.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "meridian.concept_layer_proposal.v1",
+                        "status": "draft",
+                        "proposal_path": str(proposal_dir / "concept-layer-proposal.md"),
+                        "publish_plan_path": str(proposal_dir / "publish_plan.md"),
+                        "low_risk_actions": [
+                            {
+                                "action_type": "create_concept_page",
+                                "risk": "low",
+                                "target_path": "concepts/Error.md",
+                                "concept": {
+                                    "title": "Error",
+                                    "source_papers": [],
+                                    "related_methods": [],
+                                },
+                            },
+                            {
+                                "action_type": "create_concept_page",
+                                "risk": "low",
+                                "target_path": "concepts/Unsafe.md",
+                                "concept": {
+                                    "title": "Unsafe concept",
+                                    "source_papers": ["papers/Bad.md"],
+                                    "related_methods": ["unsafe method"],
+                                    "evidence_notes": [{"snippet": "source_quality_hold should not become scientific evidence"}],
+                                },
+                            }
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            exit_code, stdout, _ = _run_cli_capture(["wiki", "concept-layer-lint", str(manifest), "--wiki-root", str(wiki_root)])
+            self.assertEqual(exit_code, 1)
+            self.assertIn("Concept layer lint status: fail", stdout)
+            report = json.loads((proposal_dir / "concept-layer-lint.json").read_text(encoding="utf-8"))
+            codes = {item["code"] for item in report["findings"]}
+            self.assertIn("source_quality_contamination_risk", codes)
 
     def test_final_status_migration_adds_retrieval_visible_quality_states(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

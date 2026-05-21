@@ -1,6 +1,6 @@
 ---
 name: wiki-retrieve
-description: Use when a research or coding task should consult Meridian's Paper Wiki to find relevant papers, mechanisms, claims, methods, evidence, source-quality holds, or implementation hooks before answering or changing code.
+description: Use when a research or coding task should consult Meridian's Paper Wiki to find relevant papers, mechanisms, prerequisite concepts, claims, methods, evidence, source-quality holds, or implementation hooks before answering or changing code.
 ---
 
 # Wiki Retrieve
@@ -55,11 +55,12 @@ Use `--proposal-type method-family`, `comparison`, `decision`, or `research-ques
 ## Retrieval Discipline
 
 - Treat frontmatter as the machine-routing source of truth.
-- Treat canonical `wiki/papers/*.md`, `wiki/syntheses/*.md`, `wiki/methods/*.md`, `wiki/topics/*.md`, `wiki/claims/*.md`, and `wiki/evidence/*.md` pages as the normal retrieval corpus and concise reading targets.
+- Treat canonical `wiki/papers/*.md`, `wiki/syntheses/*.md`, `wiki/methods/*.md`, `wiki/topics/*.md`, `wiki/concepts/*.md`, `wiki/claims/*.md`, and `wiki/evidence/*.md` pages as the normal retrieval corpus and concise reading targets.
 - Do not retrieve from `wiki/.drafts/ingests/**`, draft `paper.md` / `paper_candidate`, `review.md`, judge packets, self-check packets, or extraction files. Those are pipeline/debug artifacts.
 - Prefer context packets over raw search dumps.
 - Use retrieval v1 by default. v1 adds field-weighted scoring, section-aware ranking, controlled-vocabulary normalization, capped graph/facet expansion, source-quality routing, hard-distractor suppression, and compact context packet construction. Use `--strategy v0` only for baseline comparison.
-- Retrieval now searches paper pages, published synthesis-layer pages, and compiled knowledge-layer pages by default. Check `result_type` and `knowledge_role` before treating a hit as source evidence; synthesis pages are higher-level interpretation, method/topic pages are compiled wiki navigation/synthesis, and claim/evidence candidate records are provenance-bearing but not full reviewed synthesis.
+- Retrieval now searches paper pages, published synthesis-layer pages, and compiled knowledge-layer pages by default. Check `result_type` and `knowledge_role` before treating a hit as source evidence; synthesis pages are higher-level interpretation, method/topic/concept pages are compiled wiki navigation/synthesis, and claim/evidence candidate records are provenance-bearing but not full reviewed synthesis.
+- For coding/debug/probe queries, concept hits are often the missing preliminary layer. Read `Implementation Implications`, `Common Failure Modes`, and `Minimal Checks / Probes` before writing code or experiments.
 - Check `corpus_type` as well as `result_type`. A page under `syntheses/` can have `result_type: method-family`, `comparison`, `decision`, or `research-question`; it is still a synthesis-layer artifact and should be used as compiled context rather than paper source evidence.
 - Prefer final trust fields over legacy `quality_gate` alone: `quality_state`, `validation_state`, `trust_state`, `review_state`, and `evolution_state` together describe whether a page is usable, pending multimodal review, source-quality held, stale, or superseded.
 - Check `canonical_path` in retrieval JSON/context packets before opening pages. It should point to a canonical paper or synthesis path, not a draft ingest artifact.
@@ -67,7 +68,7 @@ Use `--proposal-type method-family`, `comparison`, `decision`, or `research-ques
 - Distinguish source facts, wiki synthesis, and the user's own ideas.
 - If the context packet reports `Source types matched: user_insight`, use it as personalized context only. Do not treat it as paper evidence.
 - Check `Revision` and `evolution state` in context packets. If retrieval reports an evolution warning such as `stale`, `superseded`, `conflicting_synthesis`, or `needs_source_recheck`, use the page as context but do not treat the affected section as settled evidence.
-- For coding tasks, expect method/topic pages to appear when available, then read `Implementation Hooks`, `Mechanism`, and `Limitations / Uncertainty` from the linked canonical papers.
+- For coding tasks, expect method/topic/concept pages to appear when available, then read concept prerequisite checks plus `Implementation Hooks`, `Mechanism`, and `Limitations / Uncertainty` from linked canonical papers.
 - For evidence tasks, inspect claim/evidence records and their provenance together with source paper `Evidence Map` before relying on a claim.
 - For overview tasks, expect synthesis/topic pages to appear before isolated papers. If a query only returns paper pages, run `meridian wiki final-product-check --wiki-root wiki` or create a synthesis proposal from the retrieval context.
 
