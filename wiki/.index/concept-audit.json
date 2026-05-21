@@ -1,16 +1,16 @@
 {
   "schema_version": "meridian.concept_audit.v1",
-  "created_at": "2026-05-21T02:16:31.879866+00:00",
+  "created_at": "2026-05-21T05:17:13.910616+00:00",
   "wiki_root": "wiki",
   "status": "warn",
   "metrics": {
-    "concept_pages": 9,
-    "candidate_concepts": 9,
+    "concept_pages": 24,
+    "candidate_concepts": 24,
     "unpromoted_candidate_concepts": 0,
     "methods_total": 302,
-    "methods_with_prerequisite_concepts": 11,
+    "methods_with_prerequisite_concepts": 31,
     "topics_total": 91,
-    "topics_with_key_concepts": 32,
+    "topics_with_key_concepts": 45,
     "concepts_missing_source_papers": 0,
     "concepts_missing_method_links": 0,
     "concepts_missing_implementation_implications": 0,
@@ -283,22 +283,12 @@
     {
       "severity": "info",
       "code": "topic_missing_key_concepts",
-      "path": "topics/agent-planning.md"
-    },
-    {
-      "severity": "info",
-      "code": "topic_missing_key_concepts",
       "path": "topics/agent-workflow-acceleration.md"
     },
     {
       "severity": "info",
       "code": "topic_missing_key_concepts",
       "path": "topics/attention-head-sharing.md"
-    },
-    {
-      "severity": "info",
-      "code": "topic_missing_key_concepts",
-      "path": "topics/attention-kernel-scheduling.md"
     },
     {
       "severity": "info",
@@ -318,27 +308,12 @@
     {
       "severity": "info",
       "code": "topic_missing_key_concepts",
-      "path": "topics/calibration-representativeness.md"
-    },
-    {
-      "severity": "info",
-      "code": "topic_missing_key_concepts",
       "path": "topics/chain-of-thought-reasoning.md"
     },
     {
       "severity": "info",
       "code": "topic_missing_key_concepts",
-      "path": "topics/conditional-diffusion.md"
-    },
-    {
-      "severity": "info",
-      "code": "topic_missing_key_concepts",
       "path": "topics/continuous-depth-models.md"
-    },
-    {
-      "severity": "info",
-      "code": "topic_missing_key_concepts",
-      "path": "topics/equivalent-transformation.md"
     },
     {
       "severity": "info",
@@ -379,11 +354,6 @@
       "severity": "info",
       "code": "topic_missing_key_concepts",
       "path": "topics/instruction-tuning.md"
-    },
-    {
-      "severity": "info",
-      "code": "topic_missing_key_concepts",
-      "path": "topics/joint-embedding-predictive-learning.md"
     },
     {
       "severity": "info",
@@ -438,11 +408,6 @@
     {
       "severity": "info",
       "code": "topic_missing_key_concepts",
-      "path": "topics/post-training-quantization.md"
-    },
-    {
-      "severity": "info",
-      "code": "topic_missing_key_concepts",
       "path": "topics/quantization-error.md"
     },
     {
@@ -458,17 +423,7 @@
     {
       "severity": "info",
       "code": "topic_missing_key_concepts",
-      "path": "topics/root-system-analysis.md"
-    },
-    {
-      "severity": "info",
-      "code": "topic_missing_key_concepts",
       "path": "topics/root-system-digitization.md"
-    },
-    {
-      "severity": "info",
-      "code": "topic_missing_key_concepts",
-      "path": "topics/rotation-based-quantization.md"
     },
     {
       "severity": "info",
@@ -508,17 +463,42 @@
     {
       "severity": "info",
       "code": "topic_missing_key_concepts",
-      "path": "topics/sparse-attention.md"
-    },
-    {
-      "severity": "info",
-      "code": "topic_missing_key_concepts",
       "path": "topics/sparse-mixture-of-experts.md"
     },
     {
       "severity": "info",
       "code": "topic_missing_key_concepts",
       "path": "topics/sparse-outlier-retention.md"
+    },
+    {
+      "severity": "info",
+      "code": "topic_missing_key_concepts",
+      "path": "topics/speculative-action-execution.md"
+    },
+    {
+      "severity": "info",
+      "code": "topic_missing_key_concepts",
+      "path": "topics/test-time-reinforcement-learning.md"
+    },
+    {
+      "severity": "info",
+      "code": "topic_missing_key_concepts",
+      "path": "topics/transformer-architecture.md"
+    },
+    {
+      "severity": "info",
+      "code": "topic_missing_key_concepts",
+      "path": "topics/verification-overhead.md"
+    },
+    {
+      "severity": "info",
+      "code": "topic_missing_key_concepts",
+      "path": "topics/vision-language-quantization.md"
+    },
+    {
+      "severity": "info",
+      "code": "topic_missing_key_concepts",
+      "path": "topics/world-model-learning.md"
     }
   ],
   "samples": {
@@ -548,24 +528,24 @@
     "topic_missing_key_concepts": [
       "topics/3D-medical-image-synthesis.md",
       "topics/KV-cache-memory.md",
-      "topics/agent-planning.md",
       "topics/agent-workflow-acceleration.md",
       "topics/attention-head-sharing.md",
-      "topics/attention-kernel-scheduling.md",
       "topics/audio-encoder-alignment.md",
       "topics/audio-language-modeling.md",
       "topics/benchmark-evaluation.md",
-      "topics/calibration-representativeness.md",
       "topics/chain-of-thought-reasoning.md",
-      "topics/conditional-diffusion.md",
       "topics/continuous-depth-models.md",
-      "topics/equivalent-transformation.md",
       "topics/error-propagation.md",
       "topics/expert-imbalance.md",
       "topics/feature-uncertainty.md",
       "topics/feature-wise-modulation.md",
       "topics/grouped-query-attention.md",
-      "topics/hardware-co-design.md"
+      "topics/hardware-co-design.md",
+      "topics/hardware-systems.md",
+      "topics/instruction-tuning.md",
+      "topics/layer-reconstruction.md",
+      "topics/layer-wise-PTQ.md",
+      "topics/learned-quantizer-scale.md"
     ],
     "low_information_concept_stubs": []
   }

@@ -89,3 +89,6 @@ This topic page compiles canonical paper pages around `equivalent transformation
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `equivalent transformation`.
+## Key Concepts
+
+- [[concepts/Rotation-transform-invariance|Rotation transform invariance]]

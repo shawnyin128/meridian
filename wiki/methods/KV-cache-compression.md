@@ -247,5 +247,6 @@ This is a compiled method-family page for `KV-cache compression`. It groups cano
 - Which linked papers provide the strongest source-grounded evidence for this method family?
 ## Prerequisite Concepts
 
+- [[concepts/Cache-retention-policy|Cache retention policy]]
 - [[concepts/Attention-sink|Attention sink]]
 - [[concepts/KV-cache-memory-bandwidth|KV-cache memory bandwidth]]

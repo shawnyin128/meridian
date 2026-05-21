@@ -64,4 +64,5 @@ This topic page compiles canonical paper pages around `preference optimization`.
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `preference optimization`.
 ## Key Concepts
 
+- [[concepts/Preference-data-underspecification|Preference data underspecification]]
 - [[concepts/KL-regularization|KL regularization]]

@@ -319,6 +319,5 @@ This topic page compiles canonical paper pages around `low-bit quantization`. It
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `low-bit quantization`.
 ## Key Concepts
 
-- [[concepts/Speculative-decoding-acceptance-rate|Speculative decoding acceptance rate]]
-- [[concepts/Attention-sink|Attention sink]]
-- [[concepts/KV-cache-memory-bandwidth|KV-cache memory bandwidth]]
+- [[concepts/Lookup-table-inference|Lookup-table inference]]
+- [[concepts/Rotation-transform-invariance|Rotation transform invariance]]

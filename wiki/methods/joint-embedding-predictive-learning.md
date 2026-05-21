@@ -109,3 +109,6 @@ This is a compiled method-family page for `joint embedding predictive learning`.
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Representation-collapse|Representation collapse]]

@@ -74,3 +74,21 @@ The server help should also work:
 ```bash
 PYTHONPATH=src python3 -m meridian.mcp serve --help
 ```
+
+Run the deterministic client-style harness before release or client setup:
+
+```bash
+PYTHONPATH=src python3 -m meridian.mcp harness --wiki-root wiki --out wiki/.index/mcp-stdio-harness.json
+```
+
+The harness sends MCP-shaped JSON-RPC requests for `initialize`, `tools/list`,
+`context`, `read`, `trace`, `propose`, `apply`, and `audit`. It uses the main
+wiki for read-only calls and a disposable fixture wiki for `apply`, so it does
+not mutate the user's canonical vault.
+
+Expected summary:
+
+- `status: pass`
+- `tool_count: 8`
+- internal `.drafts` read is blocked as a structured tool error
+- fixture proposal is linted and published successfully

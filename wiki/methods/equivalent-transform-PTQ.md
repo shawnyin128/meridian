@@ -99,3 +99,6 @@ This is a compiled method-family page for `equivalent-transform PTQ`. It groups 
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Rotation-transform-invariance|Rotation transform invariance]]

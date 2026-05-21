@@ -72,4 +72,6 @@ This is a compiled method-family page for `physics-informed neural networks`. It
 - Which linked papers provide the strongest source-grounded evidence for this method family?
 ## Prerequisite Concepts
 
+- [[concepts/Boundary-conditions|Boundary conditions]]
+- [[concepts/Collocation-points|Collocation points]]
 - [[concepts/PDE-residual|PDE residual]]

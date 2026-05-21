@@ -103,6 +103,4 @@ This topic page compiles canonical paper pages around `LLM agents`. It is a navi
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `LLM agents`.
 ## Key Concepts
 
-- [[concepts/Quantization-error-propagation|Quantization error propagation]]
-- [[concepts/Activation-outliers|Activation outliers]]
-- [[concepts/Per-channel-scaling|Per-channel scaling]]
+- [[concepts/Agent-tool-state-grounding|Agent tool-state grounding]]

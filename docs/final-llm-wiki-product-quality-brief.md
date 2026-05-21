@@ -1,6 +1,6 @@
 # Final LLM Wiki Product Quality Brief
 
-- Generated: `2026-05-21T02:16:35.343112+00:00`
+- Generated: `2026-05-21T05:17:24.622959+00:00`
 - Status: `warn`
 
 ## Canonical Corpus
@@ -8,16 +8,16 @@
 - papers: 236
 - methods: 302
 - topics: 91
-- concepts: 9
+- concepts: 24
 - claims: 1135
 - evidence: 2737
-- syntheses: 6
+- syntheses: 30
 
 ## Quality-State Coverage
 
 - Papers with final quality-state fields: 236 / 236
 - Missing navigation pages: 0
-- Retrieval result types for synthesis overview smoke: method, concept, method-family, topic, claim, evidence, paper, synthesis
+- Retrieval result types for synthesis overview smoke: method, concept, method-family, topic, claim, evidence, paper, method-family
 - Knowledge audit status: `warn`
 
 ## Residual Findings

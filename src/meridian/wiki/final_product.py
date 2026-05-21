@@ -573,7 +573,7 @@ def _synthesis_candidates(*, wiki_root: Path, max_items: int) -> list[dict[str, 
     method_pages = _rank_pages_for_synthesis(_load_pages(wiki_root, directory="methods"))
     topic_pages = _rank_pages_for_synthesis(_load_pages(wiki_root, directory="topics"))
     candidates: list[dict[str, str]] = []
-    for page in method_pages[: max(1, max_items // 2)]:
+    for page in method_pages[: max(1, max_items)]:
         title = f"{page['title'].title()} Method Family Synthesis"
         candidates.append(
             {
@@ -583,7 +583,7 @@ def _synthesis_candidates(*, wiki_root: Path, max_items: int) -> list[dict[str, 
                 "user_note": "Automatically seeded by the final LLM Wiki synthesis growth loop from a compiled method page.",
             }
         )
-    for page in topic_pages[: max(1, max_items - len(candidates))]:
+    for page in topic_pages[: max(1, max_items)]:
         title = f"{page['title'].title()} Topic Overview"
         candidates.append(
             {
@@ -593,6 +593,7 @@ def _synthesis_candidates(*, wiki_root: Path, max_items: int) -> list[dict[str, 
                 "user_note": "Automatically seeded by the final LLM Wiki synthesis growth loop from a compiled topic page.",
             }
         )
+    candidates.extend(_scenario_synthesis_candidates())
     if not candidates:
         candidates.append(
             {
@@ -602,7 +603,64 @@ def _synthesis_candidates(*, wiki_root: Path, max_items: int) -> list[dict[str, 
                 "user_note": "Fallback synthesis seed because no compiled method/topic pages were available.",
             }
         )
-    return candidates[:max_items]
+    existing_targets = {path.stem for path in (wiki_root / "syntheses").glob("*.md")}
+    new_candidates = [candidate for candidate in candidates if slugify(candidate["title"]) not in existing_targets]
+    existing_candidates = [candidate for candidate in candidates if slugify(candidate["title"]) in existing_targets]
+    return (new_candidates + existing_candidates)[:max_items]
+
+
+def _scenario_synthesis_candidates() -> list[dict[str, str]]:
+    """Canonical product-maturity synthesis shapes beyond topic/method pages."""
+    return [
+        {
+            "title": "Activation Outlier Quantization Evidence Map",
+            "proposal_type": "synthesis",
+            "query": "I need an evidence map for activation outliers in low-bit LLM quantization, including which papers support smoothing, scaling, routing, and error-propagation claims.",
+            "user_note": "Seeded to cover the evidence-map synthesis type for quantization and compression research use.",
+        },
+        {
+            "title": "KV-Cache Compression Failure Boundary Summary",
+            "proposal_type": "synthesis",
+            "query": "I need a failure-boundary synthesis for KV-cache compression and long-context inference: retention policy, attention sinks, bandwidth limits, and what checks prevent misleading speedups.",
+            "user_note": "Seeded to cover the limitation and failure-boundary synthesis type for long-context systems.",
+        },
+        {
+            "title": "Speculative Decoding Probe Planning Page",
+            "proposal_type": "research-question",
+            "query": "I want to design probes and ablations for speculative decoding, including acceptance rate, draft-target mismatch, verification cost, and dynamic draft tree tradeoffs.",
+            "user_note": "Seeded to cover implementation/probe planning for a coding-heavy research workflow.",
+        },
+        {
+            "title": "Preference Optimization Evidence And Drift Question",
+            "proposal_type": "research-question",
+            "query": "I need to compare preference optimization, RLHF, reward modeling, and test-time RL evidence while tracking KL drift, preference data underspecification, and reward overoptimization.",
+            "user_note": "Seeded to cover a cross-paper research-question page for preference optimization.",
+        },
+        {
+            "title": "PDE Residual Scientific ML Implementation Checks",
+            "proposal_type": "synthesis",
+            "query": "I need an implementation-check synthesis for scientific ML and PINN papers covering PDE residuals, boundary conditions, collocation points, and source-grounded sanity checks.",
+            "user_note": "Seeded to cover implementation checks for scientific ML rather than quantization-only workflows.",
+        },
+        {
+            "title": "Clustering Objective Representation Probe Plan",
+            "proposal_type": "synthesis",
+            "query": "I need a probe-planning synthesis for clustering and representation-learning papers, connecting k-means objective landscape, centroid assignment stability, and representation collapse.",
+            "user_note": "Seeded to cover cross-domain analogy and probe planning for classical ML plus representation learning.",
+        },
+        {
+            "title": "Agent Workflow Tool-State Grounding Overview",
+            "proposal_type": "synthesis",
+            "query": "I need a topic overview for agent workflow and tool-use papers that focuses on tool-state grounding, traceability, speculative action execution, and evaluation failure modes.",
+            "user_note": "Seeded to cover agent/tool-use synthesis rather than paper-only retrieval.",
+        },
+        {
+            "title": "Diffusion Conditioning Representation Synthesis",
+            "proposal_type": "synthesis",
+            "query": "I need a cross-paper synthesis for conditional diffusion, semantic image synthesis, and representation learning that separates conditioning signal, fidelity, diversity, and representation-collapse checks.",
+            "user_note": "Seeded to cover vision/diffusion representation synthesis.",
+        },
+    ]
 
 
 def _rank_pages_for_synthesis(pages: list[dict[str, Any]]) -> list[dict[str, Any]]:

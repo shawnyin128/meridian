@@ -1,22 +1,22 @@
 # Concept Layer Quality Audit
 
-- Generated: `2026-05-21T02:16:31.879866+00:00`
+- Generated: `2026-05-21T05:17:13.910616+00:00`
 - Status: `warn`
-- Concept pages: 9
-- Candidate concepts: 9
+- Concept pages: 24
+- Candidate concepts: 24
 - Unpromoted candidate concepts: 0
-- Methods with prerequisite concepts: 11 / 302
-- Topics with key concepts: 32 / 91
+- Methods with prerequisite concepts: 31 / 302
+- Topics with key concepts: 45 / 91
 
 ## Health Metrics
 
-- concept_pages: 9
-- candidate_concepts: 9
+- concept_pages: 24
+- candidate_concepts: 24
 - unpromoted_candidate_concepts: 0
 - methods_total: 302
-- methods_with_prerequisite_concepts: 11
+- methods_with_prerequisite_concepts: 31
 - topics_total: 91
-- topics_with_key_concepts: 32
+- topics_with_key_concepts: 45
 - concepts_missing_source_papers: 0
 - concepts_missing_method_links: 0
 - concepts_missing_implementation_implications: 0
@@ -52,16 +52,16 @@ Concept pages are preliminary knowledge pages for implementation and research-de
 
 - `topics/3D-medical-image-synthesis.md`
 - `topics/KV-cache-memory.md`
-- `topics/agent-planning.md`
 - `topics/agent-workflow-acceleration.md`
 - `topics/attention-head-sharing.md`
-- `topics/attention-kernel-scheduling.md`
 - `topics/audio-encoder-alignment.md`
 - `topics/audio-language-modeling.md`
 - `topics/benchmark-evaluation.md`
-- `topics/calibration-representativeness.md`
 - `topics/chain-of-thought-reasoning.md`
-- `topics/conditional-diffusion.md`
+- `topics/continuous-depth-models.md`
+- `topics/error-propagation.md`
+- `topics/expert-imbalance.md`
+- `topics/feature-uncertainty.md`
 
 ## Sample: low_information_concept_stubs
 

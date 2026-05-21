@@ -223,7 +223,4 @@ This topic page compiles canonical paper pages around `lookup-table inference`. 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `lookup-table inference`.
 ## Key Concepts
 
-- [[concepts/K-means-objective-landscape|K-means objective landscape]]
-- [[concepts/Speculative-decoding-acceptance-rate|Speculative decoding acceptance rate]]
-- [[concepts/Attention-sink|Attention sink]]
-- [[concepts/KV-cache-memory-bandwidth|KV-cache memory bandwidth]]
+- [[concepts/Lookup-table-inference|Lookup-table inference]]

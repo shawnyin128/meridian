@@ -157,5 +157,5 @@ This topic page compiles canonical paper pages around `draft acceptance`. It is 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `draft acceptance`.
 ## Key Concepts
 
-- [[concepts/K-means-objective-landscape|K-means objective landscape]]
-- [[concepts/Speculative-decoding-acceptance-rate|Speculative decoding acceptance rate]]
+- [[concepts/Verification-cost-model|Verification cost model]]
+- [[concepts/Dynamic-draft-tree|Dynamic draft tree]]

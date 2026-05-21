@@ -115,3 +115,6 @@ This topic page compiles canonical paper pages around `conditional diffusion`. I
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `conditional diffusion`.
+## Key Concepts
+
+- [[concepts/Diffusion-conditioning-signal|Diffusion conditioning signal]]

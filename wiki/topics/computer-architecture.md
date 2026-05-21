@@ -127,4 +127,4 @@ This topic page compiles canonical paper pages around `computer architecture`. I
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `computer architecture`.
 ## Key Concepts
 
-- [[concepts/Attention-sink|Attention sink]]
+- [[concepts/IO-aware-attention-scheduling|IO-aware attention scheduling]]

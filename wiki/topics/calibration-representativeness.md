@@ -105,3 +105,6 @@ This topic page compiles canonical paper pages around `calibration representativ
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `calibration representativeness`.
+## Key Concepts
+
+- [[concepts/Calibration-representativeness|Calibration representativeness]]

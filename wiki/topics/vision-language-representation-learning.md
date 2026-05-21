@@ -75,3 +75,6 @@ This topic page compiles canonical paper pages around `vision-language represent
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `vision-language representation learning`.
+## Key Concepts
+
+- [[concepts/Representation-collapse|Representation collapse]]

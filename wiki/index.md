@@ -4521,20 +4521,61 @@
 ## Concepts
 
 - [[concepts/Activation-outliers|Activation outliers]] - status: active; auto_structured
+- [[concepts/Agent-tool-state-grounding|Agent tool-state grounding]] - status: active; auto_structured
 - [[concepts/Attention-sink|Attention sink]] - status: active; auto_structured
+- [[concepts/Boundary-conditions|Boundary conditions]] - status: active; auto_structured
+- [[concepts/Cache-retention-policy|Cache retention policy]] - status: active; auto_structured
+- [[concepts/Calibration-representativeness|Calibration representativeness]] - status: active; auto_structured
+- [[concepts/Centroid-assignment-stability|Centroid assignment stability]] - status: active; auto_structured
+- [[concepts/Collocation-points|Collocation points]] - status: active; auto_structured
+- [[concepts/Diffusion-conditioning-signal|Diffusion conditioning signal]] - status: active; auto_structured
+- [[concepts/Dynamic-draft-tree|Dynamic draft tree]] - status: active; auto_structured
+- [[concepts/IO-aware-attention-scheduling|IO-aware attention scheduling]] - status: active; auto_structured
 - [[concepts/K-means-objective-landscape|K-means objective landscape]] - status: active; auto_structured
 - [[concepts/KL-regularization|KL regularization]] - status: active; auto_structured
 - [[concepts/KV-cache-memory-bandwidth|KV-cache memory bandwidth]] - status: active; auto_structured
+- [[concepts/Lookup-table-inference|Lookup-table inference]] - status: active; auto_structured
 - [[concepts/PDE-residual|PDE residual]] - status: active; auto_structured
 - [[concepts/Per-channel-scaling|Per-channel scaling]] - status: active; auto_structured
+- [[concepts/Preference-data-underspecification|Preference data underspecification]] - status: active; auto_structured
 - [[concepts/Quantization-error-propagation|Quantization error propagation]] - status: active; auto_structured
+- [[concepts/Representation-collapse|Representation collapse]] - status: active; auto_structured
+- [[concepts/Reward-model-overoptimization|Reward model overoptimization]] - status: active; auto_structured
+- [[concepts/Rotation-transform-invariance|Rotation transform invariance]] - status: active; auto_structured
 - [[concepts/Speculative-decoding-acceptance-rate|Speculative decoding acceptance rate]] - status: active; auto_structured
+- [[concepts/Verification-cost-model|Verification cost model]] - status: active; auto_structured
 
 ## Syntheses
 
+- [[syntheses/Activation-Outlier-Quantization-Evidence-Map|Activation Outlier Quantization Evidence Map]] - status: draft; published_proposal
+- [[syntheses/Agent-Workflow-Tool-State-Grounding-Overview|Agent Workflow Tool-State Grounding Overview]] - status: draft; published_proposal
+- [[syntheses/Benchmark-Evaluation-Topic-Overview|Benchmark Evaluation Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Calibration-Aware-Ptq-Method-Family-Synthesis|Calibration-Aware Ptq Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Calibration-Data-Selection-Topic-Overview|Calibration Data Selection Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Clustering-Algorithm-Method-Family-Synthesis|Clustering Algorithm Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Clustering-Objective-Representation-Probe-Plan|Clustering Objective Representation Probe Plan]] - status: draft; published_proposal
+- [[syntheses/Context-Extrapolation-Topic-Overview|Context Extrapolation Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Diffusion-Conditioning-Representation-Synthesis|Diffusion Conditioning Representation Synthesis]] - status: draft; published_proposal
+- [[syntheses/Hardware-Aware-Quantization-Method-Family-Synthesis|Hardware-Aware Quantization Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Hardware-Aware-Quantization-Topic-Overview|Hardware-Aware Quantization Topic Overview]] - status: draft; published_proposal
+- [[syntheses/KV-Cache-Compression-Failure-Boundary-Summary|KV-Cache Compression Failure Boundary Summary]] - status: draft; published_proposal
 - [[syntheses/Kv-Cache-Compression-Method-Family-Synthesis|Kv-Cache Compression Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Kv-Cache-Compression-Topic-Overview|Kv-Cache Compression Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Long-Context-Inference-Method-Family-Synthesis|Long-Context Inference Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Long-Context-Inference-Topic-Overview|Long-Context Inference Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Lookup-Table-Inference-Topic-Overview|Lookup-Table Inference Topic Overview]] - status: draft; published_proposal
 - [[syntheses/Low-Bit-Quantization-Topic-Overview|Low-Bit Quantization Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Outlier-Aware-Quantization-Method-Family-Synthesis|Outlier-Aware Quantization Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/PDE-Residual-Scientific-ML-Implementation-Checks|PDE Residual Scientific ML Implementation Checks]] - status: draft; published_proposal
+- [[syntheses/Paper-Specific-Research-Method-Method-Family-Synthesis|Paper-Specific Research Method Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Parameter-Efficient-Adaptation-Topic-Overview|Parameter-Efficient Adaptation Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Performance-Evaluation-Topic-Overview|Performance Evaluation Topic Overview]] - status: draft; published_proposal
 - [[syntheses/Post-Training-Quantization-Method-Family-Synthesis|Post-Training Quantization Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Preference-Optimization-Evidence-And-Drift-Question|Preference Optimization Evidence And Drift Question]] - status: draft; published_proposal
+- [[syntheses/Rotation-Based-Quantization-Method-Family-Synthesis|Rotation-Based Quantization Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Speculative-Decoding-Method-Family-Synthesis|Speculative Decoding Method Family Synthesis]] - status: draft; published_proposal
+- [[syntheses/Speculative-Decoding-Probe-Planning-Page|Speculative Decoding Probe Planning Page]] - status: draft; published_proposal
+- [[syntheses/Speculative-Decoding-Topic-Overview|Speculative Decoding Topic Overview]] - status: draft; published_proposal
+- [[syntheses/Survey-Synthesis-Method-Family-Synthesis|Survey Synthesis Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Transformer-Architecture-Method-Family-Synthesis|Transformer Architecture Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Transformer-Architecture-Topic-Overview|Transformer Architecture Topic Overview]] - status: draft; published_proposal

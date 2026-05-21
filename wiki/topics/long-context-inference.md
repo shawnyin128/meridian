@@ -227,4 +227,4 @@ This topic page compiles canonical paper pages around `long-context inference`. 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `long-context inference`.
 ## Key Concepts
 
-- [[concepts/Attention-sink|Attention sink]]
+- [[concepts/Cache-retention-policy|Cache retention policy]]

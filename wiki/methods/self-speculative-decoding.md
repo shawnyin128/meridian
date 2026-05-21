@@ -57,3 +57,7 @@ This is a compiled method-family page for `self-speculative decoding`. It groups
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Verification-cost-model|Verification cost model]]
+- [[concepts/Dynamic-draft-tree|Dynamic draft tree]]

@@ -176,3 +176,5 @@ This is a compiled method-family page for `speculative decoding`. It groups cano
 ## Prerequisite Concepts
 
 - [[concepts/Speculative-decoding-acceptance-rate|Speculative decoding acceptance rate]]
+- [[concepts/Verification-cost-model|Verification cost model]]
+- [[concepts/Dynamic-draft-tree|Dynamic draft tree]]

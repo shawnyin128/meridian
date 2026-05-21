@@ -165,3 +165,6 @@ This topic page compiles canonical paper pages around `post-training quantizatio
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `post-training quantization`.
+## Key Concepts
+
+- [[concepts/Calibration-representativeness|Calibration representativeness]]

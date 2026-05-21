@@ -239,3 +239,6 @@ This is a compiled method-family page for `calibration-aware PTQ`. It groups can
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Calibration-representativeness|Calibration representativeness]]

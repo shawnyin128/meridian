@@ -36,12 +36,21 @@ The JSON bridge remains available for smoke tests and local debugging:
 PYTHONPATH=src python3 -m meridian.mcp capabilities --detail full
 ```
 
+For client-readiness, run the MCP JSON-RPC harness:
+
+```bash
+PYTHONPATH=src python3 -m meridian.mcp harness --wiki-root wiki --out wiki/.index/mcp-stdio-harness.json
+```
+
 Design details:
 
 - `docs/wiki-product-entry-contract.md`
 - `docs/wiki-mcp-entry-design.md`
 - `docs/wiki-mcp-server-setup.md`
 - `docs/wiki-entry-demo.md`
+- `docs/daily-use-walkthrough.md`
+- `docs/paper-wiki-release-readiness-checklist.md`
+- `docs/paper-wiki-product-maturity-brief.md`
 
 ## Execution Primitives
 

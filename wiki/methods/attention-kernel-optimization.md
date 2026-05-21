@@ -139,3 +139,6 @@ This is a compiled method-family page for `attention kernel optimization`. It gr
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/IO-aware-attention-scheduling|IO-aware attention scheduling]]

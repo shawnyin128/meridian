@@ -357,6 +357,8 @@ This is a compiled method-family page for `post-training quantization`. It group
 - Which linked papers provide the strongest source-grounded evidence for this method family?
 ## Prerequisite Concepts
 
+- [[concepts/Calibration-representativeness|Calibration representativeness]]
 - [[concepts/Quantization-error-propagation|Quantization error propagation]]
+- [[concepts/Rotation-transform-invariance|Rotation transform invariance]]
 - [[concepts/Activation-outliers|Activation outliers]]
 - [[concepts/Per-channel-scaling|Per-channel scaling]]

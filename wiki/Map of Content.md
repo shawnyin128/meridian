@@ -22,7 +22,7 @@ updated: "2026-05-21"
 - Topics: 91
 - Claims: 1135
 - Evidence: 2737
-- Syntheses: 6
+- Syntheses: 30
 
 ## Operating Boundary
 

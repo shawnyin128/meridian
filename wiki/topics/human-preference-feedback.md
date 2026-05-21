@@ -137,4 +137,5 @@ This topic page compiles canonical paper pages around `human preference feedback
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `human preference feedback`.
 ## Key Concepts
 
-- [[concepts/KL-regularization|KL regularization]]
+- [[concepts/Reward-model-overoptimization|Reward model overoptimization]]
+- [[concepts/Preference-data-underspecification|Preference data underspecification]]

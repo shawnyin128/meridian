@@ -95,3 +95,6 @@ This topic page compiles canonical paper pages around `sparse attention`. It is 
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `sparse attention`.
+## Key Concepts
+
+- [[concepts/Cache-retention-policy|Cache retention policy]]

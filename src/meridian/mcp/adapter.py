@@ -332,8 +332,8 @@ def apply(*, proposal_manifest: Path, wiki_root: Path, overwrite: bool = False) 
         "tool": "meridian.apply",
         "workflow": "Update Wiki",
         "status": "published",
-        "published_path": str(published.published_path),
-        "publish_result": str(published.publish_result_path),
+        "published_path": str(published.page_path),
+        "publish_result": str(proposal_manifest.parent / "publish-result.json"),
         "lint_report": str(lint.report_path),
     }
 

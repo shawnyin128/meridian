@@ -123,4 +123,5 @@ This topic page compiles canonical paper pages around `dynamic draft tree`. It i
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `dynamic draft tree`.
 ## Key Concepts
 
-- [[concepts/Speculative-decoding-acceptance-rate|Speculative decoding acceptance rate]]
+- [[concepts/Verification-cost-model|Verification cost model]]
+- [[concepts/Dynamic-draft-tree|Dynamic draft tree]]

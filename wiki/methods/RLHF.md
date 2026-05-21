@@ -60,4 +60,5 @@ This is a compiled method-family page for `RLHF`. It groups canonical paper page
 - Which linked papers provide the strongest source-grounded evidence for this method family?
 ## Prerequisite Concepts
 
+- [[concepts/Preference-data-underspecification|Preference data underspecification]]
 - [[concepts/KL-regularization|KL regularization]]

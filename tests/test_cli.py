@@ -12,6 +12,7 @@ from pathlib import Path
 
 from meridian.cli import main
 from meridian.mcp import adapter as mcp_adapter
+from meridian.mcp import harness as mcp_harness
 from meridian.mcp import server as mcp_server
 from meridian.wiki.corpus import retrieve_papers
 from meridian.wiki.extract import PageExtraction, PdfExtraction
@@ -1784,6 +1785,68 @@ Plot per-channel activation maxima and run an ablation without smoothing.
             self.assertEqual(update_payload["workflow"], "Update Wiki")
             self.assertEqual(update_payload["update_type"], "user_insight")
             self.assertIn(update_payload["lint_status"], {"pass", "fail"})
+
+    def test_mcp_stdio_harness_runs_client_style_sequence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            _write_test_paper(
+                wiki_root / "papers/KV-Cache.md",
+                title="KV Cache Paper",
+                aliases=["KVCacheProbe"],
+                topics=["KV-cache compression", "long-context inference"],
+                methods=["KV-cache compression"],
+                settings=["long-context decoding"],
+                body_sections={
+                    "What To Remember": "KV-cache compression needs retention policy checks.",
+                    "Mechanism": "Cache retention should preserve useful context while reducing memory bandwidth.",
+                    "Evidence Map": "Reports decode memory and context-retention evidence.",
+                    "Implementation Hooks": "Track retained tokens and decode latency.",
+                },
+            )
+            concept = wiki_root / "concepts/Cache-retention-policy.md"
+            concept.parent.mkdir(parents=True)
+            concept.write_text(
+                """---
+type: "concept"
+title: "Cache retention policy"
+status: "active"
+source_papers:
+  - "papers/KV-Cache.md"
+related_methods:
+  - "KV-cache compression"
+prerequisite_for:
+  - "KV-cache compression"
+confidence: "medium"
+review_state: "auto_structured"
+---
+# Cache retention policy
+
+## What It Is
+
+Cache retention policy decides which tokens remain available during long-context decoding.
+
+## Implementation Implications
+
+Log retained-token identities and measure decode memory before claiming speedups.
+
+## Minimal Checks / Probes
+
+Compare recency-only retention with attention-based and oracle retention policies.
+
+## Evidence / Provenance
+
+- Source paper: [[papers/KV-Cache]].
+""",
+                encoding="utf-8",
+            )
+            report_path = root / "mcp-harness.json"
+            result = mcp_harness.run_stdio_harness(wiki_root=wiki_root, out_path=report_path)
+            self.assertEqual(result["status"], "pass")
+            self.assertTrue(report_path.exists())
+            self.assertEqual(result["summary"]["tool_count"], 8)
+            self.assertTrue(result["summary"]["blocked_internal_read"])
+            self.assertEqual(result["summary"]["fixture_apply_status"], "published")
 
     def test_add_insight_creates_draft_for_exact_canonical_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

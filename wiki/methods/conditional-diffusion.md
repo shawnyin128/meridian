@@ -93,3 +93,6 @@ This is a compiled method-family page for `conditional diffusion`. It groups can
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Diffusion-conditioning-signal|Diffusion conditioning signal]]

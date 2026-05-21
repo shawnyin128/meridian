@@ -75,3 +75,6 @@ This topic page compiles canonical paper pages around `joint embedding predictiv
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `joint embedding predictive learning`.
+## Key Concepts
+
+- [[concepts/Representation-collapse|Representation collapse]]

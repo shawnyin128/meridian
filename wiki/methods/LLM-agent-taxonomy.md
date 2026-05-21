@@ -61,3 +61,6 @@ This is a compiled method-family page for `LLM-agent taxonomy`. It groups canoni
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Agent-tool-state-grounding|Agent tool-state grounding]]

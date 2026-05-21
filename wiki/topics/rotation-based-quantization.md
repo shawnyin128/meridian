@@ -161,3 +161,6 @@ This topic page compiles canonical paper pages around `rotation-based quantizati
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `rotation-based quantization`.
+## Key Concepts
+
+- [[concepts/Rotation-transform-invariance|Rotation transform invariance]]

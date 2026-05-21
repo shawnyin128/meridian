@@ -313,4 +313,4 @@ This topic page compiles canonical paper pages around `hardware-aware quantizati
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `hardware-aware quantization`.
 ## Key Concepts
 
-- [[concepts/K-means-objective-landscape|K-means objective landscape]]
+- [[concepts/Lookup-table-inference|Lookup-table inference]]

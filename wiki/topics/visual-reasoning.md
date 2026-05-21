@@ -151,3 +151,6 @@ This topic page compiles canonical paper pages around `visual reasoning`. It is 
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `visual reasoning`.
+## Key Concepts
+
+- [[concepts/Diffusion-conditioning-signal|Diffusion conditioning signal]]

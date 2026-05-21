@@ -93,3 +93,6 @@ This topic page compiles canonical paper pages around `video representation lear
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `video representation learning`.
+## Key Concepts
+
+- [[concepts/Representation-collapse|Representation collapse]]

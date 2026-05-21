@@ -78,3 +78,6 @@ This topic page compiles canonical paper pages around `root system analysis`. It
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `root system analysis`.
+## Key Concepts
+
+- [[concepts/Boundary-conditions|Boundary conditions]]

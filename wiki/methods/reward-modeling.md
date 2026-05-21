@@ -144,4 +144,5 @@ This is a compiled method-family page for `reward modeling`. It groups canonical
 - Which linked papers provide the strongest source-grounded evidence for this method family?
 ## Prerequisite Concepts
 
-- [[concepts/KL-regularization|KL regularization]]
+- [[concepts/Reward-model-overoptimization|Reward model overoptimization]]
+- [[concepts/Preference-data-underspecification|Preference data underspecification]]

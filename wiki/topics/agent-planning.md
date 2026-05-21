@@ -92,3 +92,6 @@ This topic page compiles canonical paper pages around `agent planning`. It is a 
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `agent planning`.
+## Key Concepts
+
+- [[concepts/Agent-tool-state-grounding|Agent tool-state grounding]]

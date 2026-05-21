@@ -99,3 +99,6 @@ This topic page compiles canonical paper pages around `attention kernel scheduli
 ## Retrieval Hooks
 
 - Retrieve this topic when comparing papers, mechanisms, limitations, or implementation hooks around `attention kernel scheduling`.
+## Key Concepts
+
+- [[concepts/IO-aware-attention-scheduling|IO-aware attention scheduling]]

@@ -252,3 +252,212 @@
 - Updated `Concept Index.md`
 - Updated `Synthesis Index.md`
 - Updated `Claim Evidence Index.md`
+
+## [2026-05-21] publish | Calibration-Aware Ptq Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Calibration-Aware-Ptq-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r1/Calibration-Aware-Ptq-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Hardware-Aware Quantization Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Hardware-Aware-Quantization-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r1/Hardware-Aware-Quantization-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Long-Context Inference Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Long-Context-Inference-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r1/Long-Context-Inference-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Performance Evaluation Topic Overview
+
+- Published write-back proposal: `syntheses/Performance-Evaluation-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r1/Performance-Evaluation-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Benchmark Evaluation Topic Overview
+
+- Published write-back proposal: `syntheses/Benchmark-Evaluation-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r1/Benchmark-Evaluation-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Calibration Data Selection Topic Overview
+
+- Published write-back proposal: `syntheses/Calibration-Data-Selection-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r1/Calibration-Data-Selection-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Clustering Algorithm Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Clustering-Algorithm-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r2/Clustering-Algorithm-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Speculative Decoding Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Speculative-Decoding-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r2/Speculative-Decoding-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Survey Synthesis Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Survey-Synthesis-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r2/Survey-Synthesis-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Outlier-Aware Quantization Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Outlier-Aware-Quantization-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r2/Outlier-Aware-Quantization-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Rotation-Based Quantization Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Rotation-Based-Quantization-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r2/Rotation-Based-Quantization-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Paper-Specific Research Method Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Paper-Specific-Research-Method-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r2/Paper-Specific-Research-Method-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Parameter-Efficient Adaptation Topic Overview
+
+- Published write-back proposal: `syntheses/Parameter-Efficient-Adaptation-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r2/Parameter-Efficient-Adaptation-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Long-Context Inference Topic Overview
+
+- Published write-back proposal: `syntheses/Long-Context-Inference-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r2/Long-Context-Inference-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Context Extrapolation Topic Overview
+
+- Published write-back proposal: `syntheses/Context-Extrapolation-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r2/Context-Extrapolation-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Lookup-Table Inference Topic Overview
+
+- Published write-back proposal: `syntheses/Lookup-Table-Inference-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r2/Lookup-Table-Inference-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Kv-Cache Compression Topic Overview
+
+- Published write-back proposal: `syntheses/Kv-Cache-Compression-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r2/Kv-Cache-Compression-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Speculative Decoding Topic Overview
+
+- Published write-back proposal: `syntheses/Speculative-Decoding-Topic-Overview.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r2/Speculative-Decoding-Topic-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] concept-layer | concept-layer-2026-05-21-efbfe77500
+
+- Created concept pages: 24
+- Added method/topic concept backlinks: 62
+- Skipped low-risk actions: 0
+- Concept proposal: `.drafts/knowledge-repair/product-maturity-concepts-r2/concept-layer-proposal.json`
+
+## [2026-05-21] navigation | Obsidian navigation pages
+
+- Updated `Map of Content.md`
+- Updated `Paper Index.md`
+- Updated `Method Index.md`
+- Updated `Topic Index.md`
+- Updated `Concept Index.md`
+- Updated `Synthesis Index.md`
+- Updated `Claim Evidence Index.md`
+
+## [2026-05-21] publish | Activation Outlier Quantization Evidence Map
+
+- Published write-back proposal: `syntheses/Activation-Outlier-Quantization-Evidence-Map.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r3/Activation-Outlier-Quantization-Evidence-Map/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | KV-Cache Compression Failure Boundary Summary
+
+- Published write-back proposal: `syntheses/KV-Cache-Compression-Failure-Boundary-Summary.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r3/KV-Cache-Compression-Failure-Boundary-Summary/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Speculative Decoding Probe Planning Page
+
+- Published write-back proposal: `syntheses/Speculative-Decoding-Probe-Planning-Page.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r3/Speculative-Decoding-Probe-Planning-Page/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Preference Optimization Evidence And Drift Question
+
+- Published write-back proposal: `syntheses/Preference-Optimization-Evidence-And-Drift-Question.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r3/Preference-Optimization-Evidence-And-Drift-Question/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | PDE Residual Scientific ML Implementation Checks
+
+- Published write-back proposal: `syntheses/PDE-Residual-Scientific-ML-Implementation-Checks.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r3/PDE-Residual-Scientific-ML-Implementation-Checks/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Clustering Objective Representation Probe Plan
+
+- Published write-back proposal: `syntheses/Clustering-Objective-Representation-Probe-Plan.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r3/Clustering-Objective-Representation-Probe-Plan/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Agent Workflow Tool-State Grounding Overview
+
+- Published write-back proposal: `syntheses/Agent-Workflow-Tool-State-Grounding-Overview.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r3/Agent-Workflow-Tool-State-Grounding-Overview/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Diffusion Conditioning Representation Synthesis
+
+- Published write-back proposal: `syntheses/Diffusion-Conditioning-Representation-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/product-maturity-synthesis-r3/Diffusion-Conditioning-Representation-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] navigation | Obsidian navigation pages
+
+- Updated `Map of Content.md`
+- Updated `Paper Index.md`
+- Updated `Method Index.md`
+- Updated `Topic Index.md`
+- Updated `Concept Index.md`
+- Updated `Synthesis Index.md`
+- Updated `Claim Evidence Index.md`
