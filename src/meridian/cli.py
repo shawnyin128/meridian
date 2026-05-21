@@ -59,6 +59,8 @@ from meridian.wiki.commands import (
     structural_check_run,
     summarize_eval,
     system_evaluate_wiki,
+    system_optimize_compare_wiki,
+    system_optimize_eval_wiki,
 )
 
 
@@ -803,6 +805,38 @@ def build_parser() -> argparse.ArgumentParser:
     )
     system_evaluate.add_argument("--overwrite", action="store_true", help="Overwrite an existing system evaluation output directory.")
 
+    system_optimize_eval = wiki_subparsers.add_parser(
+        "system-optimize-eval",
+        help="Run batch System Evaluation Agent cases and aggregate optimization repair buckets.",
+    )
+    system_optimize_eval.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    system_optimize_eval.add_argument("--cases", type=Path, required=True, help="JSONL system optimization case file.")
+    system_optimize_eval.add_argument("--out-dir", type=Path, required=True, help="Output directory for per-case and aggregate artifacts.")
+    system_optimize_eval.add_argument("--rubric", type=Path, default=None, help="Optional system evaluation rubric markdown.")
+    system_optimize_eval.add_argument("--top-k", type=int, default=8, help="Maximum wiki pages per retrieval context.")
+    system_optimize_eval.add_argument("--strategy", choices=["v0", "v1"], default="v1", help="Retrieval strategy.")
+    system_optimize_eval.add_argument(
+        "--baseline-run",
+        type=Path,
+        default=None,
+        help="Optional previous system-optimize-eval run directory or summary.json for before/after comparison.",
+    )
+    system_optimize_eval.add_argument(
+        "--selected-pages-per-case",
+        type=int,
+        default=3,
+        help="Number of top retrieved canonical pages to load as selected read context for each system evaluation.",
+    )
+    system_optimize_eval.add_argument("--overwrite", action="store_true", help="Overwrite an existing system optimization output directory.")
+
+    system_optimize_compare = wiki_subparsers.add_parser(
+        "system-optimize-compare",
+        help="Compare two system-optimize-eval runs.",
+    )
+    system_optimize_compare.add_argument("--baseline-run", type=Path, required=True, help="Baseline run directory or summary.json.")
+    system_optimize_compare.add_argument("--candidate-run", type=Path, required=True, help="Candidate run directory or summary.json.")
+    system_optimize_compare.add_argument("--out-dir", type=Path, required=True, help="Directory where comparison artifacts are written.")
+
     retrieval_eval_summary_cmd = wiki_subparsers.add_parser(
         "retrieval-eval-summary",
         help="Summarize deterministic and optional judge results for a retrieval eval manifest.",
@@ -1470,6 +1504,42 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Hard failures: {len(result.hard_failures)}")
             print(f"Findings: {len(result.findings)}")
             return 0 if result.decision != "fail" else 1
+
+        if args.product == "wiki" and args.command == "system-optimize-eval":
+            result = system_optimize_eval_wiki(
+                wiki_root=args.wiki_root,
+                cases_path=args.cases,
+                out_dir=args.out_dir,
+                rubric_path=args.rubric,
+                top_k=args.top_k,
+                strategy=args.strategy,
+                baseline_run=args.baseline_run,
+                selected_pages_per_case=args.selected_pages_per_case,
+                overwrite=args.overwrite,
+            )
+            print(f"Wrote system optimization summary: {result.summary_path}")
+            print(f"Wrote system optimization report: {result.summary_markdown_path}")
+            print(f"Wrote repair bucket summary: {result.repair_buckets_path}")
+            print(f"Wrote optimization plan: {result.optimization_plan_path}")
+            print(f"Wrote judge packet: {result.judge_packet_path}")
+            if result.comparison_path is not None:
+                print(f"Wrote comparison: {result.comparison_path}")
+                print(f"Wrote comparison report: {result.comparison_markdown_path}")
+            print(f"Total cases: {result.total_cases}")
+            print(f"Decisions: {json.dumps(result.decisions, sort_keys=True)}")
+            print(f"Average score: {result.average_score:.3f}")
+            print(f"Min score: {result.min_score:.3f}")
+            return 0
+
+        if args.product == "wiki" and args.command == "system-optimize-compare":
+            comparison_path, comparison_markdown_path = system_optimize_compare_wiki(
+                baseline_run=args.baseline_run,
+                candidate_run=args.candidate_run,
+                out_dir=args.out_dir,
+            )
+            print(f"Wrote comparison: {comparison_path}")
+            print(f"Wrote comparison report: {comparison_markdown_path}")
+            return 0
 
         if args.product == "wiki" and args.command == "retrieval-audit":
             result = retrieval_audit_wiki(

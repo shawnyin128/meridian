@@ -2136,6 +2136,230 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertIn("Hard Fail Rules", rubric_text)
         self.assertIn("Repair Buckets", rubric_text)
 
+    def test_system_optimize_eval_writes_summary_repair_buckets_and_plan(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            self.assertEqual(main(["wiki", "init", "--wiki-root", str(wiki_root)]), 0)
+            _write_test_paper(
+                wiki_root / "papers/KV-Compression.md",
+                title="KV Compression",
+                aliases=["KV compression"],
+                topics=["long-context attention"],
+                methods=["KV-cache compression"],
+                settings=["long-context decoding"],
+                body_sections={
+                    "What To Remember": "KV-cache compression has failure boundaries around retained context.",
+                    "Implementation Hooks": "Profile KV cache memory bandwidth and retained-token sensitivity.",
+                    "Evidence Map": "Evidence links cache compression to latency and memory.",
+                },
+            )
+            _write_knowledge_page(
+                wiki_root / "syntheses/KV-Compression-Failure-Boundaries.md",
+                page_type="synthesis",
+                title="KV Compression Failure Boundaries",
+                source_papers=["papers/KV-Compression.md"],
+                body="\n".join(
+                    [
+                        "## Source Facts",
+                        "KV-cache compression changes memory pressure.",
+                        "## Wiki Synthesis",
+                        "Failure boundaries depend on retained context.",
+                        "## Evidence Map",
+                        "Trace source paper evidence.",
+                        "## Open Questions",
+                        "Which retention policy fails first?",
+                        "## Retrieval Hooks",
+                        "Use for KV-cache compression failure boundary research.",
+                    ]
+                ),
+            )
+            _write_knowledge_page(
+                wiki_root / "concepts/KV-Cache-Memory-Bandwidth.md",
+                page_type="concept",
+                title="KV Cache Memory Bandwidth",
+                source_papers=["papers/KV-Compression.md"],
+                body="\n".join(
+                    [
+                        "## What It Is",
+                        "The memory movement constraint for KV cache reads.",
+                        "## Implementation Implications",
+                        "Profile memory bandwidth before claiming speedup.",
+                        "## Common Failure Modes",
+                        "Memory traffic can hide compute improvements.",
+                        "## Minimal Checks / Probes",
+                        "Measure cache traffic and retained-token sensitivity.",
+                        "## Evidence / Provenance",
+                        "Source paper: KV Compression.",
+                    ]
+                ),
+            )
+            cases = root / "cases.jsonl"
+            cases.write_text(
+                json.dumps(
+                    {
+                        "id": "kv-system",
+                        "query": "KV Compression Failure Boundaries Source Facts Wiki Synthesis Evidence Map Open Questions KV Cache Memory Bandwidth Implementation Implications Minimal Checks Probes Evidence Provenance",
+                        "problem_description": "Retrieve synthesis and concept context for KV-cache compression failure-boundary work.",
+                        "required_page_families": ["corpus:syntheses", "type:concept"],
+                        "required_section_groups": [
+                            {
+                                "id": "synthesis",
+                                "page_families": ["corpus:syntheses"],
+                                "sections": ["Source Facts", "Wiki Synthesis", "Evidence Map", "Open Questions"],
+                            },
+                            {
+                                "id": "concept",
+                                "page_families": ["type:concept"],
+                                "sections": ["Implementation Implications", "Minimal Checks / Probes"],
+                            },
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            exit_code, stdout, stderr = _run_cli_capture(
+                [
+                    "wiki",
+                    "system-optimize-eval",
+                    "--wiki-root",
+                    str(wiki_root),
+                    "--cases",
+                    str(cases),
+                    "--out-dir",
+                    str(root / "sysopt"),
+                    "--rubric",
+                    "eval/rubrics/system_evaluation_agent_quality.md",
+                    "--top-k",
+                    "4",
+                    "--overwrite",
+                ]
+            )
+
+            self.assertEqual(exit_code, 0, stderr)
+            self.assertIn("Wrote system optimization summary", stdout)
+            summary = json.loads((root / "sysopt/summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(summary["schema_version"], "meridian.system_optimization_eval.v1")
+            self.assertEqual(summary["total_cases"], 1)
+            self.assertTrue((root / "sysopt/repair-buckets.json").exists())
+            self.assertTrue((root / "sysopt/optimization_plan.md").exists())
+            self.assertTrue((root / "sysopt/judge-packet.md").exists())
+            self.assertTrue((root / "sysopt/kv-system/system-evaluation/system-evaluation.json").exists())
+
+    def test_system_optimize_eval_propagates_hard_failures_to_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            self.assertEqual(main(["wiki", "init", "--wiki-root", str(wiki_root)]), 0)
+            _write_test_paper(
+                wiki_root / "papers/Bad-Metadata.md",
+                title="Bad Metadata",
+                aliases=["Bad Metadata"],
+                topics=["source quality"],
+                methods=["metadata extraction"],
+                settings=["source quality"],
+                body_sections={
+                    "What To Remember": "This page is a source-quality hold.",
+                    "Evidence Map": "Do not use as scientific evidence.",
+                },
+                review_state="source_quality_hold",
+                quality_gate="fail",
+                confidence="low",
+            )
+            cases = root / "cases.jsonl"
+            cases.write_text(
+                json.dumps(
+                    {
+                        "id": "bad-source",
+                        "query": "Bad Metadata scientific evidence support",
+                        "problem_description": "Scientific evidence query should hard-fail if untrusted material is returned as evidence.",
+                        "required_page_families": ["type:paper"],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            exit_code, _, _ = _run_cli_capture(
+                [
+                    "wiki",
+                    "system-optimize-eval",
+                    "--wiki-root",
+                    str(wiki_root),
+                    "--cases",
+                    str(cases),
+                    "--out-dir",
+                    str(root / "sysopt"),
+                    "--top-k",
+                    "1",
+                ]
+            )
+
+            self.assertEqual(exit_code, 0)
+            summary = json.loads((root / "sysopt/summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(summary["decisions"]["fail"], 1)
+            self.assertGreater(summary["hard_failure_count"], 0)
+            self.assertIn("source_quality_routing", summary["repair_buckets"])
+
+    def test_system_optimize_compare_detects_improvement(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            baseline = root / "baseline"
+            candidate = root / "candidate"
+            baseline.mkdir()
+            candidate.mkdir()
+            baseline_summary = {
+                "out_dir": str(baseline),
+                "total_cases": 1,
+                "decisions": {"pass": 0, "needs_refine": 1, "fail": 0},
+                "score": {"average": 3.7},
+                "hard_failure_count": 0,
+                "repair_buckets": {"retrieval_ranking": {"count": 2}},
+                "dimension_averages": [{"dimension": "retrieval_context_quality", "average_score": 3.6}],
+                "cases": [{"id": "case-a", "decision": "needs_refine", "weighted_score": 3.7}],
+            }
+            candidate_summary = {
+                "out_dir": str(candidate),
+                "total_cases": 1,
+                "decisions": {"pass": 1, "needs_refine": 0, "fail": 0},
+                "score": {"average": 4.4},
+                "hard_failure_count": 0,
+                "repair_buckets": {"retrieval_ranking": {"count": 0}},
+                "dimension_averages": [{"dimension": "retrieval_context_quality", "average_score": 4.3}],
+                "cases": [{"id": "case-a", "decision": "pass", "weighted_score": 4.4}],
+            }
+            (baseline / "summary.json").write_text(json.dumps(baseline_summary), encoding="utf-8")
+            (candidate / "summary.json").write_text(json.dumps(candidate_summary), encoding="utf-8")
+
+            exit_code, stdout, stderr = _run_cli_capture(
+                [
+                    "wiki",
+                    "system-optimize-compare",
+                    "--baseline-run",
+                    str(baseline),
+                    "--candidate-run",
+                    str(candidate),
+                    "--out-dir",
+                    str(root / "comparison"),
+                ]
+            )
+
+            self.assertEqual(exit_code, 0, stderr)
+            self.assertIn("Wrote comparison", stdout)
+            comparison = json.loads((root / "comparison/comparison.json").read_text(encoding="utf-8"))
+            self.assertEqual(comparison["decision"], "improved")
+            self.assertGreater(comparison["score_delta"], 0)
+            self.assertEqual(comparison["repair_bucket_delta"]["retrieval_ranking"]["delta"], -2)
+
+    def test_system_optimization_cases_are_parseable(self) -> None:
+        cases = Path("eval/cases/system_evaluation_optimization_loop.jsonl")
+        self.assertTrue(cases.exists())
+        parsed = [json.loads(line) for line in cases.read_text(encoding="utf-8").splitlines() if line.strip()]
+        self.assertGreaterEqual(len(parsed), 7)
+        self.assertTrue(all("query" in case and "problem_description" in case for case in parsed))
+
     def test_add_insight_creates_draft_for_exact_canonical_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

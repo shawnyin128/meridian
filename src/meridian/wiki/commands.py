@@ -101,7 +101,13 @@ from meridian.wiki.self_check import (
     run_self_check_eval,
 )
 from meridian.wiki.structural_check import StructuralSelfCheckResult, run_structural_self_check
-from meridian.wiki.system_eval import SystemEvaluationResult, run_system_evaluation
+from meridian.wiki.system_eval import (
+    SystemEvaluationResult,
+    SystemOptimizationEvalResult,
+    compare_system_optimization_runs,
+    run_system_evaluation,
+    run_system_optimization_eval,
+)
 from meridian.wiki.vault import (
     SourceAuditResult,
     WikiInitResult,
@@ -714,6 +720,39 @@ def system_evaluate_wiki(
         proposal_path=proposal_path,
         audit_paths=audit_paths,
         overwrite=overwrite,
+    )
+
+
+def system_optimize_eval_wiki(
+    *,
+    wiki_root: Path,
+    cases_path: Path,
+    out_dir: Path,
+    rubric_path: Path | None = None,
+    top_k: int = 8,
+    strategy: str = "v1",
+    baseline_run: Path | None = None,
+    selected_pages_per_case: int = 3,
+    overwrite: bool = False,
+) -> SystemOptimizationEvalResult:
+    return run_system_optimization_eval(
+        wiki_root=wiki_root,
+        cases_path=cases_path,
+        out_dir=out_dir,
+        rubric_path=rubric_path,
+        top_k=top_k,
+        strategy=strategy,
+        baseline_run=baseline_run,
+        selected_pages_per_case=selected_pages_per_case,
+        overwrite=overwrite,
+    )
+
+
+def system_optimize_compare_wiki(*, baseline_run: Path, candidate_run: Path, out_dir: Path) -> tuple[Path, Path]:
+    return compare_system_optimization_runs(
+        baseline_run=baseline_run,
+        candidate_run=candidate_run,
+        out_dir=out_dir,
     )
 
 

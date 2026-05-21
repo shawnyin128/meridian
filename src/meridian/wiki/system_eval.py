@@ -7,11 +7,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from meridian.wiki.corpus import parse_frontmatter, split_sections, strip_frontmatter
+from meridian.wiki.corpus import parse_frontmatter, retrieve_papers, split_sections, strip_frontmatter
 
 
 SYSTEM_EVALUATION_SCHEMA_VERSION = "meridian.system_evaluation.v1"
 SYSTEM_EVALUATION_JUDGE_PACKET_SCHEMA_VERSION = "meridian.system_evaluation_judge_packet.v1"
+SYSTEM_OPTIMIZATION_SCHEMA_VERSION = "meridian.system_optimization_eval.v1"
+SYSTEM_OPTIMIZATION_COMPARISON_SCHEMA_VERSION = "meridian.system_optimization_comparison.v1"
 
 INTERNAL_PATH_MARKERS = (".drafts/", ".versions/", "review.md", "paper_candidate.md")
 
@@ -52,6 +54,21 @@ class SystemEvaluationResult:
     weighted_score: float
     hard_failures: list[dict[str, Any]]
     findings: list[dict[str, Any]]
+
+
+@dataclass(frozen=True)
+class SystemOptimizationEvalResult:
+    summary_path: Path
+    summary_markdown_path: Path
+    repair_buckets_path: Path
+    optimization_plan_path: Path
+    judge_packet_path: Path
+    comparison_path: Path | None
+    comparison_markdown_path: Path | None
+    total_cases: int
+    decisions: dict[str, int]
+    average_score: float
+    min_score: float
 
 
 def run_system_evaluation(
@@ -147,6 +164,614 @@ def run_system_evaluation(
         hard_failures=hard_failures,
         findings=findings,
     )
+
+
+def run_system_optimization_eval(
+    *,
+    wiki_root: Path,
+    cases_path: Path,
+    out_dir: Path,
+    rubric_path: Path | None = None,
+    top_k: int = 8,
+    strategy: str = "v1",
+    baseline_run: Path | None = None,
+    selected_pages_per_case: int = 3,
+    overwrite: bool = False,
+) -> SystemOptimizationEvalResult:
+    if top_k < 1:
+        raise ValueError("top_k must be >= 1")
+    if selected_pages_per_case < 0:
+        raise ValueError("selected_pages_per_case must be >= 0")
+    if strategy not in {"v0", "v1"}:
+        raise ValueError("strategy must be 'v0' or 'v1'")
+    if out_dir.exists() and any(out_dir.iterdir()) and not overwrite:
+        raise FileExistsError(f"system optimization output directory already exists: {out_dir}")
+    if out_dir.exists() and overwrite:
+        shutil.rmtree(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    case_records = list(iter_system_optimization_cases(cases_path))
+    case_results: list[dict[str, Any]] = []
+    for case in case_records:
+        case_id = str(case["id"])
+        case_dir = out_dir / case_id
+        case_dir.mkdir(parents=True, exist_ok=True)
+        case_snapshot = case_dir / "case.json"
+        case_snapshot.write_text(json.dumps(case, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        context_path = case_dir / "context.md"
+        context_json_path = case_dir / "context.json"
+        retrieval = retrieve_papers(
+            query=str(case["query"]),
+            wiki_root=wiki_root,
+            top_k=top_k,
+            strategy=strategy,
+            packet_path=context_path,
+            result_path=context_json_path,
+        )
+        selected_pages = _selected_pages_from_results(retrieval.results, limit=selected_pages_per_case)
+        eval_dir = case_dir / "system-evaluation"
+        evaluation = run_system_evaluation(
+            wiki_root=wiki_root,
+            case_path=case_snapshot,
+            context_path=context_json_path,
+            out_dir=eval_dir,
+            rubric_path=rubric_path,
+            selected_pages=selected_pages,
+            overwrite=True,
+        )
+        eval_payload = _load_json_object(evaluation.report_path, label="system evaluation")
+        case_results.append(
+            {
+                "id": case_id,
+                "query": case.get("query"),
+                "intent": case.get("intent"),
+                "case_snapshot": str(case_snapshot),
+                "context_md": str(context_path),
+                "context_json": str(context_json_path),
+                "selected_pages": selected_pages,
+                "system_evaluation": str(evaluation.report_path),
+                "system_evaluation_brief": str(evaluation.markdown_path),
+                "judge_packet": str(evaluation.judge_packet_path),
+                "decision": evaluation.decision,
+                "weighted_score": evaluation.weighted_score,
+                "hard_failure_count": len(evaluation.hard_failures),
+                "finding_count": len(evaluation.findings),
+                "repair_buckets": eval_payload.get("repair_buckets") or {},
+                "dimension_scores": eval_payload.get("dimension_scores") or [],
+                "hard_failures": eval_payload.get("hard_failures") or [],
+                "findings": eval_payload.get("findings") or [],
+                "lowest_dimensions": _lowest_dimensions(eval_payload.get("dimension_scores") or []),
+                "recommended_generalized_fixes": eval_payload.get("recommended_generalized_fixes") or [],
+            }
+        )
+
+    summary = _system_optimization_summary(
+        cases_path=cases_path,
+        wiki_root=wiki_root,
+        out_dir=out_dir,
+        rubric_path=rubric_path,
+        top_k=top_k,
+        strategy=strategy,
+        case_results=case_results,
+    )
+    repair_buckets = _aggregate_repair_buckets(case_results)
+    top_leverage = _top_leverage_candidates(repair_buckets=repair_buckets, case_results=case_results)
+    summary["repair_buckets"] = repair_buckets
+    summary["top_leverage_candidates"] = top_leverage
+
+    summary_path = out_dir / "summary.json"
+    summary_markdown_path = out_dir / "summary.md"
+    repair_buckets_path = out_dir / "repair-buckets.json"
+    optimization_plan_path = out_dir / "optimization_plan.md"
+    judge_packet_path = out_dir / "judge-packet.md"
+    summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    summary_markdown_path.write_text(_render_system_optimization_summary(summary), encoding="utf-8")
+    repair_buckets_path.write_text(json.dumps(repair_buckets, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    optimization_plan_path.write_text(_render_optimization_plan(summary), encoding="utf-8")
+    judge_packet_path.write_text(_render_system_optimization_judge_packet(summary=summary, rubric_path=rubric_path), encoding="utf-8")
+
+    comparison_path = None
+    comparison_markdown_path = None
+    if baseline_run is not None:
+        comparison_path, comparison_markdown_path = compare_system_optimization_runs(
+            baseline_run=baseline_run,
+            candidate_run=out_dir,
+            out_dir=out_dir,
+        )
+
+    decisions = dict(summary["decisions"])
+    return SystemOptimizationEvalResult(
+        summary_path=summary_path,
+        summary_markdown_path=summary_markdown_path,
+        repair_buckets_path=repair_buckets_path,
+        optimization_plan_path=optimization_plan_path,
+        judge_packet_path=judge_packet_path,
+        comparison_path=comparison_path,
+        comparison_markdown_path=comparison_markdown_path,
+        total_cases=int(summary["total_cases"]),
+        decisions=decisions,
+        average_score=float(summary["score"]["average"]),
+        min_score=float(summary["score"]["min"]),
+    )
+
+
+def compare_system_optimization_runs(*, baseline_run: Path, candidate_run: Path, out_dir: Path | None = None) -> tuple[Path, Path]:
+    baseline_summary = _load_run_summary(baseline_run)
+    candidate_summary = _load_run_summary(candidate_run)
+    output_dir = out_dir or candidate_run
+    output_dir.mkdir(parents=True, exist_ok=True)
+    comparison = _compare_run_summaries(baseline=baseline_summary, candidate=candidate_summary)
+    comparison_path = output_dir / "comparison.json"
+    comparison_markdown_path = output_dir / "comparison.md"
+    comparison_path.write_text(json.dumps(comparison, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    comparison_markdown_path.write_text(_render_comparison(comparison), encoding="utf-8")
+    return comparison_path, comparison_markdown_path
+
+
+def iter_system_optimization_cases(cases_path: Path) -> list[dict[str, Any]]:
+    if not cases_path.exists():
+        raise FileNotFoundError(f"system optimization case file does not exist: {cases_path}")
+    cases = []
+    required = {"id", "query", "problem_description"}
+    with cases_path.open("r", encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                case = json.loads(stripped)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"invalid system optimization JSONL at line {line_number}: {exc}") from exc
+            if not isinstance(case, dict):
+                raise ValueError(f"system optimization case line {line_number} must be an object")
+            missing = sorted(required - set(case))
+            if missing:
+                raise ValueError(f"system optimization case line {line_number} missing required fields: {', '.join(missing)}")
+            case.setdefault("category", "system_evaluation_optimization")
+            case.setdefault("intent", case.get("problem_description"))
+            case.setdefault("required_page_families", [])
+            case.setdefault("required_section_groups", [])
+            case.setdefault("expected_context_properties", [])
+            case.setdefault("must_not_do", [])
+            case.setdefault("rubric", [])
+            cases.append(case)
+    return cases
+
+
+def _selected_pages_from_results(results: list[dict[str, Any]], *, limit: int) -> list[str]:
+    selected = []
+    for result in results:
+        if len(selected) >= limit:
+            break
+        path = _result_path(result)
+        normalized = path.replace("\\", "/")
+        if not path or any(marker in normalized for marker in INTERNAL_PATH_MARKERS):
+            continue
+        selected.append(path)
+    return selected
+
+
+def _lowest_dimensions(dimension_scores: list[dict[str, Any]], *, limit: int = 3) -> list[dict[str, Any]]:
+    sorted_scores = sorted(dimension_scores, key=lambda item: (float(item.get("score") or 0.0), str(item.get("dimension") or "")))
+    return [
+        {
+            "dimension": item.get("dimension"),
+            "score": item.get("score"),
+            "repair_bucket": item.get("repair_bucket"),
+        }
+        for item in sorted_scores[:limit]
+    ]
+
+
+def _system_optimization_summary(
+    *,
+    cases_path: Path,
+    wiki_root: Path,
+    out_dir: Path,
+    rubric_path: Path | None,
+    top_k: int,
+    strategy: str,
+    case_results: list[dict[str, Any]],
+) -> dict[str, Any]:
+    scores = [float(result.get("weighted_score") or 0.0) for result in case_results]
+    decisions: dict[str, int] = {"pass": 0, "needs_refine": 0, "fail": 0}
+    for result in case_results:
+        decision = str(result.get("decision") or "unknown")
+        decisions[decision] = decisions.get(decision, 0) + 1
+    hard_failures = [failure for result in case_results for failure in result.get("hard_failures") or []]
+    recurring_findings = _recurring_findings(case_results)
+    dimension_averages = _dimension_averages(case_results)
+    return {
+        "schema_version": SYSTEM_OPTIMIZATION_SCHEMA_VERSION,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "wiki_root": str(wiki_root),
+        "cases_path": str(cases_path),
+        "out_dir": str(out_dir),
+        "rubric_path": str(rubric_path) if rubric_path else None,
+        "top_k": top_k,
+        "strategy": strategy,
+        "total_cases": len(case_results),
+        "decisions": decisions,
+        "score": {
+            "average": round(sum(scores) / len(scores), 3) if scores else 0.0,
+            "min": round(min(scores), 3) if scores else 0.0,
+            "max": round(max(scores), 3) if scores else 0.0,
+        },
+        "hard_failure_count": len(hard_failures),
+        "hard_failures": hard_failures,
+        "recurring_findings": recurring_findings,
+        "dimension_averages": dimension_averages,
+        "lowest_scoring_dimensions": sorted(dimension_averages, key=lambda item: item["average_score"])[:5],
+        "cases": case_results,
+    }
+
+
+def _aggregate_repair_buckets(case_results: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    buckets: dict[str, dict[str, Any]] = {}
+    for result in case_results:
+        case_id = str(result.get("id") or "")
+        for bucket, count in (result.get("repair_buckets") or {}).items():
+            entry = buckets.setdefault(
+                str(bucket),
+                {
+                    "count": 0,
+                    "affected_cases": [],
+                    "findings": {},
+                    "generalized_fix": REPAIR_FIXES.get(str(bucket), "Investigate and repair the shared mechanism."),
+                },
+            )
+            entry["count"] += int(count)
+            if case_id and case_id not in entry["affected_cases"]:
+                entry["affected_cases"].append(case_id)
+        for finding in result.get("findings") or []:
+            bucket = str(finding.get("repair_bucket") or "unknown")
+            code = str(finding.get("code") or "unknown")
+            entry = buckets.setdefault(
+                bucket,
+                {
+                    "count": 0,
+                    "affected_cases": [],
+                    "findings": {},
+                    "generalized_fix": REPAIR_FIXES.get(bucket, "Investigate and repair the shared mechanism."),
+                },
+            )
+            entry["findings"][code] = int(entry["findings"].get(code, 0)) + 1
+    return dict(sorted(buckets.items(), key=lambda item: (-int(item[1]["count"]), item[0])))
+
+
+def _top_leverage_candidates(
+    *,
+    repair_buckets: dict[str, dict[str, Any]],
+    case_results: list[dict[str, Any]],
+    limit: int = 3,
+) -> list[dict[str, Any]]:
+    failed_cases = {str(result.get("id")) for result in case_results if result.get("decision") == "fail"}
+    needs_refine_cases = {str(result.get("id")) for result in case_results if result.get("decision") == "needs_refine"}
+    candidates = []
+    for bucket, payload in repair_buckets.items():
+        affected = list(payload.get("affected_cases") or [])
+        blocker_count = len([case_id for case_id in affected if case_id in failed_cases])
+        refine_count = len([case_id for case_id in affected if case_id in needs_refine_cases])
+        leverage_score = int(payload.get("count") or 0) + blocker_count * 3 + refine_count
+        candidates.append(
+            {
+                "repair_bucket": bucket,
+                "leverage_score": leverage_score,
+                "why_high_leverage": _leverage_reason(bucket=bucket, affected=affected, blocker_count=blocker_count, refine_count=refine_count),
+                "affected_workflows": _affected_workflows(bucket),
+                "recommended_mechanism_fix": payload.get("generalized_fix") or REPAIR_FIXES.get(bucket),
+                "verification": _verification_for_bucket(bucket),
+                "affected_cases": affected,
+                "finding_counts": payload.get("findings") or {},
+            }
+        )
+    return sorted(candidates, key=lambda item: (-int(item["leverage_score"]), str(item["repair_bucket"])))[:limit]
+
+
+def _recurring_findings(case_results: list[dict[str, Any]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for result in case_results:
+        for finding in result.get("findings") or []:
+            code = str(finding.get("code") or "unknown")
+            counts[code] = counts.get(code, 0) + 1
+        for failure in result.get("hard_failures") or []:
+            code = str(failure.get("code") or "unknown")
+            counts[code] = counts.get(code, 0) + 1
+    return dict(sorted(counts.items(), key=lambda item: (-item[1], item[0])))
+
+
+def _dimension_averages(case_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    buckets: dict[str, list[float]] = {}
+    for result in case_results:
+        for dimension in result.get("dimension_scores") or []:
+            name = str(dimension.get("dimension") or "")
+            if not name:
+                continue
+            buckets.setdefault(name, []).append(float(dimension.get("score") or 0.0))
+    return [
+        {
+            "dimension": name,
+            "average_score": round(sum(values) / len(values), 3),
+            "min_score": round(min(values), 3),
+            "case_count": len(values),
+        }
+        for name, values in sorted(buckets.items())
+    ]
+
+
+def _leverage_reason(*, bucket: str, affected: list[str], blocker_count: int, refine_count: int) -> str:
+    base = f"`{bucket}` appears in {len(affected)} case(s)"
+    if blocker_count:
+        return f"{base} and blocks {blocker_count} case(s), so it should be repaired before tuning softer quality issues."
+    if refine_count:
+        return f"{base} and drives {refine_count} needs-refine case(s), making it a good mechanism-level optimization target."
+    return f"{base}; improving it should reduce repeated manual review in adjacent workflows."
+
+
+def _affected_workflows(bucket: str) -> list[str]:
+    mapping = {
+        "retrieval_context": ["Use Wiki", "MCP context", "research retrieval"],
+        "retrieval_ranking": ["Use Wiki", "coding/probe retrieval", "claim support checks"],
+        "knowledge_layer": ["compiled knowledge retrieval", "Obsidian navigation"],
+        "provenance_schema": ["trace", "claim/evidence support", "write-back"],
+        "artifact_boundary": ["Prompt entry", "MCP entry", "product output"],
+        "source_quality_routing": ["evidence support", "source cleanup"],
+        "synthesis_quality": ["write-back", "future retrieval", "research planning"],
+        "concept_layer": ["coding/debug/probe", "method implementation"],
+        "claim_evidence_traceability": ["evidence support", "research decision"],
+        "entry_contract": ["Prompt entry", "MCP entry"],
+        "personalization_boundary": ["user insight", "personalized retrieval"],
+    }
+    return mapping.get(bucket, ["system quality"])
+
+
+def _verification_for_bucket(bucket: str) -> list[str]:
+    mapping = {
+        "retrieval_context": ["rerun affected retrieval cases", "compare empty/thin context rate"],
+        "retrieval_ranking": ["rerun required family/section eval", "inspect hard distractor rate"],
+        "knowledge_layer": ["run knowledge-audit", "rerun compiled result type retrieval cases"],
+        "provenance_schema": ["run trace cases", "inspect source_papers/sources deltas"],
+        "artifact_boundary": ["run product-boundary negative tests", "verify no .drafts/.versions in context"],
+        "source_quality_routing": ["run source-quality cleanup/evidence paired cases"],
+        "synthesis_quality": ["lint/publish synthesis fixture", "rerun synthesis write-back eval"],
+        "concept_layer": ["run concept-audit", "rerun coding/probe concept cases"],
+        "claim_evidence_traceability": ["run claim/evidence retrieval cases", "inspect evidence provenance"],
+        "entry_contract": ["run Prompt/MCP parity smoke", "check compact output fields"],
+        "personalization_boundary": ["run user-insight retrieval and source-fact negative tests"],
+    }
+    return mapping.get(bucket, ["rerun system-optimize-eval"])
+
+
+def _render_system_optimization_summary(summary: dict[str, Any]) -> str:
+    lines = [
+        "# System Evaluation Optimization Summary",
+        "",
+        f"- Cases: `{summary['total_cases']}`",
+        f"- Decisions: `{summary['decisions']}`",
+        f"- Average score: `{summary['score']['average']}`",
+        f"- Min score: `{summary['score']['min']}`",
+        f"- Hard failures: `{summary['hard_failure_count']}`",
+        "",
+        "## Top Leverage Candidates",
+        "",
+    ]
+    if summary.get("top_leverage_candidates"):
+        for candidate in summary["top_leverage_candidates"]:
+            lines.append(f"- `{candidate['repair_bucket']}` score={candidate['leverage_score']}: {candidate['recommended_mechanism_fix']}")
+    else:
+        lines.append("- None. No repair buckets were raised.")
+    lines.extend(["", "## Recurring Findings", ""])
+    if summary.get("recurring_findings"):
+        for code, count in summary["recurring_findings"].items():
+            lines.append(f"- `{code}`: {count}")
+    else:
+        lines.append("- None.")
+    lines.extend(["", "## Case Results", ""])
+    for result in summary["cases"]:
+        lines.append(f"- `{result['id']}`: {result['decision']} score={result['weighted_score']} findings={result['finding_count']}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _render_optimization_plan(summary: dict[str, Any]) -> str:
+    lines = [
+        "# System Evaluation Optimization Plan",
+        "",
+        "This plan is generated from System Evaluation Agent findings. It recommends mechanism-level fixes; it does not mutate the wiki by itself.",
+        "",
+    ]
+    candidates = summary.get("top_leverage_candidates") or []
+    if not candidates:
+        lines.extend(
+            [
+                "## Current Decision",
+                "",
+                "No recurring repair bucket was found. Next step is sampled semantic judge review or broader case coverage.",
+                "",
+            ]
+        )
+        return "\n".join(lines)
+    for index, candidate in enumerate(candidates, start=1):
+        lines.extend(
+            [
+                f"## {index}. {candidate['repair_bucket']}",
+                "",
+                f"- Why: {candidate['why_high_leverage']}",
+                f"- Affected workflows: {', '.join(candidate['affected_workflows'])}",
+                f"- Mechanism fix: {candidate['recommended_mechanism_fix']}",
+                f"- Affected cases: {', '.join(candidate['affected_cases']) or 'none'}",
+                f"- Verify with: {', '.join(candidate['verification'])}",
+                "",
+            ]
+        )
+    return "\n".join(lines)
+
+
+def _render_system_optimization_judge_packet(*, summary: dict[str, Any], rubric_path: Path | None) -> str:
+    rubric_text = rubric_path.read_text(encoding="utf-8") if rubric_path and rubric_path.exists() else ""
+    packet = {
+        "schema_version": SYSTEM_OPTIMIZATION_SCHEMA_VERSION,
+        "task": "Review this batch system evaluation and decide whether the selected repair buckets are the right next optimization levers.",
+        "summary": {
+            "total_cases": summary["total_cases"],
+            "decisions": summary["decisions"],
+            "score": summary["score"],
+            "hard_failure_count": summary["hard_failure_count"],
+            "repair_buckets": summary.get("repair_buckets") or {},
+            "top_leverage_candidates": summary.get("top_leverage_candidates") or [],
+        },
+        "expected_review_output": {
+            "decision": "accept_plan | revise_plan | fail",
+            "top_leverage_assessment": "whether the selected buckets are the right generalized fixes",
+            "missing_eval_coverage": "new cases needed before optimizing",
+            "risk_notes": "product boundary, provenance, or source-quality risks",
+        },
+    }
+    return "\n".join(
+        [
+            "# System Optimization Judge Packet",
+            "",
+            "Review the aggregate evaluator output, not just a single case.",
+            "",
+            "## Rubric",
+            "",
+            rubric_text.strip() or "Use the System Evaluation Agent rubric and the embedded aggregate summary.",
+            "",
+            "## Packet JSON",
+            "",
+            "```json",
+            json.dumps(packet, indent=2, ensure_ascii=False),
+            "```",
+            "",
+        ]
+    )
+
+
+def _load_run_summary(run_dir: Path) -> dict[str, Any]:
+    path = run_dir / "summary.json" if run_dir.is_dir() else run_dir
+    return _load_json_object(path, label="system optimization summary")
+
+
+def _compare_run_summaries(*, baseline: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any]:
+    baseline_cases = {str(case.get("id")): case for case in baseline.get("cases") or []}
+    candidate_cases = {str(case.get("id")): case for case in candidate.get("cases") or []}
+    all_case_ids = sorted(set(baseline_cases) | set(candidate_cases))
+    case_deltas = []
+    for case_id in all_case_ids:
+        base_case = baseline_cases.get(case_id)
+        cand_case = candidate_cases.get(case_id)
+        base_score = float((base_case or {}).get("weighted_score") or 0.0)
+        cand_score = float((cand_case or {}).get("weighted_score") or 0.0)
+        case_deltas.append(
+            {
+                "id": case_id,
+                "baseline_decision": (base_case or {}).get("decision"),
+                "candidate_decision": (cand_case or {}).get("decision"),
+                "baseline_score": base_score if base_case else None,
+                "candidate_score": cand_score if cand_case else None,
+                "score_delta": round(cand_score - base_score, 3) if base_case and cand_case else None,
+                "status": _case_delta_status(base_case, cand_case, base_score, cand_score),
+            }
+        )
+    comparison = {
+        "schema_version": SYSTEM_OPTIMIZATION_COMPARISON_SCHEMA_VERSION,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "baseline": {
+            "summary": baseline.get("out_dir"),
+            "total_cases": baseline.get("total_cases"),
+            "decisions": baseline.get("decisions"),
+            "average_score": (baseline.get("score") or {}).get("average"),
+            "hard_failure_count": baseline.get("hard_failure_count"),
+        },
+        "candidate": {
+            "summary": candidate.get("out_dir"),
+            "total_cases": candidate.get("total_cases"),
+            "decisions": candidate.get("decisions"),
+            "average_score": (candidate.get("score") or {}).get("average"),
+            "hard_failure_count": candidate.get("hard_failure_count"),
+        },
+        "score_delta": round(float((candidate.get("score") or {}).get("average") or 0.0) - float((baseline.get("score") or {}).get("average") or 0.0), 3),
+        "hard_failure_delta": int(candidate.get("hard_failure_count") or 0) - int(baseline.get("hard_failure_count") or 0),
+        "repair_bucket_delta": _repair_bucket_delta(baseline.get("repair_buckets") or {}, candidate.get("repair_buckets") or {}),
+        "dimension_score_delta": _dimension_delta(baseline.get("dimension_averages") or [], candidate.get("dimension_averages") or []),
+        "case_deltas": case_deltas,
+    }
+    comparison["decision"] = _comparison_decision(comparison)
+    return comparison
+
+
+def _case_delta_status(base_case: dict[str, Any] | None, cand_case: dict[str, Any] | None, base_score: float, cand_score: float) -> str:
+    if base_case is None:
+        return "new_case"
+    if cand_case is None:
+        return "removed_case"
+    if cand_case.get("decision") == "fail" and base_case.get("decision") != "fail":
+        return "regression"
+    if cand_score - base_score >= 0.1:
+        return "improved"
+    if base_score - cand_score >= 0.1:
+        return "regressed"
+    return "unchanged"
+
+
+def _repair_bucket_delta(baseline_buckets: dict[str, Any], candidate_buckets: dict[str, Any]) -> dict[str, dict[str, int]]:
+    keys = sorted(set(baseline_buckets) | set(candidate_buckets))
+    delta = {}
+    for key in keys:
+        baseline_count = int((baseline_buckets.get(key) or {}).get("count") or 0)
+        candidate_count = int((candidate_buckets.get(key) or {}).get("count") or 0)
+        delta[key] = {
+            "baseline": baseline_count,
+            "candidate": candidate_count,
+            "delta": candidate_count - baseline_count,
+        }
+    return delta
+
+
+def _dimension_delta(baseline_dimensions: list[dict[str, Any]], candidate_dimensions: list[dict[str, Any]]) -> dict[str, dict[str, float]]:
+    baseline = {str(item.get("dimension")): float(item.get("average_score") or 0.0) for item in baseline_dimensions}
+    candidate = {str(item.get("dimension")): float(item.get("average_score") or 0.0) for item in candidate_dimensions}
+    return {
+        key: {
+            "baseline": round(baseline.get(key, 0.0), 3),
+            "candidate": round(candidate.get(key, 0.0), 3),
+            "delta": round(candidate.get(key, 0.0) - baseline.get(key, 0.0), 3),
+        }
+        for key in sorted(set(baseline) | set(candidate))
+    }
+
+
+def _comparison_decision(comparison: dict[str, Any]) -> str:
+    if comparison["hard_failure_delta"] > 0:
+        return "regression"
+    if comparison["score_delta"] >= 0.1 and comparison["hard_failure_delta"] <= 0:
+        return "improved"
+    if comparison["score_delta"] <= -0.1:
+        return "regression"
+    return "mixed_or_flat"
+
+
+def _render_comparison(comparison: dict[str, Any]) -> str:
+    lines = [
+        "# System Evaluation Optimization Comparison",
+        "",
+        f"- Decision: `{comparison['decision']}`",
+        f"- Score delta: `{comparison['score_delta']}`",
+        f"- Hard failure delta: `{comparison['hard_failure_delta']}`",
+        "",
+        "## Repair Bucket Delta",
+        "",
+    ]
+    for bucket, payload in comparison["repair_bucket_delta"].items():
+        lines.append(f"- `{bucket}`: {payload['baseline']} -> {payload['candidate']} ({payload['delta']:+d})")
+    lines.extend(["", "## Case Deltas", ""])
+    for case in comparison["case_deltas"]:
+        lines.append(
+            f"- `{case['id']}`: {case['baseline_decision']} -> {case['candidate_decision']}; "
+            f"score_delta={case['score_delta']} status={case['status']}"
+        )
+    lines.append("")
+    return "\n".join(lines)
 
 
 def _load_json_or_jsonl_object(path: Path, *, label: str) -> dict[str, Any]:
@@ -262,10 +887,11 @@ def _hard_failures(
                     }
                 )
 
+    personalized_context = any(token in query_text.lower() for token in ("user insight", "user-supplied", "personalized", "my reading insight"))
     source_fact_task = any(token in query_text.lower() for token in ("evidence", "support", "source fact", "paper claims", "scientific"))
     if source_fact_task:
         for result in results:
-            if "user_insight" in set(result.get("matched_source_types") or []):
+            if "user_insight" in set(result.get("matched_source_types") or []) and not personalized_context:
                 failures.append(
                     {
                         "code": "user_insight_as_source_fact",

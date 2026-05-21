@@ -63,3 +63,19 @@ The continuous optimization loop should use this evaluator after a realistic tas
    - weak synthesis -> write-back schema or evolution repair
 
 Human calibration is still useful when the deterministic scaffold passes but the semantic quality feels weak, or when the repair choice changes product boundaries.
+
+## Batch Optimization Loop
+
+For repeated use, run:
+
+```bash
+meridian wiki system-optimize-eval \
+  --wiki-root wiki \
+  --cases eval/cases/system_evaluation_optimization_loop.jsonl \
+  --out-dir eval/runs/system-optimization-r1 \
+  --rubric eval/rubrics/system_evaluation_agent_quality.md
+```
+
+This command runs retrieval for each case, evaluates every context, aggregates repair buckets, and writes an `optimization_plan.md`.
+
+Use `--baseline-run` to compare a candidate run against a previous run. See `docs/system-evaluation-optimization-loop.md` for the full round schema.
