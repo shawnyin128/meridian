@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-c8035b1d1c"
+consolidation_target: "methods/KV-cache-compression"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Ge et al. - 2024 - Model Tells You What to Discard Adaptive KV Cache Compression for LLMs
 

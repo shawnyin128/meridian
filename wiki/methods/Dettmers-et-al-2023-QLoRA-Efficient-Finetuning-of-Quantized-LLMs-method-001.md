@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-de1dac3baa"
+consolidation_target: "methods/calibration-aware-PTQ"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Dettmers et al. - 2023 - QLoRA Efficient Finetuning of Quantized LLMs
 

@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-cc658fcd55"
+consolidation_target: "methods/LLM-as-judge-reward-modeling"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Zheng et al. - 2023 - Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena
 

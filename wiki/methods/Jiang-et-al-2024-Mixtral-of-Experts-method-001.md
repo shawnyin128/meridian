@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-7ff3f17512"
+consolidation_target: "methods/expert-routing"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Sparse mixture-of-experts decoder
 

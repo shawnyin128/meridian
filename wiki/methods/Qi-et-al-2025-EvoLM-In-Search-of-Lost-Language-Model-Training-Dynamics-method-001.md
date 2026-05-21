@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-e1c7a094a9"
+consolidation_target: "methods/policy-optimization"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Qi et al. - 2025 - EvoLM In Search of Lost Language Model Training Dynamics
 

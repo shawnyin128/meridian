@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-6c21379e3c"
+consolidation_target: "methods/IO-aware-attention"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Wang et al. - 2023 - BitNet Scaling 1-bit Transformers for Large Language Models
 

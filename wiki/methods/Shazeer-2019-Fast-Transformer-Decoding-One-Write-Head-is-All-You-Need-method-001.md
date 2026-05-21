@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-27ff8103da"
+consolidation_target: "methods/transformer-architecture"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Shazeer - 2019 - Fast Transformer Decoding One Write-Head is All You Need
 

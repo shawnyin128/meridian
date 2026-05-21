@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-af2b24b6e4"
+consolidation_target: "methods/clustering-algorithm"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Bo et al. - 2020 - Structural Deep Clustering Network
 

@@ -9,13 +9,13 @@ query: "I need a cross-paper method-family synthesis for clustering algorithm wi
 source_papers:
   - "concepts/K-means-objective-landscape"
   - "methods/clustering-algorithm"
-  - "concepts/Per-channel-scaling"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis"
+  - "concepts/Diffusion-conditioning-signal"
+  - "syntheses/Clustering-Algorithm-Method-Family-Synthesis"
   - "topics/clustering-theory"
   - "claims/Yang-et-al-2025-Diffusion-Models-A-Comprehensive-Survey-of-Methods-and-Applications-claim-003"
 source_sections:
-  - "concepts/K-means-objective-landscape#What It Is"
   - "concepts/K-means-objective-landscape#Evidence / Provenance"
+  - "concepts/K-means-objective-landscape#What It Is"
   - "concepts/K-means-objective-landscape#Retrieval Hooks"
   - "concepts/K-means-objective-landscape#Implementation Implications"
   - "concepts/K-means-objective-landscape#Where It Appears"
@@ -27,26 +27,28 @@ source_sections:
   - "methods/clustering-algorithm#Implementation Hooks"
   - "methods/clustering-algorithm#Failure Modes"
   - "methods/clustering-algorithm#Open Questions"
-  - "concepts/Per-channel-scaling#What It Is"
-  - "concepts/Per-channel-scaling#Evidence / Provenance"
-  - "concepts/Per-channel-scaling#Implementation Implications"
-  - "concepts/Per-channel-scaling#Common Failure Modes"
-  - "concepts/Per-channel-scaling#Retrieval Hooks"
-  - "concepts/Per-channel-scaling#Open Questions"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis#Retrieval Hooks"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis#Evidence Map"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis#Wiki Synthesis"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis#What This Page Is For"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis#Source Facts"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis#Open Questions"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis#User Ideas / Decisions"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis#Publish / Review Notes"
+  - "concepts/Diffusion-conditioning-signal#What It Is"
+  - "concepts/Diffusion-conditioning-signal#Evidence / Provenance"
+  - "concepts/Diffusion-conditioning-signal#Retrieval Hooks"
+  - "concepts/Diffusion-conditioning-signal#Implementation Implications"
+  - "concepts/Diffusion-conditioning-signal#Common Failure Modes"
+  - "concepts/Diffusion-conditioning-signal#Why It Matters"
+  - "concepts/Diffusion-conditioning-signal#Where It Appears"
+  - "concepts/Diffusion-conditioning-signal#Open Questions"
+  - "syntheses/Clustering-Algorithm-Method-Family-Synthesis#Retrieval Hooks"
+  - "syntheses/Clustering-Algorithm-Method-Family-Synthesis#Wiki Synthesis"
+  - "syntheses/Clustering-Algorithm-Method-Family-Synthesis#Evidence Map"
+  - "syntheses/Clustering-Algorithm-Method-Family-Synthesis#What This Page Is For"
+  - "syntheses/Clustering-Algorithm-Method-Family-Synthesis#Source Facts"
+  - "syntheses/Clustering-Algorithm-Method-Family-Synthesis#Open Questions"
+  - "syntheses/Clustering-Algorithm-Method-Family-Synthesis#User Ideas / Decisions"
+  - "syntheses/Clustering-Algorithm-Method-Family-Synthesis#Publish / Review Notes"
   - "topics/clustering-theory#Scope"
   - "topics/clustering-theory#Claims"
   - "topics/clustering-theory#Retrieval Hooks"
   - "topics/clustering-theory#Method Families"
   - "topics/clustering-theory#Key Papers"
-source_context: ".drafts/proposals/product-maturity-synthesis-r2/Clustering-Algorithm-Method-Family-Synthesis/source_context.json"
+source_context: ".drafts/proposals/high-leverage-synthesis-r1/Clustering-Algorithm-Method-Family-Synthesis/source_context.json"
 user_inputs:
   - "inline_user_note"
 confidence: "low"
@@ -62,15 +64,15 @@ methods:
 related:
   - "concepts/K-means-objective-landscape"
   - "methods/clustering-algorithm"
-  - "concepts/Per-channel-scaling"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis"
+  - "concepts/Diffusion-conditioning-signal"
+  - "syntheses/Clustering-Algorithm-Method-Family-Synthesis"
   - "topics/clustering-theory"
   - "claims/Yang-et-al-2025-Diffusion-Models-A-Comprehensive-Survey-of-Methods-and-Applications-claim-003"
 related_papers:
   - "concepts/K-means-objective-landscape"
   - "methods/clustering-algorithm"
-  - "concepts/Per-channel-scaling"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis"
+  - "concepts/Diffusion-conditioning-signal"
+  - "syntheses/Clustering-Algorithm-Method-Family-Synthesis"
   - "topics/clustering-theory"
   - "claims/Yang-et-al-2025-Diffusion-Models-A-Comprehensive-Survey-of-Methods-and-Applications-claim-003"
 related_methods:
@@ -91,8 +93,8 @@ revision_id: "synthesis-Clustering-Algorithm-Method-Family-Synthesis"
 ## Source Facts
 
 - [[concepts/K-means-objective-landscape|K-means objective landscape]]: retrieved source page; extract only directly supported facts with page/section provenance.
-  - `What It Is`: `K-means objective landscape` is a compiled preliminary-knowledge concept: a recurring mechanism or implementation background that appears across papers/methods and affects how a researcher understands, implements, debugs, or ablates the method family.
   - `Evidence / Provenance`: - 2008 - Skeleton extraction by mesh contraction]]: au et al 2008 skeleton extraction by mesh contraction au et al 2008 skeleton extraction by mesh contraction clustering theory clustering algorithm survey synthesis 3d geometry setting survey synthesis setting...
+  - `What It Is`: `K-means objective landscape` is a compiled preliminary-knowledge concept: a recurring mechanism or implementation background that appears across papers/methods and affects how a researcher understands, implements, debugs, or ablates the method family.
   - `Retrieval Hooks`: - Use for clustering theory, deep clustering probes, centroid assignment bugs, and matrix-factorization analogies.
   - `Implementation Implications`: - Separate representation learning changes from assignment/update changes. - Track objective value, assignment stability, and cluster utilization together.
   - `Where It Appears`: - [[papers/7194-FlexHiNM-GP-Flexible-Hier]] - [[papers/Ainslie-et-al-2020-ETC-Encoding-Long-and-Structured-Inputs-in-Transformers]] - [[papers/Assran-et-al-2023-Self-Supervised-Learning-from-Images-with-a-Joint-Embedding-Predictive-Architecture]] - [[papers/Au...
@@ -105,19 +107,21 @@ revision_id: "synthesis-Clustering-Algorithm-Method-Family-Synthesis"
   - `Implementation Hooks`: - [[papers/Ding-and-He-2004-K-means-clustering-via-principal-component-analysis|Ding and He - 2004 - K -means clustering via principal component analysis]]: - Ding and He - 2004 - K -means clustering via principal component analysis: Test centroid update monot...
   - `Failure Modes`: - [[papers/Tarpey-2007-A-parametric-k-means-algorithm|Tarpey - 2007 - A parametric k-means algorithm]]: - Clustering conclusions can depend on initialization, objective assumptions, and data distribution.
   - `Open Questions`: - Which linked papers provide the strongest source-grounded evidence for this method family?
-- [[concepts/Per-channel-scaling|Per-channel scaling]]: retrieved source page; extract only directly supported facts with page/section provenance.
-  - `What It Is`: `Per-channel scaling` is a compiled preliminary-knowledge concept: a recurring mechanism or implementation background that appears across papers/methods and affects how a researcher understands, implements, debugs, or ablates the method family.
-  - `Evidence / Provenance`: - [[papers/2511-10645v1|2511.10645v1]]: 2511 10645v1 2511 10645v1 post training quantization low bit quantization quantization error rotation based quantization hardware aware quantization lookup table inference benchmark evaluation survey synthesis survey syn...
-  - `Implementation Implications`: - Treat scale granularity as part of the kernel/data-layout contract, not just a math detail. - Check whether scale tensors broadcast over the intended axis.
-  - `Common Failure Modes`: - A tensor axis mismatch silently applies the wrong scale. - Fine-grained scales recover accuracy but erase the intended memory or speed benefit.
-  - `Retrieval Hooks`: - Use for quantizer implementation, axis bugs, and scale-granularity ablations.
+- [[concepts/Diffusion-conditioning-signal|Diffusion conditioning signal]]: retrieved source page; extract only directly supported facts with page/section provenance.
+  - `What It Is`: `Diffusion conditioning signal` is a compiled preliminary-knowledge concept: a recurring mechanism or implementation background that appears across papers/methods and affects how a researcher understands, implements, debugs, or ablates the method family.
+  - `Evidence / Provenance`: - [[papers/Dorjsembe-et-al-2024-Conditional-Diffusion-Models-for-Semantic-3D-Brain-MRI-Synthesis|Dorjsembe et al.
+  - `Retrieval Hooks`: - Use for conditional diffusion, semantic synthesis, and vision representation implementation checks.
+  - `Implementation Implications`: - Version conditioning inputs, dropout/guidance settings, and prompt or label preprocessing. - Evaluate both sample quality and condition fidelity.
+  - `Common Failure Modes`: - Higher guidance improves apparent fidelity while reducing diversity or introducing artifacts. - Condition preprocessing mismatch makes a method look weaker than it is.
+  - `Why It Matters`: - Diffusion behavior depends on how conditioning enters the denoising process, so implementation and evaluation must distinguish condition strength, guidance, and data alignment.
+  - `Where It Appears`: - [[papers/Bai-et-al-2025-Whole-Body-Conditioned-Egocentric-Video-Prediction]] - [[papers/Blattmann-et-al-2023-Stable-Video-Diffusion-Scaling-Latent-Video-Diffusion-Models-to-Large-Datasets]] - [[papers/Dorjsembe-et-al-2024-Conditional-Diffusion-Models-for-Sem...
   - `Open Questions`: - Which linked papers provide the strongest source-grounded evidence for this concept? - Which methods fail when this concept is ignored?
-- [[syntheses/Kv-Cache-Compression-Method-Family-Synthesis|Kv-Cache Compression Method Family Synthesis]]: retrieved source page; extract only directly supported facts with page/section provenance.
-  - `Retrieval Hooks`: - Query: "I need a cross-paper method-family synthesis for KV-cache compression with mechanism, implementation hooks, evidence boundaries, and failure modes." Use because: It is the original research intent that produced `Kv-Cache Compression Method Family Syn...
-  - `Evidence Map`: - [[methods/semantic-image-synthesis|semantic image synthesis]]: candidate evidence sections: What It Is, Mechanism, Used By Papers, Implementation Hooks, Failure Modes, Open Questions.
-  - `Wiki Synthesis`: - Intended use: I need a cross-paper method-family synthesis for KV-cache compression with mechanism, implementation hooks, evidence boundaries, and failure modes.
-  - `What This Page Is For`: - Original research query: I need a cross-paper method-family synthesis for KV-cache compression with mechanism, implementation hooks, evidence boundaries, and failure modes.
-  - `Source Facts`: - `Used By Papers`: - [[papers/Dorjsembe-et-al-2024-Conditional-Diffusion-Models-for-Semantic-3D-Brain-MRI-Synthesis]] - `Implementation Hooks`: - [[papers/Dorjsembe-et-al-2024-Conditional-Diffusion-Models-for-Semantic-3D-Brain-MRI-Synthesis|Dorjsembe et al.
+- [[syntheses/Clustering-Algorithm-Method-Family-Synthesis|Clustering Algorithm Method Family Synthesis]]: retrieved source page; extract only directly supported facts with page/section provenance.
+  - `Retrieval Hooks`: - Query: "I need a cross-paper method-family synthesis for clustering algorithm with mechanism, implementation hooks, evidence boundaries, and failure modes." Use because: It is the original research intent that produced `Clustering Algorithm Method Family Syn...
+  - `Wiki Synthesis`: - Intended use: I need a cross-paper method-family synthesis for clustering algorithm with mechanism, implementation hooks, evidence boundaries, and failure modes.
+  - `Evidence Map`: - [[methods/clustering-algorithm|clustering algorithm]]: candidate evidence sections: What It Is, Mechanism, Used By Papers, Implementation Hooks, Failure Modes, Open Questions.
+  - `What This Page Is For`: - Original research query: I need a cross-paper method-family synthesis for clustering algorithm with mechanism, implementation hooks, evidence boundaries, and failure modes.
+  - `Source Facts`: - `Retrieval Hooks`: - Query: "I need a cross-paper method-family synthesis for KV-cache compression with mechanism, implementation hooks, evidence boundaries, and failure modes." Use because: It is the original research intent that produced `Kv-Cache Compress...
   - `Open Questions`: - Which source facts are strong enough to preserve as canonical synthesis?
   - `User Ideas / Decisions`: Automatically seeded by the final LLM Wiki synthesis growth loop from a compiled method page.
   - `Publish / Review Notes`: - Keep source facts, wiki synthesis, and user ideas separated during review.
@@ -131,10 +135,14 @@ revision_id: "synthesis-Clustering-Algorithm-Method-Family-Synthesis"
 
 ## Wiki Synthesis
 
-- This is a low-confidence synthesis scaffold generated from canonical retrieval context.
-- Preserve the source facts below as evidence candidates; do not treat this scaffold as a final thesis.
+- Working synthesis target: This page should consolidate a method family across papers: what the mechanism actually changes, what implementation choices matter, which evidence is comparable, and where the family fails.
 - Intended use: I need a cross-paper method-family synthesis for clustering algorithm with mechanism, implementation hooks, evidence boundaries, and failure modes.
-- Next reviewer action: compress retrieved source facts into a tighter cross-paper thesis only after checking provenance.
+- Source-fact boundary: use the retrieved `Source Facts` section for directly supported statements; keep this section as compiled wiki interpretation.
+- Review contract:
+  - Identify the shared mechanism before listing paper-specific variants.
+  - Preserve implementation hooks that affect ablations or probes.
+  - Separate evidence that supports the mechanism from evidence that only supports one paper's setting.
+- Retrieval contract: future queries should be able to decide whether to read a method/topic/concept page first, which source papers to inspect next, and which uncertainty blocks a research decision.
 
 ## User Ideas / Decisions
 
@@ -142,10 +150,10 @@ Automatically seeded by the final LLM Wiki synthesis growth loop from a compiled
 
 ## Evidence Map
 
-- [[concepts/K-means-objective-landscape|K-means objective landscape]]: candidate evidence sections: What It Is, Evidence / Provenance, Retrieval Hooks, Implementation Implications, Where It Appears, Common Failure Modes, Open Questions.
+- [[concepts/K-means-objective-landscape|K-means objective landscape]]: candidate evidence sections: Evidence / Provenance, What It Is, Retrieval Hooks, Implementation Implications, Where It Appears, Common Failure Modes, Open Questions.
 - [[methods/clustering-algorithm|clustering algorithm]]: candidate evidence sections: What It Is, Mechanism, Used By Papers, Implementation Hooks, Failure Modes, Open Questions.
-- [[concepts/Per-channel-scaling|Per-channel scaling]]: candidate evidence sections: What It Is, Evidence / Provenance, Implementation Implications, Common Failure Modes, Retrieval Hooks, Open Questions.
-- [[syntheses/Kv-Cache-Compression-Method-Family-Synthesis|Kv-Cache Compression Method Family Synthesis]]: candidate evidence sections: Retrieval Hooks, Evidence Map, Wiki Synthesis, What This Page Is For, Source Facts, Open Questions, User Ideas / Decisions, Publish / Review Notes.
+- [[concepts/Diffusion-conditioning-signal|Diffusion conditioning signal]]: candidate evidence sections: What It Is, Evidence / Provenance, Retrieval Hooks, Implementation Implications, Common Failure Modes, Why It Matters, Where It Appears, Open Questions.
+- [[syntheses/Clustering-Algorithm-Method-Family-Synthesis|Clustering Algorithm Method Family Synthesis]]: candidate evidence sections: Retrieval Hooks, Wiki Synthesis, Evidence Map, What This Page Is For, Source Facts, Open Questions, User Ideas / Decisions, Publish / Review Notes.
 - [[topics/clustering-theory|clustering theory]]: candidate evidence sections: Scope, Claims, Retrieval Hooks, Method Families, Key Papers.
 - [[claims/Yang-et-al-2025-Diffusion-Models-A-Comprehensive-Survey-of-Methods-and-Applications-claim-003|4 DIFFUSION MODELS WITH IMPROVED LIKELIHOOD As discussed in Section 2.1, the training objective for diffusion models is a (negative) variational lower bound (VLB) on the log-likelihood.]]: candidate evidence sections: needs manual section selection.
 
@@ -170,7 +178,7 @@ Automatically seeded by the final LLM Wiki synthesis growth loop from a compiled
 
 - [[concepts/K-means-objective-landscape|K-means objective landscape]]
 - [[methods/clustering-algorithm|clustering algorithm]]
-- [[concepts/Per-channel-scaling|Per-channel scaling]]
-- [[syntheses/Kv-Cache-Compression-Method-Family-Synthesis|Kv-Cache Compression Method Family Synthesis]]
+- [[concepts/Diffusion-conditioning-signal|Diffusion conditioning signal]]
+- [[syntheses/Clustering-Algorithm-Method-Family-Synthesis|Clustering Algorithm Method Family Synthesis]]
 - [[topics/clustering-theory|clustering theory]]
 - [[claims/Yang-et-al-2025-Diffusion-Models-A-Comprehensive-Survey-of-Methods-and-Applications-claim-003|4 DIFFUSION MODELS WITH IMPROVED LIKELIHOOD As discussed in Section 2.1, the training objective for diffusion models is a (negative) variational lower bound (VLB) on the log-likelihood.]]

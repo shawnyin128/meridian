@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-41c8634acf"
+consolidation_target: "methods/survey-synthesis"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Zhang et al. - 2024 - Vision-Language Models for Vision Tasks A Survey
 

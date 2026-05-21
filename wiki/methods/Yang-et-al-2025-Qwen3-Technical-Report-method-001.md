@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-3452a93b8c"
+consolidation_target: "methods/long-context-inference"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Yang et al. - 2025 - Qwen3 Technical Report
 

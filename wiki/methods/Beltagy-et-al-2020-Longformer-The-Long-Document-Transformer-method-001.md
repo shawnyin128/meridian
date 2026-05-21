@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-aea2900672"
+consolidation_target: "methods/transformer-architecture"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Beltagy et al. - 2020 - Longformer The Long-Document Transformer
 

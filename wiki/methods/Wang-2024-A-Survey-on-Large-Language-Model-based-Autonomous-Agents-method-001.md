@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-87b38f655e"
+consolidation_target: "methods/LLM-agent-taxonomy"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Wang 等 - 2024 - A Survey on Large Language Model based Autonomous Agents
 

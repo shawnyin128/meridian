@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-ef85d433e9"
+consolidation_target: "methods/calibration-aware-PTQ"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Block-wise error minimization with learnable quantization parameters
 

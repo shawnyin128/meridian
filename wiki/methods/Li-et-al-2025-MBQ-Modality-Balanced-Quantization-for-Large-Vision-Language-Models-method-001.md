@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-7a62f4365d"
+consolidation_target: "methods/KV-cache-compression"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Li et al. - 2025 - MBQ Modality-Balanced Quantization for Large Vision-Language Models
 

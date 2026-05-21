@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-7f3192be98"
+consolidation_target: "methods/IO-aware-attention"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Xiao et al. - 2024 - Efficient Streaming Language Models with Attention Sinks
 

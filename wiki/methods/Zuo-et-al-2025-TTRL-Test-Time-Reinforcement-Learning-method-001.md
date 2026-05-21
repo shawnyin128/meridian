@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-e2d541cc0b"
+consolidation_target: "methods/test-time-reinforcement-learning"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Zuo et al. - 2025 - TTRL Test-Time Reinforcement Learning
 

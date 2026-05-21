@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-ce56f0994f"
+consolidation_target: "methods/survey-synthesis"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Team et al. - 2025 - Kimi K2 Open Agentic Intelligence
 

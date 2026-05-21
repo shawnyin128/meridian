@@ -38,6 +38,7 @@ from meridian.wiki.final_product import (
     FinalStatusMigrationResult,
     MethodConsolidationResult,
     NavigationBuildResult,
+    PublishMethodConsolidationResult,
     PublishSynthesisBatchResult,
     SynthesisBatchProposalResult,
     build_obsidian_navigation,
@@ -46,6 +47,7 @@ from meridian.wiki.final_product import (
     propose_contradiction_review,
     propose_method_consolidation,
     propose_synthesis_batch,
+    publish_method_consolidation,
     publish_synthesis_batch,
 )
 from meridian.wiki.ingest import IngestResult, run_ingest
@@ -521,6 +523,14 @@ def propose_method_consolidation_wiki(
     overwrite: bool = False,
 ) -> MethodConsolidationResult:
     return propose_method_consolidation(wiki_root=wiki_root, out_dir=out_dir, overwrite=overwrite)
+
+
+def publish_method_consolidation_wiki(
+    *,
+    consolidation_manifest: Path,
+    wiki_root: Path,
+) -> PublishMethodConsolidationResult:
+    return publish_method_consolidation(consolidation_manifest=consolidation_manifest, wiki_root=wiki_root)
 
 
 def propose_contradiction_review_wiki(

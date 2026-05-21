@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-af632c9d50"
+consolidation_target: "methods/clustering-algorithm"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Roy et al. - 2020 - Efficient Content-Based Sparse Attention with Routing Transformers
 

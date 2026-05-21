@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-42a2ff96b8"
+consolidation_target: "methods/continuous-depth-neural-network"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Chen et al. - 2019 - Neural Ordinary Differential Equations
 

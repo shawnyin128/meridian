@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-cd95ad8a4d"
+consolidation_target: "methods/equivalent-transform-PTQ"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Equivalent affine transformation quantization
 

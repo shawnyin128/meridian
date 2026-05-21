@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-47b389481f"
+consolidation_target: "methods/paper-specific-research-method"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Wei et al. - 2023 - Chain-of-Thought Prompting Elicits Reasoning in Large Language Models
 

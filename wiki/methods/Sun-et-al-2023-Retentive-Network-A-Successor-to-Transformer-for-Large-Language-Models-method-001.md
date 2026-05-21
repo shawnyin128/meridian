@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-27eeff54b0"
+consolidation_target: "methods/IO-aware-attention"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Sun et al. - 2023 - Retentive Network A Successor to Transformer for Large Language Models
 

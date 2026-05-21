@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-3862842e43"
+consolidation_target: "methods/transformer-architecture"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Garg et al. - 2023 - What Can Transformers Learn In-Context A Case Study of Simple Function Classes
 

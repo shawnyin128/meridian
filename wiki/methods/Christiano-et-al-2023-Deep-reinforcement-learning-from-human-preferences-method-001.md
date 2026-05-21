@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-3c35b4ab23"
+consolidation_target: "methods/preference-based-reinforcement-learning"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Christiano et al. - 2023 - Deep reinforcement learning from human preferences
 

@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-9e62e2f85d"
+consolidation_target: "methods/audio-language-modeling"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Chu et al. - 2024 - Qwen2-Audio Technical Report
 

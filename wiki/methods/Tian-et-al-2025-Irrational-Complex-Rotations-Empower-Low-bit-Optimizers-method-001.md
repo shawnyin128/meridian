@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-c7c172da31"
+consolidation_target: "methods/KV-cache-compression"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Tian et al. - 2025 - Irrational Complex Rotations Empower Low-bit Optimizers
 

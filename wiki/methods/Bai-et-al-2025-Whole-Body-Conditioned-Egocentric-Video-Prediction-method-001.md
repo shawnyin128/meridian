@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-e00cbf141b"
+consolidation_target: "methods/conditional-diffusion"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Bai et al. - 2025 - Whole-Body Conditioned Egocentric Video Prediction
 

@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-b5ca8fe0f4"
+consolidation_target: "methods/relative-position-encoding"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Su et al. - 2023 - RoFormer Enhanced Transformer with Rotary Position Embedding
 

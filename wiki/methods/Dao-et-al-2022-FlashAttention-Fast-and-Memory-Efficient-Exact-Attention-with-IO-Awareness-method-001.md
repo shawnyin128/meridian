@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-e25619f6f9"
+consolidation_target: "methods/IO-aware-attention"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Dao et al. - 2022 - FlashAttention Fast and Memory-Efficient Exact Attention with IO-Awareness
 

@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-afc3c06e58"
+consolidation_target: "methods/speculative-decoding"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Samarin et al. - 2026 - LK Losses Direct Acceptance Rate Optimization for Speculative Decoding
 

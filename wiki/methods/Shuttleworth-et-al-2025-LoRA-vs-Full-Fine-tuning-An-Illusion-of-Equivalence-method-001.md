@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-9d54ffda4f"
+consolidation_target: "methods/calibration-aware-PTQ"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Shuttleworth et al. - 2025 - LoRA vs Full Fine-tuning An Illusion of Equivalence
 

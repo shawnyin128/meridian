@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-7ebd5271ce"
+consolidation_target: "methods/policy-optimization"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # D'Oosterlinck et al. - 2024 - Anchored Preference Optimization and Contrastive Revisions Addressing Underspecification in Alignme
 

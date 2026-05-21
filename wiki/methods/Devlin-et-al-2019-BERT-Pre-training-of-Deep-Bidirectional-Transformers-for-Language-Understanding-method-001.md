@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-e8062b9707"
+consolidation_target: "methods/transformer-architecture"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Devlin et al. - 2019 - BERT Pre-training of Deep Bidirectional Transformers for Language Understanding
 

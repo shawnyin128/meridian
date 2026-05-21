@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-90a69b5b9a"
+consolidation_target: "methods/clustering-algorithm"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Roy - 2024 - An Approach Towards Learning K-means-friendly Deep Latent Representation
 

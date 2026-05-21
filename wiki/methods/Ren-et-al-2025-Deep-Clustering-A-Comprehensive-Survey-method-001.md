@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-dc2baa62d9"
+consolidation_target: "methods/clustering-algorithm"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Ren et al. - 2025 - Deep Clustering A Comprehensive Survey
 

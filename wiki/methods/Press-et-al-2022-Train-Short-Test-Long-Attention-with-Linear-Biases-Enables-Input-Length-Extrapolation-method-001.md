@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-678ba71400"
+consolidation_target: "methods/KV-cache-compression"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Press et al. - 2022 - Train Short, Test Long Attention with Linear Biases Enables Input Length Extrapolation
 

@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-92fcbb853f"
+consolidation_target: "methods/calibration-aware-PTQ"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Lobet et al. - 2017 - Using a Structural Root System Model to Evaluate and Improve the Accuracy of Root Image Analysis Pip
 

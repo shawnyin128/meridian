@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-9d5265f6ac"
+consolidation_target: "methods/clustering-algorithm"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Assran et al. - 2023 - Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture
 

@@ -7,46 +7,49 @@ updated: "2026-05-21"
 proposal_id: "Long-Context-Inference-Method-Family-Synthesis"
 query: "I need a cross-paper method-family synthesis for long-context inference with mechanism, implementation hooks, evidence boundaries, and failure modes."
 source_papers:
-  - "concepts/Attention-sink"
+  - "concepts/Cache-retention-policy"
   - "methods/long-context-inference"
-  - "concepts/Speculative-decoding-acceptance-rate"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis"
+  - "concepts/Lookup-table-inference"
+  - "syntheses/Long-Context-Inference-Method-Family-Synthesis"
   - "topics/long-context-inference"
   - "claims/GLM-5-Team-2026-GLM-5-from-Vibe-Coding-to-Agentic-Engineering-claim-003"
 source_sections:
-  - "concepts/Attention-sink#What It Is"
-  - "concepts/Attention-sink#Evidence / Provenance"
-  - "concepts/Attention-sink#Retrieval Hooks"
-  - "concepts/Attention-sink#Why It Matters"
-  - "concepts/Attention-sink#Implementation Implications"
-  - "concepts/Attention-sink#Common Failure Modes"
-  - "concepts/Attention-sink#Open Questions"
+  - "concepts/Cache-retention-policy#What It Is"
+  - "concepts/Cache-retention-policy#Evidence / Provenance"
+  - "concepts/Cache-retention-policy#Retrieval Hooks"
+  - "concepts/Cache-retention-policy#Common Failure Modes"
+  - "concepts/Cache-retention-policy#Implementation Implications"
+  - "concepts/Cache-retention-policy#Minimal Checks / Probes"
+  - "concepts/Cache-retention-policy#Where It Appears"
+  - "concepts/Cache-retention-policy#Why It Matters"
+  - "concepts/Cache-retention-policy#Open Questions"
   - "methods/long-context-inference#What It Is"
   - "methods/long-context-inference#Mechanism"
   - "methods/long-context-inference#Implementation Hooks"
   - "methods/long-context-inference#Used By Papers"
   - "methods/long-context-inference#Failure Modes"
   - "methods/long-context-inference#Open Questions"
-  - "concepts/Speculative-decoding-acceptance-rate#What It Is"
-  - "concepts/Speculative-decoding-acceptance-rate#Evidence / Provenance"
-  - "concepts/Speculative-decoding-acceptance-rate#Implementation Implications"
-  - "concepts/Speculative-decoding-acceptance-rate#Common Failure Modes"
-  - "concepts/Speculative-decoding-acceptance-rate#Where It Appears"
-  - "concepts/Speculative-decoding-acceptance-rate#Open Questions"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis#Evidence Map"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis#Retrieval Hooks"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis#Wiki Synthesis"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis#What This Page Is For"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis#Source Facts"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis#Open Questions"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis#User Ideas / Decisions"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis#Publish / Review Notes"
+  - "concepts/Lookup-table-inference#What It Is"
+  - "concepts/Lookup-table-inference#Evidence / Provenance"
+  - "concepts/Lookup-table-inference#Implementation Implications"
+  - "concepts/Lookup-table-inference#Common Failure Modes"
+  - "concepts/Lookup-table-inference#Retrieval Hooks"
+  - "concepts/Lookup-table-inference#Where It Appears"
+  - "concepts/Lookup-table-inference#Open Questions"
+  - "syntheses/Long-Context-Inference-Method-Family-Synthesis#Retrieval Hooks"
+  - "syntheses/Long-Context-Inference-Method-Family-Synthesis#Wiki Synthesis"
+  - "syntheses/Long-Context-Inference-Method-Family-Synthesis#Evidence Map"
+  - "syntheses/Long-Context-Inference-Method-Family-Synthesis#What This Page Is For"
+  - "syntheses/Long-Context-Inference-Method-Family-Synthesis#Source Facts"
+  - "syntheses/Long-Context-Inference-Method-Family-Synthesis#Open Questions"
+  - "syntheses/Long-Context-Inference-Method-Family-Synthesis#User Ideas / Decisions"
+  - "syntheses/Long-Context-Inference-Method-Family-Synthesis#Publish / Review Notes"
   - "topics/long-context-inference#Scope"
   - "topics/long-context-inference#Retrieval Hooks"
   - "topics/long-context-inference#Claims"
   - "topics/long-context-inference#Method Families"
   - "topics/long-context-inference#Key Papers"
-source_context: ".drafts/proposals/product-maturity-synthesis-r1/Long-Context-Inference-Method-Family-Synthesis/source_context.json"
+source_context: ".drafts/proposals/high-leverage-synthesis-r1/Long-Context-Inference-Method-Family-Synthesis/source_context.json"
 user_inputs:
   - "inline_user_note"
 confidence: "low"
@@ -60,17 +63,17 @@ aliases:
 topics:
 methods:
 related:
-  - "concepts/Attention-sink"
+  - "concepts/Cache-retention-policy"
   - "methods/long-context-inference"
-  - "concepts/Speculative-decoding-acceptance-rate"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis"
+  - "concepts/Lookup-table-inference"
+  - "syntheses/Long-Context-Inference-Method-Family-Synthesis"
   - "topics/long-context-inference"
   - "claims/GLM-5-Team-2026-GLM-5-from-Vibe-Coding-to-Agentic-Engineering-claim-003"
 related_papers:
-  - "concepts/Attention-sink"
+  - "concepts/Cache-retention-policy"
   - "methods/long-context-inference"
-  - "concepts/Speculative-decoding-acceptance-rate"
-  - "syntheses/Kv-Cache-Compression-Method-Family-Synthesis"
+  - "concepts/Lookup-table-inference"
+  - "syntheses/Long-Context-Inference-Method-Family-Synthesis"
   - "topics/long-context-inference"
   - "claims/GLM-5-Team-2026-GLM-5-from-Vibe-Coding-to-Agentic-Engineering-claim-003"
 related_methods:
@@ -90,13 +93,15 @@ revision_id: "synthesis-Long-Context-Inference-Method-Family-Synthesis"
 
 ## Source Facts
 
-- [[concepts/Attention-sink|Attention sink]]: retrieved source page; extract only directly supported facts with page/section provenance.
-  - `What It Is`: `Attention sink` is a compiled preliminary-knowledge concept: a recurring mechanism or implementation background that appears across papers/methods and affects how a researcher understands, implements, debugs, or ablates the method family.
-  - `Evidence / Provenance`: - 2025 - PyramidKV Dynamic KV Cache Compression based on Pyramidal Information Funneling]]: cai et al 2025 pyramidkv dynamic kv cache compression based on pyramidal information funneling pyramidkv cai et al 2025 pyramidkv dynamic kv cache compression based on...
-  - `Retrieval Hooks`: - Use for long-context cache retention, sparse attention, and token eviction sanity checks.
-  - `Why It Matters`: - Some tokens receive persistent attention and can stabilize long-context generation or cache eviction behavior, so naive token dropping can remove disproportionately important context.
-  - `Implementation Implications`: - Keep sink-token handling explicit in cache eviction and sparse-attention policies. - Separate sink preservation from recency heuristics in ablations.
-  - `Common Failure Modes`: - A cache policy overfits to recency and discards globally stabilizing tokens. - Attention visualization averages hide head-specific sink behavior.
+- [[concepts/Cache-retention-policy|Cache retention policy]]: retrieved source page; extract only directly supported facts with page/section provenance.
+  - `What It Is`: `Cache retention policy` is a compiled preliminary-knowledge concept: a recurring mechanism or implementation background that appears across papers/methods and affects how a researcher understands, implements, debugs, or ablates the method family.
+  - `Evidence / Provenance`: - [[papers/27323-KVCapsule-Efficient-Temp|27323_KVCapsule_Efficient_Temp]]: 27323 kvcapsule efficient temp 27323 kvcapsule efficient temp calibration data selection long context inference kv cache compression low rank adaptation visual reasoning transformer ar...
+  - `Retrieval Hooks`: - Use for KV-cache retention, token eviction, sparse attention, and long-context failure analysis.
+  - `Common Failure Modes`: - A policy keeps recent tokens but drops rare long-range evidence.
+  - `Implementation Implications`: - Log retained-token identities and attention mass rather than only retained counts. - Compare policy quality separately from the kernel or storage format.
+  - `Minimal Checks / Probes`: - Inspect failure cases by dependency distance and retained-token category.
+  - `Where It Appears`: - [[papers/13979-STAR-Speculative-Decodin]] - [[papers/1909-13144v2]] - [[papers/27323-KVCapsule-Efficient-Temp]] - [[papers/3549-Train-Freeze-or-Exit-Dyna]] - [[papers/Adnan-et-al-2024-Keyformer-KV-Cache-Reduction-through-Key-Tokens-Selection-for-Efficient-Ge...
+  - `Why It Matters`: - Cache compression is a policy problem as much as a size problem: deciding which tokens or heads to retain determines whether the model preserves task-relevant context.
   - `Open Questions`: - Which linked papers provide the strongest source-grounded evidence for this concept? - Which methods fail when this concept is ignored?
 - [[methods/long-context-inference|long-context inference]]: retrieved source page; extract only directly supported facts with page/section provenance.
   - `What It Is`: This is a compiled method-family page for `long-context inference`.
@@ -105,19 +110,20 @@ revision_id: "synthesis-Long-Context-Inference-Method-Family-Synthesis"
   - `Used By Papers`: - [[papers/Wang-et-al-2024-BitNet-a4-8-4-bit-Activations-for-1-bit-LLMs]] - [[papers/Wang-et-al-2025-SVD-LLM-Truncation-aware-Singular-Value-Decomposition-for-Large-Language-Model-Compression]] - [[papers/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Model...
   - `Failure Modes`: - 2025 - SVD-LLM Truncation-aware Singular Value Decomposition for Large Language Model Compression]]: - Long-context or KV-cache gains should be checked at the target sequence lengths and tasks.
   - `Open Questions`: - Which linked papers provide the strongest source-grounded evidence for this method family?
-- [[concepts/Speculative-decoding-acceptance-rate|Speculative decoding acceptance rate]]: retrieved source page; extract only directly supported facts with page/section provenance.
-  - `What It Is`: `Speculative decoding acceptance rate` is a compiled preliminary-knowledge concept: a recurring mechanism or implementation background that appears across papers/methods and affects how a researcher understands, implements, debugs, or ablates the method family...
-  - `Evidence / Provenance`: - [[papers/DeepSeek-AI-2025-DeepSeek-V3-Technical-Report|DeepSeek-AI 等 - 2025 - DeepSeek-V3 Technical Report]]: deepseek ai 2025 deepseek v3 technical report deepseek ai deepseek v3 deepseek ai 2025 deepseek v3 technical report benchmark evaluation speculative...
-  - `Implementation Implications`: - Log acceptance length distributions, not only average speedup. - Tie acceptance statistics to target model, prompt domain, and draft batch schedule.
-  - `Common Failure Modes`: - A faster draft model reduces acceptance enough to lose end-to-end speedup. - Acceptance metrics are computed before rejection handling or EOS corner cases.
-  - `Where It Appears`: - [[papers/13979-STAR-Speculative-Decodin]] - [[papers/Cai-et-al-2024-Medusa-Simple-LLM-Inference-Acceleration-Framework-with-Multiple-Decoding-Heads]] - [[papers/DeepSeek-AI-2025-DeepSeek-V3-Technical-Report]] - [[papers/ERNIE-Technical-Report]] - [[papers/El...
+- [[concepts/Lookup-table-inference|Lookup-table inference]]: retrieved source page; extract only directly supported facts with page/section provenance.
+  - `What It Is`: `Lookup-table inference` is a compiled preliminary-knowledge concept: a recurring mechanism or implementation background that appears across papers/methods and affects how a researcher understands, implements, debugs, or ablates the method family.
+  - `Evidence / Provenance`: - [[papers/DeepSeek-V4|DeepSeek_V4]]: deepseek v4 deepseek v4 moe quantization hardware aware quantization lookup table inference long context inference sparse attention kv cache compression human preference feedback reward modeling policy optimization context...
+  - `Implementation Implications`: - Keep the quantizer code path and inference kernel assumptions in the same experiment config.
+  - `Common Failure Modes`: - A paper-level method reduces arithmetic but increases memory indirection or table overhead. - Offline quantization accuracy is measured on a representation that the kernel cannot serve efficiently.
+  - `Retrieval Hooks`: - Use for hardware-aware quantization, LUT kernels, and non-uniform quantizer implementation checks.
+  - `Where It Appears`: - [[papers/1909-13144v2]] - [[papers/2511-10645v1]] - [[papers/3549-Train-Freeze-or-Exit-Dyna]] - [[papers/Blumenberg-et-al-2025-Improving-Block-Wise-LLM-Quantization-by-4-bit-Block-Wise-Optimal-Float-BOF4-Analysis-and-Variati]] - [[papers/Chee-et-al-2024-QuIP...
   - `Open Questions`: - Which linked papers provide the strongest source-grounded evidence for this concept? - Which methods fail when this concept is ignored?
-- [[syntheses/Kv-Cache-Compression-Method-Family-Synthesis|Kv-Cache Compression Method Family Synthesis]]: retrieved source page; extract only directly supported facts with page/section provenance.
-  - `Evidence Map`: - [[methods/long-context-inference|long-context inference]]: candidate evidence sections: Used By Papers, Mechanism, What It Is, Implementation Hooks, Failure Modes, Open Questions.
-  - `Retrieval Hooks`: - Query: "I need a cross-paper method-family synthesis for KV-cache compression with mechanism, implementation hooks, evidence boundaries, and failure modes." Use because: It is the original research intent that produced `Kv-Cache Compression Method Family Syn...
-  - `Wiki Synthesis`: - Intended use: I need a cross-paper method-family synthesis for KV-cache compression with mechanism, implementation hooks, evidence boundaries, and failure modes.
-  - `What This Page Is For`: - Original research query: I need a cross-paper method-family synthesis for KV-cache compression with mechanism, implementation hooks, evidence boundaries, and failure modes.
-  - `Source Facts`: - `Failure Modes`: - 2025 - SVD-LLM Truncation-aware Singular Value Decomposition for Large Language Model Compression]]: - Long-context or KV-cache gains should be checked at the target sequence lengths and tasks.
+- [[syntheses/Long-Context-Inference-Method-Family-Synthesis|Long-Context Inference Method Family Synthesis]]: retrieved source page; extract only directly supported facts with page/section provenance.
+  - `Retrieval Hooks`: - Query: "I need a cross-paper method-family synthesis for long-context inference with mechanism, implementation hooks, evidence boundaries, and failure modes." Use because: It is the original research intent that produced `Long-Context Inference Method Family...
+  - `Wiki Synthesis`: - Intended use: I need a cross-paper method-family synthesis for long-context inference with mechanism, implementation hooks, evidence boundaries, and failure modes.
+  - `Evidence Map`: - [[methods/long-context-inference|long-context inference]]: candidate evidence sections: What It Is, Mechanism, Implementation Hooks, Used By Papers, Failure Modes, Open Questions.
+  - `What This Page Is For`: - Original research query: I need a cross-paper method-family synthesis for long-context inference with mechanism, implementation hooks, evidence boundaries, and failure modes.
+  - `Source Facts`: - `Retrieval Hooks`: - Query: "I need a cross-paper method-family synthesis for KV-cache compression with mechanism, implementation hooks, evidence boundaries, and failure modes." Use because: It is the original research intent that produced `Kv-Cache Compress...
   - `Open Questions`: - Which retrieved pages are adjacent context rather than direct evidence?
   - `User Ideas / Decisions`: Automatically seeded by the final LLM Wiki synthesis growth loop from a compiled method page.
   - `Publish / Review Notes`: - Keep source facts, wiki synthesis, and user ideas separated during review.
@@ -131,10 +137,14 @@ revision_id: "synthesis-Long-Context-Inference-Method-Family-Synthesis"
 
 ## Wiki Synthesis
 
-- This is a low-confidence synthesis scaffold generated from canonical retrieval context.
-- Preserve the source facts below as evidence candidates; do not treat this scaffold as a final thesis.
+- Working synthesis target: This page should consolidate a method family across papers: what the mechanism actually changes, what implementation choices matter, which evidence is comparable, and where the family fails.
 - Intended use: I need a cross-paper method-family synthesis for long-context inference with mechanism, implementation hooks, evidence boundaries, and failure modes.
-- Next reviewer action: compress retrieved source facts into a tighter cross-paper thesis only after checking provenance.
+- Source-fact boundary: use the retrieved `Source Facts` section for directly supported statements; keep this section as compiled wiki interpretation.
+- Review contract:
+  - Identify the shared mechanism before listing paper-specific variants.
+  - Preserve implementation hooks that affect ablations or probes.
+  - Separate evidence that supports the mechanism from evidence that only supports one paper's setting.
+- Retrieval contract: future queries should be able to decide whether to read a method/topic/concept page first, which source papers to inspect next, and which uncertainty blocks a research decision.
 
 ## User Ideas / Decisions
 
@@ -142,10 +152,10 @@ Automatically seeded by the final LLM Wiki synthesis growth loop from a compiled
 
 ## Evidence Map
 
-- [[concepts/Attention-sink|Attention sink]]: candidate evidence sections: What It Is, Evidence / Provenance, Retrieval Hooks, Why It Matters, Implementation Implications, Common Failure Modes, Open Questions.
+- [[concepts/Cache-retention-policy|Cache retention policy]]: candidate evidence sections: What It Is, Evidence / Provenance, Retrieval Hooks, Common Failure Modes, Implementation Implications, Minimal Checks / Probes, Where It Appears, Why It Matters, Open Questions.
 - [[methods/long-context-inference|long-context inference]]: candidate evidence sections: What It Is, Mechanism, Implementation Hooks, Used By Papers, Failure Modes, Open Questions.
-- [[concepts/Speculative-decoding-acceptance-rate|Speculative decoding acceptance rate]]: candidate evidence sections: What It Is, Evidence / Provenance, Implementation Implications, Common Failure Modes, Where It Appears, Open Questions.
-- [[syntheses/Kv-Cache-Compression-Method-Family-Synthesis|Kv-Cache Compression Method Family Synthesis]]: candidate evidence sections: Evidence Map, Retrieval Hooks, Wiki Synthesis, What This Page Is For, Source Facts, Open Questions, User Ideas / Decisions, Publish / Review Notes.
+- [[concepts/Lookup-table-inference|Lookup-table inference]]: candidate evidence sections: What It Is, Evidence / Provenance, Implementation Implications, Common Failure Modes, Retrieval Hooks, Where It Appears, Open Questions.
+- [[syntheses/Long-Context-Inference-Method-Family-Synthesis|Long-Context Inference Method Family Synthesis]]: candidate evidence sections: Retrieval Hooks, Wiki Synthesis, Evidence Map, What This Page Is For, Source Facts, Open Questions, User Ideas / Decisions, Publish / Review Notes.
 - [[topics/long-context-inference|long-context inference]]: candidate evidence sections: Scope, Retrieval Hooks, Claims, Method Families, Key Papers.
 - [[claims/GLM-5-Team-2026-GLM-5-from-Vibe-Coding-to-Agentic-Engineering-claim-003|The result is improved end-to-end latency and higher effective throughput for long-context agentic inference.]]: candidate evidence sections: needs manual section selection.
 
@@ -168,9 +178,9 @@ Automatically seeded by the final LLM Wiki synthesis growth loop from a compiled
 
 ## Source Links
 
-- [[concepts/Attention-sink|Attention sink]]
+- [[concepts/Cache-retention-policy|Cache retention policy]]
 - [[methods/long-context-inference|long-context inference]]
-- [[concepts/Speculative-decoding-acceptance-rate|Speculative decoding acceptance rate]]
-- [[syntheses/Kv-Cache-Compression-Method-Family-Synthesis|Kv-Cache Compression Method Family Synthesis]]
+- [[concepts/Lookup-table-inference|Lookup-table inference]]
+- [[syntheses/Long-Context-Inference-Method-Family-Synthesis|Long-Context Inference Method Family Synthesis]]
 - [[topics/long-context-inference|long-context inference]]
 - [[claims/GLM-5-Team-2026-GLM-5-from-Vibe-Coding-to-Agentic-Engineering-claim-003|The result is improved end-to-end latency and higher effective throughput for long-context agentic inference.]]

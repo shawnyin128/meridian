@@ -4567,7 +4567,6 @@
 - [[syntheses/Low-Bit-Quantization-Topic-Overview|Low-Bit Quantization Topic Overview]] - status: draft; published_proposal
 - [[syntheses/Outlier-Aware-Quantization-Method-Family-Synthesis|Outlier-Aware Quantization Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/PDE-Residual-Scientific-ML-Implementation-Checks|PDE Residual Scientific ML Implementation Checks]] - status: draft; published_proposal
-- [[syntheses/Paper-Specific-Research-Method-Method-Family-Synthesis|Paper-Specific Research Method Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Parameter-Efficient-Adaptation-Topic-Overview|Parameter-Efficient Adaptation Topic Overview]] - status: draft; published_proposal
 - [[syntheses/Performance-Evaluation-Topic-Overview|Performance Evaluation Topic Overview]] - status: draft; published_proposal
 - [[syntheses/Post-Training-Quantization-Method-Family-Synthesis|Post-Training Quantization Method Family Synthesis]] - status: draft; published_proposal
@@ -4576,6 +4575,5 @@
 - [[syntheses/Speculative-Decoding-Method-Family-Synthesis|Speculative Decoding Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Speculative-Decoding-Probe-Planning-Page|Speculative Decoding Probe Planning Page]] - status: draft; published_proposal
 - [[syntheses/Speculative-Decoding-Topic-Overview|Speculative Decoding Topic Overview]] - status: draft; published_proposal
-- [[syntheses/Survey-Synthesis-Method-Family-Synthesis|Survey Synthesis Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Transformer-Architecture-Method-Family-Synthesis|Transformer Architecture Method Family Synthesis]] - status: draft; published_proposal
 - [[syntheses/Transformer-Architecture-Topic-Overview|Transformer Architecture Topic Overview]] - status: draft; published_proposal

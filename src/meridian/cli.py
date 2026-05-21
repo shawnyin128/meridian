@@ -26,6 +26,7 @@ from meridian.wiki.commands import (
     insight_lint_wiki,
     lint_wiki_command,
     publish_run,
+    publish_method_consolidation_wiki,
     publish_synthesis_batch_wiki,
     publish_proposal_wiki,
     publish_insight_wiki,
@@ -406,6 +407,13 @@ def build_parser() -> argparse.ArgumentParser:
     method_consolidation.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
     method_consolidation.add_argument("--out-dir", type=Path, default=None, help="Optional consolidation proposal directory.")
     method_consolidation.add_argument("--overwrite", action="store_true", help="Overwrite an existing consolidation proposal.")
+
+    publish_method_consolidation = wiki_subparsers.add_parser(
+        "publish-method-consolidation",
+        help="Publish low-risk method consolidation frontmatter updates.",
+    )
+    publish_method_consolidation.add_argument("consolidation_manifest", type=Path, help="Path to method-consolidation.json.")
+    publish_method_consolidation.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
 
     contradiction_review = wiki_subparsers.add_parser(
         "propose-contradiction-review",
@@ -1128,6 +1136,17 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Candidate method records: {result.candidate_count}")
             print(f"Grouped candidates: {result.grouped_count}")
             print(f"High-risk candidates: {result.high_risk_count}")
+            return 0
+
+        if args.product == "wiki" and args.command == "publish-method-consolidation":
+            result = publish_method_consolidation_wiki(
+                consolidation_manifest=args.consolidation_manifest,
+                wiki_root=args.wiki_root,
+            )
+            print(f"Wrote method consolidation publish result: {result.published_manifest_path}")
+            print(f"Updated candidate records: {result.updated_candidates}")
+            print(f"Skipped candidate records: {result.skipped_candidates}")
+            print(f"Updated wiki log: {result.log_path}")
             return 0
 
         if args.product == "wiki" and args.command == "propose-contradiction-review":

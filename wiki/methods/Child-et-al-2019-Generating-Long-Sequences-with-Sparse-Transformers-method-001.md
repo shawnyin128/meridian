@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-e8ae236685"
+consolidation_target: "methods/long-context-inference"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Child et al. - 2019 - Generating Long Sequences with Sparse Transformers
 

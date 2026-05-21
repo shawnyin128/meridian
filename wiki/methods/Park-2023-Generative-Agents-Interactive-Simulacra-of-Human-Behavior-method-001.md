@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-678aeee24d"
+consolidation_target: "methods/LLM-agent-taxonomy"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Park 等 - 2023 - Generative Agents Interactive Simulacra of Human Behavior
 

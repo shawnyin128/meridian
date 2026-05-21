@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-6e7e410be7"
+consolidation_target: "methods/transformer-architecture"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Wolleb et al. - 2022 - Diffusion Models for Medical Anomaly Detection
 

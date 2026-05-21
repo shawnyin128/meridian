@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-dcf6787e00"
+consolidation_target: "methods/agent-workflow-acceleration"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Ye et al. - 2025 - Speculative Actions A Lossless Framework for Faster Agentic Systems
 

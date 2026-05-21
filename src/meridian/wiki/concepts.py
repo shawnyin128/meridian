@@ -210,16 +210,18 @@ def propose_concept_layer(
         )
     ][:max_concepts]
     actions: list[dict[str, Any]] = []
-    for candidate in proposed:
-        actions.append(
-            {
-                "action_type": "create_concept_page",
-                "risk": "low",
-                "target_path": f"concepts/{candidate['slug']}.md",
-                "reason": "Recurring prerequisite concept appears across canonical paper/method/topic evidence and has source provenance.",
-                "concept": candidate,
-            }
-        )
+    proposed_slugs = {candidate["slug"] for candidate in proposed}
+    for candidate in candidates:
+        if candidate["slug"] in proposed_slugs:
+            actions.append(
+                {
+                    "action_type": "create_concept_page",
+                    "risk": "low",
+                    "target_path": f"concepts/{candidate['slug']}.md",
+                    "reason": "Recurring prerequisite concept appears across canonical paper/method/topic evidence and has source provenance.",
+                    "concept": candidate,
+                }
+            )
         for method in candidate["related_methods"][:10]:
             method_path = wiki_root / "methods" / f"{slugify(method)}.md"
             if method_path.exists():

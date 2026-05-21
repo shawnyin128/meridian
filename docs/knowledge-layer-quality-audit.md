@@ -1,6 +1,6 @@
 # Knowledge Layer Quality Audit
 
-- Generated: `2026-05-21T05:17:18.310470+00:00`
+- Generated: `2026-05-21T06:11:09.070714+00:00`
 - Status: `warn`
 - Papers: 236
 - Methods: 302

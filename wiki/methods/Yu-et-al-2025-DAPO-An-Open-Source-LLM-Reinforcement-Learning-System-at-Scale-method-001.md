@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-96210c9bb2"
+consolidation_target: "methods/policy-optimization"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Yu et al. - 2025 - DAPO An Open-Source LLM Reinforcement Learning System at Scale
 

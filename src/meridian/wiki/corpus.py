@@ -100,6 +100,9 @@ INTENT_SECTION_TERMS = {
         "benchmark",
     },
     "Implementation Hooks": {"implement", "implementation", "ablation", "ablations", "probe", "sanity", "code", "baseline"},
+    "Source Facts": {"source", "sources", "fact", "facts", "grounded", "paper", "papers", "trace"},
+    "Wiki Synthesis": {"synthesis", "overview", "answer", "research", "question", "compare", "comparison", "compiled", "context"},
+    "Retrieval Hooks": {"retrieve", "retrieval", "query", "search", "read", "context", "entry"},
     "Limitations / Uncertainty": {
         "scope",
         "limitation",
@@ -132,10 +135,10 @@ INTENT_SECTION_TERMS = {
     "Claims": {"claim", "claims", "evidence", "support", "contradict"},
     "Contradictions": {"contradict", "conflict", "stale", "superseded", "disagree"},
     "Claim": {"claim", "proves", "argues", "supports", "evidence"},
-    "Supporting Evidence": {"support", "supports", "evidence", "metric", "observation"},
+    "Supporting Evidence": {"support", "supports", "supported", "evidence", "metric", "observation"},
     "Contradicting Evidence": {"contradict", "contradicts", "conflict", "negative", "counter"},
     "Provenance": {"provenance", "source", "paper", "section", "page"},
-    "Evidence Item": {"evidence", "metric", "observation", "result", "table", "figure"},
+    "Evidence Item": {"evidence", "support", "supports", "supported", "metric", "observation", "result", "table", "figure"},
     "Source": {"source", "paper", "section", "page", "provenance"},
     "Metric or Observation": {"metric", "observation", "result", "table", "figure", "benchmark"},
     "Supports": {"support", "supports", "claim", "evidence"},
@@ -397,7 +400,7 @@ def _catalog_record(
     text = path.read_text(encoding="utf-8")
     frontmatter = parse_frontmatter(text)
     body = strip_frontmatter(text)
-    sections = split_sections(body)
+    sections = _sections_for_record(body=body, frontmatter=frontmatter)
     rel_path = path.relative_to(wiki_root)
     title = str(frontmatter.get("title") or path.stem)
     linked_source_quality = _linked_source_quality(frontmatter, wiki_root=wiki_root)
@@ -441,6 +444,9 @@ def _catalog_record(
         "evolution_state": frontmatter.get("evolution_state"),
         "evolution_markers": _as_list(frontmatter.get("evolution_markers")),
         "last_refinement_id": frontmatter.get("last_refinement_id"),
+        "candidate_scope": frontmatter.get("candidate_scope"),
+        "consolidation_target": frontmatter.get("consolidation_target"),
+        "retrieval_visibility": frontmatter.get("retrieval_visibility"),
         "updated": frontmatter.get("updated"),
         "routing": {field: _as_list(frontmatter.get(field)) for field in ROUTING_FIELDS},
         "section_headings": list(sections.keys()),
@@ -631,6 +637,9 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
         "evolution_state": record.get("evolution_state"),
         "evolution_markers": record.get("evolution_markers") or [],
         "last_refinement_id": record.get("last_refinement_id"),
+        "candidate_scope": record.get("candidate_scope"),
+        "consolidation_target": record.get("consolidation_target"),
+        "retrieval_visibility": record.get("retrieval_visibility"),
     }
 
 
@@ -746,7 +755,7 @@ def _score_record_v1(
         ) * section_weight
         section_score += _query_phrase_score(query_analysis, content, weight=section_weight * 0.8)
         section_score += _section_intent_boost(query_tokens, heading, weight=section_weight, content=content)
-        if section_score > 0:
+        if section_score > 0 or heading in desired_sections:
             section_hits.append(
                 {
                     "heading": heading,
@@ -812,6 +821,10 @@ def _score_record_v1(
     if knowledge_role == "candidate_method_record" and not identity_match:
         score *= 0.2
         reasons.append("candidate method-record suppression")
+    retrieval_visibility = str(record.get("retrieval_visibility") or "").lower()
+    if retrieval_visibility == "suppressed_unless_exact_identity" and not identity_match:
+        score *= 0.05
+        reasons.append("consolidated candidate suppression")
 
     result_type = str(record.get("type") or "")
     corpus_type = str(record.get("corpus_type") or record.get("relative_path") or "")
@@ -927,7 +940,8 @@ def _diversify_v1(
     if desired_sections & {"Mechanism", "Implementation Hooks", "Failure Modes", "What It Is"}:
         forced_types.append({"method"})
         forced_types.append({"concept"})
-    if desired_sections & {"Scope", "Key Papers", "Method Families"}:
+        forced_types.append({"evidence"})
+    if desired_sections & {"Scope", "Key Papers", "Method Families", "Source Facts", "Wiki Synthesis", "Open Questions", "Retrieval Hooks"}:
         forced_types.append({"synthesis", "method-family", "comparison", "research-question", "decision"})
         forced_types.append({"topic"})
     if desired_sections & {"Evidence Map", "Supporting Evidence", "Evidence Item", "Provenance", "Claims", "Contradictions"}:
@@ -935,6 +949,14 @@ def _diversify_v1(
         forced_types.append({"evidence"})
     if desired_sections & {"Evidence Map", "Implementation Hooks", "Key Papers", "Source", "Provenance"}:
         forced_types.append({"paper"})
+    deduped_forced_types = []
+    seen_forced_types = set()
+    for result_types in forced_types:
+        key = tuple(sorted(result_types))
+        if key not in seen_forced_types:
+            seen_forced_types.add(key)
+            deduped_forced_types.append(result_types)
+    forced_types = deduped_forced_types
     remaining = list(ranked)
     for result_types in forced_types:
         if len(selected) >= top_k:
@@ -1306,8 +1328,12 @@ def _query_analysis(query: str) -> dict[str, Any]:
         if anchor_hits and (len(term_hits) >= 2 or phrase_hit or len(anchor_hits) >= 2):
             domains.append(domain)
 
-    source_terms = {"cleanup", "extraction", "metadata", "ocr", "provenance", "source", "weak"}
-    source_quality_query = bool(token_set & source_terms) and bool({"cleanup", "source", "metadata", "ocr"} & token_set)
+    source_quality_query = (
+        "source quality" in norm
+        or "source-quality" in query.lower()
+        or bool(token_set & {"cleanup", "extraction", "metadata", "ocr", "weak"})
+        and bool(token_set & {"source", "metadata", "ocr", "cleanup"})
+    )
     contrast_settings = []
     if "quantization" in token_set:
         has_weight_only = "weight only" in norm or "weight-only" in query.lower()
@@ -1339,7 +1365,41 @@ def _record_sections(record: dict[str, Any], *, wiki_root: Path) -> dict[str, st
     path = Path(str(record["path"]))
     if not path.is_absolute() and not path.exists():
         path = wiki_root / path
-    return split_sections(strip_frontmatter(path.read_text(encoding="utf-8")))
+    text = path.read_text(encoding="utf-8")
+    return _sections_for_record(body=strip_frontmatter(text), frontmatter=parse_frontmatter(text))
+
+
+def _sections_for_record(*, body: str, frontmatter: dict[str, Any]) -> dict[str, str]:
+    sections = split_sections(body)
+    if sections:
+        return sections
+    page_type = str(frontmatter.get("type") or "")
+    if page_type not in {"claim", "evidence"}:
+        return sections
+    compact = _compact_candidate_sections(body)
+    if page_type == "claim":
+        return {
+            "Claim": compact.get("Claim") or body.strip(),
+            "Supporting Evidence": compact.get("Evidence IDs") or compact.get("Supports") or "No supporting evidence ids recorded.",
+            "Provenance": compact.get("Provenance") or compact.get("Source paper") or "No provenance recorded.",
+            "Confidence": str(frontmatter.get("confidence") or "unknown"),
+        }
+    return {
+        "Evidence Item": compact.get("Summary") or compact.get("Evidence type") or body.strip(),
+        "Source": compact.get("Source paper") or "No source paper recorded.",
+        "Metric or Observation": compact.get("Summary") or compact.get("Evidence type") or compact.get("Page") or "No metric or observation recorded.",
+        "Supports": compact.get("Supports") or "No supported claim recorded.",
+        "Reliability": f"confidence={frontmatter.get('confidence') or 'unknown'}; review_state={frontmatter.get('review_state') or 'unknown'}",
+    }
+
+
+def _compact_candidate_sections(body: str) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    for line in body.splitlines():
+        match = re.match(r"^-\s+([^:]+):\s*(.*)$", line.strip())
+        if match:
+            fields[match.group(1).strip()] = match.group(2).strip()
+    return fields
 
 
 def _record_search_text(record: dict[str, Any], *, wiki_root: Path) -> str:

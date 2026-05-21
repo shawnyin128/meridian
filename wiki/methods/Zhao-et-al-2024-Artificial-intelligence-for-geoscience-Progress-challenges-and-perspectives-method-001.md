@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-4cf38ab025"
+consolidation_target: "methods/PDE-constrained-learning"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Zhao et al. - 2024 - Artificial intelligence for geoscience Progress, challenges, and perspectives
 

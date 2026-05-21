@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-b65149dbac"
+consolidation_target: "methods/joint-embedding-predictive-learning"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # LeCun - A Path Towards Autonomous Machine Intelligence Version 0.9.2, 2022-06-27
 

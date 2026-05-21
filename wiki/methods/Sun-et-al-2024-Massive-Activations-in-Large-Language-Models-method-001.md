@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-ecf3175fbc"
+consolidation_target: "methods/mechanistic-activation-analysis"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Massive activation localization and mechanism analysis
 

@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-bd87741047"
+consolidation_target: "methods/paper-specific-research-method"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Gao et al. - 2025 - Soft Adaptive Policy Optimization
 

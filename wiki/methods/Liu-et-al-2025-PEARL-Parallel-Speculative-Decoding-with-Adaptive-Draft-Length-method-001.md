@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-930a2f6c11"
+consolidation_target: "methods/speculative-decoding"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Liu et al. - 2025 - PEARL Parallel Speculative Decoding with Adaptive Draft Length
 

@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-f38859344b"
+consolidation_target: "methods/joint-embedding-predictive-learning"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Vision-language joint embedding predictive architecture
 

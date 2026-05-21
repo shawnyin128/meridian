@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-0e22027881"
+consolidation_target: "methods/joint-embedding-predictive-learning"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Huang et al. - 2025 - LLM-JEPA Large Language Models Meet Joint Embedding Predictive Architectures
 

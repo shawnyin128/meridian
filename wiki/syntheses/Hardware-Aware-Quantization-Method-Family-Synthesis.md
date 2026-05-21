@@ -7,52 +7,51 @@ updated: "2026-05-21"
 proposal_id: "Hardware-Aware-Quantization-Method-Family-Synthesis"
 query: "I need a cross-paper method-family synthesis for hardware-aware quantization with mechanism, implementation hooks, evidence boundaries, and failure modes."
 source_papers:
-  - "concepts/Quantization-error-propagation"
+  - "concepts/Lookup-table-inference"
   - "methods/hardware-aware-quantization"
-  - "concepts/Activation-outliers"
-  - "syntheses/Post-Training-Quantization-Method-Family-Synthesis"
+  - "concepts/IO-aware-attention-scheduling"
+  - "syntheses/Hardware-Aware-Quantization-Method-Family-Synthesis"
   - "topics/hardware-aware-quantization"
   - "claims/Yang-et-al-2025-Diffusion-Models-A-Comprehensive-Survey-of-Methods-and-Applications-claim-003"
 source_sections:
-  - "concepts/Quantization-error-propagation#What It Is"
-  - "concepts/Quantization-error-propagation#Evidence / Provenance"
-  - "concepts/Quantization-error-propagation#Implementation Implications"
-  - "concepts/Quantization-error-propagation#Common Failure Modes"
-  - "concepts/Quantization-error-propagation#Where It Appears"
-  - "concepts/Quantization-error-propagation#Minimal Checks / Probes"
-  - "concepts/Quantization-error-propagation#Related Concepts"
-  - "concepts/Quantization-error-propagation#Why It Matters"
-  - "concepts/Quantization-error-propagation#Open Questions"
+  - "concepts/Lookup-table-inference#Evidence / Provenance"
+  - "concepts/Lookup-table-inference#What It Is"
+  - "concepts/Lookup-table-inference#Retrieval Hooks"
+  - "concepts/Lookup-table-inference#Common Failure Modes"
+  - "concepts/Lookup-table-inference#Implementation Implications"
+  - "concepts/Lookup-table-inference#Where It Appears"
+  - "concepts/Lookup-table-inference#Minimal Checks / Probes"
+  - "concepts/Lookup-table-inference#Related Concepts"
+  - "concepts/Lookup-table-inference#Why It Matters"
+  - "concepts/Lookup-table-inference#Open Questions"
   - "methods/hardware-aware-quantization#What It Is"
   - "methods/hardware-aware-quantization#Implementation Hooks"
   - "methods/hardware-aware-quantization#Mechanism"
   - "methods/hardware-aware-quantization#Used By Papers"
   - "methods/hardware-aware-quantization#Failure Modes"
   - "methods/hardware-aware-quantization#Open Questions"
-  - "concepts/Activation-outliers#What It Is"
-  - "concepts/Activation-outliers#Evidence / Provenance"
-  - "concepts/Activation-outliers#Implementation Implications"
-  - "concepts/Activation-outliers#Common Failure Modes"
-  - "concepts/Activation-outliers#Retrieval Hooks"
-  - "concepts/Activation-outliers#Where It Appears"
-  - "concepts/Activation-outliers#Why It Matters"
-  - "concepts/Activation-outliers#Minimal Checks / Probes"
-  - "concepts/Activation-outliers#Related Concepts"
-  - "concepts/Activation-outliers#Open Questions"
-  - "syntheses/Post-Training-Quantization-Method-Family-Synthesis#Retrieval Hooks"
-  - "syntheses/Post-Training-Quantization-Method-Family-Synthesis#Wiki Synthesis"
-  - "syntheses/Post-Training-Quantization-Method-Family-Synthesis#Evidence Map"
-  - "syntheses/Post-Training-Quantization-Method-Family-Synthesis#What This Page Is For"
-  - "syntheses/Post-Training-Quantization-Method-Family-Synthesis#Source Facts"
-  - "syntheses/Post-Training-Quantization-Method-Family-Synthesis#Open Questions"
-  - "syntheses/Post-Training-Quantization-Method-Family-Synthesis#User Ideas / Decisions"
-  - "syntheses/Post-Training-Quantization-Method-Family-Synthesis#Publish / Review Notes"
+  - "concepts/IO-aware-attention-scheduling#What It Is"
+  - "concepts/IO-aware-attention-scheduling#Evidence / Provenance"
+  - "concepts/IO-aware-attention-scheduling#Retrieval Hooks"
+  - "concepts/IO-aware-attention-scheduling#Implementation Implications"
+  - "concepts/IO-aware-attention-scheduling#Common Failure Modes"
+  - "concepts/IO-aware-attention-scheduling#Why It Matters"
+  - "concepts/IO-aware-attention-scheduling#Where It Appears"
+  - "concepts/IO-aware-attention-scheduling#Open Questions"
+  - "syntheses/Hardware-Aware-Quantization-Method-Family-Synthesis#Retrieval Hooks"
+  - "syntheses/Hardware-Aware-Quantization-Method-Family-Synthesis#Wiki Synthesis"
+  - "syntheses/Hardware-Aware-Quantization-Method-Family-Synthesis#Evidence Map"
+  - "syntheses/Hardware-Aware-Quantization-Method-Family-Synthesis#What This Page Is For"
+  - "syntheses/Hardware-Aware-Quantization-Method-Family-Synthesis#Source Facts"
+  - "syntheses/Hardware-Aware-Quantization-Method-Family-Synthesis#Open Questions"
+  - "syntheses/Hardware-Aware-Quantization-Method-Family-Synthesis#User Ideas / Decisions"
+  - "syntheses/Hardware-Aware-Quantization-Method-Family-Synthesis#Publish / Review Notes"
   - "topics/hardware-aware-quantization#Scope"
   - "topics/hardware-aware-quantization#Retrieval Hooks"
   - "topics/hardware-aware-quantization#Method Families"
   - "topics/hardware-aware-quantization#Claims"
   - "topics/hardware-aware-quantization#Key Papers"
-source_context: ".drafts/proposals/product-maturity-synthesis-r1/Hardware-Aware-Quantization-Method-Family-Synthesis/source_context.json"
+source_context: ".drafts/proposals/high-leverage-synthesis-r1/Hardware-Aware-Quantization-Method-Family-Synthesis/source_context.json"
 user_inputs:
   - "inline_user_note"
 confidence: "low"
@@ -66,17 +65,17 @@ aliases:
 topics:
 methods:
 related:
-  - "concepts/Quantization-error-propagation"
+  - "concepts/Lookup-table-inference"
   - "methods/hardware-aware-quantization"
-  - "concepts/Activation-outliers"
-  - "syntheses/Post-Training-Quantization-Method-Family-Synthesis"
+  - "concepts/IO-aware-attention-scheduling"
+  - "syntheses/Hardware-Aware-Quantization-Method-Family-Synthesis"
   - "topics/hardware-aware-quantization"
   - "claims/Yang-et-al-2025-Diffusion-Models-A-Comprehensive-Survey-of-Methods-and-Applications-claim-003"
 related_papers:
-  - "concepts/Quantization-error-propagation"
+  - "concepts/Lookup-table-inference"
   - "methods/hardware-aware-quantization"
-  - "concepts/Activation-outliers"
-  - "syntheses/Post-Training-Quantization-Method-Family-Synthesis"
+  - "concepts/IO-aware-attention-scheduling"
+  - "syntheses/Hardware-Aware-Quantization-Method-Family-Synthesis"
   - "topics/hardware-aware-quantization"
   - "claims/Yang-et-al-2025-Diffusion-Models-A-Comprehensive-Survey-of-Methods-and-Applications-claim-003"
 related_methods:
@@ -96,15 +95,16 @@ revision_id: "synthesis-Hardware-Aware-Quantization-Method-Family-Synthesis"
 
 ## Source Facts
 
-- [[concepts/Quantization-error-propagation|Quantization error propagation]]: retrieved source page; extract only directly supported facts with page/section provenance.
-  - `What It Is`: `Quantization error propagation` is a compiled preliminary-knowledge concept: a recurring mechanism or implementation background that appears across papers/methods and affects how a researcher understands, implements, debugs, or ablates the method family.
+- [[concepts/Lookup-table-inference|Lookup-table inference]]: retrieved source page; extract only directly supported facts with page/section provenance.
   - `Evidence / Provenance`: - [[papers/2511-10645v1|2511.10645v1]]: 2511 10645v1 2511 10645v1 post training quantization low bit quantization quantization error rotation based quantization hardware aware quantization lookup table inference benchmark evaluation survey synthesis survey syn...
-  - `Implementation Implications`: - Measure local reconstruction error and downstream metric change separately. - When a layer looks harmless locally, probe whether later layers amplify the perturbation.
-  - `Common Failure Modes`: - Optimizing one layer independently masks accumulated error. - Metrics degrade only after a later nonlinear or routing operation.
-  - `Where It Appears`: - [[papers/1808-05779v3]] - [[papers/1909-13144v2]] - [[papers/2511-10645v1]] - [[papers/3549-Train-Freeze-or-Exit-Dyna]] - [[papers/Arai-and-Ichikawa-2025-Quantization-Error-Propagation-Revisiting-Layer-Wise-Post-Training-Quantization]] - [[papers/Ashkboos-et...
-  - `Minimal Checks / Probes`: - Run layer-drop or layer-only quantization sweeps.
-  - `Related Concepts`: - [[concepts/Activation-outliers|Activation outliers]] - [[concepts/Hessian-aware-reconstruction|Hessian-aware reconstruction]]
-  - `Why It Matters`: - Quantization error is not only a local reconstruction problem; upstream activation or weight error can change downstream inputs, routing, and evaluation behavior.
+  - `What It Is`: `Lookup-table inference` is a compiled preliminary-knowledge concept: a recurring mechanism or implementation background that appears across papers/methods and affects how a researcher understands, implements, debugs, or ablates the method family.
+  - `Retrieval Hooks`: - Use for hardware-aware quantization, LUT kernels, and non-uniform quantizer implementation checks.
+  - `Common Failure Modes`: - Offline quantization accuracy is measured on a representation that the kernel cannot serve efficiently.
+  - `Implementation Implications`: - Count table reads, metadata movement, and packing layout alongside arithmetic savings. - Keep the quantizer code path and inference kernel assumptions in the same experiment config.
+  - `Where It Appears`: - [[papers/1909-13144v2]] - [[papers/2511-10645v1]] - [[papers/3549-Train-Freeze-or-Exit-Dyna]] - [[papers/Blumenberg-et-al-2025-Improving-Block-Wise-LLM-Quantization-by-4-bit-Block-Wise-Optimal-Float-BOF4-Analysis-and-Variati]] - [[papers/Chee-et-al-2024-QuIP...
+  - `Minimal Checks / Probes`: - Compare kernel-level latency and memory traffic against a uniform quantization baseline.
+  - `Related Concepts`: - [[concepts/Per-channel-scaling|Per-channel scaling]] - [[concepts/Quantization-error-propagation|Quantization error propagation]]
+  - `Why It Matters`: - A quantization method that depends on lookup tables must align quantizer design with memory layout, table access cost, and kernel support; otherwise accuracy gains can disappear at deployment.
   - `Open Questions`: - Which linked papers provide the strongest source-grounded evidence for this concept? - Which methods fail when this concept is ignored?
 - [[methods/hardware-aware-quantization|hardware-aware quantization]]: retrieved source page; extract only directly supported facts with page/section provenance.
   - `What It Is`: This is a compiled method-family page for `hardware-aware quantization`.
@@ -113,23 +113,21 @@ revision_id: "synthesis-Hardware-Aware-Quantization-Method-Family-Synthesis"
   - `Used By Papers`: - [[papers/Lasby-et-al-2025-REAP-the-Experts-Why-Pruning-Prevails-for-One-Shot-MoE-compression]] - [[papers/Chen-et-al-2025-EfficientQAT-Efficient-Quantization-Aware-Training-for-Large-Language-Models]] - [[papers/Chee-et-al-2024-QuIP-2-Bit-Quantization-of-Lar...
   - `Failure Modes`: - [[papers/Chen-et-al-2025-EfficientQAT-Efficient-Quantization-Aware-Training-for-Large-Language-Models|Chen et al.
   - `Open Questions`: - Which linked papers provide the strongest source-grounded evidence for this method family?
-- [[concepts/Activation-outliers|Activation outliers]]: retrieved source page; extract only directly supported facts with page/section provenance.
-  - `What It Is`: `Activation outliers` is a compiled preliminary-knowledge concept: a recurring mechanism or implementation background that appears across papers/methods and affects how a researcher understands, implements, debugs, or ablates the method family.
-  - `Evidence / Provenance`: - 2024 - DuQuant Distributing Outliers via Dual Transformation Makes Stronger Quantized LLMs]]: lin et al 2024 duquant distributing outliers via dual transformation makes stronger quantized llms duquant dual transformation for massive and normal outliers low b...
-  - `Implementation Implications`: - Inspect per-channel and per-token activation ranges before choosing scaling or clipping. - Keep calibration data and routing/expert paths aligned with the target deployment regime.
-  - `Common Failure Modes`: - A global scale hides rare channels that drive most error. - An ablation looks stable on average metrics while failing on outlier-heavy layers.
-  - `Retrieval Hooks`: - Use for PTQ, activation quantization, MoE quantization, and outlier smoothing ablations.
-  - `Where It Appears`: - [[papers/Frantar-et-al-2023-GPTQ-Accurate-Post-Training-Quantization-for-Generative-Pre-trained-Transformers]] - [[papers/Li-et-al-MoE-SVD-Structured-Mixture-of-Experts-LLMs-Compression-via-Singular-Value-Decomposition]] - [[papers/Lin-et-al-2024-DuQuant-Dis...
-  - `Why It Matters`: - Outlier activations can dominate quantization scale choices and make low-bit activation or weight-activation quantization fail even when average error looks acceptable.
-  - `Minimal Checks / Probes`: - Run an outlier-suppression ablation and check whether quantization error moves to another layer.
-  - `Related Concepts`: - [[concepts/Quantization-error-propagation|Quantization error propagation]] - [[concepts/Per-channel-scaling|Per-channel scaling]]
+- [[concepts/IO-aware-attention-scheduling|IO-aware attention scheduling]]: retrieved source page; extract only directly supported facts with page/section provenance.
+  - `What It Is`: `IO-aware attention scheduling` is a compiled preliminary-knowledge concept: a recurring mechanism or implementation background that appears across papers/methods and affects how a researcher understands, implements, debugs, or ablates the method family.
+  - `Evidence / Provenance`: - 2024 - Highly Optimized Kernels and Fine-Grained Codebooks for LLM Inference on Arm CPUs]]: gope et al 2024 highly optimized kernels and fine grained codebooks for llm inference on arm cpus fine grained cpus lut lut based system implementation post training...
+  - `Retrieval Hooks`: - Use for attention kernels, long-context systems, hardware-aware attention, and speed/accuracy attribution.
+  - `Implementation Implications`: - Measure prefill and decode separately, and record the attention kernel used by each experiment. - Treat block size, sequence length, and batching as part of the method contract.
+  - `Common Failure Modes`: - A sparse or low-bit attention idea improves theoretical cost but misses wall-clock speed because memory access dominates. - Kernel scheduling changes alter numerical behavior or mask handling.
+  - `Why It Matters`: - Attention speed often depends on memory movement and scheduling rather than only FLOP count, so algorithmic sparsity or tiling must be interpreted through the hardware execution path.
+  - `Where It Appears`: - [[papers/Child-et-al-2019-Generating-Long-Sequences-with-Sparse-Transformers]] - [[papers/Chitsaz-et-al-2024-Exploring-Quantization-for-Efficient-Pre-Training-of-Transformer-Language-Models]] - [[papers/Dao-2023-FlashAttention-2-Faster-Attention-with-Better-...
   - `Open Questions`: - Which linked papers provide the strongest source-grounded evidence for this concept? - Which methods fail when this concept is ignored?
-- [[syntheses/Post-Training-Quantization-Method-Family-Synthesis|Post-Training Quantization Method Family Synthesis]]: retrieved source page; extract only directly supported facts with page/section provenance.
-  - `Retrieval Hooks`: - Query: "I need a cross-paper method-family synthesis for post-training quantization with mechanism, implementation hooks, evidence boundaries, and failure modes." Use because: It is the original research intent that produced `Post-Training Quantization Metho...
-  - `Wiki Synthesis`: - Intended use: I need a cross-paper method-family synthesis for post-training quantization with mechanism, implementation hooks, evidence boundaries, and failure modes.
-  - `Evidence Map`: - [[methods/vision-language-model-quantization|vision-language model quantization]]: candidate evidence sections: Mechanism, Implementation Hooks, Used By Papers, What It Is, Failure Modes, Open Questions.
-  - `What This Page Is For`: - Original research query: I need a cross-paper method-family synthesis for post-training quantization with mechanism, implementation hooks, evidence boundaries, and failure modes.
-  - `Source Facts`: - `Failure Modes`: - [[papers/Chen-et-al-2025-EfficientQAT-Efficient-Quantization-Aware-Training-for-Large-Language-Models|Chen et al.
+- [[syntheses/Hardware-Aware-Quantization-Method-Family-Synthesis|Hardware-Aware Quantization Method Family Synthesis]]: retrieved source page; extract only directly supported facts with page/section provenance.
+  - `Retrieval Hooks`: - Query: "I need a cross-paper method-family synthesis for hardware-aware quantization with mechanism, implementation hooks, evidence boundaries, and failure modes." Use because: It is the original research intent that produced `Hardware-Aware Quantization Met...
+  - `Wiki Synthesis`: - Intended use: I need a cross-paper method-family synthesis for hardware-aware quantization with mechanism, implementation hooks, evidence boundaries, and failure modes.
+  - `Evidence Map`: - [[methods/hardware-aware-quantization|hardware-aware quantization]]: candidate evidence sections: What It Is, Implementation Hooks, Mechanism, Used By Papers, Failure Modes, Open Questions.
+  - `What This Page Is For`: - Original research query: I need a cross-paper method-family synthesis for hardware-aware quantization with mechanism, implementation hooks, evidence boundaries, and failure modes.
+  - `Source Facts`: - `Retrieval Hooks`: - Query: "I need a cross-paper method-family synthesis for post-training quantization with mechanism, implementation hooks, evidence boundaries, and failure modes." Use because: It is the original research intent that produced `Post-Traini...
   - `Open Questions`: - Which source facts are strong enough to preserve as canonical synthesis?
   - `User Ideas / Decisions`: Automatically seeded by the final LLM Wiki synthesis growth loop from a compiled method page.
   - `Publish / Review Notes`: - Keep source facts, wiki synthesis, and user ideas separated during review.
@@ -143,10 +141,14 @@ revision_id: "synthesis-Hardware-Aware-Quantization-Method-Family-Synthesis"
 
 ## Wiki Synthesis
 
-- This is a low-confidence synthesis scaffold generated from canonical retrieval context.
-- Preserve the source facts below as evidence candidates; do not treat this scaffold as a final thesis.
+- Working synthesis target: This page should consolidate a method family across papers: what the mechanism actually changes, what implementation choices matter, which evidence is comparable, and where the family fails.
 - Intended use: I need a cross-paper method-family synthesis for hardware-aware quantization with mechanism, implementation hooks, evidence boundaries, and failure modes.
-- Next reviewer action: compress retrieved source facts into a tighter cross-paper thesis only after checking provenance.
+- Source-fact boundary: use the retrieved `Source Facts` section for directly supported statements; keep this section as compiled wiki interpretation.
+- Review contract:
+  - Identify the shared mechanism before listing paper-specific variants.
+  - Preserve implementation hooks that affect ablations or probes.
+  - Separate evidence that supports the mechanism from evidence that only supports one paper's setting.
+- Retrieval contract: future queries should be able to decide whether to read a method/topic/concept page first, which source papers to inspect next, and which uncertainty blocks a research decision.
 
 ## User Ideas / Decisions
 
@@ -154,10 +156,10 @@ Automatically seeded by the final LLM Wiki synthesis growth loop from a compiled
 
 ## Evidence Map
 
-- [[concepts/Quantization-error-propagation|Quantization error propagation]]: candidate evidence sections: What It Is, Evidence / Provenance, Implementation Implications, Common Failure Modes, Where It Appears, Minimal Checks / Probes, Related Concepts, Why It Matters, Open Questions.
+- [[concepts/Lookup-table-inference|Lookup-table inference]]: candidate evidence sections: Evidence / Provenance, What It Is, Retrieval Hooks, Common Failure Modes, Implementation Implications, Where It Appears, Minimal Checks / Probes, Related Concepts, Why It Matters, Open Questions.
 - [[methods/hardware-aware-quantization|hardware-aware quantization]]: candidate evidence sections: What It Is, Implementation Hooks, Mechanism, Used By Papers, Failure Modes, Open Questions.
-- [[concepts/Activation-outliers|Activation outliers]]: candidate evidence sections: What It Is, Evidence / Provenance, Implementation Implications, Common Failure Modes, Retrieval Hooks, Where It Appears, Why It Matters, Minimal Checks / Probes, Related Concepts, Open Questions.
-- [[syntheses/Post-Training-Quantization-Method-Family-Synthesis|Post-Training Quantization Method Family Synthesis]]: candidate evidence sections: Retrieval Hooks, Wiki Synthesis, Evidence Map, What This Page Is For, Source Facts, Open Questions, User Ideas / Decisions, Publish / Review Notes.
+- [[concepts/IO-aware-attention-scheduling|IO-aware attention scheduling]]: candidate evidence sections: What It Is, Evidence / Provenance, Retrieval Hooks, Implementation Implications, Common Failure Modes, Why It Matters, Where It Appears, Open Questions.
+- [[syntheses/Hardware-Aware-Quantization-Method-Family-Synthesis|Hardware-Aware Quantization Method Family Synthesis]]: candidate evidence sections: Retrieval Hooks, Wiki Synthesis, Evidence Map, What This Page Is For, Source Facts, Open Questions, User Ideas / Decisions, Publish / Review Notes.
 - [[topics/hardware-aware-quantization|hardware-aware quantization]]: candidate evidence sections: Scope, Retrieval Hooks, Method Families, Claims, Key Papers.
 - [[claims/Yang-et-al-2025-Diffusion-Models-A-Comprehensive-Survey-of-Methods-and-Applications-claim-003|4 DIFFUSION MODELS WITH IMPROVED LIKELIHOOD As discussed in Section 2.1, the training objective for diffusion models is a (negative) variational lower bound (VLB) on the log-likelihood.]]: candidate evidence sections: needs manual section selection.
 
@@ -180,9 +182,9 @@ Automatically seeded by the final LLM Wiki synthesis growth loop from a compiled
 
 ## Source Links
 
-- [[concepts/Quantization-error-propagation|Quantization error propagation]]
+- [[concepts/Lookup-table-inference|Lookup-table inference]]
 - [[methods/hardware-aware-quantization|hardware-aware quantization]]
-- [[concepts/Activation-outliers|Activation outliers]]
-- [[syntheses/Post-Training-Quantization-Method-Family-Synthesis|Post-Training Quantization Method Family Synthesis]]
+- [[concepts/IO-aware-attention-scheduling|IO-aware attention scheduling]]
+- [[syntheses/Hardware-Aware-Quantization-Method-Family-Synthesis|Hardware-Aware Quantization Method Family Synthesis]]
 - [[topics/hardware-aware-quantization|hardware-aware quantization]]
 - [[claims/Yang-et-al-2025-Diffusion-Models-A-Comprehensive-Survey-of-Methods-and-Applications-claim-003|4 DIFFUSION MODELS WITH IMPROVED LIKELIHOOD As discussed in Section 2.1, the training objective for diffusion models is a (negative) variational lower bound (VLB) on the log-likelihood.]]

@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-8695fee967"
+consolidation_target: "methods/conditional-diffusion"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Ho and Salimans - 2022 - Classifier-Free Diffusion Guidance
 

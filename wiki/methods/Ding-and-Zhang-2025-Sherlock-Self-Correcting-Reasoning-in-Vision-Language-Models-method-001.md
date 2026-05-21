@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-48bb539e63"
+consolidation_target: "methods/paper-specific-research-method"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Ding and Zhang - 2025 - Sherlock Self-Correcting Reasoning in Vision-Language Models
 

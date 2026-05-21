@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-7cc9030181"
+consolidation_target: "methods/joint-embedding-predictive-learning"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Teoh et al. - 2025 - Next-Latent Prediction Transformers Learn Compact World Models
 

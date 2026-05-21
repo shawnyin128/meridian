@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-9ee61cab7a"
+consolidation_target: "methods/audio-language-modeling"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Yao et al. - 2023 - ReAct Synergizing Reasoning and Acting in Language Models
 

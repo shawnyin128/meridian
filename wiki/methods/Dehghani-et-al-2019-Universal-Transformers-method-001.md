@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-0faa39281d"
+consolidation_target: "methods/recurrent-transformer"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Dehghani et al. - 2019 - Universal Transformers
 

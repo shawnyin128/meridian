@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-a8a830dc12"
+consolidation_target: "methods/paper-specific-research-method"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Lyu et al. - 2023 - Faithful Chain-of-Thought Reasoning
 

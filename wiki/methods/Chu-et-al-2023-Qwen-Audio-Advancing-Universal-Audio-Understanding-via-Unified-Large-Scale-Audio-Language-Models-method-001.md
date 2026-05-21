@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-2456665cf1"
+consolidation_target: "methods/audio-language-modeling"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Chu et al. - 2023 - Qwen-Audio Advancing Universal Audio Understanding via Unified Large-Scale Audio-Language Models
 

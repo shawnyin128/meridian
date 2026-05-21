@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-1b118b2a19"
+consolidation_target: "methods/RLHF"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Yuan et al. - 2025 - Self-Rewarding Language Models
 

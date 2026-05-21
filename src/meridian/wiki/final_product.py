@@ -70,6 +70,16 @@ class MethodConsolidationResult:
 
 
 @dataclass(frozen=True)
+class PublishMethodConsolidationResult:
+    manifest_path: Path
+    published_manifest_path: Path
+    updated_candidates: int
+    skipped_candidates: int
+    catalog_paths: list[Path]
+    log_path: Path
+
+
+@dataclass(frozen=True)
 class ContradictionReviewResult:
     proposal_dir: Path
     manifest_path: Path
@@ -340,6 +350,85 @@ def propose_method_consolidation(
         candidate_count=len(candidates),
         grouped_count=len(groups),
         high_risk_count=len(high_risk),
+    )
+
+
+def publish_method_consolidation(
+    *,
+    consolidation_manifest: Path,
+    wiki_root: Path,
+) -> PublishMethodConsolidationResult:
+    manifest = _read_json(consolidation_manifest)
+    if manifest.get("schema_version") != METHOD_CONSOLIDATION_SCHEMA_VERSION:
+        raise ValueError(f"not a method consolidation manifest: {consolidation_manifest}")
+    updated = []
+    skipped = []
+    for group in manifest.get("groups") or []:
+        update = group.get("publishable_low_risk_update") or {}
+        if update.get("action_type") != "update_frontmatter":
+            skipped.append({"candidate": group.get("candidate"), "reason": "unsupported_action"})
+            continue
+        relative = str(update.get("target_path") or group.get("candidate") or "")
+        if not relative.startswith("methods/") or ".." in Path(relative).parts:
+            skipped.append({"candidate": relative, "reason": "non_canonical_method_target"})
+            continue
+        target = wiki_root / relative
+        if not target.exists():
+            skipped.append({"candidate": relative, "reason": "target_missing"})
+            continue
+        fields = dict(update.get("fields") or {})
+        if not fields:
+            skipped.append({"candidate": relative, "reason": "empty_update"})
+            continue
+        before = parse_frontmatter(target.read_text(encoding="utf-8"))
+        target.write_text(_upsert_scalar_frontmatter_fields(target.read_text(encoding="utf-8"), fields), encoding="utf-8")
+        after = parse_frontmatter(target.read_text(encoding="utf-8"))
+        changed_fields = {key: after.get(key) for key in fields if before.get(key) != after.get(key)}
+        if changed_fields:
+            updated.append({"candidate": relative, "fields": changed_fields, "target_method": group.get("target_method")})
+        else:
+            skipped.append({"candidate": relative, "reason": "already_current"})
+
+    paper_catalog = build_paper_catalog(wiki_root=wiki_root)
+    synthesis_catalog = build_synthesis_catalog(wiki_root=wiki_root) if (wiki_root / "syntheses").exists() else None
+    knowledge_catalogs = build_knowledge_catalogs(wiki_root=wiki_root)
+    index_path = rebuild_wiki_index(wiki_root=wiki_root)
+    log_path = append_wiki_log(
+        wiki_root=wiki_root,
+        action="knowledge-repair",
+        title=str(manifest.get("proposal_id") or "method consolidation"),
+        lines=[
+            f"Updated paper-specific method candidates: {len(updated)}",
+            f"Skipped candidates: {len(skipped)}",
+            f"Consolidation manifest: `{_relative_or_absolute(consolidation_manifest, wiki_root)}`",
+            "Low-risk publish only records family routing and retrieval visibility; it does not merge or rewrite method pages.",
+        ],
+    )
+    publish_manifest = {
+        "schema_version": "meridian.method_consolidation_publish.v1",
+        "created_at": _now(),
+        "wiki_root": str(wiki_root),
+        "consolidation_manifest": str(consolidation_manifest),
+        "status": "published_low_risk_frontmatter",
+        "updated_candidates": updated,
+        "skipped_candidates": skipped,
+        "index_path": str(index_path),
+        "catalog_paths": [
+            str(paper_catalog.catalog_path),
+            *([str(synthesis_catalog.catalog_path)] if synthesis_catalog else []),
+            *[str(item.catalog_path) for item in knowledge_catalogs],
+        ],
+        "log_path": str(log_path),
+    }
+    publish_path = consolidation_manifest.parent / "method-consolidation-publish.json"
+    _write_json(publish_path, publish_manifest)
+    return PublishMethodConsolidationResult(
+        manifest_path=consolidation_manifest,
+        published_manifest_path=publish_path,
+        updated_candidates=len(updated),
+        skipped_candidates=len(skipped),
+        catalog_paths=[paper_catalog.catalog_path, *([synthesis_catalog.catalog_path] if synthesis_catalog else []), *[item.catalog_path for item in knowledge_catalogs]],
+        log_path=log_path,
     )
 
 
@@ -671,12 +760,52 @@ def _rank_pages_for_synthesis(pages: list[dict[str, Any]]) -> list[dict[str, Any
 
 
 def _synthesis_body(candidate: dict[str, str]) -> str:
+    title = candidate["title"]
+    query = candidate["query"]
+    proposal_type = candidate["proposal_type"]
+    if proposal_type == "method-family":
+        thesis = "This page should consolidate a method family across papers: what the mechanism actually changes, what implementation choices matter, which evidence is comparable, and where the family fails."
+        checks = [
+            "Identify the shared mechanism before listing paper-specific variants.",
+            "Preserve implementation hooks that affect ablations or probes.",
+            "Separate evidence that supports the mechanism from evidence that only supports one paper's setting.",
+        ]
+    elif proposal_type == "research-question":
+        thesis = "This page should preserve an active research question: what the wiki already supports, which mechanisms are plausible, which failure modes must be checked, and what experiment would reduce uncertainty next."
+        checks = [
+            "Turn retrieved snippets into a testable hypothesis only when provenance supports it.",
+            "Name the weakest link: missing evidence, unclear scope, or implementation uncertainty.",
+            "List the next probe or ablation that would change the decision.",
+        ]
+    elif "evidence" in title.lower():
+        thesis = "This page should act as an evidence map: claims, supporting observations, contradicting or weak evidence, and source-quality boundaries."
+        checks = [
+            "Do not treat retrieval adjacency as evidence.",
+            "Tie every preserved claim to at least one source page or evidence record.",
+            "Keep unsupported generalizations in Open Questions.",
+        ]
+    elif "failure" in title.lower() or "boundary" in title.lower():
+        thesis = "This page should capture boundary conditions: where the mechanism is expected to work, what breaks it, and which checks prevent false confidence."
+        checks = [
+            "Prefer failure modes and scope conditions over broad success claims.",
+            "Keep system/cost claims separate from accuracy or scientific claims.",
+            "Name the minimal check that would catch the failure in an implementation.",
+        ]
+    else:
+        thesis = "This page should become a dense cross-paper synthesis: the recurring mechanism, the useful distinctions, the evidence map, and the open decisions that matter for future retrieval."
+        checks = [
+            "Compress repeated paper summaries into one cross-paper interpretation.",
+            "Preserve source facts separately from the wiki's synthesis.",
+            "Add retrieval hooks that match realistic research or coding intents.",
+        ]
     return "\n".join(
         [
-            "- This is a low-confidence synthesis scaffold generated from canonical retrieval context.",
-            "- Preserve the source facts below as evidence candidates; do not treat this scaffold as a final thesis.",
-            f"- Intended use: {candidate['query']}",
-            "- Next reviewer action: compress retrieved source facts into a tighter cross-paper thesis only after checking provenance.",
+            f"- Working synthesis target: {thesis}",
+            f"- Intended use: {query}",
+            "- Source-fact boundary: use the retrieved `Source Facts` section for directly supported statements; keep this section as compiled wiki interpretation.",
+            "- Review contract:",
+            *[f"  - {item}" for item in checks],
+            "- Retrieval contract: future queries should be able to decide whether to read a method/topic/concept page first, which source papers to inspect next, and which uncertainty blocks a research decision.",
         ]
     )
 
@@ -947,6 +1076,13 @@ def _read_json(path: Path) -> dict[str, Any]:
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def _relative_or_absolute(path: Path, wiki_root: Path) -> str:
+    try:
+        return path.relative_to(wiki_root).as_posix()
+    except ValueError:
+        return str(path)
 
 
 def _now() -> str:

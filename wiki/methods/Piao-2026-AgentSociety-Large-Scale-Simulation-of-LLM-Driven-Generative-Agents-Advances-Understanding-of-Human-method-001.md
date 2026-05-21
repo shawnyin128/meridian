@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-9fbb576981"
+consolidation_target: "methods/agent-workflow-modeling"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Piao 等 - 2026 - AgentSociety Large-Scale Simulation of LLM-Driven Generative Agents Advances Understanding of Human
 

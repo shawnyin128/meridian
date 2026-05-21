@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-f7412d98de"
+consolidation_target: "methods/survey-synthesis"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Yang et al. - 2025 - Diffusion Models A Comprehensive Survey of Methods and Applications
 

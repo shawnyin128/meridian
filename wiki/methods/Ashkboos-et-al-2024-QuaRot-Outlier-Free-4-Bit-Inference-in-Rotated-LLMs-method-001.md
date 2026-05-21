@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-99a4d253dc"
+consolidation_target: "methods/equivalent-transform-PTQ"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Randomized Hadamard rotation for end-to-end INT4 inference
 

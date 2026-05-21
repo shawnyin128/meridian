@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-c6e2c285ab"
+consolidation_target: "methods/joint-embedding-predictive-learning"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Latent video joint embedding predictive learning
 

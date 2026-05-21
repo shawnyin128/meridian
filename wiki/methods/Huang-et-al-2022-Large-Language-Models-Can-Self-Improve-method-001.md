@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-000df1092d"
+consolidation_target: "methods/survey-synthesis"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Huang et al. - 2022 - Large Language Models Can Self-Improve
 

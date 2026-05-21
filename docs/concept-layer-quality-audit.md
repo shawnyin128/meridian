@@ -1,6 +1,6 @@
 # Concept Layer Quality Audit
 
-- Generated: `2026-05-21T05:17:13.910616+00:00`
+- Generated: `2026-05-21T06:11:04.950217+00:00`
 - Status: `warn`
 - Concept pages: 24
 - Candidate concepts: 24

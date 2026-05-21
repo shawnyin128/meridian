@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-0d29bb2ded"
+consolidation_target: "methods/physics-informed-neural-networks"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Raissi et al. - 2019 - Physics-informed neural networks A deep learning framework for solving forward and inverse problems
 

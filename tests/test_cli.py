@@ -4672,6 +4672,9 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertTrue(manifest.exists())
             self.assertEqual(main(["wiki", "publish-synthesis-batch", str(manifest), "--wiki-root", str(wiki_root)]), 0)
             self.assertTrue(list((wiki_root / "syntheses").glob("*.md")))
+            synthesis_text = next((wiki_root / "syntheses").glob("*.md")).read_text(encoding="utf-8")
+            self.assertIn("Working synthesis target", synthesis_text)
+            self.assertIn("Retrieval contract", synthesis_text)
 
             result = retrieve_papers(
                 query="cross-paper synthesis for post-training quantization implementation evidence",
@@ -4742,6 +4745,19 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertEqual(manifest["grouped_count"], 1)
             self.assertIn("consolidation_target", manifest["groups"][0]["publishable_low_risk_update"]["fields"])
             self.assertNotIn("consolidation_target", candidate.read_text(encoding="utf-8"))
+            self.assertEqual(main(["wiki", "publish-method-consolidation", str(out / "method-consolidation.json"), "--wiki-root", str(wiki_root)]), 0)
+            candidate_text = candidate.read_text(encoding="utf-8")
+            self.assertIn('consolidation_target: "methods/post-training-quantization"', candidate_text)
+            self.assertIn('retrieval_visibility: "suppressed_unless_exact_identity"', candidate_text)
+            result = retrieve_papers(
+                query="post-training quantization implementation hooks and mechanism",
+                wiki_root=wiki_root,
+                top_k=2,
+                strategy="v1",
+            )
+            self.assertEqual(result.results[0]["relative_path"], "methods/post-training-quantization.md")
+            candidate_result = next(item for item in result.results if item["relative_path"] == "methods/Quant-Paper-method-001.md")
+            self.assertIn("consolidated candidate suppression", candidate_result["selection_reasons"])
 
             claims = wiki_root / "claims"
             claims.mkdir(parents=True, exist_ok=True)
@@ -4777,6 +4793,83 @@ Compare recency-only retention with attention-based and oracle retention policie
             review = json.loads((review_out / "contradiction-review.json").read_text(encoding="utf-8"))
             self.assertGreaterEqual(review["candidate_count"], 1)
             self.assertIn("claim_without_evidence", {item["candidate_type"] for item in review["candidates"]})
+
+    def test_existing_concept_layer_proposal_adds_backlinks_without_recreating_concept(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            self.assertEqual(main(["wiki", "init", "--wiki-root", str(wiki_root)]), 0)
+            _write_test_paper(
+                wiki_root / "papers/Quant-Paper.md",
+                title="Quant Paper",
+                aliases=["QuantProbe"],
+                topics=["quantization"],
+                methods=["post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "The paper studies PTQ and activation outliers in low-bit LLM inference.",
+                    "Mechanism": "Activation outliers drive quantization error propagation.",
+                },
+            )
+            _write_knowledge_page(
+                wiki_root / "methods/post-training-quantization.md",
+                page_type="method",
+                title="post-training quantization",
+                body="## What It Is\n\nA quantization method family.\n\n## Implementation Hooks\n\nInspect activation outliers.",
+                source_papers=["papers/Quant-Paper.md"],
+            )
+            concept = wiki_root / "concepts/Activation-outliers.md"
+            _write_knowledge_page(
+                concept,
+                page_type="concept",
+                title="Activation outliers",
+                body="\n".join(
+                    [
+                        "## What It Is",
+                        "",
+                        "Existing concept page.",
+                        "",
+                        "## Why It Matters",
+                        "",
+                        "Outliers affect low-bit quantization.",
+                        "",
+                        "## Implementation Implications",
+                        "",
+                        "Inspect activation ranges before choosing scales.",
+                        "",
+                        "## Minimal Checks / Probes",
+                        "",
+                        "Plot per-channel activation ranges and run ablations.",
+                    ]
+                ),
+                source_papers=["papers/Quant-Paper.md"],
+            )
+
+            proposal_dir = wiki_root / ".drafts/knowledge-repair/existing-concept-links"
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "propose-concept-layer",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--out-dir",
+                        str(proposal_dir),
+                        "--max-concepts",
+                        "0",
+                    ]
+                ),
+                0,
+            )
+            manifest = json.loads((proposal_dir / "concept-layer-proposal.json").read_text(encoding="utf-8"))
+            action_types = {item["action_type"] for item in manifest["low_risk_actions"]}
+            self.assertNotIn("create_concept_page", action_types)
+            self.assertIn("add_method_prerequisite_concept", action_types)
+            self.assertEqual(main(["wiki", "concept-layer-lint", str(proposal_dir / "concept-layer-proposal.json"), "--wiki-root", str(wiki_root)]), 0)
+            self.assertEqual(main(["wiki", "publish-concept-layer", str(proposal_dir / "concept-layer-proposal.json"), "--wiki-root", str(wiki_root)]), 0)
+            method_text = (wiki_root / "methods/post-training-quantization.md").read_text(encoding="utf-8")
+            self.assertIn("## Prerequisite Concepts", method_text)
+            self.assertIn("[[concepts/Activation-outliers|Activation outliers]]", method_text)
 
     def test_navigation_and_final_product_check(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

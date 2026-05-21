@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-8c48d58d84"
+consolidation_target: "methods/relative-position-encoding"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Shaw et al. - 2018 - Self-Attention with Relative Position Representations
 

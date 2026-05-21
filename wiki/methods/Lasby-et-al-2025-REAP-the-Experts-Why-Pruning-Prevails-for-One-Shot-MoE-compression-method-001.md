@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-3e0e5f3b3f"
+consolidation_target: "methods/MoE-quantization"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Lasby et al. - 2025 - REAP the Experts Why Pruning Prevails for One-Shot MoE compression
 

@@ -461,3 +461,83 @@
 - Updated `Concept Index.md`
 - Updated `Synthesis Index.md`
 - Updated `Claim Evidence Index.md`
+
+## [2026-05-21] knowledge-repair | method-consolidation-2026-05-21
+
+- Updated paper-specific method candidates: 239
+- Skipped candidates: 0
+- Consolidation manifest: `.drafts/knowledge-repair/high-leverage-method-consolidation-r1/method-consolidation.json`
+- Low-risk publish only records family routing and retrieval visibility; it does not merge or rewrite method pages.
+
+## [2026-05-21] publish | Transformer Architecture Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Transformer-Architecture-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/high-leverage-synthesis-r1/Transformer-Architecture-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] concept-layer | concept-layer-2026-05-21-d3ae447c4c
+
+- Created concept pages: 0
+- Added method/topic concept backlinks: 62
+- Skipped low-risk actions: 0
+- Concept proposal: `.drafts/knowledge-repair/high-leverage-concept-links-r1/concept-layer-proposal.json`
+
+## [2026-05-21] publish | Post-Training Quantization Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Post-Training-Quantization-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/high-leverage-synthesis-r1/Post-Training-Quantization-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Kv-Cache Compression Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Kv-Cache-Compression-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/high-leverage-synthesis-r1/Kv-Cache-Compression-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Calibration-Aware Ptq Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Calibration-Aware-Ptq-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/high-leverage-synthesis-r1/Calibration-Aware-Ptq-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Hardware-Aware Quantization Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Hardware-Aware-Quantization-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/high-leverage-synthesis-r1/Hardware-Aware-Quantization-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Long-Context Inference Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Long-Context-Inference-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/high-leverage-synthesis-r1/Long-Context-Inference-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Clustering Algorithm Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Clustering-Algorithm-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/high-leverage-synthesis-r1/Clustering-Algorithm-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] publish | Speculative Decoding Method Family Synthesis
+
+- Published write-back proposal: `syntheses/Speculative-Decoding-Method-Family-Synthesis.md`
+- Proposal manifest: `.drafts/proposals/high-leverage-synthesis-r1/Speculative-Decoding-Method-Family-Synthesis/proposal.json`
+- Updated index: `index.md`
+- Updated synthesis catalog: `.index/syntheses.jsonl`
+
+## [2026-05-21] navigation | Obsidian navigation pages
+
+- Updated `Map of Content.md`
+- Updated `Paper Index.md`
+- Updated `Method Index.md`
+- Updated `Topic Index.md`
+- Updated `Concept Index.md`
+- Updated `Synthesis Index.md`
+- Updated `Claim Evidence Index.md`

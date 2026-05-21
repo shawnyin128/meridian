@@ -22,6 +22,9 @@ supersedes:
 superseded_by:
 evolution_state: "active"
 revision_id: "knowledge-f5cf396c03"
+consolidation_target: "methods/paper-specific-research-method"
+candidate_scope: "paper_specific_method_record"
+retrieval_visibility: "suppressed_unless_exact_identity"
 ---
 # Meng et al. - 2026 - Sparse but Critical A Token-Level Analysis of Distributional Shifts in RLVR Fine-Tuning of LLMs
 
