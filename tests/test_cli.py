@@ -2461,6 +2461,28 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertGreaterEqual(len(parsed), 7)
         self.assertTrue(all("query" in case and "problem_description" in case for case in parsed))
 
+    def test_release_manifest_excludes_private_runtime_state(self) -> None:
+        manifest = Path("MANIFEST.in")
+        self.assertTrue(manifest.exists())
+        text = manifest.read_text(encoding="utf-8")
+        self.assertIn("graft src", text)
+        self.assertIn("graft .codex/skills", text)
+        self.assertIn("graft eval/cases", text)
+        self.assertIn("graft eval/rubrics", text)
+        self.assertIn("prune wiki", text)
+        self.assertIn("prune eval/runs", text)
+        self.assertIn("prune .arbor", text)
+
+    def test_release_vault_template_is_packaged(self) -> None:
+        template = Path("src/meridian/templates/wiki-vault")
+        self.assertTrue((template / "Map of Content.md").exists())
+        self.assertTrue((template / "raw/sources/sources.jsonl").exists())
+        self.assertTrue((template / "papers/.gitkeep").exists())
+        pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
+        self.assertIn('"templates/wiki-vault/**/*.md"', pyproject)
+        self.assertIn('"templates/wiki-vault/**/*.gitkeep"', pyproject)
+        self.assertIn('"templates/wiki-vault/**/*.jsonl"', pyproject)
+
     def test_add_insight_creates_draft_for_exact_canonical_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

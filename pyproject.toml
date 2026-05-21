@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "meridian"
 version = "0.1.0"
-description = "Paper Wiki prototype CLI for one-paper ingest review packets."
+description = "Markdown-first LLM-maintained paper wiki with CLI and MCP entries."
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
@@ -18,3 +18,6 @@ meridian-mcp = "meridian.mcp.server:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+meridian = ["templates/wiki-vault/**/*.md", "templates/wiki-vault/**/*.gitkeep", "templates/wiki-vault/**/*.jsonl"]

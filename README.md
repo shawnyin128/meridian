@@ -3,6 +3,26 @@
 Meridian is a Markdown-first Paper Wiki for turning papers, user reading notes,
 retrieval results, and refinements into a durable Obsidian knowledge base.
 
+## Install
+
+For local development:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -e .
+```
+
+This installs:
+
+- `meridian`: CLI execution primitives
+- `meridian-mcp`: MCP stdio server entry
+
+For release packaging boundaries, see `docs/release-packaging.md`. The Python
+package is the execution core; product prompt skills, representative evals, and
+the clean vault template are part of the source/repo bundle. A user's live
+`wiki/` vault is private state and is not part of the release package.
+
 ## Product Entries
 
 Meridian has two product entries:
@@ -63,6 +83,12 @@ meridian wiki init --wiki-root wiki
 This creates an Obsidian-compatible Markdown vault scaffold: `papers/`,
 `claims/`, `methods/`, `evidence/`, `topics/`, `concepts/`, `syntheses/`, immutable
 `raw/sources/`, generated `.index/`, draft areas, and reusable templates.
+
+A clean vault template for release bundles is tracked at:
+
+```text
+src/meridian/templates/wiki-vault/
+```
 
 The project main vault is `wiki/`. It is intended to be opened directly in
 Obsidian and is the default root for source audit, catalog, retrieval, and
