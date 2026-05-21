@@ -1,7 +1,44 @@
 # Meridian
 
-Meridian is a Paper Wiki prototype. The first implemented path is one-paper
-ingest:
+Meridian is a Markdown-first Paper Wiki for turning papers, user reading notes,
+retrieval results, and refinements into a durable Obsidian knowledge base.
+
+## Product Entries
+
+Meridian has two product entries:
+
+| Entry | Update Wiki | Use Wiki |
+|---|---|---|
+| Prompt/Skill | ingest sources, add insights, write back synthesis, refine pages, audit health | retrieve context, read pages, trace evidence, answer with provenance |
+| MCP | `meridian.update`, `meridian.propose`, `meridian.apply`, `meridian.audit` | `meridian.context`, `meridian.read`, `meridian.trace` |
+
+The CLI commands below are execution primitives for those entries. The user
+mental model is:
+
+- **Update Wiki**: add or improve durable wiki knowledge.
+- **Use Wiki**: retrieve compiled context for research or coding.
+
+The Prompt/Skill entry starts at:
+
+```text
+.codex/skills/meridian-paper-wiki/SKILL.md
+```
+
+The MCP adapter prototype starts at:
+
+```bash
+PYTHONPATH=src python3 -m meridian.mcp capabilities --detail full
+```
+
+Design details:
+
+- `docs/wiki-product-entry-contract.md`
+- `docs/wiki-mcp-entry-design.md`
+- `docs/wiki-entry-demo.md`
+
+## Execution Primitives
+
+Initialize a wiki vault:
 
 ```bash
 meridian wiki init --wiki-root wiki

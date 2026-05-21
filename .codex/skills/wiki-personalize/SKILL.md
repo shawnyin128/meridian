@@ -7,6 +7,8 @@ description: Use when the user wants to add, review, publish, retrieve, or reaso
 
 Use this skill when the user provides personal reading notes or asks to remember an insight about a paper.
 
+For product-facing usage, start from `.codex/skills/meridian-paper-wiki/SKILL.md` and choose `Update Wiki`. This skill is the user-insight support module.
+
 ## Core Boundary
 
 User insights are valuable wiki state, but they are not paper source facts.

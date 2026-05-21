@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meridian Paper Wiki Entry Architecture</title>
+  <style>
+    :root {
+      --bg: #f7f6f0;
+      --ink: #1f2933;
+      --muted: #667085;
+      --line: #c9d1d9;
+      --entry: #b8a7de;
+      --workflow: #93c5df;
+      --core: #9fd6ad;
+      --vault: #f1c27d;
+      --internal: #cbd5df;
+      --synthesis: #e7a6b5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 46px 28px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+      letter-spacing: 0;
+    }
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .grid {
+      margin-top: 34px;
+      display: grid;
+      grid-template-columns: 1fr 44px 1.15fr 44px 1.2fr 44px 1.15fr;
+      align-items: center;
+      gap: 0;
+    }
+    .stack {
+      display: grid;
+      gap: 14px;
+    }
+    .box {
+      min-height: 88px;
+      border: 2px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      padding: 18px;
+      box-shadow: 0 10px 26px rgba(31, 41, 51, 0.07);
+    }
+    .box strong {
+      display: block;
+      font-size: 17px;
+      margin-bottom: 8px;
+    }
+    .box span {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .entry { border-color: var(--entry); }
+    .workflow { border-color: var(--workflow); }
+    .core { border-color: var(--core); }
+    .vault { border-color: var(--vault); }
+    .internal { border-color: var(--internal); border-style: dashed; background: #fafbfc; }
+    .synthesis { border-color: var(--synthesis); }
+    .arrow {
+      text-align: center;
+      color: #2b6cb0;
+      font-size: 32px;
+      font-weight: 800;
+    }
+    .matrix {
+      margin-top: 26px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+    .wide {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+    code {
+      background: #eef2f6;
+      border: 1px solid #d9e0e7;
+      border-radius: 5px;
+      padding: 1px 5px;
+      font-size: 12px;
+    }
+    @media (max-width: 980px) {
+      .grid, .matrix, .wide {
+        grid-template-columns: 1fr;
+      }
+      .arrow {
+        transform: rotate(90deg);
+      }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Meridian Paper Wiki Entry Architecture</h1>
+  <p>最终入口只有两个：Prompt/Skill 和 MCP。每个入口只服务两个场景：Update Wiki 和 Use Wiki。CLI 是底层执行原语。</p>
+
+  <section class="grid" aria-label="entry architecture">
+    <div class="box entry">
+      <strong>User Intent</strong>
+      <span>研究、写码、读 paper、记录 insight、沉淀 synthesis</span>
+    </div>
+    <div class="arrow">→</div>
+    <div class="stack">
+      <div class="box entry">
+        <strong>Prompt / Skill Entry</strong>
+        <span><code>meridian-paper-wiki</code> 总入口 skill</span>
+      </div>
+      <div class="box entry">
+        <strong>MCP Entry</strong>
+        <span><code>context</code>, <code>read</code>, <code>trace</code>, <code>update</code>, <code>propose</code>, <code>apply</code></span>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="stack">
+      <div class="box workflow">
+        <strong>Update Wiki</strong>
+        <span>ingest, insight, write-back, refine, audit</span>
+      </div>
+      <div class="box workflow">
+        <strong>Use Wiki</strong>
+        <span>retrieve, read, trace, answer</span>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="stack">
+      <div class="box core">
+        <strong>Meridian Core</strong>
+        <span>source management, canonical publish, retrieval v1, proposals, evolution, audits</span>
+      </div>
+      <div class="box vault">
+        <strong>Canonical Vault</strong>
+        <span>papers, methods, topics, concepts, claims, evidence, syntheses, index/log/catalog</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="matrix" aria-label="workflow matrix">
+    <div class="box workflow">
+      <strong>Update Wiki Output</strong>
+      <span>managed source, canonical page, user insight, proposal, synthesis, refinement, audit report</span>
+    </div>
+    <div class="box workflow">
+      <strong>Use Wiki Output</strong>
+      <span>compact context packet, selected page sections, provenance chain, answer-ready evidence</span>
+    </div>
+  </section>
+
+  <section class="wide" aria-label="boundaries">
+    <div class="box vault">
+      <strong>Source of Truth</strong>
+      <span><code>wiki/</code> Markdown vault</span>
+    </div>
+    <div class="box internal">
+      <strong>Internal</strong>
+      <span><code>.drafts/</code>, <code>.versions/</code>, judge/debug artifacts</span>
+    </div>
+    <div class="box synthesis">
+      <strong>Write Policy</strong>
+      <span>proposal → lint → publish</span>
+    </div>
+    <div class="box core">
+      <strong>CLI</strong>
+      <span>testable execution primitives</span>
+    </div>
+  </section>
+</main>
+</body>
+</html>

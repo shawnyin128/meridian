@@ -7,6 +7,8 @@ description: Use when refining, versioning, linting, publishing, reviewing, or r
 
 Use this skill when a canonical wiki page should improve after ingest, retrieval, synthesis, or user insight.
 
+For product-facing usage, start from `.codex/skills/meridian-paper-wiki/SKILL.md` and choose `Update Wiki`. This skill is the evolution/revision support module.
+
 ## Core Boundary
 
 Refinement is proposal-first. Do not silently rewrite canonical pages.

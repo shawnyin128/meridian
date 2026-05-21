@@ -11,6 +11,7 @@ from io import StringIO
 from pathlib import Path
 
 from meridian.cli import main
+from meridian.mcp import adapter as mcp_adapter
 from meridian.wiki.corpus import retrieve_papers
 from meridian.wiki.extract import PageExtraction, PdfExtraction
 from meridian.wiki.ingest import _title_from_first_page
@@ -1513,6 +1514,109 @@ This hidden unique zeta candidate should never enter retrieval.
             self.assertFalse(
                 any(str(item.get("relative_path") or "").startswith(".drafts/") for item in canonical.results)
             )
+
+    def test_mcp_adapter_context_read_trace_and_propose_use_canonical_corpus(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            concepts = wiki_root / "concepts"
+            papers.mkdir(parents=True)
+            concepts.mkdir(parents=True)
+            _write_test_paper(
+                papers / "MoE-PTQ.md",
+                title="MoE PTQ Paper",
+                aliases=["CodeQuant"],
+                topics=["activation outliers", "quantization error"],
+                methods=["MoE post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "This paper studies MoE PTQ.",
+                    "Mechanism": "The method smooths activation outliers and tracks quantization error.",
+                    "Evidence Map": "Table 1 supports the outlier smoothing claim.",
+                    "Implementation Hooks": "Probe activation outlier smoothing before changing quantization kernels.",
+                },
+            )
+            (concepts / "Activation-outliers.md").write_text(
+                """---
+type: "concept"
+title: "Activation outliers"
+status: "active"
+aliases:
+  - "LLM activation outliers"
+source_papers:
+  - "papers/MoE-PTQ.md"
+related_methods:
+  - "MoE post-training quantization"
+prerequisite_for:
+  - "MoE post-training quantization"
+confidence: "medium"
+review_state: "auto_converged"
+---
+# Activation outliers
+
+## What It Is
+
+Activation outliers are high-magnitude activation features that stress low-bit quantization.
+
+## Implementation Implications
+
+Check activation magnitude distributions before choosing calibration and smoothing.
+
+## Minimal Checks / Probes
+
+Plot per-channel activation maxima and run an ablation without smoothing.
+
+## Evidence / Provenance
+
+- Source paper: [[papers/MoE-PTQ]].
+""",
+                encoding="utf-8",
+            )
+            drafts = wiki_root / ".drafts/ingests/noisy"
+            drafts.mkdir(parents=True)
+            (drafts / "paper.md").write_text(
+                "# Draft Only\n\nThis draft mentions unique hidden draft-only mcp token.",
+                encoding="utf-8",
+            )
+
+            caps = mcp_adapter.capabilities(detail="full")
+            self.assertEqual(caps["entry_model"]["entries"], ["Prompt/Skill", "MCP"])
+            self.assertIn("meridian.context", {tool["name"] for tool in caps["tools"]})
+
+            context = mcp_adapter.context(
+                query="activation outlier implementation probes for MoE PTQ",
+                wiki_root=wiki_root,
+                top_k=3,
+                out_dir=root / "mcp-context",
+            )
+            self.assertEqual(context["workflow"], "Use Wiki")
+            self.assertTrue(Path(context["context_path"]).exists())
+            self.assertFalse(any("drafts/" in str(item.get("canonical_path")) for item in context["results_summary"]))
+
+            read = mcp_adapter.read(page="concepts/Activation-outliers.md", wiki_root=wiki_root)
+            self.assertEqual(read["result_type"], "concept")
+            self.assertIn("Implementation Implications", read["sections"])
+            self.assertIn("Minimal Checks / Probes", read["sections"])
+
+            trace = mcp_adapter.trace(page="papers/MoE-PTQ.md", wiki_root=wiki_root)
+            self.assertEqual(trace["page"], "papers/MoE-PTQ.md")
+            self.assertIn("Evidence Map", trace["evidence_sections"])
+
+            proposal = mcp_adapter.propose(
+                wiki_root=wiki_root,
+                query="activation outlier implementation probes for MoE PTQ",
+                title="Activation Outlier Probe Plan",
+                proposal_type="synthesis",
+                context_path=Path(context["context_json_path"]),
+                out_dir=wiki_root / ".drafts/proposals/mcp-probe-plan",
+            )
+            self.assertEqual(proposal["workflow"], "Update Wiki")
+            self.assertTrue(Path(proposal["proposal_manifest"]).exists())
+            self.assertEqual(proposal["lint_status"], "pass")
+
+            with self.assertRaises(ValueError):
+                mcp_adapter.read(page=".drafts/ingests/noisy/paper.md", wiki_root=wiki_root)
 
     def test_add_insight_creates_draft_for_exact_canonical_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -4,10 +4,22 @@ Meridian's final Paper Wiki product is a Markdown-first compiled knowledge base 
 
 ## Daily Product Entry Points
 
-- `wiki/Map of Content.md`: Obsidian home page for the main knowledge graph.
+Meridian has two product entries:
+
+| Entry | Update Wiki | Use Wiki |
+|---|---|---|
+| Prompt/Skill | ingest, insight, write-back, refine, audit | retrieve, read, trace, answer |
+| MCP | `update`, `propose`, `apply`, `audit` | `context`, `read`, `trace` |
+
+The Prompt/Skill entry starts at `.codex/skills/meridian-paper-wiki/SKILL.md`.
+The MCP entry is designed in `docs/wiki-mcp-entry-design.md` and prototyped in
+`src/meridian/mcp/`. CLI commands are execution primitives for those entries.
+
+Obsidian daily navigation still starts from:
+
+- `wiki/Map of Content.md`: home page for the main knowledge graph.
 - `wiki/index.md`: generated canonical catalog.
-- `wiki/Paper Index.md`, `wiki/Method Index.md`, `wiki/Topic Index.md`, `wiki/Synthesis Index.md`, `wiki/Claim Evidence Index.md`: navigation dashboards.
-- `meridian wiki retrieve "<research intent>" --wiki-root wiki --strategy v1`: agent-facing context retrieval.
+- `wiki/Paper Index.md`, `wiki/Method Index.md`, `wiki/Topic Index.md`, `wiki/Concept Index.md`, `wiki/Synthesis Index.md`, `wiki/Claim Evidence Index.md`: navigation dashboards.
 - `wiki/raw/sources/index.md`: immutable source registry view.
 
 ## Artifact Boundary

@@ -17,6 +17,8 @@ The project main vault is `wiki/` at the repository root. Treat it as the daily 
 
 Product-facing wiki artifacts are canonical pages and retrieval/write-back context, not pipeline debug files. Follow `docs/wiki-product-dataflow-and-artifact-boundaries.md`: `wiki/papers/*.md` and `wiki/syntheses/*.md` are user-facing retrieval targets; `wiki/.drafts/ingests/<run>/paper.md` is an internal canonical-page candidate; `review.md`, judge packets, reader checks, and self-check JSON are validation/debug artifacts.
 
+The product-facing entry skill is `.codex/skills/meridian-paper-wiki/SKILL.md`. It exposes two workflows: `Update Wiki` and `Use Wiki`. Treat specialized skills such as `paper-ingest`, `wiki-retrieve`, `wiki-personalize`, `wiki-evolve`, `wiki-knowledge`, and `wiki-concept` as support modules that the entry skill delegates to.
+
 Final-product convergence is documented in `docs/final-llm-wiki-product-spec.md`. Treat the product as a compiled knowledge network: papers, methods, topics, concepts, claims, evidence, syntheses, user insights, and evolution state should all participate in retrieval and Obsidian navigation. Use `meridian wiki final-product-check --wiki-root wiki` as the deterministic readiness smoke.
 
 When architecture or implementation choices are ambiguous, consult `docs/source-grounded-development-principles.md` for the project's source-grounded principles from Karpathy's LLM Wiki gist, Anthropic agent engineering posts, and selected community followup lessons.
@@ -34,6 +36,13 @@ Do not replace this model with generic RAG unless the user explicitly asks. Sear
 ## MCP Delivery
 
 For Meridian, the Paper Wiki may be delivered as an MCP server so agents and clients can use the wiki without coupling to its internal vault layout.
+
+The MCP entry uses the same two workflow model as the prompt entry:
+
+- `Use Wiki`: `meridian.context`, `meridian.read`, `meridian.trace`.
+- `Update Wiki`: `meridian.update`, `meridian.propose`, `meridian.apply`, `meridian.audit`.
+
+The current adapter lives under `src/meridian/mcp/`; a real MCP runtime can wrap those functions.
 
 Treat MCP as a delivery surface, not the source of truth:
 

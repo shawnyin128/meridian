@@ -6,6 +6,12 @@ Before planning, designing, implementing, or reviewing changes that affect raw s
 
 `/Users/shawn/Desktop/meridian/.codex/skills/llm-wiki/SKILL.md`
 
+For product-facing Paper Wiki usage, use the unified entry skill:
+
+`/Users/shawn/Desktop/meridian/.codex/skills/meridian-paper-wiki/SKILL.md`
+
+It exposes the two product workflows: Update Wiki and Use Wiki. Treat CLI commands as execution primitives below the Prompt/Skill and MCP entries.
+
 Before generating, evaluating, or refining paper ingest outputs such as `paper.md`, claim/method/evidence records, reader self-check packets, retrieval metadata, or calibration-driven ingest quality, also load:
 
 `/Users/shawn/Desktop/meridian/.codex/skills/paper-ingest/SKILL.md`
@@ -60,6 +66,7 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `.arbor/memory.md`: short-term Arbor session memory and in-flight workflow pointer.
 - `.arbor/workflow/features.json`: Arbor workflow status index for the active planning/development queue.
 - `.codex/hooks.json`: project-local Arbor hook intents.
+- `.codex/skills/meridian-paper-wiki/SKILL.md`: product-facing Paper Wiki entry skill for Update Wiki and Use Wiki workflows.
 - `.codex/skills/llm-wiki/SKILL.md`: project skill for LLM Wiki development principles.
 - `.codex/skills/paper-ingest/SKILL.md`: project skill for high-quality paper ingest outputs and reader self-check convergence.
 - `.codex/skills/wiki-retrieve/SKILL.md`: project skill for using Meridian retrieval and Obsidian CLI to find paper-wiki context for research work.
@@ -69,6 +76,7 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `.codex/skills/wiki-concept/SKILL.md`: project skill for preliminary-knowledge concept-layer audit, publish, retrieval, and evaluation.
 - `pyproject.toml`: Python package metadata and `meridian` console script entrypoint.
 - `src/meridian/`: Paper Wiki prototype CLI implementation for `meridian wiki ...`.
+- `src/meridian/mcp/`: scenario-facing MCP adapter/prototype exposing `context`, `read`, `trace`, `update`, `propose`, `apply`, and `audit`.
 - `tests/`: unit tests for CLI ingest, eval, and human review recording.
 - `wiki/`: Obsidian-compatible Markdown wiki artifacts, managed raw sources, canonical pages, generated indexes, and draft workspaces.
 - `eval/`: Paper Wiki evaluation case examples and LLM-as-Judge rubrics.
@@ -78,6 +86,9 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `docs/paper-wiki-prototype-evaluation-plan.md`: Paper Wiki-first prototype, manual review, evaluation case, and refine loop plan.
 - `docs/wiki-evaluation-set-and-judge-rubric.md`: current evaluation set strategy and LLM-as-Judge rubric contract.
 - `docs/final-llm-wiki-product-spec.md`: final Paper Wiki product specification for compiled knowledge, synthesis growth, retrieval policy, quality states, and artifact boundaries.
+- `docs/wiki-product-entry-contract.md`: product entry contract defining Prompt/Skill and MCP entries across Update Wiki and Use Wiki.
+- `docs/wiki-mcp-entry-design.md`: MCP entry tool surface and adapter design for Paper Wiki.
+- `docs/wiki-entry-demo.md`: small release demo for Prompt/Skill and MCP entry workflows.
 - `docs/final-llm-wiki-product-quality-brief.md`: latest deterministic final-product readiness brief and residual bottlenecks.
 - `docs/wiki-layer-test-strategy.md`: layered source/canonical/retrieval test strategy, retrieval scenario metrics, judge rubric usage, calibration, and release gates.
 - `docs/wiki-product-dataflow-and-artifact-boundaries.md`: product-level source/canonical/draft/debug/retrieval artifact taxonomy and dataflow boundaries.
