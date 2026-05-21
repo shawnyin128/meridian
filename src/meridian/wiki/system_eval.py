@@ -744,7 +744,15 @@ def _dimension_delta(baseline_dimensions: list[dict[str, Any]], candidate_dimens
 def _comparison_decision(comparison: dict[str, Any]) -> str:
     if comparison["hard_failure_delta"] > 0:
         return "regression"
+    bucket_deltas = list((comparison.get("repair_bucket_delta") or {}).values())
+    bucket_regression = any(int(item.get("delta") or 0) > 0 for item in bucket_deltas)
+    bucket_improvement = any(int(item.get("delta") or 0) < 0 for item in bucket_deltas)
+    case_regression = any(str(item.get("status") or "") == "regression" for item in comparison.get("case_deltas") or [])
+    if bucket_regression or case_regression:
+        return "regression"
     if comparison["score_delta"] >= 0.1 and comparison["hard_failure_delta"] <= 0:
+        return "improved"
+    if comparison["score_delta"] > 0 and bucket_improvement:
         return "improved"
     if comparison["score_delta"] <= -0.1:
         return "regression"

@@ -1459,6 +1459,83 @@ This page explains preference optimization for alignment.
             self.assertEqual(payload["results"][0]["canonical_path"], "papers/MoE-PTQ.md")
             self.assertIn("Canonical path: `papers/MoE-PTQ.md`", text)
 
+    def test_wiki_retrieve_exposes_trace_fields_for_evaluator(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            (wiki_root / "papers").mkdir(parents=True)
+            _write_test_paper(
+                wiki_root / "papers/PINN.md",
+                title="PINN Paper",
+                aliases=["PINN"],
+                topics=["scientific ML"],
+                methods=["PDE-constrained learning"],
+                settings=["physics-informed PDE setting"],
+                body_sections={"What To Remember": "PINN uses PDE residual and boundary conditions."},
+            )
+            _write_knowledge_page(
+                wiki_root / "concepts/PDE-Residual.md",
+                page_type="concept",
+                title="PDE Residual",
+                source_papers=["papers/PINN.md"],
+                body="\n".join(
+                    [
+                        "## What It Is",
+                        "A residual of the governing differential equation.",
+                        "## Implementation Implications",
+                        "Keep residual, boundary, and data loss terms separately logged.",
+                        "## Common Failure Modes",
+                        "Incorrect autodiff variables can make the residual meaningless.",
+                        "## Minimal Checks / Probes",
+                        "Run a manufactured-solution residual check.",
+                        "## Evidence / Provenance",
+                        "Source paper: PINN Paper.",
+                    ]
+                ),
+            )
+            (wiki_root / "claims").mkdir(parents=True)
+            (wiki_root / "claims/PINN-Claim.md").write_text(
+                """---
+type: "claim"
+title: "PINN residual must be traced to boundary-condition evidence."
+status: "draft"
+sources:
+  - "papers/PINN.md"
+confidence: "medium"
+review_state: "auto_extracted"
+candidate_id: "claim-001"
+---
+# PINN residual must be traced to boundary-condition evidence.
+
+- Source paper: [[papers/PINN|PINN Paper]]
+- Claim: PINN residual must be traced to boundary-condition evidence.
+- Claim type: source_claim
+- Evidence IDs: evidence-p0001
+- Provenance: p. 2
+""",
+                encoding="utf-8",
+            )
+
+            result = retrieve_papers(
+                query="I want to implement a PINN baseline; retrieve PDE residual concepts, implementation checks, failure modes, claim evidence, and provenance.",
+                wiki_root=wiki_root,
+                top_k=4,
+                strategy="v1",
+            )
+
+            concept = next(item for item in result.results if item["result_type"] == "concept")
+            claim = next(item for item in result.results if item["result_type"] == "claim")
+            self.assertEqual(concept["sources"], ["papers/PINN.md"])
+            self.assertIn("Evidence / Provenance", concept["section_headings"])
+            concept_sections = {section["heading"] for section in concept["matched_sections"]}
+            self.assertTrue(
+                {"Implementation Implications", "Common Failure Modes", "Minimal Checks / Probes", "Evidence / Provenance"}
+                <= concept_sections
+            )
+            self.assertEqual(claim["sources"], ["papers/PINN.md"])
+            claim_sections = {section["heading"] for section in claim["matched_sections"]}
+            self.assertTrue({"Claim", "Supporting Evidence", "Provenance"} <= claim_sections)
+
     def test_wiki_retrieve_ignores_draft_ingest_candidates(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -2352,6 +2429,30 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertEqual(comparison["decision"], "improved")
             self.assertGreater(comparison["score_delta"], 0)
             self.assertEqual(comparison["repair_bucket_delta"]["retrieval_ranking"]["delta"], -2)
+
+            baseline_summary["score"]["average"] = 4.912
+            baseline_summary["repair_buckets"] = {"provenance_schema": {"count": 5}}
+            candidate_summary["score"]["average"] = 5.0
+            candidate_summary["repair_buckets"] = {"provenance_schema": {"count": 0}}
+            (baseline / "summary.json").write_text(json.dumps(baseline_summary), encoding="utf-8")
+            (candidate / "summary.json").write_text(json.dumps(candidate_summary), encoding="utf-8")
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "system-optimize-compare",
+                        "--baseline-run",
+                        str(baseline),
+                        "--candidate-run",
+                        str(candidate),
+                        "--out-dir",
+                        str(root / "small-delta-comparison"),
+                    ]
+                ),
+                0,
+            )
+            small_delta = json.loads((root / "small-delta-comparison/comparison.json").read_text(encoding="utf-8"))
+            self.assertEqual(small_delta["decision"], "improved")
 
     def test_system_optimization_cases_are_parseable(self) -> None:
         cases = Path("eval/cases/system_evaluation_optimization_loop.jsonl")

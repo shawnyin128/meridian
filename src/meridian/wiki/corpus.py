@@ -620,6 +620,8 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
         "corpus_type": record.get("corpus_type"),
         "knowledge_role": record.get("knowledge_role"),
         "source_id": record.get("source_id"),
+        "source_pdf": record.get("source_pdf"),
+        "sources": record.get("sources") or [],
         "source_quality_risk": record.get("source_quality_risk"),
         "source_quality_linked": record.get("source_quality_linked"),
         "source_quality_sources": record.get("source_quality_sources") or [],
@@ -640,6 +642,7 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
         "candidate_scope": record.get("candidate_scope"),
         "consolidation_target": record.get("consolidation_target"),
         "retrieval_visibility": record.get("retrieval_visibility"),
+        "section_headings": list(sections.keys()),
     }
 
 
@@ -878,6 +881,17 @@ def _score_record_v1(
         previous = base_sections.get(str(item.get("heading") or ""))
         if previous is None or float(item.get("score") or 0.0) > float(previous.get("score") or 0.0):
             base_sections[str(item["heading"])] = item
+    for heading in _forced_context_sections(
+        result_type=result_type,
+        desired_sections=desired_sections,
+        query_analysis=query_analysis,
+    ):
+        if heading in sections and heading not in base_sections:
+            base_sections[heading] = {
+                "heading": heading,
+                "score": 0.001,
+                "snippet": _best_snippet(sections[heading], query_tokens, limit=260),
+            }
 
     base.update(
         {
@@ -890,6 +904,7 @@ def _score_record_v1(
             ],
             "selection_reasons": _dedupe(reasons),
             "detected_domains": sorted(record_domains),
+            "section_headings": list(sections.keys()),
             "matched_source_types": _dedupe(
                 list(base.get("matched_source_types") or [])
                 + (["user_insight"] if any(item.get("heading") == "User Insights" for item in base_sections.values()) else [])
@@ -897,6 +912,45 @@ def _score_record_v1(
         }
     )
     return base
+
+
+def _forced_context_sections(
+    *,
+    result_type: str,
+    desired_sections: set[str],
+    query_analysis: dict[str, Any],
+) -> set[str]:
+    forced: set[str] = set()
+    if result_type == "concept" and desired_sections & {
+        "Implementation Implications",
+        "Common Failure Modes",
+        "Minimal Checks / Probes",
+        "Prerequisite Concepts",
+        "Concept Dependencies",
+        "Evidence / Provenance",
+    }:
+        forced.update(
+            {
+                "Implementation Implications",
+                "Common Failure Modes",
+                "Minimal Checks / Probes",
+                "Evidence / Provenance",
+            }
+        )
+    if result_type == "claim":
+        forced.update({"Claim", "Supporting Evidence", "Provenance"})
+    if result_type == "evidence":
+        forced.update({"Evidence Item", "Source", "Metric or Observation", "Supports", "Reliability"})
+    if result_type in {"synthesis", "method-family", "comparison", "decision", "research-question"} and desired_sections & {
+        "Source Facts",
+        "Wiki Synthesis",
+        "Evidence Map",
+        "Open Questions",
+    }:
+        forced.update({"Source Facts", "Wiki Synthesis", "Evidence Map", "Open Questions"})
+    if query_analysis.get("source_quality_query"):
+        forced.update({"Source", "Provenance", "Publish / Review Notes"})
+    return forced
 
 
 def _apply_graph_expansion(scored: list[dict[str, Any]], *, query_analysis: dict[str, Any]) -> list[dict[str, Any]]:
