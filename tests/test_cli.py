@@ -2484,7 +2484,7 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertIn('"templates/wiki-vault/**/*.jsonl"', pyproject)
 
     def test_research_dev_mvp_assets_exist(self) -> None:
-        skill = Path(".codex/skills/meridian-research-dev/SKILL.md").read_text(encoding="utf-8")
+        skill = Path(".codex/skills/lab/SKILL.md").read_text(encoding="utf-8")
         self.assertIn("Idea To Experiment Design", skill)
         self.assertIn("Paper Or Method To Implementation", skill)
         self.assertIn("Broken Run To Sanity Check / Debug", skill)
@@ -2500,7 +2500,7 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertIn('"templates/research-dev/**/*.md"', pyproject)
 
     def test_research_dev_idea_management_assets_parse(self) -> None:
-        skill = Path(".codex/skills/meridian-research-dev/SKILL.md").read_text(encoding="utf-8")
+        skill = Path(".codex/skills/lab/SKILL.md").read_text(encoding="utf-8")
         self.assertIn("Idea Capture / Triage / Evolution", skill)
         self.assertIn("Write back only through a Paper Wiki proposal", skill)
 
@@ -2531,7 +2531,7 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertIn("Write-back Boundary", rubric)
 
     def test_research_dev_state_model_assets_parse(self) -> None:
-        skill = Path(".codex/skills/meridian-research-dev/SKILL.md").read_text(encoding="utf-8")
+        skill = Path(".codex/skills/lab/SKILL.md").read_text(encoding="utf-8")
         for phrase in [
             "New Idea Placement / Thread Seed",
             "Approach Tree Exploration",

@@ -82,7 +82,7 @@ experiment interpretation.
 Agent-facing entry:
 
 ```text
-.codex/skills/meridian-research-dev/SKILL.md
+.codex/skills/lab/SKILL.md
 ```
 
 MVP workflows:

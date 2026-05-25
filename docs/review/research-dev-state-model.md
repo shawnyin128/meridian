@@ -5,12 +5,12 @@ Feature: Research Dev state model refactor
 ## Context/Test Plan
 
 Goal: replace loose Idea Card-centered Research Dev state with a lightweight
-`.meridian/` research space while keeping Research Dev skill-only and preserving
+`.meridian/` research space while keeping the Lab skill-only and preserving
 Paper Wiki as the grounding and write-back substrate.
 
 Required evidence:
 
-- Research Dev skill exposes state workflows for idea placement, approach tree
+- Lab skill exposes state workflows for idea placement, approach tree
   exploration, experiment evidence, and finding proposals.
 - Templates exist for `.meridian/state.md`, thread, experiment, proposal, and
   directory indexes.
@@ -25,7 +25,7 @@ Required evidence:
 
 Implemented artifacts:
 
-- `.codex/skills/meridian-research-dev/SKILL.md`
+- `.codex/skills/lab/SKILL.md`
 - `docs/research-dev-state-model.md`
 - `docs/research-dev-mvp-plan.md`
 - `docs/research-dev-use-cases.md`

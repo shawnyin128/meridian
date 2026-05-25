@@ -25,7 +25,7 @@ Implemented artifacts:
 
 - `docs/research-dev-use-cases.md`
 - `docs/research-dev-mvp-plan.md`
-- `.codex/skills/meridian-research-dev/SKILL.md`
+- `.codex/skills/lab/SKILL.md`
 - `src/meridian/templates/research-dev/`
 - `eval/cases/research_dev_mvp.jsonl`
 - `eval/rubrics/research_dev_mvp_quality.md`

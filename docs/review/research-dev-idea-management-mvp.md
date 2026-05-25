@@ -12,7 +12,7 @@ when findings become durable.
 
 Required evidence:
 
-- Research Dev skill exposes `Idea Capture / Triage / Evolution`.
+- Lab skill exposes `Idea Capture / Triage / Evolution`.
 - `idea-card.md` template exists and is portable to target repos under
   `.meridian/ideas/<slug>.md`.
 - Research Dev docs explain that idea cards are dev state, not Paper Wiki source
@@ -27,7 +27,7 @@ Required evidence:
 
 Implemented artifacts:
 
-- `.codex/skills/meridian-research-dev/SKILL.md`
+- `.codex/skills/lab/SKILL.md`
 - `src/meridian/templates/research-dev/idea-card.md`
 - `docs/research-dev-use-cases.md`
 - `docs/research-dev-mvp-plan.md`

@@ -1,11 +1,11 @@
 ---
-type: meridian-research-dev-state
+type: lab-state
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 active_thread: ""
 ---
 
-# Meridian Research Dev State
+# Meridian Lab State
 
 ## Active Thread
 

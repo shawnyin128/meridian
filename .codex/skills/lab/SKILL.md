@@ -1,9 +1,9 @@
 ---
-name: meridian-research-dev
+name: lab
 description: Use when a research coding task should use Meridian Paper Wiki context to design experiments, implement paper methods, debug broken runs, preserve evidence, or write research findings back to the wiki.
 ---
 
-# Meridian Research Dev
+# Meridian Lab
 
 Use this skill for research coding. Keep it lightweight: maintain the target
 repo's `.meridian/` research space, retrieve Paper Wiki context when research

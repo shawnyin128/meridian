@@ -36,7 +36,7 @@ Internal support skills:
 - `.codex/skills/wiki-evolve/SKILL.md`
 - `.codex/skills/wiki-knowledge/SKILL.md`
 - `.codex/skills/wiki-concept/SKILL.md`
-- `.codex/skills/meridian-research-dev/SKILL.md`
+- `.codex/skills/lab/SKILL.md`
 
 Clean vault template:
 
@@ -124,7 +124,7 @@ Then inspect the file list produced by the release build or source archive:
 - release includes `src/meridian/`
 - release includes `.codex/skills/meridian-paper-wiki/SKILL.md`
 - release includes `src/meridian/templates/wiki-vault/Map of Content.md`
-- release includes `.codex/skills/meridian-research-dev/SKILL.md`
+- release includes `.codex/skills/lab/SKILL.md`
 - release includes `src/meridian/templates/research-dev/thread.md`
 - release includes `src/meridian/templates/research-dev/experiment.md`
 - release includes `src/meridian/templates/research-dev/proposal.md`

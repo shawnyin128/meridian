@@ -521,7 +521,7 @@ Defer until the first three are stable:
 The first implementation should probably be a project skill:
 
 ```text
-.codex/skills/meridian-research-dev/SKILL.md
+.codex/skills/lab/SKILL.md
 ```
 
 The skill should call Paper Wiki MCP for research context and then use ordinary
@@ -529,8 +529,8 @@ repo inspection, shell commands, tests, and git discipline for development work.
 It should not require a new service or database.
 
 The MVP plan lives in `docs/research-dev-mvp-plan.md`. Treat that plan plus this
-use-case map as the source for future Research Dev skill, template, and
-evaluation changes.
+use-case map as the source for future Lab skill, template, and evaluation
+changes.
 
 ## Evaluation Cases
 

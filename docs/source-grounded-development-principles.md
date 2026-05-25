@@ -84,7 +84,7 @@ Adopt:
 - Evolve skills from observed failures and successful workflows.
 - Test skills against representative tasks, not toy prompts.
 
-For Meridian, this means the LLM Wiki skill should encode durable rules, while paper-ingest, context-packet, MCP-server, and research-dev skills can become separate, progressively loaded capabilities.
+For Meridian, this means the LLM Wiki skill should encode durable rules, while paper-ingest, context-packet, MCP-server, and lab skills can become separate, progressively loaded capabilities.
 
 ## Research Dev Agent Principles
 
