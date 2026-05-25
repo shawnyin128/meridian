@@ -32,10 +32,11 @@ Dev MCP server, CLI, daemon, database, or workflow engine.
   proposals/<proposal>.md
 ```
 
-`state.md` stores the global `active_thread`. Each thread stores its own
-`active_node`. Index files are navigation artifacts maintained by skill
-convention and checklist; individual thread, experiment, and proposal files are
-the source of truth.
+`state.md` stores the global `active_thread`. `memory.md` stores short-lived
+notes that are not yet stable enough to become a thread, experiment, or
+proposal. Each thread stores its own `active_node`. Index files are navigation
+artifacts maintained by skill convention and checklist; individual thread,
+experiment, and proposal files are the source of truth.
 
 ## Core Objects
 
@@ -86,6 +87,12 @@ Proposals can run strengthening experiments using the shared experiment schema.
 A proposal becomes `ready` only after evidence covers the key scope. Ready
 local proposals can be transferred into Paper Wiki draft proposals; canonical
 wiki publish still requires lint/review and user confirmation.
+
+Before transfer, create a Wiki Transfer Packet. It maps local experiment
+evidence to Paper Wiki grounding and explicitly separates source facts, wiki
+synthesis, local experiment evidence, user insight, and uncertainty. A ready
+proposal without source experiments, target wiki pages, and a transfer gate is
+not publish-ready.
 
 ## New Idea Placement
 
@@ -142,3 +149,20 @@ local experiment -> reusable finding proposal -> Paper Wiki draft -> canonical w
 Local experiment evidence is not paper source fact. It can become wiki
 synthesis, implementation notes, failure modes, or research-question context
 only through proposal-first write-back.
+
+## Lab State Validation
+
+Research Dev remains skill-only: there is no Lab product CLI, MCP server,
+daemon, database, or workflow engine. The repo does include a small internal
+validator for release/debug checks:
+
+```python
+from meridian.lab import validate_lab_space
+
+report = validate_lab_space(repo_root)
+```
+
+The validator checks the `.meridian/` layout, `active_thread`, per-thread
+`active_node`, allowed node modes, experiment validity values, proposal states,
+and the ready-proposal transfer gate. It is a guardrail for templates and tests,
+not an agent router.

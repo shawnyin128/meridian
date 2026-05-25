@@ -11,6 +11,7 @@ from io import StringIO
 from pathlib import Path
 
 from meridian.cli import main
+from meridian.lab import validate_lab_space
 from meridian.mcp import adapter as mcp_adapter
 from meridian.mcp import harness as mcp_harness
 from meridian.mcp import server as mcp_server
@@ -2502,7 +2503,8 @@ Compare recency-only retention with attention-based and oracle retention policie
     def test_research_dev_idea_management_assets_parse(self) -> None:
         skill = Path(".codex/skills/lab/SKILL.md").read_text(encoding="utf-8")
         self.assertIn("Idea Capture / Triage / Evolution", skill)
-        self.assertIn("Write back only through a Paper Wiki proposal", skill)
+        self.assertIn("Write back only through a Paper Wiki", skill)
+        self.assertIn("proposal when a local finding", skill)
 
         template = Path("src/meridian/templates/research-dev/idea-card.md").read_text(encoding="utf-8")
         for section in [
@@ -2553,6 +2555,8 @@ Compare recency-only retention with attention-based and oracle retention policie
             "threads-index.md",
             "experiments-index.md",
             "proposals-index.md",
+            "memory.md",
+            "wiki-transfer-packet.md",
         ]:
             self.assertTrue((template / name).exists(), name)
 
@@ -2563,7 +2567,12 @@ Compare recency-only retention with attention-based and oracle retention policie
 
         proposal = (template / "proposal.md").read_text(encoding="utf-8")
         self.assertIn("strengthening", proposal)
+        self.assertIn("Wiki Transfer Gate", proposal)
         self.assertIn("Transfer Notes", proposal)
+
+        transfer = (template / "wiki-transfer-packet.md").read_text(encoding="utf-8")
+        self.assertIn("Boundary Mapping", transfer)
+        self.assertIn("Publish Gate", transfer)
 
         state_doc = Path("docs/research-dev-state-model.md").read_text(encoding="utf-8")
         self.assertIn(".meridian/", state_doc)
@@ -2581,6 +2590,91 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertIn("Placement Boundary", rubric)
         self.assertIn("Proposal Lifecycle", rubric)
 
+    def test_lab_state_validator_passes_valid_research_space(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            lab = root / ".meridian"
+            (lab / "threads").mkdir(parents=True)
+            (lab / "experiments").mkdir()
+            (lab / "proposals").mkdir()
+            (lab / "state.md").write_text(
+                "---\ntype: lab-state\nactive_thread: cache-retention\n---\n# Meridian Lab State\n",
+                encoding="utf-8",
+            )
+            (lab / "memory.md").write_text("---\ntype: lab-memory\n---\n# Memory\n", encoding="utf-8")
+            (lab / "threads/index.md").write_text("# Threads\n", encoding="utf-8")
+            (lab / "experiments/index.md").write_text("# Experiments\n", encoding="utf-8")
+            (lab / "proposals/index.md").write_text("# Proposals\n", encoding="utf-8")
+            (lab / "threads/cache-retention.md").write_text(
+                "---\ntype: research-thread\nactive_node: A\n---\n"
+                "# Research Thread\n\n"
+                "## Approach Tree\n\n"
+                "### Node A: Initial approach\n\n"
+                "- mode: `supported`\n",
+                encoding="utf-8",
+            )
+            (lab / "experiments/exp-cache-probe.md").write_text(
+                "---\ntype: research-experiment\nid: exp-cache-probe\nvalidity: valid\n---\n"
+                "# Experiment\n",
+                encoding="utf-8",
+            )
+            (lab / "proposals/cache-scoring.md").write_text(
+                "---\n"
+                "type: research-finding-proposal\n"
+                "state: ready\n"
+                "source_experiments:\n"
+                "  - exp-cache-probe\n"
+                "target_wiki_pages:\n"
+                "  - wiki/concepts/KV-cache-memory-bandwidth.md\n"
+                "---\n"
+                "# Finding Proposal\n\n"
+                "## Wiki Transfer Gate\n\n"
+                "- source facts:\n",
+                encoding="utf-8",
+            )
+
+            report = validate_lab_space(root)
+            self.assertEqual(report.status, "pass", report.to_dict())
+
+    def test_lab_state_validator_fails_invalid_modes_and_ready_bridge(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            lab = root / ".meridian"
+            (lab / "threads").mkdir(parents=True)
+            (lab / "experiments").mkdir()
+            (lab / "proposals").mkdir()
+            (lab / "state.md").write_text(
+                "---\ntype: lab-state\nactive_thread: missing-thread\n---\n# Meridian Lab State\n",
+                encoding="utf-8",
+            )
+            (lab / "memory.md").write_text("---\ntype: lab-memory\n---\n# Memory\n", encoding="utf-8")
+            (lab / "threads/index.md").write_text("# Threads\n", encoding="utf-8")
+            (lab / "experiments/index.md").write_text("# Experiments\n", encoding="utf-8")
+            (lab / "proposals/index.md").write_text("# Proposals\n", encoding="utf-8")
+            (lab / "threads/cache-retention.md").write_text(
+                "---\ntype: research-thread\nactive_node: B\n---\n"
+                "# Research Thread\n\n"
+                "## Approach Tree\n\n"
+                "### Node A: Initial approach\n\n"
+                "- mode: `paused`\n",
+                encoding="utf-8",
+            )
+            (lab / "proposals/cache-scoring.md").write_text(
+                "---\ntype: research-finding-proposal\nstate: ready\n---\n"
+                "# Finding Proposal\n",
+                encoding="utf-8",
+            )
+
+            report = validate_lab_space(root)
+            codes = {finding.code for finding in report.findings}
+            self.assertEqual(report.status, "fail")
+            self.assertIn("active_thread_missing", codes)
+            self.assertIn("active_node_missing", codes)
+            self.assertIn("invalid_node_mode", codes)
+            self.assertIn("ready_proposal_without_experiments", codes)
+            self.assertIn("ready_proposal_without_wiki_target", codes)
+            self.assertIn("ready_proposal_without_transfer_gate", codes)
+
     def test_research_dev_eval_assets_parse(self) -> None:
         cases = Path("eval/cases/research_dev_mvp.jsonl")
         parsed = [json.loads(line) for line in cases.read_text(encoding="utf-8").splitlines() if line.strip()]
@@ -2592,6 +2686,18 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertIn("Wiki Retrieval Usage", rubric)
         self.assertIn("Write-back Boundary", rubric)
         self.assertIn("Lightweight Behavior", rubric)
+
+    def test_research_dev_longitudinal_replay_assets_parse(self) -> None:
+        cases = Path("eval/cases/research_dev_longitudinal_replay.jsonl")
+        parsed = [json.loads(line) for line in cases.read_text(encoding="utf-8").splitlines() if line.strip()]
+        self.assertGreaterEqual(len(parsed), 6)
+        self.assertTrue(all(case.get("category") == "research_dev_longitudinal_replay" for case in parsed))
+        self.assertTrue(all("expected_result" in case and "must_not_do" in case for case in parsed))
+
+        rubric = Path("eval/rubrics/research_dev_longitudinal_replay_quality.md").read_text(encoding="utf-8")
+        self.assertIn("Longitudinal Replay", rubric)
+        self.assertIn("Wiki Transfer Boundary", rubric)
+        self.assertIn("Invalid Evidence Handling", rubric)
 
     def test_add_insight_creates_draft_for_exact_canonical_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

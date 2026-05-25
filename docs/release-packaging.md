@@ -50,6 +50,7 @@ Minimal product docs:
 
 - `docs/daily-use-walkthrough.md`
 - `docs/final-llm-wiki-product-spec.md`
+- `docs/lab-system-optimization.md`
 - `docs/paper-wiki-release-readiness-checklist.md`
 - `docs/research-coding-framework.md`
 - `docs/research-dev-state-model.md`
@@ -126,8 +127,10 @@ Then inspect the file list produced by the release build or source archive:
 - release includes `src/meridian/templates/wiki-vault/Map of Content.md`
 - release includes `.codex/skills/lab/SKILL.md`
 - release includes `src/meridian/templates/research-dev/thread.md`
+- release includes `src/meridian/templates/research-dev/memory.md`
 - release includes `src/meridian/templates/research-dev/experiment.md`
 - release includes `src/meridian/templates/research-dev/proposal.md`
+- release includes `src/meridian/templates/research-dev/wiki-transfer-packet.md`
 - release includes `src/meridian/templates/research-dev/research-dev-context-packet.md`
 - release excludes `wiki/raw/sources/`
 - release excludes `wiki/.drafts/`

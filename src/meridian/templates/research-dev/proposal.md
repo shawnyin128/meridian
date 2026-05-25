@@ -49,6 +49,17 @@ ready.
 | Page | Update Type | Boundary |
 | --- | --- | --- |
 
+## Wiki Transfer Gate
+
+Before converting this local proposal into a Paper Wiki draft, create a
+`wiki-transfer-packet.md` or equivalent packet with:
+
+- linked source experiments
+- retrieved Paper Wiki grounding or an explicit reason it is unnecessary
+- source fact / wiki synthesis / local experiment evidence boundaries
+- target wiki pages and proposal type
+- user confirmation before canonical wiki publish
+
 ## Transfer Notes
 
 When `ready`, transfer this into a Paper Wiki draft proposal. Canonical publish

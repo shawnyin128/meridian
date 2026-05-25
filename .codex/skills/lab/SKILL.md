@@ -96,6 +96,7 @@ Minimum completion:
 - Move a proposal to `ready` only when evidence covers the key scope.
 - Convert `ready` local proposals into Paper Wiki draft proposals; publish
   canonical wiki updates only after user confirmation and lint/review.
+- Use a Wiki Transfer Packet when moving local evidence toward Paper Wiki.
 
 Example:
 
@@ -140,6 +141,7 @@ Use Markdown artifacts when a task has durable value:
 - `.meridian/experiments/<experiment>.md`
 - `.meridian/proposals/<proposal>.md`
 - `Research Dev Context Packet` for compact wiki/repo context
+- `Wiki Transfer Packet` for ready local findings moving toward Paper Wiki
 
 Templates live in:
 
@@ -152,7 +154,6 @@ src/meridian/templates/research-dev/
 For experiments or results, preserve command, config, environment, output path,
 metric definition, and interpretation. Write back only through a Paper Wiki
 proposal when a local finding becomes a reusable proposal that is `ready`.
-Write back only through a Paper Wiki proposal.
 Never edit canonical wiki pages directly from Research Dev state.
 
 Keep boundaries clear:

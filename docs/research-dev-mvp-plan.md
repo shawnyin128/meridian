@@ -372,7 +372,8 @@ The first eval assets live at:
 
 ## Implementation Decision
 
-The MVP does not add a `meridian dev` CLI yet. Skill + templates are enough for
-the first usable flow and preserve agent freedom. A deterministic `meridian dev
-scaffold` command can be added later if repeated template generation becomes
-friction.
+The MVP does not add a `meridian dev` CLI. Skill + templates are enough for the
+first usable flow and preserve agent freedom. The internal
+`meridian.lab.validate_lab_space` helper exists only for release/debug checks
+over `.meridian/` layout, active pointers, node modes, experiment validity,
+proposal states, and ready-proposal transfer gates.
