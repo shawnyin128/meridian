@@ -87,13 +87,17 @@ Agent-facing entry:
 
 MVP workflows:
 
-- Idea to Experiment Design
-- Paper or Method to Implementation
-- Broken Run to Sanity Check / Debug
+- New idea placement and thread seed creation
+- Approach tree exploration
+- Experiment evidence recording
+- Finding proposal strengthening and wiki write-back
 
-Research Dev consumes Paper Wiki through MCP context/read/trace and writes back
-through proposal-first wiki updates. The plan and scenarios are documented in
-`docs/research-dev-mvp-plan.md` and `docs/research-dev-use-cases.md`.
+Research Dev state lives in the target repo's `.meridian/` research space:
+threads, experiments, and local finding proposals. It consumes Paper Wiki
+through MCP context/read/trace and writes back through proposal-first wiki
+updates after reusable findings are ready. The state model and scenarios are
+documented in `docs/research-dev-state-model.md`,
+`docs/research-dev-mvp-plan.md`, and `docs/research-dev-use-cases.md`.
 
 ## Execution Primitives
 

@@ -19,6 +19,24 @@ Paper Wiki as the research-memory substrate and keeps the agent free to inspect,
 run, diagnose, and edit code. The MVP is skill/template first: no new daemon,
 database, route machine, or experiment platform.
 
+## Current State Model
+
+Research Dev now uses a target-repo `.meridian/` research space rather than
+loose `.meridian/ideas/` Idea Cards as the primary state model. The canonical
+state contract is documented in `docs/research-dev-state-model.md`.
+
+The primary objects are:
+
+- Research Thread: one research problem.
+- Approach Node: the smallest verifiable method in an approach tree.
+- Experiment: an independent evidence record.
+- Finding Proposal: a local reusable finding that transfers to Paper Wiki only
+  after it is `ready`.
+
+Legacy Idea Cards remain available for older artifacts, but new durable work
+should use `.meridian/threads/`, `.meridian/experiments/`, and
+`.meridian/proposals/`.
+
 ## Product Boundary
 
 Research Dev helps a researcher turn ideas, papers, failures, and results into
@@ -47,7 +65,7 @@ It does not own:
 
 ## MVP Workflows
 
-### 1. Idea Capture / Triage / Evolution
+### 1. New Idea Placement / Thread Seed
 
 Use when a user shares a research idea, debug intuition, paper-reading spark, or
 possible direction that is not yet ready to become an experiment.
@@ -55,31 +73,26 @@ possible direction that is not yet ready to become an experiment.
 Minimum completion:
 
 - preserve the raw idea faithfully
-- normalize it into a testable hypothesis
-- retrieve Paper Wiki context when prior work, methods, concepts, evidence, or
-  failure modes matter
-- summarize support, contradiction, novelty risk, implementation risk, and
-  missing evidence
-- choose the next decision: `inbox`, `test_next`, `revise`, `pause`, `kill`, or
-  `promote`
-- create an Idea Card under the target repo's `.meridian/ideas/` when the idea
-  is durable enough to track
-- write back only durable findings through Paper Wiki proposals
+- check existing threads and show at most three placement candidates
+- ask the user to choose `root`, `child`, `sibling`, or `link`
+- create a thread seed for `root` or `link`, or attach to an existing thread for
+  `child` or `sibling`
+- retrieve Paper Wiki context after placement when prior work, methods,
+  concepts, evidence, or failure modes matter
+- ask before switching active thread or node
 
-### 2. Idea To Experiment Design
+### 2. Approach Tree Exploration
 
-Use when a user has a research idea or suspected mechanism and wants the
-smallest useful experiment.
+Use when a user is exploring a research thread or suspected mechanism.
 
 Minimum completion:
 
-- retrieve Paper Wiki context first
-- identify relevant methods, concepts, claims, evidence, and gaps
-- inspect repo constraints only as needed
-- define the research question and expected learning
-- propose controls, ablations, probes, and sanity checks
-- name command/config/output identity when known
-- suggest a git checkpoint before risky implementation
+- maintain approach nodes as smallest verifiable methods
+- use only `unresolved`, `repairable`, `supported`, and `dead`
+- record assumptions, experiments, key history, and next action
+- update same-node facts automatically when evidence is strong
+- ask before changing structure, active node, `repairable`, `dead`, or thread
+  close/reopen
 
 ### 3. Paper Or Method To Implementation
 
@@ -111,27 +124,65 @@ Minimum completion:
 
 ## Artifact Schema
 
-### Idea Card
+### Research Thread
 
-Purpose: keep a research idea as lightweight dev working state before it becomes
-an experiment or wiki proposal.
+Purpose: keep one research problem, its active approach node, approach tree,
+wiki grounding, final summary, and local proposal extraction.
 
 Default target-repo path:
 
 ```text
-.meridian/ideas/<idea-slug>.md
+.meridian/threads/<thread-slug>.md
 ```
 
 Required sections:
 
-- Raw Idea
-- Hypothesis
+- Root Problem
+- Placement
 - Wiki Grounding
-- Feasibility Read
-- Minimal Test
-- Evidence Log
-- Decision
-- Write-back Candidate
+- Approach Tree
+- Thread Final Summary
+
+### Experiment
+
+Purpose: preserve command/config/output identity and interpretation as
+independent evidence.
+
+Default target-repo path:
+
+```text
+.meridian/experiments/<experiment-id>.md
+```
+
+Required sections:
+
+- Question
+- Targets And Impacts
+- Command / Config / Output
+- Result
+- Validity
+- Interpretation
+
+### Finding Proposal
+
+Purpose: mature a reusable local research finding before it becomes a Paper Wiki
+draft proposal.
+
+Default target-repo path:
+
+```text
+.meridian/proposals/<proposal-slug>.md
+```
+
+Required sections:
+
+- Reusable Finding
+- Evidence
+- Scope Checklist
+- Strengthening Experiments
+- State
+- Target Wiki Update
+- Transfer Notes
 
 ### Research Dev Context Packet
 
@@ -206,12 +257,13 @@ It should not force every request through a managed Arbor loop. Arbor remains
 useful for durable project evidence, release gates, and larger implementation
 features, but Research Dev should stay lightweight during ordinary exploration.
 
-## Idea Management Contract
+## Research Space Contract
 
-Idea management belongs to Research Dev, not the canonical Paper Wiki layer.
-Raw or half-formed ideas are active hypotheses, experiment candidates, or debug
-intuitions. They should stay in an Idea Card until they generate durable
-research memory.
+Idea and approach management belongs to Research Dev, not the canonical Paper
+Wiki layer. Raw or half-formed ideas are active hypotheses, experiment
+candidates, or debug intuitions. They should be placed into the target repo's
+`.meridian/` research space as threads, approach nodes, experiments, or local
+finding proposals until they generate durable research memory.
 
 Use Paper Wiki to ground an idea before investing in code when the idea depends
 on prior work, method details, prerequisite concepts, evidence, or known failure

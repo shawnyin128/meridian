@@ -1,7 +1,7 @@
 ---
 type: research_dev_idea
 title: ""
-status: inbox
+status: legacy
 origin: user
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
@@ -14,6 +14,11 @@ decision: undecided
 ---
 
 # Idea Card: <Title>
+
+Legacy note: Idea Cards are superseded by the `.meridian/` research-space
+model. Prefer `threads/<thread>.md`, `experiments/<experiment>.md`, and
+`proposals/<proposal>.md` for new work. Keep this template only for older
+workflows and compatibility.
 
 Suggested target-repo path:
 

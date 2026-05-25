@@ -2530,6 +2530,57 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertIn("Wiki Grounding Quality", rubric)
         self.assertIn("Write-back Boundary", rubric)
 
+    def test_research_dev_state_model_assets_parse(self) -> None:
+        skill = Path(".codex/skills/meridian-research-dev/SKILL.md").read_text(encoding="utf-8")
+        for phrase in [
+            "New Idea Placement / Thread Seed",
+            "Approach Tree Exploration",
+            "Experiment Evidence Recording",
+            "Finding Proposal / Wiki Write-back",
+            "unresolved",
+            "repairable",
+            "supported",
+            "dead",
+        ]:
+            self.assertIn(phrase, skill)
+
+        template = Path("src/meridian/templates/research-dev")
+        for name in [
+            "state.md",
+            "thread.md",
+            "experiment.md",
+            "proposal.md",
+            "threads-index.md",
+            "experiments-index.md",
+            "proposals-index.md",
+        ]:
+            self.assertTrue((template / name).exists(), name)
+
+        thread = (template / "thread.md").read_text(encoding="utf-8")
+        self.assertIn("active_node", thread)
+        self.assertIn("Approach Tree", thread)
+        self.assertIn("unresolved", thread)
+
+        proposal = (template / "proposal.md").read_text(encoding="utf-8")
+        self.assertIn("strengthening", proposal)
+        self.assertIn("Transfer Notes", proposal)
+
+        state_doc = Path("docs/research-dev-state-model.md").read_text(encoding="utf-8")
+        self.assertIn(".meridian/", state_doc)
+        self.assertIn("Node modes are exactly", state_doc)
+        self.assertIn("Proposal states are", state_doc)
+
+        cases = Path("eval/cases/research_dev_state_model.jsonl")
+        parsed = [json.loads(line) for line in cases.read_text(encoding="utf-8").splitlines() if line.strip()]
+        self.assertGreaterEqual(len(parsed), 7)
+        self.assertTrue(all(case.get("category") == "research_dev_state_model" for case in parsed))
+        self.assertTrue(all("expected_result" in case and "must_not_do" in case for case in parsed))
+
+        rubric = Path("eval/rubrics/research_dev_state_model_quality.md").read_text(encoding="utf-8")
+        self.assertIn("Hard Fail Rules", rubric)
+        self.assertIn("Placement Boundary", rubric)
+        self.assertIn("Proposal Lifecycle", rubric)
+
     def test_research_dev_eval_assets_parse(self) -> None:
         cases = Path("eval/cases/research_dev_mvp.jsonl")
         parsed = [json.loads(line) for line in cases.read_text(encoding="utf-8").splitlines() if line.strip()]

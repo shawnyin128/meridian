@@ -52,6 +52,7 @@ Minimal product docs:
 - `docs/final-llm-wiki-product-spec.md`
 - `docs/paper-wiki-release-readiness-checklist.md`
 - `docs/research-coding-framework.md`
+- `docs/research-dev-state-model.md`
 - `docs/research-dev-mvp-plan.md`
 - `docs/research-dev-use-cases.md`
 - `docs/wiki-entry-demo.md`
@@ -124,7 +125,9 @@ Then inspect the file list produced by the release build or source archive:
 - release includes `.codex/skills/meridian-paper-wiki/SKILL.md`
 - release includes `src/meridian/templates/wiki-vault/Map of Content.md`
 - release includes `.codex/skills/meridian-research-dev/SKILL.md`
-- release includes `src/meridian/templates/research-dev/idea-card.md`
+- release includes `src/meridian/templates/research-dev/thread.md`
+- release includes `src/meridian/templates/research-dev/experiment.md`
+- release includes `src/meridian/templates/research-dev/proposal.md`
 - release includes `src/meridian/templates/research-dev/research-dev-context-packet.md`
 - release excludes `wiki/raw/sources/`
 - release excludes `wiki/.drafts/`

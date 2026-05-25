@@ -24,6 +24,11 @@ memory.
 
 Research Dev is the upper layer above Paper Wiki.
 
+Research Dev state now lives in a target-repo `.meridian/` research space. The
+primary artifacts are Research Threads, Approach Nodes, Experiments, and Finding
+Proposals. Legacy Idea Cards are superseded for new durable work; see
+`docs/research-dev-state-model.md`.
+
 Paper Wiki owns:
 
 - source-managed papers
@@ -100,27 +105,65 @@ every half-formed idea into canonical wiki state.
 
 Every non-trivial Research Dev scenario may produce these artifacts.
 
-### Idea Card
+### Research Thread
 
-Purpose: keep a research idea as dev working state while it is grounded,
-tested, revised, killed, or promoted.
+Purpose: keep one research problem, active node, approach tree, grounding,
+experiments, and final summary.
 
 Default target-repo path:
 
 ```text
-.meridian/ideas/<idea-slug>.md
+.meridian/threads/<thread-slug>.md
 ```
 
 Minimum fields:
 
-- raw idea
-- normalized hypothesis
+- root problem
+- placement relation
 - wiki grounding
-- support, contradiction, novelty risk, and implementation risk
-- minimal test
-- evidence log
-- current decision
-- write-back candidate
+- approach tree
+- active node
+- thread final summary
+
+### Experiment
+
+Purpose: preserve an independent evidence record.
+
+Default target-repo path:
+
+```text
+.meridian/experiments/<experiment-id>.md
+```
+
+Minimum fields:
+
+- question
+- primary target
+- targets and impacts
+- command/config/output
+- result
+- validity
+- interpretation
+
+### Finding Proposal
+
+Purpose: mature a reusable local finding before Paper Wiki write-back.
+
+Default target-repo path:
+
+```text
+.meridian/proposals/<proposal-slug>.md
+```
+
+Minimum fields:
+
+- reusable finding
+- evidence
+- scope checklist
+- strengthening experiments
+- state
+- target wiki pages
+- transfer notes
 
 ### Research Dev Context Packet
 
@@ -202,9 +245,12 @@ Workflow:
 2. Normalize it into a testable hypothesis.
 3. Retrieve Paper Wiki context when prior work, methods, concepts, evidence, or failure modes matter.
 4. Summarize support, contradiction, novelty risk, implementation risk, and missing evidence.
-5. Decide whether to keep it in inbox, test next, revise, pause, kill, or promote.
-6. Create or update an Idea Card when the idea is durable enough to track.
-7. Write back only durable findings through Paper Wiki proposals.
+5. Decide whether it should become a root, child, sibling, or linked thread
+   seed.
+6. Place durable ideas into the `.meridian/` research space as a thread seed or
+   an approach node.
+7. Write back only durable findings through local finding proposals and then
+   Paper Wiki proposals.
 
 Wiki use:
 
@@ -214,7 +260,7 @@ Wiki use:
 
 Outputs:
 
-- Idea Card
+- Research Thread seed
 - optional Research Dev Context Packet
 - optional Experiment / Evidence Plan
 - optional Dev Write-back Packet after evidence exists
@@ -224,7 +270,7 @@ Done when:
 - raw idea and normalized hypothesis are separated
 - wiki grounding is present when it matters
 - feasibility is explicit instead of assumed
-- the next decision is named
+- placement and active-thread decision are explicit
 - raw idea does not become a Paper Wiki source fact
 
 ## Scenario 2: Idea To Experiment Design

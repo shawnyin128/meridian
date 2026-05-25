@@ -1,0 +1,144 @@
+---
+type: product-design
+title: "Research Dev State Model"
+status: draft
+created: 2026-05-25
+updated: 2026-05-25
+tags:
+  - research-dev
+  - state-model
+  - paper-wiki
+confidence: medium
+---
+
+# Research Dev State Model
+
+Research Dev is a skill-only workflow for research coding. It keeps active
+research state in the target repo's `.meridian/` directory and uses Paper Wiki
+as the grounding and long-term write-back substrate. It does not add a Research
+Dev MCP server, CLI, daemon, database, or workflow engine.
+
+## Source Of Truth
+
+```text
+.meridian/
+  state.md
+  memory.md
+  threads/index.md
+  threads/<thread>.md
+  experiments/index.md
+  experiments/<experiment>.md
+  proposals/index.md
+  proposals/<proposal>.md
+```
+
+`state.md` stores the global `active_thread`. Each thread stores its own
+`active_node`. Index files are navigation artifacts maintained by skill
+convention and checklist; individual thread, experiment, and proposal files are
+the source of truth.
+
+## Core Objects
+
+### Research Thread
+
+A Research Thread is one research problem. It owns an approach tree and can be
+closed only by user judgment. Closing a thread creates a final summary and
+extracts reusable findings into local proposals.
+
+### Approach Node
+
+An Approach Node is the smallest verifiable method in a thread's approach tree.
+Node modes are exactly:
+
+- `unresolved`: no reliable conclusion yet.
+- `repairable`: the node failed, but has a credible explanation and repair
+  direction.
+- `supported`: evidence supports continuing along this path.
+- `dead`: the node failed in a way that is not repairable.
+
+The agent may automatically update same-node facts such as experiment results,
+assumption status, node history, `supported`, and invalid-evidence retraction.
+The user must confirm `repairable`, `dead`, new node creation, active thread or
+node switching, thread close/reopen, and canonical wiki publish.
+
+### Experiment
+
+An Experiment is an independent evidence record. It stores the question,
+primary target, targets and impacts, command/config/output identity, result,
+validity, and interpretation. Experiments can target nodes or local proposals.
+If an experiment is invalid, preserve it as evidence. If a node was supported
+only by invalidated evidence, retract the node to `unresolved` and record the
+reason in node history.
+
+### Finding Proposal
+
+A Finding Proposal is a local reusable research finding. Proposal states are
+exactly:
+
+- `draft`
+- `strengthening`
+- `ready`
+- `published`
+- `rejected`
+- `archived`
+
+Proposals can run strengthening experiments using the shared experiment schema.
+A proposal becomes `ready` only after evidence covers the key scope. Ready
+local proposals can be transferred into Paper Wiki draft proposals; canonical
+wiki publish still requires lint/review and user confirmation.
+
+## New Idea Placement
+
+When a new idea appears:
+
+1. Preserve the raw idea.
+2. Check existing `.meridian/threads/` only.
+3. Show at most three placement candidates.
+4. Ask the user to choose `root`, `child`, `sibling`, or `link`.
+5. Create an independent thread seed for `root` or `link`; attach to the
+   existing tree for `child` or `sibling`.
+6. After placement, run Paper Wiki grounding when paper/method/concept/evidence
+   context matters.
+7. Ask before switching active thread or active node.
+
+`link` records inspiration or relatedness but still creates an independent
+thread seed. `sibling` means an alternative approach under the same parent
+problem. `child` means the node inherits a parent problem or repair target.
+
+## Thread Close And Reopen
+
+Thread close is never inferred from node color alone. The user decides when the
+research thread is done or paused indefinitely. Closing a thread creates a final
+summary covering supported paths, dead paths, key experiments, reusable
+findings, and local proposals. Reopening a thread requires user confirmation of
+the active node.
+
+## Git Checkpoints
+
+Research Dev can checkpoint before and after experiments. Commit messages use a
+lightweight conventional form:
+
+```text
+<type>[optional scope]: <description>
+```
+
+Recommended types: `idea`, `approach`, `exp`, `result`, `proposal`, `wiki`,
+`state`.
+
+Only commit experiment-related code, config, outputs intended for tracking, and
+`.meridian/` state. If unrelated dirty changes exist, stop and ask the user to
+confirm the commit scope.
+
+## Paper Wiki Boundary
+
+Research Dev manages the research search tree and local evidence. Paper Wiki
+manages long-term compiled knowledge. A local finding proposal is the maturity
+layer between them:
+
+```text
+local experiment -> reusable finding proposal -> Paper Wiki draft -> canonical wiki
+```
+
+Local experiment evidence is not paper source fact. It can become wiki
+synthesis, implementation notes, failure modes, or research-question context
+only through proposal-first write-back.
