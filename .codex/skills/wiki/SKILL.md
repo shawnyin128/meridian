@@ -18,6 +18,7 @@ Minimum completion:
 - Preserve source provenance and canonical page paths.
 - Keep source facts, wiki synthesis, user insight, and uncertainty labeled.
 - Update index/log/catalog when canonical pages change.
+- Leave the wiki git-clean after successful ingest when the vault is in a git repo.
 - Report the user-facing artifact path and the next review action.
 
 Canonical examples:

@@ -65,6 +65,7 @@ from meridian.wiki.commands import (
     system_optimize_compare_wiki,
     system_optimize_eval_wiki,
 )
+from meridian.wiki.git_auto_commit import GitAutoCommitResult, auto_commit_paths, git_dirty_paths
 from meridian.wiki.vault import slugify
 from meridian.wiki.workspace import workspace_for_cli
 
@@ -135,6 +136,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print internal/debug artifact paths in addition to product-facing output.",
     )
+    ingest.add_argument(
+        "--no-auto-commit",
+        action="store_true",
+        help="Do not create the scoped git commit after a successful ingest.",
+    )
 
     ingest_folder = wiki_subparsers.add_parser(
         "ingest-folder",
@@ -182,6 +188,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--verbose-artifacts",
         action="store_true",
         help="Print per-paper run manifest paths in addition to the batch product summary.",
+    )
+    ingest_folder.add_argument(
+        "--no-auto-commit",
+        action="store_true",
+        help="Do not create the scoped git commit after a successful folder ingest.",
     )
 
     init = wiki_subparsers.add_parser(
@@ -261,6 +272,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--verbose-artifacts",
         action="store_true",
         help="Print internal/debug/validation artifact paths in addition to product-facing output.",
+    )
+    flow.add_argument(
+        "--no-auto-commit",
+        action="store_true",
+        help="Do not create the scoped git commit after a successful flow run.",
     )
 
     eval_cmd = wiki_subparsers.add_parser(
@@ -1063,6 +1079,7 @@ def main(argv: list[str] | None = None) -> int:
             wiki_root = workspace.wiki_root if workspace is not None else None
             source_root = args.source_root or (workspace.source_root if workspace is not None else None)
             out_dir = args.out or _default_ingest_out_dir(wiki_root=wiki_root, pdf_path=args.pdf, title=args.title)
+            baseline_dirty = git_dirty_paths(wiki_root or out_dir)
             result = ingest_pdf(
                 pdf_path=args.pdf,
                 out_dir=out_dir,
@@ -1073,7 +1090,16 @@ def main(argv: list[str] | None = None) -> int:
                 publish_mode=args.publish_mode,
                 render_page_images=not args.no_page_images,
             )
+            if wiki_root is not None and result.canonical_paper_path is not None:
+                catalog_wiki(wiki_root=wiki_root)
             _print_ingest_summary(result.run_path, verbose_artifacts=args.verbose_artifacts)
+            if not args.no_auto_commit:
+                commit_result = _auto_commit_ingest_result(
+                    result=result,
+                    wiki_root=wiki_root,
+                    baseline_dirty=baseline_dirty,
+                )
+                _print_git_auto_commit_result(commit_result)
             return 0
 
         if args.product == "wiki" and args.command == "ingest-folder":
@@ -1082,6 +1108,7 @@ def main(argv: list[str] | None = None) -> int:
                 wiki_root=workspace.wiki_root,
                 folder=args.folder,
             )
+            baseline_dirty = git_dirty_paths(workspace.wiki_root)
             result = ingest_pdf_folder(
                 source_folder=args.folder,
                 batch_dir=batch_dir,
@@ -1093,12 +1120,22 @@ def main(argv: list[str] | None = None) -> int:
                 limit=args.limit,
                 stop_on_error=args.stop_on_error,
             )
+            if result.success_count:
+                catalog_wiki(wiki_root=workspace.wiki_root)
             _print_folder_ingest_summary(result.batch_manifest, verbose_artifacts=args.verbose_artifacts)
+            if not args.no_auto_commit:
+                commit_result = _auto_commit_folder_ingest_result(
+                    batch_manifest=result.batch_manifest,
+                    wiki_root=workspace.wiki_root,
+                    baseline_dirty=baseline_dirty,
+                )
+                _print_git_auto_commit_result(commit_result)
             return 0
 
         if args.product == "wiki" and args.command == "flow":
             workspace = workspace_for_cli(library_root=args.library_root, wiki_root=args.wiki_root)
             out_dir = args.out or _default_ingest_out_dir(wiki_root=workspace.wiki_root, pdf_path=args.pdf, title=args.title)
+            baseline_dirty = git_dirty_paths(workspace.wiki_root)
             result = run_flow(
                 pdf_path=args.pdf,
                 out_dir=out_dir,
@@ -1112,12 +1149,21 @@ def main(argv: list[str] | None = None) -> int:
                 judge_result_path=args.judge_result,
                 render_page_images=not args.no_page_images,
             )
+            catalog_wiki(wiki_root=workspace.wiki_root)
             _print_flow_summary(
                 flow_path=result.flow_path,
                 run_path=result.run_path,
                 verbose_artifacts=args.verbose_artifacts,
             )
             print(f"Flow status: {result.status}")
+            if not args.no_auto_commit:
+                commit_result = _auto_commit_flow_result(
+                    flow_path=result.flow_path,
+                    run_path=result.run_path,
+                    wiki_root=workspace.wiki_root,
+                    baseline_dirty=baseline_dirty,
+                )
+                _print_git_auto_commit_result(commit_result)
             return 0
 
         if args.product == "wiki" and args.command == "eval":
@@ -1851,6 +1897,120 @@ def _print_flow_summary(*, flow_path: Path, run_path: Path, verbose_artifacts: b
         _print_artifact_group("Validation artifacts", dict(flow.get("validation_artifacts") or {}))
         print(f"Run manifest: {run_path}")
         print(f"Flow manifest: {flow_path}")
+
+
+def _auto_commit_ingest_result(
+    *,
+    result: object,
+    wiki_root: Path | None,
+    baseline_dirty: set[str],
+) -> GitAutoCommitResult:
+    run = _read_manifest(result.run_path)  # type: ignore[attr-defined]
+    paths = _manifest_commit_paths(run)
+    paths.append(result.run_path.parent)  # type: ignore[attr-defined]
+    if wiki_root is not None:
+        paths.extend(_catalog_paths(wiki_root))
+        paths.extend(_vault_scaffold_paths(wiki_root))
+    title = str(run.get("title") or "paper")
+    return auto_commit_paths(
+        anchor=wiki_root or result.run_path.parent,  # type: ignore[attr-defined]
+        paths=paths,
+        message=f"wiki: ingest {title}",
+        baseline_dirty=baseline_dirty,
+    )
+
+
+def _auto_commit_folder_ingest_result(
+    *,
+    batch_manifest: Path,
+    wiki_root: Path,
+    baseline_dirty: set[str],
+) -> GitAutoCommitResult:
+    batch = _read_manifest(batch_manifest)
+    paths: list[Path] = [batch_manifest, batch_manifest.parent]
+    for item in batch.get("results", []):
+        if not isinstance(item, dict) or item.get("status") != "generated":
+            continue
+        run_manifest = item.get("run_manifest")
+        if not run_manifest:
+            continue
+        run_path = Path(str(run_manifest))
+        if run_path.exists():
+            paths.extend(_manifest_commit_paths(_read_manifest(run_path)))
+            paths.append(run_path.parent)
+    paths.extend(_catalog_paths(wiki_root))
+    paths.extend(_vault_scaffold_paths(wiki_root))
+    return auto_commit_paths(
+        anchor=wiki_root,
+        paths=paths,
+        message=f"wiki: ingest folder {Path(str(batch.get('source_folder') or 'papers')).name}",
+        baseline_dirty=baseline_dirty,
+    )
+
+
+def _auto_commit_flow_result(
+    *,
+    flow_path: Path,
+    run_path: Path,
+    wiki_root: Path,
+    baseline_dirty: set[str],
+) -> GitAutoCommitResult:
+    flow = _read_manifest(flow_path)
+    run = _read_manifest(run_path)
+    title = str(run.get("title") or Path(str(flow.get("source_pdf") or "paper")).stem)
+    paths = _manifest_commit_paths(run)
+    paths.append(flow_path.parent)
+    paths.extend(_catalog_paths(wiki_root))
+    paths.extend(_vault_scaffold_paths(wiki_root))
+    return auto_commit_paths(
+        anchor=wiki_root,
+        paths=paths,
+        message=f"wiki: ingest {title}",
+        baseline_dirty=baseline_dirty,
+    )
+
+
+def _manifest_commit_paths(manifest: dict[str, object]) -> list[Path]:
+    paths: list[Path] = []
+    for group_name in ("source_artifacts", "product_artifacts", "canonical_artifacts"):
+        group = manifest.get(group_name)
+        if not isinstance(group, dict):
+            continue
+        for value in group.values():
+            if isinstance(value, str) and value:
+                paths.append(Path(value))
+    for key in ("run_manifest", "flow_manifest"):
+        value = manifest.get(key)
+        if isinstance(value, str) and value:
+            paths.append(Path(value))
+    return paths
+
+
+def _catalog_paths(wiki_root: Path) -> list[Path]:
+    index_dir = wiki_root / ".index"
+    if not index_dir.exists():
+        return []
+    return sorted(index_dir.glob("*.jsonl"))
+
+
+def _vault_scaffold_paths(wiki_root: Path) -> list[Path]:
+    return [
+        wiki_root / "templates",
+        wiki_root / "raw/sources/index.md",
+    ]
+
+
+def _print_git_auto_commit_result(result: GitAutoCommitResult) -> None:
+    if result.status == "committed":
+        print(f"Git auto-commit: {result.commit}")
+    elif result.status == "skipped_not_git_repo":
+        print("Git auto-commit: skipped (not a git repository)")
+    elif result.status == "skipped_no_paths":
+        print("Git auto-commit: skipped (no eligible ingest artifacts)")
+    elif result.status == "skipped_no_changes":
+        print("Git auto-commit: skipped (no changes)")
+    else:
+        print(f"Git auto-commit: failed ({result.message})", file=sys.stderr)
 
 
 def _print_artifact_group(label: str, artifacts: dict[str, object]) -> None:

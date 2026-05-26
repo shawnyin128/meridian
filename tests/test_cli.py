@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import types
@@ -147,7 +148,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.1.1"
+        expected = "0.1.2"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -1130,6 +1131,64 @@ Evidence takeaways:
             self.assertIn("Quality gate: `warn`", log)
             self.assertTrue((wiki_root / ".drafts/retrieval").is_dir())
             self.assertTrue((wiki_root / "templates/paper.md").exists())
+
+    def test_wiki_ingest_auto_commits_scoped_generated_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "repo"
+            source_dir = root / "source"
+            repo.mkdir()
+            source_dir.mkdir()
+            subprocess.run(["git", "init"], cwd=repo, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.name", "Meridian Test"], cwd=repo, check=True)
+            wiki_root = repo / "wiki"
+            pdf = source_dir / "paper.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            out = wiki_root / ".drafts/ingests/fake-paper"
+
+            exit_code, stdout, stderr = _run_cli_capture(
+                [
+                    "wiki",
+                    "ingest",
+                    str(pdf),
+                    "--out",
+                    str(out),
+                    "--wiki-root",
+                    str(wiki_root),
+                    "--publish-mode",
+                    "auto",
+                ]
+            )
+
+            self.assertEqual(exit_code, 0, stderr)
+            self.assertIn("Git auto-commit:", stdout)
+            log = subprocess.run(
+                ["git", "log", "-1", "--pretty=%s"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+            self.assertEqual(log, "wiki: ingest Fake Research Paper")
+            status = subprocess.run(
+                ["git", "status", "--porcelain", "--untracked-files=all"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+            self.assertEqual(status, "")
+            committed_files = subprocess.run(
+                ["git", "show", "--name-only", "--pretty=", "HEAD"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout
+            self.assertIn("wiki/papers/Fake-Research-Paper.md", committed_files)
+            self.assertIn("wiki/.drafts/ingests/fake-paper/run.json", committed_files)
+            self.assertIn("wiki/.index/papers.jsonl", committed_files)
 
     def test_wiki_ingest_default_output_is_product_oriented(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

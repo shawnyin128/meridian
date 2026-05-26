@@ -180,6 +180,10 @@ Ingest this uploaded PDF into my Paper Wiki and tell me the managed source path
 and canonical wiki page.
 ```
 
+Successful ingests create a scoped git commit for the generated wiki/source
+artifacts when the wiki lives inside a git repository. Use `--no-auto-commit`
+only for advanced debugging.
+
 ```text
 Ingest this Zotero export folder, My Library, into my Paper Wiki.
 ```
