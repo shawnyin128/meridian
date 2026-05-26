@@ -3,6 +3,8 @@
 Meridian is a Markdown-first Paper Wiki for papers, reading notes, retrieval
 context, synthesis, and research memory.
 
+Current version: `0.1.0`.
+
 ## Install
 
 Meridian has one plugin name and two user skills:

@@ -11,6 +11,7 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
+from meridian import __version__
 from meridian.cli import main
 from meridian.lab import validate_lab_space
 from meridian.mcp import adapter as mcp_adapter
@@ -144,6 +145,32 @@ class CliTests(unittest.TestCase):
             sys.modules.pop("fitz", None)
         else:
             sys.modules["fitz"] = self.previous_fitz
+
+    def test_release_version_surfaces_are_aligned(self) -> None:
+        expected = "0.1.0"
+        self.assertEqual(__version__, expected)
+        self.assertEqual(mcp_server.SERVER_VERSION, expected)
+        self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
+
+        pyproject_version = ""
+        for line in Path("pyproject.toml").read_text(encoding="utf-8").splitlines():
+            if line.startswith("version = "):
+                pyproject_version = line.split("=", 1)[1].strip().strip('"')
+                break
+        self.assertEqual(pyproject_version, expected)
+
+        codex_plugin = json.loads(
+            Path("plugins/codex/meridian/.codex-plugin/plugin.json").read_text(encoding="utf-8")
+        )
+        claude_plugin = json.loads(
+            Path("plugins/claude-code/meridian/.claude-plugin/plugin.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(codex_plugin["version"], expected)
+        self.assertEqual(claude_plugin["version"], expected)
+
+        exit_code, stdout, stderr = _run_cli_capture(["--version"])
+        self.assertEqual(exit_code, 0, stderr)
+        self.assertEqual(stdout.strip(), f"meridian {expected}")
 
     def test_title_extraction_keeps_multiline_technical_title(self) -> None:
         extraction = PdfExtraction(

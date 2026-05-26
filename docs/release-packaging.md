@@ -36,6 +36,7 @@ Python execution core:
 
 - `src/meridian/`
 - `pyproject.toml`
+- `VERSION`
 - `README.md`
 - `MANIFEST.in`
 

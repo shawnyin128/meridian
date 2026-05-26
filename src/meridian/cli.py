@@ -5,6 +5,7 @@ import json
 import sys
 from pathlib import Path
 
+from meridian import __version__
 from meridian.wiki.commands import (
     calibrate_eval,
     catalog_wiki,
@@ -1021,7 +1022,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
-    args = parser.parse_args(argv)
+    effective_argv = sys.argv[1:] if argv is None else argv
+    if effective_argv in (["--version"], ["-V"]):
+        print(f"meridian {__version__}")
+        return 0
+    args = parser.parse_args(effective_argv)
 
     try:
         if args.product == "wiki" and args.command == "init":

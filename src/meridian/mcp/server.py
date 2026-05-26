@@ -7,11 +7,12 @@ import sys
 from pathlib import Path
 from typing import Any, Callable
 
+from meridian import __version__
 from meridian.mcp import adapter
 from meridian.wiki.workspace import resolve_workspace
 
 SERVER_NAME = "meridian-paper-wiki"
-SERVER_VERSION = "0.1.0"
+SERVER_VERSION = __version__
 DEFAULT_PROTOCOL_VERSION = "2024-11-05"
 
 
