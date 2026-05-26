@@ -116,6 +116,7 @@ from meridian.wiki.vault import (
     init_wiki_vault,
     lint_wiki,
     rebuild_wiki_index,
+    slugify,
 )
 from meridian.wiki.workspace import WorkspaceInitResult, init_workspace
 
@@ -131,6 +132,16 @@ class CommandIngestResult:
     canonical_paper_path: Path | None
     index_path: Path | None
     log_path: Path | None
+
+
+@dataclass(frozen=True)
+class BatchIngestResult:
+    source_folder: Path
+    batch_dir: Path
+    batch_manifest: Path
+    pdf_count: int
+    success_count: int
+    failure_count: int
 
 
 def ingest_pdf(
@@ -164,6 +175,164 @@ def ingest_pdf(
         index_path=result.publish_result.index_path if result.publish_result else None,
         log_path=result.publish_result.log_path if result.publish_result else None,
     )
+
+
+def ingest_pdf_folder(
+    *,
+    source_folder: Path,
+    batch_dir: Path,
+    wiki_root: Path,
+    source_root: Path | None = None,
+    publish_mode: str = "auto",
+    overwrite: bool = False,
+    render_page_images: bool = False,
+    limit: int | None = None,
+    stop_on_error: bool = False,
+) -> BatchIngestResult:
+    source_folder = source_folder.expanduser().resolve()
+    if not source_folder.is_dir():
+        raise ValueError(f"source folder does not exist or is not a directory: {source_folder}")
+    if limit is not None and limit < 1:
+        raise ValueError("--limit must be greater than zero")
+    if batch_dir.exists() and (batch_dir / "batch.json").exists() and not overwrite:
+        raise ValueError(f"batch output already exists: {batch_dir}")
+
+    pdf_paths = sorted(
+        path for path in source_folder.rglob("*") if path.is_file() and path.suffix.lower() == ".pdf"
+    )
+    if limit is not None:
+        pdf_paths = pdf_paths[:limit]
+    if not pdf_paths:
+        raise ValueError(f"no PDF files found under: {source_folder}")
+
+    batch_dir.mkdir(parents=True, exist_ok=True)
+    runs_dir = batch_dir / "runs"
+    runs_dir.mkdir(parents=True, exist_ok=True)
+
+    used_slugs: set[str] = set()
+    results: list[dict[str, object]] = []
+    failures = 0
+    for pdf_path in pdf_paths:
+        run_slug = _unique_batch_slug(slugify(pdf_path.stem), used_slugs)
+        run_dir = runs_dir / run_slug
+        record: dict[str, object] = {
+            "input_pdf": str(pdf_path),
+            "run_dir": str(run_dir),
+            "status": "pending",
+        }
+        try:
+            ingest_result = run_ingest(
+                pdf_path=pdf_path,
+                out_dir=run_dir,
+                overwrite=overwrite,
+                wiki_root=wiki_root,
+                source_root=source_root,
+                publish_mode=publish_mode,
+                render_page_images=render_page_images,
+            )
+            run_payload = json.loads(ingest_result.run_path.read_text(encoding="utf-8"))
+            source_artifacts = dict(run_payload.get("source_artifacts") or {})
+            product_artifacts = dict(run_payload.get("product_artifacts") or {})
+            record.update(
+                {
+                    "status": "generated",
+                    "run_manifest": str(ingest_result.run_path),
+                    "managed_source_pdf": source_artifacts.get("managed_pdf"),
+                    "canonical_paper_page": product_artifacts.get("canonical_paper_page"),
+                    "quality_gate": dict(run_payload.get("quality_gate") or {}).get("decision"),
+                    "review_state": dict(run_payload.get("deterministic_convergence") or {}).get("review_state"),
+                    "artifact_role": "internal_ingest_run",
+                }
+            )
+        except Exception as exc:  # noqa: BLE001 - keep batch ingestion moving by default.
+            failures += 1
+            record.update({"status": "error", "error": str(exc)})
+            if stop_on_error:
+                results.append(record)
+                break
+        results.append(record)
+
+    created_at = datetime.now(timezone.utc).isoformat()
+    success_count = sum(1 for item in results if item.get("status") == "generated")
+    manifest = {
+        "schema_version": "paper_wiki_folder_ingest.v0",
+        "workflow": "Update Wiki",
+        "source_kind": "zotero_export_or_pdf_folder",
+        "source_folder": str(source_folder),
+        "wiki_root": str(wiki_root),
+        "source_root": str(source_root) if source_root else None,
+        "batch_dir": str(batch_dir),
+        "created_at": created_at,
+        "pdf_count": len(pdf_paths),
+        "success_count": success_count,
+        "failure_count": failures,
+        "publish_mode": publish_mode,
+        "render_page_images": render_page_images,
+        "results": results,
+        "artifact_roles": {
+            "batch_manifest": "internal_batch_summary",
+            "per_pdf_run_dirs": "internal_ingest_runs",
+            "managed_source_pdf": "source_artifact",
+            "canonical_paper_page": "user_facing_wiki_artifact",
+        },
+        "product_summary": {
+            "managed_sources_updated": success_count > 0,
+            "canonical_wiki_pages_attempted": publish_mode != "never",
+            "canonical_wiki_pages_published": sum(1 for item in results if item.get("canonical_paper_page")),
+        },
+    }
+    batch_manifest = batch_dir / "batch.json"
+    batch_manifest.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    _write_batch_markdown_summary(batch_dir / "batch.md", manifest)
+
+    return BatchIngestResult(
+        source_folder=source_folder,
+        batch_dir=batch_dir,
+        batch_manifest=batch_manifest,
+        pdf_count=len(pdf_paths),
+        success_count=success_count,
+        failure_count=failures,
+    )
+
+
+def _unique_batch_slug(base_slug: str, used_slugs: set[str]) -> str:
+    slug = base_slug or "paper"
+    if slug not in used_slugs:
+        used_slugs.add(slug)
+        return slug
+    index = 2
+    while f"{slug}-{index}" in used_slugs:
+        index += 1
+    unique = f"{slug}-{index}"
+    used_slugs.add(unique)
+    return unique
+
+
+def _write_batch_markdown_summary(path: Path, manifest: dict[str, object]) -> None:
+    lines = [
+        "# Folder Ingest Batch",
+        "",
+        f"- Source folder: `{manifest['source_folder']}`",
+        f"- PDF count: {manifest['pdf_count']}",
+        f"- Success: {manifest['success_count']}",
+        f"- Failures: {manifest['failure_count']}",
+        f"- Publish mode: `{manifest['publish_mode']}`",
+        "",
+        "## Results",
+        "",
+    ]
+    for item in manifest.get("results", []):
+        if not isinstance(item, dict):
+            continue
+        status = item.get("status")
+        lines.append(f"- `{status}` `{item.get('input_pdf')}`")
+        if item.get("managed_source_pdf"):
+            lines.append(f"  - Managed source: `{item['managed_source_pdf']}`")
+        if item.get("canonical_paper_page"):
+            lines.append(f"  - Canonical page: `{item['canonical_paper_page']}`")
+        if item.get("error"):
+            lines.append(f"  - Error: {item['error']}")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def eval_cases(

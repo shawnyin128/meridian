@@ -75,6 +75,17 @@ under `<library-root>/wiki/` when the requested publish mode allows it.
 The original PDF is never mutated. Canonical wiki pages should point to the
 managed source path.
 
+For a Zotero export, pass the exported folder, commonly named `My Library`:
+
+```bash
+meridian wiki ingest-folder "/path/to/My Library" --publish-mode auto
+```
+
+Meridian recursively discovers PDFs, writes per-paper internal ingest runs under
+`<library-root>/wiki/.drafts/ingests/batches/`, stores a `batch.json` summary,
+and reports only the product-level batch status by default. The managed source
+PDFs and canonical paper pages are the user-facing artifacts.
+
 ## Prompt And MCP Entries
 
 The Prompt/Skill entry should ask for a library root on first use when no active

@@ -19,6 +19,7 @@ from meridian.wiki.commands import (
     eval_cases,
     final_product_check_wiki,
     final_status_migrate_wiki,
+    ingest_pdf_folder,
     ingest_pdf,
     init_wiki,
     init_wiki_workspace,
@@ -132,6 +133,54 @@ def build_parser() -> argparse.ArgumentParser:
         "--verbose-artifacts",
         action="store_true",
         help="Print internal/debug artifact paths in addition to product-facing output.",
+    )
+
+    ingest_folder = wiki_subparsers.add_parser(
+        "ingest-folder",
+        help="Recursively ingest every PDF under a folder such as a Zotero export My Library.",
+    )
+    ingest_folder.add_argument("folder", type=Path, help="Folder containing exported PDFs, e.g. Zotero My Library.")
+    ingest_folder.add_argument(
+        "--out-dir",
+        type=Path,
+        default=None,
+        help="Batch output directory. Defaults to <wiki-root>/.drafts/ingests/batches/<folder-slug>/.",
+    )
+    ingest_folder.add_argument("--wiki-root", type=Path, default=None, help="Canonical wiki root.")
+    ingest_folder.add_argument(
+        "--library-root",
+        type=Path,
+        default=None,
+        help="Optional Paper Wiki library root. Defaults to the active user workspace.",
+    )
+    ingest_folder.add_argument(
+        "--source-root",
+        type=Path,
+        default=None,
+        help="Optional managed source root. Defaults to the workspace source root.",
+    )
+    ingest_folder.add_argument(
+        "--publish-mode",
+        choices=["never", "auto", "always"],
+        default="auto",
+        help="Canonical publish policy for each discovered PDF.",
+    )
+    ingest_folder.add_argument("--overwrite", action="store_true", help="Overwrite existing per-paper run directories.")
+    ingest_folder.add_argument("--limit", type=int, default=None, help="Optional maximum number of PDFs to ingest.")
+    ingest_folder.add_argument(
+        "--render-page-images",
+        action="store_true",
+        help="Render page PNGs. By default folder ingest skips page images for scale.",
+    )
+    ingest_folder.add_argument(
+        "--stop-on-error",
+        action="store_true",
+        help="Stop after the first per-PDF failure instead of continuing the batch.",
+    )
+    ingest_folder.add_argument(
+        "--verbose-artifacts",
+        action="store_true",
+        help="Print per-paper run manifest paths in addition to the batch product summary.",
     )
 
     init = wiki_subparsers.add_parser(
@@ -1022,6 +1071,26 @@ def main(argv: list[str] | None = None) -> int:
             _print_ingest_summary(result.run_path, verbose_artifacts=args.verbose_artifacts)
             return 0
 
+        if args.product == "wiki" and args.command == "ingest-folder":
+            workspace = workspace_for_cli(library_root=args.library_root, wiki_root=args.wiki_root)
+            batch_dir = args.out_dir or _default_folder_ingest_out_dir(
+                wiki_root=workspace.wiki_root,
+                folder=args.folder,
+            )
+            result = ingest_pdf_folder(
+                source_folder=args.folder,
+                batch_dir=batch_dir,
+                wiki_root=workspace.wiki_root,
+                source_root=args.source_root or workspace.source_root,
+                publish_mode=args.publish_mode,
+                overwrite=args.overwrite,
+                render_page_images=args.render_page_images,
+                limit=args.limit,
+                stop_on_error=args.stop_on_error,
+            )
+            _print_folder_ingest_summary(result.batch_manifest, verbose_artifacts=args.verbose_artifacts)
+            return 0
+
         if args.product == "wiki" and args.command == "flow":
             workspace = workspace_for_cli(library_root=args.library_root, wiki_root=args.wiki_root)
             out_dir = args.out or _default_ingest_out_dir(wiki_root=workspace.wiki_root, pdf_path=args.pdf, title=args.title)
@@ -1697,6 +1766,10 @@ def _default_ingest_out_dir(*, wiki_root: Path, pdf_path: Path, title: str | Non
     return wiki_root / ".drafts" / "ingests" / slugify(title or pdf_path.stem)
 
 
+def _default_folder_ingest_out_dir(*, wiki_root: Path, folder: Path) -> Path:
+    return wiki_root / ".drafts" / "ingests" / "batches" / slugify(folder.name or "pdf-folder")
+
+
 def _print_ingest_summary(run_path: Path, *, verbose_artifacts: bool) -> None:
     run = _read_manifest(run_path)
     source = dict(run.get("source_artifacts") or {})
@@ -1721,6 +1794,32 @@ def _print_ingest_summary(run_path: Path, *, verbose_artifacts: bool) -> None:
         _print_artifact_group("Internal artifacts", dict(run.get("internal_artifacts") or {}))
         _print_artifact_group("Debug artifacts", dict(run.get("debug_artifacts") or {}))
         print(f"Run manifest: {run_path}")
+
+
+def _print_folder_ingest_summary(batch_manifest: Path, *, verbose_artifacts: bool) -> None:
+    batch = _read_manifest(batch_manifest)
+    product = dict(batch.get("product_summary") or {})
+    print(f"Source folder: {batch.get('source_folder')}")
+    print(f"PDFs discovered: {batch.get('pdf_count')}")
+    print(f"Ingested successfully: {batch.get('success_count')}")
+    print(f"Failures: {batch.get('failure_count')}")
+    print(f"Canonical pages published: {product.get('canonical_wiki_pages_published', 0)}")
+    print(f"Batch manifest: {batch_manifest}")
+
+    if verbose_artifacts:
+        print("Per-paper runs:")
+        for item in batch.get("results", []):
+            if not isinstance(item, dict):
+                continue
+            print(f"  - {item.get('status')}: {item.get('input_pdf')}")
+            if item.get("run_manifest"):
+                print(f"    run_manifest: {item['run_manifest']}")
+            if item.get("managed_source_pdf"):
+                print(f"    managed_source_pdf: {item['managed_source_pdf']}")
+            if item.get("canonical_paper_page"):
+                print(f"    canonical_paper_page: {item['canonical_paper_page']}")
+            if item.get("error"):
+                print(f"    error: {item['error']}")
 
 
 def _print_flow_summary(*, flow_path: Path, run_path: Path, verbose_artifacts: bool) -> None:

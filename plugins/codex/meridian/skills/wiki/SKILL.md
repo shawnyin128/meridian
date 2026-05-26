@@ -31,6 +31,10 @@ The user uploads a PDF from Codex or Claude Code. If no Paper Wiki workspace is 
 ```
 
 ```text
+The user gives a Zotero export folder such as `My Library`. Recursively ingest the PDFs into the active Paper Wiki workspace, keep sources in the managed source store, publish canonical pages when allowed, and report the batch summary plus any failures.
+```
+
+```text
 The user shares a reading note about a paper. Match it to the canonical paper, preserve the raw note, normalize the insight, publish it as user insight after lint, and make it retrievable as user-supplied context.
 ```
 

@@ -70,6 +70,12 @@ Ingest a PDF:
 meridian wiki ingest /path/to/paper.pdf --publish-mode auto
 ```
 
+Ingest a Zotero export folder:
+
+```bash
+meridian wiki ingest-folder "/path/to/My Library" --publish-mode auto
+```
+
 Retrieve wiki context:
 
 ```bash

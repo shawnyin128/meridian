@@ -856,6 +856,83 @@ Evidence takeaways:
             self.assertIn(str((library / "sources" / "index.md").resolve()), stdout)
             self.assertTrue((library / "sources" / "index.md").exists())
 
+    def test_wiki_ingest_folder_handles_zotero_export_folder(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_home = root / "config"
+            library = root / "paper-library"
+            zotero_export = root / "My Library"
+            nested = zotero_export / "Collection"
+            nested.mkdir(parents=True)
+            (zotero_export / "paper-one.pdf").write_bytes(b"%PDF fake one")
+            (nested / "paper-two.PDF").write_bytes(b"%PDF fake two")
+
+            with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(config_home)}):
+                self.assertEqual(main(["wiki", "init", "--library-root", str(library)]), 0)
+                exit_code, stdout, stderr = _run_cli_capture(
+                    [
+                        "wiki",
+                        "ingest-folder",
+                        str(zotero_export),
+                        "--publish-mode",
+                        "never",
+                    ]
+                )
+
+            self.assertEqual(exit_code, 0, stderr)
+            self.assertIn("Source folder:", stdout)
+            self.assertIn("PDFs discovered: 2", stdout)
+            self.assertIn("Ingested successfully: 2", stdout)
+            self.assertIn("Canonical pages published: 0", stdout)
+            self.assertNotIn("review.md", stdout)
+
+            batch_dir = library / "wiki/.drafts/ingests/batches/my-library"
+            batch = json.loads((batch_dir / "batch.json").read_text(encoding="utf-8"))
+            self.assertEqual(batch["source_kind"], "zotero_export_or_pdf_folder")
+            self.assertEqual(batch["pdf_count"], 2)
+            self.assertEqual(batch["success_count"], 2)
+            self.assertEqual(batch["failure_count"], 0)
+            self.assertEqual(batch["artifact_roles"]["managed_source_pdf"], "source_artifact")
+            self.assertEqual(batch["artifact_roles"]["canonical_paper_page"], "user_facing_wiki_artifact")
+            self.assertTrue((batch_dir / "batch.md").exists())
+            self.assertTrue((batch_dir / "runs/paper-one/run.json").exists())
+            self.assertTrue((batch_dir / "runs/paper-two/run.json").exists())
+
+            registry = library / "sources" / "sources.jsonl"
+            records = [json.loads(line) for line in registry.read_text(encoding="utf-8").splitlines() if line.strip()]
+            self.assertEqual(len(records), 2)
+            source_root = (library / "sources").resolve()
+            self.assertTrue(all(str(Path(record["managed_path"]).resolve()).startswith(str(source_root)) for record in records))
+
+    def test_wiki_ingest_folder_can_publish_single_pdf(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_home = root / "config"
+            library = root / "paper-library"
+            zotero_export = root / "My Library"
+            zotero_export.mkdir()
+            (zotero_export / "paper-one.pdf").write_bytes(b"%PDF fake one")
+
+            with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(config_home)}):
+                self.assertEqual(main(["wiki", "init", "--library-root", str(library)]), 0)
+                exit_code, stdout, stderr = _run_cli_capture(
+                    [
+                        "wiki",
+                        "ingest-folder",
+                        str(zotero_export),
+                        "--publish-mode",
+                        "auto",
+                    ]
+                )
+
+            self.assertEqual(exit_code, 0, stderr)
+            self.assertIn("Canonical pages published: 1", stdout)
+            batch = json.loads(
+                (library / "wiki/.drafts/ingests/batches/my-library/batch.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(batch["product_summary"]["canonical_wiki_pages_published"], 1)
+            self.assertTrue(Path(batch["results"][0]["canonical_paper_page"]).exists())
+
     def test_wiki_ingest_can_skip_page_images_for_batch_runs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
