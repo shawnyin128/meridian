@@ -38,7 +38,7 @@ The harness verifies:
 
 ## Prompt/Skill Validation
 
-The product-facing skill remains `.codex/skills/meridian-paper-wiki/SKILL.md`. It exposes exactly two workflows:
+The product-facing skill remains `.codex/skills/wiki/SKILL.md`. It exposes exactly two workflows:
 
 - Update Wiki
 - Use Wiki

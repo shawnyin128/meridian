@@ -7,7 +7,7 @@ description: Use when auditing, repairing, publishing, retrieving, or evolving M
 
 Use this skill when the task is about the compiled knowledge layer above individual paper pages.
 
-For product-facing usage, start from the `meridian-paper-wiki` skill and choose `Update Wiki` when repairing or promoting knowledge, or `Use Wiki` when consuming compiled knowledge. This skill is the knowledge-layer support module.
+For product-facing usage, start from the `wiki` skill and choose `Update Wiki` when repairing or promoting knowledge, or `Use Wiki` when consuming compiled knowledge. This skill is the knowledge-layer support module.
 
 ## Commands
 

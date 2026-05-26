@@ -1,5 +1,5 @@
 ---
-name: meridian-paper-wiki
+name: wiki
 description: Product-facing entry for Meridian Paper Wiki. Use when the user wants to update the Paper Wiki or use the Paper Wiki for research, coding, paper understanding, retrieval, synthesis, or personalized paper insights.
 ---
 

@@ -7,7 +7,7 @@ description: Use when a research or coding task should consult Meridian's Paper 
 
 Use this skill when the user's request could benefit from the accumulated Paper Wiki, especially for research ideas, paper-to-code work, ablation design, reproduction diagnosis, literature comparison, or "what prior work should I check?" questions.
 
-For product-facing usage, start from the `meridian-paper-wiki` skill and choose the `Use Wiki` workflow. This skill is the retrieval-specific support module.
+For product-facing usage, start from the `wiki` skill and choose the `Use Wiki` workflow. This skill is the retrieval-specific support module.
 
 ## Workflow
 

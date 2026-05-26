@@ -2562,7 +2562,7 @@ Compare recency-only retention with attention-based and oracle retention policie
 
         for root in (codex_root, claude_root):
             self.assertTrue((root / ".mcp.json").exists())
-            self.assertTrue((root / "skills/meridian-paper-wiki/SKILL.md").exists())
+            self.assertTrue((root / "skills/wiki/SKILL.md").exists())
             self.assertTrue((root / "skills/wiki-retrieve/SKILL.md").exists())
             self.assertTrue((root / "skills/lab/SKILL.md").exists())
             self.assertFalse((root / "skills/llm-wiki").exists())

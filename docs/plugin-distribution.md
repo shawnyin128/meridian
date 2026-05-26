@@ -19,7 +19,7 @@ plugins/claude-code/meridian/
 
 Both plugin packages include:
 
-- `skills/meridian-paper-wiki/`: product entry for Update Wiki and Use Wiki
+- `skills/wiki/`: product entry for Update Wiki and Use Wiki
 - `skills/lab/`: product entry for wiki-grounded research coding
 - support skills for ingest, retrieval, personalization, evolution, knowledge,
   and concepts

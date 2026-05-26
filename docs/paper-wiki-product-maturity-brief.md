@@ -33,7 +33,7 @@ Meridian is ready to be wrapped by local agents and MCP clients that support std
 
 Evidence:
 
-- Prompt/Skill entry exists: `.codex/skills/meridian-paper-wiki/SKILL.md`
+- Prompt/Skill entry exists: `.codex/skills/wiki/SKILL.md`
 - MCP server starts: `PYTHONPATH=src python3 -m meridian.mcp serve --wiki-root wiki`
 - MCP client-style harness passes: `wiki/.index/mcp-stdio-harness.json`
 - MCP tools expose Use Wiki and Update Wiki without requiring callers to know CLI internals.

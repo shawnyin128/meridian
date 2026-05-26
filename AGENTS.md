@@ -8,7 +8,7 @@ Before planning, designing, implementing, or reviewing changes that affect raw s
 
 For product-facing Paper Wiki usage, use the unified entry skill:
 
-`/Users/shawn/Desktop/meridian/.codex/skills/meridian-paper-wiki/SKILL.md`
+`/Users/shawn/Desktop/meridian/.codex/skills/wiki/SKILL.md`
 
 It exposes the two product workflows: Update Wiki and Use Wiki. Treat CLI commands as execution primitives below the Prompt/Skill and MCP entries.
 
@@ -70,7 +70,7 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `.arbor/memory.md`: short-term Arbor session memory and in-flight workflow pointer.
 - `.arbor/workflow/features.json`: Arbor workflow status index for the active planning/development queue.
 - `.codex/hooks.json`: project-local Arbor hook intents.
-- `.codex/skills/meridian-paper-wiki/SKILL.md`: product-facing Paper Wiki entry skill for Update Wiki and Use Wiki workflows.
+- `.codex/skills/wiki/SKILL.md`: product-facing Paper Wiki entry skill for Update Wiki and Use Wiki workflows.
 - `.codex/skills/llm-wiki/SKILL.md`: project skill for LLM Wiki development principles.
 - `.codex/skills/paper-ingest/SKILL.md`: project skill for high-quality paper ingest outputs and reader self-check convergence.
 - `.codex/skills/wiki-retrieve/SKILL.md`: project skill for using Meridian retrieval and Obsidian CLI to find paper-wiki context for research work.

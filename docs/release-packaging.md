@@ -41,7 +41,7 @@ Python execution core:
 
 Repository development copy of the product prompt entry:
 
-- `.codex/skills/meridian-paper-wiki/SKILL.md`
+- `.codex/skills/wiki/SKILL.md`
 
 Repository development copies of support skills:
 
@@ -121,7 +121,7 @@ meridian-mcp
 Agent users should install the matching plugin package, then start from:
 
 ```text
-skills/meridian-paper-wiki/SKILL.md
+skills/wiki/SKILL.md
 skills/lab/SKILL.md
 ```
 
@@ -157,9 +157,9 @@ Then inspect the file list produced by the release build or source archive:
 - release includes `src/meridian/`
 - release includes `plugins/codex/meridian/.codex-plugin/plugin.json`
 - release includes `plugins/claude-code/meridian/.claude-plugin/plugin.json`
-- release includes plugin `skills/meridian-paper-wiki/SKILL.md`
+- release includes plugin `skills/wiki/SKILL.md`
 - release includes plugin `skills/lab/SKILL.md`
-- release includes `.codex/skills/meridian-paper-wiki/SKILL.md`
+- release includes `.codex/skills/wiki/SKILL.md`
 - release includes `src/meridian/templates/wiki-vault/Map of Content.md`
 - release includes `.codex/skills/lab/SKILL.md`
 - release includes `src/meridian/templates/research-dev/thread.md`

@@ -7,7 +7,7 @@ description: Use when refining, versioning, linting, publishing, reviewing, or r
 
 Use this skill when a canonical wiki page should improve after ingest, retrieval, synthesis, or user insight.
 
-For product-facing usage, start from the `meridian-paper-wiki` skill and choose `Update Wiki`. This skill is the evolution/revision support module.
+For product-facing usage, start from the `wiki` skill and choose `Update Wiki`. This skill is the evolution/revision support module.
 
 ## Core Boundary
 

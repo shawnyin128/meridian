@@ -39,7 +39,7 @@ Decision trace:
 
 Implemented product entry convergence:
 
-- Added `.codex/skills/meridian-paper-wiki/SKILL.md` as the product-facing skill with `Update Wiki` and `Use Wiki`.
+- Added `.codex/skills/wiki/SKILL.md` as the product-facing skill with `Update Wiki` and `Use Wiki`.
 - Added `docs/wiki-product-entry-contract.md`, `docs/wiki-mcp-entry-design.md`, and `docs/wiki-entry-demo.md`.
 - Added `src/meridian/mcp/` adapter with `capabilities`, `context`, `read`, `trace`, `update`, `propose`, `apply`, and `audit`.
 - Updated README first-level usage to describe Prompt/Skill and MCP entries before CLI commands.

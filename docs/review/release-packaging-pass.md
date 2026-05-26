@@ -53,7 +53,7 @@ Packaging smoke:
   - wheel excludes private `wiki/` and `eval/runs/`
 - `python3 setup.py sdist --dist-dir /private/tmp/meridian-sdist`
   - produced `meridian-0.1.0.tar.gz`
-  - sdist includes `.codex/skills/meridian-paper-wiki/SKILL.md`
+  - sdist includes `.codex/skills/wiki/SKILL.md`
   - sdist includes `src/meridian/templates/wiki-vault/Map of Content.md`
   - sdist excludes private `wiki/`, `eval/runs/`, and `.arbor/`
 

@@ -37,7 +37,7 @@ Python package above is the shared execution core those plugins call.
 Prompt/Skill entry inside each plugin:
 
 ```text
-skills/meridian-paper-wiki/SKILL.md
+skills/wiki/SKILL.md
 skills/lab/SKILL.md
 ```
 

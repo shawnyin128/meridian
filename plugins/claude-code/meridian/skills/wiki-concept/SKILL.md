@@ -7,7 +7,7 @@ description: Use when adding, auditing, publishing, retrieving, or evaluating Me
 
 Use this skill when the task is about preliminary knowledge that sits between papers and methods: concepts that a researcher needs before coding, probing, debugging, or designing ablations.
 
-For product-facing usage, start from the `meridian-paper-wiki` skill. Concept maintenance belongs to `Update Wiki`; concept retrieval for coding/debug/probe belongs to `Use Wiki`.
+For product-facing usage, start from the `wiki` skill. Concept maintenance belongs to `Update Wiki`; concept retrieval for coding/debug/probe belongs to `Use Wiki`.
 
 Concept pages live under `wiki/concepts/` and are canonical compiled knowledge. They are not paper summaries, method-family pages, or generic textbook dumps.
 
