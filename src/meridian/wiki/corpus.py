@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import math
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -289,6 +289,7 @@ class RetrievalResult:
     packet_path: Path | None
     result_path: Path | None
     results: list[dict[str, Any]]
+    warnings: list[str] = field(default_factory=list)
 
 
 def build_paper_catalog(*, wiki_root: Path, out_path: Path | None = None) -> CatalogResult:
@@ -363,7 +364,8 @@ def retrieve_papers(
     if strategy not in {"v0", "v1"}:
         raise ValueError("strategy must be 'v0' or 'v1'")
 
-    catalog = catalog_records if catalog_records is not None else _load_or_build_catalog(wiki_root=wiki_root, catalog_path=catalog_path)
+    raw_catalog = catalog_records if catalog_records is not None else _load_or_build_catalog(wiki_root=wiki_root, catalog_path=catalog_path)
+    catalog, warnings = _normalize_catalog_records(raw_catalog, wiki_root=wiki_root)
     query_analysis = _query_analysis(query)
     if strategy == "v0":
         scored = [_score_record(record, query=query, wiki_root=wiki_root) for record in catalog]
@@ -378,6 +380,7 @@ def retrieve_papers(
         wiki_root=wiki_root,
         strategy=strategy,
         query_analysis=query_analysis if strategy == "v1" else None,
+        warnings=warnings,
     )
     if packet_path is not None:
         packet_path.parent.mkdir(parents=True, exist_ok=True)
@@ -393,6 +396,7 @@ def retrieve_papers(
                     "query_analysis": query_analysis if strategy == "v1" else None,
                     "wiki_root": str(wiki_root),
                     "generated_at": datetime.now(timezone.utc).isoformat(),
+                    "warnings": warnings,
                     "results": results,
                 },
                 indent=2,
@@ -401,7 +405,7 @@ def retrieve_papers(
             + "\n",
             encoding="utf-8",
         )
-    return RetrievalResult(packet_path=packet_path, result_path=result_path, results=results)
+    return RetrievalResult(packet_path=packet_path, result_path=result_path, results=results, warnings=warnings)
 
 
 def _catalog_record(
@@ -414,14 +418,14 @@ def _catalog_record(
     frontmatter = parse_frontmatter(text)
     body = strip_frontmatter(text)
     sections = _sections_for_record(body=body, frontmatter=frontmatter)
-    rel_path = path.relative_to(wiki_root)
+    rel_path = _canonical_relative_path(path.relative_to(wiki_root).as_posix())
     title = str(frontmatter.get("title") or path.stem)
     linked_source_quality = _linked_source_quality(frontmatter, wiki_root=wiki_root)
 
     return {
         "schema_version": schema_version,
         "page_id": rel_path.with_suffix("").as_posix(),
-        "path": str(path),
+        "path": rel_path.as_posix(),
         "relative_path": rel_path.as_posix(),
         "title": title,
         "corpus_type": rel_path.parts[0] if rel_path.parts else "",
@@ -524,6 +528,114 @@ def _load_or_build_catalog(*, wiki_root: Path, catalog_path: Path | None) -> lis
                     if stripped:
                         records.append(json.loads(stripped))
     return records
+
+
+def _normalize_catalog_records(records: list[dict[str, Any]], *, wiki_root: Path) -> tuple[list[dict[str, Any]], list[str]]:
+    normalized: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    for index, record in enumerate(records, start=1):
+        fixed = dict(record)
+        resolved = _resolve_catalog_record_path(fixed, wiki_root=wiki_root)
+        if resolved is None:
+            title = fixed.get("title") or fixed.get("relative_path") or fixed.get("path") or f"record {index}"
+            warnings.append(f"skipped unreadable catalog record: {title}")
+            continue
+        page_path, relative_path, path_warning = resolved
+        if path_warning:
+            warnings.append(path_warning)
+        if _is_internal_relative_path(relative_path):
+            warnings.append(f"skipped internal catalog record: {relative_path.as_posix()}")
+            continue
+        fixed["path"] = str(page_path)
+        fixed["relative_path"] = relative_path.as_posix()
+        fixed["canonical_path"] = relative_path.as_posix()
+        fixed["page_id"] = relative_path.with_suffix("").as_posix()
+        fixed["corpus_type"] = relative_path.parts[0] if relative_path.parts else fixed.get("corpus_type")
+        normalized.append(fixed)
+    return normalized, warnings
+
+
+def _resolve_catalog_record_path(record: dict[str, Any], *, wiki_root: Path) -> tuple[Path, Path, str | None] | None:
+    warning: str | None = None
+    relative_raw = str(record.get("relative_path") or "").strip()
+    if relative_raw:
+        relative_path = _canonical_relative_path(relative_raw)
+        if _is_internal_relative_path(relative_path):
+            return wiki_root / relative_path, relative_path, None
+        candidate = wiki_root / relative_path
+        if candidate.is_file():
+            if relative_raw != relative_path.as_posix():
+                warning = f"normalized catalog path `{relative_raw}` -> `{relative_path.as_posix()}`"
+            return candidate, relative_path, warning
+
+    raw_path = str(record.get("path") or "").strip()
+    if raw_path:
+        candidate = Path(raw_path).expanduser()
+        if not candidate.is_absolute():
+            relative_path = _canonical_relative_path(candidate.as_posix())
+            absolute_candidate = wiki_root / relative_path
+            if absolute_candidate.is_file():
+                if candidate.as_posix() != relative_path.as_posix():
+                    warning = f"normalized catalog path `{candidate.as_posix()}` -> `{relative_path.as_posix()}`"
+                return absolute_candidate, relative_path, warning
+        if candidate.is_file():
+            try:
+                relative_path = _canonical_relative_path(candidate.resolve().relative_to(wiki_root.resolve()).as_posix())
+            except ValueError:
+                return None
+            return candidate.resolve(), relative_path, warning
+        repaired = _repair_duplicate_wiki_path(candidate, wiki_root=wiki_root)
+        if repaired is not None and repaired.is_file():
+            relative_path = _canonical_relative_path(repaired.relative_to(wiki_root.resolve()).as_posix())
+            return repaired, relative_path, f"normalized catalog path `{candidate}` -> `{relative_path.as_posix()}`"
+
+    page_id = str(record.get("page_id") or "").strip()
+    if page_id:
+        if relative_raw or raw_path:
+            return None
+        relative_path = _canonical_relative_path(f"{page_id}.md")
+        candidate = wiki_root / relative_path
+        if candidate.is_file():
+            return candidate, relative_path, warning
+    return None
+
+
+def _canonical_relative_path(value: str) -> Path:
+    normalized = value.replace("\\", "/").strip("/")
+    parts = [part for part in normalized.split("/") if part and part != "."]
+    canonical_dirs = {
+        "papers",
+        "syntheses",
+        "methods",
+        "topics",
+        "concepts",
+        "claims",
+        "evidence",
+    }
+    if len(parts) >= 2 and parts[0] == "wiki" and parts[1] in canonical_dirs:
+        parts = parts[1:]
+    return Path(*parts) if parts else Path("")
+
+
+def _repair_duplicate_wiki_path(path: Path, *, wiki_root: Path) -> Path | None:
+    try:
+        wiki = wiki_root.resolve()
+    except FileNotFoundError:
+        wiki = wiki_root.absolute()
+    raw = path.expanduser()
+    if not raw.is_absolute():
+        return None
+    raw_parts = raw.parts
+    wiki_parts = wiki.parts
+    prefix_len = len(wiki_parts)
+    if raw_parts[:prefix_len] == wiki_parts and len(raw_parts) > prefix_len and raw_parts[prefix_len] == wiki.name:
+        return Path(*wiki_parts, *raw_parts[prefix_len + 1 :])
+    return None
+
+
+def _is_internal_relative_path(path: Path) -> bool:
+    parts = set(path.parts)
+    return ".drafts" in parts or ".versions" in parts
 
 
 def _knowledge_role(*, path: Path, frontmatter: dict[str, Any]) -> str:
@@ -1215,6 +1327,7 @@ def _render_context_packet(
     wiki_root: Path,
     strategy: str = "v1",
     query_analysis: dict[str, Any] | None = None,
+    warnings: list[str] | None = None,
 ) -> str:
     lines = [
         "---",
@@ -1239,8 +1352,23 @@ def _render_context_packet(
                 "",
             ]
         )
+    if warnings:
+        lines.extend(["## Retrieval Warnings", ""])
+        lines.extend(f"- {warning}" for warning in warnings)
+        lines.append("")
     if not results:
-        lines.extend(["## Results", "", "- No matching wiki pages found."])
+        lines.extend(
+            [
+                "## Results",
+                "",
+                "- No matching wiki pages found.",
+                "",
+                "## Failure Report",
+                "",
+                "- Retrieval completed, but no positive-scoring canonical pages were found.",
+                "- Check the active workspace, rebuild the catalog, or run a narrower canonical page query.",
+            ]
+        )
         return "\n".join(lines).rstrip() + "\n"
 
     lines.extend(["## Results", ""])

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -69,7 +71,7 @@ from meridian.wiki.commands import (
 from meridian.wiki.git_auto_commit import GitAutoCommitResult, auto_commit_paths, git_dirty_paths
 from meridian.wiki.health_server import serve_health_ui
 from meridian.wiki.vault import slugify
-from meridian.wiki.workspace import workspace_for_cli
+from meridian.wiki.workspace import default_user_config_path, resolve_workspace, workspace_for_cli
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -746,6 +748,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output paper JSONL catalog path. Defaults to <wiki-root>/.index/papers.jsonl.",
     )
 
+    status = wiki_subparsers.add_parser(
+        "status",
+        help="Show the active Paper Wiki workspace and core execution status.",
+    )
+    status.add_argument("--wiki-root", type=Path, default=None, help="Optional canonical wiki root.")
+    status.add_argument("--library-root", type=Path, default=None, help="Optional Paper Wiki library root.")
+    status.add_argument("--json-out", type=Path, default=None, help="Optional machine-readable status path.")
+
     retrieve = wiki_subparsers.add_parser(
         "retrieve",
         help="Retrieve paper and synthesis wiki context for a research query.",
@@ -776,6 +786,27 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="Optional machine-readable retrieval result JSON path.",
+    )
+
+    context = wiki_subparsers.add_parser(
+        "context",
+        help="Create a stable Use Wiki context packet in /private/tmp by default.",
+    )
+    context.add_argument("query", help="Standalone research or coding intent.")
+    context.add_argument("--wiki-root", type=Path, default=None, help="Optional canonical wiki root.")
+    context.add_argument("--library-root", type=Path, default=None, help="Optional Paper Wiki library root.")
+    context.add_argument("--top-k", type=int, default=6, help="Maximum wiki pages to return.")
+    context.add_argument(
+        "--strategy",
+        choices=["v0", "v1"],
+        default="v1",
+        help="Retrieval strategy.",
+    )
+    context.add_argument(
+        "--out-dir",
+        type=Path,
+        default=None,
+        help="Output directory. Defaults to /private/tmp/meridian-context/<query-slug>/.",
     )
 
     add_insight = wiki_subparsers.add_parser(
@@ -1577,6 +1608,26 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Catalog entries: {result.count}")
             return 0
 
+        if args.product == "wiki" and args.command == "status":
+            payload = _workspace_status_payload(library_root=args.library_root, wiki_root=args.wiki_root)
+            if args.json_out is not None:
+                args.json_out.parent.mkdir(parents=True, exist_ok=True)
+                args.json_out.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+                print(f"Wrote workspace status JSON: {args.json_out}")
+            print(f"Workspace status: {payload['status']}")
+            if payload["status"] == "configured":
+                print(f"Active wiki root: {payload['wiki_root']}")
+                print(f"Managed source root: {payload['source_root']}")
+                print(f"Workspace config: {payload['workspace_config']}")
+            else:
+                print("Active wiki root: not configured")
+                print("Initialize with: meridian wiki init --library-root <paper-wiki-library-root>")
+            print(f"Core module path: {payload['core_module_path']}")
+            print(f"Core package root: {payload['core_package_root']}")
+            print(f"meridian on PATH: {payload['meridian_on_path']}")
+            print(f"MCP available: {payload['mcp_available']}")
+            return 0
+
         if args.product == "wiki" and args.command == "retrieve":
             result = retrieve_wiki(
                 query=args.query,
@@ -1595,6 +1646,42 @@ def main(argv: list[str] | None = None) -> int:
             for item in result.results:
                 result_type = item.get("result_type") or item.get("type") or "paper"
                 print(f"- {item['score']}: [{result_type}] {item['title']} ({item.get('relative_path') or item['path']})")
+            if result.warnings:
+                print("Retrieval warnings:")
+                for warning in result.warnings:
+                    print(f"- {warning}")
+            if not result.results:
+                print("Failure report: no positive-scoring canonical pages were found; rebuild catalog or narrow the query.")
+            return 0
+
+        if args.product == "wiki" and args.command == "context":
+            workspace = workspace_for_cli(library_root=args.library_root, wiki_root=args.wiki_root)
+            out_dir = args.out_dir or _default_context_out_dir(args.query)
+            packet_path = out_dir / "context.md"
+            result_path = out_dir / "context.json"
+            result = retrieve_wiki(
+                query=args.query,
+                wiki_root=workspace.wiki_root,
+                top_k=args.top_k,
+                strategy=args.strategy,
+                packet_path=packet_path,
+                result_path=result_path,
+            )
+            print("Use Wiki context: ready")
+            print(f"Active wiki root: {workspace.wiki_root}")
+            print(f"Managed source root: {workspace.source_root}")
+            print(f"Wrote retrieval context packet: {packet_path}")
+            print(f"Wrote retrieval JSON: {result_path}")
+            print(f"Retrieved wiki pages: {len(result.results)}")
+            for item in result.results:
+                result_type = item.get("result_type") or item.get("type") or "paper"
+                print(f"- {item['score']}: [{result_type}] {item['title']} ({item.get('relative_path') or item['path']})")
+            if result.warnings:
+                print("Retrieval warnings:")
+                for warning in result.warnings:
+                    print(f"- {warning}")
+            if not result.results:
+                print("Failure report: no positive-scoring canonical pages were found; rebuild catalog or narrow the query.")
             return 0
 
         if args.product == "wiki" and args.command == "add-insight":
@@ -2052,6 +2139,50 @@ def _vault_scaffold_paths(wiki_root: Path) -> list[Path]:
         wiki_root / "templates",
         wiki_root / "raw/sources/index.md",
     ]
+
+
+def _workspace_status_payload(*, library_root: Path | None, wiki_root: Path | None) -> dict[str, object]:
+    workspace = resolve_workspace(library_root=library_root, wiki_root=wiki_root)
+    meridian_path = shutil.which("meridian")
+    core_module = Path(__file__).resolve()
+    core_package_root = core_module.parents[2]
+    payload: dict[str, object] = {
+        "schema_version": "meridian.paper_wiki_status.v1",
+        "status": "configured" if workspace is not None else "missing_workspace",
+        "user_config_path": str(default_user_config_path()),
+        "core_module_path": str(core_module),
+        "core_package_root": str(core_package_root),
+        "configured_core_root": os.environ.get("MERIDIAN_CORE_ROOT"),
+        "meridian_on_path": meridian_path or None,
+        "mcp_available": _mcp_available(),
+        "resolver_order": [
+            "meridian",
+            "MERIDIAN_CORE_ROOT/src via PYTHONPATH",
+            "repo-local PYTHONPATH=<repo>/src python3 -m meridian",
+        ],
+    }
+    if workspace is not None:
+        payload.update(
+            {
+                "library_root": str(workspace.library_root),
+                "source_root": str(workspace.source_root),
+                "wiki_root": str(workspace.wiki_root),
+                "workspace_config": str(workspace.config_path) if workspace.config_path else None,
+            }
+        )
+    return payload
+
+
+def _mcp_available() -> bool:
+    try:
+        import meridian.mcp.server  # noqa: F401
+    except Exception:  # noqa: BLE001 - status should report availability, not fail.
+        return False
+    return True
+
+
+def _default_context_out_dir(query: str) -> Path:
+    return Path("/private/tmp/meridian-context") / slugify(query)[:80]
 
 
 def _print_git_auto_commit_result(result: GitAutoCommitResult) -> None:

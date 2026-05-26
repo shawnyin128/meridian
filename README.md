@@ -90,6 +90,12 @@ Ask `wiki` to initialize your Paper Wiki library on first use.
 creating `.meridian/` and then continues the original idea/debug/experiment
 task.
 
+Check the active wiki and Python core binding:
+
+```bash
+meridian wiki status
+```
+
 ## Update
 
 Meridian has two update layers:
@@ -191,6 +197,10 @@ Ingest this Zotero export folder, My Library, into my Paper Wiki.
 ```text
 Use my Paper Wiki to answer this research or coding question with provenance.
 ```
+
+The `wiki` skill uses the active workspace and creates retrieval context under
+`/private/tmp/meridian-context/` by default, so normal idea search does not
+pollute the vault with debug artifacts.
 
 ```text
 Check my Paper Wiki health and tell me the top repair priorities.

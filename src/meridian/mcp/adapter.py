@@ -119,7 +119,7 @@ def context(
     out_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Retrieve a compact context packet and return summary metadata."""
-    target_dir = out_dir or wiki_root / ".drafts" / "retrieval" / f"mcp-{_slug(query)}"
+    target_dir = out_dir or Path("/private/tmp/meridian-context") / f"mcp-{_slug(query)}"
     packet_path = target_dir / "context.md"
     result_path = target_dir / "context.json"
     result = retrieve_wiki(
@@ -466,10 +466,10 @@ def _resolve_canonical_page(*, page: str, wiki_root: Path) -> Path:
             *[str(item) for item in ((record.get("routing") or {}).get("aliases") or [])],
         ]
         if any(_norm(item).rstrip(".md") == normalized.rstrip(".md") for item in candidates):
-            return _assert_canonical(Path(str(record["path"])), wiki_root=wiki_root)
+            return _assert_canonical(_record_page_path(record, wiki_root=wiki_root), wiki_root=wiki_root)
     matches = [record for record in records if normalized in _norm(str(record.get("title") or ""))]
     if len(matches) == 1:
-        return _assert_canonical(Path(str(matches[0]["path"])), wiki_root=wiki_root)
+        return _assert_canonical(_record_page_path(matches[0], wiki_root=wiki_root), wiki_root=wiki_root)
     if matches:
         titles = ", ".join(str(item.get("relative_path") or item.get("title")) for item in matches[:8])
         raise ValueError(f"ambiguous page reference: {page}; candidates: {titles}")
@@ -488,6 +488,11 @@ def _assert_canonical(path: Path, *, wiki_root: Path) -> Path:
     if any(part in {".drafts", ".versions"} for part in rel.parts):
         raise ValueError(f"internal artifact is not readable through MCP entry: {rel.as_posix()}")
     return resolved
+
+
+def _record_page_path(record: dict[str, Any], *, wiki_root: Path) -> Path:
+    raw = Path(str(record.get("path") or record.get("relative_path") or ""))
+    return raw if raw.is_absolute() else wiki_root / raw
 
 
 def _relative_to_wiki(path: Path, *, wiki_root: Path) -> str:
@@ -573,4 +578,7 @@ def _default_wiki_root() -> Path:
     workspace = resolve_workspace()
     if workspace is not None:
         return workspace.wiki_root
-    return Path("wiki")
+    raise FileNotFoundError(
+        "No Paper Wiki workspace is configured. Run "
+        "`meridian wiki init --library-root <library-root>` or pass `--wiki-root`."
+    )

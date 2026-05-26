@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -150,7 +151,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.3.0"
+        expected = "0.3.1"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -886,6 +887,78 @@ Evidence takeaways:
             self.assertIn(str((library / "sources" / "index.md").resolve()), stdout)
             self.assertTrue((library / "sources" / "index.md").exists())
 
+    def test_wiki_status_reports_active_workspace_and_core(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_home = root / "config"
+            library = root / "paper-library"
+            status_json = root / "status.json"
+
+            with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(config_home)}):
+                self.assertEqual(main(["wiki", "init", "--library-root", str(library)]), 0)
+                exit_code, stdout, stderr = _run_cli_capture(
+                    ["wiki", "status", "--json-out", str(status_json)]
+                )
+
+            self.assertEqual(exit_code, 0, stderr)
+            self.assertIn("Workspace status: configured", stdout)
+            self.assertIn("Active wiki root:", stdout)
+            self.assertIn("Managed source root:", stdout)
+            payload = json.loads(status_json.read_text(encoding="utf-8"))
+            self.assertEqual(payload["status"], "configured")
+            self.assertEqual(Path(payload["wiki_root"]).resolve(), (library / "wiki").resolve())
+            self.assertEqual(Path(payload["source_root"]).resolve(), (library / "sources").resolve())
+            self.assertIn("repo-local PYTHONPATH=<repo>/src python3 -m meridian", payload["resolver_order"])
+
+    def test_wiki_context_uses_active_workspace_and_private_tmp_default(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_home = root / "config"
+            library = root / "paper-library"
+            query = "MoE PTQ activation outlier probes test-031-context"
+            expected_dir = Path("/private/tmp/meridian-context") / "MoE-PTQ-activation-outlier-probes-test-031-context"
+            shutil.rmtree(expected_dir, ignore_errors=True)
+
+            with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(config_home)}):
+                self.assertEqual(main(["wiki", "init", "--library-root", str(library)]), 0)
+                _write_test_paper(
+                    library / "wiki/papers/MoE-PTQ.md",
+                    title="MoE PTQ Paper",
+                    aliases=["MoE PTQ"],
+                    topics=["activation outliers"],
+                    methods=["post-training quantization"],
+                    settings=["weight-activation quantization"],
+                    body_sections={
+                        "What To Remember": "MoE PTQ handles activation outliers.",
+                        "Implementation Hooks": "Run activation outlier smoothing probes.",
+                    },
+                )
+                exit_code, stdout, stderr = _run_cli_capture(
+                    ["wiki", "context", query, "--top-k", "2"]
+                )
+
+            try:
+                self.assertEqual(exit_code, 0, stderr)
+                self.assertIn("Use Wiki context: ready", stdout)
+                self.assertIn(str(library / "wiki"), stdout)
+                self.assertTrue((expected_dir / "context.md").exists())
+                self.assertTrue((expected_dir / "context.json").exists())
+                payload = json.loads((expected_dir / "context.json").read_text(encoding="utf-8"))
+                self.assertEqual(payload["results"][0]["canonical_path"], "papers/MoE-PTQ.md")
+                self.assertFalse(any(".drafts" in item["canonical_path"] for item in payload["results"]))
+            finally:
+                shutil.rmtree(expected_dir, ignore_errors=True)
+
+    def test_wiki_context_requires_workspace_instead_of_guessing_local_wiki(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_home = Path(tmp) / "config"
+            with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(config_home)}):
+                exit_code, stdout, stderr = _run_cli_capture(["wiki", "context", "agent workflow goals"])
+
+            self.assertEqual(exit_code, 1)
+            self.assertEqual(stdout, "")
+            self.assertIn("No Paper Wiki workspace is configured", stderr)
+
     def test_wiki_ingest_folder_handles_zotero_export_folder(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1439,6 +1512,7 @@ quality_state: "multimodal_pending"
             self.assertEqual(len(records), 1)
             self.assertEqual(records[0]["schema_version"], "meridian.paper_catalog.v0")
             self.assertEqual(records[0]["page_id"], "papers/Fake-Research-Paper")
+            self.assertEqual(records[0]["path"], "papers/Fake-Research-Paper.md")
             self.assertEqual(records[0]["routing"]["methods"][0], "paper-specific research method")
             self.assertIn("What To Remember", records[0]["section_previews"])
 
@@ -1473,6 +1547,16 @@ quality_state: "multimodal_pending"
         self.assertIn("meridian wiki retrieve", text)
         self.assertIn("obsidian search", text)
         self.assertIn("Implementation Hooks", text)
+
+    def test_product_wiki_skill_uses_reliable_context_entry(self) -> None:
+        skill = Path(".codex/skills/wiki/SKILL.md")
+        self.assertTrue(skill.exists())
+        text = skill.read_text(encoding="utf-8")
+        self.assertIn("meridian wiki context", text)
+        self.assertIn("meridian wiki status", text)
+        self.assertIn("/private/tmp/meridian-context", text)
+        self.assertIn("MERIDIAN_CORE_ROOT", text)
+        self.assertIn("do not start with broad `rg`", text)
 
     def test_publish_run_promotes_candidate_records_into_wiki_graph(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1778,6 +1862,105 @@ This page explains preference optimization for alignment.
             self.assertIn("methods", payload["results"][0]["matched_frontmatter"])
             self.assertEqual(payload["results"][0]["canonical_path"], "papers/MoE-PTQ.md")
             self.assertIn("Canonical path: `papers/MoE-PTQ.md`", text)
+
+    def test_wiki_retrieve_normalizes_bad_catalog_paths_and_warns(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            _write_test_paper(
+                wiki_root / "papers/MoE-PTQ.md",
+                title="MoE PTQ Paper",
+                aliases=["MoE PTQ"],
+                topics=["activation outliers"],
+                methods=["post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "MoE PTQ handles activation outliers.",
+                    "Implementation Hooks": "Probe activation outlier smoothing and clustering.",
+                },
+            )
+            self.assertEqual(main(["wiki", "catalog", "--wiki-root", str(wiki_root)]), 0)
+            record = json.loads((wiki_root / ".index/papers.jsonl").read_text(encoding="utf-8").splitlines()[0])
+            record["relative_path"] = "wiki/papers/MoE-PTQ.md"
+            record["path"] = str(wiki_root / "wiki/papers/MoE-PTQ.md")
+            bad_record = dict(record)
+            bad_record["title"] = "Broken Catalog Record"
+            bad_record["relative_path"] = "papers/Missing.md"
+            bad_record["path"] = str(wiki_root / "wiki/papers/Missing.md")
+            draft_record = dict(record)
+            draft_record["title"] = "Draft Leakage Record"
+            draft_record["relative_path"] = ".drafts/ingests/noisy/paper.md"
+            draft_record["path"] = str(wiki_root / ".drafts/ingests/noisy/paper.md")
+            bad_catalog = root / "bad-catalog.jsonl"
+            bad_catalog.write_text(
+                "\n".join(json.dumps(item) for item in (record, bad_record, draft_record)) + "\n",
+                encoding="utf-8",
+            )
+            packet = root / "context.md"
+            result_json = root / "context.json"
+
+            exit_code, stdout, stderr = _run_cli_capture(
+                [
+                    "wiki",
+                    "retrieve",
+                    "activation outlier MoE PTQ implementation probes",
+                    "--wiki-root",
+                    str(wiki_root),
+                    "--catalog",
+                    str(bad_catalog),
+                    "--out",
+                    str(packet),
+                    "--json-out",
+                    str(result_json),
+                ]
+            )
+
+            self.assertEqual(exit_code, 0, stderr)
+            self.assertIn("Retrieved wiki pages: 1", stdout)
+            self.assertIn("Retrieval warnings:", stdout)
+            text = packet.read_text(encoding="utf-8")
+            payload = json.loads(result_json.read_text(encoding="utf-8"))
+            self.assertIn("## Retrieval Warnings", text)
+            self.assertIn("normalized catalog path", "\n".join(payload["warnings"]))
+            self.assertIn("skipped unreadable catalog record", "\n".join(payload["warnings"]))
+            self.assertEqual(payload["results"][0]["canonical_path"], "papers/MoE-PTQ.md")
+            self.assertFalse(any(".drafts" in str(item.get("canonical_path")) for item in payload["results"]))
+
+    def test_wiki_retrieve_no_results_has_failure_report(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            _write_test_paper(
+                wiki_root / "papers/MoE-PTQ.md",
+                title="MoE PTQ Paper",
+                aliases=[],
+                topics=["activation outliers"],
+                methods=["post-training quantization"],
+                settings=[],
+                body_sections={"What To Remember": "MoE PTQ handles activation outliers."},
+            )
+            packet = root / "context.md"
+            result_json = root / "context.json"
+
+            exit_code, stdout, stderr = _run_cli_capture(
+                [
+                    "wiki",
+                    "retrieve",
+                    "zzzzzz no matching token qqqqqq",
+                    "--wiki-root",
+                    str(wiki_root),
+                    "--out",
+                    str(packet),
+                    "--json-out",
+                    str(result_json),
+                ]
+            )
+
+            self.assertEqual(exit_code, 0, stderr)
+            self.assertIn("Retrieved wiki pages: 0", stdout)
+            self.assertIn("Failure report:", stdout)
+            self.assertIn("## Failure Report", packet.read_text(encoding="utf-8"))
+            self.assertEqual(json.loads(result_json.read_text(encoding="utf-8"))["results"], [])
 
     def test_wiki_retrieve_exposes_trace_fields_for_evaluator(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

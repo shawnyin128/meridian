@@ -61,6 +61,8 @@ Use this workflow when the user asks a research, paper-understanding, or coding 
 
 Minimum completion:
 
+- Resolve Meridian execution before searching files manually.
+- Use the active Paper Wiki workspace; if none exists, ask for initialization instead of guessing a local `wiki/`.
 - Retrieve canonical Meridian context first.
 - Read the highest-value canonical pages or sections.
 - Answer with relevant papers, methods, concepts, evidence, and uncertainty.
@@ -81,15 +83,28 @@ The user wants to implement a method. Retrieve method pages, prerequisite concep
 The user asks whether a claim is supported. Retrieve claim/evidence records, trace the provenance to source papers, and separate paper evidence from wiki synthesis.
 ```
 
-Default retrieval primitive:
+Default Use Wiki primitive:
 
 ```bash
-meridian wiki retrieve "<standalone research intent>" \
-  --wiki-root wiki \
-  --strategy v1 \
-  --out wiki/.drafts/retrieval/<slug>/context.md \
-  --json-out wiki/.drafts/retrieval/<slug>/context.json
+meridian wiki context "<standalone research intent>"
 ```
+
+This uses the active workspace and writes `context.md` / `context.json` under
+`/private/tmp/meridian-context/<slug>/` by default. If it reports a missing
+workspace, ask the user for a library root and run `meridian wiki init
+--library-root <paper-wiki-library-root>`.
+
+Execution resolver:
+
+1. Try `meridian`.
+2. If unavailable and `MERIDIAN_CORE_ROOT` is set, use
+   `PYTHONPATH=$MERIDIAN_CORE_ROOT/src python3 -m meridian`.
+3. If working inside the Meridian repo, use
+   `PYTHONPATH=/Users/shawn/Desktop/meridian/src python3 -m meridian`.
+
+Use `meridian wiki status` to inspect the active wiki root, source root, core
+path, and MCP availability. If retrieval fails, use its warnings and failure
+report first; do not start with broad `rg` over the vault.
 
 Delegate to `wiki-retrieve` for detailed retrieval discipline.
 

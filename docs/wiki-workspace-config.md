@@ -60,6 +60,17 @@ Discovery order:
    directory.
 5. User-level active workspace.
 
+Check the current resolution with:
+
+```bash
+meridian wiki status
+```
+
+The status report includes the active wiki root, managed source root, workspace
+config, Python core path, whether `meridian` is on `PATH`, and MCP availability.
+If no workspace is configured, product-facing `Use Wiki` should stop and ask
+for a library root instead of guessing a nearby `wiki/` directory.
+
 ## Ingest Behavior
 
 After a workspace exists, the user can ask the `wiki` skill to ingest an
@@ -94,6 +105,17 @@ PDFs and canonical paper pages are the user-facing artifacts.
 The Prompt/Skill entry should ask for a library root on first use when no active
 workspace exists. After that, Update Wiki workflows can ingest uploaded PDFs
 without repeating paths.
+
+For Use Wiki, prefer the context wrapper:
+
+```bash
+meridian wiki context "What long-running agent goal design makes execution stable?"
+```
+
+It uses the active workspace, retrieves only canonical corpus pages, and writes
+`context.md` / `context.json` to `/private/tmp/meridian-context/<slug>/` by
+default. Retrieval warnings are part of the output; a bad legacy catalog path
+should produce a warning or skip, not a silent success or noisy fallback search.
 
 The MCP server also defaults to the active workspace. Server startup is an
 integration/setup concern, not the normal user-facing wiki workflow:
