@@ -192,8 +192,18 @@ Ingest this Zotero export folder, My Library, into my Paper Wiki.
 Use my Paper Wiki to answer this research or coding question with provenance.
 ```
 
+```text
+Check my Paper Wiki health and tell me the top repair priorities.
+```
+
 CLI commands remain execution primitives for skills, MCP, tests, and advanced
 debugging; they are not the normal user entry.
+
+Advanced health primitive:
+
+```bash
+meridian wiki health --wiki-root wiki --repair-plan
+```
 
 ## Lab
 

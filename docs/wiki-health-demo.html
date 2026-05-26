@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meridian Wiki Health Demo</title>
+  <style>
+    :root {
+      --bg: #f6f5f1;
+      --ink: #202124;
+      --muted: #656761;
+      --line: #d9d7cf;
+      --panel: #ffffff;
+      --good: #167a4a;
+      --warn: #a76500;
+      --bad: #a33a2b;
+      --blue: #245f9f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main { max-width: 1180px; margin: 0 auto; padding: 30px 24px 46px; }
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: end;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--line);
+    }
+    h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: 0; }
+    h2 { margin: 0 0 14px; font-size: 17px; letter-spacing: 0; }
+    h3 { margin: 0 0 6px; font-size: 15px; letter-spacing: 0; }
+    p { margin: 0; color: var(--muted); }
+    .score { text-align: right; min-width: 190px; }
+    .score strong { display: block; font-size: 42px; line-height: 1; color: var(--warn); }
+    .score span {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 4px 9px;
+      border: 1px solid #d6a348;
+      color: #7b4d00;
+      background: #fff7e6;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 650;
+    }
+    .lede {
+      margin-top: 20px;
+      padding: 18px;
+      border: 1px solid #d6c28e;
+      border-left: 6px solid var(--warn);
+      background: #fffaf0;
+      border-radius: 8px;
+    }
+    .lede b { color: var(--ink); }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+    .issues {
+      display: grid;
+      gap: 12px;
+    }
+    .issue {
+      display: grid;
+      grid-template-columns: 30px 1fr;
+      gap: 12px;
+      padding: 13px 0;
+      border-top: 1px solid var(--line);
+    }
+    .issue:first-child { border-top: 0; padding-top: 0; }
+    .rank {
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #f0e4c8;
+      color: #775000;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .tag {
+      display: inline-block;
+      margin-left: 7px;
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: #eef2f6;
+      color: #475467;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .health-questions { display: grid; gap: 12px; }
+    details.dimension {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfbf8;
+      overflow: hidden;
+    }
+    details.dimension summary {
+      display: grid;
+      grid-template-columns: 120px minmax(120px, 1fr) 46px 18px;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      cursor: pointer;
+      list-style: none;
+    }
+    details.dimension summary::-webkit-details-marker { display: none; }
+    details.dimension summary::after {
+      content: "+";
+      grid-column: 4;
+      grid-row: 1;
+      justify-self: end;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    details.dimension[open] summary::after { content: "-"; }
+    .dimension-body {
+      padding: 0 12px 12px;
+    }
+    .q-name { font-weight: 650; color: #30312e; }
+    .bar { height: 10px; background: #ecebe6; border-radius: 999px; overflow: hidden; }
+    .fill { height: 100%; background: var(--blue); }
+    details.dimension:nth-child(1) .fill { background: var(--good); }
+    details.dimension:nth-child(4) .fill,
+    details.dimension:nth-child(5) .fill { background: var(--warn); }
+    .q-score {
+      grid-column: 3;
+      text-align: right;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      font-weight: 650;
+    }
+    .sub {
+      display: grid;
+      grid-template-columns: 1fr 34px;
+      gap: 8px;
+      align-items: center;
+      padding: 9px 0;
+      border-top: 1px solid var(--line);
+      font-size: 13px;
+    }
+    .sub:first-of-type { border-top: 0; }
+    .sub small {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+    .sub-score {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      font-weight: 650;
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 12px;
+      background: #fbfbf8;
+    }
+    .metric b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+    .metric span { display: block; color: var(--muted); font-size: 13px; }
+    .contract {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px 18px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: var(--muted);
+    }
+    .contract li { margin: 0; padding: 10px 0; border-top: 1px solid var(--line); }
+    .contract b { color: var(--ink); }
+    footer { margin-top: 18px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 860px) {
+      header, .grid { display: block; }
+      .score { text-align: left; margin-top: 18px; }
+      .grid section { margin-top: 16px; }
+      details.dimension summary { grid-template-columns: 1fr 46px 18px; gap: 8px; }
+      details.dimension summary .bar { grid-column: 1 / -1; }
+      details.dimension summary::after { grid-column: 3; }
+      .q-score { text-align: left; }
+      .metrics, .contract { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Meridian Wiki Health</h1>
+        <p>0.2.0 demo · insight-first health report · deterministic scoring</p>
+      </div>
+      <div class="score">
+        <strong>86</strong>
+        <span>usable_with_warnings</span>
+      </div>
+    </header>
+
+    <div class="lede">
+      <p><b>Main insight:</b> this wiki is source-clean and usable now. The highest-leverage problem is knowledge navigation: overlapping method/topic aliases and conservative prerequisite-concept coverage make some coding/debug retrieval less direct than it should be.</p>
+    </div>
+
+    <div class="grid">
+      <section>
+        <h2>What Needs Attention</h2>
+        <div class="issues">
+          <div class="issue">
+            <div class="rank">1</div>
+            <div>
+              <h3>Method/topic aliases overlap <span class="tag">knowledge graph</span></h3>
+              <p>35 duplicate alias groups can split the same idea across competing method and topic pages. Fix with a repair proposal that clarifies page roles and publishes low-risk backlinks.</p>
+            </div>
+          </div>
+          <div class="issue">
+            <div class="rank">2</div>
+            <div>
+              <h3>Prerequisite concepts are under-linked <span class="tag">coding context</span></h3>
+              <p>31 of 63 methods that need prerequisite concepts have them. Debug/probe tasks may retrieve the method but miss the background mechanism needed to write code.</p>
+            </div>
+          </div>
+          <div class="issue">
+            <div class="rank">3</div>
+            <div>
+              <h3>One claim lacks evidence <span class="tag">traceability</span></h3>
+              <p>Claim-support queries should trace claim to evidence to source. Attach existing evidence or mark the claim as needs evidence.</p>
+            </div>
+          </div>
+          <div class="issue">
+            <div class="rank">4</div>
+            <div>
+              <h3>Two paper pages are isolated <span class="tag">canonical links</span></h3>
+              <p>Isolated papers are harder to retrieve through method/topic/concept paths. Add low-risk wikilinks into the knowledge graph.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Health Dimensions</h2>
+        <div class="health-questions">
+          <details class="dimension">
+            <summary>
+              <div class="q-name">Trust</div>
+              <div class="bar"><div class="fill" style="width:97%"></div></div>
+              <div class="q-score">97</div>
+            </summary>
+            <div class="dimension-body">
+              <p>Sources, provenance, fact/synthesis/user boundaries.</p>
+              <div class="sub"><div>Sources<small>0 missing, 0 SHA mismatch</small></div><div class="sub-score">100</div></div>
+              <div class="sub"><div>Provenance<small>0 evidence records without source provenance</small></div><div class="sub-score">100</div></div>
+              <div class="sub"><div>Boundaries<small>0 source-quality misuse</small></div><div class="sub-score">94</div></div>
+            </div>
+          </details>
+          <details class="dimension">
+            <summary>
+              <div class="q-name">Surface</div>
+              <div class="bar"><div class="fill" style="width:88%"></div></div>
+              <div class="q-score">88</div>
+            </summary>
+            <div class="dimension-body">
+              <p>Canonical pages, index/catalog/log, product artifact cleanliness.</p>
+              <div class="sub"><div>Canonical Corpus<small>indexed and parseable</small></div><div class="sub-score">92</div></div>
+              <div class="sub"><div>Product Boundary<small>no draft/version leakage</small></div><div class="sub-score">95</div></div>
+              <div class="sub"><div>Navigation<small>2 paper pages without wikilinks</small></div><div class="sub-score">78</div></div>
+            </div>
+          </details>
+          <details class="dimension">
+            <summary>
+              <div class="q-name">Context</div>
+              <div class="bar"><div class="fill" style="width:82%"></div></div>
+              <div class="q-score">82</div>
+            </summary>
+            <div class="dimension-body">
+              <p>Retrieval usefulness for research, coding, evidence, and synthesis tasks.</p>
+              <div class="sub"><div>Retrieval Coverage<small>all page types in corpus</small></div><div class="sub-score">90</div></div>
+              <div class="sub"><div>Task Usefulness<small>method + concept context can improve</small></div><div class="sub-score">78</div></div>
+              <div class="sub"><div>Explanation<small>why-to-read hints need more signal</small></div><div class="sub-score">80</div></div>
+            </div>
+          </details>
+          <details class="dimension">
+            <summary>
+              <div class="q-name">Graph</div>
+              <div class="bar"><div class="fill" style="width:68%"></div></div>
+              <div class="q-score">68</div>
+            </summary>
+            <div class="dimension-body">
+              <p>Method/topic/concept/claim/evidence connectivity and density.</p>
+              <div class="sub"><div>Method/Topic Clarity<small>35 duplicate alias groups</small></div><div class="sub-score">60</div></div>
+              <div class="sub"><div>Concept Coverage<small>31 / 63 prerequisite methods linked</small></div><div class="sub-score">74</div></div>
+              <div class="sub"><div>Claim Trace<small>1 claim without evidence</small></div><div class="sub-score">90</div></div>
+              <div class="sub"><div>Stub Suppression<small>0 low-information pages</small></div><div class="sub-score">95</div></div>
+            </div>
+          </details>
+          <details class="dimension">
+            <summary>
+              <div class="q-name">Growth</div>
+              <div class="bar"><div class="fill" style="width:76%"></div></div>
+              <div class="q-score">76</div>
+            </summary>
+            <div class="dimension-body">
+              <p>Revision, repair queue, synthesis evolution, and proposal readiness.</p>
+              <div class="sub"><div>Repair Queue<small>findings map to actions</small></div><div class="sub-score">82</div></div>
+              <div class="sub"><div>Synthesis Evolution<small>60 syntheses, density can improve</small></div><div class="sub-score">75</div></div>
+              <div class="sub"><div>Revision Readiness<small>proposal/revision path exists</small></div><div class="sub-score">72</div></div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2>Snapshot Signals</h2>
+        <div class="metrics">
+          <div class="metric"><b>239</b><span>managed sources</span></div>
+          <div class="metric"><b>0</b><span>missing / SHA mismatch</span></div>
+          <div class="metric"><b>60</b><span>syntheses</span></div>
+          <div class="metric"><b>24</b><span>concepts</span></div>
+          <div class="metric"><b>1</b><span>claim without evidence</span></div>
+          <div class="metric"><b>35</b><span>duplicate alias groups</span></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Scoring Contract</h2>
+        <ul class="contract">
+          <li><b>Deterministic first.</b><br>Default health does not call an LLM.</li>
+          <li><b>Keyword dimensions.</b><br>Scores roll up stable subchecks under Trust, Surface, Context, Graph, and Growth.</li>
+          <li><b>Hard fails override score.</b><br>Source contamination or draft retrieval blocks release.</li>
+          <li><b>Repair buckets.</b><br>Every finding maps to a mechanism-level repair path.</li>
+          <li><b>Stable benchmark cases.</b><br>Retrieval usefulness uses fixed case sets.</li>
+          <li><b>Agent optional.</b><br>Agent review consumes top-k repair candidates only.</li>
+        </ul>
+      </section>
+    </div>
+
+    <footer>
+      Demo only: the real 0.2.0 command should write JSON, Markdown, and an optional repair plan with the same insight-first structure.
+    </footer>
+  </main>
+</body>
+</html>

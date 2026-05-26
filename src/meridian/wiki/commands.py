@@ -32,6 +32,7 @@ from meridian.wiki.evolution import (
     publish_refinement,
 )
 from meridian.wiki.flow import WikiFlowResult, run_wiki_flow
+from meridian.wiki.health import WikiHealthResult, run_wiki_health
 from meridian.wiki.final_product import (
     ContradictionReviewResult,
     FinalProductCheckResult,
@@ -738,6 +739,27 @@ def final_product_check_wiki(
     brief_path: Path | None = None,
 ) -> FinalProductCheckResult:
     return final_product_check(wiki_root=wiki_root, out_path=out_path, brief_path=brief_path)
+
+
+def health_wiki(
+    *,
+    wiki_root: Path,
+    profile: str = "daily",
+    out_path: Path | None = None,
+    markdown_path: Path | None = None,
+    html_path: Path | None = None,
+    repair_plan: bool = False,
+    repair_plan_path: Path | None = None,
+) -> WikiHealthResult:
+    return run_wiki_health(
+        wiki_root=wiki_root,
+        profile=profile,
+        out_path=out_path,
+        markdown_path=markdown_path,
+        html_path=html_path,
+        repair_plan=repair_plan,
+        repair_plan_path=repair_plan_path,
+    )
 
 
 def add_insight_wiki(

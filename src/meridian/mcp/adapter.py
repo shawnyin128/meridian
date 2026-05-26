@@ -8,6 +8,7 @@ from typing import Any
 
 from meridian.wiki.commands import (
     add_insight_wiki,
+    health_wiki,
     insight_lint_wiki,
     proposal_lint_wiki,
     propose_writeback_wiki,
@@ -77,9 +78,9 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
         {
             "name": "meridian.audit",
             "workflow": "Update Wiki",
-            "summary": "Return source/wiki/catalog health pointers for maintenance decisions.",
+            "summary": "Return a compact deterministic wiki health summary for maintenance decisions.",
             "inputs": ["wiki_root", "scope"],
-            "outputs": ["audit_commands", "expected_reports"],
+            "outputs": ["health_level", "overall_score", "top_repairs", "report_paths"],
         },
     ]
     response: dict[str, Any] = {
@@ -342,25 +343,30 @@ def apply(*, proposal_manifest: Path, wiki_root: Path, overwrite: bool = False) 
 
 
 def audit(*, wiki_root: Path, scope: str = "summary") -> dict[str, Any]:
-    """Return audit commands and expected report locations for maintenance."""
-    scopes = {
-        "summary": ["lint", "source-audit", "catalog"],
-        "knowledge": ["knowledge-audit", "concept-audit"],
-        "all": ["lint", "source-audit", "catalog", "knowledge-audit", "concept-audit", "final-product-check"],
-    }
-    selected = scopes.get(scope, scopes["summary"])
+    """Return compact deterministic wiki health for maintenance."""
+    profile = "release" if scope == "all" else "daily"
+    result = health_wiki(wiki_root=wiki_root, profile=profile, repair_plan=scope in {"all", "repair"})
+    payload = json.loads(result.report_path.read_text(encoding="utf-8"))
     return {
         "schema_version": TOOL_SCHEMA_VERSION,
         "tool": "meridian.audit",
         "workflow": "Update Wiki",
         "scope": scope,
-        "commands": [f"meridian wiki {name} --wiki-root {wiki_root}" for name in selected],
+        "health_level": payload.get("health_level"),
+        "overall_score": payload.get("overall_score"),
+        "main_insight": payload.get("main_insight"),
+        "dimensions": [
+            {"name": item.get("name"), "score": item.get("score")}
+            for item in payload.get("dimensions", [])
+            if isinstance(item, dict)
+        ],
+        "top_repairs": payload.get("repair_queue", [])[:3],
+        "hard_failures": payload.get("hard_failures", []),
         "reports": {
-            "lint": str(wiki_root / ".index" / "wiki-lint.json"),
-            "source-audit": str(wiki_root / ".index" / "source-audit.json"),
-            "knowledge-audit": str(wiki_root / ".index" / "knowledge-audit.json"),
-            "concept-audit": str(wiki_root / ".index" / "concept-audit.json"),
-            "final-product-check": str(wiki_root / ".index" / "final-product-check.json"),
+            "health_json": str(result.report_path),
+            "health_markdown": str(result.markdown_path),
+            "health_html": str(result.html_path),
+            "repair_plan": str(result.repair_plan_path) if result.repair_plan_path else None,
         },
     }
 

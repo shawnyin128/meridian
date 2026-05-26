@@ -148,7 +148,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.1.2"
+        expected = "0.2.0"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -1244,6 +1244,58 @@ Evidence takeaways:
             self.assertIn("Debug artifacts:", verbose_stdout)
             self.assertIn("review.md", verbose_stdout)
             self.assertIn("paper_candidate", verbose_stdout)
+
+    def test_wiki_health_writes_json_markdown_html_and_repair_plan(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            self.assertEqual(main(["wiki", "init", "--wiki-root", str(wiki_root)]), 0)
+            (wiki_root / "papers").mkdir(exist_ok=True)
+            (wiki_root / "papers/Isolated-Paper.md").write_text(
+                """---
+type: "paper"
+title: "Isolated Paper"
+status: "draft"
+review_state: "needs_review"
+quality_state: "multimodal_pending"
+---
+# Isolated Paper
+""",
+                encoding="utf-8",
+            )
+
+            exit_code, stdout, stderr = _run_cli_capture(
+                ["wiki", "health", "--wiki-root", str(wiki_root), "--repair-plan"]
+            )
+
+            self.assertEqual(exit_code, 0, stderr)
+            self.assertIn("Wrote wiki health JSON:", stdout)
+            self.assertIn("Wiki health:", stdout)
+            health = json.loads((wiki_root / ".index/wiki-health.json").read_text(encoding="utf-8"))
+            self.assertEqual(health["schema_version"], "meridian.wiki_health.v0")
+            self.assertEqual(health["health_model_version"], "0.2.0")
+            self.assertEqual([item["name"] for item in health["dimensions"]], ["Trust", "Surface", "Context", "Graph", "Growth"])
+            self.assertTrue(all(item["subdimensions"] for item in health["dimensions"]))
+            html = (wiki_root / ".index/wiki-health.html").read_text(encoding="utf-8")
+            self.assertIn("<details class=\"dimension\">", html)
+            self.assertIn("What Needs Attention", html)
+            report = (wiki_root / ".index/wiki-health.md").read_text(encoding="utf-8")
+            self.assertIn("## Health Dimensions", report)
+            self.assertTrue(list((wiki_root / ".drafts/health").glob("*/repair-plan.md")))
+
+    def test_mcp_audit_returns_health_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            self.assertEqual(main(["wiki", "init", "--wiki-root", str(wiki_root)]), 0)
+
+            payload = mcp_adapter.audit(wiki_root=wiki_root, scope="summary")
+
+            self.assertEqual(payload["tool"], "meridian.audit")
+            self.assertIn("health_level", payload)
+            self.assertIn("overall_score", payload)
+            self.assertIn("health_json", payload["reports"])
+            self.assertTrue(Path(payload["reports"]["health_json"]).exists())
 
     def test_wiki_flow_default_output_hides_validation_debug_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -189,7 +189,7 @@ def tool_definitions() -> list[JsonDict]:
         },
         {
             "name": "meridian.audit",
-            "description": "Update Wiki: return wiki health commands and report locations.",
+            "description": "Update Wiki: return compact deterministic wiki health and repair pointers.",
             "inputSchema": _schema(
                 {
                     "wiki_root": {"type": "string", "description": "Canonical wiki root. Defaults to the active user Paper Wiki workspace."},

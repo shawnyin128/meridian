@@ -20,6 +20,7 @@ from meridian.wiki.commands import (
     eval_cases,
     final_product_check_wiki,
     final_status_migrate_wiki,
+    health_wiki,
     ingest_pdf_folder,
     ingest_pdf,
     init_wiki,
@@ -555,6 +556,18 @@ def build_parser() -> argparse.ArgumentParser:
     final_check.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
     final_check.add_argument("--out", type=Path, default=None, help="Optional final check JSON path.")
     final_check.add_argument("--brief", type=Path, default=None, help="Optional markdown quality brief path.")
+
+    health = wiki_subparsers.add_parser(
+        "health",
+        help="Run deterministic Paper Wiki health scoring and write JSON/Markdown/HTML reports.",
+    )
+    health.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    health.add_argument("--profile", choices=["daily", "release", "strict"], default="daily", help="Scoring profile label.")
+    health.add_argument("--out", type=Path, default=None, help="Optional health JSON path.")
+    health.add_argument("--report", type=Path, default=None, help="Optional markdown report path.")
+    health.add_argument("--html", type=Path, default=None, help="Optional HTML dashboard path.")
+    health.add_argument("--repair-plan", action="store_true", help="Also write a standalone repair plan under .drafts/health/.")
+    health.add_argument("--repair-plan-out", type=Path, default=None, help="Optional repair plan path.")
 
     review = wiki_subparsers.add_parser(
         "review",
@@ -1433,6 +1446,26 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Final product status: {result.status}")
             print(f"Findings: {len(result.findings)}")
             return 0 if result.status != "fail" else 1
+
+        if args.product == "wiki" and args.command == "health":
+            result = health_wiki(
+                wiki_root=args.wiki_root,
+                profile=args.profile,
+                out_path=args.out,
+                markdown_path=args.report,
+                html_path=args.html,
+                repair_plan=args.repair_plan,
+                repair_plan_path=args.repair_plan_out,
+            )
+            print(f"Wrote wiki health JSON: {result.report_path}")
+            print(f"Wrote wiki health report: {result.markdown_path}")
+            print(f"Wrote wiki health HTML: {result.html_path}")
+            if result.repair_plan_path:
+                print(f"Wrote wiki health repair plan: {result.repair_plan_path}")
+            print(f"Wiki health: {result.health_level}")
+            print(f"Overall score: {result.overall_score}")
+            print(f"Hard failures: {len(result.hard_failures)}")
+            return 0 if result.health_level != "blocked" else 1
 
         if args.product == "wiki" and args.command == "judge-pack":
             packet = create_judge_packet(

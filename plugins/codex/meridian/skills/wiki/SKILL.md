@@ -50,6 +50,9 @@ Delegate to specialized skills when needed:
 - `wiki-evolve` for refinement and revision.
 - `wiki-knowledge` or `wiki-concept` for compiled knowledge repair.
 
+Use `meridian wiki health --wiki-root <wiki>` when the user asks whether the
+wiki is usable, trustworthy, release-ready, or what should be repaired next.
+
 ## Use Wiki
 
 Use this workflow when the user asks a research, paper-understanding, or coding question that should consult the accumulated wiki.
