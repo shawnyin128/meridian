@@ -1,16 +1,16 @@
 {
   "schema_version": "meridian.concept_audit.v1",
-  "created_at": "2026-05-21T07:24:47.431398+00:00",
-  "wiki_root": "wiki",
+  "created_at": "2026-05-26T19:02:15.752710+00:00",
+  "wiki_root": "/Users/shawn/Desktop/meridian/wiki",
   "status": "pass",
   "metrics": {
-    "concept_pages": 24,
+    "concept_pages": 29,
     "candidate_concepts": 24,
     "unpromoted_candidate_concepts": 0,
     "methods_total": 302,
     "methods_requiring_prerequisite_concepts": 63,
     "consolidated_method_candidate_records": 239,
-    "methods_with_prerequisite_concepts": 31,
+    "methods_with_prerequisite_concepts": 59,
     "topics_total": 91,
     "topics_with_key_concepts": 45,
     "concepts_missing_source_papers": 0,
@@ -25,112 +25,7 @@
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/MoE-quantization.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/RoPE-scaling.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/agent-workflow-acceleration.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/attention-checkpoint-conversion.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/audio-language-modeling.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/continuous-depth-neural-network.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/dynamic-draft-tree.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/expert-aware-quantization.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/expert-routing.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/feature-level-drafting.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/feature-wise-modulation.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/grouped-query-attention.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/instruction-tuning.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/learned-step-size-quantization.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/long-context-inference.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/low-rank-compensation.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/mechanistic-activation-analysis.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/multimodal-instruction-tuning.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
       "path": "methods/paper-specific-research-method.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/performance-evaluation.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/policy-optimization.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/recurrent-transformer.md"
     },
     {
       "severity": "info",
@@ -140,47 +35,12 @@
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/relative-position-encoding.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/self-rewarding-model-training.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
       "path": "methods/source-quality-triage.md"
     },
     {
       "severity": "info",
       "code": "method_missing_prerequisite_concepts",
-      "path": "methods/sparse-mixture-of-experts.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/sparse-outlier-retention.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
       "path": "methods/survey-synthesis.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/test-time-reinforcement-learning.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/transformer-architecture.md"
-    },
-    {
-      "severity": "info",
-      "code": "method_missing_prerequisite_concepts",
-      "path": "methods/vision-language-model-quantization.md"
     },
     {
       "severity": "info",
@@ -416,26 +276,10 @@
   "samples": {
     "unpromoted_candidate_concepts": [],
     "method_missing_prerequisite_concepts": [
-      "methods/MoE-quantization.md",
-      "methods/RoPE-scaling.md",
-      "methods/agent-workflow-acceleration.md",
-      "methods/attention-checkpoint-conversion.md",
-      "methods/audio-language-modeling.md",
-      "methods/continuous-depth-neural-network.md",
-      "methods/dynamic-draft-tree.md",
-      "methods/expert-aware-quantization.md",
-      "methods/expert-routing.md",
-      "methods/feature-level-drafting.md",
-      "methods/feature-wise-modulation.md",
-      "methods/grouped-query-attention.md",
-      "methods/instruction-tuning.md",
-      "methods/learned-step-size-quantization.md",
-      "methods/long-context-inference.md",
-      "methods/low-rank-compensation.md",
-      "methods/mechanistic-activation-analysis.md",
-      "methods/multimodal-instruction-tuning.md",
       "methods/paper-specific-research-method.md",
-      "methods/performance-evaluation.md"
+      "methods/reference-synthesis.md",
+      "methods/source-quality-triage.md",
+      "methods/survey-synthesis.md"
     ],
     "consolidated_method_candidate_records": [
       "methods/13979-STAR-Speculative-Decodin-method-001.md",

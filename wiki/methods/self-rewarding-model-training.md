@@ -71,3 +71,8 @@ This is a compiled method-family page for `self-rewarding model training`. It gr
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Reward-model-overoptimization|Reward model overoptimization]]
+- [[concepts/Preference-data-underspecification|Preference data underspecification]]
+- [[concepts/KL-regularization|KL regularization]]

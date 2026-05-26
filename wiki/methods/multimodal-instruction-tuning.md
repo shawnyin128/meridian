@@ -123,3 +123,7 @@ This is a compiled method-family page for `multimodal instruction tuning`. It gr
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Representation-collapse|Representation collapse]]
+- [[concepts/Diffusion-conditioning-signal|Diffusion conditioning signal]]

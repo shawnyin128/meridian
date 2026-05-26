@@ -1,14 +1,14 @@
 # Knowledge Layer Quality Audit
 
-- Generated: `2026-05-21T07:28:15.924438+00:00`
+- Generated: `2026-05-26T19:02:43.497629+00:00`
 - Status: `warn`
 - Papers: 1
-- Methods: 0
+- Methods: 1
 - Topics: 0
 - Concepts: 0
 - Claims: 0
 - Evidence: 0
-- Syntheses: 1
+- Syntheses: 0
 
 ## Health Metrics
 
@@ -23,7 +23,7 @@
 - duplicate_method_topic_alias_groups: 0
 - source_quality_misuse: 0
 - consolidated_method_candidate_records: 0
-- pages_with_required_section_gaps: 0
+- pages_with_required_section_gaps: 1
 - pages_with_frontmatter_gaps: 1
 
 ## Interpretation
@@ -32,11 +32,11 @@ The audit checks whether the wiki has moved beyond isolated paper pages into a c
 
 ## Sample: low_information_pages
 
-- `syntheses/Agent-Workflow-Overview.md`
+- `methods/post-training-quantization.md`
 
 ## Sample: paper_without_outbound_links
 
-- `papers/Agent-Workflow.md`
+- `papers/Quant-Paper.md`
 
 ## Sample: orphan_knowledge_pages
 

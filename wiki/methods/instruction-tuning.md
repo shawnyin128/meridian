@@ -53,3 +53,7 @@ This is a compiled method-family page for `instruction tuning`. It groups canoni
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Instruction-response-supervision|Instruction-response supervision]]
+- [[concepts/Preference-data-underspecification|Preference data underspecification]]

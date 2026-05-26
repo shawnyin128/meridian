@@ -53,3 +53,7 @@ This is a compiled method-family page for `recurrent transformer`. It groups can
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/State-reuse-dynamics|State reuse dynamics]]
+- [[concepts/Position-encoding-extrapolation|Position encoding extrapolation]]

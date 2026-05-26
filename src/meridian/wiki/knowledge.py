@@ -517,7 +517,7 @@ def _uses_source_quality_hold_as_evidence(page: dict[str, Any]) -> bool:
 
 
 def _duplicate_alias_groups(pages: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    buckets: dict[str, list[str]] = {}
+    buckets: dict[str, list[dict[str, str]]] = {}
     for page in pages:
         if page["directory"] not in {"methods", "topics"}:
             continue
@@ -525,12 +525,21 @@ def _duplicate_alias_groups(pages: list[dict[str, Any]]) -> list[dict[str, Any]]
         for alias in aliases:
             key = _norm(alias)
             if key:
-                buckets.setdefault(key, []).append(page["relative_path"])
-    return [
-        {"alias": alias, "pages": sorted(set(paths))}
-        for alias, paths in sorted(buckets.items())
-        if len(set(paths)) > 1
-    ]
+                buckets.setdefault(key, []).append({"path": page["relative_path"], "directory": page["directory"]})
+    groups: list[dict[str, Any]] = []
+    for alias, entries in sorted(buckets.items()):
+        unique = {(item["path"], item["directory"]) for item in entries}
+        if len(unique) <= 1:
+            continue
+        directories = {directory for _, directory in unique}
+        paths = sorted(path for path, _ in unique)
+        if directories == {"methods", "topics"} and len(paths) == 2:
+            method_path = next(path for path, directory in unique if directory == "methods")
+            topic_path = next(path for path, directory in unique if directory == "topics")
+            if Path(method_path).stem == Path(topic_path).stem:
+                continue
+        groups.append({"alias": alias, "pages": paths})
+    return groups
 
 
 def _create_method_action(*, method: str, path: Path, paper: dict[str, Any], wiki_root: Path) -> dict[str, Any]:

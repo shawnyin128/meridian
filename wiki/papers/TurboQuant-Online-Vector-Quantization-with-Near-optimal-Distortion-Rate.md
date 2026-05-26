@@ -178,3 +178,9 @@ Evidence candidates:
 - `evidence-p0006`: p. 6; supports: claim-001, claim-003, claim-005
 - `evidence-p0007`: p. 7
 - `evidence-p0008`: p. 8
+
+## Knowledge Links
+
+- Method families: [[methods/KV-cache-compression|KV-cache compression]], [[methods/post-training-quantization|post-training quantization]], [[methods/hardware-aware-quantization|hardware-aware quantization]], [[methods/long-context-inference|long-context inference]], [[methods/transformer-architecture|transformer architecture]]
+- Topics: [[topics/low-bit-quantization|low-bit quantization]], [[topics/hardware-aware-quantization|hardware-aware quantization]], [[topics/lookup-table-inference|lookup-table inference]], [[topics/KV-cache-compression|KV-cache compression]], [[topics/feature-wise-modulation|feature-wise modulation]]
+- Concept hooks: [[concepts/Lookup-table-inference|Lookup-table inference]], [[concepts/KV-cache-memory-bandwidth|KV-cache memory bandwidth]], [[concepts/Quantization-error-propagation|Quantization error propagation]], [[concepts/Per-channel-scaling|Per-channel scaling]]

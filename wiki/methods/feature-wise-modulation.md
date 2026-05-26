@@ -54,3 +54,6 @@ This is a compiled method-family page for `feature-wise modulation`. It groups c
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Diffusion-conditioning-signal|Diffusion conditioning signal]]

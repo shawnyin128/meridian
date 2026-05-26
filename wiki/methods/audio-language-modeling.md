@@ -123,3 +123,7 @@ This is a compiled method-family page for `audio-language modeling`. It groups c
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Audio-text-alignment|Audio-text alignment]]
+- [[concepts/Representation-collapse|Representation collapse]]

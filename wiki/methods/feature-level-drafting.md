@@ -55,3 +55,7 @@ This is a compiled method-family page for `feature-level drafting`. It groups ca
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Speculative-decoding-acceptance-rate|Speculative decoding acceptance rate]]
+- [[concepts/Verification-cost-model|Verification cost model]]

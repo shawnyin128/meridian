@@ -83,3 +83,8 @@ This is a compiled method-family page for `expert-aware quantization`. It groups
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Calibration-representativeness|Calibration representativeness]]
+- [[concepts/Activation-outliers|Activation outliers]]
+- [[concepts/Quantization-error-propagation|Quantization error propagation]]

@@ -5914,6 +5914,65 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertEqual(result.results[0]["knowledge_role"], "compiled_knowledge")
             self.assertEqual(result.results[0]["relative_path"], "methods/post-training-quantization.md")
 
+    def test_knowledge_audit_allows_same_method_and_topic_title(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            method = wiki_root / "methods/expert-routing.md"
+            topic = wiki_root / "topics/expert-routing.md"
+            other = wiki_root / "methods/expert-router.md"
+            method.parent.mkdir(parents=True)
+            topic.parent.mkdir(parents=True)
+            for path, page_type, title in (
+                (method, "method", "expert routing"),
+                (topic, "topic", "expert routing"),
+                (other, "method", "expert router"),
+            ):
+                path.write_text(
+                    "\n".join(
+                        [
+                            "---",
+                            f'type: "{page_type}"',
+                            f'title: "{title}"',
+                            'status: "active"',
+                            "aliases:",
+                            '  - "router collision"',
+                            'confidence: "medium"',
+                            'review_state: "active"',
+                            "---",
+                            f"# {title}",
+                            "",
+                            "## Scope",
+                            "",
+                            "- This page has enough content for the audit fixture.",
+                            "- [[papers/Fixture|Fixture paper]]",
+                        ]
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "knowledge-audit",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--out",
+                        str(wiki_root / ".index/knowledge-audit.json"),
+                        "--brief",
+                        str(root / "brief.md"),
+                    ]
+                ),
+                0,
+            )
+            audit = json.loads((wiki_root / ".index/knowledge-audit.json").read_text(encoding="utf-8"))
+            duplicate_findings = [item for item in audit["findings"] if item["code"] == "duplicate_method_or_topic_alias"]
+            self.assertEqual(audit["metrics"]["duplicate_method_topic_alias_groups"], 1)
+            self.assertEqual(len(duplicate_findings), 1)
+            self.assertEqual(duplicate_findings[0]["alias"], "router collision")
+
     def test_knowledge_repair_lint_rejects_high_risk_deterministic_action(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

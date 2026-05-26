@@ -1,338 +1,42 @@
 {
   "schema_version": "meridian.knowledge_audit.v1",
-  "created_at": "2026-05-21T07:25:01.707430+00:00",
-  "wiki_root": "wiki",
-  "status": "warn",
+  "created_at": "2026-05-26T19:02:17.842139+00:00",
+  "wiki_root": "/Users/shawn/Desktop/meridian/wiki",
+  "status": "pass",
   "metrics": {
     "counts": {
-      "papers": 236,
+      "papers": 237,
       "methods": 302,
       "topics": 91,
       "claims": 1135,
       "evidence": 2737,
-      "concepts": 24,
+      "concepts": 29,
       "syntheses": 60
     },
     "low_information_pages": 0,
-    "paper_without_outbound_links": 1,
+    "paper_without_outbound_links": 0,
     "orphan_knowledge_pages": 0,
     "method_topic_without_inbound_paper_links": 0,
-    "claims_without_evidence": 1,
+    "claims_without_evidence": 0,
     "evidence_without_source_provenance": 0,
     "syntheses_without_source_papers": 0,
     "syntheses_with_nonpaper_source_papers": 0,
-    "duplicate_method_topic_alias_groups": 35,
+    "duplicate_method_topic_alias_groups": 0,
     "source_quality_misuse": 0,
     "consolidated_method_candidate_records": 239,
     "pages_with_required_section_gaps": 0,
     "pages_with_frontmatter_gaps": 0
   },
-  "findings": [
-    {
-      "severity": "warn",
-      "code": "claim_without_evidence",
-      "path": "claims/Xi-et-al-2023-Training-Transformers-with-4-bit-Integers-claim-004.md"
-    },
-    {
-      "severity": "info",
-      "code": "paper_missing_knowledge_outbound_links",
-      "path": "papers/STS-Efficient-Sparse-Attention-with-Speculative-Token-Sparsity.md"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/agent-workflow-acceleration.md,topics/agent-workflow-acceleration.md",
-      "alias": "agent workflow acceleration"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/audio-language-modeling.md,topics/audio-language-modeling.md",
-      "alias": "audio language modeling"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/conditional-diffusion.md,topics/conditional-diffusion.md",
-      "alias": "conditional diffusion"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/dynamic-draft-tree.md,topics/dynamic-draft-tree.md",
-      "alias": "dynamic draft tree"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/expert-routing.md,topics/expert-routing.md",
-      "alias": "expert routing"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/feature-wise-modulation.md,topics/feature-wise-modulation.md",
-      "alias": "feature wise modulation"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/grouped-query-attention.md,topics/grouped-query-attention.md",
-      "alias": "grouped query attention"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/hardware-aware-quantization.md,topics/hardware-aware-quantization.md",
-      "alias": "hardware aware quantization"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/instruction-tuning.md,topics/instruction-tuning.md",
-      "alias": "instruction tuning"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/IO-aware-attention.md,topics/IO-aware-attention.md",
-      "alias": "io aware attention"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/joint-embedding-predictive-learning.md,topics/joint-embedding-predictive-learning.md",
-      "alias": "joint embedding predictive learning"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/KV-cache-compression.md,topics/KV-cache-compression.md",
-      "alias": "kv cache compression"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/layer-wise-PTQ.md,topics/layer-wise-PTQ.md",
-      "alias": "layer wise ptq"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/learned-quantization-intervals.md,topics/learned-quantization-intervals.md",
-      "alias": "learned quantization intervals"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/long-context-inference.md,topics/long-context-inference.md",
-      "alias": "long context inference"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/mechanistic-activation-analysis.md,topics/mechanistic-activation-analysis.md",
-      "alias": "mechanistic activation analysis"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/MoE-quantization.md,topics/MoE-quantization.md",
-      "alias": "moe quantization"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/performance-evaluation.md,topics/performance-evaluation.md",
-      "alias": "performance evaluation"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/physics-informed-neural-networks.md,topics/physics-informed-neural-networks.md",
-      "alias": "physics informed neural networks"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/policy-optimization.md,topics/policy-optimization.md",
-      "alias": "policy optimization"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/post-training-quantization.md,topics/post-training-quantization.md",
-      "alias": "post training quantization"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/reward-modeling.md,topics/reward-modeling.md",
-      "alias": "reward modeling"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/RLHF.md,topics/RLHF.md",
-      "alias": "rlhf"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/RoPE-scaling.md,topics/RoPE-scaling.md",
-      "alias": "rope scaling"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/rotation-based-quantization.md,topics/rotation-based-quantization.md",
-      "alias": "rotation based quantization"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/self-speculative-decoding.md,topics/self-speculative-decoding.md",
-      "alias": "self speculative decoding"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/sparse-mixture-of-experts.md,topics/sparse-mixture-of-experts.md",
-      "alias": "sparse mixture of experts"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/sparse-outlier-retention.md,topics/sparse-outlier-retention.md",
-      "alias": "sparse outlier retention"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/speculative-action-execution.md,topics/speculative-action-execution.md",
-      "alias": "speculative action execution"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/speculative-decoding.md,topics/speculative-decoding.md",
-      "alias": "speculative decoding"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/survey-synthesis.md,topics/survey-synthesis.md",
-      "alias": "survey synthesis"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/test-time-reinforcement-learning.md,topics/test-time-reinforcement-learning.md",
-      "alias": "test time reinforcement learning"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/transformer-architecture.md,topics/transformer-architecture.md",
-      "alias": "transformer architecture"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/video-representation-learning.md,topics/video-representation-learning.md",
-      "alias": "video representation learning"
-    },
-    {
-      "severity": "warn",
-      "code": "duplicate_method_or_topic_alias",
-      "path": "methods/visual-reasoning.md,topics/visual-reasoning.md",
-      "alias": "visual reasoning"
-    }
-  ],
+  "findings": [],
   "samples": {
     "low_information_pages": [],
-    "paper_without_outbound_links": [
-      "papers/STS-Efficient-Sparse-Attention-with-Speculative-Token-Sparsity.md"
-    ],
+    "paper_without_outbound_links": [],
     "orphan_knowledge_pages": [],
-    "claims_without_evidence": [
-      "claims/Xi-et-al-2023-Training-Transformers-with-4-bit-Integers-claim-004.md"
-    ],
+    "claims_without_evidence": [],
     "evidence_without_source_provenance": [],
     "syntheses_without_source_papers": [],
     "syntheses_with_nonpaper_source_papers": [],
-    "duplicate_alias_groups": [
-      {
-        "alias": "agent workflow acceleration",
-        "pages": [
-          "methods/agent-workflow-acceleration.md",
-          "topics/agent-workflow-acceleration.md"
-        ]
-      },
-      {
-        "alias": "audio language modeling",
-        "pages": [
-          "methods/audio-language-modeling.md",
-          "topics/audio-language-modeling.md"
-        ]
-      },
-      {
-        "alias": "conditional diffusion",
-        "pages": [
-          "methods/conditional-diffusion.md",
-          "topics/conditional-diffusion.md"
-        ]
-      },
-      {
-        "alias": "dynamic draft tree",
-        "pages": [
-          "methods/dynamic-draft-tree.md",
-          "topics/dynamic-draft-tree.md"
-        ]
-      },
-      {
-        "alias": "expert routing",
-        "pages": [
-          "methods/expert-routing.md",
-          "topics/expert-routing.md"
-        ]
-      },
-      {
-        "alias": "feature wise modulation",
-        "pages": [
-          "methods/feature-wise-modulation.md",
-          "topics/feature-wise-modulation.md"
-        ]
-      },
-      {
-        "alias": "grouped query attention",
-        "pages": [
-          "methods/grouped-query-attention.md",
-          "topics/grouped-query-attention.md"
-        ]
-      },
-      {
-        "alias": "hardware aware quantization",
-        "pages": [
-          "methods/hardware-aware-quantization.md",
-          "topics/hardware-aware-quantization.md"
-        ]
-      },
-      {
-        "alias": "instruction tuning",
-        "pages": [
-          "methods/instruction-tuning.md",
-          "topics/instruction-tuning.md"
-        ]
-      },
-      {
-        "alias": "io aware attention",
-        "pages": [
-          "methods/IO-aware-attention.md",
-          "topics/IO-aware-attention.md"
-        ]
-      }
-    ],
+    "duplicate_alias_groups": [],
     "consolidated_method_candidate_records": [
       "methods/13979-STAR-Speculative-Decodin-method-001.md",
       "methods/1808-05779v3-method-001.md",

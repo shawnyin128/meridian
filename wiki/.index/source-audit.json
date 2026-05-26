@@ -1,10 +1,10 @@
 {
   "schema_version": "meridian.source_audit.v0",
-  "wiki_root": "wiki",
-  "source_root": "wiki/raw/sources",
-  "created_at": "2026-05-26T00:21:23.265452+00:00",
-  "registry": "wiki/raw/sources/sources.jsonl",
-  "total": 238,
+  "wiki_root": "/Users/shawn/Desktop/meridian/wiki",
+  "source_root": "/Users/shawn/Desktop/meridian/wiki/raw/sources",
+  "created_at": "2026-05-26T19:02:13.084861+00:00",
+  "registry": "/Users/shawn/Desktop/meridian/wiki/raw/sources/sources.jsonl",
+  "total": 241,
   "missing_managed": 0,
   "sha_mismatches": 0,
   "duplicate_sha_groups": 0,
@@ -2388,6 +2388,36 @@
       "original_path": "/Users/shawn/Desktop/2605.15508v2.pdf",
       "sha256": "00d120e46b19370611e3a2a454e2b552f86800609115e502357fffda33eef505",
       "actual_sha256": "00d120e46b19370611e3a2a454e2b552f86800609115e502357fffda33eef505"
+    },
+    {
+      "source_id": "paper-pdf-431eb13926e1",
+      "title": "TurboQuant: Online Vector Quantization with Near-optimal Distortion Rate",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "/Users/shawn/Desktop/meridian/wiki/raw/sources/papers/paper-pdf-431eb13926e1-TurboQuant-Online-Vector-Quantization-with-Near-optimal-Distortion-Rate.pdf",
+      "original_path": "/Users/shawn/Desktop/2504.19874v1.pdf",
+      "sha256": "431eb13926e10491f5fbd0bebd0813c51bd6c1e884426a1500c5db640b2997ab",
+      "actual_sha256": "431eb13926e10491f5fbd0bebd0813c51bd6c1e884426a1500c5db640b2997ab"
+    },
+    {
+      "source_id": "paper-pdf-f315915be237",
+      "title": "Fake Research Paper",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "/Users/shawn/Desktop/meridian/wiki/raw/sources/papers/paper-pdf-f315915be237-Fake-Research-Paper.pdf",
+      "original_path": "/private/var/folders/qv/fjt03h_14c924r4stbtncd8c0000gn/T/tmps1tw77ly/My Library/paper-one.pdf",
+      "sha256": "f315915be2378786af1785ccc6a226aad15ad69d96465ec0105b186066cb2681",
+      "actual_sha256": "f315915be2378786af1785ccc6a226aad15ad69d96465ec0105b186066cb2681"
+    },
+    {
+      "source_id": "paper-pdf-1ade37ff1ff5",
+      "title": "Fake Research Paper",
+      "status": "ok",
+      "findings": [],
+      "managed_path": "/Users/shawn/Desktop/meridian/wiki/raw/sources/papers/paper-pdf-1ade37ff1ff5-Fake-Research-Paper.pdf",
+      "original_path": "/var/folders/qv/fjt03h_14c924r4stbtncd8c0000gn/T/tmp0d6rq4cj/uploaded.pdf",
+      "sha256": "1ade37ff1ff5a120ee9e3e912e91bba168d2295ce9354577d330ac8111c4f10a",
+      "actual_sha256": "1ade37ff1ff5a120ee9e3e912e91bba168d2295ce9354577d330ac8111c4f10a"
     }
   ]
 }

@@ -56,3 +56,7 @@ This is a compiled method-family page for `mechanistic activation analysis`. It 
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Activation-outliers|Activation outliers]]
+- [[concepts/Representation-collapse|Representation collapse]]

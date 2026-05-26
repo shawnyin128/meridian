@@ -58,3 +58,8 @@ This is a compiled method-family page for `dynamic draft tree`. It groups canoni
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Dynamic-draft-tree|Dynamic draft tree]]
+- [[concepts/Speculative-decoding-acceptance-rate|Speculative decoding acceptance rate]]
+- [[concepts/Verification-cost-model|Verification cost model]]

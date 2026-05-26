@@ -60,3 +60,7 @@ This is a compiled method-family page for `low-rank compensation`. It groups can
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Quantization-error-propagation|Quantization error propagation]]
+- [[concepts/Calibration-representativeness|Calibration representativeness]]

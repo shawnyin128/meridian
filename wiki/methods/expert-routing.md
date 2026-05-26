@@ -55,3 +55,7 @@ This is a compiled method-family page for `expert routing`. It groups canonical 
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Token-expert-routing|Token-expert routing]]
+- [[concepts/Calibration-representativeness|Calibration representativeness]]

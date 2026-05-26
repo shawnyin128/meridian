@@ -88,3 +88,6 @@ This is a compiled method-family page for `relative position encoding`. It group
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Position-encoding-extrapolation|Position encoding extrapolation]]

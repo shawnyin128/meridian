@@ -195,6 +195,12 @@ Evidence candidates:
 - `evidence-p0007`: p. 7; supports: claim-001, claim-002
 - `evidence-p0008`: p. 8
 
+## Knowledge Links
+
+- Method families: [[methods/speculative-decoding|speculative decoding]], [[methods/KV-cache-compression|KV-cache compression]], [[methods/long-context-inference|long-context inference]], [[methods/transformer-architecture|transformer architecture]]
+- Topics: [[topics/speculative-decoding|speculative decoding]], [[topics/sparse-attention|sparse attention]], [[topics/KV-cache-compression|KV-cache compression]], [[topics/long-context-inference|long-context inference]], [[topics/transformer-architecture|transformer architecture]]
+- Concept hooks: [[concepts/Speculative-decoding-acceptance-rate|Speculative decoding acceptance rate]], [[concepts/Verification-cost-model|Verification cost model]], [[concepts/Cache-retention-policy|Cache retention policy]]
+
 ## User Insights
 
 ### insight-2026-05-20-71538c7e52

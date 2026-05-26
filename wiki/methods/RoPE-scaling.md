@@ -56,3 +56,6 @@ This is a compiled method-family page for `RoPE scaling`. It groups canonical pa
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Position-encoding-extrapolation|Position encoding extrapolation]]

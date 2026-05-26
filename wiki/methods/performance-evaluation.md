@@ -62,3 +62,7 @@ This is a compiled method-family page for `performance evaluation`. It groups ca
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Verification-cost-model|Verification cost model]]
+- [[concepts/Reward-model-overoptimization|Reward model overoptimization]]

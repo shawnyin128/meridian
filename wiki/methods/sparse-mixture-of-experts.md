@@ -55,3 +55,6 @@ This is a compiled method-family page for `sparse mixture-of-experts`. It groups
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Calibration-representativeness|Calibration representativeness]]

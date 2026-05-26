@@ -780,3 +780,18 @@
 - Draft artifacts: `/Users/shawn/Desktop/meridian/wiki/.drafts/ingests/2504-19874v1`
 - Quality gate: `pass`
 - Review state: `auto_ingested`
+
+## [2026-05-26] knowledge-repair | targeted health repair
+
+- Added machine-readable evidence id `evidence-p0009` to `claims/Xi-et-al-2023-Training-Transformers-with-4-bit-Integers-claim-004.md`.
+- Added knowledge links to isolated paper pages `papers/STS-Efficient-Sparse-Attention-with-Speculative-Token-Sparsity.md` and `papers/TurboQuant-Online-Vector-Quantization-with-Near-optimal-Distortion-Rate.md`.
+- Health delta: overall score `87 -> 88`; navigation `80 -> 100`; claim trace `90 -> 100`.
+- Remaining proposal-only buckets: duplicate method/topic aliases and prerequisite concept coverage.
+
+## [2026-05-26] concept-repair | prerequisite concept coverage
+
+- Added prerequisite concept links to 28 method-family pages where existing concepts or new source-grounded concepts were a clear coding/debug/probe prerequisite.
+- Added concept pages: `Audio-text-alignment`, `Instruction-response-supervision`, `Position-encoding-extrapolation`, `State-reuse-dynamics`, and `Token-expert-routing`.
+- Updated knowledge audit to treat same-slug method/topic pages as valid role-separated pages rather than duplicate alias conflicts.
+- Health delta: overall score `88 -> 93`; method/topic clarity `55 -> 100`; concept coverage `31/63 -> 59/63`.
+- Remaining concept coverage gaps are meta-method pages that need a product/schema decision before adding concepts.

@@ -53,3 +53,8 @@ This is a compiled method-family page for `learned step-size quantization`. It g
 ## Open Questions
 
 - Which linked papers provide the strongest source-grounded evidence for this method family?
+## Prerequisite Concepts
+
+- [[concepts/Per-channel-scaling|Per-channel scaling]]
+- [[concepts/Calibration-representativeness|Calibration representativeness]]
+- [[concepts/Quantization-error-propagation|Quantization error propagation]]
