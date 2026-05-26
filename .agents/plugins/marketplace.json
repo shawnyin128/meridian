@@ -8,7 +8,7 @@
       "name": "meridian",
       "source": {
         "source": "local",
-        "path": "./meridian"
+        "path": "./plugins/codex/meridian"
       },
       "policy": {
         "installation": "AVAILABLE",

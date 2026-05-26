@@ -29,7 +29,7 @@ Plugin package roots:
 
 Marketplace manifests:
 
-- `plugins/codex/.agents/plugins/marketplace.json`
+- `.agents/plugins/marketplace.json`
 - `plugins/claude-code/marketplace.json`
 
 Python execution core:

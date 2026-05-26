@@ -2656,11 +2656,11 @@ Compare recency-only retention with attention-based and oracle retention policie
 
         codex_root = Path("plugins/codex/meridian")
         codex_marketplace = json.loads(
-            Path("plugins/codex/.agents/plugins/marketplace.json").read_text(encoding="utf-8")
+            Path(".agents/plugins/marketplace.json").read_text(encoding="utf-8")
         )
         self.assertEqual(codex_marketplace["name"], "meridian")
         self.assertEqual(codex_marketplace["plugins"][0]["name"], "meridian")
-        self.assertEqual(codex_marketplace["plugins"][0]["source"]["path"], "./meridian")
+        self.assertEqual(codex_marketplace["plugins"][0]["source"]["path"], "./plugins/codex/meridian")
         codex_manifest = json.loads((codex_root / ".codex-plugin/plugin.json").read_text(encoding="utf-8"))
         self.assertEqual(codex_manifest["name"], "meridian")
         self.assertEqual(codex_manifest["skills"], "./skills/")

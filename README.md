@@ -42,7 +42,7 @@ Then install the matching agent plugin.
 ### Codex
 
 ```bash
-codex plugin marketplace add shawnyin128/meridian --sparse plugins/codex
+codex plugin marketplace add shawnyin128/meridian --sparse .agents/plugins --sparse plugins/codex/meridian
 codex plugin add meridian@meridian
 ```
 
@@ -66,7 +66,7 @@ For local development, replace `shawnyin128/meridian --sparse ...` with the
 matching local marketplace path:
 
 ```bash
-codex plugin marketplace add /path/to/meridian/plugins/codex
+codex plugin marketplace add /path/to/meridian
 claude plugin marketplace add /path/to/meridian/plugins/claude-code
 ```
 

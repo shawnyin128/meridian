@@ -1,6 +1,7 @@
 include README.md
 include VERSION
 include AGENTS.md
+include .agents/plugins/marketplace.json
 include pyproject.toml
 include setup.cfg
 include setup.py

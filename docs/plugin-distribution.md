@@ -64,7 +64,7 @@ Codex expects the marketplace manifest under `.agents/plugins/` inside the
 marketplace root:
 
 ```text
-plugins/codex/.agents/plugins/marketplace.json
+.agents/plugins/marketplace.json
 ```
 
 It points at:
@@ -76,7 +76,7 @@ plugins/codex/meridian/
 Install from GitHub:
 
 ```bash
-codex plugin marketplace add shawnyin128/meridian --sparse plugins/codex
+codex plugin marketplace add shawnyin128/meridian --sparse .agents/plugins --sparse plugins/codex/meridian
 codex plugin add meridian@meridian
 ```
 
