@@ -37,6 +37,7 @@ def run_ingest(
     overwrite: bool = False,
     case_metadata: dict[str, object] | None = None,
     wiki_root: Path | None = None,
+    source_root: Path | None = None,
     publish_mode: str = "never",
     render_page_images: bool = True,
 ) -> IngestResult:
@@ -51,8 +52,14 @@ def run_ingest(
     title = title_override or _title_from_metadata_or_path(extraction, pdf_path)
     created_date = datetime.now(timezone.utc).date().isoformat()
     effective_wiki_root = wiki_root or infer_wiki_root_from_out_dir(out_dir)
+    effective_source_root = source_root
     source_record = (
-        register_pdf_source(pdf_path=pdf_path, wiki_root=effective_wiki_root, title=title)
+        register_pdf_source(
+            pdf_path=pdf_path,
+            wiki_root=effective_wiki_root,
+            title=title,
+            source_root=effective_source_root,
+        )
         if effective_wiki_root is not None
         else None
     )
@@ -148,6 +155,7 @@ def run_ingest(
                 "mode": "managed",
                 "source_id": source_record.source_id,
                 "registry": str(source_record.registry_path),
+                "source_root": str(source_record.registry_path.parent),
                 "managed_path": str(source_record.managed_path),
                 "sha256": source_record.sha256,
             }

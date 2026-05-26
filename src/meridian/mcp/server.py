@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from meridian.mcp import adapter
+from meridian.wiki.workspace import resolve_workspace
 
 SERVER_NAME = "meridian-paper-wiki"
 SERVER_VERSION = "0.1.0"
@@ -26,7 +27,7 @@ class MeridianMCPServer:
     """
 
     def __init__(self, *, default_wiki_root: Path | None = None) -> None:
-        self.default_wiki_root = default_wiki_root or Path(os.environ.get("MERIDIAN_WIKI_ROOT", "wiki"))
+        self.default_wiki_root = default_wiki_root or _default_wiki_root()
 
     def handle_message(self, message: JsonDict) -> JsonDict | None:
         method = str(message.get("method") or "")
@@ -114,7 +115,7 @@ def tool_definitions() -> list[JsonDict]:
             "inputSchema": _schema(
                 {
                     "query": {"type": "string"},
-                    "wiki_root": {"type": "string", "default": "wiki"},
+                    "wiki_root": {"type": "string", "description": "Canonical wiki root. Defaults to the active user Paper Wiki workspace."},
                     "top_k": {"type": "integer", "default": 6},
                 },
                 required=["query"],
@@ -126,7 +127,7 @@ def tool_definitions() -> list[JsonDict]:
             "inputSchema": _schema(
                 {
                     "page": {"type": "string"},
-                    "wiki_root": {"type": "string", "default": "wiki"},
+                    "wiki_root": {"type": "string", "description": "Canonical wiki root. Defaults to the active user Paper Wiki workspace."},
                     "sections": {"type": "array", "items": {"type": "string"}},
                     "max_chars": {"type": "integer", "default": 2400},
                 },
@@ -139,7 +140,7 @@ def tool_definitions() -> list[JsonDict]:
             "inputSchema": _schema(
                 {
                     "page": {"type": "string"},
-                    "wiki_root": {"type": "string", "default": "wiki"},
+                    "wiki_root": {"type": "string", "description": "Canonical wiki root. Defaults to the active user Paper Wiki workspace."},
                     "max_chars": {"type": "integer", "default": 1600},
                 },
                 required=["page"],
@@ -150,7 +151,7 @@ def tool_definitions() -> list[JsonDict]:
             "description": "Update Wiki: add a paper source or user insight through the durable wiki flow.",
             "inputSchema": _schema(
                 {
-                    "wiki_root": {"type": "string", "default": "wiki"},
+                    "wiki_root": {"type": "string", "description": "Canonical wiki root. Defaults to the active user Paper Wiki workspace."},
                     "source_path": {"type": "string"},
                     "paper": {"type": "string"},
                     "note": {"type": "string"},
@@ -163,7 +164,7 @@ def tool_definitions() -> list[JsonDict]:
             "description": "Update Wiki: create a lintable write-back proposal from retrieved context.",
             "inputSchema": _schema(
                 {
-                    "wiki_root": {"type": "string", "default": "wiki"},
+                    "wiki_root": {"type": "string", "description": "Canonical wiki root. Defaults to the active user Paper Wiki workspace."},
                     "query": {"type": "string"},
                     "title": {"type": "string"},
                     "proposal_type": {"type": "string", "default": "synthesis"},
@@ -178,7 +179,7 @@ def tool_definitions() -> list[JsonDict]:
             "description": "Update Wiki: lint and publish a proposal when it is safe to canonicalize.",
             "inputSchema": _schema(
                 {
-                    "wiki_root": {"type": "string", "default": "wiki"},
+                    "wiki_root": {"type": "string", "description": "Canonical wiki root. Defaults to the active user Paper Wiki workspace."},
                     "proposal_manifest": {"type": "string"},
                     "overwrite": {"type": "boolean", "default": False},
                 },
@@ -190,7 +191,7 @@ def tool_definitions() -> list[JsonDict]:
             "description": "Update Wiki: return wiki health commands and report locations.",
             "inputSchema": _schema(
                 {
-                    "wiki_root": {"type": "string", "default": "wiki"},
+                    "wiki_root": {"type": "string", "description": "Canonical wiki root. Defaults to the active user Paper Wiki workspace."},
                     "scope": {"type": "string", "default": "summary"},
                 }
             ),
@@ -200,9 +201,9 @@ def tool_definitions() -> list[JsonDict]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Meridian Paper Wiki MCP stdio server")
-    parser.add_argument("--wiki-root", default=os.environ.get("MERIDIAN_WIKI_ROOT", "wiki"))
+    parser.add_argument("--wiki-root", default=os.environ.get("MERIDIAN_WIKI_ROOT"))
     args = parser.parse_args(argv)
-    server = MeridianMCPServer(default_wiki_root=Path(args.wiki_root))
+    server = MeridianMCPServer(default_wiki_root=Path(args.wiki_root) if args.wiki_root else None)
     return server.serve_stdio()
 
 
@@ -301,6 +302,16 @@ def _required(arguments: JsonDict, key: str) -> str:
     if value in (None, ""):
         raise ValueError(f"{key} is required")
     return str(value)
+
+
+def _default_wiki_root() -> Path:
+    env_root = os.environ.get("MERIDIAN_WIKI_ROOT")
+    if env_root:
+        return Path(env_root)
+    workspace = resolve_workspace()
+    if workspace is not None:
+        return workspace.wiki_root
+    return Path("wiki")
 
 
 TOOL_CALLS: dict[str, Callable[[MeridianMCPServer, JsonDict], JsonDict]] = {

@@ -13,6 +13,7 @@ Use this workflow when the user gives Meridian something that should become dura
 
 Minimum completion:
 
+- Use the active Paper Wiki workspace. If none exists, ask for a library root and initialize it.
 - Create or update a durable artifact in the Markdown wiki.
 - Preserve source provenance and canonical page paths.
 - Keep source facts, wiki synthesis, user insight, and uncertainty labeled.
@@ -23,6 +24,10 @@ Canonical examples:
 
 ```text
 The user gives a new paper PDF. Add it to Meridian Paper Wiki, preserve source provenance, publish the canonical paper page when the flow converges, update index/log/catalog, and report the managed source path and canonical wiki page.
+```
+
+```text
+The user uploads a PDF from Codex or Claude Code. If no Paper Wiki workspace is configured, ask which library root to use. Then copy the PDF into the managed source store, ingest into the configured wiki, and report the managed source path plus canonical page.
 ```
 
 ```text
@@ -90,5 +95,15 @@ For MCP-facing usage, the equivalent tools are:
 MCP server entry:
 
 ```bash
-PYTHONPATH=src python3 -m meridian.mcp serve --wiki-root wiki
+PYTHONPATH=src python3 -m meridian.mcp serve
 ```
+
+Workspace setup primitive:
+
+```bash
+meridian wiki init --library-root <paper-wiki-library-root>
+```
+
+This creates the managed source store and canonical wiki under one library root
+and records it as the active user workspace for future Prompt/Skill, CLI, and
+MCP usage.

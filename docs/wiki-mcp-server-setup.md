@@ -7,10 +7,20 @@ Meridian exposes the Paper Wiki through a stdio MCP server. The MCP server wraps
 From the repository root:
 
 ```bash
-PYTHONPATH=src python3 -m meridian.mcp serve --wiki-root wiki
+PYTHONPATH=src python3 -m meridian.mcp serve
 ```
 
 The server reads JSON-RPC messages from stdin and writes JSON-RPC responses to stdout. The Markdown vault remains the source of truth.
+
+By default the server uses the active user Paper Wiki workspace from
+`~/.meridian/paper-wiki-workspaces.json`. Create one with:
+
+```bash
+meridian wiki init --library-root ~/MeridianPaperWiki
+```
+
+You can still pass `--wiki-root` or set `MERIDIAN_WIKI_ROOT` for a specific
+vault.
 
 ## Claude Desktop Style Config
 
@@ -19,10 +29,10 @@ The server reads JSON-RPC messages from stdin and writes JSON-RPC responses to s
   "mcpServers": {
     "meridian-paper-wiki": {
       "command": "python3",
-      "args": ["-m", "meridian.mcp", "serve", "--wiki-root", "/Users/shawn/Desktop/meridian/wiki"],
+      "args": ["-m", "meridian.mcp", "serve"],
       "env": {
         "PYTHONPATH": "/Users/shawn/Desktop/meridian/src",
-        "MERIDIAN_WIKI_ROOT": "/Users/shawn/Desktop/meridian/wiki"
+        "MERIDIAN_LIBRARY_ROOT": "/Users/shawn/MeridianPaperWiki"
       }
     }
   }
@@ -37,9 +47,10 @@ The server reads JSON-RPC messages from stdin and writes JSON-RPC responses to s
   "transport": {
     "type": "stdio",
     "command": "python3",
-    "args": ["-m", "meridian.mcp", "serve", "--wiki-root", "wiki"],
+    "args": ["-m", "meridian.mcp", "serve"],
     "env": {
-      "PYTHONPATH": "/Users/shawn/Desktop/meridian/src"
+      "PYTHONPATH": "/Users/shawn/Desktop/meridian/src",
+      "MERIDIAN_LIBRARY_ROOT": "/Users/shawn/MeridianPaperWiki"
     }
   }
 }
@@ -66,7 +77,7 @@ The JSON bridge is useful before registering the server:
 
 ```bash
 PYTHONPATH=src python3 -m meridian.mcp capabilities --detail full
-PYTHONPATH=src python3 -m meridian.mcp context --wiki-root wiki --query "KV-cache compression debugging prerequisites"
+PYTHONPATH=src python3 -m meridian.mcp context --query "KV-cache compression debugging prerequisites"
 ```
 
 The server help should also work:

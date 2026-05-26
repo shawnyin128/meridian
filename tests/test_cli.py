@@ -9,6 +9,7 @@ import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
+from unittest.mock import patch
 
 from meridian.cli import main
 from meridian.lab import validate_lab_space
@@ -797,6 +798,63 @@ Evidence takeaways:
             self.assertNotIn("- Model strategy:", paper)
             self.assertNotIn("## Extracted Contribution Sentences", paper)
             self.assertNotIn("Agent task:", paper)
+
+    def test_wiki_workspace_config_sets_active_source_and_wiki_roots(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_home = root / "config"
+            library = root / "paper-library"
+            pdf = root / "uploaded.pdf"
+            pdf.write_bytes(b"%PDF fake")
+
+            with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(config_home)}):
+                exit_code, stdout, stderr = _run_cli_capture(
+                    ["wiki", "init", "--library-root", str(library)]
+                )
+                self.assertEqual(exit_code, 0, stderr)
+                self.assertIn("Initialized Paper Wiki workspace:", stdout)
+                self.assertTrue((library / "meridian-wiki.json").exists())
+                self.assertTrue((library / "sources/papers").is_dir())
+                self.assertTrue((library / "wiki/papers").is_dir())
+                self.assertTrue((config_home / "paper-wiki-workspaces.json").exists())
+
+                exit_code, stdout, stderr = _run_cli_capture(
+                    [
+                        "wiki",
+                        "ingest",
+                        str(pdf),
+                        "--publish-mode",
+                        "auto",
+                        "--no-page-images",
+                    ]
+                )
+
+            self.assertEqual(exit_code, 0, stderr)
+            self.assertIn("Managed source PDF:", stdout)
+            self.assertIn(str(library / "sources" / "papers"), stdout)
+            self.assertIn("Canonical wiki page:", stdout)
+            registry = library / "sources" / "sources.jsonl"
+            self.assertTrue(registry.exists())
+            records = [json.loads(line) for line in registry.read_text(encoding="utf-8").splitlines() if line.strip()]
+            self.assertEqual(len(records), 1)
+            self.assertTrue(
+                str(Path(records[0]["managed_path"]).resolve()).startswith(str((library / "sources" / "papers").resolve()))
+            )
+            out = library / "wiki/.drafts/ingests/uploaded"
+            run = json.loads((out / "run.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                Path(run["source_management"]["source_root"]).resolve(),
+                (library / "sources").resolve(),
+            )
+            self.assertTrue(Path(run["canonical_artifacts"]["paper_page"]).is_file())
+
+            with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(config_home)}):
+                exit_code, stdout, stderr = _run_cli_capture(
+                    ["wiki", "source-audit", "--wiki-root", str(library / "wiki")]
+                )
+            self.assertEqual(exit_code, 0, stderr)
+            self.assertIn(str((library / "sources" / "index.md").resolve()), stdout)
+            self.assertTrue((library / "sources" / "index.md").exists())
 
     def test_wiki_ingest_can_skip_page_images_for_batch_runs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

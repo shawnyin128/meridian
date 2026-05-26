@@ -1,14 +1,18 @@
 # Wiki Product Dataflow and Artifact Boundaries
 
-This document defines the product boundary for Meridian Paper Wiki artifacts. The daily user-facing wiki is the canonical Obsidian vault under `wiki/`; ingest, validation, and debug files exist to make that wiki auditable, but they are not the product reading surface.
+This document defines the product boundary for Meridian Paper Wiki artifacts. In
+the product path, a user-level library root contains both the managed source
+store and the canonical Obsidian vault. Legacy project-local usage may still use
+`wiki/` directly. Ingest, validation, and debug files exist to make that wiki
+auditable, but they are not the product reading surface.
 
 ## Product Dataflow
 
 ```text
 input PDF
-  -> managed source PDF in wiki/raw/sources/papers/
-  -> ingest run artifacts in wiki/.drafts/ingests/<run>/
-  -> canonical paper page in wiki/papers/<paper>.md
+  -> managed source PDF in <library-root>/sources/papers/
+  -> ingest run artifacts in <library-root>/wiki/.drafts/ingests/<run>/
+  -> canonical paper page in <library-root>/wiki/papers/<paper>.md
   -> catalog/index/log updates
   -> retrieval context packets from canonical corpus
   -> optional write-back proposal
@@ -26,6 +30,9 @@ User-facing for provenance, immutable for content:
 - `wiki/raw/sources/papers/*.pdf`: managed source PDFs.
 - `wiki/raw/sources/sources.jsonl`: source registry with original path, managed path, `source_id`, SHA, title, and timestamps.
 - `wiki/raw/sources/index.md`: Obsidian-readable source audit index.
+
+For configured workspaces, the same source artifacts live under
+`<library-root>/sources/` and `wiki/` is `<library-root>/wiki/`.
 
 The managed source path is the stable file reference for wiki pages. Arbitrary desktop/download paths are preserved as registry metadata, not used as retrieval targets.
 

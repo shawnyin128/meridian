@@ -15,6 +15,7 @@ from meridian.wiki.commands import (
     publish_proposal_wiki,
     retrieve_wiki,
 )
+from meridian.wiki.workspace import resolve_workspace
 from meridian.wiki.corpus import (
     build_knowledge_catalogs,
     build_paper_catalog,
@@ -86,7 +87,7 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
         "entry_model": {
             "entries": ["Prompt/Skill", "MCP"],
             "workflows": ["Update Wiki", "Use Wiki"],
-            "source_of_truth": "Markdown vault under wiki/",
+            "source_of_truth": "Configured Markdown vault under the active Paper Wiki workspace.",
         },
         "tools": tools,
     }
@@ -255,6 +256,7 @@ def update(
     if source_path:
         source = Path(source_path)
         slug = _slug(source.stem)
+        workspace = resolve_workspace(wiki_root=wiki_root)
         return {
             "schema_version": TOOL_SCHEMA_VERSION,
             "tool": "meridian.update",
@@ -262,6 +264,7 @@ def update(
             "update_type": "source",
             "status": "ready_for_ingest_flow",
             "source_path": str(source),
+            "managed_source_root": str(workspace.source_root) if workspace is not None else str(wiki_root / "raw" / "sources"),
             "suggested_out_dir": str(wiki_root / ".drafts" / "ingests" / slug),
             "next_action": "run_ingest_flow",
             "example_execution_primitive": (
@@ -365,7 +368,7 @@ def audit(*, wiki_root: Path, scope: str = "summary") -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Meridian MCP adapter JSON bridge")
     parser.add_argument("tool", choices=["capabilities", "context", "read", "trace", "update", "propose", "apply", "audit"])
-    parser.add_argument("--wiki-root", default="wiki")
+    parser.add_argument("--wiki-root", default=None)
     parser.add_argument("--query")
     parser.add_argument("--page")
     parser.add_argument("--detail", default="summary")
@@ -382,7 +385,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--scope", default="summary")
     args = parser.parse_args(argv)
 
-    wiki_root = Path(args.wiki_root)
+    wiki_root = Path(args.wiki_root) if args.wiki_root else _default_wiki_root()
     if args.tool == "capabilities":
         payload = capabilities(detail=args.detail)
     elif args.tool == "context":
@@ -558,3 +561,10 @@ def _slug(value: str) -> str:
 
 def _norm(value: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9./_-]+", " ", value.lower())).strip()
+
+
+def _default_wiki_root() -> Path:
+    workspace = resolve_workspace()
+    if workspace is not None:
+        return workspace.wiki_root
+    return Path("wiki")

@@ -61,6 +61,7 @@ Minimal product docs:
 - `docs/wiki-mcp-server-setup.md`
 - `docs/wiki-product-dataflow-and-artifact-boundaries.md`
 - `docs/wiki-product-entry-contract.md`
+- `docs/wiki-workspace-config.md`
 - `docs/examples/research-dev-idea-card-example.md`
 - `docs/examples/research-dev-context-packet-example.md`
 
@@ -106,6 +107,13 @@ MCP users should register:
 
 ```bash
 python3 -m meridian.mcp serve --wiki-root /path/to/wiki
+```
+
+For product installs, first initialize a user workspace:
+
+```bash
+meridian wiki init --library-root /path/to/paper-wiki-library
+python3 -m meridian.mcp serve
 ```
 
 ## Packaging Smoke

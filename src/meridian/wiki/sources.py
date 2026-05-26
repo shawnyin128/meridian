@@ -43,12 +43,17 @@ def infer_wiki_root_from_out_dir(out_dir: Path) -> Path | None:
     return Path(*parts[:index])
 
 
-def register_pdf_source(pdf_path: Path, wiki_root: Path, title: str | None = None) -> SourceRecord:
+def register_pdf_source(
+    pdf_path: Path,
+    wiki_root: Path,
+    title: str | None = None,
+    source_root: Path | None = None,
+) -> SourceRecord:
     if not pdf_path.exists():
         raise FileNotFoundError(f"PDF does not exist: {pdf_path}")
     digest = _sha256(pdf_path)
     source_id = f"paper-pdf-{digest[:12]}"
-    sources_root = wiki_root / "raw" / "sources"
+    sources_root = source_root or wiki_root / "raw" / "sources"
     papers_dir = sources_root / "papers"
     papers_dir.mkdir(parents=True, exist_ok=True)
     managed_path = papers_dir / f"{source_id}-{_slugify(title or pdf_path.stem)}.pdf"

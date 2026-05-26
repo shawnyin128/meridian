@@ -74,8 +74,9 @@ def init_wiki_vault(*, wiki_root: Path, overwrite_templates: bool = False) -> Wi
     return WikiInitResult(wiki_root=wiki_root, created_dirs=created_dirs, created_files=created_files)
 
 
-def audit_sources(*, wiki_root: Path, out_path: Path | None = None) -> SourceAuditResult:
-    registry = wiki_root / "raw/sources/sources.jsonl"
+def audit_sources(*, wiki_root: Path, out_path: Path | None = None, source_root: Path | None = None) -> SourceAuditResult:
+    sources_root = source_root or _source_root_for_wiki(wiki_root)
+    registry = sources_root / "sources.jsonl"
     records = _read_jsonl(registry)
     audits = []
     sha_to_ids: dict[str, list[str]] = {}
@@ -117,6 +118,7 @@ def audit_sources(*, wiki_root: Path, out_path: Path | None = None) -> SourceAud
     payload = {
         "schema_version": "meridian.source_audit.v0",
         "wiki_root": str(wiki_root),
+        "source_root": str(sources_root),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "registry": str(registry),
         "total": len(audits),
@@ -129,7 +131,8 @@ def audit_sources(*, wiki_root: Path, out_path: Path | None = None) -> SourceAud
     audit_path.parent.mkdir(parents=True, exist_ok=True)
     audit_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    source_index_path = wiki_root / "raw/sources/index.md"
+    source_index_path = sources_root / "index.md"
+    source_index_path.parent.mkdir(parents=True, exist_ok=True)
     source_index_path.write_text(_render_source_index(payload), encoding="utf-8")
     return SourceAuditResult(
         audit_path=audit_path,
@@ -180,7 +183,7 @@ def rebuild_wiki_index(*, wiki_root: Path) -> Path:
     return index_path
 
 
-def lint_wiki(*, wiki_root: Path, out_path: Path | None = None) -> WikiLintResult:
+def lint_wiki(*, wiki_root: Path, out_path: Path | None = None, source_root: Path | None = None) -> WikiLintResult:
     findings: list[dict[str, Any]] = []
     for relative in WIKI_DIRS:
         if not (wiki_root / relative).exists():
@@ -217,9 +220,10 @@ def lint_wiki(*, wiki_root: Path, out_path: Path | None = None) -> WikiLintResul
                 }
             )
 
-    registry = wiki_root / "raw/sources/sources.jsonl"
+    sources_root = source_root or _source_root_for_wiki(wiki_root)
+    registry = sources_root / "sources.jsonl"
     if not registry.exists():
-        findings.append({"severity": "warn", "bucket": "missing_source_registry", "path": str(registry.relative_to(wiki_root))})
+        findings.append({"severity": "warn", "bucket": "missing_source_registry", "path": _display_path(registry, wiki_root=wiki_root)})
 
     status = "pass"
     if any(item["severity"] == "error" for item in findings):
@@ -229,6 +233,7 @@ def lint_wiki(*, wiki_root: Path, out_path: Path | None = None) -> WikiLintResul
     payload = {
         "schema_version": "meridian.wiki_lint.v0",
         "wiki_root": str(wiki_root),
+        "source_root": str(sources_root),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "status": status,
         "findings": findings,
@@ -417,6 +422,25 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             hasher.update(chunk)
     return hasher.hexdigest()
+
+
+def _source_root_for_wiki(wiki_root: Path) -> Path:
+    try:
+        from meridian.wiki.workspace import resolve_workspace
+
+        workspace = resolve_workspace(wiki_root=wiki_root)
+        if workspace is not None:
+            return workspace.source_root
+    except Exception:
+        pass
+    return wiki_root / "raw" / "sources"
+
+
+def _display_path(path: Path, *, wiki_root: Path) -> str:
+    try:
+        return path.relative_to(wiki_root).as_posix()
+    except ValueError:
+        return str(path)
 
 
 def slugify(text: str) -> str:

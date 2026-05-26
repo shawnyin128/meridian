@@ -81,6 +81,7 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `.codex/skills/lab/SKILL.md`: product-facing Lab skill for wiki-aware experiment design, paper-method implementation, and broken-run sanity/debug workflows.
 - `pyproject.toml`: Python package metadata and `meridian` console script entrypoint.
 - `src/meridian/`: Paper Wiki prototype CLI implementation for `meridian wiki ...`.
+- `src/meridian/wiki/workspace.py`: user-level Paper Wiki workspace config and source/wiki root resolution.
 - `src/meridian/lab/`: lightweight Lab release/debug helpers for validating `.meridian/` research-space state without adding a product CLI or MCP surface.
 - `src/meridian/mcp/`: scenario-facing MCP adapter and stdio server exposing `context`, `read`, `trace`, `update`, `propose`, `apply`, and `audit`.
 - `src/meridian/templates/research-dev/`: Markdown templates for Research Dev `.meridian/` research-space state, context packets, experiment evidence, and finding proposals.
@@ -95,6 +96,7 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `docs/final-llm-wiki-product-spec.md`: final Paper Wiki product specification for compiled knowledge, synthesis growth, retrieval policy, quality states, and artifact boundaries.
 - `docs/wiki-product-entry-contract.md`: product entry contract defining Prompt/Skill and MCP entries across Update Wiki and Use Wiki.
 - `docs/wiki-mcp-entry-design.md`: MCP entry tool surface and adapter design for Paper Wiki.
+- `docs/wiki-workspace-config.md`: user-level Paper Wiki workspace layout, active workspace config, and managed source root behavior.
 - `docs/wiki-entry-demo.md`: small release demo for Prompt/Skill and MCP entry workflows.
 - `docs/final-llm-wiki-product-quality-brief.md`: latest deterministic final-product readiness brief and residual bottlenecks.
 - `docs/wiki-layer-test-strategy.md`: layered source/canonical/retrieval test strategy, retrieval scenario metrics, judge rubric usage, calibration, and release gates.

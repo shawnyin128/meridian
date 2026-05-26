@@ -21,6 +21,7 @@ from meridian.wiki.commands import (
     final_status_migrate_wiki,
     ingest_pdf,
     init_wiki,
+    init_wiki_workspace,
     knowledge_audit_wiki,
     knowledge_repair_lint_wiki,
     insight_lint_wiki,
@@ -62,6 +63,8 @@ from meridian.wiki.commands import (
     system_optimize_compare_wiki,
     system_optimize_eval_wiki,
 )
+from meridian.wiki.vault import slugify
+from meridian.wiki.workspace import workspace_for_cli
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -79,8 +82,8 @@ def build_parser() -> argparse.ArgumentParser:
     ingest.add_argument(
         "--out",
         type=Path,
-        required=True,
-        help="Draft output directory, e.g. wiki/.drafts/ingests/<paper-slug>/.",
+        default=None,
+        help="Draft output directory, e.g. wiki/.drafts/ingests/<paper-slug>/. Defaults to the active workspace.",
     )
     ingest.add_argument(
         "--title",
@@ -97,6 +100,18 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="Optional wiki root for canonical draft publish, e.g. wiki/.",
+    )
+    ingest.add_argument(
+        "--library-root",
+        type=Path,
+        default=None,
+        help="Optional Paper Wiki library root. Defaults to the active user workspace.",
+    )
+    ingest.add_argument(
+        "--source-root",
+        type=Path,
+        default=None,
+        help="Optional managed source root. Defaults to the workspace source root.",
     )
     ingest.add_argument(
         "--publish-mode",
@@ -123,7 +138,29 @@ def build_parser() -> argparse.ArgumentParser:
         "init",
         help="Initialize an Obsidian-compatible Paper Wiki vault.",
     )
-    init.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    init.add_argument("--wiki-root", type=Path, default=None, help="Canonical wiki root.")
+    init.add_argument(
+        "--library-root",
+        type=Path,
+        default=None,
+        help="Initialize a user-level Paper Wiki library root containing sources/ and wiki/.",
+    )
+    init.add_argument(
+        "--source-root",
+        type=Path,
+        default=None,
+        help="Managed source root for --library-root. Defaults to <library-root>/sources.",
+    )
+    init.add_argument(
+        "--no-set-default",
+        action="store_true",
+        help="Do not make this workspace the active user-level Paper Wiki workspace.",
+    )
+    init.add_argument(
+        "--overwrite-workspace-config",
+        action="store_true",
+        help="Rewrite meridian-wiki.json when the workspace paths are intentionally changing.",
+    )
     init.add_argument(
         "--overwrite-templates",
         action="store_true",
@@ -135,8 +172,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run the canonical Paper Wiki ingest flow through judge packet preparation.",
     )
     flow.add_argument("pdf", type=Path, help="Path to the source paper PDF.")
-    flow.add_argument("--out", type=Path, required=True, help="Flow output directory.")
-    flow.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    flow.add_argument("--out", type=Path, default=None, help="Flow output directory. Defaults to the active workspace.")
+    flow.add_argument("--wiki-root", type=Path, default=None, help="Canonical wiki root.")
+    flow.add_argument(
+        "--library-root",
+        type=Path,
+        default=None,
+        help="Optional Paper Wiki library root. Defaults to the active user workspace.",
+    )
+    flow.add_argument(
+        "--source-root",
+        type=Path,
+        default=None,
+        help="Optional managed source root. Defaults to the workspace source root.",
+    )
     flow.add_argument("--rubric", type=Path, required=True, help="LLM-as-Judge rubric markdown.")
     flow.add_argument("--title", default=None, help="Optional paper title override.")
     flow.add_argument("--overwrite", action="store_true", help="Overwrite existing flow output.")
@@ -927,6 +976,26 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.product == "wiki" and args.command == "init":
+            if args.library_root is not None:
+                result = init_wiki_workspace(
+                    library_root=args.library_root,
+                    wiki_root=args.wiki_root,
+                    source_root=args.source_root,
+                    set_default=not args.no_set_default,
+                    overwrite=args.overwrite_workspace_config,
+                    overwrite_templates=args.overwrite_templates,
+                )
+                print(f"Initialized Paper Wiki workspace: {result.workspace.library_root}")
+                print(f"Managed source root: {result.workspace.source_root}")
+                print(f"Canonical wiki root: {result.workspace.wiki_root}")
+                print(f"Workspace config: {result.workspace.config_path}")
+                if result.user_config_path:
+                    print(f"User config: {result.user_config_path}")
+                print(f"Created directories: {len(result.created_dirs)}")
+                print(f"Created files: {len(result.created_files)}")
+                return 0
+            if args.wiki_root is None:
+                parser.error("wiki init requires --library-root or --wiki-root")
             result = init_wiki(wiki_root=args.wiki_root, overwrite_templates=args.overwrite_templates)
             print(f"Initialized wiki vault: {result.wiki_root}")
             print(f"Created directories: {len(result.created_dirs)}")
@@ -934,12 +1003,19 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.product == "wiki" and args.command == "ingest":
+            workspace = None
+            if args.library_root is not None or args.wiki_root is not None or args.out is None:
+                workspace = workspace_for_cli(library_root=args.library_root, wiki_root=args.wiki_root)
+            wiki_root = workspace.wiki_root if workspace is not None else None
+            source_root = args.source_root or (workspace.source_root if workspace is not None else None)
+            out_dir = args.out or _default_ingest_out_dir(wiki_root=wiki_root, pdf_path=args.pdf, title=args.title)
             result = ingest_pdf(
                 pdf_path=args.pdf,
-                out_dir=args.out,
+                out_dir=out_dir,
                 title_override=args.title,
                 overwrite=args.overwrite,
-                wiki_root=args.wiki_root,
+                wiki_root=wiki_root,
+                source_root=source_root,
                 publish_mode=args.publish_mode,
                 render_page_images=not args.no_page_images,
             )
@@ -947,10 +1023,13 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.product == "wiki" and args.command == "flow":
+            workspace = workspace_for_cli(library_root=args.library_root, wiki_root=args.wiki_root)
+            out_dir = args.out or _default_ingest_out_dir(wiki_root=workspace.wiki_root, pdf_path=args.pdf, title=args.title)
             result = run_flow(
                 pdf_path=args.pdf,
-                out_dir=args.out,
-                wiki_root=args.wiki_root,
+                out_dir=out_dir,
+                wiki_root=workspace.wiki_root,
+                source_root=args.source_root or workspace.source_root,
                 rubric_path=args.rubric,
                 title_override=args.title,
                 overwrite=args.overwrite,
@@ -1612,6 +1691,10 @@ def main(argv: list[str] | None = None) -> int:
 
     parser.error("unknown command")
     return 2
+
+
+def _default_ingest_out_dir(*, wiki_root: Path, pdf_path: Path, title: str | None = None) -> Path:
+    return wiki_root / ".drafts" / "ingests" / slugify(title or pdf_path.stem)
 
 
 def _print_ingest_summary(run_path: Path, *, verbose_artifacts: bool) -> None:

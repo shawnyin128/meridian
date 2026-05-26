@@ -47,8 +47,11 @@ The Prompt/Skill entry starts at:
 The MCP entry can be started as a stdio server for MCP clients:
 
 ```bash
-PYTHONPATH=src python3 -m meridian.mcp serve --wiki-root wiki
+PYTHONPATH=src python3 -m meridian.mcp serve
 ```
+
+The server uses the active user Paper Wiki workspace by default. Pass
+`--wiki-root` only when you intentionally want a specific vault.
 
 The JSON bridge remains available for smoke tests and local debugging:
 
@@ -101,7 +104,31 @@ documented in `docs/research-dev-state-model.md`,
 
 ## Execution Primitives
 
-Initialize a wiki vault:
+Initialize a user-level Paper Wiki workspace:
+
+```bash
+meridian wiki init --library-root ~/MeridianPaperWiki
+```
+
+This writes:
+
+- `~/MeridianPaperWiki/meridian-wiki.json`: workspace config.
+- `~/MeridianPaperWiki/sources/`: managed immutable source store.
+- `~/MeridianPaperWiki/wiki/`: canonical Markdown wiki vault.
+- `~/.meridian/paper-wiki-workspaces.json`: user-level active workspace pointer.
+
+After this, uploaded or arbitrary local PDFs can be ingested without repeating
+the wiki path:
+
+```bash
+meridian wiki ingest /path/to/uploaded-paper.pdf --publish-mode auto
+```
+
+Meridian copies the PDF into the configured managed source folder, preserves the
+original input path in the registry, writes draft artifacts under the configured
+wiki, and publishes canonical pages there when requested.
+
+Legacy vault-only initialization remains available:
 
 ```bash
 meridian wiki init --wiki-root wiki
@@ -109,7 +136,9 @@ meridian wiki init --wiki-root wiki
 
 This creates an Obsidian-compatible Markdown vault scaffold: `papers/`,
 `claims/`, `methods/`, `evidence/`, `topics/`, `concepts/`, `syntheses/`, immutable
-`raw/sources/`, generated `.index/`, draft areas, and reusable templates.
+`raw/sources/`, generated `.index/`, draft areas, and reusable templates. New
+product usage should prefer `--library-root` so sources and wiki outputs stay
+under one configured library directory.
 
 A clean vault template for release bundles is tracked at:
 
@@ -130,11 +159,12 @@ meridian wiki ingest /path/to/paper.pdf --out wiki/.drafts/ingests/<paper-slug>/
 The default command creates draft-only artifacts and does not publish canonical
 wiki pages, update indexes, or run the later Research Dev Agent.
 
-When the output path is inside `wiki/.drafts/...`, Meridian treats `wiki/` as
-the vault root and registers the PDF under `wiki/raw/sources/papers/` with a
-hash-based source ID. The original input path is preserved in
-`wiki/raw/sources/sources.jsonl`, but future wiki pages point at the managed raw
-source instead of indexing arbitrary desktop/download paths.
+With a configured workspace, Meridian registers the PDF under
+`<library-root>/sources/papers/` with a hash-based source ID. The original input
+path is preserved in `<library-root>/sources/sources.jsonl`, but future wiki
+pages point at the managed raw source instead of indexing arbitrary
+desktop/download paths. Without a workspace, legacy `--out wiki/.drafts/...`
+ingest still infers `wiki/` and uses `wiki/raw/sources/`.
 
 To exercise the confidence-gated wiki path, provide a wiki root and publish
 mode:
@@ -267,10 +297,10 @@ Audit raw source management:
 meridian wiki source-audit --wiki-root wiki
 ```
 
-This checks managed PDFs in `wiki/raw/sources/papers/` against
-`wiki/raw/sources/sources.jsonl` and writes both
-`wiki/.index/source-audit.json` and an Obsidian-readable
-`wiki/raw/sources/index.md`.
+This checks managed PDFs in the configured source root against
+`sources.jsonl` and writes both `wiki/.index/source-audit.json` and an
+Obsidian-readable source index beside the registry. Legacy vault-only setups
+continue to use `wiki/raw/sources/`.
 
 Rebuild or health-check the canonical wiki:
 

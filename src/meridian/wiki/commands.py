@@ -117,6 +117,7 @@ from meridian.wiki.vault import (
     lint_wiki,
     rebuild_wiki_index,
 )
+from meridian.wiki.workspace import WorkspaceInitResult, init_workspace
 
 
 @dataclass(frozen=True)
@@ -138,6 +139,7 @@ def ingest_pdf(
     title_override: str | None = None,
     overwrite: bool = False,
     wiki_root: Path | None = None,
+    source_root: Path | None = None,
     publish_mode: str = "never",
     render_page_images: bool = True,
 ) -> CommandIngestResult:
@@ -147,6 +149,7 @@ def ingest_pdf(
         title_override=title_override,
         overwrite=overwrite,
         wiki_root=wiki_root,
+        source_root=source_root,
         publish_mode=publish_mode,
         render_page_images=render_page_images,
     )
@@ -350,6 +353,7 @@ def run_flow(
     case_path: Path | None = None,
     judge_result_path: Path | None = None,
     render_page_images: bool = True,
+    source_root: Path | None = None,
 ) -> WikiFlowResult:
     return run_wiki_flow(
         pdf_path=pdf_path,
@@ -362,6 +366,7 @@ def run_flow(
         case_path=case_path,
         judge_result_path=judge_result_path,
         render_page_images=render_page_images,
+        source_root=source_root,
     )
 
 
@@ -840,16 +845,35 @@ def init_wiki(wiki_root: Path, overwrite_templates: bool = False) -> WikiInitRes
     return init_wiki_vault(wiki_root=wiki_root, overwrite_templates=overwrite_templates)
 
 
-def source_audit_wiki(wiki_root: Path, out_path: Path | None = None) -> SourceAuditResult:
-    return audit_sources(wiki_root=wiki_root, out_path=out_path)
+def init_wiki_workspace(
+    *,
+    library_root: Path,
+    wiki_root: Path | None = None,
+    source_root: Path | None = None,
+    set_default: bool = True,
+    overwrite: bool = False,
+    overwrite_templates: bool = False,
+) -> WorkspaceInitResult:
+    return init_workspace(
+        library_root=library_root,
+        wiki_root=wiki_root,
+        source_root=source_root,
+        set_default=set_default,
+        overwrite=overwrite,
+        overwrite_templates=overwrite_templates,
+    )
+
+
+def source_audit_wiki(wiki_root: Path, out_path: Path | None = None, source_root: Path | None = None) -> SourceAuditResult:
+    return audit_sources(wiki_root=wiki_root, out_path=out_path, source_root=source_root)
 
 
 def rebuild_index_wiki(wiki_root: Path) -> Path:
     return rebuild_wiki_index(wiki_root=wiki_root)
 
 
-def lint_wiki_command(wiki_root: Path, out_path: Path | None = None) -> WikiLintResult:
-    return lint_wiki(wiki_root=wiki_root, out_path=out_path)
+def lint_wiki_command(wiki_root: Path, out_path: Path | None = None, source_root: Path | None = None) -> WikiLintResult:
+    return lint_wiki(wiki_root=wiki_root, out_path=out_path, source_root=source_root)
 
 
 def publish_run(

@@ -39,6 +39,7 @@ def run_wiki_flow(
     case_path: Path | None = None,
     judge_result_path: Path | None = None,
     render_page_images: bool = True,
+    source_root: Path | None = None,
 ) -> WikiFlowResult:
     ingest_result: IngestResult = run_ingest(
         pdf_path=pdf_path,
@@ -46,6 +47,7 @@ def run_wiki_flow(
         title_override=title_override,
         overwrite=overwrite,
         wiki_root=wiki_root,
+        source_root=source_root,
         publish_mode=publish_mode,
         render_page_images=render_page_images,
     )
@@ -102,6 +104,7 @@ def run_wiki_flow(
         "status": status,
         "source_pdf": str(pdf_path),
         "wiki_root": str(wiki_root),
+        "source_root": str(source_root) if source_root is not None else None,
         "rubric": str(rubric_path),
         "run_manifest": str(ingest_result.run_path),
         "judge_packet": str(judge_packet_path),
