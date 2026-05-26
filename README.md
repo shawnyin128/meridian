@@ -29,35 +29,12 @@ Then install the matching agent plugin.
 
 ### Codex
 
-The local Codex marketplace is:
-
-```text
-/path/to/meridian/plugins/codex
-```
-
-Install:
-
 ```bash
 codex plugin marketplace add /path/to/meridian/plugins/codex
 codex plugin add meridian@meridian
 ```
 
-If `codex` is not on your macOS `PATH`:
-
-```bash
-/Applications/Codex.app/Contents/Resources/codex plugin marketplace add /path/to/meridian/plugins/codex
-/Applications/Codex.app/Contents/Resources/codex plugin add meridian@meridian
-```
-
 ### Claude Code
-
-The local Claude Code marketplace is:
-
-```text
-/path/to/meridian/plugins/claude-code
-```
-
-Install:
 
 ```bash
 claude plugin marketplace add /path/to/meridian/plugins/claude-code
