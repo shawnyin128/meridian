@@ -24,6 +24,14 @@ cd meridian
 python3 -m pip install -e .
 ```
 
+If macOS CommandLineTools Python fails with a system `site-packages`
+permission error, install through the user site:
+
+```bash
+python3 -m pip install --user --upgrade pip setuptools wheel
+SETUPTOOLS_USE_DISTUTILS=stdlib python3 -m pip install --user -e .
+```
+
 This installs:
 
 - `meridian`: execution primitives
