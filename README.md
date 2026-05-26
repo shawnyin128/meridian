@@ -3,32 +3,41 @@
 Meridian is a Markdown-first Paper Wiki for papers, reading notes, retrieval
 context, synthesis, and research memory.
 
-## Install
+## Install Core
 
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -e .
+python3 -m pip install -e .
 ```
 
 This installs:
 
-- `meridian`: CLI execution primitives
-- `meridian-mcp`: MCP stdio server entry
+- `meridian`: execution primitives
+- `meridian-mcp`: MCP stdio server
+
+## Product Packages
+
+Meridian is meant to be used as an agent plugin. The repo ships two package
+shapes:
+
+```text
+plugins/codex/meridian-paper-wiki/
+plugins/claude-code/meridian-paper-wiki/
+```
+
+Each plugin contains the product skills and MCP config. The Python package above
+is the shared execution core those plugins call.
 
 ## Product Entries
-
-Use Meridian through two product entries:
 
 | Entry | Update Wiki | Use Wiki |
 |---|---|---|
 | Prompt/Skill | ingest PDFs, add insights, write back synthesis, refine pages | retrieve context, read pages, trace evidence, answer with provenance |
 | MCP | `meridian.update`, `meridian.propose`, `meridian.apply`, `meridian.audit` | `meridian.context`, `meridian.read`, `meridian.trace` |
 
-Prompt/Skill entry:
+Prompt/Skill entry inside each plugin:
 
 ```text
-.codex/skills/meridian-paper-wiki/SKILL.md
+skills/meridian-paper-wiki/SKILL.md
 ```
 
 MCP entry:
@@ -83,13 +92,14 @@ for experiment design, method implementation, debugging, evidence recording, and
 wiki write-back.
 
 ```text
-.codex/skills/lab/SKILL.md
+skills/lab/SKILL.md
 ```
 
 ## More Detail
 
 - Workspace config: `docs/wiki-workspace-config.md`
 - MCP setup: `docs/wiki-mcp-server-setup.md`
+- Plugin distribution: `docs/plugin-distribution.md`
 - Product entry contract: `docs/wiki-product-entry-contract.md`
 - Release packaging: `docs/release-packaging.md`
 - Lab state model: `docs/research-dev-state-model.md`

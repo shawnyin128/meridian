@@ -5,11 +5,13 @@ include setup.cfg
 include setup.py
 graft src
 graft .codex/skills
+graft plugins
 graft eval/cases
 graft eval/rubrics
 include docs/daily-use-walkthrough.md
 include docs/final-llm-wiki-product-spec.md
 include docs/paper-wiki-release-readiness-checklist.md
+include docs/plugin-distribution.md
 include docs/release-packaging.md
 include docs/research-coding-framework.md
 include docs/research-dev-mvp-plan.md

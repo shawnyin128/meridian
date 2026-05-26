@@ -5,16 +5,32 @@ what must stay local.
 
 ## Release Shape
 
-Meridian has two release surfaces:
+Meridian has two user-facing release surfaces:
 
-1. Python package: installable CLI and MCP execution core.
-2. Source/repo bundle: prompt skills, docs, representative evals, and a clean
-   vault template.
+1. Codex plugin package: `plugins/codex/meridian-paper-wiki/`.
+2. Claude Code plugin package: `plugins/claude-code/meridian-paper-wiki/`.
+
+The Python package is the shared execution core for CLI primitives and the MCP
+stdio server. It is not the product packaging shape by itself.
 
 The user's live `wiki/` is not a distributable product artifact. It is private
 state.
 
 ## Included
+
+Plugin package roots:
+
+- `plugins/codex/meridian-paper-wiki/.codex-plugin/plugin.json`
+- `plugins/codex/meridian-paper-wiki/.mcp.json`
+- `plugins/codex/meridian-paper-wiki/skills/`
+- `plugins/claude-code/meridian-paper-wiki/.claude-plugin/plugin.json`
+- `plugins/claude-code/meridian-paper-wiki/.mcp.json`
+- `plugins/claude-code/meridian-paper-wiki/skills/`
+
+Marketplace manifests:
+
+- `plugins/codex/marketplace.json`
+- `plugins/claude-code/marketplace.json`
 
 Python execution core:
 
@@ -23,13 +39,12 @@ Python execution core:
 - `README.md`
 - `MANIFEST.in`
 
-Product prompt entry:
+Repository development copy of the product prompt entry:
 
 - `.codex/skills/meridian-paper-wiki/SKILL.md`
 
-Internal support skills:
+Repository development copies of support skills:
 
-- `.codex/skills/llm-wiki/SKILL.md`
 - `.codex/skills/paper-ingest/SKILL.md`
 - `.codex/skills/wiki-retrieve/SKILL.md`
 - `.codex/skills/wiki-personalize/SKILL.md`
@@ -90,17 +105,23 @@ eval run artifacts.
 
 ## Install And Entry Points
 
-Package install should expose:
+Install the execution core with an existing Python environment:
+
+```bash
+python3 -m pip install -e .
+```
+
+That exposes:
 
 ```bash
 meridian
 meridian-mcp
 ```
 
-Prompt/Skill users should start with:
+Agent users should install the matching plugin package, then start from:
 
 ```text
-.codex/skills/meridian-paper-wiki/SKILL.md
+skills/meridian-paper-wiki/SKILL.md
 ```
 
 MCP users should register:
@@ -115,6 +136,8 @@ For product installs, first initialize a user workspace:
 meridian wiki init --library-root /path/to/paper-wiki-library
 python3 -m meridian.mcp serve
 ```
+
+See `docs/plugin-distribution.md` for Codex and Claude Code registration notes.
 
 ## Packaging Smoke
 
@@ -131,6 +154,9 @@ PYTHONPATH=src python3 -m meridian.mcp capabilities --detail full
 Then inspect the file list produced by the release build or source archive:
 
 - release includes `src/meridian/`
+- release includes `plugins/codex/meridian-paper-wiki/.codex-plugin/plugin.json`
+- release includes `plugins/claude-code/meridian-paper-wiki/.claude-plugin/plugin.json`
+- release includes plugin `skills/meridian-paper-wiki/SKILL.md`
 - release includes `.codex/skills/meridian-paper-wiki/SKILL.md`
 - release includes `src/meridian/templates/wiki-vault/Map of Content.md`
 - release includes `.codex/skills/lab/SKILL.md`
@@ -146,6 +172,5 @@ Then inspect the file list produced by the release build or source archive:
 
 ## Future Packaging Work
 
-The current release boundary is source-bundle friendly. If Meridian is published
-to PyPI, the wheel should remain the execution core, while prompt skills and
-vault templates may be shipped as package data or as a companion source bundle.
+If Meridian is published to PyPI, the wheel should remain the execution core.
+Codex and Claude Code plugin packages remain the product entrypoints.

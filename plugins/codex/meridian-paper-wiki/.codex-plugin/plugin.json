@@ -1,0 +1,37 @@
+{
+  "name": "meridian-paper-wiki",
+  "version": "0.1.0",
+  "description": "Markdown-first Paper Wiki and research-coding copilot for Codex.",
+  "author": {
+    "name": "Meridian",
+    "url": "https://github.com/shawnyin128/meridian"
+  },
+  "homepage": "https://github.com/shawnyin128/meridian",
+  "repository": "https://github.com/shawnyin128/meridian",
+  "license": "MIT",
+  "keywords": [
+    "paper-wiki",
+    "research",
+    "mcp",
+    "obsidian"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Meridian Paper Wiki",
+    "shortDescription": "Use and update a Markdown-first research paper wiki.",
+    "longDescription": "Meridian provides Prompt/Skill and MCP entries for paper ingestion, retrieval, synthesis, user insights, and wiki-aware research development.",
+    "developerName": "Meridian",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Ingest this paper into my Paper Wiki.",
+      "Use my Paper Wiki to answer this research question.",
+      "Use Lab to plan the next experiment."
+    ],
+    "brandColor": "#2563EB"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "meridian",
+  "interface": {
+    "displayName": "Meridian"
+  },
+  "plugins": [
+    {
+      "name": "meridian-paper-wiki",
+      "source": {
+        "source": "local",
+        "path": "./meridian-paper-wiki"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

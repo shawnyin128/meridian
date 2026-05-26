@@ -1,0 +1,15 @@
+{
+  "name": "meridian",
+  "owner": {
+    "name": "Meridian"
+  },
+  "description": "Meridian Paper Wiki and Lab plugin marketplace.",
+  "plugins": [
+    {
+      "name": "meridian-paper-wiki",
+      "description": "Markdown-first Paper Wiki and research-coding copilot.",
+      "source": "./meridian-paper-wiki",
+      "category": "Research"
+    }
+  ]
+}

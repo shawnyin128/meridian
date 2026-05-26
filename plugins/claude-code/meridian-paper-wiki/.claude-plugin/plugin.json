@@ -1,0 +1,18 @@
+{
+  "name": "meridian-paper-wiki",
+  "description": "Markdown-first Paper Wiki and research-coding copilot for Claude Code.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Meridian",
+    "url": "https://github.com/shawnyin128/meridian"
+  },
+  "homepage": "https://github.com/shawnyin128/meridian",
+  "repository": "https://github.com/shawnyin128/meridian",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "paper-wiki",
+    "research",
+    "mcp"
+  ]
+}

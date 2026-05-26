@@ -2526,6 +2526,7 @@ Compare recency-only retention with attention-based and oracle retention policie
         text = manifest.read_text(encoding="utf-8")
         self.assertIn("graft src", text)
         self.assertIn("graft .codex/skills", text)
+        self.assertIn("graft plugins", text)
         self.assertIn("graft eval/cases", text)
         self.assertIn("graft eval/rubrics", text)
         self.assertIn("prune wiki", text)
@@ -2541,6 +2542,30 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertIn('"templates/wiki-vault/**/*.md"', pyproject)
         self.assertIn('"templates/wiki-vault/**/*.gitkeep"', pyproject)
         self.assertIn('"templates/wiki-vault/**/*.jsonl"', pyproject)
+
+    def test_plugin_release_assets_exist(self) -> None:
+        readme = Path("README.md").read_text(encoding="utf-8")
+        self.assertNotIn("python3 -m venv", readme)
+        self.assertNotIn(". .venv/bin/activate", readme)
+        self.assertIn("plugins/codex/meridian-paper-wiki/", readme)
+        self.assertIn("plugins/claude-code/meridian-paper-wiki/", readme)
+
+        codex_root = Path("plugins/codex/meridian-paper-wiki")
+        codex_manifest = json.loads((codex_root / ".codex-plugin/plugin.json").read_text(encoding="utf-8"))
+        self.assertEqual(codex_manifest["name"], "meridian-paper-wiki")
+        self.assertEqual(codex_manifest["skills"], "./skills/")
+        self.assertEqual(codex_manifest["mcpServers"], "./.mcp.json")
+
+        claude_root = Path("plugins/claude-code/meridian-paper-wiki")
+        claude_manifest = json.loads((claude_root / ".claude-plugin/plugin.json").read_text(encoding="utf-8"))
+        self.assertEqual(claude_manifest["name"], "meridian-paper-wiki")
+
+        for root in (codex_root, claude_root):
+            self.assertTrue((root / ".mcp.json").exists())
+            self.assertTrue((root / "skills/meridian-paper-wiki/SKILL.md").exists())
+            self.assertTrue((root / "skills/wiki-retrieve/SKILL.md").exists())
+            self.assertTrue((root / "skills/lab/SKILL.md").exists())
+            self.assertFalse((root / "skills/llm-wiki").exists())
 
     def test_research_dev_mvp_assets_exist(self) -> None:
         skill = Path(".codex/skills/lab/SKILL.md").read_text(encoding="utf-8")

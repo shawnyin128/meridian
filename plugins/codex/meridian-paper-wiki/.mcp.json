@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "meridian-paper-wiki": {
+      "command": "python3",
+      "args": [
+        "-m",
+        "meridian.mcp",
+        "serve"
+      ]
+    }
+  }
+}

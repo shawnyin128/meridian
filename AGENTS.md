@@ -79,6 +79,8 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `.codex/skills/wiki-knowledge/SKILL.md`: project skill for knowledge-layer audit, repair proposal, safe publish, and retrieval discipline across method/topic/claim/evidence/synthesis pages.
 - `.codex/skills/wiki-concept/SKILL.md`: project skill for preliminary-knowledge concept-layer audit, publish, retrieval, and evaluation.
 - `.codex/skills/lab/SKILL.md`: product-facing Lab skill for wiki-aware experiment design, paper-method implementation, and broken-run sanity/debug workflows.
+- `plugins/codex/meridian-paper-wiki/`: Codex plugin package for the product-facing Paper Wiki and Lab skills plus MCP config.
+- `plugins/claude-code/meridian-paper-wiki/`: Claude Code plugin package for the product-facing Paper Wiki and Lab skills plus MCP config.
 - `pyproject.toml`: Python package metadata and `meridian` console script entrypoint.
 - `src/meridian/`: Paper Wiki prototype CLI implementation for `meridian wiki ...`.
 - `src/meridian/wiki/workspace.py`: user-level Paper Wiki workspace config and source/wiki root resolution.
@@ -97,6 +99,7 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `docs/wiki-product-entry-contract.md`: product entry contract defining Prompt/Skill and MCP entries across Update Wiki and Use Wiki.
 - `docs/wiki-mcp-entry-design.md`: MCP entry tool surface and adapter design for Paper Wiki.
 - `docs/wiki-workspace-config.md`: user-level Paper Wiki workspace layout, active workspace config, and managed source root behavior.
+- `docs/plugin-distribution.md`: Codex and Claude Code plugin distribution notes.
 - `docs/wiki-entry-demo.md`: small release demo for Prompt/Skill and MCP entry workflows.
 - `docs/final-llm-wiki-product-quality-brief.md`: latest deterministic final-product readiness brief and residual bottlenecks.
 - `docs/wiki-layer-test-strategy.md`: layered source/canonical/retrieval test strategy, retrieval scenario metrics, judge rubric usage, calibration, and release gates.
