@@ -3,16 +3,62 @@
 Meridian is a Markdown-first Paper Wiki for papers, reading notes, retrieval
 context, synthesis, and research memory.
 
-## Install Core
+## Install
+
+Use an existing Python environment and install the execution core:
 
 ```bash
-python3 -m pip install -e .
+python3 -m pip install -e /path/to/meridian
 ```
 
 This installs:
 
 - `meridian`: execution primitives
 - `meridian-mcp`: MCP stdio server
+
+Then install the matching agent plugin package:
+
+```text
+plugins/codex/meridian/
+plugins/claude-code/meridian/
+```
+
+The plugin provides the user-facing `wiki` and `lab` skills plus the MCP config
+that starts `python3 -m meridian.mcp serve` when the client needs tools.
+
+After install, start from the skills:
+
+```text
+wiki
+lab
+```
+
+Ask `wiki` to initialize your Paper Wiki library on first use.
+
+## Update
+
+Meridian has two update layers:
+
+| Layer | What Changes | How To Update |
+|---|---|---|
+| Core | MCP server code, retrieval, ingest, wiki/lab backend behavior | update the repo/package, then keep or rerun `python3 -m pip install -e /path/to/meridian` |
+| Plugin | `wiki` and `lab` skill text, support skills, `.mcp.json`, plugin metadata | reinstall or refresh the Codex/Claude Code plugin package from `plugins/.../meridian/` |
+
+If the core was installed editable with `pip install -e`, changes under
+`src/meridian/` are picked up from the repo. Restart or reload the MCP client so
+it launches the new server code.
+
+If a release changes both Python code and skills, update both layers:
+
+```text
+1. Update Meridian core.
+2. Refresh the Codex or Claude Code plugin.
+3. Restart the client.
+4. Ask `wiki` to run a small retrieval or audit smoke.
+```
+
+MCP startup is managed by the client through the plugin config; you normally do
+not start it manually.
 
 ## Product Packages
 
