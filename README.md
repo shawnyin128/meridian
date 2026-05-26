@@ -34,14 +34,14 @@ Then install the matching agent plugin.
 ### Codex
 
 ```bash
-codex plugin marketplace add /path/to/meridian/plugins/codex
+codex plugin marketplace add shawnyin128/meridian --sparse plugins/codex
 codex plugin add meridian@meridian
 ```
 
 ### Claude Code
 
 ```bash
-claude plugin marketplace add /path/to/meridian/plugins/claude-code
+claude plugin marketplace add shawnyin128/meridian --sparse plugins/claude-code
 claude plugin install meridian@meridian
 ```
 
@@ -53,6 +53,14 @@ Inside Claude Code, reload plugins after install:
 
 The plugin provides `wiki`, `lab`, support skills, and `.mcp.json`. The MCP
 config starts `python3 -m meridian.mcp serve` when the client needs tools.
+
+For local development, replace `shawnyin128/meridian --sparse ...` with the
+matching local marketplace path:
+
+```bash
+codex plugin marketplace add /path/to/meridian/plugins/codex
+claude plugin marketplace add /path/to/meridian/plugins/claude-code
+```
 
 Version metadata is stored in `VERSION`, `pyproject.toml`, and the Codex/Claude
 plugin manifests. Codex and Claude Code can show the plugin version from their
