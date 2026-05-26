@@ -5,10 +5,19 @@ context, synthesis, and research memory.
 
 ## Install
 
-Use an existing Python environment and install the execution core:
+Meridian has one plugin name and two user skills:
+
+```text
+Plugin name: meridian
+Skills: wiki, lab
+MCP server id: meridian-paper-wiki
+```
+
+Use an existing Python environment. From the Meridian repo:
 
 ```bash
-python3 -m pip install -e /path/to/meridian
+cd /path/to/meridian
+python3 -m pip install -e .
 ```
 
 This installs:
@@ -16,15 +25,53 @@ This installs:
 - `meridian`: execution primitives
 - `meridian-mcp`: MCP stdio server
 
-Then install the matching agent plugin package:
+Then install the matching agent plugin.
+
+### Codex
+
+The local Codex marketplace is:
 
 ```text
-plugins/codex/meridian/
-plugins/claude-code/meridian/
+/path/to/meridian/plugins/codex
 ```
 
-The plugin provides the user-facing `wiki` and `lab` skills plus the MCP config
-that starts `python3 -m meridian.mcp serve` when the client needs tools.
+Install:
+
+```bash
+codex plugin marketplace add /path/to/meridian/plugins/codex
+codex plugin add meridian@meridian
+```
+
+If `codex` is not on your macOS `PATH`:
+
+```bash
+/Applications/Codex.app/Contents/Resources/codex plugin marketplace add /path/to/meridian/plugins/codex
+/Applications/Codex.app/Contents/Resources/codex plugin add meridian@meridian
+```
+
+### Claude Code
+
+The local Claude Code marketplace is:
+
+```text
+/path/to/meridian/plugins/claude-code
+```
+
+Install:
+
+```bash
+claude plugin marketplace add /path/to/meridian/plugins/claude-code
+claude plugin install meridian@meridian
+```
+
+Inside Claude Code, reload plugins after install:
+
+```text
+/reload-plugins
+```
+
+The plugin provides `wiki`, `lab`, support skills, and `.mcp.json`. The MCP
+config starts `python3 -m meridian.mcp serve` when the client needs tools.
 
 After install, start from the skills:
 
@@ -50,12 +97,27 @@ it launches the new server code.
 
 If a release changes both Python code and skills, update both layers:
 
-```text
-1. Update Meridian core.
-2. Refresh the Codex or Claude Code plugin.
-3. Restart the client.
-4. Ask `wiki` to run a small retrieval or audit smoke.
+```bash
+cd /path/to/meridian
+git pull
+python3 -m pip install -e .
 ```
+
+Then refresh the plugin from the same marketplace:
+
+```bash
+codex plugin remove meridian
+codex plugin add meridian@meridian
+```
+
+or:
+
+```bash
+claude plugin update meridian
+```
+
+Restart the client or reload plugins, then ask `wiki` to run a small retrieval
+or audit smoke.
 
 MCP startup is managed by the client through the plugin config; you normally do
 not start it manually.
