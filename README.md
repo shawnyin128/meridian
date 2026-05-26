@@ -43,54 +43,37 @@ skills/lab/SKILL.md
 
 MCP entry:
 
-```bash
-PYTHONPATH=src python3 -m meridian.mcp serve
-```
+Configure the packaged MCP server from the plugin when a client wants tool
+access. The `wiki` skill can manage normal use without exposing commands.
 
-## Core Usage
+## Use Meridian
 
-Create a user-level Paper Wiki workspace:
+Use the plugin skills as the product surface:
 
-```bash
-meridian wiki init --library-root ~/MeridianPaperWiki
-```
+- `wiki`: update or use the Paper Wiki.
+- `lab`: use Paper Wiki context for research coding.
 
-This creates:
+Typical `wiki` requests:
 
 ```text
-~/MeridianPaperWiki/
-  sources/
-  wiki/
-  meridian-wiki.json
+Initialize my Paper Wiki under ~/MeridianPaperWiki.
 ```
 
-Ingest a PDF:
-
-```bash
-meridian wiki ingest /path/to/paper.pdf --publish-mode auto
+```text
+Ingest this uploaded PDF into my Paper Wiki and tell me the managed source path
+and canonical wiki page.
 ```
 
-Ingest a Zotero export folder:
-
-```bash
-meridian wiki ingest-folder "/path/to/My Library" --publish-mode auto
+```text
+Ingest this Zotero export folder, My Library, into my Paper Wiki.
 ```
 
-Retrieve wiki context:
-
-```bash
-meridian wiki retrieve "research or coding question" \
-  --wiki-root ~/MeridianPaperWiki/wiki \
-  --strategy v1
+```text
+Use my Paper Wiki to answer this research or coding question with provenance.
 ```
 
-Run health checks:
-
-```bash
-meridian wiki lint --wiki-root ~/MeridianPaperWiki/wiki
-meridian wiki source-audit --wiki-root ~/MeridianPaperWiki/wiki
-meridian wiki catalog --wiki-root ~/MeridianPaperWiki/wiki
-```
+CLI commands remain execution primitives for skills, MCP, tests, and advanced
+debugging; they are not the normal user entry.
 
 ## Lab
 

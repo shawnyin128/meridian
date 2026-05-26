@@ -7,7 +7,8 @@ to a transient upload/download path.
 
 ## Layout
 
-Initialize a workspace with:
+The `wiki` skill should initialize a workspace by asking for the user's library
+root. The execution primitive is:
 
 ```bash
 meridian wiki init --library-root ~/MeridianPaperWiki
@@ -61,7 +62,8 @@ Discovery order:
 
 ## Ingest Behavior
 
-After a workspace exists:
+After a workspace exists, the user can ask the `wiki` skill to ingest an
+uploaded PDF. The execution primitive is:
 
 ```bash
 meridian wiki ingest /path/to/uploaded.pdf --publish-mode auto
@@ -75,7 +77,8 @@ under `<library-root>/wiki/` when the requested publish mode allows it.
 The original PDF is never mutated. Canonical wiki pages should point to the
 managed source path.
 
-For a Zotero export, pass the exported folder, commonly named `My Library`:
+For a Zotero export, the user can ask the `wiki` skill to ingest the exported
+folder, commonly named `My Library`. The execution primitive is:
 
 ```bash
 meridian wiki ingest-folder "/path/to/My Library" --publish-mode auto
@@ -92,7 +95,8 @@ The Prompt/Skill entry should ask for a library root on first use when no active
 workspace exists. After that, Update Wiki workflows can ingest uploaded PDFs
 without repeating paths.
 
-The MCP server also defaults to the active workspace:
+The MCP server also defaults to the active workspace. Server startup is an
+integration/setup concern, not the normal user-facing wiki workflow:
 
 ```bash
 PYTHONPATH=src python3 -m meridian.mcp serve
