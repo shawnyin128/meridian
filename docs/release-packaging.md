@@ -7,8 +7,8 @@ what must stay local.
 
 Meridian has two user-facing release surfaces:
 
-1. Codex plugin package: `plugins/codex/meridian-paper-wiki/`.
-2. Claude Code plugin package: `plugins/claude-code/meridian-paper-wiki/`.
+1. Codex plugin package: `plugins/codex/meridian/`.
+2. Claude Code plugin package: `plugins/claude-code/meridian/`.
 
 The Python package is the shared execution core for CLI primitives and the MCP
 stdio server. It is not the product packaging shape by itself.
@@ -20,12 +20,12 @@ state.
 
 Plugin package roots:
 
-- `plugins/codex/meridian-paper-wiki/.codex-plugin/plugin.json`
-- `plugins/codex/meridian-paper-wiki/.mcp.json`
-- `plugins/codex/meridian-paper-wiki/skills/`
-- `plugins/claude-code/meridian-paper-wiki/.claude-plugin/plugin.json`
-- `plugins/claude-code/meridian-paper-wiki/.mcp.json`
-- `plugins/claude-code/meridian-paper-wiki/skills/`
+- `plugins/codex/meridian/.codex-plugin/plugin.json`
+- `plugins/codex/meridian/.mcp.json`
+- `plugins/codex/meridian/skills/`
+- `plugins/claude-code/meridian/.claude-plugin/plugin.json`
+- `plugins/claude-code/meridian/.mcp.json`
+- `plugins/claude-code/meridian/skills/`
 
 Marketplace manifests:
 
@@ -122,6 +122,7 @@ Agent users should install the matching plugin package, then start from:
 
 ```text
 skills/meridian-paper-wiki/SKILL.md
+skills/lab/SKILL.md
 ```
 
 MCP users should register:
@@ -154,9 +155,10 @@ PYTHONPATH=src python3 -m meridian.mcp capabilities --detail full
 Then inspect the file list produced by the release build or source archive:
 
 - release includes `src/meridian/`
-- release includes `plugins/codex/meridian-paper-wiki/.codex-plugin/plugin.json`
-- release includes `plugins/claude-code/meridian-paper-wiki/.claude-plugin/plugin.json`
+- release includes `plugins/codex/meridian/.codex-plugin/plugin.json`
+- release includes `plugins/claude-code/meridian/.claude-plugin/plugin.json`
 - release includes plugin `skills/meridian-paper-wiki/SKILL.md`
+- release includes plugin `skills/lab/SKILL.md`
 - release includes `.codex/skills/meridian-paper-wiki/SKILL.md`
 - release includes `src/meridian/templates/wiki-vault/Map of Content.md`
 - release includes `.codex/skills/lab/SKILL.md`

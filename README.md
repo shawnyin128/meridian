@@ -20,12 +20,12 @@ Meridian is meant to be used as an agent plugin. The repo ships two package
 shapes:
 
 ```text
-plugins/codex/meridian-paper-wiki/
-plugins/claude-code/meridian-paper-wiki/
+plugins/codex/meridian/
+plugins/claude-code/meridian/
 ```
 
-Each plugin contains the product skills and MCP config. The Python package above
-is the shared execution core those plugins call.
+Each plugin contains both product skills, support skills, and MCP config. The
+Python package above is the shared execution core those plugins call.
 
 ## Product Entries
 
@@ -38,6 +38,7 @@ Prompt/Skill entry inside each plugin:
 
 ```text
 skills/meridian-paper-wiki/SKILL.md
+skills/lab/SKILL.md
 ```
 
 MCP entry:
@@ -85,7 +86,7 @@ meridian wiki source-audit --wiki-root ~/MeridianPaperWiki/wiki
 meridian wiki catalog --wiki-root ~/MeridianPaperWiki/wiki
 ```
 
-## Research Dev
+## Lab
 
 Lab is the lightweight research-coding copilot layer. It uses Paper Wiki context
 for experiment design, method implementation, debugging, evidence recording, and

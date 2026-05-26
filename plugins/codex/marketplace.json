@@ -5,10 +5,10 @@
   },
   "plugins": [
     {
-      "name": "meridian-paper-wiki",
+      "name": "meridian",
       "source": {
         "source": "local",
-        "path": "./meridian-paper-wiki"
+        "path": "./meridian"
       },
       "policy": {
         "installation": "AVAILABLE",

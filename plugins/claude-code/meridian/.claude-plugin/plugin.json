@@ -1,6 +1,6 @@
 {
-  "name": "meridian-paper-wiki",
-  "description": "Markdown-first Paper Wiki and research-coding copilot for Claude Code.",
+  "name": "meridian",
+  "description": "Markdown-first Paper Wiki and Lab research-coding copilot for Claude Code.",
   "version": "0.1.0",
   "author": {
     "name": "Meridian",

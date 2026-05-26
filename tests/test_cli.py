@@ -2547,18 +2547,18 @@ Compare recency-only retention with attention-based and oracle retention policie
         readme = Path("README.md").read_text(encoding="utf-8")
         self.assertNotIn("python3 -m venv", readme)
         self.assertNotIn(". .venv/bin/activate", readme)
-        self.assertIn("plugins/codex/meridian-paper-wiki/", readme)
-        self.assertIn("plugins/claude-code/meridian-paper-wiki/", readme)
+        self.assertIn("plugins/codex/meridian/", readme)
+        self.assertIn("plugins/claude-code/meridian/", readme)
 
-        codex_root = Path("plugins/codex/meridian-paper-wiki")
+        codex_root = Path("plugins/codex/meridian")
         codex_manifest = json.loads((codex_root / ".codex-plugin/plugin.json").read_text(encoding="utf-8"))
-        self.assertEqual(codex_manifest["name"], "meridian-paper-wiki")
+        self.assertEqual(codex_manifest["name"], "meridian")
         self.assertEqual(codex_manifest["skills"], "./skills/")
         self.assertEqual(codex_manifest["mcpServers"], "./.mcp.json")
 
-        claude_root = Path("plugins/claude-code/meridian-paper-wiki")
+        claude_root = Path("plugins/claude-code/meridian")
         claude_manifest = json.loads((claude_root / ".claude-plugin/plugin.json").read_text(encoding="utf-8"))
-        self.assertEqual(claude_manifest["name"], "meridian-paper-wiki")
+        self.assertEqual(claude_manifest["name"], "meridian")
 
         for root in (codex_root, claude_root):
             self.assertTrue((root / ".mcp.json").exists())

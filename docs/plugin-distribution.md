@@ -8,20 +8,21 @@ execution core that the plugins call for CLI primitives and MCP tools.
 Codex plugin:
 
 ```text
-plugins/codex/meridian-paper-wiki/
+plugins/codex/meridian/
 ```
 
 Claude Code plugin:
 
 ```text
-plugins/claude-code/meridian-paper-wiki/
+plugins/claude-code/meridian/
 ```
 
 Both plugin packages include:
 
 - `skills/meridian-paper-wiki/`: product entry for Update Wiki and Use Wiki
+- `skills/lab/`: product entry for wiki-grounded research coding
 - support skills for ingest, retrieval, personalization, evolution, knowledge,
-  concepts, and Lab
+  and concepts
 - `.mcp.json`: starts the Meridian Paper Wiki MCP server with
   `python3 -m meridian.mcp serve`
 
@@ -68,7 +69,7 @@ plugins/codex/marketplace.json
 The marketplace points at:
 
 ```text
-plugins/codex/meridian-paper-wiki/
+plugins/codex/meridian/
 ```
 
 ## Claude Code
@@ -82,16 +83,23 @@ plugins/claude-code/marketplace.json
 Claude Code can validate the plugin package with:
 
 ```bash
-claude plugin validate plugins/claude-code/meridian-paper-wiki
+claude plugin validate plugins/claude-code/meridian
 claude plugin validate plugins/claude-code/marketplace.json
 ```
 
 Register the marketplace with the Claude Code plugin marketplace flow, then
-install `meridian-paper-wiki`.
+install `meridian`.
 
 ## Product Entry
 
-Users should think in two workflows:
+Users should think in two product areas:
+
+| Product Area | What It Does |
+|---|---|
+| Paper Wiki | update and use the durable paper knowledge base |
+| Lab | plan, implement, debug, and record research-code slices using Paper Wiki context |
+
+Paper Wiki keeps two workflows:
 
 | Workflow | What It Does |
 |---|---|

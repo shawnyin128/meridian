@@ -6,9 +6,9 @@
   "description": "Meridian Paper Wiki and Lab plugin marketplace.",
   "plugins": [
     {
-      "name": "meridian-paper-wiki",
-      "description": "Markdown-first Paper Wiki and research-coding copilot.",
-      "source": "./meridian-paper-wiki",
+      "name": "meridian",
+      "description": "Markdown-first Paper Wiki and Lab research-coding copilot.",
+      "source": "./meridian",
       "category": "Research"
     }
   ]
