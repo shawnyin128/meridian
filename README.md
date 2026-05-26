@@ -3,8 +3,6 @@
 Meridian is a Markdown-first Paper Wiki for papers, reading notes, retrieval
 context, synthesis, and research memory.
 
-Current version: `0.1.0`.
-
 ## Install
 
 Meridian has one plugin name and two user skills:
@@ -15,10 +13,14 @@ Skills: wiki, lab
 MCP server id: meridian-paper-wiki
 ```
 
-Use an existing Python environment. From the Meridian repo:
+The plugin is not a standalone bundle yet. It calls the Meridian Python core for
+MCP and wiki operations, so install the core first.
+
+Get the repo and install the core:
 
 ```bash
-cd /path/to/meridian
+git clone git@github.com:shawnyin128/meridian.git
+cd meridian
 python3 -m pip install -e .
 ```
 
@@ -51,6 +53,14 @@ Inside Claude Code, reload plugins after install:
 
 The plugin provides `wiki`, `lab`, support skills, and `.mcp.json`. The MCP
 config starts `python3 -m meridian.mcp serve` when the client needs tools.
+
+Version metadata is stored in `VERSION`, `pyproject.toml`, and the Codex/Claude
+plugin manifests. Codex and Claude Code can show the plugin version from their
+plugin details/list surfaces; the core version is visible with:
+
+```bash
+meridian --version
+```
 
 After install, start from the skills:
 
