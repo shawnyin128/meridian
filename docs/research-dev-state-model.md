@@ -3,7 +3,7 @@ type: product-design
 title: "Research Dev State Model"
 status: draft
 created: 2026-05-25
-updated: 2026-05-25
+updated: 2026-05-26
 tags:
   - research-dev
   - state-model
@@ -37,6 +37,32 @@ notes that are not yet stable enough to become a thread, experiment, or
 proposal. Each thread stores its own `active_node`. Index files are navigation
 artifacts maintained by skill convention and checklist; individual thread,
 experiment, and proposal files are the source of truth.
+
+## Lazy Init
+
+Lab uses lazy init. The user should not need to remember a separate setup step
+before sharing an idea, failed run, or experiment plan.
+
+At the start of any Lab workflow, the agent checks for `.meridian/` in the
+target repo. If it is missing, the agent asks for confirmation and then creates
+only the minimal skeleton:
+
+```text
+.meridian/state.md
+.meridian/memory.md
+.meridian/threads/index.md
+.meridian/experiments/index.md
+.meridian/proposals/index.md
+```
+
+Thread, experiment, and proposal files are created only when the current task
+needs them. This keeps Lab project setup cheap while still giving every repo a
+stable place for active pointers, short memory, thread navigation, experiment
+evidence, and local finding proposals.
+
+The repo includes `initialize_lab_space` as an internal helper for release/debug
+checks and agent workflows. It is not a product CLI, MCP server, daemon,
+database, or router.
 
 ## Core Objects
 

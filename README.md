@@ -86,6 +86,9 @@ lab
 ```
 
 Ask `wiki` to initialize your Paper Wiki library on first use.
+`lab` uses lazy init in each research repo: the first Lab workflow asks before
+creating `.meridian/` and then continues the original idea/debug/experiment
+task.
 
 ## Update
 
@@ -193,6 +196,41 @@ debugging; they are not the normal user entry.
 Lab is the lightweight research-coding copilot layer. It uses Paper Wiki context
 for experiment design, method implementation, debugging, evidence recording, and
 wiki write-back.
+
+In a research code repo, `lab` uses lazy init. You do not need to run setup
+first. The first Lab workflow asks before creating:
+
+```text
+.meridian/state.md
+.meridian/memory.md
+.meridian/threads/index.md
+.meridian/experiments/index.md
+.meridian/proposals/index.md
+```
+
+Lab models research work as a small graph/tree rather than loose notes:
+
+```text
+Research Thread
+  -> Approach Tree
+       -> Approach Node: unresolved | repairable | supported | dead
+       -> Experiment evidence records
+  -> Finding Proposal: draft | strengthening | ready | published | rejected | archived
+```
+
+Use this when research is exploratory:
+
+```text
+I have a new idea while debugging this method. Place it in the current research
+threads, decide whether it is a root/child/sibling/link, ground it with the
+Paper Wiki, and plan the next smallest experiment.
+```
+
+```text
+This approach failed. Record the experiment evidence, decide whether the node is
+repairable or dead, and suggest the next child node only after checking the wiki
+for relevant methods, concepts, and failure modes.
+```
 
 ```text
 skills/lab/SKILL.md

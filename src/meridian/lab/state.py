@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,14 @@ from meridian.wiki.corpus import parse_frontmatter, strip_frontmatter
 ALLOWED_NODE_MODES = {"unresolved", "repairable", "supported", "dead"}
 ALLOWED_PROPOSAL_STATES = {"draft", "strengthening", "ready", "published", "rejected", "archived"}
 ALLOWED_EXPERIMENT_VALIDITY = {"valid", "invalid", "uncertain"}
+
+LAB_INIT_TEMPLATE_MAP = {
+    "state.md": "state.md",
+    "memory.md": "memory.md",
+    "threads/index.md": "threads-index.md",
+    "experiments/index.md": "experiments-index.md",
+    "proposals/index.md": "proposals-index.md",
+}
 
 
 @dataclass(frozen=True)
@@ -170,6 +179,33 @@ def validate_lab_space(root: Path) -> LabValidationReport:
 
     status = "fail" if any(finding.severity == "error" for finding in findings) else "pass"
     return LabValidationReport(status=status, root=str(lab_root), findings=findings)
+
+
+def initialize_lab_space(root: Path, *, overwrite: bool = False) -> list[Path]:
+    """Create the minimal `.meridian/` skeleton used by Lab lazy init.
+
+    This is an internal helper for release/debug checks and agent workflows. It
+    does not add a product CLI, MCP surface, database, daemon, or router.
+    """
+
+    lab_root = root if root.name == ".meridian" else root / ".meridian"
+    template_root = Path(__file__).resolve().parents[1] / "templates" / "research-dev"
+    today = date.today().isoformat()
+    written: list[Path] = []
+
+    for directory in [lab_root, lab_root / "threads", lab_root / "experiments", lab_root / "proposals"]:
+        directory.mkdir(parents=True, exist_ok=True)
+
+    for relative_path, template_name in LAB_INIT_TEMPLATE_MAP.items():
+        target = lab_root / relative_path
+        if target.exists() and not overwrite:
+            continue
+        template = (template_root / template_name).read_text(encoding="utf-8")
+        content = template.replace("YYYY-MM-DD", today)
+        target.write_text(content, encoding="utf-8")
+        written.append(target)
+
+    return written
 
 
 def _markdown_records(directory: Path) -> list[Path]:

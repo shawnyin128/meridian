@@ -25,6 +25,11 @@ Research Dev now uses a target-repo `.meridian/` research space rather than
 loose `.meridian/ideas/` Idea Cards as the primary state model. The canonical
 state contract is documented in `docs/research-dev-state-model.md`.
 
+Lab creates the research space lazily. If a Lab workflow starts in a repo
+without `.meridian/`, the agent asks for confirmation, creates the minimal
+`state.md`, `memory.md`, and index skeleton, then continues the user's original
+idea/debug/experiment task.
+
 The primary objects are:
 
 - Research Thread: one research problem.

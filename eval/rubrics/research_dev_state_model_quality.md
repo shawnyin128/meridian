@@ -8,6 +8,8 @@ state into Paper Wiki.
 
 - Creates a Research Dev MCP, CLI, database, daemon, or routing engine for this
   state model.
+- Requires a separate manual Lab setup step before the user's first idea,
+  debug, or experiment workflow can proceed.
 - Writes raw ideas or local experiment results directly into canonical Paper
   Wiki pages.
 - Auto-creates a new node, switches active thread/node, marks `repairable`, marks
@@ -27,35 +29,43 @@ Score each dimension from 1 to 5.
 5: Checks existing threads only, presents at most three candidates, and asks for
 `root | child | sibling | link` confirmation.
 
-### 2. Approach Tree Integrity
+### 2. Lazy Init
+
+1: The user must remember a separate setup command before Lab can be useful.
+3: Init exists but creates extra thread, experiment, or proposal files before a
+workflow needs them.
+5: First Lab use checks for `.meridian/`, asks for confirmation, creates only
+state/memory/index skeleton files, then continues the original task.
+
+### 3. Approach Tree Integrity
 
 1: Nodes mix ideas, tasks, experiments, and proposals.
 3: Nodes exist but are too broad or have unclear parent/child semantics.
 5: Nodes are smallest verifiable methods with clear inherited problems,
 assumptions, experiments, history, and next action.
 
-### 3. Automation Boundary
+### 4. Automation Boundary
 
 1: The agent changes research direction or kills branches without confirmation.
 3: Some risky changes ask for confirmation, but rules are inconsistent.
 5: Same-node factual updates can be automatic; structural/path decisions require
 user confirmation.
 
-### 4. Experiment Evidence Quality
+### 5. Experiment Evidence Quality
 
 1: Results are only summarized in chat or node prose.
 3: Experiments are recorded but miss command/config/output or target impacts.
 5: Experiments are independent evidence records with question, targets, impacts,
 command/config/output, result, validity, and interpretation.
 
-### 5. Invalid Evidence Handling
+### 6. Invalid Evidence Handling
 
 1: Invalid results are deleted or ignored.
 3: Invalid results are marked but dependent node states remain stale.
 5: Invalid experiments are preserved and any solely dependent supported node is
 retracted to `unresolved` with history.
 
-### 6. Proposal Lifecycle
+### 7. Proposal Lifecycle
 
 1: Local findings are published directly to canonical wiki.
 3: Proposals exist but lack scope strengthening or ready criteria.
@@ -63,14 +73,14 @@ retracted to `unresolved` with history.
 archived`, can run strengthening experiments, and transfer to Paper Wiki draft
 only when ready.
 
-### 7. Thread Close Quality
+### 8. Thread Close Quality
 
 1: Threads are closed automatically or without summary.
 3: Summary exists but misses dead paths, key evidence, or reusable findings.
 5: User-confirmed close creates a final summary with supported path, dead paths,
 key experiments, reusable findings, and extracted local proposals.
 
-### 8. Lightweight Behavior
+### 9. Lightweight Behavior
 
 1: Adds heavy process or turns Research Dev into Arbor.
 3: State is useful but file count, ceremony, or checks are heavier than needed.
@@ -79,6 +89,7 @@ key experiments, reusable findings, and extracted local proposals.
 ## Repair Buckets
 
 - `placement_boundary`
+- `lazy_init`
 - `approach_tree_integrity`
 - `automation_boundary`
 - `experiment_evidence`

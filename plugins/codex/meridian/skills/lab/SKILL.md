@@ -10,6 +10,34 @@ repo's `.meridian/` research space, retrieve Paper Wiki context when research
 context matters, then let the agent inspect, run, diagnose, edit, and checkpoint
 normally.
 
+## Lazy Init
+
+Lab uses lazy init. The user does not need to initialize Lab before asking a
+research-coding question.
+
+At the start of any Lab workflow:
+
+- Check whether the target repo has `.meridian/`.
+- If it is missing, ask once before creating the Lab research space.
+- On confirmation, create only the minimal skeleton:
+  - `.meridian/state.md`
+  - `.meridian/memory.md`
+  - `.meridian/threads/index.md`
+  - `.meridian/experiments/index.md`
+  - `.meridian/proposals/index.md`
+- Continue the user's original idea/debug/experiment task after the skeleton
+  exists.
+- Create thread, experiment, and proposal files only when the current workflow
+  needs them.
+
+Example:
+
+```text
+The user says a run failed in a repo with no `.meridian/`. Ask to create the
+Lab research space, create the minimal skeleton after confirmation, then record
+the failed run as experiment evidence and continue debugging.
+```
+
 ## Workflows
 
 ### New Idea Placement / Thread Seed
@@ -137,8 +165,12 @@ PYTHONPATH=src python3 -m meridian.mcp context --wiki-root wiki --query "<resear
 Use Markdown artifacts when a task has durable value:
 
 - `.meridian/state.md`
+- `.meridian/memory.md`
+- `.meridian/threads/index.md`
 - `.meridian/threads/<thread>.md`
+- `.meridian/experiments/index.md`
 - `.meridian/experiments/<experiment>.md`
+- `.meridian/proposals/index.md`
 - `.meridian/proposals/<proposal>.md`
 - `Research Dev Context Packet` for compact wiki/repo context
 - `Wiki Transfer Packet` for ready local findings moving toward Paper Wiki

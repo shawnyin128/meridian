@@ -3,6 +3,7 @@
 from meridian.lab.state import (
     ALLOWED_NODE_MODES,
     ALLOWED_PROPOSAL_STATES,
+    initialize_lab_space,
     LabValidationFinding,
     LabValidationReport,
     validate_lab_space,
@@ -11,6 +12,7 @@ from meridian.lab.state import (
 __all__ = [
     "ALLOWED_NODE_MODES",
     "ALLOWED_PROPOSAL_STATES",
+    "initialize_lab_space",
     "LabValidationFinding",
     "LabValidationReport",
     "validate_lab_space",

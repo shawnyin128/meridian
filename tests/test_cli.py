@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 from meridian import __version__
 from meridian.cli import main
-from meridian.lab import validate_lab_space
+from meridian.lab import initialize_lab_space, validate_lab_space
 from meridian.mcp import adapter as mcp_adapter
 from meridian.mcp import harness as mcp_harness
 from meridian.mcp import server as mcp_server
@@ -147,7 +147,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.1.0"
+        expected = "0.1.1"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -2689,6 +2689,7 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertIn("Paper Or Method To Implementation", skill)
         self.assertIn("Broken Run To Sanity Check / Debug", skill)
         self.assertIn("meridian.context", skill)
+        self.assertIn("Lazy Init", skill)
 
         template = Path("src/meridian/templates/research-dev")
         self.assertTrue((template / "research-dev-context-packet.md").exists())
@@ -2738,6 +2739,12 @@ Compare recency-only retention with attention-based and oracle retention policie
             "Approach Tree Exploration",
             "Experiment Evidence Recording",
             "Finding Proposal / Wiki Write-back",
+            "Lazy Init",
+            ".meridian/state.md",
+            ".meridian/memory.md",
+            ".meridian/threads/index.md",
+            ".meridian/experiments/index.md",
+            ".meridian/proposals/index.md",
             "unresolved",
             "repairable",
             "supported",
@@ -2775,6 +2782,7 @@ Compare recency-only retention with attention-based and oracle retention policie
 
         state_doc = Path("docs/research-dev-state-model.md").read_text(encoding="utf-8")
         self.assertIn(".meridian/", state_doc)
+        self.assertIn("Lab uses lazy init", state_doc)
         self.assertIn("Node modes are exactly", state_doc)
         self.assertIn("Proposal states are", state_doc)
 
@@ -2787,7 +2795,29 @@ Compare recency-only retention with attention-based and oracle retention policie
         rubric = Path("eval/rubrics/research_dev_state_model_quality.md").read_text(encoding="utf-8")
         self.assertIn("Hard Fail Rules", rubric)
         self.assertIn("Placement Boundary", rubric)
+        self.assertIn("Lazy Init", rubric)
         self.assertIn("Proposal Lifecycle", rubric)
+
+    def test_lab_lazy_init_creates_minimal_valid_research_space(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            written = initialize_lab_space(root)
+            relative = sorted(path.relative_to(root) for path in written)
+            self.assertEqual(
+                relative,
+                [
+                    Path(".meridian/experiments/index.md"),
+                    Path(".meridian/memory.md"),
+                    Path(".meridian/proposals/index.md"),
+                    Path(".meridian/state.md"),
+                    Path(".meridian/threads/index.md"),
+                ],
+            )
+            self.assertFalse([path for path in (root / ".meridian/threads").glob("*.md") if path.name != "index.md"])
+            self.assertFalse([path for path in (root / ".meridian/experiments").glob("*.md") if path.name != "index.md"])
+            self.assertFalse([path for path in (root / ".meridian/proposals").glob("*.md") if path.name != "index.md"])
+            report = validate_lab_space(root)
+            self.assertEqual(report.status, "pass", report.to_dict())
 
     def test_lab_state_validator_passes_valid_research_space(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

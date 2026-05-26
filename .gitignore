@@ -3,6 +3,7 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+meridian-wiki.json
 
 .arbor/
 .codex/hooks.json

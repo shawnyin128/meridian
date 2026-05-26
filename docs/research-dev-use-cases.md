@@ -24,10 +24,12 @@ memory.
 
 Research Dev is the upper layer above Paper Wiki.
 
-Research Dev state now lives in a target-repo `.meridian/` research space. The
-primary artifacts are Research Threads, Approach Nodes, Experiments, and Finding
-Proposals. Legacy Idea Cards are superseded for new durable work; see
-`docs/research-dev-state-model.md`.
+Research Dev state now lives in a target-repo `.meridian/` research space. If a
+Lab workflow starts in a repo without `.meridian/`, the agent asks once, creates
+the minimal state/memory/index skeleton after confirmation, then continues the
+idea/debug/experiment workflow. The primary artifacts are Research Threads,
+Approach Nodes, Experiments, and Finding Proposals. Legacy Idea Cards are
+superseded for new durable work; see `docs/research-dev-state-model.md`.
 
 Paper Wiki owns:
 
