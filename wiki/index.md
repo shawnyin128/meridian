@@ -184,6 +184,7 @@
 - [[papers/Tiwari-et-al-2025-QuantSpec-Self-Speculative-Decoding-with-Hierarchical-Quantized-KV-Cache|Tiwari et al. - 2025 - QuantSpec Self-Speculative Decoding with Hierarchical Quantized KV Cache]] - status: draft; auto_converged
 - [[papers/Trippe-et-al-2023-Diffusion-probabilistic-modeling-of-protein-backbones-in-3D-for-the-motif-scaffolding-problem|Trippe et al. - 2023 - Diffusion probabilistic modeling of protein backbones in 3D for the motif-scaffolding problem]] - status: draft; auto_converged
 - [[papers/Tseng-et-al-2024-QuIP-Even-Better-LLM-Quantization-with-Hadamard-Incoherence-and-Lattice-Codebooks|Tseng et al. - 2024 - QuIP# Even Better LLM Quantization with Hadamard Incoherence and Lattice Codebooks]] - status: draft; auto_converged
+- [[papers/TurboQuant-Online-Vector-Quantization-with-Near-optimal-Distortion-Rate|TurboQuant: Online Vector Quantization with Near-optimal Distortion Rate]] - status: draft; auto_ingested
 - [[papers/Vaswani-et-al-2023-Attention-Is-All-You-Need|Vaswani et al. - 2023 - Attention Is All You Need]] - status: draft; auto_converged
 - [[papers/Vezhnevets-2023-Generative-agent-based-modeling-with-actions-grounded-in-physical-social-or-digital-space-using-Co|Vezhnevets 等 - 2023 - Generative agent-based modeling with actions grounded in physical, social, or digital space using Co]] - status: draft; auto_converged
 - [[papers/Wang-2024-A-Survey-on-Large-Language-Model-based-Autonomous-Agents|Wang 等 - 2024 - A Survey on Large Language Model based Autonomous Agents]] - status: draft; auto_converged

@@ -772,3 +772,11 @@
 - Skipped repairs: 0
 - High-risk proposal-only repairs: 239
 - Repair manifest: `.drafts/knowledge-repair/continuous-source-role-r4/repair.json`
+
+## [2026-05-26] ingest | TurboQuant: Online Vector Quantization with Near-optimal Distortion Rate
+
+- Source PDF: `/Users/shawn/Desktop/meridian/wiki/raw/sources/papers/paper-pdf-431eb13926e1-TurboQuant-Online-Vector-Quantization-with-Near-optimal-Distortion-Rate.pdf`
+- Canonical draft: [[papers/TurboQuant-Online-Vector-Quantization-with-Near-optimal-Distortion-Rate|TurboQuant: Online Vector Quantization with Near-optimal Distortion Rate]]
+- Draft artifacts: `/Users/shawn/Desktop/meridian/wiki/.drafts/ingests/2504-19874v1`
+- Quality gate: `pass`
+- Review state: `auto_ingested`
