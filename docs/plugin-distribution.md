@@ -60,16 +60,24 @@ python3 -m meridian.mcp serve
 
 ## Codex
 
-Use the repo-local marketplace manifest:
+Codex expects the marketplace manifest under `.agents/plugins/` inside the
+marketplace root:
 
 ```text
-plugins/codex/marketplace.json
+plugins/codex/.agents/plugins/marketplace.json
 ```
 
-The marketplace points at:
+It points at:
 
 ```text
 plugins/codex/meridian/
+```
+
+Install from GitHub:
+
+```bash
+codex plugin marketplace add shawnyin128/meridian --sparse plugins/codex
+codex plugin add meridian@meridian
 ```
 
 ## Claude Code
