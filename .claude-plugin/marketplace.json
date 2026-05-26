@@ -8,7 +8,7 @@
     {
       "name": "meridian",
       "description": "Markdown-first Paper Wiki and Lab research-coding copilot.",
-      "source": "./meridian",
+      "source": "./plugins/claude-code/meridian",
       "category": "Research"
     }
   ]

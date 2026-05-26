@@ -82,21 +82,32 @@ codex plugin add meridian@meridian
 
 ## Claude Code
 
-Use the repo-local marketplace manifest:
+Claude Code expects the marketplace manifest under `.claude-plugin/` inside
+the marketplace root:
 
 ```text
-plugins/claude-code/marketplace.json
+.claude-plugin/marketplace.json
+```
+
+It points at:
+
+```text
+plugins/claude-code/meridian/
 ```
 
 Claude Code can validate the plugin package with:
 
 ```bash
 claude plugin validate plugins/claude-code/meridian
-claude plugin validate plugins/claude-code/marketplace.json
+claude plugin validate .claude-plugin/marketplace.json
 ```
 
-Register the marketplace with the Claude Code plugin marketplace flow, then
-install `meridian`.
+Install from GitHub:
+
+```bash
+claude plugin marketplace add shawnyin128/meridian --sparse .claude-plugin plugins/claude-code/meridian
+claude plugin install meridian@meridian
+```
 
 ## Product Entry
 

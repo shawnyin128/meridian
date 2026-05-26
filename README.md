@@ -49,7 +49,7 @@ codex plugin add meridian@meridian
 ### Claude Code
 
 ```bash
-claude plugin marketplace add shawnyin128/meridian --sparse plugins/claude-code
+claude plugin marketplace add shawnyin128/meridian --sparse .claude-plugin plugins/claude-code/meridian
 claude plugin install meridian@meridian
 ```
 
@@ -67,7 +67,7 @@ matching local marketplace path:
 
 ```bash
 codex plugin marketplace add /path/to/meridian
-claude plugin marketplace add /path/to/meridian/plugins/claude-code
+claude plugin marketplace add /path/to/meridian
 ```
 
 Version metadata is stored in `VERSION`, `pyproject.toml`, and the Codex/Claude

@@ -2667,6 +2667,12 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertEqual(codex_manifest["mcpServers"], "./.mcp.json")
 
         claude_root = Path("plugins/claude-code/meridian")
+        claude_marketplace = json.loads(
+            Path(".claude-plugin/marketplace.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(claude_marketplace["name"], "meridian")
+        self.assertEqual(claude_marketplace["plugins"][0]["name"], "meridian")
+        self.assertEqual(claude_marketplace["plugins"][0]["source"], "./plugins/claude-code/meridian")
         claude_manifest = json.loads((claude_root / ".claude-plugin/plugin.json").read_text(encoding="utf-8"))
         self.assertEqual(claude_manifest["name"], "meridian")
 

@@ -80,6 +80,7 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `.codex/skills/wiki-concept/SKILL.md`: project skill for preliminary-knowledge concept-layer audit, publish, retrieval, and evaluation.
 - `.codex/skills/lab/SKILL.md`: product-facing Lab skill for wiki-aware experiment design, paper-method implementation, and broken-run sanity/debug workflows.
 - `.agents/plugins/marketplace.json`: Codex marketplace manifest for the Meridian plugin package.
+- `.claude-plugin/marketplace.json`: Claude Code marketplace manifest for the Meridian plugin package.
 - `plugins/codex/meridian/`: Codex plugin package for the product-facing Paper Wiki and Lab skills plus MCP config.
 - `plugins/claude-code/meridian/`: Claude Code plugin package for the product-facing Paper Wiki and Lab skills plus MCP config.
 - `pyproject.toml`: Python package metadata and `meridian` console script entrypoint.
