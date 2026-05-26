@@ -55,6 +55,30 @@ wiki is usable, trustworthy, release-ready, or what should be repaired next.
 Use `meridian wiki health-ui --wiki-root <wiki>` when the user wants the HTML
 health report's Run Check button to trigger a local health check.
 
+### Health / Repair Triage
+
+When health returns warnings, do not treat them as a request to hand-edit wiki
+content. Report the score, hard failures, and top repair buckets, then route the
+next action through the support skill that owns the mechanism:
+
+- `knowledge_graph`, `canonical_linking`, or `claim_evidence_traceability`:
+  delegate to `wiki-knowledge` and create a proposal-first repair.
+- `concept_coverage`: delegate to `wiki-concept` and prioritize high-value
+  method/probe/debug prerequisite links.
+- `context`, `retrieval`, or `explanation`: delegate to `wiki-retrieve` and
+  improve context-packet behavior or durable synthesis, not raw search.
+- `trust`, `source`, or `boundary` hard failures: stop publish/apply work and
+  run source/lint remediation first.
+- `synthesis` or `growth`: create write-back or refinement proposals before
+  canonical updates.
+
+Minimum health response:
+
+- health level and score
+- hard failure count
+- top 3 repair buckets with evidence
+- one proposed next action and whether it is safe to publish or proposal-only
+
 ## Use Wiki
 
 Use this workflow when the user asks a research, paper-understanding, or coding question that should consult the accumulated wiki.

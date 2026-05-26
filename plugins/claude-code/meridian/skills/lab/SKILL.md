@@ -160,6 +160,21 @@ If MCP is unavailable, use the local execution primitive:
 PYTHONPATH=src python3 -m meridian.mcp context --wiki-root wiki --query "<research/coding intent>"
 ```
 
+## Wiki Health Signals
+
+If a research-coding task needs wiki context and retrieval returns weak method,
+concept, or evidence support, treat that as a wiki signal rather than a reason
+to overfit the dev answer:
+
+- missing prerequisite concepts: note a `concept_coverage` gap
+- many competing method pages: note a `knowledge_graph` consolidation gap
+- unsupported claims: note a `claim_evidence_traceability` gap
+- no synthesis for a recurring design question: note a `growth` gap
+
+Continue the dev task with the best available context, but include the gap in
+the Research Dev Context Packet and ask before creating a Paper Wiki repair or
+write-back proposal.
+
 ## Artifacts
 
 Use Markdown artifacts when a task has durable value:

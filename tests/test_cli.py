@@ -151,7 +151,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.3.1"
+        expected = "0.3.2"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -1557,6 +1557,22 @@ quality_state: "multimodal_pending"
         self.assertIn("/private/tmp/meridian-context", text)
         self.assertIn("MERIDIAN_CORE_ROOT", text)
         self.assertIn("do not start with broad `rg`", text)
+
+    def test_product_skills_route_health_findings(self) -> None:
+        wiki = Path(".codex/skills/wiki/SKILL.md").read_text(encoding="utf-8")
+        retrieve = Path(".codex/skills/wiki-retrieve/SKILL.md").read_text(encoding="utf-8")
+        knowledge = Path(".codex/skills/wiki-knowledge/SKILL.md").read_text(encoding="utf-8")
+        concept = Path(".codex/skills/wiki-concept/SKILL.md").read_text(encoding="utf-8")
+        lab = Path(".codex/skills/lab/SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("Health / Repair Triage", wiki)
+        self.assertIn("knowledge_graph", wiki)
+        self.assertIn("concept_coverage", wiki)
+        self.assertIn("Run Meridian context first", retrieve)
+        self.assertIn("Health-Driven Repair Routing", knowledge)
+        self.assertIn("propose-method-consolidation", knowledge)
+        self.assertIn("Health-Driven Concept Coverage", concept)
+        self.assertIn("Wiki Health Signals", lab)
 
     def test_publish_run_promotes_candidate_records_into_wiki_graph(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

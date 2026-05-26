@@ -20,6 +20,22 @@ meridian wiki concept-layer-lint wiki/.drafts/knowledge-repair/<slug>/concept-la
 meridian wiki publish-concept-layer wiki/.drafts/knowledge-repair/<slug>/concept-layer-proposal.json --wiki-root wiki
 ```
 
+## Health-Driven Concept Coverage
+
+When health reports `concept_coverage`, optimize for coding/debug/probe
+usefulness rather than concept count:
+
+1. Read the health report and concept audit to identify high-value methods
+   missing prerequisite concepts.
+2. Prefer methods that appear in method/probe/debug retrieval contexts.
+3. Generate a concept-layer proposal and lint it.
+4. Publish only low-risk concept pages and backlinks with source provenance.
+5. Rerun health and report coverage delta.
+
+Do not create generic concept stubs to improve the score. A concept is useful
+only if it has source provenance, implementation implications, failure modes,
+minimal checks/probes, and related methods.
+
 Evaluate concept retrieval with:
 
 ```bash

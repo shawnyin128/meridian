@@ -48,6 +48,23 @@ meridian wiki concept-layer-lint wiki/.drafts/knowledge-repair/<slug>/concept-la
 meridian wiki publish-concept-layer wiki/.drafts/knowledge-repair/<slug>/concept-layer-proposal.json --wiki-root wiki
 ```
 
+## Health-Driven Repair Routing
+
+When `meridian wiki health` reports knowledge-layer buckets, convert the bucket
+into a proposal-first repair path instead of editing pages directly:
+
+| Health bucket | First action | Publish rule |
+|---|---|---|
+| `knowledge_graph` duplicate method/topic aliases | `propose-method-consolidation` | Publish only low-risk backlinks, aliases, and role metadata after lint. |
+| `canonical_linking` isolated papers | `propose-knowledge-repair` | Publish low-risk topic/method/concept backlinks after lint. |
+| `claim_evidence_traceability` evidence gaps | `propose-knowledge-repair` or refinement proposal | Attach source-grounded evidence or mark `needs_evidence`; do not invent support. |
+| stale, contradiction, or source-quality findings | `propose-contradiction-review` | Proposal-only unless review/lint validates the state. |
+
+After any safe publish, rerun `meridian wiki health --wiki-root wiki` and report
+the bucket delta. If a repair requires merging pages, changing confidence,
+rewriting synthesis, or promoting user insight into evidence, leave it as a
+review proposal.
+
 ## Boundaries
 
 - Low-risk repairs may add frontmatter fields, create missing method/topic pages from paper metadata, and restructure method/topic pages with snippets from linked canonical paper sections.

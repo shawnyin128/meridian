@@ -12,7 +12,20 @@ For product-facing usage, start from the `wiki` skill and choose the `Use Wiki` 
 ## Workflow
 
 1. Identify the user's retrieval intent: idea/design comparison, implementation/probe, evidence check, limitation/scope check, source cleanup, or synthesis.
-2. Run Meridian retrieval first:
+2. Run Meridian context first:
+
+```bash
+meridian wiki context "<standalone research query>"
+```
+
+This uses the active workspace and writes `context.md` / `context.json` under
+`/private/tmp/meridian-context/<slug>/` by default. Read the generated context
+packet before opening individual pages. If `meridian` is unavailable, resolve
+the execution path through the `wiki` skill before falling back to manual file
+search.
+
+Use the lower-level retrieval primitive only when an explicit output path or
+strategy comparison is needed:
 
 ```bash
 meridian wiki retrieve "<standalone research query>" \
@@ -38,7 +51,7 @@ obsidian vault="wiki" backlinks path="papers/<paper-page>.md"
 meridian wiki propose-writeback \
   --wiki-root wiki \
   --query "<standalone research query>" \
-  --context wiki/.drafts/retrieval/context.json \
+  --context <context.json from meridian wiki context> \
   --title "<draft synthesis title>" \
   --proposal-type synthesis
 ```
@@ -59,7 +72,7 @@ Use `--proposal-type method-family`, `comparison`, `decision`, or `research-ques
 - Treat frontmatter as the machine-routing source of truth.
 - Treat canonical `wiki/papers/*.md`, `wiki/syntheses/*.md`, `wiki/methods/*.md`, `wiki/topics/*.md`, `wiki/concepts/*.md`, `wiki/claims/*.md`, and `wiki/evidence/*.md` pages as the normal retrieval corpus and concise reading targets.
 - Do not retrieve from `wiki/.drafts/ingests/**`, draft `paper.md` / `paper_candidate`, `review.md`, judge packets, self-check packets, or extraction files. Those are pipeline/debug artifacts.
-- Prefer context packets over raw search dumps.
+- Prefer `meridian wiki context` packets over raw search dumps.
 - Use retrieval v1 by default. v1 adds field-weighted scoring, section-aware ranking, controlled-vocabulary normalization, capped graph/facet expansion, source-quality routing, hard-distractor suppression, and compact context packet construction. Use `--strategy v0` only for baseline comparison.
 - Retrieval now searches paper pages, published synthesis-layer pages, and compiled knowledge-layer pages by default. Check `result_type` and `knowledge_role` before treating a hit as source evidence; synthesis pages are higher-level interpretation, method/topic/concept pages are compiled wiki navigation/synthesis, and claim/evidence candidate records are provenance-bearing but not full reviewed synthesis.
 - For coding/debug/probe queries, concept hits are often the missing preliminary layer. Read `Implementation Implications`, `Common Failure Modes`, and `Minimal Checks / Probes` before writing code or experiments.
