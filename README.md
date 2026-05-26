@@ -117,14 +117,21 @@ git pull
 python3 -m pip install -e .
 ```
 
-Then refresh the plugin from the same marketplace:
+Then refresh the Codex marketplace snapshot:
+
+```bash
+codex plugin marketplace upgrade meridian
+```
+
+If the installed plugin still shows old behavior, reinstall it from the refreshed
+marketplace:
 
 ```bash
 codex plugin remove meridian
 codex plugin add meridian@meridian
 ```
 
-or:
+Claude Code does have an update command:
 
 ```bash
 claude plugin update meridian

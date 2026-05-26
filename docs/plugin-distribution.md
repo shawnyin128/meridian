@@ -80,6 +80,20 @@ codex plugin marketplace add shawnyin128/meridian --sparse .agents/plugins --spa
 codex plugin add meridian@meridian
 ```
 
+Codex can refresh the configured Git marketplace snapshot:
+
+```bash
+codex plugin marketplace upgrade meridian
+```
+
+If the installed plugin still shows old behavior, reinstall it from the refreshed
+marketplace:
+
+```bash
+codex plugin remove meridian
+codex plugin add meridian@meridian
+```
+
 ## Claude Code
 
 Claude Code expects the marketplace manifest under `.claude-plugin/` inside
@@ -107,6 +121,12 @@ Install from GitHub:
 ```bash
 claude plugin marketplace add shawnyin128/meridian --sparse .claude-plugin plugins/claude-code/meridian
 claude plugin install meridian@meridian
+```
+
+Claude Code can refresh with:
+
+```bash
+claude plugin update meridian
 ```
 
 ## Product Entry
