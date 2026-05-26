@@ -150,7 +150,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.2.0"
+        expected = "0.3.0"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -3124,8 +3124,18 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertEqual(manifest["provenance"], "user_supplied")
             self.assertEqual(manifest["target_page"], "papers/MoE-PTQ.md")
             self.assertIn("user_input_raw", manifest)
+            self.assertIn("internalization_targets", manifest)
+            self.assertTrue(manifest["internalization_targets"])
+            target = manifest["internalization_targets"][0]
+            self.assertIn(target["target_section"], {"Why It Matters For Me", "Personalized Interpretation", "Implementation Hooks"})
+            self.assertIn("not paper source fact", target["source_boundary"])
+            self.assertIn("provenance_note_id", target)
             self.assertIn("not paper source fact", manifest["source_fact_boundary"])
-            self.assertTrue((manifest_path.parent / "insight.md").exists())
+            insight_text = (manifest_path.parent / "insight.md").read_text(encoding="utf-8")
+            self.assertIn("## Raw User Note", insight_text)
+            self.assertIn("## Internalization Targets", insight_text)
+            self.assertIn("## Proposed Canonical Updates", insight_text)
+            self.assertIn("## Source Re-check Needed", insight_text)
             self.assertTrue((manifest_path.parent / "target_context.json").exists())
 
     def test_add_insight_matches_title_alias_and_natural_language(self) -> None:
@@ -3297,7 +3307,12 @@ Compare recency-only retention with attention-based and oracle retention policie
             text = paper.read_text(encoding="utf-8")
             self.assertIn("personalized: true", text)
             self.assertIn("user_insights:", text)
+            self.assertIn("## Implementation Hooks", text)
+            self.assertIn("Source type: `user_interpretation`; not paper source fact: `true`", text)
+            self.assertIn("## User Insight Provenance", text)
+            self.assertIn("Raw note:", text)
             self.assertIn("## User Insights", text)
+            self.assertIn("Canonical consumption: internalized sections above", text)
             self.assertIn("Boundary: user-supplied insight, not paper source fact or scientific evidence.", text)
             self.assertNotIn("## Source Facts", text)
 
@@ -3310,9 +3325,25 @@ Compare recency-only retention with attention-based and oracle retention policie
             )
             self.assertEqual(result.results[0]["relative_path"], "papers/MoE-PTQ.md")
             self.assertIn("user_insight", result.results[0]["matched_source_types"])
+            self.assertIn("user_interpretation", result.results[0]["matched_source_types"])
+            self.assertTrue(result.results[0]["not_paper_source_fact"])
+            self.assertTrue(result.results[0]["matched_insight_ids"])
             packet = (root / "context.md").read_text(encoding="utf-8")
             self.assertIn("Boundary warning: matched `User Insights`", packet)
+            self.assertIn("matched personalized/internalized content", packet)
             self.assertIn("not paper source fact", packet)
+
+            evidence = retrieve_papers(
+                query="scientific evidence for routing entropy probe",
+                wiki_root=wiki_root,
+                top_k=1,
+                packet_path=root / "evidence-context.md",
+                result_path=root / "evidence-context.json",
+            )
+            self.assertEqual(evidence.results[0]["relative_path"], "papers/MoE-PTQ.md")
+            self.assertTrue(evidence.results[0]["not_paper_source_fact"])
+            evidence_packet = (root / "evidence-context.md").read_text(encoding="utf-8")
+            self.assertIn("not paper source fact", evidence_packet)
 
     def test_insight_lint_rejects_source_fact_contamination(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -3354,6 +3385,65 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertIn("Insight lint status: fail", stdout)
             report = json.loads((out / "insight-lint.json").read_text(encoding="utf-8"))
             self.assertIn("source_fact_contamination", {item["code"] for item in report["findings"]})
+
+    def test_source_fact_correction_requires_recheck_and_does_not_publish_source_fact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            paper = wiki_root / "papers/MoE-PTQ.md"
+            _write_test_paper(
+                paper,
+                title="MoE PTQ Paper",
+                aliases=["CodeQuant"],
+                topics=["activation outliers"],
+                methods=["MoE post-training quantization"],
+                settings=["weight-activation quantization"],
+                body_sections={
+                    "What To Remember": "This paper studies MoE PTQ.",
+                    "Evidence Map": "Source-grounded evidence remains here.",
+                },
+            )
+            out = wiki_root / ".drafts/insights/source-correction"
+            self.assertEqual(
+                main(
+                    [
+                        "wiki",
+                        "add-insight",
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--paper",
+                        "CodeQuant",
+                        "--note",
+                        "paper.md is wrong: the calibration claim seems missing and needs source re-check.",
+                        "--insight-type",
+                        "paper-correction",
+                        "--out-dir",
+                        str(out),
+                    ]
+                ),
+                0,
+            )
+            manifest_path = out / "insight.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            correction = manifest["internalization_targets"][0]
+            self.assertEqual(correction["update_type"], "source_fact_correction_request")
+            self.assertTrue(correction["requires_source_recheck"])
+            self.assertEqual(correction["target_section"], "Limitations / Uncertainty")
+
+            manifest["internalization_targets"][0]["requires_source_recheck"] = False
+            manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+            exit_code, stdout, _ = _run_cli_capture(["wiki", "insight-lint", str(manifest_path), "--wiki-root", str(wiki_root)])
+            self.assertEqual(exit_code, 1)
+            self.assertIn("source_recheck_required", (out / "insight-lint.json").read_text(encoding="utf-8"))
+
+            manifest["internalization_targets"][0]["requires_source_recheck"] = True
+            manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+            self.assertEqual(main(["wiki", "publish-insight", str(manifest_path), "--wiki-root", str(wiki_root)]), 0)
+            text = paper.read_text(encoding="utf-8")
+            self.assertIn("## Limitations / Uncertainty", text)
+            self.assertIn("Source re-check required: `True`", text)
+            self.assertIn("## User Insight Provenance", text)
+            self.assertIn("Source-grounded evidence remains here.", text)
 
     def test_propose_refine_creates_draft_for_canonical_paper(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

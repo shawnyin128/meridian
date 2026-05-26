@@ -11,7 +11,7 @@ The user can write natural language or structured text such as:
 - "Remember this with MagicDec when I work on speculative decoding acceptance rate."
 - "For implementation, log routing entropy and expert usage variance."
 
-Meridian should match the note to one canonical paper, preserve the raw user input, create a reviewable draft, lint the boundary, and then publish into the paper page's `## User Insights` section.
+Meridian should match the note to one canonical paper, preserve the raw user input, create a reviewable draft, lint the boundary, and then internalize the insight into non-source-fact canonical interpretation sections. `## User Insights` remains as provenance/audit state, not the primary reading surface.
 
 ## Schema
 
@@ -39,11 +39,12 @@ Each `insight.json` includes:
 - `confidence`
 - `created_at` / `updated_at`
 - `affected_sections`
+- `internalization_targets`
 - `retrieval_impact`
 - `publish_state`
 - `refinement_proposal`
 
-The invariant is simple: `user_input_raw` is the user's statement; `normalized_summary` is a faithful compressed version; neither is a paper source fact unless source re-check later verifies it.
+Each internalization target has `target_section`, `update_type`, `source_boundary`, `requires_source_recheck`, and `provenance_note_id`. The invariant is simple: `user_input_raw` is the user's statement; `normalized_summary` is a faithful compressed version; internalized text is `user_interpretation` or `personalized_synthesis`, not paper source fact unless source re-check later verifies it.
 
 ## Commands
 
@@ -102,29 +103,36 @@ Ambiguous or no-match attempts write `insight.md`, `insight.json`, and `target_c
 
 `insight.md` sections:
 
-- User Input
+- Raw User Note
 - Matched Paper
 - Normalized User Insight
-- Potential Wiki Updates
+- Internalization Targets
+- Proposed Canonical Updates
 - Source Fact Boundary
 - Retrieval Impact
+- Source Re-check Needed
 - Open Questions
 
 ## Publish Behavior
 
-`publish-insight` only writes to the target paper page's `## User Insights` section and updates frontmatter:
+`publish-insight` writes to non-source-fact canonical sections and updates frontmatter:
 
 - `user_insights`
 - `personalized: true`
 - `updated`
 
-It does not rewrite `What To Remember`, `Mechanism`, `Evidence Map`, or other source-grounded sections. If the user says a source-grounded section is wrong, the insight is recorded as user-supplied and the refinement proposal marks `source_recheck_required: true`.
+Internalized sections include `Why It Matters For Me`, `Personalized Interpretation`, `Implementation Hooks`, `When To Retrieve This Paper`, `Cross-paper Connections`, and `Limitations / Uncertainty`. Raw notes are preserved under `User Insight Provenance`, and legacy `User Insights` remains as an audit layer.
+
+It does not rewrite `Source Facts`, `Evidence Map`, or other source-grounded sections. If the user says a source-grounded section is wrong, the insight is recorded as a source-fact correction request and must set `requires_source_recheck: true`.
 
 ## Retrieval Behavior
 
-Retrieval indexes `## User Insights` as a section. When a query matches user insight text, the context packet marks:
+Retrieval indexes internalized personalized sections and provenance sections. When a query matches user insight text, the context packet marks:
 
 - `Source types matched: user_insight`
+- `Source types matched: user_interpretation`
+- `Not paper source fact: true`
+- matched insight IDs when available
 - boundary warning that this is user-supplied context, not paper source fact or scientific evidence
 
 Implementation or idea queries may use user insights as personalized context. Evidence/source-fact queries must not treat them as paper evidence.

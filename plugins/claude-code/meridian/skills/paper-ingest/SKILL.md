@@ -145,7 +145,7 @@ Every ingest or calibration run should register the raw PDF as managed source st
 
 ## User Insight Boundary
 
-User insights are added after canonical ingest through `meridian wiki add-insight`, not by editing source-grounded paper sections directly. If a user says `paper.md` is shallow, wrong, or missing something, preserve their raw note, publish it to `## User Insights`, and require source re-check before rewriting `What To Remember`, `Mechanism`, or `Evidence Map`.
+User insights are added after canonical ingest through `meridian wiki add-insight`, not by editing source-grounded paper sections directly. Preserve the raw note, internalize it into non-source-fact canonical interpretation sections after lint, and require source re-check before rewriting `What To Remember`, `Mechanism`, or `Evidence Map`.
 
 ## Calibration Lessons
 

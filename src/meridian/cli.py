@@ -1636,7 +1636,7 @@ def main(argv: list[str] | None = None) -> int:
                 insight_manifest=args.insight_manifest,
                 wiki_root=args.wiki_root,
             )
-            print(f"Published user insight to: {result.page_path}")
+            print(f"Published internalized user insight to: {result.page_path}")
             print(f"Updated paper catalog: {result.catalog_path}")
             print(f"Insight lint report: {result.lint_report_path}")
             print(f"Updated wiki log: {result.log_path}")

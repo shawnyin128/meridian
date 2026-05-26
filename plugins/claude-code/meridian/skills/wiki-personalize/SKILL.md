@@ -63,32 +63,25 @@ Good paper identifiers:
 
 ## Publish Discipline
 
-Publishing appends to the target paper page's `## User Insights` section and updates `user_insights`, `personalized`, and `updated` frontmatter.
+Publishing internalizes the insight into non-source-fact canonical sections such
+as `Why It Matters For Me`, `Personalized Interpretation`, `Implementation
+Hooks`, `When To Retrieve This Paper`, `Cross-paper Connections`, and
+`Limitations / Uncertainty`. It also updates `user_insights`, `personalized`,
+and `updated` frontmatter.
 
-It does not rewrite source-grounded sections in the MVP path. If the user says a page is wrong, record the note and require source re-check before changing source-grounded claims.
+Preserve the raw note under `User Insight Provenance`; legacy `User Insights`
+is audit/provenance, not the primary consumption layer.
 
-If a published insight should change the canonical page's broader interpretation or retrieval behavior, route it through evolution instead of editing directly:
-
-```bash
-meridian wiki propose-refine \
-  --wiki-root wiki \
-  --target "<canonical paper page>" \
-  --from-insight "<insight_id>" \
-  --reason "<why the page should evolve>" \
-  --change-class user_insight_integration
-```
-
-In the final LLM Wiki product loop, user insight is an evolution signal. After publishing an insight, check whether it should also create:
-
-- a refinement proposal for the target paper;
-- a synthesis/update proposal if the insight changes a cross-paper idea;
-- a retrieval hint if it should affect future research-intent routing.
-
-Do not promote it into `Source Facts` without source re-check.
+Do not promote user notes into `Source Facts` or `Evidence Map`. If the user
+says a page is wrong, publish only a source-fact correction request with
+`requires_source_recheck: true`.
 
 ## Retrieval
 
-Published insights become retrievable through the canonical paper page. When retrieval matches `User Insights`, treat it as personalized context and preserve the boundary warning. It can guide implementation or idea work, but it is not scientific evidence.
+Published insights become retrievable through the canonical paper page. When
+retrieval matches internalized personalized content, preserve
+`user_interpretation` / `not_paper_source_fact` metadata. It can guide
+implementation or idea work, but it is not scientific evidence.
 
 ## Zotero
 

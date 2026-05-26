@@ -40,6 +40,10 @@ SECTION_WEIGHTS = {
     "Evidence Map": 2.2,
     "Implementation Hooks": 2.4,
     "Limitations / Uncertainty": 1.6,
+    "Why It Matters For Me": 2.5,
+    "Personalized Interpretation": 2.7,
+    "Cross-paper Connections": 2.2,
+    "User Insight Provenance": 1.2,
     "What This Page Is For": 2.2,
     "Source Facts": 2.8,
     "Wiki Synthesis": 3.0,
@@ -77,6 +81,15 @@ SECTION_WEIGHTS = {
     "Prerequisite Concepts": 2.8,
     "Key Concepts": 2.6,
     "Concept Dependencies": 2.6,
+}
+
+PERSONALIZED_INTERPRETATION_SECTIONS = {
+    "Why It Matters For Me",
+    "Personalized Interpretation",
+    "Implementation Hooks",
+    "When To Retrieve This Paper",
+    "Cross-paper Connections",
+    "Limitations / Uncertainty",
 }
 
 INTENT_SECTION_TERMS = {
@@ -597,7 +610,7 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
                 }
             )
 
-    matched_source_types = ["user_insight"] if any(item.get("heading") == "User Insights" for item in section_hits) else []
+    source_metadata = _matched_personalized_source_metadata(section_hits=section_hits, sections=sections)
     return {
         "page_id": record["page_id"],
         "title": title,
@@ -632,7 +645,9 @@ def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dic
         "related_evidence": record.get("related_evidence") or [],
         "related_concepts": record.get("related_concepts") or [],
         "prerequisite_for": record.get("prerequisite_for") or [],
-        "matched_source_types": matched_source_types,
+        "matched_source_types": source_metadata["matched_source_types"],
+        "not_paper_source_fact": source_metadata["not_paper_source_fact"],
+        "matched_insight_ids": source_metadata["matched_insight_ids"],
         "revision_id": record.get("revision_id"),
         "revision_count": record.get("revision_count"),
         "previous_revision": record.get("previous_revision"),
@@ -660,6 +675,24 @@ def _section_search(record: dict[str, Any], sections: dict[str, str]) -> dict[st
     }
     record["_section_search"] = cached
     return cached
+
+
+def _matched_personalized_source_metadata(*, section_hits: list[dict[str, Any]], sections: dict[str, str]) -> dict[str, Any]:
+    headings = {str(item.get("heading") or "") for item in section_hits}
+    matched_source_types: list[str] = []
+    matched_text = "\n".join(str(sections.get(heading) or "") for heading in headings)
+    insight_ids = _extract_insight_ids(matched_text)
+    has_internalized_marker = bool(insight_ids) or "not paper source fact" in matched_text.lower() or "user_interpretation" in matched_text
+    if "User Insights" in headings or "User Insight Provenance" in headings:
+        matched_source_types.append("user_insight")
+    if headings & PERSONALIZED_INTERPRETATION_SECTIONS and has_internalized_marker:
+        matched_source_types.append("user_interpretation")
+    matched_personalized = bool(matched_source_types)
+    return {
+        "matched_source_types": _dedupe(matched_source_types),
+        "not_paper_source_fact": matched_personalized,
+        "matched_insight_ids": insight_ids,
+    }
 
 
 def _score_records_v1(
@@ -905,12 +938,12 @@ def _score_record_v1(
             "selection_reasons": _dedupe(reasons),
             "detected_domains": sorted(record_domains),
             "section_headings": list(sections.keys()),
-            "matched_source_types": _dedupe(
-                list(base.get("matched_source_types") or [])
-                + (["user_insight"] if any(item.get("heading") == "User Insights" for item in base_sections.values()) else [])
-            ),
         }
     )
+    source_metadata = _matched_personalized_source_metadata(section_hits=list(base_sections.values()), sections=sections)
+    base["matched_source_types"] = _dedupe(list(base.get("matched_source_types") or []) + source_metadata["matched_source_types"])
+    base["not_paper_source_fact"] = bool(base.get("not_paper_source_fact")) or bool(source_metadata["not_paper_source_fact"])
+    base["matched_insight_ids"] = _dedupe(list(base.get("matched_insight_ids") or []) + source_metadata["matched_insight_ids"])
     return base
 
 
@@ -1222,6 +1255,8 @@ def _render_context_packet(
                 f"- Result type: `{result.get('result_type') or result.get('type') or 'paper'}`",
                 f"- Knowledge role: `{result.get('knowledge_role') or 'canonical'}`",
                 f"- Source types matched: {', '.join(result.get('matched_source_types') or ['source_or_wiki'])}",
+                f"- Not paper source fact: `{bool(result.get('not_paper_source_fact'))}`",
+                f"- Matched insight IDs: {', '.join(result.get('matched_insight_ids') or ['none'])}",
                 f"- Revision: `{result.get('revision_id') or 'unversioned'}`; evolution state: `{result.get('evolution_state') or 'none'}`",
                 f"- Score: `{result['score']}`",
                 f"- Review state: `{result.get('review_state')}`; quality gate: `{result.get('quality_gate')}`; quality state: `{result.get('quality_state')}`; validation state: `{result.get('validation_state')}`; trust state: `{result.get('trust_state')}`; confidence: `{result.get('confidence')}`",
@@ -1249,6 +1284,8 @@ def _render_context_packet(
             lines.append("  - `What To Remember`: inspect the page summary before using this result.")
         if "user_insight" in set(result.get("matched_source_types") or []):
             lines.append("- Boundary warning: matched `User Insights`; this is user-supplied context, not paper source fact or scientific evidence.")
+        if result.get("not_paper_source_fact"):
+            lines.append("- Boundary warning: matched personalized/internalized content; use it as user interpretation or personalized synthesis, not paper evidence.")
         if result.get("source_quality_linked"):
             linked = ", ".join(str(item) for item in (result.get("source_quality_sources") or []))
             lines.append(f"- Source-quality warning: this result links to source-quality hold material ({linked}); do not use it as scientific evidence.")
@@ -1718,3 +1755,7 @@ def _dedupe(items: list[str]) -> list[str]:
             seen.add(key)
             result.append(item)
     return result
+
+
+def _extract_insight_ids(text: str) -> list[str]:
+    return _dedupe(re.findall(r"\binsight-\d{4}-\d{2}-\d{2}-[a-f0-9]{10}\b", text))

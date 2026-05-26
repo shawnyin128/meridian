@@ -95,10 +95,10 @@ Retrieval should return compiled context before raw paper dumps:
 - overview query: synthesis/topic pages first, then key papers and evidence.
 - method/probe/debug query: method-family pages plus prerequisite concept pages first, then implementation-relevant papers/evidence.
 - evidence query: claim/evidence pages first, then source paper sections.
-- personal idea query: user insight and synthesis pages can participate, but must be labeled user-supplied.
+- personal idea query: internalized user interpretation and synthesis pages can participate, but must be labeled user-supplied / personalized and not paper evidence.
 - contradiction/stale query: claim/synthesis/evolution warnings first.
 
-Context packets must show `result_type`, `corpus_type`, `knowledge_role`, `source_type`, `quality_state`, `review_state`, `evolution_state`, provenance, selection reasons, and read-first sections.
+Context packets must show `result_type`, `corpus_type`, `knowledge_role`, `source_type`, `quality_state`, `review_state`, `evolution_state`, provenance, selection reasons, read-first sections, and whether matched personalized content is `not_paper_source_fact`.
 
 ## Obsidian Graph
 
@@ -108,7 +108,7 @@ The graph should expose:
 - method/topic -> related papers, concepts, and syntheses.
 - concept -> source papers, prerequisite methods, related concepts, and evidence.
 - synthesis -> source papers/claims/evidence.
-- user insight -> target paper and optional refinement/synthesis chain.
+- user insight -> raw note provenance, target paper, internalized canonical interpretation, and optional refinement/synthesis chain.
 - contradiction/stale candidates as proposal artifacts until reviewed.
 
 ## MCP/API/Local Model Surface

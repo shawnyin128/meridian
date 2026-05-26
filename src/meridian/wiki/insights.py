@@ -14,6 +14,7 @@ from meridian.wiki.vault import append_wiki_log, init_wiki_vault, rebuild_wiki_i
 INSIGHT_SCHEMA_VERSION = "meridian.user_insight.v1"
 INSIGHT_LINT_SCHEMA_VERSION = "meridian.user_insight_lint.v1"
 INSIGHT_PUBLISH_SCHEMA_VERSION = "meridian.user_insight_publish.v1"
+INSIGHT_INTERNALIZATION_SCHEMA_VERSION = "meridian.user_insight_internalization.v1"
 ALLOWED_INSIGHT_TYPES = {
     "paper-note",
     "paper-correction",
@@ -23,6 +24,24 @@ ALLOWED_INSIGHT_TYPES = {
     "implementation-note",
     "limitation-note",
     "future-question",
+}
+ALLOWED_INTERNALIZATION_UPDATE_TYPES = {
+    "personalized_interpretation",
+    "mechanism_refinement",
+    "implementation_hook",
+    "retrieval_hook",
+    "limitation_uncertainty",
+    "cross_paper_connection",
+    "source_fact_correction_request",
+}
+INTERNALIZATION_TARGET_SECTIONS = {
+    "Why It Matters For Me",
+    "Personalized Interpretation",
+    "Implementation Hooks",
+    "When To Retrieve This Paper",
+    "Cross-paper Connections",
+    "Limitations / Uncertainty",
+    "User Insight Provenance",
 }
 VALID_AFFECTED_SECTIONS = {
     "What To Remember",
@@ -34,6 +53,10 @@ VALID_AFFECTED_SECTIONS = {
     "Implementation Hooks",
     "Limitations / Uncertainty",
     "User Insights",
+    "Why It Matters For Me",
+    "Personalized Interpretation",
+    "Cross-paper Connections",
+    "User Insight Provenance",
 }
 
 
@@ -127,8 +150,17 @@ def add_user_insight(
     insight_id = f"insight-{created_at[:10]}-{_short_hash(str(target.get('page_id')) + raw_note)}"
     retrieval_impact = _retrieval_impact(raw_note, normalized_type)
     source_recheck_required = normalized_type == "paper-correction" or _looks_like_source_fact_correction(raw_note)
+    provenance_note_id = f"{insight_id}-raw-note"
+    internalization_targets = _internalization_targets(
+        raw_note=raw_note,
+        insight_type=normalized_type,
+        normalized_summary=normalized_summary,
+        source_recheck_required=source_recheck_required,
+        provenance_note_id=provenance_note_id,
+    )
     manifest = {
         "schema_version": INSIGHT_SCHEMA_VERSION,
+        "internalization_schema_version": INSIGHT_INTERNALIZATION_SCHEMA_VERSION,
         "created_at": created_at,
         "updated_at": created_at,
         "status": "draft",
@@ -145,6 +177,7 @@ def add_user_insight(
         "normalized_summary": normalized_summary,
         "confidence": "user_supplied",
         "affected_sections": affected_sections,
+        "internalization_targets": internalization_targets,
         "retrieval_impact": retrieval_impact,
         "source_fact_boundary": "This is user-supplied interpretation or note. It is not paper source fact unless separately verified against the source.",
         "target_context_path": str(target_context_path),
@@ -208,6 +241,34 @@ def lint_user_insight(
     boundary = str(manifest.get("source_fact_boundary") or "").lower()
     if "not paper source fact" not in boundary and "not source fact" not in boundary:
         findings.append(_finding("error", "source_boundary", "source fact boundary is not explicit"))
+    targets = list(manifest.get("internalization_targets") or [])
+    if not targets:
+        findings.append(_finding("error", "missing_internalization_targets", "internalization targets are missing"))
+    for index, target in enumerate(targets, start=1):
+        if not isinstance(target, dict):
+            findings.append(_finding("error", "invalid_internalization_target", f"internalization target {index} is not an object"))
+            continue
+        target_section = str(target.get("target_section") or "")
+        update_type = str(target.get("update_type") or "")
+        source_boundary = str(target.get("source_boundary") or "")
+        if target_section not in INTERNALIZATION_TARGET_SECTIONS:
+            findings.append(_finding("error", "invalid_internalization_target", f"invalid target section: {target_section}"))
+        if target_section in {"Source Facts", "Evidence Map"}:
+            findings.append(_finding("error", "source_fact_contamination", f"user insight cannot target source-fact section: {target_section}"))
+        if update_type not in ALLOWED_INTERNALIZATION_UPDATE_TYPES:
+            findings.append(_finding("error", "invalid_internalization_update_type", f"invalid update type: {update_type}"))
+        if not str(target.get("provenance_note_id") or "").strip():
+            findings.append(_finding("error", "missing_provenance_note_id", f"target {index} is missing provenance_note_id"))
+        if "not paper source fact" not in source_boundary.lower() and "not source fact" not in source_boundary.lower():
+            findings.append(_finding("error", "source_boundary", f"target {index} source boundary is not explicit"))
+        if update_type == "source_fact_correction_request" and not bool(target.get("requires_source_recheck")):
+            findings.append(
+                _finding(
+                    "error",
+                    "source_recheck_required",
+                    "source_fact_correction_request must require source re-check",
+                )
+            )
     if _claims_source_fact_authority(str(manifest.get("normalized_summary") or "")):
         findings.append(_finding("error", "source_fact_contamination", "normalized insight presents user input as paper evidence"))
     match = dict(manifest.get("match") or {})
@@ -238,11 +299,11 @@ def publish_user_insight(
     manifest = _load_manifest(insight_manifest)
     target_page = wiki_root / str(manifest["target_page"])
     text = target_page.read_text(encoding="utf-8")
-    updated_text = _append_insight_to_page(text=text, manifest=manifest, wiki_root=wiki_root)
+    updated_text = _internalize_insight_into_page(text=text, manifest=manifest, wiki_root=wiki_root)
     target_page.write_text(updated_text, encoding="utf-8")
     now = datetime.now(timezone.utc).isoformat()
     manifest["status"] = "published"
-    manifest["publish_state"] = "published_to_user_insights"
+    manifest["publish_state"] = "published_internalized"
     manifest["published_at"] = now
     manifest["updated_at"] = now
     insight_manifest.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -253,7 +314,7 @@ def publish_user_insight(
         action="insight",
         title=str(manifest.get("target_title") or manifest.get("target_page") or "user insight"),
         lines=[
-            f"Published user insight `{manifest.get('insight_id')}` to `User Insights`.",
+            f"Published user insight `{manifest.get('insight_id')}` as internalized canonical interpretation.",
             f"Target page: `{manifest.get('target_page')}`",
             "Boundary: user-supplied insight; not paper source fact.",
             f"Updated index: `{index_path.relative_to(wiki_root)}`",
@@ -358,11 +419,12 @@ def _candidate_from_retrieval(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def _render_insight(manifest: dict[str, Any]) -> str:
+    targets = list(manifest.get("internalization_targets") or [])
     return "\n".join(
         [
             "# User Insight Draft",
             "",
-            "## User Input",
+            "## Raw User Note",
             "",
             str(manifest["user_input_raw"]).strip(),
             "",
@@ -375,15 +437,28 @@ def _render_insight(manifest: dict[str, Any]) -> str:
             "",
             f"- {manifest['normalized_summary']}",
             "",
-            "## Potential Wiki Updates",
+            "## Internalization Targets",
             "",
-            f"- Affected sections: {', '.join(manifest['affected_sections'])}",
-            f"- Refinement proposal: {manifest['refinement_proposal']['proposed_update']}",
+            *[
+                f"- `{item.get('target_section')}` via `{item.get('update_type')}`; source re-check: `{bool(item.get('requires_source_recheck'))}`"
+                for item in targets
+            ],
+            "",
+            "## Proposed Canonical Updates",
+            "",
+            *[
+                f"- `{item.get('target_section')}`: {item.get('proposed_update')}"
+                for item in targets
+            ],
             "",
             "## Source Fact Boundary",
             "",
             f"- {manifest['source_fact_boundary']}",
             f"- Source re-check required: `{bool(manifest['refinement_proposal']['source_recheck_required'])}`",
+            "",
+            "## Source Re-check Needed",
+            "",
+            f"- `{any(bool(item.get('requires_source_recheck')) for item in targets)}`",
             "",
             "## Retrieval Impact",
             "",
@@ -414,27 +489,82 @@ def _render_publish_plan(manifest: dict[str, Any]) -> str:
             "",
             f"- Insight ID: `{manifest['insight_id']}`",
             f"- Target page: `{manifest['target_page']}`",
-            "- Publish action: append to `## User Insights`; update frontmatter `user_insights`, `personalized`, and `updated`.",
-            "- Source-grounded sections are not overwritten by this MVP publish path.",
+            "- Publish action: internalize into non-source-fact canonical sections; update frontmatter `user_insights`, `personalized`, and `updated`.",
+            "- Provenance action: preserve raw note under `## User Insight Provenance` and legacy `## User Insights` audit entry.",
+            "- Source-grounded sections are not overwritten from user input alone.",
             f"- Source re-check required before source-fact rewrite: `{bool(manifest['refinement_proposal']['source_recheck_required'])}`",
             "",
         ]
     )
 
 
-def _append_insight_to_page(*, text: str, manifest: dict[str, Any], wiki_root: Path) -> str:
+def _internalize_insight_into_page(*, text: str, manifest: dict[str, Any], wiki_root: Path) -> str:
     frontmatter = parse_frontmatter(text)
     body = strip_frontmatter(text)
     insights = _dedupe([str(item) for item in _as_list(frontmatter.get("user_insights"))] + [str(manifest["insight_id"])])
     frontmatter["user_insights"] = insights
     frontmatter["personalized"] = True
     frontmatter["updated"] = datetime.now(timezone.utc).date().isoformat()
+    for target in manifest.get("internalization_targets") or []:
+        section = str(target.get("target_section") or "")
+        if section == "User Insight Provenance":
+            continue
+        body = _append_to_section(body=body, heading=section, entry=_render_internalized_entry(manifest=manifest, target=target))
+    provenance_entry = _render_user_insight_provenance_entry(manifest=manifest, wiki_root=wiki_root)
+    body = _append_to_section(body=body, heading="User Insight Provenance", entry=provenance_entry)
     entry = _render_canonical_insight_entry(manifest=manifest, wiki_root=wiki_root)
-    if "## User Insights" in body:
-        body = body.rstrip() + "\n\n" + entry + "\n"
-    else:
-        body = body.rstrip() + "\n\n## User Insights\n\n" + entry + "\n"
+    body = _append_to_section(body=body, heading="User Insights", entry=entry)
     return _render_frontmatter(frontmatter) + "\n" + body.lstrip()
+
+
+def _append_to_section(*, body: str, heading: str, entry: str) -> str:
+    marker = f"## {heading}"
+    body = body.rstrip()
+    if marker in body:
+        pattern = re.compile(rf"(^## {re.escape(heading)}\s*$)", re.MULTILINE)
+        match = pattern.search(body)
+        if match:
+            next_heading = re.search(r"^##\s+", body[match.end() :], flags=re.MULTILINE)
+            insert_at = match.end() + next_heading.start() if next_heading else len(body)
+            return body[:insert_at].rstrip() + "\n\n" + entry.rstrip() + "\n\n" + body[insert_at:].lstrip()
+    return body + f"\n\n{marker}\n\n" + entry.rstrip() + "\n"
+
+
+def _render_internalized_entry(*, manifest: dict[str, Any], target: dict[str, Any]) -> str:
+    insight_id = str(manifest["insight_id"])
+    source_type = "personalized_synthesis" if target.get("update_type") in {"mechanism_refinement", "cross_paper_connection"} else "user_interpretation"
+    return "\n".join(
+        [
+            f"### {insight_id}",
+            "",
+            f"- Source type: `{source_type}`; not paper source fact: `true`",
+            f"- Update type: `{target.get('update_type')}`",
+            f"- Insight: {target.get('proposed_update')}",
+            f"- Provenance note: `{target.get('provenance_note_id')}`",
+            f"- Source re-check required: `{bool(target.get('requires_source_recheck'))}`",
+            f"- Boundary: {target.get('source_boundary')}",
+        ]
+    )
+
+
+def _render_user_insight_provenance_entry(*, manifest: dict[str, Any], wiki_root: Path) -> str:
+    path = Path(str(manifest.get("insight_path") or ""))
+    try:
+        rel = path.relative_to(wiki_root).as_posix()
+    except ValueError:
+        rel = str(path)
+    return "\n".join(
+        [
+            f"### {manifest['insight_id']}-raw-note",
+            "",
+            f"- Insight ID: `{manifest['insight_id']}`",
+            f"- Source type: `user_insight`; provenance: `user_supplied`",
+            f"- Date: `{str(manifest.get('created_at') or '')[:10]}`",
+            f"- Raw note: {str(manifest.get('user_input_raw') or '').strip()}",
+            f"- Draft artifact: `{rel}`",
+            "- Boundary: raw user note preserved for audit; not paper source fact.",
+        ]
+    )
 
 
 def _render_canonical_insight_entry(*, manifest: dict[str, Any], wiki_root: Path) -> str:
@@ -453,6 +583,7 @@ def _render_canonical_insight_entry(*, manifest: dict[str, Any], wiki_root: Path
             f"- Summary: {manifest['normalized_summary']}",
             f"- Original user note: `{rel}`",
             f"- Affected sections: {', '.join(manifest.get('affected_sections') or [])}",
+            "- Canonical consumption: internalized sections above; this block is provenance/audit.",
             f"- Retrieval hook: {manifest.get('retrieval_impact')}",
             "- Boundary: user-supplied insight, not paper source fact or scientific evidence.",
         ]
@@ -475,7 +606,127 @@ def _refinement_proposal(
         "proposed_update": normalized_summary,
         "update_kind": "user_insight" if source_recheck_required else "user_interpretation",
         "source_recheck_required": source_recheck_required,
-        "publish_target": "User Insights",
+        "publish_target": "internalized canonical interpretation",
+    }
+
+
+def _internalization_targets(
+    *,
+    raw_note: str,
+    insight_type: str,
+    normalized_summary: str,
+    source_recheck_required: bool,
+    provenance_note_id: str,
+) -> list[dict[str, Any]]:
+    lowered = raw_note.lower()
+    boundary = "User-supplied interpretation; not paper source fact unless separately verified against the source."
+    targets: list[dict[str, Any]] = []
+    if source_recheck_required:
+        targets.append(
+            _internalization_target(
+                section="Limitations / Uncertainty",
+                update_type="source_fact_correction_request",
+                proposed_update=f"User flagged a possible source-fact issue: {normalized_summary}",
+                boundary=boundary,
+                requires_source_recheck=True,
+                provenance_note_id=provenance_note_id,
+            )
+        )
+    elif insight_type == "implementation-note" or any(token in lowered for token in ("implement", "code", "probe", "ablation", "实验")):
+        targets.append(
+            _internalization_target(
+                section="Implementation Hooks",
+                update_type="implementation_hook",
+                proposed_update=normalized_summary,
+                boundary=boundary,
+                requires_source_recheck=False,
+                provenance_note_id=provenance_note_id,
+            )
+        )
+    elif insight_type == "retrieval-hint" or any(token in lowered for token in ("retrieve", "search", "检索", "remember")):
+        targets.append(
+            _internalization_target(
+                section="When To Retrieve This Paper",
+                update_type="retrieval_hook",
+                proposed_update=normalized_summary,
+                boundary=boundary,
+                requires_source_recheck=False,
+                provenance_note_id=provenance_note_id,
+            )
+        )
+    elif insight_type == "cross-paper-connection" or any(token in lowered for token in ("connection", "compare", "versus", "relationship", "关系")):
+        targets.append(
+            _internalization_target(
+                section="Cross-paper Connections",
+                update_type="cross_paper_connection",
+                proposed_update=normalized_summary,
+                boundary=boundary,
+                requires_source_recheck=False,
+                provenance_note_id=provenance_note_id,
+            )
+        )
+    elif insight_type == "limitation-note" or any(token in lowered for token in ("limitation", "failure", "uncertain", "scope")):
+        targets.append(
+            _internalization_target(
+                section="Limitations / Uncertainty",
+                update_type="limitation_uncertainty",
+                proposed_update=normalized_summary,
+                boundary=boundary,
+                requires_source_recheck=False,
+                provenance_note_id=provenance_note_id,
+            )
+        )
+    elif any(token in lowered for token in ("mechanism", "method", "核心", "why", "important", "关键")):
+        targets.append(
+            _internalization_target(
+                section="Personalized Interpretation",
+                update_type="mechanism_refinement",
+                proposed_update=normalized_summary,
+                boundary=boundary,
+                requires_source_recheck=False,
+                provenance_note_id=provenance_note_id,
+            )
+        )
+    else:
+        targets.append(
+            _internalization_target(
+                section="Why It Matters For Me",
+                update_type="personalized_interpretation",
+                proposed_update=normalized_summary,
+                boundary=boundary,
+                requires_source_recheck=False,
+                provenance_note_id=provenance_note_id,
+            )
+        )
+    targets.append(
+        _internalization_target(
+            section="User Insight Provenance",
+            update_type="personalized_interpretation",
+            proposed_update="Preserve the raw user note for audit and traceability.",
+            boundary=boundary,
+            requires_source_recheck=False,
+            provenance_note_id=provenance_note_id,
+        )
+    )
+    return targets
+
+
+def _internalization_target(
+    *,
+    section: str,
+    update_type: str,
+    proposed_update: str,
+    boundary: str,
+    requires_source_recheck: bool,
+    provenance_note_id: str,
+) -> dict[str, Any]:
+    return {
+        "target_section": section,
+        "update_type": update_type,
+        "proposed_update": proposed_update,
+        "source_boundary": boundary,
+        "requires_source_recheck": requires_source_recheck,
+        "provenance_note_id": provenance_note_id,
     }
 
 

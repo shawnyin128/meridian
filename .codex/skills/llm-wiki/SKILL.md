@@ -1,6 +1,6 @@
 ---
 name: llm-wiki
-description: Maintain this project as an LLM-maintained Markdown wiki system. Use when planning, designing, implementing, or reviewing features that affect raw source ingestion, generated wiki pages, schema or AGENTS conventions, Obsidian vault structure, page frontmatter, indexing, logging, query workflows, lint workflows, citations, cross-links, or persistent knowledge-base behavior.
+description: Control Meridian product-development boundaries for the LLM-maintained Paper Wiki. Use when planning, designing, implementing, or reviewing changes that define or alter product scope, architecture, workflow contracts, artifact boundaries, schema conventions, or durable knowledge-layer invariants. Do not use for routine paper ingest, retrieval, page updates, or wiki maintenance unless the task changes those product boundaries; use wiki, paper-ingest, wiki-retrieve, or other specialized skills instead.
 ---
 
 # LLM Wiki
@@ -85,7 +85,7 @@ Follow these principles while the project is still design-heavy:
 - Favor Markdown files, Obsidian links, plain directories, git history, and simple Unix-readable logs before adding databases or custom infrastructure.
 - Preserve source provenance on claims. Any synthesized claim should point back to one or more source pages or raw source references when possible.
 - Distinguish source facts, wiki synthesis, and user decisions. Do not blur "the source says", "the wiki currently infers", and "we decided".
-- Treat user reading notes as first-class personalized wiki state, but keep them in `User Insights` or proposal sections until source re-check justifies source-grounded edits.
+- Treat user reading notes as first-class personalized wiki state. Preserve the raw note for provenance, then internalize it into non-source-fact canonical interpretation sections when lint passes; keep `User Insights` as an audit layer, and require source re-check before source-grounded edits.
 - Treat preliminary knowledge as first-class concept state under `wiki/concepts/`. Concept pages should explain prerequisite mechanisms, implementation implications, failure modes, minimal checks/probes, and source provenance; do not collapse them into method pages or generic textbook notes.
 - File valuable query outputs back into the wiki when they represent durable analysis, comparison, synthesis, or planning.
 - Use proposal-first write-back for retrieval outputs. A valuable query should become `wiki/.drafts/proposals/<slug>/` first, pass `proposal-lint`, and only then publish to the canonical synthesis layer.
@@ -249,7 +249,7 @@ meridian wiki insight-lint wiki/.drafts/insights/<slug>/insight.json --wiki-root
 meridian wiki publish-insight wiki/.drafts/insights/<slug>/insight.json --wiki-root wiki
 ```
 
-The publish path appends to `## User Insights` on the canonical paper page and updates `user_insights` / `personalized` frontmatter. It must not rewrite `What To Remember`, `Mechanism`, or `Evidence Map` from user input alone. If the user says a source-grounded section is wrong, record the insight and require source re-check before changing source facts.
+The publish path internalizes the insight into non-source-fact canonical interpretation sections and updates `user_insights` / `personalized` frontmatter. It must not rewrite `Source Facts`, `What To Remember`, `Mechanism`, or `Evidence Map` from user input alone. If the user says a source-grounded section is wrong, record a source-fact correction request and require source re-check before changing source facts.
 
 ### Evolve
 

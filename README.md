@@ -196,6 +196,12 @@ Use my Paper Wiki to answer this research or coding question with provenance.
 Check my Paper Wiki health and tell me the top repair priorities.
 ```
 
+```text
+Remember this insight about CodeQuant: for my work, its real value is routing
+stability probe design. Internalize it into the paper page, but keep it marked
+as my interpretation, not paper evidence.
+```
+
 CLI commands remain execution primitives for skills, MCP, tests, and advanced
 debugging; they are not the normal user entry.
 

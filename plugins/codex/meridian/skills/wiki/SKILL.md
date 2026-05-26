@@ -36,7 +36,7 @@ The user gives a Zotero export folder such as `My Library`. Recursively ingest t
 ```
 
 ```text
-The user shares a reading note about a paper. Match it to the canonical paper, preserve the raw note, normalize the insight, publish it as user insight after lint, and make it retrievable as user-supplied context.
+The user shares a reading note about a paper. Match it to the canonical paper, preserve the raw note, normalize the insight, internalize it into non-source-fact canonical interpretation after lint, and make it retrievable as user-supplied context.
 ```
 
 ```text
