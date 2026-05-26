@@ -52,6 +52,8 @@ Delegate to specialized skills when needed:
 
 Use `meridian wiki health --wiki-root <wiki>` when the user asks whether the
 wiki is usable, trustworthy, release-ready, or what should be repaired next.
+Use `meridian wiki health-ui --wiki-root <wiki>` when the user wants the HTML
+health report's Run Check button to trigger a local health check.
 
 ## Use Wiki
 

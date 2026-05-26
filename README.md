@@ -205,6 +205,12 @@ Advanced health primitive:
 meridian wiki health --wiki-root wiki --repair-plan
 ```
 
+Enable the HTML report button:
+
+```bash
+meridian wiki health-ui --wiki-root wiki
+```
+
 ## Lab
 
 Lab is the lightweight research-coding copilot layer. It uses Paper Wiki context

@@ -67,6 +67,7 @@ from meridian.wiki.commands import (
     system_optimize_eval_wiki,
 )
 from meridian.wiki.git_auto_commit import GitAutoCommitResult, auto_commit_paths, git_dirty_paths
+from meridian.wiki.health_server import serve_health_ui
 from meridian.wiki.vault import slugify
 from meridian.wiki.workspace import workspace_for_cli
 
@@ -568,6 +569,16 @@ def build_parser() -> argparse.ArgumentParser:
     health.add_argument("--html", type=Path, default=None, help="Optional HTML dashboard path.")
     health.add_argument("--repair-plan", action="store_true", help="Also write a standalone repair plan under .drafts/health/.")
     health.add_argument("--repair-plan-out", type=Path, default=None, help="Optional repair plan path.")
+
+    health_ui = wiki_subparsers.add_parser(
+        "health-ui",
+        help="Serve the local button bridge for wiki health HTML reports.",
+    )
+    health_ui.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    health_ui.add_argument("--host", default="127.0.0.1", help="Bind host. Defaults to localhost.")
+    health_ui.add_argument("--port", type=int, default=8765, help="Bind port. Defaults to 8765.")
+    health_ui.add_argument("--profile", choices=["daily", "release", "strict"], default="daily", help="Scoring profile label.")
+    health_ui.add_argument("--no-repair-plan", action="store_true", help="Do not write a repair plan when the button runs health.")
 
     review = wiki_subparsers.add_parser(
         "review",
@@ -1466,6 +1477,16 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Overall score: {result.overall_score}")
             print(f"Hard failures: {len(result.hard_failures)}")
             return 0 if result.health_level != "blocked" else 1
+
+        if args.product == "wiki" and args.command == "health-ui":
+            serve_health_ui(
+                wiki_root=args.wiki_root,
+                host=args.host,
+                port=args.port,
+                profile=args.profile,
+                repair_plan=not args.no_repair_plan,
+            )
+            return 0
 
         if args.product == "wiki" and args.command == "judge-pack":
             packet = create_judge_packet(

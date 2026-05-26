@@ -11,6 +11,17 @@ repairable without calling an LLM in the default path.
 meridian wiki health --wiki-root wiki --repair-plan
 ```
 
+To enable the HTML report's **Run Check** button, start the local bridge:
+
+```bash
+meridian wiki health-ui --wiki-root wiki
+```
+
+The bridge binds to `127.0.0.1:8765` by default. It exposes only the wiki
+health run/status endpoints and uses a single-flight lock, so repeated clicks
+while a check is running return "already running" instead of launching duplicate
+checks.
+
 Default outputs:
 
 ```text

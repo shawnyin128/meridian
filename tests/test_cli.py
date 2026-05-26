@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
 import types
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -21,6 +22,7 @@ from meridian.mcp import server as mcp_server
 from meridian.wiki.corpus import retrieve_papers
 from meridian.wiki.extract import PageExtraction, PdfExtraction
 from meridian.wiki.ingest import _title_from_first_page
+from meridian.wiki.health_server import HealthRunController
 from meridian.wiki.model import _primary_paper_key, build_paper_model
 from meridian.wiki.packet import _trusted_metadata_authors
 from meridian.wiki.promote import _records_for_promotion
@@ -1279,9 +1281,53 @@ quality_state: "multimodal_pending"
             html = (wiki_root / ".index/wiki-health.html").read_text(encoding="utf-8")
             self.assertIn("<details class=\"dimension\">", html)
             self.assertIn("What Needs Attention", html)
+            self.assertIn("id=\"run-health\"", html)
+            self.assertIn("health-ui --wiki-root wiki", html)
             report = (wiki_root / ".index/wiki-health.md").read_text(encoding="utf-8")
             self.assertIn("## Health Dimensions", report)
             self.assertTrue(list((wiki_root / ".drafts/health").glob("*/repair-plan.md")))
+
+    def test_wiki_health_ui_controller_blocks_duplicate_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            wiki_root = Path(tmp) / "wiki"
+            wiki_root.mkdir(parents=True)
+            started = threading.Event()
+            release = threading.Event()
+
+            def fake_health(**kwargs):  # noqa: ANN001
+                root = kwargs["wiki_root"]
+                report = root / ".index/wiki-health.json"
+                html = root / ".index/wiki-health.html"
+                report.parent.mkdir(parents=True, exist_ok=True)
+                started.set()
+                release.wait(timeout=2)
+                report.write_text(
+                    json.dumps(
+                        {
+                            "health_level": "usable",
+                            "overall_score": 90,
+                            "main_insight": "ok",
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                html.write_text("<html></html>", encoding="utf-8")
+                return types.SimpleNamespace(report_path=report, html_path=html, repair_plan_path=None)
+
+            controller = HealthRunController(wiki_root=wiki_root, health_function=fake_health)
+            first: list[tuple[int, dict[str, object]]] = []
+            thread = threading.Thread(target=lambda: first.append(controller.run_once()))
+            thread.start()
+            self.assertTrue(started.wait(timeout=2))
+
+            duplicate_status, duplicate_payload = controller.run_once()
+            self.assertEqual(duplicate_status, 409)
+            self.assertEqual(duplicate_payload["state"], "running")
+
+            release.set()
+            thread.join(timeout=2)
+            self.assertEqual(first[0][0], 200)
+            self.assertEqual(first[0][1]["overall_score"], 90)
 
     def test_mcp_audit_returns_health_summary(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
