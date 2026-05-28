@@ -29,19 +29,19 @@ strategy comparison is needed:
 
 ```bash
 meridian wiki retrieve "<standalone research query>" \
-  --wiki-root wiki \
+  --wiki-root <wiki-root> \
   --strategy v1 \
-  --out wiki/.drafts/retrieval/context.md \
-  --json-out wiki/.drafts/retrieval/context.json
+  --out <wiki-root>/.drafts/retrieval/context.md \
+  --json-out <wiki-root>/.drafts/retrieval/context.json
 ```
 
 3. Read the context packet and then the smallest useful set of linked wiki pages/sections.
 4. If Obsidian is open and live-vault inspection is useful, use Obsidian CLI for complementary navigation. This includes `obsidian search` for live keyword checks:
 
 ```bash
-obsidian vault="wiki" search query="<keyword or method>" limit=10
-obsidian vault="wiki" read path="papers/<paper-page>.md"
-obsidian vault="wiki" backlinks path="papers/<paper-page>.md"
+obsidian vault="<paper-wiki-vault>" search query="<keyword or method>" limit=10
+obsidian vault="<paper-wiki-vault>" read path="papers/<paper-page>.md"
+obsidian vault="<paper-wiki-vault>" backlinks path="papers/<paper-page>.md"
 ```
 
 5. Answer with page references and explain why each paper matters for the user's task.
@@ -49,20 +49,20 @@ obsidian vault="wiki" backlinks path="papers/<paper-page>.md"
 
 ```bash
 meridian wiki propose-writeback \
-  --wiki-root wiki \
+  --wiki-root <wiki-root> \
   --query "<standalone research query>" \
   --context <context.json from meridian wiki context> \
   --title "<draft synthesis title>" \
   --proposal-type synthesis
 ```
 
-Write-back proposals stay under `wiki/.drafts/proposals/` and now include `proposal.md`, `proposal.json`, `source_context.json`, and `publish_plan.md`. They separate source facts, wiki synthesis, user ideas/decisions, uncertainty, and publish plan. Do not publish canonical synthesis directly from retrieval output.
+Write-back proposals stay under `<wiki-root>/.drafts/proposals/` and now include `proposal.md`, `proposal.json`, `source_context.json`, and `publish_plan.md`. They separate source facts, wiki synthesis, user ideas/decisions, uncertainty, and publish plan. Do not publish canonical synthesis directly from retrieval output.
 
 Before canonical publish, validate and apply explicitly:
 
 ```bash
-meridian wiki proposal-lint wiki/.drafts/proposals/<slug>/proposal.json --wiki-root wiki
-meridian wiki publish-proposal wiki/.drafts/proposals/<slug>/proposal.json --wiki-root wiki
+meridian wiki proposal-lint <wiki-root>/.drafts/proposals/<slug>/proposal.json --wiki-root <wiki-root>
+meridian wiki publish-proposal <wiki-root>/.drafts/proposals/<slug>/proposal.json --wiki-root <wiki-root>
 ```
 
 Use `--proposal-type method-family`, `comparison`, `decision`, or `research-question` when those better describe the durable artifact. Put the user's hypothesis or decision in `--user-note` or `--user-note-file`; it must remain in `User Ideas / Decisions`, not `Source Facts`.
@@ -70,8 +70,8 @@ Use `--proposal-type method-family`, `comparison`, `decision`, or `research-ques
 ## Retrieval Discipline
 
 - Treat frontmatter as the machine-routing source of truth.
-- Treat canonical `wiki/papers/*.md`, `wiki/syntheses/*.md`, `wiki/methods/*.md`, `wiki/topics/*.md`, `wiki/concepts/*.md`, `wiki/claims/*.md`, and `wiki/evidence/*.md` pages as the normal retrieval corpus and concise reading targets.
-- Do not retrieve from `wiki/.drafts/ingests/**`, draft `paper.md` / `paper_candidate`, `review.md`, judge packets, self-check packets, or extraction files. Those are pipeline/debug artifacts.
+- Treat canonical `<wiki-root>/papers/*.md`, `<wiki-root>/syntheses/*.md`, `<wiki-root>/methods/*.md`, `<wiki-root>/topics/*.md`, `<wiki-root>/concepts/*.md`, `<wiki-root>/claims/*.md`, and `<wiki-root>/evidence/*.md` pages as the normal retrieval corpus and concise reading targets.
+- Do not retrieve from `<wiki-root>/.drafts/ingests/**`, draft `paper.md` / `paper_candidate`, `review.md`, judge packets, self-check packets, or extraction files. Those are pipeline/debug artifacts.
 - Prefer `meridian wiki context` packets over raw search dumps.
 - Use retrieval v1 by default. v1 adds field-weighted scoring, section-aware ranking, controlled-vocabulary normalization, capped graph/facet expansion, source-quality routing, hard-distractor suppression, and compact context packet construction. Use `--strategy v0` only for baseline comparison.
 - Retrieval now searches paper pages, published synthesis-layer pages, and compiled knowledge-layer pages by default. Check `result_type` and `knowledge_role` before treating a hit as source evidence; synthesis pages are higher-level interpretation, method/topic/concept pages are compiled wiki navigation/synthesis, and claim/evidence candidate records are provenance-bearing but not full reviewed synthesis.
@@ -85,7 +85,7 @@ Use `--proposal-type method-family`, `comparison`, `decision`, or `research-ques
 - Check `Revision` and `evolution state` in context packets. If retrieval reports an evolution warning such as `stale`, `superseded`, `conflicting_synthesis`, or `needs_source_recheck`, use the page as context but do not treat the affected section as settled evidence.
 - For coding tasks, expect method/topic/concept pages to appear when available, then read concept prerequisite checks plus `Implementation Hooks`, `Mechanism`, and `Limitations / Uncertainty` from linked canonical papers.
 - For evidence tasks, inspect claim/evidence records and their provenance together with source paper `Evidence Map` before relying on a claim.
-- For overview tasks, expect synthesis/topic pages to appear before isolated papers. If a query only returns paper pages, run `meridian wiki final-product-check --wiki-root wiki` or create a synthesis proposal from the retrieval context.
+- For overview tasks, expect synthesis/topic pages to appear before isolated papers. If a query only returns paper pages, run `meridian wiki final-product-check --wiki-root <wiki-root>` or create a synthesis proposal from the retrieval context.
 
 ## Evaluation / Regression
 
@@ -93,7 +93,7 @@ When retrieval behavior changes, run the optimization evaluator against the main
 
 ```bash
 meridian wiki retrieval-optimize-eval eval/cases/retrieval_optimization_v1.jsonl \
-  --wiki-root wiki \
+  --wiki-root <wiki-root> \
   --out-dir eval/runs/<run-id>/ \
   --rubric eval/rubrics/retrieval_optimization_quality.md \
   --top-k 8 \

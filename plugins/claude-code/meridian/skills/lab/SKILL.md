@@ -157,7 +157,7 @@ Preferred MCP tools:
 If MCP is unavailable, use the local execution primitive:
 
 ```bash
-PYTHONPATH=src python3 -m meridian.mcp context --wiki-root wiki --query "<research/coding intent>"
+PYTHONPATH=src python3 -m meridian.mcp context --query "<research/coding intent>"
 ```
 
 ## Wiki Health Signals

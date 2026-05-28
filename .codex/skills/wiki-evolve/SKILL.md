@@ -27,7 +27,7 @@ Create a draft refinement:
 
 ```bash
 meridian wiki propose-refine \
-  --wiki-root wiki \
+  --wiki-root <wiki-root> \
   --target "<canonical page path, title, alias, or query>" \
   --reason "<why refine>" \
   --note "<refinement note>"
@@ -37,7 +37,7 @@ Use a file:
 
 ```bash
 meridian wiki propose-refine \
-  --wiki-root wiki \
+  --wiki-root <wiki-root> \
   --target wiki/syntheses/<page>.md \
   --reason "<why refine>" \
   --note-file notes.md
@@ -46,8 +46,8 @@ meridian wiki propose-refine \
 Lint and publish:
 
 ```bash
-meridian wiki refinement-lint wiki/.drafts/refinements/<slug>/refinement.json --wiki-root wiki
-meridian wiki publish-refinement wiki/.drafts/refinements/<slug>/refinement.json --wiki-root wiki
+meridian wiki refinement-lint <wiki-root>/.drafts/refinements/<slug>/refinement.json --wiki-root <wiki-root>
+meridian wiki publish-refinement <wiki-root>/.drafts/refinements/<slug>/refinement.json --wiki-root <wiki-root>
 ```
 
 ## Publish Discipline
@@ -81,10 +81,10 @@ If refinement changes these fields, keep the old version in `.versions/` and mak
 For broad structural issues across method/topic/claim/evidence/synthesis pages, prefer knowledge repair over many direct refinements:
 
 ```bash
-meridian wiki knowledge-audit --wiki-root wiki
-meridian wiki propose-knowledge-repair --wiki-root wiki --out wiki/.drafts/knowledge-repair/<slug>/
-meridian wiki knowledge-repair-lint wiki/.drafts/knowledge-repair/<slug>/repair.json --wiki-root wiki
-meridian wiki publish-knowledge-repair wiki/.drafts/knowledge-repair/<slug>/repair.json --wiki-root wiki
+meridian wiki knowledge-audit --wiki-root <wiki-root>
+meridian wiki propose-knowledge-repair --wiki-root <wiki-root> --out <wiki-root>/.drafts/knowledge-repair/<slug>/
+meridian wiki knowledge-repair-lint <wiki-root>/.drafts/knowledge-repair/<slug>/repair.json --wiki-root <wiki-root>
+meridian wiki publish-knowledge-repair <wiki-root>/.drafts/knowledge-repair/<slug>/repair.json --wiki-root <wiki-root>
 ```
 
 Publishing a knowledge repair creates snapshots before updating existing canonical knowledge pages. It is only for low-risk structural repairs; contradiction declarations, claim confidence changes, and synthesis rewrites still require proposal/refinement review.

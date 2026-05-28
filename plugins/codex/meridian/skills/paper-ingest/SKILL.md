@@ -55,7 +55,7 @@ Mechanism names alone are not content. If the page says "AOS, ACCF, POG, LUT" or
 
 ## Canonical Page Shape
 
-Keep the canonical paper page concise. It is the durable retrieval target, not the full review packet. The draft run file `wiki/.drafts/ingests/<run>/paper.md` currently mirrors this shape as an internal `paper_candidate` for publish replay, but it is not the product page and should not be used as a user-facing reading target.
+Keep the canonical paper page concise. It is the durable retrieval target, not the full review packet. The draft run file `<wiki-root>/.drafts/ingests/<run>/paper.md` currently mirrors this shape as an internal `paper_candidate` for publish replay, but it is not the product page and should not be used as a user-facing reading target.
 
 Use this order:
 

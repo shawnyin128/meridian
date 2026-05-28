@@ -13,13 +13,19 @@ The central product promise is accumulated research state: summaries, entities, 
 
 For Meridian's current MVP, apply this pattern as a personal paper wiki workflow. Do not frame the product as a multi-agent platform. The first useful version should help the user internalize raw papers, incorporate their Zotero annotations and reading insights, evolve paper analysis through feedback, and feed the wiki back into stronger research ideas.
 
-The project main vault is `wiki/` at the repository root. Treat it as the daily Obsidian vault and source-managed canonical Paper Wiki for this repo, not as a disposable eval run. For user-facing installs, prefer a configured Paper Wiki library root initialized with `meridian wiki init --library-root <dir>`; that library stores managed sources under `<dir>/sources/` and the canonical vault under `<dir>/wiki/`. Eval runs may create temporary wiki roots, but product-facing source audit, retrieval, graph, and write-back work should use the active workspace or explicit `--wiki-root wiki` unless the user asks for an isolated fixture.
+The Meridian development repo does not own the user's active Paper Wiki vault.
+For product-facing use, rely on the configured Paper Wiki library initialized
+with `meridian wiki init --library-root <dir>`; that library stores managed
+sources under `<dir>/sources/` and the canonical vault under `<dir>/wiki/`.
+Local eval runs may create temporary wiki roots, but product-facing source
+audit, retrieval, graph, and write-back work should use the active workspace or
+an explicit external `--wiki-root <wiki-root>`.
 
 Product-facing wiki artifacts are canonical pages and retrieval/write-back context, not pipeline debug files. Follow `docs/wiki-product-dataflow-and-artifact-boundaries.md`: `wiki/papers/*.md` and `wiki/syntheses/*.md` are user-facing retrieval targets; `wiki/.drafts/ingests/<run>/paper.md` is an internal canonical-page candidate; `review.md`, judge packets, reader checks, and self-check JSON are validation/debug artifacts.
 
 The product-facing entry skill is `.codex/skills/wiki/SKILL.md`. It exposes two workflows: `Update Wiki` and `Use Wiki`. Treat specialized skills such as `paper-ingest`, `wiki-retrieve`, `wiki-personalize`, `wiki-evolve`, `wiki-knowledge`, and `wiki-concept` as support modules that the entry skill delegates to.
 
-Final-product convergence is documented in `docs/final-llm-wiki-product-spec.md`. Treat the product as a compiled knowledge network: papers, methods, topics, concepts, claims, evidence, syntheses, user insights, and evolution state should all participate in retrieval and Obsidian navigation. Use `meridian wiki final-product-check --wiki-root wiki` as the deterministic readiness smoke.
+Final-product convergence is documented in `docs/final-llm-wiki-product-spec.md`. Treat the product as a compiled knowledge network: papers, methods, topics, concepts, claims, evidence, syntheses, user insights, and evolution state should all participate in retrieval and Obsidian navigation. Use `meridian wiki final-product-check --wiki-root <wiki-root>` as the deterministic readiness smoke.
 
 When architecture or implementation choices are ambiguous, consult `docs/source-grounded-development-principles.md` for the project's source-grounded principles from Karpathy's LLM Wiki gist, Anthropic agent engineering posts, and selected community followup lessons.
 

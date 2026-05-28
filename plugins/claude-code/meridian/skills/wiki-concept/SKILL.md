@@ -14,10 +14,10 @@ Concept pages live under `wiki/concepts/` and are canonical compiled knowledge. 
 ## Commands
 
 ```bash
-meridian wiki concept-audit --wiki-root wiki
-meridian wiki propose-concept-layer --wiki-root wiki --out-dir wiki/.drafts/knowledge-repair/<slug>/
-meridian wiki concept-layer-lint wiki/.drafts/knowledge-repair/<slug>/concept-layer-proposal.json --wiki-root wiki
-meridian wiki publish-concept-layer wiki/.drafts/knowledge-repair/<slug>/concept-layer-proposal.json --wiki-root wiki
+meridian wiki concept-audit --wiki-root <wiki-root>
+meridian wiki propose-concept-layer --wiki-root <wiki-root> --out-dir <wiki-root>/.drafts/knowledge-repair/<slug>/
+meridian wiki concept-layer-lint <wiki-root>/.drafts/knowledge-repair/<slug>/concept-layer-proposal.json --wiki-root <wiki-root>
+meridian wiki publish-concept-layer <wiki-root>/.drafts/knowledge-repair/<slug>/concept-layer-proposal.json --wiki-root <wiki-root>
 ```
 
 ## Health-Driven Concept Coverage
@@ -40,7 +40,7 @@ Evaluate concept retrieval with:
 
 ```bash
 meridian wiki retrieval-eval eval/cases/concept_layer_mvp.jsonl \
-  --wiki-root wiki \
+  --wiki-root <wiki-root> \
   --out-dir eval/runs/<run-id>/ \
   --rubric eval/rubrics/concept_layer_quality.md \
   --top-k 8 \

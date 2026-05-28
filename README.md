@@ -86,6 +86,11 @@ lab
 ```
 
 Ask `wiki` to initialize your Paper Wiki library on first use.
+The library is separate from this development repo: it contains
+`meridian-wiki.json`, `sources/`, and `wiki/` under the library root you choose.
+This repo should contain Meridian code, plugin assets, tests, docs, and
+templates, not your generated Paper Wiki vault.
+
 `lab` uses lazy init in each research repo: the first Lab workflow asks before
 creating `.meridian/` and then continues the original idea/debug/experiment
 task.
@@ -225,13 +230,13 @@ debugging; they are not the normal user entry.
 Advanced health primitive:
 
 ```bash
-meridian wiki health --wiki-root wiki --repair-plan
+meridian wiki health --wiki-root <wiki-root> --repair-plan
 ```
 
 Enable the HTML report button:
 
 ```bash
-meridian wiki health-ui --wiki-root wiki
+meridian wiki health-ui --wiki-root <wiki-root>
 ```
 
 ## Lab

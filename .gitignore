@@ -4,13 +4,10 @@ __pycache__/
 build/
 dist/
 meridian-wiki.json
+wiki/
 
 .arbor/
 .codex/hooks.json
 
 eval/runs/
 eval/cases/*_calibration_*.jsonl
-
-wiki/.drafts/
-wiki/raw/sources/
-wiki/.obsidian/workspace.json

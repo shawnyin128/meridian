@@ -27,7 +27,7 @@ Create a draft insight:
 
 ```bash
 meridian wiki add-insight \
-  --wiki-root wiki \
+  --wiki-root <wiki-root> \
   --paper "<paper path, title, alias, source id, or natural-language query>" \
   --note "<user note>" \
   --insight-type paper-note
@@ -37,7 +37,7 @@ Use a note file:
 
 ```bash
 meridian wiki add-insight \
-  --wiki-root wiki \
+  --wiki-root <wiki-root> \
   --paper "<paper identifier>" \
   --note-file notes.md
 ```
@@ -45,8 +45,8 @@ meridian wiki add-insight \
 Validate and publish:
 
 ```bash
-meridian wiki insight-lint wiki/.drafts/insights/<slug>/insight.json --wiki-root wiki
-meridian wiki publish-insight wiki/.drafts/insights/<slug>/insight.json --wiki-root wiki
+meridian wiki insight-lint <wiki-root>/.drafts/insights/<slug>/insight.json --wiki-root <wiki-root>
+meridian wiki publish-insight <wiki-root>/.drafts/insights/<slug>/insight.json --wiki-root <wiki-root>
 ```
 
 ## Matching Discipline

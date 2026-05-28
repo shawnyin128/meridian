@@ -90,7 +90,7 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `src/meridian/mcp/`: scenario-facing MCP adapter and stdio server exposing `context`, `read`, `trace`, `update`, `propose`, `apply`, and `audit`.
 - `src/meridian/templates/research-dev/`: Markdown templates for Research Dev `.meridian/` research-space state, context packets, experiment evidence, and finding proposals.
 - `tests/`: unit tests for CLI ingest, eval, and human review recording.
-- `wiki/`: Obsidian-compatible Markdown wiki artifacts, managed raw sources, canonical pages, generated indexes, and draft workspaces.
+- Active Paper Wiki vaults live outside the development repo, typically under a user-level library root configured by `meridian wiki init --library-root <dir>`.
 - `eval/`: Paper Wiki evaluation case examples and LLM-as-Judge rubrics.
 - `README.md`: minimal CLI usage note.
 - `docs/mvp-paper-wiki-workflow.md`: current MVP product/workflow reference.

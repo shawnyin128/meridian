@@ -14,27 +14,27 @@ For product-facing usage, start from the `wiki` skill and choose `Update Wiki` w
 Audit the knowledge layer:
 
 ```bash
-meridian wiki knowledge-audit --wiki-root wiki
+meridian wiki knowledge-audit --wiki-root <wiki-root>
 ```
 
 Create and review a repair proposal:
 
 ```bash
-meridian wiki propose-knowledge-repair --wiki-root wiki --out wiki/.drafts/knowledge-repair/<slug>/
-meridian wiki knowledge-repair-lint wiki/.drafts/knowledge-repair/<slug>/repair.json --wiki-root wiki
+meridian wiki propose-knowledge-repair --wiki-root <wiki-root> --out <wiki-root>/.drafts/knowledge-repair/<slug>/
+meridian wiki knowledge-repair-lint <wiki-root>/.drafts/knowledge-repair/<slug>/repair.json --wiki-root <wiki-root>
 ```
 
 Publish only lint-passing low-risk repairs:
 
 ```bash
-meridian wiki publish-knowledge-repair wiki/.drafts/knowledge-repair/<slug>/repair.json --wiki-root wiki
+meridian wiki publish-knowledge-repair <wiki-root>/.drafts/knowledge-repair/<slug>/repair.json --wiki-root <wiki-root>
 ```
 
 Final-product knowledge-layer checks add two proposal generators:
 
 ```bash
-meridian wiki propose-method-consolidation --wiki-root wiki --out-dir wiki/.drafts/knowledge-repair/<slug>/
-meridian wiki propose-contradiction-review --wiki-root wiki --out-dir wiki/.drafts/knowledge-repair/<slug>/
+meridian wiki propose-method-consolidation --wiki-root <wiki-root> --out-dir <wiki-root>/.drafts/knowledge-repair/<slug>/
+meridian wiki propose-contradiction-review --wiki-root <wiki-root> --out-dir <wiki-root>/.drafts/knowledge-repair/<slug>/
 ```
 
 Use them to group paper-specific method records under compiled method-family pages and to surface unsupported/stale/source-quality candidates without declaring canonical contradictions.
@@ -42,10 +42,10 @@ Use them to group paper-specific method records under compiled method-family pag
 Concept-layer checks add preliminary-knowledge pages for coding/debug/probe prerequisites:
 
 ```bash
-meridian wiki concept-audit --wiki-root wiki
-meridian wiki propose-concept-layer --wiki-root wiki --out-dir wiki/.drafts/knowledge-repair/<slug>/
-meridian wiki concept-layer-lint wiki/.drafts/knowledge-repair/<slug>/concept-layer-proposal.json --wiki-root wiki
-meridian wiki publish-concept-layer wiki/.drafts/knowledge-repair/<slug>/concept-layer-proposal.json --wiki-root wiki
+meridian wiki concept-audit --wiki-root <wiki-root>
+meridian wiki propose-concept-layer --wiki-root <wiki-root> --out-dir <wiki-root>/.drafts/knowledge-repair/<slug>/
+meridian wiki concept-layer-lint <wiki-root>/.drafts/knowledge-repair/<slug>/concept-layer-proposal.json --wiki-root <wiki-root>
+meridian wiki publish-concept-layer <wiki-root>/.drafts/knowledge-repair/<slug>/concept-layer-proposal.json --wiki-root <wiki-root>
 ```
 
 ## Health-Driven Repair Routing
@@ -60,7 +60,7 @@ into a proposal-first repair path instead of editing pages directly:
 | `claim_evidence_traceability` evidence gaps | `propose-knowledge-repair` or refinement proposal | Attach source-grounded evidence or mark `needs_evidence`; do not invent support. |
 | stale, contradiction, or source-quality findings | `propose-contradiction-review` | Proposal-only unless review/lint validates the state. |
 
-After any safe publish, rerun `meridian wiki health --wiki-root wiki` and report
+After any safe publish, rerun `meridian wiki health --wiki-root <wiki-root>` and report
 the bucket delta. If a repair requires merging pages, changing confidence,
 rewriting synthesis, or promoting user insight into evidence, leave it as a
 review proposal.
