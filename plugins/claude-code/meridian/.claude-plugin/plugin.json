@@ -1,7 +1,7 @@
 {
   "name": "meridian",
   "description": "Markdown-first Paper Wiki and Lab research-coding copilot for Claude Code.",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "author": {
     "name": "Meridian",
     "url": "https://github.com/shawnyin128/meridian"

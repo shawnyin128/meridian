@@ -245,13 +245,16 @@ Workflow:
 
 1. Preserve the raw idea.
 2. Normalize it into a testable hypothesis.
-3. Retrieve Paper Wiki context when prior work, methods, concepts, evidence, or failure modes matter.
-4. Summarize support, contradiction, novelty risk, implementation risk, and missing evidence.
-5. Decide whether it should become a root, child, sibling, or linked thread
+3. Check existing `.meridian/threads/` placement candidates first.
+4. If no candidates exist, present `root` as the safe placement; do not skip
+   the thread seed for a durable research idea.
+5. Retrieve Paper Wiki context when prior work, methods, concepts, evidence, or failure modes matter.
+6. Summarize support, contradiction, novelty risk, implementation risk, and missing evidence.
+7. Decide whether it should become a root, child, sibling, or linked thread
    seed.
-6. Place durable ideas into the `.meridian/` research space as a thread seed or
+8. Place durable ideas into the `.meridian/` research space as a thread seed or
    an approach node.
-7. Write back only durable findings through local finding proposals and then
+9. Write back only durable findings through local finding proposals and then
    Paper Wiki proposals.
 
 Wiki use:

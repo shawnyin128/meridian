@@ -16,6 +16,8 @@ state into Paper Wiki.
   `dead`, closes/reopens a thread, or publishes wiki content without user
   confirmation.
 - Skips existing-thread placement for a new durable idea.
+- Skips root thread seed creation for a new durable idea when `.meridian/`
+  exists but no existing thread candidates are available.
 - Deletes invalid experiments instead of preserving them as evidence.
 
 ## Scoring Dimensions
@@ -27,7 +29,9 @@ Score each dimension from 1 to 5.
 1: New ideas are always treated as new roots or wiki pages.
 3: Placement exists but checks too many sources or gives too many candidates.
 5: Checks existing threads only, presents at most three candidates, and asks for
-`root | child | sibling | link` confirmation.
+`root | child | sibling | link` confirmation. If there are zero candidates, it
+states that clearly and presents `root` as the safe placement instead of
+skipping Lab state.
 
 ### 2. Lazy Init
 

@@ -151,7 +151,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.3.2"
+        expected = "0.3.3"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -3105,6 +3105,8 @@ Compare recency-only retention with attention-based and oracle retention policie
             "repairable",
             "supported",
             "dead",
+            "no existing thread candidates",
+            "root thread seed",
         ]:
             self.assertIn(phrase, skill)
 
@@ -3141,18 +3143,47 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertIn("Lab uses lazy init", state_doc)
         self.assertIn("Node modes are exactly", state_doc)
         self.assertIn("Proposal states are", state_doc)
+        self.assertIn("only `threads/index.md`", state_doc)
+        self.assertIn("create a root thread seed", state_doc)
 
         cases = Path("eval/cases/research_dev_state_model.jsonl")
         parsed = [json.loads(line) for line in cases.read_text(encoding="utf-8").splitlines() if line.strip()]
-        self.assertGreaterEqual(len(parsed), 7)
+        self.assertGreaterEqual(len(parsed), 8)
         self.assertTrue(all(case.get("category") == "research_dev_state_model" for case in parsed))
         self.assertTrue(all("expected_result" in case and "must_not_do" in case for case in parsed))
+        no_candidate_case = next(
+            case for case in parsed if case["id"] == "state-new-idea-no-thread-candidates"
+        )
+        self.assertIn("root thread seed", no_candidate_case["expected_result"])
+        self.assertTrue(any("skip Lab state" in item for item in no_candidate_case["must_not_do"]))
 
         rubric = Path("eval/rubrics/research_dev_state_model_quality.md").read_text(encoding="utf-8")
         self.assertIn("Hard Fail Rules", rubric)
         self.assertIn("Placement Boundary", rubric)
         self.assertIn("Lazy Init", rubric)
         self.assertIn("Proposal Lifecycle", rubric)
+        self.assertIn("zero candidates", rubric)
+        self.assertIn("skipping Lab state", rubric)
+
+    def test_research_dev_zero_candidate_idea_replay_contract(self) -> None:
+        skill = Path(".codex/skills/lab/SKILL.md").read_text(encoding="utf-8")
+        state_doc = Path("docs/research-dev-state-model.md").read_text(encoding="utf-8")
+        rubric = Path("eval/rubrics/research_dev_state_model_quality.md").read_text(encoding="utf-8")
+        cases = [
+            json.loads(line)
+            for line in Path("eval/cases/research_dev_state_model.jsonl").read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        case = next(item for item in cases if item["id"] == "state-new-idea-no-thread-candidates")
+
+        for text in (skill, state_doc):
+            self.assertIn("no existing thread candidates", text)
+            self.assertIn("root", text)
+        self.assertIn("ask to create a root thread seed", skill)
+        self.assertIn("create a root thread seed", state_doc)
+        self.assertIn("absence of existing threads", case["must_not_do"][0])
+        self.assertIn("root thread seed", case["expected_result"])
+        self.assertIn("Skips root thread seed creation", rubric)
 
     def test_lab_lazy_init_creates_minimal_valid_research_space(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

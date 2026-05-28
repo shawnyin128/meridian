@@ -29,6 +29,9 @@ At the start of any Lab workflow:
   exists.
 - Create thread, experiment, and proposal files only when the current workflow
   needs them.
+- A new durable research idea needs a thread seed. If `.meridian/` exists but
+  there are no thread candidates, ask to create a root thread seed instead of
+  treating the task as direct coding.
 
 Example:
 
@@ -49,6 +52,8 @@ Minimum completion:
 - Preserve the raw idea.
 - Check existing `.meridian/threads/` only and show at most three placement
   candidates.
+- If there are no existing thread candidates, say so and present `root` as the
+  safe placement. Do not skip thread creation just because no thread exists.
 - Ask the user to choose `root`, `child`, `sibling`, or `link`.
 - Create a thread seed for `root` or `link`; attach to the existing thread for
   `child` or `sibling`.

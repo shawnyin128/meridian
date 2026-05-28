@@ -79,6 +79,8 @@ Minimum completion:
 
 - preserve the raw idea faithfully
 - check existing threads and show at most three placement candidates
+- when no existing thread candidates exist, present `root` as the safe
+  placement instead of skipping Lab state
 - ask the user to choose `root`, `child`, `sibling`, or `link`
 - create a thread seed for `root` or `link`, or attach to an existing thread for
   `child` or `sibling`

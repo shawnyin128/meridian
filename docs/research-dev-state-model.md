@@ -127,16 +127,25 @@ When a new idea appears:
 1. Preserve the raw idea.
 2. Check existing `.meridian/threads/` only.
 3. Show at most three placement candidates.
-4. Ask the user to choose `root`, `child`, `sibling`, or `link`.
-5. Create an independent thread seed for `root` or `link`; attach to the
+4. If there are no existing thread candidates, say so and present `root` as
+   the safe placement. A missing candidate is not a reason to skip thread
+   creation for a durable research idea.
+5. Ask the user to choose `root`, `child`, `sibling`, or `link`.
+6. Create an independent thread seed for `root` or `link`; attach to the
    existing tree for `child` or `sibling`.
-6. After placement, run Paper Wiki grounding when paper/method/concept/evidence
+7. After placement, run Paper Wiki grounding when paper/method/concept/evidence
    context matters.
-7. Ask before switching active thread or active node.
+8. Ask before switching active thread or active node.
 
 `link` records inspiration or relatedness but still creates an independent
 thread seed. `sibling` means an alternative approach under the same parent
 problem. `child` means the node inherits a parent problem or repair target.
+
+When `.meridian/` already exists with only `threads/index.md`, the correct
+new-idea behavior is to ask for or create a root thread seed and then continue
+the requested development task. Direct coding without a thread seed is reserved
+for pure engineering chores or when the user explicitly says not to record Lab
+state.
 
 ## Thread Close And Reopen
 
