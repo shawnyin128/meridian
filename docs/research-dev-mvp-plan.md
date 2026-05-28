@@ -255,14 +255,21 @@ The skill should:
 - start from one of the four MVP workflows
 - retrieve wiki context when the task depends on prior papers, methods, concepts, evidence, failed paths, or user insights
 - keep context packets compact
-- let the agent choose code-reading, commands, probes, tests, or edits
+- complete a bounded research-code slice for implementation, debugging,
+  experiment, reproduction, and probe tasks instead of stopping at advice
+- let the agent choose code-reading, commands, probes, tests, or edits inside
+  that slice
+- define done-when criteria as learning criteria before broad edits
+- compare results against the done-when criteria before claiming completion
 - require evidence identity for experiments and results
-- encourage git checkpoints at research-impact boundaries
+- default to focused git checkpoints at research-impact boundaries when the
+  relevant diff scope is clean or user-authorized
 - write back through proposal-first Paper Wiki tools
 
-It should not force every request through a managed Arbor loop. Arbor remains
-useful for durable project evidence, release gates, and larger implementation
-features, but Research Dev should stay lightweight during ordinary exploration.
+It should not force every request through a managed feature loop. Research Dev
+should stay lightweight during ordinary exploration and add Paper Wiki
+grounding, research-code slice discipline, experiment evidence, and local
+finding proposals only when the task has research value.
 
 ## Research Space Contract
 

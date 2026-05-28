@@ -7,7 +7,7 @@ updated: 2026-05-18
 tags:
   - llm-wiki
   - research-coding
-  - arbor-lessons
+  - workflow-lessons
   - multi-agent-research
 confidence: medium
 ---
@@ -91,7 +91,7 @@ Research-friendly code is the target artifact:
 
 This means the dev agent should not automatically push toward the shortest or cleanest abstraction. In research, code sometimes needs visible seams: separate variants, duplicated-but-comparable config blocks, probe hooks, debug prints guarded by flags, and result tables that expose more than a production system would expose.
 
-The agentic part should stay strong. Compared with Arbor, Meridian should avoid constraining the dev agent's own reasoning and tool-use path too tightly. The framework should define the quality of the output, the evidence to preserve, and the memory write-back contract. It should not over-prescribe every intermediate step.
+The agentic part should stay strong. Meridian should avoid constraining the dev agent's own reasoning and tool-use path too tightly. The framework should define the quality of the output, the evidence to preserve, and the memory write-back contract. It should not over-prescribe every intermediate step.
 
 Allowed autonomy:
 
@@ -130,7 +130,11 @@ Checkpoint commits should be small enough to support impact-based rollback:
 - include command/config/result identity in commit messages or linked experiment notes when relevant
 - avoid committing generated heavy artifacts unless they are intentionally part of the evidence record
 
-The agent should not commit without user authorization in environments where commits are user-controlled. But it should surface when a checkpoint is due, prepare a clean staged diff when asked, and record enough context that the user can decide whether to commit.
+The agent should not commit when the user limits commit behavior or unrelated
+dirty work makes the scope ambiguous. Otherwise, Lab should default to focused
+checkpoints after runnable research-code slices, diagnostic fixes, experiment
+setups, or interpreted results. The checkpoint is part of the research timeline,
+not a release gate.
 
 Git history, experiment notes, and wiki write-back should line up:
 
@@ -142,7 +146,7 @@ This alignment lets the researcher answer: "What changed?", "What did it affect?
 
 ## Purpose
 
-Meridian should evolve from a paper wiki into a lightweight end-to-end research coding framework. The goal is not to rebuild Arbor and not to create a general multi-agent coding platform. The goal is to support the real loop of one researcher:
+Meridian should evolve from a paper wiki into a lightweight end-to-end research coding framework. The goal is not to rebuild a managed feature workflow and not to create a general multi-agent coding platform. The goal is to support the real loop of one researcher:
 
 ```text
 read papers -> form ideas -> write code -> run experiments -> interpret results -> update research memory -> generate better ideas
@@ -224,11 +228,11 @@ Both products should use the same context packet shape:
 - gaps and next questions
 - allowed write policy
 
-## Why Arbor Does Not Fit Research Directly
+## Why Feature Workflows Do Not Fit Research Directly
 
-Arbor was designed for long-running repository development. Its strongest ideas are context recovery, project-local memory, review evidence, done-when criteria, decision trace, and release checkpoints.
+Managed feature workflows are designed for long-running repository development. Their strongest ideas are context recovery, project-local memory, review evidence, done-when criteria, decision trace, and release checkpoints.
 
-Those ideas are useful, but Arbor's default unit is a managed software feature. Research coding has a different unit: a hypothesis under uncertainty. That difference creates friction:
+Those ideas are useful, but their default unit is a managed software feature. Research coding has a different unit: a hypothesis under uncertainty. That difference creates friction:
 
 - Research is exploratory; success may be a negative result, not a completed feature.
 - The work loops through papers, ideas, code, experiment logs, and interpretation, not only repo diffs.
@@ -237,14 +241,14 @@ Those ideas are useful, but Arbor's default unit is a managed software feature. 
 - Heavy feature registries and release checkpoints can slow down small exploratory steps.
 - Evaluation must judge research state updates, not only code correctness.
 
-So the new framework should borrow Arbor's evidence discipline, but replace feature-centric workflow with research-loop state.
+So the new framework should borrow evidence discipline, but replace feature-centric workflow with research-loop state.
 
-## Borrowed From Arbor
+## Borrowed From Mature Dev Workflows
 
 Keep these:
 
 - Project-local context entrypoint: `AGENTS.md`.
-- Short-term unresolved state: `.arbor/memory.md` or an equivalent session memory file.
+- Short-term unresolved state: a project-local session memory file.
 - Durable review/evidence artifacts for important decisions.
 - Done-when thinking, but adapted to research outcomes.
 - Decision trace: key assumptions, rejected options, and invariants should survive across sessions.
@@ -253,7 +257,7 @@ Keep these:
 
 Do not keep these as MVP defaults:
 
-- Full `intake -> brainstorm -> develop -> release -> evaluate -> converge -> release` ceremony.
+- Full feature-intake, development, review, and release ceremony.
 - Feature registry as the primary product state.
 - Release checkpoints for exploratory research steps.
 - Multi-agent or worktree fan-out as the default coding path.
@@ -492,7 +496,7 @@ Boundary:
 
 ```text
 AGENTS.md
-.arbor/memory.md
+.meridian/memory.md
 wiki/
   papers/
   claims/
@@ -517,7 +521,7 @@ docs/review/
   <important-slice>-review.md
 ```
 
-This keeps Arbor-like continuity without making Arbor's feature registry the center of the product.
+This keeps workflow continuity without making a feature registry the center of the product.
 
 ## Request Interface
 
@@ -537,7 +541,8 @@ The interface should respond with one of three modes:
 
 1. Direct answer: for simple explanation.
 2. Research context packet: for idea/paper/retrieval questions.
-3. Research-code slice: for bounded implementation or experiment work.
+4. Research-code slice: for bounded implementation, debugging, reproduction,
+   probe, or experiment work.
 
 ## Development Plan
 

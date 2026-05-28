@@ -58,7 +58,7 @@ canonical wiki pages.
 
 ## Design Influences
 
-From Arbor, keep:
+From mature repository workflows, keep:
 
 - project-local orientation through `AGENTS.md`
 - short-term unresolved memory
@@ -67,10 +67,10 @@ From Arbor, keep:
 - decision trace for important research moves
 - git checkpoints as recoverable state
 
-Do not copy Arbor's full feature workflow. Research work is centered on a
+Do not copy a full feature workflow. Research work is centered on a
 hypothesis under uncertainty, not a software feature reaching done.
 
-From Superpowers-style capability packaging, keep:
+From lightweight capability packaging, keep:
 
 - scenario-facing skills rather than low-level command lists
 - progressive disclosure
@@ -335,10 +335,15 @@ Workflow:
 1. Retrieve the paper, method family, prerequisite concepts, and evidence.
 2. Read implementation hooks, assumptions, failure modes, and minimal checks.
 3. Inspect current repo entrypoints, configs, data flow, and metric definitions.
-4. Propose the smallest integration surface.
+4. Define the smallest research-code slice and its done-when criteria.
 5. Implement research-friendly code with explicit knobs and probe hooks.
-6. Add or recommend sanity checks.
-7. Prepare a write-back packet if implementation reveals hidden details or wiki gaps.
+6. Run the relevant smoke, unit, probe, or static check and repair obvious
+   failures inside the slice.
+7. Record experiment evidence when the result changes a hypothesis, node, or
+   future research decision.
+8. Commit a focused checkpoint when the relevant diff scope is clean or
+   user-authorized.
+9. Prepare a write-back packet if implementation reveals hidden details or wiki gaps.
 
 Wiki use:
 
@@ -362,6 +367,8 @@ Done when:
 - ablations/probes can be added without surgery
 - assumptions are visible
 - implementation choices are traceable to wiki context or repo constraints
+- a runnable check, explicit blocker, or scoped next action is recorded
+- checkpoint decision is explicit
 
 ## Scenario 4: Broken Run To Sanity Check / Debug
 

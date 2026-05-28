@@ -13,6 +13,8 @@ Hard fail if any apply:
 - The agent proposes expensive experiments without a learning target or evidence plan.
 - The agent silently rewrites canonical wiki state from a dev task instead of using proposal-first write-back.
 - The agent forces heavy workflow artifacts for a trivial direct coding task.
+- The agent stops at advice for an implementation, debugging, reproduction, or
+  experiment task where a small runnable research-code slice was feasible.
 
 ## Scoring
 
@@ -48,7 +50,8 @@ Score each dimension from 1 to 5.
 2. Produces a software feature plan without research learning criteria.
 3. Defines a plausible slice but weak stop conditions.
 4. Defines a bounded slice with learning target, controls, and stop condition.
-5. Defines the smallest credible slice and explains what result would change the next decision.
+5. Defines and executes or prepares the smallest credible slice, runs or names
+   the right check, and explains what result changes the next decision.
 
 ### 5. Evidence Identity
 
@@ -88,7 +91,9 @@ Score each dimension from 1 to 5.
 2. Suggests generic commits without research identity.
 3. Suggests checkpoints inconsistently.
 4. Recommends checkpoints at hypothesis/probe/result/risky-refactor boundaries.
-5. Makes impact-readable checkpoint recommendations that separate hypothesis logic, instrumentation, cleanup, and generated evidence.
+5. Makes or prepares focused, impact-readable checkpoints when scope is clean
+   or authorized, and separates hypothesis logic, instrumentation, cleanup, and
+   generated evidence.
 
 ### 10. Lightweight Behavior
 
@@ -110,4 +115,3 @@ Score each dimension from 1 to 5.
 - `writeback_boundary`
 - `checkpoint_discipline`
 - `lightweight_behavior`
-

@@ -8,7 +8,9 @@ description: Use when a research coding task should use Meridian Paper Wiki cont
 Use this skill for research coding. Keep it lightweight: maintain the target
 repo's `.meridian/` research space, retrieve Paper Wiki context when research
 context matters, then let the agent inspect, run, diagnose, edit, and checkpoint
-normally.
+normally. Lab should not weaken the agent's native coding ability: for
+implementation, debugging, and experiment requests, complete a small
+research-code slice instead of stopping at advice.
 
 ## Lazy Init
 
@@ -146,6 +148,52 @@ Common request labels still map to these workflows:
 - `Paper Or Method To Implementation`
 - `Broken Run To Sanity Check / Debug`
 
+## Research Code Slice
+
+Use this as the default execution loop for implementation, debugging,
+experiment, reproduction, or probe tasks.
+
+Minimum completion:
+
+- Classify the task as idea, implementation, debug, experiment, reproduction,
+  interpretation, or direct coding.
+- Retrieve Paper Wiki context when paper methods, concepts, evidence, metrics,
+  failure modes, or prior insights matter.
+- Identify the active thread/node when Lab state exists or the user is creating
+  durable research state.
+- Define the smallest research-code slice and done-when criteria before broad
+  edits.
+- Inspect the repo, edit code/configs/scripts as needed, run the relevant
+  command, test, smoke, probe, or static check, and repair obvious failures.
+- Compare the result against the done-when criteria before claiming completion.
+- Record experiment evidence when the result changes a hypothesis, node,
+  proposal, reproduction diagnosis, or future research decision.
+- Commit a focused checkpoint when the relevant scope is clean or the user has
+  already authorized that checkpoint. If unrelated dirty files exist, ask for
+  commit scope before staging or committing.
+
+Canonical examples:
+
+```text
+The user asks to implement a paper method. Retrieve the paper/method/concept
+context, inspect the target code, implement the smallest runnable slice, run a
+smoke or unit check, record evidence if the result teaches something, and commit
+the focused checkpoint when the diff scope is clean.
+```
+
+```text
+The user reports a broken run. Retrieve reported evidence and likely failure
+modes, inspect logs/configs/metrics, make the smallest diagnostic or fix, run
+the cheap check, update the active node or experiment evidence, and checkpoint
+the repair if it is clean.
+```
+
+```text
+The user asks for a trivial local rename with no research meaning. Do the
+ordinary code edit directly; no wiki retrieval, Lab state, experiment record, or
+checkpoint is required unless the user asks.
+```
+
 ## Wiki Retrieval Contract
 
 Retrieve wiki context after dev-state placement, or before coding when the task
@@ -219,6 +267,11 @@ Keep boundaries clear:
 ## Git Checkpoints
 
 Checkpoint before and after experiments when the relevant change scope is clear.
+For research-code slices, default to checkpointing after a runnable
+implementation slice, a valid diagnostic fix, an experiment setup, or an
+interpreted result when the diff is focused and the user has not limited commit
+behavior.
+
 Commit messages should follow:
 
 ```text
@@ -227,4 +280,5 @@ Commit messages should follow:
 
 Use types such as `idea`, `approach`, `exp`, `result`, `proposal`, `wiki`, and
 `state`. If unrelated dirty worktree changes exist, stop and ask for the commit
-scope before checkpointing.
+scope before staging or committing. Never push, publish, or mutate external
+services unless the user explicitly authorizes that specific action.
