@@ -151,7 +151,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.3.4"
+        expected = "0.3.5"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -1557,6 +1557,20 @@ quality_state: "multimodal_pending"
         self.assertIn("/private/tmp/meridian-context", text)
         self.assertIn("MERIDIAN_CORE_ROOT", text)
         self.assertIn("do not start with broad `rg`", text)
+
+    def test_meridian_setup_skill_exists(self) -> None:
+        skill = Path(".codex/skills/meridian/SKILL.md")
+        self.assertTrue(skill.exists())
+        text = skill.read_text(encoding="utf-8")
+        self.assertIn("Status Check", text)
+        self.assertIn("Initialize", text)
+        self.assertIn("Migration Check", text)
+        self.assertIn("python3 -m meridian wiki status", text)
+        self.assertIn("meridian-wiki.json", text)
+        self.assertIn("needs_migration", text)
+        self.assertIn("plugin cache/manifest", text)
+        self.assertIn("workspace schema", text)
+        self.assertIn("delegate those to wiki and lab", text)
 
     def test_product_skills_route_health_findings(self) -> None:
         wiki = Path(".codex/skills/wiki/SKILL.md").read_text(encoding="utf-8")
@@ -3034,6 +3048,7 @@ Compare recency-only retention with attention-based and oracle retention policie
 
         for root in (codex_root, claude_root):
             self.assertTrue((root / ".mcp.json").exists())
+            self.assertTrue((root / "skills/meridian/SKILL.md").exists())
             self.assertTrue((root / "skills/wiki/SKILL.md").exists())
             self.assertTrue((root / "skills/wiki-retrieve/SKILL.md").exists())
             self.assertTrue((root / "skills/lab/SKILL.md").exists())

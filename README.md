@@ -5,11 +5,11 @@ context, synthesis, and research memory.
 
 ## Install
 
-Meridian has one plugin name and two user skills:
+Meridian has one plugin name and three user-facing skills:
 
 ```text
 Plugin name: meridian
-Skills: wiki, lab
+Skills: meridian, wiki, lab
 MCP server id: meridian-paper-wiki
 ```
 
@@ -59,8 +59,9 @@ Inside Claude Code, reload plugins after install:
 /reload-plugins
 ```
 
-The plugin provides `wiki`, `lab`, support skills, and `.mcp.json`. The MCP
-config starts `python3 -m meridian.mcp serve` when the client needs tools.
+The plugin provides `meridian`, `wiki`, `lab`, support skills, and `.mcp.json`.
+The MCP config starts `python3 -m meridian.mcp serve` when the client needs
+tools.
 
 For local development, replace `shawnyin128/meridian --sparse ...` with the
 matching local marketplace path:
@@ -81,11 +82,13 @@ meridian --version
 After install, start from the skills:
 
 ```text
+meridian
 wiki
 lab
 ```
 
-Ask `wiki` to initialize your Paper Wiki library on first use.
+Ask `meridian` to check setup or initialize your Paper Wiki library on first
+use.
 The library is separate from this development repo: it contains
 `meridian-wiki.json`, `sources/`, and `wiki/` under the library root you choose.
 This repo should contain Meridian code, plugin assets, tests, docs, and
@@ -145,6 +148,11 @@ claude plugin update meridian
 Restart the client or reload plugins, then ask `wiki` to run a small retrieval
 or audit smoke.
 
+After a plugin/core update, ask `meridian` to run a setup and migration check.
+It should verify core version, visible plugin skills, active Paper Wiki
+workspace layout, and MCP readiness before you resume normal `wiki` or `lab`
+work.
+
 MCP startup is managed by the client through the plugin config; you normally do
 not start it manually.
 
@@ -171,6 +179,7 @@ Python package above is the shared execution core those plugins call.
 Prompt/Skill entry inside each plugin:
 
 ```text
+skills/meridian/SKILL.md
 skills/wiki/SKILL.md
 skills/lab/SKILL.md
 ```
@@ -184,8 +193,16 @@ access. The `wiki` skill can manage normal use without exposing commands.
 
 Use the plugin skills as the product surface:
 
+- `meridian`: initialize Meridian, check plugin/core/MCP status, and migrate
+  setup after updates.
 - `wiki`: update or use the Paper Wiki.
 - `lab`: use Paper Wiki context for research coding.
+
+Typical `meridian` request:
+
+```text
+Check my Meridian setup and migrate anything out of date.
+```
 
 Typical `wiki` requests:
 

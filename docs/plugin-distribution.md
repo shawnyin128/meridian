@@ -19,6 +19,8 @@ plugins/claude-code/meridian/
 
 Both plugin packages include:
 
+- `skills/meridian/`: setup entry for initialization, status checks, and
+  migration checks after plugin/core updates
 - `skills/wiki/`: product entry for Update Wiki and Use Wiki
 - `skills/lab/`: product entry for wiki-grounded research coding
 - support skills for ingest, retrieval, personalization, evolution, knowledge,
@@ -146,3 +148,11 @@ Paper Wiki keeps two workflows:
 | Use Wiki | retrieve context, read canonical pages, trace evidence |
 
 CLI commands remain execution primitives beneath the plugin and MCP entries.
+
+Setup is a separate maintenance entry:
+
+| Skill | What It Does |
+|---|---|
+| `meridian` | initialize user workspace, check plugin/core/MCP status, and migrate setup drift |
+| `wiki` | update or use the Paper Wiki |
+| `lab` | run wiki-grounded research coding workflows |

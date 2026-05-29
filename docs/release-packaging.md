@@ -122,6 +122,7 @@ meridian-mcp
 Agent users should install the matching plugin package, then start from:
 
 ```text
+skills/meridian/SKILL.md
 skills/wiki/SKILL.md
 skills/lab/SKILL.md
 ```
@@ -158,8 +159,10 @@ Then inspect the file list produced by the release build or source archive:
 - release includes `src/meridian/`
 - release includes `plugins/codex/meridian/.codex-plugin/plugin.json`
 - release includes `plugins/claude-code/meridian/.claude-plugin/plugin.json`
+- release includes plugin `skills/meridian/SKILL.md`
 - release includes plugin `skills/wiki/SKILL.md`
 - release includes plugin `skills/lab/SKILL.md`
+- release includes `.codex/skills/meridian/SKILL.md`
 - release includes `.codex/skills/wiki/SKILL.md`
 - release includes `src/meridian/templates/wiki-vault/Map of Content.md`
 - release includes `.codex/skills/lab/SKILL.md`

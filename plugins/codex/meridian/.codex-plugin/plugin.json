@@ -1,6 +1,6 @@
 {
   "name": "meridian",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Markdown-first Paper Wiki and Lab research-coding copilot for Codex.",
   "author": {
     "name": "Meridian",
@@ -19,8 +19,8 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Meridian",
-    "shortDescription": "Use Paper Wiki and Lab research-coding workflows.",
-    "longDescription": "Meridian provides Paper Wiki workflows for paper ingestion, retrieval, synthesis, and user insights, plus Lab workflows for wiki-grounded experiment design and debugging.",
+    "shortDescription": "Initialize Meridian, use Paper Wiki, and run Lab workflows.",
+    "longDescription": "Meridian provides setup checks and migrations, Paper Wiki workflows for paper ingestion, retrieval, synthesis, and user insights, plus Lab workflows for wiki-grounded experiment design and debugging.",
     "developerName": "Meridian",
     "category": "Productivity",
     "capabilities": [
@@ -28,6 +28,7 @@
       "Write"
     ],
     "defaultPrompt": [
+      "Check my Meridian setup and migrate anything out of date.",
       "Ingest this paper into my Paper Wiki.",
       "Use my Paper Wiki to answer this research question.",
       "Use Lab to plan the next experiment."
