@@ -7,6 +7,20 @@ description: Product-facing entry for Meridian Paper Wiki. Use when the user wan
 
 Use this as the default product-facing skill. It has two workflows.
 
+## Behavior Priority
+
+Start from the user's intent, not from CLI discovery:
+
+- `Update Wiki`: the user gives a source, note, insight, correction, comparison,
+  or durable synthesis request.
+- `Use Wiki`: the user asks a research, paper-understanding, evidence, or coding
+  context question.
+
+Use the active Paper Wiki workspace first. If no workspace exists, ask for a
+library root and initialize it before continuing. CLI and MCP calls are
+execution primitives for the agent; do not present raw command lists as the
+product answer unless the user asks for setup/debug details.
+
 ## Update Wiki
 
 Use this workflow when the user gives Meridian something that should become durable wiki state.
@@ -118,7 +132,7 @@ This uses the active workspace and writes `context.md` / `context.json` under
 workspace, ask the user for a library root and run `meridian wiki init
 --library-root <paper-wiki-library-root>`.
 
-Execution resolver:
+Agent execution resolver:
 
 1. Try `meridian`.
 2. If unavailable and `MERIDIAN_CORE_ROOT` is set, use
@@ -141,18 +155,7 @@ For MCP-facing usage, the equivalent tools are:
 - Use Wiki: `meridian.context`, `meridian.read`, `meridian.trace`.
 - Update Wiki: `meridian.update`, `meridian.propose`, `meridian.apply`, `meridian.audit`.
 
-MCP server entry:
-
-```bash
-PYTHONPATH=src python3 -m meridian.mcp serve
-```
-
-Workspace setup primitive:
-
-```bash
-meridian wiki init --library-root <paper-wiki-library-root>
-```
-
-This creates the managed source store and canonical wiki under one library root
-and records it as the active user workspace for future Prompt/Skill, CLI, and
-MCP usage.
+The plugin manages MCP startup for clients that support it. Workspace setup is
+owned by `meridian` when the user explicitly asks for setup, and by this skill
+only when an Update Wiki or Use Wiki request discovers that no active workspace
+exists.

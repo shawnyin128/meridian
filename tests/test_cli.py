@@ -1562,6 +1562,7 @@ quality_state: "multimodal_pending"
         skill = Path(".codex/skills/meridian/SKILL.md")
         self.assertTrue(skill.exists())
         text = skill.read_text(encoding="utf-8")
+        self.assertIn("Entry Boundary", text)
         self.assertIn("Status Check", text)
         self.assertIn("Initialize", text)
         self.assertIn("Migration Check", text)
@@ -1571,6 +1572,60 @@ quality_state: "multimodal_pending"
         self.assertIn("plugin cache/manifest", text)
         self.assertIn("workspace schema", text)
         self.assertIn("delegate those to wiki and lab", text)
+
+    def test_meridian_product_skill_behavior_boundaries(self) -> None:
+        meridian = Path(".codex/skills/meridian/SKILL.md").read_text(encoding="utf-8")
+        wiki = Path(".codex/skills/wiki/SKILL.md").read_text(encoding="utf-8")
+        lab = Path(".codex/skills/lab/SKILL.md").read_text(encoding="utf-8")
+        readme = Path("README.md").read_text(encoding="utf-8")
+
+        self.assertIn("Entry Boundary", meridian)
+        self.assertIn("If the user asks to ingest, retrieve, answer from papers", meridian)
+        self.assertIn("Do not continue the normal work inside this setup skill", meridian)
+
+        self.assertIn("Behavior Priority", wiki)
+        self.assertIn("Start from the user's intent, not from CLI discovery", wiki)
+        self.assertIn("do not present raw command lists", wiki)
+        self.assertIn("product answer", wiki)
+        self.assertIn("Agent execution resolver", wiki)
+        self.assertNotIn("MCP server entry:", wiki)
+
+        self.assertIn("Behavior Priority", lab)
+        self.assertIn("Lab is a research copilot, not a setup assistant", lab)
+        self.assertIn("Do the user's coding/debug/experiment task", lab)
+        self.assertIn("Keep Research Dev local until a finding proposal is `ready`", lab)
+
+        self.assertIn("| `meridian` | setup, status checks, updates, and migrations |", readme)
+        self.assertIn("| `wiki` | Paper Wiki Update Wiki and Use Wiki workflows |", readme)
+        self.assertIn("| `lab` | research coding, idea placement, experiments, and local findings |", readme)
+        self.assertIn("Support skills", readme)
+
+    def test_meridian_plugin_skill_copies_match_repo_skills(self) -> None:
+        for skill_name in ["meridian", "wiki", "lab"]:
+            repo = Path(f".codex/skills/{skill_name}/SKILL.md").read_text(encoding="utf-8")
+            codex = Path(f"plugins/codex/meridian/skills/{skill_name}/SKILL.md").read_text(encoding="utf-8")
+            claude = Path(f"plugins/claude-code/meridian/skills/{skill_name}/SKILL.md").read_text(encoding="utf-8")
+            self.assertEqual(codex, repo, skill_name)
+            self.assertEqual(claude, repo, skill_name)
+
+    def test_meridian_skill_behavior_eval_assets_parse(self) -> None:
+        cases = Path("eval/cases/meridian_skill_behavior_quality.jsonl")
+        parsed = [json.loads(line) for line in cases.read_text(encoding="utf-8").splitlines() if line.strip()]
+        self.assertGreaterEqual(len(parsed), 8)
+        self.assertTrue(all(case.get("category") == "meridian_skill_behavior_quality" for case in parsed))
+        self.assertTrue(all("expected_skill" in case and "expected_result" in case for case in parsed))
+        self.assertTrue(any(case["expected_skill"] == "meridian" for case in parsed))
+        self.assertTrue(any(case["expected_skill"] == "wiki" for case in parsed))
+        self.assertTrue(any(case["expected_skill"] == "lab" for case in parsed))
+        self.assertTrue(any("debug" in " ".join(case.get("must_not_do", [])) for case in parsed))
+
+        rubric = Path("eval/rubrics/meridian_skill_behavior_quality.md").read_text(encoding="utf-8")
+        self.assertIn("Entry Selection", rubric)
+        self.assertIn("Workspace And Retrieval Discipline", rubric)
+        self.assertIn("Artifact Boundary", rubric)
+        self.assertIn("Lab Research Copilot Behavior", rubric)
+        self.assertIn("Hard Fail Rules", rubric)
+        self.assertIn("command_sprawl", rubric)
 
     def test_product_skills_route_health_findings(self) -> None:
         wiki = Path(".codex/skills/wiki/SKILL.md").read_text(encoding="utf-8")

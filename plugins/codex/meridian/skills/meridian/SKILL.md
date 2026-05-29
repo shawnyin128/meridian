@@ -8,6 +8,20 @@ description: Use when the user wants to initialize Meridian, check Meridian plug
 Use this skill for setup, status, and migration. Keep it small: make Meridian
 ready to use, then hand the user to `wiki` or `lab`.
 
+## Entry Boundary
+
+Meridian has three user-facing skills:
+
+- `meridian`: setup, status, updates, and migrations.
+- `wiki`: Paper Wiki Update Wiki and Use Wiki work.
+- `lab`: research coding, ideas, experiments, and local findings.
+
+If the user asks to ingest, retrieve, answer from papers, add insight, check wiki
+health, or write synthesis, hand off to `wiki`. If the user asks to implement,
+debug, design an experiment, place an idea, or record research evidence, hand
+off to `lab`. Do not continue the normal work inside this setup skill after the
+setup issue is resolved.
+
 ## Workflows
 
 ### Status Check
@@ -25,6 +39,8 @@ Minimum completion:
 - Check MCP readiness with `python3 -m meridian.mcp --help` or a lightweight
   capabilities smoke.
 - Report the state as `ready`, `needs_init`, `needs_update`, or `needs_migration`.
+- When a state is not ready, give the smallest next action and stop before
+  running normal wiki or lab workflows.
 
 State meanings:
 
@@ -77,10 +93,15 @@ Minimum completion:
 - Use `lab` for idea placement, approach trees, experiment evidence, research
   code slices, and local finding proposals.
 
-Canonical example:
+Canonical examples:
 
 ```text
 The user says Meridian feels stale after updating the plugin. Check core and
 plugin versions, inspect active Paper Wiki workspace config, verify MCP can
 start, identify any missing setup files, and ask before applying migrations.
+```
+
+```text
+The user says to ingest a PDF. If setup is ready, switch to `wiki` instead of
+performing the ingest here.
 ```

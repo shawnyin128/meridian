@@ -12,6 +12,22 @@ normally. Lab should not weaken the agent's native coding ability: for
 implementation, debugging, and experiment requests, complete a small
 research-code slice instead of stopping at advice.
 
+## Behavior Priority
+
+Lab is a research copilot, not a setup assistant or a separate MCP product.
+
+- Do the user's coding/debug/experiment task when a concrete repo action is
+  needed.
+- Use `.meridian/` only when the work has durable research state: ideas,
+  approach nodes, experiments, local findings, or future write-back value.
+- Retrieve Paper Wiki context when papers, methods, concepts, evidence,
+  failure modes, or prior insights matter.
+- Ask before boundary-changing state moves: creating a new node, marking
+  `repairable` or `dead`, switching active thread/node, closing/reopening a
+  thread, publishing to Paper Wiki, or committing with unclear scope.
+- Keep Research Dev local until a finding proposal is `ready`; use `wiki` for
+  Paper Wiki update/use work.
+
 ## Lazy Init
 
 Lab uses lazy init. The user does not need to initialize Lab before asking a

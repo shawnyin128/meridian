@@ -1,6 +1,6 @@
 {
   "name": "meridian",
-  "description": "Meridian setup, Paper Wiki, and Lab research-coding copilot for Claude Code.",
+  "description": "Meridian setup, Paper Wiki, and Lab research-coding copilot for Claude Code: use meridian for setup, wiki for Paper Wiki, and lab for research coding.",
   "version": "0.3.5",
   "author": {
     "name": "Meridian",

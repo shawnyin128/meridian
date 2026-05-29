@@ -1,6 +1,6 @@
 # Meridian Setup Skill Convergence
 
-## Context / Test Plan
+## Context/Test Plan
 
 Goal: add a product-facing `meridian` skill for setup, status checks, and
 migration checks after plugin/core updates.

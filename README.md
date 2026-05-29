@@ -3,6 +3,39 @@
 Meridian is a Markdown-first Paper Wiki for papers, reading notes, retrieval
 context, synthesis, and research memory.
 
+## Use
+
+Start from the plugin skills:
+
+| Skill | Use It For | Normal Outcome |
+|---|---|---|
+| `meridian` | setup, status checks, updates, and migrations | Meridian is ready, needs init, needs update, or needs migration |
+| `wiki` | Paper Wiki Update Wiki and Use Wiki workflows | canonical wiki pages, retrieval context, provenance, or proposal-first write-back |
+| `lab` | research coding, idea placement, experiments, and local findings | research-code slice, `.meridian/` evidence, checkpoint, or local proposal |
+
+Support skills such as paper ingest, retrieval, knowledge, concept, evolution,
+and personalization are internal modules the `wiki` skill delegates to. Users
+normally do not need to call them directly.
+
+Typical requests:
+
+```text
+Check my Meridian setup and migrate anything out of date.
+```
+
+```text
+Ingest this uploaded PDF into my Paper Wiki and tell me the managed source path
+and canonical wiki page.
+```
+
+```text
+Use my Paper Wiki to answer this research question with evidence.
+```
+
+```text
+Use Lab to debug this failed run and preserve the experiment evidence.
+```
+
 ## Install
 
 Meridian has one plugin name and three user-facing skills:
@@ -77,14 +110,6 @@ plugin details/list surfaces; the core version is visible with:
 
 ```bash
 meridian --version
-```
-
-After install, start from the skills:
-
-```text
-meridian
-wiki
-lab
 ```
 
 Ask `meridian` to check setup or initialize your Paper Wiki library on first
@@ -188,32 +213,6 @@ MCP entry:
 
 Configure the packaged MCP server from the plugin when a client wants tool
 access. The `wiki` skill can manage normal use without exposing commands.
-
-## Use Meridian
-
-Use the plugin skills as the product surface:
-
-- `meridian`: initialize Meridian, check plugin/core/MCP status, and migrate
-  setup after updates.
-- `wiki`: update or use the Paper Wiki.
-- `lab`: use Paper Wiki context for research coding.
-
-Typical `meridian` request:
-
-```text
-Check my Meridian setup and migrate anything out of date.
-```
-
-Typical `wiki` requests:
-
-```text
-Initialize my Paper Wiki under ~/MeridianPaperWiki.
-```
-
-```text
-Ingest this uploaded PDF into my Paper Wiki and tell me the managed source path
-and canonical wiki page.
-```
 
 Successful ingests create a scoped git commit for the generated wiki/source
 artifacts when the wiki lives inside a git repository. Use `--no-auto-commit`
