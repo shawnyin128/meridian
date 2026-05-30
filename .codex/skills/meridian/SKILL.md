@@ -6,7 +6,8 @@ description: Use when the user wants to initialize Meridian, check Meridian plug
 # Meridian Setup
 
 Use this skill for setup, status, and migration. Keep it small: make Meridian
-ready to use, then hand the user to `wiki` or `lab`.
+ready to use, initialize missing local scaffolds, then hand the user to `wiki`
+or `lab`.
 
 ## Entry Boundary
 
@@ -40,24 +41,32 @@ Minimum completion:
   capabilities smoke.
 - Check Lab research-space readiness for the current target repo when the user
   asks whether Meridian is fully ready, mentions Lab, or is working in a repo
-  that may need research coding state. If `.meridian/` is missing, report
-  `needs_lab_init` and ask before creating it.
+  that may need research coding state. If `.meridian/` is missing in the target
+  repo, create the minimal Lab skeleton during setup and report Lab as
+  initialized. This is setup initialization, not a Lab workflow.
+- Do not report overall `ready` while a requested Lab-ready check is missing
+  `.meridian/`. Either initialize the skeleton or, if the target repo path is
+  ambiguous, ask for the target repo path first.
 - Report Paper Wiki/plugin state as `ready`, `needs_init`, `needs_update`, or
   `needs_migration`; report Lab state separately as `not_checked`,
-  `not_needed`, `ready`, `needs_lab_init`, or `needs_migration`.
+  `not_needed`, `ready`, `initialized`, `needs_lab_init`, or
+  `needs_migration`.
 - When a state is not ready, give the smallest next action and stop before
   running normal wiki or lab workflows.
 
 State meanings:
 
-- `ready`: core, active workspace, MCP, and required product skills are visible.
+- `ready`: core, active workspace, MCP, required product skills, and any
+  requested Lab research-space skeleton are present.
 - `needs_init`: no active Paper Wiki workspace is configured.
 - `needs_update`: core version and plugin manifest/skill package are visibly out
   of sync.
 - `needs_migration`: the workspace or Lab research space exists but misses
   required current-layout files.
-- `needs_lab_init`: the current target repo does not have a `.meridian/`
-  research space and the user wants Meridian ready for Lab workflows.
+- `initialized`: the missing `.meridian/` skeleton was created in this setup
+  run.
+- `needs_lab_init`: the target repo for Lab readiness is unknown or cannot be
+  written yet, so setup cannot initialize `.meridian/`.
 
 ### Initialize
 
@@ -91,14 +100,21 @@ Minimum completion:
   readable.
 - Check whether a Lab repo that needs Research Dev state has the minimal
   `.meridian/` skeleton.
-- If `.meridian/` is missing and the user confirms Lab initialization, create
-  the minimal skeleton only:
+- If `.meridian/` is missing in the target repo, create the minimal skeleton
+  only:
   - `.meridian/state.md`
   - `.meridian/memory.md`
   - `.meridian/threads/index.md`
   - `.meridian/experiments/index.md`
   - `.meridian/proposals/index.md`
-- Create missing non-destructive files only after user confirmation.
+- Prefer the installed core helper when available:
+
+```bash
+python3 -c "from pathlib import Path; from meridian.lab import initialize_lab_space; initialize_lab_space(Path.cwd())"
+```
+
+- Creating this skeleton is non-destructive setup. It must not create thread
+  files, experiment files, proposal files, active nodes, or run research work.
 - Do not move, delete, publish, or rewrite user data without explicit approval.
 
 ## Delegation
@@ -118,8 +134,9 @@ start, identify any missing setup files, and ask before applying migrations.
 
 ```text
 The user asks whether Meridian is ready in a research repo. Report Paper Wiki
-setup and Lab research-space setup separately; if `.meridian/` is missing, ask
-whether to create the minimal Lab skeleton.
+setup and Lab research-space setup separately; if `.meridian/` is missing in
+the target repo, create the minimal Lab skeleton and report Lab as initialized.
+Do not defer this to `lab`.
 ```
 
 ```text

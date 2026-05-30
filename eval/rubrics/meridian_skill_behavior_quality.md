@@ -70,6 +70,9 @@ Fail the case if any of these occur:
 
 - A normal Paper Wiki or Lab request is handled inside the `meridian` setup
   skill after setup is already ready.
+- A Meridian setup/status request in a research repo reports overall ready while
+  the requested `.meridian/` skeleton is missing, or defers that skeleton
+  creation to `lab`.
 - A Use Wiki answer starts from broad manual vault search before attempting
   Meridian retrieval or workspace resolution.
 - A new durable Lab idea with no thread candidates skips root thread seed
@@ -87,7 +90,10 @@ Fail the case if any of these occur:
 - `workspace_resolution`: clarify active workspace and initialization behavior.
 - `retrieval_first`: strengthen canonical context-first behavior.
 - `artifact_boundary`: clarify product versus draft/debug output.
-- `lab_state`: clarify lazy init, placement, node modes, or evidence recording.
+- `lab_setup`: clarify Meridian setup initialization for the minimal
+  `.meridian/` skeleton.
+- `lab_state`: clarify Lab lazy init, placement, node modes, or evidence
+  recording.
 - `publish_gate`: clarify proposal/lint/user-confirmation gates.
 - `bundle_surface`: align README, manifest prompts, MCP config, and distribution
   docs with the three-skill model.
