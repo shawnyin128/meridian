@@ -151,7 +151,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.3.5"
+        expected = "0.3.6"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -1569,6 +1569,9 @@ quality_state: "multimodal_pending"
         self.assertIn("python3 -m meridian wiki status", text)
         self.assertIn("meridian-wiki.json", text)
         self.assertIn("needs_migration", text)
+        self.assertIn("needs_lab_init", text)
+        self.assertIn("Lab state separately", text)
+        self.assertIn("minimal Lab skeleton", text)
         self.assertIn("plugin cache/manifest", text)
         self.assertIn("workspace schema", text)
         self.assertIn("delegate those to wiki and lab", text)
@@ -1582,6 +1585,9 @@ quality_state: "multimodal_pending"
         self.assertIn("Entry Boundary", meridian)
         self.assertIn("If the user asks to ingest, retrieve, answer from papers", meridian)
         self.assertIn("Do not continue the normal work inside this setup skill", meridian)
+        self.assertIn("Report Paper Wiki/plugin state", meridian)
+        self.assertIn("Lab state separately", meridian)
+        self.assertIn("needs_lab_init", meridian)
 
         self.assertIn("Behavior Priority", wiki)
         self.assertIn("Start from the user's intent, not from CLI discovery", wiki)

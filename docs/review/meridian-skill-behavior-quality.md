@@ -169,3 +169,40 @@ assets.
 - Runtime readiness doctor remains a planned follow-up, not part of this pass.
 - Install/update closure remains a planned follow-up.
 - Existing Arbor warnings for F1/F2 and F37 are not caused by this change.
+
+## Feedback Repair Round
+
+### Feedback
+
+The user reported that `meridian` setup can report overall ready while not
+creating or even flagging missing Lab `.meridian/` state in the current research
+repo.
+
+### Root Cause
+
+`meridian` Status Check treated core, active Paper Wiki workspace, visible
+skills, and MCP readiness as sufficient for `ready`. Lab research-space checks
+were mentioned only under Migration Check, so a full setup/status request could
+miss `.meridian/` readiness and produce a misleading all-ready answer.
+
+### Repair
+
+- Updated `meridian` skill Status Check to report Paper Wiki/plugin readiness
+  separately from Lab research-space readiness.
+- Added `needs_lab_init` for the case where the user wants Meridian ready for
+  Lab workflows but the target repo lacks `.meridian/`.
+- Clarified that `.meridian/` creation requires user confirmation and creates
+  only the minimal Lab skeleton.
+- Synchronized Codex and Claude Code plugin skill copies.
+- Added regression coverage to skill behavior tests and eval cases.
+
+### Evidence
+
+- Targeted tests passed:
+  `PYTHONPATH=src python3 -m unittest tests.test_cli.CliTests.test_meridian_setup_skill_exists tests.test_cli.CliTests.test_meridian_product_skill_behavior_boundaries tests.test_cli.CliTests.test_meridian_plugin_skill_copies_match_repo_skills tests.test_cli.CliTests.test_meridian_skill_behavior_eval_assets_parse`
+- Full unit suite passed:
+  `PYTHONPATH=src python3 -m unittest discover -s tests`
+- Compile check passed:
+  `PYTHONPYCACHEPREFIX=/private/tmp/meridian-lab-ready-pycache PYTHONPATH=src python3 -m compileall src tests`
+- Diff hygiene passed:
+  `git diff --check`

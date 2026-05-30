@@ -38,7 +38,13 @@ Minimum completion:
   hard failure.
 - Check MCP readiness with `python3 -m meridian.mcp --help` or a lightweight
   capabilities smoke.
-- Report the state as `ready`, `needs_init`, `needs_update`, or `needs_migration`.
+- Check Lab research-space readiness for the current target repo when the user
+  asks whether Meridian is fully ready, mentions Lab, or is working in a repo
+  that may need research coding state. If `.meridian/` is missing, report
+  `needs_lab_init` and ask before creating it.
+- Report Paper Wiki/plugin state as `ready`, `needs_init`, `needs_update`, or
+  `needs_migration`; report Lab state separately as `not_checked`,
+  `not_needed`, `ready`, `needs_lab_init`, or `needs_migration`.
 - When a state is not ready, give the smallest next action and stop before
   running normal wiki or lab workflows.
 
@@ -50,6 +56,8 @@ State meanings:
   of sync.
 - `needs_migration`: the workspace or Lab research space exists but misses
   required current-layout files.
+- `needs_lab_init`: the current target repo does not have a `.meridian/`
+  research space and the user wants Meridian ready for Lab workflows.
 
 ### Initialize
 
@@ -83,6 +91,13 @@ Minimum completion:
   readable.
 - Check whether a Lab repo that needs Research Dev state has the minimal
   `.meridian/` skeleton.
+- If `.meridian/` is missing and the user confirms Lab initialization, create
+  the minimal skeleton only:
+  - `.meridian/state.md`
+  - `.meridian/memory.md`
+  - `.meridian/threads/index.md`
+  - `.meridian/experiments/index.md`
+  - `.meridian/proposals/index.md`
 - Create missing non-destructive files only after user confirmation.
 - Do not move, delete, publish, or rewrite user data without explicit approval.
 
@@ -99,6 +114,12 @@ Canonical examples:
 The user says Meridian feels stale after updating the plugin. Check core and
 plugin versions, inspect active Paper Wiki workspace config, verify MCP can
 start, identify any missing setup files, and ask before applying migrations.
+```
+
+```text
+The user asks whether Meridian is ready in a research repo. Report Paper Wiki
+setup and Lab research-space setup separately; if `.meridian/` is missing, ask
+whether to create the minimal Lab skeleton.
 ```
 
 ```text
