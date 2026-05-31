@@ -34,7 +34,7 @@ They integrate through a shared research memory contract: context packets from w
 
 For decoupling and extensibility, the Paper Wiki should be deliverable as an MCP server.
 
-This does not change the internal wiki model. The canonical state is still raw sources, generated Markdown pages, schema, index, and log. MCP is the delivery boundary that exposes the wiki to development agents and other clients without coupling them to the vault layout.
+This does not change the internal wiki model. The canonical state is still raw sources, generated Markdown pages, schema, index, and log. MCP is the delivery boundary that exposes the wiki to Lab and external normal coding workflows without coupling them to the vault layout.
 
 Paper Wiki MCP should expose a stable interface for:
 
@@ -93,15 +93,15 @@ Evaluation cases should describe detailed problems and expected outcome properti
 
 ## Why Two Products
 
-The paper wiki, Lab, and coding workflows have different control needs.
+The Paper Wiki, Lab idea graph, and external normal coding workflows have different control needs.
 
 The wiki should stay workflow-like because the user needs stable, predictable maintenance of canonical research state. Ingesting a paper, adding a Zotero note, retrieving context, and updating claims should be auditable and structured.
 
-Lab should stay light because idea management requires quick placement,
-feasibility checks, and evidence continuity. Actual research coding remains
-agentic in the normal coding workflow because it requires adaptive decisions:
-inspect code, choose tools, run commands, diagnose failure, adjust the plan, and
-compare results.
+Lab should stay light because idea graph management requires quick placement,
+feasibility checks, and evidence continuity. Adaptive code execution belongs to
+external normal coding workflows because implementation requires adaptive
+decisions: inspect code, choose tools, run commands, diagnose failure, adjust
+the plan, and compare results.
 
 ## Lab Boundary
 

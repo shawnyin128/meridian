@@ -46,7 +46,7 @@ The Paper Wiki should be deliverable as an MCP server. This gives the system a c
 - the MCP layer exposes stable tools and resources over that knowledge
 - Lab and external coding workflows consume the wiki through MCP instead of
   depending on vault paths or internal file conventions
-- other clients can use the same paper memory without adopting the development plugin
+- other clients can use the same paper memory without adopting Lab
 
 This preserves the wiki as a workflow product while making it reusable infrastructure. MCP is a delivery surface, not the source of truth. The source of truth remains the Markdown wiki plus raw immutable sources and schema.
 
@@ -58,7 +58,9 @@ Initial MCP capabilities should be small and concrete:
 - `propose_write_back`: accept experiment/code evidence and produce a reviewable wiki update proposal
 - `ingest_source`: start a controlled paper or annotation ingest workflow
 
-Writes should be conservative at first. Prefer propose/apply separation so the dev agent can send experiment evidence back without silently rewriting canonical research memory.
+Writes should be conservative at first. Prefer propose/apply separation so Lab
+or the external normal coding workflow can send experiment evidence back
+without silently rewriting canonical research memory.
 
 ## Source-Grounded Development Principles
 
@@ -76,9 +78,15 @@ The development framework should internalize these rules:
 - constrain outputs through learning targets, evidence identity, and write-back proposals
 - preserve useful negative results and failed paths as research memory
 
-## Dev Agent Boundary
+## Legacy Development-Agent Boundary
 
-The development plugin should optimize for research work, not generic software cleanliness. Its job is to help the researcher move through idea, implementation, observation, interpretation, and memory.
+This section records the earlier development-agent design background. It is not
+the current Meridian product boundary. Current Lab behavior should preserve idea
+graph state, Paper Wiki grounding, experiment evidence, local finding proposals,
+and development handoffs; implementation, debugging, tests, commits, release,
+and convergence stay in the external normal coding workflow.
+
+The legacy development plugin direction optimized for research work, not generic software cleanliness. Its job was to help the researcher move through idea, implementation, observation, interpretation, and memory.
 
 Minimum product bar:
 
@@ -86,7 +94,10 @@ Minimum product bar:
 2. **Serve as the wiki gateway**: use the paper/wiki memory as a main entry point for development, so coding decisions can be grounded in prior papers, claims, methods, failed paths, and user insights.
 3. **Use git as research time travel**: create meaningful staged checkpoints so uncertain experiments, probes, and refactors can be compared, reverted, or split by impact.
 
-These are not separate nice-to-have features. They define why the dev plugin exists. A coding agent that does not produce research-grade code is not useful for the researcher. A coding agent that does not actively use the wiki cannot reliably feed research development or research understanding.
+These were not separate nice-to-have features in the legacy direction. They
+defined why a development plugin would have existed. In the current product,
+Lab keeps the research-state side of this loop and hands code work to the
+external normal coding workflow.
 
 Research-friendly code is the target artifact:
 
@@ -98,9 +109,16 @@ Research-friendly code is the target artifact:
 - allowed to contain purposeful redundancy when that redundancy improves comparison, inspection, or variant isolation
 - checkpointed so the researcher can recover a useful intermediate state after a later idea turns out wrong
 
-This means the dev agent should not automatically push toward the shortest or cleanest abstraction. In research, code sometimes needs visible seams: separate variants, duplicated-but-comparable config blocks, probe hooks, debug prints guarded by flags, and result tables that expose more than a production system would expose.
+In the legacy development-agent direction, the coding agent would not
+automatically push toward the shortest or cleanest abstraction. In research,
+code sometimes needs visible seams: separate variants, duplicated-but-comparable
+config blocks, probe hooks, debug prints guarded by flags, and result tables
+that expose more than a production system would expose.
 
-The agentic part should stay strong. Meridian should avoid constraining the dev agent's own reasoning and tool-use path too tightly. The framework should define the quality of the output, the evidence to preserve, and the memory write-back contract. It should not over-prescribe every intermediate step.
+For an external normal coding workflow, adaptive reasoning and tool use should
+remain flexible. Meridian should define the evidence to preserve, the handoff
+identity, and the memory write-back contract. It should not turn Lab into the
+owner of every coding step.
 
 Allowed autonomy:
 
@@ -122,7 +140,8 @@ Hard boundaries:
 
 Research coding has unusually high rollback pressure. The researcher often does not know which implementation detail, probe, ablation, or failed experiment will become useful later. Git should therefore be treated as a research timeline, not only as a release mechanism.
 
-The dev agent should encourage and prepare staged commits when:
+The external normal coding workflow should encourage and prepare staged commits
+when:
 
 - a hypothesis implementation first becomes runnable
 - an ablation/probe/debug instrumentation layer is added
@@ -139,11 +158,11 @@ Checkpoint commits should be small enough to support impact-based rollback:
 - include command/config/result identity in commit messages or linked experiment notes when relevant
 - avoid committing generated heavy artifacts unless they are intentionally part of the evidence record
 
-The agent should not commit when the user limits commit behavior or unrelated
-dirty work makes the scope ambiguous. Otherwise, Lab should default to focused
-checkpoints after runnable research-code slices, diagnostic fixes, experiment
-setups, or interpreted results. The checkpoint is part of the research timeline,
-not a release gate.
+The external normal coding workflow should not commit when the user limits
+commit behavior or unrelated dirty work makes the scope ambiguous. Otherwise,
+that workflow should default to focused checkpoints after runnable research-code
+slices, diagnostic fixes, experiment setups, or interpreted results. The
+checkpoint is part of the research timeline, not a release gate.
 
 Git history, experiment notes, and wiki write-back should line up:
 
@@ -161,18 +180,22 @@ Meridian should evolve from a paper wiki into a lightweight end-to-end research 
 read papers -> form ideas -> write code -> run experiments -> interpret results -> update research memory -> generate better ideas
 ```
 
-Research Dev state sits on the development side of this loop. A raw idea is not
-a canonical wiki fact; it is active research working state. Meridian should
-place the idea in the target repo's `.meridian/` research space, ground it with
-Paper Wiki context after placement, connect it to approach nodes and experiment
+Lab state sits on the idea-graph side of this loop. A raw idea is not a
+canonical wiki fact; it is active research working state. Meridian should place
+the idea in the target repo's `.meridian/` research space, ground it with Paper
+Wiki context after placement, connect it to approach nodes and experiment
 evidence, and only write durable findings back to the wiki through
 proposal-first paths.
 
 The shared system surface is still the LLM-maintained research state, but the products around it have different control models:
 
 - The paper wiki is workflow-first: predictable ingest, evolve, retrieve, lint, and write-back paths.
-- The development plugin is agent-first: it uses a bounded tool loop to inspect code, run commands, respond to failures, and gather evidence.
-- The integration contract is a context packet plus write-back protocol between wiki state and development state.
+- Lab is idea-graph-first: it uses lightweight Markdown state to preserve idea
+  placement, approach trees, experiment evidence, and handoffs.
+- The external normal coding workflow owns adaptive implementation, debugging,
+  tests, commits, release, and convergence.
+- The integration contract is a context packet, development handoff, and
+  write-back protocol between wiki state, Lab state, and coding evidence.
 
 ## Research Event Boundary
 
@@ -183,8 +206,8 @@ The framework should not own all of those as first-class MVP workflows. Many are
 The state model lives in `docs/research-dev-state-model.md`. The scenario-level
 product contract lives in `docs/research-dev-use-cases.md`, and the
 implementation plan lives in `docs/research-dev-mvp-plan.md`. Treat those
-documents as the Research Dev MVP's user-facing map before implementing skills,
-MCP usage patterns, or evaluation cases.
+documents as the Lab MVP's user-facing map before implementing skills, MCP
+usage patterns, or evaluation cases.
 
 The high-leverage MVP workflows are now organized around research-space state:
 
@@ -202,7 +225,7 @@ the framework only when they support one of these workflows.
 
 The two products communicate through explicit artifacts, not hidden chat state.
 
-### Wiki To Dev Agent
+### Wiki To Lab And External Coding Workflow
 
 The wiki provides:
 
@@ -211,11 +234,14 @@ The wiki provides:
 - paper-grounded definitions of metrics, methods, and claims
 - prior experiment memory and unresolved questions
 
-The dev agent consumes this context before planning experiments or coding when the task depends on prior research knowledge.
+Lab consumes this context before idea placement, feasibility review, handoff, or
+result interpretation. The external normal coding workflow can also consume it
+before planning experiments or coding when the task depends on prior research
+knowledge.
 
-### Dev Agent To Wiki
+### Lab And External Coding Workflow To Wiki
 
-The dev agent writes back:
+Lab and the external normal coding workflow write back:
 
 - experiment notes: purpose, config, command, environment, result, interpretation, next step
 - result-to-claim updates
@@ -223,7 +249,9 @@ The dev agent writes back:
 - newly discovered implementation details from reproduction work
 - refined idea or hypothesis status
 
-The dev agent should not silently rewrite broad canonical wiki pages. Broad research-state updates should go through wiki workflow review/draft gates.
+Lab and the external normal coding workflow should not silently rewrite broad
+canonical wiki pages. Broad research-state updates should go through wiki
+workflow review/draft gates.
 
 ### Shared Context Packet
 

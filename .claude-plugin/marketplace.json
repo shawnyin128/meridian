@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "meridian",
-      "description": "Markdown-first Paper Wiki and Lab research-coding copilot.",
+      "description": "Markdown-first Paper Wiki and Lab idea graph.",
       "source": "./plugins/claude-code/meridian",
       "category": "Research"
     }

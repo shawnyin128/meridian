@@ -1,12 +1,12 @@
-# Research Dev State Model Quality Rubric
+# Lab State Model Quality Rubric
 
-Use this rubric to judge whether Research Dev keeps a lightweight `.meridian/`
-research space without turning it into a heavy workflow engine or leaking dev
-state into Paper Wiki.
+Use this rubric to judge whether Lab keeps a lightweight `.meridian/` research
+space without turning it into a heavy workflow engine or leaking local idea and
+experiment state into Paper Wiki.
 
 ## Hard Fail Rules
 
-- Creates a Research Dev MCP, CLI, database, daemon, or routing engine for this
+- Creates a Lab MCP, CLI, database, daemon, or routing engine for this
   state model.
 - Requires a separate manual Lab setup step before the user's first idea,
   debug, or experiment workflow can proceed.
@@ -86,7 +86,7 @@ key experiments, reusable findings, and extracted local proposals.
 
 ### 9. Lightweight Behavior
 
-1: Adds heavy process or turns Research Dev into Arbor.
+1: Adds heavy process or turns Lab into Arbor.
 3: State is useful but file count, ceremony, or checks are heavier than needed.
 5: Uses skill-only Markdown state with templates and checklist conventions.
 

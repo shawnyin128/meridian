@@ -64,6 +64,11 @@ After initialization, the plugin MCP server can use the active workspace:
 python3 -m meridian.mcp serve
 ```
 
+The plugin MCP config starts `python3 -m meridian.mcp serve`. That process uses
+the `meridian` Python package importable in the client environment. If MCP
+behavior looks stale after a plugin update, update the core checkout with
+`git pull`, then rerun `python3 -m pip install -e .` from that checkout.
+
 ## Codex
 
 Codex expects the marketplace manifest under `.agents/plugins/` inside the
@@ -96,7 +101,7 @@ If the installed plugin still shows old behavior, reinstall it from the refreshe
 marketplace:
 
 ```bash
-codex plugin remove meridian
+codex plugin remove meridian@meridian
 codex plugin add meridian@meridian
 ```
 
@@ -132,7 +137,7 @@ claude plugin install meridian@meridian
 Claude Code can refresh with:
 
 ```bash
-claude plugin update meridian
+claude plugin update meridian@meridian
 ```
 
 ## Product Entry

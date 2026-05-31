@@ -156,7 +156,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.4.1"
+        expected = "0.4.2"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -3200,6 +3200,30 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertFalse((root / "skills/wiki-evolve").exists())
             self.assertFalse((root / "skills/wiki-knowledge").exists())
             self.assertFalse((root / "skills/wiki-concept").exists())
+
+    def test_plugin_marketplace_taglines_match_lab_boundary(self) -> None:
+        codex_marketplace = json.loads(Path(".agents/plugins/marketplace.json").read_text(encoding="utf-8"))
+        claude_marketplace = json.loads(Path(".claude-plugin/marketplace.json").read_text(encoding="utf-8"))
+        claude_description = claude_marketplace["plugins"][0]["description"]
+
+        self.assertEqual(codex_marketplace["name"], "meridian")
+        self.assertIn("Paper Wiki", claude_description)
+        self.assertIn("Lab", claude_description)
+        self.assertNotIn("research-coding copilot", claude_description)
+        self.assertNotIn("Research Dev Agent", claude_description)
+
+    def test_install_update_docs_use_consistent_plugin_commands(self) -> None:
+        readme = Path("README.md").read_text(encoding="utf-8")
+        distribution = Path("docs/plugin-distribution.md").read_text(encoding="utf-8")
+
+        expected_codex_remove = "codex plugin remove meridian@meridian"
+        expected_claude_update = "claude plugin update meridian@meridian"
+        self.assertIn(expected_codex_remove, readme)
+        self.assertIn(expected_codex_remove, distribution)
+        self.assertIn(expected_claude_update, readme)
+        self.assertIn(expected_claude_update, distribution)
+        self.assertNotIn("codex plugin remove meridian\n", distribution)
+        self.assertNotIn("claude plugin update meridian\n", distribution)
 
     def test_research_dev_mvp_assets_exist(self) -> None:
         skill = (CODEX_PLUGIN_SKILL_ROOT / "lab/SKILL.md").read_text(encoding="utf-8")

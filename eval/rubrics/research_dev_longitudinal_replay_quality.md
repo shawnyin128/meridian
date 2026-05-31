@@ -1,4 +1,4 @@
-# Research Dev Longitudinal Replay Quality Rubric
+# Lab Longitudinal Replay Quality Rubric
 
 Use this rubric to evaluate multi-step Lab behavior across a realistic research
 arc. The goal is not to reward ceremony; it is to check that lightweight

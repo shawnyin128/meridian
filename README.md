@@ -38,6 +38,11 @@ meridian --version
 python3 -m meridian.mcp serve
 ```
 
+The plugin MCP config starts `python3 -m meridian.mcp serve`. That process uses
+the `meridian` Python package importable in the client environment. If MCP
+behavior looks stale after a plugin update, update the core checkout with
+`git pull`, then rerun `python3 -m pip install -e .` from that checkout.
+
 ### Codex
 
 ```bash

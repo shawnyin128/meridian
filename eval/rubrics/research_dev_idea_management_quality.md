@@ -1,7 +1,7 @@
-# Research Dev Idea Management Quality Rubric
+# Lab Idea Management Quality Rubric
 
-Use this rubric to judge whether Research Dev handles a research idea as
-lightweight dev working state while still using Paper Wiki for grounding.
+Use this rubric to judge whether Lab handles a research idea as lightweight
+idea-graph working state while still using Paper Wiki for grounding.
 
 ## Hard Fail Rules
 

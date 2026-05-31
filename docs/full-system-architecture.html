@@ -358,13 +358,13 @@
       <div>
         <h1>Meridian Full Architecture</h1>
         <p class="subtitle">
-          两个产品，一个研究系统：Paper Wiki 是 workflow 产品；Research Dev 是 agentic 开发插件。
-          Paper Wiki 可以作为 MCP delivery，Dev 通过稳定工具接口使用 wiki，而不是耦合 vault 内部结构。
+          两个产品，一个研究系统：Paper Wiki 是 workflow 产品；Lab 是 idea graph product。
+          Paper Wiki 可以作为 MCP delivery，Lab 和外部普通 coding workflow 通过稳定工具接口使用 wiki，而不是耦合 vault 内部结构。
         </p>
       </div>
       <aside class="boundary">
         <h3>Boundary</h3>
-        <p>Wiki 维护 canonical research memory；MCP 暴露 context/search/read/write-back；Dev Agent 自主决策工具调用、诊断路径和 wiki lookup。</p>
+        <p>Wiki 维护 canonical research memory；MCP 暴露 context/search/read/write-back；Lab 管理 idea graph；外部普通 coding workflow 负责代码实现、诊断路径和测试。</p>
       </aside>
     </section>
 
@@ -374,18 +374,18 @@
         <p>只读 paper、Zotero 批注、维护 claim/method/idea，不进入代码仓库。</p>
       </article>
       <article class="mode dev">
-        <h3>Dev-agent-only</h3>
-        <p>只在代码仓库里做实验设计、sanity check、结果解释、复现诊断和实验记忆。</p>
+        <h3>Lab-only</h3>
+        <p>只在代码仓库里管理 idea graph、实验设计、结果解释和实验记忆。</p>
       </article>
       <article class="mode integrated">
         <h3>Integrated</h3>
-        <p>Dev Agent 先向 Wiki 要 context packet，实验后用 write-back packet 更新研究记忆。</p>
+        <p>Lab 先向 Wiki 要 context packet；外部 coding workflow 返回实验结果后，用 write-back packet 更新研究记忆。</p>
       </article>
     </section>
 
     <section class="implementation-order" aria-label="Implementation order">
       <h2>Implementation Order</h2>
-      <p>先构建 Paper Wiki。Dev Agent 之后再接入，因为它的 wiki-gateway 能力依赖一个真实可用的 wiki backend。</p>
+      <p>先构建 Paper Wiki。Lab 之后再接入，因为它的 wiki-grounded idea graph 能力依赖一个真实可用的 wiki backend。</p>
       <div class="order-grid">
         <article class="order-step"><h3>1. Brainstorm</h3><p>界定 prototype 边界、非目标、人工审查点和评测维度。</p></article>
         <article class="order-step"><h3>2. Prototype</h3><p>做最小 Paper Wiki：ingest、user insight、context packet、draft/publish。</p></article>
@@ -400,7 +400,7 @@
       <h2>Source-Grounded Principles</h2>
       <p>来自 LLM Wiki 指南、Anthropic agent engineering posts 和 followup 经验：原则进入系统边界，具体社区实现不照搬。</p>
       <div class="principle-row">
-        <article class="principle"><h3>Simple First</h3><p>固定任务用 workflow；不确定科研开发才用 agentic loop。</p></article>
+        <article class="principle"><h3>Simple First</h3><p>固定任务用 workflow；idea graph 用轻量 Lab；自适应代码执行交给外部普通 coding workflow。</p></article>
         <article class="principle"><h3>Progressive Disclosure</h3><p>先 metadata / index / packet，再按需展开 page、source、tool schema。</p></article>
         <article class="principle"><h3>High-Signal Context</h3><p>返回选择原因、provenance、conflicts、gaps，而不是 retrieval dump。</p></article>
         <article class="principle"><h3>Agent-Ergonomic Tools</h3><p>MCP tools 要少、清晰、可评测，支持 concise/detailed 输出。</p></article>
@@ -412,7 +412,7 @@
 
     <section class="mcp-layer" aria-label="Paper Wiki MCP delivery">
       <h2>Paper Wiki MCP Delivery</h2>
-      <p>Paper Wiki 的本体仍是 raw sources + Markdown wiki + schema。MCP 是 delivery boundary，让 Dev Agent 和其他客户端通过稳定工具契约使用研究记忆。</p>
+      <p>Paper Wiki 的本体仍是 raw sources + Markdown wiki + schema。MCP 是 delivery boundary，让 Lab 和外部普通 coding workflow 通过稳定工具契约使用研究记忆。</p>
       <div class="mcp-grid">
         <article class="mcp-item primary">
           <h3>Stable Boundary</h3>
@@ -437,31 +437,31 @@
       </div>
     </section>
 
-    <section class="dev-boundary" aria-label="Research dev boundary">
-      <h2>Research Dev Boundary</h2>
-      <p>Dev 产品最低成立条件有三个：写出科研级代码；作为 wiki 的开发入口；善用 git checkpoint 支撑科研试错。</p>
+    <section class="dev-boundary" aria-label="Lab boundary">
+      <h2>Lab Boundary</h2>
+      <p>Lab 产品最低成立条件有三个：维护 idea graph continuity；作为 Paper Wiki 的 idea-side gateway；把代码实现、调试和测试交给外部普通 coding workflow。</p>
       <div class="baseline-grid">
         <article class="baseline-item">
-          <h3>1. Research-grade Code</h3>
-          <p>清晰、易读、易维护、易扩展；允许为 probe、ablation、variant isolation 保留有目的的冗余。</p>
+          <h3>1. Idea Graph Continuity</h3>
+          <p>维护 threads、approach nodes、experiment evidence 和 local finding proposals。</p>
         </article>
         <article class="baseline-item">
           <h3>2. Wiki Gateway</h3>
-          <p>开发中主动查 paper/wiki memory，把 prior work、method detail、failed path、user insight 用到代码和解释里。</p>
+          <p>在 feasibility、placement、handoff 和结果解释中主动查 paper/wiki memory。</p>
         </article>
         <article class="baseline-item">
-          <h3>3. Git Checkpoints</h3>
-          <p>在 hypothesis、probe、ablation、result、risky refactor 边界建议阶段性 commit，支持 impact rollback。</p>
+          <h3>3. Development Handoff</h3>
+          <p>把 implementation/debug/test 工作交给外部普通 coding workflow，并保留 evidence identity 和 return criteria。</p>
         </article>
       </div>
       <div class="boundary-grid">
         <article class="boundary-item">
           <h3>Target Artifact</h3>
-          <p>代码要显式保留 configs、seeds、metrics、output paths、probe hooks 和 variant boundaries。</p>
+          <p>Lab state 要显式保留 idea placement、approach status、experiment evidence、finding proposal 和 handoff packet。</p>
         </article>
         <article class="boundary-item">
-          <h3>Agent Freedom</h3>
-          <p>允许 agent 自主读代码、跑命令、加诊断、查日志、决定下一步 sanity check 或 ablation。</p>
+          <h3>External Coding Workflow</h3>
+          <p>自适应读代码、跑命令、加诊断、查日志、决定 sanity check 或 ablation 属于普通 coding workflow。</p>
         </article>
         <article class="boundary-item">
           <h3>Wiki Awareness</h3>
@@ -469,7 +469,7 @@
         </article>
         <article class="boundary-item">
           <h3>Thin Guardrails</h3>
-          <p>不套重流程；只要求 learning target、evidence plan、checkpoint prompt、write-back packet。</p>
+          <p>不套重流程；只要求 learning target、evidence identity、handoff packet、write-back packet。</p>
         </article>
       </div>
     </section>
@@ -492,25 +492,25 @@
       <div class="bridge" aria-label="Integration contracts">
         <div class="contract">
           <h3>Context Packet</h3>
-          <p>Paper Wiki MCP -> dev: 相关 pages、选择原因、证据、冲突、缺口、允许写入策略。</p>
+          <p>Paper Wiki MCP -> Lab / external coding workflow: 相关 pages、选择原因、证据、冲突、缺口、允许写入策略。</p>
         </div>
         <div class="arrow">knowledge grounding</div>
         <div class="contract">
           <h3>Write-back Packet</h3>
-          <p>dev -> Paper Wiki MCP: 实验目的、命令/config、结果、解释、claim 影响、失败路线、下一步。</p>
+          <p>Lab / external coding workflow -> Paper Wiki MCP: 实验目的、命令/config、结果、解释、claim 影响、失败路线、下一步。</p>
         </div>
       </div>
 
       <article class="product agent">
         <div class="product-head">
-          <h2>Research Dev Agent</h2>
-          <p>Agentic plugin。目标是把自由探索转成 researcher 看得懂、可维护、可扩展、可解释的代码和证据。</p>
-          <span class="tag">agentic product</span>
+          <h2>Lab Idea Graph</h2>
+          <p>Idea graph product。目标是把自由探索转成 researcher 看得懂、可维护、可回写的 idea state 和证据。</p>
+          <span class="tag">idea graph product</span>
         </div>
         <div class="steps">
-          <div class="step"><h3>Classify Event</h3><p>实验设计、sanity check、结果解释、实验记忆、复现诊断、普通 coding。</p></div>
-          <div class="step"><h3>Inspect And Decide</h3><p>读代码、查配置、查 wiki、选命令、决定 probe、ablation、diagnostic action。</p></div>
-          <div class="step"><h3>Run Or Diagnose</h3><p>调用 shell/tests/scripts，加 instrumentation，处理失败、恢复 partial results、记录证据。</p></div>
+          <div class="step"><h3>Place Idea</h3><p>确认 root、child、sibling 或 link，并保留 raw idea 与 normalized hypothesis。</p></div>
+          <div class="step"><h3>Ground With Wiki</h3><p>查 wiki context，识别 support、contradiction、uncertainty 和 missing evidence。</p></div>
+          <div class="step"><h3>Prepare Handoff</h3><p>当需要代码实现、调试或测试时，生成给外部普通 coding workflow 的 handoff packet。</p></div>
           <div class="step"><h3>Interpret And Next</h3><p>判断结果是否支持 hypothesis，是否需要 control、ablation 或停止方向。</p></div>
         </div>
       </article>
@@ -518,7 +518,7 @@
 
     <section class="memory" aria-label="Shared research memory">
       <h2>Shared Research Memory</h2>
-      <p>两件产品共享同一套研究状态，但拥有不同控制模型。Wiki 负责 canonical memory；Dev Agent 负责把代码和实验过程变成可回写的证据。</p>
+      <p>两件产品共享同一套研究状态，但拥有不同控制模型。Wiki 负责 canonical memory；Lab 负责把 idea graph 和实验过程变成可回写的证据。</p>
       <div class="memory-grid">
         <article class="memory-item"><h3>Papers</h3><p>论文理解、批注、隐藏实现细节。</p></article>
         <article class="memory-item"><h3>Claims</h3><p>支持、反驳、置信度、证据来源。</p></article>

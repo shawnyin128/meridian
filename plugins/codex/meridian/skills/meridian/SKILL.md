@@ -60,14 +60,14 @@ Use when the user asks whether Meridian is installed, up to date, or ready.
 
 Minimum completion:
 
-- Check the Python core version with `python3 -m meridian --version`.
-- Check the active Paper Wiki workspace with `python3 -m meridian wiki status`.
+- Check the Python core version and path with `python3 -m meridian --version`
+  and `python3 -m meridian wiki status`.
 - Check that the plugin package exposes `meridian`, `wiki`, and `lab` skills.
   When installed plugin files are visible, inspect the Codex or Claude Code
   plugin cache/manifest; otherwise report plugin visibility as unknown, not as a
   hard failure.
 - Check MCP readiness with `python3 -m meridian.mcp --help` or a lightweight
-  capabilities smoke.
+  capabilities smoke, and report stale behavior as possible core/plugin drift.
 - Check Lab research-space readiness for the current target repo when the user
   asks whether Meridian is fully ready, mentions Lab, or is working in a repo
   that may need idea-graph state. If `.meridian/` is missing in the target
