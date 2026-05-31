@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,15 @@ from meridian.wiki.corpus import (
 
 CANONICAL_DIRS = {"papers", "syntheses", "methods", "topics", "concepts", "claims", "evidence"}
 TOOL_SCHEMA_VERSION = "meridian.mcp_adapter.v0"
+NEEDS_INIT_MESSAGE = "No Paper Wiki workspace is configured."
+NEEDS_INIT_NEXT_ACTION = (
+    "Run meridian wiki init --library-root <paper-wiki-library-root> "
+    "or initialize through the meridian setup skill."
+)
+INDEX_WRITE_NEXT_ACTION = (
+    "Grant write access to the Paper Wiki library or run the same request in "
+    "an environment that can write the wiki .index directory."
+)
 
 
 def capabilities(*, detail: str = "summary") -> dict[str, Any]:
@@ -391,51 +401,58 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--scope", default="summary")
     args = parser.parse_args(argv)
 
-    wiki_root = Path(args.wiki_root) if args.wiki_root else _default_wiki_root()
-    if args.tool == "capabilities":
-        payload = capabilities(detail=args.detail)
-    elif args.tool == "context":
-        if not args.query:
-            parser.error("--query is required for context")
-        payload = context(query=args.query, wiki_root=wiki_root, top_k=args.top_k)
-    elif args.tool == "read":
-        if not args.page:
-            parser.error("--page is required for read")
-        payload = read(page=args.page, wiki_root=wiki_root)
-    elif args.tool == "trace":
-        if not args.page:
-            parser.error("--page is required for trace")
-        payload = trace(page=args.page, wiki_root=wiki_root)
-    elif args.tool == "update":
-        payload = update(
-            wiki_root=wiki_root,
-            source_path=Path(args.source_path) if args.source_path else None,
-            paper=args.paper,
-            note=args.note,
-            insight_type=args.insight_type,
-        )
-    elif args.tool == "propose":
-        if not args.query:
-            parser.error("--query is required for propose")
-        if not args.title:
-            parser.error("--title is required for propose")
-        payload = propose(
-            wiki_root=wiki_root,
-            query=args.query,
-            title=args.title,
-            proposal_type=args.proposal_type,
-            context_path=Path(args.context_path) if args.context_path else None,
-        )
-    elif args.tool == "apply":
-        if not args.proposal_manifest:
-            parser.error("--proposal-manifest is required for apply")
-        payload = apply(
-            proposal_manifest=Path(args.proposal_manifest),
-            wiki_root=wiki_root,
-            overwrite=args.overwrite,
-        )
-    else:
-        payload = audit(wiki_root=wiki_root, scope=args.scope)
+    try:
+        wiki_root: Path | None = None
+        if args.tool != "capabilities":
+            wiki_root = Path(args.wiki_root) if args.wiki_root else _default_wiki_root()
+
+        if args.tool == "capabilities":
+            payload = capabilities(detail=args.detail)
+        elif args.tool == "context":
+            if not args.query:
+                parser.error("--query is required for context")
+            payload = context(query=args.query, wiki_root=wiki_root, top_k=args.top_k)
+        elif args.tool == "read":
+            if not args.page:
+                parser.error("--page is required for read")
+            payload = read(page=args.page, wiki_root=wiki_root)
+        elif args.tool == "trace":
+            if not args.page:
+                parser.error("--page is required for trace")
+            payload = trace(page=args.page, wiki_root=wiki_root)
+        elif args.tool == "update":
+            payload = update(
+                wiki_root=wiki_root,
+                source_path=Path(args.source_path) if args.source_path else None,
+                paper=args.paper,
+                note=args.note,
+                insight_type=args.insight_type,
+            )
+        elif args.tool == "propose":
+            if not args.query:
+                parser.error("--query is required for propose")
+            if not args.title:
+                parser.error("--title is required for propose")
+            payload = propose(
+                wiki_root=wiki_root,
+                query=args.query,
+                title=args.title,
+                proposal_type=args.proposal_type,
+                context_path=Path(args.context_path) if args.context_path else None,
+            )
+        elif args.tool == "apply":
+            if not args.proposal_manifest:
+                parser.error("--proposal-manifest is required for apply")
+            payload = apply(
+                proposal_manifest=Path(args.proposal_manifest),
+                wiki_root=wiki_root,
+                overwrite=args.overwrite,
+            )
+        else:
+            payload = audit(wiki_root=wiki_root, scope=args.scope)
+    except Exception as exc:
+        print(format_call_chain_error(exc), file=sys.stderr)
+        return 1
     print(json.dumps(payload, indent=2, ensure_ascii=False))
     return 0
 
@@ -574,11 +591,45 @@ def _norm(value: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9./_-]+", " ", value.lower())).strip()
 
 
+def missing_workspace_error_payload() -> dict[str, Any]:
+    return {
+        "status": "error",
+        "error_code": "needs_init",
+        "message": NEEDS_INIT_MESSAGE,
+        "next_action": NEEDS_INIT_NEXT_ACTION,
+    }
+
+
+def call_chain_error_payload(exc: Exception) -> dict[str, Any]:
+    if isinstance(exc, FileNotFoundError) and NEEDS_INIT_MESSAGE in str(exc):
+        return missing_workspace_error_payload()
+    if isinstance(exc, PermissionError):
+        filename = getattr(exc, "filename", None)
+        return {
+            "status": "error",
+            "error_code": "workspace_index_write_failed",
+            "message": "Meridian could not refresh the Paper Wiki index.",
+            "path": str(filename) if filename else "",
+            "next_action": INDEX_WRITE_NEXT_ACTION,
+        }
+    return {
+        "status": "error",
+        "error_code": "call_chain_error",
+        "message": str(exc),
+        "next_action": "Inspect the Meridian setup, workspace path, and command arguments, then retry.",
+    }
+
+
+def format_call_chain_error(exc: Exception) -> str:
+    payload = call_chain_error_payload(exc)
+    parts = [str(payload["error_code"]), str(payload["message"]), f"Next action: {payload['next_action']}"]
+    if payload.get("path"):
+        parts.insert(2, f"Path: {payload['path']}")
+    return "\n".join(parts)
+
+
 def _default_wiki_root() -> Path:
     workspace = resolve_workspace()
     if workspace is not None:
         return workspace.wiki_root
-    raise FileNotFoundError(
-        "No Paper Wiki workspace is configured. Run "
-        "`meridian wiki init --library-root <library-root>` or pass `--wiki-root`."
-    )
+    raise FileNotFoundError(NEEDS_INIT_MESSAGE)

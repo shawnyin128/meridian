@@ -144,6 +144,15 @@ Use `meridian wiki status` to inspect the active wiki root, source root, core
 path, and MCP availability. If retrieval fails, use its warnings and failure
 report first; do not start with broad `rg` over the vault.
 
+Failure recovery:
+
+- If a Meridian call returns `needs_init`, ask for the Paper Wiki library root
+  and initialize through `meridian`; do not guess a repo-local `wiki/`.
+- If a Meridian call returns `workspace_index_write_failed`, report the blocked
+  path and ask for the smallest permission or environment fix before retrying.
+- Only use direct markdown search after Meridian retrieval succeeds or returns a
+  non-recoverable product error.
+
 For detailed retrieval discipline, keep the behavior inside this `wiki` entry:
 canonical context first, selected reads second, direct file search only as a
 fallback after Meridian retrieval or workspace resolution fails.

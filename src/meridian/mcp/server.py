@@ -28,7 +28,7 @@ class MeridianMCPServer:
     """
 
     def __init__(self, *, default_wiki_root: Path | None = None) -> None:
-        self.default_wiki_root = default_wiki_root or _default_wiki_root()
+        self.default_wiki_root = default_wiki_root
 
     def handle_message(self, message: JsonDict) -> JsonDict | None:
         method = str(message.get("method") or "")
@@ -88,7 +88,7 @@ class MeridianMCPServer:
         try:
             payload = TOOL_CALLS[name](self, arguments)
         except Exception as exc:
-            return _tool_error(str(exc))
+            return _tool_error(adapter.call_chain_error_payload(exc))
         return _tool_result(payload)
 
     @staticmethod
@@ -100,7 +100,15 @@ class MeridianMCPServer:
         return {"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": message}}
 
     def wiki_root(self, arguments: JsonDict) -> Path:
-        return Path(str(arguments.get("wiki_root") or self.default_wiki_root))
+        explicit = arguments.get("wiki_root")
+        if explicit:
+            return Path(str(explicit))
+        if self.default_wiki_root is not None:
+            return self.default_wiki_root
+        workspace = resolve_workspace()
+        if workspace is not None:
+            return workspace.wiki_root
+        raise FileNotFoundError(adapter.NEEDS_INIT_MESSAGE)
 
 
 def tool_definitions() -> list[JsonDict]:
@@ -222,8 +230,16 @@ def _tool_result(payload: JsonDict) -> JsonDict:
     return {"content": [{"type": "text", "text": text}]}
 
 
-def _tool_error(message: str) -> JsonDict:
-    payload = {"status": "error", "message": message}
+def _tool_error(error: str | JsonDict) -> JsonDict:
+    if isinstance(error, dict):
+        payload = error
+    else:
+        payload = {
+            "status": "error",
+            "error_code": "tool_error",
+            "message": error,
+            "next_action": "Inspect the tool arguments and retry.",
+        }
     return {
         "content": [{"type": "text", "text": json.dumps(payload, indent=2, ensure_ascii=False)}],
         "isError": True,
@@ -303,16 +319,6 @@ def _required(arguments: JsonDict, key: str) -> str:
     if value in (None, ""):
         raise ValueError(f"{key} is required")
     return str(value)
-
-
-def _default_wiki_root() -> Path:
-    env_root = os.environ.get("MERIDIAN_WIKI_ROOT")
-    if env_root:
-        return Path(env_root)
-    workspace = resolve_workspace()
-    if workspace is not None:
-        return workspace.wiki_root
-    return Path("wiki")
 
 
 TOOL_CALLS: dict[str, Callable[[MeridianMCPServer, JsonDict], JsonDict]] = {

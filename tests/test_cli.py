@@ -43,11 +43,24 @@ CODEX_PLUGIN_SKILL_ROOT = Path("plugins/codex/meridian/skills")
 CLAUDE_PLUGIN_SKILL_ROOT = Path("plugins/claude-code/meridian/skills")
 
 
-def _run_cli_capture(args: list[str]) -> tuple[int, str, str]:
+def _run_cli_capture(args: list[str], env: dict[str, str] | None = None) -> tuple[int, str, str]:
     stdout = StringIO()
     stderr = StringIO()
-    with redirect_stdout(stdout), redirect_stderr(stderr):
+    env_context = patch.dict(os.environ, env) if env is not None else patch.dict(os.environ, {})
+    with env_context, redirect_stdout(stdout), redirect_stderr(stderr):
         exit_code = main(args)
+    return exit_code, stdout.getvalue(), stderr.getvalue()
+
+
+def _run_mcp_adapter_capture(args: list[str], env: dict[str, str] | None = None) -> tuple[int, str, str]:
+    stdout = StringIO()
+    stderr = StringIO()
+    env_context = patch.dict(os.environ, env) if env is not None else patch.dict(os.environ, {})
+    with env_context, redirect_stdout(stdout), redirect_stderr(stderr):
+        try:
+            exit_code = mcp_adapter.main(args)
+        except SystemExit as exc:
+            exit_code = int(exc.code or 0)
     return exit_code, stdout.getvalue(), stderr.getvalue()
 
 
@@ -963,6 +976,19 @@ Evidence takeaways:
             self.assertEqual(exit_code, 1)
             self.assertEqual(stdout, "")
             self.assertIn("No Paper Wiki workspace is configured", stderr)
+
+    def test_mcp_json_bridge_context_reports_needs_init_without_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_home = Path(tmp) / "empty-config"
+            exit_code, stdout, stderr = _run_mcp_adapter_capture(
+                ["context", "--query", "agent workflow goals"],
+                env={"MERIDIAN_CONFIG_HOME": str(config_home)},
+            )
+
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("needs_init", stderr)
+        self.assertIn("meridian wiki init --library-root", stderr)
 
     def test_wiki_ingest_folder_handles_zotero_export_folder(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -2384,6 +2410,30 @@ Plot per-channel activation maxima and run an ablation without smoothing.
             with self.assertRaises(ValueError):
                 mcp_adapter.read(page=".drafts/ingests/noisy/paper.md", wiki_root=wiki_root)
 
+    def test_mcp_json_bridge_capabilities_does_not_require_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_home = Path(tmp) / "empty-config"
+            exit_code, stdout, stderr = _run_mcp_adapter_capture(
+                ["capabilities", "--detail", "summary"],
+                env={"MERIDIAN_CONFIG_HOME": str(config_home)},
+            )
+
+        self.assertEqual(exit_code, 0, stderr)
+        payload = json.loads(stdout)
+        self.assertEqual(payload["schema_version"], "meridian.mcp_adapter.v0")
+        self.assertIn("entry_model", payload)
+        self.assertIn("tools", payload)
+
+    def test_mcp_adapter_shapes_index_write_failure(self) -> None:
+        error = PermissionError(1, "Operation not permitted", "/tmp/wiki/.index/papers.jsonl")
+        payload = mcp_adapter.call_chain_error_payload(error)
+
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["error_code"], "workspace_index_write_failed")
+        self.assertEqual(payload["path"], "/tmp/wiki/.index/papers.jsonl")
+        self.assertIn("could not refresh", payload["message"])
+        self.assertIn("write access", payload["next_action"])
+
     def test_mcp_stdio_server_registry_and_tool_calls_share_adapter(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -2537,6 +2587,35 @@ Plot per-channel activation maxima and run an ablation without smoothing.
             self.assertEqual(update_payload["workflow"], "Update Wiki")
             self.assertEqual(update_payload["update_type"], "user_insight")
             self.assertIn(update_payload["lint_status"], {"pass", "fail"})
+
+    def test_mcp_stdio_server_context_reports_needs_init_without_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_home = Path(tmp) / "empty-config"
+            with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(config_home)}):
+                server = mcp_server.MeridianMCPServer()
+                tools_response = server.handle_message({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
+                tool_names = {tool["name"] for tool in tools_response["result"]["tools"]}
+                self.assertIn("meridian.context", tool_names)
+
+                context_response = server.handle_message(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 2,
+                        "method": "tools/call",
+                        "params": {
+                            "name": "meridian.context",
+                            "arguments": {"query": "agent workflow goals"},
+                        },
+                    }
+                )
+
+        self.assertIn("result", context_response)
+        result = context_response["result"]
+        self.assertTrue(result["isError"])
+        payload = json.loads(result["content"][0]["text"])
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["error_code"], "needs_init")
+        self.assertIn("meridian wiki init --library-root", payload["next_action"])
 
     def test_mcp_stdio_harness_runs_client_style_sequence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

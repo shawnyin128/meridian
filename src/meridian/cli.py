@@ -2007,7 +2007,13 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
     except Exception as exc:  # noqa: BLE001 - CLI should render concise failures.
-        print(f"error: {exc}", file=sys.stderr)
+        from meridian.mcp.adapter import call_chain_error_payload, format_call_chain_error
+
+        payload = call_chain_error_payload(exc)
+        if payload.get("error_code") in {"needs_init", "workspace_index_write_failed"}:
+            print(format_call_chain_error(exc), file=sys.stderr)
+        else:
+            print(f"error: {exc}", file=sys.stderr)
         return 1
 
     parser.error("unknown command")
