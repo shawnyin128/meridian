@@ -57,12 +57,12 @@ The user shares a reading note about a paper. Match it to the canonical paper, p
 The user wants to keep a useful comparison from retrieval. Create a write-back proposal from the context packet, keep source facts and synthesis separate, lint it, and publish the synthesis if it passes.
 ```
 
-Delegate to specialized skills when needed:
+Use internal support modes when needed:
 
-- `paper-ingest` for paper flow quality.
-- `wiki-personalize` for user insight.
-- `wiki-evolve` for refinement and revision.
-- `wiki-knowledge` or `wiki-concept` for compiled knowledge repair.
+- paper ingest mode for paper flow quality.
+- personalization mode for user insight.
+- evolution mode for refinement and revision.
+- knowledge or concept mode for compiled knowledge repair.
 
 Use `meridian wiki health --wiki-root <wiki>` when the user asks whether the
 wiki is usable, trustworthy, release-ready, or what should be repaired next.
@@ -76,10 +76,10 @@ content. Report the score, hard failures, and top repair buckets, then route the
 next action through the support skill that owns the mechanism:
 
 - `knowledge_graph`, `canonical_linking`, or `claim_evidence_traceability`:
-  delegate to `wiki-knowledge` and create a proposal-first repair.
-- `concept_coverage`: delegate to `wiki-concept` and prioritize high-value
+  use knowledge repair mode and create a proposal-first repair.
+- `concept_coverage`: use concept repair mode and prioritize high-value
   method/probe/debug prerequisite links.
-- `context`, `retrieval`, or `explanation`: delegate to `wiki-retrieve` and
+- `context`, `retrieval`, or `explanation`: use retrieval repair mode and
   improve context-packet behavior or durable synthesis, not raw search.
 - `trust`, `source`, or `boundary` hard failures: stop publish/apply work and
   run source/lint remediation first.
@@ -144,7 +144,9 @@ Use `meridian wiki status` to inspect the active wiki root, source root, core
 path, and MCP availability. If retrieval fails, use its warnings and failure
 report first; do not start with broad `rg` over the vault.
 
-Delegate to `wiki-retrieve` for detailed retrieval discipline.
+For detailed retrieval discipline, keep the behavior inside this `wiki` entry:
+canonical context first, selected reads second, direct file search only as a
+fallback after Meridian retrieval or workspace resolution fails.
 
 ## Entry Model
 

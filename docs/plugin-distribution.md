@@ -23,13 +23,17 @@ Both plugin packages include:
   migration checks after plugin/core updates
 - `skills/wiki/`: product entry for Update Wiki and Use Wiki
 - `skills/lab/`: product entry for wiki-grounded research coding
-- support skills for ingest, retrieval, personalization, evolution, knowledge,
-  and concepts
 - `.mcp.json`: starts the Meridian Paper Wiki MCP server with
   `python3 -m meridian.mcp serve`
 
+Only `meridian`, `wiki`, and `lab` are published as plugin skills. Ingest,
+retrieval, personalization, evolution, knowledge, and concept behavior are
+internal support modes inside `wiki`, not separate user-facing plugin entries.
+
 `llm-wiki` is not published as a product skill. It remains a repository
-development skill for maintaining Meridian itself.
+development skill for maintaining Meridian itself. The repository may keep
+additional development support skills under `.codex/skills/`, but those are not
+part of the plugin skill surface.
 
 ## Core Install
 

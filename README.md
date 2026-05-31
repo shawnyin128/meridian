@@ -92,7 +92,9 @@ Inside Claude Code, reload plugins after install:
 /reload-plugins
 ```
 
-The plugin provides `meridian`, `wiki`, `lab`, support skills, and `.mcp.json`.
+The plugin exposes only three user-facing skills: `meridian`, `wiki`, and
+`lab`. Internal Paper Wiki support workflows are handled inside `wiki`, not
+shown as separate plugin skills. The plugin also includes `.mcp.json`.
 The MCP config starts `python3 -m meridian.mcp serve` when the client needs
 tools.
 
@@ -136,7 +138,7 @@ Meridian has two update layers:
 | Layer | What Changes | How To Update |
 |---|---|---|
 | Core | MCP server code, retrieval, ingest, wiki/lab backend behavior | update the repo/package, then keep or rerun `python3 -m pip install -e /path/to/meridian` |
-| Plugin | `wiki` and `lab` skill text, support skills, `.mcp.json`, plugin metadata | reinstall or refresh the Codex/Claude Code plugin package from `plugins/.../meridian/` |
+| Plugin | `meridian`, `wiki`, and `lab` skill text, `.mcp.json`, plugin metadata | reinstall or refresh the Codex/Claude Code plugin package from `plugins/.../meridian/` |
 
 If the core was installed editable with `pip install -e`, changes under
 `src/meridian/` are picked up from the repo. Restart or reload the MCP client so
@@ -191,8 +193,8 @@ plugins/codex/meridian/
 plugins/claude-code/meridian/
 ```
 
-Each plugin contains both product skills, support skills, and MCP config. The
-Python package above is the shared execution core those plugins call.
+Each plugin contains the three product skills and MCP config. The Python package
+above is the shared execution core those plugins call.
 
 ## Product Entries
 

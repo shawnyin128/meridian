@@ -22,10 +22,14 @@ Plugin package roots:
 
 - `plugins/codex/meridian/.codex-plugin/plugin.json`
 - `plugins/codex/meridian/.mcp.json`
-- `plugins/codex/meridian/skills/`
+- `plugins/codex/meridian/skills/meridian/`
+- `plugins/codex/meridian/skills/wiki/`
+- `plugins/codex/meridian/skills/lab/`
 - `plugins/claude-code/meridian/.claude-plugin/plugin.json`
 - `plugins/claude-code/meridian/.mcp.json`
-- `plugins/claude-code/meridian/skills/`
+- `plugins/claude-code/meridian/skills/meridian/`
+- `plugins/claude-code/meridian/skills/wiki/`
+- `plugins/claude-code/meridian/skills/lab/`
 
 Marketplace manifests:
 

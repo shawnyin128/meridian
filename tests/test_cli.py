@@ -151,7 +151,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.3.7"
+        expected = "0.3.8"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -3118,9 +3118,14 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertTrue((root / ".mcp.json").exists())
             self.assertTrue((root / "skills/meridian/SKILL.md").exists())
             self.assertTrue((root / "skills/wiki/SKILL.md").exists())
-            self.assertTrue((root / "skills/wiki-retrieve/SKILL.md").exists())
             self.assertTrue((root / "skills/lab/SKILL.md").exists())
             self.assertFalse((root / "skills/llm-wiki").exists())
+            self.assertFalse((root / "skills/paper-ingest").exists())
+            self.assertFalse((root / "skills/wiki-retrieve").exists())
+            self.assertFalse((root / "skills/wiki-personalize").exists())
+            self.assertFalse((root / "skills/wiki-evolve").exists())
+            self.assertFalse((root / "skills/wiki-knowledge").exists())
+            self.assertFalse((root / "skills/wiki-concept").exists())
 
     def test_research_dev_mvp_assets_exist(self) -> None:
         skill = Path(".codex/skills/lab/SKILL.md").read_text(encoding="utf-8")
