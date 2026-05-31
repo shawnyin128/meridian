@@ -1,55 +1,27 @@
 # Meridian
 
-Meridian is a Markdown-first Paper Wiki for papers, reading notes, retrieval
-context, synthesis, and research memory.
+Meridian is a Markdown-first research copilot for papers and research code. It
+keeps a personal Paper Wiki as compiled knowledge, then uses that wiki to ground
+reading, retrieval, synthesis, experiment design, debugging, and local findings.
 
-## Use
+Meridian has two user-facing surfaces:
 
-Start from the plugin skills:
+- `wiki`: build and use a Paper Wiki from PDFs, Zotero exports, notes,
+  syntheses, provenance, and reading insights.
+- `lab`: use the Paper Wiki while doing research coding, idea placement,
+  approach-tree exploration, experiment evidence, and local finding proposals.
 
-| Skill | Use It For | Normal Outcome |
-|---|---|---|
-| `meridian` | setup, status checks, updates, and migrations | Meridian is ready, needs init, needs update, or needs migration |
-| `wiki` | Paper Wiki Update Wiki and Use Wiki workflows | canonical wiki pages, retrieval context, provenance, or proposal-first write-back |
-| `lab` | research coding, idea placement, experiments, and local findings | research-code slice, `.meridian/` evidence, checkpoint, or local proposal |
+`meridian` is the setup/status skill.
 
-Support skills such as paper ingest, retrieval, knowledge, concept, evolution,
-and personalization are internal modules the `wiki` skill delegates to. Users
-normally do not need to call them directly.
-
-Typical requests:
-
-```text
-Check my Meridian setup and migrate anything out of date.
-```
-
-```text
-Ingest this uploaded PDF into my Paper Wiki and tell me the managed source path
-and canonical wiki page.
-```
-
-```text
-Use my Paper Wiki to answer this research question with evidence.
-```
-
-```text
-Use Lab to debug this failed run and preserve the experiment evidence.
-```
+Meridian is intentionally lightweight. It does not try to be an automatic
+scientist, a database platform, or a general coding agent. It gives agents a
+small set of durable Markdown artifacts and a reliable wiki retrieval substrate.
 
 ## Install
 
-Meridian has one plugin name and three user-facing skills:
-
-```text
-Plugin name: meridian
-Skills: meridian, wiki, lab
-MCP server id: meridian-paper-wiki
-```
-
-The plugin is not a standalone bundle yet. It calls the Meridian Python core for
-MCP and wiki operations, so install the core first.
-
-Get the repo and install the core:
+Meridian is distributed as Codex and Claude Code plugins. The plugins call the
+Python core for wiki operations and the MCP stdio server, so install the core
+from the repo first:
 
 ```bash
 git clone git@github.com:shawnyin128/meridian.git
@@ -57,20 +29,12 @@ cd meridian
 python3 -m pip install -e .
 ```
 
-If macOS CommandLineTools Python fails with a system `site-packages`
-permission error, install through the user site:
+This exposes:
 
 ```bash
-python3 -m pip install --user --upgrade pip setuptools wheel
-SETUPTOOLS_USE_DISTUTILS=stdlib python3 -m pip install --user -e .
+meridian --version
+python3 -m meridian.mcp serve
 ```
-
-This installs:
-
-- `meridian`: execution primitives
-- `meridian-mcp`: MCP stdio server
-
-Then install the matching agent plugin.
 
 ### Codex
 
@@ -79,192 +43,96 @@ codex plugin marketplace add shawnyin128/meridian --sparse .agents/plugins --spa
 codex plugin add meridian@meridian
 ```
 
+Upgrade or reinstall:
+
+```bash
+codex plugin marketplace upgrade meridian
+codex plugin remove meridian@meridian
+codex plugin add meridian@meridian
+```
+
 ### Claude Code
+
+Inside Claude Code or from the Claude CLI:
 
 ```bash
 claude plugin marketplace add shawnyin128/meridian --sparse .claude-plugin plugins/claude-code/meridian
 claude plugin install meridian@meridian
 ```
 
-Inside Claude Code, reload plugins after install:
+Upgrade:
+
+```bash
+claude plugin update meridian@meridian
+```
+
+Then reload or restart the client:
 
 ```text
 /reload-plugins
 ```
 
-The plugin exposes only three user-facing skills: `meridian`, `wiki`, and
-`lab`. Internal Paper Wiki support workflows are handled inside `wiki`, not
-shown as separate plugin skills. The plugin also includes `.mcp.json`.
-The MCP config starts `python3 -m meridian.mcp serve` when the client needs
-tools.
-
-For local development, replace `shawnyin128/meridian --sparse ...` with the
-matching local marketplace path:
-
-```bash
-codex plugin marketplace add /path/to/meridian
-claude plugin marketplace add /path/to/meridian
-```
-
-Version metadata is stored in `VERSION`, `pyproject.toml`, and the Codex/Claude
-plugin manifests. Codex and Claude Code can show the plugin version from their
-plugin details/list surfaces; the core version is visible with:
-
-```bash
-meridian --version
-```
-
-Ask `meridian` to check setup or initialize your Paper Wiki library on first
-use.
-The library is separate from this development repo: it contains
-`meridian-wiki.json`, `sources/`, and `wiki/` under the library root you choose.
-This repo should contain Meridian code, plugin assets, tests, docs, and
-templates, not your generated Paper Wiki vault.
-
-`lab` uses lazy init in each research repo: the first Lab workflow asks before
-creating `.meridian/` and then continues the original idea/debug/experiment
-task.
-
-Check the active wiki and Python core binding:
-
-```bash
-meridian wiki status
-```
-
-## Update
-
-Meridian has two update layers:
-
-| Layer | What Changes | How To Update |
-|---|---|---|
-| Core | MCP server code, retrieval, ingest, wiki/lab backend behavior | update the repo/package, then keep or rerun `python3 -m pip install -e /path/to/meridian` |
-| Plugin | `meridian`, `wiki`, and `lab` skill text, `.mcp.json`, plugin metadata | reinstall or refresh the Codex/Claude Code plugin package from `plugins/.../meridian/` |
-
-If the core was installed editable with `pip install -e`, changes under
-`src/meridian/` are picked up from the repo. Restart or reload the MCP client so
-it launches the new server code.
-
-If a release changes both Python code and skills, update both layers:
-
-```bash
-cd /path/to/meridian
-git pull
-python3 -m pip install -e .
-```
-
-Then refresh the Codex marketplace snapshot:
-
-```bash
-codex plugin marketplace upgrade meridian
-```
-
-If the installed plugin still shows old behavior, reinstall it from the refreshed
-marketplace:
-
-```bash
-codex plugin remove meridian
-codex plugin add meridian@meridian
-```
-
-Claude Code does have an update command:
-
-```bash
-claude plugin update meridian
-```
-
-Restart the client or reload plugins, then ask `wiki` to run a small retrieval
-or audit smoke.
-
-After a plugin/core update, ask `meridian` to run a setup and migration check.
-It should verify core version, visible plugin skills, active Paper Wiki
-workspace layout, and MCP readiness before you resume normal `wiki` or `lab`
-work.
-
-MCP startup is managed by the client through the plugin config; you normally do
-not start it manually.
-
-## Product Packages
-
-Meridian is meant to be used as an agent plugin. The repo ships two package
-shapes:
+Plugin package roots:
 
 ```text
 plugins/codex/meridian/
 plugins/claude-code/meridian/
 ```
 
-Each plugin contains the three product skills and MCP config. The Python package
-above is the shared execution core those plugins call.
+## Skills
 
-## Product Entries
-
-| Entry | Update Wiki | Use Wiki |
+| Skill | Use It For | Normal Outcome |
 |---|---|---|
-| Prompt/Skill | ingest PDFs, add insights, write back synthesis, refine pages | retrieve context, read pages, trace evidence, answer with provenance |
-| MCP | `meridian.update`, `meridian.propose`, `meridian.apply`, `meridian.audit` | `meridian.context`, `meridian.read`, `meridian.trace` |
+| `meridian` | setup, status checks, updates, and migrations | ready / needs init / needs update / needs migration |
+| `wiki` | Paper Wiki Update Wiki and Use Wiki workflows | canonical pages, retrieval context, provenance, or proposal-first write-back |
+| `lab` | research coding, idea placement, experiments, and local findings | research-code slice, `.meridian/` evidence, checkpoint, or local proposal |
 
-Prompt/Skill entry inside each plugin:
+Support skills such as paper ingest, retrieval, knowledge, concept, evolution,
+and personalization are internal modules the `wiki` skill delegates to. Users
+normally do not call them directly.
+
+## Paper Wiki
+
+Initialize a Paper Wiki library through the `meridian` or `wiki` skill. The
+library is user state and should live outside the Meridian development repo:
 
 ```text
-skills/meridian/SKILL.md
-skills/wiki/SKILL.md
-skills/lab/SKILL.md
+paper-wiki/
+  meridian-wiki.json
+  sources/
+  wiki/
 ```
 
-MCP entry:
+`sources/` stores managed raw files. `wiki/` stores canonical Markdown pages.
+The generated vault is the source of truth for daily use; debug drafts and
+internal validation artifacts are not product output.
 
-Configure the packaged MCP server from the plugin when a client wants tool
-access. The `wiki` skill can manage normal use without exposing commands.
-
-Successful ingests create a scoped git commit for the generated wiki/source
-artifacts when the wiki lives inside a git repository. Use `--no-auto-commit`
-only for advanced debugging.
+`wiki` has two workflows:
 
 ```text
-Ingest this Zotero export folder, My Library, into my Paper Wiki.
-```
-
-```text
-Use my Paper Wiki to answer this research or coding question with provenance.
-```
-
-The `wiki` skill uses the active workspace and creates retrieval context under
-`/private/tmp/meridian-context/` by default, so normal idea search does not
-pollute the vault with debug artifacts.
-
-```text
-Check my Paper Wiki health and tell me the top repair priorities.
-```
-
-```text
-Remember this insight about CodeQuant: for my work, its real value is routing
-stability probe design. Internalize it into the paper page, but keep it marked
-as my interpretation, not paper evidence.
+Update Wiki: ingest papers, import Zotero exports, internalize insights,
+             propose/publish syntheses, refine pages, audit health
+Use Wiki:    retrieve context, read canonical pages, trace evidence,
+             answer research/coding questions with provenance
 ```
 
 CLI commands remain execution primitives for skills, MCP, tests, and advanced
-debugging; they are not the normal user entry.
+debugging. Normal users should start from `wiki`, not from command lists.
 
-Advanced health primitive:
+Typical requests:
 
-```bash
-meridian wiki health --wiki-root <wiki-root> --repair-plan
-```
-
-Enable the HTML report button:
-
-```bash
-meridian wiki health-ui --wiki-root <wiki-root>
+```text
+Ingest this uploaded PDF into my Paper Wiki.
+Use my Paper Wiki to answer this research question with evidence.
+Check my Paper Wiki health and tell me the top repair priorities.
 ```
 
 ## Lab
 
-Lab is the lightweight research-coding copilot layer. It uses Paper Wiki context
-for experiment design, method implementation, debugging, evidence recording, and
-wiki write-back.
+Lab is the research-coding copilot layer. It consumes Paper Wiki context but
+keeps research-dev state local to the target repo under `.meridian/`.
 
-In a research code repo, `lab` uses lazy init. You do not need to run setup
-first. The first Lab workflow asks before creating:
+The first Lab workflow uses lazy initialization and asks before creating:
 
 ```text
 .meridian/state.md
@@ -274,7 +142,7 @@ first. The first Lab workflow asks before creating:
 .meridian/proposals/index.md
 ```
 
-Lab models research work as a small graph/tree rather than loose notes:
+Lab models exploratory research as:
 
 ```text
 Research Thread
@@ -284,24 +152,40 @@ Research Thread
   -> Finding Proposal: draft | strengthening | ready | published | rejected | archived
 ```
 
-Use this when research is exploratory:
+Findings stay local until they are `ready`; then `wiki` can transfer them into
+Paper Wiki write-back proposals.
+
+Typical request:
 
 ```text
-I have a new idea while debugging this method. Place it in the current research
-threads, decide whether it is a root/child/sibling/link, ground it with the
-Paper Wiki, and plan the next smallest experiment.
+Use Lab to debug this failed run and preserve the experiment evidence.
 ```
 
-```text
-This approach failed. Record the experiment evidence, decide whether the node is
-repairable or dead, and suggest the next child node only after checking the wiki
-for relevant methods, concepts, and failure modes.
-```
+## MCP
+
+The plugin includes MCP config for the Paper Wiki server. Clients can start the
+server from the plugin config; users normally do not start it manually.
+
+The MCP surface is workflow-shaped:
 
 ```text
-plugins/codex/meridian/skills/lab/SKILL.md
-plugins/claude-code/meridian/skills/lab/SKILL.md
+Use Wiki:    meridian.context, meridian.read, meridian.trace
+Update Wiki: meridian.update, meridian.propose, meridian.apply, meridian.audit
 ```
+
+MCP wraps the same Meridian core as the skills. It does not replace the Markdown
+vault.
+
+## Update
+
+There are two update layers:
+
+| Layer | What Changes | How To Update |
+|---|---|---|
+| Core | MCP server code, retrieval, ingest, wiki/lab backend behavior | `git pull`, then keep or rerun `python3 -m pip install -e .` |
+| Plugin | `meridian`, `wiki`, and `lab` skill text, `.mcp.json`, plugin metadata | upgrade/reinstall the Codex or Claude Code plugin |
+
+After updating either layer, ask `meridian` to run a setup and migration check.
 
 ## More Detail
 
