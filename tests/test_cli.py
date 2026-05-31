@@ -169,7 +169,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.4.3"
+        expected = "0.4.4"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -1656,6 +1656,28 @@ quality_state: "multimodal_pending"
             codex = (CODEX_PLUGIN_SKILL_ROOT / skill_name / "SKILL.md").read_text(encoding="utf-8")
             claude = (CLAUDE_PLUGIN_SKILL_ROOT / skill_name / "SKILL.md").read_text(encoding="utf-8")
             self.assertEqual(claude, codex, skill_name)
+
+    def test_meridian_plugin_skill_frontmatter_is_loader_safe(self) -> None:
+        for root in (CODEX_PLUGIN_SKILL_ROOT, CLAUDE_PLUGIN_SKILL_ROOT):
+            for skill_name in PRODUCT_SKILL_NAMES:
+                skill = root / skill_name / "SKILL.md"
+                text = skill.read_text(encoding="utf-8")
+                self.assertTrue(text.startswith("---\n"), str(skill))
+                frontmatter = text.split("---", 2)[1]
+                fields = {}
+                for line in frontmatter.splitlines():
+                    if ": " in line:
+                        key, value = line.split(": ", 1)
+                        fields[key] = value
+                self.assertEqual(skill_name, fields.get("name"), str(skill))
+                description = fields.get("description", "")
+                self.assertTrue(description, str(skill))
+                if ": " in description:
+                    self.assertTrue(
+                        (description.startswith('"') and description.endswith('"'))
+                        or (description.startswith("'") and description.endswith("'")),
+                        f"{skill} has a description with ': ' that must be quoted for YAML loaders",
+                    )
 
     def test_product_skill_names_do_not_conflict_with_repo_local_skills(self) -> None:
         local_skill_names = {

@@ -1,6 +1,6 @@
 ---
 name: lab
-description: Use when managing research ideas as an idea graph: place new ideas, ground them with Meridian Paper Wiki context, maintain approach trees, attach experiment evidence, and prepare reusable findings for wiki write-back. Do not use for code implementation, debugging, test repair, release, or git convergence; hand those to the normal coding workflow.
+description: "Use when managing research ideas as an idea graph: place new ideas, ground them with Meridian Paper Wiki context, maintain approach trees, attach experiment evidence, and prepare reusable findings for wiki write-back. Do not use for code implementation, debugging, test repair, release, or git convergence; hand those to the normal coding workflow."
 ---
 
 # Meridian Lab
