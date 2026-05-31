@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from meridian import __version__
+from meridian.framework_check import run_framework_check, write_framework_json, write_framework_report
 from meridian.wiki.commands import (
     calibrate_eval,
     catalog_wiki,
@@ -77,6 +78,32 @@ from meridian.wiki.workspace import default_user_config_path, resolve_workspace,
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="meridian")
     subparsers = parser.add_subparsers(dest="product", required=True)
+
+    framework_check = subparsers.add_parser(
+        "framework-check",
+        help="Run a deterministic Meridian framework health check.",
+    )
+    framework_check.add_argument(
+        "--project-root",
+        type=Path,
+        default=Path.cwd(),
+        help="Meridian development repo root. Defaults to the current directory.",
+    )
+    framework_check.add_argument("--library-root", type=Path, default=None, help="Optional Paper Wiki library root.")
+    framework_check.add_argument("--wiki-root", type=Path, default=None, help="Optional Paper Wiki canonical vault root.")
+    framework_check.add_argument(
+        "--lab-root",
+        type=Path,
+        default=None,
+        help="Optional target research repo or .meridian directory for Lab readiness checks.",
+    )
+    framework_check.add_argument(
+        "--require-workspace",
+        action="store_true",
+        help="Treat a missing Paper Wiki workspace as a failing framework check.",
+    )
+    framework_check.add_argument("--json-out", type=Path, default=None, help="Optional machine-readable report path.")
+    framework_check.add_argument("--report", type=Path, default=None, help="Optional Markdown report path.")
 
     wiki = subparsers.add_parser("wiki", help="Paper Wiki workflows")
     wiki_subparsers = wiki.add_subparsers(dest="command", required=True)
@@ -1100,6 +1127,39 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(effective_argv)
 
     try:
+        if args.product == "framework-check":
+            report = run_framework_check(
+                project_root=args.project_root,
+                library_root=args.library_root,
+                wiki_root=args.wiki_root,
+                lab_root=args.lab_root,
+                require_workspace=args.require_workspace,
+            )
+            if args.json_out:
+                write_framework_json(report, args.json_out)
+                print(f"Wrote framework check JSON: {args.json_out}")
+            if args.report:
+                write_framework_report(report, args.report)
+                print(f"Wrote framework check report: {args.report}")
+            payload = report.to_dict()
+            summary = dict(payload["summary"])  # type: ignore[arg-type]
+            print(f"Framework status: {report.status}")
+            print(
+                "Categories: "
+                f"{summary['pass']} pass, {summary['warn']} warn, {summary['fail']} fail"
+            )
+            print(
+                "Findings: "
+                f"{summary['critical']} critical, {summary['degraded']} degraded, {summary['info']} info"
+            )
+            for category in report.categories:
+                print(f"- {category.name}: {category.status}")
+                for finding in category.findings[:3]:
+                    print(f"  - {finding.severity}/{finding.fixability}: {finding.message}")
+                if len(category.findings) > 3:
+                    print(f"  - ... {len(category.findings) - 3} more")
+            return 0 if report.status != "fail" else 1
+
         if args.product == "wiki" and args.command == "init":
             if args.library_root is not None:
                 result = init_wiki_workspace(

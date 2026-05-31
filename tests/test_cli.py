@@ -16,6 +16,7 @@ from unittest.mock import patch
 
 from meridian import __version__
 from meridian.cli import main
+from meridian.framework_check import FRAMEWORK_CHECK_CATEGORIES, run_framework_check
 from meridian.lab import initialize_lab_space, validate_lab_space
 from meridian.mcp import adapter as mcp_adapter
 from meridian.mcp import harness as mcp_harness
@@ -1591,6 +1592,8 @@ quality_state: "multimodal_pending"
         readme = Path("README.md").read_text(encoding="utf-8")
 
         self.assertIn("Entry Boundary", meridian)
+        self.assertIn("Framework Check", meridian)
+        self.assertIn("python3 -m meridian framework-check", meridian)
         self.assertIn("If the user asks to ingest, retrieve, answer from papers", meridian)
         self.assertIn("Do not continue the normal work inside this setup skill", meridian)
         self.assertIn("Report Paper Wiki/plugin state", meridian)
@@ -1664,6 +1667,62 @@ quality_state: "multimodal_pending"
         self.assertIn("propose-method-consolidation", knowledge)
         self.assertIn("Health-Driven Concept Coverage", concept)
         self.assertIn("Wiki Health Signals", lab)
+
+    def test_framework_check_reports_stable_categories(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(Path(tmp) / "config")}):
+                report = run_framework_check(project_root=Path.cwd())
+
+        self.assertEqual(report.to_dict()["schema_version"], "meridian.framework_check.v0")
+        self.assertEqual([category.name for category in report.categories], FRAMEWORK_CHECK_CATEGORIES)
+        category_status = {category.name: category.status for category in report.categories}
+        self.assertEqual(category_status["Product Surface"], "pass")
+        self.assertEqual(category_status["Plugin Bundle"], "pass")
+        self.assertEqual(category_status["Runtime"], "pass")
+        self.assertEqual(category_status["Workspace"], "pass")
+        self.assertEqual(category_status["Lab State"], "pass")
+
+        info_codes = {
+            finding.code
+            for category in report.categories
+            for finding in category.findings
+            if finding.severity == "info"
+        }
+        self.assertIn("workspace_not_configured", info_codes)
+        self.assertIn("lab_state_not_checked", info_codes)
+
+    def test_framework_check_cli_writes_json_and_markdown(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            json_out = root / "framework.json"
+            report_out = root / "framework.md"
+            with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(root / "config")}):
+                exit_code, stdout, stderr = _run_cli_capture(
+                    [
+                        "framework-check",
+                        "--project-root",
+                        str(Path.cwd()),
+                        "--json-out",
+                        str(json_out),
+                        "--report",
+                        str(report_out),
+                    ]
+                )
+
+            self.assertEqual(exit_code, 0, stderr)
+            self.assertIn("Framework status:", stdout)
+            payload = json.loads(json_out.read_text(encoding="utf-8"))
+            self.assertEqual(payload["schema_version"], "meridian.framework_check.v0")
+            self.assertTrue(payload["categories"])
+            self.assertIn("# Meridian Framework Check", report_out.read_text(encoding="utf-8"))
+
+    def test_framework_check_catches_missing_lab_state_when_requested(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            report = run_framework_check(project_root=Path.cwd(), lab_root=Path(tmp))
+
+        lab_category = next(category for category in report.categories if category.name == "Lab State")
+        self.assertEqual(lab_category.status, "fail")
+        self.assertIn("lab_missing_lab_root", {finding.code for finding in lab_category.findings})
 
     def test_publish_run_promotes_candidate_records_into_wiki_graph(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

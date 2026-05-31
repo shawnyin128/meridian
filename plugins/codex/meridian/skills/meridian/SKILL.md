@@ -25,6 +25,29 @@ setup issue is resolved.
 
 ## Workflows
 
+### Framework Check
+
+Use when the user asks whether the Meridian framework itself is healthy, stale,
+or drifting after plugin/core updates.
+
+Minimum completion:
+
+- Run or emulate the deterministic check:
+
+```bash
+python3 -m meridian framework-check --project-root <meridian-repo>
+```
+
+- Include `--library-root` or `--wiki-root` when checking a real Paper Wiki
+  workspace.
+- Include `--lab-root <research-repo>` when checking Lab readiness for a target
+  research repo.
+- Report the categories as `pass`, `warn`, or `fail`; preserve the finding's
+  severity, fixability, and next action.
+- Do not turn this into normal Paper Wiki or Lab work. If the check passes and
+  the user wants to ingest, retrieve, code, or record experiments, hand off to
+  `wiki` or `lab`.
+
 ### Status Check
 
 Use when the user asks whether Meridian is installed, up to date, or ready.
