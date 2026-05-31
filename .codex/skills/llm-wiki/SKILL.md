@@ -65,7 +65,9 @@ Prefer conservative MCP boundaries:
 - no client should need to know physical page locations to request research context
 - agent-ergonomic tool responses: concise by default, detailed on request, with semantic IDs and selection reasons
 
-The Research Dev Agent should consume paper/wiki memory through this MCP surface whenever available.
+Lab should consume paper/wiki memory through this MCP surface whenever idea
+placement, feasibility review, experiment evidence, or finding write-back needs
+grounding.
 
 ## Source-Grounded Principles
 
@@ -76,10 +78,10 @@ Follow these principles while the project is still design-heavy:
 - MCP is a delivery surface, not the source of truth
 - tools should be few, high-signal, well-namespaced, and evaluated on realistic tasks
 - write operations should start as proposals before canonical wiki mutation
-- Research Dev Agent autonomy should be constrained by evidence contracts, not by brittle route machines
-- research-grade code is clear, inspectable, extensible, and sometimes purposefully redundant
+- Lab should stay an idea-graph workflow, not a coding agent or route machine
+- code implementation, debugging, tests, commits, release, and convergence belong to the user's normal development workflow
 - wiki lookup should be a first-class dev action when method definitions, prior work, failed paths, or user insights matter
-- git checkpoints should preserve research uncertainty: hypothesis code, probes, ablations, results, and risky refactors should be recoverable by impact
+- Lab development handoffs should preserve the evidence identity that the coding workflow needs to return useful experiment results
 - community followups are experience signals, not implementation templates
 
 ## Design Rules

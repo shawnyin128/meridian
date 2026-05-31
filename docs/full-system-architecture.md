@@ -6,7 +6,8 @@ created: 2026-05-18
 updated: 2026-05-18
 tags:
   - llm-wiki
-  - research-dev-agent
+  - lab
+  - idea-graph
   - full-architecture
 confidence: medium
 ---
@@ -50,7 +51,8 @@ The MCP layer should start conservative:
 - explicit propose/apply separation for writes
 - Markdown remains the durable source of truth
 - no client should need to know where a paper page or claim page physically lives
-- the dev agent consumes the wiki through MCP whenever possible
+- Lab and external coding workflows consume the wiki through MCP whenever
+  possible
 
 This makes the Paper Wiki a standalone product, while also making it a reusable research-memory backend for Lab and external coding workflows.
 

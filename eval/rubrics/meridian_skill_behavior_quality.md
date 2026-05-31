@@ -71,6 +71,9 @@ Fail the case if any of these occur:
 
 - A normal Paper Wiki or Lab request is handled inside the `meridian` setup
   skill after setup is already ready.
+- A setup/status skill routes code implementation, debugging, tests, commits,
+  release, or convergence to `wiki` or `lab` instead of the normal coding
+  workflow.
 - A Meridian setup/status request in a research repo reports overall ready while
   the requested `.meridian/` skeleton is missing, or defers that skeleton
   creation to `lab`.

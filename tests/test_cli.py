@@ -156,7 +156,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.4.0"
+        expected = "0.4.1"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -1584,6 +1584,8 @@ quality_state: "multimodal_pending"
         self.assertIn("plugin cache/manifest", text)
         self.assertIn("workspace schema", text)
         self.assertIn("delegate those to wiki and lab", text)
+        self.assertIn("hand off to the normal coding workflow", text)
+        self.assertNotIn("wants to ingest, retrieve, code, or record experiments", text)
 
     def test_meridian_product_skill_behavior_boundaries(self) -> None:
         meridian = (CODEX_PLUGIN_SKILL_ROOT / "meridian/SKILL.md").read_text(encoding="utf-8")
@@ -1595,12 +1597,16 @@ quality_state: "multimodal_pending"
         self.assertIn("Framework Check", meridian)
         self.assertIn("python3 -m meridian framework-check", meridian)
         self.assertIn("If the user asks to ingest, retrieve, answer from papers", meridian)
-        self.assertIn("Do not continue the normal work inside this setup skill", meridian)
+        self.assertIn("Do not continue the normal work", meridian)
+        self.assertIn("inside this setup skill after the setup issue is resolved", meridian)
         self.assertIn("Report Paper Wiki/plugin state", meridian)
         self.assertIn("Lab state separately", meridian)
         self.assertIn("needs_lab_init", meridian)
         self.assertIn("create the minimal Lab skeleton during setup", meridian)
         self.assertIn("Do not defer this to `lab`", meridian)
+        self.assertIn("code implementation, debugging, tests, commits, release, or", meridian)
+        self.assertIn("hand off to the normal coding workflow", meridian)
+        self.assertNotIn("wants to ingest, retrieve, code, or record experiments", meridian)
 
         self.assertIn("Behavior Priority", wiki)
         self.assertIn("Start from the user's intent, not from CLI discovery", wiki)

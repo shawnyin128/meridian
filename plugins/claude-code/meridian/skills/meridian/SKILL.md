@@ -18,11 +18,14 @@ Meridian has three user-facing skills:
 - `lab`: research idea graph, Wiki grounding, experiments, and local findings.
 
 If the user asks to ingest, retrieve, answer from papers, add insight, check wiki
-health, or write synthesis, hand off to `wiki`. Do not continue the normal work inside this setup skill after the setup issue is resolved. If the user asks to place an
-idea, review feasibility, manage an approach tree, record research evidence, or
-prepare a local finding, hand off to `lab`. If the user asks for code edits,
-debugging, tests, commits, release, or convergence, hand off to the normal
-coding workflow rather than treating Lab as the developer.
+health, or write synthesis, hand off to `wiki`. Do not continue the normal work
+inside this setup skill after the setup issue is resolved.
+
+If the user asks to place an idea, review feasibility, manage an approach tree,
+record research evidence, or prepare a local finding, hand off to `lab`. If the
+user asks for code edits, debugging, tests, commits, release, or convergence,
+hand off to the normal coding workflow rather than treating Lab as the
+developer.
 
 ## Workflows
 
@@ -45,9 +48,11 @@ python3 -m meridian framework-check --project-root <meridian-repo>
   research repo.
 - Report the categories as `pass`, `warn`, or `fail`; preserve the finding's
   severity, fixability, and next action.
-- Do not turn this into normal Paper Wiki or Lab work. If the check passes and
-  the user wants to ingest, retrieve, code, or record experiments, hand off to
-  `wiki` or `lab`.
+- Do not turn this into normal Paper Wiki, Lab, or development work. If the
+  check passes and the user wants to ingest or retrieve, hand off to `wiki`; if
+  they want idea placement or research evidence management, hand off to `lab`;
+  if they want code implementation, debugging, tests, commits, release, or
+  convergence, hand off to the normal coding workflow.
 
 ### Status Check
 

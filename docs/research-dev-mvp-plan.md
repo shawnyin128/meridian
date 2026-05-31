@@ -5,7 +5,8 @@ status: draft
 created: 2026-05-21
 updated: 2026-05-21
 tags:
-  - research-dev-agent
+  - lab
+  - idea-graph
   - llm-wiki
   - mcp
   - mvp

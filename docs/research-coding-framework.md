@@ -15,9 +15,11 @@ confidence: medium
 # Research Coding Loop Framework
 
 Status note for Meridian 0.4.0: the original "Research Dev Agent" direction is
-now split. Lab owns the idea graph and Wiki-grounded research memory. Actual
-code implementation, debugging, tests, commits, release, and convergence belong
-to the normal coding workflow.
+superseded as a product boundary. Lab owns the idea graph and Wiki-grounded
+research memory. Actual code implementation, debugging, tests, commits,
+release, and convergence belong to the normal coding workflow. Treat the
+development-agent material below as legacy design background, not current
+Meridian Lab behavior.
 
 ## Product Boundary
 
@@ -42,7 +44,8 @@ The Paper Wiki should be deliverable as an MCP server. This gives the system a c
 
 - the wiki owns paper ingestion, annotation integration, claim/method/idea pages, provenance, index, and log
 - the MCP layer exposes stable tools and resources over that knowledge
-- the dev agent consumes the wiki through MCP instead of depending on vault paths or internal file conventions
+- Lab and external coding workflows consume the wiki through MCP instead of
+  depending on vault paths or internal file conventions
 - other clients can use the same paper memory without adopting the development plugin
 
 This preserves the wiki as a workflow product while making it reusable infrastructure. MCP is a delivery surface, not the source of truth. The source of truth remains the Markdown wiki plus raw immutable sources and schema.
@@ -68,7 +71,8 @@ The development framework should internalize these rules:
 - keep context packets small, high-signal, and provenance-rich
 - design Paper Wiki MCP tools around agent tasks, not raw internal files
 - require realistic evaluations for MCP tools and dev-agent behavior
-- give the Research Dev Agent freedom to inspect, run, diagnose, and recover
+- let the external coding workflow inspect, run, diagnose, and recover without
+  turning Lab into the developer
 - constrain outputs through learning targets, evidence identity, and write-back proposals
 - preserve useful negative results and failed paths as research memory
 
@@ -375,7 +379,8 @@ Boundary:
 - If the request is pure explanation, answer directly.
 - If the request is ordinary coding, handle it as coding unless it changes research evidence.
 - If it changes research state, experiment evidence, or next decisions, create a small workflow slice.
-- If the task requires adaptive code inspection or command execution, route to the Research Dev Agent rather than the Paper Wiki Workflow.
+- If the task requires adaptive code inspection or command execution, route to
+  the normal coding workflow rather than Paper Wiki or Lab.
 
 ### 2. Retrieve Paper/Wiki/Code/Result Context
 
