@@ -37,6 +37,10 @@ from meridian.wiki.quality_check import (
 from meridian.wiki.retrieval_audit import generate_audit_queries
 from meridian.wiki.rubrics import complete_result_template, rubric_for
 
+PRODUCT_SKILL_NAMES = ["meridian", "wiki", "lab"]
+CODEX_PLUGIN_SKILL_ROOT = Path("plugins/codex/meridian/skills")
+CLAUDE_PLUGIN_SKILL_ROOT = Path("plugins/claude-code/meridian/skills")
+
 
 def _run_cli_capture(args: list[str]) -> tuple[int, str, str]:
     stdout = StringIO()
@@ -151,7 +155,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.3.8"
+        expected = "0.3.9"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -1549,7 +1553,7 @@ quality_state: "multimodal_pending"
         self.assertIn("Implementation Hooks", text)
 
     def test_product_wiki_skill_uses_reliable_context_entry(self) -> None:
-        skill = Path(".codex/skills/wiki/SKILL.md")
+        skill = CODEX_PLUGIN_SKILL_ROOT / "wiki/SKILL.md"
         self.assertTrue(skill.exists())
         text = skill.read_text(encoding="utf-8")
         self.assertIn("meridian wiki context", text)
@@ -1559,7 +1563,7 @@ quality_state: "multimodal_pending"
         self.assertIn("do not start with broad `rg`", text)
 
     def test_meridian_setup_skill_exists(self) -> None:
-        skill = Path(".codex/skills/meridian/SKILL.md")
+        skill = CODEX_PLUGIN_SKILL_ROOT / "meridian/SKILL.md"
         self.assertTrue(skill.exists())
         text = skill.read_text(encoding="utf-8")
         self.assertIn("Entry Boundary", text)
@@ -1581,9 +1585,9 @@ quality_state: "multimodal_pending"
         self.assertIn("delegate those to wiki and lab", text)
 
     def test_meridian_product_skill_behavior_boundaries(self) -> None:
-        meridian = Path(".codex/skills/meridian/SKILL.md").read_text(encoding="utf-8")
-        wiki = Path(".codex/skills/wiki/SKILL.md").read_text(encoding="utf-8")
-        lab = Path(".codex/skills/lab/SKILL.md").read_text(encoding="utf-8")
+        meridian = (CODEX_PLUGIN_SKILL_ROOT / "meridian/SKILL.md").read_text(encoding="utf-8")
+        wiki = (CODEX_PLUGIN_SKILL_ROOT / "wiki/SKILL.md").read_text(encoding="utf-8")
+        lab = (CODEX_PLUGIN_SKILL_ROOT / "lab/SKILL.md").read_text(encoding="utf-8")
         readme = Path("README.md").read_text(encoding="utf-8")
 
         self.assertIn("Entry Boundary", meridian)
@@ -1613,12 +1617,17 @@ quality_state: "multimodal_pending"
         self.assertIn("Support skills", readme)
 
     def test_meridian_plugin_skill_copies_match_repo_skills(self) -> None:
-        for skill_name in ["meridian", "wiki", "lab"]:
-            repo = Path(f".codex/skills/{skill_name}/SKILL.md").read_text(encoding="utf-8")
-            codex = Path(f"plugins/codex/meridian/skills/{skill_name}/SKILL.md").read_text(encoding="utf-8")
-            claude = Path(f"plugins/claude-code/meridian/skills/{skill_name}/SKILL.md").read_text(encoding="utf-8")
-            self.assertEqual(codex, repo, skill_name)
-            self.assertEqual(claude, repo, skill_name)
+        for skill_name in PRODUCT_SKILL_NAMES:
+            codex = (CODEX_PLUGIN_SKILL_ROOT / skill_name / "SKILL.md").read_text(encoding="utf-8")
+            claude = (CLAUDE_PLUGIN_SKILL_ROOT / skill_name / "SKILL.md").read_text(encoding="utf-8")
+            self.assertEqual(claude, codex, skill_name)
+
+    def test_product_skill_names_do_not_conflict_with_repo_local_skills(self) -> None:
+        local_skill_names = {
+            path.parent.name for path in Path(".codex/skills").glob("*/SKILL.md")
+        }
+        conflicts = sorted(local_skill_names & set(PRODUCT_SKILL_NAMES))
+        self.assertEqual([], conflicts)
 
     def test_meridian_skill_behavior_eval_assets_parse(self) -> None:
         cases = Path("eval/cases/meridian_skill_behavior_quality.jsonl")
@@ -1641,11 +1650,11 @@ quality_state: "multimodal_pending"
         self.assertIn("lab_setup", rubric)
 
     def test_product_skills_route_health_findings(self) -> None:
-        wiki = Path(".codex/skills/wiki/SKILL.md").read_text(encoding="utf-8")
+        wiki = (CODEX_PLUGIN_SKILL_ROOT / "wiki/SKILL.md").read_text(encoding="utf-8")
         retrieve = Path(".codex/skills/wiki-retrieve/SKILL.md").read_text(encoding="utf-8")
         knowledge = Path(".codex/skills/wiki-knowledge/SKILL.md").read_text(encoding="utf-8")
         concept = Path(".codex/skills/wiki-concept/SKILL.md").read_text(encoding="utf-8")
-        lab = Path(".codex/skills/lab/SKILL.md").read_text(encoding="utf-8")
+        lab = (CODEX_PLUGIN_SKILL_ROOT / "lab/SKILL.md").read_text(encoding="utf-8")
 
         self.assertIn("Health / Repair Triage", wiki)
         self.assertIn("knowledge_graph", wiki)
@@ -3128,7 +3137,7 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertFalse((root / "skills/wiki-concept").exists())
 
     def test_research_dev_mvp_assets_exist(self) -> None:
-        skill = Path(".codex/skills/lab/SKILL.md").read_text(encoding="utf-8")
+        skill = (CODEX_PLUGIN_SKILL_ROOT / "lab/SKILL.md").read_text(encoding="utf-8")
         self.assertIn("Idea To Experiment Design", skill)
         self.assertIn("Paper Or Method To Implementation", skill)
         self.assertIn("Broken Run To Sanity Check / Debug", skill)
@@ -3145,7 +3154,7 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertIn('"templates/research-dev/**/*.md"', pyproject)
 
     def test_research_dev_idea_management_assets_parse(self) -> None:
-        skill = Path(".codex/skills/lab/SKILL.md").read_text(encoding="utf-8")
+        skill = (CODEX_PLUGIN_SKILL_ROOT / "lab/SKILL.md").read_text(encoding="utf-8")
         self.assertIn("Idea Capture / Triage / Evolution", skill)
         self.assertIn("Write back only through a Paper Wiki", skill)
         self.assertIn("proposal when a local finding", skill)
@@ -3177,7 +3186,7 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertIn("Write-back Boundary", rubric)
 
     def test_research_dev_state_model_assets_parse(self) -> None:
-        skill = Path(".codex/skills/lab/SKILL.md").read_text(encoding="utf-8")
+        skill = (CODEX_PLUGIN_SKILL_ROOT / "lab/SKILL.md").read_text(encoding="utf-8")
         for phrase in [
             "New Idea Placement / Thread Seed",
             "Approach Tree Exploration",
@@ -3254,7 +3263,7 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertIn("skipping Lab state", rubric)
 
     def test_research_dev_zero_candidate_idea_replay_contract(self) -> None:
-        skill = Path(".codex/skills/lab/SKILL.md").read_text(encoding="utf-8")
+        skill = (CODEX_PLUGIN_SKILL_ROOT / "lab/SKILL.md").read_text(encoding="utf-8")
         state_doc = Path("docs/research-dev-state-model.md").read_text(encoding="utf-8")
         rubric = Path("eval/rubrics/research_dev_state_model_quality.md").read_text(encoding="utf-8")
         cases = [

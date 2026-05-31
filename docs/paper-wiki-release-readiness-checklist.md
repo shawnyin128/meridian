@@ -122,7 +122,7 @@ Repair path: inspect `wiki/.index/mcp-stdio-harness.json`.
 Command:
 
 ```bash
-sed -n '1,220p' .codex/skills/wiki/SKILL.md
+sed -n '1,220p' plugins/codex/meridian/skills/wiki/SKILL.md
 ```
 
 Expected result: exactly two product workflows, `Update Wiki` and `Use Wiki`, with concise canonical examples.

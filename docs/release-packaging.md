@@ -44,11 +44,7 @@ Python execution core:
 - `README.md`
 - `MANIFEST.in`
 
-Repository development copy of the product prompt entry:
-
-- `.codex/skills/wiki/SKILL.md`
-
-Repository development copies of support skills:
+Repository development support skills:
 
 - `.codex/skills/paper-ingest/SKILL.md`
 - `.codex/skills/wiki-retrieve/SKILL.md`
@@ -56,7 +52,15 @@ Repository development copies of support skills:
 - `.codex/skills/wiki-evolve/SKILL.md`
 - `.codex/skills/wiki-knowledge/SKILL.md`
 - `.codex/skills/wiki-concept/SKILL.md`
-- `.codex/skills/lab/SKILL.md`
+
+Product skills live only in plugin packages during development too:
+
+- `plugins/codex/meridian/skills/meridian/SKILL.md`
+- `plugins/codex/meridian/skills/wiki/SKILL.md`
+- `plugins/codex/meridian/skills/lab/SKILL.md`
+- `plugins/claude-code/meridian/skills/meridian/SKILL.md`
+- `plugins/claude-code/meridian/skills/wiki/SKILL.md`
+- `plugins/claude-code/meridian/skills/lab/SKILL.md`
 
 Clean vault template:
 
@@ -166,10 +170,7 @@ Then inspect the file list produced by the release build or source archive:
 - release includes plugin `skills/meridian/SKILL.md`
 - release includes plugin `skills/wiki/SKILL.md`
 - release includes plugin `skills/lab/SKILL.md`
-- release includes `.codex/skills/meridian/SKILL.md`
-- release includes `.codex/skills/wiki/SKILL.md`
 - release includes `src/meridian/templates/wiki-vault/Map of Content.md`
-- release includes `.codex/skills/lab/SKILL.md`
 - release includes `src/meridian/templates/research-dev/thread.md`
 - release includes `src/meridian/templates/research-dev/memory.md`
 - release includes `src/meridian/templates/research-dev/experiment.md`

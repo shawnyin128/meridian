@@ -38,7 +38,7 @@ The harness verifies:
 
 ## Prompt/Skill Validation
 
-The product-facing skill remains `.codex/skills/wiki/SKILL.md`. It exposes exactly two workflows:
+The product-facing skill remains `plugins/codex/meridian/skills/wiki/SKILL.md`. It exposes exactly two workflows:
 
 - Update Wiki
 - Use Wiki
@@ -50,4 +50,3 @@ Supporting skills remain internal modules for ingest, retrieve, personalize, evo
 - The repo has a deterministic MCP harness and setup docs. A live Claude Desktop UI registration still requires a user-side config step.
 - MCP update/apply should continue to use fixture or explicitly safe canonical proposals during automated tests.
 - Prompt entry behavior depends on the calling agent following the product skill, so eval coverage should keep checking artifact-boundary behavior.
-

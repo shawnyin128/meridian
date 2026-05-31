@@ -8,7 +8,7 @@ Before planning, designing, implementing, or reviewing changes that affect raw s
 
 For product-facing Paper Wiki usage, use the unified entry skill:
 
-`/Users/shawn/Desktop/meridian/.codex/skills/wiki/SKILL.md`
+`/Users/shawn/Desktop/meridian/plugins/codex/meridian/skills/wiki/SKILL.md`
 
 It exposes the two product workflows: Update Wiki and Use Wiki. Treat CLI commands as execution primitives below the Prompt/Skill and MCP entries.
 
@@ -38,7 +38,7 @@ Before adding, auditing, publishing, retrieving, or evaluating preliminary-knowl
 
 Before handling research coding requests that should use Paper Wiki context for experiment design, paper-method implementation, sanity checks, debugging, result interpretation, or wiki write-back, load:
 
-`/Users/shawn/Desktop/meridian/.codex/skills/lab/SKILL.md`
+`/Users/shawn/Desktop/meridian/plugins/codex/meridian/skills/lab/SKILL.md`
 
 Current MVP direction:
 
@@ -70,7 +70,6 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `.arbor/memory.md`: short-term Arbor session memory and in-flight workflow pointer.
 - `.arbor/workflow/features.json`: Arbor workflow status index for the active planning/development queue.
 - `.codex/hooks.json`: project-local Arbor hook intents.
-- `.codex/skills/wiki/SKILL.md`: product-facing Paper Wiki entry skill for Update Wiki and Use Wiki workflows.
 - `.codex/skills/llm-wiki/SKILL.md`: project skill for LLM Wiki development principles.
 - `.codex/skills/paper-ingest/SKILL.md`: project skill for high-quality paper ingest outputs and reader self-check convergence.
 - `.codex/skills/wiki-retrieve/SKILL.md`: project skill for using Meridian retrieval and Obsidian CLI to find paper-wiki context for research work.
@@ -78,11 +77,13 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `.codex/skills/wiki-evolve/SKILL.md`: project skill for refinement proposals, revision snapshots, evolution-state warnings, and canonical page versioning.
 - `.codex/skills/wiki-knowledge/SKILL.md`: project skill for knowledge-layer audit, repair proposal, safe publish, and retrieval discipline across method/topic/claim/evidence/synthesis pages.
 - `.codex/skills/wiki-concept/SKILL.md`: project skill for preliminary-knowledge concept-layer audit, publish, retrieval, and evaluation.
-- `.codex/skills/lab/SKILL.md`: product-facing Lab skill for wiki-aware experiment design, paper-method implementation, and broken-run sanity/debug workflows.
 - `.agents/plugins/marketplace.json`: Codex marketplace manifest for the Meridian plugin package.
 - `.claude-plugin/marketplace.json`: Claude Code marketplace manifest for the Meridian plugin package.
+- `plugins/codex/meridian/skills/meridian/SKILL.md`: Codex plugin setup/status/migration entry skill.
+- `plugins/codex/meridian/skills/wiki/SKILL.md`: Codex plugin product-facing Paper Wiki entry skill for Update Wiki and Use Wiki workflows.
+- `plugins/codex/meridian/skills/lab/SKILL.md`: Codex plugin product-facing Lab skill for wiki-aware experiment design, paper-method implementation, and broken-run sanity/debug workflows.
 - `plugins/codex/meridian/`: Codex plugin package for the product-facing Paper Wiki and Lab skills plus MCP config.
-- `plugins/claude-code/meridian/`: Claude Code plugin package for the product-facing Paper Wiki and Lab skills plus MCP config.
+- `plugins/claude-code/meridian/`: Claude Code plugin package for the same product-facing skills plus MCP config.
 - `pyproject.toml`: Python package metadata and `meridian` console script entrypoint.
 - `src/meridian/`: Paper Wiki prototype CLI implementation for `meridian wiki ...`.
 - `src/meridian/wiki/workspace.py`: user-level Paper Wiki workspace config and source/wiki root resolution.

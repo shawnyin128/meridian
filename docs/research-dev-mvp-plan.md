@@ -248,7 +248,7 @@ Templates live in `src/meridian/templates/research-dev/`.
 
 ## Skill Behavior
 
-The product-facing skill is `.codex/skills/lab/SKILL.md`.
+The product-facing skill is `plugins/codex/meridian/skills/lab/SKILL.md`.
 
 The skill should:
 

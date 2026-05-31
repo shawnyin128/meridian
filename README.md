@@ -299,7 +299,8 @@ for relevant methods, concepts, and failure modes.
 ```
 
 ```text
-skills/lab/SKILL.md
+plugins/codex/meridian/skills/lab/SKILL.md
+plugins/claude-code/meridian/skills/lab/SKILL.md
 ```
 
 ## More Detail

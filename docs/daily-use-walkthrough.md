@@ -2,7 +2,7 @@
 
 Meridian has two product entries:
 
-- Prompt/Skill: `.codex/skills/wiki/SKILL.md`
+- Prompt/Skill: `plugins/codex/meridian/skills/wiki/SKILL.md`
 - MCP: `python3 -m meridian.mcp serve --wiki-root wiki`
 
 The CLI commands are execution primitives. The user-facing wiki lives in `wiki/`.

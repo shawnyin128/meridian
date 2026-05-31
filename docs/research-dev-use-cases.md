@@ -533,7 +533,7 @@ Defer until the first three are stable:
 The first implementation should probably be a project skill:
 
 ```text
-.codex/skills/lab/SKILL.md
+plugins/codex/meridian/skills/lab/SKILL.md
 ```
 
 The skill should call Paper Wiki MCP for research context and then use ordinary

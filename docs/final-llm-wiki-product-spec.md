@@ -11,7 +11,7 @@ Meridian has two product entries:
 | Prompt/Skill | ingest, insight, write-back, refine, audit | retrieve, read, trace, answer |
 | MCP | `update`, `propose`, `apply`, `audit` | `context`, `read`, `trace` |
 
-The Prompt/Skill entry starts at `.codex/skills/wiki/SKILL.md`.
+The Prompt/Skill entry starts at `plugins/codex/meridian/skills/wiki/SKILL.md`.
 The MCP entry is implemented under `src/meridian/mcp/` and starts with
 `python3 -m meridian.mcp serve`. CLI commands are execution primitives for
 those entries.

@@ -16,7 +16,7 @@ The CLI remains the execution layer. Users and agents should think in workflows,
 The Prompt/Skill entry is for Codex, Claude Code, and similar coding agents that can read project instructions and run local commands. The product-facing skill is:
 
 ```text
-.codex/skills/wiki/SKILL.md
+plugins/codex/meridian/skills/wiki/SKILL.md
 ```
 
 It exposes two workflows:
