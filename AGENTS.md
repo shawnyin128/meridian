@@ -36,7 +36,7 @@ Before adding, auditing, publishing, retrieving, or evaluating preliminary-knowl
 
 `/Users/shawn/Desktop/meridian/.codex/skills/wiki-concept/SKILL.md`
 
-Before handling research coding requests that should use Paper Wiki context for experiment design, paper-method implementation, sanity checks, debugging, result interpretation, or wiki write-back, load:
+Before handling Lab idea-graph requests that should use Paper Wiki context for idea placement, feasibility review, approach-tree management, experiment evidence, local finding proposals, or development handoffs, load:
 
 `/Users/shawn/Desktop/meridian/plugins/codex/meridian/skills/lab/SKILL.md`
 
@@ -81,15 +81,15 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `.claude-plugin/marketplace.json`: Claude Code marketplace manifest for the Meridian plugin package.
 - `plugins/codex/meridian/skills/meridian/SKILL.md`: Codex plugin setup/status/migration entry skill.
 - `plugins/codex/meridian/skills/wiki/SKILL.md`: Codex plugin product-facing Paper Wiki entry skill for Update Wiki and Use Wiki workflows.
-- `plugins/codex/meridian/skills/lab/SKILL.md`: Codex plugin product-facing Lab skill for wiki-aware experiment design, paper-method implementation, and broken-run sanity/debug workflows.
+- `plugins/codex/meridian/skills/lab/SKILL.md`: Codex plugin product-facing Lab skill for wiki-aware idea graph management, approach trees, experiment evidence, local findings, and development handoffs.
 - `plugins/codex/meridian/`: Codex plugin package for the product-facing Paper Wiki and Lab skills plus MCP config.
 - `plugins/claude-code/meridian/`: Claude Code plugin package for the same product-facing skills plus MCP config.
 - `pyproject.toml`: Python package metadata and `meridian` console script entrypoint.
 - `src/meridian/`: Paper Wiki prototype CLI implementation for `meridian wiki ...`.
 - `src/meridian/wiki/workspace.py`: user-level Paper Wiki workspace config and source/wiki root resolution.
-- `src/meridian/lab/`: lightweight Lab release/debug helpers for validating `.meridian/` research-space state without adding a product CLI or MCP surface.
+- `src/meridian/lab/`: lightweight Lab release/debug helpers for validating `.meridian/` idea-graph state without adding a product CLI or MCP surface.
 - `src/meridian/mcp/`: scenario-facing MCP adapter and stdio server exposing `context`, `read`, `trace`, `update`, `propose`, `apply`, and `audit`.
-- `src/meridian/templates/research-dev/`: Markdown templates for Research Dev `.meridian/` research-space state, context packets, experiment evidence, and finding proposals.
+- `src/meridian/templates/research-dev/`: Markdown templates for Lab `.meridian/` idea-graph state, context packets, development handoffs, experiment evidence, and finding proposals.
 - `tests/`: unit tests for CLI ingest, eval, and human review recording.
 - Active Paper Wiki vaults live outside the development repo, typically under a user-level library root configured by `meridian wiki init --library-root <dir>`.
 - `eval/`: Paper Wiki evaluation case examples and LLM-as-Judge rubrics.
@@ -119,13 +119,13 @@ On fresh or resumed sessions, load Arbor project context before making project-l
 - `docs/paper-wiki-mvp-delivery-boundaries.md`: current boundaries for query write-back, Obsidian CLI, future MCP delivery, Zotero/user notes, and MVP release gates.
 - `docs/main-wiki-productization-quality-brief.md`: current main Obsidian vault productization status, source/canonical/retrieval gates, graph health, quality deltas, and remaining limitations.
 - `docs/mvp-workflow.html`: simplified visual workflow diagram.
-- `docs/research-coding-framework.md`: lightweight end-to-end research coding framework that combines LLM Wiki state, Arbor continuity ideas, and bounded multi-agent research bursts.
-- `docs/research-dev-use-cases.md`: Research Dev scenario map defining idea-to-experiment, paper-to-implementation, broken-run debug, result interpretation, reproduction diagnosis, and write-back use cases.
-- `docs/research-dev-mvp-plan.md`: lightweight Research Dev MVP plan covering artifact schemas, skill behavior, wiki retrieval, write-back, checkpointing, and evaluation.
-- `docs/research-dev-state-model.md`: canonical Research Dev `.meridian/` state model for threads, approach nodes, experiments, local finding proposals, active pointers, placement, and write-back boundaries.
+- `docs/research-coding-framework.md`: legacy research-coding framework note; 0.4.0 splits Lab idea graph from external coding workflows.
+- `docs/research-dev-use-cases.md`: Lab scenario map defining idea placement, Wiki-grounded feasibility, approach-tree management, experiment evidence, finding proposals, and development handoffs.
+- `docs/research-dev-mvp-plan.md`: lightweight Lab MVP plan covering artifact schemas, skill behavior, wiki retrieval, write-back, handoff, and evaluation.
+- `docs/research-dev-state-model.md`: canonical Lab `.meridian/` state model for threads, approach nodes, experiments, local finding proposals, active pointers, placement, handoff, and write-back boundaries.
 - `docs/lab-system-optimization.md`: Lab system optimization brief covering state validation, local finding to wiki transfer, and longitudinal replay evaluation.
-- `docs/research-coding-framework.html`: visual diagram for the research coding loop.
-- `docs/full-system-architecture.md`: two-product boundary for Paper Wiki Workflow and Research Dev Agent.
+- `docs/research-coding-framework.html`: legacy visual diagram for the research coding loop.
+- `docs/full-system-architecture.md`: system boundary for Paper Wiki Workflow, Lab idea graph, and external coding workflows.
 - `docs/full-system-architecture.html`: full visual architecture showing standalone and integrated usage modes.
 - `docs/source-grounded-development-principles.md`: source-grounded design principles from Karpathy's LLM Wiki gist, Anthropic agent engineering posts, and selected community followup lessons.
 - `docs/research-event-map.md`: research coding event taxonomy and MVP high-leverage workflow boundary.

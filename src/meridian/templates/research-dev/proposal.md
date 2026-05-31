@@ -27,7 +27,7 @@ modes matter.
 
 - [ ] setting:
 - [ ] metric:
-- [ ] implementation condition:
+- [ ] development or runtime condition:
 - [ ] sanity check:
 
 ## Strengthening Experiments

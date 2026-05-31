@@ -14,22 +14,27 @@ confidence: medium
 
 # Research Coding Loop Framework
 
+Status note for Meridian 0.4.0: the original "Research Dev Agent" direction is
+now split. Lab owns the idea graph and Wiki-grounded research memory. Actual
+code implementation, debugging, tests, commits, release, and convergence belong
+to the normal coding workflow.
+
 ## Product Boundary
 
 Meridian should be understood as a two-product research system:
 
 1. **Paper Wiki Workflow**: a workflow product for building and maintaining a personal paper/research wiki.
-2. **Research Dev Agent**: an agentic development plugin for research-friendly coding, experiment design, sanity checking, result interpretation, and reproduction diagnosis.
+2. **Lab Idea Graph**: a lightweight skill for idea placement, Wiki-grounded feasibility, approach trees, experiment evidence, development handoffs, and local finding proposals.
 
 They should work well together, but each must be useful alone.
 
 Standalone modes:
 
 - Wiki-only: the user uses Meridian to internalize papers, capture annotations, evolve paper analysis, retrieve relevant research pages, and develop ideas without touching code.
-- Dev-agent-only: the user uses Meridian inside a code repo to plan experiments, run sanity checks, diagnose reproductions, interpret results, and record experiment memory even when no paper wiki exists yet.
-- Integrated: the dev agent retrieves from the paper wiki before coding and writes experiment results, failed paths, and refined understanding back into the wiki.
+- Lab-only: the user uses Meridian inside a repo to place ideas, manage approach trees, interpret results, and record experiment memory even when no paper wiki exists yet.
+- Integrated: Lab retrieves from the paper wiki before feasibility decisions or development handoffs, then writes experiment results, failed paths, and refined understanding back into the wiki.
 
-This boundary changes the product model: the wiki remains a predefined workflow, while the development plugin is agentic because it must choose tools, inspect code, query the wiki when research context matters, adapt to failures, and decide the next diagnostic action.
+This boundary changes the product model: the wiki remains a predefined workflow, Lab remains a lightweight idea graph, and coding remains the responsibility of the normal development workflow.
 
 ## Paper Wiki As MCP
 

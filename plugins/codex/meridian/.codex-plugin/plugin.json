@@ -1,7 +1,7 @@
 {
   "name": "meridian",
-  "version": "0.3.10",
-  "description": "Markdown-first Paper Wiki and Lab research-coding copilot for Codex.",
+  "version": "0.4.0",
+  "description": "Markdown-first Paper Wiki and Lab idea-graph copilot for Codex.",
   "author": {
     "name": "Meridian",
     "url": "https://github.com/shawnyin128/meridian"
@@ -19,8 +19,8 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Meridian",
-    "shortDescription": "Setup Meridian, use Paper Wiki, and run Lab research-coding workflows.",
-    "longDescription": "Meridian exposes three user-facing skills: meridian for setup and migration, wiki for Paper Wiki update/use workflows, and lab for wiki-grounded research coding with ideas, experiments, evidence, and local findings.",
+    "shortDescription": "Setup Meridian, use Paper Wiki, and manage Lab idea graphs.",
+    "longDescription": "Meridian exposes three user-facing skills: meridian for setup and migration, wiki for Paper Wiki update/use workflows, and lab for wiki-grounded idea graphs with approach trees, experiments, evidence, handoffs, and local findings.",
     "developerName": "Meridian",
     "category": "Productivity",
     "capabilities": [
@@ -31,7 +31,7 @@
       "Check my Meridian setup and migrate anything out of date.",
       "Ingest this paper into my Paper Wiki.",
       "Use my Paper Wiki to answer this research question.",
-      "Use Lab to debug this failed run and preserve the experiment evidence."
+      "Use Lab to place this idea, ground it in my Paper Wiki, and prepare the next evidence step."
     ],
     "brandColor": "#2563EB"
   }

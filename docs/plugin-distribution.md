@@ -22,7 +22,7 @@ Both plugin packages include:
 - `skills/meridian/`: setup entry for initialization, status checks, and
   migration checks after plugin/core updates
 - `skills/wiki/`: product entry for Update Wiki and Use Wiki
-- `skills/lab/`: product entry for wiki-grounded research coding
+- `skills/lab/`: product entry for wiki-grounded idea graph management
 - `.mcp.json`: starts the Meridian Paper Wiki MCP server with
   `python3 -m meridian.mcp serve`
 
@@ -142,7 +142,7 @@ Users should think in two product areas:
 | Product Area | What It Does |
 |---|---|
 | Paper Wiki | update and use the durable paper knowledge base |
-| Lab | plan, implement, debug, and record research-code slices using Paper Wiki context |
+| Lab | place ideas, ground feasibility, manage approach trees, record evidence, and prepare development handoffs |
 
 Paper Wiki keeps two workflows:
 
@@ -159,4 +159,4 @@ Setup is a separate maintenance entry:
 |---|---|
 | `meridian` | initialize user workspace, check plugin/core/MCP status, and migrate setup drift |
 | `wiki` | update or use the Paper Wiki |
-| `lab` | run wiki-grounded research coding workflows |
+| `lab` | manage a wiki-grounded research idea graph |

@@ -86,25 +86,31 @@ Adopt:
 
 For Meridian, this means the LLM Wiki skill should encode durable rules, while paper-ingest, context-packet, MCP-server, and lab skills can become separate, progressively loaded capabilities.
 
-## Research Dev Agent Principles
+## Lab Idea Graph Principles
 
-The dev side needs agentic freedom, but the artifacts must be research-grade.
+Lab needs idea-management freedom, but the artifacts must be research-grade.
+Actual code implementation, debugging, tests, commits, release, and convergence
+belong to the normal coding workflow.
 
 Adopt:
 
-- Use the simplest scaffold that lets the model inspect, decide, run, and recover.
-- Give the agent autonomy over the path, not autonomy over the evidence contract.
-- Ground progress in environmental feedback: tests, logs, metrics, diffs, plots, and wiki evidence.
-- Prefer research-friendly code over production-minimal code.
-- Require a learning target before expensive experiments.
+- Use the simplest scaffold that lets the model place ideas, retrieve wiki
+  context, and preserve evidence.
+- Give the agent autonomy over idea graph organization, not autonomy over the
+  evidence contract.
+- Ground progress in thread/node state, experiment evidence, user decisions, and
+  wiki evidence.
+- Produce development handoffs instead of doing code work inside Lab.
+- Require a learning target before requesting expensive experiments.
 - Treat wiki lookup as a first-class move when paper definitions, prior failed paths, or method details matter.
 - Preserve failed attempts when they change the next research decision.
 
 Avoid:
 
-- forcing every research coding task through a heavy Arbor-like workflow
+- forcing every idea through a heavy feature workflow
 - over-constraining the agent with brittle state-machine prompts
 - accepting passing tests as sufficient research interpretation
+- turning Lab into a second coding agent or release workflow
 
 ## Community Followup Lessons Worth Adopting
 
@@ -132,13 +138,12 @@ For the Paper Wiki:
 - Add triage-first ingest before broad automated page writes.
 - Add typed relationships gradually: supports, contradicts, refines, implements, evaluates, extends.
 
-For the Research Dev Agent:
+For Lab:
 
 - Consume wiki context through MCP whenever available.
-- Use wiki context to make coding decisions and explain research implications.
+- Use wiki context to make feasibility decisions and explain research implications.
 - Keep tool use flexible, but require evidence identity: command, config, metric, source pages, result path.
-- Encourage meaningful git checkpoints at hypothesis, probe, ablation, result, and risky-refactor boundaries.
-- Keep checkpoint history impact-readable: separate hypothesis logic, instrumentation, mechanical cleanup, and generated artifacts.
+- Produce development handoffs for implementation/debug/test/commit work.
 - Write back through proposals, not silent canonical rewrites.
 
 For evaluation:

@@ -13,8 +13,8 @@ confidence: medium
 
 # Lab System Optimization
 
-This pass addresses the main system-level gaps after the Research Dev state
-model refactor while keeping Lab lightweight and skill-only.
+This pass addresses the main system-level gaps after the Lab state model
+refactor while keeping Lab lightweight and skill-only.
 
 ## Optimized Defects
 
@@ -51,10 +51,14 @@ research loops without becoming a heavy workflow engine.
 
 ## Current Boundary
 
-Lab remains the agent-facing dev layer. Paper Wiki remains the long-term
-compiled knowledge layer and MCP surface. Lab consumes Paper Wiki context and
-creates proposal-first write-back packets, but it does not publish canonical
-wiki pages directly.
+Lab is the agent-facing idea graph layer, not the development workflow. Paper
+Wiki remains the long-term compiled knowledge layer and MCP surface. Lab
+consumes Paper Wiki context and creates proposal-first write-back packets, but
+it does not publish canonical wiki pages directly.
+
+When the next step is implementation, debugging, tests, commits, release, or
+convergence, Lab produces a development handoff and leaves the code work to the
+normal coding workflow.
 
 ## Release Evidence To Check
 

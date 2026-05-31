@@ -1,15 +1,15 @@
 ---
-type: research-dev-context-packet
+type: lab-context-packet
 status: draft
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 scenario: ""
 wiki_context: []
-repo_context: []
+idea_graph_context: []
 confidence: medium
 ---
 
-# Research Dev Context Packet
+# Lab Context Packet
 
 ## User Intent
 
@@ -20,9 +20,9 @@ confidence: medium
 | Page | Role | Why It Matters | Boundary |
 | --- | --- | --- | --- |
 
-## Repo Context
+## Idea Graph Context
 
-| File / Artifact | Role | Why It Matters |
+| Thread / Node / Experiment / Proposal | Role | Why It Matters |
 | --- | --- | --- |
 
 ## Evidence Identity
@@ -41,7 +41,9 @@ confidence: medium
 
 ## Uncertainty / Gaps
 
-## Recommended Research-Code Slice
+## Recommended Research Move
 
-## Git Checkpoint Recommendation
+## Development Handoff Needed
 
+If code implementation, debugging, tests, commits, release, or convergence are
+needed, summarize the handoff instead of doing that work inside Lab.

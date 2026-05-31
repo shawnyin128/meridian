@@ -156,7 +156,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.3.10"
+        expected = "0.4.0"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -1610,13 +1610,13 @@ quality_state: "multimodal_pending"
         self.assertNotIn("MCP server entry:", wiki)
 
         self.assertIn("Behavior Priority", lab)
-        self.assertIn("Lab is a research copilot, not a setup assistant", lab)
-        self.assertIn("Do the user's coding/debug/experiment task", lab)
-        self.assertIn("Keep Research Dev local until a finding proposal is `ready`", lab)
+        self.assertIn("Lab is not a coding agent", lab)
+        self.assertIn("Development Handoff", lab)
+        self.assertIn("Do not use for code implementation", lab)
 
         self.assertIn("| `meridian` | setup, status checks, updates, and migrations |", readme)
         self.assertIn("| `wiki` | Paper Wiki Update Wiki and Use Wiki workflows |", readme)
-        self.assertIn("| `lab` | research coding, idea placement, experiments, and local findings |", readme)
+        self.assertIn("| `lab` | idea graph, Wiki-grounded feasibility, experiments, and local findings |", readme)
         self.assertIn("Support skills", readme)
 
     def test_meridian_plugin_skill_copies_match_repo_skills(self) -> None:
@@ -1641,13 +1641,13 @@ quality_state: "multimodal_pending"
         self.assertTrue(any(case["expected_skill"] == "meridian" for case in parsed))
         self.assertTrue(any(case["expected_skill"] == "wiki" for case in parsed))
         self.assertTrue(any(case["expected_skill"] == "lab" for case in parsed))
-        self.assertTrue(any("debug" in " ".join(case.get("must_not_do", [])) for case in parsed))
+        self.assertTrue(any("edit code or run tests inside Lab" in " ".join(case.get("must_not_do", [])) for case in parsed))
 
         rubric = Path("eval/rubrics/meridian_skill_behavior_quality.md").read_text(encoding="utf-8")
         self.assertIn("Entry Selection", rubric)
         self.assertIn("Workspace And Retrieval Discipline", rubric)
         self.assertIn("Artifact Boundary", rubric)
-        self.assertIn("Lab Research Copilot Behavior", rubric)
+        self.assertIn("Lab Idea Graph Behavior", rubric)
         self.assertIn("Hard Fail Rules", rubric)
         self.assertIn("command_sprawl", rubric)
         self.assertIn("lab_setup", rubric)
@@ -3197,16 +3197,16 @@ Compare recency-only retention with attention-based and oracle retention policie
 
     def test_research_dev_mvp_assets_exist(self) -> None:
         skill = (CODEX_PLUGIN_SKILL_ROOT / "lab/SKILL.md").read_text(encoding="utf-8")
-        self.assertIn("Idea To Experiment Design", skill)
-        self.assertIn("Paper Or Method To Implementation", skill)
-        self.assertIn("Broken Run To Sanity Check / Debug", skill)
+        self.assertIn("Idea Feasibility Review", skill)
+        self.assertIn("Development Handoff", skill)
+        self.assertIn("Experiment Evidence Recording", skill)
         self.assertIn("meridian.context", skill)
         self.assertIn("Lazy Init", skill)
 
         template = Path("src/meridian/templates/research-dev")
         self.assertTrue((template / "research-dev-context-packet.md").exists())
         self.assertTrue((template / "experiment-evidence-plan.md").exists())
-        self.assertTrue((template / "dev-writeback-packet.md").exists())
+        self.assertTrue((template / "development-handoff-packet.md").exists())
         self.assertTrue((template / "idea-card.md").exists())
 
         pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
@@ -3214,8 +3214,8 @@ Compare recency-only retention with attention-based and oracle retention policie
 
     def test_research_dev_idea_management_assets_parse(self) -> None:
         skill = (CODEX_PLUGIN_SKILL_ROOT / "lab/SKILL.md").read_text(encoding="utf-8")
-        self.assertIn("Idea Capture / Triage / Evolution", skill)
-        self.assertIn("Write back only through a Paper Wiki", skill)
+        self.assertIn("Idea Placement", skill)
+        self.assertIn("Never edit canonical wiki pages directly from Lab state", skill)
         self.assertIn("proposal when a local finding", skill)
 
         template = Path("src/meridian/templates/research-dev/idea-card.md").read_text(encoding="utf-8")
@@ -3455,8 +3455,9 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertTrue(all("expected_result" in case and "rubric" in case for case in parsed))
 
         rubric = Path("eval/rubrics/research_dev_mvp_quality.md").read_text(encoding="utf-8")
-        self.assertIn("Wiki Retrieval Usage", rubric)
-        self.assertIn("Write-back Boundary", rubric)
+        self.assertIn("Wiki Grounding", rubric)
+        self.assertIn("Development Handoff", rubric)
+        self.assertIn("Boundary Correctness", rubric)
         self.assertIn("Lightweight Behavior", rubric)
 
     def test_research_dev_longitudinal_replay_assets_parse(self) -> None:

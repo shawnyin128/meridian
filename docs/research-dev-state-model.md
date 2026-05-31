@@ -1,6 +1,6 @@
 ---
 type: product-design
-title: "Research Dev State Model"
+title: "Lab Idea Graph State Model"
 status: draft
 created: 2026-05-25
 updated: 2026-05-26
@@ -11,12 +11,17 @@ tags:
 confidence: medium
 ---
 
-# Research Dev State Model
+# Lab Idea Graph State Model
 
-Research Dev is a skill-only workflow for research coding. It keeps active
+Lab is a skill-only workflow for research idea graph management. It keeps active
 research state in the target repo's `.meridian/` directory and uses Paper Wiki
-as the grounding and long-term write-back substrate. It does not add a Research
-Dev MCP server, CLI, daemon, database, or workflow engine.
+as the grounding and long-term write-back substrate. It does not add a Lab MCP
+server, CLI, daemon, database, workflow engine, or coding agent.
+
+The older "Research Dev" framing is superseded for product behavior. Lab now
+owns idea placement, approach trees, experiment evidence, and local finding
+proposals. Code implementation, debugging, tests, commits, release, and
+convergence belong to the user's normal coding workflow.
 
 ## Source Of Truth
 
@@ -157,23 +162,27 @@ the active node.
 
 ## Git Checkpoints
 
-Research Dev can checkpoint before and after experiments. Commit messages use a
-lightweight conventional form:
+## Development Handoff
 
-```text
-<type>[optional scope]: <description>
-```
+Lab does not perform code work or git convergence. When an approach node needs
+implementation, debugging, tests, reruns, commits, release, or convergence, Lab
+creates a Development Handoff Packet instead of doing the work itself.
 
-Recommended types: `idea`, `approach`, `exp`, `result`, `proposal`, `wiki`,
-`state`.
+The handoff should include:
 
-Only commit experiment-related code, config, outputs intended for tracking, and
-`.meridian/` state. If unrelated dirty changes exist, stop and ask the user to
-confirm the commit scope.
+- active thread/node or raw idea
+- Paper Wiki grounding that shaped the decision
+- smallest development question or task
+- expected command/config/output identity
+- metric or validity criteria
+- what result would update the Lab node or proposal
+
+After the coding workflow completes, Lab can record the returned experiment
+evidence and update the idea graph.
 
 ## Paper Wiki Boundary
 
-Research Dev manages the research search tree and local evidence. Paper Wiki
+Lab manages the research search tree and local evidence. Paper Wiki
 manages long-term compiled knowledge. A local finding proposal is the maturity
 layer between them:
 
@@ -187,7 +196,7 @@ only through proposal-first write-back.
 
 ## Lab State Validation
 
-Research Dev remains skill-only: there is no Lab product CLI, MCP server,
+Lab remains skill-only: there is no Lab product CLI, MCP server,
 daemon, database, or workflow engine. The repo does include a small internal
 validator for release/debug checks:
 

@@ -1,6 +1,6 @@
 ---
 name: meridian
-description: Use when the user wants to initialize Meridian, check Meridian plugin/core/MCP status, repair setup drift, or migrate local Meridian configuration after a plugin update. Do not use for normal Paper Wiki work or Lab research coding; delegate those to wiki and lab.
+description: Use when the user wants to initialize Meridian, check Meridian plugin/core/MCP status, repair setup drift, or migrate local Meridian configuration after a plugin update. Do not use for normal Paper Wiki work or Lab idea-graph work; delegate those to wiki and lab.
 ---
 
 # Meridian Setup
@@ -15,13 +15,14 @@ Meridian has three user-facing skills:
 
 - `meridian`: setup, status, updates, and migrations.
 - `wiki`: Paper Wiki Update Wiki and Use Wiki work.
-- `lab`: research coding, ideas, experiments, and local findings.
+- `lab`: research idea graph, Wiki grounding, experiments, and local findings.
 
 If the user asks to ingest, retrieve, answer from papers, add insight, check wiki
-health, or write synthesis, hand off to `wiki`. If the user asks to implement,
-debug, design an experiment, place an idea, or record research evidence, hand
-off to `lab`. Do not continue the normal work inside this setup skill after the
-setup issue is resolved.
+health, or write synthesis, hand off to `wiki`. Do not continue the normal work inside this setup skill after the setup issue is resolved. If the user asks to place an
+idea, review feasibility, manage an approach tree, record research evidence, or
+prepare a local finding, hand off to `lab`. If the user asks for code edits,
+debugging, tests, commits, release, or convergence, hand off to the normal
+coding workflow rather than treating Lab as the developer.
 
 ## Workflows
 
@@ -64,7 +65,7 @@ Minimum completion:
   capabilities smoke.
 - Check Lab research-space readiness for the current target repo when the user
   asks whether Meridian is fully ready, mentions Lab, or is working in a repo
-  that may need research coding state. If `.meridian/` is missing in the target
+  that may need idea-graph state. If `.meridian/` is missing in the target
   repo, create the minimal Lab skeleton during setup and report Lab as
   initialized. This is setup initialization, not a Lab workflow.
 - Do not report overall `ready` while a requested Lab-ready check is missing
@@ -107,7 +108,7 @@ python3 -m meridian wiki init --library-root <library-root>
 - Confirm that the library contains `meridian-wiki.json`, `sources/`, and
   `wiki/`.
 - Explain that `wiki` handles Paper Wiki Update/Use workflows and `lab` handles
-  research coding state.
+  research idea-graph state.
 
 ### Migration Check
 
@@ -121,7 +122,7 @@ Minimum completion:
   `meridian-wiki.json`, `sources/`, and `wiki/` under one library root.
 - Check `meridian-wiki.json` for the current workspace schema when the file is
   readable.
-- Check whether a Lab repo that needs Research Dev state has the minimal
+- Check whether a Lab repo that needs idea-graph state has the minimal
   `.meridian/` skeleton.
 - If `.meridian/` is missing in the target repo, create the minimal skeleton
   only:
@@ -144,8 +145,10 @@ python3 -c "from pathlib import Path; from meridian.lab import initialize_lab_sp
 
 - Use `wiki` for ingest, retrieval, health checks, insights, synthesis, and
   Paper Wiki maintenance.
-- Use `lab` for idea placement, approach trees, experiment evidence, research
-  code slices, and local finding proposals.
+- Use `lab` for idea placement, approach trees, experiment evidence, Wiki
+  grounding for ideas, development handoffs, and local finding proposals.
+- Use the normal coding workflow for code implementation, debugging, tests,
+  commits, release, and convergence.
 
 Canonical examples:
 

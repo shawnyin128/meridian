@@ -1,37 +1,36 @@
 ---
 name: lab
-description: Use when a research coding task should use Meridian Paper Wiki context to design experiments, implement paper methods, debug broken runs, preserve evidence, or write research findings back to the wiki.
+description: Use when managing research ideas as an idea graph: place new ideas, ground them with Meridian Paper Wiki context, maintain approach trees, attach experiment evidence, and prepare reusable findings for wiki write-back. Do not use for code implementation, debugging, test repair, release, or git convergence; hand those to the normal coding workflow.
 ---
 
 # Meridian Lab
 
-Use this skill for research coding. Keep it lightweight: maintain the target
-repo's `.meridian/` research space, retrieve Paper Wiki context when research
-context matters, then let the agent inspect, run, diagnose, edit, and checkpoint
-normally. Lab should not weaken the agent's native coding ability: for
-implementation, debugging, and experiment requests, complete a small
-research-code slice instead of stopping at advice.
+Use this skill for research idea graph management. Lab keeps the target repo's
+`.meridian/` research space organized, uses Paper Wiki to ground ideas, and
+turns reusable local findings into proposal-ready packets.
+
+Lab is not a coding agent, workflow engine, MCP product, or setup assistant.
+When work needs code edits, debugging, tests, commits, release, or convergence,
+produce a compact development handoff and let the user's normal coding flow
+take over.
 
 ## Behavior Priority
 
-Lab is a research copilot, not a setup assistant or a separate MCP product.
-
-- Do the user's coding/debug/experiment task when a concrete repo action is
-  needed.
-- Use `.meridian/` only when the work has durable research state: ideas,
-  approach nodes, experiments, local findings, or future write-back value.
-- Retrieve Paper Wiki context when papers, methods, concepts, evidence,
-  failure modes, or prior insights matter.
+- Manage ideas, approach nodes, experiment evidence, and local finding
+  proposals.
+- Retrieve Paper Wiki context when papers, methods, concepts, claims, evidence,
+  prior insights, or feasibility risk matter.
+- Keep implementation details as research context, not as Lab-owned code work.
 - Ask before boundary-changing state moves: creating a new node, marking
   `repairable` or `dead`, switching active thread/node, closing/reopening a
-  thread, publishing to Paper Wiki, or committing with unclear scope.
-- Keep Research Dev local until a finding proposal is `ready`; use `wiki` for
+  thread, publishing to Paper Wiki, or handing off ambiguous development scope.
+- Keep Lab findings local until a finding proposal is `ready`; use `wiki` for
   Paper Wiki update/use work.
 
 ## Lazy Init
 
-Lab uses lazy init. The user does not need to initialize Lab before asking a
-research-coding question.
+Lab uses lazy init. The user does not need to initialize Lab before sharing an
+idea.
 
 At the start of any Lab workflow:
 
@@ -43,27 +42,28 @@ At the start of any Lab workflow:
   - `.meridian/threads/index.md`
   - `.meridian/experiments/index.md`
   - `.meridian/proposals/index.md`
-- Continue the user's original idea/debug/experiment task after the skeleton
-  exists.
+- Continue the user's original idea or evidence-management task after the
+  skeleton exists.
 - Create thread, experiment, and proposal files only when the current workflow
   needs them.
 - A new durable research idea needs a thread seed. If `.meridian/` exists but
   there are no thread candidates, ask to create a root thread seed instead of
-  treating the task as direct coding.
+  treating the task as direct development.
 
 Example:
 
 ```text
-The user says a run failed in a repo with no `.meridian/`. Ask to create the
-Lab research space, create the minimal skeleton after confirmation, then record
-the failed run as experiment evidence and continue debugging.
+The user shares a new KV-cache compression idea in a repo with no `.meridian/`.
+Ask to create the Lab research space, create the minimal skeleton after
+confirmation, place the idea as a root thread seed, then retrieve Paper Wiki
+context for feasibility.
 ```
 
 ## Workflows
 
 ### New Idea Placement / Thread Seed
 
-Use when the user shares a new idea, intuition, or side direction.
+Use when the user shares a new idea, intuition, hypothesis, or side direction.
 
 Minimum completion:
 
@@ -82,9 +82,34 @@ Minimum completion:
 Example:
 
 ```text
-The user gets a tokenizer-pruning idea while debugging KV-cache compression.
-Compare it against existing research threads, ask where it belongs, create a
-thread seed if needed, then use Paper Wiki only after placement.
+The user gets a tokenizer-pruning idea while thinking about KV-cache
+compression. Compare it against existing research threads, ask where it belongs,
+create a thread seed if needed, then use Paper Wiki only after placement.
+```
+
+### Wiki-Grounded Feasibility Review
+
+Use when the user asks whether an idea, path, repair, or experiment direction is
+plausible.
+
+Minimum completion:
+
+- Start from the active thread/node or newly placed idea.
+- Retrieve compact Paper Wiki context with `meridian.context`.
+- Read selected canonical pages with `meridian.read` when the feasibility
+  judgment depends on a paper, method, concept, claim, or evidence section.
+- Trace provenance with `meridian.trace` when a claim would affect a decision.
+- Separate source facts, wiki synthesis, user insight, local experiment
+  evidence, and uncertainty.
+- End with a next research move: refine the node, design evidence, create a
+  proposal, or prepare a development handoff.
+
+Example:
+
+```text
+The user asks whether a repair path is credible. Retrieve relevant mechanism
+and failure-boundary pages, summarize what supports or weakens the path, and
+identify the smallest evidence needed next.
 ```
 
 ### Approach Tree Exploration
@@ -105,14 +130,15 @@ Minimum completion:
 Example:
 
 ```text
-The current eviction method fails but the failure appears explainable. Record
-the evidence, ask whether the node is repairable, then ask before creating
-child repair candidates.
+The current method fails, but the failure appears explainable. Record the
+evidence, ask whether the node is repairable, then ask before creating child
+repair candidates.
 ```
 
 ### Experiment Evidence Recording
 
-Use when planning, running, or interpreting an experiment.
+Use when the user wants to preserve the result, validity, or interpretation of
+an experiment.
 
 Minimum completion:
 
@@ -123,15 +149,15 @@ Minimum completion:
 - Link experiments to nodes or proposals instead of copying results everywhere.
 - If an experiment is invalid, preserve it as evidence and retract any
   same-node support that depended only on that invalid evidence.
-- Create experiment checkpoint commits before and after experiments when the
-  relevant worktree scope is clean or user-confirmed.
+- If more code or reruns are needed, create a development handoff instead of
+  doing that work inside Lab.
 
 Example:
 
 ```text
-Before running A.1's proxy scoring ablation, commit the relevant setup. After
-the run, record the result as an experiment file and update the target node if
-the evidence is valid.
+The user reports an ablation result. Record the command/config/output identity,
+link the result to the active node, update support only if the evidence is
+valid, and note what a coding workflow should do next.
 ```
 
 ### Finding Proposal / Wiki Write-back
@@ -143,7 +169,8 @@ Minimum completion:
 - Create a local finding proposal under `.meridian/proposals/`.
 - Use proposal states exactly: `draft`, `strengthening`, `ready`, `published`,
   `rejected`, `archived`.
-- Let proposals run strengthening experiments using the same experiment schema.
+- Let proposals request strengthening experiments using the same experiment
+  schema.
 - Move a proposal to `ready` only when evidence covers the key scope.
 - Convert `ready` local proposals into Paper Wiki draft proposals; publish
   canonical wiki updates only after user confirmation and lint/review.
@@ -153,95 +180,73 @@ Example:
 
 ```text
 A local experiment shows dynamic KV eviction needs amortized scoring. Create a
-local proposal, add scope-strengthening experiments, and only transfer it to the
+local proposal, list scope-strengthening evidence, and only transfer it to the
 Paper Wiki draft path when ready.
 ```
 
-Common request labels still map to these workflows:
+### Development Handoff
 
-- `Idea Capture / Triage / Evolution`
-- `Idea To Experiment Design`
-- `Paper Or Method To Implementation`
-- `Broken Run To Sanity Check / Debug`
-
-## Research Code Slice
-
-Use this as the default execution loop for implementation, debugging,
-experiment, reproduction, or probe tasks.
+Use when the next useful action is implementation, debugging, testing, running
+experiments, commit management, release, or convergence.
 
 Minimum completion:
 
-- Classify the task as idea, implementation, debug, experiment, reproduction,
-  interpretation, or direct coding.
-- Retrieve Paper Wiki context when paper methods, concepts, evidence, metrics,
-  failure modes, or prior insights matter.
-- Identify the active thread/node when Lab state exists or the user is creating
-  durable research state.
-- Define the smallest research-code slice and done-when criteria before broad
-  edits.
-- Inspect the repo, edit code/configs/scripts as needed, run the relevant
-  command, test, smoke, probe, or static check, and repair obvious failures.
-- Compare the result against the done-when criteria before claiming completion.
-- Record experiment evidence when the result changes a hypothesis, node,
-  proposal, reproduction diagnosis, or future research decision.
-- Commit a focused checkpoint when the relevant scope is clean or the user has
-  already authorized that checkpoint. If unrelated dirty files exist, ask for
-  commit scope before staging or committing.
+- Name the current thread/node or idea that motivates the work.
+- Include the Paper Wiki context that shaped the decision.
+- State the smallest development question or task.
+- Preserve evidence identity needed by Lab: expected command/config/output,
+  metrics, validity criteria, and what result would update the node.
+- Hand off to the normal coding workflow; do not perform code edits, run tests,
+  create commits, or manage release inside Lab.
 
-Canonical examples:
+Example:
 
 ```text
-The user asks to implement a paper method. Retrieve the paper/method/concept
-context, inspect the target code, implement the smallest runnable slice, run a
-smoke or unit check, record evidence if the result teaches something, and commit
-the focused checkpoint when the diff scope is clean.
+The idea graph says Node A needs a probe implementation. Produce a handoff that
+names the node, wiki context, expected evidence, and done-when signal, then let
+the coding workflow implement and verify it.
 ```
 
-```text
-The user reports a broken run. Retrieve reported evidence and likely failure
-modes, inspect logs/configs/metrics, make the smallest diagnostic or fix, run
-the cheap check, update the active node or experiment evidence, and checkpoint
-the repair if it is clean.
-```
+Common request labels map to these workflows:
 
-```text
-The user asks for a trivial local rename with no research meaning. Do the
-ordinary code edit directly; no wiki retrieval, Lab state, experiment record, or
-checkpoint is required unless the user asks.
-```
+- `Idea Placement`
+- `Idea Feasibility Review`
+- `Approach Tree Exploration`
+- `Experiment Evidence Recording`
+- `Finding Proposal / Wiki Write-back`
+- `Development Handoff`
 
 ## Wiki Retrieval Contract
 
-Retrieve wiki context after dev-state placement, or before coding when the task
-depends on paper methods, metric definitions, prerequisite mechanisms,
+Retrieve wiki context after idea placement, or before feasibility judgment when
+the task depends on paper methods, metric definitions, prerequisite mechanisms,
 implementation hooks, failure modes, prior user insights, claim support, or
 reproduction details.
 
 Preferred MCP tools:
 
-- `meridian.context` for compact research/coding context.
+- `meridian.context` for compact research context.
 - `meridian.read` for selected canonical page sections.
 - `meridian.trace` for provenance, evidence, quality, or evolution state.
 
 If MCP is unavailable, use the local execution primitive:
 
 ```bash
-PYTHONPATH=src python3 -m meridian.mcp context --query "<research/coding intent>"
+PYTHONPATH=src python3 -m meridian.mcp context --query "<research intent>"
 ```
 
 ## Wiki Health Signals
 
-If a research-coding task needs wiki context and retrieval returns weak method,
-concept, or evidence support, treat that as a wiki signal rather than a reason
-to overfit the dev answer:
+If idea grounding returns weak method, concept, synthesis, or evidence support,
+treat that as a wiki signal rather than a reason to overfit the Lab answer:
 
 - missing prerequisite concepts: note a `concept_coverage` gap
 - many competing method pages: note a `knowledge_graph` consolidation gap
 - unsupported claims: note a `claim_evidence_traceability` gap
 - no synthesis for a recurring design question: note a `growth` gap
 
-Continue the dev task with the best available context, but include the gap in
-the Research Dev Context Packet and ask before creating a Paper Wiki repair or
+Continue the idea-graph task with the best available context, but include the
+gap in the Lab Context Packet and ask before creating a Paper Wiki repair or
 write-back proposal.
 
 ## Artifacts
@@ -256,7 +261,9 @@ Use Markdown artifacts when a task has durable value:
 - `.meridian/experiments/<experiment>.md`
 - `.meridian/proposals/index.md`
 - `.meridian/proposals/<proposal>.md`
-- `Research Dev Context Packet` for compact wiki/repo context
+- `Lab Context Packet` for compact wiki and idea-graph context
+- `Development Handoff Packet` for implementation/debug/test work that should
+  leave Lab
 - `Wiki Transfer Packet` for ready local findings moving toward Paper Wiki
 
 Templates live in:
@@ -270,31 +277,15 @@ src/meridian/templates/research-dev/
 For experiments or results, preserve command, config, environment, output path,
 metric definition, and interpretation. Write back only through a Paper Wiki
 proposal when a local finding becomes a reusable proposal that is `ready`.
-Never edit canonical wiki pages directly from Research Dev state.
+Never edit canonical wiki pages directly from Lab state.
 
 Keep boundaries clear:
 
 - paper source facts come from papers and evidence records
 - wiki synthesis is revisable interpretation
 - user insight is user-supplied context
-- research threads, nodes, experiments, and local proposals are dev working state
+- research threads, nodes, experiments, and local proposals are Lab working
+  state
 - local experiment results are evidence from the user's repo, not paper facts
-
-## Git Checkpoints
-
-Checkpoint before and after experiments when the relevant change scope is clear.
-For research-code slices, default to checkpointing after a runnable
-implementation slice, a valid diagnostic fix, an experiment setup, or an
-interpreted result when the diff is focused and the user has not limited commit
-behavior.
-
-Commit messages should follow:
-
-```text
-<type>[optional scope]: <description>
-```
-
-Use types such as `idea`, `approach`, `exp`, `result`, `proposal`, `wiki`, and
-`state`. If unrelated dirty worktree changes exist, stop and ask for the commit
-scope before staging or committing. Never push, publish, or mutate external
-services unless the user explicitly authorizes that specific action.
+- development handoffs are instructions for another workflow, not completed
+  code work

@@ -1,15 +1,17 @@
 # Meridian
 
-Meridian is a Markdown-first research copilot for papers and research code. It
+Meridian is a Markdown-first research copilot for papers and research ideas. It
 keeps a personal Paper Wiki as compiled knowledge, then uses that wiki to ground
-reading, retrieval, synthesis, experiment design, debugging, and local findings.
+reading, retrieval, synthesis, idea feasibility, experiment evidence, and local
+findings.
 
 Meridian has two user-facing surfaces:
 
 - `wiki`: build and use a Paper Wiki from PDFs, Zotero exports, notes,
   syntheses, provenance, and reading insights.
-- `lab`: use the Paper Wiki while doing research coding, idea placement,
-  approach-tree exploration, experiment evidence, and local finding proposals.
+- `lab`: manage a research idea graph with Paper Wiki grounding, approach-tree
+  exploration, experiment evidence, development handoffs, and local finding
+  proposals.
 
 `meridian` is the setup/status skill.
 
@@ -85,7 +87,7 @@ plugins/claude-code/meridian/
 |---|---|---|
 | `meridian` | setup, status checks, updates, and migrations | ready / needs init / needs update / needs migration |
 | `wiki` | Paper Wiki Update Wiki and Use Wiki workflows | canonical pages, retrieval context, provenance, or proposal-first write-back |
-| `lab` | research coding, idea placement, experiments, and local findings | research-code slice, `.meridian/` evidence, checkpoint, or local proposal |
+| `lab` | idea graph, Wiki-grounded feasibility, experiments, and local findings | `.meridian/` thread/node state, evidence, handoff packet, or local proposal |
 
 Support skills such as paper ingest, retrieval, knowledge, concept, evolution,
 and personalization are internal modules the `wiki` skill delegates to. Users
@@ -129,8 +131,8 @@ Check my Paper Wiki health and tell me the top repair priorities.
 
 ## Lab
 
-Lab is the research-coding copilot layer. It consumes Paper Wiki context but
-keeps research-dev state local to the target repo under `.meridian/`.
+Lab is the idea-graph layer. It consumes Paper Wiki context but keeps local
+research state in the target repo under `.meridian/`.
 
 The first Lab workflow uses lazy initialization and asks before creating:
 
@@ -158,8 +160,13 @@ Paper Wiki write-back proposals.
 Typical request:
 
 ```text
-Use Lab to debug this failed run and preserve the experiment evidence.
+Use Lab to place this new idea, ground it in my Paper Wiki, and decide what
+evidence I need next.
 ```
+
+When an idea graph needs implementation, debugging, tests, commits, release, or
+convergence, Lab produces a development handoff. The actual code work belongs to
+the normal coding workflow, not Lab.
 
 ## MCP
 

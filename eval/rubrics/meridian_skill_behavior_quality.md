@@ -35,15 +35,16 @@ observable workflow choices and artifact boundaries.
 4. Keeps product artifacts and internal artifacts mostly separate.
 5. Reports only user-facing artifacts by default and labels every boundary.
 
-### 4. Lab Research Copilot Behavior
+### 4. Lab Idea Graph Behavior
 
-1. Stops at advice for a concrete coding/debug task or creates state for trivial
-   work.
-2. Performs coding but ignores durable evidence or idea placement.
-3. Maintains state but over-constrains native inspect/run/diagnose behavior.
-4. Completes a small research-code slice and records evidence when valuable.
-5. Balances native coding, wiki grounding, `.meridian/` continuity, and focused
-   checkpoints.
+1. Performs coding/debug/release work inside Lab or creates state for trivial
+   code cleanup.
+2. Records ideas but skips placement, evidence identity, or wiki grounding.
+3. Maintains state but blurs Lab with the coding workflow.
+4. Manages idea placement, approach nodes, experiment evidence, and handoff
+   packets with minor ambiguity.
+5. Balances idea graph continuity, wiki grounding, evidence identity, local
+   proposals, and development handoffs without taking over code work.
 
 ### 5. User Confirmation And Publish Gates
 
@@ -77,6 +78,8 @@ Fail the case if any of these occur:
   Meridian retrieval or workspace resolution.
 - A new durable Lab idea with no thread candidates skips root thread seed
   placement.
+- A Lab workflow performs implementation, debugging, tests, commits, release, or
+  convergence instead of producing a development handoff.
 - A canonical wiki update is published without proposal/lint/review where the
   workflow requires a gate.
 - Debug or draft artifacts are presented as the primary product output.
@@ -94,6 +97,8 @@ Fail the case if any of these occur:
   `.meridian/` skeleton.
 - `lab_state`: clarify Lab lazy init, placement, node modes, or evidence
   recording.
+- `development_handoff`: clarify that Lab hands off code/debug/test work instead
+  of doing it.
 - `publish_gate`: clarify proposal/lint/user-confirmation gates.
 - `bundle_surface`: align README, manifest prompts, MCP config, and distribution
   docs with the three-skill model.

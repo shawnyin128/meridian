@@ -13,7 +13,7 @@ confidence: medium
 
 ## Hypothesis Or Failure Mode
 
-## Minimal Slice
+## Minimal Evidence
 
 ## Controls
 
@@ -38,5 +38,7 @@ confidence: medium
 
 ## Wiki Context Used
 
-## Git Checkpoint Recommendation
+## Development Handoff
 
+If implementation, debugging, tests, commits, release, or convergence are
+needed, create a Development Handoff Packet and leave that work outside Lab.
