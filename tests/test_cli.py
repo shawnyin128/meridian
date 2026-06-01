@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import io
 import os
 import shutil
 import subprocess
@@ -62,6 +63,25 @@ def _run_mcp_adapter_capture(args: list[str], env: dict[str, str] | None = None)
         except SystemExit as exc:
             exit_code = int(exc.code or 0)
     return exit_code, stdout.getvalue(), stderr.getvalue()
+
+
+def _mcp_frame(message: dict[str, object]) -> bytes:
+    payload = json.dumps(message).encode("utf-8")
+    return b"Content-Length: " + str(len(payload)).encode("ascii") + b"\r\n\r\n" + payload
+
+
+def _mcp_framed_responses(raw: bytes) -> list[dict[str, object]]:
+    responses: list[dict[str, object]] = []
+    offset = 0
+    while offset < len(raw):
+        header_end = raw.index(b"\r\n\r\n", offset)
+        header = raw[offset:header_end]
+        length = int(header.split(b":", 1)[1].strip())
+        body_start = header_end + 4
+        body_end = body_start + length
+        responses.append(json.loads(raw[body_start:body_end].decode("utf-8")))
+        offset = body_end
+    return responses
 
 
 class FakePixmap:
@@ -169,7 +189,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.4.4"
+        expected = "0.4.5"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -2638,6 +2658,34 @@ Plot per-channel activation maxima and run an ablation without smoothing.
         self.assertEqual(payload["status"], "error")
         self.assertEqual(payload["error_code"], "needs_init")
         self.assertIn("meridian wiki init --library-root", payload["next_action"])
+
+    def test_mcp_stdio_server_speaks_content_length_framing(self) -> None:
+        requests = [
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "clientInfo": {"name": "framed-test-client", "version": "0.1"},
+                },
+            },
+            {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+        ]
+        stdin = io.BytesIO(b"".join(_mcp_frame(request) for request in requests))
+        stdout = io.BytesIO()
+
+        server = mcp_server.MeridianMCPServer()
+        self.assertEqual(server.serve_stdio(stdin=stdin, stdout=stdout), 0)
+
+        raw = stdout.getvalue()
+        responses = _mcp_framed_responses(raw)
+        self.assertEqual([response["id"] for response in responses], [1, 2])
+        self.assertEqual(responses[0]["jsonrpc"], "2.0")
+        self.assertEqual(responses[0]["result"]["serverInfo"]["name"], "meridian-paper-wiki")
+        self.assertIn("tools", responses[0]["result"]["capabilities"])
+        tool_names = {tool["name"] for tool in responses[1]["result"]["tools"]}
+        self.assertIn("meridian.context", tool_names)
 
     def test_mcp_stdio_harness_runs_client_style_sequence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

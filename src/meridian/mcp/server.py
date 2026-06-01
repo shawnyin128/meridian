@@ -5,7 +5,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, BinaryIO, Callable
 
 from meridian import __version__
 from meridian.mcp import adapter
@@ -51,20 +51,25 @@ class MeridianMCPServer:
             return self._error(request_id, -32000, str(exc))
 
     def serve_stdio(self, *, stdin: Any = None, stdout: Any = None) -> int:
-        input_stream = stdin or sys.stdin
-        output_stream = stdout or sys.stdout
+        input_stream = getattr(stdin or sys.stdin, "buffer", stdin or sys.stdin)
+        output_stream = getattr(stdout or sys.stdout, "buffer", stdout or sys.stdout)
         for line in input_stream:
-            if not line.strip():
+            first_line = _bytes(line)
+            if not first_line.strip():
                 continue
+            framed = first_line.lower().startswith(b"content-length:")
             try:
-                message = json.loads(line)
-            except json.JSONDecodeError as exc:
+                if framed:
+                    message = _read_framed_message(input_stream, first_line)
+                else:
+                    message = json.loads(first_line.decode("utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
                 response = self._error(None, -32700, f"Parse error: {exc}")
             else:
                 response = self.handle_message(message)
             if response is None:
                 continue
-            output_stream.write(json.dumps(response, ensure_ascii=False) + "\n")
+            _write_message(output_stream, response, framed=framed)
             output_stream.flush()
         return 0
 
@@ -223,6 +228,51 @@ def _schema(properties: JsonDict, *, required: list[str] | None = None) -> JsonD
         "required": required or [],
         "additionalProperties": False,
     }
+
+
+def _bytes(line: bytes | str) -> bytes:
+    if isinstance(line, bytes):
+        return line
+    return line.encode("utf-8")
+
+
+def _read_framed_message(input_stream: BinaryIO, first_line: bytes) -> JsonDict:
+    content_length: int | None = _parse_content_length(first_line)
+    while True:
+        header_line = _bytes(input_stream.readline())
+        if header_line in {b"", b"\r\n", b"\n"}:
+            break
+        parsed = _parse_content_length(header_line)
+        if parsed is not None:
+            content_length = parsed
+    if content_length is None:
+        raise ValueError("missing Content-Length header")
+    payload = input_stream.read(content_length)
+    if len(payload) != content_length:
+        raise ValueError("incomplete framed JSON-RPC payload")
+    return json.loads(payload.decode("utf-8"))
+
+
+def _parse_content_length(header_line: bytes) -> int | None:
+    name, sep, value = header_line.partition(b":")
+    if not sep or name.strip().lower() != b"content-length":
+        return None
+    try:
+        length = int(value.strip())
+    except ValueError as exc:
+        raise ValueError("invalid Content-Length header") from exc
+    if length < 0:
+        raise ValueError("negative Content-Length header")
+    return length
+
+
+def _write_message(output_stream: BinaryIO, response: JsonDict, *, framed: bool) -> None:
+    payload = json.dumps(response, ensure_ascii=False).encode("utf-8")
+    if framed:
+        output_stream.write(f"Content-Length: {len(payload)}\r\n\r\n".encode("ascii"))
+        output_stream.write(payload)
+        return
+    output_stream.write(payload + b"\n")
 
 
 def _tool_result(payload: JsonDict) -> JsonDict:
