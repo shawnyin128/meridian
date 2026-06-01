@@ -18,17 +18,47 @@ take over.
 
 - Manage ideas, approach nodes, experiment evidence, and local finding
   proposals.
-- Retrieve Paper Wiki context when papers, methods, concepts, claims, evidence,
-  prior insights, or feasibility risk matter.
-- Preserve Research Prior state when an approach, experiment, prompt, metric,
-  evaluation, ablation, probe, baseline, or failure interpretation depends on
-  prior work.
+- Before finalizing a Lab plan, run the Research Prior Gate for any method,
+  prompt, metric, eval, ablation, probe, failure, or baseline slot in the plan.
+- Use Paper Wiki MCP grounding as the default path for research-prior slots;
+  preserve `checked`, `missing`, `deferred`, or `not_needed` state explicitly.
 - Keep implementation details as research context, not as Lab-owned code work.
 - Ask before boundary-changing state moves: creating a new node, marking
   `repairable` or `dead`, switching active thread/node, closing/reopening a
   thread, publishing to Paper Wiki, or handing off ambiguous development scope.
 - Keep Lab findings local until a finding proposal is `ready`; use `wiki` for
   Paper Wiki update/use work.
+
+## Research Prior Gate
+
+Before presenting a Lab plan, approach node, experiment design, feasibility
+judgment, or development handoff, scan it for research-prior slots:
+
+- `method`
+- `prompt`
+- `metric`
+- `eval`
+- `ablation`
+- `probe`
+- `failure`
+- `baseline`
+
+For every slot that affects research interpretation:
+
+1. Call `meridian.context` with a compact research intent before relying on
+   chat intuition or local repo evidence.
+2. Use `meridian.read` for selected page sections when context returns a paper,
+   method, concept, claim, evidence page, synthesis, or user insight that could
+   change the plan.
+3. Use `meridian.trace` when a decision depends on provenance, evidence
+   quality, trust state, or source support.
+4. Record the slot as `checked` when grounding is useful, `missing` when the
+   lookup has no strong grounding, `deferred` only with a stated reason, or
+   `not_needed` only for local engineering that does not change research
+   interpretation.
+
+Do not treat missing prior as failure. Preserve the attempted query and agent
+judgment, then ask before accepting the under-grounded path.
 
 ## Lazy Init
 
@@ -78,8 +108,9 @@ Minimum completion:
 - Ask the user to choose `root`, `child`, `sibling`, or `link`.
 - Create a thread seed for `root` or `link`; attach to the existing thread for
   `child` or `sibling`.
-- After placement, retrieve Paper Wiki grounding when prior methods, concepts,
-  evidence, or failure modes matter.
+- After placement, run the Research Prior Gate before feasibility or experiment
+  planning if the idea contains method, prompt, metric, eval, ablation, probe,
+  failure, or baseline slots.
 - Ask before switching the active thread or active node.
 
 Example:
@@ -118,8 +149,8 @@ identify the smallest evidence needed next.
 ### Research Prior Classification
 
 Use when a Lab plan, approach node, experiment design, prompt, metric, baseline,
-ablation, probe, evaluation protocol, or failure interpretation is likely to
-have prior research practice.
+ablation, probe, evaluation protocol, or failure interpretation contains a
+research-prior slot.
 
 Minimum completion:
 
@@ -127,8 +158,8 @@ Minimum completion:
   `not_needed`.
 - Use triggers exactly: `method`, `prompt`, `metric`, `eval`, `ablation`,
   `probe`, `failure`, or `baseline`.
-- Retrieve Paper Wiki context for research-bearing decisions; do not set a
-  numeric lookup cap.
+- For each research-bearing trigger, call `meridian.context` before finalizing
+  the plan; do not set a numeric lookup cap.
 - Mark pure local engineering as `not_needed` unless it changes research
   interpretation.
 - If prior is `missing`, record the attempted query and the agent judgment, then
@@ -258,17 +289,18 @@ Common request labels map to these workflows:
 
 ## Wiki Retrieval Contract
 
-Retrieve wiki context after idea placement, or before feasibility judgment when
-the task depends on paper methods, metric definitions, prerequisite mechanisms,
+Retrieve wiki context after idea placement before feasibility judgment or
+experiment planning whenever the placed idea has a research-prior slot. These
+slots include paper methods, metric definitions, prerequisite mechanisms,
 implementation hooks, failure modes, prior user insights, claim support, or
 reproduction details.
 
-Also retrieve when a Research Prior trigger is research-bearing: method, prompt,
-metric, eval, ablation, probe, failure, or baseline. A missing result is still a
-valid state: record `missing`, preserve the attempted query, and ask before
-using agent judgment as an under-grounded decision.
+For Research Prior triggers, MCP grounding is the default before a final Lab
+plan: method, prompt, metric, eval, ablation, probe, failure, or baseline. A
+missing result is still a valid state: record `missing`, preserve the attempted
+query, and ask before using agent judgment as an under-grounded decision.
 
-Preferred MCP tools:
+Default MCP grounding path:
 
 - `meridian.context` for compact research context.
 - `meridian.read` for selected canonical page sections.

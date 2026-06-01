@@ -89,8 +89,9 @@ Minimum completion:
 - ask the user to choose `root`, `child`, `sibling`, or `link`
 - create a thread seed for `root` or `link`, or attach to an existing thread for
   `child` or `sibling`
-- retrieve Paper Wiki context after placement when prior work, methods,
-  concepts, evidence, or failure modes matter
+- after placement, run the Research Prior Gate before feasibility or experiment
+  planning when the idea contains method, prompt, metric, eval, ablation, probe,
+  failure, or baseline slots
 - ask before switching active thread or node
 
 ### 2. Approach Tree Exploration
@@ -101,8 +102,9 @@ Minimum completion:
 
 - maintain approach nodes as smallest verifiable methods
 - use only `unresolved`, `repairable`, `supported`, and `dead`
-- record Research Prior state when the node depends on method, prompt, metric,
-  evaluation, ablation, probe, baseline, or failure choices
+- scan the node plan for method, prompt, metric, evaluation, ablation, probe,
+  baseline, or failure slots before finalizing it
+- record Research Prior state for every research-bearing slot
 - record assumptions, experiments, key history, and next action
 - update same-node facts automatically when evidence is strong
 - ask before changing structure, active node, `repairable`, `dead`, or thread
@@ -115,8 +117,8 @@ is plausible.
 
 Minimum completion:
 
-- retrieve paper, method, prerequisite concept, and evidence context when it
-  matters
+- retrieve paper, method, prerequisite concept, and evidence context before
+  finalizing a plan that contains a research-prior slot
 - treat missing prior grounding as a valid `missing` state that requires user
   confirmation before agent judgment becomes the current path
 - read selected canonical pages and trace provenance for decision-driving claims
@@ -133,8 +135,10 @@ something that should update the idea graph.
 Minimum completion:
 
 - preserve command/config/output identity
-- record Research Prior state when the design depends on metric, baseline,
-  prompt, evaluation protocol, ablation, probe, or failure claims
+- scan the design for metric, baseline, prompt, evaluation protocol, ablation,
+  probe, or failure slots
+- record Research Prior state for every research-bearing slot before treating
+  the experiment design as ready
 - record result, validity, and interpretation
 - link the experiment to node/proposal targets
 - update same-node support only when evidence is valid
@@ -293,7 +297,10 @@ The product-facing skill is `plugins/codex/meridian/skills/lab/SKILL.md`.
 The skill should:
 
 - start from one of the five MVP workflows
-- retrieve wiki context when the task depends on prior papers, methods, concepts, evidence, failed paths, or user insights
+- scan each Lab plan for research-prior slots before finalizing it
+- use `meridian.context` as the default grounding path for each research-bearing
+  slot, followed by targeted `meridian.read`/`meridian.trace` when returned
+  context could change the decision
 - keep context packets compact
 - manage ideas, approach nodes, experiment evidence, and local finding proposals
 - produce development handoffs when implementation, debugging, tests, commits,
@@ -348,7 +355,7 @@ request depends on:
 - reproduction details
 - related syntheses or method-family pages
 
-Preferred MCP sequence:
+Default MCP grounding path for research-prior slots:
 
 ```text
 meridian.context(query)

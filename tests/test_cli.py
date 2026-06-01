@@ -189,7 +189,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.4.6"
+        expected = "0.4.7"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -3531,6 +3531,9 @@ Compare recency-only retention with attention-based and oracle retention policie
             "not_needed",
             "LLM-as-Judge",
             "user confirmation",
+            "Research Prior Gate",
+            "Call `meridian.context`",
+            "Default MCP grounding path",
         ]:
             self.assertIn(phrase, skill)
 
@@ -3541,6 +3544,7 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertIn("Research Prior", text)
             self.assertIn("needed | checked | missing | deferred | not_needed", text)
             self.assertIn("method | prompt | metric | eval | ablation | probe | failure | baseline", text)
+            self.assertIn("mcp grounding", text)
             self.assertIn("user confirmation", text)
 
         state_doc = Path("docs/research-dev-state-model.md").read_text(encoding="utf-8")
@@ -3554,6 +3558,8 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertTrue(all(case.get("category") == "research_dev_research_prior" for case in parsed))
         self.assertTrue(any("LLM-as-Judge" in case["task"] for case in parsed))
         self.assertTrue(any("missing" in case["expected_result"] for case in parsed))
+        self.assertTrue(any(case.get("id") == "prior-plan-slot-gate" for case in parsed))
+        self.assertTrue(any("meridian.context" in case["expected_result"] for case in parsed))
         self.assertTrue(all("must_not_do" in case and "rubric" in case for case in parsed))
 
         rubric = Path("eval/rubrics/research_dev_research_prior_quality.md").read_text(encoding="utf-8")
@@ -3563,6 +3569,8 @@ Compare recency-only retention with attention-based and oracle retention policie
             "Evidence Boundary",
             "Local Engineering Boundary",
             "Hard Fail Rules",
+            "meridian.context",
+            "plan_slot_gate",
         ]:
             self.assertIn(phrase, rubric)
 

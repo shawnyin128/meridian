@@ -103,14 +103,19 @@ protocol, baseline, ablation, probe, or failure interpretation.
 
 Workflow:
 
-1. Classify the prior status as `needed`, `checked`, `missing`, `deferred`, or
-   `not_needed`.
-2. Retrieve Paper Wiki context for research-bearing decisions.
-3. Record page references and how the prior changes the plan.
-4. If the prior is `missing`, record the query and agent judgment, then ask for
+1. Scan the Lab plan for `method`, `prompt`, `metric`, `eval`, `ablation`,
+   `probe`, `failure`, or `baseline` slots.
+2. For each research-bearing slot, call `meridian.context` before finalizing the
+   plan.
+3. Use `meridian.read` or `meridian.trace` when returned pages or provenance
+   could change the decision.
+4. Classify the prior status as `checked`, `missing`, `deferred`, or
+   `not_needed`; use `needed` only as a temporary marker while planning.
+5. Record page references and how the prior changes the plan.
+6. If the prior is `missing`, record the query and agent judgment, then ask for
    user confirmation before treating the under-grounded judgment as the current
    path.
-5. Keep Research Prior separate from experiment evidence.
+7. Keep Research Prior separate from experiment evidence.
 
 Done when each research-bearing decision has a prior status and later Lab work
 can recover whether the decision was grounded, missing, deferred, or local-only.

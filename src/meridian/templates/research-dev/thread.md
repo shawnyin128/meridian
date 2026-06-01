@@ -48,6 +48,7 @@ exactly `unresolved`, `repairable`, `supported`, or `dead`.
 - status: `needed | checked | missing | deferred | not_needed`
 - trigger: `method | prompt | metric | eval | ablation | probe | failure | baseline`
 - query:
+- mcp grounding: `meridian.context | meridian.read | meridian.trace | not_needed | deferred`
 - wiki grounding:
 - agent judgment:
 - user confirmation: `required | accepted | not_required`

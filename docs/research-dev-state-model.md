@@ -95,9 +95,11 @@ node switching, thread close/reopen, and canonical wiki publish.
 
 Approach nodes can also carry a `Research Prior` block when the node depends on
 an existing method family, prompt pattern, metric, evaluation protocol,
-ablation, probe, baseline, or failure interpretation. This block records what
-the Paper Wiki grounding contributed to the node design without changing node
-mode by itself.
+ablation, probe, baseline, or failure interpretation. Before Lab finalizes a
+plan, feasibility judgment, experiment design, or development handoff, it scans
+for these research-prior slots and grounds each research-bearing slot through
+`meridian.context` first. This block records what the Paper Wiki grounding
+contributed to the node design without changing node mode by itself.
 
 Allowed Research Prior states are exactly:
 
@@ -109,6 +111,10 @@ Allowed Research Prior states are exactly:
 - `deferred`: prior is needed, but this round intentionally postpones the
   lookup and records why.
 - `not_needed`: the item is local-only or does not affect research judgment.
+
+`needed` is a temporary planning marker, not a final answer. A final Lab plan
+should turn every identified slot into `checked`, `missing`, `deferred`, or
+`not_needed`.
 
 Allowed Research Prior triggers are exactly:
 
@@ -129,6 +135,11 @@ metric validity, prompt design, or failure interpretation, the user must confirm
 before Lab treats it as the current path. User confirmation does not convert
 `missing` into `checked`; it only records that the user accepted the
 under-grounded risk for this exploration step.
+
+The default grounding path is `meridian.context`, followed by `meridian.read`
+for selected canonical sections when returned pages could change the plan, and
+`meridian.trace` when provenance, trust state, or evidence identity affects the
+decision.
 
 ### Experiment
 

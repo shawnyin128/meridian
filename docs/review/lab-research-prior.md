@@ -134,3 +134,54 @@ Version finalization:
   no finding points to this release.
 
 Version commit pending at the time this release note was updated.
+
+## Feedback Repair Round: Research Prior Gate
+
+Feedback:
+
+- The 0.4.6 Lab Research Prior behavior was still too soft in practice. Agents
+  often treated Paper Wiki/MCP retrieval as optional background instead of an
+  action required before shaping research-bearing plans.
+
+Diagnosis:
+
+- The rubric and eval assets already treated skipped Wiki grounding as a hard
+  failure.
+- The Lab skill still used soft language such as "when ... matter", "likely",
+  and "Preferred MCP tools".
+- That wording left too much room for agents to classify LLM-as-Judge prompt,
+  metric, baseline, probe, method, ablation, or failure decisions from chat
+  intuition alone.
+
+Repair scope:
+
+- Add a front-loaded `Research Prior Gate` to the Lab skill.
+- Require a scan for `method`, `prompt`, `metric`, `eval`, `ablation`, `probe`,
+  `failure`, and `baseline` slots before finalizing a Lab plan.
+- Make `meridian.context` the default grounding path for every
+  research-bearing slot, with targeted `meridian.read` and `meridian.trace`
+  when returned pages or provenance could change the decision.
+- Preserve `missing` as a valid under-grounded state instead of treating it as
+  a failed workflow.
+- Keep local engineering chores `not_needed` so Lab does not retrieve Wiki for
+  every implementation detail.
+
+## Release Round: 0.4.7
+
+Release evidence:
+
+- `PYTHONPATH=src python3 -m unittest discover -s tests`: pass, 155 tests.
+- `PYTHONPYCACHEPREFIX=/private/tmp/meridian-0.4.7-pycache PYTHONPATH=src python3 -m compileall src tests`: pass.
+- `git diff --check`: pass.
+- `PYTHONPATH=src python3 -m meridian framework-check --project-root . --library-root /Users/shawn/Desktop/paper-wiki`: pass, 7 categories pass, 0 warn, 0 fail.
+- `PYTHONPATH=src python3 -m meridian wiki lint --wiki-root /Users/shawn/Desktop/paper-wiki/wiki`: pass, 6 findings.
+- `PYTHONPATH=src python3 -m meridian wiki source-audit --wiki-root /Users/shawn/Desktop/paper-wiki/wiki`: pass, 247 sources, 0 missing, 0 SHA mismatches, 0 duplicate SHA groups.
+- `PYTHONPATH=src python3 -m meridian wiki catalog --wiki-root /Users/shawn/Desktop/paper-wiki/wiki`: pass, 243 catalog entries.
+
+Version surfaces:
+
+- `VERSION`: `0.4.7`
+- `pyproject.toml`: `0.4.7`
+- Python package version: `0.4.7`
+- Codex plugin manifest: `0.4.7`
+- Claude Code plugin manifest: `0.4.7`
