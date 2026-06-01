@@ -108,4 +108,29 @@ Release evidence:
 - Active Paper Wiki lint/source-audit/catalog: pass.
 - AGENTS drift hook: pass.
 
-Commit pending at the time this review doc was updated.
+Implementation commit:
+
+- `224dc20 feat: add lab research prior grounding`
+
+Version finalization:
+
+- Bumped release surfaces from `0.4.5` to `0.4.6`:
+  - `VERSION`
+  - `pyproject.toml`
+  - `src/meridian/__init__.py`
+  - `plugins/codex/meridian/.codex-plugin/plugin.json`
+  - `plugins/claude-code/meridian/.claude-plugin/plugin.json`
+  - release version alignment test
+- Version smoke: `PYTHONPATH=src python3 -m meridian --version` returned
+  `meridian 0.4.6`.
+- Targeted version and Lab release tests passed.
+- Full unit suite passed after version bump: `155 tests`.
+- `PYTHONPYCACHEPREFIX=/private/tmp/meridian-0.4.6-pycache PYTHONPATH=src python3 -m compileall src tests`: pass.
+- `git diff --check`: pass.
+- `PYTHONPATH=src python3 -m meridian framework-check --project-root . --library-root /Users/shawn/Desktop/paper-wiki`: pass.
+- Active external Paper Wiki lint/source-audit/catalog: pass.
+- AGENTS drift hook: pass.
+- Arbor process-state still reports historical F1/F37 review-evidence findings;
+  no finding points to this release.
+
+Version commit pending at the time this release note was updated.
