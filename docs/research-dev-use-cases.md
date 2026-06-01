@@ -30,6 +30,7 @@ Lab owns local research exploration state:
 
 - Research Threads
 - Approach Nodes
+- Research Prior blocks
 - Experiment evidence
 - Finding Proposals
 - Lab Context Packets
@@ -85,15 +86,36 @@ Workflow:
 
 1. Keep nodes as the smallest verifiable methods.
 2. Use only `unresolved`, `repairable`, `supported`, and `dead`.
-3. Record assumptions, relevant experiments, key history, and next action.
-4. Update same-node facts automatically when evidence is strong enough.
-5. Ask before `repairable`, `dead`, new node creation, active state switch,
+3. Record Research Prior state when the node depends on method, prompt, metric,
+   evaluation, ablation, probe, baseline, or failure interpretation choices.
+4. Record assumptions, relevant experiments, key history, and next action.
+5. Update same-node facts automatically when evidence is strong enough.
+6. Ask before `repairable`, `dead`, new node creation, active state switch,
    thread close, or thread reopen.
 
 Done when the approach graph can be resumed from the node history and evidence
 links.
 
-## Scenario 4: Experiment Evidence Recording
+## Scenario 4: Research Prior Grounding
+
+Use when Lab is shaping a research-bearing method, prompt, metric, evaluation
+protocol, baseline, ablation, probe, or failure interpretation.
+
+Workflow:
+
+1. Classify the prior status as `needed`, `checked`, `missing`, `deferred`, or
+   `not_needed`.
+2. Retrieve Paper Wiki context for research-bearing decisions.
+3. Record page references and how the prior changes the plan.
+4. If the prior is `missing`, record the query and agent judgment, then ask for
+   user confirmation before treating the under-grounded judgment as the current
+   path.
+5. Keep Research Prior separate from experiment evidence.
+
+Done when each research-bearing decision has a prior status and later Lab work
+can recover whether the decision was grounded, missing, deferred, or local-only.
+
+## Scenario 5: Experiment Evidence Recording
 
 Use when a run, result, failed path, log, or observation should update the idea
 graph.
@@ -103,14 +125,16 @@ Workflow:
 1. Record an independent experiment under `.meridian/experiments/`.
 2. Preserve question, target, command/config/output identity, result, validity,
    and interpretation.
-3. Link the experiment to affected nodes or proposals.
-4. Retract support if invalid evidence was the only support.
-5. Create a local finding proposal if the result is reusable.
+3. Record Research Prior state when the experiment design depends on a metric,
+   baseline, prompt, evaluation protocol, ablation, probe, or failure claim.
+4. Link the experiment to affected nodes or proposals.
+5. Retract support if invalid evidence was the only support.
+6. Create a local finding proposal if the result is reusable.
 
 Done when future Lab or Wiki work can recover what happened and what the result
 does or does not prove.
 
-## Scenario 5: Finding Proposal / Wiki Write-back
+## Scenario 6: Finding Proposal / Wiki Write-back
 
 Use when local research produces a reusable finding.
 
@@ -128,7 +152,7 @@ Workflow:
 Done when the local finding is evidence-gated and ready for proposal-first Paper
 Wiki transfer, or clearly blocked by missing evidence.
 
-## Scenario 6: Development Handoff
+## Scenario 7: Development Handoff
 
 Use when the next useful step is implementation, debugging, tests, reruns,
 commits, release, or convergence.
@@ -137,10 +161,12 @@ Workflow:
 
 1. Name the active thread/node or raw idea.
 2. Include Paper Wiki context that shaped the decision.
-3. State the development question.
-4. Define expected command/config/output identity.
-5. Define validity criteria and result-to-node update rules.
-6. Hand off to the normal coding workflow.
+3. Include relevant Research Prior blocks when implementation depends on a
+   method, prompt, metric, baseline, or evaluation convention.
+4. State the development question.
+5. Define expected command/config/output identity.
+6. Define validity criteria and result-to-node update rules.
+7. Hand off to the normal coding workflow.
 
 Done when the coding workflow has enough context to act and Lab has a clear
 expectation for what evidence should return.
@@ -168,6 +194,7 @@ Keep these outside Lab as handoff destinations:
 
 - idea placement quality
 - wiki grounding quality
+- research prior classification and missing-prior handling
 - approach tree quality
 - experiment evidence identity
 - proposal lifecycle discipline

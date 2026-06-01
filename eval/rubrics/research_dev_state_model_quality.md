@@ -46,7 +46,8 @@ state/memory/index skeleton files, then continues the original task.
 1: Nodes mix ideas, tasks, experiments, and proposals.
 3: Nodes exist but are too broad or have unclear parent/child semantics.
 5: Nodes are smallest verifiable methods with clear inherited problems,
-assumptions, experiments, history, and next action.
+Research Prior state when prior work matters, assumptions, experiments, history,
+and next action.
 
 ### 4. Automation Boundary
 
@@ -60,7 +61,18 @@ user confirmation.
 1: Results are only summarized in chat or node prose.
 3: Experiments are recorded but miss command/config/output or target impacts.
 5: Experiments are independent evidence records with question, targets, impacts,
-command/config/output, result, validity, and interpretation.
+Research Prior state when design depends on prior practice, command/config/output,
+result, validity, and interpretation.
+
+### 5a. Research Prior Handling
+
+1: The agent omits prior grounding for obvious method, prompt, metric, eval,
+ablation, probe, failure, or baseline decisions.
+3: Prior grounding appears in prose but is not durable or confuses prior with
+evidence.
+5: Research Prior blocks use `needed | checked | missing | deferred |
+not_needed`, preserve compact Wiki grounding or missing-prior gaps, and require
+user confirmation before accepting under-grounded agent judgment.
 
 ### 6. Invalid Evidence Handling
 
@@ -97,6 +109,7 @@ key experiments, reusable findings, and extracted local proposals.
 - `approach_tree_integrity`
 - `automation_boundary`
 - `experiment_evidence`
+- `research_prior`
 - `invalid_evidence`
 - `proposal_lifecycle`
 - `thread_close`

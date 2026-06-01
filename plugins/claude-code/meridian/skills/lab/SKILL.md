@@ -20,6 +20,9 @@ take over.
   proposals.
 - Retrieve Paper Wiki context when papers, methods, concepts, claims, evidence,
   prior insights, or feasibility risk matter.
+- Preserve Research Prior state when an approach, experiment, prompt, metric,
+  evaluation, ablation, probe, baseline, or failure interpretation depends on
+  prior work.
 - Keep implementation details as research context, not as Lab-owned code work.
 - Ask before boundary-changing state moves: creating a new node, marking
   `repairable` or `dead`, switching active thread/node, closing/reopening a
@@ -112,6 +115,37 @@ and failure-boundary pages, summarize what supports or weakens the path, and
 identify the smallest evidence needed next.
 ```
 
+### Research Prior Classification
+
+Use when a Lab plan, approach node, experiment design, prompt, metric, baseline,
+ablation, probe, evaluation protocol, or failure interpretation is likely to
+have prior research practice.
+
+Minimum completion:
+
+- Classify the prior status as `needed`, `checked`, `missing`, `deferred`, or
+  `not_needed`.
+- Use triggers exactly: `method`, `prompt`, `metric`, `eval`, `ablation`,
+  `probe`, `failure`, or `baseline`.
+- Retrieve Paper Wiki context for research-bearing decisions; do not set a
+  numeric lookup cap.
+- Mark pure local engineering as `not_needed` unless it changes research
+  interpretation.
+- If prior is `missing`, record the attempted query and the agent judgment, then
+  ask for user confirmation before treating the under-grounded judgment as the
+  current path.
+- Keep prior separate from experiment evidence: prior shapes design; evidence
+  changes node support.
+
+Example:
+
+```text
+The user wants an LLM-as-Judge rubric. Treat prompt and metric design as
+Research Prior triggers, retrieve Paper Wiki context, and record `missing` if no
+strong prompt-practice grounding exists. Offer the smallest local calibration
+probe, but ask before accepting the under-grounded design.
+```
+
 ### Approach Tree Exploration
 
 Use when the user is exploring a research thread.
@@ -120,6 +154,8 @@ Minimum completion:
 
 - Maintain an approach tree whose nodes are the smallest verifiable methods.
 - Use node modes exactly: `unresolved`, `repairable`, `supported`, `dead`.
+- Record Research Prior state for nodes that depend on method, prompt, metric,
+  eval, ablation, probe, failure, or baseline choices.
 - Record assumptions, relevant experiments, key history, and next action.
 - Automatically update same-node facts when evidence is strong enough.
 - Ask before marking a node `repairable` or `dead`, creating a new node,
@@ -146,6 +182,8 @@ Minimum completion:
   `.meridian/experiments/`.
 - Include question, primary target, targets and impacts, command/config/output,
   result, validity, and interpretation.
+- Record Research Prior state when the experiment design depends on a metric,
+  baseline, prompt, evaluation protocol, ablation, probe, or failure claim.
 - Link experiments to nodes or proposals instead of copying results everywhere.
 - If an experiment is invalid, preserve it as evidence and retract any
   same-node support that depended only on that invalid evidence.
@@ -193,6 +231,8 @@ Minimum completion:
 
 - Name the current thread/node or idea that motivates the work.
 - Include the Paper Wiki context that shaped the decision.
+- Include relevant Research Prior blocks when implementation depends on a
+  method, prompt, metric, baseline, or evaluation convention.
 - State the smallest development question or task.
 - Preserve evidence identity needed by Lab: expected command/config/output,
   metrics, validity criteria, and what result would update the node.
@@ -222,6 +262,11 @@ Retrieve wiki context after idea placement, or before feasibility judgment when
 the task depends on paper methods, metric definitions, prerequisite mechanisms,
 implementation hooks, failure modes, prior user insights, claim support, or
 reproduction details.
+
+Also retrieve when a Research Prior trigger is research-bearing: method, prompt,
+metric, eval, ablation, probe, failure, or baseline. A missing result is still a
+valid state: record `missing`, preserve the attempted query, and ask before
+using agent judgment as an under-grounded decision.
 
 Preferred MCP tools:
 

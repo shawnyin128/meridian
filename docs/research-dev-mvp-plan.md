@@ -35,6 +35,8 @@ The primary objects are:
 
 - Research Thread: one research problem.
 - Approach Node: the smallest verifiable method in an approach tree.
+- Research Prior: the Paper Wiki grounding state for research-bearing method,
+  prompt, metric, evaluation, baseline, ablation, probe, or failure decisions.
 - Experiment: an independent evidence record.
 - Finding Proposal: a local reusable finding that transfers to Paper Wiki only
   after it is `ready`.
@@ -53,6 +55,7 @@ It owns:
 - lightweight idea capture and triage
 - wiki-aware context gathering
 - Wiki-grounded feasibility review
+- Research Prior classification and missing-prior gates
 - approach tree management
 - experiment evidence recording
 - result interpretation as Lab state
@@ -98,6 +101,8 @@ Minimum completion:
 
 - maintain approach nodes as smallest verifiable methods
 - use only `unresolved`, `repairable`, `supported`, and `dead`
+- record Research Prior state when the node depends on method, prompt, metric,
+  evaluation, ablation, probe, baseline, or failure choices
 - record assumptions, experiments, key history, and next action
 - update same-node facts automatically when evidence is strong
 - ask before changing structure, active node, `repairable`, `dead`, or thread
@@ -112,6 +117,8 @@ Minimum completion:
 
 - retrieve paper, method, prerequisite concept, and evidence context when it
   matters
+- treat missing prior grounding as a valid `missing` state that requires user
+  confirmation before agent judgment becomes the current path
 - read selected canonical pages and trace provenance for decision-driving claims
 - separate source fact, wiki synthesis, user insight, local evidence, and
   uncertainty
@@ -126,6 +133,8 @@ something that should update the idea graph.
 Minimum completion:
 
 - preserve command/config/output identity
+- record Research Prior state when the design depends on metric, baseline,
+  prompt, evaluation protocol, ablation, probe, or failure claims
 - record result, validity, and interpretation
 - link the experiment to node/proposal targets
 - update same-node support only when evidence is valid
@@ -162,6 +171,7 @@ Required sections:
 - Root Problem
 - Placement
 - Wiki Grounding
+- Research Prior blocks inside relevant approach nodes
 - Approach Tree
 - Thread Final Summary
 
@@ -179,6 +189,7 @@ Default target-repo path:
 Required sections:
 
 - Question
+- Research Prior when design depends on prior practice
 - Targets And Impacts
 - Command / Config / Output
 - Result

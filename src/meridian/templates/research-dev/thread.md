@@ -43,6 +43,16 @@ exactly `unresolved`, `repairable`, `supported`, or `dead`.
 - problem_inherited:
 - method:
 
+#### Research Prior
+
+- status: `needed | checked | missing | deferred | not_needed`
+- trigger: `method | prompt | metric | eval | ablation | probe | failure | baseline`
+- query:
+- wiki grounding:
+- agent judgment:
+- user confirmation: `required | accepted | not_required`
+- impact:
+
 #### Assumptions
 
 | Statement | Status | Evidence | Note |

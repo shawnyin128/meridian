@@ -13,6 +13,16 @@ primary_target: ""
 
 What does this experiment test?
 
+## Research Prior
+
+- status: `needed | checked | missing | deferred | not_needed`
+- trigger: `method | prompt | metric | eval | ablation | probe | failure | baseline`
+- query:
+- wiki grounding:
+- agent judgment:
+- user confirmation: `required | accepted | not_required`
+- impact:
+
 ## Targets And Impacts
 
 | Target Type | Target ID | Impact | Note |

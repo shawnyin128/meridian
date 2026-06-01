@@ -3520,6 +3520,52 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertIn("root thread seed", case["expected_result"])
         self.assertIn("Skips root thread seed creation", rubric)
 
+    def test_lab_research_prior_assets_parse(self) -> None:
+        skill = (CODEX_PLUGIN_SKILL_ROOT / "lab/SKILL.md").read_text(encoding="utf-8")
+        for phrase in [
+            "Research Prior",
+            "needed",
+            "checked",
+            "missing",
+            "deferred",
+            "not_needed",
+            "LLM-as-Judge",
+            "user confirmation",
+        ]:
+            self.assertIn(phrase, skill)
+
+        template_root = Path("src/meridian/templates/research-dev")
+        thread = (template_root / "thread.md").read_text(encoding="utf-8")
+        experiment = (template_root / "experiment.md").read_text(encoding="utf-8")
+        for text in (thread, experiment):
+            self.assertIn("Research Prior", text)
+            self.assertIn("needed | checked | missing | deferred | not_needed", text)
+            self.assertIn("method | prompt | metric | eval | ablation | probe | failure | baseline", text)
+            self.assertIn("user confirmation", text)
+
+        state_doc = Path("docs/research-dev-state-model.md").read_text(encoding="utf-8")
+        self.assertIn("Research Prior", state_doc)
+        self.assertIn("missing", state_doc)
+        self.assertIn("under-grounded", state_doc)
+
+        cases = Path("eval/cases/research_dev_research_prior.jsonl")
+        parsed = [json.loads(line) for line in cases.read_text(encoding="utf-8").splitlines() if line.strip()]
+        self.assertGreaterEqual(len(parsed), 5)
+        self.assertTrue(all(case.get("category") == "research_dev_research_prior" for case in parsed))
+        self.assertTrue(any("LLM-as-Judge" in case["task"] for case in parsed))
+        self.assertTrue(any("missing" in case["expected_result"] for case in parsed))
+        self.assertTrue(all("must_not_do" in case and "rubric" in case for case in parsed))
+
+        rubric = Path("eval/rubrics/research_dev_research_prior_quality.md").read_text(encoding="utf-8")
+        for phrase in [
+            "Trigger Classification",
+            "Missing Prior Gate",
+            "Evidence Boundary",
+            "Local Engineering Boundary",
+            "Hard Fail Rules",
+        ]:
+            self.assertIn(phrase, rubric)
+
     def test_lab_lazy_init_creates_minimal_valid_research_space(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -93,6 +93,43 @@ assumption status, node history, `supported`, and invalid-evidence retraction.
 The user must confirm `repairable`, `dead`, new node creation, active thread or
 node switching, thread close/reopen, and canonical wiki publish.
 
+Approach nodes can also carry a `Research Prior` block when the node depends on
+an existing method family, prompt pattern, metric, evaluation protocol,
+ablation, probe, baseline, or failure interpretation. This block records what
+the Paper Wiki grounding contributed to the node design without changing node
+mode by itself.
+
+Allowed Research Prior states are exactly:
+
+- `needed`: Lab judges prior research should be checked, but it has not been
+  checked yet.
+- `checked`: Paper Wiki grounding was found and shaped the plan.
+- `missing`: Lab checked because prior was needed, but found no strong enough
+  grounding.
+- `deferred`: prior is needed, but this round intentionally postpones the
+  lookup and records why.
+- `not_needed`: the item is local-only or does not affect research judgment.
+
+Allowed Research Prior triggers are exactly:
+
+- `method`
+- `prompt`
+- `metric`
+- `eval`
+- `ablation`
+- `probe`
+- `failure`
+- `baseline`
+
+`missing` is an important under-grounded state, not an error. It means Lab
+decided prior grounding was needed but the Paper Wiki did not provide enough
+relevant or trustworthy context. The agent may propose a judgment or minimal
+local probe, but if that judgment affects an approach node, experiment design,
+metric validity, prompt design, or failure interpretation, the user must confirm
+before Lab treats it as the current path. User confirmation does not convert
+`missing` into `checked`; it only records that the user accepted the
+under-grounded risk for this exploration step.
+
 ### Experiment
 
 An Experiment is an independent evidence record. It stores the question,
@@ -101,6 +138,12 @@ validity, and interpretation. Experiments can target nodes or local proposals.
 If an experiment is invalid, preserve it as evidence. If a node was supported
 only by invalidated evidence, retract the node to `unresolved` and record the
 reason in node history.
+
+Experiments can carry their own Research Prior block when the experimental
+design depends on a metric, baseline, prompt, evaluation protocol, ablation,
+probe, or failure claim. This prior explains why the experiment is designed a
+certain way; the experiment result remains the evidence that can support,
+refute, or update nodes and proposals.
 
 ### Finding Proposal
 
