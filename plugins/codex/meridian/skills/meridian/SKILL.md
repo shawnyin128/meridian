@@ -66,6 +66,10 @@ Minimum completion:
   When installed plugin files are visible, inspect the Codex or Claude Code
   plugin cache/manifest; otherwise report plugin visibility as unknown, not as a
   hard failure.
+- Treat an unreadable `lab/SKILL.md` path as Meridian setup drift. Report the
+  attempted path, distinguish missing from unreadable from unknown cache
+  visibility, diagnose plugin path drift, and do not tell the agent to continue
+  from remembered Lab semantics.
 - Check MCP readiness with `python3 -m meridian.mcp --help` or a lightweight
   capabilities smoke, and report stale behavior as possible core/plugin drift.
 - Check Lab research-space readiness for the current target repo when the user
@@ -123,6 +127,9 @@ Minimum completion:
 
 - Compare the Python core version, plugin manifest version, and visible skill
   files when available.
+- Check visible `lab/SKILL.md` paths in source packages and installed plugin
+  caches when possible. If the active client cannot read Lab, route back to this
+  setup skill instead of continuing the Lab workflow from memory.
 - Check whether the active Paper Wiki workspace has the current external layout:
   `meridian-wiki.json`, `sources/`, and `wiki/` under one library root.
 - Check `meridian-wiki.json` for the current workspace schema when the file is

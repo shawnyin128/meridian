@@ -33,6 +33,8 @@ SUPPORT_SKILLS = {
     "wiki-retrieve",
 }
 
+LAB_SKILL_RELATIVE_PATH = Path("skills/lab/SKILL.md")
+
 
 @dataclass(frozen=True)
 class FrameworkFinding:
@@ -283,7 +285,148 @@ def _plugin_bundle_category(root: Path) -> FrameworkCategory:
     for path in [root / "plugins/codex/meridian/.mcp.json", root / "plugins/claude-code/meridian/.mcp.json"]:
         if not path.exists():
             _add(findings, category, "degraded", "manual", "missing_mcp_config", f"{_rel(path, root)} is missing.", "Restore MCP config or document why the package no longer ships MCP.")
+    for item in lab_skill_path_diagnostics(root):
+        state = item["state"]
+        label = item["label"]
+        path = item["path"]
+        if state == "readable":
+            _add(
+                findings,
+                category,
+                "info",
+                "manual",
+                "lab_skill_path_readable",
+                f"{label} Lab skill is readable: {path}.",
+                "No action required.",
+            )
+        elif state == "unknown":
+            _add(
+                findings,
+                category,
+                "info",
+                "manual",
+                "lab_skill_path_unknown",
+                f"{label} Lab skill path could not be inspected in this runtime: {path}.",
+                "If Lab cannot load in that client, run Meridian setup/status from that client after plugin update.",
+            )
+        elif state == "missing":
+            severity = "critical" if str(label).startswith("source") else "degraded"
+            _add(
+                findings,
+                category,
+                severity,
+                "manual",
+                "lab_skill_path_missing",
+                f"{label} Lab skill is missing: {path}.",
+                "Repair or reinstall the Meridian plugin package, then restart the client session.",
+            )
+        elif state == "unreadable":
+            _add(
+                findings,
+                category,
+                "critical",
+                "manual",
+                "lab_skill_path_unreadable",
+                f"{label} Lab skill exists but is not readable: {path}.",
+                "Treat this as Meridian setup drift; repair permissions or reinstall the plugin before using Lab.",
+            )
+        elif state == "version_drift":
+            _add(
+                findings,
+                category,
+                "degraded",
+                "manual",
+                "lab_skill_cache_version_drift",
+                f"{label} latest visible cache version is {item.get('version')} but core is {__version__}.",
+                "Update/reinstall the Meridian plugin and restart the client session.",
+            )
     return _category(category, findings)
+
+
+def lab_skill_path_diagnostics(project_root: Path, *, home: Path | None = None) -> list[dict[str, str]]:
+    """Return readable/missing/unreadable/unknown diagnostics for Lab skill paths."""
+    root = project_root.expanduser().resolve()
+    user_home = (home or Path.home()).expanduser().resolve()
+    diagnostics: list[dict[str, str]] = []
+    codex_cache_root = user_home / ".codex/plugins/cache/meridian/meridian"
+    claude_cache_root = user_home / ".claude/plugins/cache/meridian/meridian"
+    codex_marketplace_root = user_home / ".codex/.tmp/marketplaces/meridian/plugins/codex/meridian"
+    claude_marketplace_root = user_home / ".claude/plugins/marketplaces/meridian/plugins/claude-code/meridian"
+    for label, path, visible_root in [
+        ("source_codex", root / "plugins/codex/meridian" / LAB_SKILL_RELATIVE_PATH, root),
+        ("source_claude", root / "plugins/claude-code/meridian" / LAB_SKILL_RELATIVE_PATH, root),
+        ("codex_cache_current", codex_cache_root / __version__ / LAB_SKILL_RELATIVE_PATH, codex_cache_root),
+        ("claude_cache_current", claude_cache_root / __version__ / LAB_SKILL_RELATIVE_PATH, claude_cache_root),
+        ("codex_marketplace", codex_marketplace_root / LAB_SKILL_RELATIVE_PATH, codex_marketplace_root),
+        ("claude_marketplace", claude_marketplace_root / LAB_SKILL_RELATIVE_PATH, claude_marketplace_root),
+    ]:
+        diagnostics.append(_lab_skill_path_record(label, path, visible_root=visible_root))
+    for label, base in [
+        ("codex_cache_latest", user_home / ".codex/plugins/cache/meridian/meridian"),
+        ("claude_cache_latest", user_home / ".claude/plugins/cache/meridian/meridian"),
+    ]:
+        latest = _latest_version_dir(base)
+        if latest is None:
+            diagnostics.append(
+                {
+                    "label": label,
+                    "path": str(base),
+                    "state": "unknown",
+                    "version": "",
+                }
+            )
+            continue
+        if latest.name != __version__:
+            diagnostics.append(
+                {
+                    "label": label,
+                    "path": str(latest),
+                    "state": "version_drift",
+                    "version": latest.name,
+                }
+            )
+    return diagnostics
+
+
+def _lab_skill_path_record(label: str, path: Path, *, visible_root: Path) -> dict[str, str]:
+    state = _readability_state(path, visible_root=visible_root)
+    return {
+        "label": label,
+        "path": str(path),
+        "state": state,
+        "version": __version__ if state == "readable" else "",
+    }
+
+
+def _readability_state(path: Path, *, visible_root: Path) -> str:
+    if not path.exists():
+        return "unknown" if not visible_root.exists() else "missing"
+    try:
+        if not path.is_file():
+            return "unreadable"
+        path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return "unreadable"
+    return "readable"
+
+
+def _latest_version_dir(base: Path) -> Path | None:
+    if not base.exists():
+        return None
+    candidates = [child for child in base.iterdir() if child.is_dir()]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda path: _version_sort_key(path.name))
+
+
+def _version_sort_key(value: str) -> tuple[int, ...]:
+    parts: list[int] = []
+    for part in value.split("."):
+        try:
+            parts.append(int(part))
+        except ValueError:
+            parts.append(-1)
+    return tuple(parts)
 
 
 def _runtime_category() -> FrameworkCategory:

@@ -14,6 +14,13 @@ When work needs code edits, debugging, tests, commits, release, or convergence,
 produce a compact development handoff and let the user's normal coding flow
 take over.
 
+## Runtime Load Boundary
+
+Use Lab only when this `lab/SKILL.md` file was actually loaded by the active
+runtime. If the runtime reports that the Lab skill path is missing or
+unreadable, stop and use `meridian` setup/status to diagnose plugin path drift.
+Do not continue from remembered Lab semantics.
+
 ## Behavior Priority
 
 - Manage ideas, approach nodes, experiment evidence, and local finding

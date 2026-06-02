@@ -17,7 +17,7 @@ from unittest.mock import patch
 
 from meridian import __version__
 from meridian.cli import main
-from meridian.framework_check import FRAMEWORK_CHECK_CATEGORIES, run_framework_check
+from meridian.framework_check import FRAMEWORK_CHECK_CATEGORIES, lab_skill_path_diagnostics, run_framework_check
 from meridian.lab import initialize_lab_space, validate_lab_space
 from meridian.mcp import adapter as mcp_adapter
 from meridian.mcp import harness as mcp_harness
@@ -189,7 +189,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.4.7"
+        expected = "0.4.8"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -1631,6 +1631,8 @@ quality_state: "multimodal_pending"
         self.assertIn("workspace schema", text)
         self.assertIn("delegate those to wiki and lab", text)
         self.assertIn("hand off to the normal coding workflow", text)
+        self.assertIn("unreadable `lab/SKILL.md` path", text)
+        self.assertIn("remembered Lab semantics", text)
         self.assertNotIn("wants to ingest, retrieve, code, or record experiments", text)
 
     def test_meridian_product_skill_behavior_boundaries(self) -> None:
@@ -1650,6 +1652,8 @@ quality_state: "multimodal_pending"
         self.assertIn("needs_lab_init", meridian)
         self.assertIn("create the minimal Lab skeleton during setup", meridian)
         self.assertIn("Do not defer this to `lab`", meridian)
+        self.assertIn("unreadable `lab/SKILL.md` path", meridian)
+        self.assertIn("plugin path drift", meridian)
         self.assertIn("code implementation, debugging, tests, commits, release, or", meridian)
         self.assertIn("hand off to the normal coding workflow", meridian)
         self.assertNotIn("wants to ingest, retrieve, code, or record experiments", meridian)
@@ -1662,6 +1666,8 @@ quality_state: "multimodal_pending"
         self.assertNotIn("MCP server entry:", wiki)
 
         self.assertIn("Behavior Priority", lab)
+        self.assertIn("Runtime Load Boundary", lab)
+        self.assertIn("Do not continue from remembered Lab semantics", lab)
         self.assertIn("Lab is not a coding agent", lab)
         self.assertIn("Development Handoff", lab)
         self.assertIn("Do not use for code implementation", lab)
@@ -1744,8 +1750,10 @@ quality_state: "multimodal_pending"
 
     def test_framework_check_reports_stable_categories(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
+            fake_home = Path(tmp) / "home"
             with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(Path(tmp) / "config")}):
-                report = run_framework_check(project_root=Path.cwd())
+                with patch.object(Path, "home", return_value=fake_home):
+                    report = run_framework_check(project_root=Path.cwd())
 
         self.assertEqual(report.to_dict()["schema_version"], "meridian.framework_check.v0")
         self.assertEqual([category.name for category in report.categories], FRAMEWORK_CHECK_CATEGORIES)
@@ -1764,6 +1772,53 @@ quality_state: "multimodal_pending"
         }
         self.assertIn("workspace_not_configured", info_codes)
         self.assertIn("lab_state_not_checked", info_codes)
+        self.assertIn("lab_skill_path_readable", info_codes)
+
+    def test_lab_skill_path_diagnostics_reports_readable_source_and_caches(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "project"
+            home = Path(tmp) / "home"
+            for package in ["plugins/codex/meridian", "plugins/claude-code/meridian"]:
+                skill = root / package / "skills/lab/SKILL.md"
+                skill.parent.mkdir(parents=True)
+                skill.write_text("---\nname: lab\n---\n# Lab\n", encoding="utf-8")
+            for cache in [
+                home / ".codex/plugins/cache/meridian/meridian" / __version__,
+                home / ".claude/plugins/cache/meridian/meridian" / __version__,
+            ]:
+                skill = cache / "skills/lab/SKILL.md"
+                skill.parent.mkdir(parents=True)
+                skill.write_text("---\nname: lab\n---\n# Lab\n", encoding="utf-8")
+
+            records = {record["label"]: record for record in lab_skill_path_diagnostics(root, home=home)}
+
+        self.assertEqual(records["source_codex"]["state"], "readable")
+        self.assertEqual(records["source_claude"]["state"], "readable")
+        self.assertEqual(records["codex_cache_current"]["state"], "readable")
+        self.assertEqual(records["claude_cache_current"]["state"], "readable")
+        self.assertNotIn("version_drift", {record["state"] for record in records.values()})
+
+    def test_lab_skill_path_diagnostics_reports_unreadable_missing_and_version_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "project"
+            home = Path(tmp) / "home"
+            for package in ["plugins/codex/meridian", "plugins/claude-code/meridian"]:
+                skill = root / package / "skills/lab/SKILL.md"
+                skill.parent.mkdir(parents=True)
+                skill.write_text("---\nname: lab\n---\n# Lab\n", encoding="utf-8")
+
+            unreadable = home / ".codex/plugins/cache/meridian/meridian" / __version__ / "skills/lab/SKILL.md"
+            unreadable.mkdir(parents=True)
+            stale = home / ".claude/plugins/cache/meridian/meridian/0.1.0/skills/lab/SKILL.md"
+            stale.parent.mkdir(parents=True)
+            stale.write_text("---\nname: lab\n---\n# Old Lab\n", encoding="utf-8")
+
+            records = {record["label"]: record for record in lab_skill_path_diagnostics(root, home=home)}
+
+        self.assertEqual(records["codex_cache_current"]["state"], "unreadable")
+        self.assertEqual(records["claude_cache_current"]["state"], "missing")
+        self.assertEqual(records["claude_cache_latest"]["state"], "version_drift")
+        self.assertEqual(records["claude_cache_latest"]["version"], "0.1.0")
 
     def test_framework_check_cli_writes_json_and_markdown(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
