@@ -169,9 +169,15 @@ Workflow:
 3. Include relevant Research Prior blocks when implementation depends on a
    method, prompt, metric, baseline, or evaluation convention.
 4. State the development question.
-5. Define expected command/config/output identity.
-6. Define validity criteria and result-to-node update rules.
-7. Hand off to the normal coding workflow.
+5. Add `Research Code Style` when the task is an exploratory research slice:
+   prefer one readable main flow, keep source branches/configs/seeds/splits/
+   metrics/sample limits visible, and avoid single-use parser/loader/selector
+   helper layers unless they represent real reuse, risky boundary isolation, or
+   a stable external API.
+6. Define expected command/config/output identity.
+7. Define validity criteria and result-to-node update rules.
+8. Hand off to the normal coding workflow, which must enforce the research-code
+   style as an acceptance criterion if final code shape matters.
 
 Done when the coding workflow has enough context to act and Lab has a clear
 expectation for what evidence should return.

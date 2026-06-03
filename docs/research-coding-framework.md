@@ -104,6 +104,9 @@ Research-friendly code is the target artifact:
 - readable to the researcher during an active idea loop
 - easy to extend with ablations, probes, metrics, baselines, and method variants
 - explicit about configs, seeds, dataset splits, commands, output paths, and metric definitions
+- often linear for one-off calibration builders, probes, ablations, sanity
+  checks, dataset scripts, and eval scripts, so the experimental decisions stay
+  visible in the main flow
 - instrumented so the researcher can inspect intermediate behavior
 - maintainable enough that future experiments can reuse the path
 - allowed to contain purposeful redundancy when that redundancy improves comparison, inspection, or variant isolation
@@ -114,6 +117,13 @@ automatically push toward the shortest or cleanest abstraction. In research,
 code sometimes needs visible seams: separate variants, duplicated-but-comparable
 config blocks, probe hooks, debug prints guarded by flags, and result tables
 that expose more than a production system would expose.
+
+A concrete anti-pattern is splitting a small exploratory dataset or calibration
+path into single-use parser, loader, selector, and wrapper helpers when those
+helpers hide the source-specific branches, split choices, shuffle seed, sample
+limit, or metric/output identity. The desired shape is a readable main function
+or script where those research choices are visible, with helpers reserved for
+real reuse, risky boundary isolation, or a stable external API.
 
 For an external normal coding workflow, adaptive reasoning and tool use should
 remain flexible. Meridian should define the evidence to preserve, the handoff

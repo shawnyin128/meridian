@@ -189,7 +189,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.4.8"
+        expected = "0.4.9"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -3436,12 +3436,20 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertIn("Experiment Evidence Recording", skill)
         self.assertIn("meridian.context", skill)
         self.assertIn("Lazy Init", skill)
+        self.assertIn("Research Code Style", skill)
+        self.assertIn("one readable main flow", skill)
+        self.assertIn("single-use parser, loader", skill)
+        self.assertIn("downstream coding acceptance criterion", skill)
 
         template = Path("src/meridian/templates/research-dev")
         self.assertTrue((template / "research-dev-context-packet.md").exists())
         self.assertTrue((template / "experiment-evidence-plan.md").exists())
         self.assertTrue((template / "development-handoff-packet.md").exists())
         self.assertTrue((template / "idea-card.md").exists())
+        handoff_template = (template / "development-handoff-packet.md").read_text(encoding="utf-8")
+        self.assertIn("## Research Code Style", handoff_template)
+        self.assertIn("one readable main flow", handoff_template)
+        self.assertIn("Downstream acceptance criterion", handoff_template)
 
         pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
         self.assertIn('"templates/research-dev/**/*.md"', pyproject)
@@ -3741,12 +3749,20 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertGreaterEqual(len(parsed), 7)
         self.assertTrue(all(case.get("category") == "research_dev_mvp" for case in parsed))
         self.assertTrue(all("expected_result" in case and "rubric" in case for case in parsed))
+        style_case = next(case for case in parsed if case["id"] == "lab-research-code-style-handoff")
+        self.assertIn("Research Code Style", style_case["expected_result"])
+        self.assertIn("one readable main flow", style_case["expected_result"])
+        self.assertIn("single-use parser/loader/selector helper layers", style_case["acceptable_paths"][1])
+        self.assertTrue(any("clean research code" in item for item in style_case["must_not_do"]))
 
         rubric = Path("eval/rubrics/research_dev_mvp_quality.md").read_text(encoding="utf-8")
         self.assertIn("Wiki Grounding", rubric)
         self.assertIn("Development Handoff", rubric)
         self.assertIn("Boundary Correctness", rubric)
         self.assertIn("Lightweight Behavior", rubric)
+        self.assertIn("Research Code Style", rubric)
+        self.assertIn("generic wording", rubric)
+        self.assertIn("parser/loader/selector helper layers", rubric)
 
     def test_research_dev_longitudinal_replay_assets_parse(self) -> None:
         cases = Path("eval/cases/research_dev_longitudinal_replay.jsonl")

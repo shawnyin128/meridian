@@ -23,6 +23,18 @@ confidence: medium
 - metric:
 - validity criteria:
 
+## Research Code Style
+
+- Applies to exploratory research slice: yes | no
+- Expected shape:
+  - prefer one readable main flow when building a one-off calibration,
+    dataset, probe, ablation, sanity-check, or eval path
+  - keep source branches, configs, seeds, splits, metrics, sample limits, and
+    output identity visible near the call site
+  - avoid single-use parser/loader/selector helper layers unless they express
+    real reuse, risky boundary isolation, or a stable external API
+- Downstream acceptance criterion:
+
 ## Return To Lab
 
 State what result would update the node, experiment evidence, or proposal.

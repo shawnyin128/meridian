@@ -272,10 +272,26 @@ Minimum completion:
 - Include relevant Research Prior blocks when implementation depends on a
   method, prompt, metric, baseline, or evaluation convention.
 - State the smallest development question or task.
+- Add a `Research Code Style` requirement when the task is an exploratory
+  research slice such as a calibration builder, probe, ablation, sanity check,
+  dataset script, or evaluation script.
 - Preserve evidence identity needed by Lab: expected command/config/output,
   metrics, validity criteria, and what result would update the node.
 - Hand off to the normal coding workflow; do not perform code edits, run tests,
   create commits, or manage release inside Lab.
+
+Research code style:
+
+- Prefer one readable main flow for one-off exploratory slices.
+- Keep source-specific branches, configs, seeds, splits, metrics, sample limits,
+  and output identity visible near the call site.
+- Avoid splitting a small research slice into single-use parser, loader,
+  selector, and wrapper helpers that hide the experimental decisions.
+- Use helper functions only for real reuse, risky boundary isolation, or a
+  stable external API.
+- Treat this as a downstream coding acceptance criterion; Lab only writes the
+  handoff and does not guarantee the final code unless the coding workflow
+  enforces it.
 
 Example:
 

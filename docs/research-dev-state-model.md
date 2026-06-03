@@ -227,12 +227,19 @@ The handoff should include:
 - active thread/node or raw idea
 - Paper Wiki grounding that shaped the decision
 - smallest development question or task
+- Research Code Style for exploratory slices: prefer a readable main flow that
+  keeps source branches, configs, seeds, splits, metrics, sample limits, and
+  output identity visible near the call site; avoid single-use
+  parser/loader/selector helper layers unless real reuse, risky boundary
+  isolation, or a stable external API justifies them.
 - expected command/config/output identity
 - metric or validity criteria
 - what result would update the Lab node or proposal
 
-After the coding workflow completes, Lab can record the returned experiment
-evidence and update the idea graph.
+Lab can require this style in the handoff, but final generated code satisfies it
+only if the receiving coding workflow or evaluator enforces it as an acceptance
+criterion. After the coding workflow completes, Lab can record the returned
+experiment evidence and update the idea graph.
 
 ## Paper Wiki Boundary
 

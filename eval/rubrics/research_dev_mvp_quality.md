@@ -12,6 +12,8 @@ Hard fail if any apply:
   candidate threads exist.
 - Lab performs code implementation, debugging, tests, commits, release, or
   convergence instead of producing a development handoff.
+- A development handoff for an exploratory research slice omits Research Code
+  Style or reduces it to generic "clean/maintainable code" wording.
 - The task clearly depends on paper/method/concept/evidence context, but the
   agent does not retrieve or cite wiki context.
 - The agent treats user insight, wiki synthesis, or local experiment evidence as
@@ -80,6 +82,20 @@ Score each dimension from 1 to 5.
 5. Produces a compact handoff that another coding workflow can execute and
    return as Lab evidence without ambiguity.
 
+### 6a. Research Code Style
+
+1. Does not mention code shape for an exploratory research slice.
+2. Uses generic wording such as "clean code" or "maintainable code" only.
+3. Mentions readable research code but does not make it a downstream acceptance
+   criterion.
+4. Requires a linear, inspectable main flow when the task is a one-off
+   calibration builder, probe, ablation, sanity check, dataset script, or eval
+   script.
+5. Keeps source branches, configs, seeds, splits, metrics, sample limits, and
+   output identity visible near the call site; rejects single-use
+   parser/loader/selector helper layers unless real reuse, risky boundary
+   isolation, or a stable external API justifies them.
+
 ### 7. Boundary Correctness
 
 1. Mixes source facts, wiki synthesis, user insight, local evidence, and
@@ -106,6 +122,7 @@ Score each dimension from 1 to 5.
 - `experiment_evidence`
 - `proposal_lifecycle`
 - `development_handoff`
+- `research_code_style`
 - `boundary_correctness`
 - `entry_selection`
 - `lightweight_behavior`
