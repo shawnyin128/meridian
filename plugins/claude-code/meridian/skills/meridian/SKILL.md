@@ -72,6 +72,13 @@ Minimum completion:
   from remembered Lab semantics.
 - Check MCP readiness with `python3 -m meridian.mcp --help` or a lightweight
   capabilities smoke, and report stale behavior as possible core/plugin drift.
+- Check the user coding-style profile at `~/.meridian/coding-style.md` or the
+  active `MERIDIAN_CONFIG_HOME`. If it is missing, create the starter
+  coding-style profile during setup; if it is stale, report it as
+  `needs_migration` and migrate without deleting user text.
+- Confirm that the coding-style profile is only a handoff preference source for
+  the Coding Style Feedback Gate and Lab development handoffs. It is not a
+  Paper Wiki workspace and it is not a coding workflow.
 - Check Lab research-space readiness for the current target repo when the user
   asks whether Meridian is fully ready, mentions Lab, or is working in a repo
   that may need idea-graph state. If `.meridian/` is missing in the target
@@ -95,7 +102,8 @@ State meanings:
 - `needs_update`: core version and plugin manifest/skill package are visibly out
   of sync.
 - `needs_migration`: the workspace or Lab research space exists but misses
-  required current-layout files.
+  required current-layout files, or the coding-style profile has an older
+  schema.
 - `initialized`: the missing `.meridian/` skeleton was created in this setup
   run.
 - `needs_lab_init`: the target repo for Lab readiness is unknown or cannot be
@@ -134,6 +142,9 @@ Minimum completion:
   `meridian-wiki.json`, `sources/`, and `wiki/` under one library root.
 - Check `meridian-wiki.json` for the current workspace schema when the file is
   readable.
+- Check whether the user coding-style profile exists and uses the current
+  schema. If missing, create only the starter `coding-style.md`; if stale,
+  preserve all user-written principles and append any missing current sections.
 - Check whether a Lab repo that needs idea-graph state has the minimal
   `.meridian/` skeleton.
 - If `.meridian/` is missing in the target repo, create the minimal skeleton

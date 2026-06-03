@@ -30,6 +30,8 @@ Do not continue from remembered Lab semantics.
 - Use Paper Wiki MCP grounding as the default path for research-prior slots;
   preserve `checked`, `missing`, `deferred`, or `not_needed` state explicitly.
 - Keep implementation details as research context, not as Lab-owned code work.
+- Before preparing a development handoff, read the user coding-style profile
+  when available and include only relevant `User Coding Style Principles`.
 - Ask before boundary-changing state moves: creating a new node, marking
   `repairable` or `dead`, switching active thread/node, closing/reopening a
   thread, publishing to Paper Wiki, or handing off ambiguous development scope.
@@ -66,6 +68,54 @@ For every slot that affects research interpretation:
 
 Do not treat missing prior as failure. Preserve the attempted query and agent
 judgment, then ask before accepting the under-grounded path.
+
+## User Coding Style Profile
+
+Lab can consume a user-level coding-style profile when a Lab task produces a
+development handoff. The profile lives at `~/.meridian/coding-style.md` unless
+`MERIDIAN_CONFIG_HOME` points at a different Meridian config directory.
+
+Use the profile this way:
+
+- Treat profile entries as durable user preferences, not repo facts.
+- Select only entries relevant to the handoff's language, research phase, and
+  task type.
+- Add a compact `User Coding Style Principles` section before task-specific
+  `Research Code Style`.
+- Keep task-specific research-code constraints separate from durable user
+  preferences.
+- If the profile is missing, continue the Lab task with the static handoff
+  guidance and mention that `meridian` setup can initialize the profile.
+- Do not store full pasted code examples in the profile; summarize the
+  reusable principle, anti-pattern, scope, exception, provenance, confidence,
+  and update date.
+
+### Coding Style Feedback Gate
+
+Run this gate whenever the user comments on code organization, abstraction
+level, naming, comments, tests, experiment ergonomics, or research-code
+readability after code work or code-review work.
+
+Classify the feedback into exactly one outcome:
+
+- `record_user_level_principle`: the feedback is clear, reusable, scoped, and
+  explicitly evidenced by the user's wording.
+- `ask_whether_to_record`: the feedback may be a durable preference, but scope
+  or confidence is unclear.
+- `do_not_record_task_local_only`: the feedback is a local bug report,
+  repo-specific convention, or one-off correction.
+
+Strong triggers include "too over-engineered", "too many helper functions",
+"for research code I want one linear function", "not how I work", and "remember
+this style". Weak triggers include "messy", "hard to maintain", or "I do not
+like this structure". Pure correctness issues such as crashes, wrong results,
+or missing API handling do not update the profile by themselves.
+
+When the outcome is `record_user_level_principle`, update the existing matching
+principle instead of duplicating it. When the outcome is
+`ask_whether_to_record`, ask before writing durable profile state. When the
+outcome is `do_not_record_task_local_only`, keep the correction local to the
+current coding workflow.
 
 ## Lazy Init
 
@@ -272,6 +322,8 @@ Minimum completion:
 - Include relevant Research Prior blocks when implementation depends on a
   method, prompt, metric, baseline, or evaluation convention.
 - State the smallest development question or task.
+- Include a `User Coding Style Principles` section when the coding-style
+  profile has relevant entries for this handoff.
 - Add a `Research Code Style` requirement when the task is an exploratory
   research slice such as a calibration builder, probe, ablation, sanity check,
   dataset script, or evaluation script.
@@ -282,6 +334,7 @@ Minimum completion:
 
 Research code style:
 
+- First apply relevant user-level principles from the coding-style profile.
 - Prefer one readable main flow for one-off exploratory slices.
 - Keep source-specific branches, configs, seeds, splits, metrics, sample limits,
   and output identity visible near the call site.

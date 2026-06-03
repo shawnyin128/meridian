@@ -23,6 +23,12 @@ confidence: medium
 - metric:
 - validity criteria:
 
+## User Coding Style Principles
+
+- Source: `~/.meridian/coding-style.md` or active `MERIDIAN_CONFIG_HOME`.
+- Relevant principles:
+- Notes:
+
 ## Research Code Style
 
 - Applies to exploratory research slice: yes | no

@@ -189,7 +189,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.4.9"
+        expected = "0.5.0"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -1633,6 +1633,9 @@ quality_state: "multimodal_pending"
         self.assertIn("hand off to the normal coding workflow", text)
         self.assertIn("unreadable `lab/SKILL.md` path", text)
         self.assertIn("remembered Lab semantics", text)
+        self.assertIn("coding-style profile", text)
+        self.assertIn("Coding Style Feedback Gate", text)
+        self.assertIn("~/.meridian/coding-style.md", text)
         self.assertNotIn("wants to ingest, retrieve, code, or record experiments", text)
 
     def test_meridian_product_skill_behavior_boundaries(self) -> None:
@@ -1656,6 +1659,8 @@ quality_state: "multimodal_pending"
         self.assertIn("plugin path drift", meridian)
         self.assertIn("code implementation, debugging, tests, commits, release, or", meridian)
         self.assertIn("hand off to the normal coding workflow", meridian)
+        self.assertIn("coding-style profile", meridian)
+        self.assertIn("Coding Style Feedback Gate", meridian)
         self.assertNotIn("wants to ingest, retrieve, code, or record experiments", meridian)
 
         self.assertIn("Behavior Priority", wiki)
@@ -1670,6 +1675,10 @@ quality_state: "multimodal_pending"
         self.assertIn("Do not continue from remembered Lab semantics", lab)
         self.assertIn("Lab is not a coding agent", lab)
         self.assertIn("Development Handoff", lab)
+        self.assertIn("User Coding Style Principles", lab)
+        self.assertIn("Coding Style Feedback Gate", lab)
+        self.assertIn("record_user_level_principle", lab)
+        self.assertIn("ask_whether_to_record", lab)
         self.assertIn("Do not use for code implementation", lab)
 
         self.assertIn("| `meridian` | setup, status checks, updates, and migrations |", readme)
@@ -1773,6 +1782,95 @@ quality_state: "multimodal_pending"
         self.assertIn("workspace_not_configured", info_codes)
         self.assertIn("lab_state_not_checked", info_codes)
         self.assertIn("lab_skill_path_readable", info_codes)
+        self.assertIn("coding_style_profile_missing", info_codes)
+
+    def test_coding_style_profile_init_is_user_level_and_no_code_blocks(self) -> None:
+        from meridian.lab import initialize_coding_style_profile, migrate_coding_style_profile, validate_coding_style_profile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            config_home = Path(tmp) / "config"
+            profile_path = initialize_coding_style_profile(config_home=config_home)
+            self.assertEqual(profile_path, (config_home / "coding-style.md").resolve())
+            text = profile_path.read_text(encoding="utf-8")
+
+            self.assertIn("schema_version: meridian.coding_style_profile.v1", text)
+            self.assertIn("## Principles", text)
+            self.assertIn("## Pending Review", text)
+            self.assertNotIn("```", text)
+
+            report = validate_coding_style_profile(profile_path)
+            self.assertEqual(report.status, "pass", report.to_dict())
+
+            profile_path.write_text(text + "\n## User Edit\n\nDo not overwrite me.\n", encoding="utf-8")
+            rewritten = initialize_coding_style_profile(config_home=config_home)
+            self.assertEqual(rewritten, profile_path)
+            self.assertIn("Do not overwrite me.", profile_path.read_text(encoding="utf-8"))
+
+            old_profile = config_home / "old-style.md"
+            old_profile.write_text("# My Style\n\nKeep experiment scripts linear.\n", encoding="utf-8")
+            migrated = migrate_coding_style_profile(path=old_profile)
+            migrated_text = migrated.read_text(encoding="utf-8")
+            self.assertIn("schema_version: meridian.coding_style_profile.v1", migrated_text)
+            self.assertIn("## Principles", migrated_text)
+            self.assertIn("## Pending Review", migrated_text)
+            self.assertIn("Keep experiment scripts linear.", migrated_text)
+
+    def test_coding_style_feedback_gate_classifies_reusable_feedback(self) -> None:
+        from meridian.lab import classify_coding_style_feedback
+
+        strong = classify_coding_style_feedback(
+            "For research code I want one linear function; do not split this into so many helper functions."
+        )
+        weak = classify_coding_style_feedback("This file is messy and hard to maintain.")
+        bug_only = classify_coding_style_feedback("The loader crashes on an empty validation split.")
+
+        self.assertEqual(strong.outcome, "record_user_level_principle")
+        self.assertIn("research_code", strong.scopes)
+        self.assertIn("helper", strong.reason)
+        self.assertEqual(weak.outcome, "ask_whether_to_record")
+        self.assertEqual(bug_only.outcome, "do_not_record_task_local_only")
+
+    def test_framework_check_reports_coding_style_profile_state(self) -> None:
+        from meridian.lab import initialize_coding_style_profile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            config_home = Path(tmp) / "config"
+            with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(config_home)}):
+                missing = run_framework_check(project_root=Path.cwd())
+                initialize_coding_style_profile(config_home=config_home)
+                ready = run_framework_check(project_root=Path.cwd())
+
+        missing_category = next(category for category in missing.categories if category.name == "User Profile")
+        ready_category = next(category for category in ready.categories if category.name == "User Profile")
+        self.assertIn("coding_style_profile_missing", {finding.code for finding in missing_category.findings})
+        self.assertIn("coding_style_profile_ready", {finding.code for finding in ready_category.findings})
+
+    def test_lab_coding_style_profile_assets_parse(self) -> None:
+        lab = (CODEX_PLUGIN_SKILL_ROOT / "lab/SKILL.md").read_text(encoding="utf-8")
+        meridian = (CODEX_PLUGIN_SKILL_ROOT / "meridian/SKILL.md").read_text(encoding="utf-8")
+        handoff = Path("src/meridian/templates/research-dev/development-handoff-packet.md").read_text(encoding="utf-8")
+        cases = [
+            json.loads(line)
+            for line in Path("eval/cases/research_dev_coding_style_profile.jsonl").read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+
+        for phrase in [
+            "Coding Style Feedback Gate",
+            "User Coding Style Principles",
+            "record_user_level_principle",
+            "ask_whether_to_record",
+            "do_not_record_task_local_only",
+            "Do not store full pasted code examples",
+        ]:
+            self.assertIn(phrase, lab)
+        self.assertIn("coding-style profile", meridian)
+        self.assertIn("## User Coding Style Principles", handoff)
+        self.assertGreaterEqual(len(cases), 5)
+        self.assertTrue(all(case.get("category") == "research_dev_coding_style_profile" for case in cases))
+        self.assertTrue(any(case.get("expected_outcome") == "record_user_level_principle" for case in cases))
+        self.assertTrue(any(case.get("expected_outcome") == "ask_whether_to_record" for case in cases))
+        self.assertTrue(any(case.get("expected_outcome") == "do_not_record_task_local_only" for case in cases))
 
     def test_lab_skill_path_diagnostics_reports_readable_source_and_caches(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

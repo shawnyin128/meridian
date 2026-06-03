@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from meridian import __version__
-from meridian.lab import validate_lab_space
+from meridian.lab import coding_style_profile_path, validate_coding_style_profile, validate_lab_space
 from meridian.wiki.workspace import resolve_workspace
 
 
@@ -19,6 +19,7 @@ FRAMEWORK_CHECK_CATEGORIES = [
     "Runtime",
     "Workspace",
     "Artifact Boundary",
+    "User Profile",
     "Lab State",
     "Docs And Evals",
 ]
@@ -112,6 +113,7 @@ def run_framework_check(
         _runtime_category(),
         _workspace_category(root, library_root=library_root, wiki_root=wiki_root, require_workspace=require_workspace),
         _artifact_boundary_category(library_root=library_root, wiki_root=wiki_root),
+        _user_profile_category(),
         _lab_state_category(lab_root),
         _docs_and_evals_category(root),
     ]
@@ -619,6 +621,45 @@ def _lab_state_category(lab_root: Path | None) -> FrameworkCategory:
             f"lab_{item.code}",
             item.message,
             "Initialize or repair the minimal `.meridian/` research-space skeleton.",
+        )
+    return _category(category, findings)
+
+
+def _user_profile_category() -> FrameworkCategory:
+    findings: list[FrameworkFinding] = []
+    category = "User Profile"
+    report = validate_coding_style_profile()
+    if report.status == "missing":
+        _add(
+            findings,
+            category,
+            "info",
+            "confirm",
+            "coding_style_profile_missing",
+            f"User coding-style profile is missing: {coding_style_profile_path()}.",
+            "Run Meridian setup/status to create the starter coding-style profile when style handoffs are needed.",
+        )
+        return _category(category, findings)
+    if report.status == "pass":
+        _add(
+            findings,
+            category,
+            "info",
+            "manual",
+            "coding_style_profile_ready",
+            f"User coding-style profile is readable: {report.path}.",
+            "No action required.",
+        )
+        return _category(category, findings)
+    for item in report.findings:
+        _add(
+            findings,
+            category,
+            "degraded",
+            "confirm",
+            item.code,
+            item.message,
+            "Run Meridian setup/status to migrate the coding-style profile without deleting user text.",
         )
     return _category(category, findings)
 

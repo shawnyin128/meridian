@@ -3,7 +3,7 @@ type: product-design
 title: "Lab Idea Graph Use Cases"
 status: draft
 created: 2026-05-21
-updated: 2026-05-31
+updated: 2026-06-03
 tags:
   - lab
   - idea-graph
@@ -36,6 +36,7 @@ Lab owns local research exploration state:
 - Lab Context Packets
 - Development Handoff Packets
 - Wiki Transfer Packets
+- User Coding Style Principles for development handoffs
 
 The two products communicate through MCP and explicit artifacts. Lab should
 consume Paper Wiki through `meridian.context`, `meridian.read`, and
@@ -169,14 +170,17 @@ Workflow:
 3. Include relevant Research Prior blocks when implementation depends on a
    method, prompt, metric, baseline, or evaluation convention.
 4. State the development question.
-5. Add `Research Code Style` when the task is an exploratory research slice:
+5. Read relevant user-level coding-style principles from the Meridian
+   coding-style profile when available, and include a compact
+   `User Coding Style Principles` section.
+6. Add `Research Code Style` when the task is an exploratory research slice:
    prefer one readable main flow, keep source branches/configs/seeds/splits/
    metrics/sample limits visible, and avoid single-use parser/loader/selector
    helper layers unless they represent real reuse, risky boundary isolation, or
    a stable external API.
-6. Define expected command/config/output identity.
-7. Define validity criteria and result-to-node update rules.
-8. Hand off to the normal coding workflow, which must enforce the research-code
+7. Define expected command/config/output identity.
+8. Define validity criteria and result-to-node update rules.
+9. Hand off to the normal coding workflow, which must enforce the research-code
    style as an acceptance criterion if final code shape matters.
 
 Done when the coding workflow has enough context to act and Lab has a clear
@@ -210,5 +214,6 @@ Keep these outside Lab as handoff destinations:
 - experiment evidence identity
 - proposal lifecycle discipline
 - development handoff quality
+- user coding-style principle relevance
 - source fact / synthesis / user insight / local evidence boundaries
 - lightweight behavior
