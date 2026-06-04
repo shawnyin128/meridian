@@ -2280,3 +2280,7 @@ def _read_manifest(path: Path) -> dict[str, object]:
     if not isinstance(payload, dict):
         raise ValueError(f"expected JSON object: {path}")
     return payload
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

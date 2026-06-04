@@ -189,7 +189,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.5.0"
+        expected = "0.5.1"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -213,6 +213,43 @@ class CliTests(unittest.TestCase):
         exit_code, stdout, stderr = _run_cli_capture(["--version"])
         self.assertEqual(exit_code, 0, stderr)
         self.assertEqual(stdout.strip(), f"meridian {expected}")
+
+    def test_python_module_entrypoints_execute_cli_main(self) -> None:
+        env = os.environ.copy()
+        src_path = str((Path.cwd() / "src").resolve())
+        env["PYTHONPATH"] = src_path if not env.get("PYTHONPATH") else f"{src_path}{os.pathsep}{env['PYTHONPATH']}"
+
+        meridian = subprocess.run(
+            [sys.executable, "-m", "meridian", "--version"],
+            cwd=Path.cwd(),
+            env=env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        cli_module = subprocess.run(
+            [sys.executable, "-m", "meridian.cli", "--version"],
+            cwd=Path.cwd(),
+            env=env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        cli_help = subprocess.run(
+            [sys.executable, "-m", "meridian.cli", "wiki", "--help"],
+            cwd=Path.cwd(),
+            env=env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(meridian.returncode, 0, meridian.stderr)
+        self.assertEqual(meridian.stdout.strip(), "meridian 0.5.1")
+        self.assertEqual(cli_module.returncode, 0, cli_module.stderr)
+        self.assertEqual(cli_module.stdout.strip(), "meridian 0.5.1")
+        self.assertEqual(cli_help.returncode, 0, cli_help.stderr)
+        self.assertIn("usage: meridian wiki", cli_help.stdout)
 
     def test_title_extraction_keeps_multiline_technical_title(self) -> None:
         extraction = PdfExtraction(
