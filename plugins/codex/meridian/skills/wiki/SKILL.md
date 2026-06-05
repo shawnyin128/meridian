@@ -46,6 +46,10 @@ The user uploads a PDF from Codex or Claude Code. If no Paper Wiki workspace is 
 ```
 
 ```text
+The user gives an HTTP(S) paper URL. Download it to a local PDF first, then treat that PDF as the source for the normal Paper Wiki ingest flow.
+```
+
+```text
 The user gives a Zotero export folder such as `My Library`. Recursively ingest the PDFs into the active Paper Wiki workspace, keep sources in the managed source store, publish canonical pages when allowed, and report the batch summary plus any failures.
 ```
 
@@ -63,6 +67,20 @@ Use internal support modes when needed:
 - personalization mode for user insight.
 - evolution mode for refinement and revision.
 - knowledge or concept mode for compiled knowledge repair.
+
+### Source Ingest Handoff
+
+For MCP-facing source updates, `meridian.update` with `source_path` prepares a
+complete ingest handoff. MCP source update is a handoff, not proof that ingest
+has already completed: run the returned `run_command` or `fallback_command`,
+then report the managed source path, canonical wiki page, quality gate, review
+state, flow status, and git auto-commit/clean status.
+
+Do not read CLI internals to discover ordinary ingest arguments. For URL
+sources, download it to a local PDF first before calling update. If `meridian`
+is not on `PATH`, use the existing resolver below and run the fallback command
+through `python3 -m meridian`. Pass that local path to `meridian.update` or the
+flow command.
 
 Use `meridian wiki health --wiki-root <wiki>` when the user asks whether the
 wiki is usable, trustworthy, release-ready, or what should be repaired next.

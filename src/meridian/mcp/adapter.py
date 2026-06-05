@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
+import shlex
 import sys
 from pathlib import Path
 from typing import Any
@@ -38,6 +40,7 @@ INDEX_WRITE_NEXT_ACTION = (
     "Grant write access to the Paper Wiki library or run the same request in "
     "an environment that can write the wiki .index directory."
 )
+DEFAULT_PAPER_QUALITY_RUBRIC = Path("eval/rubrics/paper_wiki_quality_v0.md")
 
 
 def capabilities(*, detail: str = "summary") -> dict[str, Any]:
@@ -67,9 +70,9 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
         {
             "name": "meridian.update",
             "workflow": "Update Wiki",
-            "summary": "Add a paper source or user insight through the appropriate durable wiki flow.",
-            "inputs": ["source_path or note", "wiki_root", "paper"],
-            "outputs": ["artifact_summary", "next_action"],
+            "summary": "Add a user insight, or prepare a complete CLI ingest handoff for a local PDF source.",
+            "inputs": ["local source_path or note", "wiki_root", "paper"],
+            "outputs": ["artifact_summary", "next_action", "run_command", "fallback_command"],
         },
         {
             "name": "meridian.propose",
@@ -265,25 +268,93 @@ def update(
             "next_action": "publish_insight" if publishable else "review_match_or_lint_findings",
         }
     if source_path:
-        source = Path(source_path)
+        source = Path(source_path).expanduser()
         slug = _slug(source.stem)
         workspace = resolve_workspace(wiki_root=wiki_root)
+        effective_wiki_root = workspace.wiki_root if workspace is not None else wiki_root
+        managed_source_root = workspace.source_root if workspace is not None else effective_wiki_root / "raw" / "sources"
+        out_dir = effective_wiki_root / ".drafts" / "ingests" / slug
+        rubric_path = _default_paper_quality_rubric()
+        run_command = [
+            "meridian",
+            "wiki",
+            "flow",
+            str(source),
+            "--wiki-root",
+            str(effective_wiki_root),
+            "--out",
+            str(out_dir),
+            "--rubric",
+            str(rubric_path),
+        ]
+        fallback_command = ["python3", "-m", "meridian", *run_command[1:]]
         return {
             "schema_version": TOOL_SCHEMA_VERSION,
             "tool": "meridian.update",
             "workflow": "Update Wiki",
             "update_type": "source",
             "status": "ready_for_ingest_flow",
+            "handoff_type": "cli_ingest_flow",
             "source_path": str(source),
-            "managed_source_root": str(workspace.source_root) if workspace is not None else str(wiki_root / "raw" / "sources"),
-            "suggested_out_dir": str(wiki_root / ".drafts" / "ingests" / slug),
+            "source_kind": "local_pdf_path",
+            "input_contract": {
+                "accepted_source_forms": ["local_pdf_path"],
+                "url_handling": "For an HTTP(S) paper URL, download it to a local PDF first and pass that path as source_path.",
+                "unsupported_source_forms": ["url"],
+            },
+            "wiki_root": str(effective_wiki_root),
+            "managed_source_root": str(managed_source_root),
+            "suggested_out_dir": str(out_dir),
+            "rubric": {
+                "required": True,
+                "name": "paper_wiki_quality_v0",
+                "path": str(rubric_path),
+            },
             "next_action": "run_ingest_flow",
-            "example_execution_primitive": (
-                f"meridian wiki flow {source} --wiki-root {wiki_root} "
-                f"--out {wiki_root / '.drafts' / 'ingests' / slug}"
-            ),
+            "run_command": run_command,
+            "fallback_command": fallback_command,
+            "example_execution_primitive": _shell_join(run_command),
+            "fallback_execution_primitive": _shell_join(fallback_command),
+            "permission_boundary": {
+                "writes_wiki_root": str(effective_wiki_root),
+                "writes_managed_source_root": str(managed_source_root),
+                "requires_write_access": True,
+            },
+            "minimum_completion": [
+                "Managed source PDF",
+                "Canonical wiki page",
+                "Quality gate",
+                "Review state",
+                "Flow status",
+            ],
+            "post_ingest_checks": [
+                "catalog/index rebuilt by flow",
+                "git clean or explicit git auto-commit status",
+                "report managed source path and canonical page path",
+            ],
         }
     raise ValueError("source_path or note is required")
+
+
+def _default_paper_quality_rubric() -> Path:
+    candidates: list[Path] = []
+    core_root = os.environ.get("MERIDIAN_CORE_ROOT")
+    if core_root:
+        candidates.append(Path(core_root).expanduser() / DEFAULT_PAPER_QUALITY_RUBRIC)
+    candidates.extend(
+        [
+            Path(__file__).resolve().parents[3] / DEFAULT_PAPER_QUALITY_RUBRIC,
+            Path.cwd() / DEFAULT_PAPER_QUALITY_RUBRIC,
+        ]
+    )
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return DEFAULT_PAPER_QUALITY_RUBRIC
+
+
+def _shell_join(command: list[str]) -> str:
+    return " ".join(shlex.quote(part) for part in command)
 
 
 def propose(

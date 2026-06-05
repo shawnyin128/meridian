@@ -189,7 +189,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.5.1"
+        expected = "0.5.2"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -245,9 +245,9 @@ class CliTests(unittest.TestCase):
         )
 
         self.assertEqual(meridian.returncode, 0, meridian.stderr)
-        self.assertEqual(meridian.stdout.strip(), "meridian 0.5.1")
+        self.assertEqual(meridian.stdout.strip(), "meridian 0.5.2")
         self.assertEqual(cli_module.returncode, 0, cli_module.stderr)
-        self.assertEqual(cli_module.stdout.strip(), "meridian 0.5.1")
+        self.assertEqual(cli_module.stdout.strip(), "meridian 0.5.2")
         self.assertEqual(cli_help.returncode, 0, cli_help.stderr)
         self.assertIn("usage: meridian wiki", cli_help.stdout)
 
@@ -1637,14 +1637,19 @@ quality_state: "multimodal_pending"
         self.assertIn("Implementation Hooks", text)
 
     def test_product_wiki_skill_uses_reliable_context_entry(self) -> None:
-        skill = CODEX_PLUGIN_SKILL_ROOT / "wiki/SKILL.md"
-        self.assertTrue(skill.exists())
-        text = skill.read_text(encoding="utf-8")
-        self.assertIn("meridian wiki context", text)
-        self.assertIn("meridian wiki status", text)
-        self.assertIn("/private/tmp/meridian-context", text)
-        self.assertIn("MERIDIAN_CORE_ROOT", text)
-        self.assertIn("do not start with broad `rg`", text)
+        for root in (CODEX_PLUGIN_SKILL_ROOT, CLAUDE_PLUGIN_SKILL_ROOT):
+            skill = root / "wiki/SKILL.md"
+            self.assertTrue(skill.exists())
+            text = skill.read_text(encoding="utf-8")
+            self.assertIn("meridian wiki context", text)
+            self.assertIn("meridian wiki status", text)
+            self.assertIn("/private/tmp/meridian-context", text)
+            self.assertIn("MERIDIAN_CORE_ROOT", text)
+            self.assertIn("do not start with broad `rg`", text)
+            self.assertIn("HTTP(S) paper URL", text)
+            self.assertIn("download it to a local PDF first", text)
+            self.assertIn("MCP source update is a handoff", text)
+            self.assertIn("Do not read CLI internals", text)
 
     def test_meridian_setup_skill_exists(self) -> None:
         skill = CODEX_PLUGIN_SKILL_ROOT / "meridian/SKILL.md"
@@ -2665,6 +2670,41 @@ Plot per-channel activation maxima and run an ablation without smoothing.
         self.assertEqual(payload["path"], "/tmp/wiki/.index/papers.jsonl")
         self.assertIn("could not refresh", payload["message"])
         self.assertIn("write access", payload["next_action"])
+
+    def test_mcp_source_update_returns_complete_ingest_handoff(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            source = root / "paper.pdf"
+            source.write_bytes(b"%PDF fake")
+
+            payload = mcp_adapter.update(wiki_root=wiki_root, source_path=source)
+
+            self.assertEqual(payload["workflow"], "Update Wiki")
+            self.assertEqual(payload["update_type"], "source")
+            self.assertEqual(payload["status"], "ready_for_ingest_flow")
+            self.assertEqual(payload["handoff_type"], "cli_ingest_flow")
+            self.assertEqual(payload["input_contract"]["accepted_source_forms"], ["local_pdf_path"])
+            self.assertIn("download it to a local PDF first", payload["input_contract"]["url_handling"])
+            self.assertTrue(payload["rubric"]["required"])
+            self.assertTrue(payload["rubric"]["path"].endswith("eval/rubrics/paper_wiki_quality_v0.md"))
+            command = payload["run_command"]
+            fallback = payload["fallback_command"]
+            self.assertEqual(command[:3], ["meridian", "wiki", "flow"])
+            self.assertIn("--rubric", command)
+            self.assertIn(str(source), command)
+            self.assertEqual(fallback[:5], ["python3", "-m", "meridian", "wiki", "flow"])
+            self.assertIn("--rubric", fallback)
+            self.assertIn("Managed source PDF", payload["minimum_completion"])
+            self.assertIn("Canonical wiki page", payload["minimum_completion"])
+            self.assertIn("git clean or explicit git auto-commit status", payload["post_ingest_checks"])
+
+            exit_code, stdout, stderr = _run_cli_capture(command[1:])
+
+            self.assertEqual(exit_code, 0, stderr)
+            self.assertIn("Managed source PDF:", stdout)
+            self.assertIn("Canonical wiki page:", stdout)
+            self.assertTrue((wiki_root / "papers/Fake-Research-Paper.md").exists())
 
     def test_mcp_stdio_server_registry_and_tool_calls_share_adapter(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

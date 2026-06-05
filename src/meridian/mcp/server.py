@@ -162,11 +162,11 @@ def tool_definitions() -> list[JsonDict]:
         },
         {
             "name": "meridian.update",
-            "description": "Update Wiki: add a paper source or user insight through the durable wiki flow.",
+            "description": "Update Wiki: add a user insight, or prepare a complete CLI ingest handoff for a local PDF source.",
             "inputSchema": _schema(
                 {
                     "wiki_root": {"type": "string", "description": "Canonical wiki root. Defaults to the active user Paper Wiki workspace."},
-                    "source_path": {"type": "string"},
+                    "source_path": {"type": "string", "description": "Local PDF path. Download HTTP(S) paper URLs to a local PDF before calling this tool."},
                     "paper": {"type": "string"},
                     "note": {"type": "string"},
                     "insight_type": {"type": "string", "default": "paper-note"},
