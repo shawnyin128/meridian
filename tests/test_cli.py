@@ -189,7 +189,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.5.2"
+        expected = "0.5.3"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -245,9 +245,9 @@ class CliTests(unittest.TestCase):
         )
 
         self.assertEqual(meridian.returncode, 0, meridian.stderr)
-        self.assertEqual(meridian.stdout.strip(), "meridian 0.5.2")
+        self.assertEqual(meridian.stdout.strip(), "meridian 0.5.3")
         self.assertEqual(cli_module.returncode, 0, cli_module.stderr)
-        self.assertEqual(cli_module.stdout.strip(), "meridian 0.5.2")
+        self.assertEqual(cli_module.stdout.strip(), "meridian 0.5.3")
         self.assertEqual(cli_help.returncode, 0, cli_help.stderr)
         self.assertIn("usage: meridian wiki", cli_help.stdout)
 
@@ -3809,6 +3809,48 @@ Compare recency-only retention with attention-based and oracle retention policie
             "Hard Fail Rules",
             "meridian.context",
             "plan_slot_gate",
+        ]:
+            self.assertIn(phrase, rubric)
+
+    def test_lab_official_benchmark_fidelity_gate_assets_parse(self) -> None:
+        required_skill_phrases = [
+            "Official Benchmark Fidelity",
+            "official runner entrypoint",
+            "official task source / split source",
+            "official config defaults",
+            "official metric function",
+            "official aggregation granularity",
+            "provider substitution",
+            "history/context hook",
+            "reporting-only",
+            "official metric",
+            "derived diagnostic",
+            "Please review benchmark faithfulness, not general code quality.",
+        ]
+        for root in (CODEX_PLUGIN_SKILL_ROOT, CLAUDE_PLUGIN_SKILL_ROOT):
+            lab = (root / "lab/SKILL.md").read_text(encoding="utf-8")
+            for phrase in required_skill_phrases:
+                self.assertIn(phrase, lab)
+
+        cases = Path("eval/cases/research_dev_research_prior.jsonl")
+        parsed = [json.loads(line) for line in cases.read_text(encoding="utf-8").splitlines() if line.strip()]
+        case_ids = {case["id"] for case in parsed}
+        self.assertIn("prior-official-benchmark-aggregation", case_ids)
+        self.assertIn("prior-official-benchmark-defaults", case_ids)
+        self.assertTrue(any("aggregation granularity" in case.get("expected_result", "") for case in parsed))
+        self.assertTrue(any("official config defaults" in case.get("expected_result", "") for case in parsed))
+
+        rubric = Path("eval/rubrics/research_dev_research_prior_quality.md").read_text(encoding="utf-8")
+        for phrase in [
+            "Official Benchmark Fidelity",
+            "official runner entrypoint",
+            "official config defaults",
+            "official metric function",
+            "official aggregation granularity",
+            "review benchmark faithfulness",
+            "general code quality",
+            "official_metric_labeling",
+            "benchmark_fidelity",
         ]:
             self.assertIn(phrase, rubric)
 

@@ -141,6 +141,15 @@ for selected canonical sections when returned pages could change the plan, and
 `meridian.trace` when provenance, trust state, or evidence identity affects the
 decision.
 
+Official benchmark, baseline, eval, metric, score, and leaderboard work uses a
+stricter `Official Benchmark Fidelity` sub-block. It records official runner
+entrypoint, task source / split source, config defaults, metric function,
+aggregation granularity, local wrapper changes, provider substitution,
+history/context hook changes, reporting-only changes, and whether reported
+numbers are official metrics or derived diagnostics. Missing official evidence
+stays `missing` and requires user confirmation before the under-grounded path
+is accepted.
+
 ### Experiment
 
 An Experiment is an independent evidence record. It stores the question,
@@ -226,6 +235,8 @@ The handoff should include:
 
 - active thread/node or raw idea
 - Paper Wiki grounding that shaped the decision
+- Official Benchmark Fidelity when the task claims official benchmark,
+  baseline, eval, metric, score, or leaderboard compatibility
 - smallest development question or task
 - Research Code Style for exploratory slices: prefer a readable main flow that
   keeps source branches, configs, seeds, splits, metrics, sample limits, and
@@ -234,6 +245,7 @@ The handoff should include:
   isolation, or a stable external API justifies them.
 - expected command/config/output identity
 - metric or validity criteria
+- official metric versus derived diagnostic labels for benchmark results
 - what result would update the Lab node or proposal
 
 Lab can require this style in the handoff, but final generated code satisfies it

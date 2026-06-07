@@ -121,6 +121,13 @@ Workflow:
 Done when each research-bearing decision has a prior status and later Lab work
 can recover whether the decision was grounded, missing, deferred, or local-only.
 
+For official benchmark, baseline, eval, metric, score, or leaderboard work, add
+an `Official Benchmark Fidelity` block before finalizing the plan. It must
+capture official runner entrypoint, task source / split source, config defaults,
+metric function, aggregation granularity, local wrapper changes, and official
+metric versus derived diagnostic labels. Ask for benchmark faithfulness review,
+not general code quality review.
+
 ## Scenario 5: Experiment Evidence Recording
 
 Use when a run, result, failed path, log, or observation should update the idea
@@ -169,18 +176,20 @@ Workflow:
 2. Include Paper Wiki context that shaped the decision.
 3. Include relevant Research Prior blocks when implementation depends on a
    method, prompt, metric, baseline, or evaluation convention.
-4. State the development question.
-5. Read relevant user-level coding-style principles from the Meridian
+4. Include Official Benchmark Fidelity when implementation depends on official
+   benchmark or metric compatibility.
+5. State the development question.
+6. Read relevant user-level coding-style principles from the Meridian
    coding-style profile when available, and include a compact
    `User Coding Style Principles` section.
-6. Add `Research Code Style` when the task is an exploratory research slice:
+7. Add `Research Code Style` when the task is an exploratory research slice:
    prefer one readable main flow, keep source branches/configs/seeds/splits/
    metrics/sample limits visible, and avoid single-use parser/loader/selector
    helper layers unless they represent real reuse, risky boundary isolation, or
    a stable external API.
-7. Define expected command/config/output identity.
-8. Define validity criteria and result-to-node update rules.
-9. Hand off to the normal coding workflow, which must enforce the research-code
+8. Define expected command/config/output identity.
+9. Define validity criteria and result-to-node update rules.
+10. Hand off to the normal coding workflow, which must enforce the research-code
    style as an acceptance criterion if final code shape matters.
 
 Done when the coding workflow has enough context to act and Lab has a clear

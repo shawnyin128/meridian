@@ -24,6 +24,20 @@ What does this experiment test?
 - user confirmation: `required | accepted | not_required`
 - impact:
 
+## Official Benchmark Fidelity
+
+- official runner entrypoint:
+- official task source / split source:
+- official config defaults:
+- official metric function:
+- official aggregation granularity:
+- local wrapper changes:
+- provider substitution:
+- history/context hook:
+- reporting-only:
+- result label: `official metric | derived diagnostic | local variant | missing`
+- benchmark faithfulness review:
+
 ## Targets And Impacts
 
 | Target Type | Target ID | Impact | Note |

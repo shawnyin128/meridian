@@ -27,6 +27,9 @@ Do not continue from remembered Lab semantics.
   proposals.
 - Before finalizing a Lab plan, run the Research Prior Gate for any method,
   prompt, metric, eval, ablation, probe, failure, or baseline slot in the plan.
+- Treat official benchmark, baseline, eval, metric, score, or leaderboard
+  faithfulness as a stricter Research Prior subtype: run the Official Benchmark
+  Fidelity gate before any development handoff or final Lab plan.
 - Use Paper Wiki MCP grounding as the default path for research-prior slots;
   preserve `checked`, `missing`, `deferred`, or `not_needed` state explicitly.
 - Keep implementation details as research context, not as Lab-owned code work.
@@ -68,6 +71,36 @@ For every slot that affects research interpretation:
 
 Do not treat missing prior as failure. Preserve the attempted query and agent
 judgment, then ask before accepting the under-grounded path.
+
+### Official Benchmark Fidelity
+
+Use this stricter gate whenever the task claims compatibility with an official
+benchmark, baseline, evaluation framework, metric, score, leaderboard, or
+published result.
+
+Minimum completion:
+
+- Extract an `Official Benchmark Fidelity` block before finalizing the Lab plan
+  or development handoff.
+- Include the official runner entrypoint.
+- Include the official task source / split source.
+- Include the official config defaults.
+- Include the official metric function.
+- Include the official aggregation granularity.
+- Classify local wrapper changes as provider substitution, history/context hook,
+  reporting-only, or metric-changing behavior.
+- Label results as official metric only when runner, task/split source, config
+  defaults, metric function, and aggregation granularity match the official
+  contract. Otherwise label them as derived diagnostic or local variant.
+- If official evidence is unavailable, record `missing`, preserve what was
+  checked, and ask before accepting the under-grounded risk.
+- Add this review prompt to the handoff:
+  `Please review benchmark faithfulness, not general code quality. Compare local wrappers/artifacts against the official benchmark runner, config defaults, metric functions, and aggregation granularity. Find any local behavior that changes the reported metric.`
+
+Do not treat official per-task outputs as proof that the aggregate score is
+official. Aggregation granularity is part of the benchmark contract. Do not
+treat a runnable local wrapper as official when config defaults differ from the
+official runner.
 
 ## User Coding Style Profile
 
@@ -224,6 +257,9 @@ Minimum completion:
   current path.
 - Keep prior separate from experiment evidence: prior shapes design; evidence
   changes node support.
+- For official benchmark, baseline, eval, metric, score, or leaderboard work,
+  run the Official Benchmark Fidelity gate and preserve the official-contract
+  fields before handoff.
 
 Example:
 
@@ -321,6 +357,8 @@ Minimum completion:
 - Include the Paper Wiki context that shaped the decision.
 - Include relevant Research Prior blocks when implementation depends on a
   method, prompt, metric, baseline, or evaluation convention.
+- Include an `Official Benchmark Fidelity` block when implementation depends on
+  an official benchmark, baseline, eval, metric, score, or leaderboard claim.
 - State the smallest development question or task.
 - Include a `User Coding Style Principles` section when the coding-style
   profile has relevant entries for this handoff.
@@ -329,6 +367,8 @@ Minimum completion:
   dataset script, or evaluation script.
 - Preserve evidence identity needed by Lab: expected command/config/output,
   metrics, validity criteria, and what result would update the node.
+- For official benchmark work, tell the coding/review workflow which outputs
+  may be called official metric and which are derived diagnostic local variants.
 - Hand off to the normal coding workflow; do not perform code edits, run tests,
   create commits, or manage release inside Lab.
 
