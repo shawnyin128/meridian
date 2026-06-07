@@ -383,6 +383,9 @@ Version-managed surfaces are aligned at `0.5.3`:
 | Compile check | Passed |
 | `git diff --check` | Passed |
 | `framework-check` before local plugin cache sync | Warn only: local Codex/Claude plugin caches had not yet installed `0.5.3` |
+| Codex plugin local update | Passed, `meridian@meridian` installed/enabled at `0.5.3` |
+| Claude Code plugin local update | Passed, `meridian@meridian` updated from `0.5.2` to `0.5.3` |
+| `framework-check` after local plugin cache sync | Passed, `8 pass, 0 warn, 0 fail` |
 
 ### Notes
 
@@ -393,4 +396,9 @@ Version-managed surfaces are aligned at `0.5.3`:
 
 ### Publish Status
 
-Ready to commit, push, and update local Codex/Claude plugin caches.
+Published.
+
+- Release commit: `3201482` (`fix(lab): release meridian 0.5.3`)
+- Pushed: `master -> master`
+- Local Codex plugin cache: `0.5.3`
+- Local Claude Code plugin cache: `0.5.3`
