@@ -38,6 +38,11 @@ from meridian.wiki.quality_check import (
 )
 from meridian.wiki.retrieval_audit import generate_audit_queries
 from meridian.wiki.rubrics import complete_result_template, rubric_for
+from meridian.wiki.source_fidelity import (
+    SourceFidelityResult,
+    decide_publish,
+    load_source_fidelity_result,
+)
 
 PRODUCT_SKILL_NAMES = ["meridian", "wiki", "lab"]
 CODEX_PLUGIN_SKILL_ROOT = Path("plugins/codex/meridian/skills")
@@ -298,6 +303,96 @@ class CliTests(unittest.TestCase):
             _trusted_metadata_authors(extraction),
             "not trusted (PDF metadata says: A. Researcher)",
         )
+
+    def test_source_fidelity_result_requires_core_statement_support(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "source-fidelity-result.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "paper_wiki_source_fidelity_result.v0",
+                        "agent": "source_fidelity",
+                        "decision": "pass",
+                        "weighted_score": 4.8,
+                        "statements": [
+                            {
+                                "statement_id": "stmt-1",
+                                "statement": "The method rotates activations before quantization.",
+                                "role": "source_fact",
+                                "core": True,
+                                "verdict": "supported",
+                                "support": [{"page": 2, "excerpt": "rotates activations before quantization"}],
+                                "repair_bucket": "none",
+                            }
+                        ],
+                        "hard_failures": [],
+                        "recommended_repairs": [],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            result = load_source_fidelity_result(path)
+
+            self.assertEqual(result.decision, "pass")
+            self.assertEqual(result.weighted_score, 4.8)
+            self.assertEqual(result.blocking_findings, [])
+
+    def test_source_fidelity_result_blocks_unsupported_core_statement(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "source-fidelity-result.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "paper_wiki_source_fidelity_result.v0",
+                        "agent": "source_fidelity",
+                        "decision": "pass",
+                        "weighted_score": 4.8,
+                        "statements": [
+                            {
+                                "statement_id": "stmt-1",
+                                "statement": "The paper proves lossless compression.",
+                                "role": "source_fact",
+                                "core": True,
+                                "verdict": "unsupported",
+                                "support": [],
+                                "repair_bucket": "paper_model_extraction",
+                            }
+                        ],
+                        "hard_failures": [],
+                        "recommended_repairs": [],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            result = load_source_fidelity_result(path)
+
+            self.assertEqual(result.decision, "fail")
+            self.assertEqual(result.blocking_findings[0]["rule_id"], "unsupported_core_statement")
+
+    def test_publish_decision_requires_quality_structural_and_source_fidelity_pass(self) -> None:
+        source = SourceFidelityResult(
+            path=Path("source-fidelity-result.json"),
+            decision="pass",
+            weighted_score=4.7,
+            blocking_findings=[],
+        )
+
+        decision = decide_publish(
+            quality_gate_decision="pass",
+            quality_self_check_decision="pass",
+            quality_self_check_score=4.7,
+            structural_self_check_decision="pass",
+            structural_self_check_score=4.7,
+            source_fidelity=source,
+            publish_mode="auto",
+        )
+
+        self.assertEqual(decision.decision, "published")
+        self.assertEqual(decision.reason, "all_required_gates_passed")
 
     def test_domain_detection_does_not_treat_support_as_ppo(self) -> None:
         extraction = PdfExtraction(
