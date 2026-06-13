@@ -307,11 +307,13 @@ def _artifact_path(run_manifest: Path, value: Any) -> Path | None:
     if not value:
         return None
     path = Path(str(value))
-    if path.is_absolute() or path.exists():
+    if path.is_absolute():
         return path
     candidate = run_manifest.parent / path
     if candidate.exists():
         return candidate
+    if path.exists():
+        return path
     return path
 
 
@@ -325,17 +327,34 @@ def _artifact_text(path: Path | None, original_ref: Any) -> str:
 def _valid_support_item(item: Any) -> bool:
     if not isinstance(item, dict):
         return False
-    has_locator = any(_is_non_empty(item.get(field)) for field in SUPPORT_LOCATOR_FIELDS)
-    has_evidence = _is_non_empty(item.get("excerpt")) or _is_non_empty(item.get("evidence"))
+    has_locator = any(_valid_locator_value(field, item.get(field)) for field in SUPPORT_LOCATOR_FIELDS)
+    has_evidence = _valid_evidence_text(item.get("excerpt")) or _valid_evidence_text(item.get("evidence"))
     return has_locator and has_evidence
 
 
-def _is_non_empty(value: Any) -> bool:
-    if value is None:
+def _valid_locator_value(field: str, value: Any) -> bool:
+    if field == "page":
+        return _valid_page_locator(value)
+    if not isinstance(value, str):
         return False
-    if isinstance(value, str):
-        return bool(value.strip())
-    return True
+    return bool(value.strip())
+
+
+def _valid_page_locator(value: Any) -> bool:
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return value > 0
+    if not isinstance(value, str):
+        return False
+    stripped = value.strip()
+    if not stripped.isdigit():
+        return False
+    return int(stripped) > 0
+
+
+def _valid_evidence_text(value: Any) -> bool:
+    return isinstance(value, str) and bool(value.strip())
 
 
 def _run_context(run: dict[str, Any], run_manifest: Path) -> dict[str, Any]:

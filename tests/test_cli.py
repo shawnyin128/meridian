@@ -483,6 +483,40 @@ class CliTests(unittest.TestCase):
             self.assertEqual(result.decision, "fail")
             self.assertIn("invalid_statement_support", {finding["rule_id"] for finding in result.blocking_findings})
 
+    def test_source_fidelity_result_blocks_unusable_support_values(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "source-fidelity-result.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "paper_wiki_source_fidelity_result.v0",
+                        "agent": "source_fidelity",
+                        "decision": "pass",
+                        "weighted_score": 4.8,
+                        "statements": [
+                            {
+                                "statement_id": "stmt-1",
+                                "statement": "The method rotates activations before quantization.",
+                                "role": "source_fact",
+                                "core": True,
+                                "verdict": "supported",
+                                "support": [{"page": 0, "evidence": False}],
+                                "repair_bucket": "none",
+                            }
+                        ],
+                        "hard_failures": [],
+                        "recommended_repairs": [],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            result = load_source_fidelity_result(path)
+
+            self.assertEqual(result.decision, "fail")
+            self.assertIn("invalid_statement_support", {finding["rule_id"] for finding in result.blocking_findings})
+
     def test_source_fidelity_packet_marks_missing_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -505,6 +539,38 @@ class CliTests(unittest.TestCase):
             text = packet.read_text(encoding="utf-8")
             self.assertIn("[missing artifact: missing-paper.md]", text)
             self.assertIn("[missing artifact: missing-pages.jsonl]", text)
+
+    def test_source_fidelity_packet_prefers_manifest_local_relative_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_dir = root / "run"
+            cwd_dir = root / "cwd"
+            manifest_dir.mkdir()
+            cwd_dir.mkdir()
+            (manifest_dir / "paper.md").write_text("manifest-local paper", encoding="utf-8")
+            (cwd_dir / "paper.md").write_text("cwd paper", encoding="utf-8")
+            manifest = manifest_dir / "run.json"
+            manifest.write_text(
+                json.dumps(
+                    {
+                        "title": "Relative Artifact Paper",
+                        "draft_artifacts": {"paper_page": "paper.md"},
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            packet = manifest_dir / "source-fidelity-packet.md"
+            previous_cwd = Path.cwd()
+            try:
+                os.chdir(cwd_dir)
+                build_source_fidelity_packet(manifest, packet)
+            finally:
+                os.chdir(previous_cwd)
+
+            text = packet.read_text(encoding="utf-8")
+            self.assertIn("manifest-local paper", text)
+            self.assertNotIn("cwd paper", text)
 
     def test_publish_decision_requires_quality_structural_and_source_fidelity_pass(self) -> None:
         source = SourceFidelityResult(
