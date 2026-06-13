@@ -483,6 +483,79 @@ class CliTests(unittest.TestCase):
             self.assertEqual(result.decision, "fail")
             self.assertIn("invalid_statement_support", {finding["rule_id"] for finding in result.blocking_findings})
 
+    def test_source_fidelity_result_accepts_non_page_locator_support(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "source-fidelity-result.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "paper_wiki_source_fidelity_result.v0",
+                        "agent": "source_fidelity",
+                        "decision": "pass",
+                        "weighted_score": 4.8,
+                        "statements": [
+                            {
+                                "statement_id": "stmt-1",
+                                "statement": "The method is described in the methods section.",
+                                "role": "source_fact",
+                                "core": True,
+                                "verdict": "supported",
+                                "support": [{"section": "Methods", "excerpt": "The method is described."}],
+                                "repair_bucket": "none",
+                            }
+                        ],
+                        "hard_failures": [],
+                        "recommended_repairs": [],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            result = load_source_fidelity_result(path)
+
+            self.assertEqual(result.decision, "pass")
+            self.assertEqual(result.blocking_findings, [])
+
+    def test_source_fidelity_result_blocks_blank_support_locator_or_evidence(self) -> None:
+        cases = [
+            ("blank section locator", {"section": " ", "excerpt": "The method is described."}),
+            ("blank excerpt", {"page": 2, "excerpt": " "}),
+        ]
+        for label, support in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / "source-fidelity-result.json"
+                path.write_text(
+                    json.dumps(
+                        {
+                            "schema_version": "paper_wiki_source_fidelity_result.v0",
+                            "agent": "source_fidelity",
+                            "decision": "pass",
+                            "weighted_score": 4.8,
+                            "statements": [
+                                {
+                                    "statement_id": "stmt-1",
+                                    "statement": "The method is described in the source.",
+                                    "role": "source_fact",
+                                    "core": True,
+                                    "verdict": "supported",
+                                    "support": [support],
+                                    "repair_bucket": "none",
+                                }
+                            ],
+                            "hard_failures": [],
+                            "recommended_repairs": [],
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+
+                result = load_source_fidelity_result(path)
+
+                self.assertEqual(result.decision, "fail")
+                self.assertIn("invalid_statement_support", {finding["rule_id"] for finding in result.blocking_findings})
+
     def test_source_fidelity_result_blocks_unusable_support_values(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "source-fidelity-result.json"
