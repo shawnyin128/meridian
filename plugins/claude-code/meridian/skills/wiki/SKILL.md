@@ -38,11 +38,11 @@ Minimum completion:
 Canonical examples:
 
 ```text
-The user gives a new paper PDF. Add it to Meridian Paper Wiki, preserve source provenance, publish the canonical paper page when the flow converges, update index/log/catalog, and report the managed source path and canonical wiki page.
+The user gives a new paper PDF. Add it to Meridian Paper Wiki, preserve source provenance, run the strict ingest flow, and publish the canonical paper page only after source-fidelity validation passes. If blocked, report the managed source path, source-fidelity packet, and next review action instead of treating the draft as wiki truth.
 ```
 
 ```text
-The user uploads a PDF from Codex or Claude Code. If no Paper Wiki workspace is configured, ask which library root to use. Then copy the PDF into the managed source store, ingest into the configured wiki, and report the managed source path plus canonical page.
+The user uploads a PDF from Codex or Claude Code. If no Paper Wiki workspace is configured, ask which library root to use. Then copy the PDF into the managed source store, run the strict flow, and report the managed source path plus canonical page only when the source-fidelity gate passes.
 ```
 
 ```text
@@ -50,7 +50,7 @@ The user gives an HTTP(S) paper URL. Download it to a local PDF first, then trea
 ```
 
 ```text
-The user gives a Zotero export folder such as `My Library`. Recursively ingest the PDFs into the active Paper Wiki workspace, keep sources in the managed source store, publish canonical pages when allowed, and report the batch summary plus any failures.
+The user gives a Zotero export folder such as `My Library`. Recursively ingest the PDFs into the active Paper Wiki workspace as draft/source artifacts, keep sources in the managed source store, and report the batch summary plus source-fidelity review work needed before canonical publication.
 ```
 
 ```text
@@ -73,8 +73,9 @@ Use internal support modes when needed:
 For MCP-facing source updates, `meridian.update` with `source_path` prepares a
 complete ingest handoff. MCP source update is a handoff, not proof that ingest
 has already completed: run the returned `run_command` or `fallback_command`,
-then report the managed source path, canonical wiki page, quality gate, review
-state, flow status, and git auto-commit/clean status.
+then report the managed source path, canonical wiki page only if published,
+quality gate, source-fidelity packet/result state, review state, flow status,
+and git auto-commit/clean status.
 
 Do not read CLI internals to discover ordinary ingest arguments. For URL
 sources, download it to a local PDF first before calling update. If `meridian`
@@ -101,6 +102,8 @@ next action through the support skill that owns the mechanism:
   improve context-packet behavior or durable synthesis, not raw search.
 - `trust`, `source`, or `boundary` hard failures: stop publish/apply work and
   run source/lint remediation first.
+- `canonical_source_fidelity` or unverified canonical-paper findings: run
+  source-fidelity recheck or quarantine before using those pages as evidence.
 - `synthesis` or `growth`: create write-back or refinement proposals before
   canonical updates.
 

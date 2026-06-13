@@ -161,7 +161,10 @@ Retrieval v0 is intentionally thin: `meridian wiki catalog` builds
 `wiki/.index/papers.jsonl` from canonical paper pages, and
 `meridian wiki retrieve` produces a ranked context packet from frontmatter and
 high-value sections. It does not synthesize an answer, mutate canonical wiki
-state, or require a vector database.
+state, or require a vector database. Scientific/research retrieval excludes
+canonical paper pages that have not passed source-fidelity validation; source
+quality and source-fidelity repair queries can still retrieve those pages for
+cleanup or quarantine.
 
 ## Workflow Contract
 
@@ -180,7 +183,8 @@ Small additive updates may skip the draft stage when the user explicitly asks fo
 The current full-wiki layer starts with a Markdown/Obsidian-compatible scaffold:
 
 - `meridian wiki init --wiki-root wiki` creates the vault directories and templates.
-- `meridian wiki publish-run <run.json> --wiki-root wiki` publishes a paper page and promotes candidate claims, methods, evidence, and topics.
+- `meridian wiki flow <paper.pdf> --wiki-root wiki --rubric <rubric.md>` prepares draft ingest artifacts, validation packets, and publishes a canonical paper page only when deterministic checks and source-fidelity validation pass.
+- `meridian wiki publish-run <run.json> --wiki-root wiki --source-fidelity-result <result.json>` publishes an existing draft run and promotes candidate claims, methods, evidence, and topics only after source-fidelity validation passes.
 - `meridian wiki source-audit --wiki-root wiki` checks managed raw sources and writes a source index.
 - `meridian wiki rebuild-index --wiki-root wiki` rebuilds `wiki/index.md` and `.index/papers.jsonl`.
 - `meridian wiki lint --wiki-root wiki` checks source registry, required directories, paper frontmatter, and basic link health.

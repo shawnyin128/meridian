@@ -109,7 +109,8 @@ PDF or source export
   -> extraction artifacts
   -> draft paper model and candidate records
   -> quality gate
-  -> canonical draft publish when allowed
+  -> source-fidelity packet/result gate
+  -> canonical draft publish only after source_fidelity_pass
   -> bounded LLM-as-Judge packet
   -> recorded judge result
   -> convergence decision
@@ -126,7 +127,7 @@ meridian wiki flow <paper.pdf> \
   --rubric eval/rubrics/paper_wiki_quality_v0.md
 ```
 
-The canonical wiki page may be auto-published only as a draft. It must preserve machine-readable state such as `status`, `review_state`, `quality_gate`, provenance fields, source links, and artifact links. A converged automatic ingest can move to `review_state: auto_converged`; this means the workflow accepted the packet, not that a human personally reviewed every claim.
+The canonical wiki page may be published only after the source-fidelity gate passes. Direct ingest writes draft/source artifacts; `wiki flow` builds `source-fidelity-packet.md`, consumes an explicit source-fidelity result when available, and blocks canonical mutation unless the result passes. Published pages must preserve machine-readable state such as `status`, `review_state`, `quality_gate`, `validation_state`, `trust_state`, provenance fields, source links, and artifact links. A converged automatic ingest can move to `review_state: auto_converged`; this means the workflow accepted the packet, not that a human personally reviewed every claim.
 
 The draft run file at `wiki/.drafts/ingests/<paper-slug>/paper.md` is a `paper_candidate` for publish/replay compatibility. Do not tell the user to read it as the final wiki product. The daily reading and retrieval target is the canonical page under `wiki/papers/`.
 

@@ -114,6 +114,13 @@ paper-wiki/
 The generated vault is the source of truth for daily use; debug drafts and
 internal validation artifacts are not product output.
 
+Paper ingest is quarantine-first. Direct `wiki ingest`, `wiki ingest-folder`,
+and eval ingest runs write draft/source artifacts only. A canonical
+`wiki/papers/` page is published through `wiki flow` or gated `publish-run`
+only after source-fidelity validation passes; strict health reports historical
+canonical pages that lack `validation_state: "source_fidelity_pass"` and
+`trust_state: "source_verified"`.
+
 `wiki` has two workflows:
 
 ```text

@@ -86,8 +86,9 @@ Avoid:
 Default user-facing ingest/flow output should report:
 
 - managed source PDF
-- canonical paper wiki page when published
+- canonical paper wiki page only when source-fidelity validation passed
 - quality gate and review state
+- source-fidelity packet/result state when canonical publication is blocked
 - index/log/catalog update status
 - internal artifact root for audit
 
@@ -142,6 +143,14 @@ Every ingest or calibration run should register the raw PDF as managed source st
 - The managed raw source and registry make the ingest replayable and prevent PDFs from being indexed only by ad hoc desktop paths.
 - Eval/calibration runs may use a per-case wiki root for source registration while still keeping `publish_mode=never`.
 - If extracted text is too sparse, scanned, or only a cover/notice page, generate a source-quality hold instead of paper knowledge. The hold should be retrievable for OCR/replacement/source-cleanup workflows and must not promote scientific claims.
+
+Direct `meridian wiki ingest` and `meridian wiki ingest-folder` are draft-only
+surfaces. Canonical `wiki/papers/` publication happens through `meridian wiki
+flow` or gated `publish-run`, and requires `validation_state:
+"source_fidelity_pass"` plus `trust_state: "source_verified"` on the published
+page. Historical canonical pages missing those fields are unsafe for normal
+scientific retrieval and should be routed through source-fidelity recheck or
+quarantine.
 
 ## User Insight Boundary
 
