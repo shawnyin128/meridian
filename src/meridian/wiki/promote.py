@@ -9,6 +9,11 @@ from typing import Any
 from meridian.wiki.corpus import build_paper_catalog, parse_frontmatter
 from meridian.wiki.quality import QualityGate
 from meridian.wiki.publish import publish_canonical_draft
+from meridian.wiki.source_fidelity import (
+    PublishDecision,
+    load_source_fidelity_result,
+    source_fidelity_manifest_payload,
+)
 from meridian.wiki.sources import SourceRecord, register_pdf_source
 from meridian.wiki.vault import append_wiki_log, init_wiki_vault, rebuild_wiki_index, slugify
 
@@ -29,10 +34,10 @@ def publish_run_to_wiki(
     *,
     run_manifest: Path,
     wiki_root: Path,
+    source_fidelity_result_path: Path | None = None,
     promote_candidates: bool = True,
     overwrite: bool = False,
 ) -> PublishRunResult:
-    init_wiki_vault(wiki_root=wiki_root)
     run = _read_json(run_manifest)
     title = str(run.get("title") or "Untitled Paper")
     draft = dict(run.get("draft_artifacts") or {})
@@ -41,6 +46,13 @@ def publish_run_to_wiki(
         raise FileNotFoundError(f"draft paper page does not exist: {paper_path}")
 
     quality_gate = _quality_gate_from_run(run)
+    publish_decision = _source_fidelity_publish_decision(
+        run=run,
+        run_manifest=run_manifest,
+        source_fidelity_result_path=source_fidelity_result_path,
+        quality_gate=quality_gate,
+    )
+    init_wiki_vault(wiki_root=wiki_root)
     source_record = _ensure_managed_source(run=run, wiki_root=wiki_root, title=title)
     source_pdf = source_record.managed_path if source_record is not None else Path(str(run.get("source_pdf") or ""))
     canonical = dict(run.get("canonical_artifacts") or {})
@@ -76,6 +88,7 @@ def publish_run_to_wiki(
             "sha256": source_record.sha256,
         }
     _patch_canonical_quality_frontmatter(canonical_paper_path, quality_gate, run)
+    _patch_canonical_source_fidelity_frontmatter(canonical_paper_path, publish_decision)
 
     promoted_claims: list[Path] = []
     promoted_methods: list[Path] = []
@@ -195,6 +208,85 @@ def _records_for_promotion(records: list[dict[str, Any]], *, type_name: str, max
         return (0 if supports or high_signal else 1, page_number)
 
     return sorted(records, key=priority)[:max_records]
+
+
+def _source_fidelity_publish_decision(
+    *,
+    run: dict[str, Any],
+    run_manifest: Path,
+    source_fidelity_result_path: Path | None,
+    quality_gate: QualityGate,
+) -> PublishDecision:
+    if source_fidelity_result_path is None:
+        decision = PublishDecision(
+            decision="blocked",
+            reason="publish_run_requires_source_fidelity_result",
+            review_state="needs_review",
+            validation_state="source_fidelity_not_passed",
+            trust_state="quarantined",
+            blocking_findings=[
+                {
+                    "rule_id": "publish_run_requires_source_fidelity_result",
+                    "detail": str(run_manifest),
+                    "artifact": "source_fidelity_review",
+                    "severity": "blocker",
+                }
+            ],
+        )
+        run["source_fidelity_gate"] = {
+            "schema_version": "paper_wiki_source_fidelity_gate.v0",
+            "result_path": None,
+            "source_fidelity_decision": "missing",
+            "publish_decision": decision.decision,
+            "block_reason": decision.reason,
+            "review_state": decision.review_state,
+            "validation_state": decision.validation_state,
+            "trust_state": decision.trust_state,
+            "blocking_findings": decision.blocking_findings,
+        }
+        run["publish_decision"] = decision.decision
+        _write_json(run_manifest, run)
+        raise ValueError("source-fidelity result is required before publishing an ingest run")
+
+    source_fidelity = load_source_fidelity_result(source_fidelity_result_path)
+    if source_fidelity.decision != "pass" or source_fidelity.blocking_findings:
+        blocking = [
+            {
+                "rule_id": "source_fidelity_not_pass",
+                "detail": source_fidelity.decision,
+                "artifact": "source_fidelity_review",
+                "severity": "blocker",
+            }
+        ]
+        blocking.extend(source_fidelity.blocking_findings)
+        decision = PublishDecision(
+            decision="blocked",
+            reason=str(blocking[0]["rule_id"]),
+            review_state="needs_review",
+            validation_state="source_fidelity_not_passed",
+            trust_state="quarantined",
+            blocking_findings=blocking,
+        )
+        run["source_fidelity_gate"] = source_fidelity_manifest_payload(source_fidelity, decision)
+        run["publish_decision"] = decision.decision
+        _write_json(run_manifest, run)
+        raise ValueError(f"source-fidelity gate blocked publish-run: {decision.reason}")
+
+    review_state = str(quality_gate.review_state)
+    deterministic = dict(run.get("deterministic_convergence") or {})
+    if deterministic.get("review_state"):
+        review_state = str(deterministic["review_state"])
+    decision = PublishDecision(
+        decision="published",
+        reason="source_fidelity_passed_for_publish_run",
+        review_state=review_state,
+        validation_state="source_fidelity_pass",
+        trust_state="source_verified",
+        blocking_findings=[],
+    )
+    run["source_fidelity_gate"] = source_fidelity_manifest_payload(source_fidelity, decision)
+    run["publish_decision"] = decision.decision
+    return decision
 
 
 def _upsert_topic_pages(*, wiki_root: Path, paper_path: Path) -> list[Path]:
@@ -462,6 +554,13 @@ def _patch_canonical_source_frontmatter(path: Path, source_record: SourceRecord)
     for key, value in replacements.items():
         text = _replace_or_insert_frontmatter_scalar(text, key, value)
     text = _replace_or_insert_frontmatter_list(text, "sources", [str(source_record.managed_path)])
+    path.write_text(text, encoding="utf-8")
+
+
+def _patch_canonical_source_fidelity_frontmatter(path: Path, decision: PublishDecision) -> None:
+    text = path.read_text(encoding="utf-8")
+    text = _replace_or_insert_frontmatter_scalar(text, "validation_state", decision.validation_state)
+    text = _replace_or_insert_frontmatter_scalar(text, "trust_state", decision.trust_state)
     path.write_text(text, encoding="utf-8")
 
 

@@ -350,6 +350,8 @@ def eval_cases(
         raise ValueError("eval mode must be ingest or flow")
     if mode == "flow" and rubric_path is None:
         raise ValueError("--rubric is required when --mode flow")
+    if mode == "ingest" and publish_mode != "never":
+        raise ValueError("wiki eval --mode ingest is draft-only; use --mode flow for gated canonical publication")
 
     out_dir.mkdir(parents=True, exist_ok=True)
     results: list[dict[str, object]] = []
@@ -1073,12 +1075,14 @@ def publish_run(
     *,
     run_manifest: Path,
     wiki_root: Path,
+    source_fidelity_result_path: Path | None = None,
     promote_candidates: bool = True,
     overwrite: bool = False,
 ) -> PublishRunResult:
     return publish_run_to_wiki(
         run_manifest=run_manifest,
         wiki_root=wiki_root,
+        source_fidelity_result_path=source_fidelity_result_path,
         promote_candidates=promote_candidates,
         overwrite=overwrite,
     )

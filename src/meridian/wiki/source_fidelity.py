@@ -99,13 +99,24 @@ def decide_publish(
                 trust_state="quarantined",
                 blocking_findings=blocking,
             )
+        if source_fidelity.decision != "pass" or source_fidelity.blocking_findings:
+            blocking = [_blocking("source_fidelity_not_pass", source_fidelity.decision, "source_fidelity_review")]
+            blocking.extend(source_fidelity.blocking_findings)
+            return PublishDecision(
+                decision="blocked",
+                reason=str(blocking[0]["rule_id"]),
+                review_state="needs_review",
+                validation_state="source_fidelity_not_passed",
+                trust_state="quarantined",
+                blocking_findings=blocking,
+            )
         return PublishDecision(
             decision="published",
             reason="manual_override_publish_mode_always",
             review_state="human_overrode_gate",
-            validation_state="source_fidelity_not_passed",
+            validation_state="source_fidelity_pass",
             trust_state="manual_override",
-            blocking_findings=list(source_fidelity.blocking_findings),
+            blocking_findings=[],
         )
 
     blocking: list[dict[str, Any]] = []

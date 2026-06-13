@@ -668,6 +668,29 @@ class CliTests(unittest.TestCase):
         self.assertEqual(decision.decision, "published")
         self.assertEqual(decision.reason, "all_required_gates_passed")
 
+    def test_publish_decision_always_cannot_override_source_fidelity_failure(self) -> None:
+        source = SourceFidelityResult(
+            path=Path("source-fidelity-result.json"),
+            decision="fail",
+            weighted_score=1.0,
+            blocking_findings=[{"rule_id": "unsupported_core_statement"}],
+        )
+
+        decision = decide_publish(
+            quality_gate_decision="pass",
+            quality_self_check_decision="pass",
+            quality_self_check_score=4.7,
+            structural_self_check_decision="pass",
+            structural_self_check_score=4.7,
+            source_fidelity=source,
+            source_fidelity_result_provided=True,
+            publish_mode="always",
+        )
+
+        self.assertEqual(decision.decision, "blocked")
+        self.assertEqual(decision.reason, "source_fidelity_not_pass")
+        self.assertEqual(decision.trust_state, "quarantined")
+
     def test_domain_detection_does_not_treat_support_as_ppo(self) -> None:
         extraction = PdfExtraction(
             metadata={"title": "Physics-informed neural networks"},
@@ -2535,12 +2558,24 @@ quality_state: "multimodal_pending"
             root = Path(tmp)
             wiki_root = root / "wiki"
             pdf = root / "codequant.pdf"
+            source_fidelity = root / "source-fidelity-result.json"
             pdf.write_bytes(b"%PDF fake")
+            source_fidelity.write_text(json.dumps(_passing_source_fidelity_result()) + "\n", encoding="utf-8")
             out = wiki_root / ".drafts/ingests/codequant"
 
             self.assertEqual(main(["wiki", "ingest", str(pdf), "--out", str(out)]), 0)
             self.assertEqual(
-                main(["wiki", "publish-run", str(out / "run.json"), "--wiki-root", str(wiki_root)]),
+                main(
+                    [
+                        "wiki",
+                        "publish-run",
+                        str(out / "run.json"),
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--source-fidelity-result",
+                        str(source_fidelity),
+                    ]
+                ),
                 0,
             )
 
@@ -2561,6 +2596,31 @@ quality_state: "multimodal_pending"
             run = json.loads((out / "run.json").read_text(encoding="utf-8"))
             self.assertIn("promotion", run)
             self.assertEqual(len(run["promotion"]["methods"]), 4)
+            self.assertEqual(run["source_fidelity_gate"]["publish_decision"], "published")
+
+    def test_publish_run_blocks_without_source_fidelity_result(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_fitz = sys.modules["fitz"]
+            fake_fitz.open = lambda path: CodeQuantLikeDocument()
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            pdf = root / "codequant.pdf"
+            pdf.write_bytes(b"%PDF fake")
+            out = wiki_root / ".drafts/ingests/codequant"
+
+            self.assertEqual(main(["wiki", "ingest", str(pdf), "--out", str(out)]), 0)
+            exit_code, _stdout, stderr = _run_cli_capture(
+                ["wiki", "publish-run", str(out / "run.json"), "--wiki-root", str(wiki_root)]
+            )
+
+            self.assertEqual(exit_code, 1)
+            self.assertIn("source-fidelity result is required", stderr)
+            run = json.loads((out / "run.json").read_text(encoding="utf-8"))
+            self.assertEqual(run["publish_decision"], "blocked")
+            self.assertEqual(run["source_fidelity_gate"]["block_reason"], "publish_run_requires_source_fidelity_result")
+            self.assertFalse((wiki_root / "papers/CodeQuant-Unified-Clustering-and-Quantization.md").exists())
+            self.assertFalse((wiki_root / "index.md").exists())
+            self.assertFalse((wiki_root / "templates").exists())
 
     def test_evidence_promotion_is_capped_for_large_documents(self) -> None:
         records = [
@@ -2601,7 +2661,9 @@ quality_state: "multimodal_pending"
             draft = root / "draft"
             draft.mkdir()
             pdf = root / "paper.pdf"
+            source_fidelity = root / "source-fidelity-result.json"
             pdf.write_bytes(b"%PDF fake")
+            source_fidelity.write_text(json.dumps(_passing_source_fidelity_result()) + "\n", encoding="utf-8")
             (draft / "paper.md").write_text(
                 """---
 type: "paper"
@@ -2645,7 +2707,17 @@ This draft came from an unmanaged source.
             (draft / "run.json").write_text(json.dumps(run), encoding="utf-8")
 
             self.assertEqual(
-                main(["wiki", "publish-run", str(draft / "run.json"), "--wiki-root", str(wiki_root)]),
+                main(
+                    [
+                        "wiki",
+                        "publish-run",
+                        str(draft / "run.json"),
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--source-fidelity-result",
+                        str(source_fidelity),
+                    ]
+                ),
                 0,
             )
 
@@ -2653,8 +2725,11 @@ This draft came from an unmanaged source.
             text = canonical.read_text(encoding="utf-8")
             updated_run = json.loads((draft / "run.json").read_text(encoding="utf-8"))
             self.assertIn('source_id: "paper-pdf-', text)
-            self.assertIn("raw/sources/papers", text)
+            self.assertIn("raw", text)
+            self.assertIn("sources", text)
+            self.assertIn("papers", text)
             self.assertEqual(updated_run["source_management"]["mode"], "managed")
+            self.assertEqual(updated_run["source_fidelity_gate"]["publish_decision"], "published")
             self.assertTrue((wiki_root / "raw/sources/sources.jsonl").exists())
 
     def test_publish_run_uses_deterministic_convergence_review_state(self) -> None:
@@ -2664,7 +2739,9 @@ This draft came from an unmanaged source.
             draft = root / "draft"
             draft.mkdir()
             pdf = root / "paper.pdf"
+            source_fidelity = root / "source-fidelity-result.json"
             pdf.write_bytes(b"%PDF fake")
+            source_fidelity.write_text(json.dumps(_passing_source_fidelity_result()) + "\n", encoding="utf-8")
             (draft / "paper.md").write_text(
                 """---
 type: "paper"
@@ -2715,7 +2792,17 @@ This draft has deterministic convergence evidence.
             (draft / "run.json").write_text(json.dumps(run), encoding="utf-8")
 
             self.assertEqual(
-                main(["wiki", "publish-run", str(draft / "run.json"), "--wiki-root", str(wiki_root)]),
+                main(
+                    [
+                        "wiki",
+                        "publish-run",
+                        str(draft / "run.json"),
+                        "--wiki-root",
+                        str(wiki_root),
+                        "--source-fidelity-result",
+                        str(source_fidelity),
+                    ]
+                ),
                 0,
             )
 
@@ -2723,6 +2810,8 @@ This draft has deterministic convergence evidence.
             self.assertEqual(text.count('review_state: "auto_converged"'), 1)
             self.assertNotIn('review_state: "needs_review"', text)
             self.assertIn('convergence_state: "deterministic_text_converged"', text)
+            self.assertIn('validation_state: "source_fidelity_pass"', text)
+            self.assertIn('trust_state: "source_verified"', text)
 
     def test_wiki_retrieve_outputs_context_packet_from_frontmatter_and_sections(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -5544,6 +5633,17 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertEqual(manifest["results"][0]["mode"], "ingest")
             self.assertTrue(Path(manifest["results"][0]["case_snapshot"]).exists())
 
+    def test_eval_ingest_mode_rejects_canonical_publish_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cases = root / "cases.jsonl"
+            cases.write_text("", encoding="utf-8")
+
+            with self.assertRaises(SystemExit) as raised:
+                main(["wiki", "eval", str(cases), "--out-dir", str(root / "out"), "--publish-mode", "auto"])
+
+            self.assertEqual(raised.exception.code, 2)
+
     def test_eval_flow_mode_prepares_judge_packets(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -5557,9 +5657,9 @@ Compare recency-only retention with attention-based and oracle retention policie
                 "category": "paper_ingest",
                 "paper_path": str(pdf),
                 "problem_description": "Run the full Paper Wiki flow.",
-                "expected_result": "Judge packet and canonical draft are created.",
+                "expected_result": "Judge and source-fidelity packets are created.",
                 "acceptable_paths": ["Any path that prepares judge evidence."],
-                "must_not_do": ["Do not require human review before packet creation."],
+                "must_not_do": ["Do not publish canonical wiki pages before source-fidelity pass."],
                 "evaluation_rubric": ["Judge packet includes generated artifacts."],
             }
             cases.write_text(json.dumps(case) + "\n", encoding="utf-8")
@@ -5585,7 +5685,7 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertEqual(manifest["rubric"], str(rubric))
             self.assertEqual(manifest["wiki_root"], str(out_dir / "wiki"))
             result = manifest["results"][0]
-            self.assertEqual(result["status"], "awaiting_judge")
+            self.assertEqual(result["status"], "blocked")
             self.assertEqual(result["mode"], "flow")
             self.assertTrue(Path(result["flow_manifest"]).exists())
             self.assertTrue(Path(result["judge_packet"]).exists())
@@ -5593,7 +5693,10 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertTrue(Path(result["quality_self_check"]).exists())
             self.assertTrue(Path(result["structural_self_check"]).exists())
             self.assertTrue(Path(result["case_snapshot"]).exists())
-            self.assertIn("canonical_artifacts", result)
+            flow = json.loads(Path(result["flow_manifest"]).read_text(encoding="utf-8"))
+            self.assertEqual(flow["publish_decision"], "blocked")
+            self.assertTrue(Path(flow["source_fidelity_packet"]).exists())
+            self.assertNotIn("canonical_artifacts", result)
 
     def test_eval_converge_summary_and_calibration(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

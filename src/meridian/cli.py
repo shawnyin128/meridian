@@ -290,7 +290,7 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "Canonical draft publish policy for the flow. 'auto' publishes only after "
             "deterministic checks and source-fidelity pass; 'always' is a manual override "
-            "and requires an explicit source-fidelity result."
+            "and requires an explicit passing source-fidelity result."
         ),
     )
     flow.add_argument("--case", type=Path, default=None, help="Optional evaluation case file.")
@@ -340,9 +340,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     eval_cmd.add_argument(
         "--publish-mode",
-        choices=["never", "auto", "always"],
+        choices=["never"],
         default="never",
-        help="Per-case canonical draft publish policy inside each eval output directory.",
+        help="Draft-only publish policy for eval ingest cases. Use --mode flow for gated canonical publication.",
     )
     eval_cmd.add_argument(
         "--mode",
@@ -350,7 +350,7 @@ def build_parser() -> argparse.ArgumentParser:
         default="ingest",
         help=(
             "Evaluation execution mode. 'ingest' writes per-case draft artifacts; "
-            "'flow' also publishes draft wiki pages and creates judge packets."
+            "'flow' creates judge/source-fidelity packets and only publishes through the strict gate."
         ),
     )
     eval_cmd.add_argument(
@@ -435,6 +435,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     publish.add_argument("run_manifest", type=Path, help="Path to run.json.")
     publish.add_argument("--wiki-root", type=Path, required=True, help="Canonical wiki root.")
+    publish.add_argument(
+        "--source-fidelity-result",
+        type=Path,
+        default=None,
+        help="Source-fidelity JSON result required before canonical publication.",
+    )
     publish.add_argument("--overwrite", action="store_true", help="Allow overwriting the canonical paper page.")
     publish.add_argument(
         "--no-promote-candidates",
@@ -1350,6 +1356,7 @@ def main(argv: list[str] | None = None) -> int:
             result = publish_run(
                 run_manifest=args.run_manifest,
                 wiki_root=args.wiki_root,
+                source_fidelity_result_path=args.source_fidelity_result,
                 promote_candidates=not args.no_promote_candidates,
                 overwrite=args.overwrite,
             )
