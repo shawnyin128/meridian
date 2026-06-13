@@ -1298,8 +1298,6 @@ Evidence takeaways:
                         "wiki",
                         "ingest",
                         str(pdf),
-                        "--publish-mode",
-                        "auto",
                         "--no-page-images",
                     ]
                 )
@@ -1307,7 +1305,7 @@ Evidence takeaways:
             self.assertEqual(exit_code, 0, stderr)
             self.assertIn("Managed source PDF:", stdout)
             self.assertIn(str(library / "sources" / "papers"), stdout)
-            self.assertIn("Canonical wiki page:", stdout)
+            self.assertIn("Canonical wiki page: not published", stdout)
             registry = library / "sources" / "sources.jsonl"
             self.assertTrue(registry.exists())
             records = [json.loads(line) for line in registry.read_text(encoding="utf-8").splitlines() if line.strip()]
@@ -1321,7 +1319,9 @@ Evidence takeaways:
                 Path(run["source_management"]["source_root"]).resolve(),
                 (library / "sources").resolve(),
             )
-            self.assertTrue(Path(run["canonical_artifacts"]["paper_page"]).is_file())
+            self.assertFalse(run["canonical_wiki_mutated"])
+            self.assertEqual(run["write_policy"], "draft_only")
+            self.assertNotIn("canonical_artifacts", run)
 
             with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(config_home)}):
                 exit_code, stdout, stderr = _run_cli_capture(
@@ -1464,7 +1464,7 @@ Evidence takeaways:
             source_root = (library / "sources").resolve()
             self.assertTrue(all(str(Path(record["managed_path"]).resolve()).startswith(str(source_root)) for record in records))
 
-    def test_wiki_ingest_folder_can_publish_single_pdf(self) -> None:
+    def test_wiki_ingest_folder_can_publish_single_pdf_draft_only(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             config_home = root / "config"
@@ -1480,18 +1480,17 @@ Evidence takeaways:
                         "wiki",
                         "ingest-folder",
                         str(zotero_export),
-                        "--publish-mode",
-                        "auto",
                     ]
                 )
 
             self.assertEqual(exit_code, 0, stderr)
-            self.assertIn("Canonical pages published: 1", stdout)
+            self.assertIn("Canonical pages published: 0", stdout)
             batch = json.loads(
                 (library / "wiki/.drafts/ingests/batches/my-library/batch.json").read_text(encoding="utf-8")
             )
-            self.assertEqual(batch["product_summary"]["canonical_wiki_pages_published"], 1)
-            self.assertTrue(Path(batch["results"][0]["canonical_paper_page"]).exists())
+            self.assertEqual(batch["product_summary"]["canonical_wiki_pages_published"], 0)
+            self.assertFalse((library / "wiki/papers/Fake-Research-Paper.md").exists())
+            self.assertTrue(Path(batch["results"][0]["run_manifest"]).exists())
 
     def test_wiki_ingest_can_skip_page_images_for_batch_runs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1610,7 +1609,7 @@ Evidence takeaways:
             self.assertNotIn("The core mechanism is CodeQuant:", paper)
             self.assertNotIn("Outliers have emerged as background filler", paper)
 
-    def test_wiki_ingest_can_publish_canonical_draft(self) -> None:
+    def test_wiki_ingest_can_publish_canonical_draft_only(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             wiki_root = root / "wiki"
@@ -1627,42 +1626,26 @@ Evidence takeaways:
                     str(out),
                     "--wiki-root",
                     str(wiki_root),
-                    "--publish-mode",
-                    "auto",
                 ]
             )
 
             self.assertEqual(exit_code, 0)
             run = json.loads((out / "run.json").read_text(encoding="utf-8"))
-            self.assertTrue(run["canonical_wiki_mutated"])
-            self.assertEqual(run["write_policy"], "auto_publish_draft")
-            self.assertIn("canonical_artifacts", run)
+            self.assertFalse(run["canonical_wiki_mutated"])
+            self.assertEqual(run["write_policy"], "draft_only")
+            self.assertNotIn("canonical_artifacts", run)
             self.assertIn("product_artifacts", run)
             self.assertIn("internal_artifacts", run)
             self.assertIn("debug_artifacts", run)
             self.assertIn("retrieval_visibility", run)
 
-            canonical = Path(run["canonical_artifacts"]["paper_page"])
-            self.assertTrue(canonical.exists())
-            self.assertEqual(run["product_artifacts"]["canonical_paper_page"], str(canonical))
+            canonical = wiki_root / "papers/Fake-Research-Paper.md"
+            self.assertFalse(canonical.exists())
+            self.assertIsNone(run["product_artifacts"]["canonical_paper_page"])
             self.assertEqual(run["internal_artifacts"]["paper_candidate"], str(out / "paper.md"))
             self.assertEqual(run["debug_artifacts"]["review_packet"], str(out / "review.md"))
-            self.assertEqual(run["retrieval_visibility"]["canonical_page"], str(canonical))
+            self.assertIsNone(run["retrieval_visibility"]["canonical_page"])
             self.assertTrue(run["retrieval_visibility"]["canonical_corpus_only"])
-            canonical_text = canonical.read_text(encoding="utf-8")
-            self.assertIn("review_state: \"needs_review\"", canonical_text)
-            self.assertIn("quality_gate: \"warn\"", canonical_text)
-            self.assertNotIn("Review packet: `review.md`", canonical_text)
-            self.assertNotIn("Full extraction and review details live", canonical_text)
-            self.assertNotIn("\nartifacts:\n", canonical_text)
-
-            index = (wiki_root / "index.md").read_text(encoding="utf-8")
-            log = (wiki_root / "log.md").read_text(encoding="utf-8")
-            self.assertIn("[[papers/Fake-Research-Paper|Fake Research Paper]]", index)
-            self.assertIn("## [", log)
-            self.assertIn("Quality gate: `warn`", log)
-            self.assertTrue((wiki_root / ".drafts/retrieval").is_dir())
-            self.assertTrue((wiki_root / "templates/paper.md").exists())
 
     def test_wiki_ingest_auto_commits_scoped_generated_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1688,8 +1671,6 @@ Evidence takeaways:
                     str(out),
                     "--wiki-root",
                     str(wiki_root),
-                    "--publish-mode",
-                    "auto",
                 ]
             )
 
@@ -1718,9 +1699,8 @@ Evidence takeaways:
                 text=True,
                 stdout=subprocess.PIPE,
             ).stdout
-            self.assertIn("wiki/papers/Fake-Research-Paper.md", committed_files)
             self.assertIn("wiki/.drafts/ingests/fake-paper/run.json", committed_files)
-            self.assertIn("wiki/.index/papers.jsonl", committed_files)
+            self.assertIn("wiki/.drafts/ingests/fake-paper/paper.md", committed_files)
 
     def test_wiki_ingest_default_output_is_product_oriented(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1739,14 +1719,12 @@ Evidence takeaways:
                     str(out),
                     "--wiki-root",
                     str(wiki_root),
-                    "--publish-mode",
-                    "auto",
                 ]
             )
 
             self.assertEqual(exit_code, 0, stderr)
             self.assertIn("Managed source PDF:", stdout)
-            self.assertIn("Canonical wiki page:", stdout)
+            self.assertIn("Canonical wiki page: not published", stdout)
             self.assertIn("Quality gate:", stdout)
             self.assertIn("Internal artifact root:", stdout)
             self.assertNotIn("review.md", stdout)
@@ -1765,8 +1743,6 @@ Evidence takeaways:
                     str(verbose_out),
                     "--wiki-root",
                     str(wiki_root),
-                    "--publish-mode",
-                    "auto",
                     "--overwrite",
                     "--verbose-artifacts",
                 ]
@@ -1947,7 +1923,7 @@ quality_state: "multimodal_pending"
             rubric.write_text("# Rubric\n", encoding="utf-8")
             out = wiki_root / ".drafts/ingests/fake-flow"
 
-            exit_code, _, stderr = _run_cli_capture(
+            exit_code, stdout, stderr = _run_cli_capture(
                 [
                     "wiki",
                     "flow",
@@ -1966,6 +1942,9 @@ quality_state: "multimodal_pending"
             run = json.loads((out / "run.json").read_text(encoding="utf-8"))
             self.assertEqual(flow["publish_decision"], "blocked")
             self.assertEqual(run["publish_decision"], "blocked")
+            self.assertIn("Publish decision: blocked", stdout)
+            self.assertIn(f"Block reason: {flow['block_reason']}", stdout)
+            self.assertIn(f"Source-fidelity packet: {flow['source_fidelity_packet']}", stdout)
             self.assertFalse(run["canonical_wiki_mutated"])
             self.assertFalse((wiki_root / "papers/Fake-Research-Paper.md").exists())
 
@@ -2090,29 +2069,63 @@ quality_state: "multimodal_pending"
             self.assertIn('validation_state: "source_fidelity_pass"', text)
             self.assertIn('trust_state: "source_verified"', text)
 
+    def test_wiki_flow_cli_source_fidelity_result_publishes_canonical_page(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            sys.modules["fitz"].open = lambda path: CodeQuantLikeDocument()
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            pdf = root / "paper.pdf"
+            rubric = root / "rubric.md"
+            source_fidelity = root / "source-fidelity-result.json"
+            pdf.write_bytes(b"%PDF fake")
+            rubric.write_text("# Rubric\n", encoding="utf-8")
+            source_fidelity.write_text(json.dumps(_passing_source_fidelity_result()) + "\n", encoding="utf-8")
+            out = wiki_root / ".drafts/ingests/codequant-flow"
+
+            exit_code, stdout, stderr = _run_cli_capture(
+                [
+                    "wiki",
+                    "flow",
+                    str(pdf),
+                    "--out",
+                    str(out),
+                    "--wiki-root",
+                    str(wiki_root),
+                    "--rubric",
+                    str(rubric),
+                    "--source-fidelity-result",
+                    str(source_fidelity),
+                ]
+            )
+
+            self.assertEqual(exit_code, 0, stderr)
+            flow = json.loads((out / "flow.json").read_text(encoding="utf-8"))
+            run = json.loads((out / "run.json").read_text(encoding="utf-8"))
+            canonical = wiki_root / "papers/CodeQuant-Unified-Clustering-and-Quantization.md"
+            self.assertEqual(flow["publish_decision"], "published")
+            self.assertEqual(run["publish_decision"], "published")
+            self.assertTrue(canonical.exists())
+            self.assertIn("Publish decision: published", stdout)
+            self.assertIn(f"Source-fidelity packet: {flow['source_fidelity_packet']}", stdout)
+            text = canonical.read_text(encoding="utf-8")
+            self.assertIn('validation_state: "source_fidelity_pass"', text)
+            self.assertIn('trust_state: "source_verified"', text)
+
     def test_wiki_catalog_indexes_canonical_paper_frontmatter(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             wiki_root = root / "wiki"
-            pdf = root / "paper.pdf"
-            pdf.write_bytes(b"%PDF fake")
-            out = wiki_root / ".drafts/ingests/fake-paper"
-
-            self.assertEqual(
-                main(
-                    [
-                        "wiki",
-                        "ingest",
-                        str(pdf),
-                        "--out",
-                        str(out),
-                        "--wiki-root",
-                        str(wiki_root),
-                        "--publish-mode",
-                        "auto",
-                    ]
-                ),
-                0,
+            _write_test_paper(
+                wiki_root / "papers/Fake-Research-Paper.md",
+                title="Fake Research Paper",
+                aliases=["Fake Paper"],
+                topics=["paper-specific research topic"],
+                methods=["paper-specific research method"],
+                settings=["paper-specific setting"],
+                body_sections={
+                    "What To Remember": "This canonical fixture should be indexed.",
+                    "Mechanism": "The method is intentionally small for catalog coverage.",
+                },
             )
             self.assertEqual(main(["wiki", "catalog", "--wiki-root", str(wiki_root)]), 0)
 
@@ -6312,20 +6325,27 @@ Compare recency-only retention with attention-based and oracle retention policie
             pdf.write_bytes(b"%PDF fake")
             out = wiki_root / ".drafts/ingests/fake-paper"
             judge = root / "judge-result.json"
+            source_fidelity = root / "source-fidelity-result.json"
+            rubric = root / "rubric.md"
             judge.write_text(json.dumps(_passing_judge_result("case-1")) + "\n", encoding="utf-8")
+            source_fidelity.write_text(json.dumps(_passing_source_fidelity_result()) + "\n", encoding="utf-8")
+            rubric.write_text("# Rubric\n", encoding="utf-8")
 
+            sys.modules["fitz"].open = lambda path: CodeQuantLikeDocument()
             self.assertEqual(
                 main(
                     [
                         "wiki",
-                        "ingest",
+                        "flow",
                         str(pdf),
                         "--out",
                         str(out),
                         "--wiki-root",
                         str(wiki_root),
-                        "--publish-mode",
-                        "auto",
+                        "--rubric",
+                        str(rubric),
+                        "--source-fidelity-result",
+                        str(source_fidelity),
                     ]
                 ),
                 0,
@@ -8268,6 +8288,33 @@ def _passing_judge_result(case_id: str) -> dict[str, object]:
         "findings": [],
         "calibration_questions_for_human": [],
         "recommended_refine_bucket": "other",
+    }
+
+
+def _passing_source_fidelity_result() -> dict[str, object]:
+    return {
+        "schema_version": "paper_wiki_source_fidelity_result.v0",
+        "agent": "source_fidelity",
+        "decision": "pass",
+        "weighted_score": 4.8,
+        "statements": [
+            {
+                "statement_id": "stmt-1",
+                "statement": "CodeQuant applies rotations to smooth activation outliers.",
+                "role": "source_fact",
+                "core": True,
+                "verdict": "supported",
+                "support": [
+                    {
+                        "page": 2,
+                        "excerpt": "Stage 1 applies learnable rotations to smooth activation outliers.",
+                    }
+                ],
+                "repair_bucket": "none",
+            }
+        ],
+        "hard_failures": [],
+        "recommended_repairs": [],
     }
 
 

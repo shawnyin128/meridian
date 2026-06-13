@@ -133,7 +133,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--wiki-root",
         type=Path,
         default=None,
-        help="Optional wiki root for canonical draft publish, e.g. wiki/.",
+        help="Optional wiki root used to place draft artifacts in the active Paper Wiki workspace.",
     )
     ingest.add_argument(
         "--library-root",
@@ -149,12 +149,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ingest.add_argument(
         "--publish-mode",
-        choices=["never", "auto", "always"],
+        choices=["never"],
         default="never",
         help=(
-            "Canonical draft publish policy. 'never' only writes draft artifacts; "
-            "'auto' publishes when the quality gate does not fail; 'always' publishes "
-            "a canonical draft even when it needs review."
+            "Draft-only publish policy. Direct ingest only writes draft/source extraction artifacts; "
+            "use 'wiki flow' with a source-fidelity result for canonical publication."
         ),
     )
     ingest.add_argument(
@@ -184,7 +183,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Batch output directory. Defaults to <wiki-root>/.drafts/ingests/batches/<folder-slug>/.",
     )
-    ingest_folder.add_argument("--wiki-root", type=Path, default=None, help="Canonical wiki root.")
+    ingest_folder.add_argument("--wiki-root", type=Path, default=None, help="Wiki root used to place draft batch artifacts.")
     ingest_folder.add_argument(
         "--library-root",
         type=Path,
@@ -199,9 +198,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ingest_folder.add_argument(
         "--publish-mode",
-        choices=["never", "auto", "always"],
-        default="auto",
-        help="Canonical publish policy for each discovered PDF.",
+        choices=["never"],
+        default="never",
+        help=(
+            "Draft-only publish policy for each discovered PDF. Use 'wiki flow' with a "
+            "source-fidelity result for canonical publication."
+        ),
     )
     ingest_folder.add_argument("--overwrite", action="store_true", help="Overwrite existing per-paper run directories.")
     ingest_folder.add_argument("--limit", type=int, default=None, help="Optional maximum number of PDFs to ingest.")
@@ -285,7 +287,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--publish-mode",
         choices=["auto", "always"],
         default="auto",
-        help="Canonical draft publish policy for the flow.",
+        help=(
+            "Canonical draft publish policy for the flow. 'auto' publishes only after "
+            "deterministic checks and source-fidelity pass; 'always' is a manual override "
+            "and requires an explicit source-fidelity result."
+        ),
     )
     flow.add_argument("--case", type=Path, default=None, help="Optional evaluation case file.")
     flow.add_argument(
@@ -293,6 +299,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="Optional LLM-as-Judge JSON result to record and converge immediately.",
+    )
+    flow.add_argument(
+        "--source-fidelity-result",
+        type=Path,
+        default=None,
+        help="Optional source-fidelity JSON result required before canonical publication.",
     )
     flow.add_argument(
         "--no-page-images",
@@ -1262,6 +1274,7 @@ def main(argv: list[str] | None = None) -> int:
                 publish_mode=args.publish_mode,
                 case_path=args.case,
                 judge_result_path=args.judge_result,
+                source_fidelity_result_path=args.source_fidelity_result,
                 render_page_images=not args.no_page_images,
             )
             catalog_wiki(wiki_root=workspace.wiki_root)
@@ -2092,6 +2105,11 @@ def _print_flow_summary(*, flow_path: Path, run_path: Path, verbose_artifacts: b
     print(f"Canonical wiki page: {product.get('canonical_paper_page') or 'not published'}")
     print(f"Quality gate: {quality_gate.get('decision') or 'unknown'}")
     print(f"Review state: {flow.get('deterministic_review_state') or 'not_run'}")
+    print(f"Publish decision: {flow.get('publish_decision') or 'unknown'}")
+    if flow.get("block_reason"):
+        print(f"Block reason: {flow['block_reason']}")
+    if flow.get("source_fidelity_packet"):
+        print(f"Source-fidelity packet: {flow['source_fidelity_packet']}")
     if product.get("wiki_index"):
         print(f"Updated wiki index: {product['wiki_index']}")
     if product.get("wiki_log"):
