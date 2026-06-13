@@ -40,6 +40,7 @@ from meridian.wiki.retrieval_audit import generate_audit_queries
 from meridian.wiki.rubrics import complete_result_template, rubric_for
 from meridian.wiki.source_fidelity import (
     SourceFidelityResult,
+    build_source_fidelity_packet,
     decide_publish,
     load_source_fidelity_result,
 )
@@ -372,6 +373,138 @@ class CliTests(unittest.TestCase):
 
             self.assertEqual(result.decision, "fail")
             self.assertEqual(result.blocking_findings[0]["rule_id"], "unsupported_core_statement")
+
+    def test_source_fidelity_result_blocks_missing_core_statement(self) -> None:
+        cases = [
+            ("empty statements", []),
+            (
+                "no core statements",
+                [
+                    {
+                        "statement_id": "stmt-1",
+                        "statement": "The method rotates activations before quantization.",
+                        "role": "source_fact",
+                        "core": False,
+                        "verdict": "supported",
+                        "support": [{"page": 2, "excerpt": "rotates activations before quantization"}],
+                        "repair_bucket": "none",
+                    }
+                ],
+            ),
+        ]
+        for label, statements in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / "source-fidelity-result.json"
+                path.write_text(
+                    json.dumps(
+                        {
+                            "schema_version": "paper_wiki_source_fidelity_result.v0",
+                            "agent": "source_fidelity",
+                            "decision": "pass",
+                            "weighted_score": 4.8,
+                            "statements": statements,
+                            "hard_failures": [],
+                            "recommended_repairs": [],
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+
+                result = load_source_fidelity_result(path)
+
+                self.assertEqual(result.decision, "fail")
+                self.assertIn("missing_core_statement", {finding["rule_id"] for finding in result.blocking_findings})
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "source-fidelity-result.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "paper_wiki_source_fidelity_result.v0",
+                        "agent": "source_fidelity",
+                        "decision": "pass",
+                        "weighted_score": 4.8,
+                        "statements": [
+                            {
+                                "statement_id": "stmt-1",
+                                "statement": "The method rotates activations before quantization.",
+                                "role": "source_fact",
+                                "core": "true",
+                                "verdict": "supported",
+                                "support": [{"page": 2, "excerpt": "rotates activations before quantization"}],
+                                "repair_bucket": "none",
+                            }
+                        ],
+                        "hard_failures": [],
+                        "recommended_repairs": [],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            result = load_source_fidelity_result(path)
+
+            self.assertEqual(result.decision, "fail")
+            self.assertIn("invalid_statement_core", {finding["rule_id"] for finding in result.blocking_findings})
+
+    def test_source_fidelity_result_blocks_malformed_support(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "source-fidelity-result.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "paper_wiki_source_fidelity_result.v0",
+                        "agent": "source_fidelity",
+                        "decision": "pass",
+                        "weighted_score": 4.8,
+                        "statements": [
+                            {
+                                "statement_id": "stmt-1",
+                                "statement": "The method rotates activations before quantization.",
+                                "role": "source_fact",
+                                "core": True,
+                                "verdict": "supported",
+                                "support": [{}],
+                                "repair_bucket": "none",
+                            }
+                        ],
+                        "hard_failures": [],
+                        "recommended_repairs": [],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            result = load_source_fidelity_result(path)
+
+            self.assertEqual(result.decision, "fail")
+            self.assertIn("invalid_statement_support", {finding["rule_id"] for finding in result.blocking_findings})
+
+    def test_source_fidelity_packet_marks_missing_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = root / "run.json"
+            manifest.write_text(
+                json.dumps(
+                    {
+                        "title": "Missing Artifact Paper",
+                        "draft_artifacts": {"paper_page": "missing-paper.md"},
+                        "pages_jsonl": "missing-pages.jsonl",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            packet = root / "source-fidelity-packet.md"
+
+            build_source_fidelity_packet(manifest, packet)
+
+            text = packet.read_text(encoding="utf-8")
+            self.assertIn("[missing artifact: missing-paper.md]", text)
+            self.assertIn("[missing artifact: missing-pages.jsonl]", text)
 
     def test_publish_decision_requires_quality_structural_and_source_fidelity_pass(self) -> None:
         source = SourceFidelityResult(

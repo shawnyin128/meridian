@@ -12,6 +12,7 @@ PACKET_SCHEMA_VERSION = "paper_wiki_source_fidelity_packet.v0"
 SUPPORTED_DECISIONS = {"pass", "needs_review", "fail"}
 SUPPORTED_ROLES = {"source_fact", "wiki_synthesis", "uncertainty", "user_insight"}
 SUPPORTED_VERDICTS = {"supported", "unsupported", "contradicted", "insufficient_context"}
+SUPPORT_LOCATOR_FIELDS = {"page", "section", "table", "figure", "algorithm", "equation", "source"}
 
 
 @dataclass(frozen=True)
@@ -138,14 +139,17 @@ def build_source_fidelity_packet(run_manifest: Path, out_path: Path) -> Path:
     if not isinstance(artifacts, dict):
         artifacts = {}
 
+    paper_ref = artifacts.get("paper_page") or run.get("paper_page") or run.get("paper_path")
+    pages_ref = run.get("pages_jsonl") or run.get("pages_path")
     paper_path = _artifact_path(
         run_manifest,
-        artifacts.get("paper_page") or run.get("paper_page") or run.get("paper_path"),
+        paper_ref,
     )
-    pages_path = _artifact_path(run_manifest, run.get("pages_jsonl") or run.get("pages_path"))
+    pages_path = _artifact_path(run_manifest, pages_ref)
     if pages_path is None:
         extraction_dir = _artifact_path(run_manifest, run.get("extraction_dir"))
         pages_path = extraction_dir / "pages.jsonl" if extraction_dir is not None else None
+        pages_ref = str(Path(str(run.get("extraction_dir"))) / "pages.jsonl") if run.get("extraction_dir") else pages_ref
 
     packet = [
         "# Paper Wiki Source-Fidelity Packet",
@@ -161,11 +165,11 @@ def build_source_fidelity_packet(run_manifest: Path, out_path: Path) -> Path:
         "",
         "## paper.md",
         "",
-        _fenced("markdown", _read_text_if_available(paper_path)),
+        _fenced("markdown", _artifact_text(paper_path, paper_ref)),
         "",
         "## pages.jsonl",
         "",
-        _fenced("jsonl", _read_text_if_available(pages_path)),
+        _fenced("jsonl", _artifact_text(pages_path, pages_ref)),
         "",
         "## Required Result Shape",
         "",
@@ -216,6 +220,7 @@ def _statement_blocking_findings(payload: dict[str, Any]) -> list[dict[str, Any]
         return []
 
     blocking: list[dict[str, Any]] = []
+    has_core_statement = False
     for index, statement in enumerate(statements, start=1):
         if not isinstance(statement, dict):
             blocking.append(_blocking("statement_not_object", f"index={index}", "source_fidelity_schema"))
@@ -223,13 +228,24 @@ def _statement_blocking_findings(payload: dict[str, Any]) -> list[dict[str, Any]
 
         role = str(statement.get("role") or "")
         verdict = str(statement.get("verdict") or "")
-        core = bool(statement.get("core"))
+        raw_core = statement.get("core")
+        core = raw_core is True
         support = statement.get("support")
 
         if role not in SUPPORTED_ROLES:
             blocking.append(_blocking("invalid_statement_role", role, "source_fidelity_schema"))
         if verdict not in SUPPORTED_VERDICTS:
             blocking.append(_blocking("invalid_statement_verdict", verdict, "source_fidelity_schema"))
+        if not isinstance(raw_core, bool):
+            blocking.append(
+                _blocking(
+                    "invalid_statement_core",
+                    str(statement.get("statement_id") or index),
+                    "source_fidelity_schema",
+                )
+            )
+        if core:
+            has_core_statement = True
         if core and verdict != "supported":
             blocking.append(
                 _blocking(
@@ -238,7 +254,7 @@ def _statement_blocking_findings(payload: dict[str, Any]) -> list[dict[str, Any]
                     str(statement.get("repair_bucket") or "source_fidelity_review"),
                 )
             )
-        if core and verdict == "supported" and not support:
+        if core and verdict == "supported" and (not support or not isinstance(support, list)):
             blocking.append(
                 _blocking(
                     "supported_core_statement_missing_support",
@@ -246,14 +262,16 @@ def _statement_blocking_findings(payload: dict[str, Any]) -> list[dict[str, Any]
                     "source_fidelity_schema",
                 )
             )
-        elif core and verdict == "supported" and not isinstance(support, list):
+        elif core and verdict == "supported" and not any(_valid_support_item(item) for item in support):
             blocking.append(
                 _blocking(
-                    "supported_core_statement_support_not_list",
+                    "invalid_statement_support",
                     str(statement.get("statement_id") or index),
                     "source_fidelity_schema",
                 )
             )
+    if not has_core_statement:
+        blocking.append(_blocking("missing_core_statement", "statements", "source_fidelity_schema"))
     return blocking
 
 
@@ -289,15 +307,35 @@ def _artifact_path(run_manifest: Path, value: Any) -> Path | None:
     if not value:
         return None
     path = Path(str(value))
-    if path.is_absolute():
+    if path.is_absolute() or path.exists():
         return path
-    return run_manifest.parent / path
+    candidate = run_manifest.parent / path
+    if candidate.exists():
+        return candidate
+    return path
 
 
-def _read_text_if_available(path: Path | None) -> str:
+def _artifact_text(path: Path | None, original_ref: Any) -> str:
     if path is None or not path.exists():
-        return ""
+        label = str(original_ref) if original_ref else "unspecified"
+        return f"[missing artifact: {label}]"
     return path.read_text(encoding="utf-8")
+
+
+def _valid_support_item(item: Any) -> bool:
+    if not isinstance(item, dict):
+        return False
+    has_locator = any(_is_non_empty(item.get(field)) for field in SUPPORT_LOCATOR_FIELDS)
+    has_evidence = _is_non_empty(item.get("excerpt")) or _is_non_empty(item.get("evidence"))
+    return has_locator and has_evidence
+
+
+def _is_non_empty(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    return True
 
 
 def _run_context(run: dict[str, Any], run_manifest: Path) -> dict[str, Any]:
