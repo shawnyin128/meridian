@@ -1816,6 +1816,42 @@ quality_state: "multimodal_pending"
             self.assertIn("## Health Dimensions", report)
             self.assertTrue(list((wiki_root / ".drafts/health").glob("*/repair-plan.md")))
 
+    def test_wiki_health_strict_blocks_unverified_canonical_paper(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            self.assertEqual(main(["wiki", "init", "--wiki-root", str(wiki_root)]), 0)
+            _write_test_paper(
+                wiki_root / "papers/Unverified-Paper.md",
+                title="Unverified Paper",
+                aliases=["UnverifiedPaper"],
+                topics=["source fidelity"],
+                methods=["paper audit"],
+                settings=["strict health"],
+                body_sections={"Evidence Map": "This page has not passed source-fidelity validation."},
+            )
+            out = root / "health.json"
+
+            exit_code, stdout, stderr = _run_cli_capture(
+                ["wiki", "health", "--wiki-root", str(wiki_root), "--profile", "strict", "--out", str(out)]
+            )
+
+            self.assertEqual(exit_code, 1, stderr)
+            self.assertIn("Wiki health:", stdout)
+            health = json.loads(out.read_text(encoding="utf-8"))
+            self.assertEqual(health["health_level"], "blocked")
+            self.assertIn(
+                "canonical_source_fidelity_unverified",
+                {item["code"] for item in health["hard_failures"]},
+            )
+            audit = health["source_fidelity_audit"]
+            self.assertEqual(audit["unverified"], 1)
+            self.assertEqual(audit["verified"], 0)
+            self.assertIn("papers/Unverified-Paper.md", audit["findings"][0]["path"])
+            repair_text = json.dumps(health["repair_queue"], ensure_ascii=False).lower()
+            self.assertIn("source fidelity", repair_text)
+            self.assertIn("unverified", repair_text)
+
     def test_wiki_health_ui_controller_blocks_duplicate_runs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             wiki_root = Path(tmp) / "wiki"

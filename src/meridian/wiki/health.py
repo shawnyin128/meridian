@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from meridian.wiki.concepts import run_concept_audit
+from meridian.wiki.corpus import parse_frontmatter
 from meridian.wiki.final_product import final_product_check
 from meridian.wiki.knowledge import run_knowledge_audit
 from meridian.wiki.vault import audit_sources, lint_wiki
@@ -55,13 +56,16 @@ def run_wiki_health(
         wiki_root=wiki_root,
         brief_path=index_dir / "final-product-check.md",
     )
+    source_fidelity = audit_canonical_source_fidelity(wiki_root=wiki_root)
 
     inputs = {
+        "profile": {"name": profile},
         "source_audit": _read_json(source.audit_path),
         "wiki_lint": _read_json(lint.report_path),
         "knowledge_audit": _read_json(knowledge.report_path),
         "concept_audit": _read_json(concept.report_path),
         "final_product_check": _read_json(final.report_path),
+        "source_fidelity_audit": source_fidelity,
     }
     dimensions = _score_dimensions(inputs)
     hard_failures = _hard_failures(inputs)
@@ -86,6 +90,7 @@ def run_wiki_health(
         "dimensions": dimensions,
         "hard_failures": hard_failures,
         "repair_queue": repair_queue,
+        "source_fidelity_audit": source_fidelity,
         "input_reports": {
             "source_audit": str(source.audit_path),
             "wiki_lint": str(lint.report_path),
@@ -122,8 +127,43 @@ def run_wiki_health(
     )
 
 
+def audit_canonical_source_fidelity(*, wiki_root: Path) -> dict[str, Any]:
+    papers_dir = wiki_root / "papers"
+    findings: list[dict[str, Any]] = []
+    total = 0
+    verified = 0
+    if papers_dir.exists():
+        for path in sorted(papers_dir.glob("*.md")):
+            total += 1
+            frontmatter = parse_frontmatter(path.read_text(encoding="utf-8"))
+            validation_state = frontmatter.get("validation_state")
+            trust_state = frontmatter.get("trust_state")
+            relative = path.relative_to(wiki_root).as_posix()
+            if validation_state == "source_fidelity_pass" and trust_state == "source_verified":
+                verified += 1
+                continue
+            findings.append(
+                {
+                    "code": "canonical_source_fidelity_unverified",
+                    "path": relative,
+                    "title": str(frontmatter.get("title") or path.stem),
+                    "validation_state": validation_state,
+                    "trust_state": trust_state,
+                    "expected_validation_state": "source_fidelity_pass",
+                    "expected_trust_state": "source_verified",
+                }
+            )
+    return {
+        "total": total,
+        "verified": verified,
+        "unverified": len(findings),
+        "findings": findings,
+    }
+
+
 def _score_dimensions(inputs: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     source = inputs["source_audit"]
+    source_fidelity = inputs["source_fidelity_audit"]
     lint = inputs["wiki_lint"]
     knowledge_metrics = dict(inputs["knowledge_audit"].get("metrics") or {})
     concept_metrics = dict(inputs["concept_audit"].get("metrics") or {})
@@ -136,10 +176,12 @@ def _score_dimensions(inputs: dict[str, dict[str, Any]]) -> list[dict[str, Any]]
     source_quality_misuse = _int(knowledge_metrics.get("source_quality_misuse")) + _int(
         concept_metrics.get("source_quality_contamination")
     )
+    unverified_papers = _int(source_fidelity.get("unverified"))
 
     trust_sub = [
         _sub("Sources", _deduct(100, missing * 25 + sha_mismatch * 25 + duplicate_sha * 10, cap=100), f"{source.get('total', 0)} managed sources, {missing} missing, {sha_mismatch} SHA mismatch."),
         _sub("Provenance", _deduct(100, evidence_without_source * 15, cap=60), f"{evidence_without_source} evidence records without source provenance."),
+        _sub("Source Fidelity", _deduct(100, unverified_papers * 35, cap=100), f"{source_fidelity.get('verified', 0)} verified, {unverified_papers} unverified canonical paper pages."),
         _sub("Boundaries", 0 if source_quality_misuse else 94, f"{source_quality_misuse} source-quality contamination findings."),
     ]
 
@@ -198,8 +240,21 @@ def _score_dimensions(inputs: dict[str, dict[str, Any]]) -> list[dict[str, Any]]
 def _repair_queue(inputs: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     knowledge_metrics = dict(inputs["knowledge_audit"].get("metrics") or {})
     concept_metrics = dict(inputs["concept_audit"].get("metrics") or {})
+    source_fidelity = inputs["source_fidelity_audit"]
     lint_findings = list(inputs["wiki_lint"].get("findings") or [])
     queue: list[dict[str, Any]] = []
+    unverified = _int(source_fidelity.get("unverified"))
+    if unverified:
+        sample = ", ".join(str(item.get("path")) for item in list(source_fidelity.get("findings") or [])[:3])
+        queue.append(
+            _repair(
+                "Recheck unverified canonical paper source fidelity",
+                "canonical_source_fidelity",
+                "critical",
+                f"{unverified} canonical paper pages are unverified for source fidelity: {sample}.",
+                "Re-run source-fidelity validation and quarantine pages until validation_state=source_fidelity_pass and trust_state=source_verified.",
+            )
+        )
     duplicate_aliases = _int(knowledge_metrics.get("duplicate_method_topic_alias_groups"))
     if duplicate_aliases:
         queue.append(
@@ -264,6 +319,8 @@ def _repair_queue(inputs: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
 
 def _hard_failures(inputs: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     source = inputs["source_audit"]
+    profile = str(dict(inputs.get("profile") or {}).get("name") or "daily")
+    source_fidelity = inputs["source_fidelity_audit"]
     knowledge_metrics = dict(inputs["knowledge_audit"].get("metrics") or {})
     concept_metrics = dict(inputs["concept_audit"].get("metrics") or {})
     failures: list[dict[str, Any]] = []
@@ -278,6 +335,16 @@ def _hard_failures(inputs: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     leaks = _catalog_boundary_leaks(wiki_root=Path(str(source.get("wiki_root") or ".")))
     if leaks:
         failures.append({"code": "retrieval_boundary_leak", "message": f"{len(leaks)} draft/version paths are present in normal catalog.", "paths": leaks[:10]})
+    unverified = _int(source_fidelity.get("unverified"))
+    if profile == "strict" and unverified:
+        paths = [str(item.get("path")) for item in list(source_fidelity.get("findings") or [])[:10]]
+        failures.append(
+            {
+                "code": "canonical_source_fidelity_unverified",
+                "message": f"{unverified} canonical paper pages lack source-fidelity verified trust state.",
+                "paths": paths,
+            }
+        )
     return failures
 
 
