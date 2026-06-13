@@ -5,6 +5,7 @@ build/
 dist/
 meridian-wiki.json
 wiki/
+.worktrees/
 
 .arbor/
 .codex/hooks.json
