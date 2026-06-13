@@ -22,6 +22,7 @@ from meridian.lab import initialize_lab_space, validate_lab_space
 from meridian.mcp import adapter as mcp_adapter
 from meridian.mcp import harness as mcp_harness
 from meridian.mcp import server as mcp_server
+from meridian.wiki import commands as wiki_commands
 from meridian.wiki.corpus import retrieve_papers
 from meridian.wiki.extract import PageExtraction, PdfExtraction
 from meridian.wiki.ingest import _title_from_first_page
@@ -1934,6 +1935,99 @@ quality_state: "multimodal_pending"
             self.assertIn("Validation artifacts:", verbose_stdout)
             self.assertIn("judge-packet.md", verbose_stdout)
             self.assertIn("reader-check.md", verbose_stdout)
+
+    def test_wiki_flow_blocks_publish_without_source_fidelity_result(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            pdf = root / "paper.pdf"
+            rubric = root / "rubric.md"
+            pdf.write_bytes(b"%PDF fake")
+            rubric.write_text("# Rubric\n", encoding="utf-8")
+            out = wiki_root / ".drafts/ingests/fake-flow"
+
+            exit_code, _, stderr = _run_cli_capture(
+                [
+                    "wiki",
+                    "flow",
+                    str(pdf),
+                    "--out",
+                    str(out),
+                    "--wiki-root",
+                    str(wiki_root),
+                    "--rubric",
+                    str(rubric),
+                ]
+            )
+
+            self.assertEqual(exit_code, 0, stderr)
+            flow = json.loads((out / "flow.json").read_text(encoding="utf-8"))
+            run = json.loads((out / "run.json").read_text(encoding="utf-8"))
+            self.assertEqual(flow["publish_decision"], "blocked")
+            self.assertEqual(run["publish_decision"], "blocked")
+            self.assertFalse(run["canonical_wiki_mutated"])
+            self.assertFalse((wiki_root / "papers/Fake-Research-Paper.md").exists())
+
+    def test_wiki_flow_publishes_with_passing_source_fidelity_result(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            sys.modules["fitz"].open = lambda path: CodeQuantLikeDocument()
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            pdf = root / "paper.pdf"
+            rubric = root / "rubric.md"
+            source_fidelity = root / "source-fidelity-result.json"
+            pdf.write_bytes(b"%PDF fake")
+            rubric.write_text("# Rubric\n", encoding="utf-8")
+            source_fidelity.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "paper_wiki_source_fidelity_result.v0",
+                        "agent": "source_fidelity",
+                        "decision": "pass",
+                        "weighted_score": 4.8,
+                        "statements": [
+                            {
+                                "statement_id": "stmt-1",
+                                "statement": "CodeQuant applies rotations to smooth activation outliers.",
+                                "role": "source_fact",
+                                "core": True,
+                                "verdict": "supported",
+                                "support": [
+                                    {
+                                        "page": 2,
+                                        "excerpt": "Stage 1 applies learnable rotations to smooth activation outliers.",
+                                    }
+                                ],
+                                "repair_bucket": "none",
+                            }
+                        ],
+                        "hard_failures": [],
+                        "recommended_repairs": [],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            out = wiki_root / ".drafts/ingests/codequant-flow"
+
+            wiki_commands.run_flow(
+                pdf_path=pdf,
+                out_dir=out,
+                wiki_root=wiki_root,
+                rubric_path=rubric,
+                publish_mode="auto",
+                source_fidelity_result_path=source_fidelity,
+            )
+
+            flow = json.loads((out / "flow.json").read_text(encoding="utf-8"))
+            run = json.loads((out / "run.json").read_text(encoding="utf-8"))
+            canonical = wiki_root / "papers/CodeQuant-Unified-Clustering-and-Quantization.md"
+            self.assertEqual(flow["publish_decision"], "published")
+            self.assertEqual(run["publish_decision"], "published")
+            self.assertTrue(canonical.exists())
+            text = canonical.read_text(encoding="utf-8")
+            self.assertIn('validation_state: "source_fidelity_pass"', text)
+            self.assertIn('trust_state: "source_verified"', text)
 
     def test_wiki_catalog_indexes_canonical_paper_frontmatter(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

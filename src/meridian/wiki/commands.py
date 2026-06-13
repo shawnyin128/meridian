@@ -522,6 +522,7 @@ def run_flow(
     publish_mode: str = "auto",
     case_path: Path | None = None,
     judge_result_path: Path | None = None,
+    source_fidelity_result_path: Path | None = None,
     render_page_images: bool = True,
     source_root: Path | None = None,
 ) -> WikiFlowResult:
@@ -535,6 +536,7 @@ def run_flow(
         publish_mode=publish_mode,
         case_path=case_path,
         judge_result_path=judge_result_path,
+        source_fidelity_result_path=source_fidelity_result_path,
         render_page_images=render_page_images,
         source_root=source_root,
     )
