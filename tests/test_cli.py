@@ -1829,6 +1829,8 @@ quality_state: "multimodal_pending"
                 methods=["paper audit"],
                 settings=["strict health"],
                 body_sections={"Evidence Map": "This page has not passed source-fidelity validation."},
+                validation_state=None,
+                trust_state=None,
             )
             out = root / "health.json"
 
@@ -2878,6 +2880,8 @@ claims:
 confidence: "medium"
 review_state: "auto_converged"
 quality_gate: "pass"
+validation_state: "source_fidelity_pass"
+trust_state: "source_verified"
 ---
 # MoE PTQ Paper
 
@@ -2914,6 +2918,8 @@ claims: []
 confidence: "medium"
 review_state: "auto_converged"
 quality_gate: "pass"
+validation_state: "source_fidelity_pass"
+trust_state: "source_verified"
 ---
 # Alignment Paper
 
@@ -5453,6 +5459,76 @@ Compare recency-only retention with attention-based and oracle retention policie
 
             self.assertEqual(result.results[0]["relative_path"], "papers/Good-PINN.md")
             self.assertIn("source-quality evidence guard", result.results[1]["selection_reasons"])
+
+    def test_retrieval_excludes_unverified_papers_from_scientific_queries(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            papers = wiki_root / "papers"
+            papers.mkdir(parents=True)
+            _write_test_paper(
+                papers / "Verified-PINN.md",
+                title="Verified PINN",
+                aliases=["VerifiedPINN"],
+                topics=["physics-informed neural networks", "partial differential equations"],
+                methods=["PDE residual loss"],
+                settings=["scientific ML"],
+                body_sections={
+                    "What To Remember": "PINNs fit neural networks with PDE residual losses and boundary conditions.",
+                    "Mechanism": "Autodiff computes PDE residuals at collocation points.",
+                    "Implementation Hooks": "Test residual shapes and boundary losses.",
+                },
+            )
+            _write_test_paper(
+                papers / "Unverified-PINN.md",
+                title="Unverified PINN",
+                aliases=["UnverifiedPINN"],
+                topics=["physics-informed neural networks", "partial differential equations"],
+                methods=["PDE residual loss"],
+                settings=["scientific ML"],
+                body_sections={
+                    "What To Remember": "This historical page has not passed source-fidelity review.",
+                    "Mechanism": "It should not be used as scientific evidence yet.",
+                },
+                validation_state=None,
+                trust_state=None,
+            )
+
+            result = retrieve_papers(
+                query="I need PDE residual losses and boundary condition implementation tests for scientific ML.",
+                wiki_root=wiki_root,
+                top_k=5,
+                strategy="v1",
+            )
+
+            paths = [item["relative_path"] for item in result.results]
+            self.assertIn("papers/Verified-PINN.md", paths)
+            self.assertNotIn("papers/Unverified-PINN.md", paths)
+
+            v0 = retrieve_papers(
+                query="I need PDE residual losses and boundary condition implementation tests for scientific ML.",
+                wiki_root=wiki_root,
+                top_k=5,
+                strategy="v0",
+            )
+            self.assertIn("papers/Verified-PINN.md", [item["relative_path"] for item in v0.results])
+            self.assertNotIn("papers/Unverified-PINN.md", [item["relative_path"] for item in v0.results])
+
+            verified_query = retrieve_papers(
+                query="Find source verified pages for PDE residual loss implementation evidence.",
+                wiki_root=wiki_root,
+                top_k=5,
+                strategy="v1",
+            )
+            self.assertNotIn("papers/Unverified-PINN.md", [item["relative_path"] for item in verified_query.results])
+
+            cleanup = retrieve_papers(
+                query="Find unverified source fidelity pages that need recheck or quarantine.",
+                wiki_root=wiki_root,
+                top_k=5,
+                strategy="v1",
+            )
+            self.assertIn("papers/Unverified-PINN.md", [item["relative_path"] for item in cleanup.results])
 
     def test_retrieval_optimization_eval_writes_side_by_side_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -8494,6 +8570,8 @@ def _write_test_paper(
     review_state: str = "auto_converged",
     quality_gate: str = "pass",
     confidence: str = "medium",
+    validation_state: str | None = "source_fidelity_pass",
+    trust_state: str | None = "source_verified",
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frontmatter = [
@@ -8515,6 +8593,8 @@ def _write_test_paper(
         f'confidence: "{confidence}"',
         f'review_state: "{review_state}"',
         f'quality_gate: "{quality_gate}"',
+        *([] if validation_state is None else [f'validation_state: "{validation_state}"']),
+        *([] if trust_state is None else [f'trust_state: "{trust_state}"']),
         "---",
         f"# {title}",
         "",

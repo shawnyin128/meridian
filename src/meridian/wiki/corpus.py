@@ -371,6 +371,7 @@ def retrieve_papers(
         scored = [_score_record(record, query=query, wiki_root=wiki_root) for record in catalog]
     else:
         scored = _score_records_v1(catalog, query=query, query_analysis=query_analysis, wiki_root=wiki_root)
+    scored = _apply_source_fidelity_guard(scored, query_analysis=query_analysis)
     ranked = [item for item in sorted(scored, key=lambda payload: (-payload["score"], payload["title"])) if item["score"] > 0]
     results = _diversify_v1(ranked, query_analysis=query_analysis, top_k=top_k) if strategy == "v1" else ranked[:top_k]
 
@@ -966,6 +967,11 @@ def _score_record_v1(
 
     knowledge_role = str(record.get("knowledge_role") or "")
     identity_match = _identity_boost(str(query_analysis["norm"]), title, _as_list((record.get("routing") or {}).get("aliases")))
+    if _is_unverified_source_fidelity_result(record) and not (
+        query_analysis.get("source_quality_query") or query_analysis.get("source_fidelity_query")
+    ):
+        score = 0.0
+        reasons.append("source-fidelity verification guard")
     if knowledge_role == "candidate_method_record" and not identity_match:
         score *= 0.2
         reasons.append("candidate method-record suppression")
@@ -1265,6 +1271,33 @@ def _is_source_quality_result(item: dict[str, Any]) -> bool:
         or bool(item.get("source_quality_linked"))
         or str(item.get("source_quality_risk") or "").lower() == "true"
     )
+
+
+def _is_unverified_source_fidelity_result(item: dict[str, Any]) -> bool:
+    corpus_type = str(item.get("corpus_type") or item.get("relative_path") or item.get("path") or "")
+    result_type = str(item.get("result_type") or item.get("type") or "")
+    is_paper = result_type == "paper" or corpus_type.startswith("papers")
+    if not is_paper:
+        return False
+    return not (
+        str(item.get("validation_state") or "") == "source_fidelity_pass"
+        and str(item.get("trust_state") or "") == "source_verified"
+    )
+
+
+def _apply_source_fidelity_guard(scored: list[dict[str, Any]], *, query_analysis: dict[str, Any]) -> list[dict[str, Any]]:
+    if query_analysis.get("source_quality_query") or query_analysis.get("source_fidelity_query"):
+        return scored
+    guarded = []
+    for item in scored:
+        if _is_unverified_source_fidelity_result(item):
+            item = dict(item)
+            item["score"] = 0.0
+            item["selection_reasons"] = _dedupe(
+                list(item.get("selection_reasons") or []) + ["source-fidelity verification guard"]
+            )
+        guarded.append(item)
+    return guarded
 
 
 def _coverage_facets(
@@ -1568,6 +1601,12 @@ def _query_analysis(query: str) -> dict[str, Any]:
         or bool(token_set & {"cleanup", "extraction", "metadata", "ocr", "weak"})
         and bool(token_set & {"source", "metadata", "ocr", "cleanup"})
     )
+    source_fidelity_query = (
+        "source fidelity" in norm
+        or "source-fidelity" in query.lower()
+        or bool(token_set & {"unverified", "recheck", "quarantine", "cleanup", "blocked"})
+        and bool(token_set & {"source", "fidelity", "validation", "trust", "page", "pages"})
+    )
     contrast_settings = []
     if "quantization" in token_set:
         has_weight_only = "weight only" in norm or "weight-only" in query.lower()
@@ -1587,6 +1626,7 @@ def _query_analysis(query: str) -> dict[str, Any]:
         "domains": sorted(domains),
         "desired_sections": desired_sections,
         "source_quality_query": source_quality_query,
+        "source_fidelity_query": source_fidelity_query,
         "contrast_settings": contrast_settings,
         "phrases": phrases,
         "facet_terms": facet_terms,
