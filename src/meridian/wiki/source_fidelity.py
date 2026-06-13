@@ -78,9 +78,27 @@ def decide_publish(
     structural_self_check_decision: str,
     structural_self_check_score: float,
     source_fidelity: SourceFidelityResult,
+    source_fidelity_result_provided: bool,
     publish_mode: str,
 ) -> PublishDecision:
     if publish_mode == "always":
+        if not source_fidelity_result_provided:
+            blocking = [
+                _blocking(
+                    "manual_override_requires_source_fidelity_result",
+                    str(source_fidelity.path),
+                    "source_fidelity_review",
+                )
+            ]
+            blocking.extend(source_fidelity.blocking_findings)
+            return PublishDecision(
+                decision="blocked",
+                reason="manual_override_requires_source_fidelity_result",
+                review_state="needs_review",
+                validation_state="source_fidelity_not_passed",
+                trust_state="quarantined",
+                blocking_findings=blocking,
+            )
         return PublishDecision(
             decision="published",
             reason="manual_override_publish_mode_always",

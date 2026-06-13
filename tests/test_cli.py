@@ -661,6 +661,7 @@ class CliTests(unittest.TestCase):
             structural_self_check_decision="pass",
             structural_self_check_score=4.7,
             source_fidelity=source,
+            source_fidelity_result_provided=True,
             publish_mode="auto",
         )
 
@@ -1967,6 +1968,66 @@ quality_state: "multimodal_pending"
             self.assertEqual(run["publish_decision"], "blocked")
             self.assertFalse(run["canonical_wiki_mutated"])
             self.assertFalse((wiki_root / "papers/Fake-Research-Paper.md").exists())
+
+    def test_wiki_flow_always_blocks_without_explicit_source_fidelity_result(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            pdf = root / "paper.pdf"
+            rubric = root / "rubric.md"
+            pdf.write_bytes(b"%PDF fake")
+            rubric.write_text("# Rubric\n", encoding="utf-8")
+            out = wiki_root / ".drafts/ingests/manual-override-flow"
+
+            wiki_commands.run_flow(
+                pdf_path=pdf,
+                out_dir=out,
+                wiki_root=wiki_root,
+                rubric_path=rubric,
+                publish_mode="always",
+            )
+
+            flow = json.loads((out / "flow.json").read_text(encoding="utf-8"))
+            run = json.loads((out / "run.json").read_text(encoding="utf-8"))
+            self.assertEqual(flow["publish_decision"], "blocked")
+            self.assertEqual(flow["block_reason"], "manual_override_requires_source_fidelity_result")
+            self.assertEqual(run["publish_decision"], "blocked")
+            self.assertFalse(run["canonical_wiki_mutated"])
+            self.assertFalse((wiki_root / "papers/Fake-Research-Paper.md").exists())
+
+    def test_wiki_flow_blocked_with_judge_result_does_not_converge(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_root = root / "wiki"
+            pdf = root / "paper.pdf"
+            rubric = root / "rubric.md"
+            judge = root / "judge-result.json"
+            pdf.write_bytes(b"%PDF fake")
+            rubric.write_text("# Rubric\n", encoding="utf-8")
+            judge.write_text(json.dumps(_passing_judge_result("case-blocked-flow")) + "\n", encoding="utf-8")
+            out = wiki_root / ".drafts/ingests/blocked-judge-flow"
+
+            result = wiki_commands.run_flow(
+                pdf_path=pdf,
+                out_dir=out,
+                wiki_root=wiki_root,
+                rubric_path=rubric,
+                publish_mode="auto",
+                judge_result_path=judge,
+            )
+
+            flow = json.loads((out / "flow.json").read_text(encoding="utf-8"))
+            run = json.loads((out / "run.json").read_text(encoding="utf-8"))
+            self.assertEqual(result.status, "blocked")
+            self.assertEqual(flow["status"], "blocked")
+            self.assertEqual(flow["publish_decision"], "blocked")
+            self.assertEqual(run["publish_decision"], "blocked")
+            self.assertNotIn("judge_result", run)
+            self.assertNotIn("convergence", run)
+            self.assertNotIn("deterministic_convergence", run)
+            self.assertIsNone(flow["validation_artifacts"]["convergence"])
+            self.assertIsNone(flow["convergence"])
+            self.assertFalse((out / "convergence.json").exists())
 
     def test_wiki_flow_publishes_with_passing_source_fidelity_result(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

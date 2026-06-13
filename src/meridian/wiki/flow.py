@@ -80,18 +80,14 @@ def run_wiki_flow(
         run_manifest=ingest_result.run_path,
         out_path=out_dir / "structural-self-check.json",
     )
-    deterministic_review_state = _apply_deterministic_review_state(
-        run_manifest=ingest_result.run_path,
-        quality_self_check=quality_self_check,
-        structural_self_check=structural_self_check,
-    )
     source_fidelity_packet_path = build_source_fidelity_packet(
         run_manifest=ingest_result.run_path,
         out_path=out_dir / "source-fidelity-packet.md",
     )
+    source_fidelity_result_provided = source_fidelity_result_path is not None
     source_fidelity_result = (
         load_source_fidelity_result(source_fidelity_result_path)
-        if source_fidelity_result_path is not None
+        if source_fidelity_result_provided
         else missing_source_fidelity_result(out_dir / "source-fidelity-result.json")
     )
     quality_gate = ingest_result.quality_gate.to_json()
@@ -102,11 +98,13 @@ def run_wiki_flow(
         structural_self_check_decision=structural_self_check.decision,
         structural_self_check_score=structural_self_check.weighted_score,
         source_fidelity=source_fidelity_result,
+        source_fidelity_result_provided=source_fidelity_result_provided,
         publish_mode=publish_mode,
     )
     source_fidelity_gate = source_fidelity_manifest_payload(source_fidelity_result, publish_decision)
 
     run_payload = _read_json(ingest_result.run_path)
+    deterministic_review_state = "blocked"
     if publish_decision.decision == "published":
         publish_result = publish_canonical_draft(
             wiki_root=wiki_root,
@@ -140,6 +138,12 @@ def run_wiki_flow(
         run_payload["retrieval_visibility"] = retrieval_visibility
         _patch_canonical_publish_decision(publish_result.paper_path, publish_decision)
         _write_json(ingest_result.run_path, run_payload)
+        deterministic_review_state = _apply_deterministic_review_state(
+            run_manifest=ingest_result.run_path,
+            quality_self_check=quality_self_check,
+            structural_self_check=structural_self_check,
+        )
+        _patch_canonical_publish_decision(publish_result.paper_path, publish_decision)
     else:
         run_payload["canonical_wiki_mutated"] = False
         run_payload["write_policy"] = "draft_only"
@@ -147,7 +151,7 @@ def run_wiki_flow(
 
     convergence: WikiConvergenceResult | None = None
     status = "blocked" if publish_decision.decision == "blocked" else "awaiting_judge"
-    if judge_result_path is not None:
+    if judge_result_path is not None and publish_decision.decision != "blocked":
         record_judge_result(
             run_manifest=ingest_result.run_path,
             judge_result_path=judge_result_path,
