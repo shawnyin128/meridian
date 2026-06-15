@@ -9,6 +9,8 @@ from pathlib import Path
 
 from meridian import __version__
 from meridian.framework_check import run_framework_check, write_framework_json, write_framework_report
+from meridian.setup.doctor import build_setup_doctor_report, format_setup_doctor
+from meridian.setup.repair import apply_mcp_repair
 from meridian.wiki.commands import (
     calibrate_eval,
     catalog_wiki,
@@ -104,6 +106,26 @@ def build_parser() -> argparse.ArgumentParser:
     )
     framework_check.add_argument("--json-out", type=Path, default=None, help="Optional machine-readable report path.")
     framework_check.add_argument("--report", type=Path, default=None, help="Optional Markdown report path.")
+
+    setup = subparsers.add_parser("setup", help="Meridian setup diagnostics and repair")
+    setup_subparsers = setup.add_subparsers(dest="command", required=True)
+
+    setup_doctor = setup_subparsers.add_parser(
+        "doctor",
+        help="Diagnose Meridian runtime, plugin, and MCP readiness.",
+    )
+    setup_doctor.add_argument("--client", choices=["codex", "claude", "all"], default="all")
+    setup_doctor.add_argument("--project-root", type=Path, default=Path.cwd())
+    setup_doctor.add_argument("--json-out", type=Path, default=None)
+
+    setup_repair = setup_subparsers.add_parser(
+        "repair-mcp",
+        help="Repair installed Meridian MCP client cache config.",
+    )
+    setup_repair.add_argument("--client", choices=["codex", "claude"], required=True)
+    setup_repair.add_argument("--project-root", type=Path, default=Path.cwd())
+    setup_repair.add_argument("--apply", action="store_true")
+    setup_repair.add_argument("--json-out", type=Path, default=None)
 
     wiki = subparsers.add_parser("wiki", help="Paper Wiki workflows")
     wiki_subparsers = wiki.add_subparsers(dest="command", required=True)
@@ -1177,6 +1199,48 @@ def main(argv: list[str] | None = None) -> int:
                 if len(category.findings) > 3:
                     print(f"  - ... {len(category.findings) - 3} more")
             return 0 if report.status != "fail" else 1
+
+        if args.product == "setup" and args.command == "doctor":
+            clients = None if args.client == "all" else [args.client]
+            report = build_setup_doctor_report(project_root=args.project_root, clients=clients)
+            if args.json_out:
+                args.json_out.parent.mkdir(parents=True, exist_ok=True)
+                args.json_out.write_text(json.dumps(report.to_dict(), indent=2) + "\n", encoding="utf-8")
+                print(f"Wrote setup doctor JSON: {args.json_out}")
+            print(format_setup_doctor(report), end="")
+            return 0 if report.status in {"ready", "degraded", "repair_available"} else 1
+
+        if args.product == "setup" and args.command == "repair-mcp":
+            report = build_setup_doctor_report(project_root=args.project_root, clients=[args.client])
+            if not report.repair_plan:
+                print("No MCP repair is available.")
+                print("No files changed. Re-run with --apply.")
+                print(format_setup_doctor(report), end="")
+                return 1
+            action = report.repair_plan[0]
+            if not args.apply:
+                print("Planned repair:")
+                print(f"- write: {action.target}")
+                print(f"- command: {action.command}")
+                print(f"- args: {' '.join(action.args)}")
+                print("")
+                print("No files changed. Re-run with --apply.")
+                return 0
+            result = apply_mcp_repair(
+                client=action.client,
+                mcp_config_path=action.target,
+                command=action.command,
+                args=action.args,
+            )
+            if args.json_out:
+                args.json_out.parent.mkdir(parents=True, exist_ok=True)
+                args.json_out.write_text(json.dumps(result.to_dict(), indent=2) + "\n", encoding="utf-8")
+                print(f"Wrote setup repair JSON: {args.json_out}")
+            print("Applied repair:")
+            print(f"- backup written: {result.backup_path}")
+            print("- MCP config updated")
+            print("- restart required: yes")
+            return 0
 
         if args.product == "wiki" and args.command == "init":
             if args.library_root is not None:

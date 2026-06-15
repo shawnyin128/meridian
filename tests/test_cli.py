@@ -2647,6 +2647,39 @@ quality_state: "multimodal_pending"
         self.assertIsNone(installs[0].configured_server)
         self.assertIsNotNone(installs[0].error)
 
+    def test_setup_doctor_cli_writes_json_report(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            json_out = root / "setup.json"
+
+            exit_code, stdout, stderr = _run_cli_capture(
+                [
+                    "setup",
+                    "doctor",
+                    "--client",
+                    "codex",
+                    "--project-root",
+                    str(Path.cwd()),
+                    "--json-out",
+                    str(json_out),
+                ]
+            )
+
+            self.assertIn(exit_code, {0, 1})
+            self.assertEqual(stderr, "")
+            self.assertIn("Meridian setup doctor:", stdout)
+            self.assertTrue(json_out.exists())
+            self.assertIn("status", json.loads(json_out.read_text(encoding="utf-8")))
+
+    def test_setup_repair_mcp_cli_dry_run_does_not_apply(self) -> None:
+        exit_code, stdout, stderr = _run_cli_capture(
+            ["setup", "repair-mcp", "--client", "codex", "--project-root", str(Path.cwd())]
+        )
+
+        self.assertIn(exit_code, {0, 1})
+        self.assertEqual(stderr, "")
+        self.assertIn("No files changed", stdout)
+
     def test_setup_doctor_reports_repair_available_for_skill_visible_mcp_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "project"
