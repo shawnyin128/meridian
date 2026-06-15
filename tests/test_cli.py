@@ -2768,6 +2768,53 @@ quality_state: "multimodal_pending"
         self.assertEqual(len(report.repair_plan), 1)
         self.assertEqual(report.repair_plan[0].client, "codex")
         self.assertEqual(report.repair_plan[0].command, sys.executable)
+
+    def test_setup_doctor_reports_blocked_if_mixed_unrepairable_critical(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "project"
+            home = Path(tmp) / "home"
+            codex_root = home / ".codex/plugins/cache/meridian/meridian" / __version__
+            claude_root = home / ".claude/plugins/cache/meridian/meridian" / __version__
+            for skill in ["meridian", "wiki", "lab"]:
+                skill_path = codex_root / "skills" / skill / "SKILL.md"
+                skill_path.parent.mkdir(parents=True, exist_ok=True)
+                skill_path.write_text(f"# {skill}\n", encoding="utf-8")
+            (codex_root / ".mcp.json").write_text(
+                json.dumps(
+                    {
+                        "mcpServers": {
+                            "meridian-paper-wiki": {
+                                "args": ["-m", "meridian.mcp", "serve"],
+                            }
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            for skill in ["meridian", "wiki", "lab"]:
+                skill_path = claude_root / "skills" / skill / "SKILL.md"
+                skill_path.parent.mkdir(parents=True, exist_ok=True)
+                skill_path.write_text(f"# {skill}\n", encoding="utf-8")
+            # leave claude_root/.mcp.json missing to create a non-repairable MCP config blocker
+
+            def runner(argv: list[str], timeout: float) -> CommandResult:
+                if argv[0] == sys.executable and "-c" in argv:
+                    return CommandResult(0, f"{sys.executable}\n{__version__}\n", "")
+                if argv[0] == sys.executable and "--help" in argv:
+                    return CommandResult(0, "usage: python -m meridian.mcp", "")
+                if argv[0] == sys.executable and "capabilities" in argv:
+                    return CommandResult(0, '{"schema_version": "meridian.mcp_adapter.v0"}', "")
+                return CommandResult(1, "", f"unexpected argv: {argv}")
+
+            report = build_setup_doctor_report(project_root=root, home=home, clients=["codex", "claude"], runner=runner)
+
+        self.assertEqual(report.status, "blocked")
+        codes = {finding["code"] for finding in report.findings}
+        self.assertIn("mcp_repair_available", codes)
+        self.assertIn("mcp_required_tool_missing", codes)
+        repairable_clients = {action.client for action in report.repair_plan}
+        self.assertIn("codex", repairable_clients)
+        self.assertNotIn("claude", repairable_clients)
     def test_coding_style_profile_init_is_user_level_and_no_code_blocks(self) -> None:
         from meridian.lab import initialize_coding_style_profile, migrate_coding_style_profile, validate_coding_style_profile
 
