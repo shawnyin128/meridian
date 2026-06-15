@@ -35,6 +35,9 @@ SUPPORT_SKILLS = {
 }
 
 LAB_SKILL_RELATIVE_PATH = Path("skills/lab/SKILL.md")
+MCP_SERVER_NAME = "meridian-paper-wiki"
+MCP_SERVER_COMMAND = "python"
+MCP_SERVER_ARGS = ["-m", "meridian.mcp", "serve"]
 
 
 @dataclass(frozen=True)
@@ -287,6 +290,23 @@ def _plugin_bundle_category(root: Path) -> FrameworkCategory:
     for path in [root / "plugins/codex/meridian/.mcp.json", root / "plugins/claude-code/meridian/.mcp.json"]:
         if not path.exists():
             _add(findings, category, "degraded", "manual", "missing_mcp_config", f"{_rel(path, root)} is missing.", "Restore MCP config or document why the package no longer ships MCP.")
+            continue
+        try:
+            mcp_config = json.loads(path.read_text(encoding="utf-8"))
+            server = mcp_config["mcpServers"][MCP_SERVER_NAME]
+        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+            _add(findings, category, "critical", "manual", "invalid_mcp_config", f"{_rel(path, root)} has an invalid Meridian MCP server entry: {exc}.", "Restore the plugin MCP config with the Meridian server entry.")
+            continue
+        if server.get("command") != MCP_SERVER_COMMAND or server.get("args") != MCP_SERVER_ARGS:
+            _add(
+                findings,
+                category,
+                "degraded",
+                "manual",
+                "mcp_config_entrypoint_drift",
+                f"{_rel(path, root)} starts `{server.get('command')}` with args `{server.get('args')}`.",
+                "Update the plugin MCP entrypoint to `python -m meridian.mcp serve`, reinstall the plugin, and restart the client session.",
+            )
     for item in lab_skill_path_diagnostics(root):
         state = item["state"]
         label = item["label"]

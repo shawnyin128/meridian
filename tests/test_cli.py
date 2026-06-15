@@ -2255,7 +2255,7 @@ quality_state: "multimodal_pending"
         self.assertIn("Status Check", text)
         self.assertIn("Initialize", text)
         self.assertIn("Migration Check", text)
-        self.assertIn("python3 -m meridian wiki status", text)
+        self.assertIn("python -m meridian wiki status", text)
         self.assertIn("meridian-wiki.json", text)
         self.assertIn("needs_migration", text)
         self.assertIn("needs_lab_init", text)
@@ -2284,7 +2284,7 @@ quality_state: "multimodal_pending"
 
         self.assertIn("Entry Boundary", meridian)
         self.assertIn("Framework Check", meridian)
-        self.assertIn("python3 -m meridian framework-check", meridian)
+        self.assertIn("python -m meridian framework-check", meridian)
         self.assertIn("If the user asks to ingest, retrieve, answer from papers", meridian)
         self.assertIn("Do not continue the normal work", meridian)
         self.assertIn("inside this setup skill after the setup issue is resolved", meridian)
@@ -2482,6 +2482,42 @@ quality_state: "multimodal_pending"
         ready_category = next(category for category in ready.categories if category.name == "User Profile")
         self.assertIn("coding_style_profile_missing", {finding.code for finding in missing_category.findings})
         self.assertIn("coding_style_profile_ready", {finding.code for finding in ready_category.findings})
+
+    def test_framework_check_reports_mcp_entrypoint_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "project"
+            for package, manifest_dir in [
+                ("plugins/codex/meridian", ".codex-plugin"),
+                ("plugins/claude-code/meridian", ".claude-plugin"),
+            ]:
+                package_root = root / package
+                (package_root / manifest_dir).mkdir(parents=True)
+                (package_root / ".mcp.json").write_text(
+                    json.dumps(
+                        {
+                            "mcpServers": {
+                                "meridian-paper-wiki": {
+                                    "command": "python3",
+                                    "args": ["-m", "meridian.mcp", "serve"],
+                                }
+                            }
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                (package_root / manifest_dir / "plugin.json").write_text(
+                    json.dumps({"name": "meridian", "version": __version__}),
+                    encoding="utf-8",
+                )
+                for skill_name in ["meridian", "wiki", "lab"]:
+                    skill = package_root / "skills" / skill_name / "SKILL.md"
+                    skill.parent.mkdir(parents=True, exist_ok=True)
+                    skill.write_text(f"---\nname: {skill_name}\n---\n# {skill_name}\n", encoding="utf-8")
+
+            report = run_framework_check(project_root=root)
+
+        bundle = next(category for category in report.categories if category.name == "Plugin Bundle")
+        self.assertIn("mcp_config_entrypoint_drift", {finding.code for finding in bundle.findings})
 
     def test_lab_coding_style_profile_assets_parse(self) -> None:
         lab = (CODEX_PLUGIN_SKILL_ROOT / "lab/SKILL.md").read_text(encoding="utf-8")
@@ -4235,6 +4271,10 @@ Compare recency-only retention with attention-based and oracle retention policie
 
         for root in (codex_root, claude_root):
             self.assertTrue((root / ".mcp.json").exists())
+            mcp_config = json.loads((root / ".mcp.json").read_text(encoding="utf-8"))
+            server = mcp_config["mcpServers"]["meridian-paper-wiki"]
+            self.assertEqual(server["command"], "python")
+            self.assertEqual(server["args"], ["-m", "meridian.mcp", "serve"])
             self.assertTrue((root / "skills/meridian/SKILL.md").exists())
             self.assertTrue((root / "skills/wiki/SKILL.md").exists())
             self.assertTrue((root / "skills/lab/SKILL.md").exists())

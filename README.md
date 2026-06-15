@@ -28,20 +28,20 @@ from the repo first:
 ```bash
 git clone git@github.com:shawnyin128/meridian.git
 cd meridian
-python3 -m pip install -e .
+python -m pip install -e .
 ```
 
 This exposes:
 
 ```bash
 meridian --version
-python3 -m meridian.mcp serve
+python -m meridian.mcp serve
 ```
 
-The plugin MCP config starts `python3 -m meridian.mcp serve`. That process uses
+The plugin MCP config starts `python -m meridian.mcp serve`. That process uses
 the `meridian` Python package importable in the client environment. If MCP
 behavior looks stale after a plugin update, update the core checkout with
-`git pull`, then rerun `python3 -m pip install -e .` from that checkout.
+`git pull`, then rerun `python -m pip install -e .` from that checkout.
 
 ### Codex
 
@@ -201,7 +201,7 @@ There are two update layers:
 
 | Layer | What Changes | How To Update |
 |---|---|---|
-| Core | MCP server code, retrieval, ingest, wiki/lab backend behavior | `git pull`, then keep or rerun `python3 -m pip install -e .` |
+| Core | MCP server code, retrieval, ingest, wiki/lab backend behavior | `git pull`, then keep or rerun `python -m pip install -e .` |
 | Plugin | `meridian`, `wiki`, and `lab` skill text, `.mcp.json`, plugin metadata | upgrade/reinstall the Codex or Claude Code plugin |
 
 After updating either layer, ask `meridian` to run a setup and migration check.

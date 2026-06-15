@@ -24,7 +24,7 @@ Both plugin packages include:
 - `skills/wiki/`: product entry for Update Wiki and Use Wiki
 - `skills/lab/`: product entry for wiki-grounded idea graph management
 - `.mcp.json`: starts the Meridian Paper Wiki MCP server with
-  `python3 -m meridian.mcp serve`
+  `python -m meridian.mcp serve`
 
 Only `meridian`, `wiki`, and `lab` are published as plugin skills. Ingest,
 retrieval, personalization, evolution, knowledge, and concept behavior are
@@ -40,7 +40,7 @@ part of the plugin skill surface.
 Use an existing Python environment:
 
 ```bash
-python3 -m pip install -e .
+python -m pip install -e .
 ```
 
 Then initialize a user-level library:
@@ -61,13 +61,13 @@ The library stores managed sources and the derived wiki under one root:
 After initialization, the plugin MCP server can use the active workspace:
 
 ```bash
-python3 -m meridian.mcp serve
+python -m meridian.mcp serve
 ```
 
-The plugin MCP config starts `python3 -m meridian.mcp serve`. That process uses
+The plugin MCP config starts `python -m meridian.mcp serve`. That process uses
 the `meridian` Python package importable in the client environment. If MCP
 behavior looks stale after a plugin update, update the core checkout with
-`git pull`, then rerun `python3 -m pip install -e .` from that checkout.
+`git pull`, then rerun `python -m pip install -e .` from that checkout.
 
 ## Codex
 

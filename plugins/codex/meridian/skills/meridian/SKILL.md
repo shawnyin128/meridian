@@ -39,7 +39,7 @@ Minimum completion:
 - Run or emulate the deterministic check:
 
 ```bash
-python3 -m meridian framework-check --project-root <meridian-repo>
+python -m meridian framework-check --project-root <meridian-repo>
 ```
 
 - Include `--library-root` or `--wiki-root` when checking a real Paper Wiki
@@ -60,8 +60,8 @@ Use when the user asks whether Meridian is installed, up to date, or ready.
 
 Minimum completion:
 
-- Check the Python core version and path with `python3 -m meridian --version`
-  and `python3 -m meridian wiki status`.
+- Check the Python core version and path with `python -m meridian --version`
+  and `python -m meridian wiki status`.
 - Check that the plugin package exposes `meridian`, `wiki`, and `lab` skills.
   When installed plugin files are visible, inspect the Codex or Claude Code
   plugin cache/manifest; otherwise report plugin visibility as unknown, not as a
@@ -70,7 +70,7 @@ Minimum completion:
   attempted path, distinguish missing from unreadable from unknown cache
   visibility, diagnose plugin path drift, and do not tell the agent to continue
   from remembered Lab semantics.
-- Check MCP readiness with `python3 -m meridian.mcp --help` or a lightweight
+- Check MCP readiness with `python -m meridian.mcp --help` or a lightweight
   capabilities smoke, and report stale behavior as possible core/plugin drift.
 - Check the user coding-style profile at `~/.meridian/coding-style.md` or the
   active `MERIDIAN_CONFIG_HOME`. If it is missing, create the starter
@@ -119,7 +119,7 @@ Minimum completion:
 - Initialize the library with:
 
 ```bash
-python3 -m meridian wiki init --library-root <library-root>
+python -m meridian wiki init --library-root <library-root>
 ```
 
 - Confirm that the library contains `meridian-wiki.json`, `sources/`, and
@@ -157,7 +157,7 @@ Minimum completion:
 - Prefer the installed core helper when available:
 
 ```bash
-python3 -c "from pathlib import Path; from meridian.lab import initialize_lab_space; initialize_lab_space(Path.cwd())"
+python -c "from pathlib import Path; from meridian.lab import initialize_lab_space; initialize_lab_space(Path.cwd())"
 ```
 
 - Creating this skeleton is non-destructive setup. It must not create thread
