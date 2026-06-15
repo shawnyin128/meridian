@@ -35,6 +35,20 @@ def plan_mcp_repair(*, client: str, mcp_config_path: Path, command: str, args: l
     return RepairAction(client=client, target=mcp_config_path, command=command, args=args)
 
 
+def _backup_path_for(path: Path, timestamp: str) -> Path:
+    base = path.with_name(f"{path.name}.bak-{timestamp}")
+    backup_path = base
+    if not backup_path.exists():
+        return backup_path
+
+    suffix = 1
+    while True:
+        backup_path = path.with_name(f"{base.name}-{suffix}")
+        if not backup_path.exists():
+            return backup_path
+        suffix += 1
+
+
 def apply_mcp_repair(
     *,
     client: str,
@@ -43,12 +57,20 @@ def apply_mcp_repair(
     args: list[str],
     timestamp: str | None = None,
 ) -> RepairResult:
-    stamp = timestamp or datetime.now().strftime("%Y%m%d-%H%M%S")
-    backup_path = mcp_config_path.with_name(f"{mcp_config_path.name}.bak-{stamp}")
+    stamp = timestamp or datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    backup_path = _backup_path_for(mcp_config_path, stamp)
     original = mcp_config_path.read_text(encoding="utf-8")
     backup_path.write_text(original, encoding="utf-8")
     payload = json.loads(original)
-    payload.setdefault("mcpServers", {})
+    if not isinstance(payload, dict):
+        payload = {}
+    servers = payload.get("mcpServers")
+    if not isinstance(servers, dict):
+        payload["mcpServers"] = {}
+        servers = payload["mcpServers"]
+    else:
+        # keep existing dict and normalize nested object shape by clobbering target key
+        payload["mcpServers"] = servers
     payload["mcpServers"][MCP_SERVER_NAME] = {"command": command, "args": args}
     mcp_config_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return RepairResult(

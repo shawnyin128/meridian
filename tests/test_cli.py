@@ -2796,19 +2796,20 @@ quality_state: "multimodal_pending"
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             mcp_path = root / ".mcp.json"
-            mcp_path.write_text(
-                json.dumps(
-                    {
-                        "mcpServers": {
-                            "meridian-paper-wiki": {
-                                "command": "python3",
-                                "args": ["-m", "meridian.mcp", "serve"],
-                            }
-                        }
+            original_payload = {
+                "top": "preserve-me",
+                "mcpServers": {
+                    "meridian-paper-wiki": {
+                        "command": "python3",
+                        "args": ["-m", "meridian.mcp", "serve"],
                     }
-                ),
+                },
+            }
+            mcp_path.write_text(
+                json.dumps(original_payload),
                 encoding="utf-8",
             )
+            original_text = mcp_path.read_text(encoding="utf-8")
 
             result = apply_mcp_repair(
                 client="codex",
@@ -2821,7 +2822,91 @@ quality_state: "multimodal_pending"
             updated = json.loads(mcp_path.read_text(encoding="utf-8"))
             self.assertTrue(result.applied)
             self.assertTrue(result.backup_path.exists())
+            self.assertEqual(result.backup_path.read_text(encoding="utf-8"), original_text)
             self.assertEqual(updated["mcpServers"]["meridian-paper-wiki"]["command"], "C:/Python/python.exe")
+            self.assertEqual(updated["top"], "preserve-me")
+
+    def test_setup_repair_mcp_apply_rewrites_bad_mcp_servers_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            mcp_path = Path(tmp) / ".mcp.json"
+            original = {"top": "preserve-me", "mcpServers": None}
+            mcp_path.write_text(json.dumps(original), encoding="utf-8")
+
+            result = apply_mcp_repair(
+                client="codex",
+                mcp_config_path=mcp_path,
+                command="C:/Python/python.exe",
+                args=["-m", "meridian.mcp", "serve"],
+                timestamp="20260615-153012",
+            )
+
+            updated = json.loads(mcp_path.read_text(encoding="utf-8"))
+
+            self.assertTrue(result.applied)
+            self.assertTrue(result.backup_path.exists())
+            self.assertEqual(updated["top"], "preserve-me")
+            self.assertEqual(
+                updated["mcpServers"]["meridian-paper-wiki"],
+                {"command": "C:/Python/python.exe", "args": ["-m", "meridian.mcp", "serve"]},
+            )
+
+    def test_setup_repair_mcp_apply_rewrites_non_dict_root_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            mcp_path = Path(tmp) / ".mcp.json"
+            mcp_path.write_text(json.dumps(["bad", "root"]), encoding="utf-8")
+
+            result = apply_mcp_repair(
+                client="codex",
+                mcp_config_path=mcp_path,
+                command="C:/Python/python.exe",
+                args=["-m", "meridian.mcp", "serve"],
+                timestamp="20260615-153012",
+            )
+
+            updated = json.loads(mcp_path.read_text(encoding="utf-8"))
+
+            self.assertTrue(result.applied)
+            self.assertEqual(
+                updated,
+                {"mcpServers": {"meridian-paper-wiki": {"command": "C:/Python/python.exe", "args": ["-m", "meridian.mcp", "serve"]}}},
+            )
+
+    def test_setup_repair_mcp_apply_timestamp_collision_generates_unique_backups(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            mcp_path = Path(tmp) / ".mcp.json"
+            original = {
+                "mcpServers": {
+                    "meridian-paper-wiki": {
+                        "command": "python3",
+                        "args": ["-m", "meridian.mcp", "serve"],
+                    }
+                }
+            }
+            mcp_path.write_text(json.dumps(original), encoding="utf-8")
+
+            first = apply_mcp_repair(
+                client="codex",
+                mcp_config_path=mcp_path,
+                command="C:/Python/python.exe",
+                args=["-m", "meridian.mcp", "serve"],
+                timestamp="20260615-153012",
+            )
+            first_backup_text = first.backup_path.read_text(encoding="utf-8")
+
+            second = apply_mcp_repair(
+                client="codex",
+                mcp_config_path=mcp_path,
+                command="C:/Python/python.exe",
+                args=["-m", "meridian.mcp", "serve"],
+                timestamp="20260615-153012",
+            )
+
+            self.assertNotEqual(first.backup_path, second.backup_path)
+            self.assertEqual(first.backup_path.name, ".mcp.json.bak-20260615-153012")
+            self.assertEqual(second.backup_path.name, ".mcp.json.bak-20260615-153012-1")
+            self.assertTrue(first.backup_path.exists())
+            self.assertTrue(second.backup_path.exists())
+            self.assertEqual(first.backup_path.read_text(encoding="utf-8"), first_backup_text)
 
     def test_setup_doctor_reports_blocked_if_mixed_unrepairable_critical(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
