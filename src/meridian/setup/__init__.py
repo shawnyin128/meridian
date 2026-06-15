@@ -9,6 +9,7 @@ from meridian.setup.runtime import (
     resolve_meridian_runtime,
 )
 from meridian.setup.doctor import RepairAction, SetupDoctorReport, build_setup_doctor_report, format_setup_doctor
+from meridian.setup.repair import RepairResult, apply_mcp_repair, plan_mcp_repair
 
 __all__ = [
     "ClientInstall",
@@ -22,4 +23,7 @@ __all__ = [
     "SetupDoctorReport",
     "build_setup_doctor_report",
     "format_setup_doctor",
+    "RepairResult",
+    "apply_mcp_repair",
+    "plan_mcp_repair",
 ]
