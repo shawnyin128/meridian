@@ -136,6 +136,17 @@ def _add_client_findings(
                 "next_action": f"Repair the Meridian MCP cache for {install.client}.",
             }
         )
+        if install.mcp_config_path is not None and runtime.selected is not None:
+            repair_command, repair_args = runtime.selected.mcp_server_command()
+            repair_plan.append(RepairAction(install.client, install.mcp_config_path, repair_command, repair_args))
+            findings.append(
+                {
+                    "severity": "degraded",
+                    "code": "mcp_repair_available",
+                    "message": f"{install.client} MCP cache can be repaired with selected runtime {repair_command}.",
+                    "next_action": f"Run python -m meridian setup repair-mcp --client {install.client} --apply.",
+                }
+            )
         return
 
     command = str(install.configured_server.get("command", ""))
