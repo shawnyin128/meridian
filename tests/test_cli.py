@@ -2575,6 +2575,12 @@ quality_state: "multimodal_pending"
         self.assertEqual(installs[0].cache_state, "missing")
         self.assertIsNone(installs[0].mcp_config_path)
 
+    def test_setup_client_inspector_allows_empty_client_list(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            installs = inspect_client_installs(project_root=Path(tmp) / "project", home=Path(tmp) / "home", clients=[])
+
+        self.assertEqual(installs, [])
+
     def test_setup_client_inspector_accepts_positional_project_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "project"
@@ -2609,6 +2615,34 @@ quality_state: "multimodal_pending"
 
         self.assertIsNone(installs[0].configured_server)
         self.assertEqual(installs[0].cache_state, "installed")
+        self.assertIsNotNone(installs[0].error)
+
+    def test_setup_client_inspector_reports_mcp_server_missing_launcher_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "project"
+            home = Path(tmp) / "home"
+            cache_root = home / ".codex/plugins/cache/meridian/meridian" / __version__
+            (cache_root / "skills/meridian").mkdir(parents=True)
+            (cache_root / "skills/wiki").mkdir(parents=True)
+            (cache_root / "skills/lab").mkdir(parents=True)
+            for skill in ["meridian", "wiki", "lab"]:
+                (cache_root / "skills" / skill / "SKILL.md").write_text(f"# {skill}\n", encoding="utf-8")
+            (cache_root / ".mcp.json").write_text(
+                json.dumps(
+                    {
+                        "mcpServers": {
+                            "meridian-paper-wiki": {
+                                "args": ["-m", "meridian.mcp", "serve"],
+                            }
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            installs = inspect_client_installs(project_root=root, home=home, clients=["codex"])
+
+        self.assertIsNone(installs[0].configured_server)
         self.assertIsNotNone(installs[0].error)
 
     def test_coding_style_profile_init_is_user_level_and_no_code_blocks(self) -> None:

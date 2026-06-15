@@ -44,7 +44,7 @@ def inspect_client_installs(
     home: Path | None = None,
     clients: list[str] | None = None,
 ) -> list[ClientInstall]:
-    selected = clients or ["codex", "claude"]
+    selected = ["codex", "claude"] if clients is None else clients
     user_home = (home or Path.home()).expanduser()
     root = project_root.expanduser()
     return [_inspect_client(client, project_root=root, home=user_home) for client in selected]
@@ -78,7 +78,7 @@ def _inspect_client(client: str, *, project_root: Path, home: Path) -> ClientIns
     if mcp_config_path.exists():
         try:
             payload = json.loads(mcp_config_path.read_text(encoding="utf-8"))
-            configured_server = dict(payload["mcpServers"][MCP_SERVER_NAME])
+            configured_server = _parse_configured_server(payload)
         except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
             error = str(exc)
 
@@ -118,6 +118,19 @@ def _manifest_path(source_root: Path, client: str) -> Path:
     if client == "claude":
         return source_root / ".claude-plugin/plugin.json"
     raise ValueError(f"unknown Meridian client: {client}")
+
+
+def _parse_configured_server(payload: dict[str, Any]) -> dict[str, Any]:
+    server = payload["mcpServers"][MCP_SERVER_NAME]
+    if not isinstance(server, dict):
+        raise ValueError(f"Configured server '{MCP_SERVER_NAME}' is not a mapping.")
+    if "command" not in server or "args" not in server:
+        raise ValueError(f"Configured server '{MCP_SERVER_NAME}' is missing command and/or args.")
+    if not isinstance(server["command"], str):
+        raise ValueError(f"Configured server '{MCP_SERVER_NAME}' command must be a string.")
+    if not isinstance(server["args"], list):
+        raise ValueError(f"Configured server '{MCP_SERVER_NAME}' args must be a list.")
+    return dict(server)
 
 
 def _skill_state(path: Path) -> str:
