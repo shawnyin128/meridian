@@ -28,6 +28,7 @@ from meridian.setup.runtime import (
     default_runtime_candidates,
     resolve_meridian_runtime,
 )
+from meridian.setup.clients import inspect_client_installs
 from meridian.wiki import commands as wiki_commands
 from meridian.wiki.corpus import retrieve_papers
 from meridian.wiki.extract import PageExtraction, PdfExtraction
@@ -2512,6 +2513,67 @@ quality_state: "multimodal_pending"
 
         self.assertIsNone(report.selected)
         self.assertEqual(report.candidates, [])
+
+    def test_setup_client_inspector_finds_codex_and_claude_caches(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "project"
+            home = Path(tmp) / "home"
+            for package, manifest_dir in [
+                ("plugins/codex/meridian", ".codex-plugin"),
+                ("plugins/claude-code/meridian", ".claude-plugin"),
+            ]:
+                package_root = root / package
+                (package_root / manifest_dir).mkdir(parents=True)
+                (package_root / manifest_dir / "plugin.json").write_text(
+                    json.dumps({"name": "meridian", "version": __version__}),
+                    encoding="utf-8",
+                )
+            for cache_root in [
+                home / ".codex/plugins/cache/meridian/meridian" / __version__,
+                home / ".claude/plugins/cache/meridian/meridian" / __version__,
+            ]:
+                (cache_root / "skills/meridian").mkdir(parents=True)
+                (cache_root / "skills/wiki").mkdir(parents=True)
+                (cache_root / "skills/lab").mkdir(parents=True)
+                for skill in ["meridian", "wiki", "lab"]:
+                    (cache_root / "skills" / skill / "SKILL.md").write_text(
+                        f"# {skill}\n",
+                        encoding="utf-8",
+                    )
+                (cache_root / ".mcp.json").write_text(
+                    json.dumps(
+                        {
+                            "mcpServers": {
+                                "meridian-paper-wiki": {
+                                    "command": "python3",
+                                    "args": ["-m", "meridian.mcp", "serve"],
+                                }
+                            }
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+
+            installs = {
+                item.client: item for item in inspect_client_installs(project_root=root, home=home, clients=["codex", "claude"])
+            }
+
+        self.assertEqual(installs["codex"].cache_state, "installed")
+        self.assertEqual(installs["claude"].cache_state, "installed")
+        self.assertEqual(installs["codex"].skills["lab"], "readable")
+        self.assertEqual(installs["codex"].configured_server["command"], "python3")
+
+    def test_setup_client_inspector_reports_missing_plugin_cache(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            installs = inspect_client_installs(
+                project_root=Path(tmp) / "project",
+                home=Path(tmp) / "home",
+                clients=["codex"],
+            )
+
+        self.assertEqual(installs[0].client, "codex")
+        self.assertEqual(installs[0].cache_state, "missing")
+        self.assertIsNone(installs[0].mcp_config_path)
 
     def test_coding_style_profile_init_is_user_level_and_no_code_blocks(self) -> None:
         from meridian.lab import initialize_coding_style_profile, migrate_coding_style_profile, validate_coding_style_profile
