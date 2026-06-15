@@ -2497,6 +2497,22 @@ quality_state: "multimodal_pending"
         self.assertEqual(report.candidates[0].error_code, "mcp_launcher_import_failed")
         self.assertGreaterEqual(len(calls), 4)
 
+    def test_setup_runtime_resolver_default_candidates_respects_empty_env_override(self) -> None:
+        with patch.dict(os.environ, {"MERIDIAN_PYTHON": "C:/ignored/python"}):
+            candidates = default_runtime_candidates(env={})
+
+        self.assertFalse(any(candidate.source == "env" for candidate in candidates))
+        self.assertFalse(any(candidate.label == "MERIDIAN_PYTHON" for candidate in candidates))
+
+    def test_setup_runtime_resolver_empty_candidates_does_not_probe(self) -> None:
+        def runner(argv: list[str], timeout: float = 10.0) -> CommandResult:
+            raise AssertionError(f"runner was called unexpectedly: {argv}")
+
+        report = resolve_meridian_runtime(candidates=[], runner=runner)
+
+        self.assertIsNone(report.selected)
+        self.assertEqual(report.candidates, [])
+
     def test_coding_style_profile_init_is_user_level_and_no_code_blocks(self) -> None:
         from meridian.lab import initialize_coding_style_profile, migrate_coding_style_profile, validate_coding_style_profile
 

@@ -87,7 +87,7 @@ def default_command_runner(argv: list[str], timeout: float = 10.0) -> CommandRes
 
 
 def default_runtime_candidates(*, env: dict[str, str] | None = None) -> list[RuntimeCandidate]:
-    values = env or os.environ
+    values = os.environ if env is None else env
     candidates = [
         RuntimeCandidate("current Python", sys.executable, [], "sys_executable"),
     ]
@@ -112,7 +112,7 @@ def resolve_meridian_runtime(
     timeout: float = 10.0,
 ) -> RuntimeResolution:
     checked: list[RuntimeCandidate] = []
-    for candidate in candidates or default_runtime_candidates():
+    for candidate in (default_runtime_candidates() if candidates is None else candidates):
         checked_candidate = _check_candidate(candidate, runner=runner, timeout=timeout)
         checked.append(checked_candidate)
         if (
