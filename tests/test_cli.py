@@ -2575,6 +2575,42 @@ quality_state: "multimodal_pending"
         self.assertEqual(installs[0].cache_state, "missing")
         self.assertIsNone(installs[0].mcp_config_path)
 
+    def test_setup_client_inspector_accepts_positional_project_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "project"
+            home = Path(tmp) / "home"
+
+            installs = inspect_client_installs(root, home=home, clients=["codex"])
+
+        self.assertEqual(installs[0].client, "codex")
+
+    def test_setup_client_inspector_malformed_mcp_server_is_reported(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "project"
+            home = Path(tmp) / "home"
+            cache_root = home / ".codex/plugins/cache/meridian/meridian" / __version__
+            (cache_root / "skills/meridian").mkdir(parents=True)
+            (cache_root / "skills/wiki").mkdir(parents=True)
+            (cache_root / "skills/lab").mkdir(parents=True)
+            for skill in ["meridian", "wiki", "lab"]:
+                (cache_root / "skills" / skill / "SKILL.md").write_text(f"# {skill}\n", encoding="utf-8")
+            (cache_root / ".mcp.json").write_text(
+                json.dumps(
+                    {
+                        "mcpServers": {
+                            "meridian-paper-wiki": ["not", "pairs"],
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            installs = inspect_client_installs(project_root=root, home=home, clients=["codex"])
+
+        self.assertIsNone(installs[0].configured_server)
+        self.assertEqual(installs[0].cache_state, "installed")
+        self.assertIsNotNone(installs[0].error)
+
     def test_coding_style_profile_init_is_user_level_and_no_code_blocks(self) -> None:
         from meridian.lab import initialize_coding_style_profile, migrate_coding_style_profile, validate_coding_style_profile
 

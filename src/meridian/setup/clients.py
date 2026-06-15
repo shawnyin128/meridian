@@ -40,7 +40,6 @@ class ClientInstall:
 
 
 def inspect_client_installs(
-    *,
     project_root: Path,
     home: Path | None = None,
     clients: list[str] | None = None,
@@ -80,7 +79,7 @@ def _inspect_client(client: str, *, project_root: Path, home: Path) -> ClientIns
         try:
             payload = json.loads(mcp_config_path.read_text(encoding="utf-8"))
             configured_server = dict(payload["mcpServers"][MCP_SERVER_NAME])
-        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
             error = str(exc)
 
     return ClientInstall(
@@ -131,4 +130,3 @@ def _skill_state(path: Path) -> str:
     if path.is_dir():
         return "unreadable"
     return "readable"
-
