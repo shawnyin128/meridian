@@ -22,6 +22,12 @@ from meridian.lab import initialize_lab_space, validate_lab_space
 from meridian.mcp import adapter as mcp_adapter
 from meridian.mcp import harness as mcp_harness
 from meridian.mcp import server as mcp_server
+from meridian.setup.runtime import (
+    CommandResult,
+    RuntimeCandidate,
+    default_runtime_candidates,
+    resolve_meridian_runtime,
+)
 from meridian.wiki import commands as wiki_commands
 from meridian.wiki.corpus import retrieve_papers
 from meridian.wiki.extract import PageExtraction, PdfExtraction
@@ -2421,6 +2427,75 @@ quality_state: "multimodal_pending"
         self.assertIn("lab_state_not_checked", info_codes)
         self.assertIn("lab_skill_path_readable", info_codes)
         self.assertIn("coding_style_profile_missing", info_codes)
+
+    def test_setup_runtime_resolver_selects_sys_executable(self) -> None:
+        def runner(argv: list[str], timeout: float = 10.0) -> CommandResult:
+            joined = " ".join(argv)
+            if "import sys, meridian" in joined:
+                return CommandResult(0, "C:/Python/python.exe\n0.5.3\n", "")
+            if "-m meridian.mcp --help" in joined:
+                return CommandResult(0, "usage: python -m meridian.mcp", "")
+            if "-m meridian.mcp capabilities --detail summary" in joined:
+                return CommandResult(0, '{"schema_version": "meridian.mcp_adapter.v0"}', "")
+            return CommandResult(1, "", f"unexpected argv: {argv}")
+
+        candidates = [
+            RuntimeCandidate(
+                label="current Python",
+                command="C:/Python/python.exe",
+                args_prefix=[],
+                source="sys_executable",
+            )
+        ]
+
+        report = resolve_meridian_runtime(candidates=candidates, runner=runner)
+
+        self.assertIsNotNone(report.selected)
+        self.assertEqual(report.selected.command, "C:/Python/python.exe")
+        self.assertTrue(report.selected.import_ok)
+        self.assertTrue(report.selected.mcp_help_ok)
+        self.assertTrue(report.selected.capabilities_ok)
+        self.assertEqual(report.selected.version, "0.5.3")
+
+    def test_setup_runtime_resolver_rejects_missing_python3(self) -> None:
+        def runner(argv: list[str], timeout: float = 10.0) -> CommandResult:
+            return CommandResult(127, "", "python3: command not found")
+
+        candidates = [
+            RuntimeCandidate(label="python3", command="python3", args_prefix=[], source="path")
+        ]
+
+        report = resolve_meridian_runtime(candidates=candidates, runner=runner)
+
+        self.assertIsNone(report.selected)
+        self.assertEqual(report.candidates[0].error_code, "mcp_launcher_command_not_found")
+        self.assertFalse(report.candidates[0].exists)
+
+    def test_setup_runtime_resolver_prefers_valid_meridian_python_env(self) -> None:
+        calls: list[list[str]] = []
+
+        def runner(argv: list[str], timeout: float = 10.0) -> CommandResult:
+            calls.append(argv)
+            if argv[0] == "C:/bad/python.exe":
+                return CommandResult(0, "C:/bad/python.exe\n", "No module named meridian")
+            if argv[0] == "C:/good/python.exe" and "-c" in argv:
+                return CommandResult(0, "C:/good/python.exe\n0.5.3\n", "")
+            if argv[0] == "C:/good/python.exe" and "--help" in argv:
+                return CommandResult(0, "usage: python -m meridian.mcp", "")
+            if argv[0] == "C:/good/python.exe" and "capabilities" in argv:
+                return CommandResult(0, '{"schema_version": "meridian.mcp_adapter.v0"}', "")
+            return CommandResult(1, "", f"unexpected argv: {argv}")
+
+        candidates = [
+            RuntimeCandidate(label="current Python", command="C:/bad/python.exe", args_prefix=[], source="sys_executable"),
+            RuntimeCandidate(label="MERIDIAN_PYTHON", command="C:/good/python.exe", args_prefix=[], source="env"),
+        ]
+
+        report = resolve_meridian_runtime(candidates=candidates, runner=runner)
+
+        self.assertEqual(report.selected.command, "C:/good/python.exe")
+        self.assertEqual(report.candidates[0].error_code, "mcp_launcher_import_failed")
+        self.assertGreaterEqual(len(calls), 4)
 
     def test_coding_style_profile_init_is_user_level_and_no_code_blocks(self) -> None:
         from meridian.lab import initialize_coding_style_profile, migrate_coding_style_profile, validate_coding_style_profile
