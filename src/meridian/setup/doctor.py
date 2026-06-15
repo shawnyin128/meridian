@@ -141,7 +141,7 @@ def _add_client_findings(
     command = str(install.configured_server.get("command", ""))
     args = [str(item) for item in install.configured_server.get("args", [])]
     smoke_argv = _mcp_smoke_argv(command=command, args=args)
-    smoke = runner(smoke_argv)
+    smoke = runner(smoke_argv, 10.0)
     if smoke.returncode != 0:
         findings.append(
             {
