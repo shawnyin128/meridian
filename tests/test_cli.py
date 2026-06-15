@@ -29,6 +29,7 @@ from meridian.setup.runtime import (
     resolve_meridian_runtime,
 )
 from meridian.setup.clients import inspect_client_installs
+from meridian.setup.doctor import build_setup_doctor_report, format_setup_doctor
 from meridian.wiki import commands as wiki_commands
 from meridian.wiki.corpus import retrieve_papers
 from meridian.wiki.extract import PageExtraction, PdfExtraction
@@ -2644,6 +2645,47 @@ quality_state: "multimodal_pending"
 
         self.assertIsNone(installs[0].configured_server)
         self.assertIsNotNone(installs[0].error)
+
+    def test_setup_doctor_reports_repair_available_for_skill_visible_mcp_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "project"
+            home = Path(tmp) / "home"
+            cache_root = home / ".codex/plugins/cache/meridian/meridian" / __version__
+            for skill in ["meridian", "wiki", "lab"]:
+                skill_path = cache_root / "skills" / skill / "SKILL.md"
+                skill_path.parent.mkdir(parents=True, exist_ok=True)
+                skill_path.write_text(f"# {skill}\n", encoding="utf-8")
+            (cache_root / ".mcp.json").write_text(
+                json.dumps(
+                    {
+                        "mcpServers": {
+                            "meridian-paper-wiki": {
+                                "command": "python3",
+                                "args": ["-m", "meridian.mcp", "serve"],
+                            }
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            def runner(argv: list[str], timeout: float = 10.0) -> CommandResult:
+                if argv[0] == sys.executable and "-c" in argv:
+                    return CommandResult(0, f"{sys.executable}\n{__version__}\n", "")
+                if argv[0] == sys.executable and "--help" in argv:
+                    return CommandResult(0, "usage: python -m meridian.mcp", "")
+                if argv[0] == sys.executable and "capabilities" in argv:
+                    return CommandResult(0, '{"schema_version": "meridian.mcp_adapter.v0"}', "")
+                if argv[0] == "python3":
+                    return CommandResult(127, "", "python3: command not found")
+                return CommandResult(1, "", f"unexpected argv: {argv}")
+
+            report = build_setup_doctor_report(project_root=root, home=home, clients=["codex"], runner=runner)
+
+        self.assertEqual(report.status, "repair_available")
+        self.assertIn("skill_visible_but_mcp_unavailable", {finding["code"] for finding in report.findings})
+        self.assertIn("mcp_repair_available", {finding["code"] for finding in report.findings})
+        self.assertIn("repair_available", format_setup_doctor(report))
 
     def test_coding_style_profile_init_is_user_level_and_no_code_blocks(self) -> None:
         from meridian.lab import initialize_coding_style_profile, migrate_coding_style_profile, validate_coding_style_profile

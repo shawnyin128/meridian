@@ -8,6 +8,7 @@ from meridian.setup.runtime import (
     default_runtime_candidates,
     resolve_meridian_runtime,
 )
+from meridian.setup.doctor import RepairAction, SetupDoctorReport, build_setup_doctor_report, format_setup_doctor
 
 __all__ = [
     "ClientInstall",
@@ -17,4 +18,8 @@ __all__ = [
     "default_runtime_candidates",
     "inspect_client_installs",
     "resolve_meridian_runtime",
+    "RepairAction",
+    "SetupDoctorReport",
+    "build_setup_doctor_report",
+    "format_setup_doctor",
 ]
