@@ -1214,7 +1214,6 @@ def main(argv: list[str] | None = None) -> int:
             report = build_setup_doctor_report(project_root=args.project_root, clients=[args.client])
             if not report.repair_plan:
                 print("No MCP repair is available.")
-                print("No files changed. Re-run with --apply.")
                 print(format_setup_doctor(report), end="")
                 return 1
             action = report.repair_plan[0]

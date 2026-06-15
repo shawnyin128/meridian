@@ -2672,13 +2672,40 @@ quality_state: "multimodal_pending"
             self.assertIn("status", json.loads(json_out.read_text(encoding="utf-8")))
 
     def test_setup_repair_mcp_cli_dry_run_does_not_apply(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "project"
+            home = Path(tmp) / "home"
+            cache_root = home / ".codex/plugins/cache/meridian/meridian" / __version__
+            for skill in ["meridian", "wiki", "lab"]:
+                skill_path = cache_root / "skills" / skill / "SKILL.md"
+                skill_path.parent.mkdir(parents=True, exist_ok=True)
+                skill_path.write_text(f"# {skill}\n", encoding="utf-8")
+            mcp_path = cache_root / ".mcp.json"
+            original = {"mcpServers": {"meridian-paper-wiki": {"args": ["-m", "meridian.mcp", "serve"]}}
+            }
+            mcp_path.write_text(json.dumps(original), encoding="utf-8")
+
+            with patch.object(Path, "home", return_value=home):
+                exit_code, stdout, stderr = _run_cli_capture(
+                    ["setup", "repair-mcp", "--client", "codex", "--project-root", str(root)]
+                )
+            original_text = mcp_path.read_text(encoding="utf-8")
+
+        self.assertIn(exit_code, {0, 1})
+        self.assertEqual(stderr, "")
+        self.assertIn("Planned repair:", stdout)
+        self.assertIn("No files changed. Re-run with --apply.", stdout)
+        self.assertEqual(json.loads(original_text), original)
+
+    def test_setup_repair_mcp_cli_no_files_changed_message_is_dry_run_only(self) -> None:
         exit_code, stdout, stderr = _run_cli_capture(
             ["setup", "repair-mcp", "--client", "codex", "--project-root", str(Path.cwd())]
         )
 
         self.assertIn(exit_code, {0, 1})
         self.assertEqual(stderr, "")
-        self.assertIn("No files changed", stdout)
+        self.assertIn("No MCP repair is available.", stdout)
+        self.assertNotIn("No files changed. Re-run with --apply.", stdout)
 
     def test_setup_doctor_reports_repair_available_for_skill_visible_mcp_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
