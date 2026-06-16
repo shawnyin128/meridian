@@ -74,9 +74,10 @@ Minimum completion:
   from remembered Lab semantics.
 - Check MCP readiness with `python -m meridian.mcp --help` or a lightweight
   capabilities smoke, and report stale behavior as possible core/plugin drift.
-- Check the user research-agent contract files:
-  - `~/.meridian/coding-style.md`
-  - `~/.meridian/research-agent-principles.md`
+- Check the user research-agent contract files under the active
+  `MERIDIAN_CONFIG_HOME` when set, otherwise under `~/.meridian/`:
+  - `coding-style.md`
+  - `research-agent-principles.md`
   If either is missing, create the starter file during setup; if either is stale,
   migrate without deleting user text.
 - Confirm that the coding-style profile is only a compact preference source for
@@ -179,9 +180,10 @@ Minimum completion:
   `meridian-wiki.json`, `sources/`, and `wiki/` under one library root.
 - Check `meridian-wiki.json` for the current workspace schema when the file is
   readable.
-- Check the user research-agent contract files:
-  - `~/.meridian/coding-style.md`
-  - `~/.meridian/research-agent-principles.md`
+- Check the user research-agent contract files under the active
+  `MERIDIAN_CONFIG_HOME` when set, otherwise under `~/.meridian/`:
+  - `coding-style.md`
+  - `research-agent-principles.md`
   If either is missing, create the starter file during setup; if either is stale,
   migrate without deleting user text.
 - Check whether a Lab repo that needs idea-graph state has the minimal

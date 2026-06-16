@@ -3909,6 +3909,29 @@ quality_state: "multimodal_pending"
             self.assertIn("research-agent-principles.md", text)
             self.assertIn("AGENTS.md", text)
             self.assertIn("Do not silently substitute", text)
+            self.assertIn("MERIDIAN_CONFIG_HOME", text)
+
+    def test_framework_check_reports_stale_research_agent_principles(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_home = Path(tmp) / "config"
+            config_home.mkdir()
+            (config_home / "research-agent-principles.md").write_text(
+                "# Old Principles\n\nKeep this user text.\n",
+                encoding="utf-8",
+            )
+            with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(config_home)}):
+                report = run_framework_check(project_root=Path.cwd())
+
+        user_profile = next(category for category in report.categories if category.name == "User Profile")
+        by_code = {finding.code: finding for finding in user_profile.findings}
+        finding = by_code.get("research_agent_principles_schema_missing") or by_code.get(
+            "research_agent_principles_integrity_missing"
+        )
+        self.assertIsNotNone(finding)
+        assert finding is not None
+        self.assertEqual(finding.severity, "degraded")
+        self.assertIn("migrate", finding.next_action)
+        self.assertIn("without deleting user text", finding.next_action)
 
     def test_framework_check_reports_mcp_entrypoint_drift(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
