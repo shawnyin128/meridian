@@ -2941,6 +2941,71 @@ quality_state: "multimodal_pending"
             summary = json.loads(result.summary_path.read_text(encoding="utf-8"))
             self.assertEqual(summary["case_results"][0]["implementation_integrity_gate"], True)
 
+    def test_research_agent_contract_eval_runner_fails_boolean_mismatches(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cases = root / "cases.jsonl"
+            out = root / "out"
+            cases.write_text(
+                json.dumps(
+                    {
+                        "id": "mismatch-case",
+                        "category": "research_agent_contract_live",
+                        "suite": "integrity",
+                        "polarity": "positive",
+                        "risk": "silent_fallback",
+                        "repo_state": "repo has .meridian/",
+                        "user_request": "Implement current behavior without a silent fallback.",
+                        "expected_skill": "lab",
+                        "expected_routing": "lab_first_preflight",
+                        "expect_implementation_integrity_gate": True,
+                        "expect_blocker_reporting": True,
+                        "expect_no_silent_fallback": False,
+                        "expect_style_distillation": False,
+                        "handoff_to": ["normal_coding_workflow"],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            def runner(argv: list[str], cwd: Path, timeout: float, stdin_text: str | None):
+                last_message = Path(argv[argv.index("--output-last-message") + 1])
+                last_message.write_text(
+                    json.dumps(
+                        {
+                            "selected_entry": "lab",
+                            "routing": "lab_first_preflight",
+                            "implementation_integrity_gate": False,
+                            "blocker_reporting": False,
+                            "no_silent_fallback": True,
+                            "style_distillation": True,
+                            "handoff_to": ["normal_coding_workflow"],
+                            "confidence": "high",
+                            "reason": "Mismatched test response.",
+                            "path_rationale": [
+                                {"check": "intent_signal", "observation": "test", "effect": "test"}
+                            ],
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                return subprocess.CompletedProcess(argv, 0, "", "")
+
+            result = run_codex_research_agent_contract_eval(
+                cases_path=cases,
+                out_dir=out,
+                repo_root=Path.cwd(),
+                runner=runner,
+            )
+            self.assertEqual(result.failed_cases, 1)
+            case_result = json.loads((out / "mismatch-case/result.json").read_text(encoding="utf-8"))
+            failures = " ".join(case_result["verdict"]["failures"])
+            self.assertIn("implementation_integrity_gate expected True, got False", failures)
+            self.assertIn("blocker_reporting expected True, got False", failures)
+            self.assertIn("no_silent_fallback expected False, got True", failures)
+            self.assertIn("style_distillation expected False, got True", failures)
+
     def test_codex_lab_grounding_cli_invokes_live_runner(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -2993,6 +3058,52 @@ quality_state: "multimodal_pending"
             self.assertIsNone(kwargs["limit"])
             self.assertIn("Wrote Codex Lab grounding summary", stdout.getvalue())
             self.assertIn("Total cases: 30", stdout.getvalue())
+
+    def test_research_agent_contract_cli_invokes_live_runner(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cases = root / "cases.jsonl"
+            cases.write_text(
+                json.dumps(
+                    {
+                        "id": "case",
+                        "category": "research_agent_contract_live",
+                        "user_request": "Implement the current research path.",
+                        "expected_skill": "lab",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            out_dir = root / "run"
+            fake_result = codex_routing_eval.CodexRoutingEvalResult(
+                summary_path=out_dir / "summary.json",
+                report_path=out_dir / "report.md",
+                total_cases=1,
+                passed_cases=1,
+                failed_cases=0,
+            )
+
+            with patch("meridian.cli.run_codex_research_agent_contract_eval", return_value=fake_result) as run_eval:
+                exit_code, stdout, stderr = _run_cli_capture(
+                    [
+                        "eval",
+                        "codex-research-agent-contract",
+                        str(cases),
+                        "--out-dir",
+                        str(out_dir),
+                        "--repo-root",
+                        str(root),
+                    ]
+                )
+
+            self.assertEqual(exit_code, 0, stderr)
+            run_eval.assert_called_once()
+            kwargs = run_eval.call_args.kwargs
+            self.assertEqual(kwargs["cases_path"], cases)
+            self.assertEqual(kwargs["out_dir"], out_dir)
+            self.assertEqual(kwargs["repo_root"], root)
+            self.assertIn("Codex research-agent contract eval", stdout)
 
     def test_codex_routing_prompt_does_not_leak_expected_answer(self) -> None:
         prompt = build_routing_prompt(
