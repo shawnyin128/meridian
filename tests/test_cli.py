@@ -2297,7 +2297,10 @@ quality_state: "multimodal_pending"
         self.assertIn("remembered Lab semantics", text)
         self.assertIn("coding-style profile", text)
         self.assertIn("Coding Style Feedback Gate", text)
-        self.assertIn("~/.meridian/coding-style.md", text)
+        self.assertIn("MERIDIAN_CONFIG_HOME", text)
+        self.assertIn("~/.meridian/", text)
+        self.assertIn("coding-style.md", text)
+        self.assertIn("research-agent-principles.md", text)
         self.assertNotIn("wants to ingest, retrieve, code, or record experiments", text)
 
     def test_setup_doctor_skill_and_docs_policy_is_documented(self) -> None:
