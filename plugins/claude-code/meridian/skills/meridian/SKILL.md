@@ -15,17 +15,19 @@ Meridian has three user-facing skills:
 
 - `meridian`: setup, status, updates, and migrations.
 - `wiki`: Paper Wiki Update Wiki and Use Wiki work.
-- `lab`: research idea graph, Wiki grounding, experiments, and local findings.
+- `lab`: Lab-first research/dev preflight, idea graph, Wiki grounding,
+  experiments, development handoffs, and local findings.
 
 If the user asks to ingest, retrieve, answer from papers, add insight, check wiki
 health, or write synthesis, hand off to `wiki`. Do not continue the normal work
 inside this setup skill after the setup issue is resolved.
 
 If the user asks to place an idea, review feasibility, manage an approach tree,
-record research evidence, or prepare a local finding, hand off to `lab`. If the
-user asks for code edits, debugging, tests, commits, release, or convergence,
-hand off to the normal coding workflow rather than treating Lab as the
-developer.
+record research evidence, prepare a local finding, or do research-development
+work in a repo with `.meridian/`, hand off to `lab` for Lab-first preflight. If
+Lab decides the next action is code edits, debugging, tests, commits, release,
+or convergence, the normal coding workflow performs that work from the Lab
+development handoff rather than treating Lab as the developer.
 
 ## Workflows
 
@@ -197,10 +199,13 @@ python -c "from pathlib import Path; from meridian.lab import initialize_lab_spa
 
 - Use `wiki` for ingest, retrieval, health checks, insights, synthesis, and
   Paper Wiki maintenance.
-- Use `lab` for idea placement, approach trees, experiment evidence, Wiki
-  grounding for ideas, development handoffs, and local finding proposals.
+- Use `lab` by default for research and research-development requests in repos
+  with `.meridian/`; Lab handles preflight, idea placement, approach trees,
+  experiment evidence, Wiki grounding for ideas, development handoffs, and
+  local finding proposals.
 - Use the normal coding workflow for code implementation, debugging, tests,
-  commits, release, and convergence.
+  commits, release, and convergence after Lab preflight when the task is
+  research-bearing, or directly when the task is pure mechanical engineering.
 
 Canonical examples:
 

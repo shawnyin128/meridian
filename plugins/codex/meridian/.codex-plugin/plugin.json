@@ -1,6 +1,6 @@
 {
   "name": "meridian",
-  "version": "0.5.3",
+  "version": "0.6.0",
   "description": "Markdown-first Paper Wiki and Lab idea-graph copilot for Codex.",
   "author": {
     "name": "Meridian",
@@ -20,7 +20,7 @@
   "interface": {
     "displayName": "Meridian",
     "shortDescription": "Setup Meridian, use Paper Wiki, and manage Lab idea graphs.",
-    "longDescription": "Meridian exposes three user-facing skills: meridian for setup and migration, wiki for Paper Wiki update/use workflows, and lab for wiki-grounded idea graphs with approach trees, experiments, evidence, handoffs, and local findings.",
+    "longDescription": "Meridian exposes three user-facing skills: meridian for setup and migration, wiki for Paper Wiki update/use workflows, and lab for Lab-first research/dev preflight, wiki-grounded idea graphs, approach trees, experiments, evidence, handoffs, and local findings.",
     "developerName": "Meridian",
     "category": "Productivity",
     "capabilities": [

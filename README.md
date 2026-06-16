@@ -9,7 +9,8 @@ Meridian has two user-facing surfaces:
 
 - `wiki`: build and use a Paper Wiki from PDFs, Zotero exports, notes,
   syntheses, provenance, and reading insights.
-- `lab`: manage a research idea graph with Paper Wiki grounding, approach-tree
+- `lab`: provide Lab-first research/dev preflight in Meridian-initialized repos,
+  then manage a research idea graph with Paper Wiki grounding, approach-tree
   exploration, experiment evidence, development handoffs, and local finding
   proposals.
 
@@ -109,7 +110,7 @@ plugins/claude-code/meridian/
 |---|---|---|
 | `meridian` | setup, status checks, updates, and migrations | ready / needs init / needs update / needs migration |
 | `wiki` | Paper Wiki Update Wiki and Use Wiki workflows | canonical pages, retrieval context, provenance, or proposal-first write-back |
-| `lab` | idea graph, Wiki-grounded feasibility, experiments, and local findings | `.meridian/` thread/node state, evidence, handoff packet, or local proposal |
+| `lab` | Lab-first research/dev preflight, idea graph, Wiki-grounded feasibility, experiments, and local findings | `.meridian/` thread/node state, evidence, handoff packet, or local proposal |
 
 Support skills such as paper ingest, retrieval, knowledge, concept, evolution,
 and personalization are internal modules the `wiki` skill delegates to. Users
@@ -162,6 +163,13 @@ Check my Paper Wiki health and tell me the top repair priorities.
 
 Lab is the idea-graph layer. It consumes Paper Wiki context but keeps local
 research state in the target repo under `.meridian/`.
+
+When a target repo already has `.meridian/`, Lab is the default preflight for
+research and research-development requests. The agent should route by project
+state first: research direction, method choice, experiment design, ablations,
+probes, metrics, baselines, failure interpretation, paper grounding, evidence,
+and durable local findings start in Lab. Pure mechanical engineering may skip
+Lab and go straight to the normal coding workflow.
 
 The first Lab workflow uses lazy initialization and asks before creating:
 

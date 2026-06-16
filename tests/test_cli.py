@@ -17,6 +17,8 @@ from unittest.mock import patch
 
 from meridian import __version__
 from meridian.cli import main
+from meridian.evals import codex_routing as codex_routing_eval
+from meridian.evals.codex_routing import build_routing_prompt, run_codex_routing_eval
 from meridian.framework_check import (
     FRAMEWORK_CHECK_CATEGORIES,
     MCP_RUNTIME_CATEGORY,
@@ -211,7 +213,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.5.3"
+        expected = "0.6.0"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -267,9 +269,9 @@ class CliTests(unittest.TestCase):
         )
 
         self.assertEqual(meridian.returncode, 0, meridian.stderr)
-        self.assertEqual(meridian.stdout.strip(), "meridian 0.5.3")
+        self.assertEqual(meridian.stdout.strip(), "meridian 0.6.0")
         self.assertEqual(cli_module.returncode, 0, cli_module.stderr)
-        self.assertEqual(cli_module.stdout.strip(), "meridian 0.5.3")
+        self.assertEqual(cli_module.stdout.strip(), "meridian 0.6.0")
         self.assertEqual(cli_help.returncode, 0, cli_help.stderr)
         self.assertIn("usage: meridian wiki", cli_help.stdout)
 
@@ -2344,6 +2346,16 @@ quality_state: "multimodal_pending"
         self.assertNotIn("MCP server entry:", wiki)
 
         self.assertIn("Behavior Priority", lab)
+        self.assertIn("Lab-First Routing Gate", lab)
+        self.assertIn("When the target repo has `.meridian/`, default to Lab-first preflight", lab)
+        self.assertIn("Research Project Grounding Gate", lab)
+        self.assertIn("For idea-related requests, Lab must first check the research graph and Paper Wiki", lab)
+        self.assertIn("For research-coding requests, Lab must check Paper Wiki papers and open-source implementation", lab)
+        self.assertIn("For ongoing work, Lab must place it under the correct research node", lab)
+        self.assertIn("lab_route: use", lab)
+        self.assertIn("lab_route: skip", lab)
+        self.assertIn("Pure mechanical engineering may skip Lab", lab)
+        self.assertIn("research development requests must not bypass Lab", lab)
         self.assertIn("Runtime Load Boundary", lab)
         self.assertIn("Do not continue from remembered Lab semantics", lab)
         self.assertIn("Lab is not a coding agent", lab)
@@ -2356,7 +2368,7 @@ quality_state: "multimodal_pending"
 
         self.assertIn("| `meridian` | setup, status checks, updates, and migrations |", readme)
         self.assertIn("| `wiki` | Paper Wiki Update Wiki and Use Wiki workflows |", readme)
-        self.assertIn("| `lab` | idea graph, Wiki-grounded feasibility, experiments, and local findings |", readme)
+        self.assertIn("| `lab` | Lab-first research/dev preflight, idea graph, Wiki-grounded feasibility, experiments, and local findings |", readme)
         self.assertIn("Support skills", readme)
 
     def test_meridian_plugin_skill_copies_match_repo_skills(self) -> None:
@@ -2403,16 +2415,297 @@ quality_state: "multimodal_pending"
         self.assertTrue(any(case["expected_skill"] == "meridian" for case in parsed))
         self.assertTrue(any(case["expected_skill"] == "wiki" for case in parsed))
         self.assertTrue(any(case["expected_skill"] == "lab" for case in parsed))
+        lab_first_cases = [
+            case
+            for case in parsed
+            if case.get("expected_skill") == "lab" and case.get("expected_routing") == "lab_first_preflight"
+        ]
+        self.assertGreaterEqual(len(lab_first_cases), 30)
+        self.assertTrue(all(case.get("suite") == "lab_first_routing" for case in lab_first_cases))
+        self.assertTrue(all(case.get("polarity") == "positive" for case in lab_first_cases))
+        lab_first_risks = {case.get("risk") for case in lab_first_cases}
+        self.assertIn("research_state_continuity", lab_first_risks)
+        self.assertIn("wiki_grounding_required", lab_first_risks)
+        self.assertIn("code_grounding_required", lab_first_risks)
+        self.assertIn("node_state_update", lab_first_risks)
+        expected_text = " ".join(case.get("expected_result", "") for case in lab_first_cases)
+        self.assertIn("checks Paper Wiki", expected_text)
+        self.assertIn("open-source implementation", expected_text)
+        self.assertIn("research node", expected_text)
+        self.assertTrue(
+            any(
+                ".meridian" in case.get("repo_state", "")
+                and "probe" in case.get("user_request", "").lower()
+                for case in lab_first_cases
+            )
+        )
+        self.assertTrue(
+            any(
+                "normal_coding_workflow" in " ".join(case.get("handoff_to", []))
+                for case in lab_first_cases
+            )
+        )
+        allowed_handoffs = {"meridian", "wiki", "lab", "normal_coding_workflow"}
+        for case in parsed:
+            self.assertTrue(set(case.get("handoff_to", [])).issubset(allowed_handoffs))
         self.assertTrue(any("edit code or run tests inside Lab" in " ".join(case.get("must_not_do", [])) for case in parsed))
 
         rubric = Path("eval/rubrics/meridian_skill_behavior_quality.md").read_text(encoding="utf-8")
         self.assertIn("Entry Selection", rubric)
+        self.assertIn("Lab-First Research/Dev Routing", rubric)
+        self.assertIn("lab_first_preflight", rubric)
         self.assertIn("Workspace And Retrieval Discipline", rubric)
         self.assertIn("Artifact Boundary", rubric)
         self.assertIn("Lab Idea Graph Behavior", rubric)
         self.assertIn("Hard Fail Rules", rubric)
         self.assertIn("command_sprawl", rubric)
         self.assertIn("lab_setup", rubric)
+        self.assertIn("lab_first_routing", rubric)
+
+    def test_codex_routing_eval_runner_invokes_codex_exec_and_scores_output(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cases = root / "cases.jsonl"
+            cases.write_text(
+                json.dumps(
+                    {
+                        "id": "live-lab-route",
+                        "category": "meridian_skill_behavior_quality",
+                        "repo_state": "repo has .meridian/ with active Lab state",
+                        "user_request": "This initialized Meridian repo needs an ablation probe for the active node.",
+                        "expected_skill": "lab",
+                        "expected_routing": "lab_first_preflight",
+                        "handoff_to": ["normal_coding_workflow"],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            calls: list[list[str]] = []
+
+            def fake_runner(
+                argv: list[str],
+                cwd: Path,
+                timeout: float,
+                stdin_text: str | None,
+            ) -> subprocess.CompletedProcess[str]:
+                calls.append(argv)
+                self.assertIsNotNone(stdin_text)
+                self.assertIn("This initialized Meridian repo needs an ablation probe", stdin_text or "")
+                self.assertEqual(argv[-1], "-")
+                last_message = Path(argv[argv.index("--output-last-message") + 1])
+                last_message.write_text(
+                    json.dumps(
+                        {
+                            "selected_entry": "lab",
+                            "routing": "lab_first_preflight",
+                            "handoff_to": ["normal_coding_workflow"],
+                            "confidence": "high",
+                            "reason": "Initialized Meridian repo plus ablation probe needs Lab preflight.",
+                            "path_rationale": [
+                                {
+                                    "check": "repo_state_signal",
+                                    "observation": "repo has .meridian/ with active Lab state",
+                                    "effect": "project state makes Lab routing available",
+                                },
+                                {
+                                    "check": "intent_signal",
+                                    "observation": "ablation probe affects research evidence",
+                                    "effect": "use Lab-first preflight before implementation",
+                                },
+                                {
+                                    "check": "handoff_signal",
+                                    "observation": "probe implementation is code work",
+                                    "effect": "handoff to normal_coding_workflow after Lab context is preserved",
+                                },
+                            ],
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                return subprocess.CompletedProcess(argv, 0, '{"event":"done"}\n', "")
+
+            result = run_codex_routing_eval(
+                cases_path=cases,
+                out_dir=root / "run",
+                repo_root=Path.cwd(),
+                codex_bin="codex",
+                overwrite=True,
+                runner=fake_runner,
+            )
+
+            self.assertEqual(result.total_cases, 1)
+            self.assertEqual(result.passed_cases, 1)
+            self.assertEqual(result.failed_cases, 0)
+            self.assertTrue(calls)
+            self.assertIn("exec", calls[0])
+            self.assertIn("--json", calls[0])
+            self.assertIn("--ignore-user-config", calls[0])
+            self.assertIn("--ignore-rules", calls[0])
+            self.assertIn("--output-schema", calls[0])
+            summary = json.loads(result.summary_path.read_text(encoding="utf-8"))
+            self.assertEqual(summary["schema_version"], "meridian.codex_routing_eval.v1")
+            self.assertTrue(summary["isolate_config"])
+            self.assertEqual(summary["case_results"][0]["selected_entry"], "lab")
+            case_result = json.loads((root / "run/live-lab-route/result.json").read_text(encoding="utf-8"))
+            self.assertIn("path_rationale", case_result["response"])
+            self.assertEqual(case_result["response"]["path_rationale"][0]["check"], "repo_state_signal")
+
+    def test_codex_routing_eval_summary_groups_cases_by_polarity_and_risk(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cases = root / "cases.jsonl"
+            case_rows = [
+                {
+                    "id": "positive-lab",
+                    "category": "meridian_skill_behavior_quality",
+                    "suite": "lab_first_routing",
+                    "polarity": "positive",
+                    "risk": "research_state_continuity",
+                    "repo_state": "repo has .meridian/ with active Lab state",
+                    "user_request": "Continue the active research direction.",
+                    "expected_skill": "lab",
+                    "expected_routing": "lab_first_preflight",
+                    "handoff_to": ["lab"],
+                    "expected_result": "Lab finds the research node and preserves state.",
+                },
+                {
+                    "id": "negative-coding",
+                    "category": "meridian_skill_behavior_quality",
+                    "suite": "lab_first_routing",
+                    "polarity": "negative",
+                    "risk": "over_route_lab",
+                    "repo_state": "repo has .meridian/ but task has no research meaning",
+                    "user_request": "Rename a local helper variable.",
+                    "expected_skill": "normal_coding_workflow",
+                    "expected_routing": "normal_coding",
+                    "expected_result": "Skip Lab for pure mechanical coding.",
+                },
+            ]
+            cases.write_text("\n".join(json.dumps(row) for row in case_rows) + "\n", encoding="utf-8")
+
+            def fake_runner(
+                argv: list[str],
+                cwd: Path,
+                timeout: float,
+                stdin_text: str | None,
+            ) -> subprocess.CompletedProcess[str]:
+                last_message = Path(argv[argv.index("--output-last-message") + 1])
+                selected = "lab" if "positive-lab" in (stdin_text or "") else "normal_coding_workflow"
+                routing = "lab_first_preflight" if selected == "lab" else "normal_coding"
+                handoff = ["lab"] if selected == "lab" else ["normal_coding_workflow"]
+                last_message.write_text(
+                    json.dumps(
+                        {
+                            "selected_entry": selected,
+                            "routing": routing,
+                            "handoff_to": handoff,
+                            "confidence": "high",
+                            "reason": "fake grouped result",
+                            "path_rationale": [{"check": "repo_state_signal", "observation": "fake", "effect": "fake"}],
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                return subprocess.CompletedProcess(argv, 0, "", "")
+
+            result = run_codex_routing_eval(
+                cases_path=cases,
+                out_dir=root / "run",
+                repo_root=Path.cwd(),
+                overwrite=True,
+                runner=fake_runner,
+            )
+
+            summary = json.loads(result.summary_path.read_text(encoding="utf-8"))
+            self.assertEqual(summary["groups"]["polarity"]["positive"]["passed_cases"], 1)
+            self.assertEqual(summary["groups"]["polarity"]["negative"]["passed_cases"], 1)
+            self.assertEqual(summary["groups"]["risk"]["over_route_lab"]["total_cases"], 1)
+            self.assertEqual(summary["groups"]["suite"]["lab_first_routing"]["pass_rate"], 1.0)
+
+    def test_codex_routing_prompt_does_not_leak_expected_answer(self) -> None:
+        prompt = build_routing_prompt(
+            {
+                "id": "case",
+                "category": "meridian_skill_behavior_quality",
+                "repo_state": "repo has .meridian/",
+                "user_request": "Implement the probe that this Lab node needs.",
+                "expected_skill": "lab",
+                "expected_routing": "lab_first_preflight",
+            }
+        )
+
+        self.assertIn("Implement the probe", prompt)
+        self.assertIn("repo has .meridian/", prompt)
+        self.assertIn("simulated user turn", prompt)
+        self.assertIn("Do not answer that there is no actionable request", prompt)
+        self.assertIn("For idea-related requests, select lab_first_preflight", prompt)
+        self.assertIn("For research-coding requests, select lab_first_preflight", prompt)
+        self.assertIn("open-source implementation", prompt)
+        self.assertIn("eval-only diagnostic output", prompt)
+        self.assertNotIn("expected_skill", prompt)
+        self.assertNotIn("expected_routing", prompt)
+
+    def test_codex_routing_rationale_is_not_required_by_product_skills(self) -> None:
+        skill_paths = [
+            CODEX_PLUGIN_SKILL_ROOT / "lab/SKILL.md",
+            CLAUDE_PLUGIN_SKILL_ROOT / "lab/SKILL.md",
+            CODEX_PLUGIN_SKILL_ROOT / "meridian/SKILL.md",
+            CLAUDE_PLUGIN_SKILL_ROOT / "meridian/SKILL.md",
+        ]
+
+        for path in skill_paths:
+            self.assertNotIn("path_rationale", path.read_text(encoding="utf-8"))
+
+    def test_codex_routing_default_runner_invokes_powershell_for_windows_ps1(self) -> None:
+        calls: list[list[str]] = []
+
+        def fake_run(argv: list[str], **kwargs):  # noqa: ANN001
+            calls.append(argv)
+            self.assertEqual(kwargs.get("stdin"), subprocess.DEVNULL)
+            return subprocess.CompletedProcess(argv, 0, "", "")
+
+        def fake_which(command: str) -> str | None:
+            if command == "codex":
+                return "C:/Users/test/AppData/Roaming/npm/codex.ps1"
+            if command == "powershell":
+                return "C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+            return None
+
+        with patch.object(codex_routing_eval.os, "name", "nt"):
+            with patch.object(codex_routing_eval.shutil, "which", side_effect=fake_which):
+                with patch.object(codex_routing_eval.subprocess, "run", side_effect=fake_run):
+                    codex_routing_eval._default_runner(["codex", "exec", "-"], Path.cwd(), 10.0)
+
+        self.assertEqual(calls[0][0], "C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe")
+        self.assertIn("-File", calls[0])
+        self.assertIn("C:/Users/test/AppData/Roaming/npm/codex.ps1", calls[0])
+
+    def test_codex_routing_default_runner_invokes_cmd_for_windows_cmd_shim(self) -> None:
+        calls: list[list[str]] = []
+
+        def fake_run(argv: list[str], **kwargs):  # noqa: ANN001
+            calls.append(argv)
+            self.assertEqual(kwargs.get("stdin"), subprocess.DEVNULL)
+            return subprocess.CompletedProcess(argv, 0, "", "")
+
+        def fake_which(command: str) -> str | None:
+            if command == "codex":
+                return "C:/Users/test/AppData/Roaming/npm/codex.CMD"
+            if command == "cmd":
+                return "C:/Windows/System32/cmd.exe"
+            return None
+
+        with patch.object(codex_routing_eval.os, "name", "nt"):
+            with patch.object(codex_routing_eval.shutil, "which", side_effect=fake_which):
+                with patch.object(codex_routing_eval.subprocess, "run", side_effect=fake_run):
+                    codex_routing_eval._default_runner(["codex", "exec", "-"], Path.cwd(), 10.0)
+
+        self.assertEqual(calls[0][0], "C:/Windows/System32/cmd.exe")
+        self.assertEqual(calls[0][1], "/c")
+        self.assertIn("C:/Users/test/AppData/Roaming/npm/codex.CMD", calls[0])
 
     def test_product_skills_route_health_findings(self) -> None:
         wiki = (CODEX_PLUGIN_SKILL_ROOT / "wiki/SKILL.md").read_text(encoding="utf-8")
@@ -2514,7 +2807,7 @@ quality_state: "multimodal_pending"
         def runner(argv: list[str], timeout: float = 10.0) -> CommandResult:
             joined = " ".join(argv)
             if "import sys, meridian" in joined:
-                return CommandResult(0, "C:/Python/python.exe\n0.5.3\n", "")
+                return CommandResult(0, f"C:/Python/python.exe\n{__version__}\n", "")
             if "-m meridian.mcp --help" in joined:
                 return CommandResult(0, "usage: python -m meridian.mcp", "")
             if "-m meridian.mcp capabilities --detail summary" in joined:
@@ -2537,7 +2830,7 @@ quality_state: "multimodal_pending"
         self.assertTrue(report.selected.import_ok)
         self.assertTrue(report.selected.mcp_help_ok)
         self.assertTrue(report.selected.capabilities_ok)
-        self.assertEqual(report.selected.version, "0.5.3")
+        self.assertEqual(report.selected.version, __version__)
 
     def test_setup_runtime_resolver_rejects_missing_python3(self) -> None:
         def runner(argv: list[str], timeout: float = 10.0) -> CommandResult:
@@ -2561,7 +2854,7 @@ quality_state: "multimodal_pending"
             if argv[0] == "C:/bad/python.exe":
                 return CommandResult(0, "C:/bad/python.exe\n", "No module named meridian")
             if argv[0] == "C:/good/python.exe" and "-c" in argv:
-                return CommandResult(0, "C:/good/python.exe\n0.5.3\n", "")
+                return CommandResult(0, f"C:/good/python.exe\n{__version__}\n", "")
             if argv[0] == "C:/good/python.exe" and "--help" in argv:
                 return CommandResult(0, "usage: python -m meridian.mcp", "")
             if argv[0] == "C:/good/python.exe" and "capabilities" in argv:

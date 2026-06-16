@@ -1,6 +1,6 @@
 ---
 name: lab
-description: "Use when managing research ideas as an idea graph: place new ideas, ground them with Meridian Paper Wiki context, maintain approach trees, attach experiment evidence, and prepare reusable findings for wiki write-back. Do not use for code implementation, debugging, test repair, release, or git convergence; hand those to the normal coding workflow."
+description: "Use by default for research and research-development work in a repo with `.meridian/`: run Lab-first preflight, place/ground ideas, maintain approach trees, attach experiment evidence, prepare development handoffs, and create reusable findings for wiki write-back. Pure mechanical engineering may skip Lab. Do not use for code implementation, debugging, test repair, release, or git convergence; hand those to the normal coding workflow."
 ---
 
 # Meridian Lab
@@ -8,6 +8,10 @@ description: "Use when managing research ideas as an idea graph: place new ideas
 Use this skill for research idea graph management. Lab keeps the target repo's
 `.meridian/` research space organized, uses Paper Wiki to ground ideas, and
 turns reusable local findings into proposal-ready packets.
+
+In a repo that already has `.meridian/`, Lab is the default research/dev
+preflight layer. Route by project state first, then user intent; do not rely on
+the user saying "Lab" or on narrow keywords such as "idea graph".
 
 Lab is not a coding agent, workflow engine, MCP product, or setup assistant.
 When work needs code edits, debugging, tests, commits, release, or convergence,
@@ -20,6 +24,59 @@ Use Lab only when this `lab/SKILL.md` file was actually loaded by the active
 runtime. If the runtime reports that the Lab skill path is missing or
 unreadable, stop and use `meridian` setup/status to diagnose plugin path drift.
 Do not continue from remembered Lab semantics.
+
+## Lab-First Routing Gate
+
+When the target repo has `.meridian/`, default to Lab-first preflight for
+research and research-development requests. The gate may be silent for tiny
+answers, but the agent must make this classification before bypassing Lab:
+
+```text
+lab_route: use | skip
+reason: <why Lab is or is not the right layer>
+repo_state: meridian_initialized | needs_lazy_init | not_lab_repo
+research_prior: checked | missing | deferred | not_needed
+handoff: yes | no
+```
+
+Use `lab_route: use` when the request changes or depends on research direction,
+method choice, experiment design, ablation, probe, metric, baseline, evaluation
+protocol, failure interpretation, paper grounding, idea placement, approach
+state, experiment evidence, local findings, or development work whose result
+should update research state. In initialized Meridian repos, ambiguous research development requests must not bypass Lab.
+
+Use `lab_route: skip` only when the task is pure mechanical engineering with no
+research interpretation, no durable idea/evidence state, and no Paper Wiki
+grounding need. Pure mechanical engineering may skip Lab; examples include a
+format-only change, dependency installation, an obvious import-path repair, CI
+plumbing, release mechanics, or a small typo fix.
+
+If `lab_route: use` and the next action is implementation, debugging, testing,
+running experiments, commit management, release, or convergence, produce a
+Development Handoff Packet and then hand the work to the normal coding
+workflow. Lab owns the research context and evidence identity; the coding
+workflow owns code changes and verification.
+
+If the repo does not yet have `.meridian/` but the user request is research or
+research-development work, apply Lazy Init before treating the request as
+ordinary coding.
+
+## Research Project Grounding Gate
+
+For research projects, Lab-first preflight means preserving research-state
+continuity before picking the execution workflow:
+
+- For idea-related requests, Lab must first check the research graph and Paper Wiki for related ideas, papers, user insights, methods, and failed paths.
+- For research-coding requests, Lab must check Paper Wiki papers and open-source implementation hints when the relevant papers expose code or reproduction links. Include that implementation prior in the development handoff before normal coding starts.
+- When the user suddenly shares an idea, Lab records the raw idea, finds related
+  nodes, and asks before creating or attaching durable node state when placement
+  is ambiguous.
+- When the user wants to continue a research direction, Lab finds the matching
+  thread/node before answering or handing off coding work.
+- When completed work, a result, or a new idea can attach to the research graph,
+  Lab finds or creates the appropriate research node and records evidence,
+  findings, or state changes with provenance.
+- For ongoing work, Lab must place it under the correct research node and update node state, active pointers, confidence, evidence identity, and next actions as needed.
 
 ## Behavior Priority
 

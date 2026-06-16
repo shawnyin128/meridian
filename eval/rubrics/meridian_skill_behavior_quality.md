@@ -46,7 +46,21 @@ observable workflow choices and artifact boundaries.
 5. Balances idea graph continuity, wiki grounding, evidence identity, local
    proposals, and development handoffs without taking over code work.
 
-### 5. User Confirmation And Publish Gates
+### 5. Lab-First Research/Dev Routing
+
+1. Bypasses Lab for research-development work in an initialized `.meridian/`
+   repo, or routes pure mechanical cleanup into Lab state.
+2. Mentions Lab but treats it as optional for method, experiment, probe, metric,
+   baseline, eval, or failure interpretation work.
+3. Uses Lab for obvious idea/evidence cases but misses ambiguous implementation
+   requests whose result should update research state.
+4. Applies `lab_first_preflight` for initialized research/dev requests and
+   skips Lab for pure mechanical engineering with minor ambiguity.
+5. Routes by project state first: `.meridian/` plus research-bearing intent
+   produces Lab preflight, Research Prior classification when needed, and a
+   development handoff to the normal coding workflow for implementation.
+
+### 6. User Confirmation And Publish Gates
 
 1. Changes boundary states, active nodes, wiki publish state, or commit scope
    without confirmation.
@@ -56,7 +70,7 @@ observable workflow choices and artifact boundaries.
 5. Confirms repairable/dead/new-node/active-switch/thread-close/wiki-publish and
    lets safe factual updates proceed.
 
-### 6. Lightweight Text Quality
+### 7. Lightweight Text Quality
 
 1. Skill text reads like a command catalog or rigid state machine.
 2. Important behavior is buried below long command blocks or negative rules.
@@ -83,6 +97,11 @@ Fail the case if any of these occur:
   placement.
 - A Lab workflow performs implementation, debugging, tests, commits, release, or
   convergence instead of producing a development handoff.
+- A research-development request in an initialized `.meridian/` repo bypasses
+  Lab-first preflight and goes directly to ordinary coding without preserving
+  Lab node/evidence identity.
+- A pure mechanical engineering request creates Lab state, retrieves wiki
+  context, or records experiment evidence without user intent.
 - A canonical wiki update is published without proposal/lint/review where the
   workflow requires a gate.
 - Debug or draft artifacts are presented as the primary product output.
@@ -98,6 +117,8 @@ Fail the case if any of these occur:
 - `artifact_boundary`: clarify product versus draft/debug output.
 - `lab_setup`: clarify Meridian setup initialization for the minimal
   `.meridian/` skeleton.
+- `lab_first_routing`: clarify `.meridian/` project-state routing, Lab-first
+  preflight, skip conditions, and normal coding handoff boundaries.
 - `lab_state`: clarify Lab lazy init, placement, node modes, or evidence
   recording.
 - `development_handoff`: clarify that Lab hands off code/debug/test work instead
