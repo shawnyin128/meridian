@@ -17,7 +17,12 @@ from unittest.mock import patch
 
 from meridian import __version__
 from meridian.cli import main
-from meridian.framework_check import FRAMEWORK_CHECK_CATEGORIES, lab_skill_path_diagnostics, run_framework_check
+from meridian.framework_check import (
+    FRAMEWORK_CHECK_CATEGORIES,
+    MCP_RUNTIME_CATEGORY,
+    lab_skill_path_diagnostics,
+    run_framework_check,
+)
 from meridian.lab import initialize_lab_space, validate_lab_space
 from meridian.mcp import adapter as mcp_adapter
 from meridian.mcp import harness as mcp_harness
@@ -2431,6 +2436,19 @@ quality_state: "multimodal_pending"
         self.assertIn("lab_skill_path_readable", info_codes)
         self.assertIn("coding_style_profile_missing", info_codes)
 
+    def test_framework_check_include_mcp_runtime_adds_setup_findings(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_home = Path(tmp) / "home"
+            with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(Path(tmp) / "config")}):
+                with patch.object(Path, "home", return_value=fake_home):
+                    report = run_framework_check(project_root=Path.cwd(), include_mcp_runtime=True)
+
+        category_names = [category.name for category in report.categories]
+        self.assertEqual(category_names[: len(FRAMEWORK_CHECK_CATEGORIES)], FRAMEWORK_CHECK_CATEGORIES)
+        self.assertEqual(category_names[-1], MCP_RUNTIME_CATEGORY)
+        mcp_runtime = next(category for category in report.categories if category.name == MCP_RUNTIME_CATEGORY)
+        self.assertGreaterEqual(len(mcp_runtime.findings), 1)
+
     def test_setup_runtime_resolver_selects_sys_executable(self) -> None:
         def runner(argv: list[str], timeout: float = 10.0) -> CommandResult:
             joined = " ".join(argv)
@@ -3271,6 +3289,7 @@ quality_state: "multimodal_pending"
                         "framework-check",
                         "--project-root",
                         str(Path.cwd()),
+                        "--include-mcp-runtime",
                         "--json-out",
                         str(json_out),
                         "--report",
@@ -3282,8 +3301,11 @@ quality_state: "multimodal_pending"
             self.assertIn("Framework status:", stdout)
             payload = json.loads(json_out.read_text(encoding="utf-8"))
             self.assertEqual(payload["schema_version"], "meridian.framework_check.v0")
-            self.assertTrue(payload["categories"])
-            self.assertIn("# Meridian Framework Check", report_out.read_text(encoding="utf-8"))
+            category_names = [category["name"] for category in payload["categories"]]
+            self.assertIn(MCP_RUNTIME_CATEGORY, category_names)
+            markdown = report_out.read_text(encoding="utf-8")
+            self.assertIn("# Meridian Framework Check", markdown)
+            self.assertIn(f"### {MCP_RUNTIME_CATEGORY}:", markdown)
 
     def test_framework_check_catches_missing_lab_state_when_requested(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -9,6 +9,7 @@ from typing import Any
 
 from meridian import __version__
 from meridian.lab import coding_style_profile_path, validate_coding_style_profile, validate_lab_space
+from meridian.setup.doctor import build_setup_doctor_report
 from meridian.wiki.workspace import resolve_workspace
 
 
@@ -23,6 +24,7 @@ FRAMEWORK_CHECK_CATEGORIES = [
     "Lab State",
     "Docs And Evals",
 ]
+MCP_RUNTIME_CATEGORY = "MCP Runtime"
 PRODUCT_SKILLS = {"meridian", "wiki", "lab"}
 SUPPORT_SKILLS = {
     "llm-wiki",
@@ -108,6 +110,7 @@ def run_framework_check(
     wiki_root: Path | None = None,
     lab_root: Path | None = None,
     require_workspace: bool = False,
+    include_mcp_runtime: bool = False,
 ) -> FrameworkCheckReport:
     root = project_root.expanduser().resolve()
     categories = [
@@ -120,6 +123,8 @@ def run_framework_check(
         _lab_state_category(lab_root),
         _docs_and_evals_category(root),
     ]
+    if include_mcp_runtime:
+        categories.append(_mcp_runtime_setup_category(root))
     status = "fail" if any(category.status == "fail" for category in categories) else (
         "warn" if any(category.status == "warn" for category in categories) else "pass"
     )
@@ -503,6 +508,37 @@ def _runtime_category() -> FrameworkCategory:
             "Keep MCP tools small and scenario-facing across Use Wiki and Update Wiki.",
         )
     return _category(category, findings)
+
+
+def _mcp_runtime_setup_category(root: Path) -> FrameworkCategory:
+    findings: list[FrameworkFinding] = []
+    report = build_setup_doctor_report(project_root=root)
+    for item in report.findings:
+        severity = "critical" if item.get("severity") == "critical" else "degraded"
+        client = item.get("client")
+        message = str(item.get("message") or "MCP runtime setup finding.")
+        if client:
+            message = f"{client}: {message}"
+        _add(
+            findings,
+            MCP_RUNTIME_CATEGORY,
+            severity,
+            "manual",
+            str(item.get("code") or "mcp_runtime_setup_finding"),
+            message,
+            str(item.get("next_action") or "Run `meridian setup doctor` for setup details."),
+        )
+    if not findings:
+        _add(
+            findings,
+            MCP_RUNTIME_CATEGORY,
+            "info",
+            "manual",
+            "mcp_runtime_ready",
+            "MCP runtime setup doctor reported no findings.",
+            "No action required.",
+        )
+    return _category(MCP_RUNTIME_CATEGORY, findings)
 
 
 def _workspace_category(

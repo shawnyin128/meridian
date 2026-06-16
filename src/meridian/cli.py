@@ -104,6 +104,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Treat a missing Paper Wiki workspace as a failing framework check.",
     )
+    framework_check.add_argument(
+        "--include-mcp-runtime",
+        action="store_true",
+        help="Include setup doctor MCP runtime findings as an optional framework-check category.",
+    )
     framework_check.add_argument("--json-out", type=Path, default=None, help="Optional machine-readable report path.")
     framework_check.add_argument("--report", type=Path, default=None, help="Optional Markdown report path.")
 
@@ -1174,6 +1179,7 @@ def main(argv: list[str] | None = None) -> int:
                 wiki_root=args.wiki_root,
                 lab_root=args.lab_root,
                 require_workspace=args.require_workspace,
+                include_mcp_runtime=args.include_mcp_runtime,
             )
             if args.json_out:
                 write_framework_json(report, args.json_out)
