@@ -19,6 +19,7 @@ from meridian.wiki.commands import (
     publish_proposal_wiki,
     retrieve_wiki,
 )
+from meridian.wiki.context_paths import default_mcp_context_out_dir
 from meridian.wiki.workspace import resolve_workspace
 from meridian.wiki.corpus import (
     build_knowledge_catalogs,
@@ -132,7 +133,7 @@ def context(
     out_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Retrieve a compact context packet and return summary metadata."""
-    target_dir = out_dir or Path("/private/tmp/meridian-context") / f"mcp-{_slug(query)}"
+    target_dir = out_dir or default_mcp_context_out_dir(query)
     packet_path = target_dir / "context.md"
     result_path = target_dir / "context.json"
     result = retrieve_wiki(

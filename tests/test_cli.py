@@ -38,6 +38,7 @@ from meridian.setup.doctor import build_setup_doctor_report, format_setup_doctor
 from meridian.setup.repair import apply_mcp_repair, plan_mcp_repair
 from meridian.wiki import commands as wiki_commands
 from meridian.wiki.corpus import retrieve_papers
+from meridian.wiki.context_paths import default_context_out_dir
 from meridian.wiki.extract import PageExtraction, PdfExtraction
 from meridian.wiki.ingest import _title_from_first_page
 from meridian.wiki.health_server import HealthRunController
@@ -1397,7 +1398,7 @@ Evidence takeaways:
             config_home = root / "config"
             library = root / "paper-library"
             query = "MoE PTQ activation outlier probes test-031-context"
-            expected_dir = Path("/private/tmp/meridian-context") / "MoE-PTQ-activation-outlier-probes-test-031-context"
+            expected_dir = default_context_out_dir(query)
             shutil.rmtree(expected_dir, ignore_errors=True)
 
             with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(config_home)}):
@@ -2253,7 +2254,7 @@ quality_state: "multimodal_pending"
             text = skill.read_text(encoding="utf-8")
             self.assertIn("meridian wiki context", text)
             self.assertIn("meridian wiki status", text)
-            self.assertIn("/private/tmp/meridian-context", text)
+            self.assertIn("meridian-context", text)
             self.assertIn("MERIDIAN_CORE_ROOT", text)
             self.assertIn("do not start with broad `rg`", text)
             self.assertIn("HTTP(S) paper URL", text)
@@ -4140,7 +4141,7 @@ Plot per-channel activation maxima and run an ablation without smoothing.
             self.assertEqual(payload["input_contract"]["accepted_source_forms"], ["local_pdf_path"])
             self.assertIn("download it to a local PDF first", payload["input_contract"]["url_handling"])
             self.assertTrue(payload["rubric"]["required"])
-            self.assertTrue(payload["rubric"]["path"].endswith("eval/rubrics/paper_wiki_quality_v0.md"))
+            self.assertEqual(Path(payload["rubric"]["path"]).name, "paper_wiki_quality_v0.md")
             command = payload["run_command"]
             fallback = payload["fallback_command"]
             self.assertEqual(command[:3], ["meridian", "wiki", "flow"])
@@ -4157,7 +4158,10 @@ Plot per-channel activation maxima and run an ablation without smoothing.
             self.assertEqual(exit_code, 0, stderr)
             self.assertIn("Managed source PDF:", stdout)
             self.assertIn("Canonical wiki page:", stdout)
-            self.assertTrue((wiki_root / "papers/Fake-Research-Paper.md").exists())
+            flow = json.loads((wiki_root / ".drafts/ingests/paper/flow.json").read_text(encoding="utf-8"))
+            self.assertEqual(flow["publish_decision"], "blocked")
+            self.assertFalse((wiki_root / "papers/Fake-Research-Paper.md").exists())
+            self.assertTrue(Path(flow["source_fidelity_packet"]).exists())
 
     def test_mcp_stdio_server_registry_and_tool_calls_share_adapter(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -6756,7 +6760,9 @@ Compare recency-only retention with attention-based and oracle retention policie
 
             self.assertEqual(exit_code, 0)
             flow = json.loads((out / "flow.json").read_text(encoding="utf-8"))
-            self.assertEqual(flow["status"], "awaiting_judge")
+            self.assertEqual(flow["status"], "blocked")
+            self.assertEqual(flow["publish_decision"], "blocked")
+            self.assertEqual(flow["block_reason"], "quality_gate_not_pass")
             self.assertTrue((out / "judge-packet.md").exists())
             self.assertTrue((out / "reader-check.md").exists())
             self.assertTrue((out / "quality-self-check.json").exists())
@@ -6775,7 +6781,7 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertIn("deterministic_review_state", flow)
             self.assertEqual(
                 set(flow["managed_self_check_agents"]),
-                {"understanding", "quality", "structural"},
+                {"understanding", "quality", "structural", "source_fidelity"},
             )
             reader_check = (out / "reader-check.md").read_text(encoding="utf-8")
             self.assertIn("Schema version: `paper_wiki_reader_check.v2`", reader_check)
@@ -6793,7 +6799,8 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertIn("candidate_record_audit", reader_check)
             self.assertIn("regression_tests_to_add", reader_check)
             self.assertIn("generation_bucket", reader_check)
-            self.assertTrue((wiki_root / "papers/Fake-Research-Paper.md").exists())
+            self.assertFalse((wiki_root / "papers/Fake-Research-Paper.md").exists())
+            self.assertTrue(Path(flow["source_fidelity_packet"]).exists())
 
     def test_reader_check_command_builds_two_reader_packet(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

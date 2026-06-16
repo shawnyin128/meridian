@@ -71,6 +71,7 @@ from meridian.wiki.commands import (
     system_optimize_compare_wiki,
     system_optimize_eval_wiki,
 )
+from meridian.wiki.context_paths import default_context_out_dir
 from meridian.wiki.git_auto_commit import GitAutoCommitResult, auto_commit_paths, git_dirty_paths
 from meridian.wiki.health_server import serve_health_ui
 from meridian.wiki.vault import slugify
@@ -2342,7 +2343,7 @@ def _mcp_available() -> bool:
 
 
 def _default_context_out_dir(query: str) -> Path:
-    return Path("/private/tmp/meridian-context") / slugify(query)[:80]
+    return default_context_out_dir(query)
 
 
 def _print_git_auto_commit_result(result: GitAutoCommitResult) -> None:

@@ -113,8 +113,9 @@ meridian wiki context "What long-running agent goal design makes execution stabl
 ```
 
 It uses the active workspace, retrieves only canonical corpus pages, and writes
-`context.md` / `context.json` to `/private/tmp/meridian-context/<slug>/` by
-default. Retrieval warnings are part of the output; a bad legacy catalog path
+`context.md` / `context.json` to the OS temp directory's
+`meridian-context/<slug>/` by default (`/private/tmp` on POSIX, `%TEMP%` on
+Windows). Retrieval warnings are part of the output; a bad legacy catalog path
 should produce a warning or skip, not a silent success or noisy fallback search.
 
 The MCP server also defaults to the active workspace. Server startup is an

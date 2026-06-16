@@ -165,9 +165,10 @@ meridian wiki context "<standalone research intent>"
 ```
 
 This uses the active workspace and writes `context.md` / `context.json` under
-`/private/tmp/meridian-context/<slug>/` by default. If it reports a missing
-workspace, ask the user for a library root and run `meridian wiki init
---library-root <paper-wiki-library-root>`.
+the OS temp directory's `meridian-context/<slug>/` by default (`/private/tmp` on
+POSIX, `%TEMP%` on Windows). If it reports a missing workspace, ask the user for
+a library root and run `meridian wiki init --library-root
+<paper-wiki-library-root>`.
 
 Agent execution resolver:
 

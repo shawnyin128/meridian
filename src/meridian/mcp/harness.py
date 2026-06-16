@@ -222,6 +222,8 @@ def _write_fixture_wiki(wiki_root: Path) -> None:
                 'confidence: "medium"',
                 'review_state: "auto_converged"',
                 'quality_state: "text_converged"',
+                'validation_state: "text_converged"',
+                'trust_state: "source_grounded_text"',
                 'evolution_state: "active"',
                 "---",
                 "# Fixture Activation Outliers",

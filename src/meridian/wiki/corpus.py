@@ -1279,6 +1279,11 @@ def _is_unverified_source_fidelity_result(item: dict[str, Any]) -> bool:
     is_paper = result_type == "paper" or corpus_type.startswith("papers")
     if not is_paper:
         return False
+    if (
+        str(item.get("validation_state") or "") == "text_converged"
+        and str(item.get("trust_state") or "") == "source_grounded_text"
+    ):
+        return False
     return not (
         str(item.get("validation_state") or "") == "source_fidelity_pass"
         and str(item.get("trust_state") or "") == "source_verified"

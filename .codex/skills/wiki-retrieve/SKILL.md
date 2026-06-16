@@ -19,10 +19,10 @@ meridian wiki context "<standalone research query>"
 ```
 
 This uses the active workspace and writes `context.md` / `context.json` under
-`/private/tmp/meridian-context/<slug>/` by default. Read the generated context
-packet before opening individual pages. If `meridian` is unavailable, resolve
-the execution path through the `wiki` skill before falling back to manual file
-search.
+the OS temp directory's `meridian-context/<slug>/` by default (`/private/tmp` on
+POSIX, `%TEMP%` on Windows). Read the generated context packet before opening
+individual pages. If `meridian` is unavailable, resolve the execution path
+through the `wiki` skill before falling back to manual file search.
 
 Use the lower-level retrieval primitive only when an explicit output path or
 strategy comparison is needed:
