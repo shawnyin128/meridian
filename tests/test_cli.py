@@ -2650,24 +2650,27 @@ quality_state: "multimodal_pending"
     def test_setup_doctor_cli_writes_json_report(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
+            home = Path(tmp) / "home"
             json_out = root / "setup.json"
+            root.mkdir(exist_ok=True)
 
-            exit_code, stdout, stderr = _run_cli_capture(
-                [
-                    "setup",
-                    "doctor",
-                    "--client",
-                    "codex",
-                    "--project-root",
-                    str(Path.cwd()),
-                    "--json-out",
-                    str(json_out),
-                ]
-            )
+            with patch.object(Path, "home", return_value=home):
+                exit_code, stdout, stderr = _run_cli_capture(
+                    [
+                        "setup",
+                        "doctor",
+                        "--client",
+                        "codex",
+                        "--project-root",
+                        str(root),
+                        "--json-out",
+                        str(json_out),
+                    ]
+                )
 
             self.assertIn(exit_code, {0, 1})
             self.assertEqual(stderr, "")
-            self.assertIn("Meridian setup doctor:", stdout)
+            self.assertTrue(stdout.startswith("Meridian setup doctor:"))
             self.assertTrue(json_out.exists())
             self.assertIn("status", json.loads(json_out.read_text(encoding="utf-8")))
 
@@ -2698,14 +2701,59 @@ quality_state: "multimodal_pending"
         self.assertEqual(json.loads(original_text), original)
 
     def test_setup_repair_mcp_cli_no_files_changed_message_is_dry_run_only(self) -> None:
-        exit_code, stdout, stderr = _run_cli_capture(
-            ["setup", "repair-mcp", "--client", "codex", "--project-root", str(Path.cwd())]
-        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "project"
+            root.mkdir(parents=True, exist_ok=True)
+            home = Path(tmp) / "home"
 
-        self.assertIn(exit_code, {0, 1})
+            with patch.object(Path, "home", return_value=home):
+                exit_code, stdout, stderr = _run_cli_capture(
+                    ["setup", "repair-mcp", "--client", "codex", "--project-root", str(root)]
+                )
+
+        self.assertEqual(exit_code, 1)
         self.assertEqual(stderr, "")
         self.assertIn("No MCP repair is available.", stdout)
         self.assertNotIn("No files changed. Re-run with --apply.", stdout)
+
+    def test_setup_repair_mcp_cli_apply_writes_target_and_backup(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "project"
+            home = Path(tmp) / "home"
+            cache_root = home / ".codex/plugins/cache/meridian/meridian" / __version__
+            for skill in ["meridian", "wiki", "lab"]:
+                skill_path = cache_root / "skills" / skill / "SKILL.md"
+                skill_path.parent.mkdir(parents=True, exist_ok=True)
+                skill_path.write_text(f"# {skill}\n", encoding="utf-8")
+            mcp_path = cache_root / ".mcp.json"
+            original = {"mcpServers": {"meridian-paper-wiki": {"args": ["-m", "meridian.mcp", "serve"]}}}
+            mcp_path.write_text(json.dumps(original), encoding="utf-8")
+            json_out = root / "repair.json"
+
+            with patch.object(Path, "home", return_value=home):
+                exit_code, stdout, stderr = _run_cli_capture(
+                    [
+                        "setup",
+                        "repair-mcp",
+                        "--client",
+                        "codex",
+                        "--project-root",
+                        str(root),
+                        "--apply",
+                        "--json-out",
+                        str(json_out),
+                    ]
+                )
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(stderr, "")
+            self.assertTrue(json_out.exists())
+            self.assertTrue(any(path.name.startswith(".mcp.json.bak-") for path in mcp_path.parent.iterdir()))
+            self.assertIn("Applied repair:", stdout)
+            self.assertIn("- MCP config updated", stdout)
+            self.assertIn("- restart required: yes", stdout)
+            self.assertNotEqual(json.loads(mcp_path.read_text(encoding="utf-8")), {"mcpServers": {"meridian-paper-wiki": {"args": ["-m", "meridian.mcp", "serve"]}}})
+            repair_payload = json.loads(json_out.read_text(encoding="utf-8"))
+            self.assertEqual(repair_payload["applied"], True)
 
     def test_setup_doctor_reports_repair_available_for_skill_visible_mcp_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

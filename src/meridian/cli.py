@@ -1203,11 +1203,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.product == "setup" and args.command == "doctor":
             clients = None if args.client == "all" else [args.client]
             report = build_setup_doctor_report(project_root=args.project_root, clients=clients)
+            print(format_setup_doctor(report), end="")
             if args.json_out:
                 args.json_out.parent.mkdir(parents=True, exist_ok=True)
                 args.json_out.write_text(json.dumps(report.to_dict(), indent=2) + "\n", encoding="utf-8")
                 print(f"Wrote setup doctor JSON: {args.json_out}")
-            print(format_setup_doctor(report), end="")
             return 0 if report.status in {"ready", "degraded", "repair_available"} else 1
 
         if args.product == "setup" and args.command == "repair-mcp":
