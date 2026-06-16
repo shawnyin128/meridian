@@ -2878,6 +2878,9 @@ quality_state: "multimodal_pending"
         self.assertIn("implementation_integrity_gate", prompt)
         self.assertIn("silent fallback", prompt.lower())
         self.assertIn("Code Style Distillation", prompt)
+        self.assertIn("Code Style Distillation is a Lab workflow", prompt)
+        self.assertIn("Pure bug-only correctness requests", prompt)
+        self.assertIn("normal_coding_workflow", prompt)
 
     def test_research_agent_contract_eval_runner_scores_fields(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
