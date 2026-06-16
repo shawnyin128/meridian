@@ -84,10 +84,9 @@ def inject_meridian_agents_contract(project_root: Path) -> Path:
         return target
 
     text = target.read_text(encoding="utf-8")
-    start = text.find(MERIDIAN_AGENTS_CONTRACT_START)
-    end = text.find(MERIDIAN_AGENTS_CONTRACT_END)
-    if start >= 0 and end >= start:
-        end += len(MERIDIAN_AGENTS_CONTRACT_END)
+    span = _find_valid_meridian_agents_contract_span(text)
+    if span is not None:
+        start, end = span
         updated = text[:start] + block + text[end:]
     else:
         separator = "" if not text or text.endswith("\n\n") else "\n" if text.endswith("\n") else "\n\n"
@@ -95,6 +94,23 @@ def inject_meridian_agents_contract(project_root: Path) -> Path:
     if updated != text:
         target.write_text(updated, encoding="utf-8")
     return target
+
+
+def _find_valid_meridian_agents_contract_span(text: str) -> tuple[int, int] | None:
+    search_from = 0
+    while True:
+        start = text.find(MERIDIAN_AGENTS_CONTRACT_START, search_from)
+        if start < 0:
+            return None
+        end = text.find(MERIDIAN_AGENTS_CONTRACT_END, start + len(MERIDIAN_AGENTS_CONTRACT_START))
+        if end < 0:
+            search_from = start + len(MERIDIAN_AGENTS_CONTRACT_START)
+            continue
+        next_start = text.find(MERIDIAN_AGENTS_CONTRACT_START, start + len(MERIDIAN_AGENTS_CONTRACT_START))
+        if next_start >= 0 and next_start < end:
+            search_from = next_start
+            continue
+        return start, end + len(MERIDIAN_AGENTS_CONTRACT_END)
 
 
 def initialize_research_agent_principles(

@@ -205,8 +205,11 @@ def initialize_lab_space(root: Path, *, overwrite: bool = False, inject_agents_c
         written.append(target)
 
     if inject_agents_contract:
+        target = lab_root.parent / "AGENTS.md"
+        before = target.read_text(encoding="utf-8") if target.exists() else None
         agents_path = inject_meridian_agents_contract(lab_root.parent)
-        if agents_path not in written:
+        after = agents_path.read_text(encoding="utf-8")
+        if before != after and agents_path not in written:
             written.append(agents_path)
 
     return written

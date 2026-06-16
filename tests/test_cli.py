@@ -6048,6 +6048,64 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertEqual(first_text, prefix + block + suffix)
             self.assertEqual(second_text, first_text)
 
+    def test_meridian_agents_contract_orphan_start_preserves_text_across_repeated_injection(self) -> None:
+        from meridian.lab import (
+            MERIDIAN_AGENTS_CONTRACT_START,
+            inject_meridian_agents_contract,
+            meridian_agents_contract_block,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            agents = root / "AGENTS.md"
+            original = (
+                "# Existing Rules\n\n"
+                f"{MERIDIAN_AGENTS_CONTRACT_START}\n"
+                "This is user-authored text after an orphan marker.\n"
+                "    Preserve this indentation.\n"
+            )
+            agents.write_text(original, encoding="utf-8")
+
+            inject_meridian_agents_contract(root)
+            first_text = agents.read_text(encoding="utf-8")
+            inject_meridian_agents_contract(root)
+            second_text = agents.read_text(encoding="utf-8")
+
+            block = meridian_agents_contract_block().rstrip()
+            expected = original + "\n" + block + "\n"
+            self.assertEqual(first_text, expected)
+            self.assertEqual(second_text, expected)
+            self.assertEqual(first_text.count(block), 1)
+
+    def test_meridian_agents_contract_stray_end_preserves_text_and_appends_valid_block(self) -> None:
+        from meridian.lab import (
+            MERIDIAN_AGENTS_CONTRACT_END,
+            inject_meridian_agents_contract,
+            meridian_agents_contract_block,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            agents = root / "AGENTS.md"
+            original = (
+                f"{MERIDIAN_AGENTS_CONTRACT_END}\n"
+                "# Existing Rules\n\n"
+                "Normal user text after a stray end marker.\n"
+                "\tKeep the tabbed line.\n"
+            )
+            agents.write_text(original, encoding="utf-8")
+
+            inject_meridian_agents_contract(root)
+            first_text = agents.read_text(encoding="utf-8")
+            inject_meridian_agents_contract(root)
+            second_text = agents.read_text(encoding="utf-8")
+
+            block = meridian_agents_contract_block().rstrip()
+            expected = original + "\n" + block + "\n"
+            self.assertEqual(first_text, expected)
+            self.assertEqual(second_text, expected)
+            self.assertEqual(first_text.count(block), 1)
+
     def test_initialize_lab_space_injects_agents_contract(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
