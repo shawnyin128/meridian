@@ -3779,6 +3779,48 @@ quality_state: "multimodal_pending"
             self.assertIn("## Pending Review", migrated_text)
             self.assertIn("Keep experiment scripts linear.", migrated_text)
 
+    def test_research_agent_principles_init_migrate_and_validate(self) -> None:
+        from meridian.lab import (
+            RESEARCH_AGENT_PRINCIPLES_SCHEMA_VERSION,
+            initialize_research_agent_principles,
+            migrate_research_agent_principles,
+            research_agent_principles_path,
+            validate_research_agent_principles,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            config_home = Path(tmp) / "config"
+            target = research_agent_principles_path(config_home=config_home)
+            self.assertEqual(target, (config_home / "research-agent-principles.md").resolve())
+
+            written = initialize_research_agent_principles(config_home=config_home)
+            self.assertEqual(written, target)
+            text = written.read_text(encoding="utf-8")
+            self.assertIn(f"schema_version: {RESEARCH_AGENT_PRINCIPLES_SCHEMA_VERSION}", text)
+            self.assertIn("Implementation Integrity", text)
+            self.assertIn("Do not silently substitute", text)
+            self.assertIn("Prefer linear, readable code", text)
+            self.assertNotIn("```python", text)
+            self.assertEqual(validate_research_agent_principles(written).status, "pass")
+
+            old = config_home / "old-principles.md"
+            old.write_text("# Existing Principles\n\nUser text stays.\n", encoding="utf-8")
+            migrated = migrate_research_agent_principles(path=old)
+            migrated_text = migrated.read_text(encoding="utf-8")
+            self.assertIn("User text stays.", migrated_text)
+            self.assertIn(f"schema_version: {RESEARCH_AGENT_PRINCIPLES_SCHEMA_VERSION}", migrated_text)
+            self.assertIn("## Implementation Integrity", migrated_text)
+            self.assertIn("## Research Code Style", migrated_text)
+
+    def test_coding_style_profile_points_to_research_agent_principles(self) -> None:
+        from meridian.lab import initialize_coding_style_profile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            profile = initialize_coding_style_profile(config_home=Path(tmp))
+            text = profile.read_text(encoding="utf-8")
+            self.assertIn("research-agent-principles.md", text)
+            self.assertIn("compact", text.lower())
+
     def test_coding_style_feedback_gate_classifies_reusable_feedback(self) -> None:
         from meridian.lab import classify_coding_style_feedback
 
