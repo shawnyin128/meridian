@@ -4017,6 +4017,30 @@ quality_state: "multimodal_pending"
             self.assertTrue("primary path" in skill or "primary requested path" in skill)
             self.assertIn("Do not let Lab implement the code", skill)
 
+    def test_lab_documents_code_style_distillation_workflow(self) -> None:
+        codex_lab = Path("plugins/codex/meridian/skills/lab/SKILL.md").read_text(encoding="utf-8")
+        claude_lab = Path("plugins/claude-code/meridian/skills/lab/SKILL.md").read_text(encoding="utf-8")
+        for text in [codex_lab, claude_lab]:
+            self.assertIn("Code Style Distillation", text)
+            self.assertIn("confirmed_candidate", text)
+            self.assertIn("repo_local", text)
+            self.assertIn("insufficient_evidence", text)
+            self.assertIn("Do not store full code blocks", text)
+
+    def test_research_agent_contract_eval_assets_parse(self) -> None:
+        cases = [
+            json.loads(line)
+            for line in Path("eval/cases/research_agent_contract.jsonl").read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        rubric = Path("eval/rubrics/research_agent_contract_quality.md").read_text(encoding="utf-8")
+        self.assertGreaterEqual(len(cases), 10)
+        self.assertTrue(all(case.get("category") == "research_agent_contract" for case in cases))
+        self.assertTrue(any(case.get("expected_outcome") == "report_blocker" for case in cases))
+        self.assertTrue(any(case.get("expected_outcome") == "style_distillation_proposal" for case in cases))
+        self.assertIn("Implementation Integrity Gate", rubric)
+        self.assertIn("Code Style Distillation", rubric)
+
     def test_lab_skill_path_diagnostics_reports_readable_source_and_caches(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "project"

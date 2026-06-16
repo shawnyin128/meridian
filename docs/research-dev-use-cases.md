@@ -200,6 +200,28 @@ Workflow:
 Done when the coding workflow has enough context to act and Lab has a clear
 expectation for what evidence should return.
 
+## Scenario 8: Code Style Distillation
+
+Use when the user asks Lab to learn, distill, or infer their coding style from
+specific user-authored files or a repository.
+
+Workflow:
+
+1. Use files explicitly named by the user when provided.
+2. Exclude generated, vendored, cached, build, lock, and external dependency
+   files.
+3. Read representative code to identify style patterns, not to reproduce code.
+4. Separate durable user preference from repo-local convention.
+5. Produce a proposal before writing the profile.
+6. Classify each proposed principle as `confirmed_candidate`, `repo_local`, or
+   `insufficient_evidence`.
+7. Ask before writing confirmed principles to `~/.meridian/coding-style.md`.
+8. Store compact principles only; do not store full code blocks.
+
+Done when the user has a reviewable style proposal or has approved a compact
+profile update. Lab may prepare the proposal and profile text, but it still does
+not implement, debug, test, commit, release, or converge code.
+
 ## MVP Priority
 
 Build and evaluate these Lab-owned scenarios first:

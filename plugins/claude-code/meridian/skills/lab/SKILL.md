@@ -229,6 +229,31 @@ principle instead of duplicating it. When the outcome is
 outcome is `do_not_record_task_local_only`, keep the correction local to the
 current coding workflow.
 
+### Code Style Distillation
+
+Use when the user asks Lab to learn, distill, or infer their coding style from
+specific user-authored files or a repository.
+
+Minimum completion:
+
+- Use files explicitly named by the user when provided.
+- Exclude generated, vendored, cached, build, lock, and external dependency
+  files.
+- Read enough representative code to identify style patterns, not to reproduce
+  code.
+- Separate durable user preference from repo-local convention.
+- Produce a proposal before writing the profile.
+- Classify each proposed principle as exactly one of:
+  - `confirmed_candidate`: strong evidence and likely durable, awaiting user approval.
+  - `repo_local`: likely specific to the current codebase.
+  - `insufficient_evidence`: observed but too weak to record.
+- Ask before writing confirmed principles to `~/.meridian/coding-style.md`.
+- Do not store full code blocks in the profile; summarize principle, avoid,
+  positive shape, scope, exceptions, provenance, confidence, and updated date.
+
+Lab may prepare the proposal and profile update. It still does not implement,
+debug, test, commit, release, or converge code.
+
 ## Lazy Init
 
 Lab uses lazy init. The user does not need to initialize Lab before sharing an
@@ -488,6 +513,7 @@ Common request labels map to these workflows:
 - `Experiment Evidence Recording`
 - `Finding Proposal / Wiki Write-back`
 - `Research Grounding Injection`
+- `Code Style Distillation`
 
 ## Wiki Retrieval Contract
 
