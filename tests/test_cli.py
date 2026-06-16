@@ -2726,8 +2726,8 @@ quality_state: "multimodal_pending"
                 skill_path.parent.mkdir(parents=True, exist_ok=True)
                 skill_path.write_text(f"# {skill}\n", encoding="utf-8")
             mcp_path = cache_root / ".mcp.json"
-            original = {"mcpServers": {"meridian-paper-wiki": {"args": ["-m", "meridian.mcp", "serve"]}}}
-            mcp_path.write_text(json.dumps(original), encoding="utf-8")
+            original_text = '{"mcpServers": {"meridian-paper-wiki": '
+            mcp_path.write_text(original_text, encoding="utf-8")
             json_out = root / "repair.json"
 
             with patch.object(Path, "home", return_value=home):
@@ -2747,11 +2747,16 @@ quality_state: "multimodal_pending"
             self.assertEqual(exit_code, 0)
             self.assertEqual(stderr, "")
             self.assertTrue(json_out.exists())
-            self.assertTrue(any(path.name.startswith(".mcp.json.bak-") for path in mcp_path.parent.iterdir()))
+            backups = [path for path in mcp_path.parent.iterdir() if path.name.startswith(".mcp.json.bak-")]
+            self.assertTrue(backups)
+            self.assertEqual(backups[0].read_text(encoding="utf-8"), original_text)
             self.assertIn("Applied repair:", stdout)
             self.assertIn("- MCP config updated", stdout)
             self.assertIn("- restart required: yes", stdout)
-            self.assertNotEqual(json.loads(mcp_path.read_text(encoding="utf-8")), {"mcpServers": {"meridian-paper-wiki": {"args": ["-m", "meridian.mcp", "serve"]}}})
+            self.assertEqual(
+                json.loads(mcp_path.read_text(encoding="utf-8"))["mcpServers"]["meridian-paper-wiki"]["args"],
+                ["-m", "meridian.mcp", "serve"],
+            )
             repair_payload = json.loads(json_out.read_text(encoding="utf-8"))
             self.assertEqual(repair_payload["applied"], True)
 
@@ -2974,6 +2979,29 @@ quality_state: "multimodal_pending"
             updated = json.loads(mcp_path.read_text(encoding="utf-8"))
 
             self.assertTrue(result.applied)
+            self.assertEqual(
+                updated,
+                {"mcpServers": {"meridian-paper-wiki": {"command": "C:/Python/python.exe", "args": ["-m", "meridian.mcp", "serve"]}}},
+            )
+
+    def test_setup_repair_mcp_apply_rewrites_invalid_json_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            mcp_path = Path(tmp) / ".mcp.json"
+            original_text = '{"mcpServers": '
+            mcp_path.write_text(original_text, encoding="utf-8")
+
+            result = apply_mcp_repair(
+                client="codex",
+                mcp_config_path=mcp_path,
+                command="C:/Python/python.exe",
+                args=["-m", "meridian.mcp", "serve"],
+                timestamp="20260615-153012",
+            )
+
+            updated = json.loads(mcp_path.read_text(encoding="utf-8"))
+
+            self.assertTrue(result.applied)
+            self.assertEqual(result.backup_path.read_text(encoding="utf-8"), original_text)
             self.assertEqual(
                 updated,
                 {"mcpServers": {"meridian-paper-wiki": {"command": "C:/Python/python.exe", "args": ["-m", "meridian.mcp", "serve"]}}},

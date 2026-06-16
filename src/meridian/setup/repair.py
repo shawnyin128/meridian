@@ -61,7 +61,10 @@ def apply_mcp_repair(
     backup_path = _backup_path_for(mcp_config_path, stamp)
     original = mcp_config_path.read_text(encoding="utf-8")
     backup_path.write_text(original, encoding="utf-8")
-    payload = json.loads(original)
+    try:
+        payload = json.loads(original)
+    except json.JSONDecodeError:
+        payload = {}
     if not isinstance(payload, dict):
         payload = {}
     servers = payload.get("mcpServers")
