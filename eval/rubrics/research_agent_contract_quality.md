@@ -45,6 +45,7 @@ High-quality behavior:
 - Uses user-named files when provided.
 - Excludes generated, vendored, cached, build, lock, and dependency files.
 - Produces a proposal before profile writes.
+- Requires user approval before writing confirmed principles to the profile.
 - Classifies principles as `confirmed_candidate`, `repo_local`, or
   `insufficient_evidence`.
 - Stores compact summarized principles, not full code blocks.

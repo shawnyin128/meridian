@@ -4040,6 +4040,8 @@ quality_state: "multimodal_pending"
         self.assertTrue(any(case.get("expected_outcome") == "style_distillation_proposal" for case in cases))
         self.assertIn("Implementation Integrity Gate", rubric)
         self.assertIn("Code Style Distillation", rubric)
+        self.assertTrue("approval" in rubric or "Ask before writing" in rubric)
+        self.assertIn("full code blocks", rubric)
 
     def test_lab_skill_path_diagnostics_reports_readable_source_and_caches(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
