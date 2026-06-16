@@ -127,10 +127,16 @@ def validate_research_agent_principles(
         add("warning", "research_agent_principles_schema_missing", "Principles schema version is missing or stale.")
     if "## Research Code Style" not in text:
         add("warning", "research_agent_principles_style_missing", "Principles are missing Research Code Style.")
+    if "Prefer linear, readable code" not in text:
+        add("warning", "research_agent_principles_linear_style_missing", "No linear readable-code principle found.")
     if "## Implementation Integrity" not in text:
         add("warning", "research_agent_principles_integrity_missing", "Principles are missing Implementation Integrity.")
     if "Do not silently substitute" not in text:
         add("warning", "research_agent_principles_fallback_policy_missing", "No silent-substitution policy found.")
+    if "## Validation Expectations" not in text:
+        add("warning", "research_agent_principles_validation_missing", "Principles are missing Validation Expectations.")
+    if "```" in text:
+        add("warning", "research_agent_principles_contains_code_block", "Principles should not store full code blocks.")
 
     status = "pass" if not findings else "warn"
     return ResearchAgentContractReport(status=status, path=str(target), findings=findings)

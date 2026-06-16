@@ -3821,6 +3821,42 @@ quality_state: "multimodal_pending"
             self.assertIn("research-agent-principles.md", text)
             self.assertIn("compact", text.lower())
 
+    def test_research_agent_principles_validate_reports_stale_contract_gaps(self) -> None:
+        from meridian.lab import RESEARCH_AGENT_PRINCIPLES_SCHEMA_VERSION, validate_research_agent_principles
+
+        with tempfile.TemporaryDirectory() as tmp:
+            principles = Path(tmp) / "research-agent-principles.md"
+            principles.write_text(
+                "\n".join(
+                    [
+                        "# Meridian Research Agent Principles",
+                        "",
+                        f"schema_version: {RESEARCH_AGENT_PRINCIPLES_SCHEMA_VERSION}",
+                        "",
+                        "## Research Code Style",
+                        "",
+                        "- Keep code readable.",
+                        "",
+                        "## Implementation Integrity",
+                        "",
+                        "- Do not silently substitute legacy behavior.",
+                        "",
+                        "```",
+                        "print('too much code')",
+                        "```",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            report = validate_research_agent_principles(principles)
+
+        self.assertEqual(report.status, "warn")
+        codes = {finding.code for finding in report.findings}
+        self.assertIn("research_agent_principles_validation_missing", codes)
+        self.assertIn("research_agent_principles_linear_style_missing", codes)
+        self.assertIn("research_agent_principles_contains_code_block", codes)
+
     def test_coding_style_feedback_gate_classifies_reusable_feedback(self) -> None:
         from meridian.lab import classify_coding_style_feedback
 
