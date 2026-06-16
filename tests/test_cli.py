@@ -20,8 +20,10 @@ from meridian.cli import main
 from meridian.evals import codex_routing as codex_routing_eval
 from meridian.evals.codex_routing import (
     build_lab_grounding_prompt,
+    build_research_agent_contract_prompt,
     build_routing_prompt,
     run_codex_lab_grounding_eval,
+    run_codex_research_agent_contract_eval,
     run_codex_routing_eval,
 )
 from meridian.framework_check import (
@@ -2857,6 +2859,87 @@ quality_state: "multimodal_pending"
         self.assertNotIn("expected_skill", prompt)
         self.assertNotIn("expected_routing", prompt)
         self.assertNotIn("expect_grounding_injection", prompt)
+
+    def test_research_agent_contract_live_eval_assets_and_prompt(self) -> None:
+        cases = [
+            json.loads(line)
+            for line in Path("eval/cases/research_agent_contract_live.jsonl").read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        positives = [case for case in cases if case.get("polarity") == "positive"]
+        negatives = [case for case in cases if case.get("polarity") == "negative"]
+        self.assertGreaterEqual(len(positives), 10)
+        self.assertGreaterEqual(len(negatives), 5)
+        prompt = build_research_agent_contract_prompt(cases[0])
+        self.assertIn("eval-only diagnostic output", prompt)
+        self.assertIn("implementation_integrity_gate", prompt)
+        self.assertIn("silent fallback", prompt.lower())
+        self.assertIn("Code Style Distillation", prompt)
+
+    def test_research_agent_contract_eval_runner_scores_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cases = root / "cases.jsonl"
+            out = root / "out"
+            cases.write_text(
+                json.dumps(
+                    {
+                        "id": "case-one",
+                        "category": "research_agent_contract_live",
+                        "suite": "integrity",
+                        "polarity": "positive",
+                        "risk": "silent_fallback",
+                        "repo_state": "repo has .meridian/",
+                        "user_request": "Implement current KV cache persistence; do not use old cache format.",
+                        "expected_skill": "lab",
+                        "expected_routing": "lab_first_preflight",
+                        "expect_implementation_integrity_gate": True,
+                        "expect_blocker_reporting": True,
+                        "expect_no_silent_fallback": True,
+                        "expect_style_distillation": False,
+                        "handoff_to": ["normal_coding_workflow"],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            def runner(argv: list[str], cwd: Path, timeout: float, stdin_text: str | None):
+                last_message = Path(argv[argv.index("--output-last-message") + 1])
+                last_message.write_text(
+                    json.dumps(
+                        {
+                            "selected_entry": "lab",
+                            "routing": "lab_first_preflight",
+                            "implementation_integrity_gate": True,
+                            "blocker_reporting": True,
+                            "no_silent_fallback": True,
+                            "style_distillation": False,
+                            "handoff_to": ["normal_coding_workflow"],
+                            "confidence": "high",
+                            "reason": "Research coding needs Lab contract injection.",
+                            "path_rationale": [
+                                {
+                                    "check": "intent_signal",
+                                    "observation": "current implementation risk",
+                                    "effect": "use Lab integrity gate",
+                                }
+                            ],
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                return subprocess.CompletedProcess(argv, 0, "", "")
+
+            result = run_codex_research_agent_contract_eval(
+                cases_path=cases,
+                out_dir=out,
+                repo_root=Path.cwd(),
+                runner=runner,
+            )
+            self.assertEqual(result.passed_cases, 1)
+            summary = json.loads(result.summary_path.read_text(encoding="utf-8"))
+            self.assertEqual(summary["case_results"][0]["implementation_integrity_gate"], True)
 
     def test_codex_lab_grounding_cli_invokes_live_runner(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

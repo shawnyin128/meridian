@@ -8,7 +8,11 @@ import sys
 from pathlib import Path
 
 from meridian import __version__
-from meridian.evals.codex_routing import run_codex_lab_grounding_eval, run_codex_routing_eval
+from meridian.evals.codex_routing import (
+    run_codex_lab_grounding_eval,
+    run_codex_research_agent_contract_eval,
+    run_codex_routing_eval,
+)
 from meridian.framework_check import run_framework_check, write_framework_json, write_framework_report
 from meridian.setup.doctor import build_setup_doctor_report, format_setup_doctor
 from meridian.setup.repair import apply_mcp_repair
@@ -175,6 +179,21 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Load the host Codex user config/rules instead of the isolated eval default.",
     )
+    codex_contract = eval_subparsers.add_parser(
+        "codex-research-agent-contract",
+        help="Run live Codex eval cases for Meridian research-agent contract routing and integrity gates.",
+    )
+    codex_contract.add_argument("cases", type=Path)
+    codex_contract.add_argument("--out-dir", type=Path, required=True)
+    codex_contract.add_argument("--repo-root", type=Path, default=Path.cwd())
+    codex_contract.add_argument("--codex-bin", default="codex")
+    codex_contract.add_argument("--model", default=None)
+    codex_contract.add_argument("--profile", default=None)
+    codex_contract.add_argument("--case-id", action="append", dest="case_ids")
+    codex_contract.add_argument("--limit", type=int, default=None)
+    codex_contract.add_argument("--timeout", type=float, default=300.0)
+    codex_contract.add_argument("--overwrite", action="store_true")
+    codex_contract.add_argument("--use-user-config", action="store_true")
 
     wiki = subparsers.add_parser("wiki", help="Paper Wiki workflows")
     wiki_subparsers = wiki.add_subparsers(dest="command", required=True)
@@ -1331,6 +1350,25 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Total cases: {result.total_cases}")
             print(f"Passed: {result.passed_cases}")
             print(f"Failed: {result.failed_cases}")
+            return 0 if result.failed_cases == 0 else 1
+
+        if args.product == "eval" and args.command == "codex-research-agent-contract":
+            result = run_codex_research_agent_contract_eval(
+                cases_path=args.cases,
+                out_dir=args.out_dir,
+                repo_root=args.repo_root,
+                codex_bin=args.codex_bin,
+                model=args.model,
+                profile=args.profile,
+                case_ids=args.case_ids,
+                limit=args.limit,
+                timeout=args.timeout,
+                overwrite=args.overwrite,
+                isolate_config=not args.use_user_config,
+            )
+            print(f"Codex research-agent contract eval: {result.passed_cases}/{result.total_cases} passed")
+            print(f"Summary: {result.summary_path}")
+            print(f"Report: {result.report_path}")
             return 0 if result.failed_cases == 0 else 1
 
         if args.product == "wiki" and args.command == "init":
