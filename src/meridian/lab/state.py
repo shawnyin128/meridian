@@ -6,6 +6,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from meridian.lab.research_agent_contract import inject_meridian_agents_contract
 from meridian.wiki.corpus import parse_frontmatter, strip_frontmatter
 
 
@@ -179,7 +180,7 @@ def validate_lab_space(root: Path) -> LabValidationReport:
     return LabValidationReport(status=status, root=str(lab_root), findings=findings)
 
 
-def initialize_lab_space(root: Path, *, overwrite: bool = False) -> list[Path]:
+def initialize_lab_space(root: Path, *, overwrite: bool = False, inject_agents_contract: bool = True) -> list[Path]:
     """Create the minimal `.meridian/` skeleton used by Lab lazy init.
 
     This is an internal helper for release/debug checks and agent workflows. It
@@ -202,6 +203,11 @@ def initialize_lab_space(root: Path, *, overwrite: bool = False) -> list[Path]:
         content = template.replace("YYYY-MM-DD", today)
         target.write_text(content, encoding="utf-8")
         written.append(target)
+
+    if inject_agents_contract:
+        agents_path = inject_meridian_agents_contract(lab_root.parent)
+        if agents_path not in written:
+            written.append(agents_path)
 
     return written
 

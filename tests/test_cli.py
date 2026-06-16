@@ -5981,21 +5981,51 @@ Compare recency-only retention with attention-based and oracle retention policie
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             written = initialize_lab_space(root)
-            relative = sorted(path.relative_to(root) for path in written)
-            self.assertEqual(
-                relative,
-                [
+            relative = {path.relative_to(root) for path in written}
+            self.assertTrue(
+                {
                     Path(".meridian/experiments/index.md"),
                     Path(".meridian/proposals/index.md"),
                     Path(".meridian/state.md"),
                     Path(".meridian/threads/index.md"),
-                ],
+                }.issubset(relative),
             )
+            self.assertIn(Path("AGENTS.md"), relative)
             self.assertFalse([path for path in (root / ".meridian/threads").glob("*.md") if path.name != "index.md"])
             self.assertFalse([path for path in (root / ".meridian/experiments").glob("*.md") if path.name != "index.md"])
             self.assertFalse([path for path in (root / ".meridian/proposals").glob("*.md") if path.name != "index.md"])
             report = validate_lab_space(root)
             self.assertEqual(report.status, "pass", report.to_dict())
+
+    def test_meridian_agents_contract_block_is_idempotent_and_preserves_user_text(self) -> None:
+        from meridian.lab import inject_meridian_agents_contract
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            agents = root / "AGENTS.md"
+            agents.write_text("# Existing Rules\n\nKeep this line.\n", encoding="utf-8")
+
+            first = inject_meridian_agents_contract(root)
+            second = inject_meridian_agents_contract(root)
+
+            self.assertEqual(first, agents.resolve())
+            self.assertEqual(second, agents.resolve())
+            text = agents.read_text(encoding="utf-8")
+            self.assertIn("Keep this line.", text)
+            self.assertEqual(text.count("MERIDIAN RESEARCH AGENT CONTRACT START"), 1)
+            self.assertEqual(text.count("MERIDIAN RESEARCH AGENT CONTRACT END"), 1)
+            self.assertIn("research-agent-principles.md", text)
+            self.assertIn("Do not silently substitute", text)
+
+    def test_initialize_lab_space_injects_agents_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            written = initialize_lab_space(root)
+            relative = {str(path.relative_to(root)).replace("\\", "/") for path in written}
+            self.assertIn("AGENTS.md", relative)
+            text = (root / "AGENTS.md").read_text(encoding="utf-8")
+            self.assertIn("MERIDIAN RESEARCH AGENT CONTRACT START", text)
+            self.assertIn("~/.meridian/research-agent-principles.md", text)
 
     def test_lab_state_validator_passes_valid_research_space(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

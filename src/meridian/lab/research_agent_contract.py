@@ -9,6 +9,8 @@ from typing import Any
 
 RESEARCH_AGENT_PRINCIPLES_SCHEMA_VERSION = "meridian.research_agent_principles.v1"
 RESEARCH_AGENT_PRINCIPLES_FILENAME = "research-agent-principles.md"
+MERIDIAN_AGENTS_CONTRACT_START = "<!-- MERIDIAN RESEARCH AGENT CONTRACT START -->"
+MERIDIAN_AGENTS_CONTRACT_END = "<!-- MERIDIAN RESEARCH AGENT CONTRACT END -->"
 
 
 @dataclass(frozen=True)
@@ -52,6 +54,46 @@ def research_agent_config_home(config_home: Path | None = None) -> Path:
 
 def research_agent_principles_path(*, config_home: Path | None = None) -> Path:
     return research_agent_config_home(config_home) / RESEARCH_AGENT_PRINCIPLES_FILENAME
+
+
+def meridian_agents_contract_block() -> str:
+    return "\n".join(
+        [
+            MERIDIAN_AGENTS_CONTRACT_START,
+            "For research-development code changes, read the Meridian user-level contract before implementation:",
+            "",
+            "- ~/.meridian/research-agent-principles.md",
+            "- ~/.meridian/coding-style.md when code style matters",
+            "",
+            "Do not silently substitute legacy behavior, fallback-only behavior, stubs, task-marker comments,",
+            "no-op implementations, swallowed errors, or partial implementations for the requested current",
+            "behavior. If the current implementation is blocked, stop and report the blocker, evidence",
+            "checked, and options.",
+            MERIDIAN_AGENTS_CONTRACT_END,
+            "",
+        ]
+    )
+
+
+def inject_meridian_agents_contract(project_root: Path) -> Path:
+    root = project_root.expanduser().resolve()
+    target = root / "AGENTS.md"
+    block = meridian_agents_contract_block().rstrip() + "\n"
+    if not target.exists():
+        target.write_text(block, encoding="utf-8")
+        return target
+
+    text = target.read_text(encoding="utf-8")
+    start = text.find(MERIDIAN_AGENTS_CONTRACT_START)
+    end = text.find(MERIDIAN_AGENTS_CONTRACT_END)
+    if start >= 0 and end >= start:
+        end += len(MERIDIAN_AGENTS_CONTRACT_END)
+        updated = text[:start].rstrip() + "\n\n" + block + text[end:].lstrip()
+    else:
+        updated = text.rstrip() + "\n\n" + block
+    if updated != text:
+        target.write_text(updated, encoding="utf-8")
+    return target
 
 
 def initialize_research_agent_principles(
