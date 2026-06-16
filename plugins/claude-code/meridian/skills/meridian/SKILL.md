@@ -94,6 +94,35 @@ Minimum completion:
 - When a state is not ready, give the smallest next action and stop before
   running normal wiki or lab workflows.
 
+### Setup Doctor
+
+Use after the Status Check when plugin visibility, MCP startup, or runtime
+resolution looks stale or blocked.
+
+Minimum completion:
+
+- Run the deterministic doctor for both supported clients:
+
+```bash
+python -m meridian setup doctor --client all
+```
+
+- Preserve blocker codes and repair state from the doctor output. Treat
+  `skill_visible_but_mcp_unavailable` and `no_valid_meridian_runtime` as hard
+  setup blockers.
+- If the doctor reports `repair_available`, ask before applying any repair. On
+  approval, run the client-specific repair command:
+
+```bash
+python -m meridian setup repair-mcp --client <codex|claude> --apply
+```
+
+- After repair, tell the user to restart the affected Codex or Claude Code
+  session so the client reloads plugin/MCP configuration.
+- Do not continue normal Wiki or Lab work while
+  `skill_visible_but_mcp_unavailable` or `no_valid_meridian_runtime` remains
+  unresolved. Report the setup blocker and stop.
+
 State meanings:
 
 - `ready`: core, active workspace, MCP, required product skills, and any

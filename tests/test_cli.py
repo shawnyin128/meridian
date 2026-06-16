@@ -2290,6 +2290,21 @@ quality_state: "multimodal_pending"
         self.assertIn("~/.meridian/coding-style.md", text)
         self.assertNotIn("wants to ingest, retrieve, code, or record experiments", text)
 
+    def test_setup_doctor_skill_and_docs_policy_is_documented(self) -> None:
+        meridian = (CODEX_PLUGIN_SKILL_ROOT / "meridian/SKILL.md").read_text(encoding="utf-8")
+        lab = (CODEX_PLUGIN_SKILL_ROOT / "lab/SKILL.md").read_text(encoding="utf-8")
+        wiki = (CODEX_PLUGIN_SKILL_ROOT / "wiki/SKILL.md").read_text(encoding="utf-8")
+        readme = Path("README.md").read_text(encoding="utf-8")
+        distribution = Path("docs/plugin-distribution.md").read_text(encoding="utf-8")
+
+        self.assertIn("python -m meridian setup doctor", meridian)
+        self.assertIn("python -m meridian setup repair-mcp", meridian)
+        self.assertIn("paper_wiki_grounding", lab)
+        self.assertIn("fallback_grounding", lab)
+        self.assertIn("Use Wiki blocked", wiki)
+        self.assertIn("setup doctor", readme)
+        self.assertIn("repair-mcp", distribution)
+
     def test_meridian_product_skill_behavior_boundaries(self) -> None:
         meridian = (CODEX_PLUGIN_SKILL_ROOT / "meridian/SKILL.md").read_text(encoding="utf-8")
         wiki = (CODEX_PLUGIN_SKILL_ROOT / "wiki/SKILL.md").read_text(encoding="utf-8")

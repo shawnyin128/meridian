@@ -69,6 +69,23 @@ the `meridian` Python package importable in the client environment. If MCP
 behavior looks stale after a plugin update, update the core checkout with
 `git pull`, then rerun `python -m pip install -e .` from that checkout.
 
+After installing or updating either the Python core or plugin package, run the
+setup doctor:
+
+```bash
+python -m meridian setup doctor --client all
+```
+
+If the report shows `repair_available`, ask before applying the MCP config
+repair, then run the matching client command:
+
+```bash
+python -m meridian setup repair-mcp --client <codex|claude> --apply
+```
+
+Restart the affected Codex or Claude Code session after repair so the client
+reloads plugin and MCP configuration.
+
 ## Codex
 
 Codex expects the marketplace manifest under `.agents/plugins/` inside the
@@ -140,6 +157,11 @@ Claude Code can refresh with:
 claude plugin update meridian@meridian
 ```
 
+After refresh, run `python -m meridian setup doctor --client all`; if
+`repair_available` is reported, run
+`python -m meridian setup repair-mcp --client claude --apply` after approval and
+restart Claude Code.
+
 ## Product Entry
 
 Users should think in two product areas:
@@ -157,6 +179,16 @@ Paper Wiki keeps two workflows:
 | Use Wiki | retrieve context, read canonical pages, trace evidence |
 
 CLI commands remain execution primitives beneath the plugin and MCP entries.
+
+Setup doctor is the default route for MCP/runtime blockers. Product skills
+should stop normal Wiki or Lab work while MCP is unavailable and no local
+Meridian runtime can be imported. Run:
+
+```bash
+python -m meridian setup doctor --client all
+```
+
+Then use `repair-mcp` only when the doctor reports an available repair.
 
 Setup is a separate maintenance entry:
 

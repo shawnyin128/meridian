@@ -43,6 +43,23 @@ the `meridian` Python package importable in the client environment. If MCP
 behavior looks stale after a plugin update, update the core checkout with
 `git pull`, then rerun `python -m pip install -e .` from that checkout.
 
+After installing or updating either the core or plugin, ask the `meridian` skill
+to run setup doctor, or run it directly:
+
+```bash
+python -m meridian setup doctor --client all
+```
+
+If the doctor reports `repair_available`, apply the client-specific MCP repair
+only after approval:
+
+```bash
+python -m meridian setup repair-mcp --client <codex|claude> --apply
+```
+
+Restart the affected Codex or Claude Code session after repair so plugin and
+MCP configuration is reloaded.
+
 ### Codex
 
 ```bash
@@ -201,10 +218,13 @@ There are two update layers:
 
 | Layer | What Changes | How To Update |
 |---|---|---|
-| Core | MCP server code, retrieval, ingest, wiki/lab backend behavior | `git pull`, then keep or rerun `python -m pip install -e .` |
-| Plugin | `meridian`, `wiki`, and `lab` skill text, `.mcp.json`, plugin metadata | upgrade/reinstall the Codex or Claude Code plugin |
+| Core | MCP server code, retrieval, ingest, wiki/lab backend behavior | `git pull`, then keep or rerun `python -m pip install -e .`; run `python -m meridian setup doctor --client all` |
+| Plugin | `meridian`, `wiki`, and `lab` skill text, `.mcp.json`, plugin metadata | upgrade/reinstall the Codex or Claude Code plugin; run setup doctor and restart the client |
 
 After updating either layer, ask `meridian` to run a setup and migration check.
+When setup doctor reports MCP repair is available, approve and run
+`python -m meridian setup repair-mcp --client <codex|claude> --apply`, then
+restart the affected client session.
 
 ## More Detail
 

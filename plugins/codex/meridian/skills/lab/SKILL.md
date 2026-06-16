@@ -422,7 +422,38 @@ Default MCP grounding path:
 - `meridian.read` for selected canonical page sections.
 - `meridian.trace` for provenance, evidence, quality, or evolution state.
 
-If MCP is unavailable, use the local execution primitive:
+### Paper Wiki Grounding Readiness
+
+Prefer the Paper Wiki MCP tools for grounding: `meridian.context`,
+`meridian.read`, and `meridian.trace`.
+
+If the MCP tools are unavailable, run or request setup doctor before continuing:
+
+```bash
+python -m meridian setup doctor --client all
+```
+
+If the doctor reports `repair_available`, stop the Lab workflow and present the
+repair command instead of substituting agent judgment:
+
+```bash
+python -m meridian setup repair-mcp --client <codex|claude> --apply
+```
+
+Ask the user to restart the affected client session after repair. Use external
+primary-source fallback only after an explicit user choice to proceed without
+Paper Wiki grounding.
+
+When blocked, include this exact readiness block in the Lab response:
+
+```text
+paper_wiki_grounding: unavailable
+fallback_grounding: external_primary_sources_only_after_explicit_user_choice
+setup_next_action: python -m meridian setup doctor --client all
+```
+
+If MCP is unavailable but the setup doctor confirms local runtime readiness and
+the user chooses a local fallback, use the local execution primitive:
 
 ```bash
 PYTHONPATH=src python3 -m meridian.mcp context --query "<research intent>"

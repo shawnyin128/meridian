@@ -128,6 +128,22 @@ Minimum completion:
 - Label user insight and synthesis pages as such.
 - Create a write-back proposal when the user wants the answer preserved.
 
+### Use Wiki Setup Blocker
+
+If MCP tools are unavailable, try local CLI retrieval only when local Python can
+import Meridian, for example `python -c "import meridian"`. Then use the
+resolver below and run `meridian wiki context "<standalone research intent>"`.
+
+If MCP tools are unavailable and local Python cannot import Meridian, do not
+answer from web search or broad file search. Return a setup blocker instead:
+
+```text
+Use Wiki blocked: Meridian MCP tools are unavailable and local Python cannot import meridian.
+Repair: python -m meridian setup doctor --client all
+If repair_available: python -m meridian setup repair-mcp --client <codex|claude> --apply
+Restart the affected client session after repair.
+```
+
 Canonical examples:
 
 ```text
