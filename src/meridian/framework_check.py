@@ -13,6 +13,7 @@ from meridian.lab import (
     research_agent_principles_path,
     validate_coding_style_profile,
     validate_lab_space,
+    validate_meridian_agents_contract,
     validate_research_agent_principles,
 )
 from meridian.setup.doctor import build_setup_doctor_report
@@ -684,6 +685,28 @@ def _lab_state_category(lab_root: Path | None) -> FrameworkCategory:
             item.message,
             "Initialize or repair the minimal `.meridian/` research-space skeleton.",
         )
+    contract_report = validate_meridian_agents_contract(lab_root)
+    if contract_report.status == "pass":
+        _add(
+            findings,
+            category,
+            "info",
+            "manual",
+            "agents_contract_ready",
+            f"Project AGENTS.md contains the Meridian research-agent contract: {contract_report.path}.",
+            "No action required.",
+        )
+    else:
+        for item in contract_report.findings:
+            _add(
+                findings,
+                category,
+                "degraded",
+                "confirm",
+                item.code,
+                item.message,
+                "Run Lab readiness initialization or inject the guarded Meridian AGENTS.md contract block.",
+            )
     return _category(category, findings)
 
 

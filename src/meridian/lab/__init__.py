@@ -24,6 +24,7 @@ from meridian.lab.research_agent_contract import (
     research_agent_principles_path,
     ResearchAgentContractFinding,
     ResearchAgentContractReport,
+    validate_meridian_agents_contract,
     validate_research_agent_principles,
 )
 from meridian.lab.state import (
@@ -63,5 +64,6 @@ __all__ = [
     "ResearchAgentContractReport",
     "validate_coding_style_profile",
     "validate_lab_space",
+    "validate_meridian_agents_contract",
     "validate_research_agent_principles",
 ]

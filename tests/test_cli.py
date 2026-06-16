@@ -2882,7 +2882,12 @@ quality_state: "multimodal_pending"
         self.assertIn("Pure bug-only correctness requests", prompt)
         self.assertIn("normal_coding_workflow", prompt)
         self.assertIn("For Lab-first implementation", prompt)
+        self.assertIn("exactly [\"normal_coding_workflow\"]", prompt)
+        self.assertIn("there is no downstream owner", prompt)
+        self.assertIn("routing not_needed", prompt)
         self.assertIn("profile pollution", prompt)
+        self.assertIn("requires_user_approval_before_profile_write", prompt)
+        self.assertIn("forbids_full_code_storage", prompt)
 
     def test_research_agent_contract_eval_runner_scores_fields(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -2905,6 +2910,8 @@ quality_state: "multimodal_pending"
                         "expect_blocker_reporting": True,
                         "expect_no_silent_fallback": True,
                         "expect_style_distillation": False,
+                        "expect_requires_user_approval_before_profile_write": False,
+                        "expect_forbids_full_code_storage": False,
                         "handoff_to": ["normal_coding_workflow"],
                     }
                 )
@@ -2923,6 +2930,8 @@ quality_state: "multimodal_pending"
                             "blocker_reporting": True,
                             "no_silent_fallback": True,
                             "style_distillation": False,
+                            "requires_user_approval_before_profile_write": False,
+                            "forbids_full_code_storage": False,
                             "handoff_to": ["normal_coding_workflow"],
                             "confidence": "high",
                             "reason": "Research coding needs Lab contract injection.",
@@ -2970,6 +2979,8 @@ quality_state: "multimodal_pending"
                         "expect_blocker_reporting": True,
                         "expect_no_silent_fallback": False,
                         "expect_style_distillation": False,
+                        "expect_requires_user_approval_before_profile_write": False,
+                        "expect_forbids_full_code_storage": True,
                         "handoff_to": ["normal_coding_workflow"],
                     }
                 )
@@ -2988,7 +2999,9 @@ quality_state: "multimodal_pending"
                             "blocker_reporting": False,
                             "no_silent_fallback": True,
                             "style_distillation": True,
-                            "handoff_to": ["normal_coding_workflow"],
+                            "requires_user_approval_before_profile_write": True,
+                            "forbids_full_code_storage": False,
+                            "handoff_to": ["normal_coding_workflow", "lab"],
                             "confidence": "high",
                             "reason": "Mismatched test response.",
                             "path_rationale": [
@@ -3013,6 +3026,8 @@ quality_state: "multimodal_pending"
             self.assertIn("blocker_reporting expected True, got False", failures)
             self.assertIn("no_silent_fallback expected False, got True", failures)
             self.assertIn("style_distillation expected False, got True", failures)
+            self.assertIn("forbids_full_code_storage expected True, got False", failures)
+            self.assertIn("handoff_to unexpected 'lab'", failures)
 
     def test_codex_lab_grounding_cli_invokes_live_runner(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -4134,6 +4149,32 @@ quality_state: "multimodal_pending"
         self.assertEqual(finding.severity, "degraded")
         self.assertIn("migrate", finding.next_action)
         self.assertIn("without deleting user text", finding.next_action)
+
+    def test_framework_check_reports_missing_and_ready_agents_contract_for_lab_root(self) -> None:
+        from meridian.lab import inject_meridian_agents_contract
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            lab = root / ".meridian"
+            (lab / "threads").mkdir(parents=True)
+            (lab / "experiments").mkdir()
+            (lab / "proposals").mkdir()
+            (lab / "state.md").write_text(
+                "---\ntype: lab-state\nactive_thread: cache-retention\n---\n# Meridian Lab State\n",
+                encoding="utf-8",
+            )
+            (lab / "threads/index.md").write_text("# Threads\n", encoding="utf-8")
+            (lab / "experiments/index.md").write_text("# Experiments\n", encoding="utf-8")
+            (lab / "proposals/index.md").write_text("# Proposals\n", encoding="utf-8")
+
+            missing = run_framework_check(project_root=Path.cwd(), lab_root=root)
+            inject_meridian_agents_contract(root)
+            ready = run_framework_check(project_root=Path.cwd(), lab_root=root)
+
+        missing_category = next(category for category in missing.categories if category.name == "Lab State")
+        ready_category = next(category for category in ready.categories if category.name == "Lab State")
+        self.assertIn("agents_contract_missing", {finding.code for finding in missing_category.findings})
+        self.assertIn("agents_contract_ready", {finding.code for finding in ready_category.findings})
 
     def test_framework_check_reports_mcp_entrypoint_drift(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -6340,6 +6381,40 @@ Compare recency-only retention with attention-based and oracle retention policie
             block = meridian_agents_contract_block().rstrip()
             self.assertEqual(first_text, prefix + block + suffix)
             self.assertEqual(second_text, first_text)
+
+    def test_meridian_agents_contract_validator_reports_stale_and_duplicate_blocks(self) -> None:
+        from meridian.lab import (
+            MERIDIAN_AGENTS_CONTRACT_END,
+            MERIDIAN_AGENTS_CONTRACT_START,
+            meridian_agents_contract_block,
+            validate_meridian_agents_contract,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            agents = root / "AGENTS.md"
+            agents.write_text(
+                "\n".join(
+                    [
+                        MERIDIAN_AGENTS_CONTRACT_START,
+                        "Old contract text.",
+                        MERIDIAN_AGENTS_CONTRACT_END,
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            stale = validate_meridian_agents_contract(root)
+            agents.write_text(
+                meridian_agents_contract_block().rstrip()
+                + "\n\n"
+                + meridian_agents_contract_block().rstrip()
+                + "\n",
+                encoding="utf-8",
+            )
+            duplicate = validate_meridian_agents_contract(root)
+
+        self.assertIn("agents_contract_stale", {finding.code for finding in stale.findings})
+        self.assertIn("agents_contract_duplicate", {finding.code for finding in duplicate.findings})
 
     def test_meridian_agents_contract_orphan_start_preserves_text_across_repeated_injection(self) -> None:
         from meridian.lab import (

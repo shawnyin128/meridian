@@ -383,6 +383,10 @@ def run_codex_research_agent_contract_eval(
                 "blocker_reporting": item["verdict"].get("blocker_reporting"),
                 "no_silent_fallback": item["verdict"].get("no_silent_fallback"),
                 "style_distillation": item["verdict"].get("style_distillation"),
+                "requires_user_approval_before_profile_write": item["verdict"].get(
+                    "requires_user_approval_before_profile_write"
+                ),
+                "forbids_full_code_storage": item["verdict"].get("forbids_full_code_storage"),
                 "failures": item["verdict"]["failures"],
                 "result_path": str(out_dir / str(item["case_id"]) / "result.json"),
             }
@@ -588,21 +592,28 @@ def build_research_agent_contract_prompt(case: dict[str, Any]) -> str:
             "",
             "Contract rules:",
             "- Use Lab first for research-development work in repos with .meridian/.",
-            "- For Lab-first implementation, debugging, test, experiment, release, or convergence work, selected_entry stays lab and routing stays lab_first_preflight, but handoff_to must include normal_coding_workflow because Lab prepares grounding and integrity context for the coding workflow.",
-            "- For Lab-owned idea graph, placement, research-node, or style-distillation work with no immediate code edit, handoff_to should usually stay lab.",
-            "- Code Style Distillation is a Lab workflow: when the user asks to learn, distill, remember, or infer coding style from code or explicit style feedback, select lab, route lab_first_preflight, set style_distillation true, and hand off to lab.",
+            "- `handoff_to` names the next owner after the selected entry, not the selected entry itself.",
+            "- For Lab-first implementation, debugging, test, experiment, release, or convergence work, selected_entry stays lab and routing stays lab_first_preflight, but handoff_to must be exactly [\"normal_coding_workflow\"] because Lab prepares grounding and integrity context for the coding workflow.",
+            "- For direct meridian, wiki, normal_coding_workflow, or Lab-owned non-coding workflows, there is no downstream owner, so handoff_to must be empty.",
+            "- Code Style Distillation is a Lab workflow: when the user asks to learn, distill, remember, or infer coding style from code or explicit style feedback, select lab, route lab_first_preflight, set style_distillation true, and keep handoff_to empty unless immediate coding work is also requested.",
             "- For Code Style Distillation from code samples, require blocker reporting and no silent fallback/profile pollution when named files, representative user-authored files, or exclusion boundaries cannot be proven.",
+            "- Do not set blocker_reporting or no_silent_fallback only because style_distillation is true; explicit user style feedback can be captured without those flags when there is no uncertain code-sample boundary.",
             "- Use Implementation Integrity Gate when requested code work could silently fall back to legacy-only, fallback-only, partial, no-op, comment-marker, or swallowed-error success.",
             "- Do not treat every bug fix as a research contract task. Pure bug-only correctness requests such as crashes, exceptions, or wrong results should use normal_coding_workflow unless the user ties them to a research node, experiment, evaluation protocol, current-version behavior, benchmark/metric contract, or explicit fallback/no-op risk.",
             "- Require blocker reporting when the primary current behavior cannot be implemented from available evidence.",
             "- Set no_silent_fallback when the agent must forbid silent fallback or fake completion.",
+            "- Set requires_user_approval_before_profile_write for Code Style Distillation because durable coding-style profile writes require explicit user approval.",
+            "- Set forbids_full_code_storage for Code Style Distillation because profile updates must store distilled principles, not full code examples.",
             "- Do not require integrity gates for pure mechanical edits, setup, wiki ingest/retrieval, or non-coding explanations.",
+            "- For non-coding explanations with routing not_needed, handoff_to must be empty.",
             "",
             "Contract output booleans:",
             "- implementation_integrity_gate",
             "- blocker_reporting",
             "- no_silent_fallback",
             "- style_distillation",
+            "- requires_user_approval_before_profile_write",
+            "- forbids_full_code_storage",
             "",
             "`path_rationale` is eval-only diagnostic output. It must not be required by Meridian product skills.",
             "In path_rationale, explain the decision as short ordered checks:",
@@ -766,6 +777,8 @@ def _research_agent_contract_output_schema() -> dict[str, Any]:
             "blocker_reporting": {"type": "boolean"},
             "no_silent_fallback": {"type": "boolean"},
             "style_distillation": {"type": "boolean"},
+            "requires_user_approval_before_profile_write": {"type": "boolean"},
+            "forbids_full_code_storage": {"type": "boolean"},
         }
     )
     return {
@@ -778,6 +791,8 @@ def _research_agent_contract_output_schema() -> dict[str, Any]:
             "blocker_reporting",
             "no_silent_fallback",
             "style_distillation",
+            "requires_user_approval_before_profile_write",
+            "forbids_full_code_storage",
             "handoff_to",
             "confidence",
             "reason",
@@ -812,6 +827,7 @@ def _score_case(
     failures: list[str] = []
     expected_skill = str(case.get("expected_skill"))
     expected_routing = case.get("expected_routing")
+    has_handoff_expectation = "handoff_to" in case
     expected_handoffs = [str(item) for item in case.get("handoff_to", [])]
     selected_entry = response.get("selected_entry") if response else None
     selected_routing = response.get("routing") if response else None
@@ -825,9 +841,13 @@ def _score_case(
         failures.append(f"selected_entry expected {expected_skill!r}, got {selected_entry!r}")
     if expected_routing and selected_routing != expected_routing:
         failures.append(f"routing expected {expected_routing!r}, got {selected_routing!r}")
-    for expected in expected_handoffs:
-        if expected not in selected_handoffs:
-            failures.append(f"handoff_to missing {expected!r}")
+    if has_handoff_expectation:
+        for expected in expected_handoffs:
+            if expected not in selected_handoffs:
+                failures.append(f"handoff_to missing {expected!r}")
+        for selected in selected_handoffs:
+            if selected not in expected_handoffs:
+                failures.append(f"handoff_to unexpected {selected!r}")
 
     return {
         "decision": "pass" if not failures else "fail",
@@ -888,6 +908,8 @@ def _score_research_agent_contract_case(
         ("expect_blocker_reporting", "blocker_reporting"),
         ("expect_no_silent_fallback", "no_silent_fallback"),
         ("expect_style_distillation", "style_distillation"),
+        ("expect_requires_user_approval_before_profile_write", "requires_user_approval_before_profile_write"),
+        ("expect_forbids_full_code_storage", "forbids_full_code_storage"),
     ):
         if case_field not in case:
             continue
@@ -904,6 +926,10 @@ def _score_research_agent_contract_case(
         "blocker_reporting": response.get("blocker_reporting") if response else None,
         "no_silent_fallback": response.get("no_silent_fallback") if response else None,
         "style_distillation": response.get("style_distillation") if response else None,
+        "requires_user_approval_before_profile_write": response.get("requires_user_approval_before_profile_write")
+        if response
+        else None,
+        "forbids_full_code_storage": response.get("forbids_full_code_storage") if response else None,
     }
 
 
@@ -999,15 +1025,16 @@ def _render_research_agent_contract_report(summary: dict[str, Any]) -> str:
         f"- Failed: {summary['failed_cases']}",
         f"- Pass rate: {summary['pass_rate']:.3f}",
         "",
-        "| Case | Decision | Expected | Selected | Routing | Contract Gate | Blocker | No Silent Fallback | Style Distill |",
-        "|---|---:|---|---|---|---:|---:|---:|---:|",
+        "| Case | Decision | Expected | Selected | Routing | Contract Gate | Blocker | No Silent Fallback | Style Distill | Approval | No Full Code |",
+        "|---|---:|---|---|---|---:|---:|---:|---:|---:|---:|",
     ]
     for item in summary["case_results"]:
         display = {key: str(value) if value is not None else "" for key, value in item.items()}
         lines.append(
             "| {case_id} | {decision} | {expected_skill} | {selected_entry} | {selected_routing} | "
             "{implementation_integrity_gate} | {blocker_reporting} | {no_silent_fallback} | "
-            "{style_distillation} |".format(**display)
+            "{style_distillation} | {requires_user_approval_before_profile_write} | "
+            "{forbids_full_code_storage} |".format(**display)
         )
     if any(summary.get("groups", {}).values()):
         lines.extend(["", "## Groups", ""])

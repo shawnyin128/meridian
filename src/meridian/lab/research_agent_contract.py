@@ -96,6 +96,50 @@ def inject_meridian_agents_contract(project_root: Path) -> Path:
     return target
 
 
+def validate_meridian_agents_contract(project_root: Path) -> ResearchAgentContractReport:
+    root = project_root.expanduser().resolve()
+    target = root / "AGENTS.md"
+    findings: list[ResearchAgentContractFinding] = []
+
+    def add(severity: str, code: str, message: str) -> None:
+        findings.append(ResearchAgentContractFinding(severity, code, str(target), message))
+
+    if not target.exists():
+        add("info", "agents_contract_missing", "Project AGENTS.md is missing the Meridian research-agent contract.")
+        return ResearchAgentContractReport(status="missing", path=str(target), findings=findings)
+
+    text = target.read_text(encoding="utf-8")
+    starts = _marker_positions(text, MERIDIAN_AGENTS_CONTRACT_START)
+    ends = _marker_positions(text, MERIDIAN_AGENTS_CONTRACT_END)
+    span = _find_valid_meridian_agents_contract_span(text)
+    if not starts and not ends:
+        add("info", "agents_contract_missing", "Project AGENTS.md does not contain the Meridian contract block.")
+    elif span is None:
+        add("warning", "agents_contract_malformed", "Project AGENTS.md contains malformed Meridian contract markers.")
+    elif len(starts) != 1 or len(ends) != 1:
+        add("warning", "agents_contract_duplicate", "Project AGENTS.md contains duplicate Meridian contract markers.")
+    else:
+        start, end = span
+        current_block = text[start:end].strip()
+        expected_block = meridian_agents_contract_block().strip()
+        if current_block != expected_block:
+            add("warning", "agents_contract_stale", "Project AGENTS.md Meridian contract block is stale.")
+
+    status = "pass" if not findings else "warn" if target.exists() else "missing"
+    return ResearchAgentContractReport(status=status, path=str(target), findings=findings)
+
+
+def _marker_positions(text: str, marker: str) -> list[int]:
+    positions: list[int] = []
+    search_from = 0
+    while True:
+        index = text.find(marker, search_from)
+        if index < 0:
+            return positions
+        positions.append(index)
+        search_from = index + len(marker)
+
+
 def _find_valid_meridian_agents_contract_span(text: str) -> tuple[int, int] | None:
     search_from = 0
     while True:
