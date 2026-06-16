@@ -78,9 +78,9 @@ def meridian_agents_contract_block() -> str:
 def inject_meridian_agents_contract(project_root: Path) -> Path:
     root = project_root.expanduser().resolve()
     target = root / "AGENTS.md"
-    block = meridian_agents_contract_block().rstrip() + "\n"
+    block = meridian_agents_contract_block().rstrip()
     if not target.exists():
-        target.write_text(block, encoding="utf-8")
+        target.write_text(block + "\n", encoding="utf-8")
         return target
 
     text = target.read_text(encoding="utf-8")
@@ -88,9 +88,10 @@ def inject_meridian_agents_contract(project_root: Path) -> Path:
     end = text.find(MERIDIAN_AGENTS_CONTRACT_END)
     if start >= 0 and end >= start:
         end += len(MERIDIAN_AGENTS_CONTRACT_END)
-        updated = text[:start].rstrip() + "\n\n" + block + text[end:].lstrip()
+        updated = text[:start] + block + text[end:]
     else:
-        updated = text.rstrip() + "\n\n" + block
+        separator = "" if not text or text.endswith("\n\n") else "\n" if text.endswith("\n") else "\n\n"
+        updated = text + separator + block + "\n"
     if updated != text:
         target.write_text(updated, encoding="utf-8")
     return target
