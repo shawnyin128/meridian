@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from meridian import __version__
-from meridian.evals.codex_routing import run_codex_routing_eval
+from meridian.evals.codex_routing import run_codex_lab_grounding_eval, run_codex_routing_eval
 from meridian.framework_check import run_framework_check, write_framework_json, write_framework_report
 from meridian.setup.doctor import build_setup_doctor_report, format_setup_doctor
 from meridian.setup.repair import apply_mcp_repair
@@ -152,6 +152,25 @@ def build_parser() -> argparse.ArgumentParser:
     codex_routing.add_argument("--timeout", type=float, default=300.0, help="Per-case codex exec timeout seconds.")
     codex_routing.add_argument("--overwrite", action="store_true", help="Overwrite an existing output directory.")
     codex_routing.add_argument(
+        "--use-user-config",
+        action="store_true",
+        help="Load the host Codex user config/rules instead of the isolated eval default.",
+    )
+    codex_lab_grounding = eval_subparsers.add_parser(
+        "codex-lab-grounding",
+        help="Run live Codex exec prompts over Lab grounding injection cases.",
+    )
+    codex_lab_grounding.add_argument("cases", type=Path, help="JSONL Lab grounding cases.")
+    codex_lab_grounding.add_argument("--out-dir", type=Path, required=True, help="Directory for live Codex outputs.")
+    codex_lab_grounding.add_argument("--repo-root", type=Path, default=Path.cwd(), help="Target repo for codex exec -C.")
+    codex_lab_grounding.add_argument("--codex-bin", default="codex", help="Codex executable. Defaults to codex.")
+    codex_lab_grounding.add_argument("--model", default=None, help="Optional Codex model override.")
+    codex_lab_grounding.add_argument("--profile", default=None, help="Optional Codex profile.")
+    codex_lab_grounding.add_argument("--case-id", action="append", default=None, help="Run only this case id. Repeatable.")
+    codex_lab_grounding.add_argument("--limit", type=int, default=None, help="Optional number of cases to run.")
+    codex_lab_grounding.add_argument("--timeout", type=float, default=300.0, help="Per-case codex exec timeout seconds.")
+    codex_lab_grounding.add_argument("--overwrite", action="store_true", help="Overwrite an existing output directory.")
+    codex_lab_grounding.add_argument(
         "--use-user-config",
         action="store_true",
         help="Load the host Codex user config/rules instead of the isolated eval default.",
@@ -1288,6 +1307,27 @@ def main(argv: list[str] | None = None) -> int:
             )
             print(f"Wrote Codex routing summary: {result.summary_path}")
             print(f"Wrote Codex routing report: {result.report_path}")
+            print(f"Total cases: {result.total_cases}")
+            print(f"Passed: {result.passed_cases}")
+            print(f"Failed: {result.failed_cases}")
+            return 0 if result.failed_cases == 0 else 1
+
+        if args.product == "eval" and args.command == "codex-lab-grounding":
+            result = run_codex_lab_grounding_eval(
+                cases_path=args.cases,
+                out_dir=args.out_dir,
+                repo_root=args.repo_root,
+                codex_bin=args.codex_bin,
+                model=args.model,
+                profile=args.profile,
+                case_ids=args.case_id,
+                limit=args.limit,
+                timeout=args.timeout,
+                overwrite=args.overwrite,
+                isolate_config=not args.use_user_config,
+            )
+            print(f"Wrote Codex Lab grounding summary: {result.summary_path}")
+            print(f"Wrote Codex Lab grounding report: {result.report_path}")
             print(f"Total cases: {result.total_cases}")
             print(f"Passed: {result.passed_cases}")
             print(f"Failed: {result.failed_cases}")

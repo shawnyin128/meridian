@@ -43,7 +43,8 @@ confidence: medium
 
 ## Recommended Research Move
 
-## Development Handoff Needed
+## Research Grounding Injection Needed
 
 If code implementation, debugging, tests, commits, release, or convergence are
-needed, summarize the handoff instead of doing that work inside Lab.
+needed, summarize the implementation-relevant Paper Wiki grounding to inject
+into the coding workflow instead of creating a durable Lab handoff state file.

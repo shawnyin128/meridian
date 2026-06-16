@@ -172,11 +172,11 @@ Then inspect the file list produced by the release build or source archive:
 - release includes plugin `skills/lab/SKILL.md`
 - release includes `src/meridian/templates/wiki-vault/Map of Content.md`
 - release includes `src/meridian/templates/research-dev/thread.md`
-- release includes `src/meridian/templates/research-dev/memory.md`
 - release includes `src/meridian/templates/research-dev/experiment.md`
 - release includes `src/meridian/templates/research-dev/proposal.md`
 - release includes `src/meridian/templates/research-dev/wiki-transfer-packet.md`
 - release includes `src/meridian/templates/research-dev/research-dev-context-packet.md`
+- release includes `src/meridian/templates/research-dev/research-grounding-injection.md`
 - release excludes `wiki/raw/sources/`
 - release excludes `wiki/.drafts/`
 - release excludes `eval/runs/`

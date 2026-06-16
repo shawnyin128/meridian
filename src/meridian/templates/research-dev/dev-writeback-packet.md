@@ -1,5 +1,5 @@
 ---
-type: development-handoff-packet
+type: lab-result-writeback-packet
 status: draft
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
@@ -7,15 +7,15 @@ source_type: lab_idea_graph
 confidence: medium
 ---
 
-# Development Handoff Packet
+# Lab Result Write-back Packet
 
 ## Active Thread / Node
 
-## Wiki Context Used
+## Research Grounding Used
 
-## Development Question
+## Implemented Question
 
-## Evidence To Produce
+## Evidence Produced
 
 - command:
 - config:
@@ -29,7 +29,8 @@ State what result would update the node, experiment evidence, or proposal.
 
 ## Boundary Notes
 
-- Lab does not implement code, run tests, create commits, release, or converge.
+- This packet records results returned from coding work; it is not a Lab-owned
+  execution plan.
 - The coding workflow owns implementation/debug/test execution.
 - Lab records returned evidence and handles Paper Wiki proposal boundaries.
 

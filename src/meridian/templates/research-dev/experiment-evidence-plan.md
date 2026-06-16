@@ -38,7 +38,8 @@ confidence: medium
 
 ## Wiki Context Used
 
-## Development Handoff
+## Research Grounding Injection
 
 If implementation, debugging, tests, commits, release, or convergence are
-needed, create a Development Handoff Packet and leave that work outside Lab.
+needed, inject the relevant Paper Wiki implementation grounding into the coding
+workflow and leave that work outside Lab.

@@ -11,8 +11,8 @@ Meridian has two user-facing surfaces:
   syntheses, provenance, and reading insights.
 - `lab`: provide Lab-first research/dev preflight in Meridian-initialized repos,
   then manage a research idea graph with Paper Wiki grounding, approach-tree
-  exploration, experiment evidence, development handoffs, and local finding
-  proposals.
+  exploration, experiment evidence, research grounding injection, and local
+  finding proposals.
 
 `meridian` is the setup/status skill.
 
@@ -110,7 +110,7 @@ plugins/claude-code/meridian/
 |---|---|---|
 | `meridian` | setup, status checks, updates, and migrations | ready / needs init / needs update / needs migration |
 | `wiki` | Paper Wiki Update Wiki and Use Wiki workflows | canonical pages, retrieval context, provenance, or proposal-first write-back |
-| `lab` | Lab-first research/dev preflight, idea graph, Wiki-grounded feasibility, experiments, and local findings | `.meridian/` thread/node state, evidence, handoff packet, or local proposal |
+| `lab` | Lab-first research/dev preflight, idea graph, Wiki-grounded feasibility, experiments, and local findings | `.meridian/` thread/node state, evidence, Research Grounding Injection, or local proposal |
 
 Support skills such as paper ingest, retrieval, knowledge, concept, evolution,
 and personalization are internal modules the `wiki` skill delegates to. Users
@@ -175,7 +175,6 @@ The first Lab workflow uses lazy initialization and asks before creating:
 
 ```text
 .meridian/state.md
-.meridian/memory.md
 .meridian/threads/index.md
 .meridian/experiments/index.md
 .meridian/proposals/index.md
@@ -202,8 +201,24 @@ evidence I need next.
 ```
 
 When an idea graph needs implementation, debugging, tests, commits, release, or
-convergence, Lab produces a development handoff. The actual code work belongs to
-the normal coding workflow, not Lab.
+convergence, Lab injects relevant Paper Wiki and implementation grounding into
+the coding context. The actual code work belongs to the normal coding workflow,
+not Lab.
+
+Live Lab routing and grounding checks are explicit because they call real
+Codex sessions and may use external model access:
+
+```powershell
+python -m meridian eval codex-lab-grounding `
+  eval/cases/lab_grounding_injection_live.jsonl `
+  --out-dir eval/runs/lab-grounding-live-<stamp> `
+  --repo-root . `
+  --overwrite
+```
+
+Run this without `--limit` for release confidence. The report records
+eval-only `path_rationale` so routing failures can be debugged without adding
+that diagnostic field to the shipped product skills.
 
 ## MCP
 

@@ -18,7 +18,12 @@ from unittest.mock import patch
 from meridian import __version__
 from meridian.cli import main
 from meridian.evals import codex_routing as codex_routing_eval
-from meridian.evals.codex_routing import build_routing_prompt, run_codex_routing_eval
+from meridian.evals.codex_routing import (
+    build_lab_grounding_prompt,
+    build_routing_prompt,
+    run_codex_lab_grounding_eval,
+    run_codex_routing_eval,
+)
 from meridian.framework_check import (
     FRAMEWORK_CHECK_CATEGORIES,
     MCP_RUNTIME_CATEGORY,
@@ -213,7 +218,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.6.0"
+        expected = "0.6.1"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -269,9 +274,9 @@ class CliTests(unittest.TestCase):
         )
 
         self.assertEqual(meridian.returncode, 0, meridian.stderr)
-        self.assertEqual(meridian.stdout.strip(), "meridian 0.6.0")
+        self.assertEqual(meridian.stdout.strip(), "meridian 0.6.1")
         self.assertEqual(cli_module.returncode, 0, cli_module.stderr)
-        self.assertEqual(cli_module.stdout.strip(), "meridian 0.6.0")
+        self.assertEqual(cli_module.stdout.strip(), "meridian 0.6.1")
         self.assertEqual(cli_help.returncode, 0, cli_help.stderr)
         self.assertIn("usage: meridian wiki", cli_help.stdout)
 
@@ -2359,7 +2364,7 @@ quality_state: "multimodal_pending"
         self.assertIn("Runtime Load Boundary", lab)
         self.assertIn("Do not continue from remembered Lab semantics", lab)
         self.assertIn("Lab is not a coding agent", lab)
-        self.assertIn("Development Handoff", lab)
+        self.assertIn("Research Grounding Injection", lab)
         self.assertIn("User Coding Style Principles", lab)
         self.assertIn("Coding Style Feedback Gate", lab)
         self.assertIn("record_user_level_principle", lab)
@@ -2624,6 +2629,287 @@ quality_state: "multimodal_pending"
             self.assertEqual(summary["groups"]["polarity"]["negative"]["passed_cases"], 1)
             self.assertEqual(summary["groups"]["risk"]["over_route_lab"]["total_cases"], 1)
             self.assertEqual(summary["groups"]["suite"]["lab_first_routing"]["pass_rate"], 1.0)
+
+    def test_lab_grounding_live_eval_cases_parse(self) -> None:
+        cases = Path("eval/cases/lab_grounding_injection_live.jsonl")
+        parsed = [json.loads(line) for line in cases.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+        self.assertGreaterEqual(len(parsed), 30)
+        self.assertTrue(all(case.get("category") == "lab_grounding_injection_live" for case in parsed))
+        required_fields = {
+            "id",
+            "suite",
+            "polarity",
+            "risk",
+            "repo_state",
+            "user_request",
+            "expected_skill",
+            "expected_routing",
+            "expect_research_graph_check",
+            "expect_paper_wiki_check",
+            "expect_open_source_code_check",
+            "expect_grounding_injection",
+            "handoff_to",
+            "expected_result",
+            "must_not_do",
+        }
+        for case in parsed:
+            self.assertTrue(required_fields.issubset(case), case.get("id"))
+            for field in (
+                "expect_research_graph_check",
+                "expect_paper_wiki_check",
+                "expect_open_source_code_check",
+                "expect_grounding_injection",
+            ):
+                self.assertIsInstance(case[field], bool, case["id"])
+
+        positives = [case for case in parsed if case["polarity"] == "positive"]
+        coding_grounding = [case for case in positives if case["expect_grounding_injection"]]
+        negatives = [case for case in parsed if case["polarity"] == "negative"]
+        self.assertGreaterEqual(len(positives), 10)
+        self.assertGreaterEqual(len(coding_grounding), 10)
+        self.assertGreaterEqual(len(negatives), 10)
+        self.assertTrue(all(case["expected_skill"] == "lab" for case in positives))
+        self.assertTrue(any(case["expected_skill"] == "normal_coding_workflow" for case in negatives))
+        self.assertTrue(any(case["expected_skill"] == "wiki" for case in negatives))
+        self.assertTrue(any(case["expected_skill"] == "meridian" for case in negatives))
+        self.assertTrue(any(case["risk"] == "over_route_lab" for case in negatives))
+        self.assertTrue(any(case["risk"] == "miss_code_grounding" for case in coding_grounding))
+        self.assertTrue(any(case["expect_open_source_code_check"] for case in coding_grounding))
+
+    def test_codex_lab_grounding_eval_runner_scores_grounding_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cases = root / "cases.jsonl"
+            cases.write_text(
+                json.dumps(
+                    {
+                        "id": "live-grounding",
+                        "category": "lab_grounding_injection_live",
+                        "suite": "lab_grounding",
+                        "polarity": "positive",
+                        "risk": "miss_code_grounding",
+                        "repo_state": "repo has .meridian/ with active Lab probe node",
+                        "user_request": "Before implementing the probe, inject wiki and code grounding.",
+                        "expected_skill": "lab",
+                        "expected_routing": "lab_first_preflight",
+                        "expect_research_graph_check": True,
+                        "expect_paper_wiki_check": True,
+                        "expect_open_source_code_check": True,
+                        "expect_grounding_injection": True,
+                        "handoff_to": ["normal_coding_workflow"],
+                        "expected_result": "Lab emits Research Grounding Injection before coding.",
+                        "must_not_do": ["Do not implement inside Lab."],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            calls: list[list[str]] = []
+
+            def fake_runner(
+                argv: list[str],
+                cwd: Path,
+                timeout: float,
+                stdin_text: str | None,
+            ) -> subprocess.CompletedProcess[str]:
+                calls.append(argv)
+                self.assertIn("Research Grounding Injection", stdin_text or "")
+                self.assertIn("eval-only diagnostic output", stdin_text or "")
+                last_message = Path(argv[argv.index("--output-last-message") + 1])
+                last_message.write_text(
+                    json.dumps(
+                        {
+                            "selected_entry": "lab",
+                            "routing": "lab_first_preflight",
+                            "research_graph_check": True,
+                            "paper_wiki_check": True,
+                            "open_source_code_check": True,
+                            "grounding_injection": True,
+                            "handoff_to": ["normal_coding_workflow"],
+                            "confidence": "high",
+                            "reason": "Active probe node needs Lab preflight and implementation grounding.",
+                            "path_rationale": [
+                                {
+                                    "check": "repo_state_signal",
+                                    "observation": "repo has .meridian/",
+                                    "effect": "Lab preflight is available",
+                                },
+                                {
+                                    "check": "grounding_signal",
+                                    "observation": "probe implementation needs paper and code prior",
+                                    "effect": "emit Research Grounding Injection",
+                                },
+                            ],
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                return subprocess.CompletedProcess(argv, 0, '{"event":"done"}\n', "")
+
+            result = run_codex_lab_grounding_eval(
+                cases_path=cases,
+                out_dir=root / "run",
+                repo_root=Path.cwd(),
+                codex_bin="codex",
+                overwrite=True,
+                runner=fake_runner,
+            )
+
+            self.assertEqual(result.total_cases, 1)
+            self.assertEqual(result.passed_cases, 1)
+            self.assertEqual(result.failed_cases, 0)
+            self.assertTrue(calls)
+            summary = json.loads(result.summary_path.read_text(encoding="utf-8"))
+            self.assertEqual(summary["schema_version"], "meridian.codex_lab_grounding_eval.v1")
+            self.assertEqual(summary["case_results"][0]["grounding_injection"], True)
+            self.assertEqual(summary["groups"]["risk"]["miss_code_grounding"]["passed_cases"], 1)
+
+    def test_codex_lab_grounding_eval_reports_missing_grounding_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cases = root / "cases.jsonl"
+            cases.write_text(
+                json.dumps(
+                    {
+                        "id": "missing-grounding",
+                        "category": "lab_grounding_injection_live",
+                        "suite": "lab_grounding",
+                        "polarity": "positive",
+                        "risk": "miss_code_grounding",
+                        "repo_state": "repo has .meridian/ with active coding node",
+                        "user_request": "Implement the next probe from this node.",
+                        "expected_skill": "lab",
+                        "expected_routing": "lab_first_preflight",
+                        "expect_research_graph_check": True,
+                        "expect_paper_wiki_check": True,
+                        "expect_open_source_code_check": True,
+                        "expect_grounding_injection": True,
+                        "handoff_to": ["normal_coding_workflow"],
+                        "expected_result": "Lab checks code grounding before handoff.",
+                        "must_not_do": ["Do not skip implementation prior."],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            def fake_runner(
+                argv: list[str],
+                cwd: Path,
+                timeout: float,
+                stdin_text: str | None,
+            ) -> subprocess.CompletedProcess[str]:
+                last_message = Path(argv[argv.index("--output-last-message") + 1])
+                last_message.write_text(
+                    json.dumps(
+                        {
+                            "selected_entry": "lab",
+                            "routing": "lab_first_preflight",
+                            "research_graph_check": True,
+                            "paper_wiki_check": False,
+                            "open_source_code_check": False,
+                            "grounding_injection": False,
+                            "handoff_to": ["normal_coding_workflow"],
+                            "confidence": "medium",
+                            "reason": "Lab route selected but grounding skipped.",
+                            "path_rationale": [{"check": "grounding_signal", "observation": "skipped", "effect": "fail"}],
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                return subprocess.CompletedProcess(argv, 0, "", "")
+
+            result = run_codex_lab_grounding_eval(
+                cases_path=cases,
+                out_dir=root / "run",
+                repo_root=Path.cwd(),
+                overwrite=True,
+                runner=fake_runner,
+            )
+
+            self.assertEqual(result.failed_cases, 1)
+            case_result = json.loads((root / "run/missing-grounding/result.json").read_text(encoding="utf-8"))
+            failures = " ".join(case_result["verdict"]["failures"])
+            self.assertIn("paper_wiki_check expected True", failures)
+            self.assertIn("open_source_code_check expected True", failures)
+            self.assertIn("grounding_injection expected True", failures)
+
+    def test_codex_lab_grounding_prompt_does_not_leak_expected_answer(self) -> None:
+        prompt = build_lab_grounding_prompt(
+            {
+                "id": "case",
+                "category": "lab_grounding_injection_live",
+                "repo_state": "repo has .meridian/ with active probe node",
+                "user_request": "Implement the probe after checking related paper code.",
+                "expected_skill": "lab",
+                "expected_routing": "lab_first_preflight",
+                "expect_grounding_injection": True,
+            }
+        )
+
+        self.assertIn("Implement the probe", prompt)
+        self.assertIn("Research Grounding Injection", prompt)
+        self.assertIn("open-source implementation", prompt)
+        self.assertIn("eval-only diagnostic output", prompt)
+        self.assertNotIn("expected_skill", prompt)
+        self.assertNotIn("expected_routing", prompt)
+        self.assertNotIn("expect_grounding_injection", prompt)
+
+    def test_codex_lab_grounding_cli_invokes_live_runner(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cases = root / "cases.jsonl"
+            cases.write_text(
+                json.dumps(
+                    {
+                        "id": "case",
+                        "category": "lab_grounding_injection_live",
+                        "user_request": "Implement the probe after checking paper code.",
+                        "expected_skill": "lab",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            out_dir = root / "run"
+            summary_path = out_dir / "summary.json"
+            report_path = out_dir / "report.md"
+            fake_result = codex_routing_eval.CodexRoutingEvalResult(
+                summary_path=summary_path,
+                report_path=report_path,
+                total_cases=30,
+                passed_cases=30,
+                failed_cases=0,
+            )
+
+            with patch("meridian.cli.run_codex_lab_grounding_eval", return_value=fake_result) as run_eval:
+                stdout = StringIO()
+                with redirect_stdout(stdout):
+                    exit_code = main(
+                        [
+                            "eval",
+                            "codex-lab-grounding",
+                            str(cases),
+                            "--out-dir",
+                            str(out_dir),
+                            "--repo-root",
+                            str(root),
+                            "--overwrite",
+                        ]
+                    )
+
+            self.assertEqual(exit_code, 0)
+            run_eval.assert_called_once()
+            kwargs = run_eval.call_args.kwargs
+            self.assertEqual(kwargs["cases_path"], cases)
+            self.assertEqual(kwargs["out_dir"], out_dir)
+            self.assertEqual(kwargs["repo_root"], root)
+            self.assertIsNone(kwargs["limit"])
+            self.assertIn("Wrote Codex Lab grounding summary", stdout.getvalue())
+            self.assertIn("Total cases: 30", stdout.getvalue())
 
     def test_codex_routing_prompt_does_not_leak_expected_answer(self) -> None:
         prompt = build_routing_prompt(
@@ -3562,7 +3848,7 @@ quality_state: "multimodal_pending"
     def test_lab_coding_style_profile_assets_parse(self) -> None:
         lab = (CODEX_PLUGIN_SKILL_ROOT / "lab/SKILL.md").read_text(encoding="utf-8")
         meridian = (CODEX_PLUGIN_SKILL_ROOT / "meridian/SKILL.md").read_text(encoding="utf-8")
-        handoff = Path("src/meridian/templates/research-dev/development-handoff-packet.md").read_text(encoding="utf-8")
+        injection = Path("src/meridian/templates/research-dev/research-grounding-injection.md").read_text(encoding="utf-8")
         cases = [
             json.loads(line)
             for line in Path("eval/cases/research_dev_coding_style_profile.jsonl").read_text(encoding="utf-8").splitlines()
@@ -3579,7 +3865,9 @@ quality_state: "multimodal_pending"
         ]:
             self.assertIn(phrase, lab)
         self.assertIn("coding-style profile", meridian)
-        self.assertIn("## User Coding Style Principles", handoff)
+        self.assertIn("## User Coding Style Principles", injection)
+        self.assertIn("## Implementation Prior", injection)
+        self.assertIn("## Coding Implication", injection)
         self.assertGreaterEqual(len(cases), 5)
         self.assertTrue(all(case.get("category") == "research_dev_coding_style_profile" for case in cases))
         self.assertTrue(any(case.get("expected_outcome") == "record_user_level_principle" for case in cases))
@@ -5361,7 +5649,7 @@ Compare recency-only retention with attention-based and oracle retention policie
     def test_research_dev_mvp_assets_exist(self) -> None:
         skill = (CODEX_PLUGIN_SKILL_ROOT / "lab/SKILL.md").read_text(encoding="utf-8")
         self.assertIn("Idea Feasibility Review", skill)
-        self.assertIn("Development Handoff", skill)
+        self.assertIn("Research Grounding Injection", skill)
         self.assertIn("Experiment Evidence Recording", skill)
         self.assertIn("meridian.context", skill)
         self.assertIn("Lazy Init", skill)
@@ -5373,12 +5661,16 @@ Compare recency-only retention with attention-based and oracle retention policie
         template = Path("src/meridian/templates/research-dev")
         self.assertTrue((template / "research-dev-context-packet.md").exists())
         self.assertTrue((template / "experiment-evidence-plan.md").exists())
-        self.assertTrue((template / "development-handoff-packet.md").exists())
+        self.assertFalse((template / "development-handoff-packet.md").exists())
+        self.assertTrue((template / "research-grounding-injection.md").exists())
         self.assertTrue((template / "idea-card.md").exists())
-        handoff_template = (template / "development-handoff-packet.md").read_text(encoding="utf-8")
-        self.assertIn("## Research Code Style", handoff_template)
-        self.assertIn("one readable main flow", handoff_template)
-        self.assertIn("Downstream acceptance criterion", handoff_template)
+        injection_template = (template / "research-grounding-injection.md").read_text(encoding="utf-8")
+        self.assertIn("## Implementation Prior", injection_template)
+        self.assertIn("related papers", injection_template)
+        self.assertIn("code/repo links", injection_template)
+        self.assertIn("## Research Code Style", injection_template)
+        self.assertIn("one readable main flow", injection_template)
+        self.assertIn("Return Signal", injection_template)
 
         pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
         self.assertIn('"templates/research-dev/**/*.md"', pyproject)
@@ -5424,7 +5716,6 @@ Compare recency-only retention with attention-based and oracle retention policie
             "Finding Proposal / Wiki Write-back",
             "Lazy Init",
             ".meridian/state.md",
-            ".meridian/memory.md",
             ".meridian/threads/index.md",
             ".meridian/experiments/index.md",
             ".meridian/proposals/index.md",
@@ -5446,10 +5737,10 @@ Compare recency-only retention with attention-based and oracle retention policie
             "threads-index.md",
             "experiments-index.md",
             "proposals-index.md",
-            "memory.md",
             "wiki-transfer-packet.md",
         ]:
             self.assertTrue((template / name).exists(), name)
+        self.assertFalse((template / "memory.md").exists())
 
         thread = (template / "thread.md").read_text(encoding="utf-8")
         self.assertIn("active_node", thread)
@@ -5617,7 +5908,6 @@ Compare recency-only retention with attention-based and oracle retention policie
                 relative,
                 [
                     Path(".meridian/experiments/index.md"),
-                    Path(".meridian/memory.md"),
                     Path(".meridian/proposals/index.md"),
                     Path(".meridian/state.md"),
                     Path(".meridian/threads/index.md"),
@@ -5640,7 +5930,6 @@ Compare recency-only retention with attention-based and oracle retention policie
                 "---\ntype: lab-state\nactive_thread: cache-retention\n---\n# Meridian Lab State\n",
                 encoding="utf-8",
             )
-            (lab / "memory.md").write_text("---\ntype: lab-memory\n---\n# Memory\n", encoding="utf-8")
             (lab / "threads/index.md").write_text("# Threads\n", encoding="utf-8")
             (lab / "experiments/index.md").write_text("# Experiments\n", encoding="utf-8")
             (lab / "proposals/index.md").write_text("# Proposals\n", encoding="utf-8")
@@ -5686,7 +5975,6 @@ Compare recency-only retention with attention-based and oracle retention policie
                 "---\ntype: lab-state\nactive_thread: missing-thread\n---\n# Meridian Lab State\n",
                 encoding="utf-8",
             )
-            (lab / "memory.md").write_text("---\ntype: lab-memory\n---\n# Memory\n", encoding="utf-8")
             (lab / "threads/index.md").write_text("# Threads\n", encoding="utf-8")
             (lab / "experiments/index.md").write_text("# Experiments\n", encoding="utf-8")
             (lab / "proposals/index.md").write_text("# Proposals\n", encoding="utf-8")
@@ -5721,6 +6009,7 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertTrue(all(case.get("category") == "research_dev_mvp" for case in parsed))
         self.assertTrue(all("expected_result" in case and "rubric" in case for case in parsed))
         style_case = next(case for case in parsed if case["id"] == "lab-research-code-style-handoff")
+        self.assertIn("Research Grounding Injection", style_case["expected_result"])
         self.assertIn("Research Code Style", style_case["expected_result"])
         self.assertIn("one readable main flow", style_case["expected_result"])
         self.assertIn("single-use parser/loader/selector helper layers", style_case["acceptable_paths"][1])
@@ -5728,7 +6017,7 @@ Compare recency-only retention with attention-based and oracle retention policie
 
         rubric = Path("eval/rubrics/research_dev_mvp_quality.md").read_text(encoding="utf-8")
         self.assertIn("Wiki Grounding", rubric)
-        self.assertIn("Development Handoff", rubric)
+        self.assertIn("Research Grounding Injection", rubric)
         self.assertIn("Boundary Correctness", rubric)
         self.assertIn("Lightweight Behavior", rubric)
         self.assertIn("Research Code Style", rubric)

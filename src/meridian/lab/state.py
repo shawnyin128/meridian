@@ -15,7 +15,6 @@ ALLOWED_EXPERIMENT_VALIDITY = {"valid", "invalid", "uncertain"}
 
 LAB_INIT_TEMPLATE_MAP = {
     "state.md": "state.md",
-    "memory.md": "memory.md",
     "threads/index.md": "threads-index.md",
     "experiments/index.md": "experiments-index.md",
     "proposals/index.md": "proposals-index.md",
@@ -82,7 +81,6 @@ def validate_lab_space(root: Path) -> LabValidationReport:
 
     required_files = [
         lab_root / "state.md",
-        lab_root / "memory.md",
         lab_root / "threads/index.md",
         lab_root / "experiments/index.md",
         lab_root / "proposals/index.md",

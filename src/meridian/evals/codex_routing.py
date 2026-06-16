@@ -11,6 +11,7 @@ from typing import Any, Callable, Iterable
 
 
 CODEX_ROUTING_EVAL_SCHEMA_VERSION = "meridian.codex_routing_eval.v1"
+CODEX_LAB_GROUNDING_EVAL_SCHEMA_VERSION = "meridian.codex_lab_grounding_eval.v1"
 
 CommandRunner = Callable[[list[str], Path, float, str | None], subprocess.CompletedProcess[str]]
 
@@ -144,6 +145,134 @@ def run_codex_routing_eval(
     )
 
 
+def run_codex_lab_grounding_eval(
+    *,
+    cases_path: Path,
+    out_dir: Path,
+    repo_root: Path,
+    codex_bin: str = "codex",
+    model: str | None = None,
+    profile: str | None = None,
+    case_ids: list[str] | None = None,
+    limit: int | None = None,
+    timeout: float = 300.0,
+    overwrite: bool = False,
+    isolate_config: bool = True,
+    runner: CommandRunner | None = None,
+) -> CodexRoutingEvalResult:
+    if out_dir.exists() and any(out_dir.iterdir()) and not overwrite:
+        raise FileExistsError(f"codex lab grounding eval output directory already exists: {out_dir}")
+    if out_dir.exists() and overwrite:
+        shutil.rmtree(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    selected_cases = list(_select_cases(_load_cases(cases_path), case_ids=case_ids, limit=limit))
+    schema_path = out_dir / "codex-lab-grounding-output.schema.json"
+    schema_path.write_text(json.dumps(_lab_grounding_output_schema(), indent=2) + "\n", encoding="utf-8")
+
+    command_runner = runner or _default_runner
+    case_results: list[dict[str, Any]] = []
+    for case in selected_cases:
+        case_id = str(case["id"])
+        case_dir = out_dir / case_id
+        case_dir.mkdir(parents=True, exist_ok=True)
+        (case_dir / "case.json").write_text(json.dumps(case, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+        prompt_path = case_dir / "prompt.md"
+        prompt = build_lab_grounding_prompt(case)
+        prompt_path.write_text(prompt, encoding="utf-8")
+
+        last_message_path = case_dir / "last-message.json"
+        events_path = case_dir / "events.jsonl"
+        stderr_path = case_dir / "stderr.txt"
+        argv = build_codex_exec_argv(
+            codex_bin=codex_bin,
+            repo_root=repo_root,
+            schema_path=schema_path,
+            last_message_path=last_message_path,
+            model=model,
+            profile=profile,
+            isolate_config=isolate_config,
+        )
+        completed = command_runner(argv, repo_root, timeout, prompt)
+        events_path.write_text(completed.stdout or "", encoding="utf-8")
+        stderr_path.write_text(completed.stderr or "", encoding="utf-8")
+
+        response, parse_error = _load_last_message(last_message_path)
+        verdict = _score_lab_grounding_case(
+            case=case,
+            response=response,
+            returncode=completed.returncode,
+            parse_error=parse_error,
+        )
+        result = {
+            "case_id": case_id,
+            "suite": case.get("suite"),
+            "polarity": case.get("polarity"),
+            "risk": case.get("risk"),
+            "returncode": completed.returncode,
+            "command": argv[:-1] + ["<stdin-prompt>"],
+            "prompt_path": str(prompt_path),
+            "events_path": str(events_path),
+            "stderr_path": str(stderr_path),
+            "last_message_path": str(last_message_path),
+            "response": response,
+            "parse_error": parse_error,
+            "verdict": verdict,
+        }
+        (case_dir / "result.json").write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        case_results.append(result)
+
+    passed = sum(1 for item in case_results if item["verdict"]["decision"] == "pass")
+    failed = len(case_results) - passed
+    summary = {
+        "schema_version": CODEX_LAB_GROUNDING_EVAL_SCHEMA_VERSION,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "cases_path": str(cases_path),
+        "repo_root": str(repo_root),
+        "codex_bin": codex_bin,
+        "model": model,
+        "profile": profile,
+        "isolate_config": isolate_config,
+        "total_cases": len(case_results),
+        "passed_cases": passed,
+        "failed_cases": failed,
+        "pass_rate": (passed / len(case_results)) if case_results else 0.0,
+        "groups": _summarize_groups(case_results),
+        "case_results": [
+            {
+                "case_id": item["case_id"],
+                "suite": item.get("suite"),
+                "polarity": item.get("polarity"),
+                "risk": item.get("risk"),
+                "decision": item["verdict"]["decision"],
+                "expected_skill": item["verdict"]["expected_skill"],
+                "selected_entry": item["verdict"].get("selected_entry"),
+                "expected_routing": item["verdict"].get("expected_routing"),
+                "selected_routing": item["verdict"].get("selected_routing"),
+                "research_graph_check": item["verdict"].get("research_graph_check"),
+                "paper_wiki_check": item["verdict"].get("paper_wiki_check"),
+                "open_source_code_check": item["verdict"].get("open_source_code_check"),
+                "grounding_injection": item["verdict"].get("grounding_injection"),
+                "failures": item["verdict"]["failures"],
+                "result_path": str(out_dir / str(item["case_id"]) / "result.json"),
+            }
+            for item in case_results
+        ],
+    }
+    summary_path = out_dir / "summary.json"
+    report_path = out_dir / "report.md"
+    summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    report_path.write_text(_render_lab_grounding_report(summary), encoding="utf-8")
+    return CodexRoutingEvalResult(
+        summary_path=summary_path,
+        report_path=report_path,
+        total_cases=len(case_results),
+        passed_cases=passed,
+        failed_cases=failed,
+    )
+
+
 def _summarize_groups(case_results: list[dict[str, Any]]) -> dict[str, dict[str, dict[str, Any]]]:
     groups: dict[str, dict[str, dict[str, Any]]] = {"suite": {}, "polarity": {}, "risk": {}}
     for item in case_results:
@@ -247,6 +376,57 @@ def build_routing_prompt(case: dict[str, Any]) -> str:
             "2. intent_signal: whether the request is setup, wiki, research/dev, or mechanical code",
             "3. lab_boundary_signal: whether Lab should preflight or skip",
             "4. handoff_signal: whether implementation/debug/test work should go to normal coding",
+            "",
+            "Case:",
+            json.dumps(visible_case, indent=2, ensure_ascii=False),
+            "",
+        ]
+    )
+
+
+def build_lab_grounding_prompt(case: dict[str, Any]) -> str:
+    visible_case = {
+        "id": case.get("id"),
+        "category": case.get("category"),
+        "repo_state": case.get("repo_state", "not specified"),
+        "user_request": case.get("user_request"),
+    }
+    return "\n".join(
+        [
+            "You are running an offline Meridian Lab grounding evaluation.",
+            "Case.user_request is a simulated user turn and must be routed.",
+            "",
+            "Evaluate only the routing and pre-coding grounding obligations for Case.user_request below.",
+            "Do not edit files, run commands, load skills, retrieve real wiki pages, or complete the user request.",
+            "Return only the JSON object required by the output schema.",
+            "",
+            "Allowed selected_entry values:",
+            "- meridian",
+            "- wiki",
+            "- lab",
+            "- normal_coding_workflow",
+            "",
+            "Routing rules to apply:",
+            "- Use meridian for setup, status, migration, and readiness repair.",
+            "- Use wiki for Paper Wiki update/use work that is not attached to Lab research state.",
+            "- In a repo with .meridian/, research-bearing ideas, experiments, baselines, metrics, hypotheses, failure interpretation, and research-coded probes should use Lab-first preflight.",
+            "- Lab-first preflight should check the research graph when the request concerns ideas, nodes, active directions, completed work, evidence, or current work state.",
+            "- Lab-first preflight should check Paper Wiki prior when the request concerns ideas, feasibility, related work, baselines, metrics, evaluation design, failure modes, probes, method implementation, or recovering why an active research node was designed that way.",
+            "- Research-coding requests should check whether related papers mention open-source implementations or code-level patterns before normal coding starts.",
+            "- Probe observation or counter selection should check code-level prior when the user asks to prepare implementation work, not only when they say 'write code'.",
+            "- For actual implementation/debug/test work, Lab should produce a Research Grounding Injection and hand the work to normal_coding_workflow.",
+            "- Pure mechanical engineering with no research meaning should skip Lab, Paper Wiki, and grounding injection.",
+            "- Setup and ordinary Paper Wiki requests should not be forced through Lab merely because Meridian exists.",
+            "",
+            "`path_rationale` is eval-only diagnostic output. It must not be required by Meridian product skills.",
+            "In path_rationale, explain the route decision as short ordered checks:",
+            "1. repo_state_signal: whether `.meridian/` or setup state matters",
+            "2. intent_signal: whether the request is setup, wiki, research/dev, or mechanical code",
+            "3. graph_signal: whether the Lab research graph should be checked",
+            "4. wiki_signal: whether Paper Wiki prior should be checked",
+            "5. code_prior_signal: whether open-source implementation/code grounding should be checked",
+            "6. grounding_injection_signal: whether a Research Grounding Injection is needed before coding",
+            "7. handoff_signal: whether work stays in Lab/wiki/meridian or hands to normal coding",
             "",
             "Case:",
             json.dumps(visible_case, indent=2, ensure_ascii=False),
@@ -362,6 +542,36 @@ def _output_schema() -> dict[str, Any]:
     }
 
 
+def _lab_grounding_output_schema() -> dict[str, Any]:
+    base = _output_schema()
+    properties = dict(base["properties"])
+    properties.update(
+        {
+            "research_graph_check": {"type": "boolean"},
+            "paper_wiki_check": {"type": "boolean"},
+            "open_source_code_check": {"type": "boolean"},
+            "grounding_injection": {"type": "boolean"},
+        }
+    )
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": [
+            "selected_entry",
+            "routing",
+            "research_graph_check",
+            "paper_wiki_check",
+            "open_source_code_check",
+            "grounding_injection",
+            "handoff_to",
+            "confidence",
+            "reason",
+            "path_rationale",
+        ],
+        "properties": properties,
+    }
+
+
 def _load_last_message(path: Path) -> tuple[dict[str, Any] | None, str | None]:
     if not path.exists():
         return None, "last message file was not created"
@@ -416,6 +626,39 @@ def _score_case(
     }
 
 
+def _score_lab_grounding_case(
+    *,
+    case: dict[str, Any],
+    response: dict[str, Any] | None,
+    returncode: int,
+    parse_error: str | None,
+) -> dict[str, Any]:
+    verdict = _score_case(case=case, response=response, returncode=returncode, parse_error=parse_error)
+    failures = list(verdict["failures"])
+    for case_field, response_field in (
+        ("expect_research_graph_check", "research_graph_check"),
+        ("expect_paper_wiki_check", "paper_wiki_check"),
+        ("expect_open_source_code_check", "open_source_code_check"),
+        ("expect_grounding_injection", "grounding_injection"),
+    ):
+        if case_field not in case:
+            continue
+        selected = response.get(response_field) if response else None
+        expected = bool(case[case_field])
+        if selected != expected:
+            failures.append(f"{response_field} expected {expected!r}, got {selected!r}")
+
+    return {
+        **verdict,
+        "decision": "pass" if not failures else "fail",
+        "failures": failures,
+        "research_graph_check": response.get("research_graph_check") if response else None,
+        "paper_wiki_check": response.get("paper_wiki_check") if response else None,
+        "open_source_code_check": response.get("open_source_code_check") if response else None,
+        "grounding_injection": response.get("grounding_injection") if response else None,
+    }
+
+
 def _render_report(summary: dict[str, Any]) -> str:
     lines = [
         "# Codex Routing Evaluation",
@@ -431,6 +674,48 @@ def _render_report(summary: dict[str, Any]) -> str:
     for item in summary["case_results"]:
         lines.append(
             "| {case_id} | {decision} | {expected_skill} | {selected_entry} | {expected_routing} | {selected_routing} |".format(
+                **{key: str(value or "") for key, value in item.items()}
+            )
+        )
+    if any(summary.get("groups", {}).values()):
+        lines.extend(["", "## Groups", ""])
+        for group_name, buckets in summary.get("groups", {}).items():
+            if not buckets:
+                continue
+            lines.extend(
+                [
+                    f"### {group_name}",
+                    "",
+                    "| Bucket | Total | Passed | Failed | Pass Rate |",
+                    "|---|---:|---:|---:|---:|",
+                ]
+            )
+            for bucket_name, bucket in sorted(buckets.items()):
+                lines.append(
+                    f"| {bucket_name} | {bucket['total_cases']} | {bucket['passed_cases']} | "
+                    f"{bucket['failed_cases']} | {bucket['pass_rate']:.3f} |"
+                )
+            lines.append("")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _render_lab_grounding_report(summary: dict[str, Any]) -> str:
+    lines = [
+        "# Codex Lab Grounding Evaluation",
+        "",
+        f"- Total cases: {summary['total_cases']}",
+        f"- Passed: {summary['passed_cases']}",
+        f"- Failed: {summary['failed_cases']}",
+        f"- Pass rate: {summary['pass_rate']:.3f}",
+        "",
+        "| Case | Decision | Expected | Selected | Routing | Graph | Wiki | Code Prior | Injection |",
+        "|---|---:|---|---|---|---:|---:|---:|---:|",
+    ]
+    for item in summary["case_results"]:
+        lines.append(
+            "| {case_id} | {decision} | {expected_skill} | {selected_entry} | {selected_routing} | "
+            "{research_graph_check} | {paper_wiki_check} | {open_source_code_check} | {grounding_injection} |".format(
                 **{key: str(value or "") for key, value in item.items()}
             )
         )

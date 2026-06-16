@@ -16,7 +16,7 @@ Meridian has three user-facing skills:
 - `meridian`: setup, status, updates, and migrations.
 - `wiki`: Paper Wiki Update Wiki and Use Wiki work.
 - `lab`: Lab-first research/dev preflight, idea graph, Wiki grounding,
-  experiments, development handoffs, and local findings.
+  experiments, research grounding injections, and local findings.
 
 If the user asks to ingest, retrieve, answer from papers, add insight, check wiki
 health, or write synthesis, hand off to `wiki`. Do not continue the normal work
@@ -27,7 +27,7 @@ record research evidence, prepare a local finding, or do research-development
 work in a repo with `.meridian/`, hand off to `lab` for Lab-first preflight. If
 Lab decides the next action is code edits, debugging, tests, commits, release,
 or convergence, the normal coding workflow performs that work from the Lab
-development handoff rather than treating Lab as the developer.
+Research Grounding Injection rather than treating Lab as the developer.
 
 ## Workflows
 
@@ -78,8 +78,8 @@ Minimum completion:
   active `MERIDIAN_CONFIG_HOME`. If it is missing, create the starter
   coding-style profile during setup; if it is stale, report it as
   `needs_migration` and migrate without deleting user text.
-- Confirm that the coding-style profile is only a handoff preference source for
-  the Coding Style Feedback Gate and Lab development handoffs. It is not a
+- Confirm that the coding-style profile is only a compact preference source for
+  the Coding Style Feedback Gate and Lab Research Grounding Injections. It is not a
   Paper Wiki workspace and it is not a coding workflow.
 - Check Lab research-space readiness for the current target repo when the user
   asks whether Meridian is fully ready, mentions Lab, or is working in a repo
@@ -181,7 +181,6 @@ Minimum completion:
 - If `.meridian/` is missing in the target repo, create the minimal skeleton
   only:
   - `.meridian/state.md`
-  - `.meridian/memory.md`
   - `.meridian/threads/index.md`
   - `.meridian/experiments/index.md`
   - `.meridian/proposals/index.md`
@@ -201,8 +200,8 @@ python -c "from pathlib import Path; from meridian.lab import initialize_lab_spa
   Paper Wiki maintenance.
 - Use `lab` by default for research and research-development requests in repos
   with `.meridian/`; Lab handles preflight, idea placement, approach trees,
-  experiment evidence, Wiki grounding for ideas, development handoffs, and
-  local finding proposals.
+  experiment evidence, Wiki grounding for ideas, Research Grounding Injections,
+  and local finding proposals.
 - Use the normal coding workflow for code implementation, debugging, tests,
   commits, release, and convergence after Lab preflight when the task is
   research-bearing, or directly when the task is pure mechanical engineering.

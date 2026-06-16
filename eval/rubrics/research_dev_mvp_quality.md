@@ -11,9 +11,10 @@ Hard fail if any apply:
 - A durable new idea skips placement or root thread seed creation when no
   candidate threads exist.
 - Lab performs code implementation, debugging, tests, commits, release, or
-  convergence instead of producing a development handoff.
-- A development handoff for an exploratory research slice omits Research Code
-  Style or reduces it to generic "clean/maintainable code" wording.
+  convergence instead of producing a Research Grounding Injection.
+- A Research Grounding Injection for an exploratory research slice omits
+  Research Code Style or reduces it to generic "clean/maintainable code"
+  wording.
 - The task clearly depends on paper/method/concept/evidence context, but the
   agent does not retrieve or cite wiki context.
 - The agent treats user insight, wiki synthesis, or local experiment evidence as
@@ -72,15 +73,16 @@ Score each dimension from 1 to 5.
 5. Produces a local proposal and transfer packet that are ready for proposal
    lint/review when the user approves wiki write-back.
 
-### 6. Development Handoff
+### 6. Research Grounding Injection
 
 1. Performs code work inside Lab.
 2. Gives vague advice with no evidence return path.
-3. Names a coding task but omits validity or output identity.
-4. Provides active node, wiki context, task, expected output, and validity
-   criteria.
-5. Produces a compact handoff that another coding workflow can execute and
-   return as Lab evidence without ambiguity.
+3. Names a coding task but omits implementation prior, validity, or output
+   identity.
+4. Injects active node, relevant Paper Wiki pages, related papers or code/repo
+   links when available, task, expected output, and validity criteria.
+5. Injects compact paper/wiki implementation grounding that another coding
+   workflow can use immediately and return as Lab evidence without ambiguity.
 
 ### 6a. Research Code Style
 
@@ -103,7 +105,8 @@ Score each dimension from 1 to 5.
 2. Labels some boundaries but still lets local evidence rewrite paper facts.
 3. Keeps most boundaries clear with minor ambiguity.
 4. Separates all major evidence identities.
-5. Makes boundaries explicit in every decision, proposal, and handoff.
+5. Makes boundaries explicit in every decision, proposal, and grounding
+   injection.
 
 ### 8. Lightweight Behavior
 
@@ -121,7 +124,7 @@ Score each dimension from 1 to 5.
 - `approach_tree`
 - `experiment_evidence`
 - `proposal_lifecycle`
-- `development_handoff`
+- `grounding_injection`
 - `research_code_style`
 - `boundary_correctness`
 - `entry_selection`

@@ -28,8 +28,9 @@ state contract is documented in `docs/research-dev-state-model.md`.
 
 Lab creates the research space lazily. If a Lab workflow starts in a repo
 without `.meridian/`, the agent asks for confirmation, creates the minimal
-`state.md`, `memory.md`, and index skeleton, then continues the user's original
-idea or evidence-management task.
+`state.md` and index skeleton, then continues the user's original idea or
+evidence-management task. Lab does not create or maintain `memory.md`; unplaced
+ideas should be placed or confirmed instead of parked in a second memory file.
 
 The primary objects are:
 
@@ -59,7 +60,7 @@ It owns:
 - approach tree management
 - experiment evidence recording
 - result interpretation as Lab state
-- development handoff packets
+- Research Grounding Injection for coding workflows
 - write-back packets to Paper Wiki
 
 It does not own:
@@ -125,7 +126,8 @@ Minimum completion:
 - separate source fact, wiki synthesis, user insight, local evidence, and
   uncertainty
 - identify the smallest evidence needed next
-- create a development handoff only when code/debug/test work is the next step
+- create a Research Grounding Injection only when code/debug/test work is the
+  next step
 
 ### 4. Experiment Evidence Recording
 
@@ -142,9 +144,9 @@ Minimum completion:
 - record result, validity, and interpretation
 - link the experiment to node/proposal targets
 - update same-node support only when evidence is valid
-- prepare a development handoff if more code/debug work is needed
+- prepare a Research Grounding Injection if more code/debug work is needed
 
-### 5. Development Handoff
+### 5. Research Grounding Injection
 
 Use when the next useful action is implementation, debugging, testing,
 experiments, commits, release, or convergence.
@@ -152,10 +154,11 @@ experiments, commits, release, or convergence.
 Minimum completion:
 
 - name the motivating thread/node or idea
-- include the wiki context that shaped the decision
-- state the smallest development question or task
+- inject only the Paper Wiki grounding, related papers, code/repo links,
+  implementation prior, and source boundaries that should shape coding
+- state the smallest development question or task as a coding implication
 - define expected evidence and validity criteria
-- hand off to the normal coding workflow instead of editing code inside Lab
+- route to the normal coding workflow instead of editing code inside Lab
 
 ## Artifact Schema
 
@@ -237,7 +240,7 @@ Required sections:
 - User Insight
 - Uncertainty / Gaps
 - Recommended Next Research Move
-- Development Handoff Needed
+- Research Grounding Injection Needed
 
 ### Experiment / Evidence Plan
 
@@ -256,19 +259,19 @@ Required sections:
 - Stop Condition
 - Interpretation Plan
 
-### Development Handoff Packet
+### Research Grounding Injection
 
-Purpose: give a coding workflow enough context to implement/debug/test without
-making Lab responsible for the code.
+Purpose: inject implementation-relevant Paper Wiki grounding into the coding
+workflow without creating a durable Lab handoff state file.
 
 Required sections:
 
-- Active Thread / Node
-- Wiki Context Used
-- Development Question
-- Evidence To Produce
-- Validity Criteria
-- Return To Lab
+- Research Anchor
+- Wiki Grounding
+- Implementation Prior
+- Source Boundary
+- Coding Implication
+- Return Signal
 
 ### Wiki Transfer Packet
 
@@ -303,8 +306,8 @@ The skill should:
   context could change the decision
 - keep context packets compact
 - manage ideas, approach nodes, experiment evidence, and local finding proposals
-- produce development handoffs when implementation, debugging, tests, commits,
-  release, or convergence are needed
+- produce Research Grounding Injections when implementation, debugging, tests,
+  commits, release, or convergence are needed
 - require evidence identity for experiments and results
 - write back through proposal-first Paper Wiki tools
 
@@ -342,7 +345,7 @@ Promotion and write-back are proposal-first:
 
 ## Wiki Retrieval Contract
 
-Use Paper Wiki before feasibility judgment or development handoff when a
+Use Paper Wiki before feasibility judgment or Research Grounding Injection when a
 request depends on:
 
 - paper methods or baselines
@@ -376,8 +379,7 @@ Use proposal-first write-back when Lab state captures durable research memory:
 
 - experiment result interpretation
 - failed path that should be remembered
-- implementation detail returned by a development handoff and missing from a
-  paper page
+- implementation detail returned by coding work and missing from a paper page
 - mismatch between code and paper claim
 - new synthesis or research decision
 
@@ -392,9 +394,9 @@ Do not treat user interpretation or local experiment evidence as paper source
 fact. Put it in synthesis, user insight, result memory, or a source-recheck
 proposal.
 
-## Development Handoff Contract
+## Research Grounding Injection Contract
 
-Hand off when a Lab conclusion needs code work:
+Inject grounding when a Lab conclusion needs code work:
 
 - implementation of a hypothesis or probe
 - debugging a failed run
@@ -402,8 +404,9 @@ Hand off when a Lab conclusion needs code work:
 - committing checkpoint state
 - release or convergence work
 
-The handoff should identify the research move and the evidence Lab expects
-back. It should not prescribe a rigid agent route.
+The injection should identify the research move, the paper/wiki implementation
+prior, and the evidence Lab expects back. It should not prescribe a rigid agent
+route or duplicate Arbor workflow state.
 
 ## Evaluation Plan
 
@@ -415,12 +418,12 @@ Primary dimensions:
 - correct scenario classification
 - wiki retrieval usage when needed
 - compact Lab context quality
-- development handoff quality
+- grounding injection quality
 - evidence identity
 - sanity/probe quality
 - code-work boundary
 - write-back boundary
-- handoff discipline
+- coding boundary discipline
 - lightweight behavior
 
 The first eval assets live at:

@@ -1,6 +1,6 @@
 ---
 name: lab
-description: "Use by default for research and research-development work in a repo with `.meridian/`: run Lab-first preflight, place/ground ideas, maintain approach trees, attach experiment evidence, prepare development handoffs, and create reusable findings for wiki write-back. Pure mechanical engineering may skip Lab. Do not use for code implementation, debugging, test repair, release, or git convergence; hand those to the normal coding workflow."
+description: "Use by default for research and research-development work in a repo with `.meridian/`: run Lab-first preflight, place/ground ideas, maintain approach trees, attach experiment evidence, inject Paper Wiki implementation grounding before coding, and create reusable findings for wiki write-back. Pure mechanical engineering may skip Lab. Do not use for code implementation, debugging, test repair, release, or git convergence; hand those to the normal coding workflow."
 ---
 
 # Meridian Lab
@@ -15,8 +15,8 @@ the user saying "Lab" or on narrow keywords such as "idea graph".
 
 Lab is not a coding agent, workflow engine, MCP product, or setup assistant.
 When work needs code edits, debugging, tests, commits, release, or convergence,
-produce a compact development handoff and let the user's normal coding flow
-take over.
+produce a compact Research Grounding Injection and let the user's normal coding
+flow take over.
 
 ## Runtime Load Boundary
 
@@ -36,7 +36,7 @@ lab_route: use | skip
 reason: <why Lab is or is not the right layer>
 repo_state: meridian_initialized | needs_lazy_init | not_lab_repo
 research_prior: checked | missing | deferred | not_needed
-handoff: yes | no
+grounding_injection: yes | no
 ```
 
 Use `lab_route: use` when the request changes or depends on research direction,
@@ -52,10 +52,11 @@ format-only change, dependency installation, an obvious import-path repair, CI
 plumbing, release mechanics, or a small typo fix.
 
 If `lab_route: use` and the next action is implementation, debugging, testing,
-running experiments, commit management, release, or convergence, produce a
-Development Handoff Packet and then hand the work to the normal coding
-workflow. Lab owns the research context and evidence identity; the coding
-workflow owns code changes and verification.
+running experiments, commit management, release, or convergence, inject the
+implementation-relevant Paper Wiki grounding into the normal coding workflow.
+Do not create a durable Lab handoff state file. Lab owns the research anchor,
+grounding, and return signal; the coding workflow owns code changes and
+verification.
 
 If the repo does not yet have `.meridian/` but the user request is research or
 research-development work, apply Lazy Init before treating the request as
@@ -67,7 +68,7 @@ For research projects, Lab-first preflight means preserving research-state
 continuity before picking the execution workflow:
 
 - For idea-related requests, Lab must first check the research graph and Paper Wiki for related ideas, papers, user insights, methods, and failed paths.
-- For research-coding requests, Lab must check Paper Wiki papers and open-source implementation hints when the relevant papers expose code or reproduction links. Include that implementation prior in the development handoff before normal coding starts.
+- For research-coding requests, Lab must check Paper Wiki papers and open-source implementation hints when the relevant papers expose code or reproduction links. Include that implementation prior in the Research Grounding Injection before normal coding starts.
 - When the user suddenly shares an idea, Lab records the raw idea, finds related
   nodes, and asks before creating or attaching durable node state when placement
   is ambiguous.
@@ -86,11 +87,11 @@ continuity before picking the execution workflow:
   prompt, metric, eval, ablation, probe, failure, or baseline slot in the plan.
 - Treat official benchmark, baseline, eval, metric, score, or leaderboard
   faithfulness as a stricter Research Prior subtype: run the Official Benchmark
-  Fidelity gate before any development handoff or final Lab plan.
+  Fidelity gate before any Research Grounding Injection or final Lab plan.
 - Use Paper Wiki MCP grounding as the default path for research-prior slots;
   preserve `checked`, `missing`, `deferred`, or `not_needed` state explicitly.
 - Keep implementation details as research context, not as Lab-owned code work.
-- Before preparing a development handoff, read the user coding-style profile
+- Before preparing a Research Grounding Injection, read the user coding-style profile
   when available and include only relevant `User Coding Style Principles`.
 - Ask before boundary-changing state moves: creating a new node, marking
   `repairable` or `dead`, switching active thread/node, closing/reopening a
@@ -101,7 +102,7 @@ continuity before picking the execution workflow:
 ## Research Prior Gate
 
 Before presenting a Lab plan, approach node, experiment design, feasibility
-judgment, or development handoff, scan it for research-prior slots:
+judgment, or Research Grounding Injection, scan it for research-prior slots:
 
 - `method`
 - `prompt`
@@ -138,7 +139,7 @@ published result.
 Minimum completion:
 
 - Extract an `Official Benchmark Fidelity` block before finalizing the Lab plan
-  or development handoff.
+  or Research Grounding Injection.
 - Include the official runner entrypoint.
 - Include the official task source / split source.
 - Include the official config defaults.
@@ -151,7 +152,7 @@ Minimum completion:
   contract. Otherwise label them as derived diagnostic or local variant.
 - If official evidence is unavailable, record `missing`, preserve what was
   checked, and ask before accepting the under-grounded risk.
-- Add this review prompt to the handoff:
+- Add this review prompt to the Research Grounding Injection:
   `Please review benchmark faithfulness, not general code quality. Compare local wrappers/artifacts against the official benchmark runner, config defaults, metric functions, and aggregation granularity. Find any local behavior that changes the reported metric.`
 
 Do not treat official per-task outputs as proof that the aggregate score is
@@ -162,19 +163,19 @@ official runner.
 ## User Coding Style Profile
 
 Lab can consume a user-level coding-style profile when a Lab task produces a
-development handoff. The profile lives at `~/.meridian/coding-style.md` unless
-`MERIDIAN_CONFIG_HOME` points at a different Meridian config directory.
+Research Grounding Injection. The profile lives at `~/.meridian/coding-style.md`
+unless `MERIDIAN_CONFIG_HOME` points at a different Meridian config directory.
 
 Use the profile this way:
 
 - Treat profile entries as durable user preferences, not repo facts.
-- Select only entries relevant to the handoff's language, research phase, and
-  task type.
+- Select only entries relevant to the coding target's language, research phase,
+  and task type.
 - Add a compact `User Coding Style Principles` section before task-specific
   `Research Code Style`.
 - Keep task-specific research-code constraints separate from durable user
   preferences.
-- If the profile is missing, continue the Lab task with the static handoff
+- If the profile is missing, continue the Lab task with the static research-code
   guidance and mention that `meridian` setup can initialize the profile.
 - Do not store full pasted code examples in the profile; summarize the
   reusable principle, anti-pattern, scope, exception, provenance, confidence,
@@ -218,7 +219,6 @@ At the start of any Lab workflow:
 - If it is missing, ask once before creating the Lab research space.
 - On confirmation, create only the minimal skeleton:
   - `.meridian/state.md`
-  - `.meridian/memory.md`
   - `.meridian/threads/index.md`
   - `.meridian/experiments/index.md`
   - `.meridian/proposals/index.md`
@@ -283,7 +283,7 @@ Minimum completion:
 - Separate source facts, wiki synthesis, user insight, local experiment
   evidence, and uncertainty.
 - End with a next research move: refine the node, design evidence, create a
-  proposal, or prepare a development handoff.
+  proposal, or prepare a Research Grounding Injection for coding work.
 
 Example:
 
@@ -316,7 +316,7 @@ Minimum completion:
   changes node support.
 - For official benchmark, baseline, eval, metric, score, or leaderboard work,
   run the Official Benchmark Fidelity gate and preserve the official-contract
-  fields before handoff.
+  fields before coding starts.
 
 Example:
 
@@ -368,8 +368,8 @@ Minimum completion:
 - Link experiments to nodes or proposals instead of copying results everywhere.
 - If an experiment is invalid, preserve it as evidence and retract any
   same-node support that depended only on that invalid evidence.
-- If more code or reruns are needed, create a development handoff instead of
-  doing that work inside Lab.
+- If more code or reruns are needed, create a Research Grounding Injection
+  instead of doing that work inside Lab.
 
 Example:
 
@@ -403,31 +403,35 @@ local proposal, list scope-strengthening evidence, and only transfer it to the
 Paper Wiki draft path when ready.
 ```
 
-### Development Handoff
+### Research Grounding Injection
 
 Use when the next useful action is implementation, debugging, testing, running
 experiments, commit management, release, or convergence.
 
 Minimum completion:
 
-- Name the current thread/node or idea that motivates the work.
-- Include the Paper Wiki context that shaped the decision.
+- Name the current thread/node, proposal, or idea that motivates the work.
+- Inject the Paper Wiki grounding that should shape implementation decisions;
+  do not copy the whole Lab context or create a durable handoff state file.
+- Include related papers, code/repo links, relevant modules or functions,
+  baseline/metric/probe definitions, and paper implementation patterns when
+  available.
 - Include relevant Research Prior blocks when implementation depends on a
   method, prompt, metric, baseline, or evaluation convention.
 - Include an `Official Benchmark Fidelity` block when implementation depends on
   an official benchmark, baseline, eval, metric, score, or leaderboard claim.
-- State the smallest development question or task.
+- State the smallest development question or task as a coding implication.
 - Include a `User Coding Style Principles` section when the coding-style
-  profile has relevant entries for this handoff.
+  profile has relevant entries for this injection.
 - Add a `Research Code Style` requirement when the task is an exploratory
   research slice such as a calibration builder, probe, ablation, sanity check,
   dataset script, or evaluation script.
-- Preserve evidence identity needed by Lab: expected command/config/output,
-  metrics, validity criteria, and what result would update the node.
+- Include a `Return Signal`: expected command/config/output, metrics, validity
+  criteria, and what result would update the Lab node or proposal.
 - For official benchmark work, tell the coding/review workflow which outputs
   may be called official metric and which are derived diagnostic local variants.
-- Hand off to the normal coding workflow; do not perform code edits, run tests,
-  create commits, or manage release inside Lab.
+- Hand off to the normal coding workflow after the injection; do not perform
+  code edits, run tests, create commits, or manage release inside Lab.
 
 Research code style:
 
@@ -439,16 +443,16 @@ Research code style:
   selector, and wrapper helpers that hide the experimental decisions.
 - Use helper functions only for real reuse, risky boundary isolation, or a
   stable external API.
-- Treat this as a downstream coding acceptance criterion; Lab only writes the
-  handoff and does not guarantee the final code unless the coding workflow
+- Treat this as a downstream coding acceptance criterion; Lab only injects the
+  grounding and does not guarantee the final code unless the coding workflow
   enforces it.
 
 Example:
 
 ```text
-The idea graph says Node A needs a probe implementation. Produce a handoff that
-names the node, wiki context, expected evidence, and done-when signal, then let
-the coding workflow implement and verify it.
+The idea graph says Node A needs a probe implementation. Inject related papers,
+implementation prior, source boundaries, coding implications, and the return
+signal, then let the coding workflow implement and verify it.
 ```
 
 Common request labels map to these workflows:
@@ -458,7 +462,7 @@ Common request labels map to these workflows:
 - `Approach Tree Exploration`
 - `Experiment Evidence Recording`
 - `Finding Proposal / Wiki Write-back`
-- `Development Handoff`
+- `Research Grounding Injection`
 
 ## Wiki Retrieval Contract
 
@@ -535,7 +539,6 @@ write-back proposal.
 Use Markdown artifacts when a task has durable value:
 
 - `.meridian/state.md`
-- `.meridian/memory.md`
 - `.meridian/threads/index.md`
 - `.meridian/threads/<thread>.md`
 - `.meridian/experiments/index.md`
@@ -543,8 +546,8 @@ Use Markdown artifacts when a task has durable value:
 - `.meridian/proposals/index.md`
 - `.meridian/proposals/<proposal>.md`
 - `Lab Context Packet` for compact wiki and idea-graph context
-- `Development Handoff Packet` for implementation/debug/test work that should
-  leave Lab
+- `Research Grounding Injection` for implementation/debug/test work that should
+  receive Paper Wiki implementation prior before leaving Lab
 - `Wiki Transfer Packet` for ready local findings moving toward Paper Wiki
 
 Templates live in:
@@ -568,5 +571,5 @@ Keep boundaries clear:
 - research threads, nodes, experiments, and local proposals are Lab working
   state
 - local experiment results are evidence from the user's repo, not paper facts
-- development handoffs are instructions for another workflow, not completed
-  code work
+- research grounding injections are pre-coding context, not durable Lab state or
+  completed code work

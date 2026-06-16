@@ -28,7 +28,6 @@ convergence belong to the user's normal coding workflow.
 ```text
 .meridian/
   state.md
-  memory.md
   threads/index.md
   threads/<thread>.md
   experiments/index.md
@@ -37,11 +36,12 @@ convergence belong to the user's normal coding workflow.
   proposals/<proposal>.md
 ```
 
-`state.md` stores the global `active_thread`. `memory.md` stores short-lived
-notes that are not yet stable enough to become a thread, experiment, or
-proposal. Each thread stores its own `active_node`. Index files are navigation
-artifacts maintained by skill convention and checklist; individual thread,
-experiment, and proposal files are the source of truth.
+`state.md` stores only the global `active_thread`. Each thread stores its own
+`active_node`. Index files are navigation artifacts maintained by skill
+convention and checklist; individual thread, experiment, and proposal files are
+the source of truth. Lab does not keep a separate `memory.md`; in Arbor repos,
+short-term workflow recovery belongs to Arbor, and unplaced ideas should be
+placed or confirmed instead of being parked in a second memory file.
 
 ## Lazy Init
 
@@ -54,7 +54,6 @@ only the minimal skeleton:
 
 ```text
 .meridian/state.md
-.meridian/memory.md
 .meridian/threads/index.md
 .meridian/experiments/index.md
 .meridian/proposals/index.md
@@ -62,8 +61,8 @@ only the minimal skeleton:
 
 Thread, experiment, and proposal files are created only when the current task
 needs them. This keeps Lab project setup cheap while still giving every repo a
-stable place for active pointers, short memory, thread navigation, experiment
-evidence, and local finding proposals.
+stable place for active pointers, thread navigation, experiment evidence, and
+local finding proposals without duplicating Arbor memory.
 
 The repo includes `initialize_lab_space` as an internal helper for release/debug
 checks and agent workflows. It is not a product CLI, MCP server, daemon,
@@ -96,8 +95,8 @@ node switching, thread close/reopen, and canonical wiki publish.
 Approach nodes can also carry a `Research Prior` block when the node depends on
 an existing method family, prompt pattern, metric, evaluation protocol,
 ablation, probe, baseline, or failure interpretation. Before Lab finalizes a
-plan, feasibility judgment, experiment design, or development handoff, it scans
-for these research-prior slots and grounds each research-bearing slot through
+plan, feasibility judgment, experiment design, or Research Grounding Injection,
+it scans for these research-prior slots and grounds each research-bearing slot through
 `meridian.context` first. This block records what the Paper Wiki grounding
 contributed to the node design without changing node mode by itself.
 
@@ -225,19 +224,23 @@ the active node.
 
 ## Git Checkpoints
 
-## Development Handoff
+## Research Grounding Injection
 
 Lab does not perform code work or git convergence. When an approach node needs
 implementation, debugging, tests, reruns, commits, release, or convergence, Lab
-creates a Development Handoff Packet instead of doing the work itself.
+injects implementation-relevant Paper Wiki grounding into the normal coding
+workflow instead of creating a durable Lab handoff state file.
 
-The handoff should include:
+The injection should include:
 
 - active thread/node or raw idea
-- Paper Wiki grounding that shaped the decision
+- Paper Wiki grounding that should shape implementation
+- related papers, code/repo links, relevant modules/functions, baseline/metric
+  definitions, probe definitions, or paper implementation patterns when
+  available
 - Official Benchmark Fidelity when the task claims official benchmark,
   baseline, eval, metric, score, or leaderboard compatibility
-- smallest development question or task
+- smallest development question or task as a coding implication
 - Research Code Style for exploratory slices: prefer a readable main flow that
   keeps source branches, configs, seeds, splits, metrics, sample limits, and
   output identity visible near the call site; avoid single-use
@@ -246,12 +249,12 @@ The handoff should include:
 - expected command/config/output identity
 - metric or validity criteria
 - official metric versus derived diagnostic labels for benchmark results
-- what result would update the Lab node or proposal
+- return signal: what result would update the Lab node or proposal
 
-Lab can require this style in the handoff, but final generated code satisfies it
-only if the receiving coding workflow or evaluator enforces it as an acceptance
-criterion. After the coding workflow completes, Lab can record the returned
-experiment evidence and update the idea graph.
+Lab can require this style in the injection, but final generated code satisfies
+it only if the receiving coding workflow or evaluator enforces it as an
+acceptance criterion. After the coding workflow completes, Lab can record the
+returned experiment evidence and update the idea graph.
 
 ## Paper Wiki Boundary
 

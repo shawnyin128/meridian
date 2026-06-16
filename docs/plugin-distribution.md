@@ -169,7 +169,7 @@ Users should think in two product areas:
 | Product Area | What It Does |
 |---|---|
 | Paper Wiki | update and use the durable paper knowledge base |
-| Lab | place ideas, ground feasibility, manage approach trees, record evidence, and prepare development handoffs |
+| Lab | place ideas, ground feasibility, manage approach trees, record evidence, and prepare Research Grounding Injections |
 
 Paper Wiki keeps two workflows:
 

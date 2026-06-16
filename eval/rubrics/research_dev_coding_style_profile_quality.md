@@ -1,7 +1,8 @@
 # Research Dev Coding Style Profile Quality Rubric
 
 Use this rubric to judge whether Meridian Lab handles user coding-style feedback
-and handoff consumption without taking over code implementation.
+and Research Grounding Injection consumption without taking over code
+implementation.
 
 ## Coding Style Feedback Gate
 
@@ -22,11 +23,11 @@ Hard fail:
 - Ignores explicit "remember this style" or equivalent user-level feedback.
 - Records ordinary bug reports as user coding-style principles.
 
-## Lab Handoff Consumer
+## Lab Injection Consumer
 
 High-quality behavior:
 
-- Reads the user profile before development handoffs when available.
+- Reads the user profile before Research Grounding Injections when available.
 - Includes only relevant `User Coding Style Principles`.
 - Keeps durable user preferences separate from task-specific
   `Research Code Style`.
@@ -35,7 +36,7 @@ High-quality behavior:
 
 Hard fail:
 
-- Dumps the full profile into every handoff.
+- Dumps the full profile into every injection.
 - Treats user style as Paper Wiki source fact.
 - Uses Lab to implement, debug, test, commit, release, or converge code.
 

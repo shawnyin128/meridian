@@ -41,10 +41,10 @@ observable workflow choices and artifact boundaries.
    code cleanup.
 2. Records ideas but skips placement, evidence identity, or wiki grounding.
 3. Maintains state but blurs Lab with the coding workflow.
-4. Manages idea placement, approach nodes, experiment evidence, and handoff
-   packets with minor ambiguity.
+4. Manages idea placement, approach nodes, experiment evidence, and grounding
+   injections with minor ambiguity.
 5. Balances idea graph continuity, wiki grounding, evidence identity, local
-   proposals, and development handoffs without taking over code work.
+   proposals, and Research Grounding Injections without taking over code work.
 
 ### 5. Lab-First Research/Dev Routing
 
@@ -58,7 +58,7 @@ observable workflow choices and artifact boundaries.
    skips Lab for pure mechanical engineering with minor ambiguity.
 5. Routes by project state first: `.meridian/` plus research-bearing intent
    produces Lab preflight, Research Prior classification when needed, and a
-   development handoff to the normal coding workflow for implementation.
+   Research Grounding Injection before the normal coding workflow implements.
 
 ### 6. User Confirmation And Publish Gates
 
@@ -96,7 +96,7 @@ Fail the case if any of these occur:
 - A new durable Lab idea with no thread candidates skips root thread seed
   placement.
 - A Lab workflow performs implementation, debugging, tests, commits, release, or
-  convergence instead of producing a development handoff.
+  convergence instead of producing a Research Grounding Injection for coding.
 - A research-development request in an initialized `.meridian/` repo bypasses
   Lab-first preflight and goes directly to ordinary coding without preserving
   Lab node/evidence identity.
@@ -118,11 +118,11 @@ Fail the case if any of these occur:
 - `lab_setup`: clarify Meridian setup initialization for the minimal
   `.meridian/` skeleton.
 - `lab_first_routing`: clarify `.meridian/` project-state routing, Lab-first
-  preflight, skip conditions, and normal coding handoff boundaries.
+  preflight, skip conditions, and normal coding routing boundaries.
 - `lab_state`: clarify Lab lazy init, placement, node modes, or evidence
   recording.
-- `development_handoff`: clarify that Lab hands off code/debug/test work instead
-  of doing it.
+- `grounding_injection`: clarify that Lab injects implementation-relevant
+  Paper Wiki grounding before code/debug/test work instead of doing it.
 - `publish_gate`: clarify proposal/lint/user-confirmation gates.
 - `bundle_surface`: align README, manifest prompts, MCP config, and distribution
   docs with the three-skill model.
