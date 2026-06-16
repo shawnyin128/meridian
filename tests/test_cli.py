@@ -2449,6 +2449,46 @@ quality_state: "multimodal_pending"
         mcp_runtime = next(category for category in report.categories if category.name == MCP_RUNTIME_CATEGORY)
         self.assertGreaterEqual(len(mcp_runtime.findings), 1)
 
+    def test_framework_check_mcp_runtime_translates_setup_findings(self) -> None:
+        fake_report = types.SimpleNamespace(
+            findings=[
+                {
+                    "severity": "critical",
+                    "client": "codex",
+                    "code": "skill_visible_but_mcp_unavailable",
+                    "message": "launcher failed",
+                    "next_action": "repair codex",
+                },
+                {
+                    "severity": "degraded",
+                    "client": "claude",
+                    "code": "needs_plugin_install",
+                    "message": "cache missing",
+                    "next_action": "install claude",
+                },
+            ]
+        )
+        with patch("meridian.framework_check.build_setup_doctor_report", return_value=fake_report):
+            report = run_framework_check(project_root=Path.cwd(), include_mcp_runtime=True)
+
+        mcp_runtime = next(category for category in report.categories if category.name == MCP_RUNTIME_CATEGORY)
+        by_code = {finding.code: finding for finding in mcp_runtime.findings}
+        self.assertEqual(by_code["skill_visible_but_mcp_unavailable"].severity, "critical")
+        self.assertEqual(by_code["skill_visible_but_mcp_unavailable"].message, "codex: launcher failed")
+        self.assertEqual(by_code["needs_plugin_install"].severity, "degraded")
+        self.assertEqual(by_code["needs_plugin_install"].message, "claude: cache missing")
+
+    def test_framework_check_mcp_runtime_reports_ready_when_setup_has_no_findings(self) -> None:
+        fake_report = types.SimpleNamespace(findings=[])
+        with patch("meridian.framework_check.build_setup_doctor_report", return_value=fake_report):
+            report = run_framework_check(project_root=Path.cwd(), include_mcp_runtime=True)
+
+        mcp_runtime = next(category for category in report.categories if category.name == MCP_RUNTIME_CATEGORY)
+        self.assertEqual(mcp_runtime.status, "pass")
+        self.assertEqual(len(mcp_runtime.findings), 1)
+        self.assertEqual(mcp_runtime.findings[0].severity, "info")
+        self.assertEqual(mcp_runtime.findings[0].code, "mcp_runtime_ready")
+
     def test_setup_runtime_resolver_selects_sys_executable(self) -> None:
         def runner(argv: list[str], timeout: float = 10.0) -> CommandResult:
             joined = " ".join(argv)
@@ -3284,18 +3324,19 @@ quality_state: "multimodal_pending"
             json_out = root / "framework.json"
             report_out = root / "framework.md"
             with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(root / "config")}):
-                exit_code, stdout, stderr = _run_cli_capture(
-                    [
-                        "framework-check",
-                        "--project-root",
-                        str(Path.cwd()),
-                        "--include-mcp-runtime",
-                        "--json-out",
-                        str(json_out),
-                        "--report",
-                        str(report_out),
-                    ]
-                )
+                with patch.object(Path, "home", return_value=root / "home"):
+                    exit_code, stdout, stderr = _run_cli_capture(
+                        [
+                            "framework-check",
+                            "--project-root",
+                            str(Path.cwd()),
+                            "--include-mcp-runtime",
+                            "--json-out",
+                            str(json_out),
+                            "--report",
+                            str(report_out),
+                        ]
+                    )
 
             self.assertEqual(exit_code, 0, stderr)
             self.assertIn("Framework status:", stdout)
