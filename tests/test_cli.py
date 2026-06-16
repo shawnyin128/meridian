@@ -2299,9 +2299,14 @@ quality_state: "multimodal_pending"
 
         self.assertIn("python -m meridian setup doctor", meridian)
         self.assertIn("python -m meridian setup repair-mcp", meridian)
+        self.assertIn("skill_visible_but_mcp_unavailable", meridian)
+        self.assertIn("no_valid_meridian_runtime", meridian)
         self.assertIn("paper_wiki_grounding", lab)
         self.assertIn("fallback_grounding", lab)
+        self.assertIn("repair_available", lab)
+        self.assertIn("external_primary_sources_only_after_explicit_user_choice", lab)
         self.assertIn("Use Wiki blocked", wiki)
+        self.assertIn("do not\nanswer from web search or broad file search", wiki)
         self.assertIn("setup doctor", readme)
         self.assertIn("repair-mcp", distribution)
 
