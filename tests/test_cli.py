@@ -4007,6 +4007,15 @@ quality_state: "multimodal_pending"
             self.assertIn("required current behavior", text)
             self.assertIn("fallback-only implementation", text)
             self.assertIn("blocker reporting", text)
+            self.assertIn("validation", text)
+            self.assertIn("must prove", text)
+            self.assertIn("swallowed errors", text)
+            self.assertTrue("placeholder/no-op" in text or "placeholder / no-op" in text)
+
+        self.assertIn("benchmark or metric contract", injection)
+        for skill in [codex_lab, claude_lab]:
+            self.assertTrue("primary path" in skill or "primary requested path" in skill)
+            self.assertIn("Do not let Lab implement the code", skill)
 
     def test_lab_skill_path_diagnostics_reports_readable_source_and_caches(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

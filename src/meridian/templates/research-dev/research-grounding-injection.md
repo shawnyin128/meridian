@@ -50,7 +50,7 @@ workflow.
 ## Implementation Integrity Gate
 
 - required current behavior:
-- current API / data layout / version:
+- current API / data layout / version / benchmark or metric contract:
 - forbidden shortcuts:
   - legacy-only implementation
   - fallback-only implementation
