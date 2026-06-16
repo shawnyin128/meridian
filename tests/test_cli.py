@@ -3998,6 +3998,16 @@ quality_state: "multimodal_pending"
         self.assertTrue(any(case.get("expected_outcome") == "ask_whether_to_record" for case in cases))
         self.assertTrue(any(case.get("expected_outcome") == "do_not_record_task_local_only" for case in cases))
 
+    def test_research_grounding_injection_has_implementation_integrity_gate(self) -> None:
+        injection = Path("src/meridian/templates/research-dev/research-grounding-injection.md").read_text(encoding="utf-8")
+        codex_lab = Path("plugins/codex/meridian/skills/lab/SKILL.md").read_text(encoding="utf-8")
+        claude_lab = Path("plugins/claude-code/meridian/skills/lab/SKILL.md").read_text(encoding="utf-8")
+        for text in [injection, codex_lab, claude_lab]:
+            self.assertIn("Implementation Integrity Gate", text)
+            self.assertIn("required current behavior", text)
+            self.assertIn("fallback-only implementation", text)
+            self.assertIn("blocker reporting", text)
+
     def test_lab_skill_path_diagnostics_reports_readable_source_and_caches(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "project"

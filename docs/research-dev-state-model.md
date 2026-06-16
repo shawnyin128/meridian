@@ -241,6 +241,12 @@ The injection should include:
 - Official Benchmark Fidelity when the task claims official benchmark,
   baseline, eval, metric, score, or leaderboard compatibility
 - smallest development question or task as a coding implication
+- Implementation Integrity Gate when the implementation could be silently
+  downgraded to legacy, fallback-only, partial, stub, no-op, or swallowed-error
+  behavior; name the required current behavior, current API/data
+  layout/version/contract when relevant, forbidden shortcuts, blocker-reporting
+  requirement, and validation that proves the requested primary path rather
+  than only a fallback path
 - Research Code Style for exploratory slices: prefer a readable main flow that
   keeps source branches, configs, seeds, splits, metrics, sample limits, and
   output identity visible near the call site; avoid single-use

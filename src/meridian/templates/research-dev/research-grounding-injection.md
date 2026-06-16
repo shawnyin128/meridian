@@ -47,6 +47,18 @@ workflow.
 - avoid:
 - minimal validation:
 
+## Implementation Integrity Gate
+
+- required current behavior:
+- current API / data layout / version:
+- forbidden shortcuts:
+  - legacy-only implementation
+  - fallback-only implementation
+  - placeholder / no-op / comment-marker-as-success
+  - swallowed errors that pretend success
+- blocker reporting required: yes
+- validation must prove:
+
 ## User Coding Style Principles
 
 - Source: `~/.meridian/coding-style.md` or active `MERIDIAN_CONFIG_HOME`.

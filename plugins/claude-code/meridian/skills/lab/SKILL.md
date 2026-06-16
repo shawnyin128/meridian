@@ -160,6 +160,27 @@ official. Aggregation granularity is part of the benchmark contract. Do not
 treat a runnable local wrapper as official when config defaults differ from the
 official runner.
 
+### Implementation Integrity Gate
+
+Use this gate when the user asks for implementation, debugging, tests, reruns,
+release, or convergence and the work could be silently downgraded to legacy,
+fallback-only, partial, stub, no-op, or swallowed-error behavior.
+
+Minimum completion:
+
+- Name the required current behavior.
+- Name the current API, data layout, version, benchmark contract, or metric
+  contract when relevant.
+- List forbidden shortcuts, including legacy-only implementation,
+  fallback-only implementation, placeholder/no-op/comment-marker success, and
+  swallowed errors that pretend success.
+- Require blocker reporting when the primary requested path cannot be
+  implemented with available evidence.
+- State which validation proves the primary requested path.
+
+Do not let Lab implement the code. This gate is acceptance context for the
+normal coding workflow.
+
 ## User Coding Style Profile
 
 Lab can consume a user-level coding-style profile when a Lab task produces a
@@ -421,6 +442,10 @@ Minimum completion:
 - Include an `Official Benchmark Fidelity` block when implementation depends on
   an official benchmark, baseline, eval, metric, score, or leaderboard claim.
 - State the smallest development question or task as a coding implication.
+- Include an `Implementation Integrity Gate` when the coding task has
+  current-version behavior, data-layout, benchmark-contract, or fallback risk.
+  Name the required current behavior, forbidden shortcuts, blocker-reporting
+  requirement, and the validation that must prove the primary path.
 - Include a `User Coding Style Principles` section when the coding-style
   profile has relevant entries for this injection.
 - Add a `Research Code Style` requirement when the task is an exploratory

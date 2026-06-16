@@ -187,9 +187,14 @@ Workflow:
    metrics/sample limits visible, and avoid single-use parser/loader/selector
    helper layers unless they represent real reuse, risky boundary isolation, or
    a stable external API.
-8. Define expected command/config/output identity.
-9. Define validity criteria and result-to-node update rules.
-10. Hand off to the normal coding workflow, which must enforce the research-code
+8. Include an `Implementation Integrity Gate` when the implementation could be
+   silently downgraded to legacy, fallback-only, partial, stub, no-op, or
+   swallowed-error behavior.
+9. State which validation must prove the requested primary path, not only a
+   fallback path.
+10. Define expected command/config/output identity.
+11. Define validity criteria and result-to-node update rules.
+12. Hand off to the normal coding workflow, which must enforce the research-code
    style as an acceptance criterion if final code shape matters.
 
 Done when the coding workflow has enough context to act and Lab has a clear
