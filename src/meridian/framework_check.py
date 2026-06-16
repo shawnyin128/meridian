@@ -8,7 +8,13 @@ from pathlib import Path
 from typing import Any
 
 from meridian import __version__
-from meridian.lab import coding_style_profile_path, validate_coding_style_profile, validate_lab_space
+from meridian.lab import (
+    coding_style_profile_path,
+    research_agent_principles_path,
+    validate_coding_style_profile,
+    validate_lab_space,
+    validate_research_agent_principles,
+)
 from meridian.setup.doctor import build_setup_doctor_report
 from meridian.wiki.workspace import resolve_workspace
 
@@ -684,8 +690,8 @@ def _lab_state_category(lab_root: Path | None) -> FrameworkCategory:
 def _user_profile_category() -> FrameworkCategory:
     findings: list[FrameworkFinding] = []
     category = "User Profile"
-    report = validate_coding_style_profile()
-    if report.status == "missing":
+    coding_report = validate_coding_style_profile()
+    if coding_report.status == "missing":
         _add(
             findings,
             category,
@@ -695,28 +701,60 @@ def _user_profile_category() -> FrameworkCategory:
             f"User coding-style profile is missing: {coding_style_profile_path()}.",
             "Run Meridian setup/status to create the starter coding-style profile when style handoffs are needed.",
         )
-        return _category(category, findings)
-    if report.status == "pass":
+    elif coding_report.status == "pass":
         _add(
             findings,
             category,
             "info",
             "manual",
             "coding_style_profile_ready",
-            f"User coding-style profile is readable: {report.path}.",
+            f"User coding-style profile is readable: {coding_report.path}.",
             "No action required.",
         )
-        return _category(category, findings)
-    for item in report.findings:
+    else:
+        for item in coding_report.findings:
+            _add(
+                findings,
+                category,
+                "degraded",
+                "confirm",
+                item.code,
+                item.message,
+                "Run Meridian setup/status to migrate the coding-style profile without deleting user text.",
+            )
+
+    principles_report = validate_research_agent_principles()
+    if principles_report.status == "missing":
         _add(
             findings,
             category,
-            "degraded",
+            "info",
             "confirm",
-            item.code,
-            item.message,
-            "Run Meridian setup/status to migrate the coding-style profile without deleting user text.",
+            "research_agent_principles_missing",
+            f"Research-agent principles are missing: {research_agent_principles_path()}.",
+            "Run Meridian setup/status to create the research-agent principles reference.",
         )
+    elif principles_report.status == "pass":
+        _add(
+            findings,
+            category,
+            "info",
+            "manual",
+            "research_agent_principles_ready",
+            f"Research-agent principles are readable: {principles_report.path}.",
+            "No action required.",
+        )
+    else:
+        for item in principles_report.findings:
+            _add(
+                findings,
+                category,
+                "degraded",
+                "confirm",
+                item.code,
+                item.message,
+                "Run Meridian setup/status to migrate the research-agent principles without deleting user text.",
+            )
     return _category(category, findings)
 
 

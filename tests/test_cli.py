@@ -3887,6 +3887,29 @@ quality_state: "multimodal_pending"
         self.assertIn("coding_style_profile_missing", {finding.code for finding in missing_category.findings})
         self.assertIn("coding_style_profile_ready", {finding.code for finding in ready_category.findings})
 
+    def test_framework_check_reports_research_agent_principles_state(self) -> None:
+        from meridian.lab import initialize_research_agent_principles
+
+        with tempfile.TemporaryDirectory() as tmp:
+            config_home = Path(tmp) / "config"
+            with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(config_home)}):
+                missing = run_framework_check(project_root=Path.cwd())
+                initialize_research_agent_principles(config_home=config_home)
+                ready = run_framework_check(project_root=Path.cwd())
+
+        missing_category = next(category for category in missing.categories if category.name == "User Profile")
+        ready_category = next(category for category in ready.categories if category.name == "User Profile")
+        self.assertIn("research_agent_principles_missing", {finding.code for finding in missing_category.findings})
+        self.assertIn("research_agent_principles_ready", {finding.code for finding in ready_category.findings})
+
+    def test_meridian_setup_skill_mentions_research_agent_contract(self) -> None:
+        codex = Path("plugins/codex/meridian/skills/meridian/SKILL.md").read_text(encoding="utf-8")
+        claude = Path("plugins/claude-code/meridian/skills/meridian/SKILL.md").read_text(encoding="utf-8")
+        for text in [codex, claude]:
+            self.assertIn("research-agent-principles.md", text)
+            self.assertIn("AGENTS.md", text)
+            self.assertIn("Do not silently substitute", text)
+
     def test_framework_check_reports_mcp_entrypoint_drift(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "project"

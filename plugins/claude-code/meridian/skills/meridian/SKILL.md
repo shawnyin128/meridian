@@ -74,10 +74,11 @@ Minimum completion:
   from remembered Lab semantics.
 - Check MCP readiness with `python -m meridian.mcp --help` or a lightweight
   capabilities smoke, and report stale behavior as possible core/plugin drift.
-- Check the user coding-style profile at `~/.meridian/coding-style.md` or the
-  active `MERIDIAN_CONFIG_HOME`. If it is missing, create the starter
-  coding-style profile during setup; if it is stale, report it as
-  `needs_migration` and migrate without deleting user text.
+- Check the user research-agent contract files:
+  - `~/.meridian/coding-style.md`
+  - `~/.meridian/research-agent-principles.md`
+  If either is missing, create the starter file during setup; if either is stale,
+  migrate without deleting user text.
 - Confirm that the coding-style profile is only a compact preference source for
   the Coding Style Feedback Gate and Lab Research Grounding Injections. It is not a
   Paper Wiki workspace and it is not a coding workflow.
@@ -89,6 +90,11 @@ Minimum completion:
 - Do not report overall `ready` while a requested Lab-ready check is missing
   `.meridian/`. Either initialize the skeleton or, if the target repo path is
   ambiguous, ask for the target repo path first.
+- When Lab readiness is initialized for a target repo, ensure the project
+  `AGENTS.md` contains the guarded Meridian Research Agent Contract block.
+  The block must point to the user-level files and state:
+  `Do not silently substitute` legacy, fallback-only, stub, no-op, swallowed-error,
+  or partial behavior for requested current behavior.
 - Report Paper Wiki/plugin state as `ready`, `needs_init`, `needs_update`, or
   `needs_migration`; report Lab state separately as `not_checked`,
   `not_needed`, `ready`, `initialized`, `needs_lab_init`, or
@@ -173,9 +179,11 @@ Minimum completion:
   `meridian-wiki.json`, `sources/`, and `wiki/` under one library root.
 - Check `meridian-wiki.json` for the current workspace schema when the file is
   readable.
-- Check whether the user coding-style profile exists and uses the current
-  schema. If missing, create only the starter `coding-style.md`; if stale,
-  preserve all user-written principles and append any missing current sections.
+- Check the user research-agent contract files:
+  - `~/.meridian/coding-style.md`
+  - `~/.meridian/research-agent-principles.md`
+  If either is missing, create the starter file during setup; if either is stale,
+  migrate without deleting user text.
 - Check whether a Lab repo that needs idea-graph state has the minimal
   `.meridian/` skeleton.
 - If `.meridian/` is missing in the target repo, create the minimal skeleton
@@ -192,6 +200,11 @@ python -c "from pathlib import Path; from meridian.lab import initialize_lab_spa
 
 - Creating this skeleton is non-destructive setup. It must not create thread
   files, experiment files, proposal files, active nodes, or run research work.
+- When Lab readiness is initialized for a target repo, ensure the project
+  `AGENTS.md` contains the guarded Meridian Research Agent Contract block.
+  The block must point to the user-level files and state:
+  `Do not silently substitute` legacy, fallback-only, stub, no-op, swallowed-error,
+  or partial behavior for requested current behavior.
 - Do not move, delete, publish, or rewrite user data without explicit approval.
 
 ## Delegation
