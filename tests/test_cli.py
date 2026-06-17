@@ -2871,8 +2871,33 @@ quality_state: "multimodal_pending"
         ]
         positives = [case for case in cases if case.get("polarity") == "positive"]
         negatives = [case for case in cases if case.get("polarity") == "negative"]
-        self.assertGreaterEqual(len(positives), 10)
-        self.assertGreaterEqual(len(negatives), 5)
+        self.assertGreaterEqual(len(positives), 14)
+        self.assertGreaterEqual(len(negatives), 10)
+        self.assertTrue(all(case.get("category") == "research_agent_contract_live" for case in cases))
+        case_ids = {case["id"] for case in cases}
+        for case_id in [
+            "positive-continue-experiment-node",
+            "positive-paper-code-grounded-implementation",
+            "positive-reproduction-script-no-fake-success",
+            "positive-attach-result-to-research-node",
+            "negative-doc-typo-only",
+            "negative-python-api-question",
+            "negative-wiki-read-request",
+            "negative-meridian-init-config",
+        ]:
+            self.assertIn(case_id, case_ids)
+        risks = {case["risk"] for case in cases}
+        for risk in [
+            "research_state_continuity",
+            "paper_code_grounding_required",
+            "reproduction_fake_success",
+            "node_state_update",
+            "plain_document_edit",
+            "general_api_question",
+            "wiki_read_only",
+            "setup_initialization",
+        ]:
+            self.assertIn(risk, risks)
         prompt = build_research_agent_contract_prompt(cases[0])
         self.assertIn("eval-only diagnostic output", prompt)
         self.assertIn("implementation_integrity_gate", prompt)
@@ -2882,10 +2907,12 @@ quality_state: "multimodal_pending"
         self.assertIn("Pure bug-only correctness requests", prompt)
         self.assertIn("normal_coding_workflow", prompt)
         self.assertIn("For Lab-first implementation", prompt)
+        self.assertIn("route lab_idea_graph", prompt)
         self.assertIn("exactly [\"normal_coding_workflow\"]", prompt)
         self.assertIn("there is no downstream owner", prompt)
         self.assertIn("routing not_needed", prompt)
         self.assertIn("profile pollution", prompt)
+        self.assertIn("Research probes", prompt)
         self.assertIn("requires_user_approval_before_profile_write", prompt)
         self.assertIn("forbids_full_code_storage", prompt)
 

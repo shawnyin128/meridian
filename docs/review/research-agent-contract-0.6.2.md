@@ -29,8 +29,9 @@ Meridian 0.6.2 adds a research-agent contract for research-development work:
 - compileall: `python -m compileall src tests` passed.
 - diff check: `git diff --check` passed.
 - live Codex eval:
-  `python -m meridian eval codex-research-agent-contract eval/cases/research_agent_contract_live.jsonl --out-dir eval/runs/research-agent-contract-live-20260616-reviewfix-final2 --overwrite --timeout 300`
-  passed `16/16` cases.
+  `python -m meridian eval codex-research-agent-contract eval/cases/research_agent_contract_live.jsonl --out-dir eval/runs/research-agent-contract-live-20260616-24case-final2 --overwrite --timeout 300`
+  passed `24/24` cases, including 14 positive Lab/research-agent scenarios
+  and 10 negative routing-boundary scenarios.
 - setup doctor: runtime/import/MCP capability checks passed for version `0.6.2`;
   status is `degraded` only because the local Codex and Claude plugin caches
   are not installed in this worktree environment.
