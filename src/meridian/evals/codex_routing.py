@@ -606,6 +606,9 @@ def build_research_agent_contract_prompt(case: dict[str, Any]) -> str:
             "- Set no_silent_fallback when the agent must forbid silent fallback or fake completion.",
             "- Set requires_user_approval_before_profile_write for Code Style Distillation because durable coding-style profile writes require explicit user approval.",
             "- Set forbids_full_code_storage for Code Style Distillation because profile updates must store distilled principles, not full code examples.",
+            "- Set structured_profile_merge for Code Style Distillation because profile updates should update matching existing principles or add distinct structured principles, not append raw notes.",
+            "- Set avoids_agents_profile_pollution for Code Style Distillation because durable user coding-style principles belong in ~/.meridian/coding-style.md and ~/.meridian/research-agent-principles.md, not new project AGENTS.md style sections.",
+            "- Set code_ref_considered_optional for Code Style Distillation when the agent should consider adding or referencing ~/.meridian/code-ref/ as optional style reference material. This is not a hard gate and absence of a ref is not failure.",
             "- Do not require integrity gates for pure mechanical edits, setup, wiki ingest/retrieval, or non-coding explanations.",
             "- For non-coding explanations with routing not_needed, handoff_to must be empty.",
             "",
@@ -616,6 +619,9 @@ def build_research_agent_contract_prompt(case: dict[str, Any]) -> str:
             "- style_distillation",
             "- requires_user_approval_before_profile_write",
             "- forbids_full_code_storage",
+            "- structured_profile_merge",
+            "- avoids_agents_profile_pollution",
+            "- code_ref_considered_optional",
             "",
             "`path_rationale` is eval-only diagnostic output. It must not be required by Meridian product skills.",
             "In path_rationale, explain the decision as short ordered checks:",
@@ -781,6 +787,9 @@ def _research_agent_contract_output_schema() -> dict[str, Any]:
             "style_distillation": {"type": "boolean"},
             "requires_user_approval_before_profile_write": {"type": "boolean"},
             "forbids_full_code_storage": {"type": "boolean"},
+            "structured_profile_merge": {"type": "boolean"},
+            "avoids_agents_profile_pollution": {"type": "boolean"},
+            "code_ref_considered_optional": {"type": "boolean"},
         }
     )
     return {
@@ -795,6 +804,9 @@ def _research_agent_contract_output_schema() -> dict[str, Any]:
             "style_distillation",
             "requires_user_approval_before_profile_write",
             "forbids_full_code_storage",
+            "structured_profile_merge",
+            "avoids_agents_profile_pollution",
+            "code_ref_considered_optional",
             "handoff_to",
             "confidence",
             "reason",
@@ -912,6 +924,9 @@ def _score_research_agent_contract_case(
         ("expect_style_distillation", "style_distillation"),
         ("expect_requires_user_approval_before_profile_write", "requires_user_approval_before_profile_write"),
         ("expect_forbids_full_code_storage", "forbids_full_code_storage"),
+        ("expect_structured_profile_merge", "structured_profile_merge"),
+        ("expect_avoids_agents_profile_pollution", "avoids_agents_profile_pollution"),
+        ("expect_code_ref_considered_optional", "code_ref_considered_optional"),
     ):
         if case_field not in case:
             continue
@@ -932,6 +947,9 @@ def _score_research_agent_contract_case(
         if response
         else None,
         "forbids_full_code_storage": response.get("forbids_full_code_storage") if response else None,
+        "structured_profile_merge": response.get("structured_profile_merge") if response else None,
+        "avoids_agents_profile_pollution": response.get("avoids_agents_profile_pollution") if response else None,
+        "code_ref_considered_optional": response.get("code_ref_considered_optional") if response else None,
     }
 
 
@@ -1027,16 +1045,23 @@ def _render_research_agent_contract_report(summary: dict[str, Any]) -> str:
         f"- Failed: {summary['failed_cases']}",
         f"- Pass rate: {summary['pass_rate']:.3f}",
         "",
-        "| Case | Decision | Expected | Selected | Routing | Contract Gate | Blocker | No Silent Fallback | Style Distill | Approval | No Full Code |",
-        "|---|---:|---|---|---|---:|---:|---:|---:|---:|---:|",
+        "| Case | Decision | Expected | Selected | Routing | Contract Gate | Blocker | No Silent Fallback | Style Distill | Approval | No Full Code | Structured Merge | No AGENTS Drift | Code Ref Optional |",
+        "|---|---:|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for item in summary["case_results"]:
         display = {key: str(value) if value is not None else "" for key, value in item.items()}
+        for optional_field in [
+            "structured_profile_merge",
+            "avoids_agents_profile_pollution",
+            "code_ref_considered_optional",
+        ]:
+            display.setdefault(optional_field, "")
         lines.append(
             "| {case_id} | {decision} | {expected_skill} | {selected_entry} | {selected_routing} | "
             "{implementation_integrity_gate} | {blocker_reporting} | {no_silent_fallback} | "
             "{style_distillation} | {requires_user_approval_before_profile_write} | "
-            "{forbids_full_code_storage} |".format(**display)
+            "{forbids_full_code_storage} | {structured_profile_merge} | "
+            "{avoids_agents_profile_pollution} | {code_ref_considered_optional} |".format(**display)
         )
     if any(summary.get("groups", {}).values()):
         lines.extend(["", "## Groups", ""])

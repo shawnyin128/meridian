@@ -243,6 +243,13 @@ Minimum completion:
   code.
 - Separate durable user preference from repo-local convention.
 - Produce a proposal before writing the profile.
+- Do not write user coding-style sections into project `AGENTS.md`; durable
+  user-level style state belongs in `~/.meridian/coding-style.md`, detailed
+  behavior belongs in `~/.meridian/research-agent-principles.md`, and repo-local
+  conventions stay in the current task unless the user explicitly promotes them.
+- Use a structured merge, not append-only accumulation: update an existing
+  matching principle when possible; add a new principle only when it is genuinely
+  distinct.
 - Classify each proposed principle as exactly one of:
   - `confirmed_candidate`: strong evidence and likely durable, awaiting user approval.
   - `repo_local`: likely specific to the current codebase.
@@ -250,6 +257,10 @@ Minimum completion:
 - Ask before writing confirmed principles to `~/.meridian/coding-style.md`.
 - Do not store full code blocks in the profile; summarize principle, avoid,
   positive shape, scope, exceptions, provenance, confidence, and updated date.
+- Consider adding or referencing a compact example under `~/.meridian/code-ref/`
+  when it would make a durable style principle easier for future agents to
+  apply. This is optional reference material, not a hard gate; absence of a
+  code-ref entry is not a failure.
 
 Lab may prepare the proposal and profile update. It still does not implement,
 debug, test, commit, release, or converge code.

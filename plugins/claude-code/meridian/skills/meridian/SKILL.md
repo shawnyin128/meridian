@@ -80,6 +80,9 @@ Minimum completion:
   - `research-agent-principles.md`
   If either is missing, create the starter file during setup; if either is stale,
   migrate without deleting user text.
+- Treat `~/.meridian/code-ref/` as optional user-level coding-style reference
+  material. It may be created or referenced by a confirmed style-distillation
+  proposal, but its absence is not a setup blocker.
 - Confirm that the coding-style profile is only a compact preference source for
   the Coding Style Feedback Gate and Lab Research Grounding Injections. It is not a
   Paper Wiki workspace and it is not a coding workflow.

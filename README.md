@@ -203,6 +203,7 @@ downgrading hard implementation requirements:
 ```text
 ~/.meridian/research-agent-principles.md   detailed user-level contract
 ~/.meridian/coding-style.md                compact research-code style profile
+~/.meridian/code-ref/                      optional coding-style reference examples
 AGENTS.md                                  project-local pointer and hard rule
 ```
 
@@ -219,6 +220,15 @@ research-development code changes and not to silently substitute legacy
 behavior, fallback-only behavior, stubs, task-marker comments, no-op
 implementations, swallowed errors, or partial implementations for the requested
 current behavior.
+
+Code-style distillation updates the user-level files through a structured merge:
+update an existing matching principle when possible, add a distinct new
+principle only when needed, and keep repo-local conventions out of the global
+profile unless the user promotes them. Agents should not create new project
+`AGENTS.md` sections for distilled user coding style. They may consider adding
+or referencing compact examples under `~/.meridian/code-ref/` when a reusable
+example would help future agents, but `code-ref` is optional reference material,
+not a hard gate.
 
 Lab adds task-specific constraints through the Research Grounding Injection. For
 implementation/debug/test/release/convergence work, that injection includes an

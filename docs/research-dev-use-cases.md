@@ -213,10 +213,21 @@ Workflow:
 3. Read representative code to identify style patterns, not to reproduce code.
 4. Separate durable user preference from repo-local convention.
 5. Produce a proposal before writing the profile.
-6. Classify each proposed principle as `confirmed_candidate`, `repo_local`, or
+6. Do not write user coding-style sections into project `AGENTS.md`; durable
+   user-level style state belongs in `~/.meridian/coding-style.md`, detailed
+   behavior belongs in `~/.meridian/research-agent-principles.md`, and repo-local
+   conventions stay local unless the user explicitly promotes them.
+7. Use a structured merge rather than append-only accumulation: update an
+   existing matching principle when possible, and add a new principle only when
+   it is genuinely distinct.
+8. Classify each proposed principle as `confirmed_candidate`, `repo_local`, or
    `insufficient_evidence`.
-7. Ask before writing confirmed principles to `~/.meridian/coding-style.md`.
-8. Store compact principles only; do not store full code blocks.
+9. Ask before writing confirmed principles to `~/.meridian/coding-style.md`.
+10. Store compact principles only; do not store full code blocks.
+11. Consider adding or referencing a compact example under
+    `~/.meridian/code-ref/` when it would make a durable style principle easier
+    for future agents to apply. This is optional reference material, not a hard
+    gate; absence of a code-ref entry is not a failure.
 
 Done when the user has a reviewable style proposal or has approved a compact
 profile update. Lab may prepare the proposal and profile text, but it still does

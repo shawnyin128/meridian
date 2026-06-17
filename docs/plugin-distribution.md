@@ -89,6 +89,10 @@ skeleton when missing, injects or refreshes only the guarded Meridian block in
 `AGENTS.md`, and reports any remaining research-thread blockers without
 silently rewriting thread content.
 
+`~/.meridian/code-ref/` is optional user-level coding-style reference material.
+Style distillation may propose adding or referencing compact examples there, but
+setup readiness must not fail just because no code-ref exists.
+
 If the report shows `repair_available`, ask before applying the MCP config
 repair, then run the matching client command:
 

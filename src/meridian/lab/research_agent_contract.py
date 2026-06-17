@@ -60,10 +60,21 @@ def meridian_agents_contract_block() -> str:
     return "\n".join(
         [
             MERIDIAN_AGENTS_CONTRACT_START,
+            "This repo has `.meridian/` Lab state. For research, research-development, experiment,",
+            "evaluation, method, benchmark, or implementation-bearing coding requests,",
+            "load the Meridian Lab skill first and run Lab-first preflight before normal coding.",
+            "",
+            "If Lab routes to implementation, produce a Research Grounding Injection with the",
+            "relevant idea-graph anchor, Paper Wiki grounding, implementation prior, integrity",
+            "constraints, and return signal, then hand off to the normal coding workflow.",
+            "Pure mechanical engineering may skip Lab when it has no research interpretation,",
+            "no durable idea/evidence state, and no Paper Wiki grounding need.",
+            "",
             "For research-development code changes, read the Meridian user-level contract before implementation:",
             "",
             "- ~/.meridian/research-agent-principles.md",
             "- ~/.meridian/coding-style.md when code style matters",
+            "- ~/.meridian/code-ref/ as optional user-level coding style references when a reusable example would help",
             "",
             "Do not silently substitute legacy behavior, fallback-only behavior, stubs, task-marker comments,",
             "no-op implementations, swallowed errors, or partial implementations for the requested current",
@@ -202,6 +213,9 @@ def migrate_research_agent_principles(
     if "## Validation Expectations" not in text:
         suffix.extend(["", "## Validation Expectations", "", *_validation_expectation_lines()])
         changed = True
+    if "## Profile Maintenance" not in text:
+        suffix.extend(["", "## Profile Maintenance", "", *_profile_maintenance_lines()])
+        changed = True
     if changed:
         target.write_text(
             "\n".join(prefix) + text.rstrip() + "\n" + "\n".join(suffix).rstrip() + "\n",
@@ -238,6 +252,8 @@ def validate_research_agent_principles(
         add("warning", "research_agent_principles_fallback_policy_missing", "No silent-substitution policy found.")
     if "## Validation Expectations" not in text:
         add("warning", "research_agent_principles_validation_missing", "Principles are missing Validation Expectations.")
+    if "## Profile Maintenance" not in text:
+        add("warning", "research_agent_principles_profile_maintenance_missing", "Principles are missing Profile Maintenance.")
     if "```" in text:
         add("warning", "research_agent_principles_contains_code_block", "Principles should not store full code blocks.")
 
@@ -267,6 +283,10 @@ def _starter_principles() -> str:
         "## Validation Expectations",
         "",
         *_validation_expectation_lines(),
+        "",
+        "## Profile Maintenance",
+        "",
+        *_profile_maintenance_lines(),
     ]
     return "\n".join(lines).rstrip() + "\n"
 
@@ -297,4 +317,17 @@ def _validation_expectation_lines() -> list[str]:
         "- Tests must prove the primary requested path, not only the fallback path.",
         "- When a current API, data layout, or benchmark contract matters, validation must name that current contract.",
         "- If evidence is insufficient, report uncertainty instead of presenting completion.",
+    ]
+
+
+def _profile_maintenance_lines() -> list[str]:
+    return [
+        "- Code-style distillation updates user-level files, not project `AGENTS.md` style sections.",
+        "- Use a structured merge: update an existing matching principle when possible; add a new principle only when it is genuinely distinct.",
+        "- Do not append raw distillation notes or whole review transcripts to the profile.",
+        "- Each confirmed coding-style principle should preserve scope, principle, apply_when, avoid, positive_shape, exceptions, provenance, confidence, and updated date.",
+        "- Classify observations as `merge_existing`, `add_new_principle`, `repo_local`, or `insufficient_evidence` before writing.",
+        "- Consider adding or referencing a compact example under `~/.meridian/code-ref/` when a reusable style reference would clarify the principle.",
+        "- `~/.meridian/code-ref/` is optional reference material, not a required gate for every distillation.",
+        "- Ask before writing durable profile changes.",
     ]

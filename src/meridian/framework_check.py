@@ -9,6 +9,8 @@ from typing import Any
 
 from meridian import __version__
 from meridian.lab import (
+    MERIDIAN_AGENTS_CONTRACT_END,
+    MERIDIAN_AGENTS_CONTRACT_START,
     coding_style_profile_path,
     research_agent_principles_path,
     validate_coding_style_profile,
@@ -707,6 +709,16 @@ def _lab_state_category(lab_root: Path | None) -> FrameworkCategory:
                 item.message,
                 "Run Lab readiness initialization or inject the guarded Meridian AGENTS.md contract block.",
             )
+    for drift in _agents_style_profile_drift_findings(lab_root):
+        _add(
+            findings,
+            category,
+            "degraded",
+            "confirm",
+            drift["code"],
+            drift["message"],
+            drift["next_action"],
+        )
     return _category(category, findings)
 
 
@@ -817,6 +829,49 @@ def _docs_and_evals_category(root: Path) -> FrameworkCategory:
                     "Keep README aligned with the three-entry user model.",
                 )
     return _category(category, findings)
+
+
+def _agents_style_profile_drift_findings(project_root: Path) -> list[dict[str, str]]:
+    agents = project_root.expanduser().resolve() / "AGENTS.md"
+    if not agents.exists():
+        return []
+    text = agents.read_text(encoding="utf-8")
+    outside_contract = _remove_managed_meridian_contract_blocks(text)
+    heading_pattern = re.compile(
+        r"(?im)^#{1,3}\s+.*(?:Meridian Coding Style Profile|User Coding Style Principles|Code Style Distillation|Coding Style Profile).*$"
+    )
+    if not heading_pattern.search(outside_contract):
+        return []
+    return [
+        {
+            "code": "style_profile_drift_in_agents",
+            "message": (
+                "Project AGENTS.md appears to contain user-level coding-style profile or distillation content "
+                "outside the managed Meridian contract block."
+            ),
+            "next_action": (
+                "Move durable user coding-style principles to ~/.meridian/coding-style.md, detailed behavior to "
+                "~/.meridian/research-agent-principles.md, and optional examples to ~/.meridian/code-ref/."
+            ),
+        }
+    ]
+
+
+def _remove_managed_meridian_contract_blocks(text: str) -> str:
+    chunks: list[str] = []
+    index = 0
+    while True:
+        start = text.find(MERIDIAN_AGENTS_CONTRACT_START, index)
+        if start < 0:
+            chunks.append(text[index:])
+            break
+        end = text.find(MERIDIAN_AGENTS_CONTRACT_END, start + len(MERIDIAN_AGENTS_CONTRACT_START))
+        if end < 0:
+            chunks.append(text[index:])
+            break
+        chunks.append(text[index:start])
+        index = end + len(MERIDIAN_AGENTS_CONTRACT_END)
+    return "".join(chunks)
 
 
 def _category(name: str, findings: list[FrameworkFinding]) -> FrameworkCategory:

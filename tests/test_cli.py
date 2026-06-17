@@ -220,7 +220,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.7.1"
+        expected = "0.7.2"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -276,9 +276,9 @@ class CliTests(unittest.TestCase):
         )
 
         self.assertEqual(meridian.returncode, 0, meridian.stderr)
-        self.assertEqual(meridian.stdout.strip(), "meridian 0.7.1")
+        self.assertEqual(meridian.stdout.strip(), "meridian 0.7.2")
         self.assertEqual(cli_module.returncode, 0, cli_module.stderr)
-        self.assertEqual(cli_module.stdout.strip(), "meridian 0.7.1")
+        self.assertEqual(cli_module.stdout.strip(), "meridian 0.7.2")
         self.assertEqual(cli_help.returncode, 0, cli_help.stderr)
         self.assertIn("usage: meridian wiki", cli_help.stdout)
 
@@ -2915,6 +2915,10 @@ quality_state: "multimodal_pending"
         self.assertIn("Research probes", prompt)
         self.assertIn("requires_user_approval_before_profile_write", prompt)
         self.assertIn("forbids_full_code_storage", prompt)
+        self.assertIn("structured_profile_merge", prompt)
+        self.assertIn("avoids_agents_profile_pollution", prompt)
+        self.assertIn("code_ref_considered_optional", prompt)
+        self.assertIn("not a hard gate", prompt)
 
     def test_research_agent_contract_eval_runner_scores_fields(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -4079,6 +4083,9 @@ quality_state: "multimodal_pending"
             self.assertIn("schema_version: meridian.coding_style_profile.v1", text)
             self.assertIn("## Principles", text)
             self.assertIn("## Pending Review", text)
+            self.assertIn("structured merge", text)
+            self.assertIn("~/.meridian/code-ref/", text)
+            self.assertIn("consider adding or referencing", text)
             self.assertNotIn("```", text)
 
             report = validate_coding_style_profile(profile_path)
@@ -4096,6 +4103,7 @@ quality_state: "multimodal_pending"
             self.assertIn("schema_version: meridian.coding_style_profile.v1", migrated_text)
             self.assertIn("## Principles", migrated_text)
             self.assertIn("## Pending Review", migrated_text)
+            self.assertIn("structured merge", migrated_text)
             self.assertIn("Keep experiment scripts linear.", migrated_text)
 
     def test_research_agent_principles_init_migrate_and_validate(self) -> None:
@@ -4119,6 +4127,10 @@ quality_state: "multimodal_pending"
             self.assertIn("Implementation Integrity", text)
             self.assertIn("Do not silently substitute", text)
             self.assertIn("Prefer linear, readable code", text)
+            self.assertIn("## Profile Maintenance", text)
+            self.assertIn("structured merge", text)
+            self.assertIn("~/.meridian/code-ref/", text)
+            self.assertIn("Do not append raw distillation notes", text)
             self.assertNotIn("```python", text)
             self.assertEqual(validate_research_agent_principles(written).status, "pass")
 
@@ -4130,6 +4142,7 @@ quality_state: "multimodal_pending"
             self.assertIn(f"schema_version: {RESEARCH_AGENT_PRINCIPLES_SCHEMA_VERSION}", migrated_text)
             self.assertIn("## Implementation Integrity", migrated_text)
             self.assertIn("## Research Code Style", migrated_text)
+            self.assertIn("## Profile Maintenance", migrated_text)
 
     def test_coding_style_profile_points_to_research_agent_principles(self) -> None:
         from meridian.lab import initialize_coding_style_profile
@@ -4291,6 +4304,26 @@ quality_state: "multimodal_pending"
         self.assertIn("agents_contract_missing", {finding.code for finding in missing_category.findings})
         self.assertIn("agents_contract_ready", {finding.code for finding in ready_category.findings})
 
+    def test_framework_check_flags_user_style_profile_drift_inside_agents(self) -> None:
+        from meridian.lab import initialize_lab_space, inject_meridian_agents_contract
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            initialize_lab_space(root)
+            agents = root / "AGENTS.md"
+            agents.write_text(
+                agents.read_text(encoding="utf-8")
+                + "\n## Meridian Coding Style Profile\n\n"
+                + "- User-level style distilled from this repo should not live here.\n",
+                encoding="utf-8",
+            )
+            inject_meridian_agents_contract(root)
+
+            report = run_framework_check(project_root=Path.cwd(), lab_root=root)
+
+        lab_category = next(category for category in report.categories if category.name == "Lab State")
+        self.assertIn("style_profile_drift_in_agents", {finding.code for finding in lab_category.findings})
+
     def test_framework_check_reports_mcp_entrypoint_drift(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "project"
@@ -4384,6 +4417,10 @@ quality_state: "multimodal_pending"
             self.assertIn("repo_local", text)
             self.assertIn("insufficient_evidence", text)
             self.assertIn("Do not store full code blocks", text)
+            self.assertIn("Do not write user coding-style sections into project `AGENTS.md`", text)
+            self.assertIn("structured merge", text)
+            self.assertIn("~/.meridian/code-ref/", text)
+            self.assertIn("optional reference material", text)
 
     def test_research_agent_contract_eval_assets_parse(self) -> None:
         cases = [
@@ -6465,6 +6502,16 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertEqual(text.count("MERIDIAN RESEARCH AGENT CONTRACT END"), 1)
             self.assertIn("research-agent-principles.md", text)
             self.assertIn("Do not silently substitute", text)
+
+    def test_meridian_agents_contract_routes_research_coding_through_lab(self) -> None:
+        from meridian.lab import meridian_agents_contract_block
+
+        block = meridian_agents_contract_block()
+
+        self.assertIn("repo has `.meridian/`", block)
+        self.assertIn("load the Meridian Lab skill", block)
+        self.assertIn("Research Grounding Injection", block)
+        self.assertIn("Pure mechanical engineering may skip Lab", block)
 
     def test_meridian_agents_contract_replacement_preserves_surrounding_text_exactly(self) -> None:
         from meridian.lab import (

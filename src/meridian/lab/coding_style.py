@@ -125,6 +125,9 @@ def migrate_coding_style_profile(
             ]
         )
         changed = True
+    if "## Profile Update Protocol" not in text:
+        suffix.extend(["", "## Profile Update Protocol", "", *_profile_update_protocol_lines()])
+        changed = True
     if changed:
         target.write_text("\n".join(prefix) + text.rstrip() + "\n" + "\n".join(suffix).rstrip() + "\n", encoding="utf-8")
     return target
@@ -148,6 +151,8 @@ def validate_coding_style_profile(path: Path | None = None, *, config_home: Path
         add("warning", "coding_style_profile_principles_missing", "Profile is missing a Principles section.")
     if "## Pending Review" not in text:
         add("warning", "coding_style_profile_pending_review_missing", "Profile is missing a Pending Review section.")
+    if "## Profile Update Protocol" not in text:
+        add("warning", "coding_style_profile_update_protocol_missing", "Profile is missing a Profile Update Protocol section.")
     if "```" in text:
         add("warning", "coding_style_profile_contains_code_block", "Profile should summarize style, not store full code blocks.")
 
@@ -221,6 +226,7 @@ def _starter_profile() -> str:
         "This file stores compact durable user-level coding style principles for Meridian Lab injections.\n"
         "For the full research-agent behavior contract, also read `research-agent-principles.md` in the same Meridian config directory.\n"
         "Keep entries short, scoped, and provenance-aware. Do not store full pasted code examples here.\n"
+        "Use a structured merge when distilling style: update matching principles instead of appending raw notes.\n"
         "\n"
         "## Principles\n"
         "\n"
@@ -229,4 +235,22 @@ def _starter_profile() -> str:
         "## Pending Review\n"
         "\n"
         "Use this section for ambiguous coding-style feedback that needs user confirmation before becoming a durable principle.\n"
+        "\n"
+        "## Profile Update Protocol\n"
+        "\n"
+        + "\n".join(_profile_update_protocol_lines())
+        + "\n"
     )
+
+
+def _profile_update_protocol_lines() -> list[str]:
+    return [
+        "- Use structured merge rather than append-only updates.",
+        "- Distillation proposals must classify observations as `merge_existing`, `add_new_principle`, `repo_local`, or `insufficient_evidence` before writing.",
+        "- Merge into an existing principle when the scope and preference match; update provenance, confidence, exceptions, or positive_shape instead of duplicating the entry.",
+        "- Keep project-local conventions out of this user-level profile unless the user explicitly confirms they are durable personal preferences.",
+        "- Do not write user coding-style sections into project `AGENTS.md`; keep durable profile state in this file and detailed behavior in `research-agent-principles.md`.",
+        "- When a reusable example would make a principle easier to apply, consider adding or referencing a compact style reference under `~/.meridian/code-ref/`.",
+        "- `~/.meridian/code-ref/` is optional reference material; absence of a ref is not a failure.",
+        "- Ask before writing durable profile changes.",
+    ]
