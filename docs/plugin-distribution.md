@@ -104,7 +104,7 @@ plugins/codex/meridian/
 Install from GitHub:
 
 ```bash
-codex plugin marketplace add shawnyin128/meridian --sparse .agents/plugins --sparse plugins/codex/meridian
+codex plugin marketplace add shawnyin128/meridian --ref master --sparse .agents/plugins --sparse plugins/codex/meridian
 codex plugin add meridian@meridian
 ```
 
@@ -119,6 +119,17 @@ marketplace:
 
 ```bash
 codex plugin remove meridian@meridian
+codex plugin add meridian@meridian
+```
+
+If a local marketplace source was originally registered against an old branch or
+release ref, `marketplace upgrade` preserves that ref. Reset the marketplace
+source to `master` before reinstalling:
+
+```bash
+codex plugin remove meridian@meridian
+codex plugin marketplace remove meridian
+codex plugin marketplace add shawnyin128/meridian --ref master --sparse .agents/plugins --sparse plugins/codex/meridian
 codex plugin add meridian@meridian
 ```
 

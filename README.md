@@ -64,7 +64,7 @@ MCP configuration is reloaded.
 ### Codex
 
 ```bash
-codex plugin marketplace add shawnyin128/meridian --sparse .agents/plugins --sparse plugins/codex/meridian
+codex plugin marketplace add shawnyin128/meridian --ref master --sparse .agents/plugins --sparse plugins/codex/meridian
 codex plugin add meridian@meridian
 ```
 
@@ -73,6 +73,17 @@ Upgrade or reinstall:
 ```bash
 codex plugin marketplace upgrade meridian
 codex plugin remove meridian@meridian
+codex plugin add meridian@meridian
+```
+
+If a previous local install registered the Meridian marketplace against an old
+branch or release ref, `marketplace upgrade` will keep following that old ref.
+Reset the marketplace source to `master`, then reinstall:
+
+```bash
+codex plugin remove meridian@meridian
+codex plugin marketplace remove meridian
+codex plugin marketplace add shawnyin128/meridian --ref master --sparse .agents/plugins --sparse plugins/codex/meridian
 codex plugin add meridian@meridian
 ```
 
