@@ -300,6 +300,22 @@ Run this without `--limit` for release confidence. The report records
 eval-only `path_rationale` so routing failures can be debugged without adding
 that diagnostic field to the shipped product skills.
 
+To verify fresh-window behavior from real repo files rather than prompt hints,
+run the repo-startup eval. Each case creates a temporary repo fixture with either
+real `.meridian/` plus the managed `AGENTS.md` contract or a plain repo, then
+runs `codex exec -C <case-repo>` without passing a `repo_state` hint:
+
+```powershell
+python -m meridian eval codex-lab-repo-startup `
+  eval/cases/lab_repo_startup_live.jsonl `
+  --out-dir eval/runs/lab-repo-startup-live-<stamp> `
+  --overwrite
+```
+
+Use this eval when changing Lab routing contracts. It checks
+`repo_file_signals.read_agents`, `repo_file_signals.detected_meridian_dir`,
+`grounding_injection`, selected entry, routing, and handoff behavior.
+
 ## MCP
 
 The plugin includes MCP config for the Paper Wiki server. Clients can start the

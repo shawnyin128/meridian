@@ -13,6 +13,7 @@ from typing import Any, Callable, Iterable
 CODEX_ROUTING_EVAL_SCHEMA_VERSION = "meridian.codex_routing_eval.v1"
 CODEX_LAB_GROUNDING_EVAL_SCHEMA_VERSION = "meridian.codex_lab_grounding_eval.v1"
 CODEX_RESEARCH_AGENT_CONTRACT_EVAL_SCHEMA_VERSION = "meridian.codex_research_agent_contract_eval.v1"
+CODEX_LAB_REPO_STARTUP_EVAL_SCHEMA_VERSION = "meridian.codex_lab_repo_startup_eval.v1"
 
 CommandRunner = Callable[[list[str], Path, float, str | None], subprocess.CompletedProcess[str]]
 
@@ -274,6 +275,139 @@ def run_codex_lab_grounding_eval(
     )
 
 
+def run_codex_lab_repo_startup_eval(
+    *,
+    cases_path: Path,
+    out_dir: Path,
+    codex_bin: str = "codex",
+    model: str | None = None,
+    profile: str | None = None,
+    case_ids: list[str] | None = None,
+    limit: int | None = None,
+    timeout: float = 300.0,
+    overwrite: bool = False,
+    isolate_config: bool = True,
+    runner: CommandRunner | None = None,
+) -> CodexRoutingEvalResult:
+    if out_dir.exists() and any(out_dir.iterdir()) and not overwrite:
+        raise FileExistsError(f"codex lab repo startup eval output directory already exists: {out_dir}")
+    if out_dir.exists() and overwrite:
+        shutil.rmtree(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    selected_cases = list(_select_cases(_load_cases(cases_path), case_ids=case_ids, limit=limit))
+    schema_path = out_dir / "codex-lab-repo-startup-output.schema.json"
+    schema_path.write_text(json.dumps(_lab_repo_startup_output_schema(), indent=2) + "\n", encoding="utf-8")
+
+    command_runner = runner or _default_runner
+    case_results: list[dict[str, Any]] = []
+    for case in selected_cases:
+        case_id = str(case["id"])
+        case_dir = out_dir / case_id
+        case_dir.mkdir(parents=True, exist_ok=True)
+        (case_dir / "case.json").write_text(json.dumps(case, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+        repo_root = case_dir / "repo"
+        _write_lab_repo_startup_fixture(case, repo_root)
+
+        prompt_path = case_dir / "prompt.md"
+        prompt = build_lab_repo_startup_prompt(case)
+        prompt_path.write_text(prompt, encoding="utf-8")
+
+        last_message_path = case_dir / "last-message.json"
+        events_path = case_dir / "events.jsonl"
+        stderr_path = case_dir / "stderr.txt"
+        argv = build_codex_exec_argv(
+            codex_bin=codex_bin,
+            repo_root=repo_root.resolve(),
+            schema_path=schema_path.resolve(),
+            last_message_path=last_message_path.resolve(),
+            model=model,
+            profile=profile,
+            isolate_config=isolate_config,
+            ignore_rules=False,
+        )
+        completed = command_runner(argv, repo_root, timeout, prompt)
+        events_path.write_text(completed.stdout or "", encoding="utf-8")
+        stderr_path.write_text(completed.stderr or "", encoding="utf-8")
+
+        response, parse_error = _load_last_message(last_message_path)
+        verdict = _score_lab_repo_startup_case(
+            case=case,
+            response=response,
+            returncode=completed.returncode,
+            parse_error=parse_error,
+        )
+        result = {
+            "case_id": case_id,
+            "suite": case.get("suite"),
+            "polarity": case.get("polarity"),
+            "risk": case.get("risk"),
+            "repo_fixture": case.get("repo_fixture"),
+            "repo_root": str(repo_root),
+            "returncode": completed.returncode,
+            "command": argv[:-1] + ["<stdin-prompt>"],
+            "prompt_path": str(prompt_path),
+            "events_path": str(events_path),
+            "stderr_path": str(stderr_path),
+            "last_message_path": str(last_message_path),
+            "response": response,
+            "parse_error": parse_error,
+            "verdict": verdict,
+        }
+        (case_dir / "result.json").write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        case_results.append(result)
+
+    passed = sum(1 for item in case_results if item["verdict"]["decision"] == "pass")
+    failed = len(case_results) - passed
+    summary = {
+        "schema_version": CODEX_LAB_REPO_STARTUP_EVAL_SCHEMA_VERSION,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "cases_path": str(cases_path),
+        "codex_bin": codex_bin,
+        "model": model,
+        "profile": profile,
+        "isolate_config": isolate_config,
+        "total_cases": len(case_results),
+        "passed_cases": passed,
+        "failed_cases": failed,
+        "pass_rate": (passed / len(case_results)) if case_results else 0.0,
+        "groups": _summarize_groups(case_results),
+        "case_results": [
+            {
+                "case_id": item["case_id"],
+                "suite": item.get("suite"),
+                "polarity": item.get("polarity"),
+                "risk": item.get("risk"),
+                "repo_fixture": item.get("repo_fixture"),
+                "repo_root": item.get("repo_root"),
+                "decision": item["verdict"]["decision"],
+                "expected_skill": item["verdict"]["expected_skill"],
+                "selected_entry": item["verdict"].get("selected_entry"),
+                "expected_routing": item["verdict"].get("expected_routing"),
+                "selected_routing": item["verdict"].get("selected_routing"),
+                "agents_read": item["verdict"].get("agents_read"),
+                "meridian_dir_detected": item["verdict"].get("meridian_dir_detected"),
+                "grounding_injection": item["verdict"].get("grounding_injection"),
+                "failures": item["verdict"]["failures"],
+                "result_path": str(out_dir / str(item["case_id"]) / "result.json"),
+            }
+            for item in case_results
+        ],
+    }
+    summary_path = out_dir / "summary.json"
+    report_path = out_dir / "report.md"
+    summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    report_path.write_text(_render_lab_repo_startup_report(summary), encoding="utf-8")
+    return CodexRoutingEvalResult(
+        summary_path=summary_path,
+        report_path=report_path,
+        total_cases=len(case_results),
+        passed_cases=passed,
+        failed_cases=failed,
+    )
+
+
 def run_codex_research_agent_contract_eval(
     *,
     cases_path: Path,
@@ -439,6 +573,7 @@ def build_codex_exec_argv(
     model: str | None = None,
     profile: str | None = None,
     isolate_config: bool = True,
+    ignore_rules: bool = True,
 ) -> list[str]:
     argv = [
         codex_bin,
@@ -449,7 +584,9 @@ def build_codex_exec_argv(
         "read-only",
     ]
     if isolate_config:
-        argv.extend(["--ignore-user-config", "--ignore-rules"])
+        argv.append("--ignore-user-config")
+        if ignore_rules:
+            argv.append("--ignore-rules")
     argv.extend(
         [
             "-C",
@@ -560,6 +697,58 @@ def build_lab_grounding_prompt(case: dict[str, Any]) -> str:
             "5. code_prior_signal: whether open-source implementation/code grounding should be checked",
             "6. grounding_injection_signal: whether a Research Grounding Injection is needed before coding",
             "7. handoff_signal: whether work stays in Lab/wiki/meridian or hands to normal coding",
+            "",
+            "Case:",
+            json.dumps(visible_case, indent=2, ensure_ascii=False),
+            "",
+        ]
+    )
+
+
+def build_lab_repo_startup_prompt(case: dict[str, Any]) -> str:
+    visible_case = {
+        "id": case.get("id"),
+        "user_request": case.get("user_request"),
+    }
+    return "\n".join(
+        [
+            "You are running an offline Meridian Lab repo-startup evaluation.",
+            "Case.user_request is a simulated user turn in the current working directory.",
+            "",
+            "Inspect the current working directory files as the repo-state source of truth.",
+            "Do not rely on a prompt-provided repository-state hint; this eval intentionally omits one.",
+            "Before returning, use read-only file inspection when available: read AGENTS.md and check whether `.meridian/` exists.",
+            "Do not edit files, retrieve real wiki pages, or complete the user request.",
+            "Return only the JSON object required by the output schema.",
+            "",
+            "Allowed selected_entry values:",
+            "- meridian",
+            "- wiki",
+            "- lab",
+            "- normal_coding_workflow",
+            "",
+            "Repo startup rules:",
+            "- If AGENTS.md says this repo is Meridian Lab-initialized and `.meridian/` exists, research-bearing coding, experiments, evals, methods, benchmarks, active directions, evidence, or findings should route through Lab first.",
+            "- If Lab routes to implementation/debug/test work, set grounding_injection true and hand off to normal_coding_workflow.",
+            "- If Lab owns the whole request, such as recovering an active research node or attaching evidence to a node, use routing lab_idea_graph, set grounding_injection false, and leave handoff_to empty.",
+            "- Pure mechanical edits and general programming explanations should skip Lab even if `.meridian/` exists.",
+            "- Setup/status/MCP repair requests should select meridian.",
+            "- A plain repo without `.meridian/` should not be treated as Lab-initialized solely because the user asks for a bug fix.",
+            "- handoff_to names only downstream owners after selected_entry finishes; never include selected_entry itself.",
+            "- For direct meridian, lab_idea_graph, wiki, or normal_coding_workflow decisions, handoff_to must be empty.",
+            "- For Lab-first implementation/debug/test decisions, handoff_to must be exactly [\"normal_coding_workflow\"].",
+            "",
+            "Set repo_file_signals from real file inspection:",
+            "- read_agents: true only if you inspected or used AGENTS.md content.",
+            "- detected_meridian_dir: true only if you detected `.meridian/` in the working directory.",
+            "",
+            "`path_rationale` is eval-only diagnostic output. It must not be required by Meridian product skills.",
+            "In path_rationale, explain the decision as short ordered checks:",
+            "1. repo_file_signal: what repo files were detected",
+            "2. intent_signal: whether the user request is research-bearing, mechanical, setup, or general",
+            "3. lab_boundary_signal: whether Lab should preflight or skip",
+            "4. grounding_injection_signal: whether implementation needs Lab grounding first",
+            "5. handoff_signal: downstream owner after routing",
             "",
             "Case:",
             json.dumps(visible_case, indent=2, ensure_ascii=False),
@@ -703,6 +892,81 @@ def _select_cases(
     return selected
 
 
+def _write_lab_repo_startup_fixture(case: dict[str, Any], repo_root: Path) -> None:
+    if repo_root.exists():
+        shutil.rmtree(repo_root)
+    repo_root.mkdir(parents=True, exist_ok=True)
+    fixture = str(case.get("repo_fixture") or "lab_repo")
+    if fixture == "lab_repo":
+        _write_lab_repo_fixture(repo_root)
+    elif fixture == "plain_repo":
+        _write_plain_repo_fixture(repo_root)
+    else:
+        raise ValueError(f"unknown lab repo startup fixture: {fixture}")
+
+
+def _write_lab_repo_fixture(repo_root: Path) -> None:
+    from meridian.lab import inject_meridian_agents_contract
+
+    meridian_root = repo_root / ".meridian"
+    (meridian_root / "threads").mkdir(parents=True, exist_ok=True)
+    (meridian_root / "experiments").mkdir(parents=True, exist_ok=True)
+    (meridian_root / "proposals").mkdir(parents=True, exist_ok=True)
+    (repo_root / "src").mkdir(parents=True, exist_ok=True)
+
+    (meridian_root / "state.md").write_text(
+        "\n".join(
+            [
+                "---",
+                "type: lab-state",
+                "active_thread: active-probe-direction",
+                "active_node: probe-next-step",
+                "---",
+                "# Meridian Lab State",
+                "",
+                "Active thread: [[threads/active-probe-direction]]",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (meridian_root / "threads/index.md").write_text(
+        "# Threads\n\n- [[active-probe-direction]]: implementation-ready probe direction.\n",
+        encoding="utf-8",
+    )
+    (meridian_root / "threads/active-probe-direction.md").write_text(
+        "\n".join(
+            [
+                "# Active Probe Direction",
+                "",
+                "node_id: probe-next-step",
+                "mode: unresolved",
+                "research_prior: needed",
+                "",
+                "Next action: implement the smallest probe after Lab grounding.",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (meridian_root / "experiments/index.md").write_text("# Experiments\n\nNo completed experiment yet.\n", encoding="utf-8")
+    (meridian_root / "proposals/index.md").write_text("# Proposals\n\nNo ready proposal yet.\n", encoding="utf-8")
+    (repo_root / "src/probe.py").write_text(
+        "def existing_probe_stub():\n    return {'status': 'not_started'}\n",
+        encoding="utf-8",
+    )
+    (repo_root / "README.md").write_text("# Lab Startup Fixture\n\nResearch repo fixture for Meridian Lab routing eval.\n", encoding="utf-8")
+    (repo_root / "AGENTS.md").write_text("# Project Rules\n\nPreserve local research state.\n\n", encoding="utf-8")
+    inject_meridian_agents_contract(repo_root)
+
+
+def _write_plain_repo_fixture(repo_root: Path) -> None:
+    (repo_root / "src").mkdir(parents=True, exist_ok=True)
+    (repo_root / "AGENTS.md").write_text("# Project Rules\n\nThis is a normal software repo.\n", encoding="utf-8")
+    (repo_root / "README.md").write_text("# Plain Repo Fixture\n\nNo Meridian Lab state.\n", encoding="utf-8")
+    (repo_root / "src/example.py").write_text("def add(left, right):\n    return left + right\n", encoding="utf-8")
+
+
 def _output_schema() -> dict[str, Any]:
     return {
         "type": "object",
@@ -766,6 +1030,40 @@ def _lab_grounding_output_schema() -> dict[str, Any]:
             "research_graph_check",
             "paper_wiki_check",
             "open_source_code_check",
+            "grounding_injection",
+            "handoff_to",
+            "confidence",
+            "reason",
+            "path_rationale",
+        ],
+        "properties": properties,
+    }
+
+
+def _lab_repo_startup_output_schema() -> dict[str, Any]:
+    base = _output_schema()
+    properties = dict(base["properties"])
+    properties.update(
+        {
+            "repo_file_signals": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["read_agents", "detected_meridian_dir"],
+                "properties": {
+                    "read_agents": {"type": "boolean"},
+                    "detected_meridian_dir": {"type": "boolean"},
+                },
+            },
+            "grounding_injection": {"type": "boolean"},
+        }
+    )
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": [
+            "selected_entry",
+            "routing",
+            "repo_file_signals",
             "grounding_injection",
             "handoff_to",
             "confidence",
@@ -908,6 +1206,46 @@ def _score_lab_grounding_case(
     }
 
 
+def _score_lab_repo_startup_case(
+    *,
+    case: dict[str, Any],
+    response: dict[str, Any] | None,
+    returncode: int,
+    parse_error: str | None,
+) -> dict[str, Any]:
+    verdict = _score_case(case=case, response=response, returncode=returncode, parse_error=parse_error)
+    failures = list(verdict["failures"])
+    repo_file_signals = response.get("repo_file_signals") if response else {}
+    if not isinstance(repo_file_signals, dict):
+        repo_file_signals = {}
+
+    for case_field, signal_field in (
+        ("expect_agents_read", "read_agents"),
+        ("expect_meridian_dir_detected", "detected_meridian_dir"),
+    ):
+        if case_field not in case:
+            continue
+        selected = repo_file_signals.get(signal_field)
+        expected = bool(case[case_field])
+        if selected != expected:
+            failures.append(f"repo_file_signals.{signal_field} expected {expected!r}, got {selected!r}")
+
+    if "expect_grounding_injection" in case:
+        selected = response.get("grounding_injection") if response else None
+        expected = bool(case["expect_grounding_injection"])
+        if selected != expected:
+            failures.append(f"grounding_injection expected {expected!r}, got {selected!r}")
+
+    return {
+        **verdict,
+        "decision": "pass" if not failures else "fail",
+        "failures": failures,
+        "agents_read": repo_file_signals.get("read_agents"),
+        "meridian_dir_detected": repo_file_signals.get("detected_meridian_dir"),
+        "grounding_injection": response.get("grounding_injection") if response else None,
+    }
+
+
 def _score_research_agent_contract_case(
     *,
     case: dict[str, Any],
@@ -1012,6 +1350,48 @@ def _render_lab_grounding_report(summary: dict[str, Any]) -> str:
             "{research_graph_check} | {paper_wiki_check} | {open_source_code_check} | {grounding_injection} |".format(
                 **{key: str(value or "") for key, value in item.items()}
             )
+        )
+    if any(summary.get("groups", {}).values()):
+        lines.extend(["", "## Groups", ""])
+        for group_name, buckets in summary.get("groups", {}).items():
+            if not buckets:
+                continue
+            lines.extend(
+                [
+                    f"### {group_name}",
+                    "",
+                    "| Bucket | Total | Passed | Failed | Pass Rate |",
+                    "|---|---:|---:|---:|---:|",
+                ]
+            )
+            for bucket_name, bucket in sorted(buckets.items()):
+                lines.append(
+                    f"| {bucket_name} | {bucket['total_cases']} | {bucket['passed_cases']} | "
+                    f"{bucket['failed_cases']} | {bucket['pass_rate']:.3f} |"
+                )
+            lines.append("")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _render_lab_repo_startup_report(summary: dict[str, Any]) -> str:
+    lines = [
+        "# Codex Lab Repo Startup Evaluation",
+        "",
+        f"- Total cases: {summary['total_cases']}",
+        f"- Passed: {summary['passed_cases']}",
+        f"- Failed: {summary['failed_cases']}",
+        f"- Pass rate: {summary['pass_rate']:.3f}",
+        "",
+        "| Case | Decision | Fixture | Expected | Selected | Routing | AGENTS | .meridian | Injection |",
+        "|---|---:|---|---|---|---|---:|---:|---:|",
+    ]
+    for item in summary["case_results"]:
+        display = {key: str(value) if value is not None else "" for key, value in item.items()}
+        lines.append(
+            "| {case_id} | {decision} | {repo_fixture} | {expected_skill} | {selected_entry} | "
+            "{selected_routing} | {agents_read} | {meridian_dir_detected} | "
+            "{grounding_injection} |".format(**display)
         )
     if any(summary.get("groups", {}).values()):
         lines.extend(["", "## Groups", ""])

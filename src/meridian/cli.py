@@ -10,6 +10,7 @@ from pathlib import Path
 from meridian import __version__
 from meridian.evals.codex_routing import (
     run_codex_lab_grounding_eval,
+    run_codex_lab_repo_startup_eval,
     run_codex_research_agent_contract_eval,
     run_codex_routing_eval,
 )
@@ -213,6 +214,20 @@ def build_parser() -> argparse.ArgumentParser:
     codex_contract.add_argument("--timeout", type=float, default=300.0)
     codex_contract.add_argument("--overwrite", action="store_true")
     codex_contract.add_argument("--use-user-config", action="store_true")
+    codex_repo_startup = eval_subparsers.add_parser(
+        "codex-lab-repo-startup",
+        help="Run live Codex exec prompts in real temporary Lab/plain repo fixtures.",
+    )
+    codex_repo_startup.add_argument("cases", type=Path)
+    codex_repo_startup.add_argument("--out-dir", type=Path, required=True)
+    codex_repo_startup.add_argument("--codex-bin", default="codex")
+    codex_repo_startup.add_argument("--model", default=None)
+    codex_repo_startup.add_argument("--profile", default=None)
+    codex_repo_startup.add_argument("--case-id", action="append", dest="case_ids")
+    codex_repo_startup.add_argument("--limit", type=int, default=None)
+    codex_repo_startup.add_argument("--timeout", type=float, default=300.0)
+    codex_repo_startup.add_argument("--overwrite", action="store_true")
+    codex_repo_startup.add_argument("--use-user-config", action="store_true")
 
     wiki = subparsers.add_parser("wiki", help="Paper Wiki workflows")
     wiki_subparsers = wiki.add_subparsers(dest="command", required=True)
@@ -1394,6 +1409,24 @@ def main(argv: list[str] | None = None) -> int:
                 isolate_config=not args.use_user_config,
             )
             print(f"Codex research-agent contract eval: {result.passed_cases}/{result.total_cases} passed")
+            print(f"Summary: {result.summary_path}")
+            print(f"Report: {result.report_path}")
+            return 0 if result.failed_cases == 0 else 1
+
+        if args.product == "eval" and args.command == "codex-lab-repo-startup":
+            result = run_codex_lab_repo_startup_eval(
+                cases_path=args.cases,
+                out_dir=args.out_dir,
+                codex_bin=args.codex_bin,
+                model=args.model,
+                profile=args.profile,
+                case_ids=args.case_ids,
+                limit=args.limit,
+                timeout=args.timeout,
+                overwrite=args.overwrite,
+                isolate_config=not args.use_user_config,
+            )
+            print(f"Codex Lab repo startup eval: {result.passed_cases}/{result.total_cases} passed")
             print(f"Summary: {result.summary_path}")
             print(f"Report: {result.report_path}")
             return 0 if result.failed_cases == 0 else 1

@@ -20,9 +20,11 @@ from meridian.cli import main
 from meridian.evals import codex_routing as codex_routing_eval
 from meridian.evals.codex_routing import (
     build_lab_grounding_prompt,
+    build_lab_repo_startup_prompt,
     build_research_agent_contract_prompt,
     build_routing_prompt,
     run_codex_lab_grounding_eval,
+    run_codex_lab_repo_startup_eval,
     run_codex_research_agent_contract_eval,
     run_codex_routing_eval,
 )
@@ -220,7 +222,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.7.2"
+        expected = "0.7.3"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -276,9 +278,9 @@ class CliTests(unittest.TestCase):
         )
 
         self.assertEqual(meridian.returncode, 0, meridian.stderr)
-        self.assertEqual(meridian.stdout.strip(), "meridian 0.7.2")
+        self.assertEqual(meridian.stdout.strip(), "meridian 0.7.3")
         self.assertEqual(cli_module.returncode, 0, cli_module.stderr)
-        self.assertEqual(cli_module.stdout.strip(), "meridian 0.7.2")
+        self.assertEqual(cli_module.stdout.strip(), "meridian 0.7.3")
         self.assertEqual(cli_help.returncode, 0, cli_help.stderr)
         self.assertIn("usage: meridian wiki", cli_help.stdout)
 
@@ -2863,6 +2865,225 @@ quality_state: "multimodal_pending"
         self.assertNotIn("expected_routing", prompt)
         self.assertNotIn("expect_grounding_injection", prompt)
 
+    def test_lab_repo_startup_live_eval_cases_parse(self) -> None:
+        cases = Path("eval/cases/lab_repo_startup_live.jsonl")
+        parsed = [json.loads(line) for line in cases.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+        self.assertGreaterEqual(len(parsed), 8)
+        self.assertTrue(all(case.get("category") == "lab_repo_startup_live" for case in parsed))
+        required_fields = {
+            "id",
+            "suite",
+            "polarity",
+            "risk",
+            "repo_fixture",
+            "user_request",
+            "expected_skill",
+            "expected_routing",
+            "expect_agents_read",
+            "expect_meridian_dir_detected",
+            "expect_grounding_injection",
+            "handoff_to",
+        }
+        for case in parsed:
+            self.assertTrue(required_fields.issubset(case), case.get("id"))
+            self.assertIn(case["repo_fixture"], {"lab_repo", "plain_repo"})
+
+        positives = [case for case in parsed if case["polarity"] == "positive"]
+        negatives = [case for case in parsed if case["polarity"] == "negative"]
+        self.assertGreaterEqual(len(positives), 4)
+        self.assertGreaterEqual(len(negatives), 4)
+        self.assertTrue(any(case["expect_grounding_injection"] for case in positives))
+        self.assertTrue(any(case["expected_skill"] == "normal_coding_workflow" for case in negatives))
+        self.assertTrue(any(case["expected_skill"] == "meridian" for case in negatives))
+
+    def test_codex_lab_repo_startup_prompt_uses_real_repo_files_not_repo_state_hint(self) -> None:
+        prompt = build_lab_repo_startup_prompt(
+            {
+                "id": "startup-probe",
+                "category": "lab_repo_startup_live",
+                "repo_fixture": "lab_repo",
+                "repo_state": "repo has .meridian/ with active probe node",
+                "user_request": "Implement the next probe for the active direction.",
+                "expected_skill": "lab",
+                "expected_routing": "lab_first_preflight",
+            }
+        )
+
+        self.assertIn("Implement the next probe", prompt)
+        self.assertIn("Inspect the current working directory files", prompt)
+        self.assertIn("repo_file_signals", prompt)
+        self.assertNotIn("repo has .meridian", prompt)
+        self.assertNotIn("repo_state", prompt)
+        self.assertNotIn("repo_fixture", prompt)
+        self.assertNotIn("lab_repo", prompt)
+        self.assertNotIn("expected_skill", prompt)
+
+    def test_codex_lab_repo_startup_eval_creates_real_repo_fixture_and_scores_repo_signals(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cases = root / "cases.jsonl"
+            cases.write_text(
+                json.dumps(
+                    {
+                        "id": "startup-probe",
+                        "category": "lab_repo_startup_live",
+                        "suite": "repo_startup",
+                        "polarity": "positive",
+                        "risk": "miss_lab_repo_state",
+                        "repo_fixture": "lab_repo",
+                        "user_request": "Implement the next probe for the active direction.",
+                        "expected_skill": "lab",
+                        "expected_routing": "lab_first_preflight",
+                        "expect_agents_read": True,
+                        "expect_meridian_dir_detected": True,
+                        "expect_grounding_injection": True,
+                        "handoff_to": ["normal_coding_workflow"],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            calls: list[tuple[list[str], Path, str | None]] = []
+
+            def fake_runner(
+                argv: list[str],
+                cwd: Path,
+                timeout: float,
+                stdin_text: str | None,
+            ) -> subprocess.CompletedProcess[str]:
+                calls.append((argv, cwd, stdin_text))
+                self.assertTrue((cwd / "AGENTS.md").exists())
+                self.assertTrue((cwd / ".meridian/state.md").exists())
+                self.assertIsNotNone(stdin_text)
+                self.assertIn("Implement the next probe", stdin_text or "")
+                self.assertNotIn("repo has .meridian", stdin_text or "")
+                last_message = Path(argv[argv.index("--output-last-message") + 1])
+                schema_path = Path(argv[argv.index("--output-schema") + 1])
+                self.assertTrue(last_message.is_absolute())
+                self.assertTrue(schema_path.is_absolute())
+                last_message.write_text(
+                    json.dumps(
+                        {
+                            "selected_entry": "lab",
+                            "routing": "lab_first_preflight",
+                            "repo_file_signals": {
+                                "read_agents": True,
+                                "detected_meridian_dir": True,
+                            },
+                            "grounding_injection": True,
+                            "handoff_to": ["normal_coding_workflow"],
+                            "confidence": "high",
+                            "reason": "AGENTS.md and .meridian indicate Lab-first research coding.",
+                            "path_rationale": [
+                                {
+                                    "check": "repo_file_signal",
+                                    "observation": "AGENTS.md and .meridian are present",
+                                    "effect": "use Lab-first preflight",
+                                }
+                            ],
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                return subprocess.CompletedProcess(argv, 0, '{"event":"done"}\n', "")
+
+            result = run_codex_lab_repo_startup_eval(
+                cases_path=cases,
+                out_dir=root / "run",
+                codex_bin="codex",
+                overwrite=True,
+                runner=fake_runner,
+            )
+
+            self.assertEqual(result.total_cases, 1)
+            self.assertEqual(result.passed_cases, 1)
+            self.assertEqual(result.failed_cases, 0)
+            self.assertTrue(calls)
+            argv, cwd, _ = calls[0]
+            self.assertIn("exec", argv)
+            self.assertEqual(cwd.name, "repo")
+            self.assertIn(str(cwd), argv)
+            self.assertTrue(Path(argv[argv.index("-C") + 1]).is_absolute())
+            self.assertIn("--ignore-user-config", argv)
+            self.assertNotIn("--ignore-rules", argv)
+            summary = json.loads(result.summary_path.read_text(encoding="utf-8"))
+            self.assertEqual(summary["schema_version"], "meridian.codex_lab_repo_startup_eval.v1")
+            self.assertEqual(summary["case_results"][0]["repo_root"], str(cwd))
+            self.assertEqual(summary["case_results"][0]["agents_read"], True)
+            self.assertEqual(summary["case_results"][0]["meridian_dir_detected"], True)
+
+    def test_codex_lab_repo_startup_eval_reports_missing_repo_file_signals(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cases = root / "cases.jsonl"
+            cases.write_text(
+                json.dumps(
+                    {
+                        "id": "startup-missing-signal",
+                        "category": "lab_repo_startup_live",
+                        "suite": "repo_startup",
+                        "polarity": "positive",
+                        "risk": "miss_lab_repo_state",
+                        "repo_fixture": "lab_repo",
+                        "user_request": "Implement the next probe for the active direction.",
+                        "expected_skill": "lab",
+                        "expected_routing": "lab_first_preflight",
+                        "expect_agents_read": True,
+                        "expect_meridian_dir_detected": True,
+                        "expect_grounding_injection": True,
+                        "handoff_to": ["normal_coding_workflow"],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            def fake_runner(
+                argv: list[str],
+                cwd: Path,
+                timeout: float,
+                stdin_text: str | None,
+            ) -> subprocess.CompletedProcess[str]:
+                last_message = Path(argv[argv.index("--output-last-message") + 1])
+                last_message.write_text(
+                    json.dumps(
+                        {
+                            "selected_entry": "lab",
+                            "routing": "lab_first_preflight",
+                            "repo_file_signals": {
+                                "read_agents": False,
+                                "detected_meridian_dir": False,
+                            },
+                            "grounding_injection": False,
+                            "handoff_to": ["normal_coding_workflow"],
+                            "confidence": "medium",
+                            "reason": "Chose Lab from prompt intuition.",
+                            "path_rationale": [
+                                {"check": "repo_file_signal", "observation": "not checked", "effect": "weak"}
+                            ],
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                return subprocess.CompletedProcess(argv, 0, "", "")
+
+            result = run_codex_lab_repo_startup_eval(
+                cases_path=cases,
+                out_dir=root / "run",
+                overwrite=True,
+                runner=fake_runner,
+            )
+
+            self.assertEqual(result.failed_cases, 1)
+            case_result = json.loads((root / "run/startup-missing-signal/result.json").read_text(encoding="utf-8"))
+            failures = " ".join(case_result["verdict"]["failures"])
+            self.assertIn("repo_file_signals.read_agents expected True", failures)
+            self.assertIn("repo_file_signals.detected_meridian_dir expected True", failures)
+            self.assertIn("grounding_injection expected True", failures)
+
     def test_research_agent_contract_live_eval_assets_and_prompt(self) -> None:
         cases = [
             json.loads(line)
@@ -3112,6 +3333,53 @@ quality_state: "multimodal_pending"
             self.assertIsNone(kwargs["limit"])
             self.assertIn("Wrote Codex Lab grounding summary", stdout.getvalue())
             self.assertIn("Total cases: 30", stdout.getvalue())
+
+    def test_codex_lab_repo_startup_cli_invokes_live_runner(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cases = root / "cases.jsonl"
+            cases.write_text(
+                json.dumps(
+                    {
+                        "id": "case",
+                        "category": "lab_repo_startup_live",
+                        "repo_fixture": "lab_repo",
+                        "user_request": "Implement the next probe.",
+                        "expected_skill": "lab",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            out_dir = root / "run"
+            fake_result = codex_routing_eval.CodexRoutingEvalResult(
+                summary_path=out_dir / "summary.json",
+                report_path=out_dir / "report.md",
+                total_cases=1,
+                passed_cases=1,
+                failed_cases=0,
+            )
+
+            with patch("meridian.cli.run_codex_lab_repo_startup_eval", return_value=fake_result) as run_eval:
+                exit_code, stdout, stderr = _run_cli_capture(
+                    [
+                        "eval",
+                        "codex-lab-repo-startup",
+                        str(cases),
+                        "--out-dir",
+                        str(out_dir),
+                        "--overwrite",
+                    ]
+                )
+
+            self.assertEqual(exit_code, 0, stderr)
+            run_eval.assert_called_once()
+            kwargs = run_eval.call_args.kwargs
+            self.assertEqual(kwargs["cases_path"], cases)
+            self.assertEqual(kwargs["out_dir"], out_dir)
+            self.assertTrue(kwargs["isolate_config"])
+            self.assertIsNone(kwargs["limit"])
+            self.assertIn("Codex Lab repo startup eval: 1/1 passed", stdout)
 
     def test_research_agent_contract_cli_invokes_live_runner(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
