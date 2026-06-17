@@ -132,6 +132,31 @@ python -m meridian setup repair-mcp --client <codex|claude> --apply
   `skill_visible_but_mcp_unavailable` or `no_valid_meridian_runtime` remains
   unresolved. Report the setup blocker and stop.
 
+### Lab Readiness Init
+
+Use when a repo should be Lab-ready after a Meridian update, when
+`framework-check --lab-root <repo>` reports missing/stale Meridian contract
+state, or when a fresh client starts hand-patching `AGENTS.md`.
+
+Run the deterministic initializer:
+
+```bash
+python -m meridian setup init-lab --lab-root <repo>
+```
+
+Minimum completion:
+
+- Create or migrate the user-level files under the active `MERIDIAN_CONFIG_HOME`
+  when set, otherwise under `~/.meridian/`:
+  - `coding-style.md`
+  - `research-agent-principles.md`
+- Initialize only the minimal `.meridian/` skeleton when missing.
+- Inject or refresh only the guarded Meridian block in project `AGENTS.md`.
+- Preserve user text outside the guarded block and do not rewrite existing
+  research threads, experiments, proposals, or active nodes.
+- If the command exits non-zero, report the remaining blocker codes and stop
+  before normal Lab or coding work.
+
 State meanings:
 
 - `ready`: core, active workspace, MCP, required product skills, and any

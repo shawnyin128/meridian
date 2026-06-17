@@ -220,7 +220,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.7.0"
+        expected = "0.7.1"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -276,9 +276,9 @@ class CliTests(unittest.TestCase):
         )
 
         self.assertEqual(meridian.returncode, 0, meridian.stderr)
-        self.assertEqual(meridian.stdout.strip(), "meridian 0.7.0")
+        self.assertEqual(meridian.stdout.strip(), "meridian 0.7.1")
         self.assertEqual(cli_module.returncode, 0, cli_module.stderr)
-        self.assertEqual(cli_module.stdout.strip(), "meridian 0.7.0")
+        self.assertEqual(cli_module.stdout.strip(), "meridian 0.7.1")
         self.assertEqual(cli_help.returncode, 0, cli_help.stderr)
         self.assertIn("usage: meridian wiki", cli_help.stdout)
 
@@ -3618,6 +3618,81 @@ quality_state: "multimodal_pending"
         self.assertIn("No MCP repair is available.", stdout)
         self.assertNotIn("No files changed. Re-run with --apply.", stdout)
 
+    def test_setup_init_lab_cli_initializes_user_contract_and_lab_ready_repo(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "research-repo"
+            config_home = Path(tmp) / "config"
+            root.mkdir()
+            (root / "AGENTS.md").write_text("# Existing Rules\n\nKeep this project rule.\n", encoding="utf-8")
+
+            with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(config_home)}):
+                exit_code, stdout, stderr = _run_cli_capture(
+                    ["setup", "init-lab", "--lab-root", str(root)]
+                )
+
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(stderr, "")
+            self.assertIn("Meridian Lab setup: ready", stdout)
+            self.assertIn("coding-style.md", stdout)
+            self.assertIn("research-agent-principles.md", stdout)
+            self.assertTrue((config_home / "coding-style.md").exists())
+            self.assertTrue((config_home / "research-agent-principles.md").exists())
+            agents = (root / "AGENTS.md").read_text(encoding="utf-8")
+            self.assertIn("Keep this project rule.", agents)
+            self.assertIn("MERIDIAN RESEARCH AGENT CONTRACT START", agents)
+            self.assertEqual(validate_lab_space(root).status, "pass")
+
+    def test_setup_init_lab_cli_reports_existing_lab_state_blockers_without_overwriting_threads(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "research-repo"
+            config_home = Path(tmp) / "config"
+            lab = root / ".meridian"
+            (lab / "threads").mkdir(parents=True)
+            (lab / "experiments").mkdir()
+            (lab / "proposals").mkdir()
+            (lab / "state.md").write_text(
+                "---\ntype: lab-state\nactive_thread: direction\n---\n# Meridian Lab State\n",
+                encoding="utf-8",
+            )
+            (lab / "threads/index.md").write_text("# Threads\n", encoding="utf-8")
+            (lab / "experiments/index.md").write_text("# Experiments\n", encoding="utf-8")
+            (lab / "proposals/index.md").write_text("# Proposals\n", encoding="utf-8")
+            thread = lab / "threads/direction.md"
+            original_thread = "# Direction\n\nExisting research notes stay untouched.\n"
+            thread.write_text(original_thread, encoding="utf-8")
+
+            with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(config_home)}):
+                exit_code, stdout, stderr = _run_cli_capture(
+                    ["setup", "init-lab", "--lab-root", str(root)]
+                )
+
+            self.assertEqual(exit_code, 1)
+            self.assertEqual(stderr, "")
+            self.assertIn("Meridian Lab setup: needs_manual_repair", stdout)
+            self.assertIn("invalid_thread_type", stdout)
+            self.assertIn("thread_without_nodes", stdout)
+            self.assertTrue((root / "AGENTS.md").exists())
+            self.assertTrue((config_home / "coding-style.md").exists())
+            self.assertTrue((config_home / "research-agent-principles.md").exists())
+            self.assertEqual(thread.read_text(encoding="utf-8"), original_thread)
+
+    def test_setup_init_lab_cli_accepts_meridian_directory_as_lab_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "research-repo"
+            config_home = Path(tmp) / "config"
+            lab = root / ".meridian"
+
+            with patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": str(config_home)}):
+                exit_code, stdout, stderr = _run_cli_capture(
+                    ["setup", "init-lab", "--lab-root", str(lab)]
+                )
+
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(stderr, "")
+            self.assertIn("Meridian Lab setup: ready", stdout)
+            self.assertTrue((root / "AGENTS.md").exists())
+            self.assertIn("MERIDIAN RESEARCH AGENT CONTRACT START", (root / "AGENTS.md").read_text(encoding="utf-8"))
+
     def test_setup_repair_mcp_cli_apply_writes_target_and_backup(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "project"
@@ -4152,6 +4227,7 @@ quality_state: "multimodal_pending"
         for text in [codex, claude]:
             self.assertIn("research-agent-principles.md", text)
             self.assertIn("AGENTS.md", text)
+            self.assertIn("setup init-lab", text)
             self.assertIn("Do not silently substitute", text)
             self.assertIn("MERIDIAN_CONFIG_HOME", text)
 
@@ -4164,6 +4240,7 @@ quality_state: "multimodal_pending"
         self.assertIn("MERIDIAN RESEARCH AGENT CONTRACT START", readme)
         self.assertIn("Implementation Integrity Gate", readme)
         self.assertIn("framework-check", readme)
+        self.assertIn("setup init-lab", readme)
         self.assertIn("--lab-root", readme)
 
     def test_framework_check_reports_stale_research_agent_principles(self) -> None:

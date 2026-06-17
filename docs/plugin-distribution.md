@@ -76,6 +76,19 @@ setup doctor:
 python -m meridian setup doctor --client all
 ```
 
+For research repos that should be Lab-ready after an update, run the setup-owned
+Lab readiness initializer:
+
+```bash
+python -m meridian setup init-lab --lab-root <repo>
+```
+
+This creates or migrates `~/.meridian/coding-style.md` and
+`~/.meridian/research-agent-principles.md`, initializes the minimal `.meridian/`
+skeleton when missing, injects or refreshes only the guarded Meridian block in
+`AGENTS.md`, and reports any remaining research-thread blockers without
+silently rewriting thread content.
+
 If the report shows `repair_available`, ask before applying the MCP config
 repair, then run the matching client command:
 

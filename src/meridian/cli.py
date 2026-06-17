@@ -15,6 +15,7 @@ from meridian.evals.codex_routing import (
 )
 from meridian.framework_check import run_framework_check, write_framework_json, write_framework_report
 from meridian.setup.doctor import build_setup_doctor_report, format_setup_doctor
+from meridian.setup.lab import format_lab_setup_result, initialize_lab_readiness, write_lab_setup_json
 from meridian.setup.repair import apply_mcp_repair
 from meridian.wiki.commands import (
     calibrate_eval,
@@ -137,6 +138,24 @@ def build_parser() -> argparse.ArgumentParser:
     setup_repair.add_argument("--project-root", type=Path, default=Path.cwd())
     setup_repair.add_argument("--apply", action="store_true")
     setup_repair.add_argument("--json-out", type=Path, default=None)
+
+    setup_init_lab = setup_subparsers.add_parser(
+        "init-lab",
+        help="Initialize or migrate Lab readiness for a target research repo.",
+    )
+    setup_init_lab.add_argument(
+        "--lab-root",
+        type=Path,
+        required=True,
+        help="Target research repo root or .meridian directory to initialize for Lab.",
+    )
+    setup_init_lab.add_argument(
+        "--config-home",
+        type=Path,
+        default=None,
+        help="Optional Meridian user config home. Defaults to MERIDIAN_CONFIG_HOME or ~/.meridian.",
+    )
+    setup_init_lab.add_argument("--json-out", type=Path, default=None, help="Optional machine-readable result path.")
 
     eval_product = subparsers.add_parser("eval", help="Meridian live evaluation workflows")
     eval_subparsers = eval_product.add_subparsers(dest="command", required=True)
@@ -1309,6 +1328,14 @@ def main(argv: list[str] | None = None) -> int:
             print("- MCP config updated")
             print("- restart required: yes")
             return 0
+
+        if args.product == "setup" and args.command == "init-lab":
+            result = initialize_lab_readiness(lab_root=args.lab_root, config_home=args.config_home)
+            print(format_lab_setup_result(result), end="")
+            if args.json_out:
+                write_lab_setup_json(result, args.json_out)
+                print(f"Wrote Lab setup JSON: {args.json_out}")
+            return 0 if result.status == "ready" else 1
 
         if args.product == "eval" and args.command == "codex-routing":
             result = run_codex_routing_eval(

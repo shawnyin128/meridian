@@ -232,11 +232,23 @@ Check a repo's Lab readiness and contract block with:
 python -m meridian framework-check --lab-root <repo>
 ```
 
+Initialize or migrate the setup-owned Lab readiness files with:
+
+```bash
+python -m meridian setup init-lab --lab-root <repo>
+```
+
+This creates or migrates the user-level contract files, initializes the minimal
+`.meridian/` skeleton when missing, injects or refreshes only the guarded
+Meridian block in `AGENTS.md`, and then reruns readiness validation. It does not
+silently rewrite existing research thread content; if a thread is structurally
+invalid, the command reports the remaining blockers and exits non-zero.
+
 If the Lab State category reports `agents_contract_missing`,
 `agents_contract_stale`, `agents_contract_malformed`, or
-`agents_contract_duplicate`, rerun Lab readiness initialization through the
-`lab` skill for that repo. The helper refreshes only the guarded Meridian block
-and leaves other `AGENTS.md` content alone.
+`agents_contract_duplicate`, run `python -m meridian setup init-lab --lab-root
+<repo>`. The helper refreshes only the guarded Meridian block and leaves other
+`AGENTS.md` content alone.
 
 Lab models exploratory research as:
 
