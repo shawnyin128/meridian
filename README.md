@@ -180,6 +180,53 @@ The first Lab workflow uses lazy initialization and asks before creating:
 .meridian/proposals/index.md
 ```
 
+Lazy initialization also injects or refreshes a guarded research-agent contract
+block in the target repo's `AGENTS.md`. User text outside the managed block is
+preserved.
+
+### Research-agent contract
+
+Meridian uses three layers to keep research-development agents from silently
+downgrading hard implementation requirements:
+
+```text
+~/.meridian/research-agent-principles.md   detailed user-level contract
+~/.meridian/coding-style.md                compact research-code style profile
+AGENTS.md                                  project-local pointer and hard rule
+```
+
+The project-local `AGENTS.md` block is delimited by:
+
+```text
+<!-- MERIDIAN RESEARCH AGENT CONTRACT START -->
+...
+<!-- MERIDIAN RESEARCH AGENT CONTRACT END -->
+```
+
+Inside that block, agents are told to read the user-level contract before
+research-development code changes and not to silently substitute legacy
+behavior, fallback-only behavior, stubs, task-marker comments, no-op
+implementations, swallowed errors, or partial implementations for the requested
+current behavior.
+
+Lab adds task-specific constraints through the Research Grounding Injection. For
+implementation/debug/test/release/convergence work, that injection includes an
+`Implementation Integrity Gate` that names required current behavior, forbidden
+shortcuts, blocker reporting, and validation expectations. Lab prepares this
+context; normal coding still owns the code change.
+
+Check a repo's Lab readiness and contract block with:
+
+```bash
+python -m meridian framework-check --lab-root <repo>
+```
+
+If the Lab State category reports `agents_contract_missing`,
+`agents_contract_stale`, `agents_contract_malformed`, or
+`agents_contract_duplicate`, rerun Lab readiness initialization through the
+`lab` skill for that repo. The helper refreshes only the guarded Meridian block
+and leaves other `AGENTS.md` content alone.
+
 Lab models exploratory research as:
 
 ```text

@@ -4155,6 +4155,17 @@ quality_state: "multimodal_pending"
             self.assertIn("Do not silently substitute", text)
             self.assertIn("MERIDIAN_CONFIG_HOME", text)
 
+    def test_readme_documents_research_agent_contract(self) -> None:
+        readme = Path("README.md").read_text(encoding="utf-8")
+
+        self.assertIn("Research-agent contract", readme)
+        self.assertIn("research-agent-principles.md", readme)
+        self.assertIn("coding-style.md", readme)
+        self.assertIn("MERIDIAN RESEARCH AGENT CONTRACT START", readme)
+        self.assertIn("Implementation Integrity Gate", readme)
+        self.assertIn("framework-check", readme)
+        self.assertIn("--lab-root", readme)
+
     def test_framework_check_reports_stale_research_agent_principles(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             config_home = Path(tmp) / "config"
