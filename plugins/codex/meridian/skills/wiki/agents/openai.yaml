@@ -1,0 +1,4 @@
+interface:
+  display_name: "Wiki"
+  short_description: "Update or use the Paper Wiki with grounded workflows."
+  default_prompt: "Use $wiki to answer this research question from my Paper Wiki."

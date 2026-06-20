@@ -274,13 +274,22 @@ At the start of any Lab workflow:
 
 - Check whether the target repo has `.meridian/`.
 - If it is missing, ask once before creating the Lab research space.
-- On confirmation, create the minimal Lab skeleton:
+- On confirmation, run the deterministic Meridian helper:
+
+  ```bash
+  python -m meridian setup init-lab --lab-root <repo>
+  ```
+
+  This creates or refreshes the minimal Lab skeleton:
   - `.meridian/state.md`
   - `.meridian/threads/index.md`
   - `.meridian/experiments/index.md`
   - `.meridian/proposals/index.md`
-- Also inject or refresh the guarded Meridian research-agent contract block in
-  project `AGENTS.md`; preserve user text outside that managed block.
+- The same helper injects or refreshes the guarded Meridian research-agent contract block
+  in project `AGENTS.md`; preserve user text outside that managed block.
+- Do not hand-write, summarize, paraphrase, or otherwise generate the
+  `AGENTS.md` block yourself. The block must come from the deterministic
+  Meridian helper so repeated Lab initializations produce the same managed text.
 - Continue the user's original idea or evidence-management task after the
   skeleton exists.
 - Create thread, experiment, and proposal files only when the current workflow

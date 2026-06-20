@@ -1,0 +1,4 @@
+interface:
+  display_name: "Meridian"
+  short_description: "Check setup, migration, plugin, core, and MCP readiness."
+  default_prompt: "Use $meridian to check my Meridian setup and repair any setup drift."

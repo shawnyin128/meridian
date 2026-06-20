@@ -222,7 +222,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.7.3"
+        expected = "0.7.4"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -278,9 +278,9 @@ class CliTests(unittest.TestCase):
         )
 
         self.assertEqual(meridian.returncode, 0, meridian.stderr)
-        self.assertEqual(meridian.stdout.strip(), "meridian 0.7.3")
+        self.assertEqual(meridian.stdout.strip(), "meridian 0.7.4")
         self.assertEqual(cli_module.returncode, 0, cli_module.stderr)
-        self.assertEqual(cli_module.stdout.strip(), "meridian 0.7.3")
+        self.assertEqual(cli_module.stdout.strip(), "meridian 0.7.4")
         self.assertEqual(cli_help.returncode, 0, cli_help.stderr)
         self.assertIn("usage: meridian wiki", cli_help.stdout)
 
@@ -4690,6 +4690,15 @@ quality_state: "multimodal_pending"
             self.assertIn("~/.meridian/code-ref/", text)
             self.assertIn("optional reference material", text)
 
+    def test_lab_initialization_requires_deterministic_agents_contract_helper(self) -> None:
+        codex_lab = Path("plugins/codex/meridian/skills/lab/SKILL.md").read_text(encoding="utf-8")
+        claude_lab = Path("plugins/claude-code/meridian/skills/lab/SKILL.md").read_text(encoding="utf-8")
+        for text in [codex_lab, claude_lab]:
+            self.assertIn("python -m meridian setup init-lab --lab-root <repo>", text)
+            self.assertIn("Do not hand-write", text)
+            self.assertIn("deterministic Meridian helper", text)
+            self.assertIn("guarded Meridian research-agent contract block", text)
+
     def test_research_agent_contract_eval_assets_parse(self) -> None:
         cases = [
             json.loads(line)
@@ -6453,6 +6462,20 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertFalse((root / "skills/wiki-evolve").exists())
             self.assertFalse((root / "skills/wiki-knowledge").exists())
             self.assertFalse((root / "skills/wiki-concept").exists())
+
+    def test_codex_product_skills_define_ui_display_names(self) -> None:
+        expected = {
+            "meridian": "Meridian",
+            "wiki": "Wiki",
+            "lab": "Lab",
+        }
+        for skill_name, display_name in expected.items():
+            metadata = Path(f"plugins/codex/meridian/skills/{skill_name}/agents/openai.yaml")
+            self.assertTrue(metadata.exists(), str(metadata))
+            text = metadata.read_text(encoding="utf-8")
+            self.assertIn(f'display_name: "{display_name}"', text)
+            self.assertIn("short_description:", text)
+            self.assertIn(f"default_prompt: \"Use ${skill_name}", text)
 
     def test_plugin_marketplace_taglines_match_lab_boundary(self) -> None:
         codex_marketplace = json.loads(Path(".agents/plugins/marketplace.json").read_text(encoding="utf-8"))
