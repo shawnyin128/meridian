@@ -637,6 +637,68 @@ class LabGraphTests(unittest.TestCase):
                 graph["supporting_artifacts"]["kv-compression.A"],
             )
 
+    def test_apply_update_stays_inside_node_before_graph_relations(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            thread = root / ".meridian/threads/kv-compression.md"
+            thread.write_text(
+                thread.read_text(encoding="utf-8").rstrip()
+                + "\n\n## Graph Relations\n\n"
+                + "| Source | Relation | Target | Strength | Note |\n"
+                + "| --- | --- | --- | --- | --- |\n",
+                encoding="utf-8",
+            )
+            (root / ".meridian/experiments/exp-02.md").write_text(
+                "---\ntype: research-experiment\nid: exp-02\nvalidity: valid\n---\n# Experiment\n",
+                encoding="utf-8",
+            )
+            from meridian.lab.graph import apply_lab_update
+
+            packet = {
+                "schema": "meridian.lab.update.v1",
+                "intent": "apply_before_graph_relations",
+                "target_thread": "kv-compression",
+                "changes": [
+                    {
+                        "op": "update_node",
+                        "node_id": "kv-compression.A",
+                        "fields": {
+                            "state": "supported",
+                            "next_action": "Keep graph relations outside the node.",
+                        },
+                    },
+                    {
+                        "op": "attach_artifact",
+                        "node_id": "kv-compression.A",
+                        "artifact": {
+                            "type": "experiment",
+                            "id": "exp-02",
+                            "title": "Boundary probe",
+                            "impact": "supports",
+                            "path": ".meridian/experiments/exp-02.md",
+                        },
+                    },
+                    {
+                        "op": "record_history",
+                        "node_id": "kv-compression.A",
+                        "message": "Confirmed same-level headings close node edits.",
+                    },
+                ],
+                "user_confirmation": {"required_for": [], "status": "not_required"},
+            }
+
+            result = apply_lab_update(root, packet)
+
+            self.assertEqual(result["status"], "applied")
+            thread_text = thread.read_text(encoding="utf-8")
+            graph_relations_index = thread_text.index("## Graph Relations")
+            self.assertLess(thread_text.index("#### Next Action"), graph_relations_index)
+            self.assertLess(thread_text.index("#### Supporting Artifacts"), graph_relations_index)
+            self.assertLess(thread_text.index("#### History"), graph_relations_index)
+            self.assertNotIn("#### Supporting Artifacts", thread_text[graph_relations_index:])
+            self.assertNotIn("#### History", thread_text[graph_relations_index:])
+
     def test_apply_update_writes_nothing_when_invalid(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -675,6 +737,93 @@ class LabGraphTests(unittest.TestCase):
             self.assertEqual(result["written_paths"], [])
             self.assertEqual(after, before)
             self.assertFalse((root / ".meridian/graph").exists())
+
+    def test_apply_update_rejects_valid_but_unsupported_apply_field_without_writing(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            before = {
+                path.relative_to(root).as_posix(): path.read_text(encoding="utf-8")
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+            from meridian.lab.graph import apply_lab_update
+
+            packet = {
+                "schema": "meridian.lab.update.v1",
+                "intent": "unsupported_title_apply",
+                "target_thread": "kv-compression",
+                "changes": [
+                    {
+                        "op": "update_node",
+                        "node_id": "kv-compression.A",
+                        "fields": {"title": "Retitled idea seed"},
+                    }
+                ],
+                "user_confirmation": {"required_for": [], "status": "not_required"},
+            }
+
+            result = apply_lab_update(root, packet)
+            after = {
+                path.relative_to(root).as_posix(): path.read_text(encoding="utf-8")
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+
+            self.assertEqual(result["status"], "rejected")
+            self.assertEqual(result["written_paths"], [])
+            self.assertEqual(after, before)
+            self.assertFalse((root / ".meridian/graph").exists())
+            codes = [finding["code"] for finding in result["validation"]["findings"]]
+            self.assertIn("unsupported_apply_field", codes)
+
+    def test_apply_update_rejects_valid_but_unsupported_apply_op_without_writing(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            thread = root / ".meridian/threads/kv-compression.md"
+            thread.write_text(
+                thread.read_text(encoding="utf-8")
+                + "\n\n### Node B: Follow-up probe\n\n"
+                + "- mode: `unresolved`\n"
+                + "- parent: A\n",
+                encoding="utf-8",
+            )
+            before = {
+                path.relative_to(root).as_posix(): path.read_text(encoding="utf-8")
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+            from meridian.lab.graph import apply_lab_update
+
+            packet = {
+                "schema": "meridian.lab.update.v1",
+                "intent": "unsupported_create_edge_apply",
+                "target_thread": "kv-compression",
+                "changes": [
+                    {
+                        "op": "create_edge",
+                        "source": "kv-compression.A",
+                        "target": "kv-compression.B",
+                        "kind": "related_to",
+                    }
+                ],
+                "user_confirmation": {"required_for": [], "status": "not_required"},
+            }
+
+            result = apply_lab_update(root, packet)
+            after = {
+                path.relative_to(root).as_posix(): path.read_text(encoding="utf-8")
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+
+            self.assertEqual(result["status"], "rejected")
+            self.assertEqual(result["written_paths"], [])
+            self.assertEqual(after, before)
+            self.assertFalse((root / ".meridian/graph").exists())
+            codes = [finding["code"] for finding in result["validation"]["findings"]]
+            self.assertIn("unsupported_apply_op", codes)
 
     def test_validate_update_packet_rejects_missing_target_thread(self) -> None:
         with TemporaryDirectory() as tmp:

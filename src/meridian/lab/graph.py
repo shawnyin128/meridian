@@ -67,6 +67,9 @@ STRING_UPDATE_NODE_FIELDS = {
     "return_signal",
 }
 
+APPLY_SUPPORTED_OPS = {"update_node", "attach_artifact", "record_history", "set_active_path", "set_active_thread"}
+APPLY_SUPPORTED_UPDATE_NODE_FIELDS = {"state", "next_action"}
+
 CONFIRMATION_REQUIRED_FIELDS = {
     "state:repairable",
     "state:dead",
@@ -468,6 +471,8 @@ def write_lab_graph(root: Path) -> LabGraphBuildResult:
 
 def apply_lab_update(root: Path, packet: dict[str, Any]) -> dict[str, Any]:
     validation = validate_lab_update_packet(root, packet)
+    if validation["status"] == "pass":
+        validation = _reject_apply_unsupported_changes(validation, packet)
     if validation["status"] != "pass":
         return {
             "schema": LAB_APPLY_UPDATE_SCHEMA_VERSION,
@@ -897,6 +902,39 @@ def _split_node_id(node_id: str) -> tuple[str, str]:
     return thread_id, raw_id
 
 
+def _reject_apply_unsupported_changes(validation: dict[str, Any], packet: dict[str, Any]) -> dict[str, Any]:
+    findings = list(validation.get("findings", []))
+    changes = packet.get("changes")
+    for index, change in enumerate(changes if isinstance(changes, list) else []):
+        if not isinstance(change, dict):
+            continue
+        op = str(change.get("op") or "").strip()
+        if op not in APPLY_SUPPORTED_OPS:
+            findings.append(
+                {
+                    "severity": "error",
+                    "code": "unsupported_apply_op",
+                    "path": f"changes[{index}].op",
+                    "message": f"Apply does not support update op `{op}` in this task.",
+                }
+            )
+            continue
+        if op != "update_node":
+            continue
+        fields = change.get("fields")
+        for field in sorted(fields if isinstance(fields, dict) else {}):
+            if field not in APPLY_SUPPORTED_UPDATE_NODE_FIELDS:
+                findings.append(
+                    {
+                        "severity": "error",
+                        "code": "unsupported_apply_field",
+                        "path": f"changes[{index}].fields.{field}",
+                        "message": f"Apply does not support update_node field `{field}` in this task.",
+                    }
+                )
+    return {**validation, "status": "fail" if findings else "pass", "findings": findings}
+
+
 def _apply_update_node_change(text: str, raw_id: str, fields: dict[str, Any]) -> str:
     def edit(body: str) -> str:
         if "state" in fields:
@@ -932,7 +970,7 @@ def _replace_node_body(text: str, raw_id: str, edit: Any) -> str:
     if not match:
         return text
     body_start = match.end()
-    next_match = re.search(r"^###[ \t]+Node[ \t]+[^:\n]+(?::[^\n]*)?$", text[body_start:], flags=re.MULTILINE)
+    next_match = re.search(r"^#{1,3}[ \t]+", text[body_start:], flags=re.MULTILINE)
     body_end = body_start + next_match.start() if next_match else len(text)
     return text[:body_start] + edit(text[body_start:body_end]) + text[body_end:]
 
