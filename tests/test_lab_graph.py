@@ -482,6 +482,66 @@ class LabGraphTests(unittest.TestCase):
             self.assertNotIn("graph_json_stale", codes)
             self.assertEqual(health["status"], "pass")
 
+    def test_validate_update_packet_rejects_missing_confirmation(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            from meridian.lab.graph import validate_lab_update_packet
+
+            packet = {
+                "schema": "meridian.lab.update.v1",
+                "intent": "mark_repairable",
+                "target_thread": "kv-compression",
+                "changes": [
+                    {
+                        "op": "update_node",
+                        "node_id": "kv-compression.A",
+                        "fields": {"state": "repairable"},
+                    }
+                ],
+                "user_confirmation": {"required_for": ["state:repairable"], "status": "missing"},
+            }
+
+            report = validate_lab_update_packet(root, packet)
+
+            self.assertEqual(report["status"], "fail")
+            self.assertIn("confirmation_required", [finding["code"] for finding in report["findings"]])
+
+    def test_validate_update_packet_accepts_artifact_attach(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            (root / ".meridian/experiments/exp-02.md").write_text(
+                "---\ntype: research-experiment\nid: exp-02\nvalidity: valid\n---\n# Experiment\n",
+                encoding="utf-8",
+            )
+            from meridian.lab.graph import validate_lab_update_packet
+
+            packet = {
+                "schema": "meridian.lab.update.v1",
+                "intent": "attach_experiment",
+                "target_thread": "kv-compression",
+                "changes": [
+                    {
+                        "op": "attach_artifact",
+                        "node_id": "kv-compression.A",
+                        "artifact": {
+                            "type": "experiment",
+                            "id": "exp-02",
+                            "title": "Probe",
+                            "impact": "supports",
+                            "path": ".meridian/experiments/exp-02.md",
+                        },
+                    }
+                ],
+                "user_confirmation": {"required_for": [], "status": "not_required"},
+            }
+
+            report = validate_lab_update_packet(root, packet)
+
+            self.assertEqual(report["status"], "pass")
+            self.assertEqual(report["findings"], [])
+
 
 if __name__ == "__main__":
     unittest.main()

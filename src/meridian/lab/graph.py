@@ -35,6 +35,20 @@ ALLOWED_ARTIFACT_TYPES = {
     "research_grounding_injection",
 }
 
+ALLOWED_UPDATE_OPS = {
+    "create_node",
+    "update_node",
+    "create_edge",
+    "update_edge",
+    "attach_artifact",
+    "detach_artifact",
+    "set_active_thread",
+    "set_active_path",
+    "record_history",
+}
+
+CONFIRMATION_REQUIRED_FIELDS = {"state:repairable", "state:dead", "active_thread", "active_path", "create_node"}
+
 
 @dataclass(frozen=True)
 class LabGraphBuildResult:
@@ -185,6 +199,77 @@ def check_lab_graph(root: Path) -> dict[str, Any]:
     health["findings"] = findings
     health["status"] = _health_status(findings)
     return health
+
+
+def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, Any]:
+    lab_root = _lab_root(root)
+    graph = materialize_lab_graph(root).graph
+    node_ids = {node["id"] for node in graph["nodes"]}
+    findings: list[dict[str, str]] = []
+
+    def add(code: str, message: str, path: str = "<packet>") -> None:
+        findings.append({"severity": "error", "code": code, "path": path, "message": message})
+
+    if packet.get("schema") != LAB_UPDATE_SCHEMA_VERSION:
+        add("invalid_update_schema", f"Update packet schema must be {LAB_UPDATE_SCHEMA_VERSION}.")
+    target_thread = str(packet.get("target_thread") or "").strip()
+    if target_thread and not (lab_root / "threads" / f"{target_thread}.md").exists():
+        add("target_thread_missing", f"Target thread `{target_thread}` does not exist.")
+    changes = packet.get("changes")
+    if not isinstance(changes, list) or not changes:
+        add("missing_changes", "Update packet needs a non-empty changes list.")
+
+    confirmation = packet.get("user_confirmation") if isinstance(packet.get("user_confirmation"), dict) else {}
+    confirmation_status = str(confirmation.get("status") or "").strip()
+
+    for index, change in enumerate(changes if isinstance(changes, list) else []):
+        if not isinstance(change, dict):
+            add("invalid_change", "Each change must be an object.", f"changes[{index}]")
+            continue
+        op = str(change.get("op") or "").strip()
+        if op not in ALLOWED_UPDATE_OPS:
+            add("invalid_update_op", f"Unsupported update op `{op}`.", f"changes[{index}].op")
+        node_id = str(change.get("node_id") or "").strip()
+        if op in {"update_node", "attach_artifact", "detach_artifact"} and node_id not in node_ids:
+            add("node_missing", f"Node `{node_id}` does not exist.", f"changes[{index}].node_id")
+        if op == "update_node":
+            fields = change.get("fields")
+            if not isinstance(fields, dict) or not fields:
+                add("missing_update_fields", "update_node requires non-empty fields.", f"changes[{index}].fields")
+            state = str((fields or {}).get("state") or "").strip()
+            if state and state not in ALLOWED_NODE_MODES:
+                add("invalid_node_state", f"Node state `{state}` is not allowed.", f"changes[{index}].fields.state")
+            if state in {"repairable", "dead"} and confirmation_status != "accepted":
+                add(
+                    "confirmation_required",
+                    f"Changing state to `{state}` requires accepted user confirmation.",
+                    f"changes[{index}]",
+                )
+        if op == "attach_artifact":
+            artifact = change.get("artifact")
+            if not isinstance(artifact, dict):
+                add("missing_artifact", "attach_artifact requires artifact object.", f"changes[{index}].artifact")
+            else:
+                artifact_type = str(artifact.get("type") or "").strip()
+                if artifact_type not in ALLOWED_ARTIFACT_TYPES:
+                    add(
+                        "invalid_artifact_type",
+                        f"Artifact type `{artifact_type}` is not allowed.",
+                        f"changes[{index}].artifact.type",
+                    )
+                path = str(artifact.get("path") or "").strip()
+                if path.startswith(".meridian/") and not (lab_root.parent / path).exists():
+                    add(
+                        "artifact_path_missing",
+                        f"Artifact path `{path}` does not exist.",
+                        f"changes[{index}].artifact.path",
+                    )
+
+    return {
+        "schema": "meridian.lab.update_validation.v1",
+        "status": "fail" if findings else "pass",
+        "findings": findings,
+    }
 
 
 def write_lab_graph(root: Path) -> LabGraphBuildResult:
