@@ -5,6 +5,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
+from meridian.cli import main
+from meridian.framework_check import run_framework_check
 from meridian.lab.graph import LAB_GRAPH_SCHEMA_VERSION, materialize_lab_graph
 
 
@@ -636,6 +638,94 @@ class LabGraphTests(unittest.TestCase):
                 },
                 graph["supporting_artifacts"]["kv-compression.A"],
             )
+
+    def test_cli_lab_graph_refresh_and_check(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+
+            refresh_status = main(["lab", "graph-refresh", "--lab-root", str(root)])
+            check_status = main(["lab", "graph-check", "--lab-root", str(root)])
+
+            self.assertEqual(refresh_status, 0)
+            self.assertEqual(check_status, 0)
+            self.assertTrue((root / ".meridian/graph/graph.json").exists())
+
+    def test_cli_lab_apply_update_from_json_file(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            packet_path = root / "packet.json"
+            packet_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "meridian.lab.update.v1",
+                        "intent": "mark_supported",
+                        "target_thread": "kv-compression",
+                        "changes": [
+                            {
+                                "op": "update_node",
+                                "node_id": "kv-compression.A",
+                                "fields": {"state": "supported"},
+                            }
+                        ],
+                        "user_confirmation": {"required_for": [], "status": "not_required"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            status = main(["lab", "apply-update", str(packet_path), "--lab-root", str(root)])
+
+            self.assertEqual(status, 0)
+            thread_text = (root / ".meridian/threads/kv-compression.md").read_text(encoding="utf-8")
+            self.assertIn("- mode: `supported`", thread_text)
+
+    def test_cli_lab_export_graph_writes_required_json_out(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            out_path = root / "exported-graph.json"
+
+            status = main(["lab", "export-graph", "--lab-root", str(root), "--json-out", str(out_path)])
+
+            self.assertEqual(status, 0)
+            payload = json.loads(out_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["schema"], LAB_GRAPH_SCHEMA_VERSION)
+            self.assertEqual(payload["health"]["status"], "pass")
+
+    def test_framework_check_lab_state_warns_when_graph_json_missing(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+
+            report = run_framework_check(project_root=root, lab_root=root)
+
+            lab_state = next(category for category in report.categories if category.name == "Lab State")
+            codes = [finding.code for finding in lab_state.findings]
+            self.assertIn("lab_graph_json_missing", codes)
+            self.assertEqual(lab_state.status, "warn")
+
+    def test_framework_check_lab_state_fails_dangling_graph_state(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            thread = root / ".meridian/threads/kv-compression.md"
+            thread.write_text(
+                thread.read_text(encoding="utf-8")
+                + "\n## Graph Relations\n\n"
+                + "| Source | Relation | Target | Strength | Note |\n"
+                + "| --- | --- | --- | --- | --- |\n"
+                + "| kv-compression.A | related_to | kv-compression.missing | weak | broken |\n",
+                encoding="utf-8",
+            )
+
+            report = run_framework_check(project_root=root, lab_root=root)
+
+            lab_state = next(category for category in report.categories if category.name == "Lab State")
+            critical_codes = [finding.code for finding in lab_state.findings if finding.severity == "critical"]
+            self.assertIn("lab_dangling_edge_target", critical_codes)
+            self.assertEqual(lab_state.status, "fail")
 
     def test_apply_update_stays_inside_node_before_graph_relations(self) -> None:
         with TemporaryDirectory() as tmp:

@@ -15,6 +15,7 @@ from meridian.evals.codex_routing import (
     run_codex_routing_eval,
 )
 from meridian.framework_check import run_framework_check, write_framework_json, write_framework_report
+from meridian.lab import apply_lab_update, check_lab_graph, materialize_lab_graph, write_lab_graph
 from meridian.setup.doctor import build_setup_doctor_report, format_setup_doctor
 from meridian.setup.lab import format_lab_setup_result, initialize_lab_readiness, write_lab_setup_json
 from meridian.setup.repair import apply_mcp_repair
@@ -157,6 +158,58 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional Meridian user config home. Defaults to MERIDIAN_CONFIG_HOME or ~/.meridian.",
     )
     setup_init_lab.add_argument("--json-out", type=Path, default=None, help="Optional machine-readable result path.")
+
+    lab = subparsers.add_parser("lab", help="Meridian Lab graph workflows")
+    lab_subparsers = lab.add_subparsers(dest="command", required=True)
+
+    lab_graph_refresh = lab_subparsers.add_parser(
+        "graph-refresh",
+        help="Regenerate Lab graph JSON and health artifacts.",
+    )
+    lab_graph_refresh.add_argument(
+        "--lab-root",
+        type=Path,
+        required=True,
+        help="Target research repo root or .meridian directory.",
+    )
+    lab_graph_refresh.add_argument("--json-out", type=Path, default=None, help="Optional graph JSON copy path.")
+
+    lab_graph_check = lab_subparsers.add_parser(
+        "graph-check",
+        help="Check generated Lab graph health against Markdown state.",
+    )
+    lab_graph_check.add_argument(
+        "--lab-root",
+        type=Path,
+        required=True,
+        help="Target research repo root or .meridian directory.",
+    )
+    lab_graph_check.add_argument("--json-out", type=Path, default=None, help="Optional graph health report path.")
+
+    lab_apply_update = lab_subparsers.add_parser(
+        "apply-update",
+        help="Apply a Lab update packet from JSON.",
+    )
+    lab_apply_update.add_argument("packet", type=Path, help="Path to a Lab update packet JSON file.")
+    lab_apply_update.add_argument(
+        "--lab-root",
+        type=Path,
+        required=True,
+        help="Target research repo root or .meridian directory.",
+    )
+    lab_apply_update.add_argument("--json-out", type=Path, default=None, help="Optional apply result JSON path.")
+
+    lab_export_graph = lab_subparsers.add_parser(
+        "export-graph",
+        help="Materialize Lab graph JSON to an explicit output path.",
+    )
+    lab_export_graph.add_argument(
+        "--lab-root",
+        type=Path,
+        required=True,
+        help="Target research repo root or .meridian directory.",
+    )
+    lab_export_graph.add_argument("--json-out", type=Path, required=True, help="Required graph JSON output path.")
 
     eval_product = subparsers.add_parser("eval", help="Meridian live evaluation workflows")
     eval_subparsers = eval_product.add_subparsers(dest="command", required=True)
@@ -1351,6 +1404,47 @@ def main(argv: list[str] | None = None) -> int:
                 write_lab_setup_json(result, args.json_out)
                 print(f"Wrote Lab setup JSON: {args.json_out}")
             return 0 if result.status == "ready" else 1
+
+        if args.product == "lab" and args.command == "graph-refresh":
+            result = write_lab_graph(args.lab_root)
+            graph_path = result.lab_root / "graph" / "graph.json"
+            if args.json_out:
+                target = _write_json_payload(args.json_out, result.graph)
+                print(f"Wrote Lab graph JSON copy: {target}")
+            print(f"Lab graph refresh: {result.health['status']}")
+            print(f"Wrote Lab graph JSON: {graph_path}")
+            print(f"Findings: {len(result.health['findings'])}")
+            return 0 if result.health.get("status") == "pass" else 1
+
+        if args.product == "lab" and args.command == "graph-check":
+            health = check_lab_graph(args.lab_root)
+            if args.json_out:
+                target = _write_json_payload(args.json_out, health)
+                print(f"Wrote Lab graph health JSON: {target}")
+            print(f"Lab graph check: {health['status']}")
+            print(f"Findings: {len(health['findings'])}")
+            return 0 if health.get("status") == "pass" else 1
+
+        if args.product == "lab" and args.command == "apply-update":
+            packet = _read_manifest(args.packet)
+            result = apply_lab_update(args.lab_root, packet)
+            if args.json_out:
+                target = _write_json_payload(args.json_out, result)
+                print(f"Wrote Lab update result JSON: {target}")
+            print(f"Lab update: {result['status']}")
+            validation = result.get("validation")
+            if isinstance(validation, dict):
+                print(f"Validation: {validation.get('status', 'unknown')}")
+            print(f"Written paths: {len(result.get('written_paths', []))}")
+            return 0 if result.get("status") == "applied" else 1
+
+        if args.product == "lab" and args.command == "export-graph":
+            result = materialize_lab_graph(args.lab_root)
+            target = _write_json_payload(args.json_out, result.graph)
+            print(f"Lab graph export: {result.health['status']}")
+            print(f"Wrote Lab graph JSON: {target}")
+            print(f"Findings: {len(result.health['findings'])}")
+            return 0 if result.health.get("status") == "pass" else 1
 
         if args.product == "eval" and args.command == "codex-routing":
             result = run_codex_routing_eval(
@@ -2551,6 +2645,13 @@ def _print_artifact_group(label: str, artifacts: dict[str, object]) -> None:
         if value is None:
             continue
         print(f"  - {key}: {value}")
+
+
+def _write_json_payload(path: Path, payload: object) -> Path:
+    target = path.expanduser().resolve()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return target
 
 
 def _read_manifest(path: Path) -> dict[str, object]:
