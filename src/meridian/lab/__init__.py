@@ -12,6 +12,12 @@ from meridian.lab.coding_style import (
     migrate_coding_style_profile,
     validate_coding_style_profile,
 )
+from meridian.lab.graph import (
+    LAB_GRAPH_SCHEMA_VERSION,
+    LAB_UPDATE_SCHEMA_VERSION,
+    LabGraphBuildResult,
+    materialize_lab_graph,
+)
 from meridian.lab.research_agent_contract import (
     initialize_research_agent_principles,
     inject_meridian_agents_contract,
@@ -50,8 +56,12 @@ __all__ = [
     "initialize_coding_style_profile",
     "initialize_research_agent_principles",
     "inject_meridian_agents_contract",
+    "LAB_GRAPH_SCHEMA_VERSION",
+    "LAB_UPDATE_SCHEMA_VERSION",
     "LabValidationFinding",
     "LabValidationReport",
+    "LabGraphBuildResult",
+    "materialize_lab_graph",
     "MERIDIAN_AGENTS_CONTRACT_END",
     "MERIDIAN_AGENTS_CONTRACT_START",
     "meridian_agents_contract_block",
