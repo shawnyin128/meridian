@@ -1,6 +1,18 @@
 {
   "mcpServers": {
     "meridian-paper-wiki": {
+      "title": "Meridian Paper Wiki",
+      "description": "Retrieve, read, and trace source-grounded Paper Wiki context for research and coding.",
+      "icons": [
+        {
+          "src": "./assets/meridian-mark.svg",
+          "mimeType": "image/svg+xml",
+          "sizes": [
+            "24x24"
+          ]
+        }
+      ],
+      "cwd": ".",
       "command": "python",
       "args": [
         "-m",

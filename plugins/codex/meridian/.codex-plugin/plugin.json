@@ -1,7 +1,7 @@
 {
   "name": "meridian",
-  "version": "0.7.4",
-  "description": "Markdown-first Paper Wiki and Lab idea-graph copilot for Codex.",
+  "version": "0.7.5",
+  "description": "Source-grounded Paper Wiki retrieval, MCP context/read/trace, and Lab idea-graph copilot for Codex.",
   "author": {
     "name": "Meridian",
     "url": "https://github.com/shawnyin128/meridian"
@@ -11,28 +11,36 @@
   "license": "MIT",
   "keywords": [
     "paper-wiki",
+    "grounding",
+    "retrieval",
+    "context",
+    "read",
+    "trace",
     "research",
     "mcp",
-    "obsidian"
+    "obsidian",
+    "lab"
   ],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Meridian",
-    "shortDescription": "Setup Meridian, use Paper Wiki, and manage Lab idea graphs.",
-    "longDescription": "Meridian exposes three user-facing skills: meridian for setup and migration, wiki for Paper Wiki update/use workflows, and lab for Lab-first research/dev preflight, wiki-grounded idea graphs, approach trees, experiments, evidence, Research Grounding Injections, and local findings.",
+    "shortDescription": "Ground research with Paper Wiki and Lab.",
+    "longDescription": "Meridian exposes setup, Paper Wiki, and Lab workflows for source-grounded research. Use Paper Wiki to retrieve context, read canonical pages, and trace evidence through the Meridian MCP context/read/trace tools. Use Lab to place ideas, review feasibility against wiki evidence, manage approach trees, record experiments, prepare Research Grounding Injections, and carry local findings back to the wiki without silently dropping requested grounding.",
     "developerName": "Meridian",
     "category": "Productivity",
     "capabilities": [
       "Interactive",
+      "Read",
       "Write"
     ],
     "defaultPrompt": [
-      "Check my Meridian setup and migrate anything out of date.",
-      "Ingest this paper into my Paper Wiki.",
-      "Use my Paper Wiki to answer this research question.",
-      "Use Lab to place this idea, ground it in my Paper Wiki, and prepare the next evidence step."
+      "Check Meridian setup and MCP readiness.",
+      "Use my Paper Wiki to ground this research question.",
+      "Use Lab to place this idea and plan evidence."
     ],
-    "brandColor": "#2563EB"
+    "brandColor": "#2563EB",
+    "composerIcon": "./assets/meridian-mark.svg",
+    "logo": "./assets/meridian-mark.svg"
   }
 }

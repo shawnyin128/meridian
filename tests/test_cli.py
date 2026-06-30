@@ -222,7 +222,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.7.4"
+        expected = "0.7.5"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -278,9 +278,9 @@ class CliTests(unittest.TestCase):
         )
 
         self.assertEqual(meridian.returncode, 0, meridian.stderr)
-        self.assertEqual(meridian.stdout.strip(), "meridian 0.7.4")
+        self.assertEqual(meridian.stdout.strip(), "meridian 0.7.5")
         self.assertEqual(cli_module.returncode, 0, cli_module.stderr)
-        self.assertEqual(cli_module.stdout.strip(), "meridian 0.7.4")
+        self.assertEqual(cli_module.stdout.strip(), "meridian 0.7.5")
         self.assertEqual(cli_help.returncode, 0, cli_help.stderr)
         self.assertIn("usage: meridian wiki", cli_help.stdout)
 
@@ -4162,6 +4162,7 @@ quality_state: "multimodal_pending"
                 "top": "preserve-me",
                 "mcpServers": {
                     "meridian-paper-wiki": {
+                        "icons": [{"src": "./assets/meridian-mark.svg", "mimeType": "image/svg+xml"}],
                         "command": "python3",
                         "args": ["-m", "meridian.mcp", "serve"],
                     }
@@ -4185,7 +4186,12 @@ quality_state: "multimodal_pending"
             self.assertTrue(result.applied)
             self.assertTrue(result.backup_path.exists())
             self.assertEqual(result.backup_path.read_text(encoding="utf-8"), original_text)
-            self.assertEqual(updated["mcpServers"]["meridian-paper-wiki"]["command"], "C:/Python/python.exe")
+            server = updated["mcpServers"]["meridian-paper-wiki"]
+            self.assertEqual(server["command"], "C:/Python/python.exe")
+            self.assertEqual(server["icons"], [{"src": "./assets/meridian-mark.svg", "mimeType": "image/svg+xml"}])
+            self.assertEqual(server["title"], "Meridian Paper Wiki")
+            self.assertEqual(server["cwd"], ".")
+            self.assertIn("source-grounded Paper Wiki context", server["description"])
             self.assertEqual(updated["top"], "preserve-me")
 
     def test_setup_repair_mcp_apply_rewrites_bad_mcp_servers_shape(self) -> None:
@@ -4207,10 +4213,11 @@ quality_state: "multimodal_pending"
             self.assertTrue(result.applied)
             self.assertTrue(result.backup_path.exists())
             self.assertEqual(updated["top"], "preserve-me")
-            self.assertEqual(
-                updated["mcpServers"]["meridian-paper-wiki"],
-                {"command": "C:/Python/python.exe", "args": ["-m", "meridian.mcp", "serve"]},
-            )
+            server = updated["mcpServers"]["meridian-paper-wiki"]
+            self.assertEqual(server["command"], "C:/Python/python.exe")
+            self.assertEqual(server["args"], ["-m", "meridian.mcp", "serve"])
+            self.assertEqual(server["title"], "Meridian Paper Wiki")
+            self.assertEqual(server["cwd"], ".")
 
     def test_setup_repair_mcp_apply_rewrites_non_dict_root_payload(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -4228,10 +4235,11 @@ quality_state: "multimodal_pending"
             updated = json.loads(mcp_path.read_text(encoding="utf-8"))
 
             self.assertTrue(result.applied)
-            self.assertEqual(
-                updated,
-                {"mcpServers": {"meridian-paper-wiki": {"command": "C:/Python/python.exe", "args": ["-m", "meridian.mcp", "serve"]}}},
-            )
+            server = updated["mcpServers"]["meridian-paper-wiki"]
+            self.assertEqual(server["command"], "C:/Python/python.exe")
+            self.assertEqual(server["args"], ["-m", "meridian.mcp", "serve"])
+            self.assertEqual(server["title"], "Meridian Paper Wiki")
+            self.assertEqual(server["cwd"], ".")
 
     def test_setup_repair_mcp_apply_rewrites_invalid_json_payload(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -4251,10 +4259,35 @@ quality_state: "multimodal_pending"
 
             self.assertTrue(result.applied)
             self.assertEqual(result.backup_path.read_text(encoding="utf-8"), original_text)
-            self.assertEqual(
-                updated,
-                {"mcpServers": {"meridian-paper-wiki": {"command": "C:/Python/python.exe", "args": ["-m", "meridian.mcp", "serve"]}}},
+            server = updated["mcpServers"]["meridian-paper-wiki"]
+            self.assertEqual(server["command"], "C:/Python/python.exe")
+            self.assertEqual(server["args"], ["-m", "meridian.mcp", "serve"])
+            self.assertEqual(server["title"], "Meridian Paper Wiki")
+            self.assertEqual(server["cwd"], ".")
+
+    def test_setup_repair_mcp_apply_keeps_claude_server_schema_minimal(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            mcp_path = Path(tmp) / ".mcp.json"
+            original = {
+                "mcpServers": {
+                    "meridian-paper-wiki": {
+                        "command": "python3",
+                        "args": ["-m", "meridian.mcp", "serve"],
+                    }
+                }
+            }
+            mcp_path.write_text(json.dumps(original), encoding="utf-8")
+
+            apply_mcp_repair(
+                client="claude",
+                mcp_config_path=mcp_path,
+                command="C:/Python/python.exe",
+                args=["-m", "meridian.mcp", "serve"],
+                timestamp="20260615-153012",
             )
+
+            server = json.loads(mcp_path.read_text(encoding="utf-8"))["mcpServers"]["meridian-paper-wiki"]
+            self.assertEqual(server, {"command": "C:/Python/python.exe", "args": ["-m", "meridian.mcp", "serve"]})
 
     def test_setup_repair_mcp_apply_timestamp_collision_generates_unique_backups(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -6435,6 +6468,19 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertEqual(codex_manifest["name"], "meridian")
         self.assertEqual(codex_manifest["skills"], "./skills/")
         self.assertEqual(codex_manifest["mcpServers"], "./.mcp.json")
+        self.assertIn("grounding", codex_manifest["keywords"])
+        self.assertIn("retrieval", codex_manifest["keywords"])
+        codex_interface = codex_manifest["interface"]
+        self.assertIn("Read", codex_interface["capabilities"])
+        self.assertIn("Write", codex_interface["capabilities"])
+        self.assertLessEqual(len(codex_interface["defaultPrompt"]), 3)
+        self.assertTrue(
+            all(len(prompt) <= 128 for prompt in codex_interface["defaultPrompt"]),
+            codex_interface["defaultPrompt"],
+        )
+        self.assertIn("MCP context/read/trace", codex_interface["longDescription"])
+        self.assertTrue((codex_root / codex_interface["composerIcon"]).exists())
+        self.assertTrue((codex_root / codex_interface["logo"]).exists())
 
         claude_root = Path("plugins/claude-code/meridian")
         claude_marketplace = json.loads(
@@ -6452,6 +6498,12 @@ Compare recency-only retention with attention-based and oracle retention policie
             server = mcp_config["mcpServers"]["meridian-paper-wiki"]
             self.assertEqual(server["command"], "python")
             self.assertEqual(server["args"], ["-m", "meridian.mcp", "serve"])
+            if root == codex_root:
+                self.assertEqual(server["title"], "Meridian Paper Wiki")
+                self.assertEqual(server["cwd"], ".")
+                self.assertIn("source-grounded Paper Wiki context", server["description"])
+                self.assertEqual(server["icons"][0]["mimeType"], "image/svg+xml")
+                self.assertTrue((root / server["icons"][0]["src"]).exists())
             self.assertTrue((root / "skills/meridian/SKILL.md").exists())
             self.assertTrue((root / "skills/wiki/SKILL.md").exists())
             self.assertTrue((root / "skills/lab/SKILL.md").exists())

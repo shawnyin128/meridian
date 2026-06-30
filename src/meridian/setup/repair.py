@@ -8,6 +8,12 @@ from pathlib import Path
 from meridian.setup.clients import MCP_SERVER_NAME
 from meridian.setup.doctor import RepairAction
 
+CODEX_MCP_SERVER_DISCOVERY_METADATA = {
+    "title": "Meridian Paper Wiki",
+    "description": "Retrieve, read, and trace source-grounded Paper Wiki context for research and coding.",
+    "cwd": ".",
+}
+
 
 @dataclass(frozen=True)
 class RepairResult:
@@ -49,6 +55,23 @@ def _backup_path_for(path: Path, timestamp: str) -> Path:
         suffix += 1
 
 
+def _server_entry_for_repair(
+    *,
+    client: str,
+    command: str,
+    args: list[str],
+    existing: object,
+) -> dict[str, object]:
+    server = dict(existing) if isinstance(existing, dict) else {}
+    if client == "codex":
+        for key, value in CODEX_MCP_SERVER_DISCOVERY_METADATA.items():
+            if not isinstance(server.get(key), str) or not str(server[key]).strip():
+                server[key] = value
+    server["command"] = command
+    server["args"] = args
+    return server
+
+
 def apply_mcp_repair(
     *,
     client: str,
@@ -74,7 +97,13 @@ def apply_mcp_repair(
     else:
         # keep existing dict and normalize nested object shape by clobbering target key
         payload["mcpServers"] = servers
-    payload["mcpServers"][MCP_SERVER_NAME] = {"command": command, "args": args}
+    existing_server = servers.get(MCP_SERVER_NAME)
+    payload["mcpServers"][MCP_SERVER_NAME] = _server_entry_for_repair(
+        client=client,
+        command=command,
+        args=args,
+        existing=existing_server,
+    )
     mcp_config_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return RepairResult(
         client=client,
