@@ -213,7 +213,9 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
     if packet.get("schema") != LAB_UPDATE_SCHEMA_VERSION:
         add("invalid_update_schema", f"Update packet schema must be {LAB_UPDATE_SCHEMA_VERSION}.")
     target_thread = str(packet.get("target_thread") or "").strip()
-    if target_thread and not (lab_root / "threads" / f"{target_thread}.md").exists():
+    if not target_thread:
+        add("missing_target_thread", "Update packet requires a non-empty target_thread.")
+    elif not (lab_root / "threads" / f"{target_thread}.md").exists():
         add("target_thread_missing", f"Target thread `{target_thread}` does not exist.")
     changes = packet.get("changes")
     if not isinstance(changes, list) or not changes:
@@ -258,7 +260,13 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
                         f"changes[{index}].artifact.type",
                     )
                 path = str(artifact.get("path") or "").strip()
-                if path.startswith(".meridian/") and not (lab_root.parent / path).exists():
+                if not path:
+                    add(
+                        "missing_artifact_path",
+                        "attach_artifact requires non-empty artifact path.",
+                        f"changes[{index}].artifact.path",
+                    )
+                elif path.startswith(".meridian/") and not (lab_root.parent / path).exists():
                     add(
                         "artifact_path_missing",
                         f"Artifact path `{path}` does not exist.",
