@@ -670,10 +670,15 @@ class LabGraphTests(unittest.TestCase):
                     {"op": "create_node", "node_id": "kv-compression.B"},
                     {"op": "set_active_thread", "thread_id": "kv-compression"},
                     {"op": "set_active_path", "path": ["kv-compression.A"]},
-                    {"op": "detach_artifact", "node_id": "kv-compression.A", "artifact_id": "exp-01"},
+                    {
+                        "op": "detach_artifact",
+                        "node_id": "kv-compression.A",
+                        "artifact_id": "exp-01",
+                        "artifact_type": "experiment",
+                    },
                 ],
                 "user_confirmation": {
-                    "required_for": ["create_node", "active_thread", "active_path", "detach_artifact"],
+                    "required_for": ["create_node", "set_active_thread", "set_active_path", "detach_artifact"],
                     "status": "missing",
                 },
             }
@@ -729,6 +734,168 @@ class LabGraphTests(unittest.TestCase):
             self.assertIn("missing_node_id", codes)
             self.assertIn("invalid_node_id", codes)
             self.assertIn("node_already_exists", codes)
+
+    def test_validate_update_packet_rejects_invalid_accepted_set_active_path(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            from meridian.lab.graph import validate_lab_update_packet
+
+            packet = {
+                "schema": "meridian.lab.update.v1",
+                "intent": "set_active_path",
+                "target_thread": "kv-compression",
+                "changes": [
+                    {
+                        "op": "set_active_path",
+                        "path": ["kv-compression.A", "kv compression.B", "kv-compression.missing"],
+                    }
+                ],
+                "user_confirmation": {"required_for": ["set_active_path"], "status": "accepted"},
+            }
+
+            report = validate_lab_update_packet(root, packet)
+            codes = [finding["code"] for finding in report["findings"]]
+
+            self.assertEqual(report["status"], "fail")
+            self.assertIn("invalid_active_path_node", codes)
+            self.assertIn("active_path_node_missing", codes)
+
+    def test_validate_update_packet_rejects_unknown_update_field_without_writing_files(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            before = {
+                path.relative_to(root).as_posix(): path.read_text(encoding="utf-8")
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+            from meridian.lab.graph import validate_lab_update_packet
+
+            packet = {
+                "schema": "meridian.lab.update.v1",
+                "intent": "update_node",
+                "target_thread": "kv-compression",
+                "changes": [
+                    {
+                        "op": "update_node",
+                        "node_id": "kv-compression.A",
+                        "fields": {
+                            "unexpected": "value",
+                            "title": " ",
+                            "doing": ["not", "a", "string"],
+                        },
+                    }
+                ],
+                "user_confirmation": {"required_for": [], "status": "not_required"},
+            }
+
+            report = validate_lab_update_packet(root, packet)
+            after = {
+                path.relative_to(root).as_posix(): path.read_text(encoding="utf-8")
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+            codes = [finding["code"] for finding in report["findings"]]
+
+            self.assertEqual(report["status"], "fail")
+            self.assertIn("invalid_update_field", codes)
+            self.assertIn("invalid_update_field_value", codes)
+            self.assertEqual(after, before)
+
+    def test_validate_update_packet_rejects_scoped_confirmation_mismatch(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            from meridian.lab.graph import validate_lab_update_packet
+
+            packet = {
+                "schema": "meridian.lab.update.v1",
+                "intent": "confirm_mismatch",
+                "target_thread": "kv-compression",
+                "changes": [
+                    {
+                        "op": "update_node",
+                        "node_id": "kv-compression.A",
+                        "fields": {"state": "repairable"},
+                    },
+                    {"op": "create_node", "node_id": "kv-compression.B"},
+                ],
+                "user_confirmation": {"required_for": ["state:dead", "set_active_path"], "status": "accepted"},
+            }
+
+            report = validate_lab_update_packet(root, packet)
+            confirmation_findings = [
+                finding for finding in report["findings"] if finding["code"] == "confirmation_required"
+            ]
+
+            self.assertEqual(report["status"], "fail")
+            self.assertEqual(len(confirmation_findings), 2)
+
+    def test_validate_update_packet_rejects_windows_style_missing_artifact_path(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            from meridian.lab.graph import validate_lab_update_packet
+
+            packet = {
+                "schema": "meridian.lab.update.v1",
+                "intent": "attach_experiment",
+                "target_thread": "kv-compression",
+                "changes": [
+                    {
+                        "op": "attach_artifact",
+                        "node_id": "kv-compression.A",
+                        "artifact": {
+                            "type": "experiment",
+                            "id": "exp-missing",
+                            "title": "Missing probe",
+                            "impact": "supports",
+                            "path": ".meridian\\experiments\\exp-missing.md",
+                        },
+                    }
+                ],
+                "user_confirmation": {"required_for": [], "status": "not_required"},
+            }
+
+            report = validate_lab_update_packet(root, packet)
+
+            self.assertEqual(report["status"], "fail")
+            self.assertIn("artifact_path_missing", [finding["code"] for finding in report["findings"]])
+
+    def test_validate_update_packet_rejects_bad_boundary_op_payloads(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            from meridian.lab.graph import validate_lab_update_packet
+
+            packet = {
+                "schema": "meridian.lab.update.v1",
+                "intent": "bad_boundary_payloads",
+                "target_thread": "kv-compression",
+                "changes": [
+                    {"op": "set_active_thread", "thread_id": "missing-thread"},
+                    {"op": "detach_artifact", "node_id": "kv-compression.A", "artifact_id": "exp-01"},
+                    {"op": "record_history", "message": " "},
+                ],
+                "user_confirmation": {
+                    "required_for": ["set_active_thread", "detach_artifact"],
+                    "status": "accepted",
+                },
+            }
+
+            report = validate_lab_update_packet(root, packet)
+            codes = [finding["code"] for finding in report["findings"]]
+
+            self.assertEqual(report["status"], "fail")
+            self.assertIn("active_thread_missing", codes)
+            self.assertIn("missing_artifact_type", codes)
+            self.assertIn("missing_history_text", codes)
+
+    def test_lab_package_exports_validate_update_packet(self) -> None:
+        from meridian.lab import validate_lab_update_packet
+
+        self.assertTrue(callable(validate_lab_update_packet))
 
 
 if __name__ == "__main__":

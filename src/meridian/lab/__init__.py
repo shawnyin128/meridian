@@ -17,6 +17,7 @@ from meridian.lab.graph import (
     LAB_UPDATE_SCHEMA_VERSION,
     LabGraphBuildResult,
     materialize_lab_graph,
+    validate_lab_update_packet,
 )
 from meridian.lab.research_agent_contract import (
     initialize_research_agent_principles,
@@ -62,6 +63,7 @@ __all__ = [
     "LabValidationReport",
     "LabGraphBuildResult",
     "materialize_lab_graph",
+    "validate_lab_update_packet",
     "MERIDIAN_AGENTS_CONTRACT_END",
     "MERIDIAN_AGENTS_CONTRACT_START",
     "meridian_agents_contract_block",

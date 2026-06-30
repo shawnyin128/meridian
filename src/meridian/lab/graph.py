@@ -47,7 +47,33 @@ ALLOWED_UPDATE_OPS = {
     "record_history",
 }
 
-CONFIRMATION_REQUIRED_FIELDS = {"state:repairable", "state:dead", "active_thread", "active_path", "create_node"}
+ALLOWED_UPDATE_NODE_FIELDS = {
+    "state",
+    "title",
+    "doing",
+    "why",
+    "next_action",
+    "research_prior",
+    "return_signal",
+}
+
+STRING_UPDATE_NODE_FIELDS = {
+    "title",
+    "doing",
+    "why",
+    "next_action",
+    "research_prior",
+    "return_signal",
+}
+
+CONFIRMATION_REQUIRED_FIELDS = {
+    "state:repairable",
+    "state:dead",
+    "create_node",
+    "set_active_thread",
+    "set_active_path",
+    "detach_artifact",
+}
 CONFIRMATION_REQUIRED_OPS = {"create_node", "set_active_thread", "set_active_path", "detach_artifact"}
 
 
@@ -212,7 +238,7 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
         findings.append({"severity": "error", "code": code, "path": path, "message": message})
 
     def require_confirmation(reason: str, path: str) -> None:
-        if confirmation_status != "accepted":
+        if confirmation_status != "accepted" or reason not in confirmation_required_for:
             add("confirmation_required", f"{reason} requires accepted user confirmation.", path)
 
     def validate_node_id(node_id: str, path: str, *, must_exist: bool | None = None) -> bool:
@@ -242,6 +268,86 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
         if endpoint not in node_ids:
             add(f"edge_{field}_missing", f"{field} node `{endpoint}` does not exist.", path)
 
+    def validate_update_fields(fields: dict[str, Any], index: int) -> None:
+        for field in sorted(fields):
+            if field not in ALLOWED_UPDATE_NODE_FIELDS:
+                add(
+                    "invalid_update_field",
+                    f"update_node field `{field}` is not allowed.",
+                    f"changes[{index}].fields.{field}",
+                )
+        for field in sorted(STRING_UPDATE_NODE_FIELDS & fields.keys()):
+            value = fields[field]
+            if not isinstance(value, str) or not value.strip():
+                add(
+                    "invalid_update_field_value",
+                    f"update_node field `{field}` must be a non-empty string.",
+                    f"changes[{index}].fields.{field}",
+                )
+        if "state" in fields:
+            value = fields["state"]
+            if not isinstance(value, str) or not value.strip():
+                add("invalid_node_state", "Node state must be a non-empty string.", f"changes[{index}].fields.state")
+                return
+            state = value.strip()
+            if state not in ALLOWED_NODE_MODES:
+                add("invalid_node_state", f"Node state `{state}` is not allowed.", f"changes[{index}].fields.state")
+            if state in {"repairable", "dead"}:
+                require_confirmation(f"state:{state}", f"changes[{index}]")
+
+    def validate_active_thread(change: dict[str, Any], index: int) -> None:
+        if "thread_id" in change:
+            thread_id = str(change.get("thread_id") or "").strip()
+        elif "target_thread" in change:
+            thread_id = str(change.get("target_thread") or "").strip()
+        else:
+            thread_id = target_thread
+        if not thread_id:
+            add("missing_active_thread", "set_active_thread requires a non-empty thread id.", f"changes[{index}]")
+        elif not (lab_root / "threads" / f"{thread_id}.md").exists():
+            add("active_thread_missing", f"Active thread `{thread_id}` does not exist.", f"changes[{index}]")
+
+    def validate_active_path(change: dict[str, Any], index: int) -> None:
+        path_value = change.get("path", change.get("active_path"))
+        if not isinstance(path_value, list) or not path_value:
+            add("missing_active_path", "set_active_path requires a non-empty path list.", f"changes[{index}].path")
+            return
+        for item_index, item in enumerate(path_value):
+            active_node_id = str(item or "").strip()
+            path = f"changes[{index}].path[{item_index}]"
+            if not active_node_id:
+                add("missing_active_path_node", "Active path node id is required.", path)
+            elif not _is_well_formed_node_id(active_node_id):
+                add("invalid_active_path_node", f"Active path node id `{active_node_id}` is not well-formed.", path)
+            elif active_node_id not in node_ids:
+                add("active_path_node_missing", f"Active path node `{active_node_id}` does not exist.", path)
+
+    def validate_detach_artifact(change: dict[str, Any], index: int) -> None:
+        artifact = change.get("artifact")
+        if isinstance(artifact, dict):
+            artifact_id = str(artifact.get("id") or "").strip()
+            artifact_type = str(artifact.get("type") or "").strip()
+            path = f"changes[{index}].artifact"
+        else:
+            artifact_id = str(change.get("artifact_id") or change.get("id") or "").strip()
+            artifact_type = str(change.get("artifact_type") or change.get("type") or "").strip()
+            path = f"changes[{index}]"
+        if not artifact_id:
+            add("missing_artifact_id", "detach_artifact requires a non-empty artifact id.", path)
+        if not artifact_type:
+            add("missing_artifact_type", "detach_artifact requires a non-empty artifact type.", path)
+        elif artifact_type not in ALLOWED_ARTIFACT_TYPES:
+            add("invalid_artifact_type", f"Artifact type `{artifact_type}` is not allowed.", path)
+
+    def validate_history(change: dict[str, Any], index: int) -> None:
+        history_text = None
+        for field in ("message", "history", "note"):
+            if field in change:
+                history_text = change.get(field)
+                break
+        if not isinstance(history_text, str) or not history_text.strip():
+            add("missing_history_text", "record_history requires non-empty history text.", f"changes[{index}]")
+
     if packet.get("schema") != LAB_UPDATE_SCHEMA_VERSION:
         add("invalid_update_schema", f"Update packet schema must be {LAB_UPDATE_SCHEMA_VERSION}.")
     target_thread = str(packet.get("target_thread") or "").strip()
@@ -255,6 +361,7 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
 
     confirmation = packet.get("user_confirmation") if isinstance(packet.get("user_confirmation"), dict) else {}
     confirmation_status = str(confirmation.get("status") or "").strip()
+    confirmation_required_for = set(_as_list(confirmation.get("required_for")))
 
     for index, change in enumerate(changes if isinstance(changes, list) else []):
         if not isinstance(change, dict):
@@ -265,7 +372,7 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
             add("invalid_update_op", f"Unsupported update op `{op}`.", f"changes[{index}].op")
         node_id = str(change.get("node_id") or "").strip()
         if op in CONFIRMATION_REQUIRED_OPS:
-            require_confirmation(f"Update op `{op}`", f"changes[{index}]")
+            require_confirmation(op, f"changes[{index}]")
         if op in {"update_node", "attach_artifact", "detach_artifact"}:
             validate_node_id(node_id, f"changes[{index}].node_id", must_exist=True)
         if op == "create_node":
@@ -278,20 +385,20 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
                 add("missing_edge_kind", "Edge kind is required.", f"changes[{index}].kind")
             elif kind not in ALLOWED_EDGE_KINDS:
                 add("invalid_edge_kind", f"Edge kind `{kind}` is not allowed.", f"changes[{index}].kind")
+        if op == "set_active_thread":
+            validate_active_thread(change, index)
+        if op == "set_active_path":
+            validate_active_path(change, index)
+        if op == "detach_artifact":
+            validate_detach_artifact(change, index)
+        if op == "record_history":
+            validate_history(change, index)
         if op == "update_node":
             fields = change.get("fields")
             if not isinstance(fields, dict) or not fields:
                 add("missing_update_fields", "update_node requires non-empty fields.", f"changes[{index}].fields")
-            field_values = fields if isinstance(fields, dict) else {}
-            state = str(field_values.get("state") or "").strip()
-            if state and state not in ALLOWED_NODE_MODES:
-                add("invalid_node_state", f"Node state `{state}` is not allowed.", f"changes[{index}].fields.state")
-            if state in {"repairable", "dead"} and confirmation_status != "accepted":
-                add(
-                    "confirmation_required",
-                    f"Changing state to `{state}` requires accepted user confirmation.",
-                    f"changes[{index}]",
-                )
+            if isinstance(fields, dict):
+                validate_update_fields(fields, index)
         if op == "attach_artifact":
             artifact = change.get("artifact")
             if not isinstance(artifact, dict):
@@ -311,7 +418,7 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
                         "attach_artifact requires non-empty artifact path.",
                         f"changes[{index}].artifact.path",
                     )
-                elif path.startswith(".meridian/") and not (lab_root.parent / path).exists():
+                elif _path_starts_with_meridian(path) and not (lab_root.parent / Path(path.replace("\\", "/"))).exists():
                     add(
                         "artifact_path_missing",
                         f"Artifact path `{path}` does not exist.",
