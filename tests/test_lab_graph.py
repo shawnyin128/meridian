@@ -182,6 +182,23 @@ class LabGraphTests(unittest.TestCase):
             payload = json.loads(graph_path.read_text(encoding="utf-8"))
             self.assertEqual(payload["schema"], LAB_GRAPH_SCHEMA_VERSION)
             self.assertEqual(result.health["status"], "pass")
+            schema = json.loads(schema_path.read_text(encoding="utf-8"))
+            properties = schema["properties"]
+            expected_top_level_types = {
+                "generated_at": "string",
+                "lab_root": "string",
+                "source_files": "array",
+                "active_thread": "string",
+                "active_path": "array",
+                "nodes": "array",
+                "edges": "array",
+                "node_details": "object",
+                "supporting_artifacts": "object",
+                "health": "object",
+            }
+            self.assertEqual(properties["schema"]["const"], LAB_GRAPH_SCHEMA_VERSION)
+            for field, expected_type in expected_top_level_types.items():
+                self.assertEqual(properties[field]["type"], expected_type)
 
     def test_graph_health_fails_dangling_edge(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -229,6 +246,21 @@ class LabGraphTests(unittest.TestCase):
             health = check_lab_graph(root)
             codes = [finding["code"] for finding in health["findings"]]
             self.assertIn("graph_json_invalid", codes)
+            self.assertEqual(health["status"], "fail")
+
+    def test_check_lab_graph_fails_invalid_generated_graph_encoding(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            graph_dir = root / ".meridian/graph"
+            graph_dir.mkdir()
+            (graph_dir / "graph.json").write_bytes(b"\xff")
+
+            from meridian.lab.graph import check_lab_graph
+
+            health = check_lab_graph(root)
+            codes = [finding["code"] for finding in health["findings"]]
+            self.assertIn("graph_json_invalid_encoding", codes)
             self.assertEqual(health["status"], "fail")
 
     def test_check_lab_graph_fails_generated_graph_that_is_not_object(self) -> None:
@@ -357,6 +389,25 @@ class LabGraphTests(unittest.TestCase):
             codes = [finding["code"] for finding in health["findings"]]
             self.assertIn("graph_json_stale", codes)
             self.assertEqual(health["status"], "warn")
+
+    def test_check_lab_graph_ignores_volatile_generated_fields_for_stale_check(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+
+            from meridian.lab.graph import check_lab_graph, write_lab_graph
+
+            write_lab_graph(root)
+            graph_path = root / ".meridian/graph/graph.json"
+            payload = json.loads(graph_path.read_text(encoding="utf-8"))
+            payload["generated_at"] = "2099-01-01T00:00:00Z"
+            payload["health"] = {"status": "mutated", "finding_count": 999}
+            graph_path.write_text(json.dumps(payload), encoding="utf-8")
+
+            health = check_lab_graph(root)
+            codes = [finding["code"] for finding in health["findings"]]
+            self.assertNotIn("graph_json_stale", codes)
+            self.assertEqual(health["status"], "pass")
 
 
 if __name__ == "__main__":

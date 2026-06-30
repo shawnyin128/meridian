@@ -117,7 +117,34 @@ def check_lab_graph(root: Path) -> dict[str, Any]:
         return health
 
     try:
-        loaded = json.loads(graph_path.read_text(encoding="utf-8"))
+        raw_graph = graph_path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        return _graph_health(
+            result.lab_root,
+            [
+                {
+                    "severity": "error",
+                    "code": "graph_json_invalid_encoding",
+                    "path": "graph/graph.json",
+                    "message": f"Generated graph JSON is not valid UTF-8: {exc.reason}.",
+                }
+            ],
+        )
+    except OSError as exc:
+        return _graph_health(
+            result.lab_root,
+            [
+                {
+                    "severity": "error",
+                    "code": "graph_json_unreadable",
+                    "path": "graph/graph.json",
+                    "message": f"Generated graph JSON could not be read: {exc}.",
+                }
+            ],
+        )
+
+    try:
+        loaded = json.loads(raw_graph)
     except json.JSONDecodeError as exc:
         return _graph_health(
             result.lab_root,
@@ -451,6 +478,11 @@ def _graph_schema() -> dict[str, Any]:
         ],
         "properties": {
             "schema": {"const": LAB_GRAPH_SCHEMA_VERSION},
+            "generated_at": {"type": "string"},
+            "lab_root": {"type": "string"},
+            "source_files": {"type": "array", "items": {"type": "string"}},
+            "active_thread": {"type": "string"},
+            "active_path": {"type": "array", "items": {"type": "string"}},
             "nodes": {
                 "type": "array",
                 "items": {
@@ -477,6 +509,12 @@ def _graph_schema() -> dict[str, Any]:
                     },
                 },
             },
+            "node_details": {"type": "object"},
+            "supporting_artifacts": {
+                "type": "object",
+                "additionalProperties": {"type": "array", "items": {"type": "object"}},
+            },
+            "health": {"type": "object"},
         },
     }
 
