@@ -113,10 +113,51 @@ def check_lab_graph(root: Path) -> dict[str, Any]:
                 "message": "Generated graph JSON is missing; run graph-refresh.",
             },
         ]
-        if health["status"] == "pass":
-            health["status"] = "warn"
+        health["status"] = _health_status(health["findings"])
         return health
-    return result.health
+
+    try:
+        loaded = json.loads(graph_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return _graph_health(
+            result.lab_root,
+            [
+                {
+                    "severity": "error",
+                    "code": "graph_json_invalid",
+                    "path": "graph/graph.json",
+                    "message": f"Generated graph JSON is invalid: {exc.msg}.",
+                }
+            ],
+        )
+
+    if not isinstance(loaded, dict):
+        return _graph_health(
+            result.lab_root,
+            [
+                {
+                    "severity": "error",
+                    "code": "graph_json_not_object",
+                    "path": "graph/graph.json",
+                    "message": "Generated graph JSON must contain an object payload.",
+                }
+            ],
+        )
+
+    health = dict(check_lab_graph_payload(loaded, lab_root=result.lab_root))
+    findings = list(health["findings"])
+    if _stable_graph_payload(loaded) != _stable_graph_payload(result.graph):
+        findings.append(
+            {
+                "severity": "warning",
+                "code": "graph_json_stale",
+                "path": "graph/graph.json",
+                "message": "Generated graph JSON does not match the current Lab Markdown state; run graph-refresh.",
+            }
+        )
+    health["findings"] = findings
+    health["status"] = _health_status(findings)
+    return health
 
 
 def write_lab_graph(root: Path) -> LabGraphBuildResult:
@@ -147,6 +188,36 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
             finding["path"] = _display_path(path, lab_root=lab_root.parent) if isinstance(path, Path) else path
         findings.append(finding)
 
+    if not isinstance(graph, dict):
+        return _graph_health(
+            lab_root,
+            [
+                {
+                    "severity": "error",
+                    "code": "graph_payload_not_object",
+                    "path": "graph",
+                    "message": "Graph payload must be an object.",
+                }
+            ],
+        )
+
+    required_top_level_fields = (
+        "schema",
+        "generated_at",
+        "lab_root",
+        "source_files",
+        "active_thread",
+        "active_path",
+        "nodes",
+        "edges",
+        "node_details",
+        "supporting_artifacts",
+        "health",
+    )
+    for field in required_top_level_fields:
+        if field not in graph:
+            add("error", "missing_top_level_field", f"Graph payload is missing top-level field `{field}`.", field)
+
     if graph.get("schema") != LAB_GRAPH_SCHEMA_VERSION:
         add("error", "invalid_graph_schema", "Graph payload has an unexpected schema.", "schema")
 
@@ -156,6 +227,9 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
         add("error", "graph_not_json_serializable", str(exc), "graph")
 
     nodes = graph.get("nodes") or []
+    if not isinstance(nodes, list):
+        add("error", "invalid_nodes", "Graph payload field `nodes` must be a list.", "nodes")
+        nodes = []
     node_ids: set[str] = set()
     required_node_fields = ("id", "title", "state", "markdown_path", "markdown_anchor")
     for index, node in enumerate(nodes):
@@ -188,8 +262,12 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
                 markdown_path,
             )
 
+    edges = graph.get("edges") or []
+    if not isinstance(edges, list):
+        add("error", "invalid_edges", "Graph payload field `edges` must be a list.", "edges")
+        edges = []
     edge_ids: set[str] = set()
-    for index, edge in enumerate(graph.get("edges") or []):
+    for index, edge in enumerate(edges):
         if not isinstance(edge, dict):
             add("error", "invalid_edge", "Graph edge is not an object.", f"edges/{index}")
             continue
@@ -218,7 +296,11 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
                 f"edges/{index}/target",
             )
 
-    for active_index, node_id in enumerate(graph.get("active_path") or []):
+    active_path = graph.get("active_path") or []
+    if not isinstance(active_path, list):
+        add("error", "invalid_active_path", "Graph payload field `active_path` must be a list.", "active_path")
+        active_path = []
+    for active_index, node_id in enumerate(active_path):
         if str(node_id) not in node_ids:
             add(
                 "error",
@@ -227,7 +309,16 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
                 f"active_path/{active_index}",
             )
 
-    for node_id, artifacts in (graph.get("supporting_artifacts") or {}).items():
+    supporting_artifacts = graph.get("supporting_artifacts") or {}
+    if not isinstance(supporting_artifacts, dict):
+        add(
+            "error",
+            "invalid_supporting_artifacts",
+            "Graph payload field `supporting_artifacts` must be an object.",
+            "supporting_artifacts",
+        )
+        supporting_artifacts = {}
+    for node_id, artifacts in supporting_artifacts.items():
         if node_id not in node_ids:
             add(
                 "warning",
@@ -235,7 +326,23 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
                 f"Supporting artifacts refer to missing node `{node_id}`.",
                 "supporting_artifacts",
             )
+        if not isinstance(artifacts, list):
+            add(
+                "error",
+                "invalid_supporting_artifacts",
+                f"Supporting artifacts for node `{node_id}` must be a list.",
+                f"supporting_artifacts/{node_id}",
+            )
+            continue
         for artifact_index, artifact in enumerate(artifacts):
+            if not isinstance(artifact, dict):
+                add(
+                    "error",
+                    "invalid_supporting_artifact",
+                    f"Supporting artifact `{artifact_index}` for node `{node_id}` must be an object.",
+                    f"supporting_artifacts/{node_id}/{artifact_index}",
+                )
+                continue
             artifact_type = str(artifact.get("type") or "")
             if artifact_type not in ALLOWED_ARTIFACT_TYPES:
                 add(
@@ -253,13 +360,36 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
                     artifact_path,
                 )
 
-    status = "fail" if any(finding["severity"] == "error" for finding in findings) else "pass"
+    return _graph_health(lab_root, findings)
+
+
+def _graph_health(lab_root: Path, findings: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "schema": LAB_GRAPH_HEALTH_SCHEMA_VERSION,
-        "status": status,
+        "status": _health_status(findings),
         "lab_root": str(lab_root),
         "findings": findings,
     }
+
+
+def _health_status(findings: list[dict[str, Any]]) -> str:
+    if any(finding["severity"] == "error" for finding in findings):
+        return "fail"
+    if any(finding["severity"] == "warning" for finding in findings):
+        return "warn"
+    return "pass"
+
+
+def _stable_graph_payload(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _stable_graph_payload(item)
+            for key, item in value.items()
+            if key not in {"generated_at", "health"}
+        }
+    if isinstance(value, list):
+        return [_stable_graph_payload(item) for item in value]
+    return value
 
 
 def _graph_schema() -> dict[str, Any]:

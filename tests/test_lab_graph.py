@@ -204,6 +204,106 @@ class LabGraphTests(unittest.TestCase):
             self.assertIn("dangling_edge_target", codes)
             self.assertEqual(result.health["status"], "fail")
 
+    def test_check_lab_graph_warns_when_generated_graph_missing(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+
+            from meridian.lab.graph import check_lab_graph
+
+            health = check_lab_graph(root)
+            codes = [finding["code"] for finding in health["findings"]]
+            self.assertIn("graph_json_missing", codes)
+            self.assertEqual(health["status"], "warn")
+
+    def test_check_lab_graph_fails_corrupt_generated_graph(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            graph_dir = root / ".meridian/graph"
+            graph_dir.mkdir()
+            (graph_dir / "graph.json").write_text("{not json", encoding="utf-8")
+
+            from meridian.lab.graph import check_lab_graph
+
+            health = check_lab_graph(root)
+            codes = [finding["code"] for finding in health["findings"]]
+            self.assertIn("graph_json_invalid", codes)
+            self.assertEqual(health["status"], "fail")
+
+    def test_check_lab_graph_fails_generated_graph_that_is_not_object(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            graph_dir = root / ".meridian/graph"
+            graph_dir.mkdir()
+            (graph_dir / "graph.json").write_text("[]", encoding="utf-8")
+
+            from meridian.lab.graph import check_lab_graph
+
+            health = check_lab_graph(root)
+            codes = [finding["code"] for finding in health["findings"]]
+            self.assertIn("graph_json_not_object", codes)
+            self.assertEqual(health["status"], "fail")
+
+    def test_check_lab_graph_fails_incomplete_generated_graph_payload(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            graph_dir = root / ".meridian/graph"
+            graph_dir.mkdir()
+            (graph_dir / "graph.json").write_text(
+                json.dumps({"schema": LAB_GRAPH_SCHEMA_VERSION}),
+                encoding="utf-8",
+            )
+
+            from meridian.lab.graph import check_lab_graph
+
+            health = check_lab_graph(root)
+            codes = [finding["code"] for finding in health["findings"]]
+            self.assertIn("missing_top_level_field", codes)
+            self.assertEqual(health["status"], "fail")
+
+    def test_graph_health_fails_malformed_supporting_artifacts_without_crashing(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            result = materialize_lab_graph(root)
+            payload = dict(result.graph)
+            payload["supporting_artifacts"] = {"kv-compression.A": ["not an artifact object"]}
+
+            from meridian.lab.graph import check_lab_graph_payload
+
+            try:
+                health = check_lab_graph_payload(payload, lab_root=root / ".meridian")
+            except Exception as exc:  # pragma: no cover - assertion message carries the regression.
+                self.fail(f"check_lab_graph_payload crashed: {exc}")
+            codes = [finding["code"] for finding in health["findings"]]
+            self.assertIn("invalid_supporting_artifact", codes)
+            self.assertEqual(health["status"], "fail")
+
+    def test_check_lab_graph_warns_when_generated_graph_is_stale(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+
+            from meridian.lab.graph import check_lab_graph, write_lab_graph
+
+            write_lab_graph(root)
+            thread = root / ".meridian/threads/kv-compression.md"
+            thread.write_text(
+                thread.read_text(encoding="utf-8")
+                + "\n### Node B: Follow-up probe\n\n"
+                + "- mode: `unresolved`\n"
+                + "- parent: A\n",
+                encoding="utf-8",
+            )
+
+            health = check_lab_graph(root)
+            codes = [finding["code"] for finding in health["findings"]]
+            self.assertIn("graph_json_stale", codes)
+            self.assertEqual(health["status"], "warn")
+
 
 if __name__ == "__main__":
     unittest.main()
