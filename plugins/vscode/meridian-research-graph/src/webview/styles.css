@@ -1,0 +1,311 @@
+:root {
+  color-scheme: light;
+  --surface: #f7f7f3;
+  --panel: #ffffff;
+  --panel-subtle: #f0f2ec;
+  --line: #d8ddd2;
+  --line-strong: #aebaa8;
+  --text: #20251f;
+  --muted: #657060;
+  --accent: #6f7f3e;
+  --accent-strong: #465726;
+  --amber: #b87927;
+  --danger: #9d4a45;
+  --shadow: 0 16px 42px rgba(38, 44, 34, 0.12);
+  --radius: 8px;
+  font-family:
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+}
+
+body {
+  color: var(--text);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.appShell {
+  display: grid;
+  grid-template-columns: minmax(520px, 1fr) minmax(340px, 400px);
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 12px;
+}
+
+.emptyShell {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background: var(--surface);
+}
+
+.graphPane,
+.detailPane {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.graphPane {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.detailPane {
+  overflow: auto;
+}
+
+.graphHeader,
+.detailTitleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.graphHeader h1,
+.detailTitleRow h2 {
+  margin: 2px 0 0;
+  line-height: 1.15;
+  letter-spacing: 0;
+  color: var(--text);
+}
+
+.graphHeader h1 {
+  font-size: 20px;
+  font-weight: 650;
+}
+
+.detailTitleRow h2 {
+  overflow-wrap: anywhere;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.eyebrow {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.graphMeta,
+.detailTags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.healthAlert {
+  margin: 10px 12px 0;
+  border-radius: var(--radius);
+}
+
+.flowFrame {
+  min-width: 0;
+  min-height: 0;
+}
+
+.react-flow {
+  background:
+    linear-gradient(0deg, rgba(111, 127, 62, 0.035), rgba(111, 127, 62, 0.035)),
+    var(--panel-subtle);
+}
+
+.staticFlow {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  overflow: auto;
+  background:
+    linear-gradient(0deg, rgba(111, 127, 62, 0.035), rgba(111, 127, 62, 0.035)),
+    var(--panel-subtle);
+}
+
+.staticGraphNode {
+  position: absolute;
+  width: 210px;
+  min-height: 64px;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.react-flow__node-default.researchNode,
+.react-flow__node.researchNode,
+.staticGraphNode.researchNode {
+  width: 210px;
+  min-height: 64px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--text);
+  background: #fbfbf8;
+  box-shadow: 0 8px 22px rgba(52, 58, 48, 0.12);
+}
+
+.react-flow__node.researchNode.selected,
+.react-flow__node.researchNode.selectedNode,
+.react-flow__node-default.researchNode.selectedNode,
+.staticGraphNode.researchNode.selectedNode {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 2px rgba(111, 127, 62, 0.22), 0 10px 24px rgba(52, 58, 48, 0.16);
+}
+
+.react-flow__node.researchNode.activePathNode,
+.react-flow__node-default.researchNode.activePathNode,
+.staticGraphNode.researchNode.activePathNode {
+  border-color: var(--amber);
+  background: #fffaf1;
+}
+
+.react-flow__node.researchNode.activeNode,
+.react-flow__node-default.researchNode.activeNode,
+.staticGraphNode.researchNode.activeNode {
+  box-shadow: 0 0 0 2px rgba(111, 127, 62, 0.18), 0 10px 26px rgba(52, 58, 48, 0.16);
+}
+
+.react-flow__node.researchNode.state-supported,
+.react-flow__node-default.researchNode.state-supported,
+.staticGraphNode.researchNode.state-supported {
+  border-left: 5px solid var(--accent);
+}
+
+.react-flow__node.researchNode.state-repairable,
+.react-flow__node-default.researchNode.state-repairable,
+.staticGraphNode.researchNode.state-repairable {
+  border-left: 5px solid var(--amber);
+}
+
+.react-flow__node.researchNode.state-dead,
+.react-flow__node-default.researchNode.state-dead,
+.staticGraphNode.researchNode.state-dead {
+  border-left: 5px solid var(--danger);
+}
+
+.nodeLabel {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.nodeTitle {
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.nodeSubtitle {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.react-flow__edge.researchEdge .react-flow__edge-path {
+  stroke: #929f8d;
+  stroke-width: 1.5;
+}
+
+.react-flow__edge.activePathEdge .react-flow__edge-path {
+  stroke: var(--amber);
+  stroke-width: 2.4;
+}
+
+.react-flow__edge-textbg {
+  fill: rgba(247, 247, 243, 0.88);
+}
+
+.react-flow__edge-text {
+  fill: var(--muted);
+  font-size: 10px;
+}
+
+.detailContent {
+  min-height: 100%;
+  background: var(--panel);
+}
+
+.detailContent .ant-tabs {
+  padding: 0 14px 16px;
+}
+
+.detailContent .ant-tabs-nav {
+  margin-bottom: 12px;
+}
+
+.detailContent .ant-descriptions-bordered .ant-descriptions-item-label {
+  width: 112px;
+  color: var(--muted);
+  background: #f4f5f1;
+}
+
+.detailContent .ant-descriptions-bordered .ant-descriptions-item-content {
+  overflow-wrap: anywhere;
+}
+
+.artifactList .ant-list-item {
+  align-items: flex-start;
+  padding: 10px 0;
+}
+
+.artifactTitle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.ant-tag {
+  margin-inline-end: 0;
+  border-radius: 5px;
+}
+
+@media (max-width: 860px) {
+  body {
+    overflow: auto;
+  }
+
+  .appShell {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(520px, 62vh) minmax(320px, auto);
+    height: auto;
+    min-height: 100%;
+  }
+}
