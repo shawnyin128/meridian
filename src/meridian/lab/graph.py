@@ -422,6 +422,13 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
             if not isinstance(artifact, dict):
                 add("missing_artifact", "attach_artifact requires artifact object.", f"changes[{index}].artifact")
             else:
+                artifact_id = str(artifact.get("id") or "").strip()
+                if not artifact_id:
+                    add(
+                        "missing_artifact_id",
+                        "attach_artifact requires non-empty artifact id.",
+                        f"changes[{index}].artifact.id",
+                    )
                 artifact_type = str(artifact.get("type") or "").strip()
                 if artifact_type not in ALLOWED_ARTIFACT_TYPES:
                     add(

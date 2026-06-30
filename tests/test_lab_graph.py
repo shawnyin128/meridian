@@ -738,6 +738,55 @@ class LabGraphTests(unittest.TestCase):
             self.assertEqual(after, before)
             self.assertFalse((root / ".meridian/graph").exists())
 
+    def test_apply_update_rejects_attach_artifact_missing_id_without_writing(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            (root / ".meridian/experiments/exp-empty.md").write_text(
+                "---\ntype: research-experiment\nid: exp-empty\nvalidity: valid\n---\n# Experiment\n",
+                encoding="utf-8",
+            )
+            before = {
+                path.relative_to(root).as_posix(): path.read_text(encoding="utf-8")
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+            from meridian.lab.graph import apply_lab_update
+
+            packet = {
+                "schema": "meridian.lab.update.v1",
+                "intent": "attach_experiment_missing_id",
+                "target_thread": "kv-compression",
+                "changes": [
+                    {
+                        "op": "attach_artifact",
+                        "node_id": "kv-compression.A",
+                        "artifact": {
+                            "type": "experiment",
+                            "id": " ",
+                            "title": "Missing ID probe",
+                            "impact": "supports",
+                            "path": ".meridian/experiments/exp-empty.md",
+                        },
+                    }
+                ],
+                "user_confirmation": {"required_for": [], "status": "not_required"},
+            }
+
+            result = apply_lab_update(root, packet)
+            after = {
+                path.relative_to(root).as_posix(): path.read_text(encoding="utf-8")
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+
+            self.assertEqual(result["status"], "rejected")
+            self.assertEqual(result["written_paths"], [])
+            self.assertEqual(after, before)
+            self.assertFalse((root / ".meridian/graph").exists())
+            codes = [finding["code"] for finding in result["validation"]["findings"]]
+            self.assertIn("missing_artifact_id", codes)
+
     def test_apply_update_rejects_valid_but_unsupported_apply_field_without_writing(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
