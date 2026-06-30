@@ -207,7 +207,8 @@ def _parse_thread_nodes(
         node_id = f"{thread_id}.{raw_id}"
         mode = _node_field(body, "mode") or "unresolved"
         parent = _node_field(body, "parent")
-        active = _parse_bool(_node_field(body, "active")) or raw_id == active_node or node_id in active_path
+        active_field = _node_field(body, "active")
+        active = _parse_bool(active_field) if active_field else raw_id == active_node
         project_root = thread_path.parents[1].parent
         node = {
             "id": node_id,
@@ -247,7 +248,7 @@ def _parse_graph_relations(thread_id: str, text: str, active_path: list[str]) ->
     for row in _parse_markdown_table(section):
         source = _node_ref(thread_id, row.get("source") or row.get("from") or "")
         target = _node_ref(thread_id, row.get("target") or row.get("to") or "")
-        kind = str(row.get("kind") or row.get("type") or "related_to").strip() or "related_to"
+        kind = _clean_scalar(str(row.get("relation") or row.get("kind") or row.get("type") or "related_to")) or "related_to"
         if not source or not target:
             continue
         edge = {
@@ -255,7 +256,7 @@ def _parse_graph_relations(thread_id: str, text: str, active_path: list[str]) ->
             "source": source,
             "target": target,
             "kind": kind,
-            "strength": str(row.get("strength") or "normal").strip() or "normal",
+            "strength": _clean_scalar(str(row.get("strength") or "normal")) or "normal",
             "on_active_path": _edge_on_active_path(source, target, active_path),
         }
         edges.append(edge)
