@@ -35,6 +35,15 @@ evidence, or failure modes matter.
 Maintain approach nodes as the smallest verifiable methods. Node modes are
 exactly `unresolved`, `repairable`, `supported`, or `dead`.
 
+## Graph Relations
+
+Use this table for non-tree research graph links between core research points.
+Generated graph files are rebuilt from this control-plane Markdown.
+
+| Source | Relation | Target | Strength | Note |
+| --- | --- | --- | --- | --- |
+|  |  |  |  |  |
+
 ### Node A: <Initial Approach>
 
 - mode: `unresolved`
@@ -77,6 +86,15 @@ exactly `unresolved`, `repairable`, `supported`, or `dead`.
 #### Experiments
 
 - `<experiment-id>`
+
+#### Supporting Artifacts
+
+Experiments, Paper Wiki priors, implementation links, and local proposals
+support this research point and are not default graph nodes.
+
+| Type | ID | Title | Impact | Path |
+| --- | --- | --- | --- | --- |
+|  |  |  |  |  |
 
 #### History
 

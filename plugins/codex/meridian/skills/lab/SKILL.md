@@ -79,6 +79,24 @@ continuity before picking the execution workflow:
   findings, or state changes with provenance.
 - For ongoing work, Lab must place it under the correct research node and update node state, active pointers, confidence, evidence identity, and next actions as needed.
 
+## Research Graph Generated View
+
+Lab graph writes use strict update packets. The control plane remains Markdown
+under `.meridian/threads`, `.meridian/experiments`, and `.meridian/proposals`.
+
+Generated files under `.meridian/graph/` are read-only view artifacts:
+`graph.json`, `graph-health.json`, and `graph.schema.json`.
+Do not hand-edit generated graph files.
+
+Change graph state via strict update packet and Meridian core. VS Code graph
+viewing is read-only.
+
+Experiments, papers, wiki priors, implementation links, and local proposals
+support core points and appear in node details instead of becoming default graph
+nodes.
+
+Report graph health failures before relying on visual state.
+
 ## Behavior Priority
 
 - Manage ideas, approach nodes, experiment evidence, and local finding

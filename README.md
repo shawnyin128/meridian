@@ -260,6 +260,32 @@ If the Lab State category reports `agents_contract_missing`,
 <repo>`. The helper refreshes only the guarded Meridian block and leaves other
 `AGENTS.md` content alone.
 
+### Research graph view
+
+Lab's control plane remains Markdown under `.meridian/threads`,
+`.meridian/experiments`, and `.meridian/proposals`. Regenerate the read-only
+graph view artifacts with:
+
+```bash
+python -m meridian lab graph-refresh --lab-root <repo>
+```
+
+Check whether the generated graph still matches the Markdown state with:
+
+```bash
+python -m meridian lab graph-check --lab-root <repo>
+```
+
+Generated files under `.meridian/graph/` are view artifacts only:
+`graph.json`, `graph-health.json`, and `graph.schema.json`.
+Do not hand-edit generated graph files. Change graph state through strict
+update packets and Meridian core so the Markdown control plane and generated
+view stay in sync.
+
+The VS Code graph viewer is a read-only consumer of `.meridian/graph/`
+artifacts. Refresh and check the graph from the CLI, then treat graph health
+failures as blockers before relying on visual state.
+
 Lab models exploratory research as:
 
 ```text

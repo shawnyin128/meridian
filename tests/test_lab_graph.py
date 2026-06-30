@@ -35,6 +35,30 @@ class LabGraphTests(unittest.TestCase):
             encoding="utf-8",
         )
 
+    def test_lab_templates_include_graph_sections(self) -> None:
+        repo_root = Path(__file__).resolve().parents[1]
+
+        state_template = (repo_root / "src/meridian/templates/research-dev/state.md").read_text(encoding="utf-8")
+        thread_template = (repo_root / "src/meridian/templates/research-dev/thread.md").read_text(encoding="utf-8")
+
+        self.assertIn("active_path:", state_template)
+        self.assertIn("## Graph Relations", thread_template)
+        self.assertIn("#### Supporting Artifacts", thread_template)
+
+    def test_lab_skill_documents_generated_graph_boundary(self) -> None:
+        repo_root = Path(__file__).resolve().parents[1]
+        skill_paths = [
+            repo_root / "plugins/codex/meridian/skills/lab/SKILL.md",
+            repo_root / "plugins/claude-code/meridian/skills/lab/SKILL.md",
+        ]
+
+        for skill_path in skill_paths:
+            with self.subTest(skill=skill_path):
+                skill_text = skill_path.read_text(encoding="utf-8")
+                self.assertIn("strict update packet", skill_text)
+                self.assertIn("graph.json", skill_text)
+                self.assertIn("Do not hand-edit generated graph files", skill_text)
+
     def test_materialize_graph_uses_core_research_nodes_only(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
