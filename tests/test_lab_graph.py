@@ -100,6 +100,45 @@ class LabGraphTests(unittest.TestCase):
             self.assertEqual(relation_edges[0]["kind"], "blocks")
             self.assertEqual(relation_edges[0]["strength"], "weak")
 
+    def test_materialize_graph_normalizes_raw_parent_refs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            lab = root / ".meridian"
+            (lab / "threads").mkdir(parents=True)
+            (lab / "state.md").write_text(
+                "---\n"
+                "type: lab-state\n"
+                "active_thread: kv-compression\n"
+                "active_path: []\n"
+                "---\n"
+                "# Meridian Lab State\n",
+                encoding="utf-8",
+            )
+            (lab / "threads/kv-compression.md").write_text(
+                "---\n"
+                "type: research-thread\n"
+                "title: KV Compression\n"
+                "---\n"
+                "# Research Thread: KV Compression\n\n"
+                "## Approach Tree\n\n"
+                "### Node A: Idea seed\n\n"
+                "- mode: `supported`\n\n"
+                "### Node B: Repair scoring\n\n"
+                "- mode: `repairable`\n"
+                "- parent: A\n",
+                encoding="utf-8",
+            )
+
+            graph = materialize_lab_graph(root).graph
+
+            parent_edges = [
+                edge
+                for edge in graph["edges"]
+                if edge["source"] == "kv-compression.A" and edge["target"] == "kv-compression.B"
+            ]
+            self.assertEqual(len(parent_edges), 1)
+            self.assertEqual(parent_edges[0]["kind"], "continues")
+
 
 if __name__ == "__main__":
     unittest.main()
