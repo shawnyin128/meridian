@@ -897,6 +897,60 @@ class LabGraphTests(unittest.TestCase):
 
         self.assertTrue(callable(validate_lab_update_packet))
 
+    def test_validate_update_packet_rejects_record_history_bad_node_ids(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            from meridian.lab.graph import validate_lab_update_packet
+
+            packet = {
+                "schema": "meridian.lab.update.v1",
+                "intent": "record_history",
+                "target_thread": "kv-compression",
+                "changes": [
+                    {"op": "record_history", "node_id": " ", "message": "Observed a useful result."},
+                    {"op": "record_history", "node_id": "kv compression.A", "message": "Observed a useful result."},
+                    {"op": "record_history", "node_id": "kv-compression.missing", "message": "Observed a useful result."},
+                ],
+                "user_confirmation": {"required_for": [], "status": "not_required"},
+            }
+
+            report = validate_lab_update_packet(root, packet)
+            codes = [finding["code"] for finding in report["findings"]]
+
+            self.assertEqual(report["status"], "fail")
+            self.assertIn("missing_node_id", codes)
+            self.assertIn("invalid_node_id", codes)
+            self.assertIn("node_missing", codes)
+
+    def test_validate_update_packet_rejects_active_path_missing_edge(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            thread = root / ".meridian/threads/kv-compression.md"
+            thread.write_text(
+                thread.read_text(encoding="utf-8")
+                + "\n### Node B: Independent option\n\n"
+                + "- mode: `unresolved`\n",
+                encoding="utf-8",
+            )
+            from meridian.lab.graph import validate_lab_update_packet
+
+            packet = {
+                "schema": "meridian.lab.update.v1",
+                "intent": "set_active_path",
+                "target_thread": "kv-compression",
+                "changes": [
+                    {"op": "set_active_path", "path": ["kv-compression.A", "kv-compression.B"]},
+                ],
+                "user_confirmation": {"required_for": ["set_active_path"], "status": "accepted"},
+            }
+
+            report = validate_lab_update_packet(root, packet)
+
+            self.assertEqual(report["status"], "fail")
+            self.assertIn("active_path_edge_missing", [finding["code"] for finding in report["findings"]])
+
 
 if __name__ == "__main__":
     unittest.main()

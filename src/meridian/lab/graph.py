@@ -232,6 +232,11 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
     lab_root = _lab_root(root)
     graph = materialize_lab_graph(root).graph
     node_ids = {node["id"] for node in graph["nodes"]}
+    edge_pairs = {
+        (str(edge.get("source") or ""), str(edge.get("target") or ""))
+        for edge in graph["edges"]
+        if str(edge.get("source") or "") and str(edge.get("target") or "")
+    }
     findings: list[dict[str, str]] = []
 
     def add(code: str, message: str, path: str = "<packet>") -> None:
@@ -321,6 +326,15 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
                 add("invalid_active_path_node", f"Active path node id `{active_node_id}` is not well-formed.", path)
             elif active_node_id not in node_ids:
                 add("active_path_node_missing", f"Active path node `{active_node_id}` does not exist.", path)
+        for item_index, (source, target) in enumerate(zip(path_value, path_value[1:])):
+            source_id = str(source or "").strip()
+            target_id = str(target or "").strip()
+            if source_id in node_ids and target_id in node_ids and (source_id, target_id) not in edge_pairs:
+                add(
+                    "active_path_edge_missing",
+                    f"Active path step `{source_id}` -> `{target_id}` is missing a graph edge.",
+                    f"changes[{index}].path[{item_index}]",
+                )
 
     def validate_detach_artifact(change: dict[str, Any], index: int) -> None:
         artifact = change.get("artifact")
@@ -373,7 +387,7 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
         node_id = str(change.get("node_id") or "").strip()
         if op in CONFIRMATION_REQUIRED_OPS:
             require_confirmation(op, f"changes[{index}]")
-        if op in {"update_node", "attach_artifact", "detach_artifact"}:
+        if op in {"update_node", "attach_artifact", "detach_artifact", "record_history"}:
             validate_node_id(node_id, f"changes[{index}].node_id", must_exist=True)
         if op == "create_node":
             validate_node_id(node_id, f"changes[{index}].node_id", must_exist=False)
