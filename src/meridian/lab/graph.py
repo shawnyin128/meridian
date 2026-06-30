@@ -218,8 +218,34 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
         if field not in graph:
             add("error", "missing_top_level_field", f"Graph payload is missing top-level field `{field}`.", field)
 
-    if graph.get("schema") != LAB_GRAPH_SCHEMA_VERSION:
+    schema_value = graph.get("schema")
+    if not isinstance(schema_value, str) or schema_value != LAB_GRAPH_SCHEMA_VERSION:
         add("error", "invalid_graph_schema", "Graph payload has an unexpected schema.", "schema")
+
+    generated_at_value = graph.get("generated_at")
+    if not isinstance(generated_at_value, str):
+        add("error", "invalid_generated_at", "Graph payload field `generated_at` must be a string.", "generated_at")
+
+    lab_root_value = graph.get("lab_root")
+    if not isinstance(lab_root_value, str):
+        add("error", "invalid_lab_root", "Graph payload field `lab_root` must be a string.", "lab_root")
+
+    source_files_value = graph.get("source_files")
+    if not isinstance(source_files_value, list):
+        add("error", "invalid_source_files", "Graph payload field `source_files` must be a list.", "source_files")
+
+    active_thread_value = graph.get("active_thread")
+    if not isinstance(active_thread_value, str):
+        add(
+            "error",
+            "invalid_active_thread",
+            "Graph payload field `active_thread` must be a string.",
+            "active_thread",
+        )
+
+    health_value = graph.get("health")
+    if not isinstance(health_value, dict):
+        add("error", "invalid_health", "Graph payload field `health` must be an object.", "health")
 
     try:
         json.dumps(graph, sort_keys=True)
