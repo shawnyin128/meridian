@@ -221,6 +221,65 @@ class LabGraphTests(unittest.TestCase):
             self.assertIn("dangling_edge_target", codes)
             self.assertEqual(result.health["status"], "fail")
 
+    def test_graph_health_fails_active_path_missing_edge(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            state = root / ".meridian/state.md"
+            state.write_text(
+                "---\n"
+                "type: lab-state\n"
+                "active_thread: kv-compression\n"
+                "active_path: [kv-compression.A, kv-compression.B]\n"
+                "---\n"
+                "# State\n",
+                encoding="utf-8",
+            )
+            thread = root / ".meridian/threads/kv-compression.md"
+            thread.write_text(
+                thread.read_text(encoding="utf-8")
+                + "\n### Node B: Follow-up probe\n\n"
+                + "- mode: `unresolved`\n",
+                encoding="utf-8",
+            )
+
+            from meridian.lab.graph import materialize_lab_graph
+
+            result = materialize_lab_graph(root)
+            codes = [finding["code"] for finding in result.health["findings"]]
+            self.assertIn("active_path_edge_missing", codes)
+            self.assertEqual(result.health["status"], "fail")
+
+    def test_graph_health_fails_missing_node_detail(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            result = materialize_lab_graph(root)
+            payload = json.loads(json.dumps(result.graph))
+            payload["node_details"].pop("kv-compression.A")
+
+            from meridian.lab.graph import check_lab_graph_payload
+
+            health = check_lab_graph_payload(payload, lab_root=root / ".meridian")
+            codes = [finding["code"] for finding in health["findings"]]
+            self.assertIn("node_detail_missing", codes)
+            self.assertEqual(health["status"], "fail")
+
+    def test_graph_health_fails_missing_markdown_anchor(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            result = materialize_lab_graph(root)
+            payload = json.loads(json.dumps(result.graph))
+            payload["nodes"][0]["markdown_anchor"] = "missing-anchor"
+
+            from meridian.lab.graph import check_lab_graph_payload
+
+            health = check_lab_graph_payload(payload, lab_root=root / ".meridian")
+            codes = [finding["code"] for finding in health["findings"]]
+            self.assertIn("markdown_anchor_missing", codes)
+            self.assertEqual(health["status"], "fail")
+
     def test_check_lab_graph_warns_when_generated_graph_missing(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -261,6 +320,20 @@ class LabGraphTests(unittest.TestCase):
             health = check_lab_graph(root)
             codes = [finding["code"] for finding in health["findings"]]
             self.assertIn("graph_json_invalid_encoding", codes)
+            self.assertEqual(health["status"], "fail")
+
+    def test_check_lab_graph_fails_unreadable_generated_graph_path(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            graph_path = root / ".meridian/graph/graph.json"
+            graph_path.mkdir(parents=True)
+
+            from meridian.lab.graph import check_lab_graph
+
+            health = check_lab_graph(root)
+            codes = [finding["code"] for finding in health["findings"]]
+            self.assertIn("graph_json_unreadable", codes)
             self.assertEqual(health["status"], "fail")
 
     def test_check_lab_graph_fails_generated_graph_that_is_not_object(self) -> None:

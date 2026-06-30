@@ -286,6 +286,7 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
     else:
         nodes = nodes_value
     node_ids: set[str] = set()
+    node_records: list[dict[str, Any]] = []
     required_node_fields = ("id", "title", "state", "markdown_path", "markdown_anchor")
     for index, node in enumerate(nodes):
         if not isinstance(node, dict):
@@ -300,6 +301,7 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
         if node_id in node_ids:
             add("error", "duplicate_node_id", f"Graph node `{node_id}` appears more than once.", f"nodes/{index}/id")
         node_ids.add(node_id)
+        node_records.append(node)
         state = str(node.get("state") or "")
         if state not in ALLOWED_NODE_MODES:
             add(
@@ -316,6 +318,18 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
                 f"Graph node `{node_id}` markdown path `{markdown_path}` does not exist.",
                 markdown_path,
             )
+        elif _path_starts_with_meridian(markdown_path):
+            raw_id = _node_raw_id(node)
+            expected_anchor = _markdown_anchor(raw_id)
+            markdown_anchor = str(node.get("markdown_anchor") or "")
+            markdown_file = lab_root.parent / markdown_path
+            if markdown_anchor != expected_anchor or not _markdown_node_heading_exists(markdown_file, raw_id):
+                add(
+                    "error",
+                    "markdown_anchor_missing",
+                    f"Graph node `{node_id}` markdown anchor `{markdown_anchor}` does not resolve to a source heading.",
+                    f"nodes/{index}/markdown_anchor",
+                )
 
     edges_value = graph.get("edges")
     if not isinstance(edges_value, list):
@@ -324,6 +338,7 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
     else:
         edges = edges_value
     edge_ids: set[str] = set()
+    edge_pairs: set[tuple[str, str]] = set()
     for index, edge in enumerate(edges):
         if not isinstance(edge, dict):
             add("error", "invalid_edge", "Graph edge is not an object.", f"edges/{index}")
@@ -338,6 +353,8 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
             add("error", "invalid_edge_kind", f"Graph edge `{edge_id}` uses invalid kind `{kind}`.", f"edges/{index}/kind")
         source = str(edge.get("source") or "")
         target = str(edge.get("target") or "")
+        if source and target:
+            edge_pairs.add((source, target))
         if not source or source not in node_ids:
             add(
                 "error",
@@ -367,10 +384,28 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
                 f"Active path node `{node_id}` is not a materialized node.",
                 f"active_path/{active_index}",
             )
+    for active_index, (source, target) in enumerate(zip(active_path, active_path[1:])):
+        source_id = str(source)
+        target_id = str(target)
+        if (source_id, target_id) not in edge_pairs:
+            add(
+                "error",
+                "active_path_edge_missing",
+                f"Active path step `{source_id}` -> `{target_id}` is missing a graph edge.",
+                f"active_path/{active_index}",
+            )
 
     node_details = graph.get("node_details")
     if not isinstance(node_details, dict):
         add("error", "invalid_node_details", "Graph payload field `node_details` must be an object.", "node_details")
+        node_details = {}
+    for node in node_records:
+        node_id = str(node.get("id") or "")
+        detail = node_details.get(node_id)
+        if detail is None:
+            add("error", "node_detail_missing", f"Graph node `{node_id}` is missing node detail.", f"node_details/{node_id}")
+        elif not isinstance(detail, dict):
+            add("error", "invalid_node_detail", f"Graph node `{node_id}` detail must be an object.", f"node_details/{node_id}")
 
     supporting_artifacts_value = graph.get("supporting_artifacts")
     if not isinstance(supporting_artifacts_value, dict):
@@ -711,6 +746,23 @@ def _display_path(path: Path | str, *, lab_root: Path) -> str:
 
 def _markdown_anchor(raw_id: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", raw_id.strip().lower()).strip("-") or "node"
+
+
+def _node_raw_id(node: dict[str, Any]) -> str:
+    raw_id = str(node.get("raw_id") or "").strip()
+    if raw_id:
+        return raw_id
+    node_id = str(node.get("id") or "").strip()
+    return node_id.rsplit(".", maxsplit=1)[-1]
+
+
+def _markdown_node_heading_exists(path: Path, raw_id: str) -> bool:
+    try:
+        markdown = strip_frontmatter(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError):
+        return False
+    pattern = rf"^###\s+Node\s+{re.escape(raw_id)}(?::|\s*$)"
+    return re.search(pattern, markdown, flags=re.MULTILINE) is not None
 
 
 def _path_starts_with_meridian(path: str) -> bool:
