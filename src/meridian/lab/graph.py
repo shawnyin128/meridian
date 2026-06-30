@@ -68,14 +68,15 @@ def materialize_lab_graph(root: Path) -> LabGraphBuildResult:
             node_details[node["node"]["id"]] = node["details"]
             supporting_artifacts[node["node"]["id"]] = node["artifacts"]
             if node["parent"]:
+                parent_id = _node_ref(thread_id, node["parent"])
                 edges.append(
                     {
-                        "id": f"edge.{thread_id}.{node['parent']}.{node['raw_id']}",
-                        "source": f"{thread_id}.{node['parent']}",
+                        "id": f"edge.{parent_id}.{node['raw_id']}",
+                        "source": parent_id,
                         "target": node["node"]["id"],
                         "kind": "continues",
                         "strength": "strong",
-                        "on_active_path": _edge_on_active_path(f"{thread_id}.{node['parent']}", node["node"]["id"], active_path),
+                        "on_active_path": _edge_on_active_path(parent_id, node["node"]["id"], active_path),
                     }
                 )
         edges.extend(_parse_graph_relations(thread_id, text, active_path))

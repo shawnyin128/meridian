@@ -45,7 +45,7 @@ class LabGraphTests(unittest.TestCase):
                 "### Node B: Repair scoring\n\n"
                 "- mode: `repairable`\n"
                 "- active: true\n"
-                "- parent: A\n\n"
+                "- parent: kv-compression.A\n\n"
                 "#### Supporting Artifacts\n\n"
                 "| Type | ID | Title | Impact | Path |\n"
                 "| --- | --- | --- | --- | --- |\n"
@@ -80,8 +80,17 @@ class LabGraphTests(unittest.TestCase):
             self.assertTrue(nodes_by_id["kv-compression.B"]["active"])
             self.assertTrue(nodes_by_id["kv-compression.B"]["on_active_path"])
             self.assertEqual(graph["node_details"]["kv-compression.B"]["next_action"], "Run the amortized scoring probe.")
+            node_a_artifact_ids = [item["id"] for item in graph["supporting_artifacts"]["kv-compression.A"]]
+            self.assertEqual(node_a_artifact_ids, ["exp-01"])
             artifact_ids = [item["id"] for item in graph["supporting_artifacts"]["kv-compression.B"]]
             self.assertEqual(artifact_ids, ["exp-02"])
+            parent_edges = [
+                edge
+                for edge in graph["edges"]
+                if edge["source"] == "kv-compression.A" and edge["target"] == "kv-compression.B"
+            ]
+            self.assertEqual(len(parent_edges), 1)
+            self.assertEqual(parent_edges[0]["kind"], "continues")
             relation_edges = [
                 edge
                 for edge in graph["edges"]
