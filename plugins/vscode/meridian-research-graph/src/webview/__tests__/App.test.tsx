@@ -57,10 +57,14 @@ describe("App", () => {
     };
 
     const html = renderToString(<App graph={graph} />);
+    const staticGraphNodes = html.match(/<button[^>]*class="staticGraphNode[^"]*"[\s\S]*?<\/button>/g) ?? [];
 
     expect(html).toContain("Active probe");
     expect(html).toContain("Scoring probe");
     expect(html).toContain("Run a probe");
-    expect(html).not.toMatch(/react-flow__node[^>]*>[^<]*exp-04/);
+    expect(staticGraphNodes).toHaveLength(1);
+    expect(staticGraphNodes[0]).toContain("Active probe");
+    expect(staticGraphNodes[0]).not.toContain("Scoring probe");
+    expect(staticGraphNodes[0]).not.toContain("exp-04");
   });
 });
