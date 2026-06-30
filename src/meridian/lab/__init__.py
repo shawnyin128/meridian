@@ -13,6 +13,7 @@ from meridian.lab.coding_style import (
     validate_coding_style_profile,
 )
 from meridian.lab.graph import (
+    apply_lab_update,
     LAB_GRAPH_SCHEMA_VERSION,
     LAB_UPDATE_SCHEMA_VERSION,
     LabGraphBuildResult,
@@ -46,6 +47,7 @@ from meridian.lab.state import (
 __all__ = [
     "ALLOWED_NODE_MODES",
     "ALLOWED_PROPOSAL_STATES",
+    "apply_lab_update",
     "classify_coding_style_feedback",
     "CODING_STYLE_PROFILE_SCHEMA_VERSION",
     "coding_style_config_home",

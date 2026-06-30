@@ -542,6 +542,140 @@ class LabGraphTests(unittest.TestCase):
             self.assertEqual(report["status"], "pass")
             self.assertEqual(report["findings"], [])
 
+    def test_apply_update_writes_markdown_and_graph(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            thread = root / ".meridian/threads/kv-compression.md"
+            thread.write_text(
+                thread.read_text(encoding="utf-8")
+                + "\n\n### Node B: Follow-up probe\n\n"
+                + "- mode: `unresolved`\n"
+                + "- parent: A\n",
+                encoding="utf-8",
+            )
+            (root / ".meridian/experiments/exp-02.md").write_text(
+                "---\ntype: research-experiment\nid: exp-02\nvalidity: valid\n---\n# Experiment\n",
+                encoding="utf-8",
+            )
+            from meridian.lab.graph import apply_lab_update
+
+            packet = {
+                "schema": "meridian.lab.update.v1",
+                "intent": "apply_experiment_result",
+                "target_thread": "kv-compression",
+                "changes": [
+                    {
+                        "op": "update_node",
+                        "node_id": "kv-compression.A",
+                        "fields": {
+                            "state": "supported",
+                            "next_action": "Run the follow-up scoring probe.",
+                        },
+                    },
+                    {
+                        "op": "attach_artifact",
+                        "node_id": "kv-compression.A",
+                        "artifact": {
+                            "type": "experiment",
+                            "id": "exp-02",
+                            "title": "Scoring probe",
+                            "impact": "supports",
+                            "path": ".meridian/experiments/exp-02.md",
+                        },
+                    },
+                    {
+                        "op": "record_history",
+                        "node_id": "kv-compression.A",
+                        "message": "Attached exp-02 and updated next action.",
+                    },
+                    {
+                        "op": "set_active_path",
+                        "path": ["kv-compression.A", "kv-compression.B"],
+                    },
+                ],
+                "user_confirmation": {"required_for": ["set_active_path"], "status": "accepted"},
+            }
+
+            result = apply_lab_update(root, packet)
+
+            self.assertEqual(result["schema"], "meridian.lab.apply_update.v1")
+            self.assertEqual(result["status"], "applied")
+            self.assertEqual(result["validation"]["status"], "pass")
+            self.assertEqual(result["graph_health"]["status"], "pass")
+            self.assertIn(".meridian/state.md", result["written_paths"])
+            self.assertIn(".meridian/threads/kv-compression.md", result["written_paths"])
+            self.assertIn(".meridian/graph/graph.json", result["written_paths"])
+            state_text = (root / ".meridian/state.md").read_text(encoding="utf-8")
+            self.assertIn("active_path: [kv-compression.A, kv-compression.B]", state_text)
+            thread_text = (root / ".meridian/threads/kv-compression.md").read_text(encoding="utf-8")
+            self.assertIn("- mode: `supported`", thread_text)
+            self.assertIn("#### Next Action\n\nRun the follow-up scoring probe.", thread_text)
+            self.assertIn("#### Supporting Artifacts", thread_text)
+            self.assertIn(
+                "| experiment | exp-02 | Scoring probe | supports | .meridian/experiments/exp-02.md |",
+                thread_text,
+            )
+            self.assertRegex(thread_text, r"- \d{4}-\d{2}-\d{2}: Attached exp-02 and updated next action\.")
+            graph_path = root / ".meridian/graph/graph.json"
+            self.assertTrue(graph_path.exists())
+            graph = json.loads(graph_path.read_text(encoding="utf-8"))
+            self.assertEqual(graph["active_path"], ["kv-compression.A", "kv-compression.B"])
+            self.assertEqual(graph["nodes"][0]["state"], "supported")
+            self.assertEqual(
+                graph["node_details"]["kv-compression.A"]["next_action"],
+                "Run the follow-up scoring probe.",
+            )
+            self.assertIn(
+                {
+                    "type": "experiment",
+                    "id": "exp-02",
+                    "title": "Scoring probe",
+                    "impact": "supports",
+                    "path": ".meridian/experiments/exp-02.md",
+                },
+                graph["supporting_artifacts"]["kv-compression.A"],
+            )
+
+    def test_apply_update_writes_nothing_when_invalid(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            before = {
+                path.relative_to(root).as_posix(): path.read_text(encoding="utf-8")
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+            from meridian.lab.graph import apply_lab_update
+
+            packet = {
+                "schema": "meridian.lab.update.v1",
+                "intent": "bad_apply",
+                "target_thread": "kv-compression",
+                "changes": [
+                    {
+                        "op": "update_node",
+                        "node_id": "kv-compression.A",
+                        "fields": {"unexpected": "value"},
+                    }
+                ],
+                "user_confirmation": {"required_for": [], "status": "not_required"},
+            }
+
+            result = apply_lab_update(root, packet)
+            after = {
+                path.relative_to(root).as_posix(): path.read_text(encoding="utf-8")
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+
+            self.assertEqual(result["schema"], "meridian.lab.apply_update.v1")
+            self.assertEqual(result["status"], "rejected")
+            self.assertEqual(result["validation"]["status"], "fail")
+            self.assertEqual(result["written_paths"], [])
+            self.assertEqual(after, before)
+            self.assertFalse((root / ".meridian/graph").exists())
+
     def test_validate_update_packet_rejects_missing_target_thread(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -896,6 +1030,11 @@ class LabGraphTests(unittest.TestCase):
         from meridian.lab import validate_lab_update_packet
 
         self.assertTrue(callable(validate_lab_update_packet))
+
+    def test_lab_package_exports_apply_update(self) -> None:
+        from meridian.lab import apply_lab_update
+
+        self.assertTrue(callable(apply_lab_update))
 
     def test_validate_update_packet_rejects_record_history_bad_node_ids(self) -> None:
         with TemporaryDirectory() as tmp:

@@ -14,6 +14,7 @@ from meridian.wiki.corpus import parse_frontmatter, strip_frontmatter
 LAB_GRAPH_SCHEMA_VERSION = "meridian.lab.graph.v1"
 LAB_GRAPH_HEALTH_SCHEMA_VERSION = "meridian.lab.graph_health.v1"
 LAB_UPDATE_SCHEMA_VERSION = "meridian.lab.update.v1"
+LAB_APPLY_UPDATE_SCHEMA_VERSION = "meridian.lab.apply_update.v1"
 
 ALLOWED_EDGE_KINDS = {
     "continues",
@@ -465,6 +466,71 @@ def write_lab_graph(root: Path) -> LabGraphBuildResult:
     return result
 
 
+def apply_lab_update(root: Path, packet: dict[str, Any]) -> dict[str, Any]:
+    validation = validate_lab_update_packet(root, packet)
+    if validation["status"] != "pass":
+        return {
+            "schema": LAB_APPLY_UPDATE_SCHEMA_VERSION,
+            "status": "rejected",
+            "validation": validation,
+            "written_paths": [],
+        }
+
+    lab_root = _lab_root(root)
+    written_paths: list[Path] = []
+
+    def remember(path: Path) -> None:
+        if path not in written_paths:
+            written_paths.append(path)
+
+    def write_if_changed(path: Path, text: str) -> None:
+        existing = path.read_text(encoding="utf-8") if path.exists() else ""
+        if text != existing:
+            path.write_text(text, encoding="utf-8")
+            remember(path)
+
+    for change in packet.get("changes", []):
+        if not isinstance(change, dict):
+            continue
+        op = str(change.get("op") or "").strip()
+        if op in {"update_node", "attach_artifact", "record_history"}:
+            thread_id, raw_id = _split_node_id(str(change.get("node_id") or ""))
+            thread_path = lab_root / "threads" / f"{thread_id}.md"
+            text = thread_path.read_text(encoding="utf-8")
+            if op == "update_node":
+                fields = change.get("fields") if isinstance(change.get("fields"), dict) else {}
+                text = _apply_update_node_change(text, raw_id, fields)
+            elif op == "attach_artifact":
+                artifact = change.get("artifact") if isinstance(change.get("artifact"), dict) else {}
+                text = _apply_attach_artifact_change(text, raw_id, artifact)
+            elif op == "record_history":
+                text = _apply_record_history_change(text, raw_id, _history_message(change))
+            write_if_changed(thread_path, text)
+        elif op == "set_active_path":
+            state_path = lab_root / "state.md"
+            active_path = _as_list(change.get("path", change.get("active_path")))
+            text = state_path.read_text(encoding="utf-8") if state_path.exists() else ""
+            write_if_changed(state_path, _upsert_frontmatter_field(text, "active_path", _format_inline_list(active_path)))
+        elif op == "set_active_thread":
+            state_path = lab_root / "state.md"
+            active_thread = str(change.get("thread_id") or change.get("target_thread") or packet.get("target_thread") or "")
+            text = state_path.read_text(encoding="utf-8") if state_path.exists() else ""
+            write_if_changed(state_path, _upsert_frontmatter_field(text, "active_thread", active_thread.strip()))
+
+    graph_result = write_lab_graph(root)
+    remember(lab_root / "graph" / "graph.json")
+    remember(lab_root / "graph" / "graph-health.json")
+    remember(lab_root / "graph" / "graph.schema.json")
+
+    return {
+        "schema": LAB_APPLY_UPDATE_SCHEMA_VERSION,
+        "status": "applied",
+        "validation": validation,
+        "written_paths": [_display_path(path, lab_root=lab_root.parent) for path in written_paths],
+        "graph_health": graph_result.health,
+    }
+
+
 def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, Any]:
     findings: list[dict[str, Any]] = []
 
@@ -821,6 +887,182 @@ def _frontmatter(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
     return parse_frontmatter(path.read_text(encoding="utf-8"))
+
+
+def _split_node_id(node_id: str) -> tuple[str, str]:
+    clean = _clean_scalar(node_id)
+    if "." not in clean:
+        return "", clean
+    thread_id, raw_id = clean.rsplit(".", maxsplit=1)
+    return thread_id, raw_id
+
+
+def _apply_update_node_change(text: str, raw_id: str, fields: dict[str, Any]) -> str:
+    def edit(body: str) -> str:
+        if "state" in fields:
+            body = _upsert_node_field(body, "mode", f"`{str(fields['state']).strip()}`")
+        if "next_action" in fields:
+            body = _upsert_heading_body(body, "Next Action", str(fields["next_action"]).strip())
+        return body
+
+    return _replace_node_body(text, raw_id, edit)
+
+
+def _apply_attach_artifact_change(text: str, raw_id: str, artifact: dict[str, Any]) -> str:
+    def edit(body: str) -> str:
+        artifact_id = str(artifact.get("id") or "").strip()
+        if any(str(existing.get("id") or "").strip() == artifact_id for existing in _parse_supporting_artifacts(body)):
+            return body
+        return _append_supporting_artifact(body, artifact)
+
+    return _replace_node_body(text, raw_id, edit)
+
+
+def _apply_record_history_change(text: str, raw_id: str, message: str) -> str:
+    def edit(body: str) -> str:
+        dated_message = f"- {datetime.now(timezone.utc).date().isoformat()}: {message.strip()}"
+        return _append_heading_line(body, "History", dated_message)
+
+    return _replace_node_body(text, raw_id, edit)
+
+
+def _replace_node_body(text: str, raw_id: str, edit: Any) -> str:
+    pattern = rf"^###[ \t]+Node[ \t]+{re.escape(raw_id)}(?::[^\n]*)?$"
+    match = re.search(pattern, text, flags=re.MULTILINE)
+    if not match:
+        return text
+    body_start = match.end()
+    next_match = re.search(r"^###[ \t]+Node[ \t]+[^:\n]+(?::[^\n]*)?$", text[body_start:], flags=re.MULTILINE)
+    body_end = body_start + next_match.start() if next_match else len(text)
+    return text[:body_start] + edit(text[body_start:body_end]) + text[body_end:]
+
+
+def _upsert_node_field(body: str, name: str, value: str) -> str:
+    line = f"- {name}: {value}"
+    pattern = rf"^[ \t]*-[ \t]*{re.escape(name)}:[ \t]*.*$"
+    if re.search(pattern, body, flags=re.MULTILINE):
+        return re.sub(pattern, line, body, count=1, flags=re.MULTILINE)
+    leading_blank = re.match(r"^(?:[ \t]*(?:\r?\n|$))*", body)
+    index = leading_blank.end() if leading_blank else 0
+    return body[:index] + line + "\n" + body[index:]
+
+
+def _append_supporting_artifact(body: str, artifact: dict[str, Any]) -> str:
+    row = _artifact_table_row(artifact)
+    table = "| Type | ID | Title | Impact | Path |\n| --- | --- | --- | --- | --- |\n" + row
+    bounds = _heading_body_bounds(body, "Supporting Artifacts")
+    if bounds is None:
+        return _append_heading_section(body, "Supporting Artifacts", table)
+
+    _, content_start, content_end = bounds
+    content = body[content_start:content_end].strip()
+    if _has_markdown_table(content):
+        content = content.rstrip() + "\n" + row
+    elif content:
+        content = content.rstrip() + "\n\n" + table
+    else:
+        content = table
+    return _replace_heading_content(body, content_start, content_end, content)
+
+
+def _append_heading_line(body: str, heading: str, line: str) -> str:
+    bounds = _heading_body_bounds(body, heading)
+    if bounds is None:
+        return _append_heading_section(body, heading, line)
+    _, content_start, content_end = bounds
+    content = body[content_start:content_end].strip()
+    content = f"{content}\n{line}" if content else line
+    return _replace_heading_content(body, content_start, content_end, content)
+
+
+def _upsert_heading_body(body: str, heading: str, content: str) -> str:
+    bounds = _heading_body_bounds(body, heading)
+    if bounds is None:
+        return _append_heading_section(body, heading, content)
+    _, content_start, content_end = bounds
+    return _replace_heading_content(body, content_start, content_end, content)
+
+
+def _append_heading_section(body: str, heading: str, content: str) -> str:
+    base = body.rstrip()
+    separator = "\n\n" if base else "\n\n"
+    return f"{base}{separator}#### {heading}\n\n{content.strip()}\n\n"
+
+
+def _replace_heading_content(body: str, content_start: int, content_end: int, content: str) -> str:
+    tail = body[content_end:].lstrip("\r\n")
+    separator = "\n\n" if tail else "\n"
+    return body[:content_start] + "\n\n" + content.strip() + separator + tail
+
+
+def _heading_body_bounds(body: str, heading: str) -> tuple[re.Match[str], int, int] | None:
+    pattern = rf"^####[ \t]+{re.escape(heading)}[ \t]*$"
+    match = re.search(pattern, body, flags=re.MULTILINE)
+    if not match:
+        return None
+    content_start = match.end()
+    next_heading = re.search(r"^#{2,4}[ \t]+", body[content_start:], flags=re.MULTILINE)
+    content_end = content_start + next_heading.start() if next_heading else len(body)
+    return match, content_start, content_end
+
+
+def _artifact_table_row(artifact: dict[str, Any]) -> str:
+    cells = [
+        artifact.get("type"),
+        artifact.get("id"),
+        artifact.get("title"),
+        artifact.get("impact"),
+        artifact.get("path"),
+    ]
+    return "| " + " | ".join(_table_cell(cell) for cell in cells) + " |"
+
+
+def _table_cell(value: Any) -> str:
+    return " ".join(str(value or "").split()).replace("|", "/")
+
+
+def _has_markdown_table(content: str) -> bool:
+    return sum(1 for line in content.splitlines() if line.strip().startswith("|")) >= 2
+
+
+def _history_message(change: dict[str, Any]) -> str:
+    for field in ("message", "history", "note"):
+        if field in change:
+            return str(change.get(field) or "")
+    return ""
+
+
+def _format_inline_list(values: list[str]) -> str:
+    return "[" + ", ".join(values) + "]"
+
+
+def _upsert_frontmatter_field(text: str, field: str, value: str) -> str:
+    line = f"{field}: {value}"
+    bounds = _frontmatter_text_bounds(text)
+    if bounds is None:
+        return f"---\n{line}\n---\n{text}"
+
+    start, end = bounds
+    frontmatter = text[start:end]
+    pattern = rf"^{re.escape(field)}:[ \t]*.*$"
+    if re.search(pattern, frontmatter, flags=re.MULTILINE):
+        frontmatter = re.sub(pattern, line, frontmatter, count=1, flags=re.MULTILINE)
+    else:
+        stripped = frontmatter.rstrip("\r\n")
+        frontmatter = f"{stripped}\n{line}\n" if stripped else f"{line}\n"
+    return text[:start] + frontmatter + text[end:]
+
+
+def _frontmatter_text_bounds(text: str) -> tuple[int, int] | None:
+    opening = re.match(r"^---[ \t]*(?:\r?\n|$)", text)
+    if not opening:
+        return None
+    closing = re.search(r"^---[ \t]*(?:\r?\n|$)", text[opening.end() :], flags=re.MULTILINE)
+    if not closing:
+        return None
+    start = opening.end()
+    end = opening.end() + closing.start()
+    return start, end
 
 
 def _as_list(value: Any) -> list[str]:
