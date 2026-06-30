@@ -1406,10 +1406,13 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if result.status == "ready" else 1
 
         if args.product == "lab" and args.command == "graph-refresh":
+            json_out = _preflight_json_out(args.json_out)
+            if args.json_out and json_out is None:
+                return 1
             result = write_lab_graph(args.lab_root)
             graph_path = result.lab_root / "graph" / "graph.json"
-            if args.json_out:
-                target = _write_json_payload(args.json_out, result.graph)
+            if json_out:
+                target = _write_json_payload(json_out, result.graph)
                 print(f"Wrote Lab graph JSON copy: {target}")
             print(f"Lab graph refresh: {result.health['status']}")
             print(f"Wrote Lab graph JSON: {graph_path}")
@@ -1426,10 +1429,13 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if health.get("status") == "pass" else 1
 
         if args.product == "lab" and args.command == "apply-update":
+            json_out = _preflight_json_out(args.json_out)
+            if args.json_out and json_out is None:
+                return 1
             packet = _read_manifest(args.packet)
             result = apply_lab_update(args.lab_root, packet)
-            if args.json_out:
-                target = _write_json_payload(args.json_out, result)
+            if json_out:
+                target = _write_json_payload(json_out, result)
                 print(f"Wrote Lab update result JSON: {target}")
             print(f"Lab update: {result['status']}")
             validation = result.get("validation")
@@ -2645,6 +2651,28 @@ def _print_artifact_group(label: str, artifacts: dict[str, object]) -> None:
         if value is None:
             continue
         print(f"  - {key}: {value}")
+
+
+def _preflight_json_out(path: Path | None) -> Path | None:
+    if path is None:
+        return None
+    target = path.expanduser().resolve()
+    if target.exists() and target.is_dir():
+        print(f"error: --json-out points to a directory: {target}", file=sys.stderr)
+        return None
+    parent = target.parent
+    if parent.exists() and not parent.is_dir():
+        print(f"error: --json-out parent is not a directory: {parent}", file=sys.stderr)
+        return None
+    try:
+        parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        print(f"error: could not prepare --json-out parent {parent}: {exc}", file=sys.stderr)
+        return None
+    if target.exists() and not target.is_file():
+        print(f"error: --json-out target is not a regular file: {target}", file=sys.stderr)
+        return None
+    return target
 
 
 def _write_json_payload(path: Path, payload: object) -> Path:

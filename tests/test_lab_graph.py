@@ -681,6 +681,102 @@ class LabGraphTests(unittest.TestCase):
             thread_text = (root / ".meridian/threads/kv-compression.md").read_text(encoding="utf-8")
             self.assertIn("- mode: `supported`", thread_text)
 
+    def test_cli_lab_apply_update_bad_json_out_does_not_mutate(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            thread = root / ".meridian/threads/kv-compression.md"
+            before = thread.read_text(encoding="utf-8")
+            packet_path = root / "packet.json"
+            packet_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "meridian.lab.update.v1",
+                        "intent": "mark_supported",
+                        "target_thread": "kv-compression",
+                        "changes": [
+                            {
+                                "op": "update_node",
+                                "node_id": "kv-compression.A",
+                                "fields": {"state": "supported"},
+                            }
+                        ],
+                        "user_confirmation": {"required_for": [], "status": "not_required"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            bad_json_out = root / "existing-output-dir"
+            bad_json_out.mkdir()
+
+            status = main(
+                [
+                    "lab",
+                    "apply-update",
+                    str(packet_path),
+                    "--lab-root",
+                    str(root),
+                    "--json-out",
+                    str(bad_json_out),
+                ]
+            )
+
+            self.assertEqual(status, 1)
+            self.assertEqual(thread.read_text(encoding="utf-8"), before)
+            self.assertFalse((root / ".meridian/graph").exists())
+
+    def test_cli_lab_apply_update_rejected_packet_writes_no_files(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            packet_path = root / "packet.json"
+            packet_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "meridian.lab.update.v1",
+                        "intent": "bad_apply",
+                        "target_thread": "kv-compression",
+                        "changes": [
+                            {
+                                "op": "update_node",
+                                "node_id": "kv-compression.A",
+                                "fields": {"unexpected": "value"},
+                            }
+                        ],
+                        "user_confirmation": {"required_for": [], "status": "not_required"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            before = {
+                path.relative_to(root).as_posix(): path.read_text(encoding="utf-8")
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+
+            status = main(["lab", "apply-update", str(packet_path), "--lab-root", str(root)])
+
+            after = {
+                path.relative_to(root).as_posix(): path.read_text(encoding="utf-8")
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+            self.assertEqual(status, 1)
+            self.assertEqual(after, before)
+            self.assertFalse((root / ".meridian/graph").exists())
+
+    def test_cli_lab_graph_refresh_bad_json_out_does_not_write_graph(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            bad_json_out = root / "existing-output-dir"
+            bad_json_out.mkdir()
+
+            status = main(["lab", "graph-refresh", "--lab-root", str(root), "--json-out", str(bad_json_out)])
+
+            self.assertEqual(status, 1)
+            self.assertFalse((root / ".meridian/graph").exists())
+
     def test_cli_lab_export_graph_writes_required_json_out(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1323,6 +1419,12 @@ class LabGraphTests(unittest.TestCase):
         from meridian.lab import apply_lab_update
 
         self.assertTrue(callable(apply_lab_update))
+
+    def test_lab_package_exports_graph_check_and_write(self) -> None:
+        from meridian.lab import check_lab_graph, write_lab_graph
+
+        self.assertTrue(callable(check_lab_graph))
+        self.assertTrue(callable(write_lab_graph))
 
     def test_validate_update_packet_rejects_record_history_bad_node_ids(self) -> None:
         with TemporaryDirectory() as tmp:
