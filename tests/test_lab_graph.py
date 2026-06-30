@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -8,6 +9,30 @@ from meridian.lab.graph import LAB_GRAPH_SCHEMA_VERSION, materialize_lab_graph
 
 
 class LabGraphTests(unittest.TestCase):
+    def _write_minimal_lab(self, root: Path) -> None:
+        lab = root / ".meridian"
+        (lab / "threads").mkdir(parents=True)
+        (lab / "experiments").mkdir()
+        (lab / "proposals").mkdir()
+        (lab / "state.md").write_text(
+            "---\ntype: lab-state\nactive_thread: kv-compression\nactive_path: [kv-compression.A]\n---\n# State\n",
+            encoding="utf-8",
+        )
+        (lab / "threads/index.md").write_text("# Threads\n", encoding="utf-8")
+        (lab / "experiments/index.md").write_text("# Experiments\n", encoding="utf-8")
+        (lab / "proposals/index.md").write_text("# Proposals\n", encoding="utf-8")
+        (lab / "threads/kv-compression.md").write_text(
+            "---\ntype: research-thread\ntitle: KV Compression\nactive_node: A\n---\n"
+            "# Research Thread: KV Compression\n\n"
+            "## Approach Tree\n\n"
+            "### Node A: Idea seed\n\n"
+            "- mode: `unresolved`\n"
+            "- active: true\n\n"
+            "#### Next Action\n\n"
+            "Define the first probe.\n",
+            encoding="utf-8",
+        )
+
     def test_materialize_graph_uses_core_research_nodes_only(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -138,6 +163,46 @@ class LabGraphTests(unittest.TestCase):
             ]
             self.assertEqual(len(parent_edges), 1)
             self.assertEqual(parent_edges[0]["kind"], "continues")
+
+    def test_write_lab_graph_creates_generated_artifacts(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+
+            from meridian.lab.graph import write_lab_graph
+
+            result = write_lab_graph(root)
+
+            graph_path = root / ".meridian/graph/graph.json"
+            health_path = root / ".meridian/graph/graph-health.json"
+            schema_path = root / ".meridian/graph/graph.schema.json"
+            self.assertTrue(graph_path.exists())
+            self.assertTrue(health_path.exists())
+            self.assertTrue(schema_path.exists())
+            payload = json.loads(graph_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["schema"], LAB_GRAPH_SCHEMA_VERSION)
+            self.assertEqual(result.health["status"], "pass")
+
+    def test_graph_health_fails_dangling_edge(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            thread = root / ".meridian/threads/kv-compression.md"
+            thread.write_text(
+                thread.read_text(encoding="utf-8")
+                + "\n## Graph Relations\n\n"
+                + "| Source | Relation | Target | Strength | Note |\n"
+                + "| --- | --- | --- | --- | --- |\n"
+                + "| kv-compression.A | related_to | kv-compression.missing | weak | broken |\n",
+                encoding="utf-8",
+            )
+
+            from meridian.lab.graph import materialize_lab_graph
+
+            result = materialize_lab_graph(root)
+            codes = [finding["code"] for finding in result.health["findings"]]
+            self.assertIn("dangling_edge_target", codes)
+            self.assertEqual(result.health["status"], "fail")
 
 
 if __name__ == "__main__":

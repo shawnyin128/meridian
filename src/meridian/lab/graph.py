@@ -99,69 +99,217 @@ def materialize_lab_graph(root: Path) -> LabGraphBuildResult:
     return LabGraphBuildResult(graph=graph, lab_root=lab_root, source_files=source_files, health=health)
 
 
-def check_lab_graph_payload(graph: dict[str, Any], *, lab_root: Path) -> dict[str, Any]:
+def check_lab_graph(root: Path) -> dict[str, Any]:
+    result = materialize_lab_graph(root)
+    graph_path = result.lab_root / "graph" / "graph.json"
+    if not graph_path.exists():
+        health = dict(result.health)
+        health["findings"] = [
+            *health["findings"],
+            {
+                "severity": "warning",
+                "code": "graph_json_missing",
+                "path": "graph/graph.json",
+                "message": "Generated graph JSON is missing; run graph-refresh.",
+            },
+        ]
+        if health["status"] == "pass":
+            health["status"] = "warn"
+        return health
+    return result.health
+
+
+def write_lab_graph(root: Path) -> LabGraphBuildResult:
+    result = materialize_lab_graph(root)
+    graph_dir = result.lab_root / "graph"
+    graph_dir.mkdir(parents=True, exist_ok=True)
+    (graph_dir / "graph.json").write_text(
+        json.dumps(result.graph, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    (graph_dir / "graph-health.json").write_text(
+        json.dumps(result.health, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    (graph_dir / "graph.schema.json").write_text(
+        json.dumps(_graph_schema(), indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return result
+
+
+def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, Any]:
     findings: list[dict[str, Any]] = []
 
     def add(severity: str, code: str, message: str, path: Path | str | None = None) -> None:
         finding: dict[str, Any] = {"severity": severity, "code": code, "message": message}
         if path is not None:
-            finding["path"] = _display_path(path, lab_root=lab_root.parent)
+            finding["path"] = _display_path(path, lab_root=lab_root.parent) if isinstance(path, Path) else path
         findings.append(finding)
 
     if graph.get("schema") != LAB_GRAPH_SCHEMA_VERSION:
-        add("error", "invalid_graph_schema", "Graph payload has an unexpected schema.", lab_root)
+        add("error", "invalid_graph_schema", "Graph payload has an unexpected schema.", "schema")
 
     try:
         json.dumps(graph, sort_keys=True)
     except TypeError as exc:
-        add("error", "graph_not_json_serializable", str(exc), lab_root)
+        add("error", "graph_not_json_serializable", str(exc), "graph")
 
     nodes = graph.get("nodes") or []
     node_ids: set[str] = set()
-    for node in nodes:
+    required_node_fields = ("id", "title", "state", "markdown_path", "markdown_anchor")
+    for index, node in enumerate(nodes):
+        if not isinstance(node, dict):
+            add("error", "invalid_node", "Graph node is not an object.", f"nodes/{index}")
+            continue
+        for field in required_node_fields:
+            if not str(node.get(field) or "").strip():
+                add("error", "missing_node_field", f"Graph node is missing `{field}`.", f"nodes/{index}/{field}")
         node_id = str(node.get("id") or "")
         if not node_id:
-            add("error", "node_without_id", "Graph node is missing an id.")
             continue
         if node_id in node_ids:
-            add("error", "duplicate_node_id", f"Graph node `{node_id}` appears more than once.")
+            add("error", "duplicate_node_id", f"Graph node `{node_id}` appears more than once.", f"nodes/{index}/id")
         node_ids.add(node_id)
         state = str(node.get("state") or "")
         if state not in ALLOWED_NODE_MODES:
-            add("error", "invalid_node_state", f"Graph node `{node_id}` uses invalid state `{state}`.")
+            add(
+                "error",
+                "invalid_node_state",
+                f"Graph node `{node_id}` uses invalid state `{state}`.",
+                f"nodes/{index}/state",
+            )
+        markdown_path = str(node.get("markdown_path") or "")
+        if _path_starts_with_meridian(markdown_path) and not (lab_root.parent / markdown_path).exists():
+            add(
+                "error",
+                "node_markdown_path_missing",
+                f"Graph node `{node_id}` markdown path `{markdown_path}` does not exist.",
+                markdown_path,
+            )
 
     edge_ids: set[str] = set()
-    for edge in graph.get("edges") or []:
+    for index, edge in enumerate(graph.get("edges") or []):
+        if not isinstance(edge, dict):
+            add("error", "invalid_edge", "Graph edge is not an object.", f"edges/{index}")
+            continue
         edge_id = str(edge.get("id") or "")
         if edge_id and edge_id in edge_ids:
-            add("error", "duplicate_edge_id", f"Graph edge `{edge_id}` appears more than once.")
+            add("error", "duplicate_edge_id", f"Graph edge `{edge_id}` appears more than once.", f"edges/{index}/id")
         if edge_id:
             edge_ids.add(edge_id)
         kind = str(edge.get("kind") or "")
         if kind not in ALLOWED_EDGE_KINDS:
-            add("error", "invalid_edge_kind", f"Graph edge `{edge_id}` uses invalid kind `{kind}`.")
+            add("error", "invalid_edge_kind", f"Graph edge `{edge_id}` uses invalid kind `{kind}`.", f"edges/{index}/kind")
         source = str(edge.get("source") or "")
         target = str(edge.get("target") or "")
-        if source and source not in node_ids:
-            add("warning", "edge_source_missing", f"Graph edge `{edge_id}` source `{source}` is not a materialized node.")
-        if target and target not in node_ids:
-            add("warning", "edge_target_missing", f"Graph edge `{edge_id}` target `{target}` is not a materialized node.")
+        if not source or source not in node_ids:
+            add(
+                "error",
+                "dangling_edge_source",
+                f"Graph edge `{edge_id}` source `{source}` is not a materialized node.",
+                f"edges/{index}/source",
+            )
+        if not target or target not in node_ids:
+            add(
+                "error",
+                "dangling_edge_target",
+                f"Graph edge `{edge_id}` target `{target}` is not a materialized node.",
+                f"edges/{index}/target",
+            )
+
+    for active_index, node_id in enumerate(graph.get("active_path") or []):
+        if str(node_id) not in node_ids:
+            add(
+                "error",
+                "invalid_active_path_node",
+                f"Active path node `{node_id}` is not a materialized node.",
+                f"active_path/{active_index}",
+            )
 
     for node_id, artifacts in (graph.get("supporting_artifacts") or {}).items():
         if node_id not in node_ids:
-            add("warning", "artifact_node_missing", f"Supporting artifacts refer to missing node `{node_id}`.")
-        for artifact in artifacts:
+            add(
+                "warning",
+                "artifact_node_missing",
+                f"Supporting artifacts refer to missing node `{node_id}`.",
+                "supporting_artifacts",
+            )
+        for artifact_index, artifact in enumerate(artifacts):
             artifact_type = str(artifact.get("type") or "")
             if artifact_type not in ALLOWED_ARTIFACT_TYPES:
-                add("warning", "invalid_artifact_type", f"Artifact `{artifact.get('id')}` uses type `{artifact_type}`.")
+                add(
+                    "warning",
+                    "invalid_artifact_type",
+                    f"Artifact `{artifact.get('id')}` uses type `{artifact_type}`.",
+                    f"supporting_artifacts/{node_id}/{artifact_index}/type",
+                )
+            artifact_path = str(artifact.get("path") or "")
+            if _path_starts_with_meridian(artifact_path) and not (lab_root.parent / artifact_path).exists():
+                add(
+                    "error",
+                    "artifact_path_missing",
+                    f"Artifact `{artifact.get('id')}` path `{artifact_path}` does not exist.",
+                    artifact_path,
+                )
 
     status = "fail" if any(finding["severity"] == "error" for finding in findings) else "pass"
     return {
         "schema": LAB_GRAPH_HEALTH_SCHEMA_VERSION,
-        "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "status": status,
-        "lab_root": _display_path(lab_root, lab_root=lab_root.parent),
+        "lab_root": str(lab_root),
         "findings": findings,
+    }
+
+
+def _graph_schema() -> dict[str, Any]:
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": LAB_GRAPH_SCHEMA_VERSION,
+        "title": "Meridian Lab Graph",
+        "type": "object",
+        "required": [
+            "schema",
+            "generated_at",
+            "lab_root",
+            "source_files",
+            "active_thread",
+            "active_path",
+            "nodes",
+            "edges",
+            "node_details",
+            "supporting_artifacts",
+            "health",
+        ],
+        "properties": {
+            "schema": {"const": LAB_GRAPH_SCHEMA_VERSION},
+            "nodes": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "required": ["id", "title", "state", "markdown_path", "markdown_anchor"],
+                    "properties": {
+                        "id": {"type": "string"},
+                        "title": {"type": "string"},
+                        "state": {"enum": sorted(ALLOWED_NODE_MODES)},
+                        "markdown_path": {"type": "string"},
+                        "markdown_anchor": {"type": "string"},
+                    },
+                },
+            },
+            "edges": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "required": ["source", "target", "kind"],
+                    "properties": {
+                        "source": {"type": "string"},
+                        "target": {"type": "string"},
+                        "kind": {"enum": sorted(ALLOWED_EDGE_KINDS)},
+                    },
+                },
+            },
+        },
     }
 
 
@@ -221,6 +369,8 @@ def _parse_thread_nodes(
             "active": active,
             "on_active_path": node_id in active_path,
             "source_path": _display_path(thread_path, lab_root=project_root),
+            "markdown_path": _display_path(thread_path, lab_root=project_root),
+            "markdown_anchor": _markdown_anchor(raw_id),
         }
         parsed.append(
             {
@@ -351,6 +501,14 @@ def _display_path(path: Path | str, *, lab_root: Path) -> str:
         return path.relative_to(lab_root).as_posix()
     except ValueError:
         return str(path)
+
+
+def _markdown_anchor(raw_id: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", raw_id.strip().lower()).strip("-") or "node"
+
+
+def _path_starts_with_meridian(path: str) -> bool:
+    return path.replace("\\", "/").startswith(".meridian/")
 
 
 def _node_field(body: str, name: str) -> str:
