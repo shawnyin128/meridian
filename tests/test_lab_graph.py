@@ -282,6 +282,24 @@ class LabGraphTests(unittest.TestCase):
             self.assertIn("invalid_supporting_artifact", codes)
             self.assertEqual(health["status"], "fail")
 
+    def test_check_lab_graph_fails_empty_list_supporting_artifacts(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+
+            from meridian.lab.graph import check_lab_graph, write_lab_graph
+
+            write_lab_graph(root)
+            graph_path = root / ".meridian/graph/graph.json"
+            payload = json.loads(graph_path.read_text(encoding="utf-8"))
+            payload["supporting_artifacts"] = []
+            graph_path.write_text(json.dumps(payload), encoding="utf-8")
+
+            health = check_lab_graph(root)
+            codes = [finding["code"] for finding in health["findings"]]
+            self.assertIn("invalid_supporting_artifacts", codes)
+            self.assertEqual(health["status"], "fail")
+
     def test_check_lab_graph_warns_when_generated_graph_is_stale(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

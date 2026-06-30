@@ -226,10 +226,12 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
     except TypeError as exc:
         add("error", "graph_not_json_serializable", str(exc), "graph")
 
-    nodes = graph.get("nodes") or []
-    if not isinstance(nodes, list):
+    nodes_value = graph.get("nodes")
+    if not isinstance(nodes_value, list):
         add("error", "invalid_nodes", "Graph payload field `nodes` must be a list.", "nodes")
         nodes = []
+    else:
+        nodes = nodes_value
     node_ids: set[str] = set()
     required_node_fields = ("id", "title", "state", "markdown_path", "markdown_anchor")
     for index, node in enumerate(nodes):
@@ -262,10 +264,12 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
                 markdown_path,
             )
 
-    edges = graph.get("edges") or []
-    if not isinstance(edges, list):
+    edges_value = graph.get("edges")
+    if not isinstance(edges_value, list):
         add("error", "invalid_edges", "Graph payload field `edges` must be a list.", "edges")
         edges = []
+    else:
+        edges = edges_value
     edge_ids: set[str] = set()
     for index, edge in enumerate(edges):
         if not isinstance(edge, dict):
@@ -296,10 +300,12 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
                 f"edges/{index}/target",
             )
 
-    active_path = graph.get("active_path") or []
-    if not isinstance(active_path, list):
+    active_path_value = graph.get("active_path")
+    if not isinstance(active_path_value, list):
         add("error", "invalid_active_path", "Graph payload field `active_path` must be a list.", "active_path")
         active_path = []
+    else:
+        active_path = active_path_value
     for active_index, node_id in enumerate(active_path):
         if str(node_id) not in node_ids:
             add(
@@ -309,8 +315,12 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
                 f"active_path/{active_index}",
             )
 
-    supporting_artifacts = graph.get("supporting_artifacts") or {}
-    if not isinstance(supporting_artifacts, dict):
+    node_details = graph.get("node_details")
+    if not isinstance(node_details, dict):
+        add("error", "invalid_node_details", "Graph payload field `node_details` must be an object.", "node_details")
+
+    supporting_artifacts_value = graph.get("supporting_artifacts")
+    if not isinstance(supporting_artifacts_value, dict):
         add(
             "error",
             "invalid_supporting_artifacts",
@@ -318,6 +328,8 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
             "supporting_artifacts",
         )
         supporting_artifacts = {}
+    else:
+        supporting_artifacts = supporting_artifacts_value
     for node_id, artifacts in supporting_artifacts.items():
         if node_id not in node_ids:
             add(
