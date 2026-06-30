@@ -48,6 +48,7 @@ ALLOWED_UPDATE_OPS = {
 }
 
 CONFIRMATION_REQUIRED_FIELDS = {"state:repairable", "state:dead", "active_thread", "active_path", "create_node"}
+CONFIRMATION_REQUIRED_OPS = {"create_node", "set_active_thread", "set_active_path", "detach_artifact"}
 
 
 @dataclass(frozen=True)
@@ -210,6 +211,37 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
     def add(code: str, message: str, path: str = "<packet>") -> None:
         findings.append({"severity": "error", "code": code, "path": path, "message": message})
 
+    def require_confirmation(reason: str, path: str) -> None:
+        if confirmation_status != "accepted":
+            add("confirmation_required", f"{reason} requires accepted user confirmation.", path)
+
+    def validate_node_id(node_id: str, path: str, *, must_exist: bool | None = None) -> bool:
+        if not node_id:
+            add("missing_node_id", "Change requires a non-empty node_id.", path)
+            return False
+        if not _is_well_formed_node_id(node_id):
+            add("invalid_node_id", f"Node id `{node_id}` is not well-formed.", path)
+            return False
+        if must_exist is True and node_id not in node_ids:
+            add("node_missing", f"Node `{node_id}` does not exist.", path)
+            return False
+        if must_exist is False and node_id in node_ids:
+            add("node_already_exists", f"Node `{node_id}` already exists.", path)
+            return False
+        return True
+
+    def validate_edge_endpoint(change: dict[str, Any], index: int, field: str) -> None:
+        endpoint = str(change.get(field) or "").strip()
+        path = f"changes[{index}].{field}"
+        if not endpoint:
+            add(f"missing_edge_{field}", f"{field} node id is required.", path)
+            return
+        if not _is_well_formed_node_id(endpoint):
+            add(f"invalid_edge_{field}", f"{field} node id `{endpoint}` is not well-formed.", path)
+            return
+        if endpoint not in node_ids:
+            add(f"edge_{field}_missing", f"{field} node `{endpoint}` does not exist.", path)
+
     if packet.get("schema") != LAB_UPDATE_SCHEMA_VERSION:
         add("invalid_update_schema", f"Update packet schema must be {LAB_UPDATE_SCHEMA_VERSION}.")
     target_thread = str(packet.get("target_thread") or "").strip()
@@ -232,13 +264,26 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
         if op not in ALLOWED_UPDATE_OPS:
             add("invalid_update_op", f"Unsupported update op `{op}`.", f"changes[{index}].op")
         node_id = str(change.get("node_id") or "").strip()
-        if op in {"update_node", "attach_artifact", "detach_artifact"} and node_id not in node_ids:
-            add("node_missing", f"Node `{node_id}` does not exist.", f"changes[{index}].node_id")
+        if op in CONFIRMATION_REQUIRED_OPS:
+            require_confirmation(f"Update op `{op}`", f"changes[{index}]")
+        if op in {"update_node", "attach_artifact", "detach_artifact"}:
+            validate_node_id(node_id, f"changes[{index}].node_id", must_exist=True)
+        if op == "create_node":
+            validate_node_id(node_id, f"changes[{index}].node_id", must_exist=False)
+        if op in {"create_edge", "update_edge"}:
+            validate_edge_endpoint(change, index, "source")
+            validate_edge_endpoint(change, index, "target")
+            kind = str(change.get("kind") or "").strip()
+            if not kind:
+                add("missing_edge_kind", "Edge kind is required.", f"changes[{index}].kind")
+            elif kind not in ALLOWED_EDGE_KINDS:
+                add("invalid_edge_kind", f"Edge kind `{kind}` is not allowed.", f"changes[{index}].kind")
         if op == "update_node":
             fields = change.get("fields")
             if not isinstance(fields, dict) or not fields:
                 add("missing_update_fields", "update_node requires non-empty fields.", f"changes[{index}].fields")
-            state = str((fields or {}).get("state") or "").strip()
+            field_values = fields if isinstance(fields, dict) else {}
+            state = str(field_values.get("state") or "").strip()
             if state and state not in ALLOWED_NODE_MODES:
                 add("invalid_node_state", f"Node state `{state}` is not allowed.", f"changes[{index}].fields.state")
             if state in {"repairable", "dead"} and confirmation_status != "accepted":
@@ -860,6 +905,10 @@ def _markdown_node_heading_exists(path: Path, raw_id: str) -> bool:
 
 def _path_starts_with_meridian(path: str) -> bool:
     return path.replace("\\", "/").startswith(".meridian/")
+
+
+def _is_well_formed_node_id(value: str) -> bool:
+    return re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*(?:\.[A-Za-z0-9][A-Za-z0-9_-]*)+", value) is not None
 
 
 def _node_field(body: str, name: str) -> str:
