@@ -44,6 +44,8 @@ class LabGraphTests(unittest.TestCase):
         self.assertIn("active_path:", state_template)
         self.assertIn("## Graph Relations", thread_template)
         self.assertIn("#### Supporting Artifacts", thread_template)
+        self.assertLess(thread_template.index("## Approach Tree"), thread_template.index("### Node A"))
+        self.assertLess(thread_template.index("### Node A"), thread_template.index("## Graph Relations"))
 
     def test_lab_skill_documents_generated_graph_boundary(self) -> None:
         repo_root = Path(__file__).resolve().parents[1]

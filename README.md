@@ -282,9 +282,9 @@ Do not hand-edit generated graph files. Change graph state through strict
 update packets and Meridian core so the Markdown control plane and generated
 view stay in sync.
 
-The VS Code graph viewer is a read-only consumer of `.meridian/graph/`
-artifacts. Refresh and check the graph from the CLI, then treat graph health
-failures as blockers before relying on visual state.
+The planned VS Code graph viewer will be a read-only consumer of
+`.meridian/graph/` artifacts. Refresh and check the graph from the CLI, then
+treat graph health failures as blockers before relying on visual state.
 
 Lab models exploratory research as:
 
