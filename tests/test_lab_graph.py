@@ -195,6 +195,38 @@ class LabGraphTests(unittest.TestCase):
             self.assertEqual(len(parent_edges), 1)
             self.assertEqual(parent_edges[0]["kind"], "continues")
 
+    def test_materialize_graph_anchor_normalizes_underscores_like_viewer(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            lab = root / ".meridian"
+            (lab / "threads").mkdir(parents=True)
+            (lab / "state.md").write_text(
+                "---\n"
+                "type: lab-state\n"
+                "active_thread: kv-compression\n"
+                "active_path: []\n"
+                "---\n"
+                "# Meridian Lab State\n",
+                encoding="utf-8",
+            )
+            (lab / "threads/kv-compression.md").write_text(
+                "---\n"
+                "type: research-thread\n"
+                "title: KV Compression\n"
+                "---\n"
+                "# Research Thread: KV Compression\n\n"
+                "## Approach Tree\n\n"
+                "### Node A_B: Repair scoring\n\n"
+                "- mode: `supported`\n",
+                encoding="utf-8",
+            )
+
+            result = materialize_lab_graph(root)
+            node = result.graph["nodes"][0]
+
+            self.assertEqual(node["markdown_anchor"], "node-a-b-repair-scoring")
+            self.assertEqual(result.health["status"], "pass")
+
     def test_write_lab_graph_creates_generated_artifacts(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -530,6 +562,37 @@ class LabGraphTests(unittest.TestCase):
             self.assertNotIn("graph_json_stale", codes)
             self.assertIn("graph_health_stale", codes)
             self.assertEqual(health["status"], "warn")
+
+    def test_check_lab_graph_warns_when_graph_health_json_is_stale(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+
+            from meridian.lab.graph import check_lab_graph, write_lab_graph
+
+            write_lab_graph(root)
+            health_path = root / ".meridian/graph/graph-health.json"
+            health_path.write_text(json.dumps({"status": "mutated", "findings": []}), encoding="utf-8")
+
+            health = check_lab_graph(root)
+            codes = [finding["code"] for finding in health["findings"]]
+            self.assertIn("graph_health_json_stale", codes)
+            self.assertEqual(health["status"], "warn")
+
+    def test_graph_health_rejects_missing_node_thread_id(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            result = materialize_lab_graph(root)
+            payload = json.loads(json.dumps(result.graph))
+            payload["nodes"][0].pop("thread_id")
+
+            from meridian.lab.graph import check_lab_graph_payload
+
+            health = check_lab_graph_payload(payload, lab_root=root / ".meridian")
+            codes = [finding["code"] for finding in health["findings"]]
+            self.assertIn("missing_node_field", codes)
+            self.assertEqual(health["status"], "fail")
 
     def test_graph_health_rejects_invalid_active_thread_slug(self) -> None:
         with TemporaryDirectory() as tmp:

@@ -236,6 +236,7 @@ def check_lab_graph(root: Path) -> dict[str, Any]:
                 "message": "Generated graph health summary does not match the current Lab Markdown state; run graph-refresh.",
             }
         )
+    findings.extend(_check_graph_health_file(result.lab_root, result.health))
     health["findings"] = findings
     health["status"] = _health_status(findings)
     return health
@@ -652,7 +653,7 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
         nodes = nodes_value
     node_ids: set[str] = set()
     node_records: list[dict[str, Any]] = []
-    required_node_fields = ("id", "title", "kind", "state", "markdown_path", "markdown_anchor")
+    required_node_fields = ("id", "thread_id", "title", "kind", "state", "markdown_path", "markdown_anchor")
     for index, node in enumerate(nodes):
         if not isinstance(node, dict):
             add("error", "invalid_node", "Graph node is not an object.", f"nodes/{index}")
@@ -865,6 +866,73 @@ def _stable_graph_payload(value: Any) -> Any:
     return value
 
 
+def _check_graph_health_file(lab_root: Path, expected_health: dict[str, Any]) -> list[dict[str, Any]]:
+    health_path = lab_root / "graph" / "graph-health.json"
+    if not health_path.exists():
+        return [
+            {
+                "severity": "warning",
+                "code": "graph_health_json_missing",
+                "path": "graph/graph-health.json",
+                "message": "Generated graph health JSON is missing; run graph-refresh.",
+            }
+        ]
+
+    try:
+        raw_health = health_path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        return [
+            {
+                "severity": "error",
+                "code": "graph_health_json_invalid_encoding",
+                "path": "graph/graph-health.json",
+                "message": f"Generated graph health JSON is not valid UTF-8: {exc.reason}.",
+            }
+        ]
+    except OSError as exc:
+        return [
+            {
+                "severity": "error",
+                "code": "graph_health_json_unreadable",
+                "path": "graph/graph-health.json",
+                "message": f"Generated graph health JSON could not be read: {exc}.",
+            }
+        ]
+
+    try:
+        loaded_health = json.loads(raw_health)
+    except json.JSONDecodeError as exc:
+        return [
+            {
+                "severity": "error",
+                "code": "graph_health_json_invalid",
+                "path": "graph/graph-health.json",
+                "message": f"Generated graph health JSON is invalid: {exc.msg}.",
+            }
+        ]
+
+    if not isinstance(loaded_health, dict):
+        return [
+            {
+                "severity": "error",
+                "code": "graph_health_json_not_object",
+                "path": "graph/graph-health.json",
+                "message": "Generated graph health JSON must contain an object payload.",
+            }
+        ]
+
+    if loaded_health != expected_health:
+        return [
+            {
+                "severity": "warning",
+                "code": "graph_health_json_stale",
+                "path": "graph/graph-health.json",
+                "message": "Generated graph health JSON does not match the current Lab Markdown state; run graph-refresh.",
+            }
+        ]
+    return []
+
+
 def _graph_schema() -> dict[str, Any]:
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -895,9 +963,10 @@ def _graph_schema() -> dict[str, Any]:
                 "type": "array",
                 "items": {
                     "type": "object",
-                    "required": ["id", "title", "kind", "state", "markdown_path", "markdown_anchor"],
+                    "required": ["id", "thread_id", "title", "kind", "state", "markdown_path", "markdown_anchor"],
                     "properties": {
                         "id": {"type": "string"},
+                        "thread_id": {"type": "string"},
                         "title": {"type": "string"},
                         "kind": {"const": "research_point"},
                         "state": {"enum": sorted(ALLOWED_NODE_MODES)},

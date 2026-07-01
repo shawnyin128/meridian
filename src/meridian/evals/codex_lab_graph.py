@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+from hashlib import sha256
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -69,7 +70,7 @@ def run_codex_lab_graph_eval(
         repo_root = case_dir / "repo"
         _ensure_child_path(out_dir, repo_root)
         _write_lab_graph_fixture(case, repo_root)
-        before_snapshot = _snapshot_lab_files(repo_root)
+        before_snapshot = _snapshot_repo_files(repo_root)
 
         prompt_path = case_dir / "prompt.md"
         prompt = build_codex_lab_graph_prompt(case)
@@ -89,7 +90,7 @@ def run_codex_lab_graph_eval(
             ignore_rules=False,
         )
         completed = command_runner(argv, repo_root, timeout, prompt)
-        after_snapshot = _snapshot_lab_files(repo_root)
+        after_snapshot = _snapshot_repo_files(repo_root)
         events_path.write_text(completed.stdout or "", encoding="utf-8")
         stderr_path.write_text(completed.stderr or "", encoding="utf-8")
 
@@ -371,21 +372,13 @@ def _write_lab_graph_fixture(case: dict[str, Any], repo_root: Path) -> None:
     proposals_root.joinpath("index.md").write_text("# Proposals\n\nNo local proposal is attached yet.\n", encoding="utf-8")
 
 
-def _snapshot_lab_files(repo_root: Path) -> dict[str, str | None]:
-    paths = [
-        repo_root / ".meridian" / "state.md",
-        repo_root / ".meridian" / "threads" / "index.md",
-        repo_root / ".meridian" / "threads" / "active-probe.md",
-        repo_root / ".meridian" / "experiments" / "index.md",
-        repo_root / ".meridian" / "proposals" / "index.md",
-        repo_root / ".meridian" / "graph" / "graph.json",
-        repo_root / ".meridian" / "graph" / "graph-health.json",
-        repo_root / ".meridian" / "graph" / "graph.schema.json",
-    ]
-    snapshot: dict[str, str | None] = {}
-    for path in paths:
+def _snapshot_repo_files(repo_root: Path) -> dict[str, str]:
+    snapshot: dict[str, str] = {}
+    for path in sorted(repo_root.rglob("*")):
+        if not path.is_file():
+            continue
         relative = path.relative_to(repo_root).as_posix()
-        snapshot[relative] = path.read_text(encoding="utf-8") if path.exists() else None
+        snapshot[relative] = sha256(path.read_bytes()).hexdigest()
     return snapshot
 
 
@@ -441,8 +434,8 @@ def _score_case(
     response: dict[str, Any] | None,
     returncode: int,
     parse_error: str | None,
-    before_snapshot: dict[str, str | None],
-    after_snapshot: dict[str, str | None],
+    before_snapshot: dict[str, str],
+    after_snapshot: dict[str, str],
 ) -> dict[str, Any]:
     failures: list[str] = []
     if returncode != 0:
@@ -474,8 +467,8 @@ def _score_case(
 
     actual_mutations = sorted(
         path
-        for path, before in before_snapshot.items()
-        if after_snapshot.get(path) != before
+        for path in set(before_snapshot) | set(after_snapshot)
+        if after_snapshot.get(path) != before_snapshot.get(path)
     )
     if actual_mutations:
         failures.append(f"repo files changed during read-only eval: {actual_mutations}")

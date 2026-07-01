@@ -104,12 +104,46 @@ export function normalizeLabGraph(value: unknown): LabGraph | null {
     !isRecord(value.node_details) ||
     !isRecord(value.supporting_artifacts) ||
     !isRecord(value.health) ||
-    !isString(value.health.status)
+    !isString(value.health.status) ||
+    !value.nodes.every(isResearchGraphNode) ||
+    !value.edges.every(isResearchGraphEdge)
   ) {
     return null;
   }
 
   return value as unknown as LabGraph;
+}
+
+function isResearchGraphNode(value: unknown): value is ResearchGraphNode {
+  return (
+    isRecord(value) &&
+    isString(value.id) &&
+    isString(value.thread_id) &&
+    isString(value.title) &&
+    value.kind === "research_point" &&
+    isResearchNodeState(value.state) &&
+    isString(value.markdown_path) &&
+    isString(value.markdown_anchor) &&
+    (value.position === undefined || isGraphPosition(value.position))
+  );
+}
+
+function isResearchGraphEdge(value: unknown): value is ResearchGraphEdge {
+  return (
+    isRecord(value) &&
+    isString(value.id) &&
+    isString(value.source) &&
+    isString(value.target) &&
+    isString(value.kind)
+  );
+}
+
+function isResearchNodeState(value: unknown): value is ResearchNodeState {
+  return value === "unresolved" || value === "repairable" || value === "supported" || value === "dead";
+}
+
+function isGraphPosition(value: unknown): value is GraphPosition {
+  return isRecord(value) && typeof value.x === "number" && typeof value.y === "number";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

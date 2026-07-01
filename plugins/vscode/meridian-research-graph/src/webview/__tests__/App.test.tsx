@@ -124,6 +124,21 @@ describe("App", () => {
   it("normalizes malformed graph payloads to the empty state", () => {
     expect(normalizeLabGraph({})).toBeNull();
     expect(normalizeLabGraph([])).toBeNull();
+    expect(
+      normalizeLabGraph({
+        ...sampleGraph(),
+        nodes: [
+          {
+            id: "kv-compression.A",
+            title: "Missing thread",
+            kind: "research_point",
+            state: "unresolved",
+            markdown_path: ".meridian/threads/kv-compression.md",
+            markdown_anchor: "node-a"
+          }
+        ]
+      })
+    ).toBeNull();
 
     const html = renderToString(<App graph={normalizeLabGraph({})} />);
 

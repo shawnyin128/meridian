@@ -11,6 +11,7 @@ vi.mock("node:child_process", () => ({
 }));
 
 import { runMeridian, summarizeMeridianOutput, workspaceRoot } from "../meridianCli";
+import { normalizeMarkdownAnchor } from "../markdownAnchor";
 
 describe("runMeridian", () => {
   it("runs python -m meridian with cwd and captures output", async () => {
@@ -62,6 +63,13 @@ describe("summarizeMeridianOutput", () => {
     expect(summarizeMeridianOutput({ stdout: "stdout detail", stderr: "stderr detail" }, "stderr")).toBe(
       "stderr detail"
     );
+  });
+});
+
+describe("normalizeMarkdownAnchor", () => {
+  it("matches Meridian graph anchor generation for punctuation and underscores", () => {
+    expect(normalizeMarkdownAnchor("Node A_B: Repair scoring")).toBe("node-a-b-repair-scoring");
+    expect(normalizeMarkdownAnchor("Node A: Idea seed")).toBe("node-a-idea-seed");
   });
 });
 

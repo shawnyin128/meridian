@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { normalizeMarkdownAnchor } from "./markdownAnchor";
 import { runMeridian, summarizeMeridianOutput, workspaceRoot } from "./meridianCli";
 import type { LabGraph } from "./webview/graphTypes";
 
@@ -302,14 +303,6 @@ function revealMarkdownAnchor(editor: vscode.TextEditor, document: vscode.TextDo
       return;
     }
   }
-}
-
-function normalizeMarkdownAnchor(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/\s+/g, "-");
 }
 
 function formatCliSuccess(action: string, result: { stdout: string; stderr: string }) {

@@ -129,6 +129,8 @@ class CodexLabGraphEvalTests(unittest.TestCase):
 
             def fake_runner(command: list[str], cwd: Path, timeout: float, stdin: str | None) -> subprocess.CompletedProcess[str]:
                 (cwd / ".meridian" / "state.md").write_text("# mutated\n", encoding="utf-8")
+                (cwd / ".meridian" / "threads" / "new.md").write_text("# New thread\n", encoding="utf-8")
+                (cwd / "AGENTS.md").write_text("# mutated agents\n", encoding="utf-8")
                 last_message_path = Path(command[command.index("--output-last-message") + 1])
                 last_message_path.write_text(
                     json.dumps(
@@ -156,6 +158,8 @@ class CodexLabGraphEvalTests(unittest.TestCase):
             self.assertTrue(
                 any(
                     failure.startswith("repo files changed during read-only eval:")
+                    and ".meridian/threads/new.md" in failure
+                    and "AGENTS.md" in failure
                     for failure in case_result["verdict"]["failures"]
                 )
             )
