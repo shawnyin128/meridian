@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from meridian import __version__
+from meridian.evals.codex_lab_graph import run_codex_lab_graph_eval
 from meridian.evals.codex_routing import (
     run_codex_lab_grounding_eval,
     run_codex_lab_repo_startup_eval,
@@ -248,6 +249,24 @@ def build_parser() -> argparse.ArgumentParser:
     codex_lab_grounding.add_argument("--timeout", type=float, default=300.0, help="Per-case codex exec timeout seconds.")
     codex_lab_grounding.add_argument("--overwrite", action="store_true", help="Overwrite an existing output directory.")
     codex_lab_grounding.add_argument(
+        "--use-user-config",
+        action="store_true",
+        help="Load the host Codex user config/rules instead of the isolated eval default.",
+    )
+    codex_lab_graph = eval_subparsers.add_parser(
+        "codex-lab-graph",
+        help="Run live Codex exec prompts over Lab graph update behavior cases.",
+    )
+    codex_lab_graph.add_argument("cases", type=Path, help="JSONL Lab graph update cases.")
+    codex_lab_graph.add_argument("--out-dir", type=Path, required=True, help="Directory for live Codex outputs.")
+    codex_lab_graph.add_argument("--codex-bin", default="codex", help="Codex executable. Defaults to codex.")
+    codex_lab_graph.add_argument("--model", default=None, help="Optional Codex model override.")
+    codex_lab_graph.add_argument("--profile", default=None, help="Optional Codex profile.")
+    codex_lab_graph.add_argument("--case-id", action="append", dest="case_ids", help="Run only this case id. Repeatable.")
+    codex_lab_graph.add_argument("--limit", type=int, default=None, help="Optional number of cases to run.")
+    codex_lab_graph.add_argument("--timeout", type=float, default=300.0, help="Per-case codex exec timeout seconds.")
+    codex_lab_graph.add_argument("--overwrite", action="store_true", help="Overwrite an existing output directory.")
+    codex_lab_graph.add_argument(
         "--use-user-config",
         action="store_true",
         help="Load the host Codex user config/rules instead of the isolated eval default.",
@@ -1492,6 +1511,24 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Total cases: {result.total_cases}")
             print(f"Passed: {result.passed_cases}")
             print(f"Failed: {result.failed_cases}")
+            return 0 if result.failed_cases == 0 else 1
+
+        if args.product == "eval" and args.command == "codex-lab-graph":
+            result = run_codex_lab_graph_eval(
+                cases_path=args.cases,
+                out_dir=args.out_dir,
+                codex_bin=args.codex_bin,
+                model=args.model,
+                profile=args.profile,
+                case_ids=args.case_ids,
+                limit=args.limit,
+                timeout=args.timeout,
+                overwrite=args.overwrite,
+                isolate_config=not args.use_user_config,
+            )
+            print(f"Codex Lab graph eval: {result.passed_cases}/{result.total_cases} passed")
+            print(f"Summary: {result.summary_path}")
+            print(f"Report: {result.report_path}")
             return 0 if result.failed_cases == 0 else 1
 
         if args.product == "eval" and args.command == "codex-research-agent-contract":
