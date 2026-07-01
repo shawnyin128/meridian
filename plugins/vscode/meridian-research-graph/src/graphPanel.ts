@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { runMeridian, workspaceRoot } from "./meridianCli";
+import { runMeridian, summarizeMeridianOutput, workspaceRoot } from "./meridianCli";
 import type { LabGraph } from "./webview/graphTypes";
 
 interface LoadedGraph {
@@ -18,6 +18,7 @@ export class ResearchGraphPanel {
   private graph: LabGraph | null = null;
   private graphRoot: string | null = null;
   private graphUri: vscode.Uri | null = null;
+  private targetRoot: string | null = null;
   private selectedNodeId: string | null = null;
 
   static open(context: vscode.ExtensionContext) {
@@ -60,7 +61,9 @@ export class ResearchGraphPanel {
   async refreshGraph() {
     const root = await this.resolveGraphRoot();
     if (!root) {
-      await vscode.window.showWarningMessage("No workspace root is available for Meridian graph refresh.");
+      await vscode.window.showWarningMessage(
+        "Open a Meridian graph or use a single-root workspace before refreshing; multi-root refresh needs a known Lab root."
+      );
       return;
     }
 
@@ -77,7 +80,9 @@ export class ResearchGraphPanel {
   async checkGraph() {
     const root = await this.resolveGraphRoot();
     if (!root) {
-      await vscode.window.showWarningMessage("No workspace root is available for Meridian graph health check.");
+      await vscode.window.showWarningMessage(
+        "Open a Meridian graph or use a single-root workspace before checking health; multi-root checks need a known Lab root."
+      );
       return;
     }
 
@@ -136,6 +141,9 @@ export class ResearchGraphPanel {
     this.graph = loaded?.graph ?? null;
     this.graphRoot = loaded?.root ?? null;
     this.graphUri = loaded?.graphUri ?? null;
+    if (loaded?.root) {
+      this.targetRoot = loaded.root;
+    }
     if (this.graph && this.selectedNodeId && !this.graph.nodes.some((node) => node.id === this.selectedNodeId)) {
       this.selectedNodeId = null;
     }
@@ -167,11 +175,15 @@ export class ResearchGraphPanel {
     if (this.graphRoot) {
       return this.graphRoot;
     }
+    if (this.targetRoot) {
+      return this.targetRoot;
+    }
 
     const graphContext = await findFirstReadableGraph();
     if (graphContext) {
       this.graphRoot = graphContext.root;
       this.graphUri = graphContext.graphUri;
+      this.targetRoot = graphContext.root;
       return graphContext.root;
     }
 
@@ -211,6 +223,7 @@ export class ResearchGraphPanel {
     const styleUris = findStyleUris(this.context, this.panel.webview);
     const cspSource = this.panel.webview.cspSource;
     const graphJson = escapeScriptJson(graph);
+    const selectedNodeIdJson = escapeScriptJson(this.selectedNodeId);
 
     return `<!doctype html>
 <html lang="en">
@@ -224,6 +237,7 @@ export class ResearchGraphPanel {
   <body>
     <div id="root"></div>
     <script nonce="${nonce}">window.__MERIDIAN_GRAPH__ = ${graphJson};</script>
+    <script nonce="${nonce}">window.__MERIDIAN_SELECTED_NODE_ID__ = ${selectedNodeIdJson};</script>
     <script nonce="${nonce}" type="module" src="${scriptUri.toString()}"></script>
   </body>
 </html>`;
@@ -304,18 +318,14 @@ function formatCliSuccess(action: string, result: { stdout: string; stderr: stri
 }
 
 function formatCliFailure(action: string, result: { code: number; stdout: string; stderr: string }) {
-  const summary = summarizeCliOutput(result);
+  const summary = summarizeCliOutput(result, "stderr");
   return summary
     ? `Meridian graph ${action} failed: ${summary}`
     : `Meridian graph ${action} failed with exit code ${result.code}.`;
 }
 
-function summarizeCliOutput(result: { stdout: string; stderr: string }) {
-  const output = (result.stdout || result.stderr).trim().replace(/\s+/g, " ");
-  if (output.length <= 220) {
-    return output;
-  }
-  return `${output.slice(0, 217)}...`;
+function summarizeCliOutput(result: { stdout: string; stderr: string }, preferredStream: "stdout" | "stderr" = "stdout") {
+  return summarizeMeridianOutput(result, preferredStream);
 }
 
 function findStyleUris(context: vscode.ExtensionContext, webview: vscode.Webview) {
@@ -331,7 +341,7 @@ function findStyleUris(context: vscode.ExtensionContext, webview: vscode.Webview
     .map((file) => webview.asWebviewUri(vscode.Uri.file(path.join(assetsDir, file))));
 }
 
-function escapeScriptJson(value: LabGraph | null) {
+function escapeScriptJson(value: unknown) {
   return JSON.stringify(value).replace(/[<>&\u2028\u2029]/g, (character) => {
     switch (character) {
       case "<":

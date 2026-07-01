@@ -32,18 +32,30 @@ interface VsCodeApi {
 
 let vscodeApi: VsCodeApi | null | undefined;
 
-export function App({ graph }: { graph: LabGraph | null }) {
-  const [selectedId, setSelectedId] = useState<string | null>(graph?.nodes[0]?.id ?? null);
+export function App({
+  graph,
+  initialSelectedNodeId = null
+}: {
+  graph: LabGraph | null;
+  initialSelectedNodeId?: string | null;
+}) {
+  const [selectedId, setSelectedId] = useState<string | null>(resolveSelectedNodeId(graph, initialSelectedNodeId));
 
   useEffect(() => {
     if (!graph?.nodes.length) {
       setSelectedId(null);
       return;
     }
-    if (!selectedId || !graph.nodes.some((node) => node.id === selectedId)) {
-      setSelectedId(graph.nodes[0].id);
-    }
-  }, [graph, selectedId]);
+    setSelectedId((currentId) => {
+      if (initialSelectedNodeId && graph.nodes.some((node) => node.id === initialSelectedNodeId)) {
+        return initialSelectedNodeId;
+      }
+      if (currentId && graph.nodes.some((node) => node.id === currentId)) {
+        return currentId;
+      }
+      return graph.nodes[0].id;
+    });
+  }, [graph, initialSelectedNodeId]);
 
   const nodeIds = useMemo(() => new Set(graph?.nodes.map((node) => node.id) ?? []), [graph]);
   const selectedNode = graph?.nodes.find((node) => node.id === selectedId) ?? graph?.nodes[0] ?? null;
@@ -157,6 +169,16 @@ export function App({ graph }: { graph: LabGraph | null }) {
       </aside>
     </main>
   );
+}
+
+function resolveSelectedNodeId(graph: LabGraph | null, selectedNodeId: string | null | undefined) {
+  if (!graph?.nodes.length) {
+    return null;
+  }
+  if (selectedNodeId && graph.nodes.some((node) => node.id === selectedNodeId)) {
+    return selectedNodeId;
+  }
+  return graph.nodes[0].id;
 }
 
 function postToExtension(message: WebviewMessage) {

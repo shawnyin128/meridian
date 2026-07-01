@@ -10,7 +10,7 @@ vi.mock("node:child_process", () => ({
   spawn: mocks.spawn
 }));
 
-import { runMeridian, workspaceRoot } from "../meridianCli";
+import { runMeridian, summarizeMeridianOutput, workspaceRoot } from "../meridianCli";
 
 describe("runMeridian", () => {
   it("runs python -m meridian with cwd and captures output", async () => {
@@ -41,6 +41,27 @@ describe("workspaceRoot", () => {
     const selected = { uri: { fsPath: "D:\\selected" } };
 
     expect(workspaceRoot([first, selected], selected)).toBe("D:\\selected");
+  });
+
+  it("uses the only workspace folder when no graph root is known", () => {
+    const only = { uri: { fsPath: "D:\\only" } };
+
+    expect(workspaceRoot([only])).toBe("D:\\only");
+  });
+
+  it("does not silently choose the first folder in a multi-root workspace", () => {
+    const first = { uri: { fsPath: "D:\\first" } };
+    const second = { uri: { fsPath: "D:\\second" } };
+
+    expect(workspaceRoot([first, second])).toBeNull();
+  });
+});
+
+describe("summarizeMeridianOutput", () => {
+  it("prefers stderr for error summaries", () => {
+    expect(summarizeMeridianOutput({ stdout: "stdout detail", stderr: "stderr detail" }, "stderr")).toBe(
+      "stderr detail"
+    );
   });
 });
 

@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../App";
-import { normalizeLabGraph, type LabGraph } from "../graphTypes";
+import { normalizeLabGraph, type LabGraph, type ResearchGraphNode } from "../graphTypes";
 
 describe("App", () => {
   const consoleError = console.error;
@@ -105,6 +105,22 @@ describe("App", () => {
     expect(postMessage).toHaveBeenCalledWith({ type: "selectedNode", nodeId: "kv-compression.A" });
   });
 
+  it("uses and syncs the initial selected node id from the extension", () => {
+    const graph = sampleGraph({ includeSecondNode: true });
+
+    renderClient(<App graph={graph} initialSelectedNodeId="kv-compression.B" />);
+
+    expect(container?.textContent).toContain("Review repair");
+    expect(container?.textContent).not.toContain("Collect metrics");
+
+    act(() => {
+      root?.render(<App graph={graph} initialSelectedNodeId="kv-compression.A" />);
+    });
+
+    expect(container?.textContent).toContain("Collect metrics");
+    expect(container?.textContent).not.toContain("Review repair");
+  });
+
   it("normalizes malformed graph payloads to the empty state", () => {
     expect(normalizeLabGraph({})).toBeNull();
     expect(normalizeLabGraph([])).toBeNull();
@@ -149,7 +165,32 @@ describe("App", () => {
     });
   }
 
-  function sampleGraph(): LabGraph {
+  function sampleGraph(options: { includeSecondNode?: boolean } = {}): LabGraph {
+    const nodes: ResearchGraphNode[] = [
+      {
+        id: "kv-compression.A",
+        thread_id: "kv-compression",
+        title: "Active probe",
+        kind: "research_point",
+        state: "unresolved",
+        active: true,
+        on_active_path: true,
+        markdown_path: ".meridian/threads/kv-compression.md",
+        markdown_anchor: "active-probe"
+      }
+    ];
+    if (options.includeSecondNode) {
+      nodes.push({
+        id: "kv-compression.B",
+        thread_id: "kv-compression",
+        title: "Repair path",
+        kind: "research_point",
+        state: "repairable",
+        markdown_path: ".meridian/threads/kv-compression.md",
+        markdown_anchor: "repair-path"
+      });
+    }
+
     return {
       schema: "meridian.lab.graph.v1",
       generated_at: "2026-06-30T00:00:00Z",
@@ -157,24 +198,16 @@ describe("App", () => {
       source_files: [".meridian/state.md", ".meridian/threads/kv-compression.md"],
       active_thread: "kv-compression",
       active_path: ["kv-compression.A"],
-      nodes: [
-        {
-          id: "kv-compression.A",
-          thread_id: "kv-compression",
-          title: "Active probe",
-          kind: "research_point",
-          state: "unresolved",
-          active: true,
-          on_active_path: true,
-          markdown_path: ".meridian/threads/kv-compression.md",
-          markdown_anchor: "active-probe"
-        }
-      ],
+      nodes,
       edges: [],
       node_details: {
         "kv-compression.A": {
           doing: "Run a probe",
           next_action: "Collect metrics"
+        },
+        "kv-compression.B": {
+          doing: "Map the failure",
+          next_action: "Review repair"
         }
       },
       supporting_artifacts: {

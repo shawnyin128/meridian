@@ -48,5 +48,25 @@ export function workspaceRoot(
   workspaceFolders: readonly WorkspaceFolderLike[] | undefined,
   selectedFolder?: WorkspaceFolderLike
 ) {
-  return selectedFolder?.uri.fsPath ?? workspaceFolders?.[0]?.uri.fsPath ?? null;
+  if (selectedFolder) {
+    return selectedFolder.uri.fsPath;
+  }
+
+  if (workspaceFolders?.length === 1) {
+    return workspaceFolders[0].uri.fsPath;
+  }
+
+  return null;
+}
+
+export function summarizeMeridianOutput(
+  result: { stdout: string; stderr: string },
+  preferredStream: "stdout" | "stderr" = "stdout"
+) {
+  const preferred = preferredStream === "stderr" ? result.stderr || result.stdout : result.stdout || result.stderr;
+  const output = preferred.trim().replace(/\s+/g, " ");
+  if (output.length <= 220) {
+    return output;
+  }
+  return `${output.slice(0, 217)}...`;
 }
