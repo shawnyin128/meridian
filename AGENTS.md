@@ -100,6 +100,8 @@ choose planning, debugging, review, or branch-finishing methodology by itself.
   package.
 - `.codex/`: project-local Meridian development skills; Arbor no longer uses
   Codex project hooks by default.
+- `.github/`: GitHub Actions workflows, including VS Code extension release
+  asset packaging.
 - `docs/`: durable product, architecture, workflow, evaluation, and review
   documentation.
 - `eval/`: Paper Wiki and Lab evaluation cases and LLM-as-Judge rubrics.
