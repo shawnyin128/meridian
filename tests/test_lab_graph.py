@@ -127,6 +127,9 @@ class LabGraphTests(unittest.TestCase):
             self.assertEqual(graph["active_path"], ["kv-compression.A", "kv-compression.B"])
             self.assertEqual([node["id"] for node in graph["nodes"]], ["kv-compression.A", "kv-compression.B"])
             nodes_by_id = {node["id"]: node for node in graph["nodes"]}
+            self.assertEqual(nodes_by_id["kv-compression.A"]["kind"], "research_point")
+            self.assertEqual(nodes_by_id["kv-compression.A"]["markdown_anchor"], "node-a-idea-seed")
+            self.assertEqual(nodes_by_id["kv-compression.B"]["markdown_anchor"], "node-b-repair-scoring")
             self.assertFalse(nodes_by_id["kv-compression.A"]["active"])
             self.assertTrue(nodes_by_id["kv-compression.A"]["on_active_path"])
             self.assertEqual(graph["nodes"][1]["state"], "repairable")
@@ -502,13 +505,51 @@ class LabGraphTests(unittest.TestCase):
             graph_path = root / ".meridian/graph/graph.json"
             payload = json.loads(graph_path.read_text(encoding="utf-8"))
             payload["generated_at"] = "2099-01-01T00:00:00Z"
-            payload["health"] = {"status": "mutated", "finding_count": 999}
             graph_path.write_text(json.dumps(payload), encoding="utf-8")
 
             health = check_lab_graph(root)
             codes = [finding["code"] for finding in health["findings"]]
             self.assertNotIn("graph_json_stale", codes)
             self.assertEqual(health["status"], "pass")
+
+    def test_check_lab_graph_warns_when_generated_health_is_stale(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+
+            from meridian.lab.graph import check_lab_graph, write_lab_graph
+
+            write_lab_graph(root)
+            graph_path = root / ".meridian/graph/graph.json"
+            payload = json.loads(graph_path.read_text(encoding="utf-8"))
+            payload["health"] = {"status": "mutated", "finding_count": 999}
+            graph_path.write_text(json.dumps(payload), encoding="utf-8")
+
+            health = check_lab_graph(root)
+            codes = [finding["code"] for finding in health["findings"]]
+            self.assertNotIn("graph_json_stale", codes)
+            self.assertIn("graph_health_stale", codes)
+            self.assertEqual(health["status"], "warn")
+
+    def test_graph_health_rejects_invalid_active_thread_slug(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            state = root / ".meridian/state.md"
+            state.write_text(
+                "---\n"
+                "type: lab-state\n"
+                "active_thread: ../state\n"
+                "active_path: [kv-compression.A]\n"
+                "---\n"
+                "# State\n",
+                encoding="utf-8",
+            )
+
+            result = materialize_lab_graph(root)
+            codes = [finding["code"] for finding in result.health["findings"]]
+            self.assertIn("invalid_active_thread", codes)
+            self.assertEqual(result.health["status"], "fail")
 
     def test_validate_update_packet_rejects_missing_confirmation(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -1110,6 +1151,29 @@ class LabGraphTests(unittest.TestCase):
 
             self.assertEqual(report["status"], "fail")
             self.assertIn("missing_target_thread", [finding["code"] for finding in report["findings"]])
+
+    def test_validate_update_packet_rejects_path_shaped_thread_ids(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            from meridian.lab.graph import validate_lab_update_packet
+
+            packet = {
+                "schema": "meridian.lab.update.v1",
+                "intent": "invalid_threads",
+                "target_thread": "../state",
+                "changes": [
+                    {"op": "set_active_thread", "thread_id": "..\\state"},
+                ],
+                "user_confirmation": {"required_for": ["set_active_thread"], "status": "accepted"},
+            }
+
+            report = validate_lab_update_packet(root, packet)
+            codes = [finding["code"] for finding in report["findings"]]
+
+            self.assertEqual(report["status"], "fail")
+            self.assertIn("invalid_target_thread", codes)
+            self.assertIn("invalid_active_thread", codes)
 
     def test_validate_update_packet_rejects_missing_artifact_path(self) -> None:
         with TemporaryDirectory() as tmp:

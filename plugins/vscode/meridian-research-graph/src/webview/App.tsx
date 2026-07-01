@@ -369,7 +369,7 @@ function ArtifactDescription({ artifact }: { artifact: SupportingArtifact }) {
     artifact.path ? `Path: ${artifact.path}` : ""
   ].filter(Boolean);
 
-  return <span>{rows.join(" · ")}</span>;
+  return <span>{rows.join(" | ")}</span>;
 }
 
 function compactDescriptionItems(items: Array<[string, React.ReactNode | undefined]>) {

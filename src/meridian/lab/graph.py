@@ -227,6 +227,15 @@ def check_lab_graph(root: Path) -> dict[str, Any]:
                 "message": "Generated graph JSON does not match the current Lab Markdown state; run graph-refresh.",
             }
         )
+    if isinstance(loaded.get("health"), dict) and loaded.get("health") != result.graph.get("health"):
+        findings.append(
+            {
+                "severity": "warning",
+                "code": "graph_health_stale",
+                "path": "graph/graph.json/health",
+                "message": "Generated graph health summary does not match the current Lab Markdown state; run graph-refresh.",
+            }
+        )
     health["findings"] = findings
     health["status"] = _health_status(findings)
     return health
@@ -313,6 +322,8 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
             thread_id = target_thread
         if not thread_id:
             add("missing_active_thread", "set_active_thread requires a non-empty thread id.", f"changes[{index}]")
+        elif not _is_well_formed_thread_id(thread_id):
+            add("invalid_active_thread", f"Active thread `{thread_id}` is not well-formed.", f"changes[{index}]")
         elif not (lab_root / "threads" / f"{thread_id}.md").exists():
             add("active_thread_missing", f"Active thread `{thread_id}` does not exist.", f"changes[{index}]")
 
@@ -371,6 +382,8 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
     target_thread = str(packet.get("target_thread") or "").strip()
     if not target_thread:
         add("missing_target_thread", "Update packet requires a non-empty target_thread.")
+    elif not _is_well_formed_thread_id(target_thread):
+        add("invalid_target_thread", f"Target thread `{target_thread}` is not well-formed.")
     elif not (lab_root / "threads" / f"{target_thread}.md").exists():
         add("target_thread_missing", f"Target thread `{target_thread}` does not exist.")
     changes = packet.get("changes")
@@ -606,6 +619,21 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
             "Graph payload field `active_thread` must be a string.",
             "active_thread",
         )
+    elif active_thread_value:
+        if not _is_well_formed_thread_id(active_thread_value):
+            add(
+                "error",
+                "invalid_active_thread",
+                f"Graph active_thread `{active_thread_value}` is not well-formed.",
+                "active_thread",
+            )
+        elif not (lab_root / "threads" / f"{active_thread_value}.md").exists():
+            add(
+                "error",
+                "active_thread_missing",
+                f"Graph active_thread `{active_thread_value}` does not exist.",
+                "active_thread",
+            )
 
     health_value = graph.get("health")
     if not isinstance(health_value, dict):
@@ -624,7 +652,7 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
         nodes = nodes_value
     node_ids: set[str] = set()
     node_records: list[dict[str, Any]] = []
-    required_node_fields = ("id", "title", "state", "markdown_path", "markdown_anchor")
+    required_node_fields = ("id", "title", "kind", "state", "markdown_path", "markdown_anchor")
     for index, node in enumerate(nodes):
         if not isinstance(node, dict):
             add("error", "invalid_node", "Graph node is not an object.", f"nodes/{index}")
@@ -647,6 +675,14 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
                 f"Graph node `{node_id}` uses invalid state `{state}`.",
                 f"nodes/{index}/state",
             )
+        kind = str(node.get("kind") or "")
+        if kind != "research_point":
+            add(
+                "error",
+                "invalid_node_kind",
+                f"Graph node `{node_id}` uses invalid kind `{kind}`.",
+                f"nodes/{index}/kind",
+            )
         markdown_path = str(node.get("markdown_path") or "")
         if _path_starts_with_meridian(markdown_path) and not (lab_root.parent / markdown_path).exists():
             add(
@@ -657,7 +693,7 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
             )
         elif _path_starts_with_meridian(markdown_path):
             raw_id = _node_raw_id(node)
-            expected_anchor = _markdown_anchor(raw_id)
+            expected_anchor = _node_markdown_anchor(raw_id, str(node.get("title") or "").strip())
             markdown_anchor = str(node.get("markdown_anchor") or "")
             markdown_file = lab_root.parent / markdown_path
             if markdown_anchor != expected_anchor or not _markdown_node_heading_exists(markdown_file, raw_id):
@@ -859,10 +895,11 @@ def _graph_schema() -> dict[str, Any]:
                 "type": "array",
                 "items": {
                     "type": "object",
-                    "required": ["id", "title", "state", "markdown_path", "markdown_anchor"],
+                    "required": ["id", "title", "kind", "state", "markdown_path", "markdown_anchor"],
                     "properties": {
                         "id": {"type": "string"},
                         "title": {"type": "string"},
+                        "kind": {"const": "research_point"},
                         "state": {"enum": sorted(ALLOWED_NODE_MODES)},
                         "markdown_path": {"type": "string"},
                         "markdown_anchor": {"type": "string"},
@@ -1151,13 +1188,14 @@ def _parse_thread_nodes(
             "thread_id": thread_id,
             "raw_id": raw_id,
             "title": title,
+            "kind": "research_point",
             "label": title or raw_id,
             "state": mode,
             "active": active,
             "on_active_path": node_id in active_path,
             "source_path": _display_path(thread_path, lab_root=project_root),
             "markdown_path": _display_path(thread_path, lab_root=project_root),
-            "markdown_anchor": _markdown_anchor(raw_id),
+            "markdown_anchor": _node_markdown_anchor(raw_id, title),
         }
         parsed.append(
             {
@@ -1294,6 +1332,11 @@ def _markdown_anchor(raw_id: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", raw_id.strip().lower()).strip("-") or "node"
 
 
+def _node_markdown_anchor(raw_id: str, title: str) -> str:
+    heading = f"Node {raw_id}: {title}" if title else f"Node {raw_id}"
+    return re.sub(r"[^a-z0-9]+", "-", heading.strip().lower()).strip("-") or "node"
+
+
 def _node_raw_id(node: dict[str, Any]) -> str:
     raw_id = str(node.get("raw_id") or "").strip()
     if raw_id:
@@ -1313,6 +1356,10 @@ def _markdown_node_heading_exists(path: Path, raw_id: str) -> bool:
 
 def _path_starts_with_meridian(path: str) -> bool:
     return path.replace("\\", "/").startswith(".meridian/")
+
+
+def _is_well_formed_thread_id(value: str) -> bool:
+    return re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", value) is not None and ".." not in value
 
 
 def _is_well_formed_node_id(value: str) -> bool:

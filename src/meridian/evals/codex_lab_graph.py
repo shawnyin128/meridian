@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -24,6 +25,7 @@ _REQUIRED_OUTPUT_FIELDS = (
     "confirmation_requested",
 )
 _OUTPUT_MARKER_FILE = ".meridian-codex-lab-graph-eval"
+_CASE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 
 
 @dataclass(frozen=True)
@@ -59,11 +61,15 @@ def run_codex_lab_graph_eval(
     case_results: list[dict[str, Any]] = []
     for case in selected_cases:
         case_id = str(case["id"])
+        _validate_case_id(case_id)
         case_dir = out_dir / case_id
+        _ensure_child_path(out_dir, case_dir)
         case_dir.mkdir(parents=True, exist_ok=True)
         (case_dir / "case.json").write_text(json.dumps(case, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         repo_root = case_dir / "repo"
+        _ensure_child_path(out_dir, repo_root)
         _write_lab_graph_fixture(case, repo_root)
+        before_snapshot = _snapshot_lab_files(repo_root)
 
         prompt_path = case_dir / "prompt.md"
         prompt = build_codex_lab_graph_prompt(case)
@@ -83,6 +89,7 @@ def run_codex_lab_graph_eval(
             ignore_rules=False,
         )
         completed = command_runner(argv, repo_root, timeout, prompt)
+        after_snapshot = _snapshot_lab_files(repo_root)
         events_path.write_text(completed.stdout or "", encoding="utf-8")
         stderr_path.write_text(completed.stderr or "", encoding="utf-8")
 
@@ -92,6 +99,8 @@ def run_codex_lab_graph_eval(
             response=response,
             returncode=completed.returncode,
             parse_error=parse_error,
+            before_snapshot=before_snapshot,
+            after_snapshot=after_snapshot,
         )
         result = {
             "case_id": case_id,
@@ -240,6 +249,19 @@ def _prepare_output_dir(*, out_dir: Path, overwrite: bool) -> None:
     )
 
 
+def _validate_case_id(case_id: str) -> None:
+    if not _CASE_ID_RE.fullmatch(case_id):
+        raise ValueError(f"Invalid Codex Lab graph eval case id: {case_id!r}")
+
+
+def _ensure_child_path(parent: Path, child: Path) -> None:
+    parent_resolved = parent.resolve()
+    child_resolved = child.resolve()
+    if child_resolved != parent_resolved and parent_resolved in child_resolved.parents:
+        return
+    raise ValueError(f"Refusing to write outside output directory: {child}")
+
+
 def _validate_overwrite_target(out_dir: Path) -> None:
     target = out_dir.resolve()
     cwd = Path.cwd().resolve()
@@ -254,6 +276,7 @@ def _validate_overwrite_target(out_dir: Path) -> None:
 
 def _write_lab_graph_fixture(case: dict[str, Any], repo_root: Path) -> None:
     if repo_root.exists():
+        _ensure_child_path(repo_root.parent, repo_root)
         shutil.rmtree(repo_root)
     lab_root = repo_root / ".meridian"
     threads_root = lab_root / "threads"
@@ -348,6 +371,24 @@ def _write_lab_graph_fixture(case: dict[str, Any], repo_root: Path) -> None:
     proposals_root.joinpath("index.md").write_text("# Proposals\n\nNo local proposal is attached yet.\n", encoding="utf-8")
 
 
+def _snapshot_lab_files(repo_root: Path) -> dict[str, str | None]:
+    paths = [
+        repo_root / ".meridian" / "state.md",
+        repo_root / ".meridian" / "threads" / "index.md",
+        repo_root / ".meridian" / "threads" / "active-probe.md",
+        repo_root / ".meridian" / "experiments" / "index.md",
+        repo_root / ".meridian" / "proposals" / "index.md",
+        repo_root / ".meridian" / "graph" / "graph.json",
+        repo_root / ".meridian" / "graph" / "graph-health.json",
+        repo_root / ".meridian" / "graph" / "graph.schema.json",
+    ]
+    snapshot: dict[str, str | None] = {}
+    for path in paths:
+        relative = path.relative_to(repo_root).as_posix()
+        snapshot[relative] = path.read_text(encoding="utf-8") if path.exists() else None
+    return snapshot
+
+
 def _load_cases(cases_path: Path) -> list[dict[str, Any]]:
     cases: list[dict[str, Any]] = []
     for line_number, line in enumerate(cases_path.read_text(encoding="utf-8").splitlines(), start=1):
@@ -400,6 +441,8 @@ def _score_case(
     response: dict[str, Any] | None,
     returncode: int,
     parse_error: str | None,
+    before_snapshot: dict[str, str | None],
+    after_snapshot: dict[str, str | None],
 ) -> dict[str, Any]:
     failures: list[str] = []
     if returncode != 0:
@@ -428,6 +471,14 @@ def _score_case(
 
     if values.get("mutated_generated_graph") is True:
         failures.append("mutated_generated_graph must be false")
+
+    actual_mutations = sorted(
+        path
+        for path, before in before_snapshot.items()
+        if after_snapshot.get(path) != before
+    )
+    if actual_mutations:
+        failures.append(f"repo files changed during read-only eval: {actual_mutations}")
 
     return {
         "decision": "pass" if not failures else "fail",

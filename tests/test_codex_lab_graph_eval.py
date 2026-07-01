@@ -116,6 +116,61 @@ class CodexLabGraphEvalTests(unittest.TestCase):
             self.assertEqual(case_result["verdict"]["decision"], "fail")
             self.assertIn("mutated_generated_graph must be false", case_result["verdict"]["failures"])
 
+    def test_graph_eval_fails_when_runner_changes_read_only_fixture_files(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cases = root / "cases.jsonl"
+            cases.write_text(
+                '{"id":"case1","prompt":"Inspect current graph only","expect_graph_update":false,'
+                '"expect_supporting_artifacts":false}\n',
+                encoding="utf-8",
+            )
+            out_dir = root / "out"
+
+            def fake_runner(command: list[str], cwd: Path, timeout: float, stdin: str | None) -> subprocess.CompletedProcess[str]:
+                (cwd / ".meridian" / "state.md").write_text("# mutated\n", encoding="utf-8")
+                last_message_path = Path(command[command.index("--output-last-message") + 1])
+                last_message_path.write_text(
+                    json.dumps(
+                        {
+                            "graph_update_packet": False,
+                            "supporting_artifacts": False,
+                            "mutated_generated_graph": False,
+                            "confirmation_requested": False,
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+            result = run_codex_lab_graph_eval(
+                cases_path=cases,
+                out_dir=out_dir,
+                overwrite=False,
+                runner=fake_runner,
+            )
+
+            self.assertEqual(result.passed_cases, 0)
+            case_result = json.loads((out_dir / "case1" / "result.json").read_text(encoding="utf-8"))
+            self.assertEqual(case_result["verdict"]["decision"], "fail")
+            self.assertTrue(
+                any(
+                    failure.startswith("repo files changed during read-only eval:")
+                    for failure in case_result["verdict"]["failures"]
+                )
+            )
+
+    def test_graph_eval_rejects_case_id_path_traversal(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cases = root / "cases.jsonl"
+            cases.write_text('{"id":"../escape","prompt":"bad id"}\n', encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "Invalid Codex Lab graph eval case id"):
+                run_codex_lab_graph_eval(cases_path=cases, out_dir=root / "out", overwrite=False)
+
+            self.assertFalse((root / "escape").exists())
+
     def test_graph_eval_scores_no_update_and_confirmation_cases(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
