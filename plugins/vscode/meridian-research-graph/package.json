@@ -19,14 +19,34 @@
   ],
   "activationEvents": [
     "onCommand:meridian.openResearchGraph",
+    "onView:meridian.researchGraph",
     "workspaceContains:.meridian/graph/graph.json"
   ],
   "main": "./dist/extension.js",
   "files": [
     "dist/**",
+    "media/**",
     "package.json"
   ],
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "meridianResearch",
+          "title": "Meridian",
+          "icon": "media/meridian.svg"
+        }
+      ]
+    },
+    "views": {
+      "meridianResearch": [
+        {
+          "id": "meridian.researchGraph",
+          "name": "Research Graph",
+          "type": "webview"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "meridian.openResearchGraph",

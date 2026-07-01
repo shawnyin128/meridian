@@ -11,52 +11,50 @@ interface LoadedGraph {
   root: string;
 }
 
-export class ResearchGraphPanel {
-  static current: ResearchGraphPanel | undefined;
+export const MERIDIAN_RESEARCH_GRAPH_CONTAINER_ID = "meridianResearch";
+export const MERIDIAN_RESEARCH_GRAPH_VIEW_ID = "meridian.researchGraph";
 
-  private readonly panel: vscode.WebviewPanel;
+export class ResearchGraphViewProvider implements vscode.WebviewViewProvider {
   private readonly watcher: vscode.FileSystemWatcher;
+  private view: vscode.WebviewView | null = null;
+  private messageDisposable: vscode.Disposable | null = null;
   private graph: LabGraph | null = null;
   private graphRoot: string | null = null;
   private graphUri: vscode.Uri | null = null;
   private targetRoot: string | null = null;
   private selectedNodeId: string | null = null;
 
-  static open(context: vscode.ExtensionContext) {
-    if (ResearchGraphPanel.current) {
-      ResearchGraphPanel.current.panel.reveal(vscode.ViewColumn.One);
-      void ResearchGraphPanel.current.reloadGraph();
-      return ResearchGraphPanel.current;
-    }
-
-    const panel = vscode.window.createWebviewPanel(
-      "meridianResearchGraph",
-      "Meridian Research Graph",
-      vscode.ViewColumn.One,
-      {
-        enableScripts: true,
-        localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, "dist", "webview")]
-      }
-    );
-
-    ResearchGraphPanel.current = new ResearchGraphPanel(context, panel);
-    void ResearchGraphPanel.current.reloadGraph();
-    return ResearchGraphPanel.current;
-  }
-
-  private constructor(
-    private readonly context: vscode.ExtensionContext,
-    panel: vscode.WebviewPanel
-  ) {
-    this.panel = panel;
+  constructor(private readonly context: vscode.ExtensionContext) {
     this.watcher = vscode.workspace.createFileSystemWatcher("**/.meridian/graph/graph.json");
     this.watcher.onDidCreate(() => void this.reloadGraph());
     this.watcher.onDidChange(() => void this.reloadGraph());
     this.watcher.onDidDelete(() => void this.reloadGraph());
 
-    this.panel.onDidDispose(() => this.dispose(), undefined, context.subscriptions);
-    this.panel.webview.onDidReceiveMessage((message) => void this.handleWebviewMessage(message), undefined, context.subscriptions);
     context.subscriptions.push(this.watcher);
+  }
+
+  resolveWebviewView(webviewView: vscode.WebviewView) {
+    this.messageDisposable?.dispose();
+    this.view = webviewView;
+    webviewView.title = "Research Graph";
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, "dist", "webview")]
+    };
+    this.messageDisposable = webviewView.webview.onDidReceiveMessage((message) => void this.handleWebviewMessage(message));
+    webviewView.onDidDispose(() => {
+      if (this.view === webviewView) {
+        this.view = null;
+      }
+      this.messageDisposable?.dispose();
+      this.messageDisposable = null;
+    });
+    void this.reloadGraph();
+  }
+
+  reveal() {
+    this.view?.show();
+    void this.reloadGraph();
   }
 
   async refreshGraph() {
@@ -134,7 +132,9 @@ export class ResearchGraphPanel {
 
   private async reloadGraph() {
     await this.readGraphState();
-    this.panel.webview.html = this.renderHtml(this.graph);
+    if (this.view) {
+      this.view.webview.html = this.renderHtml(this.view.webview, this.graph);
+    }
   }
 
   private async readGraphState() {
@@ -216,13 +216,13 @@ export class ResearchGraphPanel {
     }
   }
 
-  private renderHtml(graph: LabGraph | null) {
+  private renderHtml(webview: vscode.Webview, graph: LabGraph | null) {
     const nonce = getNonce();
-    const scriptUri = this.panel.webview.asWebviewUri(
+    const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.context.extensionUri, "dist", "webview", "main.js")
     );
-    const styleUris = findStyleUris(this.context, this.panel.webview);
-    const cspSource = this.panel.webview.cspSource;
+    const styleUris = findStyleUris(this.context, webview);
+    const cspSource = webview.cspSource;
     const graphJson = escapeScriptJson(graph);
     const selectedNodeIdJson = escapeScriptJson(this.selectedNodeId);
 
@@ -242,13 +242,6 @@ export class ResearchGraphPanel {
     <script nonce="${nonce}" type="module" src="${scriptUri.toString()}"></script>
   </body>
 </html>`;
-  }
-
-  private dispose() {
-    if (ResearchGraphPanel.current === this) {
-      ResearchGraphPanel.current = undefined;
-    }
-    this.watcher.dispose();
   }
 }
 

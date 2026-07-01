@@ -1,20 +1,31 @@
 import * as vscode from "vscode";
-import { ResearchGraphPanel } from "./graphPanel";
+import {
+  MERIDIAN_RESEARCH_GRAPH_CONTAINER_ID,
+  MERIDIAN_RESEARCH_GRAPH_VIEW_ID,
+  ResearchGraphViewProvider
+} from "./graphPanel";
 
 export function activate(context: vscode.ExtensionContext) {
+  const graphViewProvider = new ResearchGraphViewProvider(context);
+
   context.subscriptions.push(
-    vscode.commands.registerCommand("meridian.openResearchGraph", () => ResearchGraphPanel.open(context)),
+    vscode.window.registerWebviewViewProvider(MERIDIAN_RESEARCH_GRAPH_VIEW_ID, graphViewProvider, {
+      webviewOptions: {
+        retainContextWhenHidden: true
+      }
+    }),
+    vscode.commands.registerCommand("meridian.openResearchGraph", async () => {
+      await vscode.commands.executeCommand(`workbench.view.extension.${MERIDIAN_RESEARCH_GRAPH_CONTAINER_ID}`);
+      graphViewProvider.reveal();
+    }),
     vscode.commands.registerCommand("meridian.refreshResearchGraph", async () => {
-      const panel = ResearchGraphPanel.open(context);
-      await panel.refreshGraph();
+      await graphViewProvider.refreshGraph();
     }),
     vscode.commands.registerCommand("meridian.checkResearchGraph", async () => {
-      const panel = ResearchGraphPanel.open(context);
-      await panel.checkGraph();
+      await graphViewProvider.checkGraph();
     }),
     vscode.commands.registerCommand("meridian.revealSelectedNodeMarkdown", async () => {
-      const panel = ResearchGraphPanel.open(context);
-      await panel.revealSelectedNodeMarkdown();
+      await graphViewProvider.revealSelectedNodeMarkdown();
     })
   );
 }

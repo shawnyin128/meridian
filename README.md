@@ -283,8 +283,11 @@ update packets and Meridian core so the Markdown control plane and generated
 view stay in sync.
 
 The VS Code graph viewer is a read-only consumer of `.meridian/graph/`
-artifacts. Refresh and check the graph from the CLI, then
-treat graph health failures as blockers before relying on visual state.
+artifacts. After installing the extension, open the Meridian icon in the VS Code
+Activity Bar and use the `Research Graph` side bar view. The command
+`Meridian: Open Research Graph` focuses the same side bar entry. Refresh and
+check the graph from the CLI or the side bar toolbar, then treat graph health
+failures as blockers before relying on visual state.
 
 Meridian publishes the VS Code graph viewer as a GitHub Release `.vsix` asset
 when the extension changes. It is not published to the VS Code Marketplace.
