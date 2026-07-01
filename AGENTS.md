@@ -1,134 +1,113 @@
 # Meridian Agent Guide
 
-This project follows the LLM Wiki development pattern.
+## Project Goal
 
-Before planning, designing, implementing, or reviewing changes that affect raw source ingestion, generated wiki pages, schema conventions, Obsidian vault layout, page frontmatter, indexing, logging, query behavior, lint behavior, citations, or cross-links, load and follow the project skill at:
+Meridian builds a personally usable Paper Wiki and Lab research-development
+layer. The system should internalize raw papers, incorporate the user's reading
+insights, evolve paper analysis through feedback, and feed accumulated wiki
+knowledge back into idea generation, feasibility review, implementation
+grounding, and local research findings.
 
-`/Users/shawn/Desktop/meridian/.codex/skills/llm-wiki/SKILL.md`
+Current product boundary:
 
-For product-facing Paper Wiki usage, use the unified entry skill:
+- Paper Wiki owns source-grounded ingest, canonical Markdown knowledge,
+  retrieval, synthesis, quality checks, and write-back proposals.
+- Lab owns local research idea graph state, approach nodes, experiment
+  evidence, research grounding injections, and local finding proposals.
+- Meridian setup owns initialization, status, migration, MCP readiness, and
+  research-agent contract scaffolding.
 
-`/Users/shawn/Desktop/meridian/plugins/codex/meridian/skills/wiki/SKILL.md`
+## Project Constraints
 
-It exposes the two product workflows: Update Wiki and Use Wiki. Treat CLI commands as execution primitives below the Prompt/Skill and MCP entries.
+This project follows the LLM Wiki development pattern. Before planning,
+designing, implementing, or reviewing changes that affect raw source ingestion,
+generated wiki pages, schema conventions, Obsidian vault layout, page
+frontmatter, indexing, logging, query behavior, lint behavior, citations, or
+cross-links, load and follow the project skill at
+`.codex/skills/llm-wiki/SKILL.md`.
 
-Before generating, evaluating, or refining paper ingest outputs such as `paper.md`, claim/method/evidence records, reader self-check packets, retrieval metadata, or calibration-driven ingest quality, also load:
+Use the focused project skills for Paper Wiki work:
 
-`/Users/shawn/Desktop/meridian/.codex/skills/paper-ingest/SKILL.md`
+- `.codex/skills/paper-ingest/SKILL.md`
+- `.codex/skills/wiki-retrieve/SKILL.md`
+- `.codex/skills/wiki-personalize/SKILL.md`
+- `.codex/skills/wiki-evolve/SKILL.md`
+- `.codex/skills/wiki-knowledge/SKILL.md`
+- `.codex/skills/wiki-concept/SKILL.md`
 
-Before using the accumulated wiki to retrieve papers, claims, methods, or implementation hooks for a research/coding request, load:
+Use the product-facing plugin skills for runtime behavior:
 
-`/Users/shawn/Desktop/meridian/.codex/skills/wiki-retrieve/SKILL.md`
+- `plugins/codex/meridian/skills/meridian/SKILL.md`: setup, status, updates,
+  and migrations.
+- `plugins/codex/meridian/skills/wiki/SKILL.md`: Paper Wiki Update Wiki and
+  Use Wiki workflows.
+- `plugins/codex/meridian/skills/lab/SKILL.md`: Lab idea graph, wiki-grounded
+  feasibility, approach trees, experiment evidence, local findings, and
+  research grounding injections.
 
-Before adding or publishing user paper-reading insights, corrections, implementation notes, retrieval hints, or Zotero-style annotation imports, load:
-
-`/Users/shawn/Desktop/meridian/.codex/skills/wiki-personalize/SKILL.md`
-
-Before refining, versioning, publishing, or reviewing evolved canonical wiki pages, load:
-
-`/Users/shawn/Desktop/meridian/.codex/skills/wiki-evolve/SKILL.md`
-
-Before auditing, repairing, publishing, retrieving, or evolving method/topic/claim/evidence/synthesis knowledge-layer pages, load:
-
-`/Users/shawn/Desktop/meridian/.codex/skills/wiki-knowledge/SKILL.md`
-
-Before adding, auditing, publishing, retrieving, or evaluating preliminary-knowledge concept pages, load:
-
-`/Users/shawn/Desktop/meridian/.codex/skills/wiki-concept/SKILL.md`
-
-Before handling Lab idea-graph requests that should use Paper Wiki context for idea placement, feasibility review, approach-tree management, experiment evidence, local finding proposals, or development handoffs, load:
-
-`/Users/shawn/Desktop/meridian/plugins/codex/meridian/skills/lab/SKILL.md`
-
-Current MVP direction:
-
-- Build a personally usable paper wiki, not a general multi-agent platform.
-- Optimize for internalizing raw papers, incorporating the user's Zotero annotations and reading insights, evolving paper analysis through feedback, and feeding the accumulated wiki back into idea generation.
-- Treat the system as a well-defined workflow with strong request handling, retrieval, storage, and review boundaries.
-- Use `/Users/shawn/Desktop/meridian/docs/mvp-paper-wiki-workflow.md` as the current product/workflow reference.
-
-Default architecture:
+Architecture constraints:
 
 - Raw sources are immutable.
 - The Markdown wiki is the durable, LLM-maintained compiled knowledge layer.
 - `AGENTS.md`, templates, and page frontmatter define the operating schema.
-- Important queries and ingests should compound into wiki pages, index updates, and append-only log entries.
+- Important queries and ingests should compound into wiki pages, index updates,
+  and append-only log entries.
+- Prefer small, auditable Markdown-first changes before adding custom
+  infrastructure.
 
-Prefer small, auditable Markdown-first changes before adding custom infrastructure.
+<!-- ARBOR HOOKLESS RUNTIME CONTRACT START -->
+Arbor hookless runtime contract:
 
-## Startup Protocol
+Arbor package scripts live under the installed Arbor skill root at
+skills/arbor/scripts. Resolve the newest installed Arbor skill root from the
+runtime cache, for example
+%USERPROFILE%/.codex/plugins/cache/arbor/arbor/*/skills/arbor on Codex or
+~/.claude/plugins/cache/arbor/arbor/*/skills/arbor on Claude Code. Do not look
+for these scripts under <project-root>/scripts or <plugin-root>/scripts. Use a
+direct Python executable for Arbor context helpers. On Windows, do not wrap
+these commands in conda run; it can recode captured stdout and corrupt large
+UTF-8 context packets. If python is not on PATH, call the absolute interpreter
+directly, such as <conda-base>/python.exe.
 
-On fresh or resumed sessions, load Arbor project context before making project-level decisions:
+Arbor startup: before answering a non-trivial project task or resume question,
+run python <arbor-skill-root>/scripts/run_session_startup_hook.py --root
+<project-root>. If that script is unavailable, manually read in this order:
+AGENTS.md; recent formatted git log; .arbor/memory.md; git status --short.
 
-1. Read this `AGENTS.md`.
-2. Check git history when the project is a git repository.
-3. Read `.arbor/memory.md`.
-4. Check current workspace status when available.
+Arbor finalization: before the final response for a non-trivial task, handoff,
+or dirty-worktree turn, run python
+<arbor-skill-root>/scripts/run_hookless_finalization.py --root <project-root>.
+That command runs the Stop-equivalent maintenance path first, then emits memory
+hygiene and AGENTS Project Map drift context, including the Git commit
+convention reminder. Use its output to decide whether any additional
+.arbor/memory.md or AGENTS.md edit is needed.
+
+Before creating a commit, draft a Conventional Commits 1.0.0 subject and run
+python <arbor-skill-root>/scripts/check_git_commit_convention.py --message
+"<subject>". Do not create native git hooks from Arbor unless the user
+explicitly asks for that separate integration.
+
+Do not register or repair project hooks unless the user explicitly asks for
+legacy hook repair. Arbor context is orientation and recovery only; it must not
+choose planning, debugging, review, or branch-finishing methodology by itself.
+<!-- ARBOR HOOKLESS RUNTIME CONTRACT END -->
 
 ## Project Map
 
-- `.arbor/memory.md`: short-term Arbor session memory and in-flight workflow pointer.
-- `.arbor/workflow/features.json`: Arbor workflow status index for the active planning/development queue.
-- `.codex/hooks.json`: project-local Arbor hook intents.
-- `.codex/skills/llm-wiki/SKILL.md`: project skill for LLM Wiki development principles.
-- `.codex/skills/paper-ingest/SKILL.md`: project skill for high-quality paper ingest outputs and reader self-check convergence.
-- `.codex/skills/wiki-retrieve/SKILL.md`: project skill for using Meridian retrieval and Obsidian CLI to find paper-wiki context for research work.
-- `.codex/skills/wiki-personalize/SKILL.md`: project skill for adding, linting, publishing, and retrieving user-supplied paper insights without source-fact contamination.
-- `.codex/skills/wiki-evolve/SKILL.md`: project skill for refinement proposals, revision snapshots, evolution-state warnings, and canonical page versioning.
-- `.codex/skills/wiki-knowledge/SKILL.md`: project skill for knowledge-layer audit, repair proposal, safe publish, and retrieval discipline across method/topic/claim/evidence/synthesis pages.
-- `.codex/skills/wiki-concept/SKILL.md`: project skill for preliminary-knowledge concept-layer audit, publish, retrieval, and evaluation.
-- `.agents/plugins/marketplace.json`: Codex marketplace manifest for the Meridian plugin package.
-- `.claude-plugin/marketplace.json`: Claude Code marketplace manifest for the Meridian plugin package.
-- `plugins/codex/meridian/skills/meridian/SKILL.md`: Codex plugin setup/status/migration entry skill.
-- `plugins/codex/meridian/skills/wiki/SKILL.md`: Codex plugin product-facing Paper Wiki entry skill for Update Wiki and Use Wiki workflows.
-- `plugins/codex/meridian/skills/lab/SKILL.md`: Codex plugin product-facing Lab skill for wiki-aware idea graph management, approach trees, experiment evidence, local findings, and development handoffs.
-- `plugins/codex/meridian/`: Codex plugin package for the product-facing Paper Wiki and Lab skills plus MCP config.
-- `plugins/claude-code/meridian/`: Claude Code plugin package for the same product-facing skills plus MCP config.
-- `pyproject.toml`: Python package metadata and `meridian` console script entrypoint.
-- `src/meridian/`: Paper Wiki prototype CLI implementation for `meridian wiki ...`.
-- `src/meridian/wiki/workspace.py`: user-level Paper Wiki workspace config and source/wiki root resolution.
-- `src/meridian/lab/`: lightweight Lab release/debug helpers for validating `.meridian/` idea-graph state without adding a product CLI or MCP surface.
-- `src/meridian/mcp/`: scenario-facing MCP adapter and stdio server exposing `context`, `read`, `trace`, `update`, `propose`, `apply`, and `audit`.
-- `src/meridian/templates/research-dev/`: Markdown templates for Lab `.meridian/` idea-graph state, context packets, development handoffs, experiment evidence, and finding proposals.
-- `tests/`: unit tests for CLI ingest, eval, and human review recording.
-- Active Paper Wiki vaults live outside the development repo, typically under a user-level library root configured by `meridian wiki init --library-root <dir>`.
-- `eval/`: Paper Wiki evaluation case examples and LLM-as-Judge rubrics.
-- `README.md`: minimal CLI usage note.
-- `docs/mvp-paper-wiki-workflow.md`: current MVP product/workflow reference.
-- `docs/mvp-paper-wiki-plan.md`: current brainstormed MVP boundary, development plan, and test plan.
-- `docs/paper-wiki-prototype-evaluation-plan.md`: Paper Wiki-first prototype, manual review, evaluation case, and refine loop plan.
-- `docs/wiki-evaluation-set-and-judge-rubric.md`: current evaluation set strategy and LLM-as-Judge rubric contract.
-- `docs/final-llm-wiki-product-spec.md`: final Paper Wiki product specification for compiled knowledge, synthesis growth, retrieval policy, quality states, and artifact boundaries.
-- `docs/wiki-product-entry-contract.md`: product entry contract defining Prompt/Skill and MCP entries across Update Wiki and Use Wiki.
-- `docs/wiki-mcp-entry-design.md`: MCP entry tool surface and adapter design for Paper Wiki.
-- `docs/wiki-workspace-config.md`: user-level Paper Wiki workspace layout, active workspace config, and managed source root behavior.
-- `docs/plugin-distribution.md`: Codex and Claude Code plugin distribution notes.
-- `docs/wiki-entry-demo.md`: small release demo for Prompt/Skill and MCP entry workflows.
-- `docs/final-llm-wiki-product-quality-brief.md`: latest deterministic final-product readiness brief and residual bottlenecks.
-- `docs/wiki-layer-test-strategy.md`: layered source/canonical/retrieval test strategy, retrieval scenario metrics, judge rubric usage, calibration, and release gates.
-- `docs/wiki-product-dataflow-and-artifact-boundaries.md`: product-level source/canonical/draft/debug/retrieval artifact taxonomy and dataflow boundaries.
-- `docs/user-insight-personalization-mvp.md`: user insight schema, add/lint/publish workflow, source-fact boundary, retrieval behavior, and future Zotero adapter boundary.
-- `docs/wiki-evolution-mvp.md`: refinement schema, lint/publish workflow, revision snapshots, evolution-state retrieval behavior, and source-fact correction rules.
-- `docs/knowledge-layer-schema.md`: canonical schema for paper/method/topic/claim/evidence/synthesis/decision knowledge-layer pages.
-- `docs/knowledge-layer-optimization-brief.md`: latest knowledge-layer audit, repair, retrieval, and remaining-limit summary for the main wiki.
-- `docs/retrieval-smoke-quality-brief.md`: latest tracked retrieval smoke quality summary over representative canonical quantization wiki pages.
-- `docs/real-library-retrieval-audit-brief.md`: latest tracked per-paper retrieval audit over the current real canonical wiki.
-- `docs/retrieval-optimization-research.md`: retrieval v1 design research, option tradeoffs, and backend roadmap for Markdown-first paper-wiki retrieval.
-- `docs/retrieval-v1-quality-brief.md`: current v0 versus optimized v1 quality evidence, run artifacts, convergence conclusion, and remaining bottlenecks.
-- `docs/wiki-writeback-synthesis-layer.md`: query write-back, proposal lint, publish, and synthesis-layer schema contract.
-- `docs/paper-wiki-mvp-delivery-boundaries.md`: current boundaries for query write-back, Obsidian CLI, future MCP delivery, Zotero/user notes, and MVP release gates.
-- `docs/main-wiki-productization-quality-brief.md`: current main Obsidian vault productization status, source/canonical/retrieval gates, graph health, quality deltas, and remaining limitations.
-- `docs/mvp-workflow.html`: simplified visual workflow diagram.
-- `docs/research-coding-framework.md`: legacy research-coding framework note; 0.4.0 splits Lab idea graph from external coding workflows.
-- `docs/research-dev-use-cases.md`: Lab scenario map defining idea placement, Wiki-grounded feasibility, approach-tree management, experiment evidence, finding proposals, and development handoffs.
-- `docs/research-dev-mvp-plan.md`: lightweight Lab MVP plan covering artifact schemas, skill behavior, wiki retrieval, write-back, handoff, and evaluation.
-- `docs/research-dev-state-model.md`: canonical Lab `.meridian/` state model for threads, approach nodes, experiments, local finding proposals, active pointers, placement, handoff, and write-back boundaries.
-- `docs/lab-system-optimization.md`: Lab system optimization brief covering state validation, local finding to wiki transfer, and longitudinal replay evaluation.
-- `docs/research-coding-framework.html`: legacy visual diagram for the research coding loop.
-- `docs/full-system-architecture.md`: system boundary for Paper Wiki Workflow, Lab idea graph, and external coding workflows.
-- `docs/full-system-architecture.html`: full visual architecture showing standalone and integrated usage modes.
-- `docs/source-grounded-development-principles.md`: source-grounded design principles from Karpathy's LLM Wiki gist, Anthropic agent engineering posts, and selected community followup lessons.
-- `docs/research-event-map.md`: research coding event taxonomy and MVP high-leverage workflow boundary.
-- `docs/concept-layer-schema.md`: canonical schema for preliminary-knowledge concept pages under `wiki/concepts/`.
-- `docs/concept-layer-optimization-brief.md`: latest concept-layer main-wiki audit, publish, and retrieval evaluation summary.
-- `docs/review/`: Arbor review/context artifacts for managed planning and later develop/evaluate rounds.
+- `.agents/`: Codex marketplace manifest for the Meridian plugin package.
+- `.arbor/`: Arbor recovery memory and workflow state.
+- `.claude-plugin/`: Claude Code marketplace manifest for the Meridian plugin
+  package.
+- `.codex/`: project-local Meridian development skills; Arbor no longer uses
+  Codex project hooks by default.
+- `docs/`: durable product, architecture, workflow, evaluation, and review
+  documentation.
+- `eval/`: Paper Wiki and Lab evaluation cases and LLM-as-Judge rubrics.
+- `plugins/`: Codex, Claude Code, and VS Code plugin packages.
+- `pyproject.toml`: Python package metadata and `meridian` console script
+  entrypoint.
+- `README.md`: user-facing setup, update, and workflow entry documentation.
+- `src/`: Meridian Python source for Paper Wiki, Lab, MCP, setup, templates,
+  and evaluation helpers.
+- `tests/`: Python test suite for CLI, ingest, retrieval, setup, Lab graph,
+  MCP, and evaluation behavior.
