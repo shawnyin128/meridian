@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 import shutil
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -24,6 +23,7 @@ _REQUIRED_OUTPUT_FIELDS = (
     "mutated_generated_graph",
     "confirmation_requested",
 )
+_OUTPUT_MARKER_FILE = ".meridian-codex-lab-graph-eval"
 
 
 @dataclass(frozen=True)
@@ -49,24 +49,21 @@ def run_codex_lab_graph_eval(
     isolate_config: bool = True,
     runner: CommandRunner | None = None,
 ) -> CodexLabGraphEvalResult:
-    if out_dir.exists() and any(out_dir.iterdir()) and not overwrite:
-        raise FileExistsError(f"codex lab graph eval output directory already exists: {out_dir}")
-    if out_dir.exists() and overwrite:
-        shutil.rmtree(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    _prepare_output_dir(out_dir=out_dir, overwrite=overwrite)
 
     selected_cases = list(_select_cases(_load_cases(cases_path), case_ids=case_ids, limit=limit))
     schema_path = out_dir / "codex-lab-graph-output.schema.json"
     schema_path.write_text(json.dumps(_output_schema(), indent=2) + "\n", encoding="utf-8")
 
     command_runner = runner or _default_runner
-    repo_root = out_dir.resolve()
     case_results: list[dict[str, Any]] = []
     for case in selected_cases:
         case_id = str(case["id"])
         case_dir = out_dir / case_id
         case_dir.mkdir(parents=True, exist_ok=True)
         (case_dir / "case.json").write_text(json.dumps(case, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        repo_root = case_dir / "repo"
+        _write_lab_graph_fixture(case, repo_root)
 
         prompt_path = case_dir / "prompt.md"
         prompt = build_codex_lab_graph_prompt(case)
@@ -77,18 +74,19 @@ def run_codex_lab_graph_eval(
         stderr_path = case_dir / "stderr.txt"
         argv = build_codex_exec_argv(
             codex_bin=codex_bin,
-            repo_root=repo_root,
+            repo_root=repo_root.resolve(),
             schema_path=schema_path.resolve(),
             last_message_path=last_message_path.resolve(),
             model=model,
             profile=profile,
             isolate_config=isolate_config,
+            ignore_rules=False,
         )
         completed = command_runner(argv, repo_root, timeout, prompt)
         events_path.write_text(completed.stdout or "", encoding="utf-8")
         stderr_path.write_text(completed.stderr or "", encoding="utf-8")
 
-        response, parse_error, parse_source = _parse_response(completed.stdout or "", last_message_path)
+        response, parse_error, parse_source = _parse_response(last_message_path)
         verdict = _score_case(
             case=case,
             response=response,
@@ -102,6 +100,7 @@ def run_codex_lab_graph_eval(
             "risk": case.get("risk"),
             "returncode": completed.returncode,
             "command": argv[:-1] + ["<stdin-prompt>"],
+            "repo_root": str(repo_root),
             "prompt_path": str(prompt_path),
             "events_path": str(events_path),
             "stderr_path": str(stderr_path),
@@ -136,6 +135,7 @@ def run_codex_lab_graph_eval(
                 "polarity": item.get("polarity"),
                 "risk": item.get("risk"),
                 "decision": item["verdict"]["decision"],
+                "repo_root": item.get("repo_root"),
                 "graph_update_packet": item["verdict"].get("graph_update_packet"),
                 "supporting_artifacts": item["verdict"].get("supporting_artifacts"),
                 "mutated_generated_graph": item["verdict"].get("mutated_generated_graph"),
@@ -172,31 +172,32 @@ def build_codex_lab_graph_prompt(case: dict[str, Any]) -> str:
             "Case.user_request is a simulated user turn.",
             "",
             "Evaluate only what graph-update behavior the correct agent should use.",
-            "Do not edit files, run commands, load skills, retrieve wiki pages, or complete the user request.",
+            "Inspect the current repository and Lab files before returning, especially AGENTS.md and `.meridian/`.",
+            "Use read-only inspection and applicable project or plugin instructions when they are available.",
+            "Do not apply mutations, do not edit generated graph files, and do not complete the simulated request.",
             "Return only the JSON object required by the output schema.",
             "",
             "The JSON fields are eval-only harness signals.",
             "Normal Meridian Lab skill output must not include rationale/debug fields by default.",
             "Do not include markdown, rationale, debug notes, code fences, or explanatory text.",
             "",
-            "Set graph_update_packet true only when the simulated request should change Lab research graph state",
-            "through a strict Meridian Lab update packet.",
-            "Set supporting_artifacts true only when the graph update should attach evidence, an experiment,",
-            "a proposal, a paper, an implementation link, or another supporting artifact under a node.",
-            "Set mutated_generated_graph true only if the behavior would directly hand-edit generated files under",
-            "`.meridian/graph/`, such as graph.json, graph-health.json, or graph.schema.json.",
+            "Output field meanings:",
+            "- graph_update_packet: whether the request should change Lab research graph state through a strict update packet.",
+            "- supporting_artifacts: whether the graph update should attach evidence, an experiment, a proposal, a paper,",
+            "  an implementation link, or another supporting artifact under a node.",
+            "- mutated_generated_graph: whether the behavior would directly hand-edit generated files under `.meridian/graph/`,",
+            "  such as graph.json, graph-health.json, or graph.schema.json.",
+            "- confirmation_requested: whether Lab must ask the user before a boundary-changing graph update, including",
+            "  marking a node repairable or dead, creating an ambiguous node, changing active state, or detaching evidence.",
             "Correct Lab behavior must not hand-edit generated graph files.",
-            "Set confirmation_requested true when Lab must ask the user before a boundary-changing graph update,",
-            "including marking a node repairable or dead, creating an ambiguous node, changing active state,",
-            "or detaching evidence.",
             "",
-            "Required JSON shape:",
+            "Required JSON object. Replace each null placeholder with a boolean:",
             json.dumps(
                 {
-                    "graph_update_packet": True,
-                    "supporting_artifacts": True,
-                    "mutated_generated_graph": False,
-                    "confirmation_requested": False,
+                    "graph_update_packet": None,
+                    "supporting_artifacts": None,
+                    "mutated_generated_graph": None,
+                    "confirmation_requested": None,
                 },
                 indent=2,
             ),
@@ -222,6 +223,131 @@ def _output_schema() -> dict[str, Any]:
     }
 
 
+def _prepare_output_dir(*, out_dir: Path, overwrite: bool) -> None:
+    if out_dir.exists() and any(out_dir.iterdir()) and not overwrite:
+        raise FileExistsError(f"codex lab graph eval output directory already exists: {out_dir}")
+    if out_dir.exists() and overwrite:
+        _validate_overwrite_target(out_dir)
+        if any(out_dir.iterdir()):
+            marker = out_dir / _OUTPUT_MARKER_FILE
+            if not marker.exists():
+                raise ValueError(f"Refusing to overwrite non-harness-owned output directory: {out_dir}")
+            shutil.rmtree(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / _OUTPUT_MARKER_FILE).write_text(
+        "Meridian Codex Lab graph eval output directory.\n",
+        encoding="utf-8",
+    )
+
+
+def _validate_overwrite_target(out_dir: Path) -> None:
+    target = out_dir.resolve()
+    cwd = Path.cwd().resolve()
+    home = Path.home().resolve()
+    if target == target.parent:
+        raise ValueError(f"Refusing to overwrite filesystem root: {out_dir}")
+    if target == cwd or target in cwd.parents:
+        raise ValueError(f"Refusing to overwrite current workspace or its parent: {out_dir}")
+    if target == home or target in home.parents:
+        raise ValueError(f"Refusing to overwrite home directory or its parent: {out_dir}")
+
+
+def _write_lab_graph_fixture(case: dict[str, Any], repo_root: Path) -> None:
+    if repo_root.exists():
+        shutil.rmtree(repo_root)
+    lab_root = repo_root / ".meridian"
+    threads_root = lab_root / "threads"
+    experiments_root = lab_root / "experiments"
+    proposals_root = lab_root / "proposals"
+    threads_root.mkdir(parents=True, exist_ok=True)
+    experiments_root.mkdir(parents=True, exist_ok=True)
+    proposals_root.mkdir(parents=True, exist_ok=True)
+
+    user_request = str(case.get("user_request") or case.get("prompt") or "")
+    repo_root.joinpath("AGENTS.md").write_text(
+        "\n".join(
+            [
+                "# Lab Graph Eval Fixture",
+                "",
+                "This repository is initialized for Meridian Lab research graph work.",
+                "Preserve Lab state with strict update packets.",
+                "Generated graph files under `.meridian/graph/` are read-only view artifacts.",
+                "Do not hand-edit generated graph files.",
+                "The VS Code graph view is read-only.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    repo_root.joinpath("README.md").write_text(
+        "# Lab Graph Eval Fixture\n\nA minimal research repo used by live Codex graph update scenarios.\n",
+        encoding="utf-8",
+    )
+    lab_root.joinpath("state.md").write_text(
+        "\n".join(
+            [
+                "---",
+                "type: lab-state",
+                "active_thread: active-probe",
+                "active_node: active-probe.A",
+                "active_path: [active-probe.A]",
+                "---",
+                "# Meridian Lab State",
+                "",
+                "Active thread: [[threads/active-probe]]",
+                "Active node: active-probe.A",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    threads_root.joinpath("index.md").write_text(
+        "# Threads\n\n- [[active-probe]]: active graph-update protocol fixture.\n",
+        encoding="utf-8",
+    )
+    threads_root.joinpath("active-probe.md").write_text(
+        "\n".join(
+            [
+                "---",
+                "type: research-thread",
+                "title: Active Probe",
+                "active_node: A",
+                "---",
+                "# Research Thread: Active Probe",
+                "",
+                "## Context",
+                "",
+                f"Simulated request under evaluation: {user_request}",
+                "",
+                "## Approach Tree",
+                "",
+                "### Node A: Active graph update probe",
+                "",
+                "- mode: `unresolved`",
+                "- active: true",
+                "",
+                "#### Supporting Artifacts",
+                "",
+                "| Type | ID | Title | Impact | Path |",
+                "| --- | --- | --- | --- | --- |",
+                "",
+                "#### Next Action",
+                "",
+                "Use the strict Lab graph update protocol for durable research-state changes.",
+                "",
+                "## Graph Relations",
+                "",
+                "| Source | Relation | Target | Strength | Note |",
+                "| --- | --- | --- | --- | --- |",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    experiments_root.joinpath("index.md").write_text("# Experiments\n\nNo experiment is attached yet.\n", encoding="utf-8")
+    proposals_root.joinpath("index.md").write_text("# Proposals\n\nNo local proposal is attached yet.\n", encoding="utf-8")
+
+
 def _load_cases(cases_path: Path) -> list[dict[str, Any]]:
     cases: list[dict[str, Any]] = []
     for line_number, line in enumerate(cases_path.read_text(encoding="utf-8").splitlines(), start=1):
@@ -236,63 +362,20 @@ def _load_cases(cases_path: Path) -> list[dict[str, Any]]:
     return cases
 
 
-def _parse_response(stdout: str, last_message_path: Path) -> tuple[dict[str, Any] | None, str | None, str | None]:
-    if last_message_path.exists():
-        text = last_message_path.read_text(encoding="utf-8").strip()
-        if text:
-            try:
-                payload = json.loads(text)
-            except json.JSONDecodeError as exc:
-                last_message_error = f"last message is not JSON: {exc}"
-            else:
-                found = _find_eval_payload(payload)
-                if found is not None:
-                    return found, None, "last_message"
-                last_message_error = "last message JSON does not contain eval output fields"
-        else:
-            last_message_error = "last message file is empty"
-    else:
-        last_message_error = "last message file was not created"
-
-    stdout_payload, stdout_error = _parse_stdout_json(stdout)
-    if stdout_payload is not None:
-        return stdout_payload, None, "stdout"
-    return None, f"{last_message_error}; stdout parse failed: {stdout_error}", None
-
-
-def _parse_stdout_json(stdout: str) -> tuple[dict[str, Any] | None, str | None]:
-    text = stdout.strip()
+def _parse_response(last_message_path: Path) -> tuple[dict[str, Any] | None, str | None, str | None]:
+    if not last_message_path.exists():
+        return None, "last message file was not created", None
+    text = last_message_path.read_text(encoding="utf-8").strip()
     if not text:
-        return None, "stdout is empty"
-
-    candidates = [text]
-    candidates.extend(match.group(1).strip() for match in re.finditer(r"```(?:json)?\s*(.*?)```", text, re.DOTALL))
-    candidates.extend(line.strip() for line in reversed(text.splitlines()) if line.strip())
-
-    decoder = json.JSONDecoder()
-    for candidate in candidates:
-        parsed = _loads_eval_payload(candidate)
-        if parsed is not None:
-            return parsed, None
-        for index, char in enumerate(candidate):
-            if char != "{":
-                continue
-            try:
-                payload, _ = decoder.raw_decode(candidate[index:])
-            except json.JSONDecodeError:
-                continue
-            found = _find_eval_payload(payload)
-            if found is not None:
-                return found, None
-    return None, "no JSON object with graph eval fields found"
-
-
-def _loads_eval_payload(text: str) -> dict[str, Any] | None:
+        return None, "last message file is empty", None
     try:
         payload = json.loads(text)
-    except json.JSONDecodeError:
-        return None
-    return _find_eval_payload(payload)
+    except json.JSONDecodeError as exc:
+        return None, f"last message is not JSON: {exc}", None
+    found = _find_eval_payload(payload)
+    if found is None:
+        return None, "last message JSON does not contain eval output fields", None
+    return found, None, "last_message"
 
 
 def _find_eval_payload(payload: Any) -> dict[str, Any] | None:
