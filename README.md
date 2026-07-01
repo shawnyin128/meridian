@@ -286,6 +286,19 @@ The VS Code graph viewer is a read-only consumer of `.meridian/graph/`
 artifacts. Refresh and check the graph from the CLI, then
 treat graph health failures as blockers before relying on visual state.
 
+Meridian publishes the VS Code graph viewer as a GitHub Release `.vsix` asset
+when the extension changes. It is not published to the VS Code Marketplace.
+Download the latest `meridian-research-graph-<version>.vsix` asset from the
+GitHub release and install it with:
+
+```powershell
+code --install-extension meridian-research-graph-<version>.vsix --force
+```
+
+If a Meridian release does not include a VSIX asset, the VS Code extension did
+not change in that release; keep using the newest earlier release that includes
+`meridian-research-graph-<version>.vsix`.
+
 Lab models exploratory research as:
 
 ```text

@@ -1,0 +1,125 @@
+name: Release VS Code extension
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag to attach the VSIX to, for example v0.8.0. Defaults to package.json version."
+        required: false
+        type: string
+      force_build:
+        description: "Build and upload even when the VS Code extension did not change since the previous tag."
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  package-vscode-extension:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plugins/vscode/meridian-research-graph
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release metadata
+        id: meta
+        shell: bash
+        working-directory: .
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          DISPATCH_TAG: ${{ inputs.tag_name }}
+          FORCE_BUILD: ${{ inputs.force_build }}
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./plugins/vscode/meridian-research-graph/package.json').version")"
+          TAG="${RELEASE_TAG:-${DISPATCH_TAG:-v${VERSION}}}"
+          if [[ -z "${TAG}" ]]; then
+            echo "Could not resolve a release tag." >&2
+            exit 1
+          fi
+
+          PREVIOUS_TAG="$(git tag --sort=-v:refname | grep -v "^${TAG}$" | head -n 1 || true)"
+          BUILD="true"
+          if [[ "${FORCE_BUILD}" != "true" && -n "${PREVIOUS_TAG}" ]]; then
+            if git diff --quiet "${PREVIOUS_TAG}" "${TAG}" -- plugins/vscode/meridian-research-graph; then
+              BUILD="false"
+            fi
+          fi
+
+          VSIX_NAME="meridian-research-graph-${VERSION}.vsix"
+          {
+            echo "version=${VERSION}"
+            echo "tag=${TAG}"
+            echo "previous_tag=${PREVIOUS_TAG}"
+            echo "build=${BUILD}"
+            echo "vsix_name=${VSIX_NAME}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Release tag: ${TAG}"
+          echo "Previous tag: ${PREVIOUS_TAG:-<none>}"
+          echo "VS Code extension changed: ${BUILD}"
+
+      - name: Set up Node.js
+        if: steps.meta.outputs.build == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: plugins/vscode/meridian-research-graph/package-lock.json
+
+      - name: Install dependencies
+        if: steps.meta.outputs.build == 'true'
+        run: npm ci
+
+      - name: Run tests
+        if: steps.meta.outputs.build == 'true'
+        run: npm test
+
+      - name: Compile extension
+        if: steps.meta.outputs.build == 'true'
+        run: npm run compile
+
+      - name: Package VSIX
+        if: steps.meta.outputs.build == 'true'
+        run: npx --yes @vscode/vsce package --out "${{ steps.meta.outputs.vsix_name }}" --allow-missing-repository
+
+      - name: Ensure GitHub release exists
+        if: steps.meta.outputs.build == 'true'
+        shell: bash
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release create "${TAG}" --title "Meridian ${TAG#v}" --notes "Automated Meridian release assets."
+          fi
+
+      - name: Upload VSIX release asset
+        if: steps.meta.outputs.build == 'true'
+        shell: bash
+        working-directory: plugins/vscode/meridian-research-graph
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          VSIX_NAME: ${{ steps.meta.outputs.vsix_name }}
+        run: gh release upload "${TAG}" "${VSIX_NAME}" --clobber
+
+      - name: Report skipped package
+        if: steps.meta.outputs.build != 'true'
+        shell: bash
+        working-directory: .
+        run: |
+          echo "VS Code extension unchanged since ${{ steps.meta.outputs.previous_tag }}; no VSIX uploaded."
