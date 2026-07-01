@@ -216,6 +216,19 @@ class CodexLabGraphEvalTests(unittest.TestCase):
         self.assertNotIn('"graph_update_packet": true', prompt)
         self.assertNotIn('"supporting_artifacts": true', prompt)
 
+    def test_live_graph_cases_keep_boundary_confirmation_expectations_precise(self) -> None:
+        cases = [
+            json.loads(line)
+            for line in Path("eval/cases/lab_graph_update_live.jsonl").read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        by_id = {case["id"]: case for case in cases}
+
+        self.assertNotIn("expect_confirmation", by_id["new_idea_creates_research_point"])
+        self.assertTrue(by_id["new_idea_creates_research_point"]["expect_graph_update"])
+        self.assertNotIn("expect_graph_update", by_id["repairable_requires_confirmation"])
+        self.assertTrue(by_id["repairable_requires_confirmation"]["expect_confirmation"])
+
 
 if __name__ == "__main__":
     unittest.main()
