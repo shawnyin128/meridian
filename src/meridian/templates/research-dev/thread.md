@@ -78,6 +78,15 @@ exactly `unresolved`, `repairable`, `supported`, or `dead`.
 
 - `<experiment-id>`
 
+#### Supporting Artifacts
+
+Experiments, Paper Wiki priors, implementation links, and local proposals
+support this research point and are not default graph nodes.
+
+| Type | ID | Title | Impact | Path |
+| --- | --- | --- | --- | --- |
+|  |  |  |  |  |
+
 #### History
 
 - YYYY-MM-DD: Created thread seed.
@@ -85,6 +94,15 @@ exactly `unresolved`, `repairable`, `supported`, or `dead`.
 #### Next Action
 
 Define the next research move.
+
+## Graph Relations
+
+Use this table for non-tree research graph links between core research points.
+Generated graph files are rebuilt from this control-plane Markdown.
+
+| Source | Relation | Target | Strength | Note |
+| --- | --- | --- | --- | --- |
+|  |  |  |  |  |
 
 ## Thread Final Summary
 

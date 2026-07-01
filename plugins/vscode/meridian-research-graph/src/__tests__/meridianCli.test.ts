@@ -1,0 +1,84 @@
+import { EventEmitter } from "node:events";
+import { describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  spawn: vi.fn()
+}));
+
+vi.mock("node:child_process", () => ({
+  default: { spawn: mocks.spawn },
+  spawn: mocks.spawn
+}));
+
+import { runMeridian, summarizeMeridianOutput, workspaceRoot } from "../meridianCli";
+import { normalizeMarkdownAnchor } from "../markdownAnchor";
+
+describe("runMeridian", () => {
+  it("runs python -m meridian with cwd and captures output", async () => {
+    const child = fakeChildProcess();
+    mocks.spawn.mockReturnValueOnce(child);
+
+    const resultPromise = runMeridian(["lab", "graph-check", "--lab-root", "D:\\repo"], "D:\\repo");
+
+    child.stdout.emit("data", Buffer.from("ok\n"));
+    child.stderr.emit("data", Buffer.from("warn\n"));
+    child.emit("close", 0);
+
+    await expect(resultPromise).resolves.toEqual({
+      code: 0,
+      stdout: "ok\n",
+      stderr: "warn\n"
+    });
+    expect(mocks.spawn).toHaveBeenCalledWith("python", ["-m", "meridian", "lab", "graph-check", "--lab-root", "D:\\repo"], {
+      cwd: "D:\\repo",
+      windowsHide: true
+    });
+  });
+});
+
+describe("workspaceRoot", () => {
+  it("prefers the selected graph workspace over the first workspace folder", () => {
+    const first = { uri: { fsPath: "D:\\first" } };
+    const selected = { uri: { fsPath: "D:\\selected" } };
+
+    expect(workspaceRoot([first, selected], selected)).toBe("D:\\selected");
+  });
+
+  it("uses the only workspace folder when no graph root is known", () => {
+    const only = { uri: { fsPath: "D:\\only" } };
+
+    expect(workspaceRoot([only])).toBe("D:\\only");
+  });
+
+  it("does not silently choose the first folder in a multi-root workspace", () => {
+    const first = { uri: { fsPath: "D:\\first" } };
+    const second = { uri: { fsPath: "D:\\second" } };
+
+    expect(workspaceRoot([first, second])).toBeNull();
+  });
+});
+
+describe("summarizeMeridianOutput", () => {
+  it("prefers stderr for error summaries", () => {
+    expect(summarizeMeridianOutput({ stdout: "stdout detail", stderr: "stderr detail" }, "stderr")).toBe(
+      "stderr detail"
+    );
+  });
+});
+
+describe("normalizeMarkdownAnchor", () => {
+  it("matches Meridian graph anchor generation for punctuation and underscores", () => {
+    expect(normalizeMarkdownAnchor("Node A_B: Repair scoring")).toBe("node-a-b-repair-scoring");
+    expect(normalizeMarkdownAnchor("Node A: Idea seed")).toBe("node-a-idea-seed");
+  });
+});
+
+function fakeChildProcess() {
+  const child = new EventEmitter() as EventEmitter & {
+    stdout: EventEmitter;
+    stderr: EventEmitter;
+  };
+  child.stdout = new EventEmitter();
+  child.stderr = new EventEmitter();
+  return child;
+}

@@ -12,6 +12,16 @@ from meridian.lab.coding_style import (
     migrate_coding_style_profile,
     validate_coding_style_profile,
 )
+from meridian.lab.graph import (
+    apply_lab_update,
+    check_lab_graph,
+    LAB_GRAPH_SCHEMA_VERSION,
+    LAB_UPDATE_SCHEMA_VERSION,
+    LabGraphBuildResult,
+    materialize_lab_graph,
+    validate_lab_update_packet,
+    write_lab_graph,
+)
 from meridian.lab.research_agent_contract import (
     initialize_research_agent_principles,
     inject_meridian_agents_contract,
@@ -39,6 +49,8 @@ from meridian.lab.state import (
 __all__ = [
     "ALLOWED_NODE_MODES",
     "ALLOWED_PROPOSAL_STATES",
+    "apply_lab_update",
+    "check_lab_graph",
     "classify_coding_style_feedback",
     "CODING_STYLE_PROFILE_SCHEMA_VERSION",
     "coding_style_config_home",
@@ -50,8 +62,14 @@ __all__ = [
     "initialize_coding_style_profile",
     "initialize_research_agent_principles",
     "inject_meridian_agents_contract",
+    "LAB_GRAPH_SCHEMA_VERSION",
+    "LAB_UPDATE_SCHEMA_VERSION",
     "LabValidationFinding",
     "LabValidationReport",
+    "LabGraphBuildResult",
+    "materialize_lab_graph",
+    "validate_lab_update_packet",
+    "write_lab_graph",
     "MERIDIAN_AGENTS_CONTRACT_END",
     "MERIDIAN_AGENTS_CONTRACT_START",
     "meridian_agents_contract_block",

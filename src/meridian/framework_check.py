@@ -11,6 +11,7 @@ from meridian import __version__
 from meridian.lab import (
     MERIDIAN_AGENTS_CONTRACT_END,
     MERIDIAN_AGENTS_CONTRACT_START,
+    check_lab_graph,
     coding_style_profile_path,
     research_agent_principles_path,
     validate_coding_style_profile,
@@ -687,6 +688,36 @@ def _lab_state_category(lab_root: Path | None) -> FrameworkCategory:
             item.message,
             "Initialize or repair the minimal `.meridian/` research-space skeleton.",
         )
+    lab_path = lab_root.expanduser().resolve()
+    lab_space = lab_path if lab_path.name == ".meridian" else lab_path / ".meridian"
+    if lab_space.exists():
+        try:
+            graph_health = check_lab_graph(lab_root)
+        except Exception as exc:  # noqa: BLE001 - framework report should not crash on Lab graph drift.
+            _add(
+                findings,
+                category,
+                "critical",
+                "manual",
+                "lab_graph_check_failed",
+                f"Lab graph health check failed unexpectedly: {exc}.",
+                "Repair Lab Markdown graph state, then run `meridian lab graph-refresh --lab-root <repo>`.",
+            )
+        else:
+            for item in graph_health.get("findings", []):
+                if not isinstance(item, dict):
+                    continue
+                graph_severity = str(item.get("severity") or "")
+                code = str(item.get("code") or "graph_finding")
+                _add(
+                    findings,
+                    category,
+                    "critical" if graph_severity == "error" else "degraded",
+                    "manual",
+                    f"lab_{code}",
+                    str(item.get("message") or "Lab graph health finding."),
+                    _lab_graph_next_action(code),
+                )
     contract_report = validate_meridian_agents_contract(lab_root)
     if contract_report.status == "pass":
         _add(
@@ -720,6 +751,12 @@ def _lab_state_category(lab_root: Path | None) -> FrameworkCategory:
             drift["next_action"],
         )
     return _category(category, findings)
+
+
+def _lab_graph_next_action(code: str) -> str:
+    if code in {"graph_json_missing", "graph_json_stale"}:
+        return "Run `meridian lab graph-refresh --lab-root <repo>` to regenerate Lab graph artifacts."
+    return "Repair Lab Markdown graph state, then run `meridian lab graph-refresh --lab-root <repo>`."
 
 
 def _user_profile_category() -> FrameworkCategory:

@@ -1,6 +1,6 @@
 {
   "name": "meridian",
-  "version": "0.7.5",
+  "version": "0.8.0",
   "description": "Source-grounded Paper Wiki retrieval, MCP context/read/trace, and Lab idea-graph copilot for Codex.",
   "author": {
     "name": "Meridian",
