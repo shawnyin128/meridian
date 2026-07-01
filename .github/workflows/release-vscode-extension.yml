@@ -1,6 +1,11 @@
 name: Release VS Code extension
 
 on:
+  push:
+    branches: [master]
+    paths:
+      - ".github/workflows/release-vscode-extension.yml"
+      - "plugins/vscode/meridian-research-graph/**"
   release:
     types: [published]
   workflow_dispatch:
@@ -43,17 +48,22 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(node -p "require('./plugins/vscode/meridian-research-graph/package.json').version")"
-          TAG="${RELEASE_TAG:-${DISPATCH_TAG:-v${VERSION}}}"
-          if [[ -z "${TAG}" ]]; then
-            echo "Could not resolve a release tag." >&2
-            exit 1
-          fi
-
-          PREVIOUS_TAG="$(git tag --sort=-v:refname | grep -v "^${TAG}$" | head -n 1 || true)"
+          TAG=""
+          PREVIOUS_TAG=""
           BUILD="true"
-          if [[ "${FORCE_BUILD}" != "true" && -n "${PREVIOUS_TAG}" ]]; then
-            if git diff --quiet "${PREVIOUS_TAG}" "${TAG}" -- plugins/vscode/meridian-research-graph; then
-              BUILD="false"
+
+          if [[ "${EVENT_NAME}" != "push" ]]; then
+            TAG="${RELEASE_TAG:-${DISPATCH_TAG:-v${VERSION}}}"
+            if [[ -z "${TAG}" ]]; then
+              echo "Could not resolve a release tag." >&2
+              exit 1
+            fi
+
+            PREVIOUS_TAG="$(git tag --sort=-v:refname | grep -v "^${TAG}$" | head -n 1 || true)"
+            if [[ "${FORCE_BUILD}" != "true" && -n "${PREVIOUS_TAG}" ]]; then
+              if git diff --quiet "${PREVIOUS_TAG}" "${TAG}" -- plugins/vscode/meridian-research-graph; then
+                BUILD="false"
+              fi
             fi
           fi
 
@@ -66,7 +76,8 @@ jobs:
             echo "vsix_name=${VSIX_NAME}"
           } >> "$GITHUB_OUTPUT"
 
-          echo "Release tag: ${TAG}"
+          echo "Event: ${EVENT_NAME}"
+          echo "Release tag: ${TAG:-<none>}"
           echo "Previous tag: ${PREVIOUS_TAG:-<none>}"
           echo "VS Code extension changed: ${BUILD}"
 
@@ -94,8 +105,16 @@ jobs:
         if: steps.meta.outputs.build == 'true'
         run: npx --yes @vscode/vsce package --out "${{ steps.meta.outputs.vsix_name }}" --allow-missing-repository
 
+      - name: Upload VSIX workflow artifact
+        if: steps.meta.outputs.build == 'true' && github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.vsix_name }}
+          path: plugins/vscode/meridian-research-graph/${{ steps.meta.outputs.vsix_name }}
+          if-no-files-found: error
+
       - name: Ensure GitHub release exists
-        if: steps.meta.outputs.build == 'true'
+        if: steps.meta.outputs.build == 'true' && github.event_name != 'push'
         shell: bash
         working-directory: .
         env:
@@ -108,7 +127,7 @@ jobs:
           fi
 
       - name: Upload VSIX release asset
-        if: steps.meta.outputs.build == 'true'
+        if: steps.meta.outputs.build == 'true' && github.event_name != 'push'
         shell: bash
         working-directory: plugins/vscode/meridian-research-graph
         env:
