@@ -16,6 +16,10 @@
     "workspaceContains:.meridian/graph/graph.json"
   ],
   "main": "./dist/extension.js",
+  "files": [
+    "dist/**",
+    "package.json"
+  ],
   "contributes": {
     "commands": [
       {
@@ -37,6 +41,7 @@
     ]
   },
   "scripts": {
+    "vscode:prepublish": "npm run compile",
     "compile": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.extension.json && vite build",
     "test": "vitest run"
   },

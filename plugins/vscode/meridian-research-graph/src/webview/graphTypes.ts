@@ -87,3 +87,39 @@ export interface LabGraph {
   supporting_artifacts: Record<string, SupportingArtifact[]>;
   health: LabGraphHealth;
 }
+
+export function normalizeLabGraph(value: unknown): LabGraph | null {
+  if (!isRecord(value) || value.schema !== "meridian.lab.graph.v1") {
+    return null;
+  }
+
+  if (
+    !isString(value.generated_at) ||
+    !isString(value.lab_root) ||
+    !isString(value.active_thread) ||
+    !isStringArray(value.source_files) ||
+    !isStringArray(value.active_path) ||
+    !Array.isArray(value.nodes) ||
+    !Array.isArray(value.edges) ||
+    !isRecord(value.node_details) ||
+    !isRecord(value.supporting_artifacts) ||
+    !isRecord(value.health) ||
+    !isString(value.health.status)
+  ) {
+    return null;
+  }
+
+  return value as unknown as LabGraph;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === "string";
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}

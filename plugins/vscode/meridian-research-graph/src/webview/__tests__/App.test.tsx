@@ -2,18 +2,21 @@ import React from "react";
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../App";
-import type { LabGraph } from "../graphTypes";
+import { normalizeLabGraph, type LabGraph } from "../graphTypes";
 
 describe("App", () => {
+  const consoleError = console.error;
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   it("renders core research node details without treating artifacts as graph nodes", () => {
-    vi.spyOn(console, "error").mockImplementation((message?: unknown) => {
+    vi.spyOn(console, "error").mockImplementation((message?: unknown, ...args: unknown[]) => {
       if (typeof message === "string" && message.includes("useLayoutEffect does nothing on the server")) {
         return;
       }
+      consoleError(message, ...args);
     });
 
     const graph: LabGraph = {
@@ -66,5 +69,14 @@ describe("App", () => {
     expect(staticGraphNodes[0]).toContain("Active probe");
     expect(staticGraphNodes[0]).not.toContain("Scoring probe");
     expect(staticGraphNodes[0]).not.toContain("exp-04");
+  });
+
+  it("normalizes malformed graph payloads to the empty state", () => {
+    expect(normalizeLabGraph({})).toBeNull();
+    expect(normalizeLabGraph([])).toBeNull();
+
+    const html = renderToString(<App graph={normalizeLabGraph({})} />);
+
+    expect(html).toContain("No Meridian graph loaded");
   });
 });

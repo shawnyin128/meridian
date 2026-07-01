@@ -61,12 +61,11 @@ export class ResearchGraphPanel {
   }
 
   private async loadGraph(): Promise<LabGraph | null> {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) {
+    const graphUri = await findFirstReadableGraphUri();
+    if (!graphUri) {
       return null;
     }
 
-    const graphUri = vscode.Uri.joinPath(workspaceFolder.uri, ".meridian", "graph", "graph.json");
     try {
       const bytes = await vscode.workspace.fs.readFile(graphUri);
       const raw = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
@@ -112,6 +111,23 @@ export class ResearchGraphPanel {
     }
     this.watcher.dispose();
   }
+}
+
+async function findFirstReadableGraphUri() {
+  const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
+  for (const workspaceFolder of workspaceFolders) {
+    const graphUri = vscode.Uri.joinPath(workspaceFolder.uri, ".meridian", "graph", "graph.json");
+    try {
+      await vscode.workspace.fs.readFile(graphUri);
+      return graphUri;
+    } catch (error) {
+      if (!isFileMissing(error)) {
+        throw error;
+      }
+    }
+  }
+
+  return null;
 }
 
 function findStyleUris(context: vscode.ExtensionContext, webview: vscode.Webview) {
