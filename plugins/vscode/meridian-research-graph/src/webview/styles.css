@@ -124,6 +124,25 @@ body {
   gap: 6px;
 }
 
+.graphHeaderActions {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  min-width: 260px;
+}
+
+.graphToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.graphToolbar .ant-btn {
+  border-radius: 6px;
+  font-weight: 600;
+}
+
 .healthAlert {
   margin: 10px 12px 0;
   border-radius: var(--radius);
@@ -307,5 +326,19 @@ body {
     grid-template-rows: minmax(520px, 62vh) minmax(320px, auto);
     height: auto;
     min-height: 100%;
+  }
+
+  .graphHeader {
+    flex-wrap: wrap;
+  }
+
+  .graphHeaderActions {
+    justify-items: start;
+    min-width: 0;
+  }
+
+  .graphMeta,
+  .graphToolbar {
+    justify-content: flex-start;
   }
 }

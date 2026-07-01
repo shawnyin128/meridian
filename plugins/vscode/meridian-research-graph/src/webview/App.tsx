@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Descriptions, Empty, List, Tabs, Tag } from "antd";
+import { Alert, Button, Descriptions, Empty, List, Tabs, Tag } from "antd";
 import {
   Background,
   Controls,
@@ -19,6 +19,18 @@ import type {
 interface FlowNodeData extends Record<string, unknown> {
   label: React.ReactNode;
 }
+
+type WebviewMessage =
+  | { type: "refreshGraph" }
+  | { type: "checkGraph" }
+  | { type: "revealMarkdown" }
+  | { type: "selectedNode"; nodeId: string };
+
+interface VsCodeApi {
+  postMessage(message: WebviewMessage): void;
+}
+
+let vscodeApi: VsCodeApi | null | undefined;
 
 export function App({ graph }: { graph: LabGraph | null }) {
   const [selectedId, setSelectedId] = useState<string | null>(graph?.nodes[0]?.id ?? null);
@@ -88,6 +100,10 @@ export function App({ graph }: { graph: LabGraph | null }) {
   const selectedDetail = selectedNode ? graph.node_details[selectedNode.id] ?? {} : {};
   const selectedArtifacts = selectedNode ? graph.supporting_artifacts[selectedNode.id] ?? [] : [];
   const healthStatus = graph.health?.status ?? "unknown";
+  const handleNodeClick = (_: React.MouseEvent, node: FlowNode<FlowNodeData>) => {
+    setSelectedId(node.id);
+    postToExtension({ type: "selectedNode", nodeId: node.id });
+  };
 
   return (
     <main className="appShell">
@@ -97,9 +113,22 @@ export function App({ graph }: { graph: LabGraph | null }) {
             <div className="eyebrow">Meridian Lab</div>
             <h1>Research Graph</h1>
           </div>
-          <div className="graphMeta">
-            <Tag color={healthColor(healthStatus)}>{healthStatus}</Tag>
-            {graph.active_thread ? <Tag>{graph.active_thread}</Tag> : null}
+          <div className="graphHeaderActions">
+            <div className="graphMeta">
+              <Tag color={healthColor(healthStatus)}>{healthStatus}</Tag>
+              {graph.active_thread ? <Tag>{graph.active_thread}</Tag> : null}
+            </div>
+            <div className="graphToolbar" aria-label="Graph actions">
+              <Button size="small" onClick={() => postToExtension({ type: "refreshGraph" })}>
+                Refresh
+              </Button>
+              <Button size="small" onClick={() => postToExtension({ type: "checkGraph" })}>
+                Health Check
+              </Button>
+              <Button size="small" type="primary" onClick={() => postToExtension({ type: "revealMarkdown" })}>
+                Open Markdown
+              </Button>
+            </div>
           </div>
         </div>
         {healthStatus !== "pass" ? (
@@ -115,7 +144,7 @@ export function App({ graph }: { graph: LabGraph | null }) {
           <GraphCanvas
             nodes={flowNodes}
             edges={flowEdges}
-            onNodeClick={(_, node) => setSelectedId(node.id)}
+            onNodeClick={handleNodeClick}
           />
         </div>
       </section>
@@ -128,6 +157,19 @@ export function App({ graph }: { graph: LabGraph | null }) {
       </aside>
     </main>
   );
+}
+
+function postToExtension(message: WebviewMessage) {
+  getVsCodeApi()?.postMessage(message);
+}
+
+function getVsCodeApi() {
+  if (vscodeApi !== undefined) {
+    return vscodeApi;
+  }
+
+  vscodeApi = typeof acquireVsCodeApi === "function" ? acquireVsCodeApi<VsCodeApi>() : null;
+  return vscodeApi;
 }
 
 function GraphNodeLabel({ node }: { node: ResearchGraphNode }) {
