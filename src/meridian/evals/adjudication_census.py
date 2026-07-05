@@ -4,16 +4,6 @@ from pathlib import Path
 
 from meridian.wiki.corpus import split_sections, strip_frontmatter
 
-# Sections that are supposed to hold negative / limitation content.
-_NEGATIVE_SECTIONS = {
-    "Failure Modes",
-    "Common Failure Modes",
-    "Limitations / Uncertainty",
-    "Limitations",
-    "Contradictions",
-    "Contradicting Evidence",
-}
-
 # Kinds scanned: directory -> the section headings that carry negatives there.
 _KINDS = {
     "methods": ("Failure Modes", "Common Failure Modes"),

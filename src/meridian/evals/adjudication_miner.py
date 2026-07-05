@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from meridian.evals.adjudication_census import is_substantive_negative
-from meridian.evals.adjudication_dataset import BUCKETS, AdjudicationItem
+from meridian.evals.adjudication_dataset import AdjudicationItem
 from meridian.wiki.corpus import parse_frontmatter, split_sections, strip_frontmatter
 
 # directory -> negative section headings to mine (same map spirit as the census)
@@ -11,6 +11,7 @@ _MINE = {
     "methods": ("Failure Modes", "Common Failure Modes"),
     "papers": ("Limitations / Uncertainty", "Limitations"),
     "topics": ("Contradictions",),
+    "concepts": ("Common Failure Modes",),
 }
 
 
@@ -20,6 +21,8 @@ def _affirmative_idea(title: str, kind: str) -> str:
         return f"I want to use {title} for my setting."
     if kind == "papers":
         return f"I want to build directly on the approach in {title}."
+    if kind == "concepts":
+        return f"My approach relies on {title}."
     return f"I want to pursue the direction described by {title}."
 
 

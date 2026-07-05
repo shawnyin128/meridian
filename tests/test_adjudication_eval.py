@@ -79,6 +79,15 @@ class DatasetTests(unittest.TestCase):
     def test_load_missing_returns_empty(self):
         self.assertEqual(load_dataset(Path("does-not-exist.jsonl")), [])
 
+    def test_load_skips_malformed_line(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "gold.jsonl"
+            good = '{"id": "g1", "idea": "ok", "expected": {"refuted": ["m/a"]}}'
+            path.write_text(good + "\n{ this is not json }\n", encoding="utf-8")
+            loaded = load_dataset(path)
+            self.assertEqual(len(loaded), 1)
+            self.assertEqual(loaded[0].id, "g1")
+
     def test_gold_template_written_once(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "gold.jsonl"
@@ -122,6 +131,19 @@ class MinerTests(unittest.TestCase):
                 )
             self.assertEqual(len(mine_bootstrap_items(root, limit=3)), 3)
 
+    def test_mines_concepts_kind(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "concepts").mkdir()
+            (root / "concepts" / "outliers.md").write_text(
+                "---\ntype: concept\ntitle: Activation outliers\n---\n"
+                "## Common Failure Modes\n\n- Ignoring outliers makes quantization fail and degrades accuracy.\n",
+                encoding="utf-8",
+            )
+            items = mine_bootstrap_items(root)
+            self.assertEqual(len(items), 1)
+            self.assertEqual(items[0].expected["refuted"], ["concepts/outliers"])
+
 
 class MetricsTests(unittest.TestCase):
     def test_bucket_recall_basic(self):
@@ -143,6 +165,20 @@ class MetricsTests(unittest.TestCase):
         self.assertEqual(report["item_count"], 2)
         # i2 truth is "none" but prediction returned a hit + rich coverage -> false comfort
         self.assertEqual(report["false_comfort_rate"], 1.0)
+
+    def test_refute_recall_split_by_source(self):
+        items = [
+            AdjudicationItem(id="b1", idea="x", expected={"prior_work": [], "refuted": ["m/a"], "corroborating": []}, label_source="bootstrap"),
+            AdjudicationItem(id="g1", idea="y", expected={"prior_work": [], "refuted": ["m/b"], "corroborating": []}, label_source="hand"),
+        ]
+        preds = {
+            "b1": AdjudicationPrediction(buckets={"prior_work": [], "refuted": ["m/a"], "corroborating": []}, coverage="thin"),
+            "g1": AdjudicationPrediction(buckets={"prior_work": [], "refuted": [], "corroborating": []}, coverage="none"),
+        }
+        report = evaluate(items, preds)
+        self.assertEqual(report["refute_recall_by_source"]["bootstrap"], 1.0)
+        self.assertEqual(report["refute_recall_by_source"]["hand"], 0.0)
+        self.assertEqual(report["item_count_by_source"], {"bootstrap": 1, "hand": 1})
 
 
 class BaselineAdapterTests(unittest.TestCase):

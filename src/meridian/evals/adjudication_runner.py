@@ -34,6 +34,22 @@ def render_summary(report: dict, census: dict) -> str:
         "> If the substantive ratio is near zero, the REFUTED gap is extraction-bound:",
         "> Phase 1 retrieval alone cannot surface negatives the corpus never captured.",
     ]
+    lines += [
+        "",
+        "## How to read refute-recall",
+        "",
+        "Bootstrap items derive each idea from a page's own title, then check whether",
+        "retrieval returns that same page. Bootstrap refute-recall is therefore a LEXICAL",
+        "SELF-RETRIEVAL ceiling, NOT the safety-net capability. The real capability",
+        "(an idea in your own words -> the page that refutes it) is measured only by the",
+        "hand-labeled gold set and the false-comfort rate, which stay n/a until gold ideas exist.",
+        "",
+        "Refute-recall by label source:",
+    ]
+    by_source = report.get("refute_recall_by_source", {})
+    counts = report.get("item_count_by_source", {})
+    for source in sorted(by_source):
+        lines.append(f"- {source}: {_fmt(by_source[source])} (n={counts.get(source, 0)})")
     return "\n".join(lines) + "\n"
 
 

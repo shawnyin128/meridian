@@ -47,12 +47,22 @@ def evaluate(items: list, predictions: dict) -> dict:
             false_comfort_flags.append(1 if gave_comfort else 0)
             row["false_comfort"] = bool(gave_comfort)
         per_item.append(row)
+    by_source_scores: dict = {}
+    by_source_counts: dict = {}
+    for item in items:
+        pred = predictions.get(item.id, AdjudicationPrediction())
+        score = bucket_recall(item.normalized_expected()["refuted"], pred.buckets.get("refuted", []))
+        by_source_scores.setdefault(item.label_source, []).append(score)
+        by_source_counts[item.label_source] = by_source_counts.get(item.label_source, 0) + 1
+    refute_recall_by_source = {src: _mean(scores) for src, scores in by_source_scores.items()}
     report = {
         "item_count": len(items),
         "refute_recall": _mean(per_bucket_scores["refuted"]),
         "prior_work_recall": _mean(per_bucket_scores["prior_work"]),
         "corroborating_recall": _mean(per_bucket_scores["corroborating"]),
         "false_comfort_rate": (sum(false_comfort_flags) / len(false_comfort_flags)) if false_comfort_flags else None,
+        "refute_recall_by_source": refute_recall_by_source,
+        "item_count_by_source": by_source_counts,
         "per_item": per_item,
     }
     return report

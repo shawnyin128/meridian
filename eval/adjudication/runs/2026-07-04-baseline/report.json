@@ -1,9 +1,15 @@
 {
-  "item_count": 24,
-  "refute_recall": 0.75,
+  "item_count": 35,
+  "refute_recall": 0.7428571428571429,
   "prior_work_recall": null,
   "corroborating_recall": null,
   "false_comfort_rate": null,
+  "refute_recall_by_source": {
+    "bootstrap": 0.7428571428571429
+  },
+  "item_count_by_source": {
+    "bootstrap": 35
+  },
   "per_item": [
     {
       "id": "boot-0001",
@@ -242,6 +248,116 @@
       "recall": {
         "prior_work": null,
         "refuted": 0.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0025",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0026",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0027",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0028",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0029",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 0.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0030",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0031",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 0.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0032",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 0.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0033",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0034",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0035",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
         "corroborating": null
       }
     }

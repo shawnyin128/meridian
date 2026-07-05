@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -41,11 +42,14 @@ def load_dataset(path: Path) -> list:
     if not Path(path).exists():
         return []
     items: list = []
-    for line in Path(path).read_text(encoding="utf-8").splitlines():
+    for lineno, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), start=1):
         line = line.strip()
         if not line or line.startswith("#"):
             continue
-        items.append(_item_from_dict(json.loads(line)))
+        try:
+            items.append(_item_from_dict(json.loads(line)))
+        except (json.JSONDecodeError, KeyError) as exc:
+            print(f"warning: skipping malformed dataset line {lineno} in {path}: {exc}", file=sys.stderr)
     return items
 
 
