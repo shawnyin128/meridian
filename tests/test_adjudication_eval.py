@@ -8,6 +8,13 @@ from meridian.evals.adjudication_census import (
     corpus_negativity_census,
     is_substantive_negative,
 )
+from meridian.evals.adjudication_dataset import (
+    BUCKETS,
+    AdjudicationItem,
+    dump_dataset,
+    load_dataset,
+    write_gold_template,
+)
 
 
 class NegativityCensusTests(unittest.TestCase):
@@ -38,3 +45,37 @@ class NegativityCensusTests(unittest.TestCase):
             self.assertEqual(census["substantive_negative"], 1)
             self.assertEqual(census["boilerplate"], 1)
             self.assertAlmostEqual(census["substantive_ratio"], 0.5)
+
+
+class DatasetTests(unittest.TestCase):
+    def test_roundtrip(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "bootstrap.jsonl"
+            items = [
+                AdjudicationItem(
+                    id="adj-0001",
+                    idea="Use rotation to remove activation outliers for W4A4.",
+                    domain="quantization",
+                    expected={"prior_work": ["papers/quarot"], "refuted": ["papers/quarot"], "corroborating": []},
+                    coverage_truth="rich",
+                    label_source="bootstrap",
+                )
+            ]
+            dump_dataset(items, path)
+            loaded = load_dataset(path)
+            self.assertEqual(len(loaded), 1)
+            self.assertEqual(loaded[0].id, "adj-0001")
+            self.assertEqual(set(loaded[0].expected.keys()), set(BUCKETS))
+            self.assertEqual(loaded[0].expected["refuted"], ["papers/quarot"])
+
+    def test_load_missing_returns_empty(self):
+        self.assertEqual(load_dataset(Path("does-not-exist.jsonl")), [])
+
+    def test_gold_template_written_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "gold.jsonl"
+            write_gold_template(path)
+            self.assertTrue(path.exists())
+            first = path.read_text(encoding="utf-8")
+            write_gold_template(path)  # must not overwrite
+            self.assertEqual(path.read_text(encoding="utf-8"), first)
