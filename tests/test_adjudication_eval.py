@@ -160,6 +160,5 @@ class BaselineAdapterTests(unittest.TestCase):
             root = Path(tmp)
             self._make_vault(root)
             pred = baseline_adjudicate("rotation quantization W4A4", root, top_k=6)
-            all_hits = set().union(*[set(v) for v in pred.buckets.values()])
-            self.assertIn("papers/rotation-paper", all_hits)
-            self.assertIn(pred.coverage, {"rich", "thin", "none"})
+            self.assertIn("papers/rotation-paper", pred.buckets["refuted"])
+            self.assertEqual(pred.coverage, "thin")
