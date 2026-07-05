@@ -16,6 +16,7 @@ from meridian.evals.adjudication_dataset import (
     write_gold_template,
 )
 from meridian.evals.adjudication_miner import mine_bootstrap_items
+from meridian.evals.adjudication_baseline import baseline_adjudicate
 from meridian.evals.adjudication_metrics import (
     AdjudicationPrediction,
     bucket_recall,
@@ -141,3 +142,24 @@ class MetricsTests(unittest.TestCase):
         self.assertEqual(report["item_count"], 2)
         # i2 truth is "none" but prediction returned a hit + rich coverage -> false comfort
         self.assertEqual(report["false_comfort_rate"], 1.0)
+
+
+class BaselineAdapterTests(unittest.TestCase):
+    def _make_vault(self, root: Path):
+        (root / "papers").mkdir(parents=True)
+        (root / "methods").mkdir(parents=True)
+        (root / "papers" / "rotation-paper.md").write_text(
+            "---\ntype: paper\ntitle: Rotation Paper\nmethods:\n  - rotation quantization\nvalidation_state: source_fidelity_pass\ntrust_state: source_verified\n---\n"
+            "## What To Remember\n\nRotation quantization for W4A4.\n"
+            "## Limitations / Uncertainty\n\n- Rotation fails and degrades KV-cache recall under W4A4.\n",
+            encoding="utf-8",
+        )
+
+    def test_refuted_bucket_from_limitations_section(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._make_vault(root)
+            pred = baseline_adjudicate("rotation quantization W4A4", root, top_k=6)
+            all_hits = set().union(*[set(v) for v in pred.buckets.values()])
+            self.assertIn("papers/rotation-paper", all_hits)
+            self.assertIn(pred.coverage, {"rich", "thin", "none"})
