@@ -3,7 +3,7 @@
   "version": "0.8.0",
   "description": "Source-grounded Paper Wiki retrieval, MCP context/read/trace, and Lab idea-graph copilot for Codex.",
   "author": {
-    "name": "Meridian",
+    "name": "Shawn",
     "url": "https://github.com/shawnyin128/meridian"
   },
   "homepage": "https://github.com/shawnyin128/meridian",
@@ -27,7 +27,7 @@
     "displayName": "Meridian",
     "shortDescription": "Ground research with Paper Wiki and Lab.",
     "longDescription": "Meridian exposes setup, Paper Wiki, and Lab workflows for source-grounded research. Use Paper Wiki to retrieve context, read canonical pages, and trace evidence through the Meridian MCP context/read/trace tools. Use Lab to place ideas, review feasibility against wiki evidence, manage approach trees, record experiments, prepare Research Grounding Injections, and carry local findings back to the wiki without silently dropping requested grounding.",
-    "developerName": "Meridian",
+    "developerName": "Shawn",
     "category": "Productivity",
     "capabilities": [
       "Interactive",
