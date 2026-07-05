@@ -1,0 +1,277 @@
+{
+  "item_count": 24,
+  "refute_recall": 0.75,
+  "prior_work_recall": null,
+  "corroborating_recall": null,
+  "false_comfort_rate": null,
+  "per_item": [
+    {
+      "id": "boot-0001",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0002",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0003",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0004",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0005",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0006",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0007",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0008",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0009",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 0.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0010",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0011",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 0.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0012",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 0.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0013",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0014",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0015",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0016",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0017",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 0.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0018",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0019",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 0.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0020",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0021",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0022",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0023",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 1.0,
+        "corroborating": null
+      }
+    },
+    {
+      "id": "boot-0024",
+      "coverage_truth": "rich",
+      "coverage_pred": "rich",
+      "recall": {
+        "prior_work": null,
+        "refuted": 0.0,
+        "corroborating": null
+      }
+    }
+  ],
+  "census": {
+    "sections_scanned": 580,
+    "boilerplate": 545,
+    "substantive_negative": 35,
+    "substantive_ratio": 0.0603448275862069,
+    "by_kind": {
+      "methods": {
+        "scanned": 117,
+        "boilerplate": 107,
+        "substantive_negative": 10
+      },
+      "papers": {
+        "scanned": 283,
+        "boilerplate": 269,
+        "substantive_negative": 14
+      },
+      "topics": {
+        "scanned": 151,
+        "boilerplate": 151,
+        "substantive_negative": 0
+      },
+      "concepts": {
+        "scanned": 29,
+        "boilerplate": 18,
+        "substantive_negative": 11
+      }
+    }
+  }
+}

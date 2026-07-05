@@ -1,0 +1,5 @@
+# Gold adjudication ideas — hand-labeled by the researcher.
+# One JSON object per line (lines starting with # are ignored).
+# page-ids are wiki paths WITHOUT .md, e.g. papers/quarot, claims/claim-001.
+# For ideas the corpus should NOT cover, set coverage_truth to "none" and leave buckets empty.
+{"id": "gold-0001", "idea": "Describe YOUR research idea in your own words here.", "domain": "optional-tag", "expected": {"prior_work": ["papers/<page-id-that-already-did-this>"], "refuted": ["papers/<page-id-with-evidence-it-fails>"], "corroborating": ["claims/<page-id-supporting-your-insight>"]}, "coverage_truth": "rich", "label_source": "hand"}

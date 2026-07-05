@@ -22,6 +22,7 @@ from meridian.evals.adjudication_metrics import (
     bucket_recall,
     evaluate,
 )
+from meridian.evals.adjudication_runner import render_summary, run_adjudication_eval
 
 
 class NegativityCensusTests(unittest.TestCase):
@@ -162,3 +163,31 @@ class BaselineAdapterTests(unittest.TestCase):
             pred = baseline_adjudicate("rotation quantization W4A4", root, top_k=6)
             self.assertIn("papers/rotation-paper", pred.buckets["refuted"])
             self.assertEqual(pred.coverage, "thin")
+
+
+class RunnerTests(unittest.TestCase):
+    def test_end_to_end_on_tiny_vault(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "wiki"
+            (root / "methods").mkdir(parents=True)
+            (root / "papers").mkdir(parents=True)
+            (root / "methods" / "rotation.md").write_text(
+                "---\ntype: method\ntitle: Rotation\n---\n"
+                "## Failure Modes\n\n- Rotation fails and degrades accuracy under W4A4.\n",
+                encoding="utf-8",
+            )
+            out = Path(tmp) / "run"
+            report = run_adjudication_eval(wiki_root=root, out_dir=out)
+            self.assertTrue((out / "summary.md").exists())
+            self.assertTrue((out / "report.json").exists())
+            self.assertIn("census", report)
+            self.assertGreaterEqual(report["item_count"], 1)
+
+    def test_render_summary_is_markdown(self):
+        report = {"item_count": 3, "refute_recall": 0.0, "prior_work_recall": None,
+                  "corroborating_recall": None, "false_comfort_rate": None, "per_item": []}
+        census = {"sections_scanned": 10, "boilerplate": 9, "substantive_negative": 1,
+                  "substantive_ratio": 0.1, "by_kind": {}}
+        text = render_summary(report, census)
+        self.assertIn("# Adjudication Eval", text)
+        self.assertIn("Refute-recall", text)
