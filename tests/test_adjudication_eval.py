@@ -16,6 +16,11 @@ from meridian.evals.adjudication_dataset import (
     write_gold_template,
 )
 from meridian.evals.adjudication_miner import mine_bootstrap_items
+from meridian.evals.adjudication_metrics import (
+    AdjudicationPrediction,
+    bucket_recall,
+    evaluate,
+)
 
 
 class NegativityCensusTests(unittest.TestCase):
@@ -114,3 +119,25 @@ class MinerTests(unittest.TestCase):
                     encoding="utf-8",
                 )
             self.assertEqual(len(mine_bootstrap_items(root, limit=3)), 3)
+
+
+class MetricsTests(unittest.TestCase):
+    def test_bucket_recall_basic(self):
+        self.assertEqual(bucket_recall(["a", "b"], ["a", "x"]), 0.5)
+        self.assertEqual(bucket_recall(["a"], ["a"]), 1.0)
+        self.assertIsNone(bucket_recall([], ["a"]))
+
+    def test_evaluate_aggregates_and_false_comfort(self):
+        items = [
+            AdjudicationItem(id="i1", idea="x", expected={"prior_work": [], "refuted": ["m/a"], "corroborating": []}, coverage_truth="rich"),
+            AdjudicationItem(id="i2", idea="y", expected={"prior_work": [], "refuted": [], "corroborating": []}, coverage_truth="none"),
+        ]
+        preds = {
+            "i1": AdjudicationPrediction(buckets={"prior_work": [], "refuted": ["m/a"], "corroborating": []}, coverage="rich"),
+            "i2": AdjudicationPrediction(buckets={"prior_work": ["m/z"], "refuted": [], "corroborating": []}, coverage="rich"),
+        }
+        report = evaluate(items, preds)
+        self.assertEqual(report["refute_recall"], 1.0)
+        self.assertEqual(report["item_count"], 2)
+        # i2 truth is "none" but prediction returned a hit + rich coverage -> false comfort
+        self.assertEqual(report["false_comfort_rate"], 1.0)
