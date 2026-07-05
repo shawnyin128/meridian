@@ -15,6 +15,7 @@ from meridian.evals.adjudication_dataset import (
     load_dataset,
     write_gold_template,
 )
+from meridian.evals.adjudication_miner import mine_bootstrap_items
 
 
 class NegativityCensusTests(unittest.TestCase):
@@ -79,3 +80,37 @@ class DatasetTests(unittest.TestCase):
             first = path.read_text(encoding="utf-8")
             write_gold_template(path)  # must not overwrite
             self.assertEqual(path.read_text(encoding="utf-8"), first)
+
+
+class MinerTests(unittest.TestCase):
+    def test_mines_only_substantive_negatives(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "methods").mkdir()
+            (root / "methods" / "rotation.md").write_text(
+                "---\ntype: method\ntitle: Rotation-based quantization\n---\n"
+                "## Failure Modes\n\n- Rotation does not improve W4A4 accuracy and degrades KV-cache recall.\n",
+                encoding="utf-8",
+            )
+            (root / "methods" / "empty.md").write_text(
+                "---\ntype: method\ntitle: Empty method\n---\n"
+                "## Failure Modes\n\n- Failure modes are not yet synthesized.\n",
+                encoding="utf-8",
+            )
+            items = mine_bootstrap_items(root)
+            self.assertEqual(len(items), 1)
+            self.assertEqual(items[0].expected["refuted"], ["methods/rotation"])
+            self.assertEqual(items[0].label_source, "bootstrap")
+            self.assertTrue(items[0].idea)
+
+    def test_limit_respected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "methods").mkdir()
+            for i in range(5):
+                (root / "methods" / f"m{i}.md").write_text(
+                    f"---\ntype: method\ntitle: Method {i}\n---\n"
+                    "## Failure Modes\n\n- This approach fails and degrades accuracy badly.\n",
+                    encoding="utf-8",
+                )
+            self.assertEqual(len(mine_bootstrap_items(root, limit=3)), 3)
