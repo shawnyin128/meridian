@@ -73,6 +73,7 @@ from meridian.wiki.source_fidelity import (
 )
 
 PRODUCT_SKILL_NAMES = ["meridian", "wiki", "lab"]
+AGENT_PLUGIN_SKILL_ROOT = Path("plugins/agent/meridian/skills")
 CODEX_PLUGIN_SKILL_ROOT = Path("plugins/codex/meridian/skills")
 CLAUDE_PLUGIN_SKILL_ROOT = Path("plugins/claude-code/meridian/skills")
 
@@ -222,7 +223,7 @@ class CliTests(unittest.TestCase):
             sys.modules["fitz"] = self.previous_fitz
 
     def test_release_version_surfaces_are_aligned(self) -> None:
-        expected = "0.8.0"
+        expected = "0.8.1"
         self.assertEqual(__version__, expected)
         self.assertEqual(mcp_server.SERVER_VERSION, expected)
         self.assertEqual(Path("VERSION").read_text(encoding="utf-8").strip(), expected)
@@ -240,8 +241,10 @@ class CliTests(unittest.TestCase):
         claude_plugin = json.loads(
             Path("plugins/claude-code/meridian/.claude-plugin/plugin.json").read_text(encoding="utf-8")
         )
+        agent_plugin = json.loads(Path("plugins/agent/meridian/plugin.json").read_text(encoding="utf-8"))
         self.assertEqual(codex_plugin["version"], expected)
         self.assertEqual(claude_plugin["version"], expected)
+        self.assertEqual(agent_plugin["version"], expected)
 
         exit_code, stdout, stderr = _run_cli_capture(["--version"])
         self.assertEqual(exit_code, 0, stderr)
@@ -278,9 +281,9 @@ class CliTests(unittest.TestCase):
         )
 
         self.assertEqual(meridian.returncode, 0, meridian.stderr)
-        self.assertEqual(meridian.stdout.strip(), "meridian 0.8.0")
+        self.assertEqual(meridian.stdout.strip(), "meridian 0.8.1")
         self.assertEqual(cli_module.returncode, 0, cli_module.stderr)
-        self.assertEqual(cli_module.stdout.strip(), "meridian 0.8.0")
+        self.assertEqual(cli_module.stdout.strip(), "meridian 0.8.1")
         self.assertEqual(cli_help.returncode, 0, cli_help.stderr)
         self.assertIn("usage: meridian wiki", cli_help.stdout)
 
@@ -2385,12 +2388,14 @@ quality_state: "multimodal_pending"
 
     def test_meridian_plugin_skill_copies_match_repo_skills(self) -> None:
         for skill_name in PRODUCT_SKILL_NAMES:
+            agent = (AGENT_PLUGIN_SKILL_ROOT / skill_name / "SKILL.md").read_text(encoding="utf-8")
             codex = (CODEX_PLUGIN_SKILL_ROOT / skill_name / "SKILL.md").read_text(encoding="utf-8")
             claude = (CLAUDE_PLUGIN_SKILL_ROOT / skill_name / "SKILL.md").read_text(encoding="utf-8")
+            self.assertEqual(agent, codex, skill_name)
             self.assertEqual(claude, codex, skill_name)
 
     def test_meridian_plugin_skill_frontmatter_is_loader_safe(self) -> None:
-        for root in (CODEX_PLUGIN_SKILL_ROOT, CLAUDE_PLUGIN_SKILL_ROOT):
+        for root in (AGENT_PLUGIN_SKILL_ROOT, CODEX_PLUGIN_SKILL_ROOT, CLAUDE_PLUGIN_SKILL_ROOT):
             for skill_name in PRODUCT_SKILL_NAMES:
                 skill = root / skill_name / "SKILL.md"
                 text = skill.read_text(encoding="utf-8")
@@ -6456,6 +6461,7 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertNotIn(". .venv/bin/activate", readme)
         self.assertIn("plugins/codex/meridian/", readme)
         self.assertIn("plugins/claude-code/meridian/", readme)
+        self.assertIn("plugins/agent/meridian/", readme)
 
         codex_root = Path("plugins/codex/meridian")
         codex_marketplace = json.loads(
@@ -6514,6 +6520,55 @@ Compare recency-only retention with attention-based and oracle retention policie
             self.assertFalse((root / "skills/wiki-evolve").exists())
             self.assertFalse((root / "skills/wiki-knowledge").exists())
             self.assertFalse((root / "skills/wiki-concept").exists())
+
+    def test_agent_plugins_portable_package_is_standard_shaped(self) -> None:
+        root = Path("plugins/agent/meridian")
+        manifest = json.loads((root / "plugin.json").read_text(encoding="utf-8"))
+        manifest_keys = {
+            "$schema",
+            "name",
+            "version",
+            "description",
+            "author",
+            "homepage",
+            "repository",
+            "license",
+            "keywords",
+            "extensions",
+        }
+        self.assertLessEqual(set(manifest), manifest_keys)
+        self.assertEqual(manifest["$schema"], "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json")
+        self.assertEqual(manifest["name"], "meridian")
+        self.assertRegex(manifest["name"], r"^(?!.*(?:--|\.\.))[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$")
+        self.assertEqual(manifest["version"], __version__)
+        self.assertIn("paper-wiki", manifest["keywords"])
+        self.assertIn("lab", manifest["keywords"])
+
+        mcp_config = json.loads((root / "mcp.json").read_text(encoding="utf-8"))
+        self.assertEqual(set(mcp_config), {"$schema", "mcpServers"})
+        self.assertEqual(mcp_config["$schema"], "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json")
+        server = mcp_config["mcpServers"]["meridian-paper-wiki"]
+        self.assertEqual(set(server), {"type", "command", "args"})
+        self.assertEqual(server["type"], "stdio")
+        self.assertEqual(server["command"], "python")
+        self.assertEqual(server["args"], ["-m", "meridian.mcp", "serve"])
+
+        self.assertFalse((root / ".codex-plugin").exists())
+        self.assertFalse((root / ".claude-plugin").exists())
+        self.assertFalse((root / ".mcp.json").exists())
+
+        skills_root = root / "skills"
+        self.assertEqual(
+            sorted(child.name for child in skills_root.iterdir() if child.is_dir()),
+            ["lab", "meridian", "wiki"],
+        )
+        for skill_name in ["meridian", "wiki", "lab"]:
+            portable = skills_root / skill_name / "SKILL.md"
+            codex = Path("plugins/codex/meridian/skills") / skill_name / "SKILL.md"
+            claude = Path("plugins/claude-code/meridian/skills") / skill_name / "SKILL.md"
+            self.assertTrue(portable.exists(), str(portable))
+            self.assertEqual(portable.read_text(encoding="utf-8"), codex.read_text(encoding="utf-8"))
+            self.assertEqual(portable.read_text(encoding="utf-8"), claude.read_text(encoding="utf-8"))
 
     def test_codex_product_skills_define_ui_display_names(self) -> None:
         expected = {

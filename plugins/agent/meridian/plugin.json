@@ -1,7 +1,8 @@
 {
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "meridian",
-  "description": "Meridian setup, Paper Wiki, and Lab idea-graph copilot for Claude Code: use meridian for setup, wiki for Paper Wiki, and lab for Lab-first research/dev preflight plus wiki-grounded idea management.",
   "version": "0.8.1",
+  "description": "Source-grounded Paper Wiki retrieval and Lab idea-graph copilot for research agents.",
   "author": {
     "name": "Shawn",
     "url": "https://github.com/shawnyin128/meridian"
@@ -10,9 +11,11 @@
   "repository": "https://github.com/shawnyin128/meridian",
   "license": "MIT",
   "keywords": [
-    "claude-code",
     "paper-wiki",
+    "grounding",
+    "retrieval",
     "research",
-    "mcp"
+    "mcp",
+    "lab"
   ]
 }

@@ -5,6 +5,12 @@ execution core that the plugins call for CLI primitives and MCP tools.
 
 ## Packages
 
+Portable Agent Plugins package:
+
+```text
+plugins/agent/meridian/
+```
+
 Codex plugin:
 
 ```text
@@ -17,14 +23,23 @@ Claude Code plugin:
 plugins/claude-code/meridian/
 ```
 
-Both plugin packages include:
+All agent-facing packages include:
 
 - `skills/meridian/`: setup entry for initialization, status checks, and
   migration checks after plugin/core updates
 - `skills/wiki/`: product entry for Update Wiki and Use Wiki
 - `skills/lab/`: product entry for wiki-grounded idea graph management
-- `.mcp.json`: starts the Meridian Paper Wiki MCP server with
+
+The portable package follows the Agent Plugins v1 layout:
+
+- `plugin.json`: closed portable manifest with no Codex- or Claude-only fields
+- `mcp.json`: starts the Meridian Paper Wiki MCP server with
   `python -m meridian.mcp serve`
+- `skills/*/SKILL.md`: immediate child skill entries
+
+The Codex and Claude Code compatibility packages keep their client-specific
+manifest files and `.mcp.json` files until those clients install the portable
+package shape directly.
 
 Only `meridian`, `wiki`, and `lab` are published as plugin skills. Ingest,
 retrieval, personalization, evolution, knowledge, and concept behavior are
@@ -102,6 +117,20 @@ python -m meridian setup repair-mcp --client <codex|claude> --apply
 
 Restart the affected Codex or Claude Code session after repair so the client
 reloads plugin and MCP configuration.
+
+## Portable Agent Plugins
+
+Use this package root for clients that accept the Agent Plugins v1.0.0
+portable package format:
+
+```text
+plugins/agent/meridian/
+```
+
+The package root intentionally contains `plugin.json`, `mcp.json`, and
+`skills/`. Client-specific UI metadata stays in the Codex or Claude Code
+compatibility packages instead of becoming non-standard top-level manifest or
+MCP fields.
 
 ## Codex
 

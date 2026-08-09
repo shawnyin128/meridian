@@ -22,9 +22,9 @@ small set of durable Markdown artifacts and a reliable wiki retrieval substrate.
 
 ## Install
 
-Meridian is distributed as Codex and Claude Code plugins. The plugins call the
-Python core for wiki operations and the MCP stdio server, so install the core
-from the repo first:
+Meridian ships a portable Agent Plugins package plus Codex and Claude Code
+compatibility packages. The plugins call the Python core for wiki operations
+and the MCP stdio server, so install the core from the repo first:
 
 ```bash
 git clone git@github.com:shawnyin128/meridian.git
@@ -111,9 +111,15 @@ Then reload or restart the client:
 Plugin package roots:
 
 ```text
+plugins/agent/meridian/
 plugins/codex/meridian/
 plugins/claude-code/meridian/
 ```
+
+`plugins/agent/meridian/` follows the Agent Plugins v1 package shape with root
+`plugin.json`, `mcp.json`, and `skills/*/SKILL.md`. Use that package for
+clients that accept the portable Agent Plugins format. Codex and Claude Code
+currently use the client-specific package roots and marketplace manifests above.
 
 ## Skills
 
@@ -380,7 +386,7 @@ There are two update layers:
 | Layer | What Changes | How To Update |
 |---|---|---|
 | Core | MCP server code, retrieval, ingest, wiki/lab backend behavior | `git pull`, then keep or rerun `python -m pip install -e .`; run `python -m meridian setup doctor --client all` |
-| Plugin | `meridian`, `wiki`, and `lab` skill text, `.mcp.json`, plugin metadata | upgrade/reinstall the Codex or Claude Code plugin; run setup doctor and restart the client |
+| Plugin | `meridian`, `wiki`, and `lab` skill text, portable `mcp.json`, compatibility `.mcp.json`, plugin metadata | upgrade/reinstall the matching plugin package; run setup doctor and restart the client |
 
 After updating either layer, ask `meridian` to run a setup and migration check.
 When setup doctor reports MCP repair is available, approve and run

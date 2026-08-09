@@ -36,6 +36,22 @@ FRAMEWORK_CHECK_CATEGORIES = [
 ]
 MCP_RUNTIME_CATEGORY = "MCP Runtime"
 PRODUCT_SKILLS = {"meridian", "wiki", "lab"}
+AGENT_PLUGIN_SCHEMA_URL = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
+AGENT_MCP_SCHEMA_URL = "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json"
+AGENT_PLUGIN_MANIFEST_KEYS = {
+    "$schema",
+    "name",
+    "version",
+    "description",
+    "author",
+    "homepage",
+    "repository",
+    "license",
+    "keywords",
+    "extensions",
+}
+AGENT_MCP_CONFIG_KEYS = {"$schema", "mcpServers"}
+AGENT_MCP_STDIO_SERVER_KEYS = {"type", "command", "args", "env", "cwd"}
 SUPPORT_SKILLS = {
     "llm-wiki",
     "paper-ingest",
@@ -226,7 +242,11 @@ def _product_surface_category(root: Path) -> FrameworkCategory:
             f"Expected internal support skills are missing from .codex/skills: {', '.join(missing_support)}.",
             "Restore missing support skills or update the framework check if the support surface changed.",
         )
-    for package_root in [root / "plugins/codex/meridian/skills", root / "plugins/claude-code/meridian/skills"]:
+    for package_root in [
+        root / "plugins/agent/meridian/skills",
+        root / "plugins/codex/meridian/skills",
+        root / "plugins/claude-code/meridian/skills",
+    ]:
         package_skills = _child_dir_names(package_root)
         if package_skills != PRODUCT_SKILLS:
             _add(
@@ -266,6 +286,7 @@ def _plugin_bundle_category(root: Path) -> FrameworkCategory:
                 "Add or repair the project version field.",
             )
     for label, path in [
+        ("agent_plugin", root / "plugins/agent/meridian/plugin.json"),
         ("codex_plugin", root / "plugins/codex/meridian/.codex-plugin/plugin.json"),
         ("claude_plugin", root / "plugins/claude-code/meridian/.claude-plugin/plugin.json"),
     ]:
@@ -275,6 +296,28 @@ def _plugin_bundle_category(root: Path) -> FrameworkCategory:
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
             versions[label] = str(payload.get("version") or "")
+            if label == "agent_plugin":
+                extra_keys = sorted(set(payload) - AGENT_PLUGIN_MANIFEST_KEYS)
+                if extra_keys:
+                    _add(
+                        findings,
+                        category,
+                        "critical",
+                        "manual",
+                        "agent_plugin_manifest_extra_keys",
+                        f"{_rel(path, root)} contains non-portable top-level keys: {extra_keys}.",
+                        "Move client-specific data under `extensions` or the matching client package.",
+                    )
+                if payload.get("$schema") != AGENT_PLUGIN_SCHEMA_URL:
+                    _add(
+                        findings,
+                        category,
+                        "critical",
+                        "manual",
+                        "agent_plugin_manifest_schema_drift",
+                        f"{_rel(path, root)} does not target the Agent Plugins 1.0.0 manifest schema.",
+                        "Set the standard `$schema` value before release.",
+                    )
         except json.JSONDecodeError:
             _add(findings, category, "critical", "manual", f"invalid_{label}", f"{_rel(path, root)} is not valid JSON.", "Fix the plugin manifest JSON.")
     if len(set(versions.values())) > 1:
@@ -288,21 +331,29 @@ def _plugin_bundle_category(root: Path) -> FrameworkCategory:
             "Align core, VERSION, pyproject, and plugin manifest versions before release.",
         )
     for skill_name in sorted(PRODUCT_SKILLS):
-        codex = root / "plugins/codex/meridian/skills" / skill_name / "SKILL.md"
-        claude = root / "plugins/claude-code/meridian/skills" / skill_name / "SKILL.md"
-        if not codex.exists() or not claude.exists():
+        paths = {
+            "Agent Plugins": root / "plugins/agent/meridian/skills" / skill_name / "SKILL.md",
+            "Codex": root / "plugins/codex/meridian/skills" / skill_name / "SKILL.md",
+            "Claude Code": root / "plugins/claude-code/meridian/skills" / skill_name / "SKILL.md",
+        }
+        if not all(path.exists() for path in paths.values()):
             continue
-        if codex.read_text(encoding="utf-8") != claude.read_text(encoding="utf-8"):
+        skill_texts = {label: path.read_text(encoding="utf-8") for label, path in paths.items()}
+        if len(set(skill_texts.values())) > 1:
             _add(
                 findings,
                 category,
                 "critical",
                 "manual",
                 "plugin_skill_copy_mismatch",
-                f"Codex and Claude Code copies differ for `{skill_name}`.",
+                f"Agent Plugins, Codex, and Claude Code copies differ for `{skill_name}`.",
                 "Synchronize product skill copies across plugin packages.",
             )
-    for path in [root / "plugins/codex/meridian/.mcp.json", root / "plugins/claude-code/meridian/.mcp.json"]:
+    for path, standard in [
+        (root / "plugins/agent/meridian/mcp.json", True),
+        (root / "plugins/codex/meridian/.mcp.json", False),
+        (root / "plugins/claude-code/meridian/.mcp.json", False),
+    ]:
         if not path.exists():
             _add(findings, category, "degraded", "manual", "missing_mcp_config", f"{_rel(path, root)} is missing.", "Restore MCP config or document why the package no longer ships MCP.")
             continue
@@ -312,6 +363,39 @@ def _plugin_bundle_category(root: Path) -> FrameworkCategory:
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
             _add(findings, category, "critical", "manual", "invalid_mcp_config", f"{_rel(path, root)} has an invalid Meridian MCP server entry: {exc}.", "Restore the plugin MCP config with the Meridian server entry.")
             continue
+        if standard:
+            extra_config_keys = sorted(set(mcp_config) - AGENT_MCP_CONFIG_KEYS)
+            extra_server_keys = sorted(set(server) - AGENT_MCP_STDIO_SERVER_KEYS)
+            if mcp_config.get("$schema") != AGENT_MCP_SCHEMA_URL:
+                _add(
+                    findings,
+                    category,
+                    "critical",
+                    "manual",
+                    "agent_plugin_mcp_schema_drift",
+                    f"{_rel(path, root)} does not target the Agent Plugins 1.0.0 MCP schema.",
+                    "Set the standard MCP `$schema` value before release.",
+                )
+            if extra_config_keys or extra_server_keys:
+                _add(
+                    findings,
+                    category,
+                    "critical",
+                    "manual",
+                    "agent_plugin_mcp_extra_keys",
+                    f"{_rel(path, root)} contains non-portable MCP keys: top={extra_config_keys}, server={extra_server_keys}.",
+                    "Keep portable MCP config within the Agent Plugins schema; keep client UI metadata in client-specific packages.",
+                )
+            if server.get("type") != "stdio":
+                _add(
+                    findings,
+                    category,
+                    "critical",
+                    "manual",
+                    "agent_plugin_mcp_type_drift",
+                    f"{_rel(path, root)} does not declare the Meridian MCP server as stdio.",
+                    "Set server `type` to `stdio` before release.",
+                )
         if server.get("command") != MCP_SERVER_COMMAND or server.get("args") != MCP_SERVER_ARGS:
             _add(
                 findings,

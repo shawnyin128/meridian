@@ -5,10 +5,12 @@ what must stay local.
 
 ## Release Shape
 
-Meridian has two user-facing release surfaces:
+Meridian has one portable Agent Plugins release surface plus two current
+client-compatibility release surfaces:
 
-1. Codex plugin package: `plugins/codex/meridian/`.
-2. Claude Code plugin package: `plugins/claude-code/meridian/`.
+1. Portable Agent Plugins package: `plugins/agent/meridian/`.
+2. Codex plugin package: `plugins/codex/meridian/`.
+3. Claude Code plugin package: `plugins/claude-code/meridian/`.
 
 The Python package is the shared execution core for CLI primitives and the MCP
 stdio server. It is not the product packaging shape by itself.
@@ -20,6 +22,11 @@ state.
 
 Plugin package roots:
 
+- `plugins/agent/meridian/plugin.json`
+- `plugins/agent/meridian/mcp.json`
+- `plugins/agent/meridian/skills/meridian/`
+- `plugins/agent/meridian/skills/wiki/`
+- `plugins/agent/meridian/skills/lab/`
 - `plugins/codex/meridian/.codex-plugin/plugin.json`
 - `plugins/codex/meridian/.mcp.json`
 - `plugins/codex/meridian/skills/meridian/`
@@ -55,6 +62,9 @@ Repository development support skills:
 
 Product skills live only in plugin packages during development too:
 
+- `plugins/agent/meridian/skills/meridian/SKILL.md`
+- `plugins/agent/meridian/skills/wiki/SKILL.md`
+- `plugins/agent/meridian/skills/lab/SKILL.md`
 - `plugins/codex/meridian/skills/meridian/SKILL.md`
 - `plugins/codex/meridian/skills/wiki/SKILL.md`
 - `plugins/codex/meridian/skills/lab/SKILL.md`
@@ -135,6 +145,11 @@ skills/wiki/SKILL.md
 skills/lab/SKILL.md
 ```
 
+Clients that support the portable Agent Plugins format should use
+`plugins/agent/meridian/`, whose root contains `plugin.json`, `mcp.json`, and
+`skills/`. Codex and Claude Code currently use the client-specific package
+roots documented in `docs/plugin-distribution.md`.
+
 MCP users should register:
 
 ```bash
@@ -165,6 +180,8 @@ PYTHONPATH=src python3 -m meridian.mcp capabilities --detail full
 Then inspect the file list produced by the release build or source archive:
 
 - release includes `src/meridian/`
+- release includes `plugins/agent/meridian/plugin.json`
+- release includes `plugins/agent/meridian/mcp.json`
 - release includes `plugins/codex/meridian/.codex-plugin/plugin.json`
 - release includes `plugins/claude-code/meridian/.claude-plugin/plugin.json`
 - release includes plugin `skills/meridian/SKILL.md`
@@ -184,4 +201,7 @@ Then inspect the file list produced by the release build or source archive:
 ## Future Packaging Work
 
 If Meridian is published to PyPI, the wheel should remain the execution core.
-Codex and Claude Code plugin packages remain the product entrypoints.
+The portable Agent Plugins package should become the default plugin entrypoint
+as clients adopt the standard. Codex and Claude Code package roots remain
+compatibility entrypoints until their install flows consume the portable package
+directly.

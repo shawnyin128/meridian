@@ -5,6 +5,8 @@ build/
 dist/
 meridian-wiki.json
 wiki/
+!plugins/agent/meridian/skills/wiki/
+!plugins/agent/meridian/skills/wiki/SKILL.md
 .worktrees/
 
 .arbor/
