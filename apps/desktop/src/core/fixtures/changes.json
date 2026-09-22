@@ -1,0 +1,34 @@
+[
+  {
+    "id": "chg-2",
+    "title": "LongSpec · 新增你的笔记",
+    "meta": "刚刚 · 你",
+    "date": "2026-08-25",
+    "source": "笔记",
+    "diff": ["+ 笔记:摊薄前提是共享前缀…"]
+  },
+  {
+    "id": "chg-1",
+    "title": "你的结论「分支浪费」 · v2 → v3",
+    "meta": "昨天 · 实验 #3 的结果回流",
+    "date": "2026-08-24",
+    "source": "实验",
+    "diff": ["- v2:长上下文下效应更强(推测)", "+ v3:batch≥8 实测确认(实验 #3)"]
+  },
+  {
+    "id": "chg-3",
+    "title": "合并重复标签 spec-dec → speculative-decoding",
+    "meta": "昨晚 · Meridian",
+    "date": "2026-08-24",
+    "source": "Meridian",
+    "diff": ["- tags: [spec-dec]", "+ tags: [speculative-decoding]"]
+  },
+  {
+    "id": "chg-4",
+    "title": "新论文入队:Sequoia-2",
+    "meta": "昨晚 · 命中你的关注",
+    "date": "2026-08-24",
+    "source": "Meridian",
+    "diff": ["+ 收件:Sequoia-2"]
+  }
+]

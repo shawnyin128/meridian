@@ -1,0 +1,14 @@
+/*
+ * The handwritten CSS of the trash can, the rules are copied from desktop/design/platform-shell-demo.html one by one.
+ * The selector name is consistent with the demo to facilitate side-by-side comparison.
+ */
+
+.tgroup{margin:6px 0 0}
+.trow{display:flex;align-items:center;gap:10px;padding:8px 16px;font-size:var(--fs-base)}
+.trow .tt2{flex:1;min-width:0;white-space:nowrap;overflow:hidden;mask-image:var(--clipfade)}
+.trow .tm2{font-size:var(--fs-sm);color:var(--ter);flex-shrink:0;margin-right:4px}
+.trow .btn{flex-shrink:0;padding:2px 10px;font-size:12px}
+/* The one that cannot be put back to its original place: gray out the recovery button and use the disabled appearance set by the demo for .pgbtn */
+.trow .btn:disabled{opacity:.35;cursor:default}
+.thint{text-align:center;font-size:var(--fs-sm);color:var(--ter);margin-top:32px}
+.desk-foot .thint{margin:0}

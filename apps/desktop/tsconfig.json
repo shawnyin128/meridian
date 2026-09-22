@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": [
+    "electron.vite.config.ts",
+    "src/main/**/*.ts",
+    "src/core/**/*.ts",
+    "src/shared/**/*.ts"
+  ],
+  "exclude": ["src/main/preload.ts"]
+}

@@ -1,0 +1,14 @@
+.research-object-card{box-sizing:border-box;width:100%;min-height:68px;margin-bottom:12px;padding:12px 16px;
+  border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);
+  transition:border-color var(--t) var(--e-out),background-color var(--t-fast) var(--e-out)}
+.research-object-card[data-actionable]{cursor:pointer}
+.research-object-card[data-actionable]:hover,.research-object-card[data-actionable]:focus-visible,
+.research-object-card:has(.dots[data-state="open"]){border-color:var(--sep-strong);outline:0}
+.research-object-card.selected{border-color:var(--accent);background:color-mix(in srgb,var(--accent-soft) 30%,var(--card))}
+.research-object-card.muted{background:var(--content)}
+.research-object-card .dots{flex:0 0 auto}
+.research-object-card:hover .dots,.research-object-card:focus-within .dots{opacity:1;pointer-events:auto}
+.research-object-card[draggable]{cursor:grab}
+.research-object-card.dragging{opacity:.4}
+.research-object-card.drag-over-before{box-shadow:0 -3px 0 0 var(--accent)}
+.research-object-card.drag-over-after{box-shadow:0 3px 0 0 var(--accent)}

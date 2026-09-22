@@ -1,0 +1,125 @@
+/*
+ * Reader, the rules are taken from the "PDF Reader" section of the demo one by one. The selector names should be kept consistent to facilitate side-by-side comparison.
+ * The reading state consists of three columns: paper context session, PDF and reading notes; the global navigation is collapsed by AppShell in this state.
+ */
+.paper-chat{flex:0 0 var(--rrw,300px);min-width:0;border-right:1px solid var(--sep);transition:opacity var(--t-slow) var(--e-inout),margin-left var(--t-slow) var(--e-inout)}
+.main.sbhide .paper-chat{margin-left:calc(var(--rrw,300px) * -1);opacity:0;pointer-events:none}
+.paper-chat-head{height:46px;box-sizing:border-box;padding:0 10px;border-bottom:1px solid var(--sep);display:flex;align-items:center;gap:8px;min-width:0;background:var(--sidebar)}
+.paper-chat-head strong{font-size:var(--fs-sm);color:var(--sec);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.paper-chat-head .back{border:0;background:var(--field);color:var(--ink);border-radius:var(--r-md);width:28px;height:26px;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.paper-chat-head .back svg{width:13px;height:13px}
+.paper-chat .msgs{padding:16px 0;gap:14px}
+.paper-chat .mwrap{width:calc(100% - 24px)}
+.paper-chat .bubble,.paper-chat .event{font-size:var(--fs-sm);line-height:1.5}
+.paper-chat .composer{padding:10px 0 12px}
+.paper-chat .cbox{padding-left:12px}
+.paper-chat .cbox input{min-width:0}
+.paper-chat .send:disabled{opacity:.45;cursor:default}
+.note-compose .btn:disabled,.reading-actions .btn:disabled{opacity:.45;cursor:default}
+.yellow{--mark:#f8d84a}.green{--mark:#87d99a}.blue{--mark:#82c7f2}.pink{--mark:#f0a0be}
+
+.reader{flex:1;display:flex;overflow:hidden;min-width:0;background:var(--desktop);position:relative}
+.pdfwrap{flex:1;overflow:auto;padding:24px;min-width:0;overscroll-behavior:contain}
+/*
+ * Page width is uniquely determined by the same pdf.js viewport. Narrow windows allow horizontal scrolling, never just compress the width and retain it
+ * Original height; the latter will cause the canvas, text selection layer and highlight layer to use three sets of geometries.
+ */
+.pdfsheet{width:max-content;min-width:100%}
+.pdfpagebox{--user-unit:1;--total-scale-factor:calc(var(--scale-factor) * var(--user-unit));--scale-round-x:1px;--scale-round-y:1px;direction:ltr;position:relative;margin:0 auto 24px;background:var(--paper);box-shadow:var(--sh-paper);border-radius:2px}
+.pdfpagebox canvas{display:block}
+.pdfload{text-align:center;color:var(--ter);font-size:var(--fs-sm);padding:48px 0}
+
+/* The TextLayer of pdf.js is only responsible for text selection, and the text itself is transparently pasted on the canvas. */
+.textLayer{color-scheme:only light;position:absolute;text-align:initial;inset:0;overflow:clip;opacity:1;line-height:1;letter-spacing:normal;word-spacing:normal;-webkit-text-size-adjust:none;text-size-adjust:none;forced-color-adjust:none;transform-origin:0 0;caret-color:CanvasText;z-index:2;--min-font-size:1;--text-scale-factor:calc(var(--total-scale-factor) * var(--min-font-size));--min-font-size-inv:calc(1 / var(--min-font-size))}
+.textLayer :is(span,br){color:transparent;position:absolute;white-space:pre;cursor:text;transform-origin:0 0;user-select:text}
+.textLayer>:not(.markedContent),.textLayer .markedContent span:not(.markedContent){z-index:1;--font-height:0;font-size:calc(var(--text-scale-factor) * var(--font-height));--scale-x:1;--rotate:0deg;transform:rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv))}
+.textLayer .markedContent{display:contents}
+.textLayer span[role="img"]{user-select:none;cursor:default}
+.textLayer ::selection{background:rgb(46 119 246/.3)}
+.textLayer .endOfContent{display:block;position:absolute;inset:100% 0 0;z-index:-1;cursor:default;user-select:none}
+.paper-highlights{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.paper-highlight{position:absolute;background:color-mix(in srgb,var(--mark) 30%,transparent);border-radius:2px}
+.paper-highlight.noted{background:transparent;border-bottom:2.5px solid #eb9d2a;border-radius:0}
+.selection-tools{position:fixed;transform:translateX(-50%);display:flex;align-items:center;background:#20242d;color:#fff;border-radius:7px;padding:3px;box-shadow:0 6px 20px rgb(0 0 0/.24);z-index:40}
+.selection-tools button{border:0;background:transparent;color:inherit;font:inherit;font-size:var(--fs-sm);padding:6px 9px;border-radius:5px;cursor:pointer;white-space:nowrap}
+.selection-tools button:hover{background:rgb(255 255 255/.12)}
+
+.reading-notes{width:320px;min-width:320px;box-sizing:border-box;border-left:1px solid var(--sep);background:var(--content);display:flex;flex-direction:column;overflow:hidden}
+.reading-notes>header{height:46px;box-sizing:border-box;padding:0 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--sep)}
+.reading-notes>header strong{font-size:var(--fs-sm)}
+.reading-notes>header span,.reading-page{font-size:var(--fs-cap);color:var(--ter)}
+.note-compose{padding:12px;border-bottom:1px solid var(--sep);display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.note-compose textarea,.reading-card textarea{width:100%;box-sizing:border-box;border:1px solid var(--sep2);background:var(--field);color:var(--ink);border-radius:var(--r-md);padding:8px;font:inherit;line-height:1.45;resize:vertical}
+.note-compose textarea{min-height:86px}.reading-card textarea{min-height:64px}
+.note-compose textarea:focus,.reading-card textarea:focus{border-color:var(--sep-strong);outline:0;box-shadow:none}
+.reading-list{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.reading-card{border:1px solid var(--sep2);border-radius:var(--r-lg);padding:10px;background:var(--card);display:flex;flex-direction:column;gap:8px}
+.highlight-card{border-left:3px solid var(--mark)}
+.reading-page,.reading-delete{border:0;background:transparent;padding:0;cursor:pointer;font-family:var(--sans);width:max-content}
+.reading-page:hover{color:var(--accent)}
+.reading-delete{color:var(--bad);font-size:var(--fs-cap)}
+.reading-actions{display:flex;align-items:center;justify-content:space-between}
+.reading-actions .btn,.note-compose .btn{font-size:var(--fs-cap);padding:3px 9px}
+.highlight-card blockquote{margin:0;color:var(--sec);font-size:var(--fs-sm);line-height:1.45;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.reading-remark{width:320px;min-width:320px;box-sizing:border-box;border-left:1px solid var(--sep);background:var(--content);display:flex;flex-direction:column;overflow:hidden}
+.reading-remark>header{height:46px;box-sizing:border-box;padding:0 14px;display:flex;align-items:center;border-bottom:1px solid var(--sep)}
+.reading-remark>header strong{font-size:var(--fs-sm)}
+.remark-compose{padding:12px;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.remark-compose textarea{width:100%;box-sizing:border-box;min-height:120px;border:1px solid var(--sep-strong);background:transparent;color:var(--ink);border-radius:var(--r-md);padding:8px;font:inherit;line-height:1.45;resize:vertical;outline:0}
+.remark-compose .btn{font-size:var(--fs-cap);padding:3px 9px}
+.remark-compose .btn:disabled{opacity:.45;cursor:default}
+
+.reader-side{display:flex;flex:0 0 362px;min-width:0;height:100%;overflow:hidden;background:var(--content);
+  transition:flex-basis var(--t-slow) var(--e-inout)}
+.reader-side.collapsed{flex-basis:42px}
+.reader-side:not(.collapsed)>:not(.reader-rail){animation:detail-panel-content-in var(--t-slow) var(--e-out) both}
+.reader-side>.paper-meta,.reader-side>.reading-notes,.reader-side>.reading-remark,.reader-side>.wiki-ingest{width:320px;min-width:320px;border-left:1px solid var(--sep)}
+.reader-rail{width:42px;min-width:42px;border-left:1px solid var(--sep);background:var(--sidebar);display:flex;flex-direction:column;align-items:center;padding-top:9px;box-sizing:border-box;gap:4px;order:2}
+.reader-rail button{width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--ter);display:grid;place-items:center;cursor:pointer}
+.reader-rail button:hover{background:var(--hover);color:var(--ink)}
+.reader-rail button.on{background:var(--tint);color:var(--accent)}
+.reader-rail svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+.zoomctl{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:2px;background:var(--card);border:1px solid var(--sep);border-radius:999px;padding:4px 8px;box-shadow:var(--sh-2);z-index:22}
+.zoomctl button{border:0;background:transparent;color:var(--ter);cursor:pointer;border-radius:var(--r-full);width:22px;height:22px;display:grid;place-items:center;padding:0;transition:background var(--t-fast) var(--e-out)}
+.zoomctl button:hover{background:var(--hover);color:var(--ink)}
+.zoomctl svg{width:12px;height:12px}
+.zoomctl span{font-size:var(--fs-sm);color:var(--sec);min-width:38px;text-align:center;font-family:var(--mono)}
+
+@media (max-width:1100px){.main.reading{--rrw:260px}}
+@media (max-width:900px){.reader-side{flex-basis:322px}.reader-side.collapsed{flex-basis:42px}.reader-side>.paper-meta,.reader-side>.reading-notes,.reader-side>.reading-remark,.reader-side>.wiki-ingest{width:280px;min-width:280px}}
+
+.wiki-ingest{box-sizing:border-box;background:var(--content);display:flex;flex-direction:column;overflow:auto}
+.wiki-ingest>header{height:46px;min-height:46px;padding:0 14px;display:flex;align-items:center;border-bottom:1px solid var(--sep)}
+.wiki-ingest>header strong{font-size:var(--fs-sm)}
+.wiki-ingest-body{padding:12px;display:flex;flex-direction:column;align-items:stretch}
+.wiki-ingest-body>p{font-size:var(--fs-sm);line-height:1.55;color:var(--sec);margin:0}
+.wiki-ingest .wiki-ingest-intro{color:var(--sec);padding:0 2px}
+.wiki-ingest-scope{margin:12px 0 10px;border:1px solid var(--sep2);border-radius:var(--r-lg);overflow:hidden;background:var(--card)}
+.wiki-ingest-scope>div{height:35px;padding:0 10px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--sep)}
+.wiki-ingest-scope>div:first-child{border-top:0}
+.wiki-ingest-scope span{color:var(--ter);font-size:var(--fs-cap)}
+.wiki-ingest-scope strong{font-size:var(--fs-sm)}
+.wiki-ingest .wiki-ingest-tip{padding:0 2px;color:var(--ter)}
+.wiki-ingest .wiki-ingest-status{margin-top:10px;padding:0 2px;color:var(--ter)}
+.wiki-ingest .wiki-ingest-status.bad{color:var(--bad)}
+.wiki-ingest .wiki-ingest-status.done{color:var(--good)}
+.wiki-ingest-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+.wiki-ingest-body>small{margin-top:10px;padding:0 2px;color:var(--ter);font-size:var(--fs-cap);line-height:1.45}
+.wiki-ingest-review{margin-top:14px;padding-top:14px;border-top:1px solid var(--sep2)}
+.wiki-ingest-review-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.wiki-ingest-review-head strong{font-size:var(--fs-sm)}
+.wiki-ingest-review-head span{color:var(--ter);font-size:var(--fs-cap)}
+.wiki-ingest-review-mode{display:flex;width:100%;margin-bottom:12px}
+.wiki-ingest-review-mode>button{flex:1 1 50%}
+.wiki-ingest-review .form-textarea{width:100%;min-height:360px;font-family:var(--mono);font-size:var(--fs-cap);line-height:1.55}
+.wiki-ingest-edit-note{margin:0 0 10px;color:var(--warn);font-size:var(--fs-cap);line-height:1.5}
+.wiki-ingest-rejection{margin-top:14px;padding:12px;background:var(--field);border-radius:var(--r-lg)}
+.wiki-ingest-rejection-head{display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
+.wiki-ingest-rejection-head strong{font-size:var(--fs-sm)}
+.wiki-ingest-rejection-head span{color:var(--ter);font-size:var(--fs-cap);line-height:1.45}
+.wiki-ingest-rejection-reasons{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
+.wiki-ingest-rejection-reasons.segmented-control>button{background:var(--card)}
+.wiki-ingest-rejection-reasons.segmented-control>button.on{background:var(--accent-soft)}
+.wiki-ingest-rejection>.form-textarea{min-height:62px;font-family:var(--sans);font-size:var(--fs-sm)}
+.wiki-ingest-rejection .wiki-ingest-actions{margin-top:10px}

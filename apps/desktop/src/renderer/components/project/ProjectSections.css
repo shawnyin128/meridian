@@ -1,0 +1,41 @@
+/* Feature-owned styles for project detail sections. Routes only place these sections. */
+.agcard{background:var(--card);border:1px solid var(--sep);border-radius:var(--r-lg);padding:12px 16px;margin-bottom:10px}
+.agh{display:flex;align-items:center;gap:8px}
+.agnm{font-size:var(--fs-base);font-weight:600}
+.agbg{margin-left:auto;font-size:var(--fs-sm);color:var(--ter)}
+.agent-run-tray{margin-top:8px}
+.agsteps{padding:6px 11px 8px}
+.agstep{display:flex;gap:10px;font-size:var(--fs-base);color:var(--sec);padding:4px 0;line-height:var(--lh-ui)}
+.agstep .agt{font-family:var(--mono);font-size:var(--fs-sm);color:var(--ter);flex-shrink:0;width:44px}
+
+.memo{font-size:13px}
+
+.tagchip .rx{position:absolute;top:-6px;right:-6px;width:14px;height:14px;border-radius:50%;background:var(--field);border:1px solid var(--sep);color:var(--ter);display:grid;place-items:center;cursor:pointer;padding:0;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
+.wkrel .tagchip:hover .rx,.tagchip .rx:focus-visible{opacity:1;pointer-events:auto}
+.tagchip .rx:hover{color:var(--bad);border-color:var(--bad)}
+.tagchip .rx svg{width:8px;height:8px}
+.wkrel .tagchip{display:inline-flex;max-width:100%;box-sizing:border-box;margin-right:0}
+.wkrel .tagchip-text{min-width:0;overflow:hidden;white-space:nowrap}
+.wkrel .tagchip-text.clipped{mask-image:var(--clipfade)}
+.wkrel .reladd{display:flex;align-items:center;gap:6px;flex:1 1 auto;min-width:190px}
+.wkrel .reladd .segmented-control{flex-shrink:0}
+.wkrel .reladd .inedit{flex:1;min-width:0}
+.wkrel .reladd:has(.urldraft){flex-wrap:wrap}
+.wkrel .reladd .urldraft{display:flex;flex-direction:column;gap:6px;flex:1 1 100%;min-width:0}
+.wkrel .reladd .urldraft .inedit{flex:none;width:100%}
+.wkrel .tagchip[data-url]{cursor:pointer}
+.wkrel .tagchip[draggable]{cursor:grab}
+.wkrel .tagchip.dragging{opacity:.4}
+.wkrel .tagchip.drop-before{box-shadow:-3px 0 0 -1px var(--accent)}
+.wkrel .tagchip.drop-after{box-shadow:3px 0 0 -1px var(--accent)}
+
+.attrow{display:flex;align-items:center;gap:8px;font-size:12px;padding:6px 2px}
+.attrow>svg{width:13px;height:13px;color:var(--ter);flex-shrink:0}
+.attrow .an{flex:1;min-width:0;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade);cursor:pointer}
+.attrow .as{font-size:var(--fs-sm);color:var(--ter);flex-shrink:0}
+.attrow .ax{border:0;background:transparent;color:var(--ter);cursor:pointer;padding:2px;border-radius:var(--r-sm);display:grid;place-items:center;opacity:0;pointer-events:none}
+.attrow:hover .ax,.attrow .ax:focus-visible{opacity:1;pointer-events:auto}
+.attrow .ax:hover{background:var(--hover);color:var(--bad)}
+.attrow .ax svg{width:11px;height:11px}
+.attachments{min-width:0;border-radius:var(--r-md);transition:background-color var(--t) var(--e-out),outline-color var(--t) var(--e-out);outline:1px solid transparent}
+.attachments.drag{background:var(--tint-good);outline-color:var(--good)}

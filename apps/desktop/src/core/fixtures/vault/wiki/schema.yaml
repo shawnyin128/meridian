@@ -1,0 +1,27 @@
+version: 1
+
+kinds:
+  topic:
+    dir: topics
+    label: 主题
+    describe:
+      section: 问题
+      hint: 要做到什么、为什么难
+  method:
+    dir: methods
+    label: 方法
+    describe:
+      section: 机制
+      hint: 这一族共享什么
+    derived_columns:
+      - key: used_for
+        label: 用于
+        from_kind: topic
+
+sections:
+  - {key: conclusions, label: 结论}
+  - {key: experiments, label: 实验}
+  - {key: open, label: 未解决}
+
+anchor:
+  require_quote: true

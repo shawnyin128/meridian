@@ -1,0 +1,78 @@
+name: Release desktop app
+
+# Pushing a vX.Y.Z tag builds the installers on every platform, uploads them with the update
+# metadata the app's updater reads to a draft GitHub Release, and publishes the draft once every
+# platform has uploaded. The tag must match the VERSION file.
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag against VERSION
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          if [[ "${TAG}" != "v${VERSION}" ]]; then
+            echo "Tag ${TAG} does not match VERSION ${VERSION}." >&2
+            exit 1
+          fi
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ steps.meta.outputs.tag }}" --draft --title "Meridian ${{ steps.meta.outputs.tag }}" --generate-notes
+
+  build:
+    needs: draft
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the Harness build dependencies
+        run: python -m pip install -e "apps/harness[build]"
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build and upload the installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # No signing certificate is configured; macOS is signed ad hoc by the builder config.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npm --prefix apps/desktop run package -- --publish always
+
+  publish:
+    needs: [draft, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "${{ needs.draft.outputs.tag }}" --repo "${{ github.repository }}" --draft=false --latest

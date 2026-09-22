@@ -1,0 +1,12 @@
+.project-control-value{display:block;min-width:0;color:var(--sec)}
+.project-control-main{display:flex;align-items:center;gap:6px;min-width:0}
+.project-control-source{flex:none;padding:1px 6px;border-radius:var(--r-xs);font-size:var(--fs-cap);line-height:var(--lh-ui);font-weight:600}
+.project-control-source.task{background:var(--accent-soft);color:var(--accent)}
+.project-control-source.research{background:var(--tint-good);color:var(--good)}
+.project-control-source.manual{background:var(--tint-mut);color:var(--ter)}
+.project-control-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.project-control-meta{display:block;margin-top:2px;color:var(--ter);font-size:var(--fs-cap);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.project-control-value.empty{color:var(--ter)}
+.project-control-value.summary .project-control-text{font-size:var(--fs-base);font-weight:600;color:var(--ink)}
+.project-control-value.inline{display:inline-flex;align-items:center;min-width:0}
+.project-control-value.inline.blocker{color:var(--warn)}

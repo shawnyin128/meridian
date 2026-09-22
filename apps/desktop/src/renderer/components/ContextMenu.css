@@ -1,0 +1,2 @@
+.context-menu{position:fixed;z-index:90;min-width:160px;padding:5px}
+.context-menu .mi{display:flex;width:100%;border:0;text-align:left;font:inherit}

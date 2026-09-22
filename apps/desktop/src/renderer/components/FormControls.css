@@ -1,0 +1,82 @@
+.form-control{
+  box-sizing:border-box;
+  min-width:0;
+  margin:0;
+  color:inherit;
+  font:inherit;
+}
+
+/*
+ * The native focus ring will change the look and feel on different platforms, and even overlap with the border to form a double-layered blue frame; it can be seen that the focus is determined by the function to which it belongs.
+ * The container or border color of the component is expressed, and the border-width / padding / height is not allowed to change during focus.
+ */
+.form-control:focus,
+.form-control:focus-visible{
+  outline:0;
+  box-shadow:none;
+}
+
+/* Standard boxed fields are selected explicitly so inline editors can keep their own geometry. */
+.form-control-field{
+  border:1px solid var(--sep2);
+  border-radius:var(--r-md);
+  background:var(--field);
+  color:var(--ink);
+  transition:border-color .12s ease,background-color .12s ease;
+}
+.form-input.form-control-field,
+.form-select.form-control-field,
+.form-button.form-control-field{
+  height:32px;
+  padding:0 10px;
+}
+.form-button.form-control-field{cursor:pointer;text-align:left}
+.form-select.form-control-field{padding-right:28px}
+.form-textarea.form-control-field{padding:8px 10px;line-height:var(--lh-ui);resize:vertical}
+.form-control-field:hover{border-color:var(--sep-strong)}
+.form-control-field:focus,
+.form-control-field:focus-visible{
+  border-color:var(--accent);
+  background:var(--card);
+}
+.form-control-field:disabled{cursor:default;opacity:.55}
+
+/* Compact editors embedded in table cells and metadata rows share one neutral focus treatment. */
+.form-input.form-control-inline,
+.form-textarea.form-control-inline,
+.form-select.form-control-inline{
+  display:block;
+  width:100%;
+  height:24px;
+  padding:2px 8px;
+  border:0;
+  border-radius:var(--r-sm);
+  background:var(--field);
+  color:var(--ink);
+  line-height:var(--lh-ui);
+  outline:0;
+  transition:background-color .12s ease;
+}
+.form-input.form-control-inline:hover,
+.form-select.form-control-inline:hover,
+.form-input.form-control-inline:focus,
+.form-input.form-control-inline:focus-visible,
+.form-textarea.form-control-inline:hover,
+.form-textarea.form-control-inline:focus,
+.form-textarea.form-control-inline:focus-visible,
+.form-select.form-control-inline:focus,
+.form-select.form-control-inline:focus-visible{
+  background:var(--card);
+}
+
+/* A directory path and its system chooser form a single field everywhere in the app. */
+.directory-field{position:relative;display:block;min-width:0;width:100%}
+.directory-field .form-input{width:100%;padding-right:42px}
+.directory-field-action{position:absolute;top:1px;right:1px;width:34px;height:30px;padding:0;border:0;
+  border-left:1px solid var(--sep2);border-radius:0 calc(var(--r-md) - 1px) calc(var(--r-md) - 1px) 0;
+  display:grid;place-items:center;background:transparent;color:var(--ter);cursor:pointer}
+.directory-field-action:hover{background:var(--hover);color:var(--ink)}
+.directory-field-action:focus-visible{outline:0;background:var(--hover);color:var(--accent)}
+.directory-field-action:disabled{cursor:default;opacity:.45;background:transparent;color:var(--ter)}
+.directory-field-action svg{width:16px;height:16px}
+.directory-field:focus-within .form-input{border-color:var(--accent);background:var(--card)}

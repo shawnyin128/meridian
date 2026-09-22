@@ -1,0 +1,10 @@
+.short-text-editor{min-width:210px}
+.short-text-title.rh{font-size:var(--fs-cap);color:var(--ter);padding:8px 12px;border-bottom:1px solid var(--sep2)}
+.short-text-form.mi-in{display:flex;align-items:center;gap:6px;padding:7px 8px;margin:0}
+.short-text-form input{box-sizing:border-box;width:100%;height:28px;min-width:0;border:1px solid var(--sep-strong);background:transparent;border-radius:var(--r-sm);padding:0 10px;font:inherit;font-size:var(--fs-sm);line-height:26px;color:var(--ink)}
+.short-text-form input:focus,.short-text-form input:focus-visible{outline:0;border-color:var(--sep-strong);box-shadow:none}
+.short-text-form input::placeholder{color:var(--ter)}
+.short-text-form .btn{height:28px;flex-shrink:0}
+.short-text-separator{height:1px;background:var(--sep2);margin:0 6px}
+.short-text-delete.mi.danger{display:flex;width:100%;align-items:center;border:0;border-radius:var(--r-sm);padding:7px 10px;background:transparent;color:var(--bad);font:inherit;font-size:var(--fs-base);cursor:pointer}
+.short-text-delete:hover,.short-text-delete:focus-visible{outline:0;background:var(--hover)}

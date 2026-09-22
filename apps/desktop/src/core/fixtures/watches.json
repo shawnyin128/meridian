@@ -1,0 +1,20 @@
+[
+  {
+    "id": "spec",
+    "type": "topic",
+    "name": "speculative decoding",
+    "active": true
+  },
+  {
+    "id": "moe",
+    "type": "topic",
+    "name": "MoE serving",
+    "active": true
+  },
+  {
+    "id": "dao",
+    "type": "author",
+    "name": "T. Dao",
+    "active": true
+  }
+]

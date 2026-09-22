@@ -1,0 +1,100 @@
+/*
+ * The handwritten CSS for the Wiki screen, the rules are copied from desktop/design/wiki-aggregation-shell-demo.html one by one.
+ * The selector name is consistent with the demo to facilitate side-by-side comparison.
+ */
+
+/* Cards: Aggregate and paper laid out in grid. The .wkcard of the demo is always in the shape of a hand */
+.wkgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--cardw),1fr));gap:10px;margin:6px 0 6px}
+/*
+ * line-height of 1.5 is a pair with height:calc(1.5em * var(--card-lines)) of .wkcard .wm :
+ * It determines the fixed height of the summary area, which also determines the equal height of all cards in the grid. If you want to change it, change it in two places together.
+ */
+.wkcard{flex:1;min-width:200px;background:var(--card);border:1px solid var(--sep);border-radius:var(--r-lg);padding:12px;cursor:pointer;transition:border-color var(--t) var(--e-out),box-shadow var(--t) var(--e-out);line-height:1.5}
+.wkcard:hover{border-color:var(--sep-strong);box-shadow:var(--sh-1)}
+.wkcard .wt{font-size:var(--card-tt);display:flex;align-items:center;gap:6px}
+.wkcard .tt{flex:1;min-width:0;font-weight:600;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade)}
+.wkcard .sp{margin-left:auto;display:flex;align-items:center;flex-shrink:0}
+.wkcard .wm{font-size:var(--card-fs);color:var(--ter);margin-top:4px;line-height:1.5;height:calc(1.5em * var(--card-lines));
+  overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--card-lines)}
+.wkcard .wf{font-size:var(--fs-sm);color:var(--ter);margin-top:8px;white-space:nowrap;overflow:hidden;mask-image:var(--clipfade);display:flex;align-items:center;gap:6px}
+.wkind{font-size:var(--fs-cap);color:var(--ter);border:1px solid var(--sep2);border-radius:var(--r-xs);padding:0 6px;flex-shrink:0}
+.wkind.k-paper{background:var(--tint-paper);border-color:transparent;color:var(--sec)}
+.wkind.k-wiki{background:var(--tint-wiki);border-color:transparent;color:var(--sec)}
+
+/* Page text and empty line: same paragraph */
+.wkpage p{margin:4px 0 8px}
+
+/* Comparison of papers on the aggregation page: rows are member papers, columns are from aggregated columns, grids have original text anchors */
+/* An embedded table keeps five rows in page flow; the rest scroll inside it. */
+.cmpwrap{overflow:auto;margin:0 0 4px;max-height:calc(38px*5 + 30px);overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.cmp{width:100%;border-collapse:collapse;font-size:var(--fs-base);line-height:var(--lh-ui)}
+.cmp th{text-align:left;font-size:var(--fs-sm);color:var(--ter);font-weight:600;padding:6px 10px;border-bottom:1px solid var(--sep);white-space:nowrap;position:sticky;top:0;background:var(--content)}
+.cmp td{padding:7px 10px;border-bottom:1px solid var(--sep2);vertical-align:top;max-width:26ch}
+.cmp tbody tr:last-child td{border-bottom:0}
+.cmp td.rh{white-space:nowrap;font-weight:600}
+.cmp td.na{color:var(--ter);text-align:center}
+.cmp th.dv,.cmp td.dv{background:var(--hover)}
+.cmp th .wkind{margin-left:6px;font-weight:400}
+.anc{border-bottom:1px dotted var(--ter);cursor:help}
+.anc sup{font-size:.78em;color:var(--ter);margin-left:2px}
+#wktip{position:fixed;z-index:60;max-width:min(44ch,60vw);padding:8px 12px;background:var(--card);color:var(--ink);border:1px solid var(--sep);border-radius:var(--r-lg);box-shadow:var(--sh-2);font-size:12px;line-height:var(--lh-ui);pointer-events:none}
+#wktip b{display:block;font-size:11px;color:var(--ter);margin-bottom:2px}
+
+/* Attribution block in the right column of the paper page */
+.memb{margin:4px 0 12px}
+.memb .wkprops{grid-template-columns:max-content 1fr;margin-top:4px}
+
+/*
+ * Text: The header is the page name plus "Edit", and the bottom is rendered by markdown; the secondary title follows the section heading structure, and follows the header
+ * The first one no longer draws a line
+ */
+.wkmain .md h2{border-top:1px solid var(--sep2);margin:24px 0 10px;padding-top:16px;font-weight:700;color:var(--ink)}
+.section-heading+.md>h2:first-child{border-top:0;margin-top:6px;padding-top:0}
+.wkmain .md h1{margin:24px 0 10px}
+.wkmain .md.src{margin-top:6px}
+
+/* Table of contents in the right column: a thin track, the section will be highlighted wherever the text is scrolled; the shallowest top level, deeper level by level indentation, and decreasing font size */
+.wktoc{list-style:none;margin:2px 0 0;padding:0;border-left:1px solid var(--sep)}
+.wktoc li{font-size:var(--fs-base);line-height:var(--lh-ui);color:var(--sec);cursor:pointer;padding:4px 0 4px 12px;margin-left:-1px;border-left:1px solid transparent;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.wktoc li:hover{color:var(--ink)}
+.wktoc li.on{color:var(--ink);font-weight:600;border-left-color:var(--accent)}
+.wktoc li.l2{padding-left:24px;font-size:var(--fs-sm)}
+.wktoc li.l3{padding-left:36px;font-size:var(--fs-sm);color:var(--ter)}
+.wktoc li.l3.on{color:var(--ink)}
+
+/* Two management entrances: cards and table rows that appear when hovering ×; column editor */
+.wkcard{position:relative}
+.wkcard .rx{position:absolute;top:8px;right:8px;width:16px;height:16px;border-radius:50%;background:var(--field);border:1px solid var(--sep);box-shadow:var(--sh-1);color:var(--ter);display:grid;place-items:center;padding:0;cursor:pointer;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
+.wkcard:hover .rx{opacity:1;pointer-events:auto}
+.wkcard .rx:hover{color:var(--bad);border-color:var(--bad)}
+.wkcard .rx svg{width:8px;height:8px}
+.cmp th.rx,.cmp td.rx{width:22px;padding-left:4px;padding-right:4px}
+/* This grid is a td without tabIndex and cannot enter the Tab sequence, so it only adds pointer-events and is not equipped with focus state. */
+.cmp td.rx{color:var(--ter);cursor:pointer;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
+.cmp td.rx svg{display:block;width:10px;height:10px;margin:0 auto}
+.cmp tbody tr:hover td.rx{opacity:1;pointer-events:auto}
+.cmp td.rx:hover{color:var(--bad)}
+.coledit{margin:6px 0 12px;display:grid;gap:6px;max-width:420px}
+.coledit .row{display:flex;gap:8px;align-items:center}
+.coledit .acts{display:flex;gap:8px;margin-top:4px}
+
+/*
+ * Subdivided placeholder card: The same width and height as the card next to it, except that the title line is an input box, the gray text in the summary position explains how to use it, and the last line is empty and only takes up the height.
+ * The height of the input box must be the row height of the real card title line, otherwise its border and padding will raise the entire card.
+ */
+.wkcard.newcard{cursor:default;border-style:dashed}
+.wkcard.newcard:hover{border-color:var(--sep)}
+.wkcard.newcard .wt .inedit{font-size:var(--card-tt);height:1.5em;padding:0 8px}
+.wkcard.newcard .wf{height:1.5em}
+
+/* The placeholder row for paper comparison: the same height as the real row, the head of the row is an input box, and the rest of the grid is first placed with short horizontal lines. */
+.cmp tr.newrow td.rh{font-weight:400}
+.cmp tr.newrow .inedit{width:100%;height:1.667em;padding:0 9px}
+
+/* The box at the end of the header of the comparison table: the width and the rules for the two buttons are all shared with the thesis table, in shell.css; here only the space is filled. */
+.cmp th.th-new{padding:4px 10px}
+
+/* Set the pop-up layer for the column clicked by the gear: .ctxmenu is given to the shell, and the editor is still inside */
+.colpop{padding:8px;min-width:240px}
+.colpop .coledit{margin:0;max-width:none}
+.coledit .ch{font-size:var(--fs-base);font-weight:600;color:var(--sec)}

@@ -1,0 +1,76 @@
+[
+  {
+    "id": "feed-1",
+    "source": "me",
+    "day": "昨天",
+    "time": "昨天 21:40",
+    "body": {
+      "kind": "runs",
+      "runs": [
+        { "kind": "text", "text": "留下一个问题:「树宽收益的拐点,在批量 serving 场景下还成立吗?」" }
+      ]
+    }
+  },
+  {
+    "id": "feed-2",
+    "source": "lab",
+    "day": "昨天",
+    "time": "昨天 22:15",
+    "body": {
+      "kind": "runs",
+      "runs": [
+        { "kind": "text", "text": "实验 #3 结果回流:分支浪费按深度分桶成立 → 结论 " },
+        { "kind": "cite", "text": "「分支浪费」" },
+        { "kind": "text", "text": " 升到 v3。" }
+      ]
+    }
+  },
+  {
+    "id": "feed-3",
+    "source": "steward",
+    "day": "昨天",
+    "time": "昨天 22:16",
+    "body": {
+      "kind": "runs",
+      "runs": [
+        { "kind": "text", "text": "你的问题已记下:" },
+        { "kind": "cite", "text": "「树宽收益有拐点」" },
+        { "kind": "text", "text": " 只在" },
+        { "kind": "strong", "text": "单请求" },
+        { "kind": "text", "text": "场景验证过,批量场景库里没有直接证据——我会盯着相关新论文。" }
+      ]
+    }
+  },
+  {
+    "id": "feed-4",
+    "source": "inbox",
+    "day": "今天",
+    "time": "07:30",
+    "body": {
+      "kind": "runs",
+      "runs": [
+        { "kind": "text", "text": "昨晚抓取:" },
+        { "kind": "strong", "text": "4 篇新论文入队" },
+        { "kind": "text", "text": "(speculative decoding ×3 · T. Dao ×1),其中一篇正好回应你昨天的问题。" }
+      ]
+    }
+  },
+  {
+    "id": "feed-5",
+    "source": "steward",
+    "day": "今天",
+    "time": "早报",
+    "body": {
+      "kind": "brief",
+      "heading": "昨晚整理了 11 处(都可撤销)· 1 件需要你看",
+      "items": [
+        {
+          "id": "brief-1",
+          "tag": "两条结论冲突",
+          "text": "「树宽收益有拐点」vs「批量场景仍净赚」",
+          "action": "看看"
+        }
+      ]
+    }
+  }
+]

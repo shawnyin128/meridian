@@ -1,0 +1,158 @@
+/*
+ * Application shell: top bar, breadcrumbs and study sidebar, moved from desktop/design/platform-shell-demo.html one by one.
+ * The selector name is consistent with the demo to facilitate side-by-side comparison. The .window / .tl of the demo is the simulated window frame in the browser.
+ * Electron has real window chrome, so the window frames, rounded corners and red, yellow and green lights are not moved.
+ */
+
+/*
+ * This bar is the window title bar. The background color can be dragged, and the buttons and breadcrumbs can be released one by one - the breadcrumbs are flex:1, so
+ * What can really be grabbed and dragged is the upper and lower sides of about 19px, not the entire column.
+ * Height hard-coded 50px: It was originally supported by the highest child element. Replacing any element in the column will quietly change it.
+ * The height of titleBarOverlay in main/index.ts is manually aligned with this number. To change one thing, you need to change another.
+ */
+.titlebar{display:flex;align-items:center;gap:8px;height:50px;padding:12px 16px;background:var(--sidebar);backdrop-filter:blur(20px);border-bottom:1px solid var(--sep);z-index:5;-webkit-app-region:drag}
+.titlebar .tbtn,.titlebar .cseg.link,.titlebar .appbtn{-webkit-app-region:no-drag}
+/* Make way for window buttons: the three buttons of win32/linux are on the upper right, and the traffic light of darwin is on the upper left. */
+:root[data-os="win32"] .titlebar,:root[data-os="linux"] .titlebar{padding-right:154px}
+:root[data-os="darwin"] .titlebar{padding-left:78px}
+
+/* 3px instead of 6px: the height of the column is only 25px, and the 30px box will push out of the column */
+.titlebar .appbtn{border:0;background:transparent;padding:3px;border-radius:var(--r-sm);cursor:pointer;display:grid;place-items:center;transition:background var(--t-fast) var(--e-out)}
+:where(.titlebar .appbtn):hover{background:var(--hover)}
+.titlebar .appbtn:active{background-image:linear-gradient(var(--press),var(--press))}
+.titlebar .brandmark{width:18px;height:18px;display:block}
+/* Breadcrumbs: Permanent after the app name, indicating the current location */
+.crumb{display:flex;align-items:center;gap:6px;margin-left:8px;font-size:12px;color:var(--ter);flex:1;min-width:0;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade);user-select:none}
+.crumb::before{content:"";width:1px;height:12px;background:var(--sep);margin-right:4px;flex-shrink:0}
+.crumb:empty{display:none}
+.crumb .csep{opacity:.5;font-size:12px;flex-shrink:0}
+.crumb .cseg{max-width:260px;overflow:hidden;text-overflow:ellipsis}
+/*
+ * The long title falls at the end of the paragraph (current position), and fades out only for it: the clickable paragraphs have a hover capsule background color, and the mask will connect the background color
+ * Gnaw them together, so they remain with the ellipses. flex:1 is used for fade, the last part is extended to the upper limit of 260px, and the tail of the title is short.
+ * before falling outside the fade zone
+ */
+.crumb .cseg:last-child{flex:1;color:var(--sec);text-overflow:clip;mask-image:var(--clipfade)}
+/* Padding is paired with negative margin: the capsule only grows outwards, and the text falls in the same place without the capsule. */
+.crumb .cseg.link{cursor:pointer;padding:2px 6px;margin:-2px -6px;border-radius:var(--r-sm);transition:background var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out)}
+.crumb .cseg.link:hover{background:var(--hover);color:var(--ink)}
+.tbtn{border:0;background:transparent;color:var(--sec);font-size:13px;cursor:pointer;padding:3px 8px;border-radius:var(--r-sm);transition:background var(--t-fast) var(--e-out)}
+:where(.tbtn):hover{background:var(--hover);color:var(--ink)}
+.tbtn svg{width:15px;height:15px;display:block}
+
+/* The background in the demo comes from .window. The window frame is not moved, and the background is moved here. */
+.main{flex:1;display:flex;min-height:0;position:relative;background:var(--window)}
+
+/* Tip capsule at the bottom: Explain the reasons for rejected actions and do not leave them in the inventory */
+.toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:var(--ink);color:var(--window);font-size:var(--fs-sm);padding:8px 20px;border-radius:var(--r-full);opacity:0;transition:opacity var(--t-slow) var(--e-out);pointer-events:none;z-index:91;box-shadow:var(--sh-2)}
+.toast.show{opacity:1}
+
+/* Top banner notification: storage class confirmation, appears briefly and disappears automatically */
+.banner{position:fixed;top:62px;left:50%;transform:translate(-50%,-14px);display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--sep);border-radius:var(--r-xl);box-shadow:var(--sh-3);padding:8px 16px;font-size:var(--fs-sm);color:var(--ink);z-index:91;opacity:0;pointer-events:none;transition:opacity var(--t-slow) var(--e-inout),transform var(--t-slow) var(--e-inout)}
+.banner.show{opacity:1;transform:translate(-50%,0)}
+.banner svg{width:14px;height:14px;color:var(--good);flex-shrink:0}
+
+/*
+ * The screen's keep-alive shell: demo stores the view state in global variables, which is stored in the always-hanging DOM.
+ * display:contents prevents this layer from participating in layout, and the root of the screen is still the direct flex child element of .main.
+ */
+.screenslot{display:contents}
+.screenslot[hidden]{display:none}
+
+/*
+ * min-width:0 cannot be omitted: the default min-width:auto of the flex item will make the minimum size of the content exceed flex-basis,
+ * A long session title without wrapping can make the sidebar wider than --sbw. Width only returns --sbw with handlebars
+ */
+.sidebar{flex:0 0 var(--sbw,232px);min-width:0;background:var(--sidebar);backdrop-filter:blur(20px);border-right:1px solid var(--sep);padding:12px 10px;overflow:visible;position:relative;display:flex;flex-direction:column;user-select:none;transition:transform var(--t-slow) var(--e-inout),opacity var(--t-slow) var(--e-inout),margin-left var(--t-slow) var(--e-inout)}
+.sidebar :is(input,textarea,[contenteditable="true"]){user-select:text}
+.sb-top{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden}
+/* Sidebar collapses */
+.main.sbhide .sidebar{margin-left:calc(var(--sbw,232px) * -1);opacity:0;pointer-events:none}
+/* The reading state returns the global navigation to the paper context bar; after exiting Reader, the original sidebar remains in its original expanded state. */
+.main.reading>.sidebar{display:none}
+
+.sfield{display:flex;align-items:center;gap:6px;background:var(--field);border:1px solid var(--sep2);border-radius:var(--r-md);padding:5px 10px;margin-bottom:6px}
+.sfield input{flex:1;border:0;background:transparent;color:var(--ink);font-family:var(--sans);font-size:12px}
+.sfield:has(input:focus-visible){outline:0;border-color:var(--sep-strong);background:var(--card)}
+.sfield .ic{color:var(--ter);display:flex;align-items:center}
+.sfield .ic svg{width:13px;height:13px}
+
+/*
+ * Instant results of global search: positioning and opening and closing are returned to Radix, and the appearance is copied from the demo's .sres and the lines below it one by one.
+ * The left edge of the demo panel is aligned with the search box, the right edge is 260px past the sidebar and pressed on the content, and folded to be 270px wider than the search box.
+ */
+/* Compounded with .pickhits so this wider, unclipped shape and lower stacking layer win over the shared shell's, regardless of CSS load order. */
+.pickhits.sres{width:calc(var(--radix-popover-trigger-width) + 270px);max-height:none;overflow:hidden;z-index:40}
+.sres .rh{font-size:var(--fs-cap);color:var(--ter);padding:8px 12px;border-bottom:1px solid var(--sep2)}
+.sres .rrow{padding:8px 12px;font-size:var(--fs-sm);cursor:pointer;border-bottom:1px solid var(--sep2)}
+.sres .rrow:last-child{border-bottom:0}
+.sres .rrow:hover{background:var(--hover)}
+.sres .rt{font-weight:500}
+.sres .rm{font-size:12px;color:var(--ter)}
+
+.sb-h{display:flex;align-items:center;gap:4px;font-size:var(--fs-cap);font-weight:600;color:var(--ter);text-transform:uppercase;letter-spacing:.04em;padding:0 8px;margin:12px 0 4px}
+.sb-h.chats-h{display:flex;align-items:center}
+.sect-h{cursor:pointer;user-select:none}
+.sh-caret{display:grid;place-items:center;opacity:0;transition:opacity var(--t-fast) var(--e-out),transform var(--t-fast) var(--e-out)}
+.sect-h:hover .sh-caret{opacity:1}
+.sect-h.closed .sh-caret{opacity:1;transform:rotate(-90deg)}
+.sh-caret svg{width:9px;height:9px}
+.sect.closed{display:none}
+
+.sb-add{border:0;background:transparent;color:var(--ter);cursor:pointer;border-radius:var(--r-sm);width:18px;height:18px;display:grid;place-items:center;padding:0;margin-left:auto}
+.sb-add:hover{background:var(--hover);color:var(--ink)}
+.sb-add svg{width:11px;height:11px}
+
+/* Row height is fixed: the appearance/disappearance of the badge must not cause any layout displacement */
+.srow{display:flex;align-items:center;gap:8px;height:30px;box-sizing:border-box;padding:0 8px;border-radius:var(--r-sm);font-size:var(--fs-base);cursor:pointer;color:var(--ink);transition:background var(--t-fast) var(--e-out)}
+/*
+ * The session row's... menu also retains this background color when it is open, even if the pointer has moved to the menu item and no longer falls on the row;
+ * :has() calculates specificity based on parameters, which is higher than .srow.on. Use a layer of :where() to clear it so that the selected row will not be covered by this one.
+ */
+.srow:hover,.srow:where(:has(.dots[data-state="open"])){background:var(--hover)}
+.srow.on{background:var(--accent-soft);color:var(--ink)}
+.srow.on .ic{color:var(--accent)}
+.srow.update-row,.srow.update-row .ic{color:var(--accent)}
+.srow .ic{width:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--sec)}
+.srow .ic svg{width:13.5px;height:13.5px}
+.srow .n{margin-left:auto;flex-shrink:0;box-sizing:border-box;min-width:24px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;line-height:1;color:var(--ter);background:var(--hover);border-radius:999px;padding:0 7px;font-variant-numeric:tabular-nums}
+.srow .n:empty{display:none}
+.srow .n.new{background:var(--field);color:var(--ink);font-weight:600}
+.srow.sub{padding-left:20px;font-size:12px}
+/* The specific item of interest always occupies one line; the title only takes up the space outside the subtitles, and when it overflows, it uses the global tail segment to fade out. */
+.watch-row .watch-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;mask-image:var(--clipfade)}
+.watch-row .n{margin-left:0}
+.chat-row .ct-t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;mask-image:var(--clipfade)}
+/* This row's own reveal-on-hover rule; the shared .dots geometry, focus, and open-state rules live in FieldPickers.css. */
+.chat-row:hover .dots{opacity:1;pointer-events:auto}
+/* The icon bit of the archived row is empty, and there is no dot for the sub-entry. */
+.srow.sub .ic.blank::before{content:none}
+/* Receipt level: paper push → discovery/concern grouping (first-level indentation) → specific items of concern (second-level indentation) */
+#g-inboxsub > .srow.discovery,#g-inboxsub > .srow.disc{padding-left:20px}
+#g-inboxsub .wgroup .srow.sub{padding-left:36px}
+/* Sub-item dots: solid if there is new content (subscript is not empty), empty if there is no content */
+.srow.sub .ic:empty::before{content:"";width:7px;height:7px;border-radius:50%;box-sizing:border-box;border:1px solid var(--ter);background:transparent}
+.srow.sub:has(.n:not(:empty)) .ic:empty::before{background:var(--sec);border-color:var(--sec)}
+/* The grouping and folding arrows are unified on the right side of the title and are visible when hovering or collapsing (same style as the section header) */
+.disc .sh-caret{opacity:0}
+.disc:hover .sh-caret{opacity:1}
+.disc.closed .sh-caret{opacity:1;transform:rotate(-90deg)}
+/* .dim is the content status (no new paper concerns), not the "unimplemented" mark */
+.srow.dim{color:var(--ter)}
+/* Paper push: The icon position changes to a folding arrow when hovering, and the subject/author is included under it. */
+#rowInboxAll:hover .sh-caret{opacity:1}
+#rowInboxAll.closed .sh-caret{opacity:1;transform:rotate(-90deg)}
+.wgroup.closed{display:none}
+
+/* Unified telescopic handle: hover to remove the capsule, click to close, drag to adjust width */
+.grip{position:absolute;top:0;bottom:0;width:10px;cursor:col-resize;z-index:6;display:none;align-items:center;justify-content:center}
+.grip::after{content:"";width:4px;height:36px;border-radius:999px;background:var(--ter);opacity:0;transition:opacity var(--t-fast) var(--e-out)}
+.grip:hover::after{opacity:1}
+#sbgrip{right:-5px;display:flex}
+.griptip{position:fixed;background:var(--card);border:1px solid var(--sep);border-radius:var(--r-lg);box-shadow:var(--sh-2);padding:8px 12px;font-size:var(--fs-sm);z-index:95;pointer-events:none;opacity:0;transition:opacity var(--t-fast) var(--e-out);white-space:nowrap}
+.griptip.show{opacity:1}
+.griptip .t1{font-weight:600;color:var(--ink);display:flex;gap:10px;align-items:baseline}
+.griptip .t1 .k{color:var(--ter);font-weight:400;font-family:var(--mono);font-size:var(--fs-sm)}
+.griptip .t2{color:var(--ter);font-size:var(--fs-sm);margin-top:1px}
+
+/* The screen that occupies the content area when the library cannot be opened: reasons, instructions and entrance to changing the library */

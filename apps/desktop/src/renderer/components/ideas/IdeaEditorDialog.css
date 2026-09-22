@@ -1,0 +1,12 @@
+.idea-dialog{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,calc(100vw - 40px));box-sizing:border-box;background:var(--content);border:1px solid var(--sep);border-radius:var(--r-xl);box-shadow:var(--sh-3);padding:20px;z-index:90}
+.idea-dialog:focus-visible{outline:0}
+.idea-dialog-title{display:block;margin:0;font-size:var(--fs-title);font-weight:650;color:var(--ink)}
+.idea-dialog-source{margin:5px 0 18px;color:var(--ter);font-size:var(--fs-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.idea-dialog-field{display:flex;flex-direction:column;gap:6px;margin-top:12px;color:var(--sec);font-size:var(--fs-sm)}
+.idea-dialog-field .form-input,.idea-dialog-field .form-textarea{width:100%;border:1px solid var(--sep2);border-radius:var(--r-md);background:var(--field);color:var(--ink);padding:8px 10px}
+.idea-dialog-field .form-input{height:34px}
+.idea-dialog-field .form-textarea{min-height:132px;line-height:1.55;resize:vertical}
+.idea-dialog-field .form-input:focus,.idea-dialog-field .form-textarea:focus{border-color:var(--sep-strong);background:var(--card)}
+.idea-dialog-note{margin:10px 0 0;color:var(--ter);font-size:var(--fs-cap);line-height:1.5}
+.idea-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.idea-dialog-actions .btn:disabled{opacity:.45;cursor:default}

@@ -1,0 +1,217 @@
+/*
+ * The handwritten CSS of the paper table function module, the rules are copied from desktop/design/platform-shell-demo.html one by one.
+ * The selector name is consistent with the demo to facilitate side-by-side comparison.
+ */
+
+/*
+ * The table itself is a scrolling viewport: it scrolls vertically and horizontally within the table, and the horizontal scroll bar is always at the bottom of the visual area;
+ * Header row sticky top, title column sticky left (corner grid is fixed in both directions)
+ */
+.desk-body.libview{display:flex;flex-direction:column;overflow:hidden}
+.desk-body.libview>.libwide{display:flex;flex-direction:column;flex:1;min-height:0;width:100%}
+.desk-body.libview #libList{flex:1;min-height:0;display:flex;flex-direction:column}
+.desk-body.libview .tblwrap{flex:1;min-height:0}
+.tblwrap{overflow:auto;scrollbar-gutter:stable}
+
+/* Library top bar: filter input box + group switching */
+.libbar{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.pdfupload-input{display:none}
+.pdfupload{display:flex;align-items:center;gap:5px;font-size:var(--fs-sm);padding:4px 10px}
+.pdfupload svg{width:12px;height:12px}
+.pdfupload:disabled{cursor:wait;opacity:.65}
+.paper-drop{position:absolute;inset:46px 0 0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;background:color-mix(in srgb,var(--content) 88%,transparent);border:2px dashed var(--accent);color:var(--ink);backdrop-filter:blur(8px);pointer-events:none}
+.paper-drop strong{font-size:var(--fs-read)}
+.paper-drop span{font-size:var(--fs-sm);color:var(--ter)}
+/* Filter the input box. The class name was left over from the one-sentence block added to the attention screen. Now it is only used here. The value is consistent with .af-in input. */
+.mgr-add{display:flex;gap:8px;margin:10px 0 20px}
+.mgr-add input{flex:1;border:1px solid var(--sep2);background:var(--field);border-radius:var(--r-md);padding:6px 12px;font-size:var(--fs-sm);color:var(--ink);font-family:var(--sans)}
+.mgr-add input:focus{outline:0;border-color:var(--sep-strong);box-shadow:none}
+.paper-search{flex:1;margin:0}
+
+/* Grouped index layer: first select a value, and then look at the papers under that value */
+.gxrow{display:flex;align-items:center;gap:12px;padding:12px 10px;border-bottom:1px solid var(--sep2);border-radius:var(--r-md);cursor:pointer}
+.gxrow:hover{background:var(--hover)}
+.gxrow .gx-t{font-size:13px;font-weight:600;min-width:150px}
+.gxrow .gx-m{flex:1;font-size:12px;color:var(--ter);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gxrow .n{font-size:12px;color:var(--ter);background:var(--hover);border-radius:999px;padding:1px 8px;flex-shrink:0}
+.gnav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.lmore{font-size:var(--fs-sm);color:var(--ter);padding:12px 2px}
+
+.ptable{width:100%;min-width:0;border-collapse:collapse;font-size:var(--fs-base);margin-bottom:16px;table-layout:fixed}
+.ptable th{position:relative}
+.thgrip{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:col-resize;z-index:3}
+.thgrip::after{content:'';position:absolute;left:3px;top:22%;bottom:22%;width:2px;border-radius:2px;background:transparent;transition:background var(--t-fast) var(--e-out)}
+.thgrip:hover::after{background:var(--sec)}
+.thmove{display:inline-flex;width:13px;height:17px;align-items:center;justify-content:center;margin:0 4px 0 -5px;color:var(--ter);opacity:0;cursor:grab;vertical-align:-4px;border-radius:3px}
+.ptable th:hover .thmove,.thmove:focus-visible{opacity:1}
+.thmove:active{cursor:grabbing;color:var(--ink)}
+.thmove svg{width:9px;height:14px}
+.column-drag-ghost{position:fixed;left:-100px;top:-100px;width:1px;height:1px;opacity:0;pointer-events:none}
+.ptable td .ci{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ptable td.trunc:has(.ci:not(:has(.tagchip))):hover{overflow:visible}
+/* Hover display: extended in situ (Excel style), text does not move, no borders, background color and row hover cover adjacent columns consistently */
+.ptable td.trunc:hover .ci:not(:has(.tagchip)){position:absolute;left:0;top:0;padding:7px 10px;width:max-content;background:linear-gradient(var(--hover),var(--hover)) var(--content);z-index:6;overflow:visible;text-overflow:clip}
+.tblwrap .ptable thead th{position:sticky;top:0;z-index:3;background:var(--content)}
+.ptable th:first-child,.ptable td:first-child{position:sticky;left:0;z-index:2;background:var(--content);box-shadow:1px 0 0 var(--sep2)}
+.ptable th:first-child{top:0;z-index:4}
+/* The corner grid should outweigh the other header grids in the same row: the "thead th" one has a higher weight, so make a separate decision for the corner grid. */
+.tblwrap .ptable thead th:first-child{left:0;z-index:4}
+/* This background color is also retained when the reading status menu is open, even if the pointer has moved to the menu item and no longer falls on this line. */
+.ptable tbody tr:hover td:first-child,.ptable tbody tr:has(.stchip[data-state="open"]) td:first-child{background:linear-gradient(var(--hover),var(--hover)) var(--content)}
+.ptable td .ci .hid{display:none}
+.ptable td .ci.chip-expanded{display:flex;align-items:center;flex-wrap:wrap;gap:2px;overflow:visible;white-space:normal;text-overflow:clip}
+.ptable td .ci.chip-expanded .hid{display:inline-block;animation:chip-row-reveal var(--t) var(--e-out) both}
+.ptable td .ci.chip-expanded .hid:nth-child(3){animation-delay:30ms}
+.ptable td .ci.chip-expanded .hid:nth-child(4){animation-delay:60ms}
+.ptable td .ci.chip-expanded .hid:nth-child(n+5){animation-delay:90ms}
+.morebadge{display:inline-flex;align-items:center;justify-content:center;min-width:28px;border:0;background:var(--tint-mut);color:var(--sec);border-radius:999px;padding:1px 8px;margin-left:2px;font:inherit;font-size:var(--fs-cap);cursor:pointer}
+.morebadge:hover{background:var(--hover);color:var(--ink)}
+@keyframes chip-row-reveal{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:translateX(0)}}
+@media (prefers-reduced-motion:reduce){.ptable td .ci.chip-expanded .hid{animation:none}}
+.ptable th{text-align:left;font-size:var(--fs-sm);color:var(--sec);font-weight:600;padding:6px 10px;border-bottom:1px solid var(--sep);cursor:pointer;white-space:nowrap;user-select:none;transition:color var(--t-fast) var(--e-out)}
+.ptable th:hover{color:var(--ink)}
+.ptable th.column-moving{opacity:.45;background:var(--tint-mut)}
+.ptable th.column-drop-before::before,.ptable th.column-drop-after::after{content:'';position:absolute;top:3px;bottom:3px;width:2px;border-radius:2px;background:var(--accent);z-index:5}
+.ptable th.column-drop-before::before{left:-1px}.ptable th.column-drop-after::after{right:-1px}
+.ptable td{padding:7px 10px;height:38px;box-sizing:border-box;border-bottom:1px solid var(--sep2);vertical-align:top;line-height:var(--lh-ui);overflow:hidden;white-space:nowrap;position:relative}
+/* An embedded table draws a rule only between adjacent rows, never under the last one. */
+.ptable tbody tr:last-child td{border-bottom:0}
+.ptable td:last-child{vertical-align:middle;padding-top:0;padding-bottom:0}
+.ptable tbody tr:hover td,.ptable tbody tr:has(.stchip[data-state="open"]) td{background:var(--hover)}
+.ptable tbody tr.selected td{background:var(--accent-soft)}
+.ptable tbody tr.selected td:first-child{background:var(--accent-soft);
+  box-shadow:inset 3px 0 0 var(--accent),1px 0 0 var(--sep2)}
+.pt-title{font-weight:500;color:var(--ink);cursor:pointer}
+.pt-title:hover{text-decoration:underline;text-underline-offset:2px}
+.ptable tbody tr{cursor:pointer}
+.pt-dim{color:var(--ter);white-space:nowrap}
+/*
+ * The + at the end of the label grid: usually a transparent placeholder, which is visible only when the line is hovered or the keyboard is entered; the demo is span, here is the button, and the font and line height are supplemented.
+ * The background and text color should be superior to the .tagchip of shell.css, so it is written as .tagchip.tagadd. It depends on the specificity, not the module packaging order;
+ * The focus state must also be filled with two categories, otherwise it will be divided equally with the resting state, and the winner will only be determined by the sequence.
+ */
+.tagchip.tagadd{background:transparent;border:1px dashed var(--sep-strong);color:var(--ter);cursor:pointer;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out);font-family:var(--sans);line-height:var(--lh-ui)}
+.ptable tr:hover .tagadd,.tagchip.tagadd:focus-visible{opacity:1;pointer-events:auto}
+.ptable tr:has(.stchip[data-state="open"]) .tagadd{opacity:1}
+.tagadd:hover{color:var(--ink);border-color:var(--sec)}
+.paper-meta-projects .tagchip.tagadd{opacity:1;pointer-events:auto}
+.tagin{border:1px solid var(--sep-strong);background:transparent;border-radius:999px;padding:1px 8px;font-size:var(--fs-sm);color:var(--ink);width:110px;font-family:var(--sans)}
+.tagin:focus-visible{outline:0}
+.stchip{font-size:var(--fs-sm);line-height:var(--lh-ui);padding:1px 10px;border:0;border-radius:999px;background:var(--field);color:var(--sec);font-family:var(--sans);cursor:pointer;white-space:nowrap}
+
+/* Custom columns: table header + button pop-up column management; click on a cell to edit in place */
+.th-add{width:28px}
+.colbtn{border:0;background:transparent;color:var(--ter);cursor:pointer;padding:3px;border-radius:var(--r-sm);display:flex;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
+.ptable thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events:auto}
+.colbtn:hover{background:var(--hover);color:var(--ink)}
+.colbtn svg{width:12px;height:12px}
+.pt-cust,.pt-remark{color:var(--sec);font-size:var(--fs-sm);cursor:text;min-width:70px}
+/* Text values use the shared inline editor; compact column-menu and picker inputs retain their own width. */
+.ptable td .paper-text-cell-input{display:block}
+
+/* Column menu: Fixed columns of built-in columns are grayed out, and custom columns can be renamed/delete at the end of rows. */
+.mi.colrow .cl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.mi.locked{cursor:default;opacity:.45}
+.cmx{border:0;background:transparent;color:var(--ter);cursor:pointer;padding:2px;border-radius:var(--r-sm);display:grid;place-items:center;opacity:0;pointer-events:none;flex-shrink:0}
+.mi.colrow:hover .cmx,.cmx:focus-visible{opacity:1;pointer-events:auto}
+.cmx:hover{background:var(--hover);color:var(--ink)}
+.cmx.del:hover{color:var(--bad)}
+.cmx svg{width:12px;height:12px}
+
+/* Create a row of type gears below the column placeholder: text/select/multi-select three icons side by side, the selected gear has .on */
+.mi-in.ctrow{display:flex;gap:6px;padding-bottom:0}
+.ctbtn{flex:1;border:1px solid var(--sep2);background:var(--field);color:var(--ter);cursor:pointer;padding:5px 0;border-radius:var(--r-sm);display:grid;place-items:center}
+.ctbtn:hover{color:var(--ink)}
+.ctbtn.on{background:var(--hover);border-color:var(--sec);color:var(--ink)}
+.ctbtn svg{width:12px;height:12px}
+/* Options: Spread below the column rows and indent one level more than the column rows; the fold button will not be visible until it hovers with the rows, otherwise it will not be found */
+.cmx.optx{opacity:1;pointer-events:auto}
+/* Column row labels start from 10px padding + 13px tick + 10px spacing = 33px, and option rows are indented 20px more */
+.mi.optrow{padding-left:53px;font-size:12px;color:var(--sec)}
+.mi.optrow .cl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.mi.optrow:hover .cmx{opacity:1;pointer-events:auto}
+.mi.optrow.optnone{color:var(--ter);cursor:default}
+/* Change the type: the three gears are spread out under the column row, and the starting point of the button is aligned with the text of the option row; when spread out, the button at the end of the row always appears */
+.typerow{padding-left:45px}
+.cmx.typex.on{opacity:1;pointer-events:auto;color:var(--ink)}
+/* Grid selector: one option per line, leaving a groove for the check at the beginning of the line */
+.ctxmenu.drop .rrow.opt{display:flex;align-items:center;gap:8px}
+.ctxmenu.drop .rrow.opt .ck{width:13px;display:flex;align-items:center;flex-shrink:0}
+
+/* Delete columns at the end of a row: usually not visible, only appears when the row is hovered */
+.rowx{border:0;background:transparent;color:var(--ter);cursor:pointer;padding:2px;border-radius:var(--r-sm);display:grid;place-items:center;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out);margin:0 auto}
+.ptable tbody tr:hover .rowx,.rowx:focus-visible{opacity:1;pointer-events:auto}
+.ptable tbody tr:has(.stchip[data-state="open"]) .rowx{opacity:1}
+.rowx:hover{background:var(--hover);color:var(--bad)}
+.rowx svg{width:13px;height:13px}
+
+/* The right-click menu of the paper row is hung on the shared ContextMenu. Here only the width of the business menu is set. */
+.paper-row-menu{min-width:168px}
+
+
+/* Paper details: Full height right column, tables and footers give way as a whole. */
+.paper-detail-slot{--detail-panel-width:360px;top:46px;right:0;bottom:0;border-left:1px solid var(--sep);
+  background:var(--content);z-index:5}
+.pdetail{height:100%;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:16px}
+.desk-body.libview,.desk-foot{transition:margin-right var(--t-slow) var(--e-inout)}
+.desk-body.withdetail,.desk-foot.withdetail{margin-right:360px}
+.pd-h{display:flex;align-items:flex-start;gap:8px;margin-bottom:12px}
+.pd-t{font-size:var(--fs-read);font-weight:700;line-height:var(--lh-ui);flex:1;min-width:0}
+.pdetail .wkprops{grid-template-columns:52px 1fr;font-size:12px}
+.pdetail>.paper-meta{height:auto;margin:0 -16px -16px}
+.paper-reading-summary{margin-top:16px}
+.paper-reading-summary .paper-meta-list{padding:0}
+.paper-reading-summary .lm{font-size:12px;color:var(--ter)}
+.paper-reading-summary button.lm{border:0;background:transparent;padding:6px 0;cursor:pointer}
+
+/*
+ * The gear at the end of the grouping column: The same button is set as the column in the header, but it is always visible; when it is full, it will change to a new line, so as not to break the top column of the library.
+ * Line breaks are only given to this one in the top bar of the library, and .feedbar of .filters itself is also used in the dynamic screen.
+ */
+.libbar .filters{align-items:center;flex-wrap:wrap}
+/* The toolbar geometric position does not change when the status copy is switched from "reading status" to "unread" or other values. */
+.libbar .read-state-filter{width:78px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/*
+ * Use inherit instead of auto for pointer-events: usually the default value auto is inherited from the parent,
+ * When the entire page is disabled, it inherits none and is disabled together.
+ */
+.colbtn.grpgear{opacity:1;pointer-events:inherit}
+
+/* Research Map is a read-only peer view of the table. It composes the shared list and segmented
+ * controls; these rules only define its two-column domain layout and information hierarchy. */
+.research-map{display:flex;min-height:0;flex:1;flex-direction:column;gap:14px;overflow:auto;padding:2px 2px 18px}
+.research-map-intro{display:flex;align-items:flex-start;gap:24px;padding:16px 18px;border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card)}
+.research-map-copy{min-width:0;flex:1}
+.research-map-title{display:flex;align-items:center;gap:8px;font-size:var(--fs-read)}
+.research-map-title .tagchip{margin:0;font-weight:400}
+.research-map-copy p{max-width:720px;margin:6px 0 0;color:var(--sec);font-size:var(--fs-sm);line-height:var(--lh-read)}
+.research-map-stats{display:flex;flex:0 0 auto;align-items:stretch;gap:8px}
+.research-map-stats>span{display:flex;min-width:72px;flex-direction:column;gap:2px;padding:7px 10px;border-radius:var(--r-md);background:var(--field);color:var(--ter);font-size:var(--fs-cap)}
+.research-map-stats strong{color:var(--ink);font-size:var(--fs-read)}
+.research-map-limit{color:var(--ter);font-size:var(--fs-sm)}
+.research-map-layout{display:grid;min-height:0;grid-template-columns:minmax(220px,310px) minmax(0,1fr);gap:16px;align-items:start}
+.research-map-groups{min-width:0}
+.research-map-group{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;min-height:54px;padding:9px 12px}
+.research-map-group.is-selected{background:var(--hover);box-shadow:inset 3px 0 0 var(--accent)}
+.research-map-group-copy{display:flex;min-width:0;flex-direction:column;gap:3px}
+.research-map-group-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-base)}
+.research-map-group-copy>span{color:var(--ter);font-size:var(--fs-cap)}
+.research-map-count{min-width:28px;padding:2px 7px;border-radius:var(--r-full);background:var(--field);color:var(--sec);font-size:var(--fs-sm);text-align:center}
+.research-map-detail{min-width:0;border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);overflow:hidden}
+.research-map-detail-head{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-bottom:1px solid var(--sep2)}
+.research-map-detail-head>div{display:flex;min-width:0;flex:1;flex-direction:column;gap:3px}
+.research-map-detail-head strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-read)}
+.research-map-detail-head>div>span,.research-map-readonly{color:var(--ter);font-size:var(--fs-cap)}
+.research-map-readonly{flex:0 0 auto;padding-top:2px}
+.research-map-papers{padding:0 16px;--structured-list-row-height:78px}
+.research-map-paper{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px;min-height:78px;padding:10px 0}
+.research-map-paper-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.research-map-paper-meta{color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
+.research-map-why{display:flex;grid-column:1/-1;align-items:center;gap:4px;min-width:0;color:var(--ter);font-size:var(--fs-cap);overflow:hidden;white-space:nowrap;mask-image:var(--clipfade)}
+.research-map-why>.tagchip{margin:0;font-size:var(--fs-cap)}
+
+@media (max-width:900px){
+  .research-map-intro{flex-direction:column}.research-map-stats{width:100%}.research-map-stats>span{flex:1}
+  .research-map-layout{grid-template-columns:1fr}.research-map-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .research-map-groups>.structured-row:nth-child(2){border-top:0}
+}

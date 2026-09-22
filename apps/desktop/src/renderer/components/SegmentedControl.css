@@ -1,0 +1,13 @@
+.segmented-control{display:inline-flex;align-items:center;gap:6px;min-width:0}
+.segmented-control>button{border:1px solid var(--sep);background:var(--field);color:var(--sec);
+  font-family:var(--sans);font-size:var(--fs-sm);padding:3px 10px;border-radius:var(--r-md);cursor:pointer;
+  transition:background-color var(--t-fast) var(--e-out),border-color var(--t-fast) var(--e-out)}
+.segmented-control--sm>button{padding:2px 8px}
+:where(.segmented-control>button):hover{color:var(--ink);
+  background-image:linear-gradient(var(--hover),var(--hover));border-color:var(--sep-strong)}
+.segmented-control>button.on{background:var(--accent-solid);border-color:var(--accent-solid);
+  color:var(--on-accent);font-weight:600}
+.segmented-control>button:focus-visible{outline:0;box-shadow:inset 0 0 0 1px var(--accent)}
+.segmented-control>button:disabled{cursor:default;opacity:.5}
+.segmented-control>button:active{background-image:linear-gradient(var(--press),var(--press))}
+.segmented-control>button.on:active{background-image:linear-gradient(var(--press-solid),var(--press-solid))}

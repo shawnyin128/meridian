@@ -1,0 +1,1629 @@
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Callable, Iterable, Literal
+
+
+CODEX_ROUTING_EVAL_SCHEMA_VERSION = "meridian.codex_routing_eval.v1"
+CODEX_LAB_GROUNDING_EVAL_SCHEMA_VERSION = "meridian.codex_lab_grounding_eval.v1"
+CODEX_RESEARCH_AGENT_CONTRACT_EVAL_SCHEMA_VERSION = "meridian.codex_research_agent_contract_eval.v1"
+CODEX_LAB_REPO_STARTUP_EVAL_SCHEMA_VERSION = "meridian.codex_lab_repo_startup_eval.v1"
+
+CommandRunner = Callable[[list[str], Path, float, "str | None"], subprocess.CompletedProcess[str]]
+EvalAgent = Literal["codex", "claude"]
+
+
+@dataclass(frozen=True)
+class CodexRoutingEvalResult:
+    summary_path: Path
+    report_path: Path
+    total_cases: int
+    passed_cases: int
+    failed_cases: int
+
+
+def run_codex_routing_eval(
+    *,
+    cases_path: Path,
+    out_dir: Path,
+    repo_root: Path,
+    agent: EvalAgent = "codex",
+    codex_bin: str = "codex",
+    claude_bin: str = "claude",
+    model: str | None = None,
+    profile: str | None = None,
+    case_ids: list[str] | None = None,
+    limit: int | None = None,
+    timeout: float = 300.0,
+    overwrite: bool = False,
+    isolate_config: bool = True,
+    runner: CommandRunner | None = None,
+) -> CodexRoutingEvalResult:
+    if out_dir.exists() and any(out_dir.iterdir()) and not overwrite:
+        raise FileExistsError(f"codex routing eval output directory already exists: {out_dir}")
+    if out_dir.exists() and overwrite:
+        shutil.rmtree(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    selected_cases = list(_select_cases(_load_cases(cases_path), case_ids=case_ids, limit=limit))
+    schema_path = out_dir / "codex-routing-output.schema.json"
+    schema_path.write_text(json.dumps(_output_schema(), indent=2) + "\n", encoding="utf-8")
+
+    command_runner = runner or _default_runner
+    case_results: list[dict[str, Any]] = []
+    for case in selected_cases:
+        case_id = str(case["id"])
+        case_dir = out_dir / case_id
+        case_dir.mkdir(parents=True, exist_ok=True)
+        case_snapshot = case_dir / "case.json"
+        case_snapshot.write_text(json.dumps(case, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+        prompt_path = case_dir / "prompt.md"
+        prompt = build_routing_prompt(case)
+        prompt_path.write_text(prompt, encoding="utf-8")
+
+        last_message_path = case_dir / "last-message.json"
+        events_path = case_dir / "events.jsonl"
+        stderr_path = case_dir / "stderr.txt"
+        argv = _build_agent_argv(
+            agent=agent,
+            codex_bin=codex_bin,
+            claude_bin=claude_bin,
+            repo_root=repo_root,
+            schema_path=schema_path,
+            last_message_path=last_message_path,
+            model=model,
+            profile=profile,
+            isolate_config=isolate_config,
+        )
+        completed = command_runner(argv, repo_root, timeout, prompt)
+        events_path.write_text(completed.stdout or "", encoding="utf-8")
+        stderr_path.write_text(completed.stderr or "", encoding="utf-8")
+
+        response, parse_error = _resolve_agent_response(
+            agent=agent,
+            completed=completed,
+            last_message_path=last_message_path,
+        )
+        verdict = _score_case(case=case, response=response, returncode=completed.returncode, parse_error=parse_error)
+        result = {
+            "case_id": case_id,
+            "suite": case.get("suite"),
+            "polarity": case.get("polarity"),
+            "risk": case.get("risk"),
+            "returncode": completed.returncode,
+            "command": _display_command(agent, argv),
+            "prompt_path": str(prompt_path),
+            "events_path": str(events_path),
+            "stderr_path": str(stderr_path),
+            "last_message_path": str(last_message_path),
+            "response": response,
+            "parse_error": parse_error,
+            "verdict": verdict,
+        }
+        (case_dir / "result.json").write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        case_results.append(result)
+
+    passed = sum(1 for item in case_results if item["verdict"]["decision"] == "pass")
+    failed = len(case_results) - passed
+    summary = {
+        "schema_version": CODEX_ROUTING_EVAL_SCHEMA_VERSION,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "cases_path": str(cases_path),
+        "repo_root": str(repo_root),
+        "agent": agent,
+        "codex_bin": codex_bin,
+        "claude_bin": claude_bin,
+        "model": model,
+        "profile": profile,
+        "isolate_config": isolate_config,
+        "total_cases": len(case_results),
+        "passed_cases": passed,
+        "failed_cases": failed,
+        "pass_rate": (passed / len(case_results)) if case_results else 0.0,
+        "groups": _summarize_groups(case_results),
+        "case_results": [
+            {
+                "case_id": item["case_id"],
+                "suite": item.get("suite"),
+                "polarity": item.get("polarity"),
+                "risk": item.get("risk"),
+                "decision": item["verdict"]["decision"],
+                "expected_skill": item["verdict"]["expected_skill"],
+                "selected_entry": item["verdict"].get("selected_entry"),
+                "expected_routing": item["verdict"].get("expected_routing"),
+                "selected_routing": item["verdict"].get("selected_routing"),
+                "failures": item["verdict"]["failures"],
+                "result_path": str(out_dir / str(item["case_id"]) / "result.json"),
+            }
+            for item in case_results
+        ],
+    }
+    summary_path = out_dir / "summary.json"
+    report_path = out_dir / "report.md"
+    summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    report_path.write_text(_render_report(summary), encoding="utf-8")
+    return CodexRoutingEvalResult(
+        summary_path=summary_path,
+        report_path=report_path,
+        total_cases=len(case_results),
+        passed_cases=passed,
+        failed_cases=failed,
+    )
+
+
+def run_codex_lab_grounding_eval(
+    *,
+    cases_path: Path,
+    out_dir: Path,
+    repo_root: Path,
+    agent: EvalAgent = "codex",
+    codex_bin: str = "codex",
+    claude_bin: str = "claude",
+    model: str | None = None,
+    profile: str | None = None,
+    case_ids: list[str] | None = None,
+    limit: int | None = None,
+    timeout: float = 300.0,
+    overwrite: bool = False,
+    isolate_config: bool = True,
+    runner: CommandRunner | None = None,
+) -> CodexRoutingEvalResult:
+    if out_dir.exists() and any(out_dir.iterdir()) and not overwrite:
+        raise FileExistsError(f"codex lab grounding eval output directory already exists: {out_dir}")
+    if out_dir.exists() and overwrite:
+        shutil.rmtree(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    selected_cases = list(_select_cases(_load_cases(cases_path), case_ids=case_ids, limit=limit))
+    schema_path = out_dir / "codex-lab-grounding-output.schema.json"
+    schema_path.write_text(json.dumps(_lab_grounding_output_schema(), indent=2) + "\n", encoding="utf-8")
+
+    command_runner = runner or _default_runner
+    case_results: list[dict[str, Any]] = []
+    for case in selected_cases:
+        case_id = str(case["id"])
+        case_dir = out_dir / case_id
+        case_dir.mkdir(parents=True, exist_ok=True)
+        (case_dir / "case.json").write_text(json.dumps(case, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+        prompt_path = case_dir / "prompt.md"
+        prompt = build_lab_grounding_prompt(case)
+        prompt_path.write_text(prompt, encoding="utf-8")
+
+        last_message_path = case_dir / "last-message.json"
+        events_path = case_dir / "events.jsonl"
+        stderr_path = case_dir / "stderr.txt"
+        argv = _build_agent_argv(
+            agent=agent,
+            codex_bin=codex_bin,
+            claude_bin=claude_bin,
+            repo_root=repo_root,
+            schema_path=schema_path,
+            last_message_path=last_message_path,
+            model=model,
+            profile=profile,
+            isolate_config=isolate_config,
+        )
+        completed = command_runner(argv, repo_root, timeout, prompt)
+        events_path.write_text(completed.stdout or "", encoding="utf-8")
+        stderr_path.write_text(completed.stderr or "", encoding="utf-8")
+
+        response, parse_error = _resolve_agent_response(
+            agent=agent,
+            completed=completed,
+            last_message_path=last_message_path,
+        )
+        verdict = _score_lab_grounding_case(
+            case=case,
+            response=response,
+            returncode=completed.returncode,
+            parse_error=parse_error,
+        )
+        result = {
+            "case_id": case_id,
+            "suite": case.get("suite"),
+            "polarity": case.get("polarity"),
+            "risk": case.get("risk"),
+            "returncode": completed.returncode,
+            "command": _display_command(agent, argv),
+            "prompt_path": str(prompt_path),
+            "events_path": str(events_path),
+            "stderr_path": str(stderr_path),
+            "last_message_path": str(last_message_path),
+            "response": response,
+            "parse_error": parse_error,
+            "verdict": verdict,
+        }
+        (case_dir / "result.json").write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        case_results.append(result)
+
+    passed = sum(1 for item in case_results if item["verdict"]["decision"] == "pass")
+    failed = len(case_results) - passed
+    summary = {
+        "schema_version": CODEX_LAB_GROUNDING_EVAL_SCHEMA_VERSION,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "cases_path": str(cases_path),
+        "repo_root": str(repo_root),
+        "agent": agent,
+        "codex_bin": codex_bin,
+        "claude_bin": claude_bin,
+        "model": model,
+        "profile": profile,
+        "isolate_config": isolate_config,
+        "total_cases": len(case_results),
+        "passed_cases": passed,
+        "failed_cases": failed,
+        "pass_rate": (passed / len(case_results)) if case_results else 0.0,
+        "groups": _summarize_groups(case_results),
+        "case_results": [
+            {
+                "case_id": item["case_id"],
+                "suite": item.get("suite"),
+                "polarity": item.get("polarity"),
+                "risk": item.get("risk"),
+                "decision": item["verdict"]["decision"],
+                "expected_skill": item["verdict"]["expected_skill"],
+                "selected_entry": item["verdict"].get("selected_entry"),
+                "expected_routing": item["verdict"].get("expected_routing"),
+                "selected_routing": item["verdict"].get("selected_routing"),
+                "research_graph_check": item["verdict"].get("research_graph_check"),
+                "paper_wiki_check": item["verdict"].get("paper_wiki_check"),
+                "open_source_code_check": item["verdict"].get("open_source_code_check"),
+                "grounding_injection": item["verdict"].get("grounding_injection"),
+                "failures": item["verdict"]["failures"],
+                "result_path": str(out_dir / str(item["case_id"]) / "result.json"),
+            }
+            for item in case_results
+        ],
+    }
+    summary_path = out_dir / "summary.json"
+    report_path = out_dir / "report.md"
+    summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    report_path.write_text(_render_lab_grounding_report(summary), encoding="utf-8")
+    return CodexRoutingEvalResult(
+        summary_path=summary_path,
+        report_path=report_path,
+        total_cases=len(case_results),
+        passed_cases=passed,
+        failed_cases=failed,
+    )
+
+
+def run_codex_lab_repo_startup_eval(
+    *,
+    cases_path: Path,
+    out_dir: Path,
+    agent: EvalAgent = "codex",
+    codex_bin: str = "codex",
+    claude_bin: str = "claude",
+    model: str | None = None,
+    profile: str | None = None,
+    case_ids: list[str] | None = None,
+    limit: int | None = None,
+    timeout: float = 300.0,
+    overwrite: bool = False,
+    isolate_config: bool = True,
+    runner: CommandRunner | None = None,
+) -> CodexRoutingEvalResult:
+    if out_dir.exists() and any(out_dir.iterdir()) and not overwrite:
+        raise FileExistsError(f"codex lab repo startup eval output directory already exists: {out_dir}")
+    if out_dir.exists() and overwrite:
+        shutil.rmtree(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    selected_cases = list(_select_cases(_load_cases(cases_path), case_ids=case_ids, limit=limit))
+    schema_path = out_dir / "codex-lab-repo-startup-output.schema.json"
+    schema_path.write_text(json.dumps(_lab_repo_startup_output_schema(), indent=2) + "\n", encoding="utf-8")
+
+    command_runner = runner or _default_runner
+    case_results: list[dict[str, Any]] = []
+    for case in selected_cases:
+        case_id = str(case["id"])
+        case_dir = out_dir / case_id
+        case_dir.mkdir(parents=True, exist_ok=True)
+        (case_dir / "case.json").write_text(json.dumps(case, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+        repo_root = case_dir / "repo"
+        _write_lab_repo_startup_fixture(case, repo_root)
+
+        prompt_path = case_dir / "prompt.md"
+        prompt = build_lab_repo_startup_prompt(case)
+        prompt_path.write_text(prompt, encoding="utf-8")
+
+        last_message_path = case_dir / "last-message.json"
+        events_path = case_dir / "events.jsonl"
+        stderr_path = case_dir / "stderr.txt"
+        argv = _build_agent_argv(
+            agent=agent,
+            codex_bin=codex_bin,
+            claude_bin=claude_bin,
+            repo_root=repo_root.resolve(),
+            schema_path=schema_path.resolve(),
+            last_message_path=last_message_path.resolve(),
+            model=model,
+            profile=profile,
+            isolate_config=isolate_config,
+            ignore_rules=False,
+        )
+        completed = command_runner(argv, repo_root, timeout, prompt)
+        events_path.write_text(completed.stdout or "", encoding="utf-8")
+        stderr_path.write_text(completed.stderr or "", encoding="utf-8")
+
+        response, parse_error = _resolve_agent_response(
+            agent=agent,
+            completed=completed,
+            last_message_path=last_message_path,
+        )
+        verdict = _score_lab_repo_startup_case(
+            case=case,
+            response=response,
+            returncode=completed.returncode,
+            parse_error=parse_error,
+        )
+        result = {
+            "case_id": case_id,
+            "suite": case.get("suite"),
+            "polarity": case.get("polarity"),
+            "risk": case.get("risk"),
+            "repo_fixture": case.get("repo_fixture"),
+            "repo_root": str(repo_root),
+            "returncode": completed.returncode,
+            "command": _display_command(agent, argv),
+            "prompt_path": str(prompt_path),
+            "events_path": str(events_path),
+            "stderr_path": str(stderr_path),
+            "last_message_path": str(last_message_path),
+            "response": response,
+            "parse_error": parse_error,
+            "verdict": verdict,
+        }
+        (case_dir / "result.json").write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        case_results.append(result)
+
+    passed = sum(1 for item in case_results if item["verdict"]["decision"] == "pass")
+    failed = len(case_results) - passed
+    summary = {
+        "schema_version": CODEX_LAB_REPO_STARTUP_EVAL_SCHEMA_VERSION,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "cases_path": str(cases_path),
+        "agent": agent,
+        "codex_bin": codex_bin,
+        "claude_bin": claude_bin,
+        "model": model,
+        "profile": profile,
+        "isolate_config": isolate_config,
+        "total_cases": len(case_results),
+        "passed_cases": passed,
+        "failed_cases": failed,
+        "pass_rate": (passed / len(case_results)) if case_results else 0.0,
+        "groups": _summarize_groups(case_results),
+        "case_results": [
+            {
+                "case_id": item["case_id"],
+                "suite": item.get("suite"),
+                "polarity": item.get("polarity"),
+                "risk": item.get("risk"),
+                "repo_fixture": item.get("repo_fixture"),
+                "repo_root": item.get("repo_root"),
+                "decision": item["verdict"]["decision"],
+                "expected_skill": item["verdict"]["expected_skill"],
+                "selected_entry": item["verdict"].get("selected_entry"),
+                "expected_routing": item["verdict"].get("expected_routing"),
+                "selected_routing": item["verdict"].get("selected_routing"),
+                "agents_read": item["verdict"].get("agents_read"),
+                "meridian_dir_detected": item["verdict"].get("meridian_dir_detected"),
+                "grounding_injection": item["verdict"].get("grounding_injection"),
+                "failures": item["verdict"]["failures"],
+                "result_path": str(out_dir / str(item["case_id"]) / "result.json"),
+            }
+            for item in case_results
+        ],
+    }
+    summary_path = out_dir / "summary.json"
+    report_path = out_dir / "report.md"
+    summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    report_path.write_text(_render_lab_repo_startup_report(summary), encoding="utf-8")
+    return CodexRoutingEvalResult(
+        summary_path=summary_path,
+        report_path=report_path,
+        total_cases=len(case_results),
+        passed_cases=passed,
+        failed_cases=failed,
+    )
+
+
+def run_codex_research_agent_contract_eval(
+    *,
+    cases_path: Path,
+    out_dir: Path,
+    repo_root: Path,
+    agent: EvalAgent = "codex",
+    codex_bin: str = "codex",
+    claude_bin: str = "claude",
+    model: str | None = None,
+    profile: str | None = None,
+    case_ids: list[str] | None = None,
+    limit: int | None = None,
+    timeout: float = 300.0,
+    overwrite: bool = False,
+    isolate_config: bool = True,
+    runner: CommandRunner | None = None,
+) -> CodexRoutingEvalResult:
+    if out_dir.exists() and any(out_dir.iterdir()) and not overwrite:
+        raise FileExistsError(f"codex research-agent contract eval output directory already exists: {out_dir}")
+    if out_dir.exists() and overwrite:
+        shutil.rmtree(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    selected_cases = list(_select_cases(_load_cases(cases_path), case_ids=case_ids, limit=limit))
+    schema_path = out_dir / "codex-research-agent-contract-output.schema.json"
+    schema_path.write_text(json.dumps(_research_agent_contract_output_schema(), indent=2) + "\n", encoding="utf-8")
+
+    command_runner = runner or _default_runner
+    case_results: list[dict[str, Any]] = []
+    for case in selected_cases:
+        case_id = str(case["id"])
+        case_dir = out_dir / case_id
+        case_dir.mkdir(parents=True, exist_ok=True)
+        (case_dir / "case.json").write_text(json.dumps(case, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+        prompt_path = case_dir / "prompt.md"
+        prompt = build_research_agent_contract_prompt(case)
+        prompt_path.write_text(prompt, encoding="utf-8")
+
+        last_message_path = case_dir / "last-message.json"
+        events_path = case_dir / "events.jsonl"
+        stderr_path = case_dir / "stderr.txt"
+        argv = _build_agent_argv(
+            agent=agent,
+            codex_bin=codex_bin,
+            claude_bin=claude_bin,
+            repo_root=repo_root,
+            schema_path=schema_path,
+            last_message_path=last_message_path,
+            model=model,
+            profile=profile,
+            isolate_config=isolate_config,
+        )
+        completed = command_runner(argv, repo_root, timeout, prompt)
+        events_path.write_text(completed.stdout or "", encoding="utf-8")
+        stderr_path.write_text(completed.stderr or "", encoding="utf-8")
+
+        response, parse_error = _resolve_agent_response(
+            agent=agent,
+            completed=completed,
+            last_message_path=last_message_path,
+        )
+        verdict = _score_research_agent_contract_case(
+            case=case,
+            response=response,
+            returncode=completed.returncode,
+            parse_error=parse_error,
+        )
+        result = {
+            "case_id": case_id,
+            "suite": case.get("suite"),
+            "polarity": case.get("polarity"),
+            "risk": case.get("risk"),
+            "returncode": completed.returncode,
+            "command": _display_command(agent, argv),
+            "prompt_path": str(prompt_path),
+            "events_path": str(events_path),
+            "stderr_path": str(stderr_path),
+            "last_message_path": str(last_message_path),
+            "response": response,
+            "parse_error": parse_error,
+            "verdict": verdict,
+        }
+        (case_dir / "result.json").write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        case_results.append(result)
+
+    passed = sum(1 for item in case_results if item["verdict"]["decision"] == "pass")
+    failed = len(case_results) - passed
+    summary = {
+        "schema_version": CODEX_RESEARCH_AGENT_CONTRACT_EVAL_SCHEMA_VERSION,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "cases_path": str(cases_path),
+        "repo_root": str(repo_root),
+        "agent": agent,
+        "codex_bin": codex_bin,
+        "claude_bin": claude_bin,
+        "model": model,
+        "profile": profile,
+        "isolate_config": isolate_config,
+        "total_cases": len(case_results),
+        "passed_cases": passed,
+        "failed_cases": failed,
+        "pass_rate": (passed / len(case_results)) if case_results else 0.0,
+        "groups": _summarize_groups(case_results),
+        "case_results": [
+            {
+                "case_id": item["case_id"],
+                "suite": item.get("suite"),
+                "polarity": item.get("polarity"),
+                "risk": item.get("risk"),
+                "decision": item["verdict"]["decision"],
+                "expected_skill": item["verdict"]["expected_skill"],
+                "selected_entry": item["verdict"].get("selected_entry"),
+                "expected_routing": item["verdict"].get("expected_routing"),
+                "selected_routing": item["verdict"].get("selected_routing"),
+                "implementation_integrity_gate": item["verdict"].get("implementation_integrity_gate"),
+                "blocker_reporting": item["verdict"].get("blocker_reporting"),
+                "no_silent_fallback": item["verdict"].get("no_silent_fallback"),
+                "style_distillation": item["verdict"].get("style_distillation"),
+                "requires_user_approval_before_profile_write": item["verdict"].get(
+                    "requires_user_approval_before_profile_write"
+                ),
+                "forbids_full_code_storage": item["verdict"].get("forbids_full_code_storage"),
+                "failures": item["verdict"]["failures"],
+                "result_path": str(out_dir / str(item["case_id"]) / "result.json"),
+            }
+            for item in case_results
+        ],
+    }
+    summary_path = out_dir / "summary.json"
+    report_path = out_dir / "report.md"
+    summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    report_path.write_text(_render_research_agent_contract_report(summary), encoding="utf-8")
+    return CodexRoutingEvalResult(
+        summary_path=summary_path,
+        report_path=report_path,
+        total_cases=len(case_results),
+        passed_cases=passed,
+        failed_cases=failed,
+    )
+
+
+def _summarize_groups(case_results: list[dict[str, Any]]) -> dict[str, dict[str, dict[str, Any]]]:
+    groups: dict[str, dict[str, dict[str, Any]]] = {"suite": {}, "polarity": {}, "risk": {}}
+    for item in case_results:
+        decision = item["verdict"]["decision"]
+        for field in groups:
+            value = item.get(field)
+            if not value:
+                continue
+            bucket = groups[field].setdefault(
+                str(value),
+                {"total_cases": 0, "passed_cases": 0, "failed_cases": 0, "pass_rate": 0.0},
+            )
+            bucket["total_cases"] += 1
+            if decision == "pass":
+                bucket["passed_cases"] += 1
+            else:
+                bucket["failed_cases"] += 1
+    for buckets in groups.values():
+        for bucket in buckets.values():
+            total = bucket["total_cases"]
+            bucket["pass_rate"] = (bucket["passed_cases"] / total) if total else 0.0
+    return groups
+
+
+def build_codex_exec_argv(
+    *,
+    codex_bin: str,
+    repo_root: Path,
+    schema_path: Path,
+    last_message_path: Path,
+    model: str | None = None,
+    profile: str | None = None,
+    isolate_config: bool = True,
+    ignore_rules: bool = True,
+) -> list[str]:
+    argv = [
+        codex_bin,
+        "exec",
+        "--json",
+        "--ephemeral",
+        "--sandbox",
+        "read-only",
+    ]
+    if isolate_config:
+        argv.append("--ignore-user-config")
+        if ignore_rules:
+            argv.append("--ignore-rules")
+    argv.extend(
+        [
+            "-C",
+            str(repo_root),
+            "--output-schema",
+            str(schema_path),
+            "--output-last-message",
+            str(last_message_path),
+        ]
+    )
+    if model:
+        argv.extend(["--model", model])
+    if profile:
+        argv.extend(["--profile", profile])
+    argv.append("-")
+    return argv
+
+
+# Read-only tool allowlist for headless Claude runs, matching Codex's `--sandbox read-only`:
+# the Meridian MCP tools that only read, skill loading, and file reads. Every other tool call,
+# including shell commands and the MCP tools that write, is denied without a prompt in `-p` mode.
+_CLAUDE_MCP_SERVER = "mcp__plugin_meridian_meridian-paper-wiki"
+_CLAUDE_MCP_READ_TOOLS: tuple[str, ...] = (
+    "capabilities",
+    "context",
+    "read",
+    "trace",
+    "audit",
+    "workspace_status",
+    "workspace_plan",
+    "workspace_changes",
+    "workspace_idea",
+    "lab_graph",
+    "lab_node",
+)
+CLAUDE_READ_ONLY_TOOLS: tuple[str, ...] = (
+    *(f"{_CLAUDE_MCP_SERVER}__meridian_{tool}" for tool in _CLAUDE_MCP_READ_TOOLS),
+    "Skill",
+    "Read",
+    "Grep",
+    "Glob",
+)
+
+
+def build_claude_print_argv(
+    *,
+    claude_bin: str,
+    schema_path: Path,
+    model: str | None = None,
+    max_turns: int | None = None,
+) -> list[str]:
+    argv = [
+        claude_bin,
+        "-p",
+        "--output-format",
+        "json",
+        "--json-schema",
+        # One line: a Windows command shim ends the command line at the first newline.
+        json.dumps(json.loads(schema_path.read_text(encoding="utf-8")), separators=(",", ":")),
+        "--allowedTools",
+        ",".join(CLAUDE_READ_ONLY_TOOLS),
+    ]
+    if model:
+        argv.extend(["--model", model])
+    if max_turns is not None:
+        argv.extend(["--max-turns", str(max_turns)])
+    return argv
+
+
+def _build_agent_argv(
+    *,
+    agent: EvalAgent,
+    codex_bin: str,
+    claude_bin: str,
+    repo_root: Path,
+    schema_path: Path,
+    last_message_path: Path,
+    model: str | None,
+    profile: str | None,
+    isolate_config: bool,
+    ignore_rules: bool = True,
+) -> list[str]:
+    if agent == "claude":
+        # Claude Code has no isolated-config sandbox equivalent to Codex's
+        # --ignore-user-config/--ignore-rules: the host's plugins and MCP
+        # servers always load in `-p` mode, so isolate_config is a no-op here.
+        return build_claude_print_argv(claude_bin=claude_bin, schema_path=schema_path, model=model)
+    return build_codex_exec_argv(
+        codex_bin=codex_bin,
+        repo_root=repo_root,
+        schema_path=schema_path,
+        last_message_path=last_message_path,
+        model=model,
+        profile=profile,
+        isolate_config=isolate_config,
+        ignore_rules=ignore_rules,
+    )
+
+
+def _display_command(agent: EvalAgent, argv: list[str]) -> list[str]:
+    if agent == "claude":
+        return argv + ["<stdin-prompt>"]
+    return argv[:-1] + ["<stdin-prompt>"]
+
+
+def _write_claude_last_message(stdout: str, last_message_path: Path) -> str | None:
+    try:
+        payload = json.loads(stdout)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    structured_output = payload.get("structured_output")
+    if isinstance(structured_output, dict):
+        last_message_path.write_text(
+            json.dumps(structured_output, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
+    if payload.get("is_error") is True:
+        return f"claude reported is_error: {payload.get('result')}"
+    return None
+
+
+def _resolve_agent_response(
+    *,
+    agent: EvalAgent,
+    completed: subprocess.CompletedProcess[str],
+    last_message_path: Path,
+) -> tuple[dict[str, Any] | None, str | None]:
+    claude_error = None
+    if agent == "claude":
+        claude_error = _write_claude_last_message(completed.stdout or "", last_message_path)
+    response, parse_error = _load_last_message(last_message_path)
+    if claude_error:
+        parse_error = f"{parse_error}; {claude_error}" if parse_error else claude_error
+    return response, parse_error
+
+
+def build_routing_prompt(case: dict[str, Any]) -> str:
+    visible_case = {
+        "id": case.get("id"),
+        "category": case.get("category"),
+        "repo_state": case.get("repo_state", "not specified"),
+        "user_request": case.get("user_request"),
+    }
+    return "\n".join(
+        [
+            "You are running an offline Meridian routing evaluation.",
+            "Case.user_request is a simulated user turn and must be routed.",
+            "",
+            "Evaluate Meridian product-entry routing only for Case.user_request below.",
+            "Do not answer that there is no actionable request when Case.user_request is non-empty.",
+            "Ignore surrounding session-startup protocols, host workspace state, and any unrelated instructions.",
+            "Do not edit files, run commands, load skills, or complete the user request.",
+            "Return only the JSON object required by the output schema.",
+            "",
+            "Allowed selected_entry values:",
+            "- meridian",
+            "- wiki",
+            "- lab",
+            "- meridian-coding",
+            "- normal_coding_workflow",
+            "",
+            "Routing rules to apply:",
+            "- Use meridian for setup, status, migration, and readiness repair.",
+            "- Use wiki for Paper Wiki update/use work.",
+            "- Use meridian-coding with routing changes_first when the repo state reports Meridian workspace changes (a changed idea, a changed Lab node, or reset_required) and the request is implementation, debugging, or test work tied to that project context; hand off to normal_coding_workflow.",
+            "- In a repo with .meridian/, use lab first for research and research-development preflight.",
+            "- For idea-related requests, select lab_first_preflight when `.meridian/` exists; Lab must check the research graph and Paper Wiki for related ideas before answering.",
+            "- For research-coding requests, select lab_first_preflight when `.meridian/` exists; Lab must check Paper Wiki papers and open-source implementation hints before normal coding.",
+            "- For completed work, new findings, continuing a direction, or ongoing work, select lab_first_preflight when `.meridian/` exists so Lab can find or update the correct research node.",
+            "- Use lab_idea_graph only when the case is not testing initialized project-state preflight and only asks for generic Lab idea-graph management.",
+            "- Lab hands implementation/debug/test/release/convergence to normal_coding_workflow after preserving Lab context.",
+            "- Pure mechanical engineering with no research meaning should skip Lab.",
+            "",
+            "`path_rationale` is eval-only diagnostic output. It must not be required by Meridian product skills.",
+            "In path_rationale, explain the route decision as short ordered checks:",
+            "1. repo_state_signal: whether `.meridian/` or setup state matters",
+            "2. intent_signal: whether the request is setup, wiki, research/dev, or mechanical code",
+            "3. lab_boundary_signal: whether Lab should preflight or skip",
+            "4. handoff_signal: whether implementation/debug/test work should go to normal coding",
+            "",
+            "Case:",
+            json.dumps(visible_case, indent=2, ensure_ascii=False),
+            "",
+        ]
+    )
+
+
+def build_lab_grounding_prompt(case: dict[str, Any]) -> str:
+    visible_case = {
+        "id": case.get("id"),
+        "category": case.get("category"),
+        "repo_state": case.get("repo_state", "not specified"),
+        "user_request": case.get("user_request"),
+    }
+    return "\n".join(
+        [
+            "You are running an offline Meridian Lab grounding evaluation.",
+            "Case.user_request is a simulated user turn and must be routed.",
+            "",
+            "Evaluate only the routing and pre-coding grounding obligations for Case.user_request below.",
+            "Do not edit files, run commands, load skills, retrieve real wiki pages, or complete the user request.",
+            "Return only the JSON object required by the output schema.",
+            "",
+            "Allowed selected_entry values:",
+            "- meridian",
+            "- wiki",
+            "- lab",
+            "- normal_coding_workflow",
+            "",
+            "Routing rules to apply:",
+            "- Use meridian for setup, status, migration, and readiness repair.",
+            "- Use wiki for Paper Wiki update/use work that is not attached to Lab research state.",
+            "- In a repo with .meridian/, research-bearing ideas, experiments, baselines, metrics, hypotheses, failure interpretation, and research-coded probes should use Lab-first preflight.",
+            "- Lab-first preflight should check the research graph when the request concerns ideas, nodes, active directions, completed work, evidence, or current work state.",
+            "- Lab-first preflight should check Paper Wiki prior when the request concerns ideas, feasibility, related work, baselines, metrics, evaluation design, failure modes, probes, method implementation, or recovering why an active research node was designed that way.",
+            "- Research-coding requests should check whether related papers mention open-source implementations or code-level patterns before normal coding starts.",
+            "- Probe observation or counter selection should check code-level prior when the user asks to prepare implementation work, not only when they say 'write code'.",
+            "- For actual implementation/debug/test work, Lab should produce a Research Grounding Injection and hand the work to normal_coding_workflow.",
+            "- Pure mechanical engineering with no research meaning should skip Lab, Paper Wiki, and grounding injection.",
+            "- Setup and ordinary Paper Wiki requests should not be forced through Lab merely because Meridian exists.",
+            "",
+            "`path_rationale` is eval-only diagnostic output. It must not be required by Meridian product skills.",
+            "In path_rationale, explain the route decision as short ordered checks:",
+            "1. repo_state_signal: whether `.meridian/` or setup state matters",
+            "2. intent_signal: whether the request is setup, wiki, research/dev, or mechanical code",
+            "3. graph_signal: whether the Lab research graph should be checked",
+            "4. wiki_signal: whether Paper Wiki prior should be checked",
+            "5. code_prior_signal: whether open-source implementation/code grounding should be checked",
+            "6. grounding_injection_signal: whether a Research Grounding Injection is needed before coding",
+            "7. handoff_signal: whether work stays in Lab/wiki/meridian or hands to normal coding",
+            "",
+            "Case:",
+            json.dumps(visible_case, indent=2, ensure_ascii=False),
+            "",
+        ]
+    )
+
+
+def build_lab_repo_startup_prompt(case: dict[str, Any]) -> str:
+    visible_case = {
+        "id": case.get("id"),
+        "user_request": case.get("user_request"),
+    }
+    return "\n".join(
+        [
+            "You are running an offline Meridian Lab repo-startup evaluation.",
+            "Case.user_request is a simulated user turn in the current working directory.",
+            "",
+            "Inspect the current working directory files as the repo-state source of truth.",
+            "Do not rely on a prompt-provided repository-state hint; this eval intentionally omits one.",
+            "Before returning, use read-only file inspection when available: read AGENTS.md and check whether `.meridian/` exists.",
+            "Do not edit files, retrieve real wiki pages, or complete the user request.",
+            "Return only the JSON object required by the output schema.",
+            "",
+            "Allowed selected_entry values:",
+            "- meridian",
+            "- wiki",
+            "- lab",
+            "- normal_coding_workflow",
+            "",
+            "Repo startup rules:",
+            "- If AGENTS.md says this repo is Meridian Lab-initialized and `.meridian/` exists, research-bearing coding, experiments, evals, methods, benchmarks, active directions, evidence, or findings should route through Lab first.",
+            "- If Lab routes to implementation/debug/test work, set grounding_injection true and hand off to normal_coding_workflow.",
+            "- If Lab owns the whole request, such as recovering an active research node or attaching evidence to a node, use routing lab_idea_graph, set grounding_injection false, and leave handoff_to empty.",
+            "- Pure mechanical edits and general programming explanations should skip Lab even if `.meridian/` exists.",
+            "- Setup/status/MCP repair requests should select meridian.",
+            "- A plain repo without `.meridian/` should not be treated as Lab-initialized solely because the user asks for a bug fix.",
+            "- handoff_to names only downstream owners after selected_entry finishes; never include selected_entry itself.",
+            "- For direct meridian, lab_idea_graph, wiki, or normal_coding_workflow decisions, handoff_to must be empty.",
+            "- For Lab-first implementation/debug/test decisions, handoff_to must be exactly [\"normal_coding_workflow\"].",
+            "",
+            "Set repo_file_signals from real file inspection:",
+            "- read_agents: true only if you inspected or used AGENTS.md content.",
+            "- detected_meridian_dir: true only if you detected `.meridian/` in the working directory.",
+            "",
+            "`path_rationale` is eval-only diagnostic output. It must not be required by Meridian product skills.",
+            "In path_rationale, explain the decision as short ordered checks:",
+            "1. repo_file_signal: what repo files were detected",
+            "2. intent_signal: whether the user request is research-bearing, mechanical, setup, or general",
+            "3. lab_boundary_signal: whether Lab should preflight or skip",
+            "4. grounding_injection_signal: whether implementation needs Lab grounding first",
+            "5. handoff_signal: downstream owner after routing",
+            "",
+            "Case:",
+            json.dumps(visible_case, indent=2, ensure_ascii=False),
+            "",
+        ]
+    )
+
+
+def build_research_agent_contract_prompt(case: dict[str, Any]) -> str:
+    visible_case = {
+        "id": case.get("id"),
+        "category": case.get("category"),
+        "repo_state": case.get("repo_state", "not specified"),
+        "user_request": case.get("user_request"),
+    }
+    return "\n".join(
+        [
+            "You are running an offline Meridian research-agent contract evaluation.",
+            "Case.user_request is a simulated user turn and must be routed.",
+            "",
+            "Evaluate only routing, Lab contract obligations, and pre-coding integrity obligations.",
+            "Do not edit files, run commands, load skills, retrieve real wiki pages, or complete the user request.",
+            "Return only the JSON object required by the output schema.",
+            "",
+            "Allowed selected_entry values:",
+            "- meridian",
+            "- wiki",
+            "- lab",
+            "- normal_coding_workflow",
+            "",
+            "Contract rules:",
+            "- Use Lab first for research-development work in repos with .meridian/.",
+            "- For Lab-owned idea graph, research-node, experiment-state, evidence attachment, or next-step planning work with no immediate code edit, select lab and route lab_idea_graph.",
+            "- `handoff_to` names the next owner after the selected entry, not the selected entry itself.",
+            "- For Lab-first implementation, debugging, test, experiment, release, or convergence work, selected_entry stays lab and routing stays lab_first_preflight, but handoff_to must be exactly [\"normal_coding_workflow\"] because Lab prepares grounding and integrity context for the coding workflow.",
+            "- For direct meridian, wiki, normal_coding_workflow, or Lab-owned non-coding workflows, there is no downstream owner, so handoff_to must be empty.",
+            "- Code Style Distillation is a Lab workflow: when the user asks to learn, distill, remember, or infer coding style from code or explicit style feedback, select lab, route lab_first_preflight, set style_distillation true, and keep handoff_to empty unless immediate coding work is also requested.",
+            "- For Code Style Distillation from code samples, require blocker reporting and no silent fallback/profile pollution when named files, representative user-authored files, or exclusion boundaries cannot be proven.",
+            "- Do not set blocker_reporting or no_silent_fallback only because style_distillation is true; explicit user style feedback can be captured without those flags when there is no uncertain code-sample boundary.",
+            "- Use Implementation Integrity Gate when requested code work could silently fall back to legacy-only, fallback-only, partial, no-op, comment-marker, or swallowed-error success.",
+            "- Research probes, eval scripts, reproduction scripts, benchmark harnesses, and dataset builders should use the Implementation Integrity Gate when missing data, hidden defaults, placeholder outputs, or no-op success would make the result look complete.",
+            "- Do not treat every bug fix as a research contract task. Pure bug-only correctness requests such as crashes, exceptions, or wrong results should use normal_coding_workflow unless the user ties them to a research node, experiment, evaluation protocol, current-version behavior, benchmark/metric contract, or explicit fallback/no-op risk.",
+            "- Require blocker reporting when the primary current behavior cannot be implemented from available evidence.",
+            "- Set no_silent_fallback when the agent must forbid silent fallback or fake completion.",
+            "- Set requires_user_approval_before_profile_write for Code Style Distillation because durable coding-style profile writes require explicit user approval.",
+            "- Set forbids_full_code_storage for Code Style Distillation because profile updates must store distilled principles, not full code examples.",
+            "- Set structured_profile_merge for Code Style Distillation because profile updates should update matching existing principles or add distinct structured principles, not append raw notes.",
+            "- Set avoids_agents_profile_pollution for Code Style Distillation because durable user coding-style principles belong in ~/.meridian/coding-style.md and ~/.meridian/research-agent-principles.md, not new project AGENTS.md style sections.",
+            "- Set code_ref_considered_optional for Code Style Distillation when the agent should consider adding or referencing ~/.meridian/code-ref/ as optional style reference material. This is not a hard gate and absence of a ref is not failure.",
+            "- Do not require integrity gates for pure mechanical edits, setup, wiki ingest/retrieval, or non-coding explanations.",
+            "- For non-coding explanations with routing not_needed, handoff_to must be empty.",
+            "",
+            "Contract output booleans:",
+            "- implementation_integrity_gate",
+            "- blocker_reporting",
+            "- no_silent_fallback",
+            "- style_distillation",
+            "- requires_user_approval_before_profile_write",
+            "- forbids_full_code_storage",
+            "- structured_profile_merge",
+            "- avoids_agents_profile_pollution",
+            "- code_ref_considered_optional",
+            "",
+            "`path_rationale` is eval-only diagnostic output. It must not be required by Meridian product skills.",
+            "In path_rationale, explain the decision as short ordered checks:",
+            "1. repo_state_signal",
+            "2. intent_signal",
+            "3. research_contract_signal",
+            "4. implementation_integrity_signal",
+            "5. style_distillation_signal",
+            "6. handoff_signal",
+            "",
+            "Case:",
+            json.dumps(visible_case, indent=2, ensure_ascii=False),
+            "",
+        ]
+    )
+
+
+def _default_runner(
+    argv: list[str],
+    cwd: Path,
+    timeout: float,
+    stdin_text: str | None = None,
+) -> subprocess.CompletedProcess[str]:
+    executable = shutil.which(argv[0])
+    effective_argv = argv
+    if os.name == "nt" and executable:
+        lowered = executable.lower()
+        if lowered.endswith(".ps1"):
+            powershell = shutil.which("powershell") or shutil.which("pwsh") or "powershell"
+            effective_argv = [powershell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", executable, *argv[1:]]
+        elif lowered.endswith((".cmd", ".bat")):
+            cmd = shutil.which("cmd") or "cmd"
+            effective_argv = [cmd, "/c", executable, *argv[1:]]
+    kwargs: dict[str, Any] = {"input": stdin_text} if stdin_text is not None else {"stdin": subprocess.DEVNULL}
+    return subprocess.run(
+        effective_argv,
+        cwd=cwd,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        capture_output=True,
+        timeout=timeout,
+        check=False,
+        **kwargs,
+    )
+
+
+def _load_cases(cases_path: Path) -> list[dict[str, Any]]:
+    cases: list[dict[str, Any]] = []
+    for line_number, line in enumerate(cases_path.read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        payload = json.loads(line)
+        if not isinstance(payload, dict):
+            raise ValueError(f"case line {line_number} is not a JSON object")
+        if "id" not in payload or "user_request" not in payload or "expected_skill" not in payload:
+            raise ValueError(f"case line {line_number} missing id, user_request, or expected_skill")
+        cases.append(payload)
+    return cases
+
+
+def _select_cases(
+    cases: list[dict[str, Any]],
+    *,
+    case_ids: list[str] | None,
+    limit: int | None,
+) -> Iterable[dict[str, Any]]:
+    selected = cases
+    if case_ids:
+        wanted = set(case_ids)
+        selected = [case for case in selected if str(case.get("id")) in wanted]
+        missing = sorted(wanted - {str(case.get("id")) for case in selected})
+        if missing:
+            raise ValueError(f"unknown case ids: {', '.join(missing)}")
+    if limit is not None:
+        if limit < 1:
+            raise ValueError("limit must be >= 1")
+        selected = selected[:limit]
+    return selected
+
+
+def _write_lab_repo_startup_fixture(case: dict[str, Any], repo_root: Path) -> None:
+    if repo_root.exists():
+        shutil.rmtree(repo_root)
+    repo_root.mkdir(parents=True, exist_ok=True)
+    fixture = str(case.get("repo_fixture") or "lab_repo")
+    if fixture == "lab_repo":
+        _write_lab_repo_fixture(repo_root)
+    elif fixture == "plain_repo":
+        _write_plain_repo_fixture(repo_root)
+    else:
+        raise ValueError(f"unknown lab repo startup fixture: {fixture}")
+
+
+def _write_lab_repo_fixture(repo_root: Path) -> None:
+    from meridian.lab import inject_meridian_agents_contract
+
+    meridian_root = repo_root / ".meridian"
+    (meridian_root / "threads").mkdir(parents=True, exist_ok=True)
+    (meridian_root / "experiments").mkdir(parents=True, exist_ok=True)
+    (meridian_root / "proposals").mkdir(parents=True, exist_ok=True)
+    (repo_root / "src").mkdir(parents=True, exist_ok=True)
+
+    (meridian_root / "state.md").write_text(
+        "\n".join(
+            [
+                "---",
+                "type: lab-state",
+                "active_thread: active-probe-direction",
+                "active_node: probe-next-step",
+                "---",
+                "# Meridian Lab State",
+                "",
+                "Active thread: [[threads/active-probe-direction]]",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (meridian_root / "threads/index.md").write_text(
+        "# Threads\n\n- [[active-probe-direction]]: implementation-ready probe direction.\n",
+        encoding="utf-8",
+    )
+    (meridian_root / "threads/active-probe-direction.md").write_text(
+        "\n".join(
+            [
+                "# Active Probe Direction",
+                "",
+                "node_id: probe-next-step",
+                "mode: unresolved",
+                "research_prior: needed",
+                "",
+                "Next action: implement the smallest probe after Lab grounding.",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (meridian_root / "experiments/index.md").write_text("# Experiments\n\nNo completed experiment yet.\n", encoding="utf-8")
+    (meridian_root / "proposals/index.md").write_text("# Proposals\n\nNo ready proposal yet.\n", encoding="utf-8")
+    (repo_root / "src/probe.py").write_text(
+        "def existing_probe_stub():\n    return {'status': 'not_started'}\n",
+        encoding="utf-8",
+    )
+    (repo_root / "README.md").write_text("# Lab Startup Fixture\n\nResearch repo fixture for Meridian Lab routing eval.\n", encoding="utf-8")
+    (repo_root / "AGENTS.md").write_text("# Project Rules\n\nPreserve local research state.\n\n", encoding="utf-8")
+    inject_meridian_agents_contract(repo_root)
+
+
+def _write_plain_repo_fixture(repo_root: Path) -> None:
+    (repo_root / "src").mkdir(parents=True, exist_ok=True)
+    (repo_root / "AGENTS.md").write_text("# Project Rules\n\nThis is a normal software repo.\n", encoding="utf-8")
+    (repo_root / "README.md").write_text("# Plain Repo Fixture\n\nNo Meridian Lab state.\n", encoding="utf-8")
+    (repo_root / "src/example.py").write_text("def add(left, right):\n    return left + right\n", encoding="utf-8")
+
+
+def _output_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["selected_entry", "routing", "handoff_to", "confidence", "reason", "path_rationale"],
+        "properties": {
+            "selected_entry": {"type": "string", "enum": ["meridian", "wiki", "lab", "meridian-coding", "normal_coding_workflow"]},
+            "routing": {
+                "type": "string",
+                "enum": [
+                    "setup_status",
+                    "changes_first",
+                    "update_wiki",
+                    "use_wiki",
+                    "lab_first_preflight",
+                    "lab_idea_graph",
+                    "normal_coding",
+                    "not_needed",
+                ],
+            },
+            "handoff_to": {
+                "type": "array",
+                "items": {"type": "string", "enum": ["meridian", "wiki", "lab", "normal_coding_workflow"]},
+            },
+            "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+            "reason": {"type": "string"},
+            "path_rationale": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["check", "observation", "effect"],
+                    "properties": {
+                        "check": {"type": "string"},
+                        "observation": {"type": "string"},
+                        "effect": {"type": "string"},
+                    },
+                },
+            },
+        },
+    }
+
+
+def _lab_grounding_output_schema() -> dict[str, Any]:
+    base = _output_schema()
+    properties = dict(base["properties"])
+    properties.update(
+        {
+            "research_graph_check": {"type": "boolean"},
+            "paper_wiki_check": {"type": "boolean"},
+            "open_source_code_check": {"type": "boolean"},
+            "grounding_injection": {"type": "boolean"},
+        }
+    )
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": [
+            "selected_entry",
+            "routing",
+            "research_graph_check",
+            "paper_wiki_check",
+            "open_source_code_check",
+            "grounding_injection",
+            "handoff_to",
+            "confidence",
+            "reason",
+            "path_rationale",
+        ],
+        "properties": properties,
+    }
+
+
+def _lab_repo_startup_output_schema() -> dict[str, Any]:
+    base = _output_schema()
+    properties = dict(base["properties"])
+    properties.update(
+        {
+            "repo_file_signals": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["read_agents", "detected_meridian_dir"],
+                "properties": {
+                    "read_agents": {"type": "boolean"},
+                    "detected_meridian_dir": {"type": "boolean"},
+                },
+            },
+            "grounding_injection": {"type": "boolean"},
+        }
+    )
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": [
+            "selected_entry",
+            "routing",
+            "repo_file_signals",
+            "grounding_injection",
+            "handoff_to",
+            "confidence",
+            "reason",
+            "path_rationale",
+        ],
+        "properties": properties,
+    }
+
+
+def _research_agent_contract_output_schema() -> dict[str, Any]:
+    base = _output_schema()
+    properties = dict(base["properties"])
+    properties.update(
+        {
+            "implementation_integrity_gate": {"type": "boolean"},
+            "blocker_reporting": {"type": "boolean"},
+            "no_silent_fallback": {"type": "boolean"},
+            "style_distillation": {"type": "boolean"},
+            "requires_user_approval_before_profile_write": {"type": "boolean"},
+            "forbids_full_code_storage": {"type": "boolean"},
+            "structured_profile_merge": {"type": "boolean"},
+            "avoids_agents_profile_pollution": {"type": "boolean"},
+            "code_ref_considered_optional": {"type": "boolean"},
+        }
+    )
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": [
+            "selected_entry",
+            "routing",
+            "implementation_integrity_gate",
+            "blocker_reporting",
+            "no_silent_fallback",
+            "style_distillation",
+            "requires_user_approval_before_profile_write",
+            "forbids_full_code_storage",
+            "structured_profile_merge",
+            "avoids_agents_profile_pollution",
+            "code_ref_considered_optional",
+            "handoff_to",
+            "confidence",
+            "reason",
+            "path_rationale",
+        ],
+        "properties": properties,
+    }
+
+
+def _load_last_message(path: Path) -> tuple[dict[str, Any] | None, str | None]:
+    if not path.exists():
+        return None, "last message file was not created"
+    text = path.read_text(encoding="utf-8").strip()
+    if not text:
+        return None, "last message file is empty"
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError as exc:
+        return None, f"last message is not JSON: {exc}"
+    if not isinstance(payload, dict):
+        return None, "last message JSON is not an object"
+    return payload, None
+
+
+def _score_case(
+    *,
+    case: dict[str, Any],
+    response: dict[str, Any] | None,
+    returncode: int,
+    parse_error: str | None,
+) -> dict[str, Any]:
+    failures: list[str] = []
+    expected_skill = str(case.get("expected_skill"))
+    expected_routing = case.get("expected_routing")
+    has_handoff_expectation = "handoff_to" in case
+    expected_handoffs = [str(item) for item in case.get("handoff_to", [])]
+    selected_entry = response.get("selected_entry") if response else None
+    selected_routing = response.get("routing") if response else None
+    selected_handoffs = [str(item) for item in (response.get("handoff_to") or [])] if response else []
+
+    if returncode != 0:
+        failures.append(f"codex exec returned {returncode}")
+    if parse_error:
+        failures.append(parse_error)
+    if selected_entry != expected_skill:
+        failures.append(f"selected_entry expected {expected_skill!r}, got {selected_entry!r}")
+    if expected_routing and selected_routing != expected_routing:
+        failures.append(f"routing expected {expected_routing!r}, got {selected_routing!r}")
+    if has_handoff_expectation:
+        for expected in expected_handoffs:
+            if expected not in selected_handoffs:
+                failures.append(f"handoff_to missing {expected!r}")
+        for selected in selected_handoffs:
+            if selected not in expected_handoffs:
+                failures.append(f"handoff_to unexpected {selected!r}")
+
+    return {
+        "decision": "pass" if not failures else "fail",
+        "expected_skill": expected_skill,
+        "selected_entry": selected_entry,
+        "expected_routing": expected_routing,
+        "selected_routing": selected_routing,
+        "expected_handoff_to": expected_handoffs,
+        "selected_handoff_to": selected_handoffs,
+        "failures": failures,
+    }
+
+
+def _score_lab_grounding_case(
+    *,
+    case: dict[str, Any],
+    response: dict[str, Any] | None,
+    returncode: int,
+    parse_error: str | None,
+) -> dict[str, Any]:
+    verdict = _score_case(case=case, response=response, returncode=returncode, parse_error=parse_error)
+    failures = list(verdict["failures"])
+    for case_field, response_field in (
+        ("expect_research_graph_check", "research_graph_check"),
+        ("expect_paper_wiki_check", "paper_wiki_check"),
+        ("expect_open_source_code_check", "open_source_code_check"),
+        ("expect_grounding_injection", "grounding_injection"),
+    ):
+        if case_field not in case:
+            continue
+        selected = response.get(response_field) if response else None
+        expected = bool(case[case_field])
+        if selected != expected:
+            failures.append(f"{response_field} expected {expected!r}, got {selected!r}")
+
+    return {
+        **verdict,
+        "decision": "pass" if not failures else "fail",
+        "failures": failures,
+        "research_graph_check": response.get("research_graph_check") if response else None,
+        "paper_wiki_check": response.get("paper_wiki_check") if response else None,
+        "open_source_code_check": response.get("open_source_code_check") if response else None,
+        "grounding_injection": response.get("grounding_injection") if response else None,
+    }
+
+
+def _score_lab_repo_startup_case(
+    *,
+    case: dict[str, Any],
+    response: dict[str, Any] | None,
+    returncode: int,
+    parse_error: str | None,
+) -> dict[str, Any]:
+    verdict = _score_case(case=case, response=response, returncode=returncode, parse_error=parse_error)
+    failures = list(verdict["failures"])
+    repo_file_signals = response.get("repo_file_signals") if response else {}
+    if not isinstance(repo_file_signals, dict):
+        repo_file_signals = {}
+
+    for case_field, signal_field in (
+        ("expect_agents_read", "read_agents"),
+        ("expect_meridian_dir_detected", "detected_meridian_dir"),
+    ):
+        if case_field not in case:
+            continue
+        selected = repo_file_signals.get(signal_field)
+        expected = bool(case[case_field])
+        if selected != expected:
+            failures.append(f"repo_file_signals.{signal_field} expected {expected!r}, got {selected!r}")
+
+    if "expect_grounding_injection" in case:
+        selected = response.get("grounding_injection") if response else None
+        expected = bool(case["expect_grounding_injection"])
+        if selected != expected:
+            failures.append(f"grounding_injection expected {expected!r}, got {selected!r}")
+
+    return {
+        **verdict,
+        "decision": "pass" if not failures else "fail",
+        "failures": failures,
+        "agents_read": repo_file_signals.get("read_agents"),
+        "meridian_dir_detected": repo_file_signals.get("detected_meridian_dir"),
+        "grounding_injection": response.get("grounding_injection") if response else None,
+    }
+
+
+def _score_research_agent_contract_case(
+    *,
+    case: dict[str, Any],
+    response: dict[str, Any] | None,
+    returncode: int,
+    parse_error: str | None,
+) -> dict[str, Any]:
+    verdict = _score_case(case=case, response=response, returncode=returncode, parse_error=parse_error)
+    failures = list(verdict["failures"])
+    for case_field, response_field in (
+        ("expect_implementation_integrity_gate", "implementation_integrity_gate"),
+        ("expect_blocker_reporting", "blocker_reporting"),
+        ("expect_no_silent_fallback", "no_silent_fallback"),
+        ("expect_style_distillation", "style_distillation"),
+        ("expect_requires_user_approval_before_profile_write", "requires_user_approval_before_profile_write"),
+        ("expect_forbids_full_code_storage", "forbids_full_code_storage"),
+        ("expect_structured_profile_merge", "structured_profile_merge"),
+        ("expect_avoids_agents_profile_pollution", "avoids_agents_profile_pollution"),
+        ("expect_code_ref_considered_optional", "code_ref_considered_optional"),
+    ):
+        if case_field not in case:
+            continue
+        selected = response.get(response_field) if response else None
+        expected = bool(case[case_field])
+        if selected != expected:
+            failures.append(f"{response_field} expected {expected!r}, got {selected!r}")
+
+    return {
+        **verdict,
+        "decision": "pass" if not failures else "fail",
+        "failures": failures,
+        "implementation_integrity_gate": response.get("implementation_integrity_gate") if response else None,
+        "blocker_reporting": response.get("blocker_reporting") if response else None,
+        "no_silent_fallback": response.get("no_silent_fallback") if response else None,
+        "style_distillation": response.get("style_distillation") if response else None,
+        "requires_user_approval_before_profile_write": response.get("requires_user_approval_before_profile_write")
+        if response
+        else None,
+        "forbids_full_code_storage": response.get("forbids_full_code_storage") if response else None,
+        "structured_profile_merge": response.get("structured_profile_merge") if response else None,
+        "avoids_agents_profile_pollution": response.get("avoids_agents_profile_pollution") if response else None,
+        "code_ref_considered_optional": response.get("code_ref_considered_optional") if response else None,
+    }
+
+
+def _render_report(summary: dict[str, Any]) -> str:
+    lines = [
+        "# Codex Routing Evaluation",
+        "",
+        f"- Total cases: {summary['total_cases']}",
+        f"- Passed: {summary['passed_cases']}",
+        f"- Failed: {summary['failed_cases']}",
+        f"- Pass rate: {summary['pass_rate']:.3f}",
+        "",
+        "| Case | Decision | Expected | Selected | Expected Routing | Selected Routing |",
+        "|---|---:|---|---|---|---|",
+    ]
+    for item in summary["case_results"]:
+        lines.append(
+            "| {case_id} | {decision} | {expected_skill} | {selected_entry} | {expected_routing} | {selected_routing} |".format(
+                **{key: str(value or "") for key, value in item.items()}
+            )
+        )
+    if any(summary.get("groups", {}).values()):
+        lines.extend(["", "## Groups", ""])
+        for group_name, buckets in summary.get("groups", {}).items():
+            if not buckets:
+                continue
+            lines.extend(
+                [
+                    f"### {group_name}",
+                    "",
+                    "| Bucket | Total | Passed | Failed | Pass Rate |",
+                    "|---|---:|---:|---:|---:|",
+                ]
+            )
+            for bucket_name, bucket in sorted(buckets.items()):
+                lines.append(
+                    f"| {bucket_name} | {bucket['total_cases']} | {bucket['passed_cases']} | "
+                    f"{bucket['failed_cases']} | {bucket['pass_rate']:.3f} |"
+                )
+            lines.append("")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _render_lab_grounding_report(summary: dict[str, Any]) -> str:
+    lines = [
+        "# Codex Lab Grounding Evaluation",
+        "",
+        f"- Total cases: {summary['total_cases']}",
+        f"- Passed: {summary['passed_cases']}",
+        f"- Failed: {summary['failed_cases']}",
+        f"- Pass rate: {summary['pass_rate']:.3f}",
+        "",
+        "| Case | Decision | Expected | Selected | Routing | Graph | Wiki | Code Prior | Injection |",
+        "|---|---:|---|---|---|---:|---:|---:|---:|",
+    ]
+    for item in summary["case_results"]:
+        lines.append(
+            "| {case_id} | {decision} | {expected_skill} | {selected_entry} | {selected_routing} | "
+            "{research_graph_check} | {paper_wiki_check} | {open_source_code_check} | {grounding_injection} |".format(
+                **{key: str(value or "") for key, value in item.items()}
+            )
+        )
+    if any(summary.get("groups", {}).values()):
+        lines.extend(["", "## Groups", ""])
+        for group_name, buckets in summary.get("groups", {}).items():
+            if not buckets:
+                continue
+            lines.extend(
+                [
+                    f"### {group_name}",
+                    "",
+                    "| Bucket | Total | Passed | Failed | Pass Rate |",
+                    "|---|---:|---:|---:|---:|",
+                ]
+            )
+            for bucket_name, bucket in sorted(buckets.items()):
+                lines.append(
+                    f"| {bucket_name} | {bucket['total_cases']} | {bucket['passed_cases']} | "
+                    f"{bucket['failed_cases']} | {bucket['pass_rate']:.3f} |"
+                )
+            lines.append("")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _render_lab_repo_startup_report(summary: dict[str, Any]) -> str:
+    lines = [
+        "# Codex Lab Repo Startup Evaluation",
+        "",
+        f"- Total cases: {summary['total_cases']}",
+        f"- Passed: {summary['passed_cases']}",
+        f"- Failed: {summary['failed_cases']}",
+        f"- Pass rate: {summary['pass_rate']:.3f}",
+        "",
+        "| Case | Decision | Fixture | Expected | Selected | Routing | AGENTS | .meridian | Injection |",
+        "|---|---:|---|---|---|---|---:|---:|---:|",
+    ]
+    for item in summary["case_results"]:
+        display = {key: str(value) if value is not None else "" for key, value in item.items()}
+        lines.append(
+            "| {case_id} | {decision} | {repo_fixture} | {expected_skill} | {selected_entry} | "
+            "{selected_routing} | {agents_read} | {meridian_dir_detected} | "
+            "{grounding_injection} |".format(**display)
+        )
+    if any(summary.get("groups", {}).values()):
+        lines.extend(["", "## Groups", ""])
+        for group_name, buckets in summary.get("groups", {}).items():
+            if not buckets:
+                continue
+            lines.extend(
+                [
+                    f"### {group_name}",
+                    "",
+                    "| Bucket | Total | Passed | Failed | Pass Rate |",
+                    "|---|---:|---:|---:|---:|",
+                ]
+            )
+            for bucket_name, bucket in sorted(buckets.items()):
+                lines.append(
+                    f"| {bucket_name} | {bucket['total_cases']} | {bucket['passed_cases']} | "
+                    f"{bucket['failed_cases']} | {bucket['pass_rate']:.3f} |"
+                )
+            lines.append("")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _render_research_agent_contract_report(summary: dict[str, Any]) -> str:
+    lines = [
+        "# Codex Research-Agent Contract Evaluation",
+        "",
+        f"- Total cases: {summary['total_cases']}",
+        f"- Passed: {summary['passed_cases']}",
+        f"- Failed: {summary['failed_cases']}",
+        f"- Pass rate: {summary['pass_rate']:.3f}",
+        "",
+        "| Case | Decision | Expected | Selected | Routing | Contract Gate | Blocker | No Silent Fallback | Style Distill | Approval | No Full Code | Structured Merge | No AGENTS Drift | Code Ref Optional |",
+        "|---|---:|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for item in summary["case_results"]:
+        display = {key: str(value) if value is not None else "" for key, value in item.items()}
+        for optional_field in [
+            "structured_profile_merge",
+            "avoids_agents_profile_pollution",
+            "code_ref_considered_optional",
+        ]:
+            display.setdefault(optional_field, "")
+        lines.append(
+            "| {case_id} | {decision} | {expected_skill} | {selected_entry} | {selected_routing} | "
+            "{implementation_integrity_gate} | {blocker_reporting} | {no_silent_fallback} | "
+            "{style_distillation} | {requires_user_approval_before_profile_write} | "
+            "{forbids_full_code_storage} | {structured_profile_merge} | "
+            "{avoids_agents_profile_pollution} | {code_ref_considered_optional} |".format(**display)
+        )
+    if any(summary.get("groups", {}).values()):
+        lines.extend(["", "## Groups", ""])
+        for group_name, buckets in summary.get("groups", {}).items():
+            if not buckets:
+                continue
+            lines.extend(
+                [
+                    f"### {group_name}",
+                    "",
+                    "| Bucket | Total | Passed | Failed | Pass Rate |",
+                    "|---|---:|---:|---:|---:|",
+                ]
+            )
+            for bucket_name, bucket in sorted(buckets.items()):
+                lines.append(
+                    f"| {bucket_name} | {bucket['total_cases']} | {bucket['passed_cases']} | "
+                    f"{bucket['failed_cases']} | {bucket['pass_rate']:.3f} |"
+                )
+            lines.append("")
+    lines.append("")
+    return "\n".join(lines)

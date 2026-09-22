@@ -1,0 +1,63 @@
+import { shell as zh } from '../zh/shell.js'
+
+/** English counterpart of `zh/shell`. `satisfies` makes a missing, extra or re-parameterised key a compile error. */
+export const shell = {
+  crumbs: {
+    feed: 'Feed',
+    inbox: 'Inbox',
+    later: 'Read Later',
+    papers: 'Papers',
+    wiki: 'Wiki',
+    changelog: 'Recent Changes',
+    ideas: 'Ideas',
+    overview: 'Overview',
+    project: 'Projects',
+    trash: 'Trash',
+    chat: 'Chats',
+    library: 'My library',
+    research: 'Research',
+  },
+  update: {
+    ready: (version: string) => `Restart to update to ${version}`,
+    available: (version: string) => `Download version ${version}`,
+  },
+  nav: {
+    feed: 'Feed',
+    inbox: 'Inbox',
+    delivery: 'Inmail',
+    discovery: 'Discovery',
+    watchTopics: 'Watched topics',
+    watchAuthors: 'Watched authors',
+    later: 'Read Later',
+    chats: 'Chats',
+    newChat: 'New chat',
+    myLibrary: 'My library',
+    papers: 'Papers',
+    wiki: 'Wiki',
+    changelog: 'Recent Changes',
+    research: 'Research',
+    overview: 'Overview',
+    projects: 'Projects',
+    ideas: 'Ideas',
+    trash: 'Trash',
+  },
+  watchKind: { topic: 'Topic', author: 'Author' },
+  sidebar: {
+    toggle: 'Collapse or expand the sidebar',
+    collapseHint: 'Click to collapse',
+    dragHint: 'Drag to resize',
+    manageChat: (title: string) => `Manage chat: ${title}`,
+    archive: 'Archive',
+  },
+  titlebar: { settings: 'Settings…' },
+  bootFailure: {
+    title: "The library won't open",
+    note: 'Choose a different library in Settings. Meridian will use it after you restart.',
+    openSettings: 'Open settings',
+  },
+  search: {
+    placeholder: 'Search everything',
+    clear: 'Clear search',
+    results: 'Search results',
+  },
+} satisfies typeof zh

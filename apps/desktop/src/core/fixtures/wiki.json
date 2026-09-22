@@ -1,0 +1,4020 @@
+{
+ "requireQuote": true,
+ "kinds": {
+  "topic": {
+   "dir": "topics",
+   "label": "主题",
+   "describe": {
+    "section": "问题",
+    "hint": "要做到什么、为什么难"
+   }
+  },
+  "method": {
+   "dir": "methods",
+   "label": "方法",
+   "describe": {
+    "section": "机制",
+    "hint": "这一族共享什么"
+   },
+   "derived_columns": [
+    {
+     "key": "used_for",
+     "label": "用于",
+     "from_kind": "topic"
+    }
+   ]
+  }
+ },
+ "sections": [
+  {
+   "key": "conclusions",
+   "label": "结论"
+  },
+  {
+   "key": "experiments",
+   "label": "实验"
+  },
+  {
+   "key": "open",
+   "label": "未解决"
+  }
+ ],
+ "pages": {
+  "papers/2210.17323": {
+   "kind": "paper",
+   "fm": {
+    "title": "GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers",
+    "short": "GPTQ",
+    "authors": [
+     "Elias Frantar",
+     "Saleh Ashkboos",
+     "Torsten Hoefler",
+     "Dan Alistarh"
+    ],
+    "year": 2022,
+    "venue": "ICLR 2023",
+    "pdf": "sources/2210.17323.pdf",
+    "updated": "2026-09-01",
+    "memberships": [
+     {
+      "in": "topics/ptq-weight-only",
+      "cells": {
+       "bits": {
+        "value": "W3/W4 · A16",
+        "at": {
+         "page": 1,
+         "quote": "reducing the bitwidth down to 3 or 4 bits per weight"
+        }
+       },
+       "needs_calib": {
+        "value": "是(二阶信息)",
+        "at": {
+         "page": 1,
+         "quote": "a new one-shot weight quantization method based on approximate second-order information"
+        }
+       },
+       "backprop": {
+        "value": "否",
+        "at": {
+         "page": 1,
+         "quote": "one-shot weight quantization method"
+        }
+       },
+       "claim": {
+        "value": "175B 模型约 4 GPU 小时量化完",
+        "at": {
+         "page": 1,
+         "quote": "GPTQ can quantize GPT models with 175 billion parameters in approximately four GPU hours"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/error-compensated-rounding",
+      "cells": {
+       "second_order": {
+        "value": "是(近似)",
+        "at": {
+         "page": 1,
+         "quote": "based on approximate second-order information"
+        }
+       },
+       "procedure": {
+        "value": "一次性、逐层",
+        "at": {
+         "page": 1,
+         "quote": "a new one-shot weight quantization method"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "body": "## 这篇说了什么\n用近似二阶信息做一次性的权重量化,把 GPT 类模型压到每权重 3–4 bit,精度损失可忽略。(p.1)\n\n## 机制\n逐层求解带二阶误差补偿的舍入,不需要重新训练。(p.1)\n\n## 主要结果\n175B 模型约 4 GPU 小时完成;首次把 175B 模型塞进单卡做生成推理;A100 上端到端约 3.25x 提速。(p.1)"
+  },
+  "papers/2211.10438": {
+   "kind": "paper",
+   "fm": {
+    "title": "SmoothQuant: Accurate and Efficient Post-Training Quantization for Large Language Models",
+    "short": "SmoothQuant",
+    "authors": [
+     "Guangxuan Xiao",
+     "Ji Lin",
+     "Mickael Seznec",
+     "Song Han"
+    ],
+    "year": 2022,
+    "venue": "ICML 2023",
+    "pdf": "sources/2211.10438.pdf",
+    "updated": "2026-09-05",
+    "memberships": [
+     {
+      "in": "topics/ptq-weight-activation",
+      "cells": {
+       "bits": {
+        "value": "W8A8",
+        "at": {
+         "page": 1,
+         "quote": "to enable 8-bit weight, 8-bit activation (W8A8) quantization for LLMs"
+        }
+       },
+       "transform_where": {
+        "value": "激活→权重的等价缩放",
+        "at": {
+         "page": 1,
+         "quote": "offline migrating the quantization difficulty from activations to weights with a mathematically equivalent transformation"
+        }
+       },
+       "learned": {
+        "value": "否",
+        "at": {
+         "page": 1,
+         "quote": "a training-free, accuracy-preserving, and general-purpose post-training quantization (PTQ) solution"
+        }
+       },
+       "claim": {
+        "value": "1.56x 提速、2x 省内存",
+        "at": {
+         "page": 1,
+         "quote": "up to 1.56x speedup and 2x memory reduction for LLMs with negligible loss in accuracy"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/per-channel-scaling",
+      "cells": {
+       "scale_from": {
+        "value": "激活离群值",
+        "at": {
+         "page": 1,
+         "quote": "SmoothQuant smooths the activation outliers"
+        }
+       },
+       "direction": {
+        "value": "激活→权重",
+        "at": {
+         "page": 1,
+         "quote": "migrating the quantization difficulty from activations to weights"
+        }
+       },
+       "learned": {
+        "value": "否",
+        "at": {
+         "page": 1,
+         "quote": "training-free"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "body": "## 这篇说了什么\n权重好量化、激活难量化;用数学等价的逐通道缩放把量化难度从激活挪到权重,实现 W8A8。(p.1)\n\n## 机制\n离线计算缩放因子,训练无关;所有矩阵乘都走 INT8。(p.1)\n\n## 主要结果\n最高 1.56x 提速与 2x 内存节省;530B 模型单节点可服务。(p.1)"
+  },
+  "papers/2305.17888": {
+   "kind": "paper",
+   "fm": {
+    "title": "LLM-QAT: Data-Free Quantization Aware Training for Large Language Models",
+    "short": "LLM-QAT",
+    "authors": [
+     "Zechun Liu",
+     "Barlas Oguz",
+     "Changsheng Zhao",
+     "Vikas Chandra"
+    ],
+    "year": 2023,
+    "venue": "ACL 2024 Findings",
+    "pdf": "sources/2305.17888.pdf",
+    "updated": "2026-09-01",
+    "memberships": [
+     {
+      "in": "topics/qat",
+      "cells": {
+       "bits": {
+        "value": "低至 4-bit(权重、激活、KV)",
+        "at": {
+         "page": 1,
+         "quote": "at quantization levels down to 4-bits"
+        }
+       },
+       "data": {
+        "value": "无需原始数据,用模型自生成蒸馏",
+        "at": {
+         "page": 1,
+         "quote": "a data-free distillation method that leverages generations produced by the pre-trained model"
+        }
+       },
+       "kv": {
+        "value": "是",
+        "at": {
+         "page": 1,
+         "quote": "we also quantize the KV cache"
+        }
+       },
+       "claim": {
+        "value": "低比特下大幅优于免训练方法",
+        "at": {
+         "page": 1,
+         "quote": "large improvements over training-free methods, especially in the low-bit settings"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/distillation-qat",
+      "cells": {
+       "teacher": {
+        "value": "预训练模型自身的生成",
+        "at": {
+         "page": 1,
+         "quote": "leverages generations produced by the pre-trained model"
+        }
+       },
+       "data": {
+        "value": "与训练数据无关",
+        "at": {
+         "page": 1,
+         "quote": "allows quantizing any generative model independent of its training data"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "body": "## 这篇说了什么\nPTQ 到 8-bit 还行,再往下就崩;于是做 QAT,但不用原始训练数据——让预训练模型自己生成数据来蒸馏。(p.1)\n\n## 机制\n数据无关的蒸馏;权重、激活之外也量化 KV cache。(p.1)\n\n## 主要结果\nLLaMA 7B/13B/30B 低至 4-bit,低比特设定下大幅优于免训练方法。(p.1)"
+  },
+  "papers/2306.00978": {
+   "kind": "paper",
+   "fm": {
+    "title": "AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration",
+    "short": "AWQ",
+    "authors": [
+     "Ji Lin",
+     "Jiaming Tang",
+     "Haotian Tang",
+     "Song Han"
+    ],
+    "year": 2023,
+    "venue": "MLSys 2024",
+    "pdf": "sources/2306.00978.pdf",
+    "updated": "2026-09-01",
+    "memberships": [
+     {
+      "in": "topics/ptq-weight-only",
+      "cells": {
+       "bits": {
+        "value": "W4 · A16",
+        "at": {
+         "page": 1,
+         "quote": "a hardware-friendly approach for LLM low-bit weight-only quantization"
+        }
+       },
+       "needs_calib": {
+        "value": "是(离线激活统计)",
+        "at": {
+         "page": 1,
+         "quote": "The scale is determined by collecting the activation statistics offline"
+        }
+       },
+       "backprop": {
+        "value": "否",
+        "at": {
+         "page": 1,
+         "quote": "AWQ does not rely on any backpropagation or reconstruction"
+        }
+       },
+       "claim": {
+        "value": "只保护 1% 显著权重即可大幅降误差",
+        "at": {
+         "page": 1,
+         "quote": "Protecting only 1% salient weights can greatly reduce quantization error"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/per-channel-scaling",
+      "cells": {
+       "scale_from": {
+        "value": "激活分布找显著通道",
+        "at": {
+         "page": 1,
+         "quote": "To identify salient weight channels, we should refer to the activation distribution, not weights"
+        }
+       },
+       "direction": {
+        "value": "放大显著权重通道",
+        "at": {
+         "page": 1,
+         "quote": "scaling up the salient channels can reduce the quantization error"
+        }
+       },
+       "learned": {
+        "value": "否",
+        "at": {
+         "page": 1,
+         "quote": "AWQ does not rely on any backpropagation or reconstruction"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "body": "## 这篇说了什么\n权重不是同等重要的;按激活分布找出 1% 显著通道,用等价缩放保护它们,做 4-bit 仅权重量化。(p.1)\n\n## 机制\n离线收集激活统计决定每通道缩放;不用反向传播,不易过拟合校准集。(p.1)\n\n## 主要结果\n在语言建模、代码、数学基准上优于既有工作;配套 TinyChat 在桌面与移动 GPU 上 3x 以上提速。(p.1)"
+  },
+  "papers/2306.07629": {
+   "kind": "paper",
+   "fm": {
+    "title": "SqueezeLLM: Dense-and-Sparse Quantization",
+    "short": "SqueezeLLM",
+    "authors": [
+     "Sehoon Kim",
+     "Coleman Hooper",
+     "Amir Gholami",
+     "Kurt Keutzer"
+    ],
+    "year": 2023,
+    "venue": "ICML 2024",
+    "pdf": "sources/2306.07629.pdf",
+    "updated": "2026-09-01",
+    "memberships": [
+     {
+      "in": "topics/ptq-weight-only",
+      "cells": {
+       "bits": {
+        "value": "W3 · A16",
+        "at": {
+         "page": 1,
+         "quote": "enables lossless compression to ultra-low precisions of up to 3-bit"
+        }
+       },
+       "needs_calib": {
+        "value": "是(二阶敏感度)",
+        "at": {
+         "page": 1,
+         "quote": "searches for the optimal bit precision assignment based on second-order information"
+        }
+       },
+       "claim": {
+        "value": "同等内存下困惑度差距缩小 2.1x",
+        "at": {
+         "page": 1,
+         "quote": "reduces the perplexity gap from the FP16 baseline by up to 2.1x as compared to the state-of-the-art methods with the same memory requirement"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/non-uniform-quantization",
+      "cells": {
+       "codebook_from": {
+        "value": "二阶敏感度",
+        "at": {
+         "page": 1,
+         "quote": "sensitivity-based non-uniform quantization, which searches for the optimal bit precision assignment based on second-order information"
+        }
+       },
+       "sparse": {
+        "value": "是",
+        "at": {
+         "page": 1,
+         "quote": "the Dense-and-Sparse decomposition that stores outliers and sensitive weight values in an efficient sparse format"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "body": "## 这篇说了什么\n单批推理的瓶颈是内存带宽不是算力;非均匀量化 + 把离群值和敏感权重拆到稀疏格式,3-bit 近无损。(p.1)\n\n## 机制\n按二阶敏感度搜索非均匀格点;Dense-and-Sparse 分解单独存离群值。(p.1)\n\n## 主要结果\nLLaMA 3-bit 下同等内存的困惑度差距缩小至多 2.1x;A6000 上至多 2.3x 提速。(p.1)"
+  },
+  "papers/2307.13304": {
+   "kind": "paper",
+   "fm": {
+    "title": "QuIP: 2-Bit Quantization of Large Language Models With Guarantees",
+    "short": "QuIP",
+    "authors": [
+     "Jerry Chee",
+     "Yaohui Cai",
+     "Volodymyr Kuleshov",
+     "Christopher De Sa"
+    ],
+    "year": 2023,
+    "venue": "NeurIPS 2023",
+    "pdf": "sources/2307.13304.pdf",
+    "updated": "2026-09-01",
+    "memberships": [
+     {
+      "in": "topics/ptq-weight-only",
+      "cells": {
+       "bits": {
+        "value": "W2 · A16",
+        "at": {
+         "page": 1,
+         "quote": "produce viable results using only two bits per weight"
+        }
+       },
+       "needs_calib": {
+        "value": "是(Hessian)",
+        "at": {
+         "page": 1,
+         "quote": "quantization benefits from incoherent weight and Hessian matrices"
+        }
+       },
+       "backprop": {
+        "value": "否",
+        "at": {
+         "page": 1,
+         "quote": "an adaptive rounding procedure minimizing a quadratic proxy objective"
+        }
+       },
+       "claim": {
+        "value": "首个可用的 2-bit 方法",
+        "at": {
+         "page": 1,
+         "quote": "yields the first LLM quantization methods that produce viable results using only two bits per weight"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/rotation",
+      "cells": {
+       "rotation_type": {
+        "value": "随机正交矩阵",
+        "at": {
+         "page": 1,
+         "quote": "ensures weight and Hessian incoherence via multiplication by random orthogonal matrices"
+        }
+       },
+       "learned": {
+        "value": "否",
+        "at": {
+         "page": 1,
+         "quote": "multiplication by random orthogonal matrices"
+        }
+       },
+       "applied_to": {
+        "value": "权重与 Hessian",
+        "at": {
+         "page": 1,
+         "quote": "ensures weight and Hessian incoherence"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/error-compensated-rounding",
+      "cells": {
+       "second_order": {
+        "value": "是(Hessian)",
+        "at": {
+         "page": 1,
+         "quote": "incoherent weight and Hessian matrices"
+        }
+       },
+       "procedure": {
+        "value": "自适应舍入,二次代理目标",
+        "at": {
+         "page": 1,
+         "quote": "an adaptive rounding procedure minimizing a quadratic proxy objective"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "body": "## 这篇说了什么\n量化得益于\"不相干\"的权重与 Hessian:权重幅值均匀、重要方向不与坐标轴对齐。两步:自适应舍入 + 用随机正交矩阵做前后处理保证不相干。(p.1)\n\n## 机制\n舍入最小化一个二次代理目标;前后乘随机正交矩阵。附带首个 LLM 规模量化算法的理论分析,也适用于 OPTQ。(p.1)\n\n## 主要结果\n不相干预处理能改善多种既有算法;首次给出每权重 2 bit 可用的结果。(p.1)"
+  },
+  "papers/2308.13137": {
+   "kind": "paper",
+   "fm": {
+    "title": "OmniQuant: Omnidirectionally Calibrated Quantization for Large Language Models",
+    "short": "OmniQuant",
+    "authors": [
+     "Wenqi Shao",
+     "Mengzhao Chen",
+     "Zhaoyang Zhang",
+     "Ping Luo"
+    ],
+    "year": 2023,
+    "venue": "ICLR 2024",
+    "pdf": "sources/2308.13137.pdf",
+    "updated": "2026-09-01",
+    "memberships": [
+     {
+      "in": "topics/ptq-weight-only",
+      "cells": {
+       "bits": {
+        "value": "W4/W3/W2 · A16",
+        "at": {
+         "page": 1,
+         "quote": "W4A16, W3A16, and W2A16"
+        }
+       },
+       "needs_calib": {
+        "value": "是,128 样本",
+        "at": {
+         "page": 1,
+         "quote": "within 1-16 hours using 128 samples"
+        }
+       },
+       "backprop": {
+        "value": "是(块级误差最小化)",
+        "at": {
+         "page": 1,
+         "quote": "Operating within a differentiable framework using block-wise error minimization"
+        }
+       },
+       "claim": {
+        "value": "7–70B 单卡 1–16 小时",
+        "at": {
+         "page": 1,
+         "quote": "the LLaMA-2 model family size 7-70B can be processed with OmniQuant on a single A100-40G GPU within 1-16 hours"
+        }
+       }
+      }
+     },
+     {
+      "in": "topics/ptq-weight-activation",
+      "cells": {
+       "bits": {
+        "value": "W4A4 / W6A6",
+        "at": {
+         "page": 1,
+         "quote": "W4A4 (4-bit weight, 4-bit activation), W6A6"
+        }
+       },
+       "transform_where": {
+        "value": "可学习等价变换(LET)",
+        "at": {
+         "page": 1,
+         "quote": "LET tackles activation outliers by shifting the challenge of quantization from activations to weights"
+        }
+       },
+       "learned": {
+        "value": "是",
+        "at": {
+         "page": 1,
+         "quote": "Learnable Weight Clipping (LWC) and Learnable Equivalent Transformation (LET)"
+        }
+       },
+       "needs_calib": {
+        "value": "是,128 样本",
+        "at": {
+         "page": 1,
+         "quote": "using 128 samples"
+        }
+       },
+       "claim": {
+        "value": "W4A4 等多种配置下表现优",
+        "at": {
+         "page": 1,
+         "quote": "superior performance across diverse quantization configurations such as W4A4"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/per-channel-scaling",
+      "cells": {
+       "scale_from": {
+        "value": "可学习",
+        "at": {
+         "page": 1,
+         "quote": "Learnable Equivalent Transformation (LET)"
+        }
+       },
+       "direction": {
+        "value": "激活→权重",
+        "at": {
+         "page": 1,
+         "quote": "shifting the challenge of quantization from activations to weights"
+        }
+       },
+       "learned": {
+        "value": "是",
+        "at": {
+         "page": 1,
+         "quote": "efficiently optimizing various quantization parameters"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "body": "## 这篇说了什么\n把量化参数(裁剪阈值、等价变换)改成可学习的,在保持 PTQ 效率的前提下覆盖仅权重与权重-激活两类设定。(p.1)\n\n## 机制\nLWC 学权重裁剪阈值;LET 学等价变换把激活离群值挪到权重;块级误差最小化,可微。(p.1)\n\n## 主要结果\nLLaMA-2 7–70B 单张 A100-40G、128 样本、1–16 小时;W4A4、W6A6、W4A16、W3A16、W2A16 均有效。(p.1)"
+  },
+  "papers/2401.18079": {
+   "kind": "paper",
+   "fm": {
+    "title": "KVQuant: Towards 10 Million Context Length LLM Inference with KV Cache Quantization",
+    "short": "KVQuant",
+    "authors": [
+     "Coleman Hooper",
+     "Sehoon Kim",
+     "Hiva Mohammadzadeh",
+     "Kurt Keutzer"
+    ],
+    "year": 2024,
+    "venue": "NeurIPS 2024",
+    "pdf": "sources/2401.18079.pdf",
+    "updated": "2026-09-01",
+    "memberships": [
+     {
+      "in": "topics/kv-cache-quantization",
+      "cells": {
+       "kv_bits": {
+        "value": "3",
+        "at": {
+         "page": 1,
+         "quote": "we achieve < 0.1 perplexity degradation with 3-bit quantization on both Wikitext-2 and C4"
+        }
+       },
+       "key_axis": {
+        "value": "逐通道",
+        "at": {
+         "page": 1,
+         "quote": "Per-Channel Key Quantization, where we adjust the dimension along which we quantize the Key activations to better match the distribution"
+        }
+       },
+       "rope": {
+        "value": "RoPE 之前",
+        "at": {
+         "page": 1,
+         "quote": "Pre-RoPE Key Quantization, where we quantize Key activations before the rotary positional embedding"
+        }
+       },
+       "claim": {
+        "value": "单卡 A100-80GB 上下文到 100 万",
+        "at": {
+         "page": 1,
+         "quote": "enables serving LLaMA-7B with a context length of up to 1 million on a single A100-80GB GPU"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/non-uniform-quantization",
+      "cells": {
+       "codebook_from": {
+        "value": "逐层敏感度加权",
+        "at": {
+         "page": 1,
+         "quote": "we derive per-layer sensitivity-weighted non-uniform datatypes that better represent the distributions"
+        }
+       },
+       "sparse": {
+        "value": "是(逐向量)",
+        "at": {
+         "page": 1,
+         "quote": "Per-Vector Dense-and-Sparse Quantization, where we isolate outliers separately for each vector"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "body": "## 这篇说了什么\n长上下文下 KV cache 成为内存主项;现有方法在 4-bit 以下失真,本文用四个手段做低比特 KV 量化。(p.1)\n\n## 机制\nKey 逐通道量化;RoPE 之前量化 Key;逐层敏感度加权的非均匀格点;逐向量的 Dense-and-Sparse 离群值隔离。(p.1)\n\n## 主要结果\n3-bit 下困惑度退化 <0.1;LLaMA-7B 单卡 100 万上下文、8 卡 1000 万;自定义 CUDA kernel 至多 ~1.7x 提速。(p.1)"
+  },
+  "papers/2404.00456": {
+   "kind": "paper",
+   "fm": {
+    "title": "QuaRot: Outlier-Free 4-Bit Inference in Rotated LLMs",
+    "short": "QuaRot",
+    "authors": [
+     "Saleh Ashkboos",
+     "Amirkeivan Mohtashami",
+     "Maximilian L. Croci",
+     "James Hensman"
+    ],
+    "year": 2024,
+    "venue": "NeurIPS 2024",
+    "pdf": "sources/2404.00456.pdf",
+    "updated": "2026-09-01",
+    "memberships": [
+     {
+      "in": "topics/ptq-weight-activation",
+      "cells": {
+       "bits": {
+        "value": "W4A4 + KV4",
+        "at": {
+         "page": 1,
+         "quote": "including all weights, activations, and KV cache in 4 bits"
+        }
+       },
+       "transform_where": {
+        "value": "残差流、FFN 激活、注意力、KV",
+        "at": {
+         "page": 1,
+         "quote": "applied to the hidden state (residual) of the LLM, as well as to the activations of the feed-forward components, aspects of the attention mechanism, and to the KV cache"
+        }
+       },
+       "needs_calib": {
+        "value": "6/8-bit 时不需要",
+        "at": {
+         "page": 1,
+         "quote": "lossless 6 and 8 bit LLaMa2 models without any calibration data using round-to-nearest quantization"
+        }
+       },
+       "claim": {
+        "value": "70B 4-bit 困惑度损失 ≤0.47",
+        "at": {
+         "page": 1,
+         "quote": "Our 4-bit quantized LLaMa2-70B model has losses of at most 0.47 WikiText-2 perplexity and retains 99% of the zero-shot performance"
+        }
+       }
+      }
+     },
+     {
+      "in": "topics/kv-cache-quantization",
+      "cells": {
+       "kv_bits": {
+        "value": "4",
+        "at": {
+         "page": 1,
+         "quote": "KV cache in 4 bits"
+        }
+       },
+       "claim": {
+        "value": "端到端全 4-bit,无需保留高精度通道",
+        "at": {
+         "page": 1,
+         "quote": "all matrix multiplications are performed in 4 bits, without any channels identified for retention in higher precision"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/rotation",
+      "cells": {
+       "rotation_type": {
+        "value": "旋转(计算不变性)",
+        "at": {
+         "page": 1,
+         "quote": "QuaRot rotates LLMs in a way that removes outliers from the hidden state without changing the output"
+        }
+       },
+       "applied_to": {
+        "value": "残差、FFN 激活、注意力、KV",
+        "at": {
+         "page": 1,
+         "quote": "applied to the hidden state (residual) of the LLM, as well as to the activations of the feed-forward components, aspects of the attention mechanism, and to the KV cache"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "body": "## 这篇说了什么\n用不改变输出的旋转把隐状态里的离群值消掉,于是权重、激活、KV cache 可以全部量化到 4 bit。(p.1)\n\n## 机制\n计算不变性:旋转施加在残差流、FFN 激活、注意力的若干处和 KV cache;所有矩阵乘都在 4 bit 下进行。(p.1)\n\n## 主要结果\nLLaMA-2 70B 4-bit 的 WikiText-2 困惑度损失至多 0.47,零样本保持 99%;6/8-bit 下不用校准数据即无损。(p.1)"
+  },
+  "papers/2405.16406": {
+   "kind": "paper",
+   "fm": {
+    "title": "SpinQuant: LLM quantization with learned rotations",
+    "short": "SpinQuant",
+    "authors": [
+     "Zechun Liu",
+     "Changsheng Zhao",
+     "Igor Fedorov",
+     "Vikas Chandra"
+    ],
+    "year": 2024,
+    "venue": "ICLR 2025",
+    "pdf": "sources/2405.16406.pdf",
+    "updated": "2026-09-01",
+    "memberships": [
+     {
+      "in": "topics/ptq-weight-activation",
+      "cells": {
+       "bits": {
+        "value": "W4A4 + KV4",
+        "at": {
+         "page": 1,
+         "quote": "With 4-bit quantization of weight, activation, and KV-cache"
+        }
+       },
+       "transform_where": {
+        "value": "激活或权重矩阵的旋转",
+        "at": {
+         "page": 1,
+         "quote": "Rotating activation or weight matrices helps remove outliers and benefits quantization"
+        }
+       },
+       "learned": {
+        "value": "是",
+        "at": {
+         "page": 1,
+         "quote": "incorporates learned rotation matrices for optimal quantized network accuracy"
+        }
+       },
+       "claim": {
+        "value": "LLaMA-2 7B 零样本差距仅 2.9 点",
+        "at": {
+         "page": 1,
+         "quote": "narrows the accuracy gap on zero-shot reasoning tasks with full precision to merely 2.9 points on the LLaMA-2 7B model"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/rotation",
+      "cells": {
+       "rotation_type": {
+        "value": "可学习旋转",
+        "at": {
+         "page": 1,
+         "quote": "we propose SpinQuant, a novel approach that incorporates learned rotation matrices"
+        }
+       },
+       "learned": {
+        "value": "是",
+        "at": {
+         "page": 1,
+         "quote": "incorporates learned rotation matrices for optimal quantized network accuracy"
+        }
+       },
+       "applied_to": {
+        "value": "激活或权重矩阵",
+        "at": {
+         "page": 1,
+         "quote": "Rotating activation or weight matrices helps remove outliers"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "body": "## 这篇说了什么\n旋转能去离群值,但不同的随机旋转效果差很多(零样本差 13 点),于是把旋转矩阵改成学出来的。(p.1)\n\n## 机制\n找出一组在全精度下输出不变的旋转参数化,再学习旋转矩阵以最优化量化后精度。(p.1)\n\n## 主要结果\nW4A4+KV4 下 LLaMA-2 7B 零样本差距 2.9 点,超 LLM-QAT 19.1 点、SmoothQuant 25.0 点;LLaMA-3 8B 上相对 QuaRot 差距缩小至多 45.1%。(p.1)"
+  },
+  "topics/kv-cache-quantization": {
+   "kind": "topic",
+   "fm": {
+    "title": "KV cache quantization",
+    "aliases": [
+     "KV 量化",
+     "KV cache compression"
+    ],
+    "parents": [
+     "topics/ptq",
+     "topics/long-context-inference"
+    ],
+    "columns": [
+     {
+      "key": "kv_bits",
+      "label": "KV 位宽"
+     },
+     {
+      "key": "key_axis",
+      "label": "Key 量化轴"
+     },
+     {
+      "key": "rope",
+      "label": "相对 RoPE 的位置"
+     },
+     {
+      "key": "claim",
+      "label": "自述主要结果"
+     }
+    ],
+    "split_on": null,
+    "updated": "2026-09-09"
+   },
+   "body": "## 问题\n长上下文下 KV cache 是内存主项,把它压到 4 bit 以下。难点是 Key 的分布沿通道有结构、且经过 RoPE 之后更难量化。\n\n这个节点同时属于 PTQ(手段)和长上下文推理(动机),所以有两个父节点。\n\n## 结论\n\n## 实验\n\n## 未解决"
+  },
+  "topics/long-context-inference": {
+   "kind": "topic",
+   "fm": {
+    "title": "Long-context inference",
+    "aliases": [
+     "长上下文推理"
+    ],
+    "parents": [],
+    "columns": [],
+    "split_on": null,
+    "updated": "2026-09-09"
+   },
+   "body": "## 问题\n上下文长到百万 token 时,推理的内存与带宽被 KV cache 主导。这个节点在示例里只有一个子聚合,lint 会指出来。\n\n## 结论\n\n## 实验\n\n## 未解决"
+  },
+  "topics/ptq-weight-activation": {
+   "kind": "topic",
+   "fm": {
+    "title": "Weight-activation PTQ",
+    "aliases": [
+     "W8A8",
+     "W4A4",
+     "weight-activation quantization"
+    ],
+    "parents": [
+     "topics/ptq"
+    ],
+    "columns": [
+     {
+      "key": "bits",
+      "label": "位宽"
+     },
+     {
+      "key": "transform_where",
+      "label": "变换施加处"
+     },
+     {
+      "key": "learned",
+      "label": "变换参数是否学习"
+     },
+     {
+      "key": "needs_calib",
+      "label": "需要校准数据"
+     },
+     {
+      "key": "claim",
+      "label": "自述主要结果"
+     }
+    ],
+    "split_on": null,
+    "updated": "2026-09-09"
+   },
+   "body": "## 问题\n权重和激活都量化,矩阵乘才能走整数算子拿到真实加速。难点全在激活:少数通道的离群值把 per-tensor 的量化范围撑大,其余数值精度全丢。\n\n## 结论\n- 2026-08-01 · W8A8 用 SmoothQuant 即可,不需要更低比特。[[papers/2211.10438]]\n- 2026-09-09 · W4A4 下旋转类优于平滑类:SpinQuant 自述超 SmoothQuant 25.0 点。[[papers/2405.16406]]\n\n## 实验\n- 2026-09-09 · Lab exp-0012(示例条目,非真实实验):Llama-3-8B 上复现 QuaRot W4A4,WikiText-2 ppl 6.4;论文未报 8B 数字。[[papers/2404.00456]]\n\n## 未解决\n- 旋转与可学习缩放能否叠加:OmniQuant 的 LET 与 SpinQuant 的学习旋转都在学变换,没人同时用。[[papers/2308.13137]] [[papers/2405.16406]]"
+  },
+  "topics/ptq-weight-only": {
+   "kind": "topic",
+   "fm": {
+    "title": "Weight-only PTQ",
+    "aliases": [
+     "W4A16",
+     "weight-only quantization",
+     "仅权重量化"
+    ],
+    "parents": [
+     "topics/ptq"
+    ],
+    "columns": [
+     {
+      "key": "bits",
+      "label": "位宽"
+     },
+     {
+      "key": "needs_calib",
+      "label": "需要校准数据"
+     },
+     {
+      "key": "backprop",
+      "label": "需要反向传播"
+     },
+     {
+      "key": "claim",
+      "label": "自述主要结果"
+     }
+    ],
+    "split_on": null,
+    "updated": "2026-09-09"
+   },
+   "body": "## 问题\n只把权重压到 2–4 bit,激活保持 16 bit。目标是省内存与带宽(单批解码是带宽瓶颈),难点是极低比特下的舍入误差与少数敏感权重。\n\n## 结论\n- 2026-09-09 · 3-bit 以下,\"均匀格点 + 二阶舍入\"与\"非均匀格点 + 稀疏分离\"是两条路,都声称近无损;没有在同一设定下的直接对比。[[papers/2210.17323]] [[papers/2306.07629]] [[papers/2307.13304]]\n\n## 实验\n\n## 未解决\n- 2-bit 是否实用:QuIP 说\"可用\",没说\"够用\"。[[papers/2307.13304]]"
+  },
+  "topics/ptq": {
+   "kind": "topic",
+   "fm": {
+    "title": "PTQ",
+    "aliases": [
+     "post-training quantization",
+     "训练后量化"
+    ],
+    "parents": [
+     "topics/quantization"
+    ],
+    "columns": [],
+    "split_on": "量化对象",
+    "updated": "2026-09-09"
+   },
+   "body": "## 问题\n不重新训练,只用少量或零校准数据把已训练好的模型量化。难点是没有梯度可以修正误差,只能靠变换、舍入策略与格点设计。\n\n按「量化对象」拆成三块:只量权重(内存为主)、权重与激活都量(算子要走整数乘)、只量 KV cache(长上下文内存)。三块的对照表列不同,所以是三个节点。\n\n## 结论\n\n## 实验\n\n## 未解决"
+  },
+  "topics/qat": {
+   "kind": "topic",
+   "fm": {
+    "title": "QAT",
+    "aliases": [
+     "quantization-aware training",
+     "量化感知训练"
+    ],
+    "parents": [
+     "topics/quantization"
+    ],
+    "columns": [
+     {
+      "key": "bits",
+      "label": "位宽"
+     },
+     {
+      "key": "data",
+      "label": "训练数据"
+     },
+     {
+      "key": "kv",
+      "label": "是否量化 KV"
+     },
+     {
+      "key": "claim",
+      "label": "自述主要结果"
+     }
+    ],
+    "split_on": null,
+    "updated": "2026-09-09"
+   },
+   "body": "## 问题\n在训练里模拟量化,让模型自己适应低比特。难点是 LLM 的原始训练数据通常拿不到,而且训练成本高。\n\n## 结论\n\n## 实验\n\n## 未解决"
+  },
+  "topics/quantization": {
+   "kind": "topic",
+   "fm": {
+    "title": "Quantization",
+    "aliases": [
+     "模型量化",
+     "low-bit inference"
+    ],
+    "parents": [],
+    "columns": [],
+    "split_on": "是否重新训练",
+    "updated": "2026-09-09"
+   },
+   "body": "## 问题\n把权重、激活、KV cache 用更少的比特表示,换取内存与带宽,同时不让精度掉太多。难点在于低比特下误差不再可忽略,而误差的来源(离群值、舍入、分布不匹配)因场景不同。\n\n这个节点不直接收论文:按「是否重新训练」拆成 PTQ 与 QAT,两边的对照表列完全不同(一边关心校准数据,一边关心训练数据)。\n\n## 结论\n\n## 实验\n\n## 未解决"
+  },
+  "methods/distillation-qat": {
+   "kind": "method",
+   "fm": {
+    "title": "Distillation-based QAT",
+    "aliases": [
+     "data-free QAT",
+     "蒸馏式量化感知训练"
+    ],
+    "parents": [],
+    "columns": [
+     {
+      "key": "teacher",
+      "label": "教师"
+     },
+     {
+      "key": "data",
+      "label": "数据来源"
+     }
+    ],
+    "split_on": null,
+    "updated": "2026-09-09"
+   },
+   "body": "## 机制\n全精度模型当教师,量化模型当学生,用蒸馏损失训练;数据可以由教师自己生成。示例里只有一篇,lint 会标 thin。\n\n## 结论\n\n## 实验\n\n## 未解决"
+  },
+  "methods/error-compensated-rounding": {
+   "kind": "method",
+   "fm": {
+    "title": "Error-compensated rounding",
+    "aliases": [
+     "OBQ-style rounding",
+     "second-order rounding",
+     "误差补偿舍入"
+    ],
+    "parents": [],
+    "columns": [
+     {
+      "key": "second_order",
+      "label": "用二阶信息"
+     },
+     {
+      "key": "procedure",
+      "label": "过程"
+     }
+    ],
+    "split_on": null,
+    "updated": "2026-09-09"
+   },
+   "body": "## 机制\n逐个(或逐列)舍入权重,每舍一个就用二阶信息把误差摊到还没舍入的权重上。不动模型结构,不需要梯度。\n\n## 结论\n\n## 实验\n\n## 未解决"
+  },
+  "methods/non-uniform-quantization": {
+   "kind": "method",
+   "fm": {
+    "title": "Non-uniform quantization",
+    "aliases": [
+     "non-uniform datatypes",
+     "dense-and-sparse",
+     "非均匀量化"
+    ],
+    "parents": [],
+    "columns": [
+     {
+      "key": "codebook_from",
+      "label": "格点依据"
+     },
+     {
+      "key": "sparse",
+      "label": "离群值稀疏分离"
+     }
+    ],
+    "split_on": null,
+    "updated": "2026-09-09"
+   },
+   "body": "## 机制\n格点不等距,按敏感度放;放不下的离群值单独存成稀疏矩阵。换来的精度用查表和稀疏 kernel 支付。\n\n## 结论\n\n## 实验\n\n## 未解决"
+  },
+  "methods/outlier-suppression": {
+   "kind": "method",
+   "fm": {
+    "title": "Outlier suppression",
+    "aliases": [
+     "离群值抑制"
+    ],
+    "parents": [],
+    "columns": [],
+    "split_on": "变换类型(缩放 vs 旋转)",
+    "updated": "2026-09-09"
+   },
+   "body": "## 机制\n在量化之前施加一个不改变模型输出的线性变换,把激活/权重里的离群值摊平。按变换类型拆成两族:逐通道缩放(对角矩阵)与旋转(正交矩阵)。\n\n## 结论\n\n## 实验\n\n## 未解决"
+  },
+  "methods/per-channel-scaling": {
+   "kind": "method",
+   "fm": {
+    "title": "Per-channel scaling",
+    "aliases": [
+     "equivalent transformation",
+     "smoothing",
+     "逐通道缩放"
+    ],
+    "parents": [
+     "methods/outlier-suppression"
+    ],
+    "columns": [
+     {
+      "key": "scale_from",
+      "label": "缩放依据"
+     },
+     {
+      "key": "direction",
+      "label": "迁移方向"
+     },
+     {
+      "key": "learned",
+      "label": "缩放是否学习"
+     }
+    ],
+    "split_on": null,
+    "updated": "2026-09-09"
+   },
+   "body": "## 机制\n对每个通道乘一个标量、在相邻的权重里除回去,数学等价。差别只在:标量从哪来(激活统计 / 显著性 / 学出来),以及把难度往哪边挪。\n\n## 结论\n\n## 实验\n\n## 未解决"
+  },
+  "methods/rotation": {
+   "kind": "method",
+   "fm": {
+    "title": "Rotation",
+    "aliases": [
+     "orthogonal transform",
+     "incoherence processing",
+     "Hadamard",
+     "旋转"
+    ],
+    "parents": [
+     "methods/outlier-suppression"
+    ],
+    "columns": [
+     {
+      "key": "rotation_type",
+      "label": "旋转类型"
+     },
+     {
+      "key": "learned",
+      "label": "旋转是否学习"
+     },
+     {
+      "key": "applied_to",
+      "label": "施加对象"
+     }
+    ],
+    "split_on": null,
+    "updated": "2026-09-09"
+   },
+   "body": "## 机制\n乘一个正交矩阵把能量摊到所有维度上,离群通道消失;正交所以可逆、输出不变。差别在:随机还是学出来的,施加在权重还是激活还是 KV。\n\n## 结论\n- 2026-09-09 · QuaRot 的旋转是随机的——QuaRot 摘要没写,依据是 SpinQuant 摘要里的 \"QuaRot, which applies random rotations\"。所以表里 QuaRot 那格留空,由本条补。[[papers/2405.16406]]\n\n## 实验\n\n## 未解决"
+  },
+  "papers/13979-STAR-Speculative-Decodin": {
+   "kind": "paper",
+   "fm": {
+    "title": "STAR: SPECULATIVE DECODING WITH SEARCHABLE DRAFTING AND TARGET-AWARE REFINEMENT FOR MULTIMODAL GENERATION",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/1808-05779v3": {
+   "kind": "paper",
+   "fm": {
+    "title": "Learning to Quantize Deep Networks by Optimizing Quantization Intervals with Task Loss",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/1909-13144v2": {
+   "kind": "paper",
+   "fm": {
+    "title": "ADDITIVE POWERS-OF-TWO QUANTIZATION: AN EFFICIENT NON-UNIFORM DISCRETIZATION FOR NEURAL NETWORKS",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/2209-11895v1": {
+   "kind": "paper",
+   "fm": {
+    "title": "In-context Learning and Induction Heads",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/2511-10645v1": {
+   "kind": "paper",
+   "fm": {
+    "title": "PAROQUANT: PAIRWISE ROTATION QUANTIZATION FOR EFFICIENT REASONING LLM INFERENCE",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/2603-19835v3": {
+   "kind": "paper",
+   "fm": {
+    "title": "FIPO: Eliciting Deep Reasoning with Future-KL Influenced Policy Optimization",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/27323-KVCapsule-Efficient-Temp": {
+   "kind": "paper",
+   "fm": {
+    "title": "KVCapsule: Efficient Temporal KV-Cache Compression for Vision-Language Models with Asymmetric Redundancy",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/3520-V-JEPA-Latent-Video-Predi": {
+   "kind": "paper",
+   "fm": {
+    "title": "V-JEPA: LATENT VIDEO PREDICTION FOR VISUAL REPRESENTATION LEARNING",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/3549-Train-Freeze-or-Exit-Dyna": {
+   "kind": "paper",
+   "fm": {
+    "title": "TRAIN, FREEZE OR EXIT: DYNAMIC MODULE-WISE FINE-TUNING UNDER MEMORY CONSTRAINTS",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/3D-Gaussian-Splatting-for-Real-Time-Radiance-Field-Rendering": {
+   "kind": "paper",
+   "fm": {
+    "title": "3D Gaussian Splatting for Real-Time Radiance Field Rendering",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/3D-Root-Data-for-Machine-Learning": {
+   "kind": "paper",
+   "fm": {
+    "title": "The Hidden Half Digitized: A Comprehensive Report on 3D Root System Databases for Machine Learning",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/7194-FlexHiNM-GP-Flexible-Hier": {
+   "kind": "paper",
+   "fm": {
+    "title": "FLEXHINM-GP: FLEXIBLE HIERARCHICAL PRUNING VIA REGION ALLOCATION AND CHANNEL PERMUTA-",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/A-ConvNet-for-the-2020s": {
+   "kind": "paper",
+   "fm": {
+    "title": "A ConvNet for the 2020s",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/A-Review-of-Incorporating-Psychological-Theories-in-LLMs": {
+   "kind": "paper",
+   "fm": {
+    "title": "A Review of Incorporating Psychological Theories in LLMs",
+    "updated": "2026-06-05",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/ACON-Optimizing-Context-Compression-for-Long-horizon-LLM-Agents": {
+   "kind": "paper",
+   "fm": {
+    "title": "ACON: OPTIMIZING CONTEXT COMPRESSION FOR LONG-HORIZON LLM AGENTS",
+    "updated": "2026-05-30",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Adnan-et-al-2024-Keyformer-KV-Cache-Reduction-through-Key-Tokens-Selection-for-Efficient-Generative-Inference": {
+   "kind": "paper",
+   "fm": {
+    "title": "KEYFORMER: KV CACHE REDUCTION THROUGH KEY TOKENS SELECTION FOR EFFICIENT GENERATIVE INFERENCE",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/ADOP-Approximate-Differentiable-One-Pixel-Point-Rendering": {
+   "kind": "paper",
+   "fm": {
+    "title": "ADOP: Approximate Differentiable One-Pixel Point Rendering",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Ainslie-et-al-2020-ETC-Encoding-Long-and-Structured-Inputs-in-Transformers": {
+   "kind": "paper",
+   "fm": {
+    "title": "ETC: Encoding Long and Structured Inputs in Transformers",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/An-Image-Is-Worth-16X16-Words-Transformers-For-Image-Recognition-At-Scale": {
+   "kind": "paper",
+   "fm": {
+    "title": "AN IMAGE IS WORTH 16X16 WORDS: TRANSFORMERS FOR IMAGE RECOGNITION AT SCALE",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/An-LLM-Compiler-for-Parallel-Function-Calling": {
+   "kind": "paper",
+   "fm": {
+    "title": "An LLM Compiler for Parallel Function Calling",
+    "updated": "2026-06-03",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Ape-Faster-And-Longer-Context-Augmented-Generation-Via-Adaptive-Parallel-Encoding": {
+   "kind": "paper",
+   "fm": {
+    "title": "APE: FASTER AND LONGER CONTEXT-AUGMENTED GENERATION VIA ADAPTIVE PARALLEL ENCODING",
+    "updated": "2026-06-03",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Arai-and-Ichikawa-2025-Quantization-Error-Propagation-Revisiting-Layer-Wise-Post-Training-Quantization": {
+   "kind": "paper",
+   "fm": {
+    "title": "Quantization Error Propagation: Revisiting Layer-Wise Post-Training Quantization",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Ashkboos-et-al-2024-QuaRot-Outlier-Free-4-Bit-Inference-in-Rotated-LLMs": {
+   "kind": "paper",
+   "fm": {
+    "title": "QuaRot: Outlier-Free 4-Bit Inference in Rotated LLMs",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Assran-et-al-2023-Self-Supervised-Learning-from-Images-with-a-Joint-Embedding-Predictive-Architecture": {
+   "kind": "paper",
+   "fm": {
+    "title": "Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Assran-et-al-2025-V-JEPA-2-Self-Supervised-Video-Models-Enable-Understanding-Prediction-and-Planning": {
+   "kind": "paper",
+   "fm": {
+    "title": "V-JEPA 2: Self-Supervised Video Models Enable Understanding, Prediction and Planning",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Au-et-al-2008-Skeleton-extraction-by-mesh-contraction": {
+   "kind": "paper",
+   "fm": {
+    "title": "Skeleton extraction by mesh contraction",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Azar-et-al-2023-A-General-Theoretical-Paradigm-to-Understand-Learning-from-Human-Preferences": {
+   "kind": "paper",
+   "fm": {
+    "title": "A General Theoretical Paradigm to Understand Learning from Human Preferences",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Bai-et-al-2025-Whole-Body-Conditioned-Egocentric-Video-Prediction": {
+   "kind": "paper",
+   "fm": {
+    "title": "Whole-Body Conditioned Egocentric Video Prediction",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Bardes-et-al-2024-Revisiting-Feature-Prediction-for-Learning-Visual-Representations-from-Video": {
+   "kind": "paper",
+   "fm": {
+    "title": "Revisiting Feature Prediction for Learning Visual Representations from Video",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Bauckhage-2015-k-Means-Clustering-Is-Matrix-Factorization": {
+   "kind": "paper",
+   "fm": {
+    "title": "k-Means Clustering Is Matrix Factorization",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Beltagy-et-al-2020-Longformer-The-Long-Document-Transformer": {
+   "kind": "paper",
+   "fm": {
+    "title": "Longformer: The Long-Document Transformer",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Bhalgat-et-al-2020-LSQ-Improving-low-bit-quantization-through-learnable-offsets-and-better-initialization": {
+   "kind": "paper",
+   "fm": {
+    "title": "LSQ+: Improving low-bit quantization through learnable offsets and better initialization",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Blattmann-et-al-2023-Stable-Video-Diffusion-Scaling-Latent-Video-Diffusion-Models-to-Large-Datasets": {
+   "kind": "paper",
+   "fm": {
+    "title": "Stable Video Diffusion: Scaling Latent Video Diffusion Models to Large Datasets",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Blumenberg-et-al-2025-Improving-Block-Wise-LLM-Quantization-by-4-bit-Block-Wise-Optimal-Float-BOF4-Analysis-and-Variati": {
+   "kind": "paper",
+   "fm": {
+    "title": "Improving Block-Wise LLM Quantization by 4-bit Block-Wise Optimal Float (BOF4): Analysis and Variations",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Bo-et-al-2020-Structural-Deep-Clustering-Network": {
+   "kind": "paper",
+   "fm": {
+    "title": "Structural Deep Clustering Network",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Bodnar-et-al-2025-A-foundation-model-for-the-Earth-system": {
+   "kind": "paper",
+   "fm": {
+    "title": "A foundation model for the Earth system",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Bootstrap-Your-Own-Latent": {
+   "kind": "paper",
+   "fm": {
+    "title": "Bootstrap Your Own Latent A New Approach to Self-Supervised Learning",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Bouda-et-al-2016-Box-Counting-Dimension-Revisited-Presenting-an-Efficient-Method-of-Minimizing-Quantization-Error-an": {
+   "kind": "paper",
+   "fm": {
+    "title": "Box-Counting Dimension Revisited: Presenting an Efficient Method of Minimizing Quantization Error and an Assessment of the Self-Similarity of Structural Root Systems",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Brown-et-al-2020-Language-Models-are-Few-Shot-Learners": {
+   "kind": "paper",
+   "fm": {
+    "title": "Language Models are Few-Shot Learners",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Caffagni-et-al-2025-Seeing-Beyond-Words-Self-Supervised-Visual-Learning-for-Multimodal-Large-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "Seeing Beyond Words: Self-Supervised Visual Learning for Multimodal Large Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Cai-et-al-2024-Medusa-Simple-LLM-Inference-Acceleration-Framework-with-Multiple-Decoding-Heads": {
+   "kind": "paper",
+   "fm": {
+    "title": "MEDUSA: Simple LLM Inference Acceleration Framework with Multiple Decoding Heads",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Cai-et-al-2025-PyramidKV-Dynamic-KV-Cache-Compression-based-on-Pyramidal-Information-Funneling": {
+   "kind": "paper",
+   "fm": {
+    "title": "PyramidKV: Dynamic KV Cache Compression based on Pyramidal Information Funneling",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Chee-et-al-2024-QuIP-2-Bit-Quantization-of-Large-Language-Models-With-Guarantees": {
+   "kind": "paper",
+   "fm": {
+    "title": "QuIP: 2-Bit Quantization of Large Language Models With Guarantees",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Chen-et-al-2019-Neural-Ordinary-Differential-Equations": {
+   "kind": "paper",
+   "fm": {
+    "title": "Neural Ordinary Differential Equations",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Chen-et-al-2025-EfficientQAT-Efficient-Quantization-Aware-Training-for-Large-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "EfficientQAT: Efficient Quantization-Aware Training for Large Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Chen-et-al-2026-VL-JEPA-Joint-Embedding-Predictive-Architecture-for-Vision-language": {
+   "kind": "paper",
+   "fm": {
+    "title": "VL-JEPA: Joint Embedding Predictive Architecture for Vision-language",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Child-et-al-2019-Generating-Long-Sequences-with-Sparse-Transformers": {
+   "kind": "paper",
+   "fm": {
+    "title": "Generating Long Sequences with Sparse Transformers",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Chitsaz-et-al-2024-Exploring-Quantization-for-Efficient-Pre-Training-of-Transformer-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "Exploring Quantization for Efficient Pre-Training of Transformer Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Choromanski-et-al-2022-Rethinking-Attention-with-Performers": {
+   "kind": "paper",
+   "fm": {
+    "title": "RETHINKING ATTENTION WITH PERFORMERS",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Christiano-et-al-2023-Deep-reinforcement-learning-from-human-preferences": {
+   "kind": "paper",
+   "fm": {
+    "title": "Deep Reinforcement Learning from Human Preferences",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Chu-et-al-2023-Qwen-Audio-Advancing-Universal-Audio-Understanding-via-Unified-Large-Scale-Audio-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "Qwen-Audio: Advancing Universal Audio Understanding via Unified Large-Scale Audio-Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Chu-et-al-2024-Qwen2-Audio-Technical-Report": {
+   "kind": "paper",
+   "fm": {
+    "title": "Qwen2-Audio Technical Report",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Computer-Architecture-A-Quantitative-Approach-5th-edition": {
+   "kind": "paper",
+   "fm": {
+    "title": "Computer Architecture A Quantitative Approach 5th edition",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Cuomo-et-al-2022-Scientific-Machine-Learning-Through-Physics-Informed-Neural-Networks-Where-we-are-and-What-s-Next": {
+   "kind": "paper",
+   "fm": {
+    "title": "Scientific Machine Learning Through Physics–Informed Neural Networks: Where we are and What’s Next",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/D-Oosterlinck-et-al-2024-Anchored-Preference-Optimization-and-Contrastive-Revisions-Addressing-Underspecification-in-Alignme": {
+   "kind": "paper",
+   "fm": {
+    "title": "Anchored Preference Optimization and Contrastive Revisions: Addressing Underspecification in Alignment",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Dai-2024-DeepSeekMoE-Towards-Ultimate-Expert-Specialization-in-Mixture-of-Experts-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "DeepSeekMoE: Towards Ultimate Expert Specialization in Mixture-of-Experts Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Dai-et-al-2019-Transformer-XL-Attentive-Language-Models-Beyond-a-Fixed-Length-Context": {
+   "kind": "paper",
+   "fm": {
+    "title": "Transformer-XL: Attentive Language Models Beyond a Fixed-Length Context",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Dao-2023-FlashAttention-2-Faster-Attention-with-Better-Parallelism-and-Work-Partitioning": {
+   "kind": "paper",
+   "fm": {
+    "title": "FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Dao-et-al-2022-FlashAttention-Fast-and-Memory-Efficient-Exact-Attention-with-IO-Awareness": {
+   "kind": "paper",
+   "fm": {
+    "title": "FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/DeepSeek-AI-2024-DeepSeek-V2-A-Strong-Economical-and-Efficient-Mixture-of-Experts-Language-Model": {
+   "kind": "paper",
+   "fm": {
+    "title": "DeepSeek-V2: A Strong, Economical, and Efficient Mixture-of-Experts Language Model",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/DeepSeek-AI-2025-DeepSeek-R1-Incentivizing-Reasoning-Capability-in-LLMs-via-Reinforcement-Learning": {
+   "kind": "paper",
+   "fm": {
+    "title": "DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/DeepSeek-AI-2025-DeepSeek-V3-Technical-Report": {
+   "kind": "paper",
+   "fm": {
+    "title": "DeepSeek-V3 Technical Report",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/DeepSeek-V4": {
+   "kind": "paper",
+   "fm": {
+    "title": "DeepSeek-V4: Towards Highly Efficient Million-Token Context Intelligence",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Dehghani-et-al-2019-Universal-Transformers": {
+   "kind": "paper",
+   "fm": {
+    "title": "UNIVERSAL TRANSFORMERS",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Delving-Deep-into-Recti-ers-Surpassing-Human-Level-Performance-on-ImageNet-Classi-cation": {
+   "kind": "paper",
+   "fm": {
+    "title": "Delving Deep into Rectifiers: Surpassing Human-Level Performance on ImageNet Classification",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Deshmukh-et-al-2024-Pengi-An-Audio-Language-Model-for-Audio-Tasks": {
+   "kind": "paper",
+   "fm": {
+    "title": "Pengi: An Audio Language Model for Audio Tasks",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Dettmers-et-al-2022-8-bit-Optimizers-via-Block-wise-Quantization": {
+   "kind": "paper",
+   "fm": {
+    "title": "8-BIT OPTIMIZERS VIA BLOCK-WISE QUANTIZATION",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Dettmers-et-al-2022-LLM-int8-8-bit-Matrix-Multiplication-for-Transformers-at-Scale": {
+   "kind": "paper",
+   "fm": {
+    "title": "LLM.int8(): 8-bit Matrix Multiplication for Transformers at Scale",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Dettmers-et-al-2023-QLoRA-Efficient-Finetuning-of-Quantized-LLMs": {
+   "kind": "paper",
+   "fm": {
+    "title": "QLORA: Efficient Finetuning of Quantized LLMs",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Devlin-et-al-2019-BERT-Pre-training-of-Deep-Bidirectional-Transformers-for-Language-Understanding": {
+   "kind": "paper",
+   "fm": {
+    "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Dicks-and-Wales-2022-Elucidating-the-solution-structure-of-the-K-means-cost-function-using-energy-landscape-theory": {
+   "kind": "paper",
+   "fm": {
+    "title": "Dicks and Wales 2022 Elucidating the solution structure of the K means cost function using energ",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Ding-and-He-2004-K-means-clustering-via-principal-component-analysis": {
+   "kind": "paper",
+   "fm": {
+    "title": "K-means Clustering via Principal Component Analysis",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Ding-and-Zhang-2025-Sherlock-Self-Correcting-Reasoning-in-Vision-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "Sherlock: Self-Correcting Reasoning in Vision-Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Ding-et-al-2024-LongRoPE-Extending-LLM-Context-Window-Beyond-2-Million-Tokens": {
+   "kind": "paper",
+   "fm": {
+    "title": "LongRoPE: Extending LLM Context Window Beyond 2 Million Tokens",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Dong-et-al-2024-Self-Boosting-Large-Language-Models-with-Synthetic-Preference-Data": {
+   "kind": "paper",
+   "fm": {
+    "title": "SELF-BOOSTING LARGE LANGUAGE MODELS WITH SYNTHETIC PREFERENCE DATA",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Dong-et-al-2025-AuroRA-Breaking-Low-Rank-Bottleneck-of-LoRA-with-Nonlinear-Mapping": {
+   "kind": "paper",
+   "fm": {
+    "title": "AuroRA: Breaking Low-Rank Bottleneck of LoRA with Nonlinear Mapping",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Dorjsembe-et-al-2024-Conditional-Diffusion-Models-for-Semantic-3D-Brain-MRI-Synthesis": {
+   "kind": "paper",
+   "fm": {
+    "title": "for this article has been transferred to IEEE.",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Download": {
+   "kind": "paper",
+   "fm": {
+    "title": "Institute of Mathematical Statistics is collaborating with JSTOR to digitize, preserve, and extend access to The Annals of Statistics. www.jstor.org",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/DREAM-R-Multimodal-Speculative-Reasoning-with-RL-Based": {
+   "kind": "paper",
+   "fm": {
+    "title": "DREAM-R: Multimodal Speculative Reasoning with RL-Based Refined Drafting, Precise Verification, and Fully Parallel Execution",
+    "updated": "2026-06-03",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Elhoushi-et-al-2024-LayerSkip-Enabling-Early-Exit-Inference-and-Self-Speculative-Decoding": {
+   "kind": "paper",
+   "fm": {
+    "title": "LayerSkip: Enabling Early Exit Inference and Self-Speculative Decoding",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Emerging-Properties-in-Self-Supervised-Vision-Transformers": {
+   "kind": "paper",
+   "fm": {
+    "title": "Emerging Properties in Self-Supervised Vision Transformers",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/ERNIE-Technical-Report": {
+   "kind": "paper",
+   "fm": {
+    "title": "ERNIE 4.5 Technical Report",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Frantar-et-al-2023-GPTQ-Accurate-Post-Training-Quantization-for-Generative-Pre-trained-Transformers": {
+   "kind": "paper",
+   "fm": {
+    "title": "GPTQ: ACCURATE POST-TRAINING QUANTIZATION FOR GENERATIVE PRE-TRAINED TRANSFORMERS",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Fu-et-al-2024-Break-the-Sequential-Dependency-of-LLM-Inference-Using-Lookahead-Decoding": {
+   "kind": "paper",
+   "fm": {
+    "title": "Break the Sequential Dependency of LLM Inference Using LOOKAHEAD DECODING",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Gao-et-al-2019-Deep-clustering-with-concrete-k-means": {
+   "kind": "paper",
+   "fm": {
+    "title": "Deep clustering with concrete k means",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Gao-et-al-2025-Soft-Adaptive-Policy-Optimization": {
+   "kind": "paper",
+   "fm": {
+    "title": "Soft Adaptive Policy Optimization",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Garg-et-al-2023-What-Can-Transformers-Learn-In-Context-A-Case-Study-of-Simple-Function-Classes": {
+   "kind": "paper",
+   "fm": {
+    "title": "What Can Transformers Learn In-Context? A Case Study of Simple Function Classes",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Ge-et-al-2024-Model-Tells-You-What-to-Discard-Adaptive-KV-Cache-Compression-for-LLMs": {
+   "kind": "paper",
+   "fm": {
+    "title": "MODEL TELLS YOU WHAT TO DISCARD: ADAPTIVE KV CACHE COMPRESSION FOR LLMS",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/GLM-5-Team-2026-GLM-5-from-Vibe-Coding-to-Agentic-Engineering": {
+   "kind": "paper",
+   "fm": {
+    "title": "GLM-5: from Vibe Coding to Agentic Engineering",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Gope-et-al-2024-Highly-Optimized-Kernels-and-Fine-Grained-Codebooks-for-LLM-Inference-on-Arm-CPUs": {
+   "kind": "paper",
+   "fm": {
+    "title": "Highly Optimized Kernels and Fine-Grained Codebooks for LLM Inference on Arm CPUs",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/GQA-Training-Generalized-Multi-Query-Transformer-Models-from-Multi-Head-Checkpoints": {
+   "kind": "paper",
+   "fm": {
+    "title": "GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints Google Research",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/gsplat-An-Open-Source-Library-for-Gaussian-Splatting-gsplat-An-Open-Source-Library-for-Gaussian-Splatting": {
+   "kind": "paper",
+   "fm": {
+    "title": "gsplat: An Open-Source Library for Gaussian Splatting",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Gu-and-Dao-2024-Mamba-Linear-Time-Sequence-Modeling-with-Selective-State-Spaces": {
+   "kind": "paper",
+   "fm": {
+    "title": "Mamba: Linear-Time Sequence Modeling with Selective State Spaces",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Guan-et-al-2025-Dynamic-Speculative-Agent-Planning": {
+   "kind": "paper",
+   "fm": {
+    "title": "Dynamic Speculative Agent Planning",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Guo-2025-Fast-Matrix-Multiplications-for-Lookup-Table-Quantized-LLMs": {
+   "kind": "paper",
+   "fm": {
+    "title": "Fast Matrix Multiplications for Lookup Table-Quantized LLMs",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Hennessy-Computer-Architecture-A-Quantitative-Approach": {
+   "kind": "paper",
+   "fm": {
+    "title": "Computer Architecture: A Quantitative Approach",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Ho-and-Salimans-2022-Classifier-Free-Diffusion-Guidance": {
+   "kind": "paper",
+   "fm": {
+    "title": "CLASSIFIER-FREE DIFFUSION GUIDANCE",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Hong-et-al-2025-A-Geometric-Approach-to-k-means": {
+   "kind": "paper",
+   "fm": {
+    "title": "A GEOMETRIC APPROACH TO k-MEANS",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Hu-et-al-2025-DREAM-Drafting-with-Refined-Target-Features-and-Entropy-Adaptive-Cross-Attention-Fusion-for-Multimo": {
+   "kind": "paper",
+   "fm": {
+    "title": "DREAM: Drafting with Refined Target Features and Entropy-Adaptive Cross-Attention Fusion for Multimodal Speculative Decoding",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Hu-et-al-2025-MoEQuant-Enhancing-Quantization-for-Mixture-of-Experts-Large-Language-Models-via-Expert-Balanced-Sa": {
+   "kind": "paper",
+   "fm": {
+    "title": "MoEQuant: Enhancing Quantization for Mixture-of-Experts Large Language Models via Expert-Balanced Sampling and Affinity Guidance",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Hu-et-al-2025-OstQuant-Refining-Large-Language-Model-Quantization-with-Orthogonal-and-Scaling-Transformations-for": {
+   "kind": "paper",
+   "fm": {
+    "title": "OSTQUANT: REFINING LARGE LANGUAGE MODEL QUANTIZATION WITH ORTHOGONAL AND SCALING TRANSFORMATIONS FOR BETTER DISTRIBUTION FIT-",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Hu-et-al-2025-Speculative-Decoding-and-Beyond-An-In-Depth-Survey-of-Techniques": {
+   "kind": "paper",
+   "fm": {
+    "title": "Speculative Decoding and Beyond: An In-Depth Survey of Techniques",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Hu-et-al-2026-Bridging-Draft-Policy-Misalignment-Group-Tree-Optimization-for-Speculative-Decoding": {
+   "kind": "paper",
+   "fm": {
+    "title": "BRIDGING DRAFT POLICY MISALIGNMENT: GROUP TREE OPTIMIZATION FOR SPECULATIVE DECODING",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Huang-et-al-2022-Large-Language-Models-Can-Self-Improve": {
+   "kind": "paper",
+   "fm": {
+    "title": "LARGE LANGUAGE MODELS CAN SELF-IMPROVE",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Huang-et-al-2025-LLM-JEPA-Large-Language-Models-Meet-Joint-Embedding-Predictive-Architectures": {
+   "kind": "paper",
+   "fm": {
+    "title": "LLM-JEPA: LARGE LANGUAGE MODELS MEET JOINT EMBEDDING PREDICTIVE ARCHITECTURES",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Huang-et-al-2025-MiLo-Efficient-Quantized-MoE-Inference-with-Mixture-of-Low-Rank-Compensators": {
+   "kind": "paper",
+   "fm": {
+    "title": "MILO: EFFICIENT QUANTIZED MOE INFERENCE WITH MIXTURE OF LOW-RANK COMPENSATORS",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Huang-et-al-2026-On-the-Direction-of-RLVR-Updates-for-LLM-Reasoning-Identification-and-Exploitation": {
+   "kind": "paper",
+   "fm": {
+    "title": "On the Direction of RLVR Updates for LLM Reasoning: Identification and Exploitation",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Jiang-et-al-2024-Mixtral-of-Experts": {
+   "kind": "paper",
+   "fm": {
+    "title": "Mixtral of Experts",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Katharopoulos-et-al-2020-Transformers-are-RNNs-Fast-Autoregressive-Transformers-with-Linear-Attention": {
+   "kind": "paper",
+   "fm": {
+    "title": "Transformers are RNNs: Fast Autoregressive Transformers with Linear Attention",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Kim-et-al-2024-SqueezeLLM-Dense-and-Sparse-Quantization": {
+   "kind": "paper",
+   "fm": {
+    "title": "SqueezeLLM: Dense-and-Sparse Quantization",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Kraabel-et-al-2025-StefaLand-An-Efficient-Geoscience-Foundation-Model-That-Improves-Dynamic-Land-Surface-Predictions": {
+   "kind": "paper",
+   "fm": {
+    "title": "STEFALAND: AN EFFICIENT GEOSCIENCE FOUNDATION MODEL THAT IMPROVES DYNAMIC LANDSURFACE PREDICTIONS",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Kuroki-et-al-2025-Binary-Quadratic-Quantization-Beyond-First-Order-Quantization-for-Real-Valued-Matrix-Compression": {
+   "kind": "paper",
+   "fm": {
+    "title": "Binary Quadratic Quantization: Beyond First-Order Quantization for Real-Valued Matrix Compression",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Lasby-et-al-2025-REAP-the-Experts-Why-Pruning-Prevails-for-One-Shot-MoE-compression": {
+   "kind": "paper",
+   "fm": {
+    "title": "REAP THE EXPERTS: WHY PRUNING PREVAILS FOR ONE-SHOT MOE COMPRESSION",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/LCM-Lossless-Context-Management": {
+   "kind": "paper",
+   "fm": {
+    "title": "LCM: Lossless Context Management",
+    "updated": "2026-05-30",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Learning-to-Keep-a-Promise-Scaling-Language-Model-Decoding-Parallelism-with-Learned-Asynchronous-Decoding": {
+   "kind": "paper",
+   "fm": {
+    "title": "Learning to Keep a Promise: Scaling Language Model Decoding Parallelism with Learned Asynchronous Decoding",
+    "updated": "2026-06-03",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/LeCun-A-Path-Towards-Autonomous-Machine-Intelligence-Version-0-9-2-2022-06-27": {
+   "kind": "paper",
+   "fm": {
+    "title": "A Path Towards Autonomous Machine Intelligence Version 0.9.2, 2022-06-27",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Lee-et-al-2025-LittleBit-Ultra-Low-Bit-Quantization-via-Latent-Factorization": {
+   "kind": "paper",
+   "fm": {
+    "title": "LittleBit: Ultra Low-Bit Quantization via Latent Factorization",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Li-et-al-2024-EAGLE-2-Faster-Inference-of-Language-Models-with-Dynamic-Draft-Trees": {
+   "kind": "paper",
+   "fm": {
+    "title": "EAGLE-2: Faster Inference of Language Models with Dynamic Draft Trees",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Li-et-al-2024-SnapKV-LLM-Knows-What-You-are-Looking-for-Before-Generation": {
+   "kind": "paper",
+   "fm": {
+    "title": "SnapKV: LLM Knows What You are Looking for Before Generation",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Li-et-al-2025-EAGLE-3-Scaling-up-Inference-Acceleration-of-Large-Language-Models-via-Training-Time-Test": {
+   "kind": "paper",
+   "fm": {
+    "title": "EAGLE-3: Scaling up Inference Acceleration of Large Language Models via Training-Time Test",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Li-et-al-2025-EAGLE-Speculative-Sampling-Requires-Rethinking-Feature-Uncertainty": {
+   "kind": "paper",
+   "fm": {
+    "title": "EAGLE: Speculative Sampling Requires Rethinking Feature Uncertainty",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Li-et-al-2025-Gumiho-A-Hybrid-Architecture-to-Prioritize-Early-Tokens-in-Speculative-Decoding": {
+   "kind": "paper",
+   "fm": {
+    "title": "Gumiho: A Hybrid Architecture to Prioritize Early Tokens in Speculative Decoding",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Li-et-al-2025-MBQ-Modality-Balanced-Quantization-for-Large-Vision-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "MBQ: Modality-Balanced Quantization for Large Vision-Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Li-et-al-2025-Uni-LoRA-One-Vector-is-All-You-Need": {
+   "kind": "paper",
+   "fm": {
+    "title": "Uni-LoRA: One Vector is All You Need",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Li-et-al-MoE-SVD-Structured-Mixture-of-Experts-LLMs-Compression-via-Singular-Value-Decomposition": {
+   "kind": "paper",
+   "fm": {
+    "title": "MoE-SVD: Structured Mixture-of-Experts LLMs Compression via Singular Value Decomposition",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Liang-et-al-2025-ParoQuant-Pairwise-Rotation-Quantization-for-Efficient-Reasoning-LLM-Inference": {
+   "kind": "paper",
+   "fm": {
+    "title": "PAROQUANT: PAIRWISE ROTATION QUANTIZATION FOR EFFICIENT REASONING LLM INFERENCE",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Lin-et-al-2024-AWQ-Activation-aware-Weight-Quantization-for-LLM-Compression-and-Acceleration": {
+   "kind": "paper",
+   "fm": {
+    "title": "AWQ: ACTIVATION-AWARE WEIGHT QUANTIZATION FOR ON-DEVICE LLM COMPRESSION AND ACCELERATION",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Lin-et-al-2024-DuQuant-Distributing-Outliers-via-Dual-Transformation-Makes-Stronger-Quantized-LLMs": {
+   "kind": "paper",
+   "fm": {
+    "title": "DuQuant: Distributing Outliers via Dual Transformation Makes Stronger Quantized LLMs",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Liu-et-al-2024-Kangaroo-Lossless-Self-Speculative-Decoding-via-Double-Early-Exiting": {
+   "kind": "paper",
+   "fm": {
+    "title": "Kangaroo: Lossless Self-Speculative Decoding via Double Early Exiting",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Liu-et-al-2025-ParetoQ-Scaling-Laws-in-Extremely-Low-bit-LLM-Quantization": {
+   "kind": "paper",
+   "fm": {
+    "title": "ParetoQ: Scaling Laws in Extremely Low-bit LLM Quantization",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Liu-et-al-2025-PEARL-Parallel-Speculative-Decoding-with-Adaptive-Draft-Length": {
+   "kind": "paper",
+   "fm": {
+    "title": "PEARL: PARALLEL SPECULATIVE DECODING WITH ADAPTIVE DRAFT LENGTH",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Liu-et-al-2025-SpinQuant-LLM-quantization-with-learned-rotations": {
+   "kind": "paper",
+   "fm": {
+    "title": "SPINQUANT: LLM QUANTIZATION WITH LEARNED ROTATIONS",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Livny-et-al-Automatic-Reconstruction-of-Tree-Skeletal-Structures-from-Point-Clouds": {
+   "kind": "paper",
+   "fm": {
+    "title": "Automatic Reconstruction of Tree Skeletal Structures from Point Clouds",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Lobet-et-al-2017-Using-a-Structural-Root-System-Model-to-Evaluate-and-Improve-the-Accuracy-of-Root-Image-Analysis-Pip": {
+   "kind": "paper",
+   "fm": {
+    "title": "Using a Structural Root System Model to Evaluate and Improve the Accuracy of Root Image Analysis Pipelines",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Lu-et-al-2022-A-continental-scale-analysis-reveals-widespread-root-bimodality": {
+   "kind": "paper",
+   "fm": {
+    "title": "A continental scale analysis reveals widespread root bimodality",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Lyu-et-al-2023-Faithful-Chain-of-Thought-Reasoning": {
+   "kind": "paper",
+   "fm": {
+    "title": "Faithful Chain-of-Thought Reasoning",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Ma-et-al-2024-AffineQuant-Affine-Transformation-Quantization-for-Large-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "AFFINEQUANT: AFFINE TRANSFORMATION QUANTIZATION FOR LARGE LANGUAGE MODELS",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Ma-et-al-2024-The-Era-of-1-bit-LLMs-All-Large-Language-Models-are-in-1-58-Bits": {
+   "kind": "paper",
+   "fm": {
+    "title": "The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Ma-et-al-2026-FIPO-Eliciting-Deep-Reasoning-with-Future-KL-Influenced-Policy-Optimization": {
+   "kind": "paper",
+   "fm": {
+    "title": "FIPO: Eliciting Deep Reasoning with Future-KL Influenced Policy Optimization",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Maharana-2024-Evaluating-Very-Long-Term-Conversational-Memory-of-LLM-Agents": {
+   "kind": "paper",
+   "fm": {
+    "title": "Evaluating Very Long-Term Conversational Memory of LLM Agents",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Mardani-et-al-2024-Residual-Corrective-Diffusion-Modeling-for-Km-scale-Atmospheric-Downscaling": {
+   "kind": "paper",
+   "fm": {
+    "title": "Residual Corrective Diffusion Modeling for Km-scale Atmospheric Downscaling",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Masked-Autoencoders-Are-Scalable-Vision-Learners": {
+   "kind": "paper",
+   "fm": {
+    "title": "Masked Autoencoders Are Scalable Vision Learners",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/MASSV-Multimodal-Adaptation-and-Self-Data-Distillation-for-Speculative-Decoding-of-Vision-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "MASSV: Multimodal Adaptation and Self-Data Distillation for Speculative Decoding of Vision-Language Models",
+    "updated": "2026-06-03",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Mastering-Diverse-Domains-through-World-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "Mastering Diverse Domains through World Models",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Meng-et-al-2022-SDEdit-Guided-Image-Synthesis-and-Editing-with-Stochastic-Differential-Equations": {
+   "kind": "paper",
+   "fm": {
+    "title": "SDEDIT: GUIDED IMAGE SYNTHESIS AND EDITING WITH STOCHASTIC DIFFERENTIAL EQUATIONS",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Meng-et-al-2026-Sparse-but-Critical-A-Token-Level-Analysis-of-Distributional-Shifts-in-RLVR-Fine-Tuning-of-LLMs": {
+   "kind": "paper",
+   "fm": {
+    "title": "Sparse but Critical: A Token-Level Analysis of Distributional Shifts in RLVR Fine-Tuning of LLMs",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Miao-et-al-2024-SpecInfer-Accelerating-Generative-Large-Language-Model-Serving-with-Tree-based-Speculative-Inferenc": {
+   "kind": "paper",
+   "fm": {
+    "title": "SpecInfer: Accelerating Large Language Model Serving with Tree-based Speculative Inference and Verification",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Michel-et-al-2019-Are-Sixteen-Heads-Really-Better-than-One": {
+   "kind": "paper",
+   "fm": {
+    "title": "Are Sixteen Heads Really Better than One?",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Mip-NeRF-A-Multiscale-Representation-for-Anti-Aliasing-Neural-Radiance-Fields-Jonathan": {
+   "kind": "paper",
+   "fm": {
+    "title": "Mip-NeRF: A Multiscale Representation for Anti-Aliasing Neural Radiance Fields",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Mix-Quant-Quantized-Prefilling-Precise-Decoding-for-Agentic-LLMs": {
+   "kind": "paper",
+   "fm": {
+    "title": "Mix-Quant: Quantized Prefilling, Precise Decoding for Agentic LLMs",
+    "updated": "2026-06-10",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/MMSpec-Benchmarking-Speculative-Decoding-for-Vision-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "MMSPEC: Benchmarking Speculative Decoding for Vision-Language Models",
+    "updated": "2026-06-03",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Mo-2025-LUT-Tensor-Core-A-Software-Hardware-Co-Design-for-LUT-Based-Low-Bit-LLM-Inference": {
+   "kind": "paper",
+   "fm": {
+    "title": "LUT Tensor Core: A Software-Hardware Co-Design for LUT-Based Low-Bit LLM Inference",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Multiverse-Your-Language-Models-Secretly": {
+   "kind": "paper",
+   "fm": {
+    "title": "Multiverse: Your Language Models Secretly Decide How to Parallelize and Merge Generation",
+    "updated": "2026-06-03",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/MVSplat-Efficient-3D-Gaussian-Splatting": {
+   "kind": "paper",
+   "fm": {
+    "title": "MVSplat: Efficient 3D Gaussian Splatting from Sparse Multi-View Images",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/NeRF-Representing-Scenes-as": {
+   "kind": "paper",
+   "fm": {
+    "title": "NeRF: Representing Scenes as Neural Radiance Fields for View Synthesis",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Neural-scene-representation-and-rendering": {
+   "kind": "paper",
+   "fm": {
+    "title": "Neural scene representation and rendering",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/On-Speculative-Decoding-for-Multimodal-Large-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "On Speculative Decoding for Multimodal Large Language Models",
+    "updated": "2026-06-03",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Oswald-et-al-2023-Transformers-learn-in-context-by-gradient-descent": {
+   "kind": "paper",
+   "fm": {
+    "title": "Transformers Learn In-Context by Gradient Descent",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Parallel-Context-Compaction-for-Long-Horizon-LLM-Agent-Serving": {
+   "kind": "paper",
+   "fm": {
+    "title": "Parallel Context Compaction for Long-Horizon LLM Agent Serving",
+    "updated": "2026-05-30",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Park-2023-Generative-Agents-Interactive-Simulacra-of-Human-Behavior": {
+   "kind": "paper",
+   "fm": {
+    "title": "Generative Agents: Interactive Simulacra of Human Behavior",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Peng-et-al-2023-YaRN-Efficient-Context-Window-Extension-of-Large-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "YaRN: Efficient Context Window Extension of Large Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Perez-et-al-2017-FiLM-Visual-Reasoning-with-a-General-Conditioning-Layer": {
+   "kind": "paper",
+   "fm": {
+    "title": "FiLM: Visual Reasoning with a General Conditioning Layer",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Piao-2026-AgentSociety-Large-Scale-Simulation-of-LLM-Driven-Generative-Agents-Advances-Understanding-of-Human": {
+   "kind": "paper",
+   "fm": {
+    "title": "AgentSociety: Large-Scale Simulation of LLM-Driven Generative Agents Advances Understanding of Human Behaviors and Society",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/pixelSplat-3D-Gaussian-Splats-from-Image-Pairs-for-Scalable-Generalizable-3D-Reconstruction": {
+   "kind": "paper",
+   "fm": {
+    "title": "pixelSplat: 3D Gaussian Splats from Image Pairs for Scalable Generalizable 3D Reconstruction",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Pixelwise-View-Selection-for-Unstructured": {
+   "kind": "paper",
+   "fm": {
+    "title": "Pixelwise View Selection for Unstructured Multi-View Stereo",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Poli-et-al-2023-Hyena-Hierarchy-Towards-Larger-Convolutional-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "Hyena Hierarchy: Towards Larger Convolutional Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Press-et-al-2022-Train-Short-Test-Long-Attention-with-Linear-Biases-Enables-Input-Length-Extrapolation": {
+   "kind": "paper",
+   "fm": {
+    "title": "TRAIN SHORT, TEST LONG: ATTENTION WITH LINEAR BIASES ENABLES INPUT LENGTH EXTRAPOLATION",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Progressive-Mixed-Precision-Decoding-For-Efficient-LLM-Inference": {
+   "kind": "paper",
+   "fm": {
+    "title": "PROGRESSIVE MIXED-PRECISION DECODING FOR EFFICIENT LLM INFERENCE",
+    "updated": "2026-06-10",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Qi-et-al-2025-EvoLM-In-Search-of-Lost-Language-Model-Training-Dynamics": {
+   "kind": "paper",
+   "fm": {
+    "title": "EvoLM: In Search of Lost Language Model Training Dynamics",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Qiu-et-al-2025-Gated-Attention-for-Large-Language-Models-Non-linearity-Sparsity-and-Attention-Sink-Free": {
+   "kind": "paper",
+   "fm": {
+    "title": "Gated Attention for Large Language Models: Non-linearity, Sparsity, and Attention-Sink-Free",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Quantizing-Large-Language-Models-for-Code-Generation-A-Differentiated-Replication": {
+   "kind": "paper",
+   "fm": {
+    "title": "Quantizing Large Language Models for Code Generation: A Differentiated Replication",
+    "updated": "2026-06-10",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Rafailov-et-al-2024-Direct-Preference-Optimization-Your-Language-Model-is-Secretly-a-Reward-Model": {
+   "kind": "paper",
+   "fm": {
+    "title": "Direct Preference Optimization: Your Language Model is Secretly a Reward Model",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Raffel-et-al-2023-Exploring-the-Limits-of-Transfer-Learning-with-a-Unified-Text-to-Text-Transformer": {
+   "kind": "paper",
+   "fm": {
+    "title": "Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Rahmati-et-al-2025-C-LoRA-Contextual-Low-Rank-Adaptation-for-Uncertainty-Estimation-in-Large-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "C-LoRA: Contextual Low-Rank Adaptation for Uncertainty Estimation in Large Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Raissi-et-al-2019-Physics-informed-neural-networks-A-deep-learning-framework-for-solving-forward-and-inverse-problems": {
+   "kind": "paper",
+   "fm": {
+    "title": "Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Ren-et-al-2025-Deep-Clustering-A-Comprehensive-Survey": {
+   "kind": "paper",
+   "fm": {
+    "title": "Deep Clustering: A Comprehensive Survey",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Roy-2024-An-Approach-Towards-Learning-K-means-friendly-Deep-Latent-Representation": {
+   "kind": "paper",
+   "fm": {
+    "title": "An Approach Towards Learning K-means-friendly Deep Latent Representation",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Roy-et-al-2020-Efficient-Content-Based-Sparse-Attention-with-Routing-Transformers": {
+   "kind": "paper",
+   "fm": {
+    "title": "Efficient Content-Based Sparse Attention with Routing Transformers",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Sadhukhan-et-al-2025-MagicDec-Breaking-the-Latency-Throughput-Tradeoff-for-Long-Context-Generation-with-Speculative-Deco": {
+   "kind": "paper",
+   "fm": {
+    "title": "MAGICDEC: BREAKING THE LATENCY-THROUGHPUT TRADEOFF FOR LONG CONTEXT GENERATION WITH SPECULATIVE DECODING",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Samarin-et-al-2026-LK-Losses-Direct-Acceptance-Rate-Optimization-for-Speculative-Decoding": {
+   "kind": "paper",
+   "fm": {
+    "title": "LK Losses: Direct Acceptance Rate Optimization for Speculative Decoding",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Scaling-Long-Horizon-LLM-Agent-via-Context-Folding": {
+   "kind": "paper",
+   "fm": {
+    "title": "Scaling Long-Horizon LLM Agent via Context-Folding",
+    "updated": "2026-05-30",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Schneuing-et-al-2024-Structure-based-Drug-Design-with-Equivariant-Diffusion-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "Structure-based Drug Design with Equivariant Diffusion Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Schulman-et-al-2017-Proximal-Policy-Optimization-Algorithms": {
+   "kind": "paper",
+   "fm": {
+    "title": "Proximal Policy Optimization Algorithms",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Schulman-et-al-2017-Trust-Region-Policy-Optimization": {
+   "kind": "paper",
+   "fm": {
+    "title": "Trust Region Policy Optimization",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Schulman-et-al-2018-High-Dimensional-Continuous-Control-Using-Generalized-Advantage-Estimation": {
+   "kind": "paper",
+   "fm": {
+    "title": "HIGH-DIMENSIONAL CONTINUOUS CONTROL USING GENERALIZED ADVANTAGE ESTIMATION",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Schuster-et-al-2022-Confident-Adaptive-Language-Modeling": {
+   "kind": "paper",
+   "fm": {
+    "title": "Confident Adaptive Language Modeling",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Selective-Context-Efficient-LLM-Inference-via-Contextual-Compression": {
+   "kind": "paper",
+   "fm": {
+    "title": "Compressing Context to Enhance Inference Efficiency of Large Language Models",
+    "updated": "2026-05-30",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Sfm-revisited": {
+   "kind": "paper",
+   "fm": {
+    "title": "Structure-from-Motion Revisited",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/SGLang-Efficient-Execution-of-Structured-Language-Model-Programs": {
+   "kind": "paper",
+   "fm": {
+    "title": "SGLang: Efficient Execution of Structured Language Model Programs",
+    "updated": "2026-06-03",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Shah-et-al-2024-FlashAttention-3-Fast-and-Accurate-Attention-with-Asynchrony-and-Low-precision": {
+   "kind": "paper",
+   "fm": {
+    "title": "FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Shao-et-al-2024-DeepSeekMath-Pushing-the-Limits-of-Mathematical-Reasoning-in-Open-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Shao-et-al-2024-OmniQuant-Omnidirectionally-Calibrated-Quantization-for-Large-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "OMNIQUANT: OMNIDIRECTIONALLY CALIBRATED QUANTIZATION FOR LARGE LANGUAGE MODELS",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/ShapeNet-An-Information-Rich-3D-Model-Repository": {
+   "kind": "paper",
+   "fm": {
+    "title": "ShapeNet: An Information-Rich 3D Model Repository",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Shaw-et-al-2018-Self-Attention-with-Relative-Position-Representations": {
+   "kind": "paper",
+   "fm": {
+    "title": "Self-Attention with Relative Position Representations",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Shazeer-2019-Fast-Transformer-Decoding-One-Write-Head-is-All-You-Need": {
+   "kind": "paper",
+   "fm": {
+    "title": "Fast Transformer Decoding: One Write-Head is All You Need",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Shazeer-et-al-2020-Talking-Heads-Attention": {
+   "kind": "paper",
+   "fm": {
+    "title": "Talking-Heads Attention",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Shuttleworth-et-al-2025-LoRA-vs-Full-Fine-tuning-An-Illusion-of-Equivalence": {
+   "kind": "paper",
+   "fm": {
+    "title": "LoRA vs Full Fine-tuning: An Illusion of Equivalence",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Son-et-al-2025-NSNQuant-A-Double-Normalization-Approach-for-Calibration-Free-Low-Bit-Vector-Quantization-of-KV-Cac": {
+   "kind": "paper",
+   "fm": {
+    "title": "NSNQuant: A Double Normalization Approach for Calibration-Free Low-Bit Vector Quantization of KV Cache",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Spec-LLaVA-Accelerating-Vision-Language-Models-with-Dynamic-Tree-Based-Speculative-Decoding": {
+   "kind": "paper",
+   "fm": {
+    "title": "Spec-LLaVA: Accelerating Vision-Language Models with Dynamic Tree-Based Speculative Decoding",
+    "updated": "2026-06-03",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/SpecEM-Training-Free-LLM-Ensembling-via-Iterative": {
+   "kind": "paper",
+   "fm": {
+    "title": "SpecEM: Training-Free LLM Ensembling via Iterative Drafting, Verification, and Online Feedback",
+    "updated": "2026-06-03",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/SpecReason-Fast-and-Accurate-Inference-Time": {
+   "kind": "paper",
+   "fm": {
+    "title": "SpecReason: Fast and Accurate Inference-Time Compute via Speculative Reasoning",
+    "updated": "2026-06-03",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Speculative-Decoding-Reimagined-for-Multimodal-Large-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "Speculative Decoding Reimagined for Multimodal Large Language Models",
+    "updated": "2026-06-03",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Speculative-RAG-Enhancing-Retrieval-Augmented-Generation-through-Drafting": {
+   "kind": "paper",
+   "fm": {
+    "title": "SPECULATIVE RAG: ENHANCING RETRIEVAL AUGMENTED GENERATION THROUGH DRAFTING",
+    "updated": "2026-05-30",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/SpecVLM-Fast-Speculative-Decoding-in-Vision-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "SPECVLM: FAST SPECULATIVE DECODING VISION-LANGUAGE MODELS",
+    "updated": "2026-06-03",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Srivastava-et-al-Precipitation-Downscaling-with-Spatiotemporal-Video-Diffusion": {
+   "kind": "paper",
+   "fm": {
+    "title": "Precipitation Downscaling with Spatiotemporal Video Diffusion",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/STS-Efficient-Sparse-Attention-with-Speculative-Token-Sparsity": {
+   "kind": "paper",
+   "fm": {
+    "title": "STS: Efficient Sparse Attention with Speculative Token Sparsity",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Su-et-al-2023-RoFormer-Enhanced-Transformer-with-Rotary-Position-Embedding": {
+   "kind": "paper",
+   "fm": {
+    "title": "ROFORMER: ENHANCED TRANSFORMER WITH ROTARY POSITION EMBEDDING",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Sun-et-al-2023-Retentive-Network-A-Successor-to-Transformer-for-Large-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "Retentive Network: A Successor to Transformer for Large Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Sun-et-al-2024-A-Simple-and-Effective-Pruning-Approach-for-Large-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "A SIMPLE AND EFFECTIVE PRUNING APPROACH FOR LARGE LANGUAGE MODELS",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Sun-et-al-2024-Massive-Activations-in-Large-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "Massive Activations in Large Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Sun-et-al-2025-FlatQuant-Flatness-Matters-for-LLM-Quantization": {
+   "kind": "paper",
+   "fm": {
+    "title": "FLATQUANT: Flatness Matters for LLM Quantization",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Szymanowicz-et-al-2024-Splatter-Image-Ultra-Fast-Single-View-3D-Reconstruction": {
+   "kind": "paper",
+   "fm": {
+    "title": "Splatter Image: Ultra-Fast Single-View 3D Reconstruction",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Tagliasacchi-et-al-Curve-Skeleton-Extraction-from-Incomplete-Point-Cloud": {
+   "kind": "paper",
+   "fm": {
+    "title": "Curve Skeleton Extraction from Incomplete Point Cloud",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Tarpey-2007-A-parametric-k-means-algorithm": {
+   "kind": "paper",
+   "fm": {
+    "title": "A Parametric k-Means Algorithm",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Team-et-al-2025-Kimi-K2-Open-Agentic-Intelligence": {
+   "kind": "paper",
+   "fm": {
+    "title": "KIMI K2: OPEN AGENTIC INTELLIGENCE",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Teoh-et-al-2025-Next-Latent-Prediction-Transformers-Learn-Compact-World-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "Next-Latent Prediction Transformers Learn Compact World Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Tian-et-al-2025-Irrational-Complex-Rotations-Empower-Low-bit-Optimizers": {
+   "kind": "paper",
+   "fm": {
+    "title": "Irrational Complex Rotations Empower Low-bit Optimizers",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Tiwari-et-al-2025-QuantSpec-Self-Speculative-Decoding-with-Hierarchical-Quantized-KV-Cache": {
+   "kind": "paper",
+   "fm": {
+    "title": "QuantSpec: Self-Speculative Decoding with Hierarchical Quantized KV Cache",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Trippe-et-al-2023-Diffusion-probabilistic-modeling-of-protein-backbones-in-3D-for-the-motif-scaffolding-problem": {
+   "kind": "paper",
+   "fm": {
+    "title": "DIFFUSION PROBABILISTIC MODELING OF PROTEIN IN 3D MOTIF-SCAFFOLDING",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Tseng-et-al-2024-QuIP-Even-Better-LLM-Quantization-with-Hadamard-Incoherence-and-Lattice-Codebooks": {
+   "kind": "paper",
+   "fm": {
+    "title": "QuIP#: Even Better LLM Quantization with Hadamard Incoherence and Lattice Codebooks",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/TurboQuant-Online-Vector-Quantization-with-Near-optimal-Distortion-Rate": {
+   "kind": "paper",
+   "fm": {
+    "title": "TurboQuant: Online Vector Quantization with Near-optimal Distortion Rate",
+    "updated": "2026-05-26",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/V-JEPA-2-1-Unlocking-Dense-Features-in-Video-Self-Supervised-Learning": {
+   "kind": "paper",
+   "fm": {
+    "title": "V-JEPA 2.1: Unlocking Dense Features in Video Self-Supervised Learning",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Vaswani-et-al-2023-Attention-Is-All-You-Need": {
+   "kind": "paper",
+   "fm": {
+    "title": "Attention Is All You Need",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Vezhnevets-2023-Generative-agent-based-modeling-with-actions-grounded-in-physical-social-or-digital-space-using-Co": {
+   "kind": "paper",
+   "fm": {
+    "title": "Generative agent-based modeling with actions grounded in physical, social, or digital space using Concordia",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Vicreg-Variance-Invariance-Covariance-Regularization-For-Self-Supervised-Learning": {
+   "kind": "paper",
+   "fm": {
+    "title": "VICREG: VARIANCE-INVARIANCE-COVARIANCE REGULARIZATION FOR SELF-SUPERVISED LEARNING",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/ViewFormer-NeRF-free-Neural-Rendering": {
+   "kind": "paper",
+   "fm": {
+    "title": "ViewFormer: NeRF-free Neural Rendering from Few Images Using Transformers",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Wang-2024-A-Survey-on-Large-Language-Model-based-Autonomous-Agents": {
+   "kind": "paper",
+   "fm": {
+    "title": "A Survey on Large Language Model based Autonomous Agents",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Wang-2025-QSVD-Efficient-Low-rank-Approximation-for-Unified-Query-Key-Value-Weight-Compression-in-Low-Precisi": {
+   "kind": "paper",
+   "fm": {
+    "title": "QSVD: Efficient Low-rank Approximation for Unified Query-Key-Value Weight Compression in Low-Precision Vision-Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Wang-2026-WSVD-Weighted-Low-Rank-Approximation-for-Fast-and-Efficient-Execution-of-Low-Precision-Vision-Langu": {
+   "kind": "paper",
+   "fm": {
+    "title": "WSVD: WEIGHTED LOW-RANK APPROXIMATION FOR FAST AND EFFICIENT EXECUTION OF LOW-PRECISION VISION-LANGUAGE MODELS",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Wang-et-al-2020-Linformer-Self-Attention-with-Linear-Complexity": {
+   "kind": "paper",
+   "fm": {
+    "title": "Linformer: Self-Attention with Linear Complexity",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Wang-et-al-2023-BitNet-Scaling-1-bit-Transformers-for-Large-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "BitNet: Scaling 1-bit Transformers for Large Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Wang-et-al-2023-Self-Consistency-Improves-Chain-of-Thought-Reasoning-in-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "SELF-CONSISTENCY IMPROVES CHAIN OF THOUGHT REASONING IN LANGUAGE MODELS",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Wang-et-al-2023-Self-Instruct-Aligning-Language-Models-with-Self-Generated-Instructions": {
+   "kind": "paper",
+   "fm": {
+    "title": "SELF-INSTRUCT: Aligning Language Models with Self-Generated Instructions",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Wang-et-al-2024-BitNet-a4-8-4-bit-Activations-for-1-bit-LLMs": {
+   "kind": "paper",
+   "fm": {
+    "title": "BitNet a4.8: 4-bit Activations for 1-bit LLMs",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Wang-et-al-2025-BitNet-v2-Native-4-bit-Activations-with-Hadamard-Transformation-for-1-bit-LLMs": {
+   "kind": "paper",
+   "fm": {
+    "title": "Richard Feynman”",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Wang-et-al-2025-Q-VLM-Post-training-Quantization-for-Large-Vision-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "Q-VLM: Post-training Quantization for Large Vision-Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Wang-et-al-2025-SVD-LLM-Truncation-aware-Singular-Value-Decomposition-for-Large-Language-Model-Compression": {
+   "kind": "paper",
+   "fm": {
+    "title": "SVD-LLM: TRUNCATION-AWARE SINGULAR VALUE DECOMPOSITION FOR LARGE LANGUAGE MODEL COMPRESSION",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Wang-LSVD-Loss-Aware-Low-Rank-Approximation-for-Efficient-Low-Precision-Vision-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "LSVD: Loss-Aware Low-Rank Approximation for Efficient Low-Precision Vision-Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Watson-et-al-2023-De-novo-design-of-protein-structure-and-function-with-RFdiffusion": {
+   "kind": "paper",
+   "fm": {
+    "title": "De novo design of protein structure and function with RFdiffusion",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Wei-et-al-2023-Chain-of-Thought-Prompting-Elicits-Reasoning-in-Large-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Wei-et-al-2025-First-SFT-Second-RL-Third-UPT-Continual-Improving-Multi-Modal-LLM-Reasoning-via-Unsupervised-Post": {
+   "kind": "paper",
+   "fm": {
+    "title": "First SFT, Second RL, Third UPT: Continual Improving Multi-Modal LLM Reasoning via Unsupervised Post-Training",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Wei-et-al-2025-T-MAC-CPU-Renaissance-via-Table-Lookup-for-Low-Bit-LLM-Deployment-on-Edge": {
+   "kind": "paper",
+   "fm": {
+    "title": "T-MAC: CPU Renaissance via Table Lookup for Low-Bit LLM Deployment on Edge",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Wolleb-et-al-2022-Diffusion-Models-for-Medical-Anomaly-Detection": {
+   "kind": "paper",
+   "fm": {
+    "title": "Diffusion Models for Medical Anomaly Detection",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Woody-Root-System-Excavation-and-Digitization": {
+   "kind": "paper",
+   "fm": {
+    "title": "Advanced Architectures of the Belowground: A Comprehensive Survey of Field Excavation and In-Situ 3D Digitization Methods for Woody Plant Root Systems in Natural Ecosystems",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/World-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "World Models",
+    "updated": "2026-06-04",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Wu-2025-LONGMEMEVAL-BENCHMARKING-CHAT-ASSIST-ANTS-ON-LONG-TERM-INTERACTIVE-MEMORY": {
+   "kind": "paper",
+   "fm": {
+    "title": "LONGMEMEVAL: BENCHMARKING CHAT ASSISTANTS ON LONG-TERM INTERACTIVE MEMORY",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Wu-et-al-2024-Meta-Rewarding-Language-Models-Self-Improving-Alignment-with-LLM-as-a-Meta-Judge": {
+   "kind": "paper",
+   "fm": {
+    "title": "META-REWARDING LANGUAGE MODELS: Self-Improving Alignment with LLM-as-a-Meta-Judge",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Wu-et-al-2025-PolarQuant-Leveraging-Polar-Transformation-for-Efficient-Key-Cache-Quantization-and-Decoding-Accele": {
+   "kind": "paper",
+   "fm": {
+    "title": "PolarQuant: Leveraging Polar Transformation for Efficient Key Cache Quantization and Decoding Acceleration",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Xi-et-al-2023-Training-Transformers-with-4-bit-Integers": {
+   "kind": "paper",
+   "fm": {
+    "title": "Training Transformers with 4-bit Integers",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Xiang-and-Zhang-2024-DFRot-Achieving-Outlier-Free-and-Massive-Activation-Free-for-Rotated-LLMs-with-Refined-Rotation": {
+   "kind": "paper",
+   "fm": {
+    "title": "DFROT: ACHIEVING OUTLIER-FREE AND MASSIVE ACTIVATION-FREE FOR ROTATED LLMS WITH REFINED ROTATION",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Xiao-et-al-2024-Efficient-Streaming-Language-Models-with-Attention-Sinks": {
+   "kind": "paper",
+   "fm": {
+    "title": "EFFICIENT STREAMING LANGUAGE MODELS WITH ATTENTION SINKS",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Xiao-et-al-2024-SmoothQuant-Accurate-and-Efficient-Post-Training-Quantization-for-Large-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "SmoothQuant: Accurate and Efficient Post-Training Quantization for Large Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Xie-et-al-2022-An-Explanation-of-In-context-Learning-as-Implicit-Bayesian-Inference": {
+   "kind": "paper",
+   "fm": {
+    "title": "An Explanation of In-context Learning as Implicit Bayesian Inference",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Xie-et-al-2022-Crystal-Diffusion-Variational-Autoencoder-for-Periodic-Material-Generation": {
+   "kind": "paper",
+   "fm": {
+    "title": "CRYSTAL DIFFUSION VARIATIONAL AUTOENCODER FOR PERIODIC MATERIAL GENERATION",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Xie-et-al-2024-Advancing-Multimodal-Large-Language-Models-with-Quantization-Aware-Scale-Learning-for-Efficient-Adap": {
+   "kind": "paper",
+   "fm": {
+    "title": "Advancing Multimodal Large Language Models with Quantization-Aware Scale Learning for Efficient Adaptation",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Xiong-et-al-2021-Nystr-mformer-A-Nystr-m-Based-Algorithm-for-Approximating-Self-Attention": {
+   "kind": "paper",
+   "fm": {
+    "title": "Nystr ̈omformer: A Nystr ̈om-based Algorithm for Approximating Self-Attention",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Xu-et-al-2025-RSAVQ-Riemannian-Sensitivity-Aware-Vector-Quantization-for-Large-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "RSAVQ: Riemannian Sensitivity-Aware Vector Quantization for Large Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Xu-et-al-2025-SpeContext-Enabling-Efficient-Long-context-Reasoning-with-Speculative-Context-Sparsity-in-LLMs": {
+   "kind": "paper",
+   "fm": {
+    "title": "SpeContext: Enabling Efficient Long-context Reasoning with Speculative Context Sparsity in LLMs",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Xu-et-al-2025-Speculative-Knowledge-Distillation-Bridging-the-Teacher-Student-Gap-Through-Interleaved-Sampling": {
+   "kind": "paper",
+   "fm": {
+    "title": "SPECULATIVE KNOWLEDGE DISTILLATION: BRIDGING THE TEACHER-STUDENT GAP THROUGH INTERLEAVED SAMPLING",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Yang-et-al-2023-Foundation-Models-for-Decision-Making-Problems-Methods-and-Opportunities": {
+   "kind": "paper",
+   "fm": {
+    "title": "Foundation Models for Decision Making: Problems, Methods, and Opportunities",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Yang-et-al-2025-Diffusion-Models-A-Comprehensive-Survey-of-Methods-and-Applications": {
+   "kind": "paper",
+   "fm": {
+    "title": "Diffusion Models: A Comprehensive Survey of Methods and Applications",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Yang-et-al-2025-LongSpec-Long-Context-Lossless-Speculative-Decoding-with-Efficient-Drafting-and-Verification": {
+   "kind": "paper",
+   "fm": {
+    "title": "LONGSPEC: Long-Context Lossless Speculative Decoding with Efficient Drafting and Verification",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Yang-et-al-2025-Qwen3-Technical-Report": {
+   "kind": "paper",
+   "fm": {
+    "title": "Qwen3 Technical Report",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Yang-et-al-Towards-K-means-friendly-Spaces-Simultaneous-Deep-Learning-and-Clustering": {
+   "kind": "paper",
+   "fm": {
+    "title": "Towards K-means-friendly Spaces: Simultaneous Deep Learning and Clustering",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Yao-et-al-2023-ReAct-Synergizing-Reasoning-and-Acting-in-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "REACT: SYNERGIZING REASONING AND ACTING IN LANGUAGE MODELS",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Ye-et-al-2025-Speculative-Actions-A-Lossless-Framework-for-Faster-Agentic-Systems": {
+   "kind": "paper",
+   "fm": {
+    "title": "Speculative Actions: A Lossless Framework for Faster Agentic Systems",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Yi-et-al-2024-Rotated-Runtime-Smooth-Training-Free-Activation-Smoother-for-accurate-INT4-inference": {
+   "kind": "paper",
+   "fm": {
+    "title": "ROTATED RUNTIME SMOOTH: TRAINING-FREE ACTIVATION SMOOTHER FOR ACCURATE INT4 INFERENCE",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Yin-et-al-2024-A-Survey-on-Multimodal-Large-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "A Survey on Multimodal Large Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Yu-et-al-2025-DAPO-An-Open-Source-LLM-Reinforcement-Learning-System-at-Scale": {
+   "kind": "paper",
+   "fm": {
+    "title": "DAPO: An Open-Source LLM Reinforcement Learning System at Scale",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Yuan-et-al-2025-Native-Sparse-Attention-Hardware-Aligned-and-Natively-Trainable-Sparse-Attention": {
+   "kind": "paper",
+   "fm": {
+    "title": "Native Sparse Attention: Hardware-Aligned and Natively Trainable Sparse Attention",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Yuan-et-al-2025-Self-Rewarding-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "Self-Rewarding Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Zaheer-et-al-2021-Big-Bird-Transformers-for-Longer-Sequences": {
+   "kind": "paper",
+   "fm": {
+    "title": "Big Bird: Transformers for Longer Sequences",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Zhang-et-al-2023-H-2-O-Heavy-Hitter-Oracle-for-Efficient-Generative-Inference-of-Large-Language-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "H2O: Heavy-Hitter Oracle for Efficient Generative Inference of Large Language Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Zhang-et-al-2024-KV-Cache-is-1-Bit-Per-Channel-Efficient-Large-Language-Model-Inference-with-Coupled-Quantization": {
+   "kind": "paper",
+   "fm": {
+    "title": "KV Cache is 1 Bit Per Channel: Efficient Large Language Model Inference with Coupled Quantization",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Zhang-et-al-2024-Vision-Language-Models-for-Vision-Tasks-A-Survey": {
+   "kind": "paper",
+   "fm": {
+    "title": "Vision-Language Models for Vision Tasks: A Survey",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Zhang-et-al-2025-RefLoRA-Refactored-Low-Rank-Adaptation-for-Efficient-Fine-Tuning-of-Large-Models": {
+   "kind": "paper",
+   "fm": {
+    "title": "RefLoRA: Refactored Low-Rank Adaptation for Efficient Fine-Tuning of Large Models",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Zhang-et-al-2026-Learning-to-Draft-Adaptive-Speculative-Decoding-with-Reinforcement-Learning": {
+   "kind": "paper",
+   "fm": {
+    "title": "LEARNING TO DRAFT: ADAPTIVE SPECULATIVE DECODING WITH REINFORCEMENT LEARNING",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Zhao-et-al-2024-Artificial-intelligence-for-geoscience-Progress-challenges-and-perspectives": {
+   "kind": "paper",
+   "fm": {
+    "title": "Artificial intelligence for geoscience: Progress, challenges, and perspectives",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Zheng-et-al-2023-Judging-LLM-as-a-Judge-with-MT-Bench-and-Chatbot-Arena": {
+   "kind": "paper",
+   "fm": {
+    "title": "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Zhou-et-al-2024-Batch-Calibration-Rethinking-Calibration-for-In-Context-Learning-and-Prompt-Engineering": {
+   "kind": "paper",
+   "fm": {
+    "title": "Batch Calibration: Rethinking Calibration for In-Context Learning and Prompt Engineering",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  },
+  "papers/Zuo-et-al-2025-TTRL-Test-Time-Reinforcement-Learning": {
+   "kind": "paper",
+   "fm": {
+    "title": "TTRL: Test-Time Reinforcement Learning",
+    "updated": "2026-05-20",
+    "year": 2026,
+    "venue": "arXiv"
+   },
+   "body": ""
+  }
+ }
+}

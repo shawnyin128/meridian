@@ -1,0 +1,20 @@
+{
+  "name": "meridian",
+  "interface": {
+    "displayName": "Meridian"
+  },
+  "plugins": [
+    {
+      "name": "meridian",
+      "source": {
+        "source": "local",
+        "path": "./plugins/codex/meridian"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

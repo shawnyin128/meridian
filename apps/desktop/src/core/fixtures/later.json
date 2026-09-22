@@ -1,0 +1,43 @@
+[
+  {
+    "id": "upsurvey",
+    "title": "Speculative Decoding for LLM Serving: A Survey",
+    "source": "上传",
+    "added": "2026-08-25",
+    "authors": "(解析待确认)",
+    "venue": "PDF",
+    "abstract": "(上传 PDF)覆盖 draft 构造、验证成本模型与 serving 集成三条线的综述草稿,解析出 42 页正文与 312 条引用。",
+    "paper": "paper-pdf-b0a0cd2893ae"
+  },
+  {
+    "id": "thunderkv",
+    "title": "ThunderKV: Fused Attention Kernels for Long-Context Serving",
+    "source": "作者 · T. Dao",
+    "added": "2026-08-24",
+    "authors": "Dao, Fu, Rodriguez",
+    "venue": "MLSys 2026",
+    "abstract": "We introduce ThunderKV, a family of fused attention kernels that co-schedule KV-cache reads with speculative verification. On shared-prefix workloads ThunderKV reduces memory stalls by 2.1× and composes with existing tree-drafting schedulers without modification.",
+    "paper": "paper-pdf-44a807f9f2db",
+    "pdf": "https://arxiv.org/pdf/2608.02233"
+  },
+  {
+    "id": "kvpress",
+    "title": "KVPress: Structured KV-Cache Compression for Serving",
+    "source": "作者 · T. Dao",
+    "added": "2026-08-21",
+    "authors": "Chen, Alvarez, Duan",
+    "venue": "arXiv 2026",
+    "abstract": "KVPress compresses the KV cache with attention-aware block pruning for long-context serving. Compression decisions are made per layer against a measured recall budget, and the pruned layout composes with speculative verification kernels without kernel changes.",
+    "paper": "paper-pdf-a2e85d069b5b"
+  },
+  {
+    "id": "mixtral",
+    "title": "Mixtral of Experts",
+    "source": "主题 · MoE serving",
+    "added": "2026-08-12",
+    "authors": "Jiang et al. (Mistral AI)",
+    "venue": "arXiv:2401.04088",
+    "abstract": "(要点转写)8×7B 稀疏 MoE,每个 token 路由到 2 个 expert,以 13B 级激活成本逼近 70B 级质量;router 的路由行为正是本库 MoE serving 主题关注的信号来源。",
+    "paper": "paper-pdf-f8bbf0e9d979"
+  }
+]

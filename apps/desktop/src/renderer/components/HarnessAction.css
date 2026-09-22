@@ -1,0 +1,12 @@
+.harness-trigger{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.harness-trigger span{font-size:13px;line-height:1;color:currentColor}
+.harness-cost-plan{min-width:360px;color:var(--sec);font-size:var(--fs-sm)}
+.harness-cost-plan>p{margin:0 0 12px;padding:9px 10px;border-radius:var(--r-md);line-height:1.45}
+.harness-cost-plan .cost-warning{background:var(--tint-warn);color:var(--warn)}
+.harness-cost-plan .cost-demo{background:var(--tint-good);color:var(--good)}
+.harness-cost-plan dl{margin:0;display:grid;gap:0;border:1px solid var(--sep);border-radius:var(--r-md);overflow:hidden}
+.harness-cost-plan dl>div{display:grid;grid-template-columns:92px minmax(0,1fr);gap:12px;padding:8px 10px;border-top:1px solid var(--sep)}
+.harness-cost-plan dl>div:first-child{border-top:0}
+.harness-cost-plan dt{color:var(--ter)}
+.harness-cost-plan dd{margin:0;color:var(--ink);text-align:right}
+.harness-cost-plan small{display:block;margin-top:10px;color:var(--ter);line-height:1.45}

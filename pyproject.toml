@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "meridian"
+version = "0.0.4"
+description = "Markdown-first LLM-maintained paper wiki with CLI and MCP entries."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "PyMuPDF>=1.24",
+  "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+# Used by scripts/brand-assets.py to generate icons from design sources; not needed at runtime or in tests.
+brand = [
+  "Pillow>=10.0",
+]
+
+[project.scripts]
+meridian = "meridian.cli:main"
+meridian-mcp = "meridian.mcp.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+meridian = [
+  "templates/wiki-vault/**/*.md",
+  "templates/wiki-vault/**/*.gitkeep",
+  "templates/wiki-vault/**/*.jsonl",
+  "templates/research-dev/**/*.md",
+]

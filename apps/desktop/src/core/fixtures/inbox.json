@@ -1,0 +1,110 @@
+[
+  {
+    "id": "specdec",
+    "watch": "spec",
+    "source": "主题 · speculative decoding",
+    "title": "Fast Inference from Transformers via Speculative Decoding",
+    "authors": "Yaniv Leviathan, Matan Kalman, Yossi Matias",
+    "venue": "ICML 2023 Oral · arXiv:2211.17192",
+    "abstract": "Inference from large autoregressive models like Transformers is slow - decoding K tokens takes K serial runs of the model. In this work we introduce speculative decoding - an algorithm to sample from autoregressive models faster without any changes to the outputs, by computing several tokens in parallel. […] We demonstrate it on T5-XXL and show a 2X-3X acceleration compared to the standard T5X implementation, with identical outputs.",
+    "rec": "主题订阅回填的奠基文:你库里三条 spec-dec 结论都建在它的接受准则上,值得留档原文。",
+    "downloaded": false,
+    "paper": "paper-pdf-e0b2ea3a1a54",
+    "pdf": "https://arxiv.org/pdf/2211.17192",
+    "vault": {
+      "topic": "speculative decoding",
+      "arxiv": "2211.17192",
+      "meta": { "authors": ["Yaniv Leviathan", "Matan Kalman", "Yossi Matias"], "submitted": "2022-11-30", "journalRef": "ICML 2023" }
+    }
+  },
+  {
+    "id": "longspec",
+    "watch": "spec",
+    "source": "主题 · speculative decoding",
+    "title": "LongSpec: Long-Context Lossless Speculative Decoding",
+    "authors": "Yang, Chen, Liu et al.",
+    "venue": "",
+    "abstract": "Speculative decoding reduces LLM decoding latency by verifying multiple drafted tokens in parallel, but tree-structured drafting is believed to stop paying off beyond a modest width. We revisit this knee-point result in batched long-context serving and show that with shared prefixes, verification cost is amortized across the batch; wider trees remain net-positive well beyond prior reports, yielding up to 2.4× end-to-end speedup.",
+    "rec": "把「宽树拐点」从方法属性重述为服务场景属性——如果成立,批量部署下的树宽设计都要重算。",
+    "downloaded": false,
+    "paper": "paper-pdf-a66fb13e3879",
+    "pdf": "https://arxiv.org/pdf/2607.01428",
+    "vault": {
+      "topic": "speculative decoding",
+      "arxiv": "2607.01428",
+      "meta": { "authors": ["Yang", "Chen", "Liu"], "submitted": "2026-07-02", "journalRef": null }
+    }
+  },
+  {
+    "id": "sequoia2",
+    "watch": "spec",
+    "source": "主题 · speculative decoding",
+    "title": "Sequoia-2: Hardware-Aware Adaptive Tree Construction for Speculative Decoding",
+    "authors": "Park, Ainslie, Zheng et al.",
+    "venue": "NeurIPS 2026",
+    "abstract": "We present Sequoia-2, which constructs speculative decoding trees adaptively per request using a hardware-aware cost model. Tree topology is optimized online against measured verification throughput rather than a fixed budget, improving accepted tokens per second by 18–31% across A100 and H200 serving configurations.",
+    "rec": "和上一篇正好互补:一个改成本模型的假设,一个把成本模型做成在线自适应。",
+    "downloaded": false,
+    "paper": "paper-pdf-ce1710c3ff83",
+    "pdf": "https://arxiv.org/pdf/2608.00417",
+    "vault": {
+      "topic": "speculative decoding",
+      "arxiv": "2608.00417",
+      "meta": { "authors": ["Park", "Ainslie", "Zheng"], "submitted": "2026-08-01", "journalRef": "NeurIPS 2026" }
+    }
+  },
+  {
+    "id": "drafterlite",
+    "watch": "spec",
+    "source": "主题 · speculative decoding",
+    "title": "DrafterLite: Distilling Draft Models that Know When to Stop",
+    "authors": "Kumar, Xia, Bhatt",
+    "venue": "",
+    "abstract": "Draft models waste compute by proposing tokens past their competence. DrafterLite distills a stopping head jointly with the draft model, letting it terminate speculation early on hard spans. This recovers most of the speedup of larger drafters at 40% of the draft cost.",
+    "rec": "「知道何时停」与你在做的按深度剪枝是同一直觉的另一实现。",
+    "downloaded": false,
+    "paper": "paper-pdf-eb6d34680efc",
+    "pdf": "https://arxiv.org/pdf/2608.01112",
+    "vault": {
+      "topic": "speculative decoding",
+      "arxiv": "2608.01112",
+      "meta": { "authors": ["Kumar", "Xia", "Bhatt"], "submitted": "2026-08-03", "journalRef": null }
+    }
+  },
+  {
+    "id": "fa3",
+    "watch": "dao",
+    "source": "作者 · T. Dao",
+    "title": "FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision",
+    "authors": "Jay Shah, Ganesh Bikshandi, Ying Zhang, Vijay Thakkar, Pradeep Ramani, Tri Dao",
+    "venue": "arXiv:2407.08608",
+    "abstract": "(要点转写)FlashAttention-2 在 H100 上只用到约 35% 算力。这篇提出三项 Hopper 专属技术:warp-specialization 让计算与搬运异步重叠、分块 matmul 与 softmax 交错执行、FP8 分块量化加 incoherent processing。结果:FP16 达 740 TFLOPs/s(约 75% 利用率),FP8 接近 1.2 PFLOPs/s,整体 1.5–2.0×,且 FP8 数值误差比基线低 2.6×。",
+    "rec": "你关注的作者新作:attention 层的算力天花板又抬高一截,与 spec-dec 的验证 kernel 正交、可叠加。",
+    "downloaded": false,
+    "paper": "paper-pdf-f6b2650adabe",
+    "pdf": "https://arxiv.org/pdf/2407.08608",
+    "vault": {
+      "topic": "",
+      "arxiv": "2407.08608",
+      "meta": { "authors": ["Jay Shah", "Ganesh Bikshandi", "Ying Zhang", "Vijay Thakkar", "Pradeep Ramani", "Tri Dao"], "submitted": "2024-07-11", "journalRef": null }
+    }
+  },
+  {
+    "id": "thunderkv",
+    "watch": "dao",
+    "source": "作者 · T. Dao",
+    "title": "ThunderKV: Fused Attention Kernels for Long-Context Serving",
+    "authors": "Dao, Fu, Rodriguez",
+    "venue": "MLSys 2026",
+    "abstract": "We introduce ThunderKV, a family of fused attention kernels that co-schedule KV-cache reads with speculative verification. On shared-prefix workloads ThunderKV reduces memory stalls by 2.1× and composes with existing tree-drafting schedulers without modification.",
+    "rec": "你关注的作者新作;与 LongSpec 的前缀复用正好在 kernel 层互补。",
+    "downloaded": false,
+    "paper": "paper-pdf-44a807f9f2db",
+    "pdf": "https://arxiv.org/pdf/2608.02233",
+    "vault": {
+      "topic": "",
+      "arxiv": "2608.02233",
+      "meta": { "authors": ["Dao", "Fu", "Rodriguez"], "submitted": "2026-08-05", "journalRef": "MLSys 2026" }
+    }
+  }
+]

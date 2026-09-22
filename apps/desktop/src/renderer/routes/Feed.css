@@ -1,0 +1,24 @@
+/*
+ * The dynamic filter bar, source card and presentation block are moved from desktop/design/platform-shell-demo.html one by one.
+ * This screen in the demo is in the dynamic exclusive state (.main.feedmain), and the values ​​in that state are shown below.
+ */
+
+.feedcol{background:var(--content)}
+.feedbar{display:flex;gap:6px;padding:10px 8px 2px;justify-content:center;flex-wrap:wrap;flex-shrink:0;position:relative}
+/* When dynamically occupying one screen, the text column is wider than the dialogue, the same as demo's .main.feedmain .feedcol .mwrap */
+.feedcol .mwrap{width:min(var(--pagew),92%)}
+.feed-day{box-sizing:border-box}
+
+.fitem{background:var(--card);border:1px solid var(--sep2);border-radius:var(--r-lg);padding:12px 16px}
+.fsrc{display:flex;align-items:center;gap:6px;font-size:var(--fs-sm);font-weight:600;color:var(--ter);margin-bottom:6px}
+.fic{display:grid;place-items:center}
+.fic svg{width:13px;height:13px}
+.ftime{margin-left:auto;font-weight:400}
+.fbody{font-size:var(--fs-base);color:var(--ink)}
+
+/* The presentation block is hosted in the standard dynamic card: only the separation structure is retained, and no jamming is included. */
+.brief .bh{font-size:var(--fs-sm);color:var(--sec);padding:0 0 8px;border-bottom:1px solid var(--sep2)}
+.bitem{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--sep2)}
+.bitem:last-child{border-bottom:0}
+.bitem .t{font-size:var(--fs-base);font-weight:500;line-height:var(--lh-ui)}
+.bitem .go{margin-left:auto;flex-shrink:0}

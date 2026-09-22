@@ -1,0 +1,18 @@
+{
+  "name": "meridian",
+  "description": "Meridian setup, Paper Wiki, Lab idea graph, and incremental project-change context for Claude Code.",
+  "version": "0.0.4",
+  "author": {
+    "name": "Shawn",
+    "url": "https://github.com/shawnyin128/meridian"
+  },
+  "homepage": "https://github.com/shawnyin128/meridian",
+  "repository": "https://github.com/shawnyin128/meridian",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "keywords": [
+    "claude-code",
+    "paper-wiki",
+    "research",
+    "mcp"
+  ]
+}

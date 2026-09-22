@@ -1,0 +1,15 @@
+{
+  "name": "meridian",
+  "owner": {
+    "name": "Shawn"
+  },
+  "description": "Meridian Paper Wiki and Lab plugin marketplace.",
+  "plugins": [
+    {
+      "name": "meridian",
+      "description": "Markdown-first Paper Wiki and Lab idea graph.",
+      "source": "./plugins/claude-code/meridian",
+      "category": "Research"
+    }
+  ]
+}

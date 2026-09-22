@@ -1,0 +1,7 @@
+export { arxivIdOf, usableTitle } from './detect.js'
+export { laterWithMetadata, missingMetadata, remoteMetadata } from './fill.js'
+export { extractPdfPages, probePdf } from './pdf-probe.js'
+export type { ExtractedPdfPage } from './pdf-probe.js'
+export type { PdfFacts, PdfProbe } from './pdf-probe.js'
+export { createMetadataQueue } from './queue.js'
+export type { MetadataQueue } from './queue.js'

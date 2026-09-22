@@ -1,0 +1,288 @@
+[
+ {
+  "id": "draft",
+  "name": "draft 效率",
+  "status": "进行中",
+  "priority": "p0",
+  "topic": "speculative decoding",
+  "focus": "宽树实验补 B≥8 + 前缀复用配置",
+  "conflictPage": "topics/ptq-weight-activation",
+  "start": "2026-06-02",
+  "due": "2026-09-15",
+  "memo": "8/14 处理完冲突后的直觉:拐点不是一个数,是 batch size 的函数。宽树实验如果 B≥8 仍然摊薄净赚,「树宽收益拐点」两条结论就都稳了。\n\n核心判据:摊薄后单位验证成本 $c(B)=\\frac{c_{\\mathrm{verify}}(B)}{B\\cdot a(B)}$,满足\n\n$$\n\\frac{\\partial c}{\\partial B}<0\n$$\n\n时加宽仍然净赚。\n\n随手记:\n- DrafterLite 的「知道何时停」和我们按深度剪枝是**同一直觉**,等宽树实验出来考虑并线。\n- `width-sweep-b4b8.csv` 里 B=4 段方差偏大,重跑一遍再下结论。",
+  "conclusionList": [
+   { "id": "c1", "text": "树宽收益有拐点,拐点是 batch size 的函数", "state": "verified", "date": "2026-06-25", "source": "手动添加" },
+   { "id": "c2", "text": "宽树在 B≥8 时仍然摊薄净赚", "state": "conflicting", "date": "2026-08-14", "source": "对话「摊薄的前提是共享前缀吗」", "paper": "13979-STAR-Speculative-Decodin" }
+  ],
+  "papers": ["13979-STAR-Speculative-Decodin", "2404.00456", "2405.16406", "2401.18079"],
+  "tasks": [
+   { "id": "t1", "title": "实验 #3:分支浪费分桶", "start": "2026-07-28", "end": "2026-08-05", "state": "done", "priority": "p2" },
+   { "id": "t2", "title": "宽树实验 B≥8", "start": "2026-08-18", "end": "2026-08-28", "state": "act", "priority": "p0" },
+   { "id": "t3", "title": "前缀复用配置", "start": "2026-08-22", "end": "2026-09-01", "state": "act", "priority": "p1" },
+   { "id": "t4", "title": "两条结论重验", "start": "2026-08-29", "end": "2026-09-05", "state": "plan", "priority": "p1" },
+   { "id": "t5", "title": "阶段汇报准备", "start": "2026-09-08", "end": "2026-09-15", "state": "plan", "priority": "p2" }
+  ],
+  "milestones": [
+   { "id": "m1", "date": "2026-08-05", "title": "实验 #3:分支浪费分桶验证", "done": true },
+   { "id": "m2", "date": "2026-08-28", "title": "宽树实验补 B≥8 + 前缀复用配置", "done": false },
+   { "id": "m3", "date": "2026-09-05", "title": "「树宽收益拐点」两条结论重验", "done": false },
+   { "id": "m4", "date": "2026-09-15", "title": "阶段汇报", "done": false }
+  ],
+  "events": [
+   { "date": "2026-06-02", "text": "开始这条研究线" },
+   { "date": "2026-06-09", "text": "结论「树宽收益有拐点」(你验证过)", "node": "knee" },
+   { "date": "2026-08-05", "text": "[agent] 实验 #3:分支浪费按深度分桶 → 结论升 v3", "node": "bucket" },
+   { "date": "2026-08-14", "text": "解决冲突:改写为单请求 / 批量两条结论", "node": "wide" }
+  ],
+  "relations": [
+   {
+    "group": "Wiki",
+    "items": [
+     { "id": "r1", "text": "树宽收益拐点", "page": "topics/ptq-weight-activation" },
+     { "id": "r2", "text": "分支浪费按深度分桶", "page": "methods/rotation" }
+    ]
+   },
+   {
+    "group": "论文",
+    "items": [
+     { "id": "r3", "text": "LongSpec" }
+    ]
+   }
+  ],
+  "attachments": [
+   { "id": "f1", "name": "width-sweep-b4b8.csv", "size": "412 KB" },
+   { "id": "f2", "name": "实验3-分桶记录.md", "size": "8 KB" }
+  ],
+  "graph": {
+   "nodes": [
+    { "id": "root", "label": "draft 效率", "state": "act", "mode": "repairable", "x": 10, "y": 95, "width": 110, "markdown": "核心问题是：在不增加验证开销的前提下，提高 draft token 的有效接受率。\n\n#### 当前判断\n\n宽度不是单调收益，需要同时看树宽、batch size 与前缀复用。\n\n#### Next Action\n\n沿当前路径验证 B≥8 时的收益边界。", "writebacks": [] },
+    {
+     "id": "knee", "label": "树宽收益拐点", "state": "done", "mode": "supported", "x": 220, "y": 30, "width": 130, "markdown": "#### Hypothesis\n\n树宽收益存在拐点，而且拐点随 batch size 变化。\n\n#### Evidence\n\n| Batch | 有效树宽 | 结论 |\n| --- | --- | --- |\n| 1 | 4 | B>4 收益很小 |\n| 8 | 8 | 仍有可测空间 |\n\n#### Next Action\n\n继续验证宽树在 B≥8 下的延迟收益。",
+     "writebacks": [
+      { "page": "topics/ptq-weight-activation", "text": "树宽收益有拐点,拐点是 batch size 的函数", "date": "2026-06-25" }
+     ]
+    },
+    { "id": "stop", "label": "draft 提前停止策略", "state": "idle", "mode": "dead", "x": 220, "y": 160, "width": 160, "markdown": "#### Result\n\n固定阈值提前停止会在长尾请求上丢失过多接受 token。\n\n#### Decision\n\n当前实现不继续推进；若后续能按请求动态估计阈值，再重新评估。", "writebacks": [] },
+    {
+     "id": "bucket", "label": "分支浪费按深度分桶", "state": "done", "mode": "supported", "x": 480, "y": 5, "width": 155, "markdown": "#### Result\n\n按深度分桶后可以稳定定位主要浪费来自哪一层，适合作为后续实验的固定诊断。",
+     "writebacks": [
+      { "page": "methods/rotation", "text": "分支浪费按深度分桶后结论升到 v3", "date": "2026-08-05" }
+     ]
+    },
+    { "id": "wide", "label": "宽树补 B≥8", "state": "act", "mode": "repairable", "x": 480, "y": 90, "width": 120, "markdown": "#### Question\n\n当 batch size 提升到 8 以上，宽树是否重新获得端到端收益？\n\n#### Next Action\n\n运行 B=8/16、树宽 4/8/16 的延迟与接受率矩阵。", "writebacks": [] },
+    { "id": "prefix", "label": "前缀复用配置", "state": "act", "mode": "unresolved", "x": 480, "y": 160, "width": 120, "markdown": "#### Idea\n\n把前缀命中率作为树宽选择的输入，而不是只按 batch size 调节。\n\n#### Next Action\n\n先记录不同请求分布下的前缀命中率。", "writebacks": [] }
+   ],
+   "edges": [
+    ["root", "knee"],
+    ["root", "stop"],
+    ["knee", "bucket"],
+    ["knee", "wide"],
+    ["knee", "prefix"]
+   ],
+   "activePath": ["root", "knee", "wide"]
+  },
+  "agentSessions": [
+   {
+    "id": "a1",
+    "title": "实验 #3 · 分桶统计脚本固化",
+    "when": "2026-08-05",
+    "steps": [
+     { "time": "16:10", "text": "接到任务:把分支浪费按深度分桶的统计固化成可复跑脚本" },
+     { "time": "16:22", "text": "发现原始 notebook 里分桶边界硬编码,改为按深度自动推导" },
+     { "time": "16:34", "text": "脚本跑通全量数据,结果与实验 #3 手工分析一致" },
+     { "time": "16:41", "text": "产出写回:结论升 v3(见科研记录 08/05)+ 附件 实验3-分桶记录.md" }
+    ],
+    "outcome": "2 个文件改动 · 结果与手工分析一致 · 共 31 分钟"
+   }
+  ]
+ },
+ {
+  "id": "timeline-demo",
+  "name": "时间线规划 Demo",
+  "status": "进行中",
+  "priority": "p1",
+  "topic": "planning",
+  "focus": "检查日视图的 slot 与 window",
+  "start": "2026-08-25",
+  "due": "2026-08-31",
+  "memo": "",
+  "conclusionList": [],
+  "papers": [],
+  "tasks": [
+   { "id": "t1", "title": "全天整理实验结果", "start": "2026-08-25", "end": "2026-08-25", "state": "act", "priority": "p1" },
+   { "id": "t2", "title": "阅读与标注", "start": "2026-08-25", "end": "2026-08-25", "window": { "start": "10:00", "end": "12:00" }, "state": "plan", "priority": "p2" },
+   { "id": "t3", "title": "实现 slot/window 控制", "start": "2026-08-25", "end": "2026-08-25", "window": { "start": "14:00", "end": "18:00" }, "state": "act", "priority": "p0" },
+   { "id": "t4", "title": "跨日实验窗口", "start": "2026-08-25", "end": "2026-08-26", "window": { "start": "22:00", "end": "04:00" }, "state": "plan", "priority": "p1" }
+  ],
+  "milestones": [
+   { "id": "m1", "date": "2026-08-25", "title": "日视图交互确认", "done": false },
+   { "id": "m2", "date": "2026-08-31", "title": "规划控制收口", "done": false }
+  ],
+  "events": [
+   { "date": "2026-08-25", "text": "创建时间线规划 Demo" }
+  ],
+  "relations": [],
+  "attachments": [],
+  "graph": { "nodes": [], "edges": [] },
+  "agentSessions": []
+ },
+ {
+  "id": "repro",
+  "name": "复现 EAGLE-2",
+  "status": "进行中",
+  "priority": "p1",
+  "topic": "speculative decoding",
+  "focus": "对齐官方实现的评测脚本",
+  "block": "等 A100 机时(周四释放)",
+  "start": "2026-08-18",
+  "due": "2026-09-02",
+  "memo": "",
+  "conclusionList": [
+   { "id": "c1", "text": "EAGLE-2 的动态树在 MT-bench 子集上可复现", "state": "pending", "date": "2026-08-23", "source": "手动添加", "paper": "2210.17323" }
+  ],
+  "papers": ["2210.17323"],
+  "tasks": [
+   { "id": "t1", "title": "评测脚本对齐", "start": "2026-08-18", "end": "2026-08-23", "state": "done", "priority": "p1" },
+   { "id": "t2", "title": "复现数据对齐(±5%)", "start": "2026-08-24", "end": "2026-09-02", "state": "act", "priority": "p0" }
+  ],
+  "milestones": [
+   { "id": "m1", "date": "2026-08-23", "title": "评测脚本跑通 MT-bench 子集", "done": true },
+   { "id": "m2", "date": "2026-09-02", "title": "复现数据对齐论文表(±5%)", "done": false }
+  ],
+  "events": [
+   { "date": "2026-08-18", "text": "开始:以官方实现为基线" },
+   { "date": "2026-08-21", "text": "[agent] 评测环境搭建,依赖版本锁定" },
+   { "date": "2026-08-23", "text": "评测脚本跑通 MT-bench 子集" }
+  ],
+  "relations": [
+   {
+    "group": "Wiki",
+    "items": [
+     { "id": "r1", "text": "EAGLE-2 动态 draft 树", "page": "topics/ptq-weight-only" }
+    ]
+   },
+   {
+    "group": "论文",
+    "items": [
+     { "id": "r2", "text": "EAGLE-2" }
+    ]
+   }
+  ],
+  "attachments": [],
+  "graph": { "nodes": [], "edges": [] },
+  "agentSessions": [
+   {
+    "id": "a2",
+    "title": "评测环境搭建",
+    "when": "2026-08-21",
+    "steps": [
+     { "time": "10:05", "text": "接到任务:为复现搭建可复跑的评测环境" },
+     { "time": "10:19", "text": "按论文仓库锁定依赖版本,固化到 lockfile" },
+     { "time": "10:41", "text": "MT-bench 数据子集下载并校验通过" },
+     { "time": "10:52", "text": "产出写回:科研记录 08/21「评测环境搭建,依赖版本锁定」" }
+    ],
+    "outcome": "4 个文件改动 · 冒烟测试通过 · 共 47 分钟"
+   }
+  ]
+ },
+ {
+  "id": "sched",
+  "name": "调度器基准测试",
+  "status": "进行中",
+  "priority": "p2",
+  "topic": "kernels",
+  "focus": "搭建可复现的基准测试环境",
+  "start": "2026-08-20",
+  "due": "2026-09-30",
+  "memo": "",
+  "conclusionList": [],
+  "papers": ["2401.18079"],
+  "tasks": [
+   { "id": "t1", "title": "环境与数据集准备", "start": "2026-08-20", "end": "2026-08-30", "state": "act", "priority": "p1" }
+  ],
+  "milestones": [
+   { "id": "m1", "date": "2026-09-10", "title": "基准环境冻结", "done": false }
+  ],
+  "events": [
+   { "date": "2026-08-20", "text": "开始:整理基准测试需求" },
+   { "date": "2026-08-23", "text": "选定负载与指标" }
+  ],
+  "relations": [
+   {
+    "group": "Wiki",
+    "items": [
+     { "id": "r1", "text": "前缀读取与验证共调度", "page": "topics/kv-cache-quantization" }
+    ]
+   }
+  ],
+  "attachments": [],
+  "graph": { "nodes": [], "edges": [] },
+  "agentSessions": []
+ },
+ {
+  "id": "moe",
+  "name": "MoE 路由信号",
+  "status": "搁置",
+  "priority": "p2",
+  "topic": "MoE serving",
+  "focus": "等 router 熵首个实验结果回流",
+  "start": "2026-07-20",
+  "due": "2026-10-01",
+  "memo": "",
+  "conclusionList": [
+   { "id": "c1", "text": "router 熵与 token 难度弱相关", "state": "pending", "date": "2026-07-20", "source": "手动添加" }
+  ],
+  "papers": ["2306.07629"],
+  "tasks": [
+   { "id": "t1", "title": "router 熵实验设计", "start": "2026-07-20", "end": "2026-08-02", "state": "plan", "priority": "p1" }
+  ],
+  "milestones": [],
+  "events": [
+   { "date": "2026-07-20", "text": "想法登记:router 熵 × draft 长度" }
+  ],
+  "relations": [
+   {
+    "group": "Wiki",
+    "items": [
+     { "id": "r1", "text": "router 熵信号", "page": "methods/per-channel-scaling" }
+    ]
+   }
+  ],
+  "attachments": [],
+  "graph": { "nodes": [], "edges": [] },
+  "agentSessions": []
+ },
+ {
+  "id": "fa",
+  "name": "FlashAttention 基线迁移",
+  "status": "已完成",
+  "priority": "p2",
+  "topic": "kernels",
+  "focus": "v2 基线全部迁移并通过回归",
+  "start": "2026-07-01",
+  "due": "2026-08-10",
+  "memo": "",
+  "conclusionList": [
+   { "id": "c1", "text": "迁移后吞吐与基线持平", "state": "verified", "date": "2026-08-10", "source": "手动添加" }
+  ],
+  "papers": ["2211.10438", "2306.00978"],
+  "tasks": [
+   { "id": "t1", "title": "v2 基线迁移与回归", "start": "2026-07-01", "end": "2026-08-10", "state": "done", "priority": "p1" }
+  ],
+  "milestones": [],
+  "events": [
+   { "date": "2026-08-10", "text": "完成迁移并回归测试" }
+  ],
+  "relations": [
+   {
+    "group": "Wiki",
+    "items": [
+     { "id": "r1", "text": "前缀读取与验证共调度", "page": "topics/kv-cache-quantization" }
+    ]
+   }
+  ],
+  "attachments": [],
+  "graph": { "nodes": [], "edges": [] },
+  "agentSessions": []
+ }
+]

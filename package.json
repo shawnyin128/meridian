@@ -1,0 +1,51 @@
+{
+  "name": "meridian-workspace",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/desktop"
+  ],
+  "scripts": {
+    "setup:harness": "conda run --no-capture-output -n meridian python -m pip install --upgrade --target apps/harness/.runtime -e apps/harness",
+    "dev:ui-samples": "MERIDIAN_LIBRARY_ROOT=/tmp/meridian-ui-samples MERIDIAN_UI_SAMPLES=1 npm --prefix apps/desktop run dev",
+    "lint": "eslint apps e2e && node scripts/check-comment-language.mjs",
+    "typecheck": "tsc -p apps/desktop --noEmit && tsc -p apps/desktop/tsconfig.preload.json --noEmit && tsc -p apps/desktop/tsconfig.renderer.json --noEmit && tsc -p apps/desktop/tsconfig.copy-test.json --noEmit && tsc -p e2e --noEmit",
+    "test": "vitest run",
+    "e2e": "npm --prefix apps/desktop run build && node scripts/e2e.mjs",
+    "check": "npm run lint && npm run typecheck"
+  },
+  "devDependencies": {
+    "@babel/parser": "^7.29.8",
+    "@playwright/test": "^1.63.0",
+    "@types/mdast": "^4.0.4",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^44.2.0",
+    "electron-builder": "^26.15.3",
+    "electron-updater": "^6.8.9",
+    "electron-vite": "^5.0.0",
+    "eslint": "^10.10.0",
+    "jsdom": "^30.0.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.69.0",
+    "vite": "^7.3.6",
+    "vitest": "^5.0.0"
+  },
+  "dependencies": {
+    "@radix-ui/react-alert-dialog": "^1.1.23",
+    "@radix-ui/react-dialog": "^1.1.23",
+    "@radix-ui/react-dropdown-menu": "^2.1.24",
+    "@radix-ui/react-popover": "^1.1.23",
+    "katex": "^0.16.47",
+    "pdfjs-dist": "^6.3.289",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-markdown": "^10.1.0",
+    "rehype-katex": "^7.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
+    "yaml": "^2.9.0",
+    "zod": "^4.5.4"
+  }
+}

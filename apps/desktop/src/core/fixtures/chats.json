@@ -1,0 +1,42 @@
+[
+ {
+  "id": "amortize",
+  "title": "摊薄的前提是共享前缀吗",
+  "named": true,
+  "archived": false,
+  "messages": [
+   {
+    "id": "am1",
+    "role": "you",
+    "runs": [{ "kind": "text", "text": "摊薄的前提是共享前缀吗?" }],
+    "actions": []
+   },
+   {
+    "id": "am2",
+    "role": "status",
+    "runs": [{ "kind": "text", "text": "AI 尚未接入,这个问题现在答不了。" }],
+    "actions": []
+   }
+  ]
+ },
+ {
+  "id": "widthknee",
+  "title": "宽树在我们集群上还成立吗",
+  "named": true,
+  "archived": true,
+  "messages": [
+   {
+    "id": "wk1",
+    "role": "you",
+    "runs": [{ "kind": "text", "text": "宽树在我们集群上还成立吗?" }],
+    "actions": []
+   },
+   {
+    "id": "wk2",
+    "role": "status",
+    "runs": [{ "kind": "text", "text": "AI 尚未接入,这个问题现在答不了。" }],
+    "actions": []
+   }
+  ]
+ }
+]

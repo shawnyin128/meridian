@@ -1,0 +1,13 @@
+.generation-control{position:relative}
+.generation-control .generation-idle-icon,.generation-control .generation-running-glyph{width:15px;height:15px;display:block;flex:0 0 auto}
+.generation-running-glyph{position:relative}
+.generation-running-glyph svg{position:absolute;inset:0;width:100%;height:100%}
+.generation-spinner{fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-dasharray:38 16;animation:generation-spin .8s linear infinite}
+.generation-stop{display:none;fill:currentColor;stroke:none}
+.generation-control.is-running:hover .generation-spinner,.generation-control.is-running:focus-visible .generation-spinner{display:none}
+.generation-control.is-running:hover .generation-stop,.generation-control.is-running:focus-visible .generation-stop{display:block}
+.generation-stop-copy{display:none}
+.generation-control.is-running:hover .generation-running-copy,.generation-control.is-running:focus-visible .generation-running-copy{display:none}
+.generation-control.is-running:hover .generation-stop-copy,.generation-control.is-running:focus-visible .generation-stop-copy{display:inline}
+@keyframes generation-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.generation-spinner{animation:none}}

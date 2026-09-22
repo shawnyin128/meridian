@@ -1,0 +1,33 @@
+.desk{flex:1;overflow:hidden;background:var(--content);display:flex;flex-direction:column;min-width:0;position:relative}
+.desk-head{display:flex;align-items:center;gap:8px;box-sizing:border-box;height:46px;padding:0 16px;border-bottom:1px solid var(--sep);background:var(--sidebar);backdrop-filter:blur(20px)}
+.desk-head .t{font-size:13px;font-weight:600}
+.desk-body{flex:1;overflow:auto;padding:20px 24px;scrollbar-gutter:stable}
+/* It’s important to override sections and grids’ own margin shorthand, otherwise they will wash out the centering of page content. */
+.desk .desk-body>*,.desk .desk-foot>*{max-width:var(--pagew);margin-left:auto;margin-right:auto}
+.desk .desk-body>.wkpage{max-width:var(--prosew)}
+.desk-foot{flex-shrink:0;border-top:1px solid var(--sep);background:var(--sidebar);backdrop-filter:blur(20px);padding:12px 16px 16px}
+.desk-foot.bare{background:transparent;border-top:0;backdrop-filter:none;padding:8px 24px 16px;overflow:hidden;scrollbar-gutter:stable}
+.desk-head>.add-action,.desk-head>.segmented-control{margin-left:auto}
+.page-toolbar{display:flex;align-items:flex-end;gap:8px;min-height:28px;margin:0 0 14px}
+.page-toolbar>.add-action:last-child{margin-left:auto}
+.page-toolbar .back{border:0;background:var(--field);color:var(--ink);border-radius:8px;width:28px;height:26px;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.page-toolbar .back svg{width:13px;height:13px}
+.page-toolbar+.section-heading{margin-top:0;padding-top:0;border-top:0}
+
+.section-heading{font-size:var(--fs-title);font-weight:700;color:var(--ink);
+  margin:24px 0 10px;padding-top:16px;border-top:1px solid var(--sep2)}
+.section-heading:first-child{margin-top:0;padding-top:0;border-top:0}
+/* The right rail is narrower: no rule above it and a smaller step. */
+.section-heading--rail{font-size:var(--fs-read);margin:20px 0 8px;padding-top:0;border-top:0}
+.section-heading--rail:first-child{margin-top:0}
+.section-heading.flexh{display:flex;align-items:center;gap:10px}
+.section-heading.flexh>.btn,.section-heading.flexh>.segmented-control,
+.section-heading.flexh>.add-action,.section-heading.flexh>.panel-close{margin-left:auto;font-weight:400}
+.section-heading.flexh>.btn~*{margin-left:8px}
+.section-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
+
+.ipcerror{padding:8px 12px;margin:0 16px 12px;border-radius:var(--r-md);background:var(--tint-bad);color:var(--bad);font-size:var(--fs-sm)}
+
+.page-failure .desk-body{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.page-failure .ipcerror{margin:0}
+.page-failure-note{margin:0;color:var(--sec);font-size:var(--fs-sm)}

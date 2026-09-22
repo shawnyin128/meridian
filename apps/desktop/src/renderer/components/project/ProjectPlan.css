@@ -1,0 +1,39 @@
+.project-plan .ddlrow{display:flex;align-items:center;gap:8px;padding:8px 2px;font-size:var(--fs-base)}
+.project-plan .ddlrow .dchip{font-family:var(--mono);font-size:var(--fs-sm);background:var(--field);border-radius:var(--r-sm);padding:2px 8px;flex-shrink:0}
+.project-plan .ddlrow .dleft{font-size:12px;color:var(--ter);width:52px;flex-shrink:0}
+.project-plan .ddlrow.done>:not(.row-delete){opacity:.5}
+#taskList{display:grid;grid-template-columns:max-content max-content max-content minmax(0,1fr) 24px;column-gap:8px}
+#msList{display:grid;grid-template-columns:max-content max-content minmax(0,1fr) 24px;column-gap:8px}
+.project-plan .task-row,.project-plan .milestone-row{grid-column:1/-1;display:grid;grid-template-columns:subgrid;column-gap:8px}
+#taskList>.task-create-row,#msList>.milestone-create-row,#taskList>.lm{grid-column:1/-1}
+.task-row .task-time-cell,.milestone-row>.dchip{box-sizing:border-box;width:max-content;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.task-row .task-time-cell{display:flex;align-items:center;gap:6px}
+.plan-date-button{background:transparent!important;padding:0 4px!important}
+.plan-date{min-width:50px}
+.task-date-part .date-chip,.task-clock-part .date-chip{color:var(--sec)}
+.task-row .prtag{justify-self:start}
+.task-row .dleft,.milestone-row .dleft{width:auto}
+.plan-cell{box-sizing:border-box;margin:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;outline:0}
+.plan-cell:hover,.plan-cell:focus-visible{box-shadow:0 0 0 1px var(--sep-strong)}
+.dchip.plan-cell{font-family:var(--mono);font-size:var(--fs-sm);background:var(--field);padding:2px 8px}
+.state-cell{padding:2px 4px;border-radius:var(--r-sm)}
+.plan-name-cell{display:flex;align-items:center;flex:1;min-width:0;height:20px}
+.plan-name,.plan-name-input{box-sizing:border-box;width:100%;height:20px;min-width:0;padding:0 5px;font:inherit;line-height:20px}
+.plan-name{border:0;border-radius:var(--r-sm);white-space:nowrap;overflow:hidden;mask-image:var(--clipfade)}
+.plan-name:hover,.plan-name:focus-visible{background:var(--field);box-shadow:none}
+.plan-name-input{border:0;border-radius:var(--r-sm);background:var(--field);color:var(--ink);outline:0;box-shadow:none}
+.plan-name-input:focus,.plan-name-input:focus-visible{outline:0;outline-offset:0;box-shadow:none}
+.project-plan .ddlrow .dsep{color:var(--ter);font-size:12px;margin:0 -3px;flex-shrink:0}
+.project-plan .ddlrow .din{font-family:var(--mono);font-size:var(--fs-sm);border:0;border-radius:var(--r-sm);padding:2px 8px;flex-shrink:0;cursor:pointer;text-align:center;white-space:nowrap}
+.project-plan .ddlrow .din:not(.prtag):not(.state-edit){background:var(--field);color:var(--sec)}
+.project-plan .ddlrow .din:hover,.project-plan .ddlrow .din:focus-visible{box-shadow:0 0 0 1px var(--sep-strong);outline:0}
+.project-plan .ddlrow .din.prtag{font:inherit;border-radius:var(--r-xs);padding:1px 6px}
+.project-plan .ddlrow .din.state-edit{padding:2px 4px;background:transparent;color:var(--ter);font-family:var(--sans);font-size:12px}
+.project-plan .ddlrow .twinputs{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.project-plan .ddlrow .min{flex:1;min-width:0;box-sizing:border-box;height:20px;border:0;background:var(--field);border-radius:var(--r-sm);padding:0 5px;font:inherit;line-height:20px;color:var(--ink);box-shadow:none}
+.project-plan .ddlrow .min:focus-visible{outline:0}
+@keyframes plan-row-flash{0%,100%{background:transparent}50%{background:var(--tint-warn)}}
+.project-plan .ddlrow.flash{animation:plan-row-flash .5s ease-in-out 2}
+.project-plan .row-delete{display:grid;place-items:center;width:24px;height:24px;margin-left:2px;padding:0;flex:0 0 auto;border:0;border-radius:var(--r-sm);background:transparent;color:var(--bad);cursor:pointer;opacity:.72}
+.project-plan .row-delete:hover,.project-plan .row-delete:focus-visible{background:var(--tint-bad);opacity:1;outline:0}
+.project-plan .row-delete svg{width:13px;height:13px}

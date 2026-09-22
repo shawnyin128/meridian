@@ -1,0 +1,18 @@
+.paper-card{border:1px solid var(--sep);border-radius:var(--r-xl);padding:12px 16px;margin-bottom:16px;background:var(--card);transition:opacity var(--t-slow) var(--e-out),transform var(--t-slow) var(--e-out)}
+.paper-card.is-leaving{opacity:0;transform:translateX(24px)}
+.paper-card-heading{display:flex;align-items:flex-start;gap:10px}
+.paper-card-heading h3{font-size:var(--fs-title);font-weight:600;margin:0;line-height:var(--lh-tight);flex:1}
+.paper-card-actions{display:flex;align-items:center;gap:8px;flex:none}
+.paper-card-metadata{font-size:var(--fs-sm);color:var(--ter);margin:4px 0 10px}
+.paper-card-notice{display:flex;align-items:center;gap:8px;margin-top:8px;padding:6px 10px;border:1px solid var(--sep2);border-radius:var(--r-md);font-size:var(--fs-sm);color:var(--sec)}
+.paper-card-notice>span{flex:1}
+.paper-card-notice.is-error{color:var(--bad)}
+.paper-card-badge{display:inline-block;font-size:var(--fs-cap);font-weight:600;color:var(--ink);background:var(--accent-soft);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:1px}
+.paper-card-citations{margin-left:8px;color:var(--ter);font-variant-numeric:tabular-nums}
+.paper-card-label{font-size:var(--fs-cap);font-weight:700;color:var(--ter);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+.paper-card-section+.paper-card-section{margin-top:10px}
+.paper-abstract{font-size:var(--fs-base);color:var(--sec);line-height:var(--lh-ui)}
+.paper-abstract>p{margin:0}
+.paper-card-recommendation{font-size:var(--fs-base);color:var(--ink)}
+
+@media (prefers-reduced-motion:reduce){.paper-card.is-leaving{transform:none}}

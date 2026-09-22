@@ -1,0 +1,8 @@
+# PDF 是二进制,行尾不能被规范化,否则字节偏移全废。
+*.pdf binary
+
+# 测试用的 fixture 库要逐字节等于提交进来的样子,不让 autocrlf 在检出时改写行尾。
+apps/desktop/src/core/fixtures/vault/** -text
+
+# 示例库是测试的输入,同样不让 autocrlf 改写行尾。
+desktop/design/wiki-example-vault/** -text

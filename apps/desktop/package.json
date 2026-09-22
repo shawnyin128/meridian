@@ -1,0 +1,12 @@
+{
+  "name": "@meridian/desktop",
+  "private": true,
+  "version": "0.0.4",
+  "type": "module",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "package": "node ../../scripts/build-harness-sidecar.mjs && electron-vite build && electron-builder --config electron-builder.config.mjs"
+  }
+}

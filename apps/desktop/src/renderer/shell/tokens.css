@@ -1,0 +1,139 @@
+/*
+ * Variable names are aligned with :root / [data-theme="dark"] of desktop/design/platform-shell-demo.html.
+ * 1. The color values are consistent with the demo: both sides are changed to the brand color palette at the same time, the accent is Primary blue, and the dark theme has a full set of grayscales.
+ * Both are derived from ~220°;
+ * 2. A batch of new tokens besides demo (--accent-solid / --press / --press-solid /
+ * --ring / --sel / --link / --tint-* / --on-tint / --paper / --scrim / --r-* / --fs-* /
+ * --lh-* / --t-* / --e-*) and split into three layers --sh-1 / --sh-2 / --sh-3 / --sh-paper do not enter demo:
+ * The demo is a benchmark for layout and behavior, not a benchmark for the appearance of the finished product. The two sides diverge on these tokens;
+ * 3. --accent-solid / --press-solid / --ring / --paper / --on-tint The two sets of themes have the same value and will not be flipped.
+ * (The first three are only written in :root, and the last two are written again according to the original values ​​following the neighbors in the dark block). It is not that the dark value is missed.
+ */
+:root{
+  --desktop:#e6eaf2; --window:#f6f8fc; --content:#ffffff; --sidebar:rgba(246,248,252,.85);
+  --ink:#0a1020; --sec:#536175; --ter:#7c8798;
+  --sep:#dce4ef; --sep2:rgba(220,228,239,.6);
+  --accent:#3568ff; --accent-soft:rgba(53,104,255,.12); --on-accent:#ffffff;
+  /* The background color of the solid accent surface, the light and dark values are the same: dark --accent with white text is only 3.19:1 */
+  --accent-solid:#3568ff;
+  --card:#ffffff; --field:#eef2f8; --hover:rgba(10,16,32,.05);
+  --good:#1f9d4d; --warn:#b8860b; --bad:#e0453a; --info:#0e9aa7; --hl:rgba(255,214,10,.45);
+  --mslane:rgba(184,134,11,.07);
+  /*
+   * Content columns and cards are divided into three levels according to the window width, with discontinuous scaling: narrow level (default), medium level (≥1600), and wide level (≥2000).
+   * --pagew is the content column width of the list screen, --prosew is the reading width of the text page (wiki page, project details), which increases more slowly;
+   * --chatw is the message column width of the conversation screen, which increases slower than these two - a line of words is too long and difficult to read;
+   * --cardw / --card-tt / --card-fs / --card-lines is the minimum width of the card, the font size of the title and summary, and the number of summary lines
+   */
+  --pagew:1080px; --prosew:1080px; --chatw:720px;
+  --cardw:230px; --card-tt:13px; --card-fs:12px; --card-lines:2;
+  --diff-add:rgba(40,167,69,.12); --diff-del:rgba(224,69,58,.1);
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --sbthumb:rgba(10,16,32,.28); --sbthumb-h:rgba(10,16,32,.45);
+  --q-bg:rgba(10,16,32,.06);
+  /*
+   * One item other than the demo: The right end of the single-line title cutoff fades out, replacing the ellipsis. Only used for mask-image, in color
+   * Only alpha counts; elements using it must fill the available width, otherwise the tail of the short title will also be eaten away by the fade
+   */
+  --clipfade:linear-gradient(to right,#000 calc(100% - 28px),transparent);
+  /*
+   * A stroke that becomes solid on hover. Only used for 1px stroke: push out by 15% from Border towards --sec, when 4px wide
+   * The handle or 2px wide column width indicator will be almost invisible
+   */
+  --sep-strong:#c7d0dd;
+  /* Press the stack color to darken in both directions. Stacking the solid accent facing the bright side will cause the white text to fall to 3.78:1 */
+  --press:rgba(10,16,32,.06); --press-solid:rgba(0,0,0,.18);
+  --ring:var(--accent); --sel:rgba(53,104,255,.22); --link:var(--accent);
+  --tint-good:rgba(48,209,88,.14); --tint-warn:rgba(255,214,10,.14);
+  --tint-bad:rgba(224,69,58,.12); --tint-info:rgba(14,154,167,.14);
+  --tint-mut:rgba(10,16,32,.04); --on-tint:#fff;
+  /* The base of the entity type label. Only type tags can use the brand's light color background, other tags must be neutral or semantic colors */
+  --tint-paper:rgba(91,140,255,.14); --tint-wiki:rgba(167,120,255,.14);
+  /* The paper does not turn over according to the subject */
+  --paper:#fff; --scrim:rgba(10,22,48,.42);
+  --sh-1:0 1px 2px rgba(10,22,48,.06), 0 0 0 1px rgba(10,22,48,.04);
+  --sh-2:0 0 0 1px rgba(10,22,48,.05), 0 6px 16px rgba(10,22,48,.12), 0 2px 5px rgba(10,22,48,.06);
+  --sh-3:0 24px 60px rgba(10,22,48,.20), 0 6px 18px rgba(10,22,48,.10);
+  --sh-paper:0 4px 22px rgba(10,22,48,.22);
+  --r-xs:4px; --r-sm:6px; --r-md:8px; --r-lg:10px; --r-xl:12px; --r-bubble:18px; --r-full:999px;
+  --fs-cap:11px; --fs-sm:12px; --fs-base:13px; --fs-read:14px; --fs-title:15px; --fs-xl:17px;
+  --lh-tight:1.3; --lh-ui:1.45; --lh-read:1.7;
+  --t-fast:120ms; --t:180ms; --t-slow:280ms;
+  --e-out:cubic-bezier(.2,.6,.35,1); --e-inout:cubic-bezier(.4,0,.2,1);
+}
+[data-theme="dark"]{
+  --desktop:#040b14; --window:#07111f; --content:#0d1b2d; --sidebar:rgba(9,21,38,.85);
+  --ink:#f5f7fb; --sec:#aab6c8; --ter:#7a8698;
+  --sep:#20324c; --sep2:rgba(32,50,76,.6);
+  --accent:#558cff; --accent-soft:rgba(85,140,255,.12); --on-accent:#ffffff;
+  --card:#12213a; --field:#16263f; --hover:rgba(245,247,251,.05);
+  --good:#30d158; --warn:#ffd60a; --bad:#ff453a; --info:#2ec4d6; --hl:rgba(255,214,10,.35);
+  --mslane:rgba(255,214,10,.06);
+  --diff-add:rgba(48,209,88,.14); --diff-del:rgba(255,69,58,.12);
+  --sbthumb:rgba(245,247,251,.28); --sbthumb-h:rgba(245,247,251,.45);
+  --q-bg:rgba(4,11,20,.4);
+  --sep-strong:#394a62;
+  --press:rgba(245,247,251,.09);
+  --sel:rgba(85,140,255,.22);
+  --tint-good:rgba(48,209,88,.20); --tint-warn:rgba(255,214,10,.20);
+  /* 18% of the red base with #ff453a on the new #0d1b2d base is 4.26:1, which cannot pass the main text 4.5:1; 10% is 4.68:1 */
+  --tint-bad:rgba(255,69,58,.10); --tint-info:rgba(46,196,214,.20);
+  --tint-mut:rgba(245,247,251,.05); --on-tint:#fff;
+  --tint-paper:rgba(91,140,255,.20); --tint-wiki:rgba(197,155,255,.20);
+  --paper:#fff; --scrim:rgba(4,11,20,.55);
+  --sh-1:0 1px 2px rgba(0,0,0,.5), 0 0 0 1px rgba(245,247,251,.05);
+  --sh-2:0 0 0 1px rgba(245,247,251,.08), 0 8px 24px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.4);
+  --sh-3:0 0 0 1px rgba(245,247,251,.07), 0 28px 70px rgba(0,0,0,.66), 0 8px 24px rgba(0,0,0,.5);
+  --sh-paper:0 4px 22px rgba(0,0,0,.5);
+}
+
+@media (min-width:1600px){:root{--pagew:1320px;--prosew:1200px;--chatw:880px;--cardw:280px;--card-tt:13px;--card-fs:12px;--card-lines:3}}
+@media (min-width:2000px){:root{--pagew:1560px;--prosew:1320px;--chatw:1000px;--cardw:320px;--card-tt:14px;--card-fs:13px;--card-lines:3}}
+
+/*
+ * When the system's "Reduce Dynamic Effects" is turned on, the transition is completely stopped, but every state change is still visible:
+ * The classes of .ddlrow.flash are added and removed by JS timer, and the static background color is changed instead of animation:none.
+ * Positioning feedback will not disappear during this period of time
+ */
+@media (prefers-reduced-motion:reduce){
+  :root{--t-fast:1ms;--t:1ms;--t-slow:1ms}
+  .ddlrow.flash{animation:none;background:var(--tint-warn)}
+  .paper-card.is-leaving{transform:none}
+}
+
+*{box-sizing:border-box}
+b,strong{font-weight:600}
+/*
+ * When pressing a macOS button, the entire icon becomes darker, not smaller; scale makes the icon faint on the 30×30 icon button.
+ * The solid accent surface is stacked with black instead of white: stacking white will suppress the white text above it to 3.78:1.
+ * The following two items are written in the same background-image as the hover in each route. If they have the same specificity, the winner can only be determined by the order of packaging;
+ * The six hovers are therefore written as :where(.btn):hover. One category, press to the specificity of a category, press the state to win based on the specificity.
+ */
+.btn:active,.icbtn:active,.tbtn:active,.cd:active,.pgbtn:active{background-image:linear-gradient(var(--press),var(--press))}
+.btn.pri:active,.send:active,.pgbtn.on:active,.cd.sel:active{background-image:linear-gradient(var(--press-solid),var(--press-solid))}
+html,body{height:100%}
+body{margin:0;background:var(--desktop);color:var(--ink);font-family:var(--sans);font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased}
+#root{height:100%;display:flex;flex-direction:column}
+
+/*
+ * Non-editing controls such as buttons retain the keyboard focus ring; all inputs, selectors, and text editing areas use neutral strokes.
+ * The blue frames added by Chromium's default or business pages no longer appear.
+ */
+:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+:is(input,textarea,select,[contenteditable="true"]):focus,
+:is(input,textarea,select,[contenteditable="true"]):focus-visible{
+  outline:0;outline-offset:0;border-color:var(--sep-strong);box-shadow:none
+}
+::selection{background:var(--sel)}
+
+/* Claude style scroll bar: the slider is always visible and the scroll area is visible at a glance */
+::-webkit-scrollbar{width:12px;height:12px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background-color:var(--sbthumb);border-radius:var(--r-full);border:3px solid transparent;background-clip:padding-box;min-height:40px}
+::-webkit-scrollbar-thumb:hover{background-color:var(--sbthumb-h);border:3px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-button{display:none;width:0;height:0}
+::-webkit-scrollbar-corner{background:transparent}
+@supports not selector(::-webkit-scrollbar){
+  *{scrollbar-width:thin;scrollbar-color:var(--sbthumb) transparent}
+}

@@ -1,0 +1,4 @@
+.date-chip{display:inline-flex;align-items:center;justify-content:center;min-height:20px;box-sizing:border-box;
+  padding:2px 7px;border-radius:var(--r-sm);background:var(--field);font-family:var(--mono);
+  font-size:var(--fs-sm);line-height:var(--lh-ui);color:var(--sec);white-space:nowrap}
+.date-time-display{display:inline-flex;align-items:center;gap:6px;min-width:0;white-space:nowrap}

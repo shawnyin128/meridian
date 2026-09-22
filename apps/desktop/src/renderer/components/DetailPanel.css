@@ -1,0 +1,35 @@
+.detail-panel{--detail-panel-width:360px;--detail-panel-gap:0px;min-width:0}
+.detail-panel__content{width:100%;min-width:0}
+
+.detail-panel--inline{flex:0 0 0;width:0;max-width:0;margin-left:0;overflow:hidden;opacity:0;pointer-events:none;
+  transition:flex-basis var(--t-slow) var(--e-inout),width var(--t-slow) var(--e-inout),
+    max-width var(--t-slow) var(--e-inout),margin-left var(--t-slow) var(--e-inout),
+    opacity var(--t) var(--e-out)}
+.detail-panel--inline.is-open{flex-basis:var(--detail-panel-width);width:var(--detail-panel-width);
+  max-width:var(--detail-panel-width);margin-left:var(--detail-panel-gap);opacity:1;pointer-events:auto}
+.detail-panel--inline>.detail-panel__content{width:100%;opacity:0;transform:translateX(14px);
+  transition:opacity var(--t) var(--e-out),transform var(--t-slow) var(--e-out)}
+.detail-panel--inline.is-open>.detail-panel__content{opacity:1;transform:translateX(0);transition-delay:45ms}
+
+.detail-panel--overlay{position:absolute;width:var(--detail-panel-width);overflow:hidden;opacity:0;
+  transform:translate3d(100%,0,0);pointer-events:none;
+  transition:transform var(--t-slow) var(--e-inout),opacity var(--t) var(--e-out)}
+.detail-panel--overlay.is-open{opacity:1;transform:translate3d(0,0,0);pointer-events:auto}
+.detail-panel--overlay>.detail-panel__content{height:100%;opacity:0;transform:translateX(10px);
+  transition:opacity var(--t) var(--e-out),transform var(--t-slow) var(--e-out)}
+.detail-panel--overlay.is-open>.detail-panel__content{opacity:1;transform:translateX(0);transition-delay:45ms}
+
+.detail-panel--resize{transition:flex-basis var(--t-slow) var(--e-inout),width var(--t-slow) var(--e-inout),
+  max-width var(--t-slow) var(--e-inout),padding var(--t-slow) var(--e-inout),
+  border-radius var(--t) var(--e-out),background-color var(--t) var(--e-out),box-shadow var(--t) var(--e-out)}
+.detail-panel--resize.is-open>.detail-panel__content{animation:detail-panel-content-in var(--t-slow) var(--e-out) both}
+
+@keyframes detail-panel-content-in{
+  from{opacity:0;transform:translateX(10px)}
+  to{opacity:1;transform:translateX(0)}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .detail-panel,.detail-panel__content{transition-delay:0ms!important}
+  .detail-panel__content{transform:none!important;animation:none!important}
+}

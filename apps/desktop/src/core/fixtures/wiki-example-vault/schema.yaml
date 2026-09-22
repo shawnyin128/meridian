@@ -1,0 +1,33 @@
+# The structure definition of this wiki. The application reads it; changing it does not change the code.
+version: 1
+
+kinds:                      # Available aggregation kinds; adding one creates another section.
+  topic:
+    dir: topics
+    label: 主题
+    describe:               # Name and purpose of the first aggregation-page section.
+      section: 问题
+      hint: 要做到什么、为什么难
+  method:
+    dir: methods
+    label: 方法
+    describe:
+      section: 机制
+      hint: 这一族共享什么
+    derived_columns:        # Comparison columns derived from member relationships in another kind.
+      - key: used_for
+        label: 用于
+        from_kind: topic
+
+sections:                   # Ordered append-only regions on every aggregation page; ingest never overwrites them.
+  - {key: conclusions, label: 结论}
+  - {key: experiments, label: 实验}
+  - {key: open, label: 未解决}
+
+anchor:
+  require_quote: true       # Reject cells without a source quotation.
+
+lint:
+  thin_below: 3             # Mark leaf aggregations with fewer members as thin.
+  split_min_rows: 5         # Require this many rows before evaluating a split.
+  split_na_ratio: 0.5       # Suggest splitting on a column when its empty-cell ratio reaches this value.

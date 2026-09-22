@@ -1,0 +1,45 @@
+[project]
+name = "meridian-harness"
+version = "0.0.0"
+description = "Meridian agent harness: LLM orchestration only, no persistent state"
+requires-python = ">=3.12"
+dependencies = [
+  "langchain>=1.4,<2",
+  "langchain-anthropic>=1.7,<2",
+  "langchain-core>=1.6,<2",
+  "langchain-google-genai>=4.4,<5",
+  "langchain-openai>=1.6,<2",
+  "langgraph>=1.2,<2",
+  "pydantic>=2.12,<3",
+]
+
+[project.optional-dependencies]
+build = ["pyinstaller>=6.19,<7"]
+
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+meridian-harness = "meridian_harness.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "TID", "ANN", "RET", "ARG"]
+ignore = ["ANN401"]
+
+# The harness is a stateless inference service: it does not access disk, implement retrieval, or own paths.
+# It requests data from Core through RPC callbacks. See .claude/skills/writing-meridian-code.
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"pathlib".msg = "Harness cannot access the filesystem; request data from Core over RPC"
+"shutil".msg = "Harness cannot access the filesystem"
+"os.path".msg = "Harness does not own paths; use entity IDs"
+
+[tool.ruff.lint.flake8-annotations]
+mypy-init-return = true

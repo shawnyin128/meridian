@@ -1,0 +1,75 @@
+/* Project details are only responsible for the field layout of this screen; cross-page interactive components hold styles in renderer/components. */
+
+/* The association idea is an inverted index in the items: the separation rules for embedded lists are held uniformly by StructuredList. */
+.project-ideas{display:grid;--structured-list-row-height:38px}
+.project-ideas>.lm{padding:10px 2px}
+.project-idea-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(160px,34%);align-items:center;gap:10px;
+  min-height:38px;padding:7px 2px}
+.project-idea-row.selected{background:var(--hover)}
+.project-idea-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.project-idea-flags{display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0}
+.project-idea-state{padding:1px 7px;border-radius:var(--r-full);background:var(--field);color:var(--ter);font-size:var(--fs-cap)}
+.project-idea-node-tag{min-width:0;max-width:170px;padding:1px 7px;border-radius:var(--r-full);background:var(--accent-soft);
+  color:var(--accent);font-size:var(--fs-cap);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.project-idea-source{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ter);font-size:var(--fs-sm);text-align:right}
+.project-idea-detail-meta{display:flex;align-items:center;gap:8px;margin-top:18px}
+.project-idea-detail-kind{padding:2px 8px;border-radius:var(--r-full);background:var(--accent-soft);color:var(--accent);
+  font-size:var(--fs-cap);font-weight:600}
+.project-idea-detail-body,.project-idea-detail-source{margin:0;color:var(--sec);font-size:var(--fs-base);line-height:1.65;
+  white-space:pre-wrap;overflow-wrap:anywhere}
+.project-idea-detail-source{font-size:var(--fs-sm)}
+.project-idea-detail-updated{margin-top:7px;color:var(--ter);font-size:var(--fs-cap)}
+.project-idea-open-idea{margin-left:auto;font-size:var(--fs-sm)}
+.project-idea-graph-actions,.project-idea-node-link{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.project-idea-node{min-width:0;max-width:100%;padding:5px 9px;border:1px solid var(--sep2);border-radius:var(--r-md);
+  background:var(--field);color:var(--ink);font:inherit;font-size:var(--fs-sm);overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;cursor:pointer}
+.project-idea-node:hover{border-color:var(--sep-strong);background:var(--hover)}
+.project-idea-node:focus-visible{outline:0;border-color:var(--accent)}
+.project-idea-node-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
+.project-idea-node-link .btn{font-size:var(--fs-sm)}
+@media (max-width:900px){
+  .project-ideas{--structured-list-row-height:58px}
+  .project-idea-row{grid-template-columns:minmax(0,1fr) auto}
+  .project-idea-flags{grid-column:2;grid-row:1}
+  .project-idea-source{grid-column:1/-1;text-align:left}
+}
+
+/* The project timeline and the details below share the same content width; when the node is opened, only the right document panel squeezes the left column. */
+.desk .desk-body>.wkpage.project-detail-page{max-width:var(--pagew)}
+.project-detail-page{transition:gap var(--t-slow) var(--e-inout)}
+.project-detail-panel>.detail-panel__content{min-width:0}
+/* Node panel: Markdown documents, branch results and advancement records maintained by Agent; App is read-only. */
+.wkpage.node-reading{gap:28px}
+/* Fixed height with its own scroll: the page keeps its height and position whichever node is open. */
+.wkside.node-document-pane{flex:0 0 520px;width:520px;max-width:min(520px,48vw);height:calc(100vh - 190px);
+  box-sizing:border-box;padding:18px 22px;border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);
+  box-shadow:var(--sh-1);overscroll-behavior:auto}
+@media (max-width:1150px){
+  .wkpage.node-reading{gap:20px}
+  .wkside.node-document-pane{flex-basis:44%;width:44%;max-width:44%;padding:16px 18px}
+}
+
+/* The project directory is a connection, not the metadata body: the path is truncated, and the status is only indicated by a small dot. */
+.workspace-field{display:flex;align-items:center;gap:4px;min-width:0}
+.workspace-root{position:relative;min-width:0;flex:1;border:0;background:transparent;color:inherit;font:inherit;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;padding:0 0 0 10px}
+.workspace-root::before{content:'';position:absolute;left:0;top:50%;width:5px;height:5px;border-radius:50%;background:var(--good);transform:translateY(-50%)}
+.workspace-root.missing::before,.workspace-root.invalid::before{background:var(--bad)}
+.workspace-field .dots{flex:0 0 auto}
+.workspace-field:hover .dots,.workspace-field:focus-within .dots{opacity:1;pointer-events:auto}
+.workspace-dialog{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:90;
+  width:min(420px,calc(100vw - 40px));box-sizing:border-box;background:var(--card);border:1px solid var(--sep);
+  border-radius:var(--r-xl);box-shadow:var(--sh-3);padding:18px}
+.workspace-dialog:focus-visible{outline:0}
+.workspace-dialog-title{font-size:var(--fs-title);font-weight:700;margin:0 0 14px;color:var(--ink)}
+.workspace-kinds{margin-bottom:16px}
+.workspace-kinds>button{min-width:78px;text-align:center}
+.workspace-local{min-width:90px}
+.workspace-form{display:grid;gap:10px}
+.workspace-form label{display:grid;grid-template-columns:66px minmax(0,1fr);align-items:center;gap:12px;
+  color:var(--ter);font-size:var(--fs-sm)}
+.workspace-form .form-control{width:100%;font-size:var(--fs-base)}
+.workspace-form .form-input::placeholder{color:var(--ter)}
+.workspace-form .form-input[type="number"]{-moz-appearance:textfield}
+.workspace-form .form-input[type="number"]::-webkit-inner-spin-button{appearance:none;margin:0}
+.workspace-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}

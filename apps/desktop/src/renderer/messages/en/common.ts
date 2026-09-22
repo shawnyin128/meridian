@@ -1,0 +1,57 @@
+import { TRASH_RETENTION_DAYS } from '../../../shared/vocabulary.js'
+import { pluralEn } from '../../lib/plural.js'
+import { common as zh } from '../zh/common.js'
+
+/** English counterpart of `zh/common`. `satisfies` makes a missing, extra or re-parameterised key a compile error. */
+export const common = {
+  save: 'Save',
+  cancel: 'Cancel',
+  edit: 'Edit',
+  confirm: 'Confirm',
+  retry: 'Retry',
+  delete: 'Delete',
+  deletePermanently: 'Delete permanently',
+  remove: 'Remove',
+  removeLink: 'Remove link',
+  restore: 'Restore',
+  archive: 'Archive',
+  unarchive: 'Unarchive',
+  undo: 'Undo',
+  loading: 'Loading…',
+  saving: 'Saving…',
+  reading: 'Reading…',
+  none: 'None',
+  all: 'All',
+  trashed: `Moved to Trash · recoverable for ${TRASH_RETENTION_DAYS} days`,
+  updatedOn: (date: string) => `Updated ${date}`,
+  addedOn: (date: string) => `Added ${date}`,
+  overdue: 'Overdue',
+  paused: 'Paused',
+  archived: 'Archived',
+  count: (n: number) => `${n}`,
+  priority: { p0: 'Urgent', p1: 'Normal', p2: 'Low' },
+  nav: { back: 'Back' },
+  panel: { close: 'Collapse details' },
+  details: { expand: 'Show details', collapse: 'Hide details' },
+  field: {
+    clear: 'Clear input',
+    clickToEdit: 'Click to edit',
+    emptyValue: '—',
+    change: (label: string) => `Edit ${label}`,
+    edit: (label: string) => `Edit ${label}`,
+    chooseDirectory: 'Choose folder',
+  },
+  pager: {
+    total: (n: number) => `${n} ${pluralEn(n, { one: 'item', other: 'items' })} total`,
+    perPage: 'Items per page',
+    perPageOption: (n: number) => `${n} / page`,
+  },
+  menu: { more: 'More' },
+  generation: {
+    start: 'Send',
+    stop: 'Stop generating',
+    running: 'Generating',
+    runningHint: 'Generating — click to stop',
+  },
+  markdown: { citePage: (page: string) => `Source · page ${page}` },
+} satisfies typeof zh

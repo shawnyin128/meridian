@@ -1,0 +1,22 @@
+/* Pagination bar: number of bars · page number · selection per page. The rules are copied from desktop/design/platform-shell-demo.html one by one. */
+
+/*
+ * The demo writes margin:0, and the horizontal auto is covered by the more specific .main.desk-open .desk-foot>*;
+ * There is no desk-open here, and the .desk-foot>* of shell.css cannot be pressed into this row. Auto can only write into this row.
+ */
+.desk-foot .pagebar{margin:0 auto}
+.pagebar{display:flex;align-items:center;gap:12px;margin:12px 0 4px;flex-wrap:wrap}
+/*
+ * The number of articles and the stalls of each page are attached to both ends of the paging strip according to their own width. The remaining margin in the middle belongs to the page number strip. The page number strip is in
+ * Row on the right side of the grid. The margins are all in the same grid, so there is no second control whose position floats with the width of the content: one more bar number
+ * Numbers only eat up the margin, and one more page number only eats up the margin. The position of each page and the edge of the page number bar are determined by the right edge of the paging bar.
+ */
+.pagebar>.segmented-control{flex:0 0 auto}
+.pagebar>.pager{flex:1 1 0;justify-content:flex-end}
+.pginfo{font-size:var(--fs-sm);color:var(--ter);white-space:nowrap}
+.pager{display:flex;align-items:center;gap:4px}
+.pgbtn{border:1px solid var(--sep);background:var(--field);border-radius:var(--r-md);padding:2px 8px;min-width:26px;cursor:pointer;font-size:var(--fs-sm);color:var(--ink);font-family:var(--sans);transition:background-color var(--t-fast) var(--e-out),border-color var(--t-fast) var(--e-out)}
+:where(.pgbtn):hover{background-image:linear-gradient(var(--hover),var(--hover));border-color:var(--sep-strong)}
+.pgbtn.on{background:var(--accent-solid);border-color:var(--accent-solid);color:var(--on-accent)}
+.pgbtn:disabled{opacity:.35;cursor:default}
+.pgell{font-size:var(--fs-sm);color:var(--ter);padding:0 2px}

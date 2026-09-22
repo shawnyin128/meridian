@@ -1,0 +1,55 @@
+{
+  "schema_version": "meridian.context.v1",
+  "query": "speculative decoding acceptance",
+  "generated_at": "2026-09-15T18:00:00+00:00",
+  "source": {
+    "kind": "paper_wiki",
+    "layout": "app_native"
+  },
+  "budget": {
+    "max_results": 6,
+    "max_chars_per_result": 1200,
+    "returned_results": 1,
+    "result_limit_reached": false
+  },
+  "results": [
+    {
+      "id": "wiki:papers/example",
+      "uri": "meridian://wiki/papers/example",
+      "title": "Example paper",
+      "result_type": "paper",
+      "knowledge_role": "paper_analysis",
+      "score": 12.5,
+      "selection_reasons": [
+        "BM25 title",
+        "field-weighted topics"
+      ],
+      "excerpt": "A compact, source-grounded result.",
+      "sections": [
+        {
+          "heading": "Evidence Map",
+          "snippet": "Table 1 reports the acceptance result.",
+          "score": 4.2,
+          "layer": "source_fact"
+        }
+      ],
+      "memberships": [
+        {
+          "id": "topics/speculative-decoding",
+          "kind": "topic",
+          "title": "Speculative decoding"
+        }
+      ],
+      "provenance": {
+        "canonical_path": "papers/example.md",
+        "source_id": "paper-example",
+        "source_pdf": "../../sources/papers/example.pdf",
+        "trust": {
+          "review_state": "auto_converged",
+          "confidence": "medium"
+        }
+      }
+    }
+  ],
+  "warnings": []
+}

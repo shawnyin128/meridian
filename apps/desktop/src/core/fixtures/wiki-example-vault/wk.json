@@ -1,0 +1,1378 @@
+{
+ "kinds": {
+  "topic": {
+   "dir": "topics",
+   "label": "主题",
+   "describe": {
+    "section": "问题",
+    "hint": "要做到什么、为什么难"
+   }
+  },
+  "method": {
+   "dir": "methods",
+   "label": "方法",
+   "describe": {
+    "section": "机制",
+    "hint": "这一族共享什么"
+   },
+   "derived_columns": [
+    {
+     "key": "used_for",
+     "label": "用于",
+     "from_kind": "topic"
+    }
+   ]
+  }
+ },
+ "sections": [
+  {
+   "key": "conclusions",
+   "label": "结论"
+  },
+  {
+   "key": "experiments",
+   "label": "实验"
+  },
+  {
+   "key": "open",
+   "label": "未解决"
+  }
+ ],
+ "lint": [
+  {
+   "sev": "warn",
+   "kind": "thin",
+   "page": "topics/kv-cache-quantization",
+   "text": "叶聚合只有 2 个成员,阈值 3。要么等论文攒够,要么它其实是父节点表里的一行。"
+  },
+  {
+   "sev": "warn",
+   "kind": "single-child",
+   "page": "topics/long-context-inference",
+   "text": "只有一个子聚合、没有直接成员:这一层没有在分东西。"
+  },
+  {
+   "sev": "warn",
+   "kind": "thin",
+   "page": "topics/qat",
+   "text": "叶聚合只有 1 个成员,阈值 3。要么等论文攒够,要么它其实是父节点表里的一行。"
+  },
+  {
+   "sev": "warn",
+   "kind": "thin",
+   "page": "methods/distillation-qat",
+   "text": "叶聚合只有 1 个成员,阈值 3。要么等论文攒够,要么它其实是父节点表里的一行。"
+  },
+  {
+   "sev": "warn",
+   "kind": "thin",
+   "page": "methods/error-compensated-rounding",
+   "text": "叶聚合只有 2 个成员,阈值 3。要么等论文攒够,要么它其实是父节点表里的一行。"
+  },
+  {
+   "sev": "warn",
+   "kind": "thin",
+   "page": "methods/non-uniform-quantization",
+   "text": "叶聚合只有 2 个成员,阈值 3。要么等论文攒够,要么它其实是父节点表里的一行。"
+  },
+  {
+   "sev": "info",
+   "kind": "split",
+   "page": "topics/kv-cache-quantization",
+   "text": "没有表触发拆分。最接近的是「Key 量化轴」列 1/2 行为空(表只有 2 行,不到 5 行不判断)。"
+  },
+  {
+   "sev": "warn",
+   "kind": "stale",
+   "page": "topics/ptq-weight-activation",
+   "text": "「结论」里 2026-08-01 的条目引用了 SmoothQuant,而那一页在 2026-09-05 改过:待复核。"
+  }
+ ],
+ "errors": [],
+ "pages": {
+  "papers/2210.17323": {
+   "kind": "paper",
+   "fm": {
+    "title": "GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers",
+    "short": "GPTQ",
+    "authors": [
+     "Elias Frantar",
+     "Saleh Ashkboos",
+     "Torsten Hoefler",
+     "Dan Alistarh"
+    ],
+    "year": 2022,
+    "venue": "ICLR 2023",
+    "pdf": "sources/2210.17323.pdf",
+    "updated": "2026-09-01",
+    "memberships": [
+     {
+      "in": "topics/ptq-weight-only",
+      "cells": {
+       "bits": {
+        "value": "W3/W4 · A16",
+        "at": {
+         "page": 1,
+         "quote": "reducing the bitwidth down to 3 or 4 bits per weight"
+        }
+       },
+       "needs_calib": {
+        "value": "是(二阶信息)",
+        "at": {
+         "page": 1,
+         "quote": "a new one-shot weight quantization method based on approximate second-order information"
+        }
+       },
+       "backprop": {
+        "value": "否",
+        "at": {
+         "page": 1,
+         "quote": "one-shot weight quantization method"
+        }
+       },
+       "claim": {
+        "value": "175B 模型约 4 GPU 小时量化完",
+        "at": {
+         "page": 1,
+         "quote": "GPTQ can quantize GPT models with 175 billion parameters in approximately four GPU hours"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/error-compensated-rounding",
+      "cells": {
+       "second_order": {
+        "value": "是(近似)",
+        "at": {
+         "page": 1,
+         "quote": "based on approximate second-order information"
+        }
+       },
+       "procedure": {
+        "value": "一次性、逐层",
+        "at": {
+         "page": 1,
+         "quote": "a new one-shot weight quantization method"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "sections": {
+    "这篇说了什么": "用近似二阶信息做一次性的权重量化,把 GPT 类模型压到每权重 3–4 bit,精度损失可忽略。(p.1)",
+    "机制": "逐层求解带二阶误差补偿的舍入,不需要重新训练。(p.1)",
+    "主要结果": "175B 模型约 4 GPU 小时完成;首次把 175B 模型塞进单卡做生成推理;A100 上端到端约 3.25x 提速。(p.1)"
+   }
+  },
+  "papers/2211.10438": {
+   "kind": "paper",
+   "fm": {
+    "title": "SmoothQuant: Accurate and Efficient Post-Training Quantization for Large Language Models",
+    "short": "SmoothQuant",
+    "authors": [
+     "Guangxuan Xiao",
+     "Ji Lin",
+     "Mickael Seznec",
+     "Song Han"
+    ],
+    "year": 2022,
+    "venue": "ICML 2023",
+    "pdf": "sources/2211.10438.pdf",
+    "updated": "2026-09-05",
+    "memberships": [
+     {
+      "in": "topics/ptq-weight-activation",
+      "cells": {
+       "bits": {
+        "value": "W8A8",
+        "at": {
+         "page": 1,
+         "quote": "to enable 8-bit weight, 8-bit activation (W8A8) quantization for LLMs"
+        }
+       },
+       "transform_where": {
+        "value": "激活→权重的等价缩放",
+        "at": {
+         "page": 1,
+         "quote": "offline migrating the quantization difficulty from activations to weights with a mathematically equivalent transformation"
+        }
+       },
+       "learned": {
+        "value": "否",
+        "at": {
+         "page": 1,
+         "quote": "a training-free, accuracy-preserving, and general-purpose post-training quantization (PTQ) solution"
+        }
+       },
+       "claim": {
+        "value": "1.56x 提速、2x 省内存",
+        "at": {
+         "page": 1,
+         "quote": "up to 1.56x speedup and 2x memory reduction for LLMs with negligible loss in accuracy"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/per-channel-scaling",
+      "cells": {
+       "scale_from": {
+        "value": "激活离群值",
+        "at": {
+         "page": 1,
+         "quote": "SmoothQuant smooths the activation outliers"
+        }
+       },
+       "direction": {
+        "value": "激活→权重",
+        "at": {
+         "page": 1,
+         "quote": "migrating the quantization difficulty from activations to weights"
+        }
+       },
+       "learned": {
+        "value": "否",
+        "at": {
+         "page": 1,
+         "quote": "training-free"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "sections": {
+    "这篇说了什么": "权重好量化、激活难量化;用数学等价的逐通道缩放把量化难度从激活挪到权重,实现 W8A8。(p.1)",
+    "机制": "离线计算缩放因子,训练无关;所有矩阵乘都走 INT8。(p.1)",
+    "主要结果": "最高 1.56x 提速与 2x 内存节省;530B 模型单节点可服务。(p.1)"
+   }
+  },
+  "papers/2305.17888": {
+   "kind": "paper",
+   "fm": {
+    "title": "LLM-QAT: Data-Free Quantization Aware Training for Large Language Models",
+    "short": "LLM-QAT",
+    "authors": [
+     "Zechun Liu",
+     "Barlas Oguz",
+     "Changsheng Zhao",
+     "Vikas Chandra"
+    ],
+    "year": 2023,
+    "venue": "ACL 2024 Findings",
+    "pdf": "sources/2305.17888.pdf",
+    "updated": "2026-09-01",
+    "memberships": [
+     {
+      "in": "topics/qat",
+      "cells": {
+       "bits": {
+        "value": "低至 4-bit(权重、激活、KV)",
+        "at": {
+         "page": 1,
+         "quote": "at quantization levels down to 4-bits"
+        }
+       },
+       "data": {
+        "value": "无需原始数据,用模型自生成蒸馏",
+        "at": {
+         "page": 1,
+         "quote": "a data-free distillation method that leverages generations produced by the pre-trained model"
+        }
+       },
+       "kv": {
+        "value": "是",
+        "at": {
+         "page": 1,
+         "quote": "we also quantize the KV cache"
+        }
+       },
+       "claim": {
+        "value": "低比特下大幅优于免训练方法",
+        "at": {
+         "page": 1,
+         "quote": "large improvements over training-free methods, especially in the low-bit settings"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/distillation-qat",
+      "cells": {
+       "teacher": {
+        "value": "预训练模型自身的生成",
+        "at": {
+         "page": 1,
+         "quote": "leverages generations produced by the pre-trained model"
+        }
+       },
+       "data": {
+        "value": "与训练数据无关",
+        "at": {
+         "page": 1,
+         "quote": "allows quantizing any generative model independent of its training data"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "sections": {
+    "这篇说了什么": "PTQ 到 8-bit 还行,再往下就崩;于是做 QAT,但不用原始训练数据——让预训练模型自己生成数据来蒸馏。(p.1)",
+    "机制": "数据无关的蒸馏;权重、激活之外也量化 KV cache。(p.1)",
+    "主要结果": "LLaMA 7B/13B/30B 低至 4-bit,低比特设定下大幅优于免训练方法。(p.1)"
+   }
+  },
+  "papers/2306.00978": {
+   "kind": "paper",
+   "fm": {
+    "title": "AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration",
+    "short": "AWQ",
+    "authors": [
+     "Ji Lin",
+     "Jiaming Tang",
+     "Haotian Tang",
+     "Song Han"
+    ],
+    "year": 2023,
+    "venue": "MLSys 2024",
+    "pdf": "sources/2306.00978.pdf",
+    "updated": "2026-09-01",
+    "memberships": [
+     {
+      "in": "topics/ptq-weight-only",
+      "cells": {
+       "bits": {
+        "value": "W4 · A16",
+        "at": {
+         "page": 1,
+         "quote": "a hardware-friendly approach for LLM low-bit weight-only quantization"
+        }
+       },
+       "needs_calib": {
+        "value": "是(离线激活统计)",
+        "at": {
+         "page": 1,
+         "quote": "The scale is determined by collecting the activation statistics offline"
+        }
+       },
+       "backprop": {
+        "value": "否",
+        "at": {
+         "page": 1,
+         "quote": "AWQ does not rely on any backpropagation or reconstruction"
+        }
+       },
+       "claim": {
+        "value": "只保护 1% 显著权重即可大幅降误差",
+        "at": {
+         "page": 1,
+         "quote": "Protecting only 1% salient weights can greatly reduce quantization error"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/per-channel-scaling",
+      "cells": {
+       "scale_from": {
+        "value": "激活分布找显著通道",
+        "at": {
+         "page": 1,
+         "quote": "To identify salient weight channels, we should refer to the activation distribution, not weights"
+        }
+       },
+       "direction": {
+        "value": "放大显著权重通道",
+        "at": {
+         "page": 1,
+         "quote": "scaling up the salient channels can reduce the quantization error"
+        }
+       },
+       "learned": {
+        "value": "否",
+        "at": {
+         "page": 1,
+         "quote": "AWQ does not rely on any backpropagation or reconstruction"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "sections": {
+    "这篇说了什么": "权重不是同等重要的;按激活分布找出 1% 显著通道,用等价缩放保护它们,做 4-bit 仅权重量化。(p.1)",
+    "机制": "离线收集激活统计决定每通道缩放;不用反向传播,不易过拟合校准集。(p.1)",
+    "主要结果": "在语言建模、代码、数学基准上优于既有工作;配套 TinyChat 在桌面与移动 GPU 上 3x 以上提速。(p.1)"
+   }
+  },
+  "papers/2306.07629": {
+   "kind": "paper",
+   "fm": {
+    "title": "SqueezeLLM: Dense-and-Sparse Quantization",
+    "short": "SqueezeLLM",
+    "authors": [
+     "Sehoon Kim",
+     "Coleman Hooper",
+     "Amir Gholami",
+     "Kurt Keutzer"
+    ],
+    "year": 2023,
+    "venue": "ICML 2024",
+    "pdf": "sources/2306.07629.pdf",
+    "updated": "2026-09-01",
+    "memberships": [
+     {
+      "in": "topics/ptq-weight-only",
+      "cells": {
+       "bits": {
+        "value": "W3 · A16",
+        "at": {
+         "page": 1,
+         "quote": "enables lossless compression to ultra-low precisions of up to 3-bit"
+        }
+       },
+       "needs_calib": {
+        "value": "是(二阶敏感度)",
+        "at": {
+         "page": 1,
+         "quote": "searches for the optimal bit precision assignment based on second-order information"
+        }
+       },
+       "claim": {
+        "value": "同等内存下困惑度差距缩小 2.1x",
+        "at": {
+         "page": 1,
+         "quote": "reduces the perplexity gap from the FP16 baseline by up to 2.1x as compared to the state-of-the-art methods with the same memory requirement"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/non-uniform-quantization",
+      "cells": {
+       "codebook_from": {
+        "value": "二阶敏感度",
+        "at": {
+         "page": 1,
+         "quote": "sensitivity-based non-uniform quantization, which searches for the optimal bit precision assignment based on second-order information"
+        }
+       },
+       "sparse": {
+        "value": "是",
+        "at": {
+         "page": 1,
+         "quote": "the Dense-and-Sparse decomposition that stores outliers and sensitive weight values in an efficient sparse format"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "sections": {
+    "这篇说了什么": "单批推理的瓶颈是内存带宽不是算力;非均匀量化 + 把离群值和敏感权重拆到稀疏格式,3-bit 近无损。(p.1)",
+    "机制": "按二阶敏感度搜索非均匀格点;Dense-and-Sparse 分解单独存离群值。(p.1)",
+    "主要结果": "LLaMA 3-bit 下同等内存的困惑度差距缩小至多 2.1x;A6000 上至多 2.3x 提速。(p.1)"
+   }
+  },
+  "papers/2307.13304": {
+   "kind": "paper",
+   "fm": {
+    "title": "QuIP: 2-Bit Quantization of Large Language Models With Guarantees",
+    "short": "QuIP",
+    "authors": [
+     "Jerry Chee",
+     "Yaohui Cai",
+     "Volodymyr Kuleshov",
+     "Christopher De Sa"
+    ],
+    "year": 2023,
+    "venue": "NeurIPS 2023",
+    "pdf": "sources/2307.13304.pdf",
+    "updated": "2026-09-01",
+    "memberships": [
+     {
+      "in": "topics/ptq-weight-only",
+      "cells": {
+       "bits": {
+        "value": "W2 · A16",
+        "at": {
+         "page": 1,
+         "quote": "produce viable results using only two bits per weight"
+        }
+       },
+       "needs_calib": {
+        "value": "是(Hessian)",
+        "at": {
+         "page": 1,
+         "quote": "quantization benefits from incoherent weight and Hessian matrices"
+        }
+       },
+       "backprop": {
+        "value": "否",
+        "at": {
+         "page": 1,
+         "quote": "an adaptive rounding procedure minimizing a quadratic proxy objective"
+        }
+       },
+       "claim": {
+        "value": "首个可用的 2-bit 方法",
+        "at": {
+         "page": 1,
+         "quote": "yields the first LLM quantization methods that produce viable results using only two bits per weight"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/rotation",
+      "cells": {
+       "rotation_type": {
+        "value": "随机正交矩阵",
+        "at": {
+         "page": 1,
+         "quote": "ensures weight and Hessian incoherence via multiplication by random orthogonal matrices"
+        }
+       },
+       "learned": {
+        "value": "否",
+        "at": {
+         "page": 1,
+         "quote": "multiplication by random orthogonal matrices"
+        }
+       },
+       "applied_to": {
+        "value": "权重与 Hessian",
+        "at": {
+         "page": 1,
+         "quote": "ensures weight and Hessian incoherence"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/error-compensated-rounding",
+      "cells": {
+       "second_order": {
+        "value": "是(Hessian)",
+        "at": {
+         "page": 1,
+         "quote": "incoherent weight and Hessian matrices"
+        }
+       },
+       "procedure": {
+        "value": "自适应舍入,二次代理目标",
+        "at": {
+         "page": 1,
+         "quote": "an adaptive rounding procedure minimizing a quadratic proxy objective"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "sections": {
+    "这篇说了什么": "量化得益于\"不相干\"的权重与 Hessian:权重幅值均匀、重要方向不与坐标轴对齐。两步:自适应舍入 + 用随机正交矩阵做前后处理保证不相干。(p.1)",
+    "机制": "舍入最小化一个二次代理目标;前后乘随机正交矩阵。附带首个 LLM 规模量化算法的理论分析,也适用于 OPTQ。(p.1)",
+    "主要结果": "不相干预处理能改善多种既有算法;首次给出每权重 2 bit 可用的结果。(p.1)"
+   }
+  },
+  "papers/2308.13137": {
+   "kind": "paper",
+   "fm": {
+    "title": "OmniQuant: Omnidirectionally Calibrated Quantization for Large Language Models",
+    "short": "OmniQuant",
+    "authors": [
+     "Wenqi Shao",
+     "Mengzhao Chen",
+     "Zhaoyang Zhang",
+     "Ping Luo"
+    ],
+    "year": 2023,
+    "venue": "ICLR 2024",
+    "pdf": "sources/2308.13137.pdf",
+    "updated": "2026-09-01",
+    "memberships": [
+     {
+      "in": "topics/ptq-weight-only",
+      "cells": {
+       "bits": {
+        "value": "W4/W3/W2 · A16",
+        "at": {
+         "page": 1,
+         "quote": "W4A16, W3A16, and W2A16"
+        }
+       },
+       "needs_calib": {
+        "value": "是,128 样本",
+        "at": {
+         "page": 1,
+         "quote": "within 1-16 hours using 128 samples"
+        }
+       },
+       "backprop": {
+        "value": "是(块级误差最小化)",
+        "at": {
+         "page": 1,
+         "quote": "Operating within a differentiable framework using block-wise error minimization"
+        }
+       },
+       "claim": {
+        "value": "7–70B 单卡 1–16 小时",
+        "at": {
+         "page": 1,
+         "quote": "the LLaMA-2 model family size 7-70B can be processed with OmniQuant on a single A100-40G GPU within 1-16 hours"
+        }
+       }
+      }
+     },
+     {
+      "in": "topics/ptq-weight-activation",
+      "cells": {
+       "bits": {
+        "value": "W4A4 / W6A6",
+        "at": {
+         "page": 1,
+         "quote": "W4A4 (4-bit weight, 4-bit activation), W6A6"
+        }
+       },
+       "transform_where": {
+        "value": "可学习等价变换(LET)",
+        "at": {
+         "page": 1,
+         "quote": "LET tackles activation outliers by shifting the challenge of quantization from activations to weights"
+        }
+       },
+       "learned": {
+        "value": "是",
+        "at": {
+         "page": 1,
+         "quote": "Learnable Weight Clipping (LWC) and Learnable Equivalent Transformation (LET)"
+        }
+       },
+       "needs_calib": {
+        "value": "是,128 样本",
+        "at": {
+         "page": 1,
+         "quote": "using 128 samples"
+        }
+       },
+       "claim": {
+        "value": "W4A4 等多种配置下表现优",
+        "at": {
+         "page": 1,
+         "quote": "superior performance across diverse quantization configurations such as W4A4"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/per-channel-scaling",
+      "cells": {
+       "scale_from": {
+        "value": "可学习",
+        "at": {
+         "page": 1,
+         "quote": "Learnable Equivalent Transformation (LET)"
+        }
+       },
+       "direction": {
+        "value": "激活→权重",
+        "at": {
+         "page": 1,
+         "quote": "shifting the challenge of quantization from activations to weights"
+        }
+       },
+       "learned": {
+        "value": "是",
+        "at": {
+         "page": 1,
+         "quote": "efficiently optimizing various quantization parameters"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "sections": {
+    "这篇说了什么": "把量化参数(裁剪阈值、等价变换)改成可学习的,在保持 PTQ 效率的前提下覆盖仅权重与权重-激活两类设定。(p.1)",
+    "机制": "LWC 学权重裁剪阈值;LET 学等价变换把激活离群值挪到权重;块级误差最小化,可微。(p.1)",
+    "主要结果": "LLaMA-2 7–70B 单张 A100-40G、128 样本、1–16 小时;W4A4、W6A6、W4A16、W3A16、W2A16 均有效。(p.1)"
+   }
+  },
+  "papers/2401.18079": {
+   "kind": "paper",
+   "fm": {
+    "title": "KVQuant: Towards 10 Million Context Length LLM Inference with KV Cache Quantization",
+    "short": "KVQuant",
+    "authors": [
+     "Coleman Hooper",
+     "Sehoon Kim",
+     "Hiva Mohammadzadeh",
+     "Kurt Keutzer"
+    ],
+    "year": 2024,
+    "venue": "NeurIPS 2024",
+    "pdf": "sources/2401.18079.pdf",
+    "updated": "2026-09-01",
+    "memberships": [
+     {
+      "in": "topics/kv-cache-quantization",
+      "cells": {
+       "kv_bits": {
+        "value": "3",
+        "at": {
+         "page": 1,
+         "quote": "we achieve < 0.1 perplexity degradation with 3-bit quantization on both Wikitext-2 and C4"
+        }
+       },
+       "key_axis": {
+        "value": "逐通道",
+        "at": {
+         "page": 1,
+         "quote": "Per-Channel Key Quantization, where we adjust the dimension along which we quantize the Key activations to better match the distribution"
+        }
+       },
+       "rope": {
+        "value": "RoPE 之前",
+        "at": {
+         "page": 1,
+         "quote": "Pre-RoPE Key Quantization, where we quantize Key activations before the rotary positional embedding"
+        }
+       },
+       "claim": {
+        "value": "单卡 A100-80GB 上下文到 100 万",
+        "at": {
+         "page": 1,
+         "quote": "enables serving LLaMA-7B with a context length of up to 1 million on a single A100-80GB GPU"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/non-uniform-quantization",
+      "cells": {
+       "codebook_from": {
+        "value": "逐层敏感度加权",
+        "at": {
+         "page": 1,
+         "quote": "we derive per-layer sensitivity-weighted non-uniform datatypes that better represent the distributions"
+        }
+       },
+       "sparse": {
+        "value": "是(逐向量)",
+        "at": {
+         "page": 1,
+         "quote": "Per-Vector Dense-and-Sparse Quantization, where we isolate outliers separately for each vector"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "sections": {
+    "这篇说了什么": "长上下文下 KV cache 成为内存主项;现有方法在 4-bit 以下失真,本文用四个手段做低比特 KV 量化。(p.1)",
+    "机制": "Key 逐通道量化;RoPE 之前量化 Key;逐层敏感度加权的非均匀格点;逐向量的 Dense-and-Sparse 离群值隔离。(p.1)",
+    "主要结果": "3-bit 下困惑度退化 <0.1;LLaMA-7B 单卡 100 万上下文、8 卡 1000 万;自定义 CUDA kernel 至多 ~1.7x 提速。(p.1)"
+   }
+  },
+  "papers/2404.00456": {
+   "kind": "paper",
+   "fm": {
+    "title": "QuaRot: Outlier-Free 4-Bit Inference in Rotated LLMs",
+    "short": "QuaRot",
+    "authors": [
+     "Saleh Ashkboos",
+     "Amirkeivan Mohtashami",
+     "Maximilian L. Croci",
+     "James Hensman"
+    ],
+    "year": 2024,
+    "venue": "NeurIPS 2024",
+    "pdf": "sources/2404.00456.pdf",
+    "updated": "2026-09-01",
+    "memberships": [
+     {
+      "in": "topics/ptq-weight-activation",
+      "cells": {
+       "bits": {
+        "value": "W4A4 + KV4",
+        "at": {
+         "page": 1,
+         "quote": "including all weights, activations, and KV cache in 4 bits"
+        }
+       },
+       "transform_where": {
+        "value": "残差流、FFN 激活、注意力、KV",
+        "at": {
+         "page": 1,
+         "quote": "applied to the hidden state (residual) of the LLM, as well as to the activations of the feed-forward components, aspects of the attention mechanism, and to the KV cache"
+        }
+       },
+       "needs_calib": {
+        "value": "6/8-bit 时不需要",
+        "at": {
+         "page": 1,
+         "quote": "lossless 6 and 8 bit LLaMa2 models without any calibration data using round-to-nearest quantization"
+        }
+       },
+       "claim": {
+        "value": "70B 4-bit 困惑度损失 ≤0.47",
+        "at": {
+         "page": 1,
+         "quote": "Our 4-bit quantized LLaMa2-70B model has losses of at most 0.47 WikiText-2 perplexity and retains 99% of the zero-shot performance"
+        }
+       }
+      }
+     },
+     {
+      "in": "topics/kv-cache-quantization",
+      "cells": {
+       "kv_bits": {
+        "value": "4",
+        "at": {
+         "page": 1,
+         "quote": "KV cache in 4 bits"
+        }
+       },
+       "claim": {
+        "value": "端到端全 4-bit,无需保留高精度通道",
+        "at": {
+         "page": 1,
+         "quote": "all matrix multiplications are performed in 4 bits, without any channels identified for retention in higher precision"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/rotation",
+      "cells": {
+       "rotation_type": {
+        "value": "旋转(计算不变性)",
+        "at": {
+         "page": 1,
+         "quote": "QuaRot rotates LLMs in a way that removes outliers from the hidden state without changing the output"
+        }
+       },
+       "applied_to": {
+        "value": "残差、FFN 激活、注意力、KV",
+        "at": {
+         "page": 1,
+         "quote": "applied to the hidden state (residual) of the LLM, as well as to the activations of the feed-forward components, aspects of the attention mechanism, and to the KV cache"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "sections": {
+    "这篇说了什么": "用不改变输出的旋转把隐状态里的离群值消掉,于是权重、激活、KV cache 可以全部量化到 4 bit。(p.1)",
+    "机制": "计算不变性:旋转施加在残差流、FFN 激活、注意力的若干处和 KV cache;所有矩阵乘都在 4 bit 下进行。(p.1)",
+    "主要结果": "LLaMA-2 70B 4-bit 的 WikiText-2 困惑度损失至多 0.47,零样本保持 99%;6/8-bit 下不用校准数据即无损。(p.1)"
+   }
+  },
+  "papers/2405.16406": {
+   "kind": "paper",
+   "fm": {
+    "title": "SpinQuant: LLM quantization with learned rotations",
+    "short": "SpinQuant",
+    "authors": [
+     "Zechun Liu",
+     "Changsheng Zhao",
+     "Igor Fedorov",
+     "Vikas Chandra"
+    ],
+    "year": 2024,
+    "venue": "ICLR 2025",
+    "pdf": "sources/2405.16406.pdf",
+    "updated": "2026-09-01",
+    "memberships": [
+     {
+      "in": "topics/ptq-weight-activation",
+      "cells": {
+       "bits": {
+        "value": "W4A4 + KV4",
+        "at": {
+         "page": 1,
+         "quote": "With 4-bit quantization of weight, activation, and KV-cache"
+        }
+       },
+       "transform_where": {
+        "value": "激活或权重矩阵的旋转",
+        "at": {
+         "page": 1,
+         "quote": "Rotating activation or weight matrices helps remove outliers and benefits quantization"
+        }
+       },
+       "learned": {
+        "value": "是",
+        "at": {
+         "page": 1,
+         "quote": "incorporates learned rotation matrices for optimal quantized network accuracy"
+        }
+       },
+       "claim": {
+        "value": "LLaMA-2 7B 零样本差距仅 2.9 点",
+        "at": {
+         "page": 1,
+         "quote": "narrows the accuracy gap on zero-shot reasoning tasks with full precision to merely 2.9 points on the LLaMA-2 7B model"
+        }
+       }
+      }
+     },
+     {
+      "in": "methods/rotation",
+      "cells": {
+       "rotation_type": {
+        "value": "可学习旋转",
+        "at": {
+         "page": 1,
+         "quote": "we propose SpinQuant, a novel approach that incorporates learned rotation matrices"
+        }
+       },
+       "learned": {
+        "value": "是",
+        "at": {
+         "page": 1,
+         "quote": "incorporates learned rotation matrices for optimal quantized network accuracy"
+        }
+       },
+       "applied_to": {
+        "value": "激活或权重矩阵",
+        "at": {
+         "page": 1,
+         "quote": "Rotating activation or weight matrices helps remove outliers"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "sections": {
+    "这篇说了什么": "旋转能去离群值,但不同的随机旋转效果差很多(零样本差 13 点),于是把旋转矩阵改成学出来的。(p.1)",
+    "机制": "找出一组在全精度下输出不变的旋转参数化,再学习旋转矩阵以最优化量化后精度。(p.1)",
+    "主要结果": "W4A4+KV4 下 LLaMA-2 7B 零样本差距 2.9 点,超 LLM-QAT 19.1 点、SmoothQuant 25.0 点;LLaMA-3 8B 上相对 QuaRot 差距缩小至多 45.1%。(p.1)"
+   }
+  },
+  "topics/kv-cache-quantization": {
+   "kind": "topic",
+   "fm": {
+    "kind": "topic",
+    "title": "KV cache quantization",
+    "aliases": [
+     "KV 量化",
+     "KV cache compression"
+    ],
+    "parents": [
+     "topics/ptq",
+     "topics/long-context-inference"
+    ],
+    "columns": [
+     {
+      "key": "kv_bits",
+      "label": "KV 位宽"
+     },
+     {
+      "key": "key_axis",
+      "label": "Key 量化轴"
+     },
+     {
+      "key": "rope",
+      "label": "相对 RoPE 的位置"
+     },
+     {
+      "key": "claim",
+      "label": "自述主要结果"
+     }
+    ],
+    "split_on": null,
+    "updated": "2026-09-09"
+   },
+   "sections": {
+    "问题": "长上下文下 KV cache 是内存主项,把它压到 4 bit 以下。难点是 Key 的分布沿通道有结构、且经过 RoPE 之后更难量化。\n\n这个节点同时属于 PTQ(手段)和长上下文推理(动机),所以有两个父节点。",
+    "结论": "",
+    "实验": "",
+    "未解决": ""
+   }
+  },
+  "topics/long-context-inference": {
+   "kind": "topic",
+   "fm": {
+    "kind": "topic",
+    "title": "Long-context inference",
+    "aliases": [
+     "长上下文推理"
+    ],
+    "parents": [],
+    "columns": [],
+    "split_on": null,
+    "updated": "2026-09-09"
+   },
+   "sections": {
+    "问题": "上下文长到百万 token 时,推理的内存与带宽被 KV cache 主导。这个节点在示例里只有一个子聚合,lint 会指出来。",
+    "结论": "",
+    "实验": "",
+    "未解决": ""
+   }
+  },
+  "topics/ptq-weight-activation": {
+   "kind": "topic",
+   "fm": {
+    "kind": "topic",
+    "title": "Weight-activation PTQ",
+    "aliases": [
+     "W8A8",
+     "W4A4",
+     "weight-activation quantization"
+    ],
+    "parents": [
+     "topics/ptq"
+    ],
+    "columns": [
+     {
+      "key": "bits",
+      "label": "位宽"
+     },
+     {
+      "key": "transform_where",
+      "label": "变换施加处"
+     },
+     {
+      "key": "learned",
+      "label": "变换参数是否学习"
+     },
+     {
+      "key": "needs_calib",
+      "label": "需要校准数据"
+     },
+     {
+      "key": "claim",
+      "label": "自述主要结果"
+     }
+    ],
+    "split_on": null,
+    "updated": "2026-09-09"
+   },
+   "sections": {
+    "问题": "权重和激活都量化,矩阵乘才能走整数算子拿到真实加速。难点全在激活:少数通道的离群值把 per-tensor 的量化范围撑大,其余数值精度全丢。",
+    "结论": "- 2026-08-01 · W8A8 用 SmoothQuant 即可,不需要更低比特。[[papers/2211.10438]]\n- 2026-09-09 · W4A4 下旋转类优于平滑类:SpinQuant 自述超 SmoothQuant 25.0 点。[[papers/2405.16406]]",
+    "实验": "- 2026-09-09 · Lab exp-0012(示例条目,非真实实验):Llama-3-8B 上复现 QuaRot W4A4,WikiText-2 ppl 6.4;论文未报 8B 数字。[[papers/2404.00456]]",
+    "未解决": "- 旋转与可学习缩放能否叠加:OmniQuant 的 LET 与 SpinQuant 的学习旋转都在学变换,没人同时用。[[papers/2308.13137]] [[papers/2405.16406]]"
+   }
+  },
+  "topics/ptq-weight-only": {
+   "kind": "topic",
+   "fm": {
+    "kind": "topic",
+    "title": "Weight-only PTQ",
+    "aliases": [
+     "W4A16",
+     "weight-only quantization",
+     "仅权重量化"
+    ],
+    "parents": [
+     "topics/ptq"
+    ],
+    "columns": [
+     {
+      "key": "bits",
+      "label": "位宽"
+     },
+     {
+      "key": "needs_calib",
+      "label": "需要校准数据"
+     },
+     {
+      "key": "backprop",
+      "label": "需要反向传播"
+     },
+     {
+      "key": "claim",
+      "label": "自述主要结果"
+     }
+    ],
+    "split_on": null,
+    "updated": "2026-09-09"
+   },
+   "sections": {
+    "问题": "只把权重压到 2–4 bit,激活保持 16 bit。目标是省内存与带宽(单批解码是带宽瓶颈),难点是极低比特下的舍入误差与少数敏感权重。",
+    "结论": "- 2026-09-09 · 3-bit 以下,\"均匀格点 + 二阶舍入\"与\"非均匀格点 + 稀疏分离\"是两条路,都声称近无损;没有在同一设定下的直接对比。[[papers/2210.17323]] [[papers/2306.07629]] [[papers/2307.13304]]",
+    "实验": "",
+    "未解决": "- 2-bit 是否实用:QuIP 说\"可用\",没说\"够用\"。[[papers/2307.13304]]"
+   }
+  },
+  "topics/ptq": {
+   "kind": "topic",
+   "fm": {
+    "kind": "topic",
+    "title": "PTQ",
+    "aliases": [
+     "post-training quantization",
+     "训练后量化"
+    ],
+    "parents": [
+     "topics/quantization"
+    ],
+    "columns": [],
+    "split_on": "量化对象",
+    "updated": "2026-09-09"
+   },
+   "sections": {
+    "问题": "不重新训练,只用少量或零校准数据把已训练好的模型量化。难点是没有梯度可以修正误差,只能靠变换、舍入策略与格点设计。\n\n按「量化对象」拆成三块:只量权重(内存为主)、权重与激活都量(算子要走整数乘)、只量 KV cache(长上下文内存)。三块的对照表列不同,所以是三个节点。",
+    "结论": "",
+    "实验": "",
+    "未解决": ""
+   }
+  },
+  "topics/qat": {
+   "kind": "topic",
+   "fm": {
+    "kind": "topic",
+    "title": "QAT",
+    "aliases": [
+     "quantization-aware training",
+     "量化感知训练"
+    ],
+    "parents": [
+     "topics/quantization"
+    ],
+    "columns": [
+     {
+      "key": "bits",
+      "label": "位宽"
+     },
+     {
+      "key": "data",
+      "label": "训练数据"
+     },
+     {
+      "key": "kv",
+      "label": "是否量化 KV"
+     },
+     {
+      "key": "claim",
+      "label": "自述主要结果"
+     }
+    ],
+    "split_on": null,
+    "updated": "2026-09-09"
+   },
+   "sections": {
+    "问题": "在训练里模拟量化,让模型自己适应低比特。难点是 LLM 的原始训练数据通常拿不到,而且训练成本高。",
+    "结论": "",
+    "实验": "",
+    "未解决": ""
+   }
+  },
+  "topics/quantization": {
+   "kind": "topic",
+   "fm": {
+    "kind": "topic",
+    "title": "Quantization",
+    "aliases": [
+     "模型量化",
+     "low-bit inference"
+    ],
+    "parents": [],
+    "columns": [],
+    "split_on": "是否重新训练",
+    "updated": "2026-09-09"
+   },
+   "sections": {
+    "问题": "把权重、激活、KV cache 用更少的比特表示,换取内存与带宽,同时不让精度掉太多。难点在于低比特下误差不再可忽略,而误差的来源(离群值、舍入、分布不匹配)因场景不同。\n\n这个节点不直接收论文:按「是否重新训练」拆成 PTQ 与 QAT,两边的对照表列完全不同(一边关心校准数据,一边关心训练数据)。",
+    "结论": "",
+    "实验": "",
+    "未解决": ""
+   }
+  },
+  "methods/distillation-qat": {
+   "kind": "method",
+   "fm": {
+    "kind": "method",
+    "title": "Distillation-based QAT",
+    "aliases": [
+     "data-free QAT",
+     "蒸馏式量化感知训练"
+    ],
+    "parents": [],
+    "columns": [
+     {
+      "key": "teacher",
+      "label": "教师"
+     },
+     {
+      "key": "data",
+      "label": "数据来源"
+     }
+    ],
+    "split_on": null,
+    "updated": "2026-09-09"
+   },
+   "sections": {
+    "机制": "全精度模型当教师,量化模型当学生,用蒸馏损失训练;数据可以由教师自己生成。示例里只有一篇,lint 会标 thin。",
+    "结论": "",
+    "实验": "",
+    "未解决": ""
+   }
+  },
+  "methods/error-compensated-rounding": {
+   "kind": "method",
+   "fm": {
+    "kind": "method",
+    "title": "Error-compensated rounding",
+    "aliases": [
+     "OBQ-style rounding",
+     "second-order rounding",
+     "误差补偿舍入"
+    ],
+    "parents": [],
+    "columns": [
+     {
+      "key": "second_order",
+      "label": "用二阶信息"
+     },
+     {
+      "key": "procedure",
+      "label": "过程"
+     }
+    ],
+    "split_on": null,
+    "updated": "2026-09-09"
+   },
+   "sections": {
+    "机制": "逐个(或逐列)舍入权重,每舍一个就用二阶信息把误差摊到还没舍入的权重上。不动模型结构,不需要梯度。",
+    "结论": "",
+    "实验": "",
+    "未解决": ""
+   }
+  },
+  "methods/non-uniform-quantization": {
+   "kind": "method",
+   "fm": {
+    "kind": "method",
+    "title": "Non-uniform quantization",
+    "aliases": [
+     "non-uniform datatypes",
+     "dense-and-sparse",
+     "非均匀量化"
+    ],
+    "parents": [],
+    "columns": [
+     {
+      "key": "codebook_from",
+      "label": "格点依据"
+     },
+     {
+      "key": "sparse",
+      "label": "离群值稀疏分离"
+     }
+    ],
+    "split_on": null,
+    "updated": "2026-09-09"
+   },
+   "sections": {
+    "机制": "格点不等距,按敏感度放;放不下的离群值单独存成稀疏矩阵。换来的精度用查表和稀疏 kernel 支付。",
+    "结论": "",
+    "实验": "",
+    "未解决": ""
+   }
+  },
+  "methods/outlier-suppression": {
+   "kind": "method",
+   "fm": {
+    "kind": "method",
+    "title": "Outlier suppression",
+    "aliases": [
+     "离群值抑制"
+    ],
+    "parents": [],
+    "columns": [],
+    "split_on": "变换类型(缩放 vs 旋转)",
+    "updated": "2026-09-09"
+   },
+   "sections": {
+    "机制": "在量化之前施加一个不改变模型输出的线性变换,把激活/权重里的离群值摊平。按变换类型拆成两族:逐通道缩放(对角矩阵)与旋转(正交矩阵)。",
+    "结论": "",
+    "实验": "",
+    "未解决": ""
+   }
+  },
+  "methods/per-channel-scaling": {
+   "kind": "method",
+   "fm": {
+    "kind": "method",
+    "title": "Per-channel scaling",
+    "aliases": [
+     "equivalent transformation",
+     "smoothing",
+     "逐通道缩放"
+    ],
+    "parents": [
+     "methods/outlier-suppression"
+    ],
+    "columns": [
+     {
+      "key": "scale_from",
+      "label": "缩放依据"
+     },
+     {
+      "key": "direction",
+      "label": "迁移方向"
+     },
+     {
+      "key": "learned",
+      "label": "缩放是否学习"
+     }
+    ],
+    "split_on": null,
+    "updated": "2026-09-09"
+   },
+   "sections": {
+    "机制": "对每个通道乘一个标量、在相邻的权重里除回去,数学等价。差别只在:标量从哪来(激活统计 / 显著性 / 学出来),以及把难度往哪边挪。",
+    "结论": "",
+    "实验": "",
+    "未解决": ""
+   }
+  },
+  "methods/rotation": {
+   "kind": "method",
+   "fm": {
+    "kind": "method",
+    "title": "Rotation",
+    "aliases": [
+     "orthogonal transform",
+     "incoherence processing",
+     "Hadamard",
+     "旋转"
+    ],
+    "parents": [
+     "methods/outlier-suppression"
+    ],
+    "columns": [
+     {
+      "key": "rotation_type",
+      "label": "旋转类型"
+     },
+     {
+      "key": "learned",
+      "label": "旋转是否学习"
+     },
+     {
+      "key": "applied_to",
+      "label": "施加对象"
+     }
+    ],
+    "split_on": null,
+    "updated": "2026-09-09"
+   },
+   "sections": {
+    "机制": "乘一个正交矩阵把能量摊到所有维度上,离群通道消失;正交所以可逆、输出不变。差别在:随机还是学出来的,施加在权重还是激活还是 KV。",
+    "结论": "- 2026-09-09 · QuaRot 的旋转是随机的——QuaRot 摘要没写,依据是 SpinQuant 摘要里的 \"QuaRot, which applies random rotations\"。所以表里 QuaRot 那格留空,由本条补。[[papers/2405.16406]]",
+    "实验": "",
+    "未解决": ""
+   }
+  }
+ }
+}

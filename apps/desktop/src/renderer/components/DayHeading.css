@@ -1,0 +1,4 @@
+/* One day opens with a grey line, left aligned with the rows under it, and never draws a rule. */
+.day-heading{font-size:12px;color:var(--ter);padding:0 2px 4px}
+*+.day-heading{padding-top:16px}
+.day-heading-count{color:var(--ter)}

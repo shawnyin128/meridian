@@ -1,0 +1,18 @@
+/*
+ * The association candidate for the input box in the placeholder. The candidate goes out through the Radix portal, so the placeholder falls into overflow:auto
+ * The container will not be cropped; the width follows the input box, Radix writes the anchor width in --radix-popover-trigger-width
+ */
+
+.pickhits{width:var(--radix-popover-trigger-width);min-width:190px;z-index:90;background:var(--card);border:1px solid var(--sep);border-radius:var(--r-lg);box-shadow:var(--sh-2);max-height:240px;overflow:auto}
+.pickhits ul{list-style:none;margin:0;padding:4px 0}
+.pickhits li{padding:6px 12px;font-size:var(--fs-base);cursor:pointer;display:flex;gap:8px;align-items:baseline}
+.pickhits li.on,.pickhits li:hover{background:var(--hover)}
+.pickhits .meta{color:var(--ter);font-size:var(--fs-sm);margin-left:auto;white-space:nowrap}
+
+/* Row shell shared by every div-based candidate list (CellPicker, TagAdd, ProjectChips, Chat mentions, SearchBox), moved from shell.css's .ctxmenu.drop .rh / .rrow. */
+.pickhits .rh{font-size:var(--fs-cap);color:var(--ter);padding:8px 12px;border-bottom:1px solid var(--sep2)}
+.pickhits .mk{display:flex;align-items:center;gap:8px;color:var(--ter)}
+.pickhits .mk svg{width:11px;height:11px;flex-shrink:0}
+.pickhits .rrow{padding:8px 12px;font-size:var(--fs-sm);cursor:pointer;border-bottom:1px solid var(--sep2);transition:background var(--t-fast) var(--e-out)}
+.pickhits .rrow:last-child{border-bottom:0}
+.pickhits .rrow.on,.pickhits .rrow:hover{background:var(--hover)}

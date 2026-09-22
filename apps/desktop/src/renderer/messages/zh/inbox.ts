@@ -1,0 +1,47 @@
+/** Inbox (paper delivery and discovery) screen copy. */
+export const inbox = {
+  streamLabel: { watch: '论文推送', discovery: '论文发现' },
+  headAll: (streamLabel: string, count: number) => `${streamLabel} · ${count}`,
+  headWatch: (label: string, count: number) => `${label} · ${count} 篇`,
+  check: {
+    checking: '正在检查新论文…',
+    failed: (reason: string) => `检查没成功：${reason}`,
+    lastChecked: (when: string) => `上次检查 ${when}`,
+  },
+  checkNewPapers: '检查新论文',
+  discovering: '正在发现…',
+  refreshDiscovery: '刷新发现',
+  sortLabel: '排序',
+  sort: { recommended: '推荐', latest: '最新', published: '已发表', impact: '影响力' },
+  discoverySettings: '发现设置',
+  watchSettings: '关注设置',
+  discoverySummary: (projects: number, intents: number) =>
+    `按项目拆分研究方向 · ${projects} 个项目 · ${intents} 个启用方向`,
+  empty: {
+    discoveryNone: '暂时没有新发现。',
+    discoveryNoSeeds: '先在项目中关联一篇带 arXiv 编号的论文。',
+    watch: '暂时没有新的推送。',
+  },
+  dismissAll: '全部忽略',
+  actions: {
+    more: '更多类似',
+    less: '减少类似',
+    known: '已经了解',
+    download: '下载并入库',
+    readLater: '稍后阅读',
+    dismiss: '忽略',
+    open: '打开',
+  },
+  notices: {
+    queued: '已存入稍后阅读',
+    alreadyQueued: '已在稍后阅读中',
+    dismissedAll: '已全部忽略 · 可在垃圾桶恢复',
+    dismissed: '已忽略 · 可在垃圾桶恢复',
+    duplicateToast: '库里已经有这一篇 · 没有重复入库',
+    alreadyInLibrary: (title: string) => `库里已经有这一篇：「${title}」`,
+    downloaded: '已下载入库 · 可阅读',
+    moreLike: '已记住 · 后续会推荐更多类似论文',
+    lessLike: '已记住 · 后续会减少类似论文',
+    known: '已标记为已经了解',
+  },
+} satisfies Record<string, unknown>

@@ -1,0 +1,42 @@
+.extension-settings-card{border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);padding:0 16px}
+.extension-settings-loading{padding:24px 16px;color:var(--ter);font-size:var(--fs-sm)}
+.extension-entry{padding:16px 0}
+.extension-entry+.extension-entry{border-top:1px solid var(--sep2)}
+.extension-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.extension-head>div{min-width:0}
+.extension-head>.extension-head-side{display:flex;flex-shrink:0;align-items:center;gap:8px}
+.extension-head h3{margin:0;color:var(--ink);font-size:var(--fs-title);line-height:var(--lh-tight)}
+.extension-head p{margin:5px 0 0;color:var(--ter);font-size:var(--fs-sm);line-height:var(--lh-ui)}
+.extension-state{flex-shrink:0;border-radius:var(--r-full);padding:2px 8px;background:var(--field);
+  color:var(--ter);font-size:var(--fs-cap)}
+.extension-state.installed{background:var(--tint-ok);color:var(--ok)}
+.extension-state.update-required{background:var(--tint-warn);color:var(--warn)}
+.extension-command{font-size:var(--fs-cap)}
+.extension-command-summary{display:flex;min-width:0;align-items:center;gap:8px}
+.extension-command-summary>span{flex:0 0 auto;color:var(--ter)}
+.extension-command-summary code{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--sec);
+  font-family:var(--mono)}
+.extension-command .card-tray-action .btn{height:24px;padding:0 8px;font-size:var(--fs-cap)}
+.extension-command-code{margin:0;padding:10px 11px;overflow:auto;color:var(--sec);font-family:var(--mono);
+  font-size:var(--fs-cap);line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.extension-command-code code{font:inherit}
+.extension-tutorial{margin-top:20px;border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);
+  padding:16px;color:var(--sec)}
+.extension-tutorial-head h3{margin:0;color:var(--ink);font-size:var(--fs-title);line-height:var(--lh-tight)}
+.extension-tutorial-head p{margin:5px 0 0;color:var(--ter);font-size:var(--fs-sm);line-height:var(--lh-ui)}
+.extension-tutorial-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0 0;padding:0;
+  list-style:none}
+.extension-tutorial-steps li{display:flex;min-width:0;gap:9px;padding:10px;border-radius:var(--r-md);background:var(--field)}
+.extension-tutorial-steps li>span{display:grid;place-items:center;flex:0 0 20px;width:20px;height:20px;border-radius:var(--r-full);
+  background:var(--accent);color:#fff;font-size:var(--fs-cap);font-weight:600}
+.extension-tutorial-steps strong,.extension-prompt strong{display:block;color:var(--ink);font-size:var(--fs-sm);font-weight:600}
+.extension-tutorial-steps p,.extension-prompt p{margin:3px 0 0;color:var(--ter);font-size:var(--fs-cap);line-height:var(--lh-ui)}
+.extension-tutorial h4{margin:18px 0 8px;color:var(--ink);font-size:var(--fs-sm);font-weight:600}
+.extension-prompt-groups{display:flex;flex-direction:column;gap:14px}
+.extension-prompt-group h5{margin:0 0 6px;color:var(--sec);font-size:var(--fs-cap);font-weight:600}
+.extension-prompt-list{border-top:1px solid var(--sep2);border-bottom:1px solid var(--sep2)}
+.extension-prompt{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;padding:10px 0}
+.extension-prompt+.extension-prompt{border-top:1px solid var(--sep2)}
+.extension-prompt .btn{flex-shrink:0;height:28px;padding:0 9px;font-size:var(--fs-cap)}
+.extension-healthy-list{margin:0;padding-left:18px;color:var(--ter);font-size:var(--fs-cap);line-height:1.65}
+@media (max-width:760px){.extension-tutorial-steps{grid-template-columns:1fr}}

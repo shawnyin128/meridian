@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "module": "Node16",
+    "target": "ES2022",
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "sourceMap": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "moduleResolution": "Node16",
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "jsx": "react-jsx",
+    "types": [
+      "node",
+      "vscode",
+      "vitest/globals",
+      "vite/client"
+    ],
+    "skipLibCheck": true
+  },
+  "include": [
+    "src"
+  ]
+}

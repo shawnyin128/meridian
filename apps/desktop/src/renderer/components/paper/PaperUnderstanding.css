@@ -1,0 +1,12 @@
+.paper-understanding{min-width:0}
+.paper-understanding-remark{padding:10px 12px;border-radius:var(--r-lg);background:var(--field)}
+.paper-understanding-label{margin-bottom:6px;color:var(--ter);font-size:var(--fs-cap);font-weight:600}
+.paper-understanding-text{white-space:pre-wrap;color:var(--ink);overflow-wrap:anywhere}
+.paper-understanding-notes{margin-top:14px}
+.paper-understanding-row{display:grid;gap:12px;align-items:start;min-height:52px;padding:9px 10px}
+.paper-understanding-page{color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
+.paper-understanding-note{display:flex;min-width:0;flex-direction:column;gap:3px}
+.paper-understanding-quote{color:var(--ter);font-size:var(--fs-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.paper-understanding-date{color:var(--ter);font-size:var(--fs-cap)}
+.paper-understanding-empty{display:flex;align-items:center;gap:10px}
+.paper-understanding-empty .lm{margin:0}

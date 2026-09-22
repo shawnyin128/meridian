@@ -1,0 +1,35 @@
+/*
+ * The message flow, bubbles and input boxes are shared by the global dialogue and the paper contextual dialogue.
+ * The dialogue in the demo shares the .stream column with the PDF reader. The reader does not move it, so only the value in the non-reading state is taken;
+ * .cres is absolutely positioned above the input box in the demo. The positioning here is Radix, leaving only the appearance and width.
+ */
+
+.stream{flex:1 1 0;display:flex;flex-direction:column;background:var(--content);min-width:0;position:relative}
+
+.bubble{font-size:var(--fs-base)}
+.msg.you .bubble{background:var(--field);color:var(--ink);padding:12px 16px;border-radius:var(--r-bubble);border-bottom-right-radius:var(--r-sm);width:fit-content;max-width:85%;margin-left:auto}
+.msg.ai .bubble{background:var(--card);border:1px solid var(--sep2);border-radius:var(--r-bubble);padding:12px 16px;box-shadow:var(--sh-1)}
+.mention{font-weight:600;text-decoration:underline;text-underline-offset:2px}
+/* It’s neither what you said nor what you answered. The demo’s ev() uses this file. */
+.event{background:var(--card);border:1px solid var(--sep2);border-radius:var(--r-lg);padding:12px 16px;font-size:var(--fs-base);color:var(--sec)}
+
+.composer{border-top:1px solid var(--sep);padding:12px 0 16px;background:var(--content);position:relative}
+.qacts{display:flex;gap:6px;padding:0 2px 8px;flex-wrap:wrap;align-items:center}
+.qsep{width:1px;height:14px;background:var(--sep);margin:0 4px}
+#qmChips{display:flex;gap:6px;flex-wrap:wrap}
+.qa{font-size:var(--fs-sm);padding:3px 12px;border-radius:999px;border:1px solid var(--sep);background:transparent;color:var(--sec);cursor:pointer;font-family:var(--sans)}
+.qa:hover{background:var(--hover);color:var(--ink)}
+.qa:active{background-image:linear-gradient(var(--press),var(--press))}
+.cbox{display:flex;align-items:center;gap:10px;background:var(--field);border:1px solid var(--sep2);border-radius:999px;padding:4px 6px 4px 16px}
+.cbox:focus-within{border-color:var(--sep-strong);background:var(--card)}
+.cbox:has(input:focus-visible){outline:0;box-shadow:none}
+.cbox input{flex:1;border:0;background:transparent;color:var(--ink);font-family:var(--sans);font-size:13px;padding:7px 0}
+.send{width:30px;height:30px;border-radius:50%;border:0;background:var(--accent-solid);color:var(--on-accent);cursor:pointer;flex-shrink:0;display:grid;place-items:center;padding:0}
+.send svg{width:15px;height:15px}
+
+/* Compounded with .pickhits so this taller, horizontally-clipped shape wins over the shared shell's, regardless of CSS load order. */
+.pickhits.cres{max-height:min(440px,55vh);overflow:hidden;overflow-y:auto}
+.cres .rh{font-size:var(--fs-cap);padding:8px 16px;border-bottom:1px solid var(--sep2);color:var(--ter)}
+.cres .rg{font-size:var(--fs-cap);font-weight:700;color:var(--ter);padding:6px 16px 2px}
+.rrow .rt{font-weight:500}
+.rrow .rm{font-size:12px;color:var(--ter)}

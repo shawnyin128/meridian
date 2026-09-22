@@ -1,0 +1,18 @@
+/* The recently changed date subtitles, entries and diffs are moved from desktop/design/platform-shell-demo.html one by one. */
+
+.crow{padding:10px 2px;cursor:pointer}
+.crow .chead{display:flex;align-items:flex-start;gap:10px}
+.crow .cbody{flex:1;min-width:0;border:0;background:transparent;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
+/* The archive button and the undo button usually do not occupy the line of sight. They are visible only after hovering the row (or entering it with the keyboard), which is the same as the .dots / .rowx of the demo. */
+.crow .cact{flex:none;align-self:center;display:flex;gap:6px;opacity:0;transition:opacity var(--t-fast) var(--e-out)}
+.crow:hover .cact,.crow .cact:focus-within{opacity:1}
+.crow .ct{display:block;font-size:var(--fs-base);font-weight:500}
+.crow .cm{display:block;font-size:var(--fs-sm);color:var(--ter);margin-top:1px}
+.crow .src{font-size:var(--fs-cap);padding:1px 8px;border-radius:999px;background:var(--field);color:var(--sec);margin-left:6px}
+.diff{margin:8px 0 4px;border:1px solid var(--sep2);border-radius:var(--r-md);overflow:hidden;font-family:var(--mono);font-size:12px;display:none}
+.crow.open .diff{display:block}
+.diff div{padding:4px 10px}
+.diff .del{background:var(--diff-del)}
+.diff .add{background:var(--diff-add)}
+/* "All Archives" is posted on the right side of "Unarchived"; the right side is managed by .section-heading.flexh's own rule in PageShell.css */
+.section-heading .archall:disabled{opacity:.45;cursor:default}

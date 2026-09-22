@@ -1,0 +1,46 @@
+{
+  "name": "meridian",
+  "version": "0.0.4",
+  "description": "Source-grounded Paper Wiki, Lab idea graph, and incremental coding context for Codex.",
+  "author": {
+    "name": "Shawn",
+    "url": "https://github.com/shawnyin128/meridian"
+  },
+  "homepage": "https://github.com/shawnyin128/meridian",
+  "repository": "https://github.com/shawnyin128/meridian",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "keywords": [
+    "paper-wiki",
+    "grounding",
+    "retrieval",
+    "context",
+    "read",
+    "trace",
+    "research",
+    "mcp",
+    "obsidian",
+    "lab"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Meridian",
+    "shortDescription": "Ground research and coding with Meridian context.",
+    "longDescription": "Meridian exposes setup, Paper Wiki, Lab, and coding-context workflows for source-grounded research. Use Paper Wiki to retrieve context, read canonical pages, and trace evidence through the Meridian MCP context/read/trace tools. Use Lab to manage ideas, approach trees, and experiment evidence. During coding, read the incremental project-change cursor first and expand only the relevant project, idea, or research node.",
+    "developerName": "Shawn",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Check Meridian setup and MCP readiness.",
+      "Use my Paper Wiki to ground this research question.",
+      "Read Meridian project changes, then continue this coding task."
+    ],
+    "brandColor": "#2563EB",
+    "composerIcon": "./assets/meridian-mark.svg",
+    "logo": "./assets/meridian-mark.svg"
+  }
+}

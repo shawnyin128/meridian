@@ -1,0 +1,8 @@
+.idea-graph-dialog{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(460px,calc(100vw - 40px));box-sizing:border-box;background:var(--content);border:1px solid var(--sep);border-radius:var(--r-xl);box-shadow:var(--sh-3);padding:20px;z-index:90}
+.idea-graph-dialog:focus-visible{outline:0}
+.idea-graph-dialog-title{display:block;margin:0;font-size:var(--fs-title);font-weight:650;color:var(--ink)}
+.idea-graph-dialog-idea{margin:5px 0 18px;color:var(--ter);font-size:var(--fs-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.idea-graph-dialog-field{display:grid;grid-template-columns:116px minmax(0,1fr);align-items:center;gap:12px;margin-top:10px;color:var(--sec);font-size:var(--fs-sm)}
+.idea-graph-dialog-field .form-control{width:100%}
+.idea-graph-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.idea-graph-dialog-actions .btn:disabled{opacity:.45;cursor:default}

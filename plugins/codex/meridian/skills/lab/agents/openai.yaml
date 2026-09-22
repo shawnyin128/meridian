@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lab"
+  short_description: "Route research-development work through Lab preflight."
+  default_prompt: "Use $lab to place this research idea and prepare the next evidence step."
