@@ -12,7 +12,7 @@ export interface UpdateFeed {
   autoDownload: boolean
   autoInstallOnAppQuit: boolean
   checkForUpdates(): Promise<unknown>
-  quitAndInstall(): void
+  quitAndInstall(isSilent: boolean, isForceRunAfter: boolean): void
   on(event: 'checking-for-update', listener: () => void): unknown
   on(event: 'update-available' | 'update-not-available' | 'update-downloaded', listener: (info: { version: string }) => void): unknown
   on(event: 'download-progress', listener: (info: { percent: number }) => void): unknown
@@ -23,7 +23,7 @@ export interface Updater {
   status(): AppUpdateStatus
   /** Starts a check unless one is running or an update is already downloading or ready. */
   check(): void
-  /** Quits and installs a downloaded update; does nothing unless the phase is `ready`. */
+  /** Quits, installs a downloaded update without the installer's wizard, and reopens the app; does nothing unless the phase is `ready`. */
   install(): void
   /** Checks shortly after start and then every six hours; returns the stop function. */
   arm(): () => void
@@ -78,7 +78,7 @@ export function createUpdater({ feed, current, supported, installsInPlace, now, 
     status,
     check,
     install() {
-      if (phase.phase === 'ready') feed.quitAndInstall()
+      if (phase.phase === 'ready') feed.quitAndInstall(true, true)
     },
     arm() {
       if (!supported) return () => {}

@@ -8,9 +8,9 @@ class FakeFeed extends EventEmitter {
   autoDownload = true
   autoInstallOnAppQuit = true
   checks = 0
-  installs = 0
+  installs: [boolean, boolean][] = []
   checkForUpdates = () => { this.checks += 1; this.emit('checking-for-update'); return Promise.resolve(null) }
-  quitAndInstall = () => { this.installs += 1 }
+  quitAndInstall = (isSilent: boolean, isForceRunAfter: boolean) => { this.installs.push([isSilent, isForceRunAfter]) }
 }
 
 function setup({ supported = true, installsInPlace = true } = {}) {
@@ -27,24 +27,24 @@ function setup({ supported = true, installsInPlace = true } = {}) {
 afterEach(() => { vi.useRealTimers() })
 
 describe('createUpdater', () => {
-  it('downloads a newer release in place and installs it only once it is ready', () => {
+  it('downloads a newer release in place and installs it silently, then reopens, only once it is ready', () => {
     const { feed, updater } = setup()
     updater.install()
-    expect(feed.installs).toBe(0)
+    expect(feed.installs).toEqual([])
 
     updater.check()
     feed.emit('update-available', { version: '0.0.4' })
     feed.emit('download-progress', { percent: 41.6 })
     expect(updater.status()).toMatchObject({ phase: 'downloading', version: '0.0.4', percent: 42, current: '0.0.3' })
     updater.install()
-    expect(feed.installs).toBe(0)
+    expect(feed.installs).toEqual([])
 
     feed.emit('update-downloaded', { version: '0.0.4' })
     expect(updater.status()).toMatchObject({ phase: 'ready', version: '0.0.4' })
     updater.check()
     expect(feed.checks).toBe(1)
     updater.install()
-    expect(feed.installs).toBe(1)
+    expect(feed.installs).toEqual([[true, true]])
   })
 
   it('reports a release it cannot install in place as available with its download page', () => {
