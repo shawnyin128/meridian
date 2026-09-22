@@ -78,12 +78,12 @@ describe('wiki 视图', () => {
     expect(leaf.columns).toEqual([{ key: 'bits', label: '位宽' }, { key: 'calib', label: '校准' }])
     expect(leaf.derivedColumns).toEqual([])
     expect(leaf.rows).toEqual([
-      { paper: { id: 'papers/a', title: 'A' }, cells: { bits: { value: 'W4', page: 1, quote: '4-bit' } }, derived: {} },
+      { paper: { id: 'papers/a', title: 'A', fullTitle: 'A: first' }, cells: { bits: { value: 'W4', page: 1, quote: '4-bit' } }, derived: {} },
       { paper: { id: 'papers/b', title: 'B: second' }, cells: {}, derived: {} },
     ])
     expect(leaf.body).toBe(DATA.pages['topics/leaf']!.body)
     // Pages linked from the body are included; missing `nowhere` is omitted and aliased `a` still uses its display name.
-    expect(leaf.titles).toEqual({ 'papers/a': 'A', 'papers/b': 'B: second' })
+    expect(leaf.titles).toEqual({ 'papers/a': 'A: first', 'papers/b': 'B: second' })
     expect(leaf.related).toEqual([{ label: '方法', links: [{ id: 'methods/m', title: 'M' }] }])
 
     const root = wikiAggregation(DATA, 'topics/root')

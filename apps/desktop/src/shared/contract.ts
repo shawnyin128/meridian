@@ -960,7 +960,11 @@ export const ProjectDeleteAttachmentParamsSchema = z.object({
 }).strict()
 
 /** Confirmed stable author identity from an external scholarly graph, with a frozen affiliation snapshot. */
-/** Where an author identity comes from; its `id` only means something within that source. */
+/**
+ * Where an author identity comes from; its `id` only means something within that source. Only
+ * Semantic Scholar identities are created now; `openalex` remains on watches saved before, and
+ * those are fetched by name.
+ */
 export const AuthorSourceSchema = z.enum(['semantic-scholar', 'openalex'])
 
 export const AuthorIdentitySchema = z.object({
@@ -1007,9 +1011,6 @@ export const AuthorCandidateSchema = z.object({
   paperCount: z.number().int().min(0),
   citationCount: z.number().int().min(0),
   hIndex: z.number().int().min(0),
-  /** The author's main research field and topics, when the source classifies authors. */
-  field: z.string().trim().min(1).optional(),
-  topics: z.array(z.string().trim().min(1)).max(2).optional(),
 }).strict()
 
 /** A topic inferred from relevant scholarly records, before the user chooses to create a watch. */
@@ -1018,10 +1019,14 @@ export const WatchTopicSuggestionSchema = z.object({
   relatedPapers: z.number().int().min(0),
 }).strict()
 
-/** A stable author identity ranked by topical relevance and public impact metadata. */
-export const WatchAuthorSuggestionSchema = AuthorCandidateSchema.extend({
-  relatedPapers: z.number().int().min(1),
-}).strict()
+/**
+ * A suggested author: a stable identity ranked by topical relevance and public impact, or, when the
+ * papers came from arXiv, which lists authors by name only, just the name.
+ */
+export const WatchAuthorSuggestionSchema = z.union([
+  AuthorCandidateSchema.extend({ relatedPapers: z.number().int().min(1) }).strict(),
+  z.object({ name: z.string().trim().min(1), relatedPapers: z.number().int().min(1) }).strict(),
+])
 
 /** Transient, read-only suggestions. Nothing becomes a watch until the user confirms it. */
 export const WatchSuggestionResultSchema = z.object({
@@ -1299,7 +1304,8 @@ export const WikiKindSchema = z.object({
 }).strict()
 
 /** Reference to a page with its ID and display name: title for aggregations and short title for papers. */
-export const WikiRefSchema = z.object({ id: z.string(), title: z.string() }).strict()
+/** A link to a wiki page: its short display name, plus the full title when the name is a shortened paper title. */
+export const WikiRefSchema = z.object({ id: z.string(), title: z.string(), fullTitle: z.string().optional() }).strict()
 
 /**
  * Aggregation card with kind, title, first non-heading body line as summary, ISO
@@ -1366,7 +1372,7 @@ export const WikiMembershipSchema = z.object({
 
 /**
  * Paper wiki page. `id` combines the paper prefix and table-row ID; `short` is
- * the card and breadcrumb title; `pdf` is a vault-relative source path; `body`
+ * the short title for editing and search, the full title when none is set; `pdf` is a vault-relative source path; `body`
  * is raw Markdown; `memberships` lists aggregations. Pages are created on import
  * and may have empty bodies. `titles` resolves valid body-link IDs.
  */
@@ -1752,6 +1758,16 @@ export const SemanticKeyStatusSchema = z.object({
 /** Saves an optional Semantic Scholar API key; null or blank removes the saved key. */
 export const SemanticKeySetParamsSchema = z.object({ apiKey: z.string().max(200).nullable() }).strict()
 
+/** The outcome of one Semantic Scholar request made with the saved key. */
+export const SemanticKeyCheckResultSchema = z.discriminatedUnion('state', [
+  z.object({ state: z.literal('connected') }).strict(),
+  z.object({
+    state: z.literal('failed'),
+    reason: z.enum(['authentication', 'rate-limit', 'timeout', 'unavailable', 'unknown']),
+    detail: z.string().trim().min(1).max(500),
+  }).strict(),
+])
+
 /**
  * The newest plugin version known, which the skills and MCP share, and when master was last read for
  * it; `checkedAt` is null until a read has succeeded, and the version is then the bundled one.
@@ -1899,6 +1915,7 @@ export type ExtensionClient = z.infer<typeof ExtensionClientSchema>
 export type ExtensionStatus = z.infer<typeof ExtensionStatusSchema>
 export type PluginVersion = z.infer<typeof PluginVersionSchema>
 export type SemanticKeyStatus = z.infer<typeof SemanticKeyStatusSchema>
+export type SemanticKeyCheckResult = z.infer<typeof SemanticKeyCheckResultSchema>
 
 /** Facet value with paper count and title of the newest matching paper. */
 export type Facet = { value: string; count: number; newestTitle: string }
@@ -1916,6 +1933,7 @@ export const CONTRACT_METHODS = [
   'extensions.pluginVersion',
   'delivery.semanticKey',
   'delivery.setSemanticKey',
+  'delivery.checkSemanticKey',
   'vault.today',
   'papers.list',
   'papers.facets',

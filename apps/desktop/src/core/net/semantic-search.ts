@@ -1,12 +1,12 @@
-import type { AuthorCandidate } from '../../shared/contract.js'
-import { getWithRetry, requestWithRetry, type HttpGet } from './http.js'
-import type { ScholarAuthor, ScholarSource, SearchPaper } from './scholar-sources.js'
+import type { AuthorCandidate, SemanticKeyCheckResult } from '../../shared/contract.js'
+import { getWithRetry, HttpStatusError, netReason, requestWithRetry, type HttpGet } from './http.js'
+import type { AuthorSearchSource, ScholarSource, SearchPaper } from './scholar-sources.js'
 
 const API = 'https://api.semanticscholar.org/graph/v1'
 const PAPER_FIELDS = ['paperId', 'title', 'year', 'authors', 'citationCount', 'influentialCitationCount'].join(',')
 const AUTHOR_FIELDS = ['name', 'affiliations', 'paperCount', 'citationCount', 'hIndex'].join(',')
 const TIMEOUT_MS = 10_000
-// Someone is waiting on these answers and OpenAlex can give them, so they skip a queue this long.
+// Someone is waiting on these answers and arXiv can give them, so they skip a queue this long.
 const MAX_QUEUE_MS = 3_000
 const PAPER_LIMIT = 50
 const AUTHOR_SEARCH_LIMIT = 10
@@ -87,24 +87,46 @@ export function parseSemanticAuthorBatch(body: Uint8Array): AuthorCandidate[] {
   return rowsIn(decoded).flatMap(authorOf)
 }
 
+const CHECK_URL = `${API}/paper/search?${new URLSearchParams({ query: 'transformer', limit: '1', fields: 'title' }).toString()}`
+
+/**
+ * Makes one small Semantic Scholar search through `get`, which must send the key, and classifies the
+ * outcome: 403 means the key was refused, 429 a rate limit, and a timeout or network error an outage.
+ */
+export async function checkSemanticKey(get: HttpGet): Promise<SemanticKeyCheckResult> {
+  try {
+    await getWithRetry(get, CHECK_URL, { timeoutMs: TIMEOUT_MS, tries: 1, backoffMs: 0, limit: 1024 * 1024, sleep: async () => {} })
+    return { state: 'connected' }
+  } catch (error) {
+    const detail = netReason(error)
+    if (error instanceof HttpStatusError) {
+      if (error.status === 401 || error.status === 403) return { state: 'failed', reason: 'authentication', detail }
+      if (error.status === 429) return { state: 'failed', reason: 'rate-limit', detail }
+      return { state: 'failed', reason: 'unavailable', detail }
+    }
+    if (detail === '连接超时') return { state: 'failed', reason: 'timeout', detail }
+    if (detail === '网络不可用') return { state: 'failed', reason: 'unavailable', detail }
+    return { state: 'failed', reason: 'unknown', detail }
+  }
+}
+
 /**
  * Paper search, author impact lookup and author search backed by the Semantic Scholar Graph API.
- * It reports no activity year, so ranking judges activity from the searched papers.
  */
 export function createSemanticSearch(deps: {
   get: HttpGet
   sleep: (ms: number) => Promise<void>
-}): ScholarSource {
-  // One attempt only: OpenAlex answers when this fails, sooner than waiting out a rate limit.
+}): ScholarSource & AuthorSearchSource {
+  // Semantic Scholar throttles at random, so one quick retry usually succeeds; arXiv answers after that.
   const policy = {
-    timeoutMs: TIMEOUT_MS, maxQueueMs: MAX_QUEUE_MS, tries: 1, backoffMs: 0, limit: 8 * 1024 * 1024, sleep: deps.sleep,
+    timeoutMs: TIMEOUT_MS, maxQueueMs: MAX_QUEUE_MS, tries: 2, backoffMs: 0, limit: 8 * 1024 * 1024, sleep: deps.sleep,
   }
   return {
     name: 'semantic-scholar',
     async searchPapers(query, sinceYear) {
       return parseSemanticPapers(await getWithRetry(deps.get, semanticPaperSearchUrl(query, sinceYear), policy))
     },
-    async authorImpacts(ids): Promise<ScholarAuthor[]> {
+    async authorImpacts(ids) {
       const batch = ids.slice(0, AUTHOR_BATCH_LIMIT)
       if (batch.length === 0) return []
       const body = await requestWithRetry(deps.get, semanticAuthorBatchUrl(), {
@@ -112,7 +134,7 @@ export function createSemanticSearch(deps: {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ ids: batch }),
       }, policy)
-      return parseSemanticAuthorBatch(body).map((candidate) => ({ candidate, activeYear: null }))
+      return parseSemanticAuthorBatch(body)
     },
     async searchAuthors(query) {
       return parseSemanticAuthorSearch(await getWithRetry(deps.get, semanticAuthorSearchUrl(query), policy))

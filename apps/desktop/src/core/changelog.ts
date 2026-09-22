@@ -468,7 +468,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     updateWikiPage(id, body) {
-      const title = id.startsWith(PAPER_PAGE) ? ops.wikiPaper(id).short : ops.wikiAggregation(id).title
+      const title = id.startsWith(PAPER_PAGE) ? ops.wikiPaper(id).title : ops.wikiAggregation(id).title
       return wrote({ kind: 'pages', id, paths: [id] }, `Wiki · 「${title}」· 改了正文`, 'snapshot', () => ops.updateWikiPage(id, body), [`~ ${id}`])
     },
 

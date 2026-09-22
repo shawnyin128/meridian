@@ -1,5 +1,5 @@
 import type { PaperReading } from '../../../shared/contract.js'
-import type { ReaderAnchor } from '../../shell/AppShell.js'
+import type { JumpAnchor } from '../../shell/AppShell.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { SectionHeading } from '../PageShell.js'
@@ -11,7 +11,7 @@ import './PaperUnderstanding.css'
 /** Personal reading state shown beside, but never merged into, canonical Wiki content. */
 export function PaperUnderstanding({ reading, onRead }: {
   reading: PaperReading | null
-  onRead: (anchor?: ReaderAnchor) => void
+  onRead: (anchor?: JumpAnchor) => void
 }) {
   const m = useMessages()
   const fmt = useFormat()

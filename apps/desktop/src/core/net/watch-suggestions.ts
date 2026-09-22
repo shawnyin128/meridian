@@ -1,10 +1,12 @@
 import {
   WatchSuggestionResultSchema,
+  type AuthorCandidate,
   type WatchAuthorSuggestion,
   type WatchSuggestionResult,
   type WatchTopicSuggestion,
 } from '../../shared/contract.js'
-import { firstAnswer, type ScholarAuthor, type ScholarSource, type SearchPaper } from './scholar-sources.js'
+import type { Arxiv } from './arxiv.js'
+import { firstAnswer, type ScholarSource, type SearchPaper } from './scholar-sources.js'
 
 const RESULT_LIMIT = 6
 const SINGLE_WORD_TOPIC_LIMIT = 2
@@ -181,24 +183,41 @@ const lookupIds = (relevance: Map<string, AuthorRelevance>): string[] => (
   )).slice(0, AUTHOR_LOOKUP_LIMIT).map(([id]) => id)
 )
 
+/** Whether an author's latest related paper, when its year is known, is recent enough to suggest. */
+const active = (topical: AuthorRelevance, currentYear: number): boolean => (
+  topical.latestYear === null || topical.latestYear >= currentYear - ACTIVE_WITHIN_YEARS
+)
+
+/** Authors sharing several papers first, then the higher score, relatedness, impact and name. */
+const byTierAndScore = (
+  left: { suggestion: WatchAuthorSuggestion; score: number }, right: { suggestion: WatchAuthorSuggestion; score: number },
+): number => (
+  Number(right.suggestion.relatedPapers >= SHARED_PAPER_TIER) - Number(left.suggestion.relatedPapers >= SHARED_PAPER_TIER)
+  || right.score - left.score
+  || right.suggestion.relatedPapers - left.suggestion.relatedPapers
+  || ('hIndex' in right.suggestion ? right.suggestion.hIndex : 0) - ('hIndex' in left.suggestion ? left.suggestion.hIndex : 0)
+  || left.suggestion.name.localeCompare(right.suggestion.name)
+)
+
+/**
+ * Ranks suggested authors. With `impacts` from a source that knows identities, only those identities
+ * are suggested and impact adds to relevance; without them the authors are suggested by name.
+ */
 const authorSuggestions = (
-  relevance: Map<string, AuthorRelevance>, impacts: ScholarAuthor[], currentYear: number,
+  relevance: Map<string, AuthorRelevance>, impacts: AuthorCandidate[] | null, currentYear: number,
 ): WatchAuthorSuggestion[] => {
   const maxRelevance = Math.max(1, ...[...relevance.values()].map((item) => item.score))
-  const maxHIndex = Math.max(1, ...impacts.map((item) => Math.log1p(item.candidate.hIndex)))
-  const maxCitations = Math.max(1, ...impacts.map((item) => Math.log1p(item.candidate.citationCount)))
-  // Most related authors share one field; a different one usually means the source merged namesakes.
-  const fields = new Map<string, number>()
-  for (const { candidate } of impacts) {
-    if (candidate.field !== undefined && relevance.has(candidate.id)) fields.set(candidate.field, (fields.get(candidate.field) ?? 0) + 1)
+  if (impacts === null) {
+    return [...relevance.values()].filter((topical) => active(topical, currentYear)).map((topical) => ({
+      suggestion: { name: topical.name, relatedPapers: topical.papers.size },
+      score: topical.score / maxRelevance,
+    })).sort(byTierAndScore).slice(0, RESULT_LIMIT).map(({ suggestion }) => suggestion)
   }
-  const mainField = [...fields.entries()].sort((left, right) => right[1] - left[1])[0]?.[0]
-  const inField = (field: string | undefined): boolean => mainField === undefined || field === undefined || field === mainField
-  return impacts.flatMap(({ candidate, activeYear }) => {
+  const maxHIndex = Math.max(1, ...impacts.map((item) => Math.log1p(item.hIndex)))
+  const maxCitations = Math.max(1, ...impacts.map((item) => Math.log1p(item.citationCount)))
+  return impacts.flatMap((candidate) => {
     const topical = relevance.get(candidate.id)
-    if (topical === undefined) return []
-    const known = [activeYear, topical.latestYear].filter((year): year is number => year !== null)
-    if (known.length > 0 && Math.max(...known) < currentYear - ACTIVE_WITHIN_YEARS) return []
+    if (topical === undefined || !active(topical, currentYear)) return []
     const score = topical.score / maxRelevance * 0.7
       + Math.log1p(candidate.hIndex) / maxHIndex * 0.2
       + Math.log1p(candidate.citationCount) / maxCitations * 0.1
@@ -206,15 +225,7 @@ const authorSuggestions = (
       suggestion: { ...candidate, name: candidate.name || topical.name, relatedPapers: topical.papers.size },
       score,
     }]
-  }).sort(({ suggestion: left, score: leftScore }, { suggestion: right, score: rightScore }) => (
-    Number(right.relatedPapers >= SHARED_PAPER_TIER) - Number(left.relatedPapers >= SHARED_PAPER_TIER)
-    || Number(inField(right.field)) - Number(inField(left.field))
-    || rightScore - leftScore
-    || right.relatedPapers - left.relatedPapers
-    || right.hIndex - left.hIndex
-    || right.citationCount - left.citationCount
-    || left.name.localeCompare(right.name)
-  )).slice(0, RESULT_LIMIT).map(({ suggestion }) => suggestion)
+  }).sort(byTierAndScore).slice(0, RESULT_LIMIT).map(({ suggestion }) => suggestion)
 }
 
 export type WatchSuggestions = {
@@ -222,7 +233,7 @@ export type WatchSuggestions = {
 }
 
 /** Where suggestions read papers and author impact from. */
-export type SuggestionSource = Pick<ScholarSource, 'name' | 'searchPapers' | 'authorImpacts'>
+export type SuggestionSource = ScholarSource
 
 /**
  * Suggests watches with scholarly search plus deterministic extraction and ranking. It performs
@@ -261,7 +272,7 @@ export function createWatchSuggestions(deps: {
       const request = firstAnswer(sources, async (source) => {
         const papers = await source.searchPapers(focus, currentYear - RECENT_PAPER_YEARS + 1)
         const relevance = relevanceOf(papers)
-        const impacts = await source.authorImpacts(lookupIds(relevance))
+        const impacts = source.authorImpacts === undefined ? null : await source.authorImpacts(lookupIds(relevance))
         return WatchSuggestionResultSchema.parse({
           topics: topicSuggestions(focus, seedTopics, papers),
           authors: authorSuggestions(relevance, impacts, currentYear),
@@ -278,6 +289,44 @@ export function createWatchSuggestions(deps: {
         .finally(() => pending.delete(key))
       pending.set(key, request)
       return request.then((value) => structuredClone(value))
+    },
+  }
+}
+
+const QUERY_RUN_LIMIT = 4
+const PHRASE_WORD_LIMIT = 3
+
+/**
+ * The arXiv query for a focus: its multi-word topic runs, or its single topic words when it has no
+ * run, each matched anywhere in a paper and joined with OR. A run longer than a short phrase must
+ * match word by word. Returns null when the focus names no topic.
+ */
+export function arxivFocusQuery(focus: string): string | null {
+  const runs = [...new Map(usefulRuns(focus).map((run) => [run.join(' '), run])).values()]
+  const multi = runs.filter((run) => run.length > 1)
+  const single = runs.filter((run) => run.length === 1 && topical(run) && run[0]!.length >= 4)
+  const chosen = (multi.length > 0 ? multi : single).slice(0, QUERY_RUN_LIMIT)
+  if (chosen.length === 0) return null
+  const clean = (word: string) => word.replace(/"/g, '')
+  return chosen.map((run) => (run.length <= PHRASE_WORD_LIMIT
+    ? `all:"${run.map(clean).join(' ')}"`
+    : `(${run.map((word) => `all:${clean(word)}`).join(' AND ')})`)).join(' OR ')
+}
+
+/** Watch suggestions read from arXiv search, which names authors but keeps no identities or impact. */
+export function createArxivSuggestionSource(arxiv: Pick<Arxiv, 'searchTopical'>): SuggestionSource {
+  return {
+    name: 'arxiv',
+    async searchPapers(query, sinceYear) {
+      const search = arxivFocusQuery(query)
+      if (search === null) return []
+      return (await arxiv.searchTopical(search, sinceYear, 'relevance')).map((paper) => ({
+        title: paper.title,
+        year: Number.parseInt(paper.submitted.slice(0, 4), 10) || null,
+        authors: paper.authors.map((name) => ({ id: name.toLocaleLowerCase(), name })),
+        citationCount: 0,
+        influentialCitationCount: 0,
+      }))
     },
   }
 }

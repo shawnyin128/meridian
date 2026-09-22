@@ -132,7 +132,9 @@ export function ProjectIdeaPanel({
  * The selected items of the two groups of segments are held by the calling site (the demo's projPlanTab / projTab are module-level variables), so
  * When you leave the project and come in again, you will stop at the last paragraph; `onTab` and `onRecord` must also maintain the same reference.
  */
-export function ProjectDetail({ projectId, onBack, onReturn, tab, onTab, record, onRecord }: {
+export function ProjectDetail({
+  projectId, onBack, onReturn, tab, onTab, record, onRecord, arrivalTask = null, onArrived,
+}: {
   projectId: string
   onBack: () => void
   /** The history return action: return to that screen if jumped from another screen, return to the list if entered from the project list. */
@@ -141,6 +143,9 @@ export function ProjectDetail({ projectId, onBack, onReturn, tab, onTab, record,
   onTab: (tab: PlanTab) => void
   record: RecordTab
   onRecord: (record: RecordTab) => void
+  /** A task to locate once the project has loaded, as when the overview timeline opens it. */
+  arrivalTask?: string | null
+  onArrived?: () => void
 }) {
   const fmt = useFormat()
   const m = useMessages()
@@ -358,6 +363,12 @@ export function ProjectDetail({ projectId, onBack, onReturn, tab, onTab, record,
     setFlash({ id })
   }, [tab, onTab, discardOpenEdits])
   const locateTask = useCallback((taskId: string) => locatePlanRow('task', taskId), [locatePlanRow])
+
+  useEffect(() => {
+    if (arrivalTask === null || project?.id !== projectId) return
+    locateTask(arrivalTask)
+    onArrived?.()
+  }, [arrivalTask, project, projectId, locateTask, onArrived])
   const locateMilestone = useCallback(
     (milestoneId: string) => locatePlanRow('ms', milestoneId), [locatePlanRow],
   )

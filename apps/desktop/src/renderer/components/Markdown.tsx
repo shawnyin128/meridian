@@ -41,10 +41,14 @@ function remarkHeadingIds() {
   return (tree: Root) => visit(tree)
 }
 
-/** There are three ways to draw links: the in-page link is clickable `.wl`, the original text anchor is `.cite`, and the rest are opened on the new window target. */
+/**
+ * There are three ways to draw links: the in-page link is clickable `.wl` and shows the page's full title from
+ * `titles` on hover, the original text anchor is `.cite`, and the rest are opened on the new window target.
+ */
 function components(
   onOpen: ((id: string) => void) | undefined,
   citePage: (page: string) => string,
+  titles: Record<string, string> | undefined,
 ): Components {
   return {
     a: ({ href, children }) => {
@@ -52,7 +56,7 @@ function components(
       if (!href) return <>{children}</>
       if (href.startsWith(WIKI)) {
         const id = href.slice(WIKI.length)
-        return <span className="wl" data-wk={id} onClick={() => onOpen?.(id)}>{children}</span>
+        return <span className="wl" data-wk={id} title={titles?.[id]} onClick={() => onOpen?.(id)}>{children}</span>
       }
       if (href.startsWith(CITE)) {
         return <span className="cite" title={citePage(href.slice(CITE.length))}>{children}</span>
@@ -77,7 +81,7 @@ export function Markdown({ src, onOpen, titles }: {
   titles?: Record<string, string>
 }) {
   const m = useMessages()
-  const parts = useMemo(() => components(onOpen, m.common.markdown.citePage), [onOpen, m])
+  const parts = useMemo(() => components(onOpen, m.common.markdown.citePage, titles), [onOpen, m, titles])
   return (
     <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath, remarkHeadingIds]} rehypePlugins={[rehypeKatex]} components={parts}>
       {desugar(src, titles)}

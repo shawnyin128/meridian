@@ -11,6 +11,8 @@ export {
   semanticReferenceUrl,
   semanticScholarBatchUrl,
 } from './providers/semantic-scholar.js'
+export { createArxivRecommendations } from './providers/arxiv.js'
+export { createFallbackRecommendations } from './providers/fallback.js'
 export {
   orderInbox,
   rankedPaper,

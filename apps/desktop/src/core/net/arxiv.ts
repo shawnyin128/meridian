@@ -10,6 +10,9 @@ export const ARXIV_INTERVAL_MS = 3_200
 /** Maximum papers fetched for one watch in a single run. */
 export const WATCH_BATCH = 20
 
+/** Maximum papers read from one topical search for suggestions and discovery. */
+export const TOPICAL_BATCH = 50
+
 /** Maximum body size for one API response. */
 const API_LIMIT = 5 * 1024 * 1024
 
@@ -37,7 +40,13 @@ export type MetadataProvider = {
   lookupMany?(ids: readonly string[]): Promise<Map<string, RemotePaper>>
 }
 
-export type Arxiv = MetadataProvider & { search(query: string): Promise<RemotePaper[]> }
+export type TopicalOrder = 'relevance' | 'submittedDate'
+
+export type Arxiv = MetadataProvider & {
+  search(query: string): Promise<RemotePaper[]>
+  /** The TOPICAL_BATCH papers matching `query` first submitted in or after `sinceYear`, best match or newest first. */
+  searchTopical(query: string, sinceYear: number, order: TopicalOrder): Promise<RemotePaper[]>
+}
 
 /**
  * Returns the arXiv search query for a watch. A topic is an exact phrase over
@@ -55,6 +64,15 @@ export function watchQuery(watch: Pick<Watch, 'type' | 'name'>): string {
 export function searchUrl(query: string): string {
   const params = new URLSearchParams({
     search_query: query, sortBy: 'submittedDate', sortOrder: 'descending', max_results: String(WATCH_BATCH),
+  })
+  return `${API}?${params.toString()}`
+}
+
+/** Returns the API address for a topical search restricted to papers first submitted in or after `sinceYear`. */
+export function topicalSearchUrl(query: string, sinceYear: number, order: TopicalOrder): string {
+  const params = new URLSearchParams({
+    search_query: `(${query}) AND submittedDate:[${sinceYear}01010000 TO 999912312359]`,
+    sortBy: order, sortOrder: 'descending', max_results: String(TOPICAL_BATCH),
   })
   return `${API}?${params.toString()}`
 }
@@ -201,6 +219,7 @@ export function createArxiv(deps: {
 
   return {
     search: (query) => call(searchUrl(query), parseAtom),
+    searchTopical: (query, sinceYear, order) => call(topicalSearchUrl(query, sinceYear, order), parseAtom),
     lookup,
     async lookupMany(ids) {
       const unique = [...new Set(ids.map((id) => id.trim()).filter(Boolean))]

@@ -9,8 +9,8 @@ export type WatchFetcher = { run(watchIds?: string[]): Promise<void>; status(): 
 
 /** Builds the serialized arXiv fetcher for all active watches or a selected subset. */
 export function createWatchFetcher(deps: {
-  store: VaultStore; arxiv: Arxiv; scholar?: ScholarlyMetadata
-  /** Papers by an author, read from the source their saved identity came from. */
+  store: VaultStore; arxiv: Pick<Arxiv, 'search'>; scholar?: ScholarlyMetadata
+  /** Papers by an author with a saved Semantic Scholar identity; other author watches search arXiv by name. */
   authorPapers?: (identity: AuthorIdentity) => Promise<RemotePaper[]>
   now: () => number; onWrite: () => void
 }): WatchFetcher {
@@ -28,7 +28,7 @@ export function createWatchFetcher(deps: {
     for (const watch of watches) {
       if (remaining === 0) break
       try {
-        const found = watch.type === 'author' && watch.identity !== undefined && deps.authorPapers !== undefined
+        const found = watch.type === 'author' && watch.identity?.source === 'semantic-scholar' && deps.authorPapers !== undefined
           ? await deps.authorPapers(watch.identity)
           : await deps.arxiv.search(watchQuery(watch))
         const local = found.map((paper) => rankedPaper(watch, paper))

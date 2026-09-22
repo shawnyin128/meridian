@@ -11,7 +11,7 @@ export type CannedResponse = {
   atom?: string
   text?: string
   /** Dynamic author response used only by fixtures; production networking never passes through here. */
-  kind?: 'author-papers' | 'openalex-author-search' | 'openalex-author-works'
+  kind?: 'author-papers' | 'semantic-author-search'
 }
 export type CannedTable = Record<string, CannedResponse>
 
@@ -22,7 +22,7 @@ const wildcard = (pattern: string, value: string): boolean => {
 }
 
 const fixtureAuthorSearch = (url: string): Uint8Array => {
-  const query = new URL(url).searchParams.get('search')?.trim() || '同名作者'
+  const query = new URL(url).searchParams.get('query')?.trim() || '同名作者'
   const slug = [...query].map((char) => char.codePointAt(0)?.toString(16) ?? '').join('-')
   const affiliations = [
     'Massachusetts Institute of Technology',
@@ -30,17 +30,13 @@ const fixtureAuthorSearch = (url: string): Uint8Array => {
     'Carnegie Mellon University',
   ]
   return new TextEncoder().encode(JSON.stringify({
-    results: affiliations.map((affiliation, at) => ({
-      id: `https://openalex.org/fixture-${slug}-${at + 1}`,
-      display_name: query,
-      last_known_institutions: [{ display_name: affiliation }],
-      topics: [{
-        display_name: ['Advanced Neural Network Applications', 'Metamaterials and Metasurfaces', 'Real-Time Systems Scheduling'][at],
-        field: { display_name: ['Computer Science', 'Materials Science', 'Computer Science'][at] },
-      }],
-      works_count: 46 - at * 11,
-      cited_by_count: 1280 - at * 360,
-      summary_stats: { h_index: 19 - at * 4 },
+    data: affiliations.map((affiliation, at) => ({
+      authorId: `fixture-${slug}-${at + 1}`,
+      name: query,
+      affiliations: [affiliation],
+      paperCount: 46 - at * 11,
+      citationCount: 1280 - at * 360,
+      hIndex: 19 - at * 4,
     })),
   }))
 }
@@ -52,8 +48,7 @@ export function createCannedGet(table: CannedTable, root: string): HttpGet {
     const canned = table[url] ?? Object.entries(table)
       .find(([pattern]) => pattern.includes('*') && wildcard(pattern, url))?.[1]
     if (canned === undefined) return { status: 404, body: new Uint8Array() }
-    const body = canned.kind === 'openalex-author-search' ? fixtureAuthorSearch(url)
-      : canned.kind === 'openalex-author-works' ? new TextEncoder().encode('{"results":[]}')
+    const body = canned.kind === 'semantic-author-search' ? fixtureAuthorSearch(url)
       : canned.kind === 'author-papers' ? new TextEncoder().encode('{"data":[]}')
       : canned.file !== undefined ? new Uint8Array(readFileSync(join(root, canned.file)))
       : canned.pdf !== undefined ? minimalPdf(canned.pdf)

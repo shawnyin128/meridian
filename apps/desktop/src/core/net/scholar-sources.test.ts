@@ -1,16 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { AuthorCandidate } from '../../shared/contract.js'
-import { createAuthorSearch, firstAnswer, type ScholarSource } from './scholar-sources.js'
+import { createAuthorSearch, firstAnswer, type AuthorSearchSource } from './scholar-sources.js'
 
 const candidate = (source: AuthorCandidate['source'], id: string): AuthorCandidate => ({
   source, id, name: 'Song Han', affiliations: [], paperCount: 1, citationCount: 1, hIndex: 1,
 })
 
-const fakeSource = (name: ScholarSource['name'], search: (query: string) => Promise<AuthorCandidate[]>): ScholarSource => ({
-  name,
-  searchPapers: async () => [],
-  authorImpacts: async () => [],
-  searchAuthors: search,
+const fakeSource = (name: string, search: (query: string) => Promise<AuthorCandidate[]>): AuthorSearchSource => ({
+  name, searchAuthors: search,
 })
 
 describe('firstAnswer', () => {

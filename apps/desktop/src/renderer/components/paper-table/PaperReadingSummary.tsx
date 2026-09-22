@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { PaperReading, PaperRow } from '../../../shared/contract.js'
 import { papers } from '../../ipc.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { useVaultRevision, type ReaderAnchor } from '../../shell/AppShell.js'
+import { useVaultRevision, type JumpAnchor } from '../../shell/AppShell.js'
 import { entryAnchor, readingEntries } from './reading-entries.js'
 import { EmptyState } from '../EmptyState.js'
 import { PageError, SectionHeading } from '../PageShell.js'
@@ -12,7 +12,7 @@ const EXCERPT = 2
 /** The reading summary in the paper details: the count can be jumped, and the essay and recent notes share the persistent record of the reader. */
 export function PaperReadingSummary({ paper, onRead, onConclusions }: {
   paper: PaperRow
-  onRead: (anchor: ReaderAnchor) => void
+  onRead: (anchor: JumpAnchor) => void
   onConclusions: () => void
 }) {
   const m = useMessages()

@@ -28,6 +28,8 @@ export type HttpRequestOptions = Pick<HttpOptions, 'method' | 'headers' | 'body'
 
 export type RateLimitedHttpOptions = {
   minIntervalMs: number
+  /** How long a 429 without Retry-After pauses the queue; 15 seconds when unset. */
+  throttleCooldownMs?: number
   sleep: (ms: number) => Promise<void>
   now: () => number
   headers?: Record<string, string>
@@ -58,7 +60,7 @@ export function createRateLimitedGet(get: HttpGet, policy: RateLimitedHttpOption
         headers: { ...policy.headers, ...options.headers },
       })
       if (response.status !== 429) return response
-      nextAt = Math.max(nextAt, policy.now() + (response.retryAfterMs ?? 15_000))
+      nextAt = Math.max(nextAt, policy.now() + (response.retryAfterMs ?? policy.throttleCooldownMs ?? 15_000))
       return { ...response, retryAfterMs: 0 }
     })
     tail = run.then(() => undefined, () => undefined)

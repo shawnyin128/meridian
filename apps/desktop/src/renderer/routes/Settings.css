@@ -85,20 +85,7 @@
 .storage-backup-actions{display:flex;align-items:center;gap:8px}
 .storage-backup-actions .btn:disabled{opacity:.45;cursor:default}
 
-.model-settings-card{border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);padding:16px}
-.model-settings-status{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
-  padding-bottom:14px;border-bottom:1px solid var(--sep2)}
-.model-settings-status strong{font-size:var(--fs-base);font-weight:600;color:var(--ink)}
-.model-settings-status p{margin:5px 0 0;color:var(--ter);font-size:var(--fs-cap);line-height:var(--lh-ui)}
-.model-status{flex-shrink:0;border-radius:var(--r-full);padding:2px 8px;background:var(--field);
-  color:var(--ter);font-size:var(--fs-cap)}
-.model-status.ready{background:var(--tint-ok);color:var(--ok)}
-.model-field{display:grid;grid-template-columns:88px minmax(0,1fr);gap:12px;align-items:center;margin-top:12px}
-.model-field>span{color:var(--sec);font-size:var(--fs-sm)}
-.model-field .form-control{width:100%}
-.model-saved-key{display:flex;align-items:center;gap:4px}
-.model-key-mask{color:var(--ter);letter-spacing:.08em}
-.model-key-tail{color:var(--ink);font-family:var(--mono);letter-spacing:.04em}
+/* The status head, field rows, saved-key mask, and foot are shared card chrome; see ServiceCard.css. */
 .model-protocol{display:grid;grid-template-columns:88px minmax(0,1fr);gap:12px;align-items:center;margin-top:12px;
   color:var(--sec);font-size:var(--fs-sm)}
 .model-protocol strong{color:var(--ink);font-size:var(--fs-sm);font-weight:500}
@@ -106,16 +93,6 @@
 .model-template-summary{margin:10px 0 0 100px;padding:9px 11px;border-radius:var(--r-md);background:var(--field);
   display:flex;flex-direction:column;gap:3px;color:var(--sec);font-size:var(--fs-cap);line-height:var(--lh-ui)}
 .model-template-summary code{color:var(--ter);font-family:var(--mono);font-size:var(--fs-cap);overflow-wrap:anywhere}
-.model-settings-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;
-  padding-top:14px;border-top:1px solid var(--sep2)}
-.model-settings-actions{display:flex;align-items:center;gap:10px;flex-shrink:0;margin-left:auto}
-.model-connection-status{min-width:0;display:flex;flex-direction:column;gap:2px;color:var(--ok);
-  font-size:var(--fs-cap);line-height:var(--lh-ui)}
-.model-connection-status.failed{color:var(--bad)}
-.model-connection-detail{max-width:360px;color:var(--sec);overflow-wrap:anywhere}
-.model-clear-key{color:var(--sec);font-size:var(--fs-cap)}
-.model-clear-key.on{color:var(--bad);background:var(--tint-bad)}
-.model-settings-error{margin:10px 0 0;color:var(--bad);font-size:var(--fs-cap)}
 
 .settings-intro,.settings-explain{margin:0 0 12px;color:var(--ter);font-size:var(--fs-sm);line-height:var(--lh-ui)}
 .settings-count{color:var(--ter);font-weight:500}

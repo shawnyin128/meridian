@@ -5,7 +5,11 @@ import type {
 } from '../../../shared/contract.js'
 import { harness } from '../../ipc.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { FormButton, FormInput, FormSelect } from '../FormControls.js'
+import { FormInput, FormSelect } from '../FormControls.js'
+import {
+  ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError, ServiceField,
+  ServiceFoot, ServiceSavedKey, ServiceStatus,
+} from './ServiceCard.js'
 
 /** Structural, language-neutral data for each provider. Copy comes from the catalog by provider id. */
 const PROVIDERS: Record<HarnessModelProvider, {
@@ -263,19 +267,15 @@ export function ModelSettings() {
       : null
 
   return (
-    <div className="model-settings-card">
-      <div className="model-settings-status">
-        <div>
-          <strong>{selected.label}</strong>
-          <p>{selected.description}</p>
-        </div>
-        <span className={savedSelection && savedProfile?.configured === true ? 'model-status ready' : 'model-status'}>
-          {savedSelection && savedProfile?.configured === true
-            ? m.settings.model.configured : m.settings.model.notConfigured}
-        </span>
-      </div>
-      <label className="model-field">
-        <span>{m.settings.model.fields.providerLabel}</span>
+    <ServiceCard className="model-settings-card">
+      <ServiceStatus
+        title={selected.label}
+        description={selected.description}
+        configured={savedSelection && savedProfile?.configured === true}
+        configuredLabel={m.settings.model.configured}
+        notConfiguredLabel={m.settings.model.notConfigured}
+      />
+      <ServiceField label={m.settings.model.fields.providerLabel}>
         <FormSelect appearance="field" aria-label={m.settings.model.fields.providerLabel} value={provider}
           onChange={(event) => selectProvider(event.target.value as HarnessModelProvider)}>
           <option value="openai">OpenAI</option>
@@ -283,11 +283,10 @@ export function ModelSettings() {
           <option value="google-gemini">Google Gemini</option>
           <option value="openai-compatible">{m.settings.model.providers['openai-compatible'].label}</option>
         </FormSelect>
-      </label>
+      </ServiceField>
       {provider === 'openai-compatible' ? (
         <>
-          <label className="model-field">
-            <span>{m.settings.model.templates.chooseLabel}</span>
+          <ServiceField label={m.settings.model.templates.chooseLabel}>
             <FormSelect appearance="field" aria-label={m.settings.model.templates.chooseAria} value={compatibleTemplate}
               onChange={(event) => selectCompatibleTemplate(event.target.value as CompatibleTemplateId)}>
               <option value="choose">{m.settings.model.templates.choosePlaceholder}</option>
@@ -297,31 +296,28 @@ export function ModelSettings() {
               <option value="lm-studio">{m.settings.model.templates['lm-studio'].label}</option>
               <option value="custom">{m.settings.model.templates.custom}</option>
             </FormSelect>
-          </label>
+          </ServiceField>
           {compatibleTemplate === 'custom' ? (
             <>
-              <label className="model-field">
-                <span>{m.settings.model.fields.protocolLabel}</span>
+              <ServiceField label={m.settings.model.fields.protocolLabel}>
                 <FormSelect appearance="field" aria-label={m.settings.model.fields.protocolAria} value={protocol}
                   onChange={(event) => setProtocol(event.target.value as HarnessModelProtocol)}>
                   <option value="responses">Responses API</option>
                   <option value="chat-completions">Chat Completions API</option>
                 </FormSelect>
-              </label>
-              <label className="model-field">
-                <span>{m.settings.model.fields.baseUrlLabel}</span>
+              </ServiceField>
+              <ServiceField label={m.settings.model.fields.baseUrlLabel}>
                 <FormInput appearance="field" aria-label={m.settings.model.fields.baseUrlAria} value={baseUrl}
                   placeholder={m.settings.model.providers['openai-compatible'].baseUrlPlaceholder}
                   onChange={(event) => setBaseUrl(event.target.value)} />
-              </label>
-              <label className="model-field">
-                <span>{m.settings.model.fields.authLabel}</span>
+              </ServiceField>
+              <ServiceField label={m.settings.model.fields.authLabel}>
                 <FormSelect appearance="field" aria-label={m.settings.model.fields.authAria} value={authentication}
                   onChange={(event) => setAuthentication(event.target.value as 'api-key' | 'none')}>
                   <option value="api-key">{m.settings.model.fields.apiKeyLabel}</option>
                   <option value="none">{m.settings.model.fields.authNoneOption}</option>
                 </FormSelect>
-              </label>
+              </ServiceField>
             </>
           ) : selectedCompatibleTemplate === null ? (
             <p className="model-template-help">{m.settings.model.templates.help}</p>
@@ -339,21 +335,18 @@ export function ModelSettings() {
       )}
       {compatibleTemplatePending ? null : (
         <>
-          <label className="model-field">
-            <span>{m.settings.model.fields.modelIdLabel}</span>
+          <ServiceField label={m.settings.model.fields.modelIdLabel}>
             <FormInput appearance="field" aria-label={m.settings.model.fields.modelIdAria} value={model}
               placeholder={modelPlaceholder} onChange={(event) => setModel(event.target.value)} />
-          </label>
+          </ServiceField>
           {authentication === 'api-key' ? (
-            <div className="model-field">
-              <span>{m.settings.model.fields.apiKeyLabel}</span>
+            <ServiceField label={m.settings.model.fields.apiKeyLabel}>
               {showingSavedApiKey ? (
-                <FormButton appearance="field" className="model-saved-key"
-                  aria-label={m.settings.model.keyStored(savedProfile?.apiKeyLastFour ?? '')}
-                  onClick={() => setEditingApiKey(true)}>
-                  <span className="model-key-mask" aria-hidden="true">••••••••</span>
-                  <span className="model-key-tail">{savedProfile?.apiKeyLastFour}</span>
-                </FormButton>
+                <ServiceSavedKey
+                  ariaLabel={m.settings.model.keyStored(savedProfile?.apiKeyLastFour ?? '')}
+                  lastFour={savedProfile?.apiKeyLastFour}
+                  onClick={() => setEditingApiKey(true)}
+                />
               ) : (
                 <FormInput appearance="field" aria-label={m.settings.model.fields.apiKeyAria} type="password"
                   value={apiKey} autoFocus={editingApiKey}
@@ -366,35 +359,31 @@ export function ModelSettings() {
                     setClearApiKey(false)
                   }} />
               )}
-            </div>
+            </ServiceField>
           ) : null}
         </>
       )}
-      <div className="model-settings-foot">
+      <ServiceFoot>
         {connectionStatus === null ? null : (
-          <div
-            className={`model-connection-status ${connectionCheck.state}`}
-            role={connectionCheck.state === 'failed' ? 'alert' : 'status'}
-          >
-            <span>{connectionStatus}</span>
-            {connectionCheck.state === 'failed' ? (
-              <span className="model-connection-detail">
-                {m.settings.model.connection.detailLabel}: {connectionCheck.detail}
-              </span>
-            ) : null}
-          </div>
+          <ServiceConnectionStatus
+            state={connectionCheck.state === 'connected' ? 'connected' : 'failed'}
+            message={connectionStatus}
+            detail={connectionCheck.state === 'failed' ? connectionCheck.detail : undefined}
+            detailLabel={m.settings.model.connection.detailLabel}
+          />
         )}
-        <div className="model-settings-actions">
+        <ServiceActions>
           {authentication === 'api-key' && savedKeyAvailable ? (
-            <button className={clearApiKey ? 'btn model-clear-key on' : 'btn model-clear-key'}
-              aria-pressed={clearApiKey}
+            <ServiceClearKeyButton
+              pending={clearApiKey}
+              label={m.settings.model.clearKey}
+              pendingLabel={m.settings.model.clearKeyPending}
               onClick={() => {
                 setClearApiKey((current) => !current)
                 setApiKey('')
                 setEditingApiKey(false)
-              }}>
-              {clearApiKey ? m.settings.model.clearKeyPending : m.settings.model.clearKey}
-            </button>
+              }}
+            />
           ) : null}
           <button
             className="btn" disabled={!canTestConnection || saving || connectionCheck.state === 'testing'}
@@ -411,12 +400,12 @@ export function ModelSettings() {
             onClick={() => { void save() }}>
             {saving ? m.settings.model.saving : m.settings.model.save}
           </button>
-        </div>
-      </div>
+        </ServiceActions>
+      </ServiceFoot>
       {settings.error === undefined ? null : (
-        <p className="model-settings-error" role="alert">{m.settings.model.errorHint(settings.error)}</p>
+        <ServiceError>{m.settings.model.errorHint(settings.error)}</ServiceError>
       )}
-      {error === null ? null : <p className="model-settings-error" role="alert">{error}</p>}
-    </div>
+      {error === null ? null : <ServiceError>{error}</ServiceError>}
+    </ServiceCard>
   )
 }

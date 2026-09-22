@@ -246,9 +246,9 @@ test('入库撞上库里已有的那一篇:不重复入库,就地给出打开那
   expect(await paperTotal(win)).toBe(before)
   expect((await inboxFromCore(win)).find((e) => e.id === dup.id)?.downloaded).toBe(false)
 
-  // That entrance really opens up Curry’s article: the title of Curry’s page is written in the header of the reader.
+  // That entrance really opens up Curry’s article: the reader header shows that paper's full title.
   await card.locator('.pdup .btn', { hasText: '打开' }).click()
-  await expect(win.locator('#crumb .cseg').last()).toHaveText(known.title.split(':')[0]!)
+  await expect(win.locator('#crumb .cseg').last()).toHaveText(known.title)
 })
 
 test.describe('这一条推送已经在别处入过库', () => {
@@ -448,18 +448,19 @@ test('关注管理:占位行按 Esc 撤掉,屏上没有旧的圆角添加框', a
   await expect(settings(win, '.mgr-add')).toHaveCount(0)
 })
 
-test('作者关注先用机构消歧,确认后保存稳定作者身份', async ({ win }) => {
+test('没填 Semantic Scholar key 时作者搜索直接说明，填了之后先用机构消歧,确认后保存稳定作者身份', async ({ win }) => {
   await openDeliverySettings(win)
   await settings(win, '.section-heading').filter({ hasText: '作者' }).locator('.btn').click()
+  await settings(win, '.wrow.newrow input').fill('Alex Kim')
+  await expect(settings(win, '.author-search-note.error')).toContainText('填入 Semantic Scholar key')
+
+  await call(win, 'delivery.setSemanticKey', { apiKey: 'fixture-key' })
+  await settings(win, '.wrow.newrow input').fill('')
   await settings(win, '.wrow.newrow input').fill('Alex Kim')
 
   await expect(settings(win, '.author-match')).toHaveCount(3)
   await expect(settings(win, '.author-match')).toContainText([
     'Massachusetts Institute of Technology', 'Stanford University', 'Carnegie Mellon University',
-  ])
-  await expect(settings(win, '.author-match [data-author-research]')).toHaveText([
-    'Computer Science · Advanced Neural Network Applications', 'Materials Science · Metamaterials and Metasurfaces',
-    'Computer Science · Real-Time Systems Scheduling',
   ])
   await settings(win, '.author-match').nth(1).locator('.btn', { hasText: '关注' }).click()
 
@@ -467,13 +468,13 @@ test('作者关注先用机构消歧,确认后保存稳定作者身份', async (
   const added = (await watchesFromCore(win)).find((item) => item.name === 'Alex Kim')
   expect(added).toMatchObject({
     type: 'author',
-    identity: { source: 'openalex', affiliations: ['Stanford University'] },
+    identity: { source: 'semantic-scholar', affiliations: ['Stanford University'] },
   })
   const row = settings(win, `.wrow[data-w="${added!.id}"]`)
   await expect(row.locator('.author-id-state')).toHaveText('Stanford University')
 })
 
-test('关注建议可从一句话或项目画像生成主题与稳定作者', async ({ win }) => {
+test('没填 key 时关注建议从 arXiv 生成主题与按姓名的作者,添加的作者是未确认身份', async ({ win }) => {
   await openDeliverySettings(win)
   const section = settings(win, '.watch-suggestions')
   await expect(section).not.toContainText('不调用模型')
@@ -482,7 +483,13 @@ test('关注建议可从一句话或项目画像生成主题与稳定作者', as
   await section.locator('.btn.pri').click()
   await expect(section.locator('.watch-suggestion-group')).toHaveCount(2)
   await expect(section).toContainText('batched inference')
-  await expect(section).toContainText('h-index')
+  await expect(section).not.toContainText('h-index')
+  const suggestedAuthor = section.locator('.watch-suggestion-row').filter({ hasText: 'Mei Lin' })
+  await expect(suggestedAuthor).toContainText('2 篇相关论文')
+  await suggestedAuthor.locator('.btn', { hasText: '添加' }).click()
+  await expect.poll(async () => (await watchesFromCore(win))
+    .find((item) => item.type === 'author' && item.name === 'Mei Lin')).toMatchObject({ type: 'author' })
+  expect((await watchesFromCore(win)).find((item) => item.name === 'Mei Lin')).not.toHaveProperty('identity')
 
   const suggestedTopic = section.locator('.watch-suggestion-row')
     .filter({ hasText: 'batched inference' }).first()
@@ -491,11 +498,12 @@ test('关注建议可从一句话或项目画像生成主题与稳定作者', as
     .some((item) => item.type === 'topic' && item.name === 'batched inference')).toBe(true)
 
   const projectResult = await call<{
-    topics: { name: string }[]; authors: { id: string }[]; paperCount: number
+    topics: { name: string }[]; authors: { name: string; id?: string }[]; paperCount: number
   }>(win, 'watch.suggest', { source: 'project', projectId: 'draft' })
   expect(projectResult.paperCount).toBeGreaterThan(0)
   expect(projectResult.topics.map((item) => item.name)).toContain('speculative decoding')
-  expect(projectResult.authors[0]?.id).toBeTruthy()
+  expect(projectResult.authors[0]?.name).toBeTruthy()
+  expect(projectResult.authors[0]?.id).toBeUndefined()
 
   await section.locator('.watch-suggestion-source .btn', { hasText: '从项目生成' }).click()
   await section.locator('.btn.pri').click()

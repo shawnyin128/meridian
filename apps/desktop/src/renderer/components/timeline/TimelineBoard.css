@@ -13,7 +13,7 @@
 .gperiodnav button:hover{background:var(--hover);color:var(--ink)}
 .gperiodnav button svg{display:block;width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .gsplit{display:flex}
-.glabels{flex:0 0 148px;border-right:1px solid var(--sep2)}
+.glabels{flex:0 0 148px;min-width:0;border-right:1px solid var(--sep2)}
 .glhead{height:30px}
 .glrow{height:44px;border-top:1px solid var(--sep2);display:flex;align-items:center;gap:8px;padding:0 12px;font-size:12px;cursor:pointer;white-space:nowrap;overflow:hidden}
 .glrow:hover{background:var(--hover)}

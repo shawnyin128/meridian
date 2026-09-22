@@ -1,5 +1,5 @@
 import type { PaperReading } from '../../../shared/contract.js'
-import type { ReaderAnchor } from '../../shell/AppShell.js'
+import type { JumpAnchor } from '../../shell/AppShell.js'
 
 /** A reading record of the words written in a paper: the highlights of the written notes include fragments of the original text, but the notes taken separately do not. */
 export type ReadingEntry = {
@@ -35,7 +35,7 @@ export function readingEntries(reading: PaperReading): ReadingEntry[] {
 }
 
 /** Click a reading record to enter the location where the reader will land: that page, that item, and open the cell where it is located in the right column. */
-export function entryAnchor(entry: ReadingEntry): ReaderAnchor {
+export function entryAnchor(entry: ReadingEntry): JumpAnchor {
   return entry.kind === 'highlight'
     ? { page: entry.page, highlight: entry.id, panel: 'highlights' }
     : { page: entry.page, note: entry.id, panel: 'notes' }

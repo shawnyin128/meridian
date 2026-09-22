@@ -24,7 +24,6 @@ import { InlineMetadataField } from '../components/InlineField.js'
 import { NewColumnHead } from '../components/paper-table/ColumnAdd.js'
 import { headingsOf, MarkdownBox } from '../components/Markdown.js'
 import { Pager } from '../components/Pager.js'
-import { shortTitle } from '../lib/paper-title.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
 import { nextKey, slugOf } from '../lib/slug.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -88,7 +87,7 @@ function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
     <div className="wkcard" data-wk={`${PAPER_PAGE}${paper.id}`} title={paper.title} onClick={onOpen}>
       <div className="wt">
         <span className="wkind k-paper">{m.wiki.paperKind}</span>
-        <span className="tt">{shortTitle(paper.title)}</span><span className="sp" />
+        <span className="tt">{paper.title}</span><span className="sp" />
       </div>
       <div className="wm">{line}</div>
       <div className="wf">{m.wiki.paperCardFooter(paper.noteCount, paper.conclusionCount)}</div>
@@ -156,7 +155,7 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
           {agg.rows.map((row) => (
             <tr key={row.paper.id}>
               <td className="rh">
-                <span className="wl" data-wk={row.paper.id} onClick={() => onOpen(row.paper.id)}>
+                <span className="wl" data-wk={row.paper.id} title={row.paper.fullTitle} onClick={() => onOpen(row.paper.id)}>
                   {row.paper.title}
                 </span>
               </td>
@@ -171,7 +170,7 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
                 return (
                   <td className="dv" key={d.key}>
                     {links.length === 0 ? '—' : links.map((l) => (
-                      <span className="tagchip" data-wk={l.id} key={l.id} onClick={() => onOpen(l.id)}>
+                      <span className="tagchip" data-wk={l.id} key={l.id} title={l.fullTitle} onClick={() => onOpen(l.id)}>
                         {l.title}
                       </span>
                     ))}
@@ -446,7 +445,7 @@ export function Wiki() {
     const members = new Set(shownAgg.rows.map((r) => r.paper.id))
     return (await papers.list({ page: 1, size: 12, filter: query })).rows
       .filter((r) => !members.has(`${PAPER_PAGE}${r.id}`))
-      .map((r) => ({ id: `${PAPER_PAGE}${r.id}`, title: shortTitle(r.title), meta: `${r.year ?? ''} ${r.venue}`.trim() }))
+      .map((r) => ({ id: `${PAPER_PAGE}${r.id}`, title: r.title, meta: `${r.year ?? ''} ${r.venue}`.trim() }))
   }, [shownAgg])
 
   const mount = (hit: PickHit): Promise<boolean> => {
@@ -505,12 +504,12 @@ export function Wiki() {
         { text: shownAgg.title },
       ]
     }
-    if (shownPaper !== null) return [{ text: shownPaper.short }]
+    if (shownPaper !== null) return [{ text: shownPaper.title }]
     return []
   }, [shownAgg, shownPaper, go])
   useCrumbTail(tail, place === null ? undefined : goHome)
 
-  const title = shownAgg?.title ?? shownPaper?.short
+  const title = shownAgg?.title ?? shownPaper?.title
     ?? (home === null ? 'Wiki' : m.wiki.title(home.aggregationCount))
 
   /** "Edit" to enter the original text state; "Save" to read the original text and write it back, write the complete library version and increment it so that this page can be retrieved again. */
@@ -721,7 +720,7 @@ export function Wiki() {
                     <div className="wkrel">
                       <span className="rl">{m.wiki.belongsTo}</span>
                       {shownAgg.parents.map((p) => (
-                        <span className="tagchip" data-wk={p.id} key={p.id} onClick={() => go(p.id)}>{p.title}</span>
+                        <span className="tagchip" data-wk={p.id} key={p.id} title={p.fullTitle} onClick={() => go(p.id)}>{p.title}</span>
                       ))}
                     </div>
                   )
@@ -730,7 +729,7 @@ export function Wiki() {
                   <div className="wkrel" key={r.label}>
                     <span className="rl">{r.label}</span>
                     {r.links.map((l) => (
-                      <span className="tagchip" data-wk={l.id} key={l.id} onClick={() => go(l.id)}>{l.title}</span>
+                      <span className="tagchip" data-wk={l.id} key={l.id} title={l.fullTitle} onClick={() => go(l.id)}>{l.title}</span>
                     ))}
                   </div>
                 ))}

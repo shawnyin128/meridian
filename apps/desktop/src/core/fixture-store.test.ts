@@ -1509,7 +1509,8 @@ describe('fixture store', () => {
 
     const wo = store.wikiAggregation('topics/ptq-weight-only')
     expect(wo.columns.map((c) => c.key)).toEqual(['bits', 'needs_calib', 'backprop', 'claim'])
-    expect(wo.rows.map((r) => r.paper)).toEqual([
+    expect(wo.rows[0]!.paper.fullTitle).toMatch(/^GPTQ: /)
+    expect(wo.rows.map((r) => ({ id: r.paper.id, title: r.paper.title }))).toEqual([
       { id: 'papers/2210.17323', title: 'GPTQ' },
       { id: 'papers/2306.00978', title: 'AWQ' },
       { id: 'papers/2306.07629', title: 'SqueezeLLM' },
@@ -1523,9 +1524,10 @@ describe('fixture store', () => {
     expect(wo.body).toContain('## 结论\n- 2026-09-09 · ')
     expect(wo.body).toMatch(/## 未解决\n- /)
     expect(wo.body).not.toContain('generated')
-    expect(wo.titles).toMatchObject({
-      'papers/2210.17323': 'GPTQ', 'papers/2306.07629': 'SqueezeLLM', 'papers/2307.13304': 'QuIP',
-    })
+    expect(wo.titles).toMatchObject(Object.fromEntries(['2210.17323', '2306.07629', '2307.13304'].map((id) => (
+      [`papers/${id}`, store.getPaper(id).title]
+    ))))
+    expect(wo.titles['papers/2210.17323']).toMatch(/^GPTQ: /)
     expect(wo.related).toEqual([{
       label: '方法',
       links: [
@@ -1641,7 +1643,10 @@ describe('fixture store', () => {
     expect(() => store.updateWikiPage('topics/ptq', '## 问题\n<!-- /generated -->')).toThrow(/生成区的标记/)
     expect(store.wikiAggregation('topics/ptq').body).toBe('## 问题\n改过的。')
     const change = store.listChanges()[0]!
-    expect(change).toMatchObject({ title: 'Wiki · 「GPTQ」· 改了正文', diff: ['~ papers/2210.17323'], undoable: true })
+    expect(change).toMatchObject({
+      title: `Wiki · 「${store.getPaper('2210.17323').title}」· 改了正文`, diff: ['~ papers/2210.17323'], undoable: true,
+    })
+    expect(change.title).toMatch(/「GPTQ: /)
     store.undoChange(change.id)
     expect(store.wikiPaper('papers/2210.17323').body).not.toBe('## 这篇说了什么\n改过。')
     expect(store.getPaper('2210.17323').updated).toBe('2026-09-01')
@@ -2191,7 +2196,7 @@ describe('fixture store', () => {
     // Library location and background tasks are Core process configuration, not state of one opened VaultStore.
     const coreMethods = new Set([
       'library.location', 'library.configure', 'library.reset', 'library.backups',
-      'library.switchBackup', 'library.deleteBackup', 'extensions.status', 'extensions.checkLatest', 'extensions.pluginVersion', 'delivery.semanticKey', 'delivery.setSemanticKey', 'jobs.status', 'inbox.fetch',
+      'library.switchBackup', 'library.deleteBackup', 'extensions.status', 'extensions.checkLatest', 'extensions.pluginVersion', 'delivery.semanticKey', 'delivery.setSemanticKey', 'delivery.checkSemanticKey', 'jobs.status', 'inbox.fetch',
       'discovery.fetch', 'author.search', 'watch.suggest', 'harness.prepare', 'harness.pendingPaperWiki',
       'harness.start', 'harness.cancel',
       'harness.modelSettings', 'harness.updateModelSettings', 'harness.checkModelConnection',

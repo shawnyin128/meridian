@@ -1,0 +1,25 @@
+/* Shared card shell for a single external service's settings (model provider, Semantic Scholar, ...). */
+.service-card{border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);padding:16px}
+.service-status-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
+  padding-bottom:14px;border-bottom:1px solid var(--sep2)}
+.service-status-head strong{font-size:var(--fs-base);font-weight:600;color:var(--ink)}
+.service-status-head p{margin:5px 0 0;color:var(--ter);font-size:var(--fs-cap);line-height:var(--lh-ui)}
+.service-status-pill{flex-shrink:0;border-radius:var(--r-full);padding:2px 8px;background:var(--field);
+  color:var(--ter);font-size:var(--fs-cap)}
+.service-status-pill.ready{background:var(--tint-ok);color:var(--ok)}
+.service-field{display:grid;grid-template-columns:88px minmax(0,1fr);gap:12px;align-items:center;margin-top:12px}
+.service-field>span{color:var(--sec);font-size:var(--fs-sm)}
+.service-field .form-control{width:100%}
+.service-saved-key{display:flex;align-items:center;gap:4px}
+.service-key-mask{color:var(--ter);letter-spacing:.08em}
+.service-key-tail{color:var(--ink);font-family:var(--mono);letter-spacing:.04em}
+.service-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;
+  padding-top:14px;border-top:1px solid var(--sep2)}
+.service-actions{display:flex;align-items:center;gap:10px;flex-shrink:0;margin-left:auto}
+.service-connection-status{min-width:0;display:flex;flex-direction:column;gap:2px;color:var(--ok);
+  font-size:var(--fs-cap);line-height:var(--lh-ui)}
+.service-connection-status.failed{color:var(--bad)}
+.service-connection-detail{max-width:360px;color:var(--sec);overflow-wrap:anywhere}
+.service-clear-key{color:var(--sec);font-size:var(--fs-cap)}
+.service-clear-key.on{color:var(--bad);background:var(--tint-bad)}
+.service-error{margin:10px 0 0;color:var(--bad);font-size:var(--fs-cap)}

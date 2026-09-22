@@ -23,6 +23,11 @@ const GROUPS: Watch['type'][] = ['topic', 'author']
 
 type SuggestionSource = 'focus' | 'project'
 
+/** A suggested author's key: its identity when the source knows one, otherwise its name. */
+const suggestedAuthorKey = (item: WatchAuthorSuggestion): string => (
+  'id' in item ? `${item.source}:${item.id}` : `name:${item.name}`
+)
+
 /**
  * A group of concerns: There is a plus sign on the right side of the title. Click it to create a new line at the end of this group of lists.
  * `adding` is the line being filled in: the placeholder is wearing `.wrow` clothes, and the input box inside is drawn and handed in by the caller.
@@ -261,7 +266,7 @@ export function WatchSettings() {
         ...found,
         topics: found.topics.filter((item) => !watchedTopics.has(item.name.toLocaleLowerCase())),
         authors: found.authors.filter((item) => (
-          !watchedAuthorIds.has(item.id) && !watchedAuthorNames.has(item.name.toLocaleLowerCase())
+          !('id' in item && watchedAuthorIds.has(item.id)) && !watchedAuthorNames.has(item.name.toLocaleLowerCase())
         )),
       }
       setSuggestions(next)
@@ -290,17 +295,18 @@ export function WatchSettings() {
   }
 
   const addSuggestedAuthor = async (candidate: WatchAuthorSuggestion) => {
-    const key = `author:${candidate.id}`
+    const key = `author:${suggestedAuthorKey(candidate)}`
     setAddingSuggestion(key)
     try {
       if (await create({
         type: 'author', name: candidate.name,
-        identity: {
-          source: candidate.source, id: candidate.id, affiliations: candidate.affiliations,
-        },
+        ...('id' in candidate ? {
+          identity: { source: candidate.source, id: candidate.id, affiliations: candidate.affiliations },
+        } : {}),
       })) {
         setSuggestions((current) => current === null ? null : {
-          ...current, authors: current.authors.filter((item) => item.id !== candidate.id),
+          ...current,
+          authors: current.authors.filter((item) => suggestedAuthorKey(item) !== suggestedAuthorKey(candidate)),
         })
       }
     } finally {
@@ -378,11 +384,6 @@ export function WatchSettings() {
                           <div className="author-match-copy">
                             <strong>{candidate.name}</strong>
                             <span>{candidate.affiliations.join(' · ') || m.watches.noAffiliation}</span>
-                            {candidate.field === undefined && candidate.topics === undefined ? null : (
-                              <span data-author-research title={candidate.topics?.join(' · ')}>
-                                {[candidate.field, candidate.topics?.[0]].filter(Boolean).join(' · ')}
-                              </span>
-                            )}
                             <small>
                               {m.watches.candidateInfo(candidate.paperCount, candidate.citationCount, candidate.hIndex)}
                             </small>
@@ -514,12 +515,12 @@ export function WatchSettings() {
                       </div>
                       <StructuredList variant="embedded" className="watch-suggestion-list">
                         {suggestions.authors.map((item) => (
-                          <StructuredRow className="watch-suggestion-row" key={item.id}>
+                          <StructuredRow className="watch-suggestion-row" key={suggestedAuthorKey(item)}>
                             <div className="watch-suggestion-copy">
                               <span className="nm">{item.name}</span>
-                              <span>{m.watches.suggestedAuthorInfo(
-                                item.relatedPapers, item.hIndex, item.citationCount,
-                              )}</span>
+                              <span>{'id' in item
+                                ? m.watches.suggestedAuthorInfo(item.relatedPapers, item.hIndex, item.citationCount)
+                                : m.watches.relatedPapers(item.relatedPapers)}</span>
                             </div>
                             <button
                               className="btn" disabled={addingSuggestion !== null}

@@ -11,7 +11,11 @@ export function discoveryReasons(projectName: string, fallbackSeedCount: number,
     reference: '由参考文献召回',
     author: '由同作者论文召回',
   } as const
-  const sources = [...new Set((paper.origins ?? []).map((origin) => origin.source))]
+  const origins = paper.origins ?? []
+  const sources = [...new Set(origins.map((origin) => origin.source))]
+  const viaArxiv = (source: keyof typeof sourceLabels): boolean => origins.some((origin) => (
+    origin.source === source && origin.provider === 'arxiv'
+  ))
   return [
     { kind: 'project' as const, label: `来自项目「${projectName}」` },
     ...matches.slice(0, 2).map((match) => ({
@@ -19,7 +23,7 @@ export function discoveryReasons(projectName: string, fallbackSeedCount: number,
       label: `匹配${match.core ? '核心' : '轮换'}方向「${match.intentLabel}」`,
     })),
     ...sources.slice(0, 2).map((source) => ({
-      kind: 'source' as const, label: sourceLabels[source],
+      kind: 'source' as const, label: viaArxiv(source) ? `${sourceLabels[source]} · arXiv` : sourceLabels[source],
     })),
     ...((paper.wikiTerms ?? []).length === 0 ? [] : [{
       kind: 'wiki' as const,
@@ -43,7 +47,7 @@ const withMatch = (
   const origins = [...(paper.origins ?? [])]
   for (const origin of incoming?.origins ?? []) {
     if (!origins.some((held) => (
-      held.source === origin.source
+      held.source === origin.source && held.provider === origin.provider
       && held.seedPaperIds.join('\n') === origin.seedPaperIds.join('\n')
     ))) origins.push(origin)
   }

@@ -390,6 +390,7 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
  */
 export function Projects() {
   const [openId, setOpenId] = useState<string | null>(null)
+  const [arrivalTask, setArrivalTask] = useState<string | null>(null)
   const [origin, setOrigin] = useState<ScreenKey | null>(null)
   const [planTab, setPlanTab] = useState<PlanTab>('task')
   const [recordTab, setRecordTab] = useState<RecordTab>('tl')
@@ -412,6 +413,7 @@ export function Projects() {
     consumed.current = jump.seq
     setOpenId(jump.target)
     setOrigin(jump.from)
+    setArrivalTask(jump.anchor?.task ?? null)
   }, [jump])
 
   return openId === null
@@ -420,6 +422,7 @@ export function Projects() {
       <ProjectDetail
         projectId={openId} onBack={close} onReturn={back}
         tab={planTab} onTab={setPlanTab} record={recordTab} onRecord={setRecordTab}
+        arrivalTask={arrivalTask} onArrived={() => setArrivalTask(null)}
       />
     )
 }

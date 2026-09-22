@@ -357,6 +357,11 @@ registerHandler('delivery.setSemanticKey', async (params) => {
   return semanticKey.status()
 })
 
+registerHandler('delivery.checkSemanticKey', (params) => {
+  EmptyParamsSchema.parse(params)
+  return background.checkSemanticKey()
+})
+
 registerHandler('extensions.pluginVersion', (params) => {
   EmptyParamsSchema.parse(params)
   return { version: pluginCheck.latest(), checkedAt: pluginCheck.checkedAt() }

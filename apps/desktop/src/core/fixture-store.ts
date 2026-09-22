@@ -32,7 +32,7 @@ import {
   renamedOptions, restoredColumn, retypedColumn,
 } from './paper-library/index.js'
 import {
-  chatSource, conclusionCounts, MANUAL_SOURCE, overviewResearch, paperLabel, placeNode,
+  chatSource, conclusionCounts, MANUAL_SOURCE, overviewResearch, placeNode,
   readWorkspaceAgentIdeas, withProjectLinks,
 } from './project-management/index.js'
 import { inboxFields, unseenPapers } from './inbox/dedup.js'
@@ -235,7 +235,7 @@ export function createFixtureStore(
   const detailOf = (project: FixtureProject): ProjectDetail => {
     const paperTitles = Object.fromEntries(project.papers.flatMap((id) => {
       const paper = byId.get(id)
-      return paper === undefined ? [] : [[id, paperLabel(paper)]]
+      return paper === undefined ? [] : [[id, paper.title]]
     }))
     return {
       ...structuredClone(project),
@@ -562,7 +562,7 @@ export function createFixtureStore(
       if (patch.title !== undefined || patch.shortTitle !== undefined) {
         const fresh = byId.get(id)!
         chats = chats.map((session) => (session.paperId === id
-          ? { ...session, title: fresh.shortTitle || fresh.title }
+          ? { ...session, title: fresh.title }
           : session))
       }
       if (patch.readState !== undefined) stated.add(id)
@@ -607,7 +607,7 @@ export function createFixtureStore(
       })
       const restored = byId.get(id)!
       chats = chats.map((session) => (session.paperId === id
-        ? { ...session, title: restored.shortTitle || restored.title }
+        ? { ...session, title: restored.title }
         : session))
       if (snapshot.readState === undefined) stated.delete(id)
       else stated.add(id)
@@ -1271,7 +1271,7 @@ export function createFixtureStore(
       }), null)
       const filing = topics === null ? null : topicProposal(
         result.paper.id,
-        result.paper.shortTitle ?? entry.title,
+        entry.title,
         [],
         [entry.vault.topic],
         wikiCards(wiki),
@@ -1690,7 +1690,7 @@ export function createFixtureStore(
       const paper = byId.get(paperId)
       if (paper === undefined) throw new Error(`论文不存在:${paperId}`)
       const created: ChatRecord = {
-        id: nextId('chat'), title: paper.shortTitle || paper.title, named: true, archived: false, messages: [], paperId,
+        id: nextId('chat'), title: paper.title, named: true, archived: false, messages: [], paperId,
       }
       chats = [created, ...chats]
       return chatSession(created)

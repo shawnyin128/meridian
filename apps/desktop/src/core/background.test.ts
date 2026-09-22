@@ -9,11 +9,12 @@ import { searchUrl, watchQuery } from './net/arxiv.js'
 import { minimalPdf } from './net/minimal-pdf.js'
 
 const VAULT = resolve(import.meta.dirname, 'fixtures/vault')
-const setup = () => {
+const setup = (options: { semanticKey?: string } = {}) => {
   const store = createFixtureStore(() => '2026-08-25')
   const background = createBackground({
     store, get: createCannedGet(cannedNet as CannedTable, VAULT), probe: probePdf,
     arxivIntervalMs: 0, sleep: async () => {}, now: () => 0,
+    ...(options.semanticKey === undefined ? {} : { semanticScholarApiKey: () => options.semanticKey }),
   })
   return { store, background }
 }
@@ -71,7 +72,7 @@ describe('createBackground', () => {
   })
 
   it('按项目论文生成独立发现流,并把显式负反馈带进下一轮种子', async () => {
-    const { store, background } = setup()
+    const { store, background } = setup({ semanticKey: 'saved-key' })
     const result = await background.fetchDiscoveries('draft')
     expect(result).toEqual({
       projects: 1, intents: 3, added: 2, deferredProjects: 0,
@@ -97,7 +98,23 @@ describe('createBackground', () => {
     expect(store.discoverySeeds('draft').negative).toContain('semantic-branch-acceptance')
   })
 
-  it('保存的 Semantic Scholar key 随每次 Semantic Scholar 请求带上，改了立即生效', async () => {
+  it('没存 key 时项目发现只搜 arXiv，推荐理由标明 arXiv', async () => {
+    const store = createFixtureStore(() => '2026-08-25')
+    const canned = createCannedGet(cannedNet as CannedTable, VAULT)
+    const hosts: string[] = []
+    const background = createBackground({
+      store,
+      get: async (url, options) => { hosts.push(new URL(url).hostname); return canned(url, options) },
+      probe: probePdf, arxivIntervalMs: 0, sleep: async () => {}, now: () => Date.UTC(2026, 8, 22),
+    })
+    const result = await background.fetchDiscoveries('draft')
+    expect(result.added).toBeGreaterThan(0)
+    expect(new Set(hosts)).toEqual(new Set(['export.arxiv.org']))
+    const rows = store.listInbox({ kind: 'discovery', project: 'draft' })
+    expect(rows[0]!.reasons).toEqual(expect.arrayContaining([{ kind: 'source', label: '由相似论文召回 · arXiv' }]))
+  })
+
+  it('存了 key 后每次 Semantic Scholar 请求都带上，改了立即生效', async () => {
     const store = createFixtureStore(() => '2026-08-25')
     const canned = createCannedGet(cannedNet as CannedTable, VAULT)
     const keys: (string | undefined)[] = []
@@ -108,20 +125,18 @@ describe('createBackground', () => {
         if (url.includes('semanticscholar.org')) keys.push(options.headers?.['x-api-key'])
         return canned(url, options)
       },
-      probe: probePdf, arxivIntervalMs: 0, sleep: async () => {}, now: () => 0,
+      probe: probePdf, arxivIntervalMs: 0, sleep: async () => {}, now: () => Date.UTC(2026, 8, 22),
       semanticScholarApiKey: () => saved.key,
     })
     await background.fetchDiscoveries('draft')
-    expect(keys.length).toBeGreaterThan(0)
-    expect(new Set(keys)).toEqual(new Set([undefined]))
-    keys.length = 0
+    expect(keys).toEqual([])
     saved.key = 'saved-key'
     await background.fetchDiscoveries('draft', true)
     expect(keys.length).toBeGreaterThan(0)
     expect(new Set(keys)).toEqual(new Set(['saved-key']))
   })
 
-  it('不用模型即可从学术元数据生成主题与稳定作者建议', async () => {
+  it('没存 key 时关注建议只问 arXiv，按姓名推荐作者', async () => {
     const { background } = setup()
     const result = await background.suggestWatches({
       focus: 'efficient inference with speculative decoding',
@@ -132,38 +147,43 @@ describe('createBackground', () => {
       { name: 'batch-aware verification', relatedPapers: 0 },
       { name: 'speculative decoding', relatedPapers: 2 },
     ]))
-    expect(result.authors[0]).toMatchObject({
-      id: 'fixture-author-1', name: 'Mei Lin', relatedPapers: 2,
-    })
+    expect(result.authors[0]).toEqual({ name: 'Mei Lin', relatedPapers: 2 })
   })
 
-  it('没存 key 时关注建议和作者搜索只问 OpenAlex；存了 key 先问 Semantic Scholar，失败再由 OpenAlex 回答', async () => {
+  it('存了 key 时关注建议先问 Semantic Scholar，失败再由 arXiv 回答；作者搜索只问 Semantic Scholar', async () => {
     const store = createFixtureStore(() => '2026-08-25')
     const canned = createCannedGet(cannedNet as CannedTable, VAULT)
     const hosts: string[] = []
-    const saved: { key?: string } = {}
+    const clock = { now: Date.UTC(2026, 8, 22) }
     const background = createBackground({
       store,
       get: async (url, options) => {
         hosts.push(new URL(url).hostname)
-        return url.includes('semanticscholar.org') ? { status: 429, body: new Uint8Array() } : canned(url, options)
+        return url.includes('/paper/search') ? { status: 429, body: new Uint8Array() } : canned(url, options)
       },
-      probe: probePdf, arxivIntervalMs: 0, sleep: async () => {}, now: () => 0,
-      semanticScholarApiKey: () => saved.key,
+      probe: probePdf, arxivIntervalMs: 0, sleep: async (ms) => { clock.now += ms }, now: () => clock.now,
+      semanticScholarApiKey: () => 'saved-key',
     })
-    await background.suggestWatches({ focus: 'speculative decoding' })
-    await background.searchAuthors('Song Han')
-    expect(new Set(hosts)).toEqual(new Set(['api.openalex.org']))
+    const result = await background.suggestWatches({ focus: 'speculative decoding' })
+    expect(hosts[0]).toBe('api.semanticscholar.org')
+    expect(hosts).toContain('export.arxiv.org')
+    expect(result.authors[0]).toEqual({ name: 'Mei Lin', relatedPapers: 2 })
 
     hosts.length = 0
-    saved.key = 'saved-key'
-    const result = await background.suggestWatches({ focus: 'speculative decoding' })
-    const authors = await background.searchAuthors('Song Han')
-    // The 429 starts a cooldown, so the author search right after it goes straight to OpenAlex.
-    expect(hosts.filter((host) => host === 'api.semanticscholar.org')).toHaveLength(1)
-    expect(hosts[0]).toBe('api.semanticscholar.org')
-    expect(result.authors[0]).toMatchObject({ source: 'openalex' })
-    expect(authors[0]).toMatchObject({ source: 'openalex' })
+    const authors = await background.searchAuthors('Alex Kim')
+    expect(new Set(hosts)).toEqual(new Set(['api.semanticscholar.org']))
+    expect(authors[0]).toMatchObject({ source: 'semantic-scholar', affiliations: ['Massachusetts Institute of Technology'] })
+  })
+
+  it('没存 key 时作者搜索不发请求，直接说明要填 key 或按姓名保存', async () => {
+    const store = createFixtureStore(() => '2026-08-25')
+    let requests = 0
+    const background = createBackground({
+      store, get: async () => { requests += 1; return { status: 200, body: new Uint8Array() } },
+      probe: probePdf, arxivIntervalMs: 0, sleep: async () => {}, now: () => 0,
+    })
+    await expect(background.searchAuthors('Song Han')).rejects.toThrow('填入 Semantic Scholar key 后才能区分同名作者')
+    expect(requests).toBe(0)
   })
 
   it('作者服务持续限流时给可恢复的说明,不把裸 429 暴露给界面', async () => {
@@ -175,10 +195,11 @@ describe('createBackground', () => {
       arxivIntervalMs: 0,
       sleep: async () => {},
       now: () => 0,
+      semanticScholarApiKey: () => 'saved-key',
     })
 
     await expect(background.searchAuthors('Song Han')).rejects.toThrow(
-      'OpenAlex 正在限流，请稍后重试；也可以先按姓名保存为未确认作者',
+      'Semantic Scholar 正在限流，请稍后重试；也可以先按姓名保存为未确认作者',
     )
   })
 })

@@ -294,11 +294,12 @@ function Upcoming({ rows, onOpen }: { rows: ProjectOverview[]; onOpen: (projectI
  * `onNewMilestone` returns whether it was written this time.
  */
 function OverviewGantt({
-  rows, onOpenProject, onMoveTask, onMoveTaskWindow, onMoveMilestone, onRenameMilestone,
+  rows, onOpenProject, onOpenTask, onMoveTask, onMoveTaskWindow, onMoveMilestone, onRenameMilestone,
   onDeleteMilestone, onNewMilestone,
 }: {
   rows: ProjectOverview[]
   onOpenProject: (projectId: string) => void
+  onOpenTask: (projectId: string, taskId: string) => void
   onMoveTask: (
     projectId: string, taskId: string, start: string, end: string, days: number
   ) => void
@@ -367,8 +368,9 @@ function OverviewGantt({
           onClick={() => { setPop(null); setShowInactive((shown) => !shown) }}
         >{m.research.overview.historyProjects}</button>
       )}
-      onLabelClick={onOpenProject}
-      onTaskClick={(projectId) => onOpenProject(projectId)}
+      onLabelClick={(projectId, kind, itemId) => (kind === 'task' && itemId !== undefined
+        ? onOpenTask(projectId, itemId) : onOpenProject(projectId))}
+      onTaskClick={onOpenTask}
       onMilestoneClick={(projectId, milestoneId, point: TimelinePoint) => {
         const milestone = rows.find((project) => project.id === projectId)
           ?.milestones.find((item) => item.id === milestoneId)
@@ -412,6 +414,7 @@ export function ResearchOverview() {
   }, [revision, reportError])
 
   const openProject = useCallback((id: string) => jumpTo('project', id), [jumpTo])
+  const openTask = useCallback((id: string, task: string) => jumpTo('project', id, { task }), [jumpTo])
 
   const moveTask = useCallback((
     projectId: string, taskId: string, start: string, end: string, days: number,
@@ -474,7 +477,7 @@ export function ResearchOverview() {
           <PageBody>
             <SectionHeading>{m.research.overview.timelineHeading}</SectionHeading>
             <OverviewGantt
-              rows={rows} onOpenProject={openProject} onMoveTask={moveTask}
+              rows={rows} onOpenProject={openProject} onOpenTask={openTask} onMoveTask={moveTask}
               onMoveTaskWindow={moveTaskWindow}
               onMoveMilestone={moveMilestone} onRenameMilestone={renameMilestone}
               onDeleteMilestone={deleteMilestone} onNewMilestone={newMilestone}

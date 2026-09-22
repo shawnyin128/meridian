@@ -43,6 +43,8 @@ export type RecommendationSource = 'similarity' | 'citation' | 'reference' | 'au
 export type RecommendationOrigin = {
   source: RecommendationSource
   seedPaperIds: string[]
+  /** Set when arXiv search found the paper; Semantic Scholar origins leave it out. */
+  provider?: 'arxiv'
 }
 
 export type DiscoveryIntentCache = { fingerprint: string; fetchedAt: number }
@@ -72,7 +74,7 @@ export type DiscoveryPaper = RemotePaper & {
 /** Replaceable boundary for any project-seeded paper recommendation backend. */
 export type RecommendationProvider = {
   recommend(
-    positivePaperIds: string[], negativePaperIds: string[], source?: RecommendationSource,
+    positive: RecommendationSeed[], negativePaperIds: string[], source?: RecommendationSource,
   ): Promise<DiscoveryPaper[]>
 }
 

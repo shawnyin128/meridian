@@ -4,7 +4,9 @@ import { minimalPdf } from '../net/minimal-pdf.js'
 import { ON_POLICY_DISTILLATION_SAMPLE } from './fixtures/on-policy-distillation.js'
 import { clusterRecommendationProfile, recommendationFingerprint, recommendationQueryIntent } from './profile.js'
 import { createRecommendationService, DISCOVERY_COOLDOWN_MS } from './service.js'
-import type { DiscoverySchedule, RecommendationProfile, RecommendationProvider } from './types.js'
+import type {
+  DiscoverySchedule, RecommendationProfile, RecommendationProvider, RecommendationSeed,
+} from './types.js'
 
 describe('project recommendation service', () => {
   it('用五篇 OPD/KD 论文建档后发布 provider 给出的 Osprey,并把正反馈并入下一轮', async () => {
@@ -24,8 +26,8 @@ describe('project recommendation service', () => {
       store.addPaper(project.id, imported.id)
     }
 
-    const recommend = vi.fn(async (positive: string[]) => (
-      positive.includes('ARXIV:2605.29343') ? [ON_POLICY_DISTILLATION_SAMPLE.expected] : []
+    const recommend = vi.fn(async (positive: RecommendationSeed[]) => (
+      positive.some((seed) => seed.paperId === 'ARXIV:2605.29343') ? [ON_POLICY_DISTILLATION_SAMPLE.expected] : []
     ))
     const onWrite = vi.fn()
     const service = createRecommendationService({ store, provider: { recommend }, onWrite, now: () => 1 })
@@ -34,7 +36,7 @@ describe('project recommendation service', () => {
       cachedIntents: 0, failedIntents: 0,
     })
     expect(recommend).toHaveBeenCalledTimes(2)
-    expect(recommend.mock.calls.map(([positive]) => positive)).toEqual([
+    expect(recommend.mock.calls.map(([positive]) => positive.map((seed) => seed.paperId))).toEqual([
       ['ARXIV:2605.29343'],
       ['ARXIV:2510.15982'],
     ])
@@ -117,8 +119,8 @@ describe('project recommendation service', () => {
       ...ON_POLICY_DISTILLATION_SAMPLE.expected,
       semanticId: 'new-paper', id: '2609.99999', title: 'A genuinely new candidate',
     }
-    const recommend = vi.fn(async (positive: string[], negative: string[]) => {
-      expect(positive).toEqual(['ARXIV:2605.29343'])
+    const recommend = vi.fn(async (positive: RecommendationSeed[], negative: string[]) => {
+      expect(positive.map((seed) => seed.paperId)).toEqual(['ARXIV:2605.29343'])
       expect(negative).toEqual([ON_POLICY_DISTILLATION_SAMPLE.expected.semanticId])
       return [ON_POLICY_DISTILLATION_SAMPLE.expected, next]
     })
@@ -274,8 +276,8 @@ describe('project recommendation service', () => {
       addDiscoveryEntries: () => 0,
     }
     const requested: string[] = []
-    const recommend = vi.fn(async (positive: string[]) => {
-      requested.push(positive[0]!)
+    const recommend = vi.fn(async (positive: RecommendationSeed[]) => {
+      requested.push(positive[0]!.paperId)
       return []
     })
     let now = 1
@@ -335,7 +337,7 @@ describe('project recommendation service', () => {
       },
       provider: {
         recommend: async (positive) => {
-          requested.push(positive[0]!)
+          requested.push(positive[0]!.paperId)
           return []
         },
       },

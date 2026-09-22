@@ -7,11 +7,6 @@ export const MANUAL_SOURCE = '手动添加'
 /** Returns the source a conclusion saved from the chat session titled `title` records. */
 export const chatSource = (title: string): string => `对话「${title}」`
 
-/** Returns the concise label a project uses for a linked paper. */
-export function paperLabel(paper: Pick<PaperRow, 'title' | 'shortTitle'>): string {
-  return paper.shortTitle || paper.title
-}
-
 /** Returns how many conclusions in `list` are verified, pending and conflicting. */
 export function conclusionCounts(list: readonly Conclusion[]): Conclusions {
   return {

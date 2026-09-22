@@ -23,7 +23,6 @@ function setup(
     store,
     arxiv: {
       search: async (query) => { queries.push(query); return search(query) },
-      lookup: async () => null,
     },
     ...(scholar === undefined ? {} : { scholar }),
     ...(authorPapers === undefined ? {} : { authorPapers }),
@@ -156,6 +155,22 @@ describe('createWatchFetcher', () => {
     expect(authorIds).toEqual(['semantic-scholar:s2-mei-lin'])
     expect(queries).toEqual([])
     expect(store.listInbox().some((entry) => entry.title === 'Verified Author')).toBe(true)
+  })
+
+  it('早先按 OpenAlex 保存的作者改按姓名从 arXiv 抓', async () => {
+    const authorIds: string[] = []
+    const { store, fetcher, queries } = setup(async () => [], undefined, async (identity) => {
+      authorIds.push(identity.id)
+      return []
+    })
+    store.createWatch({
+      type: 'author', name: 'Mei Lin',
+      identity: { source: 'openalex', id: 'A5070926896', affiliations: ['MIT'] },
+    })
+    const saved = store.listWatches().find((watch) => watch.name === 'Mei Lin')!
+    await fetcher.run([saved.id])
+    expect(authorIds).toEqual([])
+    expect(queries).toEqual(['au:"Mei Lin"'])
   })
 
   it('抓着的时候状态是 checking;接连两次按先后跑完', async () => {

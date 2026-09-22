@@ -1,6 +1,6 @@
 import type {
   AuthorCandidate, DiscoveryFetchResult, InboxDownloadResult, JobsStatus, PaperImportResult,
-  WatchSuggestionResult,
+  SemanticKeyCheckResult, WatchSuggestionResult,
 } from '../shared/contract.js'
 import { createInboxDownloads } from './inbox/download.js'
 import { createWatchFetcher } from './inbox/fetch.js'
@@ -9,13 +9,13 @@ import { createArxiv } from './net/arxiv.js'
 import type { HttpGet } from './net/http.js'
 import { createRateLimitedGet, HttpStatusError, netReason } from './net/http.js'
 import { createSemanticAuthors } from './net/semantic-authors.js'
-import { createWatchSuggestions } from './net/watch-suggestions.js'
-import { createOpenAlex } from './net/openalex.js'
+import { createArxivSuggestionSource, createWatchSuggestions } from './net/watch-suggestions.js'
 import { createAuthorSearch, type ScholarSource } from './net/scholar-sources.js'
-import { createSemanticSearch } from './net/semantic-search.js'
+import { checkSemanticKey, createSemanticSearch } from './net/semantic-search.js'
 import { createMetadataQueue, type PdfProbe } from './paper-library/index.js'
 import {
-  createRecommendationService, createSemanticRecommendations, createSemanticScholar,
+  createArxivRecommendations, createFallbackRecommendations, createRecommendationService,
+  createSemanticRecommendations, createSemanticScholar,
 } from './recommendation/index.js'
 import type { VaultStore } from './vault.js'
 
@@ -26,6 +26,8 @@ export type Background = {
   searchAuthors(query: string): Promise<AuthorCandidate[]>
   suggestWatches(input: { focus: string; seedTopics?: string[] }): Promise<WatchSuggestionResult>
   fetchDiscoveries(projectId?: string, force?: boolean): Promise<DiscoveryFetchResult>
+  /** One Semantic Scholar request with the saved key; fails as authentication when no key is saved. */
+  checkSemanticKey(): Promise<SemanticKeyCheckResult>
   armSchedule(): () => void
   status(): JobsStatus
   idle(): Promise<void>
@@ -53,27 +55,34 @@ export function createBackground(deps: {
     const apiKey = semanticKey()
     return deps.get(url, apiKey ? { ...options, headers: { ...options.headers, 'x-api-key': apiKey } } : options)
   }
-  const semanticGet = createRateLimitedGet(keyedGet, { minIntervalMs: 1_100, sleep: deps.sleep, now: deps.now })
+  // Semantic Scholar throttles about a quarter of keyed requests at random and sends no Retry-After,
+  // so a short pause before the next request serves better than a long cooldown.
+  const semanticGet = createRateLimitedGet(keyedGet, {
+    minIntervalMs: 1_100, throttleCooldownMs: 2_000, sleep: deps.sleep, now: deps.now,
+  })
   const scholar = createSemanticScholar({ get: semanticGet, sleep: deps.sleep, now: deps.now })
   const authors = createSemanticAuthors({ get: semanticGet, sleep: deps.sleep })
-  const openAlex = createOpenAlex({ get: deps.get, sleep: deps.sleep, now: deps.now })
   const semanticSearch = createSemanticSearch({ get: semanticGet, sleep: deps.sleep })
-  // Semantic Scholar leads once a key is saved; OpenAlex needs no key and answers whenever it cannot.
+  const arxivSuggestions = createArxivSuggestionSource(arxiv)
+  // Semantic Scholar leads once a key is saved; arXiv needs no key and answers whenever it cannot.
   const scholarSources = (): readonly ScholarSource[] => (
-    semanticKey() === undefined ? [openAlex] : [semanticSearch, openAlex]
+    semanticKey() === undefined ? [arxivSuggestions] : [semanticSearch, arxivSuggestions]
   )
   const watchSuggestions = createWatchSuggestions({ sources: scholarSources, now: deps.now })
-  const authorSearch = createAuthorSearch({ sources: scholarSources, now: deps.now })
-  const recommendations = createSemanticRecommendations({ get: semanticGet, sleep: deps.sleep })
+  const authorSearch = createAuthorSearch({ sources: () => [semanticSearch], now: deps.now })
+  const semanticRecommendations = createSemanticRecommendations({ get: semanticGet, sleep: deps.sleep })
+  const arxivRecommendations = createArxivRecommendations({ arxiv, now: deps.now })
   const recommendation = createRecommendationService({
-    store: deps.store, provider: recommendations, onWrite, now: deps.now,
+    store: deps.store, onWrite, now: deps.now,
+    provider: createFallbackRecommendations(() => (
+      semanticKey() === undefined ? [arxivRecommendations] : [semanticRecommendations, arxivRecommendations]
+    )),
   })
   const metadata = createMetadataQueue({ store: deps.store, probe: deps.probe, provider: arxiv, onWrite })
   const downloads = createInboxDownloads({ store: deps.store, get: deps.get, onWrite })
   const fetcher = createWatchFetcher({
     store: deps.store, arxiv, scholar, now: deps.now, onWrite,
-    authorPapers: (identity) => (identity.source === 'openalex'
-      ? openAlex.authorWorks(identity.id) : authors.papers(identity.id)),
+    authorPapers: (identity) => authors.papers(identity.id),
   })
   return {
     importPaper(filename, bytes) {
@@ -86,11 +95,14 @@ export function createBackground(deps: {
     downloadInbox: (id) => downloads.download(id),
     fetchWatches: (watchIds) => fetcher.run(watchIds),
     async searchAuthors(query) {
+      if (semanticKey() === undefined) {
+        throw new Error('填入 Semantic Scholar key 后才能区分同名作者；也可以先按姓名保存为未确认作者')
+      }
       try {
         return await authorSearch.search(query)
       } catch (error) {
         if (error instanceof HttpStatusError && error.status === 429) {
-          throw new Error('OpenAlex 正在限流，请稍后重试；也可以先按姓名保存为未确认作者')
+          throw new Error('Semantic Scholar 正在限流，请稍后重试；也可以先按姓名保存为未确认作者')
         }
         throw new Error(`没能搜索作者:${netReason(error)}`)
       }
@@ -100,7 +112,7 @@ export function createBackground(deps: {
         return await watchSuggestions.suggest(input)
       } catch (error) {
         if (error instanceof HttpStatusError && error.status === 429) {
-          throw new Error('OpenAlex 正在限流，请稍后重试')
+          throw new Error('论文检索正在限流，请稍后重试')
         }
         throw new Error(`没能生成关注建议:${netReason(error)}`)
       }
@@ -123,6 +135,9 @@ export function createBackground(deps: {
       }
       return result
     },
+    checkSemanticKey: () => (semanticKey() === undefined
+      ? Promise.resolve({ state: 'failed', reason: 'authentication', detail: '还没有保存 key' })
+      : checkSemanticKey(semanticGet)),
     armSchedule: () => armFetchSchedule(fetcher, deps.now),
     status: () => ({
       writes,

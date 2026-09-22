@@ -1,4 +1,4 @@
-import type { AuthorCandidate, AuthorIdentity } from '../../shared/contract.js'
+import type { AuthorCandidate } from '../../shared/contract.js'
 
 const AUTHOR_SEARCH_CACHE_MS = 24 * 60 * 60 * 1_000
 
@@ -6,20 +6,26 @@ const AUTHOR_SEARCH_CACHE_MS = 24 * 60 * 60 * 1_000
 export type SearchPaper = {
   title: string
   year: number | null
+  /** Author ids mean something only within the source; a source without ids uses the name. */
   authors: { id: string; name: string }[]
   citationCount: number
   influentialCitationCount: number
 }
 
-/** An author record plus the latest year the source saw them publish, or null when it does not say. */
-export type ScholarAuthor = { candidate: AuthorCandidate; activeYear: number | null }
-
-/** One scholarly graph that watch suggestions and author search can read. Ids only mean something within `name`. */
+/**
+ * A source watch suggestions read papers from. A source with `authorImpacts` knows stable author
+ * identities; one without it only names authors.
+ */
 export type ScholarSource = {
-  name: AuthorIdentity['source']
+  name: 'semantic-scholar' | 'arxiv'
   /** Relevance-ranked papers published since `sinceYear`. */
   searchPapers(query: string, sinceYear: number): Promise<SearchPaper[]>
-  authorImpacts(ids: readonly string[]): Promise<ScholarAuthor[]>
+  authorImpacts?(ids: readonly string[]): Promise<AuthorCandidate[]>
+}
+
+/** A source that can find author identities by name. */
+export type AuthorSearchSource = {
+  name: string
   searchAuthors(query: string): Promise<AuthorCandidate[]>
 }
 
@@ -48,7 +54,7 @@ export type AuthorSearch = {
  * successful answer for the same name and source order is reused for a day, and concurrent lookups merge.
  */
 export function createAuthorSearch(deps: {
-  sources: () => readonly ScholarSource[]
+  sources: () => readonly AuthorSearchSource[]
   now?: () => number
   cacheMs?: number
 }): AuthorSearch {

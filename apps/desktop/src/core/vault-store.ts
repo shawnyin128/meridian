@@ -23,7 +23,7 @@ import {
   type PaperWrite,
 } from './paper-library/index.js'
 import {
-  chatSource, conclusionCounts, MANUAL_SOURCE, overviewResearch, paperLabel, placeNode,
+  chatSource, conclusionCounts, MANUAL_SOURCE, overviewResearch, placeNode,
   projectPageText, projectWorkspaceRoot, projectWorkspaceSsh, readProjectPage,
   readProjectWorkspace, readWorkspaceAgentIdeas, withProjectLinks, writeProjectFields,
   writeProjectWorkspaceState, type ProjectRecord,
@@ -627,7 +627,7 @@ export function createVaultStore(
     delete stored.workspaceSsh
     const paperTitles = Object.fromEntries(stored.papers.flatMap((id) => {
       const paper = papers.get(id)
-      return paper === undefined ? [] : [[id, paperLabel(paper)]]
+      return paper === undefined ? [] : [[id, paper.title]]
     }))
     const workspace = readProjectWorkspace(project)
     return {
@@ -1003,7 +1003,7 @@ export function createVaultStore(
       if (patch.title !== undefined || patch.shortTitle !== undefined) {
         const fresh = papers.get(id)!
         chats = chats.map((session) => (session.paperId === id
-          ? { ...session, title: fresh.shortTitle || fresh.title }
+          ? { ...session, title: fresh.title }
           : session))
         save('chats', chats)
       }
@@ -1038,7 +1038,7 @@ export function createVaultStore(
       })
       const restored = papers.get(id)!
       chats = chats.map((session) => (session.paperId === id
-        ? { ...session, title: restored.shortTitle || restored.title }
+        ? { ...session, title: restored.title }
         : session))
       save('chats', chats)
     },
@@ -1675,7 +1675,7 @@ export function createVaultStore(
       }), null)
       const filing = topics === null ? null : topicProposal(
         result.paper.id,
-        result.paper.shortTitle ?? entry.title,
+        entry.title,
         [],
         [entry.topic],
         wikiCards(wikiData),
@@ -2137,7 +2137,7 @@ export function createVaultStore(
       const paper = papers.get(paperId)
       if (paper === undefined) throw new Error(`论文不存在:${paperId}`)
       const created: ChatRecord = {
-        id: nextId('chat'), title: paper.shortTitle || paper.title, named: true, archived: false, messages: [], paperId,
+        id: nextId('chat'), title: paper.title, named: true, archived: false, messages: [], paperId,
       }
       chats = [created, ...chats]
       save('chats', chats)

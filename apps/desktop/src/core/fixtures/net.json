@@ -67,21 +67,13 @@
     "status": 200,
     "text": "{\"recommendedPapers\":[{\"paperId\":\"semantic-branch-acceptance\",\"title\":\"Adaptive Verification Paths for Speculative Decoding\",\"abstract\":\"A project-conditioned study of adaptive verification paths and acceptance-aware branching.\",\"authors\":[{\"name\":\"Mei Lin\"},{\"name\":\"Arun Patel\"}],\"venue\":\"ICLR 2027\",\"publicationDate\":\"2026-09-13\",\"citationCount\":4,\"influentialCitationCount\":1,\"externalIds\":{\"ArXiv\":\"2609.13001\"},\"publicationTypes\":[\"Conference\"]},{\"paperId\":\"semantic-serving-tree\",\"title\":\"Serving-Aware Draft Trees under Shared Prefixes\",\"abstract\":\"Draft-tree construction conditioned on batch size and prefix sharing.\",\"authors\":[{\"name\":\"Rui Chen\"}],\"venue\":\"arXiv\",\"publicationDate\":\"2026-09-10\",\"citationCount\":1,\"influentialCitationCount\":0,\"externalIds\":{\"ArXiv\":\"2609.10002\"},\"publicationTypes\":[]}]}"
   },
-  "https://api.openalex.org/works?search=*": {
+  "https://export.arxiv.org/api/query?search_query=%28*": {
     "status": 200,
-    "text": "{\"results\":[{\"id\":\"https://openalex.org/W-fixture-watch-1\",\"title\":\"Speculative Decoding with Adaptive Draft Trees\",\"cited_by_count\":342,\"authorships\":[{\"author\":{\"id\":\"https://openalex.org/fixture-author-1\",\"display_name\":\"Mei Lin\"}},{\"author\":{\"id\":\"https://openalex.org/fixture-author-2\",\"display_name\":\"Arun Patel\"}}]},{\"id\":\"https://openalex.org/W-fixture-watch-2\",\"title\":\"Efficient Speculative Decoding for Batched Inference\",\"cited_by_count\":188,\"authorships\":[{\"author\":{\"id\":\"https://openalex.org/fixture-author-1\",\"display_name\":\"Mei Lin\"}},{\"author\":{\"id\":\"https://openalex.org/fixture-author-3\",\"display_name\":\"Rui Chen\"}}]},{\"id\":\"https://openalex.org/W-fixture-watch-3\",\"title\":\"Draft Tree Verification for Efficient Inference\",\"cited_by_count\":95,\"authorships\":[{\"author\":{\"id\":\"https://openalex.org/fixture-author-3\",\"display_name\":\"Rui Chen\"}}]}]}"
+    "atom": "<feed xmlns=\"http://www.w3.org/2005/Atom\"><entry><id>http://arxiv.org/abs/2609.13001v1</id><published>2026-09-13T08:00:00Z</published><title>Adaptive Verification Paths for Speculative Decoding</title><summary>A project-conditioned study of adaptive verification paths and acceptance-aware branching.</summary><author><name>Mei Lin</name></author><author><name>Arun Patel</name></author></entry><entry><id>http://arxiv.org/abs/2609.10002v1</id><published>2026-09-10T08:00:00Z</published><title>Serving-Aware Draft Trees under Shared Prefixes</title><summary>Draft-tree construction conditioned on batch size and prefix sharing.</summary><author><name>Rui Chen</name></author></entry><entry><id>http://arxiv.org/abs/2609.11003v1</id><published>2026-09-11T08:00:00Z</published><title>Efficient Speculative Decoding for Batched Inference</title><summary>Speculative decoding with draft trees under batched inference, verifying several draft branches per step.</summary><author><name>Mei Lin</name></author><author><name>Rui Chen</name></author></entry></feed>"
   },
-  "https://api.openalex.org/authors?filter=*": {
+  "https://api.semanticscholar.org/graph/v1/author/search?*": {
     "status": 200,
-    "text": "{\"results\":[{\"id\":\"https://openalex.org/fixture-author-1\",\"display_name\":\"Mei Lin\",\"works_count\":126,\"cited_by_count\":8300,\"summary_stats\":{\"h_index\":43},\"last_known_institutions\":[{\"display_name\":\"Massachusetts Institute of Technology\"}]},{\"id\":\"https://openalex.org/fixture-author-2\",\"display_name\":\"Arun Patel\",\"works_count\":94,\"cited_by_count\":6200,\"summary_stats\":{\"h_index\":36},\"last_known_institutions\":[{\"display_name\":\"Stanford University\"}]},{\"id\":\"https://openalex.org/fixture-author-3\",\"display_name\":\"Rui Chen\",\"works_count\":77,\"cited_by_count\":4100,\"summary_stats\":{\"h_index\":31},\"last_known_institutions\":[{\"display_name\":\"Carnegie Mellon University\"}]}]}"
-  },
-  "https://api.openalex.org/authors?search=*": {
-    "status": 200,
-    "kind": "openalex-author-search"
-  },
-  "https://api.openalex.org/works?filter=author.id*": {
-    "status": 200,
-    "kind": "openalex-author-works"
+    "kind": "semantic-author-search"
   },
   "https://api.semanticscholar.org/graph/v1/author/*/papers?*": {
     "status": 200,

@@ -1042,13 +1042,14 @@ describe('vault store on the aggregation layout', () => {
     expect(store.wikiCards().map((c) => c.id)).toEqual(fixture.wikiCards().map((c) => c.id))
   })
 
-  it('项目的论文数只数库里还在的那几篇,标题取短标题', () => {
+  it('项目的论文数只数库里还在的那几篇,标题取完整标题', () => {
     store.createProject('论文数')
     const id = store.listProjects().find((p) => p.name === '论文数')!.id
     store.putProject({ ...store.getProject(id), papers: ['2404.00456', 'no-such-paper'] })
     const detail = store.getProject(id)
     expect(detail.papers).toEqual(['2404.00456', 'no-such-paper'])
-    expect(detail.paperTitles).toEqual({ '2404.00456': 'QuaRot' })
+    expect(detail.paperTitles).toEqual({ '2404.00456': store.getPaper('2404.00456').title })
+    expect(detail.paperTitles['2404.00456']).toMatch(/^QuaRot: /)
     expect(detail.paperCount).toBe(1)
     expect(store.listProjects().find((p) => p.id === id)!.paperCount).toBe(1)
     const page = readFileSync(join(vault, 'wiki', 'projects', `${id}.md`), 'utf8')

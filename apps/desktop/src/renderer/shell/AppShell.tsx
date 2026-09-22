@@ -63,20 +63,23 @@ type Deeper = { tail: CrumbSeg[]; onLeafClick: (() => void) | null }
 /**
  * A cross-screen jump: `screen` is the screen you want to go to, `target` is the recognized landing point on that screen (wiki page id,
  * item id), `from` is the screen that initiates the jump, `seq` is incremented every time it jumps - the target screen relies on it to identify this screen entry
- * Was it jumped in, or re-entered from the sidebar. `anchor` is only possible when jumping into the browser.
+ * Was it jumped in, or re-entered from the sidebar. `anchor` is where to land on the target screen.
  */
-export type ReaderAnchor = {
+export type JumpAnchor = {
+  /** Reader: the page, highlight or note to show, and the side panel to open. */
   page?: number
   highlight?: string
   note?: string
   panel?: 'highlights' | 'notes'
+  /** Project: the task to locate in the plan. */
+  task?: string
 }
 export type ScreenJump = {
   screen: ScreenKey
   target: string
   from: ScreenKey
   seq: number
-  anchor?: ReaderAnchor
+  anchor?: JumpAnchor
 }
 
 const CrumbTailContext = createContext<((tail: CrumbSeg[], onLeafClick: (() => void) | null) => void) | null>(null)
@@ -96,7 +99,7 @@ const VaultRevisionContext = createContext<{ revision: number; bump: () => void 
 const TodayContext = createContext<string | null>(null)
 const JumpContext = createContext<{
   jump: ScreenJump | null
-  open: (screen: ScreenKey, target: string, anchor?: ReaderAnchor) => void
+  open: (screen: ScreenKey, target: string, anchor?: JumpAnchor) => void
   returnTo: (screen: ScreenKey) => void
 } | null>(null)
 /** Which screen does the current children belong to? The hanging screens are all running, and things across the screens must recognize their own grid. */
@@ -197,7 +200,7 @@ export function useToday(): string {
  */
 export function useJump(): {
   jump: ScreenJump | null
-  open: (screen: ScreenKey, target: string, anchor?: ReaderAnchor) => void
+  open: (screen: ScreenKey, target: string, anchor?: JumpAnchor) => void
   returnTo: (screen: ScreenKey) => void
 } {
   const state = useContext(JumpContext)
@@ -575,7 +578,7 @@ export function AppShell({ screens, settings }: {
 
   const jumps = useMemo(() => ({
     jump,
-    open: (next: ScreenKey, target: string, anchor?: ReaderAnchor) => {
+    open: (next: ScreenKey, target: string, anchor?: JumpAnchor) => {
       jumpSeq.current += 1
       setJump({
         screen: next, target, from: screen, seq: jumpSeq.current,

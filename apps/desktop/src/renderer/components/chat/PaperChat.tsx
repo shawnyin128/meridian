@@ -4,7 +4,6 @@ import { chat, feed, idea as ideaApi } from '../../ipc.js'
 import { useBanner, useToast, useVaultRevision } from '../../shell/AppShell.js'
 import { ChatMessageView, plain } from './ChatMessage.js'
 import { BackButton } from '../BackButton.js'
-import { paperShortTitle } from '../../lib/paper-title.js'
 import { FormInput } from '../FormControls.js'
 import { EmptyState } from '../EmptyState.js'
 import { PageError } from '../PageShell.js'
@@ -110,7 +109,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     <aside className="paper-chat stream" aria-label={m.chat.paperChatLabel}>
       <header className="paper-chat-head">
         <BackButton onClick={onBack} />
-        <strong>{paper === null ? m.common.loading : m.chat.paperHeader(paperShortTitle(paper))}</strong>
+        <strong>{paper === null ? m.common.loading : m.chat.paperHeader(paper.title)}</strong>
       </header>
       <PageError error={error} />
       <div className="msgs" ref={stream}>

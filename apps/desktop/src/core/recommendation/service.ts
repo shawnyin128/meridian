@@ -141,9 +141,7 @@ export function createRecommendationService(deps: {
         }
         try {
           const source = recommendationSource(queryIntent, plan.negative, plan.schedule)
-          const found = await deps.provider.recommend(
-            queryIntent.seeds.map((seed) => seed.paperId), plan.negative, source,
-          )
+          const found = await deps.provider.recommend(queryIntent.seeds, plan.negative, source)
           const papers = applyRecommendationSignals(plan.profile, queryIntent, found.filter((paper) => (
             !plan.excluded.has(paper.semanticId) && !plan.excluded.has(`ARXIV:${paper.id}`)
           )))

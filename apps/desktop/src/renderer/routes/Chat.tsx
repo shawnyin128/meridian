@@ -12,7 +12,6 @@ import { useFormat, type Format } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import type { Catalog } from '../messages/catalog.js'
 import { ChatMessageView, plain } from '../components/chat/ChatMessage.js'
-import { shortTitle } from '../lib/paper-title.js'
 import { FOCUS_KEY } from '../../shared/project-signals.js'
 import { PickerPopover } from '../components/PickerPopover.js'
 import { FormInput } from '../components/FormControls.js'
@@ -58,7 +57,7 @@ function mentionsOf(
     })),
     ...rows.map((p): Mention => ({
       kind: 'paper',
-      title: shortTitle(p.title),
+      title: p.title,
       meta: p.year === undefined ? p.readState : `${p.year} · ${p.readState}`,
       entity: p,
     })),

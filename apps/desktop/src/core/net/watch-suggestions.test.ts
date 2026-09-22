@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { AuthorCandidate } from '../../shared/contract.js'
-import type { ScholarAuthor, SearchPaper } from './scholar-sources.js'
-import { createWatchSuggestions, type SuggestionSource } from './watch-suggestions.js'
+import type { RemotePaper } from './arxiv.js'
+import type { SearchPaper } from './scholar-sources.js'
+import {
+  arxivFocusQuery, createArxivSuggestionSource, createWatchSuggestions, type SuggestionSource,
+} from './watch-suggestions.js'
 
 const NOW = Date.UTC(2026, 8, 22)
 
@@ -20,17 +23,15 @@ const papers: SearchPaper[] = [
   },
 ]
 
-const author = (candidate: Omit<AuthorCandidate, 'source'>, activeYear: number | null = 2026): ScholarAuthor => ({
-  candidate: { source: 'openalex', ...candidate }, activeYear,
-})
+const author = (candidate: Omit<AuthorCandidate, 'source'>): AuthorCandidate => ({ source: 'semantic-scholar', ...candidate })
 
-const impacts: ScholarAuthor[] = [
+const impacts: AuthorCandidate[] = [
   author({ id: 'a1', name: 'Ada Expert', affiliations: ['MIT'], paperCount: 120, citationCount: 8_000, hIndex: 42 }),
   author({ id: 'a2', name: 'Ben Researcher', affiliations: ['Stanford'], paperCount: 500, citationCount: 50_000, hIndex: 95 }),
   author({ id: 'a3', name: 'Cy Scholar', affiliations: ['CMU'], paperCount: 70, citationCount: 2_000, hIndex: 28 }),
 ]
 
-const fakeSource = (name: SuggestionSource['name'], found: SearchPaper[], known: ScholarAuthor[]) => {
+const fakeSource = (name: SuggestionSource['name'], found: SearchPaper[], known: AuthorCandidate[] | null) => {
   const calls: { searched: { query: string; sinceYear: number }[]; impacted: string[][] } = { searched: [], impacted: [] }
   const state = { failing: false }
   const source: SuggestionSource = {
@@ -40,16 +41,18 @@ const fakeSource = (name: SuggestionSource['name'], found: SearchPaper[], known:
       if (state.failing) throw new Error(`${name} offline`)
       return structuredClone(found)
     },
-    async authorImpacts(ids) {
-      calls.impacted.push([...ids])
-      return structuredClone(known)
-    },
+    ...(known === null ? {} : {
+      async authorImpacts(ids: readonly string[]) {
+        calls.impacted.push([...ids])
+        return structuredClone(known)
+      },
+    }),
   }
   return { source, calls, fail: () => { state.failing = true } }
 }
 
 const setup = (options: { cacheMs?: number } = {}) => {
-  const fake = fakeSource('openalex', papers, impacts)
+  const fake = fakeSource('semantic-scholar', papers, impacts)
   let clock = NOW
   const service = createWatchSuggestions({ sources: () => [fake.source], now: () => clock, ...options })
   return { service, calls: fake.calls, fail: fake.fail, advance: (ms: number) => { clock += ms } }
@@ -69,7 +72,7 @@ describe('watch suggestions', () => {
       { name: 'speculative decoding', relatedPapers: 2 },
     ]))
     expect(result.authors[0]).toMatchObject({
-      source: 'openalex', id: 'a1', name: 'Ada Expert', relatedPapers: 2, hIndex: 42,
+      source: 'semantic-scholar', id: 'a1', name: 'Ada Expert', relatedPapers: 2, hIndex: 42,
     })
     expect(calls.impacted).toEqual([['a1', 'a3', 'a2']])
     expect(result.stale).toBeUndefined()
@@ -87,7 +90,7 @@ describe('watch suggestions', () => {
       'Parallel Attention Kernels', 'Robust Sparse Routing', 'Sparse Routing Kernels', 'Scalable Mixture Routing',
       'Mixture Routing Attention', 'Adaptive Kernels', 'Adaptive Routing Kernels',
     ]
-    const fake = fakeSource('openalex', titles.map((title) => ({
+    const fake = fakeSource('semantic-scholar', titles.map((title) => ({
       title, year: 2025, authors: [], citationCount: 0, influentialCitationCount: 0,
     })), [])
     const service = createWatchSuggestions({ sources: () => [fake.source], now: () => NOW })
@@ -112,7 +115,7 @@ describe('watch suggestions', () => {
       'Unlocking Efficiency in Decoding', 'Unlocking Efficiency for Serving',
       'Convolutional Neural Networks for Routing', 'Convolutional Neural Networks at Scale',
     ]
-    const fake = fakeSource('openalex', titles.map((title) => ({
+    const fake = fakeSource('semantic-scholar', titles.map((title) => ({
       title, year: 2025, authors: [], citationCount: 0, influentialCitationCount: 0,
     })), [])
     const service = createWatchSuggestions({ sources: () => [fake.source], now: () => NOW })
@@ -127,7 +130,7 @@ describe('watch suggestions', () => {
   })
 
   it('冒号前的系统名不和后面的词拼成短语', async () => {
-    const fake = fakeSource('openalex', ['Medusa: Draft Heads', 'Eagle: Feature Drafting'].map((title) => ({
+    const fake = fakeSource('semantic-scholar', ['Medusa: Draft Heads', 'Eagle: Feature Drafting'].map((title) => ({
       title, year: 2025, authors: [], citationCount: 0, influentialCitationCount: 0,
     })), [])
     const service = createWatchSuggestions({ sources: () => [fake.source], now: () => NOW })
@@ -136,25 +139,9 @@ describe('watch suggestions', () => {
     expect(names.filter((name) => name.startsWith('medusa') || name.startsWith('eagle'))).toEqual([])
   })
 
-  it('研究领域和多数相关作者不同的作者排在同档作者后面', async () => {
-    const found: SearchPaper[] = ['A', 'B'].map((title) => ({
-      title, year: 2025, citationCount: 0, influentialCitationCount: 0,
-      authors: [{ id: 'merged', name: 'Merged' }, { id: 'cs1', name: 'Cs One' }, { id: 'cs2', name: 'Cs Two' }],
-    }))
-    const known = [
-      author({ id: 'merged', name: 'Merged', affiliations: [], paperCount: 900, citationCount: 90_000, hIndex: 90, field: 'Chemistry' }),
-      author({ id: 'cs1', name: 'Cs One', affiliations: [], paperCount: 9, citationCount: 90, hIndex: 5, field: 'Computer Science' }),
-      author({ id: 'cs2', name: 'Cs Two', affiliations: [], paperCount: 9, citationCount: 80, hIndex: 4, field: 'Computer Science' }),
-    ]
-    const fake = fakeSource('openalex', found, known)
-    const service = createWatchSuggestions({ sources: () => [fake.source], now: () => NOW })
-    const { authors } = await service.suggest({ focus: 'moe' })
-    expect(authors.map((item) => item.id)).toEqual(['cs1', 'cs2', 'merged'])
-  })
-
   it('只有单个词可选时也最多给两个', async () => {
     const titles = ['Kernels', 'Kernels', 'Attention', 'Attention', 'Routing', 'Routing', 'Sparsity', 'Sparsity']
-    const fake = fakeSource('openalex', titles.map((title) => ({
+    const fake = fakeSource('semantic-scholar', titles.map((title) => ({
       title, year: 2025, authors: [], citationCount: 0, influentialCitationCount: 0,
     })), [])
     const service = createWatchSuggestions({ sources: () => [fake.source], now: () => NOW })
@@ -176,41 +163,52 @@ describe('watch suggestions', () => {
       author({ id: 'star', name: 'Star', affiliations: [], paperCount: 400, citationCount: 90_000, hIndex: 84 }),
       author({ id: 'steady', name: 'Steady', affiliations: [], paperCount: 30, citationCount: 900, hIndex: 12 }),
     ]
-    const fake = fakeSource('openalex', found, known)
-    const service = createWatchSuggestions({ sources: () => [fake.source], now: () => NOW })
-    const { authors } = await service.suggest({ focus: 'speculative decoding' })
-    expect(authors.map((item) => item.id)).toEqual(['steady', 'star'])
-  })
-
-  it('不推荐近两年没有论文的作者；来源不报活跃年份时看搜到的论文年份', async () => {
-    const found: SearchPaper[] = [
-      { title: 'Speculative Decoding', year: 2023, citationCount: 0, influentialCitationCount: 0,
-        authors: [{ id: 'old', name: 'Retired' }, { id: 'quiet', name: 'Quiet' }, { id: 'fresh', name: 'Fresh' }] },
-      { title: 'Draft Trees', year: 2025, citationCount: 0, influentialCitationCount: 0,
-        authors: [{ id: 'fresh', name: 'Fresh' }] },
-    ]
-    const known = [
-      author({ id: 'old', name: 'Retired', affiliations: [], paperCount: 9, citationCount: 900, hIndex: 9 }, 2021),
-      author({ id: 'quiet', name: 'Quiet', affiliations: [], paperCount: 9, citationCount: 900, hIndex: 9 }, null),
-      author({ id: 'fresh', name: 'Fresh', affiliations: [], paperCount: 9, citationCount: 900, hIndex: 9 }, null),
-    ]
     const fake = fakeSource('semantic-scholar', found, known)
     const service = createWatchSuggestions({ sources: () => [fake.source], now: () => NOW })
     const { authors } = await service.suggest({ focus: 'speculative decoding' })
-    expect(authors.map((item) => item.id)).toEqual(['fresh'])
+    expect(authors.map((item) => item.name)).toEqual(['Steady', 'Star'])
+  })
+
+  it('不推荐相关论文都早于两年前的作者；论文年份不明的照常推荐', async () => {
+    const found: SearchPaper[] = [
+      { title: 'Speculative Decoding', year: 2023, citationCount: 0, influentialCitationCount: 0,
+        authors: [{ id: 'old', name: 'Retired' }] },
+      { title: 'Draft Trees', year: 2025, citationCount: 0, influentialCitationCount: 0,
+        authors: [{ id: 'fresh', name: 'Fresh' }] },
+      { title: 'Tree Verification', year: null, citationCount: 0, influentialCitationCount: 0,
+        authors: [{ id: 'quiet', name: 'Quiet' }] },
+    ]
+    const known = ['old', 'fresh', 'quiet'].map((id) => (
+      author({ id, name: id, affiliations: [], paperCount: 9, citationCount: 900, hIndex: 9 })
+    ))
+    const fake = fakeSource('semantic-scholar', found, known)
+    const service = createWatchSuggestions({ sources: () => [fake.source], now: () => NOW })
+    const { authors } = await service.suggest({ focus: 'speculative decoding' })
+    expect(authors.map((item) => item.name)).toEqual(['fresh', 'quiet'])
+  })
+
+  it('来源不认作者身份时按姓名推荐，合写多篇的排前面', async () => {
+    const fake = fakeSource('arxiv', papers, null)
+    const service = createWatchSuggestions({ sources: () => [fake.source], now: () => NOW })
+    const { authors } = await service.suggest({ focus: 'speculative decoding' })
+    expect(authors).toEqual([
+      { name: 'Ada Expert', relatedPapers: 2 },
+      { name: 'Cy Scholar', relatedPapers: 2 },
+      { name: 'Ben Researcher', relatedPapers: 1 },
+    ])
   })
 
   it('第一个来源失败时整份建议改由下一个来源给出', async () => {
     const semantic = fakeSource('semantic-scholar', papers, impacts)
     semantic.fail()
-    const openAlex = fakeSource('openalex', papers, impacts)
-    const service = createWatchSuggestions({ sources: () => [semantic.source, openAlex.source], now: () => NOW })
+    const arxiv = fakeSource('arxiv', papers, null)
+    const service = createWatchSuggestions({ sources: () => [semantic.source, arxiv.source], now: () => NOW })
     const result = await service.suggest({ focus: 'speculative decoding' })
 
     expect(semantic.calls.searched).toHaveLength(1)
     expect(semantic.calls.impacted).toEqual([])
-    expect(openAlex.calls.impacted).toHaveLength(1)
-    expect(result.authors[0]).toMatchObject({ source: 'openalex', id: 'a1' })
+    expect(arxiv.calls.searched).toHaveLength(1)
+    expect(result.authors[0]).toEqual({ name: 'Ada Expert', relatedPapers: 2 })
   })
 
   it('caches identical requests and returns isolated values', async () => {
@@ -226,10 +224,10 @@ describe('watch suggestions', () => {
 
   it('换了来源顺序就不复用旧缓存', async () => {
     const semantic = fakeSource('semantic-scholar', papers, impacts)
-    const openAlex = fakeSource('openalex', papers, impacts)
+    const arxiv = fakeSource('arxiv', papers, null)
     let withKey = false
     const service = createWatchSuggestions({
-      sources: () => (withKey ? [semantic.source, openAlex.source] : [openAlex.source]), now: () => NOW,
+      sources: () => (withKey ? [semantic.source, arxiv.source] : [arxiv.source]), now: () => NOW,
     })
     await service.suggest({ focus: 'speculative decoding' })
     withKey = true
@@ -250,6 +248,34 @@ describe('watch suggestions', () => {
   it('fails when the source fails and nothing was answered before', async () => {
     const { service, fail } = setup()
     fail()
-    await expect(service.suggest({ focus: 'speculative decoding' })).rejects.toThrow('openalex offline')
+    await expect(service.suggest({ focus: 'speculative decoding' })).rejects.toThrow('semantic-scholar offline')
+  })
+})
+
+describe('arXiv suggestion source', () => {
+  it('把多词短语各自做成全文短语、用 OR 连起来；过长的短语逐词匹配；没有多词短语时才用单个主题词', () => {
+    expect(arxivFocusQuery('I want to focus on speculative decoding with draft trees'))
+      .toBe('all:"speculative decoding" OR all:"draft trees"')
+    expect(arxivFocusQuery('batch aware dynamic verification kernels'))
+      .toBe('(all:batch AND all:aware AND all:dynamic AND all:verification AND all:kernels)')
+    expect(arxivFocusQuery('kernels')).toBe('all:"kernels"')
+    expect(arxivFocusQuery('the of and')).toBeNull()
+  })
+
+  it('按相关度搜近几年的论文，作者只有姓名，id 用小写姓名', async () => {
+    const asked: unknown[] = []
+    const paper: RemotePaper = {
+      id: '2501.00001', title: 'Draft Trees', authors: ['Mei Lin'], abstract: '', submitted: '2025-01-02',
+      journalRef: null, pdf: 'https://arxiv.org/pdf/2501.00001',
+    }
+    const source = createArxivSuggestionSource({
+      searchTopical: async (...args) => { asked.push(args); return [paper] },
+    })
+    await expect(source.searchPapers('draft trees', 2022)).resolves.toEqual([{
+      title: 'Draft Trees', year: 2025, authors: [{ id: 'mei lin', name: 'Mei Lin' }],
+      citationCount: 0, influentialCitationCount: 0,
+    }])
+    expect(asked).toEqual([['all:"draft trees"', 2022, 'relevance']])
+    expect(source.authorImpacts).toBeUndefined()
   })
 })

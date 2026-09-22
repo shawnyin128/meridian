@@ -191,7 +191,8 @@ export function createSemanticRecommendations(deps: {
     limit: RECOMMENDATION_BODY_LIMIT, sleep: deps.sleep,
   }
   return {
-    async recommend(positivePaperIds, negativePaperIds, source = 'similarity') {
+    async recommend(positive, negativePaperIds, source = 'similarity') {
+      const positivePaperIds = positive.map((seed) => seed.paperId)
       if (positivePaperIds.length === 0) return []
       if (source === 'similarity') {
         const body = await requestWithRetry(deps.get, semanticRecommendationsUrl, {

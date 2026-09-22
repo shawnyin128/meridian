@@ -8,10 +8,9 @@ import { papers } from '../ipc.js'
 import { useMessages } from '../messages/useMessages.js'
 import {
   useBanner, useCrumbTail, useJump, useToast, useVaultRevision, type CrumbSeg, type ScreenKey,
-  type ReaderAnchor,
+  type JumpAnchor,
 } from '../shell/AppShell.js'
 import { IconPlus } from '../components/icons.js'
-import { paperShortTitle } from '../lib/paper-title.js'
 import { mergedHighlightRects, normalizedHighlightRects } from './highlight-geometry.js'
 import { PaperChat, type PaperChatPrompt } from '../components/chat/PaperChat.js'
 import { ReaderSidePanel, type ReaderSideTab } from '../components/reader/ReaderSidePanel.js'
@@ -88,7 +87,7 @@ export function Reader() {
   const [sideTab, setSideTab] = useState<ReaderSideTab | null>(null)
   const [focusHighlightId, setFocusHighlightId] = useState<string | null>(null)
   const [chatPrompt, setChatPrompt] = useState<PaperChatPrompt | null>(null)
-  const [arrival, setArrival] = useState<ReaderAnchor | null>(null)
+  const [arrival, setArrival] = useState<JumpAnchor | null>(null)
   const [painted, setPainted] = useState(0)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -463,7 +462,7 @@ export function Reader() {
   }
 
   const tail = useMemo<CrumbSeg[]>(
-    () => (paper === null ? [] : [{ text: paperShortTitle(paper) }]), [paper])
+    () => (paper === null ? [] : [{ text: paper.title }]), [paper])
   useCrumbTail(tail)
 
   const status = error ?? (opened !== null && (doc === null || reading === null) ? m.reader.loadingPdf : null)

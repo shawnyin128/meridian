@@ -12,8 +12,10 @@ import {
   semanticReferenceUrl,
   semanticScholarBatchUrl,
 } from './semantic-scholar.js'
+import type { RecommendationSeed } from '../types.js'
 
 const bytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value))
+const seed = (paperId: string): RecommendationSeed => ({ paperId, title: '', abstract: '', source: 'project' })
 
 describe('Semantic Scholar recommendations', () => {
   it('keeps only usable arXiv papers and preserves API relevance order', () => {
@@ -42,7 +44,7 @@ describe('Semantic Scholar recommendations', () => {
       status: 200, body: bytes({ recommendedPapers: [] }), request: options.body,
     }))
     const client = createSemanticRecommendations({ get, sleep: async () => {} })
-    await client.recommend(['ARXIV:1'], ['s2'])
+    await client.recommend([seed('ARXIV:1')], ['s2'])
     expect(JSON.parse(get.mock.calls[0]![1].body!)).toEqual({
       positivePaperIds: ['ARXIV:1'], negativePaperIds: ['s2'],
     })
@@ -83,9 +85,9 @@ describe('Semantic Scholar recommendations', () => {
       return { status: 200, body: bytes({ data: [] }) }
     }
     const client = createSemanticRecommendations({ get, sleep: async () => {} })
-    await client.recommend(['ARXIV:2605.29343'], [], 'citation')
-    await client.recommend(['ARXIV:2605.29343'], [], 'reference')
-    await client.recommend(['ARXIV:2605.29343'], [], 'author')
+    await client.recommend([seed('ARXIV:2605.29343')], [], 'citation')
+    await client.recommend([seed('ARXIV:2605.29343')], [], 'reference')
+    await client.recommend([seed('ARXIV:2605.29343')], [], 'author')
     expect(urls).toEqual([
       semanticCitationUrl('ARXIV:2605.29343'),
       semanticReferenceUrl('ARXIV:2605.29343'),

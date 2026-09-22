@@ -36,7 +36,7 @@ describe('Semantic Scholar search', () => {
     expect(() => parseSemanticAuthorBatch(body({ data: [] }))).toThrow('无法识别的作者结果')
   })
 
-  it('批量取作者用 POST 发 id，失败只试一次好让 OpenAlex 接手', async () => {
+  it('批量取作者用 POST 发 id；被限流时重试一次再放弃，好让 arXiv 接手', async () => {
     const sent: { url: string; options: HttpRequestOptions }[] = []
     const get: HttpGet = async (url, options) => {
       sent.push({ url, options })
@@ -45,9 +45,9 @@ describe('Semantic Scholar search', () => {
         : { status: 429, body: body({}) }
     }
     const search = createSemanticSearch({ get, sleep: async () => {} })
-    await expect(search.authorImpacts(['1'])).resolves.toMatchObject([{ candidate: { id: '1' }, activeYear: null }])
+    await expect(search.authorImpacts!(['1'])).resolves.toMatchObject([{ id: '1', source: 'semantic-scholar' }])
     expect(sent[0]!.options).toMatchObject({ method: 'POST', body: JSON.stringify({ ids: ['1'] }) })
     await expect(search.searchPapers('qlora', 2022)).rejects.toThrow()
-    expect(sent).toHaveLength(2)
+    expect(sent).toHaveLength(3)
   })
 })

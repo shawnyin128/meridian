@@ -98,14 +98,22 @@ const membersOf = (data: WikiData, id: string): string[] => ids(data).filter((k)
 
 const shortOf = (page: WikiPaperRecord): string => page.fm.short ?? page.fm.title
 
-/** UI name of a page: aggregation title, paper short title, or id for a missing page. */
+/** Full name of a page: its title, or its id when the page is missing. */
 function titleOf(data: WikiData, id: string): string {
-  const page = data.pages[id]
-  if (page === undefined) return id
-  return isPaper(page) ? shortOf(page) : page.fm.title
+  return data.pages[id]?.fm.title ?? id
 }
 
-const ref = (data: WikiData, id: string): WikiRef => ({ id, title: titleOf(data, id) })
+/** Compact name a page goes by in tables and lists: a paper's short title, otherwise its full name. */
+function labelOf(data: WikiData, id: string): string {
+  const page = data.pages[id]
+  return page !== undefined && isPaper(page) ? shortOf(page) : titleOf(data, id)
+}
+
+const ref = (data: WikiData, id: string): WikiRef => {
+  const title = labelOf(data, id)
+  const full = titleOf(data, id)
+  return { id, title, ...(full === title ? {} : { fullTitle: full }) }
+}
 
 const cell = (record: WikiCellRecord): WikiCell =>
   ({ value: String(record.value), page: record.at.page, quote: record.at.quote })

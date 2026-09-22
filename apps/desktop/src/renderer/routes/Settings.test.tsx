@@ -3,13 +3,15 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
-  HarnessModelConnectionCheckResult, LibraryBackup, LibraryLocation,
+  HarnessModelConnectionCheckResult, LibraryBackup, LibraryLocation, SemanticKeyCheckResult, SemanticKeyStatus,
 } from '../../shared/contract.js'
 import { MessagesProvider } from '../messages/useMessages.js'
+import type { SettingsCategory } from '../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
 const api = vi.hoisted(() => ({
   setOpen: vi.fn(),
+  requestedCategory: 'delivery-watch' as SettingsCategory | null,
   pluginVersion: vi.fn(async () => ({ version: '0.0.1', checkedAt: null as string | null })),
   // A check re-measures the same installed extensions against the version it read.
   checkLatest: vi.fn(async (): Promise<unknown> => api.extensionStatus()),
@@ -36,6 +38,9 @@ const api = vi.hoisted(() => ({
   checkModelConnection: vi.fn(async (): Promise<HarnessModelConnectionCheckResult> => ({
     state: 'connected' as const, modelCalls: 1 as const, maxOutputTokens: 1 as const,
   })),
+  semanticKey: vi.fn(async (): Promise<SemanticKeyStatus> => ({ configured: false })),
+  setSemanticKey: vi.fn(async (): Promise<SemanticKeyStatus> => ({ configured: false })),
+  checkSemanticKey: vi.fn(async (): Promise<SemanticKeyCheckResult> => ({ state: 'connected' as const })),
   extensionStatus: vi.fn(async () => [{
     id: 'codex', name: 'Codex', state: 'installed', version: '0.8.1',
     installCommand: 'codex install command', updateCommand: 'codex update command',
@@ -70,8 +75,9 @@ vi.mock('../ipc.js', () => ({
   delivery: {
     settings: api.deliverySettings,
     updateSettings: api.updateDeliverySettings,
-    semanticKey: vi.fn(async () => ({ configured: false })),
-    setSemanticKey: vi.fn(async () => ({ configured: false })),
+    semanticKey: api.semanticKey,
+    setSemanticKey: api.setSemanticKey,
+    checkSemanticKey: api.checkSemanticKey,
   },
   harness: {
     modelSettings: api.modelSettings,
@@ -84,7 +90,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useBanner: () => api.banner,
   useJump: () => ({ open: vi.fn() }),
   useSettingsOpen: () => ({
-    open: true, requestedCategory: 'delivery-watch', setOpen: api.setOpen, openCategory: vi.fn(),
+    open: true, requestedCategory: api.requestedCategory, setOpen: api.setOpen, openCategory: vi.fn(),
   }),
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
@@ -118,9 +124,16 @@ describe('Settings', () => {
     host = document.createElement('div')
     document.body.append(host)
     root = createRoot(host)
+    api.requestedCategory = 'delivery-watch'
     api.updateDeliverySettings.mockClear()
     api.updateModelSettings.mockClear()
     api.checkModelConnection.mockClear()
+    api.semanticKey.mockClear()
+    api.semanticKey.mockResolvedValue({ configured: false })
+    api.setSemanticKey.mockClear()
+    api.setSemanticKey.mockResolvedValue({ configured: false })
+    api.checkSemanticKey.mockClear()
+    api.checkSemanticKey.mockResolvedValue({ state: 'connected' })
     api.extensionStatus.mockClear()
     api.libraryLocation.mockClear()
     api.libraryLocation.mockResolvedValue({
@@ -139,7 +152,7 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
     expect([...dialog.querySelectorAll('[data-setcat]')].map((node) => node.textContent))
-      .toEqual(['外观', '存储', 'API', '模型', '科研', '扩展', '论文推送', '关注', '发现', '归档的对话'])
+      .toEqual(['外观', '存储', 'API', '扩展', '论文推送', '关注', '发现', '归档的对话'])
     expect(dialog.querySelector('[data-setcat="delivery-watch"]')?.classList.contains('on')).toBe(true)
     expect(dialog.querySelector('[data-testid="watch-settings"]')).not.toBeNull()
     expect(dialog.querySelector('[data-testid="discovery-settings"]')).toBeNull()
@@ -168,7 +181,7 @@ describe('Settings', () => {
     expect(api.updateDeliverySettings).toHaveBeenCalledWith({ maxItemsPerRun: 12 })
   })
 
-  it('API 总览列出模型和科研的当前状态，点科研进入 Semantic Scholar key 页', async () => {
+  it('API 总览列出模型和科研的当前状态，点科研进入 Semantic Scholar 页', async () => {
     api.modelSettings.mockResolvedValueOnce({
       ...(await api.modelSettings()), model: 'gpt-test', configured: true,
     })
@@ -176,12 +189,116 @@ describe('Settings', () => {
     const dialog = document.querySelector('.setdlg')!
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
     expect(dialog.querySelector('[data-api="model"] .api-state')?.textContent).toBe('OpenAI · gpt-test')
-    expect(dialog.querySelector('[data-api="research"] .api-state')?.textContent).toBe('OpenAlex（未填 Semantic Scholar key）')
+    expect(dialog.querySelector('[data-api="research"] .api-state')?.textContent).toBe('未配置')
 
     await act(async () => { dialog.querySelector<HTMLElement>('[data-api="research"] .btn')!.click() })
     expect(dialog.querySelector('[data-setcat="research"]')?.classList.contains('on')).toBe(true)
-    expect(dialog.querySelector('[data-semantic-key]')).not.toBeNull()
-    expect(dialog.querySelector('[data-semantic-active]')?.textContent).toBe('当前：OpenAlex')
+    expect(dialog.querySelector('.semantic-key-card')).not.toBeNull()
+    expect(dialog.querySelector('.semantic-key-card .service-status-pill')?.textContent).toBe('未配置')
+  })
+
+  it('科研数据源总览显示 Semantic Scholar 当已配置 key', async () => {
+    api.semanticKey.mockResolvedValueOnce({ configured: true, lastFour: 'ab12' })
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
+    expect(dialog.querySelector('[data-api="research"] .api-state')?.textContent).toBe('Semantic Scholar')
+  })
+
+  it('API 与论文推送的子分类默认收起，点开父级或直接进入子级都会展开', async () => {
+    api.requestedCategory = null
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    const setcats = () => [...dialog.querySelectorAll('[data-setcat]')].map((node) => node.getAttribute('data-setcat'))
+    expect(setcats()).toEqual(['appearance', 'storage', 'api', 'extensions', 'delivery', 'archived'])
+
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
+    expect(setcats()).toEqual(['appearance', 'storage', 'api', 'model', 'research', 'extensions', 'delivery', 'archived'])
+
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="delivery"]')!.click() })
+    expect(setcats()).toEqual([
+      'appearance', 'storage', 'api', 'extensions', 'delivery', 'delivery-watch', 'delivery-discovery', 'archived',
+    ])
+  })
+
+  it('直接打开一个子分类时，它所属的父级子菜单保持展开', async () => {
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    expect([...dialog.querySelectorAll('[data-setcat]')].map((node) => node.getAttribute('data-setcat')))
+      .toEqual(['appearance', 'storage', 'api', 'model', 'research', 'extensions', 'delivery', 'archived'])
+    expect(dialog.querySelector('[data-setcat="model"]')?.classList.contains('on')).toBe(true)
+  })
+
+  it('未配置 key 时科研卡片显示未配置，测试连接不可用', async () => {
+    api.requestedCategory = 'research'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    const card = dialog.querySelector('.semantic-key-card')!
+    expect(card.querySelector('.service-status-pill')?.textContent).toBe('未配置')
+    const buttons = [...card.querySelectorAll<HTMLButtonElement>('button')]
+    expect(buttons.find((b) => b.textContent === '测试连接')!.disabled).toBe(true)
+    expect(buttons.find((b) => b.textContent === '保存配置')!.disabled).toBe(true)
+    expect(buttons.some((b) => b.textContent === '清除已保存的 Key')).toBe(false)
+  })
+
+  it('填写 key 并保存配置会调用 delivery.setSemanticKey', async () => {
+    api.requestedCategory = 'research'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    const input = dialog.querySelector<HTMLInputElement>('[aria-label="Semantic Scholar API Key"]')!
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+      setter.call(input, 'new-secret')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    const save = [...dialog.querySelectorAll<HTMLButtonElement>('.semantic-key-card button')]
+      .find((b) => b.textContent === '保存配置')!
+    expect(save.disabled).toBe(false)
+    await act(async () => { save.click() })
+    expect(api.setSemanticKey).toHaveBeenCalledWith('new-secret')
+  })
+
+  it('已保存的 key 显示掩码末四位；标记清除后保存会调用 setSemanticKey(null)', async () => {
+    api.requestedCategory = 'research'
+    api.semanticKey.mockResolvedValueOnce({ configured: true, lastFour: 'ab12' })
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    const card = dialog.querySelector('.semantic-key-card')!
+    expect(card.querySelector('.service-status-pill')?.textContent).toBe('已配置')
+    const saved = card.querySelector<HTMLButtonElement>('.service-saved-key')!
+    expect(saved.querySelector('.service-key-mask')?.textContent).toBe('••••••••')
+    expect(saved.querySelector('.service-key-tail')?.textContent).toBe('ab12')
+
+    const clear = [...card.querySelectorAll<HTMLButtonElement>('button')]
+      .find((b) => b.textContent === '清除已保存的 Key')!
+    await act(async () => { clear.click() })
+    expect(clear.textContent).toBe('将清除 Key')
+    const save = [...card.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === '保存配置')!
+    await act(async () => { save.click() })
+    expect(api.setSemanticKey).toHaveBeenCalledWith(null)
+  })
+
+  it('已保存 key 时可测试连接，成功与失败都按模型页同样的方式展示', async () => {
+    api.requestedCategory = 'research'
+    api.semanticKey.mockResolvedValueOnce({ configured: true, lastFour: 'ab12' })
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    const card = dialog.querySelector('.semantic-key-card')!
+    const test = [...card.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === '测试连接')!
+    expect(test.disabled).toBe(false)
+
+    await act(async () => { test.click() })
+    expect(api.checkSemanticKey).toHaveBeenCalledOnce()
+    expect(card.querySelector('.service-connection-status')?.textContent).toContain('连接成功')
+
+    api.checkSemanticKey.mockResolvedValueOnce({
+      state: 'failed', reason: 'authentication', detail: 'HTTP 401',
+    })
+    await act(async () => { test.click() })
+    const status = card.querySelector('.service-connection-status')!
+    expect(status.textContent).toContain('认证失败，请检查 API Key。')
+    expect(status.textContent).toContain('HTTP 401')
   })
 
   it('扩展设置显示 Core 检查结果:已安装的给更新命令,未安装的给安装命令', async () => {
@@ -330,11 +447,9 @@ describe('Settings', () => {
   })
 
   it('模型设置明确区分服务商和协议，并使用共享字段外观', async () => {
+    api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
-    await act(async () => {
-      dialog.querySelector<HTMLElement>('[data-setcat="model"]')!.click()
-    })
 
     const provider = dialog.querySelector<HTMLSelectElement>('[aria-label="模型服务"]')!
     expect([...provider.options].map((option) => option.textContent))
@@ -386,16 +501,14 @@ describe('Settings', () => {
         apiKeyLastFour: 'c123', configured: true,
       }],
     })
+    api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
-    await act(async () => {
-      dialog.querySelector<HTMLElement>('[data-setcat="model"]')!.click()
-    })
 
     const saved = dialog.querySelector<HTMLButtonElement>('[aria-label="模型 API Key 已保存，末四位 c123"]')!
     expect(saved.textContent).toBe('••••••••c123')
-    expect(saved.querySelector('.model-key-mask')?.textContent).toBe('••••••••')
-    expect(saved.querySelector('.model-key-tail')?.textContent).toBe('c123')
+    expect(saved.querySelector('.service-key-mask')?.textContent).toBe('••••••••')
+    expect(saved.querySelector('.service-key-tail')?.textContent).toBe('c123')
     expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型 API Key"]')).toBeNull()
     expect(dialog.textContent).not.toContain('API Key 由操作系统凭据库加密保护')
 
@@ -416,11 +529,9 @@ describe('Settings', () => {
         apiKeyLastFour: 'c123', configured: true,
       }],
     })
+    api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
-    await act(async () => {
-      dialog.querySelector<HTMLElement>('[data-setcat="model"]')!.click()
-    })
 
     const test = [...dialog.querySelectorAll<HTMLButtonElement>('button')]
       .find((button) => button.textContent === '测试连接')!
@@ -459,17 +570,15 @@ describe('Settings', () => {
       detail: 'HTTP 404: model deepseek-flash was not found',
       modelCalls: 1, maxOutputTokens: 1,
     })
+    api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
-    await act(async () => {
-      dialog.querySelector<HTMLElement>('[data-setcat="model"]')!.click()
-    })
 
     const test = [...dialog.querySelectorAll<HTMLButtonElement>('button')]
       .find((button) => button.textContent === '测试连接')!
     await act(async () => { test.click() })
 
-    const status = dialog.querySelector('.model-connection-status')!
+    const status = dialog.querySelector('.service-connection-status')!
     expect(status.textContent).toContain('没有找到模型或接口。')
     expect(status.textContent).toContain('详情: HTTP 404: model deepseek-flash was not found')
   })
@@ -489,11 +598,9 @@ describe('Settings', () => {
         apiKeyLastFour: '2222', configured: true,
       }],
     })
+    api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
-    await act(async () => {
-      dialog.querySelector<HTMLElement>('[data-setcat="model"]')!.click()
-    })
 
     const provider = dialog.querySelector<HTMLSelectElement>('[aria-label="模型服务"]')!
     await act(async () => {
@@ -521,11 +628,9 @@ describe('Settings', () => {
   })
 
   it('用一个 OpenAI 兼容入口保存任意第三方的标准协议配置', async () => {
+    api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
-    await act(async () => {
-      dialog.querySelector<HTMLElement>('[data-setcat="model"]')!.click()
-    })
 
     const select = async (label: string, value: string) => {
       const field = dialog.querySelector<HTMLSelectElement>(`[aria-label="${label}"]`)!
@@ -551,7 +656,7 @@ describe('Settings', () => {
     await fill('模型名称', 'third-party-model')
     await fill('模型 API Key', 'third-party-secret')
     await act(async () => {
-      dialog.querySelector<HTMLButtonElement>('.model-settings-actions .btn.pri')!.click()
+      dialog.querySelector<HTMLButtonElement>('.service-actions .btn.pri')!.click()
     })
 
     expect(api.updateModelSettings).toHaveBeenCalledWith({
@@ -565,11 +670,9 @@ describe('Settings', () => {
   })
 
   it('常用模板只要求用户填写模型 ID 和需要的密钥', async () => {
+    api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
-    await act(async () => {
-      dialog.querySelector<HTMLElement>('[data-setcat="model"]')!.click()
-    })
     const setSelect = async (label: string, value: string) => {
       const field = dialog.querySelector<HTMLSelectElement>(`[aria-label="${label}"]`)!
       await act(async () => {

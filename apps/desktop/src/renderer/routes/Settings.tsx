@@ -38,6 +38,16 @@ const CATEGORIES = [
   'archived',
 ] as const
 const SUB_CATEGORIES: ReadonlySet<CategoryKey> = new Set(['model', 'research', 'delivery-watch', 'delivery-discovery'])
+/**
+ * Maps each sub-item to the parent category that groups it in the left column. A sub-item is
+ * rendered only while its group is expanded: the parent or one of its own siblings is current.
+ */
+const SUB_PARENT: Partial<Record<CategoryKey, CategoryKey>> = {
+  model: 'api',
+  research: 'api',
+  'delivery-watch': 'delivery',
+  'delivery-discovery': 'delivery',
+}
 const CATEGORY_LABEL: Record<CategoryKey, keyof Catalog['settings']['categories']> = {
   appearance: 'appearance',
   storage: 'storage',
@@ -393,11 +403,14 @@ export function Settings() {
     ),
   }
 
+  const expandedParent = SUB_PARENT[current] ?? current
+  const visibleCategories = CATEGORIES.filter((c) => !SUB_CATEGORIES.has(c) || SUB_PARENT[c] === expandedParent)
+
   return (
     <ModalDialog open={open} onOpenChange={setOpen} contentClassName="setdlg">
       <div className="set-side">
         <ModalTitle className="set-t">{m.settings.title}</ModalTitle>
-        {CATEGORIES.map((c) => (
+        {visibleCategories.map((c) => (
           <div
             key={c}
             className={`${c === current ? 'srow on' : 'srow'}${SUB_CATEGORIES.has(c) ? ' set-sub' : ''}`}

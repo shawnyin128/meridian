@@ -2,7 +2,6 @@ export {
   chatSource,
   conclusionCounts,
   MANUAL_SOURCE,
-  paperLabel,
   withProjectLinks,
 } from './links.js'
 export {

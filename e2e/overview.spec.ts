@@ -300,6 +300,30 @@ test('总览横条是真实任务:拖动改任务日期,单击进所属项目', 
 
   await bar.click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', '复现 EAGLE-2'])
+  await expect(shown(win).locator('.task-row[data-row="t2"]')).toHaveClass(/\bflash\b/)
+})
+
+test('总览时间线左栏宽度固定，长任务名不撑宽；点任务名跳到项目里的这条任务', async ({ win }) => {
+  await gotoOverview(win)
+  const labels = shown(win).locator('.gantt .glabels')
+  const before = (await labels.boundingBox())!.width
+  await win.evaluate(async () => {
+    await (window as unknown as MeridianWindow).meridian.call('project.updateTask', {
+      projectId: 'repro', taskId: 't2',
+      patch: { title: '早期 observation 探索。重点放在发现问题上，目标搞清楚 Expert 的哪个东西有问题，并把结论整理成一页说明' },
+    })
+  })
+  // The write bypassed the screen, so reload the window to read the overview afresh.
+  await win.reload()
+  await gotoOverview(win)
+  const label = shown(win).locator('.gantt .timeline-label-row[data-proj="repro"][data-task="t2"] .timeline-item-label')
+  await expect(label).toContainText('早期 observation 探索')
+  expect((await labels.boundingBox())!.width).toBe(before)
+  expect(await label.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true)
+
+  await label.click()
+  await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', '复现 EAGLE-2'])
+  await expect(shown(win).locator('.task-row[data-row="t2"]')).toHaveClass(/\bflash\b/)
 })
 
 test.describe('拖总览菱形改期', () => {

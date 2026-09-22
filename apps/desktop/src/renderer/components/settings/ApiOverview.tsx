@@ -25,7 +25,7 @@ export function ApiOverview({ onOpen }: { onOpen: (category: 'model' | 'research
       : copy.modelUnset
   const researchState = semanticKey === null
     ? m.common.reading
-    : semanticKey.configured ? copy.researchSemantic : copy.researchOpenAlex
+    : semanticKey.configured ? 'Semantic Scholar' : copy.researchUnset
   const rows = [
     { key: 'model' as const, name: copy.model, state: modelState },
     { key: 'research' as const, name: copy.research, state: researchState },
