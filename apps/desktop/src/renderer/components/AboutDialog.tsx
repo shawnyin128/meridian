@@ -1,4 +1,4 @@
-import { appUpdates } from '../ipc.js'
+import { appUpdates, extensions } from '../ipc.js'
 import { useAppUpdate } from '../hooks/useAppUpdate.js'
 import { useMessages } from '../messages/useMessages.js'
 import { DownloadRing, IconCheck } from './icons.js'
@@ -43,7 +43,10 @@ function AboutBody({ status, onClose }: { status: AppUpdateStatus; onClose: () =
         </button>
         <UpdateAction
           status={status}
-          onCheck={() => { void appUpdates.check() }}
+          onCheck={() => {
+            void appUpdates.check()
+            void extensions.checkLatest()
+          }}
           onInstall={appUpdates.install}
           onDownload={(url) => { window.open(url) }}
         />

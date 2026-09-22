@@ -303,7 +303,10 @@ export function Settings() {
           statuses={extensionStatus} onCopy={copyExtensionCommand} onCopyPrompt={copyAgentPrompt}
           app={appUpdate === null ? undefined : {
             status: appUpdate,
-            onCheck: () => { void appUpdates.check() },
+            onCheck: () => {
+              void appUpdates.check()
+              void extensions.checkLatest().then(setExtensionStatus).catch(reportError)
+            },
             onInstall: appUpdates.install,
             onDownload: (url) => { window.open(url) },
           }}

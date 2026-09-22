@@ -105,6 +105,7 @@ import {
 } from './workspace-layout.js'
 import { extensionStatuses } from './extensions/status.js'
 import { noteVersionChanges } from './extensions/notices.js'
+import { createPluginVersionCheck } from './extensions/latest.js'
 import {
   createChatHarnessRunner, createChatService, createHarnessCostGate,
   createHarnessModelConfig, createHarnessProposalAudit,
@@ -166,21 +167,29 @@ const appliedProposalBodies = (() => {
 })()
 const store = openStore(vaultRoot, appliedProposalBodies)
 const appVersion = process.env['MERIDIAN_APP_VERSION']
-// A real library hears about app and plugin version changes once per machine; the fixture library never does.
-if (vaultRoot !== undefined && appVersion !== undefined) {
-  noteVersionChanges({
-    file: join(configHome, 'version-notices.json'),
-    appVersion,
-    extensions: extensionStatuses(undefined, appVersion),
-    post: (runs) => store.appendFeed({ source: 'steward', body: { kind: 'runs', runs } }),
-  })
-}
 let libraryLocation = currentLibrary({ currentRoot: locationRoot, source: librarySource, configHome })
 /** Fixture mode and explicit canned mode never access the network. */
 const canned = vaultRoot === undefined || process.env['MERIDIAN_CANNED_NET'] === '1'
+const httpGet = canned ? createCannedGet(cannedNet as CannedTable, locationRoot) : electronGet
+// A real library hears about app and plugin version changes once per machine; the fixture library never does.
+const noteVersions = (pluginVersion: string): void => {
+  if (vaultRoot === undefined || appVersion === undefined) return
+  noteVersionChanges({
+    file: join(configHome, 'version-notices.json'),
+    appVersion,
+    pluginVersion,
+    extensions: extensionStatuses(undefined, pluginVersion),
+    post: (runs) => store.appendFeed({ source: 'steward', body: { kind: 'runs', runs } }),
+  })
+}
+const pluginCheck = createPluginVersionCheck({
+  get: httpGet, file: join(configHome, 'plugin-latest.json'), now: Date.now, onLatest: noteVersions,
+})
+noteVersions(pluginCheck.latest())
+if (vaultRoot !== undefined) pluginCheck.arm()
 const background = createBackground({
   store,
-  get: canned ? createCannedGet(cannedNet as CannedTable, locationRoot) : electronGet,
+  get: httpGet,
   probe: probePdf,
   arxivIntervalMs: canned ? 0 : ARXIV_INTERVAL_MS,
   sleep: canned ? async () => {} : sleep,
@@ -329,7 +338,12 @@ function assertLibraryRestartReady(): void {
 
 registerHandler('extensions.status', (params) => {
   EmptyParamsSchema.parse(params)
-  return extensionStatuses(undefined, appVersion)
+  return extensionStatuses(undefined, pluginCheck.latest())
+})
+
+registerHandler('extensions.checkLatest', async (params) => {
+  EmptyParamsSchema.parse(params)
+  return extensionStatuses(undefined, await pluginCheck.check())
 })
 
 registerHandler('vault.today', (params) => {

@@ -10,13 +10,15 @@ const NoticesSchema = z.object({
 
 /**
  * Tells the user, through the feed, about version changes they would otherwise not see: the app
- * having updated itself since the last run, and each plugin that is older than the app. Every
+ * having updated itself since the last run, and each plugin older than `pluginVersion`, the newest
+ * plugin version known. Every
  * notice is posted once per machine; `file` remembers what was posted. The first run on a machine
  * records the app version without announcing it.
  */
-export function noteVersionChanges({ file, appVersion, extensions, post }: {
+export function noteVersionChanges({ file, appVersion, pluginVersion, extensions, post }: {
   file: string
   appVersion: string
+  pluginVersion: string
   extensions: ExtensionStatus[]
   post: (runs: FeedRun[]) => void
 }): void {
@@ -30,7 +32,7 @@ export function noteVersionChanges({ file, appVersion, extensions, post }: {
     ])
   }
   for (const extension of extensions) {
-    const key = `${extension.id}@${appVersion}`
+    const key = `${extension.id}@${pluginVersion}`
     if (extension.state !== 'update-required' || extension.version === undefined || noticed.has(key)) continue
     noticed.add(key)
     post([
@@ -38,7 +40,7 @@ export function noteVersionChanges({ file, appVersion, extensions, post }: {
       { kind: 'strong', text: extension.name },
       {
         kind: 'text',
-        text: ` 还是 ${extension.version}，App 已是 ${appVersion}。到设置 · 扩展复制更新命令，更新后重启 coding agent 会话。`,
+        text: ` 还是 ${extension.version}，最新是 ${pluginVersion}。到设置 · 扩展复制更新命令，更新后重启 coding agent 会话。`,
       },
     ])
   }

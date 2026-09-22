@@ -222,7 +222,8 @@ class CliTests(unittest.TestCase):
         else:
             sys.modules["fitz"] = self.previous_fitz
 
-    def test_release_version_surfaces_are_aligned(self) -> None:
+    def test_plugin_version_surfaces_are_aligned(self) -> None:
+        # The skills and MCP (plugins and Python core) share VERSION; the desktop app has its own version.
         expected = Path("VERSION").read_text(encoding="utf-8").strip()
         self.assertRegex(expected, r"^\d+\.\d+\.\d+$")
         self.assertEqual(__version__, expected)
@@ -245,14 +246,16 @@ class CliTests(unittest.TestCase):
         self.assertEqual(codex_plugin["version"], expected)
         self.assertEqual(claude_plugin["version"], expected)
         self.assertEqual(agent_plugin["version"], expected)
-        desktop = json.loads(Path("apps/desktop/package.json").read_text(encoding="utf-8"))
-        self.assertEqual(desktop["version"], expected)
-        lock = json.loads(Path("package-lock.json").read_text(encoding="utf-8"))
-        self.assertEqual(lock["packages"]["apps/desktop"]["version"], expected)
 
         exit_code, stdout, stderr = _run_cli_capture(["--version"])
         self.assertEqual(exit_code, 0, stderr)
         self.assertEqual(stdout.strip(), f"meridian {expected}")
+
+    def test_desktop_app_version_surfaces_are_aligned(self) -> None:
+        desktop = json.loads(Path("apps/desktop/package.json").read_text(encoding="utf-8"))["version"]
+        self.assertRegex(desktop, r"^\d+\.\d+\.\d+$")
+        lock = json.loads(Path("package-lock.json").read_text(encoding="utf-8"))
+        self.assertEqual(lock["packages"]["apps/desktop"]["version"], desktop)
 
     def test_python_module_entrypoints_execute_cli_main(self) -> None:
         env = os.environ.copy()

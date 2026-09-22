@@ -61,6 +61,8 @@ export const library = {
 
 export const extensions = {
   status: () => call<ExtensionStatus[]>('extensions.status', {}),
+  /** Reads the newest plugin version from the repository, then returns the statuses measured against it. */
+  checkLatest: () => call<ExtensionStatus[]>('extensions.checkLatest', {}),
 }
 
 /** The app's own self-update, run by the main process rather than Core. */

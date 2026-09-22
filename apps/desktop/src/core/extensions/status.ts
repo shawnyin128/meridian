@@ -73,11 +73,11 @@ function cachedVersions(root: string): string[] {
 }
 
 /** Whether dotted numeric version `left` is older than `right`; 0.0.10 is newer than 0.0.9. */
-function olderThan(left: string, right: string): boolean {
+export function olderThan(left: string, right: string): boolean {
   return left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' }) < 0
 }
 
-function inspectClient(layout: ClientLayout, home: string, appVersion: string | undefined): ExtensionStatus {
+function inspectClient(layout: ClientLayout, home: string, pluginVersion: string | undefined): ExtensionStatus {
   const root = layout.cacheRoot(home)
   for (const directory of cachedVersions(root)) {
     const packageRoot = join(root, directory)
@@ -85,7 +85,7 @@ function inspectClient(layout: ClientLayout, home: string, appVersion: string | 
     if (!existsSync(manifest)) continue
     const complete = REQUIRED_SURFACES.every((surface) => existsSync(join(packageRoot, surface)))
     const version = manifestVersion(manifest, directory)
-    const current = complete && (appVersion === undefined || !olderThan(version, appVersion))
+    const current = complete && (pluginVersion === undefined || !olderThan(version, pluginVersion))
     return {
       id: layout.id,
       name: layout.name,
@@ -106,8 +106,8 @@ function inspectClient(layout: ClientLayout, home: string, appVersion: string | 
 
 /**
  * Inspect local plugin caches only; this never invokes an agent CLI or changes client state.
- * Plugins share the app's version number, so a plugin older than `appVersion` needs an update.
+ * A plugin older than `pluginVersion`, the newest plugin version known, needs an update.
  */
-export function extensionStatuses(home: string = homedir(), appVersion?: string): ExtensionStatus[] {
-  return CLIENTS.map((layout) => inspectClient(layout, home, appVersion))
+export function extensionStatuses(home: string = homedir(), pluginVersion?: string): ExtensionStatus[] {
+  return CLIENTS.map((layout) => inspectClient(layout, home, pluginVersion))
 }

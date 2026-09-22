@@ -1883,6 +1883,7 @@ export const CONTRACT_METHODS = [
   'library.switchBackup',
   'library.deleteBackup',
   'extensions.status',
+  'extensions.checkLatest',
   'vault.today',
   'papers.list',
   'papers.facets',

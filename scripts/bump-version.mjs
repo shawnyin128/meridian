@@ -1,11 +1,12 @@
-// Sets one version number on every surface that ships together: the Python core, the desktop app,
-// and the agent plugins. Usage: node scripts/bump-version.mjs 0.0.3
+// Sets one of Meridian's two version numbers on every surface that carries it.
+//   node scripts/bump-version.mjs app 0.0.9     the desktop app, released by pushing a matching vX.Y.Z tag
+//   node scripts/bump-version.mjs plugin 0.0.2  the skills and MCP (plugins and Python core), released from master
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
-const version = process.argv[2]
-if (!/^\d+\.\d+\.\d+$/.test(version ?? '')) {
-  console.error('Usage: node scripts/bump-version.mjs <major.minor.patch>')
+const [target, version] = process.argv.slice(2)
+if (!['app', 'plugin'].includes(target ?? '') || !/^\d+\.\d+\.\d+$/.test(version ?? '')) {
+  console.error('Usage: node scripts/bump-version.mjs <app|plugin> <major.minor.patch>')
   process.exit(1)
 }
 const root = resolve(import.meta.dirname, '..')
@@ -19,20 +20,23 @@ function replaceOnce(path, pattern, replacement) {
   writeFileSync(file, text.replace(pattern, replacement))
 }
 
-writeFileSync(join(root, 'VERSION'), `${version}\n`)
-replaceOnce('pyproject.toml', /^version = "[^"]+"$/m, `version = "${version}"`)
-replaceOnce('src/meridian/__init__.py', /^__version__ = "[^"]+"$/m, `__version__ = "${version}"`)
-for (const manifest of [
-  'apps/desktop/package.json',
-  'plugins/agent/meridian/plugin.json',
-  'plugins/claude-code/meridian/.claude-plugin/plugin.json',
-  'plugins/codex/meridian/.codex-plugin/plugin.json',
-]) {
-  replaceOnce(manifest, /^( {2}"version": )"[^"]+"/m, `$1"${version}"`)
+if (target === 'app') {
+  replaceOnce('apps/desktop/package.json', /^( {2}"version": )"[^"]+"/m, `$1"${version}"`)
+  replaceOnce(
+    'package-lock.json',
+    /("apps\/desktop": \{\s*"name": "@meridian\/desktop",\s*"version": )"[^"]+"/,
+    `$1"${version}"`,
+  )
+} else {
+  writeFileSync(join(root, 'VERSION'), `${version}\n`)
+  replaceOnce('pyproject.toml', /^version = "[^"]+"$/m, `version = "${version}"`)
+  replaceOnce('src/meridian/__init__.py', /^__version__ = "[^"]+"$/m, `__version__ = "${version}"`)
+  for (const manifest of [
+    'plugins/agent/meridian/plugin.json',
+    'plugins/claude-code/meridian/.claude-plugin/plugin.json',
+    'plugins/codex/meridian/.codex-plugin/plugin.json',
+  ]) {
+    replaceOnce(manifest, /^( {2}"version": )"[^"]+"/m, `$1"${version}"`)
+  }
 }
-replaceOnce(
-  'package-lock.json',
-  /("apps\/desktop": \{\s*"name": "@meridian\/desktop",\s*"version": )"[^"]+"/,
-  `$1"${version}"`,
-)
-console.log(`Meridian version set to ${version}`)
+console.log(`Meridian ${target} version set to ${version}`)

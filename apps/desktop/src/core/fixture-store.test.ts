@@ -2191,7 +2191,7 @@ describe('fixture store', () => {
     // Library location and background tasks are Core process configuration, not state of one opened VaultStore.
     const coreMethods = new Set([
       'library.location', 'library.configure', 'library.reset', 'library.backups',
-      'library.switchBackup', 'library.deleteBackup', 'extensions.status', 'jobs.status', 'inbox.fetch',
+      'library.switchBackup', 'library.deleteBackup', 'extensions.status', 'extensions.checkLatest', 'jobs.status', 'inbox.fetch',
       'discovery.fetch', 'author.search', 'watch.suggest', 'harness.prepare', 'harness.pendingPaperWiki',
       'harness.start', 'harness.cancel',
       'harness.modelSettings', 'harness.updateModelSettings', 'harness.checkModelConnection',

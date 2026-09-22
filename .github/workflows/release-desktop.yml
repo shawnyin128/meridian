@@ -2,7 +2,7 @@ name: Release desktop app
 
 # Pushing a vX.Y.Z tag builds the installers on every platform, uploads them with the update
 # metadata the app's updater reads to a draft GitHub Release, and publishes the draft once every
-# platform has uploaded. The tag must match the VERSION file.
+# platform has uploaded. The tag must match the app version in apps/desktop/package.json.
 on:
   push:
     tags: ["v*.*.*"]
@@ -18,15 +18,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check the tag against VERSION
+      - name: Check the tag against the app version
         id: meta
         shell: bash
         run: |
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
-          VERSION="$(tr -d '[:space:]' < VERSION)"
+          VERSION="$(node -p "require('./apps/desktop/package.json').version")"
           if [[ "${TAG}" != "v${VERSION}" ]]; then
-            echo "Tag ${TAG} does not match VERSION ${VERSION}." >&2
+            echo "Tag ${TAG} does not match the app version ${VERSION}." >&2
             exit 1
           fi
           echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"

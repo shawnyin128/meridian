@@ -3,7 +3,7 @@ import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from 're
 import type { ChatSession, Watch } from '../../shared/contract.js'
 import { ACTIVE_PROJECT } from '../../shared/vocabulary.js'
 import {
-  appMenu, appUpdates, changelog, chat, idea, inbox, later, papers, project, trash, vault, watch, wiki,
+  appMenu, appUpdates, changelog, chat, extensions, idea, inbox, later, papers, project, trash, vault, watch, wiki,
 } from '../ipc.js'
 import { ActionMenu, MenuItem } from '../components/ActionMenu.js'
 import { AboutDialog } from '../components/AboutDialog.js'
@@ -668,7 +668,11 @@ export function AppShell({ screens, settings }: {
           <MenuItem onSelect={() => { wantDialog.current = 'settings' }}>
             {m.shell.titlebar.settings}<span className="mi-key">{appMenu.platform() === 'darwin' ? '⌘,' : 'Ctrl+,'}</span>
           </MenuItem>
-          <MenuItem onSelect={() => { void appUpdates.check(); wantDialog.current = 'about' }}>
+          <MenuItem onSelect={() => {
+            void appUpdates.check()
+            void extensions.checkLatest()
+            wantDialog.current = 'about'
+          }}>
             {m.shell.titlebar.checkUpdates}
           </MenuItem>
           <MenuItem onSelect={() => { wantDialog.current = 'about' }}>{m.shell.titlebar.about}</MenuItem>
