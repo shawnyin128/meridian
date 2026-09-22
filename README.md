@@ -1,4 +1,4 @@
-# Meridian
+<p align="center"><img src="assets/header.png" alt="Meridian — Research without boundaries"></p>
 
 ## License
 
