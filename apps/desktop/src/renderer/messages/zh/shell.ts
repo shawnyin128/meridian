@@ -50,7 +50,7 @@ export const shell = {
     archive: '归档',
   },
   titlebar: { settings: '设置…', checkUpdates: '检查更新…', about: '关于 Meridian' },
-  about: { title: '关于 Meridian', releases: '发布记录' },
+  about: { title: '关于 Meridian', releases: '发布记录', version: (version: string) => `版本 ${version}` },
   bootFailure: {
     title: '论文库打不开',
     note: '可以在设置里换一个论文库，重启之后打开它。',

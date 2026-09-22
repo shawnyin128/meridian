@@ -38,11 +38,13 @@ export function UpdateAction({ status, onCheck, onInstall, onDownload }: AppUpda
   if (status.phase === 'available') {
     return <button className="btn pri" onClick={() => onDownload(status.url)}>{copy.download}</button>
   }
+  const label = status.phase === 'checking' ? copy.checking
+    : status.phase === 'downloading' ? copy.downloading : copy.check
   return (
     <button
       className="btn" onClick={onCheck}
       disabled={status.phase === 'unsupported' || status.phase === 'checking' || status.phase === 'downloading'}
-    >{copy.check}</button>
+    >{label}</button>
   )
 }
 

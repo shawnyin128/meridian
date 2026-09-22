@@ -52,7 +52,7 @@ export const shell = {
     archive: 'Archive',
   },
   titlebar: { settings: 'Settings…', checkUpdates: 'Check for Updates…', about: 'About Meridian' },
-  about: { title: 'About Meridian', releases: 'Release notes' },
+  about: { title: 'About Meridian', releases: 'Release notes', version: (version: string) => `Version ${version}` },
   bootFailure: {
     title: "The library won't open",
     note: 'Choose a different library in Settings. Meridian will use it after you restart.',

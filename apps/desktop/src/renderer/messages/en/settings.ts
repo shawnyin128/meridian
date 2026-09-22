@@ -186,6 +186,8 @@ export const settings = {
         error: (message: string) => `Update check failed: ${message}`,
       },
       check: 'Check for updates',
+      checking: 'Checking…',
+      downloading: 'Downloading…',
       restart: 'Restart to update',
       download: 'Download',
     },

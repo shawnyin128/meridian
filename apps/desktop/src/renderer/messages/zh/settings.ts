@@ -179,6 +179,8 @@ export const settings = {
         error: (message: string) => `检查更新失败：${message}`,
       },
       check: '检查更新',
+      checking: '检查中…',
+      downloading: '下载中…',
       restart: '重启并更新',
       download: '前往下载',
     },
