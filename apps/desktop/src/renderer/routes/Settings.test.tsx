@@ -70,6 +70,8 @@ vi.mock('../ipc.js', () => ({
   delivery: {
     settings: api.deliverySettings,
     updateSettings: api.updateDeliverySettings,
+    semanticKey: vi.fn(async () => ({ configured: false })),
+    setSemanticKey: vi.fn(async () => ({ configured: false })),
   },
   harness: {
     modelSettings: api.modelSettings,

@@ -1,7 +1,7 @@
-import type { FeedRun, FetchStatus } from '../../shared/contract.js'
+import type { AuthorIdentity, FeedRun, FetchStatus } from '../../shared/contract.js'
 import { watchQuery, type Arxiv } from '../net/arxiv.js'
 import { netReason } from '../net/http.js'
-import type { SemanticAuthors } from '../net/semantic-authors.js'
+import type { RemotePaper } from '../net/arxiv.js'
 import type { VaultStore } from '../vault.js'
 import { rankedPaper, type ScholarlyMetadata } from '../recommendation/index.js'
 
@@ -9,7 +9,9 @@ export type WatchFetcher = { run(watchIds?: string[]): Promise<void>; status(): 
 
 /** Builds the serialized arXiv fetcher for all active watches or a selected subset. */
 export function createWatchFetcher(deps: {
-  store: VaultStore; arxiv: Arxiv; scholar?: ScholarlyMetadata; authors?: SemanticAuthors
+  store: VaultStore; arxiv: Arxiv; scholar?: ScholarlyMetadata
+  /** Papers by an author, read from the source their saved identity came from. */
+  authorPapers?: (identity: AuthorIdentity) => Promise<RemotePaper[]>
   now: () => number; onWrite: () => void
 }): WatchFetcher {
   let tail: Promise<void> = Promise.resolve()
@@ -26,8 +28,8 @@ export function createWatchFetcher(deps: {
     for (const watch of watches) {
       if (remaining === 0) break
       try {
-        const found = watch.type === 'author' && watch.identity !== undefined && deps.authors !== undefined
-          ? await deps.authors.papers(watch.identity.id)
+        const found = watch.type === 'author' && watch.identity !== undefined && deps.authorPapers !== undefined
+          ? await deps.authorPapers(watch.identity)
           : await deps.arxiv.search(watchQuery(watch))
         const local = found.map((paper) => rankedPaper(watch, paper))
         const added = deps.store.addInboxEntries(watch.id, local, remaining)

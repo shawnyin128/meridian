@@ -1,22 +1,13 @@
-import type { AuthorCandidate } from '../../shared/contract.js'
 import type { RemotePaper } from './arxiv.js'
 import { getWithRetry, type HttpGet } from './http.js'
 
-const SEARCH_FIELDS = ['name', 'affiliations', 'paperCount', 'citationCount', 'hIndex'].join(',')
 const PAPER_FIELDS = [
   'paperId', 'title', 'abstract', 'authors', 'venue', 'publicationDate', 'year',
   'citationCount', 'influentialCitationCount', 'externalIds', 'publicationTypes',
 ].join(',')
 const TIMEOUT_MS = 10_000
-const SEARCH_LIMIT = 10
 const PAPER_SCAN_LIMIT = 100
 const RESULT_LIMIT = 20
-const SEARCH_CACHE_MS = 24 * 60 * 60 * 1_000
-
-export const semanticAuthorSearchUrl = (query: string): string =>
-  `https://api.semanticscholar.org/graph/v1/author/search?${new URLSearchParams({
-    query, limit: String(SEARCH_LIMIT), fields: SEARCH_FIELDS,
-  }).toString()}`
 
 export const semanticAuthorPapersUrl = (authorId: string): string =>
   `https://api.semanticscholar.org/graph/v1/author/${encodeURIComponent(authorId)}/papers?${new URLSearchParams({
@@ -24,7 +15,6 @@ export const semanticAuthorPapersUrl = (authorId: string): string =>
   }).toString()}`
 
 export type SemanticAuthors = {
-  search(query: string): Promise<AuthorCandidate[]>
   papers(authorId: string): Promise<RemotePaper[]>
 }
 
@@ -51,25 +41,6 @@ const rowsOf = (body: Uint8Array, message: string): unknown[] => {
   if (decoded === null || typeof decoded !== 'object'
     || !Array.isArray((decoded as { data?: unknown }).data)) throw new Error(message)
   return (decoded as { data: unknown[] }).data
-}
-
-/** Filters the loose network payload into the small author identity picker contract. */
-export function parseAuthorCandidates(body: Uint8Array): AuthorCandidate[] {
-  return rowsOf(body, 'Semantic Scholar 返回了无法识别的作者结果').flatMap((item) => {
-    if (item === null || typeof item !== 'object') return []
-    const row = item as Record<string, unknown>
-    const id = text(row['authorId'])
-    const name = text(row['name'])
-    if (id === '' || name === '') return []
-    const affiliations = Array.isArray(row['affiliations'])
-      ? [...new Set(row['affiliations'].map(text).filter(Boolean))] : []
-    return [{
-      id, name, affiliations,
-      paperCount: count(row['paperCount']),
-      citationCount: count(row['citationCount']),
-      hIndex: count(row['hIndex']),
-    }]
-  })
 }
 
 const submittedOf = (paper: ApiPaper): string => {
@@ -123,39 +94,16 @@ export function parseAuthorPapers(body: Uint8Array): RemotePaper[] {
   }).slice(0, RESULT_LIMIT)
 }
 
-/** Stable author lookup and author-id paper retrieval backed by Semantic Scholar Graph API. */
+/** Author-id paper retrieval backed by Semantic Scholar Graph API, for author watches saved with a Semantic Scholar identity. */
 export function createSemanticAuthors(deps: {
   get: HttpGet
   sleep: (ms: number) => Promise<void>
-  now?: () => number
-  searchCacheMs?: number
 }): SemanticAuthors {
-  const cache = new Map<string, { at: number; value: AuthorCandidate[] }>()
-  const pending = new Map<string, Promise<AuthorCandidate[]>>()
   const policy = {
     timeoutMs: TIMEOUT_MS, tries: 2, backoffMs: 1_000,
     limit: 6 * 1024 * 1024, sleep: deps.sleep,
   }
   return {
-    search(query) {
-      const key = query.trim().replace(/\s+/g, ' ').toLocaleLowerCase()
-      const now = (deps.now ?? Date.now)()
-      const held = cache.get(key)
-      if (held !== undefined && now - held.at < (deps.searchCacheMs ?? SEARCH_CACHE_MS)) {
-        return Promise.resolve(structuredClone(held.value))
-      }
-      const running = pending.get(key)
-      if (running !== undefined) return running.then((value) => structuredClone(value))
-      const request = getWithRetry(deps.get, semanticAuthorSearchUrl(query), policy)
-        .then(parseAuthorCandidates)
-        .then((value) => {
-          cache.set(key, { at: (deps.now ?? Date.now)(), value: structuredClone(value) })
-          return value
-        })
-        .finally(() => pending.delete(key))
-      pending.set(key, request)
-      return request.then((value) => structuredClone(value))
-    },
     async papers(authorId) {
       const body = await getWithRetry(deps.get, semanticAuthorPapersUrl(authorId), policy)
       return parseAuthorPapers(body)

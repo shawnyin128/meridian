@@ -1,20 +1,14 @@
 import {
   WatchSuggestionResultSchema,
+  type AuthorCandidate,
   type WatchAuthorSuggestion,
   type WatchSuggestionResult,
   type WatchTopicSuggestion,
 } from '../../shared/contract.js'
-import { getWithRetry, requestWithRetry, type HttpGet } from './http.js'
+import type { SearchPaper } from './openalex.js'
 
-const PAPER_FIELDS = [
-  'paperId', 'title', 'authors', 'citationCount', 'influentialCitationCount',
-].join(',')
-const AUTHOR_FIELDS = ['name', 'affiliations', 'paperCount', 'citationCount', 'hIndex'].join(',')
-const PAPER_LIMIT = 24
 const RESULT_LIMIT = 6
-const AUTHOR_BATCH_LIMIT = 30
 const CACHE_MS = 24 * 60 * 60 * 1_000
-const TIMEOUT_MS = 10_000
 
 const STOP_WORDS = new Set([
   'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'how', 'i', 'in',
@@ -22,95 +16,11 @@ const STOP_WORDS = new Set([
   'paper', 'papers', 'study', 'the', 'this', 'to', 'using', 'via', 'want', 'with',
 ])
 
-type SearchAuthor = { id: string; name: string }
-type SearchPaper = {
-  title: string
-  authors: SearchAuthor[]
-  citationCount: number
-  influentialCitationCount: number
-}
-
-type AuthorImpact = {
-  id: string
-  name: string
-  affiliations: string[]
-  paperCount: number
-  citationCount: number
-  hIndex: number
-}
-
 type TopicCandidate = {
   name: string
   score: number
   papers: Set<number>
   seeded: boolean
-}
-
-export const semanticPaperSearchUrl = (query: string): string => (
-  `https://api.semanticscholar.org/graph/v1/paper/search?${new URLSearchParams({
-    query, limit: String(PAPER_LIMIT), fields: PAPER_FIELDS,
-  }).toString()}`
-)
-
-export const semanticAuthorBatchUrl = (): string => (
-  `https://api.semanticscholar.org/graph/v1/author/batch?${new URLSearchParams({
-    fields: AUTHOR_FIELDS,
-  }).toString()}`
-)
-
-const text = (value: unknown): string => typeof value === 'string' ? value.trim() : ''
-const count = (value: unknown): number => (
-  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0
-)
-
-const decoded = (body: Uint8Array): unknown => JSON.parse(new TextDecoder().decode(body))
-
-/** Projects the loose paper-search payload into the fields used for deterministic ranking. */
-export function parseSuggestionPapers(body: Uint8Array): SearchPaper[] {
-  const payload = decoded(body)
-  if (payload === null || typeof payload !== 'object'
-    || !Array.isArray((payload as { data?: unknown }).data)) {
-    throw new Error('Semantic Scholar returned an unrecognized paper result')
-  }
-  return (payload as { data: unknown[] }).data.flatMap((item) => {
-    if (item === null || typeof item !== 'object') return []
-    const row = item as Record<string, unknown>
-    const title = text(row['title'])
-    if (title === '') return []
-    const authors = Array.isArray(row['authors']) ? row['authors'].flatMap((author) => {
-      if (author === null || typeof author !== 'object') return []
-      const value = author as Record<string, unknown>
-      const id = text(value['authorId'])
-      const name = text(value['name'])
-      return id === '' || name === '' ? [] : [{ id, name }]
-    }) : []
-    return [{
-      title, authors,
-      citationCount: count(row['citationCount']),
-      influentialCitationCount: count(row['influentialCitationCount']),
-    }]
-  })
-}
-
-/** Projects an author-batch response into stable identities and public impact metadata. */
-export function parseSuggestionAuthors(body: Uint8Array): AuthorImpact[] {
-  const payload = decoded(body)
-  if (!Array.isArray(payload)) throw new Error('Semantic Scholar returned unrecognized author details')
-  return payload.flatMap((item) => {
-    if (item === null || typeof item !== 'object') return []
-    const row = item as Record<string, unknown>
-    const id = text(row['authorId'])
-    const name = text(row['name'])
-    if (id === '' || name === '') return []
-    const affiliations = Array.isArray(row['affiliations'])
-      ? [...new Set(row['affiliations'].map(text).filter(Boolean))] : []
-    return [{
-      id, name, affiliations,
-      paperCount: count(row['paperCount']),
-      citationCount: count(row['citationCount']),
-      hIndex: count(row['hIndex']),
-    }]
-  })
 }
 
 const tokens = (value: string): string[] => (
@@ -196,7 +106,7 @@ const topicSuggestions = (
 }
 
 const authorSuggestions = (
-  papers: SearchPaper[], impacts: AuthorImpact[],
+  papers: SearchPaper[], impacts: AuthorCandidate[],
 ): WatchAuthorSuggestion[] => {
   const relevance = new Map<string, { name: string; papers: Set<number>; score: number }>()
   papers.forEach((paper, at) => {
@@ -231,6 +141,7 @@ const authorSuggestions = (
     || right.citationCount - left.citationCount
     || left.name.localeCompare(right.name)
   )).slice(0, RESULT_LIMIT).map((author) => ({
+    source: author.source,
     id: author.id,
     name: author.name,
     affiliations: author.affiliations,
@@ -245,22 +156,24 @@ export type WatchSuggestions = {
   suggest(input: { focus: string; seedTopics?: string[] }): Promise<WatchSuggestionResult>
 }
 
+/** Where suggestions read papers and author impact from. */
+export type SuggestionSource = {
+  searchPapers(query: string): Promise<SearchPaper[]>
+  authorImpacts(ids: readonly string[]): Promise<AuthorCandidate[]>
+}
+
 /**
  * Suggests watches with scholarly search plus deterministic extraction and ranking. It performs
  * no model calls, owns no durable state, and returns only candidates for explicit user review.
+ * When the source fails and the same request was answered before, it returns that answer marked `stale`.
  */
 export function createWatchSuggestions(deps: {
-  get: HttpGet
-  sleep: (ms: number) => Promise<void>
+  source: SuggestionSource
   now?: () => number
   cacheMs?: number
 }): WatchSuggestions {
   const cache = new Map<string, { at: number; value: WatchSuggestionResult }>()
   const pending = new Map<string, Promise<WatchSuggestionResult>>()
-  const policy = {
-    timeoutMs: TIMEOUT_MS, tries: 2, backoffMs: 1_000,
-    limit: 8 * 1024 * 1024, sleep: deps.sleep,
-  }
 
   return {
     suggest(input) {
@@ -276,21 +189,10 @@ export function createWatchSuggestions(deps: {
       const running = pending.get(key)
       if (running !== undefined) return running.then((value) => structuredClone(value))
 
-      const request = getWithRetry(deps.get, semanticPaperSearchUrl(focus), policy)
-        .then(parseSuggestionPapers)
+      const request = deps.source.searchPapers(focus)
         .then(async (papers) => {
           const authorIds = [...new Set(papers.flatMap((paper) => paper.authors.map((author) => author.id)))]
-            .slice(0, AUTHOR_BATCH_LIMIT)
-          const impacts = authorIds.length === 0 ? [] : parseSuggestionAuthors(await requestWithRetry(
-            deps.get,
-            semanticAuthorBatchUrl(),
-            {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ ids: authorIds }),
-            },
-            policy,
-          ))
+          const impacts = await deps.source.authorImpacts(authorIds)
           return WatchSuggestionResultSchema.parse({
             topics: topicSuggestions(focus, seedTopics, papers),
             authors: authorSuggestions(papers, impacts),
@@ -300,6 +202,9 @@ export function createWatchSuggestions(deps: {
         .then((value) => {
           cache.set(key, { at: (deps.now ?? Date.now)(), value: structuredClone(value) })
           return value
+        }, (error: unknown) => {
+          if (held === undefined) throw error
+          return { ...structuredClone(held.value), stale: true }
         })
         .finally(() => pending.delete(key))
       pending.set(key, request)

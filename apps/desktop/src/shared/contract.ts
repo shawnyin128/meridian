@@ -960,8 +960,11 @@ export const ProjectDeleteAttachmentParamsSchema = z.object({
 }).strict()
 
 /** Confirmed stable author identity from an external scholarly graph, with a frozen affiliation snapshot. */
+/** Where an author identity comes from; its `id` only means something within that source. */
+export const AuthorSourceSchema = z.enum(['semantic-scholar', 'openalex'])
+
 export const AuthorIdentitySchema = z.object({
-  source: z.literal('semantic-scholar'),
+  source: AuthorSourceSchema,
   id: z.string().trim().min(1),
   affiliations: z.array(z.string().trim().min(1)),
 }).strict()
@@ -995,8 +998,9 @@ const WatchFieldsSchema = z.discriminatedUnion('type', [
   }).strict(),
 ])
 
-/** Semantic Scholar author search projects only fields needed for disambiguation and selection. */
+/** An author search result, projected to the fields needed for disambiguation and selection. */
 export const AuthorCandidateSchema = z.object({
+  source: AuthorSourceSchema,
   id: z.string().trim().min(1),
   name: z.string().trim().min(1),
   affiliations: z.array(z.string().trim().min(1)),
@@ -1021,6 +1025,8 @@ export const WatchSuggestionResultSchema = z.object({
   topics: z.array(WatchTopicSuggestionSchema).max(8),
   authors: z.array(WatchAuthorSuggestionSchema).max(8),
   paperCount: z.number().int().min(0),
+  /** The source could not be reached, so these are the last suggestions made for the same request. */
+  stale: z.boolean().optional(),
 }).strict()
 
 export const RecommendationReasonSchema = z.object({
@@ -1734,6 +1740,15 @@ export const LibraryResetResultSchema = z.object({
 /** Local coding-agent plugin package detected by Core without invoking its CLI. */
 export const ExtensionClientSchema = z.enum(['codex', 'claude-code'])
 
+/** Whether the user saved a Semantic Scholar API key, and its last four characters when so. */
+export const SemanticKeyStatusSchema = z.object({
+  configured: z.boolean(),
+  lastFour: z.string().optional(),
+}).strict()
+
+/** Saves an optional Semantic Scholar API key; null or blank removes the saved key. */
+export const SemanticKeySetParamsSchema = z.object({ apiKey: z.string().max(200).nullable() }).strict()
+
 /**
  * The newest plugin version known, which the skills and MCP share, and when master was last read for
  * it; `checkedAt` is null until a read has succeeded, and the version is then the bundled one.
@@ -1880,6 +1895,7 @@ export type LibraryResetResult = z.infer<typeof LibraryResetResultSchema>
 export type ExtensionClient = z.infer<typeof ExtensionClientSchema>
 export type ExtensionStatus = z.infer<typeof ExtensionStatusSchema>
 export type PluginVersion = z.infer<typeof PluginVersionSchema>
+export type SemanticKeyStatus = z.infer<typeof SemanticKeyStatusSchema>
 
 /** Facet value with paper count and title of the newest matching paper. */
 export type Facet = { value: string; count: number; newestTitle: string }
@@ -1895,6 +1911,8 @@ export const CONTRACT_METHODS = [
   'extensions.status',
   'extensions.checkLatest',
   'extensions.pluginVersion',
+  'delivery.semanticKey',
+  'delivery.setSemanticKey',
   'vault.today',
   'papers.list',
   'papers.facets',

@@ -97,6 +97,30 @@ describe('createBackground', () => {
     expect(store.discoverySeeds('draft').negative).toContain('semantic-branch-acceptance')
   })
 
+  it('保存的 Semantic Scholar key 随每次 Semantic Scholar 请求带上，改了立即生效', async () => {
+    const store = createFixtureStore(() => '2026-08-25')
+    const canned = createCannedGet(cannedNet as CannedTable, VAULT)
+    const keys: (string | undefined)[] = []
+    const saved: { key?: string } = {}
+    const background = createBackground({
+      store,
+      get: async (url, options) => {
+        if (url.includes('semanticscholar.org')) keys.push(options.headers?.['x-api-key'])
+        return canned(url, options)
+      },
+      probe: probePdf, arxivIntervalMs: 0, sleep: async () => {}, now: () => 0,
+      semanticScholarApiKey: () => saved.key,
+    })
+    await background.fetchDiscoveries('draft')
+    expect(keys.length).toBeGreaterThan(0)
+    expect(new Set(keys)).toEqual(new Set([undefined]))
+    keys.length = 0
+    saved.key = 'saved-key'
+    await background.fetchDiscoveries('draft', true)
+    expect(keys.length).toBeGreaterThan(0)
+    expect(new Set(keys)).toEqual(new Set(['saved-key']))
+  })
+
   it('不用模型即可从学术元数据生成主题与稳定作者建议', async () => {
     const { background } = setup()
     const result = await background.suggestWatches({
@@ -125,7 +149,7 @@ describe('createBackground', () => {
     })
 
     await expect(background.searchAuthors('Song Han')).rejects.toThrow(
-      '作者检索服务正忙，请稍后重试；也可以先按姓名保存为未确认作者',
+      'OpenAlex 正在限流，请稍后重试；也可以先按姓名保存为未确认作者',
     )
   })
 })

@@ -124,9 +124,9 @@ test('preload 仍是窄接口:页面上没有任何收得下 channel 名的口�
   })
   console.log(`preload 面 ${JSON.stringify(surface)}`)
   expect(surface.meridian).toEqual([
-    'call:function', 'chooseLibraryRoot:function', 'chooseWorkspaceRoot:function', 'onOpenSettings:function',
-    'pathForFile:function', 'platform:string', 'restartApp:function', 'revealFile:function',
-    'setTitleBarTheme:function', 'toggleMaximize:function',
+    'call:function', 'chooseLibraryRoot:function', 'chooseWorkspaceRoot:function', 'onOpenAgentTutorial:function',
+    'onOpenSettings:function', 'pathForFile:function', 'platform:string', 'restartApp:function', 'revealFile:function',
+    'setLocale:function', 'setTitleBarTheme:function', 'toggleMaximize:function', 'updates:object',
   ])
   expect(surface.escapes).toEqual([
     'require:undefined', 'process:undefined', 'ipcRenderer:undefined',
@@ -202,11 +202,13 @@ test('扩展设置展示 Core 检查到的状态与对应安装或更新命令',
 
   for (const status of statuses) {
     const entry = win.locator(`.setdlg [data-extension="${status.id}"]`)
-    const command = status.state === 'update-required' ? status.updateCommand : status.installCommand
+    // An installed extension, current or not, is kept up to date rather than installed again.
+    const updating = status.state !== 'not-installed'
+    const command = updating ? status.updateCommand : status.installCommand
     await expect(entry).toContainText(status.name)
     await expect(entry.locator('.extension-state')).toContainText(EXTENSION_STATE_COPY[status.state])
     await expect(entry.locator('pre')).toHaveText(command)
-    await expect(entry.getByRole('button', { name: `复制 ${status.name} ${status.state === 'update-required' ? '更新' : '安装'}命令` })).toHaveCount(1)
+    await expect(entry.getByRole('button', { name: `复制 ${status.name} ${updating ? '更新' : '安装'}命令` })).toHaveCount(1)
   }
 })
 

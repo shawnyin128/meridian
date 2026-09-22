@@ -463,7 +463,7 @@ test('作者关注先用机构消歧,确认后保存稳定作者身份', async (
   const added = (await watchesFromCore(win)).find((item) => item.name === 'Alex Kim')
   expect(added).toMatchObject({
     type: 'author',
-    identity: { source: 'semantic-scholar', affiliations: ['Stanford University'] },
+    identity: { source: 'openalex', affiliations: ['Stanford University'] },
   })
   const row = settings(win, `.wrow[data-w="${added!.id}"]`)
   await expect(row.locator('.author-id-state')).toHaveText('Stanford University')

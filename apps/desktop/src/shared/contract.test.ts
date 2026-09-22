@@ -968,7 +968,7 @@ describe('contract schemas', () => {
     const result = {
       topics: [{ name: 'speculative decoding', relatedPapers: 12 }],
       authors: [{
-        id: 'author-1', name: 'Ada Expert', affiliations: ['MIT'], relatedPapers: 4,
+        source: 'openalex' as const, id: 'author-1', name: 'Ada Expert', affiliations: ['MIT'], relatedPapers: 4,
         paperCount: 120, citationCount: 8_000, hIndex: 42,
       }],
       paperCount: 24,

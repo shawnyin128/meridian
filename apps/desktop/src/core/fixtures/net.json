@@ -15,12 +15,42 @@
     "delayMs": 3000,
     "text": "<html><head><meta name=\"citation_title\" content=\"Slow Lookup Paper\"><meta name=\"citation_author\" content=\"Lin, Mei\"><meta name=\"citation_date\" content=\"2025/09/05\"><meta name=\"citation_pdf_url\" content=\"https://arxiv.org/pdf/2509.05555\"><meta name=\"citation_arxiv_id\" content=\"2509.05555v1\"><meta name=\"citation_abstract\" content=\"Arrives after a pause.\"></head></html>"
   },
-  "https://arxiv.org/pdf/2211.17192": { "status": 200, "file": "sources/papers/paper-pdf-e0b2ea3a1a54-Fast-Inference-from-Transformers-via-Speculative-Decoding.pdf" },
-  "https://arxiv.org/pdf/2407.08608": { "status": 200, "file": "sources/papers/paper-pdf-f6b2650adabe-FlashAttention-3-Fast-and-Accurate-Attention-with-Asynchrony-and-Low-precision.pdf" },
-  "https://arxiv.org/pdf/2607.01428": { "status": 200, "pdf": { "lines": ["LongSpec: Long-Context Lossless Speculative Decoding"] } },
-  "https://arxiv.org/pdf/2608.00417": { "status": 503 },
-  "https://arxiv.org/pdf/2608.01112": { "status": 200, "delayMs": 2500, "pdf": { "lines": ["DrafterLite: Distilling Draft Models that Know When to Stop"] } },
-  "https://arxiv.org/pdf/2608.02233": { "status": 200, "pdf": { "lines": ["ThunderKV: Fused Attention Kernels for Long-Context Serving"] } },
+  "https://arxiv.org/pdf/2211.17192": {
+    "status": 200,
+    "file": "sources/papers/paper-pdf-e0b2ea3a1a54-Fast-Inference-from-Transformers-via-Speculative-Decoding.pdf"
+  },
+  "https://arxiv.org/pdf/2407.08608": {
+    "status": 200,
+    "file": "sources/papers/paper-pdf-f6b2650adabe-FlashAttention-3-Fast-and-Accurate-Attention-with-Asynchrony-and-Low-precision.pdf"
+  },
+  "https://arxiv.org/pdf/2607.01428": {
+    "status": 200,
+    "pdf": {
+      "lines": [
+        "LongSpec: Long-Context Lossless Speculative Decoding"
+      ]
+    }
+  },
+  "https://arxiv.org/pdf/2608.00417": {
+    "status": 503
+  },
+  "https://arxiv.org/pdf/2608.01112": {
+    "status": 200,
+    "delayMs": 2500,
+    "pdf": {
+      "lines": [
+        "DrafterLite: Distilling Draft Models that Know When to Stop"
+      ]
+    }
+  },
+  "https://arxiv.org/pdf/2608.02233": {
+    "status": 200,
+    "pdf": {
+      "lines": [
+        "ThunderKV: Fused Attention Kernels for Long-Context Serving"
+      ]
+    }
+  },
   "https://export.arxiv.org/api/query?search_query=all%3A%22speculative+decoding%22&sortBy=submittedDate&sortOrder=descending&max_results=20": {
     "status": 200,
     "atom": "<feed xmlns=\"http://www.w3.org/2005/Atom\"><entry><id>http://arxiv.org/abs/2609.01234v1</id><published>2026-09-12T08:00:00Z</published><title>Tree Width in Batched Serving</title><summary>Batched verification moves the width knee point outward.</summary><author><name>Mei Lin</name></author><author><name>Arun Patel</name></author></entry><entry><id>http://arxiv.org/abs/2211.17192v2</id><published>2022-11-30T17:33:28Z</published><title>Fast Inference from Transformers via Speculative Decoding</title><summary>Inference from large autoregressive models is slow.</summary><author><name>Yaniv Leviathan</name></author></entry></feed>"
@@ -37,17 +67,21 @@
     "status": 200,
     "text": "{\"recommendedPapers\":[{\"paperId\":\"semantic-branch-acceptance\",\"title\":\"Adaptive Verification Paths for Speculative Decoding\",\"abstract\":\"A project-conditioned study of adaptive verification paths and acceptance-aware branching.\",\"authors\":[{\"name\":\"Mei Lin\"},{\"name\":\"Arun Patel\"}],\"venue\":\"ICLR 2027\",\"publicationDate\":\"2026-09-13\",\"citationCount\":4,\"influentialCitationCount\":1,\"externalIds\":{\"ArXiv\":\"2609.13001\"},\"publicationTypes\":[\"Conference\"]},{\"paperId\":\"semantic-serving-tree\",\"title\":\"Serving-Aware Draft Trees under Shared Prefixes\",\"abstract\":\"Draft-tree construction conditioned on batch size and prefix sharing.\",\"authors\":[{\"name\":\"Rui Chen\"}],\"venue\":\"arXiv\",\"publicationDate\":\"2026-09-10\",\"citationCount\":1,\"influentialCitationCount\":0,\"externalIds\":{\"ArXiv\":\"2609.10002\"},\"publicationTypes\":[]}]}"
   },
-  "https://api.semanticscholar.org/graph/v1/paper/search?*": {
+  "https://api.openalex.org/works?search=*": {
     "status": 200,
-    "text": "{\"data\":[{\"paperId\":\"fixture-watch-1\",\"title\":\"Speculative Decoding with Adaptive Draft Trees\",\"citationCount\":342,\"influentialCitationCount\":44,\"authors\":[{\"authorId\":\"fixture-author-1\",\"name\":\"Mei Lin\"},{\"authorId\":\"fixture-author-2\",\"name\":\"Arun Patel\"}]},{\"paperId\":\"fixture-watch-2\",\"title\":\"Efficient Speculative Decoding for Batched Inference\",\"citationCount\":188,\"influentialCitationCount\":21,\"authors\":[{\"authorId\":\"fixture-author-1\",\"name\":\"Mei Lin\"},{\"authorId\":\"fixture-author-3\",\"name\":\"Rui Chen\"}]},{\"paperId\":\"fixture-watch-3\",\"title\":\"Draft Tree Verification for Efficient Inference\",\"citationCount\":95,\"influentialCitationCount\":10,\"authors\":[{\"authorId\":\"fixture-author-3\",\"name\":\"Rui Chen\"}]}]}"
+    "text": "{\"results\":[{\"id\":\"https://openalex.org/W-fixture-watch-1\",\"title\":\"Speculative Decoding with Adaptive Draft Trees\",\"cited_by_count\":342,\"authorships\":[{\"author\":{\"id\":\"https://openalex.org/fixture-author-1\",\"display_name\":\"Mei Lin\"}},{\"author\":{\"id\":\"https://openalex.org/fixture-author-2\",\"display_name\":\"Arun Patel\"}}]},{\"id\":\"https://openalex.org/W-fixture-watch-2\",\"title\":\"Efficient Speculative Decoding for Batched Inference\",\"cited_by_count\":188,\"authorships\":[{\"author\":{\"id\":\"https://openalex.org/fixture-author-1\",\"display_name\":\"Mei Lin\"}},{\"author\":{\"id\":\"https://openalex.org/fixture-author-3\",\"display_name\":\"Rui Chen\"}}]},{\"id\":\"https://openalex.org/W-fixture-watch-3\",\"title\":\"Draft Tree Verification for Efficient Inference\",\"cited_by_count\":95,\"authorships\":[{\"author\":{\"id\":\"https://openalex.org/fixture-author-3\",\"display_name\":\"Rui Chen\"}}]}]}"
   },
-  "https://api.semanticscholar.org/graph/v1/author/batch?*": {
+  "https://api.openalex.org/authors?filter=*": {
     "status": 200,
-    "text": "[{\"authorId\":\"fixture-author-1\",\"name\":\"Mei Lin\",\"affiliations\":[\"Massachusetts Institute of Technology\"],\"paperCount\":126,\"citationCount\":8300,\"hIndex\":43},{\"authorId\":\"fixture-author-2\",\"name\":\"Arun Patel\",\"affiliations\":[\"Stanford University\"],\"paperCount\":94,\"citationCount\":6200,\"hIndex\":36},{\"authorId\":\"fixture-author-3\",\"name\":\"Rui Chen\",\"affiliations\":[\"Carnegie Mellon University\"],\"paperCount\":77,\"citationCount\":4100,\"hIndex\":31}]"
+    "text": "{\"results\":[{\"id\":\"https://openalex.org/fixture-author-1\",\"display_name\":\"Mei Lin\",\"works_count\":126,\"cited_by_count\":8300,\"summary_stats\":{\"h_index\":43},\"last_known_institutions\":[{\"display_name\":\"Massachusetts Institute of Technology\"}]},{\"id\":\"https://openalex.org/fixture-author-2\",\"display_name\":\"Arun Patel\",\"works_count\":94,\"cited_by_count\":6200,\"summary_stats\":{\"h_index\":36},\"last_known_institutions\":[{\"display_name\":\"Stanford University\"}]},{\"id\":\"https://openalex.org/fixture-author-3\",\"display_name\":\"Rui Chen\",\"works_count\":77,\"cited_by_count\":4100,\"summary_stats\":{\"h_index\":31},\"last_known_institutions\":[{\"display_name\":\"Carnegie Mellon University\"}]}]}"
   },
-  "https://api.semanticscholar.org/graph/v1/author/search?*": {
+  "https://api.openalex.org/authors?search=*": {
     "status": 200,
-    "kind": "author-search"
+    "kind": "openalex-author-search"
+  },
+  "https://api.openalex.org/works?filter=author.id*": {
+    "status": 200,
+    "kind": "openalex-author-works"
   },
   "https://api.semanticscholar.org/graph/v1/author/*/papers?*": {
     "status": 200,

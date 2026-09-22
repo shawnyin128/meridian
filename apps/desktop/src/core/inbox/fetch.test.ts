@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createFixtureStore } from '../fixture-store.js'
+import type { AuthorIdentity } from '../../shared/contract.js'
 import type { RemotePaper } from '../net/arxiv.js'
 import { createWatchFetcher } from './fetch.js'
 
@@ -13,7 +14,7 @@ function setup(
   scholar?: { lookup(ids: string[]): Promise<Map<string, {
     citationCount: number; influentialCitationCount: number; venue: string; published: boolean
   }>> },
-  authors?: { search(query: string): Promise<never[]>; papers(authorId: string): Promise<RemotePaper[]> },
+  authorPapers?: (identity: AuthorIdentity) => Promise<RemotePaper[]>,
 ) {
   const store = createFixtureStore(() => '2026-08-25')
   const queries: string[] = []
@@ -25,7 +26,7 @@ function setup(
       lookup: async () => null,
     },
     ...(scholar === undefined ? {} : { scholar }),
-    ...(authors === undefined ? {} : { authors }),
+    ...(authorPapers === undefined ? {} : { authorPapers }),
     now: () => 1_000,
     onWrite: () => { counter.writes += 1 },
   })
@@ -142,9 +143,9 @@ describe('createWatchFetcher', () => {
 
   it('已确认的作者按稳定 id 抓论文,不再把同名姓名交给 arXiv 模糊搜索', async () => {
     const authorIds: string[] = []
-    const { store, fetcher, queries } = setup(async () => [], undefined, {
-      search: async () => [],
-      papers: async (id) => { authorIds.push(id); return [paper('2609.08888', 'Verified Author')] },
+    const { store, fetcher, queries } = setup(async () => [], undefined, async (identity) => {
+      authorIds.push(`${identity.source}:${identity.id}`)
+      return [paper('2609.08888', 'Verified Author')]
     })
     store.createWatch({
       type: 'author', name: 'Mei Lin',
@@ -152,7 +153,7 @@ describe('createWatchFetcher', () => {
     })
     const verified = store.listWatches().find((watch) => watch.name === 'Mei Lin')!
     await fetcher.run([verified.id])
-    expect(authorIds).toEqual(['s2-mei-lin'])
+    expect(authorIds).toEqual(['semantic-scholar:s2-mei-lin'])
     expect(queries).toEqual([])
     expect(store.listInbox().some((entry) => entry.title === 'Verified Author')).toBe(true)
   })

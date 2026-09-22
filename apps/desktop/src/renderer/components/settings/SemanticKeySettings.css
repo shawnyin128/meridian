@@ -1,0 +1,6 @@
+.semantic-key{margin-top:24px}
+.semantic-key-row{display:flex;align-items:center;gap:8px}
+.semantic-key-row>.form-control,.semantic-key-row>.semantic-key-saved{flex:1;min-width:0}
+.semantic-key-saved{display:flex;align-items:center;gap:8px;color:var(--ter);font-variant-numeric:tabular-nums}
+.semantic-key-tail{color:var(--ink)}
+.semantic-key .settings-explain a{color:var(--accent)}

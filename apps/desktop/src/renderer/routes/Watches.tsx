@@ -205,7 +205,7 @@ export function WatchSettings() {
       type: 'author',
       name: candidate.name,
       identity: {
-        source: 'semantic-scholar', id: candidate.id, affiliations: candidate.affiliations,
+        source: candidate.source, id: candidate.id, affiliations: candidate.affiliations,
       },
     }).then((created) => { if (created) stop() })
   }
@@ -296,7 +296,7 @@ export function WatchSettings() {
       if (await create({
         type: 'author', name: candidate.name,
         identity: {
-          source: 'semantic-scholar', id: candidate.id, affiliations: candidate.affiliations,
+          source: candidate.source, id: candidate.id, affiliations: candidate.affiliations,
         },
       })) {
         setSuggestions((current) => current === null ? null : {
@@ -469,7 +469,10 @@ export function WatchSettings() {
               ? <div className="ph2">{hadSuggestions ? m.watches.allAdded : m.watches.noneSuggested}</div>
               : (
                 <>
-                  <div className="ph2">{m.watches.suggestionBasis(suggestions.paperCount)}</div>
+                  <div className="ph2">
+                    {m.watches.suggestionBasis(suggestions.paperCount)}
+                    {suggestions.stale === true ? ` · ${m.watches.suggestionStale}` : ''}
+                  </div>
                   {suggestions.topics.length === 0 ? null : (
                     <section className="watch-suggestion-group">
                       <div className="watch-suggestion-group-heading">

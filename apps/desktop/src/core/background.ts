@@ -10,6 +10,7 @@ import type { HttpGet } from './net/http.js'
 import { createRateLimitedGet, HttpStatusError, netReason } from './net/http.js'
 import { createSemanticAuthors } from './net/semantic-authors.js'
 import { createWatchSuggestions } from './net/watch-suggestions.js'
+import { createOpenAlex } from './net/openalex.js'
 import { createMetadataQueue, type PdfProbe } from './paper-library/index.js'
 import {
   createRecommendationService, createSemanticRecommendations, createSemanticScholar,
@@ -36,21 +37,23 @@ const needsMetadata = (paper: PaperImportResult['paper']): boolean => (
 /** Builds Core work that continues after the import contract call returns. */
 export function createBackground(deps: {
   store: VaultStore; get: HttpGet; probe: PdfProbe; arxivIntervalMs: number
-  sleep: (ms: number) => Promise<void>; now: () => number; semanticScholarApiKey?: string
+  sleep: (ms: number) => Promise<void>; now: () => number
+  /** The Semantic Scholar API key to send, read on every request so a newly saved key applies at once. */
+  semanticScholarApiKey?: () => string | undefined
 }): Background {
   let writes = 0
   const onWrite = (): void => { writes += 1 }
   const arxiv = createArxiv({ get: deps.get, minIntervalMs: deps.arxivIntervalMs, now: deps.now, sleep: deps.sleep })
-  const apiKey = deps.semanticScholarApiKey?.trim() || process.env['SEMANTIC_SCHOLAR_API_KEY']?.trim()
-  const semanticGet = createRateLimitedGet(deps.get, {
-    minIntervalMs: 1_100, sleep: deps.sleep, now: deps.now,
-    ...(apiKey ? { headers: { 'x-api-key': apiKey } } : {}),
-  })
+  const keyedGet: HttpGet = (url, options) => {
+    const apiKey = deps.semanticScholarApiKey?.()?.trim() || process.env['SEMANTIC_SCHOLAR_API_KEY']?.trim()
+    return deps.get(url, apiKey ? { ...options, headers: { ...options.headers, 'x-api-key': apiKey } } : options)
+  }
+  const semanticGet = createRateLimitedGet(keyedGet, { minIntervalMs: 1_100, sleep: deps.sleep, now: deps.now })
   const scholar = createSemanticScholar({ get: semanticGet, sleep: deps.sleep, now: deps.now })
-  const authors = createSemanticAuthors({ get: semanticGet, sleep: deps.sleep, now: deps.now })
-  const watchSuggestions = createWatchSuggestions({
-    get: semanticGet, sleep: deps.sleep, now: deps.now,
-  })
+  const authors = createSemanticAuthors({ get: semanticGet, sleep: deps.sleep })
+  // OpenAlex needs no key, so watch suggestions and author search work out of the box.
+  const openAlex = createOpenAlex({ get: deps.get, sleep: deps.sleep, now: deps.now })
+  const watchSuggestions = createWatchSuggestions({ source: openAlex, now: deps.now })
   const recommendations = createSemanticRecommendations({ get: semanticGet, sleep: deps.sleep })
   const recommendation = createRecommendationService({
     store: deps.store, provider: recommendations, onWrite, now: deps.now,
@@ -58,7 +61,9 @@ export function createBackground(deps: {
   const metadata = createMetadataQueue({ store: deps.store, probe: deps.probe, provider: arxiv, onWrite })
   const downloads = createInboxDownloads({ store: deps.store, get: deps.get, onWrite })
   const fetcher = createWatchFetcher({
-    store: deps.store, arxiv, scholar, authors, now: deps.now, onWrite,
+    store: deps.store, arxiv, scholar, now: deps.now, onWrite,
+    authorPapers: (identity) => (identity.source === 'openalex'
+      ? openAlex.authorWorks(identity.id) : authors.papers(identity.id)),
   })
   return {
     importPaper(filename, bytes) {
@@ -72,10 +77,10 @@ export function createBackground(deps: {
     fetchWatches: (watchIds) => fetcher.run(watchIds),
     async searchAuthors(query) {
       try {
-        return await authors.search(query)
+        return await openAlex.searchAuthors(query)
       } catch (error) {
         if (error instanceof HttpStatusError && error.status === 429) {
-          throw new Error('作者检索服务正忙，请稍后重试；也可以先按姓名保存为未确认作者')
+          throw new Error('OpenAlex 正在限流，请稍后重试；也可以先按姓名保存为未确认作者')
         }
         throw new Error(`没能搜索作者:${netReason(error)}`)
       }
@@ -85,7 +90,7 @@ export function createBackground(deps: {
         return await watchSuggestions.suggest(input)
       } catch (error) {
         if (error instanceof HttpStatusError && error.status === 429) {
-          throw new Error('研究检索服务正忙，请稍后重试')
+          throw new Error('OpenAlex 正在限流，请稍后重试')
         }
         throw new Error(`没能生成关注建议:${netReason(error)}`)
       }

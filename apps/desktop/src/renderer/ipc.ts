@@ -2,7 +2,7 @@ import type { AppUpdateStatus } from '../shared/app-update.js'
 import type {
   AttachmentFields, AuthorCandidate, ChangeEntry, ChatCancelResult, ChatMessage, ChatMessageFields,
   ChatSendResult, ChatSession, ConclusionState,
-  ContractMethod, Facet, PluginVersion,
+  ContractMethod, Facet, PluginVersion, SemanticKeyStatus,
   DeliverySettings, DiscoveryFeedback, DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile,
   ExtensionStatus, FeedEntry, FeedFields,
   InboxDownloadResult, InboxEntry, InboxListParams, JobsStatus, LaterEntry, ListParams,
@@ -268,6 +268,9 @@ export const discovery = {
 export const delivery = {
   settings: () => call<DeliverySettings>('delivery.settings', {}),
   updateSettings: (settings: DeliverySettings) => call<void>('delivery.updateSettings', settings),
+  semanticKey: () => call<SemanticKeyStatus>('delivery.semanticKey', {}),
+  /** Saves the optional Semantic Scholar API key, or removes it when null. */
+  setSemanticKey: (apiKey: string | null) => call<SemanticKeyStatus>('delivery.setSemanticKey', { apiKey }),
 }
 
 export const later = {

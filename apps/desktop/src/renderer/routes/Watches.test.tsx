@@ -18,7 +18,7 @@ const api = vi.hoisted(() => ({
   suggest: vi.fn(async () => ({
     topics: [{ name: 'batch aware verification', relatedPapers: 3 }],
     authors: [{
-      id: 'author-new', name: 'Ada Expert', affiliations: ['MIT'], relatedPapers: 2,
+      source: 'openalex', id: 'author-new', name: 'Ada Expert', affiliations: ['MIT'], relatedPapers: 2,
       paperCount: 120, citationCount: 8_000, hIndex: 42,
     }],
     paperCount: 8,
@@ -133,7 +133,7 @@ describe('WatchSettings', () => {
     await act(async () => { button(authorRow, '添加').click() })
     expect(api.create).toHaveBeenCalledWith({
       type: 'author', name: 'Ada Expert',
-      identity: { source: 'semantic-scholar', id: 'author-new', affiliations: ['MIT'] },
+      identity: { source: 'openalex', id: 'author-new', affiliations: ['MIT'] },
     })
 
     await act(async () => { root.unmount() })

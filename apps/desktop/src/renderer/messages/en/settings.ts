@@ -294,6 +294,17 @@ export const settings = {
     saved: 'Inmail settings saved',
   },
   discovery: {
+    semanticKey: {
+      heading: 'Data sources',
+      explain: 'Watch suggestions and author search use OpenAlex by default, which needs no key. With a Semantic Scholar API key, discovery and author watches saved from Semantic Scholar are rarely rate limited.',
+      apply: 'Get a free key',
+      inputLabel: 'Semantic Scholar API key',
+      placeholder: 'Paste a Semantic Scholar API key (optional)',
+      stored: (lastFour: string) => `Saved Semantic Scholar API key ending in ${lastFour}`,
+      save: 'Save',
+      replace: 'Replace',
+      remove: 'Remove',
+    },
     heading: 'Discovery',
     intro: 'Choose what kinds of papers Meridian should look for in each project.',
     directionsHeading: 'Research directions',

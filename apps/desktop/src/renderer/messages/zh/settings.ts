@@ -287,6 +287,17 @@ export const settings = {
     saved: '论文推送设置已保存',
   },
   discovery: {
+    semanticKey: {
+      heading: '数据源',
+      explain: '关注建议和作者搜索默认用 OpenAlex，不需要 key。填入 Semantic Scholar API key 后，发现推荐和早先按 Semantic Scholar 保存的作者关注不容易被限流。',
+      apply: '免费申请 key',
+      inputLabel: 'Semantic Scholar API key',
+      placeholder: '粘贴 Semantic Scholar API key（可选）',
+      stored: (lastFour: string) => `已保存的 Semantic Scholar API key，末四位 ${lastFour}`,
+      save: '保存',
+      replace: '更换',
+      remove: '移除',
+    },
     heading: '发现',
     intro: '管理按项目生成的论文发现方向与核心方向。',
     directionsHeading: '发现方向',

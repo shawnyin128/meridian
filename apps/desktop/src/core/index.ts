@@ -16,6 +16,7 @@ import {
   ChatSetArchivedParamsSchema,
   CONTRACT_METHODS,
   EmptyParamsSchema,
+  SemanticKeySetParamsSchema,
   FeedAppendParamsSchema,
   HarnessCancelParamsSchema,
   HarnessPendingPaperWikiParamsSchema,
@@ -106,6 +107,7 @@ import {
 import { extensionStatuses } from './extensions/status.js'
 import { noteVersionChanges } from './extensions/notices.js'
 import { createPluginVersionCheck } from './extensions/latest.js'
+import { openSemanticKeyStore } from './net/semantic-key.js'
 import {
   createChatHarnessRunner, createChatService, createHarnessCostGate,
   createHarnessModelConfig, createHarnessProposalAudit,
@@ -154,6 +156,9 @@ const librarySource = sourceOf(vaultRoot, process.env['MERIDIAN_VAULT_SOURCE'])
 const locationRoot = vaultRoot ?? process.env['MERIDIAN_LIBRARY_ROOT'] ?? process.cwd()
 const configHome = process.env['MERIDIAN_CONFIG_HOME'] ?? join(homedir(), '.meridian')
 const harnessModel = await createHarnessModelConfig(configHome, createMainCredentialVault())
+const semanticKey = await openSemanticKeyStore({
+  file: join(configHome, 'semantic-scholar.json'), vault: createMainCredentialVault(),
+})
 const proposalAudit = vaultRoot === undefined ? null : createHarnessProposalAudit(locationRoot)
 /** Trust-migration input for openStore: the composition root is the only place allowed to reach into Harness. */
 const appliedProposalBodies = (() => {
@@ -194,6 +199,7 @@ const background = createBackground({
   arxivIntervalMs: canned ? 0 : ARXIV_INTERVAL_MS,
   sleep: canned ? async () => {} : sleep,
   now: Date.now,
+  semanticScholarApiKey: semanticKey.current,
 })
 const paperWikiHarness = vaultRoot === undefined ? null : createPaperWikiHarnessRunner({
   store,
@@ -339,6 +345,16 @@ function assertLibraryRestartReady(): void {
 registerHandler('extensions.status', (params) => {
   EmptyParamsSchema.parse(params)
   return extensionStatuses(undefined, pluginCheck.latest())
+})
+
+registerHandler('delivery.semanticKey', (params) => {
+  EmptyParamsSchema.parse(params)
+  return semanticKey.status()
+})
+
+registerHandler('delivery.setSemanticKey', async (params) => {
+  await semanticKey.set(SemanticKeySetParamsSchema.parse(params).apiKey)
+  return semanticKey.status()
 })
 
 registerHandler('extensions.pluginVersion', (params) => {
@@ -560,8 +576,11 @@ registerHandler('watch.suggest', (params) => {
   const intentTopics = store.discoveryIntents(input.projectId)
     .filter((intent) => intent.enabled)
     .flatMap((intent) => intent.label.split(/[·|/]/).map((part) => part.trim()))
+  // Search by what the project's papers are about; the project's name and plan wording make a poor query.
+  const focus = [intentTopics, profile.wikiTerms ?? []]
+    .map((terms) => [...new Set(terms)].slice(0, 6).join(' ')).find((terms) => terms.length >= 3) ?? profile.anchorText
   return background.suggestWatches({
-    focus: profile.anchorText,
+    focus,
     seedTopics: [project.topic, ...(profile.wikiTerms ?? []), ...intentTopics]
       .map((topic) => topic.trim()).filter((topic) => topic !== '' && topic !== '未分主题'),
   })

@@ -45,14 +45,30 @@ describe('getWithRetry', () => {
     expect(sleeps).toEqual([3000, 6000])
   })
 
-  it('每次请求都带着还没中止的超时信号与大小上限', async () => {
-    const seen: { aborted: boolean; limit: number }[] = []
+  it('每次请求都带着超时时长与大小上限，由发送方在真正发出时才开始计时', async () => {
+    const seen: { signal: AbortSignal | undefined; timeoutMs: number | undefined; limit: number }[] = []
     const get: HttpGet = async (_url, options) => {
-      seen.push({ aborted: options.signal.aborted, limit: options.limit })
+      seen.push({ signal: options.signal, timeoutMs: options.timeoutMs, limit: options.limit })
       return { status: 200, body: bytes('') }
     }
     await getWithRetry(get, 'https://x', policy([]))
-    expect(seen).toEqual([{ aborted: false, limit: 1024 }])
+    expect(seen).toEqual([{ signal: undefined, timeoutMs: expect.any(Number), limit: 1024 }])
+  })
+
+  it('限流队列里排队的时间不算进超时：排完队交给发送方的仍是完整的超时时长', async () => {
+    let clock = 0
+    const sent: (number | undefined)[] = []
+    const base: HttpGet = async (_url, options) => {
+      sent.push(options.timeoutMs)
+      return { status: 200, body: bytes('') }
+    }
+    const queued = createRateLimitedGet(base, {
+      minIntervalMs: 60_000, now: () => clock, sleep: async (ms) => { clock += ms },
+    })
+    await queued('https://x', { timeoutMs: 10_000, limit: 1 })
+    await queued('https://x', { timeoutMs: 10_000, limit: 1 })
+    expect(clock).toBe(60_000)
+    expect(sent).toEqual([10_000, 10_000])
   })
 })
 

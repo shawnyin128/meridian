@@ -5,11 +5,12 @@ import { retryAfterMs, type HttpGet } from './http.js'
  * GETs through Chromium's network stack, which honours the system proxy.
  * Reads the body chunk by chunk, reporting bytes received and the
  * Content-Length (null when absent) after each chunk. Throws if the body grows
- * past `limit`, and whatever net.fetch throws, including the abort of `signal`.
+ * past `limit`, and whatever net.fetch throws, including the abort of `signal` or the lapse of `timeoutMs`.
  */
-export const electronGet: HttpGet = async (url, { signal, limit, onProgress, method, headers, body }) => {
+export const electronGet: HttpGet = async (url, { signal: given, timeoutMs, limit, onProgress, method, headers, body }) => {
+  const signal = given ?? (timeoutMs === undefined ? undefined : AbortSignal.timeout(timeoutMs))
   const response = await net.fetch(url, {
-    signal,
+    ...(signal === undefined ? {} : { signal }),
     ...(method === undefined ? {} : { method }),
     headers: { 'User-Agent': 'Meridian/0.0.0 (personal research desktop)', ...headers },
     ...(body === undefined ? {} : { body }),

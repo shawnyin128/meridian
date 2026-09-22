@@ -16,6 +16,7 @@ import { DirectoryField } from '../components/FormControls.js'
 import { AppearanceSettings } from '../components/settings/AppearanceSettings.js'
 import { LanguageSettings } from '../components/settings/LanguageSettings.js'
 import { DiscoverySettings } from '../components/settings/DiscoverySettings.js'
+import { SemanticKeySettings } from '../components/settings/SemanticKeySettings.js'
 import { DeliverySettings } from '../components/settings/DeliverySettings.js'
 import { ModelSettings } from '../components/settings/ModelSettings.js'
 import { ExtensionSettings } from '../components/settings/ExtensionSettings.js'
@@ -341,6 +342,7 @@ export function Settings() {
         <SectionHeading>{m.settings.discovery.heading}</SectionHeading>
         <p className="settings-intro">{m.settings.discovery.intro}</p>
         <DiscoverySettings />
+        <SemanticKeySettings />
       </>
     ),
     archived: (

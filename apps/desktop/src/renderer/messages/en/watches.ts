@@ -36,6 +36,7 @@ export const watches = {
   allAdded: 'All suggestions added.',
   noneSuggested: 'No new topics or authors found. Try a more specific focus.',
   suggestionBasis: (n: number) => `Based on ${n} relevant ${pluralEn(n, { one: 'paper', other: 'papers' })}`,
+  suggestionStale: 'the source is unreachable, so these are the last suggestions',
   topicSuggestions: 'Topics worth watching',
   authorSuggestions: 'Authors worth following',
   relatedPapers: (n: number) => n === 0

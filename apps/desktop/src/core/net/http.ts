@@ -2,7 +2,12 @@
 export type HttpResponse = { status: number; body: Uint8Array; retryAfterMs?: number }
 
 export type HttpOptions = {
-  signal: AbortSignal
+  signal?: AbortSignal
+  /**
+   * Abort the request once it has been in flight this long. The sender starts the clock when it sends,
+   * so time spent waiting in a rate-limit queue does not count against it.
+   */
+  timeoutMs?: number
   /** Abort and throw when the response body exceeds this many bytes. */
   limit: number
   onProgress?: (received: number, total: number | null) => void
@@ -91,9 +96,7 @@ export async function requestWithRetry(
 ): Promise<Uint8Array> {
   for (let attempt = 1; ; attempt += 1) {
     try {
-      const response = await get(url, {
-        signal: AbortSignal.timeout(policy.timeoutMs), limit: policy.limit, ...request,
-      })
+      const response = await get(url, { timeoutMs: policy.timeoutMs, limit: policy.limit, ...request })
       if (response.status !== 200) throw new HttpStatusError(response.status, response.retryAfterMs)
       return response.body
     } catch (error) {

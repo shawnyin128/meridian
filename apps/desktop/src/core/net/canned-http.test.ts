@@ -12,7 +12,7 @@ describe('createCannedGet', () => {
     'https://a/atom': { status: 200, atom: '<feed/>' },
     'https://a/down': { status: 503 },
     'https://a/slow': { status: 200, delayMs: 50, atom: 'slow' },
-    'https://authors/search?*': { status: 200, kind: 'author-search' },
+    'https://authors/search?*': { status: 200, kind: 'openalex-author-search' },
   }, ROOT)
   const options = () => ({ signal: new AbortController().signal, limit: 1_000_000 })
 
@@ -30,13 +30,14 @@ describe('createCannedGet', () => {
   })
 
   it('通配 fixture 可以按输入生成同名作者候选', async () => {
-    const response = await get('https://authors/search?query=Alex+Kim', options())
+    const response = await get('https://authors/search?search=Alex+Kim', options())
     const decoded = JSON.parse(new TextDecoder().decode(response.body)) as {
-      data: { name: string; affiliations: string[] }[]
+      results: { display_name: string; last_known_institutions: { display_name: string }[] }[]
     }
-    expect(decoded.data).toHaveLength(3)
-    expect(decoded.data.map((author) => author.name)).toEqual(['Alex Kim', 'Alex Kim', 'Alex Kim'])
-    expect(new Set(decoded.data.flatMap((author) => author.affiliations)).size).toBe(3)
+    expect(decoded.results).toHaveLength(3)
+    expect(decoded.results.map((author) => author.display_name)).toEqual(['Alex Kim', 'Alex Kim', 'Alex Kim'])
+    expect(new Set(decoded.results.flatMap((author) => author.last_known_institutions.map((at) => at.display_name))).size)
+      .toBe(3)
   })
 
   it('延迟响应先报一半进度,完成再报到底;中止时抛出原因', async () => {
