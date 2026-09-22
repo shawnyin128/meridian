@@ -21,7 +21,6 @@ eval/runs/
 eval/cases/*_calibration_*.jsonl
 
 # Development-only material: coding-agent instructions and skills, plans, reviews, design docs
-/AGENTS.md
 /CLAUDE.md
 /.codex/
 /.claude/
