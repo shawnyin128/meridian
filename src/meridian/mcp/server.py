@@ -12,6 +12,7 @@ from meridian.lab import apply_lab_update, materialize_lab_graph, record_lab_res
 from meridian.mcp import adapter
 from meridian.wiki.workspace import resolve_workspace
 from meridian.workspace_protocol import (
+    EVENT_KINDS,
     add_workspace_agent_idea,
     add_workspace_event,
     inspect_project_workspace,
@@ -323,7 +324,11 @@ def tool_definitions() -> list[JsonDict]:
         },
         {
             "name": "meridian.workspace_event_add",
-            "description": "Project Workspace: append one compact event backed by an existing repository evidence file.",
+            "description": (
+                "Project Workspace: append one compact, structured event backed by an existing repository "
+                "evidence file. title = the conclusion in one line; detail = key numbers or parameters; "
+                "kind = start (began a node), reopen, result, decision, complete, or note."
+            ),
             "inputSchema": _schema(
                 {
                     "workspace_root": {
@@ -331,7 +336,16 @@ def tool_definitions() -> list[JsonDict]:
                         "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
                     },
                     "event_id": {"type": "string", "description": "Stable idempotency key for the event."},
-                    "text": {"type": "string", "description": "Compact result summary shown in the App."},
+                    "title": {"type": "string", "description": "The conclusion in one line, shown as the record title."},
+                    "kind": {
+                        "type": "string",
+                        "enum": sorted(EVENT_KINDS),
+                        "description": "start, reopen, result, decision, complete, or note.",
+                    },
+                    "detail": {
+                        "type": "string",
+                        "description": "Optional key numbers or parameters, shown under the title.",
+                    },
                     "source": {
                         "type": "string",
                         "description": "Existing evidence file relative to the repository root.",
@@ -339,7 +353,7 @@ def tool_definitions() -> list[JsonDict]:
                     "date": {"type": "string", "description": "YYYY-MM-DD; defaults to the local current date."},
                     "node": {"type": "string", "description": "Optional Meridian Lab graph node id."},
                 },
-                required=["event_id", "text", "source"],
+                required=["event_id", "title", "kind", "source"],
             ),
         },
         {
@@ -681,10 +695,12 @@ def _call_workspace_event_add(server: MeridianMCPServer, arguments: JsonDict) ->
     return add_workspace_event(
         server.workspace_root(arguments),
         event_id=_required(arguments, "event_id"),
-        text=_required(arguments, "text"),
+        text=_required(arguments, "title"),
         source=_required(arguments, "source"),
         event_date=str(arguments["date"]) if arguments.get("date") not in (None, "") else None,
         node=str(arguments["node"]) if arguments.get("node") not in (None, "") else None,
+        kind=_required(arguments, "kind"),
+        detail=str(arguments["detail"]) if arguments.get("detail") not in (None, "") else None,
     )
 
 

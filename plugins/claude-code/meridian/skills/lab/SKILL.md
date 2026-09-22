@@ -115,17 +115,21 @@ available.
 The Meridian App shows the user what the agent has been doing and what it
 found. Two calls feed it; neither needs the user's confirmation.
 
-**Research record.** Call `meridian.workspace_event_add` (or
-`python -m meridian workspace event-add`) at these boundaries, one event each:
+**Research record.** Call `meridian.workspace_event_add` (or, without MCP,
+`python -m meridian workspace event-add` for an unstructured fallback) at
+these boundaries, one event each. Pass a structured `kind`, a one-line
+`title` (the conclusion, not a formatted sentence), and an optional `detail`
+for key numbers or parameters — do not fold the boundary's verb into the
+title text:
 
 - work starts on a target: the first real step toward a research node, a
   linked idea, or a planned task (reading its context, writing code for it,
-  running it). Text: `开始推进 <target>`.
+  running it). `kind: start`, title: `<target>`.
 - the target changes: work moves to a different node, idea or task, or the
-  conversation turns to a topic other than the current target. Text:
-  `转向 <new target>：<one-line reason>`.
+  conversation turns to a topic other than the current target. `kind: note`,
+  title: `转向 <new target>：<one-line reason>`.
 - the target lands: after an experiment use `meridian.lab_result` instead;
-  for other finished work, `完成 <target>：<one-line outcome>`.
+  for other finished work, `kind: complete`, title: `<target>：<one-line outcome>`.
 
 Do not add an event for steps inside the same target. Use a stable `event_id`
 such as `<date>-start-<target-slug>`. `source` must be an existing file that

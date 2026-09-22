@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import unittest
 from contextlib import redirect_stdout
+from datetime import datetime
 from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -129,6 +130,117 @@ class WorkspaceProtocolTest(unittest.TestCase):
                     text="Used the plan as evidence",
                     source=".meridian/control/plan.json",
                 )
+
+    def test_add_event_writes_kind_detail_and_at(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            evidence = root / ".meridian/experiments/latency-probe.md"
+            evidence.parent.mkdir(parents=True, exist_ok=True)
+            evidence.write_text("# Latency probe\n", encoding="utf-8")
+
+            result = add_workspace_event(
+                root,
+                event_id="latency-probe-result",
+                event_date="2026-09-15",
+                text="Latency probe passed on A100",
+                source=".meridian/experiments/latency-probe.md",
+                kind="result",
+                detail="p99 dropped from 80ms to 62ms",
+            )
+
+            self.assertEqual(result["event"]["kind"], "result")
+            self.assertEqual(result["event"]["detail"], "p99 dropped from 80ms to 62ms")
+            at = datetime.fromisoformat(result["event"]["at"])
+            self.assertIsNotNone(at.tzinfo)
+
+    def test_add_event_rejects_bad_kind_empty_detail_and_overlong_text(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            evidence = root / ".meridian/experiments/latency-probe.md"
+            evidence.parent.mkdir(parents=True, exist_ok=True)
+            evidence.write_text("# Latency probe\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(WorkspaceProtocolError, "kind is unknown"):
+                add_workspace_event(
+                    root, event_id="bad-kind", text="Bad kind", source=".meridian/experiments/latency-probe.md",
+                    kind="unknown",
+                )
+            with self.assertRaisesRegex(WorkspaceProtocolError, "non-empty string"):
+                add_workspace_event(
+                    root, event_id="bad-detail", text="Bad detail", source=".meridian/experiments/latency-probe.md",
+                    detail=" ",
+                )
+            with self.assertRaisesRegex(WorkspaceProtocolError, "at most 120 characters"):
+                add_workspace_event(
+                    root, event_id="bad-length", text="x" * 121, source=".meridian/experiments/latency-probe.md",
+                )
+
+    def test_validate_events_accepts_legacy_overlong_text_but_checks_new_fields(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            evidence = root / ".meridian/experiments/latency-probe.md"
+            evidence.parent.mkdir(parents=True, exist_ok=True)
+            evidence.write_text("# Latency probe\n", encoding="utf-8")
+            self._write_json(
+                root / EVENTS_PATH,
+                {
+                    "schema_version": "meridian.workspace-events.v1",
+                    "events": [
+                        {
+                            "id": "legacy",
+                            "date": "2026-09-01",
+                            "text": "x" * 200,
+                            "source": ".meridian/experiments/latency-probe.md",
+                        }
+                    ],
+                },
+            )
+
+            status = inspect_project_workspace(root)
+
+            self.assertEqual(status["surfaces"]["events"]["status"], "ok")
+
+            self._write_json(
+                root / EVENTS_PATH,
+                {
+                    "schema_version": "meridian.workspace-events.v1",
+                    "events": [
+                        {
+                            "id": "bad-at",
+                            "date": "2026-09-01",
+                            "text": "Missing offset",
+                            "source": ".meridian/experiments/latency-probe.md",
+                            "at": "2026-09-01T00:00:00",
+                        }
+                    ],
+                },
+            )
+
+            invalid = inspect_project_workspace(root)
+            self.assertEqual(invalid["surfaces"]["events"]["status"], "invalid")
+            self.assertIn("ISO 8601 datetime with offset", invalid["surfaces"]["events"]["issue"])
+
+    def test_add_event_is_idempotent_despite_a_fresh_at_each_call(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            evidence = root / ".meridian/experiments/latency-probe.md"
+            evidence.parent.mkdir(parents=True, exist_ok=True)
+            evidence.write_text("# Latency probe\n", encoding="utf-8")
+
+            first = add_workspace_event(
+                root, event_id="repeat", text="Repeat", source=".meridian/experiments/latency-probe.md", kind="note",
+            )
+            second = add_workspace_event(
+                root, event_id="repeat", text="Repeat", source=".meridian/experiments/latency-probe.md", kind="note",
+            )
+
+            self.assertEqual(first["status"], "created")
+            self.assertEqual(second["status"], "unchanged")
+            self.assertEqual(first["event"]["at"], second["event"]["at"])
 
     def test_event_rejects_missing_or_escaping_source(self) -> None:
         with TemporaryDirectory() as tmp, TemporaryDirectory() as outside_tmp:

@@ -249,7 +249,9 @@ class MCPWorkspaceTests(unittest.TestCase):
                 {
                     "event_id": "probe-complete",
                     "date": "2026-09-16",
-                    "text": "Probe completed",
+                    "title": "Probe completed",
+                    "kind": "result",
+                    "detail": "Latency dropped 12ms",
                     "source": ".meridian/experiments/probe.md",
                     "node": "direction.A",
                 },
@@ -260,7 +262,9 @@ class MCPWorkspaceTests(unittest.TestCase):
                 {
                     "event_id": "probe-complete",
                     "date": "2026-09-16",
-                    "text": "Probe completed",
+                    "title": "Probe completed",
+                    "kind": "result",
+                    "detail": "Latency dropped 12ms",
                     "source": ".meridian/experiments/probe.md",
                     "node": "direction.A",
                 },
@@ -270,6 +274,10 @@ class MCPWorkspaceTests(unittest.TestCase):
             self.assertEqual(status["status"], "ready")
             self.assertEqual(plan_payload["revision"], "revision-1")
             self.assertEqual(event["status"], "created")
+            self.assertEqual(event["event"]["kind"], "result")
+            self.assertEqual(event["event"]["text"], "Probe completed")
+            self.assertEqual(event["event"]["detail"], "Latency dropped 12ms")
+            self.assertIn("at", event["event"])
             self.assertEqual(duplicate["status"], "unchanged")
             self.assertEqual(after["surfaces"]["events"]["event_count"], 1)
             self.assertEqual(plan.read_bytes(), plan_before)
@@ -361,7 +369,8 @@ class MCPWorkspaceTests(unittest.TestCase):
                 {
                     "workspace_root": str(root),
                     "event_id": "missing-evidence",
-                    "text": "Should fail",
+                    "title": "Should fail",
+                    "kind": "note",
                     "source": "results/missing.json",
                 },
             )

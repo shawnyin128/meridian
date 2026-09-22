@@ -319,7 +319,8 @@ def _run_workspace_sequence(*, fixture_root: Path | None = None) -> JsonDict:
             {
                 "event_id": "fixture-probe-complete",
                 "date": "2026-09-16",
-                "text": "Fixture probe completed",
+                "title": "Fixture probe completed",
+                "kind": "result",
                 "source": ".meridian/experiments/fixture-probe.md",
                 "node": "fixture.A",
             },

@@ -192,6 +192,33 @@ class LabActiveNodesTests(unittest.TestCase):
             self.assertEqual(len(events), 1)
             self.assertIn("开始推进", events[0]["text"])
             self.assertEqual(events[0]["node"], "kv-compression.A")
+            self.assertEqual(events[0]["kind"], "start")
+
+    def test_reopen_node_emits_focus_event_with_reopen_kind(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_lab(
+                root,
+                state_frontmatter="active_thread: kv-compression\nactive_nodes: []",
+                thread_body=_TWO_NODE_TREE.replace(
+                    "### Node A: Idea seed\n\n- mode: `unresolved`", "### Node A: Idea seed\n\n- mode: `dead`"
+                ),
+            )
+            _write_workspace_manifest(root)
+            packet = {
+                "schema": "meridian.lab.update.v1",
+                "intent": "reopen_a",
+                "target_thread": "kv-compression",
+                "changes": [{"op": "reopen_node", "node_id": "kv-compression.A"}],
+                "user_confirmation": {"required_for": [], "status": "not_required"},
+            }
+
+            apply_lab_update(root, packet)
+
+            events = json.loads((root / ".meridian/events/events.json").read_text(encoding="utf-8"))["events"]
+            self.assertEqual(len(events), 1)
+            self.assertIn("重开", events[0]["text"])
+            self.assertEqual(events[0]["kind"], "reopen")
 
     def test_activate_node_writes_no_event_without_a_workspace(self) -> None:
         with TemporaryDirectory() as tmp:

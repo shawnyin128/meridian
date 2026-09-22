@@ -744,6 +744,7 @@ def _add_focus_event(root: Path, lab_root: Path, *, node_id: str, label: str, th
     if not (lab_root / "workspace.json").exists():
         return
     verb = "开始推进" if action == "activate" else "重开"
+    kind = "start" if action == "activate" else "reopen"
     today = datetime.now(timezone.utc).astimezone().date().isoformat()
     add_workspace_event(
         root,
@@ -752,6 +753,7 @@ def _add_focus_event(root: Path, lab_root: Path, *, node_id: str, label: str, th
         source=f".meridian/threads/{thread_id}.md",
         event_date=today,
         node=node_id,
+        kind=kind,
     )
 
 

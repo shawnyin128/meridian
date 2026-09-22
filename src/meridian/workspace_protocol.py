@@ -31,6 +31,9 @@ AGENT_IDEAS_PATH = Path(".meridian/ideas/ideas.json")
 
 _EVENT_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _APP_OR_GENERATED_SURFACES = {MANIFEST_PATH, PLAN_PATH, GRAPH_PATH, EVENTS_PATH, CHANGES_PATH, AGENT_IDEAS_PATH}
+EVENT_KINDS = {"start", "reopen", "result", "decision", "complete", "note"}
+_EVENT_TITLE_MAX_LEN = 120
+_EVENT_DETAIL_MAX_LEN = 300
 _CHANGE_KINDS = {
     "project.snapshot",
     "project.updated",
@@ -272,6 +275,8 @@ def add_workspace_event(
     source: str,
     event_date: str | None = None,
     node: str | None = None,
+    kind: str | None = None,
+    detail: str | None = None,
 ) -> dict[str, Any]:
     """Append one source-backed event to the repository-owned event projection."""
 
@@ -282,6 +287,8 @@ def add_workspace_event(
         source=source,
         event_date=event_date,
         node=node,
+        kind=kind,
+        detail=detail,
     )
     return commit_workspace_event(prepared)
 
@@ -294,6 +301,8 @@ def prepare_workspace_event(
     source: str,
     event_date: str | None = None,
     node: str | None = None,
+    kind: str | None = None,
+    detail: str | None = None,
 ) -> PreparedWorkspaceEvent:
     """Validate and stage one event without writing its projection."""
 
@@ -307,18 +316,27 @@ def prepare_workspace_event(
     normalized_text = text.strip()
     if not normalized_text:
         raise WorkspaceProtocolError("event text must not be empty")
+    if len(normalized_text) > _EVENT_TITLE_MAX_LEN:
+        raise WorkspaceProtocolError(f"event text must be at most {_EVENT_TITLE_MAX_LEN} characters")
     normalized_source = _source_path(repository, source)
     normalized_date = _event_date(event_date)
     normalized_node = node.strip() if node is not None else ""
+    normalized_kind = _event_kind(kind, label="event kind") if kind is not None else None
+    normalized_detail = _event_detail(detail, label="event detail") if detail is not None else None
 
     event: dict[str, str] = {
         "id": normalized_id,
         "date": normalized_date,
         "text": normalized_text,
         "source": normalized_source,
+        "at": datetime.now(timezone.utc).astimezone().isoformat(),
     }
     if normalized_node:
         event["node"] = normalized_node
+    if normalized_kind is not None:
+        event["kind"] = normalized_kind
+    if normalized_detail is not None:
+        event["detail"] = normalized_detail
 
     target = repository / events_path
     if target.exists():
@@ -328,9 +346,12 @@ def prepare_workspace_event(
 
     prior = next((item for item in payload["events"] if item["id"] == normalized_id), None)
     if prior is not None:
-        if prior != event:
+        # "at" always reflects this call's time, so a repeat call is compared without it: the
+        # stored event (and its original "at") is kept, not overwritten with a later timestamp.
+        if {k: v for k, v in prior.items() if k != "at"} != {k: v for k, v in event.items() if k != "at"}:
             raise WorkspaceProtocolError(f"event id already exists with different content: {normalized_id}")
         status = "unchanged"
+        event = prior
     else:
         payload["events"].append(event)
         status = "created"
@@ -540,7 +561,7 @@ def _validate_events(value: Any, *, repository: Path | None = None) -> dict[str,
     ids: set[str] = set()
     for index, raw_event in enumerate(events):
         item = _object(raw_event, f"workspace event {index}")
-        allowed = {"id", "date", "text", "source", "node"}
+        allowed = {"id", "date", "text", "source", "node", "kind", "detail", "at"}
         if set(item) - allowed or not {"id", "date", "text", "source"}.issubset(item):
             raise WorkspaceProtocolError(f"workspace event {index} has invalid fields")
         event_id = _nonempty_string(item.get("id"), f"workspace event {index} id")
@@ -550,12 +571,20 @@ def _validate_events(value: Any, *, repository: Path | None = None) -> dict[str,
             raise WorkspaceProtocolError(f"workspace events contain duplicate id: {event_id}")
         ids.add(event_id)
         _event_date(_nonempty_string(item.get("date"), f"workspace event {index} date"))
+        # New events keep the title to _EVENT_TITLE_MAX_LEN; legacy events may run longer and are
+        # shown whole, so the stored length is not re-checked here.
         _nonempty_string(item.get("text"), f"workspace event {index} text")
         source = _nonempty_string(item.get("source"), f"workspace event {index} source")
         if repository is not None:
             _source_path(repository, source)
         if "node" in item:
             _nonempty_string(item.get("node"), f"workspace event {index} node")
+        if "kind" in item:
+            _event_kind(item.get("kind"), label=f"workspace event {index} kind")
+        if "detail" in item:
+            _event_detail(item.get("detail"), label=f"workspace event {index} detail")
+        if "at" in item:
+            _event_at(item.get("at"), f"workspace event {index} at")
     return payload
 
 
@@ -677,6 +706,31 @@ def _event_date(value: str | None) -> str:
         raise WorkspaceProtocolError("event date must use YYYY-MM-DD") from exc
     if parsed.isoformat() != candidate:
         raise WorkspaceProtocolError("event date must use YYYY-MM-DD")
+    return candidate
+
+
+def _event_kind(value: Any, *, label: str) -> str:
+    kind = _nonempty_string(value, label)
+    if kind not in EVENT_KINDS:
+        raise WorkspaceProtocolError(f"{label} is unknown: {kind}")
+    return kind
+
+
+def _event_detail(value: Any, *, label: str) -> str:
+    detail = _nonempty_string(value, label)
+    if len(detail) > _EVENT_DETAIL_MAX_LEN:
+        raise WorkspaceProtocolError(f"{label} must be at most {_EVENT_DETAIL_MAX_LEN} characters")
+    return detail
+
+
+def _event_at(value: Any, label: str) -> str:
+    candidate = _nonempty_string(value, label)
+    try:
+        parsed = datetime.fromisoformat(candidate)
+    except ValueError as exc:
+        raise WorkspaceProtocolError(f"{label} must be an ISO 8601 datetime with offset") from exc
+    if parsed.tzinfo is None:
+        raise WorkspaceProtocolError(f"{label} must be an ISO 8601 datetime with offset")
     return candidate
 
 
