@@ -35,7 +35,7 @@ const overviewCounts = (win: Page) => win.evaluate(async () => {
   const rows = await (window as unknown as MeridianWindow).meridian
     .call('project.overview', {}) as {
       id: string; name: string; status: string; start: string; due: string
-      tasks: { id: string; start: string; end: string }[]
+      tasks: { id: string; start: string; end: string; state: string }[]
       milestones: { id: string; date: string; done: boolean }[]
       events: { date: string; text: string }[]
       research: { activePath: { id: string; label: string }[] }
@@ -47,13 +47,17 @@ const overviewCounts = (win: Page) => win.evaluate(async () => {
   const w0 = today - (weekday + 6) % 7
   const w1 = w0 + 6
   const sum = (of: (p: (typeof rows)[number]) => number) => rows.reduce((n, p) => n + of(p), 0)
+  // The default overview timeline leaves out finished tasks and milestones; the history view keeps them.
+  const openTasks = (p: (typeof rows)[number]) => p.tasks.filter((t) => t.state !== 'done').length
   return {
     ids: rows.map((p) => p.id),
-    ganttRows: sum((p) => p.status === '进行中' ? 1 + p.tasks.length : 0),
+    ganttRows: sum((p) => p.status === '进行中' ? 1 + openTasks(p) : 0),
     allGanttRows: sum((p) => 1 + p.tasks.length),
-    taskRows: sum((p) => p.status === '进行中' ? p.tasks.length : 0),
+    allTaskRows: sum((p) => p.tasks.length),
+    taskRows: sum((p) => p.status === '进行中' ? openTasks(p) : 0),
     diamonds: sum((p) => p.status === '进行中' ? p.milestones.filter((m) => {
       const d = day(m.date)
+      if (m.done) return false
       return d >= w0 && d <= w1
     }).length : 0),
     now: rows.filter((p) => p.status !== '已完成').length,
@@ -181,6 +185,35 @@ test('总览点一个项目进它的详情,返回钮回总览,面包屑「项目
   await shown(win).locator('.desk-head .back').click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目'])
   await expect(shown(win).locator('[data-proj="draft"]')).toBeVisible()
+})
+
+test('总览时间线:项目行的折叠钮收起它的任务,别的项目不动,再点展开,点行本身仍进项目', async ({ win }) => {
+  await gotoOverview(win)
+  const gantt = shown(win).locator('.gantt')
+  const taskLabels = (project: string) => gantt.locator(`.timeline-label-row[data-proj="${project}"][data-task]`)
+  const taskBars = (project: string) => gantt.locator(`.grow[data-proj="${project}"][data-task]`)
+  await expect(taskLabels('repro')).not.toHaveCount(0)
+  await expect(taskLabels('draft')).not.toHaveCount(0)
+  const reproTasks = await taskLabels('repro').count()
+  const draftTasks = await taskLabels('draft').count()
+  expect(reproTasks).toBeGreaterThan(0)
+  expect(draftTasks).toBeGreaterThan(0)
+
+  const fold = gantt.locator('.glrow.msl[data-proj="repro"] .timeline-fold')
+  await fold.click()
+  await expect(fold).toHaveAttribute('aria-expanded', 'false')
+  await expect(taskLabels('repro')).toHaveCount(0)
+  await expect(taskBars('repro')).toHaveCount(0)
+  await expect(gantt.locator('.glrow.msl[data-proj="repro"] .timeline-folded-count')).toHaveText(`${reproTasks} 项任务已折叠`)
+  await expect(taskLabels('draft')).toHaveCount(draftTasks)
+  await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '总览'])
+
+  await fold.click()
+  await expect(taskLabels('repro')).toHaveCount(reproTasks)
+  await expect(taskBars('repro')).toHaveCount(reproTasks)
+
+  await gantt.locator('.glrow.msl[data-proj="repro"] .timeline-item-label').click()
+  await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', '复现 EAGLE-2'])
 })
 
 test('新建的项目在总览里看得见,横幅那句话才算数', async ({ win }) => {
@@ -369,7 +402,9 @@ test.describe('窗口收窄并滚动', () => {
 
   test('窗口收窄并滚动后,每个任务行都保留横条或边缘残桩', async ({ app, win }) => {
     await gotoOverview(win)
-    const { taskRows } = await overviewCounts(win)
+    // The history view keeps finished tasks, whose early bars are the ones left as stubs at the left edge.
+    await shown(win).locator('.overview-history-toggle').click()
+    const { allTaskRows: taskRows } = await overviewCounts(win)
     // Wait for one more frame after Gant has finished painting, and the first callback of ResizeObserver will be implemented; if you don't wait, the subsequent recalculation when changing the window size will be one frame later.
     await shown(win).locator('.gantt .grow').first().waitFor()
     await win.evaluate(() => new Promise<null>((drawn) => requestAnimationFrame(() => drawn(null))))

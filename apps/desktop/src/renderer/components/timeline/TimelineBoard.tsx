@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   MouseEvent as ReactMouseEvent, ReactNode, RefObject,
 } from 'react'
@@ -7,6 +7,7 @@ import { useToday } from '../../shell/AppShell.js'
 import { dnum, isoOf } from '../../../shared/dates.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
+import { Icon } from '../icons.js'
 import {
   DAY_SLOT_HOURS, shiftTaskWindow, timelineDayAt, TimelineControls, TimelineGrid,
   TimelineNowMarker, timelineTaskSpan, useFittedTimelineWindow, useTimelinePeriod,
@@ -45,11 +46,12 @@ function pointAt(canvas: HTMLElement, clientX: number, clientY: number): Timelin
 }
 
 /**
+ * With `foldable`, each project's milestone row carries a caret that hides or shows that project's task rows.
  * A complete timeline shared between the project page and the overview. The two places only determine the label content, head movement and click behavior through parameters;
  * Time scales, grids, task/milestone rows, drag and drop, status colors, priorities and overdue reminders are only implemented here once.
  */
 export function TimelineBoard({
-  projects, className = '', showProjectNames = false, headerAction, canvasOverlay,
+  projects, className = '', showProjectNames = false, foldable = false, headerAction, canvasOverlay,
   milestoneLaneRef, hoverMilestoneId, onHoverMilestone, onLabelClick, onTaskClick,
   onMilestoneClick, onMilestoneLaneClick, onMoveTask, onMoveTaskWindow, onMoveMilestone,
   onPeriodChange,
@@ -57,6 +59,7 @@ export function TimelineBoard({
   projects: TimelineProject[]
   className?: string
   showProjectNames?: boolean
+  foldable?: boolean
   headerAction?: (context: {
     scale: TimelineScale; firstDay: string; today: string
   }) => ReactNode
@@ -88,10 +91,17 @@ export function TimelineBoard({
   const window = useFittedTimelineWindow(wrap, period.window, scale)
   const today = dnum(todayIso)
   const { w0, w1, days, dayWidth, label } = window
+  const [folded, setFolded] = useState<ReadonlySet<string>>(new Set())
+  const toggleFold = (projectId: string) => setFolded((held) => {
+    const next = new Set(held)
+    if (next.has(projectId)) next.delete(projectId)
+    else next.add(projectId)
+    return next
+  })
   const rows = useMemo(() => projects.flatMap((project): TimelineRow[] => [
     { kind: 'milestones', project },
-    ...project.tasks.map((task) => ({ kind: 'task' as const, project, task })),
-  ]), [projects])
+    ...(folded.has(project.id) ? [] : project.tasks.map((task) => ({ kind: 'task' as const, project, task }))),
+  ]), [folded, projects])
 
   const onMove = useCallback((grab: Grab, delta: number) => {
     if (grab.kind === 'milestone') {
@@ -166,10 +176,21 @@ export function TimelineBoard({
                   row.project.id, row.kind, row.kind === 'task' ? row.task.id : undefined,
                 )}
               >
+                {foldable && row.kind === 'milestones' ? (
+                  <button
+                    type="button" className="timeline-fold" aria-expanded={!folded.has(row.project.id)}
+                    title={folded.has(row.project.id)
+                      ? m.timeline.fold.expand(row.project.name) : m.timeline.fold.collapse(row.project.name)}
+                    onClick={(event) => { event.stopPropagation(); toggleFold(row.project.id) }}
+                  ><Icon sw={2.4}><path d="M6 9l6 6 6-6" /></Icon></button>
+                ) : null}
                 {showProjectNames
                   ? <span className="timeline-project-label" title={row.project.name}>{row.project.name}</span>
                   : null}
                 <span className="timeline-item-label" title={labelFor(row)}>{labelFor(row)}</span>
+                {row.kind === 'milestones' && folded.has(row.project.id) && row.project.tasks.length > 0
+                  ? <span className="timeline-folded-count">{m.timeline.fold.hidden(row.project.tasks.length)}</span>
+                  : null}
                 {row.kind === 'task'
                   ? <span className={`timeline-task-priority ${row.task.priority}`}>{row.task.priority.toUpperCase()}</span>
                   : null}

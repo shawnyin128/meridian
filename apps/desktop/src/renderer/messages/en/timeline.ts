@@ -18,6 +18,11 @@ export const timeline = {
   taskTitle: (range: string, window: string, priority: string, note: string) =>
     `${range}${window === '' ? '' : ` · ${window}`} · ${priority}${note === '' ? '' : ` · ${note}`}`
     + ' · Drag to reschedule · Click to open',
+  fold: {
+    collapse: (project: string) => `Collapse tasks of ${project}`,
+    expand: (project: string) => `Expand tasks of ${project}`,
+    hidden: (n: number) => `${n} ${n === 1 ? 'task' : 'tasks'} hidden`,
+  },
   stub: {
     left: 'left',
     right: 'right',

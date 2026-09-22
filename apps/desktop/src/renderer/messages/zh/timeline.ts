@@ -15,6 +15,11 @@ export const timeline = {
     `${date} ${title}${note === '' ? '' : ` · ${note}`} · 拖动改期，点击定位`,
   taskTitle: (range: string, window: string, priority: string, note: string) =>
     `${range}${window === '' ? '' : ` · ${window}`} · ${priority}${note === '' ? '' : ` · ${note}`} · 拖动改期，点击定位`,
+  fold: {
+    collapse: (project: string) => `折叠「${project}」的任务`,
+    expand: (project: string) => `展开「${project}」的任务`,
+    hidden: (n: number) => `${n} 项任务已折叠`,
+  },
   stub: {
     left: '左',
     right: '右',

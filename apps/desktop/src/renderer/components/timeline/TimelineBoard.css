@@ -67,3 +67,11 @@
 .gnow::after{content:"";position:absolute;top:27px;left:-3px;width:7px;height:7px;border-radius:50%;background:var(--bad)}
 .gddl.hl{box-shadow:0 0 0 4px var(--tint-warn);transform:rotate(45deg) scale(1.35)}
 .gddl.overdue.hl{box-shadow:0 0 0 4px var(--tint-bad)}
+.timeline-fold{display:grid;place-items:center;flex:none;width:18px;height:18px;margin-left:-4px;padding:0;border:0;
+  border-radius:var(--r-sm);background:none;color:var(--ter);cursor:pointer;transition:transform var(--t-fast) var(--e-out)}
+.timeline-fold svg{width:12px;height:12px}
+.timeline-fold:hover{background:var(--hover);color:var(--ink)}
+.timeline-fold:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.timeline-fold[aria-expanded="false"]{transform:rotate(-90deg)}
+.timeline-folded-count{flex:none;color:var(--ter);font-weight:400}
+@media (prefers-reduced-motion:reduce){.timeline-fold{transition:none}}

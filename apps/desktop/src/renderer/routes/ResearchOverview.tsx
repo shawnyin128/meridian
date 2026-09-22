@@ -315,8 +315,16 @@ function OverviewGantt({
   const m = useMessages()
   const [pop, setPop] = useState<MilestonePop | null>(null)
   const [showInactive, setShowInactive] = useState(false)
+  // The overview answers what is still left to do, so finished tasks and milestones stay on the project page;
+  // the history view shows everything, finished work included.
   const visibleProjects = useMemo(
-    () => showInactive ? rows : rows.filter((project) => project.status === ACTIVE_PROJECT),
+    () => showInactive ? rows : rows
+      .filter((project) => project.status === ACTIVE_PROJECT)
+      .map((project) => ({
+        ...project,
+        tasks: project.tasks.filter((task) => task.state !== 'done'),
+        milestones: project.milestones.filter((milestone) => !milestone.done),
+      })),
     [rows, showInactive],
   )
   const closePop = useCallback(() => setPop(null), [])
@@ -349,6 +357,7 @@ function OverviewGantt({
       projects={visibleProjects}
       className="overview-gantt"
       showProjectNames
+      foldable
       onPeriodChange={closePop}
       headerAction={() => (
         <button
