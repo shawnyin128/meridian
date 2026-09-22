@@ -2,6 +2,7 @@
 name = "meridian-harness"
 version = "0.0.0"
 description = "Meridian agent harness: LLM orchestration only, no persistent state"
+license = "PolyForm-Noncommercial-1.0.0"
 requires-python = ">=3.12"
 dependencies = [
   "langchain>=1.4,<2",
