@@ -382,6 +382,10 @@ class WorkspaceProtocolTest(unittest.TestCase):
                         "probe-complete",
                         "--text",
                         "Probe completed",
+                        "--kind",
+                        "result",
+                        "--detail",
+                        "3 of 3 checks pass",
                         "--source",
                         "results/probe.json",
                     ]
@@ -393,6 +397,8 @@ class WorkspaceProtocolTest(unittest.TestCase):
             self.assertEqual(json.loads(status_stdout.getvalue())["status"], "ready")
             self.assertEqual(json.loads(plan_stdout.getvalue())["revision"], "abc123")
             self.assertEqual(json.loads(event_stdout.getvalue())["status"], "created")
+            stored = json.loads((root / ".meridian/events/events.json").read_text(encoding="utf-8"))["events"][-1]
+            self.assertEqual((stored["kind"], stored["detail"]), ("result", "3 of 3 checks pass"))
 
     def test_manifest_error_names_unknown_and_missing_surfaces(self) -> None:
         with TemporaryDirectory() as tmp:

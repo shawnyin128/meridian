@@ -83,9 +83,9 @@ is not on `PATH`, use the existing resolver below and run the fallback command
 through `python3 -m meridian`. Pass that local path to `meridian.update` or the
 flow command.
 
-Use `meridian wiki health --wiki-root <wiki>` when the user asks whether the
+Use `python -m meridian wiki health --wiki-root <wiki>` when the user asks whether the
 wiki is usable, trustworthy, release-ready, or what should be repaired next.
-Use `meridian wiki health-ui --wiki-root <wiki>` when the user wants the HTML
+Use `python -m meridian wiki health-ui --wiki-root <wiki>` when the user wants the HTML
 health report's Run Check button to trigger a local health check.
 
 ### Health / Repair Triage
@@ -132,7 +132,7 @@ Minimum completion:
 
 If MCP tools are unavailable, try local CLI retrieval only when local Python can
 import Meridian, for example `python -c "import meridian"`. Then use the
-resolver below and run `meridian wiki context "<standalone research intent>"`.
+resolver below and run `python -m meridian wiki context "<standalone research intent>"`.
 
 If MCP tools are unavailable and local Python cannot import Meridian, do not
 answer from web search or broad file search. Return a setup blocker instead:
@@ -167,7 +167,7 @@ meridian wiki context "<standalone research intent>"
 This uses the active workspace and writes `context.md` / `context.json` under
 the OS temp directory's `meridian-context/<slug>/` by default (`/private/tmp` on
 POSIX, `%TEMP%` on Windows). If it reports a missing workspace, ask the user for
-a library root and run `meridian wiki init --library-root
+a library root and run `python -m meridian wiki init --library-root
 <paper-wiki-library-root>`.
 
 Agent execution resolver:
@@ -178,7 +178,7 @@ Agent execution resolver:
 3. If working inside the Meridian repo, use
    `PYTHONPATH=/Users/shawn/Desktop/meridian/src python3 -m meridian`.
 
-Use `meridian wiki status` to inspect the active wiki root, source root, core
+Use `python -m meridian wiki status` to inspect the active wiki root, source root, core
 path, and MCP availability. If retrieval fails, use its warnings and failure
 report first; do not start with broad `rg` over the vault.
 

@@ -87,6 +87,7 @@ from meridian.wiki.health_server import serve_health_ui
 from meridian.wiki.vault import slugify
 from meridian.wiki.workspace import default_user_config_path, resolve_workspace, workspace_for_cli
 from meridian.workspace_protocol import (
+    EVENT_KINDS,
     add_workspace_agent_idea,
     add_workspace_event,
     inspect_project_workspace,
@@ -252,7 +253,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     workspace_event_add.add_argument("--root", type=Path, default=Path.cwd(), help="Repository or .meridian root.")
     workspace_event_add.add_argument("--id", required=True, help="Stable event identifier.")
-    workspace_event_add.add_argument("--text", required=True, help="Compact event summary.")
+    workspace_event_add.add_argument("--text", required=True, help="One-line title: the conclusion.")
+    workspace_event_add.add_argument(
+        "--kind", required=True, choices=sorted(EVENT_KINDS), help="Research record type."
+    )
+    workspace_event_add.add_argument("--detail", default=None, help="Optional key numbers or parameters.")
     workspace_event_add.add_argument("--source", required=True, help="Existing evidence file relative to the repository.")
     workspace_event_add.add_argument("--date", default=None, help="Event date in YYYY-MM-DD; defaults to today.")
     workspace_event_add.add_argument("--node", default=None, help="Optional Lab graph node id.")
@@ -1585,6 +1590,8 @@ def main(argv: list[str] | None = None) -> int:
                 source=args.source,
                 event_date=args.date,
                 node=args.node,
+                kind=args.kind,
+                detail=args.detail,
             )
             if json_out:
                 target = _write_json_payload(json_out, result)

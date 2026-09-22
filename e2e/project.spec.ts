@@ -135,7 +135,7 @@ test('想法在科研图中动态标出关联节点，节点详情反向展示�
   await linkedNode.click()
   const headings = await side.locator('.section-heading').allTextContents()
   expect(headings.slice(1, 4)).toEqual(['分支 · 3', '关联想法 · 1', '科研记录 · 1'])
-  // wide and prefix are both active_nodes, so knee's branches are 推进中 (2) and 已验证 (1); no candidate group remains.
+  // wide and prefix are both active_nodes, so knee's branches are two in progress and one supported; no candidate group remains.
   expect(await side.locator('.node-branch-label').evaluateAll((labels) => labels.map((label) => ({
     text: label.textContent,
     whiteSpace: getComputedStyle(label).whiteSpace,

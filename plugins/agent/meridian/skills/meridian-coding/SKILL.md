@@ -63,7 +63,8 @@ The Meridian App shows the user what the agent has been doing and what it
 found. Two calls feed it; neither needs the user's confirmation.
 
 **Research record.** Call `meridian.workspace_event_add` (or, without MCP,
-`meridian workspace event-add` for an unstructured fallback) at these
+`python -m meridian workspace event-add` with `--kind`, `--text` as the
+title, and `--detail`) at these
 boundaries, one event each. Pass a structured `kind`, a one-line `title`
 (the conclusion, not a formatted sentence), and an optional `detail` for
 key numbers or parameters — do not fold the boundary's verb into the title
@@ -87,7 +88,7 @@ is a Lab node.
 **Ideas.** When the discussion produces a new research direction, hypothesis
 or mechanism worth revisiting later, and it is not already a linked idea or a
 Lab node, call `meridian.workspace_idea_add` once (or
-`meridian workspace idea-add`) with a stable `idea_id`, a one-line `title`, a
+`python -m meridian workspace idea-add`) with a stable `idea_id`, a one-line `title`, a
 `body` that states the idea itself, and a `context` naming the work it came up
 in. Pass `node` when it grows out of a Lab node. The App adds it to the
 project's idea list marked as coming from a coding agent. Do not record

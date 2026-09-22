@@ -116,7 +116,8 @@ The Meridian App shows the user what the agent has been doing and what it
 found. Two calls feed it; neither needs the user's confirmation.
 
 **Research record.** Call `meridian.workspace_event_add` (or, without MCP,
-`python -m meridian workspace event-add` for an unstructured fallback) at
+`python -m meridian workspace event-add` with `--kind`, `--text` as the title, and
+`--detail`) at
 these boundaries, one event each. Pass a structured `kind`, a one-line
 `title` (the conclusion, not a formatted sentence), and an optional `detail`
 for key numbers or parameters — do not fold the boundary's verb into the

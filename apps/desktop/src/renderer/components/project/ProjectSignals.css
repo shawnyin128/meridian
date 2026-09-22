@@ -9,7 +9,8 @@
 .record-date-heading{padding:6px 0 2px;font-size:var(--fs-cap);font-weight:700;color:var(--ter)}
 .record-row{display:grid;grid-template-columns:84px 132px minmax(0,1fr) 52px;align-items:start;gap:10px}
 .record-row.no-node{grid-template-columns:84px minmax(0,1fr) 52px}
-.record-kind{min-width:0}
+.structured-list:has(> .record-row){--structured-list-row-height:64px}
+.record-kind{min-width:0;justify-self:start}
 .rk-chip{display:inline-flex;align-items:center;min-height:18px;box-sizing:border-box;padding:1px 6px;
   border-radius:var(--r-xs);font-size:var(--fs-cap);font-weight:700;white-space:nowrap}
 .rk-chip.rk-start{background:var(--tint-info);color:var(--info)}
