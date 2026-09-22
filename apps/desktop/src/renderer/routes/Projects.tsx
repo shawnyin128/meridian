@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import type { ReactNode, RefObject } from 'react'
 import type { ProjectStatus, ProjectSummary } from '../../shared/contract.js'
 import {
-  AGENT_PREFIX, FOCUS_KEY, idleDays, idleNote, NEAR_DAYS, nextMilestone, projectSortOrder, STALE_DAYS,
+  FOCUS_KEY, idleDays, idleNote, NEAR_DAYS, nextMilestone, projectSortOrder, STALE_DAYS,
 } from '../../shared/project-signals.js'
 import type { ProjectSortKey } from '../../shared/project-signals.js'
 import { ACTIVE_PROJECT, PROJECT_STATUSES } from '../../shared/vocabulary.js'
@@ -22,6 +22,7 @@ import { ShortTextEditor } from '../components/ShortTextEditor.js'
 import { IconCheck } from '../components/icons.js'
 import { ProjectBlockerView, ProjectNextActionView } from '../components/project/ProjectControl.js'
 import { ProjectIdentity } from '../components/project/ProjectIdentity.js'
+import { EventText } from '../components/project/ProjectSignals.js'
 import { ResearchObjectCard } from '../components/ResearchObjectCard.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
@@ -208,7 +209,7 @@ function ProjectPanel({ project, onOpen, menu, dragProps, dropClassName }: {
             ? <span className="project-card-empty">{m.research.panel.noRecords}</span>
             : (
               <span title={latest.text}>
-                {fmt.date(latest.date)} {latest.text.replace(AGENT_PREFIX, 'agent · ')}
+                {fmt.date(latest.date)} <EventText text={latest.text} origin={latest.origin} />
               </span>
             )}
         </span>

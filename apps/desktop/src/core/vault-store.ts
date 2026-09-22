@@ -789,7 +789,13 @@ export function createVaultStore(
     return writeProject(
       {
         ...project,
-        events: [...project.events, { date: today(), text, ...(node === undefined ? {} : { node }) }],
+        events: [
+          ...project.events,
+          {
+            date: today(), text, kind: 'note' as const,
+            ...(node === undefined ? {} : { node }),
+          },
+        ],
       },
       ['events'],
     )
@@ -1179,7 +1185,8 @@ export function createVaultStore(
           conclusions: conclusionCounts(p.conclusionList),
           paperCount: p.papers.filter((id) => papers.has(id)).length,
           milestones: p.milestones.map(({ date, done }) => ({ date, done })),
-          recentEvents: p.events.slice(-RECENT_EVENTS).map(({ date, text }) => ({ date, text })),
+          recentEvents: p.events.slice(-RECENT_EVENTS)
+            .map(({ date, text, origin }) => ({ date, text, ...(origin === undefined ? {} : { origin }) })),
         }
       })
     },
@@ -1235,7 +1242,7 @@ export function createVaultStore(
         papers: [],
         tasks: [],
         milestones: [],
-        events: [{ date: start, text: '创建项目' }],
+        events: [{ date: start, text: '创建项目', kind: 'project' as const }],
         relations: [],
         attachments: [],
         graph: { nodes: [], edges: [] },

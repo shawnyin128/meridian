@@ -244,7 +244,7 @@ test('sched / moe / fa 各打开一次,各板块条数与 project.get 一致', a
     await expect(shown(win).locator('.desk-head .t'), id).toHaveText(project.name)
     await expect(win.locator('#taskList .ddlrow'), id).toHaveCount(project.tasks)
     await expect(win.locator('.gantt .grow:not(.msrow)'), id).toHaveCount(project.tasks)
-    await expect(win.locator('.evlist .tlrow'), id).toHaveCount(project.events)
+    await expect(win.locator('.evlist .record-row'), id).toHaveCount(project.events)
     await expect(win.locator('.agcard'), id).toHaveCount(project.agentSessions)
 
     await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '里程碑' }).click()

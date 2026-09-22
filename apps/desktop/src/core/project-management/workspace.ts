@@ -21,6 +21,8 @@ const GRAPH = '.meridian/graph/graph.json'
 const EVENTS = '.meridian/events/events.json'
 const CHANGES = '.meridian/control/changes.json'
 const AGENT_IDEAS = '.meridian/ideas/ideas.json'
+const EXPERIMENTS_PREFIX = '.meridian/experiments/'
+const WorkspaceEventKindSchema = z.enum(['start', 'reopen', 'result', 'decision', 'complete', 'note'])
 export const WORKSPACE_AGENT_IDEAS_SCHEMA = 'meridian.workspace-agent-ideas.v1'
 const REMOTE_FILES = [MANIFEST, PLAN, CHANGES, GRAPH, EVENTS] as const
 const MAX_RETAINED_CHANGES = 500
@@ -110,6 +112,9 @@ const WorkspaceEventFileSchema = z.object({
     text: z.string().trim().min(1),
     source: z.string().trim().min(1),
     node: z.string().optional(),
+    kind: WorkspaceEventKindSchema.optional(),
+    detail: z.string().trim().min(1).max(300).optional(),
+    at: z.string().optional(),
   }).strict()),
 }).strict()
 
@@ -628,13 +633,25 @@ function readGraphJson(text: string | undefined): {
   }
 }
 
+/**
+ * Legacy rule for a workspace event written before `kind` existed: source evidence under
+ * `.meridian/experiments/` is a result, anything else is a general note.
+ */
+function legacyEventKind(source: string): 'result' | 'note' {
+  return source.startsWith(EXPERIMENTS_PREFIX) ? 'result' : 'note'
+}
+
 function readEventsJson(text: string | undefined): ProjectWorkspace['events'] {
   if (text === undefined) return []
   const parsed = WorkspaceEventFileSchema.parse(JSON.parse(text))
-  return parsed.events.map(({ date, text: eventText, node }) => ({
-    date,
-    text: eventText.startsWith('[agent] ') ? eventText : `[agent] ${eventText}`,
-    ...(node === undefined ? {} : { node }),
+  return parsed.events.map((event) => ({
+    date: event.date,
+    text: event.text,
+    origin: 'agent' as const,
+    ...(event.node === undefined ? {} : { node: event.node }),
+    kind: event.kind ?? legacyEventKind(event.source),
+    ...(event.detail === undefined ? {} : { detail: event.detail }),
+    ...(event.at === undefined ? {} : { at: event.at }),
   }))
 }
 

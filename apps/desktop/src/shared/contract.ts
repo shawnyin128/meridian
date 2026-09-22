@@ -3,6 +3,30 @@ import { DEFAULT_PAPER_GROUPS, PROJECT_STATUSES, READ_STATES } from './vocabular
 
 const IsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日期必须是 ISO 字符串')
 const IsoTimestamp = z.iso.datetime()
+const IsoDateTimeOffset = z.iso.datetime({ offset: true })
+
+/**
+ * A research-record row's type chip. `project` only ever marks the project-creation record; every
+ * other App-written record is `note`. Agent-written records use the other six values.
+ */
+export const EventKindSchema = z.enum(['start', 'reopen', 'result', 'decision', 'complete', 'note', 'project'])
+export type EventKind = z.infer<typeof EventKindSchema>
+
+/**
+ * One research-record row, shared by the project's own event log and its live workspace
+ * projection. `kind` and `origin` are absent on a record written before those fields existed; the
+ * renderer shows a record with no `kind` as `note` and no `origin` as `user`.
+ */
+const RecordEventSchema = z.object({
+  date: IsoDate,
+  text: z.string(),
+  node: z.string().optional(),
+  kind: EventKindSchema.optional(),
+  detail: z.string().min(1).max(300).optional(),
+  at: IsoDateTimeOffset.optional(),
+  origin: z.enum(['agent', 'user']).optional(),
+}).strict()
+export type RecordEvent = z.infer<typeof RecordEventSchema>
 
 const ProjectStatusSchema = z.enum(PROJECT_STATUSES)
 
@@ -234,11 +258,7 @@ export const ProjectWorkspaceSchema = z.object({
   graph: ResearchGraphSchema.optional(),
   graphGeneratedAt: z.string().optional(),
   graphHealth: z.enum(['ok', 'warning', 'error', 'unknown']).optional(),
-  events: z.array(z.object({
-    date: IsoDate,
-    text: z.string(),
-    node: z.string().optional(),
-  }).strict()),
+  events: z.array(RecordEventSchema),
   issue: z.string().optional(),
 }).strict()
 
@@ -282,11 +302,8 @@ export const ProjectDetailSchema = z.object({
   paperTitles: z.record(z.string(), z.string()),
   tasks: z.array(TaskSchema),
   milestones: z.array(MilestoneSchema),
-  /**
-   * Research log in insertion order, newest last. Text prefixed with `[agent] `
-   * came from an agent write-back; optional `node` links it to a graph node.
-   */
-  events: z.array(z.object({ date: IsoDate, text: z.string(), node: z.string().optional() }).strict()),
+  /** Research log in insertion order, newest last. `node` links a record to a graph node. */
+  events: z.array(RecordEventSchema),
   relations: z.array(RelationGroupSchema),
   attachments: z.array(AttachmentSchema),
   graph: ResearchGraphSchema,
@@ -309,7 +326,9 @@ export const ProjectSummarySchema = ProjectDetailSchema.pick({
   /** One completion value per milestone; the earliest unfinished item is next, with titles kept in details. */
   milestones: z.array(z.object({ date: IsoDate, done: z.boolean() }).strict()),
   /** Last three research-log entries in event order, newest last. */
-  recentEvents: z.array(z.object({ date: IsoDate, text: z.string() }).strict()),
+  recentEvents: z.array(z.object({
+    date: IsoDate, text: z.string(), origin: z.enum(['agent', 'user']).optional(),
+  }).strict()),
 })
 
 /**

@@ -188,7 +188,7 @@ describe('project workspace protocol', () => {
         // Legacy graph.json exports only `active_path`; the App reads it as its last valid id.
         activeNodes: ['thread.B'],
       },
-      events: [{ date: '2026-09-15', text: '[agent] Probe passed', node: 'thread.B' }],
+      events: [{ date: '2026-09-15', text: 'Probe passed', node: 'thread.B', kind: 'result', origin: 'agent' }],
     })
   })
 
@@ -336,7 +336,7 @@ describe('project workspace protocol', () => {
         nodes: [{ id: 'A', label: 'Remote probe', state: 'act', mode: 'repairable', markdown: 'Remote body' }],
         activeNodes: ['A'],
       },
-      events: [{ date: '2026-09-15', text: '[agent] Remote result' }],
+      events: [{ date: '2026-09-15', text: 'Remote result', kind: 'note', origin: 'agent' }],
     })
   })
 })

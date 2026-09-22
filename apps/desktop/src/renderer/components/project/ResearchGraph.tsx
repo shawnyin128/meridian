@@ -7,9 +7,9 @@ import type {
   ResearchGraph as Graph,
   ResearchIdea,
 } from '../../../shared/contract.js'
-import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { activeRoutes } from '../../../shared/research-path.js'
+import { recordKind, recordOrigin, sortRecordsNewestFirst } from '../../../shared/project-signals.js'
 import { Markdown } from '../Markdown.js'
 import { EmptyState } from '../EmptyState.js'
 import { IconPlus } from '../icons.js'
@@ -388,7 +388,6 @@ export function ResearchNodePanel({ graph, events, ideas, node, onClose, onSelec
   onSelect: (nodeId: string) => void
   onSelectIdea: (ideaId: string) => void
 }) {
-  const fmt = useFormat()
   const m = useMessages()
   const byId = new Map(graph.nodes.map((candidate) => [candidate.id, candidate]))
   const children = layoutResearchTree(graph).edges
@@ -418,7 +417,7 @@ export function ResearchNodePanel({ graph, events, ideas, node, onClose, onSelec
       nodes: children.filter((child) => !isActive(child) && nodeMode(child) === 'unresolved'),
     },
   ].filter((group) => group.nodes.length > 0)
-  const nodeEvents = events.filter((event) => event.node === node.id).reverse()
+  const nodeEvents = sortRecordsNewestFirst(events.filter((event) => event.node === node.id))
   const document = splitNodeDocument(node.markdown)
 
   return (
@@ -475,10 +474,10 @@ export function ResearchNodePanel({ graph, events, ideas, node, onClose, onSelec
         ? <EmptyState variant="section">{m.project.graph.noRecords}</EmptyState>
         : (
           <StructuredList className="node-event-list" variant="embedded">
-            {nodeEvents.map((event) => (
+            {nodeEvents.map((event, index) => (
               <ProjectEventRow
-                key={`${event.date} ${event.text}`}
-                text={event.text} date={event.date} dateLabel={fmt.date(event.date)}
+                key={`${event.date} ${index}`}
+                kind={recordKind(event)} title={event.text} detail={event.detail} origin={recordOrigin(event)}
               />
             ))}
           </StructuredList>

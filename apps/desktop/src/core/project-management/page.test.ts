@@ -33,7 +33,7 @@ const PROJECT: ProjectRecord = {
   milestones: [{ id: 'ms-1', date: '2026-08-28', title: '宽树实验', done: false }],
   events: [
     { date: '2026-06-02', text: '开始这条研究线' },
-    { date: '2026-08-05', text: '[agent] 实验 #3:分支浪费按深度分桶 → 结论升 v3' },
+    { date: '2026-08-05', text: '实验 #3:分支浪费按深度分桶 → 结论升 v3', origin: 'agent' },
   ],
   relations: [{
     group: 'Wiki',
@@ -193,7 +193,7 @@ describe('project page', () => {
       ...PROJECT,
       events: [
         { date: '2026-06-09', text: '结论「树宽收益拐点」', node: 'knee' },
-        { date: '2026-08-05', text: '[agent] 实验 #3', node: 'bucket' },
+        { date: '2026-08-05', text: '实验 #3', node: 'bucket', origin: 'agent' },
         { date: '2026-08-14', text: '解决冲突' },
       ],
       graph: {
@@ -218,7 +218,7 @@ describe('project page', () => {
     // Accept the legacy [node:x] [agent] ordering as well.
     writePage(file, text.replace('[agent] [node:bucket]', '[node:bucket] [agent]'), staging)
     expect(readProjectPage(file, project.id).events[1])
-      .toEqual({ date: '2026-08-05', text: '[agent] 实验 #3', node: 'bucket' })
+      .toEqual({ date: '2026-08-05', text: '实验 #3', node: 'bucket', origin: 'agent' })
   })
 
   it('正文当中的 [node:x] 是正文不是标记:读回来不带节点,正文一个字不少,写回去逐字节一样', () => {

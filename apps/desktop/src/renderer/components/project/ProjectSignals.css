@@ -6,6 +6,24 @@
 .project-signal-kind .ak{display:inline-flex;align-items:center;justify-content:center;width:100%;min-height:18px;
   box-sizing:border-box;padding:1px 6px;border-radius:var(--r-xs);font-size:var(--fs-cap);font-weight:700;white-space:nowrap}
 .project-signal-date .date-chip{width:100%;box-sizing:border-box;padding-left:4px;padding-right:4px}
-.project-event-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:10px}
-.project-event-text{min-width:0;overflow-wrap:anywhere}
-.project-event-date{white-space:nowrap;text-align:right}
+.record-date-heading{padding:6px 0 2px;font-size:var(--fs-cap);font-weight:700;color:var(--ter)}
+.record-row{display:grid;grid-template-columns:84px 132px minmax(0,1fr) 52px;align-items:start;gap:10px}
+.record-row.no-node{grid-template-columns:84px minmax(0,1fr) 52px}
+.record-kind{min-width:0}
+.rk-chip{display:inline-flex;align-items:center;min-height:18px;box-sizing:border-box;padding:1px 6px;
+  border-radius:var(--r-xs);font-size:var(--fs-cap);font-weight:700;white-space:nowrap}
+.rk-chip.rk-start{background:var(--tint-info);color:var(--info)}
+.rk-chip.rk-reopen{background:var(--tint-warn);color:var(--warn)}
+.rk-chip.rk-result{background:var(--tint-good);color:var(--good)}
+.rk-chip.rk-decision{background:var(--accent-soft);color:var(--accent)}
+.rk-chip.rk-complete{background:var(--tint-teal);color:var(--teal)}
+.rk-chip.rk-note{background:var(--tint-mut);color:var(--sec)}
+.rk-chip.rk-project{background:var(--tint-violet);color:var(--violet)}
+.record-node{min-width:0;overflow:hidden}
+.record-node-link{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  background:none;border:0;padding:0;font:inherit;color:var(--link);cursor:pointer}
+.record-node-link:hover{text-decoration:underline}
+.record-title-cell{min-width:0;display:flex;flex-direction:column;gap:2px}
+.record-title{font-weight:600;overflow-wrap:anywhere}
+.record-detail{color:var(--sec);font-size:var(--fs-sm);overflow-wrap:anywhere}
+.record-who{white-space:nowrap;text-align:right;color:var(--ter);font-size:var(--fs-cap)}

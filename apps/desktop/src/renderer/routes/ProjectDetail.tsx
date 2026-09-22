@@ -5,7 +5,9 @@ import type {
 } from '../../shared/contract.js'
 import { projectControlState } from '../../shared/project-control.js'
 import { researchPathState } from '../../shared/research-path.js'
-import { FOCUS_KEY, projectDecisionItems } from '../../shared/project-signals.js'
+import {
+  FOCUS_KEY, projectDecisionItems, recordKind, recordOrigin, sortRecordsNewestFirst,
+} from '../../shared/project-signals.js'
 import { PROJECT_STATUSES } from '../../shared/vocabulary.js'
 import { appMenu, files, idea as ideaApi, papers, project as projectApi, wiki } from '../ipc.js'
 import {
@@ -426,6 +428,20 @@ export function ProjectDetail({
   const workspaceGraph = project.workspace?.graph
   const displayedGraph = workspaceGraph ?? project.graph
   const visibleEvents = [...project.events, ...(project.workspace?.events ?? [])]
+  // Newest date first, newest record first inside a date; consecutive records share a date group.
+  const recordGroups: { date: string; records: typeof visibleEvents }[] = []
+  for (const record of sortRecordsNewestFirst(visibleEvents)) {
+    const group = recordGroups.at(-1)
+    if (group !== undefined && group.date === record.date) group.records.push(record)
+    else recordGroups.push({ date: record.date, records: [record] })
+  }
+  const goToRecordNode = (nodeId: string) => {
+    holdRecordHeading()
+    onRecord('graph')
+    setSelectedIdeaId(null)
+    setSelectedNode(nodeId)
+    discardOpenEdits()
+  }
   const attn = projectDecisionItems({
     status: project.status,
     // Old project conclusions are reserved for data compatibility only and no longer participate in the attention signal of the project page.
@@ -671,12 +687,23 @@ export function ProjectDetail({
             {record === 'tl'
               ? (
                 <StructuredList className="evlist" variant="embedded">
-                  {[...project.events, ...(project.workspace?.events ?? [])].map((ev, index) => (
-                    <ProjectEventRow
-                      key={`${ev.date} ${ev.text} ${index}`}
-                      text={ev.text} date={ev.date} dateLabel={fmt.date(ev.date)}
-                    />
-                  ))}
+                  {recordGroups.flatMap((group) => [
+                    <div className="record-date-heading" key={`${group.date} heading`}>{fmt.date(group.date)}</div>,
+                    ...group.records.map((ev, index) => {
+                      const graphNode = ev.node === undefined
+                        ? undefined
+                        : displayedGraph.nodes.find((candidate) => candidate.id === ev.node)
+                      return (
+                        <ProjectEventRow
+                          key={`${group.date} ${index}`}
+                          kind={recordKind(ev)} title={ev.text} detail={ev.detail}
+                          origin={recordOrigin(ev)}
+                          node={graphNode === undefined ? undefined : { id: graphNode.id, label: graphNode.label }}
+                          onSelectNode={goToRecordNode}
+                        />
+                      )
+                    }),
+                  ])}
                 </StructuredList>
               )
               : (

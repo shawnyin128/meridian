@@ -23,11 +23,46 @@ const PAIR = /^ *([\w-]+):(?: (.*))?$/
 /** One research-record line. */
 const EVENT = /^- (\d{4}-\d{2}-\d{2}) (.*)$/
 
-/** Node marker at the start of an event body. Accept `[agent] ` before or after it; later `[node:x]` text remains body content. */
-const NODE_MARK = /^(\[agent\] )?\[node:([^\]\s]+)\] (\[agent\] )?/
-
-/** Prefix for agent-written event bodies; the node marker follows it. */
+/** Prefix for agent-written event bodies. */
 const AGENT_PREFIX = '[agent] '
+/** Leading `[kind:x]` marker recognized on an event line; an unrecognized value is left as body text. */
+const LEADING_KIND = /^\[kind:([a-z]+)\] /
+/** Leading `[node:x]` marker recognized on an event line. */
+const LEADING_NODE = /^\[node:([^\]\s]+)\] /
+/** Event kinds the page format persists; anything else is treated as unmarked. */
+const EVENT_KINDS = new Set(['start', 'reopen', 'result', 'decision', 'complete', 'note', 'project'])
+
+/**
+ * Strips the leading `[agent]`, `[kind:x]`, and `[node:x]` markers from an event line body, in
+ * whatever order they appear (new lines are written in that canonical order; a marker pair written
+ * by an older Meridian version may be reversed). Each marker is recognized at most once; anything
+ * that follows the last recognized marker, including a `[node:x]`-shaped run of text further into
+ * the line, is body content.
+ */
+function stripEventMarkers(raw: string): { text: string; node?: string; kind?: string; agent: boolean } {
+  let rest = raw
+  let node: string | undefined
+  let kind: string | undefined
+  let agent = false
+  for (let matched = true; matched;) {
+    matched = false
+    if (!agent && rest.startsWith(AGENT_PREFIX)) {
+      agent = true
+      rest = rest.slice(AGENT_PREFIX.length)
+      matched = true
+      continue
+    }
+    if (kind === undefined) {
+      const found = LEADING_KIND.exec(rest)
+      if (found) { kind = found[1]; rest = rest.slice(found[0].length); matched = true; continue }
+    }
+    if (node === undefined) {
+      const found = LEADING_NODE.exec(rest)
+      if (found) { node = found[1]; rest = rest.slice(found[0].length); matched = true; continue }
+    }
+  }
+  return { text: rest, ...(node === undefined ? {} : { node }), ...(kind === undefined ? {} : { kind }), agent }
+}
 
 /** Keys whose contract names differ from their page representation. */
 const PAGE_KEYS = {
@@ -228,25 +263,33 @@ function sectionRange(rows: string[], heading: string): [number, number] {
 }
 
 /**
- * Parse an event-line body into the contract shape: extract a leading `[node:x]` into `node`, keep
- * `[agent] ` at the start of text, and preserve every other character. An unmarked line is all body.
+ * Parse an event-line body into the contract shape via `stripEventMarkers`: `node` and `kind` are
+ * carried over verbatim, `origin` is `'agent'` only when the line carried the `[agent]` marker
+ * (omitted otherwise, so a plain user-written line needs no `origin` at all), and every other
+ * character is `text`. An unmarked line is all body.
  */
 function eventOf(date: string, raw: string): ProjectDetail['events'][number] {
-  const mark = NODE_MARK.exec(raw)
-  if (mark === null) return { date, text: raw }
-  const rest = raw.slice(mark[0].length)
-  const agent = mark[1] !== undefined || mark[3] !== undefined
-  return { date, text: agent ? `${AGENT_PREFIX}${rest}` : rest, node: mark[2]! }
+  const { text, node, kind, agent } = stripEventMarkers(raw)
+  return {
+    date,
+    text,
+    ...(node === undefined ? {} : { node }),
+    ...(kind !== undefined && EVENT_KINDS.has(kind) ? { kind: kind as NonNullable<ProjectDetail['events'][number]['kind']> } : {}),
+    ...(agent ? { origin: 'agent' as const } : {}),
+  }
 }
 
-/** Event body linked to a node: place the marker after `[agent] ` and before all remaining text. */
-const withNode = (text: string, node: string): string => (text.startsWith(AGENT_PREFIX)
-  ? `${AGENT_PREFIX}[node:${node}] ${text.slice(AGENT_PREFIX.length)}`
-  : `[node:${node}] ${text}`)
+/** Leading markers for one event line, in canonical write order: `[agent] [kind:x] [node:x] `. */
+function eventMarkerPrefix(event: ProjectDetail['events'][number]): string {
+  const agent = event.origin === 'agent' ? AGENT_PREFIX : ''
+  const kind = event.kind === undefined ? '' : `[kind:${event.kind}] `
+  const node = event.node === undefined ? '' : `[node:${event.node}] `
+  return `${agent}${kind}${node}`
+}
 
 /** Research-record section lines: one event per line with a blank line on each side. */
 const eventLines = (events: ProjectDetail['events']): string[] => ['', ...events.map((event) =>
-  `- ${event.date} ${event.node === undefined ? event.text : withNode(event.text, event.node)}`), '']
+  `- ${event.date} ${eventMarkerPrefix(event)}${event.text}`), '']
 
 /** Memo section lines: preserve memo text verbatim and leave a trailing newline. */
 const memoLines = (memo: string): string[] => ['', ...(memo === '' ? [] : memo.split('\n')), '']

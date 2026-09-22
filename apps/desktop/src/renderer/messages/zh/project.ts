@@ -16,6 +16,19 @@ export const project = {
   },
   recordViewLabel: '科研记录视图',
   recordModes: { list: '列表' },
+  records: {
+    kind: {
+      start: '开始推进',
+      reopen: '重开',
+      result: '实验结果',
+      decision: '决定',
+      complete: '完成',
+      note: '记录',
+      project: '项目',
+    },
+    who: { agent: 'agent', user: '你' },
+    goToGraph: (label: string) => `在科研图中打开「${label}」`,
+  },
   plan: {
     taskMode: '任务',
     milestoneMode: '里程碑',

@@ -1165,7 +1165,7 @@ describe('vault store on the aggregation layout', () => {
       branches: { active: 1, supported: 1, failed: 1, shelved: 0 },
     })
     expect(overview.events.at(-1)).toEqual({
-      date: '2026-09-15', text: '[agent] 探针通过', node: 'probe',
+      date: '2026-09-15', text: '探针通过', node: 'probe', kind: 'result', origin: 'agent',
     })
     expect(overview).not.toHaveProperty('graph')
     expect(overview).not.toHaveProperty('workspace')

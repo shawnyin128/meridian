@@ -19,6 +19,19 @@ export const project = {
   },
   recordViewLabel: 'Research log view',
   recordModes: { list: 'List' },
+  records: {
+    kind: {
+      start: 'Started',
+      reopen: 'Reopened',
+      result: 'Result',
+      decision: 'Decision',
+      complete: 'Completed',
+      note: 'Note',
+      project: 'Project',
+    },
+    who: { agent: 'agent', user: 'you' },
+    goToGraph: (label: string) => `Open "${label}" in the research graph`,
+  },
   plan: {
     taskMode: 'Task',
     milestoneMode: 'Milestone',

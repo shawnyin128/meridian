@@ -18,6 +18,8 @@
   --accent-solid:#3568ff;
   --card:#ffffff; --field:#eef2f8; --hover:rgba(10,16,32,.05);
   --good:#1f9d4d; --warn:#b8860b; --bad:#e0453a; --info:#0e9aa7; --hl:rgba(255,214,10,.45);
+  /* Two record-kind hues beyond the semantic tones above: complete (teal) and project (violet). */
+  --teal:#0f8a72; --violet:#7c4fe0;
   --mslane:rgba(184,134,11,.07);
   /*
    * Content columns and cards are divided into three levels according to the window width, with discontinuous scaling: narrow level (default), medium level (≥1600), and wide level (≥2000).
@@ -48,6 +50,7 @@
   --tint-good:rgba(48,209,88,.14); --tint-warn:rgba(255,214,10,.14);
   --tint-bad:rgba(224,69,58,.12); --tint-info:rgba(14,154,167,.14);
   --tint-mut:rgba(10,16,32,.04); --on-tint:#fff;
+  --tint-teal:rgba(15,138,114,.14); --tint-violet:rgba(124,79,224,.14);
   /* The base of the entity type label. Only type tags can use the brand's light color background, other tags must be neutral or semantic colors */
   --tint-paper:rgba(91,140,255,.14); --tint-wiki:rgba(167,120,255,.14);
   /* The paper does not turn over according to the subject */
@@ -69,6 +72,7 @@
   --accent:#558cff; --accent-soft:rgba(85,140,255,.12); --on-accent:#ffffff;
   --card:#12213a; --field:#16263f; --hover:rgba(245,247,251,.05);
   --good:#30d158; --warn:#ffd60a; --bad:#ff453a; --info:#2ec4d6; --hl:rgba(255,214,10,.35);
+  --teal:#2dd4bf; --violet:#a78bfa;
   --mslane:rgba(255,214,10,.06);
   --diff-add:rgba(48,209,88,.14); --diff-del:rgba(255,69,58,.12);
   --sbthumb:rgba(245,247,251,.28); --sbthumb-h:rgba(245,247,251,.45);
@@ -80,6 +84,7 @@
   /* 18% of the red base with #ff453a on the new #0d1b2d base is 4.26:1, which cannot pass the main text 4.5:1; 10% is 4.68:1 */
   --tint-bad:rgba(255,69,58,.10); --tint-info:rgba(46,196,214,.20);
   --tint-mut:rgba(245,247,251,.05); --on-tint:#fff;
+  --tint-teal:rgba(45,212,191,.20); --tint-violet:rgba(167,139,250,.20);
   --tint-paper:rgba(91,140,255,.20); --tint-wiki:rgba(197,155,255,.20);
   --paper:#fff; --scrim:rgba(4,11,20,.55);
   --sh-1:0 1px 2px rgba(0,0,0,.5), 0 0 0 1px rgba(245,247,251,.05);

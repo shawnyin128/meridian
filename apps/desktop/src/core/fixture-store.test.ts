@@ -591,8 +591,11 @@ describe('fixture store', () => {
     const full = store.getProject('draft')
     expect(full.events.length).toBeGreaterThan(3)
     expect(summary.milestones).toEqual(full.milestones.map(({ date, done }) => ({ date, done })))
-    // Summary events contain only date and text; node linkage remains in details.
-    expect(summary.recentEvents).toEqual(full.events.slice(-3).map(({ date, text }) => ({ date, text })))
+    // Summary events carry date, text, and origin (for the overview's "agent" tag); node
+    // linkage, kind, detail, and at remain in details only.
+    expect(summary.recentEvents).toEqual(full.events.slice(-3).map(({ date, text, origin }) => ({
+      date, text, ...(origin === undefined ? {} : { origin }),
+    })))
   })
 
   it('新记一条科研记录之后,概要的末位与详情的末位都是它', () => {
@@ -1721,7 +1724,7 @@ describe('fixture store', () => {
     const before = store.getProject('draft').events.length
     const after = store.createEvent('draft', '[对话] 来自对话的结论')
     expect(after.events).toHaveLength(before + 1)
-    expect(after.events.at(-1)).toEqual({ date: '2026-08-25', text: '[对话] 来自对话的结论' })
+    expect(after.events.at(-1)).toEqual({ date: '2026-08-25', text: '[对话] 来自对话的结论', kind: 'note' })
     expect(store.getProject('draft').events.at(-1)!.text).toBe('[对话] 来自对话的结论')
     expect(() => store.createEvent('nope', '不存在的项目')).toThrow()
   })

@@ -158,10 +158,10 @@ describe('vault app state', () => {
       const id = store.listProjects()[0]!.id
       store.createEvent(id, '开始这条研究线')
       expect(read(`wiki/projects/${id}.md`))
-        .toContain('## 科研记录\n\n- 2026-09-08 创建项目\n- 2026-09-08 开始这条研究线\n')
+        .toContain('## 科研记录\n\n- 2026-09-08 [kind:project] 创建项目\n- 2026-09-08 [kind:note] 开始这条研究线\n')
       expect(reopen().getProject(id).events).toEqual([
-        { date: '2026-09-08', text: '创建项目' },
-        { date: '2026-09-08', text: '开始这条研究线' },
+        { date: '2026-09-08', text: '创建项目', kind: 'project' },
+        { date: '2026-09-08', text: '开始这条研究线', kind: 'note' },
       ])
     })
 

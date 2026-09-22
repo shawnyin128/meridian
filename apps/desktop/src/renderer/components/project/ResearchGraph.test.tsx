@@ -177,22 +177,25 @@ describe('idea and graph association', () => {
     act(() => root.unmount())
   })
 
-  it('keeps the research-event source and text together with trailing date metadata', () => {
+  it('renders a structured record row with a kind chip, title, and who, and no node column', () => {
     const host = document.createElement('div')
     const root = createRoot(host)
     act(() => root.render(withMessages(
       <ResearchNodePanel
         graph={GRAPH}
-        events={[{ date: '2026-09-14', text: '[agent] 跑通延迟测量', node: 'root' }]}
+        events={[{
+          date: '2026-09-14', text: '跑通延迟测量', node: 'root', kind: 'result', origin: 'agent',
+        }]}
         ideas={[]} node={GRAPH.nodes[0]!}
         onClose={vi.fn()} onSelect={vi.fn()} onSelectIdea={vi.fn()}
       />,
     )))
 
-    const row = host.querySelector('.project-event-row')
-    expect(row?.querySelector('.project-event-text')?.textContent).toBe('agent跑通延迟测量')
-    expect(row?.querySelector('time')?.getAttribute('datetime')).toBe('2026-09-14')
-    expect(row?.querySelector('.project-event-date')?.textContent).toBe('9月14日')
+    const row = host.querySelector('.record-row')
+    expect(row?.querySelector('.record-title')?.textContent).toBe('跑通延迟测量')
+    expect(row?.querySelector('.record-kind')?.textContent).toBe('实验结果')
+    expect(row?.querySelector('.record-who')?.textContent).toBe('agent')
+    expect(row?.querySelector('.record-node')).toBeNull()
     act(() => root.unmount())
   })
 })

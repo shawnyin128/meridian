@@ -143,12 +143,14 @@ test('想法在科研图中动态标出关联节点，节点详情反向展示�
   const tableCell = side.locator('.node-markdown td').first()
   await expect(tableCell).toBeVisible()
   expect(await tableCell.evaluate((cell) => getComputedStyle(cell).borderTopWidth)).not.toBe('0px')
-  const eventRow = side.locator('.project-event-row').first()
-  const eventParts = await eventRow.locator('.project-event-text, .project-event-date').evaluateAll(
+  // The node panel variant has no node column: chip, title, and who read left to right.
+  const eventRow = side.locator('.record-row').first()
+  await expect(eventRow.locator('.record-node')).toHaveCount(0)
+  const eventParts = await eventRow.locator('.record-kind, .record-title-cell, .record-who').evaluateAll(
     (parts) => parts.map((part) => part.getBoundingClientRect()),
   )
-  expect(eventParts[1]!.left).toBeGreaterThan(eventParts[0]!.left)
-  expect(eventParts[1]!.top).toBeLessThan(eventParts[0]!.bottom)
+  expect(eventParts[1]!.left).toBeGreaterThanOrEqual(eventParts[0]!.right - 1)
+  expect(eventParts[2]!.left).toBeGreaterThan(eventParts[1]!.left)
   const linkedIdea = side.locator(`.node-idea-row[data-idea="${idea!.id}"]`)
   await expect(linkedIdea).toContainText(idea!.title)
   await linkedIdea.click()
@@ -291,7 +293,7 @@ test('各板块渲染出的条目数与 project.get 返回的条数逐对相等'
   const rendered: Record<string, number> = {
     任务行: await win.locator('#taskList .ddlrow').count(),
     甘特任务行: await win.locator('.gantt .grow:not(.msrow)').count(),
-    科研记录: await win.locator('.evlist .tlrow').count(),
+    科研记录: await win.locator('.evlist .record-row').count(),
     关联组: await win.locator('.wkrel').count(),
     关联条目: await win.locator('.wkrel .tagchip').count(),
     附件: await win.locator('.attrow').count(),

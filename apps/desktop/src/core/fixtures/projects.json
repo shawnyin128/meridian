@@ -29,9 +29,14 @@
    { "id": "m4", "date": "2026-09-15", "title": "阶段汇报", "done": false }
   ],
   "events": [
-   { "date": "2026-06-02", "text": "开始这条研究线" },
-   { "date": "2026-06-09", "text": "结论「树宽收益有拐点」(你验证过)", "node": "knee" },
-   { "date": "2026-08-05", "text": "[agent] 实验 #3:分支浪费按深度分桶 → 结论升 v3", "node": "bucket" },
+   { "date": "2026-06-02", "text": "开始这条研究线", "kind": "start" },
+   { "date": "2026-06-09", "text": "结论「树宽收益有拐点」(你验证过)", "node": "knee", "kind": "decision" },
+   { "date": "2026-08-01", "text": "阶段汇报材料整理完毕", "kind": "complete" },
+   { "date": "2026-08-05", "text": "实验 #3:分支浪费按深度分桶 → 结论升 v3", "node": "bucket", "kind": "result", "origin": "agent" },
+   {
+    "date": "2026-08-08", "text": "重开宽树分支,补测 B=8 边界", "node": "wide", "kind": "reopen",
+    "detail": "上一轮在 B=8 处方差偏大", "origin": "agent"
+   },
    { "date": "2026-08-14", "text": "解决冲突:改写为单请求 / 批量两条结论", "node": "wide" }
   ],
   "relations": [
@@ -151,7 +156,7 @@
   ],
   "events": [
    { "date": "2026-08-18", "text": "开始:以官方实现为基线" },
-   { "date": "2026-08-21", "text": "[agent] 评测环境搭建,依赖版本锁定" },
+   { "date": "2026-08-21", "text": "评测环境搭建,依赖版本锁定", "kind": "note", "origin": "agent" },
    { "date": "2026-08-23", "text": "评测脚本跑通 MT-bench 子集" }
   ],
   "relations": [

@@ -1,4 +1,4 @@
-import type { ProjectOverview, ProjectStatus, Task } from './contract.js'
+import type { EventKind, ProjectOverview, ProjectStatus, RecordEvent, Task } from './contract.js'
 import { dnum } from './dates.js'
 import { ACTIVE_PROJECT } from './vocabulary.js'
 
@@ -9,7 +9,27 @@ export const FOCUS_KEY: Record<ProjectStatus, FocusLabelKey> =
 
 export const NEAR_DAYS = 3
 export const STALE_DAYS = 7
-export const AGENT_PREFIX = '[agent] '
+
+/** A record written before `kind` existed shows as a general note. */
+export const recordKind = (record: Pick<RecordEvent, 'kind'>): EventKind => record.kind ?? 'note'
+
+/** A record written before `origin` existed came from the user, not an agent. */
+export const recordOrigin = (record: Pick<RecordEvent, 'origin'>): 'agent' | 'user' => record.origin ?? 'user'
+
+const recordTimestamp = (record: Pick<RecordEvent, 'date' | 'at'>): number => Date.parse(record.at ?? record.date)
+
+/**
+ * Sorts research records newest first: by `at` when present, else by `date`; a tie (same
+ * timestamp, typically same date with neither record carrying `at`) keeps reverse write order, so
+ * a record later in its source array sorts as the newer one. The one shared ordering every
+ * research-record list (the project's timeline view and a node's record panel) is built from.
+ */
+export function sortRecordsNewestFirst<T extends RecordEvent>(records: readonly T[]): T[] {
+  return records
+    .map((record, index) => ({ record, index }))
+    .sort((a, b) => recordTimestamp(b.record) - recordTimestamp(a.record) || b.index - a.index)
+    .map(({ record }) => record)
+}
 
 /**
  * The catalog text this module needs to render decision items, idle notes and the pulse signal.
