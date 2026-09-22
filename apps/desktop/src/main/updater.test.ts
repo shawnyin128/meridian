@@ -1,6 +1,8 @@
 import { EventEmitter } from 'node:events'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { CHECK_EVERY_MS, createUpdater, FIRST_CHECK_MS, TICK_MS, type UpdateFeed } from './updater.js'
+import {
+  CHECK_EVERY_MS, createUpdater, FIRST_CHECK_MS, RETRY_AFTER_ERROR_MS, TICK_MS, type UpdateFeed,
+} from './updater.js'
 
 class FakeFeed extends EventEmitter {
   autoDownload = true
@@ -89,6 +91,22 @@ describe('createUpdater', () => {
     vi.advanceTimersByTime(TICK_MS * 22)
     expect(feed.checks).toBe(1)
     advance(TICK_MS)
+    vi.advanceTimersByTime(TICK_MS)
+    expect(feed.checks).toBe(2)
+    stop()
+  })
+
+  it('retries a failed check an hour later instead of the next day', () => {
+    vi.useFakeTimers()
+    const { feed, updater, advance } = setup()
+    const stop = updater.arm()
+    vi.advanceTimersByTime(FIRST_CHECK_MS)
+    feed.emit('error', new Error('offline'))
+
+    advance(RETRY_AFTER_ERROR_MS - 1)
+    vi.advanceTimersByTime(TICK_MS)
+    expect(feed.checks).toBe(1)
+    advance(1)
     vi.advanceTimersByTime(TICK_MS)
     expect(feed.checks).toBe(2)
     stop()

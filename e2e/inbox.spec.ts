@@ -73,10 +73,9 @@ async function openDeliverySettings(win: Page) {
   await expect(settings(win, '[data-setcat="delivery-watch"]')).toHaveClass(/\bon\b/)
 }
 
-/** For the paragraph header text, remove the copywriting of those controls hanging on the first paragraph header. */
-async function sectionHeads(win: Page, controls: string[]): Promise<string[]> {
-  const heads = await shown(win, '.section-heading').allTextContents()
-  return heads.map((h) => controls.reduce((t, c) => t.replace(c, ''), h).trim())
+/** Titles of the collapsible groups the cards are listed under, in page order. */
+function groupTitles(win: Page): Promise<string[]> {
+  return shown(win, '.collapsible-group-title').allTextContents()
 }
 
 test('侧栏「论文推送」进推送屏,条目、分组与正文都照 demo', async ({ win }) => {
@@ -99,8 +98,8 @@ test('侧栏「论文推送」进推送屏,条目、分组与正文都照 demo',
     const w = watches.find((x) => x.id === id)!
     return `${KIND[w.type]} · ${w.name}`
   })
-  expect(await sectionHeads(win, ['全部忽略'])).toEqual(heads)
-  await expect(shown(win, '.section-heading .btn')).toHaveCount(1)
+  expect(await groupTitles(win)).toEqual(heads)
+  await expect(shown(win, '.collapsible-group-actions .btn')).toHaveCount(1)
 
   // Every paragraph of the first card is word-for-word identical to the original text of the demo.
   const card = shown(win, '.pcard').first()
@@ -121,7 +120,17 @@ test('关注与项目发现是两条流,发现解释来源并接受显式反馈'
   await expect.poll(async () => (await discoveryFromCore(win)).length).toBeGreaterThan(0)
   await expect(shown(win, '.pcard').first()).toBeVisible()
   await expect(shown(win, '.pcard').first().locator('.prec')).toContainText('来自项目')
-  await expect(shown(win, '.section-heading').first()).toContainText('项目 ·')
+  await expect(shown(win, '.collapsible-group-title').first()).toContainText('项目 ·')
+  // Discovery lists its projects under the sidebar row; picking one shows only that project's papers.
+  const byProject = new Map<string, number>()
+  for (const entry of await discoveryFromCore(win)) byProject.set(entry.project, (byProject.get(entry.project) ?? 0) + 1)
+  await expect(win.locator('[data-discovery-project]')).toHaveCount(byProject.size)
+  const [firstProject, firstCount] = [...byProject.entries()][0]!
+  await win.locator(`[data-discovery-project="${firstProject}"]`).click()
+  await expect(win.locator(`[data-discovery-project="${firstProject}"]`)).toHaveClass(/\bon\b/)
+  await expect(shown(win, '.pcard')).toHaveCount(firstCount)
+  await expect(shown(win, '.collapsible-group')).toHaveCount(1)
+  await openInbox(win, 'discovery')
 
   const first = shown(win, '.pcard').first()
   await first.locator('[title="更多类似"]').click()
@@ -146,9 +155,9 @@ test('按主题与作者各筛一档,面包屑与条数都跟着换', async ({ w
     await expect(shown(win, '.desk-head .t')).toHaveText(`${KIND[w.type]} · ${w.name} · ${w.n} 篇`)
     await expect(shown(win, '.pcard')).toHaveCount(w.n)
     // There is only one paragraph header in one gear, and it is this concern that is written; only empty states are displayed in the gaps.
-    await expect(shown(win, '.section-heading')).toHaveCount(w.n === 0 ? 0 : 1)
+    await expect(shown(win, '.collapsible-group')).toHaveCount(w.n === 0 ? 0 : 1)
     await expect(shown(win, '.empty-state')).toHaveCount(w.n === 0 ? 1 : 0)
-    if (w.n > 0) expect(await sectionHeads(win, ['全部忽略'])).toEqual([`${KIND[w.type]} · ${w.name}`])
+    if (w.n > 0) expect(await groupTitles(win)).toEqual([`${KIND[w.type]} · ${w.name}`])
     await expect(win.locator(`[data-watchrow="${w.id}"]`)).toHaveClass(/\bon\b/)
   }
 })
@@ -186,7 +195,7 @@ test('「全部忽略」清空这一档,清完出空态,忽略的都在垃圾桶
   await expect(shown(win, '.pcard')).toHaveCount((await inboxFromCore(win)).length)
   const titles = await cardTitles(win)
 
-  await shown(win, '.section-heading.flexh .btn').filter({ hasText: '全部忽略' }).click()
+  await shown(win, '.collapsible-group-actions .btn').filter({ hasText: '全部忽略' }).click()
   await expect(shown(win, '.pcard')).toHaveCount(0)
   await expect(shown(win, '.empty-state')).toHaveCount(1)
   await expect(shown(win, '.desk-head .t')).toHaveText('论文推送 · 0')
@@ -420,7 +429,7 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   await win.keyboard.press('Escape')
   await openInbox(win, 'all')
   await expect(shown(win, '.pcard')).toHaveCount(survivors.length)
-  expect(await sectionHeads(win, ['全部忽略'])).toEqual([...new Set(survivors.map((e) => e.source))])
+  expect(await groupTitles(win)).toEqual([...new Set(survivors.map((e) => e.source))])
 })
 
 test('关注管理:占位行按 Esc 撤掉,屏上没有旧的圆角添加框', async ({ win }) => {

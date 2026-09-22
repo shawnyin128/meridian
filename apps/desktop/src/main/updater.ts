@@ -3,6 +3,8 @@ import { releaseUrl } from '../shared/app-update.js'
 
 export const CHECK_EVERY_MS = 24 * 3_600_000
 export const TICK_MS = 3_600_000
+/** A failed check, such as one made while offline, is retried after this long rather than a day later. */
+export const RETRY_AFTER_ERROR_MS = 3_600_000
 export const FIRST_CHECK_MS = 10_000
 
 /** The part of electron-updater's AppUpdater this module drives. */
@@ -81,7 +83,8 @@ export function createUpdater({ feed, current, supported, installsInPlace, now, 
     arm() {
       if (!supported) return () => {}
       const tick = () => {
-        if (checkedAt === undefined || now() - checkedAt >= CHECK_EVERY_MS) check()
+        const wait = phase.phase === 'error' ? RETRY_AFTER_ERROR_MS : CHECK_EVERY_MS
+        if (checkedAt === undefined || now() - checkedAt >= wait) check()
       }
       const first = setTimeout(tick, FIRST_CHECK_MS)
       const every = setInterval(tick, TICK_MS)

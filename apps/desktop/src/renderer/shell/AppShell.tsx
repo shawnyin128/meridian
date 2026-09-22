@@ -2,8 +2,11 @@ import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, u
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import type { ChatSession, Watch } from '../../shared/contract.js'
 import { ACTIVE_PROJECT } from '../../shared/vocabulary.js'
-import { appMenu, changelog, chat, idea, inbox, later, papers, project, trash, vault, watch, wiki } from '../ipc.js'
+import {
+  appMenu, appUpdates, changelog, chat, idea, inbox, later, papers, project, trash, vault, watch, wiki,
+} from '../ipc.js'
 import { ActionMenu, MenuItem } from '../components/ActionMenu.js'
+import { AboutDialog } from '../components/AboutDialog.js'
 import { PageFailure } from '../components/PageShell.js'
 import { ScreenBoundary } from '../components/ScreenBoundary.js'
 import type { Catalog } from '../messages/catalog.js'
@@ -45,6 +48,9 @@ export const ALL_WATCHES = 'all'
 
 /** Two independent information streams for paper push. The entrance belongs to the shell navigation and is not held by the temporary filtering status in the page. */
 export type InboxMode = 'watch' | 'discovery'
+
+/** One project's share of the discovery stream, listed under Discovery in the sidebar. */
+export type DiscoveryProjectCount = { id: string; name: string; count: number }
 
 const SB_MIN = 180
 const SB_MAX = 320
@@ -332,6 +338,7 @@ export function AppShell({ screens, settings }: {
   const [chatId, setChatId] = useState<string | null>(null)
   const [inboxCounts, setInboxCounts] = useState<Record<string, number>>({})
   const [discoveryCount, setDiscoveryCount] = useState(0)
+  const [discoveryProjects, setDiscoveryProjects] = useState<DiscoveryProjectCount[]>([])
   const [laterCount, setLaterCount] = useState(0)
   const [revision, setRevision] = useState(0)
   const [today, setToday] = useState<string | null>(null)
@@ -347,7 +354,9 @@ export function AppShell({ screens, settings }: {
   /** Where the focus is before opening the application menu. Returned here when the menu is closed; returned to Radix when empty, it is returned to the Mark button. */
   const appMenuOpener = useRef<HTMLElement | null>(null)
   /** Is it because I selected "Settings..." when I closed the menu this time? To set the modal, wait until the menu is closed before hanging up. See the note below. */
-  const wantSettings = useRef(false)
+  // The dialog a menu item asked for, opened only once the menu has closed and handed focus back.
+  const wantDialog = useRef<'settings' | 'about' | null>(null)
+  const [aboutOpen, setAboutOpen] = useState(false)
 
   // Each subscript in the side column reads the number of the entire database, and it must be retrieved every time after writing, so follow the revision. Curry’s today is also
   // Retake it here: The library uses the current day when writing, and the old day on the screen will be one day different.
@@ -364,7 +373,16 @@ export function AppShell({ screens, settings }: {
     void later.list().then((entries) => setLaterCount(entries.length))
     void inbox.list({ kind: 'watch' }).then((entries) => setInboxCounts(entries.reduce<Record<string, number>>(
       (counts, e) => ({ ...counts, [e.watch]: (counts[e.watch] ?? 0) + 1 }), {})))
-    void inbox.list({ kind: 'discovery' }).then((entries) => setDiscoveryCount(entries.length))
+    void Promise.all([inbox.list({ kind: 'discovery' }), project.list()]).then(([entries, projects]) => {
+      setDiscoveryCount(entries.length)
+      const names = new Map(projects.map((held) => [held.id, held.name]))
+      const counts = new Map<string, DiscoveryProjectCount>()
+      for (const entry of entries) {
+        const held = counts.get(entry.project) ?? { id: entry.project, name: names.get(entry.project) ?? entry.source, count: 0 }
+        counts.set(entry.project, { ...held, count: held.count + 1 })
+      }
+      setDiscoveryProjects([...counts.values()])
+    })
   }, [revision])
 
   // Reading ideas also takes in those a coding agent recorded, which is not a write here, so recount on every screen change too.
@@ -373,10 +391,11 @@ export function AppShell({ screens, settings }: {
   }, [revision, screen])
 
   // After a follower is removed, the paper push screen cannot stop on a follower that no longer exists.
+  // Discovery scopes by project instead, so its scope is never a watch id.
   useEffect(() => {
-    if (inboxScope !== ALL_WATCHES
+    if (inboxMode === 'watch' && inboxScope !== ALL_WATCHES
       && !watches.some((w) => w.id === inboxScope)) setInboxScope(ALL_WATCHES)
-  }, [watches, inboxScope])
+  }, [watches, inboxScope, inboxMode])
 
   // "Settings..." in the menu: The main process conveys a message, and the opening and closing still returns to the page.
   useEffect(() => appMenu.onOpenSettings(() => setSettingsOpen(true)), [])
@@ -639,16 +658,22 @@ export function AppShell({ screens, settings }: {
                   e.preventDefault()
                   appMenuOpener.current.focus()
                 }
-                if (!wantSettings.current) return
-                wantSettings.current = false
-                setSettingsOpen(true)
+                const wanted = wantDialog.current
+                wantDialog.current = null
+                if (wanted === 'settings') setSettingsOpen(true)
+                if (wanted === 'about') setAboutOpen(true)
               },
           }}
         >
-          <MenuItem onSelect={() => { wantSettings.current = true }}>
+          <MenuItem onSelect={() => { wantDialog.current = 'settings' }}>
             {m.shell.titlebar.settings}<span className="mi-key">{appMenu.platform() === 'darwin' ? '⌘,' : 'Ctrl+,'}</span>
           </MenuItem>
+          <MenuItem onSelect={() => { void appUpdates.check(); wantDialog.current = 'about' }}>
+            {m.shell.titlebar.checkUpdates}
+          </MenuItem>
+          <MenuItem onSelect={() => { wantDialog.current = 'about' }}>{m.shell.titlebar.about}</MenuItem>
         </ActionMenu>
+        <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
         <div className="crumb" id="crumb">
           {parts.map((p, i) => {
             // The demo only connects .cseg.link to the processor: you cannot click the callback at the end, it is the current position.
@@ -674,7 +699,8 @@ export function AppShell({ screens, settings }: {
           changeCount={changeCount} projectCount={projectCount} trashCount={trashCount}
           wikiCount={wikiCount} ideaCount={ideaCount}
           inboxScope={inboxScope} inboxMode={inboxMode} onOpenInbox={openInbox} watches={watches}
-          inboxCounts={inboxCounts} discoveryCount={discoveryCount} laterCount={laterCount}
+          inboxCounts={inboxCounts} discoveryCount={discoveryCount} discoveryProjects={discoveryProjects}
+          laterCount={laterCount}
           chats={chats} chatId={screen === 'chat' ? chatId : null} onOpenChat={openChat}
           onNewChat={newChat} onArchiveChat={archiveChat}
           grip={{ onMouseDown: gripDown, onMouseEnter: gripEnter, onMouseLeave: hideGriptip }}

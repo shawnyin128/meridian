@@ -32,7 +32,7 @@ export function PaperCard({
       {abstract ? (
         <section className="paper-card-section">
           <div className="paper-card-label plabel">Abstract</div>
-          <PaperAbstract text={abstract} />
+          <PaperAbstract text={abstract} folded />
         </section>
       ) : null}
       {recommendation ? (

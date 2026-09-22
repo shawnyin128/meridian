@@ -179,5 +179,7 @@ export const papers = {
   card: {
     recommendationLabel: 'Why recommended',
     citations: (n: number) => `${n} ${pluralEn(n, { one: 'citation', other: 'citations' })}`,
+    expandAbstract: 'Show full abstract',
+    collapseAbstract: 'Show less',
   },
 } satisfies typeof zh

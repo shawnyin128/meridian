@@ -176,5 +176,7 @@ export const papers = {
   card: {
     recommendationLabel: '推荐理由',
     citations: (n: number) => `${n} 引用`,
+    expandAbstract: '展开摘要',
+    collapseAbstract: '收起摘要',
   },
 } satisfies Record<string, unknown>

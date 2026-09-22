@@ -54,6 +54,7 @@ const { Inbox } = await import('./Inbox.js')
 describe('Inbox', () => {
   let host: HTMLDivElement
   beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     host = document.createElement('div')
     document.body.append(host)
@@ -64,7 +65,7 @@ describe('Inbox', () => {
     api.setIntent.mockClear()
     api.openCategory.mockClear()
   })
-  afterEach(() => { host.remove(); status = null })
+  afterEach(() => { host.remove(); status = null; vi.unstubAllGlobals() })
 
   it('后台进程还没重启、状态缺少新字段时仍能正常渲染', async () => {
     status = { writes: 0, uploads: [] } as unknown as JobsStatus
@@ -102,6 +103,29 @@ describe('Inbox', () => {
     const more = host.querySelector<HTMLButtonElement>('[title="更多类似"]')!
     await act(async () => { more.click() })
     expect(api.feedback).toHaveBeenCalledWith('d1', 'more')
+    await act(async () => { root.unmount() })
+  })
+
+  it('发现按项目分组：每组标题带条数，点标题折叠这一组，其它组不受影响', async () => {
+    const entry = (id: string, project: string, name: string): InboxEntry => ({
+      id, kind: 'discovery', watch: '', project, source: `项目 · ${name}`,
+      title: `Paper ${id}`, authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
+      reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
+    })
+    api.entries = [entry('d1', 'p1', '项目一'), entry('d2', 'p2', '项目二'), entry('d3', 'p1', '项目一')]
+    api.mode = 'discovery'
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    const groups = [...host.querySelectorAll<HTMLElement>('.collapsible-group')]
+    expect(groups.map((group) => group.dataset['group'])).toEqual(['p1', 'p2'])
+    expect(groups[0]!.querySelector('.collapsible-group-title')?.textContent).toBe('项目 · 项目一')
+    expect(groups[0]!.querySelector('.collapsible-group-count')?.textContent).toBe('2')
+    expect(groups[0]!.querySelectorAll('.paper-card')).toHaveLength(2)
+
+    await act(async () => { groups[0]!.querySelector<HTMLButtonElement>('.collapsible-group-toggle')!.click() })
+    expect(groups[0]!.querySelector('.collapsible-group-toggle')?.getAttribute('aria-expanded')).toBe('false')
+    expect(groups[0]!.querySelectorAll('.paper-card')).toHaveLength(0)
+    expect(groups[1]!.querySelectorAll('.paper-card')).toHaveLength(1)
     await act(async () => { root.unmount() })
   })
 

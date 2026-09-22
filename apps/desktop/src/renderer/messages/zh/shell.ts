@@ -16,8 +16,10 @@ export const shell = {
     research: '研究',
   },
   update: {
-    ready: (version: string) => `重启以更新到 ${version}`,
-    available: (version: string) => `下载新版本 ${version}`,
+    ready: (version: string) => `新版本 ${version} 已就绪`,
+    available: (version: string) => `有新版本 ${version}`,
+    relaunch: '重启',
+    download: '下载',
   },
   nav: {
     feed: '动态',
@@ -47,7 +49,8 @@ export const shell = {
     manageChat: (title: string) => `管理对话：${title}`,
     archive: '归档',
   },
-  titlebar: { settings: '设置…' },
+  titlebar: { settings: '设置…', checkUpdates: '检查更新…', about: '关于 Meridian' },
+  about: { title: '关于 Meridian', releases: '发布记录' },
   bootFailure: {
     title: '论文库打不开',
     note: '可以在设置里换一个论文库，重启之后打开它。',

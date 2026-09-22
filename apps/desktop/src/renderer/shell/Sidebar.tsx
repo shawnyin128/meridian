@@ -7,7 +7,7 @@ import { Icon, IconNorthStar, IconPlus } from '../components/icons.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useAppUpdate } from '../hooks/useAppUpdate.js'
 import { appUpdates } from '../ipc.js'
-import { ALL_WATCHES, type InboxMode, type ScreenKey } from './AppShell.js'
+import { ALL_WATCHES, type DiscoveryProjectCount, type InboxMode, type ScreenKey } from './AppShell.js'
 import { SearchBox } from './SearchBox.js'
 
 const Caret = ({ onClick }: { onClick?: (e: ReactMouseEvent) => void }) => (
@@ -73,21 +73,25 @@ function SectHead({ sect, label, closed, onToggle, extra }: {
   )
 }
 
-/** Pinned above the trash row once a new version is downloaded (restart installs it) or, where it cannot install in place, found. */
+/**
+ * Pinned above the trash row once a new version is downloaded, with a button that relaunches into it, or,
+ * where the app cannot install in place, once one is found, with a button to its download page.
+ */
 function UpdateRow() {
   const m = useMessages()
   const update = useAppUpdate()
   if (update?.phase !== 'ready' && update?.phase !== 'available') return null
+  const ready = update.phase === 'ready'
   return (
-    <div
-      className="srow update-row" data-desk="update" style={{ flexShrink: 0, marginTop: 6 }}
-      onClick={() => {
-        if (update.phase === 'ready') appUpdates.install()
-        else window.open(update.url)
-      }}
-    >
+    <div className="update-row" data-desk="update">
       <span className="ic"><Icon><path d="M12 4v11" /><path d="M7 10l5 5 5-5" /><path d="M5 20h14" /></Icon></span>
-      {update.phase === 'ready' ? m.shell.update.ready(update.version) : m.shell.update.available(update.version)}
+      <span className="update-row-text">
+        {ready ? m.shell.update.ready(update.version) : m.shell.update.available(update.version)}
+      </span>
+      <button
+        type="button" className="btn pri update-row-action"
+        onClick={() => { if (ready) appUpdates.install(); else window.open(update.url) }}
+      >{ready ? m.shell.update.relaunch : m.shell.update.download}</button>
     </div>
   )
 }
@@ -107,7 +111,7 @@ function UpdateRow() {
  */
 export function Sidebar({
   screen, onNavigate, onJump, paperCount, changeCount, projectCount, trashCount, wikiCount, ideaCount,
-  inboxScope, inboxMode, onOpenInbox, watches, inboxCounts, discoveryCount, laterCount,
+  inboxScope, inboxMode, onOpenInbox, watches, inboxCounts, discoveryCount, discoveryProjects, laterCount,
   chats, chatId, onOpenChat, onNewChat, onArchiveChat, grip,
 }: {
   screen: ScreenKey
@@ -125,6 +129,7 @@ export function Sidebar({
   watches: Watch[]
   inboxCounts: Record<string, number>
   discoveryCount: number
+  discoveryProjects: DiscoveryProjectCount[]
   laterCount: number
   chats: ChatSession[]
   chatId: string | null
@@ -149,6 +154,7 @@ export function Sidebar({
   // "Paper push" counts the number of articles brought in by all following, which is synonymous with demo's allN = unread.spec + unread.dao
   const pushed = Object.values(inboxCounts).reduce((sum, n) => sum + n, 0)
   const onWatch = (id: string) => screen === 'inbox' && inboxMode === 'watch' && inboxScope === id
+  const onDiscovery = (id: string) => screen === 'inbox' && inboxMode === 'discovery' && inboxScope === id
   const inboxAll = [
     'srow', closed['inboxsub'] ? 'closed' : null,
     screen === 'inbox' && inboxMode === 'watch' && inboxScope === ALL_WATCHES ? 'on' : null,
@@ -184,11 +190,28 @@ export function Sidebar({
           </div>
           <div className={wgroup('inboxsub')} id="g-inboxsub">
             <div
-              className={screen === 'inbox' && inboxMode === 'discovery' ? 'srow discovery on' : 'srow discovery'}
+              className={[
+                'srow discovery', closed['discoverysub'] ? 'closed' : null,
+                onDiscovery(ALL_WATCHES) ? 'on' : null,
+              ].filter(Boolean).join(' ')}
               data-inbox="discovery" onClick={() => onOpenInbox(ALL_WATCHES, 'discovery')}
             >
               <span className="ic"><IconNorthStar /></span>{m.shell.nav.discovery}
+              {discoveryProjects.length > 0
+                ? <Caret onClick={(e) => { e.stopPropagation(); toggle('discoverysub') }} /> : null}
               <span className={discoveryCount > 0 ? 'n new' : 'n'}>{discoveryCount || ''}</span>
+            </div>
+            <div className={wgroup('discoverysub')} id="g-discoverysub">
+              {discoveryProjects.map((held) => (
+                <div
+                  key={held.id} className={onDiscovery(held.id) ? 'srow sub watch-row on' : 'srow sub watch-row'}
+                  data-discovery-project={held.id} onClick={() => onOpenInbox(held.id, 'discovery')}
+                >
+                  <span className="ic" />
+                  <span className="watch-name">{held.name}</span>
+                  <span className="n new">{held.count}</span>
+                </div>
+              ))}
             </div>
             <div
               className={closed['topics'] ? 'srow disc closed' : 'srow disc'} data-disc="topics"

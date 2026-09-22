@@ -1,0 +1,18 @@
+.collapsible-group+.collapsible-group{margin-top:8px}
+/* The pinned heading covers the items scrolling under it, so it paints the page ground. */
+.collapsible-group-head{position:sticky;top:-20px;z-index:2;display:flex;align-items:center;gap:10px;
+  margin:0 -4px 12px;padding:12px 4px 10px;background:var(--content);border-bottom:1px solid var(--sep)}
+.collapsible-group.is-closed .collapsible-group-head{margin-bottom:0}
+.collapsible-group-toggle{display:flex;flex:1;min-width:0;align-items:center;gap:8px;padding:0;border:0;background:none;
+  color:var(--ink);font:inherit;font-size:var(--fs-title);font-weight:700;text-align:left;cursor:pointer}
+.collapsible-group-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--r-sm)}
+.collapsible-group-caret{display:grid;place-items:center;flex:none;width:16px;height:16px;color:var(--ter);
+  transition:transform var(--t-fast) var(--e-out)}
+.collapsible-group-caret svg{width:12px;height:12px}
+.collapsible-group.is-closed .collapsible-group-caret{transform:rotate(-90deg)}
+.collapsible-group-title{min-width:0;overflow-wrap:anywhere}
+.collapsible-group-count{flex:none;border-radius:var(--r-full);padding:1px 8px;background:var(--field);color:var(--sec);
+  font-size:var(--fs-cap);font-weight:600;font-variant-numeric:tabular-nums}
+.collapsible-group-actions{display:flex;flex:none;align-items:center;gap:8px}
+
+@media (prefers-reduced-motion:reduce){.collapsible-group-caret{transition:none}}

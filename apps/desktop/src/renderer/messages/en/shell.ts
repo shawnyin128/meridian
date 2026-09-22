@@ -18,8 +18,10 @@ export const shell = {
     research: 'Research',
   },
   update: {
-    ready: (version: string) => `Restart to update to ${version}`,
-    available: (version: string) => `Download version ${version}`,
+    ready: (version: string) => `Version ${version} is ready`,
+    available: (version: string) => `Version ${version} is available`,
+    relaunch: 'Relaunch',
+    download: 'Download',
   },
   nav: {
     feed: 'Feed',
@@ -49,7 +51,8 @@ export const shell = {
     manageChat: (title: string) => `Manage chat: ${title}`,
     archive: 'Archive',
   },
-  titlebar: { settings: 'Settings…' },
+  titlebar: { settings: 'Settings…', checkUpdates: 'Check for Updates…', about: 'About Meridian' },
+  about: { title: 'About Meridian', releases: 'Release notes' },
   bootFailure: {
     title: "The library won't open",
     note: 'Choose a different library in Settings. Meridian will use it after you restart.',

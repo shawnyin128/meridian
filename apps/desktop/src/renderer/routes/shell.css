@@ -66,6 +66,8 @@
 .ctxmenu.cfpop{position:fixed;left:calc(50% - 190px);top:calc(50% - 80px)}
 .dlg{min-width:340px;max-width:460px;padding:10px 10px 12px}
 .dlg-t{font-size:var(--fs-base);font-weight:600;line-height:var(--lh-ui);padding:8px 8px 20px;color:var(--ink)}
+.dlg-d{margin:0;padding:0 8px 8px;font-size:var(--fs-base);line-height:var(--lh-ui);color:var(--sec)}
+.dlg-d:last-of-type{padding-bottom:16px}
 .dlg-a{display:flex;justify-content:flex-end;gap:10px;padding:0 4px}
 .dlg-a .btn{font-size:var(--fs-base);padding:5px 16px}
 

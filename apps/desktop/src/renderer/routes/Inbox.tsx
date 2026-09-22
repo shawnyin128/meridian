@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type {
   DiscoveryFetchResult, DiscoveryProfile, FetchStatus, InboxEntry,
   InboxListParams, Watch,
@@ -19,10 +19,11 @@ import {
   PaperCard, PaperCardBadge, PaperCardCitations, PaperCardNotice,
 } from '../components/paper/PaperCard.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import {
-  PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
+  PageBody, PageError, PageHeader, PageShell, PageTitle,
 } from '../components/PageShell.js'
 import './shell.css'
 
@@ -101,16 +102,37 @@ export function Inbox() {
   }, [loadProfiles, revision, reportError, sort, stream])
 
   const watched = watches.find((w) => w.id === scope)
+  // Discovery is scoped by project and paper delivery by watch; the sidebar sets the scope for either stream.
+  const groupOf = useCallback((entry: InboxEntry) => (stream === 'discovery' ? entry.project : entry.watch), [stream])
   const rows = useMemo(() => (
-    stream === 'discovery' || scope === ALL_WATCHES
-      ? entries : entries.filter((e) => e.watch === scope)
-  ), [entries, scope, stream])
+    scope === ALL_WATCHES ? entries : entries.filter((e) => groupOf(e) === scope)
+  ), [entries, groupOf, scope])
+  const groups = useMemo(() => {
+    const byKey = new Map<string, { key: string; title: string; rows: InboxEntry[] }>()
+    for (const row of rows) {
+      const key = groupOf(row)
+      const group = byKey.get(key) ?? { key, title: row.source, rows: [] }
+      group.rows.push(row)
+      byKey.set(key, group)
+    }
+    return [...byKey.values()]
+  }, [groupOf, rows])
+  const scopedProject = stream === 'discovery' && scope !== ALL_WATCHES ? groups[0]?.title ?? '' : null
+  const [folded, setFolded] = useState<ReadonlySet<string>>(new Set())
+  const toggleGroup = (key: string) => setFolded((held) => {
+    const next = new Set(held)
+    if (next.has(key)) next.delete(key)
+    else next.add(key)
+    return next
+  })
 
   const tail = useMemo(
     () => (scope === ALL_WATCHES
       ? [{ text: streamLabel(m, stream) }]
-      : watched ? [{ text: m.shell.watchKind[watched.type] }, { text: watched.name }] : []),
-    [scope, stream, watched, m],
+      : scopedProject !== null
+        ? [{ text: streamLabel(m, stream) }, { text: scopedProject }]
+        : watched ? [{ text: m.shell.watchKind[watched.type] }, { text: watched.name }] : []),
+    [scope, scopedProject, stream, watched, m],
   )
   useCrumbTail(tail)
 
@@ -175,9 +197,85 @@ export function Inbox() {
     }).catch((e: Error) => toast(e.message))
   }
 
+  const card = (p: InboxEntry) => (
+    <PaperCard
+      key={p.id} paperId={p.id} watchId={p.watch} title={p.title} leaving={leaving.has(p.id)}
+      actions={(
+        <>
+        {stream === 'discovery' ? (
+          <>
+            <button
+              className={`icbtn${p.feedback === 'more' ? ' on' : ''}`}
+              title={m.inbox.actions.more} onClick={() => feedback(p.id, 'more')}
+            ><Icon><path d="M7 10v11H3V10h4zM7 19l4 2h6.5a2 2 0 0 0 2-1.7l1.2-7A2 2 0 0 0 18.7 10H14l1-4.2A2.3 2.3 0 0 0 12.8 3L7 10z" /></Icon></button>
+            <button className="icbtn" title={m.inbox.actions.less} onClick={() => feedback(p.id, 'less')}>
+              <Icon><path d="M7 14V3H3v11h4zM7 5l4-2h6.5a2 2 0 0 1 2 1.7l1.2 7a2 2 0 0 1-2 2.3H14l1 4.2a2.3 2.3 0 0 1-2.2 2.8L7 14z" /></Icon>
+            </button>
+            <button className="icbtn" title={m.inbox.actions.known} onClick={() => feedback(p.id, 'known')}>
+              <IconCheck />
+            </button>
+          </>
+        ) : null}
+        {p.downloaded
+          ? (
+            <button
+              className="icbtn" title={m.papers.rowActions.openReader} onClick={() => open('reader', p.paper)}
+            ><IconRead /></button>
+          )
+          : busy.has(p.id)
+            ? (
+              <button className="icbtn busy" title={m.later.actions.downloading} disabled>
+                <DownloadRing progress={jobs?.downloads?.find((item) => item.id === p.id) ?? null} />
+              </button>
+            )
+            : (
+              <button className="icbtn" title={m.inbox.actions.download} onClick={() => ingest(p.id)}>
+                <IconDownload />
+              </button>
+            )}
+        <button className="icbtn" title={m.inbox.actions.readLater} onClick={() => queue(p.id)}>
+          <IconLater />
+        </button>
+        {stream === 'watch' ? (
+          <button
+            className="icbtn" title={m.inbox.actions.dismiss}
+            onClick={() => dismiss([p.id], m.inbox.notices.dismissed)}
+          ><IconCross /></button>
+        ) : null}
+        </>
+      )}
+      notices={(
+        <>
+          {collided.has(p.id) ? (
+            <PaperCardNotice action={(
+              <button className="btn plain" onClick={() => open('reader', p.paper)}>{m.inbox.actions.open}</button>
+            )}>{m.inbox.notices.alreadyInLibrary(collided.get(p.id) ?? '')}</PaperCardNotice>
+          ) : null}
+          {failed.has(p.id) ? (
+            <PaperCardNotice tone="error" action={(
+              <button className="btn plain" onClick={() => ingest(p.id)}>{m.common.retry}</button>
+            )}>{failed.get(p.id)}</PaperCardNotice>
+          ) : null}
+        </>
+      )}
+      metadata={(
+        <>
+          {p.authors}{p.venue ? <PaperCardBadge>{p.venue}</PaperCardBadge> : null}
+          {(p.ranking?.citationCount ?? 0) > 0
+            ? <PaperCardCitations count={p.ranking?.citationCount ?? 0} /> : null}
+        </>
+      )}
+      abstract={p.abstract} {...(
+        stream === 'discovery' && p.reasons.length > 0
+          ? { recommendation: p.reasons.map((reason) => reason.label).join(' · ') }
+          : p.rec === '' ? {} : { recommendation: p.rec }
+      )}
+    />
+  )
+
   const head = scope === ALL_WATCHES
     ? m.inbox.headAll(streamLabel(m, stream), rows.length)
-    : m.inbox.headWatch(watched ? label(watched, m.shell.watchKind) : '', rows.length)
+    : m.inbox.headWatch(scopedProject ?? (watched ? label(watched, m.shell.watchKind) : ''), rows.length)
 
   return (
     <PageShell>
@@ -248,100 +346,20 @@ export function Inbox() {
           )
           : (
             <>
-              {rows.map((p, at) => {
-            // All push this file will be segmented according to the following. If a certain item is followed by that file, only a paragraph header of the same style will be set at the front.
-            const group = stream === 'discovery' ? p.project : p.watch
-            const previous = stream === 'discovery' ? rows[at - 1]?.project : rows[at - 1]?.watch
-            const openGroup = scope === ALL_WATCHES ? group !== previous : at === 0
-            return (
-              <Fragment key={p.id}>
-                {openGroup ? (
-                  <SectionHeading variant="group" className={at === 0 ? 'flexh' : undefined}>
-                    {p.source}
-                    {/* The demo only puts "ignore all" on the first paragraph header, and it ignores everything in this file. */}
-                    {at === 0 ? (
-                      <button
-                        className="btn plain"
-                        onClick={() => dismiss(rows.map((r) => r.id), m.inbox.notices.dismissedAll)}
-                      >{m.inbox.dismissAll}</button>
-                    ) : null}
-                  </SectionHeading>
-                ) : null}
-                <PaperCard
-                  paperId={p.id} watchId={p.watch} title={p.title} leaving={leaving.has(p.id)}
-                  actions={(
-                    <>
-                    {stream === 'discovery' ? (
-                      <>
-                        <button
-                          className={`icbtn${p.feedback === 'more' ? ' on' : ''}`}
-                          title={m.inbox.actions.more} onClick={() => feedback(p.id, 'more')}
-                        ><Icon><path d="M7 10v11H3V10h4zM7 19l4 2h6.5a2 2 0 0 0 2-1.7l1.2-7A2 2 0 0 0 18.7 10H14l1-4.2A2.3 2.3 0 0 0 12.8 3L7 10z" /></Icon></button>
-                        <button className="icbtn" title={m.inbox.actions.less} onClick={() => feedback(p.id, 'less')}>
-                          <Icon><path d="M7 14V3H3v11h4zM7 5l4-2h6.5a2 2 0 0 1 2 1.7l1.2 7a2 2 0 0 1-2 2.3H14l1 4.2a2.3 2.3 0 0 1-2.2 2.8L7 14z" /></Icon>
-                        </button>
-                        <button className="icbtn" title={m.inbox.actions.known} onClick={() => feedback(p.id, 'known')}>
-                          <IconCheck />
-                        </button>
-                      </>
-                    ) : null}
-                    {p.downloaded
-                      ? (
-                        <button
-                          className="icbtn" title={m.papers.rowActions.openReader} onClick={() => open('reader', p.paper)}
-                        ><IconRead /></button>
-                      )
-                      : busy.has(p.id)
-                        ? (
-                          <button className="icbtn busy" title={m.later.actions.downloading} disabled>
-                            <DownloadRing progress={jobs?.downloads?.find((item) => item.id === p.id) ?? null} />
-                          </button>
-                        )
-                        : (
-                          <button className="icbtn" title={m.inbox.actions.download} onClick={() => ingest(p.id)}>
-                            <IconDownload />
-                          </button>
-                        )}
-                    <button className="icbtn" title={m.inbox.actions.readLater} onClick={() => queue(p.id)}>
-                      <IconLater />
-                    </button>
-                    {stream === 'watch' ? (
-                      <button
-                        className="icbtn" title={m.inbox.actions.dismiss}
-                        onClick={() => dismiss([p.id], m.inbox.notices.dismissed)}
-                      ><IconCross /></button>
-                    ) : null}
-                    </>
-                  )}
-                  notices={(
-                    <>
-                      {collided.has(p.id) ? (
-                        <PaperCardNotice action={(
-                          <button className="btn plain" onClick={() => open('reader', p.paper)}>{m.inbox.actions.open}</button>
-                        )}>{m.inbox.notices.alreadyInLibrary(collided.get(p.id) ?? '')}</PaperCardNotice>
-                      ) : null}
-                      {failed.has(p.id) ? (
-                        <PaperCardNotice tone="error" action={(
-                          <button className="btn plain" onClick={() => ingest(p.id)}>{m.common.retry}</button>
-                        )}>{failed.get(p.id)}</PaperCardNotice>
-                      ) : null}
-                    </>
-                  )}
-                  metadata={(
-                    <>
-                      {p.authors}{p.venue ? <PaperCardBadge>{p.venue}</PaperCardBadge> : null}
-                      {(p.ranking?.citationCount ?? 0) > 0
-                        ? <PaperCardCitations count={p.ranking?.citationCount ?? 0} /> : null}
-                    </>
-                  )}
-                  abstract={p.abstract} {...(
-                    stream === 'discovery' && p.reasons.length > 0
-                      ? { recommendation: p.reasons.map((reason) => reason.label).join(' · ') }
-                      : p.rec === '' ? {} : { recommendation: p.rec }
-                  )}
-                />
-              </Fragment>
-              )})}
+              {groups.map((group, index) => (
+                <CollapsibleGroup
+                  key={group.key} data-group={group.key} title={group.title} count={group.rows.length}
+                  open={!folded.has(group.key)} onToggle={() => toggleGroup(group.key)}
+                  actions={index === 0 ? (
+                    <button
+                      className="btn plain"
+                      onClick={() => dismiss(rows.map((r) => r.id), m.inbox.notices.dismissedAll)}
+                    >{m.inbox.dismissAll}</button>
+                  ) : undefined}
+                >
+                  {group.rows.map(card)}
+                </CollapsibleGroup>
+              ))}
             </>
           )}
       </PageBody>
