@@ -292,7 +292,7 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
   /** Create a new project: Remove the new line and write down an update after it is written. When the project is rejected, this line and the typed name will be retained. */
   const createProject = (name: string): boolean | Promise<boolean> =>
     (name === '' ? false : write(projectApi.create(name).then(() => feed.append({
-      source: 'steward',
+      source: 'me',
       body: { kind: 'runs', runs: [{ kind: 'text', text: m.research.list.createdFeedNote(name) }] },
     })), { note: m.research.list.createdNote }))
 

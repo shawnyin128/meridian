@@ -97,7 +97,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     if (session === null) return
     void chat.recordAction(session.id, message.id).then(async (held) => {
       banner(m.chat.recordedNote(held.name))
-      await feed.append({ source: 'steward', body: { kind: 'runs', runs: [
+      await feed.append({ source: 'me', body: { kind: 'runs', runs: [
         plain(m.chat.recordedTo(held.name)),
       ] } })
       bump()

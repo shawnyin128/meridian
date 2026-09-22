@@ -37,7 +37,7 @@ describe('createInboxDownloads', () => {
     expect(store.listInbox().find((entry) => entry.id === 'specdec'))
       .toMatchObject({ downloaded: true, paper: result.paper })
     expect(store.listFeed()[0]).toMatchObject({
-      source: 'steward',
+      source: 'me',
       body: {
         runs: [
           { text: '已入库:' },

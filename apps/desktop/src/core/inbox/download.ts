@@ -42,7 +42,7 @@ export function createInboxDownloads(deps: {
       const result = deps.store.completeInboxDownload(id, body)
       if (result.kind === 'added') {
         deps.store.appendFeed({
-          source: 'steward',
+          source: 'me',
           body: {
             kind: 'runs',
             runs: [

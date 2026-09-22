@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs
 import { basename, isAbsolute, join } from 'node:path'
 import type { z } from 'zod'
 import type {
-  ChatSession, Conclusion, DeliverySettings, FeedRun, GraphNode, PaperColumns, PaperImportResult, PaperReading, PaperRow, Proposal,
+  ChatSession, Conclusion, DeliverySettings, FeedEntry, FeedRun, GraphNode, PaperColumns, PaperImportResult, PaperReading, PaperRow, Proposal,
   ProjectDetail, ProjectWorkspaceBinding, ReadingMutation, ResearchIdea, SearchHit, Task, TaskFields,
 } from '../shared/contract.js'
 import { DEFAULT_DELIVERY_SETTINGS, FeedEntrySchema, ResearchIdeaSchema, WatchSchema } from '../shared/contract.js'
@@ -82,6 +82,8 @@ const STAGING = 'tmp'
 
 /** Number of research-log entries included in a project summary. */
 const RECENT_EVENTS = 3
+/** How often the feed re-reads bound workspaces for new research-record events. */
+const WORKSPACE_EVENT_READ_MS = 60_000
 
 /** Character limit used when an untitled demo chat derives its name from the first user message. */
 const CHAT_TITLE_CHARS = 12
@@ -690,6 +692,49 @@ export function createVaultStore(
     state = { ...state, agentIdeas: [...taken] }
     writeJson(stateFile, state, staging)
     for (const project of touched) syncProjectWorkspace(project)
+  }
+
+  /** Appends one feed entry dated now. */
+  const appendFeedEntry = (source: FeedEntry['source'], runs: FeedRun[]): void => {
+    const day = today()
+    feed = [...feed, {
+      id: nextId('entry'), source, day: dayOf(day, day), time: FEED_NOW,
+      createdAt: now().toISOString(),
+      body: { kind: 'runs', runs: structuredClone(runs) },
+    }]
+    save('feed', feed)
+  }
+
+  let eventsReadAt = Number.NEGATIVE_INFINITY
+  /**
+   * Copies research-record events that coding agents wrote in bound workspaces into the feed as Lab
+   * entries, each once. The first pass only marks existing events as seen, so an existing history does
+   * not flood the feed; workspaces are read at most once a minute because an SSH binding means a round trip.
+   */
+  const absorbWorkspaceEvents = (): void => {
+    const at = now().getTime()
+    if (at - eventsReadAt < WORKSPACE_EVENT_READ_MS) return
+    eventsReadAt = at
+    const first = state.feedEvents === undefined
+    const seen = new Set(state.feedEvents ?? [])
+    const fresh: { project: string; text: string }[] = []
+    for (const project of projects()) {
+      if (project.workspaceRoot === undefined && project.workspaceSsh === undefined) continue
+      for (const event of readProjectWorkspace(project)?.events ?? []) {
+        const key = `${project.id}:${event.date}:${event.text}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        fresh.push({ project: project.name, text: event.text.replace(/^\[agent\] /, '') })
+      }
+    }
+    if (!first && fresh.length === 0) return
+    if (!first) {
+      for (const event of fresh) {
+        appendFeedEntry('lab', [{ kind: 'strong', text: `「${event.project}」` }, { kind: 'text', text: event.text }])
+      }
+    }
+    state = { ...state, feedEvents: [...seen] }
+    writeJson(stateFile, state, staging)
   }
 
   /** Current paper rows augmented with links and conclusions stored on projects. */
@@ -2051,6 +2096,7 @@ export function createVaultStore(
     },
 
     listFeed() {
+      absorbWorkspaceEvents()
       return feedNewestFirst(feed, today())
     },
 

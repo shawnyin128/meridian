@@ -290,6 +290,8 @@ export function createFixtureStore(
   let ideaOrder: string[] | undefined
   // `<project id>:<idea id>` of each workspace agent idea already taken into the idea list.
   const takenAgentIdeas = new Set<string>()
+  // Research-record events already copied into the feed; null until the first pass marks the existing ones.
+  let feedEvents: Set<string> | null = null
   // Dismissal and read-later both hide an inbox item while preserving its original slot for restoration.
   const gone = new Set<string>()
   // Track papers with an explicit read state so undo can distinguish absent state from stored unread.
@@ -1632,6 +1634,25 @@ export function createFixtureStore(
     },
 
     listFeed() {
+      const first = feedEvents === null
+      const seen = feedEvents ?? new Set<string>()
+      for (const project of projectById.values()) {
+        for (const event of project.workspace?.events ?? []) {
+          const key = `${project.id}:${event.date}:${event.text}`
+          if (seen.has(key)) continue
+          seen.add(key)
+          if (first) continue
+          const day = today()
+          feed = [...feed, {
+            id: nextId('entry'), source: 'lab', day: dayOf(day, day), time: FEED_NOW,
+            createdAt: now().toISOString(),
+            body: { kind: 'runs', runs: [
+              { kind: 'strong', text: `「${project.name}」` }, { kind: 'text', text: event.text.replace(/^\[agent\] /, '') },
+            ] },
+          }]
+        }
+      }
+      feedEvents = seen
       return feedNewestFirst(feed, today())
     },
 

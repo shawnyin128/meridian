@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 
 type ContentProps = Omit<Dialog.DialogContentProps,
-  'children' | 'className' | 'aria-describedby' | 'onOpenAutoFocus' | 'onCloseAutoFocus'
+  'children' | 'className' | 'aria-describedby' | 'onCloseAutoFocus'
 >
 
 export function ModalTitle({ className, children }: { className?: string; children: ReactNode }) {

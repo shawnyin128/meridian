@@ -188,7 +188,7 @@ export function Chat() {
     if (id === null) return
     void chat.recordAction(id, message.id).then(async (p) => {
       banner(m.chat.recordedNote(p.name))
-      await feed.append({ source: 'steward', body: { kind: 'runs', runs: [
+      await feed.append({ source: 'me', body: { kind: 'runs', runs: [
         plain(m.chat.recordedTo(p.name)),
       ] } })
       bump()

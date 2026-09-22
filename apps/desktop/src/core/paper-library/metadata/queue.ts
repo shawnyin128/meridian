@@ -49,7 +49,7 @@ export function createMetadataQueue(deps: {
   let batch = 0
 
   const note = (runs: FeedRun[]): void => {
-    deps.store.appendFeed({ source: 'steward', body: { kind: 'runs', runs } })
+    deps.store.appendFeed({ source: 'me', body: { kind: 'runs', runs } })
     deps.onWrite()
   }
 

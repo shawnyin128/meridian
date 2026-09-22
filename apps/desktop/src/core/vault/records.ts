@@ -106,6 +106,8 @@ export const VaultStateSchema = z.object({
   projectOrder: z.array(z.string()).optional(),
   ideaOrder: z.array(z.string()).optional(),
   agentIdeas: z.array(z.string()).optional(),
+  /** Research-record events already copied into the feed, as `project:date:text` keys. */
+  feedEvents: z.array(z.string()).optional(),
   deliverySettings: DeliverySettingsSchema.optional(),
   discoverySchedules: z.record(z.string(), z.object({
     lastFetchedAt: z.number().int().nullable(),

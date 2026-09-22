@@ -79,6 +79,10 @@ describe('createBackground', () => {
     })
     const rows = store.listInbox({ kind: 'discovery', project: 'draft' })
     expect(rows).toHaveLength(2)
+    expect(store.listFeed()[0]).toMatchObject({
+      source: 'inbox',
+      body: { runs: [{ text: '发现:' }, { text: '2 篇新论文推荐' }, { text: '(1 个项目)。' }] },
+    })
     expect(rows[0]).toMatchObject({
       kind: 'discovery', project: 'draft', source: '项目 · draft 效率',
       reasons: expect.arrayContaining([

@@ -1169,6 +1169,39 @@ describe('vault store on the aggregation layout', () => {
     expect(overview).not.toHaveProperty('workspace')
   })
 
+  it('关联仓库里 coding agent 新写的科研记录进动态的「实验」，旧的不刷屏，同一条只进一次', () => {
+    let clock = new Date('2026-09-22T10:00:00.000Z')
+    const timed = createVaultStore(vault, () => '2026-09-22', () => clock)
+    timed.createProject('动态实验流')
+    const id = timed.listProjects().find((project) => project.name === '动态实验流')!.id
+    const repo = join(vault, 'feed-lab-repo')
+    mkdirSync(join(repo, '.meridian/events'), { recursive: true })
+    timed.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    const writeEvents = (events: { id: string; text: string }[]) => writeFileSync(
+      join(repo, '.meridian/events/events.json'),
+      JSON.stringify({
+        schema_version: 'meridian.workspace-events.v1',
+        events: events.map((event) => ({ ...event, date: '2026-09-22', source: 'src/probe.py' })),
+      }),
+      'utf8',
+    )
+    const labTexts = () => timed.listFeed().filter((entry) => entry.source === 'lab')
+      .map((entry) => (entry.body.kind === 'runs' ? entry.body.runs.map((run) => run.text).join('') : ''))
+
+    writeEvents([{ id: 'old', text: '开始推进 延迟探针' }])
+    expect(labTexts()).toEqual([])
+
+    writeEvents([{ id: 'old', text: '开始推进 延迟探针' }, { id: 'new', text: '完成 延迟探针：p95 降到 40ms' }])
+    clock = new Date(clock.getTime() + 30_000)
+    expect(labTexts()).toEqual([])
+    clock = new Date(clock.getTime() + 31_000)
+    expect(labTexts()).toEqual(['「动态实验流」完成 延迟探针：p95 降到 40ms'])
+    expect(timed.listFeed()[0]!.source).toBe('lab')
+
+    clock = new Date(clock.getTime() + 61_000)
+    expect(labTexts()).toHaveLength(1)
+  })
+
   it('项目的结论分档从页上的结论列表数出来,页上不再存计数', () => {
     store.createProject('结论计数')
     const id = store.listProjects().find((project) => project.name === '结论计数')!.id

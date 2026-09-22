@@ -90,7 +90,24 @@ export function createBackground(deps: {
         throw new Error(`没能生成关注建议:${netReason(error)}`)
       }
     },
-    fetchDiscoveries: (projectId, force) => recommendation.discover(projectId, force),
+    async fetchDiscoveries(projectId, force) {
+      const result = await recommendation.discover(projectId, force)
+      if (result.added > 0) {
+        deps.store.appendFeed({
+          source: 'inbox',
+          body: {
+            kind: 'runs',
+            runs: [
+              { kind: 'text', text: '发现:' },
+              { kind: 'strong', text: `${result.added} 篇新论文推荐` },
+              { kind: 'text', text: `(${result.projects} 个项目)。` },
+            ],
+          },
+        })
+        onWrite()
+      }
+      return result
+    },
     armSchedule: () => armFetchSchedule(fetcher, deps.now),
     status: () => ({
       writes,
