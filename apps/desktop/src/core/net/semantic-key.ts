@@ -24,7 +24,9 @@ const lastFourOf = (secret: string) => Array.from(secret).slice(-4).join('')
 
 /**
  * The user's optional Semantic Scholar API key, kept in `file` encrypted by the OS-backed `vault`
- * and decrypted once while opening. A key the vault re-encrypts on open is written back.
+ * and decrypted once while opening. A key the vault re-encrypts on open is written back. A saved key
+ * the vault cannot decrypt is reported and treated as not saved, so Core still starts; saving a new
+ * key replaces it.
  */
 export async function openSemanticKeyStore({ file, vault }: {
   file: string
@@ -37,11 +39,16 @@ export async function openSemanticKeyStore({ file, vault }: {
     writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, 'utf8')
   }
   if (stored !== null) {
-    const opened = await vault.open(stored.ciphertext)
-    key = opened.secret
-    if (opened.replacement !== undefined) {
-      stored = { ...stored, ciphertext: opened.replacement }
-      write(stored)
+    try {
+      const opened = await vault.open(stored.ciphertext)
+      key = opened.secret
+      if (opened.replacement !== undefined) {
+        stored = { ...stored, ciphertext: opened.replacement }
+        write(stored)
+      }
+    } catch (error) {
+      console.error(`Semantic Scholar key could not be decrypted and is treated as not saved: ${String(error)}`)
+      stored = null
     }
   }
   return {

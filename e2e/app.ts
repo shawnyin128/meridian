@@ -1,6 +1,8 @@
 import { _electron as electron, test as base } from '@playwright/test'
 import type { ElectronApplication, Locator, Page } from '@playwright/test'
-import { resolve } from 'node:path'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 
 const APP_DIR = resolve(import.meta.dirname, '../apps/desktop')
 
@@ -29,18 +31,22 @@ export const test = base.extend<{
 }>({
   showWindow: [false, { option: true }],
   app: async ({ showWindow }, use) => {
+    // A fresh config home per case keeps the user's own ~/.meridian (keys, model settings) out of reach.
+    const configHome = mkdtempSync(join(tmpdir(), 'meridian-e2e-config-'))
     const app = await electron.launch({
       // The specs assert Chinese copy, so the app must not follow the host's language.
       args: [APP_DIR, '--lang=zh-CN'],
       env: {
         ...ENV,
         MERIDIAN_LIBRARY_ROOT: VAULT,
+        MERIDIAN_CONFIG_HOME: configHome,
         // Explicitly write '0': When this variable is set in the external shell, the unnamed use case still does not appear on the screen.
         MERIDIAN_SHOW_WINDOW: showWindow ? '1' : '0',
       },
     })
     await use(app)
     await app.close()
+    rmSync(configHome, { recursive: true, force: true })
   },
   win: async ({ app }, use) => {
     const win = await app.firstWindow()

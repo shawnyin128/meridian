@@ -50,6 +50,17 @@ describe('openSemanticKeyStore', () => {
     expect(store.current()).toBeUndefined()
   })
 
+  it('已保存的 key 解不开时当作未保存，Core 照常启动；再存一次会覆盖', async () => {
+    const file = keyFile()
+    await (await openSemanticKeyStore({ file, vault: sealer() })).set('abcd1234wxyz')
+    const broken: SecretSealer = { ...sealer(), open: async () => { throw new Error('vault unavailable') } }
+    const reopened = await openSemanticKeyStore({ file, vault: broken })
+    expect(reopened.status()).toEqual({ configured: false })
+    expect(reopened.current()).toBeUndefined()
+    await reopened.set('newkey5678')
+    expect(reopened.status()).toEqual({ configured: true, lastFour: '5678' })
+  })
+
   it('加密服务要求换密文时把新密文写回', async () => {
     const file = keyFile()
     await (await openSemanticKeyStore({ file, vault: sealer() })).set('abcd1234wxyz')
