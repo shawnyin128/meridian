@@ -1549,10 +1549,13 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if result.health.get("status") == "pass" else 1
 
         if args.product == "lab" and args.command == "focus":
-            payload = parse_hook_payload(sys.stdin.read()) if args.hook else {}
+            # Claude Code exchanges hook JSON and context as UTF-8, whatever the console code page.
+            payload = parse_hook_payload(sys.stdin.buffer.read().decode("utf-8")) if args.hook else {}
             report = run_lab_focus_hook(payload)
             if report:
-                print(report)
+                sys.stdout.flush()
+                sys.stdout.buffer.write(f"{report}\n".encode("utf-8"))
+                sys.stdout.buffer.flush()
             return 0
 
         if args.product == "workspace" and args.command == "status":

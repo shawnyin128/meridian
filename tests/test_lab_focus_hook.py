@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import unittest
 from contextlib import redirect_stdout
-from io import StringIO
+from io import BytesIO, StringIO, TextIOWrapper
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -40,6 +40,10 @@ def _write_lab(root: Path, *, active_nodes: str) -> None:
         "- mode: `unresolved`\n",
         encoding="utf-8",
     )
+
+
+def _gbk_stream(data: bytes) -> TextIOWrapper:
+    return TextIOWrapper(BytesIO(data), encoding="gbk")
 
 
 class LabFocusHookTests(unittest.TestCase):
@@ -133,25 +137,29 @@ class LabFocusHookTests(unittest.TestCase):
 
     def test_cli_hook_prints_nothing_outside_a_workspace(self) -> None:
         with TemporaryDirectory() as tmp:
-            payload = json.dumps({"cwd": tmp, "hook_event_name": "SessionStart"})
-            out = StringIO()
-            with patch("sys.stdin", StringIO(payload)), redirect_stdout(out):
+            stdout = _gbk_stream(b"")
+            stdin = _gbk_stream(json.dumps({"cwd": tmp, "hook_event_name": "SessionStart"}).encode("utf-8"))
+            with patch("sys.stdin", stdin), patch("sys.stdout", stdout):
                 exit_code = main(["lab", "focus", "--hook"])
 
             self.assertEqual(exit_code, 0)
-            self.assertEqual(out.getvalue(), "")
+            self.assertEqual(stdout.buffer.getvalue(), b"")
 
-    def test_cli_hook_prints_active_nodes_inside_a_workspace(self) -> None:
+    def test_cli_hook_speaks_utf8_even_when_the_console_code_page_is_not(self) -> None:
         with TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            root = Path(tmp) / "长程项目"
             _write_lab(root, active_nodes="[kv-compression.A]")
-            payload = json.dumps({"cwd": str(root), "hook_event_name": "SessionStart"})
-            out = StringIO()
-            with patch("sys.stdin", StringIO(payload)), redirect_stdout(out):
+            thread = root / ".meridian/threads/kv-compression.md"
+            thread.write_text(thread.read_text(encoding="utf-8").replace("Idea seed", "长程稳健性"), encoding="utf-8")
+            payload = json.dumps({"cwd": str(root), "hook_event_name": "SessionStart"}, ensure_ascii=False)
+            stdout = _gbk_stream(b"")
+            with patch("sys.stdin", _gbk_stream(payload.encode("utf-8"))), patch("sys.stdout", stdout):
                 exit_code = main(["lab", "focus", "--hook"])
 
             self.assertEqual(exit_code, 0)
-            self.assertIn("kv-compression.A", out.getvalue())
+            output = stdout.buffer.getvalue().decode("utf-8")
+            self.assertIn("kv-compression.A", output)
+            self.assertIn("长程稳健性", output)
 
     def test_cli_focus_without_hook_flag_prints_nothing(self) -> None:
         with TemporaryDirectory() as tmp:

@@ -201,13 +201,6 @@ body {
   box-shadow: 0 0 0 2px rgba(111, 127, 62, 0.22), 0 10px 24px rgba(52, 58, 48, 0.16);
 }
 
-.react-flow__node.researchNode.activePathNode,
-.react-flow__node-default.researchNode.activePathNode,
-.staticGraphNode.researchNode.activePathNode {
-  border-color: var(--amber);
-  background: #fffaf1;
-}
-
 .react-flow__node.researchNode.activeNode,
 .react-flow__node-default.researchNode.activeNode,
 .staticGraphNode.researchNode.activeNode {
