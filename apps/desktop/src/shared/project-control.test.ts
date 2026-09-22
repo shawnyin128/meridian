@@ -21,7 +21,7 @@ describe('projectControlState', () => {
   it('没有进行中任务时依次使用科研节点 Next Action、计划任务和缺失提示', () => {
     expect(projectControlState({
       tasks: [task({ id: 'later', title: '之后整理' })],
-      activePath: [{ id: 'node', label: '动态阈值', nextAction: '运行阈值矩阵' }],
+      activeNodes: [{ id: 'node', label: '动态阈值', nextAction: '运行阈值矩阵' }],
     }).next).toEqual({
       source: 'research', text: '运行阈值矩阵',
       node: { id: 'node', label: '动态阈值' },
@@ -30,6 +30,20 @@ describe('projectControlState', () => {
       .toMatchObject({ source: 'task', text: '之后整理' })
     expect(projectControlState({ tasks: [] }).next)
       .toEqual({ source: 'missing', text: '需要定义任务' })
+  })
+
+  it('多个活跃节点时,取第一个带 Next Action 的节点,跳过没有的,也不取更晚的那个', () => {
+    expect(projectControlState({
+      tasks: [],
+      activeNodes: [
+        { id: 'silent', label: '无动作分支' },
+        { id: 'first-loud', label: '第一个有动作的分支', nextAction: '运行延迟矩阵' },
+        { id: 'second-loud', label: '第二个有动作的分支', nextAction: '运行阈值矩阵' },
+      ],
+    }).next).toEqual({
+      source: 'research', text: '运行延迟矩阵',
+      node: { id: 'first-loud', label: '第一个有动作的分支' },
+    })
   })
 
   it('只投影显示下一步所需的任务字段，不把任务标题复制两份', () => {

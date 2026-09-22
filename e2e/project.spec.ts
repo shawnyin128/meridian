@@ -135,10 +135,11 @@ test('想法在科研图中动态标出关联节点，节点详情反向展示�
   await linkedNode.click()
   const headings = await side.locator('.section-heading').allTextContents()
   expect(headings.slice(1, 4)).toEqual(['分支 · 3', '关联想法 · 1', '科研记录 · 1'])
+  // wide and prefix are both active_nodes, so knee's branches are 推进中 (2) and 已验证 (1); no candidate group remains.
   expect(await side.locator('.node-branch-label').evaluateAll((labels) => labels.map((label) => ({
     text: label.textContent,
     whiteSpace: getComputedStyle(label).whiteSpace,
-  })))).toContainEqual({ text: '候选 / 搁置', whiteSpace: 'nowrap' })
+  })))).toContainEqual({ text: '推进中', whiteSpace: 'nowrap' })
   const tableCell = side.locator('.node-markdown td').first()
   await expect(tableCell).toBeVisible()
   expect(await tableCell.evaluate((cell) => getComputedStyle(cell).borderTopWidth)).not.toBe('0px')
@@ -558,13 +559,18 @@ test('新建一个任务再删掉,任务数前后一致', async ({ win }) => {
   expect((await readDraft(win)).tasks.some((t) => t.title === NEW_TASK_TITLE)).toBe(false)
 })
 
-test('科研图展示 active path,节点以只读 Markdown、分支结果与 Agent 记录呈现', async ({ win }) => {
+test('科研图展示多个活跃节点,节点以只读 Markdown、分支结果与 Agent 记录呈现', async ({ win }) => {
   await gotoProject(win)
   await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '科研图' }).click()
   const graph = win.locator('.rgraph')
   await expect(graph.locator('.active-path')).toHaveCount(0)
-  await expect(graph.locator('.redges path.active')).toHaveCount(2)
-  await expect(graph.locator('.active-edge-flows path')).toHaveCount(2)
+  // Fixture has two active siblings (wide, prefix) under knee: both routes (root-knee, knee-wide,
+  // knee-prefix) are on an active path, so both edges and both leaf nodes light up.
+  await expect(graph.locator('.redges path.active')).toHaveCount(3)
+  await expect(graph.locator('.active-edge-flows path')).toHaveCount(3)
+  await expect(graph.locator('.rgn.active-leaf')).toHaveCount(2)
+  await expect(graph.locator('.rgn[data-node="root"]')).not.toHaveClass(/active-leaf/)
+  await expect(graph.locator('.rgn[data-node="root"]')).toHaveClass(/active-path-node-graph/)
 
   await graph.locator('.rgn[data-node="root"]').click()
   const panel = win.locator('.screenslot:not([hidden]) .wkside')
@@ -577,8 +583,10 @@ test('科研图展示 active path,节点以只读 Markdown、分支结果与 Age
   await panel.locator('.node-branch', { hasText: '树宽收益拐点' }).click()
   await expect(panel.locator('.node-document-title')).toHaveText('树宽收益拐点')
   await expect(panel.locator('.node-markdown')).toContainText('Hypothesis')
-  await expect(panel.locator('.node-branch-group.active .node-branch')).toHaveCount(1)
-  await expect(panel.locator('.node-branch-group.candidate .node-branch')).toHaveCount(1)
+  // wide and prefix are both in active_nodes, so both land in the in-progress group, not repairable/candidate.
+  await expect(panel.locator('.node-branch-group.active .node-branch')).toHaveCount(2)
+  await expect(panel.locator('.node-branch-group.repairable .node-branch')).toHaveCount(0)
+  await expect(panel.locator('.node-branch-group.candidate .node-branch')).toHaveCount(0)
 })
 
 test('科研图节点上下居中且可缩放平移,分支和科研记录在正文上方', async ({ win }) => {

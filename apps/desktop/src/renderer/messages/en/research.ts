@@ -18,6 +18,8 @@ export const research = {
     empty: 'No active projects yet.',
     activePathNote: (taskText: string | undefined) =>
       `Current research path${taskText === undefined ? '' : ` · Task: ${taskText}`}`,
+    /** Suffix after the first in-progress node's label when several nodes are active at once. */
+    activeNodesMore: (n: number) => `+${n} more`,
     focusWithActiveTasks: (label: string, n: number) =>
       `${label} · ${n} ${pluralEn(n, { one: 'active task', other: 'active tasks' })}`,
     noRecentRecord: 'No research record yet',

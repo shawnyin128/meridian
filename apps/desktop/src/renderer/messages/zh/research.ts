@@ -15,6 +15,8 @@ export const research = {
     empty: '暂无待推进项目。',
     activePathNote: (taskText: string | undefined) =>
       `当前科研路径${taskText === undefined ? '' : ` · 任务 ${taskText}`}`,
+    /** Suffix after the first in-progress node's label when several nodes are active at once. */
+    activeNodesMore: (n: number) => `等 ${n} 个`,
     focusWithActiveTasks: (label: string, n: number) => `${label} · ${n} 条进行中任务`,
     noRecentRecord: '暂无科研记录',
     waitingForAgent: '等待 Agent 回传',

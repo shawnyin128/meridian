@@ -55,7 +55,7 @@
   ],
   "graph": {
    "nodes": [
-    { "id": "root", "label": "draft 效率", "state": "act", "mode": "repairable", "x": 10, "y": 95, "width": 110, "markdown": "核心问题是：在不增加验证开销的前提下，提高 draft token 的有效接受率。\n\n#### 当前判断\n\n宽度不是单调收益，需要同时看树宽、batch size 与前缀复用。\n\n#### Next Action\n\n沿当前路径验证 B≥8 时的收益边界。", "writebacks": [] },
+    { "id": "root", "label": "draft 效率", "state": "idle", "mode": "repairable", "x": 10, "y": 95, "width": 110, "markdown": "核心问题是：在不增加验证开销的前提下，提高 draft token 的有效接受率。\n\n#### 当前判断\n\n宽度不是单调收益，需要同时看树宽、batch size 与前缀复用。\n\n#### Next Action\n\n沿当前路径验证 B≥8 时的收益边界。", "writebacks": [] },
     {
      "id": "knee", "label": "树宽收益拐点", "state": "done", "mode": "supported", "x": 220, "y": 30, "width": 130, "markdown": "#### Hypothesis\n\n树宽收益存在拐点，而且拐点随 batch size 变化。\n\n#### Evidence\n\n| Batch | 有效树宽 | 结论 |\n| --- | --- | --- |\n| 1 | 4 | B>4 收益很小 |\n| 8 | 8 | 仍有可测空间 |\n\n#### Next Action\n\n继续验证宽树在 B≥8 下的延迟收益。",
      "writebacks": [
@@ -79,7 +79,7 @@
     ["knee", "wide"],
     ["knee", "prefix"]
    ],
-   "activePath": ["root", "knee", "wide"]
+   "activeNodes": ["wide", "prefix"]
   },
   "agentSessions": [
    {

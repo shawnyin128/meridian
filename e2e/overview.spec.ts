@@ -38,7 +38,7 @@ const overviewCounts = (win: Page) => win.evaluate(async () => {
       tasks: { id: string; start: string; end: string; state: string }[]
       milestones: { id: string; date: string; done: boolean }[]
       events: { date: string; text: string }[]
-      research: { activePath: { id: string; label: string }[] }
+      research: { activeNodes: { id: string; label: string }[] }
     }[]
   const day = (s: string) => Math.floor(Date.parse(`${s}T00:00:00Z`) / 86400000)
   const today = day(await (window as unknown as MeridianWindow).meridian

@@ -4,7 +4,7 @@ import type {
 
 const TASK_PRIORITY = { p0: 0, p1: 1, p2: 2 } as const
 
-type ActivePathNode = Pick<GraphNode, 'id' | 'label' | 'nextAction'>
+type ActiveGraphNode = Pick<GraphNode, 'id' | 'label' | 'nextAction'>
 
 function taskOf(tasks: readonly Task[], state: Task['state']): Task | undefined {
   return [...tasks]
@@ -27,24 +27,30 @@ function taskAction(task: Task): ProjectNextAction {
 
 /**
  * Resolves the operational state shown by every project surface. The App-owned plan wins for
- * executable work; Lab contributes the active node's next action without mutating that plan.
- * A milestone is deliberately not an action, and a missing action remains visible instead of
- * silently reusing the project's broader goal.
+ * executable work; Lab contributes the first active node's next action without mutating that
+ * plan. A milestone is deliberately not an action, and a missing action remains visible instead
+ * of silently reusing the project's broader goal.
  */
 export function projectControlState(project: {
   tasks: readonly Task[]
   block?: string
-  activePath?: readonly ActivePathNode[]
+  activeNodes?: readonly ActiveGraphNode[]
 }): ProjectControl {
   const active = taskOf(project.tasks, 'act')
-  const leaf = project.activePath?.at(-1)
-  const research = leaf?.nextAction?.trim()
+  const researching = (project.activeNodes ?? [])
+    .flatMap((node) => {
+      const text = node.nextAction?.trim()
+      return text ? [{ node, text }] : []
+    })[0]
   const planned = taskOf(project.tasks, 'plan')
 
   const next: ProjectNextAction = active !== undefined
     ? taskAction(active)
-    : research && leaf
-      ? { source: 'research', text: research, node: { id: leaf.id, label: leaf.label } }
+    : researching !== undefined
+      ? {
+        source: 'research', text: researching.text,
+        node: { id: researching.node.id, label: researching.node.label },
+      }
       : planned !== undefined
         ? taskAction(planned)
         : { source: 'missing', text: '需要定义任务' }

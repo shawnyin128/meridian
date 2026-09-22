@@ -202,11 +202,11 @@ export const project = {
     resetView: '重置视野',
     legend: {
       inProgress: '推进中',
+      needsRepair: '待修复',
       verified: '已验证',
       failed: '失败',
       candidate: '候选 / 搁置',
       activePath: '当前研究路径',
-      currentNode: '当前推进节点',
       ideaLinked: '当前想法关联',
     },
     branchSummary: (n: number) => `分支 · ${n}`,

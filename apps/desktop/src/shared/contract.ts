@@ -168,13 +168,14 @@ export const GraphNodeSchema = z.object({
 }).strict()
 
 /**
- * Read-only DAG of a project's research paths. `activePath` is the agent-selected
- * root-to-leaf sequence and may be omitted for legacy project pages.
+ * Read-only DAG of a project's research nodes. `activeNodes` is the set of nodes currently in
+ * progress, oldest first; each one's route is derived from branch edges rather than stored, and
+ * the field may be omitted for legacy project pages.
  */
 export const ResearchGraphSchema = z.object({
   nodes: z.array(GraphNodeSchema),
   edges: z.array(z.tuple([z.string(), z.string()])),
-  activePath: z.array(z.string()).optional(),
+  activeNodes: z.array(z.string()).optional(),
 }).strict()
 
 /**
@@ -323,12 +324,12 @@ export const ProjectOverviewSchema = ProjectDetailSchema.pick({
   tasks: true, milestones: true, events: true,
 }).extend({
   /**
-   * Read-only graph summary for overview surfaces: current path, path health,
+   * Read-only graph summary for overview surfaces: nodes currently in progress, path health,
    * and branch counts without the full graph or Markdown.
    */
   research: z.object({
     pathState: z.enum(['empty', 'missing', 'broken', 'active']),
-    activePath: z.array(GraphNodeSchema.pick({
+    activeNodes: z.array(GraphNodeSchema.pick({
       id: true, label: true, state: true, mode: true, nextAction: true,
     })),
     branches: z.object({

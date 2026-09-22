@@ -359,7 +359,7 @@ export function createFixtureStore(
       projectName: project.name,
       anchorText: [
         project.name, project.topic, project.focus,
-        ...(project.graph.activePath ?? []).flatMap((id) => {
+        ...(project.graph.activeNodes ?? []).flatMap((id) => {
           const node = project.graph.nodes.find((held) => held.id === id)
           return node === undefined ? [] : [node.label, node.nextAction ?? '']
         }),
@@ -743,7 +743,7 @@ export function createFixtureStore(
         control: projectControlState({
           tasks: p.tasks,
           ...(p.block === undefined ? {} : { block: p.block }),
-          activePath: overviewResearch(p.graph).activePath,
+          activeNodes: overviewResearch(p.graph).activeNodes,
         }),
         conclusions: conclusionCounts(p.conclusionList),
         paperCount: p.papers.filter((id) => byId.has(id)).length,

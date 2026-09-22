@@ -65,7 +65,7 @@ describe('layoutResearchTree', () => {
         { id: 'E', label: 'Leaf', state: 'act', x: 880, y: 0, width: 180, writebacks: [] },
       ],
       edges: [['A', 'B'], ['B', 'C'], ['B', 'D'], ['D', 'C'], ['C', 'E']],
-      activePath: ['A', 'B', 'C', 'E'],
+      activeNodes: ['E'],
     })
     const byId = new Map(layout.nodes.map((node) => [node.id, node]))
     expect(byId.get('C')!.x).toBe(byId.get('D')!.x)
@@ -81,7 +81,7 @@ describe('idea and graph association', () => {
   it('explains active-path and current-node emphasis with matching legend marks', () => {
     const markup = renderToStaticMarkup(withMessages(
       <ResearchGraph
-        graph={{ ...GRAPH, activePath: ['root', 'probe'] }}
+        graph={{ ...GRAPH, activeNodes: ['probe'] }}
         selected={null} onSelect={vi.fn()}
       />,
     ))
@@ -89,10 +89,35 @@ describe('idea and graph association', () => {
     host.innerHTML = markup
 
     expect(host.querySelector('.glegend')?.textContent)
-      .toContain('当前研究路径当前推进节点')
+      .toContain('当前研究路径推进中')
     expect(host.querySelector('.legend-path')).not.toBeNull()
     expect(host.querySelector('.legend-node.current')).not.toBeNull()
     expect(host.querySelector('.legend-node.idea')).toBeNull()
+  })
+
+  it('marks every active node in progress and every route active, without promoting the ancestor', () => {
+    const multi: Graph = {
+      nodes: [
+        { id: 'root', label: '根节点', state: 'idle', x: 0, y: 0, width: 180, writebacks: [] },
+        { id: 'a', label: '分支 A', state: 'act', x: 220, y: 0, width: 180, writebacks: [] },
+        { id: 'b', label: '分支 B', state: 'act', x: 220, y: 60, width: 180, writebacks: [] },
+      ],
+      edges: [['root', 'a'], ['root', 'b']],
+      activeNodes: ['a', 'b'],
+    }
+    const markup = renderToStaticMarkup(withMessages(
+      <ResearchGraph graph={multi} selected={null} onSelect={vi.fn()} />,
+    ))
+    const host = document.createElement('div')
+    host.innerHTML = markup
+
+    expect(host.querySelectorAll('.rgn.active-leaf')).toHaveLength(2)
+    expect(host.querySelector('[data-node="a"]')?.classList.contains('active-leaf')).toBe(true)
+    expect(host.querySelector('[data-node="b"]')?.classList.contains('active-leaf')).toBe(true)
+    expect(host.querySelector('[data-node="root"]')?.classList.contains('active-leaf')).toBe(false)
+    expect(host.querySelector('[data-node="root"]')?.classList.contains('active-path-node-graph')).toBe(true)
+    expect(host.querySelectorAll('.redges path.active')).toHaveLength(2)
+    expect(host.querySelectorAll('.active-edge-flows path')).toHaveLength(2)
   })
 
   it('adds an animated hatch only to nodes linked to the open idea', () => {

@@ -24,7 +24,7 @@ describe('placeNode', () => {
 })
 
 describe('overviewResearch', () => {
-  it('只投影 active path 的紧凑节点并把分支互斥归类', () => {
+  it('只投影活跃节点本身并把分支互斥归类', () => {
     const graph: ResearchGraph = {
       nodes: [
         { ...node('root', 0, 0, 100), state: 'done', mode: 'supported' },
@@ -36,12 +36,11 @@ describe('overviewResearch', () => {
         node('shelved', 100, 120, 100),
       ],
       edges: [['root', 'active'], ['root', 'failed'], ['root', 'shelved']],
-      activePath: ['root', 'active'],
+      activeNodes: ['active'],
     }
     expect(overviewResearch(graph)).toEqual({
       pathState: 'active',
-      activePath: [
-        { id: 'root', label: 'root', state: 'done', mode: 'supported' },
+      activeNodes: [
         {
           id: 'active', label: 'active', state: 'act', mode: 'repairable',
           nextAction: 'Run the probe',
@@ -51,13 +50,26 @@ describe('overviewResearch', () => {
     })
   })
 
-  it('区分空图、未指定路径与断裂路径', () => {
+  it('两个兄弟节点同时活跃,都投影出来', () => {
+    const graph: ResearchGraph = {
+      nodes: [
+        node('root', 0, 0, 100),
+        { ...node('a', 100, 0, 100), state: 'act' },
+        { ...node('b', 100, 60, 100), state: 'act' },
+      ],
+      edges: [['root', 'a'], ['root', 'b']],
+      activeNodes: ['a', 'b'],
+    }
+    expect(overviewResearch(graph).activeNodes.map((n) => n.id)).toEqual(['a', 'b'])
+  })
+
+  it('区分空图、未指定活跃节点与断裂(活跃 id 不在图里)', () => {
     expect(overviewResearch({ nodes: [], edges: [] }).pathState).toBe('empty')
     expect(overviewResearch({ nodes: [node('root', 0, 0, 100)], edges: [] }).pathState)
       .toBe('missing')
     expect(overviewResearch({
       nodes: [node('root', 0, 0, 100), node('leaf', 100, 0, 100)],
-      edges: [], activePath: ['root', 'leaf'],
+      edges: [], activeNodes: ['nope'],
     }).pathState).toBe('broken')
   })
 })

@@ -213,11 +213,11 @@ export const project = {
     resetView: 'Reset view',
     legend: {
       inProgress: 'In progress',
+      needsRepair: 'Needs repair',
       verified: 'Verified',
       failed: 'Failed',
       candidate: 'Candidate / shelved',
       activePath: 'Active research path',
-      currentNode: 'Current node',
       ideaLinked: 'Linked to selected idea',
     },
     branchSummary: (n: number) => `Branches · ${n}`,

@@ -9,6 +9,7 @@ import type {
 } from '../../../shared/contract.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
+import { activeRoutes } from '../../../shared/research-path.js'
 import { Markdown } from '../Markdown.js'
 import { EmptyState } from '../EmptyState.js'
 import { IconPlus } from '../icons.js'
@@ -59,7 +60,7 @@ const clampGraphZoom = (zoom: number) =>
   Math.min(GRAPH_MAX_ZOOM, Math.max(GRAPH_MIN_ZOOM, zoom))
 
 const nodeMode = (node: GraphNode): NonNullable<GraphNode['mode']> =>
-  node.mode ?? (node.state === 'done' ? 'supported' : node.state === 'act' ? 'repairable' : 'unresolved')
+  node.mode ?? (node.state === 'done' ? 'supported' : 'unresolved')
 
 /**
  * Lay out the read-only graph from topology instead of persisted display coordinates.
@@ -186,11 +187,10 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
   }
   const nodes = layout.nodes
   const byId = new Map(nodes.map((node) => [node.id, node]))
-  const activePath = (graph.activePath ?? []).filter((id) => byId.has(id))
-  const activeNodes = new Set(activePath)
+  const activeNodeIds = new Set((graph.activeNodes ?? []).filter((id) => byId.has(id)))
+  const routes = activeRoutes(graph, graph.activeNodes ?? [])
   const ideaNodes = new Set(ideaNodeIds.filter((id) => byId.has(id)))
-  const activeEdges = new Set(activePath.slice(1).map((to, index) => `${activePath[index]}\u0000${to}`))
-  const activeLeaf = activePath.at(-1)
+  const routeEdges = layout.edges.filter(([from, to]) => routes.edges.has(`${from}\u0000${to}`))
   const contentWidth = Math.max(...nodes.map((node) => node.x + node.width))
   const contentHeight = Math.max(...nodes.map((node) => node.y + GRAPH_NODE_HEIGHT))
   const baseX = contentWidth < viewportWidth ? (viewportWidth - contentWidth) / 2 : 24
@@ -291,27 +291,25 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
             <g className="redges">
               {layout.edges.map(([from, to]) => (
                 <path
-                  className={activeEdges.has(`${from}\u0000${to}`) ? 'active' : undefined}
+                  className={routes.edges.has(`${from}\u0000${to}`) ? 'active' : undefined}
                   key={`${from} ${to}`} d={edgePath(from, to)}
                 />
               ))}
             </g>
             <g className="active-edge-flows" aria-hidden="true">
-              {activePath.slice(1).map((to, index) => {
-                const from = activePath[index]!
-                return (
-                  <path
-                    key={`${from} ${to}`} d={edgePath(from, to)}
-                    style={{ animationDelay: `${index * 110}ms` }}
-                  />
-                )
-              })}
+              {routeEdges.map(([from, to], index) => (
+                <path
+                  key={`${from} ${to}`} d={edgePath(from, to)}
+                  style={{ animationDelay: `${index * 110}ms` }}
+                />
+              ))}
             </g>
             {nodes.map((node) => {
               const ideaRelated = ideaNodes.has(node.id)
+              const onRoute = routes.nodes.has(node.id) && !activeNodeIds.has(node.id)
               return (
                 <g
-                  className={`rgn ${node.state} ${nodeMode(node)}${activeNodes.has(node.id) ? ' active-path-node-graph' : ''}${node.id === activeLeaf ? ' active-leaf' : ''}${ideaRelated ? ' idea-related' : ''}${node.id === selected ? ' sel' : ''}`}
+                  className={`rgn ${node.state} ${nodeMode(node)}${onRoute ? ' active-path-node-graph' : ''}${activeNodeIds.has(node.id) ? ' active-leaf' : ''}${ideaRelated ? ' idea-related' : ''}${node.id === selected ? ' sel' : ''}`}
                   data-node={node.id}
                   key={node.id} transform={`translate(${node.x},${node.y})`}
                   onClick={() => onSelect(node.id)}
@@ -340,15 +338,15 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
         </div>
       </div>
       <div className="glegend">
-        <span className="legend-item"><span className="ld progress" />{m.project.graph.legend.inProgress}</span>
+        <span className="legend-item"><span className="ld progress" />{m.project.graph.legend.needsRepair}</span>
         <span className="legend-item"><span className="ld verified" />{m.project.graph.legend.verified}</span>
         <span className="legend-item"><span className="ld failed" />{m.project.graph.legend.failed}</span>
         <span className="legend-item"><span className="ld candidate" />{m.project.graph.legend.candidate}</span>
-        {activePath.length === 0 ? null : (
+        {routes.nodes.size === 0 ? null : (
           <>
             <span className="legend-divider" aria-hidden="true" />
             <span className="legend-item"><span className="legend-path" />{m.project.graph.legend.activePath}</span>
-            <span className="legend-item"><span className="legend-node current" />{m.project.graph.legend.currentNode}</span>
+            <span className="legend-item"><span className="legend-node current" />{m.project.graph.legend.inProgress}</span>
           </>
         )}
         {ideaNodes.size === 0 ? null : (
@@ -396,10 +394,16 @@ export function ResearchNodePanel({ graph, events, ideas, node, onClose, onSelec
   const children = layoutResearchTree(graph).edges
     .filter(([from]) => from === node.id)
     .flatMap(([, to]) => byId.get(to) ?? [])
+  const activeNodeIds = new Set(graph.activeNodes ?? [])
+  const isActive = (child: GraphNode) => activeNodeIds.has(child.id)
   const branches = [
     {
       key: 'active', label: m.project.graph.legend.inProgress,
-      nodes: children.filter((child) => nodeMode(child) === 'repairable'),
+      nodes: children.filter(isActive),
+    },
+    {
+      key: 'repairable', label: m.project.graph.legend.needsRepair,
+      nodes: children.filter((child) => !isActive(child) && nodeMode(child) === 'repairable'),
     },
     {
       key: 'useful', label: m.project.graph.legend.verified,
@@ -411,7 +415,7 @@ export function ResearchNodePanel({ graph, events, ideas, node, onClose, onSelec
     },
     {
       key: 'candidate', label: m.project.graph.legend.candidate,
-      nodes: children.filter((child) => nodeMode(child) === 'unresolved'),
+      nodes: children.filter((child) => !isActive(child) && nodeMode(child) === 'unresolved'),
     },
   ].filter((group) => group.nodes.length > 0)
   const nodeEvents = events.filter((event) => event.node === node.id).reverse()

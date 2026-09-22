@@ -1157,8 +1157,9 @@ describe('vault store on the aggregation layout', () => {
     const overview = store.overviewProjects().find((project) => project.id === id)!
     expect(overview.research).toEqual({
       pathState: 'active',
-      activePath: [
-        { id: 'root', label: '研究问题', state: 'done', mode: 'supported' },
+      // Legacy `active_path` is read as only its last id: root (supported) is the shared ancestor
+      // but is not itself active, so it does not appear here even though it is on the old chain.
+      activeNodes: [
         { id: 'probe', label: '延迟探针', state: 'act', mode: 'repairable' },
       ],
       branches: { active: 1, supported: 1, failed: 1, shelved: 0 },

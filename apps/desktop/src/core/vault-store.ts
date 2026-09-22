@@ -937,7 +937,7 @@ export function createVaultStore(
       projectName: project.name,
       anchorText: [
         project.name, project.topic, project.focus,
-        ...(project.graph.activePath ?? []).flatMap((id) => {
+        ...(project.graph.activeNodes ?? []).flatMap((id) => {
           const node = project.graph.nodes.find((held) => held.id === id)
           return node === undefined ? [] : [node.label, node.nextAction ?? '']
         }),
@@ -1174,7 +1174,7 @@ export function createVaultStore(
           control: projectControlState({
             tasks: p.tasks,
             ...(p.block === undefined ? {} : { block: p.block }),
-            activePath: overviewResearch(graph).activePath,
+            activeNodes: overviewResearch(graph).activeNodes,
           }),
           conclusions: conclusionCounts(p.conclusionList),
           paperCount: p.papers.filter((id) => papers.has(id)).length,

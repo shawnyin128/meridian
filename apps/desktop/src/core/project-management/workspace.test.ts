@@ -185,9 +185,44 @@ describe('project workspace protocol', () => {
           },
         ],
         edges: [['thread.A', 'thread.B']],
-        activePath: ['thread.A', 'thread.B'],
+        // Legacy graph.json exports only `active_path`; the App reads it as its last valid id.
+        activeNodes: ['thread.B'],
       },
       events: [{ date: '2026-09-15', text: '[agent] Probe passed', node: 'thread.B' }],
+    })
+  })
+
+  it('reads active_nodes directly, marking every listed id act and leaving ancestors and other repairable nodes idle', () => {
+    const root = temporary()
+    const held = project(root)
+    writeProjectWorkspace(held)
+    mkdirSync(join(root, '.meridian/graph'), { recursive: true })
+    writeFileSync(join(root, '.meridian/graph/graph.json'), JSON.stringify({
+      schema: 'meridian.lab.graph.v1',
+      active_nodes: ['thread.B', 'thread.C'],
+      nodes: [
+        { id: 'thread.A', label: 'Hypothesis', state: 'repairable' },
+        { id: 'thread.B', label: 'Probe one', state: 'unresolved' },
+        { id: 'thread.C', label: 'Probe two', state: 'repairable' },
+      ],
+      edges: [
+        { source: 'thread.A', target: 'thread.B' },
+        { source: 'thread.A', target: 'thread.C' },
+      ],
+      health: { status: 'ok' },
+    }), 'utf8')
+
+    // thread.A is the shared ancestor and is itself `repairable`, but it is not in active_nodes,
+    // so it must stay idle: being on the route, and being repairable, no longer imply act.
+    expect(readProjectWorkspace(held)).toMatchObject({
+      graph: {
+        activeNodes: ['thread.B', 'thread.C'],
+        nodes: [
+          { id: 'thread.A', state: 'idle', mode: 'repairable' },
+          { id: 'thread.B', state: 'act', mode: 'unresolved' },
+          { id: 'thread.C', state: 'act', mode: 'repairable' },
+        ],
+      },
     })
   })
 
@@ -299,7 +334,7 @@ describe('project workspace protocol', () => {
       state: 'ready', planRevision: 'remote-revision', graphHealth: 'ok',
       graph: {
         nodes: [{ id: 'A', label: 'Remote probe', state: 'act', mode: 'repairable', markdown: 'Remote body' }],
-        activePath: ['A'],
+        activeNodes: ['A'],
       },
       events: [{ date: '2026-09-15', text: '[agent] Remote result' }],
     })

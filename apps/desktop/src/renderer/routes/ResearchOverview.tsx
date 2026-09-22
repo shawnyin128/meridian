@@ -168,7 +168,7 @@ function ProjectProgress({ rows, onOpen }: {
               const control = projectControlState({
                 tasks: project.tasks,
                 ...(project.block === undefined ? {} : { block: project.block }),
-                activePath: project.research.activePath,
+                activeNodes: project.research.activeNodes,
               })
               const active = control.next.source === 'task' && control.next.task.state === 'act'
                 ? control.next.task
@@ -178,7 +178,13 @@ function ProjectProgress({ rows, onOpen }: {
               const signal = projectPulseSignal({
                 ...project, conclusions: { conflicting: 0 },
               }, today, m.project.signals)
-              const activeLeaf = project.research.activePath.at(-1)
+              const [firstActive, ...moreActive] = project.research.activeNodes
+              const activeLabel = firstActive === undefined
+                ? undefined
+                : moreActive.length === 0
+                  ? firstActive.label
+                  : `${firstActive.label} ${m.research.overview.activeNodesMore(moreActive.length)}`
+              const activeTitle = project.research.activeNodes.map((n) => n.label).join(', ')
               return (
                 <StructuredRow
                   className="ovlist-row progress ovpulse-row" data-proj={project.id}
@@ -186,11 +192,11 @@ function ProjectProgress({ rows, onOpen }: {
                 >
                   <ProjectIdentity project={project} variant="progress" />
                   <span className="ovpulse-cell">
-                    <b title={activeLeaf?.label ?? project.focus}>
-                      {activeLeaf?.label ?? project.focus}
+                    <b title={activeLabel === undefined ? project.focus : activeTitle}>
+                      {activeLabel ?? project.focus}
                     </b>
                     <span className="ovpulse-sub">
-                      {activeLeaf
+                      {firstActive
                         ? m.research.overview.activePathNote(active ? control.next.text : undefined)
                         : (() => {
                           const label = m.project.identity.focusLabel[FOCUS_KEY[project.status]]

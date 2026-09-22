@@ -620,8 +620,8 @@ describe('fixture store', () => {
     expect(draft.tasks).toEqual(full.tasks)
     expect(draft.milestones).toEqual(full.milestones)
     expect(draft.events).toEqual(full.events)
-    expect(draft.research.activePath.map((node) => node.id)).toEqual(full.graph.activePath)
-    expect(draft.research.branches).toEqual({ active: 3, supported: 2, failed: 1, shelved: 0 })
+    expect(draft.research.activeNodes.map((node) => node.id)).toEqual(full.graph.activeNodes)
+    expect(draft.research.branches).toEqual({ active: 2, supported: 2, failed: 1, shelved: 1 })
     expect(draft).toMatchObject({ start: full.start, due: full.due, priority: full.priority })
   })
 
@@ -656,7 +656,7 @@ describe('fixture store', () => {
     rows[0]!.tasks[0]!.title = '篡改后的任务'
     rows[0]!.milestones[0]!.title = '篡改后的标题'
     rows[0]!.events[0]!.text = '篡改后的记录'
-    rows[0]!.research.activePath[0]!.label = '篡改后的节点'
+    rows[0]!.research.activeNodes[0]!.label = '篡改后的节点'
     rows[0]!.conclusions.verified = 99
     expect(JSON.stringify(store.overviewProjects())).toBe(before)
   })

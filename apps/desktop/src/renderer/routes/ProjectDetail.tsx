@@ -440,12 +440,12 @@ export function ProjectDetail({
   const controlState = projectControlState({
     tasks: project.tasks,
     ...(project.block === undefined ? {} : { block: project.block }),
-    ...(displayedGraph.activePath === undefined
+    ...(displayedGraph.activeNodes === undefined
       ? {}
       : {
-        activePath: displayedGraph.activePath.flatMap((id) => {
-          const pathNode = displayedGraph.nodes.find((candidate) => candidate.id === id)
-          return pathNode === undefined ? [] : [pathNode]
+        activeNodes: displayedGraph.activeNodes.flatMap((id) => {
+          const activeNode = displayedGraph.nodes.find((candidate) => candidate.id === id)
+          return activeNode === undefined ? [] : [activeNode]
         }),
       }),
   })

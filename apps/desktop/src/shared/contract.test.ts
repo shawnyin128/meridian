@@ -542,7 +542,7 @@ describe('contract schemas', () => {
       events: [{ date: '2026-06-02', text: '开始这条研究线' }],
       research: {
         pathState: 'active',
-        activePath: [
+        activeNodes: [
           { id: 'root', label: 'draft 效率', state: 'done', mode: 'supported' },
           { id: 'wide', label: '宽树补 B≥8', state: 'act', mode: 'repairable' },
         ],

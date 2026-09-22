@@ -565,8 +565,14 @@ function readGraphJson(text: string | undefined): {
   const branchEdges = sourceEdges
     .filter((edge) => edge.kind === undefined || LAB_BRANCH_EDGE_KINDS.has(edge.kind))
     .map(({ source, target }): [string, string] => [source, target])
-  const activePath = (Array.isArray(raw['active_path']) ? raw['active_path'] : [])
-    .flatMap((value) => typeof value === 'string' && ids.has(value) ? [value] : [])
+  // `active_nodes` is the current source of truth; a legacy export that still carries only
+  // `active_path` is read as its last valid id, per the shared on-disk contract.
+  const activeNodes = Array.isArray(raw['active_nodes'])
+    ? raw['active_nodes'].flatMap((value) => typeof value === 'string' && ids.has(value) ? [value] : [])
+    : (Array.isArray(raw['active_path']) ? raw['active_path'] : [])
+      .flatMap((value) => typeof value === 'string' && ids.has(value) ? [value] : [])
+      .slice(-1)
+  const activeSet = new Set(activeNodes)
   const nodeDetails = obj(raw['node_details']) ?? {}
 
   const depth = new Map([...ids].map((id) => [id, 0]))
@@ -595,7 +601,7 @@ function readGraphJson(text: string | undefined): {
       : undefined
     const state = externalState === 'supported'
       ? 'done' as const
-      : node['active'] === true || activePath.includes(id) || externalState === 'repairable'
+      : activeSet.has(id)
         ? 'act' as const
         : 'idle' as const
     return [{
@@ -616,7 +622,7 @@ function readGraphJson(text: string | undefined): {
   const health = obj(raw['health'])
   const generatedAt = str(raw['generated_at'])
   return {
-    graph: { nodes, edges: branchEdges, activePath },
+    graph: { nodes, edges: branchEdges, activeNodes },
     ...(generatedAt === undefined ? {} : { generatedAt }),
     health: graphHealth(health?.['status']),
   }

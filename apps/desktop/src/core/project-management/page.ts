@@ -84,10 +84,24 @@ const ProjectPageSchema = z.object({
   graph: z.object({
     nodes: detail.graph.shape.nodes,
     edges: z.array(z.object({ from: z.string(), to: z.string() }).strict()),
-    active_path: detail.graph.shape.activePath,
+    active_nodes: detail.graph.shape.activeNodes,
+    // Legacy key from before the App tracked several active nodes; read-only, never written.
+    active_path: z.array(z.string()).optional(),
   }).strict(),
   agent_sessions: detail.agentSessions,
 })
+
+/**
+ * Reads a project page's active nodes, falling back to a legacy `active_path`'s last id when
+ * `active_nodes` is absent. Returns `undefined` when the page carries neither key.
+ */
+function legacyActiveNodes(
+  graph: { active_nodes?: string[] | undefined; active_path?: string[] | undefined },
+): string[] | undefined {
+  if (graph.active_nodes !== undefined) return graph.active_nodes
+  if (graph.active_path !== undefined) return graph.active_path.length === 0 ? [] : [graph.active_path.at(-1)!]
+  return undefined
+}
 
 /** Remove a trailing CR from one line; only external editors can introduce it. */
 const withoutCr = (row: string): string => (row.endsWith('\r') ? row.slice(0, -1) : row)
@@ -269,7 +283,7 @@ function frontOf(project: ProjectRecord): Record<string, Json> {
     graph: {
       nodes: project.graph.nodes,
       edges: project.graph.edges.map(([from, to]) => ({ from, to })),
-      ...(project.graph.activePath === undefined ? {} : { active_path: project.graph.activePath }),
+      ...(project.graph.activeNodes === undefined ? {} : { active_nodes: project.graph.activeNodes }),
     },
     agent_sessions: project.agentSessions,
     // Optional contract fields are absent rather than explicitly undefined, which does not match the
@@ -338,7 +352,7 @@ export function readProjectPage(file: string, id: string): ProjectRecord {
     graph: {
       nodes: page.graph.nodes,
       edges: page.graph.edges.map(({ from, to }): [string, string] => [from, to]),
-      ...(page.graph.active_path === undefined ? {} : { activePath: page.graph.active_path }),
+      ...(legacyActiveNodes(page.graph) === undefined ? {} : { activeNodes: legacyActiveNodes(page.graph) }),
     },
     agentSessions: page.agent_sessions,
   }

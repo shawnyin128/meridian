@@ -38,14 +38,14 @@ export function placeNode(
 }
 
 /**
- * Builds the compact, read-only graph projection used by the research overview. The active path is
- * healthy only when every id exists and every consecutive pair is an edge. Branch counts are
- * mutually exclusive so their sum is the graph's node count.
+ * Builds the compact, read-only graph projection used by the research overview. Path health is
+ * broken only when an active id does not exist in the graph. Branch counts are mutually
+ * exclusive so their sum is the graph's node count.
  */
 export function overviewResearch(graph: ResearchGraph): ProjectOverview['research'] {
   const byId = new Map(graph.nodes.map((node) => [node.id, node]))
-  const requested = graph.activePath ?? []
-  const activePath = requested.flatMap((id) => {
+  const requested = graph.activeNodes ?? []
+  const activeNodes = requested.flatMap((id) => {
     const node = byId.get(id)
     return node === undefined
       ? []
@@ -63,5 +63,5 @@ export function overviewResearch(graph: ResearchGraph): ProjectOverview['researc
     else if (node.state === 'act') branches.active += 1
     else branches.shelved += 1
   }
-  return { pathState, activePath, branches }
+  return { pathState, activeNodes, branches }
 }
