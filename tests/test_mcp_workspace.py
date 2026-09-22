@@ -426,12 +426,12 @@ class MCPWorkspaceTests(unittest.TestCase):
                                 "next_action": "Run the repair probe.",
                             },
                             {
-                                "op": "set_active_path",
-                                "path": ["direction.A", "direction.B"],
+                                "op": "activate_node",
+                                "node_id": "direction.B",
                             },
                         ],
                         "user_confirmation": {
-                            "required_for": ["create_node", "set_active_path"],
+                            "required_for": ["create_node"],
                             "status": "accepted",
                         },
                     }
@@ -450,7 +450,7 @@ class MCPWorkspaceTests(unittest.TestCase):
                 {(edge["source"], edge["target"]) for edge in after["graph"]["edges"]},
             )
             self.assertEqual(
-                after["graph"]["active_path"], ["direction.A", "direction.B"]
+                after["graph"]["active_nodes"], ["direction.A", "direction.B"]
             )
             self.assertEqual(plan.read_bytes(), plan_before)
 

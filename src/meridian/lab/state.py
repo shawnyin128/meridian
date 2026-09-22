@@ -117,12 +117,9 @@ def validate_lab_space(root: Path) -> LabValidationReport:
         frontmatter = parse_frontmatter(text)
         if frontmatter.get("type") != "research-thread":
             add("error", "invalid_thread_type", path, "Thread frontmatter must use `type: research-thread`.")
-        active_node = str(frontmatter.get("active_node") or "").strip()
         nodes = _extract_nodes(strip_frontmatter(text))
         if not nodes:
             add("error", "thread_without_nodes", path, "Thread must contain at least one approach node.")
-        if active_node and active_node not in nodes:
-            add("error", "active_node_missing", path, f"active_node `{active_node}` is not present in the approach tree.")
         for node_id, mode in nodes.items():
             if mode not in ALLOWED_NODE_MODES:
                 add(

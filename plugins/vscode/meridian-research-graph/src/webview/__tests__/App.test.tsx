@@ -36,7 +36,7 @@ describe("App", () => {
       lab_root: ".meridian",
       source_files: [".meridian/state.md", ".meridian/threads/kv-compression.md"],
       active_thread: "kv-compression",
-      active_path: ["kv-compression.A"],
+      active_nodes: ["kv-compression.A"],
       nodes: [
         {
           id: "kv-compression.A",
@@ -45,7 +45,6 @@ describe("App", () => {
           kind: "research_point",
           state: "unresolved",
           active: true,
-          on_active_path: true,
           markdown_path: ".meridian/threads/kv-compression.md",
           markdown_anchor: "active-probe"
         }
@@ -189,7 +188,6 @@ describe("App", () => {
         kind: "research_point",
         state: "unresolved",
         active: true,
-        on_active_path: true,
         markdown_path: ".meridian/threads/kv-compression.md",
         markdown_anchor: "active-probe"
       }
@@ -212,7 +210,7 @@ describe("App", () => {
       lab_root: ".meridian",
       source_files: [".meridian/state.md", ".meridian/threads/kv-compression.md"],
       active_thread: "kv-compression",
-      active_path: ["kv-compression.A"],
+      active_nodes: ["kv-compression.A"],
       nodes,
       edges: [],
       node_details: {

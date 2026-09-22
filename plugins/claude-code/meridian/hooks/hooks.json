@@ -1,0 +1,29 @@
+{
+  "description": "Meridian Lab Focus: prints which Lab research nodes are active at session start and before each prompt, so the agent activates/reopens nodes instead of guessing. Silent outside a Meridian Lab or workspace repository.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -m meridian lab focus --hook",
+            "shell": "bash",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -m meridian lab focus --hook",
+            "shell": "bash",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

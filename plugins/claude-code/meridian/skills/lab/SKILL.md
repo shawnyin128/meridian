@@ -22,8 +22,8 @@ flow take over.
 
 Use Lab only when this `lab/SKILL.md` file was actually loaded by the active
 runtime. If the runtime reports that the Lab skill path is missing or
-unreadable, stop and use `meridian` setup/status to diagnose plugin path drift.
-Do not continue from remembered Lab semantics.
+unreadable, stop and use `python -m meridian setup doctor` to diagnose plugin
+path drift. Do not continue from remembered Lab semantics.
 
 ## Lab-First Routing Gate
 
@@ -90,9 +90,10 @@ not change the file contract or Lab's ownership rules.
 
 When the Meridian MCP server is available, use `meridian.workspace_status` for
 protocol readiness and `meridian.workspace_plan` to read the plan. Otherwise,
-use `meridian workspace status --root .` and
-`meridian workspace plan --root .`. Do not parse or patch the protocol files
-with ad-hoc scripts when either deterministic entry is available.
+use `python -m meridian workspace status --root .` and
+`python -m meridian workspace plan --root .`. Do not parse or patch the
+protocol files with ad-hoc scripts when either deterministic entry is
+available.
 
 - Do not edit `plan.json` from Lab, an external agent, or repository code.
 - If Lab state conflicts with the plan, report the mismatch; do not silently
@@ -105,8 +106,9 @@ with ad-hoc scripts when either deterministic entry is available.
   After writing a node-bound experiment record, use `meridian.lab_result` over
   MCP so the node evidence, graph view, and event projection move together. Use
   `meridian.workspace_event_add` for the other source-backed events described
-  in Keeping the App informed, or fall back to `meridian workspace event-add`,
-  rather than editing this generated projection by hand.
+  in Keeping the App informed, or fall back to
+  `python -m meridian workspace event-add`, rather than editing this generated
+  projection by hand.
 
 ## Keeping the App informed
 
@@ -114,7 +116,7 @@ The Meridian App shows the user what the agent has been doing and what it
 found. Two calls feed it; neither needs the user's confirmation.
 
 **Research record.** Call `meridian.workspace_event_add` (or
-`meridian workspace event-add`) at these boundaries, one event each:
+`python -m meridian workspace event-add`) at these boundaries, one event each:
 
 - work starts on a target: the first real step toward a research node, a
   linked idea, or a planned task (reading its context, writing code for it,
@@ -134,7 +136,7 @@ is a Lab node.
 **Ideas.** When the discussion produces a new research direction, hypothesis
 or mechanism worth revisiting later, and it is not already a linked idea or a
 Lab node, call `meridian.workspace_idea_add` once (or
-`meridian workspace idea-add`) with a stable `idea_id`, a one-line `title`, a
+`python -m meridian workspace idea-add`) with a stable `idea_id`, a one-line `title`, a
 `body` that states the idea itself, and a `context` naming the work it came up
 in. Pass `node` when it grows out of a Lab node. The App adds it to the
 project's idea list marked as coming from a coding agent. Do not record
@@ -162,9 +164,10 @@ viewing is read-only.
 When the Meridian MCP server is available, use `meridian.lab_graph` to read the
 current materialized graph and health, use `meridian.lab_update` to submit a
 strict `meridian.lab.update.v1` packet. Boundary-changing operations such as
-creating a node or switching the active path still require accepted user
-confirmation inside the packet. These tools never grant permission to edit the
-App-owned project plan.
+creating a node or switching the active thread still require accepted user
+confirmation inside the packet; `activate_node`, `deactivate_node`, and
+`reopen_node` do not (see Focus below). These tools never grant permission to
+edit the App-owned project plan.
 
 After completing an experiment, use `meridian.lab_result` as the standard
 return signal for that node. It validates the evidence sections, attaches the
@@ -177,25 +180,35 @@ same call; omit it to attach a record that already exists.
 ## Keeping the graph current
 
 The App draws the research graph only from Lab state. Work that never reaches
-Lab state is invisible there: the active path stays on the old node and the
+Lab state is invisible there: a node stays out of `active_nodes` and the
 finished node keeps looking untouched. Hold these checkpoints whenever work
 concerns a Lab node, including inside a coding task.
 
-- **Focus.** When the user tells you to work on a node ("做 X", "接着推进 X",
-  "switch to X"), that instruction is the confirmation for making X the active
-  path. Before the first real step, if X is not the last entry of
-  `active_path`, call `meridian.lab_update` with `set_active_path` (the path
-  from the root to X) and `user_confirmation`
-  `{"status": "accepted", "required_for": ["set_active_path"]}`, together with
-  `update_node` setting `doing` (and `why` when the user gave a reason). Do
-  not switch on your own initiative: if you conclude that another node should
-  come next, ask first. The instruction does not cover creating a node or
-  marking one `repairable` or `dead`; those still need their own ask.
+- **Focus.** When the user starts, resumes, restarts, or reopens work on a
+  node — whatever the wording ("做 X", "接着推进 X", "switch to X", "回到 X继续") —
+  that instruction is the confirmation: before the first real step, call
+  `meridian.lab_update` with `activate_node` for that node id, together with
+  `update_node` setting `doing` (and `why` when the user gave a reason); no
+  `user_confirmation` is needed. If the node's state is `supported` or `dead`,
+  use `reopen_node` instead: it sets the node's state back to `unresolved` and
+  adds it to `active_nodes` in the same call. Several nodes may stay active at
+  once; activating or reopening one does not deactivate any other. Only call
+  `deactivate_node` when the user says they are stopping or pausing that node.
+  A node's retired `- active:` body field and a thread's `active_node`
+  frontmatter are never read or written; `active_nodes` in `state.md` is the
+  only source of truth. Naming a node to work on confirms activating or
+  reopening it; creating a new node, or marking one `repairable` or `dead`,
+  still needs its own ask.
+- **Checkpoint.** Call `meridian.lab_update` with `record_history` on the node
+  whenever the user makes a design decision or an experiment run finishes,
+  rather than waiting until Completion to write the first history line.
 - **Completion.** A node's work is finished only when its evidence is in Lab:
   call `meridian.lab_result` with the experiment record (passing `experiment`
   when the record is new) and the new `next_action`. When the work produced no
   experiment, update `doing` and `next_action` through `meridian.lab_update`
-  and add the `完成` event from Keeping the App informed.
+  and add the `完成` event from Keeping the App informed. Marking a node
+  `supported` or `dead` removes it from `active_nodes` automatically, in the
+  same write.
 - **Leaving.** Before moving to another node or ending the task, check the
   node you are leaving against Completion, then apply Focus to the next one.
 - **Relations.** When work shows that two existing nodes block, support,
@@ -223,8 +236,10 @@ Report graph health failures before relying on visual state.
 - Before preparing a Research Grounding Injection, read the user coding-style profile
   when available and include only relevant `User Coding Style Principles`.
 - Ask before boundary-changing state moves: creating a new node, marking
-  `repairable` or `dead`, switching active thread/node, closing/reopening a
+  `repairable` or `dead`, switching the active thread, closing/reopening a
   thread, publishing to Paper Wiki, or handing off ambiguous development scope.
+  Naming a node to work on activates or reopens it without a separate ask (see
+  Focus under Keeping the graph current).
 - Keep Lab findings local until a finding proposal is `ready`; use `wiki` for
   Paper Wiki update/use work.
 
@@ -326,7 +341,8 @@ Use the profile this way:
 - Keep task-specific research-code constraints separate from durable user
   preferences.
 - If the profile is missing, continue the Lab task with the static research-code
-  guidance and mention that `meridian` setup can initialize the profile.
+  guidance and mention that `python -m meridian setup init-lab` can initialize
+  the profile.
 - Do not store full pasted code examples in the profile; summarize the
   reusable principle, anti-pattern, scope, exception, provenance, confidence,
   and update date.
@@ -455,7 +471,9 @@ Minimum completion:
 - After placement, run the Research Prior Gate before feasibility or experiment
   planning if the idea contains method, prompt, metric, eval, ablation, probe,
   failure, or baseline slots.
-- Ask before switching the active thread or active node.
+- Ask before switching the active thread. Naming a node to work on activates
+  or reopens it without a separate ask (see Focus under Keeping the graph
+  current).
 
 Example:
 
@@ -537,9 +555,9 @@ Minimum completion:
 - Record assumptions, relevant experiments, key history, and next action.
 - Automatically update same-node facts when evidence is strong enough.
 - Ask before marking a node `repairable` or `dead`, creating a new node,
-  changing active node on your own initiative, closing or reopening a thread,
-  or killing a path. A user instruction to work on a node already confirms
-  making it active (see Keeping the graph current).
+  closing or reopening a thread, or killing a path. Naming a node to work on
+  already confirms activating or reopening it (see Focus under Keeping the
+  graph current).
 - Confirm thread close with the user, then write a final summary and extract
   reusable findings into local proposals.
 

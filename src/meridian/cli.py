@@ -17,6 +17,7 @@ from meridian.evals.codex_routing import (
 )
 from meridian.framework_check import run_framework_check, write_framework_json, write_framework_report
 from meridian.lab import apply_lab_update, check_lab_graph, materialize_lab_graph, write_lab_graph
+from meridian.lab.focus_hook import parse_hook_payload, run_lab_focus_hook
 from meridian.setup.doctor import build_setup_doctor_report, format_setup_doctor
 from meridian.setup.lab import format_lab_setup_result, initialize_lab_readiness, write_lab_setup_json
 from meridian.setup.repair import apply_mcp_repair
@@ -217,6 +218,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Target research repo root or .meridian directory.",
     )
     lab_export_graph.add_argument("--json-out", type=Path, required=True, help="Required graph JSON output path.")
+
+    lab_focus = lab_subparsers.add_parser(
+        "focus",
+        help="Print compact Lab Focus context (active nodes) for hook integrations.",
+    )
+    lab_focus.add_argument(
+        "--hook",
+        action="store_true",
+        help="Read a Claude Code hook JSON payload (with `cwd`) from stdin and print the Focus report.",
+    )
 
     workspace = subparsers.add_parser("workspace", help="Shared App and repository workspace protocol")
     workspace_subparsers = workspace.add_subparsers(dest="command", required=True)
@@ -1536,6 +1547,13 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Wrote Lab graph JSON: {target}")
             print(f"Findings: {len(result.health['findings'])}")
             return 0 if result.health.get("status") == "pass" else 1
+
+        if args.product == "lab" and args.command == "focus":
+            payload = parse_hook_payload(sys.stdin.read()) if args.hook else {}
+            report = run_lab_focus_hook(payload)
+            if report:
+                print(report)
+            return 0
 
         if args.product == "workspace" and args.command == "status":
             result = inspect_project_workspace(args.root)

@@ -66,7 +66,7 @@ export function App({
     }
     return graph.nodes.map((node, index) => ({
       id: node.id,
-      position: stablePosition(node, index, graph.active_path),
+      position: stablePosition(node, index, graph.active_nodes),
       data: {
         label: <GraphNodeLabel node={node} />
       },
@@ -295,7 +295,6 @@ function NodeDetail({
         </div>
         <div className="detailTags">
           {node.active ? <Tag color="green">active</Tag> : null}
-          {node.on_active_path ? <Tag color="gold">active path</Tag> : null}
         </div>
       </div>
       <Tabs
@@ -382,12 +381,12 @@ function compactDescriptionItems(items: Array<[string, React.ReactNode | undefin
     }));
 }
 
-function stablePosition(node: ResearchGraphNode, index: number, activePath: string[]) {
+function stablePosition(node: ResearchGraphNode, index: number, activeNodes: string[]) {
   if (isFinitePosition(node.position)) {
     return node.position;
   }
 
-  const activeIndex = activePath.indexOf(node.id);
+  const activeIndex = activeNodes.indexOf(node.id);
   if (activeIndex >= 0) {
     return {
       x: activeIndex * 300,
@@ -413,7 +412,6 @@ function nodeClassName(node: ResearchGraphNode, selected: boolean) {
     "researchNode",
     `state-${node.state}`,
     node.active ? "activeNode" : "",
-    node.on_active_path ? "activePathNode" : "",
     selected ? "selectedNode" : ""
   ]
     .filter(Boolean)

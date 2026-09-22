@@ -41,7 +41,7 @@ class LabGraphTests(unittest.TestCase):
         state_template = (repo_root / "src/meridian/templates/research-dev/state.md").read_text(encoding="utf-8")
         thread_template = (repo_root / "src/meridian/templates/research-dev/thread.md").read_text(encoding="utf-8")
 
-        self.assertIn("active_path:", state_template)
+        self.assertIn("active_nodes:", state_template)
         self.assertIn("## Graph Relations", thread_template)
         self.assertIn("#### Supporting Artifacts", thread_template)
         self.assertLess(thread_template.index("## Approach Tree"), thread_template.index("### Node A"))
@@ -73,7 +73,7 @@ class LabGraphTests(unittest.TestCase):
                 "---\n"
                 "type: lab-state\n"
                 "active_thread: kv-compression\n"
-                "active_path: [kv-compression.A, kv-compression.B]\n"
+                "active_nodes: [kv-compression.B]\n"
                 "---\n"
                 "# Meridian Lab State\n",
                 encoding="utf-8",
@@ -85,20 +85,17 @@ class LabGraphTests(unittest.TestCase):
                 "---\n"
                 "type: research-thread\n"
                 "title: KV Compression\n"
-                "active_node: B\n"
                 "---\n"
                 "# Research Thread: KV Compression\n\n"
                 "## Approach Tree\n\n"
                 "### Node A: Idea seed\n\n"
-                "- mode: `supported`\n"
-                "- active: false\n\n"
+                "- mode: `supported`\n\n"
                 "#### Experiments\n\n"
                 "- `exp-01`\n\n"
                 "#### Next Action\n\n"
                 "Continue toward the repair node.\n\n"
                 "### Node B: Repair scoring\n\n"
                 "- mode: `repairable`\n"
-                "- active: true\n"
                 "- parent: kv-compression.A\n\n"
                 "#### Supporting Artifacts\n\n"
                 "| Type | ID | Title | Impact | Path |\n"
@@ -125,7 +122,7 @@ class LabGraphTests(unittest.TestCase):
 
             self.assertEqual(graph["schema"], LAB_GRAPH_SCHEMA_VERSION)
             self.assertEqual(graph["active_thread"], "kv-compression")
-            self.assertEqual(graph["active_path"], ["kv-compression.A", "kv-compression.B"])
+            self.assertEqual(graph["active_nodes"], ["kv-compression.B"])
             self.assertEqual([node["id"] for node in graph["nodes"]], ["kv-compression.A", "kv-compression.B"])
             nodes_by_id = {node["id"]: node for node in graph["nodes"]}
             self.assertEqual(nodes_by_id["kv-compression.A"]["kind"], "research_point")
@@ -134,10 +131,8 @@ class LabGraphTests(unittest.TestCase):
             self.assertIn("#### Next Action", nodes_by_id["kv-compression.B"]["markdown"])
             self.assertIn("Run the amortized scoring probe.", nodes_by_id["kv-compression.B"]["markdown"])
             self.assertFalse(nodes_by_id["kv-compression.A"]["active"])
-            self.assertTrue(nodes_by_id["kv-compression.A"]["on_active_path"])
             self.assertEqual(graph["nodes"][1]["state"], "repairable")
             self.assertTrue(nodes_by_id["kv-compression.B"]["active"])
-            self.assertTrue(nodes_by_id["kv-compression.B"]["on_active_path"])
             self.assertEqual(graph["node_details"]["kv-compression.B"]["next_action"], "Run the amortized scoring probe.")
             node_a_artifact_ids = [item["id"] for item in graph["supporting_artifacts"]["kv-compression.A"]]
             self.assertEqual(node_a_artifact_ids, ["exp-01"])
@@ -150,6 +145,7 @@ class LabGraphTests(unittest.TestCase):
             ]
             self.assertEqual(len(parent_edges), 1)
             self.assertEqual(parent_edges[0]["kind"], "continues")
+            self.assertTrue(parent_edges[0]["on_active_path"])
             relation_edges = [
                 edge
                 for edge in graph["edges"]
@@ -158,6 +154,7 @@ class LabGraphTests(unittest.TestCase):
             self.assertEqual(len(relation_edges), 1)
             self.assertEqual(relation_edges[0]["kind"], "blocks")
             self.assertEqual(relation_edges[0]["strength"], "weak")
+            self.assertFalse(relation_edges[0]["on_active_path"])
 
     def test_materialize_graph_normalizes_raw_parent_refs(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -255,7 +252,7 @@ class LabGraphTests(unittest.TestCase):
                 "lab_root": "string",
                 "source_files": "array",
                 "active_thread": "string",
-                "active_path": "array",
+                "active_nodes": "array",
                 "nodes": "array",
                 "edges": "array",
                 "node_details": "object",
@@ -287,7 +284,10 @@ class LabGraphTests(unittest.TestCase):
             self.assertIn("dangling_edge_target", codes)
             self.assertEqual(result.health["status"], "fail")
 
-    def test_graph_health_fails_active_path_missing_edge(self) -> None:
+    def test_graph_health_allows_two_sibling_nodes_active_at_once(self) -> None:
+        # The retired active_path chain check rejected two active ids with no
+        # edge between them; active_nodes is a set, so unrelated siblings may
+        # both be active with no health finding.
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             self._write_minimal_lab(root)
@@ -296,7 +296,7 @@ class LabGraphTests(unittest.TestCase):
                 "---\n"
                 "type: lab-state\n"
                 "active_thread: kv-compression\n"
-                "active_path: [kv-compression.A, kv-compression.B]\n"
+                "active_nodes: [kv-compression.A, kv-compression.B]\n"
                 "---\n"
                 "# State\n",
                 encoding="utf-8",
@@ -304,7 +304,7 @@ class LabGraphTests(unittest.TestCase):
             thread = root / ".meridian/threads/kv-compression.md"
             thread.write_text(
                 thread.read_text(encoding="utf-8")
-                + "\n### Node B: Follow-up probe\n\n"
+                + "\n### Node B: Sibling probe\n\n"
                 + "- mode: `unresolved`\n",
                 encoding="utf-8",
             )
@@ -313,8 +313,13 @@ class LabGraphTests(unittest.TestCase):
 
             result = materialize_lab_graph(root)
             codes = [finding["code"] for finding in result.health["findings"]]
-            self.assertIn("active_path_edge_missing", codes)
-            self.assertEqual(result.health["status"], "fail")
+            self.assertNotIn("active_path_edge_missing", codes)
+            self.assertNotIn("invalid_active_node", codes)
+            self.assertEqual(result.health["status"], "pass")
+            self.assertEqual(result.graph["active_nodes"], ["kv-compression.A", "kv-compression.B"])
+            nodes_by_id = {node["id"]: node for node in result.graph["nodes"]}
+            self.assertTrue(nodes_by_id["kv-compression.A"]["active"])
+            self.assertTrue(nodes_by_id["kv-compression.B"]["active"])
 
     def test_graph_health_fails_missing_node_detail(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -725,11 +730,11 @@ class LabGraphTests(unittest.TestCase):
                         "message": "Attached exp-02 and updated next action.",
                     },
                     {
-                        "op": "set_active_path",
-                        "path": ["kv-compression.A", "kv-compression.B"],
+                        "op": "activate_node",
+                        "node_id": "kv-compression.B",
                     },
                 ],
-                "user_confirmation": {"required_for": ["set_active_path"], "status": "accepted"},
+                "user_confirmation": {"required_for": [], "status": "not_required"},
             }
 
             result = apply_lab_update(root, packet)
@@ -742,7 +747,8 @@ class LabGraphTests(unittest.TestCase):
             self.assertIn(".meridian/threads/kv-compression.md", result["written_paths"])
             self.assertIn(".meridian/graph/graph.json", result["written_paths"])
             state_text = (root / ".meridian/state.md").read_text(encoding="utf-8")
-            self.assertIn("active_path: [kv-compression.A, kv-compression.B]", state_text)
+            self.assertIn("active_nodes: [kv-compression.B]", state_text)
+            self.assertNotIn("active_path", state_text)
             thread_text = (root / ".meridian/threads/kv-compression.md").read_text(encoding="utf-8")
             self.assertIn("- mode: `supported`", thread_text)
             self.assertIn("#### Next Action\n\nRun the follow-up scoring probe.", thread_text)
@@ -755,8 +761,9 @@ class LabGraphTests(unittest.TestCase):
             graph_path = root / ".meridian/graph/graph.json"
             self.assertTrue(graph_path.exists())
             graph = json.loads(graph_path.read_text(encoding="utf-8"))
-            self.assertEqual(graph["active_path"], ["kv-compression.A", "kv-compression.B"])
+            self.assertEqual(graph["active_nodes"], ["kv-compression.B"])
             self.assertEqual(graph["nodes"][0]["state"], "supported")
+            self.assertEqual(result["warnings"], [])
             self.assertEqual(
                 graph["node_details"]["kv-compression.A"]["next_action"],
                 "Run the follow-up scoring probe.",
@@ -1039,12 +1046,12 @@ class LabGraphTests(unittest.TestCase):
                         "next_action": "Run the smallest scoring probe.",
                     },
                     {
-                        "op": "set_active_path",
-                        "path": ["kv-compression.A", "kv-compression.B"],
+                        "op": "activate_node",
+                        "node_id": "kv-compression.B",
                     },
                 ],
                 "user_confirmation": {
-                    "required_for": ["create_node", "set_active_path"],
+                    "required_for": ["create_node"],
                     "status": "accepted",
                 },
             }
@@ -1062,7 +1069,7 @@ class LabGraphTests(unittest.TestCase):
                 ("kv-compression.A", "kv-compression.B"),
                 {(edge["source"], edge["target"]) for edge in graph["edges"]},
             )
-            self.assertEqual(graph["active_path"], ["kv-compression.A", "kv-compression.B"])
+            self.assertEqual(graph["active_nodes"], ["kv-compression.A", "kv-compression.B"])
             self.assertTrue(next(edge for edge in graph["edges"] if edge["target"] == "kv-compression.B")["on_active_path"])
 
     def test_apply_update_rejects_create_node_without_confirmation_or_title(self) -> None:
@@ -1492,7 +1499,6 @@ class LabGraphTests(unittest.TestCase):
                 "changes": [
                     {"op": "create_node", "node_id": "kv-compression.B"},
                     {"op": "set_active_thread", "thread_id": "kv-compression"},
-                    {"op": "set_active_path", "path": ["kv-compression.A"]},
                     {
                         "op": "detach_artifact",
                         "node_id": "kv-compression.A",
@@ -1501,7 +1507,7 @@ class LabGraphTests(unittest.TestCase):
                     },
                 ],
                 "user_confirmation": {
-                    "required_for": ["create_node", "set_active_thread", "set_active_path", "detach_artifact"],
+                    "required_for": ["create_node", "set_active_thread", "detach_artifact"],
                     "status": "missing",
                 },
             }
@@ -1512,7 +1518,7 @@ class LabGraphTests(unittest.TestCase):
             ]
 
             self.assertEqual(report["status"], "fail")
-            self.assertEqual(len(confirmation_findings), 4)
+            self.assertEqual(len(confirmation_findings), 3)
 
     def test_validate_update_packet_rejects_bad_required_node_ids(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -1558,7 +1564,7 @@ class LabGraphTests(unittest.TestCase):
             self.assertIn("invalid_node_id", codes)
             self.assertIn("node_already_exists", codes)
 
-    def test_validate_update_packet_rejects_invalid_accepted_set_active_path(self) -> None:
+    def test_validate_update_packet_rejects_activate_node_with_bad_node_id(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             self._write_minimal_lab(root)
@@ -1566,23 +1572,80 @@ class LabGraphTests(unittest.TestCase):
 
             packet = {
                 "schema": "meridian.lab.update.v1",
-                "intent": "set_active_path",
+                "intent": "activate_node",
                 "target_thread": "kv-compression",
                 "changes": [
-                    {
-                        "op": "set_active_path",
-                        "path": ["kv-compression.A", "kv compression.B", "kv-compression.missing"],
-                    }
+                    {"op": "activate_node", "node_id": "kv-compression.missing"},
                 ],
-                "user_confirmation": {"required_for": ["set_active_path"], "status": "accepted"},
+                "user_confirmation": {"required_for": [], "status": "not_required"},
             }
 
             report = validate_lab_update_packet(root, packet)
             codes = [finding["code"] for finding in report["findings"]]
 
             self.assertEqual(report["status"], "fail")
-            self.assertIn("invalid_active_path_node", codes)
-            self.assertIn("active_path_node_missing", codes)
+            self.assertIn("node_missing", codes)
+
+    def test_validate_update_packet_rejects_activate_node_on_closed_node(self) -> None:
+        # Requirement: activate_node on a supported/dead node is a validation
+        # error telling the caller to use reopen_node instead.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            thread = root / ".meridian/threads/kv-compression.md"
+            thread.write_text(thread.read_text(encoding="utf-8").replace("`unresolved`", "`supported`"), encoding="utf-8")
+            state = root / ".meridian/state.md"
+            state.write_text(
+                state.read_text(encoding="utf-8").replace("active_path: [kv-compression.A]", "active_nodes: []"),
+                encoding="utf-8",
+            )
+            from meridian.lab.graph import validate_lab_update_packet
+
+            packet = {
+                "schema": "meridian.lab.update.v1",
+                "intent": "activate_node",
+                "target_thread": "kv-compression",
+                "changes": [
+                    {"op": "activate_node", "node_id": "kv-compression.A"},
+                ],
+                "user_confirmation": {"required_for": [], "status": "not_required"},
+            }
+
+            report = validate_lab_update_packet(root, packet)
+            codes = [finding["code"] for finding in report["findings"]]
+
+            self.assertEqual(report["status"], "fail")
+            self.assertIn("activate_closed_node", codes)
+
+    def test_validate_update_packet_allows_activate_node_already_active_as_noop(self) -> None:
+        # Requirement: activating an already-active node is a no-op, not an error,
+        # even when a hand-edit left it active while also supported/dead (the
+        # active_node_closed situation) -- already-active wins over that check.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            thread = root / ".meridian/threads/kv-compression.md"
+            thread.write_text(thread.read_text(encoding="utf-8").replace("`unresolved`", "`supported`"), encoding="utf-8")
+            state = root / ".meridian/state.md"
+            state.write_text(
+                state.read_text(encoding="utf-8").replace("active_path: [kv-compression.A]", "active_nodes: [kv-compression.A]"),
+                encoding="utf-8",
+            )
+            from meridian.lab.graph import validate_lab_update_packet
+
+            packet = {
+                "schema": "meridian.lab.update.v1",
+                "intent": "activate_node",
+                "target_thread": "kv-compression",
+                "changes": [
+                    {"op": "activate_node", "node_id": "kv-compression.A"},
+                ],
+                "user_confirmation": {"required_for": [], "status": "not_required"},
+            }
+
+            report = validate_lab_update_packet(root, packet)
+
+            self.assertEqual(report["status"], "pass")
 
     def test_validate_update_packet_rejects_unknown_update_field_without_writing_files(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -1757,7 +1820,10 @@ class LabGraphTests(unittest.TestCase):
             self.assertIn("invalid_node_id", codes)
             self.assertIn("node_missing", codes)
 
-    def test_validate_update_packet_rejects_active_path_missing_edge(self) -> None:
+    def test_validate_update_packet_allows_activating_an_unrelated_sibling(self) -> None:
+        # The retired active_path chain validation required a graph edge between
+        # consecutive active ids. active_nodes is a set: an unrelated sibling
+        # with no edge to the other active node is a valid activation.
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             self._write_minimal_lab(root)
@@ -1772,18 +1838,17 @@ class LabGraphTests(unittest.TestCase):
 
             packet = {
                 "schema": "meridian.lab.update.v1",
-                "intent": "set_active_path",
+                "intent": "activate_node",
                 "target_thread": "kv-compression",
                 "changes": [
-                    {"op": "set_active_path", "path": ["kv-compression.A", "kv-compression.B"]},
+                    {"op": "activate_node", "node_id": "kv-compression.B"},
                 ],
-                "user_confirmation": {"required_for": ["set_active_path"], "status": "accepted"},
+                "user_confirmation": {"required_for": [], "status": "not_required"},
             }
 
             report = validate_lab_update_packet(root, packet)
 
-            self.assertEqual(report["status"], "fail")
-            self.assertIn("active_path_edge_missing", [finding["code"] for finding in report["findings"]])
+            self.assertEqual(report["status"], "pass")
 
 
 if __name__ == "__main__":

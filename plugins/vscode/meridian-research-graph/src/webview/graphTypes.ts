@@ -16,7 +16,6 @@ export interface ResearchGraphNode {
   kind: string;
   state: ResearchNodeState;
   active?: boolean;
-  on_active_path?: boolean;
   stale?: boolean;
   needs_attention?: boolean;
   source_path?: string;
@@ -80,7 +79,7 @@ export interface LabGraph {
   lab_root: string;
   source_files: string[];
   active_thread: string;
-  active_path: string[];
+  active_nodes: string[];
   nodes: ResearchGraphNode[];
   edges: ResearchGraphEdge[];
   node_details: Record<string, ResearchNodeDetail>;
@@ -98,7 +97,7 @@ export function normalizeLabGraph(value: unknown): LabGraph | null {
     !isString(value.lab_root) ||
     !isString(value.active_thread) ||
     !isStringArray(value.source_files) ||
-    !isStringArray(value.active_path) ||
+    !isStringArray(value.active_nodes) ||
     !Array.isArray(value.nodes) ||
     !Array.isArray(value.edges) ||
     !isRecord(value.node_details) ||

@@ -9,6 +9,8 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from meridian import __version__
+
 WORKSPACE_SCHEMA_VERSION = "meridian.workspace.v1"
 PROJECT_PLAN_SCHEMA_VERSION = "meridian.project-plan.v1"
 WORKSPACE_EVENTS_SCHEMA_VERSION = "meridian.workspace-events.v1"
@@ -464,8 +466,15 @@ def _read_manifest(repository: Path) -> dict[str, Any]:
     surfaces = _object(manifest.get("surfaces"), "workspace surfaces")
     surface_names = set(surfaces)
     required_surfaces = {"plan", "graph", "events"}
-    if not required_surfaces.issubset(surface_names) or surface_names - (required_surfaces | {"changes", "ideas"}):
-        raise WorkspaceProtocolError("workspace surfaces do not match the v1 contract")
+    allowed_surfaces = required_surfaces | {"changes", "ideas"}
+    unknown_surfaces = surface_names - allowed_surfaces
+    missing_surfaces = required_surfaces - surface_names
+    if unknown_surfaces or missing_surfaces:
+        raise WorkspaceProtocolError(
+            "workspace surfaces do not match the v1 contract: "
+            f"unknown={sorted(unknown_surfaces)}, missing={sorted(missing_surfaces)} "
+            f"(meridian {__version__}); restart the agent session or update Meridian."
+        )
     expected = {
         "plan": (PLAN_PATH, "meridian-app"),
         **({"changes": (CHANGES_PATH, "meridian-app")} if "changes" in surfaces else {}),

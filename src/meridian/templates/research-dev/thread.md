@@ -4,7 +4,6 @@ title: ""
 status: open
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
-active_node: A
 related_threads: []
 ---
 
@@ -38,7 +37,6 @@ exactly `unresolved`, `repairable`, `supported`, or `dead`.
 ### Node A: <Initial Approach>
 
 - mode: `unresolved`
-- active: true
 - parent:
 - problem_inherited:
 - method:

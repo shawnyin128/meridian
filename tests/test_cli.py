@@ -7002,7 +7002,7 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertFalse((template / "memory.md").exists())
 
         thread = (template / "thread.md").read_text(encoding="utf-8")
-        self.assertIn("active_node", thread)
+        self.assertNotIn("active_node", thread)
         self.assertIn("Approach Tree", thread)
         self.assertIn("unresolved", thread)
 
@@ -7389,7 +7389,7 @@ Compare recency-only retention with attention-based and oracle retention policie
             (lab / "experiments/index.md").write_text("# Experiments\n", encoding="utf-8")
             (lab / "proposals/index.md").write_text("# Proposals\n", encoding="utf-8")
             (lab / "threads/cache-retention.md").write_text(
-                "---\ntype: research-thread\nactive_node: B\n---\n"
+                "---\ntype: research-thread\n---\n"
                 "# Research Thread\n\n"
                 "## Approach Tree\n\n"
                 "### Node A: Initial approach\n\n"
@@ -7406,7 +7406,6 @@ Compare recency-only retention with attention-based and oracle retention policie
             codes = {finding.code for finding in report.findings}
             self.assertEqual(report.status, "fail")
             self.assertIn("active_thread_missing", codes)
-            self.assertIn("active_node_missing", codes)
             self.assertIn("invalid_node_mode", codes)
             self.assertIn("ready_proposal_without_experiments", codes)
             self.assertIn("ready_proposal_without_wiki_target", codes)

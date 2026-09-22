@@ -11,6 +11,7 @@ from typing import Any
 
 from meridian.lab.state import ALLOWED_NODE_MODES
 from meridian.wiki.corpus import parse_frontmatter, strip_frontmatter
+from meridian.workspace_protocol import add_workspace_event
 
 LAB_GRAPH_SCHEMA_VERSION = "meridian.lab.graph.v1"
 LAB_GRAPH_HEALTH_SCHEMA_VERSION = "meridian.lab.graph_health.v1"
@@ -45,7 +46,9 @@ ALLOWED_UPDATE_OPS = {
     "attach_artifact",
     "detach_artifact",
     "set_active_thread",
-    "set_active_path",
+    "activate_node",
+    "deactivate_node",
+    "reopen_node",
     "record_history",
 }
 
@@ -74,7 +77,9 @@ APPLY_SUPPORTED_OPS = {
     "create_edge",
     "attach_artifact",
     "record_history",
-    "set_active_path",
+    "activate_node",
+    "deactivate_node",
+    "reopen_node",
     "set_active_thread",
 }
 APPLY_SUPPORTED_UPDATE_NODE_FIELDS = {"state", "doing", "why", "next_action"}
@@ -84,10 +89,9 @@ CONFIRMATION_REQUIRED_FIELDS = {
     "state:dead",
     "create_node",
     "set_active_thread",
-    "set_active_path",
     "detach_artifact",
 }
-CONFIRMATION_REQUIRED_OPS = {"create_node", "set_active_thread", "set_active_path", "detach_artifact"}
+CONFIRMATION_REQUIRED_OPS = {"create_node", "set_active_thread", "detach_artifact"}
 
 
 @dataclass(frozen=True)
@@ -102,7 +106,7 @@ def materialize_lab_graph(root: Path) -> LabGraphBuildResult:
     lab_root = _lab_root(root)
     state = _frontmatter(lab_root / "state.md")
     active_thread = str(state.get("active_thread") or "").strip()
-    active_path = _as_list(state.get("active_path"))
+    active_nodes = _resolve_active_nodes(state)
     threads = sorted((lab_root / "threads").glob("*.md")) if (lab_root / "threads").exists() else []
     threads = [path for path in threads if path.name != "index.md"]
 
@@ -115,9 +119,7 @@ def materialize_lab_graph(root: Path) -> LabGraphBuildResult:
     for thread_path in threads:
         thread_id = thread_path.stem
         text = thread_path.read_text(encoding="utf-8")
-        frontmatter = parse_frontmatter(text)
-        active_node = str(frontmatter.get("active_node") or "").strip()
-        for node in _parse_thread_nodes(thread_id, thread_path, text, active_node=active_node, active_path=active_path):
+        for node in _parse_thread_nodes(thread_id, thread_path, text, active_nodes=active_nodes):
             nodes.append(node["node"])
             node_details[node["node"]["id"]] = node["details"]
             supporting_artifacts[node["node"]["id"]] = node["artifacts"]
@@ -130,10 +132,12 @@ def materialize_lab_graph(root: Path) -> LabGraphBuildResult:
                         "target": node["node"]["id"],
                         "kind": "continues",
                         "strength": "strong",
-                        "on_active_path": _edge_on_active_path(parent_id, node["node"]["id"], active_path),
                     }
                 )
-        edges.extend(_parse_graph_relations(thread_id, text, active_path))
+        edges.extend(_parse_graph_relations(thread_id, text))
+
+    edges = _dedupe_edges(edges)
+    _mark_edges_on_active_path(edges, active_nodes)
 
     graph = {
         "schema": LAB_GRAPH_SCHEMA_VERSION,
@@ -141,9 +145,9 @@ def materialize_lab_graph(root: Path) -> LabGraphBuildResult:
         "lab_root": ".meridian",
         "source_files": [_display_path(path, lab_root=lab_root.parent) for path in source_files if path.exists()],
         "active_thread": active_thread,
-        "active_path": active_path,
+        "active_nodes": active_nodes,
         "nodes": nodes,
-        "edges": _dedupe_edges(edges),
+        "edges": edges,
         "node_details": node_details,
         "supporting_artifacts": supporting_artifacts,
         "health": {"status": "unknown", "findings": []},
@@ -151,6 +155,36 @@ def materialize_lab_graph(root: Path) -> LabGraphBuildResult:
     health = check_lab_graph_payload(graph, lab_root=lab_root)
     graph["health"] = {"status": health["status"], "finding_count": len(health["findings"])}
     return LabGraphBuildResult(graph=graph, lab_root=lab_root, source_files=source_files, health=health)
+
+
+def _resolve_active_nodes(frontmatter: dict[str, Any]) -> list[str]:
+    """Read the active-node set from Lab state frontmatter.
+
+    Prefers ``active_nodes``. When absent, falls back to the legacy
+    ``active_path`` chain, read as a single-element list holding its last id.
+    """
+
+    if "active_nodes" in frontmatter:
+        return _as_list(frontmatter.get("active_nodes"))
+    return _as_list(frontmatter.get("active_path"))[-1:]
+
+
+def _mark_edges_on_active_path(edges: list[dict[str, Any]], active_nodes: list[str]) -> None:
+    """Set each edge's ``on_active_path`` in place.
+
+    An edge qualifies when it is a branch (``continues``) edge and both of its
+    endpoints lie in the closure of active nodes and their ancestors.
+    """
+
+    parent_of = {edge["target"]: edge["source"] for edge in edges if edge.get("kind") == "continues"}
+    closure: set[str] = set()
+    for node_id in active_nodes:
+        current: str | None = node_id
+        while current and current not in closure:
+            closure.add(current)
+            current = parent_of.get(current)
+    for edge in edges:
+        edge["on_active_path"] = edge.get("kind") == "continues" and edge["source"] in closure and edge["target"] in closure
 
 
 def check_lab_graph(root: Path) -> dict[str, Any]:
@@ -255,6 +289,8 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
     lab_root = _lab_root(root)
     graph = materialize_lab_graph(root).graph
     node_ids = {node["id"] for node in graph["nodes"]}
+    nodes_by_id = {node["id"]: node for node in graph["nodes"]}
+    active_nodes_current = set(graph.get("active_nodes", []))
     edge_pairs = {
         (str(edge.get("source") or ""), str(edge.get("target") or ""))
         for edge in graph["edges"]
@@ -386,29 +422,16 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
                     f"changes[{index}].{field}",
                 )
 
-    def validate_active_path(change: dict[str, Any], index: int) -> None:
-        path_value = change.get("path", change.get("active_path"))
-        if not isinstance(path_value, list) or not path_value:
-            add("missing_active_path", "set_active_path requires a non-empty path list.", f"changes[{index}].path")
-            return
-        for item_index, item in enumerate(path_value):
-            active_node_id = str(item or "").strip()
-            path = f"changes[{index}].path[{item_index}]"
-            if not active_node_id:
-                add("missing_active_path_node", "Active path node id is required.", path)
-            elif not _is_well_formed_node_id(active_node_id):
-                add("invalid_active_path_node", f"Active path node id `{active_node_id}` is not well-formed.", path)
-            elif active_node_id not in node_ids:
-                add("active_path_node_missing", f"Active path node `{active_node_id}` does not exist.", path)
-        for item_index, (source, target) in enumerate(zip(path_value, path_value[1:])):
-            source_id = str(source or "").strip()
-            target_id = str(target or "").strip()
-            if source_id in node_ids and target_id in node_ids and (source_id, target_id) not in edge_pairs:
-                add(
-                    "active_path_edge_missing",
-                    f"Active path step `{source_id}` -> `{target_id}` is missing a graph edge.",
-                    f"changes[{index}].path[{item_index}]",
-                )
+    def validate_activate_node(node_id: str, index: int) -> None:
+        if node_id in active_nodes_current:
+            return  # Activating an already-active node is a no-op, not an error.
+        node = nodes_by_id.get(node_id)
+        if node is not None and node.get("state") in {"supported", "dead"}:
+            add(
+                "activate_closed_node",
+                f"Node `{node_id}` is `{node['state']}`; use reopen_node to bring it back into progress.",
+                f"changes[{index}].node_id",
+            )
 
     def validate_detach_artifact(change: dict[str, Any], index: int) -> None:
         artifact = change.get("artifact")
@@ -463,7 +486,15 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
         node_id = str(change.get("node_id") or "").strip()
         if op in CONFIRMATION_REQUIRED_OPS:
             require_confirmation(op, f"changes[{index}]")
-        if op in {"update_node", "attach_artifact", "detach_artifact", "record_history"}:
+        if op in {
+            "update_node",
+            "attach_artifact",
+            "detach_artifact",
+            "record_history",
+            "activate_node",
+            "deactivate_node",
+            "reopen_node",
+        }:
             validate_node_id(node_id, f"changes[{index}].node_id", must_exist=True)
         if op == "create_node":
             finding_count = len(findings)
@@ -484,8 +515,8 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
                 add("invalid_edge_kind", f"Edge kind `{kind}` is not allowed.", f"changes[{index}].kind")
         if op == "set_active_thread":
             validate_active_thread(change, index)
-        if op == "set_active_path":
-            validate_active_path(change, index)
+        if op == "activate_node" and node_id in node_ids:
+            validate_activate_node(node_id, index)
         if op == "detach_artifact":
             validate_detach_artifact(change, index)
         if op == "record_history":
@@ -571,7 +602,11 @@ def apply_lab_update(root: Path, packet: dict[str, Any]) -> dict[str, Any]:
         }
 
     lab_root = _lab_root(root)
+    state_path = lab_root / "state.md"
+    pre_graph = materialize_lab_graph(root).graph
+    node_lookup = {node["id"]: node for node in pre_graph["nodes"]}
     written_paths: list[Path] = []
+    touched_node_ids: list[str] = []
 
     def remember(path: Path) -> None:
         if path not in written_paths:
@@ -583,6 +618,44 @@ def apply_lab_update(root: Path, packet: dict[str, Any]) -> dict[str, Any]:
             path.write_text(text, encoding="utf-8")
             remember(path)
 
+    def write_thread_file(thread_path: Path, text: str) -> None:
+        # A thread file lab_update touches is fully rewritten; drop the retired
+        # `active_node` frontmatter key rather than carry it forward stale.
+        write_if_changed(thread_path, _remove_frontmatter_field(text, "active_node"))
+
+    def touch_node(node_id: str) -> None:
+        if node_id and node_id not in touched_node_ids:
+            touched_node_ids.append(node_id)
+
+    def read_active_nodes() -> list[str]:
+        text = state_path.read_text(encoding="utf-8") if state_path.exists() else ""
+        return _resolve_active_nodes(parse_frontmatter(text))
+
+    def write_active_nodes(active_nodes: list[str]) -> None:
+        text = state_path.read_text(encoding="utf-8") if state_path.exists() else ""
+        updated = _upsert_frontmatter_field(text, "active_nodes", _format_inline_list(active_nodes))
+        write_if_changed(state_path, _remove_frontmatter_field(updated, "active_path"))
+
+    def deactivate(node_id: str) -> None:
+        active_nodes = read_active_nodes()
+        if node_id in active_nodes:
+            write_active_nodes([item for item in active_nodes if item != node_id])
+
+    def activate(node_id: str, *, action: str) -> None:
+        active_nodes = read_active_nodes()
+        if node_id in active_nodes:
+            return
+        write_active_nodes([*active_nodes, node_id])
+        node = node_lookup.get(node_id, {})
+        _add_focus_event(
+            root,
+            lab_root,
+            node_id=node_id,
+            label=str(node.get("label") or node_id),
+            thread_id=str(node.get("thread_id") or _split_node_id(node_id)[0]),
+            action=action,
+        )
+
     for change in packet.get("changes", []):
         if not isinstance(change, dict):
             continue
@@ -591,9 +664,11 @@ def apply_lab_update(root: Path, packet: dict[str, Any]) -> dict[str, Any]:
             thread_id, _ = _split_node_id(str(change.get("node_id") or ""))
             thread_path = lab_root / "threads" / f"{thread_id}.md"
             text = thread_path.read_text(encoding="utf-8")
-            write_if_changed(thread_path, _apply_create_node_change(text, change))
+            write_thread_file(thread_path, _apply_create_node_change(text, change))
         elif op in {"update_node", "attach_artifact", "record_history"}:
-            thread_id, raw_id = _split_node_id(str(change.get("node_id") or ""))
+            node_id = str(change.get("node_id") or "").strip()
+            touch_node(node_id)
+            thread_id, raw_id = _split_node_id(node_id)
             thread_path = lab_root / "threads" / f"{thread_id}.md"
             text = thread_path.read_text(encoding="utf-8")
             if op == "update_node":
@@ -604,7 +679,9 @@ def apply_lab_update(root: Path, packet: dict[str, Any]) -> dict[str, Any]:
                 text = _apply_attach_artifact_change(text, raw_id, artifact)
             elif op == "record_history":
                 text = _apply_record_history_change(text, raw_id, _history_message(change))
-            write_if_changed(thread_path, text)
+            write_thread_file(thread_path, text)
+            if op == "update_node" and str(fields.get("state") or "").strip() in {"supported", "dead"}:
+                deactivate(node_id)
         elif op == "create_edge":
             source = str(change.get("source") or "").strip()
             thread_id, _ = _split_node_id(source)
@@ -612,14 +689,19 @@ def apply_lab_update(root: Path, packet: dict[str, Any]) -> dict[str, Any]:
             text = thread_path.read_text(encoding="utf-8")
             kind = str(change.get("kind") or "").strip()
             target = str(change.get("target") or "").strip()
-            write_if_changed(thread_path, _apply_create_edge_change(text, source, kind, target))
-        elif op == "set_active_path":
-            state_path = lab_root / "state.md"
-            active_path = _as_list(change.get("path", change.get("active_path")))
-            text = state_path.read_text(encoding="utf-8") if state_path.exists() else ""
-            write_if_changed(state_path, _upsert_frontmatter_field(text, "active_path", _format_inline_list(active_path)))
+            write_thread_file(thread_path, _apply_create_edge_change(text, source, kind, target))
+        elif op == "activate_node":
+            activate(str(change.get("node_id") or "").strip(), action="activate")
+        elif op == "deactivate_node":
+            deactivate(str(change.get("node_id") or "").strip())
+        elif op == "reopen_node":
+            node_id = str(change.get("node_id") or "").strip()
+            thread_id, raw_id = _split_node_id(node_id)
+            thread_path = lab_root / "threads" / f"{thread_id}.md"
+            text = thread_path.read_text(encoding="utf-8")
+            write_thread_file(thread_path, _apply_update_node_change(text, raw_id, {"state": "unresolved"}))
+            activate(node_id, action="reopen")
         elif op == "set_active_thread":
-            state_path = lab_root / "state.md"
             active_thread = str(change.get("thread_id") or change.get("target_thread") or packet.get("target_thread") or "")
             text = state_path.read_text(encoding="utf-8") if state_path.exists() else ""
             write_if_changed(state_path, _upsert_frontmatter_field(text, "active_thread", active_thread.strip()))
@@ -629,13 +711,48 @@ def apply_lab_update(root: Path, packet: dict[str, Any]) -> dict[str, Any]:
     remember(lab_root / "graph" / "graph-health.json")
     remember(lab_root / "graph" / "graph.schema.json")
 
+    final_active_nodes = set(graph_result.graph.get("active_nodes", []))
+    final_states = {node["id"]: node.get("state") for node in graph_result.graph.get("nodes", [])}
+    warnings = [
+        {
+            "severity": "warning",
+            "code": "node_not_active",
+            "node_id": node_id,
+            "message": f"Node `{node_id}` was updated but is not in active_nodes; add an activate_node change for it if the user is working on it.",
+        }
+        for node_id in touched_node_ids
+        if node_id not in final_active_nodes and final_states.get(node_id) not in {"supported", "dead"}
+    ]
+
     return {
         "schema": LAB_APPLY_UPDATE_SCHEMA_VERSION,
         "status": "applied",
         "validation": validation,
         "written_paths": [_display_path(path, lab_root=lab_root.parent) for path in written_paths],
         "graph_health": graph_result.health,
+        "warnings": warnings,
     }
+
+
+def _add_focus_event(root: Path, lab_root: Path, *, node_id: str, label: str, thread_id: str, action: str) -> None:
+    """Record a Focus workspace event for an activation or reopen, when a workspace exists.
+
+    Silently does nothing when the repository has no `.meridian/workspace.json`
+    manifest (Lab-only repositories are valid and carry no App workspace).
+    """
+
+    if not (lab_root / "workspace.json").exists():
+        return
+    verb = "开始推进" if action == "activate" else "重开"
+    today = datetime.now(timezone.utc).astimezone().date().isoformat()
+    add_workspace_event(
+        root,
+        event_id=f"lab-focus.{node_id}.{action}.{today}",
+        text=f"{verb} {label}",
+        source=f".meridian/threads/{thread_id}.md",
+        event_date=today,
+        node=node_id,
+    )
 
 
 def validate_lab_apply_update(root: Path, packet: dict[str, Any]) -> dict[str, Any]:
@@ -675,7 +792,7 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
         "lab_root",
         "source_files",
         "active_thread",
-        "active_path",
+        "active_nodes",
         "nodes",
         "edges",
         "node_details",
@@ -811,7 +928,6 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
     else:
         edges = edges_value
     edge_ids: set[str] = set()
-    edge_pairs: set[tuple[str, str]] = set()
     for index, edge in enumerate(edges):
         if not isinstance(edge, dict):
             add("error", "invalid_edge", "Graph edge is not an object.", f"edges/{index}")
@@ -826,8 +942,6 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
             add("error", "invalid_edge_kind", f"Graph edge `{edge_id}` uses invalid kind `{kind}`.", f"edges/{index}/kind")
         source = str(edge.get("source") or "")
         target = str(edge.get("target") or "")
-        if source and target:
-            edge_pairs.add((source, target))
         if not source or source not in node_ids:
             add(
                 "error",
@@ -843,29 +957,28 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
                 f"edges/{index}/target",
             )
 
-    active_path_value = graph.get("active_path")
-    if not isinstance(active_path_value, list):
-        add("error", "invalid_active_path", "Graph payload field `active_path` must be a list.", "active_path")
-        active_path = []
+    active_nodes_value = graph.get("active_nodes")
+    if not isinstance(active_nodes_value, list):
+        add("error", "invalid_active_nodes", "Graph payload field `active_nodes` must be a list.", "active_nodes")
+        active_nodes = []
     else:
-        active_path = active_path_value
-    for active_index, node_id in enumerate(active_path):
-        if str(node_id) not in node_ids:
+        active_nodes = active_nodes_value
+    node_states = {str(node.get("id")): str(node.get("state") or "") for node in node_records}
+    for active_index, node_id in enumerate(active_nodes):
+        node_id = str(node_id)
+        if node_id not in node_ids:
             add(
                 "error",
-                "invalid_active_path_node",
-                f"Active path node `{node_id}` is not a materialized node.",
-                f"active_path/{active_index}",
+                "invalid_active_node",
+                f"Active node `{node_id}` is not a materialized node.",
+                f"active_nodes/{active_index}",
             )
-    for active_index, (source, target) in enumerate(zip(active_path, active_path[1:])):
-        source_id = str(source)
-        target_id = str(target)
-        if (source_id, target_id) not in edge_pairs:
+        elif node_states.get(node_id) in {"supported", "dead"}:
             add(
-                "error",
-                "active_path_edge_missing",
-                f"Active path step `{source_id}` -> `{target_id}` is missing a graph edge.",
-                f"active_path/{active_index}",
+                "warning",
+                "active_node_closed",
+                f"Active node `{node_id}` has state `{node_states[node_id]}`; it should have left active_nodes.",
+                f"active_nodes/{active_index}",
             )
 
     node_details = graph.get("node_details")
@@ -1044,7 +1157,7 @@ def _graph_schema() -> dict[str, Any]:
             "lab_root",
             "source_files",
             "active_thread",
-            "active_path",
+            "active_nodes",
             "nodes",
             "edges",
             "node_details",
@@ -1057,7 +1170,7 @@ def _graph_schema() -> dict[str, Any]:
             "lab_root": {"type": "string"},
             "source_files": {"type": "array", "items": {"type": "string"}},
             "active_thread": {"type": "string"},
-            "active_path": {"type": "array", "items": {"type": "string"}},
+            "active_nodes": {"type": "array", "items": {"type": "string"}},
             "nodes": {
                 "type": "array",
                 "items": {
@@ -1176,7 +1289,7 @@ def _apply_create_node_change(text: str, change: dict[str, Any]) -> str:
     _, raw_id = _split_node_id(str(change.get("node_id") or ""))
     title = str(change.get("title") or "").strip()
     state = str(change.get("state") or "unresolved").strip()
-    lines = [f"### Node {raw_id}: {title}", "", f"- mode: `{state}`", "- active: false"]
+    lines = [f"### Node {raw_id}: {title}", "", f"- mode: `{state}`"]
     parent = str(change.get("parent") or "").strip()
     if parent:
         lines.append(f"- parent: {parent}")
@@ -1245,7 +1358,14 @@ def _replace_node_body(text: str, raw_id: str, edit: Any) -> str:
     body_start = match.end()
     next_match = re.search(r"^#{1,3}[ \t]+", text[body_start:], flags=re.MULTILINE)
     body_end = body_start + next_match.start() if next_match else len(text)
-    return text[:body_start] + edit(text[body_start:body_end]) + text[body_end:]
+    updated_body = _strip_legacy_active_field(edit(text[body_start:body_end]))
+    return text[:body_start] + updated_body + text[body_end:]
+
+
+def _strip_legacy_active_field(body: str) -> str:
+    """Drop a node's retired `- active:` body field; it is no longer a source of truth."""
+
+    return re.sub(r"^[ \t]*-[ \t]*active:[ \t]*.*\r?\n?", "", body, count=1, flags=re.MULTILINE)
 
 
 def _upsert_node_field(body: str, name: str, value: str) -> str:
@@ -1375,6 +1495,19 @@ def _upsert_frontmatter_field(text: str, field: str, value: str) -> str:
     return text[:start] + frontmatter + text[end:]
 
 
+def _remove_frontmatter_field(text: str, field: str) -> str:
+    bounds = _frontmatter_text_bounds(text)
+    if bounds is None:
+        return text
+    start, end = bounds
+    frontmatter = text[start:end]
+    pattern = rf"^{re.escape(field)}:[ \t]*.*\r?\n?"
+    updated = re.sub(pattern, "", frontmatter, count=1, flags=re.MULTILINE)
+    if updated == frontmatter:
+        return text
+    return text[:start] + updated + text[end:]
+
+
 def _frontmatter_text_bounds(text: str) -> tuple[int, int] | None:
     opening = re.match(r"^---[ \t]*(?:\r?\n|$)", text)
     if not opening:
@@ -1405,8 +1538,7 @@ def _parse_thread_nodes(
     thread_path: Path,
     text: str,
     *,
-    active_node: str,
-    active_path: list[str],
+    active_nodes: list[str],
 ) -> list[dict[str, Any]]:
     markdown = strip_frontmatter(text)
     matches = list(re.finditer(r"^### Node\s+([^:\n]+)(?::\s*(.*))?$", markdown, flags=re.MULTILINE))
@@ -1420,8 +1552,6 @@ def _parse_thread_nodes(
         node_id = f"{thread_id}.{raw_id}"
         mode = _node_field(body, "mode") or "unresolved"
         parent = _node_field(body, "parent")
-        active_field = _node_field(body, "active")
-        active = _parse_bool(active_field) if active_field else raw_id == active_node
         project_root = thread_path.parents[1].parent
         node = {
             "id": node_id,
@@ -1431,8 +1561,7 @@ def _parse_thread_nodes(
             "kind": "research_point",
             "label": title or raw_id,
             "state": mode,
-            "active": active,
-            "on_active_path": node_id in active_path,
+            "active": node_id in active_nodes,
             "source_path": _display_path(thread_path, lab_root=project_root),
             "markdown_path": _display_path(thread_path, lab_root=project_root),
             "markdown_anchor": _node_markdown_anchor(raw_id, title),
@@ -1466,7 +1595,7 @@ def _parse_thread_nodes(
     return parsed
 
 
-def _parse_graph_relations(thread_id: str, text: str, active_path: list[str]) -> list[dict[str, Any]]:
+def _parse_graph_relations(thread_id: str, text: str) -> list[dict[str, Any]]:
     section = _extract_heading_section(strip_frontmatter(text), "Graph Relations")
     if not section:
         return []
@@ -1483,7 +1612,6 @@ def _parse_graph_relations(thread_id: str, text: str, active_path: list[str]) ->
             "target": target,
             "kind": kind,
             "strength": _clean_scalar(str(row.get("strength") or "normal")) or "normal",
-            "on_active_path": _edge_on_active_path(source, target, active_path),
         }
         edges.append(edge)
     for line in section.splitlines():
@@ -1500,7 +1628,6 @@ def _parse_graph_relations(thread_id: str, text: str, active_path: list[str]) ->
                 "target": target,
                 "kind": kind,
                 "strength": "normal",
-                "on_active_path": _edge_on_active_path(source, target, active_path),
             }
         )
     return edges
@@ -1566,10 +1693,6 @@ def _dedupe_edges(edges: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return result
 
 
-def _edge_on_active_path(source: str, target: str, active_path: list[str]) -> bool:
-    return any(left == source and right == target for left, right in zip(active_path, active_path[1:]))
-
-
 def _display_path(path: Path | str, *, lab_root: Path) -> str:
     path = Path(path)
     try:
@@ -1619,10 +1742,6 @@ def _is_well_formed_node_id(value: str) -> bool:
 def _node_field(body: str, name: str) -> str:
     match = re.search(rf"^\s*-\s*{re.escape(name)}:\s*(.+?)\s*$", body, flags=re.MULTILINE)
     return _clean_scalar(match.group(1)) if match else ""
-
-
-def _parse_bool(value: str) -> bool:
-    return value.strip().lower() in {"true", "yes", "1"}
 
 
 def _clean_scalar(value: str) -> str:

@@ -7,6 +7,7 @@ from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from meridian import __version__
 from meridian.cli import main
 from meridian.workspace_protocol import (
     CHANGES_PATH,
@@ -280,6 +281,32 @@ class WorkspaceProtocolTest(unittest.TestCase):
             self.assertEqual(json.loads(status_stdout.getvalue())["status"], "ready")
             self.assertEqual(json.loads(plan_stdout.getvalue())["revision"], "abc123")
             self.assertEqual(json.loads(event_stdout.getvalue())["status"], "created")
+
+    def test_manifest_error_names_unknown_and_missing_surfaces(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_json(
+                root / ".meridian/workspace.json",
+                {
+                    "schema_version": "meridian.workspace.v1",
+                    "project": {"id": "project-1", "name": "Shared research"},
+                    "surfaces": {
+                        # "plan" is missing (required); "totally_unknown" is not part of the contract.
+                        "graph": {"path": ".meridian/graph/graph.json", "writer": "workspace"},
+                        "events": {"path": ".meridian/events/events.json", "writer": "workspace"},
+                        "totally_unknown": {"path": ".meridian/x.json", "writer": "workspace"},
+                    },
+                },
+            )
+
+            with self.assertRaises(WorkspaceProtocolError) as raised:
+                read_project_plan(root)
+
+            message = str(raised.exception)
+            self.assertIn("unknown=['totally_unknown']", message)
+            self.assertIn("missing=['plan']", message)
+            self.assertIn(f"meridian {__version__}", message)
+            self.assertIn("restart the agent session or update Meridian", message)
 
 
 if __name__ == "__main__":

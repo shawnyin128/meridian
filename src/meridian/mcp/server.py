@@ -28,6 +28,13 @@ STALE_SERVER_WARNING = (
     "Warning: Meridian's code on disk changed after this MCP server started, so its tools may be "
     "missing or outdated. Tell the user to restart the agent session to load the current Meridian tools."
 )
+LAB_FOCUS_GUIDANCE = (
+    "Lab Focus: when the user starts, resumes, restarts, or reopens work on a node (any wording), "
+    "activate_node it (or reopen_node if it is supported/dead) before the first real step; no need to ask. "
+    "Several nodes may be active at once; starting one does not deactivate the others unless the user says "
+    "they are stopping or pausing it. Record a record_history checkpoint on each design decision or finished "
+    "experiment run. When work on a node ends, record completion through lab_result or update_node."
+)
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -112,7 +119,8 @@ class MeridianMCPServer:
                 "context/read/trace and Update Wiki through update/propose/apply/audit. "
                 "Project Workspace exposes status/plan/event_add for App-agent coordination. "
                 "Coding context starts with read-only changes, then expands only referenced ideas or nodes. "
-                "Lab exposes graph/update/result for agent-owned research state; App-owned plans remain read-only."
+                "Lab exposes graph/update/result for agent-owned research state; App-owned plans remain read-only. "
+                f"{LAB_FOCUS_GUIDANCE}"
             ),
         }
 
@@ -387,7 +395,10 @@ def tool_definitions() -> list[JsonDict]:
         },
         {
             "name": "meridian.lab_update",
-            "description": "Lab: apply a strict meridian.lab.update.v1 packet through the Markdown control plane and refresh the generated graph.",
+            "description": (
+                "Lab: apply a strict meridian.lab.update.v1 packet through the Markdown control plane and "
+                "refresh the generated graph. " + LAB_FOCUS_GUIDANCE
+            ),
             "inputSchema": _schema(
                 {
                     "workspace_root": {
@@ -713,7 +724,7 @@ def _call_lab_node(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
         "detail": (graph.get("node_details") or {}).get(node_id),
         "incoming": [edge for edge in edges if edge.get("target") == node_id],
         "outgoing": [edge for edge in edges if edge.get("source") == node_id],
-        "active": node_id in graph.get("active_path", []),
+        "active": node_id in graph.get("active_nodes", []),
         "linked_ideas": read_workspace_node_ideas(root, node_id),
         "health": result.health,
     }

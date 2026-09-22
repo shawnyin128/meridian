@@ -3,7 +3,7 @@ type: lab-state
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 active_thread: ""
-active_path: []
+active_nodes: []
 ---
 
 # Meridian Lab State

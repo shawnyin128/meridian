@@ -343,10 +343,10 @@ def _run_workspace_sequence(*, fixture_root: Path | None = None) -> JsonDict:
                             "parent": "fixture.A",
                             "next_action": "Run the fixture repair probe.",
                         },
-                        {"op": "set_active_path", "path": ["fixture.A", "fixture.B"]},
+                        {"op": "activate_node", "node_id": "fixture.B"},
                     ],
                     "user_confirmation": {
-                        "required_for": ["create_node", "set_active_path"],
+                        "required_for": ["create_node"],
                         "status": "accepted",
                     },
                 }
@@ -484,19 +484,18 @@ def _write_workspace_fixture(workspace_root: Path) -> None:
         encoding="utf-8",
     )
     (meridian_root / "state.md").write_text(
-        "---\ntype: lab-state\nactive_thread: fixture\nactive_path: [fixture.A]\n---\n# State\n",
+        "---\ntype: lab-state\nactive_thread: fixture\nactive_nodes: [fixture.A]\n---\n# State\n",
         encoding="utf-8",
     )
     (meridian_root / "threads/index.md").write_text("# Threads\n", encoding="utf-8")
     (meridian_root / "experiments/index.md").write_text("# Experiments\n", encoding="utf-8")
     (meridian_root / "proposals/index.md").write_text("# Proposals\n", encoding="utf-8")
     (meridian_root / "threads/fixture.md").write_text(
-        "---\ntype: research-thread\ntitle: Fixture\nactive_node: A\n---\n"
+        "---\ntype: research-thread\ntitle: Fixture\n---\n"
         "# Research Thread: Fixture\n\n"
         "## Approach Tree\n\n"
         "### Node A: Fixture root\n\n"
-        "- mode: `unresolved`\n"
-        "- active: true\n\n"
+        "- mode: `unresolved`\n\n"
         "#### Next Action\n\n"
         "Run the fixture probe.\n",
         encoding="utf-8",
@@ -593,7 +592,7 @@ def _status(
     graph_after = workspace_result["graph_after_payload"].get("graph", {})
     if "fixture.B" not in {node.get("id") for node in graph_after.get("nodes", [])}:
         return "fail"
-    if graph_after.get("active_path") != ["fixture.A", "fixture.B"]:
+    if graph_after.get("active_nodes") != ["fixture.A"]:
         return "fail"
     fixture_node = next((node for node in graph_after.get("nodes", []) if node.get("id") == "fixture.B"), {})
     if fixture_node.get("state") != "supported":
