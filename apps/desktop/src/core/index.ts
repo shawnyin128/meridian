@@ -341,6 +341,11 @@ registerHandler('extensions.status', (params) => {
   return extensionStatuses(undefined, pluginCheck.latest())
 })
 
+registerHandler('extensions.pluginVersion', (params) => {
+  EmptyParamsSchema.parse(params)
+  return { version: pluginCheck.latest(), checkedAt: pluginCheck.checkedAt() }
+})
+
 registerHandler('extensions.checkLatest', async (params) => {
   EmptyParamsSchema.parse(params)
   return extensionStatuses(undefined, await pluginCheck.check())

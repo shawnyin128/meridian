@@ -19,6 +19,8 @@ const StoredSchema = z.object({ version: z.string(), checkedAt: z.string() }).st
 export interface PluginVersionCheck {
   /** The newest plugin version known: the bundled one or the last one read from master, whichever is newer. */
   latest(): string
+  /** When master was last read successfully, as an ISO time, or null before the first successful read. */
+  checkedAt(): string | null
   /**
    * Reads master's plugin version now and returns `latest()` afterwards. A failed request is expected when
    * offline, so it leaves the last known version in place instead of failing.
@@ -56,6 +58,7 @@ export function createPluginVersionCheck({ get, file, now, onLatest }: {
 
   return {
     latest,
+    checkedAt: () => stored?.checkedAt ?? null,
     check,
     arm() {
       const tick = () => {

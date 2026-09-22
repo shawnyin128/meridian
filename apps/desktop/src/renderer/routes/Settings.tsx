@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { ChatSession, ExtensionStatus, LibraryBackup, LibraryLocation } from '../../shared/contract.js'
-import { appMenu, appUpdates, chat, extensions, library } from '../ipc.js'
+import type {
+  ChatSession, ExtensionStatus, LibraryBackup, LibraryLocation, PluginVersion,
+} from '../../shared/contract.js'
+import { appMenu, chat, extensions, library } from '../ipc.js'
 import { useFormat } from '../lib/format.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -22,7 +24,6 @@ import { ModalDialog, ModalTitle } from '../components/ModalDialog.js'
 import { StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
-import { useAppUpdate } from '../hooks/useAppUpdate.js'
 import { WatchSettings } from './Watches.js'
 import './shell.css'
 import './Settings.css'
@@ -61,7 +62,8 @@ export function Settings() {
   const [location, setLocation] = useState<LibraryLocation | null>(null)
   const [backups, setBackups] = useState<LibraryBackup[] | null>(null)
   const [extensionStatus, setExtensionStatus] = useState<ExtensionStatus[] | null>(null)
-  const appUpdate = useAppUpdate()
+  const [pluginVersion, setPluginVersion] = useState<PluginVersion | null>(null)
+  const [checkingPlugin, setCheckingPlugin] = useState(false)
   const [choosing, setChoosing] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [switchingBackup, setSwitchingBackup] = useState<string | null>(null)
@@ -84,6 +86,7 @@ export function Settings() {
     void library.location().then(setLocation).catch(reportError)
     void library.backups().then(setBackups).catch(reportError)
     void extensions.status().then(setExtensionStatus).catch(reportError)
+    void extensions.pluginVersion().then(setPluginVersion).catch(reportError)
   }, [open, revision, reportError])
 
   useEffect(() => {
@@ -301,14 +304,20 @@ export function Settings() {
         <SectionHeading>{m.settings.extensions.heading}</SectionHeading>
         <ExtensionSettings
           statuses={extensionStatus} onCopy={copyExtensionCommand} onCopyPrompt={copyAgentPrompt}
-          app={appUpdate === null ? undefined : {
-            status: appUpdate,
+          plugin={pluginVersion === null ? undefined : {
+            plugin: pluginVersion,
+            checking: checkingPlugin,
             onCheck: () => {
-              void appUpdates.check()
-              void extensions.checkLatest().then(setExtensionStatus).catch(reportError)
+              setCheckingPlugin(true)
+              void extensions.checkLatest()
+                .then((statuses) => {
+                  setExtensionStatus(statuses)
+                  return extensions.pluginVersion()
+                })
+                .then(setPluginVersion)
+                .catch(reportError)
+                .finally(() => setCheckingPlugin(false))
             },
-            onInstall: appUpdates.install,
-            onDownload: (url) => { window.open(url) },
           }}
         />
       </>

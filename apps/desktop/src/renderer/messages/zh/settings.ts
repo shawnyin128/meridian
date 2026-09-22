@@ -164,10 +164,16 @@ export const settings = {
       'update-required': '需要更新',
       'not-installed': '未安装',
     },
-    app: {
-      name: 'Meridian App',
-      version: (version: string) => `当前 ${version}`,
+    plugin: {
+      name: 'Meridian Plugin',
+      description: 'Skill 与 MCP 共用这个版本',
+      latest: (version: string) => `最新 ${version}`,
       checkedAt: (date: string) => `上次检查 ${date}`,
+      neverChecked: '还没联网检查过',
+      check: '检查更新',
+      checking: '检查中…',
+    },
+    app: {
       phase: {
         unsupported: '开发版本不检查更新。',
         idle: '尚未检查更新。',

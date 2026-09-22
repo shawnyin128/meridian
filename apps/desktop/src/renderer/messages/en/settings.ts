@@ -171,10 +171,16 @@ export const settings = {
       'update-required': 'Update needed',
       'not-installed': 'Not installed',
     },
-    app: {
-      name: 'Meridian App',
-      version: (version: string) => `Version ${version}`,
+    plugin: {
+      name: 'Meridian Plugin',
+      description: 'The skills and MCP share this version',
+      latest: (version: string) => `Latest ${version}`,
       checkedAt: (date: string) => `last checked ${date}`,
+      neverChecked: 'not checked online yet',
+      check: 'Check for updates',
+      checking: 'Checking…',
+    },
+    app: {
       phase: {
         unsupported: 'Development builds do not check for updates.',
         idle: 'Not checked yet.',

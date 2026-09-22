@@ -10,9 +10,9 @@ import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
 const api = vi.hoisted(() => ({
   setOpen: vi.fn(),
-  updateStatus: vi.fn(async () => ({ phase: 'ready', version: '0.0.4', current: '0.0.3', checkedAt: '2026-09-22T08:00:00.000Z' })),
-  checkUpdate: vi.fn(async () => ({ phase: 'checking', current: '0.0.3' })),
-  installUpdate: vi.fn(),
+  pluginVersion: vi.fn(async () => ({ version: '0.0.1', checkedAt: null as string | null })),
+  // A check re-measures the same installed extensions against the version it read.
+  checkLatest: vi.fn(async (): Promise<unknown> => api.extensionStatus()),
   deliverySettings: vi.fn(async () => ({ maxItemsPerRun: 10 })),
   updateDeliverySettings: vi.fn(async () => {}),
   modelSettings: vi.fn(async () => ({
@@ -76,10 +76,7 @@ vi.mock('../ipc.js', () => ({
     updateModelSettings: api.updateModelSettings,
     checkModelConnection: api.checkModelConnection,
   },
-  extensions: { status: api.extensionStatus },
-  appUpdates: {
-    status: api.updateStatus, check: api.checkUpdate, install: api.installUpdate, onChange: vi.fn(() => () => {}),
-  },
+  extensions: { status: api.extensionStatus, pluginVersion: api.pluginVersion, checkLatest: api.checkLatest },
 }))
 vi.mock('../shell/AppShell.js', () => ({
   useBanner: () => api.banner,
@@ -191,13 +188,19 @@ describe('Settings', () => {
       .toBe('claude install command')
     expect(dialog.querySelector('[data-extension-tutorial]')?.textContent)
       .toContain('在 Coding Agent 中使用 Meridian')
-    const appRow = dialog.querySelector('[data-app-update="ready"]')!
-    expect(appRow.querySelector('.extension-state')?.textContent).toBe('当前 0.0.3')
-    expect(appRow.querySelector('p')?.textContent).toContain('0.0.4 已下载，重启即可更新。')
+    // The first row is the plugin version the skills and MCP share, not the app's own version.
+    const pluginRow = dialog.querySelector('[data-plugin-version="0.0.1"]')!
+    expect(pluginRow.querySelector('h3')?.textContent).toBe('Meridian Plugin')
+    expect(pluginRow.querySelector('.extension-state')?.textContent).toBe('最新 0.0.1')
+    expect(pluginRow.querySelector('p')?.textContent).toContain('还没联网检查过')
+    api.pluginVersion.mockResolvedValueOnce({ version: '0.0.2', checkedAt: '2026-09-22T08:00:00.000Z' })
     await act(async () => {
-      appRow.querySelector<HTMLButtonElement>('button')!.click()
+      pluginRow.querySelector<HTMLButtonElement>('button')!.click()
     })
-    expect(api.installUpdate).toHaveBeenCalledOnce()
+    expect(api.checkLatest).toHaveBeenCalledOnce()
+    const checked = dialog.querySelector('[data-plugin-version="0.0.2"]')!
+    expect(checked.querySelector('.extension-state')?.textContent).toBe('最新 0.0.2')
+    expect(checked.querySelector('p')?.textContent).toContain('上次检查')
 
     await act(async () => {
       dialog.querySelector<HTMLButtonElement>('[aria-label="复制 Claude Code 安装命令"]')!.click()

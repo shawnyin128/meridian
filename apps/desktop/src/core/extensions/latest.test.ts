@@ -40,6 +40,7 @@ describe('createPluginVersionCheck', () => {
   it('没查过时用打包时的插件版本', () => {
     const { make } = setup(async () => ({ status: 200, body: '' }))
     expect(make().latest()).toBe(BUNDLED_PLUGIN_VERSION)
+    expect(make().checkedAt()).toBeNull()
   })
 
   it('读到 master 上更新的版本就用它，并且重启后还记得', async () => {
@@ -49,6 +50,7 @@ describe('createPluginVersionCheck', () => {
     expect(urls).toEqual([LATEST_PLUGIN_URL])
     expect(seen).toEqual([newer])
     expect(make().latest()).toBe(newer)
+    expect(make().checkedAt()).toBe('2026-09-22T00:00:00.000Z')
   })
 
   it('master 上的版本比打包的旧时仍用打包的', async () => {

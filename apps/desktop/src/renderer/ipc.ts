@@ -2,7 +2,7 @@ import type { AppUpdateStatus } from '../shared/app-update.js'
 import type {
   AttachmentFields, AuthorCandidate, ChangeEntry, ChatCancelResult, ChatMessage, ChatMessageFields,
   ChatSendResult, ChatSession, ConclusionState,
-  ContractMethod, Facet,
+  ContractMethod, Facet, PluginVersion,
   DeliverySettings, DiscoveryFeedback, DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile,
   ExtensionStatus, FeedEntry, FeedFields,
   InboxDownloadResult, InboxEntry, InboxListParams, JobsStatus, LaterEntry, ListParams,
@@ -63,6 +63,8 @@ export const extensions = {
   status: () => call<ExtensionStatus[]>('extensions.status', {}),
   /** Reads the newest plugin version from the repository, then returns the statuses measured against it. */
   checkLatest: () => call<ExtensionStatus[]>('extensions.checkLatest', {}),
+  /** The newest plugin version known and when it was last read from the repository. */
+  pluginVersion: () => call<PluginVersion>('extensions.pluginVersion', {}),
 }
 
 /** The app's own self-update, run by the main process rather than Core. */

@@ -1,19 +1,19 @@
 import type { ExtensionStatus } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { CardTray } from '../CardTray.js'
-import { AppUpdateEntry, type AppUpdateEntryProps } from './AppUpdateSettings.js'
+import { PluginVersionEntry, type PluginVersionEntryProps } from './PluginVersionEntry.js'
 import './ExtensionSettings.css'
 
 interface ExtensionSettingsProps {
   statuses: ExtensionStatus[] | null
-  /** The app's own row, listed first because the plugins share its version; omitted until known. */
-  app?: AppUpdateEntryProps | undefined
+  /** The plugin version row listed first, since both clients install that version; omitted until known. */
+  plugin?: PluginVersionEntryProps | undefined
   onCopy: (name: string, command: string) => void
   onCopyPrompt: (prompt: string) => void
 }
 
 /** Installed coding-agent extensions and the explicit commands that manage them. */
-export function ExtensionSettings({ statuses, app, onCopy, onCopyPrompt }: ExtensionSettingsProps) {
+export function ExtensionSettings({ statuses, plugin, onCopy, onCopyPrompt }: ExtensionSettingsProps) {
   const m = useMessages()
   if (statuses === null) {
     return <div className="extension-settings-card extension-settings-loading">{m.settings.extensions.loading}</div>
@@ -22,7 +22,7 @@ export function ExtensionSettings({ statuses, app, onCopy, onCopyPrompt }: Exten
   return (
     <>
       <div className="extension-settings-card">
-        {app === undefined ? null : <AppUpdateEntry {...app} />}
+        {plugin === undefined ? null : <PluginVersionEntry {...plugin} />}
         {statuses.map((extension) => {
           // An installed extension, current or not, is kept up to date rather than installed again.
           const updating = extension.state !== 'not-installed'

@@ -1734,6 +1734,15 @@ export const LibraryResetResultSchema = z.object({
 /** Local coding-agent plugin package detected by Core without invoking its CLI. */
 export const ExtensionClientSchema = z.enum(['codex', 'claude-code'])
 
+/**
+ * The newest plugin version known, which the skills and MCP share, and when master was last read for
+ * it; `checkedAt` is null until a read has succeeded, and the version is then the bundled one.
+ */
+export const PluginVersionSchema = z.object({
+  version: z.string(),
+  checkedAt: z.string().nullable(),
+}).strict()
+
 export const ExtensionStatusSchema = z.object({
   id: ExtensionClientSchema,
   name: z.string(),
@@ -1870,6 +1879,7 @@ export type LibraryBackup = z.infer<typeof LibraryBackupSchema>
 export type LibraryResetResult = z.infer<typeof LibraryResetResultSchema>
 export type ExtensionClient = z.infer<typeof ExtensionClientSchema>
 export type ExtensionStatus = z.infer<typeof ExtensionStatusSchema>
+export type PluginVersion = z.infer<typeof PluginVersionSchema>
 
 /** Facet value with paper count and title of the newest matching paper. */
 export type Facet = { value: string; count: number; newestTitle: string }
@@ -1884,6 +1894,7 @@ export const CONTRACT_METHODS = [
   'library.deleteBackup',
   'extensions.status',
   'extensions.checkLatest',
+  'extensions.pluginVersion',
   'vault.today',
   'papers.list',
   'papers.facets',
