@@ -43,7 +43,7 @@ describe('createWatchFetcher', () => {
     await fetcher.run()
     expect(queries).toEqual(['all:"speculative decoding"', 'au:Dao_T'])
     expect(store.listInbox()).toHaveLength(before + 2)
-    expect(store.listFeed().at(-1)).toMatchObject({
+    expect(store.listFeed()[0]).toMatchObject({
       source: 'inbox',
       body: {
         kind: 'runs',
@@ -68,7 +68,7 @@ describe('createWatchFetcher', () => {
     await fetcher.run()
     expect(store.listInbox()).toHaveLength(before + 1)
     expect(queries).toHaveLength(1)
-    expect(store.listFeed().at(-1)?.body).toMatchObject({
+    expect(store.listFeed()[0]?.body).toMatchObject({
       kind: 'runs', runs: expect.arrayContaining([{ kind: 'strong', text: '1 篇新论文入队' }]),
     })
   })

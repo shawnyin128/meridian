@@ -61,13 +61,15 @@ test('条目的来源、时刻与正文和 demo 源文件里的原文逐字相�
   const demo = feedItemsFromDemo()
   expect(demo).toHaveLength(PROSE + 1)
 
+  // The demo lists the oldest entry first; the feed shows the newest first.
+  const onScreen = (demoAt: number) => demo.length - 1 - demoAt
   const sources = await sourcesFromCore(win)
-  expect(sources).toEqual(demo.map((d) => d.source))
+  expect(sources).toEqual([...demo].reverse().map((d) => d.source))
   await expect(shown(win, '.fitem')).toHaveCount(demo.length)
 
   for (let at = 0; at < PROSE; at++) {
-    expect(await bodyText(win, at)).toBe(demo[at]!.text)
-    await expect(shown(win, '.fitem .ftime').nth(at)).toHaveText(demo[at]!.time)
+    expect(await bodyText(win, onScreen(at))).toBe(demo[at]!.text)
+    await expect(shown(win, '.fitem .ftime').nth(onScreen(at))).toHaveText(demo[at]!.time)
   }
 
   // The fifth text is the presentation block: the subtitle, the red mark, the text, and the button of that thing are extracted from the HTML of the demo.
@@ -81,7 +83,7 @@ test('条目的来源、时刻与正文和 demo 源文件里的原文逐字相�
   await expect(shown(win, '.brief .bitem .tag')).toHaveText(pick(/<span class="tag conf">([^<]*)<\/span>/))
   await expect(shown(win, '.brief .bitem .t')).toHaveText(pick(/<span class="t">([^<]*)<\/span>/))
   await expect(shown(win, '.brief .bitem .go .btn')).toHaveText(pick(/id="briefConf">([^<]*)<\/button>/))
-  await expect(shown(win, '.fitem .ftime').nth(PROSE)).toHaveText(demo[PROSE]!.time)
+  await expect(shown(win, '.fitem .ftime').nth(onScreen(PROSE))).toHaveText(demo[PROSE]!.time)
 })
 
 test('五个筛选档各自的条数与按来源分档的计数一致', async ({ win }) => {

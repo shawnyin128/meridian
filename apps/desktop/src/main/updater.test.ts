@@ -79,7 +79,7 @@ describe('createUpdater', () => {
     expect(updater.status()).toEqual({ phase: 'unsupported', current: '0.0.3' })
   })
 
-  it('checks shortly after start and then every four hours', () => {
+  it('checks shortly after start and then every six hours', () => {
     vi.useFakeTimers()
     const { feed, updater, advance } = setup()
     const stop = updater.arm()
@@ -88,7 +88,7 @@ describe('createUpdater', () => {
     feed.emit('update-not-available', { version: '0.0.3' })
 
     advance(CHECK_EVERY_MS - TICK_MS)
-    vi.advanceTimersByTime(TICK_MS * 2)
+    vi.advanceTimersByTime(TICK_MS * 4)
     expect(feed.checks).toBe(1)
     advance(TICK_MS)
     vi.advanceTimersByTime(TICK_MS)

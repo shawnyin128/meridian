@@ -14,7 +14,7 @@ import {
 } from '../shared/vocabulary.js'
 import type { ChangeRecord } from './changelog.js'
 import { ChangeRecordSchema, PROJECT_FIELDS, withChangelog } from './changelog.js'
-import { dayOf, systemToday } from './dates.js'
+import { dayOf, feedNewestFirst, systemToday } from './dates.js'
 import {
   applyReadingMutation, checkColumns, checkCustom, checkGroupKey, columnCells, emptyColumns,
   emptyPaperReading, facetPapers, freePageStem, laterWithMetadata, listPapers, liveColumns,
@@ -2051,7 +2051,7 @@ export function createVaultStore(
     },
 
     listFeed() {
-      return feed.map((e) => structuredClone(e))
+      return feedNewestFirst(feed, today())
     },
 
     appendFeed({ source, body }) {

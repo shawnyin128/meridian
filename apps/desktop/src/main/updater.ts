@@ -1,7 +1,7 @@
 import type { AppUpdatePhase, AppUpdateStatus } from '../shared/app-update.js'
 import { releaseUrl } from '../shared/app-update.js'
 
-export const CHECK_EVERY_MS = 4 * 3_600_000
+export const CHECK_EVERY_MS = 6 * 3_600_000
 export const TICK_MS = 3_600_000
 /** A failed check, such as one made while offline, is retried after this long rather than a day later. */
 export const RETRY_AFTER_ERROR_MS = 3_600_000
@@ -25,7 +25,7 @@ export interface Updater {
   check(): void
   /** Quits and installs a downloaded update; does nothing unless the phase is `ready`. */
   install(): void
-  /** Checks shortly after start and then every four hours; returns the stop function. */
+  /** Checks shortly after start and then every six hours; returns the stop function. */
   arm(): () => void
 }
 

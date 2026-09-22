@@ -1264,18 +1264,18 @@ describe('fixture store', () => {
     expect(store.listChanges()[0]!.diff[0]).not.toBe('篡改后的 diff')
   })
 
-  it('动态按 fixture 的次序返回,日期分段跟着条目走', () => {
-    expect(store.listFeed().map((e) => e.source)).toEqual(['me', 'lab', 'steward', 'inbox', 'steward'])
-    expect(store.listFeed().map((e) => e.day)).toEqual(['昨天', '昨天', '昨天', '今天', '今天'])
-    expect(store.listFeed()[4]!.time).toBe('早报')
+  it('动态最新的在前,日期分段跟着条目走', () => {
+    expect(store.listFeed().map((e) => e.source)).toEqual(['steward', 'inbox', 'steward', 'lab', 'me'])
+    expect(store.listFeed().map((e) => e.day)).toEqual(['今天', '今天', '昨天', '昨天', '昨天'])
+    expect(store.listFeed()[0]!.time).toBe('早报')
   })
 
   it('取回的动态是副本,连正文分段与简报条目那一层改了也渗不回库里', () => {
     const before = JSON.stringify(store.listFeed())
     const rows = store.listFeed()
-    rows[0]!.time = '篡改后的时刻'
-    const runs = rows[0]!.body
-    const brief = rows[4]!.body
+    rows[4]!.time = '篡改后的时刻'
+    const runs = rows[4]!.body
+    const brief = rows[0]!.body
     expect(runs.kind).toBe('runs')
     expect(brief.kind).toBe('brief')
     if (runs.kind === 'runs') runs.runs[0]!.text = '篡改后的分段'
@@ -1760,7 +1760,7 @@ describe('fixture store', () => {
     expect(store.getProject('draft').events).toEqual(before)
   })
 
-  it('新记的动态排在最后,落在今天这一段', () => {
+  it('新记的动态排在最前,落在今天这一段', () => {
     store = createFixtureStore(
       () => EPOCH,
       () => new Date('2026-08-25T14:03:02.001Z'),
@@ -1771,7 +1771,7 @@ describe('fixture store', () => {
     })
     const feed = store.listFeed()
     expect(feed).toHaveLength(before + 1)
-    expect(feed.at(-1)).toMatchObject({
+    expect(feed[0]).toMatchObject({
       source: 'me', day: '今天', time: '刚刚',
       createdAt: '2026-08-25T14:03:02.001Z',
       body: { kind: 'runs', runs: [{ kind: 'text', text: '闪念:「新想法」' }] },

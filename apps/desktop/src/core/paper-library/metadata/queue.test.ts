@@ -64,8 +64,8 @@ describe('上传之后的元数据解析', () => {
     await queue.idle()
     expect(store.getPaper(paper.id).title).toBe('draft-trees')
     expect(queue.uploads()[0]).toMatchObject({ step: 'failed', error: '网络不可用' })
-    expect(JSON.stringify(store.listFeed().at(-1)?.body)).toContain('元数据暂未补全')
-    expect(JSON.stringify(store.listFeed().at(-1)?.body)).not.toContain('网络不可用')
+    expect(JSON.stringify(store.listFeed()[0]?.body)).toContain('元数据暂未补全')
+    expect(JSON.stringify(store.listFeed()[0]?.body)).not.toContain('网络不可用')
   })
 
   it('保留整个活动批次,并发探测 PDF,再用一次远端批量查询补全', async () => {

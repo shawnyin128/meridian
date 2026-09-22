@@ -473,7 +473,7 @@ describe('vault app state', () => {
         id: watchId, type: 'topic', name: 'speculative sampling', active: false,
       }])
       expect(back.listChats()).toEqual([{ id: chat.id, title: '树宽收益的拐点在哪', archived: false, messageCount: 1 }])
-      expect(back.listFeed().at(-1)).toMatchObject({ source: 'me', day: '今天', time: '刚刚' })
+      expect(back.listFeed()[0]).toMatchObject({ source: 'me', day: '今天', time: '刚刚' })
     })
 
     it('论文上下文会话按论文身份复用并跨重启保存', () => {
@@ -543,8 +543,8 @@ describe('vault app state', () => {
       mkdirSync(join(vault, '.git'))
       const entries = reopen().listFeed()
       expect(entries).toHaveLength(2)
-      expect(JSON.stringify(entries[1]!.body)).toContain('在 git 管理之下')
-      expect(JSON.stringify(entries[1]!.body)).not.toContain('不在 git')
+      expect(JSON.stringify(entries[0]!.body)).toContain('在 git 管理之下')
+      expect(JSON.stringify(entries[0]!.body)).not.toContain('不在 git')
     })
 
     it('应用状态与 wiki 一起进 git:.meridian 没有被挡在版本历史之外', () => {

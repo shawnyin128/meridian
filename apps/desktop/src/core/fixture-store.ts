@@ -41,7 +41,7 @@ import {
   discoveryReasons, orderInbox, recommendationSeedIds,
   type DiscoveryPaper, type DiscoveryPreferences, type DiscoverySchedule,
 } from './recommendation/index.js'
-import { dayOf, systemToday } from './dates.js'
+import { dayOf, feedNewestFirst, systemToday } from './dates.js'
 import { createResearchIdea, updateResearchIdea } from './research-ideas/index.js'
 import type { MetadataFill, VaultOps, VaultStore } from './vault.js'
 import {
@@ -1632,7 +1632,7 @@ export function createFixtureStore(
     },
 
     listFeed() {
-      return feed.map((e) => structuredClone(e))
+      return feedNewestFirst(feed, today())
     },
 
     appendFeed({ source, body }) {
