@@ -457,6 +457,10 @@ test('作者关注先用机构消歧,确认后保存稳定作者身份', async (
   await expect(settings(win, '.author-match')).toContainText([
     'Massachusetts Institute of Technology', 'Stanford University', 'Carnegie Mellon University',
   ])
+  await expect(settings(win, '.author-match [data-author-research]')).toHaveText([
+    'Computer Science · Advanced Neural Network Applications', 'Materials Science · Metamaterials and Metasurfaces',
+    'Computer Science · Real-Time Systems Scheduling',
+  ])
   await settings(win, '.author-match').nth(1).locator('.btn', { hasText: '关注' }).click()
 
   await expect(settings(win, '.wrow.newrow')).toHaveCount(0)
@@ -477,14 +481,14 @@ test('关注建议可从一句话或项目画像生成主题与稳定作者', as
   await section.locator('input').fill('我想关注批量推理中的动态验证与草稿树')
   await section.locator('.btn.pri').click()
   await expect(section.locator('.watch-suggestion-group')).toHaveCount(2)
-  await expect(section).toContainText('efficient inference')
+  await expect(section).toContainText('batched inference')
   await expect(section).toContainText('h-index')
 
   const suggestedTopic = section.locator('.watch-suggestion-row')
-    .filter({ hasText: 'efficient inference' }).first()
+    .filter({ hasText: 'batched inference' }).first()
   await suggestedTopic.locator('.btn', { hasText: '添加' }).click()
   await expect.poll(async () => (await watchesFromCore(win))
-    .some((item) => item.type === 'topic' && item.name === 'efficient inference')).toBe(true)
+    .some((item) => item.type === 'topic' && item.name === 'batched inference')).toBe(true)
 
   const projectResult = await call<{
     topics: { name: string }[]; authors: { id: string }[]; paperCount: number

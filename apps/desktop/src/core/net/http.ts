@@ -8,6 +8,11 @@ export type HttpOptions = {
    * so time spent waiting in a rate-limit queue does not count against it.
    */
   timeoutMs?: number
+  /**
+   * A rate-limited sender answers 429 without sending when this request would first wait longer
+   * than this in its queue, so a caller with a fallback need not sit out another caller's cooldown.
+   */
+  maxQueueMs?: number
   /** Abort and throw when the response body exceeds this many bytes. */
   limit: number
   onProgress?: (received: number, total: number | null) => void
@@ -39,9 +44,13 @@ export function createRateLimitedGet(get: HttpGet, policy: RateLimitedHttpOption
   let tail: Promise<void> = Promise.resolve()
   let nextAt = 0
   return (url, options) => {
+    const queuedAt = policy.now()
     const run = tail.catch(() => undefined).then(async () => {
       const now = policy.now()
       const wait = Math.max(0, nextAt - now)
+      if (options.maxQueueMs !== undefined && now - queuedAt + wait > options.maxQueueMs) {
+        return { status: 429, body: new Uint8Array(), retryAfterMs: 0 }
+      }
       if (wait > 0) await policy.sleep(wait)
       nextAt = Math.max(nextAt, now) + policy.minIntervalMs
       const response = await get(url, {
@@ -75,6 +84,7 @@ export class HttpStatusError extends Error {
 
 export type RetryPolicy = {
   timeoutMs: number
+  maxQueueMs?: number
   tries: number
   backoffMs: number
   limit: number
@@ -96,7 +106,10 @@ export async function requestWithRetry(
 ): Promise<Uint8Array> {
   for (let attempt = 1; ; attempt += 1) {
     try {
-      const response = await get(url, { timeoutMs: policy.timeoutMs, limit: policy.limit, ...request })
+      const response = await get(url, {
+        timeoutMs: policy.timeoutMs, limit: policy.limit,
+        ...(policy.maxQueueMs === undefined ? {} : { maxQueueMs: policy.maxQueueMs }), ...request,
+      })
       if (response.status !== 200) throw new HttpStatusError(response.status, response.retryAfterMs)
       return response.body
     } catch (error) {

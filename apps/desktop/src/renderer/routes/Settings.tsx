@@ -19,6 +19,7 @@ import { DiscoverySettings } from '../components/settings/DiscoverySettings.js'
 import { SemanticKeySettings } from '../components/settings/SemanticKeySettings.js'
 import { DeliverySettings } from '../components/settings/DeliverySettings.js'
 import { ModelSettings } from '../components/settings/ModelSettings.js'
+import { ApiOverview } from '../components/settings/ApiOverview.js'
 import { ExtensionSettings } from '../components/settings/ExtensionSettings.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { ModalDialog, ModalTitle } from '../components/ModalDialog.js'
@@ -33,13 +34,16 @@ import './Settings.css'
  * Set the categories, one item per category in the left column. Paper push centrally manages attention and project discovery directions; archived items manage closed conversations.
  */
 const CATEGORIES = [
-  'appearance', 'storage', 'model', 'extensions', 'delivery', 'delivery-watch', 'delivery-discovery', 'archived',
+  'appearance', 'storage', 'api', 'model', 'research', 'extensions', 'delivery', 'delivery-watch', 'delivery-discovery',
+  'archived',
 ] as const
-const SUB_CATEGORIES: ReadonlySet<CategoryKey> = new Set(['delivery-watch', 'delivery-discovery'])
+const SUB_CATEGORIES: ReadonlySet<CategoryKey> = new Set(['model', 'research', 'delivery-watch', 'delivery-discovery'])
 const CATEGORY_LABEL: Record<CategoryKey, keyof Catalog['settings']['categories']> = {
   appearance: 'appearance',
   storage: 'storage',
+  api: 'api',
   model: 'model',
+  research: 'research',
   extensions: 'extensions',
   delivery: 'delivery',
   'delivery-watch': 'deliveryWatch',
@@ -293,6 +297,20 @@ export function Settings() {
             )}
       </>
     ),
+    api: (
+      <>
+        <SectionHeading>{m.settings.api.heading}</SectionHeading>
+        <p className="settings-intro">{m.settings.api.intro}</p>
+        <ApiOverview onOpen={setCurrent} />
+      </>
+    ),
+    research: (
+      <>
+        <SectionHeading>{m.settings.research.heading}</SectionHeading>
+        <p className="settings-intro">{m.settings.research.intro}</p>
+        <SemanticKeySettings />
+      </>
+    ),
     model: (
       <>
         <SectionHeading>{m.settings.model.heading}</SectionHeading>
@@ -342,7 +360,6 @@ export function Settings() {
         <SectionHeading>{m.settings.discovery.heading}</SectionHeading>
         <p className="settings-intro">{m.settings.discovery.intro}</p>
         <DiscoverySettings />
-        <SemanticKeySettings />
       </>
     ),
     archived: (

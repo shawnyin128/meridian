@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { HttpGet } from './http.js'
 import {
-  createOpenAlex, openAlexAuthorBatchUrl, openAlexAuthorWorksUrl, parseOpenAlexAuthors,
+  openAlexAuthorBatchUrl, openAlexAuthorWorksUrl, openAlexWorkSearchUrl, parseOpenAlexAuthors,
   parseOpenAlexAuthorWorks, parseOpenAlexWorks,
 } from './openalex.js'
 
@@ -11,12 +10,12 @@ describe('OpenAlex', () => {
   it('论文搜索只保留有标题的，作者 id 去掉 URL 前缀', () => {
     expect(parseOpenAlexWorks(body({ results: [
       {
-        id: 'https://openalex.org/W1', title: 'QLoRA', cited_by_count: 510,
+        id: 'https://openalex.org/W1', title: 'QLoRA', cited_by_count: 510, publication_year: 2023,
         authorships: [{ author: { id: 'https://openalex.org/A1', display_name: 'Tim Dettmers' } }, { author: null }],
       },
       { id: 'https://openalex.org/W2', title: '' },
     ] }))).toEqual([{
-      title: 'QLoRA', authors: [{ id: 'A1', name: 'Tim Dettmers' }], citationCount: 510, influentialCitationCount: 0,
+      title: 'QLoRA', year: 2023, authors: [{ id: 'A1', name: 'Tim Dettmers' }], citationCount: 510, influentialCitationCount: 0,
     }])
   })
 
@@ -28,9 +27,12 @@ describe('OpenAlex', () => {
         last_known_institutions: [{ display_name: 'MIT' }, { display_name: 'MIT' }, { display_name: '' }],
       },
       { id: '', display_name: 'Broken' },
-    ] }))).toEqual([{
-      source: 'openalex', id: 'A5070926896', name: 'Song Han', affiliations: ['MIT'],
-      paperCount: 222, citationCount: 33_073, hIndex: 58,
+    ] }), 2026)).toEqual([{
+      candidate: {
+        source: 'openalex', id: 'A5070926896', name: 'Song Han', affiliations: ['MIT'],
+        paperCount: 222, citationCount: 33_073, hIndex: 58,
+      },
+      activeYear: null,
     }])
   })
 
@@ -63,18 +65,61 @@ describe('OpenAlex', () => {
     })
   })
 
-  it('作者机构最多留前三个，免得把历年所有挂靠都列出来', () => {
+  it('机构按近 5 年出现的年数排，只留前两个；第二个要近 5 年里至少出现 3 年，总年数也不少于第一个的一半', () => {
+    const affiliated = (affiliations: [string, number[]][]) => parseOpenAlexAuthors(body({ results: [{
+      id: 'https://openalex.org/A1', display_name: 'Song Han',
+      affiliations: affiliations.map(([name, years]) => ({ institution: { display_name: name }, years })),
+      last_known_institutions: [{ display_name: 'Central Intelligence Agency' }],
+    }] }), 2026)[0]!.candidate.affiliations
+    expect(affiliated([
+      ['Tsinghua University', [2021, 2016, 2011]],
+      ['Nvidia', [2026, 2025, 2024]],
+      ['Central Intelligence Agency', [2026]],
+      ['Massachusetts Institute of Technology', [2025, 2024, 2023, 2022, 2021, 2020]],
+    ])).toEqual(['Massachusetts Institute of Technology', 'Nvidia'])
+    expect(affiliated([
+      ['University of Connecticut', [2025, 2024, 2023, 2022]],
+      ['University of Southern California', [2025, 2024]],
+    ])).toEqual(['University of Connecticut'])
+    expect(affiliated([
+      ['Tsinghua University', [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017]],
+      ['Research Center for Information Technology in Agriculture', [2025, 2024, 2023, 2022]],
+    ])).toEqual(['Tsinghua University'])
+  })
+
+  it('没有带年份的机构时退回最后已知机构，最多两个', () => {
     const [author] = parseOpenAlexAuthors(body({ results: [{
       id: 'https://openalex.org/A1', display_name: 'Song Han',
-      last_known_institutions: ['MIT', 'Nvidia', 'Tsinghua', 'Stanford', 'CIA'].map((name) => ({ display_name: name })),
-    }] }))
-    expect(author!.affiliations).toEqual(['MIT', 'Nvidia', 'Tsinghua'])
+      last_known_institutions: ['MIT', 'Nvidia', 'Tsinghua'].map((name) => ({ display_name: name })),
+    }] }), 2026)
+    expect(author!.candidate.affiliations).toEqual(['MIT', 'Nvidia'])
+  })
+
+  it('带出研究领域和前两个主题，活跃年份取有论文的最近一年', () => {
+    const [author] = parseOpenAlexAuthors(body({ results: [{
+      id: 'https://openalex.org/A1', display_name: 'Song Han',
+      topics: [
+        { display_name: 'Advanced Neural Network Applications', field: { display_name: 'Computer Science' } },
+        { display_name: 'Domain Adaptation and Few-Shot Learning', field: { display_name: 'Computer Science' } },
+        { display_name: 'Adversarial Robustness in Machine Learning', field: { display_name: 'Computer Science' } },
+      ],
+      counts_by_year: [{ year: 2026, works_count: 0 }, { year: 2025, works_count: 4 }, { year: 2024, works_count: 9 }],
+    }] }), 2026)
+    expect(author!.candidate).toMatchObject({
+      field: 'Computer Science',
+      topics: ['Advanced Neural Network Applications', 'Domain Adaptation and Few-Shot Learning'],
+    })
+    expect(author!.activeYear).toBe(2025)
   })
 
   it('拒绝无法识别的返回结构', () => {
     expect(() => parseOpenAlexWorks(body({ data: [] }))).toThrow('无法识别的论文结果')
-    expect(() => parseOpenAlexAuthors(body({ data: [] }))).toThrow('无法识别的作者结果')
+    expect(() => parseOpenAlexAuthors(body({ data: [] }), 2026)).toThrow('无法识别的作者结果')
     expect(() => parseOpenAlexAuthorWorks(body({ data: [] }))).toThrow('无法识别的作者论文结果')
+  })
+
+  it('论文搜索只取给定年份之后发表的', () => {
+    expect(new URL(openAlexWorkSearchUrl('qlora', 2022)).searchParams.get('filter')).toBe('from_publication_date:2022-01-01')
   })
 
   it('批量取作者与按作者取论文用 OpenAlex 的过滤语法', () => {
@@ -82,23 +127,5 @@ describe('OpenAlex', () => {
     const works = new URL(openAlexAuthorWorksUrl('A1'))
     expect(works.searchParams.get('filter')).toBe('author.id:A1')
     expect(works.searchParams.get('sort')).toBe('publication_date:desc')
-  })
-
-  it('相同名字复用成功缓存，并合并同时发生的查询', async () => {
-    let calls = 0
-    let release: (() => void) | undefined
-    const blocked = new Promise<void>((done) => { release = done })
-    const get: HttpGet = async () => {
-      calls += 1
-      await blocked
-      return { status: 200, body: body({ results: [{ id: 'https://openalex.org/A1', display_name: 'Song Han' }] }) }
-    }
-    const openAlex = createOpenAlex({ get, sleep: async () => {}, now: () => 100 })
-    const one = openAlex.searchAuthors('Song  Han')
-    const two = openAlex.searchAuthors(' song han ')
-    release?.()
-    await expect(Promise.all([one, two])).resolves.toHaveLength(2)
-    await expect(openAlex.searchAuthors('SONG HAN')).resolves.toMatchObject([{ source: 'openalex', id: 'A1' }])
-    expect(calls).toBe(1)
   })
 })

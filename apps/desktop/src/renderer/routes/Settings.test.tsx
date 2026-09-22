@@ -139,7 +139,7 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
     expect([...dialog.querySelectorAll('[data-setcat]')].map((node) => node.textContent))
-      .toEqual(['外观', '存储', 'AI 模型', '扩展', '论文推送', '关注', '发现', '归档的对话'])
+      .toEqual(['外观', '存储', 'API', '模型', '科研', '扩展', '论文推送', '关注', '发现', '归档的对话'])
     expect(dialog.querySelector('[data-setcat="delivery-watch"]')?.classList.contains('on')).toBe(true)
     expect(dialog.querySelector('[data-testid="watch-settings"]')).not.toBeNull()
     expect(dialog.querySelector('[data-testid="discovery-settings"]')).toBeNull()
@@ -166,6 +166,22 @@ describe('Settings', () => {
       dialog.querySelector<HTMLButtonElement>('.delivery-setting-control .btn')!.click()
     })
     expect(api.updateDeliverySettings).toHaveBeenCalledWith({ maxItemsPerRun: 12 })
+  })
+
+  it('API 总览列出模型和科研的当前状态，点科研进入 Semantic Scholar key 页', async () => {
+    api.modelSettings.mockResolvedValueOnce({
+      ...(await api.modelSettings()), model: 'gpt-test', configured: true,
+    })
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
+    expect(dialog.querySelector('[data-api="model"] .api-state')?.textContent).toBe('OpenAI · gpt-test')
+    expect(dialog.querySelector('[data-api="research"] .api-state')?.textContent).toBe('OpenAlex（未填 Semantic Scholar key）')
+
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-api="research"] .btn')!.click() })
+    expect(dialog.querySelector('[data-setcat="research"]')?.classList.contains('on')).toBe(true)
+    expect(dialog.querySelector('[data-semantic-key]')).not.toBeNull()
+    expect(dialog.querySelector('[data-semantic-active]')?.textContent).toBe('当前：OpenAlex')
   })
 
   it('扩展设置显示 Core 检查结果:已安装的给更新命令,未安装的给安装命令', async () => {

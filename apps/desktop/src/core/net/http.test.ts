@@ -112,6 +112,24 @@ describe('createRateLimitedGet', () => {
     expect(waits).toEqual([5_000])
   })
 
+  it('要排队超过 maxQueueMs 的请求不发出，直接得到 429；不设上限的请求照常等冷却', async () => {
+    let now = 0
+    const sent: string[] = []
+    const raw: HttpGet = async (url) => {
+      sent.push(url)
+      return url.endsWith('one')
+        ? { status: 429, body: bytes(''), retryAfterMs: 15_000 }
+        : { status: 200, body: bytes('ok') }
+    }
+    const get = createRateLimitedGet(raw, {
+      minIntervalMs: 1_000, now: () => now, sleep: async (ms) => { now += ms },
+    })
+    await get('https://s2/one', { limit: 100 })
+    expect((await get('https://s2/hurry', { limit: 100, maxQueueMs: 3_000 })).status).toBe(429)
+    expect((await get('https://s2/patient', { limit: 100 })).status).toBe(200)
+    expect(sent).toEqual(['https://s2/one', 'https://s2/patient'])
+  })
+
   it('给服务的每个请求合并固定请求头', async () => {
     let headers: Record<string, string> | undefined
     const get = createRateLimitedGet(async (_url, options) => {

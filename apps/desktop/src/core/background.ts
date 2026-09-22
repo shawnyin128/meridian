@@ -11,6 +11,8 @@ import { createRateLimitedGet, HttpStatusError, netReason } from './net/http.js'
 import { createSemanticAuthors } from './net/semantic-authors.js'
 import { createWatchSuggestions } from './net/watch-suggestions.js'
 import { createOpenAlex } from './net/openalex.js'
+import { createAuthorSearch, type ScholarSource } from './net/scholar-sources.js'
+import { createSemanticSearch } from './net/semantic-search.js'
 import { createMetadataQueue, type PdfProbe } from './paper-library/index.js'
 import {
   createRecommendationService, createSemanticRecommendations, createSemanticScholar,
@@ -44,16 +46,24 @@ export function createBackground(deps: {
   let writes = 0
   const onWrite = (): void => { writes += 1 }
   const arxiv = createArxiv({ get: deps.get, minIntervalMs: deps.arxivIntervalMs, now: deps.now, sleep: deps.sleep })
+  const semanticKey = (): string | undefined => (
+    deps.semanticScholarApiKey?.()?.trim() || undefined
+  )
   const keyedGet: HttpGet = (url, options) => {
-    const apiKey = deps.semanticScholarApiKey?.()?.trim() || process.env['SEMANTIC_SCHOLAR_API_KEY']?.trim()
+    const apiKey = semanticKey()
     return deps.get(url, apiKey ? { ...options, headers: { ...options.headers, 'x-api-key': apiKey } } : options)
   }
   const semanticGet = createRateLimitedGet(keyedGet, { minIntervalMs: 1_100, sleep: deps.sleep, now: deps.now })
   const scholar = createSemanticScholar({ get: semanticGet, sleep: deps.sleep, now: deps.now })
   const authors = createSemanticAuthors({ get: semanticGet, sleep: deps.sleep })
-  // OpenAlex needs no key, so watch suggestions and author search work out of the box.
   const openAlex = createOpenAlex({ get: deps.get, sleep: deps.sleep, now: deps.now })
-  const watchSuggestions = createWatchSuggestions({ source: openAlex, now: deps.now })
+  const semanticSearch = createSemanticSearch({ get: semanticGet, sleep: deps.sleep })
+  // Semantic Scholar leads once a key is saved; OpenAlex needs no key and answers whenever it cannot.
+  const scholarSources = (): readonly ScholarSource[] => (
+    semanticKey() === undefined ? [openAlex] : [semanticSearch, openAlex]
+  )
+  const watchSuggestions = createWatchSuggestions({ sources: scholarSources, now: deps.now })
+  const authorSearch = createAuthorSearch({ sources: scholarSources, now: deps.now })
   const recommendations = createSemanticRecommendations({ get: semanticGet, sleep: deps.sleep })
   const recommendation = createRecommendationService({
     store: deps.store, provider: recommendations, onWrite, now: deps.now,
@@ -77,7 +87,7 @@ export function createBackground(deps: {
     fetchWatches: (watchIds) => fetcher.run(watchIds),
     async searchAuthors(query) {
       try {
-        return await openAlex.searchAuthors(query)
+        return await authorSearch.search(query)
       } catch (error) {
         if (error instanceof HttpStatusError && error.status === 429) {
           throw new Error('OpenAlex 正在限流，请稍后重试；也可以先按姓名保存为未确认作者')

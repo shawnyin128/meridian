@@ -11,7 +11,7 @@ const APPLY_URL = 'https://www.semanticscholar.org/product/api#api-key-form'
 /** The optional Semantic Scholar API key: shown masked once saved, replaced or removed on request. */
 export function SemanticKeySettings() {
   const m = useMessages()
-  const copy = m.settings.discovery.semanticKey
+  const copy = m.settings.research.semanticKey
   const [status, setStatus] = useState<SemanticKeyStatus | null>(null)
   const [draft, setDraft] = useState('')
   const [editing, setEditing] = useState(false)
@@ -44,6 +44,7 @@ export function SemanticKeySettings() {
         {copy.explain}{' '}
         <a href={APPLY_URL} target="_blank" rel="noreferrer">{copy.apply}</a>
       </p>
+      <p className="settings-explain" data-semantic-active>{copy.active(status.configured)}</p>
       {error === null ? null : <div className="err">{error}</div>}
       <div className="semantic-key-row">
         {showingSaved ? (

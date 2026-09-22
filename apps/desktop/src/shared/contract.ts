@@ -1007,6 +1007,9 @@ export const AuthorCandidateSchema = z.object({
   paperCount: z.number().int().min(0),
   citationCount: z.number().int().min(0),
   hIndex: z.number().int().min(0),
+  /** The author's main research field and topics, when the source classifies authors. */
+  field: z.string().trim().min(1).optional(),
+  topics: z.array(z.string().trim().min(1)).max(2).optional(),
 }).strict()
 
 /** A topic inferred from relevant scholarly records, before the user chooses to create a watch. */

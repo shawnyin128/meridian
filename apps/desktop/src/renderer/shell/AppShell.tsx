@@ -101,7 +101,7 @@ const JumpContext = createContext<{
 } | null>(null)
 /** Which screen does the current children belong to? The hanging screens are all running, and things across the screens must recognize their own grid. */
 const SlotContext = createContext<ScreenKey | null>(null)
-export type SettingsCategory = 'appearance' | 'storage' | 'model' | 'extensions' | 'delivery' | 'delivery-watch' | 'delivery-discovery' | 'archived'
+export type SettingsCategory = 'appearance' | 'storage' | 'api' | 'model' | 'research' | 'extensions' | 'delivery' | 'delivery-watch' | 'delivery-discovery' | 'archived'
 const SettingsContext = createContext<{
   open: boolean
   requestedCategory: SettingsCategory | null

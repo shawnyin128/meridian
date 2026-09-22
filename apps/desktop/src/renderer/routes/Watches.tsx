@@ -378,6 +378,11 @@ export function WatchSettings() {
                           <div className="author-match-copy">
                             <strong>{candidate.name}</strong>
                             <span>{candidate.affiliations.join(' · ') || m.watches.noAffiliation}</span>
+                            {candidate.field === undefined && candidate.topics === undefined ? null : (
+                              <span data-author-research title={candidate.topics?.join(' · ')}>
+                                {[candidate.field, candidate.topics?.[0]].filter(Boolean).join(' · ')}
+                              </span>
+                            )}
                             <small>
                               {m.watches.candidateInfo(candidate.paperCount, candidate.citationCount, candidate.hIndex)}
                             </small>

@@ -137,6 +137,35 @@ describe('createBackground', () => {
     })
   })
 
+  it('没存 key 时关注建议和作者搜索只问 OpenAlex；存了 key 先问 Semantic Scholar，失败再由 OpenAlex 回答', async () => {
+    const store = createFixtureStore(() => '2026-08-25')
+    const canned = createCannedGet(cannedNet as CannedTable, VAULT)
+    const hosts: string[] = []
+    const saved: { key?: string } = {}
+    const background = createBackground({
+      store,
+      get: async (url, options) => {
+        hosts.push(new URL(url).hostname)
+        return url.includes('semanticscholar.org') ? { status: 429, body: new Uint8Array() } : canned(url, options)
+      },
+      probe: probePdf, arxivIntervalMs: 0, sleep: async () => {}, now: () => 0,
+      semanticScholarApiKey: () => saved.key,
+    })
+    await background.suggestWatches({ focus: 'speculative decoding' })
+    await background.searchAuthors('Song Han')
+    expect(new Set(hosts)).toEqual(new Set(['api.openalex.org']))
+
+    hosts.length = 0
+    saved.key = 'saved-key'
+    const result = await background.suggestWatches({ focus: 'speculative decoding' })
+    const authors = await background.searchAuthors('Song Han')
+    // The 429 starts a cooldown, so the author search right after it goes straight to OpenAlex.
+    expect(hosts.filter((host) => host === 'api.semanticscholar.org')).toHaveLength(1)
+    expect(hosts[0]).toBe('api.semanticscholar.org')
+    expect(result.authors[0]).toMatchObject({ source: 'openalex' })
+    expect(authors[0]).toMatchObject({ source: 'openalex' })
+  })
+
   it('作者服务持续限流时给可恢复的说明,不把裸 429 暴露给界面', async () => {
     const store = createFixtureStore(() => '2026-08-25')
     const background = createBackground({

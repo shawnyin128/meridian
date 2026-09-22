@@ -34,6 +34,10 @@ const fixtureAuthorSearch = (url: string): Uint8Array => {
       id: `https://openalex.org/fixture-${slug}-${at + 1}`,
       display_name: query,
       last_known_institutions: [{ display_name: affiliation }],
+      topics: [{
+        display_name: ['Advanced Neural Network Applications', 'Metamaterials and Metasurfaces', 'Real-Time Systems Scheduling'][at],
+        field: { display_name: ['Computer Science', 'Materials Science', 'Computer Science'][at] },
+      }],
       works_count: 46 - at * 11,
       cited_by_count: 1280 - at * 360,
       summary_stats: { h_index: 19 - at * 4 },
