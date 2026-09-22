@@ -53,7 +53,7 @@ describe('watch suggestions', () => {
 
     expect(result.paperCount).toBe(3)
     expect(result.topics).toEqual(expect.arrayContaining([
-      { name: 'batch aware verification', relatedPapers: 0 },
+      { name: 'batch-aware verification', relatedPapers: 0 },
       { name: 'speculative decoding', relatedPapers: 2 },
     ]))
     expect(result.authors[0]).toMatchObject({

@@ -63,6 +63,14 @@ describe('OpenAlex', () => {
     })
   })
 
+  it('作者机构最多留前三个，免得把历年所有挂靠都列出来', () => {
+    const [author] = parseOpenAlexAuthors(body({ results: [{
+      id: 'https://openalex.org/A1', display_name: 'Song Han',
+      last_known_institutions: ['MIT', 'Nvidia', 'Tsinghua', 'Stanford', 'CIA'].map((name) => ({ display_name: name })),
+    }] }))
+    expect(author!.affiliations).toEqual(['MIT', 'Nvidia', 'Tsinghua'])
+  })
+
   it('拒绝无法识别的返回结构', () => {
     expect(() => parseOpenAlexWorks(body({ data: [] }))).toThrow('无法识别的论文结果')
     expect(() => parseOpenAlexAuthors(body({ data: [] }))).toThrow('无法识别的作者结果')

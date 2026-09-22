@@ -23,8 +23,9 @@ type TopicCandidate = {
   seeded: boolean
 }
 
+/** Lower-cased words, keeping hyphenated terms such as post-training whole. */
 const tokens = (value: string): string[] => (
-  value.toLocaleLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []
+  value.toLocaleLowerCase().match(/[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*/gu) ?? []
 )
 
 const usefulRuns = (value: string): string[][] => {

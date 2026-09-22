@@ -17,6 +17,8 @@ const AUTHOR_BATCH_LIMIT = 30
 const AUTHOR_WORK_SCAN_LIMIT = 100
 const AUTHOR_WORK_LIMIT = 20
 const AUTHOR_SEARCH_CACHE_MS = 24 * 60 * 60 * 1_000
+// OpenAlex lists every institution an author was ever linked to, often noisily; a few tell namesakes apart.
+const AFFILIATION_LIMIT = 3
 
 export const openAlexWorkSearchUrl = (query: string): string => `${API}/works?${new URLSearchParams({
   search: query, 'per-page': String(PAPER_LIMIT), select: SEARCH_WORK_FIELDS,
@@ -87,7 +89,7 @@ export function parseOpenAlexAuthors(body: Uint8Array): AuthorCandidate[] {
     const institutions = Array.isArray(row['last_known_institutions']) ? row['last_known_institutions'] : []
     const affiliations = [...new Set(institutions.map((institution) => (
       text((institution as { display_name?: unknown } | null)?.display_name)
-    )).filter(Boolean))]
+    )).filter(Boolean))].slice(0, AFFILIATION_LIMIT)
     const stats = row['summary_stats'] as { h_index?: unknown } | null | undefined
     return [{
       source: 'openalex' as const, id, name, affiliations,
