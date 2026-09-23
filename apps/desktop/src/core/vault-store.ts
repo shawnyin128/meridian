@@ -1426,7 +1426,7 @@ export function createVaultStore(
     createTask(projectId, task) {
       const project = projectOf(projectId)
       checkSpan(task)
-      return writeProject({ ...project, tasks: [...project.tasks, { ...task, id: nextId('task') }] }, ['tasks'])
+      return writeProject({ ...project, tasks: [{ ...task, id: nextId('task') }, ...project.tasks] }, ['tasks'])
     },
 
     updateTask(projectId, taskId, patch) {
@@ -1464,7 +1464,7 @@ export function createVaultStore(
     createMilestone(projectId, milestone) {
       const project = projectOf(projectId)
       return writeProject(
-        { ...project, milestones: [...project.milestones, { ...milestone, id: nextId('ms') }] },
+        { ...project, milestones: [{ ...milestone, id: nextId('ms') }, ...project.milestones] },
         ['milestones'],
       )
     },
@@ -1507,7 +1507,7 @@ export function createVaultStore(
       return writeProject({
         ...project,
         relations: seen
-          ? project.relations.map((r) => (r.group === group ? { ...r, items: [...r.items, item] } : r))
+          ? project.relations.map((r) => (r.group === group ? { ...r, items: [item, ...r.items] } : r))
           : [...project.relations, { group, items: [item] }],
       }, ['relations'])
     },
@@ -1528,7 +1528,7 @@ export function createVaultStore(
       const project = projectOf(projectId)
       if (!papers.has(paperId)) throw new Error(`论文不存在:${paperId}`)
       if (project.papers.includes(paperId)) throw new Error(`已经关联过这篇论文:${paperId}`)
-      return writeProject({ ...project, papers: [...project.papers, paperId] }, ['papers'])
+      return writeProject({ ...project, papers: [paperId, ...project.papers] }, ['papers'])
     },
 
     removePaper(projectId, paperId) {
@@ -1563,7 +1563,7 @@ export function createVaultStore(
       const project = projectOf(projectId)
       return writeProject({
         ...project,
-        attachments: [...project.attachments, { ...attachment, id: nextId('att') }],
+        attachments: [{ ...attachment, id: nextId('att') }, ...project.attachments],
       }, ['attachments'])
     },
 
@@ -1818,7 +1818,7 @@ export function createVaultStore(
     },
 
     createWatch(watch) {
-      watches = [...watches, { id: nextId('watch'), ...structuredClone(watch), active: true }]
+      watches = [{ id: nextId('watch'), ...structuredClone(watch), active: true }, ...watches]
       save('watches', watches)
     },
 

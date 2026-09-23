@@ -148,9 +148,10 @@ describe('vault app state', () => {
       store.createProject('draft 效率')
       const id = store.listProjects()[0]!.id
       store.createRelation(id, { group: 'Wiki', text: '甲' })
-      const second = store.createRelation(id, { group: 'Wiki', text: '乙' }).relations[0]!.items[1]!
-      store.moveRelation(id, second.id, 0)
-      expect(reopen().getProject(id).relations[0]!.items.map((i) => i.text)).toEqual(['乙', '甲'])
+      // New items go to the front of their group, so the second one created sits ahead of the first.
+      const first = store.createRelation(id, { group: 'Wiki', text: '乙' }).relations[0]!.items[1]!
+      store.moveRelation(id, first.id, 0)
+      expect(reopen().getProject(id).relations[0]!.items.map((i) => i.text)).toEqual(['甲', '乙'])
     })
 
     it('科研记录追在正文里,一条一行', () => {

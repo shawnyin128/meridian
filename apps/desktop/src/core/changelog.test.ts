@@ -354,7 +354,7 @@ describe('change log', () => {
     store.createTask(PROJECT, {
       title: '要撤销的任务', start: '2026-08-25', end: '2026-08-31', state: 'act', priority: 'p1',
     })
-    expect(store.getProject(PROJECT).tasks.at(-1)!.title).toBe('要撤销的任务')
+    expect(store.getProject(PROJECT).tasks[0]!.title).toBe('要撤销的任务')
     store.undoChange(recorded()[0]!.id)
     expect(store.getProject(PROJECT)).toEqual(before)
   })

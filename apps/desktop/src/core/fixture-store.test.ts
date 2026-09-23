@@ -397,16 +397,16 @@ describe('fixture store', () => {
       title: '宽树实验补 B≥8', start: '2026-08-25', end: '2026-08-31', state: 'act', priority: 'p1',
     })
     expect(after.tasks).toHaveLength(before + 1)
-    const created = after.tasks.at(-1)!
+    const created = after.tasks[0]!
     expect(created.id).not.toBe('')
     expect(created.title).toBe('宽树实验补 B≥8')
-    expect(store.getProject('draft').tasks.at(-1)?.id).toBe(created.id)
+    expect(store.getProject('draft').tasks[0]?.id).toBe(created.id)
   })
 
   it('新建任务不带备注,后来补写的备注能读回和改写', () => {
     const created = store.createTask('draft', {
       title: '写备注的任务', start: '2026-08-25', end: '2026-08-31', state: 'act', priority: 'p1',
-    }).tasks.at(-1)!
+    }).tasks[0]!
     expect(created.note).toBeUndefined()
     const withNote = store.updateTask('draft', created.id, { note: '先跑 A/B 两组,再看结论' })
     expect(withNote.tasks.find((t) => t.id === created.id)?.note).toBe('先跑 A/B 两组,再看结论')
@@ -418,15 +418,15 @@ describe('fixture store', () => {
     const before = store.getProject('draft').milestones.length
     const after = store.createMilestone('draft', { date: '2026-09-01', title: '补齐基线', done: false })
     expect(after.milestones).toHaveLength(before + 1)
-    const created = after.milestones.at(-1)!
+    const created = after.milestones[0]!
     expect(created.id).not.toBe('')
-    expect(store.getProject('draft').milestones.at(-1)?.title).toBe('补齐基线')
+    expect(store.getProject('draft').milestones[0]?.title).toBe('补齐基线')
   })
 
   it('两次新建拿到的 id 不相同', () => {
     const fields = { title: '同名任务', start: '2026-08-25', end: '2026-08-31', state: 'act', priority: 'p1' } as const
-    const first = store.createTask('draft', fields).tasks.at(-1)!.id
-    const second = store.createTask('draft', fields).tasks.at(-1)!.id
+    const first = store.createTask('draft', fields).tasks[0]!.id
+    const second = store.createTask('draft', fields).tasks[0]!.id
     expect(second).not.toBe(first)
   })
 
@@ -464,21 +464,21 @@ describe('fixture store', () => {
     expect(() => store.deleteMilestone('draft', 'no-such-milestone')).toThrow(/no-such-milestone/)
   })
 
-  it('新建的关联条目带上了 id 并进入既有的那一组', () => {
+  it('新建的关联条目带上了 id 并排在这一组的最前面', () => {
     const before = store.getProject('draft').relations.find((r) => r.group === 'Wiki')!.items.length
     const after = store.createRelation('draft', { group: 'Wiki', text: '前缀读取与验证共调度' })
     const group = after.relations.find((r) => r.group === 'Wiki')!
     expect(group.items).toHaveLength(before + 1)
-    expect(group.items.at(-1)!.id).not.toBe('')
-    expect(group.items.at(-1)!.text).toBe('前缀读取与验证共调度')
-    expect(store.getProject('draft').relations.find((r) => r.group === 'Wiki')?.items.at(-1)?.text)
+    expect(group.items[0]!.id).not.toBe('')
+    expect(group.items[0]!.text).toBe('前缀读取与验证共调度')
+    expect(store.getProject('draft').relations.find((r) => r.group === 'Wiki')?.items[0]?.text)
       .toBe('前缀读取与验证共调度')
   })
 
   it('关联 Wiki 条目带上的页要是 wiki 里的一页聚合', () => {
     const page = store.wikiCards()[0]!
     const after = store.createRelation('draft', { group: 'Wiki', text: page.title, page: page.id })
-    expect(after.relations.find((relation) => relation.group === 'Wiki')!.items.at(-1)!.page)
+    expect(after.relations.find((relation) => relation.group === 'Wiki')!.items[0]!.page)
       .toBe(page.id)
     expect(() => store.createRelation('draft', {
       group: 'Wiki', text: 'x', page: 'topics/nope',
@@ -539,9 +539,9 @@ describe('fixture store', () => {
     const path = resolve(VAULT, 'sweep.csv')
     const after = store.createAttachment('draft', { name: 'sweep.csv', size: '12 KB', path })
     expect(after.attachments).toHaveLength(before + 1)
-    expect(after.attachments.at(-1)!.id).not.toBe('')
-    expect(store.getProject('draft').attachments.at(-1)?.name).toBe('sweep.csv')
-    expect(store.getProject('draft').attachments.at(-1)?.path).toBe(path)
+    expect(after.attachments[0]!.id).not.toBe('')
+    expect(store.getProject('draft').attachments[0]?.name).toBe('sweep.csv')
+    expect(store.getProject('draft').attachments[0]?.path).toBe(path)
   })
 
   it('附件的路径要是绝对路径', () => {
@@ -1087,12 +1087,12 @@ describe('fixture store', () => {
       title: '新增分时任务', start: EPOCH, end: EPOCH,
       window: { start: '14:00', end: '16:00' }, state: 'act', priority: 'p1',
     })
-    const task = made.tasks.at(-1)!
+    const task = made.tasks[0]!
     expect(task.window).toEqual({ start: '14:00', end: '16:00' })
     expect(() => store.updateTask('timeline-demo', task.id, {
       window: { start: '18:00', end: '16:00' },
     })).toThrow(/结束时间/)
-    expect(store.updateTask('timeline-demo', task.id, { window: null }).tasks.at(-1)!.window)
+    expect(store.updateTask('timeline-demo', task.id, { window: null }).tasks[0]!.window)
       .toBeUndefined()
   })
 
@@ -1193,15 +1193,15 @@ describe('fixture store', () => {
     const withTask = store.createTask('draft', {
       title: '新任务', start: '2026-08-25', end: '2026-08-31', state: 'act', priority: 'p1',
     })
-    const newTaskId = withTask.tasks.at(-1)!.id
-    withTask.tasks.at(-1)!.title = '篡改后的标题'
+    const newTaskId = withTask.tasks[0]!.id
+    withTask.tasks[0]!.title = '篡改后的标题'
     withTask.milestones[0]!.title = '篡改后的标题'
     expect(store.getProject('draft').tasks.find((t) => t.id === newTaskId)?.title).toBe('新任务')
     expect(store.getProject('draft').milestones[0]!.title).not.toBe('篡改后的标题')
 
     const withMs = store.createMilestone('draft', { date: '2026-09-01', title: '新里程碑', done: false })
-    const newMsId = withMs.milestones.at(-1)!.id
-    withMs.milestones.at(-1)!.date = '2030-01-01'
+    const newMsId = withMs.milestones[0]!.id
+    withMs.milestones[0]!.date = '2030-01-01'
     expect(store.getProject('draft').milestones.find((m) => m.id === newMsId)?.date).toBe('2026-09-01')
 
     const afterDelete = store.deleteTask('draft', newTaskId)
@@ -1453,15 +1453,16 @@ describe('fixture store', () => {
     }
   })
 
-  it('关注:新建的排在最后且是启用的,暂停只改启停', () => {
+  it('关注:新建的排在最前面且是启用的,暂停只改启停', () => {
     expect(store.listWatches().map((w) => w.id)).toEqual(['spec', 'moe', 'dao'])
 
     store.createWatch({ type: 'author', name: 'A. Gu' })
-    expect(store.listWatches().at(-1)).toMatchObject({ type: 'author', name: 'A. Gu', active: true })
-    expect(store.listWatches().at(-1)!.id).not.toBe('')
+    expect(store.listWatches()[0]).toMatchObject({ type: 'author', name: 'A. Gu', active: true })
+    expect(store.listWatches()[0]!.id).not.toBe('')
 
     store.setWatchActive('spec', false)
-    expect(store.listWatches()[0]).toMatchObject({ id: 'spec', name: 'speculative decoding', active: false })
+    expect(store.listWatches().find((w) => w.id === 'spec'))
+      .toMatchObject({ id: 'spec', name: 'speculative decoding', active: false })
     // Pausing stops future fetches but keeps already fetched entries.
     expect(store.listInbox().filter((e) => e.watch === 'spec')).toHaveLength(4)
   })
