@@ -46,14 +46,16 @@ const DATA: WikiData = {
 
 /**
  * A world with project `draft` (verified node conclusions on exp1 and wide, an unverified one on
- * fresh, none on open, legacy conclusion c1) and one highlight on EAGLE-2.
+ * fresh, none on open, legacy conclusions c1 verified and c2 pending) and one highlight on EAGLE-2.
+ * It requires verified conclusions unless `requireVerified` says otherwise, as when an agent submits.
  */
-const world = (by = '我'): ClaimWorld => ({
+const world = (by = '我', requireVerified = true): ClaimWorld => ({
   by,
+  requireVerified,
   project: (id) => (id === 'draft'
     ? {
-      nodes: ['exp1', 'wide', 'fresh', 'open'], conclusions: ['c1'],
-      concluded: ['exp1', 'wide', 'fresh'], verified: ['exp1', 'wide'],
+      nodes: ['exp1', 'wide', 'fresh', 'open'], conclusions: ['c1', 'c2'],
+      concluded: ['exp1', 'wide', 'fresh'], verified: ['exp1', 'wide'], verifiedConclusions: ['c1'],
     }
     : undefined),
   reading: (paper) => (paper === 'papers/eagle' ? { highlights: ['h-1'], notes: ['n-1'] } : { highlights: [], notes: [] }),
@@ -123,14 +125,18 @@ describe('claim ops', () => {
     expect(() => run([{ op: 'reviseClaim', page: 'topics/sd', claim: 'plain', text: '改过' }])).not.toThrow()
   })
 
-  it('节点当证据:agent 要节点已有结论,「我」要结论已验证;冲突的对象不受限', () => {
-    const add = (node: string, by: string) => () => run([{ op: 'addClaim', page: 'topics/sd', claim: {
-      id: 'n', text: 'x', evidence: [{ kind: 'experiment', project: 'draft', node }],
-    } }], by)
-    expect(add('open', AGENT)).toThrow(/节点 open 还没有结论/)
-    expect(add('fresh', AGENT)).not.toThrow()
-    expect(add('fresh', '我')).toThrow(/节点 fresh 的结论还没验证/)
-    expect(add('wide', '我')).not.toThrow()
+  it('项目结论当证据:agent 提交时要节点已有结论,写进 Wiki 时要结论已验证,不管谁提的;冲突的对象不受限', () => {
+    const add = (evidence: Evidence, by: string, requireVerified = true) => () => applyProposal(DATA, { ops: [{
+      op: 'addClaim', page: 'topics/sd', claim: { id: 'n', text: 'x', evidence: [evidence] },
+    }] }, TODAY, world(by, requireVerified))
+    const node = (id: string): Evidence => ({ kind: 'experiment', project: 'draft', node: id })
+    expect(add(node('open'), AGENT, false)).toThrow(/节点 open 还没有结论/)
+    expect(add(node('fresh'), AGENT, false)).not.toThrow()
+    expect(add(node('fresh'), AGENT)).toThrow(/节点 fresh 的结论还没验证/)
+    expect(add(node('fresh'), '我')).toThrow(/节点 fresh 的结论还没验证/)
+    expect(add(node('wide'), '我')).not.toThrow()
+    expect(add({ kind: 'experiment', project: 'draft', conclusion: 'c2' }, '我')).toThrow(/结论 c2 还没验证/)
+    expect(add({ kind: 'experiment', project: 'draft', conclusion: 'c2' }, AGENT, false)).not.toThrow()
     expect(() => run([{ op: 'markConflict', page: 'topics/sd', claim: 'plain', conflict: {
       id: 'x', against: { kind: 'experiment', project: 'draft', node: 'open' }, note: '实验说法相反',
     } }])).not.toThrow()

@@ -205,7 +205,7 @@ describe('project workspace protocol', () => {
       node_details: {
         't.A': {
           tasks: ['task-1'],
-          conclusion: { text: 'Width 8 wins at B>=8', date: '2026-09-20', evidence: ['exp-1', 'exp-9'] },
+          conclusion: { text: 'Width 8 wins at B>=8', date: '2026-09-20', evidence: ['exp-1', 'exp-9'], revision: 'r1' },
         },
         't.B': { next_action: 'Run it.' },
       },
@@ -220,6 +220,7 @@ describe('project workspace protocol', () => {
       conclusion: {
         text: 'Width 8 wins at B>=8', date: '2026-09-20',
         evidence: [{ id: 'exp-1', title: 'Width sweep' }, { id: 'exp-9', title: 'exp-9' }],
+        revision: 'r1',
       },
     })
     expect(open).not.toHaveProperty('tasks')

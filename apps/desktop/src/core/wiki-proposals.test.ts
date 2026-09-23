@@ -39,6 +39,12 @@ const addClaim = (id: string, page = 'topics/qat'): ProposalOp => ({
   op: 'addClaim', page, claim: { id, text: `结论 ${id}`, evidence: [{ kind: 'experiment', project: 'draft', node: 'knee' }] },
 })
 
+/** Verifies the conclusion node `node` of project `project` holds, as the user would from the Conclusions view. */
+const verify = (store: VaultStore, project: string, node: string): void => {
+  const shown = store.getProject(project).projectConclusions!.find((c) => c.node === node)!
+  store.verifyConclusion(project, node, shown.fingerprint!)
+}
+
 const claimOn = (store: VaultStore, page: string, id: string): WikiClaim | undefined =>
   store.wikiAggregation(page).claims.find((c) => c.id === id)
 
@@ -82,6 +88,7 @@ describe('review queue on the fixture library', () => {
   })
 
   it('应用:按提出者写入并记一条「实验」来源的变动,记录变成 applied 并指向那条变动;撤销还原', async () => {
+    verify(store, 'draft', 'knee')
     const [valid] = queue.list('queued')
     const before = store.wikiAggregation('topics/kv-cache-quantization').claims
     const receipt = await queue.decide(valid!.id, 'apply')
@@ -98,6 +105,17 @@ describe('review queue on the fixture library', () => {
     await expect(queue.decide(valid!.id, 'apply')).rejects.toThrow('这条提案已经处理过了')
     store.undoChange(change.id)
     expect(store.wikiAggregation('topics/kv-cache-quantization').claims).toEqual(before)
+  })
+
+  it('引用了没验证的项目结论:照样排队,列表标出待验证的结论,应用被拒且留在队列;验证之后能应用', async () => {
+    const [valid] = queue.list('queued')
+    expect(valid!.unverified).toEqual(['projects/draft#knee'])
+    await expect(queue.decide(valid!.id, 'apply')).rejects.toThrow('结论待验证:projects/draft#knee。验证之后再应用')
+    expect(queue.list().find((p) => p.id === valid!.id)!.status).toBe('queued')
+    expect((await queue.propose(envelope(store, [addClaim('unverified')]))).status).toBe('queued')
+    verify(store, 'draft', 'knee')
+    expect(queue.list('queued')[0]!.unverified).toEqual([])
+    expect((await queue.decide(valid!.id, 'apply')).status).toBe('applied')
   })
 
   it('应用一条过期的提案:拒收为 stale,Wiki 一个字不动;拒绝时记下理由', async () => {
@@ -159,6 +177,7 @@ describe('review queue on the fixture library', () => {
   })
 
   it('新版本多写的字段不拒收,记录里原样留着', async () => {
+    verify(store, 'draft', 'knee')
     const op = { ...addClaim('future'), confidence: 0.9 } as ProposalOp
     const receipt = await queue.propose({ ...envelope(store, [op]), priority: 'high' })
     expect(receipt.status).toBe('queued')
@@ -235,6 +254,7 @@ describe('review queue on a vault', () => {
       node_details: { [node]: { conclusion: { text: '宽树在 B≥8 时净赚', date: '2026-09-20', evidence: ['exp-1'] } } },
     }))
     store.bindProjectWorkspace(id, { kind: 'local', root })
+    verify(store, id, node)
     const conclusion = store.createConclusion(id, '宽树在 B≥8 时净赚', {}).conclusionList[0]!.id
     store.setConclusionState(id, conclusion, 'verified')
     return { id, node, conclusion }

@@ -176,6 +176,29 @@ export function createWikiProposals({ store, pdf, now }: {
     return { titles, claimTexts }
   }
 
+  /**
+   * `projects/<id>#<node or conclusion>` of each project conclusion `proposal` cites as evidence that the
+   * user has not verified: a node conclusion without a current verification, or a legacy conclusion
+   * whose stored state is not verified. A project that is gone is left to validation.
+   */
+  const unverifiedOf = (proposal: AgentProposal): string[] => {
+    const refs: string[] = []
+    for (const op of proposal.ops) {
+      const items = op.op === 'addClaim' ? op.claim.evidence
+        : op.op === 'reviseClaim' || op.op === 'addEvidence' ? op.evidence ?? [] : []
+      for (const e of items) {
+        if (e.kind !== 'experiment' || !store.listProjects().some((p) => p.id === e.project)) continue
+        const held = store.getProject(e.project)
+        const verified = e.node !== undefined
+          ? held.projectConclusions?.find((c) => c.node === e.node)?.verifiedOn !== undefined
+          : held.conclusionList.find((c) => c.id === e.conclusion)?.state === 'verified'
+        const ref = `projects/${e.project}#${e.node ?? e.conclusion}`
+        if (!verified && !refs.includes(ref)) refs.push(ref)
+      }
+    }
+    return refs
+  }
+
   /** Write protocol §7.1 steps 3–6 against the vault as it stands. */
   const evaluate = async (proposal: AgentProposal): Promise<Outcome> => {
     const reject = (kind: 'stale' | 'invalid', message: string): Outcome =>
@@ -269,7 +292,8 @@ export function createWikiProposals({ store, pdf, now }: {
 
     /**
      * Returns the queue records with `status` (every record when absent), newest first, each with the
-     * pages it would write, whether its base is stale now, and the titles and claim texts it names. A
+     * pages it would write, whether its base is stale now, the unverified project conclusions a queued one
+     * cites, and the titles and claim texts it names. A
      * record whose proposal cannot be read against the vault is listed as unreadable with the cause as
      * its notice, and the others list as usual.
      */
@@ -281,6 +305,7 @@ export function createWikiProposals({ store, pdf, now }: {
             ...r,
             pages,
             staleNow: r.proposal !== null && staleness(r.proposal) !== null,
+            unverified: r.proposal === null || r.status !== 'queued' ? [] : unverifiedOf(r.proposal),
             ...(r.proposal === null ? { titles: {}, claimTexts: {} } : labelsOf(r.proposal, pages)),
           }
         } catch (error) {
@@ -295,7 +320,8 @@ export function createWikiProposals({ store, pdf, now }: {
      * The user's decision on queued record `id`: `decline` rejects it as declined with `reason`; `apply`
      * reruns the staleness, validation and quote checks and applies it as its producer (recorded in the
      * change log under its trigger's chip), or rejects it as stale or invalid. Throws if there is no such
-     * record or it is not queued.
+     * record, it is not queued, or applying it would write a project conclusion the user has not verified
+     * (the record stays queued).
      */
     async decide(id: string, decision: 'apply' | 'decline', reason?: string): Promise<ProposalReceipt> {
       const record = store.proposalRecords().find((r) => r.id === id)
@@ -308,8 +334,11 @@ export function createWikiProposals({ store, pdf, now }: {
         next = { ...record, status: 'rejected', reason: { kind: 'declined', message: reason ?? '' }, decided }
       } else {
         const outcome = await evaluate(proposal)
+        const unverified = unverifiedOf(proposal)
         if (outcome.status === 'rejected') {
           next = { ...record, status: 'rejected', reason: outcome.reason, decided }
+        } else if (unverified.length > 0) {
+          throw new Error(`结论待验证:${unverified.join('、')}。验证之后再应用`)
         } else {
           store.applyProposal({ source: 'user', title: proposal.title, ops: proposal.ops }, {
             by: byOf(proposal), source: chipOf(proposal),

@@ -190,12 +190,81 @@ class ConclusionTests(unittest.TestCase):
 
             text = (root / THREAD).read_text(encoding="utf-8")
             self.assertEqual(text.count("#### Conclusion"), 1)
-            self.assertIn("Eviction wins at B>=8\n\n- concluded: 2026-09-21\n- evidence: `exp-1`", text)
-            detail = materialize_lab_graph(root).graph["node_details"]["kv.A"]
+            self.assertIn('- text: "Eviction wins at B>=8"\n- concluded: 2026-09-21\n- evidence: ["exp-1"]', text)
+            conclusion = materialize_lab_graph(root).graph["node_details"]["kv.A"]["conclusion"]
             self.assertEqual(
-                detail["conclusion"],
+                {key: value for key, value in conclusion.items() if key != "revision"},
                 {"text": "Eviction wins at B>=8", "date": "2026-09-21", "evidence": ["exp-1"]},
             )
+
+    def test_conclusion_text_never_changes_the_thread_structure(self) -> None:
+        texts = [
+            "### Node Z: injected",
+            "- evidence: `exp-9`",
+            "#### Tasks",
+            "- mode: `dead`",
+            "## Graph Relations",
+            "---",
+            'quote " and \\ backslash',
+            "line\u2028separator and next\x85line",
+            "- text: \"nested\"",
+        ]
+        for injected in texts:
+            with self.subTest(text=injected), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                _write_repo(root, tasks=[])
+                change = {"op": "record_conclusion", "node_id": "kv.B", "text": injected, "evidence": ["exp-1"]}
+                (root / THREAD).write_text(_OLD_THREAD + "\n#### Experiments\n\n- `exp-1`\n", encoding="utf-8")
+                self.assertEqual(apply_lab_update(root, _packet(change))["status"], "applied")
+
+                thread = (root / THREAD).read_text(encoding="utf-8")
+                self.assertEqual(len(thread.splitlines()), thread.count("\n"))
+                graph = materialize_lab_graph(root).graph
+                self.assertEqual([node["id"] for node in graph["nodes"]], ["kv.A", "kv.B"])
+                self.assertEqual([node["state"] for node in graph["nodes"]], ["unresolved", "supported"])
+                conclusion = graph["node_details"]["kv.B"]["conclusion"]
+                self.assertEqual((conclusion["text"], conclusion["evidence"]), (injected, ["exp-1"]))
+
+    def test_reclosing_a_node_or_rewriting_its_experiment_changes_the_conclusion_revision(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_repo(root, tasks=[])
+            close = {"op": "update_node", "node_id": "kv.A", "fields": {"state": "supported"}}
+            record = {"op": "record_conclusion", "node_id": "kv.A", "text": "Eviction wins", "evidence": ["exp-1"]}
+            apply_lab_update(root, _packet(close, record))
+
+            def revision() -> str:
+                return materialize_lab_graph(root).graph["node_details"]["kv.A"]["conclusion"]["revision"]
+
+            first = revision()
+            apply_lab_update(root, _packet({"op": "update_node", "node_id": "kv.A", "fields": {"state": "supported"}}))
+            self.assertEqual(revision(), first)
+            apply_lab_update(root, _packet({"op": "reopen_node", "node_id": "kv.A"}, close))
+            reclosed = revision()
+            self.assertNotEqual(reclosed, first)
+            (root / ".meridian/experiments/exp-1.md").write_text("# Experiment: one, rewritten\n", encoding="utf-8")
+            self.assertNotEqual(revision(), reclosed)
+
+
+class GraphHealthTaskFieldTests(unittest.TestCase):
+    def test_a_malformed_tasks_field_is_a_finding_not_a_crash(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_repo(root, tasks=[])
+            result = materialize_lab_graph(root)
+            for tasks in (None, [{"id": "t1"}], "t1"):
+                with self.subTest(tasks=tasks):
+                    graph = json.loads(json.dumps(result.graph))
+                    graph["node_details"]["kv.A"]["tasks"] = tasks
+                    health = check_lab_graph_payload(graph, lab_root=result.lab_root)
+                    self.assertIn("invalid_node_tasks", [finding["code"] for finding in health["findings"]])
+
+    def test_a_task_id_that_is_not_a_plan_id_shape_is_rejected(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_repo(root, tasks=["t1\n### Node Z"])
+            result = apply_lab_update(root, _packet({"op": "link_task", "node_id": "kv.A", "task_id": "t1\n### Node Z"}))
+            self.assertEqual(_codes(result), ["invalid_task_id"])
 
 
 if __name__ == "__main__":

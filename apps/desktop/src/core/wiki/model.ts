@@ -311,6 +311,22 @@ export function projectClaims(data: WikiData, project: string): {
   })
 }
 
+/** Returns the node or legacy conclusion of project `project` each open claim conflict is raised against, in page id then page order. */
+export function projectDisputes(data: WikiData, project: string): { node?: string; conclusion?: string }[] {
+  return ids(data).flatMap((id) => {
+    const page = data.pages[id]!
+    if (isPaper(page)) return []
+    return readableClaims(page).flatMap((claim) => (claim.conflicts ?? []).flatMap(({ against }) => (
+      against.kind === 'experiment' && against.project === project
+        ? [{
+          ...(against.node === undefined ? {} : { node: against.node }),
+          ...(against.conclusion === undefined ? {} : { conclusion: against.conclusion }),
+        }]
+        : []
+    )))
+  })
+}
+
 /**
  * Returns the aggregation `id` in `data` as the contract shows it: aggregationView's fields plus its
  * claims (wikiClaims, with `projects` naming projects) and `version`. Throws if `id` is not an aggregation.

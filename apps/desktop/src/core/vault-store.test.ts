@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import {
   copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync,
   statSync, writeFileSync,
@@ -10,6 +11,7 @@ import { z } from 'zod'
 import {
   PaperRowSchema, SearchHitSchema, WikiAggregationCardSchema, WikiHomeSchema, WikiPaperSchema, type Evidence,
 } from '../shared/contract.js'
+import { stableJson } from './changelog.js'
 import { createFixtureStore } from './fixture-store.js'
 import { emptyColumns } from './paper-library/index.js'
 import type { VaultStore } from './vault.js'
@@ -1121,20 +1123,25 @@ describe('vault store on the aggregation layout', () => {
       }))
     }
     graph('宽树在 B≥8 时净赚')
-    expect(store.getProject(id).projectConclusions).toEqual([{
+    const shown = store.getProject(id).projectConclusions!
+    expect(shown).toEqual([{
       id: 't.A', node: 't.A', text: '宽树在 B≥8 时净赚', date: '2026-09-09', state: 'pending',
+      fingerprint: expect.stringMatching(/^[0-9a-f]{16}$/),
       tasks: [{ id: task, title: '跑宽度扫描' }], experiments: [{ id: 'exp-1', title: '宽度扫描' }], wiki: [],
     }])
+    const counts = () => store.listProjects().find((p) => p.id === id)!.conclusions
     const write = () => store.applyProposal({ source: 'user', title: '写入 Wiki', ops: [{
       op: 'addClaim', page: 'topics/ptq', claim: {
         id: 'wide-b8', text: '宽树在 B≥8 时净赚', evidence: [{ kind: 'experiment', project: id, node: 't.A' }],
       },
     }] })
     expect(write).toThrow(/节点 t.A 的结论还没验证/)
-    expect(() => store.verifyConclusion(id, 't.B')).toThrow(/t.B/)
+    expect(() => store.verifyConclusion(id, 't.B', shown[0]!.fingerprint!)).toThrow(/t.B/)
+    expect(counts()).toEqual({ verified: 0, pending: 1, conflicting: 0 })
 
-    store.verifyConclusion(id, 't.A')
-    expect(createVaultStore(vault).getProject(id).projectConclusions![0]!.state).toBe('verified')
+    store.verifyConclusion(id, 't.A', shown[0]!.fingerprint!)
+    expect(createVaultStore(vault).getProject(id).projectConclusions![0]).toMatchObject({ state: 'verified', verifiedOn: '2026-09-10' })
+    expect(counts()).toEqual({ verified: 1, pending: 0, conflicting: 0 })
     write()
     expect(store.getProject(id).projectConclusions![0]!.wiki).toEqual([{
       page: 'topics/ptq', title: store.wikiAggregation('topics/ptq').title, claim: 'wide-b8', version: 1,
@@ -1142,6 +1149,49 @@ describe('vault store on the aggregation layout', () => {
 
     graph('宽树在 B≥16 时才净赚')
     expect(store.getProject(id).projectConclusions![0]!.state).toBe('pending')
+    expect(() => store.verifyConclusion(id, 't.A', shown[0]!.fingerprint!)).toThrow(/在你打开之后又被改过/)
+  })
+
+  it('旧版本记下的项目变动在没验证过结论的项目上照样能撤销', () => {
+    store.createProject('旧记录')
+    const id = store.listProjects().find((p) => p.name === '旧记录')!.id
+    store.updateProject(id, { focus: '新的当前目标' })
+    const file = join(vault, '.meridian', 'changelog.json')
+    const rows = JSON.parse(readFileSync(file, 'utf8')) as { target: { id: string } | null; after: string }[]
+    const detail = store.getProject(id)
+    const older = ['name', 'status', 'priority', 'topic', 'focus', 'block', 'start', 'due', 'memo',
+      'papers', 'tasks', 'milestones', 'events', 'relations', 'attachments', 'agentSessions'] as const
+    const after = createHash('sha256')
+      .update(stableJson(Object.fromEntries(older.map((key) => [key, detail[key]])))).digest('hex').slice(0, 16)
+    writeFileSync(file, JSON.stringify(rows.map((row) => (row.target?.id === id ? { ...row, after } : row))))
+    const reopened = createVaultStore(vault, () => '2026-09-10')
+    reopened.undoChange(reopened.listChanges().find((c) => c.title.includes('改了字段'))!.id)
+    expect(reopened.getProject(id).focus).not.toBe('新的当前目标')
+  })
+
+  it('验证与取消验证都进最近变动,撤销逐项还原;没验证过的项目页不多出这一项', () => {
+    store.createProject('验证撤销')
+    const id = store.listProjects().find((p) => p.name === '验证撤销')!.id
+    const repo = join(vault, 'undo-repo')
+    mkdirSync(join(repo, '.meridian/graph'), { recursive: true })
+    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    writeFileSync(join(repo, '.meridian/graph/graph.json'), JSON.stringify({
+      schema: 'meridian.lab.graph.v1', edges: [], nodes: [{ id: 't.A', title: '宽树', state: 'supported' }],
+      node_details: { 't.A': { conclusion: { text: '宽树净赚', date: '2026-09-09', evidence: ['exp-1'], revision: 'r1' } } },
+    }))
+    const page = join(vault, 'wiki', 'projects', `${id}.md`)
+    const before = readFileSync(page, 'utf8')
+    const state = () => store.getProject(id).projectConclusions![0]!.state
+    store.verifyConclusion(id, 't.A', store.getProject(id).projectConclusions![0]!.fingerprint!)
+    expect(store.listChanges()[0]).toMatchObject({ title: expect.stringContaining('验证结论'), undoable: true })
+    store.unverifyConclusion(id, 't.A')
+    expect(state()).toBe('pending')
+    expect(store.listChanges()[0]).toMatchObject({ title: expect.stringContaining('取消验证结论'), undoable: true })
+    store.undoChange(store.listChanges()[0]!.id)
+    expect(state()).toBe('verified')
+    store.undoChange(store.listChanges().find((c) => c.title.includes('验证结论') && !c.title.includes('取消'))!.id)
+    expect(state()).toBe('pending')
+    expect(readFileSync(page, 'utf8')).toBe(before)
   })
 
   it('重排顺序与项目现有任务不是同一批 id 时拒绝写入', () => {
