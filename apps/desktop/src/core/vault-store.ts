@@ -610,7 +610,7 @@ export function createVaultStore(
     trashed: new Set(trash.flatMap((item) => (item.kind === 'paper'
       ? [`${PAPER_PAGE}${basename(item.page, '.md')}`] : []))),
     missingRegions: Object.keys(wikiData.pages).sort()
-      .filter((id) => !isPaper(wikiData.pages[id]!) && generatedMissing(wikiFile(id)).length > 0),
+      .filter((id) => !isPaper(wikiData.pages[id]!) && generatedMissing(wikiFile(id)).some((name) => name !== 'claims')),
   })
 
   /** Rewrites `.meridian/wiki-signals.json` with the signals of the vault as it stands. */
@@ -2052,8 +2052,12 @@ export function createVaultStore(
       }
       const names = projectNames()
       for (const id of refilled(proposal, data, next)) {
+        const claims = (next.pages[id] as WikiAggregationRecord).fm.claims ?? []
         fillGenerated(wikiFile(id), {
-          children: generatedChildren(next, id), table: generatedTable(next, id), claims: generatedClaims(next, id, names),
+          children: generatedChildren(next, id), table: generatedTable(next, id),
+          // A page written before claims existed gains the claims region only once it holds a claim.
+          ...(claims.length === 0 && generatedMissing(wikiFile(id)).includes('claims')
+            ? {} : { claims: generatedClaims(next, id, names) }),
         }, staging)
       }
       rereadWiki(touchedPages(proposal, data))

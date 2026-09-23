@@ -1474,6 +1474,29 @@ describe('vault store on the aggregation layout', () => {
     expect(store.wikiAggregation('topics/ptq-weight-only').rows.map((r) => r.paper.title)).not.toContain('KVQuant')
   })
 
+  it('0.0.14 写的聚合页没有 claims 也没有结论生成区:照原样读出,开库与改别的页都不动它一个字节,写了结论才补上结论区', () => {
+    cpSync(resolve(import.meta.dirname, 'fixtures/wiki-0.0.14'), join(vault, 'wiki'), { recursive: true })
+    const page = join(vault, 'wiki', 'topics', 'qat.md')
+    const old = readFileSync(page, 'utf8')
+    store = createVaultStore(vault, () => '2026-09-10', () => new Date('2026-09-10T16:05:04.003Z'))
+    const view = store.wikiAggregation('topics/qat')
+    expect(view.claims).toEqual([])
+    expect(view.body).toBe(old.slice(old.lastIndexOf('<!-- /generated -->\n') + '<!-- /generated -->\n'.length).trim())
+    expect(view.rows.map((r) => r.paper.title)).toEqual(['LLM-QAT'])
+    expect(store.wikiSignals().filter((s) => s.kind === 'missing-generated-region')).toEqual([])
+    expect(readFileSync(page, 'utf8')).toBe(old)
+
+    store.applyProposal({ source: 'user', title: '改名', ops: [{ op: 'setAggregationMetadata', page: 'topics/ptq', title: 'PTQ 总览', splitOn: null }] })
+    expect(readFileSync(page, 'utf8')).toBe(old)
+
+    store.applyProposal({ source: 'user', title: '加一条结论', ops: [{
+      op: 'addClaim', page: 'topics/qat', claim: { id: 'data-free', text: '自生成数据够用', evidence: [{ kind: 'personal', text: '' }] },
+    }] })
+    const written = readFileSync(page, 'utf8')
+    expect(written).toContain('claims:\n  - id: "data-free"\n')
+    expect(written).toContain('<!-- /generated -->\n<!-- generated:claims -->\n## 结论\n- 自生成数据够用 · v1 · 2026-09-10 ^data-free\n')
+  })
+
   it('新建一个聚合再往里挪成员,父聚合的子聚合区跟着回填;撤销把新页删掉', () => {
     const parent = join(vault, 'wiki', 'topics', 'ptq.md')
     const parentBefore = readFileSync(parent, 'utf8')

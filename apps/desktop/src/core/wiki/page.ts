@@ -261,12 +261,13 @@ function generatedRange(bare: string[], name: string, file: string): [number, nu
 /**
  * Replaces what stands between each generated region's markers on the page at
  * `file` with the given markdown, the markers and every other byte untouched.
- * A page written before the claims region existed gets that region, markers
- * and all, right after the table region. Throws if the children or table
- * region's markers are missing.
+ * Without `claims` the claims region is left as it is; with it, a page written
+ * before the claims region existed gets that region, markers and all, right
+ * after the table region. Throws if the children or table region's markers are
+ * missing.
  */
 export function fillGenerated(
-  file: string, regions: { children: string; table: string; claims: string }, staging: string,
+  file: string, regions: { children: string; table: string; claims?: string }, staging: string,
 ): void {
   for (const [name, text] of Object.entries(regions)) {
     const page = rowsOf(file)
