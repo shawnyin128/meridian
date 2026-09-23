@@ -49,7 +49,8 @@ Releases up to `v0.0.14` predate the scheme and keep their three-part numbers.
 | Baseline | `baseline/vX.Y.0.0` | `baseline/v0.1.0.0` |
 
 - `<module>` names the area of the codebase: `desktop`, `wiki`, `lab`, `harness`, `plugins`,
-  `release`, and so on.
+  `process` (versioning, CI, repository rules), and so on. `release` is reserved for release
+  branches and is never a module name.
 - The version in the name is the release the work ships in.
 - A release branch ends in `/release` because git cannot hold a branch whose name is a prefix of
   other branches (`fix/v0.0.14.2` next to `fix/v0.0.14.2/desktop/...`).

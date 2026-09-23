@@ -24,7 +24,7 @@ Format: `[module] short description`
 - `[plugins] The focus hook prints node labels in the wrong encoding`
 
 Module names are the same as in branch names: `desktop`, `wiki`, `lab`, `harness`, `plugins`,
-`release`, and so on.
+`process`, and so on.
 
 ## 3. Body
 
