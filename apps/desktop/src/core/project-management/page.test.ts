@@ -204,6 +204,21 @@ describe('project page', () => {
     expect(readAs0014(file).success).toBe(true)
   })
 
+  it('agent 加的任务:来源与请求记录各放在顶层一项,任务项本身不多字段;读回来一样,0.0.14 照样读得出', () => {
+    const agentTask = { ...PROJECT.tasks[0]!, id: 'task-2', origin: 'agent' as const }
+    const project = { ...PROJECT, tasks: [...PROJECT.tasks, agentTask], agentTasks: { 'rerun-sweep': 'task-2' } }
+    writePage(file, projectPageText(project), staging)
+    const text = readFileSync(file, 'utf8')
+    expect(text).toContain('task_origins:\n  task-2: "agent"\n')
+    expect(text).toContain('agent_tasks:\n  rerun-sweep: "task-2"\n')
+    expect(text).not.toMatch(/tasks:\n(?: {2}.*\n)*? {4}origin:/)
+    expect(readProjectPage(file, 'project-1')).toEqual(project)
+    expect(readAs0014(file).error).toBeUndefined()
+
+    writeProjectFields(file, { ...project, tasks: PROJECT.tasks }, ['tasks'], staging)
+    expect(readFileSync(file, 'utf8')).not.toContain('task_origins:')
+  })
+
   it('只改 papers 那几行,别的字节不动', () => {
     const before = readFileSync(file, 'utf8')
     writeProjectFields(file, { ...PROJECT, papers: ['2401.18079'] }, ['papers'], staging)

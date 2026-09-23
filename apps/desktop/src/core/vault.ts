@@ -16,6 +16,7 @@ import type { RemotePaper } from './net/arxiv.js'
 import type {
   DiscoveryPaper, DiscoverySchedule, RecommendationIntent, RecommendationProfile,
 } from './recommendation/index.js'
+import type { WorkspaceAgentTask } from './project-management/index.js'
 import type { ResearchIdeaMutation } from './research-ideas/index.js'
 
 export type DiscoverySeeds = { positive: string[]; negative: string[] }
@@ -293,11 +294,31 @@ export interface VaultStore {
 
   /**
    * Appends a task built from the given fields to the project with the given
-   * projectId, assigning it an id unused by that project, and returns the
-   * updated project. Throws if no such project exists, or the task's end date
-   * precedes its start date.
+   * projectId, assigning it an id unused by that project and `origin` when an
+   * agent added it, and returns the updated project. Throws if no such project
+   * exists, or the task's end date precedes its start date.
    */
-  createTask(projectId: string, task: TaskFields): ProjectDetail
+  createTask(projectId: string, task: TaskFields, origin?: 'agent'): ProjectDetail
+
+  /**
+   * The task requests coding agents left in bound local workspaces (only project
+   * `projectId`'s when given) that the plan has not taken yet, in project then file order.
+   */
+  agentTaskRequests(projectId?: string): { project: string; request: WorkspaceAgentTask }[]
+
+  /**
+   * Adds agent task request `request` to project `projectId`'s plan through createTask, as a
+   * planned task on its date marked as added by an agent, and records the request as taken with
+   * the task it became. Throws as createTask does.
+   */
+  addAgentTask(projectId: string, request: WorkspaceAgentTask): ProjectDetail
+
+  /**
+   * Takes every pending agent task request (only project `projectId`'s when given) into its plan
+   * with addAgentTask, each recorded as an undoable change. A request is taken once: deleting or
+   * undoing its task does not bring it back.
+   */
+  absorbAgentTasks(projectId?: string): void
 
   /**
    * Merges patch into the task with the given taskId inside the project with
@@ -917,4 +938,5 @@ export type VaultOps = Omit<
   | 'archiveAllChanges'
   | 'deleteChange'
   | 'clearArchivedChanges'
+  | 'absorbAgentTasks'
 >

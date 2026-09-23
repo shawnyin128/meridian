@@ -64,7 +64,7 @@ do not edit `.meridian/control/changes.json`.
 ## Keeping the App informed
 
 The Meridian App shows the user what the agent has been doing and what it
-found. Two calls feed it; neither needs the user's confirmation.
+found. Three calls feed it; none needs the user's confirmation.
 
 **Research record.** Call `meridian.workspace_event_add` (or, without MCP,
 `python -m meridian workspace event-add` with `--kind`, `--text` as the
@@ -88,6 +88,18 @@ such as `<date>-start-<target-slug>`. `source` must be an existing file that
 anchors the target: the node's thread file under `.meridian/threads/`, the
 experiment record, or the main file being changed. Pass `node` when the target
 is a Lab node.
+
+**Tasks.** When you and the user settle on a clear, concrete next step, one
+piece of work with a recognizable end ("rerun the width sweep at B=16", "add
+the per-channel key quantizer and its unit test"), call
+`meridian.workspace_task_add` once (or `python -m meridian workspace task-add`)
+with a stable `task_id`, a one-line `title`, and a `note` saying what done
+means. The App puts it in the project plan at once, marked as added by an
+agent; the user deletes what they do not want, so do not ask first. A general
+direction or hypothesis ("prefix reuse may matter more than width", "look into
+dynamic thresholds") is not a task: place it as a Lab node or record it as an
+idea. Once the App has taken the task, `meridian.workspace_plan` lists its plan
+task id under `agent_tasks[<task_id>]`; use that id to link it to its node.
 
 **Ideas.** When the discussion produces a new research direction, hypothesis
 or mechanism worth revisiting later, and it is not already a linked idea or a

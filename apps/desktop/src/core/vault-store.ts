@@ -29,7 +29,7 @@ import {
 import {
   chatSource, CONCLUSION_CHANGED, concludedNodes, conclusionCounts, conclusionFingerprint, MANUAL_SOURCE, overviewResearch, placeNode,
   projectConclusions, verifiedNodes, projectPageText, projectWorkspaceRoot, projectWorkspaceSsh, readProjectPage,
-  readProjectWorkspace, readWorkspaceAgentIdeas, withProjectLinks, writeProjectFields,
+  readProjectWorkspace, readWorkspaceAgentIdeas, readWorkspaceAgentTasks, withProjectLinks, writeProjectFields,
   writeProjectWorkspaceState, type ProjectRecord,
 } from './project-management/index.js'
 import { inboxFields, unseenPapers } from './inbox/dedup.js'
@@ -720,6 +720,7 @@ export function createVaultStore(
     delete stored.created
     delete stored.workspaceRoot
     delete stored.workspaceSsh
+    delete stored.agentTasks
     const paperTitles = Object.fromEntries(stored.papers.flatMap((id) => {
       const paper = papers.get(id)
       return paper === undefined ? [] : [[id, paper.title]]
@@ -843,6 +844,14 @@ export function createVaultStore(
   }
 
   /** Writes only the modified project fields to its page and returns the updated detail. */
+  /** The one path that adds a task to a plan, for the user and for agents alike (see VaultOps.createTask). */
+  const createTask = (projectId: string, task: TaskFields, origin?: 'agent'): ProjectDetail => {
+    const project = projectOf(projectId)
+    checkSpan(task)
+    const made = { ...task, id: nextId('task'), ...(origin === undefined ? {} : { origin }) }
+    return writeProject({ ...project, tasks: [...project.tasks, made] }, ['tasks'])
+  }
+
   const writeProject = (
     project: ProjectRecord, fields: (keyof ProjectRecord)[], syncWorkspace = true,
   ): ProjectDetail => {
@@ -1423,10 +1432,26 @@ export function createVaultStore(
       })
     },
 
-    createTask(projectId, task) {
+    createTask,
+
+    agentTaskRequests(projectId) {
+      return projects().filter((project) => projectId === undefined || project.id === projectId).flatMap((project) => {
+        const taken = project.agentTasks ?? {}
+        return readWorkspaceAgentTasks(project.workspaceRoot)
+          .filter((request) => taken[request.id] === undefined)
+          .map((request) => ({ project: project.id, request }))
+      })
+    },
+
+    addAgentTask(projectId, request) {
+      const had = new Set(projectOf(projectId).tasks.map((task) => task.id))
+      const made = createTask(projectId, {
+        title: request.title, start: request.date, end: request.date, state: 'plan', priority: 'p1',
+        ...(request.note === undefined ? {} : { note: request.note }),
+      }, 'agent')
+      const task = made.tasks.find((candidate) => !had.has(candidate.id))!.id
       const project = projectOf(projectId)
-      checkSpan(task)
-      return writeProject({ ...project, tasks: [...project.tasks, { ...task, id: nextId('task') }] }, ['tasks'])
+      return writeProject({ ...project, agentTasks: { ...project.agentTasks, [request.id]: task } }, ['agentTasks'])
     },
 
     updateTask(projectId, taskId, patch) {

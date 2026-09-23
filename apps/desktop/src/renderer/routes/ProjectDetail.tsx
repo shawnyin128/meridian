@@ -508,7 +508,7 @@ export function ProjectDetail({
   const conclusion = conclusions.find((candidate) => candidate.id === selectedConclusion)
   const nodeLook = (nodeId: string | undefined) => {
     const found = displayedGraph.nodes.find((candidate) => candidate.id === nodeId)
-    return found === undefined ? undefined : { label: found.label, mode: nodeMode(found) }
+    return found === undefined ? undefined : { id: found.id, label: found.label, mode: nodeMode(found) }
   }
   const detailOpen = node !== undefined || selectedIdea !== undefined
     || selectedTask !== undefined || conclusion !== undefined
@@ -839,7 +839,8 @@ export function ProjectDetail({
             {selectedTask !== undefined
               ? (
                 <ProjectTaskPanel
-                  task={selectedTask} onClose={clearTask}
+                  task={selectedTask} onClose={clearTask} onOpenNode={goToRecordNode}
+                  node={nodeLook(displayedGraph.nodes.find((candidate) => candidate.tasks?.includes(selectedTask.id))?.id)}
                   onSaveNote={(note) => writeProject(
                     projectApi.updateTask(projectId, selectedTask.id, { note }), m.project.plan.noteUpdated,
                   )}
@@ -1114,6 +1115,8 @@ export function ProjectDetail({
                 <ResearchNodePanel
                   graph={displayedGraph} events={visibleEvents}
                   ideas={linkedIdeas.filter((idea) => idea.node === node.id)} node={node}
+                  tasks={project.tasks.filter((task) => node.tasks?.includes(task.id))}
+                  onSelectTask={openTask}
                   onClose={clearNode}
                   onSelect={(nodeId) => {
                     setSelectedIdeaId(null)

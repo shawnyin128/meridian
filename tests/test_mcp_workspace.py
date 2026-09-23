@@ -207,6 +207,7 @@ class MCPWorkspaceTests(unittest.TestCase):
                 "meridian.workspace_plan",
                 "meridian.workspace_event_add",
                 "meridian.workspace_idea_add",
+                "meridian.workspace_task_add",
             },
         )
         coding_tools = {
@@ -310,6 +311,37 @@ class MCPWorkspaceTests(unittest.TestCase):
             self.assertEqual(stored["schema_version"], "meridian.workspace-agent-ideas.v1")
             self.assertEqual([idea["id"] for idea in stored["ideas"]], ["prefix-cache-eviction"])
             self.assertEqual(stored["ideas"][0]["context"], "Claude Code session on cache eviction")
+            self.assertEqual(plan.read_bytes(), plan_before)
+
+    def test_task_add_records_agent_tasks_idempotently_and_leaves_the_plan_alone(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plan = self._workspace(root)
+            plan_before = plan.read_bytes()
+            server = MeridianMCPServer(default_workspace_root=root)
+            arguments = {
+                "task_id": "rerun-width-sweep",
+                "date": "2026-09-24",
+                "title": "Rerun the width sweep at B=16",
+                "note": "Done when the latency matrix has the B=16 column.",
+            }
+
+            _, created = self._call(server, "meridian.workspace_task_add", arguments)
+            _, repeated = self._call(server, "meridian.workspace_task_add", arguments)
+            conflict, _ = self._call(server, "meridian.workspace_task_add", {**arguments, "title": "Other"})
+            too_long, _ = self._call(server, "meridian.workspace_task_add", {**arguments, "task_id": "x", "title": "t" * 161})
+
+            self.assertEqual((created["status"], repeated["status"]), ("created", "unchanged"))
+            self.assertTrue(conflict["isError"])
+            self.assertTrue(too_long["isError"])
+            stored = json.loads((root / ".meridian/tasks/tasks.json").read_text(encoding="utf-8"))
+            self.assertEqual(stored, {
+                "schema_version": "meridian.workspace-agent-tasks.v1",
+                "tasks": [{
+                    "id": "rerun-width-sweep", "date": "2026-09-24", "title": "Rerun the width sweep at B=16",
+                    "note": "Done when the latency matrix has the B=16 column.",
+                }],
+            })
             self.assertEqual(plan.read_bytes(), plan_before)
 
     def test_coding_context_reads_cursor_then_expands_only_referenced_entities(self) -> None:
