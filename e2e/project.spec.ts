@@ -137,7 +137,7 @@ test('想法在科研图中动态标出关联节点，节点详情反向展示�
 
   await linkedNode.click()
   const headings = await side.locator('.section-heading').allTextContents()
-  expect(headings.slice(1, 4)).toEqual(['分支 · 3', '关联想法 · 1', '科研记录 · 1'])
+  expect(headings.slice(1, 5)).toEqual(['分支 · 3', '任务 · 1', '关联想法 · 1', '科研记录 · 1'])
   // wide and prefix are both active_nodes, so knee's branches are two in progress and one supported; no candidate group remains.
   expect(await side.locator('.node-branch-label').evaluateAll((labels) => labels.map((label) => ({
     text: label.textContent,
@@ -897,7 +897,7 @@ test('关联:可以加一个链接并给它起显示名,点 chip 交给系统浏
   await win.screenshot({ path: resolve(import.meta.dirname, '../.superpowers/e2e-shots/project-url-chip.png') })
 })
 
-test('关联:占位 chip 长在它将来待的那一组行末尾,切组跟着搬', async ({ win }) => {
+test('关联:占位 chip 长在它将来待的那一组行首,切组跟着搬', async ({ win }) => {
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
   // Click the group name label at the beginning of the line to identify the line: the two buttons of the section selector in the placeholder say "Wiki" and "Thesis".
@@ -911,6 +911,8 @@ test('关联:占位 chip 长在它将来待的那一组行末尾,切组跟着搬
   await side.locator('[title="添加关联"]').click()
   await expect(pageRow.locator('.inedit')).toHaveCount(1)
   await expect(pageRow.locator('.tagchip')).toHaveCount(pageChips)
+  // A new link lands first in its group, so the placeholder opens right after the group name.
+  expect(await pageRow.evaluate((row) => row.querySelector('.rl')!.nextElementSibling!.className)).toBe('reladd')
   // The segment selector and the input box have the same thing: when the chip line cannot fit, they wrap together and are not allowed to be split into the upper and lower lines.
   const pair = await pageRow.locator('.reladd').evaluate((el) => ({
     seg: el.querySelector('.segmented-control')!.getBoundingClientRect().top,
@@ -932,7 +934,7 @@ test('关联:占位 chip 长在它将来待的那一组行末尾,切组跟着搬
   await expect(pageRow.locator('.inedit')).toHaveAttribute('aria-busy', 'false')
   await pageRow.locator('.inedit').press('Enter')
   await expect(pageRow.locator('.tagchip')).toHaveCount(pageChips + 1)
-  await expect(pageRow.locator('.tagchip').last()).toContainText('端到端关联')
+  await expect(pageRow.locator('.tagchip').first()).toContainText('端到端关联')
 
   // Esc removes the placeholder, the number of chips in both groups remains unchanged.
   await side.locator('[title="添加关联"]').click()
@@ -1161,20 +1163,24 @@ test('项目列表点进详情,内容导航行的返回钮退回列表', async (
   await expect(win.locator('.screenslot:not([hidden]) [data-proj="draft"]')).toBeVisible()
 })
 
-test('任务四列各自编辑,点击行本身不改变任何列', async ({ win }) => {
+test('任务四列各自编辑,点击行本身只打开任务详情,不改变任何列', async ({ win }) => {
   test.slow()
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
   const menu = win.locator('[role="menu"]')
   const radios = menu.locator('[role="menuitemradio"]')
 
-  // Clicking the blank space of the row does not open editing; each of the four columns only opens its own control.
+  // Clicking the blank space of the row opens the task panel and no editor; each of the four columns only opens its own control.
   const row = win.locator('#taskList .ddlrow').first()
   await expect(row.locator('.dots')).toHaveCount(0)
   await expect(row.locator('.row-delete')).toHaveAttribute('title', '删除任务')
+  const title = await row.locator('.plan-name').textContent()
   await row.evaluate((element) => (element as HTMLElement).click())
+  await expect(side.locator('.node-document-title')).toHaveText(title!)
   await expect(row.locator('.plan-name-input')).toHaveCount(0)
   await expect(win.locator('.schedule-form')).toHaveCount(0)
+  await win.keyboard.press('Escape')
+  await expect(side.locator('.node-document-title')).toHaveCount(0)
 
   await row.locator('.plan-name').click()
   await expect(row.locator('.plan-name-input')).toHaveCount(1)
@@ -1221,7 +1227,8 @@ test('任务与里程碑的状态格独立修改并立即写回 core', async ({ 
     tasks: { id: string; state: 'act' | 'plan' | 'done' }[]
     milestones: { id: string; date: string; done: boolean }[]
   }>(win, 'project.get', { id: 'draft' })
-  const firstTask = before.tasks[0]!
+  // Done tasks and milestones sit in the collapsed archive, so the check uses the first open ones.
+  const firstTask = before.tasks.find((task) => task.state !== 'done')!
   const nextState = { act: 'plan', plan: 'done', done: 'act' } as const
   const stateWord = { act: '进行中', plan: '计划中', done: '已完成' } as const
 
@@ -1233,7 +1240,8 @@ test('任务与里程碑的状态格独立修改并立即写回 core', async ({ 
   expect(afterTask.tasks.find((task) => task.id === firstTask.id)?.state).toBe(nextState[firstTask.state])
 
   await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '里程碑' }).click()
-  const firstMilestone = [...before.milestones].sort((a, b) => a.date.localeCompare(b.date))[0]!
+  const firstMilestone = [...before.milestones].filter((milestone) => !milestone.done)
+    .sort((a, b) => a.date.localeCompare(b.date))[0]!
   const milestoneRow = win.locator(`#msList .ddlrow[data-row="${firstMilestone.id}"]`)
   await milestoneRow.locator('.state-cell').click()
   await win.locator('[role="menuitemradio"]', { hasText: firstMilestone.done ? '未完成' : '已完成' }).click()

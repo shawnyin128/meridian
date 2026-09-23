@@ -437,18 +437,6 @@ export function ProjectPlan({
         {tab === 'task'
           ? (
             <StructuredList id="taskList" variant="embedded">
-              {activeTasks.map((task) => (
-                <TaskRow
-                  key={task.id} task={task} flash={flashId === task.id} selected={selectedTaskId === task.id}
-                  dragProps={taskOrder.cardProps(task.id)} dropClass={taskOrder.dropClass(task.id)}
-                  onSave={(patch) => onUpdateTask(task.id, patch)}
-                  onDelete={() => onDeleteTask(task.id)}
-                  onOpen={() => onOpenTask(task.id)}
-                />
-              ))}
-              {project.tasks.length === 0 && creating?.kind !== 'task'
-                ? <div className="lm">{m.project.plan.noTasks}</div>
-                : null}
               {creating?.kind === 'task'
                 ? (
                   <TaskCreateRow
@@ -464,6 +452,18 @@ export function ProjectPlan({
                     onCancel={onCancelCreate} onSave={onCreateTask}
                   />
                 )
+                : null}
+              {activeTasks.map((task) => (
+                <TaskRow
+                  key={task.id} task={task} flash={flashId === task.id} selected={selectedTaskId === task.id}
+                  dragProps={taskOrder.cardProps(task.id)} dropClass={taskOrder.dropClass(task.id)}
+                  onSave={(patch) => onUpdateTask(task.id, patch)}
+                  onDelete={() => onDeleteTask(task.id)}
+                  onOpen={() => onOpenTask(task.id)}
+                />
+              ))}
+              {project.tasks.length === 0 && creating?.kind !== 'task'
+                ? <div className="lm">{m.project.plan.noTasks}</div>
                 : null}
               {archivedTasks.length === 0
                 ? null

@@ -407,8 +407,8 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   const topics = watches.filter((w) => w.type === 'topic').length
   await settings(win, '.section-heading').filter({ hasText: '主题' }).locator('.btn').click()
   await expect(settings(win, '.wrow')).toHaveCount(watches.length + 1)
-  // The two groups are tiled sibling nodes. The placeholder for the topic group is followed by the lines for the author group, so press to identify it, not .last()
-  await expect(settings(win, '.wrow').nth(topics)).toHaveClass(/\bnewrow\b/)
+  // A new watch lands first in its group, so the topic group's placeholder is the very first row.
+  await expect(settings(win, '.wrow').first()).toHaveClass(/\bnewrow\b/)
   await settings(win, '.wrow.newrow input').fill('kv cache')
   await settings(win, '.wrow.newrow input').press('Enter')
   await expect(settings(win, '.wrow.newrow')).toHaveCount(0)
