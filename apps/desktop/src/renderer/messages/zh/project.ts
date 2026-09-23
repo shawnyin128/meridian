@@ -198,7 +198,6 @@ export const project = {
     unlinkNode: '取消关联',
     createNode: '转为新节点',
     linkExistingNode: '关联已有节点',
-    nodeTag: (label: string) => `节点 · ${label}`,
     sourceTag: (source: string) => `来源 · ${source}`,
     placedCreated: '已创建科研图节点并关联想法',
     placedLinked: '已关联科研图节点',

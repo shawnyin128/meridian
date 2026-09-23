@@ -51,7 +51,7 @@ describe('ProjectEventRow', () => {
     expect(host.querySelector('.record-who')?.textContent).toBe('agent')
     expect(row?.className).toContain('with-node')
     const tag = host.querySelector('.record-node button.node-tag--fill')
-    expect(tag?.textContent).toBe('节点 · 延迟探针')
+    expect(tag?.textContent).toBe('延迟探针')
     act(() => { tag!.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
     expect(onSelectNode).toHaveBeenCalledWith('thread.B')
     act(() => root.unmount())
