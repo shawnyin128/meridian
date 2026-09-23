@@ -75,6 +75,13 @@ App, the Python package, and the agent plugins. Data formats are compatible in b
   additive fields instead of rejecting the whole file. A part that genuinely cannot be read is
   reported on its own with the reason (for example "update the App") while every other part keeps
   showing. One unreadable surface never hides the others.
+- Contract types are often stored whole (undo snapshots in the change log, trash, queues), so
+  renaming or removing a field of a stored type is a storage-format change: find every stored copy
+  and give each a reader for the old shape.
+- Stored data is read record by record: a record that cannot be read is reported and skipped or
+  degraded, and never keeps the library from opening.
+- Before a release, open a read-only copy of a real library written by the previous version with the
+  new build and confirm its projects, overview, Wiki and feed load.
 - A change that is not purely additive bumps the schema version, and readers keep supporting the
   previous versions.
 - These readers are required compatibility, not the "backwards-compatibility shims" discouraged
