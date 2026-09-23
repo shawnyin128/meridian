@@ -4,14 +4,15 @@ import { displayOf, semverOf } from '../../../../scripts/app-version.mjs'
 import { displayVersion } from './app-version.js'
 
 describe('app version naming', () => {
-  it('四段版本号存成三段 semver,显示时还原;修复号为 0 时只显示三段', () => {
+  it('四段版本号存成三段 semver,显示时还原成四段,修复号为 0 也写出来', () => {
     expect(semverOf('0.0.14.1')).toBe('0.0.14001')
     expect(semverOf('0.0.14.15')).toBe('0.0.14015')
     expect(semverOf('0.0.15')).toBe('0.0.15000')
     expect(semverOf('1.2.3.4')).toBe('1.2.3004')
     expect(displayVersion('0.0.14001')).toBe('0.0.14.1')
     expect(displayVersion('0.0.14015')).toBe('0.0.14.15')
-    expect(displayVersion('0.0.15000')).toBe('0.0.15')
+    expect(displayVersion('0.0.15000')).toBe('0.0.15.0')
+    expect(displayVersion('0.1.0')).toBe('0.1.0.0')
     expect(displayVersion('1.2.3004')).toBe('1.2.3.4')
   })
 

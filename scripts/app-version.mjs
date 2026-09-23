@@ -11,13 +11,11 @@ export function semverOf(display) {
   return `${Number(major)}.${Number(large)}.${Number(small) * 1000 + Number(fix)}`
 }
 
-/** Returns the display version of a stored semver; a zero FIX is left off. */
+/** Returns the four-part display version of a stored semver. */
 export function displayOf(semver) {
   const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(semver)
   if (match === null) throw new Error(`not a stored app version: ${semver}`)
   const [major, large, packed] = match.slice(1).map(Number)
   if (major === 0 && large === 0 && packed < 1000) return semver
-  const small = Math.floor(packed / 1000)
-  const fix = packed % 1000
-  return fix === 0 ? `${major}.${large}.${small}` : `${major}.${large}.${small}.${fix}`
+  return `${major}.${large}.${Math.floor(packed / 1000)}.${packed % 1000}`
 }
