@@ -2,9 +2,10 @@ import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import projects from '../fixtures/projects.json' with { type: 'json' }
 import wikiFixture from '../fixtures/wiki.json' with { type: 'json' }
 import type { WikiData } from './model.js'
-import { generatedChildren, generatedTable } from './generated.js'
+import { generatedChildren, generatedClaims, generatedTable } from './generated.js'
 import { readWikiData } from './read.js'
 
 const DATA = wikiFixture as WikiData
@@ -46,7 +47,8 @@ describe('生成区与示例库对拍', () => {
 
   afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
-  it('每页聚合的两个生成区,渲染出来的与页上写着的一字不差', () => {
+  it('每页聚合的三个生成区,渲染出来的与页上写着的一字不差', () => {
+    const names = Object.fromEntries(projects.map((p) => [p.id, p.name]))
     const data = readWikiData(dir)!
     /** Lines between the two markers of this generated page region. */
     const between = (text: string, name: string): string =>
@@ -57,6 +59,7 @@ describe('生成区与示例库对拍', () => {
       const text = readFileSync(join(dir, `${id}.md`), 'utf8')
       expect(between(text, 'children'), `${id} 的子聚合`).toBe(generatedChildren(data, id))
       expect(between(text, 'table'), `${id} 的对照表`).toBe(generatedTable(data, id))
+      expect(between(text, 'claims'), `${id} 的结论`).toBe(generatedClaims(data, id, names))
     }
   })
 })

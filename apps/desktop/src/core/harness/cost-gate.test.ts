@@ -38,7 +38,7 @@ const reading: PaperReading = {
 }
 const wiki: WikiPaper = {
   id: 'papers/p1', title: 'A Paper', short: 'A Paper', authors: ['A'], venue: 'arXiv', pdf: 'p1.pdf',
-  updated: '2026-09-17', body: '', titles: {}, memberships: [],
+  updated: '2026-09-17', body: '', titles: {}, memberships: [], version: { fm: '0000000000000000', body: '0000000000000000' },
 }
 
 function gate(options: { configured?: boolean; now?: () => Date } = {}) {

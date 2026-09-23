@@ -3,9 +3,12 @@ import { basename, isAbsolute, join } from 'node:path'
 import type { z } from 'zod'
 import type {
   ChatSession, Conclusion, DeliverySettings, FeedEntry, FeedRun, GraphNode, PaperColumns, PaperImportResult, PaperReading, PaperRow, Proposal,
-  ProjectDetail, ProjectWorkspaceBinding, ReadingMutation, ResearchIdea, SearchHit, Task, TaskFields,
+  ProjectDetail, ProjectWorkspaceBinding, ProposalRecord, ReadingMutation, ResearchIdea, SearchHit, Task, TaskFields,
+  WikiSignal,
 } from '../shared/contract.js'
-import { DEFAULT_DELIVERY_SETTINGS, FeedEntrySchema, ResearchIdeaSchema, WatchSchema } from '../shared/contract.js'
+import {
+  DEFAULT_DELIVERY_SETTINGS, FeedEntrySchema, ProposalRecordSchema, ResearchIdeaSchema, WatchSchema,
+} from '../shared/contract.js'
 import { projectControlState } from '../shared/project-control.js'
 import { topicDir, topicProposal } from '../shared/topic-proposal.js'
 import {
@@ -48,11 +51,13 @@ import {
 } from './vault/writer.js'
 import type { MetadataFill, VaultOps, VaultStore } from './vault.js'
 import {
-  appendEntry, applyProposal, checkBody, checkGenerated, createAggregationPage, entryLine,
-  fillGenerated, generatedChildren, generatedTable, isPaper, readWikiData, readWikiPage,
-  removeMembership, setAggregationMetadata, setBody, setBodyAndTrust, setColumns, setMembership,
-  setParents, setUpdated, touchedPages, wikiAggregation, wikiCards, wikiHome, wikiPaper, wikiSearchIndex,
-  type WikiAggregationRecord, type WikiData, type WikiPaperRecord,
+  appendEntry, applyProposal, checkBody, checkGenerated, conclusionClaims, createAggregationPage, describeOp,
+  entryLine, fillGenerated, generatedChildren, generatedClaims, generatedMissing, generatedTable, HUMAN,
+  isClaimOp, isPaper, pageVersion,
+  readWikiData, readWikiPage, removeClaim, removeMembership, setAggregationMetadata, setBody, setBodyAndTrust,
+  setClaim, setColumns, setMembership, setParents, setUpdated, touchedPages, wikiAggregation, wikiCards,
+  wikiHome, wikiPaper, wikiSearchIndex, wikiSignals,
+  type ClaimWorld, type WikiAggregationRecord, type WikiData, type WikiPaperRecord,
 } from './wiki/index.js'
 import { prepareFallbackLibrary } from './workspace-layout.js'
 import { createResearchIdea, updateResearchIdea } from './research-ideas/index.js'
@@ -409,6 +414,20 @@ export function createVaultStore(
   }
   let trash = load('trash', TrashRecordSchema)
   let readings = load('paper-readings', PaperReadingRecordSchema)
+  // Another App version may have written queue records this one cannot read; keep those as written.
+  const heldProposals: unknown[] = existsSync(join(meridian, 'proposals.json'))
+    ? JSON.parse(readFileSync(join(meridian, 'proposals.json'), 'utf8')) as unknown[] : []
+  let proposals: ProposalRecord[] = []
+  const unreadProposals: unknown[] = []
+  for (const [at, held] of heldProposals.entries()) {
+    const parsed = ProposalRecordSchema.safeParse(held)
+    if (parsed.success) proposals.push(parsed.data)
+    else {
+      unreadProposals.push(held)
+      console.error(`[wiki] 提案队列第 ${at + 1} 条这个版本读不了,原样保留(可能要更新 App):${parsed.error.message}`)
+    }
+  }
+  const inboxDir = join(meridian, 'proposal-inbox')
 
   // Older versions left watch-derived recommendations in inbox.json after a watch was removed.
   // They have no reachable sidebar destination and pollute the combined feed and deduplication history, so remove them on open.
@@ -498,11 +517,23 @@ export function createVaultStore(
    * its parents; pages targeted by `setColumns`; and old and new parents of a
    * `setParents` target. Renaming can affect parent child-links and derived links
    * in other aggregation tables, so it refills every aggregation, plus every
-   * current aggregation of a modified paper in `next`. `before` supplies old parents.
+   * current aggregation of a modified paper in `next`. A claim op refills every
+   * aggregation it writes; a revision also refills every page whose claims
+   * conflict with the revised one, since those render its text. `before`
+   * supplies old parents and the other side of a closed conflict.
    */
   const refilled = (proposal: Proposal, before: WikiData, next: WikiData): string[] => {
     const out: string[] = []
     const add = (id: string): void => { if (!out.includes(id)) out.push(id) }
+    for (const id of touchedPages({ ops: proposal.ops.filter(isClaimOp) }, before)) add(id)
+    for (const op of proposal.ops) {
+      if (op.op !== 'reviseClaim') continue
+      const ref = `${op.page}#${op.claim}`
+      for (const [id, page] of Object.entries(next.pages)) {
+        if (isPaper(page)) continue
+        if ((page.fm.claims ?? []).some((c) => (c.conflicts ?? []).some((x) => x.against.kind === 'claim' && x.against.ref === ref))) add(id)
+      }
+    }
     for (const op of proposal.ops) {
       if (op.op === 'setMembership' || op.op === 'removeMembership') add(op.in)
       if (op.op === 'createAggregation') {
@@ -525,7 +556,10 @@ export function createVaultStore(
     return out
   }
 
-  /** Rereads wiki structure after a write and recomputes table rows for the affected paper pages. */
+  /**
+   * Rereads wiki structure after a write, recomputes table rows for the affected paper pages, and
+   * rewrites the Wiki signals file.
+   */
   const rereadWiki = (paths: string[]): void => {
     wikiData = readWikiData(wiki)
     for (const path of paths) {
@@ -535,7 +569,55 @@ export function createVaultStore(
       if (page === undefined) papers.delete(stem)
       else papers.set(stem, paperRowOf(wikiData, stem, page as WikiPaperRecord))
     }
+    writeSignals()
   }
+
+  /** Page version of Wiki page `id`, null when it has no file. Throws if a part of the id is `.` or `..`. */
+  const versionOf = (id: string): ReturnType<typeof pageVersion> => {
+    if (id.split('/').some((part) => part === '.' || part === '..')) throw new Error(`页 id 不能含 . 或 ..:${id}`)
+    const file = wikiFile(id)
+    return existsSync(file) ? pageVersion(readFileSync(file, 'utf8')) : null
+  }
+
+  /** Every project's name, by id. */
+  const projectNames = (): Record<string, string> =>
+    Object.fromEntries([...projectById.values()].map((p) => [p.id, p.name]))
+
+  /** The claim-validation world for producer `by`: the vault's projects (with workspace nodes) and reading records. */
+  const worldOf = (by: string): ClaimWorld => ({
+    by,
+    project: (id) => {
+      const project = projectById.get(id)
+      if (project === undefined) return undefined
+      const nodes = [...project.graph.nodes, ...readProjectWorkspace(project)?.graph?.nodes ?? []]
+      return { nodes: nodes.map((n) => n.id), conclusions: project.conclusionList.map((c) => c.id) }
+    },
+    reading: (paper) => {
+      const reading = readingOf(paper.slice(PAPER_PAGE.length))
+      return { highlights: reading.highlights.map((h) => h.id), notes: reading.notes.map((n) => n.id) }
+    },
+  })
+
+  /** The Wiki signals of the vault as it stands. */
+  const signals = (): WikiSignal[] => wikiSignals(wikiData, {
+    projects: [...projectById.values()].map((p) => ({
+      id: p.id,
+      pages: [
+        ...p.relations.flatMap((g) => g.items.flatMap((item) => (item.page === undefined ? [] : [item.page]))),
+        ...p.graph.nodes.flatMap((n) => n.writebacks.map((w) => w.page)),
+      ],
+    })),
+    trashed: new Set(trash.flatMap((item) => (item.kind === 'paper'
+      ? [`${PAPER_PAGE}${basename(item.page, '.md')}`] : []))),
+    missingRegions: Object.keys(wikiData.pages).sort()
+      .filter((id) => !isPaper(wikiData.pages[id]!) && generatedMissing(wikiFile(id)).length > 0),
+  })
+
+  /** Rewrites `.meridian/wiki-signals.json` with the signals of the vault as it stands. */
+  const writeSignals = (): void => {
+    writeJson(join(meridian, 'wiki-signals.json'), { generated_at: now().toISOString(), signals: signals() }, staging)
+  }
+  writeSignals()
 
   /** Returns the immutable source referenced by a paper page, or an empty string without `source_id`. */
   const sourceOf = (id: string): string => scalar(readPage(paperFile(id)).front, 'source_id')
@@ -630,11 +712,13 @@ export function createVaultStore(
       return paper === undefined ? [] : [[id, paper.title]]
     }))
     const workspace = readProjectWorkspace(project)
+    const claims = conclusionClaims(wikiData, project.id)
     return {
       ...stored,
       paperTitles,
       paperCount: Object.keys(paperTitles).length,
       conclusions: conclusionCounts(stored.conclusionList),
+      ...(Object.keys(claims).length === 0 ? {} : { conclusionClaims: claims }),
       ...(workspace === undefined ? {} : { workspace }),
     }
   }
@@ -1535,32 +1619,6 @@ export function createVaultStore(
       return nextProject
     },
 
-    writeBack(id, node, page, text) {
-      const project = projectOf(id)
-      const data = wikiData
-      const target = data.pages[page]
-      if (target === undefined || isPaper(target)) throw new Error(`wiki 聚合不存在:${page}`)
-      if (!project.graph.nodes.some((n) => n.id === node)) throw new Error(`节点不存在:${node}`)
-      if (text.trim() === '') throw new Error('写回的那句话不能为空')
-      checkOneLine(text)
-      const day = today()
-      const section = data.sections[0]!.label
-      // Write the project page first so a failed write cannot leave an unattributed append on the wiki page.
-      const detail = writeProject({
-        ...project,
-        graph: {
-          ...project.graph,
-          nodes: project.graph.nodes.map((n) => (n.id === node
-            ? { ...n, writebacks: [...n.writebacks, { page, text, date: day }] }
-            : n)),
-        },
-      }, ['graph'])
-      appendEntry(wikiFile(page), section, entryLine(day, text), staging)
-      setUpdated(wikiFile(page), day, staging)
-      rereadWiki([page])
-      return detail
-    },
-
     createConclusion(projectId, text, { chat, paper }) {
       const project = projectOf(projectId)
       const source = chat === undefined ? MANUAL_SOURCE : chatSource(chatOf(chat).title)
@@ -1922,27 +1980,23 @@ export function createVaultStore(
     },
 
     wikiAggregation(id) {
-      return wikiAggregation(wikiData, id)
+      return wikiAggregation(wikiData, id, versionOf(id)!, projectNames())
     },
 
     wikiPaper(id) {
       if (wikiData.pages[id] === undefined) throw new Error(`wiki 论文页不存在:${id}`)
-      return wikiPaper(wikiData, id)
+      return wikiPaper(wikiData, id, versionOf(id)!)
     },
 
     wikiCards() {
       return wikiCards(wikiData)
     },
 
-    wikiSections() {
-      return wikiData.sections.map((s) => s.label)
-    },
-
-    applyProposal(proposal) {
+    applyProposal(proposal, producer) {
       const data = wikiData
       const day = today()
       // Validate the complete proposal first so an invalid step writes no bytes.
-      const next = applyProposal(data, proposal, day)
+      const next = applyProposal(data, proposal, day, worldOf(producer?.by ?? HUMAN))
       // Refill requires generated-region markers. Newly proposed pages are not on disk yet, so skip them here.
       for (const id of refilled(proposal, data, next)) {
         if (existsSync(wikiFile(id))) checkGenerated(wikiFile(id))
@@ -1973,17 +2027,79 @@ export function createVaultStore(
         } else if (op.op === 'setAggregationMetadata') {
           setAggregationMetadata(wikiFile(op.page), { title: op.title, splitOn: op.splitOn }, staging)
           setUpdated(wikiFile(op.page), day, staging)
-        } else {
+        } else if (op.op === 'setColumns') {
           setColumns(wikiFile(op.page), op.columns, staging)
           setUpdated(wikiFile(op.page), day, staging)
         }
       }
+      // Claim ops may change several claims on several pages; write each changed claim once, in page order.
+      for (const id of touchedPages(proposal, data)) {
+        const after = next.pages[id]
+        if (after === undefined || isPaper(after)) continue
+        const held = new Map(((data.pages[id] as WikiAggregationRecord | undefined)?.fm.claims ?? []).map((c) => [c.id, c]))
+        const kept = new Set((after.fm.claims ?? []).map((c) => c.id))
+        let changed = false
+        for (const claim of after.fm.claims ?? []) {
+          if (JSON.stringify(held.get(claim.id)) === JSON.stringify(claim)) continue
+          setClaim(wikiFile(id), claim, staging)
+          changed = true
+        }
+        for (const gone of [...held.keys()].filter((c) => !kept.has(c))) {
+          removeClaim(wikiFile(id), gone, staging)
+          changed = true
+        }
+        if (changed) setUpdated(wikiFile(id), day, staging)
+      }
+      const names = projectNames()
       for (const id of refilled(proposal, data, next)) {
         fillGenerated(wikiFile(id), {
-          children: generatedChildren(next, id), table: generatedTable(next, id),
+          children: generatedChildren(next, id), table: generatedTable(next, id), claims: generatedClaims(next, id, names),
         }, staging)
       }
-      rereadWiki(touchedPages(proposal))
+      rereadWiki(touchedPages(proposal, data))
+    },
+
+    checkProposal(ops, by) {
+      applyProposal(wikiData, { ops }, today(), worldOf(by))
+    },
+
+    describeProposal(ops) {
+      return ops.map((op) => describeOp(op, wikiData))
+    },
+
+    pagesWritten(ops) {
+      return touchedPages({ ops }, wikiData)
+    },
+
+    pageVersion(id) {
+      return versionOf(id)
+    },
+
+    wikiSignals() {
+      return signals()
+    },
+
+    proposalRecords() {
+      return structuredClone(proposals)
+    },
+
+    saveProposalRecords(rows) {
+      proposals = structuredClone(rows)
+      save('proposals', [...proposals, ...unreadProposals])
+    },
+
+    nextProposalId() {
+      return nextId('proposal')
+    },
+
+    proposalInbox() {
+      if (!existsSync(inboxDir)) return []
+      return readdirSync(inboxDir).filter((name) => name.endsWith('.json')).sort()
+        .map((name) => ({ name, text: readFileSync(join(inboxDir, name), 'utf8') }))
+    },
+
+    dropProposalInboxFile(name) {
+      removePage(join(inboxDir, name))
     },
 
     updateWikiPage(id, body) {
@@ -2002,10 +2118,10 @@ export function createVaultStore(
       rereadWiki([id])
     },
 
-    proposalPages(proposal) {
+    proposalPages(proposal, by = HUMAN) {
       const data = wikiData
-      const next = applyProposal(data, proposal, today())
-      const named = touchedPages(proposal)
+      const next = applyProposal(data, proposal, today(), worldOf(by))
+      const named = touchedPages(proposal, data)
       return [...named, ...refilled(proposal, data, next).filter((id) => !named.includes(id))]
     },
 

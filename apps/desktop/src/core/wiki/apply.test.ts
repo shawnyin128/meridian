@@ -145,7 +145,7 @@ describe('applyProposal', () => {
       { op: 'appendEntry', page: 'topics/leaf', section: '结论', date: TODAY, text: 'x' },
       { op: 'setMembership', paper: 'papers/b', in: 'methods/m', cells: {} },
       { op: 'createAggregation', kind: 'topic', id: 'topics/x', title: 'X', parents: [], columns: [], describe: '' },
-    ]))).toEqual(['papers/b', 'topics/leaf', 'topics/x'])
+    ]), DATA)).toEqual(['papers/b', 'topics/leaf', 'topics/x'])
   })
 
   it('setParents:挂到同类的页下、拿掉;不同种类、自己、重复、成环都拒绝;updated 推到今天', () => {
@@ -217,7 +217,7 @@ describe('applyProposal', () => {
       { op: 'appendEntry', page: 'topics/leaf', section: '结论', date: TODAY, text: '一条' },
       { op: 'setColumns', page: 'methods/m', columns: [{ key: 'a', label: '1' }] },
       { op: 'setAggregationMetadata', page: 'topics/leaf', title: 'Leaf', splitOn: null },
-    ].map((op) => describeOp(op as Proposal['ops'][number]))).toEqual([
+    ].map((op) => describeOp(op as Proposal['ops'][number], DATA))).toEqual([
       '+ topics/x 新建(topic)',
       '+ papers/b ∈ topics/leaf(1 格)',
       '- papers/a ∈ topics/leaf',
@@ -225,6 +225,6 @@ describe('applyProposal', () => {
       '~ methods/m 列:a',
       '~ topics/leaf 元数据:Leaf',
     ])
-    expect(describeOp({ op: 'setParents', page: 'topics/leaf', parents: ['topics/root', 'topics/x'] })).toBe('~ topics/leaf 属于:topics/root,topics/x')
+    expect(describeOp({ op: 'setParents', page: 'topics/leaf', parents: ['topics/root', 'topics/x'] }, DATA)).toBe('~ topics/leaf 属于:topics/root,topics/x')
   })
 })

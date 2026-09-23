@@ -16,11 +16,13 @@ updated: "2026-05-20"
 |---|---|
 | [[papers/13979-STAR-Speculative-Decodin|STAR: SPECULATIVE DECODING WITH SEARCHABLE DRAFTING AND TARGET-AWARE REFINEMENT FOR MULTIMODAL GENERATION]] | [[topics/speculative-decoding|Speculative decoding]], [[topics/draft-acceptance|Draft acceptance]] |
 <!-- /generated -->
+<!-- generated:claims -->
+## 结论
+(暂无结论)
+<!-- /generated -->
 
 ## 机制
 压缩或裁掉 KV cache,让长序列与多路草稿放得进显存。
-
-## 结论
 
 ## 实验
 

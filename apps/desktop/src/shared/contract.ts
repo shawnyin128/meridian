@@ -294,6 +294,8 @@ export const ProjectDetailSchema = z.object({
   conclusions: ConclusionsSchema,
   /** Project conclusions in insertion order. */
   conclusionList: z.array(ConclusionSchema),
+  /** Claim refs whose experiment evidence cites a conclusion, keyed by conclusion id; derived by Core, never stored. */
+  conclusionClaims: z.record(z.string(), z.array(z.string())).optional(),
   /** Derived count of referenced papers still present in the vault. */
   paperCount: z.number().int(),
   /** Paper IDs recorded on the project page, including papers currently in trash. */
@@ -877,8 +879,8 @@ export const ProjectDeleteParamsSchema = z.object({ id: z.string() }).strict()
 /** Writable project fields; `block: null` clears the blocker. */
 const ProjectFieldsSchema = ProjectDetailSchema.omit({
   id: true, tasks: true, milestones: true, events: true, relations: true, attachments: true,
-  conclusions: true, conclusionList: true, paperCount: true, papers: true, paperTitles: true,
-  graph: true, agentSessions: true, block: true,
+  conclusions: true, conclusionList: true, conclusionClaims: true, paperCount: true, papers: true,
+  paperTitles: true, graph: true, agentSessions: true, block: true,
   conflictPage: true, workspace: true,
 }).extend({
   block: z.string().trim().min(1).max(500).nullable(),
@@ -1312,6 +1314,114 @@ export const FeedEntrySchema = z.object({
   body: FeedBodySchema,
 }).strict()
 
+/** Version of the Wiki write protocol; Core accepts non-human proposals of exactly this version. */
+export const WIKI_PROTOCOL_VERSION = 1
+
+// Other processes and versions write proposal envelopes, queue records and claims, so their schemas are
+// loose: an unknown additive field is kept, never a reason to refuse (AGENTS.md, Version Compatibility).
+
+/** `<dir>/<file stem>`; neither part is `.` or `..` (checked in apply.ts). */
+export const PageIdSchema = z.string().regex(/^[\p{L}\p{N}._-]+\/[\p{L}\p{N}._-]+$/u)
+/** A claim id is ASCII so that it is also a valid Obsidian block id (`^id`). */
+export const ClaimIdSchema = z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/)
+/** `<page id>#<claim id>` */
+export const ClaimRefSchema = z.string().regex(/^[\p{L}\p{N}._-]+\/[\p{L}\p{N}._-]+#[a-z0-9][a-z0-9-]{0,63}$/u)
+const Fingerprint = z.string().regex(/^[0-9a-f]{16}$/)
+/** The fingerprints of a page's stored frontmatter and stored body (write protocol §3.2). */
+export const PageVersionSchema = z.object({ fm: Fingerprint, body: Fingerprint }).loose()
+
+const ProposalTitle = z.string().trim().min(1).max(200)
+const Quote = z.string().trim().min(1).max(2_000)
+/** Trimmed, non-empty and bounded; "no line break" is checked in apply.ts. */
+const OneLine = (max: number) => z.string().trim().min(1).max(max)
+const ClaimText = OneLine(1_000)
+
+/** A passage in a paper: the paper page, the 1-based PDF page, the verbatim quote, and the reader highlight it came from. */
+export const SourceEvidenceSchema = z.object({
+  kind: z.literal('source'), paper: PageIdSchema, page: z.number().int().positive(), quote: Quote,
+  highlight: z.string().optional(),
+}).loose()
+
+/** A Lab result: a project node or a project conclusion (at least one, checked in apply.ts). */
+export const ExperimentEvidenceSchema = z.object({
+  kind: z.literal('experiment'), project: z.string().min(1),
+  node: z.string().optional(), conclusion: z.string().optional(),
+  text: z.string().trim().max(2_000).optional(),
+}).loose()
+
+/**
+ * What supports a claim: a source passage, another claim or page, a Lab result, a pointer to the
+ * user's own highlight or note (exactly one, checked in apply.ts), or the user's own judgment.
+ */
+export const EvidenceSchema = z.discriminatedUnion('kind', [
+  SourceEvidenceSchema,
+  z.object({ kind: z.literal('wiki'), ref: z.union([ClaimRefSchema, PageIdSchema]) }).loose(),
+  ExperimentEvidenceSchema,
+  z.object({
+    kind: z.literal('note'), paper: PageIdSchema, highlight: z.string().optional(), note: z.string().optional(),
+  }).loose(),
+  z.object({ kind: z.literal('personal'), text: z.string().trim().max(2_000) }).loose(),
+])
+
+/** What a claim conflicts with: another claim, a source passage, or a Lab result. */
+export const ConflictTargetSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('claim'), ref: ClaimRefSchema }).loose(),
+  SourceEvidenceSchema,
+  ExperimentEvidenceSchema,
+])
+
+/** One evidence item on a claim as the contract shows it: the item, when and by whom it was added, and its display name. */
+export const WikiEvidenceSchema = z.object({
+  evidence: EvidenceSchema,
+  added: IsoDate,
+  by: z.string(),
+  /** Paper short title, target claim text or page title, or project name; absent for personal evidence. */
+  title: z.string().optional(),
+}).strict()
+
+/** One open conflict on a claim; `title` is the other side's display text (claim text, paper short title, or project name). */
+export const WikiConflictSchema = z.object({
+  id: z.string(),
+  against: ConflictTargetSchema,
+  note: z.string(),
+  since: IsoDate,
+  by: z.string(),
+  title: z.string(),
+}).strict()
+
+/**
+ * A claim on an aggregation page: one settled finding with its version, when and by whom the current
+ * version was written (`我` or `ai:<producer id>`), its evidence, its open conflicts and earlier versions,
+ * oldest first.
+ */
+export const WikiClaimSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  version: z.number().int().positive(),
+  since: IsoDate,
+  by: z.string(),
+  evidence: z.array(WikiEvidenceSchema),
+  conflicts: z.array(WikiConflictSchema),
+  history: z.array(z.object({
+    version: z.number().int().positive(), text: z.string(), since: IsoDate, by: z.string(),
+  }).strict()),
+}).strict()
+
+/** Deterministic Wiki signal kinds Core computes for producers (write protocol §6.2). */
+export const WikiSignalKindSchema = z.enum([
+  'unfiled-paper', 'thin-aggregation', 'single-child', 'duplicate-name', 'broken-link',
+  'broken-membership', 'broken-claim-ref', 'cell-missing-anchor', 'claim-without-evidence',
+  'open-conflict', 'missing-generated-region',
+])
+
+/** One signal: the page (or `projects/<id>`) it is about, the page ids or claim refs involved, and one plain sentence. */
+export const WikiSignalSchema = z.object({
+  kind: WikiSignalKindSchema,
+  page: z.string(),
+  related: z.array(z.string()),
+  detail: z.string(),
+}).strict()
+
 /**
  * Aggregation kind from `schema.yaml`: frontmatter key, display label, page
  * directory, and current vault page count.
@@ -1367,8 +1477,8 @@ export const WikiRelatedSchema = z.object({
 
 /**
  * Aggregation page with card fields, parents, optional split basis, child cards,
- * comparison table, relations, and body Markdown after the final generated
- * region. `titles` maps valid body-link IDs to display text.
+ * comparison table, relations, claims in page order, and body Markdown after the final generated
+ * region. `titles` maps valid body-link IDs to display text; `version` is the page version.
  */
 export const WikiAggregationSchema = WikiAggregationCardSchema.extend({
   parents: z.array(WikiRefSchema),
@@ -1378,8 +1488,10 @@ export const WikiAggregationSchema = WikiAggregationCardSchema.extend({
   derivedColumns: z.array(WikiColumnSchema),
   rows: z.array(WikiRowSchema),
   related: z.array(WikiRelatedSchema),
+  claims: z.array(WikiClaimSchema),
   body: z.string(),
   titles: z.record(z.string(), z.string()),
+  version: PageVersionSchema,
 }).strict()
 
 /** Paper membership in an aggregation with kind and populated table cells keyed by display label. */
@@ -1394,7 +1506,7 @@ export const WikiMembershipSchema = z.object({
  * Paper wiki page. `id` combines the paper prefix and table-row ID; `short` is
  * the short title for editing and search, the full title when none is set; `pdf` is a vault-relative source path; `body`
  * is raw Markdown; `memberships` lists aggregations. Pages are created on import
- * and may have empty bodies. `titles` resolves valid body-link IDs.
+ * and may have empty bodies. `titles` resolves valid body-link IDs; `version` is the page version.
  */
 export const WikiPaperSchema = z.object({
   id: z.string(),
@@ -1408,6 +1520,7 @@ export const WikiPaperSchema = z.object({
   body: z.string(),
   titles: z.record(z.string(), z.string()),
   memberships: z.array(WikiMembershipSchema),
+  version: PageVersionSchema,
 }).strict()
 
 /**
@@ -1478,7 +1591,37 @@ export const ProposalOpSchema = z.discriminatedUnion('op', [
     title: z.string().trim().min(1).max(2_000),
     splitOn: z.string().trim().max(500).nullable(),
   }).strict(),
+  z.object({
+    op: z.literal('addClaim'), page: PageIdSchema,
+    claim: z.object({
+      id: ClaimIdSchema, text: ClaimText, evidence: z.array(EvidenceSchema).min(1).max(50),
+    }).loose(),
+  }).loose(),
+  z.object({
+    op: z.literal('reviseClaim'), page: PageIdSchema, claim: ClaimIdSchema, text: ClaimText,
+    evidence: z.array(EvidenceSchema).max(50).optional(),
+  }).loose(),
+  z.object({
+    op: z.literal('addEvidence'), page: PageIdSchema, claim: ClaimIdSchema,
+    evidence: z.array(EvidenceSchema).min(1).max(50),
+  }).loose(),
+  z.object({
+    op: z.literal('markConflict'), page: PageIdSchema, claim: ClaimIdSchema,
+    conflict: z.object({ id: ClaimIdSchema, against: ConflictTargetSchema, note: OneLine(1_000) }).loose(),
+  }).loose(),
+  z.object({
+    op: z.literal('resolveConflict'), page: PageIdSchema, claim: ClaimIdSchema, conflict: ClaimIdSchema,
+    outcome: z.enum(['revised', 'split', 'retracted', 'dismissed']), note: OneLine(1_000),
+  }).loose(),
+  z.object({
+    op: z.literal('retractClaim'), page: PageIdSchema, claim: ClaimIdSchema, reason: OneLine(1_000),
+  }).loose(),
 ])
+
+/** The six ops that act on claims; the only ops a non-human producer may submit. */
+export const CLAIM_OPS = [
+  'addClaim', 'reviseClaim', 'addEvidence', 'markConflict', 'resolveConflict', 'retractClaim',
+] as const
 
 /**
  * Write-back proposal. `source` identifies its producer, `title` summarizes it
@@ -1492,6 +1635,95 @@ export const ProposalSchema = z.object({
 }).strict()
 
 export const WikiApplyParamsSchema = z.object({ proposal: ProposalSchema }).strict()
+
+/** Who wrote a non-human proposal. `human` is refused by `wiki.propose`; an AI producer id looks like `skill.meridian`. */
+export const ProducerSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('human') }).loose(),
+  z.object({
+    kind: z.literal('ai'),
+    id: z.string().regex(/^[a-z][a-z0-9-]*(\.[a-z0-9-]+)+$/),
+    model: z.string().max(200).optional(),
+  }).loose(),
+])
+
+/** What prompted a proposal. */
+export const TriggerSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('manual') }).loose(),
+  z.object({ kind: z.literal('ingest'), paper: PageIdSchema }).loose(),
+  z.object({ kind: z.literal('lint'), signals: z.array(WikiSignalKindSchema).min(1) }).loose(),
+  z.object({ kind: z.literal('chat'), session: z.string().min(1) }).loose(),
+  z.object({ kind: z.literal('reading'), paper: PageIdSchema }).loose(),
+  z.object({ kind: z.literal('experiment'), project: z.string().min(1), node: z.string().optional() }).loose(),
+])
+
+/**
+ * A non-human proposal envelope (write protocol §2.1). `key` is unique per producer; `base` gives the
+ * version of every page the ops name (null: the page must not exist); `ops` run in order.
+ */
+export const AgentProposalSchema = z.object({
+  protocol: z.literal(WIKI_PROTOCOL_VERSION),
+  key: z.string().min(1).max(200),
+  producer: ProducerSchema,
+  trigger: TriggerSchema,
+  title: ProposalTitle,
+  rationale: z.string().max(4_000).optional(),
+  base: z.record(PageIdSchema, PageVersionSchema.nullable()),
+  ops: z.array(ProposalOpSchema).min(1).max(500),
+}).loose()
+
+const ProposalReasonSchema = z.object({
+  kind: z.enum(['stale', 'invalid', 'declined']),
+  message: z.string(),
+}).loose().nullable()
+
+/**
+ * One entry of the review queue `.meridian/proposals.json`, newest first. `digest` fingerprints the
+ * proposal (or, for an inbox file that did not parse, the file text, and then `proposal` is null).
+ * `received` and `decided.at` are epoch ms. `notice` flags a queued proposal whose source quotes could
+ * not be verified. `change` is the change record id once applied.
+ */
+export const ProposalRecordSchema = z.object({
+  id: z.string(),
+  digest: Fingerprint,
+  proposal: AgentProposalSchema.nullable(),
+  received: z.number().int(),
+  path: z.enum(['auto', 'review']),
+  status: z.enum(['queued', 'applied', 'rejected']),
+  reason: ProposalReasonSchema,
+  decided: z.object({ at: z.number().int(), by: z.enum(['我', 'policy']) }).loose().nullable(),
+  change: z.string().nullable(),
+  notice: z.string().nullable(),
+}).loose()
+
+/**
+ * A queue record as the review list reads it, plus three derived fields: the describeOp line of every op,
+ * the pages it would write, and whether the pages it rests on changed since it was made.
+ */
+export const WikiProposalSchema = ProposalRecordSchema.extend({
+  ops: z.array(z.string()),
+  pages: z.array(z.string()),
+  staleNow: z.boolean(),
+}).loose()
+
+/** What submitting or deciding a proposal came to. */
+export const ProposalReceiptSchema = z.object({
+  id: z.string(),
+  status: z.enum(['applied', 'queued', 'rejected']),
+  reason: ProposalReasonSchema,
+}).loose()
+
+/** Params of `wiki.propose`; Core parses the envelope itself so that every refusal names its cause. */
+export const WikiProposeParamsSchema = z.object({ proposal: z.unknown() }).strict()
+
+export const WikiProposalsParamsSchema = z.object({
+  status: z.enum(['queued', 'applied', 'rejected']).optional(),
+}).strict()
+
+export const WikiDecideParamsSchema = z.object({
+  id: z.string(),
+  decision: z.enum(['apply', 'decline']),
+  reason: z.string().trim().max(1_000).optional(),
+}).strict()
 
 /**
  * Chat message run whose `kind` distinguishes plain text from an entered `@` mention.
@@ -1912,7 +2144,21 @@ export type WikiMembership = z.infer<typeof WikiMembershipSchema>
 export type WikiPaper = z.infer<typeof WikiPaperSchema>
 export type WikiHome = z.infer<typeof WikiHomeSchema>
 export type ProposalOp = z.infer<typeof ProposalOpSchema>
+export type ClaimOp = Extract<ProposalOp, { op: (typeof CLAIM_OPS)[number] }>
 export type Proposal = z.infer<typeof ProposalSchema>
+export type PageVersion = z.infer<typeof PageVersionSchema>
+export type Evidence = z.infer<typeof EvidenceSchema>
+export type ConflictTarget = z.infer<typeof ConflictTargetSchema>
+export type WikiEvidence = z.infer<typeof WikiEvidenceSchema>
+export type WikiConflict = z.infer<typeof WikiConflictSchema>
+export type WikiClaim = z.infer<typeof WikiClaimSchema>
+export type WikiSignalKind = z.infer<typeof WikiSignalKindSchema>
+export type WikiSignal = z.infer<typeof WikiSignalSchema>
+export type AgentProposal = z.infer<typeof AgentProposalSchema>
+export type ProposalRecord = z.infer<typeof ProposalRecordSchema>
+export type WikiProposal = z.infer<typeof WikiProposalSchema>
+export type ProposalReceipt = z.infer<typeof ProposalReceiptSchema>
+export type ProposalStatus = ProposalRecord['status']
 export type ChatRun = z.infer<typeof ChatRunSchema>
 export type ChatAction = z.infer<typeof ChatActionSchema>
 export type ChatMessage = z.infer<typeof ChatMessageSchema>
@@ -2027,6 +2273,10 @@ export const CONTRACT_METHODS = [
   'wiki.cards',
   'wiki.apply',
   'wiki.update',
+  'wiki.propose',
+  'wiki.proposals',
+  'wiki.decide',
+  'wiki.signals',
   'trash.list',
   'trash.restore',
   'trash.purge',

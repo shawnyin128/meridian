@@ -1,15 +1,15 @@
 import type {
-  AttachmentFields, ChangeEntry, ChatMessage, ChatMessageFields, ChatSession, ConclusionState, Facet,
+  AttachmentFields, ChangeEntry, ChangeSource, ChatMessage, ChatMessageFields, ChatSession, ConclusionState, Facet,
   DeliverySettings, DiscoveryFeedback, DiscoveryIntentAction, DiscoveryProfile, FeedEntry, FeedFields,
   InboxDownloadResult, InboxEntry,
   InboxListParams, LaterEntry, ListParams, ListResult,
-  GraphNode, MilestoneFields,
+  GraphNode, MilestoneFields, PageVersion,
   PaperCell, PaperColumn, PaperColumns,
-  PaperFields, PaperImportResult, PaperReading, PaperRow, Proposal, ProjectDetail, ProjectFields,
-  ProjectOverview, ProjectSummary, ProjectWorkspaceBinding, ReadingMutation,
+  PaperFields, PaperImportResult, PaperReading, PaperRow, Proposal, ProposalOp, ProposalRecord, ProjectDetail,
+  ProjectFields, ProjectOverview, ProjectSummary, ProjectWorkspaceBinding, ReadingMutation,
   RelationFields, ResearchIdea, SearchHit,
   TaskFields, TaskPatch, TrashEntry, Watch, WatchFields, WikiAggregation, WikiAggregationCard, WikiHome,
-  WikiPaper,
+  WikiPaper, WikiSignal,
 } from '../shared/contract.js'
 import type { PageText, PaperSnapshot } from './vault/records.js'
 import type { RemotePaper } from './net/arxiv.js'
@@ -19,6 +19,9 @@ import type {
 import type { ResearchIdeaMutation } from './research-ideas/index.js'
 
 export type DiscoverySeeds = { positive: string[]; negative: string[] }
+
+/** Who applies a proposal: the `by` its claim ops stamp, and the change-log chip its record carries. */
+export type ProposalProducer = { by: string; source: ChangeSource }
 
 /**
  * The vault-backed data operations Core exposes over the contract, plus the
@@ -417,15 +420,6 @@ export interface VaultStore {
    */
   deleteNode(projectId: string, nodeId: string): ProjectDetail
 
-  /**
-   * Writes one line from a project's research node back to a wiki aggregation
-   * page: appends `- <today> · <text>` to that page's first appendable section
-   * and records `{ page, text, date: today }` on the node. Returns the project.
-   * Throws if the project, node or page does not exist, or `text` is empty or
-   * spans lines.
-   */
-  writeBack(id: string, node: string, page: string, text: string): ProjectDetail
-
   /** Appends a pending conclusion to a project. This research-state write is not undoable. */
   createConclusion(
     projectId: string, text: string, from: { chat?: string; paper?: string },
@@ -574,15 +568,16 @@ export interface VaultStore {
    * Returns the aggregation with the given id: its card, its parents, the cards
    * of its children, its comparison table — one row per member paper in id
    * order, cells keyed by column — the aggregations of every other kind its
-   * members also belong to, and its body. Throws if no such aggregation exists.
+   * members also belong to, its claims, its body and its page version. Throws
+   * if no such aggregation exists.
    */
   wikiAggregation(id: string): WikiAggregation
 
   /**
    * Returns the paper page with the given id — `papers/` followed by the id of
-   * a row `listPapers` gives: the fields its frontmatter carries, its body, and
-   * one membership per aggregation it belongs to with the cells it fills there.
-   * Every listed paper has a page. Throws if no such paper exists.
+   * a row `listPapers` gives: the fields its frontmatter carries, its body,
+   * one membership per aggregation it belongs to with the cells it fills there,
+   * and its page version. Every listed paper has a page. Throws if no such paper exists.
    */
   wikiPaper(id: string): WikiPaper
 
@@ -593,22 +588,57 @@ export interface VaultStore {
   wikiCards(): WikiAggregationCard[]
 
   /**
-   * Returns the labels of the schema's appendable sections in order.
-   */
-  wikiSections(): string[]
-
-  /**
    * Applies a proposal: every op in order, each seeing the effect of the ones
    * before it, none of them written unless all of them are valid — the
-   * validity rules are applyProposal's in core/wiki. A membership op
-   * writes the paper's page, the other ops write the aggregation's page, and
-   * every aggregation whose members or children the proposal changed gets its
-   * generated regions rewritten. Every written page is stamped updated today.
-   * The proposal is validated again here even when `proposalPages` already
-   * validated it: the store does not assume its caller did.
-   * Throws if an op is not valid.
+   * validity rules are applyProposal's in core/wiki, with claim ops stamped
+   * `producer.by` (`我` when no producer is given) and checked against the
+   * vault's projects and reading records. A membership op writes the paper's
+   * page, the other ops write the aggregation's page, and every aggregation
+   * whose members, children or claims the proposal changed, or whose claims
+   * conflict with a revised claim, gets its generated regions rewritten. Every
+   * written page is stamped updated today, and the Wiki signals are
+   * recomputed. The proposal is validated again here even when
+   * `proposalPages` already validated it: the store does not assume its
+   * caller did. `producer.source` is the change-log chip the recorded change
+   * carries. Throws if an op is not valid.
    */
-  applyProposal(proposal: Proposal): void
+  applyProposal(proposal: Proposal, producer?: ProposalProducer): void
+
+  /**
+   * Throws exactly when applyProposal would refuse `ops` from producer `by`
+   * against the vault as it stands; writes nothing.
+   */
+  checkProposal(ops: ProposalOp[], by: string): void
+
+  /** Returns the describeOp line of each op, read against the vault as it stands. */
+  describeProposal(ops: ProposalOp[]): string[]
+
+  /**
+   * Returns the id of every page applying `ops` would store content on, in first-touched order (core/wiki
+   * touchedPages), without validating them.
+   */
+  pagesWritten(ops: ProposalOp[]): string[]
+
+  /** Returns the page version (write protocol §3.2) of the Wiki page with the given id, null when there is none. */
+  pageVersion(id: string): PageVersion | null
+
+  /** Returns the Wiki signals (write protocol §6.2) of the vault as it stands. */
+  wikiSignals(): WikiSignal[]
+
+  /** Returns the review-queue records, newest first. */
+  proposalRecords(): ProposalRecord[]
+
+  /** Replaces the review-queue records with `rows`, newest first. */
+  saveProposalRecords(rows: ProposalRecord[]): void
+
+  /** Returns an unused review-queue record id, `proposal-<n>`. */
+  nextProposalId(): string
+
+  /** Returns every file waiting in the proposal inbox, by file name order: its name and its text. */
+  proposalInbox(): { name: string; text: string }[]
+
+  /** Removes the proposal inbox file with the given name. Throws if it is not there. */
+  dropProposalInboxFile(name: string): void
 
   /**
    * Replaces the body of the wiki page with the given id — every line after
@@ -637,9 +667,9 @@ export interface VaultStore {
    * Returns the id of every page applying `proposal` would write, in the order
    * first written: the pages its ops name, then every aggregation whose
    * generated regions the apply refills. Throws if the proposal is not valid
-   * against the vault as it stands.
+   * against the vault as it stands for producer `by` (`我` when absent).
    */
-  proposalPages(proposal: Proposal): string[]
+  proposalPages(proposal: Proposal, by?: string): string[]
 
   /**
    * Puts the given page texts back as they are, a null text removing that page.
