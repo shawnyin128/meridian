@@ -163,8 +163,7 @@ or delete research nodes, append node events, or attach node-level Wiki
 write-backs. Make research-node changes through the Lab Markdown control plane
 and strict update packets, then refresh the generated graph view.
 
-Change graph state via strict update packet and Meridian core. VS Code graph
-viewing is read-only.
+Change graph state via strict update packet and Meridian core.
 
 When the Meridian MCP server is available, use `meridian.lab_graph` to read the
 current materialized graph and health, use `meridian.lab_update` to submit a

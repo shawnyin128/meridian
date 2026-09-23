@@ -309,7 +309,6 @@ def _write_lab_graph_fixture(case: dict[str, Any], repo_root: Path) -> None:
                 "Preserve Lab state with strict update packets.",
                 "Generated graph files under `.meridian/graph/` are read-only view artifacts.",
                 "Do not hand-edit generated graph files.",
-                "The VS Code graph view is read-only.",
                 "",
             ]
         ),
