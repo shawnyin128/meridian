@@ -11,8 +11,11 @@ Format: `[vX.Y.Z.F] description (Closes #issue)`
 - `[v0.0.15.0] Show a detail note on every task (Closes #5)`
 
 Work is done on the work branch first; the pull request is opened once the work is finished and
-tested. `Closes #issue` closes the issue automatically when the pull request is merged, so the
-issue, the branch, the pull request and the version always point at each other. The description
+tested. `Closes #issue` links the pull request to its issue, so the issue, the branch, the pull
+request and the version always point at each other. GitHub closes an issue by itself only when the
+pull request merges into the default branch, and work merges into a release branch, so whoever
+merges the pull request also closes its issue with a comment naming the pull request and the
+release branch. The description
 says what the change does, not what the pull request does to the repository.
 
 ## 2. Where it goes
@@ -57,7 +60,7 @@ All of these must hold:
    `git switch -c fix/v0.0.14.2/desktop/research-record-layout v0.0.14001`
 3. The fix is made and a pull request is opened into `fix/v0.0.14.2/release`, titled
    `[v0.0.14.2] Lay research records out like the other project lists (Closes #12)`.
-4. The owner reviews it, the checks pass, it is merged. Issue #12 closes itself and the fix ships
-   with `v0.0.14.2`.
+4. The owner reviews it, the checks pass, it is merged, and issue #12 is closed with the comment
+   "Merged in #13 into fix/v0.0.14.2/release; ships in v0.0.14.2." The fix ships with `v0.0.14.2`.
 
 The pull request template in this repository asks for these fields.
