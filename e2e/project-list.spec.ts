@@ -226,6 +226,18 @@ test('面板只显示最新一条推进,细行的上次推进按最新那条算'
     .toContainText(`上次推进 ${daysSince(today, moe.at(-1)!.date)} 天前`)
 })
 
+test('单日与跨天任务的日期标签、全天与时段标签在各自列里一样宽', async ({ win }) => {
+  await gotoList(win)
+  await win.locator('[data-proj="timeline-demo"]').click()
+  const rows = win.locator('#taskList .task-row')
+  await expect(rows).toHaveCount(4)
+  for (const cell of ['.task-date-part .date-chip', '.task-clock-part .date-chip']) {
+    const widths = await rows.evaluateAll((items, selector) => items.map((row) =>
+      Math.round(row.querySelector(selector as string)!.getBoundingClientRect().width)), cell)
+    expect(new Set(widths).size, `${cell} 各行应一样宽:${widths.join(',')}`).toBe(1)
+  }
+})
+
 test('没有图数据的项目出的是一行占位,不是空画布加图例', async ({ win }) => {
   await gotoList(win)
   await win.locator('[data-proj="sched"]').click()
