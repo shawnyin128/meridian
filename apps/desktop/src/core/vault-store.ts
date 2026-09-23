@@ -13,7 +13,7 @@ import {
   TRASH_RETENTION_DAYS, UNREAD_PAPER,
 } from '../shared/vocabulary.js'
 import type { ChangeRecord } from './changelog.js'
-import { ChangeRecordSchema, PROJECT_FIELDS, withChangelog } from './changelog.js'
+import { PROJECT_FIELDS, parseChangeRecords, withChangelog } from './changelog.js'
 import { dayOf, feedNewestFirst, systemToday } from './dates.js'
 import {
   applyReadingMutation, checkColumns, checkCustom, checkGroupKey, columnCells, emptyColumns,
@@ -2280,7 +2280,10 @@ export function createVaultStore(
   }
 
   return withChangelog(ops, {
-    load: (): ChangeRecord[] => load('changelog', ChangeRecordSchema),
+    load: (): ChangeRecord[] => {
+      const file = join(meridian, 'changelog.json')
+      return existsSync(file) ? parseChangeRecords(JSON.parse(readFileSync(file, 'utf8'))) : []
+    },
     save: (rows) => { save('changelog', rows) },
     nextId: () => nextId('change'),
   })

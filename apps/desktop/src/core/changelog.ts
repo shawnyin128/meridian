@@ -94,6 +94,37 @@ export type ChangeRecord = z.infer<typeof ChangeRecordSchema>
 type ChangeTarget = z.infer<typeof ChangeTargetSchema>
 type Restore = z.infer<typeof RestoreSchema>
 
+/** Rewrites a research graph an older version snapshotted: its `activePath` chain becomes `activeNodes` holding the chain's last id. */
+function upgradeGraph(graph: unknown): void {
+  if (typeof graph !== 'object' || graph === null || !('activePath' in graph)) return
+  const held = graph as { activePath?: unknown; activeNodes?: unknown }
+  const path = held.activePath
+  delete held.activePath
+  if (held.activeNodes === undefined && Array.isArray(path) && path.length > 0) held.activeNodes = [path.at(-1)]
+}
+
+/**
+ * Parses the stored change log one record at a time, upgrading project snapshots older versions
+ * wrote. A record whose undo data still cannot be read is kept as history without undo
+ * (`restore: null`); a record that cannot be read at all is left out and reported on stderr. So an
+ * unreadable record never keeps the library from opening.
+ */
+export function parseChangeRecords(raw: unknown): ChangeRecord[] {
+  if (!Array.isArray(raw)) throw new Error('最近变动文件不是列表')
+  return raw.flatMap((row: unknown, index): ChangeRecord[] => {
+    const restore = (row as { restore?: { kind?: unknown; project?: { graph?: unknown; workspace?: { graph?: unknown } } } })?.restore
+    if (restore?.kind === 'project') {
+      upgradeGraph(restore.project?.graph)
+      upgradeGraph(restore.project?.workspace?.graph)
+    }
+    const whole = ChangeRecordSchema.safeParse(row)
+    if (whole.success) return [whole.data]
+    const withoutUndo = ChangeRecordSchema.safeParse({ ...(row as object), target: null, restore: null })
+    console.error(`[changelog] record ${index}: ${whole.error.message.slice(0, 300)}`)
+    return withoutUndo.success ? [withoutUndo.data] : []
+  })
+}
+
 /** Where a write retains its previous entity: snapshot, trash, no prior entity, or an explicit restore operation. */
 type Keep = 'snapshot' | 'trash' | 'created' | Restore
 
