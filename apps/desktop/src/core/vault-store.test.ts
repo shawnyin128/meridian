@@ -1193,14 +1193,16 @@ describe('vault store on the aggregation layout', () => {
 
     store.absorbAgentTasks(id)
     const tasks = store.getProject(id).tasks
+    // Each request lands at the front of the plan as it is absorbed, so the request
+    // processed last (write-up) ends up ahead of the one processed first (rerun-sweep).
     expect(tasks.map(({ title, start, end, state, priority, origin, note }) => ({ title, start, end, state, priority, origin, note }))).toEqual([
-      { title: '在 B=16 重跑宽度扫描', start: '2026-09-12', end: '2026-09-12', state: 'plan', priority: 'p1', origin: 'agent', note: '延迟矩阵补上 B=16 一列算完成' },
       { title: '整理扫描结果', start: '2026-09-13', end: '2026-09-13', state: 'plan', priority: 'p1', origin: 'agent', note: undefined },
+      { title: '在 B=16 重跑宽度扫描', start: '2026-09-12', end: '2026-09-12', state: 'plan', priority: 'p1', origin: 'agent', note: '延迟矩阵补上 B=16 一列算完成' },
     ])
     const plan = JSON.parse(readFileSync(join(repo, '.meridian', 'control', 'plan.json'), 'utf8')) as {
       agent_tasks: Record<string, string>; tasks: { id: string; origin?: string }[]
     }
-    expect(plan.agent_tasks).toEqual({ 'rerun-sweep': tasks[0]!.id, 'write-up': tasks[1]!.id })
+    expect(plan.agent_tasks).toEqual({ 'rerun-sweep': tasks[1]!.id, 'write-up': tasks[0]!.id })
     expect(plan.tasks.map((task) => task.origin)).toEqual(['agent', 'agent'])
     const changes = store.listChanges().slice(0, 2)
     expect(changes.map((c) => [c.title, c.source, c.undoable])).toEqual([
@@ -1209,8 +1211,9 @@ describe('vault store on the aggregation layout', () => {
 
     store.absorbAgentTasks(id)
     expect(store.getProject(id).tasks).toHaveLength(2)
+    // changes[0] is the most recently logged change, which added the write-up task (tasks[0]).
     store.undoChange(changes[0]!.id)
-    store.deleteTask(id, tasks[0]!.id)
+    store.deleteTask(id, tasks[1]!.id)
     store.absorbAgentTasks()
     expect(createVaultStore(vault).getProject(id).tasks).toEqual([])
   })
