@@ -75,6 +75,18 @@ describe('WatchSettings', () => {
   })
   afterEach(() => { host.remove() })
 
+  it('新建关注的输入行出现在该组最前,和新关注落下的位置一致', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+
+    const topicList = host.querySelector('[data-w="topic-1"]')!.closest('.wlist')!
+    const add = topicList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!
+    await act(async () => { add.click() })
+    expect(topicList.firstElementChild!.classList.contains('newrow')).toBe(true)
+
+    await act(async () => { root.unmount() })
+  })
+
   it('主题和作者都从原行进入编辑，并用原关注 id 保存', async () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })

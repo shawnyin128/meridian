@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Milestone, Task } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
-import { ProjectPlan, ProjectTaskPanel } from './ProjectPlan.js'
+import { ProjectPlan, ProjectTaskPanel, type PlanCreating } from './ProjectPlan.js'
 
 const task: Task = {
   id: 'task-1', title: '校准批次', start: '2026-09-16', end: '2026-09-16',
@@ -29,13 +29,14 @@ function renderPlan(tab: 'task' | 'ms', options: {
   tasks?: Task[]
   milestones?: Milestone[]
   flashId?: string | null
+  creating?: PlanCreating | null
 } = {}) {
-  const { tasks = [task], milestones = [milestone], flashId = null } = options
+  const { tasks = [task], milestones = [milestone], flashId = null, creating = null } = options
   return renderToStaticMarkup(
     <MessagesProvider>
       <ProjectPlan
         project={{ tasks, milestones }} tab={tab} today="2026-09-16"
-        creating={null} flashId={flashId} selectedTaskId={null}
+        creating={creating} flashId={flashId} selectedTaskId={null}
         listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()} milestoneLaneRef={createRef()}
         onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
         onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
@@ -82,6 +83,12 @@ describe('ProjectPlan', () => {
     expect(output).toContain('9月20日')
     expect(output).toContain('未完成')
     expect(output).not.toContain('校准批次')
+  })
+
+  it('新建任务的输入行出现在列表最前,和新任务落下的位置一致', () => {
+    const output = renderPlan('task', { creating: { kind: 'task', date: '2026-09-16', window: null } })
+    expect(output.indexOf('task-create-row')).toBeGreaterThan(-1)
+    expect(output.indexOf('task-create-row')).toBeLessThan(output.indexOf('data-row="task-1"'))
   })
 
   it('已完成的任务默认折叠进已归档分组,活动列表里看不到它', () => {
