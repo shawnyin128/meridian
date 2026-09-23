@@ -80,13 +80,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release edit "${{ needs.draft.outputs.tag }}" --repo "${{ github.repository }}" --draft=false --latest
-      # Only the newest release feeds the updater, so older ones and their tags are removed beyond the latest ten.
-      - name: Keep the newest ten releases
+      # Only the newest release feeds the updater, so older ones and their tags are removed beyond the latest five.
+      - name: Keep the newest five releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release list --repo "${{ github.repository }}" --limit 200 --json tagName,createdAt,isDraft \
-            --jq 'map(select(.isDraft | not)) | sort_by(.createdAt) | reverse | .[10:] | .[].tagName' |
+            --jq 'map(select(.isDraft | not)) | sort_by(.createdAt) | reverse | .[5:] | .[].tagName' |
           while read -r tag; do
             gh release delete "$tag" --repo "${{ github.repository }}" --yes --cleanup-tag
           done
