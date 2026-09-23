@@ -1,7 +1,10 @@
 # Issues
 
-An issue is where every change starts. One issue covers one specific problem, and every issue
-names the version it ships in.
+An issue records a problem someone reports or work that is not started yet. One issue covers one
+specific problem, and every issue names the version it ships in.
+
+The team's own work does not need an issue first: build it on a work branch and describe it in the
+pull request (see [pull-requests.md](pull-requests.md)).
 
 ## 1. Type label and milestone
 
