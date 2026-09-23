@@ -1108,8 +1108,9 @@ describe('contract schemas', () => {
     const data = wikiFixture as WikiData
     const aggregationIds = wikiSearchIndex(data).map((hit) => hit.target)
     expect(aggregationIds.length).toBeGreaterThan(0)
-    for (const id of aggregationIds) WikiAggregationSchema.parse(wikiAggregation(data, id))
-    for (const row of papers) WikiPaperSchema.parse(wikiPaper(data, `papers/${row.id}`))
+    const version = { fm: '0123456789abcdef', body: '0123456789abcdef' }
+    for (const id of aggregationIds) WikiAggregationSchema.parse(wikiAggregation(data, id, version, {}))
+    for (const row of papers) WikiPaperSchema.parse(wikiPaper(data, `papers/${row.id}`, version))
   })
 
   it('项目里那几处 wiki 跳转的目标都指向真的聚合页', () => {

@@ -1,0 +1,4 @@
+.diff{margin:8px 0 4px;border:1px solid var(--sep2);border-radius:var(--r-md);overflow:hidden;font-family:var(--mono);font-size:12px}
+.diff div{padding:4px 10px}
+.diff .del{background:var(--diff-del)}
+.diff .add{background:var(--diff-add)}

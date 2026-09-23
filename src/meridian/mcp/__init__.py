@@ -6,26 +6,24 @@ truth.
 """
 
 from meridian.mcp.adapter import (
-    apply,
     audit,
     capabilities,
     context,
-    propose,
     read,
     trace,
-    update,
+    wiki_proposal_status,
+    wiki_propose,
 )
 from meridian.mcp.server import MeridianMCPServer, tool_definitions
 
 __all__ = [
     "MeridianMCPServer",
-    "apply",
     "audit",
     "capabilities",
     "context",
-    "propose",
     "read",
     "tool_definitions",
     "trace",
-    "update",
+    "wiki_proposal_status",
+    "wiki_propose",
 ]

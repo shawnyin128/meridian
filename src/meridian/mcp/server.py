@@ -117,7 +117,10 @@ class MeridianMCPServer:
             "serverInfo": {"name": SERVER_NAME, "version": SERVER_VERSION},
             "instructions": (
                 "Meridian Paper Wiki exposes two workflows: Use Wiki through "
-                "context/read/trace and Update Wiki through update/propose/apply/audit. "
+                "context/read/trace, and Update Wiki through wiki_propose/wiki_proposal_status/audit. "
+                "The App owns paper ingest, aggregation structure, and body edits; an agent may only "
+                "propose a conclusion a project found and summarised, as claim ops with experiment "
+                "evidence, and the user reviews it in the App. "
                 "Project Workspace exposes status/plan/event_add for App-agent coordination. "
                 "Coding context starts with read-only changes, then expands only referenced ideas or nodes. "
                 "Lab exposes graph/update/result for agent-owned research state; App-owned plans remain read-only. "
@@ -213,48 +216,52 @@ def tool_definitions() -> list[JsonDict]:
             ),
         },
         {
-            "name": "meridian.update",
-            "description": "Update Wiki: add a user insight, or prepare a complete CLI ingest handoff for a local PDF source.",
+            "name": "meridian.wiki_propose",
+            "description": (
+                "Update Wiki: propose a conclusion a project found and summarised, as claim ops "
+                "(addClaim, reviseClaim, addEvidence, markConflict, resolveConflict, retractClaim). "
+                "Never import papers, restructure aggregations, or edit bodies; addClaim/reviseClaim "
+                "need at least one experiment evidence item. The user reviews the proposal in the App; "
+                "this tool only writes to the review inbox."
+            ),
             "inputSchema": _schema(
                 {
                     "wiki_root": {"type": "string", "description": "Canonical wiki root. Defaults to the active user Paper Wiki workspace."},
-                    "source_path": {"type": "string", "description": "Local PDF path. Download HTTP(S) paper URLs to a local PDF before calling this tool."},
-                    "paper": {"type": "string"},
-                    "note": {"type": "string"},
-                    "insight_type": {"type": "string", "default": "paper-note"},
+                    "ops": {
+                        "type": "array",
+                        "items": {"type": "object"},
+                        "description": "Claim ops only: addClaim, reviseClaim, addEvidence, markConflict, resolveConflict, retractClaim.",
+                    },
+                    "title": {"type": "string", "description": "One sentence for the review list."},
+                    "trigger": {
+                        "type": "object",
+                        "description": "Where the conclusion came from.",
+                        "properties": {
+                            "project": {"type": "string"},
+                            "node": {"type": "string"},
+                        },
+                        "required": ["project"],
+                        "additionalProperties": False,
+                    },
+                    "rationale": {"type": "string"},
+                },
+                required=["ops", "title", "trigger"],
+            ),
+        },
+        {
+            "name": "meridian.wiki_proposal_status",
+            "description": "Update Wiki: check a submitted proposal's review status, or list recent proposals.",
+            "inputSchema": _schema(
+                {
+                    "wiki_root": {"type": "string", "description": "Canonical wiki root. Defaults to the active user Paper Wiki workspace."},
+                    "key": {"type": "string", "description": "The key returned by wiki_propose. Omit to list recent proposals."},
+                    "limit": {"type": "integer", "default": 10, "minimum": 1, "maximum": 100},
                 }
             ),
         },
         {
-            "name": "meridian.propose",
-            "description": "Update Wiki: create a lintable write-back proposal from retrieved context.",
-            "inputSchema": _schema(
-                {
-                    "wiki_root": {"type": "string", "description": "Canonical wiki root. Defaults to the active user Paper Wiki workspace."},
-                    "query": {"type": "string"},
-                    "title": {"type": "string"},
-                    "proposal_type": {"type": "string", "default": "synthesis"},
-                    "context_path": {"type": "string"},
-                    "user_note": {"type": "string"},
-                },
-                required=["query", "title"],
-            ),
-        },
-        {
-            "name": "meridian.apply",
-            "description": "Update Wiki: lint and publish a proposal when it is safe to canonicalize.",
-            "inputSchema": _schema(
-                {
-                    "wiki_root": {"type": "string", "description": "Canonical wiki root. Defaults to the active user Paper Wiki workspace."},
-                    "proposal_manifest": {"type": "string"},
-                    "overwrite": {"type": "boolean", "default": False},
-                },
-                required=["proposal_manifest"],
-            ),
-        },
-        {
             "name": "meridian.audit",
-            "description": "Update Wiki: return compact deterministic wiki health and repair pointers.",
+            "description": "Update Wiki: read the App's deterministic wiki signals (lint findings); report if it has not run yet.",
             "inputSchema": _schema(
                 {
                     "wiki_root": {"type": "string", "description": "Canonical wiki root. Defaults to the active user Paper Wiki workspace."},
@@ -597,34 +604,27 @@ def _call_trace(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
     )
 
 
-def _call_update(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
-    source_path = arguments.get("source_path")
-    return adapter.update(
+def _call_wiki_propose(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
+    ops = arguments.get("ops")
+    if not isinstance(ops, list):
+        raise TypeError("ops must be an array of claim operations")
+    trigger = arguments.get("trigger")
+    if not isinstance(trigger, dict):
+        raise TypeError("trigger must be an object with a project")
+    return adapter.wiki_propose(
         wiki_root=server.wiki_root(arguments),
-        source_path=Path(str(source_path)) if source_path else None,
-        paper=arguments.get("paper"),
-        note=arguments.get("note"),
-        insight_type=str(arguments.get("insight_type") or "paper-note"),
-    )
-
-
-def _call_propose(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
-    context_path = arguments.get("context_path")
-    return adapter.propose(
-        wiki_root=server.wiki_root(arguments),
-        query=_required(arguments, "query"),
+        ops=ops,
         title=_required(arguments, "title"),
-        proposal_type=str(arguments.get("proposal_type") or "synthesis"),
-        context_path=Path(str(context_path)) if context_path else None,
-        user_note=str(arguments.get("user_note") or ""),
+        trigger=trigger,
+        rationale=str(arguments["rationale"]) if arguments.get("rationale") not in (None, "") else None,
     )
 
 
-def _call_apply(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
-    return adapter.apply(
-        proposal_manifest=Path(_required(arguments, "proposal_manifest")),
+def _call_wiki_proposal_status(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
+    return adapter.wiki_proposal_status(
         wiki_root=server.wiki_root(arguments),
-        overwrite=bool(arguments.get("overwrite") or False),
+        key=str(arguments["key"]) if arguments.get("key") not in (None, "") else None,
+        limit=int(arguments.get("limit") or 10),
     )
 
 
@@ -787,9 +787,8 @@ TOOL_CALLS: dict[str, Callable[[MeridianMCPServer, JsonDict], JsonDict]] = {
     "meridian.context": _call_context,
     "meridian.read": _call_read,
     "meridian.trace": _call_trace,
-    "meridian.update": _call_update,
-    "meridian.propose": _call_propose,
-    "meridian.apply": _call_apply,
+    "meridian.wiki_propose": _call_wiki_propose,
+    "meridian.wiki_proposal_status": _call_wiki_proposal_status,
     "meridian.audit": _call_audit,
     "meridian.workspace_status": _call_workspace_status,
     "meridian.workspace_plan": _call_workspace_plan,

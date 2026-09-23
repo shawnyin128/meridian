@@ -10,12 +10,13 @@ import papers from './fixtures/papers.json' with { type: 'json' }
 import projects from './fixtures/projects.json' with { type: 'json' }
 import watchList from './fixtures/watches.json' with { type: 'json' }
 import wikiFixture from './fixtures/wiki.json' with { type: 'json' }
+import proposalFixture from './fixtures/proposals.json' with { type: 'json' }
 import type {
   Attachment, ChangeEntry, ChatMessage, ChatSession, Conclusion, DeliverySettings, FeedEntry, InboxEntry,
   GraphNode, LaterEntry, PaperColumns, PaperImportResult, PaperReading, PaperRow, ProjectDetail, ReadingMutation, SearchHit,
-  ResearchIdea, Task, TaskFields, TrashEntry, Watch,
+  ProposalRecord, ResearchIdea, Task, TaskFields, TrashEntry, Watch,
 } from '../shared/contract.js'
-import { DEFAULT_DELIVERY_SETTINGS } from '../shared/contract.js'
+import { AgentProposalSchema, DEFAULT_DELIVERY_SETTINGS } from '../shared/contract.js'
 import { projectControlState } from '../shared/project-control.js'
 import { topicDir, topicProposal } from '../shared/topic-proposal.js'
 import {
@@ -44,9 +45,11 @@ import {
 import { dayOf, feedNewestFirst, systemToday } from './dates.js'
 import { createResearchIdea, updateResearchIdea } from './research-ideas/index.js'
 import type { MetadataFill, VaultOps, VaultStore } from './vault.js'
+import { digestOf } from './wiki-proposals.js'
 import {
-  applyProposal, checkBody, isPaper, touchedPages, wikiAggregation, wikiCards, wikiHome, wikiPaper,
-  wikiSearchIndex, type WikiData, type WikiPaperRecord,
+  applyProposal, checkBody, conclusionClaims, describeOp, HUMAN, isPaper, pageVersion, recordText, touchedPages,
+  wikiAggregation, wikiCards, wikiHome, wikiPaper, wikiSearchIndex, wikiSignals,
+  type ClaimWorld, type WikiData, type WikiPaperRecord,
 } from './wiki/index.js'
 
 /** Trash entry with all content needed for restoration. `restorable` is derived from destination availability. */
@@ -71,7 +74,7 @@ type SeededChange = Omit<ChangeEntry, 'undone' | 'undoable' | 'archived'>
 type PaperRecord = Omit<PaperRow, 'readState' | 'projects'> & { sourceId: string }
 
 /** Fixture projects retain only fields that a project page can persist. */
-type FixtureProject = Omit<ProjectDetail, 'paperCount' | 'paperTitles' | 'conclusions'>
+type FixtureProject = Omit<ProjectDetail, 'paperCount' | 'paperTitles' | 'conclusions' | 'conclusionClaims'>
 
 /** Stored inbox recommendation: cross-boundary fields plus topics written to the paper page on import. */
 type InboxRecord = InboxEntry & {
@@ -237,11 +240,13 @@ export function createFixtureStore(
       const paper = byId.get(id)
       return paper === undefined ? [] : [[id, paper.title]]
     }))
+    const claims = conclusionClaims(wiki, project.id)
     return {
       ...structuredClone(project),
       paperTitles,
       paperCount: Object.keys(paperTitles).length,
       conclusions: conclusionCounts(project.conclusionList),
+      ...(Object.keys(claims).length === 0 ? {} : { conclusionClaims: claims }),
     }
   }
 
@@ -303,6 +308,43 @@ export function createFixtureStore(
   let deliveryConfig: DeliverySettings = structuredClone(DEFAULT_DELIVERY_SETTINGS)
   // Fixture ids use t1/m1/r1/f1/feed-1/chg-1 shapes; new prefixes must not collide with them.
   const nextId = (prefix: string) => `${prefix}-${++seq}`
+
+  /** Page version of fixture page `id`, from the text its record stands for; null when there is no such page. */
+  const versionOf = (id: string): ReturnType<typeof pageVersion> => {
+    const page = wiki.pages[id]
+    return page === undefined ? null : pageVersion(recordText(page))
+  }
+
+  /** Every project's name, by id. */
+  const projectNames = (): Record<string, string> =>
+    Object.fromEntries([...projectById.values()].map((p) => [p.id, p.name]))
+
+  /** The claim-validation world for producer `by`: the fixture projects and reading records. */
+  const worldOf = (by: string): ClaimWorld => ({
+    by,
+    project: (id) => {
+      const project = projectById.get(id)
+      return project === undefined ? undefined
+        : { nodes: project.graph.nodes.map((n) => n.id), conclusions: project.conclusionList.map((c) => c.id) }
+    },
+    reading: (paper) => {
+      const reading = readings.get(paper.slice(PAPER_PAGE.length))
+      return { highlights: reading?.highlights.map((h) => h.id) ?? [], notes: reading?.notes.map((n) => n.id) ?? [] }
+    },
+  })
+
+  /** The review queue, seeded with the fixture's agent proposals, newest first; `ageHours` dates each before now. */
+  let proposals: ProposalRecord[] = (proposalFixture as { ageHours: number; status: ProposalRecord['status']; reason: ProposalRecord['reason']; proposal: unknown }[])
+    .map((held) => {
+      const proposal = AgentProposalSchema.parse(held.proposal)
+      const received = now().getTime() - held.ageHours * 3_600_000
+      return {
+        id: nextId('proposal'), digest: digestOf(proposal), proposal, received, path: 'review' as const,
+        status: held.status, reason: held.reason,
+        decided: held.status === 'queued' ? null : { at: received + 3_600_000, by: '我' as const },
+        change: null, notice: null,
+      }
+    })
   /** Current vault time as epoch milliseconds at today's UTC midnight, used for trash timestamps and retention. */
   const nowMs = () => Date.parse(`${today()}T00:00:00Z`)
 
@@ -1134,35 +1176,6 @@ export function createFixtureStore(
       return detailOf(nextProject)
     },
 
-    writeBack(id, node, page, text) {
-      const project = projectById.get(id)
-      if (!project) throw new Error(`项目不存在:${id}`)
-      const target = wiki.pages[page]
-      if (target === undefined || isPaper(target)) throw new Error(`wiki 聚合不存在:${page}`)
-      if (!project.graph.nodes.some((n) => n.id === node)) throw new Error(`节点不存在:${node}`)
-      if (text.trim() === '') throw new Error('写回的那句话不能为空')
-      checkOneLine(text)
-      const day = today()
-      const next = applyProposal(wiki, {
-        source: 'user',
-        title: `写回 ${page}`,
-        ops: [{ op: 'appendEntry', page, section: wiki.sections[0]!.label, date: day, text }],
-      }, day)
-      rederiveRows(wiki, next)
-      wiki = next
-      const nextProject = {
-        ...project,
-        graph: {
-          ...project.graph,
-          nodes: project.graph.nodes.map((n) => (n.id === node
-            ? { ...n, writebacks: [...n.writebacks, { page, text, date: day }] }
-            : n)),
-        },
-      }
-      projectById.set(id, nextProject)
-      return detailOf(nextProject)
-    },
-
     createConclusion(projectId, text, { chat, paper }) {
       const project = projectById.get(projectId)
       if (!project) throw new Error(`项目不存在:${projectId}`)
@@ -1512,26 +1525,72 @@ export function createFixtureStore(
     },
 
     wikiAggregation(id) {
-      return wikiAggregation(wiki, id)
+      return wikiAggregation(wiki, id, versionOf(id)!, projectNames())
     },
 
     wikiPaper(id) {
       if (wiki.pages[id] === undefined) throw new Error(`wiki 论文页不存在:${id}`)
-      return wikiPaper(wiki, id)
+      return wikiPaper(wiki, id, versionOf(id)!)
     },
 
     wikiCards() {
       return wikiCards(wiki)
     },
 
-    wikiSections() {
-      return wiki.sections.map((s) => s.label)
-    },
-
-    applyProposal(proposal) {
-      const next = applyProposal(wiki, proposal, today())
+    applyProposal(proposal, producer) {
+      const next = applyProposal(wiki, proposal, today(), worldOf(producer?.by ?? HUMAN))
       rederiveRows(wiki, next)
       wiki = next
+    },
+
+    checkProposal(ops, by) {
+      applyProposal(wiki, { ops }, today(), worldOf(by))
+    },
+
+    describeProposal(ops) {
+      return ops.map((op) => describeOp(op, wiki))
+    },
+
+    pagesWritten(ops) {
+      return touchedPages({ ops }, wiki)
+    },
+
+    pageVersion(id) {
+      return versionOf(id)
+    },
+
+    wikiSignals() {
+      return wikiSignals(wiki, {
+        projects: [...projectById.values()].map((p) => ({
+          id: p.id,
+          pages: [
+            ...p.relations.flatMap((g) => g.items.flatMap((item) => (item.page === undefined ? [] : [item.page]))),
+            ...p.graph.nodes.flatMap((n) => n.writebacks.map((w) => w.page)),
+          ],
+        })),
+        trashed: new Set(trash.flatMap((item) => (item.kind === 'paper' ? [`${PAPER_PAGE}${item.paper.id}`] : []))),
+        missingRegions: [],
+      })
+    },
+
+    proposalRecords() {
+      return structuredClone(proposals)
+    },
+
+    saveProposalRecords(rows) {
+      proposals = structuredClone(rows)
+    },
+
+    nextProposalId() {
+      return nextId('proposal')
+    },
+
+    proposalInbox() {
+      return []
+    },
+
+    dropProposalInboxFile(name) {
+      throw new Error(`测试数据模式没有提案收件箱:${name}`)
     },
 
     updateWikiPage(id, body) {
@@ -1564,10 +1623,10 @@ export function createFixtureStore(
       wiki = next
     },
 
-    proposalPages(proposal) {
+    proposalPages(proposal, by = HUMAN) {
       // Validation only: fixtures have no generated area and write exactly the pages named by the operation.
-      applyProposal(wiki, proposal, today())
-      return touchedPages(proposal)
+      applyProposal(wiki, proposal, today(), worldOf(by))
+      return touchedPages(proposal, wiki)
     },
 
     readPages(paths) {

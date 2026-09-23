@@ -1751,29 +1751,6 @@ describe('fixture store', () => {
     expect(store.getProject('sched').graph.nodes.map((node) => node.label)).toEqual(['新节点'])
   })
 
-  it('写回:聚合页第一个追加区多一条,节点多一条写回,一条变动,撤销两边都还原', () => {
-    const before = store.wikiAggregation('topics/ptq').body
-    const after = store.writeBack('draft', 'knee', 'topics/ptq', '拐点是 batch size 的函数')
-    expect(after.graph.nodes.find((n) => n.id === 'knee')!.writebacks.at(-1))
-      .toEqual({ page: 'topics/ptq', text: '拐点是 batch size 的函数', date: EPOCH })
-    expect(store.wikiAggregation('topics/ptq').body)
-      .toContain(`## 结论\n- ${EPOCH} · 拐点是 batch size 的函数`)
-    const change = store.listChanges()[0]!
-    expect(change).toMatchObject({
-      title: '项目「draft 效率」· 写回 PTQ',
-      undoable: true,
-      diff: ['+ topics/ptq § 结论:拐点是 batch size 的函数', '+ knee ↦ topics/ptq'],
-    })
-    store.undoChange(change.id)
-    expect(store.wikiAggregation('topics/ptq').body).toBe(before)
-    expect(store.getProject('draft').graph.nodes.find((n) => n.id === 'knee')!.writebacks)
-      .toHaveLength(1)
-    expect(() => store.writeBack('draft', 'nope', 'topics/ptq', 'x')).toThrow(/nope/)
-    expect(() => store.writeBack('draft', 'knee', 'topics/nope', 'x')).toThrow(/topics\/nope/)
-    expect(() => store.writeBack('draft', 'knee', 'topics/ptq', '')).toThrow()
-    expect(() => store.writeBack('draft', 'knee', 'topics/ptq', 'a\nb')).toThrow(/换行/)
-  })
-
   it('科研记录的正文带换行时被拒,一个字都不写进去', () => {
     const before = store.getProject('draft').events
     for (const text of ['第一行\n第二行', '\n开头就换行', '结尾换行\n']) {
@@ -2074,7 +2051,6 @@ describe('fixture store', () => {
       'project.createNode': () => store.createNode('draft', '新节点', null),
       'project.updateNode': () => store.updateNode('draft', 'knee', { state: 'done' }),
       'project.deleteNode': () => store.deleteNode('draft', 'bucket'),
-      'project.writeBack': () => store.writeBack('draft', 'knee', 'topics/ptq', '拐点是 batch size 的函数'),
       'inbox.list': () => store.listInbox(),
       'inbox.dismiss': () => store.dismissInbox('drafterlite'),
       'inbox.readLater': () => store.readLater('sequoia2'),
@@ -2110,6 +2086,7 @@ describe('fixture store', () => {
         ops: [{ op: 'appendEntry', page: 'topics/ptq', section: '未解决', date: EPOCH, text: '一条' }],
       }),
       'wiki.update': () => store.updateWikiPage('topics/ptq', '## 问题\n改过的。'),
+      'wiki.signals': () => store.wikiSignals(),
       'trash.list': () => store.listTrash(),
       'trash.restore': () => {
         store.deletePaper(store.listPapers({ page: 1, size: 1 }).rows[0]!.id)
@@ -2220,7 +2197,7 @@ describe('fixture store', () => {
       'harness.modelSettings', 'harness.updateModelSettings', 'harness.checkModelConnection',
       'harness.applyPaperWiki',
       'harness.rejectPaperWiki', 'chat.send', 'chat.cancel',
-      'idea.placeOnGraph',
+      'idea.placeOnGraph', 'wiki.propose', 'wiki.proposals', 'wiki.decide',
     ])
     for (const method of CONTRACT_METHODS.filter((candidate) => !coreMethods.has(candidate))) {
       expect(covered[method], `契约方法 ${method} 没有实现`).toBeDefined()

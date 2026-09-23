@@ -442,7 +442,7 @@ def add_workspace_agent_idea(
 
 def _validate_agent_ideas(value: Any) -> dict[str, Any]:
     payload = _object(value, "workspace agent ideas")
-    _exact_keys(payload, {"schema_version", "ideas"}, "workspace agent ideas")
+    _required_keys(payload, {"schema_version", "ideas"}, "workspace agent ideas")
     if payload.get("schema_version") != WORKSPACE_AGENT_IDEAS_SCHEMA_VERSION:
         raise WorkspaceProtocolError("workspace agent ideas are not meridian.workspace-agent-ideas.v1")
     ideas = payload.get("ideas")
@@ -451,8 +451,8 @@ def _validate_agent_ideas(value: Any) -> dict[str, Any]:
     ids: set[str] = set()
     for index, raw in enumerate(ideas):
         item = _object(raw, f"workspace agent idea {index}")
-        if set(item) - {"id", "date", "title", "body", "context", "node"} or not {"id", "date", "title", "body"}.issubset(item):
-            raise WorkspaceProtocolError(f"workspace agent idea {index} has invalid fields")
+        if not {"id", "date", "title", "body"}.issubset(item):
+            raise WorkspaceProtocolError(f"workspace agent idea {index} is missing required fields")
         idea_id = _nonempty_string(item.get("id"), f"workspace agent idea {index} id")
         if not _EVENT_ID.fullmatch(idea_id) or idea_id in ids:
             raise WorkspaceProtocolError(f"workspace agent idea {index} id is invalid or duplicated")
@@ -475,25 +475,24 @@ def _repository_root(root: Path) -> Path:
 
 def _read_manifest(repository: Path) -> dict[str, Any]:
     manifest = _read_json(repository / MANIFEST_PATH, label="workspace manifest")
-    _exact_keys(manifest, {"schema_version", "project", "surfaces"}, "workspace manifest")
+    _required_keys(manifest, {"schema_version", "project", "surfaces"}, "workspace manifest")
     if manifest.get("schema_version") != WORKSPACE_SCHEMA_VERSION:
         raise WorkspaceProtocolError("workspace manifest is not meridian.workspace.v1")
 
     project = _object(manifest.get("project"), "workspace project")
-    _exact_keys(project, {"id", "name"}, "workspace project")
+    _required_keys(project, {"id", "name"}, "workspace project")
     _nonempty_string(project.get("id"), "workspace project id")
     _nonempty_string(project.get("name"), "workspace project name")
 
     surfaces = _object(manifest.get("surfaces"), "workspace surfaces")
     surface_names = set(surfaces)
     required_surfaces = {"plan", "graph", "events"}
-    allowed_surfaces = required_surfaces | {"changes", "ideas"}
-    unknown_surfaces = surface_names - allowed_surfaces
     missing_surfaces = required_surfaces - surface_names
-    if unknown_surfaces or missing_surfaces:
+    if missing_surfaces:
+        # An unrecognized extra surface is a forward-compatible addition, not an error: this
+        # Meridian version simply does not read it yet.
         raise WorkspaceProtocolError(
-            "workspace surfaces do not match the v1 contract: "
-            f"unknown={sorted(unknown_surfaces)}, missing={sorted(missing_surfaces)} "
+            f"workspace surfaces are missing required entries {sorted(missing_surfaces)} "
             f"(meridian {__version__}); restart the agent session or update Meridian."
         )
     expected = {
@@ -505,7 +504,7 @@ def _read_manifest(repository: Path) -> dict[str, Any]:
     }
     for name, (path, writer) in expected.items():
         surface = _object(surfaces.get(name), f"workspace {name} surface")
-        _exact_keys(surface, {"path", "writer"}, f"workspace {name} surface")
+        _required_keys(surface, {"path", "writer"}, f"workspace {name} surface")
         if surface.get("path") != path.as_posix() or surface.get("writer") != writer:
             raise WorkspaceProtocolError(f"workspace {name} surface does not match the v1 contract")
     return manifest
@@ -561,9 +560,8 @@ def _validate_events(value: Any, *, repository: Path | None = None) -> dict[str,
     ids: set[str] = set()
     for index, raw_event in enumerate(events):
         item = _object(raw_event, f"workspace event {index}")
-        allowed = {"id", "date", "text", "source", "node", "kind", "detail", "at"}
-        if set(item) - allowed or not {"id", "date", "text", "source"}.issubset(item):
-            raise WorkspaceProtocolError(f"workspace event {index} has invalid fields")
+        if not {"id", "date", "text", "source"}.issubset(item):
+            raise WorkspaceProtocolError(f"workspace event {index} is missing required fields")
         event_id = _nonempty_string(item.get("id"), f"workspace event {index} id")
         if not _EVENT_ID.fullmatch(event_id):
             raise WorkspaceProtocolError(f"workspace event {index} id is invalid")
@@ -590,7 +588,7 @@ def _validate_events(value: Any, *, repository: Path | None = None) -> dict[str,
 
 def _validate_changes(value: Any) -> dict[str, Any]:
     payload = _object(value, "workspace changes")
-    _exact_keys(
+    _required_keys(
         payload,
         {"schema_version", "project_id", "epoch", "next_sequence", "ideas", "changes"},
         "workspace changes",
@@ -609,10 +607,9 @@ def _validate_changes(value: Any) -> dict[str, Any]:
     idea_ids: set[str] = set()
     for index, raw_idea in enumerate(ideas):
         idea = _object(raw_idea, f"workspace idea {index}")
-        allowed = {"id", "title", "body", "archived", "created", "updated", "node", "source"}
         required = {"id", "title", "body", "archived", "created", "updated", "source"}
-        if set(idea) - allowed or not required.issubset(idea):
-            raise WorkspaceProtocolError(f"workspace idea {index} has invalid fields")
+        if not required.issubset(idea):
+            raise WorkspaceProtocolError(f"workspace idea {index} is missing required fields")
         idea_id = _nonempty_string(idea.get("id"), f"workspace idea {index} id")
         if idea_id in idea_ids:
             raise WorkspaceProtocolError(f"workspace changes contain duplicate idea id: {idea_id}")
@@ -626,9 +623,8 @@ def _validate_changes(value: Any) -> dict[str, Any]:
         if "node" in idea:
             _nonempty_string(idea.get("node"), f"workspace idea {index} node")
         source = _object(idea.get("source"), f"workspace idea {index} source")
-        allowed_source = {"chat_title", "paper_id", "paper_title"}
-        if set(source) - allowed_source or "chat_title" not in source:
-            raise WorkspaceProtocolError(f"workspace idea {index} source has invalid fields")
+        if "chat_title" not in source:
+            raise WorkspaceProtocolError(f"workspace idea {index} source is missing chat_title")
         _nonempty_string(source.get("chat_title"), f"workspace idea {index} source chat_title")
         for key in ("paper_id", "paper_title"):
             if key in source:
@@ -640,7 +636,7 @@ def _validate_changes(value: Any) -> dict[str, Any]:
     prior_sequence = 0
     for index, raw_change in enumerate(changes):
         change = _object(raw_change, f"workspace change {index}")
-        _exact_keys(change, {"sequence", "at", "kind", "summary", "refs"}, f"workspace change {index}")
+        _required_keys(change, {"sequence", "at", "kind", "summary", "refs"}, f"workspace change {index}")
         sequence = change.get("sequence")
         if not isinstance(sequence, int) or isinstance(sequence, bool) or sequence <= prior_sequence:
             raise WorkspaceProtocolError("workspace change sequences must be strictly increasing positive integers")
@@ -657,7 +653,7 @@ def _validate_changes(value: Any) -> dict[str, Any]:
             raise WorkspaceProtocolError(f"workspace change {index} refs must be a non-empty array")
         for ref_index, raw_ref in enumerate(refs):
             ref = _object(raw_ref, f"workspace change {index} ref {ref_index}")
-            _exact_keys(ref, {"kind", "id"}, f"workspace change {index} ref {ref_index}")
+            _required_keys(ref, {"kind", "id"}, f"workspace change {index} ref {ref_index}")
             if ref.get("kind") not in {"project", "idea", "node"}:
                 raise WorkspaceProtocolError(f"workspace change {index} ref {ref_index} kind is invalid")
             _nonempty_string(ref.get("id"), f"workspace change {index} ref {ref_index} id")
@@ -793,9 +789,13 @@ def _nonempty_string(value: Any, label: str) -> str:
     return value.strip()
 
 
-def _exact_keys(value: dict[str, Any], expected: set[str], label: str) -> None:
-    if set(value) != expected:
-        raise WorkspaceProtocolError(f"{label} fields do not match the v1 contract")
+def _required_keys(value: dict[str, Any], required: set[str], label: str) -> None:
+    """Reject only a missing required field; an unknown extra field is a forward-compatible addition."""
+    missing = required - set(value)
+    if missing:
+        raise WorkspaceProtocolError(
+            f"{label} is missing required fields {sorted(missing)} (meridian {__version__}); update Meridian."
+        )
 
 
 def _atomic_json(path: Path, payload: object) -> None:

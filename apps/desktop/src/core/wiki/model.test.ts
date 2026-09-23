@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import type { WikiData } from './model.js'
 import { wikiAggregation, wikiCards, wikiHome, wikiPaper, wikiSearchIndex } from './model.js'
 
+/** A page version the views echo back unchanged. */
+const V = { fm: '0123456789abcdef', body: 'fedcba9876543210' }
+
 /** Two aggregation kinds, one internal node with a leaf, and three papers cover every view rule. */
 const DATA: WikiData = {
   requireQuote: true,
@@ -72,7 +75,7 @@ describe('wiki 视图', () => {
   })
 
   it('聚合页:子聚合、对照表的行与格子、派生列、正文、关联', () => {
-    const leaf = wikiAggregation(DATA, 'topics/leaf')
+    const leaf = wikiAggregation(DATA, 'topics/leaf', V, {})
     expect(leaf.parents).toEqual([{ id: 'topics/root', title: 'Root' }])
     expect(leaf.splitOn).toBeUndefined()
     expect(leaf.columns).toEqual([{ key: 'bits', label: '位宽' }, { key: 'calib', label: '校准' }])
@@ -86,14 +89,14 @@ describe('wiki 视图', () => {
     expect(leaf.titles).toEqual({ 'papers/a': 'A: first', 'papers/b': 'B: second' })
     expect(leaf.related).toEqual([{ label: '方法', links: [{ id: 'methods/m', title: 'M' }] }])
 
-    const root = wikiAggregation(DATA, 'topics/root')
+    const root = wikiAggregation(DATA, 'topics/root', V, {})
     expect(root.summary).toBe('第一段。')
     expect(root.body).toBe(DATA.pages['topics/root']!.body)
     expect(root.splitOn).toBe('按什么拆')
     expect(root.children.map((c) => c.id)).toEqual(['topics/leaf'])
     expect(root.rows).toEqual([])
 
-    const m = wikiAggregation(DATA, 'methods/m')
+    const m = wikiAggregation(DATA, 'methods/m', V, {})
     expect(m.derivedColumns).toEqual([{ key: 'used_for', label: '用于' }])
     expect(m.rows.map((r) => r.derived)).toEqual([
       { used_for: [{ id: 'topics/leaf', title: 'Leaf' }] }, { used_for: [] },
@@ -102,7 +105,7 @@ describe('wiki 视图', () => {
   })
 
   it('论文页:正文原样、按聚合分组的归属', () => {
-    const a = wikiPaper(DATA, 'papers/a')
+    const a = wikiPaper(DATA, 'papers/a', V)
     expect(a).toMatchObject({
       id: 'papers/a', title: 'A: first', short: 'A', authors: ['Ann'], year: 2024, venue: 'X 2024',
       pdf: 'sources/a.pdf', updated: '2026-09-05',
@@ -120,7 +123,7 @@ describe('wiki 视图', () => {
       },
     ])
     // A page without short title, venue, or PDF uses its title as the short title and empty strings for the other fields.
-    expect(wikiPaper(DATA, 'papers/c')).toMatchObject({ short: 'C', venue: '', pdf: '', body: '' })
+    expect(wikiPaper(DATA, 'papers/c', V)).toMatchObject({ short: 'C', venue: '', pdf: '', body: '' })
   })
 
   it('搜索索引:每页聚合一条,种类按 schema 次序、种类内按 id', () => {
@@ -137,10 +140,10 @@ describe('wiki 视图', () => {
   })
 
   it('不存在的 id 抛出,论文 id 当聚合取也抛出', () => {
-    expect(() => wikiAggregation(DATA, 'topics/nope')).toThrow(/topics\/nope/)
-    expect(() => wikiAggregation(DATA, 'papers/a')).toThrow(/papers\/a/)
-    expect(() => wikiPaper(DATA, 'papers/nope')).toThrow(/papers\/nope/)
-    expect(() => wikiPaper(DATA, 'topics/leaf')).toThrow(/topics\/leaf/)
+    expect(() => wikiAggregation(DATA, 'topics/nope', V, {})).toThrow(/topics\/nope/)
+    expect(() => wikiAggregation(DATA, 'papers/a', V, {})).toThrow(/papers\/a/)
+    expect(() => wikiPaper(DATA, 'papers/nope', V)).toThrow(/papers\/nope/)
+    expect(() => wikiPaper(DATA, 'topics/leaf', V)).toThrow(/topics\/leaf/)
   })
 
   it('parents 里指向库里没有的页:那一条的名字就是它的 id,页照常打开', () => {
@@ -155,18 +158,18 @@ describe('wiki 视图', () => {
         },
       },
     }
-    expect(wikiAggregation(data, 'topics/orphan').parents).toEqual([{ id: 'topics/gone', title: 'topics/gone' }])
+    expect(wikiAggregation(data, 'topics/orphan', V, {}).parents).toEqual([{ id: 'topics/gone', title: 'topics/gone' }])
   })
 
   it('取回的视图是新对象,改它渗不回数据', () => {
-    const before = JSON.stringify(wikiAggregation(DATA, 'topics/leaf'))
-    const leaf = wikiAggregation(DATA, 'topics/leaf')
+    const before = JSON.stringify(wikiAggregation(DATA, 'topics/leaf', V, {}))
+    const leaf = wikiAggregation(DATA, 'topics/leaf', V, {})
     leaf.rows[0]!.cells['bits']!.value = '篡改'
     leaf.columns[0]!.label = '篡改'
     leaf.parents.length = 0
-    expect(JSON.stringify(wikiAggregation(DATA, 'topics/leaf'))).toBe(before)
-    const a = wikiPaper(DATA, 'papers/a')
+    expect(JSON.stringify(wikiAggregation(DATA, 'topics/leaf', V, {}))).toBe(before)
+    const a = wikiPaper(DATA, 'papers/a', V)
     a.authors.push('篡改')
-    expect(wikiPaper(DATA, 'papers/a').authors).toEqual(['Ann'])
+    expect(wikiPaper(DATA, 'papers/a', V).authors).toEqual(['Ann'])
   })
 })

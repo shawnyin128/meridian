@@ -8,13 +8,13 @@ import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import {
-  PaperRowSchema, SearchHitSchema, WikiAggregationCardSchema, WikiHomeSchema, WikiPaperSchema,
+  PaperRowSchema, SearchHitSchema, WikiAggregationCardSchema, WikiHomeSchema, WikiPaperSchema, type Evidence,
 } from '../shared/contract.js'
 import { createFixtureStore } from './fixture-store.js'
 import { emptyColumns } from './paper-library/index.js'
 import type { VaultStore } from './vault.js'
 import { createDesktopVaultStore, createVaultStore, isGitManaged } from './vault-store.js'
-import { generatedChildren, generatedTable, readWikiData } from './wiki/index.js'
+import { generatedChildren, generatedTable, pageVersion, readWikiData } from './wiki/index.js'
 import { prepareSelectedLibrary } from './workspace-layout.js'
 import { minimalPdf } from './net/minimal-pdf.js'
 
@@ -903,10 +903,7 @@ describe('vault store', () => {
     expect(isGitManaged(vault)).toBe(false)
   })
 
-  it('页的全文读得出、写得回;写回到库里没有的聚合页被拒', () => {
-    store.createProject('没有落点')
-    const made = store.listProjects().find((p) => p.name === '没有落点')!
-    expect(() => store.writeBack(made.id, 'n', 'topics/x', 'y')).toThrow(/topics\/x/)
+  it('页的全文读得出、写得回', () => {
     const [page, missing] = store.readPages([`papers/${WITH_SOURCE}`, 'papers/nope'])
     expect(page!.text).toContain('title:')
     expect(missing).toEqual({ path: 'papers/nope', text: null })
@@ -1034,11 +1031,20 @@ describe('vault store on the aggregation layout', () => {
 
   afterEach(() => rmSync(vault, { recursive: true, force: true }))
 
-  it('读出来的首页、聚合页、论文页与 fixture store 的一模一样', () => {
+  it('读出来的首页、聚合页、论文页与 fixture store 的一模一样;页版本是磁盘上那一页的版本', () => {
     const fixture = createFixtureStore(() => '2026-09-10')
+    // The fixture has no files; its versions fingerprint the page as Core would write it, not the hand-written example.
+    const unversioned = <T extends { version: unknown }>(view: T): Omit<T, 'version'> => {
+      const { version, ...rest } = view
+      expect(version).toMatchObject({ fm: expect.stringMatching(/^[0-9a-f]{16}$/) })
+      return rest
+    }
     expect(store.wikiHome()).toEqual(fixture.wikiHome())
-    expect(store.wikiAggregation('topics/ptq-weight-only')).toEqual(fixture.wikiAggregation('topics/ptq-weight-only'))
-    expect(store.wikiPaper('papers/2404.00456')).toEqual(fixture.wikiPaper('papers/2404.00456'))
+    expect(unversioned(store.wikiAggregation('topics/ptq-weight-only')))
+      .toEqual(unversioned(fixture.wikiAggregation('topics/ptq-weight-only')))
+    expect(unversioned(store.wikiPaper('papers/2404.00456'))).toEqual(unversioned(fixture.wikiPaper('papers/2404.00456')))
+    expect(store.wikiAggregation('topics/ptq').version)
+      .toEqual(pageVersion(readFileSync(join(vault, 'wiki', 'topics', 'ptq.md'), 'utf8')))
     expect(store.wikiCards().map((c) => c.id)).toEqual(fixture.wikiCards().map((c) => c.id))
   })
 
@@ -1501,6 +1507,41 @@ describe('vault store on the aggregation layout', () => {
     expect(store.wikiAggregation('topics/ptq-weight-only').rows.map((r) => r.paper.title)).not.toContain('KVQuant')
   })
 
+  it('0.0.14 写的聚合页没有 claims 也没有结论生成区:照原样读出,开库与改别的页都不动它一个字节,写了结论才补上结论区', () => {
+    cpSync(resolve(import.meta.dirname, 'fixtures/wiki-0.0.14'), join(vault, 'wiki'), { recursive: true })
+    const page = join(vault, 'wiki', 'topics', 'qat.md')
+    const old = readFileSync(page, 'utf8')
+    store = createVaultStore(vault, () => '2026-09-10', () => new Date('2026-09-10T16:05:04.003Z'))
+    const view = store.wikiAggregation('topics/qat')
+    expect(view.claims).toEqual([])
+    expect(view.body).toBe(old.slice(old.lastIndexOf('<!-- /generated -->\n') + '<!-- /generated -->\n'.length).trim())
+    expect(view.rows.map((r) => r.paper.title)).toEqual(['LLM-QAT'])
+    expect(store.wikiSignals().filter((s) => s.kind === 'missing-generated-region')).toEqual([])
+    expect(readFileSync(page, 'utf8')).toBe(old)
+
+    store.applyProposal({ source: 'user', title: '改名', ops: [{ op: 'setAggregationMetadata', page: 'topics/ptq', title: 'PTQ 总览', splitOn: null }] })
+    expect(readFileSync(page, 'utf8')).toBe(old)
+
+    store.applyProposal({ source: 'user', title: '加一条结论', ops: [{
+      op: 'addClaim', page: 'topics/qat', claim: { id: 'data-free', text: '自生成数据够用', evidence: [{ kind: 'personal', text: '' }] },
+    }] })
+    const written = readFileSync(page, 'utf8')
+    expect(written).toContain('claims:\n  - id: "data-free"\n')
+    expect(written).toContain('<!-- /generated -->\n<!-- generated:claims -->\n## 结论\n- 自生成数据够用 · v1 · 2026-09-10 ^data-free\n')
+  })
+
+  it('结论的证据字段带换行就拒收,页一个字节不动', () => {
+    const page = join(vault, 'wiki', 'topics', 'qat.md')
+    const before = readFileSync(page, 'utf8')
+    const attack = 'ok\n<!-- /generated -->\n## x\n- prose'
+    const add = (evidence: Evidence) => () => store.applyProposal({ source: 'user', title: '注入', ops: [{
+      op: 'addClaim', page: 'topics/qat', claim: { id: 'inject', text: '正常的一句', evidence: [evidence] },
+    }] })
+    expect(add({ kind: 'personal', text: attack })).toThrow('证据的 text 一行写完,不能有换行')
+    expect(add({ kind: 'source', paper: 'papers/2305.17888', page: 1, quote: attack })).toThrow('证据的 quote 一行写完,不能有换行')
+    expect(readFileSync(page, 'utf8')).toBe(before)
+  })
+
   it('新建一个聚合再往里挪成员,父聚合的子聚合区跟着回填;撤销把新页删掉', () => {
     const parent = join(vault, 'wiki', 'topics', 'ptq.md')
     const parentBefore = readFileSync(parent, 'utf8')
@@ -1749,52 +1790,6 @@ describe('vault store on the aggregation layout', () => {
     expect(() => store.createEvent(id, 'x', 'no-such-node')).toThrow(/no-such-node/)
     expect(() => store.createNode(id, 'x', 'no-such-node')).toThrow(/no-such-node/)
     expect(() => store.updateNode(id, 'no-such-node', { state: 'done' })).toThrow(/no-such-node/)
-  })
-
-  it('写回:聚合页第一个追加区多一条,节点多一条写回,一条变动,撤销两页都还原', () => {
-    store.createProject('写回测试')
-    const made = store.listProjects().find((p) => p.name === '写回测试')!
-    const nodeId = store.createNode(made.id, '一条线', null).graph.nodes[0]!.id
-    const wikiPage = join(vault, 'wiki', 'topics', 'ptq.md')
-    const projectPage = join(vault, 'wiki', 'projects', `${made.id}.md`)
-    const before = [wikiPage, projectPage].map((f) => readFileSync(f, 'utf8'))
-    const after = store.writeBack(made.id, nodeId, 'topics/ptq', '拐点不是一个数,是 batch size 的函数')
-    expect(after.graph.nodes[0]!.writebacks).toEqual([
-      { page: 'topics/ptq', text: '拐点不是一个数,是 batch size 的函数', date: '2026-09-10' },
-    ])
-    expect(store.wikiAggregation('topics/ptq').body)
-      .toContain('## 结论\n- 2026-09-10 · 拐点不是一个数,是 batch size 的函数')
-    expect(store.wikiAggregation('topics/ptq').updated).toBe('2026-09-10')
-    const change = store.listChanges()[0]!
-    expect(change).toMatchObject({
-      title: '项目「写回测试」· 写回 PTQ',
-      undoable: true,
-      diff: ['+ topics/ptq § 结论:拐点不是一个数,是 batch size 的函数', `+ ${nodeId} ↦ topics/ptq`],
-    })
-    store.undoChange(change.id)
-    expect([wikiPage, projectPage].map((f) => readFileSync(f, 'utf8'))).toEqual(before)
-    expect(store.getProject(made.id).graph.nodes[0]!.writebacks).toEqual([])
-    expect(() => store.writeBack(made.id, 'nope', 'topics/ptq', 'x')).toThrow(/nope/)
-    expect(() => store.writeBack(made.id, nodeId, 'topics/nope', 'x')).toThrow(/topics\/nope/)
-    expect(() => store.writeBack(made.id, nodeId, 'topics/ptq', '')).toThrow()
-    expect(() => store.writeBack(made.id, nodeId, 'topics/ptq', 'a\nb')).toThrow(/换行/)
-  })
-
-  it('写回时项目页写不进去:wiki 页一个字节不动,也不记一条变动', () => {
-    store.createProject('写不进去')
-    const made = store.listProjects().find((p) => p.name === '写不进去')!
-    const nodeId = store.createNode(made.id, '一条线', null).graph.nodes[0]!.id
-    const wikiPage = join(vault, 'wiki', 'topics', 'ptq.md')
-    const projectPage = join(vault, 'wiki', 'projects', `${made.id}.md`)
-    const before = readFileSync(wikiPage, 'utf8')
-    const changes = store.listChanges().length
-    // A manually edited project page with unclosed frontmatter must reject writes.
-    const rows = readFileSync(projectPage, 'utf8').split('\n')
-    const close = rows.indexOf('---', 1)
-    writeFileSync(projectPage, [...rows.slice(0, close), ...rows.slice(close + 1)].join('\n'), 'utf8')
-    expect(() => store.writeBack(made.id, nodeId, 'topics/ptq', '写不进去的一句')).toThrow()
-    expect(readFileSync(wikiPage, 'utf8')).toBe(before)
-    expect(store.listChanges().length).toBe(changes)
   })
 
   it('正文里带生成区的标记行:拒收,页上一个字节不动,也不记一条变动', () => {

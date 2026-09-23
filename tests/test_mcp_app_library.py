@@ -80,30 +80,35 @@ class MCPAppLibraryTests(unittest.TestCase):
             saved = json.loads((out_dir / "context.json").read_text(encoding="utf-8"))
             self.assertEqual(saved, packet)
 
-    def test_v1_context_remains_valid_proposal_input(self) -> None:
+    def test_context_reads_a_page_with_no_claims_and_a_page_with_an_unknown_extra_field(self) -> None:
+        """Backward/forward compatibility (AGENTS.md): a paper page (which never has `claims`) and
+        an aggregation page carrying an additive field this version does not know about yet both
+        read fine rather than being rejected or dropped from results."""
         with tempfile.TemporaryDirectory() as tmp:
             library_root = Path(tmp) / "library"
             shutil.copytree(APP_LIBRARY_FIXTURE, library_root)
             wiki_root = library_root / "wiki"
-            context_payload = adapter.context(
-                query="speculative decoding",
-                wiki_root=wiki_root,
-                top_k=4,
-                out_dir=Path(tmp) / "context",
+            topic_path = wiki_root / "topics/speculative-decoding.md"
+            self.assertIn("claims:", topic_path.read_text(encoding="utf-8"))
+            topic_path.write_text(
+                topic_path.read_text(encoding="utf-8").replace(
+                    'aliases: []',
+                    'aliases: []\nfuture_field: "a newer Meridian added this"',
+                    1,
+                ),
+                encoding="utf-8",
             )
 
-            proposal = adapter.propose(
-                wiki_root=wiki_root,
-                query="speculative decoding",
-                title="Speculative Decoding Context",
-                context_path=Path(context_payload["context_json_path"]),
-                out_dir=wiki_root / ".drafts/proposals/context-contract",
-            )
+            records = app_native_catalog_records(wiki_root)
+            topic_record = next(item for item in records if item["page_id"] == "topics/speculative-decoding")
+            self.assertEqual(topic_record["raw_frontmatter"].get("future_field"), "a newer Meridian added this")
+            self.assertTrue(topic_record["raw_frontmatter"].get("claims"))
+            paper_record = next(item for item in records if item["page_id"].startswith("papers/13979-"))
+            self.assertNotIn("claims", paper_record["raw_frontmatter"])
 
-            self.assertEqual(proposal["lint_status"], "pass")
-            source_context = json.loads(Path(proposal["source_context"]).read_text(encoding="utf-8"))
-            self.assertTrue(source_context["results"])
-            self.assertTrue(all(item["relative_path"].endswith(".md") for item in source_context["results"]))
+            payload = adapter.context(query="speculative decoding", wiki_root=wiki_root, top_k=6, out_dir=Path(tmp) / "ctx")
+            paths = {item["provenance"]["canonical_path"] for item in payload["context"]["results"]}
+            self.assertIn("topics/speculative-decoding.md", paths)
 
     def test_stdio_tool_returns_inline_v1_context(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

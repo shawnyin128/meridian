@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import os
+import re
 import tempfile
 from pathlib import Path
 
-from meridian.wiki.vault import slugify
+
+def slugify(text: str) -> str:
+    slug = re.sub(r"[^A-Za-z0-9]+", "-", text).strip("-")
+    return slug[:96] or "untitled"
 
 
 def default_context_base_dir() -> Path:

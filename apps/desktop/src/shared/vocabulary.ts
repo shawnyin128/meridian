@@ -36,6 +36,9 @@ export const TRASH_RETENTION_DAYS = 7
 /** Maximum results per search, matching the demo search UI. */
 export const SEARCH_LIMIT = 8
 
+/** The `by` a claim, evidence item or conflict carries when the user wrote it in the app. */
+export const HUMAN_PRODUCER = '我'
+
 /** Wiki paper-page ID prefix followed by the paper-table row ID. */
 export const PAPER_PAGE = 'papers/'
 

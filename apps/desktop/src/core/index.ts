@@ -86,7 +86,10 @@ import {
   WatchUpdateParamsSchema,
   WikiAggregationParamsSchema,
   WikiApplyParamsSchema,
+  WikiDecideParamsSchema,
   WikiPaperParamsSchema,
+  WikiProposalsParamsSchema,
+  WikiProposeParamsSchema,
   WikiUpdateParamsSchema,
 } from '../shared/contract.js'
 import { createFixtureStore } from './fixture-store.js'
@@ -115,6 +118,7 @@ import {
   createMainCredentialVault, createPaperWikiHarnessRunner,
 } from './harness/index.js'
 import { placeResearchIdeaOnGraph } from './research-ideas/graph-placement.js'
+import { createWikiProposals, pdfPageText } from './wiki-proposals.js'
 
 type Handler = (params: unknown) => unknown
 
@@ -247,6 +251,18 @@ const harness = createHarnessCostGate({
   initialProposals: pendingHarnessProposals,
   ...(proposalAudit === null ? {} : { recordProposal: proposalAudit.record }),
 })
+const wikiProposals = createWikiProposals({ store, pdf: pdfPageText(store), now: Date.now })
+/** Agents drop proposals into a real library's inbox, which is drained at startup and then every few seconds. */
+const INBOX_SCAN_MS = 5_000
+if (vaultRoot !== undefined) {
+  const scan = (): void => {
+    wikiProposals.scanInbox().catch((error: unknown) => {
+      console.error(`[wiki] 提案收件箱处理失败:${error instanceof Error ? error.message : String(error)}`)
+    })
+  }
+  scan()
+  setInterval(scan, INBOX_SCAN_MS)
+}
 /** Automatic fetches run only for a real library using the real network. */
 const scheduled = !canned
 const showUiSamples = vaultRoot === undefined && process.env['MERIDIAN_UI_SAMPLES'] === '1'
@@ -637,8 +653,23 @@ registerHandler('wiki.cards', (params) => {
   EmptyParamsSchema.parse(params)
   return store.wikiCards()
 })
-registerHandler('wiki.apply', (params) =>
-  store.applyProposal(WikiApplyParamsSchema.parse(params).proposal))
+registerHandler('wiki.apply', async (params) => {
+  const { proposal } = WikiApplyParamsSchema.parse(params)
+  await wikiProposals.checkHumanQuotes(proposal.ops)
+  store.applyProposal(proposal)
+})
+registerHandler('wiki.propose', (params) =>
+  wikiProposals.propose(WikiProposeParamsSchema.parse(params).proposal))
+registerHandler('wiki.proposals', (params) =>
+  wikiProposals.list(WikiProposalsParamsSchema.parse(params).status))
+registerHandler('wiki.decide', (params) => {
+  const { id, decision, reason } = WikiDecideParamsSchema.parse(params)
+  return wikiProposals.decide(id, decision, reason)
+})
+registerHandler('wiki.signals', (params) => {
+  EmptyParamsSchema.parse(params)
+  return store.wikiSignals()
+})
 registerHandler('wiki.update', (params) => {
   const { id, body } = WikiUpdateParamsSchema.parse(params)
   return store.updateWikiPage(id, body)

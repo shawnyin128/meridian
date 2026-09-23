@@ -19,7 +19,7 @@ import type {
   ProjectSummary,
   RelationFields, SearchHit, TaskFields, TaskPatch, TrashEntry, Watch, WatchFields,
   WatchSuggestionParams, WatchSuggestionResult, WikiAggregation,
-  WikiAggregationCard, WikiHome, WikiPaper,
+  WikiAggregationCard, WikiHome, WikiPaper, ProposalReceipt, ProposalStatus, WikiProposal,
 } from '../shared/contract.js'
 
 const call = <T>(method: ContractMethod, params: unknown): Promise<T> =>
@@ -302,6 +302,11 @@ export const wiki = {
   cards: () => call<WikiAggregationCard[]>('wiki.cards', {}),
   apply: (proposal: Proposal) => call<void>('wiki.apply', { proposal }),
   update: (id: string, body: string) => call<void>('wiki.update', { id, body }),
+  /** The review queue, newest first; every status when `status` is absent. */
+  proposals: (status?: ProposalStatus) =>
+    call<WikiProposal[]>('wiki.proposals', status === undefined ? {} : { status }),
+  decide: (id: string, decision: 'apply' | 'decline', reason?: string) =>
+    call<ProposalReceipt>('wiki.decide', { id, decision, ...(reason === undefined ? {} : { reason }) }),
 }
 
 export const search = {

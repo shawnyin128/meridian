@@ -11,7 +11,6 @@ license = "PolyForm-Noncommercial-1.0.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.9"
 dependencies = [
-  "PyMuPDF>=1.24",
   "PyYAML>=6.0",
 ]
 

@@ -7,8 +7,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from meridian.wiki.vault import WikiInitResult, init_wiki_vault
-
 
 WORKSPACE_CONFIG_FILENAME = "meridian-wiki.json"
 WORKSPACE_SCHEMA_VERSION = "meridian.paper_wiki_workspace.v1"
@@ -27,7 +25,6 @@ class PaperWikiWorkspace:
 @dataclass(frozen=True)
 class WorkspaceInitResult:
     workspace: PaperWikiWorkspace
-    wiki_result: WikiInitResult
     created_dirs: list[Path]
     created_files: list[Path]
     user_config_path: Path | None
@@ -47,8 +44,12 @@ def init_workspace(
     source_root: Path | None = None,
     set_default: bool = True,
     overwrite: bool = False,
-    overwrite_templates: bool = False,
 ) -> WorkspaceInitResult:
+    """Register a library root and scaffold its managed source store.
+
+    This does not create `wiki/` content: the Meridian App owns the wiki
+    itself (schema, pages, and every write to it).
+    """
     library = library_root.expanduser().resolve()
     wiki = (wiki_root.expanduser().resolve() if wiki_root is not None else library / "wiki")
     sources = (source_root.expanduser().resolve() if source_root is not None else library / "sources")
@@ -85,7 +86,6 @@ def init_workspace(
         config_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         created_files.append(config_path)
 
-    wiki_result = init_wiki_vault(wiki_root=wiki, overwrite_templates=overwrite_templates)
     workspace = PaperWikiWorkspace(
         library_root=library,
         source_root=sources,
@@ -98,9 +98,8 @@ def init_workspace(
 
     return WorkspaceInitResult(
         workspace=workspace,
-        wiki_result=wiki_result,
-        created_dirs=created_dirs + wiki_result.created_dirs,
-        created_files=created_files + wiki_result.created_files,
+        created_dirs=created_dirs,
+        created_files=created_files,
         user_config_path=user_config_path,
     )
 

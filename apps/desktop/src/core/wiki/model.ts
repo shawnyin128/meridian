@@ -1,5 +1,6 @@
 import type {
-  SearchHit, WikiAggregation, WikiAggregationCard, WikiCell, WikiHome, WikiPaper, WikiRef,
+  ConflictTarget, Evidence, PageVersion, SearchHit, WikiAggregation, WikiAggregationCard, WikiCell, WikiClaim,
+  WikiHome, WikiPaper, WikiRef,
 } from '../../shared/contract.js'
 
 /** One entry from schema.yaml `kinds`. */
@@ -41,6 +42,27 @@ export type WikiPaperRecord = {
   body: string
 }
 
+/** One evidence item as a page stores it: the item, then the day and producer that added it. */
+export type WikiEvidenceRecord = Evidence & { added: string; by: string }
+
+/** One open conflict as a page stores it. */
+export type WikiConflictRecord = { id: string; against: ConflictTarget; note: string; since: string; by: string }
+
+/** One earlier version of a claim. */
+export type WikiHistoryRecord = { version: number; text: string; since: string; by: string }
+
+/** One claim as an aggregation page stores it; `conflicts` and `history` are absent when empty. */
+export type WikiClaimRecord = {
+  id: string
+  text: string
+  version: number
+  since: string
+  by: string
+  evidence: WikiEvidenceRecord[]
+  conflicts?: WikiConflictRecord[]
+  history?: WikiHistoryRecord[]
+}
+
 /** Aggregation page: frontmatter plus body after the final generated region, excluding surrounding whitespace and generated content. */
 export type WikiAggregationRecord = {
   kind: string
@@ -51,6 +73,7 @@ export type WikiAggregationRecord = {
     columns?: { key: string; label: string }[]
     split_on?: string | null
     updated: string
+    claims?: WikiClaimRecord[]
   }
   body: string
 }
@@ -99,12 +122,12 @@ const membersOf = (data: WikiData, id: string): string[] => ids(data).filter((k)
 const shortOf = (page: WikiPaperRecord): string => page.fm.short ?? page.fm.title
 
 /** Full name of a page: its title, or its id when the page is missing. */
-function titleOf(data: WikiData, id: string): string {
+export function titleOf(data: WikiData, id: string): string {
   return data.pages[id]?.fm.title ?? id
 }
 
 /** Compact name a page goes by in tables and lists: a paper's short title, otherwise its full name. */
-function labelOf(data: WikiData, id: string): string {
+export function labelOf(data: WikiData, id: string): string {
   const page = data.pages[id]
   return page !== undefined && isPaper(page) ? shortOf(page) : titleOf(data, id)
 }
@@ -177,6 +200,99 @@ export function wikiHome(data: WikiData): WikiHome {
 }
 
 /**
+ * Returns the claims stored on aggregation page `page` that this version can read, in page order: a
+ * hand-edited or unknown claim shape is left out rather than failing the page.
+ */
+function readableClaims(page: WikiAggregationRecord): WikiClaimRecord[] {
+  const held: unknown = page.fm.claims
+  if (!Array.isArray(held)) return []
+  return (held as WikiClaimRecord[]).filter((c) => typeof c === 'object' && c !== null
+    && typeof c.id === 'string' && typeof c.text === 'string' && typeof c.version === 'number'
+    && typeof c.since === 'string' && typeof c.by === 'string' && Array.isArray(c.evidence))
+}
+
+/** Returns the readable claims on aggregation `id`, in page order. Throws if `id` is not an aggregation. */
+export const claimsOf = (data: WikiData, id: string): WikiClaimRecord[] => readableClaims(aggregationOf(data, id))
+
+/** Returns the readable claim a `<page>#<claim>` ref names, or undefined when the page or the claim is not there. */
+export function claimAt(data: WikiData, ref: string): WikiClaimRecord | undefined {
+  const [page, claim] = ref.split('#') as [string, string]
+  const held = data.pages[page]
+  if (held === undefined || isPaper(held)) return undefined
+  return readableClaims(held).find((c) => c.id === claim)
+}
+
+/**
+ * Returns the display name of the other side of a conflict or of an evidence item: the claim's text
+ * (the ref itself when the claim is gone), a page's title, a paper's short title, or a project's name
+ * from `projects` (its id when unnamed). Personal evidence has none.
+ */
+function sideTitle(
+  data: WikiData, side: Evidence | ConflictTarget, projects: Record<string, string>,
+): string | undefined {
+  switch (side.kind) {
+    case 'claim': return claimAt(data, side.ref)?.text ?? side.ref
+    case 'wiki': return side.ref.includes('#') ? claimAt(data, side.ref)?.text ?? side.ref : titleOf(data, side.ref)
+    case 'source':
+    case 'note': return labelOf(data, side.paper)
+    case 'experiment': return projects[side.project] ?? side.project
+    case 'personal': return undefined
+  }
+}
+
+/**
+ * Returns the claims of aggregation `id` as the contract shows them, in page order: each evidence item
+ * and conflict with its display name resolved (see sideTitle), empty conflict and history lists where the
+ * page omits them. `projects` maps project ids to names. Throws if `id` is not an aggregation.
+ */
+export function wikiClaims(data: WikiData, id: string, projects: Record<string, string>): WikiClaim[] {
+  return claimsOf(data, id).map((claim) => ({
+    id: claim.id,
+    text: claim.text,
+    version: claim.version,
+    since: claim.since,
+    by: claim.by,
+    evidence: claim.evidence.map(({ added, by, ...evidence }) => {
+      const title = sideTitle(data, evidence, projects)
+      return { evidence, added, by, ...(title === undefined ? {} : { title }) }
+    }),
+    conflicts: (claim.conflicts ?? []).map((c) => ({ ...c, title: sideTitle(data, c.against, projects)! })),
+    history: (claim.history ?? []).map((h) => ({ ...h })),
+  }))
+}
+
+/**
+ * Returns, for each conclusion of project `project`, the refs of the claims whose experiment evidence
+ * cites it, claims in page id then page order; conclusions no claim cites are absent.
+ */
+export function conclusionClaims(data: WikiData, project: string): Record<string, string[]> {
+  const out: Record<string, string[]> = {}
+  for (const id of ids(data)) {
+    const page = data.pages[id]!
+    if (isPaper(page)) continue
+    for (const claim of readableClaims(page)) {
+      for (const e of claim.evidence) {
+        if (e.kind !== 'experiment' || e.project !== project || e.conclusion === undefined) continue
+        const ref = `${id}#${claim.id}`
+        const held = out[e.conclusion] ?? []
+        if (!held.includes(ref)) out[e.conclusion] = [...held, ref]
+      }
+    }
+  }
+  return out
+}
+
+/**
+ * Returns the aggregation `id` in `data` as the contract shows it: aggregationView's fields plus its
+ * claims (wikiClaims, with `projects` naming projects) and `version`. Throws if `id` is not an aggregation.
+ */
+export function wikiAggregation(
+  data: WikiData, id: string, version: PageVersion, projects: Record<string, string>,
+): WikiAggregation {
+  return { ...aggregationView(data, id), claims: wikiClaims(data, id, projects), version }
+}
+
+/**
  * Returns the aggregation `id` in `data`: its card, its parents, the cards of
  * its children in id order, its table — one row per member paper in id order,
  * cells keyed by the aggregation's columns (a cell whose key is not a column
@@ -185,7 +301,7 @@ export function wikiHome(data: WikiData): WikiHome {
  * aggregations its members also belong to in id order, its body, and the
  * names of the pages its body links to. Throws if `id` is not an aggregation.
  */
-export function wikiAggregation(data: WikiData, id: string): WikiAggregation {
+export function aggregationView(data: WikiData, id: string): Omit<WikiAggregation, 'claims' | 'version'> {
   const page = aggregationOf(data, id)
   const kind = kindOf(data, page)
   const columns = (page.fm.columns ?? []).map((c) => ({ key: c.key, label: c.label }))
@@ -233,9 +349,9 @@ export function wikiAggregation(data: WikiData, id: string): WikiAggregation {
  * the names of the pages its body links to, and one membership per aggregation
  * it belongs to — in the paper's own order, cells in the paper's own order,
  * labelled by the aggregation's columns, a membership in an aggregation the
- * data does not hold dropped. Throws if `id` is not a paper page.
+ * data does not hold dropped — and `version`. Throws if `id` is not a paper page.
  */
-export function wikiPaper(data: WikiData, id: string): WikiPaper {
+export function wikiPaper(data: WikiData, id: string, version: PageVersion): WikiPaper {
   const page = data.pages[id]
   if (page === undefined || !isPaper(page)) throw new Error(`wiki 论文页不存在:${id}`)
   const memberships = (page.fm.memberships ?? []).flatMap((m) => {
@@ -261,6 +377,7 @@ export function wikiPaper(data: WikiData, id: string): WikiPaper {
     body: page.body,
     titles: titlesOf(data, page.body),
     memberships,
+    version,
   }
 }
 

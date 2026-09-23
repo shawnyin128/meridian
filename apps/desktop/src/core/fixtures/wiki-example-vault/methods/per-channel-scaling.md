@@ -22,11 +22,13 @@ updated: 2026-09-09
 | [[papers/2306.00978|AWQ]] | 激活分布找显著通道 ·p1 | 放大显著权重通道 ·p1 | 否 ·p1 | [[topics/ptq-weight-only|Weight-only PTQ]] |
 | [[papers/2308.13137|OmniQuant]] | 可学习 ·p1 | 激活→权重 ·p1 | 是 ·p1 | [[topics/ptq-weight-only|Weight-only PTQ]], [[topics/ptq-weight-activation|Weight-activation PTQ]] |
 <!-- /generated -->
+<!-- generated:claims -->
+## 结论
+(暂无结论)
+<!-- /generated -->
 
 ## 机制
 对每个通道乘一个标量、在相邻的权重里除回去,数学等价。差别只在:标量从哪来(激活统计 / 显著性 / 学出来),以及把难度往哪边挪。
-
-## 结论
 
 ## 实验
 

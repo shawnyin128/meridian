@@ -80,7 +80,7 @@ const detail = ProjectDetailSchema.shape
  * determines ordering between projects and is never displayed, so it stays inside Core.
  */
 export type ProjectRecord = Omit<
-  ProjectDetail, 'paperCount' | 'paperTitles' | 'conclusions' | 'workspace'
+  ProjectDetail, 'paperCount' | 'paperTitles' | 'conclusions' | 'conclusionClaims' | 'workspace'
 > & {
   created: string
   workspaceRoot?: string

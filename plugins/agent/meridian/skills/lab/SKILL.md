@@ -501,8 +501,9 @@ Minimum completion:
 - Trace provenance with `meridian.trace` when a claim would affect a decision.
 - Separate source facts, wiki synthesis, user insight, local experiment
   evidence, and uncertainty.
-- End with a next research move: refine the node, design evidence, create a
-  proposal, or prepare a Research Grounding Injection for coding work.
+- End with a next research move: refine the node, design evidence, propose a
+  settled conclusion via `wiki_propose`, or prepare a Research Grounding
+  Injection for coding work.
 
 Example:
 
@@ -612,16 +613,21 @@ Minimum completion:
 - Let proposals request strengthening experiments using the same experiment
   schema.
 - Move a proposal to `ready` only when evidence covers the key scope.
-- Convert `ready` local proposals into Paper Wiki draft proposals; publish
-  canonical wiki updates only after user confirmation and lint/review.
+- Convert a `ready` local proposal into a `meridian.wiki_propose` call: claim
+  ops only (`addClaim`/`reviseClaim`/...), with at least one `experiment`
+  evidence item naming this project and node. Never import a paper, restructure
+  an aggregation, or edit a body through this path.
+- The proposal is queued for the user's review in the App; it is not applied
+  by submitting it. Report the returned key, and check it with
+  `meridian.wiki_proposal_status` if the user asks.
 - Use a Wiki Transfer Packet when moving local evidence toward Paper Wiki.
 
 Example:
 
 ```text
 A local experiment shows dynamic KV eviction needs amortized scoring. Create a
-local proposal, list scope-strengthening evidence, and only transfer it to the
-Paper Wiki draft path when ready.
+local proposal, list scope-strengthening evidence, then submit it as an
+addClaim on the KV-eviction topic page via wiki_propose once ready.
 ```
 
 ### Research Grounding Injection
@@ -757,8 +763,10 @@ treat that as a wiki signal rather than a reason to overfit the Lab answer:
 - no synthesis for a recurring design question: note a `growth` gap
 
 Continue the idea-graph task with the best available context, but include the
-gap in the Lab Context Packet and ask before creating a Paper Wiki repair or
-write-back proposal.
+gap in the Lab Context Packet. An agent may only propose a conclusion (a
+`wiki_propose` claim op with experiment evidence); it cannot repair or
+restructure the wiki, so surface a structural gap to the user instead of
+attempting a fix.
 
 ## Artifacts
 
@@ -785,8 +793,9 @@ src/meridian/templates/research-dev/
 ## Evidence And Write-back
 
 For experiments or results, preserve command, config, environment, output path,
-metric definition, and interpretation. Write back only through a Paper Wiki
-proposal when a local finding becomes a reusable proposal that is `ready`.
+metric definition, and interpretation. Write back only through
+`meridian.wiki_propose` (claim ops with experiment evidence) when a local
+finding becomes a reusable proposal that is `ready`; the App still reviews it.
 Never edit canonical wiki pages directly from Lab state.
 
 Keep boundaries clear:
