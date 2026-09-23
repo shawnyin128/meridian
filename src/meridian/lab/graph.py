@@ -5,13 +5,17 @@ import os
 import re
 import tempfile
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from meridian.lab.state import ALLOWED_NODE_MODES
 from meridian.wiki.corpus import parse_frontmatter, strip_frontmatter
-from meridian.workspace_protocol import add_workspace_event
+from meridian.workspace_protocol import (
+    WorkspaceProtocolError,
+    add_workspace_event,
+    read_project_plan,
+)
 
 LAB_GRAPH_SCHEMA_VERSION = "meridian.lab.graph.v1"
 LAB_GRAPH_HEALTH_SCHEMA_VERSION = "meridian.lab.graph_health.v1"
@@ -50,6 +54,9 @@ ALLOWED_UPDATE_OPS = {
     "deactivate_node",
     "reopen_node",
     "record_history",
+    "link_task",
+    "unlink_task",
+    "record_conclusion",
 }
 
 ALLOWED_UPDATE_NODE_FIELDS = {
@@ -81,6 +88,9 @@ APPLY_SUPPORTED_OPS = {
     "deactivate_node",
     "reopen_node",
     "set_active_thread",
+    "link_task",
+    "unlink_task",
+    "record_conclusion",
 }
 APPLY_SUPPORTED_UPDATE_NODE_FIELDS = {"state", "doing", "why", "next_action"}
 
@@ -92,6 +102,8 @@ CONFIRMATION_REQUIRED_FIELDS = {
     "detach_artifact",
 }
 CONFIRMATION_REQUIRED_OPS = {"create_node", "set_active_thread", "detach_artifact"}
+CLOSED_NODE_STATES = {"supported", "dead"}
+CONCLUSION_MAX_LEN = 1000
 
 
 @dataclass(frozen=True)
@@ -296,6 +308,15 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
         for edge in graph["edges"]
         if str(edge.get("source") or "") and str(edge.get("target") or "")
     }
+    node_states = {node["id"]: str(node.get("state") or "") for node in graph["nodes"]}
+    node_experiments = {
+        node_id: set(detail.get("experiments") or []) for node_id, detail in graph["node_details"].items()
+    }
+    task_nodes = {
+        task_id: node_id
+        for node_id, detail in graph["node_details"].items()
+        for task_id in detail.get("tasks", [])
+    }
     findings: list[dict[str, str]] = []
 
     def add(code: str, message: str, path: str = "<packet>") -> None:
@@ -450,6 +471,76 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
         elif artifact_type not in ALLOWED_ARTIFACT_TYPES:
             add("invalid_artifact_type", f"Artifact type `{artifact_type}` is not allowed.", path)
 
+    def validate_link_task(change: dict[str, Any], index: int, node_id: str) -> None:
+        task_id = str(change.get("task_id") or "").strip()
+        path = f"changes[{index}].task_id"
+        if not task_id:
+            add("missing_task_id", "link_task requires a non-empty task_id.", path)
+        elif plan_task_ids is None:
+            add("plan_unavailable", f"link_task needs the App's project plan: {plan_issue}", path)
+        elif task_id not in plan_task_ids:
+            add("task_missing", f"Task `{task_id}` is not in the project plan.", path)
+        elif task_nodes.get(task_id, node_id) != node_id:
+            add(
+                "task_already_linked",
+                f"Task `{task_id}` already belongs to node `{task_nodes[task_id]}`; unlink_task it there first.",
+                path,
+            )
+        else:
+            task_nodes[task_id] = node_id
+
+    def validate_unlink_task(change: dict[str, Any], index: int, node_id: str) -> None:
+        task_id = str(change.get("task_id") or "").strip()
+        path = f"changes[{index}].task_id"
+        if not task_id:
+            add("missing_task_id", "unlink_task requires a non-empty task_id.", path)
+        elif task_nodes.get(task_id) != node_id:
+            add("task_not_linked", f"Task `{task_id}` is not linked to node `{node_id}`.", path)
+        else:
+            del task_nodes[task_id]
+
+    def validate_conclusion(change: dict[str, Any], index: int, node_id: str) -> None:
+        text = change.get("text")
+        if (
+            not isinstance(text, str)
+            or not text.strip()
+            or "\n" in text
+            or "\r" in text
+            or len(text.strip()) > CONCLUSION_MAX_LEN
+        ):
+            add(
+                "invalid_conclusion_text",
+                f"record_conclusion requires one non-empty line of at most {CONCLUSION_MAX_LEN} characters.",
+                f"changes[{index}].text",
+            )
+        state = node_states.get(node_id, "")
+        if state not in CLOSED_NODE_STATES:
+            add(
+                "conclusion_node_open",
+                f"Node `{node_id}` is `{state}`; record a conclusion only once the node is supported or dead.",
+                f"changes[{index}].node_id",
+            )
+        evidence = change.get("evidence")
+        if not isinstance(evidence, list) or not evidence or not all(
+            isinstance(item, str) and item.strip() for item in evidence
+        ):
+            add(
+                "missing_conclusion_evidence",
+                "record_conclusion requires a non-empty evidence list of experiment ids.",
+                f"changes[{index}].evidence",
+            )
+        else:
+            unattached = [item.strip() for item in evidence if item.strip() not in node_experiments.get(node_id, set())]
+            if unattached:
+                add(
+                    "conclusion_evidence_unattached",
+                    f"Experiments {', '.join(unattached)} are not attached to node `{node_id}`; attach them with lab_result first.",
+                    f"changes[{index}].evidence",
+                )
+        date_value = change.get("date")
+        if date_value is not None and not _is_iso_date(date_value):
+            add("invalid_conclusion_date", "record_conclusion date must use YYYY-MM-DD.", f"changes[{index}].date")
+
     def validate_history(change: dict[str, Any], index: int) -> None:
         history_text = None
         for field in ("message", "history", "note"):
@@ -471,6 +562,14 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
     changes = packet.get("changes")
     if not isinstance(changes, list) or not changes:
         add("missing_changes", "Update packet needs a non-empty changes list.")
+    plan_task_ids: set[str] | None = None
+    plan_issue = ""
+    if any(isinstance(change, dict) and change.get("op") == "link_task" for change in changes or []):
+        try:
+            plan = read_project_plan(lab_root.parent)
+            plan_task_ids = {str(task.get("id")) for task in plan["tasks"] if isinstance(task, dict)}
+        except (OSError, WorkspaceProtocolError) as exc:
+            plan_issue = str(exc)
 
     confirmation = packet.get("user_confirmation") if isinstance(packet.get("user_confirmation"), dict) else {}
     confirmation_status = str(confirmation.get("status") or "").strip()
@@ -494,14 +593,26 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
             "activate_node",
             "deactivate_node",
             "reopen_node",
+            "link_task",
+            "unlink_task",
+            "record_conclusion",
         }:
-            validate_node_id(node_id, f"changes[{index}].node_id", must_exist=True)
+            node_exists = validate_node_id(node_id, f"changes[{index}].node_id", must_exist=True)
+            if node_exists and op == "link_task":
+                validate_link_task(change, index, node_id)
+            elif node_exists and op == "unlink_task":
+                validate_unlink_task(change, index, node_id)
+            elif node_exists and op == "record_conclusion":
+                validate_conclusion(change, index, node_id)
+            elif node_exists and op == "reopen_node":
+                node_states[node_id] = "unresolved"
         if op == "create_node":
             finding_count = len(findings)
             node_id_valid = validate_node_id(node_id, f"changes[{index}].node_id", must_exist=False)
             validate_create_node(change, index)
             if node_id_valid and len(findings) == finding_count:
                 node_ids.add(node_id)
+                node_states[node_id] = str(change.get("state") or "unresolved").strip()
                 parent = str(change.get("parent") or "").strip()
                 if parent:
                     edge_pairs.add((_node_ref(target_thread, parent), node_id))
@@ -527,6 +638,8 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
                 add("missing_update_fields", "update_node requires non-empty fields.", f"changes[{index}].fields")
             if isinstance(fields, dict):
                 validate_update_fields(fields, index)
+                if isinstance(fields.get("state"), str) and fields["state"].strip() in ALLOWED_NODE_MODES:
+                    node_states[node_id] = fields["state"].strip()
         if op == "attach_artifact":
             artifact = change.get("artifact")
             if not isinstance(artifact, dict):
@@ -546,6 +659,8 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
                         f"Artifact type `{artifact_type}` is not allowed.",
                         f"changes[{index}].artifact.type",
                     )
+                if artifact_type == "experiment" and artifact_id:
+                    node_experiments.setdefault(node_id, set()).add(artifact_id)
                 path = str(artifact.get("path") or "").strip()
                 if not path:
                     add(
@@ -665,7 +780,7 @@ def apply_lab_update(root: Path, packet: dict[str, Any]) -> dict[str, Any]:
             thread_path = lab_root / "threads" / f"{thread_id}.md"
             text = thread_path.read_text(encoding="utf-8")
             write_thread_file(thread_path, _apply_create_node_change(text, change))
-        elif op in {"update_node", "attach_artifact", "record_history"}:
+        elif op in {"update_node", "attach_artifact", "record_history", "link_task", "unlink_task", "record_conclusion"}:
             node_id = str(change.get("node_id") or "").strip()
             touch_node(node_id)
             thread_id, raw_id = _split_node_id(node_id)
@@ -679,6 +794,12 @@ def apply_lab_update(root: Path, packet: dict[str, Any]) -> dict[str, Any]:
                 text = _apply_attach_artifact_change(text, raw_id, artifact)
             elif op == "record_history":
                 text = _apply_record_history_change(text, raw_id, _history_message(change))
+            elif op == "link_task":
+                text = _apply_link_task_change(text, raw_id, str(change.get("task_id") or "").strip())
+            elif op == "unlink_task":
+                text = _apply_unlink_task_change(text, raw_id, str(change.get("task_id") or "").strip())
+            elif op == "record_conclusion":
+                text = _apply_record_conclusion_change(text, raw_id, change)
             write_thread_file(thread_path, text)
             if op == "update_node" and str(fields.get("state") or "").strip() in {"supported", "dead"}:
                 deactivate(node_id)
@@ -994,6 +1115,17 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
             add("error", "node_detail_missing", f"Graph node `{node_id}` is missing node detail.", f"node_details/{node_id}")
         elif not isinstance(detail, dict):
             add("error", "invalid_node_detail", f"Graph node `{node_id}` detail must be an object.", f"node_details/{node_id}")
+    task_owner: dict[str, str] = {}
+    for node_id, detail in node_details.items():
+        for task_id in detail.get("tasks", []) if isinstance(detail, dict) else []:
+            if task_id in task_owner:
+                add(
+                    "warning",
+                    "task_linked_twice",
+                    f"Task `{task_id}` is linked to both `{task_owner[task_id]}` and `{node_id}`; a task belongs to one node.",
+                    f"node_details/{node_id}/tasks",
+                )
+            task_owner.setdefault(task_id, node_id)
 
     supporting_artifacts_value = graph.get("supporting_artifacts")
     if not isinstance(supporting_artifacts_value, dict):
@@ -1352,6 +1484,32 @@ def _apply_record_history_change(text: str, raw_id: str, message: str) -> str:
     return _replace_node_body(text, raw_id, edit)
 
 
+def _apply_link_task_change(text: str, raw_id: str, task_id: str) -> str:
+    return _replace_node_body(text, raw_id, lambda body: _append_unique_heading_line(body, "Tasks", f"- `{task_id}`"))
+
+
+def _apply_unlink_task_change(text: str, raw_id: str, task_id: str) -> str:
+    def edit(body: str) -> str:
+        bounds = _heading_body_bounds(body, "Tasks")
+        if bounds is None:
+            return body
+        heading, content_start, content_end = bounds
+        kept = [line for line in body[content_start:content_end].strip().splitlines() if _list_item(line) != task_id]
+        if kept:
+            return _replace_heading_content(body, content_start, content_end, "\n".join(kept))
+        tail = body[content_end:].lstrip("\r\n")
+        return body[: heading.start()].rstrip() + "\n\n" + tail
+
+    return _replace_node_body(text, raw_id, edit)
+
+
+def _apply_record_conclusion_change(text: str, raw_id: str, change: dict[str, Any]) -> str:
+    conclusion_date = str(change.get("date") or "").strip() or datetime.now(timezone.utc).astimezone().date().isoformat()
+    evidence = ", ".join(f"`{str(item).strip()}`" for item in change.get("evidence") or [])
+    content = f"{str(change.get('text') or '').strip()}\n\n- concluded: {conclusion_date}\n- evidence: {evidence}"
+    return _replace_node_body(text, raw_id, lambda body: _upsert_heading_body(body, "Conclusion", content))
+
+
 def _replace_node_body(text: str, raw_id: str, edit: Any) -> str:
     pattern = rf"^###[ \t]+Node[ \t]+{re.escape(raw_id)}(?::[^\n]*)?$"
     match = re.search(pattern, text, flags=re.MULTILINE)
@@ -1573,6 +1731,8 @@ def _parse_thread_nodes(
             "markdown": body,
         }
         artifacts = _parse_supporting_artifacts(body)
+        tasks = _parse_node_tasks(body)
+        conclusion = _parse_node_conclusion(body)
         parsed.append(
             {
                 "node": node,
@@ -1590,6 +1750,8 @@ def _parse_thread_nodes(
                         for artifact in artifacts
                         if artifact.get("type") == "experiment" and artifact.get("id")
                     ],
+                    **({"tasks": tasks} if tasks else {}),
+                    **({"conclusion": conclusion} if conclusion is not None else {}),
                 },
                 "artifacts": artifacts,
             }
@@ -1671,6 +1833,51 @@ def _parse_supporting_artifacts(body: str) -> list[dict[str, Any]]:
             }
         )
     return _dedupe_artifacts(artifacts)
+
+
+def _parse_node_tasks(body: str) -> list[str]:
+    bounds = _heading_body_bounds(body, "Tasks")
+    if bounds is None:
+        return []
+    _, content_start, content_end = bounds
+    return [item for item in (_list_item(line) for line in body[content_start:content_end].splitlines()) if item]
+
+
+def _parse_node_conclusion(body: str) -> dict[str, Any] | None:
+    """Read a node's `#### Conclusion` section as ``{text, date, evidence}``, or None when it has no text."""
+
+    bounds = _heading_body_bounds(body, "Conclusion")
+    if bounds is None:
+        return None
+    _, content_start, content_end = bounds
+    lines: list[str] = []
+    conclusion_date = ""
+    evidence: list[str] = []
+    for line in body[content_start:content_end].splitlines():
+        field = re.match(r"^\s*-\s*(concluded|evidence):\s*(.*?)\s*$", line)
+        if field is not None and field.group(1) == "concluded":
+            conclusion_date = _clean_scalar(field.group(2))
+        elif field is not None:
+            evidence = [_clean_scalar(item) for item in field.group(2).split(",") if _clean_scalar(item)]
+        elif line.strip():
+            lines.append(line.strip())
+    if not lines:
+        return None
+    return {"text": " ".join(lines), "date": conclusion_date, "evidence": evidence}
+
+
+def _list_item(line: str) -> str:
+    match = re.match(r"^\s*-\s*(.+?)\s*$", line)
+    return _clean_scalar(match.group(1)) if match else ""
+
+
+def _is_iso_date(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    try:
+        return date.fromisoformat(value).isoformat() == value
+    except ValueError:
+        return False
 
 
 def _extract_next_action(body: str) -> str:

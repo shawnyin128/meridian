@@ -23,12 +23,16 @@ When the repository has `.meridian/` and Meridian MCP is available:
 4. Keep the new `next_cursor` in task context for the next check.
 5. When the work is for a Lab node, make that node the active path before the
    first real step, as described in Keeping the graph current in the `lab`
-   skill: the user's instruction to work on it is the confirmation.
+   skill: the user's instruction to work on it is the confirmation. When it is
+   for a planned task, first link the task to its node (Tasks in the same
+   section).
 6. Implement and verify the requested code through the normal coding workflow.
 7. Before finishing, or before moving to another node, put the node's result
    into Lab: `meridian.lab_result` for an experiment (pass `experiment` to
    write a new record), otherwise `doing` and `next_action` through
-   `meridian.lab_update` plus a `kind: complete` event.
+   `meridian.lab_update` plus a `kind: complete` event. A node that ends
+   `supported` or `dead` also gets its conclusion (Conclusion in the `lab`
+   skill).
 
 Do not call `meridian.lab_graph`, reread every idea, or retrieve the whole Paper
 Wiki unless the task actually requires discovery beyond the referenced entities.
