@@ -5,7 +5,7 @@ build/
 dist/
 out/
 meridian-wiki.json
-wiki/
+/wiki/
 !plugins/agent/meridian/skills/wiki/
 !plugins/agent/meridian/skills/wiki/SKILL.md
 !apps/desktop/src/core/fixtures/vault/wiki/
