@@ -61,6 +61,8 @@ Releases up to `v0.0.14` predate the scheme and keep their three-part numbers.
 3. When every work branch of the version has passed its tests, merge each one into the version's
    release branch through a pull request (see [pull-requests.md](pull-requests.md)).
 4. On the release branch, bump the version, pass the release checks below, then push the tag.
+5. After a fix release, merge its release branch into every feature release branch still in
+   progress, so the next feature version cannot ship without the fix.
 
 Example, `v0.0.14.2`:
 
@@ -76,11 +78,9 @@ v0.0.14001 (tag of v0.0.14.1)
 2. Merge them all into `baseline/vX.Y.0.0` and release it.
 3. `master` always holds the latest baseline and moves only when a baseline is released. The agent
    plugins install from `master`, so they update with baselines.
-4. Once baselines have advanced three versions past a baseline, delete every branch of that
-   baseline and earlier. Example: releasing `v0.4.0.0` deletes the branches of `v0.1` and before.
 
-The first baseline, `v0.1.0.0`, is cut when the owner decides. Until then `master` holds the latest
-`v0.0.x` release.
+The first baseline, `v0.1.0.0`, is cut when the owner decides. Until then `master` follows every
+release: it moves to each `v0.0.x` release as soon as it is published.
 
 ## 5. Release channels
 
@@ -102,4 +102,34 @@ A tag is pushed only after all of these pass:
    projects, overview, Wiki and feed load.
 3. The owner reviews an unpacked build (`electron-builder --dir`) and approves the release.
 
-The workflow keeps only the newest five releases.
+The workflow keeps the release pages and installers of the newest five releases. It never deletes
+a tag.
+
+## 7. Branch lifecycle
+
+A branch lives only as long as it is needed. Tags are the permanent record of every release: to
+look at or fix an old version, start a new branch from its tag.
+
+| Branch | Deleted when |
+|---|---|
+| Work branch `…/<module>/<name>` | Its pull request is merged into the release branch. GitHub deletes it automatically. |
+| `fix/vX.Y.Z.F/release` | It has been released and is contained in the next feature release branch. |
+| `feature/vX.Y.Z.0/release` | It has been released and merged into the next baseline. |
+| `baseline/vX.Y.0.0` | Three newer baselines exist. Only the latest three baselines are kept. |
+| Tag `v…` | Never. |
+
+So at any time the repository holds only: branches with unmerged work, release branches not yet
+contained in the next version, the latest three baselines, `master`, and every tag.
+
+Rules that keep deletion safe:
+
+- A release branch is deleted only after the check
+  `git merge-base --is-ancestor <release branch> <branch that should contain it>` passes.
+- Local branches are removed with `git branch -d`, which refuses a branch that is not merged.
+- Work branches may be squash-merged into their release branch (one pull request, one commit).
+  Release branches merge into the next version and into baselines with a merge commit, so their
+  history stays reachable after the branch is gone.
+
+Example: `v0.0.14.2` is released from `fix/v0.0.14.2/release`. Its work branch was deleted when its
+pull request merged. `fix/v0.0.14.2/release` is merged into `feature/v0.0.15.0/release`, and once the
+check above passes it is deleted. The tag `v0.0.14002` stays.
