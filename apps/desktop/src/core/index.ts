@@ -170,15 +170,17 @@ const appliedProposalBodies = (() => {
     return new Map<string, string>()
   }
 })()
-const store = openStore(vaultRoot, appliedProposalBodies)
+const { store, openError } = openStore(vaultRoot, appliedProposalBodies)
 const appVersion = process.env['MERIDIAN_APP_VERSION']
 let libraryLocation = currentLibrary({ currentRoot: locationRoot, source: librarySource, configHome })
 /** Fixture mode and explicit canned mode never access the network. */
 const canned = vaultRoot === undefined || process.env['MERIDIAN_CANNED_NET'] === '1'
 const httpGet = canned ? createCannedGet(cannedNet as CannedTable, locationRoot) : electronGet
-// A real library hears about app and plugin version changes once per machine; the fixture library never does.
+// A real library hears about app and plugin version changes once per machine; the fixture library
+// never does. A library that failed to open has no feed to post to, and every method of `store`
+// throws in that case, so posting here would crash Core before it registers any contract handler.
 const noteVersions = (pluginVersion: string): void => {
-  if (vaultRoot === undefined || appVersion === undefined) return
+  if (vaultRoot === undefined || appVersion === undefined || openError !== null) return
   noteVersionChanges({
     file: join(configHome, 'version-notices.json'),
     appVersion,
@@ -255,17 +257,26 @@ function sourceOf(root: string | undefined, source: string | undefined): Library
   return source === 'configured' || source === 'fallback' ? source : 'environment'
 }
 
-/** Store for this run: fixtures when no vault is selected; unopenedStore with logged cause when the selected vault cannot open. */
-function openStore(root: string | undefined, appliedProposalBodies: Map<string, string>): VaultStore {
-  if (root === undefined) return createFixtureStore(undefined, undefined, appliedProposalBodies)
+/**
+ * Store for this run: fixtures when no vault is selected; an `unopenedStore` reporting the cause
+ * when the selected vault cannot open. `openError` is that same cause, so callers can tell the
+ * difference between an unopened store and a real one without invoking a method to find out.
+ */
+function openStore(
+  root: string | undefined, appliedProposalBodies: Map<string, string>,
+): { store: VaultStore; openError: string | null } {
+  if (root === undefined) {
+    return { store: createFixtureStore(undefined, undefined, appliedProposalBodies), openError: null }
+  }
   try {
-    return process.env['MERIDIAN_BOOTSTRAP_VAULT'] === '1'
+    const store = process.env['MERIDIAN_BOOTSTRAP_VAULT'] === '1'
       ? createDesktopVaultStore(root, undefined, undefined, appliedProposalBodies)
       : createVaultStore(root, undefined, undefined, appliedProposalBodies)
+    return { store, openError: null }
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err)
     console.error(`[core] 论文库打不开:${reason}`)
-    return unopenedStore(reason)
+    return { store: unopenedStore(reason), openError: reason }
   }
 }
 
@@ -283,7 +294,7 @@ function definedFields<T extends object>(patch: T): Partial<WithoutUndefined<T>>
 
 registerHandler('library.location', (params) => {
   EmptyParamsSchema.parse(params)
-  return libraryLocation
+  return { ...libraryLocation, openError }
 })
 registerHandler('library.configure', (params) => {
   const { root } = LibraryConfigureParamsSchema.parse(params)

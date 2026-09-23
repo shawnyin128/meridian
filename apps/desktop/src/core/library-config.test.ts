@@ -249,4 +249,18 @@ describe('desktop library configuration', () => {
       configHome: join(base, 'config'),
     }).restartRequired).toBe(false)
   })
+
+  // Neither function opens the vault, so they can never observe an open failure; only Core's own
+  // library.location handler knows whether the running store actually opened.
+  it('currentLibrary 和 configureLibrary 都不知道库能否打开，openError 恒为 null', () => {
+    const base = tempRoot()
+    const root = join(base, 'library')
+    prepareSelectedLibrary(root)
+    expect(currentLibrary({
+      currentRoot: root, source: 'fallback', configHome: join(base, 'config'),
+    }).openError).toBeNull()
+    expect(configureLibrary(root, {
+      currentRoot: root, source: 'fallback', configHome: join(base, 'config'),
+    }).openError).toBeNull()
+  })
 })
