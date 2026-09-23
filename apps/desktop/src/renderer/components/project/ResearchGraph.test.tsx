@@ -177,7 +177,7 @@ describe('idea and graph association', () => {
     act(() => root.unmount())
   })
 
-  it('renders a structured record row with a kind chip, title, and who, and no node column', () => {
+  it('renders a structured record row with a kind chip, title, and who, and no node tag', () => {
     const host = document.createElement('div')
     const root = createRoot(host)
     act(() => root.render(withMessages(
@@ -192,10 +192,10 @@ describe('idea and graph association', () => {
     )))
 
     const row = host.querySelector('.record-row')
-    expect(row?.querySelector('.record-title')?.textContent).toBe('跑通延迟测量')
-    expect(row?.querySelector('.record-kind')?.textContent).toBe('实验结果')
+    expect(row?.querySelector('.record-line')?.textContent).toBe('跑通延迟测量')
+    expect(row?.querySelector('.project-signal-kind')?.textContent).toBe('实验结果')
     expect(row?.querySelector('.record-who')?.textContent).toBe('agent')
-    expect(row?.querySelector('.record-node')).toBeNull()
+    expect(row?.querySelector('.node-tag')).toBeNull()
     act(() => root.unmount())
   })
 })

@@ -30,57 +30,49 @@ describe('ProjectSignals', () => {
 describe('ProjectEventRow', () => {
   beforeEach(() => { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh') })
 
-  it('renders the kind chip, node link, title, detail, and who; clicking the node reports its id', () => {
+  it('跟决策行同一套列:类型标签、日期标签、节点标签、标题与细节、谁写的;点节点标签报出节点 id', () => {
     const host = document.createElement('div')
     const root = createRoot(host)
     const onSelectNode = vi.fn()
     act(() => root.render(
       <MessagesProvider>
         <ProjectEventRow
-          kind="result" title="第一个探针支持假设" detail="p99 从 80ms 降到 62ms"
+          kind="result" date="2026-09-22" title="第一个探针支持假设" detail="p99 从 80ms 降到 62ms"
           node={{ id: 'thread.B', label: '延迟探针' }} onSelectNode={onSelectNode} origin="agent"
         />
       </MessagesProvider>,
     ))
 
-    expect(host.querySelector('.record-kind')?.textContent).toBe('实验结果')
-    expect(host.querySelector('.record-kind')?.className).toContain('rk-result')
-    expect(host.querySelector('.record-title')?.textContent).toBe('第一个探针支持假设')
-    expect(host.querySelector('.record-detail')?.textContent).toBe('p99 从 80ms 降到 62ms')
+    const row = host.querySelector('.record-row')
+    expect(row?.className).toContain('attnrow project-signal-columns')
+    expect(host.querySelector('.project-signal-kind .ak.good')?.textContent).toBe('实验结果')
+    expect(host.querySelector('.project-signal-date .date-chip')).not.toBeNull()
+    expect(host.querySelector('.record-line')?.textContent).toBe('第一个探针支持假设 · p99 从 80ms 降到 62ms')
     expect(host.querySelector('.record-who')?.textContent).toBe('agent')
-    const nodeLink = host.querySelector('.record-node-link')
-    expect(nodeLink?.textContent).toBe('延迟探针')
-    act(() => { nodeLink!.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
+    expect(row?.className).toContain('with-node')
+    const tag = host.querySelector('.record-node button.node-tag--fill')
+    expect(tag?.textContent).toBe('节点 · 延迟探针')
+    act(() => { tag!.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
     expect(onSelectNode).toHaveBeenCalledWith('thread.B')
     act(() => root.unmount())
   })
 
-  it('omits the node column entirely when the caller passes no onSelectNode (the node-panel variant)', () => {
+  it('节点面板里的变体(不传 onSelectNode)不画节点标签;没有细节时只写标题', () => {
     const host = document.createElement('div')
     const root = createRoot(host)
     act(() => root.render(
       <MessagesProvider>
-        <ProjectEventRow kind="note" title="搭好评测环境" origin="user" />
+        <ProjectEventRow
+          kind="note" date="2026-09-21" title="搭好评测环境" origin="user"
+          node={{ id: 'thread.A', label: '评测' }}
+        />
       </MessagesProvider>,
     ))
 
-    expect(host.querySelector('.record-node')).toBeNull()
+    expect(host.querySelector('.node-tag')).toBeNull()
+    expect(host.querySelector('.record-line')?.textContent).toBe('搭好评测环境')
+    expect(host.querySelector('.project-signal-kind .ak.mut')?.textContent).toBe('记录')
     expect(host.querySelector('.record-who')?.textContent).toBe('你')
-    act(() => root.unmount())
-  })
-
-  it('keeps the node column but renders nothing in it when the record carries no node', () => {
-    const host = document.createElement('div')
-    const root = createRoot(host)
-    act(() => root.render(
-      <MessagesProvider>
-        <ProjectEventRow kind="decision" title="改成条件式" onSelectNode={vi.fn()} origin="user" />
-      </MessagesProvider>,
-    ))
-
-    const nodeCell = host.querySelector('.record-node')
-    expect(nodeCell).not.toBeNull()
-    expect(nodeCell?.textContent).toBe('')
     act(() => root.unmount())
   })
 })

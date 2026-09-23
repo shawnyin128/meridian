@@ -1,0 +1,8 @@
+.node-tag{display:inline-flex;flex:none;min-width:0;max-width:170px;box-sizing:border-box;padding:1px 7px;border:0;
+  border-radius:var(--r-full);background:var(--accent-soft);color:var(--accent);font:inherit;font-size:var(--fs-cap);
+  line-height:var(--lh-ui)}
+.node-tag--fill{width:100%;max-width:none}
+.node-tag-text{min-width:0;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade)}
+button.node-tag{cursor:pointer}
+button.node-tag:hover{filter:brightness(0.96)}
+button.node-tag:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
