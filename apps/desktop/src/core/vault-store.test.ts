@@ -1078,6 +1078,24 @@ describe('vault store on the aggregation layout', () => {
     expect(createVaultStore(vault).getProject(id).tasks[0]!.window).toBeUndefined()
   })
 
+  it('任务备注写进页面并同步进共享计划面,重开仍在', () => {
+    store.createProject('备注项目')
+    const id = store.listProjects().find((project) => project.name === '备注项目')!.id
+    const repo = join(vault, 'note-repo')
+    mkdirSync(repo)
+    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    const made = store.createTask(id, {
+      title: '需要写备注的任务', start: '2026-09-10', end: '2026-09-10', state: 'plan', priority: 'p0',
+    })
+    const task = made.tasks[0]!
+    store.updateTask(id, task.id, { note: '先确认基线,再改并发数' })
+    expect(createVaultStore(vault).getProject(id).tasks[0]!.note).toBe('先确认基线,再改并发数')
+    const plan = JSON.parse(readFileSync(join(repo, '.meridian/control/plan.json'), 'utf8')) as {
+      tasks: { note?: string }[]
+    }
+    expect(plan.tasks[0]!.note).toBe('先确认基线,再改并发数')
+  })
+
   it('拖拽重排的任务顺序写进页面并刷新共享计划面,重开也保持这个顺序', () => {
     store.createProject('排序项目')
     const id = store.listProjects().find((project) => project.name === '排序项目')!.id
