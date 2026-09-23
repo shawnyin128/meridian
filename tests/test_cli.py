@@ -1765,7 +1765,7 @@ class CliTests(unittest.TestCase):
             result = mcp_harness.run_stdio_harness(wiki_root=wiki_root, out_path=report_path)
             self.assertEqual(result["status"], "pass")
             self.assertTrue(report_path.exists())
-            self.assertEqual(result["summary"]["tool_count"], 17)
+            self.assertEqual(result["summary"]["tool_count"], 18)
             self.assertTrue(result["summary"]["blocked_internal_read"])
             self.assertEqual(result["summary"]["fixture_propose_status"], "submitted")
             self.assertEqual(result["summary"]["fixture_proposal_status"], "waiting_for_app")

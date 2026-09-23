@@ -19,6 +19,7 @@ from meridian.wiki.workspace import default_user_config_path, init_workspace, re
 from meridian.workspace_protocol import (
     EVENT_KINDS,
     add_workspace_agent_idea,
+    add_workspace_agent_task,
     add_workspace_event,
     inspect_project_workspace,
     read_project_plan,
@@ -205,6 +206,17 @@ def build_parser() -> argparse.ArgumentParser:
     workspace_idea_add.add_argument("--date", default=None, help="Idea date in YYYY-MM-DD; defaults to today.")
     workspace_idea_add.add_argument("--node", default=None, help="Optional Lab graph node id.")
     workspace_idea_add.add_argument("--json-out", type=Path, default=None, help="Optional write result JSON path.")
+
+    workspace_task_add = workspace_subparsers.add_parser(
+        "task-add",
+        help="Add a concrete next step agreed with the user to the Meridian App's project plan.",
+    )
+    workspace_task_add.add_argument("--root", type=Path, default=Path.cwd(), help="Repository or .meridian root.")
+    workspace_task_add.add_argument("--id", required=True, help="Stable task identifier.")
+    workspace_task_add.add_argument("--title", required=True, help="The step in one line.")
+    workspace_task_add.add_argument("--note", default=None, help="Optional Markdown note.")
+    workspace_task_add.add_argument("--date", default=None, help="Planned date in YYYY-MM-DD; defaults to today.")
+    workspace_task_add.add_argument("--json-out", type=Path, default=None, help="Optional write result JSON path.")
 
     wiki = subparsers.add_parser("wiki", help="Paper Wiki workflows")
     wiki_subparsers = wiki.add_subparsers(dest="command", required=True)
@@ -447,6 +459,19 @@ def main(argv: list[str] | None = None) -> int:
             if json_out:
                 target = _write_json_payload(json_out, result)
                 print(f"Wrote workspace event result JSON: {target}")
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+            return 0
+
+        if args.product == "workspace" and args.command == "task-add":
+            json_out = _preflight_json_out(args.json_out)
+            if args.json_out and json_out is None:
+                return 1
+            result = add_workspace_agent_task(
+                args.root, task_id=args.id, title=args.title, note=args.note, task_date=args.date,
+            )
+            if json_out:
+                target = _write_json_payload(json_out, result)
+                print(f"Wrote workspace task result JSON: {target}")
             print(json.dumps(result, indent=2, ensure_ascii=False))
             return 0
 

@@ -21,6 +21,8 @@ WORKSPACE_CHANGE_PAGE_SCHEMA_VERSION = "meridian.workspace-change-page.v1"
 WORKSPACE_IDEA_SCHEMA_VERSION = "meridian.workspace-idea.v1"
 WORKSPACE_AGENT_IDEAS_SCHEMA_VERSION = "meridian.workspace-agent-ideas.v1"
 WORKSPACE_AGENT_IDEA_WRITE_SCHEMA_VERSION = "meridian.workspace-agent-idea-write.v1"
+WORKSPACE_AGENT_TASKS_SCHEMA_VERSION = "meridian.workspace-agent-tasks.v1"
+WORKSPACE_AGENT_TASK_WRITE_SCHEMA_VERSION = "meridian.workspace-agent-task-write.v1"
 
 MANIFEST_PATH = Path(".meridian/workspace.json")
 PLAN_PATH = Path(".meridian/control/plan.json")
@@ -28,9 +30,12 @@ GRAPH_PATH = Path(".meridian/graph/graph.json")
 EVENTS_PATH = Path(".meridian/events/events.json")
 CHANGES_PATH = Path(".meridian/control/changes.json")
 AGENT_IDEAS_PATH = Path(".meridian/ideas/ideas.json")
+AGENT_TASKS_PATH = Path(".meridian/tasks/tasks.json")
 
 _EVENT_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
-_APP_OR_GENERATED_SURFACES = {MANIFEST_PATH, PLAN_PATH, GRAPH_PATH, EVENTS_PATH, CHANGES_PATH, AGENT_IDEAS_PATH}
+_APP_OR_GENERATED_SURFACES = {
+    MANIFEST_PATH, PLAN_PATH, GRAPH_PATH, EVENTS_PATH, CHANGES_PATH, AGENT_IDEAS_PATH, AGENT_TASKS_PATH,
+}
 EVENT_KINDS = {"start", "reopen", "result", "decision", "complete", "note"}
 _EVENT_TITLE_MAX_LEN = 120
 _EVENT_DETAIL_MAX_LEN = 300
@@ -438,6 +443,79 @@ def add_workspace_agent_idea(
         "path": AGENT_IDEAS_PATH.as_posix(),
         "idea": idea,
     }
+
+
+def add_workspace_agent_task(
+    root: Path,
+    *,
+    task_id: str,
+    title: str,
+    note: str | None = None,
+    task_date: str | None = None,
+) -> dict[str, Any]:
+    """Record one next step a coding agent and the user settled on, for the Meridian App to add to the plan.
+
+    The App adds it as a task marked as added by an agent, and lists the task id it got under
+    ``agent_tasks[task_id]`` in the project plan. Writing the same id with the same content again is a
+    no-op; the same id with different content raises :class:`WorkspaceProtocolError`.
+    """
+
+    repository = _repository_root(root)
+    _read_manifest(repository)
+    normalized_id = task_id.strip()
+    if not _EVENT_ID.fullmatch(normalized_id):
+        raise WorkspaceProtocolError("task id must be 1-128 URL-safe identifier characters")
+    normalized_title = title.strip()
+    if not normalized_title or len(normalized_title) > 160 or "\n" in normalized_title:
+        raise WorkspaceProtocolError("task title must be one line of 1-160 characters")
+    task: dict[str, str] = {"id": normalized_id, "date": _event_date(task_date), "title": normalized_title}
+    if note is not None and note.strip():
+        if len(note.strip()) > 20_000:
+            raise WorkspaceProtocolError("task note must be at most 20000 characters")
+        task["note"] = note.strip()
+
+    target = repository / AGENT_TASKS_PATH
+    if target.exists():
+        payload = _validate_agent_tasks(_read_json(target, label="workspace agent tasks"))
+    else:
+        payload = {"schema_version": WORKSPACE_AGENT_TASKS_SCHEMA_VERSION, "tasks": []}
+    prior = next((item for item in payload["tasks"] if item["id"] == normalized_id), None)
+    if prior is not None:
+        if prior != task:
+            raise WorkspaceProtocolError(f"task id already exists with different content: {normalized_id}")
+        status = "unchanged"
+    else:
+        payload["tasks"].append(task)
+        _atomic_json(target, payload)
+        status = "created"
+    return {
+        "schema_version": WORKSPACE_AGENT_TASK_WRITE_SCHEMA_VERSION,
+        "status": status,
+        "path": AGENT_TASKS_PATH.as_posix(),
+        "task": task,
+    }
+
+
+def _validate_agent_tasks(value: Any) -> dict[str, Any]:
+    payload = _object(value, "workspace agent tasks")
+    _required_keys(payload, {"schema_version", "tasks"}, "workspace agent tasks")
+    if payload.get("schema_version") != WORKSPACE_AGENT_TASKS_SCHEMA_VERSION:
+        raise WorkspaceProtocolError("workspace agent tasks are not meridian.workspace-agent-tasks.v1")
+    tasks = payload.get("tasks")
+    if not isinstance(tasks, list):
+        raise WorkspaceProtocolError("workspace agent tasks must be a JSON array")
+    ids: set[str] = set()
+    for index, raw in enumerate(tasks):
+        item = _object(raw, f"workspace agent task {index}")
+        if not {"id", "date", "title"}.issubset(item):
+            raise WorkspaceProtocolError(f"workspace agent task {index} is missing required fields")
+        task_id = _nonempty_string(item.get("id"), f"workspace agent task {index} id")
+        if not _EVENT_ID.fullmatch(task_id) or task_id in ids:
+            raise WorkspaceProtocolError(f"workspace agent task {index} id is invalid or duplicated")
+        ids.add(task_id)
+        _event_date(_nonempty_string(item.get("date"), f"workspace agent task {index} date"))
+        _nonempty_string(item.get("title"), f"workspace agent task {index} title")
+    return payload
 
 
 def _validate_agent_ideas(value: Any) -> dict[str, Any]:

@@ -20,6 +20,9 @@
 .dchip.plan-cell{font-family:var(--mono);font-size:var(--fs-sm);background:var(--field);padding:2px 8px}
 .state-cell{padding:2px 4px;border-radius:var(--r-sm)}
 .plan-name-cell{display:flex;align-items:center;flex:1;min-width:0;height:20px}
+.task-name-with-origin{display:flex;align-items:center;min-width:0}
+.task-name-with-origin>.agtag{margin:0 0 0 6px;flex-shrink:0}
+.project-task-detail-node{display:flex;min-width:0}
 .plan-name,.plan-name-input{box-sizing:border-box;width:100%;height:20px;min-width:0;padding:0 5px;font:inherit;line-height:20px}
 .plan-name{border:0;border-radius:var(--r-sm);white-space:nowrap;overflow:hidden;mask-image:var(--clipfade)}
 .plan-name:hover,.plan-name:focus-visible{background:var(--field);box-shadow:none}

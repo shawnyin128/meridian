@@ -935,13 +935,25 @@ export function createFixtureStore(
       ]
     },
 
-    createTask(projectId, task) {
+    createTask(projectId, task, origin) {
       const project = projectById.get(projectId)
       if (!project) throw new Error(`项目不存在:${projectId}`)
       checkSpan(task)
-      const nextProject = { ...project, tasks: [...project.tasks, { ...task, id: nextId('task') }] }
+      const made = { ...task, id: nextId('task'), ...(origin === undefined ? {} : { origin }) }
+      const nextProject = { ...project, tasks: [...project.tasks, made] }
       projectById.set(projectId, nextProject)
       return detailOf(nextProject)
+    },
+
+    agentTaskRequests() {
+      return []
+    },
+
+    addAgentTask(projectId, request) {
+      return this.createTask(projectId, {
+        title: request.title, start: request.date, end: request.date, state: 'plan', priority: 'p1',
+        ...(request.note === undefined ? {} : { note: request.note }),
+      }, 'agent')
     },
 
     updateTask(projectId, taskId, patch) {

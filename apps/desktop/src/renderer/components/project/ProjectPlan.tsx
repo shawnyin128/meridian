@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import type {
+  GraphNode,
   Milestone,
   ProjectDetail as Project,
   Task,
@@ -12,6 +13,7 @@ import { dnum, isoOf } from '../../../shared/dates.js'
 import { AddAction } from '../AddAction.js'
 import { CollapsibleGroup } from '../CollapsibleGroup.js'
 import { DateChip } from '../DateTimeDisplay.js'
+import { EmptyState } from '../EmptyState.js'
 import { ChoicePicker, DateButton, PriorityPicker } from '../FieldPickers.js'
 import { InlineDraftInput } from '../InlineDraftInput.js'
 import { InlineField } from '../InlineField.js'
@@ -26,6 +28,7 @@ import { useDragReorder, type DragCardProps } from '../../hooks/useDragReorder.j
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
+import { NodeTag } from './NodeTag.js'
 import './ProjectPlan.css'
 
 const stateWord = (m: Catalog): Record<Task['state'], string> => m.project.plan.state
@@ -196,12 +199,15 @@ function PlanNameCell({ value, label, onSave, stopRowActivation = false }: {
 
 /**
  * Task detail panel: the same shared panel and open/close interaction as a research node, showing
- * the task's fields plus its Markdown note, editable in place.
+ * the task's fields (and that an agent added it, when one did), its Markdown note, editable in
+ * place, and the research node it belongs to, which opens through `onOpenNode`.
  */
-export function ProjectTaskPanel({ task, onClose, onSaveNote }: {
+export function ProjectTaskPanel({ task, node, onClose, onSaveNote, onOpenNode }: {
   task: Task
+  node: { id: string; label: string; mode: NonNullable<GraphNode['mode']> } | undefined
   onClose: () => void
   onSaveNote: (note: string) => Promise<boolean>
+  onOpenNode: (nodeId: string) => void
 }) {
   const m = useMessages()
   const fmt = useFormat()
@@ -224,7 +230,19 @@ export function ProjectTaskPanel({ task, onClose, onSaveNote }: {
         <DateChip>{fmt.dateRange(task.start, task.end)}</DateChip>
         <span className={`prtag ${task.priority}`}>{task.priority.toUpperCase()}</span>
         <span className="project-task-detail-state">{stateWord(m)[task.state]}</span>
+        {task.origin === 'agent' ? <span className="agtag">{m.project.records.who.agent}</span> : null}
       </div>
+      <SectionHeading variant="rail">{m.project.plan.nodeHeading}</SectionHeading>
+      {node === undefined
+        ? <EmptyState variant="section">{m.project.plan.noNode}</EmptyState>
+        : (
+          <div className="project-task-detail-node">
+            <NodeTag
+              label={node.label} mode={node.mode} hint={m.project.records.goToGraph(node.label)}
+              onOpen={() => onOpenNode(node.id)}
+            />
+          </div>
+        )}
       <SectionHeading variant="rail" className="flexh">{m.project.plan.noteHeading}
         <button className="btn plain" onClick={toggle}>{editing ? m.common.save : m.common.edit}</button>
       </SectionHeading>
@@ -270,10 +288,22 @@ function TaskRow({ task, flash, selected, dragProps, dropClass = '', onSave, onD
         className="dleft plan-cell state-cell" stopRowActivation
         onPick={(state) => { void onSave({ state }) }}
       />
-      <PlanNameCell
-        value={task.title} label={m.project.plan.taskNamePlaceholder} onSave={(title) => onSave({ title })}
-        stopRowActivation
-      />
+      {task.origin === 'agent'
+        ? (
+          <span className="task-name-with-origin">
+            <PlanNameCell
+              value={task.title} label={m.project.plan.taskNamePlaceholder} onSave={(title) => onSave({ title })}
+              stopRowActivation
+            />
+            <span className="agtag">{m.project.records.who.agent}</span>
+          </span>
+        )
+        : (
+          <PlanNameCell
+            value={task.title} label={m.project.plan.taskNamePlaceholder} onSave={(title) => onSave({ title })}
+            stopRowActivation
+          />
+        )}
       <button
         className="row-delete" type="button"
         title={m.project.plan.deleteTask} aria-label={m.project.plan.deleteTaskFor(task.title)}

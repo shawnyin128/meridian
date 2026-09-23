@@ -68,6 +68,9 @@
 .node-branch-group.useful .node-branch-dot{background:var(--good)}
 .node-branch-group.dead .node-branch-dot{background:var(--bad)}
 .node-branch-group.candidate .node-branch-dot{background:var(--ter)}
+.node-tasks{--structured-list-row-height:38px}
+.node-task-row{display:flex;align-items:center;gap:8px;min-height:38px;padding:8px 2px}
+.node-task-row>.fade-text{flex:1;min-width:0}
 .node-ideas{display:grid;--structured-list-row-height:54px}
 .node-ideas>.lm{padding:8px 2px}
 .node-idea-row{display:grid;gap:3px;min-height:54px;padding:8px 2px}

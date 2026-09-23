@@ -139,19 +139,24 @@ describe('idea and graph association', () => {
     expect(host.querySelector('.legend-node.idea')).not.toBeNull()
   })
 
-  it('places linked ideas between branches and research events and opens the idea in place', () => {
+  it('lists the tasks of the node, then linked ideas, between branches and research events and opens each in place', () => {
     const host = document.createElement('div')
     const root = createRoot(host)
     const onSelectIdea = vi.fn()
+    const onSelectTask = vi.fn()
+    const task = { id: 'task-7', title: '重跑延迟矩阵', start: '2026-09-14', end: '2026-09-14', state: 'plan' as const, priority: 'p1' as const, origin: 'agent' as const }
     act(() => root.render(withMessages(
       <ResearchNodePanel
-        graph={GRAPH} events={[]} ideas={[IDEA]} node={GRAPH.nodes[0]!}
-        onClose={vi.fn()} onSelect={vi.fn()} onSelectIdea={onSelectIdea}
+        graph={GRAPH} events={[]} ideas={[IDEA]} tasks={[task]} node={GRAPH.nodes[0]!}
+        onClose={vi.fn()} onSelect={vi.fn()} onSelectIdea={onSelectIdea} onSelectTask={onSelectTask}
       />,
     )))
 
     const headings = [...host.querySelectorAll('.section-heading')].map((heading) => heading.textContent)
-    expect(headings.slice(1, 4)).toEqual(['分支 · 1', '关联想法 · 1', '科研记录 · 0'])
+    expect(headings.slice(1, 5)).toEqual(['分支 · 1', '任务 · 1', '关联想法 · 1', '科研记录 · 0'])
+    expect(host.querySelector('.node-task-row')?.textContent).toBe('重跑延迟矩阵agent')
+    act(() => (host.querySelector('.node-task-row') as HTMLButtonElement).click())
+    expect(onSelectTask).toHaveBeenCalledWith('task-7')
     expect(host.querySelector('.node-idea-row')?.textContent)
       .toContain('用动态预算控制校准成本')
     expect(host.querySelector('.node-ideas')?.classList.contains('structured-list--embedded')).toBe(true)
@@ -171,7 +176,7 @@ describe('idea and graph association', () => {
     act(() => root.render(withMessages(
       <ResearchNodePanel
         graph={{ ...GRAPH, nodes: [node, GRAPH.nodes[1]!] }} events={[]} ideas={[]} node={node}
-        onClose={vi.fn()} onSelect={vi.fn()} onSelectIdea={vi.fn()}
+        tasks={[]} onClose={vi.fn()} onSelect={vi.fn()} onSelectIdea={vi.fn()} onSelectTask={vi.fn()}
       />,
     )))
 
@@ -191,7 +196,7 @@ describe('idea and graph association', () => {
           date: '2026-09-14', text: '跑通延迟测量', node: 'root', kind: 'result', origin: 'agent',
         }]}
         ideas={[]} node={GRAPH.nodes[0]!}
-        onClose={vi.fn()} onSelect={vi.fn()} onSelectIdea={vi.fn()}
+        tasks={[]} onClose={vi.fn()} onSelect={vi.fn()} onSelectIdea={vi.fn()} onSelectTask={vi.fn()}
       />,
     )))
 

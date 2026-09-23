@@ -469,15 +469,21 @@ registerHandler('papers.setColumnType', (params) => {
 })
 registerHandler('project.list', (params) => {
   EmptyParamsSchema.parse(params)
+  store.absorbAgentTasks()
   return store.listProjects()
 })
 registerHandler('project.overview', (params) => {
   EmptyParamsSchema.parse(params)
+  store.absorbAgentTasks()
   return store.overviewProjects()
 })
 registerHandler('project.create', (params) =>
   store.createProject(ProjectCreateParamsSchema.parse(params).name))
-registerHandler('project.get', (params) => store.getProject(ProjectGetParamsSchema.parse(params).id))
+registerHandler('project.get', (params) => {
+  const { id } = ProjectGetParamsSchema.parse(params)
+  store.absorbAgentTasks(id)
+  return store.getProject(id)
+})
 registerHandler('project.bindWorkspace', (params) => {
   const { id, binding } = ProjectBindWorkspaceParamsSchema.parse(params)
   return store.bindProjectWorkspace(id, binding)

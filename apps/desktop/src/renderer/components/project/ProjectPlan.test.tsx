@@ -118,10 +118,14 @@ describe('ProjectPlan', () => {
   })
 })
 
-function renderTaskPanel(taskOverrides: Partial<Task> = {}) {
+function renderTaskPanel(
+  taskOverrides: Partial<Task> = {}, node?: { id: string; label: string; mode: 'supported' },
+) {
   return renderToStaticMarkup(
     <MessagesProvider>
-      <ProjectTaskPanel task={{ ...task, ...taskOverrides }} onClose={vi.fn()} onSaveNote={vi.fn()} />
+      <ProjectTaskPanel
+        task={{ ...task, ...taskOverrides }} node={node} onClose={vi.fn()} onSaveNote={vi.fn()} onOpenNode={vi.fn()}
+      />
     </MessagesProvider>,
   )
 }
@@ -140,6 +144,20 @@ describe('ProjectTaskPanel', () => {
   it('没有备注时显示空状态提示,而不是空白', () => {
     const output = renderTaskPanel({ note: undefined })
     expect(output).toContain('还没有备注')
+  })
+
+  it('显示任务挂在哪个研究节点上;还没挂时说明 agent 做它时会挂上', () => {
+    const linked = renderTaskPanel({}, { id: 'kv.n3', label: '前缀共调度', mode: 'supported' })
+    expect(linked).toContain('研究节点')
+    expect(linked).toMatch(/<button[^>]*class="node-tag node-tag--supported"[^>]*title="在科研图中打开「前缀共调度」"/)
+    expect(renderTaskPanel()).toContain('还没挂到研究节点上')
+  })
+
+  it('agent 加的任务在面板和列表里都带一个安静的 agent 标记,用户加的没有', () => {
+    expect(renderTaskPanel({ origin: 'agent' })).toContain('<span class="agtag">agent</span>')
+    expect(renderTaskPanel()).not.toContain('agtag')
+    expect(renderPlan('task', { tasks: [{ ...task, origin: 'agent' }] })).toContain('<span class="agtag">agent</span>')
+    expect(renderPlan('task')).not.toContain('agtag')
   })
 
   it('有备注时渲染备注正文', () => {

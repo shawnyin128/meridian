@@ -21,6 +21,9 @@ const GRAPH = '.meridian/graph/graph.json'
 const EVENTS = '.meridian/events/events.json'
 const CHANGES = '.meridian/control/changes.json'
 const AGENT_IDEAS = '.meridian/ideas/ideas.json'
+// Not declared in the manifest: a 0.0.14 plugin rejects a manifest naming a surface it does not know.
+const AGENT_TASKS = '.meridian/tasks/tasks.json'
+export const WORKSPACE_AGENT_TASKS_SCHEMA = 'meridian.workspace-agent-tasks.v1'
 const EXPERIMENTS_PREFIX = '.meridian/experiments/'
 const WorkspaceEventKindSchema = z.enum(['start', 'reopen', 'result', 'decision', 'complete', 'note'])
 export const WORKSPACE_AGENT_IDEAS_SCHEMA = 'meridian.workspace-agent-ideas.v1'
@@ -165,7 +168,15 @@ function planBody(project: ProjectRecord): JsonObject {
     },
     tasks: project.tasks,
     milestones: project.milestones,
+    ...agentTasksOf(project),
   }
+}
+
+/** `{ agent_tasks }` mapping each agent task request to the plan task it became and still is, or nothing. */
+function agentTasksOf(project: ProjectRecord): JsonObject {
+  const ids = new Set(project.tasks.map((task) => task.id))
+  const held = Object.entries(project.agentTasks ?? {}).filter(([, task]) => ids.has(task))
+  return held.length === 0 ? {} : { agent_tasks: Object.fromEntries(held) }
 }
 
 function ideaProjections(project: ProjectRecord, ideas: readonly ResearchIdea[]): IdeaProjection[] {
@@ -741,6 +752,36 @@ const AgentIdeasFileSchema = z.object({
     node: z.string().min(1).optional(),
   })),
 })
+
+const AgentTasksFileSchema = z.object({
+  schema_version: z.literal(WORKSPACE_AGENT_TASKS_SCHEMA),
+  tasks: z.array(z.object({
+    id: z.string().min(1),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    title: z.string().trim().min(1).max(160),
+    note: z.string().trim().min(1).max(20_000).optional(),
+  })),
+})
+
+/** One next step a coding agent asked to add to a project's plan. */
+export type WorkspaceAgentTask = z.infer<typeof AgentTasksFileSchema>['tasks'][number]
+
+/**
+ * Returns the tasks coding agents asked to add in the local workspace at `root`, in file order. It is
+ * empty when `root` is undefined (unbound or SSH) and when the file is absent; a file that breaks the
+ * schema is reported on stderr and read as empty, so one bad file does not block the plan.
+ */
+export function readWorkspaceAgentTasks(root: string | undefined): WorkspaceAgentTask[] {
+  if (root === undefined) return []
+  const file = join(root, AGENT_TASKS)
+  if (!existsSync(file)) return []
+  try {
+    return AgentTasksFileSchema.parse(JSON.parse(readFileSync(file, 'utf8'))).tasks
+  } catch (error) {
+    console.error(`[workspace] ${file}: ${error instanceof Error ? error.message : String(error)}`)
+    return []
+  }
+}
 
 /** One idea a coding agent recorded in a project workspace. */
 export type WorkspaceAgentIdea = z.infer<typeof AgentIdeasFileSchema>['ideas'][number]
