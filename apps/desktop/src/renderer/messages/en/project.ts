@@ -215,12 +215,6 @@ export const project = {
     placedUnlinked: 'Node link removed',
   },
   linkedIdeas: (n: number) => `Linked ideas · ${n}`,
-  conclusions: {
-    heading: (n: number) => `Project conclusions · ${n}`,
-    state: { pending: 'To verify', verified: 'Verified', conflicting: 'Conflicting' },
-    writeBack: 'Write to Wiki',
-    written: 'In the Wiki',
-  },
   noLinkedIdeas: 'No linked ideas yet.',
   remarkSaved: 'Project notes saved',
   remarkEmpty: 'No project notes yet. Click “Edit” to start writing. Markdown and $…$ formulas are supported.',
