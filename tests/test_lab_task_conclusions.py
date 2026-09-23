@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import json
+import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import unittest
 
-from meridian.lab.graph import apply_lab_update, check_lab_graph_payload, materialize_lab_graph
+from meridian.lab.graph import (
+    apply_lab_update,
+    check_lab_graph_payload,
+    materialize_lab_graph,
+)
 
 THREAD = ".meridian/threads/kv.md"
 
