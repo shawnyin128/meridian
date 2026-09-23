@@ -62,14 +62,14 @@
    "nodes": [
     { "id": "root", "label": "draft 效率", "state": "idle", "mode": "repairable", "x": 10, "y": 95, "width": 110, "markdown": "核心问题是：在不增加验证开销的前提下，提高 draft token 的有效接受率。\n\n#### 当前判断\n\n宽度不是单调收益，需要同时看树宽、batch size 与前缀复用。\n\n#### Next Action\n\n沿当前路径验证 B≥8 时的收益边界。", "writebacks": [] },
     {
-     "id": "knee", "label": "树宽收益拐点", "state": "done", "mode": "supported", "x": 220, "y": 30, "width": 130, "markdown": "#### Hypothesis\n\n树宽收益存在拐点，而且拐点随 batch size 变化。\n\n#### Evidence\n\n| Batch | 有效树宽 | 结论 |\n| --- | --- | --- |\n| 1 | 4 | B>4 收益很小 |\n| 8 | 8 | 仍有可测空间 |\n\n#### Next Action\n\n继续验证宽树在 B≥8 下的延迟收益。",
+     "id": "knee", "label": "树宽收益拐点", "state": "done", "mode": "supported", "x": 220, "y": 30, "width": 130, "tasks": ["t4"], "conclusion": { "text": "单请求下树宽收益在宽度 4 出现拐点，拐点随 batch size 后移", "date": "2026-08-12", "evidence": [{ "id": "exp-2", "title": "B=1/8 树宽扫描" }] }, "markdown": "#### Hypothesis\n\n树宽收益存在拐点，而且拐点随 batch size 变化。\n\n#### Evidence\n\n| Batch | 有效树宽 | 结论 |\n| --- | --- | --- |\n| 1 | 4 | B>4 收益很小 |\n| 8 | 8 | 仍有可测空间 |\n\n#### Next Action\n\n继续验证宽树在 B≥8 下的延迟收益。",
      "writebacks": [
       { "page": "topics/ptq-weight-activation", "text": "树宽收益有拐点,拐点是 batch size 的函数", "date": "2026-06-25" }
      ]
     },
-    { "id": "stop", "label": "draft 提前停止策略", "state": "idle", "mode": "dead", "x": 220, "y": 160, "width": 160, "markdown": "#### Result\n\n固定阈值提前停止会在长尾请求上丢失过多接受 token。\n\n#### Decision\n\n当前实现不继续推进；若后续能按请求动态估计阈值，再重新评估。", "writebacks": [] },
+    { "id": "stop", "label": "draft 提前停止策略", "state": "idle", "mode": "dead", "x": 220, "y": 160, "width": 160, "conclusion": { "text": "固定阈值提前停止在长尾请求上丢失过多接受 token，不再推进", "date": "2026-07-20", "evidence": [{ "id": "exp-1", "title": "固定阈值提前停止" }] }, "markdown": "#### Result\n\n固定阈值提前停止会在长尾请求上丢失过多接受 token。\n\n#### Decision\n\n当前实现不继续推进；若后续能按请求动态估计阈值，再重新评估。", "writebacks": [] },
     {
-     "id": "bucket", "label": "分支浪费按深度分桶", "state": "done", "mode": "supported", "x": 480, "y": 5, "width": 155, "markdown": "#### Result\n\n按深度分桶后可以稳定定位主要浪费来自哪一层，适合作为后续实验的固定诊断。",
+     "id": "bucket", "label": "分支浪费按深度分桶", "state": "done", "mode": "supported", "x": 480, "y": 5, "width": 155, "tasks": ["t1"], "conclusion": { "text": "按深度分桶能稳定定位分支浪费来自哪一层", "date": "2026-08-05", "evidence": [{ "id": "exp-3", "title": "实验 #3 分桶统计" }] }, "markdown": "#### Result\n\n按深度分桶后可以稳定定位主要浪费来自哪一层，适合作为后续实验的固定诊断。",
      "writebacks": [
       { "page": "methods/rotation", "text": "分支浪费按深度分桶后结论升到 v3", "date": "2026-08-05" }
      ]

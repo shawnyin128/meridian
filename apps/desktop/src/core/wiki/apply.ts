@@ -11,19 +11,24 @@ import { claimAt, isPaper } from './model.js'
 export const HUMAN = HUMAN_PRODUCER
 
 /**
- * What claim validation needs beyond the Wiki: the producer stamped as `by` (HUMAN, or `ai:<id>`), the
- * nodes and conclusions of a project (undefined when there is no such project), and the highlight and
- * note ids of a paper's reading record, by paper page id.
+ * What claim validation needs beyond the Wiki: the producer stamped as `by` (HUMAN, or `ai:<id>`),
+ * whether a cited project conclusion must be one the user verified (writing) or need only exist
+ * (an agent submitting for review), the nodes and legacy conclusions of a project (undefined when there
+ * is no such project) with the nodes holding a conclusion and the nodes and legacy conclusions the user
+ * verified, and the highlight and note ids of a paper's reading record, by paper page id.
  */
 export type ClaimWorld = {
   by: string
-  project: (id: string) => { nodes: string[]; conclusions: string[] } | undefined
+  requireVerified: boolean
+  project: (id: string) => {
+    nodes: string[]; conclusions: string[]; concluded: string[]; verified: string[]; verifiedConclusions: string[]
+  } | undefined
   reading: (paper: string) => { highlights: string[]; notes: string[] }
 }
 
 /** A world in which the user writes and no project or reading record exists. */
 const HUMAN_WORLD: ClaimWorld = {
-  by: HUMAN, project: () => undefined, reading: () => ({ highlights: [], notes: [] }),
+  by: HUMAN, requireVerified: true, project: () => undefined, reading: () => ({ highlights: [], notes: [] }),
 }
 
 /** Returns the line one entry takes in an append section: date, separator, text. */
@@ -169,14 +174,28 @@ function unknownFields(claim: WikiClaimRecord): Record<string, unknown> {
   return Object.fromEntries(Object.entries(claim).filter(([key]) => !known.includes(key)))
 }
 
-/** Throws unless an experiment item names a node or a conclusion of a project `world` knows, and those exist. */
-function checkExperiment(e: Extract<Evidence, { kind: 'experiment' }>, world: ClaimWorld): void {
+/**
+ * Throws unless an experiment item names a node or a conclusion of a project `world` knows, and those
+ * exist. As evidence, a node must also hold a conclusion, and when `world` requires it, the node's
+ * conclusion or the legacy conclusion must be one the user verified.
+ */
+function checkExperiment(e: Extract<Evidence, { kind: 'experiment' }>, world: ClaimWorld, asEvidence: boolean): void {
   if (e.node === undefined && e.conclusion === undefined) throw new Error('实验证据要指明节点或结论')
   const project = world.project(e.project)
   if (project === undefined) throw new Error(`项目不存在:${e.project}`)
   if (e.node !== undefined && !project.nodes.includes(e.node)) throw new Error(`项目 ${e.project} 里没有节点:${e.node}`)
   if (e.conclusion !== undefined && !project.conclusions.includes(e.conclusion)) {
     throw new Error(`项目 ${e.project} 里没有结论:${e.conclusion}`)
+  }
+  if (!asEvidence) return
+  if (e.node !== undefined && !project.concluded.includes(e.node)) {
+    throw new Error(`节点 ${e.node} 还没有结论:先用 record_conclusion 记下它的结论,再拿它当证据`)
+  }
+  if (world.requireVerified && e.node !== undefined && !project.verified.includes(e.node)) {
+    throw new Error(`节点 ${e.node} 的结论还没验证:验证之后才能写进 Wiki`)
+  }
+  if (world.requireVerified && e.conclusion !== undefined && !project.verifiedConclusions.includes(e.conclusion)) {
+    throw new Error(`结论 ${e.conclusion} 还没验证:验证之后才能写进 Wiki`)
   }
 }
 
@@ -193,7 +212,7 @@ function checkEvidence(data: WikiData, items: Evidence[], world: ClaimWorld, hel
     if (e.kind === 'wiki' && (e.ref.includes('#') ? claimAt(data, e.ref) : data.pages[e.ref]) === undefined) {
       throw new Error(`证据指向的页或结论不存在:${e.ref}`)
     }
-    if (e.kind === 'experiment') checkExperiment(e, world)
+    if (e.kind === 'experiment') checkExperiment(e, world, true)
     if (e.kind === 'note') {
       paperOf(data, e.paper)
       if ((e.highlight === undefined) === (e.note === undefined)) throw new Error('笔记证据要指明一条高亮或一条笔记,只能指一个')
@@ -340,7 +359,7 @@ function step(data: WikiData, op: ProposalOp, today: string, ops: ProposalOp[], 
       } else if (against.kind === 'source') {
         paperOf(data, against.paper)
       } else {
-        checkExperiment(against, world)
+        checkExperiment(against, world, false)
       }
       const add = (target: ConflictTarget) => (c: WikiClaimRecord): WikiClaimRecord =>
         withConflicts(c, [...c.conflicts ?? [], { id, against: ordered(target), note, since: today, by: world.by }])

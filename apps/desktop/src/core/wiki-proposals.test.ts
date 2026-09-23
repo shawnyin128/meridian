@@ -27,7 +27,7 @@ function envelope(store: VaultStore, ops: ProposalOp[], extra: Record<string, un
     protocol: 1,
     key: `k-${JSON.stringify(ops).length}-${String(extra['key'] ?? '')}`,
     producer: { kind: 'ai', id: 'skill.meridian' },
-    trigger: { kind: 'experiment', project: 'draft', node: 'wide' },
+    trigger: { kind: 'experiment', project: 'draft', node: 'knee' },
     title: '宽树实验的结论',
     base: Object.fromEntries(namedPages(ops).map((id) => [id, store.pageVersion(id)])),
     ops,
@@ -36,8 +36,14 @@ function envelope(store: VaultStore, ops: ProposalOp[], extra: Record<string, un
 }
 
 const addClaim = (id: string, page = 'topics/qat'): ProposalOp => ({
-  op: 'addClaim', page, claim: { id, text: `结论 ${id}`, evidence: [{ kind: 'experiment', project: 'draft', node: 'wide' }] },
+  op: 'addClaim', page, claim: { id, text: `结论 ${id}`, evidence: [{ kind: 'experiment', project: 'draft', node: 'knee' }] },
 })
+
+/** Verifies the conclusion node `node` of project `project` holds, as the user would from the Conclusions view. */
+const verify = (store: VaultStore, project: string, node: string): void => {
+  const shown = store.getProject(project).projectConclusions!.find((c) => c.node === node)!
+  store.verifyConclusion(project, node, shown.fingerprint!)
+}
 
 const claimOn = (store: VaultStore, page: string, id: string): WikiClaim | undefined =>
   store.wikiAggregation(page).claims.find((c) => c.id === id)
@@ -55,7 +61,7 @@ describe('review queue on the fixture library', () => {
     const list = queue.list()
     for (const item of list) WikiProposalSchema.parse(item)
     expect(list.map((p) => [p.status, p.staleNow])).toEqual([['queued', false], ['queued', true], ['rejected', false]])
-    expect(list[0]!.titles).toEqual({ 'topics/kv-cache-quantization': 'KV cache quantization', 'projects/draft': 'draft 效率', 'projects/draft#prefix': '前缀复用配置' })
+    expect(list[0]!.titles).toEqual({ 'topics/kv-cache-quantization': 'KV cache quantization', 'projects/draft': 'draft 效率', 'projects/draft#knee': '树宽收益拐点' })
     expect(list[0]!.claimTexts).toEqual({ 'topics/kv-cache-quantization#prefix-schedule': 'KV cache 量化之后,前缀读取与验证可以共调度,吞吐与基线持平' })
     expect(list[0]!.pages).toEqual(['topics/kv-cache-quantization'])
     expect(queue.list('rejected').map((p) => p.reason?.kind)).toEqual(['declined'])
@@ -82,6 +88,7 @@ describe('review queue on the fixture library', () => {
   })
 
   it('应用:按提出者写入并记一条「实验」来源的变动,记录变成 applied 并指向那条变动;撤销还原', async () => {
+    verify(store, 'draft', 'knee')
     const [valid] = queue.list('queued')
     const before = store.wikiAggregation('topics/kv-cache-quantization').claims
     const receipt = await queue.decide(valid!.id, 'apply')
@@ -98,6 +105,17 @@ describe('review queue on the fixture library', () => {
     await expect(queue.decide(valid!.id, 'apply')).rejects.toThrow('这条提案已经处理过了')
     store.undoChange(change.id)
     expect(store.wikiAggregation('topics/kv-cache-quantization').claims).toEqual(before)
+  })
+
+  it('引用了没验证的项目结论:照样排队,列表标出待验证的结论,应用被拒且留在队列;验证之后能应用', async () => {
+    const [valid] = queue.list('queued')
+    expect(valid!.unverified).toEqual(['projects/draft#knee'])
+    await expect(queue.decide(valid!.id, 'apply')).rejects.toThrow('结论待验证:projects/draft#knee。验证之后再应用')
+    expect(queue.list().find((p) => p.id === valid!.id)!.status).toBe('queued')
+    expect((await queue.propose(envelope(store, [addClaim('unverified')]))).status).toBe('queued')
+    verify(store, 'draft', 'knee')
+    expect(queue.list('queued')[0]!.unverified).toEqual([])
+    expect((await queue.decide(valid!.id, 'apply')).status).toBe('applied')
   })
 
   it('应用一条过期的提案:拒收为 stale,Wiki 一个字不动;拒绝时记下理由', async () => {
@@ -146,9 +164,11 @@ describe('review queue on the fixture library', () => {
       { op: 'addClaim', page: 'topics/qat', claim: { id: 'x', text: 'x', evidence } } as ProposalOp,
     ], { key: JSON.stringify(evidence) }))).reason
     expect(await reason([{ kind: 'wiki', ref: 'topics/ptq' }])).toMatchObject({ kind: 'invalid', message: expect.stringContaining('实验证据') })
-    expect(await reason([{ kind: 'experiment', project: 'draft', node: 'wide' }, { kind: 'personal', text: '我觉得' }]))
+    expect(await reason([{ kind: 'experiment', project: 'draft', node: 'knee' }, { kind: 'personal', text: '我觉得' }]))
       .toEqual({ kind: 'invalid', message: '只有「我」能写个人判断' })
     expect(await reason([{ kind: 'experiment', project: 'nope', node: 'wide' }])).toEqual({ kind: 'invalid', message: '项目不存在:nope' })
+    expect(await reason([{ kind: 'experiment', project: 'draft', node: 'wide' }]))
+      .toEqual({ kind: 'invalid', message: '节点 wide 还没有结论:先用 record_conclusion 记下它的结论,再拿它当证据' })
   })
 
   it('提交:协议版本不对或不是信封的形状就抛错,说清原因', async () => {
@@ -157,6 +177,7 @@ describe('review queue on the fixture library', () => {
   })
 
   it('新版本多写的字段不拒收,记录里原样留着', async () => {
+    verify(store, 'draft', 'knee')
     const op = { ...addClaim('future'), confidence: 0.9 } as ProposalOp
     const receipt = await queue.propose({ ...envelope(store, [op]), priority: 'high' })
     expect(receipt.status).toBe('queued')
@@ -168,7 +189,7 @@ describe('review queue on the fixture library', () => {
 
   it('没有文字层的引句照样排队,记录里标出来;有文字层却找不到的拒收', async () => {
     const source = { kind: 'source', paper: 'papers/2305.17888', page: 1, quote: 'data-free distillation of the model' }
-    const op = { op: 'addClaim', page: 'topics/qat', claim: { id: 'q', text: 'x', evidence: [{ kind: 'experiment', project: 'draft', node: 'wide' }, source] } } as ProposalOp
+    const op = { op: 'addClaim', page: 'topics/qat', claim: { id: 'q', text: 'x', evidence: [{ kind: 'experiment', project: 'draft', node: 'knee' }, source] } } as ProposalOp
     const receipt = await queue.propose(envelope(store, [op]))
     expect(receipt.status).toBe('queued')
     expect(queue.list()[0]!.notice).toBe('这些引句没有文字层可核对:papers/2305.17888 p.1')
@@ -218,11 +239,22 @@ describe('review queue on a vault', () => {
     rmSync(vault, { recursive: true, force: true })
   })
 
-  /** A project with one node and one verified conclusion, for experiment evidence. */
+  /**
+   * A project bound to a workspace whose Lab graph has one supported node holding a conclusion, and
+   * one verified legacy conclusion, for experiment evidence.
+   */
   const project = (): { id: string; node: string; conclusion: string } => {
     store.createProject('写回')
     const id = store.listProjects().find((p) => p.name === '写回')!.id
-    const node = store.createNode(id, '宽树', null).graph.nodes[0]!.id
+    const root = join(vault, 'repo')
+    const node = 'wide.n1'
+    mkdirSync(join(root, '.meridian', 'graph'), { recursive: true })
+    writeFileSync(join(root, '.meridian', 'graph', 'graph.json'), JSON.stringify({
+      schema: 'meridian.lab.graph.v1', nodes: [{ id: node, title: '宽树', state: 'supported' }], edges: [],
+      node_details: { [node]: { conclusion: { text: '宽树在 B≥8 时净赚', date: '2026-09-20', evidence: ['exp-1'] } } },
+    }))
+    store.bindProjectWorkspace(id, { kind: 'local', root })
+    verify(store, id, node)
     const conclusion = store.createConclusion(id, '宽树在 B≥8 时净赚', {}).conclusionList[0]!.id
     store.setConclusionState(id, conclusion, 'verified')
     return { id, node, conclusion }
@@ -265,6 +297,7 @@ describe('review queue on a vault', () => {
     const records = queue.list()
     expect(records.map((r) => [r.status, r.reason?.kind ?? null])).toEqual([['rejected', 'stale'], ['rejected', 'invalid'], ['queued', null]])
     expect(records[1]).toMatchObject({ proposal: null, reason: { message: expect.stringMatching(/^b-broken\.json:/) } })
+    expect(records[2]!.titles[`projects/${id}#${node}`]).toBe('宽树')
     const onDisk = JSON.parse(readFileSync(join(meridian(), 'proposals.json'), 'utf8')) as { id: string }[]
     expect(onDisk.map((r) => r.id)).toEqual(records.map((r) => r.id))
     await queue.decide(records[2]!.id, 'apply')

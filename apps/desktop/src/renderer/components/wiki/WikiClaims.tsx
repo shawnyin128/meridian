@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type {
-  Conclusion, ConflictTarget, Evidence, ProjectSummary, ProposalOp, WikiAggregation, WikiClaim, WikiConflict,
+  ConflictTarget, Evidence, ProjectConclusion, ProjectSummary, ProposalOp, WikiAggregation, WikiClaim, WikiConflict,
 } from '../../../shared/contract.js'
 import { HUMAN_PRODUCER } from '../../../shared/vocabulary.js'
 import { project as projectApi } from '../../ipc.js'
@@ -124,7 +124,7 @@ export function WikiClaims({ page, pending, links, onApply }: {
   const [basis, setBasis] = useState<'personal' | 'conclusion'>('personal')
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [projectId, setProjectId] = useState('')
-  const [conclusions, setConclusions] = useState<Conclusion[]>([])
+  const [conclusions, setConclusions] = useState<ProjectConclusion[]>([])
   const [conclusionId, setConclusionId] = useState('')
   const [other, setOther] = useState('')
   const [outcome, setOutcome] = useState<Outcome>('dismissed')
@@ -148,7 +148,9 @@ export function WikiClaims({ page, pending, links, onApply }: {
   useEffect(() => {
     setConclusions([])
     if (projectId === '') return
-    void projectApi.get(projectId).then((detail) => setConclusions(detail.conclusionList))
+    void projectApi.get(projectId).then((detail) => setConclusions(
+      (detail.projectConclusions ?? []).filter((conclusion) => conclusion.state === 'verified'),
+    ))
   }, [projectId])
 
   const others = form === null || form.kind === 'add' ? [] : page.claims.filter((x) => x.id !== form.claim.id)
@@ -160,10 +162,13 @@ export function WikiClaims({ page, pending, links, onApply }: {
     const claim = form.kind === 'add' ? null : form.claim
     switch (form.kind) {
       case 'add': {
-        if (text.trim() === '' || (basis === 'conclusion' && conclusionId === '')) return null
+        const picked = conclusions.find((x) => x.id === conclusionId)
+        if (text.trim() === '' || (basis === 'conclusion' && picked === undefined)) return null
         const evidence: Evidence[] = basis === 'personal'
           ? [{ kind: 'personal', text: note.trim() }]
-          : [{ kind: 'experiment', project: projectId, conclusion: conclusionId }]
+          : [picked!.node === undefined
+            ? { kind: 'experiment', project: projectId, conclusion: picked!.id }
+            : { kind: 'experiment', project: projectId, node: picked!.node }]
         return { title: c.proposals.add(page.title), ops: [
           { op: 'addClaim', page: page.id, claim: { id: claimId(text.trim(), ids), text: text.trim(), evidence } },
         ] }

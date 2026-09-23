@@ -7,6 +7,8 @@ export {
   checkBody,
   conclusionClaims,
   isPaper,
+  projectClaims,
+  projectDisputes,
   wikiAggregation,
   wikiCards,
   wikiHome,

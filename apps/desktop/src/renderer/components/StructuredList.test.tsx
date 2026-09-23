@@ -24,6 +24,13 @@ describe('StructuredList', () => {
     )
   })
 
+  it('marks the row whose detail is open with the shared selected variant', () => {
+    expect(renderToStaticMarkup(<StructuredRow selected onActivate={() => undefined}>项目</StructuredRow>))
+      .toContain('class="structured-row structured-row--selected"')
+    expect(renderToStaticMarkup(<StructuredRow onActivate={() => undefined}>项目</StructuredRow>))
+      .not.toContain('structured-row--selected')
+  })
+
   it('accepts a route-specific column contract', () => {
     const html = renderToStaticMarkup(
       <StructuredRow columns="100px minmax(0, 1fr)">项目</StructuredRow>,

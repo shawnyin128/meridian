@@ -237,9 +237,11 @@ export function ProjectTaskPanel({ task, onClose, onSaveNote }: {
   )
 }
 
-function TaskRow({ task, flash, dragProps, dropClass = '', onSave, onDelete, onOpen }: {
+function TaskRow({ task, flash, selected, dragProps, dropClass = '', onSave, onDelete, onOpen }: {
   task: Task
   flash: boolean
+  /** Whether this task's detail panel is the one currently open. */
+  selected: boolean
   /** Omitted for an archived row: it is not draggable, since its position among other done tasks does not matter. */
   dragProps?: DragCardProps
   dropClass?: string
@@ -251,7 +253,7 @@ function TaskRow({ task, flash, dragProps, dropClass = '', onSave, onDelete, onO
   const m = useMessages()
   return (
     <StructuredRow
-      composite data-row={task.id} {...dragProps} onActivate={onOpen}
+      composite selected={selected} data-row={task.id} {...dragProps} onActivate={onOpen}
       title={m.project.plan.openTask}
       className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}${
         dropClass ? ` ${dropClass}` : ''}`}
@@ -325,7 +327,7 @@ function MilestoneRow({ milestone, flash, onHover, onSave, onDelete }: {
  * this component owns task/milestone presentation, creation, and per-field editing behavior.
  */
 export function ProjectPlan({
-  project, tab, today, creating, flashId,
+  project, tab, today, creating, flashId, selectedTaskId,
   listRef, addRef, timelineAddRef, milestoneLaneRef,
   onTab, onDiscardOpenEdits, onStartTask, onStartMilestone, onCancelCreate,
   onCreateTask, onCreateMilestone, onUpdateTask, onDeleteTask, onReorderTasks, onOpenTask,
@@ -336,6 +338,8 @@ export function ProjectPlan({
   today: string
   creating: PlanCreating | null
   flashId: string | null
+  /** The task whose detail panel is currently open, so its row can show as selected. */
+  selectedTaskId: string | null
   listRef: RefObject<HTMLDivElement | null>
   addRef: RefObject<HTMLButtonElement | null>
   timelineAddRef: RefObject<HTMLButtonElement | null>
@@ -405,7 +409,7 @@ export function ProjectPlan({
             <StructuredList id="taskList" variant="embedded">
               {activeTasks.map((task) => (
                 <TaskRow
-                  key={task.id} task={task} flash={flashId === task.id}
+                  key={task.id} task={task} flash={flashId === task.id} selected={selectedTaskId === task.id}
                   dragProps={taskOrder.cardProps(task.id)} dropClass={taskOrder.dropClass(task.id)}
                   onSave={(patch) => onUpdateTask(task.id, patch)}
                   onDelete={() => onDeleteTask(task.id)}
@@ -441,6 +445,7 @@ export function ProjectPlan({
                     {archivedTasks.map((task) => (
                       <TaskRow
                         key={task.id} task={task} flash={flashId === task.id}
+                        selected={selectedTaskId === task.id}
                         onSave={(patch) => onUpdateTask(task.id, patch)}
                         onDelete={() => onDeleteTask(task.id)}
                         onOpen={() => onOpenTask(task.id)}

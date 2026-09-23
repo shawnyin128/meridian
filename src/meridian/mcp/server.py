@@ -221,7 +221,8 @@ def tool_definitions() -> list[JsonDict]:
                 "Update Wiki: propose a conclusion a project found and summarised, as claim ops "
                 "(addClaim, reviseClaim, addEvidence, markConflict, resolveConflict, retractClaim). "
                 "Never import papers, restructure aggregations, or edit bodies; addClaim/reviseClaim "
-                "need at least one experiment evidence item. The user reviews the proposal in the App; "
+                "need at least one experiment evidence item, and a node named as evidence must have a "
+                "recorded conclusion (record_conclusion). The user reviews the proposal in the App; "
                 "this tool only writes to the review inbox."
             ),
             "inputSchema": _schema(
@@ -418,7 +419,9 @@ def tool_definitions() -> list[JsonDict]:
             "name": "meridian.lab_update",
             "description": (
                 "Lab: apply a strict meridian.lab.update.v1 packet through the Markdown control plane and "
-                "refresh the generated graph. " + LAB_FOCUS_GUIDANCE
+                "refresh the generated graph. link_task/unlink_task {node_id, task_id} tie a plan task to the "
+                "one node it belongs to; record_conclusion {node_id, text, evidence: [experiment ids]} writes "
+                "a supported or dead node's conclusion for the owner to verify. " + LAB_FOCUS_GUIDANCE
             ),
             "inputSchema": _schema(
                 {

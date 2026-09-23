@@ -33,8 +33,8 @@ import {
   renamedOptions, restoredColumn, retypedColumn,
 } from './paper-library/index.js'
 import {
-  chatSource, conclusionCounts, MANUAL_SOURCE, overviewResearch, placeNode,
-  readWorkspaceAgentIdeas, withProjectLinks,
+  chatSource, CONCLUSION_CHANGED, concludedNodes, conclusionCounts, conclusionFingerprint, MANUAL_SOURCE,
+  overviewResearch, placeNode, projectConclusions, readWorkspaceAgentIdeas, verifiedNodes, withProjectLinks,
 } from './project-management/index.js'
 import { inboxFields, unseenPapers } from './inbox/dedup.js'
 import {
@@ -47,7 +47,7 @@ import { createResearchIdea, updateResearchIdea } from './research-ideas/index.j
 import type { MetadataFill, VaultOps, VaultStore } from './vault.js'
 import { digestOf } from './wiki-proposals.js'
 import {
-  applyProposal, checkBody, conclusionClaims, describeOp, HUMAN, isPaper, pageVersion, recordText, touchedPages,
+  applyProposal, checkBody, conclusionClaims, describeOp, projectClaims, projectDisputes, HUMAN, isPaper, pageVersion, recordText, touchedPages,
   wikiAggregation, wikiCards, wikiHome, wikiPaper, wikiSearchIndex, wikiSignals,
   type ClaimWorld, type WikiData, type WikiPaperRecord,
 } from './wiki/index.js'
@@ -74,7 +74,9 @@ type SeededChange = Omit<ChangeEntry, 'undone' | 'undoable' | 'archived'>
 type PaperRecord = Omit<PaperRow, 'readState' | 'projects'> & { sourceId: string }
 
 /** Fixture projects retain only fields that a project page can persist. */
-type FixtureProject = Omit<ProjectDetail, 'paperCount' | 'paperTitles' | 'conclusions' | 'conclusionClaims'>
+type FixtureProject = Omit<
+  ProjectDetail, 'paperCount' | 'paperTitles' | 'conclusions' | 'conclusionClaims' | 'projectConclusions'
+>
 
 /** Stored inbox recommendation: cross-boundary fields plus topics written to the paper page on import. */
 type InboxRecord = InboxEntry & {
@@ -235,18 +237,25 @@ export function createFixtureStore(
     .map((p) => [p.id, atToday(structuredClone(p), builtOn)]))
 
   /** Cross-boundary project copy with paper count and titles derived from current library state. */
+  /** The conclusions of `project` as the Conclusions view lists them. */
+  const conclusionsOf = (project: FixtureProject) => projectConclusions(
+    project, project.graph, projectClaims(wiki, project.id), projectDisputes(wiki, project.id),
+  )
+
   const detailOf = (project: FixtureProject): ProjectDetail => {
     const paperTitles = Object.fromEntries(project.papers.flatMap((id) => {
       const paper = byId.get(id)
       return paper === undefined ? [] : [[id, paper.title]]
     }))
     const claims = conclusionClaims(wiki, project.id)
+    const conclusions = conclusionsOf(project)
     return {
       ...structuredClone(project),
       paperTitles,
       paperCount: Object.keys(paperTitles).length,
-      conclusions: conclusionCounts(project.conclusionList),
+      conclusions: conclusionCounts(conclusions),
       ...(Object.keys(claims).length === 0 ? {} : { conclusionClaims: claims }),
+      projectConclusions: conclusions,
     }
   }
 
@@ -320,12 +329,19 @@ export function createFixtureStore(
     Object.fromEntries([...projectById.values()].map((p) => [p.id, p.name]))
 
   /** The claim-validation world for producer `by`: the fixture projects and reading records. */
-  const worldOf = (by: string): ClaimWorld => ({
+  const worldOf = (by: string, requireVerified = true): ClaimWorld => ({
     by,
+    requireVerified,
     project: (id) => {
       const project = projectById.get(id)
-      return project === undefined ? undefined
-        : { nodes: project.graph.nodes.map((n) => n.id), conclusions: project.conclusionList.map((c) => c.id) }
+      if (project === undefined) return undefined
+      return {
+        nodes: project.graph.nodes.map((n) => n.id),
+        conclusions: project.conclusionList.map((c) => c.id),
+        concluded: concludedNodes(project.graph).map((n) => n.id),
+        verified: [...verifiedNodes(project, project.graph).keys()],
+        verifiedConclusions: project.conclusionList.filter((c) => c.state === 'verified').map((c) => c.id),
+      }
     },
     reading: (paper) => {
       const reading = readings.get(paper.slice(PAPER_PAGE.length))
@@ -793,7 +809,7 @@ export function createFixtureStore(
           ...(p.block === undefined ? {} : { block: p.block }),
           activeNodes: overviewResearch(p.graph).activeNodes,
         }),
-        conclusions: conclusionCounts(p.conclusionList),
+        conclusions: conclusionCounts(conclusionsOf(p)),
         paperCount: p.papers.filter((id) => byId.has(id)).length,
         milestones: p.milestones.map(({ date, done }) => ({ date, done })),
         recentEvents: p.events.slice(-RECENT_EVENTS)
@@ -816,7 +832,7 @@ export function createFixtureStore(
         ...(p.block === undefined ? {} : { block: p.block }),
         start: p.start,
         due: p.due,
-        conclusions: conclusionCounts(p.conclusionList),
+        conclusions: conclusionCounts(conclusionsOf(p)),
         tasks: p.tasks.map((task) => ({
           ...task,
           ...(task.window === undefined ? {} : { window: { ...task.window } }),
@@ -1210,6 +1226,32 @@ export function createFixtureStore(
       return detailOf(nextProject)
     },
 
+    verifyConclusion(projectId, node, fingerprint) {
+      const project = projectById.get(projectId)
+      if (!project) throw new Error(`项目不存在:${projectId}`)
+      const held = concludedNodes(project.graph).find((n) => n.id === node)
+      if (held === undefined) throw new Error(`节点没有可验证的结论:${node}`)
+      if (conclusionFingerprint(held) !== fingerprint) throw new Error(CONCLUSION_CHANGED)
+      const entry = { node, fingerprint, date: today() }
+      const nextProject = {
+        ...project,
+        verifiedConclusions: [...(project.verifiedConclusions ?? []).filter((v) => v.node !== node), entry],
+      }
+      projectById.set(projectId, nextProject)
+      return detailOf(nextProject)
+    },
+
+    unverifyConclusion(projectId, node) {
+      const project = projectById.get(projectId)
+      if (!project) throw new Error(`项目不存在:${projectId}`)
+      const rest = (project.verifiedConclusions ?? []).filter((v) => v.node !== node)
+      const nextProject = { ...project }
+      if (rest.length === 0) delete nextProject.verifiedConclusions
+      else nextProject.verifiedConclusions = rest
+      projectById.set(projectId, nextProject)
+      return detailOf(nextProject)
+    },
+
     deleteConclusion(projectId, conclusionId) {
       const project = projectById.get(projectId)
       if (!project) throw new Error(`项目不存在:${projectId}`)
@@ -1544,7 +1586,7 @@ export function createFixtureStore(
     },
 
     checkProposal(ops, by) {
-      applyProposal(wiki, { ops }, today(), worldOf(by))
+      applyProposal(wiki, { ops }, today(), worldOf(by, by === HUMAN))
     },
 
     describeProposal(ops) {

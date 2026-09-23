@@ -3,7 +3,8 @@ import { basename, isAbsolute, join } from 'node:path'
 import type { z } from 'zod'
 import type {
   ChatSession, Conclusion, DeliverySettings, FeedEntry, FeedRun, GraphNode, PaperColumns, PaperImportResult, PaperReading, PaperRow, Proposal,
-  ProjectDetail, ProjectWorkspaceBinding, ProposalRecord, ReadingMutation, ResearchIdea, SearchHit, Task, TaskFields,
+  ProjectConclusion, ProjectDetail, ProjectWorkspaceBinding, ProposalRecord, ReadingMutation, ResearchGraph, ResearchIdea,
+  SearchHit, Task, TaskFields,
   WikiSignal,
 } from '../shared/contract.js'
 import {
@@ -26,8 +27,8 @@ import {
   type PaperWrite,
 } from './paper-library/index.js'
 import {
-  chatSource, conclusionCounts, MANUAL_SOURCE, overviewResearch, placeNode,
-  projectPageText, projectWorkspaceRoot, projectWorkspaceSsh, readProjectPage,
+  chatSource, CONCLUSION_CHANGED, concludedNodes, conclusionCounts, conclusionFingerprint, MANUAL_SOURCE, overviewResearch, placeNode,
+  projectConclusions, verifiedNodes, projectPageText, projectWorkspaceRoot, projectWorkspaceSsh, readProjectPage,
   readProjectWorkspace, readWorkspaceAgentIdeas, withProjectLinks, writeProjectFields,
   writeProjectWorkspaceState, type ProjectRecord,
 } from './project-management/index.js'
@@ -53,7 +54,7 @@ import type { MetadataFill, VaultOps, VaultStore } from './vault.js'
 import {
   appendEntry, applyProposal, checkBody, checkGenerated, conclusionClaims, createAggregationPage, describeOp,
   entryLine, fillGenerated, generatedChildren, generatedClaims, generatedMissing, generatedTable, HUMAN,
-  isClaimOp, isPaper, pageVersion,
+  isClaimOp, isPaper, pageVersion, projectClaims, projectDisputes,
   readWikiData, readWikiPage, removeClaim, removeMembership, setAggregationMetadata, setBody, setBodyAndTrust,
   setClaim, setColumns, setMembership, setParents, setUpdated, touchedPages, wikiAggregation, wikiCards,
   wikiHome, wikiPaper, wikiSearchIndex, wikiSignals,
@@ -584,13 +585,21 @@ export function createVaultStore(
     Object.fromEntries([...projectById.values()].map((p) => [p.id, p.name]))
 
   /** The claim-validation world for producer `by`: the vault's projects (with workspace nodes) and reading records. */
-  const worldOf = (by: string): ClaimWorld => ({
+  const worldOf = (by: string, requireVerified = true): ClaimWorld => ({
     by,
+    requireVerified,
     project: (id) => {
       const project = projectById.get(id)
       if (project === undefined) return undefined
-      const nodes = [...project.graph.nodes, ...readProjectWorkspace(project)?.graph?.nodes ?? []]
-      return { nodes: nodes.map((n) => n.id), conclusions: project.conclusionList.map((c) => c.id) }
+      const workspace = readProjectWorkspace(project)?.graph
+      const graph = workspace ?? project.graph
+      return {
+        nodes: [...project.graph.nodes, ...workspace?.nodes ?? []].map((n) => n.id),
+        conclusions: project.conclusionList.map((c) => c.id),
+        concluded: concludedNodes(graph).map((n) => n.id),
+        verified: [...verifiedNodes(project, graph).keys()],
+        verifiedConclusions: project.conclusionList.filter((c) => c.state === 'verified').map((c) => c.id),
+      }
     },
     reading: (paper) => {
       const reading = readingOf(paper.slice(PAPER_PAGE.length))
@@ -701,6 +710,10 @@ export function createVaultStore(
     return project
   }
 
+  /** The conclusions of `project` whose research graph is `graph`, as the Conclusions view lists them. */
+  const conclusionsOf = (project: ProjectRecord, graph: ResearchGraph): ProjectConclusion[] =>
+    projectConclusions(project, graph, projectClaims(wikiData, project.id), projectDisputes(wikiData, project.id))
+
   /** Builds the cross-boundary project detail, deriving paper counts and titles from current vault state. */
   const detailOf = (project: ProjectRecord): ProjectDetail => {
     const stored: Omit<ProjectRecord, 'created'> & { created?: string } = structuredClone(project)
@@ -713,12 +726,14 @@ export function createVaultStore(
     }))
     const workspace = readProjectWorkspace(project)
     const claims = conclusionClaims(wikiData, project.id)
+    const conclusions = conclusionsOf(project, workspace?.graph ?? project.graph)
     return {
       ...stored,
       paperTitles,
       paperCount: Object.keys(paperTitles).length,
-      conclusions: conclusionCounts(stored.conclusionList),
+      conclusions: conclusionCounts(conclusions),
       ...(Object.keys(claims).length === 0 ? {} : { conclusionClaims: claims }),
+      projectConclusions: conclusions,
       ...(workspace === undefined ? {} : { workspace }),
     }
   }
@@ -1266,7 +1281,7 @@ export function createVaultStore(
             ...(p.block === undefined ? {} : { block: p.block }),
             activeNodes: overviewResearch(graph).activeNodes,
           }),
-          conclusions: conclusionCounts(p.conclusionList),
+          conclusions: conclusionCounts(conclusionsOf(p, graph)),
           paperCount: p.papers.filter((id) => papers.has(id)).length,
           milestones: p.milestones.map(({ date, done }) => ({ date, done })),
           recentEvents: p.events.slice(-RECENT_EVENTS)
@@ -1296,7 +1311,7 @@ export function createVaultStore(
           ...(p.block === undefined ? {} : { block: p.block }),
           start: p.start,
           due: p.due,
-          conclusions: conclusionCounts(p.conclusionList),
+          conclusions: conclusionCounts(conclusionsOf(p, graph)),
           tasks: p.tasks.map((task) => ({
             ...task,
             ...(task.window === undefined ? {} : { window: { ...task.window } }),
@@ -1656,6 +1671,27 @@ export function createVaultStore(
           conclusion.id === conclusionId ? { ...conclusion, state } : conclusion
         )),
       }, ['conclusionList'])
+    },
+
+    verifyConclusion(projectId, node, fingerprint) {
+      const project = projectOf(projectId)
+      const held = concludedNodes(readProjectWorkspace(project)?.graph ?? project.graph).find((n) => n.id === node)
+      if (held === undefined) throw new Error(`节点没有可验证的结论:${node}`)
+      if (conclusionFingerprint(held) !== fingerprint) throw new Error(CONCLUSION_CHANGED)
+      const entry = { node, fingerprint, date: today() }
+      return writeProject({
+        ...project,
+        verifiedConclusions: [...(project.verifiedConclusions ?? []).filter((v) => v.node !== node), entry],
+      }, ['verifiedConclusions'], false)
+    },
+
+    unverifyConclusion(projectId, node) {
+      const project = projectOf(projectId)
+      const rest = (project.verifiedConclusions ?? []).filter((v) => v.node !== node)
+      const next = { ...project }
+      if (rest.length === 0) delete next.verifiedConclusions
+      else next.verifiedConclusions = rest
+      return writeProject(next, ['verifiedConclusions'], false)
     },
 
     deleteConclusion(projectId, conclusionId) {
@@ -2073,7 +2109,7 @@ export function createVaultStore(
     },
 
     checkProposal(ops, by) {
-      applyProposal(wikiData, { ops }, today(), worldOf(by))
+      applyProposal(wikiData, { ops }, today(), worldOf(by, by === HUMAN))
     },
 
     describeProposal(ops) {

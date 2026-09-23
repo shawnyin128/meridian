@@ -47,22 +47,24 @@ export function StructuredList({
  * The only interactive shell for list rows. When passed to `onActivate`, it is rendered as a keyboard-accessible button, otherwise it is a static div;
  * `columns` allows business pages to define column widths, while borders, hover, focus and row-level clicks are only implemented once.
  * A `composite` row holds controls of its own, so it stays a div that forwards pointer clicks to `onActivate`;
- * its children must include the keyboard-accessible control for the same action.
+ * its children must include the keyboard-accessible control for the same action. A `selected` row is
+ * the one whose detail is open beside the list.
  */
 export function StructuredRow({
-  children, className = '', columns, composite = false, onActivate, rowRef, style, ...props
+  children, className = '', columns, composite = false, selected = false, onActivate, rowRef, style, ...props
 }: {
   children: ReactNode
   className?: string
   columns?: string
   composite?: boolean
+  selected?: boolean
   onActivate?: () => void
   /** DOM reference of static/composite rows; clickable rows are rendered as buttons by the component itself and do not receive div references. */
   rowRef?: Ref<HTMLDivElement>
   style?: CSSProperties
 } & Omit<HTMLAttributes<HTMLElement>, 'children' | 'className' | 'style' | 'onClick'>) {
   const rowStyle = columns ? { ...style, gridTemplateColumns: columns } : style
-  const rowClass = `structured-row${composite ? ' structured-row--composite' : ''}${className ? ` ${className}` : ''}`
+  const rowClass = `structured-row${composite ? ' structured-row--composite' : ''}${selected ? ' structured-row--selected' : ''}${className ? ` ${className}` : ''}`
   if (onActivate && composite) {
     return (
       <div className={rowClass} style={rowStyle} onClick={onActivate} {...props as HTMLAttributes<HTMLDivElement>}>

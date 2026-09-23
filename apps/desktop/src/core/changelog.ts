@@ -28,8 +28,14 @@ const FINGERPRINT_CHARS = 16
 export const PROJECT_FIELDS: (keyof ProjectRecord & keyof ProjectDetail)[] = [
   'name', 'status', 'priority', 'topic', 'focus', 'block', 'start', 'due', 'memo',
   'papers', 'tasks', 'milestones', 'events', 'relations', 'attachments',
-  'agentSessions',
+  'agentSessions', 'verifiedConclusions',
 ]
+
+/**
+ * Project fields added after fingerprints were first stored. They are left out of a fingerprint while
+ * absent, so a project that never set one keeps the fingerprint older records hold.
+ */
+const LATER_PROJECT_FIELDS: ReadonlySet<string> = new Set(['verifiedConclusions'])
 
 /**
  * Entity changed by one record. Before undo, resolve its current shape and compare it with the stored
@@ -151,7 +157,9 @@ export type ChangeLogStore = {
 function valueOf(entity: Entity): Record<string, unknown> {
   switch (entity.kind) {
     case 'paper': return entity.paper
-    case 'project': return Object.fromEntries(PROJECT_FIELDS.map((key) => [key, entity.project[key]]))
+    case 'project': return Object.fromEntries(PROJECT_FIELDS.flatMap((key) => (
+      LATER_PROJECT_FIELDS.has(key) && entity.project[key] === undefined ? [] : [[key, entity.project[key]]]
+    )))
     case 'columns': return entity.column
     case 'columnType': return { ...entity.column, cells: entity.cells }
     default: return Object.fromEntries(entity.pages.map((p) => [p.path, p.text]))
@@ -399,6 +407,14 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
 
     updateProject(id, patch) {
       return onProject(id, '改了字段', () => ops.updateProject(id, patch))
+    },
+
+    verifyConclusion(projectId, node, fingerprint) {
+      return onProject(projectId, '验证结论', () => ops.verifyConclusion(projectId, node, fingerprint))
+    },
+
+    unverifyConclusion(projectId, node) {
+      return onProject(projectId, '取消验证结论', () => ops.unverifyConclusion(projectId, node))
     },
 
     deleteProject(id) {

@@ -7,7 +7,59 @@ import type { ProjectRecord } from './page.js'
 import {
   dropProjectPageKeys, readProjectPage, projectPageText, writeProjectFields,
 } from './page.js'
+import { readFrontmatter } from '../vault/frontmatter.js'
 import { writePage } from '../vault/writer.js'
+
+const Day14 = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+
+/**
+ * The project-page frontmatter schema of 0.0.14.x (v0.0.14002), copied with the contract shapes it
+ * reused: its top level ignores unknown keys, while every nested object is strict.
+ */
+const PageSchema0014 = z.object({
+  type: z.literal('project'), name: z.string(), created: Day14, status: z.string(),
+  priority: z.enum(['p0', 'p1', 'p2']), topic: z.string(), focus: z.string(), block: z.string().optional(),
+  conflict_page: z.string().optional(), workspace_root: z.string().min(1).optional(),
+  workspace_ssh: z.object({ host: z.string(), path: z.string(), port: z.number().optional() }).strict().optional(),
+  start: Day14, due: Day14, papers: z.array(z.string()).default([]),
+  conclusion_list: z.array(z.object({
+    id: z.string(), text: z.string(), state: z.enum(['pending', 'verified', 'conflicting']), date: Day14,
+    source: z.string(), paper: z.string().optional(),
+  }).strict()).default([]),
+  tasks: z.array(z.object({
+    id: z.string(), title: z.string(), start: Day14, end: Day14,
+    window: z.object({ start: z.string(), end: z.string() }).strict().optional(),
+    state: z.enum(['act', 'plan', 'done']), priority: z.enum(['p0', 'p1', 'p2']),
+  }).strict()),
+  milestones: z.array(z.object({ id: z.string(), date: Day14, title: z.string(), done: z.boolean() }).strict()),
+  relations: z.array(z.object({
+    group: z.string(),
+    items: z.array(z.object({ id: z.string(), text: z.string(), page: z.string().optional(), url: z.string().optional() }).strict()),
+  }).strict()),
+  attachments: z.array(z.object({ id: z.string(), name: z.string(), size: z.string(), path: z.string().optional() }).strict()),
+  graph: z.object({
+    nodes: z.array(z.object({
+      id: z.string(), label: z.string(), state: z.enum(['act', 'done', 'idle']),
+      mode: z.enum(['unresolved', 'repairable', 'supported', 'dead']).optional(), nextAction: z.string().optional(),
+      x: z.number(), y: z.number(), width: z.number(), markdown: z.string().optional(),
+      markdownPath: z.string().optional(), markdownAnchor: z.string().optional(),
+      writebacks: z.array(z.object({ page: z.string(), text: z.string(), date: Day14 }).strict()),
+    }).strict()),
+    edges: z.array(z.object({ from: z.string(), to: z.string() }).strict()),
+    active_nodes: z.array(z.string()).optional(),
+    active_path: z.array(z.string()).optional(),
+  }).strict(),
+  agent_sessions: z.array(z.object({
+    id: z.string(), title: z.string(), when: Day14,
+    steps: z.array(z.object({ time: z.string(), text: z.string() }).strict()), outcome: z.string(),
+  }).strict()),
+})
+
+/** The frontmatter of the page at `file`, as a 0.0.14.x App would read it. */
+const readAs0014 = (file: string) => {
+  const rows = readFileSync(file, 'utf8').split('\n')
+  return PageSchema0014.safeParse(readFrontmatter(rows.slice(1, rows.indexOf('---', 1))))
+}
 
 /** Project exercising every page shape: sequences, nesting, and optional values. */
 const PROJECT: ProjectRecord = {
@@ -131,6 +183,27 @@ describe('project page', () => {
     expect('conclusions' in read).toBe(false)
   })
 
+  it('验证过的结论单独成一项加在 frontmatter 末尾,别的字节不动;读不了的一条跳过', () => {
+    const before = readFileSync(file, 'utf8')
+    const verified = [{ node: 't.wide', fingerprint: '0123456789abcdef', date: '2026-09-21' }]
+    writeProjectFields(file, { ...PROJECT, verifiedConclusions: verified }, ['verifiedConclusions'], staging)
+    const entry = 'verified_conclusions:\n  - node: "t.wide"\n    fingerprint: "0123456789abcdef"\n    date: "2026-09-21"\n'
+    expect(readFileSync(file, 'utf8')).toBe(before.replace('\n---\n\n# ', `\n${entry}---\n\n# `))
+    expect(readProjectPage(file, 'project-1').verifiedConclusions).toEqual(verified)
+
+    writePage(file, readFileSync(file, 'utf8').replace(entry, `${entry}  - node: "t.bad"\n    fingerprint: "nope"\n    date: "2026-09-21"\n`), staging)
+    expect(readProjectPage(file, 'project-1').verifiedConclusions).toEqual(verified)
+  })
+
+  it('这个版本写出的项目页,0.0.14 的 App 照样读得出:新数据只放在 frontmatter 顶层', () => {
+    const verified = [{ node: 't.wide', fingerprint: '0123456789abcdef', date: '2026-09-21' }]
+    writePage(file, projectPageText({ ...PROJECT, verifiedConclusions: verified }), staging)
+    const whole = readAs0014(file)
+    expect(whole.error).toBeUndefined()
+    writeProjectFields(file, { ...PROJECT, verifiedConclusions: [] }, ['verifiedConclusions'], staging)
+    expect(readAs0014(file).success).toBe(true)
+  })
+
   it('只改 papers 那几行,别的字节不动', () => {
     const before = readFileSync(file, 'utf8')
     writeProjectFields(file, { ...PROJECT, papers: ['2401.18079'] }, ['papers'], staging)
@@ -177,20 +250,13 @@ describe('project page', () => {
     expect(read.tasks[0]!.note).toBeUndefined()
   })
 
-  it('0.14 版本严格的任务 schema 仍能读这一条任务,备注不会让它被拒绝', () => {
-    // Mirrors TaskSchema before `note` existed: strict, so an unrecognized key throws for that item.
-    const legacyStrictTaskSchema = z.object({
-      id: z.string(), title: z.string(), start: z.string(), end: z.string(),
-      window: z.object({ start: z.string(), end: z.string() }).strict().optional(),
-      state: z.enum(['act', 'plan', 'done']), priority: z.enum(['p0', 'p1', 'p2']),
-    }).strict()
+  it('这个版本写出带备注的任务,0.0.14 的 App 整页照样读得出', () => {
     const withNote = { ...PROJECT.tasks[0]!, note: '先跑 A/B 两组,再看结论' }
-    writeProjectFields(file, { ...PROJECT, tasks: [withNote] }, ['tasks'], staging)
-    // The page's own top-level object is not strict, so an old App ignores the unrecognized
-    // `task_notes` key entirely; the task item itself still has to pass the old, strict shape on
-    // its own, which it does because the note never entered that item's own fields.
-    const legacyShape = Object.fromEntries(Object.entries(withNote).filter(([k]) => k !== 'note'))
-    expect(() => legacyStrictTaskSchema.parse(legacyShape)).not.toThrow()
+    writePage(file, projectPageText({ ...PROJECT, tasks: [withNote] }), staging)
+    // 0.0.14's per-task shape is strict; the page's own top level is not, so it ignores the
+    // unrecognized `task_notes` key entirely, and the task item itself never carried `note`.
+    const whole = readAs0014(file)
+    expect(whole.error).toBeUndefined()
     expect(readFileSync(file, 'utf8')).not.toMatch(/note:/)
   })
 

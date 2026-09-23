@@ -35,7 +35,7 @@ function renderPlan(tab: 'task' | 'ms', options: {
     <MessagesProvider>
       <ProjectPlan
         project={{ tasks, milestones }} tab={tab} today="2026-09-16"
-        creating={null} flashId={flashId}
+        creating={null} flashId={flashId} selectedTaskId={null}
         listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()} milestoneLaneRef={createRef()}
         onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
         onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}

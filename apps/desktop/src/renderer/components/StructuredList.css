@@ -9,3 +9,4 @@
 .structured-list--embedded>.structured-row+.structured-row{border-top:1px solid var(--sep2)}
 button.structured-row,.structured-row--composite{cursor:pointer;transition:background var(--t-fast) var(--e-out)}
 button.structured-row:hover,button.structured-row:focus-visible,.structured-row--composite:hover{background:var(--hover);outline:0}
+.structured-row--selected{background:var(--hover)}

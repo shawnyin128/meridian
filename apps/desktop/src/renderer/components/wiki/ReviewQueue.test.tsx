@@ -42,6 +42,7 @@ const PROPOSALS: WikiProposal[] = [
     ] },
   }),
   { ...proposal('p5', { status: 'rejected', reason: { kind: 'invalid', message: 'x.json:提案的格式不对' } }), proposal: null, pages: [], titles: {}, claimTexts: {} },
+  proposal('p6', { unverified: ['projects/draft#wide'] }),
 ]
 
 describe('ReviewQueue', () => {
@@ -50,6 +51,7 @@ describe('ReviewQueue', () => {
   const onApply = vi.fn()
   const onDecline = vi.fn()
   const onOpenPage = vi.fn()
+  const onOpenConclusion = vi.fn()
 
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -61,7 +63,7 @@ describe('ReviewQueue', () => {
     root = createRoot(host)
     act(() => root!.render(
       <MessagesProvider>
-        <ReviewQueue proposals={PROPOSALS} pending={false} onApply={onApply} onDecline={onDecline} onOpenPage={onOpenPage} />
+        <ReviewQueue proposals={PROPOSALS} pending={false} onApply={onApply} onDecline={onDecline} onOpenPage={onOpenPage} onOpenConclusion={onOpenConclusion} />
       </MessagesProvider>,
     ))
   })
@@ -92,6 +94,15 @@ describe('ReviewQueue', () => {
     expect(chip.textContent).toBe('Speculative decoding')
     act(() => chip.click())
     expect(onOpenPage).toHaveBeenCalledWith('topics/sd')
+  })
+
+  it('引用了没验证的项目结论:标出结论待验证,应用按不了,点结论去验证它', () => {
+    expect(row('p6').querySelector('.stag.pend')!.textContent).toBe('结论待验证')
+    expect(row('p6').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(true)
+    const chip = row('p6').querySelector<HTMLElement>('.review-unverified .tagchip')!
+    expect(chip.textContent).toBe('加宽实验')
+    act(() => chip.click())
+    expect(onOpenConclusion).toHaveBeenCalledWith('draft', 'wide')
   })
 
   it('应用直接交给调用方;拒绝先填可选的原因再确认', () => {
@@ -126,7 +137,7 @@ describe('ReviewQueue', () => {
     act(() => root!.render(
       <MessagesProvider>
         <ReviewEntry count={2} onOpen={() => {}} />
-        <ReviewQueue proposals={PROPOSALS.slice(2)} pending={false} onApply={onApply} onDecline={onDecline} onOpenPage={onOpenPage} />
+        <ReviewQueue proposals={PROPOSALS.filter((p) => p.status !== 'queued')} pending={false} onApply={onApply} onDecline={onDecline} onOpenPage={onOpenPage} onOpenConclusion={onOpenConclusion} />
       </MessagesProvider>,
     ))
     expect(host.textContent).toContain('没有等你审阅的提案。')
