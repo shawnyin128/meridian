@@ -608,6 +608,7 @@ function readGraphJson(text: string | undefined): {
     const conclusion = obj(detail?.['conclusion'])
     const conclusionText = str(conclusion?.['text'])
     const conclusionDate = str(conclusion?.['date'])
+    const revision = str(conclusion?.['revision'])
     const titles = new Map((Array.isArray(artifacts[id]) ? artifacts[id] : []).flatMap((artifact) => {
       const row = obj(artifact)
       const artifactId = str(row?.['id'])
@@ -642,6 +643,7 @@ function readGraphJson(text: string | undefined): {
           evidence: (Array.isArray(conclusion?.['evidence']) ? conclusion['evidence'] : [])
             .flatMap((evidence) => str(evidence) ?? [])
             .map((evidence) => ({ id: evidence, title: titles.get(evidence) ?? evidence })),
+          ...(revision === undefined ? {} : { revision }),
         },
       }),
     }]

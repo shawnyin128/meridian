@@ -67,6 +67,7 @@ import {
   ProjectReorderParamsSchema,
   ProjectReorderTasksParamsSchema,
   ProjectSetConclusionStateParamsSchema,
+  ProjectUnverifyConclusionParamsSchema,
   ProjectVerifyConclusionParamsSchema,
   ResearchIdeaCreateParamsSchema,
   ResearchIdeaDeleteParamsSchema,
@@ -558,8 +559,12 @@ registerHandler('project.deleteConclusion', (params) => {
   return store.deleteConclusion(projectId, conclusionId)
 })
 registerHandler('project.verifyConclusion', (params) => {
-  const { projectId, node } = ProjectVerifyConclusionParamsSchema.parse(params)
-  return store.verifyConclusion(projectId, node)
+  const { projectId, node, fingerprint } = ProjectVerifyConclusionParamsSchema.parse(params)
+  return store.verifyConclusion(projectId, node, fingerprint)
+})
+registerHandler('project.unverifyConclusion', (params) => {
+  const { projectId, node } = ProjectUnverifyConclusionParamsSchema.parse(params)
+  return store.unverifyConclusion(projectId, node)
 })
 registerHandler('inbox.list', (params) => {
   return store.listInbox(InboxListParamsSchema.parse(params))

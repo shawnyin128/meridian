@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { z } from 'zod'
 import type { ProjectDetail } from '../../shared/contract.js'
-import { ProjectDetailSchema } from '../../shared/contract.js'
+import { ProjectDetailSchema, VerifiedConclusionSchema } from '../../shared/contract.js'
 import { spliceLines } from '../vault/writer.js'
 
 /** Values representable in frontmatter. */
@@ -86,17 +86,10 @@ export type ProjectRecord = Omit<
   created: string
   workspaceRoot?: string
   workspaceSsh?: { host: string; path: string; port?: number | undefined }
-  /** Node conclusions the user verified, each with the fingerprint of the text and evidence verified. */
-  verifiedConclusions?: VerifiedConclusion[]
 }
 
-/** One node conclusion the user verified: its node, the conclusion fingerprint verified, and the day. */
-export type VerifiedConclusion = { node: string; fingerprint: string; date: string }
-
 /** One stored `verified_conclusions` entry; unknown additive keys are dropped. */
-const VerifiedConclusionSchema = z.object({
-  node: z.string().min(1), fingerprint: z.string().regex(/^[0-9a-f]{16}$/), date: detail.start,
-})
+const VerifiedConclusionEntrySchema = z.object(VerifiedConclusionSchema.shape)
 
 /**
  * Project-page frontmatter shape. Research-graph edges are stored as endpoint objects rather than
@@ -395,7 +388,7 @@ export function readProjectPage(file: string, id: string): ProjectRecord {
     ...(page.verified_conclusions === undefined ? {} : {
       // An entry this version cannot read is skipped, so it never keeps the project from opening.
       verifiedConclusions: page.verified_conclusions.flatMap((entry) => {
-        const read = VerifiedConclusionSchema.safeParse(entry)
+        const read = VerifiedConclusionEntrySchema.safeParse(entry)
         return read.success ? [read.data] : []
       }),
     }),
@@ -468,11 +461,9 @@ export function writeProjectFields(
     const key: string = field in PAGE_KEYS ? PAGE_KEYS[field as keyof typeof PAGE_KEYS] : field
     const value = front[key]
     if (value === undefined && (
-      field === 'block' || field === 'workspaceRoot' || field === 'workspaceSsh'
+      field === 'block' || field === 'workspaceRoot' || field === 'workspaceSsh' || field === 'verifiedConclusions'
     )) {
-      const removable = field === 'block'
-        ? 'block'
-        : field === 'workspaceRoot' ? 'workspace_root' : 'workspace_ssh'
+      const removable = field in PAGE_KEYS ? PAGE_KEYS[field as keyof typeof PAGE_KEYS] : field
       dropProjectPageKeys(file, [removable], staging)
       continue
     }
