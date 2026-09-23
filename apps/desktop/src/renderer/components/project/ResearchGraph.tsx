@@ -6,12 +6,14 @@ import type {
   ProjectDetail as Project,
   ResearchGraph as Graph,
   ResearchIdea,
+  Task,
 } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { activeRoutes } from '../../../shared/research-path.js'
 import { recordKind, recordOrigin, sortRecordsNewestFirst } from '../../../shared/project-signals.js'
 import { Markdown } from '../Markdown.js'
 import { EmptyState } from '../EmptyState.js'
+import { FadeText } from '../FadeText.js'
 import { IconPlus } from '../icons.js'
 import { PanelClose } from '../PanelClose.js'
 import { SectionHeading } from '../PageShell.js'
@@ -380,14 +382,17 @@ export function splitNodeDocument(markdown: string | undefined): {
 }
 
 /** Read-only projection of the Agent-maintained node document, with App-owned idea associations. */
-export function ResearchNodePanel({ graph, events, ideas, node, onClose, onSelect, onSelectIdea }: {
+export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, onSelect, onSelectIdea, onSelectTask }: {
   graph: Graph
   events: Project['events']
   ideas: ResearchIdea[]
+  /** The plan tasks that belong to this node, in plan order. */
+  tasks: Task[]
   node: GraphNode
   onClose: () => void
   onSelect: (nodeId: string) => void
   onSelectIdea: (ideaId: string) => void
+  onSelectTask: (taskId: string) => void
 }) {
   const m = useMessages()
   const byId = new Map(graph.nodes.map((candidate) => [candidate.id, candidate]))
@@ -446,6 +451,20 @@ export function ResearchNodePanel({ graph, events, ideas, node, onClose, onSelec
               </div>
             ))}
           </div>
+        )}
+
+      <SectionHeading variant="rail">{m.project.graph.tasks(tasks.length)}</SectionHeading>
+      {tasks.length === 0
+        ? <EmptyState variant="section">{m.project.graph.noTasks}</EmptyState>
+        : (
+          <StructuredList className="node-tasks" variant="embedded">
+            {tasks.map((task) => (
+              <StructuredRow className="node-task-row" data-task={task.id} key={task.id} onActivate={() => onSelectTask(task.id)}>
+                <FadeText>{task.title}</FadeText>
+                {task.origin === 'agent' ? <span className="agtag">{m.project.records.who.agent}</span> : null}
+              </StructuredRow>
+            ))}
+          </StructuredList>
         )}
 
       <SectionHeading variant="rail">{m.project.linkedIdeas(ideas.length)}</SectionHeading>

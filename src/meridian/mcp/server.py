@@ -14,6 +14,7 @@ from meridian.wiki.workspace import resolve_workspace
 from meridian.workspace_protocol import (
     EVENT_KINDS,
     add_workspace_agent_idea,
+    add_workspace_agent_task,
     add_workspace_event,
     inspect_project_workspace,
     read_project_plan,
@@ -390,6 +391,27 @@ def tool_definitions() -> list[JsonDict]:
             ),
         },
         {
+            "name": "meridian.workspace_task_add",
+            "description": (
+                "Project Workspace: add one clear, concrete next step the user and you agreed on to the "
+                "project plan as a task; the App marks it as added by an agent and the user deletes what "
+                "they do not want. A general direction or hypothesis is a Lab node or an idea, not a task."
+            ),
+            "inputSchema": _schema(
+                {
+                    "workspace_root": {
+                        "type": "string",
+                        "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
+                    },
+                    "task_id": {"type": "string", "description": "Stable idempotency key for the task."},
+                    "title": {"type": "string", "description": "The step in one line, at most 160 characters."},
+                    "note": {"type": "string", "description": "Optional Markdown note: what done means, inputs, commands."},
+                    "date": {"type": "string", "description": "YYYY-MM-DD the task is planned for; defaults to today."},
+                },
+                required=["task_id", "title"],
+            ),
+        },
+        {
             "name": "meridian.lab_graph",
             "description": "Lab: read the current Markdown-backed research graph and detailed health without changing it.",
             "inputSchema": _schema(
@@ -719,6 +741,16 @@ def _call_workspace_idea_add(server: MeridianMCPServer, arguments: JsonDict) -> 
     )
 
 
+def _call_workspace_task_add(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
+    return add_workspace_agent_task(
+        server.workspace_root(arguments),
+        task_id=_required(arguments, "task_id"),
+        title=_required(arguments, "title"),
+        note=str(arguments["note"]) if arguments.get("note") not in (None, "") else None,
+        task_date=str(arguments["date"]) if arguments.get("date") not in (None, "") else None,
+    )
+
+
 def _call_lab_graph(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
     result = materialize_lab_graph(server.workspace_root(arguments))
     return {
@@ -799,6 +831,7 @@ TOOL_CALLS: dict[str, Callable[[MeridianMCPServer, JsonDict], JsonDict]] = {
     "meridian.workspace_idea": _call_workspace_idea,
     "meridian.workspace_event_add": _call_workspace_event_add,
     "meridian.workspace_idea_add": _call_workspace_idea_add,
+    "meridian.workspace_task_add": _call_workspace_task_add,
     "meridian.lab_graph": _call_lab_graph,
     "meridian.lab_node": _call_lab_node,
     "meridian.lab_update": _call_lab_update,

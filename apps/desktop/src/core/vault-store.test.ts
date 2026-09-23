@@ -1177,6 +1177,44 @@ describe('vault store on the aggregation layout', () => {
     expect(() => store.verifyConclusion(id, 't.A', shown[0]!.fingerprint!)).toThrow(/在你打开之后又被改过/)
   })
 
+  it('agent 请求加的任务:进计划、标明 agent 加的、记一条能撤销的变动;每条只收一次,删掉或撤销都不回来', () => {
+    store.createProject('agent 任务')
+    const id = store.listProjects().find((p) => p.name === 'agent 任务')!.id
+    const repo = join(vault, 'agent-task-repo')
+    mkdirSync(join(repo, '.meridian', 'tasks'), { recursive: true })
+    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    const requests = (tasks: unknown[]) => writeFileSync(join(repo, '.meridian', 'tasks', 'tasks.json'), JSON.stringify({
+      schema_version: 'meridian.workspace-agent-tasks.v1', tasks,
+    }))
+    requests([
+      { id: 'rerun-sweep', date: '2026-09-12', title: '在 B=16 重跑宽度扫描', note: '延迟矩阵补上 B=16 一列算完成' },
+      { id: 'write-up', date: '2026-09-13', title: '整理扫描结果' },
+    ])
+
+    store.absorbAgentTasks(id)
+    const tasks = store.getProject(id).tasks
+    expect(tasks.map(({ title, start, end, state, priority, origin, note }) => ({ title, start, end, state, priority, origin, note }))).toEqual([
+      { title: '在 B=16 重跑宽度扫描', start: '2026-09-12', end: '2026-09-12', state: 'plan', priority: 'p1', origin: 'agent', note: '延迟矩阵补上 B=16 一列算完成' },
+      { title: '整理扫描结果', start: '2026-09-13', end: '2026-09-13', state: 'plan', priority: 'p1', origin: 'agent', note: undefined },
+    ])
+    const plan = JSON.parse(readFileSync(join(repo, '.meridian', 'control', 'plan.json'), 'utf8')) as {
+      agent_tasks: Record<string, string>; tasks: { id: string; origin?: string }[]
+    }
+    expect(plan.agent_tasks).toEqual({ 'rerun-sweep': tasks[0]!.id, 'write-up': tasks[1]!.id })
+    expect(plan.tasks.map((task) => task.origin)).toEqual(['agent', 'agent'])
+    const changes = store.listChanges().slice(0, 2)
+    expect(changes.map((c) => [c.title, c.source, c.undoable])).toEqual([
+      ['项目「agent 任务」· agent 新增任务', 'Meridian', true], ['项目「agent 任务」· agent 新增任务', 'Meridian', true],
+    ])
+
+    store.absorbAgentTasks(id)
+    expect(store.getProject(id).tasks).toHaveLength(2)
+    store.undoChange(changes[0]!.id)
+    store.deleteTask(id, tasks[0]!.id)
+    store.absorbAgentTasks()
+    expect(createVaultStore(vault).getProject(id).tasks).toEqual([])
+  })
+
   it('旧版本记下的项目变动在没验证过结论的项目上照样能撤销', () => {
     store.createProject('旧记录')
     const id = store.listProjects().find((p) => p.name === '旧记录')!.id

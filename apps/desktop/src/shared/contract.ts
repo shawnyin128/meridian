@@ -107,6 +107,8 @@ export const TaskSchema = z.object({
   priority: z.enum(['p0', 'p1', 'p2']),
   /** Raw Markdown note for the task's requirements and details; absent means no note has been written. */
   note: z.string().optional(),
+  /** `agent` when a coding agent added the task to the plan; absent when the user did. */
+  origin: z.enum(['agent']).optional(),
 }).strict()
 
 export const MilestoneSchema = z.object({
@@ -941,7 +943,7 @@ export const ProjectUpdateParamsSchema = z.object({
  * Writable task and milestone fields exclude `id`, which is assigned by Core on
  * creation and used only to select the record during updates.
  */
-const TaskFieldsSchema = TaskSchema.omit({ id: true })
+const TaskFieldsSchema = TaskSchema.omit({ id: true, origin: true })
 const MilestoneFieldsSchema = MilestoneSchema.omit({ id: true })
 
 export const ProjectCreateTaskParamsSchema = z.object({

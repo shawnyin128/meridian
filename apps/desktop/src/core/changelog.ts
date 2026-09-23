@@ -409,6 +409,15 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       return onProject(id, '改了字段', () => ops.updateProject(id, patch))
     },
 
+    absorbAgentTasks(projectId) {
+      for (const { project, request } of ops.agentTaskRequests(projectId)) {
+        const target: ChangeTarget = { kind: 'project', id: project }
+        const before = entityOf(target)
+        ops.addAgentTask(project, request)
+        push(target, 'agent 新增任务', 'snapshot', before, undefined, 'Meridian')
+      }
+    },
+
     verifyConclusion(projectId, node, fingerprint) {
       return onProject(projectId, '验证结论', () => ops.verifyConclusion(projectId, node, fingerprint))
     },

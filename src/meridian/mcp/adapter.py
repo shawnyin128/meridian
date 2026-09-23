@@ -138,6 +138,13 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
             "outputs": ["status", "path", "idea"],
         },
         {
+            "name": "meridian.workspace_task_add",
+            "workflow": "Project Workspace",
+            "summary": "Add an idempotent concrete next step agreed with the user to the App's project plan.",
+            "inputs": ["workspace_root", "task_id", "title", "note", "date"],
+            "outputs": ["status", "path", "task"],
+        },
+        {
             "name": "meridian.lab_graph",
             "workflow": "Lab",
             "summary": "Read the current Markdown-backed research graph and its health without changing App planning state.",

@@ -72,6 +72,7 @@ const PAGE_KEYS = {
   workspaceRoot: 'workspace_root',
   workspaceSsh: 'workspace_ssh',
   verifiedConclusions: 'verified_conclusions',
+  agentTasks: 'agent_tasks',
 } as const
 
 const detail = ProjectDetailSchema.shape
@@ -86,6 +87,8 @@ export type ProjectRecord = Omit<
   created: string
   workspaceRoot?: string
   workspaceSsh?: { host: string; path: string; port?: number | undefined }
+  /** Each agent task request taken into the plan, by request id, with the id of the task it became. */
+  agentTasks?: Record<string, string>
 }
 
 /** One stored `verified_conclusions` entry; unknown additive keys are dropped. */
@@ -97,7 +100,7 @@ const VerifiedConclusionEntrySchema = z.object(VerifiedConclusionSchema.shape)
  * rest of the page. Tolerant of unknown keys itself, so a future additive task field cannot break
  * reading either; strictness on write is still enforced by the contract's own `TaskSchema`.
  */
-const PageTaskSchema = TaskSchema.omit({ note: true }).passthrough()
+const PageTaskSchema = TaskSchema.omit({ note: true, origin: true }).passthrough()
 
 /**
  * Project-page frontmatter shape. Research-graph edges are stored as endpoint objects rather than
@@ -128,6 +131,9 @@ const ProjectPageSchema = z.object({
   tasks: z.array(PageTaskSchema),
   /** Task notes keyed by task id, a task carrying one only when it has a note. */
   task_notes: z.record(z.string(), z.string()).optional(),
+  /** Who added a task, keyed by task id, for tasks not added by the user; kept out of task items like notes. */
+  task_origins: z.record(z.string(), z.string()).optional(),
+  agent_tasks: z.record(z.string(), z.string()).optional(),
   milestones: detail.milestones,
   relations: detail.relations,
   attachments: detail.attachments,
@@ -317,6 +323,12 @@ function taskNotesOf(tasks: ProjectRecord['tasks']): Record<string, string> | un
   return Object.keys(notes).length === 0 ? undefined : notes
 }
 
+/** Task origins keyed by task id, carrying only tasks an agent added; `undefined` when none did. */
+function taskOriginsOf(tasks: ProjectRecord['tasks']): Record<string, string> | undefined {
+  const origins = Object.fromEntries(tasks.flatMap((task) => (task.origin === undefined ? [] : [[task.id, task.origin]])))
+  return Object.keys(origins).length === 0 ? undefined : origins
+}
+
 /** Frontmatter representation of a project. */
 function frontOf(project: ProjectRecord): Record<string, Json> {
   return {
@@ -346,9 +358,12 @@ function frontOf(project: ProjectRecord): Record<string, Json> {
     tasks: project.tasks.map((task) => {
       const rest = { ...task }
       delete rest.note
+      delete rest.origin
       return rest
     }),
     ...(taskNotesOf(project.tasks) === undefined ? {} : { task_notes: taskNotesOf(project.tasks) }),
+    ...(taskOriginsOf(project.tasks) === undefined ? {} : { task_origins: taskOriginsOf(project.tasks) }),
+    ...(project.agentTasks === undefined ? {} : { agent_tasks: project.agentTasks }),
     milestones: project.milestones,
     relations: project.relations,
     attachments: project.attachments,
@@ -420,9 +435,12 @@ export function readProjectPage(file: string, id: string): ProjectRecord {
     memo: body.slice(memoFrom, memoTo).join('\n').trim(),
     conclusionList: page.conclusion_list,
     papers: page.papers,
-    tasks: page.tasks.map((task) => (page.task_notes?.[task.id] === undefined
-      ? task
-      : { ...task, note: page.task_notes[task.id] })),
+    tasks: page.tasks.map((task) => ({
+      ...task,
+      ...(page.task_notes?.[task.id] === undefined ? {} : { note: page.task_notes[task.id] }),
+      ...(page.task_origins?.[task.id] === 'agent' ? { origin: 'agent' as const } : {}),
+    })),
+    ...(page.agent_tasks === undefined ? {} : { agentTasks: page.agent_tasks }),
     milestones: page.milestones,
     events: body.slice(eventsFrom, eventsTo).flatMap((row) => {
       const event = EVENT.exec(withoutCr(row))
@@ -511,7 +529,10 @@ export function writeProjectFields(
     }
     if (value === undefined) throw new Error(`项目页上没有这一项:${key}`)
     syncKey(key, value)
-    // Notes live in their own key so an older App's strict per-task schema never sees them.
-    if (field === 'tasks') syncKey('task_notes', front['task_notes'])
+    // Notes and origins live in their own keys so an older App's strict per-task schema never sees them.
+    if (field === 'tasks') {
+      syncKey('task_notes', front['task_notes'])
+      syncKey('task_origins', front['task_origins'])
+    }
   }
 }

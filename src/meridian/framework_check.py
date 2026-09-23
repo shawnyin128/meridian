@@ -569,6 +569,7 @@ def _runtime_category() -> FrameworkCategory:
         "meridian.workspace_idea",
         "meridian.workspace_event_add",
         "meridian.workspace_idea_add",
+        "meridian.workspace_task_add",
         "meridian.lab_graph",
         "meridian.lab_node",
         "meridian.lab_update",
