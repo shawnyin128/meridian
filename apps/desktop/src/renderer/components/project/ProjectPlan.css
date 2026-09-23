@@ -2,16 +2,15 @@
 .project-plan .ddlrow .dchip{font-family:var(--mono);font-size:var(--fs-sm);background:var(--field);border-radius:var(--r-sm);padding:2px 8px;flex-shrink:0}
 .project-plan .ddlrow .dleft{font-size:12px;color:var(--ter);width:52px;flex-shrink:0}
 .project-plan .ddlrow.done>:not(.row-delete){opacity:.5}
-#taskList{display:grid;grid-template-columns:max-content max-content max-content minmax(0,1fr) 24px;column-gap:8px}
+#taskList{display:grid;grid-template-columns:max-content max-content max-content max-content minmax(0,1fr) 24px;column-gap:8px}
 #msList{display:grid;grid-template-columns:max-content max-content minmax(0,1fr) 24px;column-gap:8px}
 .project-plan .task-row,.project-plan .milestone-row{grid-column:1/-1;display:grid;grid-template-columns:subgrid;column-gap:8px}
 #taskList>.task-create-row,#msList>.milestone-create-row,#taskList>.lm{grid-column:1/-1}
-.task-row .task-time-cell,.milestone-row>.dchip{box-sizing:border-box;width:max-content;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.task-row .task-time-cell{display:flex;align-items:center;gap:6px}
+.milestone-row>.dchip{box-sizing:border-box;width:max-content;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .plan-date-button{background:transparent!important;padding:0 4px!important}
 .plan-date{min-width:50px}
 .task-date-part .date-chip,.task-clock-part .date-chip{color:var(--sec)}
-.task-row .prtag{justify-self:start}
+.task-row .prtag,.task-row .task-date-part,.task-row .task-clock-part{justify-self:start}
 .task-row .dleft,.milestone-row .dleft{width:auto}
 .plan-cell{box-sizing:border-box;margin:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;outline:0}
 .plan-cell:hover,.plan-cell:focus-visible{box-shadow:0 0 0 1px var(--sep-strong)}
