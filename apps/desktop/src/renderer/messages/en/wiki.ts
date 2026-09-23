@@ -261,7 +261,7 @@ export const wiki = {
       project: 'Project',
       projectPick: 'Choose a project',
       conclusionPick: 'Choose a conclusion',
-      noConclusions: 'This project has no conclusions yet.',
+      noConclusions: 'This project has no verified conclusions yet.',
       other: 'Conflicts with',
       noOthers: 'This page has no other findings.',
       note: 'Note',

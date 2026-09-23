@@ -222,7 +222,7 @@ export const wiki = {
       project: '项目',
       projectPick: '选一个项目',
       conclusionPick: '选一条结论',
-      noConclusions: '这个项目还没有结论。',
+      noConclusions: '这个项目还没有已验证的结论。',
       other: '与哪一条冲突',
       noOthers: '这一页没有别的结论。',
       note: '说明',

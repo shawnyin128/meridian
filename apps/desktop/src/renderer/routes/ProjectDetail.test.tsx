@@ -213,6 +213,11 @@ describe('research record view names', () => {
     expect(zh.project.recordModes.activity).toBe('动态')
     expect(en.project.recordModes.activity).toBe('Activity')
   })
+
+  it('names the conclusions view 结论', () => {
+    expect(zh.project.recordModes.conclusions).toBe('结论')
+    expect(en.project.recordModes.conclusions).toBe('Conclusions')
+  })
 })
 
 describe('project idea panel', () => {
