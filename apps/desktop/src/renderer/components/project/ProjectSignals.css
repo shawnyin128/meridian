@@ -10,6 +10,6 @@
 .record-row.with-node{grid-template-columns:var(--project-signal-kind-width) var(--project-signal-date-width) 150px minmax(0,1fr) auto}
 .record-node{display:flex;min-width:0}
 .record-text{display:flex;align-items:center;gap:6px;text-overflow:clip}
-.record-line{flex:1;min-width:0;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade)}
+.record-line{flex:1}
 .record-detail{color:var(--ter)}
 .record-who{white-space:nowrap;color:var(--ter);font-size:var(--fs-cap)}

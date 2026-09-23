@@ -2,7 +2,7 @@
 import { act, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ResearchGraph as Graph, ResearchIdea } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
@@ -76,7 +76,11 @@ describe('layoutResearchTree', () => {
 })
 
 describe('idea and graph association', () => {
-  beforeEach(() => { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh') })
+  beforeEach(() => {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+  })
+  afterEach(() => { vi.unstubAllGlobals() })
 
   it('explains active-path and current-node emphasis with matching legend marks', () => {
     const markup = renderToStaticMarkup(withMessages(

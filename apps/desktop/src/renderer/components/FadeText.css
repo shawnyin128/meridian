@@ -1,0 +1,2 @@
+.fade-text{min-width:0;overflow:hidden;white-space:nowrap}
+.fade-text.clipped{mask-image:var(--clipfade)}

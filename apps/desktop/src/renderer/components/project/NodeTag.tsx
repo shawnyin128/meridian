@@ -1,3 +1,4 @@
+import { FadeText } from '../FadeText.js'
 import './NodeTag.css'
 
 /**
@@ -13,11 +14,11 @@ export function NodeTag({ label, onOpen, hint, fill = false }: {
 }) {
   const className = fill ? 'node-tag node-tag--fill' : 'node-tag'
   return onOpen === undefined
-    ? <span className={className} title={hint ?? label}><span className="node-tag-text">{label}</span></span>
+    ? <span className={className} title={hint ?? label}><FadeText>{label}</FadeText></span>
     : (
       <button
         type="button" className={className} title={hint ?? label}
         onClick={(event) => { event.stopPropagation(); onOpen() }}
-      ><span className="node-tag-text">{label}</span></button>
+      ><FadeText>{label}</FadeText></button>
     )
 }

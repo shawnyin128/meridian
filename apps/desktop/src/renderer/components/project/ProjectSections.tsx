@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DragEvent as ReactDragEvent, ReactNode, RefObject } from 'react'
 import type { AgentSession, Attachment, RelationGroup } from '../../../shared/contract.js'
 import { papers } from '../../ipc.js'
 import { AddAction } from '../AddAction.js'
 import { CardTray } from '../CardTray.js'
+import { FadeText } from '../FadeText.js'
 import { IconCross } from '../icons.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PickRow, type PickHit } from '../PickRow.js'
@@ -142,22 +143,6 @@ export function ProjectMemo({ text, editing, onEditing, onSave, onOpen }: {
   )
 }
 
-/** Chip text that fades out at the chip's edge when it does not fit, and is left whole when it does. */
-function ChipText({ children }: { children: string }) {
-  const text = useRef<HTMLSpanElement>(null)
-  const [clipped, setClipped] = useState(false)
-  useLayoutEffect(() => {
-    const element = text.current
-    if (element === null) return
-    const measure = () => setClipped(element.scrollWidth > element.clientWidth + 1)
-    measure()
-    const observer = new ResizeObserver(measure)
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [children])
-  return <span ref={text} className={`tagchip-text${clipped ? ' clipped' : ''}`}>{children}</span>
-}
-
 /** Grouped paper/wiki relations with one insertion slot and consistent removable chips. */
 export function ProjectRelations({
   groups, papers: linked, adding, onRemove, onOpenPage, onOpenPaper, onRemovePaper, onMove,
@@ -249,7 +234,7 @@ export function ProjectRelations({
                 className={chipClass(row, paper.id)} key={paper.id} data-paper={paper.id}
                 onClick={() => onOpenPaper(paper.id)} {...dragProps(row, paper.id)}
               >
-                <ChipText>{paper.title}</ChipText>
+                <FadeText className="tagchip-text">{paper.title}</FadeText>
                 <button
                   className="rx" title={m.common.removeLink}
                   onClick={(event) => { event.stopPropagation(); onRemovePaper(paper.id, paper.title) }}
@@ -264,7 +249,7 @@ export function ProjectRelations({
               onClick={item.url !== undefined
                 ? () => { window.open(item.url, '_blank') }
                 : item.page === undefined ? undefined : () => onOpenPage(item.page!)}
-            ><ChipText>{item.text}</ChipText>
+            ><FadeText className="tagchip-text">{item.text}</FadeText>
               <button
                 className="rx" title={m.common.removeLink}
                 onClick={(event) => { event.stopPropagation(); onRemove(item.id, item.text) }}
