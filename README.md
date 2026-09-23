@@ -1,7 +1,7 @@
 <p align="center"><img src="assets/header.png" alt="Meridian — Research without boundaries"></p>
 
 <p align="center">
-  <a href="https://github.com/shawnyin128/meridian/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/shawnyin128/meridian?label=release"></a>
+  <a href="https://github.com/shawnyin128/meridian/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/shawnyin128/meridian?display_name=release&label=release"></a>
   <a href="LICENSE"><img alt="License: PolyForm Noncommercial 1.0.0" src="https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue"></a>
   <img alt="Platform: Windows | macOS" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey">
   <a href="https://github.com/shawnyin128/meridian/actions/workflows/release-desktop.yml"><img alt="Release build" src="https://img.shields.io/github/actions/workflow/status/shawnyin128/meridian/release-desktop.yml?label=build"></a>
@@ -23,7 +23,7 @@ A release raises one position and resets every position to its right to zero
 
 The app's updater and packager accept only three-part semver, so a release is stored as
 `X.Y.(Z × 1000 + F)`: `v0.0.14.1` is stored, tagged and published as `0.0.14001`. The app,
-installer names and release titles show the four-part version. Releases up to `v0.0.14`
+installer names, release titles and the release badge show the four-part version. Releases up to `v0.0.14`
 predate the scheme and keep their three-part numbers.
 
 ### Branch names
