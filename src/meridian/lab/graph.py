@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -104,6 +105,9 @@ CONFIRMATION_REQUIRED_FIELDS = {
 CONFIRMATION_REQUIRED_OPS = {"create_node", "set_active_thread", "detach_artifact"}
 CLOSED_NODE_STATES = {"supported", "dead"}
 CONCLUSION_MAX_LEN = 1000
+TASK_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}")
+# JSON leaves these unescaped, yet str.splitlines() and some editors break lines on them.
+_LINE_BREAKING_CHARACTERS = {"\x85": "\\u0085", "\u2028": "\\u2028", "\u2029": "\\u2029"}
 
 
 @dataclass(frozen=True)
@@ -476,6 +480,8 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
         path = f"changes[{index}].task_id"
         if not task_id:
             add("missing_task_id", "link_task requires a non-empty task_id.", path)
+        elif not TASK_ID_PATTERN.fullmatch(task_id):
+            add("invalid_task_id", f"Task id `{task_id}` is not a plan task id.", path)
         elif plan_task_ids is None:
             add("plan_unavailable", f"link_task needs the App's project plan: {plan_issue}", path)
         elif task_id not in plan_task_ids:
@@ -1117,7 +1123,16 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
             add("error", "invalid_node_detail", f"Graph node `{node_id}` detail must be an object.", f"node_details/{node_id}")
     task_owner: dict[str, str] = {}
     for node_id, detail in node_details.items():
-        for task_id in detail.get("tasks", []) if isinstance(detail, dict) else []:
+        tasks = detail.get("tasks", []) if isinstance(detail, dict) else []
+        if not isinstance(tasks, list) or not all(isinstance(task_id, str) and task_id for task_id in tasks):
+            add(
+                "error",
+                "invalid_node_tasks",
+                f"Graph node `{node_id}` tasks must be a list of task ids.",
+                f"node_details/{node_id}/tasks",
+            )
+            continue
+        for task_id in tasks:
             if task_id in task_owner:
                 add(
                     "warning",
@@ -1407,7 +1422,11 @@ def _reject_apply_unsupported_changes(validation: dict[str, Any], packet: dict[s
 def _apply_update_node_change(text: str, raw_id: str, fields: dict[str, Any]) -> str:
     def edit(body: str) -> str:
         if "state" in fields:
-            body = _upsert_node_field(body, "mode", f"`{str(fields['state']).strip()}`")
+            state = str(fields["state"]).strip()
+            was_closed = (_node_field(body, "mode") or "unresolved") in CLOSED_NODE_STATES
+            body = _upsert_node_field(body, "mode", f"`{state}`")
+            if state in CLOSED_NODE_STATES and not was_closed:
+                body = _upsert_node_field(body, "close_count", str(_close_count(body) + 1))
         if "doing" in fields:
             body = _upsert_heading_body(body, "Doing", str(fields["doing"]).strip())
         if "why" in fields:
@@ -1424,6 +1443,8 @@ def _apply_create_node_change(text: str, change: dict[str, Any]) -> str:
     title = str(change.get("title") or "").strip()
     state = str(change.get("state") or "unresolved").strip()
     lines = [f"### Node {raw_id}: {title}", "", f"- mode: `{state}`"]
+    if state in CLOSED_NODE_STATES:
+        lines.append("- close_count: 1")
     parent = str(change.get("parent") or "").strip()
     if parent:
         lines.append(f"- parent: {parent}")
@@ -1505,9 +1526,29 @@ def _apply_unlink_task_change(text: str, raw_id: str, task_id: str) -> str:
 
 def _apply_record_conclusion_change(text: str, raw_id: str, change: dict[str, Any]) -> str:
     conclusion_date = str(change.get("date") or "").strip() or datetime.now(timezone.utc).astimezone().date().isoformat()
-    evidence = ", ".join(f"`{str(item).strip()}`" for item in change.get("evidence") or [])
-    content = f"{str(change.get('text') or '').strip()}\n\n- concluded: {conclusion_date}\n- evidence: {evidence}"
+    evidence = [str(item).strip() for item in change.get("evidence") or []]
+    content = "\n".join(
+        [
+            f"- text: {_one_line_json(str(change.get('text') or '').strip())}",
+            f"- concluded: {conclusion_date}",
+            f"- evidence: {_one_line_json(evidence)}",
+        ]
+    )
     return _replace_node_body(text, raw_id, lambda body: _upsert_heading_body(body, "Conclusion", content))
+
+
+def _one_line_json(value: Any) -> str:
+    """Encode ``value`` as JSON on one line that no Markdown reader can split or read as structure."""
+
+    encoded = json.dumps(value, ensure_ascii=False)
+    for character, escape in _LINE_BREAKING_CHARACTERS.items():
+        encoded = encoded.replace(character, escape)
+    return encoded
+
+
+def _close_count(body: str) -> int:
+    value = _node_field(body, "close_count")
+    return int(value) if value.isdigit() else 0
 
 
 def _replace_node_body(text: str, raw_id: str, edit: Any) -> str:
@@ -1732,7 +1773,9 @@ def _parse_thread_nodes(
         }
         artifacts = _parse_supporting_artifacts(body)
         tasks = _parse_node_tasks(body)
-        conclusion = _parse_node_conclusion(body)
+        conclusion = _parse_node_conclusion(
+            body, mode=mode, artifacts=artifacts, project_root=thread_path.parents[1].parent
+        )
         parsed.append(
             {
                 "node": node,
@@ -1843,27 +1886,45 @@ def _parse_node_tasks(body: str) -> list[str]:
     return [item for item in (_list_item(line) for line in body[content_start:content_end].splitlines()) if item]
 
 
-def _parse_node_conclusion(body: str) -> dict[str, Any] | None:
-    """Read a node's `#### Conclusion` section as ``{text, date, evidence}``, or None when it has no text."""
+def _parse_node_conclusion(body: str, *, mode: str, artifacts: list[dict[str, Any]], project_root: Path) -> dict[str, Any] | None:
+    """Read a node's `#### Conclusion` section as ``{text, date, evidence, revision}``.
+
+    ``revision`` fingerprints the node's closed state, how many times it was closed, and the bytes of
+    each cited experiment record. Returns None when the section is absent or its text or evidence
+    field is not a JSON string or list of strings.
+    """
 
     bounds = _heading_body_bounds(body, "Conclusion")
     if bounds is None:
         return None
     _, content_start, content_end = bounds
-    lines: list[str] = []
-    conclusion_date = ""
-    evidence: list[str] = []
-    for line in body[content_start:content_end].splitlines():
-        field = re.match(r"^\s*-\s*(concluded|evidence):\s*(.*?)\s*$", line)
-        if field is not None and field.group(1) == "concluded":
-            conclusion_date = _clean_scalar(field.group(2))
-        elif field is not None:
-            evidence = [_clean_scalar(item) for item in field.group(2).split(",") if _clean_scalar(item)]
-        elif line.strip():
-            lines.append(line.strip())
-    if not lines:
+    fields: dict[str, str] = {}
+    for line in body[content_start:content_end].split("\n"):
+        field = re.match(r"^- (text|concluded|evidence): (.*)$", line.rstrip("\r"))
+        if field is not None:
+            fields.setdefault(field.group(1), field.group(2))
+    try:
+        text = json.loads(fields.get("text", "null"))
+        evidence = json.loads(fields.get("evidence", "null"))
+    except json.JSONDecodeError:
         return None
-    return {"text": " ".join(lines), "date": conclusion_date, "evidence": evidence}
+    if not isinstance(text, str) or not text or not isinstance(evidence, list) or not all(isinstance(item, str) for item in evidence):
+        return None
+    paths = {artifact.get("id"): str(artifact.get("path") or "") for artifact in artifacts if artifact.get("type") == "experiment"}
+    records = [[item, _file_digest(project_root, paths.get(item, ""))] for item in evidence]
+    revision = hashlib.sha256(json.dumps([mode, _close_count(body), records]).encode("utf-8")).hexdigest()[:16]
+    return {"text": text, "date": fields.get("concluded", "").strip(), "evidence": evidence, "revision": revision}
+
+
+def _file_digest(project_root: Path, relative: str) -> str:
+    """First 16 hex characters of the SHA-256 of a `.meridian/` file, or "missing" when it cannot be read."""
+
+    if not _path_starts_with_meridian(relative):
+        return "missing"
+    try:
+        return hashlib.sha256((project_root / relative).read_bytes()).hexdigest()[:16]
+    except OSError:
+        return "missing"
 
 
 def _list_item(line: str) -> str:
