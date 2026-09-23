@@ -41,7 +41,7 @@ claims:
     text: "KV cache 量化之后,前缀读取与验证可以共调度,吞吐与基线持平"
     version: 2
     since: "2026-08-10"
-    by: "ai:skill.meridian"
+    by: "我"
     evidence:
       - kind: "personal"
         text: "读 KVQuant 时的直觉"
@@ -52,7 +52,7 @@ claims:
         conclusion: "c1"
         text: "迁移后吞吐与基线持平"
         added: "2026-08-10"
-        by: "ai:skill.meridian"
+        by: "我"
     history:
       - version: 1
         text: "KV cache 量化会拖慢前缀读取(推测)"

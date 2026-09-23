@@ -66,7 +66,7 @@ describe('review queue on the fixture library', () => {
     expect(receipt).toEqual({ id: valid!.id, status: 'applied', reason: null })
     expect(claimOn(store, 'topics/kv-cache-quantization', 'prefix-schedule')).toMatchObject({
       version: 3, by: 'ai:skill.meridian', since: TODAY,
-      history: [{ version: 1 }, { version: 2, by: 'ai:skill.meridian' }],
+      history: [{ version: 1 }, { version: 2, by: '我' }],
     })
     const change = store.listChanges()[0]!
     expect(change).toMatchObject({ source: '实验', title: `Wiki · ${valid!.proposal!.title}` })

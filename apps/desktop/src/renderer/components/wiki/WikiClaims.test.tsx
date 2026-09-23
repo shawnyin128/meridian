@@ -29,6 +29,7 @@ const PAGE = {
     {
       id: 'knee', text: '拐点在宽度 6', version: 2, since: '2026-06-09', by: '我',
       evidence: [
+        { evidence: { kind: 'personal', text: '直觉' }, added: '2026-05-02', by: '我' },
         { evidence: { kind: 'experiment', project: 'draft', node: 'exp1', text: '单请求实测' }, added: '2026-06-09', by: '我', title: 'draft 效率' },
         { evidence: { kind: 'source', paper: 'papers/eagle', page: 7, quote: 'wide trees amortize', highlight: 'h-3' }, added: '2026-09-14', by: 'ai:skill.meridian', title: 'EAGLE-2' },
       ],
@@ -37,7 +38,7 @@ const PAGE = {
     },
     {
       id: 'plain', text: '另一条结论', version: 1, since: '2026-09-01', by: 'ai:skill.meridian',
-      evidence: [{ evidence: { kind: 'personal', text: '直觉' }, added: '2026-09-01', by: '我' }],
+      evidence: [{ evidence: { kind: 'experiment', project: 'draft', node: 'exp2', text: '批量实测' }, added: '2026-09-01', by: 'ai:skill.meridian', title: 'draft 效率' }],
       conflicts: [], history: [],
     },
   ],
@@ -91,11 +92,11 @@ describe('WikiClaims', () => {
     expect(knee.querySelector('.wkclaim-meta')!.textContent).toBe('v26月9日我')
     expect(host.querySelector('[data-claim="plain"] .wkclaim-by')!.textContent).toBe('agent')
     expect([...knee.querySelectorAll('.wkclaim-evidence')].map((li) => li.textContent))
-      .toEqual(['实验draft 效率exp1单请求实测', '证据EAGLE-2 p.7wide trees amortize'])
+      .toEqual(['个人判断直觉', '实验draft 效率exp1单请求实测', '证据EAGLE-2 p.7wide trees amortize'])
     expect(knee.classList.contains('wkclaim--conflict')).toBe(true)
     expect(host.querySelector('[data-claim="plain"]')!.classList.contains('wkclaim--conflict')).toBe(false)
     expect(knee.querySelector('.wkclaim-conflict')!.textContent).toBe('冲突批量场景仍净赚批量下拐点后移处理冲突')
-    expect(host.querySelector('[data-claim="plain"] .wkclaim-evidence')!.textContent).toBe('个人判断直觉')
+    expect(host.querySelector('[data-claim="plain"] .wkclaim-evidence')!.textContent).toBe('实验draft 效率exp2批量实测')
     expect(knee.querySelector('.diff')).toBeNull()
     act(() => knee.querySelector<HTMLButtonElement>('.wkclaim-history')!.click())
     expect([...knee.querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual(['- v1 · 5月2日 · 树宽收益递减', '+ v2 · 6月9日 · 拐点在宽度 6'])

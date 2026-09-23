@@ -10,7 +10,7 @@
    "trigger": { "kind": "experiment", "project": "draft", "node": "prefix" },
    "title": "前缀复用实验回流,修订「前缀共调度」这条结论",
    "rationale": "前缀命中率 0.8 的配置下重跑了吞吐,结论的适用条件需要写进去。",
-   "base": { "topics/kv-cache-quantization": { "fm": "a98ad518ac679afb", "body": "483703e7ac4cf720" } },
+   "base": { "topics/kv-cache-quantization": { "fm": "4cebdb0aa5192004", "body": "483703e7ac4cf720" } },
    "ops": [
     {
      "op": "reviseClaim",
