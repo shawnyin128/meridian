@@ -321,6 +321,9 @@ export function ProjectDetail({
     void writeProject(op, note, notify)
   }
 
+  /** Persists a drag-reordering of the task list, shared by the plan's task rows and the Gantt's labels. */
+  const reorderTasks = (order: string[]) => { void writeProject(projectApi.reorderTasks(projectId, order)) }
+
   const chooseLocalWorkspace = async () => {
     const root = await appMenu.chooseWorkspaceRoot()
     if (root !== null) setLocalPath(root)
@@ -600,6 +603,7 @@ export function ProjectDetail({
             projectApi.updateMilestone(projectId, milestoneId, { date }),
             m.project.plan.rescheduledTo(fmt.date(date)), toast,
           )}
+          onReorderTasks={reorderTasks}
           onNewTask={startTask} onNewMilestone={startMilestone}
           newActionRef={ganttAdd} milestoneLaneRef={msLane}
         />
@@ -652,6 +656,7 @@ export function ProjectDetail({
               onDeleteTask={(taskId) => applyWrite(
                 projectApi.deleteTask(projectId, taskId), m.project.plan.taskDeleted,
               )}
+              onReorderTasks={reorderTasks}
               onUpdateMilestone={(milestoneId, patch) => writeProject(
                 projectApi.updateMilestone(projectId, milestoneId, patch), m.project.plan.milestoneUpdated,
               )}

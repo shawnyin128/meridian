@@ -34,6 +34,9 @@
 .project-plan .ddlrow .min:focus-visible{outline:0}
 @keyframes plan-row-flash{0%,100%{background:transparent}50%{background:var(--tint-warn)}}
 .project-plan .ddlrow.flash{animation:plan-row-flash .5s ease-in-out 2}
+.project-plan .task-row.dragging{opacity:.4}
+.project-plan .task-row.drag-over-before{box-shadow:0 -2px 0 0 var(--accent)}
+.project-plan .task-row.drag-over-after{box-shadow:0 2px 0 0 var(--accent)}
 .project-plan .row-delete{display:grid;place-items:center;width:24px;height:24px;margin-left:2px;padding:0;flex:0 0 auto;border:0;border-radius:var(--r-sm);background:transparent;color:var(--bad);cursor:pointer;opacity:.72}
 .project-plan .row-delete:hover,.project-plan .row-delete:focus-visible{background:var(--tint-bad);opacity:1;outline:0}
 .project-plan .row-delete svg{width:13px;height:13px}

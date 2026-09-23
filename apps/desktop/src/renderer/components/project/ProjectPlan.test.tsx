@@ -24,7 +24,8 @@ function renderPlan(tab: 'task' | 'ms') {
         listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()} milestoneLaneRef={createRef()}
         onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
         onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
-        onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onUpdateMilestone={vi.fn()}
+        onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={vi.fn()}
+        onUpdateMilestone={vi.fn()}
         onDeleteMilestone={vi.fn()} onHoverMilestone={vi.fn()}
       />
     </MessagesProvider>,
@@ -43,6 +44,11 @@ describe('ProjectPlan', () => {
     expect(output).toContain('08:00–10:00')
     expect(output).toContain('校准批次')
     expect(output).not.toContain('完成首轮校准')
+  })
+
+  it('任务行可以拖拽排序', () => {
+    const output = renderPlan('task')
+    expect(output).toContain('data-row="task-1" draggable="true"')
   })
 
   it('里程碑模式复用同一列表外壳并只显示里程碑字段', () => {

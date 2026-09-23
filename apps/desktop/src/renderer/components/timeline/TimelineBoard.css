@@ -29,6 +29,9 @@
 .gwrap{overflow-x:scroll;flex:1;min-width:0}
 .gcanvas{position:relative;border-bottom:1px solid var(--sep2)}
 .glabels .glrow:last-child{border-bottom:1px solid var(--sep2)}
+.glrow.dragging{opacity:.4}
+.glrow.drag-over-before{box-shadow:inset 0 2px 0 0 var(--accent)}
+.glrow.drag-over-after{box-shadow:inset 0 -2px 0 0 var(--accent)}
 .gdays{display:flex;position:relative;z-index:2}
 .gday{flex:0 0 auto;text-align:center;font-size:var(--fs-sm);color:var(--ter);padding:6px 0 4px;box-sizing:border-box;border-left:1px solid var(--sep2)}
 .gday:first-child{border-left:0}

@@ -1072,6 +1072,39 @@ describe('vault store on the aggregation layout', () => {
     expect(createVaultStore(vault).getProject(id).tasks[0]!.window).toBeUndefined()
   })
 
+  it('拖拽重排的任务顺序写进页面并刷新共享计划面,重开也保持这个顺序', () => {
+    store.createProject('排序项目')
+    const id = store.listProjects().find((project) => project.name === '排序项目')!.id
+    const titles = ['第一个任务', '第二个任务', '第三个任务']
+    for (const title of titles) {
+      store.createTask(id, { title, start: '2026-09-10', end: '2026-09-10', state: 'plan', priority: 'p1' })
+    }
+    const [first, second, third] = store.getProject(id).tasks
+    const reordered = [third!.id, first!.id, second!.id]
+    const after = store.reorderTasks(id, reordered)
+    expect(after.tasks.map((t) => t.id)).toEqual(reordered)
+    expect(createVaultStore(vault).getProject(id).tasks.map((t) => t.id)).toEqual(reordered)
+
+    const repo = join(vault, 'sort-repo')
+    mkdirSync(repo)
+    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    const flipped = [second!.id, third!.id, first!.id]
+    store.reorderTasks(id, flipped)
+    const plan = JSON.parse(readFileSync(join(repo, '.meridian/control/plan.json'), 'utf8')) as {
+      tasks: { id: string }[]
+    }
+    expect(plan.tasks.map((task) => task.id)).toEqual(flipped)
+  })
+
+  it('重排顺序与项目现有任务不是同一批 id 时拒绝写入', () => {
+    store.createProject('排序校验项目')
+    const id = store.listProjects().find((project) => project.name === '排序校验项目')!.id
+    store.createTask(id, { title: '唯一任务', start: '2026-09-10', end: '2026-09-10', state: 'plan', priority: 'p1' })
+    const realId = store.getProject(id).tasks[0]!.id
+    expect(() => store.reorderTasks(id, [realId, 'no-such-task'])).toThrow(/任务顺序/)
+    expect(() => store.reorderTasks(id, [])).toThrow(/任务顺序/)
+  })
+
   it('项目连接代码目录后，任务与里程碑每次修改都刷新共享计划面', () => {
     store.createProject('协议项目')
     const id = store.listProjects().find((project) => project.name === '协议项目')!.id

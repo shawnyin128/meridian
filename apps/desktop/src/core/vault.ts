@@ -314,6 +314,13 @@ export interface VaultStore {
   deleteTask(projectId: string, taskId: string): ProjectDetail
 
   /**
+   * Reorders the project with the given projectId's tasks to match `order`, its one stored task
+   * order read by both the task list and the Gantt chart. Returns the updated project. Throws if no
+   * such project exists, or `order` is not exactly a permutation of the project's current task ids.
+   */
+  reorderTasks(projectId: string, order: readonly string[]): ProjectDetail
+
+  /**
    * Appends a milestone built from the given fields to the project with the
    * given projectId, assigning it an id unused by that project, and returns
    * the updated project. Throws if no such project exists.

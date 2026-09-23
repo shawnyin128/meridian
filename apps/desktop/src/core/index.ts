@@ -65,6 +65,7 @@ import {
   ProjectMoveRelationParamsSchema,
   ProjectPaperParamsSchema,
   ProjectReorderParamsSchema,
+  ProjectReorderTasksParamsSchema,
   ProjectSetConclusionStateParamsSchema,
   ResearchIdeaCreateParamsSchema,
   ResearchIdeaDeleteParamsSchema,
@@ -469,6 +470,10 @@ registerHandler('project.updateTask', (params) => {
 registerHandler('project.deleteTask', (params) => {
   const { projectId, taskId } = ProjectDeleteTaskParamsSchema.parse(params)
   return store.deleteTask(projectId, taskId)
+})
+registerHandler('project.reorderTasks', (params) => {
+  const { projectId, order } = ProjectReorderTasksParamsSchema.parse(params)
+  return store.reorderTasks(projectId, order)
 })
 registerHandler('project.createMilestone', (params) => {
   const { projectId, milestone } = ProjectCreateMilestoneParamsSchema.parse(params)

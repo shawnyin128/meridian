@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import type {
   Milestone,
@@ -19,6 +19,7 @@ import { IconTrash } from '../icons.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { useDragReorder, type DragCardProps } from '../../hooks/useDragReorder.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
 import './ProjectPlan.css'
@@ -187,17 +188,20 @@ function PlanNameCell({ value, label, onSave }: {
   )
 }
 
-function TaskRow({ task, flash, onSave, onDelete }: {
+function TaskRow({ task, flash, dragProps, dropClass, onSave, onDelete }: {
   task: Task
   flash: boolean
+  dragProps: DragCardProps
+  dropClass: string
   onSave: (patch: TaskPatch) => Promise<boolean>
   onDelete: () => void
 }) {
   const m = useMessages()
   return (
     <StructuredRow
-      data-row={task.id}
-      className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}`}
+      data-row={task.id} {...dragProps}
+      className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}${
+        dropClass ? ` ${dropClass}` : ''}`}
     >
       <div className="task-time-cell">
         <TaskScheduleField mode="date" task={task} onSave={onSave} className="task-date-part" />
@@ -271,7 +275,7 @@ export function ProjectPlan({
   project, tab, today, creating, flashId,
   listRef, addRef, timelineAddRef, milestoneLaneRef,
   onTab, onDiscardOpenEdits, onStartTask, onStartMilestone, onCancelCreate,
-  onCreateTask, onCreateMilestone, onUpdateTask, onDeleteTask,
+  onCreateTask, onCreateMilestone, onUpdateTask, onDeleteTask, onReorderTasks,
   onUpdateMilestone, onDeleteMilestone, onHoverMilestone,
 }: {
   project: Pick<Project, 'tasks' | 'milestones'>
@@ -292,6 +296,8 @@ export function ProjectPlan({
   onCreateMilestone: (draft: MilestoneDraft) => Promise<boolean>
   onUpdateTask: (taskId: string, patch: TaskPatch) => Promise<boolean>
   onDeleteTask: (taskId: string) => void
+  /** Persists a full drag-reordering of the task list: `order` is a permutation of the project's task ids. */
+  onReorderTasks: (order: string[]) => void
   onUpdateMilestone: (
     milestoneId: string,
     patch: Partial<Pick<Milestone, 'date' | 'title' | 'done'>>,
@@ -300,6 +306,8 @@ export function ProjectPlan({
   onHoverMilestone: (milestoneId: string | null) => void
 }) {
   const m = useMessages()
+  const taskIds = useMemo(() => project.tasks.map((task) => task.id), [project.tasks])
+  const taskOrder = useDragReorder(taskIds, () => 'task', onReorderTasks)
   return (
     <section className="project-plan">
       <SectionHeading variant="content" className="flexh">{m.project.sections.plan}
@@ -328,6 +336,7 @@ export function ProjectPlan({
               {project.tasks.map((task) => (
                 <TaskRow
                   key={task.id} task={task} flash={flashId === task.id}
+                  dragProps={taskOrder.cardProps(task.id)} dropClass={taskOrder.dropClass(task.id)}
                   onSave={(patch) => onUpdateTask(task.id, patch)}
                   onDelete={() => onDeleteTask(task.id)}
                 />
