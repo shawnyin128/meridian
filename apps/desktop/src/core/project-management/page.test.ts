@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { z } from 'zod'
 import type { ProjectRecord } from './page.js'
 import {
   dropProjectPageKeys, readProjectPage, projectPageText, writeProjectFields,
@@ -159,19 +160,58 @@ describe('project page', () => {
     expect(readProjectPage(file, 'project-1').tasks.map((t) => t.id)).toEqual(['task-1', 'task-2'])
   })
 
-  it('任务带上备注,写出再读回保持一致', () => {
+  it('任务带上备注,写出再读回保持一致;备注单独存放,不进任务本身那一块', () => {
     const withNote = { ...PROJECT.tasks[0]!, note: '先跑 A/B 两组,再看结论' }
     writeProjectFields(file, { ...PROJECT, tasks: [withNote] }, ['tasks'], staging)
-    expect(readFileSync(file, 'utf8')).toContain('    note: "先跑 A/B 两组,再看结论"\n')
+    const text = readFileSync(file, 'utf8')
+    expect(text).toContain('task_notes:\n  task-1: "先跑 A/B 两组,再看结论"\n')
+    expect(text).not.toMatch(/tasks:\n(?: {2}.*\n)*? {4}note:/)
     expect(readProjectPage(file, 'project-1').tasks[0]!.note).toBe(withNote.note)
   })
 
-  it('旧页上的任务没有 note 这一键,读出来是 undefined,不补空字符串', () => {
-    // PROJECT.tasks[0] already has no note field, so the file the beforeEach wrote is itself an
-    // old-format sample; this only asserts what reading it must give.
+  it('旧页上的任务没有 note 也没有 task_notes,读出来 note 是 undefined,不补空字符串', () => {
+    // PROJECT.tasks[0] already has no note and the beforeEach-written page has no task_notes key,
+    // so the file it wrote is itself an old-format sample; this only asserts what reading it gives.
     const read = readProjectPage(file, 'project-1')
     expect('note' in read.tasks[0]!).toBe(false)
     expect(read.tasks[0]!.note).toBeUndefined()
+  })
+
+  it('0.14 版本严格的任务 schema 仍能读这一条任务,备注不会让它被拒绝', () => {
+    // Mirrors TaskSchema before `note` existed: strict, so an unrecognized key throws for that item.
+    const legacyStrictTaskSchema = z.object({
+      id: z.string(), title: z.string(), start: z.string(), end: z.string(),
+      window: z.object({ start: z.string(), end: z.string() }).strict().optional(),
+      state: z.enum(['act', 'plan', 'done']), priority: z.enum(['p0', 'p1', 'p2']),
+    }).strict()
+    const withNote = { ...PROJECT.tasks[0]!, note: '先跑 A/B 两组,再看结论' }
+    writeProjectFields(file, { ...PROJECT, tasks: [withNote] }, ['tasks'], staging)
+    // The page's own top-level object is not strict, so an old App ignores the unrecognized
+    // `task_notes` key entirely; the task item itself still has to pass the old, strict shape on
+    // its own, which it does because the note never entered that item's own fields.
+    const legacyShape = Object.fromEntries(Object.entries(withNote).filter(([k]) => k !== 'note'))
+    expect(() => legacyStrictTaskSchema.parse(legacyShape)).not.toThrow()
+    expect(readFileSync(file, 'utf8')).not.toMatch(/note:/)
+  })
+
+  it('多行、带引号反斜杠和 --- 的备注写出再读回一字不差,frontmatter 仍然收得住口', () => {
+    const tricky = [
+      '先确认基线,再改并发数。',
+      '',
+      '- 引号 "quoted" 和反斜杠 C:\\temp\\run.log',
+      '---',
+      '上面那行 --- 不是 frontmatter 的收口',
+    ].join('\n')
+    const withNote = { ...PROJECT.tasks[0]!, note: tricky }
+    writeProjectFields(file, { ...PROJECT, tasks: [withNote] }, ['tasks'], staging)
+    const rows = readFileSync(file, 'utf8').split('\n')
+    expect(rows[0]).toBe('---')
+    // The note is a single quoted-and-escaped scalar, so none of its own newlines or `---` lines
+    // land in the file as real lines that could end the frontmatter early.
+    const taskNotesAt = rows.indexOf('task_notes:')
+    expect(taskNotesAt).toBeGreaterThan(0)
+    expect(rows[taskNotesAt + 1]).toMatch(/^ {2}task-1: ".*"$/)
+    expect(readProjectPage(file, 'project-1').tasks[0]!.note).toBe(tricky)
   })
 
   it('记一条科研记录只多出那一行', () => {
