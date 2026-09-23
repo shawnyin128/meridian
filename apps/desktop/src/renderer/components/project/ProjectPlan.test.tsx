@@ -11,15 +11,19 @@ const task: Task = {
   id: 'task-1', title: '校准批次', start: '2026-09-16', end: '2026-09-16',
   window: { start: '08:00', end: '10:00' }, priority: 'p1', state: 'act',
 }
+const rangeTask: Task = {
+  id: 'task-2', title: '跨天联调', start: '2026-09-16', end: '2026-09-20',
+  priority: 'p2', state: 'plan',
+}
 const milestone: Milestone = {
   id: 'milestone-1', date: '2026-09-20', title: '完成首轮校准', done: false,
 }
 
-function renderPlan(tab: 'task' | 'ms') {
+function renderPlan(tab: 'task' | 'ms', tasks: Task[] = [task]) {
   return renderToStaticMarkup(
     <MessagesProvider>
       <ProjectPlan
-        project={{ tasks: [task], milestones: [milestone] }} tab={tab} today="2026-09-16"
+        project={{ tasks, milestones: [milestone] }} tab={tab} today="2026-09-16"
         creating={null} flashId={null}
         listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()} milestoneLaneRef={createRef()}
         onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
@@ -43,6 +47,15 @@ describe('ProjectPlan', () => {
     expect(output).toContain('08:00–10:00')
     expect(output).toContain('校准批次')
     expect(output).not.toContain('完成首轮校准')
+  })
+
+  it('单日和跨天任务的日期栏共用同一个网格列,不再包在同一个容器里', () => {
+    const output = renderPlan('task', [task, rangeTask])
+    expect(output).not.toContain('task-time-cell')
+    expect(output).toContain('9月16日')
+    expect(output).toContain('9月16日–9月20日')
+    expect(output).toContain('class="schedule-trigger task-date-part"')
+    expect(output).toContain('class="schedule-trigger task-clock-part"')
   })
 
   it('里程碑模式复用同一列表外壳并只显示里程碑字段', () => {

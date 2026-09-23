@@ -199,10 +199,8 @@ function TaskRow({ task, flash, onSave, onDelete }: {
       data-row={task.id}
       className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}`}
     >
-      <div className="task-time-cell">
-        <TaskScheduleField mode="date" task={task} onSave={onSave} className="task-date-part" />
-        <TaskScheduleField mode="time" task={task} onSave={onSave} className="task-clock-part" />
-      </div>
+      <TaskScheduleField mode="date" task={task} onSave={onSave} className="task-date-part" />
+      <TaskScheduleField mode="time" task={task} onSave={onSave} className="task-clock-part" />
       <PriorityPicker
         value={task.priority} className={`prtag ${task.priority} plan-cell`}
         title={m.project.plan.editPriority}
