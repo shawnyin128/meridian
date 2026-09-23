@@ -867,6 +867,8 @@ export function createFixtureStore(
         agentSessions: [],
       }
       projectById.set(project.id, project)
+      // Front of whatever order already exists, so a new project outranks the manual order too.
+      projectOrder = [project.id, ...(projectOrder ?? [])]
     },
 
     getProject(id) {

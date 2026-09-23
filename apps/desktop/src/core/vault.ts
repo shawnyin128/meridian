@@ -251,7 +251,8 @@ export interface VaultStore {
 
   /**
    * Creates a project carrying the given name, assigns it an id unused by the
-   * vault, and appends it after the projects already there. It starts active,
+   * vault, and adds it to the front of the projects already there, ahead of
+   * any manual order set by reorderProjects. It starts active,
    * takes the vault's today as its start date and a due date no earlier than
    * that, and carries placeholder text for its topic and its focus, both of
    * which the screens show before you have chosen either. It holds no tasks,

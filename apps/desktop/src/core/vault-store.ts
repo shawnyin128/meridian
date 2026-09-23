@@ -1358,6 +1358,9 @@ export function createVaultStore(
       }
       projectById.set(project.id, project)
       writePage(projectFile(project.id), projectPageText(project), staging)
+      // Front of whatever order already exists, so a new project outranks the manual order too.
+      state = { ...state, projectOrder: [project.id, ...(state.projectOrder ?? [])] }
+      writeJson(stateFile, state, staging)
     },
 
     putProject(project) {

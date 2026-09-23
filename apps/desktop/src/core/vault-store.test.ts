@@ -551,14 +551,18 @@ describe('vault store', () => {
     })).toThrow(/列名重复/)
   })
 
-  it('手动设的项目顺序存进 state.json,重开还在;坏 id 被丢弃', () => {
+  it('新项目排最前;手动设的项目顺序存进 state.json 且新项目也排在它最前,重开还在;坏 id 被丢弃', () => {
     store.createProject('顺序甲')
     store.createProject('顺序乙')
-    const [a, b] = store.listProjects().filter((p) => p.name === '顺序甲' || p.name === '顺序乙')
-    expect(store.listProjects().map((p) => p.id)).toEqual([a!.id, b!.id])
-    store.reorderProjects([b!.id, 'no-such-project'])
+    const a = store.listProjects().find((p) => p.name === '顺序甲')!
+    const b = store.listProjects().find((p) => p.name === '顺序乙')!
+    expect(store.listProjects().map((p) => p.id)).toEqual([b.id, a.id])
+    store.reorderProjects([a!.id, b!.id, 'no-such-project'])
     const reordered = createVaultStore(vault).listProjects().map((p) => p.id)
-    expect(reordered.indexOf(b!.id)).toBeLessThan(reordered.indexOf(a!.id))
+    expect(reordered.indexOf(a!.id)).toBeLessThan(reordered.indexOf(b!.id))
+    store.createProject('顺序丙')
+    const c = store.listProjects().find((p) => p.name === '顺序丙')!
+    expect(store.listProjects()[0]!.id).toBe(c.id)
   })
 
   it('论文推送配置有默认值，写进 state.json 后重开仍保留', () => {

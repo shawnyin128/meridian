@@ -36,8 +36,7 @@ describe('project recommendation service', () => {
       cachedIntents: 0, failedIntents: 0,
     })
     expect(recommend).toHaveBeenCalledTimes(2)
-    // project.papers now links newest-first, so a tie in cluster score now breaks toward the
-    // paper linked last instead of the one linked first.
+    // project.papers is newest-first, so a tie in cluster score goes to the most recently linked paper.
     expect(recommend.mock.calls.map(([positive]) => positive.map((seed) => seed.paperId))).toEqual([
       ['ARXIV:2605.29343'],
       ['ARXIV:2505.04560'],

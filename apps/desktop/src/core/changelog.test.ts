@@ -326,7 +326,7 @@ describe('change log', () => {
 
   it('新建的东西撤销之后就不在了,删掉的东西撤销之后回来了', () => {
     store.createProject('要撤销掉的项目')
-    const created = store.listProjects().at(-1)!.id
+    const created = store.listProjects()[0]!.id
     store.undoChange(recorded()[0]!.id)
     expect(store.listProjects().map((p) => p.id)).not.toContain(created)
 

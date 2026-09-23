@@ -668,7 +668,7 @@ describe('fixture store', () => {
 
   it('新建的项目进总览,删掉的离开总览', () => {
     store.createProject('宽树消融')
-    const id = store.listProjects().at(-1)!.id
+    const id = store.listProjects()[0]!.id
     const added = store.overviewProjects().find((p) => p.id === id)
     expect(added).toMatchObject({ name: '宽树消融', status: '进行中' })
     expect(added?.events).toEqual(store.getProject(id).events)
@@ -694,7 +694,7 @@ describe('fixture store', () => {
     store.createProject('宽树消融')
 
     expect(store.listProjects().map((p) => p.id)).toHaveLength(before + 1)
-    const id = store.listProjects().at(-1)!.id
+    const id = store.listProjects()[0]!.id
     expect(id).not.toBe('')
     const created = store.getProject(id)
     expect(() => ProjectDetailSchema.parse(created)).not.toThrow()
@@ -726,7 +726,8 @@ describe('fixture store', () => {
     const fixtureIds = new Set(store.listProjects().map((p) => p.id))
     store.createProject('甲')
     store.createProject('乙')
-    const added = store.listProjects().slice(-2).map((p) => p.id)
+    // New projects go to the front of the list, so they are the first two, not the last two.
+    const added = store.listProjects().slice(0, 2).map((p) => p.id)
     expect(new Set(added).size).toBe(2)
     expect(added.some((id) => fixtureIds.has(id))).toBe(false)
   })
