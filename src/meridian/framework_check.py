@@ -32,7 +32,6 @@ FRAMEWORK_CHECK_CATEGORIES = [
     "Artifact Boundary",
     "User Profile",
     "Lab State",
-    "Docs And Evals",
 ]
 MCP_RUNTIME_CATEGORY = "MCP Runtime"
 PRODUCT_SKILLS = {"meridian", "wiki", "lab", "meridian-coding"}
@@ -138,7 +137,6 @@ def run_framework_check(
         _artifact_boundary_category(library_root=library_root, wiki_root=wiki_root),
         _user_profile_category(),
         _lab_state_category(lab_root),
-        _docs_and_evals_category(root),
     ]
     if include_mcp_runtime:
         categories.append(_mcp_runtime_setup_category(root))
@@ -900,27 +898,6 @@ def _user_profile_category() -> FrameworkCategory:
                 item.code,
                 item.message,
                 "Run Meridian setup/status to migrate the research-agent principles without deleting user text.",
-            )
-    return _category(category, findings)
-
-
-def _docs_and_evals_category(root: Path) -> FrameworkCategory:
-    findings: list[FrameworkFinding] = []
-    category = "Docs And Evals"
-    required_paths = [
-        root / "eval/cases/meridian_skill_behavior_quality.jsonl",
-        root / "eval/rubrics/meridian_skill_behavior_quality.md",
-    ]
-    for path in required_paths:
-        if not path.exists():
-            _add(
-                findings,
-                category,
-                "degraded",
-                "manual",
-                "missing_release_surface",
-                f"Expected release/framework surface is missing: {_rel(path, root)}.",
-                "Restore the doc or eval asset, or update the framework check when the surface changes.",
             )
     return _category(category, findings)
 

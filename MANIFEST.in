@@ -5,11 +5,8 @@ include .claude-plugin/marketplace.json
 include pyproject.toml
 graft src
 graft plugins
-graft eval/cases
-graft eval/rubrics
 prune .arbor
 prune .git
-prune eval/runs
 prune wiki
 global-exclude __pycache__/*
 global-exclude *.py[cod]
