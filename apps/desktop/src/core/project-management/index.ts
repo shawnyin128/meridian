@@ -10,7 +10,9 @@ export {
   readProjectPage,
   writeProjectFields,
 } from './page.js'
-export type { ProjectRecord } from './page.js'
+export type { ProjectRecord, VerifiedConclusion } from './page.js'
+export { concludedNodes, conclusionFingerprint, projectConclusions } from './conclusions.js'
+export type { ProjectClaim } from './conclusions.js'
 export { overviewResearch, placeNode } from './research-graph.js'
 export {
   PROJECT_PLAN_SCHEMA,

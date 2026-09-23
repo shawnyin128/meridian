@@ -191,6 +191,8 @@ export const project = {
     call<ProjectDetail>('project.setConclusionState', { projectId, conclusionId, state }),
   deleteConclusion: (projectId: string, conclusionId: string) =>
     call<ProjectDetail>('project.deleteConclusion', { projectId, conclusionId }),
+  verifyConclusion: (projectId: string, node: string) =>
+    call<ProjectDetail>('project.verifyConclusion', { projectId, node }),
 }
 
 export const changelog = {

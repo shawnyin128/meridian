@@ -33,8 +33,8 @@ import {
   renamedOptions, restoredColumn, retypedColumn,
 } from './paper-library/index.js'
 import {
-  chatSource, conclusionCounts, MANUAL_SOURCE, overviewResearch, placeNode,
-  readWorkspaceAgentIdeas, withProjectLinks,
+  chatSource, concludedNodes, conclusionCounts, conclusionFingerprint, MANUAL_SOURCE, overviewResearch, placeNode,
+  projectConclusions, readWorkspaceAgentIdeas, withProjectLinks, type VerifiedConclusion,
 } from './project-management/index.js'
 import { inboxFields, unseenPapers } from './inbox/dedup.js'
 import {
@@ -47,7 +47,7 @@ import { createResearchIdea, updateResearchIdea } from './research-ideas/index.j
 import type { MetadataFill, VaultOps, VaultStore } from './vault.js'
 import { digestOf } from './wiki-proposals.js'
 import {
-  applyProposal, checkBody, conclusionClaims, describeOp, HUMAN, isPaper, pageVersion, recordText, touchedPages,
+  applyProposal, checkBody, conclusionClaims, describeOp, projectClaims, HUMAN, isPaper, pageVersion, recordText, touchedPages,
   wikiAggregation, wikiCards, wikiHome, wikiPaper, wikiSearchIndex, wikiSignals,
   type ClaimWorld, type WikiData, type WikiPaperRecord,
 } from './wiki/index.js'
@@ -74,7 +74,9 @@ type SeededChange = Omit<ChangeEntry, 'undone' | 'undoable' | 'archived'>
 type PaperRecord = Omit<PaperRow, 'readState' | 'projects'> & { sourceId: string }
 
 /** Fixture projects retain only fields that a project page can persist. */
-type FixtureProject = Omit<ProjectDetail, 'paperCount' | 'paperTitles' | 'conclusions' | 'conclusionClaims'>
+type FixtureProject = Omit<
+  ProjectDetail, 'paperCount' | 'paperTitles' | 'conclusions' | 'conclusionClaims' | 'projectConclusions'
+> & { verifiedConclusions?: VerifiedConclusion[] }
 
 /** Stored inbox recommendation: cross-boundary fields plus topics written to the paper page on import. */
 type InboxRecord = InboxEntry & {
@@ -241,12 +243,15 @@ export function createFixtureStore(
       return paper === undefined ? [] : [[id, paper.title]]
     }))
     const claims = conclusionClaims(wiki, project.id)
+    const stored = structuredClone(project)
+    delete stored.verifiedConclusions
     return {
-      ...structuredClone(project),
+      ...stored,
       paperTitles,
       paperCount: Object.keys(paperTitles).length,
       conclusions: conclusionCounts(project.conclusionList),
       ...(Object.keys(claims).length === 0 ? {} : { conclusionClaims: claims }),
+      projectConclusions: projectConclusions(project, project.graph, projectClaims(wiki, project.id)),
     }
   }
 
@@ -324,8 +329,15 @@ export function createFixtureStore(
     by,
     project: (id) => {
       const project = projectById.get(id)
-      return project === undefined ? undefined
-        : { nodes: project.graph.nodes.map((n) => n.id), conclusions: project.conclusionList.map((c) => c.id) }
+      if (project === undefined) return undefined
+      const concluded = concludedNodes(project.graph)
+      const verified = new Map((project.verifiedConclusions ?? []).map((v) => [v.node, v.fingerprint]))
+      return {
+        nodes: project.graph.nodes.map((n) => n.id),
+        conclusions: project.conclusionList.map((c) => c.id),
+        concluded: concluded.map((n) => n.id),
+        verified: concluded.filter((n) => verified.get(n.id) === conclusionFingerprint(n.conclusion)).map((n) => n.id),
+      }
     },
     reading: (paper) => {
       const reading = readings.get(paper.slice(PAPER_PAGE.length))
@@ -1205,6 +1217,20 @@ export function createFixtureStore(
         conclusionList: project.conclusionList.map((conclusion) => (
           conclusion.id === conclusionId ? { ...conclusion, state } : conclusion
         )),
+      }
+      projectById.set(projectId, nextProject)
+      return detailOf(nextProject)
+    },
+
+    verifyConclusion(projectId, node) {
+      const project = projectById.get(projectId)
+      if (!project) throw new Error(`项目不存在:${projectId}`)
+      const held = concludedNodes(project.graph).find((n) => n.id === node)
+      if (held === undefined) throw new Error(`节点没有可验证的结论:${node}`)
+      const entry = { node, fingerprint: conclusionFingerprint(held.conclusion), date: today() }
+      const nextProject = {
+        ...project,
+        verifiedConclusions: [...(project.verifiedConclusions ?? []).filter((v) => v.node !== node), entry],
       }
       projectById.set(projectId, nextProject)
       return detailOf(nextProject)

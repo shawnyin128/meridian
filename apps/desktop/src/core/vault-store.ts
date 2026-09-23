@@ -26,8 +26,8 @@ import {
   type PaperWrite,
 } from './paper-library/index.js'
 import {
-  chatSource, conclusionCounts, MANUAL_SOURCE, overviewResearch, placeNode,
-  projectPageText, projectWorkspaceRoot, projectWorkspaceSsh, readProjectPage,
+  chatSource, concludedNodes, conclusionCounts, conclusionFingerprint, MANUAL_SOURCE, overviewResearch, placeNode,
+  projectConclusions, projectPageText, projectWorkspaceRoot, projectWorkspaceSsh, readProjectPage,
   readProjectWorkspace, readWorkspaceAgentIdeas, withProjectLinks, writeProjectFields,
   writeProjectWorkspaceState, type ProjectRecord,
 } from './project-management/index.js'
@@ -53,7 +53,7 @@ import type { MetadataFill, VaultOps, VaultStore } from './vault.js'
 import {
   appendEntry, applyProposal, checkBody, checkGenerated, conclusionClaims, createAggregationPage, describeOp,
   entryLine, fillGenerated, generatedChildren, generatedClaims, generatedMissing, generatedTable, HUMAN,
-  isClaimOp, isPaper, pageVersion,
+  isClaimOp, isPaper, pageVersion, projectClaims,
   readWikiData, readWikiPage, removeClaim, removeMembership, setAggregationMetadata, setBody, setBodyAndTrust,
   setClaim, setColumns, setMembership, setParents, setUpdated, touchedPages, wikiAggregation, wikiCards,
   wikiHome, wikiPaper, wikiSearchIndex, wikiSignals,
@@ -589,8 +589,16 @@ export function createVaultStore(
     project: (id) => {
       const project = projectById.get(id)
       if (project === undefined) return undefined
-      const nodes = [...project.graph.nodes, ...readProjectWorkspace(project)?.graph?.nodes ?? []]
-      return { nodes: nodes.map((n) => n.id), conclusions: project.conclusionList.map((c) => c.id) }
+      const workspace = readProjectWorkspace(project)?.graph
+      const nodes = [...project.graph.nodes, ...workspace?.nodes ?? []]
+      const concluded = workspace === undefined ? [] : concludedNodes(workspace)
+      const verified = new Map((project.verifiedConclusions ?? []).map((v) => [v.node, v.fingerprint]))
+      return {
+        nodes: nodes.map((n) => n.id),
+        conclusions: project.conclusionList.map((c) => c.id),
+        concluded: concluded.map((n) => n.id),
+        verified: concluded.filter((n) => verified.get(n.id) === conclusionFingerprint(n.conclusion)).map((n) => n.id),
+      }
     },
     reading: (paper) => {
       const reading = readingOf(paper.slice(PAPER_PAGE.length))
@@ -707,6 +715,7 @@ export function createVaultStore(
     delete stored.created
     delete stored.workspaceRoot
     delete stored.workspaceSsh
+    delete stored.verifiedConclusions
     const paperTitles = Object.fromEntries(stored.papers.flatMap((id) => {
       const paper = papers.get(id)
       return paper === undefined ? [] : [[id, paper.title]]
@@ -719,6 +728,9 @@ export function createVaultStore(
       paperCount: Object.keys(paperTitles).length,
       conclusions: conclusionCounts(stored.conclusionList),
       ...(Object.keys(claims).length === 0 ? {} : { conclusionClaims: claims }),
+      projectConclusions: projectConclusions(
+        project, workspace?.graph ?? project.graph, projectClaims(wikiData, project.id),
+      ),
       ...(workspace === undefined ? {} : { workspace }),
     }
   }
@@ -1656,6 +1668,17 @@ export function createVaultStore(
           conclusion.id === conclusionId ? { ...conclusion, state } : conclusion
         )),
       }, ['conclusionList'])
+    },
+
+    verifyConclusion(projectId, node) {
+      const project = projectOf(projectId)
+      const held = concludedNodes(readProjectWorkspace(project)?.graph ?? project.graph).find((n) => n.id === node)
+      if (held === undefined) throw new Error(`节点没有可验证的结论:${node}`)
+      const entry = { node, fingerprint: conclusionFingerprint(held.conclusion), date: today() }
+      return writeProject({
+        ...project,
+        verifiedConclusions: [...(project.verifiedConclusions ?? []).filter((v) => v.node !== node), entry],
+      }, ['verifiedConclusions'], false)
     },
 
     deleteConclusion(projectId, conclusionId) {

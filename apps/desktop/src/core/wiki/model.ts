@@ -283,6 +283,35 @@ export function conclusionClaims(data: WikiData, project: string): Record<string
 }
 
 /**
+ * Returns every claim whose experiment evidence cites a node or a legacy conclusion of project
+ * `project`, once per cited node or conclusion, in page id then page order: the page and its title,
+ * the claim id and version, whether it has an open conflict, and the node or conclusion cited.
+ */
+export function projectClaims(data: WikiData, project: string): {
+  page: string; title: string; claim: string; version: number; conflicted: boolean; node?: string; conclusion?: string
+}[] {
+  return ids(data).flatMap((id) => {
+    const page = data.pages[id]!
+    if (isPaper(page)) return []
+    return readableClaims(page).flatMap((claim) => {
+      const seen = new Set<string>()
+      return claim.evidence.flatMap((e) => {
+        if (e.kind !== 'experiment' || e.project !== project) return []
+        const key = JSON.stringify([e.node ?? '', e.conclusion ?? ''])
+        if (seen.has(key)) return []
+        seen.add(key)
+        return [{
+          page: id, title: page.fm.title, claim: claim.id, version: claim.version,
+          conflicted: (claim.conflicts ?? []).length > 0,
+          ...(e.node === undefined ? {} : { node: e.node }),
+          ...(e.conclusion === undefined ? {} : { conclusion: e.conclusion }),
+        }]
+      })
+    })
+  })
+}
+
+/**
  * Returns the aggregation `id` in `data` as the contract shows it: aggregationView's fields plus its
  * claims (wikiClaims, with `projects` naming projects) and `version`. Throws if `id` is not an aggregation.
  */

@@ -130,6 +130,18 @@ describe('project page', () => {
     expect('conclusions' in read).toBe(false)
   })
 
+  it('验证过的结论单独成一项加在 frontmatter 末尾,别的字节不动;读不了的一条跳过', () => {
+    const before = readFileSync(file, 'utf8')
+    const verified = [{ node: 't.wide', fingerprint: '0123456789abcdef', date: '2026-09-21' }]
+    writeProjectFields(file, { ...PROJECT, verifiedConclusions: verified }, ['verifiedConclusions'], staging)
+    const entry = 'verified_conclusions:\n  - node: "t.wide"\n    fingerprint: "0123456789abcdef"\n    date: "2026-09-21"\n'
+    expect(readFileSync(file, 'utf8')).toBe(before.replace('\n---\n\n# ', `\n${entry}---\n\n# `))
+    expect(readProjectPage(file, 'project-1').verifiedConclusions).toEqual(verified)
+
+    writePage(file, readFileSync(file, 'utf8').replace(entry, `${entry}  - node: "t.bad"\n    fingerprint: "nope"\n    date: "2026-09-21"\n`), staging)
+    expect(readProjectPage(file, 'project-1').verifiedConclusions).toEqual(verified)
+  })
+
   it('只改 papers 那几行,别的字节不动', () => {
     const before = readFileSync(file, 'utf8')
     writeProjectFields(file, { ...PROJECT, papers: ['2401.18079'] }, ['papers'], staging)

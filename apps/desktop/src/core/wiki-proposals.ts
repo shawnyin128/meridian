@@ -153,7 +153,7 @@ export function createWikiProposals({ store, pdf, now }: {
       if (!store.listProjects().some((p) => p.id === id)) return
       const held = store.getProject(id)
       titles[`projects/${id}`] = held.name
-      const node = held.graph.nodes.find((n) => n.id === part.node)
+      const node = [...held.graph.nodes, ...held.workspace?.graph?.nodes ?? []].find((n) => n.id === part.node)
       if (node !== undefined) titles[`projects/${id}#${node.id}`] = node.label
       const conclusion = held.conclusionList.find((c) => c.id === part.conclusion)
       if (conclusion !== undefined) titles[`projects/${id}#${conclusion.id}`] = conclusion.text

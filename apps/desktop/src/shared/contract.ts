@@ -129,6 +129,27 @@ export const ConclusionSchema = z.object({
   paper: z.string().optional(),
 }).strict()
 
+/**
+ * One of a project's conclusions as the Conclusions view shows it; derived by Core, never stored.
+ * A node conclusion has `node` (its id is the node id) and is `pending` until the user verifies the
+ * text and evidence it has now; a legacy entry of `conclusionList` has `source` and reads as verified.
+ * Either is `conflicting` while a Wiki claim written from it has an open conflict. `tasks` are the
+ * node's plan tasks, `experiments` its evidence, and `wiki` the claims citing it, in page order.
+ */
+export const ProjectConclusionSchema = z.object({
+  id: z.string(),
+  node: z.string().optional(),
+  source: z.string().optional(),
+  text: z.string(),
+  date: IsoDate.optional(),
+  state: ConclusionStateSchema,
+  tasks: z.array(z.object({ id: z.string(), title: z.string() }).strict()),
+  experiments: z.array(z.object({ id: z.string(), title: z.string() }).strict()),
+  wiki: z.array(z.object({
+    page: z.string(), title: z.string(), claim: z.string(), version: z.number().int().positive(),
+  }).strict()),
+}).strict()
+
 /** Derived project conclusion counts by verification bucket. */
 export const ConclusionsSchema = z.object({
   verified: z.number().int(),
@@ -189,6 +210,14 @@ export const GraphNodeSchema = z.object({
   markdownPath: z.string().optional(),
   markdownAnchor: z.string().optional(),
   writebacks: z.array(z.object({ page: z.string(), text: z.string(), date: IsoDate }).strict()),
+  /** Plan task ids a coding agent linked to this node; a task belongs to at most one node. */
+  tasks: z.array(z.string()).optional(),
+  /** The finding an agent recorded once the node closed, with the experiments that show it. */
+  conclusion: z.object({
+    text: z.string(),
+    date: IsoDate.optional(),
+    evidence: z.array(z.object({ id: z.string(), title: z.string() }).strict()),
+  }).strict().optional(),
 }).strict()
 
 /**
@@ -296,6 +325,8 @@ export const ProjectDetailSchema = z.object({
   conclusionList: z.array(ConclusionSchema),
   /** Claim refs whose experiment evidence cites a conclusion, keyed by conclusion id; derived by Core, never stored. */
   conclusionClaims: z.record(z.string(), z.array(z.string())).optional(),
+  /** Node and legacy conclusions, newest first; derived by Core, never stored. */
+  projectConclusions: z.array(ProjectConclusionSchema).optional(),
   /** Derived count of referenced papers still present in the vault. */
   paperCount: z.number().int(),
   /** Paper IDs recorded on the project page, including papers currently in trash. */
@@ -879,7 +910,8 @@ export const ProjectDeleteParamsSchema = z.object({ id: z.string() }).strict()
 /** Writable project fields; `block: null` clears the blocker. */
 const ProjectFieldsSchema = ProjectDetailSchema.omit({
   id: true, tasks: true, milestones: true, events: true, relations: true, attachments: true,
-  conclusions: true, conclusionList: true, conclusionClaims: true, paperCount: true, papers: true,
+  conclusions: true, conclusionList: true, conclusionClaims: true, projectConclusions: true,
+  paperCount: true, papers: true,
   paperTitles: true, graph: true, agentSessions: true, block: true,
   conflictPage: true, workspace: true,
 }).extend({
@@ -1942,6 +1974,12 @@ export const ProjectDeleteConclusionParamsSchema = z.object({
   conclusionId: z.string(),
 }).strict()
 
+/** Marks the conclusion node `node` currently holds as verified by the user. */
+export const ProjectVerifyConclusionParamsSchema = z.object({
+  projectId: z.string(),
+  node: z.string(),
+}).strict()
+
 /** Metadata extraction and current stage for one upload. */
 export const MetadataJobSchema = z.object({
   id: z.string(),
@@ -2061,6 +2099,7 @@ export type PaperColumn = PaperColumns['custom'][number]
 export type ReadState = z.infer<typeof ReadStateSchema>
 export type ProjectStatus = z.infer<typeof ProjectStatusSchema>
 export type Conclusion = z.infer<typeof ConclusionSchema>
+export type ProjectConclusion = z.infer<typeof ProjectConclusionSchema>
 export type ConclusionState = z.infer<typeof ConclusionStateSchema>
 export type Conclusions = z.infer<typeof ConclusionsSchema>
 export type PaperFields = z.infer<typeof PaperFieldsSchema>
@@ -2260,6 +2299,7 @@ export const CONTRACT_METHODS = [
   'project.createConclusion',
   'project.setConclusionState',
   'project.deleteConclusion',
+  'project.verifyConclusion',
   'inbox.list',
   'inbox.dismiss',
   'inbox.readLater',

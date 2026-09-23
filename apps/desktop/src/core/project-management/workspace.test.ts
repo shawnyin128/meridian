@@ -192,6 +192,40 @@ describe('project workspace protocol', () => {
     })
   })
 
+  it('读出节点关联的任务和结论,证据按实验标题显示;0.0.14 导出的节点两样都没有', () => {
+    const root = temporary()
+    const held = project(root)
+    writeProjectWorkspace(held)
+    mkdirSync(join(root, '.meridian/graph'), { recursive: true })
+    const node = (id: string, state: string) => ({ id, title: id, state, markdown: '' })
+    writeFileSync(join(root, '.meridian/graph/graph.json'), JSON.stringify({
+      schema: 'meridian.lab.graph.v1',
+      nodes: [node('t.A', 'supported'), node('t.B', 'unresolved')],
+      edges: [],
+      node_details: {
+        't.A': {
+          tasks: ['task-1'],
+          conclusion: { text: 'Width 8 wins at B>=8', date: '2026-09-20', evidence: ['exp-1', 'exp-9'] },
+        },
+        't.B': { next_action: 'Run it.' },
+      },
+      supporting_artifacts: {
+        't.A': [{ type: 'experiment', id: 'exp-1', title: 'Width sweep', path: '.meridian/experiments/exp-1.md' }],
+      },
+    }), 'utf8')
+
+    const [concluded, open] = readProjectWorkspace(held)!.graph!.nodes
+    expect(concluded).toMatchObject({
+      tasks: ['task-1'],
+      conclusion: {
+        text: 'Width 8 wins at B>=8', date: '2026-09-20',
+        evidence: [{ id: 'exp-1', title: 'Width sweep' }, { id: 'exp-9', title: 'exp-9' }],
+      },
+    })
+    expect(open).not.toHaveProperty('tasks')
+    expect(open).not.toHaveProperty('conclusion')
+  })
+
   it('新版本写进清单与科研记录的新增字段被忽略,科研图与记录照常显示', () => {
     const root = temporary()
     const held = project(root)

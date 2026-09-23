@@ -2184,6 +2184,7 @@ describe('fixture store', () => {
       'project.createConclusion': () => store.createConclusion('draft', '新结论', {}),
       'project.setConclusionState': () => store.setConclusionState('draft', 'c1', 'pending'),
       'project.deleteConclusion': () => store.deleteConclusion('draft', 'c2'),
+      'project.verifyConclusion': () => store.verifyConclusion('draft', 'knee'),
       'delivery.settings': () => store.deliverySettings(),
       'delivery.updateSettings': () => store.setDeliverySettings({ maxItemsPerRun: 12 }),
       'search.query': () => store.search('draft'),

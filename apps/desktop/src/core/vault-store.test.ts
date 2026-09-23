@@ -1102,6 +1102,48 @@ describe('vault store on the aggregation layout', () => {
     expect(plan.tasks.map((task) => task.id)).toEqual(flipped)
   })
 
+  it('节点结论:列进项目结论,验证后是已验证并存在项目页上,写进 Wiki 后看得到页与版本,结论改了回到待验证', () => {
+    store.createProject('结论链')
+    const id = store.listProjects().find((p) => p.name === '结论链')!.id
+    const task = store.createTask(id, {
+      title: '跑宽度扫描', start: '2026-09-10', end: '2026-09-10', state: 'done', priority: 'p1',
+    }).tasks[0]!.id
+    const repo = join(vault, 'chain-repo')
+    mkdirSync(repo)
+    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    const graph = (text: string) => {
+      mkdirSync(join(repo, '.meridian/graph'), { recursive: true })
+      writeFileSync(join(repo, '.meridian/graph/graph.json'), JSON.stringify({
+        schema: 'meridian.lab.graph.v1', edges: [],
+        nodes: [{ id: 't.A', title: '宽树', state: 'supported' }, { id: 't.B', title: '前缀', state: 'unresolved' }],
+        node_details: { 't.A': { tasks: [task], conclusion: { text, date: '2026-09-09', evidence: ['exp-1'] } } },
+        supporting_artifacts: { 't.A': [{ type: 'experiment', id: 'exp-1', title: '宽度扫描' }] },
+      }))
+    }
+    graph('宽树在 B≥8 时净赚')
+    expect(store.getProject(id).projectConclusions).toEqual([{
+      id: 't.A', node: 't.A', text: '宽树在 B≥8 时净赚', date: '2026-09-09', state: 'pending',
+      tasks: [{ id: task, title: '跑宽度扫描' }], experiments: [{ id: 'exp-1', title: '宽度扫描' }], wiki: [],
+    }])
+    const write = () => store.applyProposal({ source: 'user', title: '写入 Wiki', ops: [{
+      op: 'addClaim', page: 'topics/ptq', claim: {
+        id: 'wide-b8', text: '宽树在 B≥8 时净赚', evidence: [{ kind: 'experiment', project: id, node: 't.A' }],
+      },
+    }] })
+    expect(write).toThrow(/节点 t.A 的结论还没验证/)
+    expect(() => store.verifyConclusion(id, 't.B')).toThrow(/t.B/)
+
+    store.verifyConclusion(id, 't.A')
+    expect(createVaultStore(vault).getProject(id).projectConclusions![0]!.state).toBe('verified')
+    write()
+    expect(store.getProject(id).projectConclusions![0]!.wiki).toEqual([{
+      page: 'topics/ptq', title: store.wikiAggregation('topics/ptq').title, claim: 'wide-b8', version: 1,
+    }])
+
+    graph('宽树在 B≥16 时才净赚')
+    expect(store.getProject(id).projectConclusions![0]!.state).toBe('pending')
+  })
+
   it('重排顺序与项目现有任务不是同一批 id 时拒绝写入', () => {
     store.createProject('排序校验项目')
     const id = store.listProjects().find((project) => project.name === '排序校验项目')!.id

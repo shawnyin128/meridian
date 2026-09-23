@@ -441,6 +441,13 @@ export interface VaultStore {
   deleteConclusion(projectId: string, conclusionId: string): ProjectDetail
 
   /**
+   * Records that the user verified the conclusion node `node` holds now (its text and evidence); a
+   * later change to either makes it pending again. This research-state write is not undoable. Throws
+   * when the node is not a closed node holding a conclusion.
+   */
+  verifyConclusion(projectId: string, node: string): ProjectDetail
+
+  /**
    * Returns the inbox entries a watch brought in and that have not left the
    * inbox, in vault order. Entries the same watch brought in sit next to each
    * other in that order. Each entry names the original it stands for; where
