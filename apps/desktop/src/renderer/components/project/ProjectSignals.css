@@ -7,6 +7,8 @@
   box-sizing:border-box;padding:1px 6px;border-radius:var(--r-xs);font-size:var(--fs-cap);font-weight:700;white-space:nowrap}
 .project-signal-date .date-chip{width:100%;box-sizing:border-box;padding-left:4px;padding-right:4px}
 .record-row{grid-template-columns:var(--project-signal-kind-width) var(--project-signal-date-width) minmax(0,1fr) auto}
+.record-row.with-node{grid-template-columns:var(--project-signal-kind-width) var(--project-signal-date-width) 150px minmax(0,1fr) auto}
+.record-node{display:flex;min-width:0}
 .record-text{display:flex;align-items:center;gap:6px;text-overflow:clip}
 .record-line{flex:1;min-width:0;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade)}
 .record-detail{color:var(--ter)}

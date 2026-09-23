@@ -39,8 +39,9 @@ const RECORD_TONE: Record<EventKind, 'info' | 'warn' | 'good' | 'accent' | 'mut'
 
 /**
  * One research-record row on the same columns as the project's decision rows: the kind chip, the
- * date chip, then one line holding the optional node link, the title and the muted detail, and who
- * wrote it. `node` is omitted in the node panel, whose own node would be redundant there.
+ * date chip, the node tag column, one line holding the title and the muted detail, and who wrote it.
+ * Without `onSelectNode` (the node panel, whose own node would be redundant) the node column is left
+ * out; a record without a node leaves its cell empty so titles stay aligned.
  */
 export function ProjectEventRow({
   kind, date, title, detail, node, onSelectNode, origin,
@@ -55,16 +56,20 @@ export function ProjectEventRow({
 }) {
   const m = useMessages()
   return (
-    <StructuredRow className="attnrow project-signal-columns record-row">
+    <StructuredRow className={`attnrow project-signal-columns record-row${onSelectNode === undefined ? '' : ' with-node'}`}>
       <ProjectSignalKind tone={RECORD_TONE[kind]}>{m.project.records.kind[kind]}</ProjectSignalKind>
       <ProjectSignalDate date={date} />
+      {onSelectNode === undefined ? null : (
+        <span className="record-node">
+          {node === undefined ? null : (
+            <NodeTag
+              label={node.label} hint={m.project.records.goToGraph(node.label)} fill
+              onOpen={() => onSelectNode(node.id)}
+            />
+          )}
+        </span>
+      )}
       <span className="attn-text record-text" title={detail === undefined ? title : `${title} · ${detail}`}>
-        {node === undefined || onSelectNode === undefined ? null : (
-          <NodeTag
-            label={node.label} hint={m.project.records.goToGraph(node.label)}
-            onOpen={() => onSelectNode(node.id)}
-          />
-        )}
         <span className="record-line">
           {title}
           {detail === undefined ? null : <span className="record-detail"> · {detail}</span>}
