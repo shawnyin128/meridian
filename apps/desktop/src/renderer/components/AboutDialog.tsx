@@ -4,6 +4,7 @@ import { useMessages } from '../messages/useMessages.js'
 import { DownloadRing, IconCheck } from './icons.js'
 import { ModalDialog, ModalTitle } from './ModalDialog.js'
 import { PanelClose } from './PanelClose.js'
+import { ProgressFill } from './ProgressFill.js'
 import { UpdateAction, updateLine } from './settings/AppUpdateSettings.js'
 import type { AppUpdateStatus } from '../../shared/app-update.js'
 import brandmark from '../../../resources/mark-64.png'
@@ -11,12 +12,9 @@ import './AboutDialog.css'
 
 const RELEASES = 'https://github.com/shawnyin128/meridian/releases'
 
-/** The small mark before the status line: a spinner while working, a check once current or ready. */
+/** The small mark before the status line: a spinner while checking, a check once current or ready. */
 function StatusMark({ status }: { status: AppUpdateStatus }) {
   if (status.phase === 'checking') return <DownloadRing progress={null} />
-  if (status.phase === 'downloading') {
-    return <DownloadRing progress={{ received: status.percent, total: 100 }} />
-  }
   if (status.phase === 'latest' || status.phase === 'ready') return <IconCheck />
   return null
 }
@@ -33,7 +31,10 @@ function AboutBody({ status, onClose }: { status: AppUpdateStatus; onClose: () =
           <p className="about-version">{m.shell.about.version(status.current)}</p>
         </div>
       </div>
-      <p className={`about-status is-${status.phase}`} data-about-update={status.phase}>
+      <p className={`about-status progress-host is-${status.phase}`} data-about-update={status.phase}>
+        {status.phase === 'downloading'
+          ? <ProgressFill percent={status.percent} label={updateLine(status, m)} />
+          : null}
         <StatusMark status={status} />
         <span>{updateLine(status, m)}</span>
       </p>

@@ -5,6 +5,7 @@ import { useMessages } from '../messages/useMessages.js'
 import { useBanner } from '../shell/AppShell.js'
 import { useJobs } from '../shell/useJobs.js'
 import { IconCross } from './icons.js'
+import { ProgressFill } from './ProgressFill.js'
 import './ParseProgress.css'
 
 const PROGRESS: Record<MetadataJob['step'], number> = {
@@ -43,13 +44,8 @@ export function ParseProgress({ onParsed }: { onParsed: (job: MetadataJob) => vo
   return createPortal(
     <aside className="parse-float" aria-label={m.papers.parse.statusAria}>
       {active.length > 0 ? (
-        <div className="upcard compact progress-fill" role="status">
-          <div
-            className="upprogress" aria-label={m.papers.parse.progressAria}
-            aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} role="progressbar"
-          >
-            <span style={{ width: `${progress}%` }} />
-          </div>
+        <div className="upcard compact progress-host" role="status">
+          <ProgressFill percent={progress} label={m.papers.parse.progressAria} />
           <div className="upt">
             <span>{m.papers.parse.working}</span>
             <span className="upcount">{m.papers.parse.count(active.length)}</span>
