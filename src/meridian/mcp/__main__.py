@@ -8,13 +8,14 @@ if __name__ == "__main__":
     argv = sys.argv[1:]
     if not argv or argv[0] in {"-h", "--help"}:
         print(
-            "usage: python -m meridian.mcp {serve,harness,capabilities,context,read,trace,update,propose,apply,audit} ...\n\n"
+            "usage: python -m meridian.mcp {serve,harness,capabilities,context,read,trace,"
+            "wiki-propose,wiki-proposal-status,audit} ...\n\n"
             "Product MCP entry:\n"
             "  serve        start the stdio MCP server\n\n"
             "Client readiness:\n"
             "  harness      run a deterministic JSON-RPC MCP client-style smoke\n\n"
             "JSON bridge / smoke tools:\n"
-            "  capabilities context read trace update propose apply audit\n\n"
+            "  capabilities context read trace wiki-propose wiki-proposal-status audit\n\n"
             "Examples:\n"
             "  python -m meridian.mcp serve --wiki-root wiki\n"
             "  python -m meridian.mcp serve --workspace-root /path/to/research-repo\n"
