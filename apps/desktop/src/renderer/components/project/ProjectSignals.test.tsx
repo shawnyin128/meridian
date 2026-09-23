@@ -42,7 +42,7 @@ describe('ProjectEventRow', () => {
       <MessagesProvider>
         <ProjectEventRow
           kind="result" date="2026-09-22" title="第一个探针支持假设" detail="p99 从 80ms 降到 62ms"
-          node={{ id: 'thread.B', label: '延迟探针' }} onSelectNode={onSelectNode} origin="agent"
+          node={{ id: 'thread.B', label: '延迟探针', mode: 'repairable' }} onSelectNode={onSelectNode} origin="agent"
         />
       </MessagesProvider>,
     ))
@@ -56,6 +56,8 @@ describe('ProjectEventRow', () => {
     expect(row?.className).toContain('with-node')
     const tag = host.querySelector('.record-node button.node-tag--fill')
     expect(tag?.textContent).toBe('延迟探针')
+    expect(tag?.className).toContain('node-tag--repairable')
+    expect(tag?.querySelector('.node-tag-dot')).not.toBeNull()
     act(() => { tag!.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
     expect(onSelectNode).toHaveBeenCalledWith('thread.B')
     act(() => root.unmount())
@@ -68,7 +70,7 @@ describe('ProjectEventRow', () => {
       <MessagesProvider>
         <ProjectEventRow
           kind="note" date="2026-09-21" title="搭好评测环境" origin="user"
-          node={{ id: 'thread.A', label: '评测' }}
+          node={{ id: 'thread.A', label: '评测', mode: 'unresolved' }}
         />
       </MessagesProvider>,
     ))

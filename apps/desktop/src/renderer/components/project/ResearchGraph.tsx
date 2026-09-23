@@ -59,7 +59,8 @@ const GRAPH_MAX_ZOOM = 1.8
 const clampGraphZoom = (zoom: number) =>
   Math.min(GRAPH_MAX_ZOOM, Math.max(GRAPH_MIN_ZOOM, zoom))
 
-const nodeMode = (node: GraphNode): NonNullable<GraphNode['mode']> =>
+/** A node's research state, the one the graph colours its dot by. */
+export const nodeMode = (node: GraphNode): NonNullable<GraphNode['mode']> =>
   node.mode ?? (node.state === 'done' ? 'supported' : 'unresolved')
 
 /**

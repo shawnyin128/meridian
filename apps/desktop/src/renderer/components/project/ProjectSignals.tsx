@@ -1,4 +1,4 @@
-import type { EventKind } from '../../../shared/contract.js'
+import type { EventKind, GraphNode } from '../../../shared/contract.js'
 import type { ProjectDecisionItem } from '../../../shared/project-signals.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { DateChip } from '../DateTimeDisplay.js'
@@ -51,7 +51,7 @@ export function ProjectEventRow({
   date: string
   title: string
   detail?: string | undefined
-  node?: { id: string; label: string } | undefined
+  node?: { id: string; label: string; mode: NonNullable<GraphNode['mode']> } | undefined
   onSelectNode?: ((nodeId: string) => void) | undefined
   origin: 'agent' | 'user'
 }) {
@@ -64,7 +64,7 @@ export function ProjectEventRow({
         <span className="record-node">
           {node === undefined ? null : (
             <NodeTag
-              label={node.label} hint={m.project.records.goToGraph(node.label)} fill
+              label={node.label} mode={node.mode} hint={m.project.records.goToGraph(node.label)} fill
               onOpen={() => onSelectNode(node.id)}
             />
           )}
