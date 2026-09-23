@@ -490,13 +490,13 @@ test('任务四列逐行对齐,任务与里程碑日期使用同一底色', asyn
       Math.round(row.querySelector(cell as string)!.getBoundingClientRect().x)), selector)
     expect(new Set(x).size, `${selector} 应落在同一列`).toBe(1)
   }
-  const taskDateColor = await rows.first().locator('.task-date-part')
+  const taskDateColor = await rows.first().locator('.task-date-part .date-chip')
     .evaluate((element) => getComputedStyle(element).backgroundColor)
 
   await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '里程碑' }).click()
   const milestoneDate = win.locator('#msList .milestone-row>.dchip').first()
   await expect(milestoneDate).toBeVisible()
-  expect(await milestoneDate.evaluate((element) => getComputedStyle(element).backgroundColor))
+  expect(await milestoneDate.locator('.date-chip').evaluate((element) => getComputedStyle(element).backgroundColor))
     .toBe(taskDateColor)
   await milestoneDate.hover()
   await expect(milestoneDate.locator('..')).not.toHaveClass(/\bhl\b/)
