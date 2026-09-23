@@ -143,10 +143,10 @@ test('想法在科研图中动态标出关联节点，节点详情反向展示�
   const tableCell = side.locator('.node-markdown td').first()
   await expect(tableCell).toBeVisible()
   expect(await tableCell.evaluate((cell) => getComputedStyle(cell).borderTopWidth)).not.toBe('0px')
-  // The node panel variant has no node column: chip, title, and who read left to right.
+  // The node panel variant has no node column: kind chip, date chip, text, and who read left to right.
   const eventRow = side.locator('.record-row').first()
   await expect(eventRow.locator('.record-node')).toHaveCount(0)
-  const eventParts = await eventRow.locator('.record-kind, .record-title-cell, .record-who').evaluateAll(
+  const eventParts = await eventRow.locator('.project-signal-kind, .record-text, .record-who').evaluateAll(
     (parts) => parts.map((part) => part.getBoundingClientRect()),
   )
   expect(eventParts[1]!.left).toBeGreaterThanOrEqual(eventParts[0]!.right - 1)
