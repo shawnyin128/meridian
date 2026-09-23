@@ -2,12 +2,12 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import type { ReactNode, RefObject } from 'react'
 import type {
   PaperFields, PaperReading, PaperRow, Proposal, WikiAggregation, WikiAggregationCard, WikiCell, WikiColumn, WikiHome,
-  WikiPaper,
+  WikiPaper, WikiProposal,
 } from '../../shared/contract.js'
 import { PAPER_PAGE } from '../../shared/vocabulary.js'
 import { papers, wiki } from '../ipc.js'
 import {
-  useCrumbTail, useJump, useScreenEntry, useToast, useVaultRevision, type CrumbSeg, type ScreenKey,
+  useBanner, useCrumbTail, useJump, useScreenEntry, useToast, useVaultRevision, type CrumbSeg, type ScreenKey,
 } from '../shell/AppShell.js'
 import { AddAction } from '../components/AddAction.js'
 import { ActionPopover } from '../components/ActionPopover.js'
@@ -15,7 +15,7 @@ import { BackButton } from '../components/BackButton.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { FormInput } from '../components/FormControls.js'
 import {
-  PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
+  PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar, SectionHeading,
 } from '../components/PageShell.js'
 import { IconCross, IconGear } from '../components/icons.js'
 import { useFormat } from '../lib/format.js'
@@ -28,14 +28,19 @@ import { PickRow, type PickHit } from '../components/PickRow.js'
 import { nextKey, slugOf } from '../lib/slug.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { PaperUnderstanding } from '../components/paper/PaperUnderstanding.js'
+import { ReviewEntry, ReviewQueue } from '../components/wiki/ReviewQueue.js'
+import { WikiClaims } from '../components/wiki/WikiClaims.js'
 import './shell.css'
 import './Wiki.css'
 
 /** demo's pagerHTML('wkp', …, [12,24,48]): each page of the paper. */
 const PAGE_SIZES = [12, 24, 48]
 
-/** Which page are you currently looking at: null is the home page, and the rest are the ids of aggregate or paper pages. */
+/** Which page are you currently looking at: null is the home page, REVIEW the review queue, and the rest are the ids of aggregate or paper pages. */
 type Place = string | null
+
+/** The review queue's place; it has no `/`, so no page id can be it. */
+const REVIEW = 'review'
 
 /** Return to one space on the stack: the previous page in the wiki, or the screen that jumped us in. */
 type Step = { place: Place } | { origin: ScreenKey }
@@ -307,12 +312,14 @@ export function Wiki() {
   const [agg, setAgg] = useState<WikiAggregation | null>(null)
   const [paper, setPaper] = useState<WikiPaper | null>(null)
   const [reading, setReading] = useState<PaperReading | null>(null)
+  const [proposals, setProposals] = useState<WikiProposal[]>([])
   const [tip, setTip] = useState<Tip | null>(null)
   const [error, setError] = useState<string | null>(null)
   const consumed = useRef(0)
   const main = useRef<HTMLDivElement>(null)
   const reportError = useCallback((e: Error) => setError(e.message), [])
   const toast = useToast()
+  const banner = useBanner()
   const write = useVaultWrite()
   const box = useRef<HTMLDivElement>(null)
   const [editing, setEditing] = useState(false)
@@ -339,14 +346,14 @@ export function Wiki() {
 
   /**
    * A management operation is a proposal: after the writing is successful, close the input line, increment the entire database version, display this sentence in the banner, and return the written
-   * No. `pending` is true when the proposal is on the way.
+   * No. `pending` is true when the proposal is on the way. `note` replaces the title in the banner.
    */
-  const propose = (title: string, ops: Proposal['ops']): Promise<boolean> => {
+  const propose = (title: string, ops: Proposal['ops'], note = title): Promise<boolean> => {
     setPending(true)
     return write(wiki.apply({ source: 'user', title, ops }).then(() => {
       // The open of the elastic layer of the gear is adding === 'columns'. Successful saving depends on this sentence layer.
       setAdding(null)
-    }), { note: title }).finally(() => setPending(false))
+    }), { note }).finally(() => setPending(false))
   }
 
   /**
@@ -384,8 +391,12 @@ export function Wiki() {
   }, [page, size, revision, reportError])
 
   useEffect(() => {
+    void wiki.proposals().then(setProposals).catch(reportError)
+  }, [revision, reportError])
+
+  useEffect(() => {
     setError(null)
-    if (place === null) return
+    if (place === null || place === REVIEW) return
     setTip(null)
     if (place.startsWith(PAPER_PAGE)) void wiki.paper(place).then(setPaper).catch(reportError)
     else void wiki.aggregation(place).then(setAgg).catch(reportError)
@@ -505,12 +516,25 @@ export function Wiki() {
       ]
     }
     if (shownPaper !== null) return [{ text: shownPaper.title }]
+    if (place === REVIEW) return [{ text: m.wiki.queue.entry }]
     return []
-  }, [shownAgg, shownPaper, go])
+  }, [shownAgg, shownPaper, go, place, m])
   useCrumbTail(tail, place === null ? undefined : goHome)
 
+  const queued = proposals.filter((p) => p.status === 'queued').length
   const title = shownAgg?.title ?? shownPaper?.title
+    ?? (place === REVIEW ? m.wiki.queue.title(queued) : null)
     ?? (home === null ? 'Wiki' : m.wiki.title(home.aggregationCount))
+
+  /** Applies or declines a queued proposal; a proposal Core refuses on apply is reported with its reason. */
+  const decide = (proposal: WikiProposal, decision: 'apply' | 'decline', reason?: string) => {
+    setPending(true)
+    void write(wiki.decide(proposal.id, decision, reason).then((receipt) => {
+      if (decision === 'decline') banner(m.wiki.queue.declinedNote)
+      else if (receipt.status === 'applied') banner(m.wiki.queue.appliedNote)
+      else toast(m.wiki.queue.rejectedNote(receipt.reason?.message ?? ''))
+    })).finally(() => setPending(false))
+  }
 
   /** "Edit" to enter the original text state; "Save" to read the original text and write it back, write the complete library version and increment it so that this page can be retrieved again. */
   const toggleEdit = () => {
@@ -675,6 +699,15 @@ export function Wiki() {
                       [{ op: 'removeMembership', paper: paperId, in: shownAgg.id }],
                     )
                   }}
+                />
+                <WikiClaims
+                  page={shownAgg} pending={pending}
+                  links={{
+                    openPage: go,
+                    openProject: (id) => jumpTo('project', id),
+                    openReader: (paper, anchor) => jumpTo('reader', paper.slice(PAPER_PAGE.length), anchor),
+                  }}
+                  onApply={(note, ops) => propose(note, ops, m.wiki.claims.saved)}
                 />
                 {bodyHead(shownAgg.title)}
                 <MarkdownBox
@@ -846,9 +879,22 @@ export function Wiki() {
           )
           : null}
 
+        {place === REVIEW
+          ? (
+            <ReviewQueue
+              proposals={proposals} pending={pending} onOpenPage={go}
+              onApply={(proposal) => decide(proposal, 'apply')}
+              onDecline={(proposal, reason) => decide(proposal, 'decline', reason === '' ? undefined : reason)}
+            />
+          )
+          : null}
+
         {place === null && home !== null
           ? (
             <>
+              <PageToolbar>
+                <ReviewEntry count={queued} onOpen={() => go(REVIEW)} />
+              </PageToolbar>
               {home.kinds.map((k) => (
                 <Fragment key={k.key}>
                   <SectionHeading>{k.label}</SectionHeading>

@@ -52,7 +52,7 @@ export function pdfPageText(store: Pick<VaultStore, 'paperSource'>): PdfPageText
 /**
  * Checks every source evidence item and source conflict target in `ops` against its PDF (write protocol
  * §4.3). Returns the refusal for a page the PDF lacks, a quote absent from a page that has text, or, from
- * a producer other than `我`, a quote shorter than 12 characters after normalization; otherwise null
+ * a producer other than HUMAN, a quote shorter than 12 characters after normalization; otherwise null
  * with the items whose page had no text layer (or whose paper has no PDF) listed as unverifiable.
  */
 export async function checkQuotes(

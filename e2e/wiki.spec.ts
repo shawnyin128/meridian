@@ -101,9 +101,9 @@ test('根节点卡进聚合页,子聚合再进一层带上级,返回按历史退
   await expect(crumbs(win)).toHaveText(['我的库', 'Wiki', agg.title])
   await expect(shown(win).locator('.desk-head .t')).toHaveText(agg.title)
   await expect(shown(win).locator('.desk-head .back')).toHaveCount(1)
-  // The fixed areas are at the front (segmentation, paper comparison), each with a management entrance, and the header of the text is the page name plus "Edit"
+  // The fixed areas are at the front (segmentation, paper comparison, findings), each with a management entrance, and the header of the text is the page name plus "Edit"
   expect(await shown(win).locator('.wkmain .section-heading').allTextContents())
-    .toEqual([`细分${agg.kindLabel}${agg.kindLabel}`, '论文对比论文', `${agg.title}编辑`])
+    .toEqual([`细分${agg.kindLabel}${agg.kindLabel}`, '论文对比论文', '结论结论', `${agg.title}编辑`])
   // The section headers are the same as those in the main area: 15px, the first section "Subdivision..." is free of line, and the non-first section "Paper Comparison" draws a top line
   const mainHeads = shown(win).locator('.wkmain .section-heading')
   await expect(mainHeads.nth(0)).toHaveCSS('font-size', '15px')

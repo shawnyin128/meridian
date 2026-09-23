@@ -44,7 +44,7 @@ export function generatedTable(data: WikiData, id: string): string {
 /**
  * Returns the markdown for an aggregation's claims region (write protocol §2.4): its heading, then per
  * claim in page order `- <text> · v<n> · <since> ^<id>` followed by one indented line per evidence item
- * and one per open conflict, or `(暂无结论)` when it has none. `projects` maps project ids to names (the
+ * and one per open conflict, or the no-claims line when it has none. `projects` maps project ids to names (the
  * id stands when unnamed); a missing claim or page is shown by its ref or id. Line breaks inside a quote
  * render as spaces.
  */

@@ -1,0 +1,5 @@
+.project-conclusion{display:flex;align-items:baseline;gap:8px;padding:9px 2px}
+.project-conclusion .stag{flex:none;margin-left:0}
+.project-conclusion-text{flex:1;min-width:0;font-size:var(--fs-base);overflow-wrap:anywhere}
+.project-conclusion-date{flex:none;color:var(--ter);font-size:var(--fs-sm)}
+.project-conclusion-write,.project-conclusion-written{flex:none;font-size:var(--fs-sm)}

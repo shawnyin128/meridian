@@ -33,6 +33,7 @@ import {
   ProjectAttachments, ProjectMemo, ProjectRelations, ProjectTopicField, ProjectUrlDraft,
 } from '../components/project/ProjectSections.js'
 import { NodeTag } from '../components/project/NodeTag.js'
+import { ProjectConclusions } from '../components/project/ProjectConclusions.js'
 import { ProjectTimeline } from '../components/project/ProjectTimeline.js'
 import { nodeMode, ResearchGraph, ResearchNodePanel } from '../components/project/ResearchGraph.js'
 import {
@@ -751,6 +752,8 @@ export function ProjectDetail({
                   })}
                 </StructuredList>
               )}
+
+            <ProjectConclusions project={project} onOpenPage={openWikiPage} />
 
             <ProjectMemo
               text={project.memo} editing={memoEditing} onEditing={setMemoEditing} onOpen={openWikiPage}

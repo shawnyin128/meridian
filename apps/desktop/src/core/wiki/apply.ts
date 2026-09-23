@@ -1,5 +1,6 @@
 import type { ClaimOp, ConflictTarget, Evidence, ProposalOp } from '../../shared/contract.js'
 import { CLAIM_OPS } from '../../shared/contract.js'
+import { HUMAN_PRODUCER } from '../../shared/vocabulary.js'
 import type {
   WikiAggregationRecord, WikiCellRecord, WikiClaimRecord, WikiConflictRecord, WikiData, WikiEvidenceRecord,
   WikiMembershipRecord, WikiPaperRecord,
@@ -7,10 +8,10 @@ import type {
 import { claimAt, isPaper } from './model.js'
 
 /** The `by` Core stamps for a write the user made in the app. */
-export const HUMAN = '我'
+export const HUMAN = HUMAN_PRODUCER
 
 /**
- * What claim validation needs beyond the Wiki: the producer stamped as `by` (`我`, or `ai:<id>`), the
+ * What claim validation needs beyond the Wiki: the producer stamped as `by` (HUMAN, or `ai:<id>`), the
  * nodes and conclusions of a project (undefined when there is no such project), and the highlight and
  * note ids of a paper's reading record, by paper page id.
  */
@@ -503,7 +504,7 @@ function step(data: WikiData, op: ProposalOp, today: string, ops: ProposalOp[], 
  * claim, conflict or claim id is missing or already taken, a text holds a line
  * break, a revision leaves the text as it is, an evidence item or conflict
  * target fails §4.3 as far as the Wiki and `world` tell or repeats one already
- * there, a producer other than `我` gives personal evidence or an addClaim or
+ * there, a producer other than HUMAN gives personal evidence or an addClaim or
  * reviseClaim without experiment evidence, a claim would conflict with itself
  * or twice under one id, a resolveConflict outcome lacks the op it requires in
  * the same proposal, or a claim with open conflicts is retracted.

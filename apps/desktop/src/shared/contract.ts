@@ -1391,7 +1391,7 @@ export const WikiConflictSchema = z.object({
 
 /**
  * A claim on an aggregation page: one settled finding with its version, when and by whom the current
- * version was written (`我` or `ai:<producer id>`), its evidence, its open conflicts and earlier versions,
+ * version was written (HUMAN_PRODUCER or `ai:<producer id>`), its evidence, its open conflicts and earlier versions,
  * oldest first.
  */
 export const WikiClaimSchema = z.object({

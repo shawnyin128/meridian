@@ -8,6 +8,7 @@ import { useFormat } from '../lib/format.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { DayHeading } from '../components/DayHeading.js'
+import { DiffLines } from '../components/DiffLines.js'
 import { EmptyState } from '../components/EmptyState.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
@@ -149,11 +150,7 @@ export function Changelog() {
           ) : null}
         </div>
       </div>
-      <div className="diff">
-        {c.diff.map((line) => (
-          <div className={line.startsWith('+') ? 'add' : 'del'} key={line}>{line}</div>
-        ))}
-      </div>
+      <DiffLines lines={c.diff} />
     </StructuredRow>
   )
 

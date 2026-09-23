@@ -205,6 +205,12 @@ export const project = {
   },
   linkedIdeas: (n: number) => `关联想法 · ${n}`,
   noLinkedIdeas: '还没有关联想法。',
+  conclusions: {
+    heading: (n: number) => `项目结论 · ${n}`,
+    state: { pending: '待验证', verified: '已验证', conflicting: '有冲突' },
+    writeBack: '写入 Wiki',
+    written: '已写入 Wiki',
+  },
   remarkSaved: '已保存随笔',
   remarkEmpty: '还没有随笔，点「编辑」开始写。支持 Markdown 与 $…$ 公式。',
   graph: {

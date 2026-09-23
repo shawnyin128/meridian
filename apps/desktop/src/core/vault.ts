@@ -591,7 +591,7 @@ export interface VaultStore {
    * Applies a proposal: every op in order, each seeing the effect of the ones
    * before it, none of them written unless all of them are valid — the
    * validity rules are applyProposal's in core/wiki, with claim ops stamped
-   * `producer.by` (`我` when no producer is given) and checked against the
+   * `producer.by` (HUMAN_PRODUCER when no producer is given) and checked against the
    * vault's projects and reading records. A membership op writes the paper's
    * page, the other ops write the aggregation's page, and every aggregation
    * whose members, children or claims the proposal changed, or whose claims
@@ -667,7 +667,7 @@ export interface VaultStore {
    * Returns the id of every page applying `proposal` would write, in the order
    * first written: the pages its ops name, then every aggregation whose
    * generated regions the apply refills. Throws if the proposal is not valid
-   * against the vault as it stands for producer `by` (`我` when absent).
+   * against the vault as it stands for producer `by` (HUMAN_PRODUCER when absent).
    */
   proposalPages(proposal: Proposal, by?: string): string[]
 
