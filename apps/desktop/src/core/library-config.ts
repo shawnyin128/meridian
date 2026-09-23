@@ -43,12 +43,14 @@ export function configureLibrary(root: string, options: LibraryConfigOptions): L
   return location(paths.root, 'configured', paths.root !== libraryPaths(options.currentRoot).root)
 }
 
+/** Neither `currentLibrary` nor `configureLibrary` opens the vault, so `openError` is always null here; only Core's own `library.location` handler knows whether the running vault failed to open. */
 function location(root: string, source: LibrarySource, restartRequired: boolean): LibraryLocation {
   return {
     root: libraryPaths(root).root,
     source,
     locked: source === 'environment' || source === 'fixture',
     restartRequired,
+    openError: null,
   }
 }
 

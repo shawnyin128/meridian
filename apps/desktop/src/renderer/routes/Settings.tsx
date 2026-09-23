@@ -215,18 +215,21 @@ export function Settings() {
           {location === null
             ? <div className="storage-loading">{m.settings.storage.readingLocation}</div>
             : (
-              <label className="storage-root">
-                <span>{m.settings.storage.rootLabel}</span>
-                <DirectoryField
-                  value={location.root}
-                  readOnly
-                  chooseDisabled={location.locked}
-                  chooseLabel={choosing
-                    ? m.settings.storage.checkingDirectory : m.settings.storage.chooseAction}
-                  choosing={choosing}
-                  onChoose={() => { void chooseLibrary() }}
-                />
-              </label>
+              <>
+                <PageError variant="section" error={location.openError} />
+                <label className="storage-root">
+                  <span>{m.settings.storage.rootLabel}</span>
+                  <DirectoryField
+                    value={location.root}
+                    readOnly
+                    chooseDisabled={location.locked}
+                    chooseLabel={choosing
+                      ? m.settings.storage.checkingDirectory : m.settings.storage.chooseAction}
+                    choosing={choosing}
+                    onChoose={() => { void chooseLibrary() }}
+                  />
+                </label>
+              </>
             )}
           {location?.locked
             ? <p className="storage-note">{m.settings.storage.lockedNote}</p>

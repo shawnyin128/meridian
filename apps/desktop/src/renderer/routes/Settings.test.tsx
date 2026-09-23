@@ -49,7 +49,7 @@ const api = vi.hoisted(() => ({
     installCommand: 'claude install command', updateCommand: 'claude update command',
   }]),
   libraryLocation: vi.fn(async (): Promise<LibraryLocation> => ({
-    root: '/tmp/meridian', source: 'fixture' as const, locked: true, restartRequired: false,
+    root: '/tmp/meridian', source: 'fixture' as const, locked: true, restartRequired: false, openError: null,
   })),
   libraryBackups: vi.fn(async (): Promise<LibraryBackup[]> => []),
   switchBackup: vi.fn(async () => ({
@@ -137,7 +137,7 @@ describe('Settings', () => {
     api.extensionStatus.mockClear()
     api.libraryLocation.mockClear()
     api.libraryLocation.mockResolvedValue({
-      root: '/tmp/meridian', source: 'fixture', locked: true, restartRequired: false,
+      root: '/tmp/meridian', source: 'fixture', locked: true, restartRequired: false, openError: null,
     })
     api.libraryBackups.mockClear()
     api.libraryBackups.mockResolvedValue([])
@@ -391,9 +391,30 @@ describe('Settings', () => {
     expect(dialog.textContent).not.toContain('选择根目录…')
   })
 
+  it('库打不开时显示路径与原因，切换和重置仍然可用', async () => {
+    api.libraryLocation.mockResolvedValueOnce({
+      root: '/tmp/broken-library', source: 'fallback', locked: false, restartRequired: false,
+      openError: '库里没有论文页目录:/tmp/broken-library/wiki/papers',
+    })
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => {
+      dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click()
+    })
+
+    expect(dialog.textContent).not.toContain('正在读取库位置')
+    expect(dialog.querySelector('.ipcerror')?.textContent)
+      .toBe('库里没有论文页目录:/tmp/broken-library/wiki/papers')
+    expect(dialog.querySelector<HTMLInputElement>('.storage-root input')?.value)
+      .toBe('/tmp/broken-library')
+    expect(dialog.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录"]')?.disabled)
+      .toBe(false)
+    expect(dialog.querySelector<HTMLButtonElement>('.storage-reset .btn.tdel')?.disabled).toBe(false)
+  })
+
   it('备份可直接切换，当前库会由 Core 保存后重启', async () => {
     api.libraryLocation.mockResolvedValueOnce({
-      root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: false,
+      root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: false, openError: null,
     })
     api.libraryBackups.mockResolvedValueOnce([{
       id: 'meridian-backup-20260915-182838Z',
@@ -419,7 +440,7 @@ describe('Settings', () => {
 
   it('永久删除备份前要求确认，成功后从列表移除', async () => {
     api.libraryLocation.mockResolvedValueOnce({
-      root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: false,
+      root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: false, openError: null,
     })
     api.libraryBackups.mockResolvedValueOnce([{
       id: 'meridian-backup-20260915-182838Z',
