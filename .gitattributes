@@ -5,4 +5,4 @@
 apps/desktop/src/core/fixtures/vault/** -text
 
 # 示例库是测试的输入,同样不让 autocrlf 改写行尾。
-desktop/design/wiki-example-vault/** -text
+apps/desktop/src/core/fixtures/wiki-example-vault/** -text
