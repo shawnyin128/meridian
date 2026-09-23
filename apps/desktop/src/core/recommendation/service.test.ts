@@ -36,9 +36,10 @@ describe('project recommendation service', () => {
       cachedIntents: 0, failedIntents: 0,
     })
     expect(recommend).toHaveBeenCalledTimes(2)
+    // project.papers is newest-first, so a tie in cluster score goes to the most recently linked paper.
     expect(recommend.mock.calls.map(([positive]) => positive.map((seed) => seed.paperId))).toEqual([
       ['ARXIV:2605.29343'],
-      ['ARXIV:2510.15982'],
+      ['ARXIV:2505.04560'],
     ])
     const found = store.listInbox({ kind: 'discovery', project: project.id })
     expect(found).toHaveLength(1)

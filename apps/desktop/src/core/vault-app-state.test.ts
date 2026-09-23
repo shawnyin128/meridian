@@ -148,9 +148,10 @@ describe('vault app state', () => {
       store.createProject('draft 效率')
       const id = store.listProjects()[0]!.id
       store.createRelation(id, { group: 'Wiki', text: '甲' })
-      const second = store.createRelation(id, { group: 'Wiki', text: '乙' }).relations[0]!.items[1]!
-      store.moveRelation(id, second.id, 0)
-      expect(reopen().getProject(id).relations[0]!.items.map((i) => i.text)).toEqual(['乙', '甲'])
+      // New items go to the front of their group, so the second one created sits ahead of the first.
+      const first = store.createRelation(id, { group: 'Wiki', text: '乙' }).relations[0]!.items[1]!
+      store.moveRelation(id, first.id, 0)
+      expect(reopen().getProject(id).relations[0]!.items.map((i) => i.text)).toEqual(['甲', '乙'])
     })
 
     it('科研记录追在正文里,一条一行', () => {
@@ -165,26 +166,31 @@ describe('vault app state', () => {
       ])
     })
 
-    it('项目按建立的先后排,第十个排在第二个之后,不按文件名', () => {
-      for (let n = 0; n < 11; n += 1) store.createProject(`项目 ${n}`)
+    it('项目按建立的先后倒序排,建得晚的排在前面,不按文件名', () => {
+      const created: string[] = []
+      for (let n = 0; n < 11; n += 1) {
+        store.createProject(`项目 ${n}`)
+        created.push(store.listProjects()[0]!.id)
+      }
       const ids = store.listProjects().map((p) => p.id)
       expect(ids).toHaveLength(11)
-      expect(ids).toEqual([...ids].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })))
-      expect(ids.indexOf('project-2')).toBeLessThan(ids.indexOf('project-10'))
+      // Newest first: the exact reverse of creation order, regardless of how the assigned ids
+      // would sort as filenames.
+      expect(ids).toEqual([...created].reverse())
       // Reopen scans files by filename, but ordering must still follow creation time.
       expect(reopen().listProjects().map((p) => p.id)).toEqual(ids)
       expect(reopen().overviewProjects().map((p) => p.id)).toEqual(ids)
     })
 
-    it('先建的排在前面,哪怕它的 id 排在后面', () => {
+    it('后建的排在前面,创建日期仍来自各自的项目页', () => {
       store.createProject('先建的')
       day = '2026-09-10'
       store.createProject('后建的')
       const [first, second] = reopen().listProjects()
-      expect([first?.name, second?.name]).toEqual(['先建的', '后建的'])
+      expect([first?.name, second?.name]).toEqual(['后建的', '先建的'])
       // Creation date is stored on the project page rather than inferred from another field.
-      expect(read(`wiki/projects/${first!.id}.md`)).toContain('created: "2026-09-08"')
-      expect(read(`wiki/projects/${second!.id}.md`)).toContain('created: "2026-09-10"')
+      expect(read(`wiki/projects/${first!.id}.md`)).toContain('created: "2026-09-10"')
+      expect(read(`wiki/projects/${second!.id}.md`)).toContain('created: "2026-09-08"')
     })
 
     it('科研记录的正文带换行时被拒,项目一个字都没改', () => {
@@ -522,10 +528,10 @@ describe('vault app state', () => {
       store.createProject('先建的')
       day = '2026-09-10'
       store.createProject('后建的')
-      const first = store.listProjects()[0]!.id
+      const first = store.listProjects().find((p) => p.name === '先建的')!.id
       store.updateProject(first, { status: '搁置' })
       store.undoChange(store.listChanges()[0]!.id)
-      expect(reopen().listProjects().map((p) => p.name)).toEqual(['先建的', '后建的'])
+      expect(reopen().listProjects().map((p) => p.name)).toEqual(['后建的', '先建的'])
       expect(read(`wiki/projects/${first}.md`)).toContain('created: "2026-09-08"')
     })
   })

@@ -867,6 +867,8 @@ export function createFixtureStore(
         agentSessions: [],
       }
       projectById.set(project.id, project)
+      // Front of whatever order already exists, so a new project outranks the manual order too.
+      projectOrder = [project.id, ...(projectOrder ?? [])]
     },
 
     getProject(id) {
@@ -940,7 +942,7 @@ export function createFixtureStore(
       if (!project) throw new Error(`项目不存在:${projectId}`)
       checkSpan(task)
       const made = { ...task, id: nextId('task'), ...(origin === undefined ? {} : { origin }) }
-      const nextProject = { ...project, tasks: [...project.tasks, made] }
+      const nextProject = { ...project, tasks: [made, ...project.tasks] }
       projectById.set(projectId, nextProject)
       return detailOf(nextProject)
     },
@@ -998,7 +1000,7 @@ export function createFixtureStore(
       if (!project) throw new Error(`项目不存在:${projectId}`)
       const nextProject = {
         ...project,
-        milestones: [...project.milestones, { ...milestone, id: nextId('ms') }],
+        milestones: [{ ...milestone, id: nextId('ms') }, ...project.milestones],
       }
       projectById.set(projectId, nextProject)
       return detailOf(nextProject)
@@ -1047,7 +1049,7 @@ export function createFixtureStore(
       }
       const seen = project.relations.some((r) => r.group === group)
       const relations = seen
-        ? project.relations.map((r) => (r.group === group ? { ...r, items: [...r.items, item] } : r))
+        ? project.relations.map((r) => (r.group === group ? { ...r, items: [item, ...r.items] } : r))
         : [...project.relations, { group, items: [item] }]
       const nextProject = { ...project, relations }
       projectById.set(projectId, nextProject)
@@ -1073,7 +1075,7 @@ export function createFixtureStore(
       if (!project) throw new Error(`项目不存在:${projectId}`)
       if (!byId.has(paperId)) throw new Error(`论文不存在:${paperId}`)
       if (project.papers.includes(paperId)) throw new Error(`已经关联过这篇论文:${paperId}`)
-      const nextProject = { ...project, papers: [...project.papers, paperId] }
+      const nextProject = { ...project, papers: [paperId, ...project.papers] }
       projectById.set(projectId, nextProject)
       return detailOf(nextProject)
     },
@@ -1116,7 +1118,7 @@ export function createFixtureStore(
       if (!project) throw new Error(`项目不存在:${projectId}`)
       const nextProject = {
         ...project,
-        attachments: [...project.attachments, { ...attachment, id: nextId('att') }],
+        attachments: [{ ...attachment, id: nextId('att') }, ...project.attachments],
       }
       projectById.set(projectId, nextProject)
       return detailOf(nextProject)
@@ -1388,7 +1390,7 @@ export function createFixtureStore(
     },
 
     createWatch(watch) {
-      watches = [...watches, { id: nextId('watch'), ...structuredClone(watch), active: true }]
+      watches = [{ id: nextId('watch'), ...structuredClone(watch), active: true }, ...watches]
     },
 
     updateWatch(id, watch) {

@@ -251,7 +251,8 @@ export interface VaultStore {
 
   /**
    * Creates a project carrying the given name, assigns it an id unused by the
-   * vault, and appends it after the projects already there. It starts active,
+   * vault, and adds it to the front of the projects already there, ahead of
+   * any manual order set by reorderProjects. It starts active,
    * takes the vault's today as its start date and a due date no earlier than
    * that, and carries placeholder text for its topic and its focus, both of
    * which the screens show before you have chosen either. It holds no tasks,
@@ -293,10 +294,11 @@ export interface VaultStore {
   deleteProject(id: string): void
 
   /**
-   * Appends a task built from the given fields to the project with the given
-   * projectId, assigning it an id unused by that project and `origin` when an
-   * agent added it, and returns the updated project. Throws if no such project
-   * exists, or the task's end date precedes its start date.
+   * Adds a task built from the given fields to the front of the project with
+   * the given projectId's task list, assigning it an id unused by that
+   * project and `origin` when an agent added it, and returns the updated
+   * project. Throws if no such project exists, or the task's end date
+   * precedes its start date.
    */
   createTask(projectId: string, task: TaskFields, origin?: 'agent'): ProjectDetail
 
@@ -345,9 +347,10 @@ export interface VaultStore {
   reorderTasks(projectId: string, order: readonly string[]): ProjectDetail
 
   /**
-   * Appends a milestone built from the given fields to the project with the
-   * given projectId, assigning it an id unused by that project, and returns
-   * the updated project. Throws if no such project exists.
+   * Adds a milestone built from the given fields to the front of the project
+   * with the given projectId's milestone list, assigning it an id unused by
+   * that project, and returns the updated project. Throws if no such project
+   * exists.
    */
   createMilestone(projectId: string, milestone: MilestoneFields): ProjectDetail
 
@@ -370,12 +373,12 @@ export interface VaultStore {
   deleteMilestone(projectId: string, milestoneId: string): ProjectDetail
 
   /**
-   * Appends a relation item carrying the given text to the group the given
-   * fields name inside the project with the given projectId, assigning it an
-   * id unused by that project, and returns the updated project. A group name
-   * the project does not yet carry becomes a new last group. A page has to
-   * name an aggregation the vault holds. Throws if no such project or
-   * aggregation exists.
+   * Adds a relation item carrying the given text to the front of the group
+   * the given fields name inside the project with the given projectId,
+   * assigning it an id unused by that project, and returns the updated
+   * project. A group name the project does not yet carry becomes a new last
+   * group. A page has to name an aggregation the vault holds. Throws if no
+   * such project or aggregation exists.
    */
   createRelation(projectId: string, relation: RelationFields): ProjectDetail
 
@@ -400,11 +403,11 @@ export interface VaultStore {
   moveRelation(projectId: string, id: string, index: number): ProjectDetail
 
   /**
-   * Appends an attachment built from the given fields to the project with the
-   * given projectId, assigning it an id unused by that project, and returns
-   * the updated project. The attachment records the file's absolute path; the
-   * file is not copied. Throws if no such project exists or the path is not
-   * absolute.
+   * Adds an attachment built from the given fields to the front of the
+   * project with the given projectId's attachment list, assigning it an id
+   * unused by that project, and returns the updated project. The attachment
+   * records the file's absolute path; the file is not copied. Throws if no
+   * such project exists or the path is not absolute.
    */
   createAttachment(projectId: string, attachment: AttachmentFields): ProjectDetail
 
@@ -524,7 +527,7 @@ export interface VaultStore {
 
   /**
    * Creates an active watch carrying the given fields, assigns it an id unused
-   * by the vault, and appends it after the watches already there.
+   * by the vault, and adds it to the front of the watches already there.
    */
   createWatch(watch: WatchFields): void
 
