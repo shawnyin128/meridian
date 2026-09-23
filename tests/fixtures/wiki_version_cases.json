@@ -1,0 +1,38 @@
+[
+  {
+    "name": "crlf_line_endings",
+    "text": "---\r\nkind: \"topic\"\r\ntitle: \"CRLF page\"\r\nupdated: \"2026-01-01\"\r\n---\r\n## Problem\r\nText with CRLF endings.\r\n",
+    "fm": "8627f6986393863c",
+    "body": "8206a0bf7da07d81"
+  },
+  {
+    "name": "generated_regions_removed",
+    "text": "---\nkind: \"topic\"\ntitle: \"Generated regions\"\n---\n<!-- generated:children -->\n## Children\n(none)\n<!-- /generated -->\n<!-- generated:table -->\n## Table\n| a |\n|---|\n| b |\n<!-- /generated -->\n\n## Problem\nProse after generated regions.\n",
+    "fm": "b3b195de77dc8b57",
+    "body": "5190d05d4fa4a474"
+  },
+  {
+    "name": "updated_line_stripped_from_frontmatter_only",
+    "text": "---\nkind: \"topic\"\ntitle: \"Updated line\"\naliases: []\nupdated: \"2026-05-20\"\n---\n## Problem\nupdated: this word appears in prose too, must stay.\n",
+    "fm": "7bb34f3528eae15c",
+    "body": "9dd7b326a56fd234"
+  },
+  {
+    "name": "no_frontmatter",
+    "text": "# Just a body\n\nNo frontmatter fence here.\n",
+    "fm": "e3b0c44298fc1c14",
+    "body": "fa2d5fa7d600a419"
+  },
+  {
+    "name": "updated_value_change_a",
+    "text": "---\nkind: \"topic\"\ntitle: \"Updated line\"\naliases: []\nupdated: \"2026-05-20\"\n---\n## Problem\nupdated: this word appears in prose too, must stay.\n",
+    "fm": "7bb34f3528eae15c",
+    "body": "9dd7b326a56fd234"
+  },
+  {
+    "name": "updated_value_change_b",
+    "text": "---\nkind: \"topic\"\ntitle: \"Updated line\"\naliases: []\nupdated: \"2026-09-22\"\n---\n## Problem\nupdated: this word appears in prose too, must stay.\n",
+    "fm": "7bb34f3528eae15c",
+    "body": "9dd7b326a56fd234"
+  }
+]

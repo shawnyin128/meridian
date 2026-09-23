@@ -400,7 +400,7 @@ class WorkspaceProtocolTest(unittest.TestCase):
             stored = json.loads((root / ".meridian/events/events.json").read_text(encoding="utf-8"))["events"][-1]
             self.assertEqual((stored["kind"], stored["detail"]), ("result", "3 of 3 checks pass"))
 
-    def test_manifest_error_names_unknown_and_missing_surfaces(self) -> None:
+    def test_manifest_error_names_a_missing_required_surface(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             self._write_json(
@@ -409,10 +409,9 @@ class WorkspaceProtocolTest(unittest.TestCase):
                     "schema_version": "meridian.workspace.v1",
                     "project": {"id": "project-1", "name": "Shared research"},
                     "surfaces": {
-                        # "plan" is missing (required); "totally_unknown" is not part of the contract.
+                        # "plan" is missing (required); Core cannot interpret the manifest without it.
                         "graph": {"path": ".meridian/graph/graph.json", "writer": "workspace"},
                         "events": {"path": ".meridian/events/events.json", "writer": "workspace"},
-                        "totally_unknown": {"path": ".meridian/x.json", "writer": "workspace"},
                     },
                 },
             )
@@ -421,10 +420,103 @@ class WorkspaceProtocolTest(unittest.TestCase):
                 read_project_plan(root)
 
             message = str(raised.exception)
-            self.assertIn("unknown=['totally_unknown']", message)
-            self.assertIn("missing=['plan']", message)
-            self.assertIn(f"meridian {__version__}", message)
-            self.assertIn("restart the agent session or update Meridian", message)
+            self.assertIn("missing required entries ['plan']", message)
+            self.assertIn("update Meridian", message)
+
+    def test_forward_compatible_with_a_newer_format_sample(self) -> None:
+        """A newer Meridian may add fields or a surface this version does not know about yet.
+
+        Version-compatibility rule (AGENTS.md): unknown additive fields and unrecognized extra
+        surfaces are ignored, not rejected. Only a missing required field is an error.
+        """
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            evidence = root / ".meridian/experiments/e1.md"
+            evidence.parent.mkdir(parents=True, exist_ok=True)
+            evidence.write_text("# Experiment\n", encoding="utf-8")
+            self._write_json(
+                root / ".meridian/workspace.json",
+                {
+                    "schema_version": "meridian.workspace.v1",
+                    "future_top_level_field": "ignored",
+                    "project": {"id": "project-1", "name": "Shared research", "future_project_field": "ignored"},
+                    "surfaces": {
+                        "plan": {"path": ".meridian/control/plan.json", "writer": "meridian-app", "future_surface_field": "ignored"},
+                        "graph": {"path": ".meridian/graph/graph.json", "writer": "workspace"},
+                        "events": {"path": ".meridian/events/events.json", "writer": "workspace"},
+                        "changes": {"path": ".meridian/control/changes.json", "writer": "meridian-app"},
+                        "future_surface": {"path": ".meridian/future/x.json", "writer": "meridian-app"},
+                    },
+                },
+            )
+            self._write_json(
+                root / ".meridian/control/plan.json",
+                {
+                    "schema_version": "meridian.project-plan.v1",
+                    "revision": "abc123",
+                    "updated_at": "2026-09-15T18:00:00Z",
+                    "project": {"id": "project-1", "name": "Shared research"},
+                    "tasks": [{"id": "task-1", "title": "Run probe"}],
+                    "milestones": [],
+                },
+            )
+            self._write_json(
+                root / ".meridian/events/events.json",
+                {
+                    "schema_version": "meridian.workspace-events.v1",
+                    "events": [
+                        {
+                            "id": "e1",
+                            "date": "2026-09-16",
+                            "text": "Probe ran",
+                            "source": ".meridian/experiments/e1.md",
+                            "future_event_field": "ignored",
+                        }
+                    ],
+                },
+            )
+            self._write_json(
+                root / ".meridian/control/changes.json",
+                {
+                    "schema_version": "meridian.workspace-changes.v1",
+                    "project_id": "project-1",
+                    "epoch": "epoch-1",
+                    "next_sequence": 2,
+                    "future_changes_field": "ignored",
+                    "ideas": [
+                        {
+                            "id": "idea-1",
+                            "title": "Try X",
+                            "body": "Body",
+                            "archived": False,
+                            "created": "2026-09-16",
+                            "updated": "2026-09-16",
+                            "source": {"chat_title": "chat", "future_source_field": "ignored"},
+                            "future_idea_field": "ignored",
+                        }
+                    ],
+                    "changes": [
+                        {
+                            "sequence": 1,
+                            "at": "2026-09-16T00:00:00Z",
+                            "kind": "idea.linked",
+                            "summary": "linked",
+                            "refs": [{"kind": "idea", "id": "idea-1", "future_ref_field": "ignored"}],
+                            "future_change_field": "ignored",
+                        }
+                    ],
+                },
+            )
+
+            status = inspect_project_workspace(root)
+            self.assertEqual(status["status"], "ready")
+            plan = read_project_plan(root)
+            self.assertEqual(plan["revision"], "abc123")
+            changes = read_workspace_changes(root)
+            self.assertEqual(changes["status"], "ready")
+            self.assertEqual(len(changes["changes"]), 1)
+            idea = read_workspace_idea(root, "idea-1")
+            self.assertEqual(idea["idea"]["id"], "idea-1")
 
 
 if __name__ == "__main__":
