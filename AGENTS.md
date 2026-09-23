@@ -62,6 +62,24 @@ edge, a genuinely swappable external service, or a seam a test must substitute
 `RecommendationProvider`). Everywhere else, one concrete implementation with no
 interface is correct.
 
+## Version Compatibility
+
+The vault, project workspaces, and Lab state are read and written by different versions of the
+App, the Python package, and the agent plugins. Data formats are compatible in both directions:
+
+- **Backward (mandatory).** A newer version reads and displays everything an older version wrote:
+  vault pages, workspace surfaces, Lab state, graph exports, events, queues. When a format
+  changes, keep the reader for the old shape and prove it with a test on an old-format sample.
+  Data an older version produced must never disappear after an upgrade.
+- **Forward (graceful).** When reading a file another process or version wrote, ignore unknown
+  additive fields instead of rejecting the whole file. A part that genuinely cannot be read is
+  reported on its own with the reason (for example "update the App") while every other part keeps
+  showing. One unreadable surface never hides the others.
+- A change that is not purely additive bumps the schema version, and readers keep supporting the
+  previous versions.
+- These readers are required compatibility, not the "backwards-compatibility shims" discouraged
+  below. Closed schemas for model output (Harness rules) are unaffected.
+
 ## Paper Wiki Data Rules
 
 - Raw sources (PDFs and their extracted text) are immutable.
