@@ -8,6 +8,7 @@ import type {
 import {
   idleNote, projectDecisionItems as attnItems, projectPulseSignal,
 } from '../../shared/project-signals.js'
+import { en } from '../messages/en/index.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { zh } from '../messages/zh/index.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
@@ -204,6 +205,13 @@ describe('idleNote', () => {
     expect(idleNote(null, sm.idle)).toBe('尚无推进')
     expect(idleNote(0, sm.idle)).toBe('今天有推进')
     expect(idleNote(5, sm.idle)).toBe('上次推进 5 天前')
+  })
+})
+
+describe('research record view names', () => {
+  it('names the activity feed view, not a bare list', () => {
+    expect(zh.project.recordModes.activity).toBe('动态')
+    expect(en.project.recordModes.activity).toBe('Activity')
   })
 })
 

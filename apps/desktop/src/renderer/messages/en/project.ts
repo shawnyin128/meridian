@@ -18,7 +18,7 @@ export const project = {
     records: 'Research log',
   },
   recordViewLabel: 'Research log view',
-  recordModes: { list: 'List' },
+  recordModes: { activity: 'Activity' },
   records: {
     kind: {
       start: 'Started',
