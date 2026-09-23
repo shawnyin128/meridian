@@ -16,13 +16,21 @@ const listProjects = (win: Page) => win.evaluate(async () => {
 const getProject = (win: Page, id: string) => win.evaluate(async (projectId) => {
   const project = await (window as unknown as MeridianWindow).meridian
     .call('project.get', { id: projectId }) as {
-      name: string; tasks: unknown[]; milestones: unknown[]; events: unknown[]
-      agentSessions: unknown[]; graph: { nodes: unknown[] }
+      name: string
+      tasks: { state: string }[]
+      milestones: { done: boolean }[]
+      events: unknown[]
+      agentSessions: unknown[]
+      graph: { nodes: unknown[] }
     }
   return {
     name: project.name,
+    // The Gantt still draws a bar for every task, done or not.
     tasks: project.tasks.length,
-    milestones: project.milestones.length,
+    // A done task or milestone starts collapsed into the plan list's archived group, so the visible
+    // row count is the active-only count, not the contract's full array length.
+    activeTasks: project.tasks.filter((t) => t.state !== 'done').length,
+    activeMilestones: project.milestones.filter((m) => !m.done).length,
     events: project.events.length,
     agentSessions: project.agentSessions.length,
     graphNodes: project.graph.nodes.length,
@@ -68,10 +76,10 @@ test('从列表进入 draft 之外的项目,详情屏渲染的是那个项目', 
   expect(project.name).not.toBe('draft 效率')
   await expect(shown(win).locator('.desk-head .t')).toHaveText(project.name)
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', project.name])
-  await expect(win.locator('#taskList .ddlrow')).toHaveCount(project.tasks)
+  await expect(win.locator('#taskList .ddlrow')).toHaveCount(project.activeTasks)
 
   await win.locator('.segmented-control>button', { hasText: '里程碑' }).click()
-  await expect(win.locator('#msList .ddlrow')).toHaveCount(project.milestones)
+  await expect(win.locator('#msList .ddlrow')).toHaveCount(project.activeMilestones)
 })
 
 test('项目详情的面包屑「项目」那一段点回列表', async ({ win }) => {
@@ -242,13 +250,13 @@ test('sched / moe / fa 各打开一次,各板块条数与 project.get 一致', a
     await win.locator(`[data-proj="${id}"]`).click()
     const project = await getProject(win, id)
     await expect(shown(win).locator('.desk-head .t'), id).toHaveText(project.name)
-    await expect(win.locator('#taskList .ddlrow'), id).toHaveCount(project.tasks)
+    await expect(win.locator('#taskList .ddlrow'), id).toHaveCount(project.activeTasks)
     await expect(win.locator('.gantt .grow:not(.msrow)'), id).toHaveCount(project.tasks)
     await expect(win.locator('.evlist .record-row'), id).toHaveCount(project.events)
     await expect(win.locator('.agcard'), id).toHaveCount(project.agentSessions)
 
     await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '里程碑' }).click()
-    await expect(win.locator('#msList .ddlrow'), id).toHaveCount(project.milestones)
+    await expect(win.locator('#msList .ddlrow'), id).toHaveCount(project.activeMilestones)
     // Sections are maintained across projects. If you want to start the next project from the task section, you have to switch back by yourself.
     await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '任务' }).click()
     await win.locator('#crumb .cseg.link', { hasText: '项目' }).click()

@@ -41,8 +41,11 @@ const MILESTONES = { m1: -20, m2: 3, m3: 11, m4: 21 }
 
 /** When the window is reduced to this content width, the Gantt viewport only has more than 300 pixels left, and the strips of the last two tasks fall outside the viewport. */
 const NARROW_WIDTH = 760
-/** The number of tasks in the draft project in the fixture. */
+/** The number of tasks in the draft project in the fixture. The Gantt still shows every one of them. */
 const TASK_ROWS = 5
+/** One of the fixture's tasks (t1) is done, so the plan's task list shows this many rows by default: a
+ * done task collapses into the archived group, which starts closed. */
+const ACTIVE_TASK_ROWS = TASK_ROWS - 1
 /**
  * Live per-day pixel width of the Gantt grid. `TimelineScale.tsx` fits the default week scale to the
  * viewport (`dayWidth = viewportWidth / 7`), so it is not a fixed constant and must be read from a
@@ -290,6 +293,14 @@ test('各板块渲染出的条目数与 project.get 返回的条数逐对相等'
     }
   })
 
+  // A done task/milestone starts collapsed into the archived group; open it so every row is in the
+  // DOM and this parity check still accounts for every item the contract returns.
+  const openArchive = async (listSelector: string) => {
+    const toggle = win.locator(`${listSelector} .collapsible-group-toggle`)
+    if (await toggle.count() > 0) await toggle.click()
+  }
+  await openArchive('#taskList')
+
   const rendered: Record<string, number> = {
     任务行: await win.locator('#taskList .ddlrow').count(),
     甘特任务行: await win.locator('.gantt .grow:not(.msrow)').count(),
@@ -304,6 +315,7 @@ test('各板块渲染出的条目数与 project.get 返回的条数逐对相等'
   // Milestones and scientific research maps are each hidden behind another tab. You can only view them by cutting over them.
   await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '里程碑' }).click()
   await win.locator('#msList').waitFor()
+  await openArchive('#msList')
   rendered['里程碑行'] = await win.locator('#msList .ddlrow').count()
   await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '科研图' }).click()
   await win.locator('.rgraph').waitFor()
@@ -470,7 +482,9 @@ test('任务时间列单独编辑时,名称、优先级与状态保持静息', a
 test('任务四列逐行对齐,任务与里程碑日期使用同一底色', async ({ win }) => {
   await gotoProject(win)
   const rows = win.locator('#taskList .task-row')
-  await expect(rows).toHaveCount(TASK_ROWS)
+  // The fixture's one done task (t1) starts collapsed into the archived group; only the active rows
+  // are visible and need to line up.
+  await expect(rows).toHaveCount(ACTIVE_TASK_ROWS)
   for (const selector of ['.task-time-cell', '.prtag', '.state-cell', '.plan-name']) {
     const x = await rows.evaluateAll((items, cell) => items.map((row) =>
       Math.round(row.querySelector(cell as string)!.getBoundingClientRect().x)), selector)
@@ -543,21 +557,21 @@ test('拖完菱形那一下不算点击,单击只切到里程碑并闪烁,名称
 
 test('新建一个任务再删掉,任务数前后一致', async ({ win }) => {
   await gotoProject(win)
-  await expect(win.locator('#taskList .ddlrow')).toHaveCount(TASK_ROWS)
+  await expect(win.locator('#taskList .ddlrow')).toHaveCount(ACTIVE_TASK_ROWS)
 
   await win.locator('.section-heading.flexh .btn.plain', { hasText: '任务' }).click()
   await win.locator('#taskList .min').fill(NEW_TASK_TITLE)
   await win.locator('#taskList .min').press('Enter')
 
   await expect(win.locator('#banner span')).toHaveText('已创建任务')
-  await expect(win.locator('#taskList .ddlrow')).toHaveCount(TASK_ROWS + 1)
+  await expect(win.locator('#taskList .ddlrow')).toHaveCount(ACTIVE_TASK_ROWS + 1)
   expect((await readDraft(win)).tasks.some((t) => t.title === NEW_TASK_TITLE)).toBe(true)
 
   const created = win.locator('#taskList .ddlrow', { hasText: NEW_TASK_TITLE })
   await created.locator('.row-delete').click()
 
   await expect(win.locator('#banner span')).toHaveText('已删除任务')
-  await expect(win.locator('#taskList .ddlrow')).toHaveCount(TASK_ROWS)
+  await expect(win.locator('#taskList .ddlrow')).toHaveCount(ACTIVE_TASK_ROWS)
   expect((await readDraft(win)).tasks.some((t) => t.title === NEW_TASK_TITLE)).toBe(false)
 })
 
