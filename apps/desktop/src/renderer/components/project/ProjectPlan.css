@@ -6,6 +6,9 @@
 #msList{display:grid;grid-template-columns:max-content max-content minmax(0,1fr) 24px;column-gap:8px}
 .project-plan .task-row,.project-plan .milestone-row{grid-column:1/-1;display:grid;grid-template-columns:subgrid;column-gap:8px}
 #taskList>.task-create-row,#msList>.milestone-create-row,#taskList>.lm{grid-column:1/-1}
+#taskList>.collapsible-group,#msList>.collapsible-group{grid-column:1/-1;display:grid;grid-template-columns:subgrid}
+#taskList .collapsible-group-body,#msList .collapsible-group-body{grid-column:1/-1;display:grid;grid-template-columns:subgrid;row-gap:0}
+#taskList .collapsible-group-head,#msList .collapsible-group-head{grid-column:1/-1}
 .milestone-row>.dchip{box-sizing:border-box;width:max-content;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .plan-date-button{background:transparent!important;padding:0 4px!important}
 .plan-date{min-width:50px}

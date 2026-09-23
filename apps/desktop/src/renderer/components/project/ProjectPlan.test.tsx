@@ -18,13 +18,24 @@ const rangeTask: Task = {
 const milestone: Milestone = {
   id: 'milestone-1', date: '2026-09-20', title: '完成首轮校准', done: false,
 }
+const doneTask: Task = {
+  id: 'task-3', title: '已完成的任务', start: '2026-09-01', end: '2026-09-02', priority: 'p2', state: 'done',
+}
+const doneMilestone: Milestone = {
+  id: 'milestone-2', date: '2026-09-05', title: '已完成的里程碑', done: true,
+}
 
-function renderPlan(tab: 'task' | 'ms', tasks: Task[] = [task]) {
+function renderPlan(tab: 'task' | 'ms', options: {
+  tasks?: Task[]
+  milestones?: Milestone[]
+  flashId?: string | null
+} = {}) {
+  const { tasks = [task], milestones = [milestone], flashId = null } = options
   return renderToStaticMarkup(
     <MessagesProvider>
       <ProjectPlan
-        project={{ tasks, milestones: [milestone] }} tab={tab} today="2026-09-16"
-        creating={null} flashId={null}
+        project={{ tasks, milestones }} tab={tab} today="2026-09-16"
+        creating={null} flashId={flashId}
         listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()} milestoneLaneRef={createRef()}
         onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
         onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
@@ -56,7 +67,7 @@ describe('ProjectPlan', () => {
   })
 
   it('单日和跨天任务的日期栏共用同一个网格列,不再包在同一个容器里', () => {
-    const output = renderPlan('task', [task, rangeTask])
+    const output = renderPlan('task', { tasks: [task, rangeTask] })
     expect(output).not.toContain('task-time-cell')
     expect(output).toContain('9月16日')
     expect(output).toContain('9月16日–9月20日')
@@ -71,5 +82,33 @@ describe('ProjectPlan', () => {
     expect(output).toContain('9月20日')
     expect(output).toContain('未完成')
     expect(output).not.toContain('校准批次')
+  })
+
+  it('已完成的任务默认折叠进已归档分组,活动列表里看不到它', () => {
+    const output = renderPlan('task', { tasks: [task, doneTask] })
+    expect(output).toContain('校准批次')
+    expect(output).not.toContain('已完成的任务')
+    expect(output).toContain('已归档')
+  })
+
+  it('flashId 指向已归档任务时,归档分组自动展开显示它', () => {
+    const output = renderPlan('task', { tasks: [task, doneTask], flashId: doneTask.id })
+    expect(output).toContain('已完成的任务')
+  })
+
+  it('归档任务不参与拖拽排序', () => {
+    const output = renderPlan('task', { tasks: [task, doneTask], flashId: doneTask.id })
+    expect(output).toContain('data-row="task-1" draggable="true"')
+    expect(output).not.toContain('data-row="task-3" draggable="true"')
+  })
+
+  it('已完成的里程碑默认折叠进已归档分组,展开后可见', () => {
+    const closed = renderPlan('ms', { milestones: [milestone, doneMilestone] })
+    expect(closed).toContain('完成首轮校准')
+    expect(closed).not.toContain('已完成的里程碑')
+    expect(closed).toContain('已归档')
+
+    const open = renderPlan('ms', { milestones: [milestone, doneMilestone], flashId: doneMilestone.id })
+    expect(open).toContain('已完成的里程碑')
   })
 })

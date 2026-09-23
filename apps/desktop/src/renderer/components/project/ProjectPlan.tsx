@@ -10,6 +10,7 @@ import type {
 import { TASK_SLOT_ENDS, TASK_SLOT_STARTS } from '../../../shared/contract.js'
 import { dnum, isoOf } from '../../../shared/dates.js'
 import { AddAction } from '../AddAction.js'
+import { CollapsibleGroup } from '../CollapsibleGroup.js'
 import { DateChip } from '../DateTimeDisplay.js'
 import { ChoicePicker, DateButton, PriorityPicker } from '../FieldPickers.js'
 import { InlineDraftInput } from '../InlineDraftInput.js'
@@ -188,11 +189,12 @@ function PlanNameCell({ value, label, onSave }: {
   )
 }
 
-function TaskRow({ task, flash, dragProps, dropClass, onSave, onDelete }: {
+function TaskRow({ task, flash, dragProps, dropClass = '', onSave, onDelete }: {
   task: Task
   flash: boolean
-  dragProps: DragCardProps
-  dropClass: string
+  /** Omitted for an archived row: it is not draggable, since its position among other done tasks does not matter. */
+  dragProps?: DragCardProps
+  dropClass?: string
   onSave: (patch: TaskPatch) => Promise<boolean>
   onDelete: () => void
 }) {
@@ -304,8 +306,23 @@ export function ProjectPlan({
   onHoverMilestone: (milestoneId: string | null) => void
 }) {
   const m = useMessages()
+  const [taskArchiveOpen, setTaskArchiveOpen] = useState(false)
+  const [msArchiveOpen, setMsArchiveOpen] = useState(false)
   const taskIds = useMemo(() => project.tasks.map((task) => task.id), [project.tasks])
-  const taskOrder = useDragReorder(taskIds, () => 'task', onReorderTasks)
+  const taskDoneById = useMemo(
+    () => new Map(project.tasks.map((task) => [task.id, task.state === 'done'])), [project.tasks],
+  )
+  const taskOrder = useDragReorder(
+    taskIds, (id) => (taskDoneById.get(id) ? 'done' : 'active'), onReorderTasks,
+  )
+  const activeTasks = project.tasks.filter((task) => task.state !== 'done')
+  const archivedTasks = project.tasks.filter((task) => task.state === 'done')
+  const activeMilestones = [...project.milestones].filter((milestone) => !milestone.done)
+    .sort((a, b) => dnum(a.date) - dnum(b.date))
+  const archivedMilestones = [...project.milestones].filter((milestone) => milestone.done)
+    .sort((a, b) => dnum(a.date) - dnum(b.date))
+  const taskArchiveShown = taskArchiveOpen || archivedTasks.some((task) => task.id === flashId)
+  const msArchiveShown = msArchiveOpen || archivedMilestones.some((milestone) => milestone.id === flashId)
   return (
     <section className="project-plan">
       <SectionHeading variant="content" className="flexh">{m.project.sections.plan}
@@ -331,7 +348,7 @@ export function ProjectPlan({
         {tab === 'task'
           ? (
             <StructuredList id="taskList" variant="embedded">
-              {project.tasks.map((task) => (
+              {activeTasks.map((task) => (
                 <TaskRow
                   key={task.id} task={task} flash={flashId === task.id}
                   dragProps={taskOrder.cardProps(task.id)} dropClass={taskOrder.dropClass(task.id)}
@@ -358,11 +375,27 @@ export function ProjectPlan({
                   />
                 )
                 : null}
+              {archivedTasks.length === 0
+                ? null
+                : (
+                  <CollapsibleGroup
+                    variant="quiet" title={m.common.archived}
+                    open={taskArchiveShown} onToggle={() => setTaskArchiveOpen((open) => !open)}
+                  >
+                    {archivedTasks.map((task) => (
+                      <TaskRow
+                        key={task.id} task={task} flash={flashId === task.id}
+                        onSave={(patch) => onUpdateTask(task.id, patch)}
+                        onDelete={() => onDeleteTask(task.id)}
+                      />
+                    ))}
+                  </CollapsibleGroup>
+                )}
             </StructuredList>
           )
           : (
             <StructuredList id="msList" variant="embedded">
-              {[...project.milestones].sort((a, b) => dnum(a.date) - dnum(b.date)).map((milestone) => (
+              {activeMilestones.map((milestone) => (
                 <MilestoneRow
                   key={milestone.id} milestone={milestone} flash={flashId === milestone.id}
                   onHover={onHoverMilestone}
@@ -379,6 +412,23 @@ export function ProjectPlan({
                   />
                 )
                 : null}
+              {archivedMilestones.length === 0
+                ? null
+                : (
+                  <CollapsibleGroup
+                    variant="quiet" title={m.common.archived}
+                    open={msArchiveShown} onToggle={() => setMsArchiveOpen((open) => !open)}
+                  >
+                    {archivedMilestones.map((milestone) => (
+                      <MilestoneRow
+                        key={milestone.id} milestone={milestone} flash={flashId === milestone.id}
+                        onHover={onHoverMilestone}
+                        onSave={(patch) => onUpdateMilestone(milestone.id, patch)}
+                        onDelete={() => onDeleteMilestone(milestone.id)}
+                      />
+                    ))}
+                  </CollapsibleGroup>
+                )}
             </StructuredList>
           )}
       </div>
