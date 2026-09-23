@@ -628,7 +628,8 @@ Minimum completion:
 - Convert a `ready` local proposal into a `meridian.wiki_propose` call: claim
   ops only (`addClaim`/`reviseClaim`/...), with at least one `experiment`
   evidence item naming this project and a node whose conclusion is recorded;
-  the App rejects a node without one. Never import a paper, restructure
+  the App rejects a node without one, and the user can apply the proposal only
+  after verifying that conclusion. Never import a paper, restructure
   an aggregation, or edit a body through this path.
 - The proposal is queued for the user's review in the App; it is not applied
   by submitting it. Report the returned key, and check it with
