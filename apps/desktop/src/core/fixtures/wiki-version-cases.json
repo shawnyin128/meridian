@@ -1,0 +1,92 @@
+[
+ {
+  "name": "aggregation page with generated regions and an updated line",
+  "text": "---\nkind: \"topic\"\ntitle: \"Speculative decoding\"\naliases: []\nparents: []\ncolumns: []\nupdated: \"2026-05-20\"\nclaims:\n  - id: \"knee\"\n    text: \"拐点在宽度 6\"\n    version: 1\n    since: \"2026-06-09\"\n    by: \"我\"\n    evidence:\n      - kind: \"personal\"\n        text: \"\"\n        added: \"2026-06-09\"\n        by: \"我\"\n---\n<!-- generated:children -->\n## 子聚合\n(无)\n<!-- /generated -->\n<!-- generated:table -->\n## 对照表\n(此节点不直接收论文)\n<!-- /generated -->\n<!-- generated:claims -->\n## 结论\n- 拐点在宽度 6 · v1 · 2026-06-09 ^knee\n  - 个人判断\n<!-- /generated -->\n\n## 问题\n小模型起草、大模型并行核对。\n\n## 实验\n\n## 未解决\n",
+  "fm": "440392ea10e472ca",
+  "body": "5729364b9d820507"
+ },
+ {
+  "name": "the same page with CRLF line endings",
+  "text": "---\r\nkind: \"topic\"\r\ntitle: \"Speculative decoding\"\r\naliases: []\r\nparents: []\r\ncolumns: []\r\nupdated: \"2026-05-20\"\r\nclaims:\r\n  - id: \"knee\"\r\n    text: \"拐点在宽度 6\"\r\n    version: 1\r\n    since: \"2026-06-09\"\r\n    by: \"我\"\r\n    evidence:\r\n      - kind: \"personal\"\r\n        text: \"\"\r\n        added: \"2026-06-09\"\r\n        by: \"我\"\r\n---\r\n<!-- generated:children -->\r\n## 子聚合\r\n(无)\r\n<!-- /generated -->\r\n<!-- generated:table -->\r\n## 对照表\r\n(此节点不直接收论文)\r\n<!-- /generated -->\r\n<!-- generated:claims -->\r\n## 结论\r\n- 拐点在宽度 6 · v1 · 2026-06-09 ^knee\r\n  - 个人判断\r\n<!-- /generated -->\r\n\r\n## 问题\r\n小模型起草、大模型并行核对。\r\n\r\n## 实验\r\n\r\n## 未解决\r\n",
+  "fm": "440392ea10e472ca",
+  "body": "5729364b9d820507"
+ },
+ {
+  "name": "the same page stamped on another day",
+  "text": "---\nkind: \"topic\"\ntitle: \"Speculative decoding\"\naliases: []\nparents: []\ncolumns: []\nupdated: \"2026-09-22\"\nclaims:\n  - id: \"knee\"\n    text: \"拐点在宽度 6\"\n    version: 1\n    since: \"2026-06-09\"\n    by: \"我\"\n    evidence:\n      - kind: \"personal\"\n        text: \"\"\n        added: \"2026-06-09\"\n        by: \"我\"\n---\n<!-- generated:children -->\n## 子聚合\n(无)\n<!-- /generated -->\n<!-- generated:table -->\n## 对照表\n(此节点不直接收论文)\n<!-- /generated -->\n<!-- generated:claims -->\n## 结论\n- 拐点在宽度 6 · v1 · 2026-06-09 ^knee\n  - 个人判断\n<!-- /generated -->\n\n## 问题\n小模型起草、大模型并行核对。\n\n## 实验\n\n## 未解决\n",
+  "fm": "440392ea10e472ca",
+  "body": "5729364b9d820507"
+ },
+ {
+  "name": "paper page without generated regions",
+  "text": "---\ntitle: \"STAR\"\nupdated: 2026-05-20\nmemberships:\n  - in: \"topics/speculative-decoding\"\n    cells: []\n---\n## 这篇说了什么\n多模态生成里的投机解码。\n",
+  "fm": "8e3e14f4db4b7f86",
+  "body": "3b2b28ab21b0b8ce"
+ },
+ {
+  "name": "a nested updated key is part of the frontmatter",
+  "text": "---\ntitle: \"X\"\ncustom:\n  updated: \"kept\"\nupdated: \"2026-01-01\"\n---\nbody",
+  "fm": "dab23224537ccca5",
+  "body": "230d8358dc8e8890"
+ },
+ {
+  "name": "no frontmatter",
+  "text": "# Loose note\n\nNo fences here.\n",
+  "fm": "e3b0c44298fc1c14",
+  "body": "7787a58be0d6ec37"
+ },
+ {
+  "name": "empty body",
+  "text": "---\ntitle: \"Empty\"\n---\n",
+  "fm": "eedaf34b4fa7e4eb",
+  "body": "e3b0c44298fc1c14"
+ },
+ {
+  "name": "a CRLF page without generated regions",
+  "text": "---\r\nkind: \"topic\"\r\ntitle: \"CRLF page\"\r\nupdated: \"2026-01-01\"\r\n---\r\n## Problem\r\nText with CRLF endings.\r\n",
+  "fm": "8627f6986393863c",
+  "body": "8206a0bf7da07d81"
+ },
+ {
+  "name": "generated regions are removed from the body",
+  "text": "---\nkind: \"topic\"\ntitle: \"Generated regions\"\n---\n<!-- generated:children -->\n## Children\n(none)\n<!-- /generated -->\n<!-- generated:table -->\n## Table\n| a |\n|---|\n| b |\n<!-- /generated -->\n\n## Problem\nProse after generated regions.\n",
+  "fm": "b3b195de77dc8b57",
+  "body": "5190d05d4fa4a474"
+ },
+ {
+  "name": "an updated: line in the body stays",
+  "text": "---\nkind: \"topic\"\ntitle: \"Updated line\"\naliases: []\nupdated: \"2026-05-20\"\n---\n## Problem\nupdated: this word appears in prose too, must stay.\n",
+  "fm": "7bb34f3528eae15c",
+  "body": "9dd7b326a56fd234"
+ },
+ {
+  "name": "a frontmatter line that only starts with --- is not the closing fence",
+  "text": "---\ntitle: \"Fence\"\n---x: \"value\"\nupdated: \"2026-01-01\"\n---\n## Body\nhello\n",
+  "fm": "b9be802d9ea98084",
+  "body": "2d173895437f82d4"
+ },
+ {
+  "name": "a generated region left open runs to the end",
+  "text": "---\ntitle: \"Open\"\n---\n## Body\nkept\n<!-- generated:table -->\n## Table\n| a |\n",
+  "fm": "3c018948613cf236",
+  "body": "5ef854940f9a2e51"
+ },
+ {
+  "name": "a frontmatter that never closes is all body",
+  "text": "---\ntitle: \"Unclosed\"\n\n## Body\nhello\n",
+  "fm": "e3b0c44298fc1c14",
+  "body": "386e5a7136cd4b1f"
+ },
+ {
+  "name": "an indented or unspaced generated marker is body text",
+  "text": "---\ntitle: \"Markers\"\n---\n  <!-- generated:table -->\nindented\n<!--generated:children-->\nunspaced\n  <!-- /generated -->\n## Body\nhello\n",
+  "fm": "f1353c2573351796",
+  "body": "00b9f940e194b3e7"
+ },
+ {
+  "name": "a key that only starts with updated stays in the frontmatter",
+  "text": "---\ntitle: \"Keys\"\nupdated_by: \"我\"\nupdated: \"2026-01-01\"\n---\n## Body\nhello\n",
+  "fm": "f9f914a2a77824c6",
+  "body": "2d173895437f82d4"
+ }
+]

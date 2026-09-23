@@ -41,8 +41,8 @@ const FINDER_METADATA = new Set(['.DS_Store', '.localized'])
 
 /**
  * Complete wiki/schema.yaml for a new library: topics live under topics/, methods under methods/,
- * and method tables add a "used for" column derived from member topics. The three append sections
- * are findings, experiments, and open questions; cells must include source quotations.
+ * and method tables add a "used for" column derived from member topics. The two append sections
+ * are experiments and open questions (findings are claims); cells must include source quotations.
  */
 const WIKI_SCHEMA = [
   'version: 1',
@@ -66,7 +66,6 @@ const WIKI_SCHEMA = [
   '        from_kind: topic',
   '',
   'sections:',
-  '  - {key: conclusions, label: 结论}',
   '  - {key: experiments, label: 实验}',
   '  - {key: open, label: 未解决}',
   '',

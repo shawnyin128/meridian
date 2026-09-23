@@ -75,7 +75,7 @@ def run_stdio_harness(
     )
     audit = call(main_server, _tool_call(7, "meridian.audit", {"wiki_root": str(wiki_root), "scope": "all"}))
 
-    fixture_result = _run_fixture_update_sequence(fixture_root=fixture_root)
+    fixture_result = _run_fixture_propose_sequence(fixture_root=fixture_root)
     transcript.extend(fixture_result["transcript"])
     workspace_result = _run_workspace_sequence()
     transcript.extend(workspace_result["transcript"])
@@ -102,8 +102,8 @@ def run_stdio_harness(
             "read_page": _tool_payload(read).get("page"),
             "trace_page": _tool_payload(trace).get("page"),
             "blocked_internal_read": bool((blocked_read.get("result") or {}).get("isError")),
-            "fixture_apply_status": fixture_result["apply_payload"].get("status"),
-            "fixture_published_path": fixture_result["apply_payload"].get("published_path"),
+            "fixture_propose_status": fixture_result["propose_payload"].get("status"),
+            "fixture_proposal_status": fixture_result["proposal_status_payload"].get("status"),
             "workspace_status": workspace_result["status_payload"].get("status"),
             "workspace_plan_revision": workspace_result["plan_payload"].get("revision"),
             "workspace_change_cursor_status": workspace_result["changes_payload"].get("cursor_status"),
@@ -119,9 +119,8 @@ def run_stdio_harness(
             "meridian.context",
             "meridian.read",
             "meridian.trace",
-            "meridian.update",
-            "meridian.propose",
-            "meridian.apply",
+            "meridian.wiki_propose",
+            "meridian.wiki_proposal_status",
             "meridian.audit",
             "meridian.workspace_status",
             "meridian.workspace_plan",
@@ -154,7 +153,7 @@ def main(argv: list[str] | None = None) -> int:
     return 0 if result["status"] == "pass" else 1
 
 
-def _run_fixture_update_sequence(*, fixture_root: Path | None) -> JsonDict:
+def _run_fixture_propose_sequence(*, fixture_root: Path | None) -> JsonDict:
     temp_dir: tempfile.TemporaryDirectory[str] | None = None
     if fixture_root is None:
         temp_dir = tempfile.TemporaryDirectory(prefix="meridian-mcp-fixture-")
@@ -186,33 +185,41 @@ def _run_fixture_update_sequence(*, fixture_root: Path | None) -> JsonDict:
     propose = call(
         _tool_call(
             102,
-            "meridian.propose",
+            "meridian.wiki_propose",
             {
                 "wiki_root": str(wiki_root),
-                "query": "activation outlier implementation probe planning",
-                "title": "Fixture Activation Outlier Probe Synthesis",
-                "proposal_type": "synthesis",
-                "context_path": _tool_payload(context).get("context_json_path"),
+                "title": "Fixture activation outlier probe supports smoothing",
+                "trigger": {"project": "fixture-project", "node": "fixture.A"},
+                "ops": [
+                    {
+                        "op": "addClaim",
+                        "page": "topics/quantization-error",
+                        "claim": {
+                            "id": "fixture-outlier-probe",
+                            "text": "Fixture: the no-smoothing ablation confirms activation outliers dominate error.",
+                            "evidence": [{"kind": "experiment", "project": "fixture-project", "node": "fixture.A"}],
+                        },
+                    }
+                ],
             },
         )
     )
     propose_payload = _tool_payload(propose)
-    apply = call(
+    status = call(
         _tool_call(
             103,
-            "meridian.apply",
-            {
-                "wiki_root": str(wiki_root),
-                "proposal_manifest": propose_payload.get("proposal_manifest"),
-            },
+            "meridian.wiki_proposal_status",
+            {"wiki_root": str(wiki_root), "key": propose_payload.get("key")},
         )
     )
-    apply_payload = _tool_payload(apply)
+    status_payload = _tool_payload(status)
+    audit = call(_tool_call(104, "meridian.audit", {"wiki_root": str(wiki_root)}))
     result = {
         "fixture_root": str(wiki_root),
         "context_payload": _tool_payload(context),
         "propose_payload": propose_payload,
-        "apply_payload": apply_payload,
+        "proposal_status_payload": status_payload,
+        "audit_payload": _tool_payload(audit),
         "transcript": transcript,
     }
     if temp_dir is not None:
@@ -221,52 +228,86 @@ def _run_fixture_update_sequence(*, fixture_root: Path | None) -> JsonDict:
 
 
 def _write_fixture_wiki(wiki_root: Path) -> None:
-    paper = wiki_root / "papers/Fixture-Activation-Outliers.md"
-    paper.parent.mkdir(parents=True, exist_ok=True)
-    (wiki_root / "syntheses").mkdir(parents=True, exist_ok=True)
-    paper.write_text(
+    """Write a minimal new-format (aggregation) vault: one topic with a paper member."""
+    topics = wiki_root / "topics"
+    papers = wiki_root / "papers"
+    topics.mkdir(parents=True, exist_ok=True)
+    papers.mkdir(parents=True, exist_ok=True)
+    (wiki_root / "schema.yaml").write_text(
+        "\n".join(
+            [
+                "version: 1",
+                "kinds:",
+                "  topic:",
+                "    dir: topics",
+                "    label: Topic",
+                "    describe: {section: Problem, hint: what is hard here}",
+                "sections:",
+                "  - {key: experiments, label: Experiments}",
+                "  - {key: open, label: Open questions}",
+                "anchor:",
+                "  require_quote: true",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (topics / "quantization-error.md").write_text(
+        "\n".join(
+            [
+                "---",
+                'kind: "topic"',
+                'title: "Quantization error"',
+                "aliases: []",
+                "parents: []",
+                "columns: []",
+                'updated: "2026-09-16"',
+                "---",
+                "<!-- generated:children -->",
+                "## Sub-aggregations",
+                "(none)",
+                "<!-- /generated -->",
+                "<!-- generated:table -->",
+                "## Table",
+                "| Paper |",
+                "|---|",
+                "| [[papers/fixture-activation-outliers|Fixture Activation Outliers]] |",
+                "<!-- /generated -->",
+                "<!-- generated:claims -->",
+                "## Conclusions",
+                "(none yet)",
+                "<!-- /generated -->",
+                "",
+                "## Problem",
+                "Activation outlier probes are useful before changing a quantization kernel.",
+                "",
+                "## Experiments",
+                "",
+                "## Open questions",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (papers / "fixture-activation-outliers.md").write_text(
         "\n".join(
             [
                 "---",
                 'type: "paper"',
                 'title: "Fixture Activation Outliers"',
-                "aliases:",
-                '  - "FixtureOutliers"',
-                "topics:",
-                '  - "activation outliers"',
-                '  - "quantization error"',
-                "methods:",
-                '  - "post-training quantization"',
-                '  - "outlier-aware quantization"',
-                "settings:",
-                '  - "weight-activation quantization"',
-                'confidence: "medium"',
-                'review_state: "auto_converged"',
-                'quality_state: "text_converged"',
-                'validation_state: "text_converged"',
-                'trust_state: "source_grounded_text"',
-                'evolution_state: "active"',
+                'status: "active"',
+                'created: "2026-09-16"',
+                'updated: "2026-09-16"',
+                'source_id: "fixture-source"',
+                "memberships:",
+                '  - in: "topics/quantization-error"',
+                "    cells: []",
                 "---",
-                "# Fixture Activation Outliers",
-                "",
-                "## What To Remember",
-                "",
-                "Activation outlier probes are useful before changing a quantization kernel.",
-                "",
-                "## Mechanism",
-                "",
+                "## What this covers",
                 "Outlier-aware quantization checks whether rare high-magnitude activations dominate scaling and downstream error.",
                 "",
-                "## Evidence Map",
-                "",
-                "The fixture evidence supports only MCP harness behavior, not a scientific claim.",
-                "",
-                "## Implementation Hooks",
-                "",
-                "Plot activation maxima and run a no-smoothing ablation before changing deployment kernels.",
             ]
-        )
-        + "\n",
+        ),
         encoding="utf-8",
     )
 
@@ -543,9 +584,8 @@ def _status(
         "meridian.context",
         "meridian.read",
         "meridian.trace",
-        "meridian.update",
-        "meridian.propose",
-        "meridian.apply",
+        "meridian.wiki_propose",
+        "meridian.wiki_proposal_status",
         "meridian.audit",
         "meridian.workspace_status",
         "meridian.workspace_plan",
@@ -562,13 +602,17 @@ def _status(
         return "fail"
     if not _tool_payload(context).get("results_summary"):
         return "fail"
-    if not _tool_payload(read).get("sections"):
+    if not (_tool_payload(read).get("body") or _tool_payload(read).get("sections")):
         return "fail"
     if not _tool_payload(trace).get("page"):
         return "fail"
     if not ((blocked_read.get("result") or {}).get("isError")):
         return "fail"
-    if fixture_result["apply_payload"].get("status") != "published":
+    if fixture_result["propose_payload"].get("status") != "submitted":
+        return "fail"
+    if fixture_result["proposal_status_payload"].get("status") != "waiting_for_app":
+        return "fail"
+    if fixture_result["audit_payload"].get("status") != "not_run":
         return "fail"
     if workspace_result["status_payload"].get("status") != "ready":
         return "fail"

@@ -20,7 +20,6 @@ kinds:                      # Available aggregation kinds; adding one creates an
         from_kind: topic
 
 sections:                   # Ordered append-only regions on every aggregation page; ingest never overwrites them.
-  - {key: conclusions, label: 结论}
   - {key: experiments, label: 实验}
   - {key: open, label: 未解决}
 

@@ -19,7 +19,6 @@ kinds:
         from_kind: topic
 
 sections:
-  - {key: conclusions, label: 结论}
   - {key: experiments, label: 实验}
   - {key: open, label: 未解决}
 

@@ -27,10 +27,6 @@
  },
  "sections": [
   {
-   "key": "conclusions",
-   "label": "结论"
-  },
-  {
    "key": "experiments",
    "label": "实验"
   },
@@ -897,9 +893,79 @@
      }
     ],
     "split_on": null,
-    "updated": "2026-09-09"
+    "updated": "2026-09-09",
+    "claims": [
+     {
+      "id": "per-channel-keys",
+      "text": "Key 按通道量化、Value 按 token 量化时,3 bit 的困惑度损失仍在 0.1 以内",
+      "version": 1,
+      "since": "2026-07-02",
+      "by": "我",
+      "evidence": [
+       {
+        "kind": "source",
+        "paper": "papers/2401.18079",
+        "page": 1,
+        "quote": "Per-Channel Key Quantization, where we adjust the dimension along which we quantize the Key activations to better match the distribution",
+        "added": "2026-07-02",
+        "by": "我"
+       },
+       {
+        "kind": "source",
+        "paper": "papers/2401.18079",
+        "page": 1,
+        "quote": "we achieve < 0.1 perplexity degradation with 3-bit quantization on both Wikitext-2 and C4",
+        "added": "2026-07-02",
+        "by": "我"
+       }
+      ],
+      "conflicts": [
+       {
+        "id": "granularity",
+        "against": {
+         "kind": "claim",
+         "ref": "topics/ptq-weight-activation#rotation-kv"
+        },
+        "note": "量化粒度的说法不一致:按通道还是按 token",
+        "since": "2026-08-20",
+        "by": "我"
+       }
+      ]
+     },
+     {
+      "id": "prefix-schedule",
+      "text": "KV cache 量化之后,前缀读取与验证可以共调度,吞吐与基线持平",
+      "version": 2,
+      "since": "2026-08-10",
+      "by": "我",
+      "evidence": [
+       {
+        "kind": "personal",
+        "text": "读 KVQuant 时的直觉",
+        "added": "2026-07-01",
+        "by": "我"
+       },
+       {
+        "kind": "experiment",
+        "project": "fa",
+        "conclusion": "c1",
+        "text": "迁移后吞吐与基线持平",
+        "added": "2026-08-10",
+        "by": "我"
+       }
+      ],
+      "history": [
+       {
+        "version": 1,
+        "text": "KV cache 量化会拖慢前缀读取(推测)",
+        "since": "2026-07-01",
+        "by": "我"
+       }
+      ]
+     }
+    ]
    },
-   "body": "## 问题\n长上下文下 KV cache 是内存主项,把它压到 4 bit 以下。难点是 Key 的分布沿通道有结构、且经过 RoPE 之后更难量化。\n\n这个节点同时属于 PTQ(手段)和长上下文推理(动机),所以有两个父节点。\n\n## 结论\n\n## 实验\n\n## 未解决"
+   "body": "## 问题\n长上下文下 KV cache 是内存主项,把它压到 4 bit 以下。难点是 Key 的分布沿通道有结构、且经过 RoPE 之后更难量化。\n\n这个节点同时属于 PTQ(手段)和长上下文推理(动机),所以有两个父节点。\n\n## 实验\n\n## 未解决"
   },
   "topics/long-context-inference": {
    "kind": "topic",
@@ -913,7 +979,7 @@
     "split_on": null,
     "updated": "2026-09-09"
    },
-   "body": "## 问题\n上下文长到百万 token 时,推理的内存与带宽被 KV cache 主导。这个节点在示例里只有一个子聚合,lint 会指出来。\n\n## 结论\n\n## 实验\n\n## 未解决"
+   "body": "## 问题\n上下文长到百万 token 时,推理的内存与带宽被 KV cache 主导。这个节点在示例里只有一个子聚合,lint 会指出来。\n\n## 实验\n\n## 未解决"
   },
   "topics/ptq-weight-activation": {
    "kind": "topic",
@@ -950,7 +1016,38 @@
      }
     ],
     "split_on": null,
-    "updated": "2026-09-09"
+    "updated": "2026-09-09",
+    "claims": [
+     {
+      "id": "rotation-kv",
+      "text": "旋转之后 KV cache 按 token 量化到 4 bit 就够,不必按通道",
+      "version": 1,
+      "since": "2026-08-20",
+      "by": "我",
+      "evidence": [
+       {
+        "kind": "source",
+        "paper": "papers/2404.00456",
+        "page": 1,
+        "quote": "including all weights, activations, and KV cache in 4 bits",
+        "added": "2026-08-20",
+        "by": "我"
+       }
+      ],
+      "conflicts": [
+       {
+        "id": "granularity",
+        "against": {
+         "kind": "claim",
+         "ref": "topics/kv-cache-quantization#per-channel-keys"
+        },
+        "note": "量化粒度的说法不一致:按通道还是按 token",
+        "since": "2026-08-20",
+        "by": "我"
+       }
+      ]
+     }
+    ]
    },
    "body": "## 问题\n权重和激活都量化,矩阵乘才能走整数算子拿到真实加速。难点全在激活:少数通道的离群值把 per-tensor 的量化范围撑大,其余数值精度全丢。\n\n## 结论\n- 2026-08-01 · W8A8 用 SmoothQuant 即可,不需要更低比特。[[papers/2211.10438]]\n- 2026-09-09 · W4A4 下旋转类优于平滑类:SpinQuant 自述超 SmoothQuant 25.0 点。[[papers/2405.16406]]\n\n## 实验\n- 2026-09-09 · Lab exp-0012(示例条目,非真实实验):Llama-3-8B 上复现 QuaRot W4A4,WikiText-2 ppl 6.4;论文未报 8B 数字。[[papers/2404.00456]]\n\n## 未解决\n- 旋转与可学习缩放能否叠加:OmniQuant 的 LET 与 SpinQuant 的学习旋转都在学变换,没人同时用。[[papers/2308.13137]] [[papers/2405.16406]]"
   },
@@ -1004,7 +1101,7 @@
     "split_on": "量化对象",
     "updated": "2026-09-09"
    },
-   "body": "## 问题\n不重新训练,只用少量或零校准数据把已训练好的模型量化。难点是没有梯度可以修正误差,只能靠变换、舍入策略与格点设计。\n\n按「量化对象」拆成三块:只量权重(内存为主)、权重与激活都量(算子要走整数乘)、只量 KV cache(长上下文内存)。三块的对照表列不同,所以是三个节点。\n\n## 结论\n\n## 实验\n\n## 未解决"
+   "body": "## 问题\n不重新训练,只用少量或零校准数据把已训练好的模型量化。难点是没有梯度可以修正误差,只能靠变换、舍入策略与格点设计。\n\n按「量化对象」拆成三块:只量权重(内存为主)、权重与激活都量(算子要走整数乘)、只量 KV cache(长上下文内存)。三块的对照表列不同,所以是三个节点。\n\n## 实验\n\n## 未解决"
   },
   "topics/qat": {
    "kind": "topic",
@@ -1038,7 +1135,7 @@
     "split_on": null,
     "updated": "2026-09-09"
    },
-   "body": "## 问题\n在训练里模拟量化,让模型自己适应低比特。难点是 LLM 的原始训练数据通常拿不到,而且训练成本高。\n\n## 结论\n\n## 实验\n\n## 未解决"
+   "body": "## 问题\n在训练里模拟量化,让模型自己适应低比特。难点是 LLM 的原始训练数据通常拿不到,而且训练成本高。\n\n## 实验\n\n## 未解决"
   },
   "topics/quantization": {
    "kind": "topic",
@@ -1053,7 +1150,7 @@
     "split_on": "是否重新训练",
     "updated": "2026-09-09"
    },
-   "body": "## 问题\n把权重、激活、KV cache 用更少的比特表示,换取内存与带宽,同时不让精度掉太多。难点在于低比特下误差不再可忽略,而误差的来源(离群值、舍入、分布不匹配)因场景不同。\n\n这个节点不直接收论文:按「是否重新训练」拆成 PTQ 与 QAT,两边的对照表列完全不同(一边关心校准数据,一边关心训练数据)。\n\n## 结论\n\n## 实验\n\n## 未解决"
+   "body": "## 问题\n把权重、激活、KV cache 用更少的比特表示,换取内存与带宽,同时不让精度掉太多。难点在于低比特下误差不再可忽略,而误差的来源(离群值、舍入、分布不匹配)因场景不同。\n\n这个节点不直接收论文:按「是否重新训练」拆成 PTQ 与 QAT,两边的对照表列完全不同(一边关心校准数据,一边关心训练数据)。\n\n## 实验\n\n## 未解决"
   },
   "methods/distillation-qat": {
    "kind": "method",
@@ -1077,7 +1174,7 @@
     "split_on": null,
     "updated": "2026-09-09"
    },
-   "body": "## 机制\n全精度模型当教师,量化模型当学生,用蒸馏损失训练;数据可以由教师自己生成。示例里只有一篇,lint 会标 thin。\n\n## 结论\n\n## 实验\n\n## 未解决"
+   "body": "## 机制\n全精度模型当教师,量化模型当学生,用蒸馏损失训练;数据可以由教师自己生成。示例里只有一篇,lint 会标 thin。\n\n## 实验\n\n## 未解决"
   },
   "methods/error-compensated-rounding": {
    "kind": "method",
@@ -1102,7 +1199,7 @@
     "split_on": null,
     "updated": "2026-09-09"
    },
-   "body": "## 机制\n逐个(或逐列)舍入权重,每舍一个就用二阶信息把误差摊到还没舍入的权重上。不动模型结构,不需要梯度。\n\n## 结论\n\n## 实验\n\n## 未解决"
+   "body": "## 机制\n逐个(或逐列)舍入权重,每舍一个就用二阶信息把误差摊到还没舍入的权重上。不动模型结构,不需要梯度。\n\n## 实验\n\n## 未解决"
   },
   "methods/non-uniform-quantization": {
    "kind": "method",
@@ -1127,7 +1224,7 @@
     "split_on": null,
     "updated": "2026-09-09"
    },
-   "body": "## 机制\n格点不等距,按敏感度放;放不下的离群值单独存成稀疏矩阵。换来的精度用查表和稀疏 kernel 支付。\n\n## 结论\n\n## 实验\n\n## 未解决"
+   "body": "## 机制\n格点不等距,按敏感度放;放不下的离群值单独存成稀疏矩阵。换来的精度用查表和稀疏 kernel 支付。\n\n## 实验\n\n## 未解决"
   },
   "methods/outlier-suppression": {
    "kind": "method",
@@ -1141,7 +1238,7 @@
     "split_on": "变换类型(缩放 vs 旋转)",
     "updated": "2026-09-09"
    },
-   "body": "## 机制\n在量化之前施加一个不改变模型输出的线性变换,把激活/权重里的离群值摊平。按变换类型拆成两族:逐通道缩放(对角矩阵)与旋转(正交矩阵)。\n\n## 结论\n\n## 实验\n\n## 未解决"
+   "body": "## 机制\n在量化之前施加一个不改变模型输出的线性变换,把激活/权重里的离群值摊平。按变换类型拆成两族:逐通道缩放(对角矩阵)与旋转(正交矩阵)。\n\n## 实验\n\n## 未解决"
   },
   "methods/per-channel-scaling": {
    "kind": "method",
@@ -1172,7 +1269,7 @@
     "split_on": null,
     "updated": "2026-09-09"
    },
-   "body": "## 机制\n对每个通道乘一个标量、在相邻的权重里除回去,数学等价。差别只在:标量从哪来(激活统计 / 显著性 / 学出来),以及把难度往哪边挪。\n\n## 结论\n\n## 实验\n\n## 未解决"
+   "body": "## 机制\n对每个通道乘一个标量、在相邻的权重里除回去,数学等价。差别只在:标量从哪来(激活统计 / 显著性 / 学出来),以及把难度往哪边挪。\n\n## 实验\n\n## 未解决"
   },
   "methods/rotation": {
    "kind": "method",

@@ -6,16 +6,15 @@ import type {
 import {
   ChangeEntrySchema, PaperColumnsSchema, PaperRowSchema, ProjectDetailSchema,
 } from '../shared/contract.js'
-import { COLUMN_TYPE_LABEL, PAPER_PAGE, PROJECTS_DIR, TRASH_RETENTION_DAYS } from '../shared/vocabulary.js'
+import { COLUMN_TYPE_LABEL, PAPER_PAGE, TRASH_RETENTION_DAYS } from '../shared/vocabulary.js'
 import { dayOf } from './dates.js'
 import { misfitCells } from './paper-library/index.js'
 import type { ProjectRecord } from './project-management/index.js'
 import type { PageText, PaperSnapshot } from './vault/records.js'
 import { PageTextSchema, PaperSnapshotSchema } from './vault/records.js'
 import type { VaultOps, VaultStore } from './vault.js'
-import { describeOp } from './wiki/index.js'
 
-/** Changes made by the user in the UI. No other writer currently contributes recorded entries. */
+/** Changes made by the user in the UI; a proposal applied from the review queue records its own chip. */
 const BY_ME: ChangeSource = '我'
 
 /** Number of leading SHA-256 hexadecimal characters used for a fingerprint. */
@@ -164,7 +163,7 @@ const typeDiff = (key: string, from: PaperColumn['type'], to: PaperColumn['type'
   [`- ${key}: ${JSON.stringify(COLUMN_TYPE_LABEL[from])}`, `+ ${key}: ${JSON.stringify(COLUMN_TYPE_LABEL[to])}`]
 
 /** JSON with sorted object keys so identical content always serializes identically for fingerprinting. */
-function stableJson(value: unknown): string {
+export function stableJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`
   if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null'
   const entries = Object.keys(value).sort()
@@ -297,9 +296,10 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     }
   }
 
-  /** Record one entry at the front of the log. */
+  /** Record one entry at the front of the log; `source` is its chip. */
   const push = (
     target: ChangeTarget, what: string, keep: Keep, before: Entity | undefined, diff?: string[],
+    source: ChangeSource = BY_ME,
   ): void => {
     const after = entityOf(target)
     const named = before ?? after
@@ -310,7 +310,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         ? what
         : `${target.kind === 'paper' ? '论文' : '项目'}「${nameOf(named)}」· ${what}`,
       meta: null,
-      source: BY_ME,
+      source,
       diff: diff ?? diffLines(before, after),
       target,
       after: fingerprint(after),
@@ -474,32 +474,13 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         : onProject(action.project, '新增科研记录', () => ops.recordAction(id, messageId))
     },
 
-    writeBack(id, node, page, text) {
-      const name = ops.getProject(id).name
-      const title = ops.wikiAggregation(page).title
-      const section = ops.wikiSections()[0] ?? ''
-      const paths = [page, `${PROJECTS_DIR}/${id}`]
-      return wrote(
-        { kind: 'pages', id: paths.join('\n'), paths },
-        `项目「${name}」· 写回 ${title}`,
-        'snapshot',
-        () => ops.writeBack(id, node, page, text),
-        [
-          describeOp({ op: 'appendEntry', page, section, date: ops.today(), text }),
-          `+ ${node} ↦ ${page}`,
-        ],
-      )
-    },
-
-    applyProposal(proposal) {
-      const paths = ops.proposalPages(proposal)
-      return wrote(
-        { kind: 'pages', id: paths.join('\n'), paths },
-        `Wiki · ${proposal.title}`,
-        'snapshot',
-        () => ops.applyProposal(proposal),
-        proposal.ops.map(describeOp),
-      )
+    applyProposal(proposal, producer = { by: BY_ME, source: BY_ME }) {
+      const paths = ops.proposalPages(proposal, producer.by)
+      const target: ChangeTarget = { kind: 'pages', id: paths.join('\n'), paths }
+      const before = entityOf(target)
+      const diff = ops.describeProposal(proposal.ops)
+      ops.applyProposal(proposal, producer)
+      push(target, `Wiki · ${proposal.title}`, 'snapshot', before, diff, producer.source)
     },
 
     updateWikiPage(id, body) {

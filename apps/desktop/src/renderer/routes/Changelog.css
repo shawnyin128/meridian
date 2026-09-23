@@ -9,10 +9,7 @@
 .crow .ct{display:block;font-size:var(--fs-base);font-weight:500}
 .crow .cm{display:block;font-size:var(--fs-sm);color:var(--ter);margin-top:1px}
 .crow .src{font-size:var(--fs-cap);padding:1px 8px;border-radius:999px;background:var(--field);color:var(--sec);margin-left:6px}
-.diff{margin:8px 0 4px;border:1px solid var(--sep2);border-radius:var(--r-md);overflow:hidden;font-family:var(--mono);font-size:12px;display:none}
+.crow .diff{display:none}
 .crow.open .diff{display:block}
-.diff div{padding:4px 10px}
-.diff .del{background:var(--diff-del)}
-.diff .add{background:var(--diff-add)}
 /* "All Archives" is posted on the right side of "Unarchived"; the right side is managed by .section-heading.flexh's own rule in PageShell.css */
 .section-heading .archall:disabled{opacity:.45;cursor:default}

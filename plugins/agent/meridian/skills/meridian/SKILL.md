@@ -182,18 +182,23 @@ State meanings:
 ### Initialize
 
 Use when Meridian has no active user workspace or the user asks to set it up.
+The Meridian App owns the wiki itself: it creates `wiki/` (schema, pages, and
+every write to them) the first time the user opens or creates a library
+there. This CLI step only registers that library root so the CLI and MCP can
+find it; it never creates or touches `wiki/` content.
 
 Minimum completion:
 
 - Ask for the Paper Wiki library root before creating user data.
-- Initialize the library with:
+- Register the library with:
 
 ```bash
 python -m meridian wiki init --library-root <library-root>
 ```
 
-- Confirm that the library contains `meridian-wiki.json`, `sources/`, and
-  `wiki/`.
+- Confirm that the library contains `meridian-wiki.json` and `sources/`. If
+  `wiki/` is missing, tell the user to open or create the library in the
+  Meridian App first; this command does not create it.
 - Explain that `wiki` handles Paper Wiki Update/Use workflows and `lab` handles
   research idea-graph state.
 

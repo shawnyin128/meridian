@@ -560,9 +560,8 @@ def _runtime_category() -> FrameworkCategory:
         "meridian.context",
         "meridian.read",
         "meridian.trace",
-        "meridian.update",
-        "meridian.propose",
-        "meridian.apply",
+        "meridian.wiki_propose",
+        "meridian.wiki_proposal_status",
         "meridian.audit",
         "meridian.workspace_status",
         "meridian.workspace_plan",
@@ -642,7 +641,8 @@ def _workspace_category(
             "manual",
             "workspace_not_configured",
             "No active Paper Wiki workspace is configured for this check.",
-            "Run `meridian wiki init --library-root <library-root>` or pass --library-root/--wiki-root.",
+            "Create a library through the Meridian App, register it with "
+            "`meridian wiki init --library-root <library-root>`, or pass --library-root/--wiki-root.",
         )
         return _category(category, findings)
     for label, path in [
@@ -684,6 +684,12 @@ def _workspace_category(
 
 
 def _artifact_boundary_category(*, library_root: Path | None, wiki_root: Path | None) -> FrameworkCategory:
+    """Check the vault matches the new-format aggregation layout.
+
+    The MCP tools list every page in memory from `schema.yaml` and the kind
+    directories (`meridian.mcp.app_library`); there is no on-disk catalog to
+    audit for leaked internal artifacts any more.
+    """
     findings: list[FrameworkFinding] = []
     category = "Artifact Boundary"
     workspace = resolve_workspace(library_root=library_root, wiki_root=wiki_root)
@@ -694,43 +700,20 @@ def _artifact_boundary_category(*, library_root: Path | None, wiki_root: Path | 
             "info",
             "manual",
             "artifact_boundary_skipped",
-            "No workspace was available, so canonical catalog artifact-boundary checks were skipped.",
+            "No workspace was available, so the vault layout check was skipped.",
             "Pass --library-root or --wiki-root when checking a real Paper Wiki.",
         )
         return _category(category, findings)
-    index_dir = workspace.wiki_root / ".index"
-    if not index_dir.exists():
+    schema_path = workspace.wiki_root / "schema.yaml"
+    if not schema_path.is_file():
         _add(
             findings,
             category,
             "degraded",
             "manual",
-            "missing_wiki_index",
-            "Wiki .index directory is missing.",
-            "Run `meridian wiki catalog --wiki-root <wiki-root>`.",
-        )
-        return _category(category, findings)
-    bad_records: list[str] = []
-    for path in sorted(index_dir.glob("*.jsonl")):
-        for line in path.read_text(encoding="utf-8").splitlines():
-            if not line.strip():
-                continue
-            try:
-                record = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            record_path = str(record.get("path") or record.get("canonical_path") or "")
-            if "/.drafts/" in record_path or "/.versions/" in record_path:
-                bad_records.append(f"{path.name}:{record_path}")
-    if bad_records:
-        _add(
-            findings,
-            category,
-            "critical",
-            "manual",
-            "internal_artifact_indexed",
-            f"Canonical indexes include internal artifacts: {bad_records[:5]}.",
-            "Rebuild catalogs and fix retrieval indexing to exclude drafts and versions.",
+            "missing_wiki_schema",
+            f"Wiki schema.yaml is missing: {schema_path}.",
+            "The Meridian App creates and owns wiki content; open the library in the App first.",
         )
     return _category(category, findings)
 

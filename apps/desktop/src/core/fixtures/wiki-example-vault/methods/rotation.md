@@ -22,6 +22,10 @@ updated: 2026-09-09
 | [[papers/2404.00456|QuaRot]] | 旋转(计算不变性) ·p1 | — | 残差、FFN 激活、注意力、KV ·p1 | [[topics/ptq-weight-activation|Weight-activation PTQ]], [[topics/kv-cache-quantization|KV cache quantization]] |
 | [[papers/2405.16406|SpinQuant]] | 可学习旋转 ·p1 | 是 ·p1 | 激活或权重矩阵 ·p1 | [[topics/ptq-weight-activation|Weight-activation PTQ]] |
 <!-- /generated -->
+<!-- generated:claims -->
+## 结论
+(暂无结论)
+<!-- /generated -->
 
 ## 机制
 乘一个正交矩阵把能量摊到所有维度上,离群通道消失;正交所以可逆、输出不变。差别在:随机还是学出来的,施加在权重还是激活还是 KV。

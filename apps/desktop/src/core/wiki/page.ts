@@ -1,4 +1,4 @@
-import type { WikiMembershipRecord } from './model.js'
+import type { WikiClaimRecord, WikiMembershipRecord } from './model.js'
 import type { Json } from '../vault/frontmatter.js'
 import { emitItem, emitKey } from '../vault/frontmatter.js'
 import { rangeOf, removeKey, rowsOf, writeKey } from '../vault/page-lines.js'
@@ -23,30 +23,36 @@ function membershipLines(membership: WikiMembershipRecord): string[] {
 }
 
 /**
- * Line ranges `[from, to)` occupied by memberships, indexed by `in`. `key` is -1 when the page has no
- * `memberships`; `items` is empty for an explicit empty list. Throw when memberships are neither an
- * empty list nor indented sequence items under the key.
+ * Line ranges `[from, to)` occupied by the items of the sequence `key`, indexed by the value of each
+ * item's first field `head`. The key range is -1/-1 when the page has no `key`; `items` is empty for an
+ * explicit empty list. Throw when the value is neither an empty list nor indented sequence items under
+ * the key, or an item does not start with `- <head>:`.
  */
-function membershipsOf(file: string): { key: [number, number]; items: Map<string, [number, number]> } {
+function itemsOf(
+  file: string, key: 'memberships' | 'claims', head: 'in' | 'id',
+): { key: [number, number]; items: Map<string, [number, number]> } {
   const page = rowsOf(file)
-  const key = rangeOf(page, 'memberships')
+  const range = rangeOf(page, key)
   const items = new Map<string, [number, number]>()
-  if (key[0] < 0) return { key, items }
-  // Memberships occupy indented lines below the key. A one-line key supports only the empty-list form; top-level items are not editable.
-  const flat = key[1] - key[0] === 1 && page.bare[key[0]] !== 'memberships: []'
-  const indentless = page.bare.slice(key[0] + 1, key[1]).some((row) => row.startsWith('- '))
-  if (flat || indentless) throw new Error(`memberships 不是本模块能改的写法:${file}`)
-  let at = key[0] + 1
-  while (at < key[1]) {
-    const head = /^\s*- in: (["']?)([^"'\s]+)\1\s*$/.exec(page.bare[at]!)
-    if (!head) throw new Error(`memberships 里有一条不是 - in: 开头:${file} 第 ${at + 1} 行`)
+  if (range[0] < 0) return { key: range, items }
+  // Items occupy indented lines below the key. A one-line key supports only the empty-list form; top-level items are not editable.
+  const flat = range[1] - range[0] === 1 && page.bare[range[0]] !== `${key}: []`
+  const indentless = page.bare.slice(range[0] + 1, range[1]).some((row) => row.startsWith('- '))
+  if (flat || indentless) throw new Error(`${key} 不是本模块能改的写法:${file}`)
+  const first = new RegExp(`^\\s*- ${head}: (["']?)([^"'\\s]+)\\1\\s*$`)
+  let at = range[0] + 1
+  while (at < range[1]) {
+    const match = first.exec(page.bare[at]!)
+    if (!match) throw new Error(`${key} 里有一条不是 - ${head}: 开头:${file} 第 ${at + 1} 行`)
     let to = at + 1
-    while (to < key[1] && !page.bare[to]!.startsWith(`${ITEM_INDENT}- `)) to += 1
-    items.set(head[2]!, [at, to])
+    while (to < range[1] && !page.bare[to]!.startsWith(`${ITEM_INDENT}- `)) to += 1
+    items.set(match[2]!, [at, to])
     at = to
   }
-  return { key, items }
+  return { key: range, items }
 }
+
+const membershipsOf = (file: string): ReturnType<typeof itemsOf> => itemsOf(file, 'memberships', 'in')
 
 /**
  * Writes `membership` onto the paper page at `file`: replacing the lines of the
@@ -97,14 +103,61 @@ export function removeMembership(file: string, target: string, staging: string):
 }
 
 /**
- * Appends `line` at the end of the `## section` block of the page at `file`:
- * after its last non-blank line, or right under the heading when the block is
- * empty; a blank line stays between the block and the next heading. Throws if
- * the page has no such heading.
+ * Writes `claim` onto the aggregation page at `file` in the block layout of write protocol §2.4 (one key
+ * per line, fields in the record's own order): replacing the lines of the claim with the same id when the
+ * page carries one, appending after the last claim when it does not, opening a `claims` block just above
+ * the closing `---` when the page carries none. Every other byte of the page is untouched; the lines
+ * written carry the line ending of the line they land on. Throws if the page holds no closed frontmatter,
+ * or its `claims` is written some way this cannot edit line by line.
+ */
+export function setClaim(file: string, claim: WikiClaimRecord, staging: string): void {
+  const { key, items } = itemsOf(file, 'claims', 'id')
+  const value = JSON.parse(JSON.stringify(claim)) as Json
+  if (key[0] < 0) {
+    writeKey(file, 'claims', [value], staging, [])
+    return
+  }
+  const page = rowsOf(file)
+  const lines = withCrOf(page.rows[key[0]]!, emitItem(value, ITEM_INDENT))
+  const held = items.get(claim.id)
+  if (held) {
+    spliceLines(file, held[0], held[1], lines, staging)
+  } else if (items.size === 0) {
+    // Replace the `claims: []` line with the key and first item.
+    spliceLines(file, key[0], key[1], [...withCrOf(page.rows[key[0]]!, ['claims:']), ...lines], staging)
+  } else {
+    spliceLines(file, key[1], key[1], lines, staging)
+  }
+}
+
+/**
+ * Removes the claim with the given id from the aggregation page at `file`, leaving `claims: []` when it
+ * was the last one. Every other byte of the page is untouched. Throws if the page carries no such claim,
+ * or its `claims` is written some way this cannot edit line by line.
+ */
+export function removeClaim(file: string, id: string, staging: string): void {
+  const { key, items } = itemsOf(file, 'claims', 'id')
+  const held = items.get(id)
+  if (!held) throw new Error(`这一页上没有结论 ${id}:${file}`)
+  if (items.size === 1) {
+    const page = rowsOf(file)
+    spliceLines(file, key[0], key[1], withCrOf(page.rows[key[0]]!, ['claims: []']), staging)
+    return
+  }
+  spliceLines(file, held[0], held[1], [], staging)
+}
+
+/**
+ * Appends `line` at the end of the `## section` block in the body of the page
+ * at `file` (the lines after its last generated region, whose own headings
+ * are not sections): after the block's last non-blank line, or right under the
+ * heading when the block is empty; a blank line stays between the block and
+ * the next heading. Throws if the body has no such heading.
  */
 export function appendEntry(file: string, section: string, line: string, staging: string): void {
   const page = rowsOf(file)
-  const heading = page.bare.indexOf(`## ${section}`)
+  const regionsEnd = page.bare.lastIndexOf(GENERATED_CLOSE)
+  const heading = page.bare.indexOf(`## ${section}`, (regionsEnd < 0 ? page.close : regionsEnd) + 1)
   if (heading < 0) throw new Error(`页上没有「${section}」这一节:${file}`)
   let end = heading + 1
   while (end < page.bare.length && !page.bare[end]!.startsWith('## ')) end += 1
@@ -208,29 +261,53 @@ function generatedRange(bare: string[], name: string, file: string): [number, nu
 /**
  * Replaces what stands between each generated region's markers on the page at
  * `file` with the given markdown, the markers and every other byte untouched.
- * Throws if a region's markers are missing.
+ * Without `claims` the claims region is left as it is; with it, a page written
+ * before the claims region existed gets that region, markers and all, right
+ * after the table region. Throws if the children or table region's markers are
+ * missing.
  */
-export function fillGenerated(file: string, regions: { children: string; table: string }, staging: string): void {
+export function fillGenerated(
+  file: string, regions: { children: string; table: string; claims?: string }, staging: string,
+): void {
   for (const [name, text] of Object.entries(regions)) {
     const page = rowsOf(file)
+    if (name === 'claims' && generatedMissing(file).includes('claims')) {
+      const after = generatedRange(page.bare, 'table', file)[1] + 1
+      const lines = [GENERATED_OPEN('claims'), ...text.split('\n'), GENERATED_CLOSE]
+      spliceLines(file, after, after, withCrOf(page.rows[after - 1]!, lines), staging)
+      continue
+    }
     const [open, close] = generatedRange(page.bare, name, file)
     spliceLines(file, open + 1, close, withCrOf(page.rows[open]!, text.split('\n')), staging)
   }
 }
 
+/** The generated regions an aggregation page carries, in page order. */
+const REGIONS = ['children', 'table', 'claims']
+
+/** Returns the names of the generated regions whose marker pair the page at `file` lacks, in REGIONS order. */
+export function generatedMissing(file: string): string[] {
+  const { bare } = rowsOf(file)
+  return REGIONS.filter((name) => {
+    const open = bare.indexOf(GENERATED_OPEN(name))
+    return open < 0 || bare.indexOf(GENERATED_CLOSE, open + 1) < 0
+  })
+}
+
 /**
- * Throws if the page at `file` lacks either generated region's markers — the
- * page cannot be refilled and should be reported before anything is written.
+ * Throws if the page at `file` lacks the children or table region's markers —
+ * the page cannot be refilled and should be reported before anything is
+ * written. A missing claims region is not an error: fillGenerated adds it.
  */
 export function checkGenerated(file: string): void {
-  const { bare } = rowsOf(file)
-  for (const name of ['children', 'table']) generatedRange(bare, name, file)
+  const [missing] = generatedMissing(file).filter((name) => name !== 'claims')
+  if (missing !== undefined) throw new Error(`页上没有 ${missing} 的生成区:${file}`)
 }
 
 /**
  * Writes a new aggregation page at `file`: frontmatter from `front` (kind,
  * title, an empty aliases list, parents, columns, split_on when given,
- * updated), the two generated regions empty at the head, then the body — the
+ * updated), the three generated regions empty at the head, then the body — the
  * describing section with its text and one empty heading per appendable
  * section in order. Replaces what is there, staged under `staging` and
  * renamed over the page.
@@ -251,7 +328,8 @@ export function createAggregationPage(
   replacePage(file, [
     '---', ...keys.flatMap(([k, v]) => emitKey(k, v, '')), '---',
     GENERATED_OPEN('children'), GENERATED_CLOSE,
-    GENERATED_OPEN('table'), GENERATED_CLOSE, '',
+    GENERATED_OPEN('table'), GENERATED_CLOSE,
+    GENERATED_OPEN('claims'), GENERATED_CLOSE, '',
     `## ${describe.section}`, describe.text, '',
     ...sections.flatMap((s) => [`## ${s}`, '']),
   ].join('\n'), staging)

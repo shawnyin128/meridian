@@ -111,6 +111,7 @@ def app_native_catalog_records(wiki_root: Path) -> list[dict[str, Any]]:
         record.update(
             {
                 "routing": routing,
+                "raw_frontmatter": frontmatter,
                 "status": frontmatter.get("status"),
                 "review_state": frontmatter.get("review_state"),
                 "quality_gate": frontmatter.get("quality_gate"),

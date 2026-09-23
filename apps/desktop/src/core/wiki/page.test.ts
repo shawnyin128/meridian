@@ -207,7 +207,7 @@ describe('wiki page writes', () => {
   it('回填生成区:只换标记之间的行', () => {
     const file = page('topics/ptq-weight-only.md')
     const before = lines('topics/ptq-weight-only.md')
-    fillGenerated(file, { children: '- 子', table: '| 表 |' }, staging)
+    fillGenerated(file, { children: '- 子', table: '| 表 |', claims: '- 结论' }, staging)
     const after = lines('topics/ptq-weight-only.md')
     const c = before.indexOf('<!-- generated:children -->')
     const t = before.indexOf('<!-- generated:table -->')
@@ -280,14 +280,15 @@ describe('wiki page writes', () => {
     createAggregationPage(file, {
       kind: 'topic', title: 'New', parents: ['topics/ptq'], columns: [{ key: 'bits', label: '位宽' }],
       splitOn: undefined, updated: '2026-09-10',
-    }, { section: '问题', text: '新的。' }, ['结论', '实验', '未解决'], staging)
+    }, { section: '问题', text: '新的。' }, ['实验', '未解决'], staging)
     expect(readFileSync(file, 'utf8')).toBe([
       '---', 'kind: "topic"', 'title: "New"', 'aliases: []', 'parents:', '  - "topics/ptq"',
       'columns:', '  - key: "bits"', '    label: "位宽"', 'updated: "2026-09-10"', '---',
       '<!-- generated:children -->', '<!-- /generated -->',
-      '<!-- generated:table -->', '<!-- /generated -->', '',
+      '<!-- generated:table -->', '<!-- /generated -->',
+      '<!-- generated:claims -->', '<!-- /generated -->', '',
       '## 问题', '新的。', '',
-      '## 结论', '', '## 实验', '', '## 未解决', '',
+      '## 实验', '', '## 未解决', '',
     ].join('\n'))
   })
 })

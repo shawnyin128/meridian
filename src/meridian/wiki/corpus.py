@@ -10,12 +10,7 @@ from typing import Any
 
 import yaml
 
-CATALOG_SCHEMA_VERSION = "meridian.paper_catalog.v0"
-SYNTHESIS_CATALOG_SCHEMA_VERSION = "meridian.synthesis_catalog.v1"
-KNOWLEDGE_CATALOG_SCHEMA_VERSION = "meridian.knowledge_catalog.v1"
 CONTEXT_PACKET_SCHEMA_VERSION = "meridian.retrieval_context.v0"
-
-KNOWLEDGE_DIRECTORIES = ("methods", "topics", "claims", "evidence", "concepts")
 
 ROUTING_FIELDS = (
     "aliases",
@@ -280,12 +275,6 @@ CONTEXT_PACKET_SECTION_LIMIT = 3
 
 
 @dataclass(frozen=True)
-class CatalogResult:
-    catalog_path: Path
-    count: int
-
-
-@dataclass(frozen=True)
 class RetrievalResult:
     packet_path: Path | None
     result_path: Path | None
@@ -293,71 +282,17 @@ class RetrievalResult:
     warnings: list[str] = field(default_factory=list)
 
 
-def build_paper_catalog(*, wiki_root: Path, out_path: Path | None = None) -> CatalogResult:
-    papers_dir = wiki_root / "papers"
-    if not papers_dir.exists():
-        raise FileNotFoundError(f"wiki papers directory does not exist: {papers_dir}")
-
-    catalog_path = out_path or wiki_root / ".index" / "papers.jsonl"
-    catalog_path.parent.mkdir(parents=True, exist_ok=True)
-
-    records = [_catalog_record(path, wiki_root=wiki_root) for path in sorted(papers_dir.glob("*.md"))]
-    with catalog_path.open("w", encoding="utf-8") as handle:
-        for record in records:
-            handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
-
-    return CatalogResult(catalog_path=catalog_path, count=len(records))
-
-
-def build_synthesis_catalog(*, wiki_root: Path, out_path: Path | None = None) -> CatalogResult:
-    syntheses_dir = wiki_root / "syntheses"
-    if not syntheses_dir.exists():
-        raise FileNotFoundError(f"wiki syntheses directory does not exist: {syntheses_dir}")
-
-    catalog_path = out_path or wiki_root / ".index" / "syntheses.jsonl"
-    catalog_path.parent.mkdir(parents=True, exist_ok=True)
-
-    records = [
-        _catalog_record(path, wiki_root=wiki_root, schema_version=SYNTHESIS_CATALOG_SCHEMA_VERSION)
-        for path in sorted(syntheses_dir.glob("*.md"))
-    ]
-    with catalog_path.open("w", encoding="utf-8") as handle:
-        for record in records:
-            handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
-
-    return CatalogResult(catalog_path=catalog_path, count=len(records))
-
-
-def build_knowledge_catalogs(*, wiki_root: Path) -> list[CatalogResult]:
-    results: list[CatalogResult] = []
-    for directory in KNOWLEDGE_DIRECTORIES:
-        source_dir = wiki_root / directory
-        if not source_dir.exists():
-            continue
-        catalog_path = wiki_root / ".index" / f"{directory}.jsonl"
-        catalog_path.parent.mkdir(parents=True, exist_ok=True)
-        records = [
-            _catalog_record(path, wiki_root=wiki_root, schema_version=KNOWLEDGE_CATALOG_SCHEMA_VERSION)
-            for path in sorted(source_dir.glob("*.md"))
-        ]
-        with catalog_path.open("w", encoding="utf-8") as handle:
-            for record in records:
-                handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
-        results.append(CatalogResult(catalog_path=catalog_path, count=len(records)))
-    return results
-
-
 def retrieve_papers(
     *,
     query: str,
     wiki_root: Path,
-    catalog_path: Path | None = None,
-    catalog_records: list[dict[str, Any]] | None = None,
+    catalog_records: list[dict[str, Any]],
     top_k: int = 5,
     strategy: str = "v1",
     packet_path: Path | None = None,
     result_path: Path | None = None,
 ) -> RetrievalResult:
+    """Rank pre-listed catalog records against a query (records come from `app_native_catalog_records`)."""
     if not query.strip():
         raise ValueError("query must not be empty")
     if top_k < 1:
@@ -365,8 +300,7 @@ def retrieve_papers(
     if strategy not in {"v0", "v1"}:
         raise ValueError("strategy must be 'v0' or 'v1'")
 
-    raw_catalog = catalog_records if catalog_records is not None else _load_or_build_catalog(wiki_root=wiki_root, catalog_path=catalog_path)
-    catalog, warnings = _normalize_catalog_records(raw_catalog, wiki_root=wiki_root)
+    catalog, warnings = _normalize_catalog_records(catalog_records, wiki_root=wiki_root)
     query_analysis = _query_analysis(query)
     if strategy == "v0":
         scored = [_score_record(record, query=query, wiki_root=wiki_root) for record in catalog]
@@ -408,128 +342,6 @@ def retrieve_papers(
             encoding="utf-8",
         )
     return RetrievalResult(packet_path=packet_path, result_path=result_path, results=results, warnings=warnings)
-
-
-def _catalog_record(
-    path: Path,
-    *,
-    wiki_root: Path,
-    schema_version: str = CATALOG_SCHEMA_VERSION,
-) -> dict[str, Any]:
-    text = path.read_text(encoding="utf-8")
-    frontmatter = parse_frontmatter(text)
-    body = strip_frontmatter(text)
-    sections = _sections_for_record(body=body, frontmatter=frontmatter)
-    rel_path = _canonical_relative_path(path.relative_to(wiki_root).as_posix())
-    title = str(frontmatter.get("title") or path.stem)
-    linked_source_quality = _linked_source_quality(frontmatter, wiki_root=wiki_root)
-
-    return {
-        "schema_version": schema_version,
-        "page_id": rel_path.with_suffix("").as_posix(),
-        "path": rel_path.as_posix(),
-        "relative_path": rel_path.as_posix(),
-        "title": title,
-        "corpus_type": rel_path.parts[0] if rel_path.parts else "",
-        "type": frontmatter.get("type"),
-        "knowledge_role": _knowledge_role(path=path, frontmatter=frontmatter),
-        "status": frontmatter.get("status"),
-        "review_state": frontmatter.get("review_state"),
-        "quality_gate": frontmatter.get("quality_gate"),
-        "quality_state": frontmatter.get("quality_state"),
-        "validation_state": frontmatter.get("validation_state"),
-        "trust_state": frontmatter.get("trust_state"),
-        "confidence": frontmatter.get("confidence"),
-        "source_id": frontmatter.get("source_id"),
-        "source_pdf": frontmatter.get("source_pdf"),
-        "source_registry": frontmatter.get("source_registry"),
-        "source_quality_risk": frontmatter.get("source_quality_risk"),
-        "source_quality_linked": linked_source_quality["linked"],
-        "source_quality_sources": linked_source_quality["sources"],
-        "sources": _as_list(frontmatter.get("sources")),
-        "source_papers": _as_list(frontmatter.get("source_papers")),
-        "related_papers": _as_list(frontmatter.get("related_papers")),
-        "related_methods": _as_list(frontmatter.get("related_methods")),
-        "related_topics": _as_list(frontmatter.get("related_topics")),
-        "related_claims": _as_list(frontmatter.get("related_claims")),
-        "related_evidence": _as_list(frontmatter.get("related_evidence")),
-        "related_concepts": _as_list(frontmatter.get("related_concepts")),
-        "prerequisite_for": _as_list(frontmatter.get("prerequisite_for")),
-        "personalized": frontmatter.get("personalized"),
-        "user_insights": _as_list(frontmatter.get("user_insights")),
-        "revision_id": frontmatter.get("revision_id"),
-        "revision_count": frontmatter.get("revision_count"),
-        "previous_revision": frontmatter.get("previous_revision"),
-        "evolution_state": frontmatter.get("evolution_state"),
-        "evolution_markers": _as_list(frontmatter.get("evolution_markers")),
-        "last_refinement_id": frontmatter.get("last_refinement_id"),
-        "candidate_scope": frontmatter.get("candidate_scope"),
-        "consolidation_target": frontmatter.get("consolidation_target"),
-        "retrieval_visibility": frontmatter.get("retrieval_visibility"),
-        "updated": frontmatter.get("updated"),
-        "routing": {field: _as_list(frontmatter.get(field)) for field in ROUTING_FIELDS},
-        "section_headings": list(sections.keys()),
-        "section_previews": {
-            heading: _preview(content, limit=700)
-            for heading, content in sections.items()
-            if heading in SECTION_WEIGHTS
-        },
-    }
-
-
-def _linked_source_quality(frontmatter: dict[str, Any], *, wiki_root: Path) -> dict[str, Any]:
-    linked_paths = []
-    for field in ("sources", "source_papers", "related_papers"):
-        linked_paths.extend(str(item) for item in _as_list(frontmatter.get(field)))
-    source_quality_sources = []
-    for linked in _dedupe(linked_paths):
-        if not linked or not linked.startswith("papers/"):
-            continue
-        path = wiki_root / linked
-        if path.suffix != ".md":
-            path = path.with_suffix(".md")
-        if not path.exists():
-            continue
-        linked_frontmatter = parse_frontmatter(path.read_text(encoding="utf-8"))
-        quality_text = " ".join(
-            str(linked_frontmatter.get(field) or "")
-            for field in ("review_state", "quality_gate", "quality_state", "validation_state", "trust_state")
-        ).lower()
-        if any(token in quality_text for token in ("source_quality_hold", "needs_source_recheck", "untrusted_source_text")):
-            source_quality_sources.append(linked)
-    return {"linked": bool(source_quality_sources), "sources": source_quality_sources}
-
-
-def _load_or_build_catalog(*, wiki_root: Path, catalog_path: Path | None) -> list[dict[str, Any]]:
-    effective_path = catalog_path or wiki_root / ".index" / "papers.jsonl"
-    if not effective_path.exists():
-        build_paper_catalog(wiki_root=wiki_root, out_path=effective_path)
-    records = []
-    with effective_path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            stripped = line.strip()
-            if stripped:
-                records.append(json.loads(stripped))
-    if catalog_path is None and (wiki_root / "syntheses").exists():
-        synthesis_path = wiki_root / ".index" / "syntheses.jsonl"
-        build_synthesis_catalog(wiki_root=wiki_root, out_path=synthesis_path)
-        with synthesis_path.open("r", encoding="utf-8") as handle:
-            for line in handle:
-                stripped = line.strip()
-                if stripped:
-                    records.append(json.loads(stripped))
-    if catalog_path is None:
-        build_knowledge_catalogs(wiki_root=wiki_root)
-        for directory in KNOWLEDGE_DIRECTORIES:
-            knowledge_path = wiki_root / ".index" / f"{directory}.jsonl"
-            if not knowledge_path.exists():
-                continue
-            with knowledge_path.open("r", encoding="utf-8") as handle:
-                for line in handle:
-                    stripped = line.strip()
-                    if stripped:
-                        records.append(json.loads(stripped))
-    return records
 
 
 def _normalize_catalog_records(records: list[dict[str, Any]], *, wiki_root: Path) -> tuple[list[dict[str, Any]], list[str]]:
@@ -638,20 +450,6 @@ def _repair_duplicate_wiki_path(path: Path, *, wiki_root: Path) -> Path | None:
 def _is_internal_relative_path(path: Path) -> bool:
     parts = set(path.parts)
     return ".drafts" in parts or ".versions" in parts
-
-
-def _knowledge_role(*, path: Path, frontmatter: dict[str, Any]) -> str:
-    page_type = str(frontmatter.get("type") or "")
-    review_state = str(frontmatter.get("review_state") or "").lower()
-    if page_type == "method" and re.search(r"-method-\d+$", path.stem):
-        return "candidate_method_record"
-    if page_type in {"claim", "evidence"} and (
-        frontmatter.get("candidate_id") or review_state in {"candidate", "auto_extracted", "source_text_insufficient"}
-    ):
-        return "candidate_record"
-    if page_type in {"method", "topic", "claim", "evidence", "concept", "synthesis", "method-family", "comparison", "decision", "research-question"}:
-        return "compiled_knowledge"
-    return "source_page"
 
 
 def _score_record(record: dict[str, Any], *, query: str, wiki_root: Path) -> dict[str, Any]:
