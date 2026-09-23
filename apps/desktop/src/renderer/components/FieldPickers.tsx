@@ -48,17 +48,26 @@ export function DotsMenu({
 /** A single-value picker whose trigger appearance is supplied by the host field. */
 export function ChoicePicker<T extends string>({
   value, options, onPick, label = (option) => option, className = 'pv metadata-editable',
+  stopRowActivation = false,
 }: {
   value: T
   options: readonly T[]
   onPick: (next: T) => void
   label?: (option: T) => string
   className?: string
+  /** Pass true when the row or card itself is clickable, so the trigger swallows the click instead of bubbling it. */
+  stopRowActivation?: boolean
 }) {
   const m = useMessages()
   return (
     <ActionMenu
-      align="start" trigger={<button className={className} title={m.common.field.clickToEdit}>{label(value)}</button>}
+      align="start"
+      trigger={(
+        <button
+          className={className} title={m.common.field.clickToEdit}
+          onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
+        >{label(value)}</button>
+      )}
     >
       <MenuRadioGroup value={value}>
         {options.map((option) => (
@@ -75,17 +84,27 @@ export function ChoicePicker<T extends string>({
 }
 
 /** Priority picker shared by plan rows and project metadata. */
-export function PriorityPicker({ value, className, title, onPick, children }: {
+export function PriorityPicker({ value, className, title, onPick, children, stopRowActivation = false }: {
   value: Task['priority']
   className: string
   title: string
   onPick: (next: Task['priority']) => void
   children: ReactNode
+  /** Pass true when the row or card itself is clickable, so the trigger swallows the click instead of bubbling it. */
+  stopRowActivation?: boolean
 }) {
   const m = useMessages()
   const priorityNote = (option: Task['priority']) => ` · ${m.common.priority[option]}`
   return (
-    <ActionMenu align="start" trigger={<button className={className} title={title}>{children}</button>}>
+    <ActionMenu
+      align="start"
+      trigger={(
+        <button
+          className={className} title={title}
+          onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
+        >{children}</button>
+      )}
+    >
       <MenuRadioGroup value={value}>
         {PRIORITIES.map((priority) => (
           <MenuRadioItem

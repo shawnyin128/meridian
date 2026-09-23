@@ -89,6 +89,10 @@ export const project = {
     taskMoved: (days: number) => `任务${days > 0 ? '顺延' : '提前'} ${Math.abs(days)} 天`,
     taskWindowMoved: (slots: number) => `任务${slots > 0 ? '后移' : '前移'} ${Math.abs(slots)} 个时段`,
     rescheduledTo: (date: string) => `已改期到 ${date}`,
+    openTask: '打开任务',
+    noteHeading: '备注',
+    noteEmpty: '还没有备注，点「编辑」写下要求和细节，agent 会读到。',
+    noteUpdated: '已更新备注',
   },
   signals: {
     heading: (n: number) => `需要注意 · ${n}`,

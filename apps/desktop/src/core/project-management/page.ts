@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { z } from 'zod'
 import type { ProjectDetail } from '../../shared/contract.js'
-import { ProjectDetailSchema, VerifiedConclusionSchema } from '../../shared/contract.js'
+import { ProjectDetailSchema, TaskSchema, VerifiedConclusionSchema } from '../../shared/contract.js'
 import { spliceLines } from '../vault/writer.js'
 
 /** Values representable in frontmatter. */
@@ -92,6 +92,14 @@ export type ProjectRecord = Omit<
 const VerifiedConclusionEntrySchema = z.object(VerifiedConclusionSchema.shape)
 
 /**
+ * A task as a page stores it: without `note`, which lives in the page's separate `task_notes` map
+ * so an older App's strict per-task schema never sees an unrecognized key and can still read the
+ * rest of the page. Tolerant of unknown keys itself, so a future additive task field cannot break
+ * reading either; strictness on write is still enforced by the contract's own `TaskSchema`.
+ */
+const PageTaskSchema = TaskSchema.omit({ note: true }).passthrough()
+
+/**
  * Project-page frontmatter shape. Research-graph edges are stored as endpoint objects rather than
  * tuples because the line-oriented reader understands keyed items but not nested sequences. Ignore
  * user-added keys while reading; field updates replace only their own lines and preserve those keys.
@@ -117,7 +125,9 @@ const ProjectPageSchema = z.object({
   papers: detail.papers.default([]),
   conclusion_list: detail.conclusionList.default([]),
   verified_conclusions: z.array(z.unknown()).optional(),
-  tasks: detail.tasks,
+  tasks: z.array(PageTaskSchema),
+  /** Task notes keyed by task id, a task carrying one only when it has a note. */
+  task_notes: z.record(z.string(), z.string()).optional(),
   milestones: detail.milestones,
   relations: detail.relations,
   attachments: detail.attachments,
@@ -299,6 +309,14 @@ const eventLines = (events: ProjectDetail['events']): string[] => ['', ...events
 /** Memo section lines: preserve memo text verbatim and leave a trailing newline. */
 const memoLines = (memo: string): string[] => ['', ...(memo === '' ? [] : memo.split('\n')), '']
 
+/** Task notes keyed by task id, carrying only tasks with a non-empty note; `undefined` when none do. */
+function taskNotesOf(tasks: ProjectRecord['tasks']): Record<string, string> | undefined {
+  const notes = Object.fromEntries(
+    tasks.filter((task) => task.note !== undefined && task.note !== '').map((task) => [task.id, task.note!]),
+  )
+  return Object.keys(notes).length === 0 ? undefined : notes
+}
+
 /** Frontmatter representation of a project. */
 function frontOf(project: ProjectRecord): Record<string, Json> {
   return {
@@ -325,7 +343,12 @@ function frontOf(project: ProjectRecord): Record<string, Json> {
       source: conclusion.source,
       ...(conclusion.paper === undefined ? {} : { paper: conclusion.paper }),
     })),
-    tasks: project.tasks,
+    tasks: project.tasks.map((task) => {
+      const rest = { ...task }
+      delete rest.note
+      return rest
+    }),
+    ...(taskNotesOf(project.tasks) === undefined ? {} : { task_notes: taskNotesOf(project.tasks) }),
     milestones: project.milestones,
     relations: project.relations,
     attachments: project.attachments,
@@ -397,7 +420,9 @@ export function readProjectPage(file: string, id: string): ProjectRecord {
     memo: body.slice(memoFrom, memoTo).join('\n').trim(),
     conclusionList: page.conclusion_list,
     papers: page.papers,
-    tasks: page.tasks,
+    tasks: page.tasks.map((task) => (page.task_notes?.[task.id] === undefined
+      ? task
+      : { ...task, note: page.task_notes[task.id] })),
     milestones: page.milestones,
     events: body.slice(eventsFrom, eventsTo).flatMap((row) => {
       const event = EVENT.exec(withoutCr(row))
@@ -443,6 +468,23 @@ export function writeProjectFields(
   file: string, project: ProjectRecord, fields: (keyof ProjectRecord)[], staging: string,
 ): void {
   const front = frontOf(project)
+  /** Replaces, inserts, or (when `value` is undefined) removes one top-level key's lines. */
+  const syncKey = (key: string, value: Json | undefined): void => {
+    if (value === undefined) {
+      dropProjectPageKeys(file, [key], staging)
+      return
+    }
+    const { front: rows, close } = splitRows(file)
+    const start = rows.findIndex((row) => row.startsWith(`${key}:`))
+    const lines = emitKey(key, value, '')
+    if (start < 0) {
+      spliceLines(file, close, close, lines, staging)
+      return
+    }
+    let end = start + 1
+    while (end < rows.length && rows[end]!.startsWith(' ')) end += 1
+    spliceLines(file, start + 1, end + 1, lines, staging)
+  }
   for (const field of fields) {
     if (field === 'events' || field === 'memo') {
       const heading = field === 'events' ? EVENTS : MEMO
@@ -468,15 +510,8 @@ export function writeProjectFields(
       continue
     }
     if (value === undefined) throw new Error(`项目页上没有这一项:${key}`)
-    const { front: rows, close } = splitRows(file)
-    const start = rows.findIndex((row) => row.startsWith(`${key}:`))
-    const lines = emitKey(key, value, '')
-    if (start < 0) {
-      spliceLines(file, close, close, lines, staging)
-      continue
-    }
-    let end = start + 1
-    while (end < rows.length && rows[end]!.startsWith(' ')) end += 1
-    spliceLines(file, start + 1, end + 1, lines, staging)
+    syncKey(key, value)
+    // Notes live in their own key so an older App's strict per-task schema never sees them.
+    if (field === 'tasks') syncKey('task_notes', front['task_notes'])
   }
 }

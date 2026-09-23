@@ -100,6 +100,10 @@ export const project = {
       return slots > 0 ? `Task moved later by ${n} ${unit}` : `Task moved earlier by ${n} ${unit}`
     },
     rescheduledTo: (date: string) => `Rescheduled to ${date}`,
+    openTask: 'Open task',
+    noteHeading: 'Note',
+    noteEmpty: 'No note yet. Click “Edit” to write down the requirements and details; agents will read it.',
+    noteUpdated: 'Note updated',
   },
   signals: {
     heading: (n: number) => `Needs attention · ${n}`,

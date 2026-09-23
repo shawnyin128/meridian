@@ -105,6 +105,8 @@ export const TaskSchema = z.object({
   window: TaskWindowSchema.optional(),
   state: z.enum(['act', 'plan', 'done']),
   priority: z.enum(['p0', 'p1', 'p2']),
+  /** Raw Markdown note for the task's requirements and details; absent means no note has been written. */
+  note: z.string().optional(),
 }).strict()
 
 export const MilestoneSchema = z.object({

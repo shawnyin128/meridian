@@ -2,11 +2,11 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { z } from 'zod'
 import type { ProjectRecord } from './page.js'
 import {
   dropProjectPageKeys, readProjectPage, projectPageText, writeProjectFields,
 } from './page.js'
-import { z } from 'zod'
 import { readFrontmatter } from '../vault/frontmatter.js'
 import { writePage } from '../vault/writer.js'
 
@@ -231,6 +231,53 @@ describe('project page', () => {
     expect(after.slice(0, at)).toEqual(before.slice(0, at))
     expect(after.slice(at + 6)).toEqual(before.slice(at))
     expect(readProjectPage(file, 'project-1').tasks.map((t) => t.id)).toEqual(['task-1', 'task-2'])
+  })
+
+  it('任务带上备注,写出再读回保持一致;备注单独存放,不进任务本身那一块', () => {
+    const withNote = { ...PROJECT.tasks[0]!, note: '先跑 A/B 两组,再看结论' }
+    writeProjectFields(file, { ...PROJECT, tasks: [withNote] }, ['tasks'], staging)
+    const text = readFileSync(file, 'utf8')
+    expect(text).toContain('task_notes:\n  task-1: "先跑 A/B 两组,再看结论"\n')
+    expect(text).not.toMatch(/tasks:\n(?: {2}.*\n)*? {4}note:/)
+    expect(readProjectPage(file, 'project-1').tasks[0]!.note).toBe(withNote.note)
+  })
+
+  it('旧页上的任务没有 note 也没有 task_notes,读出来 note 是 undefined,不补空字符串', () => {
+    // PROJECT.tasks[0] already has no note and the beforeEach-written page has no task_notes key,
+    // so the file it wrote is itself an old-format sample; this only asserts what reading it gives.
+    const read = readProjectPage(file, 'project-1')
+    expect('note' in read.tasks[0]!).toBe(false)
+    expect(read.tasks[0]!.note).toBeUndefined()
+  })
+
+  it('这个版本写出带备注的任务,0.0.14 的 App 整页照样读得出', () => {
+    const withNote = { ...PROJECT.tasks[0]!, note: '先跑 A/B 两组,再看结论' }
+    writePage(file, projectPageText({ ...PROJECT, tasks: [withNote] }), staging)
+    // 0.0.14's per-task shape is strict; the page's own top level is not, so it ignores the
+    // unrecognized `task_notes` key entirely, and the task item itself never carried `note`.
+    const whole = readAs0014(file)
+    expect(whole.error).toBeUndefined()
+    expect(readFileSync(file, 'utf8')).not.toMatch(/note:/)
+  })
+
+  it('多行、带引号反斜杠和 --- 的备注写出再读回一字不差,frontmatter 仍然收得住口', () => {
+    const tricky = [
+      '先确认基线,再改并发数。',
+      '',
+      '- 引号 "quoted" 和反斜杠 C:\\temp\\run.log',
+      '---',
+      '上面那行 --- 不是 frontmatter 的收口',
+    ].join('\n')
+    const withNote = { ...PROJECT.tasks[0]!, note: tricky }
+    writeProjectFields(file, { ...PROJECT, tasks: [withNote] }, ['tasks'], staging)
+    const rows = readFileSync(file, 'utf8').split('\n')
+    expect(rows[0]).toBe('---')
+    // The note is a single quoted-and-escaped scalar, so none of its own newlines or `---` lines
+    // land in the file as real lines that could end the frontmatter early.
+    const taskNotesAt = rows.indexOf('task_notes:')
+    expect(taskNotesAt).toBeGreaterThan(0)
+    expect(rows[taskNotesAt + 1]).toMatch(/^ {2}task-1: ".*"$/)
+    expect(readProjectPage(file, 'project-1').tasks[0]!.note).toBe(tricky)
   })
 
   it('记一条科研记录只多出那一行', () => {

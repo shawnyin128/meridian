@@ -403,6 +403,17 @@ describe('fixture store', () => {
     expect(store.getProject('draft').tasks.at(-1)?.id).toBe(created.id)
   })
 
+  it('新建任务不带备注,后来补写的备注能读回和改写', () => {
+    const created = store.createTask('draft', {
+      title: '写备注的任务', start: '2026-08-25', end: '2026-08-31', state: 'act', priority: 'p1',
+    }).tasks.at(-1)!
+    expect(created.note).toBeUndefined()
+    const withNote = store.updateTask('draft', created.id, { note: '先跑 A/B 两组,再看结论' })
+    expect(withNote.tasks.find((t) => t.id === created.id)?.note).toBe('先跑 A/B 两组,再看结论')
+    expect(store.getProject('draft').tasks.find((t) => t.id === created.id)?.note)
+      .toBe('先跑 A/B 两组,再看结论')
+  })
+
   it('新建的里程碑带上了 id 并进入项目', () => {
     const before = store.getProject('draft').milestones.length
     const after = store.createMilestone('draft', { date: '2026-09-01', title: '补齐基线', done: false })

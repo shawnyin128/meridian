@@ -455,7 +455,7 @@ class WorkspaceProtocolTest(unittest.TestCase):
                     "revision": "abc123",
                     "updated_at": "2026-09-15T18:00:00Z",
                     "project": {"id": "project-1", "name": "Shared research"},
-                    "tasks": [{"id": "task-1", "title": "Run probe"}],
+                    "tasks": [{"id": "task-1", "title": "Run probe", "note": "Check baseline first"}],
                     "milestones": [],
                 },
             )
@@ -511,6 +511,9 @@ class WorkspaceProtocolTest(unittest.TestCase):
             self.assertEqual(status["status"], "ready")
             plan = read_project_plan(root)
             self.assertEqual(plan["revision"], "abc123")
+            # A per-task field, such as a task's note, is not validated at all -- it is opaque data
+            # this reader passes straight through to whichever MCP tool call returns the plan.
+            self.assertEqual(plan["tasks"][0]["note"], "Check baseline first")
             changes = read_workspace_changes(root)
             self.assertEqual(changes["status"], "ready")
             self.assertEqual(len(changes["changes"]), 1)

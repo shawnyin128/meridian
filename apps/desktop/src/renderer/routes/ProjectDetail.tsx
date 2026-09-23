@@ -39,7 +39,7 @@ import { nodeMode, ResearchGraph, ResearchNodePanel } from '../components/projec
 import {
   IdeaGraphDialog, type IdeaGraphDialogMode,
 } from '../components/ideas/IdeaGraphDialog.js'
-import { ProjectPlan } from '../components/project/ProjectPlan.js'
+import { ProjectPlan, ProjectTaskPanel } from '../components/project/ProjectPlan.js'
 import type { PlanCreating, PlanTab } from '../components/project/ProjectPlan.js'
 import { BackButton } from '../components/BackButton.js'
 import { dnum } from '../../shared/dates.js'
@@ -166,6 +166,7 @@ export function ProjectDetail({
   const [memoEditing, setMemoEditing] = useState(false)
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedConclusion, setSelectedConclusion] = useState<string | null>(null)
   const [ideaGraphDialog, setIdeaGraphDialog] = useState<{
     ideaId: string
@@ -194,7 +195,17 @@ export function ProjectDetail({
   const today = useToday()
   const clearNode = useCallback(() => setSelectedNode(null), [])
   const clearIdea = useCallback(() => setSelectedIdeaId(null), [])
+  const clearTask = useCallback(() => setSelectedTaskId(null), [])
   const clearConclusion = useCallback(() => setSelectedConclusion(null), [])
+  /** The task panel shares the right-side slot with the node/idea/conclusion panels: opening a task
+   * is the only place that sets it, so every other opener needs no change of its own to give it up
+   * -- the effect below clears it back out whenever one of those three becomes selected instead. */
+  const openTask = useCallback((taskId: string) => {
+    setSelectedNode(null)
+    setSelectedIdeaId(null)
+    setSelectedConclusion(null)
+    setSelectedTaskId(taskId)
+  }, [])
   const { revision } = useVaultRevision()
   const { open: jumpTo } = useJump()
   const openWikiPage = (page: string) => jumpTo('wiki', page)
@@ -251,6 +262,7 @@ export function ProjectDetail({
   useEffect(() => {
     setSelectedNode(null)
     setSelectedIdeaId(null)
+    setSelectedTaskId(null)
     setSelectedConclusion(null)
     setIdeaGraphDialog(null)
   }, [projectId])
@@ -261,8 +273,14 @@ export function ProjectDetail({
     }
   }, [linkedIdeas, selectedIdeaId])
 
+  // The task panel shares its slot with the node/idea/conclusion panels; opening any of those closes it.
+  useEffect(() => {
+    if (selectedNode !== null || selectedIdeaId !== null || selectedConclusion !== null) setSelectedTaskId(null)
+  }, [selectedNode, selectedIdeaId, selectedConclusion])
+
   useEscapeLayer(selectedNode !== null, clearNode)
   useEscapeLayer(selectedIdeaId !== null, clearIdea)
+  useEscapeLayer(selectedTaskId !== null, clearTask)
   useEscapeLayer(selectedConclusion !== null, clearConclusion)
 
   // Switching the record view swaps content of a different height under the heading. The heading is
@@ -375,7 +393,10 @@ export function ProjectDetail({
     }
     setFlash({ id })
   }, [tab, onTab, discardOpenEdits])
-  const locateTask = useCallback((taskId: string) => locatePlanRow('task', taskId), [locatePlanRow])
+  const locateTask = useCallback((taskId: string) => {
+    locatePlanRow('task', taskId)
+    openTask(taskId)
+  }, [locatePlanRow, openTask])
 
   useEffect(() => {
     if (arrivalTask === null || project?.id !== projectId) return
@@ -481,6 +502,7 @@ export function ProjectDetail({
   })
   const node = displayedGraph.nodes.find((n) => n.id === selectedNode)
   const selectedIdea = linkedIdeas.find((idea) => idea.id === selectedIdeaId)
+  const selectedTask = project.tasks.find((t) => t.id === selectedTaskId)
   const dialogIdea = linkedIdeas.find((idea) => idea.id === ideaGraphDialog?.ideaId)
   const conclusions = project.projectConclusions ?? []
   const conclusion = conclusions.find((candidate) => candidate.id === selectedConclusion)
@@ -488,7 +510,8 @@ export function ProjectDetail({
     const found = displayedGraph.nodes.find((candidate) => candidate.id === nodeId)
     return found === undefined ? undefined : { label: found.label, mode: nodeMode(found) }
   }
-  const detailOpen = node !== undefined || selectedIdea !== undefined || conclusion !== undefined
+  const detailOpen = node !== undefined || selectedIdea !== undefined
+    || selectedTask !== undefined || conclusion !== undefined
   const workspaceLeaf = project.workspace?.root.split(/[\\/]/).filter(Boolean).at(-1)
   const workspaceName = project.workspace?.kind === 'ssh'
     ? `${project.workspace.host}:${workspaceLeaf ?? project.workspace.root}`
@@ -658,7 +681,7 @@ export function ProjectDetail({
 
             <ProjectPlan
               project={project} tab={tab} today={today} creating={creating}
-              flashId={flash?.id ?? null}
+              flashId={flash?.id ?? null} selectedTaskId={selectedTaskId}
               listRef={planList} addRef={planAdd} timelineAddRef={ganttAdd} milestoneLaneRef={msLane}
               onTab={onTab} onDiscardOpenEdits={discardOpenEdits}
               onStartTask={() => startTask()} onStartMilestone={startMilestone}
@@ -679,6 +702,7 @@ export function ProjectDetail({
                 projectApi.deleteTask(projectId, taskId), m.project.plan.taskDeleted,
               )}
               onReorderTasks={reorderTasks}
+              onOpenTask={openTask}
               onUpdateMilestone={(milestoneId, patch) => writeProject(
                 projectApi.updateMilestone(projectId, milestoneId, patch), m.project.plan.milestoneUpdated,
               )}
@@ -812,7 +836,16 @@ export function ProjectDetail({
             open={detailOpen} mode="resize"
             className={`wkside project-detail-panel${detailOpen ? ' node-document-pane' : ''}`}
           >
-            {selectedIdea !== undefined
+            {selectedTask !== undefined
+              ? (
+                <ProjectTaskPanel
+                  task={selectedTask} onClose={clearTask}
+                  onSaveNote={(note) => writeProject(
+                    projectApi.updateTask(projectId, selectedTask.id, { note }), m.project.plan.noteUpdated,
+                  )}
+                />
+              )
+              : selectedIdea !== undefined
               ? (
                 <ProjectIdeaPanel
                   idea={selectedIdea}

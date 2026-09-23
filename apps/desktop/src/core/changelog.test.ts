@@ -359,6 +359,18 @@ describe('change log', () => {
     expect(store.getProject(PROJECT)).toEqual(before)
   })
 
+  it('撤销一次任务备注的编辑,项目回到写备注之前的样子', () => {
+    const task = store.getProject(PROJECT).tasks.find((t) => t.id === 't2')!
+    expect(task.note).toBeUndefined()
+    const before = store.getProject(PROJECT)
+    store.updateTask(PROJECT, 't2', { note: '先确认基线,再改并发数' })
+    expect(store.getProject(PROJECT).tasks.find((t) => t.id === 't2')!.note)
+      .toBe('先确认基线,再改并发数')
+    store.undoChange(recorded()[0]!.id)
+    expect(store.getProject(PROJECT)).toEqual(before)
+    expect(store.getProject(PROJECT).tasks.find((t) => t.id === 't2')!.note).toBeUndefined()
+  })
+
   it('同一条撤两次撤不动,库里没有的那条 id 也撤不动', () => {
     store.updateProject(PROJECT, { focus: '改过的焦点' })
     const change = recorded()[0]!
