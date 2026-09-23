@@ -1,6 +1,6 @@
 <!--
 Title: [vX.Y.Z.F] description (Closes #issue)
-Example: [v0.0.14.2] Lay research records out like the other project lists (Closes #12)
+Example: [v0.0.15.0] Drag to reorder tasks in the research plan (Closes #3)
 Rules: .github/pull-requests.md
 -->
 

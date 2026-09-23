@@ -1,7 +1,17 @@
 # Issues
 
-An issue is where every change starts. One issue covers one specific problem, and every issue
-names the version it ships in.
+Every change starts as an issue, including the team's own work. One issue covers one specific
+problem, and every issue names the version it ships in.
+
+## How a version gets its scope
+
+1. Everything to be done is recorded as an issue with a type label. Issues without a milestone are
+   the backlog.
+2. When a version is planned, the owner decides which issues it includes and sets their milestone
+   to that version (`v0.0.15.0`). The milestone's issues are the version's scope.
+3. Work branches are cut for those issues. Each pull request closes its issue when it merges.
+4. The version is released when its milestone has no open issues. Anything that will not make it
+   is moved to the next milestone first.
 
 ## 1. Type label and milestone
 
@@ -24,7 +34,7 @@ Format: `[module] short description`
 - `[plugins] The focus hook prints node labels in the wrong encoding`
 
 Module names are the same as in branch names: `desktop`, `wiki`, `lab`, `harness`, `plugins`,
-`release`, and so on.
+`process`, and so on.
 
 ## 3. Body
 
