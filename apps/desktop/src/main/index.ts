@@ -12,6 +12,7 @@ import { attachCredentialVault } from './credential-vault.js'
 import { MAIN_COPY, uiLocaleOf } from './messages.js'
 import { afterCoreStops } from './restart-core.js'
 import { createUpdater } from './updater.js'
+import { displayVersion } from '../shared/app-version.js'
 import electronUpdater from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
 import macIcon from '../../resources/icon-macos.png?asset'
@@ -158,7 +159,7 @@ app.whenReady().then(() => {
   // so there a found release is offered as a download instead.
   const updater = createUpdater({
     feed: electronUpdater.autoUpdater,
-    current: app.getVersion(),
+    current: displayVersion(app.getVersion()),
     supported: app.isPackaged,
     installsInPlace: process.platform !== 'darwin',
     now: Date.now,
@@ -196,11 +197,11 @@ app.whenReady().then(() => {
     const source = explicit !== undefined ? 'environment' : configured !== undefined ? 'configured' : 'fallback'
     const child = utilityProcess.fork(join(here, '../core/index.js'), [], {
       env: fixture
-        ? { ...process.env, ...harnessEnvironment, MERIDIAN_APP_VERSION: app.getVersion() }
+        ? { ...process.env, ...harnessEnvironment, MERIDIAN_APP_VERSION: displayVersion(app.getVersion()) }
         : {
           ...process.env,
           ...harnessEnvironment,
-          MERIDIAN_APP_VERSION: app.getVersion(),
+          MERIDIAN_APP_VERSION: displayVersion(app.getVersion()),
           MERIDIAN_VAULT_ROOT: selected,
           MERIDIAN_VAULT_SOURCE: source,
           MERIDIAN_CONFIG_HOME: configHome(),

@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
+      display: ${{ steps.meta.outputs.display }}
     steps:
       - uses: actions/checkout@v4
 
@@ -30,11 +31,14 @@ jobs:
             exit 1
           fi
           echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+          # Releases are named by the four-part display version; the tag carries the stored semver.
+          DISPLAY="$(node --input-type=module -e "const { displayOf } = await import('./scripts/app-version.mjs'); console.log(displayOf(process.argv[1]))" "${VERSION}")"
+          echo "display=${DISPLAY}" >> "${GITHUB_OUTPUT}"
 
       - name: Create the draft release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ steps.meta.outputs.tag }}" --draft --title "Meridian ${{ steps.meta.outputs.tag }}" --generate-notes
+        run: gh release create "${{ steps.meta.outputs.tag }}" --draft --title "Meridian v${{ steps.meta.outputs.display }}" --generate-notes
 
   build:
     needs: draft

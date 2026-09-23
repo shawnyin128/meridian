@@ -1,5 +1,6 @@
 import type { AppUpdatePhase, AppUpdateStatus } from '../shared/app-update.js'
 import { releaseUrl } from '../shared/app-update.js'
+import { displayVersion } from '../shared/app-version.js'
 
 export const CHECK_EVERY_MS = 6 * 3_600_000
 export const TICK_MS = 3_600_000
@@ -58,12 +59,12 @@ export function createUpdater({ feed, current, supported, installsInPlace, now, 
   feed.on('checking-for-update', () => set({ phase: 'checking' }))
   feed.on('update-not-available', () => set({ phase: 'latest' }, true))
   feed.on('update-available', (info) => set(installsInPlace
-    ? { phase: 'downloading', version: info.version, percent: 0 }
-    : { phase: 'available', version: info.version, url: releaseUrl(info.version) }, true))
+    ? { phase: 'downloading', version: displayVersion(info.version), percent: 0 }
+    : { phase: 'available', version: displayVersion(info.version), url: releaseUrl(info.version) }, true))
   feed.on('download-progress', (info) => {
     if (phase.phase === 'downloading') set({ ...phase, percent: Math.round(info.percent) })
   })
-  feed.on('update-downloaded', (info) => set({ phase: 'ready', version: info.version }))
+  feed.on('update-downloaded', (info) => set({ phase: 'ready', version: displayVersion(info.version) }))
   // electron-updater appends response headers and a stack to the message; the first line names the failure.
   feed.on('error', (error) => set({ phase: 'error', message: error.message.split('\n', 1)[0]!.trim() }, true))
 

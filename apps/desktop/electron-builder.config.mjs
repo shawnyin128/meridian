@@ -1,6 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { displayOf } from '../../scripts/app-version.mjs'
 
+/** The release's display version (0.0.14.1), which installer names carry instead of the stored semver. */
+const display = displayOf(JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version)
 const electron = JSON.parse(readFileSync(new URL('../../node_modules/electron/package.json', import.meta.url), 'utf8'))
 const sidecarName = process.platform === 'win32' ? 'meridian-harness.exe' : 'meridian-harness'
 const sidecarDirectory = resolve(
@@ -34,11 +37,12 @@ export default {
     oneClick: false,
     allowToChangeInstallationDirectory: true,
     // latest.yml names the installer with hyphens, so the uploaded file must carry that exact name.
-    artifactName: '${productName}-Setup-${version}.${ext}',
+    artifactName: `${'${productName}'}-Setup-${display}.${'${ext}'}`,
   },
   mac: {
     // The zip is what electron-updater reads on macOS to detect a newer release.
     target: ['dmg', 'zip'],
+    artifactName: `${'${productName}'}-${display}-${'${arch}'}.${'${ext}'}`,
     icon: 'resources/icon.icns',
     category: 'public.app-category.productivity',
     // No Developer ID certificate is configured, so sign the bundle ad-hoc. Without this,

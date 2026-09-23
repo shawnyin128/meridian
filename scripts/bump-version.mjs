@@ -1,12 +1,15 @@
 // Sets one of Meridian's two version numbers on every surface that carries it.
-//   node scripts/bump-version.mjs app 0.0.9     the desktop app, released by pushing a matching vX.Y.Z tag
+//   node scripts/bump-version.mjs app 0.0.14.1  the desktop app, released by pushing v<stored semver>
+//     (scripts/app-version.mjs: 0.0.14.1 is stored as 0.0.14001)
 //   node scripts/bump-version.mjs plugin 0.0.2  the skills and MCP (plugins and Python core), released from master
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { semverOf } from './app-version.mjs'
 
 const [target, version] = process.argv.slice(2)
-if (!['app', 'plugin'].includes(target ?? '') || !/^\d+\.\d+\.\d+$/.test(version ?? '')) {
-  console.error('Usage: node scripts/bump-version.mjs <app|plugin> <major.minor.patch>')
+const pattern = target === 'app' ? /^\d+\.\d+\.\d+(\.\d+)?$/ : /^\d+\.\d+\.\d+$/
+if (!['app', 'plugin'].includes(target ?? '') || !pattern.test(version ?? '')) {
+  console.error('Usage: node scripts/bump-version.mjs <app MAJOR.LARGE.SMALL[.FIX]|plugin major.minor.patch>')
   process.exit(1)
 }
 const root = resolve(import.meta.dirname, '..')
@@ -21,11 +24,12 @@ function replaceOnce(path, pattern, replacement) {
 }
 
 if (target === 'app') {
-  replaceOnce('apps/desktop/package.json', /^( {2}"version": )"[^"]+"/m, `$1"${version}"`)
+  const stored = semverOf(version)
+  replaceOnce('apps/desktop/package.json', /^( {2}"version": )"[^"]+"/m, `$1"${stored}"`)
   replaceOnce(
     'package-lock.json',
     /("apps\/desktop": \{\s*"name": "@meridian\/desktop",\s*"version": )"[^"]+"/,
-    `$1"${version}"`,
+    `$1"${stored}"`,
   )
 } else {
   writeFileSync(join(root, 'VERSION'), `${version}\n`)
