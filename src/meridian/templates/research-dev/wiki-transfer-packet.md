@@ -26,12 +26,12 @@ Summarize the reusable finding exactly as supported by local experiments.
 | --- | --- | --- |
 |  | `paper | method | concept | claim | evidence | synthesis` | `source fact | wiki synthesis | user insight | uncertainty` |
 
-## Proposed Wiki Draft
+## Proposed Claim Ops
 
-- proposal type:
-- target pages:
-- draft path:
-- lint command:
+- target page (aggregation, e.g. `topics/<slug>`):
+- op: `addClaim | reviseClaim | addEvidence | markConflict | resolveConflict | retractClaim`
+- claim id / text:
+- experiment evidence: `{kind: experiment, project, node}` (required for a non-human addClaim/reviseClaim)
 
 ## Boundary Mapping
 
@@ -41,10 +41,10 @@ Summarize the reusable finding exactly as supported by local experiments.
 - user insight:
 - uncertainty:
 
-## Publish Gate
+## Submission Gate
 
 - [ ] local proposal state is `ready`
 - [ ] source experiments are linked and valid for the claimed scope
 - [ ] Paper Wiki grounding has been retrieved or explicitly judged unnecessary
 - [ ] source facts are not rewritten from local experiment evidence
-- [ ] user confirms canonical wiki publish
+- [ ] submitted through `meridian.wiki_propose` and queued for the user's review in the App (an agent never publishes a wiki page directly)
