@@ -11,8 +11,8 @@ from meridian.mcp.adapter import (
     context,
     read,
     trace,
-    wiki_propose,
     wiki_proposal_status,
+    wiki_propose,
 )
 from meridian.mcp.server import MeridianMCPServer, tool_definitions
 
@@ -24,6 +24,6 @@ __all__ = [
     "read",
     "tool_definitions",
     "trace",
-    "wiki_propose",
     "wiki_proposal_status",
+    "wiki_propose",
 ]

@@ -3,11 +3,9 @@ from __future__ import annotations
 import json
 import io
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
-import threading
 import types
 import unittest
 from contextlib import redirect_stderr, redirect_stdout

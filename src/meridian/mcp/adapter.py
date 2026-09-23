@@ -11,7 +11,12 @@ from meridian.mcp.app_library import app_native_candidates, app_native_catalog_r
 from meridian.mcp.context_contract import CONTEXT_SCHEMA_VERSION, build_context_packet
 from meridian.wiki.claims import ProposalValidationError
 from meridian.wiki.context_paths import default_mcp_context_out_dir
-from meridian.wiki.corpus import parse_frontmatter, retrieve_papers, split_sections, strip_frontmatter
+from meridian.wiki.corpus import (
+    parse_frontmatter,
+    retrieve_papers,
+    split_sections,
+    strip_frontmatter,
+)
 from meridian.wiki.pages import (
     generated_regions,
     page_children,
@@ -21,7 +26,12 @@ from meridian.wiki.pages import (
     resolve_vault_root,
 )
 from meridian.wiki.propose import submit_wiki_proposal
-from meridian.wiki.queue import find_proposal_record, inbox_has_key, read_proposal_records, read_wiki_signals
+from meridian.wiki.queue import (
+    find_proposal_record,
+    inbox_has_key,
+    read_proposal_records,
+    read_wiki_signals,
+)
 from meridian.wiki.workspace import resolve_workspace
 from meridian.workspace_protocol import WorkspaceProtocolError
 

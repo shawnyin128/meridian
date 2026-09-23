@@ -8,7 +8,6 @@ from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from meridian import __version__
 from meridian.cli import main
 from meridian.workspace_protocol import (
     CHANGES_PATH,
