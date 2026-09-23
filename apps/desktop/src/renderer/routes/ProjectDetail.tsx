@@ -137,7 +137,7 @@ export function ProjectIdeaPanel({
  * When you leave the project and come in again, you will stop at the last paragraph; `onTab` and `onRecord` must also maintain the same reference.
  */
 export function ProjectDetail({
-  projectId, onBack, onReturn, tab, onTab, record, onRecord, arrivalTask = null, onArrived,
+  projectId, onBack, onReturn, tab, onTab, record, onRecord, arrivalTask = null, arrivalConclusion = null, onArrived,
 }: {
   projectId: string
   onBack: () => void
@@ -149,6 +149,8 @@ export function ProjectDetail({
   onRecord: (record: RecordTab) => void
   /** A task to locate once the project has loaded, as when the overview timeline opens it. */
   arrivalTask?: string | null
+  /** A conclusion to open once the project has loaded, as when the Wiki review queue asks to verify it. */
+  arrivalConclusion?: string | null
   onArrived?: () => void
 }) {
   const fmt = useFormat()
@@ -380,6 +382,14 @@ export function ProjectDetail({
     locateTask(arrivalTask)
     onArrived?.()
   }, [arrivalTask, project, projectId, locateTask, onArrived])
+
+  useEffect(() => {
+    if (arrivalConclusion === null || project?.id !== projectId) return
+    setSelectedNode(null)
+    setSelectedIdeaId(null)
+    setSelectedConclusion(arrivalConclusion)
+    onArrived?.()
+  }, [arrivalConclusion, project, projectId, onArrived])
   const locateMilestone = useCallback(
     (milestoneId: string) => locatePlanRow('ms', milestoneId), [locatePlanRow],
   )
@@ -767,7 +777,7 @@ export function ProjectDetail({
                     const ideaNode = displayedGraph.nodes.find((node) => node.id === idea.node)
                     return (
                       <StructuredRow
-                        className={`project-idea-row${selectedIdeaId === idea.id ? ' selected' : ''}`}
+                        className="project-idea-row" selected={selectedIdeaId === idea.id}
                         data-idea={idea.id} key={idea.id}
                         onActivate={() => {
                           setSelectedNode(null)
@@ -831,10 +841,14 @@ export function ProjectDetail({
                 <ProjectConclusionPanel
                   projectId={projectId} conclusion={conclusion} node={nodeLook(conclusion.node)}
                   onClose={clearConclusion}
-                  onVerify={() => {
-                    if (conclusion.node === undefined) return
+                  onVerify={(verified, fingerprint) => {
                     void writeProject(
-                      projectApi.verifyConclusion(projectId, conclusion.node), m.project.conclusions.verified,
+                      projectApi.verifyConclusion(projectId, verified, fingerprint), m.project.conclusions.verified,
+                    ).then((saved) => { if (!saved) refreshWorkspace() })
+                  }}
+                  onUnverify={(verified) => {
+                    void writeProject(
+                      projectApi.unverifyConclusion(projectId, verified), m.project.conclusions.unverified,
                     )
                   }}
                   onWrite={(title, ops) => write(

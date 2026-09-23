@@ -38,7 +38,7 @@ export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
   const written = conclusion.wiki[0]
   return (
     <StructuredRow
-      className={`attnrow project-signal-columns record-row with-node conclusion-row${selected ? ' selected' : ''}`}
+      className="attnrow project-signal-columns record-row with-node conclusion-row" selected={selected}
       data-conclusion={conclusion.id} onActivate={onOpen}
     >
       <ProjectSignalKind tone={STATE_TONE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
@@ -60,16 +60,19 @@ export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
  * The detail panel of one conclusion: its text, state and actions, then the evidence chain — the
  * node's tasks, the node, the experiment records — and the Wiki claims written from it. A legacy
  * conclusion shows its source instead of the chain. Verify is offered while a node conclusion is
- * pending; writing to the Wiki needs a verified conclusion and submits one claim through `onWrite`.
+ * pending and unverify once the user verified it; writing to the Wiki needs a verified conclusion and
+ * submits one claim through `onWrite`.
  */
 export function ProjectConclusionPanel({
-  projectId, conclusion, node, onClose, onVerify, onWrite, onOpenNode, onOpenTask, onOpenPage,
+  projectId, conclusion, node, onClose, onVerify, onUnverify, onWrite, onOpenNode, onOpenTask, onOpenPage,
 }: {
   projectId: string
   conclusion: ProjectConclusion
   node: NodeLook | undefined
   onClose: () => void
-  onVerify: () => void
+  /** Verifies the node's conclusion as shown: its node and the fingerprint of what the panel displays. */
+  onVerify: (node: string, fingerprint: string) => void
+  onUnverify: (node: string) => void
   onWrite: (title: string, ops: ProposalOp[]) => Promise<boolean>
   onOpenNode: (nodeId: string) => void
   onOpenTask: (taskId: string) => void
@@ -112,11 +115,14 @@ export function ProjectConclusionPanel({
       </SectionHeading>
       <p className="conclusion-detail-text">{conclusion.text}</p>
       <div className="conclusion-detail-meta">
-        <span className={`ak ${STATE_TONE[conclusion.state]}`}>{c.state[conclusion.state]}</span>
+        <ProjectSignalKind tone={STATE_TONE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
         {conclusion.date === undefined ? null : <span className="conclusion-detail-date">{fmt.date(conclusion.date)}</span>}
         <span className="conclusion-detail-actions">
-          {conclusion.node !== undefined && conclusion.state === 'pending'
-            ? <button className="btn pri" onClick={onVerify}>{c.verify}</button>
+          {conclusion.node !== undefined && conclusion.fingerprint !== undefined && conclusion.state === 'pending'
+            ? <button className="btn pri" onClick={() => onVerify(conclusion.node!, conclusion.fingerprint!)}>{c.verify}</button>
+            : null}
+          {conclusion.node !== undefined && conclusion.verifiedOn !== undefined
+            ? <button className="btn" onClick={() => onUnverify(conclusion.node!)}>{c.unverify}</button>
             : null}
           <button
             className="btn" disabled={conclusion.state !== 'verified'}

@@ -37,6 +37,8 @@ export const project = {
     writtenTo: (page: string, version: number) => `${page} v${version}`,
     verify: '验证',
     verified: '已验证这条结论',
+    unverify: '取消验证',
+    unverified: '已取消验证',
     verifyFirst: '验证之后才能写入 Wiki',
     write: '写入 Wiki',
     written: '已写入 Wiki',

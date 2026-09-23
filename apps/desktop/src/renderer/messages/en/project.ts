@@ -40,6 +40,8 @@ export const project = {
     writtenTo: (page: string, version: number) => `${page} v${version}`,
     verify: 'Verify',
     verified: 'Conclusion verified',
+    unverify: 'Unverify',
+    unverified: 'Verification withdrawn',
     verifyFirst: 'Verify it before writing it to the Wiki',
     write: 'Write to Wiki',
     written: 'Written to the Wiki',

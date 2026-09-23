@@ -261,6 +261,9 @@ export const wiki = {
     reasonPlaceholder: '拒绝的原因（可不填）',
     stale: '已过期',
     staleNote: '依据的页在提案之后改过，应用时会被拒收。',
+    unverified: '结论待验证',
+    unverifiedNote: '引用的项目结论还没验证，验证之后才能应用。',
+    unverifiedLabel: '结论',
     trigger: (project: string, node: string | null) => `项目 ${project}${node === null ? '' : ` · 节点 ${node}`}`,
     pages: '涉及',
     change: {
