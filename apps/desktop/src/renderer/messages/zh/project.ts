@@ -15,7 +15,7 @@ export const project = {
     records: '科研记录',
   },
   recordViewLabel: '科研记录视图',
-  recordModes: { list: '列表' },
+  recordModes: { activity: '动态' },
   records: {
     kind: {
       start: '开始推进',
