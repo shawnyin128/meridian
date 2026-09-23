@@ -685,7 +685,7 @@ function projectWorkspaceFromFiles(
 
 /**
  * Reads one agent-written surface on its own, so a surface this App version cannot parse is reported
- * in `issues` as `<label>读不了:<why>` instead of hiding the surfaces that did parse.
+ * in `issues` as one line naming `label` and the reason, instead of hiding the surfaces that did parse.
  */
 function readSurface<T>(label: string, read: () => T, issues: string[]): T | undefined {
   try {
