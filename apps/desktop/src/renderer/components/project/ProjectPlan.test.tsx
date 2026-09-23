@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Milestone, Task } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
-import { ProjectPlan } from './ProjectPlan.js'
+import { ProjectPlan, ProjectTaskPanel } from './ProjectPlan.js'
 
 const task: Task = {
   id: 'task-1', title: '校准批次', start: '2026-09-16', end: '2026-09-16',
@@ -39,7 +39,7 @@ function renderPlan(tab: 'task' | 'ms', options: {
         listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()} milestoneLaneRef={createRef()}
         onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
         onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
-        onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={vi.fn()}
+        onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={vi.fn()} onOpenTask={vi.fn()}
         onUpdateMilestone={vi.fn()}
         onDeleteMilestone={vi.fn()} onHoverMilestone={vi.fn()}
       />
@@ -110,5 +110,41 @@ describe('ProjectPlan', () => {
 
     const open = renderPlan('ms', { milestones: [milestone, doneMilestone], flashId: doneMilestone.id })
     expect(open).toContain('已完成的里程碑')
+  })
+
+  it('任务行整行可点开任务详情,不止是拖拽把手', () => {
+    const output = renderPlan('task')
+    expect(output).toContain('title="打开任务"')
+  })
+})
+
+function renderTaskPanel(taskOverrides: Partial<Task> = {}) {
+  return renderToStaticMarkup(
+    <MessagesProvider>
+      <ProjectTaskPanel task={{ ...task, ...taskOverrides }} onClose={vi.fn()} onSaveNote={vi.fn()} />
+    </MessagesProvider>,
+  )
+}
+
+describe('ProjectTaskPanel', () => {
+  beforeEach(() => { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh') })
+
+  it('展示任务标题、日期、优先级与状态', () => {
+    const output = renderTaskPanel()
+    expect(output).toContain('校准批次')
+    expect(output).toContain('9月16日')
+    expect(output).toContain('P1')
+    expect(output).toContain('进行中')
+  })
+
+  it('没有备注时显示空状态提示,而不是空白', () => {
+    const output = renderTaskPanel({ note: undefined })
+    expect(output).toContain('还没有备注')
+  })
+
+  it('有备注时渲染备注正文', () => {
+    const output = renderTaskPanel({ note: '先跑 A/B 两组,再看结论' })
+    expect(output).toContain('先跑 A/B 两组')
+    expect(output).not.toContain('还没有备注')
   })
 })

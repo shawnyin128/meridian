@@ -38,7 +38,7 @@ import { nodeMode, ResearchGraph, ResearchNodePanel } from '../components/projec
 import {
   IdeaGraphDialog, type IdeaGraphDialogMode,
 } from '../components/ideas/IdeaGraphDialog.js'
-import { ProjectPlan } from '../components/project/ProjectPlan.js'
+import { ProjectPlan, ProjectTaskPanel } from '../components/project/ProjectPlan.js'
 import type { PlanCreating, PlanTab } from '../components/project/ProjectPlan.js'
 import { BackButton } from '../components/BackButton.js'
 import { dnum } from '../../shared/dates.js'
@@ -163,6 +163,7 @@ export function ProjectDetail({
   const [memoEditing, setMemoEditing] = useState(false)
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [ideaGraphDialog, setIdeaGraphDialog] = useState<{
     ideaId: string
     mode: IdeaGraphDialogMode
@@ -190,6 +191,13 @@ export function ProjectDetail({
   const today = useToday()
   const clearNode = useCallback(() => setSelectedNode(null), [])
   const clearIdea = useCallback(() => setSelectedIdeaId(null), [])
+  const clearTask = useCallback(() => setSelectedTaskId(null), [])
+  /** The task panel and the node/idea panel share one slot: opening a task is the only place that sets it, so it needs no separate callback for every other opener. */
+  const openTask = useCallback((taskId: string) => {
+    setSelectedNode(null)
+    setSelectedIdeaId(null)
+    setSelectedTaskId(taskId)
+  }, [])
   const { revision } = useVaultRevision()
   const { open: jumpTo } = useJump()
   const openWikiPage = (page: string) => jumpTo('wiki', page)
@@ -246,6 +254,7 @@ export function ProjectDetail({
   useEffect(() => {
     setSelectedNode(null)
     setSelectedIdeaId(null)
+    setSelectedTaskId(null)
     setIdeaGraphDialog(null)
   }, [projectId])
 
@@ -255,8 +264,14 @@ export function ProjectDetail({
     }
   }, [linkedIdeas, selectedIdeaId])
 
+  // The task panel shares its slot with the node/idea panel; opening either of those closes it.
+  useEffect(() => {
+    if (selectedNode !== null || selectedIdeaId !== null) setSelectedTaskId(null)
+  }, [selectedNode, selectedIdeaId])
+
   useEscapeLayer(selectedNode !== null, clearNode)
   useEscapeLayer(selectedIdeaId !== null, clearIdea)
+  useEscapeLayer(selectedTaskId !== null, clearTask)
 
   // Switching the record view swaps content of a different height under the heading. The heading is
   // kept where it was on screen so the switch does not read as the page moving.
@@ -368,7 +383,10 @@ export function ProjectDetail({
     }
     setFlash({ id })
   }, [tab, onTab, discardOpenEdits])
-  const locateTask = useCallback((taskId: string) => locatePlanRow('task', taskId), [locatePlanRow])
+  const locateTask = useCallback((taskId: string) => {
+    locatePlanRow('task', taskId)
+    openTask(taskId)
+  }, [locatePlanRow, openTask])
 
   useEffect(() => {
     if (arrivalTask === null || project?.id !== projectId) return
@@ -465,8 +483,9 @@ export function ProjectDetail({
   })
   const node = displayedGraph.nodes.find((n) => n.id === selectedNode)
   const selectedIdea = linkedIdeas.find((idea) => idea.id === selectedIdeaId)
+  const selectedTask = project.tasks.find((t) => t.id === selectedTaskId)
   const dialogIdea = linkedIdeas.find((idea) => idea.id === ideaGraphDialog?.ideaId)
-  const detailOpen = node !== undefined || selectedIdea !== undefined
+  const detailOpen = node !== undefined || selectedIdea !== undefined || selectedTask !== undefined
   const workspaceLeaf = project.workspace?.root.split(/[\\/]/).filter(Boolean).at(-1)
   const workspaceName = project.workspace?.kind === 'ssh'
     ? `${project.workspace.host}:${workspaceLeaf ?? project.workspace.root}`
@@ -657,6 +676,7 @@ export function ProjectDetail({
                 projectApi.deleteTask(projectId, taskId), m.project.plan.taskDeleted,
               )}
               onReorderTasks={reorderTasks}
+              onOpenTask={openTask}
               onUpdateMilestone={(milestoneId, patch) => writeProject(
                 projectApi.updateMilestone(projectId, milestoneId, patch), m.project.plan.milestoneUpdated,
               )}
@@ -767,7 +787,16 @@ export function ProjectDetail({
             open={detailOpen} mode="resize"
             className={`wkside project-detail-panel${detailOpen ? ' node-document-pane' : ''}`}
           >
-            {selectedIdea !== undefined
+            {selectedTask !== undefined
+              ? (
+                <ProjectTaskPanel
+                  task={selectedTask} onClose={clearTask}
+                  onSaveNote={(note) => writeProject(
+                    projectApi.updateTask(projectId, selectedTask.id, { note }), m.project.plan.noteUpdated,
+                  )}
+                />
+              )
+              : selectedIdea !== undefined
               ? (
                 <ProjectIdeaPanel
                   idea={selectedIdea}

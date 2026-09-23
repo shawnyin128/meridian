@@ -159,6 +159,21 @@ describe('project page', () => {
     expect(readProjectPage(file, 'project-1').tasks.map((t) => t.id)).toEqual(['task-1', 'task-2'])
   })
 
+  it('任务带上备注,写出再读回保持一致', () => {
+    const withNote = { ...PROJECT.tasks[0]!, note: '先跑 A/B 两组,再看结论' }
+    writeProjectFields(file, { ...PROJECT, tasks: [withNote] }, ['tasks'], staging)
+    expect(readFileSync(file, 'utf8')).toContain('    note: "先跑 A/B 两组,再看结论"\n')
+    expect(readProjectPage(file, 'project-1').tasks[0]!.note).toBe(withNote.note)
+  })
+
+  it('旧页上的任务没有 note 这一键,读出来是 undefined,不补空字符串', () => {
+    // PROJECT.tasks[0] already has no note field, so the file the beforeEach wrote is itself an
+    // old-format sample; this only asserts what reading it must give.
+    const read = readProjectPage(file, 'project-1')
+    expect('note' in read.tasks[0]!).toBe(false)
+    expect(read.tasks[0]!.note).toBeUndefined()
+  })
+
   it('记一条科研记录只多出那一行', () => {
     const before = readFileSync(file, 'utf8').split('\n')
     const events = [...PROJECT.events, { date: '2026-09-08', text: '记一笔' }]

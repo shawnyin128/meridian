@@ -21,6 +21,8 @@ export type InlineFieldProps = {
   validate?: (value: string) => boolean
   /** Edits in a wrapping field that grows with its text, for values whose display wraps; Enter still saves. */
   multiline?: boolean
+  /** Pass true when the row or card itself is clickable, so the trigger swallows the click instead of bubbling it. */
+  stopRowActivation?: boolean
 }
 
 /**
@@ -33,7 +35,7 @@ export function InlineField({
   label, value, display, type = 'text', inputMode, options, onSave,
   wrapperClassName = 'metadata-field', buttonClassName = 'metadata-editable',
   inputClassName = 'metadata-input', inputAppearance = 'plain', emptyText, normalize = (next) => next,
-  validate = () => true, multiline = false,
+  validate = () => true, multiline = false, stopRowActivation = false,
 }: InlineFieldProps) {
   const m = useMessages()
   const empty = emptyText ?? m.common.field.emptyValue
@@ -68,7 +70,11 @@ export function InlineField({
     field = (
       <button
         type="button" className={buttonClassName} title={m.common.field.change(label)}
-        onClick={() => { setDraft(value); setEditing(true) }}
+        onClick={(event) => {
+          if (stopRowActivation) event.stopPropagation()
+          setDraft(value)
+          setEditing(true)
+        }}
       >{(display ?? value) || empty}</button>
     )
   } else if (options !== undefined) {

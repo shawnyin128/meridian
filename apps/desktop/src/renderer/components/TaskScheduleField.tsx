@@ -106,11 +106,13 @@ export function TaskScheduleEditor({ mode, task, saving, onSave, onCancel }: {
 }
 
 /** Separate date or time entry; both share the TaskScheduleEditor, but will not enter the editing state together. */
-export function TaskScheduleField({ mode, task, onSave, className = '' }: {
+export function TaskScheduleField({ mode, task, onSave, className = '', stopRowActivation = false }: {
   mode: ScheduleEditMode
   task: Task
   onSave: (patch: TaskPatch) => Promise<boolean>
   className?: string
+  /** Pass true when the row or card itself is clickable, so the trigger swallows the click instead of bubbling it. */
+  stopRowActivation?: boolean
 }) {
   const fmt = useFormat()
   const m = useMessages()
@@ -137,6 +139,7 @@ export function TaskScheduleField({ mode, task, onSave, className = '' }: {
         <button
           type="button" className={`schedule-trigger${className ? ` ${className}` : ''}`}
           title={title}
+          onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
         ><DateChip>{label}</DateChip></button>
       )}
       contentClassName="ctxmenu schedule-pop" side="bottom" align="start" sideOffset={4}

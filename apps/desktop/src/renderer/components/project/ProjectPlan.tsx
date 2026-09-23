@@ -15,12 +15,15 @@ import { DateChip } from '../DateTimeDisplay.js'
 import { ChoicePicker, DateButton, PriorityPicker } from '../FieldPickers.js'
 import { InlineDraftInput } from '../InlineDraftInput.js'
 import { InlineField } from '../InlineField.js'
+import { MarkdownBox } from '../Markdown.js'
+import { PanelClose } from '../PanelClose.js'
 import { TaskScheduleField } from '../TaskScheduleField.js'
 import { IconTrash } from '../icons.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { useDragReorder, type DragCardProps } from '../../hooks/useDragReorder.js'
+import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
 import './ProjectPlan.css'
@@ -175,21 +178,66 @@ function MilestoneCreateRow({ initial, triggers, onSave, onCancel }: {
   )
 }
 
-function PlanNameCell({ value, label, onSave }: {
+function PlanNameCell({ value, label, onSave, stopRowActivation = false }: {
   value: string
   label: string
   onSave: (value: string) => boolean | Promise<boolean>
+  stopRowActivation?: boolean
 }) {
   return (
     <InlineField
       label={label} value={value} wrapperClassName="plan-name-cell"
       buttonClassName="plan-cell plan-name" inputClassName="plan-name-input"
       normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onSave}
+      stopRowActivation={stopRowActivation}
     />
   )
 }
 
-function TaskRow({ task, flash, dragProps, dropClass = '', onSave, onDelete }: {
+/**
+ * Task detail panel: the same shared panel and open/close interaction as a research node, showing
+ * the task's fields plus its Markdown note, editable in place.
+ */
+export function ProjectTaskPanel({ task, onClose, onSaveNote }: {
+  task: Task
+  onClose: () => void
+  onSaveNote: (note: string) => Promise<boolean>
+}) {
+  const m = useMessages()
+  const fmt = useFormat()
+  const [editing, setEditing] = useState(false)
+  const box = useRef<HTMLDivElement>(null)
+  const toggle = () => {
+    if (!editing) { setEditing(true); return }
+    const next = box.current?.innerText.trim() ?? ''
+    setEditing(false)
+    void onSaveNote(next)
+  }
+  return (
+    <>
+      <SectionHeading
+        variant="rail" className="node-document-head"
+        actions={<PanelClose onClose={onClose} />}
+      ><span className="node-document-title">{task.title}</span>
+      </SectionHeading>
+      <div className="project-task-detail-meta">
+        <DateChip>{fmt.dateRange(task.start, task.end)}</DateChip>
+        <span className={`prtag ${task.priority}`}>{task.priority.toUpperCase()}</span>
+        <span className="project-task-detail-state">{stateWord(m)[task.state]}</span>
+      </div>
+      <SectionHeading variant="rail" className="flexh">{m.project.plan.noteHeading}
+        <button className="btn plain" onClick={toggle}>{editing ? m.common.save : m.common.edit}</button>
+      </SectionHeading>
+      <MarkdownBox
+        className="task-note" text={task.note ?? ''} editing={editing} box={box}
+        onCancel={() => setEditing(false)}
+        empty={<span className="lm">{m.project.plan.noteEmpty}</span>}
+      />
+    </>
+  )
+}
+
+function TaskRow({ task, flash, dragProps, dropClass = '', onSave, onDelete, onOpen }: {
   task: Task
   flash: boolean
   /** Omitted for an archived row: it is not draggable, since its position among other done tasks does not matter. */
@@ -197,32 +245,37 @@ function TaskRow({ task, flash, dragProps, dropClass = '', onSave, onDelete }: {
   dropClass?: string
   onSave: (patch: TaskPatch) => Promise<boolean>
   onDelete: () => void
+  /** Opens the task's detail panel; the row's own field editors swallow their clicks so they do not also open it. */
+  onOpen: () => void
 }) {
   const m = useMessages()
   return (
     <StructuredRow
-      data-row={task.id} {...dragProps}
+      composite data-row={task.id} {...dragProps} onActivate={onOpen}
+      title={m.project.plan.openTask}
       className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}${
         dropClass ? ` ${dropClass}` : ''}`}
     >
-      <TaskScheduleField mode="date" task={task} onSave={onSave} className="task-date-part" />
-      <TaskScheduleField mode="time" task={task} onSave={onSave} className="task-clock-part" />
+      <TaskScheduleField mode="date" task={task} onSave={onSave} className="task-date-part" stopRowActivation />
+      <TaskScheduleField mode="time" task={task} onSave={onSave} className="task-clock-part" stopRowActivation />
       <PriorityPicker
         value={task.priority} className={`prtag ${task.priority} plan-cell`}
-        title={m.project.plan.editPriority}
+        title={m.project.plan.editPriority} stopRowActivation
         onPick={(priority) => { void onSave({ priority }) }}
       >{task.priority.toUpperCase()}</PriorityPicker>
       <ChoicePicker
         value={task.state} options={TASK_STATES} label={(state) => stateWord(m)[state]}
-        className="dleft plan-cell state-cell" onPick={(state) => { void onSave({ state }) }}
+        className="dleft plan-cell state-cell" stopRowActivation
+        onPick={(state) => { void onSave({ state }) }}
       />
       <PlanNameCell
         value={task.title} label={m.project.plan.taskNamePlaceholder} onSave={(title) => onSave({ title })}
+        stopRowActivation
       />
       <button
         className="row-delete" type="button"
         title={m.project.plan.deleteTask} aria-label={m.project.plan.deleteTaskFor(task.title)}
-        onClick={onDelete}
+        onClick={(event) => { event.stopPropagation(); onDelete() }}
       ><IconTrash /></button>
     </StructuredRow>
   )
@@ -275,7 +328,7 @@ export function ProjectPlan({
   project, tab, today, creating, flashId,
   listRef, addRef, timelineAddRef, milestoneLaneRef,
   onTab, onDiscardOpenEdits, onStartTask, onStartMilestone, onCancelCreate,
-  onCreateTask, onCreateMilestone, onUpdateTask, onDeleteTask, onReorderTasks,
+  onCreateTask, onCreateMilestone, onUpdateTask, onDeleteTask, onReorderTasks, onOpenTask,
   onUpdateMilestone, onDeleteMilestone, onHoverMilestone,
 }: {
   project: Pick<Project, 'tasks' | 'milestones'>
@@ -298,6 +351,8 @@ export function ProjectPlan({
   onDeleteTask: (taskId: string) => void
   /** Persists a full drag-reordering of the task list: `order` is a permutation of the project's task ids. */
   onReorderTasks: (order: string[]) => void
+  /** Opens the task's detail panel; fired by clicking its row here or its bar/label in the Gantt. */
+  onOpenTask: (taskId: string) => void
   onUpdateMilestone: (
     milestoneId: string,
     patch: Partial<Pick<Milestone, 'date' | 'title' | 'done'>>,
@@ -354,6 +409,7 @@ export function ProjectPlan({
                   dragProps={taskOrder.cardProps(task.id)} dropClass={taskOrder.dropClass(task.id)}
                   onSave={(patch) => onUpdateTask(task.id, patch)}
                   onDelete={() => onDeleteTask(task.id)}
+                  onOpen={() => onOpenTask(task.id)}
                 />
               ))}
               {project.tasks.length === 0 && creating?.kind !== 'task'
@@ -387,6 +443,7 @@ export function ProjectPlan({
                         key={task.id} task={task} flash={flashId === task.id}
                         onSave={(patch) => onUpdateTask(task.id, patch)}
                         onDelete={() => onDeleteTask(task.id)}
+                        onOpen={() => onOpenTask(task.id)}
                       />
                     ))}
                   </CollapsibleGroup>
