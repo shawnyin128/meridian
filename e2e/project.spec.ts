@@ -485,12 +485,12 @@ test('任务四列逐行对齐,任务与里程碑日期使用同一底色', asyn
   // The fixture's one done task (t1) starts collapsed into the archived group; only the active rows
   // are visible and need to line up.
   await expect(rows).toHaveCount(ACTIVE_TASK_ROWS)
-  for (const selector of ['.task-time-cell', '.prtag', '.state-cell', '.plan-name']) {
+  for (const selector of ['.task-date-part', '.task-clock-part', '.prtag', '.state-cell', '.plan-name']) {
     const x = await rows.evaluateAll((items, cell) => items.map((row) =>
       Math.round(row.querySelector(cell as string)!.getBoundingClientRect().x)), selector)
     expect(new Set(x).size, `${selector} 应落在同一列`).toBe(1)
   }
-  const taskDateColor = await rows.first().locator('.task-time-cell')
+  const taskDateColor = await rows.first().locator('.task-date-part')
     .evaluate((element) => getComputedStyle(element).backgroundColor)
 
   await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '里程碑' }).click()
