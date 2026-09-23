@@ -1,0 +1,32 @@
+name: Feature
+description: New functionality. A complete new module ships in a baseline (Y), anything else in an iteration (Z).
+title: "[module] "
+labels: ["feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One issue, one feature. Replace `module` in the title with the area, for example `[wiki]`.
+        Set the milestone to the target version, for example `v0.0.15.0` or `v0.1.0.0`.
+  - type: textarea
+    id: wanted
+    attributes:
+      label: What is wanted
+      description: The feature, in one or two sentences.
+      placeholder: Agents can propose a conclusion a project found, and I confirm it in the App.
+    validations:
+      required: true
+  - type: textarea
+    id: needs
+    attributes:
+      label: Detailed requirements
+      description: How it should work, step by step, and what it must not do.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      description: What is true when it is done.
+    validations:
+      required: true

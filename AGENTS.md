@@ -202,6 +202,8 @@ The Harness tests need the Harness installed first:
 
 ## Git
 
+- Branches, versions and releases follow `.github/versioning.md`; issues follow
+  `.github/issues.md`; pull requests follow `.github/pull-requests.md`.
 - Commit messages follow Conventional Commits:
   `<type>(<scope>): <description>`, imperative, lowercase, no trailing period.
 - Stage explicit paths. Do not use `git add -A`, `git stash`, force-push, or

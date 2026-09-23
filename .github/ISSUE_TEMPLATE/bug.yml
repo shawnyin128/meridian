@@ -1,0 +1,42 @@
+name: Bug
+description: Something does not work as intended. Ships in a fix version (the F position).
+title: "[module] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One issue, one problem. Replace `module` in the title with the area, for example `[desktop]`.
+        Set the milestone to the target fix version, for example `v0.0.14.2`.
+  - type: textarea
+    id: happens
+    attributes:
+      label: What happens
+      description: The current, wrong behaviour.
+      placeholder: After updating from 0.0.13, projects, overview and Wiki show nothing.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The steps that make it happen.
+      placeholder: |
+        1. Use a library 0.0.13 wrote that has undo history.
+        2. Install 0.0.14 and open it.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      description: What should happen instead.
+      placeholder: The library opens as before.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Shown in About Meridian.
+      placeholder: 0.0.14.1

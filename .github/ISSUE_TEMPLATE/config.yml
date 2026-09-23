@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: How issues work in Meridian
+    url: https://github.com/shawnyin128/meridian/blob/master/.github/issues.md
+    about: Type labels, milestones, titles and what to write.

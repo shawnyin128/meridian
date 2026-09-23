@@ -1,0 +1,30 @@
+name: Optimization
+description: Improve something that already works. Ships in an iteration version (the Z position).
+title: "[module] "
+labels: ["optimization"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One issue, one improvement. Replace `module` in the title with the area, for example `[desktop]`.
+        Set the milestone to the target version, for example `v0.0.15.0`.
+  - type: textarea
+    id: now
+    attributes:
+      label: What it does now
+      placeholder: Research plan tasks cannot be reordered.
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: What should change
+      placeholder: Tasks can be dragged into a new order, and new tasks are added at the top.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
