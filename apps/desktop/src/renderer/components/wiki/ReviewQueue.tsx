@@ -68,16 +68,18 @@ function linesOf(op: ProposalOp, p: WikiProposal, w: Catalog['wiki']): string[] 
 
 /**
  * The review queue: every queued agent proposal with who made it, what prompted it, its change lines
- * and the pages it would change, flagged when a page it rests on changed since; the user applies it
- * or declines it with an optional reason. Decided proposals follow under their own heading, each with
- * its outcome.
+ * and the pages it would change, flagged when a page it rests on changed since or when it cites a
+ * project conclusion the user has not verified (each opens through `onOpenConclusion`); the user
+ * applies it or declines it with an optional reason. Decided proposals follow under their own heading,
+ * each with its outcome.
  */
-export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage }: {
+export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage, onOpenConclusion }: {
   proposals: WikiProposal[]
   pending: boolean
   onApply: (proposal: WikiProposal) => void
   onDecline: (proposal: WikiProposal, reason: string) => void
   onOpenPage: (id: string) => void
+  onOpenConclusion: (project: string, conclusion: string) => void
 }) {
   const m = useMessages()
   const r = m.wiki.queue
@@ -110,11 +112,26 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                 <div className="review-head">
                   <span className="review-title">{p.proposal?.title ?? r.unreadable}</span>
                   {p.staleNow ? <span className="stag pend">{r.stale}</span> : null}
+                  {(p.unverified ?? []).length > 0 ? <span className="stag pend">{r.unverified}</span> : null}
                 </div>
                 <div className="review-meta">{source(p)}</div>
                 {p.proposal?.rationale ? <p className="review-note">{p.proposal.rationale}</p> : null}
                 {p.staleNow ? <p className="review-note review-note--warn">{r.staleNote}</p> : null}
                 {p.notice === null ? null : <p className="review-note review-note--warn">{p.notice}</p>}
+                {(p.unverified ?? []).length === 0 ? null : <p className="review-note review-note--warn">{r.unverifiedNote}</p>}
+                {(p.unverified ?? []).length === 0 ? null : (
+                  <div className="wkrel review-unverified">
+                    <span className="rl">{r.unverifiedLabel}</span>
+                    {p.unverified!.map((ref) => {
+                      const [project, conclusion] = ref.slice('projects/'.length).split('#') as [string, string]
+                      return (
+                        <span className="tagchip" key={ref} onClick={() => onOpenConclusion(project, conclusion)}>
+                          {p.titles[ref] ?? conclusion}
+                        </span>
+                      )
+                    })}
+                  </div>
+                )}
                 <DiffLines lines={lines(p)} />
                 <div className="wkrel">
                   <span className="rl">{r.pages}</span>
@@ -123,7 +140,7 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                   ))}
                 </div>
                 <div className="review-actions">
-                  <button type="button" className="btn pri" disabled={pending || p.proposal === null || p.staleNow} onClick={() => onApply(p)}>{r.apply}</button>
+                  <button type="button" className="btn pri" disabled={pending || p.proposal === null || p.staleNow || (p.unverified ?? []).length > 0} onClick={() => onApply(p)}>{r.apply}</button>
                   <ActionPopover
                     open={declining === p.id}
                     onOpenChange={(next) => {

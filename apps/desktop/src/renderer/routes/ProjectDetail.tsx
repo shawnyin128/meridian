@@ -33,6 +33,7 @@ import {
   ProjectAttachments, ProjectMemo, ProjectRelations, ProjectTopicField, ProjectUrlDraft,
 } from '../components/project/ProjectSections.js'
 import { NodeTag } from '../components/project/NodeTag.js'
+import { ProjectConclusionPanel, ProjectConclusionRow } from '../components/project/ProjectConclusions.js'
 import { ProjectTimeline } from '../components/project/ProjectTimeline.js'
 import { nodeMode, ResearchGraph, ResearchNodePanel } from '../components/project/ResearchGraph.js'
 import {
@@ -55,8 +56,8 @@ import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import './shell.css'
 import './ProjectDetail.css'
 
-/** Two segments of scientific research records. */
-export type RecordTab = 'tl' | 'graph'
+/** Three segments of scientific research records: activity, conclusions, and the research graph. */
+export type RecordTab = 'tl' | 'concl' | 'graph'
 
 export function ProjectIdeaPanel({
   idea, graph, workspaceManaged, onClose, onOpenIdea, onCreateNode, onLinkNode,
@@ -136,7 +137,7 @@ export function ProjectIdeaPanel({
  * When you leave the project and come in again, you will stop at the last paragraph; `onTab` and `onRecord` must also maintain the same reference.
  */
 export function ProjectDetail({
-  projectId, onBack, onReturn, tab, onTab, record, onRecord, arrivalTask = null, onArrived,
+  projectId, onBack, onReturn, tab, onTab, record, onRecord, arrivalTask = null, arrivalConclusion = null, onArrived,
 }: {
   projectId: string
   onBack: () => void
@@ -148,6 +149,8 @@ export function ProjectDetail({
   onRecord: (record: RecordTab) => void
   /** A task to locate once the project has loaded, as when the overview timeline opens it. */
   arrivalTask?: string | null
+  /** A conclusion to open once the project has loaded, as when the Wiki review queue asks to verify it. */
+  arrivalConclusion?: string | null
   onArrived?: () => void
 }) {
   const fmt = useFormat()
@@ -163,6 +166,7 @@ export function ProjectDetail({
   const [memoEditing, setMemoEditing] = useState(false)
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null)
+  const [selectedConclusion, setSelectedConclusion] = useState<string | null>(null)
   const [ideaGraphDialog, setIdeaGraphDialog] = useState<{
     ideaId: string
     mode: IdeaGraphDialogMode
@@ -190,6 +194,7 @@ export function ProjectDetail({
   const today = useToday()
   const clearNode = useCallback(() => setSelectedNode(null), [])
   const clearIdea = useCallback(() => setSelectedIdeaId(null), [])
+  const clearConclusion = useCallback(() => setSelectedConclusion(null), [])
   const { revision } = useVaultRevision()
   const { open: jumpTo } = useJump()
   const openWikiPage = (page: string) => jumpTo('wiki', page)
@@ -246,6 +251,7 @@ export function ProjectDetail({
   useEffect(() => {
     setSelectedNode(null)
     setSelectedIdeaId(null)
+    setSelectedConclusion(null)
     setIdeaGraphDialog(null)
   }, [projectId])
 
@@ -257,6 +263,7 @@ export function ProjectDetail({
 
   useEscapeLayer(selectedNode !== null, clearNode)
   useEscapeLayer(selectedIdeaId !== null, clearIdea)
+  useEscapeLayer(selectedConclusion !== null, clearConclusion)
 
   // Switching the record view swaps content of a different height under the heading. The heading is
   // kept where it was on screen so the switch does not read as the page moving.
@@ -277,7 +284,7 @@ export function ProjectDetail({
   // A newly opened node or idea starts at the top of the panel, not where the previous one was scrolled to.
   useEffect(() => {
     document.querySelector('.screenslot:not([hidden]) .node-document-pane')?.scrollTo({ top: 0 })
-  }, [selectedNode, selectedIdeaId])
+  }, [selectedNode, selectedIdeaId, selectedConclusion])
 
   useEffect(() => {
     if (!flash) return
@@ -375,6 +382,14 @@ export function ProjectDetail({
     locateTask(arrivalTask)
     onArrived?.()
   }, [arrivalTask, project, projectId, locateTask, onArrived])
+
+  useEffect(() => {
+    if (arrivalConclusion === null || project?.id !== projectId) return
+    setSelectedNode(null)
+    setSelectedIdeaId(null)
+    setSelectedConclusion(arrivalConclusion)
+    onArrived?.()
+  }, [arrivalConclusion, project, projectId, onArrived])
   const locateMilestone = useCallback(
     (milestoneId: string) => locatePlanRow('ms', milestoneId), [locatePlanRow],
   )
@@ -437,6 +452,7 @@ export function ProjectDetail({
     holdRecordHeading()
     onRecord('graph')
     setSelectedIdeaId(null)
+    setSelectedConclusion(null)
     setSelectedNode(nodeId)
     discardOpenEdits()
   }
@@ -466,7 +482,13 @@ export function ProjectDetail({
   const node = displayedGraph.nodes.find((n) => n.id === selectedNode)
   const selectedIdea = linkedIdeas.find((idea) => idea.id === selectedIdeaId)
   const dialogIdea = linkedIdeas.find((idea) => idea.id === ideaGraphDialog?.ideaId)
-  const detailOpen = node !== undefined || selectedIdea !== undefined
+  const conclusions = project.projectConclusions ?? []
+  const conclusion = conclusions.find((candidate) => candidate.id === selectedConclusion)
+  const nodeLook = (nodeId: string | undefined) => {
+    const found = displayedGraph.nodes.find((candidate) => candidate.id === nodeId)
+    return found === undefined ? undefined : { label: found.label, mode: nodeMode(found) }
+  }
+  const detailOpen = node !== undefined || selectedIdea !== undefined || conclusion !== undefined
   const workspaceLeaf = project.workspace?.root.split(/[\\/]/).filter(Boolean).at(-1)
   const workspaceName = project.workspace?.kind === 'ssh'
     ? `${project.workspace.host}:${workspaceLeaf ?? project.workspace.root}`
@@ -672,12 +694,14 @@ export function ProjectDetail({
                   value={record}
                   options={[
                     { value: 'tl', label: m.project.recordModes.activity },
+                    { value: 'concl', label: m.project.recordModes.conclusions },
                     { value: 'graph', label: m.project.sections.graph },
                   ]}
                   onChange={(value) => {
                     holdRecordHeading()
                     onRecord(value)
-                    if (value === 'tl') setSelectedNode(null)
+                    if (value !== 'graph') setSelectedNode(null)
+                    if (value !== 'concl') setSelectedConclusion(null)
                     discardOpenEdits()
                   }}
                 />
@@ -706,6 +730,25 @@ export function ProjectDetail({
                   })}
                 </StructuredList>
               )
+              : record === 'concl'
+              ? (conclusions.length === 0
+                ? <EmptyState variant="section">{m.project.conclusions.empty}</EmptyState>
+                : (
+                  <StructuredList className="evlist" variant="embedded">
+                    {conclusions.map((item) => (
+                      <ProjectConclusionRow
+                        key={item.id} conclusion={item} node={nodeLook(item.node)}
+                        selected={item.id === selectedConclusion}
+                        onOpen={() => {
+                          setSelectedNode(null)
+                          setSelectedIdeaId(null)
+                          setSelectedConclusion(item.id)
+                          discardOpenEdits()
+                        }}
+                      />
+                    ))}
+                  </StructuredList>
+                ))
               : (
                 <>
                   <ResearchGraph
@@ -714,6 +757,7 @@ export function ProjectDetail({
                     ideaNodeIds={selectedIdea?.node === undefined ? [] : [selectedIdea.node]}
                     onSelect={(nodeId) => {
                       setSelectedIdeaId(null)
+                      setSelectedConclusion(null)
                       setSelectedNode(nodeId)
                     }}
                   />
@@ -733,10 +777,11 @@ export function ProjectDetail({
                     const ideaNode = displayedGraph.nodes.find((node) => node.id === idea.node)
                     return (
                       <StructuredRow
-                        className={`project-idea-row${selectedIdeaId === idea.id ? ' selected' : ''}`}
+                        className="project-idea-row" selected={selectedIdeaId === idea.id}
                         data-idea={idea.id} key={idea.id}
                         onActivate={() => {
                           setSelectedNode(null)
+                          setSelectedConclusion(null)
                           setSelectedIdeaId(idea.id)
                           discardOpenEdits()
                         }}
@@ -789,6 +834,29 @@ export function ProjectDetail({
                   onUnlinkNode={() => {
                     void placeIdeaOnGraph(selectedIdea, { kind: 'unlink' })
                   }}
+                />
+              )
+              : conclusion !== undefined
+              ? (
+                <ProjectConclusionPanel
+                  projectId={projectId} conclusion={conclusion} node={nodeLook(conclusion.node)}
+                  onClose={clearConclusion}
+                  onVerify={(verified, fingerprint) => {
+                    void writeProject(
+                      projectApi.verifyConclusion(projectId, verified, fingerprint), m.project.conclusions.verified,
+                    ).then((saved) => { if (!saved) refreshWorkspace() })
+                  }}
+                  onUnverify={(verified) => {
+                    void writeProject(
+                      projectApi.unverifyConclusion(projectId, verified), m.project.conclusions.unverified,
+                    )
+                  }}
+                  onWrite={(title, ops) => write(
+                    wiki.apply({ source: 'user', title, ops }), { note: m.project.conclusions.written },
+                  )}
+                  onOpenNode={goToRecordNode}
+                  onOpenTask={locateTask}
+                  onOpenPage={openWikiPage}
                 />
               )
               : node === undefined

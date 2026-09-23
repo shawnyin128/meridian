@@ -13,7 +13,12 @@ declare global {
 const api = vi.hoisted(() => ({
   listProjects: vi.fn(() => Promise.resolve([{ id: 'draft', name: 'draft 效率' }])),
   getProject: vi.fn(() => Promise.resolve({
-    id: 'draft', conclusionList: [{ id: 'c1', text: '拐点是 batch size 的函数', state: 'verified', date: '2026-06-25', source: '手动添加' }],
+    id: 'draft',
+    projectConclusions: [
+      { id: 't.wide', node: 't.wide', text: '宽树在 B≥8 时净赚', state: 'verified', tasks: [], experiments: [], wiki: [] },
+      { id: 't.open', node: 't.open', text: '还没验证的一条', state: 'pending', tasks: [], experiments: [], wiki: [] },
+      { id: 'c1', source: '手动添加', text: '拐点是 batch size 的函数', date: '2026-06-25', state: 'verified', tasks: [], experiments: [], wiki: [] },
+    ],
   })),
 }))
 
@@ -125,7 +130,21 @@ describe('WikiClaims', () => {
     expect(document.querySelector('.wiki-form')).toBeNull()
   })
 
-  it('添加结论:选一条项目结论作依据,正文先填成那条结论', async () => {
+  it('添加结论:只能选已验证的项目结论作依据,节点结论引用节点,旧版结论引用结论 id', async () => {
+    act(() => host.querySelector<HTMLButtonElement>('.add-action')!.click())
+    await act(async () => { [...dialog().querySelectorAll<HTMLButtonElement>('.segmented-control button')][1]!.click(); await flush() })
+    await act(async () => { setValue(dialog().querySelector('select')!, 'draft'); await flush() })
+    const options = [...dialog().querySelectorAll('select')[1]!.querySelectorAll('option')].map((o) => o.value)
+    expect(options).toEqual(['', 't.wide', 'c1'])
+    act(() => setValue(dialog().querySelectorAll('select')[1]!, 't.wide'))
+    await act(async () => { save().click(); await flush() })
+    expect(onApply.mock.calls[0]![1]).toEqual([{
+      op: 'addClaim', page: 'topics/sd',
+      claim: { id: 'b-8', text: '宽树在 B≥8 时净赚', evidence: [{ kind: 'experiment', project: 'draft', node: 't.wide' }] },
+    }])
+  })
+
+  it('添加结论:选一条旧版项目结论作依据,正文先填成那条结论', async () => {
     act(() => host.querySelector<HTMLButtonElement>('.add-action')!.click())
     await act(async () => { [...dialog().querySelectorAll<HTMLButtonElement>('.segmented-control button')][1]!.click(); await flush() })
     await act(async () => { setValue(dialog().querySelector('select')!, 'draft'); await flush() })

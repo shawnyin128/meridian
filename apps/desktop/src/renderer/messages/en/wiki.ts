@@ -261,7 +261,7 @@ export const wiki = {
       project: 'Project',
       projectPick: 'Choose a project',
       conclusionPick: 'Choose a conclusion',
-      noConclusions: 'This project has no conclusions yet.',
+      noConclusions: 'This project has no verified conclusions yet.',
       other: 'Conflicts with',
       noOthers: 'This page has no other findings.',
       note: 'Note',
@@ -300,6 +300,9 @@ export const wiki = {
     reasonPlaceholder: 'Reason (optional)',
     stale: 'Out of date',
     staleNote: 'A page it rests on changed after it was made; applying it will be refused.',
+    unverified: 'Unverified conclusion',
+    unverifiedNote: 'It cites project conclusions that are not verified yet; verify them before applying.',
+    unverifiedLabel: 'Verify',
     trigger: (project: string, node: string | null) => `Project ${project}${node === null ? '' : ` · node ${node}`}`,
     pages: 'Pages',
     change: {

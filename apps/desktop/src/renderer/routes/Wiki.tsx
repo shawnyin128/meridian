@@ -883,6 +883,7 @@ export function Wiki() {
           ? (
             <ReviewQueue
               proposals={proposals} pending={pending} onOpenPage={go}
+              onOpenConclusion={(project, conclusion) => jumpTo('project', project, { conclusion })}
               onApply={(proposal) => decide(proposal, 'apply')}
               onDecline={(proposal, reason) => decide(proposal, 'decline', reason === '' ? undefined : reason)}
             />
