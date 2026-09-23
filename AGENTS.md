@@ -182,7 +182,6 @@ finish:
 ```bash
 npm run check                    # eslint, comment language, tsc
 npm test                         # vitest
-npm run e2e                      # Playwright against the built Electron app
 python -m ruff check apps/harness
 python -m pytest tests           # CLI, MCP, and Lab
 python -m pytest apps/harness/tests
@@ -199,6 +198,12 @@ The Harness tests need the Harness installed first:
 - Test names state behavior, not method names.
 - UI changes are checked at several window sizes and in both light and dark
   themes.
+- End-to-end specs (`npm run e2e`, Playwright against the built Electron app)
+  run once per release, after the owner approves the build, and only the specs
+  covering the changed areas. Components are decoupled so that unit tests can
+  cover them; add an end-to-end case only for behaviour no unit test can reach.
+  Let a started run finish, and do not re-run specs that already passed on the
+  same code.
 
 ## Git
 
@@ -210,3 +215,98 @@ The Harness tests need the Harness installed first:
   history rewrites on shared branches.
 - Do not bump versions, push tags, or edit release workflows unless the human
   asks; a `v*` tag publishes a release.
+- Commit with a pathspec (`git commit -- <paths>`), so nothing another process
+  staged is swept into your commit.
+- `Closes #N` in a pull request closes the issue only when it merges into the
+  default branch. Work merges into release branches, so whoever merges a pull
+  request closes its issue with a comment naming the pull request and the
+  release branch.
+
+## Releasing
+
+`.github/versioning.md` defines the version number, the branches and the release
+checks. This is the order to follow, on the version's release branch and never on
+`master`:
+
+1. **Scope.** Every issue in the version's milestone is closed, each one when its
+   pull request merged.
+2. **Bump.** `node scripts/bump-version.mjs app X.Y.Z.F`. Also bump the plugin
+   version (`node scripts/bump-version.mjs plugin a.b.c`) whenever `src/meridian`,
+   `plugins/` or an MCP tool changed since the last release, so installed Apps
+   prompt their users to update the agent plugin. Commit
+   `chore(release): bump the app to X.Y.Z.F …` by explicit paths; do not push yet.
+3. **Build an unpacked copy.** `npm --prefix apps/desktop run build`, then in
+   `apps/desktop`:
+   `CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --config electron-builder.config.mjs --dir`.
+   The Harness sidecar must already exist under `apps/harness/dist`. Copy
+   `dist/win-unpacked` into a new folder for every build: the owner may still
+   have the previous one open, and overwriting a running build breaks it.
+4. **Upgrade smoke.** Copy a real library written by the previous release, the
+   `.meridian` folder of every workspace it links, and a config home into a
+   temporary directory, rewrite the copied workspace paths to the copies, and
+   launch the new build with `MERIDIAN_VAULT_ROOT` and `MERIDIAN_CONFIG_HOME`
+   pointing at them. `library.location`, `vault.today`, `project.list`,
+   `project.get` for every project, `wiki.home`, `wiki.proposals`, `wiki.signals`
+   and `feed.list` must all succeed. Never point a test at the original library
+   or `~/.meridian`.
+5. **Owner review.** Hand the owner the unpacked build with a list of what to
+   check, issue by issue. Nothing is tagged until the owner approves. Any change
+   after that means a new build in a new folder and another review.
+6. **End-to-end.** After approval, run the specs covering the changed areas. A
+   failing spec blocks the release.
+7. **Tag.** With the owner's go-ahead, push the release branch, then tag its head
+   `v<stored version>` (see "How the number is stored"). The tag starts the
+   release workflow. Check the published release: its title shows the four-part
+   version and every installer is attached.
+8. **After the release.** Move `master` as `.github/versioning.md` section 4
+   says, merge a fix release branch into every feature release branch in
+   progress, and delete merged branches as its section 7 says.
+
+## Mistakes Made Here Before
+
+Each of these happened in this repository. The rule after each one is binding.
+
+- **A new App version hid data an older one wrote, or an older App went blank on
+  new data.** Readers parsed stored data strictly: a strict change-log parse of
+  old snapshots, a new event field, a new key inside a strictly parsed task.
+  New stored fields go where older readers already ignore unknown keys (for a
+  project page, its top level), never inside a nested object an older version
+  parses strictly. Prove it by parsing the new output with a copy of the
+  previous release's schema (`git show v<previous>:<path>`).
+- **A review accepted a proxy for the requirement.** The issue asked for date
+  chips of equal width; the review checked that the columns after them lined up.
+  Review against the issue's own words and the screenshot, element by element.
+- **A test could not fail.** The fixture held no single-day task, so the width
+  bug was invisible; another check compared two transparent wrappers. Before
+  trusting a test, confirm its fixture contains the case the issue is about,
+  then break the implementation and quote the assertion that goes red.
+- **A restyled list drifted from its siblings three times.** It had its own
+  chips, padding and hover. Start from the shared component, and compare a
+  screenshot of the whole page with the neighbouring sections before handing it
+  over.
+- **Agent-written text changed a file's structure.** A newline or a line
+  starting with `###` or `- evidence:` created a node or broke a region.
+  Serialize untrusted text so no content can change structure, and add a
+  round-trip test with such strings.
+- **The owner confirmed content they had not seen.** A review queue showed a
+  count instead of the evidence it would write, and a verification applied to a
+  conclusion that changed after it was displayed. A confirmation screen shows
+  everything that will be written, and a confirmation carries a fingerprint of
+  what was shown; Core rejects it if the content changed.
+- **A product surface was removed without asking.** A component or decision the
+  owner has not discussed (an extension, a workflow, a new service) is raised as
+  its own question before any change.
+- **The update dialog showed `0.0.14001`.** Anything a user sees shows the
+  four-part display version, never the stored semver.
+- **An older agent plugin regenerated a derived file without the new keys.**
+  Keep canonical data where older writers preserve it byte for byte, treat
+  generated files such as `graph.json` as rebuildable, and bump the plugin
+  version with every plugin change.
+- **Removing a worktree almost deleted the main checkout's dependencies.**
+  Worktrees link `node_modules` as junctions. Remove each junction with
+  `cmd /c rmdir <path>` before removing the worktree, never with a recursive
+  delete.
+- **Several Electron apps at once exhausted the desktop.** Launches failed with
+  `0xC0000142`. Do not run end-to-end suites from several worktrees at once. An
+  offscreen window can also time out on screenshots and report styles from
+  before a transition; take visual checks with a visible window.
