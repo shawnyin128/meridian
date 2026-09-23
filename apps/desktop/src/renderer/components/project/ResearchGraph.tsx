@@ -477,7 +477,7 @@ export function ResearchNodePanel({ graph, events, ideas, node, onClose, onSelec
             {nodeEvents.map((event, index) => (
               <ProjectEventRow
                 key={`${event.date} ${index}`}
-                kind={recordKind(event)} title={event.text} detail={event.detail} origin={recordOrigin(event)}
+                kind={recordKind(event)} date={event.date} title={event.text} detail={event.detail} origin={recordOrigin(event)}
               />
             ))}
           </StructuredList>

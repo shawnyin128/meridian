@@ -185,6 +185,8 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .ak.warn{background:var(--tint-warn);color:var(--warn)}
 .ak.mut{background:var(--tint-mut);color:var(--sec)}
 .ak.info{background:var(--tint-info);color:var(--ink)}
+.ak.good{background:var(--tint-good);color:var(--good)}
+.ak.accent{background:var(--accent-soft);color:var(--accent)}
 .attn+.wkpage{margin-top:24px}
 
 .tlrow{font-size:13px;padding:8px 2px}

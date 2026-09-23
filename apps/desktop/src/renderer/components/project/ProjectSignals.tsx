@@ -3,11 +3,12 @@ import type { ProjectDecisionItem } from '../../../shared/project-signals.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { DateChip } from '../DateTimeDisplay.js'
 import { StructuredRow } from '../StructuredList.js'
+import { NodeTag } from './NodeTag.js'
 import './ProjectSignals.css'
 
-/** Stable type column shared by project and overview decision rows. */
+/** Stable type column shared by project and overview decision rows and research records. */
 export function ProjectSignalKind({ tone, children }: {
-  tone: ProjectDecisionItem['tone']
+  tone: ProjectDecisionItem['tone'] | 'info' | 'good' | 'accent'
   children: string
 }) {
   return (
@@ -31,15 +32,21 @@ export function EventText({ text, origin }: { text: string; origin?: 'agent' | '
   return origin === 'agent' ? <><span className="agtag">agent</span>{text}</> : <>{text}</>
 }
 
+/** The chip tone of each research-record kind. */
+const RECORD_TONE: Record<EventKind, 'info' | 'warn' | 'good' | 'accent' | 'mut'> = {
+  start: 'info', reopen: 'warn', result: 'good', decision: 'accent', complete: 'good', note: 'mut', project: 'mut',
+}
+
 /**
- * One structured research-record row: a type chip, an optional node link, a bold one-line title
- * with an optional muted detail line, and who wrote it. `node` is omitted in the node panel, whose
- * own node column would be redundant with the panel it lives in.
+ * One research-record row on the same columns as the project's decision rows: the kind chip, the
+ * date chip, then one line holding the optional node link, the title and the muted detail, and who
+ * wrote it. `node` is omitted in the node panel, whose own node would be redundant there.
  */
 export function ProjectEventRow({
-  kind, title, detail, node, onSelectNode, origin,
+  kind, date, title, detail, node, onSelectNode, origin,
 }: {
   kind: EventKind
+  date: string
   title: string
   detail?: string | undefined
   node?: { id: string; label: string } | undefined
@@ -48,21 +55,20 @@ export function ProjectEventRow({
 }) {
   const m = useMessages()
   return (
-    <StructuredRow className={`record-row rk-${kind}${node === undefined && onSelectNode === undefined ? ' no-node' : ''}`}>
-      <span className={`record-kind rk-chip rk-${kind}`}>{m.project.records.kind[kind]}</span>
-      {onSelectNode === undefined ? null : (
-        <span className="record-node">
-          {node === undefined ? null : (
-            <button
-              type="button" className="record-node-link" onClick={() => onSelectNode(node.id)}
-              title={m.project.records.goToGraph(node.label)}
-            >{node.label}</button>
-          )}
+    <StructuredRow className="attnrow project-signal-columns record-row">
+      <ProjectSignalKind tone={RECORD_TONE[kind]}>{m.project.records.kind[kind]}</ProjectSignalKind>
+      <ProjectSignalDate date={date} />
+      <span className="attn-text record-text" title={detail === undefined ? title : `${title} · ${detail}`}>
+        {node === undefined || onSelectNode === undefined ? null : (
+          <NodeTag
+            label={node.label} hint={m.project.records.goToGraph(node.label)}
+            onOpen={() => onSelectNode(node.id)}
+          />
+        )}
+        <span className="record-line">
+          {title}
+          {detail === undefined ? null : <span className="record-detail"> · {detail}</span>}
         </span>
-      )}
-      <span className="record-title-cell">
-        <span className="record-title">{title}</span>
-        {detail === undefined ? null : <span className="record-detail">{detail}</span>}
       </span>
       <span className="record-who">{m.project.records.who[origin]}</span>
     </StructuredRow>

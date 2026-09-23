@@ -32,6 +32,7 @@ import {
   attachmentSizeText, PROJECT_PAPER_GROUP, PROJECT_RELATION_GROUPS, PROJECT_URL_GROUP, ProjectAgentSessions,
   ProjectAttachments, ProjectMemo, ProjectRelations, ProjectTopicField, ProjectUrlDraft,
 } from '../components/project/ProjectSections.js'
+import { NodeTag } from '../components/project/NodeTag.js'
 import { ProjectTimeline } from '../components/project/ProjectTimeline.js'
 import { ResearchGraph, ResearchNodePanel } from '../components/project/ResearchGraph.js'
 import {
@@ -428,13 +429,7 @@ export function ProjectDetail({
   const workspaceGraph = project.workspace?.graph
   const displayedGraph = workspaceGraph ?? project.graph
   const visibleEvents = [...project.events, ...(project.workspace?.events ?? [])]
-  // Newest date first, newest record first inside a date; consecutive records share a date group.
-  const recordGroups: { date: string; records: typeof visibleEvents }[] = []
-  for (const record of sortRecordsNewestFirst(visibleEvents)) {
-    const group = recordGroups.at(-1)
-    if (group !== undefined && group.date === record.date) group.records.push(record)
-    else recordGroups.push({ date: record.date, records: [record] })
-  }
+  const sortedRecords = sortRecordsNewestFirst(visibleEvents)
   const goToRecordNode = (nodeId: string) => {
     holdRecordHeading()
     onRecord('graph')
@@ -688,23 +683,20 @@ export function ProjectDetail({
             {record === 'tl'
               ? (
                 <StructuredList className="evlist" variant="embedded">
-                  {recordGroups.flatMap((group) => [
-                    <div className="record-date-heading" key={`${group.date} heading`}>{fmt.date(group.date)}</div>,
-                    ...group.records.map((ev, index) => {
-                      const graphNode = ev.node === undefined
-                        ? undefined
-                        : displayedGraph.nodes.find((candidate) => candidate.id === ev.node)
-                      return (
-                        <ProjectEventRow
-                          key={`${group.date} ${index}`}
-                          kind={recordKind(ev)} title={ev.text} detail={ev.detail}
-                          origin={recordOrigin(ev)}
-                          node={graphNode === undefined ? undefined : { id: graphNode.id, label: graphNode.label }}
-                          onSelectNode={goToRecordNode}
-                        />
-                      )
-                    }),
-                  ])}
+                  {sortedRecords.map((ev, index) => {
+                    const graphNode = ev.node === undefined
+                      ? undefined
+                      : displayedGraph.nodes.find((candidate) => candidate.id === ev.node)
+                    return (
+                      <ProjectEventRow
+                        key={`${ev.date} ${index}`}
+                        kind={recordKind(ev)} date={ev.date} title={ev.text} detail={ev.detail}
+                        origin={recordOrigin(ev)}
+                        node={graphNode === undefined ? undefined : { id: graphNode.id, label: graphNode.label }}
+                        onSelectNode={goToRecordNode}
+                      />
+                    )
+                  })}
                 </StructuredList>
               )
               : (
@@ -747,9 +739,7 @@ export function ProjectDetail({
                           {nodeLabel === undefined
                             ? null
                             : (
-                              <span className="project-idea-node-tag" title={nodeLabel}>
-                                {m.project.idea.nodeTag(nodeLabel)}
-                              </span>
+                              <NodeTag label={nodeLabel} />
                             )}
                           {idea.archived ? <span className="project-idea-state">{m.common.archived}</span> : null}
                         </span>
