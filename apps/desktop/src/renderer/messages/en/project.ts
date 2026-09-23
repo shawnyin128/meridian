@@ -209,7 +209,6 @@ export const project = {
     unlinkNode: 'Unlink',
     createNode: 'Create node',
     linkExistingNode: 'Link existing node',
-    nodeTag: (label: string) => `Node · ${label}`,
     sourceTag: (source: string) => `Source · ${source}`,
     placedCreated: 'Research graph node created and linked',
     placedLinked: 'Linked to research graph node',
