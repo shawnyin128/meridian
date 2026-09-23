@@ -86,6 +86,8 @@ describe('ReviewQueue', () => {
     expect(row('p1').querySelector('.stag')).toBeNull()
     expect(row('p2').querySelector('.stag.pend')!.textContent).toBe('已过期')
     expect(row('p2').textContent).toContain('这些引句没有文字层可核对')
+    expect(row('p1').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(false)
+    expect(row('p2').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(true)
     const chip = row('p1').querySelector<HTMLElement>('.wkrel .tagchip')!
     expect(chip.textContent).toBe('Speculative decoding')
     act(() => chip.click())
