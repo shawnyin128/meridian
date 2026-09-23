@@ -25,9 +25,16 @@ from meridian.wiki.pages import (
     resolve_vault_root,
 )
 from meridian.wiki.propose import submit_wiki_proposal
-from meridian.wiki.queue import find_proposal_record, inbox_has_key, read_proposal_records, read_wiki_signals
+from meridian.wiki.queue import (
+    find_proposal_record,
+    inbox_has_key,
+    read_proposal_records,
+    read_wiki_signals,
+)
 
-FIXTURE_CASES = json.loads((Path(__file__).parent / "fixtures" / "wiki_version_cases.json").read_text(encoding="utf-8"))
+FIXTURE_CASES = json.loads(
+    (Path(__file__).parents[1] / "apps/desktop/src/core/fixtures/wiki-version-cases.json").read_text(encoding="utf-8")
+)
 
 
 def _build_vault(root: Path) -> Path:
@@ -120,18 +127,9 @@ def _build_vault(root: Path) -> Path:
 
 
 class PageVersionFingerprintTests(unittest.TestCase):
-    """Page-version fingerprint parity (spec sec 3.2).
+    """Page-version fingerprint (spec sec 3.2), checked against the fixture the App's vitest also asserts."""
 
-    `tests/fixtures/wiki_version_cases.json` is a temporary stand-in for the
-    cross-suite fixture `apps/desktop/src/core/fixtures/wiki-version-cases.json`
-    interface.md describes (created by the App task). Its expected `fm`/`body`
-    values are computed by this same Python implementation, so this proves
-    internal consistency (determinism, CRLF/generated-region/updated-line
-    handling) but not yet parity with the TypeScript implementation. Swap in
-    the App's fixture once it lands.
-    """
-
-    def test_fixture_cases_match_this_implementation(self) -> None:
+    def test_every_shared_fixture_case_matches_the_app(self) -> None:
         self.assertGreaterEqual(len(FIXTURE_CASES), 4)
         for case in FIXTURE_CASES:
             with self.subTest(case=case["name"]):

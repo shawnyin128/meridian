@@ -20,6 +20,7 @@ from typing import Any
 
 _GENERATED_START = re.compile(r"^\s*<!--\s*generated:([^>]*?)\s*-->\s*$")
 _GENERATED_END = re.compile(r"^\s*<!--\s*/generated\s*-->\s*$")
+_EXACT_GENERATED_START = re.compile(r"<!-- generated:\S+ -->")
 
 
 def _default_records(wiki_root: Path) -> list[dict[str, Any]]:
@@ -126,28 +127,26 @@ def generated_regions(body_text: str) -> tuple[dict[str, str], str]:
 def fingerprint_parts(text: str) -> tuple[str, str]:
     """Extract the exact `(fm, body)` text the page-version fingerprint hashes (spec sec 3.2).
 
-    ``fm`` is the frontmatter with `\\r\\n` normalized to `\\n` and every
-    top-level ``updated:`` line removed. ``body`` is everything after the
-    closing fence with each ``<!-- generated:NAME -->``...``<!-- /generated
-    -->`` run removed, then trimmed. A page without frontmatter has an empty
-    ``fm``.
+    With `\\r\\n` read as `\\n`: ``fm`` is the lines between an opening line
+    that is exactly ``---`` and the next line that is exactly ``---``, minus
+    top-level ``updated:`` lines. ``body`` is the lines after that closing
+    line, each run from a line that is exactly ``<!-- generated:NAME -->``
+    through the next line that is exactly ``<!-- /generated -->`` (or the
+    end) removed, then trimmed. A page without a closed frontmatter has an
+    empty ``fm`` and all its lines as the body.
     """
-    normalized = text.replace("\r\n", "\n")
-    fm_text, body_text = _split_frontmatter(normalized)
-    fm_lines = [line for line in fm_text.split("\n") if not line.startswith("updated:")]
-    fm = "\n".join(fm_lines)
-    body_lines, in_region = [], False
-    for line in body_text.split("\n"):
-        if not in_region and _GENERATED_START.match(line):
+    lines = text.replace("\r\n", "\n").split("\n")
+    close = lines.index("---", 1) if lines[0] == "---" and "---" in lines[1:] else -1
+    fm = [line for line in lines[1:close] if not line.startswith("updated:")] if close > 0 else []
+    body, in_region = [], False
+    for line in lines[close + 1 :]:
+        if not in_region and _EXACT_GENERATED_START.fullmatch(line):
             in_region = True
-            continue
-        if in_region:
-            if _GENERATED_END.match(line):
-                in_region = False
-            continue
-        body_lines.append(line)
-    body = "\n".join(body_lines).strip()
-    return fm, body
+        elif in_region and line == "<!-- /generated -->":
+            in_region = False
+        elif not in_region:
+            body.append(line)
+    return "\n".join(fm), "\n".join(body).strip()
 
 
 def fingerprint_text(text: str) -> dict[str, str]:
@@ -161,17 +160,6 @@ def page_version(path: Path) -> dict[str, str] | None:
     if not path.is_file():
         return None
     return fingerprint_text(path.read_text(encoding="utf-8"))
-
-
-def _split_frontmatter(text: str) -> tuple[str, str]:
-    if not text.startswith("---\n"):
-        return "", text
-    end = text.find("\n---", 4)
-    if end == -1:
-        return "", text
-    close_line_end = text.find("\n", end + 1)
-    body_start = close_line_end + 1 if close_line_end != -1 else len(text)
-    return text[4:end], text[body_start:]
 
 
 def _sha16(text: str) -> str:

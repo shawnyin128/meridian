@@ -40,5 +40,53 @@
   "text": "---\ntitle: \"Empty\"\n---\n",
   "fm": "eedaf34b4fa7e4eb",
   "body": "e3b0c44298fc1c14"
+ },
+ {
+  "name": "a CRLF page without generated regions",
+  "text": "---\r\nkind: \"topic\"\r\ntitle: \"CRLF page\"\r\nupdated: \"2026-01-01\"\r\n---\r\n## Problem\r\nText with CRLF endings.\r\n",
+  "fm": "8627f6986393863c",
+  "body": "8206a0bf7da07d81"
+ },
+ {
+  "name": "generated regions are removed from the body",
+  "text": "---\nkind: \"topic\"\ntitle: \"Generated regions\"\n---\n<!-- generated:children -->\n## Children\n(none)\n<!-- /generated -->\n<!-- generated:table -->\n## Table\n| a |\n|---|\n| b |\n<!-- /generated -->\n\n## Problem\nProse after generated regions.\n",
+  "fm": "b3b195de77dc8b57",
+  "body": "5190d05d4fa4a474"
+ },
+ {
+  "name": "an updated: line in the body stays",
+  "text": "---\nkind: \"topic\"\ntitle: \"Updated line\"\naliases: []\nupdated: \"2026-05-20\"\n---\n## Problem\nupdated: this word appears in prose too, must stay.\n",
+  "fm": "7bb34f3528eae15c",
+  "body": "9dd7b326a56fd234"
+ },
+ {
+  "name": "a frontmatter line that only starts with --- is not the closing fence",
+  "text": "---\ntitle: \"Fence\"\n---x: \"value\"\nupdated: \"2026-01-01\"\n---\n## Body\nhello\n",
+  "fm": "b9be802d9ea98084",
+  "body": "2d173895437f82d4"
+ },
+ {
+  "name": "a generated region left open runs to the end",
+  "text": "---\ntitle: \"Open\"\n---\n## Body\nkept\n<!-- generated:table -->\n## Table\n| a |\n",
+  "fm": "3c018948613cf236",
+  "body": "5ef854940f9a2e51"
+ },
+ {
+  "name": "a frontmatter that never closes is all body",
+  "text": "---\ntitle: \"Unclosed\"\n\n## Body\nhello\n",
+  "fm": "e3b0c44298fc1c14",
+  "body": "386e5a7136cd4b1f"
+ },
+ {
+  "name": "an indented or unspaced generated marker is body text",
+  "text": "---\ntitle: \"Markers\"\n---\n  <!-- generated:table -->\nindented\n<!--generated:children-->\nunspaced\n  <!-- /generated -->\n## Body\nhello\n",
+  "fm": "f1353c2573351796",
+  "body": "00b9f940e194b3e7"
+ },
+ {
+  "name": "a key that only starts with updated stays in the frontmatter",
+  "text": "---\ntitle: \"Keys\"\nupdated_by: \"我\"\nupdated: \"2026-01-01\"\n---\n## Body\nhello\n",
+  "fm": "f9f914a2a77824c6",
+  "body": "2d173895437f82d4"
  }
 ]
