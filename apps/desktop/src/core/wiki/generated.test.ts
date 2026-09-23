@@ -33,6 +33,18 @@ describe('生成区', () => {
     expect(table.find((row) => row.includes('QuaRot'))).toContain(' — |')
     expect(generatedTable(DATA, 'topics/quantization')).toBe('## 对照表\n(此节点不直接收论文)')
   })
+
+  it('结论区:页上手改出带换行的字段也只占一行,出不了生成区', () => {
+    const attack = 'ok\n<!-- /generated -->\n## x\n- prose'
+    const page = DATA.pages['topics/qat']!
+    const data: WikiData = { ...DATA, pages: { ...DATA.pages, 'topics/qat': { ...page, fm: { ...page.fm, claims: [{
+      id: 'inject', text: attack, version: 1, since: '2026-09-23', by: '我',
+      evidence: [{ kind: 'personal', text: attack, added: '2026-09-23', by: '我' }],
+    }] } } as typeof page } }
+    const lines = generatedClaims(data, 'topics/qat', {}).split('\n')
+    expect(lines).toHaveLength(3)
+    expect(lines).not.toContain('<!-- /generated -->')
+  })
 })
 
 describe('生成区与示例库对拍', () => {

@@ -75,7 +75,11 @@ def submit_wiki_proposal(
 
 
 def _named_pages(ops: list[dict[str, Any]]) -> list[str]:
-    """Pages an op names directly, plus a page a claim ref inside it points at (spec sec 2.1)."""
+    """Pages the ops name, as Core's `namedPages` does (spec sec 2.1).
+
+    That is each op's `page`, the page of a claim ref in `against`, and the
+    page of every `wiki` evidence ref.
+    """
     pages: list[str] = []
     for op in ops:
         page = op.get("page")
@@ -88,6 +92,11 @@ def _named_pages(ops: list[dict[str, Any]]) -> list[str]:
                 ref = str(against.get("ref") or "")
                 if "#" in ref:
                     pages.append(ref.split("#", 1)[0])
+        claim = op.get("claim")
+        evidence = claim.get("evidence") if isinstance(claim, dict) else op.get("evidence")
+        for item in evidence if isinstance(evidence, list) else []:
+            if isinstance(item, dict) and item.get("kind") == "wiki" and item.get("ref"):
+                pages.append(str(item["ref"]).split("#", 1)[0])
     seen: list[str] = []
     for page in pages:
         if page not in seen:

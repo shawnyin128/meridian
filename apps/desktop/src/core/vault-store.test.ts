@@ -8,7 +8,7 @@ import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import {
-  PaperRowSchema, SearchHitSchema, WikiAggregationCardSchema, WikiHomeSchema, WikiPaperSchema,
+  PaperRowSchema, SearchHitSchema, WikiAggregationCardSchema, WikiHomeSchema, WikiPaperSchema, type Evidence,
 } from '../shared/contract.js'
 import { createFixtureStore } from './fixture-store.js'
 import { emptyColumns } from './paper-library/index.js'
@@ -1495,6 +1495,18 @@ describe('vault store on the aggregation layout', () => {
     const written = readFileSync(page, 'utf8')
     expect(written).toContain('claims:\n  - id: "data-free"\n')
     expect(written).toContain('<!-- /generated -->\n<!-- generated:claims -->\n## 结论\n- 自生成数据够用 · v1 · 2026-09-10 ^data-free\n')
+  })
+
+  it('结论的证据字段带换行就拒收,页一个字节不动', () => {
+    const page = join(vault, 'wiki', 'topics', 'qat.md')
+    const before = readFileSync(page, 'utf8')
+    const attack = 'ok\n<!-- /generated -->\n## x\n- prose'
+    const add = (evidence: Evidence) => () => store.applyProposal({ source: 'user', title: '注入', ops: [{
+      op: 'addClaim', page: 'topics/qat', claim: { id: 'inject', text: '正常的一句', evidence: [evidence] },
+    }] })
+    expect(add({ kind: 'personal', text: attack })).toThrow('证据的 text 一行写完,不能有换行')
+    expect(add({ kind: 'source', paper: 'papers/2305.17888', page: 1, quote: attack })).toThrow('证据的 quote 一行写完,不能有换行')
+    expect(readFileSync(page, 'utf8')).toBe(before)
   })
 
   it('新建一个聚合再往里挪成员,父聚合的子聚合区跟着回填;撤销把新页删掉', () => {

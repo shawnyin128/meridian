@@ -45,8 +45,8 @@ export function generatedTable(data: WikiData, id: string): string {
  * Returns the markdown for an aggregation's claims region (write protocol §2.4): its heading, then per
  * claim in page order `- <text> · v<n> · <since> ^<id>` followed by one indented line per evidence item
  * and one per open conflict, or the no-claims line when it has none. `projects` maps project ids to names (the
- * id stands when unnamed); a missing claim or page is shown by its ref or id. Line breaks inside a quote
- * render as spaces.
+ * id stands when unnamed); a missing claim or page is shown by its ref or id. A line break inside any
+ * field renders as a space, so no field can end the region.
  */
 export function generatedClaims(data: WikiData, id: string, projects: Record<string, string>): string {
   const link = (target: string, text: string): string => `[[${target}|${text}]]`
@@ -54,7 +54,7 @@ export function generatedClaims(data: WikiData, id: string, projects: Record<str
   const side = (item: Evidence | ConflictTarget): string => {
     switch (item.kind) {
       case 'source':
-        return `${link(item.paper, labelOf(data, item.paper))} (p.${item.page})「${item.quote.replace(/\r?\n/g, ' ')}」`
+        return `${link(item.paper, labelOf(data, item.paper))} (p.${item.page})「${item.quote}」`
       case 'experiment':
         return `实验 ${link(`projects/${item.project}`, projects[item.project] ?? item.project)} ${item.node ?? item.conclusion ?? ''}${item.text ? `:${item.text}` : ''}`
       case 'wiki':
@@ -79,5 +79,5 @@ export function generatedClaims(data: WikiData, id: string, projects: Record<str
     `- ${claim.text} · v${claim.version} · ${claim.since} ^${claim.id}`,
     ...claim.evidence.map((item) => `  - ${label(item)}${side(item) === '' ? '' : ` · ${side(item)}`}`),
     ...(claim.conflicts ?? []).map((c) => `  - 冲突 · ${side(c.against)}:${c.note}`),
-  ])].join('\n')
+  ].map((line) => line.replace(/\r\n|[\r\n]/g, ' ')))].join('\n')
 }

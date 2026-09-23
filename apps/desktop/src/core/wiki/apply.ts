@@ -155,7 +155,18 @@ function ordered<T extends Evidence | ConflictTarget>(item: T): T {
 
 /** Throws unless the text holds no line break; `what` names it in the message. */
 function oneLine(text: string, what: string): void {
-  if (text.includes('\n')) throw new Error(`${what}一行写完,不能有换行`)
+  if (/[\r\n]/.test(text)) throw new Error(`${what}一行写完,不能有换行`)
+}
+
+/** Throws unless no string field of an evidence item or conflict target holds a line break. */
+function oneLineFields(item: Evidence | ConflictTarget): void {
+  for (const [key, value] of Object.entries(item)) if (typeof value === 'string') oneLine(value, `证据的 ${key} `)
+}
+
+/** The fields of `claim` this version does not know, kept as written. */
+function unknownFields(claim: WikiClaimRecord): Record<string, unknown> {
+  const known = ['id', 'text', 'version', 'since', 'by', 'evidence', 'conflicts', 'history']
+  return Object.fromEntries(Object.entries(claim).filter(([key]) => !known.includes(key)))
 }
 
 /** Throws unless an experiment item names a node or a conclusion of a project `world` knows, and those exist. */
@@ -177,6 +188,7 @@ function checkExperiment(e: Extract<Evidence, { kind: 'experiment' }>, world: Cl
 function checkEvidence(data: WikiData, items: Evidence[], world: ClaimWorld, held: Evidence[]): void {
   const seen = new Set(held.map(identity))
   for (const e of items) {
+    oneLineFields(e)
     if (e.kind === 'source') paperOf(data, e.paper)
     if (e.kind === 'wiki' && (e.ref.includes('#') ? claimAt(data, e.ref) : data.pages[e.ref]) === undefined) {
       throw new Error(`证据指向的页或结论不存在:${e.ref}`)
@@ -220,6 +232,7 @@ function withConflicts(claim: WikiClaimRecord, conflicts: WikiConflictRecord[]):
     id: claim.id, text: claim.text, version: claim.version, since: claim.since, by: claim.by, evidence: claim.evidence,
     ...(conflicts.length === 0 ? {} : { conflicts }),
     ...(claim.history === undefined ? {} : { history: claim.history }),
+    ...unknownFields(claim),
   }
 }
 
@@ -300,6 +313,7 @@ function step(data: WikiData, op: ProposalOp, today: string, ops: ProposalOp[], 
         evidence: [...claim.evidence, ...given.map((e) => evidenceRecord(e, today, world.by))],
         ...(claim.conflicts === undefined ? {} : { conflicts: claim.conflicts }),
         history: [...claim.history ?? [], { version: claim.version, text: claim.text, since: claim.since, by: claim.by }],
+        ...unknownFields(claim),
       }))
       return { ...data, pages }
     }
@@ -316,6 +330,7 @@ function step(data: WikiData, op: ProposalOp, today: string, ops: ProposalOp[], 
       const claim = claimIn(aggregationOf(data, op.page), op.page, op.claim)
       const { id, against, note } = op.conflict
       oneLine(note, '冲突说明')
+      oneLineFields(against)
       if ((claim.conflicts ?? []).some((c) => c.id === id)) throw new Error(`这条结论上已经有冲突 ${id}:${self}`)
       if (against.kind === 'claim') {
         if (against.ref === self) throw new Error(`结论不能与自己冲突:${self}`)

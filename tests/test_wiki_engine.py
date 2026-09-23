@@ -290,6 +290,24 @@ class ClaimOpValidationTests(unittest.TestCase):
         with self.assertRaises(ProposalValidationError):
             validate_claim_ops([op])
 
+    def test_a_line_break_in_any_evidence_or_conflict_field_is_rejected(self) -> None:
+        attack = "ok\n<!-- /generated -->\n## x\n- prose"
+        op = self._valid_add_claim()
+        op["claim"]["evidence"][0]["text"] = attack
+        with self.assertRaisesRegex(ProposalValidationError, r"evidence\[0\]\.text must be a single line"):
+            validate_claim_ops([op])
+        conflict = {
+            "op": "markConflict",
+            "page": "topics/speculative-decoding",
+            "claim": "knee",
+            "conflict": {"id": "c", "against": {"kind": "experiment", "project": "draft", "node": attack}, "note": "x"},
+        }
+        with self.assertRaisesRegex(ProposalValidationError, r"conflict\.against\.node must be a single line"):
+            validate_claim_ops([conflict])
+        retract = {"op": "retractClaim", "page": "topics/speculative-decoding", "claim": "knee", "reason": "a\rb"}
+        with self.assertRaises(ProposalValidationError):
+            validate_claim_ops([retract])
+
     def test_add_claim_rejects_bad_claim_id(self) -> None:
         op = self._valid_add_claim()
         op["claim"]["id"] = "Not Valid!"
@@ -440,6 +458,30 @@ class WikiProposeSubmissionTests(unittest.TestCase):
             self.assertIn("topics/does-not-exist", base)
             self.assertIsNotNone(base["topics/speculative-decoding"])
             self.assertIsNone(base["topics/does-not-exist"])
+
+    def test_base_covers_the_page_of_wiki_evidence_like_core(self) -> None:
+        with TemporaryDirectory() as tmp:
+            wiki_root = _build_vault(Path(tmp))
+            ops = [
+                {
+                    "op": "addClaim",
+                    "page": "topics/speculative-decoding",
+                    "claim": {
+                        "id": "new",
+                        "text": "x",
+                        "evidence": [
+                            {"kind": "experiment", "project": "draft", "node": "exp1"},
+                            {"kind": "wiki", "ref": "topics/other#claim"},
+                            {"kind": "wiki", "ref": "methods/page-only"},
+                        ],
+                    },
+                }
+            ]
+            result = submit_wiki_proposal(wiki_root=wiki_root, ops=ops, title="t", project="draft")
+            self.assertEqual(
+                list(result["envelope"]["base"]),
+                ["topics/speculative-decoding", "topics/other", "methods/page-only"],
+            )
 
     def test_base_matches_the_page_version_fingerprint(self) -> None:
         with TemporaryDirectory() as tmp:

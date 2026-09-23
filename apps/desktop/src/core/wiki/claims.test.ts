@@ -72,6 +72,18 @@ describe('claim ops', () => {
     expect(claims(DATA, 'topics/sd')).toHaveLength(2)
   })
 
+  it('修订与标冲突留着更新版本写下的未知字段', () => {
+    const page = DATA.pages['topics/sd'] as WikiAggregationRecord
+    const withExtra = { ...page, fm: { ...page.fm, claims: page.fm.claims!.map((c) => ({ ...c, scope: '单请求' })) } }
+    const data = { ...DATA, pages: { ...DATA.pages, 'topics/sd': withExtra } }
+    const revised = run([{ op: 'reviseClaim', page: 'topics/sd', claim: 'plain', text: '改过的结论' }], '我', data)
+    expect(claims(revised, 'topics/sd').find((c) => c.id === 'plain')).toMatchObject({ scope: '单请求', version: 2 })
+    const marked = run([{ op: 'markConflict', page: 'topics/sd', claim: 'plain', conflict: {
+      id: 'x', against: { kind: 'claim', ref: 'topics/batch#wins' }, note: '说法不一致',
+    } }], '我', data)
+    expect(claims(marked, 'topics/sd').find((c) => c.id === 'plain')).toMatchObject({ scope: '单请求', conflicts: [{ id: 'x' }] })
+  })
+
   it('addClaim 的拒收:id 已用、换行、证据重复、证据指向不存在的东西', () => {
     const add = (claim: { id: string; text: string; evidence: Evidence[] }, by = '我') =>
       () => run([{ op: 'addClaim', page: 'topics/sd', claim }], by)
