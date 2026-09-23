@@ -716,7 +716,7 @@ test('在项目详情里再点侧栏的「项目」,回到项目列表;返回键
   await expect(back).toHaveCount(0)
 })
 
-test('科研记录在列表和科研图之间切换,标题留在原处,列表短也不留空白', async ({ win }) => {
+test('科研记录在动态和科研图之间切换,标题留在原处,动态短也不留空白', async ({ win }) => {
   await gotoProject(win)
   const page = win.locator('.screenslot:not([hidden]) .wkpage')
   const heading = page.locator('.section-heading.flexh', { hasText: '科研记录' })
@@ -727,10 +727,10 @@ test('科研记录在列表和科研图之间切换,标题留在原处,列表短
   await toggle('科研图')
   await expect(page.locator('.rgraph')).toBeVisible()
   const graphHeight = await viewHeight()
-  // Scroll so the graph is in view, then switch back to the shorter list.
+  // Scroll so the graph is in view, then switch back to the shorter activity feed.
   await heading.evaluate((el) => el.scrollIntoView({ block: 'start' }))
   const held = await top()
-  await toggle('列表')
+  await toggle('动态')
   await expect(page.locator('.evlist')).toBeVisible()
   // The heading holds its place unless the shorter page cannot scroll that far; then it sits as
   // high as the page allows, with nothing padded in to fake the old height.

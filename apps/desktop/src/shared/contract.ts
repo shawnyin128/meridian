@@ -1755,6 +1755,8 @@ export const LibraryLocationSchema = z.object({
   source: LibrarySourceSchema,
   locked: z.boolean(),
   restartRequired: z.boolean(),
+  /** Why the library at `root` failed to open, or null when it opened (or has not been tried yet). */
+  openError: z.string().nullable(),
 }).strict()
 
 export const LibraryConfigureParamsSchema = z.object({ root: z.string().min(1) }).strict()

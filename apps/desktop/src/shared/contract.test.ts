@@ -285,6 +285,7 @@ describe('contract schemas', () => {
       source: 'configured',
       locked: false,
       restartRequired: true,
+      openError: null,
     }
     expect(LibraryConfigureParamsSchema.parse({ root: '/library' })).toEqual({ root: '/library' })
     expect(LibraryLocationSchema.parse(location)).toEqual(location)

@@ -671,7 +671,7 @@ export function ProjectDetail({
                   label={m.project.recordViewLabel}
                   value={record}
                   options={[
-                    { value: 'tl', label: m.project.recordModes.list },
+                    { value: 'tl', label: m.project.recordModes.activity },
                     { value: 'graph', label: m.project.sections.graph },
                   ]}
                   onChange={(value) => {
