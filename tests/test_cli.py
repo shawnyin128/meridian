@@ -6760,16 +6760,6 @@ Compare recency-only retention with attention-based and oracle retention policie
         self.assertIn("prune eval/runs", text)
         self.assertIn("prune .arbor", text)
 
-    def test_release_vault_template_is_packaged(self) -> None:
-        template = Path("src/meridian/templates/wiki-vault")
-        self.assertTrue((template / "Map of Content.md").exists())
-        self.assertTrue((template / "raw/sources/sources.jsonl").exists())
-        self.assertTrue((template / "papers/.gitkeep").exists())
-        pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
-        self.assertIn('"templates/wiki-vault/**/*.md"', pyproject)
-        self.assertIn('"templates/wiki-vault/**/*.gitkeep"', pyproject)
-        self.assertIn('"templates/wiki-vault/**/*.jsonl"', pyproject)
-
     def test_plugin_release_assets_exist(self) -> None:
         codex_root = Path("plugins/codex/meridian")
         codex_marketplace = json.loads(

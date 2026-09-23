@@ -3,8 +3,6 @@ include VERSION
 include .agents/plugins/marketplace.json
 include .claude-plugin/marketplace.json
 include pyproject.toml
-include setup.cfg
-include setup.py
 graft src
 graft plugins
 graft eval/cases
