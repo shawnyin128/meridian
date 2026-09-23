@@ -213,6 +213,18 @@ concerns a Lab node, including inside a coding task.
   and add the `完成` event from Keeping the App informed. Marking a node
   `supported` or `dead` removes it from `active_nodes` automatically, in the
   same write.
+- **Tasks.** When the user asks to work on a planned task, read it with
+  `meridian.workspace_plan` (its title and note), decide whether it belongs to
+  an existing node or needs a new one (a new node still needs its own ask), and
+  record the link with a `link_task` change (`node_id`, `task_id`) in the same
+  packet as Focus. A task belongs to one node; to move it, `unlink_task` it from
+  the old node first.
+- **Conclusion.** When a node becomes `supported` or `dead`, record what the
+  project actually found with a `record_conclusion` change: `text` is the
+  finding in one line, `evidence` lists the experiment ids attached to the node
+  that show it. The App lists it under 结论 as unverified until the user
+  verifies it. Never write a conclusion the node's experiments do not show;
+  when the finding changes, record it again and the user verifies it anew.
 - **Leaving.** Before moving to another node or ending the task, check the
   node you are leaving against Completion, then apply Focus to the next one.
 - **Relations.** When work shows that two existing nodes block, support,
@@ -615,7 +627,9 @@ Minimum completion:
 - Move a proposal to `ready` only when evidence covers the key scope.
 - Convert a `ready` local proposal into a `meridian.wiki_propose` call: claim
   ops only (`addClaim`/`reviseClaim`/...), with at least one `experiment`
-  evidence item naming this project and node. Never import a paper, restructure
+  evidence item naming this project and a node whose conclusion is recorded;
+  the App rejects a node without one, and the user can apply the proposal only
+  after verifying that conclusion. Never import a paper, restructure
   an aggregation, or edit a body through this path.
 - The proposal is queued for the user's review in the App; it is not applied
   by submitting it. Report the returned key, and check it with

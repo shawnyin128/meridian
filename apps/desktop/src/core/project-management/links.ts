@@ -1,4 +1,4 @@
-import type { Conclusion, Conclusions, PaperRow } from '../../shared/contract.js'
+import type { ConclusionState, Conclusions, PaperRow } from '../../shared/contract.js'
 import type { ProjectRecord } from './page.js'
 
 /** Source marker for an item added manually from project details. */
@@ -8,7 +8,7 @@ export const MANUAL_SOURCE = '手动添加'
 export const chatSource = (title: string): string => `对话「${title}」`
 
 /** Returns how many conclusions in `list` are verified, pending and conflicting. */
-export function conclusionCounts(list: readonly Conclusion[]): Conclusions {
+export function conclusionCounts(list: readonly { state: ConclusionState }[]): Conclusions {
   return {
     verified: list.filter((conclusion) => conclusion.state === 'verified').length,
     pending: list.filter((conclusion) => conclusion.state === 'pending').length,

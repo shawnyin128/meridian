@@ -741,9 +741,13 @@ describe('fixture store', () => {
       .toBe(4)
   })
 
-  it('fixture 项目的结论分档与结论列表一致', () => {
-    expect(store.getProject('draft').conclusions)
-      .toEqual({ verified: 1, pending: 0, conflicting: 1 })
+  it('fixture 项目的结论分档数的是结论视图里的每一条:节点结论加旧版结论', () => {
+    const draft = store.getProject('draft')
+    expect(draft.projectConclusions!.map((c) => [c.id, c.state]).sort()).toEqual([
+      ['bucket', 'pending'], ['c1', 'verified'], ['c2', 'conflicting'], ['knee', 'pending'], ['stop', 'pending'],
+    ])
+    expect(draft.conclusions).toEqual({ verified: 1, pending: 3, conflicting: 1 })
+    expect(store.listProjects().find((project) => project.id === 'draft')!.conclusions).toEqual(draft.conclusions)
     expect(store.getProject('draft').conclusionList.map((conclusion) => conclusion.state))
       .toEqual(['verified', 'conflicting'])
     expect(store.listProjects().find((project) => project.id === 'repro')!.conclusions)
@@ -766,9 +770,9 @@ describe('fixture store', () => {
     expect(item).toMatchObject({
       state: 'pending', date: EPOCH, source: `对话「${session.title}」`,
     })
-    expect(made.conclusions).toEqual({ verified: 1, pending: 1, conflicting: 1 })
+    expect(made.conclusions).toEqual({ verified: 1, pending: 4, conflicting: 1 })
     expect(store.setConclusionState('draft', item.id, 'verified').conclusions)
-      .toEqual({ verified: 2, pending: 0, conflicting: 1 })
+      .toEqual({ verified: 2, pending: 3, conflicting: 1 })
     expect(store.deleteConclusion('draft', item.id).conclusionList.some(
       (conclusion) => conclusion.id === item.id,
     )).toBe(false)
@@ -2184,6 +2188,10 @@ describe('fixture store', () => {
       'project.createConclusion': () => store.createConclusion('draft', '新结论', {}),
       'project.setConclusionState': () => store.setConclusionState('draft', 'c1', 'pending'),
       'project.deleteConclusion': () => store.deleteConclusion('draft', 'c2'),
+      'project.verifyConclusion': () => store.verifyConclusion(
+        'draft', 'knee', store.getProject('draft').projectConclusions!.find((c) => c.node === 'knee')!.fingerprint!,
+      ),
+      'project.unverifyConclusion': () => store.unverifyConclusion('draft', 'knee'),
       'delivery.settings': () => store.deliverySettings(),
       'delivery.updateSettings': () => store.setDeliverySettings({ maxItemsPerRun: 12 }),
       'search.query': () => store.search('draft'),

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { z } from 'zod'
 import type { ProjectDetail } from '../../shared/contract.js'
-import { ProjectDetailSchema } from '../../shared/contract.js'
+import { ProjectDetailSchema, VerifiedConclusionSchema } from '../../shared/contract.js'
 import { spliceLines } from '../vault/writer.js'
 
 /** Values representable in frontmatter. */
@@ -71,6 +71,7 @@ const PAGE_KEYS = {
   agentSessions: 'agent_sessions',
   workspaceRoot: 'workspace_root',
   workspaceSsh: 'workspace_ssh',
+  verifiedConclusions: 'verified_conclusions',
 } as const
 
 const detail = ProjectDetailSchema.shape
@@ -80,12 +81,15 @@ const detail = ProjectDetailSchema.shape
  * determines ordering between projects and is never displayed, so it stays inside Core.
  */
 export type ProjectRecord = Omit<
-  ProjectDetail, 'paperCount' | 'paperTitles' | 'conclusions' | 'conclusionClaims' | 'workspace'
+  ProjectDetail, 'paperCount' | 'paperTitles' | 'conclusions' | 'conclusionClaims' | 'projectConclusions' | 'workspace'
 > & {
   created: string
   workspaceRoot?: string
   workspaceSsh?: { host: string; path: string; port?: number | undefined }
 }
+
+/** One stored `verified_conclusions` entry; unknown additive keys are dropped. */
+const VerifiedConclusionEntrySchema = z.object(VerifiedConclusionSchema.shape)
 
 /**
  * Project-page frontmatter shape. Research-graph edges are stored as endpoint objects rather than
@@ -112,6 +116,7 @@ const ProjectPageSchema = z.object({
   due: detail.due,
   papers: detail.papers.default([]),
   conclusion_list: detail.conclusionList.default([]),
+  verified_conclusions: z.array(z.unknown()).optional(),
   tasks: detail.tasks,
   milestones: detail.milestones,
   relations: detail.relations,
@@ -308,6 +313,7 @@ function frontOf(project: ProjectRecord): Record<string, Json> {
     ...(project.conflictPage === undefined ? {} : { conflict_page: project.conflictPage }),
     ...(project.workspaceRoot === undefined ? {} : { workspace_root: project.workspaceRoot }),
     ...(project.workspaceSsh === undefined ? {} : { workspace_ssh: project.workspaceSsh }),
+    ...(project.verifiedConclusions === undefined ? {} : { verified_conclusions: project.verifiedConclusions }),
     start: project.start,
     due: project.due,
     papers: project.papers,
@@ -379,6 +385,13 @@ export function readProjectPage(file: string, id: string): ProjectRecord {
     ...(page.conflict_page === undefined ? {} : { conflictPage: page.conflict_page }),
     ...(page.workspace_root === undefined ? {} : { workspaceRoot: page.workspace_root }),
     ...(page.workspace_ssh === undefined ? {} : { workspaceSsh: page.workspace_ssh }),
+    ...(page.verified_conclusions === undefined ? {} : {
+      // An entry this version cannot read is skipped, so it never keeps the project from opening.
+      verifiedConclusions: page.verified_conclusions.flatMap((entry) => {
+        const read = VerifiedConclusionEntrySchema.safeParse(entry)
+        return read.success ? [read.data] : []
+      }),
+    }),
     start: page.start,
     due: page.due,
     memo: body.slice(memoFrom, memoTo).join('\n').trim(),
@@ -448,11 +461,9 @@ export function writeProjectFields(
     const key: string = field in PAGE_KEYS ? PAGE_KEYS[field as keyof typeof PAGE_KEYS] : field
     const value = front[key]
     if (value === undefined && (
-      field === 'block' || field === 'workspaceRoot' || field === 'workspaceSsh'
+      field === 'block' || field === 'workspaceRoot' || field === 'workspaceSsh' || field === 'verifiedConclusions'
     )) {
-      const removable = field === 'block'
-        ? 'block'
-        : field === 'workspaceRoot' ? 'workspace_root' : 'workspace_ssh'
+      const removable = field in PAGE_KEYS ? PAGE_KEYS[field as keyof typeof PAGE_KEYS] : field
       dropProjectPageKeys(file, [removable], staging)
       continue
     }

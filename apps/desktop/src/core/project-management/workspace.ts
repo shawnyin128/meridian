@@ -538,6 +538,7 @@ function graphHealth(value: unknown): NonNullable<ProjectWorkspace['graphHealth'
 }
 
 const LAB_NODE_MODES = new Set(['unresolved', 'repairable', 'supported', 'dead'])
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 const LAB_BRANCH_EDGE_KINDS = new Set(['continues', 'branches_from'])
 
 /** Adapts the generated Lab graph into the small, layout-bearing graph the desktop already draws. */
@@ -579,6 +580,7 @@ function readGraphJson(text: string | undefined): {
       .slice(-1)
   const activeSet = new Set(activeNodes)
   const nodeDetails = obj(raw['node_details']) ?? {}
+  const artifacts = obj(raw['supporting_artifacts']) ?? {}
 
   const depth = new Map([...ids].map((id) => [id, 0]))
   for (let pass = 0; pass < ids.size; pass += 1) {
@@ -600,7 +602,18 @@ function readGraphJson(text: string | undefined): {
     const row = lane.get(column) ?? 0
     lane.set(column, row + 1)
     const externalState = str(node['state'])
-    const nextAction = str(obj(nodeDetails[id])?.['next_action'])
+    const detail = obj(nodeDetails[id])
+    const nextAction = str(detail?.['next_action'])
+    const tasks = Array.isArray(detail?.['tasks']) ? detail['tasks'].flatMap((task) => str(task) ?? []) : []
+    const conclusion = obj(detail?.['conclusion'])
+    const conclusionText = str(conclusion?.['text'])
+    const conclusionDate = str(conclusion?.['date'])
+    const revision = str(conclusion?.['revision'])
+    const titles = new Map((Array.isArray(artifacts[id]) ? artifacts[id] : []).flatMap((artifact) => {
+      const row = obj(artifact)
+      const artifactId = str(row?.['id'])
+      return artifactId === undefined ? [] : [[artifactId, str(row?.['title']) ?? artifactId] as const]
+    }))
     const mode = externalState !== undefined && LAB_NODE_MODES.has(externalState)
       ? externalState as 'unresolved' | 'repairable' | 'supported' | 'dead'
       : undefined
@@ -622,6 +635,17 @@ function readGraphJson(text: string | undefined): {
       ...(str(node['markdown_path']) === undefined ? {} : { markdownPath: str(node['markdown_path'])! }),
       ...(str(node['markdown_anchor']) === undefined ? {} : { markdownAnchor: str(node['markdown_anchor'])! }),
       writebacks: [],
+      ...(tasks.length === 0 ? {} : { tasks }),
+      ...(conclusionText === undefined ? {} : {
+        conclusion: {
+          text: conclusionText,
+          ...(conclusionDate !== undefined && ISO_DATE.test(conclusionDate) ? { date: conclusionDate } : {}),
+          evidence: (Array.isArray(conclusion?.['evidence']) ? conclusion['evidence'] : [])
+            .flatMap((evidence) => str(evidence) ?? [])
+            .map((evidence) => ({ id: evidence, title: titles.get(evidence) ?? evidence })),
+          ...(revision === undefined ? {} : { revision }),
+        },
+      }),
     }]
   })
   const health = obj(raw['health'])

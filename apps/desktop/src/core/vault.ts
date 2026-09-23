@@ -441,6 +441,16 @@ export interface VaultStore {
   deleteConclusion(projectId: string, conclusionId: string): ProjectDetail
 
   /**
+   * Records that the user verified the conclusion node `node` holds, whose fingerprint the user saw as
+   * `fingerprint`; any later change to it makes it pending again. Throws when the node is not a closed
+   * node holding a conclusion, or with CONCLUSION_CHANGED when its fingerprint is no longer `fingerprint`.
+   */
+  verifyConclusion(projectId: string, node: string, fingerprint: string): ProjectDetail
+
+  /** Withdraws the user's verification of node `node`'s conclusion; nothing changes when there is none. */
+  unverifyConclusion(projectId: string, node: string): ProjectDetail
+
+  /**
    * Returns the inbox entries a watch brought in and that have not left the
    * inbox, in vault order. Entries the same watch brought in sit next to each
    * other in that order. Each entry names the original it stands for; where

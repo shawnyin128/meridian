@@ -7,7 +7,7 @@
    "protocol": 1,
    "key": "skill.meridian:draft:prefix:1",
    "producer": { "kind": "ai", "id": "skill.meridian", "model": "claude-code" },
-   "trigger": { "kind": "experiment", "project": "draft", "node": "prefix" },
+   "trigger": { "kind": "experiment", "project": "draft", "node": "knee" },
    "title": "前缀复用实验回流,修订「前缀共调度」这条结论",
    "rationale": "前缀命中率 0.8 的配置下重跑了吞吐,结论的适用条件需要写进去。",
    "base": { "topics/kv-cache-quantization": { "fm": "4cebdb0aa5192004", "body": "483703e7ac4cf720" } },
@@ -18,7 +18,7 @@
      "claim": "prefix-schedule",
      "text": "前缀命中率不低于 0.8 时,KV cache 量化后前缀读取与验证可以共调度,吞吐与基线持平",
      "evidence": [
-      { "kind": "experiment", "project": "draft", "node": "prefix", "text": "前缀命中率 0.8 时吞吐与基线持平" }
+      { "kind": "experiment", "project": "draft", "node": "knee", "text": "前缀命中率 0.8 时吞吐与基线持平" }
      ]
     }
    ]
