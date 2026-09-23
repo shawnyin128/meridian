@@ -2,7 +2,7 @@
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 import { ProjectEventRow, ProjectSignalDate, ProjectSignalKind } from './ProjectSignals.js'
@@ -28,7 +28,11 @@ describe('ProjectSignals', () => {
 })
 
 describe('ProjectEventRow', () => {
-  beforeEach(() => { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh') })
+  beforeEach(() => {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+  })
+  afterEach(() => { vi.unstubAllGlobals() })
 
   it('跟决策行同一套列:类型标签、日期标签、节点标签、标题与细节、谁写的;点节点标签报出节点 id', () => {
     const host = document.createElement('div')

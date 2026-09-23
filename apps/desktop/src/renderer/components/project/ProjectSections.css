@@ -15,8 +15,6 @@
 .tagchip .rx:hover{color:var(--bad);border-color:var(--bad)}
 .tagchip .rx svg{width:8px;height:8px}
 .wkrel .tagchip{display:inline-flex;max-width:100%;box-sizing:border-box;margin-right:0}
-.wkrel .tagchip-text{min-width:0;overflow:hidden;white-space:nowrap}
-.wkrel .tagchip-text.clipped{mask-image:var(--clipfade)}
 .wkrel .reladd{display:flex;align-items:center;gap:6px;flex:1 1 auto;min-width:190px}
 .wkrel .reladd .segmented-control{flex-shrink:0}
 .wkrel .reladd .inedit{flex:1;min-width:0}

@@ -3,6 +3,7 @@ import type { ProjectDecisionItem } from '../../../shared/project-signals.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { DateChip } from '../DateTimeDisplay.js'
 import { StructuredRow } from '../StructuredList.js'
+import { FadeText } from '../FadeText.js'
 import { NodeTag } from './NodeTag.js'
 import './ProjectSignals.css'
 
@@ -70,10 +71,10 @@ export function ProjectEventRow({
         </span>
       )}
       <span className="attn-text record-text" title={detail === undefined ? title : `${title} · ${detail}`}>
-        <span className="record-line">
+        <FadeText className="record-line">
           {title}
           {detail === undefined ? null : <span className="record-detail"> · {detail}</span>}
-        </span>
+        </FadeText>
       </span>
       <span className="record-who">{m.project.records.who[origin]}</span>
     </StructuredRow>
