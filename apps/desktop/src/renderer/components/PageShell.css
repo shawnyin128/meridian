@@ -30,4 +30,5 @@
 
 .page-failure .desk-body{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
 .page-failure .ipcerror{margin:0}
+.ipcerror--section{margin:0 0 8px}
 .page-failure-note{margin:0;color:var(--sec);font-size:var(--fs-sm)}

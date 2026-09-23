@@ -39,15 +39,15 @@ const WorkspaceChangeKindSchema = z.enum([
 
 const ManifestSchema = z.object({
   schema_version: z.literal(WORKSPACE_SCHEMA),
-  project: z.object({ id: z.string(), name: z.string() }).strict(),
+  project: z.object({ id: z.string(), name: z.string() }),
   surfaces: z.object({
-    plan: z.object({ path: z.literal(PLAN), writer: z.literal('meridian-app') }).strict(),
-    changes: z.object({ path: z.literal(CHANGES), writer: z.literal('meridian-app') }).strict().optional(),
-    graph: z.object({ path: z.literal(GRAPH), writer: z.literal('workspace') }).strict(),
-    events: z.object({ path: z.literal(EVENTS), writer: z.literal('workspace') }).strict(),
-    ideas: z.object({ path: z.literal(AGENT_IDEAS), writer: z.literal('workspace') }).strict().optional(),
-  }).strict(),
-}).strict()
+    plan: z.object({ path: z.literal(PLAN), writer: z.literal('meridian-app') }),
+    changes: z.object({ path: z.literal(CHANGES), writer: z.literal('meridian-app') }).optional(),
+    graph: z.object({ path: z.literal(GRAPH), writer: z.literal('workspace') }),
+    events: z.object({ path: z.literal(EVENTS), writer: z.literal('workspace') }),
+    ideas: z.object({ path: z.literal(AGENT_IDEAS), writer: z.literal('workspace') }).optional(),
+  }),
+})
 
 const IdeaProjectionSchema = z.object({
   id: z.string(),
@@ -115,8 +115,8 @@ const WorkspaceEventFileSchema = z.object({
     kind: WorkspaceEventKindSchema.optional(),
     detail: z.string().trim().min(1).max(300).optional(),
     at: z.string().optional(),
-  }).strict()),
-}).strict()
+  })),
+})
 
 type JsonObject = Record<string, unknown>
 type SshBinding = Extract<ProjectWorkspaceBinding, { kind: 'ssh' }>
@@ -666,8 +666,9 @@ function projectWorkspaceFromFiles(
   if (planText === undefined) throw new Error('工作区缺少项目计划')
   const plan = obj(JSON.parse(planText))
   const revision = str(plan?.['revision'])
-  const external = readGraphJson(files.get(manifest.surfaces.graph.path))
-  const events = readEventsJson(files.get(manifest.surfaces.events.path))
+  const issues: string[] = []
+  const external = readSurface('科研图', () => readGraphJson(files.get(manifest.surfaces.graph.path)), issues)
+  const events = readSurface('科研记录', () => readEventsJson(files.get(manifest.surfaces.events.path)), issues)
   return {
     ...base,
     state: 'ready',
@@ -677,7 +678,24 @@ function projectWorkspaceFromFiles(
       ...(external.generatedAt === undefined ? {} : { graphGeneratedAt: external.generatedAt }),
       graphHealth: external.health,
     }),
-    events,
+    events: events ?? [],
+    ...(issues.length === 0 ? {} : { issue: issues.join(';') }),
+  }
+}
+
+/**
+ * Reads one agent-written surface on its own, so a surface this App version cannot parse is reported
+ * in `issues` as `<label>读不了:<why>` instead of hiding the surfaces that did parse.
+ */
+function readSurface<T>(label: string, read: () => T, issues: string[]): T | undefined {
+  try {
+    return read()
+  } catch (error) {
+    const why = error instanceof z.ZodError
+      ? '格式是这个版本的 Meridian 不认识的,请更新 App'
+      : error instanceof Error ? error.message : String(error)
+    issues.push(`${label}读不了:${why}`)
+    return undefined
   }
 }
 
@@ -697,8 +715,8 @@ const AgentIdeasFileSchema = z.object({
     body: z.string().trim().min(1).max(20_000),
     context: z.string().trim().min(1).optional(),
     node: z.string().min(1).optional(),
-  }).strict()),
-}).strict()
+  })),
+})
 
 /** One idea a coding agent recorded in a project workspace. */
 export type WorkspaceAgentIdea = z.infer<typeof AgentIdeasFileSchema>['ideas'][number]

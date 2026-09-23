@@ -32,7 +32,9 @@ describe('PageShell', () => {
         <SectionHeading variant="group">今日</SectionHeading>
       </>,
     )
-    expect(html).toContain('class="ipcerror" role="alert"')
+    expect(html).toContain('class="ipcerror ipcerror--page" role="alert"')
+    expect(renderToStaticMarkup(<PageError error="科研图读不了" variant="section" />))
+      .toBe('<div class="ipcerror ipcerror--section" role="alert">科研图读不了</div>')
     expect(html).toContain('class="section-heading section-heading--page flexh"')
     expect(html).toContain('class="section-heading section-heading--content"')
     expect(html).toContain('class="section-heading section-heading--group"')

@@ -50,9 +50,15 @@ export const PageFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivEleme
   },
 )
 
-/** Unified page-level landing point for IPC/loading errors. */
-export function PageError({ error }: { error: string | null | undefined }) {
-  return error ? <div className="ipcerror" role="alert">{error}</div> : null
+/**
+ * Unified landing point for IPC/loading errors. `page` sits in the page gutter; `section` sits flush
+ * inside a content section, above what failed to load.
+ */
+export function PageError({ error, variant = 'page' }: {
+  error: string | null | undefined
+  variant?: 'page' | 'section'
+}) {
+  return error ? <div className={`ipcerror ipcerror--${variant}`} role="alert">{error}</div> : null
 }
 
 /** The one section heading in the app. `variant` picks the weight; `actions` is the only right-hand slot. */

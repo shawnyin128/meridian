@@ -192,6 +192,59 @@ describe('project workspace protocol', () => {
     })
   })
 
+  it('新版本写进清单与科研记录的新增字段被忽略,科研图与记录照常显示', () => {
+    const root = temporary()
+    const held = project(root)
+    writeProjectWorkspace(held)
+    const manifestFile = join(root, '.meridian/workspace.json')
+    const manifest = JSON.parse(readFileSync(manifestFile, 'utf8')) as { surfaces: Record<string, unknown> }
+    manifest.surfaces['notebooks'] = { path: '.meridian/notebooks/index.json', writer: 'workspace' }
+    writeFileSync(manifestFile, JSON.stringify(manifest), 'utf8')
+    mkdirSync(join(root, '.meridian/graph'), { recursive: true })
+    writeFileSync(join(root, '.meridian/graph/graph.json'), JSON.stringify({
+      schema: 'meridian.lab.graph.v1', active_nodes: ['thread.A'],
+      nodes: [{ id: 'thread.A', label: 'Hypothesis', state: 'unresolved', active: true, color: 'blue' }],
+      edges: [], health: { status: 'pass' },
+    }), 'utf8')
+    mkdirSync(join(root, '.meridian/events'), { recursive: true })
+    writeFileSync(join(root, '.meridian/events/events.json'), JSON.stringify({
+      schema_version: 'meridian.workspace-events.v1',
+      events: [{
+        id: 'event-1', date: '2026-09-15', text: 'Probe passed', source: '.meridian/threads/t.md',
+        weight: 3,
+      }],
+    }), 'utf8')
+
+    const workspace = readProjectWorkspace(held)
+    expect(workspace).toMatchObject({
+      state: 'ready', graph: { nodes: [{ id: 'thread.A' }] }, events: [{ text: 'Probe passed' }],
+    })
+    expect(workspace?.issue).toBeUndefined()
+  })
+
+  it('科研记录文件整份读不了时,科研图照常显示,并写明哪个文件读不了、为什么', () => {
+    const root = temporary()
+    const held = project(root)
+    writeProjectWorkspace(held)
+    mkdirSync(join(root, '.meridian/graph'), { recursive: true })
+    writeFileSync(join(root, '.meridian/graph/graph.json'), JSON.stringify({
+      schema: 'meridian.lab.graph.v1',
+      active_nodes: ['thread.A'],
+      nodes: [{ id: 'thread.A', label: 'Hypothesis', state: 'unresolved', active: true }],
+      edges: [],
+      health: { status: 'pass' },
+    }), 'utf8')
+    mkdirSync(join(root, '.meridian/events'), { recursive: true })
+    writeFileSync(join(root, '.meridian/events/events.json'), JSON.stringify({
+      schema_version: 'meridian.workspace-events.v2',
+      events: [{ id: 'event-1', when: '2026-09-15T10:00:00Z', text: 'Probe passed' }],
+    }), 'utf8')
+
+    const workspace = readProjectWorkspace(held)
+    expect(workspace).toMatchObject({ state: 'ready', events: [], graph: { nodes: [{ id: 'thread.A' }] } })
+    expect(workspace?.issue).toBe('科研记录读不了:格式是这个版本的 Meridian 不认识的,请更新 App')
+  })
+
   it('reads active_nodes directly, marking every listed id act and leaving ancestors and other repairable nodes idle', () => {
     const root = temporary()
     const held = project(root)

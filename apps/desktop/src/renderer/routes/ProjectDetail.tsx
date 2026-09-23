@@ -684,6 +684,7 @@ export function ProjectDetail({
               </div>
             </SectionHeading>
             <div className="record-view">
+            <PageError error={project.workspace?.issue} variant="section" />
             {record === 'tl'
               ? (
                 <StructuredList className="evlist" variant="embedded">
