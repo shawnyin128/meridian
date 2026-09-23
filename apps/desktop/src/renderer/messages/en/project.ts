@@ -52,7 +52,7 @@ export const project = {
     source: 'Source',
     tasks: (n: number) => `Tasks ${n}`,
     noTasks: 'No tasks are linked to this node',
-    node: 'Node',
+    node: 'Research node',
     experiments: (n: number) => `Experiment records ${n}`,
     noExperiments: 'No experiment records',
     wiki: 'Wiki',

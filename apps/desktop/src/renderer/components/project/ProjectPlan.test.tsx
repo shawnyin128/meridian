@@ -146,11 +146,11 @@ describe('ProjectTaskPanel', () => {
     expect(output).toContain('还没有备注')
   })
 
-  it('显示任务挂在哪个研究节点上;还没挂时说明 agent 做它时会挂上', () => {
+  it('显示任务挂在哪个科研节点上;还没挂时说明 agent 做它时会挂上', () => {
     const linked = renderTaskPanel({}, { id: 'kv.n3', label: '前缀共调度', mode: 'supported' })
-    expect(linked).toContain('研究节点')
+    expect(linked).toContain('科研节点')
     expect(linked).toMatch(/<button[^>]*class="node-tag node-tag--supported"[^>]*title="在科研图中打开「前缀共调度」"/)
-    expect(renderTaskPanel()).toContain('还没挂到研究节点上')
+    expect(renderTaskPanel()).toContain('还没挂到科研节点上')
   })
 
   it('agent 加的任务在面板和列表里都带一个安静的 agent 标记,用户加的没有', () => {

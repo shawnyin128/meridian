@@ -9,7 +9,7 @@
 .project-idea-flags{display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0}
 .project-idea-state{padding:1px 7px;border-radius:var(--r-full);background:var(--field);color:var(--ter);font-size:var(--fs-cap)}
 .project-idea-source{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ter);font-size:var(--fs-sm);text-align:right}
-.project-idea-detail-meta{display:flex;align-items:center;gap:8px;margin-top:18px}
+.project-idea-detail-meta{display:flex;align-items:center;gap:8px}
 .project-idea-detail-kind{padding:2px 8px;border-radius:var(--r-full);background:var(--accent-soft);color:var(--accent);
   font-size:var(--fs-cap);font-weight:600}
 .project-idea-detail-body,.project-idea-detail-source{margin:0;color:var(--sec);font-size:var(--fs-base);line-height:1.65;

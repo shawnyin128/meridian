@@ -1,7 +1,7 @@
 /* Conclusion rows reuse the research-record columns; the Wiki column is capped so long page titles do not squeeze the text. */
 .conclusion-wiki{max-width:180px;overflow:hidden;text-overflow:ellipsis}
 
-.conclusion-detail-text{margin:14px 0 0;color:var(--ink);font-size:var(--fs-base);line-height:1.65;overflow-wrap:anywhere}
+.conclusion-detail-text{margin:0;color:var(--ink);font-size:var(--fs-base);line-height:1.65;overflow-wrap:anywhere}
 .conclusion-detail-meta{display:flex;align-items:center;gap:8px;margin-top:12px}
 .conclusion-detail-date{color:var(--ter);font-size:var(--fs-cap)}
 .conclusion-detail-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
