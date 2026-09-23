@@ -96,7 +96,8 @@ const ChatSessionContext = createContext<{
   select: (id: string) => void
 } | null>(null)
 const VaultRevisionContext = createContext<{ revision: number; bump: () => void } | null>(null)
-const TodayContext = createContext<string | null>(null)
+/** Exported only so tests can supply a today value to components that call `useToday` without mounting all of AppShell. */
+export const TodayContext = createContext<string | null>(null)
 const JumpContext = createContext<{
   jump: ScreenJump | null
   open: (screen: ScreenKey, target: string, anchor?: JumpAnchor) => void

@@ -911,6 +911,18 @@ export function createFixtureStore(
       return detailOf(nextProject)
     },
 
+    reorderTasks(projectId, order) {
+      const project = projectById.get(projectId)
+      if (!project) throw new Error(`项目不存在:${projectId}`)
+      const byId = new Map(project.tasks.map((t) => [t.id, t]))
+      if (order.length !== project.tasks.length || !order.every((id) => byId.has(id))) {
+        throw new Error('任务顺序与项目任务不匹配')
+      }
+      const nextProject = { ...project, tasks: order.map((id) => byId.get(id)!) }
+      projectById.set(projectId, nextProject)
+      return detailOf(nextProject)
+    },
+
     createMilestone(projectId, milestone) {
       const project = projectById.get(projectId)
       if (!project) throw new Error(`项目不存在:${projectId}`)

@@ -417,6 +417,10 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       return onProject(projectId, '删掉任务', () => ops.deleteTask(projectId, taskId))
     },
 
+    reorderTasks(projectId, order) {
+      return onProject(projectId, '调整任务顺序', () => ops.reorderTasks(projectId, order))
+    },
+
     createMilestone(projectId, milestone) {
       return onProject(projectId, '新增里程碑', () => ops.createMilestone(projectId, milestone))
     },

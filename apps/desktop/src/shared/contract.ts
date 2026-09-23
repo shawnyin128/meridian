@@ -913,6 +913,12 @@ export const ProjectDeleteTaskParamsSchema = z.object({
   taskId: z.string(),
 }).strict()
 
+/** Reorders a project's tasks to `order`, a permutation of its current task ids: its one stored order. */
+export const ProjectReorderTasksParamsSchema = z.object({
+  projectId: z.string(),
+  order: z.array(z.string()),
+}).strict()
+
 export const ProjectCreateMilestoneParamsSchema = z.object({
   projectId: z.string(),
   milestone: MilestoneFieldsSchema,
@@ -1989,6 +1995,7 @@ export const CONTRACT_METHODS = [
   'project.createTask',
   'project.updateTask',
   'project.deleteTask',
+  'project.reorderTasks',
   'project.createMilestone',
   'project.updateMilestone',
   'project.deleteMilestone',

@@ -14,6 +14,7 @@ import {
 } from './TimelineScale.js'
 import type { TimelineScale } from './TimelineScale.js'
 import { useGanttDrag } from '../../hooks/useGanttDrag.js'
+import { useDragReorder } from '../../hooks/useDragReorder.js'
 import './TimelineBoard.css'
 
 export type TimelineProject = {
@@ -54,7 +55,7 @@ export function TimelineBoard({
   projects, className = '', showProjectNames = false, foldable = false, headerAction, canvasOverlay,
   milestoneLaneRef, hoverMilestoneId, onHoverMilestone, onLabelClick, onTaskClick,
   onMilestoneClick, onMilestoneLaneClick, onMoveTask, onMoveTaskWindow, onMoveMilestone,
-  onPeriodChange,
+  onReorderTasks, onPeriodChange,
 }: {
   projects: TimelineProject[]
   className?: string
@@ -79,6 +80,8 @@ export function TimelineBoard({
     slots: number
   ) => void
   onMoveMilestone: (projectId: string, milestoneId: string, date: string) => void
+  /** Persists a full drag-reordering of one project's tasks; omit to leave the label column undraggable. */
+  onReorderTasks?: (projectId: string, order: string[]) => void
   onPeriodChange?: () => void
 }) {
   const fmt = useFormat()
@@ -102,6 +105,28 @@ export function TimelineBoard({
     { kind: 'milestones', project },
     ...(folded.has(project.id) ? [] : project.tasks.map((task) => ({ kind: 'task' as const, project, task }))),
   ]), [folded, projects])
+
+  // Scopes a dragged task label to its own project, so a drop only reorders tasks within that
+  // project; `order` interleaves every project's task ids, so the project whose sub-order changed
+  // is the one the user actually reordered.
+  const taskProjectId = useMemo(
+    () => new Map(rows.flatMap((row) => (row.kind === 'task' ? [[row.task.id, row.project.id] as const] : []))),
+    [rows],
+  )
+  const labelReorder = useDragReorder(
+    [...taskProjectId.keys()], (id) => taskProjectId.get(id) ?? '',
+    (order) => {
+      for (const project of projects) {
+        const current = project.tasks.map((task) => task.id)
+        const known = new Set(current)
+        const next = order.filter((id) => known.has(id))
+        if (next.some((id, index) => id !== current[index])) {
+          onReorderTasks?.(project.id, next)
+          return
+        }
+      }
+    },
+  )
 
   const onMove = useCallback((grab: Grab, delta: number) => {
     if (grab.kind === 'milestone') {
@@ -166,12 +191,16 @@ export function TimelineBoard({
             const key = row.kind === 'milestones'
               ? `${row.project.id}/milestones`
               : `${row.project.id}/task/${row.task.id}`
+            const dropClass = row.kind === 'task' && onReorderTasks !== undefined
+              ? labelReorder.dropClass(row.task.id) : ''
             return (
               <div
-                className={row.kind === 'milestones' ? 'glrow msl timeline-label-row' : 'glrow timeline-label-row'}
+                className={`${row.kind === 'milestones' ? 'glrow msl timeline-label-row' : 'glrow timeline-label-row'}${
+                  dropClass ? ` ${dropClass}` : ''}`}
                 data-proj={row.project.id}
                 data-task={row.kind === 'task' ? row.task.id : undefined}
                 key={key}
+                {...(row.kind === 'task' && onReorderTasks !== undefined ? labelReorder.cardProps(row.task.id) : {})}
                 onClick={() => onLabelClick?.(
                   row.project.id, row.kind, row.kind === 'task' ? row.task.id : undefined,
                 )}

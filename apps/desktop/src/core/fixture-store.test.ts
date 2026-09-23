@@ -429,6 +429,20 @@ describe('fixture store', () => {
     expect(() => store.deleteTask('draft', 'no-such-task')).toThrow(/no-such-task/)
   })
 
+  it('按给定顺序重排任务,并且重新读取项目也是这个顺序', () => {
+    const ids = store.getProject('draft').tasks.map((t) => t.id)
+    const reordered = [ids[2]!, ids[0]!, ids[1]!, ...ids.slice(3)]
+    const after = store.reorderTasks('draft', reordered)
+    expect(after.tasks.map((t) => t.id)).toEqual(reordered)
+    expect(store.getProject('draft').tasks.map((t) => t.id)).toEqual(reordered)
+  })
+
+  it('顺序缺任务或多出未知 id 时拒绝重排', () => {
+    const ids = store.getProject('draft').tasks.map((t) => t.id)
+    expect(() => store.reorderTasks('draft', ids.slice(1))).toThrow(/任务顺序/)
+    expect(() => store.reorderTasks('draft', [...ids, 'no-such-task'])).toThrow(/任务顺序/)
+  })
+
   it('删除里程碑后项目里没有它', () => {
     const after = store.deleteMilestone('draft', 'm2')
     expect(after.milestones.some((m) => m.id === 'm2')).toBe(false)
@@ -2042,6 +2056,7 @@ describe('fixture store', () => {
       }),
       'project.updateTask': () => store.updateTask('draft', 't2', {}),
       'project.deleteTask': () => store.deleteTask('draft', 't2'),
+      'project.reorderTasks': () => store.reorderTasks('draft', store.getProject('draft').tasks.map((t) => t.id)),
       'project.createMilestone': () => store.createMilestone('draft', {
         date: '2026-09-01', title: '新里程碑', done: false,
       }),

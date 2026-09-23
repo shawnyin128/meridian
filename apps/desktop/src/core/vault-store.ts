@@ -1353,6 +1353,15 @@ export function createVaultStore(
       )
     },
 
+    reorderTasks(projectId, order) {
+      const project = projectOf(projectId)
+      const byId = new Map(project.tasks.map((t) => [t.id, t]))
+      if (order.length !== project.tasks.length || !order.every((id) => byId.has(id))) {
+        throw new Error('任务顺序与项目任务不匹配')
+      }
+      return writeProject({ ...project, tasks: order.map((id) => byId.get(id)!) }, ['tasks'])
+    },
+
     createMilestone(projectId, milestone) {
       const project = projectOf(projectId)
       return writeProject(
