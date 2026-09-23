@@ -1320,12 +1320,13 @@ export const WIKI_PROTOCOL_VERSION = 1
 // Other processes and versions write proposal envelopes, queue records and claims, so their schemas are
 // loose: an unknown additive field is kept, never a reason to refuse (AGENTS.md, Version Compatibility).
 
-/** `<dir>/<file stem>`; neither part is `.` or `..` (checked in apply.ts). */
-export const PageIdSchema = z.string().regex(/^[\p{L}\p{N}._-]+\/[\p{L}\p{N}._-]+$/u)
+/** `<dir>/<file stem>`; neither part is `.` or `..`. */
+export const PageIdSchema = z.string().regex(/^(?!\.{1,2}\/)[\p{L}\p{N}._-]+\/(?!\.{1,2}$)[\p{L}\p{N}._-]+$/u)
 /** A claim id is ASCII so that it is also a valid Obsidian block id (`^id`). */
 export const ClaimIdSchema = z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/)
 /** `<page id>#<claim id>` */
-export const ClaimRefSchema = z.string().regex(/^[\p{L}\p{N}._-]+\/[\p{L}\p{N}._-]+#[a-z0-9][a-z0-9-]{0,63}$/u)
+export const ClaimRefSchema = z.string()
+  .regex(/^(?!\.{1,2}\/)[\p{L}\p{N}._-]+\/(?!\.{1,2}#)[\p{L}\p{N}._-]+#[a-z0-9][a-z0-9-]{0,63}$/u)
 const Fingerprint = z.string().regex(/^[0-9a-f]{16}$/)
 /** The fingerprints of a page's stored frontmatter and stored body (write protocol §3.2). */
 export const PageVersionSchema = z.object({ fm: Fingerprint, body: Fingerprint }).loose()
@@ -1696,13 +1697,16 @@ export const ProposalRecordSchema = z.object({
 }).loose()
 
 /**
- * A queue record as the review list reads it, plus three derived fields: the describeOp line of every op,
- * the pages it would write, and whether the pages it rests on changed since it was made.
+ * A queue record as the review list reads it, plus derived fields: the pages it would write, whether the
+ * pages it rests on changed since it was made, the titles of what it names (a page by its id, a project
+ * as `projects/<id>`, a node as `projects/<id>#<node>`), and the current text of each claim it names by
+ * `<page>#<claim>`. Anything no longer in the vault has no entry.
  */
 export const WikiProposalSchema = ProposalRecordSchema.extend({
-  ops: z.array(z.string()),
   pages: z.array(z.string()),
   staleNow: z.boolean(),
+  titles: z.record(z.string(), z.string()),
+  claimTexts: z.record(z.string(), z.string()),
 }).loose()
 
 /** What submitting or deciding a proposal came to. */

@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -50,13 +51,34 @@ describe('review queue on the fixture library', () => {
     queue = createWikiProposals({ store, pdf: fakePdf(null), now: () => NOW })
   })
 
-  it('fixture 队列:一条能用、一条已过期排队,一条已拒绝;读出来带 op 行、要写的页与现在是否过期', () => {
+  it('fixture 队列:一条能用、一条已过期排队,一条已拒绝;读出来带要写的页、现在是否过期、页名项目名节点名与结论原文', () => {
     const list = queue.list()
     for (const item of list) WikiProposalSchema.parse(item)
     expect(list.map((p) => [p.status, p.staleNow])).toEqual([['queued', false], ['queued', true], ['rejected', false]])
-    expect(list[0]!.ops).toEqual(['~ topics/kv-cache-quantization#prefix-schedule v2→v3:前缀命中率不低于 0.8 时,KV cache 量化后前缀读取与验证可以共调度,吞吐与基线持平'])
+    expect(list[0]!.titles).toEqual({ 'topics/kv-cache-quantization': 'KV cache quantization', 'projects/draft': 'draft 效率', 'projects/draft#prefix': '前缀复用配置' })
+    expect(list[0]!.claimTexts).toEqual({ 'topics/kv-cache-quantization#prefix-schedule': 'KV cache 量化之后,前缀读取与验证可以共调度,吞吐与基线持平' })
     expect(list[0]!.pages).toEqual(['topics/kv-cache-quantization'])
     expect(queue.list('rejected').map((p) => p.reason?.kind)).toEqual(['declined'])
+  })
+
+  it('base 里的页 id 带 . 或 .. 的提案进不了队列', async () => {
+    const before = store.proposalRecords().length
+    await expect(queue.propose(envelope(store, [addClaim('dots')], { base: { '../x': null } }))).rejects.toThrow('提案的格式不对')
+    expect(store.proposalRecords()).toHaveLength(before)
+  })
+
+  it('一条记录读不出来时单独报出,其余照常列出', () => {
+    const broken: VaultStore = {
+      ...store,
+      pageVersion: (id) => {
+        if (id === 'topics/kv-cache-quantization') throw new Error('这一页读不了')
+        return store.pageVersion(id)
+      },
+    }
+    const list = createWikiProposals({ store: broken, pdf: fakePdf(null), now: () => NOW }).list()
+    expect(list.map((p) => [p.status, p.proposal === null, p.notice])).toEqual([
+      ['queued', true, '这一页读不了'], ['queued', false, null], ['rejected', false, null],
+    ])
   })
 
   it('应用:按提出者写入并记一条「实验」来源的变动,记录变成 applied 并指向那条变动;撤销还原', async () => {
@@ -205,6 +227,27 @@ describe('review queue on a vault', () => {
     store.setConclusionState(id, conclusion, 'verified')
     return { id, node, conclusion }
   }
+
+  it('真实跨进程:Python 提交的结论带 wiki 证据,base 里有那一页,App 收下排队', async () => {
+    const { id, node } = project()
+    const ops = [{ op: 'addClaim', page: 'topics/speculative-decoding', claim: {
+      id: 'cross', text: '跨进程的一条', evidence: [
+        { kind: 'experiment', project: id, node }, { kind: 'wiki', ref: 'topics/draft-acceptance#batch-wins' },
+      ],
+    } }]
+    const script = [
+      'import json, sys',
+      'from pathlib import Path',
+      'from meridian.wiki.propose import submit_wiki_proposal',
+      `submit_wiki_proposal(wiki_root=Path(${JSON.stringify(join(vault, 'wiki'))}), ops=json.loads(sys.argv[1]), title="跨进程", project=${JSON.stringify(id)})`,
+    ].join('\n')
+    execFileSync('python', ['-c', script, JSON.stringify(ops)], {
+      env: { ...process.env, PYTHONPATH: resolve(import.meta.dirname, '../../../../src'), PYTHONIOENCODING: 'utf-8' },
+    })
+    const queue = createWikiProposals({ store, pdf: fakePdf(null), now: () => NOW })
+    await queue.scanInbox()
+    expect(queue.list().map((p) => [p.status, p.reason])).toEqual([['queued', null]])
+  })
 
   it('收件箱:合格、坏 JSON、过期三份各记一条,文件都删掉;临时文件不碰', async () => {
     const { id, node } = project()

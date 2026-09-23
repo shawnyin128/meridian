@@ -4,16 +4,9 @@
 .review-row{padding:12px 2px}
 .review-head{display:flex;align-items:baseline;gap:8px}
 .review-title{flex:1;min-width:0;font-size:var(--fs-base);font-weight:500;overflow-wrap:anywhere}
-.review-tag{flex:none;padding:1px 8px;border-radius:999px;background:var(--field);color:var(--sec);font-size:var(--fs-cap)}
-.review-tag--stale{background:var(--tint-warn);color:var(--warn)}
-.review-tag--applied{background:var(--tint-good);color:var(--good)}
 .review-meta{margin-top:2px;color:var(--ter);font-size:var(--fs-sm)}
 .review-note{margin:6px 0 0;color:var(--sec);font-size:var(--fs-sm);line-height:1.5}
 .review-note--warn{color:var(--warn)}
-.review-pages{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:6px}
-.review-label{color:var(--ter);font-size:var(--fs-sm);margin-right:4px}
-.review-page{border:0;font:inherit;font-size:var(--fs-sm);cursor:pointer}
-.review-page:hover{color:var(--ink)}
 .review-actions{display:flex;gap:8px;margin-top:10px}
 .review-actions .btn:disabled{opacity:.45;cursor:default}
 .review-decline{display:flex;gap:8px;align-items:center;padding:8px;width:320px}

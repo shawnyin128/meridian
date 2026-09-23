@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import type {
-  AgentProposal, ChangeSource, PageVersion, ProposalOp, ProposalReceipt, ProposalRecord, ProposalStatus,
-  WikiProposal,
+  AgentProposal, ChangeSource, ConflictTarget, Evidence, PageVersion, ProposalOp, ProposalReceipt, ProposalRecord,
+  ProposalStatus, WikiProposal,
 } from '../shared/contract.js'
 import { AgentProposalSchema, WIKI_PROTOCOL_VERSION } from '../shared/contract.js'
 import { PAPER_PAGE } from '../shared/vocabulary.js'
@@ -127,6 +127,55 @@ export function createWikiProposals({ store, pdf, now }: {
     return null
   }
 
+  /**
+   * The titles and claim texts the review list shows for `proposal` writing `pages` (see
+   * WikiProposalSchema), read from the vault as it stands; a page, project, node or claim that is gone
+   * gets no entry.
+   */
+  const labelsOf = (proposal: AgentProposal, pages: string[]): Pick<WikiProposal, 'titles' | 'claimTexts'> => {
+    const titles: Record<string, string> = {}
+    const claimTexts: Record<string, string> = {}
+    const aggregations = new Map(store.wikiCards().map((card) => [card.id, card.title]))
+    const page = (id: string): void => {
+      if (id in titles) return
+      const title = aggregations.get(id)
+        ?? (id.startsWith(PAPER_PAGE) && store.pageVersion(id) !== null ? store.wikiPaper(id).title : undefined)
+      if (title !== undefined) titles[id] = title
+    }
+    const claim = (ref: string): void => {
+      const [id, claimId] = ref.split('#') as [string, string]
+      page(id)
+      if (!aggregations.has(id)) return
+      const found = store.wikiAggregation(id).claims.find((c) => c.id === claimId)
+      if (found !== undefined) claimTexts[ref] = found.text
+    }
+    const project = (id: string, part: { node?: string | undefined; conclusion?: string | undefined }): void => {
+      if (!store.listProjects().some((p) => p.id === id)) return
+      const held = store.getProject(id)
+      titles[`projects/${id}`] = held.name
+      const node = held.graph.nodes.find((n) => n.id === part.node)
+      if (node !== undefined) titles[`projects/${id}#${node.id}`] = node.label
+      const conclusion = held.conclusionList.find((c) => c.id === part.conclusion)
+      if (conclusion !== undefined) titles[`projects/${id}#${conclusion.id}`] = conclusion.text
+    }
+    const evidence = (e: Evidence | ConflictTarget): void => {
+      if (e.kind === 'source' || e.kind === 'note') page(e.paper)
+      else if (e.kind === 'experiment') project(e.project, e)
+      else if (e.kind === 'claim' || (e.kind === 'wiki' && e.ref.includes('#'))) claim(e.ref)
+      else if (e.kind === 'wiki') page(e.ref)
+    }
+    if (proposal.trigger.kind === 'experiment') project(proposal.trigger.project, proposal.trigger)
+    for (const id of pages) page(id)
+    for (const op of proposal.ops) {
+      if (isClaimOp(op) && op.op !== 'addClaim') claim(`${op.page}#${op.claim}`)
+      const items = op.op === 'addClaim' ? op.claim.evidence
+        : op.op === 'reviseClaim' || op.op === 'addEvidence' ? op.evidence ?? []
+          : op.op === 'markConflict' ? [op.conflict.against] : []
+      for (const item of items) evidence(item)
+    }
+    return { titles, claimTexts }
+  }
+
   /** Write protocol §7.1 steps 3–6 against the vault as it stands. */
   const evaluate = async (proposal: AgentProposal): Promise<Outcome> => {
     const reject = (kind: 'stale' | 'invalid', message: string): Outcome =>
@@ -220,15 +269,26 @@ export function createWikiProposals({ store, pdf, now }: {
 
     /**
      * Returns the queue records with `status` (every record when absent), newest first, each with the
-     * describeOp lines of its ops, the pages it would write, and whether its base is stale now.
+     * pages it would write, whether its base is stale now, and the titles and claim texts it names. A
+     * record whose proposal cannot be read against the vault is listed as unreadable with the cause as
+     * its notice, and the others list as usual.
      */
     list(status?: ProposalStatus): WikiProposal[] {
-      return store.proposalRecords().filter((r) => status === undefined || r.status === status).map((r) => ({
-        ...r,
-        ops: r.proposal === null ? [] : store.describeProposal(r.proposal.ops),
-        pages: r.proposal === null ? [] : store.pagesWritten(r.proposal.ops),
-        staleNow: r.proposal !== null && staleness(r.proposal) !== null,
-      }))
+      return store.proposalRecords().filter((r) => status === undefined || r.status === status).map((r) => {
+        try {
+          const pages = r.proposal === null ? [] : store.pagesWritten(r.proposal.ops)
+          return {
+            ...r,
+            pages,
+            staleNow: r.proposal !== null && staleness(r.proposal) !== null,
+            ...(r.proposal === null ? { titles: {}, claimTexts: {} } : labelsOf(r.proposal, pages)),
+          }
+        } catch (error) {
+          const cause = error instanceof Error ? error.message : String(error)
+          console.error(`[wiki] 提案 ${r.id} 读不出来,其余照常列出:${cause}`)
+          return { ...r, proposal: null, notice: cause, pages: [], staleNow: false, titles: {}, claimTexts: {} }
+        }
+      })
     },
 
     /**
