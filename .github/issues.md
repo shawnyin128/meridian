@@ -1,10 +1,17 @@
 # Issues
 
-An issue records a problem someone reports or work that is not started yet. One issue covers one
-specific problem, and every issue names the version it ships in.
+Every change starts as an issue, including the team's own work. One issue covers one specific
+problem, and every issue names the version it ships in.
 
-The team's own work does not need an issue first: build it on a work branch and describe it in the
-pull request (see [pull-requests.md](pull-requests.md)).
+## How a version gets its scope
+
+1. Everything to be done is recorded as an issue with a type label. Issues without a milestone are
+   the backlog.
+2. When a version is planned, the owner decides which issues it includes and sets their milestone
+   to that version (`v0.0.15.0`). The milestone's issues are the version's scope.
+3. Work branches are cut for those issues. Each pull request closes its issue when it merges.
+4. The version is released when its milestone has no open issues. Anything that will not make it
+   is moved to the next milestone first.
 
 ## 1. Type label and milestone
 

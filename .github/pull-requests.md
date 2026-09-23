@@ -5,14 +5,15 @@ job, and let the checks run.
 
 ## 1. Title and issue
 
-Format: `[vX.Y.Z.F] description`, followed by `(Closes #issue)` when the work answers an issue.
+Format: `[vX.Y.Z.F] description (Closes #issue)`
 
-- `[v0.0.15.0] Drag tasks to reorder the research plan`
-- `[v0.0.14.2] Fix research records that every screen showed empty (Closes #12)`
+- `[v0.0.15.0] Drag to reorder tasks in the research plan (Closes #3)`
+- `[v0.0.15.0] Show a detail note on every task (Closes #5)`
 
 Work is done on the work branch first; the pull request is opened once the work is finished and
-tested. `Closes #issue` closes the issue automatically when the pull request is merged, so a
-reported problem, its branch, the pull request and the version point at each other.
+tested. `Closes #issue` closes the issue automatically when the pull request is merged, so the
+issue, the branch, the pull request and the version always point at each other. The description
+says what the change does, not what the pull request does to the repository.
 
 ## 2. Where it goes
 
