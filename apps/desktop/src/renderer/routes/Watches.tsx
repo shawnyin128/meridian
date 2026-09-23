@@ -29,7 +29,7 @@ const suggestedAuthorKey = (item: WatchAuthorSuggestion): string => (
 )
 
 /**
- * A group of concerns: There is a plus sign on the right side of the title. Click it to create a new line at the end of this group of lists.
+ * A group of concerns: There is a plus sign on the right side of the title. Click it to create a new line at the top of this group of lists.
  * `adding` is the line being filled in: the placeholder is wearing `.wrow` clothes, and the input box inside is drawn and handed in by the caller.
  */
 function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, onRemove }: {
@@ -52,6 +52,9 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
         ? <EmptyState variant="section">{m.watches.empty(m.shell.watchKind[type])}</EmptyState>
         : (
           <StructuredList className="wlist">
+            {editor === undefined || editor.id !== undefined
+              ? null
+              : <StructuredRow className="wrow newrow" rowRef={editor.row}>{editor.input}</StructuredRow>}
             {watches.map((w) => (editor?.id === w.id
               ? (
                 <StructuredRow className="wrow editrow" data-w={w.id} key={w.id} rowRef={editor.row}>
@@ -79,9 +82,6 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
                   />
                 </StructuredRow>
               ))) }
-            {editor === undefined || editor.id !== undefined
-              ? null
-              : <StructuredRow className="wrow newrow" rowRef={editor.row}>{editor.input}</StructuredRow>}
           </StructuredList>
         )}
     </>

@@ -228,6 +228,19 @@ export function ProjectRelations({
           ref={adding !== undefined && sameRow(adding.group, row.group) ? adding.row : undefined}
         >
           <span className="rl">{groupLabel(row.group)}</span>
+          {adding !== undefined && sameRow(adding.group, row.group)
+            ? (
+              <div className="reladd">
+                <SegmentedControl
+                  label={m.project.links.groupLabel}
+                  value={adding.group}
+                  options={PROJECT_RELATION_GROUPS.map((group) => ({ value: group, label: groupLabel(group) }))}
+                  onChange={adding.onGroup}
+                />
+                {adding.input}
+              </div>
+            )
+            : null}
           {isPaperRow(row.group)
             ? linked.map((paper) => (
               <span
@@ -256,19 +269,6 @@ export function ProjectRelations({
               ><IconCross sw={2.5} /></button>
             </span>
           ))}
-          {adding !== undefined && sameRow(adding.group, row.group)
-            ? (
-              <div className="reladd">
-                <SegmentedControl
-                  label={m.project.links.groupLabel}
-                  value={adding.group}
-                  options={PROJECT_RELATION_GROUPS.map((group) => ({ value: group, label: groupLabel(group) }))}
-                  onChange={adding.onGroup}
-                />
-                {adding.input}
-              </div>
-            )
-            : null}
         </div>
       ))}
     </>
