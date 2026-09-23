@@ -168,14 +168,6 @@ function checkSpan(task: TaskFields): void {
   }
 }
 
-/** Moves the item at `at` to `index` among `list`, clamping `index` to the list's bounds. */
-function movedTo<T>(list: readonly T[], at: number, index: number): T[] {
-  const target = Math.max(0, Math.min(index, list.length - 1))
-  const item = list[at]!
-  const rest = list.filter((_, i) => i !== at)
-  return [...rest.slice(0, target), item, ...rest.slice(target)]
-}
-
 /** Throw when a research-record body contains a newline. */
 function checkOneLine(text: string): void {
   if (text.includes('\n')) throw new Error('科研记录一条占一行,正文里不能有换行')
@@ -1032,13 +1024,19 @@ export function createFixtureStore(
         projectById.set(projectId, nextProject)
         return detailOf(nextProject)
       }
+      const moved = <T,>(list: T[], at: number): T[] => {
+        const target = Math.max(0, Math.min(index, list.length - 1))
+        const item = list[at]!
+        const rest = list.filter((_, i) => i !== at)
+        return [...rest.slice(0, target), item, ...rest.slice(target)]
+      }
       const paperAt = project.papers.indexOf(id)
-      if (paperAt >= 0) return commit({ ...project, papers: movedTo(project.papers, paperAt, index) })
+      if (paperAt >= 0) return commit({ ...project, papers: moved(project.papers, paperAt) })
       const group = project.relations.find((r) => r.items.some((i) => i.id === id))
       if (group === undefined) throw new Error(`关联不存在:${id}`)
       const relations = project.relations.map((r) => (r !== group
         ? r
-        : { ...r, items: movedTo(r.items, r.items.findIndex((i) => i.id === id), index) }))
+        : { ...r, items: moved(r.items, r.items.findIndex((i) => i.id === id)) }))
       return commit({ ...project, relations })
     },
 
