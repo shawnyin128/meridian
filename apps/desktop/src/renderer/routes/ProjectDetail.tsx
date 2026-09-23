@@ -34,7 +34,7 @@ import {
 } from '../components/project/ProjectSections.js'
 import { NodeTag } from '../components/project/NodeTag.js'
 import { ProjectTimeline } from '../components/project/ProjectTimeline.js'
-import { ResearchGraph, ResearchNodePanel } from '../components/project/ResearchGraph.js'
+import { nodeMode, ResearchGraph, ResearchNodePanel } from '../components/project/ResearchGraph.js'
 import {
   IdeaGraphDialog, type IdeaGraphDialogMode,
 } from '../components/ideas/IdeaGraphDialog.js'
@@ -692,7 +692,9 @@ export function ProjectDetail({
                         key={`${ev.date} ${index}`}
                         kind={recordKind(ev)} date={ev.date} title={ev.text} detail={ev.detail}
                         origin={recordOrigin(ev)}
-                        node={graphNode === undefined ? undefined : { id: graphNode.id, label: graphNode.label }}
+                        node={graphNode === undefined
+                          ? undefined
+                          : { id: graphNode.id, label: graphNode.label, mode: nodeMode(graphNode) }}
                         onSelectNode={goToRecordNode}
                       />
                     )
@@ -723,7 +725,7 @@ export function ProjectDetail({
                     const source = idea.source.paperTitle === undefined
                       ? idea.source.chatTitle
                       : `${idea.source.paperTitle} · ${idea.source.chatTitle}`
-                    const nodeLabel = displayedGraph.nodes.find((node) => node.id === idea.node)?.label
+                    const ideaNode = displayedGraph.nodes.find((node) => node.id === idea.node)
                     return (
                       <StructuredRow
                         className={`project-idea-row${selectedIdeaId === idea.id ? ' selected' : ''}`}
@@ -736,10 +738,10 @@ export function ProjectDetail({
                       >
                         <span className="project-idea-title">{idea.title}</span>
                         <span className="project-idea-flags">
-                          {nodeLabel === undefined
+                          {ideaNode === undefined
                             ? null
                             : (
-                              <NodeTag label={nodeLabel} />
+                              <NodeTag label={ideaNode.label} mode={nodeMode(ideaNode)} />
                             )}
                           {idea.archived ? <span className="project-idea-state">{m.common.archived}</span> : null}
                         </span>
