@@ -238,20 +238,39 @@ checks. This is the order to follow, on the version's release branch and never o
    `plugins/` or an MCP tool changed since the last release, so installed Apps
    prompt their users to update the agent plugin. Commit
    `chore(release): bump the app to X.Y.Z.F …` by explicit paths; do not push yet.
-3. **Build an unpacked copy.** `npm --prefix apps/desktop run build`, then in
-   `apps/desktop`:
-   `CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --config electron-builder.config.mjs --dir`.
-   The Harness sidecar must already exist under `apps/harness/dist`. Copy
-   `dist/win-unpacked` into a new folder for every build: the owner may still
-   have the previous one open, and overwriting a running build breaks it.
+3. **Build an unpacked copy.** Build the Harness sidecar for this machine first:
+   install the build extra once (`python -m pip install -e "apps/harness[build]"`),
+   then run `node scripts/build-harness-sidecar.mjs`, which writes
+   `apps/harness/dist/<platform>-<arch>`. Then run
+   `npm --prefix apps/desktop run build` and, in `apps/desktop`:
+   - macOS: `CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --config electron-builder.config.mjs --dir`
+     writes `dist/mac-arm64/Meridian.app` on Apple silicon.
+   - Windows (PowerShell): `npx electron-builder --config electron-builder.config.mjs --dir`
+     writes `dist\win-unpacked`.
+
+   Copy that output into a new folder for every build (`ditto` on macOS,
+   `Copy-Item -Recurse` on Windows): the owner may still have the previous one
+   open, and overwriting a running build breaks it.
 4. **Upgrade smoke.** Copy a real library written by the previous release, the
    `.meridian` folder of every workspace it links, and a config home into a
-   temporary directory, rewrite the copied workspace paths to the copies, and
-   launch the new build with `MERIDIAN_VAULT_ROOT` and `MERIDIAN_CONFIG_HOME`
-   pointing at them. `library.location`, `vault.today`, `project.list`,
-   `project.get` for every project, `wiki.home`, `wiki.proposals`, `wiki.signals`
-   and `feed.list` must all succeed. Never point a test at the original library
-   or `~/.meridian`.
+   temporary directory, and rewrite the copied workspace paths to the copies.
+   The library is `active_library_root` in
+   `<config home>/paper-wiki-workspaces.json`, or else `library` in the App's
+   user data folder (`~/Library/Application Support/@meridian/desktop` on macOS,
+   `%APPDATA%\@meridian\desktop` on Windows); the config home is `~/.meridian`.
+   Launch the copied build with `MERIDIAN_VAULT_ROOT` and `MERIDIAN_CONFIG_HOME`
+   pointing at the copies and `--user-data-dir` at a new empty folder: an
+   installed Meridian holds the single-instance lock of its user data folder,
+   and a build sharing that folder quits at once. Unset `ELECTRON_RUN_AS_NODE`
+   first; shells started from VS Code extensions set it, and the build then runs
+   as plain Node.
+   - macOS: `env -u ELECTRON_RUN_AS_NODE MERIDIAN_VAULT_ROOT=<copy>/library MERIDIAN_CONFIG_HOME=<copy>/config <build>/Meridian.app/Contents/MacOS/Meridian --user-data-dir=<copy>/user-data`
+   - Windows (PowerShell): `Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction Ignore; $env:MERIDIAN_VAULT_ROOT = '<copy>\library'; $env:MERIDIAN_CONFIG_HOME = '<copy>\config'; & '<build>\Meridian.exe' --user-data-dir='<copy>\user-data'`
+
+   `library.location`, `vault.today`, `project.list`, `project.get` for every
+   project, `wiki.home`, `wiki.proposals`, `wiki.signals` and `feed.list` must
+   all succeed. Never point a test at the original library, the App's user data
+   folder, or `~/.meridian`.
 5. **Owner review.** Hand the owner the unpacked build with a list of what to
    check, issue by issue. Nothing is tagged until the owner approves. Any change
    after that means a new build in a new folder and another review.
@@ -307,9 +326,10 @@ Each of these happened in this repository. The rule after each one is binding.
   generated files such as `graph.json` as rebuildable, and bump the plugin
   version with every plugin change.
 - **Removing a worktree almost deleted the main checkout's dependencies.**
-  Worktrees link `node_modules` as junctions. Remove each junction with
-  `cmd /c rmdir <path>` before removing the worktree, never with a recursive
-  delete.
+  Worktrees link `node_modules` to the main checkout, as a junction on Windows
+  and a symlink on macOS. Remove each link before removing the worktree, never
+  with a recursive delete: `cmd /c rmdir <path>` on Windows, `rm <path>` with no
+  `-r` and no trailing slash on macOS.
 - **Several Electron apps at once exhausted the desktop.** Launches failed with
   `0xC0000142`. Do not run end-to-end suites from several worktrees at once. An
   offscreen window can also time out on screenshots and report styles from
