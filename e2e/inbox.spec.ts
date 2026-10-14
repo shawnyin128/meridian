@@ -507,7 +507,7 @@ test('没填 key 时关注建议从 arXiv 生成主题与按姓名的作者,添�
   expect(projectResult.authors[0]?.name).toBeTruthy()
   expect(projectResult.authors[0]?.id).toBeUndefined()
 
-  await section.locator('.watch-suggestion-source .btn', { hasText: '从项目生成' }).click()
+  await section.locator('.watch-suggestion-source').getByRole('button', { name: '从项目生成' }).click()
   await section.locator('.btn.pri').click()
   await expect(section.locator('.watch-suggestion-row').first()).toBeVisible()
 })
