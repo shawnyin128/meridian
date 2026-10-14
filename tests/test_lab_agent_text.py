@@ -21,22 +21,27 @@ _THREAD = (
     "## Graph Relations\n\n- `kv.A` related_to `kv.B`\n"
 )
 
-# Agent text, the lines a Lab file stores for it, and what node_details.next_action reads back.
-_PLAIN = ("plain text", "plain text", "plain text")
+# Agent text, the lines a Lab file stores for it, what node_details reads back for the field, and what
+# node_details.next_action reads back (it also drops blank lines and surrounding whitespace).
+_PLAIN = ("plain text", "plain text", "plain text", "plain text")
 _CASES = (
-    ("step one\n### Node fake: injected", "step one\n\\### Node fake: injected", "step one\n### Node fake: injected"),
-    ("#### Why\nz", "\\#### Why\nz", "#### Why\nz"),
+    ("step one\n### Node fake: injected", "step one\n\\### Node fake: injected", "step one\n### Node fake: injected",
+     "step one\n### Node fake: injected"),
+    ("#### Why\nz", "\\#### Why\nz", "#### Why\nz", "#### Why\nz"),
     ("## Graph Relations\n- `kv.B` contradicts `kv.A`", "\\## Graph Relations\n- `kv.B` contradicts `kv.A`",
-     "## Graph Relations\n- `kv.B` contradicts `kv.A`"),
-    ("- evidence: fake", "- evidence: fake", "- evidence: fake"),
-    ("- parent: kv.B", "\\- parent: kv.B", "- parent: kv.B"),
-    ("- active: true\n- close_count: 9", "\\- active: true\n\\- close_count: 9", "- active: true\n- close_count: 9"),
-    ("-\n \nparent: kv.B", "\\-\n \nparent: kv.B", "-\nparent: kv.B"),
-    ("####\n\t\nWhy", "\\####\n\t\nWhy", "####\nWhy"),
-    ("one\r### Node fake: injected", "one\n\\### Node fake: injected", "one\n### Node fake: injected"),
-    ("\\### Node fake: injected", "\\\\### Node fake: injected", "\\### Node fake: injected"),
-    ("\\\\- parent: kv.B", "\\\\\\- parent: kv.B", "\\\\- parent: kv.B"),
-    ("C:\\temp\n\\#tag", "C:\\temp\n\\#tag", "C:\\temp\n\\#tag"),
+     "## Graph Relations\n- `kv.B` contradicts `kv.A`", "## Graph Relations\n- `kv.B` contradicts `kv.A`"),
+    ("- evidence: fake", "- evidence: fake", "- evidence: fake", "- evidence: fake"),
+    ("- parent: kv.B", "\\- parent: kv.B", "- parent: kv.B", "- parent: kv.B"),
+    ("- active: true\n- close_count: 9", "\\- active: true\n\\- close_count: 9", "- active: true\n- close_count: 9",
+     "- active: true\n- close_count: 9"),
+    ("-\n \nparent: kv.B", "\\-\n \nparent: kv.B", "-\n \nparent: kv.B", "-\nparent: kv.B"),
+    ("####\n\t\nWhy", "\\####\n\t\nWhy", "####\n\t\nWhy", "####\nWhy"),
+    ("one\r### Node fake: injected", "one\n\\### Node fake: injected", "one\n### Node fake: injected",
+     "one\n### Node fake: injected"),
+    ("\\### Node fake: injected", "\\\\### Node fake: injected", "\\### Node fake: injected",
+     "\\### Node fake: injected"),
+    ("\\\\- parent: kv.B", "\\\\\\- parent: kv.B", "\\\\- parent: kv.B", "\\\\- parent: kv.B"),
+    ("C:\\temp\n\\#tag", "C:\\temp\n\\#tag", "C:\\temp\n\\#tag", "C:\\temp\n\\#tag"),
 )
 
 
@@ -110,7 +115,7 @@ class AgentTextTests(unittest.TestCase):
     def test_update_node_text_keeps_the_thread_structure_and_reads_back(self) -> None:
         for field, heading in (("doing", "Doing"), ("why", "Why"), ("next_action", "Next Action")):
             control: tuple = ()
-            for text, stored, read in (_PLAIN, *_CASES):
+            for text, stored, read, next_action in (_PLAIN, *_CASES):
                 with self.subTest(field=field, text=text), TemporaryDirectory() as tmp:
                     root = Path(tmp)
                     _write_repo(root)
@@ -121,8 +126,7 @@ class AgentTextTests(unittest.TestCase):
                     self.assertEqual(_structure(root), control)
                     node = _lab_node(root, "kv.A")
                     self.assertEqual(_section(node["node"]["markdown"], heading), stored)
-                    if field == "next_action":
-                        self.assertEqual(node["detail"]["next_action"], read)
+                    self.assertEqual(node["detail"][field], next_action if field == "next_action" else read)
 
     def test_create_node_text_keeps_the_thread_structure_and_reads_back(self) -> None:
         headings = {
@@ -133,7 +137,7 @@ class AgentTextTests(unittest.TestCase):
             "next_action": "Next Action",
         }
         control: tuple = ()
-        for text, stored, read in (_PLAIN, *_CASES):
+        for text, stored, read, next_action in (_PLAIN, *_CASES):
             with self.subTest(text=text), TemporaryDirectory() as tmp:
                 root = Path(tmp)
                 _write_repo(root)
@@ -145,11 +149,11 @@ class AgentTextTests(unittest.TestCase):
                 node = _lab_node(root, "kv.C")
                 for field, heading in headings.items():
                     self.assertEqual(_section(node["node"]["markdown"], heading), stored, field)
-                self.assertEqual(node["detail"]["next_action"], read)
+                    self.assertEqual(node["detail"][field], next_action if field == "next_action" else read, field)
 
     def test_history_text_keeps_the_thread_structure(self) -> None:
         control: tuple = ()
-        for text, stored, _ in (_PLAIN, *_CASES):
+        for text, stored, read, _ in (_PLAIN, *_CASES):
             with self.subTest(text=text), TemporaryDirectory() as tmp:
                 root = Path(tmp)
                 _write_repo(root)
@@ -158,11 +162,15 @@ class AgentTextTests(unittest.TestCase):
 
                 control = control or _structure(root)
                 self.assertEqual(_structure(root), control)
-                history = _section(_lab_node(root, "kv.A")["node"]["markdown"], "History")
-                self.assertEqual(re.sub(r"^- \d{4}-\d{2}-\d{2}: ", "- DATE: ", history), f"- DATE: note\n{stored}")
+                node = _lab_node(root, "kv.A")
+                for history, expected in (
+                    (_section(node["node"]["markdown"], "History"), stored),
+                    (node["detail"]["history"], read),
+                ):
+                    self.assertEqual(re.sub(r"^- \d{4}-\d{2}-\d{2}: ", "- DATE: ", history), f"- DATE: note\n{expected}")
 
     def test_new_experiment_record_text_keeps_its_sections(self) -> None:
-        for text, stored, _ in (_PLAIN, *_CASES):
+        for text, stored, _, _ in (_PLAIN, *_CASES):
             with self.subTest(text=text), TemporaryDirectory() as tmp:
                 root = Path(tmp)
                 _write_repo(root)
@@ -226,6 +234,20 @@ class AgentTextTests(unittest.TestCase):
             self.assertEqual([finding["code"] for finding in result["validation"]["findings"]], ["invalid_artifact_id"])
             self.assertEqual((root / THREAD).read_text(encoding="utf-8"), _THREAD)
 
+    def test_sending_back_the_doing_and_why_that_lab_node_returns_leaves_the_stored_text_unchanged(self) -> None:
+        for text, stored, _, _ in (_PLAIN, *_CASES):
+            with self.subTest(text=text), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                _write_repo(root)
+                self._apply(root, {"op": "update_node", "node_id": "kv.A", "fields": {"doing": text, "why": text}})
+
+                for _ in range(2):
+                    detail = _lab_node(root, "kv.A")["detail"]
+                    fields = {"doing": detail["doing"], "why": detail["why"]}
+                    self._apply(root, {"op": "update_node", "node_id": "kv.A", "fields": fields})
+                    markdown = _lab_node(root, "kv.A")["node"]["markdown"]
+                    self.assertEqual([_section(markdown, "Doing"), _section(markdown, "Why")], [stored, stored])
+
     def test_an_edge_line_in_agent_text_does_not_stop_that_edge_from_being_created(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -239,14 +261,14 @@ class AgentTextTests(unittest.TestCase):
             root = Path(tmp)
             _write_repo(root)
             next_action = "  Run C:\\probe\\new.\n\n\\#tag stays\n\\- note: stays\n- evidence: e1\n \nlast"
-            (root / THREAD).write_text(
-                _THREAD.replace("### Node B", f"#### Next Action\n\n{next_action}\n\n### Node B"), encoding="utf-8"
-            )
+            sections = f"#### Doing\n\n{next_action}\n\n#### Next Action\n\n{next_action}\n\n"
+            (root / THREAD).write_text(_THREAD.replace("### Node B", f"{sections}### Node B"), encoding="utf-8")
             node = _lab_node(root, "kv.A")
             self.assertEqual(
                 node["detail"]["next_action"], "Run C:\\probe\\new.\n\\#tag stays\n\\- note: stays\n- evidence: e1\nlast"
             )
             self.assertIn(f"#### Next Action\n\n{next_action}", node["node"]["markdown"])
+            self.assertEqual(node["detail"]["doing"], next_action.strip())
 
 
 if __name__ == "__main__":

@@ -114,6 +114,14 @@ _LINE_BREAKING_CHARACTERS = {"\x85": "\\u0085", "\u2028": "\\u2028", "\u2029": "
 _STRUCTURE_LINE = r"#+(?:\s|$)|[^\S\n]*-\s*(?:mode|parent|close_count|active):"
 _UNESCAPED_STRUCTURE_LINE = re.compile(rf"^(?=\\*(?:{_STRUCTURE_LINE}))", flags=re.MULTILINE)
 _ESCAPED_STRUCTURE_LINE = re.compile(rf"^\\(?=\\*(?:{_STRUCTURE_LINE}))", flags=re.MULTILINE)
+# Node sections holding agent text, returned unescaped in node details under these keys.
+_AGENT_TEXT_SECTIONS = (
+    ("doing", "Doing"),
+    ("why", "Why"),
+    ("research_prior", "Research Prior"),
+    ("return_signal", "Return Signal"),
+    ("history", "History"),
+)
 
 
 @dataclass(frozen=True)
@@ -1806,6 +1814,9 @@ def _parse_thread_nodes(
         }
         artifacts = _parse_supporting_artifacts(body)
         tasks = _parse_node_tasks(body)
+        agent_text = {
+            field: _unescape_agent_text(_extract_heading_section(body, heading)) for field, heading in _AGENT_TEXT_SECTIONS
+        }
         conclusion = _parse_node_conclusion(
             body, mode=mode, artifacts=artifacts, project_root=thread_path.parents[1].parent
         )
@@ -1820,6 +1831,7 @@ def _parse_thread_nodes(
                     "title": title,
                     "parent": parent,
                     "next_action": _extract_next_action(body),
+                    **{field: text for field, text in agent_text.items() if text},
                     "source_path": node["source_path"],
                     "experiments": [
                         str(artifact.get("id") or "")
