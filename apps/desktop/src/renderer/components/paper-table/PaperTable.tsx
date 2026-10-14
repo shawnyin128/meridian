@@ -41,11 +41,15 @@ import { ResearchMap } from './ResearchMap.js'
 import './PaperTable.css'
 
 type ChipKey = 'topics'
-/** The title column is rendered separately in the table, and the BodyKey is a built-in column to the right of it. */
+/** The title column renders separately; a BodyKey is a built-in column to its right. */
 export type BodyKey = 'short' | 'authors' | 'y' | 'venue' | 'rating' | 'st' | 'remark' | ChipKey
 type ColKey = 't' | BodyKey | 'x'
 
-/** A column drawn on the table at this time. Custom columns come with their type and options, and are not sorted. Labels are not stored here: they come from the catalog for a built-in column, or `column.label` for a custom one. */
+/**
+ * A column the table shows now. Custom columns carry their type and options and cannot be sorted.
+ * Labels are not stored here: they come from the catalog for a built-in column, or `column.label`
+ * for a custom one.
+ */
 type ShownCol =
   | { k: BodyKey; sort?: SortKey; column?: undefined }
   | { k: string; sort?: undefined; column: PaperColumn }
@@ -66,7 +70,7 @@ export const COLUMNS: { k: BodyKey; sort?: SortKey }[] = [
   { k: 'remark' },
 ]
 
-/** Width of the last column: The delete button at the end of the row shares this column with the column + at the end of the table header and the column setting gear. */
+/** Width of the last column: the row's delete button, the header's + and the column gear share it. */
 const ROWX_WIDTH = 52
 
 const DEFAULT_WIDTHS: Record<ColKey, number> = {
@@ -75,11 +79,11 @@ const DEFAULT_WIDTHS: Record<ColKey, number> = {
   x: ROWX_WIDTH,
 }
 
-/** The column width of the custom column is the same as the demo: columns that have not been measured will always be this wide. */
+/** Custom column width, as in the demo: a column that was never resized stays this wide. */
 const CUSTOM_WIDTH = 140
 const MIN_COLUMN_WIDTH = 56
 
-/** Lower limit when manually dragging; window scaling can still be made proportionally narrower by the browser. */
+/** Lower limit for a manual drag; the browser can still shrink columns further as the window narrows. */
 const minimumWidth = (key: string): number => key === 'x' ? ROWX_WIDTH : MIN_COLUMN_WIDTH
 
 type WidthDrag = {
@@ -95,14 +99,18 @@ const RESEARCH_MAP_LIMIT = 200
 
 const ARROW_PATH: Record<SortDirection, string> = { asc: 'M6 15l6-6 6 6', desc: 'M6 9l6 6 6-6' }
 
-/** The values filled in a cell at the moment: the text column and the selection column store one value, the multi-select column stores one column, and the unfilled ones are not in the mapping. */
+/**
+ * The values a cell holds now: text and single-choice columns store one value, a multi-choice column
+ * stores a list, and an empty cell is absent from the map.
+ */
 function cellValues(held: PaperCell | undefined): string[] {
   return held === undefined ? [] : Array.isArray(held) ? held : [held]
 }
 
 /**
- * This time the column configuration changes which banner should be reported, and if there is no one to report, it will be undefined. Five levels are selected in order: deleted columns, added columns,
- * The name was changed, the grouping was changed, and only the options were changed.
+ * The banner for this column configuration change, or undefined when there is none. The first match
+ * wins, in this order: a deleted column, an added column, a renamed column, changed groups, a changed
+ * column order, and otherwise changed options.
  */
 export function columnsNote(
   prev: PaperColumns, next: PaperColumns, notices: Catalog['papers']['notices'],
@@ -119,7 +127,10 @@ export function columnsNote(
   return undefined
 }
 
-/** The complete order of all columns except the title; the old configuration can only remember part of it, and the missing items are added at the end in the order of declaration. */
+/**
+ * The full order of all columns except the title. An older configuration may list only some of them;
+ * the missing ones follow at the end in declaration order.
+ */
 export function orderedColumns(columns: PaperColumns): ShownCol[] {
   const all: ShownCol[] = [
     ...COLUMNS,
@@ -157,17 +168,20 @@ function SortArrow({ direction }: { direction: SortDirection }) {
 }
 
 /**
- * The `+` at the end of the label grid: click to open it and change it to the input box. The association layer lists the values ​​that are not in this article in the entire library. Press Enter or click the association item.
- * Handed to `onAdd`. `onAdd` returns whether the writing is completed: it is closed only after the writing is completed. When the writing is rejected, the input box and the typed words are kept. Esc,
- * Click outside the input box and association layer, and when the focus leaves them, they will be folded, and the typed words will not be retained; when submitting on the way, clicking outside and leaving the focus will not
- * Put it away, and don’t post it a second time before adding it once. Open is the `+` button's own `setOpen(true)`, close all to
- * `useInlineDraft`, Radix only handles floating layer positioning and rendering, and does not participate in opening and closing decisions; the vision is for demo.
- * .tagadd/.tagin/tagSug.
- * The association word list is only fetched by papers.facets when it is opened, so what you see every time is the current value of the entire database.
+ * The `+` at the end of a topics cell: clicking it turns it into an input. Its candidate list shows
+ * the vault's values this paper does not have yet; Enter or clicking a candidate hands the value to
+ * `onAdd`, which returns whether the write completed. The input closes only then; a rejected write
+ * keeps the input and the typed text. Esc, a press outside the input and its candidates, or focus
+ * leaving them closes it and drops the typed text; while a submission is pending, neither an outside
+ * press nor focus leaving closes it, and no second add is sent before the first one lands. The `+`
+ * button opens it with its own `setOpen(true)` and all closing goes through `useInlineDraft`; Radix
+ * only positions and renders the popover and has no say in opening or closing. The styling follows
+ * the demo's .tagadd/.tagin/tagSug. The candidates are fetched with papers.facets each time it opens,
+ * so they are always the vault's current values.
  */
 function TagAdd({ field, values, onAdd, onError }: {
   field: ChipKey
-  /** Values already available in this article. */
+  /** Values this paper already has. */
   values: string[]
   onAdd: (value: string) => Promise<boolean>
   onError: (e: Error) => void
@@ -194,7 +208,7 @@ function TagAdd({ field, values, onAdd, onError }: {
     : []
   const isNew = typed !== '' && !values.includes(typed) && !hits.some((v) => v.toLowerCase() === needle)
 
-  // When closed, the input box is not rendered, the input is empty, and the out-of-focus and out-of-focus paths are ignored.
+  // While closed the input is not rendered and its ref is null, so the outside and focus paths do nothing.
   const draft = useInlineDraft({
     row: input, triggers: NO_TRIGGERS, onCancel: close,
     onSubmit: () => (typed === '' ? false : onAdd(typed)),
@@ -245,8 +259,9 @@ function TagAdd({ field, values, onAdd, onError }: {
 }
 
 /**
- * Reading status in the status grid: Click to open and list four files, select one to write back to this article. The visual is demo's .stchip with it
- * The one you click on selects the elastic layer, and the opening and closing belongs to Radix. The "Reading" file is marked separately on the table, the same as demo.
+ * The reading status in a Status cell: clicking it opens the four statuses, and picking one writes it
+ * back to this paper. The styling is the demo's .stchip and the popover it opens; Radix owns opening
+ * and closing. The "Reading" status is highlighted in the table, as in the demo.
  */
 function ReadStateChip({ current, onPick }: {
   current: ReadState
@@ -274,7 +289,10 @@ function ReadStateChip({ current, onPick }: {
   )
 }
 
-/** The reading status shortcut in the top column of the paper library; it falls directly into the existing readState facet without creating a second set of "unread areas". */
+/**
+ * The reading status shortcut in the paper library toolbar. It applies the existing readState facet
+ * instead of adding a second "unread" area.
+ */
 function ReadStateFilter({ current, onPick }: {
   current: ReadState | null
   onPick: (readState: ReadState | null) => void
@@ -307,15 +325,19 @@ function ReadStateFilter({ current, onPick }: {
   )
 }
 
-/** Double-click the blank space or text of the row to open the reader; buttons and editors within the grid retain their own double-click semantics. */
+/**
+ * Double-clicking a row's blank space or text opens the reader; buttons and editors inside a cell
+ * keep their own double-click behaviour.
+ */
 function opensPaperFrom(target: EventTarget | null): boolean {
   return !(target instanceof Element)
     || target.closest('button, input, select, textarea, [contenteditable="true"]') === null
 }
 
 /**
- * In-place editing of the text column: press Enter to hand over the words in the input box to `onSave`, Esc, click outside the `cell` or leave the focus
- * In this frame, `onCancel` is adjusted, and the typed words are not written. `onSave` returns whether this cell is used up this time.
+ * In-place editing of a text cell: Enter hands the input's text to `onSave`; Esc, a press outside
+ * `cell`, or focus leaving it calls `onCancel` without writing the typed text. `onSave` returns
+ * whether this edit is finished.
  */
 function TextCellEdit({ cell, initial, onSave, onCancel }: {
   cell: RefObject<HTMLTableCellElement | null>
@@ -339,12 +361,14 @@ function TextCellEdit({ cell, initial, onSave, onCancel }: {
 }
 
 /**
- * Paper library table: filtering and grouping, paging, column width dragging, freezing the first column and table header, hovering over long cells to expand in place,
- * Click on a row to open the details panel, add a label at the end of the label grid, delete the end of the row, manage columns in the column menu at the end of the table header, and customize columns by type
- * To different grid editors. form forever
- * Only holds the current page: papers.list is obtained by page, grouping values and counting are obtained by papers.facets,
- * Which columns are displayed are retrieved from papers.columns.
- * When another screen jumps in, it falls on the title of that article: the title enters the filter box, and it is the only one left in the table.
+ * The paper library table: filtering and grouping, paging, column-width dragging, a frozen first
+ * column and header, long cells expanding in place on hover, a click on a row opening the detail
+ * panel, adding a topic at the end of the topics cell, deleting at the end of a row, managing
+ * columns from the menu at the end of the header, and a cell editor for each custom column type.
+ * The table holds only the current page: papers.list fetches it by page, papers.facets supplies the
+ * group values and counts, and papers.columns says which columns show.
+ * A jump from another screen lands on that paper's title: the title goes into the filter box, which
+ * leaves only that paper in the table.
  */
 export function PaperTable() {
   const m = useMessages()
@@ -365,16 +389,19 @@ export function PaperTable() {
   const [widths, setWidths] = useState<Record<string, number>>(DEFAULT_WIDTHS)
   const [columns, setColumns] = useState<PaperColumns>(
     { hidden: [], custom: [], groups: [...DEFAULT_PAPER_GROUPS] })
-  // The last confirmed column set of core: each step in the column set chain counts it as its own write, and does not count the columns in the closure at the moment of rendering.
+  // Core's last confirmed column set. Every step on the column chain computes its write from this,
+  // not from the columns captured in a render's closure.
   const confirmedColumns = useRef(columns)
-  // The tail of the chain of column sets: the writing of retrieving column configurations and changing column sets are arranged behind it. Only when the previous one is settled, it is the turn of the next one.
+  // Tail of the column chain: column configuration refetches and column set writes queue behind it,
+  // each starting only after the previous one has settled.
   const columnChain = useRef<Promise<unknown>>(Promise.resolve())
   const [newCol, setNewCol] = useState(false)
   const colAdd = useRef<HTMLButtonElement>(null)
   const newColCell = useRef<HTMLTableCellElement>(null)
-  // The identity of this column creation attempt; if the placeholder is closed in any way (Esc, click outside, focus away, details panel opened), it will be replaced by null
+  // Identity of the current column-creation attempt; closing the draft in any way (Esc, outside
+  // press, focus leaving, opening the detail panel) replaces it with null.
   const columnDraftToken = useRef<object | null>(null)
-  // The custom grid being edited in place
+  // The custom cell being edited in place
   const [editingCell, setEditingCell] = useState<{ id: string; key: string } | null>(null)
   const editingTd = useRef<HTMLTableCellElement>(null)
   const [detail, setDetail] = useState<PaperRow | null>(null)
@@ -390,7 +417,8 @@ export function PaperTable() {
   const dragged = useRef(false)
   const table = useRef<HTMLTableElement>(null)
   const consumed = useRef(0)
-  // The writing queue of the cell being edited: the value uploaded in the chain is the value settled in the previous step. If it is broken, null will be passed - if it is broken, it will be invalid this time and will not be sent.
+  // Write queue of the cell being edited: each link resolves to the values the previous step settled
+  // on, or to null when a step failed, which voids this pick so it is not sent.
   const queue = useRef<{
     cell: { id: string; key: string }
     chain: Promise<string[] | null>
@@ -401,14 +429,16 @@ export function PaperTable() {
   const paperCount = usePaperCount()
   const screen = useScreen()
   const { jump, open } = useJump()
-  // It is incremented after the write operation, so that the two effects of grouping and fetching are run again, corresponding to the renderLibRows adjusted after the demo is submitted.
+  // The revision is bumped after a write so the grouping and row-fetch effects run again, like the
+  // demo's renderLibRows call after a submit.
   const { revision, bump } = useVaultRevision()
   const reportError = useCallback((e: Error) => setError(e.message), [])
   const closeDetail = useCallback(() => setDetail(null), [])
   const write = useVaultWrite()
   const detailId = detail?.id
 
-  // The writing (hanging project) on the details panel only allows the entire library version to be incremented, and the open article must be retrieved from the library.
+  // A write in the detail panel (linking a project) only bumps the vault revision, so the open paper
+  // must be refetched.
   useEffect(() => {
     if (detailId === undefined) return
     void papers.get(detailId).then(setDetail).catch(reportError)
@@ -424,23 +454,28 @@ export function PaperTable() {
 
   const filter = q.trim()
   const pageCount = Math.max(1, Math.ceil(total / size))
-  // The demo's pagerHTML clips the page number back to the last page when rendering, and does not wait for the number to come back before correcting it.
+  // As in the demo's pagerHTML, a page past the end renders as the last page at once instead of
+  // waiting for the refetched count to correct it.
   const shownPage = Math.min(page, pageCount)
 
-  // In ordinary grouping, select a value first. Before selection, there is only the index layer, no rows are taken, and no paging bar is displayed. After filtering, when there is no row left for the selected value.
-  // Also returns the index level. The reading status is a direct filter. When a status that is currently 0 is selected, an empty table will be drawn instead of a grouped index.
+  // With an ordinary grouping, the user picks a value first: until then only the group index shows,
+  // no rows are fetched and no pager is drawn. A filter that leaves the picked value without rows also
+  // returns to the index. Reading status is a direct filter: picking a status that has no papers now
+  // draws an empty table instead of the group index.
   const listed = group === 'none'
     || (sel !== null && (group === 'readState' || facets.some((f) => f.value === sel)))
 
   useEffect(() => {
-    // The fetched column configuration is also arranged into the chain of the column set: once it is written on the road, wait until it lands before sending it. The returned configuration is the basis for subsequent write calculation loads.
+    // Fetching the column configuration also queues on the column chain, so it waits for a write in
+    // flight to land. The fetched configuration is the base later writes compute from.
     columnChain.current = columnChain.current.then(() => papers.columns().then((live) => {
       confirmedColumns.current = live
       setColumns(live)
     }).catch(reportError))
   }, [revision, reportError])
 
-  // When editing a cell, the write queue of the previous cell will be discarded, and the first submission of the next cell will be restarted according to the current column configuration and row.
+  // Editing another cell drops the previous cell's write queue; the next cell's first pick computes
+  // from the current column configuration and row again.
   useEffect(() => { queue.current = null }, [editingCell])
 
   useEffect(() => {
@@ -484,7 +519,8 @@ export function PaperTable() {
   const reentry = useScreenReentry()
   useEffect(() => { setDetail(null) }, [reentry])
 
-  // When jumped from another screen, the landing point is the title of a paper. Fill in the filter box and return to the first page. It is the same as go in the demo search.
+  // A jump from another screen lands on a paper title: put it in the filter box and go back to the
+  // first page, like `go` in the demo's search.
   useEffect(() => {
     if (jump === null || jump.seq === consumed.current) return
     consumed.current = jump.seq
@@ -495,22 +531,24 @@ export function PaperTable() {
   const backToValues = useCallback(() => { setSel(null); setPage(1) }, [])
   const backToUngrouped = useCallback(() => { setGroup('none'); setSel(null); setPage(1) }, [])
 
-  /** What is this grouping called on the interface: the column name of the custom column takes precedence, and then the built-in field table is checked, it is not the key itself. */
-  // groupNames is an ordinary object. If hasOwn is not checked, keys such as toString will get the function on Object.prototype.
+  /** A grouping's name in the UI: a custom column's label, else the built-in group name, else the key. */
+  // groupNames is a plain object; without the hasOwn check, keys such as toString would return
+  // functions from Object.prototype.
   const labelOf = (key: string) => columns.custom.find((c) => c.key === key)?.label
     ?? (Object.hasOwn(m.papers.groupNames, key) ? m.papers.groupNames[key as keyof typeof m.papers.groupNames] : key)
 
   useCrumbTail(useMemo(() => {
     if (view === 'research-map') return []
     if (group === 'none') return []
-    // The order of table lookup is consistent with labelOf; labelOf is a new reference every time it is rendered, and entering the dependency array will cause the breadcrumbs to be reset every frame.
+    // Same lookup order as labelOf. labelOf is a new function every render, and as a dependency it
+    // would reset the breadcrumbs every frame.
     const label = columns.custom.find((c) => c.key === group)?.label
       ?? (Object.hasOwn(m.papers.groupNames, group)
         ? m.papers.groupNames[group as keyof typeof m.papers.groupNames] : group)
     return sel === null ? [{ text: label }] : [{ text: label, onClick: backToValues }, { text: sel }]
   }, [view, group, sel, columns, backToValues, m]), backToUngrouped)
 
-  // When grouping by a certain column, it is unchecked, deleted, or changed to a text column: return "None" on the spot
+  // When the grouped-by column is unchecked, deleted or made a text column, fall back to "None" at once
   useEffect(() => {
     if (group !== 'none' && !columns.groups.includes(group)) {
       setGroup('none')
@@ -521,8 +559,10 @@ export function PaperTable() {
 
   useEscapeLayer(detail !== null, closeDetail)
 
-  // What is dragged is the dividing line between the two columns: the left column and the adjacent right column increase and decrease, the total width remains unchanged, and the column further to the right will not follow.
-  // When starting to drag, first freeze the width of each column actually displayed by the browser to prevent the space left by width:100% from being re-distributed to the entire table.
+  // A drag moves the boundary between two columns: the left column and its right neighbour grow and
+  // shrink by the same amount, so the total width stays fixed and columns further right do not move.
+  // A drag first freezes the widths the browser actually shows, so the slack left by width:100% is
+  // not redistributed across the table.
   useEffect(() => {
     const move = (e: MouseEvent) => {
       const d = drag.current
@@ -586,12 +626,12 @@ export function PaperTable() {
       let hidden = 0
       let real = 0
       ;[...ci.children].forEach((chip, i) => {
-        // The first label is always retained and is truncated if necessary.
+        // The first chip always stays, truncated if needed.
         if (i === 0) return
         if (hidden > 0 || chip.getBoundingClientRect().right > limit) {
           chip.classList.add('hid')
           hidden++
-          // The + at the end is not the content, and it will not be counted as +N if it is folded in.
+          // The trailing + is not content, so folding it away does not count toward +N.
           if (!chip.classList.contains('tagadd')) real++
         }
       })
@@ -619,7 +659,10 @@ export function PaperTable() {
     })
   }, [rows, columns, widths, detail, screen, editingCell, m])
 
-  /** How wide is this column now? The dragged columns are dragged out, the built-in columns that have not been dragged are DEFAULT_WIDTHS, and the custom columns are all 140. */
+  /**
+   * A column's current width: its dragged width once dragged, otherwise DEFAULT_WIDTHS for a built-in
+   * column and 140 for a custom one.
+   */
   const widthOf = (k: string) => widths[k] ?? CUSTOM_WIDTH
 
   const startDrag = (e: ReactMouseEvent, k: string) => {
@@ -672,7 +715,8 @@ export function PaperTable() {
   }
 
   const remove = (id: string) => {
-    // After deleting the demo, the length of the list will be reduced by one item. The page numbers will be clipped back in the same frame, and an empty list will not be drawn first.
+    // As in the demo, a delete shortens the list by one item, so the page number clamps back in the
+    // same frame instead of drawing an empty list first.
     void write(papers.delete(id).then(() => {
       if (detail?.id === id) setDetail(null)
       setTotal((t) => t - 1)
@@ -680,8 +724,9 @@ export function PaperTable() {
   }
 
   /**
-   * The browser file selector only gives the Renderer a copy of the File explicitly selected by the user; the content is cloned in a Uint8Array structure
-   * To Core, the warehousing identity, checksums, and disk writes all stay in Core. After success, drop the new paper in the table and open the details.
+   * The browser file picker gives the renderer only a copy of the File the user explicitly chose. Its
+   * content goes to Core as a structured-cloned Uint8Array; the paper's vault identity, checksum and
+   * disk writes all stay in Core. On success, the new paper shows in the table with its details open.
    */
   const uploadPdf = async (file: File) => {
     if (file.size > MAX_PDF_UPLOAD_BYTES) {
@@ -735,14 +780,15 @@ export function PaperTable() {
     void uploadFiles([...event.dataTransfer.files])
   }
 
-  /** Close the frame you are editing. */
+  /** Close the cell being edited. */
   const closeCell = () => {
     setEditingCell(null)
   }
 
   /**
-   * When the text cell is entered: if the value does not change, just close it, otherwise write back to this cell. Return this time to see if this space has been used up - no change or
-   * It is true if it is written, and it is false if it is rejected.
+   * Enter in a text cell: an unchanged value just closes it, otherwise the value is written back to
+   * the cell. Returns whether the edit is finished: true when unchanged or written, false when the
+   * write is rejected.
    */
   const saveCell = (p: PaperRow, k: string, value: string): boolean | Promise<boolean> => {
     if (value.trim() === (p.custom[k] ?? '')) return true
@@ -750,7 +796,10 @@ export function PaperTable() {
       { note: m.papers.notices.updated })
   }
 
-  /** Edit an essay: Write it into the reading record, which is the same paragraph as the right column of the reader, and do not record recent changes. */
+  /**
+   * Edits the remark: writes it to the reading record, the same text as in the reader's side panel,
+   * without an entry in Recent Changes.
+   */
   const saveRemark = (p: PaperRow, value: string): boolean | Promise<boolean> => {
     if (value.trim() === (p.remark ?? '').replace(/[\r\n]/g, '').trim()) return true
     return write(papers.mutateReading(p.id, { kind: 'remark.set', text: value }), {
@@ -759,11 +808,15 @@ export function PaperTable() {
   }
 
   /**
-   * Write back the option that moved up this cell: `created` is true, first add it to this column (arrange it into the chain of the column set, click on that moment
-   * The confirmed column set is calculated), and then `papers.update` changes this grid - replace the single-select column with it, and move it again. The current value is cleared, and the multi-select column
-   * Be added or removed. After writing the single selection, close the editing state, keep the multiple selections and continue to choose; write it as a newspaper banner. If any step is rejected, I will not write further this time.
-   * Re-acquire the columns and rows of this grid from core to correct it. The unsent selections behind it are also invalidated. Only one toast is reported in the whole process.
-   * When the same grid is submitted consecutively, the next calculation will be done after it is its turn and the previous one is really settled, instead of calculating the value at the moment of submission.
+   * Writes back the option picked in this cell. With `created`, the option is first added to this
+   * column (queued on the column chain and computed from the column set confirmed at that moment);
+   * then `papers.update` changes the cell: a single-choice column takes the option, or is cleared when
+   * its current value is picked again, and a multi-choice column adds or removes it. After a
+   * single-choice write the editor closes, while a multi-choice one stays open for more picks; a write
+   * shows the banner. If any step is rejected, this pick writes nothing further and the cell's column
+   * and row are refetched from Core to correct it; the unsent picks queued after it are voided too,
+   * and the whole sequence shows one toast. Consecutive picks in the same cell each compute their
+   * values when their turn comes and the previous pick has truly settled, not when they are submitted.
    */
   const savePick = (p: PaperRow, column: PaperColumn, value: string, created: boolean) => {
     const q = queue.current?.cell.id === p.id && queue.current.cell.key === column.key
@@ -772,16 +825,19 @@ export function PaperTable() {
         cell: { id: p.id, key: column.key },
         chain: Promise.resolve<string[] | null>(cellValues(p.custom[column.key])),
       }
-    // The queue will be reset to zero only when the last person in the queue is selected, and the next new selection will start from the current row again.
-    // You won't always be stuck in "cancel" - the callback itself must return to zero when it throws an error and reaches the following catch, otherwise all subsequent selections in this cell will be silently canceled.
+    // The queue resets only when its last pick finishes, so the next new pick starts again from the
+    // current row. It must not stay stuck voiding: the callback must also reset when it throws into
+    // the catch below, or every later pick in this cell would be silently voided.
     const clearIfLatest = () => { if (queue.current === entry) queue.current = null }
     const chain: Promise<string[] | null> = q.chain.then(async (values) => {
-      // Whichever step in the previous row is broken will be invalidated this time and will not be issued - that step is already being retaken from core to correct this grid.
+      // If any earlier step in this cell failed, this pick is voided and not sent; that step is
+      // already refetching the cell from Core to correct it.
       if (values === null) { clearIfLatest(); return null }
       const next = values.includes(value)
         ? values.filter((v) => v !== value)
         : column.type === 'select' ? [value] : [...values, value]
-      // Core's write verification takes the column's options and compares the value of the grid. New options must be listed first, and then written into the grid.
+      // Core validates a cell's value against the column's options, so a new option must be added to
+      // the column before it is written into the cell.
       const added = !created || await writeColumns(async (base) => {
         const withOption = {
           ...base,
@@ -797,7 +853,8 @@ export function PaperTable() {
         if (column.type === 'select') closeCell()
         return next
       }
-      // Rejected: The assumption in this box no longer matches the core, so it is better to retake it here; the toast has been reported from the rejected step.
+      // Rejected: this cell's assumptions no longer match Core, so refetch it; the rejected step
+      // already showed the toast.
       clearIfLatest()
       bump()
       return null
@@ -807,10 +864,12 @@ export function PaperTable() {
   }
 
   /**
-   * Arrange a column set change to the end of the chain: when it is its turn, hand over the core's last confirmed column set to `step`, `step` to do its own writing
-   * And hand back the written column set. Once it is done, let it take effect, call `onApplied` (if given) synchronously at the same moment, and return true; `step`
-   * When throwing or rejecting, report the original message as a toast, retrieve a correction from the core, and return false. The next step always waits for the previous step together with its
-   * Start after all corrections are settled.
+   * Queues a column set change at the end of the column chain. When its turn comes, `step` receives
+   * Core's last confirmed column set, does its own write and returns the written column set, which
+   * then takes effect; `onApplied` (if given) is called synchronously at that moment, and the result
+   * is true. When `step` throws or rejects, its original message shows as a toast, the column set is
+   * refetched from Core to correct it, and the result is false. Each step starts only after the
+   * previous step and its correction have settled.
    */
   const writeColumns = (
     step: (base: PaperColumns) => Promise<PaperColumns>, onApplied?: () => void,
@@ -836,8 +895,10 @@ export function PaperTable() {
   }
 
   /**
-   * A change in the column configuration: queue into the chain of column sets, press `update` when it is your turn to calculate the new configuration from the last confirmed column set and hand it to the core;
-   * It will take effect only after it is written (`onApplied` is called synchronously at the same moment), the banner will be displayed, and the deleted column will be lost together with its column width. Return is written as no.
+   * A column configuration change, queued on the column chain: when its turn comes, `update` computes
+   * the new configuration from the last confirmed column set and it is handed to Core. It takes effect
+   * only once written (`onApplied` is called synchronously at that moment), shows its banner, and
+   * drops a deleted column's width along with the column. Returns whether it was written.
    */
   const changeColumns = (
     update: (base: PaperColumns) => PaperColumns, onApplied?: () => void,
@@ -858,9 +919,11 @@ export function PaperTable() {
   }, onApplied)
 
   /**
-   * The column name filled in at the end of the table header and the selected type: arranged in a chain of column sets. When it is your turn, write one column at a time. The key is confirmed at that moment.
-   * Column aggregation calculation. Return to see if the placeholder is used up: the column name is empty and the same name as the current column on the table is false; otherwise, the column is created this time
-   * It was written, and the space was not abandoned before it was written.
+   * The column name typed at the end of the header and the selected type, queued on the column chain;
+   * when its turn comes, one column is written, its key computed from the column set confirmed at that
+   * moment. Returns whether the draft is consumed: false for an empty name or one a column in the
+   * table already uses; otherwise true once this column was written and the draft was not abandoned
+   * before that.
    */
   const createColumn = (label: string, type: PaperColumn['type']): boolean | Promise<boolean> => {
     const builtinLabels = [m.papers.columns.title, ...COLUMNS.map((c) => m.papers.columns[c.k])]
@@ -869,14 +932,17 @@ export function PaperTable() {
     columnDraftToken.current = token
     return changeColumns(
       (base) => ({ ...base, custom: [...base.custom, { key: columnKey(label, base), label, type, options: [] }] }),
-      // Collect the placeholder in the same submission as the new column; if it has been abandoned this time (the token has been replaced), the placeholder is no longer there, and the newly opened one will not be collected.
+      // Close the draft in the same commit as the new column. If this attempt was abandoned (the
+      // token was replaced), its draft is already gone, and a newly opened one must stay open.
       () => { if (columnDraftToken.current === token) setNewCol(false) },
     ).then((ok) => ok && columnDraftToken.current === token)
   }
 
   /**
-   * Write the column set that is modified together with the paper at once: arrange the chain into the column set. After `op` is written, retrieve the column set from core, re-fetch the rows on the table and report
-   * `note`; When the toast is rejected, the original message of core will be reported, and the column will remain unchanged. Return is written as no.
+   * Writes a column set change that also rewrites papers, queued on the column chain: once `op` is
+   * written, refetches the column set from Core, refetches the table's rows and shows `note`. When it
+   * is rejected, Core's original message shows as a toast and the columns stay unchanged. Returns
+   * whether it was written.
    */
   const writeColumnsAndCells = (op: () => Promise<void>, note: string): Promise<boolean> =>
     writeColumns(async () => {
@@ -887,17 +953,18 @@ export function PaperTable() {
       return live
     })
 
-  /** Changing the name of an option: All papers filled with it in the database are changed together, which is considered an undoable change. */
+  /** Renames an option: every paper in the vault that holds it changes too, as one undoable change. */
   const renameOption = (key: string, from: string, to: string) =>
     writeColumnsAndCells(() => papers.renameOption(key, from, to), m.papers.notices.optionRenamed)
 
-  /** Change the type of a column: All cells in the library are changed together according to the conversion rules, which is considered an undoable change. */
+  /** Changes a column's type and converts every cell in the vault by its rules, as one undoable change. */
   const setColumnType = (key: string, type: PaperColumn['type']) =>
     writeColumnsAndCells(() => papers.setColumnType(key, type), m.papers.notices.columnTypeChanged)
 
   /**
-   * What is drawn in the custom grid: when not editing, the text column is given to plain text, and the selection and multi-select columns are given to chip (put it into .ci, so
-   * If it cannot fit, it will be folded like the theme grid and filled with +N); when editing, press the type to the input box or selector.
+   * What a custom cell shows: when not editing, plain text for a text column and chips for single- and
+   * multi-choice columns (inside .ci, so they fold into +N like the topics cell when they do not fit);
+   * when editing, the input or picker for the column type.
    */
   const customCell = (p: PaperRow, column: PaperColumn) => {
     const values = cellValues(p.custom[column.key])
@@ -911,7 +978,8 @@ export function PaperTable() {
         <TextCellEdit
           cell={editingTd} initial={values[0] ?? ''}
           onSave={(value) => saveCell(p, column.key, value)}
-          // You may have clicked on other cells before writing back. Only close this cell when it is still the current editing target.
+          // Another cell may have been clicked before the write came back; close this cell only if it
+          // is still the one being edited.
           onCancel={() => setEditingCell((cur) => (cur !== null && cur.id === p.id && cur.key === column.key ? null : cur))}
         />
       )
@@ -963,7 +1031,8 @@ export function PaperTable() {
         </td>
       )
     }
-    // This column describes your relationship with this article, and it is up to you to change it; to what extent the wiki has edited this page is another field.
+    // This column is the user's own relationship with the paper, and only they change it; how far the
+    // Wiki has written up the paper's page is a separate field.
     if (k === 'st') {
       return (
         <td key={k}>
@@ -1113,8 +1182,9 @@ export function PaperTable() {
     </div>
   )
 
-  // The grouping column contains only the keys listed in the gear: when there is an unlisted key in the manually modified configuration,
-  // Since it is not in the gear, it cannot be removed. If it is not drawn as a chip, it will not leave a dead button that will be rejected by the core if clicked.
+  // The group bar shows only keys the gear menu lists. A hand-edited configuration may hold an
+  // unlisted key, which the gear cannot remove; drawing no option for it avoids a dead button that
+  // Core would reject when clicked.
   const groupable = new Set(groupRows(columns, m.papers.groupNames).map((r) => r.key))
 
   return (
@@ -1126,7 +1196,7 @@ export function PaperTable() {
       onDragLeave={leaveDrop} onDrop={dropFiles}
     >
       {dropActive ? <div className="paper-drop"><strong>{m.papers.upload.dropToImport}</strong></div> : null}
-      {/* The title of the demo always carries a number; before the count is up, the "·" and the empty space behind it are not displayed. */}
+      {/* As in the demo the title carries a count; until it arrives, the "·" and space after it are hidden. */}
       <PageHeader>
         <PageTitle>{m.papers.title(paperCount)}</PageTitle>
       </PageHeader>

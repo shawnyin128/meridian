@@ -6,7 +6,7 @@ import { ActionPopover } from '../ActionPopover.js'
 import { InlineDraftInput } from '../InlineDraftInput.js'
 import { IconMulti, IconSelect, IconText } from '../icons.js'
 
-/** The icons for each of the three types of gears are in the order of the gear buttons; the name comes from the catalog's `papers.columnType`. */
+/** Each column type's icon, in type-button order; its name comes from the catalog's `papers.columnType`. */
 const TYPES = [
   { type: 'text', Icon: IconText },
   { type: 'select', Icon: IconSelect },
@@ -14,11 +14,12 @@ const TYPES = [
 ] as const satisfies readonly { type: PaperColumn['type']; Icon: () => ReactElement }[]
 
 /**
- * Text / radio selection / multi-select radio group (`role="radiogroup"`, each button `role="radio"` +
- * `aria-checked`): `type` That file is selected, and only it is in the Tab order. Click a gear to hand that gear to `onPick`,
- * Then give the focus to `focusAfterClick` (if given); the arrow keys move between the three gears starting from the `type` gear, and move to
- * That file is handed over to `onPick`, and the focus moves to its button. Handle other keys to `onKeyDown`. Press gear when `buttons` are given
- * Receive three buttons in order. Vision is `.ctrow` / `.ctbtn`.
+ * Text / single-choice / multi-choice radio group (`role="radiogroup"`, each button `role="radio"` +
+ * `aria-checked`): the `type` option is selected and is the only one in the Tab order. Clicking an
+ * option hands it to `onPick`, then moves focus to `focusAfterClick` (if given); the arrow keys move
+ * from the `type` option to its neighbour, hand that one to `onPick`, and focus its button. Other
+ * keys go to `onKeyDown`. When `buttons` is given, it receives the three buttons in order. Styled as
+ * `.ctrow` / `.ctbtn`.
  */
 export function ColumnTypePicker({ type, onPick, onKeyDown, buttons, focusAfterClick }: {
   type: PaperColumn['type']
@@ -28,7 +29,8 @@ export function ColumnTypePicker({ type, onPick, onKeyDown, buttons, focusAfterC
   focusAfterClick?: RefObject<HTMLElement | null>
 }) {
   const m = useMessages()
-  // If buttons are not given, it will be collected by itself; the subscript is aligned with TYPES - it will not be changed according to the selected gear, but will be taken according to the position.
+  // Without `buttons`, collect them here. Indexes match TYPES by position and do not follow the
+  // selected option.
   const ownButtons = useRef<(HTMLButtonElement | null)[]>([])
   const refs = buttons ?? ownButtons
   return (
@@ -57,24 +59,28 @@ export function ColumnTypePicker({ type, onPick, onKeyDown, buttons, focusAfterC
   )
 }
 
-/** This type of icon. */
+/** The icon of a column type. */
 export function ColumnTypeIcon({ type }: { type: PaperColumn['type'] }) {
   const { Icon } = TYPES.find((t) => t.type === type)!
   return <Icon />
 }
 
 /**
- * The placeholder that grows out at the end of the table header: fill in the column name, and press Enter to give the name with the leading and trailing blanks removed together with the type selected at the moment.
- * `onCreate`, once built; Esc, click outside the `cell` and type layer, and cancel when the focus moves outside the two. `onCreate`
- * Return to see if the placeholder has been used up. `triggers` are those entry buttons that are not considered "extra" when clicked or focused.
- * When `pickType` is true (only for paper table transfer), pop up three more type buttons below the placeholder. The default is "Text". Click which one to change.
- * Which, the focus is still on the column name input box; if it is not passed, it will be like the aggregation page, where all text columns are created.
- * The type button group is a radio group(`role="radiogroup"`, each button `role="radio"` +
- * `aria-checked`): Press Tab in the column name input box to enter the currently selected gear; use the arrow keys to move between the three gears and select them.
- * The focus moves and stays in the group. If you press the mouse and then move it away without letting go, it will not be clicked. In that case, the focus will be given to the clicked one first.
- * Regardless of whether it is selected or not - the arrow keys still press the selected gear to calculate the starting point, and Space / Enter still only returns the focus to the column name input box.
- * Instead of selecting it, you don’t even see which button the focus is on at this moment; Shift+Tab in the group also returns the column name input box; pressing in the group
- * Esc gives up completely as in the input box.
+ * The draft that opens at the end of the table header: Enter hands the trimmed column name, with the
+ * type selected at that moment, to `onCreate` once. Esc, a press outside `cell` and the type popover,
+ * or focus moving outside both cancels. `onCreate` returns whether the draft is consumed. `triggers`
+ * are entry buttons that do not count as outside when pressed or focused.
+ * With `pickType` (passed only by the paper table), three type buttons pop up below the draft,
+ * defaulting to "Text"; clicking one selects it while focus stays in the column name input. Without
+ * it, as on the Wiki aggregation page, every column is created as text.
+ * The type buttons are a radio group (`role="radiogroup"`, each button `role="radio"` +
+ * `aria-checked`): Tab in the column name input enters the selected option, and the arrow keys move
+ * among the three, selecting as focus moves and keeping focus in the group. A mouse press dragged
+ * away before release is no click; it still gives focus to the pressed button, selected or not. The
+ * arrow keys then still start from the selected option, and Space / Enter only return focus to the
+ * column name input instead of selecting, since which button has focus is not even visible then.
+ * Shift+Tab in the group also returns to the column name input, and Esc in the group cancels
+ * outright, as it does in the input.
  */
 export function NewColumnHead({ cell, triggers, onCreate, onCancel, pickType }: {
   cell: RefObject<HTMLTableCellElement | null>
@@ -85,7 +91,7 @@ export function NewColumnHead({ cell, triggers, onCreate, onCancel, pickType }: 
 }) {
   const m = useMessages()
   const input = useRef<HTMLInputElement>(null)
-  // References to the three types of buttons, the subscripts are aligned with TYPES - do not change with the selected gear, get them according to the position
+  // The three type buttons; indexes match TYPES by position and do not follow the selected option.
   const btnRefs = useRef<(HTMLButtonElement | null)[]>([])
   const [type, setType] = useState<PaperColumn['type']>('text')
   const th = (
@@ -94,7 +100,8 @@ export function NewColumnHead({ cell, triggers, onCreate, onCancel, pickType }: 
         className="celledit" ref={input} scopeRef={cell} triggers={triggers}
         placeholder={m.papers.columnAdd.namePlaceholder} onSubmit={(label) => onCreate(label, type)} onCancel={onCancel}
         onKeyDown={(e) => {
-          // The type layer portal is at the end of the body. The native Tab order cannot reach it. Here, the focus is manually sent there.
+          // The type popover is portaled to the end of the body, out of reach of the native Tab order,
+          // so focus is moved there by hand.
           if (e.key === 'Tab' && !e.shiftKey) {
             const btn = btnRefs.current[TYPES.findIndex(({ type: t }) => t === type)]
             if (btn) { e.preventDefault(); btn.focus() }
@@ -107,7 +114,7 @@ export function NewColumnHead({ cell, triggers, onCreate, onCancel, pickType }: 
   return (
     <ActionPopover
       open anchor={th} side="bottom" align="end" sideOffset={4} sticky="always"
-      // The focus is already on the column name input box. If this layer pops up, it will not be grabbed.
+      // Focus is already in the column name input; opening this popover must not take it.
       contentProps={{ onOpenAutoFocus: (event) => event.preventDefault() }}
     >
       <ColumnTypePicker
