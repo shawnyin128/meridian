@@ -80,7 +80,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper }: {
                       <span className="research-map-readonly">{m.papers.researchMap.readOnly}</span>
                     </div>
                     <StructuredList
-                      variant="embedded" maxVisibleRows={7} className="research-map-papers"
+                      variant="embedded" className="research-map-papers"
                       aria-label={m.papers.researchMap.paperListAria(selected.label)}
                     >
                       {selected.members.map((member) => (

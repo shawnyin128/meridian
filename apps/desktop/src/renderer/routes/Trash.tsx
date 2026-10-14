@@ -116,7 +116,11 @@ export function Trash() {
                       className="btn" disabled={!entry.restorable}
                       onClick={() => restore(entry)}
                     >{m.common.restore}</button>
-                    <button className="btn tdel" onClick={() => purge(entry.id)}>{m.common.deletePermanently}</button>
+                    <ConfirmDialog
+                      trigger={<button className="btn tdel">{m.common.deletePermanently}</button>}
+                      title={m.trash.confirmPurge(entry.title)}
+                      confirmLabel={m.trash.confirmPurgeLabel} onConfirm={() => purge(entry.id)}
+                    />
                   </StructuredRow>
                 ))}
               </StructuredList>

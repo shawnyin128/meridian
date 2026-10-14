@@ -162,4 +162,35 @@ describe('WatchSettings', () => {
 
     await act(async () => { root.unmount() })
   })
+
+  it('建议来源用共享的分段切换,切换后换成新来源的建议', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+
+    const section = host.querySelector('.watch-suggestions')!
+    const sources = section.querySelector('.segmented-control[aria-label="建议来源"]')
+    expect(sources).not.toBeNull()
+    expect(button(sources!, '描述关注方向').getAttribute('aria-pressed')).toBe('true')
+
+    const input = section.querySelector<HTMLInputElement>(
+      'input[placeholder="用一句话描述想持续关注的研究方向"]',
+    )!
+    await act(async () => { enter(input, '我想关注批量推理中的动态验证策略') })
+    await act(async () => { button(section, '查找建议').click() })
+    expect(section.textContent).toContain('batch aware verification')
+
+    await act(async () => { button(sources!, '从项目生成').click() })
+    expect(button(sources!, '从项目生成').getAttribute('aria-pressed')).toBe('true')
+    expect(button(sources!, '描述关注方向').getAttribute('aria-pressed')).toBe('false')
+    expect(section.textContent).not.toContain('batch aware verification')
+
+    api.suggest.mockResolvedValueOnce({
+      topics: [{ name: 'tree attention kernels', relatedPapers: 2 }], authors: [], paperCount: 4,
+    })
+    await act(async () => { button(section, '查找建议').click() })
+    expect(api.suggest).toHaveBeenLastCalledWith({ source: 'project', projectId: 'project-1' })
+    expect(section.textContent).toContain('tree attention kernels')
+
+    await act(async () => { root.unmount() })
+  })
 })
