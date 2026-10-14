@@ -8,8 +8,8 @@
  */
 
 /*
- * Placeholder row: a real row gets its height from the 22px "Pause" and "Remove" buttons. The
- * placeholder has no buttons, so its input is raised to the same height.
+ * Placeholder row: every watch row is at least 40px tall (`.wrow` in shell.css). The placeholder's
+ * input stays 22px, the height of a row's name line, so it does not change the row's height.
  */
 .wrow.newrow .inedit{height:22px;padding:0 9px}
 .wrow.editrow{align-items:flex-start;min-height:30px;padding-block:4px}
