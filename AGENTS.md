@@ -26,6 +26,33 @@ treat every write to it as irreversible.
 - Never claim something works without running it. Say "unverified" when you
   could not run it.
 
+## Owner Checkpoints
+
+Besides the questions other rules require, work stops for the owner at three
+points:
+
+1. **Plan.** Before editing, when the task is ambiguous or touches more than a
+   few files.
+2. **Change review.** When a version's pull requests are open, check out in the
+   owner's main checkout a branch that holds them: the work branch for one pull
+   request, or a local-only `review/vX.Y.Z.F` branch that merges the release
+   branch and every work branch. List the files and lines to check, issue by
+   issue. The owner's OK in the conversation is the approval
+   `.github/pull-requests.md` requires; pull requests are opened from the
+   owner's account, so GitHub cannot record an approving review. Then merge each
+   pull request into the release branch with `gh pr merge --merge`, close its
+   issue, switch the main checkout to the release branch and delete the review
+   branch. Parallel sessions work in their own worktrees under `.worktrees/`, so
+   the main checkout stays free for review: switch it only when `git status` is
+   clean there and no other `review/` branch is checked out.
+3. **Build review.** Releasing step 5: nothing is tagged until the owner
+   approves the unpacked build.
+
+Once the owner has asked for a change or a release, carry everything between
+these points forward without asking: issues, milestones, branches, pull
+requests, merging after the change review, the version bump, the unpacked build
+and the upgrade smoke.
+
 ## Architecture
 
 One frontend, two backends. The directory layout is the architecture.
@@ -187,8 +214,10 @@ python -m pytest tests           # CLI, MCP, and Lab
 python -m pytest apps/harness/tests
 ```
 
-The Harness tests need the Harness installed first:
-`python -m pip install -e apps/harness`.
+Run every gate with one Python that has
+`python -m pip install -e . -e "apps/harness[build]"` and comes first on `PATH`
+(on the owner's Mac, the `meridian` conda env): one vitest case starts `python`
+itself, and the CLI tests need PyYAML.
 
 - A failing check means the work is not done. Never pass it by weakening an
   assertion, skipping a case, or adding an ignore marker.
