@@ -114,7 +114,7 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
             "workflow": "Coding Context",
             "summary": "Read bounded App-owned changes after an opaque client cursor.",
             "inputs": ["workspace_root", "cursor", "limit", "kinds"],
-            "outputs": ["cursor_status", "next_cursor", "has_more", "changes"],
+            "outputs": ["cursor_status", "next_cursor", "has_more", "changes", "unreadable_changes"],
         },
         {
             "name": "meridian.workspace_idea",
