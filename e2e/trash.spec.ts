@@ -2,31 +2,31 @@ import type { Page } from '@playwright/test'
 import { TRASH_RETENTION_DAYS } from '../apps/desktop/src/shared/vocabulary.js'
 import { expect, gotoPapers, gotoProject, test, vaultToday, type MeridianWindow } from './app.js'
 
-/** The screen you entered is always hung, and the selector that is present on every screen, such as the screen header, should be stored in the currently displayed screen. */
+/** Visited screens stay mounted, so selectors every screen has, like the header, target the shown one. */
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
 
 const gotoTrash = (win: Page) => win.locator('[data-desk="trash"]').click()
 
 const DAY_MS = 86_400_000
 
-/** The article that Curry deleted today has the entire retention period written down. */
+/** What an entry deleted on the vault's today shows: the full retention period. */
 const FULL_RETENTION = `${TRASH_RETENTION_DAYS} 天后自动清除`
 
-/** Bypass the interface and call `trash.list` directly to get the deletion time of each item, with the latest one first. */
+/** Calls `trash.list` directly, bypassing the UI, for each entry's deletion time, newest first. */
 const deletedAt = (win: Page) => win.evaluate(async () => {
   const entries = await (window as unknown as MeridianWindow).meridian
     .call('trash.list', {}) as { deletedAt: number }[]
   return entries.map((e) => e.deletedAt)
 })
 
-/** Bypass the interface and call `trash.list` directly, and get the id of each item in the trash. */
+/** Calls `trash.list` directly, bypassing the UI, for the id of each entry in the Trash. */
 const trashIds = (win: Page) => win.evaluate(async () => {
   const entries = await (window as unknown as MeridianWindow).meridian
     .call('trash.list', {}) as { id: string }[]
   return entries.map((e) => e.id)
 })
 
-/** Directly call `trash.restore` to bypass the interface and return the reason for rejection; if it is not rejected, return the sentence itself. */
+/** Calls `trash.restore` directly, bypassing the UI; returns the rejection message, or a note if accepted. */
 const restoreRefused = (win: Page, id: string) => win.evaluate((entryId) =>
   (window as unknown as MeridianWindow).meridian.call('trash.restore', { id: entryId })
     .then(() => '没有被拒绝', (e: Error) => e.message), id)
@@ -96,11 +96,12 @@ test('垃圾桶条目带着删除时刻过边界,记的是库里的今天,而库
   console.log(`垃圾桶条目的删除时刻 ${JSON.stringify(stamps)},库里的今天是 ${today},`
     + `这一屏读到的系统日期是 ${system},点删除前墙上时钟是 ${before},读到时是 ${now}`)
 
-  // Only the number of days left is written on the interface, and the time itself is not displayed, so it can only be read according to the contract.
+  // The UI shows only the days left, not the timestamp, so read it through the contract.
   expect(stamps).toEqual([Date.parse(`${today}T00:00:00Z`)])
-  // Curry's clock is the system's clock, it doesn't stop at a certain day in the past.
+  // The vault's clock is the system clock; it is not frozen on some past day.
   expect(today).toBe(system)
-  // The deletion time is taken from the zero point of Curry's day, not the wall clock: it is evenly divisible by one day, and the wall clock is almost impossible to be evenly divided.
+  // The deletion time is midnight of the vault's today, not the wall clock: it divides evenly by a day,
+  // which a wall-clock time almost never does.
   expect(stamps[0]! % DAY_MS).toBe(0)
   expect(before % DAY_MS, '墙上时钟正好落在零点,这条用例这一次证不了任何事').not.toBe(0)
   expect(before).toBeLessThanOrEqual(now)
@@ -115,14 +116,15 @@ test('垃圾桶的倒数按库里的今天算,把这一屏的钟拨走也不动'
   await win.locator('.ptable tbody tr').first().locator('.rowx').click()
   await expect(win.locator('[data-desk="trash"] .n')).toHaveText('2')
 
-  // The deletion time is today in Curry. The two deletions on the same day have the same time, so the countdowns should be the same.
+  // The deletion time is the vault's today, so two deletions on one day share a time and a countdown.
   const stamps = await deletedAt(win)
   expect(new Set(stamps).size).toBe(1)
-  // Both are recorded on today's day in the library, so what's left of them is the entire retention period, not a random number.
+  // Both carry the vault's today, so each has the full retention period left, not an arbitrary count.
   const midnight = Date.parse(`${await vaultToday(win)}T00:00:00Z`)
   expect(stamps).toEqual([midnight, midnight])
 
-  // First set the clock on this screen to three days later, and then open the trash can for the first time: if you still look at the clock on the wall, the countdown will read four days.
+  // Move this page's clock three days ahead, then open the Trash for the first time: a countdown that read
+  // the wall clock would show four days.
   await win.clock.setFixedTime(stamps[0]! + 3 * DAY_MS)
   await gotoTrash(win)
   await expect(win.locator('.tgroup .trow .tm2'))
@@ -145,7 +147,8 @@ test('删掉的附件进垃圾桶,恢复后回到项目', async ({ win }) => {
   await win.locator('.tgroup .trow .btn', { hasText: '恢复' }).click()
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
 
-  // Enter "Project" from another screen and it will fall into the list. The attachment is in the project details, so you have to click on draft again.
+  // Entering Projects from another screen lands on the list; the attachments are in the project detail,
+  // so open draft again.
   await win.locator('[data-desk="resproj"]').click()
   await win.locator('[data-proj="draft"]').click()
   await expect(win.locator('.attrow .an')).toHaveCount(names.length)
@@ -159,7 +162,8 @@ test('原项目还在垃圾桶里时,那条附件恢复不回去,项目回来才
   await win.locator('.attrow .ax').first().click()
   await expect(win.locator('.attrow')).toHaveCount(names.length - 1)
 
-  // The "item" entered from another screen landed on the list, so go around the trash can first, then go back to the list and delete this item as well.
+  // Entering Projects from another screen lands on the list, so detour through the Trash, then go back
+  // to the list and delete this project too.
   await gotoTrash(win)
   await expect(shown(win, '.section-heading')).toHaveText('附件 · 1清空垃圾桶')
   await win.locator('[data-desk="resproj"]').click()
@@ -174,7 +178,8 @@ test('原项目还在垃圾桶里时,那条附件恢复不回去,项目回来才
   const projectRow = shown(win, '.trow').filter({ hasText: name })
   const attachmentRow = shown(win, '.trow').filter({ hasText: names[0]! })
 
-  // You cannot restore a project that no longer exists, so the restore button for this item is gray. Instead of clicking on it, you will get an IPC error message.
+  // An attachment cannot go back to a project that is gone, so its Restore button is disabled rather
+  // than clickable into an IPC error.
   await expect(attachmentRow.locator('.btn', { hasText: '恢复' })).toBeDisabled()
   await expect(projectRow.locator('.btn', { hasText: '恢复' })).toBeEnabled()
 
@@ -187,7 +192,7 @@ test('原项目还在垃圾桶里时,那条附件恢复不回去,项目回来才
 
   await win.locator('[data-desk="resproj"]').click()
   await win.locator('[data-proj="draft"]').click()
-  // allInnerTexts will not retry itself. It will wait for all attachments to be drawn back before reading.
+  // allInnerTexts does not retry, so wait for every attachment to render before reading.
   await expect(win.locator('.attrow .an')).toHaveCount(names.length)
   expect((await win.locator('.attrow .an').allInnerTexts()).sort()).toEqual([...names].sort())
 })
@@ -210,7 +215,7 @@ test('清空垃圾桶要过二次确认,清掉的东西恢复不回来', async (
   await expect(dialog.locator('.dlg-t')).toHaveText('清空垃圾桶？2 项将被彻底删除，不可恢复。')
   await expect(dialog.locator('.dlg-a .btn')).toHaveText(['取消', '确认清空'])
 
-  // Cancel immutable content
+  // Cancel leaves the contents unchanged.
   await dialog.locator('.btn', { hasText: '取消' }).click()
   await expect(dialog).toHaveCount(0)
   await expect(win.locator('.tgroup .trow')).toHaveCount(2)

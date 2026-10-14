@@ -1,10 +1,10 @@
 import { expect, gotoPapers, gotoProject, test, type MeridianWindow } from './app.js'
 
-/** Drag the title bar this much wider from the default 300px. */
+/** How far to drag the Title column wider than its default 300px. */
 const COLUMN_DRAG = 60
 const WIDENED = '360px'
 
-/** A conversation title wider than the sidebar: without line wrapping, the full width before truncation exceeds the 320px upper limit of the sidebar. */
+/** A chat title wider than the sidebar: unwrapped and untruncated it exceeds the sidebar's 320px cap. */
 const LONG_CHAT_TITLE = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 
 test('窗口没有系统标题栏与菜单栏,整个外框都归页面', async ({ app, win }) => {
@@ -22,8 +22,9 @@ test('窗口没有系统标题栏与菜单栏,整个外框都归页面', async (
   expect(inner.h, '页面拿到整个外框的高度:系统既不画标题栏也不画菜单栏').toBe(size.outer.height)
   expect(inner.w).toBe(size.outer.width)
 
-  // The column height and the height of titleBarOverlay in main/index.ts are two numbers that are manually aligned. As soon as the column becomes higher,
-  // The three window buttons drawn by the system are no longer on the same center line as the controls in the column, and this cannot be seen in the screenshot.
+  // The bar's height and titleBarOverlay's height in main/index.ts are two numbers kept equal by hand. If
+  // the bar grows, the three window buttons the OS draws leave the center line of the bar's controls,
+  // which a screenshot cannot show.
   const bar = (await win.locator('.titlebar').boundingBox())!
   expect(bar.height, '标题栏与 titleBarOverlay 的 height 都是 50').toBe(50)
 })
@@ -47,18 +48,19 @@ test('标题栏的品牌标记是应用菜单的入口,落在栏内', async ({ w
   expect(box.y).toBeGreaterThan(bar.y)
   expect(box.y + box.height).toBeLessThan(bar.y + bar.height)
 
-  // The mark is a button, and clicking it is an application menu; there is no longer a second application name in the column
+  // The mark is a button that opens the app menu; the bar no longer shows the app name a second time.
   await expect(win.locator('.titlebar .app-t')).toHaveCount(0)
   await win.locator('.titlebar .appbtn').click()
   await expect(win.locator('[data-appmenu] .mi').first()).toContainText('设置…')
   await win.keyboard.press('Escape')
   await expect(win.locator('[data-appmenu]')).toHaveCount(0)
-  // The same callback is used to close the menu and open the settings. The time Esc is used to close the menu, it should not also open the settings.
+  // Closing the menu and opening Settings share one callback; closing the menu with Esc must not also
+  // open Settings.
   await expect(win.locator('.setdlg')).toHaveCount(0)
 })
 
 test('标题栏整条可拖,交互元素让出拖拽区', async ({ win }) => {
-  // Read -webkit-app-region The type using getPropertyValue:CSSStyleDeclaration does not have this camel case property
+  // Read via getPropertyValue: the CSSStyleDeclaration type has no camelCase -webkit-app-region property.
   const region = (sel: string) => win.locator(sel).first()
     .evaluate((el) => getComputedStyle(el).getPropertyValue('-webkit-app-region'))
 
@@ -111,7 +113,7 @@ test('长会话标题不把侧栏顶宽', async ({ win }) => {
   await win.locator('#chatList .chat-row').first().waitFor()
   const before = await width()
 
-  // Bypassing the interface to create a conversation: The new one on the interface is called "New Conversation", which is too short to hold up the sidebar.
+  // Create the chat bypassing the UI: the UI names a new chat "New chat", too short to widen the sidebar.
   await win.evaluate((title) => (window as unknown as MeridianWindow).meridian
     .call('chat.create', { title, named: true }), LONG_CHAT_TITLE)
   await win.reload()
@@ -145,11 +147,11 @@ test('切走再切回,分页页码、排序、列宽与详情面板都保持', a
   const byYear = await titles()
   await win.locator('.ptable thead th[data-k="title"]').click()
   await expect(win.locator('.ptable thead th[data-k="title"] svg')).toHaveCount(1)
-  // The sort arrow is the local state, and rows on this page are still being fetched. The position of the handle should be measured after the new page is actually changed.
-  // Otherwise, what is measured is the coordinate before rearrangement, and when pressed, it will fall outside the handle.
+  // The sort arrow is local state while this page's rows are still being fetched, so measure the grip only
+  // after the rows change; otherwise its position is from before the re-sort and the press misses it.
   await expect.poll(titles).not.toEqual(byYear)
 
-  // The center of the handle falls right on the border of the adjacent table headers. Press 2px inward before it falls on the handle itself.
+  // The grip's center lies on the border with the next header cell; 2px inward lands on the grip itself.
   const grip = (await win.locator('.ptable thead th[data-k="title"] .thgrip').boundingBox())!
   const y = grip.y + grip.height / 2
   const titleColumn = win.locator('col[data-cw="t"]')
@@ -161,13 +163,15 @@ test('切走再切回,分页页码、排序、列宽与详情面板都保持', a
   await win.mouse.move(grip.x + 2, y)
   await win.mouse.down()
   await win.mouse.move(grip.x + 2 + COLUMN_DRAG, y, { steps: 8 })
-  // The column width during dragging is written directly on col. Wait for it to complete this journey before raising your hand: it keeps pressing until it falls on the handle.
-  // It's the original 300px, just red here, instead of leaving an inexplicable width until after you raise your hand.
+  // During a drag the column width is written straight onto col. Wait for the full distance before
+  // releasing: if the press missed the grip, the width stays at 300px and fails here, instead of an
+  // unexplained width showing up after the release.
   await expect.poll(width).toBe(WIDENED)
   await win.mouse.up()
   await expect.poll(width).toBe(WIDENED)
-  // The table width is added by each column, and it will change only when you raise your hand and submit the new column width back to the state. That width during dragging is directly
-  // What is written on col does not enter this number, so I cannot recognize "can be dragged but cannot be saved" by just looking at col.
+  // The table width is the sum of the columns and changes only when the release commits the new column
+  // width to state. The width written onto col during the drag is not included, so checking col alone
+  // would miss a column that drags but is never saved.
   await expect.poll(tableMin).toBe(minBefore + COLUMN_DRAG)
 
   const nextPage = win.locator('.pager .pgbtn').last()
@@ -176,7 +180,8 @@ test('切走再切回,分页页码、排序、列宽与详情面板都保持', a
   await nextPage.click()
   await expect(win.locator('.pager .pgbtn.on')).toHaveText('3')
 
-  // Click on the title grid, but not on the row center: After the table fills the window, the row center may fall on the "+" that appears when hovering the subject column.
+  // Click the title cell, not the row center: once the table fills the window, the row center may land on
+  // the "+" the Topics column shows on hover.
   await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
   await expect(win.locator('.pdetail')).toBeVisible()
 
@@ -191,26 +196,29 @@ test('切走再切回,分页页码、排序、列宽与详情面板都保持', a
 })
 
 test('全应用的齿轮是同一颗:一条闭合轮廓加一个轴孔,四处逐字相同', async ({ win }) => {
-  // The four gears are scattered across two screens plus a sidebar; windows that are not on the screen have to wait two seconds for each operability, and the default 30 seconds is not enough.
+  // The four gears are spread over two screens and the sidebar; an offscreen window waits two seconds for
+  // each actionability check, so the default 30 seconds is not enough.
   test.slow()
   await gotoPapers(win)
   await win.locator('.ptable tbody tr').first().waitFor()
   const gear = (await win.locator('.filters .grpgear svg path').getAttribute('d'))!
 
-  // A gear is a closed outline with an axle hole; the eight segments each start and do not close, which is a sun, not a gear.
+  // A gear is one closed outline plus an axle hole; eight separate open strokes would be a sun, not a gear.
   expect(gear.match(/M/g)).toHaveLength(1)
   expect(gear.endsWith('Z')).toBe(true)
   await expect(win.locator('.filters .grpgear svg circle')).toHaveCount(1)
 
-  // Column menu entry at the end of the table header: What you click is the column setting, so it is also a gear. The tooltip has the same meaning as the one on the aggregation page.
+  // The column menu at the end of the table header opens Column settings, so it is a gear too, with the
+  // same tooltip as on aggregation pages.
   expect(await win.locator('.ptable thead [title="列设置"] svg path').getAttribute('d')).toBe(gear)
-  // The configuration entry is no longer crowded in the sidebar; there is only one push settings gear left in the inbox toolbar.
+  // Settings entries no longer crowd the sidebar; the only Watch settings gear is in the Inbox toolbar.
   await expect(win.locator('.sidebar [title="管理关注"]')).toHaveCount(0)
   await win.locator('[data-inbox="all"]').click()
   expect(await win.locator('.screenslot:not([hidden]) [title="关注设置"] svg path').getAttribute('d'))
     .toBe(gear)
 
-  // Column setting of "Papers Comparison" on the aggregation page: The gear lives at the end of the header of the comparison table, so it must be on the page where there are real members
+  // Column settings of "Paper comparison" on an aggregation page: the gear sits at the end of the
+  // comparison table's header, so it needs a page that really has member papers.
   await win.locator('[data-desk="wiki"]').click()
   const shown = win.locator('.screenslot:not([hidden])')
   await shown.locator('[data-wk="topics/quantization"]').click()

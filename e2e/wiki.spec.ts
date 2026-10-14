@@ -2,7 +2,7 @@ import type { Locator, Page } from '@playwright/test'
 import { PAPER_PAGE } from '../apps/desktop/src/shared/vocabulary.js'
 import { dshort, expect, test, type MeridianWindow } from './app.js'
 
-/** The screen you entered is always hung, and the selector that is present on every screen, such as the screen header, should be stored in the currently displayed screen. */
+/** Visited screens stay mounted, so selectors every screen has, like the header, target the shown one. */
 const shown = (win: Page) => win.locator('.screenslot:not([hidden])')
 
 const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
@@ -57,7 +57,7 @@ test('侧栏「Wiki」进 wiki 屏:标题与角标都是聚合总数,分节只�
   expect(await shown(win).locator('.section-heading').allTextContents())
     .toEqual([...home.kinds.map((k) => k.label), '论文'])
 
-  // There is one grid for each kind of aggregation. There is only the root node in the grid, and the count of the last row is according to the contract.
+  // One grid per aggregation kind, holding only its root pages, with footer counts from the contract.
   for (const [at, kind] of home.kinds.entries()) {
     const cards = shown(win).locator('.wkgrid').nth(at).locator('.wkcard')
     const roots = home.roots.filter((c) => c.kind === kind.key)
@@ -65,12 +65,12 @@ test('侧栏「Wiki」进 wiki 屏:标题与角标都是聚合总数,分节只�
     expect(await cards.locator('.wf').allTextContents()).toEqual(roots.map(foot))
   }
 
-  // Centering rules apply to direct child elements: grid centered, not against padding
+  // The centering rule applies to direct children: the grid is centered, not flush against the padding.
   const grid = (await shown(win).locator('.wkgrid').first().boundingBox())!
   const body = (await shown(win).locator('.desk-body').boundingBox())!
   expect(grid.x).toBeGreaterThan(body.x + 24)
 
-  // The paper is paginated, and the total number on the pagination bar is the number of papers in the entire library.
+  // Papers are paginated, and the pager's total is the number of papers in the whole vault.
   await expect(shown(win).locator('.pginfo')).toHaveText(`共 ${await paperTotal(win)} 条`)
 })
 
@@ -101,16 +101,18 @@ test('根节点卡进聚合页,子聚合再进一层带上级,返回按历史退
   await expect(crumbs(win)).toHaveText(['我的库', 'Wiki', agg.title])
   await expect(shown(win).locator('.desk-head .t')).toHaveText(agg.title)
   await expect(shown(win).locator('.desk-head .back')).toHaveCount(1)
-  // The fixed areas are at the front (segmentation, paper comparison, findings), each with a management entrance, and the header of the text is the page name plus "Edit"
+  // The fixed sections come first (subpages, Paper comparison, Findings), each with its own action,
+  // and the body's header is the page name plus "Edit".
   expect(await shown(win).locator('.wkmain .section-heading').allTextContents())
     .toEqual([`细分${agg.kindLabel}${agg.kindLabel}`, '论文对比论文', '结论结论', `${agg.title}编辑`])
-  // The section headers are the same as those in the main area: 15px, the first section "Subdivision..." is free of line, and the non-first section "Paper Comparison" draws a top line
+  // Section headers use the main-area style, 15px: the first one, subpages, has no top rule, and a later
+  // one such as Paper comparison draws one.
   const mainHeads = shown(win).locator('.wkmain .section-heading')
   await expect(mainHeads.nth(0)).toHaveCSS('font-size', '15px')
   await expect(mainHeads.nth(0)).toHaveCSS('border-top-width', '0px')
   await expect(mainHeads.nth(1)).toHaveCSS('font-size', '15px')
   await expect(mainHeads.nth(1)).toHaveCSS('border-top-width', '1px')
-  // The text is rendered using markdown: its secondary headings are the ones written on the page.
+  // The body is rendered as Markdown: its h2 headings are the ones written in the page.
   expect(await shown(win).locator('.wkmain .md h2').allTextContents())
     .toEqual(agg.body.split('\n').filter((l) => l.startsWith('## ')).map((l) => l.slice(3)))
   await expect(shown(win).locator('.wkgrid .wkcard')).toHaveCount(agg.children.length)
@@ -118,7 +120,7 @@ test('根节点卡进聚合页,子聚合再进一层带上级,返回按历史退
   await expect(shown(win).locator('.wkside .pv').nth(1))
     .toHaveText(`${agg.memberCount} 篇 · ${agg.childCount} 细分`)
 
-  // The sub-aggregation goes one level further: the middle of the breadcrumb is its first parent
+  // A child aggregation goes one level deeper: the breadcrumb's middle segment is its first parent.
   const child = agg.children[0]!
   const opened = await aggFromCore(win, child.id)
   await shown(win).locator(`.wkgrid [data-wk="${child.id}"]`).click()
@@ -126,7 +128,7 @@ test('根节点卡进聚合页,子聚合再进一层带上级,返回按历史退
   await shown(win).locator('.desk-head .back').click()
   await expect(shown(win).locator('.desk-head .t')).toHaveText(agg.title)
 
-  // The "Wiki" section of Breadcrumbs returns to the homepage
+  // The breadcrumb's Wiki segment returns to the Wiki home.
   await crumbs(win).filter({ hasText: 'Wiki' }).click()
   await expect(crumbs(win)).toHaveText(['我的库', 'Wiki'])
 })
@@ -144,7 +146,7 @@ test('对照表的行是成员论文,格子按契约的列排,悬停看原文;�
   expect(await table.locator('thead th:not(.rx):not(.th-add)').allTextContents())
     .toEqual(['论文', ...agg.columns.map((c) => c.label)])
   expect(await table.locator('tbody tr td.rh').allTextContents()).toEqual(agg.rows.map((r) => r.paper.title))
-  // The empty grid is a short horizontal line, and the grid with a value has a page number superscript.
+  // An empty cell shows a dash, and a filled cell carries a page-number superscript.
   const first = agg.rows[0]!
   expect(await table.locator('tbody tr').first().locator('td:not(.rh):not(.rx)').allTextContents()).toEqual(
     agg.columns.map((c) => {
@@ -152,21 +154,22 @@ test('对照表的行是成员论文,格子按契约的列排,悬停看原文;�
       return cell === undefined ? '—' : `${cell.value}p${cell.page}`
     }),
   )
-  // Hovering a box reveals the original text it quoted.
+  // Hovering a cell's anchor shows the source text it quotes.
   const filled = agg.columns.find((c) => first.cells[c.key] !== undefined)!
   await table.locator('tbody tr').first().locator('.anc').first().hover()
   await expect(win.locator('#wktip')).toContainText(first.cells[filled.key]!.quote)
 
-  // [[id]] without an alias in the text uses the interface name of that page as text.
+  // An [[id]] link without an alias in the body shows that page's display name.
   expect(await shown(win).locator('.wkmain .md .wl').allTextContents()).toContain('GPTQ')
 
-  // Enter the thesis page
+  // Open the paper page.
   await table.locator(`[data-wk="${first.paper.id}"]`).click()
   const paper = await paperFromCore(win, first.paper.id)
   await expect(crumbs(win)).toHaveText(['我的库', 'Wiki', paper.short])
   await expect(shown(win).locator('.desk-head .t')).toHaveText(paper.short)
   expect(await shown(win).locator('.wkside .section-heading').allTextContents()).toEqual(['属性', '归属', '目录'])
-  // The header of the sidebar panel is another set, one size smaller than the main area and no line is drawn: 14px, no top line
+  // Side panel headers have their own style, one size smaller than the main area and without a rule:
+  // 14px, no top border.
   const sideHeads = shown(win).locator('.wkside .section-heading')
   await expect(sideHeads.first()).toHaveCSS('font-size', '14px')
   await expect(sideHeads.first()).toHaveCSS('border-top-width', '0px')
@@ -175,7 +178,7 @@ test('对照表的行是成员论文,格子按契约的列排,悬停看原文;�
     .toEqual(paper.memberships.map((m) => m.aggregation.title))
   await expect(shown(win).locator('.memb .wkind').first()).toHaveClass(/\bk-wiki\b/)
 
-  // The aggregation chip in the attribution returns to that table; returns to the paper page according to history
+  // An aggregation chip under Location in Wiki opens that page's table; back returns to the paper page.
   const back = paper.memberships[0]!.aggregation
   await shown(win).locator(`.memb [data-wk="${back.id}"]`).click()
   await expect(shown(win).locator('.desk-head .t')).toHaveText(back.title)
@@ -186,7 +189,7 @@ test('对照表的行是成员论文,格子按契约的列排,悬停看原文;�
 test('首页论文卡进论文页;个人理解与 Wiki 内容分层,没内化的正文仍能直接编辑', async ({ win }) => {
   await gotoWiki(win)
   const cards = shown(win).locator('.wkgrid').last().locator('.wkcard')
-  // evaluateAll does not wait: wait for the cards to arrive first, otherwise zero cards will be read on the home page before they are retrieved.
+  // evaluateAll does not wait, so wait for the cards first; otherwise it reads zero before they load.
   await cards.first().waitFor()
   const ids = await cards.evaluateAll((els) => els.map((el) => el.getAttribute('data-wk')!))
   const id = ids.find((wk) => !/^\d{4}\.\d{5}$/.test(wk.slice(PAPER_PAGE.length)))!
@@ -200,12 +203,14 @@ test('首页论文卡进论文页;个人理解与 Wiki 内容分层,没内化的
   await expect(shown(win).locator('.wkmain .md .empty-state')).toHaveText('还没有生成 Wiki 内化内容。')
   await expect(shown(win).locator('.wkmain .acts')).toHaveText('编辑')
   await expect(shown(win).locator('.wkside .empty-state')).toHaveText('还没有归到任何一页下。')
-  // "Go to the paper list to view" jump to the paper screen and fill in its title into the filter box; there are QuaRot and SpinQuant in the fixture.
-  // A page of a paper with the same name copied from an old library, so the number of lines filtered out can only be asserted to be non-zero.
+  // "View in the paper list" goes to Papers with the title in the filter box. In the fixture, QuaRot and
+  // SpinQuant each have a same-named paper page copied from an old vault, so the filtered row count can
+  // only be asserted non-zero.
   await shown(win).locator('.macts .btn').click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['我的库', '论文'])
   await expect(win.locator('#libq')).toHaveValue(paper.title)
-  // The title can be drawn as soon as the filter box is filled in, but the rows have to wait until papers.list comes back, so the number of rows has to wait and not be counted on the spot.
+  // The filter box fills at once, but rows wait for papers.list to return, so poll the row count rather
+  // than reading it once.
   await expect(win.locator('.screenslot:not([hidden]) .ptable tbody tr')).not.toHaveCount(0)
 })
 
@@ -213,12 +218,12 @@ test('论文页的属性里年份与发表分两行,各写各的', async ({ win 
   await gotoWiki(win)
   const cards = shown(win).locator('.wkgrid').last().locator('.wkcard')
   await cards.first().waitFor()
-  // The default paper format on the home page is 12 articles per page, arranged by title, and the arXiv number fixture with publication year and source does not fall on the first page;
-  // Turn to the maximum page size to ensure that you can get one article
+  // The home page shows 12 papers per page by default, sorted by title, and the arXiv-numbered fixtures
+  // with a year and venue are not on the first page; the largest page size is sure to include one.
   await shown(win).locator('.pagebar .segmented-control>button', { hasText: '48 / 页' }).click()
   await expect(cards).toHaveCount(48)
   const ids = await cards.evaluateAll((els) => els.map((el) => el.getAttribute('data-wk')!))
-  // The arXiv numbered articles come from fixtures with publication year and source, so both lines have something to compare with.
+  // arXiv-numbered papers come from fixtures with a year and venue, so both rows have a value to compare.
   const id = ids.find((wk) => /^\d{4}\.\d{5}$/.test(wk.slice(PAPER_PAGE.length)))!
   expect(id).toBeDefined()
   const paper = await call<{ short: string; year?: number; venue: string }>(win, 'wiki.paper', { id })
@@ -250,15 +255,16 @@ test('项目详情的关联 chip 也进对应的聚合页', async ({ win }) => {
 })
 
 test('右栏目录列正文的标题,点一条把它滚进视口', async ({ win, app }) => {
-  // The window is lowered, making this page really want to scroll. What is given is the height of the content area, not the height of the outer frame: after the window has no borders, the only difference between the two is
-  // A 1px side, and the premise of this one "the first title is above the viewport" measures the content area, so give it directly so that it doesn't drift.
+  // Lower the window so this page really scrolls. Set the content height, not the outer frame: in a
+  // frameless window the two differ only by a 1px border, and this test's premise, "the first heading is
+  // above the viewport", measures the content area, so setting it directly keeps it from drifting.
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setContentSize(1200, 440))
   const agg = await aggFromCore(win, 'topics/ptq-weight-only')
   await gotoWiki(win)
   await shown(win).locator('[data-wk="topics/quantization"]').click()
   await shown(win).locator('[data-wk="topics/ptq"]').click()
   await shown(win).locator('[data-wk="topics/ptq-weight-only"]').click()
-  // This page will not be rendered until the data is retrieved. Wait for it to appear on the screen before reading the directory.
+  // The page renders only after its data arrives; wait for it before reading the table of contents.
   await expect(shown(win).locator('.desk-head .t')).toHaveText(agg.title)
 
   const heads = agg.body.split('\n').filter((l) => /^#{1,3}\s/.test(l)).map((l) => l.replace(/^#+\s+/, ''))
@@ -266,7 +272,8 @@ test('右栏目录列正文的标题,点一条把它滚进视口', async ({ win,
   const toc = shown(win).locator('.wktoc li')
   expect(await toc.allTextContents()).toEqual(heads)
 
-  // Scroll to the bottom first, and the first title of the text will be at the top of the viewport; click on the first item in the table of contents, and it will return to the top of the viewport.
+  // Scroll to the bottom so the body's first heading is above the viewport; clicking the first contents
+  // entry brings it back to the top of the viewport.
   const body = shown(win).locator('.desk-body')
   await body.evaluate((el) => { el.scrollTop = el.scrollHeight })
   const top = (await body.boundingBox())!.y
@@ -301,7 +308,7 @@ test('正文抬头的「编辑」把正文换成原文,「保存」后按 markdo
   const changes = await call<{ id: string; title: string; undoable: boolean }[]>(win, 'changelog.list', {})
   expect(changes[0]).toMatchObject({ title: 'Wiki · 「Quantization」· 改了正文', undoable: true })
   await call(win, 'changelog.undo', { id: changes[0]!.id })
-  // What you cancel is the contract, and this screen doesn’t know about it; change the screen and come back to get it again.
+  // The undo goes through the contract, which this screen does not see; switch screens and back to refetch.
   await win.locator('[data-desk="papers"]').click()
   await gotoWiki(win)
   await shown(win).locator('[data-wk="topics/quantization"]').click()
@@ -328,18 +335,18 @@ test('细分:挂上已有的同类聚合,拿掉;新名字回车新建一页', as
   const cards = shown(win).locator('.wkmain .wkgrid .wkcard')
   const n = await cards.count()
 
-  // After clicking +, there will be a placeholder card immediately at the end of the grid, and the input box will grow in the card.
+  // Clicking + adds a placeholder card at the end of the grid at once, with the input inside the card.
   await shown(win).locator('.wkmain .section-heading', { hasText: '细分主题' }).locator('.btn').click()
   await expect(cards).toHaveCount(n + 1)
   await expect(cards.last()).toHaveClass(/\bnewcard\b/)
   await expect(cards.last().locator('.pickin')).toHaveCount(1)
   await expect(cards.last().locator('.wkind')).toHaveClass(/\bk-wiki\b/)
-  // The placeholder card is wearing the card's own clothes: it is the same width and height as the real card next to it, it is not a separate search box.
+  // The placeholder is a card: as wide and tall as the real card beside it, not a separate search box.
   const real = (await cards.nth(n - 1).boundingBox())!
   const holder = (await cards.last().boundingBox())!
   expect(holder.width).toBe(real.width)
   expect(holder.height).toBe(real.height)
-  // If there is no writing on the last line of the placeholder card, that line still occupies the same height as the last line of the real card.
+  // The placeholder's footer is empty but still as tall as a real card's footer.
   expect((await cards.last().locator('.wf').boundingBox())!.height)
     .toBe((await cards.nth(n - 1).locator('.wf').boundingBox())!.height)
   const row = shown(win).locator('.pickin')
@@ -397,12 +404,13 @@ test('论文对比:加一篇论文,拿掉;改列——改名生效,删有格子�
   const rows = shown(win).locator('table.cmp tbody tr')
   const n = agg.rows.length
 
-  // After clicking +, there will be an extra line at the end of the table body. The head of the line is the input box, and the remaining cells are short horizontal lines.
+  // Clicking + adds a row at the end of the table body: its header cell is the input, the other cells dashes.
   await shown(win).locator('.wkmain .section-heading', { hasText: '论文对比' }).locator('[title="添加论文"]').click()
   await expect(rows).toHaveCount(n + 1)
   await expect(rows.last()).toHaveClass(/\bnewrow\b/)
   expect(await rows.last().locator('td:not(.rh):not(.rx)').allTextContents()).toEqual(agg.columns.map(() => '—'))
-  // The placeholder row pins the height of the single real row; the QuIP (papers/2307.13304) row does not wrap under the default window width, use it as a reference
+  // The placeholder row matches the height of a one-line real row; the QuIP (papers/2307.13304) row does
+  // not wrap at the default window width, so it is the reference.
   const quipIdx = agg.rows.findIndex((r) => r.paper.id === 'papers/2307.13304')
   const real = (await rows.nth(quipIdx).boundingBox())!
   const holder = (await rows.last().boundingBox())!
@@ -423,13 +431,14 @@ test('论文对比:加一篇论文,拿掉;改列——改名生效,删有格子�
   await shown(win).locator('table.cmp thead').hover()
   await shown(win).locator('table.cmp thead [title="列设置"]').click()
   const editor = win.locator('[data-radix-popper-content-wrapper] .coledit')
-  // There are no words on the gears. After unfolding, there must be a place to explain what is being changed.
+  // The gear has no label, so the opened editor must say what it changes.
   await expect(editor.locator('.ch')).toHaveText('列设置')
   await expect(editor.locator('.row input')).toHaveCount(agg.columns.length)
   await editor.locator('.row input').first().fill('比特')
   await editor.locator('.btn.pri').click()
   await expect(shown(win).locator('table.cmp thead th').nth(1)).toHaveText('比特')
-  // The first column contains cells filled in by members: deleting it was rejected by Core, the header remained unchanged, and the editor kept it.
+  // The first column has cells filled for member papers: Core rejects deleting it, the header stays, and
+  // the editor stays open.
   await shown(win).locator('table.cmp thead').hover()
   await shown(win).locator('table.cmp thead [title="列设置"]').click()
   await editor.locator('.row .btn').first().click()
@@ -486,7 +495,7 @@ test('内容列与卡片按窗口宽度分档:窄窗口 1080 与小卡,宽窗口
   await expect.poll(async () => (await tier()).pagew).toBe('1560px')
   expect(await tier()).toEqual({ pagew: '1560px', cardw: '320px' })
   expect((await grid.boundingBox())!.width).toBeGreaterThan(1500)
-  // The summary of the card is three lines in wide format
+  // A wide window shows a three-line card summary.
   await expect(shown(win).locator('.wkcard .wm').first()).toHaveCSS('-webkit-line-clamp', '3')
 })
 
@@ -514,7 +523,8 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
   await shown(win).locator('[data-wk="topics/ptq"]').click()
   await shown(win).locator('[data-wk="topics/ptq-weight-only"]').click()
   const table = shown(win).locator('table.cmp')
-  // This page has to wait for wiki.aggregation to come back before drawing the table. allTextContents does not wait for elements, so wait for the table to appear on the screen first.
+  // The table renders only once wiki.aggregation returns, and allTextContents does not wait for elements,
+  // so wait for the table first.
   await table.waitFor()
   const heads = () => table.locator('thead th:not(.rx):not(.th-add)').allTextContents()
   const before = await heads()
@@ -522,35 +532,36 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
   await table.locator('thead').hover()
   await table.locator('thead [title="新增列"]').click()
   await expect(table.locator('thead th.th-new')).toHaveCount(1)
-  // The placeholder column also has a blank space in each row of the table body. The number of cells in the table is not correct.
+  // The placeholder column adds a blank cell to each body row too, or the body's cells would not line up.
   expect(await table.locator('tbody tr').first().locator('td').count())
     .toBe(before.length + 2)
   await table.locator('thead th.th-new input').fill('新列')
   await table.locator('thead th.th-new input').press('Enter')
   await expect.poll(heads).toEqual([...before, '新列'])
   await expect(table.locator('thead th.th-new')).toHaveCount(0)
-  // The columns on this page only have names. The names have been filled in just now, so no layers will pop up after they are created.
+  // Columns on this page have only a name, already typed, so no popover opens after one is created.
   await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(0)
 
-  // Rename and delete are in the column settings of the gear and are treated the same as other columns.
+  // Renaming and deleting go through the gear's Column settings, the same as for other columns.
   await table.locator('thead').hover()
   await table.locator('thead [title="列设置"]').click()
   const editor = win.locator('[data-radix-popper-content-wrapper] .coledit')
-  // The editor has one column and one row, and does not include the heading "paper"; before contains "paper", so the number of the two is exactly equal.
+  // The editor has a row per column but none for the Paper heading; before includes Paper but not the new
+  // column, so the two counts are exactly equal.
   await expect(editor.locator('.row input')).toHaveCount(before.length)
   await editor.locator('.row input').last().fill('新列 2')
   await editor.locator('.btn.pri').click()
   await expect.poll(heads).toEqual([...before, '新列 2'])
 
-  // Column names that have the same name as existing columns will not be submitted: the placeholders and typed words will be retained.
+  // A column name that duplicates an existing one is not submitted: the placeholder and typed text stay.
   await table.locator('thead').hover()
   await table.locator('thead [title="新增列"]').click()
   await table.locator('thead th.th-new input').fill('新列 2')
   await table.locator('thead th.th-new input').press('Enter')
   await expect(table.locator('thead th.th-new')).toHaveCount(1)
   await expect(table.locator('thead th.th-new input')).toHaveValue('新列 2')
-  // Remove the placeholder and then count the headers: the selector of `heads` only excludes .rx and .th-add, and the placeholder th.th-new will be used by it.
-  // Count in (the text is an empty string), so the number of columns can only be compared after the placeholders are gone.
+  // Remove the placeholder before counting headers: the `heads` selector excludes only .rx and .th-add, so
+  // it also counts th.th-new (as an empty string), and column counts compare only once it is gone.
   await table.locator('thead th.th-new input').press('Escape')
   await expect(table.locator('thead th.th-new')).toHaveCount(0)
   await expect.poll(heads).toEqual([...before, '新列 2'])
@@ -562,7 +573,8 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
   await expect(table.locator('thead th.th-new')).toHaveCount(0)
   await expect.poll(heads).toEqual([...before, '新列 2'])
 
-  // When typing the plus sign for paper comparison on the keyboard, pointerdown will not be sent, and the placeholder column cannot be removed by clicking Cancel; the two placeholders cannot be opened at the same time.
+  // Pressing Paper comparison's + from the keyboard sends no pointerdown, so the placeholder column cannot
+  // rely on an outside click to close; the two placeholders must still never be open at once.
   await table.locator('thead').hover()
   await table.locator('thead [title="新增列"]').click()
   await expect(table.locator('thead th.th-new')).toHaveCount(1)
@@ -580,7 +592,7 @@ test('这一节没有成员时没有表,也就没有列入口', async ({ win }) 
   await shown(win).locator('[data-wk="topics/quantization"]').click()
   await expect(shown(win).locator('table.cmp')).toHaveCount(0)
   await expect(shown(win).locator('.th-add')).toHaveCount(0)
-  // All that is left on the letterhead is the plus sign of the related paper: the gears follow the watch, and if there is no watch, there is no such thing.
+  // The header keeps only the add-paper +: the gear comes with the table, so with no table there is none.
   const head = shown(win).locator('.wkmain .section-heading', { hasText: '论文对比' })
   await expect(head.locator('button')).toHaveCount(1)
   await expect(head.locator('button')).toHaveAttribute('title', '添加论文')
@@ -589,18 +601,21 @@ test('这一节没有成员时没有表,也就没有列入口', async ({ win }) 
 test('细分:名字里没有字母数字时占位与打好的字都留着', async ({ win }) => {
   await gotoWiki(win)
   await shown(win).locator('[data-wk="topics/quantization"]').click()
-  // The count elements are not equal: the page name in the screen header means that wiki.aggregation is back, and the subdivision card can be counted correctly at this time
+  // count() does not wait for elements: the page name in the header means wiki.aggregation has returned,
+  // so the subpage cards can be counted correctly now.
   await expect(shown(win).locator('.desk-head .t')).toHaveText('Quantization')
   const cards = shown(win).locator('.wkmain .wkgrid .wkcard')
   const n = await cards.count()
 
-  // Pure punctuation is not required. slug:slugOf uses \p{L}, and the Chinese characters are left as they are (see slug.test.ts)
+  // Only pure punctuation has no slug: slugOf keeps \p{L}, so Chinese characters stay as they are (see
+  // slug.test.ts).
   await shown(win).locator('.wkmain .section-heading', { hasText: '细分主题' }).locator('.btn').click()
   await shown(win).locator('.pickin').pressSequentially('!!!')
   await expect(shown(win).locator('.pickin')).toHaveAttribute('aria-busy', 'false')
   await shown(win).locator('.pickin').press('Enter')
 
-  // Submission rejected: The original words are put into the toast, and the placeholder card and the words inside are retained. People can change them on the spot and then enter.
+  // Rejected: the message shows in the toast, and the placeholder card keeps the typed text so it can be
+  // fixed in place and submitted again.
   await expect(win.locator('#toast')).toHaveText('名字里得有字母或数字')
   await expect(shown(win).locator('.ipcerror')).toHaveCount(0)
   await expect(cards).toHaveCount(n + 1)
