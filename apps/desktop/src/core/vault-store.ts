@@ -47,6 +47,7 @@ import {
   ChatRecordSchema, InboxRecordSchema, LaterRecordSchema, PaperReadingRecordSchema,
   TrashRecordSchema, VaultStateSchema,
 } from './vault/records.js'
+import { readRecord, readStoredList, withUnknownFields, type StoredList } from './vault/stored-records.js'
 import {
   movePage, removePage, replacePage, writeImmutable, writeJson, writePage,
 } from './vault/writer.js'
@@ -186,9 +187,9 @@ function readPage(file: string): Scanned {
   return { id: name.slice(0, -'.md'.length), file, ...splitPage(readFileSync(file, 'utf8')) }
 }
 
-/** Reads every page in a directory, sorted by filename as this implementation's vault order. */
-function scan(dir: string): Scanned[] {
-  return readdirSync(dir).filter((name) => name.endsWith('.md')).sort()
+/** Reads every page in a directory whose stem `keep` accepts, sorted by filename as this implementation's vault order. */
+function scan(dir: string, keep: (stem: string) => boolean): Scanned[] {
+  return readdirSync(dir).filter((name) => name.endsWith('.md') && keep(name.slice(0, -'.md'.length))).sort()
     .map((name) => readPage(join(dir, name)))
 }
 
@@ -370,26 +371,39 @@ export function createVaultStore(
   }
   migrateAppliedTrust()
 
-  /** Loads the record list in `.meridian/<name>.json`, or an empty list when the file does not exist. */
-  const load = <T>(name: string, schema: z.ZodType<T>): T[] => {
+  /** Each list `load` read, by name, holding what its next `save` writes back besides the rows. */
+  const lists = new Map<string, StoredList<unknown>>()
+
+  /**
+   * Loads the record list in `.meridian/<name>.json` record by record, telling records apart by their
+   * `key` field, or an empty list when the file does not exist.
+   */
+  const load = <T>(name: string, schema: z.ZodType<T>, key = 'id'): T[] => {
     const file = join(meridian, `${name}.json`)
     if (!existsSync(file)) return []
-    return schema.array().parse(JSON.parse(readFileSync(file, 'utf8')))
+    const list = readStoredList(file, JSON.parse(readFileSync(file, 'utf8')), schema, key)
+    lists.set(name, list)
+    return list.rows
   }
-  const save = (name: string, rows: unknown): void => writeJson(join(meridian, `${name}.json`), rows, staging)
+  const save = (name: string, rows: readonly unknown[]): void =>
+    writeJson(join(meridian, `${name}.json`), lists.get(name)?.stored(rows) ?? rows, staging)
 
   // Remove partial output from the previous run; destination pages were never modified and the debris is no longer useful.
   rmSync(staging, { recursive: true, force: true })
 
   const stateFile = join(meridian, 'state.json')
-  let state: VaultState = existsSync(stateFile)
-    ? VaultStateSchema.parse(JSON.parse(readFileSync(stateFile, 'utf8')))
-    : { seq: 0 }
+  const readState = existsSync(stateFile)
+    ? readRecord(VaultStateSchema, JSON.parse(readFileSync(stateFile, 'utf8')))
+    : { value: { seq: 0 }, unknown: [] }
+  if ('error' in readState) throw new Error(`${stateFile} 这个版本读不了:${readState.error}`)
+  let state: VaultState = readState.value
+  /** Writes `state` to `state.json` with the fields this version does not know put back. */
+  const saveState = (): void => writeJson(stateFile, withUnknownFields(state, readState.unknown), staging)
 
   /** Returns an unused vault ID from a monotonically increasing sequence that survives restarts. */
   const nextId = (prefix: string): string => {
     state = { ...state, seq: state.seq + 1 }
-    writeJson(stateFile, state, staging)
+    saveState()
     return `${prefix}-${state.seq}`
   }
 
@@ -414,7 +428,7 @@ export function createVaultStore(
     save('feed', feed)
   }
   let trash = load('trash', TrashRecordSchema)
-  let readings = load('paper-readings', PaperReadingRecordSchema)
+  let readings = load('paper-readings', PaperReadingRecordSchema, 'paperId')
   // Another App version may have written queue records this one cannot read; keep those as written.
   const heldProposals: unknown[] = existsSync(join(meridian, 'proposals.json'))
     ? JSON.parse(readFileSync(join(meridian, 'proposals.json'), 'utf8')) as unknown[] : []
@@ -432,7 +446,11 @@ export function createVaultStore(
 
   // Older versions left watch-derived recommendations in inbox.json after a watch was removed.
   // They have no reachable sidebar destination and pollute the combined feed and deduplication history, so remove them on open.
-  const knownWatches = new Set(watches.map((watch) => watch.id))
+  // A watch this version cannot read still owns its entries.
+  const knownWatches = new Set<unknown>([
+    ...watches.map((watch) => watch.id),
+    ...(lists.get('watches')?.unreadable ?? []).map((watch) => (watch as { id?: unknown }).id),
+  ])
   const orphanInbox = new Set(
     inbox.filter((entry) => entry.kind === 'watch' && !knownWatches.has(entry.watch))
       .map((entry) => entry.id),
@@ -447,16 +465,22 @@ export function createVaultStore(
     }
   }
 
-  const projectById = new Map<string, ProjectRecord>(
-    (existsSync(projectDir) ? readdirSync(projectDir).filter((n) => n.endsWith('.md')) : [])
-      .map((name) => {
-        const id = name.slice(0, -'.md'.length)
-        return [id, readProjectPage(join(projectDir, name), id)]
-      }),
-  )
+  const projectById = new Map<string, ProjectRecord>()
+  /** Ids of the project pages this version cannot read; they are left out and never written. */
+  const unreadableProjects = new Set<string>()
+  for (const name of existsSync(projectDir) ? readdirSync(projectDir).filter((n) => n.endsWith('.md')) : []) {
+    const id = name.slice(0, -'.md'.length)
+    try {
+      projectById.set(id, readProjectPage(join(projectDir, name), id))
+    } catch (err) {
+      unreadableProjects.add(id)
+      console.error(`[project] ${join(projectDir, name)} 这个版本读不了,没有读进来(可能要更新 App):${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
 
   const orphanDiscoveries = new Set(
-    inbox.filter((entry) => entry.kind === 'discovery' && !projectById.has(entry.project))
+    inbox.filter((entry) => entry.kind === 'discovery' && !projectById.has(entry.project)
+      && !unreadableProjects.has(entry.project))
       .map((entry) => entry.id),
   )
   if (orphanDiscoveries.size > 0) {
@@ -466,7 +490,7 @@ export function createVaultStore(
     save('trash', trash)
   }
 
-  const paperScan = scan(paperDir)
+  const paperScan = scan(paperDir, (stem) => wikiData.pages[PAPER_PAGE + stem] !== undefined)
 
   /** Every paper page in the vault, keyed by its filename-derived ID. */
   const papers = new Map<string, PaperRow>()
@@ -521,7 +545,8 @@ export function createVaultStore(
    * current aggregation of a modified paper in `next`. A claim op refills every
    * aggregation it writes; a revision also refills every page whose claims
    * conflict with the revised one, since those render its text. `before`
-   * supplies old parents and the other side of a closed conflict.
+   * supplies old parents and the other side of a closed conflict. A page
+   * `next` does not hold, such as one this version cannot read, is left out.
    */
   const refilled = (proposal: Proposal, before: WikiData, next: WikiData): string[] => {
     const out: string[] = []
@@ -554,7 +579,7 @@ export function createVaultStore(
       if (op.op !== 'setMembership' && op.op !== 'removeMembership') continue
       for (const m of (next.pages[op.paper] as WikiPaperRecord).fm.memberships ?? []) add(m.in)
     }
-    return out
+    return out.filter((id) => next.pages[id] !== undefined)
   }
 
   /**
@@ -571,6 +596,11 @@ export function createVaultStore(
       else papers.set(stem, paperRowOf(wikiData, stem, page as WikiPaperRecord))
     }
     writeSignals()
+  }
+
+  /** Throws when Wiki page `id` has a file that the Wiki left out because this version cannot read it. */
+  const checkReadable = (id: string): void => {
+    if (wikiData.pages[id] === undefined && existsSync(wikiFile(id))) throw new Error(`wiki 页这个版本读不了(可能要更新 App):${id}`)
   }
 
   /** Page version of Wiki page `id`, null when it has no file. Throws if a part of the id is `.` or `..`. */
@@ -703,10 +733,10 @@ export function createVaultStore(
   /** Current vault time as UTC midnight, used for deletion timestamps and trash retention. */
   const nowMs = (): number => Date.parse(`${today()}T00:00:00Z`)
 
-  /** Returns a project by ID. Throws when the vault has no such project. */
+  /** Returns a project by ID. Throws when the vault has no such project, or cannot read its page. */
   const projectOf = (id: string): ProjectRecord => {
     const project = projectById.get(id)
-    if (!project) throw new Error(`项目不存在:${id}`)
+    if (!project) throw new Error(unreadableProjects.has(id) ? `项目页这个版本读不了(可能要更新 App):${id}` : `项目不存在:${id}`)
     return project
   }
 
@@ -790,7 +820,7 @@ export function createVaultStore(
     ideas = [...added, ...ideas]
     save('ideas', ideas)
     state = { ...state, agentIdeas: [...taken] }
-    writeJson(stateFile, state, staging)
+    saveState()
     for (const project of touched) syncProjectWorkspace(project)
   }
 
@@ -834,7 +864,7 @@ export function createVaultStore(
       }
     }
     state = { ...state, feedEvents: [...seen] }
-    writeJson(stateFile, state, staging)
+    saveState()
   }
 
   /** Current paper rows augmented with links and conclusions stored on projects. */
@@ -955,7 +985,7 @@ export function createVaultStore(
       },
     ])
     state = { ...state, gitManaged: managed }
-    writeJson(stateFile, state, staging)
+    saveState()
   }
 
   // Multiple pages may legally reference one source, usually after duplicate imports. Keep every page visible and
@@ -974,7 +1004,7 @@ export function createVaultStore(
       ])
     }
     state = { ...state, sharedSources: shared.length }
-    writeJson(stateFile, state, staging)
+    saveState()
   }
 
   /** Returns the current vault column configuration, or an empty configuration before customization. */
@@ -1225,7 +1255,7 @@ export function createVaultStore(
     setPaperColumns(columns) {
       checkColumns(columns, [...papers.values()])
       state = { ...state, columns: structuredClone(columns) }
-      writeJson(stateFile, state, staging)
+      saveState()
     },
 
     renamePaperOption(key, from, to) {
@@ -1245,7 +1275,7 @@ export function createVaultStore(
           custom: held.custom.map((c) => (c.key === key ? { ...c, options } : c)),
         },
       }
-      writeJson(stateFile, state, staging)
+      saveState()
     },
 
     setPaperColumnType(key, type) {
@@ -1256,7 +1286,7 @@ export function createVaultStore(
         writePaper(id, { custom: patchedCustom(papers.get(id)!.custom, { [key]: cell ?? null }), updated: day })
       }
       state = { ...state, columns: next }
-      writeJson(stateFile, state, staging)
+      saveState()
     },
 
     paperCells(key) {
@@ -1273,7 +1303,7 @@ export function createVaultStore(
         })
       }
       state = { ...state, columns: next }
-      writeJson(stateFile, state, staging)
+      saveState()
     },
 
     listProjects() {
@@ -1306,7 +1336,7 @@ export function createVaultStore(
     reorderProjects(order) {
       const known = new Set(projectById.keys())
       state = { ...state, projectOrder: [...order].filter((id) => known.has(id)) }
-      writeJson(stateFile, state, staging)
+      saveState()
     },
 
     overviewProjects() {
@@ -1364,7 +1394,7 @@ export function createVaultStore(
       writePage(projectFile(project.id), projectPageText(project), staging)
       // Front of whatever order already exists, so a new project outranks the manual order too.
       state = { ...state, projectOrder: [project.id, ...(state.projectOrder ?? [])] }
-      writeJson(stateFile, state, staging)
+      saveState()
     },
 
     putProject(project) {
@@ -1893,7 +1923,7 @@ export function createVaultStore(
 
     setDeliverySettings(settings: DeliverySettings) {
       state = { ...state, deliverySettings: structuredClone(settings) }
-      writeJson(stateFile, state, staging)
+      saveState()
     },
 
     addInboxEntries(watchId, found, limit) {
@@ -1982,7 +2012,7 @@ export function createVaultStore(
         ...state,
         discoverySchedules: { ...state.discoverySchedules, [projectId]: schedule },
       }
-      writeJson(stateFile, state, staging)
+      saveState()
     },
 
     setDiscoveryIntent(projectId, intentId, action) {
@@ -2004,7 +2034,7 @@ export function createVaultStore(
           },
         },
       }
-      writeJson(stateFile, state, staging)
+      saveState()
     },
 
     addDiscoveryEntries(projectId, found: DiscoveryPaper[], limit) {
@@ -2053,7 +2083,7 @@ export function createVaultStore(
 
     setLastFetch(at) {
       state = { ...state, fetchedAt: at }
-      writeJson(stateFile, state, staging)
+      saveState()
     },
 
     wikiHome() {
@@ -2061,10 +2091,12 @@ export function createVaultStore(
     },
 
     wikiAggregation(id) {
+      checkReadable(id)
       return wikiAggregation(wikiData, id, versionOf(id)!, projectNames())
     },
 
     wikiPaper(id) {
+      checkReadable(id)
       if (wikiData.pages[id] === undefined) throw new Error(`wiki 论文页不存在:${id}`)
       return wikiPaper(wikiData, id, versionOf(id)!)
     },
@@ -2076,6 +2108,7 @@ export function createVaultStore(
     applyProposal(proposal, producer) {
       const data = wikiData
       const day = today()
+      for (const id of touchedPages(proposal, data)) checkReadable(id)
       // Validate the complete proposal first so an invalid step writes no bytes.
       const next = applyProposal(data, proposal, day, worldOf(producer?.by ?? HUMAN))
       // Refill requires generated-region markers. Newly proposed pages are not on disk yet, so skip them here.
@@ -2145,6 +2178,7 @@ export function createVaultStore(
     },
 
     checkProposal(ops, by) {
+      for (const id of touchedPages({ ops }, wikiData)) checkReadable(id)
       applyProposal(wikiData, { ops }, today(), worldOf(by, by === HUMAN))
     },
 
@@ -2189,6 +2223,7 @@ export function createVaultStore(
 
     updateWikiPage(id, body) {
       checkBody(id, body)
+      checkReadable(id)
       if (wikiData.pages[id] === undefined) throw new Error(`wiki 页不存在:${id}`)
       setBody(wikiFile(id), body, staging)
       setUpdated(wikiFile(id), today(), staging)
@@ -2197,6 +2232,7 @@ export function createVaultStore(
 
     applyPaperWikiDraft(id, body) {
       checkBody(id, body)
+      checkReadable(id)
       if (wikiData.pages[id] === undefined) throw new Error(`wiki 页不存在:${id}`)
       setBodyAndTrust(wikiFile(id), body, staging)
       setUpdated(wikiFile(id), today(), staging)
@@ -2377,7 +2413,7 @@ export function createVaultStore(
     reorderIdeas(order) {
       const known = new Set(ideas.map((idea) => idea.id))
       state = { ...state, ideaOrder: [...order].filter((id) => known.has(id)) }
-      writeJson(stateFile, state, staging)
+      saveState()
     },
 
     createIdea(chatId, title, body) {
@@ -2483,7 +2519,10 @@ export function createVaultStore(
   return withChangelog(ops, {
     load: (): ChangeRecord[] => {
       const file = join(meridian, 'changelog.json')
-      return existsSync(file) ? parseChangeRecords(JSON.parse(readFileSync(file, 'utf8'))) : []
+      if (!existsSync(file)) return []
+      const log = parseChangeRecords(JSON.parse(readFileSync(file, 'utf8')))
+      lists.set('changelog', log)
+      return log.rows
     },
     save: (rows) => { save('changelog', rows) },
     nextId: () => nextId('change'),

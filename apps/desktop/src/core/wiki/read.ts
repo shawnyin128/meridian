@@ -36,8 +36,8 @@ export function readWikiPage(file: string, kind: string | null): WikiPaperRecord
 /**
  * Reads the aggregation layout under `wikiDir`: `schema.yaml`, every paper
  * page under `papers/`, and every page under each kind's directory, in file
- * name order. Throws if there is no `schema.yaml`, naming that file, or if a
- * page cannot be read.
+ * name order. A page that cannot be read is left out and reported on stderr.
+ * Throws if there is no `schema.yaml`, naming that file.
  */
 export function readWikiData(wikiDir: string): WikiData {
   const schemaFile = join(wikiDir, 'schema.yaml')
@@ -52,7 +52,7 @@ export function readWikiData(wikiDir: string): WikiData {
       try {
         pages[id] = readWikiPage(join(full, name), kind)
       } catch (err) {
-        throw new Error(`${id}:${err instanceof Error ? err.message : String(err)}`, { cause: err })
+        console.error(`[wiki] ${id} 这个版本读不了,没有读进来(可能要更新 App):${err instanceof Error ? err.message : String(err)}`)
       }
     }
   }

@@ -95,7 +95,8 @@ export const TrashRecordSchema = z.discriminatedUnion('kind', [
  * deliveries. `projectOrder` and `ideaOrder` hold a manual display order set by drag or a one-shot
  * sort action; either is omitted until its list is reordered for the first time. `agentIdeas` lists
  * `<project id>:<idea id>` for each workspace agent idea already taken into the idea list, so a
- * deleted one does not come back.
+ * deleted one does not come back. Strict, so a key this version does not know is reported to the
+ * reader, which keeps it, instead of being dropped.
  */
 export const VaultStateSchema = z.object({
   seq: z.number().int(),
@@ -121,7 +122,7 @@ export const VaultStateSchema = z.object({
     coreIntentId: z.string().nullable(),
     disabledIntentIds: z.array(z.string()),
   }).strict()).optional(),
-})
+}).strict()
 
 export type PaperSnapshot = z.infer<typeof PaperSnapshotSchema>
 export type InboxRecord = z.infer<typeof InboxRecordSchema>
