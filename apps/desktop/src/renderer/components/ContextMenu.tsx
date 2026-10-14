@@ -6,8 +6,9 @@ import './ContextMenu.css'
 export type ContextMenuPoint = { x: number; y: number }
 
 /**
- * The coordinate menu shared by the right mouse button and keyboard ContextMenu. It unifies portal, viewport clamping, click/Escape closing,
- * The first focus and the focus return after closing; business components only provide original coordinates, labels and actions.
+ * The point-positioned menu shared by right-click and the keyboard ContextMenu key. It owns the
+ * portal, clamping to the viewport, closing on click/Escape, the first focus and returning focus
+ * after closing; callers only provide the raw coordinates, the label and the actions.
  */
 export function ContextMenu({ point, label, onClose, className = '', children }: {
   point: ContextMenuPoint

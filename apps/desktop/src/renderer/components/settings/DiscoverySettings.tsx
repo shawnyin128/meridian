@@ -17,7 +17,7 @@ function resultNote(result: DiscoveryFetchResult, m: Catalog): string {
   return parts.join(' · ')
 }
 
-/** The discovery direction is the only configuration page; the gear on the discovery page is only responsible for opening the settings, and no longer draws a separate editor. */
+/** The only editor of research directions; the gear on the Discovery page just opens these settings. */
 export function DiscoverySettings() {
   const m = useMessages()
   const [profiles, setProfiles] = useState<DiscoveryProfile[]>([])

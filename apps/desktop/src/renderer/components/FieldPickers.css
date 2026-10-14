@@ -15,10 +15,13 @@ button.pv{border:0;background:transparent;font-family:var(--sans);font-size:var(
 .cd.sel{background:var(--accent-solid);color:var(--on-accent)}
 
 /*
- * "More" button: The conversation rows in the sidebar share the same set of rows on each screen, and are only revealed when the row is hovered, the keyboard is entered, or the menu is opened; the real button,
- * Resting pointer-events are paired with opacity, otherwise it is an invisible but clickable button. :focus-visible That half is
- * The only entrance to the keyboard, the rows for project list and project details are only this one; the [data-state="open"] half covers the modal menu
- * When enabled, disableOutsidePointerEvents blocks hovers from the rest of the page, otherwise the trigger will disappear along with that line.
+ * "More" button: the sidebar's chat rows and the rows on every screen share it, and it shows only
+ * while its row is hovered, has keyboard focus, or has its menu open. It is a real button, so at
+ * rest pointer-events:none goes with opacity:0, otherwise it would be invisible but clickable. The
+ * :focus-visible half is the keyboard's way in, and the only one for project list and project
+ * detail rows. The [data-state="open"] half covers a modal menu: while it is open,
+ * disableOutsidePointerEvents blocks hover on the rest of the page, and the trigger would otherwise
+ * disappear along with its row's hover.
  */
 .dots{border:0;background:transparent;color:var(--ter);cursor:pointer;padding:2px;border-radius:var(--r-sm);display:grid;place-items:center;flex-shrink:0;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
 .dots:hover{background:var(--hover);color:var(--ink)}

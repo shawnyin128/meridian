@@ -9,7 +9,10 @@ import { PageError, SectionHeading } from '../PageShell.js'
 
 const EXCERPT = 2
 
-/** The reading summary in the paper details: the count can be jumped, and the essay and recent notes share the persistent record of the reader. */
+/**
+ * The reading summary in the paper detail: the counts are clickable, and the remark and recent
+ * notes come from the same stored record the reader uses.
+ */
 export function PaperReadingSummary({ paper, onRead, onConclusions }: {
   paper: PaperRow
   onRead: (anchor: JumpAnchor) => void

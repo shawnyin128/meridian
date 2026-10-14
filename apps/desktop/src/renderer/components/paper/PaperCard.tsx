@@ -3,7 +3,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { PaperAbstract } from './PaperAbstract.js'
 import './PaperCard.css'
 
-/** The paper discovery card is shared between receiving and reading later; the page only transmits actions, prompts and optional information. */
+/** The paper card shared by Inbox and Read Later; pages only pass actions, notices and optional details. */
 export function PaperCard({
   paperId, watchId, title, actions, notices, metadata, abstract, recommendation, leaving = false,
 }: {
@@ -45,7 +45,7 @@ export function PaperCard({
   )
 }
 
-/** Short tags in paper metadata, such as conference name or source of affiliation. */
+/** A short badge in a paper card's metadata, such as the venue or the source. */
 export function PaperCardBadge({ children }: { children: ReactNode }) {
   return <span className="paper-card-badge venue">{children}</span>
 }
@@ -64,7 +64,7 @@ export function PaperCardNotice({ children, action, tone = 'default' }: {
   )
 }
 
-/** Reference numbers remain as weakened fixed-width numbers. */
+/** The citation count, kept as dimmed fixed-width digits. */
 export function PaperCardCitations({ count }: { count: number }) {
   const m = useMessages()
   return <span className="paper-card-citations citations">{m.papers.card.citations(count)}</span>

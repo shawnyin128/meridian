@@ -10,17 +10,24 @@ import { COLUMNS } from './PaperTable.js'
 import { FormInput } from '../FormControls.js'
 
 /**
- * Click the gear at the end of the table header to open the column menu: built-in columns are one per row, click on the row to show and hide, fixed columns are grayed out and unresponsive; custom columns
- * One per line, rename or delete at the end of the line. The new column is not here, it is the + at the end of the header. The visual is demo's colMenu,
- * Open and close Radix: When the name change input box is open, Esc only cancels the name change and leaves the menu.
- * Each change is handed over to `onChange` with a function: receive the last confirmed column configuration and return the entire changed column configuration; the existing column names on the table will not be changed.
- * Change it to your original name and just close the input box.
- * There is an additional fold button at the end of the row of the selection column and the multi-selection column, and its options are expanded: one per row, and rename and delete at the end of the row. Change your name and leave
- * `onRenameOption` (it needs to be changed together with the paper), delete it as usual `onChange` - when there are still papers in the whole database with that option filled in
- * core will reject it, and the banner will report its original words.
- * There is also a "Change Type" button at the end of the row of the custom column. Expand the row of type gears when creating the column, click or use the direction keys to switch to another gear.
- * `onRetype`, the promise it returns will be fulfilled when this write is finalized (written or rejected). When writing about changing the type is still on the way, the stalls are OK
- * Select the last requested gear, and the direction keys start from it, and switching to it does not count; after everything is settled, return to the type in `columns`.
+ * The column menu, opened from the gear at the end of the table header. Built-in columns take one
+ * row each, and clicking a row shows or hides the column; locked columns are grayed out and inert.
+ * Custom columns take one row each, with rename and delete at the end of the row. Adding a column
+ * is not here but the + at the end of the header. Styled as the demo's colMenu, opened and closed
+ * by Radix; while a rename input is open, Esc cancels only the rename and keeps the menu.
+ * Each change goes to `onChange` as a function that takes the last confirmed column configuration
+ * and returns the whole changed one; a name another column on the table already has is refused,
+ * and renaming to the column's own name just closes the input.
+ * Select and multi-select columns have an extra toggle at the end of the row that expands their
+ * options, one per row, with rename and delete at the end of the row. Renaming goes to
+ * `onRenameOption` (the papers holding it change too); deleting goes to `onChange` as usual, and
+ * while any paper in the vault still holds that option, Core rejects it and the banner shows
+ * Core's message.
+ * Custom column rows also have a "Change type" button that expands the row of type options used
+ * when adding a column; clicking or arrowing to another option calls `onRetype`, whose promise
+ * settles once that write is final (written or rejected). While a type change is still being
+ * written, the options show the last requested type, the arrow keys start from it, and picking it
+ * again does nothing; once everything settles, they return to the type in `columns`.
  */
 export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
   columns: PaperColumns
@@ -36,9 +43,10 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
   const [opened, setOpened] = useState<string | null>(null)
   // The option being renamed
   const [renamingOption, setRenamingOption] = useState<{ key: string; from: string } | null>(null)
-  // The key of the column in which the type range is being spread
+  // The key of the column whose type options are expanded
   const [retyping, setRetyping] = useState<string | null>(null)
-  // Write the columns that are still on the way to change the type: the type of the last request, together with the mark identifying this request.
+  // Columns whose type change is still being written: the last requested type, with a token that
+  // identifies that request.
   const [requested, setRequested] = useState<Record<string, { type: PaperColumn['type']; token: object }>>({})
 
   const toggle = (k: string) => onChange((base) => ({
@@ -46,10 +54,16 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
     hidden: base.hidden.includes(k) ? base.hidden.filter((h) => h !== k) : [...base.hidden, k],
   }))
 
-  /** Which gear is selected in the gear row at the moment: when this column has a changed type and is written on the road, it is the last requested gear, otherwise it is the type in the column configuration. */
+  /**
+   * The selected type option: the last requested type while a type change is being written,
+   * otherwise the configured one.
+   */
   const pickedType = (c: PaperColumn) => requested[c.key]?.type ?? c.type
 
-  /** Request to change column `key` to `type`; when this write is finalized, if it is still the last request for this column, the filename returns to the type in the column configuration. */
+  /**
+   * Requests `type` for column `key`; once that write is final and is still the column's last
+   * request, the options return to the configured type.
+   */
   const retype = (key: string, type: PaperColumn['type']) => {
     const token = {}
     setRequested((r) => ({ ...r, [key]: { type, token } }))
@@ -73,14 +87,16 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
       }}
       sticky="always" trigger={<button className="colbtn" title={m.papers.columnMenu.settings}><IconGear /></button>}
       contentProps={{
-          // Radix collects Esc during the capture phase of the document and cannot block it in the input box; when changing the name, block the closing layer here and only cancel the name change.
+          // Radix takes Esc in the document's capture phase, so the input cannot stop it; during a
+          // rename, keep the popover open here and only cancel the rename.
           onEscapeKeyDown: (e) => {
             if (renamingOption !== null) { e.preventDefault(); setRenamingOption(null); return }
             if (renaming !== null) { e.preventDefault(); setRenaming(null) }
           },
       }}
     >
-          {/* Creating a column will expand the table, and the entry at the end of the table header will slide out of the visible area; the menu should remain in the window, the same as the clamping when opening the demo layer */}
+          {/* sticky="always" above: adding a column widens the table and slides the header's gear out of
+              view; the menu still stays in the window, like the demo's clamping when it opens a popover */}
           {COLUMNS.map((c) => {
             const locked = (LOCKED_PAPER_COLUMNS as readonly string[]).includes(c.k)
             return (
@@ -131,7 +147,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                 <button className="cmx" title={m.papers.columnMenu.rename} onClick={() => setRenaming(c.key)}>
                   <IconPencil />
                 </button>
-                {/* Core rejects keys without columns in the group, so when deleting a column, you must remove the item in the group together with it. */}
+                {/* Core rejects group keys with no column, so a deleted column leaves the groups too. */}
                 <button
                   className="cmx del" title={m.papers.columnMenu.deleteColumn}
                   onClick={() => onChange((base) => ({

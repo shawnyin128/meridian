@@ -21,13 +21,13 @@ import {
 } from './icons.js'
 
 /**
- * Pin the rendering tags of each exported icon in card-icons.tsx and compare the source code byte by byte as it is written today.
- * IconPlus / IconCross / IconDots are handwritten bare <svg>, deliberately not containing the Icon of this file
- * Shell: Icon fixed complement strokeLinecap and strokeLinejoin double round, while IconPlus,
- * IconCross only needs strokeLinecap; IconDots uses fill to draw three solid points and no stroke at all.
- * Inserting Icon will reverse fill/stroke. PLUS_PATH is exported separately. This test uses the naked icon.
- * All the tags packaged with the universal Icon shell are pinned and asserted to be unequal to prevent someone from accidentally using IconPlus
- * "Simplified" into another plus sign.
+ * Pins the rendered markup of each icon exported from icons.tsx, byte for byte as the source is
+ * written today. IconPlus / IconCross / IconDots are hand-written bare <svg>s that deliberately do
+ * not use this file's Icon shell: Icon always adds both strokeLinecap and strokeLinejoin round,
+ * while IconPlus and IconCross need only strokeLinecap, and IconDots draws three solid dots with
+ * fill and no stroke at all, so wrapping it in Icon would invert fill/stroke. PLUS_PATH is exported
+ * separately; this test pins the markup of the bare icon's path wrapped in the generic Icon shell
+ * and asserts the two differ, so nobody "simplifies" IconPlus into the other plus by accident.
  */
 
 describe('card-icons', () => {

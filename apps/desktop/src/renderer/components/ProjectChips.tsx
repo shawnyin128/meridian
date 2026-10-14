@@ -12,8 +12,9 @@ import { useMessages } from '../messages/useMessages.js'
 import { FormInput } from './FormControls.js'
 
 /**
- * A project with a paper: one chip per project, the × on the chip removes the paper from the project;
- * Use the "+" at the end to select a project that has not yet been linked to this article. After writing, the whole library version will be automatically incremented, and the current screen will be retrieved by itself.
+ * The projects of a paper: one chip per project, whose × removes the paper from that project; the
+ * "+" at the end picks a project this paper is not linked to yet. A write bumps the vault revision
+ * by itself, and the current screen refetches on its own.
  */
 export function ProjectChips({ paper, onError }: {
   paper: PaperRow

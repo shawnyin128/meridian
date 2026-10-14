@@ -3,7 +3,10 @@ import type { PaperReading } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { FormTextarea } from '../FormControls.js'
 
-/** The essay in the right column of the reader: a random thought about the entire article, without anchoring the page number; the entire paragraph is saved and replaced, and the save does not change if it is not modified. */
+/**
+ * The remark in the reader's right rail: a free thought about the whole paper, tied to no page. The
+ * whole text is saved as a replacement, and Save stays disabled while it is unchanged.
+ */
 export function ReadingRemark({ reading, saving, onSave }: {
   reading: PaperReading | null
   saving: boolean

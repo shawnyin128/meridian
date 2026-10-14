@@ -10,7 +10,8 @@ type AddActionProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> 
 }
 
 /**
- * Add entry for all products. The main action of the page, the section action and the pure icon entrance only change the weight, and no longer draw a set of plus signs respectively.
+ * The one add entry for the whole product. A page's main action, a section action and a pure icon
+ * entry differ only in weight instead of each drawing its own plus sign.
  * Pure icon entries must be given title or aria-label so that both mouse and keyboard users know what will be added.
  */
 export const AddAction = forwardRef<HTMLButtonElement, AddActionProps>(function AddAction({

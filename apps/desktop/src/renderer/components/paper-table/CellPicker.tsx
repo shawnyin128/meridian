@@ -7,9 +7,10 @@ import { PickerPopover } from '../PickerPopover.js'
 import { FormInput } from '../FormControls.js'
 
 /**
- * The lines to be drawn in the pop-up layer at this moment: the ones containing `typed` (lowercase substrings) in `options` are `hits`; `isNew`
- * Ask if there is an extra line "New" at the end - it is required only if the typed word is not empty and is not equal to any of the options. If equal, the ratio will be in lower case.
- * So the only difference between upper and lower case counts as the same option. `typed` contains what the words in the input box look like after removing the leading and trailing spaces.
+ * The rows the popover shows now: `hits` are the `options` that contain `typed` (as a lowercase
+ * substring); `isNew` says whether a "Create" row follows them, needed only when the typed text is
+ * not empty and equals no option. Equality is compared in lowercase, so a difference in case alone
+ * counts as the same option. `typed` is the input's text with leading and trailing spaces removed.
  */
 export function optionRows(
   options: readonly string[], typed: string,
@@ -22,16 +23,19 @@ export function optionRows(
 }
 
 /**
- * Grid editor for selection columns and multi-select columns: an input box in the grid serves as an anchor, and a layer of existing options and typed words in this column are hung below.
- * Screen these rows. If the rows cannot be screened, there will be an extra row of "New "X"". Click a line to report the option of this line; Enter to report the typed word - related to a certain
- * If the option only differs in uppercase and lowercase letters, the option itself will be reported. Otherwise, a new one will be reported; Esc and click will not be written anywhere else. Vision is
- * The demo's `.ctxmenu.drop` and `.rrow` / `.mk` are opened and closed by Radix.
- * `onCommit` collects the option that is activated now, and whether it should be added to this column first; why does this cell become
- * Count outside. After the new creation, the input box is cleared and the pop-up layer remains.
+ * Cell editor for select and multi-select columns: an input in the cell is the anchor, and below it
+ * a popover lists the column's existing options, filtered by the typed text. When the typed text
+ * equals no option, an extra "Create "X"" row appears. Clicking a row reports that row's option;
+ * Enter reports the typed text, as the option itself when it differs from one only in case,
+ * otherwise as a new one; Esc and a click elsewhere write nothing. Styled as the demo's
+ * `.ctxmenu.drop` and `.rrow` / `.mk`, opened and closed by Radix.
+ * `onCommit` receives the option chosen now and whether it must first be added to this column;
+ * when this cell closes is decided by the caller. After a create, the input is cleared and the
+ * popover stays open.
  */
 export function CellPicker({ column, values, onCommit, onClose }: {
   column: PaperColumn
-  /** The value filled in this box at the moment can only be one in the single-choice column. */
+  /** The values this cell holds now; a select column holds at most one. */
   values: string[]
   onCommit: (value: string, created: boolean) => void
   onClose: () => void

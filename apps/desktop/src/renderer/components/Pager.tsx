@@ -4,10 +4,12 @@ import { PageFooter } from './PageShell.js'
 import { SegmentedControl } from './SegmentedControl.js'
 
 /**
- * Pagination bar: total number on the left, page number and each page file on the right. When the total number does not exceed the smallest one, the entire bar will not appear and return
- * null. The page numbers are output according to the rules of the demo: the first page, one page on each side of the current page, the last page, and ellipsis at the break. `page`
- * When the last page is exceeded, press the last page to draw. It is the same as the demo and does not wait for the number to be retrieved before correcting.
- * The outer layer is always PageShell's lightweight footer; `className` only complements the page's own layout modifications.
+ * Pagination bar: the total on the left, the page numbers and the page-size options on the right.
+ * When the total does not exceed the smallest page size, no bar appears and this returns null.
+ * Page numbers follow the demo's rule: the first page, one page on each side of the current page,
+ * the last page, and an ellipsis at each gap. A `page` past the last page is drawn as the last
+ * page, as in the demo, without waiting for a refetch to correct it.
+ * The wrapper is always PageShell's bare footer; `className` only adds the page's own layout tweaks.
  */
 export function Pager({ total, page, size, sizes, onPage, onSize, className }: {
   total: number

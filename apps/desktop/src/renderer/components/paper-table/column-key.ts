@@ -2,12 +2,13 @@ import type { PaperColumns } from '../../../shared/contract.js'
 import { GROUPABLE_PAPER_FIELDS, PAPER_COLUMNS } from '../../../shared/vocabulary.js'
 import { nextKey } from '../../lib/slug.js'
 
-// The contract only accepts the key [A-Za-z0-9_-], but slugOf keeps CJK as a letter, so first fold it into -
+// The contract allows only [A-Za-z0-9_-] in keys, but slugOf keeps CJK as letters; fold the rest into -
 const NON_KEY = /[^A-Za-z0-9_-]+/g
 
 /**
- * The keys that can be used for the column `label`: Illegal characters are folded into `-`, which are the same as those existing in `columns`, built-in columns, groupable fields,
- * When the sentinel `none` or `Object.prototype` of the grouping column hits the property name, it is followed by `-2` and `-3`.
+ * A usable key for a column named `label`: characters a key cannot hold fold into `-`, and on a
+ * collision with a key in `columns`, a built-in column, a groupable field, the group sentinel
+ * `none` or a property name of `Object.prototype`, `-2`, `-3`… is appended.
  */
 export function columnKey(label: string, columns: PaperColumns): string {
   return nextKey(label.replace(NON_KEY, '-'), [

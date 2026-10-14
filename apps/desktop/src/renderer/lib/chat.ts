@@ -1,2 +1,2 @@
-/** Default session ID shared by conflict entries in dynamics and global conversations. */
+/** The default chat session id shared by the feed's conflict entries and the global chat. */
 export const CONFLICT_THREAD = 'conflict'

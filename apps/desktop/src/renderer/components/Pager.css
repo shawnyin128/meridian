@@ -1,15 +1,18 @@
-/* Pagination bar: number of bars · page number · selection per page. The rules are copied from desktop/design/platform-shell-demo.html one by one. */
+/* Pagination bar: total · page numbers · page size. Rules copied from e2e/fixtures/platform-shell-demo.html. */
 
 /*
- * The demo writes margin:0, and the horizontal auto is covered by the more specific .main.desk-open .desk-foot>*;
- * There is no desk-open here, and the .desk-foot>* of shell.css cannot be pressed into this row. Auto can only write into this row.
+ * The demo writes margin:0 and gets the horizontal auto from the more specific
+ * .main.desk-open .desk-foot>*. There is no desk-open here, and .desk-foot>* in PageShell.css
+ * cannot override this rule, so the auto has to be written into this rule itself.
  */
 .desk-foot .pagebar{margin:0 auto}
 .pagebar{display:flex;align-items:center;gap:12px;margin:12px 0 4px;flex-wrap:wrap}
 /*
- * The number of articles and the stalls of each page are attached to both ends of the paging strip according to their own width. The remaining margin in the middle belongs to the page number strip. The page number strip is in
- * Row on the right side of the grid. The margins are all in the same grid, so there is no second control whose position floats with the width of the content: one more bar number
- * Numbers only eat up the margin, and one more page number only eats up the margin. The position of each page and the edge of the page number bar are determined by the right edge of the paging bar.
+ * The total and the page-size options keep their own widths at the two ends of the bar; the space
+ * left in the middle belongs to the page numbers, which line up at its right. All slack sits in
+ * that one space, so no second control shifts with the content width: a longer total or one more
+ * page number only uses up slack. The page-size options and the page numbers' edge are placed from
+ * the bar's right edge.
  */
 .pagebar>.segmented-control{flex:0 0 auto}
 .pagebar>.pager{flex:1 1 0;justify-content:flex-end}

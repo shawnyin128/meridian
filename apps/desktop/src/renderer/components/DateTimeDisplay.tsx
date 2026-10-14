@@ -16,7 +16,8 @@ export function DateChip({ date, children, className = '' }: {
 }
 
 /**
- * Unified date/hour combination across applications. The date always comes first and the hour comes last; the caller only decides whether to display the hour.
+ * The app-wide date and time pair. The date always comes first and the time after it; the caller
+ * only decides whether to show the time.
  */
 export function DateTimeDisplay({
   start, end = start, time, className = '', dateClassName = '', timeClassName = '',
