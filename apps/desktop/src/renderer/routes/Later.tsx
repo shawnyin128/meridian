@@ -14,7 +14,7 @@ import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle } from '../components/PageShell.js'
 import './shell.css'
 
-/** Grouping basis: According to the time of joining the team, or according to the place of origin when joining the team. */
+/** How entries are grouped: by the day they joined the queue, or by where they came from. */
 type Grouping = 'time' | 'src'
 
 const MODES: Grouping[] = ['time', 'src']
@@ -23,7 +23,8 @@ const MODES: Grouping[] = ['time', 'src']
 const TITLE_IN_TOAST = 18
 
 /**
- * Read later: For direct reading that has been stored in the database, only the original text address will be downloaded and stored in the database first, and each item can be moved out of the queue.
+ * Read Later: a paper already in the vault opens straight in the reader; one with only its source
+ * address is downloaded into the vault first. Each entry can be removed from the queue.
  */
 export function Later() {
   const m = useMessages()
@@ -77,7 +78,7 @@ export function Later() {
       { note: m.later.removed(entry.title.slice(0, TITLE_IN_TOAST)), notify: toast })
   }
 
-  // The entries have been sorted from newest to oldest by date of entry into the queue, and the groups are grouped according to the order in which they appear.
+  // Entries arrive newest first by the day they were queued; groups follow the order keys first appear in.
   const key = (e: LaterEntry) => (grouping === 'time' ? e.day : e.source)
   const groups = entries.reduce<{ key: string; items: LaterEntry[] }[]>((made, entry) => {
     const seen = made.find((g) => g.key === key(entry))

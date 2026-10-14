@@ -17,8 +17,8 @@ import './shell.css'
 import './Trash.css'
 
 /**
- * The order of grouping. The order array of the demo is the paper push, paper, and project. The attachments are not in the array and follow the ordered ones.
- * After; the idea follows the project, and attachments remain at the end.
+ * The order of the groups. The demo's order array was Inbox, papers, projects, with attachments
+ * outside it, after the ordered kinds; ideas follow projects, and attachments stay last.
  */
 const KINDS: TrashEntry['kind'][] = ['inbox', 'paper', 'project', 'idea', 'attachment']
 
@@ -26,8 +26,10 @@ const KINDS: TrashEntry['kind'][] = ['inbox', 'paper', 'project', 'idea', 'attac
 const TITLE_IN_BANNER = 18
 
 /**
- * One has a few days left before it is automatically cleared. `deletedAt` is the epoch millisecond of the deletion time, `today` is Curry’s today,
- * Both take the same clock. The day of deletion is counted as the entire retention period, and items that have expired are counted as 0 - the library will not list such entries.
+ * Days left before an entry is cleared automatically. `deletedAt` is the deletion time in epoch
+ * milliseconds and `today` the vault's today; both come from the same clock. An entry deleted today
+ * has the whole retention period left, and an expired one counts as 0: the vault no longer lists
+ * such entries.
  */
 export const daysLeft = (deletedAt: number, today: string) =>
   Math.ceil((deletedAt + TRASH_RETENTION_DAYS * D1 - dnum(today) * D1) / D1)
@@ -45,8 +47,9 @@ function ClearButton({ count, onClear }: { count: number; onClear: () => void })
 }
 
 /**
- * Trash: A safety net for full app deletion. Entries are grouped by type, and each entry can be restored to its original location or completely deleted;
- * The first set is titled the entrance to empty the entire barrel. Entries are retrieved through trash.list and the deleted content itself is not held in this screen.
+ * Trash: the safety net for every deletion in the app. Entries are grouped by kind, and each can be
+ * restored to where it was or deleted permanently; the first group's heading holds "Empty trash".
+ * Entries come from trash.list; this screen does not hold the deleted content itself.
  */
 export function Trash() {
   const m = useMessages()
@@ -124,7 +127,7 @@ export function Trash() {
           ))}
       </PageBody>
 
-      {/* The retention period description of demo stays at the bottom of the view and does not move with the length of the content; the entire bar does not appear when the bucket is empty. */}
+      {/* As in the demo, the retention note stays at the bottom of the view; an empty trash shows no bar. */}
       {entries.length > 0
         ? (
           <PageFooter bare>
