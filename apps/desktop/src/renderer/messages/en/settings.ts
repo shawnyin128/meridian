@@ -224,7 +224,7 @@ export const settings = {
         latest: 'Up to date.',
         downloading: (version: string, percent: number) => `Downloading ${version} (${percent}%).`,
         ready: (version: string) => `${version} is downloaded. Restart to update.`,
-        available: (version: string) => `Version ${version} is available to download and install.`,
+        available: (version: string) => `Version ${version} is available. Meridian cannot replace itself where it runs (for example from the disk image), so download and install it.`,
         error: (message: string) => `Update check failed: ${message}`,
       },
       check: 'Check for updates',

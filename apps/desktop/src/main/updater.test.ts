@@ -1,8 +1,9 @@
 import { EventEmitter } from 'node:events'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
-  CHECK_EVERY_MS, createUpdater, FIRST_CHECK_MS, RETRY_AFTER_ERROR_MS, TICK_MS, type UpdateFeed,
+  CHECK_EVERY_MS, createUpdater, FIRST_CHECK_MS, RETRY_AFTER_ERROR_MS, TICK_MS, type InstallRoute, type UpdateFeed,
 } from './updater.js'
+import type { SelfUpdate } from './mac-self-update.js'
 
 class FakeFeed extends EventEmitter {
   autoDownload = true
@@ -13,12 +14,12 @@ class FakeFeed extends EventEmitter {
   quitAndInstall = (isSilent: boolean, isForceRunAfter: boolean) => { this.installs.push([isSilent, isForceRunAfter]) }
 }
 
-function setup({ supported = true, installsInPlace = true } = {}) {
+function setup({ supported = true, route = { kind: 'feed' } as InstallRoute } = {}) {
   const feed = new FakeFeed()
   let clock = Date.parse('2026-09-22T00:00:00Z')
   const changes: string[] = []
   const updater = createUpdater({
-    feed: feed as unknown as UpdateFeed, current: '0.0.3', supported, installsInPlace,
+    feed: feed as unknown as UpdateFeed, current: '0.0.3', supported, route,
     now: () => clock, onChange: (status) => changes.push(status.phase),
   })
   return { feed, updater, changes, advance: (ms: number) => { clock += ms } }
@@ -48,7 +49,7 @@ describe('createUpdater', () => {
   })
 
   it('reports a release it cannot install in place as available with its download page', () => {
-    const { feed, updater } = setup({ installsInPlace: false })
+    const { feed, updater } = setup({ route: { kind: 'page' } })
     expect(feed.autoDownload).toBe(false)
     expect(feed.autoInstallOnAppQuit).toBe(false)
     updater.check()
@@ -56,6 +57,56 @@ describe('createUpdater', () => {
     expect(updater.status()).toMatchObject({
       phase: 'available', version: '0.0.4', url: 'https://github.com/shawnyin128/meridian/releases/tag/v0.0.4',
     })
+  })
+
+  it('downloads a release itself and relaunches into it when the App replaces its own bundle', async () => {
+    let finish: () => void = () => {}
+    let progress: (percent: number) => void = () => {}
+    const self = {
+      downloads: [] as string[], installs: 0,
+      download(release, onProgress) {
+        self.downloads.push(release.version)
+        progress = onProgress
+        return new Promise<void>((done) => { finish = done })
+      },
+      install() { self.installs += 1 },
+    } satisfies SelfUpdate & { downloads: string[]; installs: number }
+    const { feed, updater } = setup({ route: { kind: 'self', self } })
+    expect(feed.autoDownload).toBe(false)
+    expect(feed.autoInstallOnAppQuit).toBe(false)
+
+    updater.check()
+    feed.emit('update-available', { version: '0.0.15003', files: [] })
+    expect(self.downloads).toEqual(['0.0.15003'])
+    progress(57.4)
+    expect(updater.status()).toMatchObject({ phase: 'downloading', version: '0.0.15.3', percent: 57 })
+    updater.install()
+    expect(self.installs).toBe(0)
+
+    finish()
+    await Promise.resolve()
+    expect(updater.status()).toMatchObject({ phase: 'ready', version: '0.0.15.3' })
+    updater.install()
+    expect(self.installs).toBe(1)
+    expect(feed.installs).toEqual([])
+  })
+
+  it('reports a failed self download as an error and lets the user check again', async () => {
+    const self: SelfUpdate = {
+      download: () => Promise.reject(new Error('Meridian-0.0.15.3-arm64.zip does not match the checksum its release lists')),
+      install: () => { throw new Error('install must not run') },
+    }
+    const { feed, updater } = setup({ route: { kind: 'self', self } })
+    updater.check()
+    feed.emit('update-available', { version: '0.0.15003', files: [] })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(updater.status()).toMatchObject({
+      phase: 'error', message: 'Meridian-0.0.15.3-arm64.zip does not match the checksum its release lists',
+    })
+    updater.install()
+    updater.check()
+    expect(feed.checks).toBe(2)
   })
 
   it('records when a check finished, keeps the error, and lets the user check again', () => {
