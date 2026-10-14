@@ -1,19 +1,22 @@
 import { useEffect } from 'react'
 import type { RefObject } from 'react'
 
-/** Use it for rows without entry buttons to avoid having to rehang the listener with a new array every time it is rendered. */
+/** For drafts without entry buttons: a new array on every render would re-attach the listeners. */
 export const NO_TRIGGERS: Array<RefObject<HTMLElement | null>> = []
 
 /**
- * Cancel editing when you click outside the placeholder or the focus leaves the placeholder; Esc does not pass here, and is handled by each placeholder's own onKeyDown. press on
- * Clicking on an element's own scroll bar (not on its content) does not count outside the placeholder.
- * "Within the placeholders" are `row`, `triggers`, and those with `[data-radix-popper-content-wrapper]` ancestors
- * Those contents - Popover, DropdownMenu and other floating layers based on popper positioning, whether they are portaled or not
- * body;Dialog and AlertDialog do not have this attribute and do not count. Although the diamond on the Gantt milestone path is within triggers,
- * Counting as placeholder. `triggers` is the entry button that can reopen or focus this placeholder. There may be more than one. Click them the same
- * Do not count points outside the placeholder.
- * It is canceled when the focus moves from within the placeholder to an element outside the placeholder; it is not canceled when the window is out of focus (switched to another application) and the focus falls back to the body.
- * Elements taken over do not count. When `row` is not mounted, neither is considered.
+ * Cancels editing on a press outside the draft or when focus leaves it. Esc does not go through
+ * here; each draft's own onKeyDown handles it. A press on an element's own scrollbar (not its
+ * content) does not count as outside.
+ * Inside the draft are `row`, `triggers`, and anything with a `[data-radix-popper-content-wrapper]`
+ * ancestor: Popover, DropdownMenu and other popper-positioned popovers, whether or not they are
+ * portaled to the body. Dialog and AlertDialog lack that attribute and do not count. A diamond on a
+ * Gantt milestone lane does not count as inside even though it lies within `triggers`. `triggers`
+ * are the entry buttons that can reopen or focus this draft; there may be several, and pressing
+ * them does not count as outside either.
+ * Focus moving from inside the draft to an element outside it cancels; the window losing focus
+ * (switching to another app), where focus falls back to the body and no element receives it, does
+ * not. While `row` is not mounted, neither check applies.
  */
 export function useCancelOnOutside(
   row: RefObject<HTMLElement | null>,
@@ -23,22 +26,25 @@ export function useCancelOnOutside(
   useEffect(() => {
     const inside = (el: Element, held: HTMLElement) => held.contains(el)
       || el.closest('[data-radix-popper-content-wrapper]') !== null
-      // The entire Milestone Road is a trigger, but the diamond point on the road opens that own edit line, not reopens this line.
+      // The whole milestone lane is a trigger, but a diamond on it opens that milestone's own editor
+      // rather than reopening this draft.
       || (!el.closest('.gddl') && triggers.some((t) => t.current?.contains(el)))
     const press = (e: PointerEvent) => {
       const held = row.current
       const target = e.target as Element
-      // The native scroll bar has no independent node, and the target is the scrollable element itself; the vertical scroll bar is really scrolling
-      // (scrollHeight > clientHeight), the bar that cannot be measured by clientWidth is occupied. The same is true for horizontal scroll bars.
-      // Occupy the one that cannot be measured by clientHeight. When pressed, offsetX/Y will exceed the corresponding client amount.
+      // A native scrollbar has no node of its own, so the target is the scrollable element itself. A
+      // vertical scrollbar that actually scrolls (scrollHeight > clientHeight) sits outside
+      // clientWidth, and a horizontal one outside clientHeight, so a press on one has an
+      // offsetX/offsetY at or beyond the matching client size.
       const onOwnScrollbar = (target.scrollHeight > target.clientHeight && e.offsetX >= target.clientWidth)
         || (target.scrollWidth > target.clientWidth && e.offsetY >= target.clientHeight)
       if (held !== null && !onOwnScrollbar && !inside(target, held)) onCancel()
     }
     const leave = (e: FocusEvent) => {
       const held = row.current
-      // The autoFocus of the placeholder input box is hung up and run before the ref of the row in the layout stage. Every placeholder opened will be
-      // After this moment - the row is still empty at that time and cannot be regarded as leaving.
+      // The draft input's autoFocus runs as soon as it mounts, before the row's ref is set in the
+      // layout phase. Every draft that opens passes this moment with the row still null, and that
+      // is not leaving.
       if (held === null || !(e.relatedTarget instanceof Element)) return
       if (inside(e.target as Element, held) && !inside(e.relatedTarget, held)) onCancel()
     }

@@ -2,20 +2,21 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent, RefObject } from 'react'
 
 /**
- * Hold and drag the Gantry to reschedule the set with its viewport, shared by both Ganters.
- * The draggable element raises `grab` on mousedown, and transfers the `G` it held when it was pressed; when the hand is raised, the pointer moves laterally by more than 4px and is pressed
- * If the adsorbed displacement is not zero throughout the day, then this portion and the number of days of displacement are handed over to `onMove`, otherwise it is counted as a click and handed over to `onClick`.
- * `idOf` gives this identifier in the Gantry: during dragging `dragged` returns the pixel offset following the pointer for this identifier,
- * Returns 0 for other identifiers.
- * `wrap` is Gantt's `.gwrap`, `dayWidth` is the pixel width of a day grid. returned
- * `onClickCapture` is hung on the root element of the Gantt, swallowing the click that the browser resends after raising the hand; `stubAt` receives a paragraph
- * `unitWidthOf` allows specific elements to use finer adsorption units (time-sharing tasks in the project day view use two hours);
- * The horizontal bars are at the left and right ends of the canvas, which is in the viewport of `wrap`
- * If less than 4px is exposed, return the side where the stump is attached and the `left` of the stump, otherwise return null. The viewport scrolls with `wrap` and
- * Size changes are re-measured, but the side effects of the measurement are only run once when mounting (depending on the `wrap` ref, the identity will not change),
- * The caller must ensure that `wrap.current` has pointed to the real node at the moment this hook is mounted, otherwise the viewport will always stop at
- * `{ left: 0, width: 0 }`. `stubAt` sticks to the right border of `left` and is calculated based on the stub width of 20px (`ProjectDetail.css`
- * `.gstub`), if the width is changed, the calculation here must be changed accordingly.
+ * Drag-to-reschedule and viewport tracking for a Gantt chart, shared by both Gantt timelines.
+ * A draggable element calls `grab` on mousedown with the `G` it stands for. On mouseup, if the
+ * pointer moved more than 4px sideways and the snapped displacement is not zero units, `onMove`
+ * receives that `G` and the units moved; otherwise it is a click and goes to `onClick`. A unit is
+ * one day (`dayWidth` pixels) unless `unitWidthOf` gives an element a finer one (timed tasks in
+ * the project day view snap to two hours). `idOf` names a `G`: while it is dragged, `dragged`
+ * returns its snapped pixel offset, and 0 for every other id.
+ * `wrap` is the Gantt's `.gwrap`. Put the returned `onClickCapture` on the Gantt's root element: it
+ * swallows the click the browser fires after mouseup. `stubAt` takes a bar's left and right ends on
+ * the canvas and, when less than 4px of the bar shows in the `wrap` viewport, returns the side its
+ * stub sits on and the stub's `left`; otherwise null. The viewport is re-measured on scroll and
+ * resize, but the measuring effect runs only once on mount (it depends on the `wrap` ref, whose
+ * identity never changes), so `wrap.current` must already point at the real node when this hook
+ * mounts, or the viewport stays `{ left: 0, width: 0 }`. The right-side stub's `left` assumes the
+ * 20px stub width of `.gstub` in `TimelineBoard.css`; change both together.
  */
 export function useGanttDrag<G>({ wrap, dayWidth, unitWidthOf, idOf, onMove, onClick }: {
   wrap: RefObject<HTMLDivElement | null>
@@ -33,9 +34,10 @@ export function useGanttDrag<G>({ wrap, dayWidth, unitWidthOf, idOf, onMove, onC
   const drag = useRef<{
     grab: G; id: string; x0: number; dx: number; unitWidth: number; moved: boolean
   } | null>(null)
-  // After raising your hand, the browser will add another click, and the landing point may be the place where you click on the blank to create a new milestone: that time can no longer be regarded as a new one.
-  // When the hand is raised outside Gant, this click will not be Gant consumption, so the next time you press it, the mark will be cleared.
-  // Otherwise it will stay until some unrelated Gantt click swallows that click.
+  // After mouseup the browser fires one more click, which may land on blank lane space where a click
+  // creates a milestone; that click must not create one. When the mouse is released outside the
+  // Gantt, no Gantt handler consumes the click, so the next mousedown clears the flag; otherwise it
+  // would stay set until it swallowed some unrelated Gantt click.
   const suppress = useRef(false)
   const [shift, setShift] = useState<{ id: string; dx: number } | null>(null)
   const [view, setView] = useState({ left: 0, width: 0 })
@@ -46,7 +48,8 @@ export function useGanttDrag<G>({ wrap, dayWidth, unitWidthOf, idOf, onMove, onC
     const sync = () => setView({ left: w.scrollLeft, width: w.clientWidth })
     sync()
     w.addEventListener('scroll', sync)
-    // Both screens are hung. The viewport may have been changed when you switch away and then switch back. If you only measure it once when mounting, the expired width will always be used.
+    // Both screens stay mounted, so the viewport may change while the other screen is shown;
+    // measuring only once on mount would keep a stale width.
     const resize = new ResizeObserver(sync)
     resize.observe(w)
     return () => {

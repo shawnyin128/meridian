@@ -3,19 +3,23 @@ import type { KeyboardEvent as ReactKeyboardEvent, RefObject } from 'react'
 import { useCancelOnOutside } from './useCancelOnOutside.js'
 
 /**
- * Keyboard and cancellation of in-place occupancy: press Enter to call `onSubmit`; Esc, mouse click outside the occupancy, and focus moves from inside the occupancy to outside the occupancy
- * On the element, `onCancel` is adjusted, and the window being out of focus (switching to another application) does not count. `onSubmit` returns whether this is a placeholder
- * Used - if true, the placeholder will be collected from here, if not, the placeholder and the words inside will be retained, and people can change it and press Enter; it is not allowed to be thrown synchronously
- * It is also not allowed to reject. If the writing fails, you must catch it yourself and return false.
- * `submit` is a protected submission entry outside the carriage return (such as a mouse click candidate), and `attempt` follows the same convention. once
- * Before the submission is completed, neither press Enter nor `submit` will send a second message, and you will not give up even if you click outside the placeholder or leave the focus; wait for this submission.
- * There is a result - if it is used, it is put away as usual; if it is not used, the placeholder and words are kept, regardless of whether the focus is on it at that time. Esc is not affected by this
- * The impact is still clear abandonment.
- * `row` is the element counted as "within the placeholder", `triggers` is the entry button that can reopen or focus the placeholder
- * (Except Gantt diamond); any content in the Radix popper floating layer (calendar, association drop-down, menu, etc.) is also considered a placeholder.
- * Within, no matter whether it is opened from this place or whether it is portaled to the body. Click on `triggers` to bring focus to them
- * Or this type of floating layer does not count as leaving the placeholder; when `row` is not mounted, the two judgments of the point outside and the focus leaving will not take effect. returned
- * `inputProps` is allocated to the input box in the placeholder.
+ * Keyboard and cancel handling for an inline draft: Enter calls `onSubmit`; Esc, a mouse press
+ * outside the draft, and focus moving from inside the draft to an element outside it call
+ * `onCancel`. The window losing focus (switching to another app) does not count. `onSubmit`
+ * returns whether it consumed the draft: true closes the draft from here, false keeps the draft
+ * and its text so the user can edit it and press Enter again. It must neither throw synchronously
+ * nor reject; a failed write must be caught by the caller and return false.
+ * `submit` is the same guarded entry for submissions other than Enter (such as clicking a
+ * candidate), and `attempt` follows the same contract. Until a submission settles, neither Enter
+ * nor `submit` sends a second one, and a press outside or focus leaving does not cancel. Once it
+ * settles, a consumed draft closes as usual and an unconsumed one keeps the draft and its text,
+ * wherever focus is by then. Esc is not affected and always cancels.
+ * `row` is the element that counts as inside the draft; `triggers` are the entry buttons that can
+ * reopen or focus it (except a Gantt milestone diamond). Anything in a Radix popper (calendar,
+ * candidate dropdown, menu, and so on) also counts as inside, whether or not it was opened from here
+ * and whether or not it is portaled to the body. Pressing `triggers` or such a popper, or moving
+ * focus to them, does not leave the draft. While `row` is not mounted, neither the outside press
+ * nor focus leaving cancels. Spread the returned `inputProps` onto the draft's input.
  */
 export function useInlineDraft({ row, triggers, onSubmit, onCancel }: {
   row: RefObject<HTMLElement | null>
@@ -32,10 +36,11 @@ export function useInlineDraft({ row, triggers, onSubmit, onCancel }: {
   focus: () => void
   submit: (attempt: () => boolean | Promise<boolean>) => void
 } {
-  // Writing is asynchronous, and the input box is still there after pressing Enter; the second time it is written, it will be blocked at this frame, so it is ref instead of state.
+  // Writes are asynchronous and the input stays after Enter; a second Enter in the same frame must
+  // already be blocked, so this is a ref rather than state.
   const busy = useRef(false)
-  // When submitting on the way, press and hold the click outside or the focus away to prevent them from closing the placeholder; return the result to the sentence in submit() after it comes out
-  // onCancel() tube
+  // While a submission is pending, an outside press or focus leaving must not close the draft; once
+  // the result is in, the onCancel() call in submit() decides.
   const cancelUnlessBusy = useCallback(() => { if (!busy.current) onCancel() }, [onCancel])
   useCancelOnOutside(row, cancelUnlessBusy, triggers)
 

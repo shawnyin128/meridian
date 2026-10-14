@@ -14,7 +14,7 @@ function Probe({ count, onChoose }: { count: number; onChoose: (index: number) =
   return <input data-active={keys.active} onKeyDown={keys.onKeyDown} />
 }
 
-/** Hang the probe into a real container and return its input. */
+/** Mount the probe into a real container and return its input. */
 function mount(count: number, onChoose: (index: number) => void): HTMLInputElement {
   const host = document.createElement('div')
   document.body.appendChild(host)

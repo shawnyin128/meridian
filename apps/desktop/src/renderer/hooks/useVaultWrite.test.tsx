@@ -18,13 +18,13 @@ vi.mock('../shell/AppShell.js', () => ({
 
 type Write = ReturnType<typeof useVaultWrite>
 
-/** The probe does not draw anything, but only gives the write rendered this time to external testing. */
+/** Renders nothing; only hands the write function from this render to the test. */
 function Probe({ onReady }: { onReady: (write: Write) => void }) {
   onReady(useVaultWrite())
   return null
 }
 
-/** Hang the probe into a real container and take out the write it renders this time. */
+/** Mount the probe into a real container and return the write function it rendered. */
 function mount(): Write {
   const host = document.createElement('div')
   document.body.appendChild(host)
