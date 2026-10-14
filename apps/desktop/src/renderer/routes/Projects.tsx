@@ -39,12 +39,13 @@ import {
 import './shell.css'
 import './Projects.css'
 
-/** The list is the shallowest layer of this screen, and the breadcrumbs no longer hang down. */
+/** The list is this screen's top level, so the breadcrumbs add nothing below it. */
 const NO_TAIL: CrumbSeg[] = []
 
 /**
- * The health signal of the project corresponds to the projSig of the demo: the most recent unfinished milestone from today, the number of days since the last advancement
- * The number of days (null if there is no scientific research record), whether it is stalled, and the number of completed milestones.
+ * A project's health signals, the demo's projSig: the nearest unfinished milestone from today, the
+ * days since the last progress (null when the Research log is empty), whether it has stalled, and the
+ * number of milestones done.
  */
 function signals(project: ProjectSummary, todayIso: string) {
   const next = nextMilestone(project.milestones, todayIso)
@@ -58,8 +59,9 @@ function signals(project: ProjectSummary, todayIso: string) {
 }
 
 /**
- * The ... menu at the right end of the project row corresponds to the demo's projMenu: renaming, status transfer, and deletion.
- * Renaming replaces the content in the same pop-up layer, which is consistent with the demo's point of opening the renamed layer on the spot after closing the menu.
+ * The … menu at the right end of a project row, the demo's projMenu: rename, change status, delete.
+ * Rename replaces the content of the same popover, matching the demo, which closed the menu and
+ * opened a rename popover in the same spot.
  */
 function ProjectMenu({ project, onRename, onStatus, onDelete }: {
   project: ProjectSummary
@@ -115,9 +117,10 @@ function ProjectMenu({ project, onRename, onStatus, onDelete }: {
 }
 
 /**
- * Create a new row in the top row of the list, corresponding to demo's projCreateRow: fill in the name in place, press Enter to create, Esc, click outside the row
- * Or cancel when the focus leaves this line. Clicking "New Project" on the header of the page does not count outside the line. `onCreate` returns whether this line is
- * When used, `onCancel` must maintain the same reference between re-renders.
+ * The new-project row at the top of the list, the demo's projCreateRow: type the name in place and
+ * press Enter to create; Escape, a click outside the row or focus leaving it cancels. A click on the
+ * page header's "New project" does not count as outside. `onCreate` returns whether the row is done;
+ * `onCancel` must keep the same reference across re-renders.
  */
 function ProjectCreateRow({ row, triggers, onCreate, onCancel }: {
   row: RefObject<HTMLDivElement | null>
@@ -219,7 +222,7 @@ function ProjectPanel({ project, onOpen, menu, dragProps, dropClassName }: {
   )
 }
 
-/** Shelved and completed projects: a row with status, name, focus and last push. */
+/** Shelved and completed projects: one row with status, name, focus and time since the last progress. */
 function ProjectRow({ project, onOpen, menu, dragProps, dropClassName }: {
   project: ProjectSummary; onOpen: () => void; menu: ReactNode
   dragProps: DragCardProps; dropClassName: string
@@ -243,10 +246,11 @@ function ProjectRow({ project, onOpen, menu, dragProps, dropClassName }: {
 }
 
 /**
- * Project list: Grouped by status, one project in progress is on a large panel, and the other projects are on a row, each on the right end
- * There are management menus, and the title of the first group is New Entry. Data is retrieved through project.list, created, renamed,
- * Status transfer and deletion are written back through project.create / project.update / project.delete respectively.
- * Click a panel or row to enter the details of that item.
+ * The project list, grouped by status: each ongoing project gets a large panel and every other
+ * project a row, each with a management menu at its right end; the first group's heading holds
+ * "New project". Data comes from project.list; creating, renaming, changing status and deleting
+ * write back through project.create / project.update / project.delete. Clicking a panel or row opens
+ * that project's details.
  */
 function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
   const m = useMessages()
@@ -282,15 +286,18 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
   }, [reportError, revision])
 
   /**
-   * End the next write operation: turn off the new line, and then finish it with write. Do not go here when creating a new line - it should be as written
-   * Success or failure determines whether to stay or not.
+   * Finishes a write: closes the new-project row, then lets `write` finish. Creating from the row does
+   * not come here: whether the row stays depends on that write's result.
    */
   const applyWrite = (op: Promise<unknown>, note: string, notify: (text: string) => void = banner) => {
     setCreating(false)
     void write(op, { note, notify })
   }
 
-  /** Create a new project: Remove the new line and write down an update after it is written. When the project is rejected, this line and the typed name will be retained. */
+  /**
+   * Creates a project: once it is written the row closes and a Feed entry is added; if the project is
+   * rejected, the row and the typed name stay.
+   */
   const createProject = (name: string): boolean | Promise<boolean> =>
     (name === '' ? false : write(projectApi.create(name).then(() => feed.append({
       source: 'me',
@@ -308,7 +315,8 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
 
   const groups = PROJECT_STATUSES
     .map((status) => ({ status, items: projects.filter((p) => p.status === status) }))
-    // Always keep in progress: the new project created at the header and its input line will fall in this section, and will not be misaligned because there are only completed projects left in the library.
+    // Always keep the ongoing group: a project created from the header, and its input row, land in it,
+    // so neither shows under another status when the vault holds only finished projects.
     .filter((g) => g.items.length > 0 || g.status === ACTIVE_PROJECT)
 
   const menuOf = (p: ProjectSummary) => (
@@ -343,7 +351,8 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
                   <AddAction
                     variant="page" id="projNew" ref={projNew}
                     onClick={() => {
-                      // If the row is already open, only the focus is returned to it, and the half-filled name is retained; so clicking on it does not count as clicking outside the row.
+                      // An open row is only refocused, keeping the half-typed name, so this click does not
+                      // count as outside the row.
                       if (creating) createRow.current?.querySelector('input')?.focus()
                       else setCreating(true)
                     }}
@@ -381,13 +390,15 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
 }
 
 /**
- * Research › Project: list first and then details, corresponding to demo’s resState.proj - when it is empty, it is a list.
- * When there is a value, it is the details of that project, and the "project" section of the breadcrumb is returned to the list.
- * The sidebar will return to the list every time the screen is cut, the same as demo's openResProjects; returning from the wiki page does not count as screen switching.
- * When I came back, I was still stuck on the original project. When the overview jumps in, it will fall directly on that item. Remember the origin, and click the return button in the content navigation row.
- * Return to the overview and the breadcrumbs are still returned to the list, the same as demo's resFrom; there is no way in from the list point.
- * Return button returns to the project list. The two groups of sections in the details are hung here in turn. When you leave the project and come in again, you will stop at the last section.
- * Same as demo's module-level projPlanTab / projTab.
+ * Research › Projects: the list, then a project's details, the demo's resState.proj: empty shows the
+ * list, a value shows that project's details, and the breadcrumbs' "Projects" segment returns to the
+ * list. Every sidebar entry returns to the list, like the demo's openResProjects; coming back from a
+ * Wiki page is not an entry, so the same project is still open. A jump from the overview lands on
+ * that project and remembers the origin: the Back button in the content's navigation row returns to
+ * the overview, while the breadcrumbs still return to the list, like the demo's resFrom. Opened from
+ * the list, there is no origin and Back returns to the project list. Both tab groups of the details
+ * are kept here, so leaving the project and coming back lands on the last tab, like the demo's
+ * module-level projPlanTab / projTab.
  */
 export function Projects() {
   const [openId, setOpenId] = useState<string | null>(null)
@@ -401,7 +412,8 @@ export function Projects() {
   const { jump, returnTo } = useJump()
   const consumed = useRef(0)
 
-  // Return is a historical return: if you are jumped in from another screen, you will go back to that screen. If you enter from the list point, there is no way to go back to the previous layer in the structure.
+  // Back follows history: after a jump from another screen it returns there; opened from the list, it
+  // goes up one level, to the list.
   const back = useCallback(() => {
     if (origin === null) { close(); return }
     setOrigin(null)
