@@ -21,7 +21,7 @@ const withMessages = (node: ReactNode) => {
   return <MessagesProvider>{node}</MessagesProvider>
 }
 
-/** This set of use cases uses this day as today in the library, and the following dates are counted according to it. */
+/** These tests use this day as the vault's today; the dates below count from it. */
 const TODAY = '2026-08-25'
 
 const project = (over: Partial<ProjectDetail>): ProjectDetail => ({

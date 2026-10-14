@@ -1,20 +1,21 @@
 /*
- * Variable names are aligned with :root / [data-theme="dark"] of desktop/design/platform-shell-demo.html.
- * 1. The color values are consistent with the demo: both sides are changed to the brand color palette at the same time, the accent is Primary blue, and the dark theme has a full set of grayscales.
- * Both are derived from ~220°;
- * 2. A batch of new tokens besides demo (--accent-solid / --press / --press-solid /
- * --ring / --sel / --link / --tint-* / --on-tint / --paper / --scrim / --r-* / --fs-* /
- * --lh-* / --t-* / --e-*) and split into three layers --sh-1 / --sh-2 / --sh-3 / --sh-paper do not enter demo:
- * The demo is a benchmark for layout and behavior, not a benchmark for the appearance of the finished product. The two sides diverge on these tokens;
- * 3. --accent-solid / --press-solid / --ring / --paper / --on-tint The two sets of themes have the same value and will not be flipped.
- * (The first three are only written in :root, and the last two are written again according to the original values ​​following the neighbors in the dark block). It is not that the dark value is missed.
+ * Variable names match :root / [data-theme="dark"] of e2e/fixtures/platform-shell-demo.html.
+ * 1. Color values match the demo: both moved to the brand palette together. The accent is Primary
+ *    blue, and the dark theme has a full gray scale; both derive from a hue of about 220°.
+ * 2. The tokens added beyond the demo (--accent-solid / --press / --press-solid / --ring / --sel /
+ *    --link / --tint-* / --on-tint / --paper / --scrim / --r-* / --fs-* / --lh-* / --t-* / --e-*)
+ *    and the split into --sh-1 / --sh-2 / --sh-3 / --sh-paper are not in the demo: the demo is the
+ *    reference for layout and behavior, not for the finished look, so the two differ on these.
+ * 3. --accent-solid / --press-solid / --ring / --paper / --on-tint have the same value in both
+ *    themes and do not flip (the first three are written only in :root; the last two are repeated
+ *    with the same values next to their neighbours in the dark block). No dark value is missing.
  */
 :root{
   --desktop:#e6eaf2; --window:#f6f8fc; --content:#ffffff; --sidebar:rgba(246,248,252,.85);
   --ink:#0a1020; --sec:#536175; --ter:#7c8798;
   --sep:#dce4ef; --sep2:rgba(220,228,239,.6);
   --accent:#3568ff; --accent-soft:rgba(53,104,255,.12); --on-accent:#ffffff;
-  /* The background color of the solid accent surface, the light and dark values are the same: dark --accent with white text is only 3.19:1 */
+  /* Solid accent surfaces, the same in both themes: white on the dark --accent is only 3.19:1 */
   --accent-solid:#3568ff;
   --card:#ffffff; --field:#eef2f8; --hover:rgba(10,16,32,.05);
   --good:#1f9d4d; --warn:#b8860b; --bad:#e0453a; --info:#0e9aa7; --hl:rgba(255,214,10,.45);
@@ -22,10 +23,12 @@
   --teal:#0f8a72; --violet:#7c4fe0;
   --mslane:rgba(184,134,11,.07);
   /*
-   * Content columns and cards are divided into three levels according to the window width, with discontinuous scaling: narrow level (default), medium level (≥1600), and wide level (≥2000).
-   * --pagew is the content column width of the list screen, --prosew is the reading width of the text page (wiki page, project details), which increases more slowly;
-   * --chatw is the message column width of the conversation screen, which increases slower than these two - a line of words is too long and difficult to read;
-   * --cardw / --card-tt / --card-fs / --card-lines is the minimum width of the card, the font size of the title and summary, and the number of summary lines
+   * Content columns and cards scale with the window width in three steps, not continuously: narrow
+   * (default), medium (≥1600) and wide (≥2000). --pagew is the content column width of list screens;
+   * --prosew, the reading width of prose pages (Wiki pages, project details), grows more slowly;
+   * --chatw, the message column width of Chats, grows more slowly still: overlong lines are hard to
+   * read. --cardw / --card-tt / --card-fs / --card-lines are a card's minimum width, its title and
+   * summary font sizes, and its number of summary lines.
    */
   --pagew:1080px; --prosew:1080px; --chatw:720px;
   --cardw:230px; --card-tt:13px; --card-fs:12px; --card-lines:2;
@@ -35,25 +38,29 @@
   --sbthumb:rgba(10,16,32,.28); --sbthumb-h:rgba(10,16,32,.45);
   --q-bg:rgba(10,16,32,.06);
   /*
-   * One item other than the demo: The right end of the single-line title cutoff fades out, replacing the ellipsis. Only used for mask-image, in color
-   * Only alpha counts; elements using it must fill the available width, otherwise the tail of the short title will also be eaten away by the fade
+   * Not in the demo: a clipped one-line title fades out at its right end instead of ending in an
+   * ellipsis. Used only as a mask-image, so only the colors' alpha counts. An element using it must
+   * fill the available width, or the end of a short title is faded too.
    */
   --clipfade:linear-gradient(to right,#000 calc(100% - 28px),transparent);
   /*
-   * A stroke that becomes solid on hover. Only used for 1px stroke: push out by 15% from Border towards --sec, when 4px wide
-   * The handle or 2px wide column width indicator will be almost invisible
+   * The stroke a border turns into on hover. For 1px strokes only: it moves 15% from --sep toward
+   * --sec, which would be nearly invisible on the 4px-wide resize handle or the 2px column-width guide.
    */
   --sep-strong:#c7d0dd;
-  /* Press the stack color to darken in both directions. Stacking the solid accent facing the bright side will cause the white text to fall to 3.78:1 */
+  /*
+   * Pressed-state overlays. --press-solid darkens in both themes: lightening a solid accent surface
+   * would drop its white text to 3.78:1.
+   */
   --press:rgba(10,16,32,.06); --press-solid:rgba(0,0,0,.18);
   --ring:var(--accent); --sel:rgba(53,104,255,.22); --link:var(--accent);
   --tint-good:rgba(48,209,88,.14); --tint-warn:rgba(255,214,10,.14);
   --tint-bad:rgba(224,69,58,.12); --tint-info:rgba(14,154,167,.14);
   --tint-mut:rgba(10,16,32,.04); --on-tint:#fff;
   --tint-teal:rgba(15,138,114,.14); --tint-violet:rgba(124,79,224,.14);
-  /* The base of the entity type label. Only type tags can use the brand's light color background, other tags must be neutral or semantic colors */
+  /* Entity-type tags. Only type tags use these brand tints; other tags are neutral or semantic */
   --tint-paper:rgba(91,140,255,.14); --tint-wiki:rgba(167,120,255,.14);
-  /* The paper does not turn over according to the subject */
+  /* The paper does not flip with the theme */
   --paper:#fff; --scrim:rgba(10,22,48,.42);
   --sh-1:0 1px 2px rgba(10,22,48,.06), 0 0 0 1px rgba(10,22,48,.04);
   --sh-2:0 0 0 1px rgba(10,22,48,.05), 0 6px 16px rgba(10,22,48,.12), 0 2px 5px rgba(10,22,48,.06);
@@ -81,7 +88,7 @@
   --press:rgba(245,247,251,.09);
   --sel:rgba(85,140,255,.22);
   --tint-good:rgba(48,209,88,.20); --tint-warn:rgba(255,214,10,.20);
-  /* 18% of the red base with #ff453a on the new #0d1b2d base is 4.26:1, which cannot pass the main text 4.5:1; 10% is 4.68:1 */
+  /* #ff453a on an 18% red tint over #0d1b2d is 4.26:1, short of body text's 4.5:1; 10% gives 4.68:1 */
   --tint-bad:rgba(255,69,58,.10); --tint-info:rgba(46,196,214,.20);
   --tint-mut:rgba(245,247,251,.05); --on-tint:#fff;
   --tint-teal:rgba(45,212,191,.20); --tint-violet:rgba(167,139,250,.20);
@@ -97,9 +104,9 @@
 @media (min-width:2000px){:root{--pagew:1560px;--prosew:1320px;--chatw:1000px;--cardw:320px;--card-tt:14px;--card-fs:13px;--card-lines:3}}
 
 /*
- * When the system's "Reduce Dynamic Effects" is turned on, the transition is completely stopped, but every state change is still visible:
- * The classes of .ddlrow.flash are added and removed by JS timer, and the static background color is changed instead of animation:none.
- * Positioning feedback will not disappear during this period of time
+ * With the system's "Reduce motion" on, transitions stop entirely but every state change still shows.
+ * A JS timer adds and removes .ddlrow.flash, so it gets a static background rather than only
+ * animation:none, and the located row stays highlighted for that time.
  */
 @media (prefers-reduced-motion:reduce){
   :root{--t-fast:1ms;--t:1ms;--t-slow:1ms}
@@ -110,10 +117,12 @@
 *{box-sizing:border-box}
 b,strong{font-weight:600}
 /*
- * When pressing a macOS button, the entire icon becomes darker, not smaller; scale makes the icon faint on the 30×30 icon button.
- * The solid accent surface is stacked with black instead of white: stacking white will suppress the white text above it to 3.78:1.
- * The following two items are written in the same background-image as the hover in each route. If they have the same specificity, the winner can only be determined by the order of packaging;
- * The six hovers are therefore written as :where(.btn):hover. One category, press to the specificity of a category, press the state to win based on the specificity.
+ * A pressed macOS button darkens as a whole rather than shrinking; scale blurs the icon on a 30×30
+ * icon button. Solid accent surfaces take a black overlay, not white: white would drop the white text
+ * on them to 3.78:1.
+ * The two rules below set the same background-image as each route's hover rules, and at equal
+ * specificity the bundle order would pick the winner. The six hovers are therefore written as
+ * :where(.btn):hover, one class lighter than the pressed rules, which win on specificity.
  */
 .btn:active,.icbtn:active,.tbtn:active,.cd:active,.pgbtn:active{background-image:linear-gradient(var(--press),var(--press))}
 .btn.pri:active,.send:active,.pgbtn.on:active,.cd.sel:active{background-image:linear-gradient(var(--press-solid),var(--press-solid))}
@@ -122,8 +131,9 @@ body{margin:0;background:var(--desktop);color:var(--ink);font-family:var(--sans)
 #root{height:100%;display:flex;flex-direction:column}
 
 /*
- * Non-editing controls such as buttons retain the keyboard focus ring; all inputs, selectors, and text editing areas use neutral strokes.
- * The blue frames added by Chromium's default or business pages no longer appear.
+ * Controls that do not edit text, such as buttons, keep the keyboard focus ring; inputs, selects and
+ * text editors get a neutral border instead, so the blue outline from Chromium's defaults or from a
+ * screen's own styles no longer shows.
  */
 :focus-visible{outline:2px solid var(--ring);outline-offset:2px}
 :is(input,textarea,select,[contenteditable="true"]):focus,
@@ -132,7 +142,7 @@ body{margin:0;background:var(--desktop);color:var(--ink);font-family:var(--sans)
 }
 ::selection{background:var(--sel)}
 
-/* Claude style scroll bar: the slider is always visible and the scroll area is visible at a glance */
+/* Claude-style scroll bars: the thumb is always visible, so what scrolls is clear at a glance */
 ::-webkit-scrollbar{width:12px;height:12px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background-color:var(--sbthumb);border-radius:var(--r-full);border:3px solid transparent;background-clip:padding-box;min-height:40px}

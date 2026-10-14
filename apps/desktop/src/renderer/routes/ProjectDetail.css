@@ -1,6 +1,6 @@
-/* Project details are only responsible for the field layout of this screen; cross-page interactive components hold styles in renderer/components. */
+/* Only this screen's own layout lives here; components shared across screens keep their styles in renderer/components. */
 
-/* The association idea is an inverted index in the items: the separation rules for embedded lists are held uniformly by StructuredList. */
+/* Linked ideas, a reverse lookup of the ideas that name this project; StructuredList owns embedded-list dividers. */
 .project-ideas{display:grid;--structured-list-row-height:38px}
 .project-ideas>.lm{padding:10px 2px}
 .project-idea-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(160px,34%);align-items:center;gap:10px;
@@ -32,11 +32,11 @@
   .project-idea-source{grid-column:1/-1;text-align:left}
 }
 
-/* The project timeline and the details below share the same content width; when the node is opened, only the right document panel squeezes the left column. */
+/* The project timeline and the details below share one content width; an open node's panel only narrows the left column. */
 .desk .desk-body>.wkpage.project-detail-page{max-width:var(--pagew)}
 .project-detail-page{transition:gap var(--t-slow) var(--e-inout)}
 .project-detail-panel>.detail-panel__content{min-width:0}
-/* Node panel: Markdown documents, branch results and advancement records maintained by Agent; App is read-only. */
+/* Node panel: the Markdown document, branch results and progress records an agent maintains; the App only reads them. */
 .wkpage.node-reading{gap:28px}
 /* Fixed height with its own scroll: the page keeps its height and position whichever node is open. */
 .wkside.node-document-pane{flex:0 0 520px;width:520px;max-width:min(520px,48vw);height:calc(100vh - 190px);
@@ -47,7 +47,7 @@
   .wkside.node-document-pane{flex-basis:44%;width:44%;max-width:44%;padding:16px 18px}
 }
 
-/* The project directory is a connection, not the metadata body: the path is truncated, and the status is only indicated by a small dot. */
+/* The Workspace is a connection, not core metadata: its path is truncated and its state shows only as a small dot. */
 .workspace-field{display:flex;align-items:center;gap:4px;min-width:0}
 .workspace-root{position:relative;min-width:0;flex:1;border:0;background:transparent;color:inherit;font:inherit;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;padding:0 0 0 10px}
 .workspace-root::before{content:'';position:absolute;left:0;top:50%;width:5px;height:5px;border-radius:50%;background:var(--good);transform:translateY(-50%)}

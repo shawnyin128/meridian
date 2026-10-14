@@ -33,24 +33,24 @@ import { WikiClaims } from '../components/wiki/WikiClaims.js'
 import './shell.css'
 import './Wiki.css'
 
-/** demo's pagerHTML('wkp', …, [12,24,48]): each page of the paper. */
+/** Papers per page, as in the demo's pagerHTML('wkp', …, [12,24,48]). */
 const PAGE_SIZES = [12, 24, 48]
 
-/** Which page are you currently looking at: null is the home page, REVIEW the review queue, and the rest are the ids of aggregate or paper pages. */
+/** The page shown: null is the Wiki home, REVIEW the review queue, any other value a page id. */
 type Place = string | null
 
 /** The review queue's place; it has no `/`, so no page id can be it. */
 const REVIEW = 'review'
 
-/** Return to one space on the stack: the previous page in the wiki, or the screen that jumped us in. */
+/** One entry of the Back stack: the previous Wiki page, or the screen that jumped here. */
 type Step = { place: Place } | { origin: ScreenKey }
 
-/** The original text of the hovered grid and where the prompt box should be. */
+/** The source quote of the hovered cell and where its tooltip goes. */
 type Tip = { page: number; quote: string; left: number; top: number }
 
 /**
- * demo's aggCard: category label, title, "N superiors" label when multiple parent aggregation, the first line of the description, the last line is the subdivision number,
- * Number of members and update date.
+ * The demo's aggCard: kind tag, title, an "N parents" tag when the aggregation has several parents,
+ * the first line of its summary, and a last line with its subpage count, paper count and update date.
  */
 function AggregationCard({ card, onOpen, onRemove, pending }: {
   card: WikiAggregationCard; onOpen: () => void; onRemove?: () => void; pending?: boolean
@@ -83,7 +83,7 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
   )
 }
 
-/** Demo's paperCard: Take only the part before the colon for the title, and click on the paper page of this article. */
+/** The demo's paperCard; a click opens this paper's page. */
 function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
   const m = useMessages()
   const line = [`${paper.year ?? ''} ${paper.venue}`.trim(), paper.topics.join(' / ')]
@@ -100,7 +100,7 @@ function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
   )
 }
 
-/** Grid with anchor points: The value is superscripted with the page number, and the original text it refers to is revealed when hovering. */
+/** A cell with an anchor: its value carries the page number in superscript; hovering shows the quote. */
 function Cell({ cell, onTip }: { cell: WikiCell; onTip: (tip: Tip | null) => void }) {
   return (
     <span
@@ -117,8 +117,9 @@ function Cell({ cell, onTip }: { cell: WikiCell; onTip: (tip: Tip | null) => voi
 }
 
 /**
- * Comparison of papers: rows are member papers, columns are from aggregated columns, unfilled cells are a dash, and derived columns are chips.
- * The internal node has no columns or rows, which means it does not directly accept papers.
+ * The paper comparison: rows are member papers, columns come from the aggregation's columns, empty
+ * cells show a dash, and derived columns show chips. An inner node with no columns and no rows takes
+ * no papers directly.
  */
 function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
   agg: WikiAggregation
@@ -126,11 +127,12 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
   onTip: (tip: Tip | null) => void
   onRemove?: (paperId: string) => void
   pending?: boolean
-  /** Add a placeholder line for the paper: `row` is hung on `<tr>`, and `input` is the input box in the line header. */
+  /** The placeholder row for adding a paper: `row` goes on its `<tr>`, `input` sits in its first cell. */
   adding?: { row: RefObject<HTMLTableRowElement | null>; input: ReactNode } | undefined
   /**
-   * The cell at the end of the header: `controls` is the column + and column setting gear, `newColumn` is the open placeholder header cell,
-   * It is null when it is not turned on - when it is turned on, each row of the table body also leaves an empty space at the same position.
+   * The cells at the end of the header row: `controls` holds the add-column + and the column-settings
+   * gear; `newColumn` is the placeholder header cell for a new column, null while it is closed. While
+   * it is open, every body row leaves an empty cell in the same position.
    */
   head?: { controls: ReactNode; newColumn: ReactNode } | undefined
 }) {
@@ -211,8 +213,9 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
 }
 
 /**
- * Column Editor: Existing columns can be renamed and deleted one by one. Save and hand over the entire set of columns. Save cannot be clicked if any column name is empty.
- * It is rendered in the elastic layer of the gear at the end of the header; the new column is not here, but belongs to the + at the end of the header.
+ * Column settings: rename or delete existing columns one by one. Save hands over the whole set of
+ * columns and is disabled while any column name is empty. It renders in the popover of the gear at
+ * the end of the header row; adding a column is not here but on the + next to it.
  */
 function ColumnsEditor({ columns, onSave, onCancel }: {
   columns: WikiColumn[]; onSave: (columns: WikiColumn[]) => void; onCancel: () => void
@@ -246,15 +249,16 @@ function ColumnsEditor({ columns, onSave, onCancel }: {
 }
 
 /**
- * Table of contents in the right column: titles in the text, the shallowest one-level top grid, and deeper level-by-level indents; wherever the text is scrolled, the entries in that section are highlighted;
- * Click on one to scroll that title into the viewport. The text will not be published if there is no title.
+ * The contents list in the right rail: the body's headings, the shallowest level flush left and each
+ * deeper level indented one more step. The entry of the section scrolled to is highlighted, and a
+ * click scrolls that heading into view. Nothing renders when the body has no headings.
  */
 function Toc({ body, main }: { body: string; main: RefObject<HTMLDivElement | null> }) {
   const m = useMessages()
   const headings = useMemo(() => headingsOf(body), [body])
   const [active, setActive] = useState<string | null>(null)
 
-  // The scrolling container of the text is .desk-body: each time you scroll, take the title closest to the top of the viewport.
+  // The body scrolls inside .desk-body: on every scroll, take the last heading that reached its top.
   useEffect(() => {
     const scroller = main.current?.closest('.desk-body')
     if (!scroller || headings.length === 0) return
@@ -290,11 +294,15 @@ function Toc({ body, main }: { body: string; main: RefObject<HTMLDivElement | nu
 }
 
 /**
- * Wiki: two kinds of aggregation plus thesis base. On the home page, only the root node is placed in one grid for each aggregation, and the paginated paper is at the end; the aggregation card enters the aggregation page.
- * The thesis card and thesis comparison headings are entered on the thesis page. The aggregation page is a fixed area (segmentation, paper comparison) with a page title, header, and
- * The text is rendered by markdown and can be edited in place. The paper page only has the text; the table of contents in the right column lists the titles in the text. Home page, aggregate page
- * Take the paper page from wiki.home / wiki.aggregation / wiki.paper, and go to papers.list for the paper page.
- * This screen does not hold libraries. Return is a historical return: when you are jumped in by another screen, the source is also on the stack. If you retreat to the bottom, you will return to that screen.
+ * Wiki: two kinds of aggregation over a base of papers. The home shows one grid of root cards per
+ * kind, then the paginated papers; an aggregation card opens its aggregation page, and a paper card
+ * or a paper comparison row title opens that paper's page. An aggregation page has fixed sections
+ * (subpages, paper comparison) under its title, then a Markdown body that can be edited in place. A
+ * paper page has only the user's reading notes and the body. The contents list in the right rail
+ * lists the body's headings. The home, aggregation and paper pages come from wiki.home /
+ * wiki.aggregation / wiki.paper, and the home's papers from papers.list.
+ * This screen holds no vault data of its own. Back follows history: when another screen jumped here,
+ * that screen is on the stack too, and going back past the last page returns to it.
  */
 export function Wiki() {
   const fmt = useFormat()
@@ -335,30 +343,33 @@ export function Wiki() {
   const colBtn = useRef<HTMLButtonElement>(null)
   const colAdd = useRef<HTMLButtonElement>(null)
 
-  // When the page is changed or the library is changed, the original text being edited is discarded: just like the essay, the action of re-rendering the entire screen will also discard it.
+  // A page change or vault write discards the source being edited: as with Project notes, anything
+  // that re-renders the whole screen discards it.
   useEffect(() => setEditing(false), [place, revision])
 
-  // When the page is changed or the library is changed, the open management portal will be closed together.
+  // A page change or vault write also closes whichever add row or column editor is open.
   useEffect(() => {
     setAdding(null)
     setNewCol(false)
   }, [place, revision])
 
   /**
-   * A management operation is a proposal: after the writing is successful, close the input line, increment the entire database version, display this sentence in the banner, and return the written
-   * No. `pending` is true when the proposal is on the way. `note` replaces the title in the banner.
+   * A management operation is a proposal: once it is written, close the input row, bump the vault
+   * revision, show `title` in the banner, and return whether it was written. `pending` is true while
+   * the proposal is in flight. `note` replaces `title` in the banner.
    */
   const propose = (title: string, ops: Proposal['ops'], note = title): Promise<boolean> => {
     setPending(true)
     return write(wiki.apply({ source: 'user', title, ops }).then(() => {
-      // The open of the elastic layer of the gear is adding === 'columns'. Successful saving depends on this sentence layer.
+      // The gear's popover is open while adding === 'columns'; a successful save closes it here.
       setAdding(null)
     }), { note }).finally(() => setPending(false))
   }
 
   /**
-   * Open the management portal `what`: If something else is open, switch to it; when it is open, PickRow returns the focus to the input box.
-   * At the same time, remove the placeholder column at the end of the table header, and take it along without relying on the judgment of out-of-point or focus departure.
+   * Opens the add row `what`: if another one is open, switches to it; if this one is already open,
+   * moves focus back to its PickRow input. Also closes the placeholder column at the end of the
+   * header row, here, rather than relying on a click-outside or focus-loss check.
    */
   const open = (what: 'child' | 'paper') => {
     setNewCol(false)
@@ -367,7 +378,8 @@ export function Wiki() {
     held?.querySelector('input')?.focus()
   }
 
-  // Enter from the sidebar and land on the homepage; when jumped from another screen, land on the page pointed to by the jump, and the source is added to the stack for return.
+  // An entry from the sidebar lands on the Wiki home; a jump from another screen lands on the page it
+  // points to, with the origin screen on the stack for Back.
   useEffect(() => {
     if (jump !== null && jump.seq !== consumed.current) {
       consumed.current = jump.seq
@@ -439,7 +451,10 @@ export function Wiki() {
   const shownReading = shownPaper !== null && reading?.paperId === shownPaper.id.slice(PAPER_PAGE.length)
     ? reading : null
 
-  /** Candidates for subdivision: aggregates of the same category, not on this page, and not yet linked to this page, matched by title, not listed when the input is empty. */
+  /**
+   * Subpage candidates: aggregations of the same kind, other than this page and not yet under it,
+   * matched by title; none while the input is empty.
+   */
   const suggestChildren = useCallback(async (query: string): Promise<PickHit[]> => {
     if (shownAgg === null || query === '') return []
     const taken = new Set(shownAgg.children.map((c) => c.id))
@@ -450,7 +465,7 @@ export function Wiki() {
       .map((c) => ({ id: c.id, title: c.title, meta: m.project.identity.paperCount(c.memberCount) }))
   }, [shownAgg, m])
 
-  /** Candidates for papers: Those whose titles or topics match the paper list and are not members of this page. If the input is empty, they will not be listed. */
+  /** Paper candidates: papers matching the query that are not on this page; none while the input is empty. */
   const suggestPapers = useCallback(async (query: string): Promise<PickHit[]> => {
     if (shownAgg === null || query === '') return []
     const members = new Set(shownAgg.rows.map((r) => r.paper.id))
@@ -472,7 +487,7 @@ export function Wiki() {
 
   const unmount = (card: WikiAggregationCard) => {
     if (shownAgg === null || pending) return
-    // Fetch that page first before sending out the proposal. The paragraph you fetch is also considered a proposal on the way.
+    // Fetch that page before sending the proposal; the fetch already counts as the proposal in flight.
     setPending(true)
     void wiki.aggregation(card.id).then((child) => propose(
       m.wiki.proposals.moveOut(child.title, shownAgg.title),
@@ -483,7 +498,10 @@ export function Wiki() {
     })
   }
 
-  /** Fill in the column names at the end of the header: Add a column to this page. The columns on this page only have names, and there is nothing else configurable after they are created. */
+  /**
+   * Adds a column, named at the end of the header row, to this page. A column here is only a name;
+   * nothing else about it can be configured after it is created.
+   */
   const createColumn = (label: string): boolean | Promise<boolean> => {
     if (shownAgg === null || label === '' || shownAgg.columns.some((c) => c.label === label)) return false
     return propose(m.wiki.proposals.changeColumns(shownAgg.title), [{
@@ -506,7 +524,8 @@ export function Wiki() {
     }])
   }
 
-  // The middle section of the breadcrumbs of the aggregation page is its first parent, click on that page; the paper page has only itself, the same as the syncCrumb of the demo
+  // An aggregation page's middle breadcrumb is its first parent, which opens that page; a paper page
+  // shows only itself, as in the demo's syncCrumb.
   const tail = useMemo<CrumbSeg[]>(() => {
     if (shownAgg !== null) {
       const parent = shownAgg.parents[0]
@@ -536,7 +555,10 @@ export function Wiki() {
     })).finally(() => setPending(false))
   }
 
-  /** "Edit" to enter the original text state; "Save" to read the original text and write it back, write the complete library version and increment it so that this page can be retrieved again. */
+  /**
+   * "Edit" switches to editing the source; "Save" reads the source back and writes it, and the vault
+   * revision bump after the write makes this page fetch again.
+   */
   const toggleEdit = () => {
     if (!editing) {
       setEditing(true)
@@ -550,7 +572,7 @@ export function Wiki() {
     }), { note: m.wiki.saved }).finally(() => setSaving(false))
   }
 
-  /** The header of the text section: the page name is on the left, "Edit"/"Save" is on the right, the same shape as the project essay. */
+  /** The body's section heading: the page name on the left, "Edit"/"Save" on the right, like Project notes. */
   const bodyHead = (name: string) => (
     <SectionHeading variant="content" className="flexh">{name}
       <button className="btn plain acts" disabled={saving} onClick={toggleEdit}>
@@ -559,7 +581,10 @@ export function Wiki() {
     </SectionHeading>
   )
 
-  /** The bibliographic field of the Wiki paper page is the same frontmatter as the paper library; it is still written single-point by papers.update. */
+  /**
+   * A Wiki paper page's bibliographic fields are the same frontmatter the paper list edits; only
+   * papers.update writes them.
+   */
   const updateWikiPaper = (
     patch: Partial<PaperFields>, label: string,
   ): Promise<boolean> => {
@@ -647,7 +672,7 @@ export function Wiki() {
                     : {
                       controls: (
                         <>
-                          {/* If the placeholder column is already open, just return the focus to it, and keep the half-filled column name. */}
+                          {/* If the placeholder column is already open, only refocus it, keeping the half-typed name. */}
                           <AddAction
                             variant="icon" className="colbtn" ref={colAdd} disabled={pending}
                             title={m.wiki.aggregation.addColumn}
@@ -667,7 +692,10 @@ export function Wiki() {
                               </button>
                             )}
                           >
-                            {/* Creating a column will expand the table, and the header and end of the table will slide accordingly; the pop-up layer should remain in the window, the same as the column menu of the paper table */}
+                            {/*
+                              * Adding a column widens the table and moves the end of the header row; the
+                              * popover stays inside the window, like the paper table's column menu.
+                              */}
                                 <ColumnsEditor
                                   columns={shownAgg.columns} onCancel={() => setAdding(null)}
                                   onSave={(columns) => {
@@ -691,7 +719,7 @@ export function Wiki() {
                         ),
                     }}
                   onRemove={(paperId) => {
-                    // The box with aria-disabled can still receive clicks, but it will not be posted here when the proposal is on the way.
+                    // An aria-disabled cell still receives clicks; this ignores them while a proposal is in flight.
                     if (pending) return
                     const row = shownAgg.rows.find((r) => r.paper.id === paperId)!
                     propose(
@@ -845,7 +873,7 @@ export function Wiki() {
                     )}
                   <div className="pk">{m.wiki.updatedLabel}</div><div className="pv">{fmt.date(shownPaper.updated)}</div>
                 </div>
-                {/* What the application gets here is the row it was filtered out from the paper database; the browser proceeds from the details of that row. */}
+                {/* Papers filters its table down to this paper by title; the user continues from that row's details. */}
                 <div className="macts">
                   <button className="btn pri" onClick={() => jumpTo('papers', shownPaper.title)}>
                     {m.wiki.viewInPaperList}

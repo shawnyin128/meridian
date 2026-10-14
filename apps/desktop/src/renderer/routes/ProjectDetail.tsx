@@ -56,7 +56,7 @@ import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import './shell.css'
 import './ProjectDetail.css'
 
-/** Three segments of scientific research records: activity, conclusions, and the research graph. */
+/** The Research log's three views: activity, conclusions, and the research graph. */
 export type RecordTab = 'tl' | 'concl' | 'graph'
 
 export function ProjectIdeaPanel({
@@ -127,21 +127,23 @@ export function ProjectIdeaPanel({
 }
 
 /**
- * Project details: Gantt timeline, task and milestone list, scientific research record timeline, property panel on the right.
- * `projectId` is the project to be displayed, the data is obtained through project.get, and the addition, deletion and modification of tasks and milestones are
- * project.createTask / updateTask / deleteTask and the corresponding milestone methods, the project attributes are
- * project.update writes back to core. `onBack` hangs on the "project" section of the breadcrumbs and returns to the project list.
- * It must maintain the same reference between re-renders; `onReturn` is hung on the return button in the content navigation row, returning to the original screen.
- * Return to the project list when there is no way.
- * The selected items of the two groups of segments are held by the calling site (the demo's projPlanTab / projTab are module-level variables), so
- * When you leave the project and come in again, you will stop at the last paragraph; `onTab` and `onRecord` must also maintain the same reference.
+ * Project details: the Gantt timeline, the task and milestone list, the Research log, and the
+ * properties panel on the right. `projectId` is the project shown; its data comes from project.get.
+ * Tasks and milestones are created, changed and deleted through project.createTask / updateTask /
+ * deleteTask and the matching milestone methods; project properties are written back to Core through
+ * project.update. `onBack` goes on the breadcrumbs' "Projects" segment and returns to the project
+ * list; it must keep the same reference across re-renders. `onReturn` goes on the Back button in the
+ * content's navigation row and returns to the screen the user came from, or to the project list.
+ * The selected tab of both tab groups is held by the caller (the demo's projPlanTab / projTab are
+ * module-level variables), so leaving the project and coming back lands on the last tab; `onTab` and
+ * `onRecord` must keep the same reference too.
  */
 export function ProjectDetail({
   projectId, onBack, onReturn, tab, onTab, record, onRecord, arrivalTask = null, arrivalConclusion = null, onArrived,
 }: {
   projectId: string
   onBack: () => void
-  /** The history return action: return to that screen if jumped from another screen, return to the list if entered from the project list. */
+  /** Back through history: to the screen that jumped here, or to the list when entered from the project list. */
   onReturn: () => void
   tab: PlanTab
   onTab: (tab: PlanTab) => void
@@ -160,7 +162,7 @@ export function ProjectDetail({
   const [relAdding, setRelAdding] = useState(false)
   const [relGroup, setRelGroup] = useState<string>(PROJECT_RELATION_GROUPS[0])
   const [creating, setCreating] = useState<PlanCreating | null>(null)
-  // Change a new object every time you position it: when you click on the same line, the identity of the object changes to make the following effect run again.
+  // A new object on every locate: clicking the same row again changes its identity, so the effect below reruns.
   const [flash, setFlash] = useState<{ id: string } | null>(null)
   const [hoverMilestone, setHoverMilestone] = useState<string | null>(null)
   const [memoEditing, setMemoEditing] = useState(false)
@@ -234,19 +236,21 @@ export function ProjectDetail({
   const name = project?.name
   useCrumbTail(useMemo(() => (name === undefined ? [] : [{ text: name }]), [name]), onBack)
 
-  // Writing outside this screen will also be changed to this project (recovering attachments from the trash can), so follow revision to retrieve it.
+  // Writes outside this screen can change this project too (restoring an attachment from the Trash),
+  // so fetch again on every revision.
   useEffect(() => {
     void projectApi.get(projectId).then(setProject).catch(reportError)
   }, [projectId, reportError, revision])
 
-  // The idea is to store the project id in itself, so the project details are back-projected here to form a two-way visible association.
+  // An idea stores its project's id; project details look the link up from this side, so it shows at both ends.
   useEffect(() => {
     void ideaApi.list()
       .then((ideas) => setLinkedIdeas(ideas.filter((idea) => idea.project === projectId)))
       .catch(reportError)
   }, [projectId, reportError, revision])
 
-  // Follows external materializer when project details is on; SSH requires process and network connection, less frequently than local directory.
+  // While project details are open, follow what external writers put in the workspace; SSH needs a
+  // process and a network connection, so it polls less often than a local folder.
   const workspaceKey = project?.workspace === undefined
     ? undefined
     : [project.workspace.kind, project.workspace.host, project.workspace.port, project.workspace.root].join(':')
@@ -309,7 +313,8 @@ export function ProjectDetail({
     const row = planList.current?.querySelector<HTMLElement>(`[data-row="${flash.id}"]`)
     if (row) {
       row.scrollIntoView({ block: 'nearest' })
-      // The class of the row has not changed. If you do not remove the animation and force the layout again, the second positioning of the same row will not replay and flicker.
+      // The row's class does not change: without clearing the animation and forcing a layout, locating
+      // the same row a second time would not replay the flash.
       row.style.animation = 'none'
       row.getBoundingClientRect()
       row.style.animation = ''
@@ -319,9 +324,9 @@ export function ProjectDetail({
   }, [flash])
 
   /**
-   * Discard the New Row, Related Forms, and Essay Editors that are currently open.
-   * The renderProject corresponding to the demo rewrites the entire deskBody - the rows and forms inserted inside are gone.
-   * The essay frame is also reconstructed from the original text.
+   * Discards the open new row, the Links add row and the Project notes editor. The demo's
+   * renderProject rewrote the whole deskBody, losing any rows and forms inserted in it, and rebuilt
+   * the notes box from the source text.
    */
   const discardOpenEdits = useCallback(() => {
     setCreating(null)
@@ -330,15 +335,19 @@ export function ProjectDetail({
   }, [stopRel])
 
   /**
-   * Receive the result of the next write operation: the written item is entered into state, and then completed by write (the whole library version is incremented, and the note is not empty)
-   * Use notify prompt (default confirmation banner); if written, an error will be reported and false will be returned. Placeholder submission goes like this:
-   * The position will be collected by itself according to success or failure, and will not be lost here.
+   * Finishes a write that returns the project: the project goes into state, then `write` bumps the
+   * vault revision and, when `note` is given, shows it through `notify` (the confirmation banner by
+   * default). A failed write is reported and returns false. Placeholder submissions come straight
+   * here: the placeholder closes or stays open by itself depending on the result, so nothing is lost.
    */
   const writeProject = (
     op: Promise<Project>, note?: string, notify: (text: string) => void = banner,
   ): Promise<boolean> => write(op.then((p) => setProject(p)), { note, notify })
 
-  /** Non-placeholder writing: First discard the editor that is open at the moment, and rewrite the entire deskBody corresponding to the renderProject of the demo. */
+  /**
+   * A write not made from a placeholder: first discards any open editor, as the demo's renderProject
+   * rewrote the whole deskBody.
+   */
   const applyWrite = (
     op: Promise<Project>, note?: string, notify: (text: string) => void = banner,
   ) => {
@@ -428,10 +437,10 @@ export function ProjectDetail({
     )
   }
 
-  /** Which half of the list does the new row belong to; null means there is no new row. */
+  /** Which plan tab the new row belongs to; null when there is no new row. */
   const openRowKind: PlanTab | null = creating?.kind ?? null
 
-  /** When there is already a new row in the same segment, return the focus to it to avoid opening a second row. */
+  /** When that tab already has a new row, moves focus back to it instead of opening a second one. */
   const focusOpenRow = (kind: PlanTab) => {
     if (openRowKind !== kind) return false
     planList.current?.querySelector<HTMLInputElement>('.min')?.focus()
@@ -450,7 +459,10 @@ export function ProjectDetail({
     setCreating({ kind: 'ms', date })
   }
 
-  /** The local files dragged or clicked are created into attachments in sequence. Only the absolute path is recorded and the original file is not copied. */
+  /**
+   * Adds the dropped or chosen local files as attachments, one after another. Only the absolute path
+   * is recorded; the file itself is not copied.
+   */
   const addAttachments = (dropped: File[]) => {
     const local = dropped.filter((file) => files.pathOf(file) !== '')
     if (local.length < dropped.length) toast(m.project.attachments.localOnly)
@@ -479,7 +491,7 @@ export function ProjectDetail({
   }
   const attn = projectDecisionItems({
     status: project.status,
-    // Old project conclusions are reserved for data compatibility only and no longer participate in the attention signal of the project page.
+    // Old project conclusions are kept only for data compatibility and no longer feed the project page's signals.
     conclusions: { conflicting: 0 },
     milestones: project.milestones,
     events: visibleEvents,
@@ -949,8 +961,8 @@ export function ProjectDetail({
                         const next = focus.trim()
                         const label = m.project.identity.focusLabel[FOCUS_KEY[project.status]]
                         if (next === '') { toast(m.project.identity.focusRequired(label)); return false }
-                        // When submitting, close the editor that is open elsewhere, and do not wait for the results of this writing; close this box and leave it to
-                        // InlineMetadataField, determined by the success or failure of this writing
+                        // On submit, close any editor open elsewhere without waiting for this write; whether
+                        // this field closes is left to InlineMetadataField, which follows the write's result
                         discardOpenEdits()
                         return writeProject(
                           projectApi.update(projectId, { focus: next }), m.project.identity.focusUpdated(label),
@@ -1030,7 +1042,7 @@ export function ProjectDetail({
                   <SectionHeading
                     variant="rail"
                     actions={(
-                      // Demo's relAdd guard: If the placeholder is already open, just return the focus to it, and keep half of the filled content.
+                      // The demo's relAdd guard: an open placeholder is only refocused, keeping what was typed.
                       <AddAction
                         variant="section" ref={relAdd} title={m.project.links.addTitle}
                         onClick={() => {

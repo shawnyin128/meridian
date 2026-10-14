@@ -1,6 +1,6 @@
 /*
- * The handwritten CSS of the project list, the rules are copied from desktop/design/platform-shell-demo.html one by one.
- * The selector name is consistent with the demo to facilitate side-by-side comparison.
+ * Hand-written CSS for the project list, copied rule by rule from e2e/fixtures/platform-shell-demo.html.
+ * Selectors keep the demo's names so the two can be compared side by side.
  */
 
 /* Ongoing projects: a decision-first card. */
@@ -27,7 +27,7 @@
   .project-card-recent{grid-column:1/-1}
 }
 
-/* Shelved vs. Completed Items: One Line */
+/* Shelved and completed projects: one row each */
 .prow{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--r-lg);cursor:pointer;font-size:var(--fs-base);transition:background var(--t-fast) var(--e-out)}
 .prow:hover,.prow:has(.dots[data-state="open"]){background:var(--hover)}
 .prow[draggable]{cursor:grab}
@@ -37,6 +37,6 @@
 .prow .m{color:var(--ter);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .prow .tp{margin-left:auto;font-size:var(--fs-sm);color:var(--ter);flex-shrink:0}
 
-/* The entrance to the in-line management menu: hover over that line to reveal it; the rules of .dots themselves are in components/FieldPickers.css */
+/* A row's management menu shows while the row is hovered; .dots itself is in components/FieldPickers.css */
 .projpanel .dots{margin-left:2px}
 .prow:hover .dots{opacity:1;pointer-events:auto}
