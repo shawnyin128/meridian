@@ -25,11 +25,13 @@ test('自动化传 MERIDIAN_SHOW_WINDOW=0 时窗口不上屏', async ({ app, win
   expect(await visible(app)).toBe(false)
 })
 
-test('不传 MERIDIAN_SHOW_WINDOW 时窗口上屏', async () => {
+test('不传 MERIDIAN_SHOW_WINDOW 时窗口上屏', async ({ configHome }) => {
   const env = Object.fromEntries(Object.entries(process.env).filter(
     (e): e is [string, string] => e[1] !== undefined && !e[0].startsWith('MERIDIAN_')))
   // Point to fixture: Without this item, the application will open the real paper library according to user configuration.
-  const app = await electron.launch({ args: [APP_DIR], env: { ...env, MERIDIAN_LIBRARY_ROOT: FIXTURE_VAULT } })
+  const app = await electron.launch({
+    args: [APP_DIR], env: { ...env, MERIDIAN_LIBRARY_ROOT: FIXTURE_VAULT, MERIDIAN_CONFIG_HOME: configHome },
+  })
   try {
     const win = await app.firstWindow()
     await win.locator('.sidebar').waitFor()
@@ -43,10 +45,11 @@ test('不传 MERIDIAN_SHOW_WINDOW 时窗口上屏', async () => {
 const cleanEnv = () => Object.fromEntries(Object.entries(process.env).filter(
   (e): e is [string, string] => e[1] !== undefined && !e[0].startsWith('MERIDIAN_')))
 
-test('指定的库里没有论文页目录时,内容区报出缺的目录,设置仍打得开', async () => {
+test('指定的库里没有论文页目录时,内容区报出缺的目录,设置仍打得开', async ({ configHome }) => {
   const bare = mkdtempSync(join(tmpdir(), 'meridian-e2e-bare-'))
   const app = await electron.launch({
-    args: [APP_DIR], env: { ...cleanEnv(), MERIDIAN_VAULT_ROOT: bare, MERIDIAN_SHOW_WINDOW: '0' },
+    args: [APP_DIR],
+    env: { ...cleanEnv(), MERIDIAN_VAULT_ROOT: bare, MERIDIAN_CONFIG_HOME: configHome, MERIDIAN_SHOW_WINDOW: '0' },
   })
   try {
     const win = await app.firstWindow()
@@ -63,11 +66,12 @@ test('指定的库里没有论文页目录时,内容区报出缺的目录,设置
   }
 })
 
-test('指定的库没有 Wiki 结构文件时,内容区报出缺的那个文件', async () => {
+test('指定的库没有 Wiki 结构文件时,内容区报出缺的那个文件', async ({ configHome }) => {
   const legacy = mkdtempSync(join(tmpdir(), 'meridian-e2e-noschema-'))
   mkdirSync(join(legacy, 'wiki', 'papers'), { recursive: true })
   const app = await electron.launch({
-    args: [APP_DIR], env: { ...cleanEnv(), MERIDIAN_VAULT_ROOT: legacy, MERIDIAN_SHOW_WINDOW: '0' },
+    args: [APP_DIR],
+    env: { ...cleanEnv(), MERIDIAN_VAULT_ROOT: legacy, MERIDIAN_CONFIG_HOME: configHome, MERIDIAN_SHOW_WINDOW: '0' },
   })
   try {
     const win = await app.firstWindow()
@@ -100,7 +104,7 @@ test('用户配置登记的库打不开时报错,不悄悄换成应用自己的�
 const KEEP_PAGE = '---\ntype: "paper"\ntitle: "Keep"\nstatus: "draft"\ncreated: "2026-09-15"\n'
   + 'updated: "2026-09-15"\nsource_id: "keep"\nmemberships: []\n---\n# Keep\n'
 
-test('设置可重置、切换和删除论文库备份', async () => {
+test('设置可重置、切换和删除论文库备份', async ({ configHome }) => {
   const parent = mkdtempSync(join(tmpdir(), 'meridian-e2e-reset-'))
   const root = join(parent, 'library')
   prepareSelectedLibrary(root, new Date('2026-09-15T12:00:00Z'))
@@ -109,7 +113,8 @@ test('设置可重置、切换和删除论文库备份', async () => {
   const app = await electron.launch({
     args: [APP_DIR],
     env: {
-      ...cleanEnv(), MERIDIAN_VAULT_ROOT: root, MERIDIAN_CANNED_NET: '1', MERIDIAN_SHOW_WINDOW: '0',
+      ...cleanEnv(), MERIDIAN_VAULT_ROOT: root, MERIDIAN_CONFIG_HOME: configHome, MERIDIAN_CANNED_NET: '1',
+      MERIDIAN_SHOW_WINDOW: '0',
     },
   })
   try {

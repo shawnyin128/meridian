@@ -82,6 +82,16 @@ def _mcp_framed_responses(raw: bytes) -> list[dict[str, object]]:
 
 
 class CliTests(unittest.TestCase):
+    def setUp(self) -> None:
+        # The config home and these variables otherwise lead to the user's own ~/.meridian and vault.
+        config_home = tempfile.TemporaryDirectory()
+        self.addCleanup(config_home.cleanup)
+        environment = patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": config_home.name})
+        environment.start()
+        self.addCleanup(environment.stop)
+        for name in ("MERIDIAN_LIBRARY_ROOT", "MERIDIAN_WIKI_WORKSPACE", "MERIDIAN_WIKI_ROOT", "MERIDIAN_WORKSPACE_ROOT"):
+            os.environ.pop(name, None)
+
     def test_plugin_version_surfaces_are_aligned(self) -> None:
         # The skills and MCP (plugins and Python core) share VERSION; the desktop app has its own version.
         expected = Path("VERSION").read_text(encoding="utf-8").strip()

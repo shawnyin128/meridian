@@ -9,11 +9,13 @@ const APP_DIR = resolve(import.meta.dirname, '../apps/desktop')
 const EXAMPLE = resolve(import.meta.dirname, '../apps/desktop/src/core/fixtures/wiki-example-vault')
 
 /**
- * Start an Electron like test in app.ts, but point to a library with a new layout: copy the sample library to the temporary directory
- * Under wiki/, `MERIDIAN_VAULT_ROOT` allows core to access the store of the real library. After the use case is run, the database is deleted together with it.
+ * The `app` fixture of app.ts on a vault with the aggregation layout: each case copies the example
+ * vault into `wiki/` of a temporary directory, and `MERIDIAN_VAULT_ROOT` makes Core open that copy
+ * with the vault store instead of the fixture store. The copy is deleted after the case, and the
+ * case's config home is the temporary one from app.ts.
  */
 const test = base.extend<{ app: ElectronApplication }>({
-  app: async ({ showWindow }, use) => {
+  app: async ({ showWindow, configHome }, use) => {
     const vault = mkdtempSync(join(tmpdir(), 'meridian-e2e-vault-'))
     for (const name of ['schema.yaml', 'papers', 'topics', 'methods']) {
       cpSync(join(EXAMPLE, name), join(vault, 'wiki', name), { recursive: true })
@@ -24,6 +26,7 @@ const test = base.extend<{ app: ElectronApplication }>({
         ...Object.fromEntries(Object.entries(process.env).filter((e): e is [string, string] => e[1] !== undefined)),
         MERIDIAN_VAULT_ROOT: vault,
         MERIDIAN_LIBRARY_ROOT: vault,
+        MERIDIAN_CONFIG_HOME: configHome,
         MERIDIAN_SHOW_WINDOW: showWindow ? '1' : '0',
       },
     })
