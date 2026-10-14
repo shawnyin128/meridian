@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
+from unittest.mock import patch
 
 from meridian.cli import main
 from meridian.framework_check import run_framework_check
@@ -11,6 +13,16 @@ from meridian.lab.graph import LAB_GRAPH_SCHEMA_VERSION, materialize_lab_graph
 
 
 class LabGraphTests(unittest.TestCase):
+    def setUp(self) -> None:
+        # The config home and these variables otherwise lead to the user's own ~/.meridian and vault.
+        config_home = TemporaryDirectory()
+        self.addCleanup(config_home.cleanup)
+        environment = patch.dict(os.environ, {"MERIDIAN_CONFIG_HOME": config_home.name})
+        environment.start()
+        self.addCleanup(environment.stop)
+        for name in ("MERIDIAN_LIBRARY_ROOT", "MERIDIAN_WIKI_WORKSPACE", "MERIDIAN_WIKI_ROOT", "MERIDIAN_WORKSPACE_ROOT"):
+            os.environ.pop(name, None)
+
     def _write_minimal_lab(self, root: Path) -> None:
         lab = root / ".meridian"
         (lab / "threads").mkdir(parents=True)

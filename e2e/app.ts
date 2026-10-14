@@ -7,15 +7,15 @@ import { join, resolve } from 'node:path'
 const APP_DIR = resolve(import.meta.dirname, '../apps/desktop')
 
 /**
- * Which vault the use case runs on. Only the original text of the paper was actually read from the disk, so I pointed to the one in the fixture and put it
- * An original article's vault; `MERIDIAN_LIBRARY_ROOT` has been specified, so that the same batch of use cases can be run
- * On the real library.
+ * The vault every case runs on: the fixture vault in this repository. In fixture mode Core serves
+ * everything from the JSON fixtures and reads only the papers' source PDFs from this directory.
+ * No environment variable can replace it, so a run never reaches a real vault.
  */
-const VAULT = process.env['MERIDIAN_LIBRARY_ROOT']
-  ?? resolve(APP_DIR, 'src/core/fixtures/vault')
+const VAULT = resolve(APP_DIR, 'src/core/fixtures/vault')
 
-const ENV = Object.fromEntries(
-  Object.entries(process.env).filter((e): e is [string, string] => e[1] !== undefined))
+/** The parent environment without `MERIDIAN_VAULT_ROOT`, which would make Core open that vault instead of the fixture. */
+const ENV = Object.fromEntries(Object.entries(process.env).filter(
+  (e): e is [string, string] => e[1] !== undefined && e[0] !== 'MERIDIAN_VAULT_ROOT'))
 
 /**
  * Each use case has an exclusive Electron instance: `app` is the main process handle (change the window size and use it),
@@ -27,12 +27,16 @@ const ENV = Object.fromEntries(
  * `test.use({ showWindow: true })`, and leave the rest open.
  */
 export const test = base.extend<{
-  app: ElectronApplication; win: Page; showWindow: boolean
+  app: ElectronApplication; win: Page; showWindow: boolean; configHome: string
 }>({
   showWindow: [false, { option: true }],
-  app: async ({ showWindow }, use) => {
-    // A fresh config home per case keeps the user's own ~/.meridian (keys, model settings) out of reach.
+  // A fresh config home per case keeps the user's own ~/.meridian (keys, model settings) out of reach.
+  configHome: async ({}, use) => {
     const configHome = mkdtempSync(join(tmpdir(), 'meridian-e2e-config-'))
+    await use(configHome)
+    rmSync(configHome, { recursive: true, force: true })
+  },
+  app: async ({ showWindow, configHome }, use) => {
     const app = await electron.launch({
       // The specs assert Chinese copy, so the app must not follow the host's language.
       args: [APP_DIR, '--lang=zh-CN'],
@@ -46,7 +50,6 @@ export const test = base.extend<{
     })
     await use(app)
     await app.close()
-    rmSync(configHome, { recursive: true, force: true })
   },
   win: async ({ app }, use) => {
     const win = await app.firstWindow()
