@@ -3,14 +3,14 @@ import { resolve } from 'node:path'
 import type { Page } from '@playwright/test'
 import { expect, openSettings, settle, test, type MeridianWindow } from './app.js'
 
-/** The screen you entered is always hung, and the selectors that are present on every screen, such as messages and input boxes, should be included in the currently displayed screen. */
+/** Screens stay mounted once visited, so selectors every screen has, such as messages, are scoped to the visible one. */
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
 
 const DEMO = resolve(import.meta.dirname, 'fixtures/platform-shell-demo.html')
 
 /**
- * Extract the preset line of askConflict() from the demo source file: the sentence you asked, and the original HTML text of the answer.
- * The expected value is taken from the demo itself, not copied by hand.
+ * Extracts the scripted exchange in the demo's askConflict(): the user's question and the reply's raw HTML.
+ * Expected values come from the demo itself rather than being copied by hand.
  */
 function conflictFromDemo(): { asked: string; reply: string } {
   const demo = readFileSync(DEMO, 'utf8')
@@ -30,23 +30,23 @@ const MODEL_NOT_CONFIGURED = 'AI 尚未接入，请先在设置中配置模型�
 /** A piece of HTML text with tags stripped and whitespace collapsed into a single space. */
 const stripped = (html: string) => html.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
 
-/** Bypass the interface and adjust the contract directly. */
+/** Calls a Core contract method directly, bypassing the UI. */
 const core = <T>(win: Page, method: string, params: unknown) =>
   win.evaluate(([m, p]) => (window as unknown as MeridianWindow).meridian.call(m as string, p),
     [method, params] as const) as Promise<T>
 
 type Session = { id: string; title: string; archived: boolean; messageCount: number }
 
-/** Click the `at` conversation in the "Conversation" group on the sidebar to enter the conversation screen. The session list is laid out after it is retrieved, so wait for it to land first. */
+/** Opens the chat at index `at` in the sidebar's Chats group, waiting first for the fetched list to render. */
 async function gotoChat(win: Page, at = 0): Promise<void> {
   await win.locator('#chatList .chat-row').first().waitFor()
   await win.locator('#chatList .chat-row').nth(at).click()
   await shown(win, '#composer').waitFor()
-  // Each session in the fixture carries messages. Wait until they are completed before starting, so as not to regard the empty stream as the entire session.
+  // Every fixture chat has messages; wait for them so an empty message list is not taken for the whole chat.
   await shown(win, '.msg').first().waitFor()
 }
 
-/** Send a sentence in the current conversation and wait for the response to fall on the message stream. */
+/** Sends a message in the open chat and waits until it and the response are both in the message list. */
 async function say(win: Page, value: string): Promise<void> {
   const before = await shown(win, '.msg').count()
   await shown(win, '#composer').fill(value)
@@ -54,7 +54,7 @@ async function say(win: Page, value: string): Promise<void> {
   await expect(shown(win, '.msg')).toHaveCount(before + 2)
 }
 
-/** Start a new conversation: + on the "Conversation" title in the sidebar. */
+/** Starts a new chat with the + on the sidebar's Chats heading. */
 async function newChat(win: Page): Promise<void> {
   await win.locator('.sidebar .sb-add[title="新对话"]').click()
   await shown(win, '#composer').waitFor()
@@ -69,7 +69,7 @@ test('侧栏对话组的行数与 chat.list 一致,进屏后面包屑是对话�
 
   await expect(win.locator('#chatList .chat-row')).toHaveCount(active.length)
   await expect(win.locator('#chatList .ct-t')).toHaveText(active.map((s) => s.title))
-  // Archived conversations are not in the sidebar at all, they are in settings
+  // Archived chats are not in the sidebar at all; they are listed in Settings.
   await expect(win.locator('.sidebar .chat-row')).toHaveCount(active.length)
   for (const s of archived) await expect(win.locator('.sidebar')).not.toContainText(s.title)
 
@@ -88,7 +88,7 @@ test('动态的「看看」建立结论冲突会话，未配置模型时给明�
   await expect(shown(win, '.msg.ai')).toHaveCount(0)
   await expect(shown(win, '.msgs')).not.toContainText(stripped(demo.reply.split('<div class="macts">')[0]!))
 
-  // This line becomes a conversation by itself and is ranked at the top of the conversation list.
+  // The feed item opens a chat of its own, listed first in the chat list.
   await expect(win.locator('#chatList .ct-t').first()).toHaveText('结论冲突')
 })
 
@@ -119,7 +119,7 @@ test('问一个一般问题,出来的是「AI 尚未接入」的状态而不是�
   await say(win, '宽树在批量下还成立吗?')
 
   await expect(shown(win, '.msg .event')).toHaveText(MODEL_NOT_CONFIGURED)
-  // The status is not an answer: it does not form an answer bubble, nor does the fake answer marked "demo" appear.
+  // The status is not an answer: no answer bubble is drawn, and no fake answer marked "(demo)" appears.
   await expect(shown(win, '.msg.ai')).toHaveCount(0)
   await expect(shown(win, '.msgs')).not.toContainText('(demo)')
 })
@@ -145,7 +145,7 @@ test('@ 下拉按项目、论文、Wiki 三组列候选,点一条填进输入框
   await expect(win.locator('#cRes')).toHaveCount(0)
 })
 
-/** Ask the contract directly: This article is not archived now. */
+/** Asks Core directly whether the chat is archived now. */
 const isArchived = async (win: Page, id: string) =>
   (await core<Session[]>(win, 'chat.list', {})).find((s) => s.id === id)!.archived
 
@@ -163,9 +163,10 @@ test('归档把会话移出侧栏,设置里取消归档把它放回', async ({ a
   expect(await isArchived(win, target.id)).toBe(true)
 
   await openSettings(app, win)
-  // Settings is a modal that covers the current screen, not one screen: opening it does not change the screen, and the breadcrumbs still stay on the screen where the archiving occurred.
+  // Settings is a modal over the current screen, not a screen of its own: the breadcrumb still shows
+  // the screen where the chat was archived.
   await expect(win.locator('#crumb .cseg')).toHaveText(['动态'])
-  // By default, the settings fall into the storage category. Only the category in the left column of archived dialogue points can be drawn.
+  // Settings opens on another category; archived chats show only under "Archived chats" on the left.
   await win.locator('[data-setcat="archived"]').click()
   await expect(win.locator(`.setdlg .wrow[data-chat="${target.id}"] .nm`)).toHaveText(target.title)
 
@@ -181,13 +182,14 @@ test('设置里「打开」进那条归档的会话,模态让开且屏上标出�
   const archived = (await core<Session[]>(win, 'chat.list', {})).find((s) => s.archived)!
 
   await openSettings(app, win)
-  // By default, the settings fall into the storage category. Only the category in the left column of archived dialogue points can be drawn.
+  // Settings opens on another category; archived chats show only under "Archived chats" on the left.
   await win.locator('[data-setcat="archived"]').click()
   await win.locator(`.setdlg .wrow[data-chat="${archived.id}"]`)
     .getByRole('button', { name: '打开' }).click()
 
   await expect(win.locator('.setdlg')).toHaveCount(0)
-  // The archived conversations are not in the sidebar column. Once they are entered, they cannot be distinguished from other conversations, so the breadcrumbs must be marked with a sentence.
+  // Archived chats are not in the sidebar, so once opened they would look like any other chat; the
+  // breadcrumb marks them as archived.
   await expect(win.locator('#crumb .cseg')).toHaveText(['对话', `${archived.title} · 已归档`])
   await expect(shown(win, '.msg')).toHaveCount(archived.messageCount)
 })
@@ -230,7 +232,7 @@ test('会话行的更多菜单是真菜单:触发器报 menu,下键高亮归档,
 
   await expect(row).toHaveCount(0)
   expect(await isArchived(win, target.id)).toBe(true)
-  // The click of Enter to select does not pop up on the session line: it still stays on the dynamic screen when the application starts.
+  // The Enter that selects the item does not bubble to the chat row: the app stays on the Feed screen.
   await expect(win.locator('#crumb .cseg')).toHaveText(['动态'])
 })
 
@@ -242,13 +244,15 @@ test('正打开着的会话开它的 ... 菜单,行仍然是选中底色,不是 
   await shown(win, '#composer').waitFor()
   await expect(row).toHaveClass(/\bon\b/)
 
-  // The background color of the selected row is given by .srow.on, not this hover rule; here we first take the background color of the actual selected state for reference
+  // The selected row's background comes from .srow.on, not the hover rule; record the actual
+  // selected background first as the reference.
   await settle(row)
   const selectedBg = await row.evaluate((el) => getComputedStyle(el).backgroundColor)
 
   await row.hover()
   await row.locator('.dots').click()
-  // When the pointer is moved to the menu item, the line is really lost :hover - if it is not moved, it will be "sticky" and no problem can be detected.
+  // Moving the pointer onto a menu item makes the row really lose :hover; without the move, :hover
+  // sticks and no bug would show.
   await win.locator('[role="menu"] [role="menuitem"]').first().hover()
   await settle(row)
   expect(await row.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(selectedBg)
@@ -265,7 +269,8 @@ test('未选中的会话行开它的 ... 菜单,行留着 hover 底色', async (
   const hoverBg = await row.evaluate((el) => getComputedStyle(el).backgroundColor)
 
   await row.locator('.dots').click()
-  // When the pointer is moved to the menu item, the line is really lost :hover - if it is not moved, it will be "sticky" and no problem can be detected.
+  // Moving the pointer onto a menu item makes the row really lose :hover; without the move, :hover
+  // sticks and no bug would show.
   await win.locator('[role="menu"] [role="menuitem"]').first().hover()
   await settle(row)
   expect(await row.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(hoverBg)

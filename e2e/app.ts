@@ -18,13 +18,14 @@ const ENV = Object.fromEntries(
   Object.entries(process.env).filter((e): e is [string, string] => e[1] !== undefined))
 
 /**
- * Each use case has an exclusive Electron instance: `app` is the main process handle (change the window size and use it),
- * `win` is its first window. The entire application is automatically shut down after the use case is run.
- * `showWindow` tells whether this item requires a real window on the screen. The default is not - it has been used more than a hundred times in one round of regression.
- * Windows grabbing focus again and again can make it difficult to use the computer. The price is that the window that is not on the screen does not have the frame given by the compositor: rAF falls to
- * Once per second, so Playwright waits for two seconds for each operability and one second for each element screenshot;
- * The menu accelerator is only accessible from the window on the upper screen. The use case itself that is blocked by these two things
- * `test.use({ showWindow: true })`, and leave the rest open.
+ * Each test case gets its own Electron instance: `app` is the main-process handle (used to resize the
+ * window), `win` is its first window. The whole app is closed after the case finishes.
+ * `showWindow` says whether the case needs a real window on screen. It defaults to false: one
+ * regression round launches the app more than a hundred times, and windows grabbing focus again and
+ * again make the computer hard to use. The cost is that an offscreen window gets no frames from the
+ * compositor: rAF drops to once per second, so Playwright waits two seconds per actionability check
+ * and one second per element screenshot, and menu accelerators reach only a window on screen. Cases
+ * that hit either limit set `test.use({ showWindow: true })`; the rest leave it off.
  */
 export const test = base.extend<{
   app: ElectronApplication; win: Page; showWindow: boolean
@@ -40,7 +41,8 @@ export const test = base.extend<{
         ...ENV,
         MERIDIAN_LIBRARY_ROOT: VAULT,
         MERIDIAN_CONFIG_HOME: configHome,
-        // Explicitly write '0': When this variable is set in the external shell, the unnamed use case still does not appear on the screen.
+        // Write '0' explicitly: a case that did not ask for a window stays off screen even when the
+        // outer shell sets this variable.
         MERIDIAN_SHOW_WINDOW: showWindow ? '1' : '0',
       },
     })
@@ -63,29 +65,32 @@ export const test = base.extend<{
 
 export { expect } from '@playwright/test'
 
-/** preload is exposed to the page's access interface. In `page.evaluate`, the interface is bypassed and the core is directly called according to the contract method name. */
+/** The API preload exposes to the page; inside `page.evaluate` it calls Core by contract method, bypassing the UI. */
 export type MeridianWindow = Window & {
   meridian: { call(method: string, params: unknown): Promise<unknown>; platform: NodeJS.Platform }
 }
 
 /**
- * Click the brand mark in the title bar to open the application menu, and then click "Settings...". When you return, the settings modal is already on the screen.
+ * Clicks the brand mark in the title bar to open the app menu, then "Settings…". Returns once the
+ * Settings modal is on screen.
  */
 export async function openSettings(_app: ElectronApplication, win: Page): Promise<void> {
-  // Settings are entered from the brand mark in the upper left corner of the title bar: that layer is the entrance to application-level configuration, and the menu bar is no longer drawn.
+  // Settings opens from the brand mark at the top left of the title bar, the entry point for
+  // app-level configuration; the app draws no menu bar.
   await win.locator('.titlebar .appbtn').click()
   await win.locator('[data-appmenu] .mi', { hasText: '设置…' }).click()
   await win.locator('.setdlg').waitFor()
 }
 
 /**
- * Click "My Library › Papers" on the sidebar to enter the paper screen. The application falls on the dynamic screen. All use cases done on the paper table must take this step first.
+ * Clicks "My library › Papers" in the sidebar to open the Papers screen. The app starts on the Feed
+ * screen, so every test case on the paper table takes this step first.
  */
 export async function gotoPapers(win: Page): Promise<void> {
   await win.locator('[data-desk="papers"]').click()
 }
 
-/** A deduplicated ascending collection of elements `offsetHeight`. A single-value collection indicates that this group of rows is of equal height. */
+/** The distinct `offsetHeight` values of the elements, ascending; a single value means equal heights. */
 export function uniqueHeights(rows: Locator): Promise<number[]> {
   return rows.evaluateAll((els) => [
     ...new Set(els.map((el) => (el as HTMLElement).offsetHeight)),
@@ -93,26 +98,29 @@ export function uniqueHeights(rows: Locator): Promise<number[]> {
 }
 
 /**
- * Move the pointer out of the content area. When the pointer presses on the truncated grid, the `.ci` of that grid will expand in place and cross the table width.
- * The measured width and the captured image will change accordingly; the hover of the first synthesized mouse event is still calculated according to the real cursor.
- * Therefore, you need to enter the content area and then come out, so that the hover state can be settled.
+ * Moves the pointer out of the content area. A pointer resting on a truncated cell makes that
+ * cell's `.ci` expand in place across the table width, which changes measured widths and
+ * screenshots. The first synthesized mouse event still computes hover from the real cursor, so the
+ * pointer moves into the content area and then out for the hover state to settle.
  */
 export async function parkPointer(win: Page): Promise<void> {
   await win.mouse.move(600, 400)
   await win.mouse.move(0, 0)
 }
 
-/** End all running transitions and animations on the element, so that the subsequent calculated value reading will immediately get the final value. */
+/** Finishes every running transition and animation on the element, so computed styles read next are final. */
 export function settle(locator: Locator): Promise<void> {
   return locator.evaluate((el) => { el.getAnimations().forEach((a) => { a.finish() }) })
 }
 
 /**
- * Click "Research › Projects" on the sidebar to enter the project list, then click on the draft project from the list, and then return after Gantt has finished drawing.
- * What we are waiting for is the frame, not a certain element: when Gantt is mounted, the viewport width is directly measured by the layout side effect, and the stub and row are the same.
- * Submit the drawing, so any element is already correct as soon as it appears; what has not yet been implemented is the first time of ResizeObserver
- * callback. If we don't wait for that frame, when the window size is changed later, the recalculation will be delayed by one frame, and the stumps will not be filled.
- * The entered screen is always hanging, and there is also a Gantt on the research overview, so the waiting line must be included in the currently displayed screen.
+ * Clicks "Research › Projects" in the sidebar, opens the draft project from the list, and returns
+ * once its Gantt has drawn. The wait is for a frame, not an element: when the Gantt mounts, a layout
+ * effect measures the viewport width directly and stubs and rows are drawn in the same commit, so
+ * every element is correct as soon as it appears; what is still pending is the first ResizeObserver
+ * callback. Without that frame, the recalculation after a later window resize lands one frame late
+ * and stubs can be missing. Screens stay mounted once visited and Overview has a Gantt too, so the
+ * awaited row is scoped to the visible screen.
  */
 export async function gotoProject(win: Page): Promise<void> {
   await win.locator('[data-desk="resproj"]').click()
@@ -121,26 +129,28 @@ export async function gotoProject(win: Page): Promise<void> {
   await win.evaluate(() => new Promise<null>((drawn) => requestAnimationFrame(() => drawn(null))))
 }
 
-/** Bypass the interface and call `vault.today` directly, get today in Curry; every relative date on the screen is counted according to it. */
+/** Calls `vault.today` directly, bypassing the UI: the vault's today, base of every relative date on screen. */
 export const vaultToday = (win: Page): Promise<string> => win.evaluate(() =>
   (window as unknown as MeridianWindow).meridian.call('vault.today', {}) as Promise<string>)
 
 /**
- * The date of the fixture is generated according to today in the library, which is the day days after today, ISO; if days is negative, it is today
- * before. The use case is written to determine how far the date is from today, not which day it falls on - which day is different every day.
+ * Fixture dates are generated relative to the vault's today: returns the ISO date `days` after
+ * `today`, or before it when `days` is negative. Test cases assert how far a date is from today, not
+ * which calendar day it is, because that changes every day.
  */
 export const fixtureDay = (today: string, days: number): string =>
   new Date(Date.parse(`${today}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10)
 
-/** The date is uniformly written as M month and D day on the interface, which is the same as dshort of routes/dates.ts. */
+/** A date as the Chinese UI writes it (month and day), like `createFormat('zh').date` in renderer/lib/format.ts. */
 export const dshort = (iso: string): string => {
   const [, month, day] = iso.match(/^(?:\d{4}-)?(\d{1,2})[-/](\d{1,2})$/) ?? []
   return month && day ? `${Number(month)}月${Number(day)}日` : iso
 }
 
 /**
- * Bypass the interface and call `project.get('draft')` directly, and only get the two arrays to be checked by the write path use case.
- * It is used to confirm the actual value stored in the core after dragging, creating, deleting and other operations, rather than the optimistically rendered state of the interface itself.
+ * Calls `project.get('draft')` directly, bypassing the UI, and keeps only the two arrays the
+ * write-path test cases check: what Core actually stored after a drag, create, delete or similar
+ * action, rather than what the UI rendered optimistically.
  */
 export async function readDraft(win: Page): Promise<{
   milestones: { id: string; date: string }[]
