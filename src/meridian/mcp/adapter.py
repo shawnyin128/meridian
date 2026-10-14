@@ -7,11 +7,16 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from meridian.mcp.app_library import app_native_candidates, app_native_catalog_records
+from meridian.mcp.app_library import (
+    app_native_candidates,
+    app_native_catalog_records,
+    app_native_unreadable_pages,
+)
 from meridian.mcp.context_contract import CONTEXT_SCHEMA_VERSION, build_context_packet
 from meridian.wiki.claims import ProposalValidationError
 from meridian.wiki.context_paths import default_mcp_context_out_dir
 from meridian.wiki.corpus import (
+    FrontmatterError,
     parse_frontmatter,
     retrieve_papers,
     split_sections,
@@ -69,7 +74,7 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
             "workflow": "Use Wiki",
             "summary": "Trace a page's links: parents/children/members/memberships, claim evidence and conflicts.",
             "inputs": ["page", "wiki_root", "max_chars"],
-            "outputs": ["parents", "children", "members", "memberships", "claims", "version"],
+            "outputs": ["parents", "children", "members", "memberships", "claims", "version", "warnings"],
         },
         {
             "name": "meridian.wiki_propose",
@@ -282,7 +287,7 @@ def context(
         layout="app_native",
         top_k=top_k,
         max_chars_per_result=max_chars_per_result,
-        warnings=result.warnings,
+        warnings=[*result.warnings, *_unreadable_page_warnings(wiki_root)],
         records_by_id=records_by_id,
     )
     result_path.parent.mkdir(parents=True, exist_ok=True)
@@ -308,7 +313,7 @@ def read(
     max_chars: int = 2400,
 ) -> dict[str, Any]:
     """Read one wiki page: frontmatter (memberships/claims), generated regions, and body."""
-    record = resolve_page(wiki_root, page)
+    record = _resolve_readable_page(wiki_root, page)
     path = Path(str(record["path"]))
     text = path.read_text(encoding="utf-8")
     frontmatter = parse_frontmatter(text)
@@ -341,7 +346,7 @@ def read(
 def trace(*, page: str, wiki_root: Path, max_chars: int = 1600) -> dict[str, Any]:
     """Trace a page's links: parents/children/members/memberships, claim evidence and conflicts."""
     records = app_native_catalog_records(wiki_root)
-    record = resolve_page(wiki_root, page, records=records)
+    record = _resolve_readable_page(wiki_root, page, records=records)
     page_id = str(record["page_id"])
     path = Path(str(record["path"]))
     frontmatter = record.get("raw_frontmatter") or {}
@@ -355,6 +360,7 @@ def trace(*, page: str, wiki_root: Path, max_chars: int = 1600) -> dict[str, Any
         "title": record.get("title"),
         "result_type": result_type,
         "version": page_version(path),
+        "warnings": _unreadable_page_warnings(wiki_root),
     }
     if result_type == "paper":
         payload["memberships"] = record.get("_memberships") or []
@@ -522,6 +528,28 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     print(json.dumps(payload, indent=2, ensure_ascii=False))
     return 0
+
+
+def _resolve_readable_page(
+    wiki_root: Path, page: str, *, records: list[dict[str, Any]] | None = None
+) -> dict[str, Any]:
+    """Resolve a page reference like :func:`resolve_page`.
+
+    Raises ``FrontmatterError`` naming the page when the reference matches only a page whose front
+    matter cannot be parsed.
+    """
+    try:
+        return resolve_page(wiki_root, page, records=records)
+    except FileNotFoundError:
+        unreadable = resolve_page(wiki_root, page, records=app_native_unreadable_pages(wiki_root))
+        raise FrontmatterError(f"{unreadable['relative_path']}: {unreadable['issue']}") from None
+
+
+def _unreadable_page_warnings(wiki_root: Path) -> list[str]:
+    return [
+        f"skipped unreadable page {item['relative_path']}: {item['issue']}"
+        for item in app_native_unreadable_pages(wiki_root)
+    ]
 
 
 def _summarize_result(item: dict[str, Any]) -> dict[str, Any]:

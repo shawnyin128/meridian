@@ -2341,6 +2341,29 @@ class CliTests(unittest.TestCase):
             self.assertIn("ready_proposal_without_wiki_target", codes)
             self.assertIn("ready_proposal_without_transfer_gate", codes)
 
+    def test_lab_state_validator_reports_each_file_with_unreadable_front_matter(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            initialize_lab_space(root, inject_agents_contract=False)
+            lab = root / ".meridian"
+            broken = "---\ntype: [unclosed\n---\n# Broken\n"
+            for relative in ("state.md", "threads/cache.md", "experiments/probe.md", "proposals/finding.md"):
+                (lab / relative).write_text(broken, encoding="utf-8")
+
+            report = validate_lab_space(root)
+
+            self.assertEqual(report.status, "fail")
+            self.assertEqual(
+                sorted((finding.code, Path(finding.path).as_posix()) for finding in report.findings),
+                [
+                    ("unreadable_frontmatter", "experiments/probe.md"),
+                    ("unreadable_frontmatter", "proposals/finding.md"),
+                    ("unreadable_frontmatter", "state.md"),
+                    ("unreadable_frontmatter", "threads/cache.md"),
+                ],
+            )
+            self.assertTrue(all("front matter is not valid YAML" in finding.message for finding in report.findings))
+
 
 if __name__ == "__main__":
     unittest.main()

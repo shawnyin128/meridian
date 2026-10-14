@@ -632,6 +632,34 @@ class MCPWorkspaceTests(unittest.TestCase):
             self.assertEqual(thread.read_bytes(), thread_before)
             self.assertEqual(plan.read_bytes(), plan_before)
 
+    def test_lab_result_reports_unreadable_experiment_front_matter_before_any_write(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            thread = root / ".meridian/threads/direction.md"
+            thread_before = thread.read_bytes()
+            probe = root / ".meridian/experiments/probe.md"
+            probe.write_text(probe.read_text(encoding="utf-8").replace("id: probe", "id: [probe"), encoding="utf-8")
+            server = MeridianMCPServer(default_workspace_root=root)
+
+            tool_result, error = self._call(
+                server,
+                "meridian.lab_result",
+                {
+                    "node_id": "direction.A",
+                    "event_id": "unreadable-probe",
+                    "summary": "This must not be projected",
+                    "source": ".meridian/experiments/probe.md",
+                    "impact": "supports",
+                },
+            )
+
+            self.assertTrue(tool_result["isError"])
+            self.assertEqual(error["error_code"], "workspace_protocol_error")
+            self.assertIn("experiment frontmatter cannot be parsed: front matter is not valid YAML", error["message"])
+            self.assertFalse((root / ".meridian/events/events.json").exists())
+            self.assertEqual(thread.read_bytes(), thread_before)
+
     def test_lab_result_rolls_back_node_and_graph_when_event_commit_fails(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

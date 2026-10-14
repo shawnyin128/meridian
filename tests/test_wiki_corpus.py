@@ -54,7 +54,16 @@ class FrontmatterParsingTests(unittest.TestCase):
         )
 
     def test_parse_frontmatter_rejects_a_non_mapping_root(self) -> None:
-        self.assertEqual(parse_frontmatter("---\n- paper\n- topic\n---\n"), {})
+        with self.assertRaisesRegex(ValueError, "front matter is not a mapping"):
+            parse_frontmatter("---\n- paper\n- topic\n---\n")
+
+    def test_parse_frontmatter_reports_invalid_yaml_instead_of_no_front_matter(self) -> None:
+        with self.assertRaisesRegex(ValueError, "front matter is not valid YAML"):
+            parse_frontmatter("---\ntitle: [unclosed\n---\n# Body\n")
+
+    def test_parse_frontmatter_reads_a_page_without_or_with_an_empty_block_as_no_fields(self) -> None:
+        self.assertEqual(parse_frontmatter("# Body\n"), {})
+        self.assertEqual(parse_frontmatter("---\n\n---\n# Body\n"), {})
 
 
 if __name__ == "__main__":

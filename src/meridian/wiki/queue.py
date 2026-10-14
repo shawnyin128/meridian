@@ -38,9 +38,17 @@ def inbox_has_key(vault_root: Path, key: str) -> bool:
 
 
 def read_wiki_signals(vault_root: Path) -> dict[str, Any] | None:
-    """Return `{generated_at, signals}`, or `None` if the App has not run yet."""
+    """Return `{generated_at, signals}`, or `None` if the App has not run yet.
+
+    Raises `ValueError` naming the file when it is not valid JSON or not a JSON object.
+    """
     path = vault_root / ".meridian" / "wiki-signals.json"
     if not path.is_file():
         return None
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    return payload if isinstance(payload, dict) else None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{path} is not valid JSON: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError(f"{path} is not a JSON object")
+    return payload
