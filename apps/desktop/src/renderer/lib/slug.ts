@@ -3,8 +3,8 @@ import { slugOf } from '../../shared/slug.js'
 export { slugOf } from '../../shared/slug.js'
 
 /**
- * The stable key corresponding to `label`: the slug of the label, if it collides with the slug in `taken`, try `-2`, `-3`... until there is no collision;
- * Tags without any alphanumeric characters start with `col`.
+ * The stable key for `label`: its slug, with `-2`, `-3`… appended until it collides with nothing in
+ * `taken`; a label without any letter or digit gets the base `col`.
  */
 export function nextKey(label: string, taken: Iterable<string>): string {
   const used = new Set(taken)

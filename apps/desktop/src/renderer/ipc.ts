@@ -27,8 +27,8 @@ const call = <T>(method: ContractMethod, params: unknown): Promise<T> =>
 
 export const appMenu = {
   /**
-   * When the user requests to open settings in the application menu, call `handler` and return the function to unsubscribe from it. Menu click is a command, not
-   * The number is fetched and sent directly to this page by the main process without going through the core.
+   * Calls `handler` when the user opens settings from the app menu and returns its unsubscribe
+   * function. A menu click is a command, not data: the main process sends it here, not via Core.
    */
   onOpenSettings: (handler: () => void) => window.meridian.onOpenSettings(handler),
   /** Open the Skill and MCP tutorial from the native Help menu. */
@@ -37,15 +37,15 @@ export const appMenu = {
   chooseLibraryRoot: () => window.meridian.chooseLibraryRoot(),
   /** Open the system directory selector and connect the code workspace to a project. */
   chooseWorkspaceRoot: () => window.meridian.chooseWorkspaceRoot(),
-  /** After the user confirms the adoption of the new library, the application is restarted, allowing Core to open a new workspace at the startup boundary. */
+  /** Restarts the app once the user confirms switching to the new vault, so Core opens it at startup. */
   restartApp: () => { window.meridian.restartApp() },
   /** The self-drawn title bar switches between maximized and restored when double-clicked. */
   toggleMaximize: () => { window.meridian.toggleMaximize() },
-  /** Which platform to run on. It depends on how much space should be left on both sides of the title bar for the window buttons and whether the shortcut key should be ⌘ or Ctrl. */
+  /** The platform; it sets the title bar's room for window buttons and whether shortcuts use ⌘ or Ctrl. */
   platform: (): string => window.meridian.platform,
   /**
-   * Give the color of the three symbols of the window button to the main process. You will get it once every time you change the dark or light theme, otherwise if you change the dark theme
-   * Those three symbols are still gray in the light theme. This call on darwin does nothing.
+   * Gives the main process the window buttons' symbol color; call it on every dark/light switch, or
+   * the symbols stay the dark theme's gray in the light theme. Does nothing on darwin.
    */
   setTitleBarTheme: (symbolColor: string) => { window.meridian.setTitleBarTheme(symbolColor) },
 }
@@ -87,8 +87,8 @@ export const files = {
 
 export const vault = {
   /**
-   * Curry's today, ISO date. The retention period of each relative date on the screen and the trash can is calculated from it. It follows the library clock,
-   * It will change after midnight in a session, so you need to retrieve it again, you can't just retrieve it once and keep it for later use.
+   * Today in the vault, as an ISO date; every relative date on screen and the trash retention count
+   * from it. It follows the vault's clock and changes past midnight, so fetch it again, not once.
    */
   today: () => call<string>('vault.today', {}),
 }
@@ -101,7 +101,7 @@ export const papers = {
   update: (id: string, patch: Partial<PaperFields>) =>
     call<void>('papers.update', { id, patch }),
   delete: (id: string) => call<void>('papers.delete', { id }),
-  /** Bytes of the original PDF of the paper. Reject if the original text of this article is not available in the library. */
+  /** Bytes of the paper's original PDF. Rejects when the vault has no source file for this paper. */
   source: (id: string) => call<Uint8Array>('papers.source', { id }),
   /** The uploaded binary is directly structurally cloned to Core without base64. */
   import: (filename: string, bytes: Uint8Array) =>
@@ -200,15 +200,15 @@ export const project = {
 export const changelog = {
   list: () => call<ChangeEntry[]>('changelog.list', {}),
   /**
-   * Undo this: The entity returns to the way it was before this change. Reject when it cannot be removed, the reason is in the error
-   * ——It has been withdrawn, the snapshot has expired, or the entity has been modified after this transaction.
+   * Undoes this change: the entity returns to how it was before it. Rejects when it cannot be undone,
+   * with the reason in the error: already undone, the snapshot expired, or the entity changed since.
    */
   undo: (id: string) => call<void>('changelog.undo', { id }),
-  /** Archive this item: it falls into the "Archived" section and is no longer counted in the unviewed count. Archived and re-archived does nothing. */
+  /** Archives this entry into "Archived", out of the unseen count; archiving it again does nothing. */
   archive: (id: string) => call<void>('changelog.archive', { id }),
-  /** Delete everything that has not been archived yet. */
+  /** Archives every entry not archived yet. */
   archiveAll: () => call<void>('changelog.archiveAll', {}),
-  /** Permanently delete an interface change record and its undo snapshot, leaving the Wiki's appended audit log unchanged. */
+  /** Permanently deletes one change record and its undo snapshot; the Wiki's append-only log is left as is. */
   delete: (id: string) => call<void>('changelog.delete', { id }),
   /** All archived records are permanently deleted, and unarchived records remain unchanged. */
   clearArchived: () => call<void>('changelog.clearArchived', {}),
@@ -251,7 +251,7 @@ export const inbox = {
   list: (params: InboxListParams = {}) => call<InboxEntry[]>('inbox.list', params),
   dismiss: (id: string) => call<void>('inbox.dismiss', { id }),
   readLater: (id: string) => call<boolean>('inbox.readLater', { id }),
-  /** Store this one. The interface will decide whether to open the entry based on whether it has been added to the library or whether the article already exists in the library. */
+  /** Adds the paper to the vault; whether it was added or already there tells the UI how to open the entry. */
   download: (id: string) => call<InboxDownloadResult>('inbox.download', { id }),
   /** Starts one full fetch of every active watch and returns immediately. */
   fetch: () => call<void>('inbox.fetch', {}),
@@ -314,7 +314,7 @@ export const wiki = {
 }
 
 export const search = {
-  /** For those items hit by the global search word, the upper limit of the number and sorting are determined by core. */
+  /** The items the global search query hits; Core decides how many and in what order. */
   query: (query: string) => call<SearchHit[]>('search.query', { query }),
 }
 
