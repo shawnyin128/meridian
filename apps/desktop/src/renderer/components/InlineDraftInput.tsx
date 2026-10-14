@@ -8,13 +8,13 @@ import { FormInput } from './FormControls.js'
 
 export type InlineDraftInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'onSubmit'> & {
   /**
-   * The entire placeholder editing area. When peer controls such as date and status are also considered internal to the editor, the outer rows are passed in; when omitted, the input box
-   * You are the editing area.
+   * The whole draft area. Pass the outer row when sibling controls such as date and status also count
+   * as inside the editor; when omitted, the input alone is the draft area.
    */
   scopeRef?: RefObject<HTMLElement | null>
-  /** You can open or refocus this placeholder entry. Clicking on them does not leave the editing area. */
+  /** Entry buttons that can open or refocus this draft; pressing them does not leave the draft. */
   triggers?: Array<RefObject<HTMLElement | null>>
-  /** Press Enter to submit the normalized text; the placeholder will be closed only when true is returned. */
+  /** Enter submits the normalized text; the draft closes only when this returns true. */
   onSubmit: (value: string) => boolean | Promise<boolean>
   onCancel: () => void
   normalize?: (value: string) => string
@@ -27,9 +27,11 @@ function assignRef(ref: ForwardedRef<HTMLInputElement>, node: HTMLInputElement |
 }
 
 /**
- * New/placeholder input box for all applications. It ties the input DOM to the lifecycle of `useInlineDraft`: autofocus,
- * Enter submits, Esc, off-point and focus leave cancellation, prevent duplication during asynchronous submission and lock off-point cancellation. Business components are only responsible for
- * Peer-to-peer layout and writing actions, no more typing keyboard, focus and busy rules by yourself.
+ * The app-wide input for a new item or an inline draft. It ties the input element to the
+ * `useInlineDraft` lifecycle: autofocus, Enter to submit, cancel on Esc, an outside press or focus
+ * leaving, and no duplicate submission or outside-press cancel while an asynchronous submission is
+ * pending. Feature components handle only the sibling layout and the write, and no longer write
+ * their own keyboard, focus and busy rules.
  */
 export const InlineDraftInput = forwardRef<HTMLInputElement, InlineDraftInputProps>(
   function InlineDraftInput({

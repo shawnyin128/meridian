@@ -11,8 +11,9 @@ declare global {
 type Draft = ReturnType<typeof useInlineDraft>
 
 /**
- * A placeholder probe: an input box and a button in `row`, an entry button (counted as triggers) and an unrelated button outside `row`.
- * When `detached` is true, `row` is not attached to any element; `onDraft` receives the hook return value each time it is rendered.
+ * A draft probe: an input and a button inside `row`, plus an entry button (one of the triggers) and
+ * an unrelated button outside `row`. With `detached`, `row` is attached to no element; `onDraft`
+ * receives the hook's return value on every render.
  */
 function Probe({ onSubmit, onCancel, detached = false, onDraft }: {
   onSubmit: () => boolean | Promise<boolean>
@@ -37,7 +38,7 @@ function Probe({ onSubmit, onCancel, detached = false, onDraft }: {
   )
 }
 
-/** Hang the probe into a real container and return the elements inside and outside the placeholder. */
+/** Mount the probe into a real container and return the elements inside and outside the draft. */
 function mount(
   onSubmit: () => boolean | Promise<boolean>,
   onCancel: () => void,
@@ -54,7 +55,7 @@ function mount(
   }
 }
 
-/** Imitate a floating layer that is portaled to the body by Radix and return a button inside it. */
+/** Imitate a popover that Radix portals to the body and return a button inside it. */
 function portalLayer(): HTMLButtonElement {
   const wrapper = document.createElement('div')
   wrapper.setAttribute('data-radix-popper-content-wrapper', '')
@@ -78,7 +79,7 @@ async function pressMouse(on: Element): Promise<void> {
   })
 }
 
-/** Move the focus to `to`: jsdom's focus() gives the previous focus point focusout, relatedTarget is `to`. */
+/** Move focus to `to`: jsdom's focus() fires focusout on the old focus with `to` as relatedTarget. */
 async function moveFocus(to: HTMLElement): Promise<void> {
   await act(async () => { to.focus() })
 }
@@ -374,7 +375,8 @@ describe('useInlineDraft', () => {
     const elsewhere = document.createElement('button')
     document.body.appendChild(elsewhere)
 
-    // When the input box is attached, use autoFocus; first make it out of focus and have no elements to take over, then the focus will start from outside the placeholder.
+    // The input autofocuses on mount; blur it first with no element taking focus, so focus starts
+    // outside the draft.
     await act(async () => { input.blur() })
     await moveFocus(outside)
     await moveFocus(elsewhere)
@@ -385,7 +387,8 @@ describe('useInlineDraft', () => {
     const onCancel = vi.fn()
     const { trigger, outside } = mount(() => true, onCancel, { detached: true })
 
-    // Move out from the entrance button: the entrance button is included in the placeholder, only the row is not blocked.
+    // Focus leaves from the entry button, which counts as inside the draft; only `row` is not
+    // mounted.
     await moveFocus(trigger)
     await moveFocus(outside)
     expect(onCancel).not.toHaveBeenCalled()
