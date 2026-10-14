@@ -35,7 +35,10 @@ function linkedProjectLabel(idea: ResearchIdea, linked: ProjectSummary | undefin
   return linked === undefined ? m.ideas.link.unavailable : m.ideas.link.project(linked.name)
 }
 
-/** Idea cards and project cards share the same end-of-line management language: the card itself is responsible for entering details, and management actions are collected in "More". */
+/**
+ * Idea cards share the project cards' row-end pattern: clicking the card opens its details, and
+ * management actions sit in the "More" menu.
+ */
 function IdeaMenu({ idea, linked, onArchive, onDelete }: {
   idea: ResearchIdea
   linked: ProjectSummary | undefined

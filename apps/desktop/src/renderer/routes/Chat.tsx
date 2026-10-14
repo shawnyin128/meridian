@@ -26,22 +26,25 @@ import { GenerationControl } from '../components/GenerationControl.js'
 import './shell.css'
 import '../components/chat/Chat.css'
 
-/** The mentionEntities:`@` of demo brings so many papers that have been recently added to the database. */
+/** How many recently added papers `@` offers, as in the demo's mentionEntities. */
 const MENTION_PAPERS = 5
 /** The mentionUI of the demo: Each group can list up to this many items. */
 const MENTION_PER_GROUP = 4
-/** The renderQuickMentions of the demo: the shortcut `@` above the input box takes so many projects and papers. */
+/**
+ * The demo's renderQuickMentions: the quick `@` buttons above the composer take this many
+ * projects and this many papers.
+ */
 const QUICK_MENTIONS = 2
 
-/** `@` is a candidate in the drop-down list, `entity` is the one in the library, and the answer template takes fields from it. */
+/** One candidate in the `@` picker; `entity` is the vault entity it names. */
 type Mention =
   | { kind: 'project'; title: string; meta: string; entity: ProjectSummary }
   | { kind: 'paper'; title: string; meta: string; entity: PaperRow }
   | { kind: 'page'; title: string; meta: string; entity: WikiAggregationCard }
 
 /**
- * `@` Entities that can be referenced are the same as demo's mentionEntities: the project is ranked first according to the latest advancement, followed by the library
- * The first few papers, and then every page of the wiki. The name of the paper is only the part before the colon of the title.
+ * The entities `@` can reference, as in the demo's mentionEntities: projects first, by most recent
+ * progress, then the most recently added papers, then every Wiki page.
  */
 function mentionsOf(
   projects: ProjectSummary[], rows: PaperRow[], pages: WikiAggregationCard[], fmt: Format, m: Catalog,
@@ -68,8 +71,9 @@ function mentionsOf(
 }
 
 /**
- * `@` pulls down the candidates in this column at this moment, the same as the mentionUI of the demo: the words typed after `@` will appear in the name or the line of gray words
- * Even if it hits, a maximum of MENTION_PER_GROUP will be left in each group.
+ * The `@` picker's candidates for the current input, as in the demo's mentionUI: an item matches
+ * when the text typed after `@` appears in its name or its gray meta line, and each group keeps at
+ * most MENTION_PER_GROUP matches.
  */
 function hitsOf(typed: string, all: Mention[]): Mention[] {
   const needle = typed.slice(1).toLowerCase()
@@ -118,11 +122,12 @@ export function Chat() {
     void chat.messages(id).then(setMessages).catch(reportError)
   }, [id, revision, reportError])
 
-  // The demo's add(): pulls the message flow to the end every time one is written.
+  // As in the demo's add(): scroll the message list to the bottom whenever a message is added.
   useEffect(() => { stream.current?.scrollTo?.({ top: stream.current.scrollHeight }) }, [messages])
 
   const mentions = useMemo(() => mentionsOf(projects, rows, pages, fmt, m), [projects, rows, pages, fmt, m])
-  // Candidates are calculated based on the input and database at the current moment. Before the number is retrieved, it is empty at first. After returning, the drop-down will open by itself.
+  // Candidates come from the current input and the loaded vault data: empty until the data arrives,
+  // after which the picker opens by itself.
   const suggest = useMemo(() => (mentioning ? hitsOf(draft.trim(), mentions) : []), [mentioning, draft, mentions])
 
   const send = useCallback(async (session: string, text: string) => {
@@ -138,8 +143,8 @@ export function Chat() {
     if (id !== null) void chat.cancel(id)
   }, [id])
 
-  // The conflict in the dynamic presentation: start a new session and lay out the default line from the demo as it is.
-  // The remaining drop points are an existing conversation - the one in the global search point, just cut over it.
+  // The conflict brief in the Feed starts a new chat and asks the preset question, as in the demo.
+  // Any other jump target is an existing chat (e.g. a search hit), so just switch to it.
   useEffect(() => {
     if (jump === null || jump.seq === consumed.current) return
     consumed.current = jump.seq
@@ -158,7 +163,7 @@ export function Chat() {
     setMentioning(value.trim().startsWith('@'))
   }
 
-  // cRes line of demo: replace the entire input with this reference
+  // A row of the demo's cRes picker: replace the whole input with this mention
   const pick = (name: string) => {
     setDraft(`@${name} `)
     setMentioning(false)
@@ -166,7 +171,7 @@ export function Chat() {
   }
   const keys = useCandidateKeys(suggest.length, (i) => pick(suggest[i]!.title))
 
-  // Demo shortcut @: Replace the quote at the beginning and keep the ones that have been typed later.
+  // The demo's quick @: replace the leading mention and keep the text typed after it.
   const quick = (name: string) => {
     setDraft(`@${name} ${draft.replace(/^@\S+\s*/, '')}`)
     composer.current?.focus()
@@ -195,7 +200,8 @@ export function Chat() {
   }
   const hasDiscussion = messages.some((message) => message.role === 'you')
 
-  // The archived conversation is not in the sidebar column. After entering it, there is no difference between it and other conversations on the screen. The breadcrumbs are marked with a sentence.
+  // An archived chat is not listed in the sidebar. Once opened it looks like any other chat; only
+  // the breadcrumb marks it as archived.
   const tail = useMemo<CrumbSeg[]>(
     () => (title === null ? [] : [{ text: archived ? m.chat.archivedSuffix(title) : title }]),
     [title, archived, m])

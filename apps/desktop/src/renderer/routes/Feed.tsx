@@ -14,7 +14,10 @@ import { useFormat } from '../lib/format.js'
 import './shell.css'
 import './Feed.css'
 
-/** Dynamic source family: The icon is the source, and the color is only on the icon. Moved item by item from the demo's FSRC. Names come from the catalog. */
+/**
+ * Feed sources: the icon identifies the source, and only the icon is colored. Copied entry by
+ * entry from the demo's FSRC; names come from the catalog.
+ */
 const FSRC: Record<FeedSource, { color: string; icon: ReactNode }> = {
   steward: {
     color: 'var(--sec)',
@@ -63,7 +66,7 @@ const FSRC: Record<FeedSource, { color: string; icon: ReactNode }> = {
 /** The order of the five buttons on the filter bar is taken from the demo; "all" does not filter, and the others filter one source each. Labels come from the catalog. */
 const FILTERS: (FeedSource | null)[] = [null, 'steward', 'me', 'lab', 'inbox']
 
-/** A dynamic text: a formatted paragraph, or a briefing. */
+/** A feed entry's body: a formatted paragraph, or a brief. */
 function Body({ body, onOpenConflict }: {
   body: FeedEntry['body']; onOpenConflict: () => void
 }) {
@@ -75,7 +78,7 @@ function Body({ body, onOpenConflict }: {
           <div className="bitem" key={item.id}>
             <span className="tag conf">{item.tag}</span>
             <span className="t">{item.text}</span>
-            {/* demo's briefConf: This button opens a dialogue line with conflicting conclusions. */}
+            {/* The demo's briefConf: this button opens a chat about the conflicting conclusions. */}
             <span className="go">
               <button className="btn" onClick={onOpenConflict}>{item.action}</button>
             </span>
@@ -95,7 +98,7 @@ function Body({ body, onOpenConflict }: {
   )
 }
 
-/** A piece of news: source icon and name, moment in the upper right corner, and text. */
+/** One feed entry: the source icon and name, the time at the top right, and the body. */
 function Item({ entry, nowMs, onOpenConflict }: {
   entry: FeedEntry; nowMs: number; onOpenConflict: () => void
 }) {
@@ -136,8 +139,9 @@ export function FeedRows({ rows, showDays, nowMs, onOpenConflict }: {
 }
 
 /**
- * Dynamic: Every new development in the library is spread out by time, filtered by source, and segmented by date. Entries are retrieved from feed.list,
- * This screen does not hold libraries. Research ideas have their own editable list and no longer masquerade as an update.
+ * Feed: everything new in the vault in time order, filterable by source and grouped by date.
+ * Entries come from feed.list; this screen never touches the vault itself. Research ideas have
+ * their own editable list and no longer appear as feed entries.
  */
 export function Feed() {
   const m = useMessages()
