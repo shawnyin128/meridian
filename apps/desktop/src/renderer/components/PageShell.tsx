@@ -8,7 +8,7 @@ import './PageShell.css'
 const classes = (base: string, className: string | undefined) =>
   `${base}${className ? ` ${className}` : ''}`
 
-/** Page-level scrolling and regional skeleton; business pages only combine header, body text, footer and floating layer. */
+/** Page-level scrolling and region skeleton; pages only compose the header, body, footer and popovers. */
 export const PageShell = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   function PageShell({ className, ...props }, ref) {
     return <div ref={ref} className={classes('desk', className)} {...props} />
@@ -42,7 +42,7 @@ export const PageBody = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement
   },
 )
 
-/** Permanent in the bottom area; bare suitable for paging and lightweight prompts. */
+/** The footer always shown at the bottom of the page; `bare` suits pagination and light hints. */
 export const PageFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { bare?: boolean }>(
   function PageFooter({ bare = false, className, ...props }, ref) {
     const own = bare ? 'desk-foot bare' : 'desk-foot'

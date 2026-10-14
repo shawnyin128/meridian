@@ -26,10 +26,13 @@ export type InlineFieldProps = {
 }
 
 /**
- * Zotero-style single value editor: When resting, it is a normal attribute value, and the entire grid is hovered; clicking only replaces this grid with an input control.
- * Submit and give up using `useInlineDraft`, a set of standards common to all applications: write only after pressing Enter, move the focus outside the control or click on
- * Giving up everything else, leaving no words typed, and the window being out of focus (cutting to another application) does not count as leaving. `onSave` returns whether to accept the new value,
- * When writing fails, the editing state is retained to prevent the three business pages from implementing asynchronous anti-replication.
+ * Zotero-style single-value editor: at rest it is a plain property value whose whole cell shows
+ * hover; a click replaces only this cell with an input control. Submitting and cancelling follow
+ * `useInlineDraft`, the one convention across the app: only Enter writes; focus leaving the control
+ * or a press anywhere else cancels without keeping the typed text, and the window losing focus
+ * (switching to another app) does not count as leaving. `onSave` returns whether the new value is
+ * accepted; when a write fails the editor stays open, so the three pages that use it do not each
+ * implement their own async duplicate-submit guard.
  */
 export function InlineField({
   label, value, display, type = 'text', inputMode, options, onSave,
@@ -60,7 +63,7 @@ export function InlineField({
       return next === value ? true : onSave(next)
     },
   })
-  // Select and input each require a ref of a specific element type, and the applicable control is their union type.
+  // Select, input and textarea each take a ref of their own element type; `control` holds their union.
   const holdControl = (element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null) => {
     control.current = element
   }
@@ -112,8 +115,8 @@ export function InlineField({
   }
 
   return (
-    // The outer layer does not change nodes with the editing state: Grid/Flex always measures the same value grid, native input/select
-    // The min-content width will not expand the property bar after clicking.
+    // The wrapper keeps the same node in both states, so Grid/Flex always measures the same value
+    // cell and a native input/select's min-content width does not widen the property column on click.
     <span className={wrapperClassName}>{field}</span>
   )
 }

@@ -11,8 +11,10 @@ export function ModalTitle({ className, children }: { className?: string; childr
 }
 
 /**
- * A trigger-free modal skeleton for the entire application. Unify overlay, portal, accessibility declaration without description, and access from application menu,
- * Focus return when programmatically opening and closing page buttons, etc. Business pages only provide content layout and open status.
+ * The app-wide modal skeleton without a trigger. It owns the overlay, the portal, the accessibility
+ * declaration for a dialog without a description, and returning focus on close whether the dialog
+ * was opened from the app menu, programmatically or by a page button. Pages only provide the
+ * content layout and the open state.
  */
 export function ModalDialog({
   open, onOpenChange, contentClassName, overlayClassName = 'scrim', children,
@@ -44,16 +46,18 @@ export function ModalDialog({
     return () => document.removeEventListener('focusin', remember)
   }, [])
 
-  // Radix's shutdown auto-focus in a controlled, Trigger-less Dialog does not guarantee that every shutdown path will be triggered;
-  // The state switch after submission is done again, and only the original entry that remains on the page is focused.
+  // In a controlled Dialog without a Trigger, Radix's close auto-focus is not guaranteed to fire on
+  // every close path, so an effect on the committed `open` change does it again, focusing the
+  // original opener only while it is still on the page.
   useEffect(() => {
     const previous = committedOpen.current
     committedOpen.current = open
     if (previous && !open && restoreFocus && opener.current?.isConnected) opener.current.focus()
   }, [open, restoreFocus])
 
-  // When a controlled Dialog without Trigger reaches onOpenAutoFocus, FocusScope may temporarily move the focus to the body.
-  // In the "Close → Open" render, first remember the call entry that is still on the page, so that it can be returned stably when it is closed.
+  // By the time a controlled Dialog without a Trigger reaches onOpenAutoFocus, FocusScope may have
+  // moved focus to the body for a moment. So the closed → open render first remembers the opener
+  // still on the page, and closing can reliably return focus to it.
   if (open && !wasOpen.current) {
     const active = document.activeElement
     opener.current = active instanceof HTMLElement && active !== document.body ? active : lastFocused.current

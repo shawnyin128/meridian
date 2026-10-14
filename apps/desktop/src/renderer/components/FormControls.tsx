@@ -22,8 +22,9 @@ const classes = (
 ) => `form-control ${kind} form-control-${appearance}${className ? ` ${className}` : ''}`
 
 /**
- * Stable base for all single-line native inputs. Business components continue to have layout and appearance classes; here only the box model, fonts and
- * focus behavior to ensure that entering the editing state will not increase, sink, or pop up the browser's own blue frame.
+ * The stable base for every single-line native input. Components keep their own layout and
+ * appearance classes; this sets only the box model, font and focus behavior, so entering edit mode
+ * never makes the field taller, shifts it down, or shows the browser's own blue frame.
  */
 export const FormInput = forwardRef<
   HTMLInputElement,
@@ -81,7 +82,7 @@ export const FormButton = forwardRef<
   },
 )
 
-/** Multi-line text follows the same focus and size base as single-line input, and the specific height is still determined by the functional component to which it belongs. */
+/** Multi-line text on the same focus and size base as single-line input; its component sets the height. */
 export const FormTextarea = forwardRef<
   HTMLTextAreaElement,
   TextareaHTMLAttributes<HTMLTextAreaElement> & ControlAppearanceProps
@@ -91,7 +92,7 @@ export const FormTextarea = forwardRef<
   },
 )
 
-/** Native dropdowns only unify the input base and do not take over options, submissions, or field status. */
+/** A native dropdown on the shared input base; options, submission and field state stay with the caller. */
 export const FormSelect = forwardRef<
   HTMLSelectElement,
   SelectHTMLAttributes<HTMLSelectElement> & ControlAppearanceProps

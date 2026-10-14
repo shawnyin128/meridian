@@ -22,9 +22,11 @@ export type ActionMenuProps = {
 }
 
 /**
- * An action menu skeleton for the entire application. Entry buttons, business items and opening and closing strategies are given by the calling place; Root, asChild trigger,
- * Portal, surface style, positioning and inline click isolation are only implemented once. Controlled menus can be controlled using `open`/`onOpenChange`
- * When switching to the editor in the same layer, `contentProps` only retains Radix's advanced capabilities such as focus and Escape.
+ * The app-wide action menu skeleton. Callers provide the trigger button, the items and when it opens
+ * and closes; Root, the asChild trigger, Portal, surface style, positioning and inline click
+ * isolation are implemented only here. A menu that switches to an editor in the same popover is
+ * controlled through `open`/`onOpenChange`; `contentProps` only carries advanced Radix options such
+ * as focus and Escape handling.
  */
 export function ActionMenu({
   trigger, children, open, onOpenChange, modal,

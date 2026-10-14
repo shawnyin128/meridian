@@ -14,7 +14,7 @@ export function StructuredList({
 }: {
   children: ReactNode
   className?: string
-  /** `embedded` does not draw the container outline, but only draws dividing lines between adjacent lines. */
+  /** `embedded` draws no outline around the list, only dividers between adjacent rows. */
   variant?: 'card' | 'embedded'
   /**
    * Embedded lists show five rows by default, then keep the surrounding page stable with internal
@@ -44,8 +44,9 @@ export function StructuredList({
 }
 
 /**
- * The only interactive shell for list rows. When passed to `onActivate`, it is rendered as a keyboard-accessible button, otherwise it is a static div;
- * `columns` allows business pages to define column widths, while borders, hover, focus and row-level clicks are only implemented once.
+ * The one interactive shell for list rows. With `onActivate` it renders as a keyboard-accessible
+ * button, otherwise as a static div; `columns` lets pages set the column widths, while borders,
+ * hover, focus and row clicks are implemented only here.
  * A `composite` row holds controls of its own, so it stays a div that forwards pointer clicks to `onActivate`;
  * its children must include the keyboard-accessible control for the same action. A `selected` row is
  * the one whose detail is open beside the list.
@@ -59,7 +60,7 @@ export function StructuredRow({
   composite?: boolean
   selected?: boolean
   onActivate?: () => void
-  /** DOM reference of static/composite rows; clickable rows are rendered as buttons by the component itself and do not receive div references. */
+  /** DOM ref of a row without `onActivate`; a row with it, a button or a composite div, takes no ref. */
   rowRef?: Ref<HTMLDivElement>
   style?: CSSProperties
 } & Omit<HTMLAttributes<HTMLElement>, 'children' | 'className' | 'style' | 'onClick'>) {

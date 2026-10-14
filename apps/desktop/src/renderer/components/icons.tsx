@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 
-/** Icons shared in many places are copied from desktop/design/platform-shell-demo.html one by one. */
+/** Icons shared in many places, copied one by one from e2e/fixtures/platform-shell-demo.html. */
 
-/** The selected check mark in the menu row is the same as the ICON_CK in the demo. */
+/** The check mark of a selected menu row, the same as the demo's ICON_CK. */
 export const IconCheck = () => (
   <svg
     className="cki" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -36,14 +36,14 @@ export const IconLater = () => (
   </svg>
 )
 
-/** The file level of the new column: text column. */
+/** Column type option when adding a column: text. */
 export const IconText = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
     <path d="M5 6h14M12 6v13" />
   </svg>
 )
 
-/** New column level: select column (single selection). */
+/** Column type option when adding a column: select (single choice). */
 export const IconSelect = () => (
   <svg
     viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -53,7 +53,7 @@ export const IconSelect = () => (
   </svg>
 )
 
-/** New column level: multi-select column. */
+/** Column type option when adding a column: multi-select. */
 export const IconMulti = () => (
   <svg
     viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -63,8 +63,8 @@ export const IconMulti = () => (
   </svg>
 )
 
-/** The only gear in the entire application: the settings of a view or section—which columns to display, what groups to group by, and what follows to subscribe to. */
-// This one is calculated based on the 16-frame viewport, which is different from the other 24-frame icons in this file; changing the viewport requires recalculating the entire path.
+/** The app's one gear: a view's or section's settings, such as shown columns, grouping, subscriptions. */
+// Drawn on a 16-unit viewBox, unlike this file's 24-unit icons; changing it means recomputing the path.
 export const IconGear = () => (
   <svg
     viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2"
@@ -75,7 +75,7 @@ export const IconGear = () => (
   </svg>
 )
 
-/** A collapsible button that expands options on a row of columns. */
+/** The chevron of a fold toggle, such as the one that expands a column's options in its row. */
 export const IconChevron = () => (
   <svg
     viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
@@ -85,7 +85,7 @@ export const IconChevron = () => (
   </svg>
 )
 
-/** The renaming pen at the end of the line is the same as the one in the demo column menu. */
+/** The rename pencil at the end of a row, the same as in the demo's column menu. */
 export const IconPencil = () => (
   <svg
     viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -95,7 +95,7 @@ export const IconPencil = () => (
   </svg>
 )
 
-/** The column sorting handle of the paper header; only start dragging from this small target to prevent the entire column header from generating browser smear. */
+/** The paper table's column reorder handle; drags start only here, so the header leaves no drag ghost. */
 export const IconGrip = () => (
   <svg viewBox="0 0 12 16" fill="currentColor" stroke="none">
     <circle cx="3" cy="3" r="1" /><circle cx="9" cy="3" r="1" />
@@ -104,7 +104,7 @@ export const IconGrip = () => (
   </svg>
 )
 
-/** Common shell for multiple icons: 24-frame viewport, stroke current color. */
+/** Shared shell for many icons: a 24-unit viewBox, stroked in currentColor. */
 export const Icon = ({ sw = 1.8, children }: { sw?: number; children: ReactNode }) => (
   <svg
     viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw}
@@ -119,7 +119,7 @@ export const IconFolder = () => (
   </Icon>
 )
 
-/** Discover the entrance to the North Star. The four long axes fill the 24-frame viewport, and the small bevel makes it still look like a compass star at the sidebar size. */
+/** Discovery's North Star: four long arms fill the viewBox; small bevels keep it a star at sidebar size. */
 export const IconNorthStar = () => (
   <Icon sw={2}>
     <path d="M12 2l2.1 7.9L22 12l-7.9 2.1L12 22l-2.1-7.9L2 12l7.9-2.1L12 2z" />
@@ -127,24 +127,24 @@ export const IconNorthStar = () => (
   </Icon>
 )
 
-/** Public path to the plus sign; bare icons and wherever a generic Icon shell is required take shape from here. */
+/** The plus sign's path, shared by the bare IconPlus and anything drawing it in the generic Icon shell. */
 export const PLUS_PATH = 'M12 5v14M5 12h14'
 
-/** The plus sign added in place: + at the end of the table header, + at the end of the label grid, the "New" line in the association layer, and the magnification of the reader. */
+/** The in-place add +: table header end, tag cell end, a picker's "Create" row, and the reader's zoom in. */
 export const IconPlus = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
     <path d={PLUS_PATH} />
   </svg>
 )
 
-/** That fork is closed/removed. `sw` is the stroke thickness: inline action 2, column menu 2.2, chip subscript 2.5. */
+/** The close/remove ×. `sw` is the stroke width: 2 for inline actions, 2.2 column menu, 2.5 chip badge. */
 export const IconCross = ({ sw = 2 }: { sw?: number }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round">
     <path d="M18 6L6 18M6 6l12 12" />
   </svg>
 )
 
-/** Inline... Three dots for the menu. */
+/** The three dots of an inline … menu. */
 export const IconDots = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
     <circle cx="5" cy="12" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="19" cy="12" r="1.7" />

@@ -9,16 +9,19 @@ import './PickRow.css'
 /** A candidate in the drop-down: target id, display name, gray text on the right. */
 export type PickHit = { id: string; title: string; meta?: string }
 
-/** The maximum number of drop-down items is this many. */
+/** At most this many candidates show in the drop-down. */
 const LIMIT = 8
 
 /**
- * The input box in the placeholder has associated candidates: when typing, press `suggest` to select the candidate column, use the up and down keys to select, and press Enter to select the highlighted one.
- * Click on a candidate to select that one; when there is no highlighted candidate and `allowNew` is true, press Enter to hand over the input of the original text as the new name.
- * Enter does not move when the candidate has not caught up with the input. During this period, the input box is `aria-busy`. Enter, click candidate, Esc, click outside the placeholder
- * When the focus leaves the placeholder, it is controlled by `useInlineDraft`, and the second one is not sent until the selection is landed.
- * `row` is the element that is counted as "within the placeholder" and is hung on the placeholder by the caller; `triggers` can be reopened or focused
- * Clicking on the entry buttons of this placeholder does not count as clicking outside the placeholder. Handled to `onError` when candidate selection fails.
+ * The input of a draft row, with suggested candidates: typing asks `suggest` for candidates, the
+ * up/down keys move the highlight, and Enter picks the highlighted one. Clicking a candidate picks
+ * it; with no candidate highlighted and `allowNew` true, Enter hands the typed text over as a new
+ * name. Enter does nothing while the candidates have not caught up with the input, and the input
+ * is `aria-busy` meanwhile. Enter, a candidate click, Esc, a press outside the draft and focus
+ * leaving it go through `useInlineDraft`, which sends no second pick until the first has landed.
+ * `row` is the element that counts as inside the draft, mounted on it by the caller; pressing or
+ * focusing one of the `triggers`, the buttons that open this draft, does not count as outside. A
+ * failed `suggest` goes to `onError`.
  */
 export function PickRow({
   row, triggers, placeholder, suggest, allowNew, onPick, onNew, onCancel, onError,

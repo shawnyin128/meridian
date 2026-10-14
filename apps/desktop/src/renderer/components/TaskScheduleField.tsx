@@ -13,7 +13,7 @@ import './TaskScheduleField.css'
 
 export type ScheduleEditMode = 'date' | 'time'
 
-/** An editor shared by dates and time periods; mode only determines which set of fields will be exposed for this edit. */
+/** One editor for the date range and the time window; `mode` only picks which fields this edit shows. */
 export function TaskScheduleEditor({ mode, task, saving, onSave, onCancel }: {
   mode: ScheduleEditMode
   task: Task
@@ -105,7 +105,7 @@ export function TaskScheduleEditor({ mode, task, saving, onSave, onCancel }: {
   )
 }
 
-/** Separate date or time entry; both share the TaskScheduleEditor, but will not enter the editing state together. */
+/** A separate date or time-window entry; both open TaskScheduleEditor but never edit together. */
 export function TaskScheduleField({ mode, task, onSave, className = '', stopRowActivation = false }: {
   mode: ScheduleEditMode
   task: Task

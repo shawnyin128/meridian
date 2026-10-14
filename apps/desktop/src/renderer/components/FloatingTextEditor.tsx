@@ -5,8 +5,9 @@ import type { ActionPopoverAlign, ActionPopoverSide } from './ActionPopover.js'
 import { ShortTextEditor } from './ShortTextEditor.js'
 
 /**
- * Short text editor with positioned shell. Unify Popover portal, anchor point, Escape, and prohibit closing outside the point during asynchronous saving.
- * And the draft status when the editing object is switched; the page only gives anchors, copywriting and save/delete actions.
+ * A short text editor in a positioned shell. It owns the Popover portal, the anchor, Escape, staying
+ * open on an outside press during an async save, and the draft state when the edited object
+ * switches; pages only provide the anchor, the copy and the save/delete actions.
  */
 export function FloatingTextEditor({
   open, anchor, editorKey, title, initialValue = '', placeholder, onSubmit, onClose, onDelete,
@@ -38,8 +39,8 @@ export function FloatingTextEditor({
       contentClassName={contentClassName} side={side} align={align} sideOffset={sideOffset}
       contentProps={{
         onEscapeKeyDown: (event) => {
-            // This layer determines whether to close, avoiding Radix's open change and the editor's own Escape.
-            // OnClose is called once each; when writing is not completed, the elastic layer and draft are completely retained.
+            // This popover alone decides whether to close, so Radix's open change and the editor's own
+            // Escape do not each call onClose; while a write is unfinished, popover and draft stay intact.
           event.preventDefault()
           if (!busy) onClose()
         },

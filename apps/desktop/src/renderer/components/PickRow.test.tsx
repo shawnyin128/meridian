@@ -11,7 +11,7 @@ declare global {
 
 const HIT: PickHit = { id: 'h1', title: '候选一' }
 
-/** Hang a real PickRow: the placeholder is hung on the outer div, there are no triggers, and the candidate is always `HIT`. */
+/** Mounts a real PickRow: the outer div is the draft `row`, no triggers, and `HIT` is the only candidate. */
 function Probe({ onPick, onCancel }: {
   onPick: (hit: PickHit) => boolean | Promise<boolean>
   onCancel: () => void
@@ -28,7 +28,7 @@ function Probe({ onPick, onCancel }: {
   )
 }
 
-/** Hooks into a real container and returns its own host element. */
+/** Mounts Probe into a real container and returns its host element. */
 function mount(onPick: (hit: PickHit) => boolean | Promise<boolean>, onCancel: () => void): HTMLDivElement {
   const host = document.createElement('div')
   document.body.appendChild(host)
@@ -36,7 +36,7 @@ function mount(onPick: (hit: PickHit) => boolean | Promise<boolean>, onCancel: (
   return host
 }
 
-/** Complete this round of microtasks and let the candidate promises be implemented. */
+/** Drains this round of microtasks so the candidate promises resolve. */
 async function flush(): Promise<void> {
   await act(async () => { await Promise.resolve(); await Promise.resolve() })
 }
@@ -52,7 +52,7 @@ describe('PickRow', () => {
     const onPick = vi.fn(() => new Promise<boolean>((ok) => { settle = ok }))
     const onCancel = vi.fn()
     mount(onPick, onCancel)
-    await flush() // Get the candidate as soon as it is mounted, no need to type
+    await flush() // The candidate arrives right after mounting, without typing
 
     const hit = document.querySelector<HTMLLIElement>('.pickhits li')!
     await act(async () => { hit.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })) })

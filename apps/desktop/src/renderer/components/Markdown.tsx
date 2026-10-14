@@ -9,26 +9,29 @@ import remarkMath from 'remark-math'
 import 'katex/dist/katex.min.css'
 import { useMessages } from '../messages/useMessages.js'
 
-/** There are two types of tags in the text: `[[id|Text]]` / `[[id]]` are in-page links, and `(p.N)` is the original anchor point. */
+/** Two kinds of marks: `[[id|Text]]` / `[[id]]` are in-page links, and `(p.N)` is a source anchor. */
 const WIKI_LINK = /\[\[([^\]|\n]+)(?:\|([^\]\n]+))?\]\]/g
 const CITE_MARK = /\(p\.(\d+)\)/g
 
-/** The rewritten links are distinguished by prefixes; `#` starts with allowing react-markdown URL filtering to pass. */
+/** Rewritten links are told apart by prefix; starting with `#` lets them pass react-markdown's URL filter. */
 const WIKI = '#wiki:'
 const CITE = '#cite:'
 
 /**
- * The two tags are rewritten into standard markdown links: `[[id|text]]` → `[text](<#wiki:id>)`, the text of `[[id]]` is
- * `titles[id]`, if not, it is id;`(p.N)` → `[p.N](<#cite:N>)`. When `titles` is given, the id that is not in it is not
- * For pages in the library, the tags are kept according to the original text; if no `titles` (essay) is given, they will be used as links.
- * Rewriting is done on the entire original text before parsing, so the tags in code blocks, inline codes, and formulas will also be rewritten; tags do not cross lines, rewriting does not add, delete, or break new lines, and the line numbers remain unchanged.
+ * Rewrites both marks into standard Markdown links: `[[id|text]]` → `[text](<#wiki:id>)`, where the
+ * text of `[[id]]` is `titles[id]`, or the id when absent; `(p.N)` → `[p.N](<#cite:N>)`. When
+ * `titles` is given, an id missing from it is not a page in the vault and its mark stays as
+ * written; without `titles` (a remark), every mark becomes a link.
+ * The rewrite runs on the whole source before parsing, so marks in code blocks, inline code and
+ * formulas are rewritten too. Marks never span lines and the rewrite adds, removes or splits no
+ * line breaks, so line numbers stay the same.
  */
 const desugar = (src: string, titles: Record<string, string> | undefined): string => src
   .replace(WIKI_LINK, (m: string, id: string, label?: string) =>
     (titles !== undefined && titles[id] === undefined ? m : `[${label ?? titles?.[id] ?? id}](<${WIKI}${id}>)`))
   .replace(CITE_MARK, (_m: string, n: string) => `[p.${n}](<${CITE}${n}>)`)
 
-/** remark plug-in: Each heading has an id `h-<line number>`, which matches the id given to the directory by headingsOf. */
+/** remark plugin: gives each heading the id `h-<line number>`, as headingsOf does for the table of contents. */
 function remarkHeadingIds() {
   const visit = (node: Parent): void => {
     for (const child of node.children) {
@@ -42,8 +45,8 @@ function remarkHeadingIds() {
 }
 
 /**
- * There are three ways to draw links: the in-page link is clickable `.wl` and shows the page's full title from
- * `titles` on hover, the original text anchor is `.cite`, and the rest are opened on the new window target.
+ * Links render three ways: an in-page link is a clickable `.wl` that shows the page's full title
+ * from `titles` on hover, a source anchor is a `.cite`, and any other link opens in a new window.
  */
 function components(
   onOpen: ((id: string) => void) | undefined,
@@ -52,7 +55,7 @@ function components(
 ): Components {
   return {
     a: ({ href, children }) => {
-      // urlTransform clears javascript: this type of protocol into an empty string: the cleared link should not be drawn as a link
+      // urlTransform empties URLs with protocols such as javascript:; an emptied link must not render as one
       if (!href) return <>{children}</>
       if (href.startsWith(WIKI)) {
         const id = href.slice(WIKI.length)
@@ -67,13 +70,15 @@ function components(
 }
 
 /**
- * A piece of markdown is rendered: GFM (tables, etc.) are rendered as GFM, and the original HTML is escaped as text. `[[id|text]]` and
- * `[[id]]` and `(p.N)` can be identified anywhere in the text (including those in the code). The former is an in-page link. Click to call it.
- * `onOpen(id)`, the latter is the original anchor point; ordinary links are opened on the new window target. `$…$` is an inline formula, `$$` occupies one line
- * The last block is the interline formula, both of which use KaTeX; the `$$...$$` within a single line is calculated according to the syntax rules of remark-math.
- * Not counting between lines. The id of each header is `h-` followed by its line number in `src`. `[[id]]` When no alias is written, the text is `titles[id]`,
- * If not, it’s id. When `titles` is given, the id that is not in it is not a page in the library, and the mark remains as the original text; `titles` is not given
- * (Essay) will always be used as a link.
+ * Renders a piece of Markdown: GFM (tables and so on) renders as GFM, and raw HTML is escaped as
+ * text. `[[id|text]]`, `[[id]]` and `(p.N)` are recognized anywhere in the text, code included. The
+ * first two are in-page links that call `onOpen(id)` on click; the last is a source anchor.
+ * Ordinary links open in a new window. `$…$` is an inline formula and a block between `$$` lines
+ * is a display formula, both rendered with KaTeX; `$$...$$` within one line is inline under
+ * remark-math's syntax rules, not a display formula. Each heading's id is `h-` followed by its
+ * line number in `src`. `[[id]]` without an alias shows `titles[id]`, or the id when absent. When
+ * `titles` is given, an id missing from it is not a page in the vault and its mark stays as
+ * written; without `titles` (a remark), every mark becomes a link.
  */
 export function Markdown({ src, onOpen, titles }: {
   src: string
@@ -89,12 +94,13 @@ export function Markdown({ src, onOpen, titles }: {
   )
 }
 
-/** An entry in the directory: title level, original text, and the id of the rendered title element. */
+/** A table-of-contents entry: heading level, source text, and the id of the rendered heading element. */
 export type Heading = { depth: number; text: string; id: string }
 
 /**
- * The ATX headers of levels one to three in `src` are in the order of appearance; lines in fenced code blocks are not counted; the trailing `#` sequence is removed.
- * `id` is the `h-` line number, which is the same as the title element rendered by Markdown.
+ * The level one to three ATX headings in `src`, in order of appearance; lines inside fenced code
+ * blocks do not count, and a trailing `#` sequence is removed. `id` is `h-` plus the line number,
+ * the same as on the heading element Markdown renders.
  */
 export function headingsOf(src: string): Heading[] {
   const out: Heading[] = []
@@ -111,9 +117,11 @@ export function headingsOf(src: string): Heading[] {
 }
 
 /**
- * The same container switches between the rendering result and the original Markdown text: when `editing` is false, press Markdown to draw `text`
- * (When the string is empty, draw `empty`), when it is true, it is a piece of original text of contentEditable, focus when entering, and Esc calls `onCancel`.
- * The "Edit"/"Save" button is placed by the caller, and the `innerText` of the `box` is read when saving. `className` is appended to the container.
+ * One container that switches between the rendered result and the Markdown source: with `editing`
+ * false it renders `text` as Markdown (`empty` when the string is empty); with it true it is a
+ * contentEditable holding the source, focused on entry, where Esc calls `onCancel`.
+ * The caller places the "Edit"/"Save" buttons and reads `box`'s `innerText` on save. `className` is
+ * appended to the container.
  */
 export function MarkdownBox({ text, editing, box, onCancel, onOpen, titles, empty, className }: {
   text: string
@@ -134,7 +142,7 @@ export function MarkdownBox({ text, editing, box, onCancel, onOpen, titles, empt
         onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); onCancel() } }}
       >{text}</div>
     )
-    // Under exactOptionalPropertyTypes, when onOpen is not passed, it cannot be explicitly assigned to undefined, and it can only be not passed at all.
+    // Under exactOptionalPropertyTypes an absent onOpen cannot be passed as undefined; it must be left out.
     : (
       <div className={classes}>
         {text === ''

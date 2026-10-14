@@ -1,6 +1,7 @@
 /*
- * The association candidate for the input box in the placeholder. The candidate goes out through the Radix portal, so the placeholder falls into overflow:auto
- * The container will not be cropped; the width follows the input box, Radix writes the anchor width in --radix-popover-trigger-width
+ * Suggested candidates for the input of a draft row. They render through the Radix portal, so a
+ * draft inside an overflow:auto container does not clip them; their width follows the input, as
+ * Radix writes the anchor width to --radix-popover-trigger-width
  */
 
 .pickhits{width:var(--radix-popover-trigger-width);min-width:190px;z-index:90;background:var(--card);border:1px solid var(--sep);border-radius:var(--r-lg);box-shadow:var(--sh-2);max-height:240px;overflow:auto}

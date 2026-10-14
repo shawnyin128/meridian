@@ -1,7 +1,7 @@
 import * as Popover from '@radix-ui/react-popover'
 import type { ReactElement, ReactNode, RefObject } from 'react'
 
-/** Focus guard dedicated to the input associative layer; maintained together with PickerPopover, the page does not touch the Radix event contract. */
+/** PickerPopover's focus guard, kept beside it so pages never touch the Radix event contract. */
 function pressGuard(
   anchor?: RefObject<HTMLElement | null>,
 ): Pick<Popover.PopoverContentProps, 'onOpenAutoFocus' | 'onMouseDown' | 'onInteractOutside'> {
@@ -30,8 +30,10 @@ export type PickerPopoverProps = {
 }
 
 /**
- * Enter the floating shell shared by the association/selector. Radix is only responsible for positioning; here unified portal, spacing, anchor point external determination,
- * Do not grab the input focus when opening and do not let the input go out of focus when the candidate is pressed. When `content` is empty, only the anchor point will be retained, and the empty floating layer will not be attached.
+ * The popover shell shared by input suggestions and pickers. Radix only positions it; this owns the
+ * portal, the spacing, treating a press on the anchor as inside, not taking the input's focus on
+ * open, and not blurring the input when a candidate is pressed. When `content` is empty, only the
+ * anchor renders and no empty popover is mounted.
  */
 export function PickerPopover({
   open, anchor, content, anchorRef, onOpenChange,

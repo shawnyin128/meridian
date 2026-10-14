@@ -9,8 +9,10 @@ export type ActionPopoverSide = Popover.PopoverContentProps['side']
 export type ActionPopoverAlign = Popover.PopoverContentProps['align']
 
 /**
- * A shared skeleton for interactively configurable layers. Unlike `PickerPopover` used for input association, it retains the native focus inside the floating layer.
- * Flow, suitable for calendars, column settings and multi-control forms; business only provides entrance, content and controlled opening and closing strategies.
+ * The shared skeleton for interactive configuration popovers. Unlike `PickerPopover`, which serves
+ * input suggestions, it keeps the native focus flow inside the popover, which suits calendars,
+ * column settings and multi-control forms; callers only provide the trigger, the content and the
+ * controlled open/close policy.
  */
 type ActionPopoverBaseProps = {
   children: ReactNode

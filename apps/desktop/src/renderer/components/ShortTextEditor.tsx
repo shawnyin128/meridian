@@ -47,7 +47,8 @@ export function ShortTextEditor({
     busyListener.current?.(next)
   }
 
-  // The same convention as for in-place editing across the entire application: drafts cannot be discarded by out-of-point and focus-away before submission has been returned.
+  // Same rule as inline editing across the app: until a submit has returned, neither a press outside
+  // nor focus leaving can discard the draft.
   const cancelUnlessBusy = useCallback(() => {
     if (!busyRef.current) onClose()
   }, [onClose])
@@ -58,7 +59,7 @@ export function ShortTextEditor({
     if (next === '' || busyRef.current) return
     changeBusy(true)
     try {
-      // If this editor has been replaced by another anchor point, the new pop-up layer cannot be closed even if the old one is written successfully.
+      // If this editor was replaced for another anchor meanwhile, the old write must not close the new popover.
       if (await onSubmit(next) && alive.current) onClose()
     } finally {
       if (alive.current) changeBusy(false)

@@ -7,8 +7,9 @@
 }
 
 /*
- * The native focus ring will change the look and feel on different platforms, and even overlap with the border to form a double-layered blue frame; it can be seen that the focus is determined by the function to which it belongs.
- * The container or border color of the component is expressed, and the border-width / padding / height is not allowed to change during focus.
+ * The native focus ring looks different on each platform and can even overlap the border into a
+ * double blue frame. Focus is shown by the container or border color of the component the control
+ * belongs to, and border-width / padding / height must not change on focus.
  */
 .form-control:focus,
 .form-control:focus-visible{
