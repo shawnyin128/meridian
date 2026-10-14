@@ -2511,7 +2511,10 @@ export function createVaultStore(
   return withChangelog(ops, {
     load: (): ChangeRecord[] => {
       const file = join(meridian, 'changelog.json')
-      return existsSync(file) ? parseChangeRecords(JSON.parse(readFileSync(file, 'utf8'))) : []
+      if (!existsSync(file)) return []
+      const log = parseChangeRecords(JSON.parse(readFileSync(file, 'utf8')))
+      lists.set('changelog', log)
+      return log.rows
     },
     save: (rows) => { save('changelog', rows) },
     nextId: () => nextId('change'),

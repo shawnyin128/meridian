@@ -12,6 +12,7 @@ import { misfitCells } from './paper-library/index.js'
 import type { ProjectRecord } from './project-management/index.js'
 import type { PageText, PaperSnapshot } from './vault/records.js'
 import { PageTextSchema, PaperSnapshotSchema } from './vault/records.js'
+import { readRecord, withUnknownFields, type StoredList } from './vault/stored-records.js'
 import type { VaultOps, VaultStore } from './vault.js'
 
 /** Changes made by the user in the UI; a proposal applied from the review queue records its own chip. */
@@ -110,24 +111,49 @@ function upgradeGraph(graph: unknown): void {
 
 /**
  * Parses the stored change log one record at a time, upgrading project snapshots older versions
- * wrote. A record whose undo data still cannot be read is kept as history without undo
- * (`restore: null`); a record that cannot be read at all is left out and reported on stderr. So an
- * unreadable record never keeps the library from opening.
+ * wrote and leaving out fields this version does not know. A record whose undo data still cannot be
+ * read is kept as history without undo (`restore: null`); a record that cannot be read at all is
+ * left out of `rows`. Both are reported on stderr. `stored` writes a record without undo back as
+ * written while it is unchanged and with its original undo data once changed, every unreadable
+ * record as written, and every other record with its unknown fields put back. So an unreadable
+ * record never keeps the library from opening, and no save loses it.
  */
-export function parseChangeRecords(raw: unknown): ChangeRecord[] {
+export function parseChangeRecords(raw: unknown): StoredList<ChangeRecord> {
   if (!Array.isArray(raw)) throw new Error('最近变动文件不是列表')
-  return raw.flatMap((row: unknown, index): ChangeRecord[] => {
-    const restore = (row as { restore?: { kind?: unknown; project?: { graph?: unknown; workspace?: { graph?: unknown } } } })?.restore
-    if (restore?.kind === 'project') {
-      upgradeGraph(restore.project?.graph)
-      upgradeGraph(restore.project?.workspace?.graph)
+  const rows: ChangeRecord[] = []
+  const unreadable: unknown[] = []
+  /** What to write for each row read, by its id. */
+  const writes = new Map<string, (row: ChangeRecord) => unknown>()
+  raw.forEach((written: unknown, index) => {
+    // Upgrading rewrites a snapshot in place, so it works on a copy and `written` stays as it was.
+    const row = structuredClone(written) as { restore?: { kind?: unknown; project?: { graph?: unknown; workspace?: { graph?: unknown } } } } | null
+    if (row?.restore?.kind === 'project') {
+      upgradeGraph(row.restore.project?.graph)
+      upgradeGraph(row.restore.project?.workspace?.graph)
     }
-    const whole = ChangeRecordSchema.safeParse(row)
-    if (whole.success) return [whole.data]
-    const withoutUndo = ChangeRecordSchema.safeParse({ ...(row as object), target: null, restore: null })
-    console.error(`[changelog] record ${index}: ${whole.error.message.slice(0, 300)}`)
-    return withoutUndo.success ? [withoutUndo.data] : []
+    const whole = readRecord(ChangeRecordSchema, row)
+    if (!('error' in whole)) {
+      rows.push(whole.value)
+      writes.set(whole.value.id, (next) => withUnknownFields(next, whole.unknown))
+      return
+    }
+    console.error(`[changelog] record ${index}: ${whole.error.slice(0, 300)}`)
+    const withoutUndo = readRecord(ChangeRecordSchema, { ...row, target: null, restore: null })
+    if ('error' in withoutUndo) {
+      unreadable.push(written)
+      return
+    }
+    const { target, restore } = written as { target: unknown; restore: unknown }
+    rows.push(withoutUndo.value)
+    writes.set(withoutUndo.value.id, (next) => (next === withoutUndo.value
+      ? written
+      : { ...withUnknownFields(next, withoutUndo.unknown) as object, target, restore }))
   })
+  return {
+    rows,
+    unreadable,
+    stored: (next) => [...(next as ChangeRecord[]).map((row) => writes.get(row.id)?.(row) ?? row), ...unreadable],
+  }
 }
 
 /** Where a write retains its previous entity: snapshot, trash, no prior entity, or an explicit restore operation. */

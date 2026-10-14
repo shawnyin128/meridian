@@ -2120,5 +2120,33 @@ describe('vault store on the aggregation layout', () => {
       expect(() => reopened.updateProject(id, { focus: '换个焦点' })).toThrow(/读不了/)
       expect(readFileSync(file, 'utf8')).toBe(before)
     })
+
+    it('最近变动:读不了的一条与撤销数据读不了的一条存回时原样留着,改过的连同原来的撤销数据留着;不认识的字段也留着', () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      store.updatePaper('2404.00456', { readState: '在读' })
+      const [readable] = held('changelog')
+      // Written before archiving existed, with a project snapshot that cannot be read: the reader defaults
+      // `archived` and upgrades the graph, yet the file must keep the record as written.
+      const oldUndo: Record<string, unknown> = {
+        ...readable, id: 'change-900', target: { kind: 'project', id: 'p' },
+        restore: { kind: 'project', project: { name: 3, graph: { nodes: [], edges: [], activePath: ['n'] } } },
+      }
+      delete oldUndo['archived']
+      const newUndo = { ...readable, id: 'change-901', target: { kind: 'dataset', id: 'imagenet' }, restore: { kind: 'dataset', rows: 3 } }
+      const garbage = { id: 'change-902', kind: 'telemetry' }
+      put('changelog', [{ ...readable, reviewer: 'someone' }, oldUndo, newUndo, garbage])
+      const reopened = reopen()
+      expect(reopened.listChanges().map((change) => [change.id, change.undoable]))
+        .toEqual([[readable!['id'], true], ['change-900', false], ['change-901', false]])
+
+      reopened.archiveChange(readable!['id'] as string)
+      reopened.archiveChange('change-901')
+      const saved = held('changelog')
+      expect(saved).toHaveLength(4)
+      expect(saved.find((row) => row['id'] === readable!['id'])).toMatchObject({ reviewer: 'someone', archived: true })
+      expect(saved.find((row) => row['id'] === 'change-900')).toEqual(oldUndo)
+      expect(saved.find((row) => row['id'] === 'change-901')).toEqual({ ...newUndo, archived: true })
+      expect(saved.find((row) => row['id'] === 'change-902')).toEqual(garbage)
+    })
   })
 })
