@@ -14,8 +14,9 @@ import { GenerationControl } from '../GenerationControl.js'
 import './Chat.css'
 
 /**
- * Reader's essay context session. It gets the only session in Core by paper id, so leave the reader and come back,
- * Or open it from the global conversation list, and you will see the same history; there is no direct access to the vault, nor does the discussion pretend to be a wiki.
+ * The reader's paper chat. Core keeps one session per paper id, so leaving the reader and coming
+ * back, or opening it from the global chat list, shows the same history. It never touches the vault
+ * directly, and the discussion does not pose as Wiki content.
  */
 export type PaperChatPrompt = { seq: number; quote: string }
 
@@ -53,7 +54,8 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     void chat.forPaper(paperId).then((value) => {
       if (!live) return
       setSession(value)
-      // A new session may be created when entering for the first time; refresh the shell list. Empty paper sessions are temporarily hidden by Core.
+      // Opening it the first time may create a session, so refresh the shell's chat list; Core hides
+      // empty paper sessions for now.
       bump()
     }).catch(reportError)
     return () => { live = false }

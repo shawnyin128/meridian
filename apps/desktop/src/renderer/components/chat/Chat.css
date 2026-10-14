@@ -1,7 +1,9 @@
 /*
- * The message flow, bubbles and input boxes are shared by the global dialogue and the paper contextual dialogue.
- * The dialogue in the demo shares the .stream column with the PDF reader. The reader does not move it, so only the value in the non-reading state is taken;
- * .cres is absolutely positioned above the input box in the demo. The positioning here is Radix, leaving only the appearance and width.
+ * The message stream, bubbles and composer shared by the global chat and the paper chat.
+ * In the demo the chat shares the .stream column with the PDF reader. The reader does not change it,
+ * so only the values for the non-reading state are kept here.
+ * In the demo .cres sits absolutely positioned above the composer; here Radix positions it, so only
+ * its look and width remain.
  */
 
 .stream{flex:1 1 0;display:flex;flex-direction:column;background:var(--content);min-width:0;position:relative}
@@ -10,7 +12,7 @@
 .msg.you .bubble{background:var(--field);color:var(--ink);padding:12px 16px;border-radius:var(--r-bubble);border-bottom-right-radius:var(--r-sm);width:fit-content;max-width:85%;margin-left:auto}
 .msg.ai .bubble{background:var(--card);border:1px solid var(--sep2);border-radius:var(--r-bubble);padding:12px 16px;box-shadow:var(--sh-1)}
 .mention{font-weight:600;text-decoration:underline;text-underline-offset:2px}
-/* It’s neither what you said nor what you answered. The demo’s ev() uses this file. */
+/* Neither your message nor an answer: a status line, the demo's ev() style. */
 .event{background:var(--card);border:1px solid var(--sep2);border-radius:var(--r-lg);padding:12px 16px;font-size:var(--fs-base);color:var(--sec)}
 
 .composer{border-top:1px solid var(--sep);padding:12px 0 16px;background:var(--content);position:relative}

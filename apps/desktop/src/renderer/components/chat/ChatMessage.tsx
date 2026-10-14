@@ -9,11 +9,11 @@ export const plain = (text: string): { kind: 'text'; text: string } => ({ kind: 
 export const said = (runs: ChatRun[]): ChatMessageFields => ({ role: 'you', runs, actions: [] })
 export const answer = (runs: ChatRun[], actions: ChatAction[] = []): ChatMessageFields =>
   ({ role: 'ai', runs, actions })
-/** The honest state before model access; ordinary conversations and paper conversations must give the same capability boundary. */
+/** The honest status until a model is connected; global and paper chats must state the same limits. */
 export const noModel = (m: Catalog): ChatMessageFields =>
   ({ role: 'status', runs: [plain(m.chat.noModel)], actions: [] })
 
-/** The text of a message, each paragraph is rendered according to its own layout role. */
+/** The text of a message; each run renders by its own kind. */
 function Runs({ runs }: { runs: ChatRun[] }) {
   return (
     <>
@@ -24,7 +24,10 @@ function Runs({ runs }: { runs: ChatRun[] }) {
   )
 }
 
-/** A message: What you say is turned to the right to form a bubble, your answer is placed to the left to form a card, and the status does not pretend to be a model answer. */
+/**
+ * One message: what you said sits on the right as a bubble, the answer on the left as a card, and a
+ * status line never poses as a model answer.
+ */
 export function ChatMessageView({ message, onAct }: {
   message: ChatMessage
   onAct: (action: ChatAction) => void
