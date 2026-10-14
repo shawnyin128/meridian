@@ -1979,4 +1979,146 @@ describe('vault store on the aggregation layout', () => {
     expect(reopened.wikiAggregation('topics/ptq-weight-only').rows.map((r) => r.paper.id)).toContain(`papers/${added.id}`)
   })
 
+  describe('存下的数据一条一条地读', () => {
+    const stored = (name: string): string => join(vault, '.meridian', `${name}.json`)
+    const put = (name: string, rows: unknown): void => writeFileSync(stored(name), JSON.stringify(rows))
+    const held = (name: string): Record<string, unknown>[] => JSON.parse(readFileSync(stored(name), 'utf8'))
+    const reopen = (): VaultStore => createVaultStore(vault, () => '2026-09-10')
+
+    afterEach(() => vi.restoreAllMocks())
+
+    it('列表里有一条读不了:其余照常读出,它连同文件、第几条与原因报到 stderr,存回时原样留着', () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const readable = {
+        id: 'entry-900', source: 'me', day: '今天', time: '09:00', createdAt: '2026-09-10T09:00:00.000Z',
+        body: { kind: 'runs', runs: [{ kind: 'text', text: '读得了的一条' }] },
+      }
+      const broken = { id: 'entry-901', source: 'robot', day: '今天', time: '09:01', body: { kind: 'chart', points: [1, 2] } }
+      put('feed', [readable, broken])
+      const reopened = reopen()
+      expect(reopened.listFeed().map((entry) => entry.id)).toEqual(['entry-900'])
+      const reported = error.mock.calls.map(([line]) => String(line)).filter((line) => line.includes(stored('feed')))
+      expect(reported).toEqual([expect.stringContaining('第 2 条')])
+      expect(reported[0]).toContain('"source"')
+
+      reopened.appendFeed({ source: 'me', body: { kind: 'runs', runs: [{ kind: 'text', text: '新记的一条' }] } })
+      expect(held('feed')).toHaveLength(3)
+      expect(held('feed').find((row) => row['id'] === 'entry-901')).toEqual(broken)
+    })
+
+    it('读不了的关注名下的收件不当成孤儿删掉', () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      put('watches', [{ id: 'w-1', name: 'NeurIPS', type: 'venue', active: true }])
+      put('inbox', [INBOX_ENTRY])
+      expect(reopen().listInbox().map((entry) => entry.id)).toEqual(['in-new'])
+    })
+
+    it('记录里有这个版本不认识的字段:列出时不带,改过这一条再存回时那些字段还在', () => {
+      const identity = { source: 'semantic-scholar' as const, id: '1741101', affiliations: [] }
+      put('watches', [{
+        id: 'watch-1', name: 'Tri Dao', type: 'author', active: true, color: 'teal',
+        identity: { ...identity, orcid: '0000-0001' },
+      }])
+      const reopened = reopen()
+      expect(reopened.listWatches()).toEqual([{ id: 'watch-1', name: 'Tri Dao', type: 'author', active: true, identity }])
+
+      reopened.updateWatch('watch-1', { type: 'author', name: 'Tri Dao', identity: { ...identity, affiliations: ['Princeton'] } })
+      expect(held('watches')).toEqual([{
+        id: 'watch-1', name: 'Tri Dao', type: 'author', active: true, color: 'teal',
+        identity: { ...identity, affiliations: ['Princeton'], orcid: '0000-0001' },
+      }])
+      expect(reopen().listWatches()).toEqual([expect.objectContaining({ identity: { ...identity, affiliations: ['Princeton'] } })])
+    })
+
+    it('不认识的字段跟着它所在的那条:前面的笔记删掉、这条记录在列表里挪了位置,字段还在原来那条笔记上', () => {
+      const note = (id: string, page: number) => ({ id, page, text: `第 ${page} 页`, created: '2026-09-01', updated: '2026-09-01' })
+      const other = { paperId: '2210.17323', highlights: [], notes: [], remark: '另一篇' }
+      put('paper-readings', [
+        { paperId: '2404.00456', highlights: [], notes: [note('note-1', 1), { ...note('note-2', 2), mood: 'curious' }], remark: '', pinned: true },
+        other,
+      ])
+      const reopened = reopen()
+      expect(reopened.paperReading('2404.00456').notes[1]).toEqual(note('note-2', 2))
+
+      reopened.mutatePaperReading('2404.00456', { kind: 'note.delete', id: 'note-1' })
+      expect(held('paper-readings')).toEqual([
+        other, { paperId: '2404.00456', highlights: [], notes: [{ ...note('note-2', 2), mood: 'curious' }], remark: '', pinned: true },
+      ])
+    })
+
+    it('旧格式的记录与新版本写的、读不了的记录在同一个文件里:旧的照常读出,存回时另两条的内容都还在', () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      put('watches', [{ id: 'w-1', name: 'quantization', type: 'topic', active: true }])
+      // Records written before discovery and download metadata carry no kind, project, reasons, arxiv, semanticId or meta.
+      const legacy: Record<string, unknown> = { ...INBOX_ENTRY }
+      delete legacy['arxiv']
+      delete legacy['meta']
+      const newer = { ...INBOX_ENTRY, id: 'in-newer', score: 0.9 }
+      const broken = { ...INBOX_ENTRY, id: 'in-broken', title: null }
+      put('inbox', [legacy, newer, broken])
+      const reopened = reopen()
+      expect(reopened.listInbox().map((entry) => entry.id).sort()).toEqual(['in-new', 'in-newer'])
+      expect(reopened.listInbox().find((entry) => entry.id === 'in-new')).toMatchObject({ kind: 'watch', title: 'Rotation Revisited' })
+
+      reopened.dismissInbox('in-new')
+      const saved = held('inbox')
+      expect(saved.find((row) => row['id'] === 'in-new')).toMatchObject({ gone: true, kind: 'watch', arxiv: '' })
+      expect(saved.find((row) => row['id'] === 'in-newer')).toMatchObject({ score: 0.9 })
+      expect(saved.find((row) => row['id'] === 'in-broken')).toEqual(broken)
+    })
+
+    it('state.json 里有这个版本不认识的字段,含嵌套的:照常开库,改设置存回时那些字段还在', () => {
+      put('state', { ...held('state') as object, deliverySettings: { maxItemsPerRun: 7, digest: 'weekly' }, focus: { since: '2026-09-01' } })
+      const reopened = reopen()
+      expect(reopened.deliverySettings()).toEqual({ maxItemsPerRun: 7 })
+
+      reopened.setDeliverySettings({ maxItemsPerRun: 3 })
+      expect(held('state')).toMatchObject({ deliverySettings: { maxItemsPerRun: 3, digest: 'weekly' }, focus: { since: '2026-09-01' } })
+    })
+
+    it('Wiki 页读不了:开库照常,它不在 Core 给出的内容里并报到 stderr;别的页照常读写,它一个字节不动;写它的请求被拒', () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const topic = join(vault, 'wiki', 'topics', 'kv-cache-quantization.md')
+      const paper = join(vault, 'wiki', 'papers', '2306.07629.md')
+      writeFileSync(topic, readFileSync(topic, 'utf8').replace(/^kind: topic$/m, 'kind: method'))
+      writeFileSync(paper, '# 没有 frontmatter 的一页\n')
+      const before = [readFileSync(topic, 'utf8'), readFileSync(paper, 'utf8')]
+      const reopened = reopen()
+      expect(reopened.wikiCards().map((card) => card.id)).not.toContain('topics/kv-cache-quantization')
+      expect(reopened.listPapers({ page: 1, size: 50 }).rows.map((row) => row.id)).not.toContain('2306.07629')
+      expect(error).toHaveBeenCalledWith(expect.stringContaining('topics/kv-cache-quantization'))
+      expect(error).toHaveBeenCalledWith(expect.stringContaining('papers/2306.07629'))
+
+      // KVQuant is also a member of the unreadable topic, whose generated regions must not be refilled.
+      reopened.applyProposal({
+        source: 'user', title: '把 KVQuant 归进 Weight-only PTQ',
+        ops: [{ op: 'setMembership', paper: 'papers/2401.18079', in: 'topics/ptq-weight-only', cells: {} }],
+      })
+      expect(reopened.getPaper('2401.18079').topics).toEqual(['Weight-only PTQ'])
+      expect(reopened.wikiPaper('papers/2401.18079').title).toMatch(/^KVQuant:/)
+      expect(() => reopened.updateWikiPage('topics/kv-cache-quantization', '## 问题\n新的')).toThrow(/读不了/)
+      expect(() => reopened.applyProposal({
+        source: 'user', title: '重建 KV 量化',
+        ops: [{ op: 'createAggregation', kind: 'topic', id: 'topics/kv-cache-quantization', title: 'KV', parents: [], columns: [], describe: '新的' }],
+      })).toThrow(/读不了/)
+      expect([readFileSync(topic, 'utf8'), readFileSync(paper, 'utf8')]).toEqual(before)
+    })
+
+    it('项目页读不了:开库照常,项目列表里没有它并报到 stderr,它名下的推荐留着;改它的请求被拒,页一个字节不动', () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      store.createProject('读得了')
+      store.createProject('读不了')
+      const id = store.listProjects().find((project) => project.name === '读不了')!.id
+      const file = join(vault, 'wiki', 'projects', `${id}.md`)
+      writeFileSync(file, readFileSync(file, 'utf8').replace(/^priority: .*$/m, 'priority: "p9"'))
+      const before = readFileSync(file, 'utf8')
+      put('inbox', [{ ...INBOX_ENTRY, kind: 'discovery', watch: '', project: id }])
+      const reopened = reopen()
+      expect(reopened.listProjects().map((project) => project.name)).toEqual(['读得了'])
+      expect(error).toHaveBeenCalledWith(expect.stringContaining(file))
+      expect(reopened.listInbox().map((entry) => entry.id)).toEqual(['in-new'])
+      expect(() => reopened.updateProject(id, { focus: '换个焦点' })).toThrow(/读不了/)
+      expect(readFileSync(file, 'utf8')).toBe(before)
+    })
+  })
 })

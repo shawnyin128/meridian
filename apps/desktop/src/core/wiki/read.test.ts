@@ -1,7 +1,7 @@
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import wikiFixture from '../fixtures/wiki.json' with { type: 'json' }
 import type { WikiData } from './model.js'
 import { readWikiData } from './read.js'
@@ -52,8 +52,13 @@ describe('readWikiData', () => {
     expect(data.pages['papers/2210.17323']!.body.startsWith('## 这篇说了什么\n')).toBe(true)
   })
 
-  it('页上的 kind 与目录对不上就抛出', () => {
+  it('页上的 kind 与目录对不上:这一页不读进来并报到 stderr,别的页照常读出', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     writeFileSync(join(dir, 'topics', 'bad.md'), '---\nkind: method\ntitle: Bad\nupdated: 2026-09-10\n---\n# Bad\n', 'utf8')
-    expect(() => readWikiData(dir)).toThrow(/topics\/bad/)
+    const data = readWikiData(dir)
+    expect(data.pages['topics/bad']).toBeUndefined()
+    expectMatchesFixture(data)
+    expect(error).toHaveBeenCalledWith(expect.stringMatching(/topics\/bad/))
+    error.mockRestore()
   })
 })
