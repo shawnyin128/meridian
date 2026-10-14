@@ -61,7 +61,7 @@ test('从阅读器搜:全局侧栏连同全局搜索一起收起,阅读器里搜
 
   // While reading, the whole global sidebar is hidden (.main.reading>.sidebar{display:none}), taking
   // the global search with it. This matches .main.reading .sidebar in
-  // desktop/design/platform-shell-demo.html: it is how this screen should look, not a reader quirk.
+  // e2e/fixtures/platform-shell-demo.html: it is how this screen should look, not a reader quirk.
   await expect(win.locator('.sidebar')).toBeHidden()
   await expect(win.locator('#sSearch')).toBeHidden()
 })
