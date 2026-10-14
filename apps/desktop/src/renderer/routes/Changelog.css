@@ -1,4 +1,4 @@
-/* Recent Changes' day headings, entries and diffs, copied rule by rule from desktop/design/platform-shell-demo.html. */
+/* Recent Changes' day headings, entries and diffs, copied rule by rule from e2e/fixtures/platform-shell-demo.html. */
 
 .crow{padding:10px 2px;cursor:pointer}
 .crow .chead{display:flex;align-items:flex-start;gap:10px}
