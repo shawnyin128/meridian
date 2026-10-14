@@ -1,20 +1,21 @@
 /*
- * Set the modal's outer frame and two-column skeleton. There is no such screen in the demo, and the size is customized; the mask, card surface and column components are all used.
- * There is no new design language for the set of tokens and rules (.scrim, .srow, .section-heading, .wrow, .btn).
+ * Frame and two-column layout of the Settings modal. The demo has no such screen, so the size is
+ * our own; the backdrop, card surfaces and columns all reuse the existing tokens and rules (.scrim,
+ * .srow, .section-heading, .wrow, .btn) and add no new design language.
  */
 
 .setdlg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
   width:min(820px,88vw);height:min(560px,84vh);box-sizing:border-box;display:flex;overflow:hidden;
   background:var(--content);border:1px solid var(--sep);border-radius:var(--r-xl);
   box-shadow:var(--sh-3);z-index:90}
-/* The focus is sent in by Radix, and the default outline is not drawn when it falls on the container. */
+/* Radix moves focus into the dialog; no default outline is drawn when it lands on the container. */
 .setdlg:focus-visible{outline:0}
-/* Classification in the left column, the value is based on the column in the side column: the same background color, padding and .srow line */
+/* Left column of categories, matching the sidebar: same background, padding and .srow rows */
 .set-side{flex:0 0 190px;box-sizing:border-box;background:var(--sidebar);
   border-right:1px solid var(--sep);padding:20px 10px;overflow-y:auto}
 .set-side .set-t{font-size:var(--fs-base);font-weight:600;color:var(--ink);padding:0 8px;margin:0 0 10px}
 .set-side .srow.set-sub{height:28px;padding-left:20px;font-size:var(--fs-sm)}
-/* The content in the right column, the value is reflected in the text area of the screen */
+/* Right column of content, matching a screen's main content area */
 .set-main{flex:1;min-width:0;overflow:auto;padding:20px 24px}
 
 .appearance-settings-card{border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);padding:16px}

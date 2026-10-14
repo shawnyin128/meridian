@@ -1,6 +1,8 @@
 /*
- * Reader, the rules are taken from the "PDF Reader" section of the demo one by one. The selector names should be kept consistent to facilitate side-by-side comparison.
- * The reading state consists of three columns: paper context session, PDF and reading notes; the global navigation is collapsed by AppShell in this state.
+ * Reader, copied rule by rule from the demo's "PDF Reader" section. Selectors keep the demo's
+ * names so the two can be compared side by side.
+ * The reading view has three columns: paper chat, PDF and reading notes; AppShell collapses the
+ * global navigation in this view.
  */
 .paper-chat{flex:0 0 var(--rrw,300px);min-width:0;border-right:1px solid var(--sep);transition:opacity var(--t-slow) var(--e-inout),margin-left var(--t-slow) var(--e-inout)}
 .main.sbhide .paper-chat{margin-left:calc(var(--rrw,300px) * -1);opacity:0;pointer-events:none}
@@ -21,15 +23,16 @@
 .reader{flex:1;display:flex;overflow:hidden;min-width:0;background:var(--desktop);position:relative}
 .pdfwrap{flex:1;overflow:auto;padding:24px;min-width:0;overscroll-behavior:contain}
 /*
- * Page width is uniquely determined by the same pdf.js viewport. Narrow windows allow horizontal scrolling, never just compress the width and retain it
- * Original height; the latter will cause the canvas, text selection layer and highlight layer to use three sets of geometries.
+ * Page width comes only from the one pdf.js viewport. A narrow window scrolls horizontally; never
+ * shrink the width while keeping the original height, or the canvas, text selection layer and
+ * highlight layer end up with three different geometries.
  */
 .pdfsheet{width:max-content;min-width:100%}
 .pdfpagebox{--user-unit:1;--total-scale-factor:calc(var(--scale-factor) * var(--user-unit));--scale-round-x:1px;--scale-round-y:1px;direction:ltr;position:relative;margin:0 auto 24px;background:var(--paper);box-shadow:var(--sh-paper);border-radius:2px}
 .pdfpagebox canvas{display:block}
 .pdfload{text-align:center;color:var(--ter);font-size:var(--fs-sm);padding:48px 0}
 
-/* The TextLayer of pdf.js is only responsible for text selection, and the text itself is transparently pasted on the canvas. */
+/* pdf.js's TextLayer is only for text selection: transparent text laid over the canvas. */
 .textLayer{color-scheme:only light;position:absolute;text-align:initial;inset:0;overflow:clip;opacity:1;line-height:1;letter-spacing:normal;word-spacing:normal;-webkit-text-size-adjust:none;text-size-adjust:none;forced-color-adjust:none;transform-origin:0 0;caret-color:CanvasText;z-index:2;--min-font-size:1;--text-scale-factor:calc(var(--total-scale-factor) * var(--min-font-size));--min-font-size-inv:calc(1 / var(--min-font-size))}
 .textLayer :is(span,br){color:transparent;position:absolute;white-space:pre;cursor:text;transform-origin:0 0;user-select:text}
 .textLayer>:not(.markedContent),.textLayer .markedContent span:not(.markedContent){z-index:1;--font-height:0;font-size:calc(var(--text-scale-factor) * var(--font-height));--scale-x:1;--rotate:0deg;transform:rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv))}

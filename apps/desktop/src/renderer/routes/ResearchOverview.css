@@ -1,13 +1,19 @@
-/* The research overview is only responsible for the layout of this screen. The basic styles for timelines, dates, and structured lists are held by public components. */
+/*
+ * Layout of the research overview screen only. The base styles for timelines, dates and structured
+ * lists belong to the shared components.
+ */
 
-/* digital summary */
+/* Summary counts */
 .ovstats{display:flex;gap:10px;flex-wrap:wrap}
 .ovstat{background:var(--card);border:1px solid var(--sep);border-radius:var(--r-lg);padding:8px 16px;min-width:74px}
 .ovstat b{display:block;font-size:var(--fs-xl);font-weight:700;line-height:var(--lh-tight)}
 .ovstat span{font-size:var(--fs-sm);color:var(--ter)}
 .ovstat.bad b{color:var(--bad)}
 
-/* The overview timeline is isomorphic to the project timeline: projects come first, followed by milestones or real tasks. */
+/*
+ * The overview timeline mirrors the project timeline: each row starts with its project, followed by
+ * the milestones or an actual task.
+ */
 .overview-gantt .glabels{flex-basis:258px}
 .overview-gantt .timeline-label-row{gap:7px;cursor:pointer;font-weight:400}
 .overview-gantt .timeline-project-label{max-width:82px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
@@ -18,8 +24,9 @@
 .overview-history-toggle.on{background:var(--card);color:var(--ink);box-shadow:var(--sh-1)}
 
 /*
- * The overview information bar uses the same list and reading order: project / time / type / content / supplementary status.
- * The project is content-sized, while date and type reuse the project signal column contract.
+ * Overview rows share one list layout and reading order: project / date / kind / content / extra
+ * status. The project column fits its content; the date and kind columns reuse the project signal
+ * column widths.
  */
 .ovlist{display:grid;grid-template-columns:max-content var(--project-signal-date-width) var(--project-signal-kind-width) minmax(0,1fr) max-content;
   column-gap:var(--project-signal-gap)}
@@ -63,5 +70,5 @@
   .ovlist-row.ovpulse-row{grid-template-columns:140px minmax(0,1fr) minmax(0,1.1fr) minmax(0,1fr) 108px;column-gap:10px}
 }
 
-/* The anchor point of the milestone elastic layer: a point that falls within the canvas and does not occupy any space. */
+/* Anchor of the milestone popover: a zero-size point placed inside the timeline canvas. */
 .ganchor{position:absolute;width:0;height:0}
