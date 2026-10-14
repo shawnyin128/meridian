@@ -1103,6 +1103,10 @@ export function createVaultStore(
       return structuredClone(withProjectLinks(paper, projects()))
     },
 
+    hasPaper(id) {
+      return papers.has(id)
+    },
+
     updatePaper(id, patch) {
       const paper = papers.get(id)
       if (!paper) throw new Error(`论文不存在:${id}`)
@@ -1377,6 +1381,10 @@ export function createVaultStore(
         }
       }
       return detailOf(project)
+    },
+
+    hasProject(id) {
+      return projectById.has(id)
     },
 
     bindProjectWorkspace(id, binding: ProjectWorkspaceBinding | null) {

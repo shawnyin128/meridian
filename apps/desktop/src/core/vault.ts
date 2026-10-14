@@ -26,8 +26,9 @@ export type ProposalProducer = { by: string; source: ChangeSource }
 
 /**
  * The vault-backed data operations Core exposes over the contract, plus the
- * primitives undo and restoring from the trash need — paperSnapshot, putPaper,
- * putProject, readPages, putPages, paperCells, putPaperColumn and trashedPaper —
+ * primitives undo and restoring from the trash need — hasPaper, paperSnapshot,
+ * putPaper, hasProject, putProject, readPages, putPages, paperCells,
+ * putPaperColumn and trashedPaper —
  * which no contract method reaches. A fixture implementation backs tests and
  * early UI work; a disk-backed implementation replaces it without changing
  * callers.
@@ -88,6 +89,9 @@ export interface VaultStore {
 
   /** Returns the paper with the given id. Throws if no such paper exists. */
   getPaper(id: string): PaperRow
+
+  /** Returns whether the vault holds a paper with the given id, the one getPaper returns. */
+  hasPaper(id: string): boolean
 
   /**
    * Merges patch into the paper with the given id and stamps it as updated
@@ -269,6 +273,9 @@ export interface VaultStore {
    * holds an edge either of whose ends is not among its nodes.
    */
   getProject(id: string): ProjectDetail
+
+  /** Returns whether the vault holds a project with the given id, even one whose research graph getProject rejects. */
+  hasProject(id: string): boolean
 
   /**
    * Connects a project to a local or SSH repository and materializes the App-owned planning

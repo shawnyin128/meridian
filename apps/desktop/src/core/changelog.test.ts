@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { resolve } from 'node:path'
 import type { ChangeEntry } from '../shared/contract.js'
 import { TRASH_RETENTION_DAYS } from '../shared/vocabulary.js'
+import { type ChangeRecord, withChangelog } from './changelog.js'
 import { createFixtureStore } from './fixture-store.js'
 import { minimalPdf } from './net/minimal-pdf.js'
 import { emptyColumns } from './paper-library/index.js'
@@ -571,5 +572,52 @@ describe('change log', () => {
 
     expect(store.listChanges().length).toBe(changes)
     expect(store.getPaper(a).custom).toEqual({ note: 'x' })
+  })
+
+  it('真的不在了的论文、项目和列才算不在:删掉的撤得回来,列移除之后的改动撤不了', () => {
+    const paper = store.getPaper('Jiang-et-al-2024-Mixtral-of-Experts')
+    store.deletePaper(paper.id)
+    store.undoChange(recorded()[0]!.id)
+    expect(store.getPaper(paper.id)).toEqual(paper)
+
+    const project = store.getProject(PROJECT)
+    store.deleteProject(PROJECT)
+    store.undoChange(recorded()[0]!.id)
+    expect(store.getProject(PROJECT)).toEqual(project)
+
+    const column = { key: 'du-fa', label: '读法', type: 'select' as const, options: ['精读'] }
+    store.setPaperColumns({ ...emptyColumns(), custom: [column] })
+    store.renamePaperOption('du-fa', '精读', '细读')
+    const renamed = recorded()[0]!
+    store.setPaperColumns(emptyColumns())
+    expect(() => store.undoChange(renamed.id)).toThrow('这一列之后又改过,撤销会盖掉那次改动')
+
+    store.setPaperColumns({ ...emptyColumns(), custom: [column] })
+    store.setPaperColumnType('du-fa', 'multi')
+    const retyped = recorded()[0]!
+    store.setPaperColumns(emptyColumns())
+    expect(() => store.undoChange(retyped.id)).toThrow('这一列之后又改过,撤销会盖掉那次改动')
+  })
+
+  it('项目读不出来时,撤销和改动都报出读不出来的原因,不当它已经不在', () => {
+    const fixture = createFixtureStore(today)
+    const corruption = `科研图的边指向不存在的节点:${PROJECT}.a → ${PROJECT}.gone`
+    let corrupt = false
+    let rows: ChangeRecord[] = []
+    const logged = withChangelog({
+      ...fixture,
+      getProject: (id) => {
+        if (corrupt && id === PROJECT) throw new Error(corruption)
+        return fixture.getProject(id)
+      },
+    }, { load: () => rows, save: (next) => { rows = next }, nextId: () => `change-${rows.length + 1}` })
+    logged.updateProject(PROJECT, { focus: '改过的焦点' })
+    const change = logged.listChanges()[0]!
+
+    corrupt = true
+    expect(() => logged.undoChange(change.id)).toThrow(corruption)
+    expect(logged.listChanges()[0]).toMatchObject({ id: change.id, undone: false })
+    expect(() => logged.updateProject(PROJECT, { focus: '再改一次' })).toThrow(corruption)
+    expect(fixture.getProject(PROJECT).focus).toBe('改过的焦点')
   })
 })
