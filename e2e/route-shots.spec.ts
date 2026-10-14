@@ -3,7 +3,8 @@ import type { Page } from '@playwright/test'
 import { expect, gotoPapers, parkPointer, test } from './app.js'
 
 /**
- * Take a screenshot of each of the four states of the paper library table: default list, details panel, label floating layer, and grouping by topic.
+ * Screenshots of four states of the paper table: the default list, the details panel, the topic
+ * popover and grouping by topic.
  */
 
 const SHOTS = resolve(import.meta.dirname, '../.superpowers/e2e-shots')
@@ -21,8 +22,8 @@ async function shootStates(win: Page, route: string): Promise<void> {
   await win.screenshot({ path: `${SHOTS}/route-${route}-detail.png` })
   await win.locator('[title="收起详情"]').click()
 
-  // When the theme grid cannot fit, fold the + at the end and press it on this grid before unfolding; the subject is now in the 7th grid
-  // (title/short title/rating/author/year/publication/subject).
+  // The + in a topic cell stays hidden until its row is hovered; Topics is the 7th column (Title,
+  // Short title, Rating, Authors, Year, Venue, Topics).
   const cell = rows.first().locator('td:nth-child(7)')
   await cell.hover()
   await cell.locator('.tagadd').click()

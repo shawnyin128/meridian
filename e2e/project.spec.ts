@@ -11,7 +11,7 @@ const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
   [method, params] as const,
 )
 
-/** The `rgb()` parsed by `--sep-strong` is used to compare the border color of the style C input box. */
+/** The `rgb()` that `--sep-strong` resolves to, compared with the border color of a style C input. */
 const sepStrongRgb = (win: Page): Promise<string> => win.evaluate(() => {
   const probe = document.createElement('div')
   probe.style.color = 'var(--sep-strong)'
@@ -32,14 +32,15 @@ const fieldRgb = (win: Page): Promise<string> => win.evaluate(() => {
 })
 
 /**
- * How many days are the dates of the draft project in the fixture from today in the library? The date of the fixture is generated as today, so
- * The use case targets this distance, not a certain day; running across days gets the same set of distances.
+ * Offsets in days from the vault's today to the dates of the fixture's draft project. The fixture
+ * dates are generated from today, so tests target these offsets rather than calendar days, and
+ * runs on different days see the same offsets.
  */
 const T2_START = -7
 const T2_END = 3
 const MILESTONES = { m1: -20, m2: 3, m3: 11, m4: 21 }
 
-/** When the window is reduced to this content width, the Gantt viewport only has more than 300 pixels left, and the strips of the last two tasks fall outside the viewport. */
+/** At this content width the Gantt viewport is just over 300px; the last two task bars fall outside. */
 const NARROW_WIDTH = 760
 /** The number of tasks in the draft project in the fixture. The Gantt still shows every one of them. */
 const TASK_ROWS = 5
@@ -69,11 +70,11 @@ async function revealMilestone(win: Page, dataMilestone: string) {
 }
 /** The width below which the Gantt viewport should fall after narrowing. */
 const NARROW_VIEWPORT = 400
-/** The stub sticks to the gap left on the inside of the Gantt viewport, which is consistent with the positioning formula of the stub in useGanttDrag.ts. */
+/** Gap between a stub and the viewport edge it sticks to; matches the stub formula in useGanttDrag.ts. */
 const GANTT_STUB_INSET = 6
 /** The title used for the new task is the same string used in manual testing (task-5d). */
 const NEW_TASK_TITLE = '实测新建的任务'
-/** A title, task and milestone rewritten from the list name format. */
+/** New titles the tests write through the list's name cell, one for a task and one for a milestone. */
 const EDITED_TASK_TITLE = '甘特里点开改的任务'
 const EDITED_MILESTONE_TITLE = '甘特里点开改的里程碑'
 
@@ -230,10 +231,10 @@ test('窗口收窄后每条任务行在甘特视口里仍看得见条或残桩',
   await app.evaluate(({ BrowserWindow }, width) => {
     BrowserWindow.getAllWindows()[0]!.setContentSize(width, 900)
   }, NARROW_WIDTH)
-  // Narrowing changes only the DOM width immediately; the position of the stump has to wait until React reads the new width from ResizeObserver.
-  // It falls after re-rendering. The equal-width numbers become smaller only until the first half. There is only scrollLeft in the stub position attached to the left edge.
-  // ——Narrowing it doesn’t move it——it looks the same under the old and new widths; only the positions close to the right edge contain the viewport width, so what’s waiting is
-  // They are aligned to the current viewport.
+  // Narrowing changes the DOM width at once, but stubs move only after React reads the new width
+  // from ResizeObserver and re-renders, so waiting for the width alone covers half of it. A stub on
+  // the left edge depends only on scrollLeft and looks the same at either width; only right-edge
+  // stubs include the viewport width, so the wait is for one of them to match the current viewport.
   await expect.poll(() => win.locator('.gantt .gwrap').evaluate((wrap, { narrow, inset }) => {
     if (wrap.clientWidth >= narrow) return '视口还没收窄'
     const right = wrap.scrollLeft + wrap.clientWidth
@@ -243,7 +244,8 @@ test('窗口收窄后每条任务行在甘特视口里仍看得见条或残桩',
       : '残桩还停在旧视口'
   }, { narrow: NARROW_VIEWPORT, inset: GANTT_STUB_INSET })).toBe('残桩已按当前视口重算')
 
-  // The strips and stumps are both absolutely positioned, and may fall entirely outside the Gantt viewport; the measurement is the width of the section where it intersects with the viewport.
+  // Bars and stubs are absolutely positioned and may lie wholly outside the Gantt viewport, so
+  // measure the width of their intersection with the viewport.
   const rows = await win.locator('.gantt .gwrap').evaluate((wrap) => {
     const view = wrap.getBoundingClientRect()
     const visible = (el: Element | null) => {
@@ -260,7 +262,7 @@ test('窗口收窄后每条任务行在甘特视口里仍看得见条或残桩',
 
   expect(rows.map((r) => Math.max(r.bar ?? 0, r.stub ?? 0) > 0))
     .toEqual(Array<boolean>(TASK_ROWS).fill(true))
-  // The strip is really squeezed out of the viewport. This use case is testing the stub, otherwise it is empty.
+  // Some bar really is pushed out of the viewport, so this test checks a stub; otherwise it is vacuous.
   expect(rows.filter((r) => (r.bar ?? 0) <= 0 && (r.stub ?? 0) > 0).length).toBeGreaterThan(0)
 })
 
@@ -312,7 +314,7 @@ test('各板块渲染出的条目数与 project.get 返回的条数逐对相等'
     Agent步骤: await win.locator('.agstep').count(),
   }
 
-  // Milestones and scientific research maps are each hidden behind another tab. You can only view them by cutting over them.
+  // Milestones and the research graph each sit behind another tab and render only after switching to it.
   await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '里程碑' }).click()
   await win.locator('#msList').waitFor()
   await openArchive('#msList')
@@ -334,11 +336,11 @@ test('越界的日期被 core 拒绝,绕开界面直调也拦得住', async ({ w
     const meridian = (window as unknown as MeridianWindow).meridian
     const reason = (call: Promise<unknown>) => call.then(() => '没有被拒绝', (e: Error) => e.message)
     return {
-      // There is only end in patch, and whether it crosses the boundary depends on its relationship with the saved start date; this day is earlier than the start date of t2
+      // The patch holds only end, checked against the stored start; this day is before t2's start.
       task: await reason(meridian.call('project.updateTask', {
         projectId: 'draft', taskId: 't2', patch: { end: dates.beforeTask },
       })),
-      // In the same way, only change due, which is earlier than the start date of draft.
+      // Likewise only due changes, to a day before draft's start date.
       project: await reason(meridian.call('project.update', {
         id: 'draft', patch: { due: dates.beforeProject },
       })),
@@ -358,23 +360,25 @@ test('拖菱形改期后,抬手补发的那次点击不算点在空白处新建�
   const box = (await diamond.boundingBox())!
   const x0 = box.x + box.width / 2
   const y = box.y + box.height / 2
-  // Hovering will enlarge the diamond, and the outer frame will change accordingly; dragging moves its left, so measure left
+  // Hovering enlarges the diamond and its bounding box; dragging moves its offsetLeft, so measure that.
   const left = () => diamond.evaluate((el) => (el as HTMLElement).offsetLeft)
   const from = await left()
 
   await win.mouse.move(x0, y)
   await win.mouse.down()
-  // The drop point moved 15px further than the integer multiple of 3 days: the diamond was absorbed back to x0+3×dayWidth, but the cursor stopped 15px further to the right.
-  // The raised hand landed on the background of Milestone Lane rather than on the rhombus itself - this was exactly the landing point that would have been mistaken for a new building back then.
+  // Move 15px past a whole 3 days: the diamond snaps back to x0 + 3 × dayWidth while the cursor
+  // stops 15px to its right, so the release lands on the milestone lane's background rather than on
+  // the diamond, exactly where the click used to be mistaken for creating a milestone.
   await win.mouse.move(x0 + 3 * dayWidth + 15, y, { steps: 8 })
-  // During dragging, the diamond will follow the pointer all day long, and the extra 15px will be absorbed. Wait until it has really moved for three days before raising your hand: Did you press it?
-  // If it falls on the diamond, or if it stays in place before the move is made, the area will be red instead of a drag that did not occur.
-  // Passed by pretending to be "not misjudged as a new one"
+  // While dragging, the diamond follows the pointer in whole days and drops the extra 15px. Wait for
+  // it to move three days before releasing: if the press missed it or the move was not delivered, it
+  // stays put and fails here, instead of a drag that never happened passing as "no milestone created".
   await expect.poll(async () => (await left()) - from).toBe(Math.round(3 * dayWidth))
   await win.mouse.up()
 
   await expect(win.locator('#toast')).toHaveText(`已改期到 ${dshort(moved)}`)
-  // It is not regarded as a new one: the task segment is still there (misjudgment will cut the tab to the milestone segment and insert a blank line to create a new line)
+  // Not mistaken for a create: the task tab still shows (a misread click would switch to the
+  // milestone tab and insert a blank row for a new milestone).
   await expect(win.locator('#taskList')).toBeVisible()
   // The exact core data below already proves no extra milestone appeared and the other three are untouched.
   expect((await readDraft(win)).milestones).toEqual([
@@ -388,7 +392,7 @@ test('拖菱形改期后,抬手补发的那次点击不算点在空白处新建�
 test('拖任务条顺延后,开始与结束日期移动了相同的天数', async ({ win }) => {
   await gotoProject(win)
   const today = await vaultToday(win)
-  // t1 falls outside the Gantt window and only the stumps are drawn. t2 is the first task to draw the strip. It is postponed for 2 days.
+  // t1 lies outside the Gantt window and draws only a stub; t2, the first with a bar, moves 2 days.
   const dayWidth = await ganttDayWidth(win)
   const bar = win.locator('.gantt .gbar').first()
   const box = (await bar.boundingBox())!
@@ -400,8 +404,9 @@ test('拖任务条顺延后,开始与结束日期移动了相同的天数', asyn
   await win.mouse.move(x0, y)
   await win.mouse.down()
   await win.mouse.move(x0 + 2 * dayWidth, y, { steps: 8 })
-  // The strip follows the pointer throughout the day while dragging. Wait until it has been moved for two days before raising your hand: the press does not fall on the bar, or the movement fails.
-  // When it was not delivered, it stayed where it was, and it was red here, instead of raising your hand and waiting for a notification that it would not come.
+  // While dragging, the bar follows the pointer in whole days. Wait for it to move two days before
+  // releasing: if the press missed the bar or the move was not delivered, it stays put and fails
+  // here, instead of after the release while waiting for a toast that never comes.
   await expect.poll(async () => (await left()) - from).toBe(Math.round(2 * dayWidth))
   await win.mouse.up()
 
@@ -414,7 +419,7 @@ test('拖任务条顺延后,开始与结束日期移动了相同的天数', asyn
 test('拖完任务条那一下不算点击,单击只定位闪烁,名称格仍可独立写回 core', async ({ win }) => {
   await gotoProject(win)
   const today = await vaultToday(win)
-  // t1 falls outside the Gantt window and only draws stumps, t2 is the first task to draw a strip
+  // t1 lies outside the Gantt window and draws only a stub; t2 is the first task with a bar.
   const dayWidth = await ganttDayWidth(win)
   const bar = win.locator('.gantt .gbar').first()
   const box = (await bar.boundingBox())!
@@ -425,18 +430,19 @@ test('拖完任务条那一下不算点击,单击只定位闪烁,名称格仍可
   await win.mouse.move(box.x + box.width / 2, y)
   await win.mouse.down()
   await win.mouse.move(box.x + box.width / 2 + 2 * dayWidth, y, { steps: 8 })
-  // The strip follows the pointer throughout the day while dragging. Wait until it has been moved for two days before raising your hand: the press does not fall on the bar, or the movement fails.
-  // It stayed where it was before it was delivered, and it was red here, so the following sentence "This is not a click" is out of the question.
+  // While dragging, the bar follows the pointer in whole days. Wait for it to move two days before
+  // releasing: if the press missed the bar or the move was not delivered, it stays put and fails
+  // here, since the "not a click" check below means nothing without a drag.
   await expect.poll(async () => (await left()) - from).toBe(Math.round(2 * dayWidth))
   await win.mouse.up()
   await expect(win.locator('#toast')).toHaveText('任务顺延 2 天')
-  // The suppression logic is still there: the click that raised the hand to resend did not trigger the positioning flash.
+  // Click suppression still works: the click the browser sends after the release did not flash the row.
   await expect(win.locator('#taskList .ddlrow[data-row="t2"]')).not.toHaveClass(/\bflash\b/)
 
   const moved = (await readDraft(win)).tasks.find((t) => t.id === 't2')!
   expect(moved.start).toBe(fixtureDay(today, T2_START + 2))
 
-  // Just click without dragging: only position and make the corresponding row flash, without opening any column
+  // A plain click without a drag only locates the matching row and makes it flash, opening no editor.
   await win.locator('.gantt .gbar').first().click()
   const row = win.locator('#taskList .ddlrow[data-row="t2"]')
   await expect(row).toHaveClass(/\bflash\b/)
@@ -450,7 +456,7 @@ test('拖完任务条那一下不算点击,单击只定位闪烁,名称格仍可
 
   const saved = (await readDraft(win)).tasks.find((t) => t.id === 't2')!
   expect(saved.title).toBe(EDITED_TASK_TITLE)
-  // This time the editor did not change the dragged out schedule back.
+  // Editing the name did not revert the dates set by the drag.
   expect(saved.start).toBe(fixtureDay(today, T2_START + 2))
   expect(saved.end).toBe(fixtureDay(today, T2_END + 2))
 })
@@ -517,19 +523,20 @@ test('拖完菱形那一下不算点击,单击只切到里程碑并闪烁,名称
   const dayWidth = await ganttDayWidth(win)
   const box = (await diamond.boundingBox())!
   const y = box.y + box.height / 2
-  // Hovering will enlarge the diamond, and the outer frame will change accordingly; dragging moves its left, so the left
+  // Hovering enlarges the diamond and its bounding box; dragging moves its offsetLeft, so measure that.
   const left = () => diamond.evaluate((el) => (el as HTMLElement).offsetLeft)
   const from = await left()
 
   await win.mouse.move(box.x + box.width / 2, y)
   await win.mouse.down()
   await win.mouse.move(box.x + box.width / 2 + 3 * dayWidth, y, { steps: 8 })
-  // While dragging, the diamond follows the pointer throughout the day. Wait until it has really moved for three days before raising your hand: the press does not land on the diamond, or it moves
-  // Before it was delivered, it stayed where it was, and it was red here, instead of raising your hand and waiting for a notification that it would not come.
+  // While dragging, the diamond follows the pointer in whole days. Wait for it to move three days
+  // before releasing: if the press missed it or the move was not delivered, it stays put and fails
+  // here, instead of after the release while waiting for a toast that never comes.
   await expect.poll(async () => (await left()) - from).toBe(Math.round(3 * dayWidth))
   await win.mouse.up()
   await expect(win.locator('#toast')).toHaveText(`已改期到 ${dshort(moved)}`)
-  // The suppression logic is still there: it is still stuck in task segmentation, and positioning is not triggered by dragging.
+  // Click suppression still works: the task tab stays shown, since the drag triggered no locate.
   await expect(win.locator('#taskList')).toBeVisible()
 
   // The reschedule may have pushed m2 into the next calendar window; find it again before clicking it.
@@ -551,7 +558,7 @@ test('拖完菱形那一下不算点击,单击只切到里程碑并闪烁,名称
     return project.milestones.find((m) => m.id === 'm2')!
   })
   expect(saved.title).toBe(EDITED_MILESTONE_TITLE)
-  // This time the editor did not change the dragged-out date back.
+  // Editing the name did not revert the date set by the drag.
   expect(saved.date).toBe(moved)
 })
 
@@ -791,7 +798,7 @@ test('新任务行开着且打了字时按侧栏会话的「...」:草稿与字�
   await input.fill('按菜单触发器放弃的任务')
   await expect(input).toHaveValue('按菜单触发器放弃的任务')
 
-  // The trigger of DropdownMenu opens the menu on pointerdown and preventDefault. After this, the browser will no longer send mousedown.
+  // The DropdownMenu trigger opens on pointerdown and calls preventDefault, so no mousedown follows.
   const chat = win.locator('#chatList .chat-row').first()
   await chat.hover()
   await chat.locator('.dots').click()
@@ -900,8 +907,9 @@ test('关联:可以加一个链接并给它起显示名,点 chip 交给系统浏
 test('关联:占位 chip 长在它将来待的那一组行首,切组跟着搬', async ({ win }) => {
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
-  // Click the group name label at the beginning of the line to identify the line: the two buttons of the section selector in the placeholder say "Wiki" and "Thesis".
-  // Using .wkrel's own hasText filter will hit both groups in the line where the placeholder is located.
+  // Identify a group row by the name label at its start: the placeholder's segmented control also
+  // shows the Wiki and Papers labels, so a hasText filter on .wkrel would match both groups in the
+  // row that holds the placeholder.
   const group = (name: string) =>
     side.locator('.wkrel').filter({ has: win.locator('.rl', { hasText: name }) })
   const pageRow = group('Wiki')
@@ -913,14 +921,15 @@ test('关联:占位 chip 长在它将来待的那一组行首,切组跟着搬', 
   await expect(pageRow.locator('.tagchip')).toHaveCount(pageChips)
   // A new link lands first in its group, so the placeholder opens right after the group name.
   expect(await pageRow.evaluate((row) => row.querySelector('.rl')!.nextElementSibling!.className)).toBe('reladd')
-  // The segment selector and the input box have the same thing: when the chip line cannot fit, they wrap together and are not allowed to be split into the upper and lower lines.
+  // The segmented control and the input stay together: when the chip row overflows they wrap as one,
+  // never split across two lines.
   const pair = await pageRow.locator('.reladd').evaluate((el) => ({
     seg: el.querySelector('.segmented-control')!.getBoundingClientRect().top,
     input: el.querySelector('.inedit')!.getBoundingClientRect().top,
   }))
   expect(Math.abs(pair.seg - pair.input)).toBeLessThan(4)
 
-  // Cut to the paper group: the placeholder moves there whole. That row's own linked papers now come
+  // Switch to the paper group: the placeholder moves there whole. That row's own linked papers now come
   // from project.papers and only offer picking an existing paper, so switch back to Wiki to submit free text.
   await side.locator('.wkrel .segmented-control>button', { hasText: '论文' }).click()
   await expect(pageRow.locator('.inedit')).toHaveCount(0)
@@ -975,7 +984,7 @@ test('关联 chip 上的 × 只移除这一条,不顺带打开它挂着的那一
   const chip = linked.first()
   const text = await chip.innerText()
 
-  // × Normally I don’t connect the pointer, I can only click it by hovering over the chip.
+  // The × takes no pointer events until the chip is hovered.
   await chip.hover()
   await chip.locator('.rx').click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', 'draft 效率'])
@@ -1006,7 +1015,8 @@ test('属性格进入编辑时不改变右栏和值列宽度', async ({ win }) =
 })
 
 test('属性栏焦点格:焦点移走或点到格外都算放弃,只有回车才写回', async ({ win }) => {
-  // Three rounds of editing and three verification core; the window that is not on the screen needs to wait two seconds for each operability, and the default 30 seconds is not enough
+  // Three edits, each checked in Core; an offscreen window waits two seconds per actionability
+  // check, so the default 30 s is too short.
   test.slow()
   await gotoProject(win)
   const focusNow = () => call<{ focus: string }>(win, 'project.get', { id: 'draft' }).then((p) => p.focus)
@@ -1015,7 +1025,7 @@ test('属性栏焦点格:焦点移走或点到格外都算放弃,只有回车才
   const edit = side.locator('button.metadata-editable', { hasText: before })
   const pin = side.locator('.metadata-input')
 
-  // The keyboard moves the focus out of this space: put it away, and the words typed are not written.
+  // Moving focus out with the keyboard closes the cell without writing the typed text.
   await edit.click()
   await pin.fill('改了又不要')
   await pin.press('Tab')
@@ -1023,7 +1033,7 @@ test('属性栏焦点格:焦点移走或点到格外都算放弃,只有回车才
   await expect(edit).toHaveText(before)
   expect(await focusNow()).toBe(before)
 
-  // Click outside the grid: also close it and don’t write
+  // Clicking outside the cell also closes it without writing.
   await edit.click()
   await pin.fill('点外面也不要')
   await win.locator('.screenslot:not([hidden]) .memo').click()
@@ -1047,7 +1057,7 @@ test('属性栏焦点格:回车后写被拒,格子仍在编辑、字还在', asy
 
   await edit.click()
   await pin.fill('项目没了这段还想留着')
-  // When the grid is open, bypass the interface and delete the project: core will really reject this write when pressing Enter to submit.
+  // With the cell open, delete the project through Core, so Core really rejects the write Enter submits.
   await call(win, 'project.delete', { id: 'draft' })
   await pin.press('Enter')
   await expect(win.locator('#toast')).toHaveText('项目不存在:draft')
@@ -1061,7 +1071,7 @@ test('就地输入框:关联占位是样式 C,属性栏焦点格没有边框浅�
   const sepStrong = await sepStrongRgb(win)
   const field = await fieldRgb(win)
 
-  // The plus sign associated with the placeholder is an ordinary button. This button has not been clicked yet. The keyboard's determination of focus visibility should be based on the real path.
+  // The + that adds a link is a plain, still unclicked button; check its focus ring the keyboard way.
   // A prior Tab keypress puts Chromium's input-modality tracking into "keyboard" so the following
   // scripted focus() still counts as keyboard-driven, matching :focus-visible like a real Tab would.
   const relAdd = side.locator('.section-heading.flexh [title="添加关联"]')
@@ -1070,7 +1080,7 @@ test('就地输入框:关联占位是样式 C,属性栏焦点格没有边框浅�
   await expect(relAdd).toHaveCSS('outline-style', 'solid')
   await expect(relAdd).toHaveCSS('outline-width', '2px')
 
-  // .inedit:Style C for associated placeholders
+  // .inedit: the link placeholder uses style C.
   await relAdd.click()
   const relInput = side.locator('.wkrel .inedit')
   await relInput.focus()
@@ -1092,7 +1102,7 @@ test('就地输入框:关联占位是样式 C,属性栏焦点格没有边框浅�
 })
 
 test.describe('属性栏焦点格:切到别的应用', () => {
-  // The window must be on the screen and take the system focus. Only then can the focus be lost or taken by the blur()/focus() of the main process.
+  // The window must be visible and hold system focus, or the main process's blur()/focus() cannot move it.
   test.use({ showWindow: true })
 
   test('切回来不重新全选:接着打字接在原字后面,不是把原字替掉', async ({ app, win }) => {
@@ -1105,7 +1115,8 @@ test.describe('属性栏焦点格:切到别的应用', () => {
     await edit.click()
     await pin.fill('切走前打的字')
 
-    // Turn off Playwright's focus simulation: when it is turned on, the page always assumes that it has focus, and the real window is out of focus and the focus cannot be transmitted.
+    // Turn off Playwright's focus emulation: while on, the page always believes it has focus, so the
+    // real window losing or regaining focus never reaches it.
     const cdp = await win.context().newCDPSession(win)
     await cdp.send('Emulation.setFocusEmulationEnabled', { enabled: false })
     await app.evaluate(({ BrowserWindow }) => {
@@ -1117,7 +1128,7 @@ test.describe('属性栏焦点格:切到别的应用', () => {
       message: '窗口没有真的拿到系统焦点,后面的 blur()/focus() 无从谈起',
     }).toBe(true)
 
-    // Switch to another application and then switch back: .metadata-input has not been uninstalled, Blink will resend focus to it
+    // Switch to another app and back: .metadata-input stayed mounted, so Blink gives focus back to it.
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.blur())
     await expect.poll(() => win.evaluate(() => document.hasFocus())).toBe(false)
     await app.evaluate(({ BrowserWindow }) => {
@@ -1157,7 +1168,7 @@ test('项目列表点进详情,内容导航行的返回钮退回列表', async (
   await expect(win.locator('.screenslot:not([hidden]) .desk-head .t')).toHaveText('draft 效率')
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', 'draft 效率'])
 
-  // There is no way in from the list, and the return stack is empty: the return button returns to the previous level in the structure, which is the item list.
+  // Opened from the list there is no origin to return to, so Back goes up a level, to the project list.
   await win.locator('.screenslot:not([hidden]) .desk-head .back').click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目'])
   await expect(win.locator('.screenslot:not([hidden]) [data-proj="draft"]')).toBeVisible()
@@ -1201,7 +1212,7 @@ test('任务四列各自编辑,点击行本身只打开任务详情,不改变任
   await expect(radios).toHaveText(['进行中', '计划中', '已完成'])
   await win.keyboard.press('Escape')
 
-  // Status: Three-level radio selection, the current "In Progress" is checked; click "Shelved" to write back
+  // Status: three radio options, ACTIVE_PROJECT checked; clicking SHELVED_PROJECT writes it back.
   await side.locator('.wkprops .pk:text-is("状态") + .pv').click()
   await expect(radios).toHaveText([...PROJECT_STATUSES])
   await expect(radios.filter({ hasText: ACTIVE_PROJECT })).toHaveAttribute('aria-checked', 'true')
@@ -1209,7 +1220,7 @@ test('任务四列各自编辑,点击行本身只打开任务详情,不改变任
   await expect(win.locator('#banner span')).toHaveText('已更新状态')
   expect((await call<{ status: string }>(win, 'project.get', { id: 'draft' })).status).toBe(SHELVED_PROJECT)
 
-  // Priority: The current P0 is checked; press the key twice to go to P1, press Enter to write back
+  // Priority: the current P0 is checked; ArrowDown twice reaches P1 and Enter writes it back.
   await side.locator('.wkprops .pk:text-is("优先级") + .pv').click()
   await expect(radios).toHaveText(['P0 · 紧急', 'P1 · 常规', 'P2 · 较低'])
   await expect(radios.nth(0)).toHaveAttribute('aria-checked', 'true')
@@ -1264,7 +1275,7 @@ test('红色垃圾桶直接删除任务,不会先把这一行切进编辑态', a
   expect(project.tasks.some((task) => task.id === taskId)).toBe(false)
 })
 
-/** Enter the details of the draft, switch to the scientific research map, click on "Tree Width Inflection Point", and return to the header of the node panel; when you return, the header is already this node. */
+/** Opens draft's research graph and clicks the knee node; returns the node panel header, showing it. */
 async function openNodePanel(win: Page) {
   await gotoProject(win)
   await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '科研图' }).click()

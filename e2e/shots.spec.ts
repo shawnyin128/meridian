@@ -31,21 +31,23 @@ test('截下带选择列与自定义分组的一组基线图', async ({ win, app
   await win.locator('.ptable thead th.th-new input').fill('标签')
   await win.locator('.ptable thead th.th-new input').press('Enter')
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(0)
-  // The multi-selected pop-up layer will not be closed after selection. The two values ​​are then completed in the same edit: clicking the grid again will be regarded as clicked outside by the pop-up layer.
+  // The multiple-choice popover stays open after a pick, so both values go in one edit: clicking
+  // the cell again would count as a click outside the popover.
   const cell = win.locator('.ptable tbody tr').first().locator('td.pt-cust')
   await cell.click()
   for (const value of ['综述', '必读']) {
     await cell.locator('input.celledit').fill(value)
     await win.locator('[data-radix-popper-content-wrapper] .rrow.mk').click()
-    // There are only input boxes in the editing grid, and the chip can be drawn only after it has been closed for editing; the evidence for writing it down this time is that this line in the pop-up layer has a check mark.
+    // While editing, the cell holds only the input and draws chips once editing closes, so the
+    // proof that this pick was written is the check mark on its popover row.
     await expect(win.locator('[data-radix-popper-content-wrapper] .rrow.opt', { hasText: value })
       .locator('.ck svg')).toHaveCount(1)
   }
   await win.keyboard.press('Escape')
   await expect(cell.locator('.tagchip')).toHaveText(['综述', '必读'])
 
-  // The grouping column should be viewed under the longest one: two built-in groupable fields, plus this multi-select column.
-  // The topic and status are there by default, only new columns are added here.
+  // Shoot the grouping bar at its longest: the two default groupable fields plus this
+  // multiple-choice column. Topics and Status are on by default, so only the new column is added.
   await win.locator('.filters .grpgear').click()
   for (const label of ['标签']) {
     await win.locator('[data-radix-popper-content-wrapper] .mi', { hasText: label }).click()
@@ -55,7 +57,7 @@ test('截下带选择列与自定义分组的一组基线图', async ({ win, app
 
   for (const [w, h] of [[1280, 720], [1440, 900], [1920, 1080], [2560, 1440]] as const) {
     await app.evaluate(({ BrowserWindow }, s) => BrowserWindow.getAllWindows()[0]!.setSize(s.w, s.h), { w, h })
-    // The newly created column is at the far right of the table. In a narrow window, you need to push the horizontal scroll all the way until its grid is in the screen.
+    // The new column is at the table's right end; in a narrow window scroll fully right to show it.
     await win.locator('.tblwrap').evaluate((el) => { el.scrollLeft = el.scrollWidth })
     await parkPointer(win)
     await win.screenshot({ path: `${SHOTS}/papers-typed-${w}.png` })
@@ -67,14 +69,14 @@ test('截下项目详情屏的一组基线图', async ({ win }) => {
   await parkPointer(win)
   await win.screenshot({ path: `${SHOTS}/project-detail.png` })
   await win.locator('.gantt').screenshot({ path: `${SHOTS}/project-gantt.png` })
-  // The screen can be scrolled, but the lower half of the screen cannot be captured into the entire window. Take a separate screenshot of each of the two columns.
+  // A window screenshot misses the scrolled-off lower half, so shoot the two columns separately.
   await win.locator('.wkmain').screenshot({ path: `${SHOTS}/project-main.png` })
   await win.locator('.wkside').screenshot({ path: `${SHOTS}/project-side.png` })
 })
 
 test('截下项目详情屏头在四档窗口下的图', async ({ win, app }) => {
   test.slow()
-  // gotoProject uses the list click to enter: it is this screen header that has newly grown return buttons.
+  // gotoProject enters by clicking the list, which gives this screen header its new Back button.
   await gotoProject(win)
   for (const [w, h] of [[1280, 720], [1440, 900], [1920, 1080], [2560, 1440]] as const) {
     await app.evaluate(({ BrowserWindow }, s) => BrowserWindow.getAllWindows()[0]!.setSize(s.w, s.h), { w, h })
@@ -95,7 +97,7 @@ test('截下对话屏在四档窗口下的图', async ({ win, app }) => {
   }
 })
 
-/** Directory of screenshots of the 6th batch: the same use case is run once before and after the modification (SHOTS_PHASE=before / after), and the two rounds of pictures are viewed side by side. */
+/** Batch 6 screenshot directory: run once per SHOTS_PHASE (before / after) and compare side by side. */
 const B6 = `${SHOTS}/b6-paper-columns/${process.env['SHOTS_PHASE'] ?? 'after'}`
 const B6_SIZES = [[1280, 720], [1440, 900], [1920, 1080], [2560, 1440]] as const
 
@@ -137,7 +139,8 @@ test('第 6 批:Wiki 论文页的属性,四档窗口 × 亮暗', async ({ win, a
 })
 
 test('第 6 批:列菜单与改类型那一行,四档窗口 × 亮暗', async ({ win, app }) => {
-  // Each window opens three menus: the hover state, the expanded type line, and the text column line; windows that are not on the screen have to wait two seconds for each operability.
+  // Each window size opens the menu three times (hover, expanded type row, text column row), and an
+  // offscreen window waits two seconds per actionability check.
   test.setTimeout(300_000)
   await gotoPapers(win)
   await win.locator('.ptable tbody tr').first().waitFor()
@@ -147,7 +150,8 @@ test('第 6 批:列菜单与改类型那一行,四档窗口 × 亮暗', async ({
   await win.locator('.ptable thead th.th-new input').fill('读法')
   await win.locator('.ptable thead th.th-new input').press('Enter')
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(0)
-  // The default type is text, there is no need to click the type setting: create another column and cut off the row of the text column (there is no fold button)
+  // Text is the default type, so no type click: create a second column to capture a text column's
+  // row, which has no Options toggle.
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [title="新增列"]').click()
   await win.locator('.ptable thead th.th-new input').fill('备注')
@@ -162,7 +166,7 @@ test('第 6 批:列菜单与改类型那一行,四档窗口 × 亮暗', async ({
       await win.locator('.ptable thead [title="列设置"]').click()
       const row = win.locator('[data-radix-popper-content-wrapper] .mi.colrow', { hasText: '读法' })
       await row.hover()
-      // The mouse stays on the line: fold, change type, rename, delete four .cmx and display them simultaneously
+      // With the pointer on the row, all four .cmx (options, change type, rename, delete) show.
       await win.screenshot({ path: `${B6}/column-menu-hover-${theme}-${w}.png` })
       await row.locator('[title="改类型"]').click()
       await parkPointer(win)
@@ -174,7 +178,7 @@ test('第 6 批:列菜单与改类型那一行,四档窗口 × 亮暗', async ({
       await win.locator('.ptable thead [title="列设置"]').click()
       const textRow = win.locator('[data-radix-popper-content-wrapper] .mi.colrow', { hasText: '备注' })
       await textRow.hover()
-      // There is no fold button in the text column. The first button at the end of the line is to change the type.
+      // A text column has no Options toggle, so the first button at the row's end is Change type.
       await win.screenshot({ path: `${B6}/column-menu-text-${theme}-${w}.png` })
       await win.keyboard.press('Escape')
       await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(0)

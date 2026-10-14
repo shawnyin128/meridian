@@ -5,30 +5,30 @@ import {
 } from '../apps/desktop/src/shared/vocabulary.js'
 import { expect, gotoPapers, parkPointer, settle, test, uniqueHeights, type MeridianWindow } from './app.js'
 
-/** The page status of all 291 paper pages in the vault is this, which is not the same as the reading status. */
+/** Page state of all 291 paper pages in the fixture vault, a field separate from reading status. */
 const PAGE_STATE = 'draft'
 
-/** The number of remaining values in the topic group after filtering "attention" in the fixture; only when the index layer stabilizes to this number does it mean that the filtering has taken effect. */
+/** Rows the topic group index shows once the "attention" filter has taken effect. */
 const TOPICS_UNDER_FILTER = 56
 const TOPIC = 'transformer architecture'
 
-/** The topic added to the first line of the write path use case does not have this value in the fixture. */
+/** A topic the write-path tests add to the first row; no paper in the fixture has it. */
 const ADDED_TOPIC = 'kv cache 压缩'
 
-/** Continuously write the multi-select column created by the use case, and connect the two newly created options in a grid. */
+/** A multiple-choice column the tests create, and two options created back to back in one cell. */
 const MULTI_COLUMN = '标签'
 const PICKED = ['综述', '必读'] as const
 
-/** The total number of papers for fixture, the number of pages when there are 20 articles per page, and the number of articles remaining after filtering for "attention". */
+/** Papers in the fixture, pages at 20 per page, and papers left after filtering by "attention". */
 const PAPERS_TOTAL = 291
 const PAPER_PAGES = 15
 const PAPERS_UNDER_FILTER = 44
 
-/** The left edge of the first page gear button on the paging bar should be kept to two decimal places. */
+/** Left edge, rounded to two decimals, of the first page-size option on the pagination bar. */
 const sizeButtonLeft = (win: Page) => win.locator('.pagebar .segmented-control>button').first()
   .evaluate((el) => +el.getBoundingClientRect().left.toFixed(2))
 
-/** The screen you entered is always hung, and the selector that is present on every screen, such as the screen header, should be stored in the currently displayed screen. */
+/** Visited screens stay mounted; scope selectors every screen has (e.g. its header) to the shown one. */
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
 
 /** Measure a direct page-content child against the shared responsive page-width token. */
@@ -46,24 +46,25 @@ const sharedContentGeometry = (win: Page, selector: string) => shown(win, select
   }
 })
 
-/** Bypass the interface and call the core directly according to the contract method name. */
+/** Calls Core directly by contract method name, bypassing the UI. */
 const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
   ([m, p]) => (window as unknown as MeridianWindow).meridian.call(m as string, p) as Promise<T>,
   [method, params] as const,
 )
 
-/** Wait until the 20th line on the first page is drawn: all subsequent measurements must be done on the table with data. */
+/** Waits until the first page renders all 20 rows, so later measurements run on a populated table. */
 const firstPage = (win: Page) => expect(win.locator('.ptable tbody tr')).toHaveCount(20)
 
 /**
- * Before entering the paper screen, bypass the interface and write the column configuration, and then fill in the cells in the same position for each of the first `cells.length` rows arranged by date added, which is the table's default sort.
- * Return the ids of these rows. The paper screen is not hung up until the first time it is entered and the number is retrieved, so it needs to be adjusted before gotoPapers.
+ * Writes the column configuration through Core, then fills `cells[i]` into the i-th paper by date
+ * added, the table's default sort, and returns those papers' ids. The papers screen mounts and
+ * fetches only on its first visit, so call this before gotoPapers.
  */
 async function seed(
   win: Page, custom: PaperColumns['custom'], cells: Record<string, PaperCell | null>[],
   groups: string[] = [...DEFAULT_PAPER_GROUPS],
 ): Promise<string[]> {
-  // The sidebar is drawn, and preload and contract calls are ready.
+  // Once the sidebar is drawn, preload and contract calls are ready.
   await win.locator('[data-desk="papers"]').waitFor()
   await call(win, 'papers.setColumns', { columns: { hidden: [], custom, groups } })
   if (cells.length === 0) return []
@@ -76,7 +77,7 @@ async function seed(
   return ids
 }
 
-/** Open the column settings menu, expand the type row of the column `label`, and click the `type` file; the menu remains. */
+/** Opens Column settings, expands column `label`'s type row and picks `type`; the menu stays open. */
 async function retype(win: Page, label: string, type: '文本' | '单选' | '多选'): Promise<void> {
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [title="列设置"]').click()
@@ -86,7 +87,7 @@ async function retype(win: Page, label: string, type: '文本' | '单选' | '多
   await win.locator(`[data-radix-popper-content-wrapper] .typerow .ctbtn[title="${type}"]`).click()
 }
 
-/** Bypass the interface and press id to get the current custom grid of these articles. */
+/** Fetches the current custom cells of the given papers through Core. */
 const cellsOf = (win: Page, ids: string[]) => Promise.all(ids.map((id) =>
   call<{ custom: Record<string, unknown> }>(win, 'papers.get', { id }).then((r) => r.custom)))
 
@@ -173,7 +174,7 @@ test('别的屏上的写不摘掉论文表的截断标记', async ({ win }) => {
   expect(cells).toBeGreaterThan(0)
   expect(folded).toBeGreaterThan(0)
 
-  // The writing on the later reading will increment the revision. The paper screen is hidden at this time, and the measured width is all 0.
+  // Read Later's write bumps the revision while the papers screen is hidden, where widths measure 0.
   await win.locator('#rowLater').click()
   await shown(win, '.pcard').first().locator('[title="移出"]').click()
   await expect(shown(win, '.desk-head .t')).toHaveText('稍后阅读 · 3')
@@ -207,7 +208,7 @@ test('表内给论文加一个主题后,重新取数确认这一行的主题真�
   const chips = row.locator('td:nth-child(7) .tagchip:not(.tagadd)')
   const before = await chips.allTextContents()
 
-  // When the theme grid cannot fit, fold the extra chips and the + at the end and press them on this grid before unfolding.
+  // The + in a topic cell stays hidden until its row is hovered.
   await row.locator('td:nth-child(7)').hover()
   await row.locator('td:nth-child(7) .tagadd').click()
   await win.locator('.tagin').fill(ADDED_TOPIC)
@@ -215,8 +216,8 @@ test('表内给论文加一个主题后,重新取数确认这一行的主题真�
   await expect(chips).toHaveText([...before, ADDED_TOPIC])
   await expect(win.locator('.tagin')).toHaveCount(0)
 
-  // The interface's own table will be re-retrieved due to the increment of revision. Here we bypass the interface and check it again separately.
-  // Confirm that the changes are actually written back to the core by papers.update, not in a local optimistic state.
+  // The table refetches by itself when the revision bumps; refetching through Core here proves
+  // papers.update wrote the change, not just an optimistic local state.
   const refetchedTopics = await win.evaluate(async (t) => {
     const result = await (window as unknown as MeridianWindow).meridian
       .call('papers.list', { page: 1, size: 1, sort: 'title', direction: 'asc', filter: t }) as {
@@ -234,20 +235,21 @@ test('状态列显示的是阅读状态,点它选一档就写回 core,页面状�
   const title = await row.locator('.pt-title .ci').innerText()
   const chip = row.locator('.stchip')
 
-  // The reading status is not written on the paper page in Curry, and it is filled in as unread when fetching it; this column does not write the extent of compilation.
+  // The vault's paper pages store no reading status, so Core reports them as unread; this column
+  // never shows the page state, which tracks how far the Wiki page is compiled.
   await expect(chip).toHaveText(UNREAD_PAPER)
   await expect(chip).not.toHaveText(PAGE_STATE)
 
   await chip.click()
-  // Clicking this chip only opens the status floating layer, and does not mean clicking this line to open the details panel.
+  // Clicking the chip only opens the status menu; it is not a row click that opens the details panel.
   await expect(win.locator('.ctxmenu .mi')).toHaveText([...READ_STATES])
   await expect(win.locator('.pdetail')).toHaveCount(0)
 
   await win.locator('.ctxmenu .mi', { hasText: READING_PAPER }).click()
   await expect(chip).toHaveText(READING_PAPER)
 
-  // The interface's own table will be re-retrieved due to the increment of revision. Here we bypass the interface and check it again separately.
-  // Confirm that the changes are actually written back to the core by papers.update, not in a local optimistic state.
+  // The table refetches by itself when the revision bumps; refetching through Core here proves
+  // papers.update wrote the change, not just an optimistic local state.
   const refetched = await win.evaluate(async (t) => {
     const result = await (window as unknown as MeridianWindow).meridian
       .call('papers.list', { page: 1, size: 1, sort: 'title', direction: 'asc', filter: t }) as {
@@ -257,7 +259,7 @@ test('状态列显示的是阅读状态,点它选一档就写回 core,页面状�
   }, title)
   console.log(`改过之后重新取数:${JSON.stringify(refetched)}`)
   expect(refetched?.readState).toBe(READING_PAPER)
-  // The two states are written separately: changing the reading state does not change this page. How far has the wiki been compiled?
+  // The two are stored separately: changing the reading status leaves the page state untouched.
   expect(refetched?.pageState).toBe(PAGE_STATE)
 })
 
@@ -292,7 +294,7 @@ test('标签浮层:Escape 关层不冒到屏上,输入框里打的字不留', as
   await win.keyboard.press('Escape')
 
   await expect(win.locator('.tagin')).toHaveCount(0)
-  // Escape was eaten by the floating layer: the details panel was not opened at this time, and the table was still in the same place.
+  // The popover consumed Escape: the details panel did not open and the table is unchanged.
   await expect(win.locator('.pdetail')).toHaveCount(0)
   await expect(win.locator('.ptable tbody tr')).toHaveCount(20)
 
@@ -304,7 +306,7 @@ test('标签浮层:Escape 关层不冒到屏上,输入框里打的字不留', as
 test('标签添加框:写被拒时输入框与打好的字都留着', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
-  // The table is sorted by date added by default. Here we also retrieve it by date added. The first row retrieved is the first row on the table.
+  // The table sorts by date added by default, so the first paper listed that way is its first row.
   const first = await call<{ rows: { id: string }[] }>(
     win, 'papers.list', { page: 1, size: 1, sort: 'addedAt', direction: 'desc' },
   ).then((r) => r.rows[0]!)
@@ -314,7 +316,7 @@ test('标签添加框:写被拒时输入框与打好的字都留着', async ({ w
   await cell.hover()
   await cell.locator('.tagadd').click()
   await input.fill(ADDED_TOPIC)
-  // To bypass the interface, delete this article first: the row on the table is still there. If you press Enter and write core once, it will be rejected.
+  // Delete the paper through Core first: its row stays, and the write that Enter sends is rejected.
   await call(win, 'papers.delete', { id: first.id })
   await input.press('Enter')
 
@@ -327,7 +329,7 @@ test('标签添加框:写被拒时输入框与打好的字都留着', async ({ w
 test('标签添加框:点联想项写被拒时,候选层与打开的占位都留着', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
-  // The table is sorted by date added by default. Here we also retrieve it by date added. The first row retrieved is the first row on the table.
+  // The table sorts by date added by default, so the first paper listed that way is its first row.
   const first = await call<{ rows: { id: string }[] }>(
     win, 'papers.list', { page: 1, size: 1, sort: 'addedAt', direction: 'desc' },
   ).then((r) => r.rows[0]!)
@@ -337,10 +339,10 @@ test('标签添加框:点联想项写被拒时,候选层与打开的占位都留
 
   await cell.hover()
   await cell.locator('.tagadd').click()
-  // Without typing, the association layer immediately lists the values that are not available in this article in the entire database; click on the first candidate to initiate the addition this time.
+  // Before typing, the list suggests every vault topic the paper lacks; the test adds the first.
   await expect(hit).toHaveCount(1)
   const picked = await hit.innerText()
-  // Bypass the interface and delete this article first: the row on the table is still there. If you click on the candidate and write core, it will be rejected.
+  // Delete the paper through Core first: its row stays, and the write the click sends is rejected.
   await call(win, 'papers.delete', { id: first.id })
   await hit.click()
 
@@ -353,7 +355,7 @@ test('标签添加框:点联想项写被拒时,候选层与打开的占位都留
 test('标签添加框:提交在路上时点外,写落地前候选层与占位都不收', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
-  // The table is sorted by date added by default. Here we also retrieve it by date added. The first row retrieved is the first row on the table.
+  // The table sorts by date added by default, so the first paper listed that way is its first row.
   const first = await call<{ rows: { id: string }[] }>(
     win, 'papers.list', { page: 1, size: 1, sort: 'addedAt', direction: 'desc' },
   ).then((r) => r.rows[0]!)
@@ -365,14 +367,14 @@ test('标签添加框:提交在路上时点外,写落地前候选层与占位都
   await cell.locator('.tagadd').click()
   await expect(hit).toHaveCount(1)
   const picked = await hit.innerText()
-  // Select your full text and screen it again: this article is still there, and it is still the first article after screening.
+  // Typing the suggestion's full text filters the list again; it is still there and still first.
   await input.fill(picked)
   await expect(hit).toHaveText(picked)
-  // Bypass the interface and delete this article first: the row on the table is still there, click on the candidate and write core this time, it will be rejected.
+  // Delete the paper through Core first: its row stays, and the write the click sends is rejected.
   await call(win, 'papers.delete', { id: first.id })
 
-  // In the same task, first click the candidate once to submit, and then send pointerdown/mousedown/click to the elements outside the box in sequence:
-  // papers.update takes IPC cross-process and cannot be implemented within this task. This series of points must fall when the submission is on the way.
+  // In one task, click the suggestion to submit, then pointerdown/mousedown/click outside the box.
+  // papers.update crosses IPC and cannot settle within the task, so these land while it is in flight.
   await win.evaluate(() => {
     document.querySelector<HTMLElement>('.pickhits .rrow')!
       .dispatchEvent(new MouseEvent('click', { bubbles: true }))
@@ -392,7 +394,7 @@ test('标签添加框:提交在路上时点外,写落地前候选层与占位都
 test('标签添加框:回车提交在路上时点外,写落地前占位、打的字与候选层都不收', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
-  // The table is sorted by date added by default. Here we also retrieve it by date added. The first row retrieved is the first row on the table.
+  // The table sorts by date added by default, so the first paper listed that way is its first row.
   const first = await call<{ rows: { id: string }[] }>(
     win, 'papers.list', { page: 1, size: 1, sort: 'addedAt', direction: 'desc' },
   ).then((r) => r.rows[0]!)
@@ -404,11 +406,11 @@ test('标签添加框:回车提交在路上时点外,写落地前占位、打的
   await cell.locator('.tagadd').click()
   await input.fill(ADDED_TOPIC)
   await expect(newRow).toHaveCount(1)
-  // To bypass the interface, delete this article first: the row on the table is still there, and writing core this time after pressing Enter will be rejected.
+  // Delete the paper through Core first: its row stays, and the write that Enter sends is rejected.
   await call(win, 'papers.delete', { id: first.id })
 
-  // In the same task, first send a carriage return to submit once, and then send pointerdown/mousedown/click to the elements outside the box in sequence:
-  // papers.update takes IPC cross-process and cannot be implemented within this task. This series of points must fall when the submission is on the way.
+  // In one task, press Enter to submit, then pointerdown/mousedown/click outside the box.
+  // papers.update crosses IPC and cannot settle within the task, so these land while it is in flight.
   await win.evaluate(() => {
     document.querySelector<HTMLElement>('.tagin')!
       .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
@@ -432,8 +434,9 @@ test('标签添加框:没有联想层时焦点移走也收起,打的字不留', 
     win, 'papers.list', { page: 1, size: 10, sort: 'addedAt', direction: 'desc' },
   ).then((r) => r.rows)
   const vocab = (await call<{ value: string }[]>(win, 'papers.facets', { field: 'topics' })).map((f) => f.value)
-  // Enter a topic that already exists in this article, and there is no value in the word list other than this article that contains it: there is neither candidate nor new creation, and the association layer is not drawn.
-  // To close it, you can only rely on occupying your own out-of-point and out-of-focus points.
+  // Type a topic this paper already has and no other vocabulary value contains: there is no
+  // suggestion and no "Create" row, so no popover renders and only the input's own blur and
+  // outside-click handling can close it.
   const pick = rows.flatMap((row, at) => row.topics.map((topic) => ({ at, topic, topics: row.topics })))
     .find(({ topic, topics }) => !vocab.some((v) => !topics.includes(v) && v.toLowerCase().includes(topic.toLowerCase())))
   expect(pick).toBeDefined()
@@ -473,7 +476,8 @@ test('标签添加框:点联想项写成功后,输入框与候选层都收起', 
 })
 
 test('文本格:改完焦点移走或点到格外都算放弃,只有回车才写', async ({ win }) => {
-  // Column creation, three rounds of editing and three core checks; a window that is not on the screen needs to wait two seconds for each operability, and the default 30 seconds is not enough
+  // Creates a column, then makes three edits each checked in Core; an offscreen window waits two
+  // seconds per actionability check, so the default 30 s is too short.
   test.slow()
   await gotoPapers(win)
   await firstPage(win)
@@ -481,17 +485,18 @@ test('文本格:改完焦点移走或点到格外都算放弃,只有回车才写
   await win.locator('.ptable thead [title="新增列"]').click()
   await win.locator('.ptable thead th.th-new input').fill('备注')
   await win.locator('.ptable thead th.th-new input').press('Enter')
-  // The placeholder is removed only after the column is created and written; before the placeholder is removed, each row of the table body will have an extra space of pt-cust, which will be unique after it is removed.
+  // The placeholder goes only once the column write lands; until then every body row has an extra
+  // pt-cust cell, and afterwards exactly one.
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(0)
 
   const cell = win.locator('.ptable tbody tr').first().locator('td.pt-cust')
   const input = cell.locator('input.celledit')
-  // The table is sorted by date added by default. Here we also retrieve it by date added. The first row retrieved is the first row on the table.
+  // The table sorts by date added by default, so the first paper listed that way is its first row.
   const saved = () => call<{ rows: { custom: Record<string, unknown> }[] }>(
     win, 'papers.list', { page: 1, size: 1, sort: 'addedAt', direction: 'desc' },
   ).then((r) => Object.values(r.rows[0]!.custom))
 
-  // The keyboard moves the focus out of this grid: the grid is closed and the typed words are not written.
+  // Moving focus out with the keyboard closes the cell without writing the typed text.
   await cell.click()
   await input.fill('改了又不要')
   await input.press('Tab')
@@ -499,7 +504,7 @@ test('文本格:改完焦点移走或点到格外都算放弃,只有回车才写
   await expect(cell).toHaveText('')
   expect(await saved()).toEqual([])
 
-  // Click outside the grid: also close it and don’t write
+  // Clicking outside the cell also closes it without writing.
   await cell.click()
   await input.fill('点外面也不要')
   await shown(win, '.desk-head .t').click()
@@ -530,7 +535,7 @@ test('文本格开着时按住表格自己的滚动条,不算点到格外:格子
 
   const wrap = win.locator('.tblwrap')
   const box = (await wrap.boundingBox())!
-  // The 5px within the bottom edge of wrap is the track of the horizontal scroll bar. No line in the table body can reach this y
+  // The bottom 5px of .tblwrap is the horizontal scrollbar track; no body row reaches this y.
   await win.mouse.move(box.x + box.width / 2, box.y + box.height - 5)
   await win.mouse.down()
   await win.mouse.up()
@@ -548,7 +553,8 @@ test('文本格开着时按住表格自己的竖直滚动条,不算点到格外:
   await win.locator('.ptable thead th.th-new input').press('Enter')
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(0)
 
-  // 50 items per page, the content of the table body far exceeds the height of the viewport, ensuring that the scroll bar in the vertical direction of .tblwrap is real, so that the test will not be empty.
+  // At 50 per page the body is far taller than the viewport, so .tblwrap really scrolls vertically
+  // and the check is not vacuous.
   await win.locator('.pagebar .segmented-control>button', { hasText: '50 / 页' }).click()
   await expect(win.locator('.ptable tbody tr')).toHaveCount(50)
 
@@ -562,7 +568,7 @@ test('文本格开着时按住表格自己的竖直滚动条,不算点到格外:
   await input.fill('按竖滚动条也不丢')
 
   const box = (await wrap.boundingBox())!
-  // The 5px inside the right side of wrap is the track of the vertical scroll bar. No column in the table body can reach this x
+  // The rightmost 5px of .tblwrap is the vertical scrollbar track; no body column reaches this x.
   await win.mouse.move(box.x + box.width - 5, box.y + box.height / 2)
   await win.mouse.down()
   await win.mouse.up()
@@ -572,14 +578,16 @@ test('文本格开着时按住表格自己的竖直滚动条,不算点到格外:
 })
 
 test('列管理:内置列显隐持久到离开再回来,固定列藏不了;自定义列新建、填格、撤销、改名、删除', async ({ win }) => {
-  // A use case goes through creating columns, filling in fields, canceling, renaming, and deleting columns; a window that is not on the screen needs to wait two seconds for each operability, and the default 30 seconds is not enough.
+  // One test creates a column, fills a cell, undoes, renames and deletes; an offscreen window waits
+  // two seconds per actionability check, so the default 30 s is too short.
   test.slow()
   await gotoPapers(win)
   await firstPage(win)
   const head = () => win.locator('.ptable thead th').allTextContents()
-  // All built-in columns in the new library are displayed
+  // A fresh vault shows every built-in column.
   await expect.poll(head).toContain('主题')
-  // There are two entrances at the end of the meter: + plus one column (the plus sign has no shaft hole), and the gear is set in rows (there is one shaft hole)
+  // The header ends in two buttons: + adds a column (no circle in its icon) and the gear opens
+  // Column settings (one circle, the gear's hub).
   await expect(win.locator('.ptable thead [title="列设置"] svg circle')).toHaveCount(1)
   await expect(win.locator('.ptable thead [title="新增列"] svg circle')).toHaveCount(0)
   await win.locator('.ptable thead').hover()
@@ -592,14 +600,15 @@ test('列管理:内置列显隐持久到离开再回来,固定列藏不了;自�
   await win.locator('[data-desk="wiki"]').click()
   await gotoPapers(win)
   await expect.poll(head).not.toContain('主题')
-  // The thesis screen is always hanging, and what you see when you come back may be just the state it is holding on to; the column configuration will only be permanent if it is entered into the core——
-  // The theme is the column hidden this time
+  // The papers screen stays mounted, so on return it may just show the state it held; the column
+  // configuration persisted only if Core has it, with Topics as the one hidden column.
   expect((await call<{ hidden: string[] }>(win, 'papers.columns', {})).hidden).toEqual(['topics'])
 
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [title="新增列"]').click()
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(1)
-  // Once the placeholder is opened, the type layer pops up, and the focus is still on the column name input box; the new table header is at the right end of the table, and the layer cannot be squeezed out of the window.
+  // The type popover opens with the placeholder while focus stays in the column name input; the new
+  // header sits at the table's right end, and the popover must still fit inside the window.
   await expect(win.locator('[data-radix-popper-content-wrapper] .ctbtn')).toHaveCount(3)
   await expect(win.locator('.ptable thead th.th-new input')).toBeFocused()
   const layer = (await win.locator('[data-radix-popper-content-wrapper] .ctxmenu').boundingBox())!
@@ -609,7 +618,7 @@ test('列管理:内置列显隐持久到离开再回来,固定列藏不了;自�
   await win.locator('.ptable thead th.th-new input').fill('备注')
   await win.locator('.ptable thead th.th-new input').press('Enter')
   await expect.poll(head).toContain('备注')
-  // The column creation is written as: Remove the placeholder and type layer together, without leaving even one frame of overlap.
+  // Creating the column removes the placeholder and type popover together, with no frame of overlap.
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(0)
   await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(0)
 
@@ -626,7 +635,7 @@ test('列管理:内置列显隐持久到离开再回来,固定列藏不了;自�
   await first.locator('td.pt-cust input.celledit').press('Enter')
   await expect(first.locator('td.pt-cust')).toHaveText('读到一半')
 
-  // The table is sorted by date added by default. Here we also retrieve it by date added. The first row retrieved is the first row on the table.
+  // The table sorts by date added by default, so the first paper listed that way is its first row.
   const rows = await call<{ rows: { title: string; custom: Record<string, string> }[] }>(
     win, 'papers.list', { page: 1, size: 1, sort: 'addedAt', direction: 'desc' },
   ).then((r) => r.rows)
@@ -635,7 +644,7 @@ test('列管理:内置列显隐持久到离开再回来,固定列藏不了;自�
 
   const changes = await call<{ id: string; title: string }[]>(win, 'changelog.list', {})
   expect(changes[0]!.title).toContain('改了字段')
-  // To undo, take the real path on the recent changes screen: the write count of the entire database will be incremented there, and the paper table will be re-fetched accordingly.
+  // Undo the real way, on Recent Changes: it bumps the vault revision and the paper table refetches.
   await win.locator('[data-desk="changelog"]').click()
   await shown(win, '.crow').first().locator('.cundo').click()
   await gotoPapers(win)
@@ -654,13 +663,14 @@ test('列管理:内置列显隐持久到离开再回来,固定列藏不了;自�
 })
 
 test('多选格:连着提交两次都留得住,点输入框本身不关弹层', async ({ win }) => {
-  // Create a column and write two cells in a row; the window that is not on the screen needs to wait two seconds for each operability. The default 30 seconds is not enough.
+  // Creates a column and writes one cell twice in a row; an offscreen window waits two seconds per
+  // actionability check, so the default 30 s is too short.
   test.slow()
   await gotoPapers(win)
   await firstPage(win)
   const pop = win.locator('[data-radix-popper-content-wrapper]')
 
-  // Create a multi-select column: one cell can hold two values, so there is no such thing as submitting twice in a row.
+  // Multiple choice, because only then can one cell keep two values submitted back to back.
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [title="新增列"]').click()
   await pop.locator('.ctbtn[title="多选"]').click()
@@ -673,15 +683,17 @@ test('多选格:连着提交两次都留得住,点输入框本身不关弹层', 
   await cell.click()
   await input.fill(PICKED[0])
   await expect(pop.locator('.rrow.mk')).toHaveCount(1)
-  // The input box is the anchor of the elastic layer and is not inside the elastic layer. Clicking on it does not count as clicking outside the elastic layer. Both left and right clicks must be true:
-  // Radix only postpones the closing of the left-click until click, and closes the right-click on the spot. The input box will be eaten by itself. Click can't stop it.
+  // The input anchors the popover but is outside it, and clicking it must not count as an outside
+  // click, for both buttons: Radix defers left-click dismissal to the click event but dismisses a
+  // right-click at once, so the input swallowing its own click cannot stop it.
   for (const button of ['left', 'right'] as const) {
     await input.click({ button })
     await expect(pop).toHaveCount(1)
     await expect(input).toHaveValue(PICKED[0])
   }
 
-  // There is no wait between two submissions: the first write has not come back yet, and the column configuration and grid values ​​clutching in the interface are still old.
+  // No wait between the two submissions: the first write has not returned, so the column
+  // configuration and cell value the UI holds are still the old ones.
   await input.press('Enter')
   await input.fill(PICKED[1])
   await input.press('Enter')
@@ -700,14 +712,16 @@ test('多选格:连着提交两次都留得住,点输入框本身不关弹层', 
 })
 
 test('列类型:建单选列、格子里建选项、按它分组、改名与撤销、删还在用的选项被拒', async ({ win }) => {
-  // A use case goes through creating a column, filling in two boxes, grouping, renaming, canceling, and deleting; the window that does not appear on the screen needs to wait two seconds for each operation.
+  // One test creates a column, fills two cells, groups, renames, undoes and deletes; an offscreen
+  // window waits two seconds per actionability check.
   test.slow()
   await gotoPapers(win)
   await firstPage(win)
   const head = () => win.locator('.ptable thead th').allTextContents()
   const menu = win.locator('[data-radix-popper-content-wrapper] .mi.colrow')
 
-  // Create a selection column: The + at the end of the header opens a placeholder. In the type layer below it, first select the gear, fill in the name and press Enter
+  // Create a single-choice column: the + at the header's end opens a placeholder; pick the type in
+  // the popover below it first, then type the name and press Enter.
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [title="新增列"]').click()
   await win.locator('[data-radix-popper-content-wrapper] .ctbtn[title="单选"]').click()
@@ -719,7 +733,7 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   expect((await call<{ custom: { label: string; type: string }[] }>(win, 'papers.columns', {}))
     .custom[0]).toMatchObject({ label: '读法', type: 'select' })
 
-  // Build an option in each of the two cells
+  // Create one option from each of two cells.
   const rows = win.locator('.ptable tbody tr')
   for (const [at, value] of [[0, '精读'], [1, '略读']] as const) {
     await rows.nth(at).locator('td.pt-cust').click()
@@ -730,7 +744,8 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   expect((await call<{ custom: { options: string[] }[] }>(win, 'papers.columns', {}))
     .custom[0]!.options).toEqual(['精读', '略读'])
 
-  // Check it in the gear, and there will be one more chip in the grouping column; click in and only the two filled-in articles will be grouped.
+  // Checking the column in the group gear adds a button to the grouping bar; selecting it groups
+  // only the two papers that have a value.
   await win.locator('.filters .grpgear').click()
   await win.locator('[data-radix-popper-content-wrapper] .mi', { hasText: '读法' }).click()
   await win.keyboard.press('Escape')
@@ -738,14 +753,15 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   await expect(win.locator('.gxrow')).toHaveCount(2)
   await expect(win.locator('.gxrow .n')).toHaveText(['1', '1'])
 
-  // When you are grouping by it, uncheck it in the gear: chip is gone, and the group will return to "None" on the spot.
+  // Unchecking it in the gear while grouping by it removes its button, and grouping falls back to
+  // "None" at once.
   await win.locator('.filters .grpgear').click()
   await win.locator('[data-radix-popper-content-wrapper] .mi', { hasText: '读法' }).click()
   await win.keyboard.press('Escape')
   await expect(win.locator('.filters .segmented-control>button', { hasText: '读法' })).toHaveCount(0)
   await expect(win.locator('.filters .segmented-control>button.on')).toHaveText('无')
 
-  // Change the name of an option: the grid will change accordingly, bypass the interface and check again to confirm that it is not a local optimistic state.
+  // Rename an option: the cell follows, and refetching through Core rules out an optimistic state.
   await firstPage(win)
   const title = await rows.first().locator('td.pt-title').innerText()
   await win.locator('.ptable thead').hover()
@@ -766,7 +782,7 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   const changes = await call<{ id: string; title: string }[]>(win, 'changelog.list', {})
   expect(changes[0]!.title).toBe('论文表 · 列「读法」的选项 精读 → 细读')
 
-  // Withdraw: Thesis goes back with column options
+  // Undo: the paper's cell and the column options both revert.
   await win.locator('[data-desk="changelog"]').click()
   await shown(win, '.crow').first().locator('.cundo').click()
   await gotoPapers(win)
@@ -774,7 +790,8 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   expect((await call<{ custom: { options: string[] }[] }>(win, 'papers.columns', {}))
     .custom[0]!.options).toEqual(['精读', '略读'])
 
-  // There are also options filled in the paper that cannot be deleted: toast reports the original words of core, and the header remains unchanged.
+  // An option a paper still uses cannot be deleted: the toast shows Core's own message and the
+  // header is unchanged.
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [title="列设置"]').click()
   await menu.filter({ hasText: '读法' }).locator('.cmx.optx').click()
@@ -785,7 +802,8 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   await expect.poll(head).toContain('读法')
 
-  // Delete this column when you are grouping it: the header and the chip on the grouping column are gone, and the grouping is returned to "None" on the spot.
+  // Delete the column while grouping by it: its header and grouping-bar button go, and grouping
+  // falls back to "None" at once.
   await win.keyboard.press('Escape')
   await win.locator('.filters .grpgear').click()
   await win.locator('[data-radix-popper-content-wrapper] .mi', { hasText: '读法' }).click()
@@ -801,7 +819,8 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   await expect(shown(win, '.filters .segmented-control>button').filter({ hasText: '读法' })).toHaveCount(0)
   await expect(shown(win, '.filters .segmented-control>button.on')).toHaveText('无')
   await expect.poll(head).not.toContain('读法')
-  // If you delete a column without removing it from the group, the core will reject the write and the column will be retrieved. The above assertion is only an optimistic state.
+  // Had the column been deleted without leaving the groups, Core would reject the write and the
+  // column would return; the assertions above see only the optimistic state.
   const left = await call<PaperColumns>(win, 'papers.columns', {})
   expect(left.custom).toEqual([])
   expect(left.groups).toEqual([...DEFAULT_PAPER_GROUPS])
@@ -841,7 +860,8 @@ test('翻页改了页码的个数,页码条与每页档位的边缘不动', asyn
   })
 
   const first = await edges()
-  // There is only one ellipsis on the first page, on both sides of page 4, and again on the last page: the lengths of the three page number bars are different.
+  // Page 1 has one ellipsis, page 4 one on each side and the last page one again, so the three
+  // pagers differ in length.
   for (const n of [2, 3, 4]) await goPage(n)
   const middle = await edges()
   await goPage(PAPER_PAGES)
@@ -864,8 +884,8 @@ test('分页条两端对齐:条数贴左缘,页码与每页档位挨着贴右缘
 
   const laid = await win.locator('.pagebar').evaluate((bar) => {
     const bx = bar.getBoundingClientRect()
-    // What is measured is where the words "total N items" fall, not the .pginfo box: when the box is expanded, the words are still at the left end.
-    // Only the word "quantity" can tell clearly that the number of items the user sees is not posted on the left edge.
+    // Measure the count text, not the .pginfo box: a stretched box starts at the left edge even
+    // when its text does not, so only the text shows whether the count the user sees is flush left.
     const count = document.createRange()
     count.selectNodeContents(bar.querySelector('.pginfo')!)
     const seg = bar.querySelector('.segmented-control')!.getBoundingClientRect()
@@ -892,13 +912,14 @@ test('分页条两端对齐:条数贴左缘,页码与每页档位挨着贴右缘
 })
 
 test('年份与发表分两列:年份只写年份、仍按它排序,发表只写出处、紧跟年份、可隐藏;详情里两行各写各的,详情开着时表只剩标题、作者与年份', async ({ win }) => {
-  // Two rounds of sorting, one hiding, and opening details; a window that is not on the screen needs to wait two seconds for each operability, and the default 30 seconds is not enough
+  // Two sorts, one hide and opening details; an offscreen window waits two seconds per
+  // actionability check, so the default 30 s is too short.
   test.slow()
   await gotoPapers(win)
   await firstPage(win)
-  // Draw a sorting arrow next to the label at the header of the table. The read text has a leading space; trimming it is better than pure labels.
+  // Header cells draw a sort arrow beside the label, which leaves a leading space; trim to the label.
   const head = async () => (await win.locator('.ptable thead th').allTextContents()).map((t) => t.trim())
-  // After the title is the short title, rating, author, year, publication, topic, and status.
+  // After Title come Short title, Rating, Authors, Year, Venue, Topics and Status.
   expect((await head()).slice(0, 8)).toEqual(['标题', '短标题', '评分', '作者', '年份', '发表', '主题', '状态'])
   const listed = (direction: 'asc' | 'desc') => call<{ rows: { year?: number; venue: string }[] }>(
     win, 'papers.list', { page: 1, size: 10, sort: 'year', direction },
@@ -910,13 +931,13 @@ test('年份与发表分两列:年份只写年份、仍按它排序,发表只写
   await expect(rows.locator('td:nth-child(5)')).toHaveText(desc.map((p) => String(p.year ?? '')))
   await expect(rows.locator('td:nth-child(6)')).toHaveText(desc.map((p) => p.venue))
 
-  // The year is still the sorting column: click again to switch to ascending order, and the two columns will be switched to the page in ascending order.
+  // Year is still the sort column: a second click switches to ascending, and both columns follow.
   await win.locator('.ptable thead th[data-k="year"]').click()
   const asc = await listed('asc')
   await expect(rows.locator('td:nth-child(5)')).toHaveText(asc.map((p) => String(p.year ?? '')))
   await expect(rows.locator('td:nth-child(6)')).toHaveText(asc.map((p) => p.venue))
 
-  // Publishing is not a fixed column, it can be hidden, it is venue that goes into the core
+  // Venue is not a locked column, so it can be hidden; Core stores it as venue.
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [title="列设置"]').click()
   const menu = win.locator('[data-radix-popper-content-wrapper] .mi.colrow')
@@ -924,7 +945,7 @@ test('年份与发表分两列:年份只写年份、仍按它排序,发表只写
   await expect(menu.filter({ hasText: '发表' })).not.toHaveClass(/locked/)
   await menu.filter({ hasText: '发表' }).click()
   await expect.poll(head).not.toContain('发表')
-  // All the built-in columns in the new library are displayed, and the published column is the column that was hidden this time.
+  // A fresh vault shows every built-in column, so Venue is the only hidden one.
   expect((await call<PaperColumns>(win, 'papers.columns', {})).hidden).toEqual(['venue'])
   await win.keyboard.press('Escape')
 
@@ -945,7 +966,7 @@ test('齿轮里没有新建入口,建列归表头末尾的 ＋', async ({ win })
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [title="列设置"]').click()
   const menu = win.locator('[data-radix-popper-content-wrapper]')
-  // The menu is really open, so the following two items are not passed empty-handed because they are not open.
+  // The menu is really open, so the two checks below cannot pass merely because it is closed.
   await expect(menu.locator('.mi.colrow', { hasText: '年份' })).toHaveCount(1)
   await expect(menu.locator('.mi-in')).toHaveCount(0)
   await expect(menu.locator('.ctrow')).toHaveCount(0)
@@ -959,13 +980,13 @@ test('占位列开着时行高仍是 38px,表仍对齐全局页面宽度', async
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [title="新增列"]').click()
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(1)
-  // The placeholder column also has a blank space in each row of the table body. The number of cells in the table is not correct.
+  // The placeholder column also adds an empty cell to every body row, keeping the cell count right.
   expect(await cells()).toBe(before + 1)
   await parkPointer(win)
   expect(await uniqueHeights(win.locator('.ptable tbody tr'))).toEqual([38])
   const wide = await sharedContentGeometry(win, '.libwide')
   expect(wide.width).toBe(wide.expectedWidth)
-  // Esc removes the entire occupying column
+  // Escape removes the whole placeholder column.
   await win.locator('.ptable thead th.th-new input').press('Escape')
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(0)
   expect(await cells()).toBe(before)
@@ -986,12 +1007,14 @@ test('详情面板保留完整列与列操作,Escape 收的是详情面板', asy
   await win.keyboard.press('Escape')
   await expect(win.locator('.pdetail')).toHaveCount(0)
   await expect(detailSlot).toHaveAttribute('data-panel-state', 'closed')
-  // No floating layer should pop up when the details are closed: if the layer that creates the column is opened when the details are open, it will pop up.
+  // Closing the details opens no popover; an add-column popover opened while the details were open
+  // would show up now.
   await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(0)
 })
 
 test('建列被 core 拒绝:占位格与打好的列名都留着,改了再回车才建出来', async ({ win }) => {
-  // Create a column, fill in two boxes, delete a column, and create a column twice; the window that is not on the screen needs to wait two seconds for each operability, and the default 30 seconds is not enough
+  // Creates a column, fills two values, deletes the column and creates two more; an offscreen
+  // window waits two seconds per actionability check, so the default 30 s is too short.
   test.slow()
   await gotoPapers(win)
   await firstPage(win)
@@ -1000,7 +1023,8 @@ test('建列被 core 拒绝:占位格与打好的列名都留着,改了再回车
   const newHead = win.locator('.ptable thead th.th-new')
   const newInput = newHead.locator('input')
 
-  // The first line leaves two values in a multi-select column, and then deletes this column: the column is gone, but the values remain in the paper.
+  // Leave two values in a multiple-choice column on the first row, then delete the column: the
+  // column is gone but the values stay on the paper.
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [title="新增列"]').click()
   await pop.locator('.ctbtn[title="多选"]').click()
@@ -1022,26 +1046,29 @@ test('建列被 core 拒绝:占位格与打好的列名都留着,改了再回车
   await menu.filter({ hasText: MULTI_COLUMN }).locator('.cmx.del').click()
   await expect.poll(head).not.toContain(MULTI_COLUMN)
   await win.keyboard.press('Escape')
-  // The table is sorted by date added by default. Here we also retrieve it by date added. The first row retrieved is the first row on the table.
+  // The table sorts by date added by default, so the first paper listed that way is its first row.
   const first = await call<{ rows: { custom: Record<string, unknown> }[] }>(
     win, 'papers.list', { page: 1, size: 1, sort: 'addedAt', direction: 'desc' },
   ).then((r) => r.rows[0]!)
   expect(Object.values(first.custom)).toEqual([PICKED])
   expect((await call<PaperColumns>(win, 'papers.columns', {})).custom).toEqual([])
 
-  // The key of the Chinese column name fell on the same one again. Core saw multiple values ​​left in the paper and rejected this column - choose a non-default one.
-  // Submit the type again, and "the type will quietly fall back to the default after being rejected." This kind of regression will be seen by this use case.
+  // This Chinese column name folds to the same key again, and Core rejects the column because a
+  // paper still holds several values under it. A non-default type is picked so this test catches
+  // the type quietly falling back to the default after a rejection.
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [title="新增列"]').click()
   await pop.locator('.ctbtn[title="单选"]').click()
   await newInput.fill('读法')
   await newInput.press('Enter')
-  // Column creation is not optimistic about insertion: at this moment, the table header should not have it, only the placeholder, and the focus is still on the placeholder.
+  // Columns are not inserted optimistically: for now the header has only the placeholder, and focus
+  // stays in it.
   expect(await head()).not.toContain('读法')
   await expect(newInput).toBeFocused()
   await expect(win.locator('#toast')).toHaveText('列「读法」不是多选列,有论文填着多个值')
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
-  // Writing was rejected: the placeholder, type layer, typed words, and type pressed (the "radio selection" selected this time, not the default "text") are all retained.
+  // After the rejection the placeholder, type popover, typed name and chosen type (Single choice,
+  // not the default Text) all remain.
   await expect(newHead).toHaveCount(1)
   await expect(newInput).toHaveValue('读法')
   const selectBtn = pop.locator('.ctbtn[title="单选"]')
@@ -1050,7 +1077,8 @@ test('建列被 core 拒绝:占位格与打好的列名都留着,改了再回车
   await expect.poll(head).not.toContain('读法')
   expect((await call<PaperColumns>(win, 'papers.columns', {})).custom).toEqual([])
 
-  // Change it to a non-colliding key name on the spot and press Enter: This time it will be built and the placeholder will be removed.
+  // Change it in place to a name whose key does not collide and press Enter: this time the column is
+  // created and the placeholder goes.
   await newInput.fill('note')
   await newInput.press('Enter')
   await expect.poll(head).toContain('note')
@@ -1062,19 +1090,20 @@ test('建列一次建成:选中的类型跟着一次写落地,不是先建文本
   await firstPage(win)
   const head = () => win.locator('.ptable thead th').allTextContents()
 
-  // Click +: The placeholder and type layer appear at the same time, and the focus is on the column name input box.
+  // Clicking + shows the placeholder and type popover together, with focus in the column name input.
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [title="新增列"]').click()
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(1)
   await expect(win.locator('.ptable thead th.th-new input')).toBeFocused()
 
-  // Click "Radio Select": the button aria-checked="true", the focus is still on the input box
+  // Clicking Single choice sets its aria-checked="true" while focus stays in the input.
   const selectBtn = win.locator('[data-radix-popper-content-wrapper] .ctbtn[title="单选"]')
   await selectBtn.click()
   await expect(selectBtn).toHaveAttribute('aria-checked', 'true')
   await expect(win.locator('.ptable thead th.th-new input')).toBeFocused()
 
-  // Type a name and press Enter: the type of the new column in core is select, the table header appears, the placeholders and layers are gone, and there is no configuration layer.
+  // Typing a name and pressing Enter stores a select column in Core; its header appears and neither
+  // the placeholder nor any popover remains.
   await win.locator('.ptable thead th.th-new input').fill('建列一次建成')
   await win.locator('.ptable thead th.th-new input').press('Enter')
   await expect.poll(head).toContain('建列一次建成')
@@ -1093,7 +1122,8 @@ test('建列占位:Esc 放弃,占位与类型层一起没了', async ({ win }) =
   await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(1)
 
   await win.keyboard.press('Escape')
-  // Both sentences take snapshots, do not poll, etc. The type layer is checked first: red should be red in the type layer itself, not the one that is occupied first.
+  // Both checks are snapshots, not polls. The type popover is checked first, so a lingering popover
+  // fails its own check rather than the placeholder's.
   expect(await win.locator('[data-radix-popper-content-wrapper]').count()).toBe(0)
   expect(await win.locator('.ptable thead th.th-new').count()).toBe(0)
 })
@@ -1107,7 +1137,8 @@ test('建列占位:点到占位与类型层之外,占位与类型层一起没了
   await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(1)
 
   await shown(win, '.desk-head .t').click()
-  // Both sentences take snapshots, do not poll, etc. The type layer is checked first: red should be red in the type layer itself, not the one that is occupied first.
+  // Both checks are snapshots, not polls. The type popover is checked first, so a lingering popover
+  // fails its own check rather than the placeholder's.
   expect(await win.locator('[data-radix-popper-content-wrapper]').count()).toBe(0)
   expect(await win.locator('.ptable thead th.th-new').count()).toBe(0)
 })
@@ -1133,23 +1164,24 @@ test('建列占位:只用键盘建一列多选列', async ({ win }) => {
   const input = win.locator('.ptable thead th.th-new input')
   await input.fill('键盘建列')
 
-  // Press Tab in the input box, focus into the type layer, and fall on the currently selected "Text"
+  // Tab from the input moves focus into the type popover, onto the selected Text option.
   await win.keyboard.press('Tab')
   const textBtn = win.locator('[data-radix-popper-content-wrapper] .ctbtn[title="文本"]')
   const multiBtn = win.locator('[data-radix-popper-content-wrapper] .ctbtn[title="多选"]')
   await expect(textBtn).toBeFocused()
 
-  // Use the arrow keys to move between the three gears and select, and the focus remains in the group: text → single selection → multiple selection
+  // Arrow keys move through and select the three options, focus staying in the group: Text, Single
+  // choice, Multiple choice.
   await win.keyboard.press('ArrowRight')
   await win.keyboard.press('ArrowRight')
   await expect(multiBtn).toBeFocused()
   await expect(multiBtn).toHaveAttribute('aria-checked', 'true')
 
-  // Enter selects the currently focused gear and returns the focus to the column name input box.
+  // Enter selects the focused option and returns focus to the column name input.
   await win.keyboard.press('Enter')
   await expect(input).toBeFocused()
 
-  // Press enter in the input box to submit: the type in core is "multiple selection" selected by the keyboard.
+  // Enter in the input submits, and Core stores the Multiple choice type picked by keyboard.
   await win.keyboard.press('Enter')
   await expect.poll(() => win.locator('.ptable thead th').allTextContents()).toContain('键盘建列')
   expect((await call<PaperColumns>(win, 'papers.columns', {}))
@@ -1165,11 +1197,12 @@ test('建列不乐观插入:写在路上或写失败时表头不会同时有新�
   await win.locator('.ptable thead [title="新增列"]').click()
   await win.locator('.ptable thead th.th-new input').fill('建列时序')
   await win.locator('.ptable thead th.th-new input').press('Enter')
-  // The moment you press enter, you immediately check the table header: the new column should not have appeared (no optimistic insertion), and the placeholder is still there - both will not be there at the same time.
+  // Checked right after Enter: the new column is not there yet (no optimistic insert) and the
+  // placeholder still is, so the two never show at once.
   expect(await head()).not.toContain('建列时序')
   expect(await win.locator('.ptable thead th.th-new').count()).toBe(1)
 
-  // After the writing is implemented: the placeholder is no longer there, the new column is there
+  // Once the write lands the placeholder is gone and the new column is there.
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(0)
   await expect.poll(head).toContain('建列时序')
 })
@@ -1181,15 +1214,17 @@ test('建列写在路上时 Esc 放弃了草稿:占位与类型层一起没了,�
   await win.locator('.ptable thead [title="新增列"]').click()
   await win.locator('.ptable thead th.th-new input').fill('写在路上被放弃')
   await win.locator('.ptable thead th.th-new input').press('Enter')
-  // Press Esc without waiting for the writing to land: the placeholder is removed, but the writing has been sent and cannot be withdrawn.
+  // Escape before the write lands removes the placeholder, but the write is already sent and
+  // cannot be recalled.
   await win.keyboard.press('Escape')
-  // Both sentences take snapshots, do not poll, etc. The type layer is checked first: red should be red in the type layer itself, not the one that is occupied first.
+  // Both checks are snapshots, not polls. The type popover is checked first, so a lingering popover
+  // fails its own check rather than the placeholder's.
   expect(await win.locator('[data-radix-popper-content-wrapper]').count()).toBe(0)
   expect(await win.locator('.ptable thead th.th-new').count()).toBe(0)
 
   await expect.poll(() => call<PaperColumns>(win, 'papers.columns', {}).then((c) => c.custom.map((x) => x.label)))
     .toContain('写在路上被放弃')
-  // After writing, nothing should be turned on.
+  // Nothing reopens when the write lands.
   expect(await win.locator('[data-radix-popper-content-wrapper]').count()).toBe(0)
 })
 
@@ -1203,9 +1238,10 @@ test('建列写在路上时在格子选择器里新建选项:排在建列之后�
   await win.locator('.ptable thead [title="新增列"]').click()
   await win.locator('.ptable thead th.th-new input').fill('建列时序')
 
-  // In the same task: press Enter to start writing in the column, then click on the "Reading" box on the first line, type a new option and press Enter. setColumns go IPC
-  // Cross-process, it is impossible to land in this task, this string must fall on the road of construction; React is submitted in the micro task,
-  // Therefore, only microtasks are placed between each step and no tasks are given out.
+  // Within one task: Enter starts the column write, then the first row's single-choice cell is
+  // clicked, a new option typed and Enter pressed. setColumns crosses IPC and cannot land within
+  // this task, so all of this happens while the column write is in flight. React commits in
+  // microtasks, so only microtasks run between the steps and the task never yields.
   await win.evaluate(async () => {
     const settle = async () => { for (let i = 0; i < 10; i += 1) await Promise.resolve() }
     document.querySelector<HTMLInputElement>('.ptable thead th.th-new input')!
@@ -1231,13 +1267,14 @@ test('建列写在路上时在格子选择器里新建选项:排在建列之后�
 })
 
 test('窄窗口下建列的类型层仍整块落在窗口里', async ({ win, app }) => {
-  // The new meter head is at the far right end of the meter, and the narrow gear is the one where it is most likely to be squeezed out of the window.
+  // The new header sits at the table's right end, and a narrow window is where the type popover is
+  // most likely pushed out.
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setContentSize(1280, 720))
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [title="新增列"]').click()
-  // The type layer pops up together with the placeholder, so you don’t have to wait for Enter or write to land.
+  // The type popover opens with the placeholder, so there is no Enter or write to wait for.
   const layer = (await win.locator('[data-radix-popper-content-wrapper] .ctxmenu').boundingBox())!
   const vw = await win.evaluate(() => window.innerWidth)
   console.log(`1280×720 下类型层落在 [${layer.x}, ${layer.x + layer.width}]px,窗口宽 ${vw}px`)
@@ -1256,7 +1293,8 @@ test('状态浮层是真菜单:四档是 menuitemradio,当前那一档 aria-chec
   await expect(items.nth(READ_STATES.indexOf(UNREAD_PAPER))).toHaveAttribute('aria-checked', 'true')
   await expect(items.nth(READ_STATES.indexOf(READING_PAPER))).toHaveAttribute('aria-checked', 'false')
 
-  // When clicked, the focus is on the content layer: the first time the key is pressed to the first level, the second time it is pressed to "Reading"
+  // After the click, focus is on the menu content: the first ArrowDown highlights the first option
+  // and the second READING_PAPER.
   await win.keyboard.press('ArrowDown')
   await win.keyboard.press('ArrowDown')
   await expect(items.nth(READ_STATES.indexOf(READING_PAPER))).toHaveAttribute('data-highlighted', '')
@@ -1264,7 +1302,7 @@ test('状态浮层是真菜单:四档是 menuitemradio,当前那一档 aria-chec
 
   await expect(win.locator('[role="menu"]')).toHaveCount(0)
   await expect(chip).toHaveText(READING_PAPER)
-  // When I press Enter to select it, it does not pop up to the row to open the details panel.
+  // Enter selects it without reaching the row and opening the details panel.
   await expect(win.locator('.pdetail')).toHaveCount(0)
 })
 
@@ -1272,9 +1310,9 @@ test('阅读状态菜单开着、指针挪到菜单项上之后,行留着 hover 
   await gotoPapers(win)
   await firstPage(win)
   const row = win.locator('.ptable tbody tr').first()
-  // The background color of hover is drawn on the grid (td), not <tr> itself, so the background color must be read from the grid
+  // The hover background is painted on the cells (td), not on <tr>, so read it from a cell.
   const cell = row.locator('td:nth-child(7)')
-  // The first column is a sticky grid, and the background color is the gradient of background-image, not background-color.
+  // The sticky first cell paints its background as a background-image gradient, not background-color.
   const stickyCell = row.locator('td:first-child')
   const rowx = row.locator('.rowx')
   const tagadd = cell.locator('.tagadd')
@@ -1285,7 +1323,8 @@ test('阅读状态菜单开着、指针挪到菜单项上之后,行留着 hover 
   await settle(stickyCell)
   const hoverStickyImage = await stickyCell.evaluate((el) => getComputedStyle(el).backgroundImage)
   await row.locator('.stchip').click()
-  // When the pointer is moved to the menu item, the line is really lost :hover - if it is not moved, it will be "sticky" and no problem can be detected.
+  // Moving the pointer onto a menu item really drops the row's :hover; without the move :hover would
+  // stick and the check could not catch anything.
   await win.locator('[role="menu"] [role="menuitemradio"]').first().hover()
   await settle(cell)
   expect(await cell.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(hoverBg)
@@ -1298,7 +1337,7 @@ test('阅读状态菜单开着、指针挪到菜单项上之后,行留着 hover 
   await expect(tagadd).toHaveCSS('pointer-events', 'none')
 })
 
-// This use case must be run in the displayed window. This effect cannot be achieved in an off-screen window.
+// This test needs a visible window; an offscreen window cannot reproduce the behaviour.
 test.describe(() => {
   test.use({ showWindow: true })
 
@@ -1319,8 +1358,9 @@ test.describe(() => {
     await expect(menu).toHaveCount(1)
     const box = await rowx.boundingBox()
     if (!box) throw new Error('rowx 量不到位置')
-    // Real pointer click, without going through the operability check of locator.click() - that layer of check will first confirm that the target can be
-    // Hit, and here is precisely the test of "missing a hit, click through to the outer layer of the menu to close the menu" itself
+    // A raw pointer click, skipping locator.click()'s actionability check: that check first ensures
+    // the target receives the click, while this test is about the click falling through to the
+    // layer outside the menu and closing it.
     await win.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
     await expect(menu).toHaveCount(0)
 
@@ -1347,7 +1387,7 @@ test('分组齿轮是真菜单:每行是 menuitemcheckbox,勾选跟着分组栏;
   await expect(win.locator('.filters .segmented-control>button')).toHaveText(['无', '项目'])
 })
 
-// This use case must be run in the displayed window. This effect cannot be achieved in an off-screen window.
+// This test needs a visible window; an offscreen window cannot reproduce the behaviour.
 test.describe(() => {
   test.use({ showWindow: true })
 
@@ -1357,13 +1397,14 @@ test.describe(() => {
     const gear = win.locator('.filters .grpgear')
     const menu = win.locator('[role="menu"]')
 
-    // Normally you can move
+    // Normally it is clickable.
     await gear.click()
     await expect(menu).toHaveCount(1)
     await win.keyboard.press('Escape')
     await expect(menu).toHaveCount(0)
 
-    // When other menus (reading state) are open, clicking the gear will only close that menu without popping up the group menu.
+    // While another menu (reading status) is open, clicking the gear only closes that menu and does
+    // not open the group menu.
     await win.locator('.ptable tbody tr').first().locator('.stchip').click()
     await expect(menu).toHaveCount(1)
     const box = await gear.boundingBox()
@@ -1403,7 +1444,8 @@ test('改类型:文本 → 单选,现有的不同值收成选项,格子画成选
   await expect(win.locator('#banner span')).toHaveText('已改列类型 · 记入最近变动，可撤销')
   const column = (await call<PaperColumns>(win, 'papers.columns', {})).custom[0]!
   expect(column.type).toBe('select')
-  // The options are collected according to the order of the papers in the library. The library order is different from the table order; the order is determined by core single test, which is better than the collection here.
+  // Options are collected in vault order, which differs from table order; Core's unit tests pin the
+  // order, so compare as a set here.
   expect([...column.options].sort()).toEqual(['略读', '精读'].sort())
   expect(await cellsOf(win, ids)).toEqual([{ note: '精读' }, { note: '略读' }, { note: '精读' }])
 })
@@ -1484,7 +1526,7 @@ test('改类型:多选 → 单选时有论文填着多个值,整次被拒,toast 
   await retype(win, '标签', '单选')
   await expect(win.locator('#toast')).toHaveText('列「标签」有 2 篇论文填着多个值,改不成单选列')
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
-  // Rejected: "Multiple Selection" is still selected in the type row, and the grid and core on the table remain the same.
+  // Rejected: Multiple choice stays selected in the type row; the table cells and Core are unchanged.
   await expect(win.locator('[data-radix-popper-content-wrapper] .typerow .ctbtn[title="多选"]'))
     .toHaveAttribute('aria-checked', 'true')
   await expect(win.locator('.ptable tbody tr td.pt-cust').nth(0).locator('.tagchip')).toHaveText(['综述', '必读'])
@@ -1538,17 +1580,20 @@ test('改类型:列菜单里只用键盘把文本列改成单选', async ({ win 
   await win.locator('.ptable thead [title="列设置"]').click()
   const menu = win.locator('[data-radix-popper-content-wrapper]')
 
-  // Once the menu is opened, the focus falls on the first tab-able button in the menu: there is no option fold button in the text column, and this one is "Change Type"
+  // Opening the menu focuses its first tabbable button; a text column has no Options toggle, so
+  // that is Change type.
   await expect(menu.locator('.mi.colrow', { hasText: '备注' }).locator('[title="改类型"]')).toBeFocused()
   await win.keyboard.press('Enter')
-  // Among the unfolded files, only the current one is in the Tab order; after "Change Type", there are Change Name Pen, Delete ×, and this file.
+  // Of the expanded type options only the current one is in the Tab order; after Change type come
+  // the rename pen, the delete × and then that option.
   await win.keyboard.press('Tab')
   await win.keyboard.press('Tab')
   await win.keyboard.press('Tab')
   const selectBtn = menu.locator('.typerow .ctbtn[title="单选"]')
   await expect(menu.locator('.typerow .ctbtn[title="文本"]')).toBeFocused()
 
-  // Move the right arrow key to "Radio Choice" and select it: this column is changed to a radio choice column, the grid is drawn as an option chip, and the focus remains on "Radio Choice"
+  // ArrowRight moves to Single choice and selects it: the column becomes single-choice, the cell
+  // renders as an option chip, and focus stays on Single choice.
   await win.keyboard.press('ArrowRight')
   await expect(win.locator('.ptable tbody tr td.pt-cust').nth(0).locator('.tagchip')).toHaveText('精读')
   expect((await call<PaperColumns>(win, 'papers.columns', {})).custom[0])
