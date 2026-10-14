@@ -1,14 +1,17 @@
 /*
- * Application shell: top bar, breadcrumbs and study sidebar, moved from desktop/design/platform-shell-demo.html one by one.
- * The selector name is consistent with the demo to facilitate side-by-side comparison. The .window / .tl of the demo is the simulated window frame in the browser.
- * Electron has real window chrome, so the window frames, rounded corners and red, yellow and green lights are not moved.
+ * The app shell: title bar, breadcrumbs and sidebar, copied rule by rule from
+ * e2e/fixtures/platform-shell-demo.html. Selectors keep the demo's names so the two can be compared
+ * side by side. The demo's .window / .tl draw a fake window frame in the browser; Electron has real
+ * window chrome, so the frame, rounded corners and traffic lights are not copied.
  */
 
 /*
- * This bar is the window title bar. The background color can be dragged, and the buttons and breadcrumbs can be released one by one - the breadcrumbs are flex:1, so
- * What can really be grabbed and dragged is the upper and lower sides of about 19px, not the entire column.
- * Height hard-coded 50px: It was originally supported by the highest child element. Replacing any element in the column will quietly change it.
- * The height of titleBarOverlay in main/index.ts is manually aligned with this number. To change one thing, you need to change another.
+ * This bar is the window's title bar. Its background drags the window; buttons and breadcrumb links
+ * are exempted one by one, because .crumb is flex:1 and exempting it whole would leave only the ~19px
+ * strips above and below it draggable.
+ * The height is fixed at 50px: it used to come from the tallest child, so swapping any element in
+ * the bar changed it silently. titleBarOverlay's height in main/index.ts matches this number by hand;
+ * change both together.
  */
 .titlebar{display:flex;align-items:center;gap:8px;height:50px;padding:12px 16px;background:var(--sidebar);backdrop-filter:blur(20px);border-bottom:1px solid var(--sep);z-index:5;-webkit-app-region:drag}
 .titlebar .tbtn,.titlebar .cseg.link,.titlebar .appbtn{-webkit-app-region:no-drag}
@@ -16,59 +19,65 @@
 :root[data-os="win32"] .titlebar,:root[data-os="linux"] .titlebar{padding-right:154px}
 :root[data-os="darwin"] .titlebar{padding-left:78px}
 
-/* 3px instead of 6px: the height of the column is only 25px, and the 30px box will push out of the column */
+/* 3px of padding, not 6px: the bar's content is only 25px tall, and a 30px button would not fit */
 .titlebar .appbtn{border:0;background:transparent;padding:3px;border-radius:var(--r-sm);cursor:pointer;display:grid;place-items:center;transition:background var(--t-fast) var(--e-out)}
 :where(.titlebar .appbtn):hover{background:var(--hover)}
 .titlebar .appbtn:active{background-image:linear-gradient(var(--press),var(--press))}
 .titlebar .brandmark{width:18px;height:18px;display:block}
-/* Breadcrumbs: Permanent after the app name, indicating the current location */
+/* Breadcrumbs: always shown after the app button, they tell where the user is */
 .crumb{display:flex;align-items:center;gap:6px;margin-left:8px;font-size:12px;color:var(--ter);flex:1;min-width:0;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade);user-select:none}
 .crumb::before{content:"";width:1px;height:12px;background:var(--sep);margin-right:4px;flex-shrink:0}
 .crumb:empty{display:none}
 .crumb .csep{opacity:.5;font-size:12px;flex-shrink:0}
 .crumb .cseg{max-width:260px;overflow:hidden;text-overflow:ellipsis}
 /*
- * The long title falls at the end of the paragraph (current position), and fades out only for it: the clickable paragraphs have a hover capsule background color, and the mask will connect the background color
- * Gnaw them together, so they remain with the ellipses. flex:1 is used for fade, the last part is extended to the upper limit of 260px, and the tail of the title is short.
- * before falling outside the fade zone
+ * Long titles land in the last segment (the current location), so only it fades out: the clickable
+ * segments have a pill background on hover that the mask would eat into along with the text, so they
+ * keep the ellipsis. flex:1 serves the fade: it stretches the last segment up to its 260px cap, so a
+ * short title ends before the fade zone.
  */
 .crumb .cseg:last-child{flex:1;color:var(--sec);text-overflow:clip;mask-image:var(--clipfade)}
-/* Padding is paired with negative margin: the capsule only grows outwards, and the text falls in the same place without the capsule. */
+/* Padding paired with a negative margin: the pill grows outward only, and the text does not move. */
 .crumb .cseg.link{cursor:pointer;padding:2px 6px;margin:-2px -6px;border-radius:var(--r-sm);transition:background var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out)}
 .crumb .cseg.link:hover{background:var(--hover);color:var(--ink)}
 .tbtn{border:0;background:transparent;color:var(--sec);font-size:13px;cursor:pointer;padding:3px 8px;border-radius:var(--r-sm);transition:background var(--t-fast) var(--e-out)}
 :where(.tbtn):hover{background:var(--hover);color:var(--ink)}
 .tbtn svg{width:15px;height:15px;display:block}
 
-/* The background in the demo comes from .window. The window frame is not moved, and the background is moved here. */
+/* The demo takes this background from .window; the window frame is not copied, so it moves here. */
 .main{flex:1;display:flex;min-height:0;position:relative;background:var(--window)}
 
-/* Tip capsule at the bottom: Explain the reasons for rejected actions and do not leave them in the inventory */
+/* The toast pill at the bottom: says why an action was rejected; nothing was saved */
 .toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:var(--ink);color:var(--window);font-size:var(--fs-sm);padding:8px 20px;border-radius:var(--r-full);opacity:0;transition:opacity var(--t-slow) var(--e-out);pointer-events:none;z-index:91;box-shadow:var(--sh-2)}
 .toast.show{opacity:1}
 
-/* Top banner notification: storage class confirmation, appears briefly and disappears automatically */
+/* The banner at the top: confirms that something was saved, shows briefly and hides by itself */
 .banner{position:fixed;top:62px;left:50%;transform:translate(-50%,-14px);display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--sep);border-radius:var(--r-xl);box-shadow:var(--sh-3);padding:8px 16px;font-size:var(--fs-sm);color:var(--ink);z-index:91;opacity:0;pointer-events:none;transition:opacity var(--t-slow) var(--e-inout),transform var(--t-slow) var(--e-inout)}
 .banner.show{opacity:1;transform:translate(-50%,0)}
 .banner svg{width:14px;height:14px;color:var(--good);flex-shrink:0}
 
 /*
- * The screen's keep-alive shell: demo stores the view state in global variables, which is stored in the always-hanging DOM.
- * display:contents prevents this layer from participating in layout, and the root of the screen is still the direct flex child element of .main.
+ * Keeps a screen alive: the demo holds view state in global variables; here it lives in DOM that
+ * stays mounted. display:contents keeps this wrapper out of layout, so the screen's root is still a
+ * direct flex child of .main.
  */
 .screenslot{display:contents}
 .screenslot[hidden]{display:none}
 
 /*
- * min-width:0 cannot be omitted: the default min-width:auto of the flex item will make the minimum size of the content exceed flex-basis,
- * A long session title without wrapping can make the sidebar wider than --sbw. Width only returns --sbw with handlebars
+ * min-width:0 is required: a flex item's default min-width:auto lets its content's minimum size
+ * override flex-basis, so a long unwrapped chat title would make the sidebar wider than --sbw. The
+ * width comes only from --sbw, which the resize handle sets.
  */
 .sidebar{flex:0 0 var(--sbw,232px);min-width:0;background:var(--sidebar);backdrop-filter:blur(20px);border-right:1px solid var(--sep);padding:12px 10px;overflow:visible;position:relative;display:flex;flex-direction:column;user-select:none;transition:transform var(--t-slow) var(--e-inout),opacity var(--t-slow) var(--e-inout),margin-left var(--t-slow) var(--e-inout)}
 .sidebar :is(input,textarea,[contenteditable="true"]){user-select:text}
 .sb-top{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden}
 /* Sidebar collapses */
 .main.sbhide .sidebar{margin-left:calc(var(--sbw,232px) * -1);opacity:0;pointer-events:none}
-/* The reading state returns the global navigation to the paper context bar; after exiting Reader, the original sidebar remains in its original expanded state. */
+/*
+ * In the Reader the paper's context bar takes the place of the global navigation; leaving the Reader
+ * brings the sidebar back expanded or collapsed as it was.
+ */
 .main.reading>.sidebar{display:none}
 
 .sfield{display:flex;align-items:center;gap:6px;background:var(--field);border:1px solid var(--sep2);border-radius:var(--r-md);padding:5px 10px;margin-bottom:6px}
@@ -78,8 +87,10 @@
 .sfield .ic svg{width:13px;height:13px}
 
 /*
- * Instant results of global search: positioning and opening and closing are returned to Radix, and the appearance is copied from the demo's .sres and the lines below it one by one.
- * The left edge of the demo panel is aligned with the search box, the right edge is 260px past the sidebar and pressed on the content, and folded to be 270px wider than the search box.
+ * Live results of the global search: Radix positions, opens and closes them; the look is copied rule
+ * by rule from the demo's .sres and the rules below it. In the demo the panel's left edge lines up
+ * with the search box and its right edge reaches 260px past the sidebar over the content, which comes
+ * to 270px wider than the search box.
  */
 /* Compounded with .pickhits so this wider, unclipped shape and lower stacking layer win over the shared shell's, regardless of CSS load order. */
 .pickhits.sres{width:calc(var(--radix-popover-trigger-width) + 270px);max-height:none;overflow:hidden;z-index:40}
@@ -106,8 +117,9 @@
 /* Row height is fixed: the appearance/disappearance of the badge must not cause any layout displacement */
 .srow{display:flex;align-items:center;gap:8px;height:30px;box-sizing:border-box;padding:0 8px;border-radius:var(--r-sm);font-size:var(--fs-base);cursor:pointer;color:var(--ink);transition:background var(--t-fast) var(--e-out)}
 /*
- * The session row's... menu also retains this background color when it is open, even if the pointer has moved to the menu item and no longer falls on the row;
- * :has() calculates specificity based on parameters, which is higher than .srow.on. Use a layer of :where() to clear it so that the selected row will not be covered by this one.
+ * A chat row keeps this background while its … menu is open, even once the pointer has left the row
+ * for a menu item. :has() takes its argument's specificity, higher than .srow.on; :where() zeroes it,
+ * so this rule does not override the selected row.
  */
 .srow:hover,.srow:where(:has(.dots[data-state="open"])){background:var(--hover)}
 .srow.on{background:var(--accent-soft);color:var(--ink)}
@@ -123,32 +135,35 @@
 .srow .n:empty{display:none}
 .srow .n.new{background:var(--field);color:var(--ink);font-weight:600}
 .srow.sub{padding-left:20px;font-size:12px}
-/* The specific item of interest always occupies one line; the title only takes up the space outside the subtitles, and when it overflows, it uses the global tail segment to fade out. */
+/*
+ * A watch row stays on one line: its name takes only the space the badge leaves and, when it
+ * overflows, fades out with the shared --clipfade.
+ */
 .watch-row .watch-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;mask-image:var(--clipfade)}
 .watch-row .n{margin-left:0}
 .chat-row .ct-t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;mask-image:var(--clipfade)}
 /* This row's own reveal-on-hover rule; the shared .dots geometry, focus, and open-state rules live in FieldPickers.css. */
 .chat-row:hover .dots{opacity:1;pointer-events:auto}
-/* The icon bit of the archived row is empty, and there is no dot for the sub-entry. */
+/* A sub-row whose icon slot is marked .blank (an archived row) draws no dot. */
 .srow.sub .ic.blank::before{content:none}
-/* Receipt level: paper push → discovery/concern grouping (first-level indentation) → specific items of concern (second-level indentation) */
+/* Inbox levels: Inmail; Discovery and the watch groups (first indent); single watches (second indent) */
 #g-inboxsub > .srow.discovery,#g-inboxsub > .srow.disc{padding-left:20px}
 #g-inboxsub .wgroup .srow.sub{padding-left:36px}
-/* Sub-item dots: solid if there is new content (subscript is not empty), empty if there is no content */
+/* A sub-row's dot: filled when there are new papers (the badge is not empty), hollow otherwise */
 .srow.sub .ic:empty::before{content:"";width:7px;height:7px;border-radius:50%;box-sizing:border-box;border:1px solid var(--ter);background:transparent}
 .srow.sub:has(.n:not(:empty)) .ic:empty::before{background:var(--sec);border-color:var(--sec)}
-/* The grouping and folding arrows are unified on the right side of the title and are visible when hovering or collapsing (same style as the section header) */
+/* A group's collapse caret sits right of its title, shown on hover or while collapsed, like a section's */
 .disc .sh-caret{opacity:0}
 .disc:hover .sh-caret{opacity:1}
 .disc.closed .sh-caret{opacity:1;transform:rotate(-90deg)}
-/* .dim is the content status (no new paper concerns), not the "unimplemented" mark */
+/* .dim is a content state (a watch with no new papers), not an "unimplemented" mark */
 .srow.dim{color:var(--ter)}
-/* Paper push: The icon position changes to a folding arrow when hovering, and the subject/author is included under it. */
+/* Inmail: its caret shows on hover and collapses the Discovery, topic and author groups under it. */
 #rowInboxAll:hover .sh-caret{opacity:1}
 #rowInboxAll.closed .sh-caret{opacity:1;transform:rotate(-90deg)}
 .wgroup.closed{display:none}
 
-/* Unified telescopic handle: hover to remove the capsule, click to close, drag to adjust width */
+/* The shared resize handle: hovering shows the pill, a click collapses, dragging resizes */
 .grip{position:absolute;top:0;bottom:0;width:10px;cursor:col-resize;z-index:6;display:none;align-items:center;justify-content:center}
 .grip::after{content:"";width:4px;height:36px;border-radius:999px;background:var(--ter);opacity:0;transition:opacity var(--t-fast) var(--e-out)}
 .grip:hover::after{opacity:1}
@@ -158,5 +173,3 @@
 .griptip .t1{font-weight:600;color:var(--ink);display:flex;gap:10px;align-items:baseline}
 .griptip .t1 .k{color:var(--ter);font-weight:400;font-family:var(--mono);font-size:var(--fs-sm)}
 .griptip .t2{color:var(--ter);font-size:var(--fs-sm);margin-top:1px}
-
-/* The screen that occupies the content area when the library cannot be opened: reasons, instructions and entrance to changing the library */
