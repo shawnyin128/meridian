@@ -91,6 +91,14 @@ class LabActiveNodesTests(unittest.TestCase):
             self.assertFalse(nodes_by_id["kv-compression.A"]["active"])
             self.assertTrue(nodes_by_id["kv-compression.B"]["active"])
 
+    def test_unreadable_state_front_matter_is_reported_instead_of_read_as_no_active_nodes(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_lab(root, state_frontmatter="active_nodes: [kv-compression.A", thread_body=_TWO_NODE_TREE)
+
+            with self.assertRaisesRegex(ValueError, r"state\.md: front matter is not valid YAML"):
+                materialize_lab_graph(root)
+
     def test_marking_a_node_supported_or_dead_removes_it_from_active_nodes(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

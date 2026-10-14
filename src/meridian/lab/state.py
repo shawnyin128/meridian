@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from meridian.lab.research_agent_contract import inject_meridian_agents_contract
-from meridian.wiki.corpus import parse_frontmatter, strip_frontmatter
+from meridian.wiki.corpus import FrontmatterError, parse_frontmatter, strip_frontmatter
 
 
 ALLOWED_NODE_MODES = {"unresolved", "repairable", "supported", "dead"}
@@ -94,11 +94,23 @@ def validate_lab_space(root: Path) -> LabValidationReport:
         if not directory.exists():
             add("error", "missing_required_directory", directory, "Required Lab directory is missing.")
 
-    state_frontmatter = _frontmatter(lab_root / "state.md")
-    active_thread = str(state_frontmatter.get("active_thread") or "").strip()
+    def read_frontmatter(path: Path, text: str) -> dict[str, Any] | None:
+        """Return the file's front matter, or ``None`` after recording why it cannot be parsed."""
+        try:
+            return parse_frontmatter(text)
+        except FrontmatterError as exc:
+            add("error", "unreadable_frontmatter", path, f"Frontmatter cannot be parsed: {exc}.")
+            return None
+
+    state_path = lab_root / "state.md"
+    state_frontmatter = read_frontmatter(state_path, state_path.read_text(encoding="utf-8")) if state_path.exists() else {}
+    active_thread = str((state_frontmatter or {}).get("active_thread") or "").strip()
 
     threads = _markdown_records(lab_root / "threads")
-    experiments = _markdown_records(lab_root / "experiments")
+    experiments = {
+        path: read_frontmatter(path, path.read_text(encoding="utf-8"))
+        for path in _markdown_records(lab_root / "experiments")
+    }
     proposals = _markdown_records(lab_root / "proposals")
 
     thread_ids = {path.stem for path in threads}
@@ -114,7 +126,9 @@ def validate_lab_space(root: Path) -> LabValidationReport:
 
     for path in threads:
         text = path.read_text(encoding="utf-8")
-        frontmatter = parse_frontmatter(text)
+        frontmatter = read_frontmatter(path, text)
+        if frontmatter is None:
+            continue
         if frontmatter.get("type") != "research-thread":
             add("error", "invalid_thread_type", path, "Thread frontmatter must use `type: research-thread`.")
         nodes = _extract_nodes(strip_frontmatter(text))
@@ -129,8 +143,9 @@ def validate_lab_space(root: Path) -> LabValidationReport:
                     f"Node `{node_id}` uses mode `{mode}`; allowed modes are {sorted(ALLOWED_NODE_MODES)}.",
                 )
 
-    for path in experiments:
-        frontmatter = _frontmatter(path)
+    for path, frontmatter in experiments.items():
+        if frontmatter is None:
+            continue
         if frontmatter.get("type") != "research-experiment":
             add("error", "invalid_experiment_type", path, "Experiment frontmatter must use `type: research-experiment`.")
         validity = str(frontmatter.get("validity") or "uncertain").strip()
@@ -144,7 +159,9 @@ def validate_lab_space(root: Path) -> LabValidationReport:
 
     for path in proposals:
         text = path.read_text(encoding="utf-8")
-        frontmatter = parse_frontmatter(text)
+        frontmatter = read_frontmatter(path, text)
+        if frontmatter is None:
+            continue
         if frontmatter.get("type") != "research-finding-proposal":
             add("error", "invalid_proposal_type", path, "Proposal frontmatter must use `type: research-finding-proposal`.")
         state = str(frontmatter.get("state") or "draft").strip()
@@ -218,12 +235,6 @@ def _markdown_records(directory: Path) -> list[Path]:
     return sorted(path for path in directory.glob("*.md") if path.name != "index.md")
 
 
-def _frontmatter(path: Path) -> dict[str, Any]:
-    if not path.exists():
-        return {}
-    return parse_frontmatter(path.read_text(encoding="utf-8"))
-
-
 def _extract_nodes(markdown: str) -> dict[str, str]:
     matches = list(re.finditer(r"^### Node\s+([^:\n]+).*?$", markdown, flags=re.MULTILINE))
     nodes: dict[str, str] = {}
@@ -237,11 +248,10 @@ def _extract_nodes(markdown: str) -> dict[str, str]:
     return nodes
 
 
-def _experiment_ids(paths: list[Path]) -> set[str]:
+def _experiment_ids(experiments: dict[Path, dict[str, Any] | None]) -> set[str]:
     result: set[str] = set()
-    for path in paths:
-        frontmatter = _frontmatter(path)
-        experiment_id = str(frontmatter.get("id") or "").strip()
+    for path, frontmatter in experiments.items():
+        experiment_id = str((frontmatter or {}).get("id") or "").strip()
         result.add(experiment_id or path.stem)
         result.add(path.stem)
     return result

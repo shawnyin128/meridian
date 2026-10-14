@@ -15,7 +15,12 @@ from meridian.lab.graph import (
     validate_lab_apply_update,
 )
 from meridian.lab.state import ALLOWED_EXPERIMENT_VALIDITY
-from meridian.wiki.corpus import parse_frontmatter, split_sections, strip_frontmatter
+from meridian.wiki.corpus import (
+    FrontmatterError,
+    parse_frontmatter,
+    split_sections,
+    strip_frontmatter,
+)
 from meridian.workspace_protocol import (
     PreparedWorkspaceEvent,
     WorkspaceProtocolError,
@@ -256,7 +261,10 @@ def _validate_experiment(prepared: PreparedWorkspaceEvent) -> dict[str, str]:
         text = path.read_text(encoding="utf-8")
     except UnicodeDecodeError as exc:
         raise LabResultError("experiment record must be UTF-8 Markdown") from exc
-    frontmatter = parse_frontmatter(text)
+    try:
+        frontmatter = parse_frontmatter(text)
+    except FrontmatterError as exc:
+        raise LabResultError(f"experiment frontmatter cannot be parsed: {exc}") from exc
     if frontmatter.get("type") != "research-experiment":
         raise LabResultError(
             "experiment frontmatter must use type: research-experiment"

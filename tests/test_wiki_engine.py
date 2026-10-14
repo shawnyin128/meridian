@@ -241,6 +241,37 @@ class PagesReadTraceTests(unittest.TestCase):
                 ["topics/speculative-decoding"],
             )
 
+    def _add_unreadable_page(self, wiki_root: Path) -> None:
+        (wiki_root / "papers/broken.md").write_text(
+            '---\ntitle: "Broken speculative decoding\nmemberships: [unclosed\n---\n## What this covers\nSpeculative decoding.\n',
+            encoding="utf-8",
+        )
+
+    def test_read_and_trace_of_a_page_with_unreadable_front_matter_report_the_page(self) -> None:
+        with TemporaryDirectory() as tmp:
+            wiki_root = _build_vault(Path(tmp))
+            self._add_unreadable_page(wiki_root)
+
+            for tool in (adapter.read, adapter.trace):
+                with self.subTest(tool=tool.__name__):
+                    with self.assertRaisesRegex(ValueError, "papers/broken.md: front matter is not valid YAML"):
+                        tool(page="papers/broken", wiki_root=wiki_root)
+
+    def test_listings_skip_and_report_a_page_with_unreadable_front_matter(self) -> None:
+        with TemporaryDirectory() as tmp:
+            wiki_root = _build_vault(Path(tmp))
+            self._add_unreadable_page(wiki_root)
+
+            trace = adapter.trace(page="topics/speculative-decoding", wiki_root=wiki_root)
+            context = adapter.context(query="speculative decoding", wiki_root=wiki_root, out_dir=Path(tmp) / "ctx")
+
+            self.assertEqual([m["id"] for m in trace["members"]], ["papers/star"])
+            self.assertEqual(len(trace["warnings"]), 1)
+            self.assertIn("papers/broken.md: front matter is not valid YAML", trace["warnings"][0])
+            packet = context["context"]
+            self.assertNotIn("papers/broken.md", {item["provenance"]["canonical_path"] for item in packet["results"]})
+            self.assertEqual(trace["warnings"], [w for w in packet["warnings"] if "papers/broken.md" in w])
+
 
 class ClaimOpValidationTests(unittest.TestCase):
     """Shape validation for agent claim proposals (interface.md decisions 2 and 6)."""
@@ -606,6 +637,17 @@ class QueueAndSignalsTests(unittest.TestCase):
             result = adapter.audit(wiki_root=wiki_root)
             self.assertEqual(result["status"], "not_run")
             self.assertEqual(result["signals"], [])
+
+    def test_audit_reports_an_unreadable_signals_file_as_unreadable_not_as_not_run(self) -> None:
+        with TemporaryDirectory() as tmp:
+            wiki_root = _build_vault(Path(tmp))
+            signals_path = resolve_vault_root(wiki_root) / ".meridian" / "wiki-signals.json"
+            signals_path.parent.mkdir(parents=True, exist_ok=True)
+            for content, reason in (("[]\n", "is not a JSON object"), ("{not json\n", "is not valid JSON")):
+                with self.subTest(content=content):
+                    signals_path.write_text(content, encoding="utf-8")
+                    with self.assertRaisesRegex(ValueError, f"wiki-signals.json {reason}"):
+                        adapter.audit(wiki_root=wiki_root)
 
     def test_audit_reads_signals_once_the_app_has_run(self) -> None:
         with TemporaryDirectory() as tmp:

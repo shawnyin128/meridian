@@ -6,7 +6,12 @@ from typing import Any
 
 import yaml
 
-from meridian.wiki.corpus import parse_frontmatter, split_sections, strip_frontmatter
+from meridian.wiki.corpus import (
+    FrontmatterError,
+    parse_frontmatter,
+    split_sections,
+    strip_frontmatter,
+)
 
 _CANONICAL_DIRS = ("papers", "syntheses", "methods", "topics", "concepts", "claims", "evidence")
 _GENERATED_REGION = re.compile(
@@ -14,7 +19,7 @@ _GENERATED_REGION = re.compile(
     flags=re.DOTALL,
 )
 _SEARCH_TOKEN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+#/-]*|[\u3400-\u9fff]")
-_CATALOG_CACHE: dict[str, tuple[tuple[tuple[str, int, int], ...], list[dict[str, Any]]]] = {}
+_CATALOG_CACHE: dict[str, tuple[tuple[tuple[str, int, int], ...], list[dict[str, Any]], list[dict[str, str]]]] = {}
 _CATALOG_CACHE_LIMIT = 8
 
 
@@ -31,7 +36,23 @@ def is_app_native_wiki(wiki_root: Path) -> bool:
 
 
 def app_native_catalog_records(wiki_root: Path) -> list[dict[str, Any]]:
-    """Read the desktop Markdown layout into retrieval catalog records without writing indexes."""
+    """Read the desktop Markdown layout into retrieval catalog records without writing indexes.
+
+    Pages whose front matter cannot be parsed are left out; :func:`app_native_unreadable_pages`
+    lists them.
+    """
+    return _app_native_catalog(wiki_root)[0]
+
+
+def app_native_unreadable_pages(wiki_root: Path) -> list[dict[str, str]]:
+    """Return the pages left out of the catalog because their front matter cannot be parsed.
+
+    Each entry has ``page_id``, ``relative_path``, ``path``, ``title`` (the file stem) and ``issue``.
+    """
+    return _app_native_catalog(wiki_root)[1]
+
+
+def _app_native_catalog(wiki_root: Path) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
     schema_path = wiki_root / "schema.yaml"
     schema = yaml.safe_load(schema_path.read_text(encoding="utf-8")) or {}
     kinds = schema.get("kinds") if isinstance(schema, dict) else {}
@@ -45,8 +66,9 @@ def app_native_catalog_records(wiki_root: Path) -> list[dict[str, Any]]:
     cache_key = str(wiki_root.resolve())
     cached = _CATALOG_CACHE.get(cache_key)
     if cached is not None and cached[0] == signature:
-        return cached[1]
+        return cached[1], cached[2]
     pages: dict[str, dict[str, Any]] = {}
+    unreadable: list[dict[str, str]] = []
     for directory in directories:
         source_dir = wiki_root / directory
         if not source_dir.is_dir():
@@ -55,7 +77,19 @@ def app_native_catalog_records(wiki_root: Path) -> list[dict[str, Any]]:
             relative_path = path.relative_to(wiki_root).as_posix()
             page_id = path.relative_to(wiki_root).with_suffix("").as_posix()
             text = path.read_text(encoding="utf-8")
-            frontmatter = parse_frontmatter(text)
+            try:
+                frontmatter = parse_frontmatter(text)
+            except FrontmatterError as exc:
+                unreadable.append(
+                    {
+                        "page_id": page_id,
+                        "relative_path": relative_path,
+                        "path": str(path),
+                        "title": path.stem,
+                        "issue": str(exc),
+                    }
+                )
+                continue
             body = _GENERATED_REGION.sub("", strip_frontmatter(text)).strip()
             result_type = str(
                 frontmatter.get("type")
@@ -141,8 +175,8 @@ def app_native_catalog_records(wiki_root: Path) -> list[dict[str, Any]]:
         records.append(record)
     if len(_CATALOG_CACHE) >= _CATALOG_CACHE_LIMIT and cache_key not in _CATALOG_CACHE:
         _CATALOG_CACHE.pop(next(iter(_CATALOG_CACHE)))
-    _CATALOG_CACHE[cache_key] = (signature, records)
-    return records
+    _CATALOG_CACHE[cache_key] = (signature, records, unreadable)
+    return records, unreadable
 
 
 def app_native_candidates(

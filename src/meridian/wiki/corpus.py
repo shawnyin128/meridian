@@ -1617,7 +1617,15 @@ def _coerce_frontmatter_scalars(value: Any) -> Any:
     return value
 
 
+class FrontmatterError(ValueError):
+    """Raised when a page's front matter block cannot be parsed into a mapping."""
+
+
 def parse_frontmatter(text: str) -> dict[str, Any]:
+    """Return a page's front matter fields, or ``{}`` when it has no or an empty front matter block.
+
+    Raises ``FrontmatterError`` with the reason when the block is not valid YAML or not a mapping.
+    """
     if not text.startswith("---\n"):
         return {}
     end = text.find("\n---", 4)
@@ -1625,10 +1633,12 @@ def parse_frontmatter(text: str) -> dict[str, Any]:
         return {}
     try:
         loaded = yaml.load(text[4:end], Loader=yaml.BaseLoader)
-    except yaml.YAMLError:
+    except yaml.YAMLError as exc:
+        raise FrontmatterError(f"front matter is not valid YAML: {' '.join(str(exc).split())}") from exc
+    if loaded is None:
         return {}
     if not isinstance(loaded, dict):
-        return {}
+        raise FrontmatterError("front matter is not a mapping")
     return _coerce_frontmatter_scalars(loaded)
 
 

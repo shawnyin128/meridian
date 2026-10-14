@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from meridian.lab.state import ALLOWED_NODE_MODES
-from meridian.wiki.corpus import parse_frontmatter, strip_frontmatter
+from meridian.wiki.corpus import FrontmatterError, parse_frontmatter, strip_frontmatter
 from meridian.workspace_protocol import (
     WorkspaceProtocolError,
     add_workspace_event,
@@ -1375,7 +1375,10 @@ def _lab_root(root: Path) -> Path:
 def _frontmatter(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
-    return parse_frontmatter(path.read_text(encoding="utf-8"))
+    try:
+        return parse_frontmatter(path.read_text(encoding="utf-8"))
+    except FrontmatterError as exc:
+        raise FrontmatterError(f"{path}: {exc}") from exc
 
 
 def _split_node_id(node_id: str) -> tuple[str, str]:
