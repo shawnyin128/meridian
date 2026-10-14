@@ -108,6 +108,20 @@ CONCLUSION_MAX_LEN = 1000
 TASK_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}")
 # JSON leaves these unescaped, yet str.splitlines() and some editors break lines on them.
 _LINE_BREAKING_CHARACTERS = {"\x85": "\\u0085", "\u2028": "\\u2028", "\u2029": "\\u2029"}
+# A line the Lab parsers read as structure: a heading (a run of `#`, then whitespace or the line
+# end), or a node field that _node_field, _upsert_node_field and _strip_legacy_active_field find
+# anywhere in a node body. `\s` crosses lines here exactly as it does in those parsers.
+_STRUCTURE_LINE = r"#+(?:\s|$)|[^\S\n]*-\s*(?:mode|parent|close_count|active):"
+_UNESCAPED_STRUCTURE_LINE = re.compile(rf"^(?=\\*(?:{_STRUCTURE_LINE}))", flags=re.MULTILINE)
+_ESCAPED_STRUCTURE_LINE = re.compile(rf"^\\(?=\\*(?:{_STRUCTURE_LINE}))", flags=re.MULTILINE)
+# Node sections holding agent text, returned unescaped in node details under these keys.
+_AGENT_TEXT_SECTIONS = (
+    ("doing", "Doing"),
+    ("why", "Why"),
+    ("research_prior", "Research Prior"),
+    ("return_signal", "Return Signal"),
+    ("history", "History"),
+)
 
 
 @dataclass(frozen=True)
@@ -656,6 +670,12 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
                     add(
                         "missing_artifact_id",
                         "attach_artifact requires non-empty artifact id.",
+                        f"changes[{index}].artifact.id",
+                    )
+                elif artifact_id.splitlines() != [artifact_id]:
+                    add(
+                        "invalid_artifact_id",
+                        "attach_artifact artifact id must be one line.",
                         f"changes[{index}].artifact.id",
                     )
                 artifact_type = str(artifact.get("type") or "").strip()
@@ -1431,11 +1451,11 @@ def _apply_update_node_change(text: str, raw_id: str, fields: dict[str, Any]) ->
             if state in CLOSED_NODE_STATES and not was_closed:
                 body = _upsert_node_field(body, "close_count", str(_close_count(body) + 1))
         if "doing" in fields:
-            body = _upsert_heading_body(body, "Doing", str(fields["doing"]).strip())
+            body = _upsert_heading_body(body, "Doing", escape_agent_text(str(fields["doing"]).strip()))
         if "why" in fields:
-            body = _upsert_heading_body(body, "Why", str(fields["why"]).strip())
+            body = _upsert_heading_body(body, "Why", escape_agent_text(str(fields["why"]).strip()))
         if "next_action" in fields:
-            body = _upsert_heading_body(body, "Next Action", str(fields["next_action"]).strip())
+            body = _upsert_heading_body(body, "Next Action", escape_agent_text(str(fields["next_action"]).strip()))
         return body
 
     return _replace_node_body(text, raw_id, edit)
@@ -1461,7 +1481,7 @@ def _apply_create_node_change(text: str, change: dict[str, Any]) -> str:
     for field, heading in heading_fields:
         value = change.get(field)
         if isinstance(value, str) and value.strip():
-            lines.extend(["", f"#### {heading}", "", value.strip()])
+            lines.extend(["", f"#### {heading}", "", escape_agent_text(value.strip())])
     section = "\n".join(lines).rstrip()
     graph_relations = re.search(r"^##[ \t]+Graph Relations[ \t]*$", text, flags=re.MULTILINE)
     if graph_relations is None:
@@ -1473,8 +1493,6 @@ def _apply_create_node_change(text: str, change: dict[str, Any]) -> str:
 
 def _apply_create_edge_change(text: str, source: str, kind: str, target: str) -> str:
     line = f"- `{source}` {kind} `{target}`"
-    if any(existing.strip() == line for existing in text.splitlines()):
-        return text
     graph_relations = re.search(r"^##[ \t]+Graph Relations[ \t]*$", text, flags=re.MULTILINE)
     if graph_relations is None:
         return f"{text.rstrip()}\n\n## Graph Relations\n\n{line}\n"
@@ -1482,6 +1500,8 @@ def _apply_create_edge_change(text: str, source: str, kind: str, target: str) ->
     next_heading = re.search(r"^#{1,2}[ \t]+", text[body_start:], flags=re.MULTILINE)
     body_end = body_start + next_heading.start() if next_heading else len(text)
     section = text[body_start:body_end].rstrip()
+    if any(existing.strip() == line for existing in section.splitlines()):
+        return text
     rest = text[body_end:]
     return f"{text[:body_start]}{section}\n{line}\n" + (f"\n{rest}" if rest else "")
 
@@ -1503,7 +1523,7 @@ def _apply_attach_artifact_change(text: str, raw_id: str, artifact: dict[str, An
 def _apply_record_history_change(text: str, raw_id: str, message: str) -> str:
     def edit(body: str) -> str:
         dated_message = f"- {datetime.now(timezone.utc).date().isoformat()}: {message.strip()}"
-        return _append_heading_line(body, "History", dated_message)
+        return _append_heading_line(body, "History", escape_agent_text(dated_message))
 
     return _replace_node_body(text, raw_id, edit)
 
@@ -1547,6 +1567,27 @@ def _one_line_json(value: Any) -> str:
     for character, escape in _LINE_BREAKING_CHARACTERS.items():
         encoded = encoded.replace(character, escape)
     return encoded
+
+
+def escape_agent_text(text: str) -> str:
+    """Encode agent-supplied ``text`` for a Lab Markdown body so that none of its lines reads as structure.
+
+    Line endings become ``\\n``. Every line that, after any leading backslashes, a Lab parser would
+    read as a heading or node field gets one more leading backslash; :func:`_unescape_agent_text`
+    reverses it.
+    """
+
+    return _UNESCAPED_STRUCTURE_LINE.sub(r"\\", re.sub(r"\r\n?", "\n", text))
+
+
+def _unescape_agent_text(text: str) -> str:
+    """Return the agent text that :func:`escape_agent_text` encoded as ``text``.
+
+    Removes one leading backslash from each line made of one or more backslashes followed by a
+    structure line, and keeps every other line as is.
+    """
+
+    return _ESCAPED_STRUCTURE_LINE.sub("", text)
 
 
 def _close_count(body: str) -> int:
@@ -1776,6 +1817,9 @@ def _parse_thread_nodes(
         }
         artifacts = _parse_supporting_artifacts(body)
         tasks = _parse_node_tasks(body)
+        agent_text = {
+            field: _unescape_agent_text(_extract_heading_section(body, heading)) for field, heading in _AGENT_TEXT_SECTIONS
+        }
         conclusion = _parse_node_conclusion(
             body, mode=mode, artifacts=artifacts, project_root=thread_path.parents[1].parent
         )
@@ -1790,6 +1834,7 @@ def _parse_thread_nodes(
                     "title": title,
                     "parent": parent,
                     "next_action": _extract_next_action(body),
+                    **{field: text for field, text in agent_text.items() if text},
                     "source_path": node["source_path"],
                     "experiments": [
                         str(artifact.get("id") or "")
@@ -1945,7 +1990,7 @@ def _is_iso_date(value: Any) -> bool:
 
 
 def _extract_next_action(body: str) -> str:
-    section = _extract_heading_section(body, "Next Action")
+    section = _unescape_agent_text(_extract_heading_section(body, "Next Action"))
     return "\n".join(line.strip() for line in section.splitlines() if line.strip())
 
 
