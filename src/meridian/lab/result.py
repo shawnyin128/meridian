@@ -11,6 +11,7 @@ from meridian.lab.graph import (
     LAB_APPLY_UPDATE_SCHEMA_VERSION,
     apply_lab_update,
     check_lab_graph,
+    escape_agent_text,
     materialize_lab_graph,
     validate_lab_apply_update,
 )
@@ -324,6 +325,8 @@ def _write_experiment_record(
         if not isinstance(value, str) or not value.strip():
             raise LabResultError(f"experiment requires a non-empty {field}")
         values[field] = value.strip()
+    if values["title"].splitlines() != [values["title"]]:
+        raise LabResultError("experiment title must be one line")
     if values["validity"] not in ALLOWED_EXPERIMENT_VALIDITY:
         raise LabResultError(
             f"experiment validity must be one of {sorted(ALLOWED_EXPERIMENT_VALIDITY)}"
@@ -337,6 +340,7 @@ def _write_experiment_record(
         or relative.parent != experiments_root
         or relative.suffix.lower() != ".md"
         or relative.name == "index.md"
+        or relative.stem.splitlines() != [relative.stem]
     ):
         raise LabResultError(
             "a new experiment record must be .meridian/experiments/<id>.md"
@@ -363,15 +367,15 @@ def _write_experiment_record(
             "",
             "## Question",
             "",
-            values["question"],
+            escape_agent_text(values["question"]),
             "",
             "## Command / Config / Output",
             "",
-            values["command"],
+            escape_agent_text(values["command"]),
             "",
             "## Result",
             "",
-            values["result"],
+            escape_agent_text(values["result"]),
             "",
             "## Validity",
             "",
@@ -379,7 +383,7 @@ def _write_experiment_record(
             "",
             "## Interpretation",
             "",
-            values["interpretation"],
+            escape_agent_text(values["interpretation"]),
             "",
         ]
     )
