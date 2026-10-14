@@ -4,12 +4,12 @@ import { join } from 'node:path'
 import type { Page } from '@playwright/test'
 import { expect, test, type MeridianWindow } from './app.js'
 
-/** The screen you entered is always hung; store selectors that exist on every screen inside the currently shown one. */
+/** Screens stay mounted once visited, so selectors every screen has are scoped to the visible one. */
 const shown = (win: Page) => win.locator('.screenslot:not([hidden])')
 
 const gotoIdeas = (win: Page) => win.locator('[data-desk="ideas"]').click()
 
-/** Bypass the interface: create a throwaway chat, then one idea from it, and return the idea. */
+/** Creates a throwaway chat and one idea from it directly, bypassing the UI, and returns the idea. */
 const seedIdea = (win: Page, title: string) => win.evaluate(async (ideaTitle) => {
   const meridian = (window as unknown as MeridianWindow).meridian
   const chat = await meridian.call('chat.create', { title: ideaTitle, named: true }) as { id: string }

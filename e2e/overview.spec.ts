@@ -1,36 +1,36 @@
 import type { Page } from '@playwright/test'
 import { dshort, expect, fixtureDay, test, vaultToday, type MeridianWindow } from './app.js'
 
-/** When the window is reduced to this content width, the Gantt viewport only has more than 300 pixels left. */
+/** At this window content width, the Gantt viewport is only a little over 300 pixels wide. */
 const NARROW_WIDTH = 760
 /** The width below which the Gantt viewport should fall after narrowing. */
 const NARROW_VIEWPORT = 400
-/** The stub sticks to the gap left on the inside of the Gantt viewport, which is consistent with the positioning formula of the stub in useGanttDrag.ts. */
+/** Gap between a stub and the inner edge of the Gantt viewport, as in the stub formula in useGanttDrag.ts. */
 const GANTT_STUB_INSET = 6
 
-/** The t2 and m2 of the repro in the fixture are the number of days from Curry today. */
+/** Days from the vault's today of the fixture repro project's task t2 and milestone m2. */
 const REPRO_T2_START = -1
 const REPRO_T2_END = 8
 const REPRO_M2 = 8
 
-/** Monday of the week Curry is in today; both the overview and the project open this week by default. */
+/** Monday of the vault's current week; both Overview and the project detail open on this week by default. */
 const weekStart = (today: string) => fixtureDay(
   today,
   -((new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7),
 )
 
-/** The positioning of the milestone pop-up layer is consistent with `<Popover.Content side="bottom" ... sideOffset={6}>` in ResearchOverview.tsx. */
+/** Gap below the anchor of the milestone popover: FloatingTextEditor's default `sideOffset` (ResearchOverview.tsx). */
 const POPOVER_SIDE_OFFSET = 6
-/** The allowable pixel error of the spring layer anchor point check covers the sub-pixel jitter measured by the bounding box after the diamond is rotated 45°. */
+/** Allowed pixel error of the popover anchor check: sub-pixel jitter in the bounding box of the 45°-rotated diamond. */
 const POPOVER_ANCHOR_SLOP = 2
 
-/** The screen you entered is always hung, and the selector that is present on every screen, such as the screen header, should be stored in the currently displayed screen. */
+/** Screens stay mounted once visited, so selectors every screen has, such as headers, are scoped to the visible one. */
 const shown = (win: Page) => win.locator('.screenslot:not([hidden])')
 
-/** Click "Research › Overview" in the sidebar. The application falls on the dynamic screen. All use cases done on the overview must take this step first. */
+/** Clicks "Research › Overview" in the sidebar; the app starts on Feed, so every Overview test case begins here. */
 const gotoOverview = (win: Page) => win.locator('[data-desk="restl"]').click()
 
-/** Bypass the interface and directly call `project.overview`, calculate the number of items in each block of the overview based on the contract return value. */
+/** Calls `project.overview` directly, bypassing the UI, and counts what each Overview section should show. */
 const overviewCounts = (win: Page) => win.evaluate(async () => {
   const rows = await (window as unknown as MeridianWindow).meridian
     .call('project.overview', {}) as {
@@ -95,7 +95,7 @@ async function revealMilestone(win: Page, dataMilestone: string) {
   return diamond
 }
 
-/** Bypass the interface and call `project.get` directly, get a project milestone, and check whether the picture on the Gantt falls into the core. */
+/** Calls `project.get` directly, bypassing the UI: a project's milestones, to check that Gantt edits reached Core. */
 const milestonesOf = (win: Page, id: string) => win.evaluate(async (projectId) => {
   const project = await (window as unknown as MeridianWindow).meridian
     .call('project.get', { id: projectId }) as { milestones: { date: string; title: string }[] }
@@ -104,7 +104,7 @@ const milestonesOf = (win: Page, id: string) => win.evaluate(async (projectId) =
 
 const NEW_PROJECT = '实测新建的项目'
 
-/** Overview of the names of the use cases entered into the input boxes in the milestone pop-up layer. */
+/** Milestone titles the Overview test cases type into the milestone popover's input. */
 const REJECTED_TITLE = '写被拒时留着的里程碑'
 const RETRIED_TITLE = '改了再回车的里程碑'
 const TWICE_TITLE = '连按两下回车的里程碑'
@@ -118,10 +118,10 @@ test('侧栏「总览」进的是研究总览,各块条数与 project.overview �
 
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '总览'])
   await expect(shown(win).locator('.desk-head .t')).toHaveText(`总览 · ${counts.active}`)
-  // This row in the demo sidebar does not have a subtitle, only other rows have it.
+  // In the demo this sidebar row has no badge; only the other rows do.
   await expect(win.locator('[data-desk="restl"] .n')).toHaveCount(0)
 
-  // By default, only ongoing projects are displayed; one milestone line for each project, and another line for each real task.
+  // By default only active projects show: one milestone row per project, plus one row per real task.
   expect(counts.ganttRows).toBeGreaterThanOrEqual(counts.active)
   await expect(shown(win).locator('.gantt .grow')).toHaveCount(counts.ganttRows)
   await expect(shown(win).locator('.gantt .glrow')).toHaveCount(counts.ganttRows)
@@ -134,7 +134,8 @@ test('侧栏「总览」进的是研究总览,各块条数与 project.overview �
   await expect(shown(win).locator('.timeline-task-priority')).toHaveCount(counts.taskRows)
   await expect(shown(win).locator('.ovcols > div').first().locator('.ovlist-row.dated')).toHaveCount(counts.recent)
   await expect(shown(win).locator('.ovcols > div').last().locator('.ovlist-row.dated')).toHaveCount(counts.upcoming)
-  // The decision queue only appears when something happens; old project conclusions are no longer involved, and fixtures are still overdue, stagnant, and blocked.
+  // The decision queue appears only when something needs attention; old project conclusions no longer
+  // feed it, and the fixture still has overdue, stale and blocked items.
   await expect(shown(win).locator('.ovlist-row.attention')).not.toHaveCount(0)
   const embeddedLists = shown(win).locator('.ovlist, .ovpulse')
   expect(await embeddedLists.count()).toBeGreaterThan(1)
@@ -167,19 +168,19 @@ test('总览点一个项目进它的详情,返回钮回总览,面包屑「项目
   await expect(shown(win).locator('.desk-head .t')).toHaveText('draft 效率')
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', 'draft 效率'])
 
-  // Return is the history return: the origin is the overview, and the return button returns to the overview.
+  // Back follows history: the project was opened from Overview, so Back returns to Overview.
   await shown(win).locator('.desk-head .back').click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '总览'])
   await expect(shown(win).locator('.desk-head .t')).toHaveText(`总览 · ${active}`)
   await expect(shown(win).locator('.ovlist-row.progress[data-proj="draft"]')).toBeVisible()
 
-  // The breadcrumb section still returns to the project list, the same as demo
+  // The breadcrumb's Projects segment still returns to the project list, as in the demo.
   await shown(win).locator('.gantt .glrow[data-proj="repro"]').first().click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', '复现 EAGLE-2'])
   await win.locator('#crumb .cseg.link', { hasText: '项目' }).click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目'])
   await expect(shown(win).locator('[data-proj="draft"]')).toBeVisible()
-  // The items coming into the list have no origin, and return to the previous level in the button structure: the item list
+  // A project opened from the list has no other origin, so Back goes one level up: the project list.
   await shown(win).locator('[data-proj="draft"]').click()
   await expect(shown(win).locator('.desk-head .back')).toHaveCount(1)
   await shown(win).locator('.desk-head .back').click()
@@ -235,7 +236,7 @@ test('新建的项目在总览里看得见,横幅那句话才算数', async ({ w
     .toHaveText(NEW_PROJECT)
   await expect(shown(win).locator(`.gantt .glrow[data-proj="${created}"] .timeline-project-label`))
     .toHaveText(NEW_PROJECT)
-  // When there are no tasks in a new project, there are only milestones, and the project schedule is no longer used to forge a task.
+  // A new project with no tasks shows only its milestone row; its schedule no longer fakes a task bar.
   await expect(shown(win).locator(`.gantt .gbar[data-proj="${created}"]`)).toHaveCount(0)
   await expect(shown(win).locator(`.ovcols .ovlist-row[data-proj="${created}"] .ovlist-main`))
     .toHaveText('创建项目')
@@ -252,7 +253,7 @@ test('点甘特行内空白在那一天新建里程碑,写落进 core', async ({
 
   const firstDay = weekStart(await vaultToday(win))
 
-  // The horizontal bar of repro is drawn from the second day of the window. The point at the beginning of the line is blank and falls on the first day of the window.
+  // repro's bar starts on the window's second day, so the start of its row is empty and on day one.
   await row.click({ position: { x: 10, y: 22 } })
   await expect(win.locator('.ctxmenu .rh')).toHaveText(`新建里程碑 · ${dshort(firstDay)}`)
   await win.locator('.ctxmenu .mi-in input').fill('总览上补的里程碑')
@@ -278,13 +279,14 @@ test('总览横条是真实任务:拖动改任务日期,单击进所属项目', 
   await win.mouse.move(x0, y)
   await win.mouse.down()
   await win.mouse.move(x0 + 2 * dayPx, y, { steps: 8 })
-  // During dragging, the horizontal bar will follow the pointer throughout the day. Wait until it has really moved for two days before raising your hand: the press does not fall on the horizontal bar, or the movement has not yet occurred.
-  // It stayed where it was when it was delivered, and it was red here
+  // While dragging, the bar follows the pointer in whole days. Wait until it has really moved two days
+  // before releasing: if the press missed the bar or the move has not happened yet, the bar stays put
+  // and this check fails.
   await expect.poll(async () => Math.round((await left()) - from)).toBe(Math.round(2 * dayPx))
   await win.mouse.up()
 
   await expect(win.locator('#toast')).toHaveText('任务顺延 2 天')
-  // The drag was not regarded as a click: it was still stuck in the overview and did not enter the project.
+  // The drag did not count as a click: the app stays on Overview instead of opening the project.
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '总览'])
   const saved = await win.evaluate(async () => {
     const project = await (window as unknown as MeridianWindow).meridian
@@ -357,13 +359,14 @@ test.describe('拖总览菱形改期', () => {
 
     await win.mouse.move(x0, y)
     await win.mouse.down()
-    // The drop point is moved 15px more than an integer multiple of 3 days: the diamond is absorbed back to the whole day, the cursor stops on the blank space in the line, and the click that is raised to reissue falls on the blank space.
+    // Drop 15px past exactly three days: the diamond snaps back to the whole day, so the cursor ends on
+    // empty row space and the click the browser sends after mouseup lands there.
     await win.mouse.move(x0 + 3 * dayPx + 15, y, { steps: 8 })
     await expect.poll(async () => Math.round((await left()) - from)).toBe(Math.round(3 * dayPx))
     await win.mouse.up()
 
     await expect(win.locator('#toast')).toHaveText(`已改期到 ${dshort(moved)}`)
-    // The reissued click was swallowed: the "New Milestone" popup in the blank space of the line did not appear.
+    // The click sent after mouseup was swallowed: no "New milestone" popover opened on the empty row space.
     await expect(win.locator('.ctxmenu')).toHaveCount(0)
     expect(await milestonesOf(win, 'repro')).toContainEqual({ date: moved, title })
     expect(await milestonesOf(win, 'draft')).toEqual(draftBefore)
@@ -373,9 +376,10 @@ test.describe('拖总览菱形改期', () => {
     await movedDiamond.click()
     await expect(win.locator('.ctxmenu .rh')).toHaveText(`里程碑 · ${dshort(moved)}`)
     await expect(win.locator('.ctxmenu .mi-in input')).toHaveValue(title)
-    // The anchor point of the spring layer is the point where the mouse clicks, which is the center of the diamond at this moment - the diamond rotates 45° and the hover will enlarge, but both revolve around
-    // When the center is transformed, the measurement center is not affected. side="bottom" align="start": The x of the anchor point is attached to the left side of the spring layer, and the y of the anchor point is higher than the upper side.
-    // Multiple sideOffset
+    // The popover is anchored at the click point, here the diamond's center. The diamond is rotated 45°
+    // and grows on hover, but both transforms are around its center, so the measured center holds.
+    // With side="bottom" align="start", the popover's left edge is at the anchor's x and its top edge
+    // is sideOffset below the anchor's y.
     const diamondBox = (await movedDiamond.boundingBox())!
     const anchor = { x: diamondBox.x + diamondBox.width / 2, y: diamondBox.y + diamondBox.height / 2 }
     const popoverBox = (await win.locator('.ctxmenu').boundingBox())!
@@ -429,7 +433,8 @@ test.describe('窗口收窄并滚动', () => {
     // The history view keeps finished tasks, whose early bars are the ones left as stubs at the left edge.
     await shown(win).locator('.overview-history-toggle').click()
     const { allTaskRows: taskRows } = await overviewCounts(win)
-    // Wait for one more frame after Gant has finished painting, and the first callback of ResizeObserver will be implemented; if you don't wait, the subsequent recalculation when changing the window size will be one frame later.
+    // After the Gantt has drawn, wait one more frame for ResizeObserver's first callback; otherwise the
+    // recalculation after the resize below lands one frame late.
     await shown(win).locator('.gantt .grow').first().waitFor()
     await win.evaluate(() => new Promise<null>((drawn) => requestAnimationFrame(() => drawn(null))))
     await app.evaluate(({ BrowserWindow }, width) => {
@@ -438,14 +443,15 @@ test.describe('窗口收窄并滚动', () => {
     const wrap = shown(win).locator('.gantt .gwrap')
     await expect.poll(() => wrap.evaluate((el) => el.clientWidth)).toBeLessThan(NARROW_VIEWPORT)
     await wrap.evaluate((el) => { el.scrollLeft = el.scrollWidth })
-    // The stub position attached to the left edge contains scrollLeft, waiting for the position of the viewport after they are scrolled.
+    // A stub on the left edge is positioned from scrollLeft; wait until the stubs match the scrolled viewport.
     await expect.poll(() => wrap.evaluate((el, inset) => {
       const stubs = [...el.querySelectorAll<HTMLElement>('.gstub')]
       if (stubs.length === 0) return '没有残桩'
       return stubs.some((s) => s.offsetLeft - el.scrollLeft === inset) ? '残桩已按当前视口重算' : '残桩还停在旧视口'
     }, GANTT_STUB_INSET)).toBe('残桩已按当前视口重算')
 
-    // The horizontal bars and stumps are both absolutely positioned, and may fall entirely outside the Gantt viewport; the measurement is the width of the section where it intersects with the viewport.
+    // Bars and stubs are absolutely positioned and may lie wholly outside the Gantt viewport, so measure
+    // the width of their overlap with the viewport.
     const rows = await wrap.evaluate((el) => {
       const view = el.getBoundingClientRect()
       const visible = (node: Element | null) => {
@@ -473,21 +479,24 @@ test('总览新建里程碑:写被拒时弹层与打的字都留着,改了再回
   const menu = win.locator('.ctxmenu')
   const input = menu.locator('.mi-in input')
 
-  // The horizontal bar of repro is drawn from the second day of the window. The point at the beginning of the line is blank and falls on the first day of the window.
+  // repro's bar starts on the window's second day, so the start of its row is empty and on day one.
   await shown(win).locator('.gantt .grow[data-row="repro"]').click({ position: { x: 10, y: 22 } })
   await expect(menu.locator('.rh')).toHaveText(`新建里程碑 · ${dshort(firstDay)}`)
 
-  // Bypass the interface and directly delete the repro: the overview will not be retrieved, and the elastic layer is still hung on the repro. Writing core this time will inevitably be rejected.
+  // Delete repro directly, bypassing the UI: Overview does not refetch, so the popover stays on repro's
+  // row, and this write to Core is bound to be rejected.
   await win.evaluate(() => (window as unknown as MeridianWindow).meridian.call('project.delete', { id: 'repro' }))
   await input.fill(REJECTED_TITLE)
   await input.press('Enter')
-  // First wait for the error message to appear on the screen: it means that the carriage return is really written and rejected, and then look at the pop-up layer so that the judgment is not made before it is written back.
+  // Wait for the error toast first: it shows the Enter really reached Core and was rejected, so the
+  // popover is checked only after the write has returned.
   await expect(win.locator('#toast')).toHaveText('项目不存在:repro')
   await expect(shown(win).locator('.ipcerror')).toHaveCount(0)
   await expect(menu).toBeVisible()
   await expect(input).toHaveValue(REJECTED_TITLE)
 
-  // Put the repro back from the trash can, change the wording and press Enter: This time it is written, and the elastic layer is closed
+  // Restore repro from the trash, change the text and press Enter: this time the write succeeds and the
+  // popover closes.
   await win.evaluate(async () => {
     const meridian = (window as unknown as MeridianWindow).meridian
     const trash = await meridian.call('trash.list', {}) as { id: string; kind: string; title: string }[]
@@ -510,8 +519,9 @@ test('总览新建里程碑:一次写没落地之前连按两下回车,只建一
   const input = win.locator('.ctxmenu .mi-in input')
   await input.fill(TWICE_TITLE)
 
-  // Two presses are sent in the same task: the first press has to go back and forth through IPC, and is divided into two presses. When the press is sent in, the second press
-  // It may arrive after writing it back and closing the elastic layer. It may not be possible to detect if the anti-resubmission is broken.
+  // Send both presses in one task: the first press's write makes an IPC round trip, and as two separate
+  // presses the second could arrive after the write returned and the popover closed, so a broken
+  // double-submit guard could go unnoticed.
   await input.evaluate((el) => {
     for (let i = 0; i < 2; i += 1) el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
   })
@@ -536,7 +546,8 @@ test('总览里程碑改名:写成了才收起;写被拒时弹层与打的字都
   expect(await milestonesOf(win, 'repro'))
     .toContainEqual({ date: fixtureDay(today, REPRO_M2), title: RENAMED_TITLE })
 
-  // Click it again, bypass the interface and directly delete this milestone: the overview will not be retrieved again, and this time the rename to core will be rejected.
+  // Open it again and delete the milestone directly, bypassing the UI: Overview does not refetch, so
+  // this rename is rejected by Core.
   await diamond.click()
   await expect(input).toHaveValue(RENAMED_TITLE)
   await win.evaluate(() => (window as unknown as MeridianWindow).meridian
@@ -556,13 +567,14 @@ test('总览新建里程碑:点外落在一次被拒的写的在途期间,弹层
 
   await shown(win).locator('.gantt .grow[data-row="repro"]').click({ position: { x: 10, y: 22 } })
   await input.fill(REJECTED_TITLE)
-  // Bypass the interface and directly delete the repro: the overview will not be retrieved, and the elastic layer is still hung on the repro. Writing core this time will inevitably be rejected.
+  // Delete repro directly, bypassing the UI: Overview does not refetch, so the popover stays on repro's
+  // row, and this write to Core is bound to be rejected.
   await win.evaluate(() => (window as unknown as MeridianWindow).meridian.call('project.delete', { id: 'repro' }))
 
-  // First send Enter to initiate a submission, then send pointerdown/mousedown/click to the screen header
-  // outside the pop-up layer, before writing IPC cross-process can come back. A microtask yield after Enter
+  // Press Enter to start a submit, then send pointerdown/mousedown/click to the screen header outside
+  // the popover before the cross-process IPC write can return. A microtask yield after Enter
   // lets React commit the busy-flag update first; without it, the outside click reads the pre-commit,
-  // not-yet-busy state and dismisses the layer instead of being vetoed.
+  // not-yet-busy state and dismisses the popover instead of being vetoed.
   await win.evaluate(async () => {
     document.querySelector<HTMLElement>('.ctxmenu .mi-in input')!
       .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
@@ -605,8 +617,9 @@ test('总览新建里程碑:写在路上时把弹层挪到另一行,第一次写
   await shown(win).locator('.gantt .grow[data-row="repro"]').click({ position: { x: 10, y: 22 } })
   await input.fill(STALE_TITLE)
 
-  // In the same task: press Enter to start writing on the repro; send pointerdown/mousedown/click to the next day's cell in the draft line in sequence,
-  // Move the elastic layer over; type in the moved elastic layer. Write away IPC cross-process, this whole sequence falls before it comes back
+  // All in one task: press Enter to start the write on repro, send pointerdown/mousedown/click to the
+  // next day's cell in the draft row to move the popover there, and type into the moved popover. The
+  // write crosses processes over IPC, so this whole sequence happens before it returns.
   await win.evaluate(async ({ dayPx, typed }) => {
     const stale = document.querySelector<HTMLInputElement>('.ctxmenu .mi-in input')!
     stale.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
@@ -614,7 +627,8 @@ test('总览新建里程碑:写在路上时把弹层挪到另一行,第一次写
     const box = row.getBoundingClientRect()
     const at = { bubbles: true, button: 0, clientX: box.left + dayPx + 10, clientY: box.top + 22 }
     for (const type of ['pointerdown', 'mousedown', 'click']) row.dispatchEvent(new MouseEvent(type, at))
-    // Only give way to the microtask: React draws the moved elastic layer in the microtask. The IPC reply is another task and cannot be inserted.
+    // Yield only to microtasks: React draws the moved popover in a microtask, while the IPC reply is a
+    // separate task and cannot run in between.
     for (let i = 0; i < 10 && document.querySelector('.ctxmenu .mi-in input') === stale; i += 1) {
       await Promise.resolve()
     }
@@ -643,8 +657,9 @@ test('总览新建里程碑:写在路上时把弹层挪到另一个项目的同�
   await shown(win).locator('.gantt .grow[data-row="repro"]').click({ position: { x: 10, y: 22 } })
   await input.fill(STALE_TITLE)
 
-  // In the same task: press Enter and start writing on the repro; on the draft line, send pointerdown/mousedown/click in sequence with the same x as just now,
-  // The pop-up layer is moved to the same day and the same abscissa of the draft. Write away IPC cross-process, this whole sequence falls before it comes back
+  // All in one task: press Enter to start the write on repro, then send pointerdown/mousedown/click to
+  // the draft row at the same x, moving the popover to the same day and spot on draft's row. The write
+  // crosses processes over IPC, so this whole sequence happens before it returns.
   await win.evaluate(async () => {
     document.querySelector<HTMLInputElement>('.ctxmenu .mi-in input')!
       .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
@@ -655,7 +670,8 @@ test('总览新建里程碑:写在路上时把弹层挪到另一个项目的同�
     const anchor = document.querySelector<HTMLElement>(`${gantt} .ganchor`)!
     const top = anchor.style.top
     for (const type of ['pointerdown', 'mousedown', 'click']) row.dispatchEvent(new MouseEvent(type, at))
-    // Only give up the microtask: React moves the anchor point to the draft line in the microtask. The IPC reply is another task and cannot be inserted.
+    // Yield only to microtasks: React moves the anchor to the draft row in a microtask, while the IPC
+    // reply is a separate task and cannot run in between.
     for (let i = 0; i < 10 && anchor.style.top === top; i += 1) await Promise.resolve()
     if (anchor.style.top === top) throw new Error('弹层没有在同一个任务里挪到 draft 行')
   })
@@ -664,7 +680,8 @@ test('总览新建里程碑:写在路上时把弹层挪到另一个项目的同�
   expect(await milestonesOf(win, 'repro')).toContainEqual({ date: firstDay, title: STALE_TITLE })
   await expect(menu).toBeVisible()
   await expect(menu.locator('.rh')).toHaveText(`新建里程碑 · ${dshort(firstDay)}`)
-  // The pop-up layer that is moved to another project must not contain the words repro, otherwise it will be built on draft by pressing Enter.
+  // A popover moved to another project must not keep the text typed for repro, or Enter would create
+  // that milestone on draft.
   await expect(input).toHaveValue('')
 })
 

@@ -3,20 +3,20 @@ import { resolve } from 'node:path'
 import type { Locator, Page } from '@playwright/test'
 import { expect, gotoPapers, test, uniqueHeights, type MeridianWindow } from './app.js'
 
-/** The screen you entered is always hung, and the selectors that are present on every screen, such as cards, should be stored in the currently displayed screen. */
+/** Screens stay mounted once visited, so selectors every screen has, such as cards, are scoped to the visible one. */
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
 const settings = (win: Page, sel: string) => win.locator(`.setdlg ${sel}`)
 
 const DEMO = resolve(import.meta.dirname, 'fixtures/platform-shell-demo.html')
 
-/** A push notification for demo. The field names are written in demo's own way, so leave them as they are so that they can be compared side by side with the source files. */
+/** One Inmail entry of the demo, with field names spelled as in the demo so they compare side by side. */
 type DemoEntry = {
   id: string; watch: string; title: string; authors: string; venue: string; abs: string; rec: string
 }
 
 /**
- * Evaluate the INBOX array in the demo source file as it is. The expected value is taken from the demo itself, not copied by hand; the array is
- * A self-consistent literal that does not reference anything else in the demo.
+ * Evaluates the demo's INBOX array as is. Expected values come from the demo itself rather than being
+ * copied by hand; the array is a self-contained literal that references nothing else in the demo.
  */
 function inboxFromDemo(): DemoEntry[] {
   const demo = readFileSync(DEMO, 'utf8')
@@ -48,7 +48,7 @@ const watchesFromCore = (win: Page) =>
     identity?: { source: 'semantic-scholar'; id: string; affiliations: string[] }
   }[]>(win, 'watch.list', {})
 
-/** Bypass the interface and call `papers.get` directly, and ask the library if this article is available. */
+/** Calls `papers.get` directly, bypassing the UI, to ask whether the vault has this paper. */
 const inLibrary = (win: Page, id: string) => win.evaluate((paper) =>
   (window as unknown as MeridianWindow).meridian.call('papers.get', { id: paper })
     .then(() => true, () => false), id)
@@ -59,13 +59,13 @@ const paperTotal = (win: Page) =>
 
 const KIND: Record<'topic' | 'author', string> = { topic: '主题', author: '作者' }
 
-/** Press Enter twice to fill in the topic name of the use case. */
+/** The topic name typed in the press-Enter-twice test case. */
 const TWICE_WATCH = '两下回车的主题'
 
 const openInbox = (win: Page, scope: string) => win.locator(`[data-inbox="${scope}"]`).click()
 const cardTitles = (win: Page) => shown(win, '.pcard h3').allTextContents()
 
-/** Push configuration only lives in the global settings; the small gear on the inbox screen directly opens the corresponding category. */
+/** Inmail settings live only in Settings; the gear on the Inmail screen opens their Watches category directly. */
 async function openDeliverySettings(win: Page) {
   await openInbox(win, 'all')
   await shown(win, '[title="关注设置"]').click()
@@ -92,7 +92,7 @@ test('侧栏「论文推送」进推送屏,条目、分组与正文都照 demo',
   await expect(shown(win, '.pcard')).toHaveCount(demo.length)
   expect(await cardTitles(win)).toEqual(demo.map((d) => d.title))
 
-  // One article focuses on one paragraph, and "ignore all" only hangs on the first paragraph.
+  // One group per watch, and "Dismiss all" appears only on the first group.
   const watches = await watchesFromCore(win)
   const heads = [...new Set(demo.map((d) => d.watch))].map((id) => {
     const w = watches.find((x) => x.id === id)!
@@ -101,7 +101,7 @@ test('侧栏「论文推送」进推送屏,条目、分组与正文都照 demo',
   expect(await groupTitles(win)).toEqual(heads)
   await expect(shown(win, '.collapsible-group-actions .btn')).toHaveCount(1)
 
-  // Every paragraph of the first card is word-for-word identical to the original text of the demo.
+  // Every part of the first card matches the demo's text exactly.
   const card = shown(win, '.pcard').first()
   const text = (sel: string) => card.locator(sel).evaluate((el) => el.textContent ?? '')
   expect(await text('h3')).toBe(demo[0]!.title)
@@ -146,7 +146,7 @@ test('按主题与作者各筛一档,面包屑与条数都跟着换', async ({ w
   const counted = (await watchesFromCore(win)).map((w) => ({
     ...w, n: entries.filter((e) => e.watch === w.id).length,
   }))
-  // At least the number of entries in the two levels is different, otherwise this test will have no discernible effect on screening.
+  // At least two watches must have different counts, or this test could not tell whether filtering works.
   expect(new Set(counted.map((c) => c.n)).size).toBeGreaterThan(1)
 
   for (const w of counted) {
@@ -154,7 +154,7 @@ test('按主题与作者各筛一档,面包屑与条数都跟着换', async ({ w
     await expect(win.locator('#crumb .cseg')).toHaveText(['收件', KIND[w.type], w.name])
     await expect(shown(win, '.desk-head .t')).toHaveText(`${KIND[w.type]} · ${w.name} · ${w.n} 篇`)
     await expect(shown(win, '.pcard')).toHaveCount(w.n)
-    // There is only one paragraph header in one gear, and it is this concern that is written; only empty states are displayed in the gaps.
+    // A watch's view has one group heading, naming that watch; a watch with no entries shows only the empty state.
     await expect(shown(win, '.collapsible-group')).toHaveCount(w.n === 0 ? 0 : 1)
     await expect(shown(win, '.empty-state')).toHaveCount(w.n === 0 ? 1 : 0)
     if (w.n > 0) expect(await groupTitles(win)).toEqual([`${KIND[w.type]} · ${w.name}`])
@@ -164,7 +164,7 @@ test('按主题与作者各筛一档,面包屑与条数都跟着换', async ({ w
 
 test('忽略一条:它进垃圾桶,恢复后回到推送屏原来的位置', async ({ win }) => {
   await openInbox(win, 'all')
-  // allTextContents will not retry itself. It will wait for all the cards in this file to be drawn before reading.
+  // allTextContents does not retry, so wait until every card in this view is drawn before reading.
   await expect(shown(win, '.pcard')).toHaveCount((await inboxFromCore(win)).length)
   const order = await cardTitles(win)
   const dropped = order[1]!
@@ -173,7 +173,7 @@ test('忽略一条:它进垃圾桶,恢复后回到推送屏原来的位置', asy
   await expect(shown(win, '.pcard')).toHaveCount(order.length - 1)
   expect(await cardTitles(win)).toEqual(order.filter((t) => t !== dropped))
 
-  // Re-retrieve the number and compare it: it is really in the trash, not just missing from the interface
+  // Read Core again: the entry really is in the trash, not just gone from the screen.
   const trash = await trashFromCore(win)
   expect(trash).toHaveLength(1)
   expect(trash[0]).toMatchObject({ kind: 'inbox', title: dropped })
@@ -222,7 +222,7 @@ test('入库:论文进库,按钮就地变开始阅读', async ({ win }) => {
   expect((await inboxFromCore(win)).filter((e) => e.downloaded)).toHaveLength(1)
   await expect(win.locator('[data-desk="papers"] .n')).toHaveText(String(before + 1))
 
-  // Which article is included: filter the paper list by title, and it will be in the row.
+  // The paper added is the card's: filtering the paper table by its title shows it as the one row.
   await win.locator('[data-desk="papers"]').click()
   await win.locator('#libq').fill(title.slice(0, 24))
   await expect(win.locator('.ptable tbody tr .pt-title .ci')).toHaveText([title])
@@ -230,7 +230,7 @@ test('入库:论文进库,按钮就地变开始阅读', async ({ win }) => {
 
 test('入库撞上库里已有的那一篇:不重复入库,就地给出打开那一篇的入口', async ({ win }) => {
   const entries = await call<{ id: string; title: string; paper: string }[]>(win, 'inbox.list', {})
-  // The library already has that push for that article: the same content is derived from the same paper ID.
+  // An Inmail entry whose paper the vault already has; the two are matched by paper ID.
   const dup = (await Promise.all(entries.map(async (e) =>
     ({ e, known: await inLibrary(win, e.paper) })))).find((x) => x.known)!.e
   const known = await call<{ title: string }>(win, 'papers.get', { id: dup.paper })
@@ -242,11 +242,11 @@ test('入库撞上库里已有的那一篇:不重复入库,就地给出打开那
 
   await expect(win.locator('#toast')).toHaveText('库里已经有这一篇 · 没有重复入库')
   await expect(card.locator('.pdup span')).toHaveText(`库里已经有这一篇：「${known.title}」`)
-  // There are not many items in the library, and this one has not been recorded as being in the library.
+  // The vault has no extra paper, and the entry is not marked as added.
   expect(await paperTotal(win)).toBe(before)
   expect((await inboxFromCore(win)).find((e) => e.id === dup.id)?.downloaded).toBe(false)
 
-  // That entrance really opens up Curry’s article: the reader header shows that paper's full title.
+  // That entry point really opens the vault's paper: the reader header shows that paper's full title.
   await card.locator('.pdup .btn', { hasText: '打开' }).click()
   await expect(win.locator('#crumb .cseg').last()).toHaveText(known.title)
 })
@@ -266,7 +266,8 @@ test.describe('这一条推送已经在别处入过库', () => {
     const card = shown(win, `.pcard[data-pid="${fresh.id}"]`)
     await expect(card.locator('[title="下载并入库"]')).toHaveCount(1)
 
-    // Bypass the interface and store it directly: core records that it has been stored in the library. The interface has not retrieved it yet, and the card is still displayed as not stored in the library.
+    // Add it directly, bypassing the UI: Core records the entry as added, but the UI has not
+    // refetched, so the card still shows it as not added.
     await call(win, 'inbox.download', { id: fresh.id })
 
     await card.locator('[title="下载并入库"]').click()
@@ -317,7 +318,8 @@ test('存入稍后阅读:离开推送屏,排到队首,再移出', async ({ win }
   await expect(shown(win, '.desk-head .t')).toHaveText(`稍后阅读 · ${queued.length}`)
   await expect(shown(win, '.pcard')).toHaveCount(queued.length)
 
-  // The segments grouped by time are the segments calculated by Curry, and those grouped by source are the origins recorded when joining the team.
+  // Grouped by date, the sections are the days Core computes; grouped by source, they are the sources
+  // recorded when each entry was queued.
   // Unlike sectionHeads' targets, the grouping switch now lives in the page header, so a day heading's
   // text is already clean and needs no control-label stripping.
   const heads = (key: 'day' | 'source') => [...new Set(queued.map((e) => e[key]))]
@@ -360,10 +362,10 @@ test('稍后阅读里有原文地址的条目可以直接开始阅读并在需�
     await expect(shown(win, `.pcard[data-pid="${entry.id}"] [title="开始阅读"]`))
       .toHaveCount(readable.has(entry.id) ? 1 : 0)
   }
-  // There are quite a few queues, but the only thing missing is the entrance to the reader.
+  // Every queued entry can still be removed; only the entry point to the reader is missing on some.
   await expect(shown(win, '.pcard [title="移出"]')).toHaveCount(queued.length)
 
-  // In the inbox, download the same article pointed to by the queue into the database, and the item on the queue will appear and "start reading"
+  // Adding the same paper from Inmail gives the queued entry pointing at it a reader entry point too.
   const shared = queued.find((e) => !e.downloaded
     && entries.some((x) => x.id === e.id && !x.downloaded))!
   const source = entries.find((x) => x.paper === shared.paper)!
@@ -391,7 +393,7 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   await expect(groupHeads.nth(1)).toHaveCSS('font-size', '15px')
   await expect(groupHeads.nth(1)).toHaveCSS('border-top-width', '1px')
 
-  // Pause: The line turns gray, the corner icon is retracted, and the captured push is still there.
+  // Pause: the sidebar row dims, its badge goes away, and the entries already fetched stay.
   const entriesBefore = await inboxFromCore(win)
   const kept = entriesBefore.filter((e) => e.watch === 'spec').length
   const spec = settings(win, '.wrow').filter({ hasText: 'speculative decoding' })
@@ -403,7 +405,7 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   await spec.locator('.btn', { hasText: '恢复' }).click()
   await expect(win.locator('[data-watchrow="spec"]')).not.toHaveClass(/\bdim\b/)
 
-  // Added: Add one more row to the "Topic" group in the sidebar, and the group count will increase accordingly.
+  // Add: the sidebar's topic group gains a row, and its count goes up by one.
   const topics = watches.filter((w) => w.type === 'topic').length
   await settings(win, '.section-heading').filter({ hasText: '主题' }).locator('.btn').click()
   await expect(settings(win, '.wrow')).toHaveCount(watches.length + 1)
@@ -437,10 +439,10 @@ test('关注管理:占位行按 Esc 撤掉,屏上没有旧的圆角添加框', a
   const watches = await watchesFromCore(win)
   await expect(settings(win, '.wrow')).toHaveCount(watches.length)
 
-  // Esc removes the placeholder; there is no old rounded corner added box on this screen.
+  // Esc removes the placeholder row; the old rounded add box is gone from this screen.
   await settings(win, '.section-heading').filter({ hasText: '作者' }).locator('.btn').click()
   await expect(settings(win, '.wrow')).toHaveCount(watches.length + 1)
-  // The placeholder is wearing .wrow clothes: when it is turned on, the attention line on this screen is still the same height.
+  // The placeholder is styled as a .wrow: while it is open, every watch row here still has one height.
   expect(await uniqueHeights(settings(win, '.wrow'))).toHaveLength(1)
   await settings(win, '.wrow.newrow input').press('Escape')
   await expect(settings(win, '.wrow.newrow')).toHaveCount(0)
@@ -540,7 +542,7 @@ test('关注可原地编辑:保留原 id、暂停状态与已经收到的论文'
   expect((await inboxFromCore(win)).map((entry) => entry.id)).toEqual(inboxIds)
 })
 
-/** The browser's default style and the style given by the rules are completely different for the items actually worn in the input box. */
+/** The computed styles an input actually wears, picked where browser defaults and the app's rules clearly differ. */
 const inputShape = (input: Locator): Promise<Record<string, string>> => input.evaluate((el) => {
   const s = getComputedStyle(el)
   return {
@@ -577,7 +579,8 @@ test('关注管理:同一时间只开一个占位,点另一组的加号先收掉
   await settings(win, '.wrow.newrow input').fill('还没提交的字')
   await settings(win, '.section-heading').filter({ hasText: '作者' }).locator('.btn').click()
 
-  // The author group is ranked after the theme group, and its place is the last line on the screen; the theme group line and the words inside are closed together.
+  // The author group comes after the topic group, so its placeholder is the last row; the topic
+  // group's placeholder closed together with the text typed in it.
   await expect(settings(win, '.wrow.newrow')).toHaveCount(1)
   await expect(settings(win, '.wrow')).toHaveCount(watches.length + 1)
   await expect(settings(win, '.wrow').last()).toHaveClass(/\bnewrow\b/)
@@ -592,8 +595,9 @@ test('关注管理:两下快回车只建出一条关注', async ({ win }) => {
   const topics = watches.filter((w) => w.type === 'topic').length
   await settings(win, '.section-heading').filter({ hasText: '主题' }).locator('.btn').click()
   await settings(win, '.wrow.newrow input').fill(TWICE_WATCH)
-  // The placeholder cannot be removed until the writing comes back. It and the words inside are still there until the writing comes back. core may have been written between two presses,
-  // Then there is no chance of this competition; two keydowns sent to the same task will definitely collide, and the second keydown will be placed on the placeholder that has not yet been written.
+  // The placeholder and its text stay until the write returns. With two real presses, Core may finish
+  // writing between them and the race never happens; two keydowns dispatched in one task always
+  // collide, the second landing on a placeholder whose write is still in flight.
   await settings(win, '.wrow.newrow input').evaluate((el) => {
     el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
@@ -606,7 +610,7 @@ test('关注管理:两下快回车只建出一条关注', async ({ win }) => {
 })
 
 test.describe('关注管理:切到别的应用', () => {
-  // The window must be on the screen and take the system focus before the blur() of the main process can take the focus.
+  // The window must be on screen and hold system focus for the main process's blur() to take it away.
   test.use({ showWindow: true })
 
   test('切到别的应用不算放弃:占位与打好的字都留着', async ({ app, win }) => {
@@ -615,10 +619,12 @@ test.describe('关注管理:切到别的应用', () => {
     const input = settings(win, '.wrow.newrow input')
     await input.fill('切走之前打的字')
     await expect(input).toBeFocused()
-    // Turn off Playwright's focus simulation: when it is turned on, the page always assumes that it has focus, and the real window is out of focus and cannot be transmitted.
+    // Turn off Playwright's focus emulation: while it is on, the page always believes it has focus, so
+    // the real window losing focus never reaches it.
     const cdp = await win.context().newCDPSession(win)
     await cdp.send('Emulation.setFocusEmulationEnabled', { enabled: false })
-    // Pull the window to the foreground and wait until it really gets the system focus before the subsequent blur() can lose focus.
+    // Bring the window to the front and wait until it really has system focus; only then can the
+    // blur() below take it away.
     await app.evaluate(({ BrowserWindow }) => {
       const target = BrowserWindow.getAllWindows()[0]!
       target.show()
@@ -658,11 +664,11 @@ test('侧栏角标数的都是库里的真实数量', async ({ win }) => {
     ['#rowLater .n', queued.length],
     ...watches.map((w): [string, number] => [`[data-watchrow="${w.id}"] .n`, count(w.id)]),
   ]
-  // At least two different numbers, otherwise this test will not be able to distinguish between subscripts.
+  // At least two counts must differ, or this test could not tell one badge from another.
   expect(new Set(badges.map(([, n]) => n)).size).toBeGreaterThan(1)
 
   for (const [sel, n] of badges) {
-    // The empty subscript is hidden by CSS, and the text is an empty string, consistent with the demo's `n||''`
+    // A zero badge has empty text and CSS hides it, matching the demo's `n||''`.
     await expect(win.locator(sel)).toHaveText(n === 0 ? '' : String(n))
   }
 })

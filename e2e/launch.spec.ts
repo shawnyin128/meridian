@@ -9,14 +9,14 @@ import { expect, openSettings, test } from './app.js'
 const APP_DIR = resolve(import.meta.dirname, '../apps/desktop')
 const FIXTURE_VAULT = resolve(APP_DIR, 'src/core/fixtures/vault')
 
-/** The first window of the application is not on the screen at the moment. */
+/** Whether the app's first window is on screen right now. */
 const visible = (app: ElectronApplication) =>
   app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.isVisible())
 
 test('打包后的应用启动出一个窗口', async ({ win }) => {
   const mark = win.locator('.titlebar .appbtn .brandmark')
   await expect(mark).toHaveCount(1)
-  // When the address is wrong and the resource is not included in the package, the element still has an 18×18 box, and only the naturalWidth will be 0.
+  // With a wrong URL or an asset missing from the package, the element still has its 18×18 box; only naturalWidth is 0.
   expect(await mark.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
 })
 
@@ -41,7 +41,7 @@ test('不传 MERIDIAN_SHOW_WINDOW 时窗口上屏', async ({ configHome }) => {
   }
 })
 
-/** Remove all variables starting with MERIDIAN_: the use case decides where the library comes from, and those set in the external shell do not count. */
+/** The environment minus every MERIDIAN_ variable: each test case picks its own vault, not the outer shell. */
 const cleanEnv = () => Object.fromEntries(Object.entries(process.env).filter(
   (e): e is [string, string] => e[1] !== undefined && !e[0].startsWith('MERIDIAN_')))
 

@@ -7,18 +7,19 @@ const SHOTS = resolve(import.meta.dirname, '../.superpowers/e2e-shots/gantt')
 const SIZES = [[1280, 720], [1440, 900], [1920, 1080], [2560, 1440]] as const
 const THEMES = [['light', ''], ['dark', 'dark']] as const
 
-/** The screen you entered is always hanging, and the selector should be closed in the currently displayed screen. */
+/** Screens stay mounted once visited, so selectors are scoped to the visible one. */
 const shown = (win: Page) => win.locator('.screenslot:not([hidden])')
 
-/** After waiting for two frames: changing the window size, scrolling and changing the theme, the viewport will not be recalculated until the next frame. */
+/** Waits two frames: after a resize, a scroll or a theme change, the viewport is recalculated only on the next frame. */
 const frames = (win: Page) => win.evaluate(() => new Promise<null>((drawn) => {
   requestAnimationFrame(() => requestAnimationFrame(() => drawn(null)))
 }))
 
 /**
- * The two items used in the screenshot are: name, how many days from the end of the schedule to today, and status. The fixture items are all days from the beginning of the window
- * Drawing starts and spans most of the window, neither of the two settings, 1280 and 1440, will roll out of the viewport; with these two, the viewport stops at the beginning
- * The entire paragraph on the right is outside, and when the scroll reaches the end, the entire paragraph on the left is outside.
+ * The two projects the screenshots add: name, start and due in days from today, and status. The
+ * fixture projects start a few days into the window and span most of it, so at neither 1280 nor 1440
+ * do they leave the viewport; with these two, the right one lies wholly outside the viewport when it
+ * rests at the start, and the left one when it is scrolled to the end.
  */
 const SAMPLES = [
   { name: '残桩样例 · 右', start: 21, due: 22, status: '进行中' },
@@ -26,11 +27,12 @@ const SAMPLES = [
 ] as const
 
 /**
- * Create two projects attached to both ends of the Gantt window, then click on the overview and wait for Gantt to finish drawing. `today` is Curry’s today.
- * Returns the overview Gantt's `.gantt` locator.
+ * Creates the two sample projects at both ends of the Gantt window, then opens Overview and waits for
+ * its Gantt to draw. `today` is the vault's today. Returns the overview Gantt's `.gantt` locator.
  */
 async function enterOverviewWithSamples(win: Page, today: string): Promise<Locator> {
-  // The overview is only retrieved after mounting and writing on the interface. The few times you bypass the interface and make direct adjustments, you must do so before entering the overview.
+  // Overview fetches only when it mounts and after writes made through the UI, so these direct Core
+  // calls must come before it is opened.
   for (const sample of SAMPLES) {
     await win.evaluate(async ({ name, patch }) => {
       const meridian = (window as unknown as MeridianWindow).meridian

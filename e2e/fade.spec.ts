@@ -1,24 +1,25 @@
 import { expect, gotoPapers, test, type MeridianWindow } from './app.js'
 import type { Locator, Page } from '@playwright/test'
 
-/** The width of the fade area is the same number as `--clipfade` in tokens.css. */
+/** Width of the fade zone in px; must equal the one in `--clipfade` in tokens.css. */
 const FADE = 28
 
-/** The transition time of the line background color (`--t-fast` 120ms) plus one frame margin. You must wait for it to finish before taking a sample, otherwise the color will be measured halfway. */
+/** The row background's transition (`--t-fast`, 120ms) plus a frame; sample after it ends, not mid-transition. */
 const SETTLE = 180
 
-/** Two extra-long session titles, one each in Latin and Chinese: no line breaks, and the full width before truncation exceeds the 320px upper limit of the sidebar. */
+/** Two over-long chat titles, one Latin and one Chinese: each is wider on one line than the sidebar's 320px maximum. */
 const LONG_TITLES = [
   ['拉丁', 'Compositional Generalization of Retrieval Augmented Language Models Under Distribution Shift'],
   ['中文', '检索增强语言模型在分布偏移之下的组合泛化能力究竟还成不成立这个问题的再检验'],
 ] as const
 
-/** Things measured in a screenshot: the background color, the background color of the rightmost column, and the ink color of each column. The color is `0xrrggbb`. */
+/** One screenshot's measurements: background, rightmost column's background, ink per column; colors are `0xrrggbb`. */
 type Shot = { bg: number; tail: number; ink: number[] }
 
 /**
- * Return the screenshot of the element to the page to decode it and measure its background color and column-by-column ink color. The background color is the color that appears most in the entire image.
- * The ink color of a certain column is the maximum channel difference between all pixels in the column and the background color - the background color itself is 0, and the whole word is about two hundred.
+ * Screenshots the element, decodes the image in the page, and measures its background and per-column
+ * ink. The background is the most frequent color in the image. A column's ink is the largest channel
+ * difference between any of its pixels and the background: 0 for bare background, about 200 for solid text.
  */
 async function shoot(win: Page, target: Locator): Promise<Shot> {
   const png = (await target.screenshot()).toString('base64')
@@ -75,12 +76,15 @@ const apart = (a: number, b: number): number => Math.max(
   Math.abs((a & 255) - (b & 255)))
 
 /**
- * Measures the fade of a title and writes the measured number to stdout. `backdrop` is the row/column where the title is located,
- * Its background color is the color that should be revealed after the title fades out. Returns the background color of `backdrop` for cross-state comparison.
- * The criterion is the ratio of the ink color of two samples of the same text with the mask turned on and the mask turned off: `--clipfade` in the fade-out area is a line
- * For a linear slope, only half of the ink should be left on average; the mask should be opaque outside the fade-out area, which should be fine at all.
- * `pose` puts the measured row back to its proper state. Taking a screenshot of an element picture will move the pointer away, so the hover state is in the first picture.
- * After drawing, start to go back. The three background colors will be measured in the three pictures. Replace each picture once before, and the three pictures will be consistent.
+ * Measures the fade of one title and logs the numbers to stdout. `backdrop` is the row or bar the title
+ * sits in; its background is the color the faded tail should reveal. Returns that background so
+ * callers can compare states.
+ * The check is the ratio of ink in two samples of the same text, mask on and mask off: `--clipfade` is
+ * a linear ramp over the fade zone, so about half the ink should remain there on average, and the mask
+ * is opaque outside it, so all the ink should remain.
+ * `pose` puts the row back into the state under test. An element screenshot moves the pointer away, so
+ * a hover starts to fade after the first shot and the three shots would see three backgrounds; posing
+ * before every shot keeps them consistent.
  */
 async function measureFade(win: Page, label: string, backdrop: Locator, target: Locator,
   pose: () => Promise<void>): Promise<number> {
@@ -96,7 +100,8 @@ async function measureFade(win: Page, label: string, backdrop: Locator, target: 
   expect(shape.scroll, `${label} 的文字要真的超出盒子`).toBeGreaterThan(shape.client)
   expect(shape.mask, `${label} 要挂着 --clipfade`).toContain('linear-gradient')
   expect(shape.ellipsis, `${label} 不该再出省略号`).toBe('clip')
-  // The fade must be a mask, not a layer of background color stacked on top: there are two sets of background colors for hover and selection in the row, and the layered color will be exposed if the background is changed.
+  // The fade must be a mask, not a background color painted over the text: the row has separate hover
+  // and selected backgrounds, and a painted color would show once the background changes.
   expect(shape.color, `${label} 不该自己画底色`).toBe('rgba(0, 0, 0, 0)')
   expect(shape.image, `${label} 不该自己画底色`).toBe('none')
 
@@ -136,8 +141,9 @@ async function measureFade(win: Page, label: string, backdrop: Locator, target: 
 }
 
 /**
- * In the uncropped title, the ratio of ink colors sampled twice when the mask switch is turned on. The fade area should be 1 when it falls outside the tail of the text:
- * Once the masked element shrinks to the width of text, the tail of the short title will fall into the fade-out area, and the number will drop.
+ * For an untruncated title, the ratio of ink with the mask on to ink with it off. It is 1 while the fade
+ * zone lies past the end of the text; if the masked element shrinks to the text's width, the short
+ * title's tail falls into the fade zone and the ratio drops.
  */
 async function fullInk(win: Page, label: string, target: Locator): Promise<number> {
   const shape = await target.evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }))
@@ -169,8 +175,9 @@ test('短标题一点不被渐隐吃掉', async ({ win }) => {
   expect(await fullInk(win, '面包屑-短末段', leaf), '短末段该原样显示').toBe(1)
 })
 
-// Measure three places for each type of text, one switch mask for each place, and eighteen element screenshots for one use case. The screenshot requires the compositor to give one frame,
-// When the window is not on the screen, one picture takes one second, which cannot be accommodated in the thirty-second use case budget.
+// Two scripts, three places each, three screenshots per place (mask on, mask off, backdrop): eighteen
+// element screenshots in one test case. Each needs a frame from the compositor, which an offscreen
+// window gets once a second, more than the 30-second test case budget allows.
 test.describe(() => {
   test.use({ showWindow: true })
 
@@ -193,7 +200,8 @@ test.describe(() => {
         () => row.hover())
       expect(await sidebar(), `${script} 长标题不该顶宽侧栏`).toBe(before)
 
-      // Click on this line to select it; the pointer will hover when it is left on the line. Move it into the text area and measure again.
+      // Click the row to select it; a pointer left on the row would add hover, so move it into the
+      // content area before measuring.
       await row.click()
       const chosen = await measureFade(win, `侧栏-${script}-选中`, row, row.locator('.ct-t'),
         () => win.mouse.move(900, 600))
