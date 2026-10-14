@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { TRASH_RETENTION_DAYS } from '../../shared/vocabulary.js'
 import { daysLeft } from './Trash.js'
 
-/** This set of use cases uses this day as today in the library, and the following deletion times are counted according to it. */
+/** The vault's today in these tests; the deletion times below count from it. */
 const TODAY = '2026-08-25'
 
-/** Curry's days forward are the epoch milliseconds of that day, that is, the deletion time recorded when deleting that day. */
+/** Epoch milliseconds of the day `days` days before the vault's today: the deletion time recorded that day. */
 const deletedDaysAgo = (days: number) =>
   Date.parse(`${TODAY}T00:00:00Z`) - days * 86_400_000
 
@@ -20,8 +20,8 @@ describe('daysLeft', () => {
     expect(daysLeft(deletedDaysAgo(6), TODAY)).toBe(1)
   })
 
-  // The library discards entries whose retention period has expired along with their contents (see fixture-store's "Items deleted for 8 days will no longer be listed"),
-  // So the entry that counts as 0 will never make it to this screen.
+  // The vault drops an entry past its retention period together with its content (see the
+  // fixture-store test on an entry deleted 8 days ago), so an entry counting 0 never reaches this screen.
   it('删满保留期的算 0,那样的条目已经不在垃圾桶里了', () => {
     expect(daysLeft(deletedDaysAgo(TRASH_RETENTION_DAYS), TODAY)).toBe(0)
   })

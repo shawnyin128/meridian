@@ -1,9 +1,9 @@
-/* The recently changed date subtitles, entries and diffs are moved from desktop/design/platform-shell-demo.html one by one. */
+/* Recent Changes' day headings, entries and diffs, copied rule by rule from e2e/fixtures/platform-shell-demo.html. */
 
 .crow{padding:10px 2px;cursor:pointer}
 .crow .chead{display:flex;align-items:flex-start;gap:10px}
 .crow .cbody{flex:1;min-width:0;border:0;background:transparent;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
-/* The archive button and the undo button usually do not occupy the line of sight. They are visible only after hovering the row (or entering it with the keyboard), which is the same as the .dots / .rowx of the demo. */
+/* The row's buttons stay hidden until the row is hovered (or entered with the keyboard), like the demo's .dots / .rowx. */
 .crow .cact{flex:none;align-self:center;display:flex;gap:6px;opacity:0;transition:opacity var(--t-fast) var(--e-out)}
 .crow:hover .cact,.crow .cact:focus-within{opacity:1}
 .crow .ct{display:block;font-size:var(--fs-base);font-weight:500}
@@ -11,5 +11,5 @@
 .crow .src{font-size:var(--fs-cap);padding:1px 8px;border-radius:999px;background:var(--field);color:var(--sec);margin-left:6px}
 .crow .diff{display:none}
 .crow.open .diff{display:block}
-/* "All Archives" is posted on the right side of "Unarchived"; the right side is managed by .section-heading.flexh's own rule in PageShell.css */
+/* "Archive all" sits at the right of the Current heading, placed there by .section-heading.flexh in PageShell.css. */
 .section-heading .archall:disabled{opacity:.45;cursor:default}

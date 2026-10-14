@@ -7,15 +7,16 @@ import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { useMessages } from '../messages/useMessages.js'
 import type { ScreenKey } from './AppShell.js'
 
-/** Which screen to enter after clicking on a hit is the same as the go of each item in the demo searchIndex. */
+/** The screen a clicked hit opens, like each entry's `go` in the demo's searchIndex. */
 const SCREEN: Record<SearchHit['kind'], ScreenKey> = {
   aggregation: 'wiki', project: 'project', chat: 'chat', paper: 'papers',
 }
 
 /**
- * Global search at the top of the sidebar: Instant results will appear as you type, click on an item to access the item on that screen. Indexing, matching, sorting and number of items
- * The upper limit is on the core side. This component only sends query words and receives the few returned by search.query. It does not hold a library.
- * `onJump` is the cross-screen jump entrance of the shell, and every hit falls to the target screen through it.
+ * The global search at the top of the sidebar: results appear as you type, and clicking one opens
+ * that item on its screen. Indexing, matching, ranking and the result limit live in Core; this
+ * component only sends the query and shows the few hits search.query returns, holding no vault data.
+ * `onJump` is the shell's cross-screen jump, and every hit reaches its screen through it.
  */
 export function SearchBox({ onJump }: { onJump: (screen: ScreenKey, target: string) => void }) {
   const m = useMessages()
@@ -32,7 +33,7 @@ export function SearchBox({ onJump }: { onJump: (screen: ScreenKey, target: stri
     return () => { live = false }
   }, [q])
 
-  // Demo's h.go(): close the panel and jump again, and the typed words will be retained.
+  // The demo's h.go(): close the results, then jump; the typed query stays.
   const go = (hit: SearchHit) => {
     setHits([])
     onJump(SCREEN[hit.kind], hit.target)
@@ -60,7 +61,7 @@ export function SearchBox({ onJump }: { onJump: (screen: ScreenKey, target: stri
       content={(
         <>
           <div className="rh">{m.shell.search.results}</div>
-          {/* The placement point of the paper is the title. The placement point of the two articles with the same name is the same. When adding the category and placement point, the key will collide. */}
+          {/* A paper's target is its title, so same-titled papers share one: kind plus target would collide. */}
           {hits.map((hit, at) => (
             <div
               className={at === keys.active ? 'rrow on' : 'rrow'} key={`${at}${hit.kind}${hit.target}`}

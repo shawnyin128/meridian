@@ -17,19 +17,19 @@ import { StructuredList, StructuredRow } from '../components/StructuredList.js'
 import './shell.css'
 import './Changelog.css'
 
-/** The separation between the two paragraphs in the gray characters is the same string as the splicing part. */
+/** The separator between the parts of the grey line; the same string splits `meta` and joins the parts. */
 const SEP = ' · '
 
 /**
- * In the gray line under the title, remove the relative date at the beginning and what is left: `meta` after the first separator.
- * The entire `meta` is the date, and if there is no separator, it will be an empty string.
+ * What is left of the grey line under the title once its leading relative date is dropped: `meta`
+ * after the first separator. When the whole `meta` is the date, with no separator, this is ''.
  */
 export function metaBelowHeading(meta: string): string {
   const at = meta.indexOf(SEP)
   return at < 0 ? '' : meta.slice(at + SEP.length)
 }
 
-/** The second half of the line of gray text under the title: Those that have been withdrawn are said to have been withdrawn, those that cannot be withdrawn are said to be irrevocable, and the rest are requested to be clicked. */
+/** The end of the grey line under the title: undone, cannot be undone, or a prompt to open the entry. */
 const hint = (entry: ChangeEntry, state: Catalog['changelog']['state']): string => {
   if (entry.undone) return state.undone
   return entry.undoable ? state.openToSee : state.notUndoable
@@ -65,10 +65,12 @@ function ClearArchivedButton({ count, onClear }: { count: number; onClear: () =>
 }
 
 /**
- * Recent changes: Every change in the library, its origin and what was changed. The two sections are divided according to filing and filing, and each section is divided into segments according to day.
- * The date is written in the subtitle at the beginning of the paragraph and will not be repeated in the gray text of the entry; click one to expand its diff, and the expanded entries will be different from each other.
- * Impact; The numbers in the screen header and sidebar are only those that are not archived. Each entry has its own undo entry. Undo writes that entity back to this transaction.
- * The way it was before, it will not affect whether it is archived or not. The entries are retrieved from changelog.list, and this screen does not hold the library.
+ * Recent Changes: every change to the vault, where it came from and what it changed. Two sections,
+ * current and archived, are each split by day; the date is the day's heading and is not repeated in
+ * the entries' grey lines. Clicking an entry expands its diff, independently of the other entries.
+ * The screen title and the sidebar count only unarchived entries. Each entry has its own Undo, which
+ * writes the entity back to how it was before this change and leaves archiving as it is. Entries come
+ * from changelog.list; this screen does not hold the vault.
  */
 export function Changelog() {
   const m = useMessages()
@@ -94,7 +96,8 @@ export function Changelog() {
     return next
   })
 
-  // It is common for cancellations to be rejected (the entity has been modified again after this transaction), and the reasons should be displayed on the screen instead of turning into a one-screen error report.
+  // An undo is often rejected (the entity changed again after this change), so the reason shows as a
+  // toast instead of becoming a page-wide error.
   const undo = (id: string) => {
     void changelog.undo(id).then(() => {
       bump()
@@ -102,7 +105,7 @@ export function Changelog() {
     }).catch((e: Error) => toast(e.message))
   }
 
-  // If a single article is archived and no banner appears: the article that falls into one or two sections below will be counted as one. This is feedback.
+  // Archiving one entry shows no banner: the entry moving down into the Archived section is the feedback.
   const archive = (id: string) => {
     void write(changelog.archive(id))
   }
@@ -121,7 +124,7 @@ export function Changelog() {
 
   const fresh = entries.filter((c) => !c.archived)
   const filed = entries.filter((c) => c.archived)
-  // The number in the screen header and "All Archives" only refer to the entire file that has not been viewed.
+  // The screen title and "Archive all" count only the unarchived entries.
   const unread = fresh.length
 
   const row = (c: ChangeEntry) => (
@@ -155,9 +158,9 @@ export function Changelog() {
   )
 
   /**
-   * Entries in a section: the same day is connected into a paragraph, with a line of small gray text at the
-   * beginning of the paragraph, each paragraph a separate embedded list so its own divider rules stay local
-   * to that day. The order is as given by `changelog.list`, without rearrangement.
+   * Entries in a section: consecutive entries of the same day form a group under a small grey day
+   * heading, each group a separate embedded list so its own divider rules stay local to that day. The
+   * order is as given by `changelog.list`, without rearrangement.
    */
   const section = (list: ChangeEntry[]) => {
     const days: { date: string; entries: ChangeEntry[] }[] = []

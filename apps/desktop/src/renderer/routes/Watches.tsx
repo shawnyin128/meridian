@@ -19,7 +19,7 @@ import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import './shell.css'
 import './Watches.css'
 
-/** Two groups of followers in push settings. */
+/** The two groups of watches in the Inmail settings. */
 const GROUPS: Watch['type'][] = ['topic', 'author']
 
 type SuggestionSource = 'focus' | 'project'
@@ -30,8 +30,9 @@ const suggestedAuthorKey = (item: WatchAuthorSuggestion): string => (
 )
 
 /**
- * A group of concerns: There is a plus sign on the right side of the title. Click it to create a new line at the top of this group of lists.
- * `adding` is the line being filled in: the placeholder is wearing `.wrow` clothes, and the input box inside is drawn and handed in by the caller.
+ * One group of watches, with a plus button at the right of its heading that opens a new row at the
+ * top of the group's list. `editor` is the row being filled in: the draft row wears the `.wrow`
+ * styles, and the caller renders and submits the input inside it.
  */
 function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, onRemove }: {
   type: Watch['type']
@@ -106,7 +107,8 @@ export function WatchSettings() {
   const [suggestionError, setSuggestionError] = useState<string | null>(null)
   const [addingSuggestion, setAddingSuggestion] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  // The space occupied is held by the whole screen, and "only one is open at the same time" can control two groups; if each group holds it by itself, no one can remove the opponent's one.
+  // The screen, not each group, holds the draft row, so "only one open at a time" spans both groups:
+  // if each group held its own, neither could close the other's.
   const [editor, setEditor] = useState<{ type: Watch['type']; id?: string } | null>(null)
   const [name, setName] = useState('')
   const [authorMatches, setAuthorMatches] = useState<AuthorCandidate[]>([])
@@ -119,8 +121,9 @@ export function WatchSettings() {
   const addTopic = useRef<HTMLButtonElement>(null)
   const addAuthor = useRef<HTMLButtonElement>(null)
   const suggestionRequest = useRef(0)
-  // Both + are considered "within the placeholder": if you remove the placeholder first when clicking on the + in another group, the layout will jump and the mouseup will not return.
-  // That button is now white-spotted - the previous placeholder is gone, but the new group has not been opened.
+  // Both + buttons count as inside the draft row: if clicking the other group's + closed the draft
+  // first, the layout would shift and the mouseup would miss the button, so the click would do
+  // nothing: the old draft gone and the new group's not opened.
   const triggers = useMemo(() => [addTopic, addAuthor], [])
 
   const toast = useToast()
@@ -173,11 +176,11 @@ export function WatchSettings() {
     return () => { window.clearTimeout(timer) }
   }, [authorSearchNonce, editor, name, watches])
 
-  /** Create a new follow. If it is written well, it will return true; if it is written incorrectly, it will report an error and return false. */
+  /** Creates a watch. Returns true when the write succeeds; on failure it reports the error and returns false. */
   const create = (fields: WatchFields): Promise<boolean> => write(watch.create(fields),
     { note: m.watches.notices.added, notify: toast })
 
-  /** Save the current placeholder: Keep the original attention and existing push when editing, and add one when creating a new one. */
+  /** Saves the draft row: an edit updates the watch in place, keeping its delivered papers; a new row adds one. */
   const persist = (fields: WatchFields): Promise<boolean> => editor?.id === undefined
     ? create(fields)
     : write(watch.update(editor.id, fields), {
@@ -185,8 +188,8 @@ export function WatchSettings() {
     })
 
   /**
-   * Click the plus sign of a certain group: the placeholder is opened to this group, and the one opened in the other group is closed together with the words in it;
-   * Only the input box that has been opened in this group returns the focus.
+   * Clicks a group's plus button: the draft row opens in this group, and one open in the other group
+   * closes with its text; if this group's draft is already open, only its input gets focus back.
    */
   const open = (type: Watch['type']) => {
     if (editor?.type === type && editor.id === undefined) {

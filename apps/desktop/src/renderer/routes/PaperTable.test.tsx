@@ -28,17 +28,17 @@ const ROW: PaperRow = {
   updated: '2026-01-01', custom: {}, projects: [],
 }
 const EMPTY_COLUMNS: PaperColumns = { hidden: [], custom: [], groups: [] }
-/** A created selection column with an existing option: the selector can be opened in the grid to submit new options, and the menu can also be renamed. */
+/** A created select column with one option: a cell's picker adds options, the column menu renames them. */
 const SELECT_COLUMNS: PaperColumns = {
   hidden: [], groups: [],
   custom: [{ key: 'pick', label: '选择', type: 'select', options: ['existing'] }],
 }
-/** A built-in multi-select column with an existing option: several values can be selected consecutively in one cell. */
+/** A created multi-select column with one option: several values can be picked one after another in one cell. */
 const MULTI_COLUMNS: PaperColumns = {
   hidden: [], groups: [],
   custom: [{ key: 'pick', label: '多选', type: 'multi', options: ['existing'] }],
 }
-/** One column selection column and one text column: In the same row, select the selection cell first and then save the text cell. */
+/** A select column and a text column: in one row, pick in the select cell first, then save the text cell. */
 const PICK_AND_NOTE: PaperColumns = {
   hidden: [], groups: [],
   custom: [
@@ -46,11 +46,11 @@ const PICK_AND_NOTE: PaperColumns = {
     { key: 'note', label: '备注', type: 'text', options: [] },
   ],
 }
-/** There is only one text column "Remarks": change its type in the column menu. */
+/** One custom text column, the note column, whose type the tests change in the column menu. */
 const NOTE_COLUMNS: PaperColumns = {
   hidden: [], groups: [], custom: [{ key: 'note', label: '备注', type: 'text', options: [] }],
 }
-/** The configuration confirmed by core after "Remarks" was changed to a radio selection column. */
+/** The columns Core confirms after the note column becomes a single-select column. */
 const NOTE_AS_SELECT: PaperColumns = {
   hidden: [], groups: [], custom: [{ key: 'note', label: '备注', type: 'select', options: [] }],
 }
@@ -59,20 +59,20 @@ let columnsCall: Controlled<PaperColumns>
 let listCall: Controlled<{ rows: PaperRow[]; total: number }>
 let getCall: Controlled<PaperRow>
 let importCall: Controlled<PaperImportResult> & { filename: string; bytes: Uint8Array }
-/** Each time papers.setColumns calls its own controlled promise, arranged in the order in which it was initiated. */
+/** Each papers.setColumns call's own controlled promise, in the order the calls were made. */
 let setColumnsCalls: (Controlled<void> & { columns: PaperColumns })[]
 /** Each papers.update has its own controlled promise, arranged in the order in which it was initiated. */
 let updateCalls: (Controlled<void> & { id: string; patch: Record<string, unknown> })[]
-/** Each time the parameters of papers.renameOption are arranged in the order of initiation. */
+/** The arguments of each papers.renameOption call, in the order the calls were made. */
 let renameOptionCalls: [key: string, from: string, to: string][]
-/** Each time papers.setColumnType calls its own controlled promise, arranged in the order in which they were initiated. */
+/** Each papers.setColumnType call's own controlled promise, in the order the calls were made. */
 let setColumnTypeCalls: (Controlled<void> & { key: string; type: string })[]
-/** The original words of toast, arranged in the order in which they were given. */
+/** The text of each toast, in the order shown. */
 let toastMessages: string[]
 let deletedPapers: string[]
-/** Should papers.update throw an error synchronously next time (instead of using a reject promise) to simulate an unexpected error throw? */
+/** An error the next papers.update throws synchronously, instead of rejecting, to simulate an unexpected throw. */
 let throwOnNextUpdate: Error | null
-/** papers.columns / papers.list have been adjusted several times each, including the time when mounting. */
+/** How many times papers.columns / papers.list were called, including the calls on mount. */
 let columnsCallCount: number
 let listCallCount: number
 let listParams: ListParams[]
@@ -133,7 +133,7 @@ vi.mock('../shell/AppShell.js', () => ({
   usePaperCount: () => null,
   useScreen: () => 'papers',
   useToast: () => (message: string) => { toastMessages.push(message) },
-  // Only when a revision state is maintained will the bump re-trigger the effects that are retrieved by revision just like in the application.
+  // Only real revision state makes bump re-run the effects that fetch on revision, as in the app.
   useVaultRevision: () => {
     const [revision, setRevision] = useState(0)
     return { revision, bump: () => { setRevision((r) => r + 1) } }
@@ -155,7 +155,7 @@ describe('内置列', () => {
 
 let mountedRoot: Root | null = null
 
-/** Hang in a real container and the rendered table is inside. */
+/** Mounts the table in a real container and returns the container. */
 function mount(): HTMLDivElement {
   const host = document.createElement('div')
   document.body.appendChild(host)
@@ -169,7 +169,7 @@ async function flush(): Promise<void> {
   await act(async () => { await Promise.resolve(); await Promise.resolve() })
 }
 
-/** To set the value of an input box and dispatch the input event, the native setter subscribed by React itself is used; it is applicable to both controlled and uncontrolled. */
+/** Sets an input's value through the native setter React tracks, then dispatches input; works controlled or not. */
 function setValue(input: HTMLInputElement, value: string): void {
   const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!
   setter.call(input, value)
@@ -190,8 +190,8 @@ function headTexts(host: HTMLElement): string[] {
 const TYPE_TITLE = { select: '单选', multi: '多选' } as const
 
 /**
- * Create a draft of a column: open the placeholder, press `type` (leave the default "text" if not passed), fill in the name, press Enter, and return to the time it was initiated.
- * papers.setColumns.
+ * Drafts a new column: opens the draft header, picks `type` (the default "text" if not given), fills
+ * in the name, presses Enter, and returns the papers.setColumns call that started.
  */
 async function startCreate(host: HTMLDivElement, label: string, type?: 'select' | 'multi') {
   const plus = host.querySelector<HTMLButtonElement>('[title="新增列"]')!
@@ -208,7 +208,7 @@ async function startCreate(host: HTMLDivElement, label: string, type?: 'select' 
   return setColumnsCalls.at(-1)!
 }
 
-/** Hang up a table with only one text column called "Remarks", open the column settings menu, and expand the row with the type of "Remarks". */
+/** Mounts a table whose only custom column is the note column, opens the column menu and its type row. */
 async function openNoteTypeRow(): Promise<void> {
   const host = mount()
   columnsCall.resolve(NOTE_COLUMNS)
@@ -218,12 +218,12 @@ async function openNoteTypeRow(): Promise<void> {
   await act(async () => { document.querySelector<HTMLButtonElement>('[title="改类型"]')!.click() })
 }
 
-/** The gear button named `title` in the column menu type row. */
+/** The option button titled `title` in the column menu's type row. */
 function typeButton(title: string): HTMLButtonElement {
   return document.querySelector<HTMLButtonElement>(`.typerow [title="${title}"]`)!
 }
 
-/** Click `key` on the element currently holding focus. */
+/** Presses `key` on the element currently holding focus. */
 async function pressKey(key: string): Promise<void> {
   await act(async () => {
     document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }))
@@ -407,7 +407,7 @@ describe('PaperTable', () => {
     await flush()
 
     const table = host.querySelector<HTMLTableElement>('.ptable')!
-    // Responsive width is 100% managed by CSS and cannot be crammed back into a pixel min-width that would create horizontal scrolling.
+    // CSS owns the responsive width entirely; an inline pixel min-width would bring back horizontal scrolling.
     expect(table.style.minWidth).toBe('')
     const actual: Record<string, number> = {
       t: 400, short: 180, rating: 100, authors: 170, y: 110, venue: 130, topics: 220, st: 90, x: 52,
@@ -511,7 +511,7 @@ describe('PaperTable', () => {
     await startCreate(host, '第一次')
     expect(setColumnsCalls).toHaveLength(1)
 
-    // Click a row to open the details panel: This way, do not go through NewColumnHead's onCancel, directly setNewCol(false)
+    // Clicking a row opens the details panel, which calls setNewCol(false) directly, not NewColumnHead's onCancel.
     const row = host.querySelector<HTMLElement>('.ptable tbody tr')!
     await act(async () => { press(row) })
     getCall.resolve(ROW)
@@ -532,7 +532,7 @@ describe('PaperTable', () => {
     const input2 = host.querySelector<HTMLInputElement>('th.th-new input')!
     await act(async () => { setValue(input2, '第二次') })
 
-    // The first time the column is built: the details panel has already closed it, and the second draft should not be touched.
+    // The first column write lands: the details panel already dismissed that draft, so the second must stay as is.
     setColumnsCalls[0]!.resolve()
     await flush()
     expect(host.querySelector('th.th-new input')).toBe(input2)
@@ -549,7 +549,7 @@ describe('PaperTable', () => {
     // Write once with the selected type, instead of creating a text column first and then changing the type.
     expect(call.columns.custom.find((c) => c.label === '选择列')?.type).toBe('select')
 
-    // The writing has not yet been implemented: the placeholder, type layer and selected gear are all still there
+    // The write has not landed yet: the draft header, the type popover and the selected option all stay.
     expect(host.querySelector('th.th-new')).not.toBeNull()
     const selectBtn = document.querySelector<HTMLButtonElement>('[title="单选"]')!
     expect(selectBtn.getAttribute('aria-checked')).toBe('true')
@@ -557,18 +557,20 @@ describe('PaperTable', () => {
 
     call.resolve()
     await flush()
-    // It is written as follows: the placeholders and the type layer are folded together, leaving no overlap of even one frame (the following use case nails this point frame by frame)
+    // Once it lands, the draft header and the type popover close together, with not one frame of overlap
+    // (the next test checks this frame by frame).
     expect(host.querySelector('th.th-new')).toBeNull()
     expect(document.querySelector('[data-radix-popper-content-wrapper]')).toBeNull()
   })
 
-  // Use Profiler to submit table header snapshots one after another, and check that each submission after the creation of columns is completed: the placeholders and new columns will not be present at the same time.
-  // Or neither. act is only submitted in groups between its own refresh points, and the smallest granularity that can be distinguished is one such refresh point.
+  // A Profiler snapshots the table header at every commit; after the column write lands, no commit may
+  // show both the draft header and the new column, or neither. act commits in batches at its own flush
+  // points, so one flush point is the finest grain this can tell apart.
   it('建列写成时,新列出现与占位(连同类型层)撤下落在同一次提交里,不会有只画一半的一帧', async () => {
     const host = document.createElement('div')
     document.body.appendChild(host)
     const root = createRoot(host)
-    /** A snapshot of the table header after each submission: whether the placeholder is present and whether the new column is present. */
+    /** The table header after each commit: whether the draft header is there and whether the new column is. */
     const snapshots: { hasPlaceholder: boolean; hasNewColumn: boolean }[] = []
     const snapshot = () => ({
       hasPlaceholder: host.querySelector('th.th-new') !== null,
@@ -591,13 +593,13 @@ describe('PaperTable', () => {
     await flush()
 
     await startCreate(host, '建列时序')
-    snapshots.length = 0 // Only look at those submissions after the implementation
+    snapshots.length = 0 // Only the commits after the write lands count
 
     setColumnsCalls[0]!.resolve()
     await flush()
 
     expect(snapshots.length).toBeGreaterThan(0)
-    // Every submission happens to be one of "the placeholder is there and the new column is not there" or "the placeholder is not there and the new column is there", not both or neither.
+    // Every commit shows exactly one of the draft header and the new column, never both or neither.
     for (const s of snapshots) expect(s.hasPlaceholder).not.toBe(s.hasNewColumn)
     expect(snapshots.at(-1)).toEqual({ hasPlaceholder: false, hasNewColumn: true })
   })
@@ -612,7 +614,8 @@ describe('PaperTable', () => {
     expect(setColumnsCalls).toHaveLength(1)
     const createCall = setColumnsCalls[0]!
 
-    // First select an existing option in the multi-select grid - no need to create an option, just enter the link and post it, and keep it without landing.
+    // First pick an existing option in the multi-select cell: it creates no option, so it enters the
+    // chain and is sent at once; leave it pending.
     const cell = host.querySelector<HTMLElement>('td.pt-cust')!
     await act(async () => { press(cell) })
     const existingRow = document.querySelector<HTMLElement>('.rrow.opt')!
@@ -621,24 +624,26 @@ describe('PaperTable', () => {
     expect(updateCalls).toHaveLength(1)
     const firstUpdate = updateCalls[0]!
 
-    // Submit a new option again - the chain is ranked after the first time; the list creation has not yet been completed at this moment, and it is not included in the closure submitted this time.
+    // Then submit a new option: it queues behind the first pick. The column creation has not landed
+    // yet, so the closure captured at submission lacks the new column.
     const picker = host.querySelector<HTMLInputElement>('td.pt-cust input.celledit')!
     await act(async () => { setValue(picker, '新选项') })
     await act(async () => {
       picker.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     })
     await flush()
-    expect(setColumnsCalls).toHaveLength(1) // It's ranked behind the first time, and it hasn't been its turn to actually write yet.
+    expect(setColumnsCalls).toHaveLength(1) // Queued behind the first pick, it has not written yet.
 
-    // Column creation is implemented: There are new columns in the column set confirmed by core
+    // The column creation lands: the columns Core confirmed now include the new column
     createCall.resolve()
     await flush()
 
-    // Only after writing for the first time is it implemented, the chain is advanced to the execution body of the second option.
+    // Only once the first write lands does the chain move on to running the second option.
     firstUpdate.resolve()
     await flush()
 
-    // The second time I actually write: the payload carries the newly created column, not the copy that is missing from the closure at the moment of submission.
+    // The second option's actual write: its payload carries the new column, not the closure's copy from
+    // submission time, which lacks it.
     expect(setColumnsCalls).toHaveLength(2)
     const createdKey = createCall.columns.custom.find((c) => c.label === '新列')!.key
     const sentKeys = setColumnsCalls[1]!.columns.custom.map((c) => c.key)
@@ -654,7 +659,8 @@ describe('PaperTable', () => {
     const cell = host.querySelector<HTMLElement>('td.pt-cust')!
     await act(async () => { press(cell) })
 
-    // Submit the first new option - no need to wait for the column to be created, directly enter the link to write, and keep it as a gate without landing.
+    // Submit the first new option: with no column creation to wait for, it enters the chain and writes
+    // at once; leave it pending as a gate.
     const picker = host.querySelector<HTMLInputElement>('td.pt-cust input.celledit')!
     await act(async () => { setValue(picker, '新选项A') })
     await act(async () => {
@@ -664,23 +670,23 @@ describe('PaperTable', () => {
     expect(setColumnsCalls).toHaveLength(1)
     const firstSetColumns = setColumnsCalls[0]!
 
-    // Then submit the second new option - ranked behind the first one, the first one has not yet landed at this moment
+    // Then submit the second new option: it queues behind the first, which has not landed yet.
     await act(async () => { setValue(picker, '新选项B') })
     await act(async () => {
       picker.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     })
     await flush()
-    expect(setColumnsCalls).toHaveLength(1) // It's behind the first one and it hasn't been its turn yet
+    expect(setColumnsCalls).toHaveLength(1) // Queued behind the first, it has not had its turn yet
 
-    // The first one is implemented: setColumns is completed, and the papers.update that is sent immediately needs someone to respond to it.
+    // The first one lands: setColumns completes, and the papers.update it sends next needs an answer too.
     firstSetColumns.resolve()
     await flush()
     expect(updateCalls).toHaveLength(1)
     updateCalls[0]!.resolve()
     await flush()
 
-    // The second one is actually written: with the value confirmed after the first one landed, not at the moment of submission (before the first one landed)
-    // The one calculated from the columns and rows - the calculation will miss the first newly added "new option A"
+    // The second one writes now, with the values confirmed after the first landed, not the ones computed
+    // from the columns and row at submission (before the first landed), which would miss option A.
     expect(setColumnsCalls).toHaveLength(2)
     const sentPickColumn = setColumnsCalls[1]!.columns.custom.find((c) => c.key === 'pick')!
     expect(sentPickColumn.options).toEqual(['existing', '新选项A', '新选项B'])
@@ -706,10 +712,10 @@ describe('PaperTable', () => {
     await flush()
 
     expect(toastMessages).toEqual(['意外炸了'])
-    // The error occurred before the controlled promise was actually credited, and this time there was no papers.update call left.
+    // The throw happened before any controlled promise was recorded, so this pick left no papers.update call.
     expect(updateCalls).toHaveLength(0)
 
-    // Select the same cell again: the queue is not stuck in "void" due to that error, and will be counted and issued as usual.
+    // Pick in the same cell again: the error did not jam the queue; the write is computed and sent as usual.
     const existingRowAgain = document.querySelector<HTMLElement>('.rrow.opt')!
     await act(async () => { press(existingRowAgain) })
     await flush()
@@ -730,11 +736,11 @@ describe('PaperTable', () => {
       .find((r) => r.textContent === 'other')!
     await act(async () => { press(other) })
     await flush()
-    // The selected writing is left untouched: this row on the table is still the old existing
+    // The pick's write is left pending: the table's row still holds the old 'existing'.
     expect(updateCalls).toHaveLength(1)
 
-    // First use an external focusin to turn off the pick selector, and then separately dispatch the click of the note cell.
-    // Prevent two state changes from being squeezed into the same rendering
+    // Close the pick cell's picker with a focusin outside it first, then dispatch the note cell's click
+    // separately, so the two state changes do not land in the same render.
     await act(async () => {
       noteCell!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
       document.body.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
@@ -821,7 +827,7 @@ describe('PaperTable', () => {
     expect(input!.value).toBe('建列时序')
     expect(document.querySelector('[title="单选"]')!.getAttribute('aria-checked')).toBe('true')
     expect(headTexts(host)).not.toContain('建列时序')
-    // After being rejected, I retrieved a column configuration from core to correct it.
+    // After the rejection, the table fetched the columns from Core again to correct itself.
     expect(columnsCallCount).toBeGreaterThan(columnsCallsAtMount)
 
     await act(async () => { setValue(input!, '改过的名字') })
@@ -890,7 +896,7 @@ describe('PaperTable', () => {
     await act(async () => { press(document.querySelector<HTMLElement>('.rrow.opt')!) })
     await flush()
     expect(updateCalls).toHaveLength(1)
-    // The second time is ranked after the first time. It will not be counted or issued until the first time is settled.
+    // The second pick queues behind the first; it is neither computed nor sent until the first settles.
     await act(async () => { press(document.querySelector<HTMLElement>('.rrow.opt')!) })
     await flush()
     expect(updateCalls).toHaveLength(1)
@@ -905,8 +911,8 @@ describe('PaperTable', () => {
     expect(columnsCallCount).toBeGreaterThan(columnsCallsAtMount)
     expect(listCallCount).toBeGreaterThan(listCallsAtMount)
 
-    // Select again. When it is rejected this time, it will be the last one in this cell; after retrieving this row from core, select the same cell again.
-    // Exactly one write is issued, and the value is calculated based on the line retrieved again.
+    // Pick again; this time the rejected pick is the cell's last one. After the row is fetched again
+    // from Core, a pick in the same cell sends exactly one write, computed from the refetched row.
     listCall = controlled()
     await act(async () => { press(document.querySelector<HTMLElement>('.rrow.opt')!) })
     await flush()
@@ -938,7 +944,8 @@ describe('PaperTable', () => {
     })
     await flush()
     expect(setColumnsCalls).toHaveLength(1)
-    // After the typed words are cleared, the filtering is restored. This line is the existing option existing, which is ranked after the new one.
+    // With the typed text cleared, the filter is lifted and this row is the existing option; this pick
+    // queues behind the new option.
     await act(async () => { press(document.querySelector<HTMLElement>('.rrow.opt')!) })
     await flush()
 
@@ -962,7 +969,7 @@ describe('PaperTable', () => {
 
     const create = await startCreate(host, '建列时序')
     const gear = document.querySelector<HTMLButtonElement>('.grpgear')!
-    // The group menu is DropdownMenu. The trigger is only opened when the left click is pointerdown, and click is not recognized.
+    // The group menu is a Radix DropdownMenu: its trigger opens on a left-button pointerdown and ignores click.
     await act(async () => { gear.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
     const topics = [...document.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')]
       .find((el) => el.textContent === '主题')!
@@ -1008,7 +1015,8 @@ describe('PaperTable', () => {
     await act(async () => { gear.click() })
     await act(async () => { document.querySelector<HTMLButtonElement>('[title="选项"]')!.click() })
     await act(async () => { document.querySelector<HTMLButtonElement>('[title="重命名选项"]')!.click() })
-    // Search only in the option line. The draft placeholder for creating the column is also in the document at this time, with the same input.celledit class name.
+    // Look only inside the option row: the column draft header is in the document too, with the same
+    // input.celledit class.
     const input = document.querySelector<HTMLInputElement>('.mi.optrow input.celledit')!
     await act(async () => { setValue(input, 'renamed') })
     await act(async () => {
@@ -1066,7 +1074,7 @@ describe('PaperTable', () => {
     await act(async () => {
       picker.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     })
-    // Filtering is restored after typing is cleared. This line has existing options. existing
+    // With the typed text cleared, the filter is lifted and this row is the existing option.
     await act(async () => { press(document.querySelector<HTMLElement>('.rrow.opt')!) })
     await flush()
     expect(setColumnsCalls).toHaveLength(1)
@@ -1115,7 +1123,7 @@ describe('PaperTable', () => {
     await flush()
     expect(setColumnsCalls).toHaveLength(2)
     expect(setColumnsCalls[1]!.columns.custom.map((c) => c.label)).toEqual(['第一次', '第二次'])
-    // The first time it landed, the second placeholder was not accepted, its words are still there
+    // The first write landed; the second draft header stays open, its text still there.
     expect(host.querySelector('th.th-new input')).toBe(input2)
     expect(input2.value).toBe('第二次')
 
@@ -1131,7 +1139,8 @@ describe('PaperTable', () => {
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
     const columnsAtMount = columnsCallCount
-    // A selection in the grid was rejected by core: PaperTable bumped itself, re-fetched the column configuration, and refused to answer.
+    // Core rejects a pick in a cell: PaperTable bumps itself and fetches the columns again, and the test
+    // leaves that fetch unanswered for now.
     columnsCall = controlled()
     await act(async () => { press(host.querySelector<HTMLElement>('td.pt-cust')!) })
     await act(async () => { press(document.querySelector<HTMLElement>('.rrow.opt')!) })
@@ -1165,7 +1174,7 @@ describe('PaperTable', () => {
 
   it('第一次取回列配置之前改分组:改动排在这一次取数之后,按取回的配置算,已有的自定义列留着', async () => {
     mount()
-    // I won’t answer papers.columns() when mounting. In the meantime, select a group from the group menu.
+    // Leave the papers.columns() call on mount unanswered, and meanwhile pick a group in the group menu.
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
 
@@ -1191,7 +1200,7 @@ describe('PaperTable', () => {
     const create = await startCreate(host, '建列时序')
     await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
     await act(async () => { document.querySelector<HTMLButtonElement>('[title="改类型"]')!.click() })
-    // There is also a "multi-select" button on the layer below the column creation placeholder, which is limited to the type row of the column menu.
+    // The column draft header's popover also has a multi-select button, so look only in the column menu's type row.
     await act(async () => { document.querySelector<HTMLButtonElement>('.typerow [title="多选"]')!.click() })
     expect(setColumnTypeCalls).toHaveLength(0)
 
@@ -1235,7 +1244,7 @@ describe('PaperTable', () => {
     await openNoteTypeRow()
     await act(async () => { typeButton('文本').focus() })
     await pressKey('ArrowRight')
-    // Writing is still on the way: first select the "single selection" just requested for the stall line
+    // The write is still in flight: the type row already selects the requested single-select option.
     expect(typeButton('单选').getAttribute('aria-checked')).toBe('true')
 
     setColumnTypeCalls[0]!.reject(new Error('论文页写不进去'))
