@@ -4,8 +4,8 @@ import { useMessages } from '../../messages/useMessages.js'
 import './PaperCard.css'
 
 /**
- * Unified presentation of paper abstracts. Excerpts are parsed in Markdown, so the arXiv common `$…$` and `$$…$$`
- * Mathematical expressions reuse global KaTeX rendering instead of exposing LaTeX source code directly to users.
+ * The one presentation of paper abstracts. Abstracts are parsed as Markdown, so the `$…$` and
+ * `$$…$$` math common on arXiv reuses the global KaTeX rendering instead of showing raw LaTeX.
  * With `folded`, the abstract shows its first lines fading out and offers to expand when there is more.
  */
 export function PaperAbstract({ text, folded = false }: { text: string; folded?: boolean }) {

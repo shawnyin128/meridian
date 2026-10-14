@@ -22,7 +22,8 @@ export type TimelineWindow = {
 }
 
 /**
- * The day/week is a complete viewport cycle, and the grid width is divided equally with the available width; the month view retains a fixed day width and horizontal scrolling.
+ * Day and week views show one whole period across the viewport, splitting the available width
+ * evenly among its days; month view keeps a fixed day width and scrolls horizontally.
  */
 export function fitTimelineWindow(
   window: TimelineWindow, scale: TimelineScale, viewportWidth: number,
@@ -31,7 +32,7 @@ export function fitTimelineWindow(
   return { ...window, dayWidth: viewportWidth / window.days }
 }
 
-/** The day/week grid is recalculated in real time when the viewport is widened, and the two project timelines are shared. */
+/** Refits the day and week grids live as the viewport resizes; shared by both project timelines. */
 export function useFittedTimelineWindow(
   viewport: RefObject<HTMLDivElement | null>, window: TimelineWindow, scale: TimelineScale,
 ): TimelineWindow {

@@ -61,7 +61,10 @@ function HighlightCard({ highlight, onSave, onDelete, onJump, focus }: {
   )
 }
 
-/** The personal status panel on the right side of the reader; only submits semantic commands and does not know how PDF or Core saves files. */
+/**
+ * The reader's right-rail panel of the user's own reading state. It only submits semantic
+ * mutations and knows nothing of how the PDF or Core stores them.
+ */
 export function ReadingNotes({
   reading, currentPage, saving, onMutate, onJump, mode = 'all', focusHighlightId = null,
 }: {

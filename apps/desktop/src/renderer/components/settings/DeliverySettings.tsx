@@ -9,7 +9,7 @@ import { FormInput } from '../FormControls.js'
 const MIN_ITEMS = 1
 const MAX_ITEMS = 100
 
-/** Follow the push configuration shared with Discovery; this is edit only, runtime caps are enforced by Core. */
+/** Delivery settings shared by watches and Discovery; this only edits them, Core enforces caps at run time. */
 export function DeliverySettings() {
   const m = useMessages()
   const [saved, setSaved] = useState<DeliverySettingsValue | null>(null)

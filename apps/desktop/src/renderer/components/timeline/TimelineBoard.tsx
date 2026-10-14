@@ -48,8 +48,9 @@ function pointAt(canvas: HTMLElement, clientX: number, clientY: number): Timelin
 
 /**
  * With `foldable`, each project's milestone row carries a caret that hides or shows that project's task rows.
- * A complete timeline shared between the project page and the overview. The two places only determine the label content, head movement and click behavior through parameters;
- * Time scales, grids, task/milestone rows, drag and drop, status colors, priorities and overdue reminders are only implemented here once.
+ * The full timeline shared by the project page and Overview. The two callers only choose the label
+ * content, the header action and what clicks do, through props; the time scale, grid, task and
+ * milestone rows, drag and drop, status colors, priorities and overdue warnings live only here.
  */
 export function TimelineBoard({
   projects, className = '', showProjectNames = false, foldable = false, headerAction, canvasOverlay,
