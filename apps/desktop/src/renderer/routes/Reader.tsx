@@ -37,7 +37,10 @@ type PendingHighlight = {
 
 const emptyReading = (paperId: string): PaperReading => ({ paperId, highlights: [], notes: [], remark: '' })
 
-/** Redraws a set of highlights using the same path; it is called when the PDF is first loaded, when scaling the page feed tree, and when the reading status is updated. */
+/**
+ * Redraws every highlight through one path; called when the PDF first loads, when a zoom rebuilds
+ * the page boxes, and when the reading state updates.
+ */
 function paintHighlights(box: ParentNode, reading: PaperReading | null): void {
   box.querySelectorAll<HTMLElement>('.paper-highlights').forEach((marks) => marks.replaceChildren())
   if (reading === null) return
@@ -59,7 +62,7 @@ function paintHighlights(box: ParentNode, reading: PaperReading | null): void {
   }
 }
 
-/** Take the original bytes of the article in the library and give them to pdf.js Worker for analysis. */
+/** Fetches the paper's source PDF bytes from the vault and hands them to the pdf.js worker to parse. */
 async function openDocument(id: string): Promise<PDFDocumentProxy> {
   const [data, pdfjs] = await Promise.all([papers.source(id), import('pdfjs-dist')])
   pdfjs.GlobalWorkerOptions.workerSrc = workerSrc
@@ -67,8 +70,9 @@ async function openDocument(id: string): Promise<PDFDocumentProxy> {
 }
 
 /**
- * PDF reader. Canvas is responsible for faithfully drawing the original text, and pdf.js TextLayer is responsible for native text selection and normalized rectangles.
- * Stacked separately between the two; the user's reading status is only persisted through Core commands, and this screen does not directly hold any files.
+ * PDF reader. A canvas draws the original pages faithfully, and a pdf.js TextLayer stacked over it
+ * provides native text selection and the normalized highlight rectangles. The user's reading state
+ * persists only through Core commands; this screen holds no files itself.
  */
 export function Reader() {
   const m = useMessages()
@@ -299,7 +303,8 @@ export function Reader() {
     if (box !== null) paintHighlights(box, reading)
   }, [reading])
 
-  // The drop point must wait until the PDF page and reading history are ready; clear it after the drop, and the subsequent zooming and redrawing will not move the position.
+  // Landing on the jump's anchor waits until the PDF pages and the reading state are ready. The
+  // anchor is cleared once used, so later zooms and redraws do not move the view.
   useEffect(() => {
     const view = scroller.current
     if (arrival === null || painted === 0 || reading === null || view === null) return
@@ -345,7 +350,7 @@ export function Reader() {
     if (opened !== null) zoomOf.current.set(opened, zoom)
   }, [opened, zoom])
 
-  // Stay on one page for a while before writing down, and do not frequently scroll through the middle pages.
+  // Record the page only once the user stays on it for a while, not every page scrolled past.
   useEffect(() => {
     if (opened === null || doc === null || reading === null || reading.lastPage === currentPage) return
     if (reading.lastPage === undefined && currentPage === 1) return
@@ -377,7 +382,10 @@ export function Reader() {
     return () => view.removeEventListener('scroll', locate)
   }, [doc])
 
-  /** Replace the browser's native selection with a normalized rectangle within the same page; cross-page selections are left to the user to reselect. */
+  /**
+   * Turns the browser's native selection into normalized rectangles on its page; a selection that
+   * spans pages is dropped for the user to reselect.
+   */
   const captureSelection = useCallback(() => {
     const selection = window.getSelection()
     if (selection === null || selection.isCollapsed || selection.rangeCount === 0) {

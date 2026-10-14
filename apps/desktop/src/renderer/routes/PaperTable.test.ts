@@ -14,7 +14,7 @@ const base: PaperColumns = {
   groups: ['topics', 'level'],
 }
 
-/** Replace the string of custom columns on base. */
+/** Returns `base` with its custom columns replaced. */
 const withCustom = (custom: PaperColumns['custom']): PaperColumns => ({ ...base, custom })
 
 describe('columnsNote', () => {

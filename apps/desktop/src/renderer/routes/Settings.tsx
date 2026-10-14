@@ -31,7 +31,8 @@ import './shell.css'
 import './Settings.css'
 
 /**
- * Set the categories, one item per category in the left column. Paper push centrally manages attention and project discovery directions; archived items manage closed conversations.
+ * Settings categories, one row each in the left column. Inmail gathers Watches and the projects'
+ * Discovery directions; Archived chats manages the chats that were archived.
  */
 const CATEGORIES = [
   'appearance', 'storage', 'api', 'model', 'research', 'extensions', 'delivery', 'delivery-watch', 'delivery-discovery',
@@ -64,10 +65,11 @@ const CATEGORY_LABEL: Record<CategoryKey, keyof Catalog['settings']['categories'
 type CategoryKey = SettingsCategory
 
 /**
- * Settings: Application-level configurations that do not belong to any content group, are opened by the application menu, and cover the current screen. The left column is classification,
- * The right column shows the content of the selected category. Storage exposes only whole Paper
- * Wiki roots and app-created backups; Core owns layout and every filesystem mutation. Choosing a
- * different root only registers it for next startup. Masks, focus and Escape are owned by Radix.
+ * Settings: app-level configuration that belongs to no content group, opened from the app menu
+ * as a dialog over the current screen. The left column lists the categories, and the right column
+ * shows the selected one. Storage exposes only whole Paper Wiki roots and app-created backups;
+ * Core owns layout and every filesystem mutation. Choosing a different root only registers it for
+ * next startup. The overlay, focus and Escape are owned by Radix.
  */
 export function Settings() {
   const m = useMessages()
@@ -92,7 +94,8 @@ export function Settings() {
   const reportError = useCallback((e: Error) => setError(e.message), [])
   const write = useVaultWrite()
 
-  // Not retrieved when it is closed: This modal is always hanging. If you do not add this item, every time the library writes, it will ask for the session list one more time.
+  // Fetch nothing while closed: this dialog stays mounted, so without this check every vault write
+  // would fetch the chat list again.
   useEffect(() => {
     if (!open) return
     setError(null)

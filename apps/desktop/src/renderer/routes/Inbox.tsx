@@ -27,10 +27,10 @@ import {
 } from '../components/PageShell.js'
 import './shell.css'
 
-/** The `.pcard` swipe-away animation of the demo: The library is actually written after the card slides away for so long. */
+/** The demo's `.pcard` slide-away: the vault is written only after the card has slid away this long. */
 const LEAVE_MS = 260
 
-/** A note on the name displayed in the inbox, demo's WATCHES. */
+/** A watch's label in the Inbox, kind · name, as in the demo's WATCHES. */
 const label = (w: Watch, watchKind: Record<Watch['type'], string>) => `${watchKind[w.type]} · ${w.name}`
 
 /** The stream label shown in the page title and breadcrumb tail: paper delivery or paper discovery. */
@@ -61,7 +61,9 @@ function discoveryResultNote(result: DiscoveryFetchResult, m: Catalog): string {
 }
 
 /**
- * Article push: crawl according to the following and spread out in groups. Each article can be downloaded into the library, saved for later reading, or ignored.
+ * Inbox: papers fetched for your watches (Inmail) or recommended for your projects (Discovery),
+ * shown in groups. Each paper can be downloaded into the vault or saved to Read Later; Inmail
+ * papers can also be dismissed.
  */
 export function Inbox() {
   const m = useMessages()
@@ -73,7 +75,8 @@ export function Inbox() {
   const [profiles, setProfiles] = useState<DiscoveryProfile[]>([])
   const [leaving, setLeaving] = useState<ReadonlySet<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
-  // After bumping into the existing article in the library, this card contains the title of the page in the library and the entrance to it.
+  // A download that hit a paper already in the vault: that paper's title, shown on the card with a
+  // link to open it.
   const [collided, setCollided] = useState<ReadonlyMap<string, string>>(new Map())
 
   const toast = useToast()

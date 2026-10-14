@@ -22,11 +22,15 @@ export function normalizedHighlightRects(page: Rect, selected: Rect[]): PaperHig
   return mergedHighlightRects(clipped)
 }
 
-/** Merge normalized fragments of the same row; also used to accommodate previously saved duplicate rectangles. */
+/**
+ * Merges normalized fragments on the same line; also applied to stored highlights, so duplicate
+ * rectangles saved earlier draw as one.
+ */
 export function mergedHighlightRects(rects: PaperHighlightRect[]): PaperHighlightRect[] {
   const ordered = rects.map((rect) => ({ ...rect })).sort((a, b) => a.y - b.y || a.x - b.x)
-  // pdf.js's TextLayer returns identical or partially overlapping DOMRects for nested spans. Drawing directly will result in the same
-  // Rows overlap dark squares; here only adjacent/overlapping segments in the same visual row are merged, and distant text is not connected across columns.
+  // pdf.js's TextLayer returns identical or partially overlapping DOMRects for nested spans; drawn
+  // as is, the overlaps show as darker blocks on the line. Only touching or overlapping fragments
+  // on the same visual line merge, so text far apart is never joined across columns.
   const merged: PaperHighlightRect[] = []
   for (const rect of ordered) {
     const rectRight = rect.x + rect.width
