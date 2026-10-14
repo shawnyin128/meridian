@@ -1,5 +1,7 @@
 import type { ResearchIdea, ResearchIdeaPatch } from '../../shared/contract.js'
 
+export { placeResearchIdeaOnGraph } from './graph-placement.js'
+
 export type IdeaSource = ResearchIdea['source']
 export type ResearchIdeaMutation = ResearchIdeaPatch & { node?: string | null }
 
