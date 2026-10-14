@@ -253,6 +253,52 @@ class WorkspaceProtocolTest(unittest.TestCase):
             with self.assertRaisesRegex(WorkspaceProtocolError, "relative to the workspace root"):
                 add_workspace_event(root, event_id="escape", text="Escape", source=str(outside))
 
+    def test_add_event_succeeds_after_a_stored_event_source_was_deleted(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            for name in ("first.md", "second.md"):
+                (root / "results").mkdir(exist_ok=True)
+                (root / "results" / name).write_text("# Evidence\n", encoding="utf-8")
+            add_workspace_event(root, event_id="first", text="First", source="results/first.md")
+            stored_first = json.loads((root / EVENTS_PATH).read_text(encoding="utf-8"))["events"][0]
+            (root / "results/first.md").unlink()
+
+            result = add_workspace_event(root, event_id="second", text="Second", source="results/second.md")
+
+            self.assertEqual(result["status"], "created")
+            stored = json.loads((root / EVENTS_PATH).read_text(encoding="utf-8"))["events"]
+            self.assertEqual(stored, [stored_first, result["event"]])
+
+    def test_add_event_keeps_stored_events_this_version_cannot_read_as_written(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            (root / "results").mkdir()
+            (root / "results/probe.md").write_text("# Probe\n", encoding="utf-8")
+            stored = [
+                {"id": "known", "date": "2026-09-01", "text": "Known", "source": "results/probe.md", "kind": "note"},
+                {
+                    "id": "future",
+                    "date": "2026-09-02",
+                    "text": "Written by a newer version",
+                    "source": "results/probe.md",
+                    "kind": "milestone",
+                    "future_field": {"nested": [1, 2.5, None]},
+                },
+                {"id": "partial", "date": "2026-09-03", "text": "No source"},
+                "not an event object",
+            ]
+            self._write_json(root / EVENTS_PATH, {"schema_version": "meridian.workspace-events.v1", "events": stored})
+
+            result = add_workspace_event(root, event_id="new", text="New", source="results/probe.md")
+
+            self.assertEqual(result["status"], "created")
+            payload = json.loads((root / EVENTS_PATH).read_text(encoding="utf-8"))
+            self.assertEqual(payload["events"], [*stored, result["event"]])
+            with self.assertRaisesRegex(WorkspaceProtocolError, "different content: future"):
+                add_workspace_event(root, event_id="future", text="Reused id", source="results/probe.md")
+
     def test_status_reports_invalid_repository_owned_surface_without_hiding_plan(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

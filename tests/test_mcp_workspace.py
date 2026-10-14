@@ -376,6 +376,48 @@ class MCPWorkspaceTests(unittest.TestCase):
             self.assertEqual(node["node"]["id"], "direction.A")
             self.assertEqual(node["linked_ideas"][0]["id"], "idea-1")
 
+    def test_unreadable_changes_are_reported_while_other_changes_and_the_node_still_read(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            changes_path = root / ".meridian/control/changes.json"
+            journal = json.loads(changes_path.read_text(encoding="utf-8"))
+            journal["next_sequence"] = 6
+            journal["changes"] += [
+                {
+                    "sequence": 3,
+                    "at": "2026-09-17T00:00:00Z",
+                    "kind": "idea.archived",
+                    "summary": "Idea archived by a newer App",
+                    "refs": [{"kind": "idea", "id": "idea-1"}],
+                },
+                {"sequence": 4, "at": "2026-09-17T01:00:00Z", "kind": "project.updated", "summary": "No refs", "refs": []},
+                {
+                    "sequence": 5,
+                    "at": "2026-09-18T00:00:00Z",
+                    "kind": "project.updated",
+                    "summary": "Project updated",
+                    "refs": [{"kind": "project", "id": "project-1"}],
+                },
+            ]
+            changes_path.write_text(json.dumps(journal) + "\n", encoding="utf-8")
+            server = MeridianMCPServer(default_workspace_root=root)
+
+            changes_result, changes = self._call(server, "meridian.workspace_changes", {"cursor": "mcp-feed:1"})
+            node_result, node = self._call(server, "meridian.lab_node", {"node_id": "direction.A"})
+            _, status = self._call(server, "meridian.workspace_status", {})
+
+            self.assertNotIn("isError", changes_result, changes.get("message"))
+            self.assertEqual([item["sequence"] for item in changes["changes"]], [2, 5])
+            self.assertEqual(changes["next_cursor"], "mcp-feed:5")
+            self.assertEqual(len(changes["unreadable_changes"]), 2)
+            self.assertIn("kind is unknown: idea.archived", changes["unreadable_changes"][0])
+            self.assertIn("update Meridian", changes["unreadable_changes"][0])
+            self.assertIn("refs must be a non-empty array", changes["unreadable_changes"][1])
+            self.assertNotIn("isError", node_result, node.get("message"))
+            self.assertEqual(node["linked_ideas"][0]["id"], "idea-1")
+            self.assertEqual(status["surfaces"]["changes"]["unreadable_changes"], changes["unreadable_changes"])
+
     def test_explicit_workspace_root_and_invalid_source_return_structured_results(
         self,
     ) -> None:

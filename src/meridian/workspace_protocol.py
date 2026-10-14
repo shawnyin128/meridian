@@ -119,6 +119,7 @@ def inspect_project_workspace(root: Path) -> dict[str, Any]:
             "head_sequence": value["next_sequence"] - 1,
             "retained_change_count": len(value["changes"]),
             "linked_idea_count": len(value["ideas"]),
+            "unreadable_changes": value["unreadable_changes"],
         },
     )
     events = _inspect_optional_surface(
@@ -157,7 +158,11 @@ def read_workspace_changes(
     limit: int = 20,
     kinds: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Read a bounded incremental page from the App-owned change journal."""
+    """Read a bounded incremental page from the App-owned change journal.
+
+    Changes this version cannot read are left out of the page and listed, each with its reason,
+    in ``unreadable_changes``.
+    """
 
     repository = _repository_root(root)
     manifest = _read_manifest(repository)
@@ -230,6 +235,7 @@ def read_workspace_changes(
         "retained_from": retained_from,
         "head_sequence": head,
         "changes": selected,
+        "unreadable_changes": payload["unreadable_changes"],
     }
 
 
@@ -345,11 +351,16 @@ def prepare_workspace_event(
 
     target = repository / events_path
     if target.exists():
-        payload = _validate_events(_read_json(target, label="workspace events"), repository=repository)
+        # Stored events are kept as read and not revalidated: one this version cannot read, or
+        # whose source file has since been deleted, must not block a new event.
+        payload = _events_payload(_read_json(target, label="workspace events"))
     else:
         payload = {"schema_version": WORKSPACE_EVENTS_SCHEMA_VERSION, "events": []}
 
-    prior = next((item for item in payload["events"] if item["id"] == normalized_id), None)
+    prior = next(
+        (item for item in payload["events"] if isinstance(item, dict) and item.get("id") == normalized_id),
+        None,
+    )
     if prior is not None:
         # "at" always reflects this call's time, so a repeat call is compared without it: the
         # stored event (and its original "at") is kept, not overwritten with a later timestamp.
@@ -628,15 +639,19 @@ def _validate_graph(value: Any) -> dict[str, Any]:
     return graph
 
 
-def _validate_events(value: Any, *, repository: Path | None = None) -> dict[str, Any]:
+def _events_payload(value: Any) -> dict[str, Any]:
     payload = _object(value, "workspace events")
     if payload.get("schema_version") != WORKSPACE_EVENTS_SCHEMA_VERSION:
         raise WorkspaceProtocolError("workspace events are not meridian.workspace-events.v1")
-    events = payload.get("events")
-    if not isinstance(events, list):
+    if not isinstance(payload.get("events"), list):
         raise WorkspaceProtocolError("workspace events must be a JSON array")
+    return payload
+
+
+def _validate_events(value: Any, *, repository: Path | None = None) -> dict[str, Any]:
+    payload = _events_payload(value)
     ids: set[str] = set()
-    for index, raw_event in enumerate(events):
+    for index, raw_event in enumerate(payload["events"]):
         item = _object(raw_event, f"workspace event {index}")
         if not {"id", "date", "text", "source"}.issubset(item):
             raise WorkspaceProtocolError(f"workspace event {index} is missing required fields")
@@ -665,6 +680,12 @@ def _validate_events(value: Any, *, repository: Path | None = None) -> dict[str,
 
 
 def _validate_changes(value: Any) -> dict[str, Any]:
+    """Validate the change journal, reading its changes one by one.
+
+    Returns the journal with ``changes`` narrowed to the changes this version can read and
+    ``unreadable_changes`` holding the reason each other change was left out.
+    """
+
     payload = _object(value, "workspace changes")
     _required_keys(
         payload,
@@ -711,31 +732,46 @@ def _validate_changes(value: Any) -> dict[str, Any]:
     changes = payload.get("changes")
     if not isinstance(changes, list):
         raise WorkspaceProtocolError("workspace changes changes must be a JSON array")
-    prior_sequence = 0
+    readable: list[dict[str, Any]] = []
+    unreadable: list[str] = []
     for index, raw_change in enumerate(changes):
-        change = _object(raw_change, f"workspace change {index}")
-        _required_keys(change, {"sequence", "at", "kind", "summary", "refs"}, f"workspace change {index}")
-        sequence = change.get("sequence")
-        if not isinstance(sequence, int) or isinstance(sequence, bool) or sequence <= prior_sequence:
-            raise WorkspaceProtocolError("workspace change sequences must be strictly increasing positive integers")
-        if sequence >= next_sequence:
-            raise WorkspaceProtocolError("workspace change sequence must be below next_sequence")
-        prior_sequence = sequence
-        _nonempty_string(change.get("at"), f"workspace change {index} at")
-        kind = _nonempty_string(change.get("kind"), f"workspace change {index} kind")
-        if kind not in _CHANGE_KINDS:
-            raise WorkspaceProtocolError(f"workspace change {index} kind is unknown: {kind}")
-        _nonempty_string(change.get("summary"), f"workspace change {index} summary")
-        refs = change.get("refs")
-        if not isinstance(refs, list) or not refs:
-            raise WorkspaceProtocolError(f"workspace change {index} refs must be a non-empty array")
-        for ref_index, raw_ref in enumerate(refs):
-            ref = _object(raw_ref, f"workspace change {index} ref {ref_index}")
-            _required_keys(ref, {"kind", "id"}, f"workspace change {index} ref {ref_index}")
-            if ref.get("kind") not in {"project", "idea", "node"}:
-                raise WorkspaceProtocolError(f"workspace change {index} ref {ref_index} kind is invalid")
-            _nonempty_string(ref.get("id"), f"workspace change {index} ref {ref_index} id")
-    return payload
+        prior_sequence = readable[-1]["sequence"] if readable else 0
+        try:
+            readable.append(_validate_change(raw_change, index, after=prior_sequence, before=next_sequence))
+        except WorkspaceProtocolError as exc:
+            unreadable.append(str(exc))
+    return {**payload, "changes": readable, "unreadable_changes": unreadable}
+
+
+def _validate_change(value: Any, index: int, *, after: int, before: int) -> dict[str, Any]:
+    """Validate one journal change whose sequence must lie strictly between ``after`` and ``before``."""
+
+    change = _object(value, f"workspace change {index}")
+    _required_keys(change, {"sequence", "at", "kind", "summary", "refs"}, f"workspace change {index}")
+    sequence = change.get("sequence")
+    if not isinstance(sequence, int) or isinstance(sequence, bool) or sequence <= after:
+        raise WorkspaceProtocolError(
+            f"workspace change {index} sequence must be a positive integer above the previous change's"
+        )
+    if sequence >= before:
+        raise WorkspaceProtocolError(f"workspace change {index} sequence must be below next_sequence")
+    _nonempty_string(change.get("at"), f"workspace change {index} at")
+    kind = _nonempty_string(change.get("kind"), f"workspace change {index} kind")
+    if kind not in _CHANGE_KINDS:
+        raise WorkspaceProtocolError(
+            f"workspace change {index} kind is unknown: {kind} (meridian {__version__}); update Meridian."
+        )
+    _nonempty_string(change.get("summary"), f"workspace change {index} summary")
+    refs = change.get("refs")
+    if not isinstance(refs, list) or not refs:
+        raise WorkspaceProtocolError(f"workspace change {index} refs must be a non-empty array")
+    for ref_index, raw_ref in enumerate(refs):
+        ref = _object(raw_ref, f"workspace change {index} ref {ref_index}")
+        _required_keys(ref, {"kind", "id"}, f"workspace change {index} ref {ref_index}")
+        if ref.get("kind") not in {"project", "idea", "node"}:
+            raise WorkspaceProtocolError(f"workspace change {index} ref {ref_index} kind is invalid")
+        _nonempty_string(ref.get("id"), f"workspace change {index} ref {ref_index} id")
+    return change
 
 
 def _change_cursor(epoch: str, sequence: int) -> str:
