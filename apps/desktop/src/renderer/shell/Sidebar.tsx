@@ -15,8 +15,8 @@ const Caret = ({ onClick }: { onClick?: (e: ReactMouseEvent) => void }) => (
 )
 
 /**
- * A line of concern in the sidebar. When `count` is 0, the subscript is empty (the empty subscript is hidden by CSS), and the paused bar
- * It turns gray and does not display the corner mark, which is consistent with the demo's applyWatchUI.
+ * A watch's row in the sidebar. When `count` is 0 the badge is empty (CSS hides an empty badge); a
+ * paused watch is greyed out and shows no badge, as in the demo's applyWatchUI.
  */
 function WatchRow({ watch, count, on, onOpen }: {
   watch: Watch; count: number; on: boolean; onOpen: () => void
@@ -36,8 +36,9 @@ function WatchRow({ watch, count, on, onOpen }: {
 }
 
 /**
- * A conversation's row in the sidebar. The "More" button at the end of the line opens a menu with only archives: demo. That menu also has pinned,
- * Rename and delete, this application does not have those three things. Archived conversations are not in this column, unarchiving is in the settings.
+ * A chat's row in the sidebar. The "More" button at its end opens a menu with Archive only: the
+ * demo's menu also had pin, rename and delete, which this app does not. Archived chats are not in
+ * this list; unarchiving is in Settings.
  */
 function ChatRow({ session, on, onOpen, onArchive }: {
   session: ChatSession; on: boolean; onOpen: () => void; onArchive: () => void
@@ -65,7 +66,7 @@ function SectHead({ sect, label, closed, onToggle, extra }: {
   return (
     <div
       className={cls.filter(Boolean).join(' ')} data-sect={sect}
-      // demo excludes .sb-add: the buttons in the title have their own actions and should not be collapsed together with this section.
+      // As in the demo, skip .sb-add: a button in the heading has its own action, not a collapse.
       onClick={(e) => { if (!(e.target as HTMLElement).closest('.sb-add')) onToggle() }}
     >
       {label}<Caret />{extra}
@@ -97,17 +98,20 @@ function UpdateRow() {
 }
 
 /**
- * Study sidebar: global search, updates, incoming items, conversations, my library, research, and trash can.
- * Click "Dialogue" without cutting the screen, and all other items will lead to one screen; `onJump` is handed over to the global search, and the results of clicking an item will fall to
- * That one on that screen.
- * When `paperCount`, `changeCount`, `projectCount` and `wikiCount` are null, the corresponding subscripts are not rendered, `trashCount`
- * When it is 0, the trash can corner is empty (the empty corner is hidden by CSS, consistent with the demo's `TRASH.length||''`).
- * `watches` displays two groups of attention·topic and attention·author under the inbox, `inboxCounts` gives each according to the attention id
- * The number of push items, and the followings that do not appear in it are counted as 0. `inboxMode` distinguishes discovery and attention flows, `inboxScope`
- * It is the file currently viewed in the focus stream; both determine the selected state of the sidebar.
- * `chats` displays the conversation list under the conversation. The archived ones are not in this column, they are in the settings; `chatId` is the conversation screen
- * When the currently viewed item is null, no session is selected.
- * `grip` is the three mouse processors of the retractable handle. Drag and drop, click to collapse and hover prompts are all implemented by the shell.
+ * The sidebar: global search, updates, Inbox, Chats, My library, Research, and Trash.
+ * Clicking the Chats heading does not switch screens; every other item opens one. `onJump` goes to
+ * the global search, and clicking a result opens that item on its screen.
+ * While `paperCount`, `changeCount`, `projectCount` or `wikiCount` is null, its badge is not rendered;
+ * when `trashCount` is 0 the Trash badge is empty (CSS hides an empty badge, like the demo's
+ * `TRASH.length||''`).
+ * `watches` fills the Watched topics and Watched authors groups under the Inbox; `inboxCounts` gives
+ * each watch's number of delivered papers by watch id, and a watch missing from it counts as 0.
+ * `inboxMode` tells the Discovery stream from the watch stream and `inboxScope` is the scope shown in
+ * it; together they decide which row is selected.
+ * `chats` fills the list under Chats; archived chats are not here but in Settings. `chatId` is the
+ * chat the Chats screen shows; null means none is selected.
+ * `grip` holds the resize handle's three mouse handlers; dragging, click-to-collapse and the hover
+ * tooltip are all implemented by the shell.
  */
 export function Sidebar({
   screen, onNavigate, onJump, paperCount, changeCount, projectCount, trashCount, wikiCount, ideaCount,
@@ -151,7 +155,7 @@ export function Sidebar({
   const topics = watches.filter((w) => w.type === 'topic')
   const authors = watches.filter((w) => w.type === 'author')
   const active = chats.filter((s) => !s.archived)
-  // "Paper push" counts the number of articles brought in by all following, which is synonymous with demo's allN = unread.spec + unread.dao
+  // The Inmail row counts the papers every watch delivered, the demo's allN = unread.spec + unread.dao.
   const pushed = Object.values(inboxCounts).reduce((sum, n) => sum + n, 0)
   const onWatch = (id: string) => screen === 'inbox' && inboxMode === 'watch' && inboxScope === id
   const onDiscovery = (id: string) => screen === 'inbox' && inboxMode === 'discovery' && inboxScope === id
@@ -174,7 +178,7 @@ export function Sidebar({
 
         <SectHead sect="inbox" label={m.shell.nav.inbox} closed={!!closed['inbox']} onToggle={() => toggle('inbox')} />
         <div className={sect('inbox')} id="sect-inbox">
-          {/* The demo only allows the caret of this row to collapse subgroups, leaving the rest of the row for the recipient view */}
+          {/* As in the demo, only this row's caret collapses its subgroups; the rest of the row opens the Inbox. */}
           <div
             className={inboxAll.filter(Boolean).join(' ')} id="rowInboxAll" data-inbox={ALL_WATCHES}
             onClick={() => onOpenInbox(ALL_WATCHES)}

@@ -20,7 +20,7 @@ export type ScreenKey =
   'feed' | 'inbox' | 'later' | 'papers' | 'wiki' | 'changelog' | 'ideas' | 'overview' | 'project'
   | 'trash' | 'chat' | 'reader'
 
-/** A section of bread crumbs. Those with onClick and not at the last position are clickable return entries, corresponding to the `.cseg.link` of the demo. */
+/** A breadcrumb segment. One with `onClick` that is not last is a link back, the demo's `.cseg.link`. */
 export type CrumbSeg = { text: string; onClick?: () => void }
 
 /** The breadcrumb trail for each screen. `null` means this screen keeps whatever brought it in. */
@@ -39,14 +39,10 @@ const crumbsOf = (m: Catalog): Record<ScreenKey, [string, ...string[]] | null> =
   reader: null,
 })
 
-/** The new conversation's placeholder before the title is set is the same as demo's makeSession('new conversation', false). */
-// TODO(i18n-t17): stays Chinese until Task 17 moves this into messages/{zh,en}/chat.ts
-// alongside Chat.tsx, which this task must not touch (owned by the parallel worktree).
-
-/** The default level of the paper push screen is: do not filter and follow, push all papers together for viewing. */
+/** The Inbox's default scope: no watch filter, papers from every watch shown together. */
 export const ALL_WATCHES = 'all'
 
-/** Two independent information streams for paper push. The entrance belongs to the shell navigation and is not held by the temporary filtering status in the page. */
+/** The Inbox's two streams. Which one is open is shell navigation state, not a page-local filter. */
 export type InboxMode = 'watch' | 'discovery'
 
 /** One project's share of the discovery stream, listed under Discovery in the sidebar. */
@@ -54,16 +50,17 @@ export type DiscoveryProjectCount = { id: string; name: string; count: number }
 
 const SB_MIN = 180
 const SB_MAX = 320
-/** Demo's showGtip: The capsule comes out after hovering over the handle for 350ms. */
+/** The demo's showGtip: the handle's tooltip appears after the pointer rests on it this many ms. */
 const GRIPTIP_DELAY = 350
 
-/** A screen hangs below the basic breadcrumbs: deeper levels, and final fallback actions. */
+/** A screen's additions to its base breadcrumbs: deeper segments and the last base segment's back action. */
 type Deeper = { tail: CrumbSeg[]; onLeafClick: (() => void) | null }
 
 /**
- * A cross-screen jump: `screen` is the screen you want to go to, `target` is the recognized landing point on that screen (wiki page id,
- * item id), `from` is the screen that initiates the jump, `seq` is incremented every time it jumps - the target screen relies on it to identify this screen entry
- * Was it jumped in, or re-entered from the sidebar. `anchor` is where to land on the target screen.
+ * A jump from one screen to another: `screen` is the destination, `target` the item to open there
+ * (a wiki page id, an item id), `from` the screen the jump started on. `seq` grows with every jump, so
+ * the destination can tell whether it was entered by this jump or again from the sidebar. `anchor` is
+ * where to land on the destination.
  */
 export type JumpAnchor = {
   /** Reader: the page, highlight or note to show, and the side panel to open. */
@@ -105,7 +102,7 @@ const JumpContext = createContext<{
   open: (screen: ScreenKey, target: string, anchor?: JumpAnchor) => void
   returnTo: (screen: ScreenKey) => void
 } | null>(null)
-/** Which screen does the current children belong to? The hanging screens are all running, and things across the screens must recognize their own grid. */
+/** The screen these children belong to: every mounted screen keeps running, so each must know its own. */
 const SlotContext = createContext<ScreenKey | null>(null)
 export type SettingsCategory = 'appearance' | 'storage' | 'api' | 'model' | 'research' | 'extensions' | 'delivery' | 'delivery-watch' | 'delivery-discovery' | 'archived'
 const SettingsContext = createContext<{
@@ -115,12 +112,12 @@ const SettingsContext = createContext<{
   openCategory: (category: SettingsCategory) => void
 } | null>(null)
 
-/** The symbol color that should be used for the window button under the current theme is `--sec`: the three symbols and the secondary text are in the same file. */
+/** The color of the window buttons' symbols in the current theme: `--sec`, the tone of secondary text. */
 function symbolColor(): string {
   return getComputedStyle(document.documentElement).getPropertyValue('--sec').trim()
 }
 
-/** The demo's banner() and toast() have the same shape: the latter one covers the previous one, and exits automatically after `ms` milliseconds. */
+/** The demo's banner() and toast(): a new message replaces the shown one, which hides after `ms` ms. */
 function useFading(ms: number): [{ text: string; show: boolean }, (text: string) => void] {
   const [state, setState] = useState({ text: '', show: false })
   const timer = useRef(0)
@@ -133,11 +130,12 @@ function useFading(ms: number): [{ text: string; show: boolean }, (text: string)
 }
 
 /**
- * Hang the deeper level of the current screen under the basic breadcrumbs to the shell. An empty array means that this screen does not have a deeper level.
- * `onLeafClick` is attached to the last paragraph of the basic breadcrumb (such as "paper"), so that it will be pushed off the last position by `tail`
- * It becomes the entrance back to the shallowest level of this screen.
- * Both parameters must maintain the same reference (using useMemo / useCallback) when the content does not change, otherwise the shell
- * will be reset repeatedly.
+ * Hands the shell the current screen's deeper breadcrumb segments, shown after its base segments. An
+ * empty array means the screen has no deeper level. `onLeafClick` goes on the last base segment (such
+ * as "Papers"): once `tail` pushes that segment out of the last position, it becomes the way back to
+ * the screen's top level.
+ * Both arguments must keep the same reference while their content is unchanged (useMemo /
+ * useCallback); otherwise the shell is set again and again.
  */
 export function useCrumbTail(tail: CrumbSeg[], onLeafClick?: () => void): void {
   const set = useContext(CrumbTailContext)
@@ -145,7 +143,8 @@ export function useCrumbTail(tail: CrumbSeg[], onLeafClick?: () => void): void {
 }
 
 /**
- * The confirmation banner function after fetching and writing operations corresponds to demo's banner(): the latter one covers the previous one and exits automatically after 1.6 seconds.
+ * Returns the function that shows the confirmation banner after a write, the demo's banner(): a new
+ * message replaces the shown one, which hides after 1.6 seconds.
  * The returned function retains the same reference throughout the lifetime of the shell.
  */
 export function useBanner(): (text: string) => void {
@@ -155,7 +154,8 @@ export function useBanner(): (text: string) => void {
 }
 
 /**
- * Get the prompt function of the rejected action, which corresponds to the toast() of the demo: the last one overwrites the previous one, and it will exit automatically after 2.4 seconds.
+ * Returns the function that tells the user an action was rejected, the demo's toast(): a new message
+ * replaces the shown one, which hides after 2.4 seconds.
  * The returned function retains the same reference throughout the lifetime of the shell.
  */
 export function useToast(): (text: string) => void {
@@ -165,7 +165,8 @@ export function useToast(): (text: string) => void {
 }
 
 /**
- * Round up the number of articles in the database. The sidebar corner markers and the paper screen title read the same number. null means it has not been retrieved yet.
+ * Returns the number of papers in the vault. The sidebar badge and the Papers screen title read the
+ * same number. null means it has not been fetched yet.
  */
 export function usePaperCount(): number | null {
   const state = useContext(PaperCountContext)
@@ -174,9 +175,10 @@ export function usePaperCount(): number | null {
 }
 
 /**
- * The rounding library's write count and its increment function. After writing a call `bump`, each screen and sidebar corner mark will be clicked.
- * New `revision` retrieval: when data on one screen is changed to another screen (delete to trash, restore from trash)
- * That's what it depends on. The returned `bump` remains the same reference throughout the lifetime of the shell.
+ * Returns the vault-wide write count and the function that increments it. Call `bump` after a write;
+ * every screen and sidebar badge fetches again on a new `revision`. A write on one screen that changes
+ * another screen's data (moving to the trash, restoring from it) relies on this. The returned `bump`
+ * remains the same reference throughout the lifetime of the shell.
  */
 export function useVaultRevision(): { revision: number; bump: () => void } {
   const state = useContext(VaultRevisionContext)
@@ -185,9 +187,10 @@ export function useVaultRevision(): { revision: number; bump: () => void } {
 }
 
 /**
- * Get today's ISO date in the library. Every relative date on the screen is calculated from it, which is given by core, not the local system date.
- * You won't be stuck on a single screen until you get it, so you'll always get value here. Refetch it after each library write, and only then:
- * A screen of dry waiting passed midnight without any writing during that time, and what is given here remains the same as that day, until the next time it is written.
+ * Returns the vault's today as an ISO date. Every relative date on screen counts from it; Core gives
+ * it, not the local system clock. No screen mounts before it arrives, so this always has a value. It
+ * is fetched again after every vault write and only then: a screen left idle past midnight with no
+ * write keeps the previous day until the next write.
  */
 export function useToday(): string {
   const today = useContext(TodayContext)
@@ -196,10 +199,11 @@ export function useToday(): string {
 }
 
 /**
- * Get the entrance to the cross-screen jump and the jump to the caller's screen. `open` records the current screen as the origin and then switches to it
- * The target screen is called in every cross-screen entry on the interface; `jump` is only used when the screen where it is taken is the target of a certain jump.
- * Not empty - the hanging screens are all running, and the jumps of other screens cannot be mistaken for your own; `returnTo` returns to the original screen. `open`
- * The third parameter is the landing point when entering the reader.
+ * Returns the cross-screen jump functions and the jump aimed at the caller's screen. `open` records
+ * the current screen as the origin, then switches to the destination; every cross-screen link in the
+ * UI calls it. `jump` is non-null only when the caller's screen is a jump's destination: every mounted
+ * screen keeps running, so none may take another screen's jump for its own. `returnTo` goes back to
+ * the origin screen. The third argument of `open` is where to land, such as a page in the reader.
  */
 export function useJump(): {
   jump: ScreenJump | null
@@ -217,9 +221,10 @@ export function useJump(): {
 }
 
 /**
- * Get the opening and closing settings of the modal. `open` becomes true when the user requests to open settings in the application menu; `setOpen` is handed over to Radix,
- * Esc, point masks, and modal entrances to other places are all closed via it. The returned `setOpen` is used throughout the lifetime of the shell.
- * Keep the same reference.
+ * Returns the open state of the Settings modal. `open` becomes true when the user opens Settings from
+ * the app menu. `setOpen` goes to Radix: Escape, a click on the overlay, and the modal's links to
+ * other places all close it through this. The returned `setOpen` keeps the same reference throughout
+ * the lifetime of the shell.
  */
 export function useSettingsOpen(): {
   open: boolean
@@ -233,8 +238,9 @@ export function useSettingsOpen(): {
 }
 
 /**
- * Get the key of which screen is currently displayed. The screens that have been entered are always hung, and those that are hidden still receive document-level events.
- * Processors that should only be active on the current screen use it to get themselves out of the way.
+ * Returns the key of the screen currently shown. A screen once entered stays mounted, and a hidden
+ * one still receives document-level events; handlers meant only for the current screen use this to
+ * step aside.
  */
 export function useScreen(): ScreenKey {
   const state = useContext(ScreenContext)
@@ -243,8 +249,9 @@ export function useScreen(): ScreenKey {
 }
 
 /**
- * Get the number of times the sidebar is cut. The screen uses it to decide whether to return to the lowest level when "re-entering": only the sidebar cuts to another screen.
- * It counts as re-entering. Cross-screen jumps and returns after jumps are not counted, so the number remains unchanged in those two situations.
+ * Returns the number of sidebar navigations. A screen uses it to decide when an entry takes it back to
+ * its top level: only a sidebar click counts as an entry. A cross-screen jump and the return from one
+ * leave the number unchanged.
  */
 export function useScreenEntry(): number {
   const state = useContext(ScreenContext)
@@ -263,8 +270,9 @@ export function useScreenReentry(): number {
 }
 
 /**
- * Get the current file of the paper push screen: `ALL_WATCHES` means all push, otherwise it is the id of a certain follower.
- * Which file to select is determined by the sidebar, so it belongs to the navigation state of the shell just like the current screen.
+ * Returns the Inbox's current scope: `ALL_WATCHES` for the whole stream, otherwise one watch's id
+ * (one project's id in Discovery). The sidebar picks it, so like the current screen it is shell
+ * navigation state.
  */
 export function useInboxScope(): string {
   const scope = useContext(InboxScopeContext)
@@ -272,7 +280,7 @@ export function useInboxScope(): string {
   return scope
 }
 
-/** The current paper push entry is an explicit attention stream or a discovery stream generated by project. */
+/** Whether the Inbox shows the stream of explicit watches or the Discovery stream derived from projects. */
 export function useInboxMode(): InboxMode {
   const mode = useContext(InboxModeContext)
   if (mode === null) throw new Error('useInboxMode needs AppShell')
@@ -280,10 +288,10 @@ export function useInboxMode(): InboxMode {
 }
 
 /**
- * Get which conversation the conversation screen is currently viewing: `id` and `title` are both null when no one is selected. Which one to choose
- * Determined by the conversation list in the sidebar, it belongs to the navigation state of the shell as well as the current screen; `select` makes the conversation screen
- * Cut the new one into the current one. `archived` indicates whether this item is in the archive - the archived conversation is not in the sidebar
- * In one column, it can only be opened from the settings, and it must be visible on the screen.
+ * Returns the chat the Chats screen shows: `id` and `title` are both null when none is selected. The
+ * sidebar's chat list picks it, so like the current screen it is shell navigation state; `select`
+ * makes another chat the current one. `archived` tells whether the chat is archived: an archived chat
+ * is not in the sidebar list and opens only from Settings, so the screen has to show that it is.
  */
 export function useChatSession(): {
   id: string | null
@@ -312,11 +320,12 @@ export function useEscapeLayer(active: boolean, close: () => void): void {
 }
 
 /**
- * Application shell: top bar (sidebar switch, breadcrumbs) and study sidebar. The current screen is determined by the sidebar navigation.
- * `screens` gives the contents of each screen. The screen you entered is always hanging, and when you cut it out it is just hidden, paging, sorting, column width,
- * The editing status is still there.
- * `settings` is the content of the settings modal, covering the current screen and opened by the application menu; it is not a screen and has no keep-alive
- * Breadcrumbs are not entered in the slot, and the opening and closing are obtained through `useSettingsOpen`.
+ * The app shell: the title bar (sidebar toggle, breadcrumbs) and the sidebar, whose navigation picks
+ * the current screen. `screens` gives each screen's content. A screen once entered stays mounted and
+ * is only hidden when you leave it, so its paging, sorting, column widths and edits survive.
+ * `settings` is the Settings modal's content, opened from the app menu over the current screen. It is
+ * not a screen: it has no keep-alive slot and no breadcrumbs, and reads its open state through
+ * `useSettingsOpen`.
  */
 export function AppShell({ screens, settings }: {
   screens: Record<ScreenKey, ReactNode>
@@ -357,15 +366,15 @@ export function AppShell({ screens, settings }: {
   const drag = useRef<{ x0: number; w0: number; moved: boolean } | null>(null)
   const griptipTimer = useRef(0)
   const jumpSeq = useRef(0)
-  /** Where the focus is before opening the application menu. Returned here when the menu is closed; returned to Radix when empty, it is returned to the Mark button. */
+  /** Focus before the app menu opened, restored on close; when null, Radix returns focus to the logo button. */
   const appMenuOpener = useRef<HTMLElement | null>(null)
-  /** Is it because I selected "Settings..." when I closed the menu this time? To set the modal, wait until the menu is closed before hanging up. See the note below. */
   // The dialog a menu item asked for, opened only once the menu has closed and handed focus back.
   const wantDialog = useRef<'settings' | 'about' | null>(null)
   const [aboutOpen, setAboutOpen] = useState(false)
 
-  // Each subscript in the side column reads the number of the entire database, and it must be retrieved every time after writing, so follow the revision. Curry’s today is also
-  // Retake it here: The library uses the current day when writing, and the old day on the screen will be one day different.
+  // Every sidebar badge counts the whole vault and must be fetched again after each write, so this
+  // follows `revision`. The vault's today is fetched here too: a write uses the current day, and a
+  // stale day on screen would be one day off.
   useEffect(() => {
     void vault.today().then(setToday).catch((e: Error) => setBootError(e.message))
     void papers.list({ page: 1, size: 1 }).then((r) => setPaperCount(r.total))
@@ -396,14 +405,14 @@ export function AppShell({ screens, settings }: {
     void idea.list().then((rows) => setIdeaCount(rows.filter((item) => !item.archived).length))
   }, [revision, screen])
 
-  // After a follower is removed, the paper push screen cannot stop on a follower that no longer exists.
+  // After a watch is removed, the Inbox must not stay scoped to a watch that no longer exists.
   // Discovery scopes by project instead, so its scope is never a watch id.
   useEffect(() => {
     if (inboxMode === 'watch' && inboxScope !== ALL_WATCHES
       && !watches.some((w) => w.id === inboxScope)) setInboxScope(ALL_WATCHES)
   }, [watches, inboxScope, inboxMode])
 
-  // "Settings..." in the menu: The main process conveys a message, and the opening and closing still returns to the page.
+  // "Settings…" in the app menu: the main process sends a message; the open state stays in the page.
   useEffect(() => appMenu.onOpenSettings(() => setSettingsOpen(true)), [])
 
   // Help owns one stable entry into the same Extensions surface that reports installation state.
@@ -412,11 +421,12 @@ export function AppShell({ screens, settings }: {
     setSettingsOpen(true)
   }), [])
 
-  // The platform name is used for CSS: How much space should be left for the window buttons on both sides is divided according to the platform.
+  // The platform name is for CSS: the room left for the window buttons on either side depends on it.
   useEffect(() => { document.documentElement.dataset.os = appMenu.platform() }, [])
 
-  // The theme does not go into the React state, but directly writes the documentElement's data-theme. The screenshot script and e2e are also written in the same way.
-  // So focus on properties instead of buttons: every way to change the theme can be caught here.
+  // The theme is not React state: it is written straight to documentElement's data-theme, and the
+  // screenshot script and e2e write it the same way. So this watches the attribute, not the buttons,
+  // and catches every way the theme can change.
   useEffect(() => {
     appMenu.setTitleBarTheme(symbolColor())
     const observer = new MutationObserver(() => appMenu.setTitleBarTheme(symbolColor()))
@@ -440,7 +450,8 @@ export function AppShell({ screens, settings }: {
     openCategory: openSettingsCategory,
   }), [settingsCategory, settingsOpen, openSettingsCategory])
 
-  // The handle of the demo can be used with both hands: when the displacement exceeds 3px, it is dragging, and when there is no displacement, when the hand is raised, it is "click to collapse".
+  // The demo's handle does two things: moving more than 3px is a drag, and releasing without moving
+  // is a click that collapses the sidebar.
   useEffect(() => {
     const move = (e: MouseEvent) => {
       const d = drag.current
@@ -549,7 +560,7 @@ export function AppShell({ screens, settings }: {
     navigate('chat')
   }
 
-  // Demo's newChat: If there is already a conversation that has not been spoken yet, just cut it and not open another one.
+  // The demo's newChat: if an empty chat already exists, switch to it instead of creating another.
   const newChat = () => {
     const empty = chats.find((s) => s.paperId === undefined && !s.archived && s.messageCount === 0)
     if (empty) { openChat(empty.id); return }
@@ -559,7 +570,8 @@ export function AppShell({ screens, settings }: {
     }).catch((e: Error) => showToast(e.message))
   }
 
-  // Demo archiving: put the currently open item into the archive and return it to the status. Cancel archiving in the settings screen, do not go here
+  // The demo's archive: archive a chat and, if it is the open one, go to the Feed. Unarchiving happens
+  // in Settings and does not come through here.
   const archiveChat = (id: string) => {
     void chat.setArchived(id, true).then(() => {
       bump()
@@ -594,7 +606,7 @@ export function AppShell({ screens, settings }: {
 
   const crumbs = useMemo(() => crumbsOf(m), [m])
 
-  // A screen of your own breadcrumbs: the last paragraph of the basic level brings the rollback action of this screen, and then connects to the deeper paragraphs of this screen
+  // A screen's own breadcrumbs: the last base segment carries its back action, then its deeper ones.
   const partsOf = (k: ScreenKey): CrumbSeg[] => {
     const base = crumbs[k]
     if (base === null) return []
@@ -608,8 +620,9 @@ export function AppShell({ screens, settings }: {
     ]
   }
 
-  // The borrowed paragraphs are copied into text, and only the last paragraphs are connected back to the screen where they came from: the paragraphs further forward are on the screen where they came from.
-  // It is the rollback action of that screen itself. Clicking here will only change an invisible screen and become a dead link.
+  // Borrowed segments are copied as plain text, and only the last one links back to the origin screen:
+  // the earlier ones are that screen's own back actions, and clicking them here would only change a
+  // hidden screen, a dead link.
   const from = crumbs[screen] === null && jump?.screen === screen ? jump.from : null
   const parts: CrumbSeg[] = from === null
     ? partsOf(screen)
@@ -642,7 +655,7 @@ export function AppShell({ screens, settings }: {
           align="start" sideOffset={6} contentData={{ 'data-appmenu': '' }}
           onOpenChange={(open) => {
             if (!open) return
-            // The body does not count as "where the focus was just now": in that case it is returned to Radix, which will return the marker button itself
+            // The body does not count as where focus was: Radix then returns focus to the logo button.
             const active = document.activeElement
             appMenuOpener.current = active instanceof HTMLElement && active !== document.body
               ? active
@@ -654,11 +667,13 @@ export function AppShell({ screens, settings }: {
             </button>
           )}
           contentProps={{
-              // Two floating layers cannot control focus at the same time. If you hang up Dialog on the spot when selecting "Settings...", it will record "Return after closing".
-              // "To whom" will fall on the menu item being unloaded. When it is returned, the node is gone and the focus falls back to the body. so
-              // The menu only writes down "I will open the settings later", and the actual hanging Dialog is placed in the menu's own closing callback - at that time the menu
-              // The focus has been returned, and Dialog has obtained a stable element. You cannot use setTimeout to arrange this:
-              // When Radix's FocusScope is uninstalled, it also schedules a macro task of 0 milliseconds. There is no guarantee who will come first.
+              // The menu and the Dialog cannot both manage focus. Mounting the Dialog as soon as
+              // "Settings…" is selected makes it record the menu item being unmounted as the element
+              // to refocus on close; by then that node is gone and focus falls to the body. So the
+              // menu only notes which dialog is wanted, and the Dialog mounts in the menu's own close
+              // callback, once the menu has handed focus back and the Dialog gets a stable element.
+              // setTimeout cannot order this: Radix's FocusScope also schedules a 0 ms macrotask when
+              // it unmounts, and which one runs first is not guaranteed.
               onCloseAutoFocus: (e) => {
                 if (appMenuOpener.current) {
                   e.preventDefault()
@@ -686,7 +701,7 @@ export function AppShell({ screens, settings }: {
         <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
         <div className="crumb" id="crumb">
           {parts.map((p, i) => {
-            // The demo only connects .cseg.link to the processor: you cannot click the callback at the end, it is the current position.
+            // As in the demo, only .cseg.link gets a handler: the last segment is the current position.
             const link = p.onClick !== undefined && i < parts.length - 1
             return (
               <Fragment key={`${i}${p.text}`}>
@@ -726,8 +741,9 @@ export function AppShell({ screens, settings }: {
                     <ChatSessionContext.Provider value={chatSession}>
                       <JumpContext.Provider value={jumps}>
                         {/*
-                         * Each screen is calculated as a relative date based on today's date in the library, and the screen will not hang until it is retrieved; it cannot be retrieved.
-                         * I can't hang up even one screen, and the error can only appear on this layer.
+                         * Every screen counts relative dates from the vault's today, so no screen mounts
+                         * before it arrives. If it cannot be fetched, not one screen mounts, and the
+                         * error can only show at this level.
                          */}
                         <TodayContext.Provider value={today}>
                           <SettingsContext.Provider value={settingsState}>
@@ -767,7 +783,7 @@ export function AppShell({ screens, settings }: {
         </BannerContext.Provider>
       </div>
 
-      {/* The banner of the demo: the element is permanent, and the text remains and fades out when exiting. */}
+      {/* The demo's banner: the element is always present, and its text stays while it fades out. */}
       <div className={banner.show ? 'banner show' : 'banner'} id="banner">
         <svg
           viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"
@@ -778,10 +794,10 @@ export function AppShell({ screens, settings }: {
         <span>{banner.text}</span>
       </div>
 
-      {/* The demo's toast: a prompt for rejected actions, the same element as the banner is permanent */}
+      {/* The demo's toast: says an action was rejected; like the banner, the element is always present. */}
       <div className={toast.show ? 'toast show' : 'toast'} id="toast">{toast.text}</div>
 
-      {/* The griptip of the demo: the capsule after hovering the handle, stops outside the viewport when it does not appear. */}
+      {/* The demo's griptip: the tooltip shown after hovering the handle, parked off screen while hidden. */}
       <div
         className={griptip ? 'griptip show' : 'griptip'} id="griptip"
         style={{ top: griptip?.top ?? 0, left: griptip?.left ?? -9999 }}
