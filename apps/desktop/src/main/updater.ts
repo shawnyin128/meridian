@@ -1,6 +1,7 @@
 import type { AppUpdatePhase, AppUpdateStatus } from '../shared/app-update.js'
 import { releaseUrl } from '../shared/app-update.js'
 import { displayVersion } from '../shared/app-version.js'
+import type { ReleaseInfo, SelfUpdate } from './mac-self-update.js'
 
 export const CHECK_EVERY_MS = 6 * 3_600_000
 export const TICK_MS = 3_600_000
@@ -15,7 +16,8 @@ export interface UpdateFeed {
   checkForUpdates(): Promise<unknown>
   quitAndInstall(isSilent: boolean, isForceRunAfter: boolean): void
   on(event: 'checking-for-update', listener: () => void): unknown
-  on(event: 'update-available' | 'update-not-available' | 'update-downloaded', listener: (info: { version: string }) => void): unknown
+  on(event: 'update-available', listener: (info: ReleaseInfo) => void): unknown
+  on(event: 'update-not-available' | 'update-downloaded', listener: (info: { version: string }) => void): unknown
   on(event: 'download-progress', listener: (info: { percent: number }) => void): unknown
   on(event: 'error', listener: (error: Error) => void): unknown
 }
@@ -31,15 +33,18 @@ export interface Updater {
 }
 
 /**
- * Tracks self-update state for the running app. When `installsInPlace` is false (macOS without a
- * signing identity) a found release is reported as `available` with its download page instead of
- * being downloaded. `onChange` receives every new status.
+ * How a found release is installed: the feed downloads and installs it (`feed`), the App downloads it
+ * and replaces its own bundle (`self`, macOS without a signing identity), or the user downloads it
+ * from its release page (`page`, where the App cannot replace itself).
  */
-export function createUpdater({ feed, current, supported, installsInPlace, now, onChange }: {
+export type InstallRoute = { kind: 'feed' } | { kind: 'self'; self: SelfUpdate } | { kind: 'page' }
+
+/** Tracks self-update state for the running app and installs a found release by `route`. `onChange` receives every new status. */
+export function createUpdater({ feed, current, supported, route, now, onChange }: {
   feed: UpdateFeed
   current: string
   supported: boolean
-  installsInPlace: boolean
+  route: InstallRoute
   now: () => number
   onChange: (status: AppUpdateStatus) => void
 }): Updater {
@@ -54,13 +59,26 @@ export function createUpdater({ feed, current, supported, installsInPlace, now, 
     onChange(status())
   }
 
-  feed.autoDownload = installsInPlace
-  feed.autoInstallOnAppQuit = installsInPlace
+  feed.autoDownload = route.kind === 'feed'
+  feed.autoInstallOnAppQuit = route.kind === 'feed'
   feed.on('checking-for-update', () => set({ phase: 'checking' }))
   feed.on('update-not-available', () => set({ phase: 'latest' }, true))
-  feed.on('update-available', (info) => set(installsInPlace
-    ? { phase: 'downloading', version: displayVersion(info.version), percent: 0 }
-    : { phase: 'available', version: displayVersion(info.version), url: releaseUrl(info.version) }, true))
+  feed.on('update-available', (info) => {
+    const version = displayVersion(info.version)
+    if (route.kind === 'page') {
+      set({ phase: 'available', version, url: releaseUrl(info.version) }, true)
+      return
+    }
+    set({ phase: 'downloading', version, percent: 0 }, true)
+    if (route.kind === 'self') {
+      route.self.download(info, (percent) => {
+        if (phase.phase === 'downloading') set({ ...phase, percent: Math.round(percent) })
+      }).then(
+        () => set({ phase: 'ready', version }),
+        (error: unknown) => set({ phase: 'error', message: error instanceof Error ? error.message : String(error) }, true),
+      )
+    }
+  })
   feed.on('download-progress', (info) => {
     if (phase.phase === 'downloading') set({ ...phase, percent: Math.round(info.percent) })
   })
@@ -79,7 +97,9 @@ export function createUpdater({ feed, current, supported, installsInPlace, now, 
     status,
     check,
     install() {
-      if (phase.phase === 'ready') feed.quitAndInstall(true, true)
+      if (phase.phase !== 'ready') return
+      if (route.kind === 'self') route.self.install()
+      else feed.quitAndInstall(true, true)
     },
     arm() {
       if (!supported) return () => {}

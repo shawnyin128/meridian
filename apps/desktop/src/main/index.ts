@@ -1,17 +1,20 @@
 import {
-  app, BrowserWindow, dialog, ipcMain, MessageChannelMain, Menu, shell, utilityProcess,
+  app, BrowserWindow, dialog, ipcMain, MessageChannelMain, Menu, net, shell, utilityProcess,
 } from 'electron'
+import { execFile, spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { menuTemplate } from './menu.js'
 import { openLinks } from './links.js'
 import { packagedHarnessEnvironment } from './harness-sidecar.js'
 import { attachCredentialVault } from './credential-vault.js'
 import { MAIN_COPY, uiLocaleOf } from './messages.js'
 import { afterCoreStops } from './restart-core.js'
-import { createUpdater } from './updater.js'
+import { canReplaceSelf, createMacSelfUpdate } from './mac-self-update.js'
+import { createUpdater, type InstallRoute } from './updater.js'
+import { releaseFilesUrl } from '../shared/app-update.js'
 import { displayVersion } from '../shared/app-version.js'
 import electronUpdater from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
@@ -155,13 +158,35 @@ app.whenReady().then(() => {
     shell.showItemInFolder(path)
     return true
   })
-  // Only packaged builds have a release feed; macOS without a signing identity cannot replace itself,
-  // so there a found release is offered as a download instead.
+  // Only packaged builds have a release feed. Squirrel.Mac only updates signed apps, so on macOS
+  // the App replaces its own bundle, or offers the release page where it cannot write its location.
+  // MERIDIAN_UPDATE_FEED_URL points checks and downloads at a test server.
+  const feedUrl = process.env['MERIDIAN_UPDATE_FEED_URL']
+  if (feedUrl !== undefined) electronUpdater.autoUpdater.setFeedURL({ provider: 'generic', url: feedUrl })
+  const bundle = resolve(app.getPath('exe'), '../../..')
+  const route: InstallRoute = process.platform !== 'darwin' ? { kind: 'feed' }
+    : !app.isPackaged || !canReplaceSelf(bundle) ? { kind: 'page' }
+      : {
+        kind: 'self',
+        self: createMacSelfUpdate({
+          bundle,
+          pid: process.pid,
+          base: (version) => feedUrl ?? releaseFilesUrl(version),
+          fetch: (url) => net.fetch(url),
+          run: (command, args) => new Promise((done, fail) => {
+            execFile(command, [...args], (error, stdout) => { if (error) fail(error); else done(stdout) })
+          }),
+          launch: (script, args) => {
+            spawn('/bin/sh', ['-c', script, 'meridian-update', ...args], { detached: true, stdio: 'ignore' }).unref()
+          },
+          quit: () => app.quit(),
+        }),
+      }
   const updater = createUpdater({
     feed: electronUpdater.autoUpdater,
     current: displayVersion(app.getVersion()),
     supported: app.isPackaged,
-    installsInPlace: process.platform !== 'darwin',
+    route,
     now: Date.now,
     onChange: (status) => { if (!win.isDestroyed()) win.webContents.send(UPDATE_CHANGED, status) },
   })
