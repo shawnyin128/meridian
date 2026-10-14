@@ -241,29 +241,28 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
   /** Current vault time as epoch milliseconds at today's UTC midnight, shared by recording and retention. */
   const nowMs = (): number => Date.parse(`${ops.today()}T00:00:00Z`)
 
-  /** Current entity shape, or undefined when it no longer exists; normal reads throw in that case. */
+  /**
+   * Current entity shape, or undefined when the paper, project or column no longer exists. Any other
+   * failure to read it, such as a project whose research graph getProject rejects, throws.
+   */
   const entityOf = (target: ChangeTarget): Entity | undefined => {
-    try {
-      switch (target.kind) {
-        case 'paper':
-          return { kind: 'paper', paper: ops.getPaper(target.id), snapshot: ops.paperSnapshot(target.id) }
-        case 'project':
-          return { kind: 'project', project: ops.getProject(target.id) }
-        case 'pages':
-          return { kind: 'pages', pages: ops.readPages(target.paths) }
-        case 'columnType': {
-          const column = ops.paperColumns().custom.find((c) => c.key === target.id)
-          if (column === undefined) throw new Error(`论文表里没有这一列:${target.id}`)
-          return { kind: 'columnType', column, cells: ops.paperCells(target.id) }
-        }
-        default: {
-          const column = ops.paperColumns().custom.find((c) => c.key === target.id)
-          if (column === undefined) throw new Error(`论文表里没有这一列:${target.id}`)
-          return { kind: 'columns', column }
-        }
+    switch (target.kind) {
+      case 'paper':
+        return ops.hasPaper(target.id)
+          ? { kind: 'paper', paper: ops.getPaper(target.id), snapshot: ops.paperSnapshot(target.id) }
+          : undefined
+      case 'project':
+        return ops.hasProject(target.id) ? { kind: 'project', project: ops.getProject(target.id) } : undefined
+      case 'pages':
+        return { kind: 'pages', pages: ops.readPages(target.paths) }
+      case 'columnType': {
+        const column = ops.paperColumns().custom.find((c) => c.key === target.id)
+        return column === undefined ? undefined : { kind: 'columnType', column, cells: ops.paperCells(target.id) }
       }
-    } catch {
-      return undefined
+      default: {
+        const column = ops.paperColumns().custom.find((c) => c.key === target.id)
+        return column === undefined ? undefined : { kind: 'columns', column }
+      }
     }
   }
 

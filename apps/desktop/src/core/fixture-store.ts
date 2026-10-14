@@ -601,6 +601,10 @@ export function createFixtureStore(
       return structuredClone(withProjectLinks(paper, [...projectById.values()]))
     },
 
+    hasPaper(id) {
+      return byId.has(id)
+    },
+
     updatePaper(id, patch) {
       const paper = byId.get(id)
       if (!paper) throw new Error(`论文不存在:${id}`)
@@ -881,6 +885,10 @@ export function createFixtureStore(
         }
       }
       return detailOf(project)
+    },
+
+    hasProject(id) {
+      return projectById.has(id)
     },
 
     bindProjectWorkspace(id, binding) {

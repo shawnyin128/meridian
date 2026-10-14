@@ -754,6 +754,29 @@ describe('vault store', () => {
     expect(reopened.getPaper(WITH_SOURCE).custom).toEqual({ note: '手写的一段' })
   })
 
+  it('项目页手改得科研图的边指向不存在的节点:撤销对它的改动报出这个原因,不当项目已经不在', () => {
+    store.createProject('图')
+    const id = store.listProjects().find((p) => p.name === '图')!.id
+    const from = store.createNode(id, '甲', null).graph.nodes.at(-1)!.id
+    const to = store.createNode(id, '乙', from).graph.nodes.at(-1)!.id
+    store.updateProject(id, { focus: '改过的焦点' })
+    const file = join(vault, 'wiki', 'projects', `${id}.md`)
+    writeFileSync(file, readFileSync(file, 'utf8').replace(`to: "${to}"`, 'to: "gone"'))
+    const reopened = createVaultStore(vault)
+
+    expect(() => reopened.undoChange(reopened.listChanges()[0]!.id))
+      .toThrow(`科研图的边指向不存在的节点:${from} → gone`)
+  })
+
+  it('删掉的项目撤销删除之后原样回来', () => {
+    store.createProject('要删的项目')
+    const id = store.listProjects().find((p) => p.name === '要删的项目')!.id
+    const before = store.getProject(id)
+    store.deleteProject(id)
+    store.undoChange(store.listChanges()[0]!.id)
+    expect(store.getProject(id)).toEqual(before)
+  })
+
   it('一列删掉之后,这一篇别的格子照样改得动,那一列留下的值原样待在页上', () => {
     const file = join(vault, 'wiki', 'papers', `${WITH_SOURCE}.md`)
     const progress = { key: 'jin-du', label: '进度', type: 'text' as const, options: [] }
