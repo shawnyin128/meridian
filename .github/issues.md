@@ -11,7 +11,7 @@ problem, and every issue names the version it ships in.
    to that version (`v0.0.15.0`). The milestone's issues are the version's scope.
 3. Work branches are cut for those issues. Each pull request closes its issue when it merges.
 4. The version is released when its milestone has no open issues. Anything that will not make it
-   is moved to the next milestone first.
+   is moved to the next milestone first. Once the release is published, the milestone is closed.
 
 ## 1. Type label and milestone
 

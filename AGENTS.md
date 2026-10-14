@@ -260,7 +260,8 @@ checks. This is the order to follow, on the version's release branch and never o
    version and every installer is attached.
 8. **After the release.** Move `master` as `.github/versioning.md` section 4
    says, merge a fix release branch into every feature release branch in
-   progress, and delete merged branches as its section 7 says.
+   progress, delete merged branches as its section 7 says, and close the
+   version's milestone.
 
 ## Mistakes Made Here Before
 

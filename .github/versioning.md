@@ -64,6 +64,7 @@ Releases up to `v0.0.14` predate the scheme and keep their three-part numbers.
 4. On the release branch, bump the version, pass the release checks below, then push the tag.
 5. After a fix release, merge its release branch into every feature release branch still in
    progress, so the next feature version cannot ship without the fix.
+6. Once the release is published, close the version's milestone.
 
 Example, `v0.0.14.2`:
 
@@ -76,7 +77,8 @@ v0.0.14001 (tag of v0.0.14.1)
 ## 4. Releasing a baseline
 
 1. Collect every released feature and fix branch whose `X.Y` belongs to the next baseline.
-2. Merge them all into `baseline/vX.Y.0.0` and release it.
+2. Merge them all into `baseline/vX.Y.0.0` and release it. Once the release is published, close
+   the baseline's milestone.
 3. `master` always holds the latest baseline and moves only when a baseline is released. The agent
    plugins install from `master`, so they update with baselines.
 
