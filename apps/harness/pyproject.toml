@@ -36,7 +36,7 @@ select = ["E", "F", "I", "N", "UP", "B", "SIM", "TID", "ANN", "RET", "ARG"]
 ignore = ["ANN401"]
 
 # The harness is a stateless inference service: it does not access disk, implement retrieval, or own paths.
-# It requests data from Core through RPC callbacks. See .claude/skills/writing-meridian-code.
+# It requests data from Core through RPC callbacks. See the Architecture section of AGENTS.md.
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "pathlib".msg = "Harness cannot access the filesystem; request data from Core over RPC"
 "shutil".msg = "Harness cannot access the filesystem"

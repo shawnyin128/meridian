@@ -1,6 +1,6 @@
 import tseslint from 'typescript-eslint'
 
-/** Dependency direction defines the architecture; violations are build errors, not style advice. See .claude/skills/writing-meridian-code. */
+/** Dependency direction defines the architecture; violations are build errors, not style advice. See the Architecture section of AGENTS.md. */
 const forbid = (patterns) => ['error', { patterns }]
 const rendererBoundaries = [
   { group: ['**/core/*', '**/core/**'], message: 'renderer 不能直接碰 core,一切经 IPC' },

@@ -95,7 +95,7 @@ Dependency direction is enforced by ESLint: `components/`, `hooks/`, and `lib/` 
 `routes/`. If a shared component needs something currently owned by a route, move the smallest stable
 contract down and pass route-specific policy in through props.
 
-Cross-screen labels and pure policy helpers live in `lib/` (`paper-title`, `slug`, `chat`, `trash`),
+Cross-screen labels and pure policy helpers live in `lib/` (`slug`, `chat`, `format`, `plural`),
 so opening one screen never imports another screen just to borrow a constant or formatter.
 
 Date arithmetic/formatting and project signal projection live in `shared/` because Renderer and Core
