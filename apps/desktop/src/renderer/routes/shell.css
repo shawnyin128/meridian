@@ -1,9 +1,10 @@
 /*
- * The window shell, menu, label and attribute table rules shared by each screen are copied from desktop/design/platform-shell-demo.html one by one.
- * The selector name is consistent with the demo to facilitate side-by-side comparison.
+ * Window shell, menu, tag and property-table rules shared by every screen, copied rule by rule from
+ * e2e/fixtures/platform-shell-demo.html. Selectors keep the demo's names so the two can be compared
+ * side by side.
  */
 
-/* The skeleton of the message flow: dynamics and dialogues share the same set, one line per frame, and the text column is centered and has a fixed width. */
+/* Message stream shared by the feed and chat: one item per row in a centered, fixed-width column */
 .msgs{flex:1;overflow:auto;padding:24px 0;display:flex;flex-direction:column;gap:20px}
 .mwrap{width:min(var(--chatw),92%);margin:0 auto}
 .cite{color:var(--link);cursor:pointer;font-size:13px}
@@ -19,10 +20,13 @@
 .add-action>svg{width:12px;height:12px;flex:none}
 .add-action-icon{gap:0}
 
-/* Buttons on the filter bar: The grouping bar .filters of the paper table is shared with the dynamic .feedbar */
+/* Filter bar buttons: the paper table's group bar .filters shares them with the feed's .feedbar */
 .filters{display:flex;gap:6px;margin-bottom:12px}
 
-/* Management row: a name plus a few buttons at the end of the row. It is used for the follow management of the demo, and the archive dialog of the setting screen also has this shape. */
+/*
+ * Management row: a name followed by a few buttons at the end of the row. The demo uses it to manage
+ * watches; the archived chats list in Settings has the same shape.
+ */
 .wlist{margin-top:6px}
 .wrow{display:flex;align-items:center;gap:8px;min-height:40px;padding:8px 12px;font-size:13px}
 .wrow .nm{display:flex;align-items:center;flex:1;min-width:0;min-height:22px;line-height:22px}
@@ -58,10 +62,10 @@
 .inbox-settings svg{width:16px;height:16px}
 .icbtn.on{color:var(--accent-solid);background:var(--accent-soft)}
 
-/* Modal mask, moved from demo’s .scrim. The secondary confirmation of the trash can is shared with the setting modal */
+/* Modal backdrop, from the demo's .scrim. Shared by the Trash confirmation and the Settings modal */
 .scrim{position:fixed;inset:0;background:var(--scrim);backdrop-filter:blur(2px);z-index:89}
 
-/* Actions that will completely lose data or history share this set of confirmation popups. */
+/* Every action that permanently loses data or history uses this one confirmation dialog. */
 .btn.tdel{color:var(--bad)}
 .ctxmenu.cfpop{position:fixed;left:calc(50% - 190px);top:calc(50% - 80px)}
 .dlg{min-width:340px;max-width:460px;padding:10px 10px 12px}
@@ -71,47 +75,51 @@
 .dlg-a{display:flex;justify-content:flex-end;gap:10px;padding:0 4px}
 .dlg-a .btn{font-size:var(--fs-base);padding:5px 16px}
 
-/* Select the elastic layer: positioning and opening and closing belong to Radix, and the appearance is copied from the demo's .ctxmenu / .mi one by one. */
+/* Menu popover: Radix owns position and open/close; the look is copied from the demo's .ctxmenu / .mi. */
 .ctxmenu{min-width:158px;background:var(--card);border:1px solid var(--sep);border-radius:var(--r-lg);box-shadow:var(--sh-2);padding:6px;z-index:90}
 .mi{display:flex;align-items:center;gap:10px;width:100%;padding:6px 10px;border:0;border-radius:var(--r-sm);background:transparent;font-family:var(--sans);font-size:var(--fs-base);line-height:var(--lh-ui);text-align:left;color:var(--ink);cursor:pointer;user-select:none;transition:background var(--t-fast) var(--e-out)}
 .mi:hover,.mi[data-highlighted]{background:var(--hover)}
 .mi.on{font-weight:700}
 .mi.danger{color:var(--bad)}
 .msep{height:1px;background:var(--sep2);margin:4px 6px}
-/* The check mark in the groove on the left side of the option is moved from the demo's .ck / .cki */
+/* Check mark in the slot on the left of a menu item, from the demo's .ck / .cki */
 .mi .ck{width:13px;display:flex;align-items:center;flex-shrink:0}
 .cki{width:13px;height:13px;vertical-align:-2px}
 .mi-key{margin-left:auto;color:var(--ter);font-size:var(--fs-cap)}
-/* The input line in the pop-up layer: transparent bottom, light gray thin edge, no color change in focus state */
+/* Input row in a popover: transparent background, thin light-gray border, no color change on focus */
 .mi-in{padding:6px 8px}
 .mi-in input{width:100%;border:1px solid var(--sep-strong);background:transparent;border-radius:var(--r-sm);padding:4px 10px;font-size:var(--fs-sm);color:var(--ink);font-family:var(--sans)}
 .mi-in input:focus-visible{outline:0}
 
 /*
- * The box at the end of the table header: column + and column setting gear, shared by the two tables. It is usually hidden until the mouse enters the header or itself.
- * The two buttons are 18px each (12px icon + 3px left and right), so the left and right padding ranges from .ptable th / .cmp th
- * 10px received 4px, 44px available width to fit
+ * Last header cell of both tables: the add-column + and the column-settings gear. Both stay hidden
+ * until the pointer enters the header or the button itself.
+ * Each button is 18px (12px icon + 3px padding on each side), so the cell's horizontal padding drops
+ * from the 10px of .ptable th / .cmp th to 4px, leaving 44px of width to fit them.
  */
 .th-add{width:52px;white-space:nowrap}
-/* The th of the two tables each has a padding: 6px 10px. According to the selector, they are more specific than .th-add. The inner margin must be written together with the table. */
+/*
+ * Each table's th sets padding:6px 10px with a selector more specific than .th-add, so this padding
+ * override has to name the table too.
+ */
 .ptable th.th-add,.cmp th.th-add{padding-left:4px;padding-right:4px}
 .colbtn{border:0;background:transparent;color:var(--ter);cursor:pointer;padding:3px;border-radius:var(--r-sm);display:inline-flex;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
 thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events:auto}
 .colbtn:hover{background:var(--hover);color:var(--ink)}
 .colbtn svg{width:12px;height:12px}
 
-/* In-place input box in grid and header placeholder grid */
+/* In-place input in a table cell and in the placeholder header cell of a new column */
 .celledit{border:1px solid var(--sep-strong);background:transparent;border-radius:var(--r-sm);padding:2px 8px;font-size:var(--fs-sm);color:var(--ink);width:92px;font-family:var(--sans)}
 .celledit:focus-visible{outline:0}
 .th-new .celledit{width:100%}
-/* The option of the demo is a non-focusable div, there is no corresponding rule; here is a button, the keyboard focus must be visible */
+/* The demo's items are unfocusable divs without this rule; here they are buttons, so focus must show */
 .ctxmenu:focus-visible{outline:0}
 .mi:focus-visible{outline:none;background:var(--hover)}
 
-/* Another form of elastic layer: the rename/edit popover (FloatingTextEditor, project rename), moved from the demo's .ctxmenu.drop. */
+/* Second popover form, for rename/edit (FloatingTextEditor, project rename): the demo's .ctxmenu.drop. */
 .ctxmenu.drop{padding:0;border-radius:var(--r-lg);overflow:hidden;min-width:190px}
 
-/* Status tags: status and conclusion categorization of the project list, "Complete" of the agent card */
+/* Status tags: project list status and conclusion category, and "Completed" on an agent session card */
 .stag{font-size:var(--fs-cap);font-weight:600;border-radius:var(--r-full);padding:1px 8px;margin-left:4px;vertical-align:1px}
 .stag.ok{background:var(--tint-good);color:var(--good)}
 .stag.pend{background:var(--tint-warn);color:var(--warn)}
@@ -124,21 +132,27 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .prtag.p1{background:var(--tint-warn);color:var(--warn)}
 .prtag.p2{background:var(--tint-mut);color:var(--ter)}
 
-/* The chip shared by the label grid of the paper table and the project related area */
+/* Chip shared by the paper table's tag cells and the project's links section */
 .tagchip{display:inline-block;font-size:var(--fs-sm);background:var(--field);color:var(--sec);border-radius:var(--r-full);padding:1px 8px;margin:1px 4px 1px 0;white-space:nowrap}
 .tagchip.add-action-icon{display:inline-flex;align-items:center;justify-content:center}
 
-/* Conflict tags in conclusion: dynamic briefing block shared with project list */
+/* Conflict tag on a conclusion in the feed's briefing block */
 .tag{font-size:12px;font-weight:600;padding:2px 10px;border-radius:999px;white-space:nowrap;background:var(--field);color:var(--sec)}
 .tag.conf{background:var(--tint-bad);color:var(--bad)}
 
 .wkprops{display:grid;grid-template-columns:44px minmax(0,1fr);width:100%;max-width:100%;min-width:0;row-gap:6px;column-gap:12px;font-size:var(--fs-sm);line-height:var(--lh-ui)}
 .wkprops>*{min-width:0}
-/* The label column is only 44px, and the four-character labels ("Segmentation Basis" and "Restart Condition") are not wrapped, and the extra overflow is added to the column spacing. */
+/*
+ * The label column is only 44px. Labels of four Chinese characters, such as "Split on" and "Restart
+ * condition", stay on one line, and whatever does not fit overflows into the column gap.
+ */
 .wkprops .pk{color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
 .wkprops .pv{color:var(--sec)}
 
-/* Single-value metadata editing for all products: Zotero-style full-grid hover. After clicking, only the input box will appear in the original position. */
+/*
+ * Single-value metadata editing used across the app: Zotero-style hover over the whole cell; a click
+ * replaces just that value with an input in the same place.
+ */
 .metadata-field{display:block;width:100%;max-width:100%;min-width:0}
 .metadata-editable{display:block;box-sizing:border-box;width:100%;min-width:0;margin:-2px 0;padding:2px 0;border:0;border-radius:var(--r-xs);background:transparent;color:var(--sec);font:inherit;line-height:inherit;text-align:left;overflow-wrap:anywhere;cursor:text}
 .metadata-editable:hover,.metadata-editable:focus-visible{background:var(--field);color:var(--ink);outline:0}
@@ -147,8 +161,10 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .form-control.metadata-input.multiline{display:block;width:100%;field-sizing:content;resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere}
 
 /*
- * Double columns of text: left text + right attribute column, and associated chip row under the attribute column. Project details are shared with the wiki page.
- * The demo's .wkrel and .tagchip are all hand-shaped; this application only allows those with real jump targets to be hand-shaped.
+ * Two-column page: body text on the left, a property column on the right with rows of related chips
+ * below it. Shared by project details and wiki pages.
+ * The demo gives every .wkrel .tagchip the pointer cursor; here only chips with a real link target
+ * get it.
  */
 .wkpage{display:flex;gap:32px;align-items:flex-start;font-size:var(--fs-read);line-height:var(--lh-read)}
 .wkmain{flex:1;min-width:0}
@@ -161,7 +177,7 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .wkrel .tagchip[data-wk]{cursor:pointer}
 .wkrel .tagchip[data-wk]:hover{color:var(--ink)}
 
-/* A deeper back button in the screen, the same as #deskBack in the demo */
+/* Back button on a page one level down inside a screen, same as the demo's #deskBack */
 .desk-head .back{border:0;background:var(--field);color:var(--ink);border-radius:8px;width:28px;height:26px;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .desk-head .back svg{width:13px;height:13px}
 .icbtn.busy{cursor:default}
@@ -172,12 +188,12 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .desk-head .fetchnote{margin-left:auto;font-size:var(--fs-sm);color:var(--ter);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .desk-head .fetchnote+.btn{margin-left:2px;flex-shrink:0}
 
-/* "Requires Attention" block and date row: project screen shared with wiki screen */
+/* "Needs attention" block and its dated rows, shared by the project and wiki screens */
 .attn{padding:0;margin-bottom:0}
 .attnrow{display:grid;grid-template-columns:var(--project-signal-kind-width) var(--project-signal-date-width) minmax(0,1fr);
   align-items:center;column-gap:var(--project-signal-gap);
   padding:8px 0;font-size:var(--fs-base);cursor:default}
-/* demo: You can only click on the line with the wiki page attached. */
+/* As in the demo, only rows linked to a wiki page are clickable. */
 .attnrow[data-wk]{cursor:pointer}
 .attnrow[data-wk]:hover{background:var(--hover)}
 .attn-text{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
@@ -193,7 +209,10 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .tlrow .tm{font-size:12px;color:var(--ter)}
 .macts{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 
-/* Markdown text: The project essay and the wiki page share a set of rendering, and the rendering state and the original text state are in the same container */
+/*
+ * Markdown body: project notes and wiki pages share one rendering, and the rendered and source views
+ * use the same container
+ */
 .md{line-height:var(--lh-read);padding:2px}
 .md.src{white-space:pre-wrap;outline:none;caret-color:var(--ink)}
 .md p{margin:0 0 10px}
@@ -227,6 +246,6 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .nrow .nq{font-size:12px;color:var(--ter);font-style:italic;background:var(--field);border-radius:6px;padding:5px 8px;margin-bottom:6px}
 .nrow .nt{font-size:var(--fs-sm);color:var(--ink);overflow-wrap:anywhere}
 
-/* Input box for in-place editing: The associated form of the project page is shared with the three management entrances of the wiki page */
+/* In-place edit input of inline drafts and forms: project links, the new-project row, Wiki column settings, pick rows */
 .inedit{border:1px solid var(--sep-strong);background:transparent;border-radius:var(--r-sm);padding:3px 10px;font-size:var(--fs-base);color:var(--ink);font-family:var(--sans);flex:1;min-width:0}
 .inedit:focus-visible{outline:0}

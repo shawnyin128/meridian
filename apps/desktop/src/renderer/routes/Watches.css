@@ -1,11 +1,16 @@
 /*
- * Pay attention to the placeholder row for management, and the one sentence addition block at the bottom - the latter is copied from
- * desktop/design/platform-shell-demo.html, the selector name is consistent with demo to facilitate side-by-side comparison.
- * The attention line .wrow is shared with the settings screen, and the rules are in shell.css.
- * The demo places a sparkle icon in .af-h. There is no model behind this part, and the icon and its rules have been removed.
+ * The placeholder row of watch management and the one-sentence add block at the bottom. The
+ * latter is copied from e2e/fixtures/platform-shell-demo.html; selectors keep the demo's names so
+ * the two can be compared side by side.
+ * The watch row .wrow is shared with the Settings screen; its rules are in shell.css.
+ * The demo puts a sparkle icon in .af-h. No model backs this block, so the icon and its rules are
+ * dropped.
  */
 
-/* Placeholder row: The height of the real row is supported by the 22px of the "Pause" and "Remove" buttons. There are no buttons in the placeholder, and the input box is raised to the same height. */
+/*
+ * Placeholder row: every watch row is at least 40px tall (`.wrow` in shell.css). The placeholder's
+ * input stays 22px, the height of a row's name line, so it does not change the row's height.
+ */
 .wrow.newrow .inedit{height:22px;padding:0 9px}
 .wrow.editrow{align-items:flex-start;min-height:30px;padding-block:4px}
 .wrow.editrow .inedit{height:22px;padding:0 9px}

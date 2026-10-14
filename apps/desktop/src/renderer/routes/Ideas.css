@@ -19,7 +19,10 @@
 .idea-card-updated{flex:none;margin-left:auto;color:var(--ter);font-size:var(--fs-cap)}
 .idea-card>.dots{margin-top:-3px}
 
-/* The details follow the "left content, right document" rhythm of the scientific research diagram node, but retain the editable status of the idea itself. */
+/*
+ * The detail panel follows a research graph node's layout, content on the left and its document on
+ * the right, but keeps the idea itself editable.
+ */
 .idea-detail-slot{--detail-panel-width:min(420px,42vw);--detail-panel-gap:28px;position:sticky;top:0;align-self:flex-start;
   max-height:calc(100vh - 108px)}
 .idea-detail-panel{width:100%;max-height:calc(100vh - 108px);
