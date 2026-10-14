@@ -47,8 +47,11 @@ silence one with a disable comment or by loosening the lint config.
   (`window.meridian`) and the contract in `shared/contract.ts`. It imports
   types from the contract, never its zod schemas; validation happens in Core.
 - Core never imports renderer code. Each Core domain (`recommendation`,
-  `project-management`, `paper-library`, `wiki`, `harness`) exposes itself
-  only through its `index.ts`; do not reach into another domain's internals.
+  `project-management`, `paper-library`, `wiki`, `harness`, `research-ideas`)
+  exposes itself only through its `index.ts`; do not reach into another
+  domain's internals. A new domain, a directory under `core/` with its own
+  `index.ts`, joins `coreDomainBoundaries` in `eslint.config.js` in the same
+  change that creates it.
 - Only Core writes the vault, only through the vault writer, and only as
   line-level edits that leave every other byte untouched.
 - The Harness never touches the filesystem or handles paths. It refers to

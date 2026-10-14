@@ -119,7 +119,7 @@ import {
   createHarnessModelConfig, createHarnessProposalAudit,
   createMainCredentialVault, createPaperWikiHarnessRunner,
 } from './harness/index.js'
-import { placeResearchIdeaOnGraph } from './research-ideas/graph-placement.js'
+import { placeResearchIdeaOnGraph } from './research-ideas/index.js'
 import { createWikiProposals, pdfPageText } from './wiki-proposals.js'
 
 type Handler = (params: unknown) => unknown

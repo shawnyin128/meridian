@@ -22,6 +22,7 @@ const coreDomainBoundaries = [{
     '**/paper-library/**', '!**/paper-library/index.js',
     '**/wiki/**', '!**/wiki/index.js',
     '**/harness/**', '!**/harness/index.js',
+    '**/research-ideas/**', '!**/research-ideas/index.js',
   ],
   message: 'Core 业务域只通过各自的 index.ts 暴露能力，不跨域引用内部实现',
 }]
