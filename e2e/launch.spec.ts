@@ -28,7 +28,7 @@ test('自动化传 MERIDIAN_SHOW_WINDOW=0 时窗口不上屏', async ({ app, win
 test('不传 MERIDIAN_SHOW_WINDOW 时窗口上屏', async () => {
   const env = Object.fromEntries(Object.entries(process.env).filter(
     (e): e is [string, string] => e[1] !== undefined && !e[0].startsWith('MERIDIAN_')))
-  // Point at the fixture vault: without it, the app would open the user's real vault from their configuration.
+  // Point to fixture: Without this item, the application will open the real paper library according to user configuration.
   const app = await electron.launch({ args: [APP_DIR], env: { ...env, MERIDIAN_LIBRARY_ROOT: FIXTURE_VAULT } })
   try {
     const win = await app.firstWindow()
