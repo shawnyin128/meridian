@@ -127,7 +127,7 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
             "name": "meridian.workspace_event_add",
             "workflow": "Project Workspace",
             "summary": "Append an idempotent App-visible event backed by durable repository evidence.",
-            "inputs": ["workspace_root", "event_id", "text", "source", "date", "node"],
+            "inputs": ["workspace_root", "event_id", "title", "kind", "detail", "source", "date", "node"],
             "outputs": ["status", "path", "event"],
         },
         {
@@ -229,7 +229,8 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
                     "tool": "meridian.workspace_event_add",
                     "workspace_root": "/path/to/research-repo",
                     "event_id": "latency-probe-complete",
-                    "text": "Latency probe passed on A100",
+                    "title": "Latency probe passed on A100",
+                    "kind": "result",
                     "source": ".meridian/experiments/latency-probe.md",
                 },
             },

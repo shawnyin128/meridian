@@ -630,7 +630,56 @@ class QueueAndSignalsTests(unittest.TestCase):
             self.assertEqual(result["signals"][0]["kind"], "open-conflict")
 
 
+_JSON_TYPES = {"object": dict, "array": list, "string": str, "integer": int, "boolean": bool}
+
+
+def _schema_violations(schema: dict, value: object, path: str) -> list[str]:
+    """Return how ``value`` breaks ``schema``, checking type, enum, required, extra keys and items."""
+    expected = schema.get("type")
+    if expected and not isinstance(value, _JSON_TYPES[expected]):
+        return [f"{path}: expected {expected}, got {value!r}"]
+    violations = []
+    if "enum" in schema and value not in schema["enum"]:
+        violations.append(f"{path}: {value!r} is not one of {schema['enum']}")
+    if isinstance(value, dict):
+        properties = schema.get("properties", {})
+        violations += [f"{path}: missing required {key}" for key in schema.get("required", []) if key not in value]
+        for key, item in value.items():
+            if key in properties:
+                violations += _schema_violations(properties[key], item, f"{path}.{key}")
+            elif schema.get("additionalProperties") is False:
+                violations.append(f"{path}: unknown field {key}")
+    if isinstance(value, list) and "items" in schema:
+        for index, item in enumerate(value):
+            violations += _schema_violations(schema["items"], item, f"{path}[{index}]")
+    return violations
+
+
 class McpToolSurfaceTests(unittest.TestCase):
+    def _input_schemas(self) -> dict[str, dict]:
+        server = MeridianMCPServer()
+        response = server.handle_message({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
+        return {tool["name"]: tool["inputSchema"] for tool in response["result"]["tools"]}
+
+    def test_capabilities_list_exactly_the_inputs_each_tool_schema_accepts(self) -> None:
+        schemas = self._input_schemas()
+        described = {tool["name"]: tool["inputs"] for tool in adapter.capabilities()["tools"]}
+        self.assertEqual(set(described), set(schemas) - {"meridian.capabilities"})
+        for name, inputs in described.items():
+            with self.subTest(tool=name):
+                self.assertCountEqual(inputs, schemas[name]["properties"])
+
+    def test_every_capabilities_example_call_is_accepted_by_its_tool_schema(self) -> None:
+        schemas = self._input_schemas()
+        examples = adapter.capabilities(detail="full")["examples"]
+        self.assertTrue(examples)
+        for example in examples:
+            arguments = dict(example["call"])
+            name = arguments.pop("tool")
+            with self.subTest(tool=name):
+                self.assertIn(name, schemas)
+                self.assertEqual(_schema_violations(schemas[name], arguments, name), [])
+
     def test_tools_list_is_exactly_the_new_tool_set(self) -> None:
         server = MeridianMCPServer()
         response = server.handle_message({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
