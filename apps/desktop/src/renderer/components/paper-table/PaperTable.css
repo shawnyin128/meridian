@@ -1,11 +1,12 @@
 /*
- * The handwritten CSS of the paper table function module, the rules are copied from desktop/design/platform-shell-demo.html one by one.
- * The selector name is consistent with the demo to facilitate side-by-side comparison.
+ * Hand-written CSS of the paper table module, with rules copied one by one from
+ * e2e/fixtures/platform-shell-demo.html. Selector names match the demo for side-by-side comparison.
  */
 
 /*
- * The table itself is a scrolling viewport: it scrolls vertically and horizontally within the table, and the horizontal scroll bar is always at the bottom of the visual area;
- * Header row sticky top, title column sticky left (corner grid is fixed in both directions)
+ * The table itself is the scroll viewport: it scrolls both ways inside the table, with the horizontal
+ * scrollbar always at the bottom of the visible area. The header row sticks to the top and the title
+ * column to the left (the corner cell is fixed both ways)
  */
 .desk-body.libview{display:flex;flex-direction:column;overflow:hidden}
 .desk-body.libview>.libwide{display:flex;flex-direction:column;flex:1;min-height:0;width:100%}
@@ -13,7 +14,7 @@
 .desk-body.libview .tblwrap{flex:1;min-height:0}
 .tblwrap{overflow:auto;scrollbar-gutter:stable}
 
-/* Library top bar: filter input box + group switching */
+/* Top bar of the paper list: filter input + group switch */
 .libbar{display:flex;align-items:center;gap:12px;margin-bottom:16px}
 .pdfupload-input{display:none}
 .pdfupload{display:flex;align-items:center;gap:5px;font-size:var(--fs-sm);padding:4px 10px}
@@ -22,13 +23,13 @@
 .paper-drop{position:absolute;inset:46px 0 0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;background:color-mix(in srgb,var(--content) 88%,transparent);border:2px dashed var(--accent);color:var(--ink);backdrop-filter:blur(8px);pointer-events:none}
 .paper-drop strong{font-size:var(--fs-read)}
 .paper-drop span{font-size:var(--fs-sm);color:var(--ter)}
-/* Filter the input box. The class name was left over from the one-sentence block added to the attention screen. Now it is only used here. The value is consistent with .af-in input. */
+/* Filter input. The class name is left over from the one-line add box of the Watches screen and is now used only here; values match .af-in input. */
 .mgr-add{display:flex;gap:8px;margin:10px 0 20px}
 .mgr-add input{flex:1;border:1px solid var(--sep2);background:var(--field);border-radius:var(--r-md);padding:6px 12px;font-size:var(--fs-sm);color:var(--ink);font-family:var(--sans)}
 .mgr-add input:focus{outline:0;border-color:var(--sep-strong);box-shadow:none}
 .paper-search{flex:1;margin:0}
 
-/* Grouped index layer: first select a value, and then look at the papers under that value */
+/* Group index level: pick a value first, then see the papers under it */
 .gxrow{display:flex;align-items:center;gap:12px;padding:12px 10px;border-bottom:1px solid var(--sep2);border-radius:var(--r-md);cursor:pointer}
 .gxrow:hover{background:var(--hover)}
 .gxrow .gx-t{font-size:13px;font-weight:600;min-width:150px}
@@ -49,14 +50,14 @@
 .column-drag-ghost{position:fixed;left:-100px;top:-100px;width:1px;height:1px;opacity:0;pointer-events:none}
 .ptable td .ci{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ptable td.trunc:has(.ci:not(:has(.tagchip))):hover{overflow:visible}
-/* Hover display: extended in situ (Excel style), text does not move, no borders, background color and row hover cover adjacent columns consistently */
+/* Hover reveal: expands in place (Excel style); text stays put, no border, and the background over adjacent columns matches the row hover */
 .ptable td.trunc:hover .ci:not(:has(.tagchip)){position:absolute;left:0;top:0;padding:7px 10px;width:max-content;background:linear-gradient(var(--hover),var(--hover)) var(--content);z-index:6;overflow:visible;text-overflow:clip}
 .tblwrap .ptable thead th{position:sticky;top:0;z-index:3;background:var(--content)}
 .ptable th:first-child,.ptable td:first-child{position:sticky;left:0;z-index:2;background:var(--content);box-shadow:1px 0 0 var(--sep2)}
 .ptable th:first-child{top:0;z-index:4}
-/* The corner grid should outweigh the other header grids in the same row: the "thead th" one has a higher weight, so make a separate decision for the corner grid. */
+/* The corner cell must sit above the other header cells: the "thead th" rule is more specific, so the corner cell gets its own rule. */
 .tblwrap .ptable thead th:first-child{left:0;z-index:4}
-/* This background color is also retained when the reading status menu is open, even if the pointer has moved to the menu item and no longer falls on this line. */
+/* Keep this background while the reading status menu is open, even when the pointer is on a menu item and no longer over this row. */
 .ptable tbody tr:hover td:first-child,.ptable tbody tr:has(.stchip[data-state="open"]) td:first-child{background:linear-gradient(var(--hover),var(--hover)) var(--content)}
 .ptable td .ci .hid{display:none}
 .ptable td .ci.chip-expanded{display:flex;align-items:center;flex-wrap:wrap;gap:2px;overflow:visible;white-space:normal;text-overflow:clip}
@@ -86,9 +87,11 @@
 .ptable tbody tr{cursor:pointer}
 .pt-dim{color:var(--ter);white-space:nowrap}
 /*
- * The + at the end of the label grid: usually a transparent placeholder, which is visible only when the line is hovered or the keyboard is entered; the demo is span, here is the button, and the font and line height are supplemented.
- * The background and text color should be superior to the .tagchip of shell.css, so it is written as .tagchip.tagadd. It depends on the specificity, not the module packaging order;
- * The focus state must also be filled with two categories, otherwise it will be divided equally with the resting state, and the winner will only be determined by the sequence.
+ * The + at the end of a tag cell: a transparent placeholder at rest, visible only while the row is
+ * hovered or it has keyboard focus. The demo uses a span; this is a button, so font and line height
+ * are added. Its background and text color must beat .tagchip in shell.css, hence .tagchip.tagadd,
+ * relying on specificity rather than module bundling order. The focus state needs both classes too,
+ * or it ties with the resting state and only source order decides.
  */
 .tagchip.tagadd{background:transparent;border:1px dashed var(--sep-strong);color:var(--ter);cursor:pointer;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out);font-family:var(--sans);line-height:var(--lh-ui)}
 .ptable tr:hover .tagadd,.tagchip.tagadd:focus-visible{opacity:1;pointer-events:auto}
@@ -99,7 +102,7 @@
 .tagin:focus-visible{outline:0}
 .stchip{font-size:var(--fs-sm);line-height:var(--lh-ui);padding:1px 10px;border:0;border-radius:999px;background:var(--field);color:var(--sec);font-family:var(--sans);cursor:pointer;white-space:nowrap}
 
-/* Custom columns: table header + button pop-up column management; click on a cell to edit in place */
+/* Custom columns: the header's last cell holds the + and the column gear; clicking a cell edits it in place */
 .th-add{width:28px}
 .colbtn{border:0;background:transparent;color:var(--ter);cursor:pointer;padding:3px;border-radius:var(--r-sm);display:flex;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
 .ptable thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events:auto}
@@ -109,7 +112,7 @@
 /* Text values use the shared inline editor; compact column-menu and picker inputs retain their own width. */
 .ptable td .paper-text-cell-input{display:block}
 
-/* Column menu: Fixed columns of built-in columns are grayed out, and custom columns can be renamed/delete at the end of rows. */
+/* Column menu: locked built-in columns are grayed out, and custom columns have rename/delete at the end of their rows. */
 .mi.colrow .cl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .mi.locked{cursor:default;opacity:.45}
 .cmx{border:0;background:transparent;color:var(--ter);cursor:pointer;padding:2px;border-radius:var(--r-sm);display:grid;place-items:center;opacity:0;pointer-events:none;flex-shrink:0}
@@ -118,38 +121,38 @@
 .cmx.del:hover{color:var(--bad)}
 .cmx svg{width:12px;height:12px}
 
-/* Create a row of type gears below the column placeholder: text/select/multi-select three icons side by side, the selected gear has .on */
+/* The type options below the new-column draft: text/select/multi-select icons side by side, the selected one has .on */
 .mi-in.ctrow{display:flex;gap:6px;padding-bottom:0}
 .ctbtn{flex:1;border:1px solid var(--sep2);background:var(--field);color:var(--ter);cursor:pointer;padding:5px 0;border-radius:var(--r-sm);display:grid;place-items:center}
 .ctbtn:hover{color:var(--ink)}
 .ctbtn.on{background:var(--hover);border-color:var(--sec);color:var(--ink)}
 .ctbtn svg{width:12px;height:12px}
-/* Options: Spread below the column rows and indent one level more than the column rows; the fold button will not be visible until it hovers with the rows, otherwise it will not be found */
+/* Options: expand below the column row, one level deeper; the toggle is always visible, not only on row hover, or nobody would find it */
 .cmx.optx{opacity:1;pointer-events:auto}
 /* Column row labels start from 10px padding + 13px tick + 10px spacing = 33px, and option rows are indented 20px more */
 .mi.optrow{padding-left:53px;font-size:12px;color:var(--sec)}
 .mi.optrow .cl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .mi.optrow:hover .cmx{opacity:1;pointer-events:auto}
 .mi.optrow.optnone{color:var(--ter);cursor:default}
-/* Change the type: the three gears are spread out under the column row, and the starting point of the button is aligned with the text of the option row; when spread out, the button at the end of the row always appears */
+/* Change type: the type options expand under the column row, in line with option text; while open, the row's type button stays visible */
 .typerow{padding-left:45px}
 .cmx.typex.on{opacity:1;pointer-events:auto;color:var(--ink)}
-/* Grid selector: one option per line, leaving a groove for the check at the beginning of the line */
+/* Cell picker: one option per row, with a slot for the check mark at the start of the row */
 .ctxmenu.drop .rrow.opt{display:flex;align-items:center;gap:8px}
 .ctxmenu.drop .rrow.opt .ck{width:13px;display:flex;align-items:center;flex-shrink:0}
 
-/* Delete columns at the end of a row: usually not visible, only appears when the row is hovered */
+/* The delete button at the end of a row: hidden at rest, shown only while the row is hovered */
 .rowx{border:0;background:transparent;color:var(--ter);cursor:pointer;padding:2px;border-radius:var(--r-sm);display:grid;place-items:center;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out);margin:0 auto}
 .ptable tbody tr:hover .rowx,.rowx:focus-visible{opacity:1;pointer-events:auto}
 .ptable tbody tr:has(.stchip[data-state="open"]) .rowx{opacity:1}
 .rowx:hover{background:var(--hover);color:var(--bad)}
 .rowx svg{width:13px;height:13px}
 
-/* The right-click menu of the paper row is hung on the shared ContextMenu. Here only the width of the business menu is set. */
+/* The paper row's right-click menu uses the shared ContextMenu; only this menu's width is set here. */
 .paper-row-menu{min-width:168px}
 
 
-/* Paper details: Full height right column, tables and footers give way as a whole. */
+/* Paper detail: a full-height right panel; the table and the footer make room for it together. */
 .paper-detail-slot{--detail-panel-width:360px;top:46px;right:0;bottom:0;border-left:1px solid var(--sep);
   background:var(--content);z-index:5}
 .pdetail{height:100%;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:16px}
@@ -165,15 +168,16 @@
 .paper-reading-summary button.lm{border:0;background:transparent;padding:6px 0;cursor:pointer}
 
 /*
- * The gear at the end of the grouping column: The same button is set as the column in the header, but it is always visible; when it is full, it will change to a new line, so as not to break the top column of the library.
- * Line breaks are only given to this one in the top bar of the library, and .feedbar of .filters itself is also used in the dynamic screen.
+ * The gear at the end of the group bar: the same button as the header's column gear, but always
+ * visible. When the bar is full it wraps to a new line rather than overflow the paper list's top
+ * bar. Only this top bar wraps, since .filters itself is also used by the Feed screen's .feedbar.
  */
 .libbar .filters{align-items:center;flex-wrap:wrap}
-/* The toolbar geometric position does not change when the status copy is switched from "reading status" to "unread" or other values. */
+/* Fixed width, so the toolbar layout does not shift when the label changes from "Reading status" to "Unread" or another value. */
 .libbar .read-state-filter{width:78px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /*
- * Use inherit instead of auto for pointer-events: usually the default value auto is inherited from the parent,
- * When the entire page is disabled, it inherits none and is disabled together.
+ * pointer-events is inherit rather than auto: normally that inherits the parent's default auto, and
+ * when the whole page is disabled it inherits none and is disabled with it.
  */
 .colbtn.grpgear{opacity:1;pointer-events:inherit}
 

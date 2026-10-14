@@ -4,7 +4,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { ActionMenu, MenuCheckboxItem } from '../ActionMenu.js'
 import { IconCheck, IconGear } from '../icons.js'
 
-/** The grouping listed in the gear: the built-in groupable fields come first, and the selection columns and multi-selection columns follow in the order of configuration. */
+/** The group fields under the gear: built-in groupable fields, then select and multi-select columns in order. */
 export function groupRows(
   columns: PaperColumns, groupNames: Record<string, string>,
 ): { key: string; label: string }[] {
@@ -15,9 +15,10 @@ export function groupRows(
 }
 
 /**
- * The gear at the end of the grouping bar: click on a row to open a column that can be grouped. Those with ticks are the chips placed on the grouping bar. Click a line
- * Switch whether it is in `columns.groups` or not, and the pop-up layer will not be closed. Switching is calculated based on the last confirmed column configuration and handed over to `onChange`.
- * `.mi` / `.ck` for visual column menu.
+ * The gear at the end of the group bar: it opens one row per groupable field, and checked rows are
+ * the chips shown on the group bar. Clicking a row toggles whether it is in `columns.groups` and
+ * keeps the popover open; the toggle is computed from the last confirmed column configuration and
+ * handed to `onChange`. Styled with the column menu's `.mi` / `.ck`.
  */
 export function GroupMenu({ columns, onChange }: {
   columns: PaperColumns
@@ -38,7 +39,7 @@ export function GroupMenu({ columns, onChange }: {
         <MenuCheckboxItem
           key={r.key} checked={columns.groups.includes(r.key)}
           onCheckedChange={() => toggle(r.key)}
-          // Clicking on a row only switches this row, leaving the menu and selecting
+          // Clicking a row only toggles that row; the menu stays open
           onSelect={(e) => e.preventDefault()}
         >
           <span className="ck">{columns.groups.includes(r.key) ? <IconCheck /> : null}</span>

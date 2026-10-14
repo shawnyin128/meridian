@@ -1,7 +1,7 @@
 import type { PaperReading } from '../../../shared/contract.js'
 import type { JumpAnchor } from '../../shell/AppShell.js'
 
-/** A reading record of the words written in a paper: the highlights of the written notes include fragments of the original text, but the notes taken separately do not. */
+/** A reading entry in the user's own words: a highlight with a note carries its quote, a plain note does not. */
 export type ReadingEntry = {
   id: string
   kind: 'highlight' | 'note'
@@ -11,7 +11,7 @@ export type ReadingEntry = {
   updated: string
 }
 
-/** For the reading records with written notes in this article, the most recently revised ones are listed first; the highlights without written notes are not counted. */
+/** The paper's reading entries with written text, latest update first; highlights without a note are left out. */
 export function readingEntries(reading: PaperReading): ReadingEntry[] {
   return [
     ...reading.highlights.filter((highlight) => highlight.note.trim() !== '')
@@ -34,7 +34,7 @@ export function readingEntries(reading: PaperReading): ReadingEntry[] {
   ].sort((left, right) => right.updated.localeCompare(left.updated))
 }
 
-/** Click a reading record to enter the location where the reader will land: that page, that item, and open the cell where it is located in the right column. */
+/** Where the reader lands when an entry is clicked: its page and item, with its panel open in the right rail. */
 export function entryAnchor(entry: ReadingEntry): JumpAnchor {
   return entry.kind === 'highlight'
     ? { page: entry.page, highlight: entry.id, panel: 'highlights' }
