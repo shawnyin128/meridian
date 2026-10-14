@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test'
 import { expect, gotoPapers, test, type MeridianWindow } from './app.js'
 
-/** The screen you entered remains hanging, and the selector on the reader should be closed in the currently displayed screen. */
+/** Visited screens stay mounted, so reader selectors are scoped to the screen shown. */
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
 
 const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
@@ -12,52 +12,56 @@ const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
 /** Each page of the original text in the fixture vault is 612 × 792 pt. */
 const PAGE = { width: 612, height: 792 }
 
-/** Demo paintPdf: When scaling 1, the page width is first reduced to 830, and then the screen is displayed according to the device pixel ratio. */
+/** The reader's fit scale: zoom 1 fits a page to 830px wide, at most 1.6×, before the device pixel ratio. */
 const FIT = Math.min(830 / PAGE.width, 1.6)
 
 /**
- * The corresponding papers and page numbers of the three original texts in the fixture vault are all in
- * `apps/desktop/src/core/fixtures/vault/sources/papers/`. The number of pages in the three copies is different from each other, draw how many pages
- * Just indicate which part is parsed.
+ * The papers and page counts of the three source PDFs in the fixture vault, all under
+ * `apps/desktop/src/core/fixtures/vault/sources/papers/`. The three page counts differ, so the
+ * number of pages drawn shows which one was parsed.
  */
 const READABLE = { title: 'STAR: SPECULATIVE DECODING', pages: 2 }
-/** The specdec item in the inbox points to after downloading it into the database. */
+/** The paper the inbox entry specdec points to, once it is downloaded into the vault. */
 const INGESTED = { entry: 'specdec', pages: 3 }
-/** Later, read the article pointed to by the Mixtral item in the queue, which is already in the library. */
+/** The paper the Read Later entry mixtral points to, already in the vault. */
 const QUEUED = { entry: 'mixtral', pages: 5 }
 
-/** "The same article is still there when you read it again." The position where the use case is scrolled must be within the page after zooming in one level. */
+/** Where the test that reopens a paper scrolls to; it must lie within the pages after one zoom-in. */
 const SCROLLED = 400
 
-/** The number of library writes made by the use case "Write the library elsewhere without re-parsing" while the browser is still hanging. */
+/** How many vault writes the no-re-parse test makes elsewhere while the reader stays mounted. */
 const VAULT_WRITES = 5
 
-/** The two articles read back using the use case of changing the article: both are in the library, both have the original text, the number of pages drawn is different, and the changed article can be recognized. */
+/**
+ * The two papers the switching tests read: both in the vault with a source PDF, and with different
+ * page counts, so the pages drawn show which paper is on screen.
+ */
 const SWITCHED = [READABLE, { title: 'Mixtral of Experts', pages: QUEUED.pages }]
 
-/** Filter out the article with this title from the article table and click on its details panel. */
+/** Filters the paper table to this title and clicks the row to open its detail panel. */
 async function selectPaper(win: Page, title: string): Promise<void> {
   await win.locator('#libq').fill(title)
   await expect(win.locator('.ptable tbody tr')).toHaveCount(1)
   await win.locator('.ptable tbody tr').click()
 }
 
-/** Go to the article screen, filter out that article and click on its details panel. */
+/** Goes to Papers, filters to the readable paper and opens its detail panel. */
 async function selectReadable(win: Page): Promise<void> {
   await gotoPapers(win)
   await selectPaper(win, READABLE.title)
 }
 
-/** Filter out the article from the paper table, click on the details panel, and then click "Start Reading". */
+/** Opens the readable paper's detail panel from the paper table, then clicks "Start reading". */
 async function openFromPapers(win: Page): Promise<void> {
   await selectReadable(win)
   await shown(win, '.pdetail [title="开始阅读"]').click()
 }
 
 /**
- * Each page drawn in the reader: the width and height of the frame, the number of ink dots (opaque and dark pixels) on the screen,
- * How many pixels have not been drawn at all (fully transparent), and how many pixels there are in total on one page. Unpainted canvas is completely transparent
- * For black, just counting "dark pixels" will treat it as if the entire page is full of ink, so count both.
+ * For each page drawn in the reader: its box's width and height, the ink pixels on the canvas (opaque
+ * and dark), the pixels never drawn (fully transparent), and the page's total pixels. An unpainted
+ * canvas is transparent black, so counting dark pixels alone would read a blank page as all ink;
+ * hence both counts.
  */
 const inked = (win: Page) => shown(win, '.pdfpagebox').evaluateAll((boxes) => boxes.map((box) => {
   const canvas = box.querySelector('canvas')!
@@ -75,20 +79,21 @@ const inked = (win: Page) => shown(win, '.pdfpagebox').evaluateAll((boxes) => bo
 }))
 
 /**
- * Assert that the reader draws exactly the parsed PDF: exactly pages, each page is the page size according to the appropriate width ratio
- * The shrunken frame has been painted on the entire page, has ink, and is not a solid color. Return the number measured on each page.
+ * Asserts the reader draws exactly the parsed PDF: `pages` pages, each in a box of the page size
+ * scaled by the fit ratio, painted all over, with ink, and not a solid color. Returns each page's
+ * measurements.
  */
 async function expectPainted(win: Page, pages: number) {
   await expect(shown(win, '.pdfpagebox')).toHaveCount(pages)
   await expect(shown(win, '.pdfpagebox[data-painted="1"]')).toHaveCount(pages)
   const painted = await inked(win)
 
-  // The number of pages and page size can only come from the parsed PDF, not the boxes set by the interface itself.
+  // The page count and page size can only come from the parsed PDF, not from boxes the UI sets itself.
   expect(painted).toHaveLength(pages)
   for (const page of painted) {
     expect(page.width).toBe(Math.floor(PAGE.width * FIT))
     expect(page.height).toBe(Math.floor(PAGE.height * FIT))
-    // The entire page has been drawn, the bottom is white, and there are words on it: The three lines together indicate that the drawing is this PDF
+    // The whole page is drawn, on a white background, with text on it: together these show this PDF was drawn.
     expect(page.untouched).toBe(0)
     expect(page.ink).toBeGreaterThan(0)
     expect(page.ink).toBeLessThan(page.pixels)
@@ -148,8 +153,8 @@ test('先排好所有页的框,再从视口附近开始画;第一页先于其余
 })
 
 /**
- * From this moment on, record every Worker that has been created and destroyed on the page. Parse one at a time and destroy that document
- * Terminate, so the difference between the two numbers is the number of copies of the document that are still alive at this moment.
+ * Records every Worker the page creates and terminates from now on. Each parse starts one Worker and
+ * destroying its document terminates it, so the difference of the two counts is the documents alive.
  */
 const recordWorkers = (win: Page) => win.evaluate(() => {
   const made: string[] = []
@@ -178,7 +183,8 @@ const pdfWorkers = async (win: Page, of: 'made' | 'killed' = 'made') => (await w
 
 test('解析跑在 pdf.js 起的 Worker 里,没有退回主线程', async ({ win }) => {
   await selectReadable(win)
-  // When the Worker cannot be started, pdf.js will silently return to the main thread for analysis, so write down each Worker created in this paragraph.
+  // When a Worker cannot start, pdf.js silently falls back to parsing on the main thread, so record each
+  // Worker created from here on.
   await recordWorkers(win)
 
   await shown(win, '.pdetail [title="开始阅读"]').click()
@@ -196,9 +202,10 @@ test('别处写库不会把原文重解析一遍', async ({ win }) => {
   await expect(shown(win, '.pdfpagebox')).toHaveCount(READABLE.pages)
   expect(await pdfWorkers(win)).toHaveLength(1)
 
-  // Push focus pause/resume in the settings, each time it is a library write; the reader is always hanging (just closed behind this screen),
-  // Following writing and re-fetching, one more worker will be created for each write, and the deleted copy will not be destroyed. The global sidebar is retracted while reading,
-  // You must first use the reader's own back button to exit the screen, and then open the push settings from the incoming screen.
+  // Each pause or resume of a watch in Watch settings is a vault write. The reader stays mounted, only
+  // hidden behind this screen; re-fetching on every write would start one more worker per write and
+  // never destroy the replaced document. The global sidebar is collapsed while reading, so leave
+  // through the reader's own back button, then open Watch settings from the Inbox screen.
   await shown(win, '.paper-chat-head .back').click()
   await win.locator('[data-inbox="all"]').click()
   await shown(win, '[title="关注设置"]').click()
@@ -209,7 +216,7 @@ test('别处写库不会把原文重解析一遍', async ({ win }) => {
     await expect(watched.locator('.src')).toHaveCount(pausing ? 1 : 0)
   }
 
-  // Back to the reader: The drawing is still the same, and the analysis is not run again.
+  // Back in the reader: the pages are drawn as before, and the PDF is not parsed again.
   await win.keyboard.press('Escape')
   await win.locator('[data-desk="papers"]').click()
   await shown(win, '.pdetail [title="开始阅读"]').click()
@@ -249,8 +256,9 @@ test('换一篇读,新篇解析期间屏上没有上一篇的页', async ({ win 
   expect(seen.cleared).toBe(true)
 })
 
-// Twenty times for five different chapters, each time you have to wait for Playwright to determine whether the element is stable: which criterion compares the two adjacent frames?
-// Position, when the window is not on the screen, one frame is one second, one frame is two seconds, and the thirty-second use case budget cannot fit twenty frames.
+// These tests take twenty actions over five papers, and before each one Playwright waits for the
+// element to be stable, comparing its position in two consecutive frames. Offscreen a frame takes one
+// second, so each wait takes two, and twenty of them do not fit the 30-second test budget.
 test.describe(() => {
   test.use({ showWindow: true })
 
@@ -353,7 +361,7 @@ test('阅读器顶栏与面包屑写的是这一篇,面包屑上一段回到论�
 
   await expect(shown(win, '.paper-chat-head strong')).toHaveText('STAR · 阅读中')
   await expect(win.locator('#crumb .cseg')).toHaveText(['我的库', '论文', 'STAR'])
-  // Among the borrowed paragraphs, only the last paragraph can be clicked. It is the entrance to the screen where you came from.
+  // Of the segments taken from the screen the reader came from, only the last is a link, back to that screen.
   await expect(win.locator('#crumb .cseg.link')).toHaveText(['论文'])
 
   await win.locator('#crumb .cseg.link', { hasText: '论文' }).click()
@@ -379,7 +387,8 @@ test('同一篇再进来,读到哪儿、放大到几倍都留着', async ({ win 
 
   await shown(win, '.zoomctl [title="放大"]').click()
   await expect(shown(win, '.zoomctl span')).toHaveText('120%')
-  // The final step in redrawing is to stop the scrolling back to the original proportions, wait for the entire article to be drawn in the new proportions, and then wait two frames before scrolling to the position you want to remember.
+  // A redraw restores the scroll to the same proportion, so wait until the whole paper is drawn at the
+  // new zoom, then two more frames, before scrolling to the position to remember.
   await expect.poll(async () => {
     const pages = await inked(win)
     return pages.length === READABLE.pages && pages.every((p) => p.untouched === 0)
@@ -408,7 +417,7 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
   await shown(win, `.pcard[data-pid="${target.id}"] [title="开始阅读"]`).click()
   await expectPainted(win, INGESTED.pages)
 
-  // Delete this article from the paper screen. The reader is still open and I am reading the same article, but it is no longer in the library.
+  // Delete the paper from Papers: the reader stays open on the same paper, which is no longer in the vault.
   await shown(win, '.paper-chat-head .back').click()
   await gotoPapers(win)
   await win.locator('#libq').fill(target.title.slice(0, 24))
@@ -421,7 +430,8 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
   await shown(win, `.pcard[data-pid="${target.id}"] [title="开始阅读"]`).click()
   await expect(shown(win, '.pdfload')).toHaveText(`论文不存在:${target.paper}`)
 
-  // After restoring from the trash can and then entering the same article, the last error report will disappear; when reading, the global sidebar is retracted, and you can use the return button to leave the screen.
+  // Restored from the Trash, the same paper opens without the earlier error. The global sidebar is
+  // collapsed while reading, so leave through the back button.
   await shown(win, '.paper-chat-head .back').click()
   await win.locator('[data-desk="trash"]').click()
   await win.locator('.tgroup .trow .btn', { hasText: '恢复' }).click()
@@ -447,7 +457,7 @@ test('收件里下载入库那一条的「开始阅读」进阅读器,入库那�
     win, 'inbox.list', {})
   const target = entries.find((e) => !e.downloaded)!
   expect(target.id).toBe(INGESTED.entry)
-  // What you get when entering the library is the ID that the paper in the library should have. The ID of the receiving entry is not the paper ID.
+  // `paper` is the ID the paper gets once added to the vault; the inbox entry's own ID is not a paper ID.
   expect(target.paper).toMatch(/^paper-pdf-[0-9a-f]{12}$/)
 
   await win.locator('#rowInboxAll').click()

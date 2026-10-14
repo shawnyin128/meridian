@@ -1,7 +1,7 @@
 import type { ElectronApplication, Page } from '@playwright/test'
 import { expect, openSettings, test, type MeridianWindow } from './app.js'
 
-/** The number of steps for Tab walking: enough to complete the focusable elements in the setting modal and circle back to the starting point. */
+/** Tab presses in the focus walk: enough to pass every focusable element in Settings and wrap around. */
 const TAB_STEPS = 8
 
 type Session = { id: string; title: string; archived: boolean }
@@ -20,15 +20,16 @@ const EXTENSION_STATE_COPY: Record<ExtensionStatus['state'], string> = {
   'not-installed': '未安装',
 }
 
-/** Bypass the interface and adjust the contract directly. */
+/** Calls a contract method directly, bypassing the UI. */
 const core = <T>(win: Page, method: string, params: unknown) =>
   win.evaluate(([m, p]) => (window as unknown as MeridianWindow).meridian.call(m as string, p),
     [method, params] as const) as Promise<T>
 
 /**
- * Press `CmdOrCtrl` plus `key`. The event is injected into the window by the main process, and the page is returned to the menu without processing.
- * accelerator - This path is the same as the user's real keystroke, and the keydown processor on the page cannot touch it.
- * Playwright's own `keyboard.press` is only sent to the rendering process and cannot reach the menu.
+ * Presses `CmdOrCtrl` plus `key`. The main process injects the event into the window, and a key the
+ * page does not handle goes on to the menu accelerators: the same path as a real keystroke, out of
+ * reach of the page's keydown handlers. Playwright's own `keyboard.press` reaches only the renderer
+ * and never the menu.
  */
 const press = (app: ElectronApplication, key: string) =>
   app.evaluate(({ BrowserWindow }, pressed) => {
@@ -40,7 +41,7 @@ const press = (app: ElectronApplication, key: string) =>
   }, key)
 
 test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', async ({ app, win }) => {
-  // The menu is installed in whenReady, and it is guaranteed to be completely installed after the first window comes out.
+  // The menu is set in whenReady, so it is fully installed once the first window is up.
   await win.locator('.sidebar').waitFor()
   const menu = await app.evaluate(({ Menu }) => {
     const built = Menu.getApplicationMenu()
@@ -56,9 +57,9 @@ test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', 
   console.log(`菜单 ${JSON.stringify(menu)}`)
 
   const mac = process.platform === 'darwin'
-  // Only the menu where "Settings..." and "File" are listed by themselves, the rest are still roles, copy and paste, zoom,
-  // The developer tools are still there; on macOS, "Settings..." is in the application name menu, and the file menu is still a role;
-  // There is an additional "Tools" menu without role on Windows/Linux, sandwiched between the view and the window
+  // Only "Settings…" and the File menu are built by hand; the rest are still roles, so copy and paste,
+  // zoom and the developer tools remain. On macOS "Settings…" sits in the app-name menu and File is
+  // still a role; Windows and Linux add a Tools menu without a role, between View and Window.
   expect(menu.map((top) => top.role)).toEqual(mac
     ? ['appmenu', 'filemenu', 'editmenu', 'viewmenu', 'windowmenu']
     : [null, 'editmenu', 'viewmenu', null, 'windowmenu'])
@@ -67,13 +68,13 @@ test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', 
   expect(settings).toHaveLength(1)
   expect(settings[0]!.label).toBe('设置…')
   expect(settings[0]!.accelerator).toBe('CmdOrCtrl+,')
-  // On macOS, it's under the first menu of the menu bar (the application name menu); on Windows/Linux, it's under the "Tools" menu,
-  // That is, the fourth top-level menu (after File, Edit, and View)
+  // On macOS it is in the menu bar's first menu (the app-name menu); on Windows and Linux in the Tools
+  // menu, the fourth top-level menu after File, Edit and View.
   expect(menu.findIndex((top) => top.items.some((item) => item.id === 'settings'))).toBe(mac ? 0 : 3)
 })
 
-// The buttons that are not connected to the page are returned to the accelerator of the menu. That step is the window's own native menu.
-// A window that is not on the screen cannot get focus, so there is no escape route - pressing Ctrl+, nothing will happen.
+// A key the page does not handle goes on to the menu accelerators, and that step is the window's own
+// native menu. An offscreen window cannot take focus, so the key goes nowhere and Ctrl+, does nothing.
 test.describe(() => {
   test.use({ showWindow: true })
 
@@ -86,7 +87,8 @@ test.describe(() => {
     await win.keyboard.press('Escape')
     await expect(win.locator('.setdlg')).toHaveCount(0)
 
-    // The shortcut key requires that the window really holds the system focus; turn off Playwright's focus simulation, and hasFocus will report the actual result.
+    // The shortcut needs the window to really hold system focus; with Playwright's focus emulation off,
+    // hasFocus reports the real state.
     const cdp = await win.context().newCDPSession(win)
     await cdp.send('Emulation.setFocusEmulationEnabled', { enabled: false })
     await app.evaluate(({ BrowserWindow }) => {
@@ -103,7 +105,7 @@ test.describe(() => {
     await win.keyboard.press('Escape')
     await expect(win.locator('.setdlg')).toHaveCount(0)
 
-    // Counter example: What opens settings is the shortcut key registered in "Settings...", not "whatever key is pressed to open it"
+    // Negative check: Settings opens on the shortcut registered for "Settings…", not on any key.
     await press(app, '.')
     await expect(win.locator('.setdlg')).toHaveCount(0)
   })
@@ -133,7 +135,8 @@ test('preload 仍是窄接口:页面上没有任何收得下 channel 名的口�
     'electron:undefined', 'module:undefined',
   ])
 
-  // The subscription port only communicates the agreed channel: the main process sends other messages, and the processor on the page does not ring once.
+  // The subscription listens only on its agreed channel: other messages from the main process never
+  // fire the page's handler.
   await win.evaluate(() => {
     const page = window as unknown as {
       seen: number
@@ -165,7 +168,7 @@ test('设置是左右分栏:左栏是分类,右栏是选中那一类的内容', 
   const archived = (await core<Session[]>(win, 'chat.list', {})).filter((s) => s.archived)
   expect(archived.length).toBeGreaterThan(0)
 
-  // The left column only contains categories that really have content today, and does not include empty categories to make up the number.
+  // The left column lists only categories that have content today, with no empty ones as filler.
   const labels = await cats.allInnerTexts()
   console.log(`左栏分类 ${JSON.stringify(labels)}`)
   expect(labels).toEqual(['外观', '存储', 'API', '扩展', '论文推送', '归档的对话'])
@@ -178,10 +181,11 @@ test('设置是左右分栏:左栏是分类,右栏是选中那一类的内容', 
   await expect(directory.locator('input')).toHaveValue(/meridian/i)
   await expect(directory.locator('[aria-label="选择论文库根目录"]')).toHaveCount(1)
   await expect(win.getByRole('button', { name: '选择根目录…' })).toHaveCount(0)
-  // Regular applications will be enabled; these shared fixtures are not allowed to be cleared by an interface use case.
+  // Reset is enabled in normal use; the shared fixture must not be cleared by a UI test.
   await expect(win.locator('.setdlg .storage-reset .btn')).toBeDisabled()
 
-  // Click each category in the left column one by one, and the content in the right column will be changed to that category; the push setting itself will be divided into multiple sections.
+  // Clicking each category in the left column switches the right column to it; the Inmail category
+  // itself spans several sections.
   for (const label of labels) {
     await cats.filter({ hasText: label }).click()
     await expect(win.locator('.setdlg .set-side .srow.on')).toHaveText([label])
@@ -249,7 +253,7 @@ test('设置模态:屏上其余部分隐掉,Tab 不跑到模态外,Esc 之后焦
   expect(await win.evaluate(() => document.activeElement?.id ?? '')).toBe('sbBtn')
 
   await openSettings(app, win)
-  // Modal half: The mask blocks the pointer and the rest of the screen is completely hidden from screen readers.
+  // The modal part: the scrim blocks the pointer, and the rest of the screen is hidden from screen readers.
   await expect(win.locator('.scrim')).toHaveCount(1)
   await expect(win.locator('#root')).toHaveAttribute('aria-hidden', 'true')
 
@@ -268,6 +272,6 @@ test('设置模态:屏上其余部分隐掉,Tab 不跑到模态外,Esc 之后焦
   await win.keyboard.press('Escape')
   await expect(win.locator('.setdlg')).toHaveCount(0)
   await expect(win.locator('#root')).not.toHaveAttribute('aria-hidden', 'true')
-  // The focus is returned in a timeout after the modal is unloaded. The disappearance of the element does not mean that the focus has been returned.
+  // Focus returns in a timeout after the modal unmounts; the element being gone does not mean it is back.
   await expect.poll(() => win.evaluate(() => document.activeElement?.id ?? '')).toBe('sbBtn')
 })

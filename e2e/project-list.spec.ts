@@ -2,17 +2,17 @@ import type { Page } from '@playwright/test'
 import { PROJECT_STATUSES } from '../apps/desktop/src/shared/vocabulary.js'
 import { dshort, expect, settle, test, vaultToday, type MeridianWindow } from './app.js'
 
-/** The screen you entered is always hung, and the selector that is present on every screen, such as the screen header, should be stored in the currently displayed screen. */
+/** Visited screens stay mounted, so selectors every screen has, like the header, target the shown one. */
 const shown = (win: Page) => win.locator('.screenslot:not([hidden])')
 
-/** Bypass the interface and call `project.list` directly, and get the items that should be included in the list screen. */
+/** Calls `project.list` directly, bypassing the UI, for the projects the list screen should show. */
 const listProjects = (win: Page) => win.evaluate(async () => {
   const rows = await (window as unknown as MeridianWindow).meridian
     .call('project.list', {}) as { id: string; name: string; status: string }[]
   return rows.map(({ id, name, status }) => ({ id, name, status }))
 })
 
-/** Bypass the interface and call `project.get` directly to get the name of the details screen and the number of items in each section. */
+/** Calls `project.get` directly, bypassing the UI, for the detail screen's name and each section's count. */
 const getProject = (win: Page, id: string) => win.evaluate(async (projectId) => {
   const project = await (window as unknown as MeridianWindow).meridian
     .call('project.get', { id: projectId }) as {
@@ -37,7 +37,7 @@ const getProject = (win: Page, id: string) => win.evaluate(async (projectId) => 
   }
 }, id)
 
-/** Bypass the interface and call `project.get` directly to get the entire scientific research record of this project. */
+/** Calls `project.get` directly, bypassing the UI, for the project's whole research log. */
 const getEvents = (win: Page, id: string) => win.evaluate(async (projectId) => {
   const project = await (window as unknown as MeridianWindow).meridian
     .call('project.get', { id: projectId }) as { events: { date: string; text: string }[] }
@@ -45,12 +45,12 @@ const getEvents = (win: Page, id: string) => win.evaluate(async (projectId) => {
 }, id)
 
 const ACTIVE = '进行中'
-/** It’s been a few days since Curry looked back at this date. */
+/** Days from the vault's today back to this date. */
 const daysSince = (today: string, iso: string) =>
   Math.floor((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${iso}T00:00:00Z`)) / 86_400_000)
-/** Use it to return to a list from another screen: Clicking on the sidebar always ends up in the list, without exiting the current item first. */
+/** Returns to the list from any screen: the sidebar entry always lands on it, even from a project. */
 const gotoList = (win: Page) => win.locator('[data-desk="resproj"]').click()
-/** Projects other than draft in fixture must be opened once each in this round. */
+/** The fixture's projects other than draft; one test opens each of them once. */
 const OTHER_PROJECTS = ['sched', 'moe', 'fa']
 const NEW_PROJECT = '实测新建的项目'
 const RENAMED_PROJECT = '实测重命名后的项目'
@@ -95,7 +95,7 @@ test('项目详情的面包屑「项目」那一段点回列表', async ({ win }
 test('侧栏项目角标是进行中的项目数', async ({ win }) => {
   const projects = await listProjects(win)
   const active = projects.filter((p) => p.status === ACTIVE).length
-  // The number in the corner is the project in progress; when the two numbers are equal, this use case cannot distinguish which one it is counting.
+  // The badge counts active projects; if all were active, this test could not tell the two counts apart.
   expect(active).toBeLessThan(projects.length)
   await expect(win.locator('[data-desk="resproj"] .n')).toHaveText(String(active))
 })
@@ -110,7 +110,7 @@ test('从别的屏再进「项目」落在列表,已经在项目屏时再点侧�
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目'])
   await expect(shown(win).locator('[data-proj="draft"]')).toBeVisible()
 
-  // Go to the thesis screen, turn a page and come back: the project screen is in the list
+  // Go to Papers, turn a page and come back: the Projects screen shows the list.
   await win.locator('[data-desk="papers"]').click()
   await win.locator('.pager .pgbtn').last().click()
   await expect(win.locator('.pager .pgbtn.on')).toHaveText('2')
@@ -119,7 +119,7 @@ test('从别的屏再进「项目」落在列表,已经在项目屏时再点侧�
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目'])
   await expect(shown(win).locator('[data-proj="draft"]')).toBeVisible()
 
-  // The pagination of the paper screen has not been changed smoothly; the grouping is still retained after switching over and walking around.
+  // The Papers page was not reset on the way; its grouping also survives a round trip to another screen.
   await win.locator('[data-desk="papers"]').click()
   await expect(win.locator('.pager .pgbtn.on')).toHaveText('2')
   await win.locator('.filters .segmented-control>button', { hasText: '主题' }).click()
@@ -184,7 +184,7 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   await card.locator('.dots').click()
   await win.locator('.ctxmenu .mi', { hasText: '搁置' }).click()
   await expect(win.locator('#toast')).toHaveText('已标记为 搁置')
-  // The status has changed groups: the large panel has become thin rows, and the project.list also has a new status.
+  // It moves to another group: the panel becomes a compact row, and project.list has the new status.
   await expect(card).toHaveClass(/prow/)
   expect((await listProjects(win)).find((p) => p.id === created!.id)?.status).toBe('搁置')
 
@@ -216,11 +216,12 @@ test('面板只显示最新一条推进,细行的上次推进按最新那条算'
   const recent = await shown(win).locator('[data-proj="draft"] .project-card-recent').innerText()
   expect(recent).toContain(dshort(draft.at(-1)!.date))
 
-  // The number of days of stagnation in a draft is calculated based on the last one; the earliest date in the record is farther away, and if you read the wrong position, the number will not be it.
+  // draft's idle days count from its latest entry; the earliest entry is further back, so reading the
+  // wrong end of the log gives a different number.
   await expect(shown(win).locator('[data-proj="draft"] .project-card-alert'))
     .toContainText(`已 ${daysSince(today, draft.at(-1)!.date)} 天无推进`)
 
-  // moe is a shelved project. There is only one line. The end of that line is the number of days since the latest scientific research record.
+  // moe is shelved and shows as one compact row, ending with the days since its latest log entry.
   const moe = await getEvents(win, 'moe')
   await expect(shown(win).locator('[data-proj="moe"] .m'))
     .toContainText(`上次推进 ${daysSince(today, moe.at(-1)!.date)} 天前`)
@@ -248,7 +249,8 @@ test('没有图数据的项目出的是一行占位,不是空画布加图例', a
   await expect(win.locator('.rgraph')).toHaveCount(0)
   await expect(win.locator('.glegend')).toHaveCount(0)
 
-  // Projects with graph data still display canvases and legends; segments are maintained across projects without having to cut them again.
+  // A project with graph data still shows the canvas and legend; the selected tab carries over between
+  // projects, so there is no need to switch again.
   await win.locator('#crumb .cseg.link', { hasText: '项目' }).click()
   await win.locator('[data-proj="draft"]').click()
   await expect(win.locator('.rgraph .rgn')).toHaveCount((await getProject(win, 'draft')).graphNodes)
@@ -269,13 +271,16 @@ test('sched / moe / fa 各打开一次,各板块条数与 project.get 一致', a
 
     await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '里程碑' }).click()
     await expect(win.locator('#msList .ddlrow'), id).toHaveCount(project.activeMilestones)
-    // Sections are maintained across projects. If you want to start the next project from the task section, you have to switch back by yourself.
+    // The selected tab carries over between projects; switch back to Task for the next one.
     await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '任务' }).click()
     await win.locator('#crumb .cseg.link', { hasText: '项目' }).click()
   }
 })
 
-/** A real button is sent through CDP: Playwright's press does not recognize characters outside the keyboard layout, and the first characters of menu items are all Chinese characters. */
+/**
+ * Sends a real key press through CDP: Playwright's press does not recognize characters outside the
+ * keyboard layout, and every menu item starts with a Chinese character.
+ */
 async function typeKey(win: Page, ch: string): Promise<void> {
   const cdp = await win.context().newCDPSession(win)
   await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ch, text: ch, unmodifiedText: ch })
@@ -300,18 +305,19 @@ test('项目菜单是真菜单;重命名框里打菜单项首字、方向键、H
   await menu.locator('[role="menuitem"]', { hasText: '重命名' }).click()
   await expect(input).toBeFocused()
   await input.fill('')
-  // The first letter of the five menu items: Rename, In progress, On hold, Completed, Delete
+  // The first character of each of the five menu items: Rename, Active, Shelved, Finished, Delete.
   for (const ch of ['重', '进', '搁', '已', '删']) await typeKey(win, ch)
-  // If typeahead grabs the focus while typing, it is moved by a zero-delay setTimeout; the same-delay timer is pressed into the queue
-  // Sequential triggering, here wait for a round of macro tasks with the same zero delay, let the focus move (if it is scheduled) finish running first and then assert
+  // If typeahead takes focus on a key, it moves it in a zero-delay setTimeout. Timers with the same delay
+  // fire in queue order, so waiting one zero-delay macrotask lets any scheduled focus move run first.
   await win.evaluate(() => new Promise<void>((r) => setTimeout(r, 0)))
-  // The assertion must be stuck here. The following press will first return the focus to the input box, and you can't tell whether it ran or not.
+  // Assert here: the next press focuses the input first, which would hide whether focus had moved.
   await expect(input).toBeFocused()
   await input.press('Space')
   await input.press('a')
   await expect(input).toHaveValue('重进搁已删 a')
   await expect(input).toBeFocused()
-  // The arrow keys and Home/End only move the cursor in the box: go back to the beginning and press x, move one space to the right and press y, and go to the end and press z; Tab does not take the focus out of the menu.
+  // Arrow keys and Home/End only move the caret in the input: Home then x, one right then y, End then z;
+  // Tab does not move focus out of the menu.
   await input.press('ArrowDown')
   await input.press('ArrowUp')
   await input.press('Home')
@@ -320,13 +326,13 @@ test('项目菜单是真菜单;重命名框里打菜单项首字、方向键、H
   await input.press('y')
   await input.press('End')
   await input.press('z')
-  // The same reason: it must be stuck here before press('Tab'), otherwise Tab's own press will take back the focus first
+  // Same reason: assert before press('Tab'), which would otherwise focus the input again first.
   await expect(input).toBeFocused()
   await input.press('Tab')
   await expect(input).toHaveValue('x重y进搁已删 az')
   await expect(input).toBeFocused()
 
-  // Esc Cancel: The menu is closed and the name is not changed.
+  // Esc cancels: the menu closes and the name is unchanged.
   await input.press('Escape')
   await expect(menu).toHaveCount(0)
   await expect(card.locator('.project-identity-name')).toHaveText('draft 效率')
@@ -351,7 +357,8 @@ test('项目菜单开着、指针挪到菜单项上之后,悬停才露出的 ...
   await settle(card)
   const hoverBorderColor = await card.evaluate((el) => getComputedStyle(el).borderColor)
   await dots.click()
-  // When the pointer is moved to the menu item, the line is really lost :hover - if it is not moved, it will be "sticky" and no problem can be detected.
+  // Moving the pointer onto a menu item really takes :hover off the card; without the move, :hover
+  // sticks and the bug cannot show.
   await win.locator('[role="menu"] [role="menuitem"]').first().hover()
   await settle(dots)
   await expect(dots).toHaveCSS('opacity', '1')
@@ -368,7 +375,8 @@ test('搁置或已完成的项目菜单开着、指针挪到菜单项上之后,�
   await settle(row)
   const hoverBg = await row.evaluate((el) => getComputedStyle(el).backgroundColor)
   await dots.click()
-  // When the pointer is moved to the menu item, the line is really lost :hover - if it is not moved, it will be "sticky" and no problem can be detected.
+  // Moving the pointer onto a menu item really takes :hover off the row; without the move, :hover
+  // sticks and the bug cannot show.
   await win.locator('[role="menu"] [role="menuitem"]').first().hover()
   await settle(row)
   expect(await row.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(hoverBg)
@@ -386,7 +394,7 @@ test('菜单开着时触发器仍然可点;再点一下菜单收起,不重新弹
   // Click again on the same trigger and the menu will collapse.
   await dots.click()
   await expect(menu).toHaveCount(0)
-  // This time, I didn’t pretend to do anything: the list is still there, and I didn’t jump into the project details.
+  // The click did not reach the card: the list still shows, and the project detail did not open.
   await expect(card).toBeVisible()
 })
 

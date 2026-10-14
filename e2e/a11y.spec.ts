@@ -2,21 +2,22 @@ import type { Locator, Page } from '@playwright/test'
 import { gotoPapers, parkPointer, test } from './app.js'
 
 /**
- * Keyboard and screen reading walkthrough: Gather facts, don’t make assertions. Run through the thesis library table and change the Tab order, Tab destination in the floating layer,
- * The focus after Escape, the element lacking an accessible name, and the role of the floating layer are hit to stdout, and are closed by the report.
- * Assertions are left to papers.spec.ts / shell.spec.ts, none of which should make e2e red.
+ * Keyboard and screen reader walkthrough that gathers facts without asserting. It walks the paper
+ * table and prints to stdout the Tab order, where Tab lands inside popovers, the focus after Escape,
+ * elements without an accessible name and the popovers' roles, for the report to collect.
+ * Assertions belong in papers.spec.ts and shell.spec.ts; nothing here should turn e2e red.
  */
 
-/** The upper limit of the number of tab steps is: enough to complete the shell + 10-line table + paging bar and circle back to the starting point. */
+/** Most Tab presses in a walk: enough to pass the shell, a 10-row table and the pager and wrap around. */
 const TAB_STEPS = 150
 
-/** The number of Tab steps in the floating layer is enough to complete the first few items in the floating layer and cross the boundary of the floating layer. */
+/** Tab presses inside a popover: enough to pass its first few items and cross its boundary. */
 const LAYER_TAB_STEPS = 6
 
-/** Waiting so long before reading back the focus record allows the focusin triggered by the last key press to fall into the log. */
+/** How long to wait before reading back the focus log, so the focusin from the last key press is in it. */
 const SETTLE = 100
 
-/** A fact record shared by the focus point and the interactive element. */
+/** The fact record used for both focus stops and interactive elements. */
 type Note = {
   id: number
   tag: string
@@ -26,14 +27,14 @@ type Note = {
   nameFrom: string
   visible: boolean
   opacity: string
-  /** Which floating layer the element falls in? If it is not in the floating layer, it will be an empty string. */
+  /** The popover the element is in, or an empty string when it is in none. */
   layer: string
 }
 
 /**
- * Install a focus recorder on the page: record the current focus as the first one, and append one each time focusin is used.
- * The element identity is stored in `window.__a11ySeen`, `Note.id` is its subscript in this array,
- * The same element will get the same id if it gets focus repeatedly. Repeated calls will clear the previous records.
+ * Installs a focus recorder on the page: logs the current focus first, then appends an entry on every
+ * focusin. Element identities live in `window.__a11ySeen` and `Note.id` is the index there, so an
+ * element focused again keeps its id. Calling it again clears the earlier records.
  */
 const INSTALL_FOCUS_LOG = () => {
   const w = window as unknown as {
@@ -74,21 +75,21 @@ const INSTALL_FOCUS_LOG = () => {
   }
 
   w.__a11yLog = [note(document.activeElement, true)]
-  // When reinstalling, you must first remove the previous listener, otherwise the same Tab will be recorded as multiple entries.
+  // On reinstall, remove the previous listener first, or one Tab would be logged several times.
   if (w.__a11yOn) document.removeEventListener('focusin', w.__a11yOn)
   w.__a11yOn = () => w.__a11yLog.push(note(document.activeElement, true))
   document.addEventListener('focusin', w.__a11yOn)
-  // note is only used in closures. It is hung up for READ_FOCUS_LOG to reuse the same set of calibers.
+  // note exists only in this closure; expose it so READ_FOCUS_LOG describes elements the same way.
   ;(w as unknown as { __a11yNote: typeof note }).__a11yNote = note
 }
 
-/** Read the current focus directly and cross-verify with the event log: when the log is missing, this article shall prevail. */
+/** Reads the current focus directly to cross-check the event log; when the log misses a step, this wins. */
 const READ_ACTIVE = () => {
   const w = window as unknown as { __a11yNote: (el: Element | null, register: boolean) => Note }
   return w.__a11yNote(document.activeElement, false)
 }
 
-/** Read back the focus record and list the interactive elements that are visible on the screen but have not received focus during the walkthrough. */
+/** Reads back the focus log and lists visible interactive elements the walk never focused. */
 const READ_FOCUS_LOG = () => {
   const w = window as unknown as {
     __a11yLog: Note[]; __a11ySeen: Element[]; __a11yNote: (el: Element | null, register: boolean) => Note
@@ -100,7 +101,7 @@ const READ_FOCUS_LOG = () => {
   return { log: w.__a11yLog, unreached }
 }
 
-/** Fold the consecutively repeated `tag|role|name` into one line and add the number, so that the Tab sequence can be read in stdout. */
+/** Folds runs of the same `tag|role|name` into one line with a count, so stdout shows a readable Tab order. */
 function collapse(log: Note[]): string[] {
   const out: string[] = []
   let last = ''
@@ -118,8 +119,8 @@ function collapse(log: Note[]): string[] {
 }
 
 /**
- * Wait for the table to be drawn and return the focus to the body: first click the screen title once (unfocusable),
- * Tab The starting point of the walkthrough can be determined.
+ * Waits for the table to render and returns focus to the body by clicking the screen title once (not
+ * focusable), so the Tab walk starts from a known point.
  */
 async function ready(win: Page): Promise<void> {
   await gotoPapers(win)
@@ -128,7 +129,10 @@ async function ready(win: Page): Promise<void> {
   await parkPointer(win)
 }
 
-/** Starting from the focus after the page is loaded, double-click Tab to type out the order of the drop points, the position around the starting point, and the unreached elements. */
+/**
+ * Presses Tab repeatedly from the focus the page loaded with, and prints the order of focus stops,
+ * where the walk wraps back to its start, and the unreached elements.
+ */
 async function tabWalk(win: Page, route: string): Promise<void> {
   await win.evaluate(INSTALL_FOCUS_LOG)
   for (let i = 0; i < TAB_STEPS; i++) await win.keyboard.press('Tab')
@@ -149,16 +153,18 @@ async function tabWalk(win: Page, route: string): Promise<void> {
 }
 
 /**
- * Open a floating layer, and combine the floating layer with the role of each item (with aria-checked), the aria of the trigger, the direction of the up and down keys and Tab,
- * The focus after Escape comes out. `cell` is the grid where the trigger is located, press it up before clicking; `trigger` clicks to open the floating layer.
+ * Opens a popover and prints the role of the popover and of each item (with aria-checked), the
+ * trigger's aria attributes, where the arrow keys and Tab move focus, and the focus after Escape.
+ * `cell` is the trigger's cell, hovered before the click; clicking `trigger` opens the popover.
  */
 async function layerWalk(win: Page, route: string, cell: Locator, trigger: Locator): Promise<void> {
-  // The + in the label grid is replaced by an input box when the floating layer is open, and the two items on the trigger can only be read when it is closed.
+  // While the popover is open, the + in the tag cell is replaced by an input, so the trigger's two
+  // attributes can only be read before it opens.
   const triggerAria = await trigger.evaluate((el) => ({
     haspopup: el.getAttribute('aria-haspopup') ?? '',
     expanded: el.getAttribute('aria-expanded') ?? '',
   }))
-  // When the theme grid cannot fit in it, fold the + at the end and press it on this grid to unfold it.
+  // A Topics cell that overflows folds away its trailing +; hovering the cell unfolds it.
   await cell.hover()
   await trigger.click()
   const layer = win.locator('[data-radix-popper-content-wrapper] > *').first()
@@ -199,11 +205,11 @@ test('路线 A 的论文库表:键盘与读屏走查', async ({ win }) => {
   await ready(win)
   await tabWalk(win, 'A')
   const row = win.locator('.ptable tbody tr').first()
-  // Topic in box 7 (title/short title/rating/author/year/publication/topic/status)
+  // Topics is the 7th cell (Title, Short title, Rating, Authors, Year, Venue, Topics, Status).
   const topics = row.locator('td:nth-child(7)')
   await layerWalk(win, 'A', topics, topics.locator('.tagadd'))
-  // When the theme grid cannot fit, hover will expand on the spot, cross the table width, and move to the 6th grid next to the status grid;
-  // If you do not move the pointer, the first hover target measured by the status grid will be blocked by the expanded content of the theme grid.
+  // An overflowing Topics cell expands in place on hover, past its width and over the Status cell beside
+  // it; unless the pointer moves away, the Status cell's first hover target is covered by that expansion.
   await parkPointer(win)
   const status = row.locator('td', { has: win.locator('.stchip') })
   await layerWalk(win, 'A-状态', status, status.locator('.stchip'))
