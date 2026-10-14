@@ -14,6 +14,7 @@ import { InlineDraftInput } from '../components/InlineDraftInput.js'
 import { StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { FormInput, FormSelect } from '../components/FormControls.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
+import { SegmentedControl } from '../components/SegmentedControl.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import './shell.css'
 import './Watches.css'
@@ -425,18 +426,14 @@ export function WatchSettings() {
 
       <section className="watch-suggestions">
         <div className="af-h">{m.watches.suggestHeading}</div>
-        <div className="watch-suggestion-source" role="group" aria-label={m.watches.sourceLabel}>
-          <button
-            className={`btn${suggestionSource === 'focus' ? ' on' : ''}`}
-            aria-pressed={suggestionSource === 'focus'}
-            onClick={() => changeSuggestionSource('focus')}
-          >{m.watches.sourceFocus}</button>
-          <button
-            className={`btn${suggestionSource === 'project' ? ' on' : ''}`}
-            aria-pressed={suggestionSource === 'project'}
-            onClick={() => changeSuggestionSource('project')}
-          >{m.watches.sourceProject}</button>
-        </div>
+        <SegmentedControl
+          className="watch-suggestion-source" label={m.watches.sourceLabel} value={suggestionSource}
+          options={[
+            { value: 'focus', label: m.watches.sourceFocus },
+            { value: 'project', label: m.watches.sourceProject },
+          ]}
+          onChange={changeSuggestionSource}
+        />
         <div className="af-in">
           {suggestionSource === 'focus'
             ? (

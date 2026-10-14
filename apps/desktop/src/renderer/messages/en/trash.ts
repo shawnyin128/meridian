@@ -17,5 +17,7 @@ export const trash = {
   confirmClear: (count: number) =>
     `Empty the trash? ${count} ${pluralEn(count, { one: 'item', other: 'items' })} will be deleted permanently and cannot be recovered.`,
   confirmClearLabel: 'Empty trash',
+  confirmPurge: (title: string) => `Delete “${title}” permanently? This cannot be undone.`,
+  confirmPurgeLabel: 'Delete permanently',
   cleared: 'Trash emptied',
 } satisfies typeof zh
