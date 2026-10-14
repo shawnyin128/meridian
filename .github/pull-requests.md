@@ -47,7 +47,10 @@ unless it is a large refactor that cannot be split.
 
 All of these must hold:
 
-1. At least one core developer (today, the owner) has reviewed and approved it.
+1. At least one core developer (today, the owner) has reviewed and approved it. The owner checks
+   the change locally and approves it in the conversation; pull requests are opened from the
+   owner's account, so GitHub cannot record the approval as a review. Once it is given, the agent
+   merges the pull request and closes its issue.
 2. Every automated check is green. A failing build, test or lint blocks the merge.
 3. The commit messages follow Conventional Commits, for example
    `fix(desktop): fade text only when it does not fit`.
