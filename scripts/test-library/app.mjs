@@ -11,12 +11,14 @@ export const DESKTOP = join(REPO, 'apps', 'desktop')
 /**
  * How to start `app`: a folder such as apps/desktop runs under the checkout's electron package, a
  * macOS `Meridian.app` through its bundled executable, and any other path is the executable itself.
+ * Throws when the folder has not been built.
  */
 function appTarget(app) {
   const path = resolve(app)
   if (path.endsWith('.app')) return { executable: join(path, 'Contents', 'MacOS', 'Meridian'), args: [] }
-  if (statSync(path).isDirectory()) return { executable: createRequire(import.meta.url)('electron'), args: [path] }
-  return { executable: path, args: [] }
+  if (!statSync(path).isDirectory()) return { executable: path, args: [] }
+  if (!existsSync(join(path, 'out', 'main', 'index.js'))) throw new Error(`${path} is not built: run npm --prefix apps/desktop run build`)
+  return { executable: createRequire(import.meta.url)('electron'), args: [path] }
 }
 
 /**
