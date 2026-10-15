@@ -27,7 +27,7 @@
  * shrink the width while keeping the original height, or the canvas, text selection layer and
  * highlight layer end up with three different geometries.
  */
-.pdfsheet{width:max-content;min-width:100%}
+.pdfsheet{width:max-content;min-width:100%;transform-origin:0 0}
 .pdfpagebox{--user-unit:1;--total-scale-factor:calc(var(--scale-factor) * var(--user-unit));--scale-round-x:1px;--scale-round-y:1px;direction:ltr;position:relative;margin:0 auto 24px;background:var(--paper);box-shadow:var(--sh-paper);border-radius:2px}
 .pdfpagebox canvas{display:block}
 .pdfload{text-align:center;color:var(--ter);font-size:var(--fs-sm);padding:48px 0}
