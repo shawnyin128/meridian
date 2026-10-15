@@ -57,6 +57,10 @@ export const GROUPABLE_PAPER_FIELDS = ['topics', 'projects', 'readState'] as con
 /** Default grouping fields before a vault has chosen its own. */
 export const DEFAULT_PAPER_GROUPS = ['topics', 'projects', 'readState'] as const
 
+/** The relative-day sections Core files feed and read-later entries under, by catalog key. */
+export const DAY_SECTIONS = { today: '今天', yesterday: '昨天', week: '本周', earlier: '更早' } as const
+export type DaySection = keyof typeof DAY_SECTIONS
+
 /** UI labels for the two watch types. */
 export const WATCH_KINDS = { topic: '主题', author: '作者' } as const
 

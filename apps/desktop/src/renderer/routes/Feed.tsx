@@ -3,9 +3,9 @@ import type { ReactNode } from 'react'
 import type { FeedEntry, FeedSource } from '../../shared/contract.js'
 import { feed } from '../ipc.js'
 import { useMessages } from '../messages/useMessages.js'
-import { useJump, useVaultRevision } from '../shell/AppShell.js'
+import { useJump, useToday, useVaultRevision } from '../shell/AppShell.js'
 import { CONFLICT_THREAD } from '../lib/chat.js'
-import { DayHeading } from '../components/DayHeading.js'
+import { DayHeading, daySectionName } from '../components/DayHeading.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle,
 } from '../components/PageShell.js'
@@ -104,8 +104,9 @@ function Item({ entry, nowMs, onOpenConflict }: {
 }) {
   const m = useMessages()
   const fmt = useFormat()
+  const today = useToday()
   const src = FSRC[entry.source]
-  const time = entry.createdAt === undefined ? entry.time : fmt.activityTime(entry.createdAt, nowMs)
+  const time = entry.createdAt === undefined ? entry.time : fmt.activityTime(entry.createdAt, today, nowMs)
   return (
     <div className="mwrap">
       <div className="msg">
@@ -128,10 +129,11 @@ export function FeedRows({ rows, showDays, nowMs, onOpenConflict }: {
   nowMs: number
   onOpenConflict: () => void
 }) {
+  const m = useMessages()
   return rows.map((entry, index) => (
     <Fragment key={entry.id}>
       {showDays && entry.day !== rows[index - 1]?.day ? (
-        <div className="mwrap feed-day"><DayHeading>{entry.day}</DayHeading></div>
+        <div className="mwrap feed-day"><DayHeading>{daySectionName(entry.day, m.common.daySections)}</DayHeading></div>
       ) : null}
       <Item entry={entry} nowMs={nowMs} onOpenConflict={onOpenConflict} />
     </Fragment>
