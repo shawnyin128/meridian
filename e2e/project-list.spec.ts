@@ -37,6 +37,13 @@ const getProject = (win: Page, id: string) => win.evaluate(async (projectId) => 
   }
 }, id)
 
+/** Calls `project.list` directly, bypassing the UI, for the day the project last progressed. */
+const lastProgress = (win: Page, id: string) => win.evaluate(async (projectId) => {
+  const rows = await (window as unknown as MeridianWindow).meridian
+    .call('project.list', {}) as { id: string; lastProgress?: string }[]
+  return rows.find((row) => row.id === projectId)?.lastProgress
+}, id)
+
 /** Calls `project.get` directly, bypassing the UI, for the project's whole research log. */
 const getEvents = (win: Page, id: string) => win.evaluate(async (projectId) => {
   const project = await (window as unknown as MeridianWindow).meridian
@@ -207,7 +214,7 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   expect((await listProjects(win)).find((p) => p.id === created!.id)?.status).toBe('搁置')
 })
 
-test('面板只显示最新一条推进,细行的上次推进按最新那条算', async ({ win }) => {
+test('面板只显示最新一条推进,停滞天数与细行的上次推进按最近推进那天算', async ({ win }) => {
   await gotoList(win)
   const today = await vaultToday(win)
 
@@ -216,15 +223,17 @@ test('面板只显示最新一条推进,细行的上次推进按最新那条算'
   const recent = await shown(win).locator('[data-proj="draft"] .project-card-recent').innerText()
   expect(recent).toContain(dshort(draft.at(-1)!.date))
 
-  // draft's idle days count from its latest entry; the earliest entry is further back, so reading the
-  // wrong end of the log gives a different number.
+  // Nothing has changed draft since its latest entry; the earliest entry is further back, so reading
+  // the wrong end of the log gives a different number.
+  const draftProgress = await lastProgress(win, 'draft')
+  expect(draftProgress).toBe(draft.at(-1)!.date)
   await expect(shown(win).locator('[data-proj="draft"] .project-card-alert'))
-    .toContainText(`已 ${daysSince(today, draft.at(-1)!.date)} 天无推进`)
+    .toContainText(`已 ${daysSince(today, draftProgress!)} 天无推进`)
 
-  // moe is shelved and shows as one compact row, ending with the days since its latest log entry.
-  const moe = await getEvents(win, 'moe')
+  // moe is shelved and shows as one compact row, ending with the days since it last progressed.
+  const moeProgress = await lastProgress(win, 'moe')
   await expect(shown(win).locator('[data-proj="moe"] .m'))
-    .toContainText(`上次推进 ${daysSince(today, moe.at(-1)!.date)} 天前`)
+    .toContainText(`上次推进 ${daysSince(today, moeProgress!)} 天前`)
 })
 
 test('单日与跨天任务的日期标签、全天与时段标签在各自列里一样宽', async ({ win }) => {

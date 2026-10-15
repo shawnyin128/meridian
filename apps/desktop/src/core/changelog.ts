@@ -22,6 +22,15 @@ const BY_ME: ChangeSource = '我'
 const FINGERPRINT_CHARS = 16
 
 /**
+ * What a project change title names for the writes that are not progress on the project: reordering
+ * its tasks or relations, and deleting the project itself.
+ */
+const REORDER_TASKS = '调整任务顺序'
+const MOVE_RELATION = '调整关联顺序'
+const DELETE_PROJECT = '删掉'
+const NOT_PROGRESS: ReadonlySet<string> = new Set([REORDER_TASKS, MOVE_RELATION, DELETE_PROJECT])
+
+/**
  * Project fields captured in recent changes and restored from snapshots. Project fingerprints and
  * diffs inspect only these fields, excluding ids, derived values, legacy conclusions, research graphs,
  * and other project research state outside undo history.
@@ -99,6 +108,23 @@ export const ChangeRecordSchema = ChangeEntrySchema
 export type ChangeRecord = z.infer<typeof ChangeRecordSchema>
 type ChangeTarget = z.infer<typeof ChangeTargetSchema>
 type Restore = z.infer<typeof RestoreSchema>
+
+/**
+ * Project `id`'s `lastProgress` field as ProjectDetail defines it, empty when there is none: the newest
+ * day among `records`, the project's research records on its page and in its bound workspace, and the
+ * changes `rows` record to it or undo, other than those NOT_PROGRESS names.
+ */
+export function lastProgressOf(
+  rows: readonly ChangeRecord[], id: string, records: readonly { date: string }[],
+): Pick<ProjectDetail, 'lastProgress'> {
+  const changed = rows
+    .filter((row) => row.target?.kind === 'project' && row.target.id === id
+      // A project change title ends in `· ` and what changed, after the project's name.
+      && !NOT_PROGRESS.has(row.title.slice(row.title.lastIndexOf('· ') + 2)))
+    .map((row) => new Date(row.at).toISOString().slice(0, 10))
+  const newest = [...records.map((record) => record.date), ...changed].sort().at(-1)
+  return newest === undefined ? {} : { lastProgress: newest }
+}
 
 /** Rewrites a research graph an older version snapshotted: its `activePath` chain becomes `activeNodes` holding the chain's last id. */
 function upgradeGraph(graph: unknown): void {
@@ -323,7 +349,12 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     if (before === undefined) throw new Error('改动之前库里没有这个实体,存不下快照')
     switch (before.kind) {
       case 'paper': return { kind: 'paper', snapshot: before.snapshot }
-      case 'project': return { kind: 'project', project: before.project }
+      case 'project': {
+        // Derived anew on every read, so the stored snapshot leaves it out.
+        const project = { ...before.project }
+        delete project.lastProgress
+        return { kind: 'project', project }
+      }
       case 'pages': return { kind: 'pages', pages: before.pages }
       default: throw new Error('列这一类变动没有快照可存,还原要现成的那一份')
     }
@@ -365,9 +396,16 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     return result
   }
 
-  /** Project write that records the entire pre-change project. */
-  const onProject = <T>(id: string, what: string, write: () => T): T =>
-    wrote({ kind: 'project', id }, what, 'snapshot', write)
+  /**
+   * Project write that records the pre-change project as `keep` says. The project it returns counts
+   * this write's record in `lastProgress`, which the write read before the record existed.
+   */
+  const onProject = (
+    id: string, what: string, write: () => ProjectDetail, keep: Keep = 'snapshot',
+  ): ProjectDetail => {
+    const project = wrote({ kind: 'project', id }, what, keep, write)
+    return { ...project, ...lastProgressOf(rows, id, [...project.events, ...project.workspace?.events ?? []]) }
+  }
 
   /** Paper-field write that records the paper's pre-change shape. */
   const updatePaper = (id: string, patch: Partial<PaperFields>): void =>
@@ -452,7 +490,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     deleteProject(id) {
-      return wrote({ kind: 'project', id }, '删掉', 'trash', () => ops.deleteProject(id))
+      return wrote({ kind: 'project', id }, DELETE_PROJECT, 'trash', () => ops.deleteProject(id))
     },
 
     createTask(projectId, task) {
@@ -468,7 +506,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     reorderTasks(projectId, order) {
-      return onProject(projectId, '调整任务顺序', () => ops.reorderTasks(projectId, order))
+      return onProject(projectId, REORDER_TASKS, () => ops.reorderTasks(projectId, order))
     },
 
     createMilestone(projectId, milestone) {
@@ -501,7 +539,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     moveRelation(projectId, id, index) {
-      return onProject(projectId, '调整关联顺序', () => ops.moveRelation(projectId, id, index))
+      return onProject(projectId, MOVE_RELATION, () => ops.moveRelation(projectId, id, index))
     },
 
     createAttachment(projectId, attachment) {
@@ -509,8 +547,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     deleteAttachment(projectId, attachmentId) {
-      return wrote({ kind: 'project', id: projectId }, '删掉附件', 'trash', () =>
-        ops.deleteAttachment(projectId, attachmentId))
+      return onProject(projectId, '删掉附件', () => ops.deleteAttachment(projectId, attachmentId), 'trash')
     },
 
     createEvent(projectId, text, node) {

@@ -107,9 +107,8 @@ export function projectSortOrder(projects: readonly SortableProject[], key: Proj
   }).map((project) => project.id)
 }
 
-export function idleDays(events: ReadonlyArray<{ date: string }>, today: string): number | null {
-  const last = events.at(-1)
-  return last === undefined ? null : dnum(today) - dnum(last.date)
+export function idleDays(lastProgress: string | undefined, today: string): number | null {
+  return lastProgress === undefined ? null : dnum(today) - dnum(lastProgress)
 }
 
 export function idleNote(idle: number | null, m: ProjectSignalMessages['idle']): string {
@@ -132,7 +131,7 @@ export type ProjectSignalSource = {
   status: ProjectStatus
   conclusions: { conflicting: number }
   milestones: ReadonlyArray<{ id?: string; date: string; title: string; done: boolean }>
-  events: ReadonlyArray<{ date: string }>
+  lastProgress?: string | undefined
   tasks?: ReadonlyArray<Pick<Task, 'state' | 'end'>> | undefined
   block?: string | undefined
   conflictPage?: string | undefined
@@ -201,7 +200,7 @@ export function projectDecisionItems(
       reason: m.reason.overdueTasks(count), action: m.action.rescheduleOrFinish,
     })
   }
-  const idle = idleDays(project.events, todayIso)
+  const idle = idleDays(project.lastProgress, todayIso)
   if (idle !== null && idle > STALE_DAYS) {
     items.push({
       id: 'stale', rank: 6, kind: m.kind.stale, tone: 'mut',
@@ -234,7 +233,7 @@ export function projectPulseSignal(
     label: first.kind,
     detail: first.reason,
   }
-  const idle = idleDays(project.events, todayIso)
+  const idle = idleDays(project.lastProgress, todayIso)
   if (idle === null) return { tone: 'quiet', label: m.pulse.waiting, detail: idleNote(idle, m.idle) }
   return { tone: 'healthy', label: m.pulse.onTrack, detail: idleNote(idle, m.idle) }
 }

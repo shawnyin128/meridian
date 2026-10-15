@@ -65,7 +65,7 @@ describe('change log', () => {
 
     store.undoChange(change.id)
     // Read again to confirm the vault actually returned to the pre-change state.
-    expect(store.getProject(PROJECT)).toEqual(before)
+    expect(store.getProject(PROJECT)).toEqual({ ...before, lastProgress: day })
 
     const rows = recorded()
     expect(rows).toHaveLength(2)
@@ -197,6 +197,7 @@ describe('change log', () => {
   })
 
   it('删除一条只清掉记录与撤销快照,不改被记录的知识内容', () => {
+    const { lastProgress } = store.getProject(PROJECT)
     store.updateProject(PROJECT, { focus: '删除记录也保留的改动' })
     const change = recorded()[0]!
     const project = store.getProject(PROJECT)
@@ -204,7 +205,8 @@ describe('change log', () => {
     store.deleteChange(change.id)
 
     expect(store.listChanges().some((row) => row.id === change.id)).toBe(false)
-    expect(store.getProject(PROJECT)).toEqual(project)
+    // The deleted record no longer counts as progress.
+    expect(store.getProject(PROJECT)).toEqual({ ...project, lastProgress })
     expect(() => store.undoChange(change.id)).toThrow(/最近变动里没有这一条/)
   })
 
@@ -357,7 +359,7 @@ describe('change log', () => {
     })
     expect(store.getProject(PROJECT).tasks[0]!.title).toBe('要撤销的任务')
     store.undoChange(recorded()[0]!.id)
-    expect(store.getProject(PROJECT)).toEqual(before)
+    expect(store.getProject(PROJECT)).toEqual({ ...before, lastProgress: day })
   })
 
   it('撤销一次任务备注的编辑,项目回到写备注之前的样子', () => {
@@ -368,7 +370,7 @@ describe('change log', () => {
     expect(store.getProject(PROJECT).tasks.find((t) => t.id === 't2')!.note)
       .toBe('先确认基线,再改并发数')
     store.undoChange(recorded()[0]!.id)
-    expect(store.getProject(PROJECT)).toEqual(before)
+    expect(store.getProject(PROJECT)).toEqual({ ...before, lastProgress: day })
     expect(store.getProject(PROJECT).tasks.find((t) => t.id === 't2')!.note).toBeUndefined()
   })
 

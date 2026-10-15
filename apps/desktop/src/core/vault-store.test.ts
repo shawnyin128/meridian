@@ -1395,6 +1395,57 @@ describe('vault store on the aggregation layout', () => {
     expect(overview).not.toHaveProperty('workspace')
   })
 
+  it('最近推进是最新的那一天:页上的记录、工作区事件与记进最近变动的改动都算,只调顺序的不算;列表、详情与总览是同一天', () => {
+    let day = '2026-09-01'
+    const dated = createVaultStore(vault, () => day)
+    dated.createProject('推进日')
+    const id = dated.listProjects().find((project) => project.name === '推进日')!.id
+    const progress = () => [
+      dated.listProjects().find((project) => project.id === id)!.lastProgress,
+      dated.getProject(id).lastProgress,
+      dated.overviewProjects().find((project) => project.id === id)!.lastProgress,
+    ]
+    expect(progress()).toEqual(['2026-09-01', '2026-09-01', '2026-09-01'])
+
+    day = '2026-09-05'
+    for (const title of ['第一个任务', '第二个任务']) {
+      dated.createTask(id, { title, start: '2026-09-10', end: '2026-09-10', state: 'plan', priority: 'p1' })
+    }
+    for (const text of ['第一条关联', '第二条关联']) dated.createRelation(id, { group: 'Wiki', text })
+    expect(progress()).toEqual(['2026-09-05', '2026-09-05', '2026-09-05'])
+
+    day = '2026-09-07'
+    expect(dated.updateProject(id, { memo: '换用更小的草稿模型' }).lastProgress).toBe('2026-09-07')
+    expect(progress()).toEqual(['2026-09-07', '2026-09-07', '2026-09-07'])
+
+    day = '2026-09-09'
+    const [first, second] = dated.getProject(id).tasks
+    expect(dated.reorderTasks(id, [second!.id, first!.id]).lastProgress).toBe('2026-09-07')
+    const moved = dated.getProject(id).relations[0]!.items[1]!.id
+    expect(dated.moveRelation(id, moved, 0).lastProgress).toBe('2026-09-07')
+    dated.undoChange(dated.listChanges()[0]!.id)
+    expect(progress()).toEqual(['2026-09-07', '2026-09-07', '2026-09-07'])
+
+    const repo = join(vault, 'progress-repo')
+    mkdirSync(join(repo, '.meridian/events'), { recursive: true })
+    dated.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    writeFileSync(join(repo, '.meridian/events/events.json'), JSON.stringify({
+      schema_version: 'meridian.workspace-events.v1',
+      events: [
+        { id: 'late', date: '2026-09-12', text: '完成 延迟探针', source: 'src/probe.py' },
+        { id: 'early', date: '2026-09-03', text: '开始推进 延迟探针', source: 'src/probe.py' },
+      ],
+    }), 'utf8')
+    expect(progress()).toEqual(['2026-09-12', '2026-09-12', '2026-09-12'])
+
+    // The derived day is never stored, not even in an undo snapshot.
+    const stored = JSON.parse(readFileSync(join(vault, '.meridian/changelog.json'), 'utf8')) as
+      { restore: { kind: string; project?: object } | null }[]
+    const snapshots = stored.flatMap((row) => (row.restore?.kind === 'project' ? [row.restore.project!] : []))
+    expect(snapshots.length).toBeGreaterThan(0)
+    for (const snapshot of snapshots) expect(snapshot).not.toHaveProperty('lastProgress')
+  })
+
   it('关联仓库里 coding agent 新写的科研记录进动态的「实验」，旧的不刷屏，同一条只进一次', () => {
     let clock = new Date('2026-09-22T10:00:00.000Z')
     const timed = createVaultStore(vault, () => '2026-09-22', () => clock)
