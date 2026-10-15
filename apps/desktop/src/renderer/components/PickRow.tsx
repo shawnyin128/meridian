@@ -21,16 +21,17 @@ const LIMIT = 8
  * leaving it go through `useInlineDraft`, which sends no second pick until the first has landed.
  * `row` is the element that counts as inside the draft, mounted on it by the caller; pressing or
  * focusing one of the `triggers`, the buttons that open this draft, does not count as outside. A
- * failed `suggest` goes to `onError`.
+ * failed `suggest` goes to `onError`. The input starts out holding `initialText`.
  */
 export function PickRow({
-  row, triggers, placeholder, suggest, allowNew, onPick, onNew, onCancel, onError,
+  row, triggers, placeholder, initialText = '', suggest, allowNew, onPick, onNew, onCancel, onError,
   inputClassName = 'inedit pickin',
   inputAppearance = 'plain',
 }: {
   row: RefObject<HTMLElement | null>
   triggers: Array<RefObject<HTMLElement | null>>
   placeholder: string
+  initialText?: string
   suggest: (query: string) => Promise<PickHit[]>
   allowNew: boolean
   onPick: (hit: PickHit) => boolean | Promise<boolean>
@@ -40,7 +41,7 @@ export function PickRow({
   inputClassName?: string
   inputAppearance?: FormControlAppearance
 }) {
-  const [text, setText] = useState('')
+  const [text, setText] = useState(initialText)
   const [hits, setHits] = useState<PickHit[]>([])
   const [answered, setAnswered] = useState('')
   const seq = useRef(0)

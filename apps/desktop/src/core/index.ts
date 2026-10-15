@@ -77,6 +77,7 @@ import {
   ResearchIdeaUpdateParamsSchema,
   ProjectUpdateMilestoneParamsSchema,
   ProjectUpdateParamsSchema,
+  ProjectUpdateRelationParamsSchema,
   ProjectUpdateTaskParamsSchema,
   SearchParamsSchema,
   TrashPurgeParamsSchema,
@@ -529,6 +530,10 @@ registerHandler('project.createRelation', (params) => {
 registerHandler('project.deleteRelation', (params) => {
   const { projectId, relationId } = ProjectDeleteRelationParamsSchema.parse(params)
   return store.deleteRelation(projectId, relationId)
+})
+registerHandler('project.updateRelation', (params) => {
+  const { projectId, relationId, relation } = ProjectUpdateRelationParamsSchema.parse(params)
+  return store.updateRelation(projectId, relationId, relation)
 })
 registerHandler('project.addPaper', (params) => {
   const { projectId, paperId } = ProjectPaperParamsSchema.parse(params)

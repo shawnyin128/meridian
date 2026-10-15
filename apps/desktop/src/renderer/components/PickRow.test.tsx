@@ -81,4 +81,30 @@ describe('PickRow', () => {
     await act(async () => { settle(true) })
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
+
+  it('从给定的文字开始:输入框里就是它,候选按它来查,没有候选时回车把它当新名字交出去', async () => {
+    const suggest = vi.fn((query: string) => { void query; return Promise.resolve<PickHit[]>([]) })
+    const onNew = vi.fn(() => true)
+    function Editing() {
+      const row = useRef<HTMLDivElement>(null)
+      return (
+        <div ref={row}>
+          <PickRow
+            row={row} triggers={[]} placeholder="挑一个" initialText="树宽收益拐点"
+            suggest={suggest} allowNew onPick={() => false} onNew={onNew} onCancel={() => {}} onError={() => {}}
+          />
+        </div>
+      )
+    }
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    act(() => { createRoot(host).render(<Editing />) })
+    await flush()
+
+    const input = host.querySelector('input')!
+    expect(input.value).toBe('树宽收益拐点')
+    expect(suggest).toHaveBeenCalledWith('树宽收益拐点')
+    await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })) })
+    expect(onNew).toHaveBeenCalledWith('树宽收益拐点')
+  })
 })

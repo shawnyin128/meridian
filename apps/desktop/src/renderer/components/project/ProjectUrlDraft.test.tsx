@@ -63,6 +63,23 @@ describe('ProjectUrlDraft', () => {
     expect(onInvalid).toHaveBeenCalledTimes(1)
   })
 
+  it('starts from the address and name it is given, and submits them unchanged', async () => {
+    act(() => root.render(
+      <MessagesProvider>
+        <div ref={scope}>
+          <ProjectUrlDraft
+            key="editing" row={scope} triggers={[]} initial={{ url: 'https://wandb.ai/team/run', text: 'Run board' }}
+            onSubmit={onSubmit} onCancel={onCancel} onInvalid={onInvalid}
+          />
+        </div>
+      </MessagesProvider>,
+    ))
+    const [address, label] = inputs()
+    expect([address!.value, label!.value]).toEqual(['https://wandb.ai/team/run', 'Run board'])
+    await enter(address!)
+    expect(onSubmit).toHaveBeenCalledWith('https://wandb.ai/team/run', 'Run board')
+  })
+
   it('names an address by dropping its scheme and trailing slash', () => {
     expect(urlDisplayName('http://example.com/')).toBe('example.com')
   })

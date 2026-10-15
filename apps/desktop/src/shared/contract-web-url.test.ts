@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { ProjectCreateRelationParamsSchema, RelationSchema } from './contract.js'
+import {
+  ProjectCreateRelationParamsSchema, ProjectUpdateRelationParamsSchema, RelationSchema,
+} from './contract.js'
 
 describe('web-address relations', () => {
   it('accepts http and https addresses and rejects every other scheme', () => {
@@ -17,5 +19,14 @@ describe('web-address relations', () => {
     }).success
     expect(create('https://example.com')).toBe(true)
     expect(create('javascript:alert(1)')).toBe(false)
+  })
+
+  it('validates the address on the update call too, and the update cannot move the item to another group', () => {
+    const update = (relation: object) => ProjectUpdateRelationParamsSchema.safeParse({
+      projectId: 'p', relationId: 'rel-1', relation,
+    }).success
+    expect(update({ text: 'x', url: 'https://example.com' })).toBe(true)
+    expect(update({ text: 'x', url: 'javascript:alert(1)' })).toBe(false)
+    expect(update({ group: 'links', text: 'x' })).toBe(false)
   })
 })

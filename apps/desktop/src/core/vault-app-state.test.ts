@@ -144,6 +144,24 @@ describe('vault app state', () => {
       })).toThrow()
     })
 
+    it('改过的关联落在那一页上,重开后还是改过的样子,别的行不动', () => {
+      store.createProject('draft 效率')
+      const id = store.listProjects()[0]!.id
+      store.createRelation(id, { group: 'links', text: '实验看板', url: 'https://wandb.ai/team/draft' })
+      const item = store.createRelation(id, { group: 'links', text: '旧看板', url: 'https://wandb.ai/team/old' })
+        .relations[0]!.items[0]!
+      const before = read(`wiki/projects/${id}.md`).split('\n')
+      store.updateRelation(id, item.id, { text: '新看板', url: 'https://wandb.ai/team/new' })
+      const after = read(`wiki/projects/${id}.md`).split('\n')
+      expect(after.filter((row, i) => row !== before[i])).toEqual([
+        '        text: "新看板"', '        url: "https://wandb.ai/team/new"',
+      ])
+      expect(reopen().getProject(id).relations[0]!.items).toEqual([
+        { id: item.id, text: '新看板', url: 'https://wandb.ai/team/new' },
+        { id: expect.any(String), text: '实验看板', url: 'https://wandb.ai/team/draft' },
+      ])
+    })
+
     it('关联顺序的调整落在那一页上,重开后顺序还在', () => {
       store.createProject('draft 效率')
       const id = store.listProjects()[0]!.id

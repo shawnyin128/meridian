@@ -397,6 +397,17 @@ export interface VaultStore {
    */
   deleteRelation(projectId: string, relationId: string): ProjectDetail
 
+  /**
+   * Replaces the text and target of the relation item with the given
+   * relationId inside the project with the given projectId, keeping its id,
+   * group and position, and returns the updated project. A target left out is
+   * removed from the item. Targets are checked as createRelation checks them.
+   * Throws if no such project, relation item or aggregation exists.
+   */
+  updateRelation(
+    projectId: string, relationId: string, relation: Omit<RelationFields, 'group'>,
+  ): ProjectDetail
+
   /** Links an existing paper to a project. */
   addPaper(projectId: string, paperId: string): ProjectDetail
 

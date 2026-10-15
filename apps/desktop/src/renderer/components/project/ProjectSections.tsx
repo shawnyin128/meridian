@@ -5,7 +5,7 @@ import { papers } from '../../ipc.js'
 import { AddAction } from '../AddAction.js'
 import { CardTray } from '../CardTray.js'
 import { FadeText } from '../FadeText.js'
-import { IconCross } from '../icons.js'
+import { IconCross, IconPencil } from '../icons.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PickRow, type PickHit } from '../PickRow.js'
 import { useFormat } from '../../lib/format.js'
@@ -27,13 +27,14 @@ export const PROJECT_RELATION_GROUPS = ['Wiki', PROJECT_PAPER_GROUP, PROJECT_URL
 export const urlDisplayName = (url: string) => url.replace(/^https?:\/\//i, '').replace(/\/$/, '')
 
 /**
- * Two-field draft for a web-address relation: the address and an optional display name. Enter in
- * either field submits, Escape or a click outside `row` cancels. `onSubmit` receives a normalized
- * http(s) address and resolves true when the row should close.
+ * Two-field draft for a web-address relation: the address and an optional display name, holding
+ * `initial` at first. Enter in either field submits, Escape or a click outside `row` cancels.
+ * `onSubmit` receives a normalized http(s) address and resolves true when the row should close.
  */
-export function ProjectUrlDraft({ row, triggers, onSubmit, onCancel, onInvalid }: {
+export function ProjectUrlDraft({ row, triggers, initial, onSubmit, onCancel, onInvalid }: {
   row: RefObject<HTMLElement | null>
   triggers: Array<RefObject<HTMLElement | null>>
+  initial?: { url: string; text: string }
   onSubmit: (url: string, name: string) => boolean | Promise<boolean>
   onCancel: () => void
   onInvalid: () => void
@@ -55,11 +56,11 @@ export function ProjectUrlDraft({ row, triggers, onSubmit, onCancel, onInvalid }
   return (
     <div className="urldraft">
       <FormInput
-        ref={address} className="inedit" placeholder={m.project.links.urlPlaceholder}
+        ref={address} className="inedit" placeholder={m.project.links.urlPlaceholder} defaultValue={initial?.url}
         autoComplete="off" autoFocus onKeyDown={draft.inputProps.onKeyDown}
       />
       <FormInput
-        ref={label} className="inedit" placeholder={m.project.links.urlNamePlaceholder}
+        ref={label} className="inedit" placeholder={m.project.links.urlNamePlaceholder} defaultValue={initial?.text}
         autoComplete="off" onKeyDown={draft.inputProps.onKeyDown}
       />
     </div>
@@ -143,9 +144,13 @@ export function ProjectMemo({ text, editing, onEditing, onSave, onOpen }: {
   )
 }
 
-/** Grouped paper/wiki relations with one insertion slot and consistent removable chips. */
+/**
+ * Grouped paper/wiki relations with one insertion slot, consistent removable chips, and relation
+ * items that open an edit slot: `editing.input` takes the place of the item `editing.id` inside
+ * `editing.row`.
+ */
 export function ProjectRelations({
-  groups, papers: linked, adding, onRemove, onOpenPage, onOpenPaper, onRemovePaper, onMove,
+  groups, papers: linked, adding, editing, onEdit, onRemove, onOpenPage, onOpenPaper, onRemovePaper, onMove,
 }: {
   groups: RelationGroup[]
   papers: { id: string; title: string }[]
@@ -155,6 +160,8 @@ export function ProjectRelations({
     input: ReactNode
     onGroup: (group: string) => void
   } | undefined
+  editing?: { id: string; row: RefObject<HTMLDivElement | null>; input: ReactNode } | undefined
+  onEdit: (item: RelationGroup['items'][number]) => void
   onRemove: (relationId: string, text: string) => void
   onOpenPage: (page: string) => void
   onOpenPaper: (paperId: string) => void
@@ -255,20 +262,26 @@ export function ProjectRelations({
               </span>
             ))
             : null}
-          {row.items.map((item) => (
-            <span
-              className={chipClass(row, item.id)} key={item.id} data-wk={item.page} data-url={item.url}
-              title={item.url} {...dragProps(row, item.id)}
-              onClick={item.url !== undefined
-                ? () => { window.open(item.url, '_blank') }
-                : item.page === undefined ? undefined : () => onOpenPage(item.page!)}
-            ><FadeText className="tagchip-text">{item.text}</FadeText>
-              <button
-                className="rx" title={m.common.removeLink}
-                onClick={(event) => { event.stopPropagation(); onRemove(item.id, item.text) }}
-              ><IconCross sw={2.5} /></button>
-            </span>
-          ))}
+          {row.items.map((item) => (editing?.id === item.id
+            ? <div className="reladd" key={item.id} ref={editing.row}>{editing.input}</div>
+            : (
+              <span
+                className={chipClass(row, item.id)} key={item.id} data-wk={item.page} data-url={item.url}
+                title={item.url} {...dragProps(row, item.id)}
+                onClick={item.url !== undefined
+                  ? () => { window.open(item.url, '_blank') }
+                  : item.page === undefined ? undefined : () => onOpenPage(item.page!)}
+              ><FadeText className="tagchip-text">{item.text}</FadeText>
+                <button
+                  className="tagchip-edit" title={m.project.links.editTitle}
+                  onClick={(event) => { event.stopPropagation(); onEdit(item) }}
+                ><IconPencil /></button>
+                <button
+                  className="rx" title={m.common.removeLink}
+                  onClick={(event) => { event.stopPropagation(); onRemove(item.id, item.text) }}
+                ><IconCross sw={2.5} /></button>
+              </span>
+            )))}
         </div>
       ))}
     </>

@@ -215,6 +215,8 @@ export const project = {
     urlNamePlaceholder: 'Display name (optional)',
     urlInvalid: 'That is not a valid web address',
     added: 'Link added',
+    editTitle: 'Edit link',
+    updated: 'Link updated',
     paperLinked: (title: string) => `Linked paper “${title}”`,
     paperRemoved: (title: string) => `Removed link to “${title}”`,
     removed: (text: string) => `Removed link to “${text}”`,
