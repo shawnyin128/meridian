@@ -10,12 +10,11 @@
 
 .memo{font-size:13px}
 
-.tagchip .rx{position:absolute;top:-6px;right:-6px;width:14px;height:14px;border-radius:50%;background:var(--field);border:1px solid var(--sep);color:var(--ter);display:grid;place-items:center;cursor:pointer;padding:0;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
-.tagchip .rx:focus-visible{opacity:1;pointer-events:auto}
-.tagchip .rx:hover{color:var(--bad);border-color:var(--bad)}
+.tagchip :is(.rx,.tagchip-edit){flex-shrink:0;width:14px;height:14px;border:0;border-radius:50%;background:transparent;color:var(--ter);display:grid;place-items:center;cursor:pointer;padding:0}
+.tagchip .rx:hover{color:var(--bad)}
 .tagchip .rx svg{width:8px;height:8px}
-.wkrel .tagchip{display:inline-flex;align-items:center;gap:3px;max-width:100%;box-sizing:border-box;margin-right:0}
-.wkrel .tagchip :is(.rx,.tagchip-edit){position:static;flex-shrink:0;width:14px;height:14px;border:0;border-radius:50%;background:transparent;color:var(--ter);display:grid;place-items:center;cursor:pointer;padding:0;opacity:1;pointer-events:auto}
+.wkrel .tagchip,.tagchip:has(.rx){display:inline-flex;align-items:center;gap:3px;max-width:100%;box-sizing:border-box}
+.wkrel .tagchip{margin-right:0}
 .wkrel .tagchip .tagchip-edit:hover{color:var(--ink)}
 .wkrel .tagchip .tagchip-edit svg{width:9px;height:9px}
 .wkrel .reladd{display:flex;align-items:center;gap:6px;flex:1 1 auto;min-width:190px}
