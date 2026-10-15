@@ -440,6 +440,23 @@ describe('fixture store', () => {
     expect(() => store.deleteTask('draft', 'no-such-task')).toThrow(/no-such-task/)
   })
 
+  it('任务的科研节点可以手动设、改、清;手动设的节点优先于图里连的那个,结论里也按它算', () => {
+    const tasksOf = (node: string) => store.getProject('draft').projectConclusions!
+      .find((c) => c.node === node)!.tasks.map((t) => t.id)
+    expect(tasksOf('knee')).toEqual(['t4'])
+    expect(store.setTaskNode('draft', 't4', 'stop').taskNodes).toEqual({ t4: 'stop' })
+    expect([tasksOf('knee'), tasksOf('stop')]).toEqual([[], ['t4']])
+    expect(store.setTaskNode('draft', 't4', 'bucket').taskNodes).toEqual({ t4: 'bucket' })
+    expect([tasksOf('stop'), tasksOf('bucket')]).toEqual([[], ['t1', 't4']])
+    expect(store.setTaskNode('draft', 't4', null).taskNodes).toBeUndefined()
+    expect(tasksOf('knee')).toEqual(['t4'])
+  })
+
+  it('给不存在的任务或节点设科研节点会抛出', () => {
+    expect(() => store.setTaskNode('draft', 'no-such-task', 'knee')).toThrow(/no-such-task/)
+    expect(() => store.setTaskNode('draft', 't2', 'no-such-node')).toThrow(/no-such-node/)
+  })
+
   it('按给定顺序重排任务,并且重新读取项目也是这个顺序', () => {
     const ids = store.getProject('draft').tasks.map((t) => t.id)
     const reordered = [ids[2]!, ids[0]!, ids[1]!, ...ids.slice(3)]
@@ -2074,6 +2091,7 @@ describe('fixture store', () => {
       'project.updateTask': () => store.updateTask('draft', 't2', {}),
       'project.deleteTask': () => store.deleteTask('draft', 't2'),
       'project.reorderTasks': () => store.reorderTasks('draft', store.getProject('draft').tasks.map((t) => t.id)),
+      'project.setTaskNode': () => store.setTaskNode('draft', 't3', 'knee'),
       'project.createMilestone': () => store.createMilestone('draft', {
         date: '2026-09-01', title: '新里程碑', done: false,
       }),

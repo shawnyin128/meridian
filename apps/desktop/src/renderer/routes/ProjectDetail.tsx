@@ -5,6 +5,7 @@ import type {
 } from '../../shared/contract.js'
 import { projectControlState } from '../../shared/project-control.js'
 import { researchPathState } from '../../shared/research-path.js'
+import { withTaskNodes } from '../../shared/task-nodes.js'
 import {
   FOCUS_KEY, projectDecisionItems, recordKind, recordOrigin, sortRecordsNewestFirst,
 } from '../../shared/project-signals.js'
@@ -484,6 +485,7 @@ export function ProjectDetail({
 
   const workspaceGraph = project.workspace?.graph
   const displayedGraph = workspaceGraph ?? project.graph
+  const taskGraph = withTaskNodes(displayedGraph, project.taskNodes)
   const visibleEvents = [...project.events, ...(project.workspace?.events ?? [])]
   const sortedRecords = sortRecordsNewestFirst(visibleEvents)
   const goToRecordNode = (nodeId: string) => {
@@ -517,7 +519,7 @@ export function ProjectDetail({
         }),
       }),
   })
-  const node = displayedGraph.nodes.find((n) => n.id === selectedNode)
+  const node = taskGraph.nodes.find((n) => n.id === selectedNode)
   const selectedIdea = linkedIdeas.find((idea) => idea.id === selectedIdeaId)
   const selectedTask = project.tasks.find((t) => t.id === selectedTaskId)
   const dialogIdea = linkedIdeas.find((idea) => idea.id === ideaGraphDialog?.ideaId)
@@ -857,10 +859,15 @@ export function ProjectDetail({
               ? (
                 <ProjectTaskPanel
                   task={selectedTask} onClose={clearTask} onOpenNode={goToRecordNode}
-                  node={nodeLook(displayedGraph.nodes.find((candidate) => candidate.tasks?.includes(selectedTask.id))?.id)}
+                  node={nodeLook(taskGraph.nodes.find((candidate) => candidate.tasks?.includes(selectedTask.id))?.id)}
+                  nodes={displayedGraph.nodes}
+                  handSet={displayedGraph.nodes.some((candidate) => candidate.id === project.taskNodes?.[selectedTask.id])}
                   onSaveNote={(note) => writeProject(
                     projectApi.updateTask(projectId, selectedTask.id, { note }), m.project.plan.noteUpdated,
                   )}
+                  onSetNode={(nodeId) => {
+                    void writeProject(projectApi.setTaskNode(projectId, selectedTask.id, nodeId), m.project.plan.nodeUpdated)
+                  }}
                 />
               )
               : selectedIdea !== undefined

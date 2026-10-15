@@ -1261,6 +1261,26 @@ test('任务四列各自编辑,点击行本身只打开任务详情,不改变任
   expect((await call<{ priority: string }>(win, 'project.get', { id: 'draft' })).priority).toBe('p1')
 })
 
+test('任务详情里手动给任务挂科研节点,面板里显示挂上的节点并写进库里;手动挂的可以取消', async ({ win }) => {
+  await gotoProject(win)
+  const side = win.locator('.screenslot:not([hidden]) .wkside')
+  const linked = side.locator('.project-task-detail-node .node-tag')
+  const taskNodes = async () => (await call<{ taskNodes?: Record<string, string> }>(
+    win, 'project.get', { id: 'draft' },
+  )).taskNodes
+
+  await win.locator('#taskList .ddlrow', { hasText: '宽树实验 B≥8' }).evaluate((element) => (element as HTMLElement).click())
+  await expect(linked).toHaveCount(0)
+  await side.locator('button', { hasText: '关联节点' }).click()
+  await win.locator('[role="menuitemradio"]', { hasText: '树宽收益拐点' }).click()
+  await expect(linked).toHaveText('树宽收益拐点')
+  expect(await taskNodes()).toEqual({ t2: 'knee' })
+
+  await side.locator('button', { hasText: '取消关联' }).click()
+  await expect(linked).toHaveCount(0)
+  expect(await taskNodes()).toBeUndefined()
+})
+
 test('任务与里程碑的状态格独立修改并立即写回 core', async ({ win }) => {
   await gotoProject(win)
   const before = await call<{

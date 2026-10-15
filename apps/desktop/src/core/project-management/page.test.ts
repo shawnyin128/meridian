@@ -61,6 +61,34 @@ const readAs0014 = (file: string) => {
   return PageSchema0014.safeParse(readFrontmatter(rows.slice(1, rows.indexOf('---', 1))))
 }
 
+/**
+ * The project-page frontmatter schema of 0.0.15.3 (v0.0.15003), copied the same way on top of
+ * 0.0.14's: its tasks ignore unknown keys, it reads the task maps and verified conclusions, and its
+ * graph nodes carry the tasks and conclusion a coding agent linked.
+ */
+const PageSchema0015003 = PageSchema0014.extend({
+  verified_conclusions: z.array(z.unknown()).optional(),
+  tasks: z.array(PageSchema0014.shape.tasks.element.passthrough()),
+  task_notes: z.record(z.string(), z.string()).optional(),
+  task_origins: z.record(z.string(), z.string()).optional(),
+  agent_tasks: z.record(z.string(), z.string()).optional(),
+  graph: PageSchema0014.shape.graph.extend({
+    nodes: z.array(PageSchema0014.shape.graph.shape.nodes.element.extend({
+      tasks: z.array(z.string()).optional(),
+      conclusion: z.object({
+        text: z.string(), date: Day14.optional(),
+        evidence: z.array(z.object({ id: z.string(), title: z.string() }).strict()), revision: z.string().optional(),
+      }).strict().optional(),
+    })),
+  }),
+})
+
+/** The frontmatter of the page at `file`, as App 0.0.15.3 would read it. */
+const readAs0015003 = (file: string) => {
+  const rows = readFileSync(file, 'utf8').split('\n')
+  return PageSchema0015003.safeParse(readFrontmatter(rows.slice(1, rows.indexOf('---', 1))))
+}
+
 /** Project exercising every page shape: sequences, nesting, and optional values. */
 const PROJECT: ProjectRecord = {
   id: 'project-1',
@@ -217,6 +245,22 @@ describe('project page', () => {
 
     writeProjectFields(file, { ...project, tasks: PROJECT.tasks }, ['tasks'], staging)
     expect(readFileSync(file, 'utf8')).not.toContain('task_origins:')
+  })
+
+  it('手动设的科研节点单独放在顶层 task_nodes,任务项本身不多字段;读回来一样,0.0.15.3 的 App 照样读得出', () => {
+    const project = { ...PROJECT, taskNodes: { 'task-1': 'n2' } }
+    writePage(file, projectPageText(project), staging)
+    const text = readFileSync(file, 'utf8')
+    expect(text).toContain('task_nodes:\n  task-1: "n2"\n')
+    expect(text).not.toMatch(/tasks:\n(?: {2}.*\n)*? {4}node:/)
+    expect(readProjectPage(file, 'project-1')).toEqual(project)
+    expect(readAs0015003(file).error).toBeUndefined()
+    expect(readAs0014(file).error).toBeUndefined()
+
+    writeProjectFields(file, { ...project, tasks: [] }, ['tasks'], staging)
+    expect(readFileSync(file, 'utf8')).toContain('task_nodes:\n  task-1: "n2"\n')
+    writeProjectFields(file, PROJECT, ['taskNodes'], staging)
+    expect(readFileSync(file, 'utf8')).not.toContain('task_nodes:')
   })
 
   it('只改 papers 那几行,别的字节不动', () => {
