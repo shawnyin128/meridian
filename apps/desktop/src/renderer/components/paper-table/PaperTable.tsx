@@ -1284,7 +1284,7 @@ export function PaperTable() {
                       <div className="gx-t">{f.value}</div>
                       <div className="gx-m">
                         {m.papers.groupIndex.newest(
-                          `${f.newestTitle.slice(0, 44)}${f.newestTitle.length > 44 ? '…' : ''}`,
+                          `${plainTitle(f.newestTitle).slice(0, 44)}${plainTitle(f.newestTitle).length > 44 ? '…' : ''}`,
                         )}
                       </div>
                       <span className="n">{f.count}</span>

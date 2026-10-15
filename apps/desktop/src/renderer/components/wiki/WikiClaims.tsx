@@ -18,6 +18,7 @@ import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { WikiFormDialog, WikiFormField } from './WikiFormDialog.js'
+import { PaperText } from '../paper/PaperText.js'
 import './WikiClaims.css'
 
 type Outcome = 'revised' | 'split' | 'retracted' | 'dismissed'
@@ -49,6 +50,7 @@ function conflictId(...claims: (WikiClaim | undefined)[]): string {
 function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: string | undefined; links: ClaimLinks }) {
   const m = useMessages()
   const c = m.wiki.claims
+  const paper = title === undefined ? null : <PaperText text={title} />
   switch (item.kind) {
     case 'experiment':
       return (
@@ -66,7 +68,7 @@ function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: 
           <button
             type="button" className="wkclaim-link"
             onClick={() => links.openReader(item.paper, { page: item.page, ...(item.highlight === undefined ? {} : { highlight: item.highlight }) })}
-          >{title} {c.page(item.page)}</button>
+          >{paper} {c.page(item.page)}</button>
           <q className="wkclaim-quote">{item.quote}</q>
         </>
       )
@@ -77,7 +79,7 @@ function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: 
           <button
             type="button" className="wkclaim-link"
             onClick={() => links.openReader(item.paper, item.highlight === undefined ? { panel: 'notes', note: item.note! } : { highlight: item.highlight })}
-          >{title}</button>
+          >{paper}</button>
         </>
       )
     case 'wiki':

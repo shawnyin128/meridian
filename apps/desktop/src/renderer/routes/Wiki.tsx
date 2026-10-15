@@ -476,7 +476,7 @@ export function Wiki() {
     const members = new Set(shownAgg.rows.map((r) => r.paper.id))
     return (await papers.list({ page: 1, size: 12, filter: query })).rows
       .filter((r) => !members.has(`${PAPER_PAGE}${r.id}`))
-      .map((r) => ({ id: `${PAPER_PAGE}${r.id}`, title: r.title, meta: `${r.year ?? ''} ${r.venue}`.trim() }))
+      .map((r) => ({ id: `${PAPER_PAGE}${r.id}`, title: r.title, meta: `${r.year ?? ''} ${r.venue}`.trim(), paper: true }))
   }, [shownAgg])
 
   const mount = (hit: PickHit): Promise<boolean> => {

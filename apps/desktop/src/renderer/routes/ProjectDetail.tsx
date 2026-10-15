@@ -77,8 +77,8 @@ export function ProjectIdeaPanel({
   const fmt = useFormat()
   const m = useMessages()
   const source = idea.source.paperTitle === undefined
-    ? idea.source.chatTitle
-    : `${idea.source.paperTitle} · ${idea.source.chatTitle}`
+    ? plainTitle(idea.source.chatTitle)
+    : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
   const linkedNode = graph.nodes.find((node) => node.id === idea.node)
   return (
     <>
@@ -223,6 +223,7 @@ export function ProjectDetail({
       .map((row) => ({
         id: row.id,
         title: row.title,
+        paper: true,
         ...(row.year === undefined ? {} : { meta: String(row.year) }),
       }))
   }, [heldPapers])
@@ -809,8 +810,8 @@ export function ProjectDetail({
                 <StructuredList className="project-ideas" variant="embedded">
                   {linkedIdeas.map((idea) => {
                     const source = idea.source.paperTitle === undefined
-                      ? idea.source.chatTitle
-                      : `${idea.source.paperTitle} · ${idea.source.chatTitle}`
+                      ? plainTitle(idea.source.chatTitle)
+                      : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
                     const ideaNode = displayedGraph.nodes.find((node) => node.id === idea.node)
                     return (
                       <StructuredRow

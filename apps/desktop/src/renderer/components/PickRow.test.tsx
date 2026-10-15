@@ -11,17 +11,18 @@ declare global {
 
 const HIT: PickHit = { id: 'h1', title: '候选一' }
 
-/** Mounts a real PickRow: the outer div is the draft `row`, no triggers, and `HIT` is the only candidate. */
-function Probe({ onPick, onCancel }: {
+/** Mounts a real PickRow: the outer div is the draft `row`, no triggers, and `hits` are the candidates. */
+function Probe({ onPick, onCancel, hits }: {
   onPick: (hit: PickHit) => boolean | Promise<boolean>
   onCancel: () => void
+  hits: PickHit[]
 }) {
   const row = useRef<HTMLDivElement>(null)
   return (
     <div ref={row}>
       <PickRow
         row={row} triggers={[]} placeholder="挑一个"
-        suggest={() => Promise.resolve([HIT])} allowNew={false}
+        suggest={() => Promise.resolve(hits)} allowNew={false}
         onPick={onPick} onNew={() => false} onCancel={onCancel} onError={() => {}}
       />
     </div>
@@ -29,10 +30,12 @@ function Probe({ onPick, onCancel }: {
 }
 
 /** Mounts Probe into a real container and returns its host element. */
-function mount(onPick: (hit: PickHit) => boolean | Promise<boolean>, onCancel: () => void): HTMLDivElement {
+function mount(
+  onPick: (hit: PickHit) => boolean | Promise<boolean>, onCancel: () => void, hits = [HIT],
+): HTMLDivElement {
   const host = document.createElement('div')
   document.body.appendChild(host)
-  act(() => { createRoot(host).render(<Probe onPick={onPick} onCancel={onCancel} />) })
+  act(() => { createRoot(host).render(<Probe onPick={onPick} onCancel={onCancel} hits={hits} />) })
   return host
 }
 
@@ -80,5 +83,16 @@ describe('PickRow', () => {
 
     await act(async () => { settle(true) })
     expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('论文候选的标题按 LaTeX 显示，其他候选原样显示', async () => {
+    mount(vi.fn(), vi.fn(), [
+      { id: 'p1', title: '\\textbf{F}luxBin $\\times$', paper: true }, { id: 't1', title: 'a--b \\textbf{c}' },
+    ])
+    await flush()
+
+    const [paper, topic] = [...document.querySelectorAll('.pickhits li')]
+    expect(paper!.innerHTML).toMatch(/^<strong>F<\/strong>luxBin <span><span class="katex">/)
+    expect(topic!.innerHTML).toBe('a--b \\textbf{c}')
   })
 })

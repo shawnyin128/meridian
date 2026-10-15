@@ -9,6 +9,8 @@ import { useAppUpdate } from '../hooks/useAppUpdate.js'
 import { appUpdates } from '../ipc.js'
 import { ALL_WATCHES, type DiscoveryProjectCount, type InboxMode, type ScreenKey } from './AppShell.js'
 import { SearchBox } from './SearchBox.js'
+import { PaperText } from '../components/paper/PaperText.js'
+import { plainTitle } from '../components/paper/paper-text.js'
 
 const Caret = ({ onClick }: { onClick?: (e: ReactMouseEvent) => void }) => (
   <span className="sh-caret" onClick={onClick}><Icon sw={2.4}><path d="M6 9l6 6 6-6" /></Icon></span>
@@ -51,8 +53,8 @@ function ChatRow({ session, on, onOpen, onArchive }: {
       <span className="ic">
         <Icon><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></Icon>
       </span>
-      <span className="ct-t">{session.title}</span>
-      <DotsMenu label={m.shell.sidebar.manageChat(session.title)} stopRowActivation>
+      <span className="ct-t"><PaperText text={session.title} /></span>
+      <DotsMenu label={m.shell.sidebar.manageChat(plainTitle(session.title))} stopRowActivation>
         <MenuItem onSelect={onArchive}>{m.shell.sidebar.archive}</MenuItem>
       </DotsMenu>
     </div>

@@ -68,7 +68,7 @@ export function SearchBox({ onJump }: { onJump: (screen: ScreenKey, target: stri
               className={at === keys.active ? 'rrow on' : 'rrow'} key={`${at}${hit.kind}${hit.target}`}
               onClick={() => go(hit)}
             >
-              <div className="rt">{hit.kind === 'paper' ? <PaperText text={hit.title} /> : hit.title}</div>
+              <div className="rt">{hit.kind === 'paper' || hit.kind === 'chat' ? <PaperText text={hit.title} /> : hit.title}</div>
               <div className="rm">{hit.meta}</div>
             </div>
           ))}
