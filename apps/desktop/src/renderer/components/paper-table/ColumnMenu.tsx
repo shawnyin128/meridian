@@ -7,14 +7,16 @@ import { IconCheck, IconChevron, IconCross, IconGear, IconPencil } from '../icon
 import { ColumnTypeIcon, ColumnTypePicker } from './ColumnAdd.js'
 import { takenLabel } from './column-key.js'
 import { COLUMNS } from './PaperTable.js'
-import { FormInput } from '../FormControls.js'
+import { InlineDraftInput } from '../InlineDraftInput.js'
 
 /**
  * The column menu, opened from the gear at the end of the table header. Built-in columns take one
  * row each, and clicking a row shows or hides the column; locked columns are grayed out and inert.
  * Custom columns take one row each, with rename and delete at the end of the row. Adding a column
  * is not here but the + at the end of the header. Styled as the demo's colMenu, opened and closed
- * by Radix; while a rename input is open, Esc cancels only the rename and keeps the menu.
+ * by Radix; while a rename input is open, Esc cancels only the rename and keeps the menu, and a
+ * press outside the menu or focus leaving it renames as Enter does, closing the menu only once the
+ * rename is accepted.
  * Each change goes to `onChange` as a function that takes the last confirmed column configuration
  * and returns the whole changed one; a name another column on the table already has is refused,
  * and renaming to the column's own name just closes the input.
@@ -79,6 +81,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
     <ActionPopover
       open={open}
       onOpenChange={(next) => {
+        if (!next && (renaming !== null || renamingOption !== null)) return
         setOpen(next)
         setRenaming(null)
         setRenamingOption(null)
@@ -115,19 +118,17 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                 <span className="ck"><IconCheck /></span>
                 {renaming === c.key
                   ? (
-                    <FormInput
-                      className="celledit" autoComplete="off" autoFocus defaultValue={c.label}
-                      onKeyDown={(e) => {
-                        if (e.key !== 'Enter') return
-                        const label = e.currentTarget.value.trim()
-                        if (label === c.label) { setRenaming(null); return }
+                    <InlineDraftInput
+                      className="celledit" defaultValue={c.label} onCancel={() => setRenaming(null)}
+                      onSubmit={(label) => {
+                        if (label === c.label) return true
                         const builtinLabels = [m.papers.columns.title, ...COLUMNS.map((k) => m.papers.columns[k.k])]
-                        if (label === '' || takenLabel(label, columns, builtinLabels)) return
-                        setRenaming(null)
+                        if (takenLabel(label, columns, builtinLabels)) return false
                         onChange((base) => ({
                           ...base,
                           custom: base.custom.map((x) => (x.key === c.key ? { ...x, label } : x)),
                         }))
+                        return true
                       }}
                     />
                   )
@@ -175,15 +176,13 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                     <div key={o} className="mi optrow">
                       {renamingOption?.key === c.key && renamingOption.from === o
                         ? (
-                          <FormInput
-                            className="celledit" autoComplete="off" autoFocus defaultValue={o}
-                            onKeyDown={(e) => {
-                              if (e.key !== 'Enter') return
-                              const to = e.currentTarget.value.trim()
-                              if (to === o) { setRenamingOption(null); return }
-                              if (to === '' || c.options.includes(to)) return
-                              setRenamingOption(null)
+                          <InlineDraftInput
+                            className="celledit" defaultValue={o} onCancel={() => setRenamingOption(null)}
+                            onSubmit={(to) => {
+                              if (to === o) return true
+                              if (c.options.includes(to)) return false
                               onRenameOption(c.key, o, to)
+                              return true
                             }}
                           />
                         )

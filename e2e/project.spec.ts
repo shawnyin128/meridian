@@ -1,5 +1,5 @@
 import { resolve } from 'node:path'
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { ACTIVE_PROJECT, PROJECT_STATUSES, SHELVED_PROJECT } from '../apps/desktop/src/shared/vocabulary.js'
 import {
   dshort, expect, fixtureDay, gotoProject, readDraft, test, uniqueHeights, vaultToday,
@@ -999,13 +999,19 @@ test('关联 chip 上的 × 只移除这一条,不顺带打开它挂着的那一
   expect(relations.flatMap((r) => r.items.map((i) => i.text))).not.toContain(text)
 })
 
-test('属性格进入编辑时不改变右栏和值列宽度', async ({ win }) => {
+test('属性格进入编辑时不改变右栏和值列宽度,字也不挪位', async ({ win }) => {
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
   const props = side.locator('.wkprops')
   const field = props.locator('.pk:text-is("名称") + .metadata-field')
   const name = field.locator('.metadata-editable')
+  // Where the text starts inside its box: the same box with the same inset keeps it in place.
+  const inset = (box: Locator) => box.evaluate((el) => {
+    const style = getComputedStyle(el)
+    return [style.paddingLeft, style.paddingTop, style.borderLeftWidth, style.borderTopWidth, style.lineHeight]
+  })
   const before = await Promise.all([side.boundingBox(), props.boundingBox(), field.boundingBox(), name.boundingBox()])
+  const insetBefore = await inset(name)
   expect(before[3]?.x).toBe(before[2]?.x)
   expect(before[3]?.width).toBe(before[2]?.width)
 
@@ -1016,6 +1022,9 @@ test('属性格进入编辑时不改变右栏和值列宽度', async ({ win }) =
 
   expect(editing.map((box) => box?.width)).toEqual(before.map((box) => box?.width))
   expect(editing.map((box) => box?.x)).toEqual(before.map((box) => box?.x))
+  expect(editing.map((box) => box?.y)).toEqual(before.map((box) => box?.y))
+  expect(editing[2]?.height).toBe(before[2]?.height)
+  expect(await inset(input)).toEqual(insetBefore)
 })
 
 test('属性栏焦点格:焦点移走或点到格外都像回车一样写回,Esc 才放弃', async ({ win }) => {

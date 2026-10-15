@@ -7,12 +7,12 @@ import { useOnLeave } from './useOnLeave.js'
  * draft, by a mouse press outside it or focus moving from inside it to an element outside it; Esc
  * calls `onCancel`. Leaving a draft for which `isEmpty` returns true calls `onCancel` instead of
  * submitting; without `isEmpty`, leaving always submits. The window losing focus (switching to
- * another app) does not count as leaving. `onSubmit` returns whether it consumed the draft: true
- * closes the draft from here, false keeps the draft and its text so the user can edit it and submit
- * again. A submission made by leaving that returns false also marks the input invalid
- * (`aria-invalid`) until its text changes or the draft closes, and leaving again does not resubmit
- * before the text changes. `onSubmit` must neither throw synchronously nor reject; a failed write
- * must be caught by the caller and return false.
+ * another app) does not count as leaving. `onSubmit` receives whether the draft is being left, and
+ * returns whether it consumed the draft: true closes the draft from here, false keeps the draft and
+ * its text so the user can edit it and submit again. A submission made by leaving that returns
+ * false also marks the input invalid (`aria-invalid`) until its text changes or the draft closes,
+ * and leaving again does not resubmit before the text changes. `onSubmit` must neither throw
+ * synchronously nor reject; a failed write must be caught by the caller and return false.
  * `submit` is the same guarded entry for submissions other than Enter (such as clicking a
  * candidate), and `attempt` follows the same contract. Until a submission settles, neither Enter,
  * `submit` nor leaving sends a second one. Once it settles, a consumed draft closes as usual and an
@@ -28,7 +28,7 @@ import { useOnLeave } from './useOnLeave.js'
 export function useInlineDraft({ row, triggers, onSubmit, onCancel, isEmpty }: {
   row: RefObject<HTMLElement | null>
   triggers: Array<RefObject<HTMLElement | null>>
-  onSubmit: () => boolean | Promise<boolean>
+  onSubmit: (leaving: boolean) => boolean | Promise<boolean>
   onCancel: () => void
   isEmpty?: () => boolean
 }): {
@@ -73,7 +73,7 @@ export function useInlineDraft({ row, triggers, onSubmit, onCancel, isEmpty }: {
   useOnLeave(row, () => {
     if (busy.current || refused.current) return
     if (isEmpty?.() === true) close()
-    else submit(onSubmit, true)
+    else submit(() => onSubmit(true), true)
   }, triggers)
 
   return {
@@ -83,7 +83,7 @@ export function useInlineDraft({ row, triggers, onSubmit, onCancel, isEmpty }: {
       'aria-invalid': invalid || undefined,
       onInput: clearInvalid,
       onKeyDown: (e) => {
-        if (e.key === 'Enter') submit(onSubmit)
+        if (e.key === 'Enter') submit(() => onSubmit(false))
         if (e.key === 'Escape') { e.stopPropagation(); close() }
       },
     },

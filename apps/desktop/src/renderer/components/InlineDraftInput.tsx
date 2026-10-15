@@ -15,10 +15,10 @@ export type InlineDraftInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 
   /** Entry buttons that can open or refocus this draft; pressing them does not leave the draft. */
   triggers?: Array<RefObject<HTMLElement | null>>
   /**
-   * Enter or leaving the draft submits the normalized text; the draft closes only when this returns
-   * true. Leaving with no text closes the draft without calling it.
+   * Enter or leaving the draft submits the normalized text, with whether the draft is being left; the
+   * draft closes only when this returns true. Leaving with no text closes the draft without calling it.
    */
-  onSubmit: (value: string) => boolean | Promise<boolean>
+  onSubmit: (value: string, leaving: boolean) => boolean | Promise<boolean>
   onCancel: () => void
   normalize?: (value: string) => string
   validate?: (value: string) => boolean
@@ -51,9 +51,9 @@ export const InlineDraftInput = forwardRef<HTMLInputElement, InlineDraftInputPro
       row: scopeRef ?? input,
       triggers,
       onCancel,
-      onSubmit: () => {
+      onSubmit: (leaving) => {
         const value = normalize(input.current?.value ?? '')
-        return validate(value) ? onSubmit(value) : false
+        return validate(value) ? onSubmit(value, leaving) : false
       },
       isEmpty: () => normalize(input.current?.value ?? '') === '',
     })

@@ -63,7 +63,7 @@ describe('InlineDraftInput', () => {
       input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
       await Promise.resolve()
     })
-    expect(submit).toHaveBeenCalledWith('新项目')
+    expect(submit).toHaveBeenCalledWith('新项目', false)
     expect(cancel).toHaveBeenCalledTimes(1)
   })
 
@@ -97,7 +97,7 @@ describe('InlineDraftInput', () => {
     expect(submit).not.toHaveBeenCalled()
   })
 
-  it('submits typed text on an unrelated pointer as Enter would', async () => {
+  it('submits typed text on an unrelated pointer as Enter would, telling the host the draft is being left', async () => {
     const submit = vi.fn(() => Promise.resolve(true))
     const cancel = vi.fn()
     act(() => root!.render(<Probe onSubmit={submit} onCancel={cancel} />))
@@ -107,7 +107,7 @@ describe('InlineDraftInput', () => {
         .dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
       await Promise.resolve()
     })
-    expect(submit).toHaveBeenCalledWith('新项目')
+    expect(submit).toHaveBeenCalledWith('新项目', true)
     expect(cancel).toHaveBeenCalledTimes(1)
   })
 

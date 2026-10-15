@@ -1030,6 +1030,80 @@ describe('PaperTable', () => {
     expect(toastMessages).toEqual([])
   })
 
+  it('列菜单里改列名、改选项名,点到菜单外都像回车一样改掉', async () => {
+    const host = mount()
+    columnsCall.resolve(SELECT_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const gear = host.querySelector<HTMLButtonElement>('[title="列设置"]')!
+    // Radix closes the menu on the click that ends the press, once the rename has been accepted.
+    const pressOutside = async () => {
+      await act(async () => { document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })) })
+      await act(async () => { press(document.body) })
+      await flush()
+    }
+
+    await act(async () => { gear.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[title="重命名列"]')!.click() })
+    await act(async () => { setValue(document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')!, '挑选') })
+    await pressOutside()
+    expect(setColumnsCalls.at(-1)?.columns.custom.map((c) => c.label)).toEqual(['挑选'])
+    expect(document.querySelector('.mi.colrow')).toBeNull()
+    await act(async () => { setColumnsCalls.at(-1)!.resolve() })
+    await flush()
+
+    await act(async () => { gear.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[title="选项"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[title="重命名选项"]')!.click() })
+    await act(async () => { setValue(document.querySelector<HTMLInputElement>('.mi.optrow input.celledit')!, 'renamed') })
+    await pressOutside()
+    expect(renameOptionCalls).toEqual([['pick', 'existing', 'renamed']])
+
+    // A name another column already has is refused: the menu, the input and its text stay.
+    await act(async () => { gear.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[title="重命名列"]')!.click() })
+    await act(async () => { setValue(document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')!, '标题') })
+    await pressOutside()
+    const refused = document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')!
+    expect(refused.value).toBe('标题')
+    expect(refused.getAttribute('aria-invalid')).toBe('true')
+  })
+
+  it('文本格离开时的写还在路上就点了另一格:写成了才开那一格;写被拒时原格带着字留着并标红', async () => {
+    const host = mount()
+    columnsCall.resolve(NOTE_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const noteCell = host.querySelector<HTMLElement>('td.pt-cust')!
+    const remarkCell = host.querySelector<HTMLElement>('td.pt-remark')!
+    /** Types `value` into the note cell, then presses on the remark cell as a user would. */
+    const typeThenOpenRemark = async (value: string) => {
+      await act(async () => { press(noteCell) })
+      await act(async () => { setValue(noteCell.querySelector<HTMLInputElement>('input')!, value) })
+      await act(async () => { remarkCell.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })) })
+      await act(async () => { press(remarkCell) })
+    }
+
+    await typeThenOpenRemark('读到一半')
+    expect(updateCalls.map((u) => u.patch)).toEqual([{ custom: { note: '读到一半' } }])
+    expect(remarkCell.querySelector('input')).toBeNull()
+    await act(async () => { updateCalls[0]!.resolve() })
+    await flush()
+    expect(noteCell.querySelector('input')).toBeNull()
+    expect(remarkCell.querySelector('input')).not.toBeNull()
+    await act(async () => {
+      remarkCell.querySelector('input')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+
+    await typeThenOpenRemark('写不进去')
+    await act(async () => { updateCalls[1]!.reject(new Error('论文不存在')) })
+    await flush()
+    const kept = noteCell.querySelector<HTMLInputElement>('input')!
+    expect(kept.value).toBe('写不进去')
+    expect(kept.getAttribute('aria-invalid')).toBe('true')
+    expect(remarkCell.querySelector('input')).toBeNull()
+  })
+
   it('建列的写在路上时,格子里新建选项排在建列之后:先加选项(载荷带着新列),成了再写这一格', async () => {
     const host = mount()
     columnsCall.resolve(SELECT_COLUMNS)

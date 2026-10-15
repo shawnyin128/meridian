@@ -786,6 +786,21 @@ export function PaperTable() {
     setEditingCell(null)
   }
 
+  // A text cell's save still in flight. Another cell opens only once it has landed, so a refused
+  // save keeps its editor and text instead of being replaced.
+  const cellSave = useRef<Promise<boolean> | null>(null)
+  const holdCellSave = (save: boolean | Promise<boolean>): boolean | Promise<boolean> => {
+    if (typeof save === 'boolean') return save
+    const held = save.finally(() => { if (cellSave.current === held) cellSave.current = null })
+    cellSave.current = held
+    return held
+  }
+  const openCell = (cell: { id: string; key: string }) => {
+    if (editingCell?.id === cell.id && editingCell.key === cell.key) return
+    if (cellSave.current === null) setEditingCell(cell)
+    else void cellSave.current.then((saved) => { if (saved) setEditingCell(cell) })
+  }
+
   /**
    * Enter in a text cell: an unchanged value just closes it, otherwise the value is written back to
    * the cell. Returns whether the edit is finished: true when unchanged or written, false when the
@@ -818,8 +833,9 @@ export function PaperTable() {
    * and row are refetched from Core to correct it; the unsent picks queued after it are voided too,
    * and the whole sequence shows one toast. Consecutive picks in the same cell each compute their
    * values when their turn comes and the previous pick has truly settled, not when they are submitted.
+   * Resolves whether this pick was written.
    */
-  const savePick = (p: PaperRow, column: PaperColumn, value: string, created: boolean) => {
+  const savePick = (p: PaperRow, column: PaperColumn, value: string, created: boolean): Promise<boolean> => {
     const q = queue.current?.cell.id === p.id && queue.current.cell.key === column.key
       ? queue.current
       : {
@@ -862,6 +878,7 @@ export function PaperTable() {
     }).catch((e: Error) => { clearIfLatest(); toast(e.message); return null })
     const entry = { cell: q.cell, chain }
     queue.current = entry
+    return chain.then((settled) => settled !== null)
   }
 
   /**
@@ -978,7 +995,7 @@ export function PaperTable() {
       return (
         <TextCellEdit
           cell={editingTd} initial={values[0] ?? ''}
-          onSave={(value) => saveCell(p, column.key, value)}
+          onSave={(value) => holdCellSave(saveCell(p, column.key, value))}
           // Another cell may have been clicked before the write came back; close this cell only if it
           // is still the one being edited.
           onCancel={() => setEditingCell((cur) => (cur !== null && cur.id === p.id && cur.key === column.key ? null : cur))}
@@ -999,7 +1016,7 @@ export function PaperTable() {
       return (
         <td
           className="pt-cust" key={c.k} ref={editing ? editingTd : undefined}
-          onClick={(e) => { e.stopPropagation(); setEditingCell({ id: p.id, key: c.k }) }}
+          onClick={(e) => { e.stopPropagation(); openCell({ id: p.id, key: c.k }) }}
         >{customCell(p, c.column)}</td>
       )
     }
@@ -1016,13 +1033,13 @@ export function PaperTable() {
       return (
         <td
           className="pt-remark" key={k} ref={editing ? editingTd : undefined}
-          onClick={(event) => { event.stopPropagation(); setEditingCell({ id: p.id, key: k }) }}
+          onClick={(event) => { event.stopPropagation(); openCell({ id: p.id, key: k }) }}
         >
           {editing
             ? (
               <TextCellEdit
                 cell={editingTd} initial={p.remark ?? ''}
-                onSave={(value) => saveRemark(p, value)}
+                onSave={(value) => holdCellSave(saveRemark(p, value))}
                 onCancel={() => setEditingCell((held) => (
                   held !== null && held.id === p.id && held.key === k ? null : held
                 ))}

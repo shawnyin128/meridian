@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
 import type { PaperColumn } from '../../../shared/contract.js'
 import { useCandidateKeys } from '../../hooks/useCandidateKeys.js'
+import { useInlineDraft } from '../../hooks/useInlineDraft.js'
+import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { IconCheck, IconPlus } from '../icons.js'
 import { PickerPopover } from '../PickerPopover.js'
@@ -26,18 +28,21 @@ export function optionRows(
  * Cell editor for select and multi-select columns: an input in the cell is the anchor, and below it
  * a popover lists the column's existing options, filtered by the typed text. When the typed text
  * equals no option, an extra "Create "X"" row appears. Clicking a row reports that row's option;
- * Enter reports the typed text, as the option itself when it differs from one only in case,
- * otherwise as a new one; Esc and a click elsewhere write nothing. Styled as the demo's
- * `.ctxmenu.drop` and `.rrow` / `.mk`, opened and closed by Radix.
- * `onCommit` receives the option chosen now and whether it must first be added to this column;
- * when this cell closes is decided by the caller. After a create, the input is cleared and the
- * popover stays open.
+ * Enter reports the highlighted option, or the typed text as a new one when nothing matches; Esc
+ * writes nothing. A press outside the input and its popover, or focus leaving them, reports what
+ * Enter would, except that a highlighted option the cell already holds is left as it is, and closes
+ * the picker once `onCommit` resolves true; with nothing typed it just closes. A refused report
+ * keeps the picker and its text and marks the input invalid. Styled as the demo's `.ctxmenu.drop`
+ * and `.rrow` / `.mk`.
+ * `onCommit` receives the option chosen now and whether it must first be added to this column, and
+ * returns whether it was written; otherwise when this cell closes is decided by the caller. After a
+ * create, the input is cleared and the popover stays open.
  */
 export function CellPicker({ column, values, onCommit, onClose }: {
   column: PaperColumn
   /** The values this cell holds now; a select column holds at most one. */
   values: string[]
-  onCommit: (value: string, created: boolean) => void
+  onCommit: (value: string, created: boolean) => boolean | Promise<boolean>
   onClose: () => void
 }) {
   const m = useMessages()
@@ -46,25 +51,32 @@ export function CellPicker({ column, values, onCommit, onClose }: {
 
   const typed = q.trim()
   const { hits, isNew } = optionRows(column.options, typed)
-  const keys = useCandidateKeys(hits.length, (i) => onCommit(hits[i]!, false))
+  const keys = useCandidateKeys(hits.length, (i) => { void onCommit(hits[i]!, false) })
+  const draft = useInlineDraft({
+    row: anchor, triggers: NO_TRIGGERS, onCancel: onClose, isEmpty: () => typed === '',
+    onSubmit: () => {
+      const hit = hits[keys.active]
+      if (hit === undefined) return onCommit(typed, true)
+      return values.includes(hit) || onCommit(hit, false)
+    },
+  })
 
   const create = () => {
     setQ('')
-    onCommit(typed, true)
+    void onCommit(typed, true)
   }
 
   return (
     <PickerPopover
       open anchorRef={anchor} stopClickPropagation
-      onOpenChange={(next) => { if (!next) onClose() }}
       anchor={(
         <FormInput
           className="celledit" autoComplete="off" autoFocus value={q} ref={anchor}
           placeholder={m.papers.cellPicker.placeholder}
+          aria-invalid={draft.inputProps['aria-invalid']} onInput={draft.inputProps.onInput}
           onClick={(e) => e.stopPropagation()}
-          // The row itself opens its own right-click menu on any descendant; left unguarded, that menu's
-          // auto-focused first item fires this popover's focus-outside dismissal even though the click
-          // landed on the picker's own input.
+          // The row itself opens its own right-click menu on any descendant; a right-click on the
+          // picker's own input must not open it.
           onContextMenu={(e) => e.stopPropagation()}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {

@@ -130,6 +130,35 @@ describe('WatchSettings', () => {
     await act(async () => { root.unmount() })
   })
 
+  it('作者占位打了名字、没选身份就点到别处：按名字存成待确认的作者', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+    const authorList = host.querySelector('[data-w="author-1"]')!.closest('.wlist')!
+    await act(async () => { authorList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!.click() })
+
+    await act(async () => { enter(authorList.querySelector<HTMLInputElement>('.newrow input')!, 'Ada Lovelace') })
+    await act(async () => { document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })) })
+    expect(api.create).toHaveBeenCalledWith({ type: 'author', name: 'Ada Lovelace' })
+
+    await act(async () => { root.unmount() })
+  })
+
+  it('主题占位打了字时点作者组的加号：先存下这个主题，再开作者占位', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+    const topicList = host.querySelector('[data-w="topic-1"]')!.closest('.wlist')!
+    const authorList = host.querySelector('[data-w="author-1"]')!.closest('.wlist')!
+    await act(async () => { topicList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!.click() })
+    await act(async () => { enter(topicList.querySelector<HTMLInputElement>('.newrow input')!, 'speculative sampling') })
+
+    await act(async () => { authorList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!.click() })
+    expect(api.create).toHaveBeenCalledWith({ type: 'topic', name: 'speculative sampling' })
+    expect(topicList.querySelector('.newrow')).toBeNull()
+    expect(authorList.querySelector<HTMLInputElement>('.newrow input')!.value).toBe('')
+
+    await act(async () => { root.unmount() })
+  })
+
   it('从一句关注方向查找主题和稳定作者，确认后才创建关注', async () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
