@@ -26,12 +26,15 @@ describe('Markdown', () => {
     expect(out).toContain('<span class="cite" title="原文第 3 页">p.3</span>')
   })
 
-  it('[[id]] 没写别名时文字取 titles,写了别名以别名为准,悬停都显示 titles 里的完整标题,titles 里没有的按原文', () => {
-    const titles = { 'papers/a': 'GPTQ', 'topics/ptq': 'PTQ' }
+  it('[[id]] 没写别名时文字取 titles 里的短名,写了别名以别名为准,悬停都显示完整标题,titles 里没有的按原文', () => {
+    const titles = {
+      'papers/a': { id: 'papers/a', title: 'GPTQ', fullTitle: 'GPTQ: Accurate Post-Training Quantization' },
+      'topics/ptq': { id: 'topics/ptq', title: 'PTQ' },
+    }
     const out = renderToStaticMarkup(
       <MessagesProvider><Markdown src="[[papers/a]] [[topics/ptq|训练后量化]] [[papers/z]]" titles={titles} /></MessagesProvider>,
     )
-    expect(out).toContain('<span class="wl" data-wk="papers/a" title="GPTQ">GPTQ</span>')
+    expect(out).toContain('<span class="wl" data-wk="papers/a" title="GPTQ: Accurate Post-Training Quantization">GPTQ</span>')
     expect(out).toContain('<span class="wl" data-wk="topics/ptq" title="PTQ">训练后量化</span>')
     expect(out).toContain('[[papers/z]]')
     expect(out).not.toContain('data-wk="papers/z"')

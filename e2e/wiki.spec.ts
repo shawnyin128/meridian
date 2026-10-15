@@ -165,8 +165,8 @@ test('对照表的行是成员论文,格子按契约的列排,悬停看原文;�
   // Open the paper page.
   await table.locator(`[data-wk="${first.paper.id}"]`).click()
   const paper = await paperFromCore(win, first.paper.id)
-  await expect(crumbs(win)).toHaveText(['我的库', 'Wiki', paper.short])
-  await expect(shown(win).locator('.desk-head .t')).toHaveText(paper.short)
+  await expect(crumbs(win)).toHaveText(['我的库', 'Wiki', paper.title])
+  await expect(shown(win).locator('.desk-head .t')).toHaveText(paper.title)
   expect(await shown(win).locator('.wkside .section-heading').allTextContents()).toEqual(['属性', '归属', '目录'])
   // Side panel headers have their own style, one size smaller than the main area and without a rule:
   // 14px, no top border.
@@ -183,7 +183,7 @@ test('对照表的行是成员论文,格子按契约的列排,悬停看原文;�
   await shown(win).locator(`.memb [data-wk="${back.id}"]`).click()
   await expect(shown(win).locator('.desk-head .t')).toHaveText(back.title)
   await shown(win).locator('.desk-head .back').click()
-  await expect(shown(win).locator('.desk-head .t')).toHaveText(paper.short)
+  await expect(shown(win).locator('.desk-head .t')).toHaveText(paper.title)
 })
 
 test('首页论文卡进论文页;个人理解与 Wiki 内容分层,没内化的正文仍能直接编辑', async ({ win }) => {
