@@ -53,7 +53,7 @@ import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
-import { NO_TRIGGERS } from '../hooks/useCancelOnOutside.js'
+import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import './shell.css'
 import './ProjectDetail.css'

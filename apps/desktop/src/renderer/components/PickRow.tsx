@@ -19,6 +19,8 @@ const LIMIT = 8
  * name. Enter does nothing while the candidates have not caught up with the input, and the input
  * is `aria-busy` meanwhile. Enter, a candidate click, Esc, a press outside the draft and focus
  * leaving it go through `useInlineDraft`, which sends no second pick until the first has landed.
+ * Leaving the draft with text in it acts as Enter does; leaving it empty, with `initialText`
+ * unchanged, or at all with `cancelOnLeave`, closes it.
  * `row` is the element that counts as inside the draft, mounted on it by the caller; pressing or
  * focusing one of the `triggers`, the buttons that open this draft, does not count as outside. A
  * failed `suggest` goes to `onError`. The input starts out holding `initialText`.
@@ -27,6 +29,7 @@ export function PickRow({
   row, triggers, placeholder, initialText = '', suggest, allowNew, onPick, onNew, onCancel, onError,
   inputClassName = 'inedit pickin',
   inputAppearance = 'plain',
+  cancelOnLeave = false,
 }: {
   row: RefObject<HTMLElement | null>
   triggers: Array<RefObject<HTMLElement | null>>
@@ -40,6 +43,7 @@ export function PickRow({
   onError: (e: Error) => void
   inputClassName?: string
   inputAppearance?: FormControlAppearance
+  cancelOnLeave?: boolean
 }) {
   const [text, setText] = useState(initialText)
   const [hits, setHits] = useState<PickHit[]>([])
@@ -70,7 +74,10 @@ export function PickRow({
     if (allowNew && text.trim() !== '') return onNew(text.trim())
     return false
   }
-  const draft = useInlineDraft({ row, triggers, onSubmit: pick, onCancel })
+  const draft = useInlineDraft({
+    row, triggers, onSubmit: pick, onCancel,
+    isEmpty: () => cancelOnLeave || text.trim() === '' || text.trim() === initialText.trim(),
+  })
   // A stale result set must not be selected by Enter; the input's own onSubmit (pick) re-checks
   // `stale` and takes over instead, matching the mouse-pick path's staleness rule.
   const keys = useCandidateKeys(hits.length, (i) => { if (!stale) draft.submit(() => onPick(hits[i]!)) })

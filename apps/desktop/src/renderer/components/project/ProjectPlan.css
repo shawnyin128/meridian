@@ -30,7 +30,7 @@
 .plan-name{border:0;border-radius:var(--r-sm);white-space:nowrap;overflow:hidden;mask-image:var(--clipfade)}
 .plan-name:hover,.plan-name:focus-visible{background:var(--field);box-shadow:none}
 .plan-name-input{border:0;border-radius:var(--r-sm);background:var(--field);color:var(--ink);outline:0;box-shadow:none}
-.plan-name-input:focus,.plan-name-input:focus-visible{outline:0;outline-offset:0;box-shadow:none}
+.plan-name-input:focus,.plan-name-input:focus-visible{outline:0;outline-offset:0;box-shadow:inset 0 -2px 0 var(--ring)}
 .project-plan .ddlrow .dsep{color:var(--ter);font-size:12px;margin:0 -3px;flex-shrink:0}
 .project-plan .ddlrow .din{font-family:var(--mono);font-size:var(--fs-sm);border:0;border-radius:var(--r-sm);padding:2px 8px;flex-shrink:0;cursor:pointer;text-align:center;white-space:nowrap}
 .project-plan .ddlrow .din:not(.prtag):not(.state-edit){background:var(--field);color:var(--sec)}

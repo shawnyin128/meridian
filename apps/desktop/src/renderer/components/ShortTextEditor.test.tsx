@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
+import { FloatingTextEditor } from './FloatingTextEditor.js'
 import { ShortTextEditor } from './ShortTextEditor.js'
 
 declare global {
@@ -108,6 +109,99 @@ describe('ShortTextEditor', () => {
     await act(async () => { finish!(false); await Promise.resolve() })
     act(() => document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })))
     expect(close).toHaveBeenCalledTimes(1)
+  })
+
+  it('saves on an outside press as Enter would; an empty or unchanged draft just closes', async () => {
+    const submit = vi.fn(() => Promise.resolve(true))
+    const close = vi.fn()
+    const pressOutside = async () => {
+      await act(async () => {
+        document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+        await Promise.resolve()
+      })
+    }
+    act(() => root!.render(withMessages(
+      <ShortTextEditor
+        title="重命名项目" initialValue="旧名称" placeholder="项目名称"
+        onSubmit={submit} onClose={close}
+      />,
+    )))
+    const input = host.querySelector<HTMLInputElement>('input')!
+    await pressOutside()
+    act(() => setValue(input, '  '))
+    await pressOutside()
+    expect(submit).not.toHaveBeenCalled()
+    expect(close).toHaveBeenCalledTimes(2)
+
+    act(() => setValue(input, ' 新名称 '))
+    await pressOutside()
+    expect(submit).toHaveBeenCalledWith('新名称')
+    expect(close).toHaveBeenCalledTimes(3)
+  })
+
+  it('keeps a draft refused on leaving open with its text and marks it invalid until the text changes', async () => {
+    const submit = vi.fn(() => Promise.resolve(false))
+    const close = vi.fn()
+    act(() => root!.render(withMessages(
+      <ShortTextEditor title="里程碑" placeholder="里程碑内容" onSubmit={submit} onClose={close} />,
+    )))
+    const input = host.querySelector<HTMLInputElement>('input')!
+    act(() => setValue(input, '评审'))
+    await act(async () => {
+      document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+      await Promise.resolve()
+    })
+    expect(submit).toHaveBeenCalledTimes(1)
+    expect(close).not.toHaveBeenCalled()
+    expect(input.value).toBe('评审')
+    expect(input.getAttribute('aria-invalid')).toBe('true')
+    act(() => document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })))
+    expect(submit).toHaveBeenCalledTimes(1)
+
+    act(() => setValue(input, '评审会'))
+    expect(input.getAttribute('aria-invalid')).toBeNull()
+  })
+
+  it('in a FloatingTextEditor, the click ending an outside press does not close a draft refused meanwhile', async () => {
+    let settle = (accepted: boolean) => { void accepted }
+    const close = vi.fn()
+    act(() => root!.render(withMessages(
+      <FloatingTextEditor
+        open anchor={<span />} editorKey="new" title="新里程碑" placeholder="里程碑内容"
+        onSubmit={() => new Promise<boolean>((ok) => { settle = ok })} onClose={close}
+      />,
+    )))
+    // Radix attaches its outside-press listener one task after the popover opens, and dismisses a
+    // popover only on the click that ends the press.
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)) })
+    const input = document.querySelector<HTMLInputElement>('.short-text-editor input')!
+    act(() => setValue(input, '评审'))
+    act(() => document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })))
+    await act(async () => { settle(false) })
+    act(() => {
+      for (const type of ['mousedown', 'pointerup', 'mouseup', 'click']) {
+        document.body.dispatchEvent(new MouseEvent(type, { bubbles: true }))
+      }
+    })
+    expect(close).not.toHaveBeenCalled()
+    expect(input.value).toBe('评审')
+    expect(input.getAttribute('aria-invalid')).toBe('true')
+  })
+
+  it('in a FloatingTextEditor, focus moving to the popover around the editor does not leave it', async () => {
+    const submit = vi.fn(() => true)
+    act(() => root!.render(withMessages(
+      <FloatingTextEditor
+        open anchor={<span />} editorKey="new" title="新里程碑" placeholder="里程碑内容"
+        onSubmit={submit} onClose={() => {}}
+      />,
+    )))
+    const input = document.querySelector<HTMLInputElement>('.short-text-editor input')!
+    act(() => setValue(input, '评审'))
+    const around = input.closest<HTMLElement>('.short-text-editor')!.parentElement!.closest<HTMLElement>('[tabindex="-1"]')!
+    act(() => around.focus())
+    expect(document.activeElement).toBe(around)
+    expect(submit).not.toHaveBeenCalled()
   })
 
   it('keeps an in-flight draft open when Escape is pressed', async () => {
