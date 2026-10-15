@@ -32,17 +32,35 @@
 .pdfpagebox canvas{display:block}
 .pdfload{text-align:center;color:var(--ter);font-size:var(--fs-sm);padding:48px 0}
 
-/* pdf.js's TextLayer is only for text selection: transparent text laid over the canvas. */
-.textLayer{color-scheme:only light;position:absolute;text-align:initial;inset:0;overflow:clip;opacity:1;line-height:1;letter-spacing:normal;word-spacing:normal;-webkit-text-size-adjust:none;text-size-adjust:none;forced-color-adjust:none;transform-origin:0 0;caret-color:CanvasText;z-index:2;--min-font-size:1;--text-scale-factor:calc(var(--total-scale-factor) * var(--min-font-size));--min-font-size-inv:calc(1 / var(--min-font-size))}
-.textLayer :is(span,br){color:transparent;position:absolute;white-space:pre;cursor:text;transform-origin:0 0;user-select:text}
+/*
+ * pdf.js's TextLayer is only for text selection: transparent text laid over the canvas. These are
+ * the `.textLayer` rules of pdfjs-dist 6.3.289 web/pdf_viewer.css, unnested, without -moz- prefixes.
+ */
+.textLayer{color-scheme:only light;position:absolute;text-align:initial;inset:0;overflow:clip;opacity:1;line-height:1;letter-spacing:normal;word-spacing:normal;-webkit-text-size-adjust:none;text-size-adjust:none;forced-color-adjust:none;transform-origin:0 0;caret-color:CanvasText;z-index:0;--min-font-size:1;--text-scale-factor:calc(var(--total-scale-factor) * var(--min-font-size));--min-font-size-inv:calc(1 / var(--min-font-size))}
+.textLayer.highlighting{touch-action:none}
+.textLayer :is(span,br){color:transparent;position:absolute;white-space:pre;cursor:text;transform-origin:0% 0%;-webkit-user-select:text;user-select:text}
 .textLayer>:not(.markedContent),.textLayer .markedContent span:not(.markedContent){z-index:1;--font-height:0;font-size:calc(var(--text-scale-factor) * var(--font-height));--scale-x:1;--rotate:0deg;transform:rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv))}
 .textLayer .markedContent{display:contents}
-.textLayer span[role="img"]{user-select:none;cursor:default}
+.textLayer span[role="img"]{-webkit-user-select:none;user-select:none;cursor:default}
+.textLayer .highlight{--highlight-bg-color:rgb(180 0 170/.25);--highlight-selected-bg-color:rgb(0 100 0/.25);--highlight-backdrop-filter:none;--highlight-selected-backdrop-filter:none;margin:-1px;padding:1px;background-color:var(--highlight-bg-color);backdrop-filter:var(--highlight-backdrop-filter);border-radius:4px}
+@media screen and (forced-colors:active){.textLayer .highlight{--highlight-bg-color:transparent;--highlight-selected-bg-color:transparent;--highlight-backdrop-filter:var(--hcm-highlight-filter);--highlight-selected-backdrop-filter:var(--hcm-highlight-selected-filter)}}
+.textLayer .highlight.appended{position:initial}
+.textLayer .highlight.begin{border-radius:4px 0 0 4px}
+.textLayer .highlight.end{border-radius:0 4px 4px 0}
+.textLayer .highlight.middle{border-radius:0}
+.textLayer .highlight.selected{background-color:var(--highlight-selected-bg-color);backdrop-filter:var(--highlight-selected-backdrop-filter);scroll-margin-top:50px}
+.textLayer ::selection{background:rgba(0 0 255/.25);background:color-mix(in srgb,AccentColor,transparent 50%);color:transparent}
+.textLayer.selectionRendering ::selection{background:transparent;color:transparent}
+.textLayer br::selection{background:transparent}
+.textLayer .endOfContent{display:block;position:absolute;inset:100% 0 0;z-index:0;cursor:default;-webkit-user-select:none;user-select:none}
+.textLayer.selecting .endOfContent{top:0}
+/* Meridian's own: the text layer stacks over the highlight overlay, and a selection takes the app's blue. */
+.textLayer{z-index:2}
 .textLayer ::selection{background:rgb(46 119 246/.3)}
-.textLayer .endOfContent{display:block;position:absolute;inset:100% 0 0;z-index:-1;cursor:default;user-select:none}
 .paper-highlights{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
-.paper-highlight{position:absolute;background:color-mix(in srgb,var(--mark) 30%,transparent);border-radius:2px}
-.paper-highlight.noted{background:transparent;border-bottom:2.5px solid #eb9d2a;border-radius:0}
+.paper-highlight{position:absolute;overflow:visible}
+.paper-highlight path{fill:color-mix(in srgb,var(--mark) 30%,transparent)}
+.paper-highlight.noted path{fill:none;stroke:#eb9d2a;stroke-width:2.5px;vector-effect:non-scaling-stroke}
 .selection-tools{position:fixed;transform:translateX(-50%);display:flex;align-items:center;background:#20242d;color:#fff;border-radius:7px;padding:3px;box-shadow:0 6px 20px rgb(0 0 0/.24);z-index:40}
 .selection-tools button{border:0;background:transparent;color:inherit;font:inherit;font-size:var(--fs-sm);padding:6px 9px;border-radius:5px;cursor:pointer;white-space:nowrap}
 .selection-tools button:hover{background:rgb(255 255 255/.12)}

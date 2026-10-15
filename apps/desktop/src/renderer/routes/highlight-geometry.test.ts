@@ -1,5 +1,47 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { normalizedHighlightRects } from './highlight-geometry.js'
+import type { PaperHighlightRect } from '../../shared/contract.js'
+import {
+  highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionToolsAnchor,
+} from './highlight-geometry.js'
+
+/** A US Letter page at the reader's fit scale (830 / 612), as the page box's client rectangle. */
+const PAGE = { left: 120, top: 60, width: 830, height: 1074 }
+
+/**
+ * Text boxes of 11 pt type at that scale: Chromium measures each text node with its fallback font,
+ * so serif, sans-serif and superscript runs on one line have different heights and tops.
+ */
+const SERIF = { ascent: 13.3, height: 16.5 }
+const SANS = { ascent: 11.5, height: 14.9 }
+const SUPERSCRIPT = { ascent: 13.6, height: 12 }
+
+/** A text box from `left` to `right` on the line whose baseline is `baseline`, in client pixels. */
+const text = (left: number, right: number, baseline: number, face = SERIF) =>
+  ({ left, top: baseline - face.ascent, width: right - left, height: face.height })
+
+/** A stored rectangle mapped back to client pixels, rounded to tenths of a pixel. */
+const onScreen = (rect: PaperHighlightRect) => ({
+  left: Math.round((PAGE.left + rect.x * PAGE.width) * 10) / 10,
+  right: Math.round((PAGE.left + (rect.x + rect.width) * PAGE.width) * 10) / 10,
+  top: Math.round((PAGE.top + rect.y * PAGE.height) * 10) / 10,
+  bottom: Math.round((PAGE.top + (rect.y + rect.height) * PAGE.height) * 10) / 10,
+})
+
+/**
+ * A two-column section under a full-width figure: the left column's text runs from 193 to 524 px,
+ * the right column's from 547 to 878 px, a 23 px gutter, and the rows of both columns share their
+ * baselines. The selection starts in the first left line and ends in the second right line, so in
+ * document order it covers the three left lines, then the first two right lines.
+ */
+const TWO_COLUMNS = [
+  text(350, 470, 905), text(475.5, 524, 905, SANS),
+  text(193, 300, 923.4), text(300, 306, 923.4, SUPERSCRIPT), text(311.5, 360, 923.4, SANS),
+  text(365.5, 524, 923.4),
+  text(193, 410, 941.8),
+  text(547, 700, 905), text(705.5, 878, 905),
+  text(547, 640, 923.4),
+]
 
 describe('highlight geometry', () => {
   it('把 CSS 像素换成页内比例，缩放前后保存的锚点不变', () => {
@@ -44,5 +86,87 @@ describe('highlight geometry', () => {
     expect(merged[1]).toMatchObject({ x: 0.7, y: 0.1 })
     expect(merged[1]?.width).toBeCloseTo(0.1)
     expect(merged[1]?.height).toBeCloseTo(0.02)
+  })
+
+  it('跨两栏的选区每栏每行一个矩形：一行一个高度，左右只到文字为止，不越过栏间距', () => {
+    expect(normalizedHighlightRects(PAGE, TWO_COLUMNS).map(onScreen)).toEqual([
+      { left: 350, right: 524, top: 891.7, bottom: 908.4 },
+      { left: 547, right: 878, top: 891.7, bottom: 908.2 },
+      { left: 193, right: 524, top: 909.8, bottom: 926.8 },
+      { left: 547, right: 640, top: 910.1, bottom: 926.6 },
+      { left: 193, right: 410, top: 928.5, bottom: 945 },
+    ])
+  })
+
+  it('文字框的先后次序不影响结果，后来的框能把同一行已分开的两段连起来', () => {
+    expect(normalizedHighlightRects(PAGE, [...TWO_COLUMNS].reverse()).map(onScreen))
+      .toEqual(normalizedHighlightRects(PAGE, TWO_COLUMNS).map(onScreen))
+    expect(normalizedHighlightRects(
+      PAGE, [text(193, 250, 941.8), text(290, 410, 941.8), text(250, 290, 941.8)],
+    ).map(onScreen)).toEqual([{ left: 193, right: 410, top: 928.5, bottom: 945 }])
+  })
+
+  it('0.0.15.3 存下的高亮仍能画出：同一行的碎片并成一行，按页面宽高比判断字距，另一栏的同一行不并', () => {
+    // Stored by 0.0.15.3 for one line of each column: span and text boxes of uneven height, 14 px
+    // apart on the left line, and the right column's line 23 px across the gutter.
+    const stored: PaperHighlightRect[] = [
+      { x: 0.0880, y: 0.7747, width: 0.1289, height: 0.0154 },
+      { x: 0.2337, y: 0.7764, width: 0.0843, height: 0.0139 },
+      { x: 0.2337, y: 0.7747, width: 0.0843, height: 0.0154 },
+      { x: 0.3250, y: 0.7747, width: 0.1617, height: 0.0154 },
+      { x: 0.5145, y: 0.7747, width: 0.3988, height: 0.0154 },
+    ]
+    const lines = highlightLines(stored, PAGE.width / PAGE.height)
+    expect(lines).toHaveLength(2)
+    expect(lines[0]!.x).toBeCloseTo(0.0880, 4)
+    expect(lines[0]!.y).toBeCloseTo(0.7747, 4)
+    expect(lines[0]!.width).toBeCloseTo(0.3987, 4)
+    expect(lines[0]!.height).toBeCloseTo(0.0156, 4)
+    expect(lines[1]).toEqual(stored[4])
+  })
+
+  it('高亮画成一个形状：无批注时每行一个矩形填色，有批注时每行一条底线', () => {
+    const lines = normalizedHighlightRects(PAGE, TWO_COLUMNS).slice(0, 2)
+    const filled = highlightShape(lines, false)
+    const noted = highlightShape(lines, true)
+    expect(filled.path.match(/M/g)).toHaveLength(2)
+    expect(filled.path.match(/z/g)).toHaveLength(2)
+    expect(noted.path).toBe(lines.map((line) => `M${line.x} ${line.y + line.height}h${line.width}`).join(''))
+    expect(onScreen(filled.box)).toEqual({ left: 350, right: 878, top: 891.7, bottom: 908.4 })
+    expect(noted.box).toEqual(filled.box)
+  })
+
+  it('选区工具条放在选中文字下方，下方放不下才放到上方，横向居中且不出窗口', () => {
+    const lines = normalizedHighlightRects(PAGE, TWO_COLUMNS)
+    expect(selectionToolsAnchor(PAGE, lines, { width: 1400, height: 1100 }))
+      .toEqual({ left: expect.closeTo(535.5, 5), top: expect.closeTo(955, 5) })
+    expect(selectionToolsAnchor(PAGE, lines, { width: 1400, height: 1000 }))
+      .toEqual({ left: expect.closeTo(535.5, 5), top: expect.closeTo(847.7, 5) })
+    expect(selectionToolsAnchor(PAGE, lines.slice(1, 2), { width: 750, height: 1100 }).left).toBe(650)
+  })
+
+  it('选区只按选中的文字节点量，去掉首尾空白，不量元素、<br> 和 endOfContent', () => {
+    document.body.innerHTML = '<div class="textLayer">'
+      + '<span role="presentation">Speculative decoding </span><br role="presentation">'
+      + '<span class="markedContent"><span role="presentation">drafts tokens</span></span>'
+      + '<span role="presentation"> </span><br role="presentation">'
+      + '<span role="presentation">  in parallel</span>'
+      + '<div class="endOfContent"></div></div>'
+    const layer = document.querySelector('.textLayer')!
+    const range = document.createRange()
+    range.setStart(layer.firstChild!.firstChild!, 12)
+    range.setEnd(layer, layer.childNodes.length)
+    const pieces = selectedTextRanges(range)
+    expect(pieces.map((piece) => piece.toString())).toEqual(['decoding', 'drafts tokens', 'in parallel'])
+    for (const piece of pieces) {
+      expect(piece.startContainer.nodeType).toBe(Node.TEXT_NODE)
+      expect(piece.endContainer).toBe(piece.startContainer)
+    }
+
+    const inside = document.createRange()
+    const words = layer.querySelector('.markedContent span')!.firstChild!
+    inside.setStart(words, 2)
+    inside.setEnd(words, 7)
+    expect(selectedTextRanges(inside).map((piece) => piece.toString())).toEqual(['afts'])
   })
 })
