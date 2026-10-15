@@ -962,15 +962,16 @@ export function PaperTable() {
     writeColumnsAndCells(() => papers.setColumnType(key, type), m.papers.notices.columnTypeChanged)
 
   /**
-   * What a custom cell shows: when not editing, plain text for a text column and chips for single- and
-   * multi-choice columns (inside .ci, so they fold into +N like the topics cell when they do not fit);
-   * when editing, the input or picker for the column type.
+   * What a custom cell shows: when not editing, the text of a text column inside .ci, so it truncates
+   * and expands on hover like the remark cell, and chips for single- and multi-choice columns (inside
+   * .ci, so they fold into +N like the topics cell when they do not fit); when editing, the input or
+   * picker for the column type.
    */
   const customCell = (p: PaperRow, column: PaperColumn) => {
     const values = cellValues(p.custom[column.key])
     const editing = editingCell?.id === p.id && editingCell.key === column.key
     if (!editing) {
-      if (column.type === 'text') return values[0] ?? ''
+      if (column.type === 'text') return <span className="ci">{values[0] ?? ''}</span>
       return <span className="ci">{values.map((v) => <span className="tagchip" key={v}>{v}</span>)}</span>
     }
     if (column.type === 'text') {
