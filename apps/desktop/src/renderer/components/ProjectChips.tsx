@@ -5,7 +5,7 @@ import { AddAction } from './AddAction.js'
 import { IconCross } from './icons.js'
 import { PickerPopover } from './PickerPopover.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
-import { NO_TRIGGERS } from '../hooks/useCancelOnOutside.js'
+import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useInlineDraft } from '../hooks/useInlineDraft.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -45,7 +45,7 @@ export function ProjectChips({ paper, onError }: {
     project.addPaper(target.id, paper.id), { note: m.research.chips.linked(target.name) },
   )
   const draft = useInlineDraft({
-    row: input, triggers: NO_TRIGGERS, onCancel: close,
+    row: input, triggers: NO_TRIGGERS, onCancel: close, isEmpty: () => needle === '',
     onSubmit: () => (hits[0] === undefined ? false : add(hits[0])),
   })
   const keys = useCandidateKeys(hits.length, (i) => draft.submit(() => add(hits[i]!)))

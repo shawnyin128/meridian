@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { NO_TRIGGERS } from '../hooks/useCancelOnOutside.js'
+import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useInlineDraft } from '../hooks/useInlineDraft.js'
 import { useMessages } from '../messages/useMessages.js'
 import { FormInput, FormSelect, FormTextarea, type FormControlAppearance } from './FormControls.js'
@@ -28,11 +28,11 @@ export type InlineFieldProps = {
 /**
  * Zotero-style single-value editor: at rest it is a plain property value whose whole cell shows
  * hover; a click replaces only this cell with an input control. Submitting and cancelling follow
- * `useInlineDraft`, the one convention across the app: only Enter writes; focus leaving the control
- * or a press anywhere else cancels without keeping the typed text, and the window losing focus
- * (switching to another app) does not count as leaving. `onSave` returns whether the new value is
- * accepted; when a write fails the editor stays open, so the three pages that use it do not each
- * implement their own async duplicate-submit guard.
+ * `useInlineDraft`, the one convention across the app: Enter, focus leaving the control or a press
+ * anywhere else saves, and Esc cancels; the window losing focus (switching to another app) does not
+ * count as leaving. An unchanged value closes without calling `onSave`. `onSave` returns whether
+ * the new value is accepted; when a write fails the editor stays open, so the three pages that use
+ * it do not each implement their own async duplicate-submit guard.
  */
 export function InlineField({
   label, value, display, type = 'text', inputMode, options, onSave,

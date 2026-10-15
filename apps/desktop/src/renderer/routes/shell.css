@@ -157,7 +157,6 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .metadata-editable{display:block;box-sizing:border-box;width:100%;min-width:0;margin:-2px 0;padding:2px 0;border:0;border-radius:var(--r-xs);background:transparent;color:var(--sec);font:inherit;line-height:inherit;text-align:left;overflow-wrap:anywhere;cursor:text}
 .metadata-editable:hover,.metadata-editable:focus-visible{background:var(--field);color:var(--ink);outline:0}
 .pv.metadata-editable{cursor:pointer}
-.form-control.metadata-input{margin:-4px 0}
 .form-control.metadata-input.multiline{display:block;width:100%;field-sizing:content;resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere}
 
 /*

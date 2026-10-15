@@ -77,6 +77,47 @@ describe('InlineMetadataField', () => {
     expect(save).toHaveBeenCalledTimes(1)
   })
 
+  it('改了值点到别处，像回车一样保存并收起；没改就离开只收起，不写', async () => {
+    const save = vi.fn(() => Promise.resolve(true))
+    act(() => root!.render(withMessages(<InlineMetadataField label="标题" value="旧标题" onSave={save} />)))
+    act(() => host.querySelector<HTMLButtonElement>('.metadata-editable')!.click())
+    act(() => setValue(host.querySelector<HTMLTextAreaElement>('[aria-label="编辑标题"]')!, '新标题'))
+    await act(async () => {
+      document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+      await Promise.resolve()
+    })
+    expect(save).toHaveBeenCalledWith('新标题')
+    expect(host.querySelector('.metadata-input')).toBeNull()
+
+    act(() => host.querySelector<HTMLButtonElement>('.metadata-editable')!.click())
+    await act(async () => {
+      document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+      await Promise.resolve()
+    })
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(host.querySelector('.metadata-input')).toBeNull()
+  })
+
+  it('离开时写入被拒，编辑器带着新值留在原位并标红；Esc 收起后再打开不再标红', async () => {
+    const save = vi.fn(() => Promise.resolve(false))
+    act(() => root!.render(withMessages(<InlineMetadataField label="年份" value="2026" onSave={save} />)))
+    act(() => host.querySelector<HTMLButtonElement>('.metadata-editable')!.click())
+    const input = host.querySelector<HTMLInputElement>('[aria-label="编辑年份"]')!
+    act(() => setValue(input, '2027'))
+    await act(async () => {
+      document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+      await Promise.resolve()
+    })
+    expect(save).toHaveBeenCalledWith('2027')
+    expect(host.querySelector('[aria-label="编辑年份"]')).toBe(input)
+    expect(input.value).toBe('2027')
+    expect(input.getAttribute('aria-invalid')).toBe('true')
+
+    act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+    act(() => host.querySelector<HTMLButtonElement>('.metadata-editable')!.click())
+    expect(host.querySelector('[aria-label="编辑年份"]')!.getAttribute('aria-invalid')).toBeNull()
+  })
+
   it('同一编辑器可通过样式和校验参数服务列表名称格', async () => {
     const save = vi.fn(() => Promise.resolve(true))
     act(() => root!.render(withMessages(
