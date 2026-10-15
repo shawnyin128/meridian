@@ -69,7 +69,7 @@ describe('attnItems', () => {
       },
       {
         id: 'stale', rank: 6, kind: '推进停滞', tone: 'mut',
-        reason: '已 8 天没有科研记录', action: '确认继续、搁置或调整方向',
+        reason: '已 8 天无推进', action: '确认继续、搁置或调整方向',
       },
     ])
   })
@@ -90,7 +90,7 @@ describe('attnItems', () => {
       },
       {
         id: 'stale', rank: 6, kind: '推进停滞', tone: 'mut',
-        reason: '已 8 天没有科研记录', action: '确认继续、搁置或调整方向',
+        reason: '已 8 天无推进', action: '确认继续、搁置或调整方向',
       },
     ])
   })
@@ -193,7 +193,7 @@ describe('attnItems', () => {
     expect(attnItems(project({ lastProgress: '2026-08-17' }), TODAY, sm)).toEqual([
       {
         id: 'stale', rank: 6, kind: '推进停滞', tone: 'mut',
-        reason: '已 8 天没有科研记录', action: '确认继续、搁置或调整方向',
+        reason: '已 8 天无推进', action: '确认继续、搁置或调整方向',
       },
     ])
     expect(attnItems(project({ lastProgress: '2026-08-18' }), TODAY, sm)).toEqual([])

@@ -130,7 +130,7 @@ export const project = {
       conflictCount: (n: number) =>
         `${n} conflicting ${pluralEn(n, { one: 'conclusion', other: 'conclusions' })}`,
       overdueTasks: (n: number) => `${n} overdue ${pluralEn(n, { one: 'task', other: 'tasks' })}`,
-      idleDays: (n: number) => `No research updates for ${n} ${pluralEn(n, { one: 'day', other: 'days' })}`,
+      idleDays: (n: number) => `No progress for ${n} ${pluralEn(n, { one: 'day', other: 'days' })}`,
       pathBroken: 'Active path is broken',
     pathMissing: 'No active path is set in the research graph',
     },

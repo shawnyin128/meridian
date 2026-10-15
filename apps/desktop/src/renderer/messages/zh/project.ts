@@ -118,7 +118,7 @@ export const project = {
     reason: {
       conflictCount: (n: number) => `${n} 条证据结论互相冲突`,
       overdueTasks: (n: number) => `${n} 条任务已过计划时间`,
-      idleDays: (n: number) => `已 ${n} 天没有科研记录`,
+      idleDays: (n: number) => `已 ${n} 天无推进`,
       pathBroken: '当前 active path 已断裂',
       pathMissing: '科研图尚未指定 active path',
     },
