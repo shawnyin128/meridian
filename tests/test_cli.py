@@ -1547,6 +1547,20 @@ class CliTests(unittest.TestCase):
             self.assertIn("deterministic Meridian helper", text)
             self.assertIn("guarded Meridian research-agent contract block", text)
 
+    def test_lab_and_coding_skills_decide_the_node_state_on_completion(self) -> None:
+        for root in (AGENT_PLUGIN_SKILL_ROOT, CODEX_PLUGIN_SKILL_ROOT, CLAUDE_PLUGIN_SKILL_ROOT):
+            lab = (root / "lab/SKILL.md").read_text(encoding="utf-8")
+            coding = (root / "meridian-coding/SKILL.md").read_text(encoding="utf-8")
+            completion = lab.split("- **Completion.**", 1)[1].split("\n- **", 1)[0]
+            finishing = coding.split("\n7. ", 1)[1].split("\n\n", 1)[0]
+            for name, step in (("lab", completion), ("meridian-coding", finishing)):
+                with self.subTest(root=str(root), skill=name):
+                    text = " ".join(step.replace("`", "").split()).lower()
+                    self.assertIn("decide the node's state", text)
+                    self.assertIn("supported when valid evidence supports", text)
+                    self.assertIn("ask the user, then", text)
+                    self.assertIn("repairable or dead", text)
+
     def test_lab_skill_path_diagnostics_reports_readable_source_and_caches(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "project"
