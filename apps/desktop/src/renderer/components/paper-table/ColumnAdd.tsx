@@ -66,10 +66,11 @@ export function ColumnTypeIcon({ type }: { type: PaperColumn['type'] }) {
 }
 
 /**
- * The draft that opens at the end of the table header: Enter hands the trimmed column name, with the
- * type selected at that moment, to `onCreate` once. Esc, a press outside `cell` and the type popover,
- * or focus moving outside both cancels. `onCreate` returns whether the draft is consumed. `triggers`
- * are entry buttons that do not count as outside when pressed or focused.
+ * The draft that opens at the end of the table header: Enter, a press outside `cell` and the type
+ * popover, or focus moving outside both hands the trimmed column name, with the type selected at that
+ * moment, to `onCreate` once; with no name typed, leaving closes the draft, and Esc always does.
+ * `onCreate` returns whether the draft is consumed. `triggers` are entry buttons that do not count as
+ * outside when pressed or focused.
  * With `pickType` (passed only by the paper table), three type buttons pop up below the draft,
  * defaulting to "Text"; clicking one selects it while focus stays in the column name input. Without
  * it, as on the Wiki aggregation page, every column is created as text.

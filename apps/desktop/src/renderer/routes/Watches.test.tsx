@@ -115,6 +115,21 @@ describe('WatchSettings', () => {
     await act(async () => { root.unmount() })
   })
 
+  it('编辑中的关注没改名就点到别处，只收起，不写', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+
+    for (const id of ['topic-1', 'author-1']) {
+      await act(async () => { button(host.querySelector(`[data-w="${id}"]`)!, '编辑').click() })
+      expect(host.querySelector(`[data-w="${id}"] input`)).not.toBeNull()
+      await act(async () => { document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })) })
+      expect(host.querySelector(`[data-w="${id}"] input`)).toBeNull()
+    }
+    expect(api.update).not.toHaveBeenCalled()
+
+    await act(async () => { root.unmount() })
+  })
+
   it('从一句关注方向查找主题和稳定作者，确认后才创建关注', async () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
