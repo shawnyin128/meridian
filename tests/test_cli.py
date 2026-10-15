@@ -2147,6 +2147,16 @@ class CliTests(unittest.TestCase):
         self.assertIn("Research Grounding Injection", block)
         self.assertIn("Pure mechanical engineering may skip Lab", block)
 
+    def test_meridian_agents_contract_decides_the_node_state_when_recording_its_result(self) -> None:
+        from meridian.lab import meridian_agents_contract_block
+
+        bullet = meridian_agents_contract_block().split("- When the user asks to work on a Lab node,", 1)[1]
+        text = " ".join(bullet.split("\n\n", 1)[0].replace("`", "").split()).lower()
+
+        self.assertIn("meridian.lab_result when its work ends. in that call, decide the node's state", text)
+        self.assertIn("supported when valid evidence supports it", text)
+        self.assertIn("repairable or dead only after asking the user", text)
+
     def test_meridian_agents_contract_replacement_preserves_surrounding_text_exactly(self) -> None:
         from meridian.lab import (
             MERIDIAN_AGENTS_CONTRACT_END,
