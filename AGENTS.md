@@ -110,6 +110,10 @@ App, the Python package, and the agent plugins. Data formats are compatible in b
   and give each a reader for the old shape.
 - Stored data is read record by record: a record that cannot be read is reported and skipped or
   degraded, and never keeps the library from opening.
+- A change that adds or tightens a rule here audits every existing stored format against it, and
+  opens an issue for each format that breaks it.
+- A new stored kind or field ships first in a version whose readers tolerate it, and is written only
+  by a later version, once the versions that cannot read it are no longer in use.
 - Before a release, open a read-only copy of a real library written by the previous version with the
   new build and confirm its projects, overview, Wiki and feed load.
 - A change that is not purely additive bumps the schema version, and readers keep supporting the
