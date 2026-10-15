@@ -333,6 +333,15 @@ describe('PaperTable', () => {
     expect(listParams.at(-1)).not.toHaveProperty('filter')
   })
 
+  it('论文搜索框与关注屏的一句话添加框是同一种带框的字段输入框', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    expect(host.querySelector('#libq')?.classList).toContain('form-control-field')
+  })
+
   it('随笔与自定义文本列共用整格文本编辑器', async () => {
     const host = mount()
     columnsCall.resolve(NOTE_COLUMNS)
