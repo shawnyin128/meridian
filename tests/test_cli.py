@@ -1819,8 +1819,11 @@ class CliTests(unittest.TestCase):
             codex_interface["defaultPrompt"],
         )
         self.assertIn("MCP context/read/trace", codex_interface["longDescription"])
-        self.assertTrue((codex_root / codex_interface["composerIcon"]).exists())
-        self.assertTrue((codex_root / codex_interface["logo"]).exists())
+        app_marks = {size: Path(f"apps/desktop/resources/mark-{size}.png").read_bytes() for size in (64, 128)}
+        app_tokens = Path("apps/desktop/src/renderer/shell/tokens.css").read_text(encoding="utf-8")
+        self.assertEqual(codex_interface["brandColor"].lower(), app_tokens.split("--accent-solid:", 1)[1][:7])
+        self.assertEqual((codex_root / codex_interface["composerIcon"]).read_bytes(), app_marks[64])
+        self.assertEqual((codex_root / codex_interface["logo"]).read_bytes(), app_marks[128])
 
         claude_root = Path("plugins/claude-code/meridian")
         claude_marketplace = json.loads(
@@ -1842,8 +1845,10 @@ class CliTests(unittest.TestCase):
                 self.assertEqual(server["title"], "Meridian Paper Wiki")
                 self.assertEqual(server["cwd"], ".")
                 self.assertIn("source-grounded Paper Wiki context", server["description"])
-                self.assertEqual(server["icons"][0]["mimeType"], "image/svg+xml")
-                self.assertTrue((root / server["icons"][0]["src"]).exists())
+                self.assertEqual(
+                    server["icons"], [{"src": "./assets/meridian-mark-64.png", "mimeType": "image/png", "sizes": ["64x64"]}]
+                )
+                self.assertEqual((root / server["icons"][0]["src"]).read_bytes(), app_marks[64])
             self.assertTrue((root / "skills/meridian/SKILL.md").exists())
             self.assertTrue((root / "skills/wiki/SKILL.md").exists())
             self.assertTrue((root / "skills/lab/SKILL.md").exists())
@@ -1919,6 +1924,19 @@ class CliTests(unittest.TestCase):
             self.assertIn(f'display_name: "{display_name}"', text)
             self.assertIn("short_description:", text)
             self.assertIn(f"default_prompt: \"Use ${skill_name}", text)
+
+    def test_codex_product_skills_show_the_app_mark_from_the_plugin_assets(self) -> None:
+        plugin_root = Path("plugins/codex/meridian").resolve()
+        for skill_name in PRODUCT_SKILL_NAMES:
+            skill_dir = plugin_root / "skills" / skill_name
+            lines = (skill_dir / "agents/openai.yaml").read_text(encoding="utf-8").splitlines()
+            fields = dict(line.strip().split(": ", 1) for line in lines if line.startswith("  "))
+            for field, size in (("icon_small", 64), ("icon_large", 128)):
+                with self.subTest(skill=skill_name, field=field):
+                    # Codex accepts a `..` icon path only when it resolves inside the plugin's assets/.
+                    icon = Path(os.path.normpath(skill_dir / fields[field].strip('"')))
+                    self.assertEqual(icon.parent, plugin_root / "assets")
+                    self.assertEqual(icon.read_bytes(), Path(f"apps/desktop/resources/mark-{size}.png").read_bytes())
 
     def test_plugin_marketplace_taglines_match_lab_boundary(self) -> None:
         codex_marketplace = json.loads(Path(".agents/plugins/marketplace.json").read_text(encoding="utf-8"))

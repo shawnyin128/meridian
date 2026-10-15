@@ -5,10 +5,10 @@
       "description": "Retrieve, read, and trace source-grounded Paper Wiki context for research and coding.",
       "icons": [
         {
-          "src": "./assets/meridian-mark.svg",
-          "mimeType": "image/svg+xml",
+          "src": "./assets/meridian-mark-64.png",
+          "mimeType": "image/png",
           "sizes": [
-            "24x24"
+            "64x64"
           ]
         }
       ],
