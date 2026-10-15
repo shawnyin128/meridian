@@ -29,8 +29,9 @@ export const urlDisplayName = (url: string) => url.replace(/^https?:\/\//i, '').
 /**
  * Two-field draft for a web-address relation: the address and an optional display name, holding
  * `initial` at first. Enter in either field or leaving `row` submits, Escape cancels, and leaving
- * both fields empty closes the row. `onSubmit` receives a normalized http(s) address and resolves
- * true when the row should close.
+ * both fields empty closes the row, as does leaving an `initial` draft unchanged or without an
+ * address. `onSubmit` receives a normalized http(s) address and resolves true when the row should
+ * close.
  */
 export function ProjectUrlDraft({ row, triggers, initial, onSubmit, onCancel, onInvalid }: {
   row: RefObject<HTMLElement | null>
@@ -45,7 +46,13 @@ export function ProjectUrlDraft({ row, triggers, initial, onSubmit, onCancel, on
   const label = useRef<HTMLInputElement>(null)
   const draft = useInlineDraft({
     row, triggers, onCancel,
-    isEmpty: () => `${address.current?.value ?? ''}${label.current?.value ?? ''}`.trim() === '',
+    isEmpty: () => {
+      const typed = address.current?.value.trim() ?? ''
+      const name = label.current?.value.trim() ?? ''
+      return initial === undefined
+        ? `${typed}${name}` === ''
+        : typed === '' || (typed === initial.url && name === initial.text)
+    },
     onSubmit: () => {
       const typed = address.current?.value.trim() ?? ''
       if (typed === '') return false

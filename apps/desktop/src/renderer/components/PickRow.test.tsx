@@ -158,4 +158,39 @@ describe('PickRow', () => {
     await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })) })
     expect(onNew).toHaveBeenCalledWith('树宽收益拐点')
   })
+
+  it('从给定的文字开始时,没改就离开只收起;改了再离开像回车一样交出去;清空了离开也只收起', async () => {
+    const onNew = vi.fn(() => true)
+    const onCancel = vi.fn()
+    function Editing() {
+      const row = useRef<HTMLDivElement>(null)
+      return (
+        <div ref={row}>
+          <PickRow
+            row={row} triggers={[]} placeholder="挑一个" initialText="树宽收益拐点"
+            suggest={() => Promise.resolve([])} allowNew
+            onPick={() => false} onNew={onNew} onCancel={onCancel} onError={() => {}}
+          />
+        </div>
+      )
+    }
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    act(() => { createRoot(host).render(<Editing />) })
+    await flush()
+
+    await pressOutside()
+    expect(onNew).not.toHaveBeenCalled()
+    expect(onCancel).toHaveBeenCalledTimes(1)
+
+    await type('树宽收益拐点 v2')
+    await pressOutside()
+    expect(onNew).toHaveBeenCalledWith('树宽收益拐点 v2')
+    expect(onCancel).toHaveBeenCalledTimes(2)
+
+    await type('')
+    await pressOutside()
+    expect(onNew).toHaveBeenCalledTimes(1)
+    expect(onCancel).toHaveBeenCalledTimes(3)
+  })
 })

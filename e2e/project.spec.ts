@@ -1011,6 +1011,14 @@ test('关联:点 chip 上的编辑就地改它,位置不变,改动写进库里',
   const wikiRow = side.locator('.wkrel').filter({ has: win.locator('.rl', { hasText: 'Wiki' }) })
   const chips = wikiRow.locator('.tagchip')
   const before = await chips.allInnerTexts()
+  const page = (await chips.first().getAttribute('data-wk'))!
+
+  // Leaving the edit without a change closes it and leaves the item as it was, page link included.
+  await chips.first().locator('.tagchip-edit').click()
+  await win.locator('.screenslot:not([hidden]) .memo').click()
+  await expect(wikiRow.locator('.reladd')).toHaveCount(0)
+  await expect(chips).toHaveText(before)
+  await expect(chips.first()).toHaveAttribute('data-wk', page)
 
   await chips.first().locator('.tagchip-edit').click()
   const input = wikiRow.locator('.reladd .inedit')
