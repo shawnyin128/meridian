@@ -10,6 +10,7 @@ import {
   PageBody, PageError, PageHeader, PageShell, PageTitle,
 } from '../components/PageShell.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
+import { PaperText } from '../components/paper/PaperText.js'
 import { useFormat } from '../lib/format.js'
 import './shell.css'
 import './Feed.css'
@@ -90,7 +91,7 @@ function Body({ body, onOpenConflict }: {
   return (
     <>
       {body.runs.map((run, at) => (
-        run.kind === 'strong' ? <b key={at}>{run.text}</b>
+        run.kind === 'strong' ? <b key={at}><PaperText text={run.text} /></b>
           : run.kind === 'cite' ? <span className="cite" key={at}>{run.text}</span>
             : <Fragment key={at}>{run.text}</Fragment>
       ))}

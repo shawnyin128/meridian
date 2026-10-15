@@ -8,6 +8,7 @@ import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import 'katex/dist/katex.min.css'
 import { useMessages } from '../messages/useMessages.js'
+import { remarkPaperText } from './paper/paper-text.js'
 
 /** Two kinds of marks: `[[id|Text]]` / `[[id]]` are in-page links, and `(p.N)` is a source anchor. */
 const WIKI_LINK = /\[\[([^\]|\n]+)(?:\|([^\]\n]+))?\]\]/g
@@ -78,17 +79,25 @@ function components(
  * remark-math's syntax rules, not a display formula. Each heading's id is `h-` followed by its
  * line number in `src`. `[[id]]` without an alias shows `titles[id]`, or the id when absent. When
  * `titles` is given, an id missing from it is not a page in the vault and its mark stays as
- * written; without `titles` (a remark), every mark becomes a link.
+ * written; without `titles` (a remark), every mark becomes a link. With `latexText`, the text
+ * outside code and formulas renders LaTeX text commands as `PaperText` does, and a single `~` is a
+ * no-break space rather than strikethrough.
  */
-export function Markdown({ src, onOpen, titles }: {
+export function Markdown({ src, onOpen, titles, latexText = false }: {
   src: string
   onOpen?: (id: string) => void
   titles?: Record<string, string>
+  latexText?: boolean
 }) {
   const m = useMessages()
   const parts = useMemo(() => components(onOpen, m.common.markdown.citePage, titles), [onOpen, m, titles])
   return (
-    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath, remarkHeadingIds]} rehypePlugins={[rehypeKatex]} components={parts}>
+    <ReactMarkdown
+      remarkPlugins={latexText
+        ? [[remarkGfm, { singleTilde: false }], remarkMath, remarkHeadingIds, remarkPaperText]
+        : [remarkGfm, remarkMath, remarkHeadingIds]}
+      rehypePlugins={[rehypeKatex]} components={parts}
+    >
       {desugar(src, titles)}
     </ReactMarkdown>
   )

@@ -52,6 +52,7 @@ import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
+import { plainTitle } from '../components/paper/paper-text.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import './shell.css'
 import './ProjectDetail.css'
@@ -1060,7 +1061,7 @@ export function ProjectDetail({
                     onOpenPage={openWikiPage}
                     onOpenPaper={(paperId) => jumpTo('reader', paperId)}
                     onRemovePaper={(paperId, title) => applyWrite(
-                      projectApi.removePaper(projectId, paperId), m.project.links.paperRemoved(title), toast,
+                      projectApi.removePaper(projectId, paperId), m.project.links.paperRemoved(plainTitle(title)), toast,
                     )}
                     onMove={(id, index) => { void writeProject(projectApi.moveRelation(projectId, id, index)) }}
                     adding={!relAdding
@@ -1077,7 +1078,7 @@ export function ProjectDetail({
                               onNew={() => false}
                               onCancel={stopRel} onError={reportError}
                               onPick={(hit) => writeProject(
-                                projectApi.addPaper(projectId, hit.id), m.project.links.paperLinked(hit.title),
+                                projectApi.addPaper(projectId, hit.id), m.project.links.paperLinked(plainTitle(hit.title)),
                               )}
                             />
                           )

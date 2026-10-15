@@ -3,6 +3,7 @@ import type { SearchHit } from '../../shared/contract.js'
 import { search } from '../ipc.js'
 import { PickerPopover } from '../components/PickerPopover.js'
 import { ClearableInput } from '../components/ClearableInput.js'
+import { PaperText } from '../components/paper/PaperText.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { useMessages } from '../messages/useMessages.js'
 import type { ScreenKey } from './AppShell.js'
@@ -67,7 +68,7 @@ export function SearchBox({ onJump }: { onJump: (screen: ScreenKey, target: stri
               className={at === keys.active ? 'rrow on' : 'rrow'} key={`${at}${hit.kind}${hit.target}`}
               onClick={() => go(hit)}
             >
-              <div className="rt">{hit.title}</div>
+              <div className="rt">{hit.kind === 'paper' ? <PaperText text={hit.title} /> : hit.title}</div>
               <div className="rm">{hit.meta}</div>
             </div>
           ))}

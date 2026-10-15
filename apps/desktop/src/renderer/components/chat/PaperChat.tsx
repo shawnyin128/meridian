@@ -11,6 +11,7 @@ import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { IdeaEditorDialog } from '../ideas/IdeaEditorDialog.js'
 import { GenerationControl } from '../GenerationControl.js'
+import { PaperText } from '../paper/PaperText.js'
 import './Chat.css'
 
 /**
@@ -111,7 +112,9 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     <aside className="paper-chat stream" aria-label={m.chat.paperChatLabel}>
       <header className="paper-chat-head">
         <BackButton onClick={onBack} />
-        <strong>{paper === null ? m.common.loading : m.chat.paperHeader(paper.title)}</strong>
+        <strong>
+          {paper === null ? m.common.loading : <><PaperText text={paper.title} />{m.chat.paperHeaderSuffix}</>}
+        </strong>
       </header>
       <PageError error={error} />
       <div className="msgs" ref={stream}>

@@ -7,6 +7,7 @@ import { CardTray } from '../CardTray.js'
 import { FadeText } from '../FadeText.js'
 import { IconCross } from '../icons.js'
 import { MarkdownBox } from '../Markdown.js'
+import { PaperText } from '../paper/PaperText.js'
 import { PickRow, type PickHit } from '../PickRow.js'
 import { useFormat } from '../../lib/format.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
@@ -247,7 +248,7 @@ export function ProjectRelations({
                 className={chipClass(row, paper.id)} key={paper.id} data-paper={paper.id}
                 onClick={() => onOpenPaper(paper.id)} {...dragProps(row, paper.id)}
               >
-                <FadeText className="tagchip-text">{paper.title}</FadeText>
+                <FadeText className="tagchip-text"><PaperText text={paper.title} /></FadeText>
                 <button
                   className="rx" title={m.common.removeLink}
                   onClick={(event) => { event.stopPropagation(); onRemovePaper(paper.id, paper.title) }}

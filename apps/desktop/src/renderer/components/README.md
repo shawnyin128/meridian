@@ -61,6 +61,8 @@ Current shared contracts:
 - `PickRow`, `Pager`, `Markdown`, `PaperMetadata`, `ParseProgress`, `AddAction`: shared feature widgets.
 - `paper/PaperCard`: discovery-card composition, actions/notices slots, metadata badges, recommendations,
   and the shared LaTeX-capable `PaperAbstract`. Inbox and read-later configure the same card.
+- `paper/PaperText`: every display of a paper title (inline) or abstract (block, through `Markdown`) with
+  the LaTeX of arXiv metadata; `plainTitle` is the same title for tooltips, aria labels, breadcrumbs and toasts.
 - `paper/PaperUnderstanding`: the reader-facing whole-paper remark and page-linked note summary. It
   keeps personal reading state visually and structurally separate from canonical Wiki Markdown.
 - `chat/PaperChat` and `chat/ChatMessage`: paper-context composition, shared conversation rendering,
