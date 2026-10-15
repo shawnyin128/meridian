@@ -1,0 +1,68 @@
+import { onDay } from './app.mjs'
+
+const text = (value) => ({ kind: 'text', text: value })
+const say = (role, ...runs) => ({ role, runs: runs.map((run) => (typeof run === 'string' ? text(run) : run)), actions: [] })
+
+/**
+ * Seeds the chats and ideas. Replies are written with `chat.append`, since only a model produces
+ * them: two paper chats, ordinary chats, one archived, and a reply whose action records a research
+ * record for the KV cache project. Ideas are saved from those chats in every state: placed on the
+ * research graph, linked only, archived, promoted to a project, unlinked, and deleted into Trash.
+ */
+export async function seedConversations(seed, call) {
+  const append = (id, messages) => call('chat.append', { id, messages })
+  const eagle = await onDay(seed, -5, async () => {
+    const chat = await call('chat.forPaper', { paperId: seed.papers.eagle })
+    await append(chat.id, [
+      say('you', '草稿头为什么只用一层 decoder 就够了？'),
+      say('ai', '因为草稿头预测的是倒数第二层的特征，而不是 token。特征序列比 token 序列平滑得多，一层 decoder 就能外推得很准；', '真正决定加速比的是接受率，而不是草稿头的容量。论文在 13B 上用的命令行是 ',
+        { kind: 'text', text: 'python -m eagle.evaluation.gen_ea_answer_vicuna --ea-model-path yuhuili/EAGLE-Vicuna-13B-v1.3 --base-model-path lmsys/vicuna-13b-v1.3' },
+        '，可以直接对照。'),
+      say('you', '那树形草稿的宽度怎么定？'),
+      say('ai', '论文用的是固定的树结构。按接受率动态调整宽度是一个值得试的方向。'),
+    ])
+    return chat
+  })
+  const h2o = await onDay(seed, -4, async () => {
+    const chat = await call('chat.forPaper', { paperId: seed.papers.h2o })
+    await append(chat.id, [say('you', '重击者 token 能和 KV 量化叠加吗？'), say('ai', '可以：先淘汰非重击者，再把留下的 KV 量化到低位宽。')])
+    return chat
+  })
+  const width = await onDay(seed, -3, async () => {
+    const chat = await call('chat.create', { title: '推测解码的树宽怎么定', named: true })
+    await append(chat.id, [say('you', '固定树宽为什么在长回答上变差？'), say('ai', '长回答后半段的接受率下降，宽树里大部分分支都会被拒绝，验证开销白白浪费。')])
+    return chat
+  })
+  await onDay(seed, -30, async () => {
+    const chat = await call('chat.create', { title: 'KV cache 量化方案讨论', named: true })
+    await append(chat.id, [say('you', 'K 和 V 应该用同一种量化粒度吗？'), {
+      ...say('ai', '不应该：K 的离群值集中在少数通道，按通道量化；V 没有这种结构，按 token 量化。'),
+      actions: [{ kind: 'writeBack', label: '记入科研记录', project: seed.projects.kv.id, text: 'K 按通道、V 按 token 量化的方案定下来了' }],
+    }])
+    const [, reply] = await call('chat.messages', { id: chat.id })
+    const project = await call('chat.recordAction', { id: chat.id, messageId: reply.id })
+    await call('feed.append', { source: 'me', body: { kind: 'runs', runs: [text(`对话结论已记入项目《${project.name}》的科研记录。`)] } })
+  })
+  const old = await call('chat.create', { title: '旧的 MoE 讨论', named: true })
+  await append(old.id, [say('you', 'Switch 的容量因子取多少合适？'), say('ai', '论文里 1.0 到 1.25 都试过，训练时 1.25 更稳。')])
+  await call('chat.setArchived', { id: old.id, archived: true })
+
+  const spec = seed.projects.spec.id
+  const idea = async (chat, title, body, patch) => {
+    const made = await call('idea.create', { chatId: chat.id, title, body })
+    if (patch !== undefined) await call('idea.update', { id: made.id, patch })
+    return made.id
+  }
+  const placed = await idea(eagle, '按接受率动态调整草稿树宽度', '用最近一段的接受率决定下一步树宽：接受率高就加宽，低就收窄，让验证开销跟着收益走。', { project: spec })
+  await call('idea.placeOnGraph', { id: placed, placement: { kind: 'link', nodeId: 'spec-decoding.B' } })
+  await idea(width, '草稿头和目标模型共享浅层 KV', '草稿头直接读目标模型浅层的 KV，省掉草稿自己的 KV cache。', { project: spec })
+  await idea(width, '按 token 难度跳过验证', '对置信度很高的 token 直接接受，不进验证。', { project: spec, archived: true })
+  const promoted = await idea(h2o, '推测解码和 KV 量化联合优化', '草稿阶段用低位宽 KV，验证阶段用全精度 KV，两边的显存和速度一起算。')
+  await onDay(seed, -5, async () => {
+    const { project } = await call('idea.promote', { id: promoted })
+    seed.projects.promoted = { id: project.id, days: -5 }
+    await call('project.update', { id: project.id, patch: { status: '搁置', focus: '等 KV cache 量化的结论出来再继续' } })
+  })
+  await idea(old, 'MoE 路由用熵正则代替负载均衡 loss', '负载均衡 loss 会压低路由的确定性，换成对路由分布的熵正则可能更好。')
+  await call('idea.delete', { id: await idea(width, '用 n-gram 草稿处理代码补全', '代码里重复片段多，n-gram 草稿也许有用。') })
+}

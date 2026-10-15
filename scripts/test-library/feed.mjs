@@ -50,9 +50,10 @@ export async function seedWatches(seed, call) {
 
 /**
  * Writes the recommendations in `.meridian/inbox.json` in the stored shape a watch fetch writes,
- * since only the network produces them. Run with the App closed.
+ * since only the network produces them, followed by the stored records in `extra`. Run with the App
+ * closed.
  */
-export function writeInbox(seed) {
+export function writeInbox(seed, extra = []) {
   const records = RECOMMENDATIONS.map((paper) => {
     const watch = seed.watches[paper.watch]
     const kind = watch.type === 'topic' ? '主题' : '作者'
@@ -64,7 +65,7 @@ export function writeInbox(seed) {
       arxiv: paper.arxiv, semanticId: '', meta: { authors: paper.authors, submitted: paper.submitted, journalRef: null },
     }
   })
-  writeJson(join(seed.out, 'library', '.meridian', 'inbox.json'), records)
+  writeJson(join(seed.out, 'library', '.meridian', 'inbox.json'), [...records, ...extra])
 }
 
 /** Moves recommendations to read-later and to Trash through the inbox's own methods. */
