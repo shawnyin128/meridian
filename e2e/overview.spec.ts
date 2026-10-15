@@ -1,5 +1,7 @@
 import type { Page } from '@playwright/test'
-import { dshort, expect, fixtureDay, test, vaultToday, type MeridianWindow } from './app.js'
+import {
+  dshort, expect, fixtureDay, overlaps, test, timelinePeriod, vaultToday, type MeridianWindow,
+} from './app.js'
 
 /** At this window content width, the Gantt viewport is only a little over 300 pixels wide. */
 const NARROW_WIDTH = 760
@@ -48,12 +50,13 @@ const overviewCounts = (win: Page) => win.evaluate(async () => {
   const w1 = w0 + 6
   const sum = (of: (p: (typeof rows)[number]) => number) => rows.reduce((n, p) => n + of(p), 0)
   // The default overview timeline leaves out finished tasks and milestones; the history view keeps them.
-  const openTasks = (p: (typeof rows)[number]) => p.tasks.filter((t) => t.state !== 'done').length
+  // Either view lists only the tasks that overlap the shown week.
+  const inWeek = (t: (typeof rows)[number]['tasks'][number]) => day(t.end) >= w0 && day(t.start) <= w1
+  const openTasks = (p: (typeof rows)[number]) => p.tasks.filter((t) => t.state !== 'done' && inWeek(t)).length
   return {
     ids: rows.map((p) => p.id),
     ganttRows: sum((p) => p.status === '进行中' ? 1 + openTasks(p) : 0),
-    allGanttRows: sum((p) => 1 + p.tasks.length),
-    allTaskRows: sum((p) => p.tasks.length),
+    allGanttRows: sum((p) => 1 + p.tasks.filter(inWeek).length),
     taskRows: sum((p) => p.status === '进行中' ? openTasks(p) : 0),
     diamonds: sum((p) => p.status === '进行中' ? p.milestones.filter((m) => {
       const d = day(m.date)
@@ -388,7 +391,7 @@ test.describe('拖总览菱形改期', () => {
   })
 })
 
-test('日周月切换只改视口,任务行不丢失且同日任务在月视图只占一格', async ({ win }) => {
+test('日周月切换时只列出和当前时间段有交集的任务,同日任务在月视图只占一格', async ({ win }) => {
   const today = await vaultToday(win)
   const taskTitle = '总览切换尺度用的同日任务'
   const made = await win.evaluate(async ({ date, title }) => (window as unknown as MeridianWindow).meridian
@@ -402,24 +405,36 @@ test('日周月切换只改视口,任务行不丢失且同日任务在月视图�
   const taskId = made.tasks.find((task) => task.title === taskTitle)!.id
   await gotoOverview(win)
   const gantt = shown(win).locator('.overview-gantt')
-  const labels = gantt.locator('.timeline-label-row')
   const bar = gantt.locator(`.gbar[data-proj="repro"][data-task="${taskId}"]`)
   await expect(bar).toBeVisible()
-  const before = await labels.evaluateAll((items) => items.map((item) => item.textContent))
-  expect(before.length).toBeGreaterThan(0)
+  // The default view lists the active projects' unfinished tasks that overlap the shown period.
+  const overview = await win.evaluate(() => (window as unknown as MeridianWindow).meridian
+    .call('project.overview', {}) as Promise<{
+      id: string; status: string; tasks: { id: string; start: string; end: string; state: string }[]
+    }[]>)
+  const listed = (scale: 'day' | 'week' | 'month') => overview
+    .filter((project) => project.status === '进行中')
+    .flatMap((project) => project.tasks
+      .filter((task) => task.state !== 'done' && overlaps(task, timelinePeriod(today, scale)))
+      .map((task) => `${project.id}/${task.id}`))
+    .sort()
+  const taskLabels = async () => (await gantt.locator('.timeline-label-row[data-task]').evaluateAll(
+    (items) => items.map((item) => `${(item as HTMLElement).dataset.proj}/${(item as HTMLElement).dataset.task}`),
+  )).sort()
+  expect(await taskLabels()).toEqual(listed('week'))
 
   await gantt.locator('.gscale button', { hasText: '月' }).click()
   await expect(bar).toBeVisible()
   expect((await bar.boundingBox())!.width).toBeLessThan(40)
-  expect(await labels.evaluateAll((items) => items.map((item) => item.textContent))).toEqual(before)
+  await expect.poll(taskLabels).toEqual(listed('month'))
 
   await gantt.locator('.gscale button', { hasText: '日' }).click()
   await expect(bar).toBeVisible()
-  expect(await labels.evaluateAll((items) => items.map((item) => item.textContent))).toEqual(before)
+  await expect.poll(taskLabels).toEqual(listed('day'))
 
   await gantt.locator('.gscale button', { hasText: '周' }).click()
   await expect(bar).toBeVisible()
-  expect(await labels.evaluateAll((items) => items.map((item) => item.textContent))).toEqual(before)
+  await expect.poll(taskLabels).toEqual(listed('week'))
 })
 
 test.describe('窗口收窄并滚动', () => {
@@ -428,11 +443,21 @@ test.describe('窗口收窄并滚动', () => {
   // multi-step settling can take several real seconds there but is immediate once the window is on screen.
   test.use({ showWindow: true })
 
-  test('窗口收窄并滚动后,每个任务行都保留横条或边缘残桩', async ({ app, win }) => {
+  test('窗口收窄并滚动后,月视图里每个任务行都保留横条或边缘残桩', async ({ app, win }) => {
+    // Day and week views fit their period to the viewport, so only month view scrolls and draws stubs.
+    // A task on the month's first day lies left of the viewport once it is scrolled to the month's end.
+    const month = timelinePeriod(await vaultToday(win), 'month')
+    await win.evaluate((day) => (window as unknown as MeridianWindow).meridian.call('project.createTask', {
+      projectId: 'repro', task: { title: '月初任务', start: day, end: day, state: 'plan', priority: 'p2' },
+    }), month.first)
     await gotoOverview(win)
-    // The history view keeps finished tasks, whose early bars are the ones left as stubs at the left edge.
+    // The history view keeps every project and finished tasks too.
     await shown(win).locator('.overview-history-toggle').click()
-    const { allTaskRows: taskRows } = await overviewCounts(win)
+    await shown(win).locator('.gantt .gscale button', { hasText: '月' }).click()
+    await expect(shown(win).locator('.gantt .gbar-label', { hasText: '月初任务' })).toHaveCount(1)
+    const taskRows = (await win.evaluate(() => (window as unknown as MeridianWindow).meridian
+      .call('project.overview', {}) as Promise<{ tasks: { start: string; end: string }[] }[]>))
+      .flatMap((project) => project.tasks).filter((task) => overlaps(task, month)).length
     // After the Gantt has drawn, wait one more frame for ResizeObserver's first callback; otherwise the
     // recalculation after the resize below lands one frame late.
     await shown(win).locator('.gantt .grow').first().waitFor()
