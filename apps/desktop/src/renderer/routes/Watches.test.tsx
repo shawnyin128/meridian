@@ -45,7 +45,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
 vi.mock('../hooks/useVaultWrite.js', () => ({
-  useVaultWrite: () => async (work: Promise<unknown>) => { await work; return true },
+  useVaultWrite: () => async (work: Promise<unknown>) => work.then(() => true, () => false),
 }))
 
 const { WatchSettings } = await import('./Watches.js')
@@ -155,6 +155,30 @@ describe('WatchSettings', () => {
     expect(api.create).toHaveBeenCalledWith({ type: 'topic', name: 'speculative sampling' })
     expect(topicList.querySelector('.newrow')).toBeNull()
     expect(authorList.querySelector<HTMLInputElement>('.newrow input')!.value).toBe('')
+
+    await act(async () => { root.unmount() })
+  })
+
+  it('点作者组的加号时主题存被拒：主题占位带着字留着并标红，作者占位不开；再点别的关注的编辑也不换', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+    const topicList = host.querySelector('[data-w="topic-1"]')!.closest('.wlist')!
+    const authorList = host.querySelector('[data-w="author-1"]')!.closest('.wlist')!
+    await act(async () => { topicList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!.click() })
+    const input = topicList.querySelector<HTMLInputElement>('.newrow input')!
+    await act(async () => { enter(input, 'speculative sampling') })
+    api.create.mockRejectedValueOnce(new Error('写不进去'))
+
+    await act(async () => { authorList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!.click() })
+    expect(topicList.querySelector('.newrow input')).toBe(input)
+    expect(input.value).toBe('speculative sampling')
+    expect(input.getAttribute('aria-invalid')).toBe('true')
+    expect(authorList.querySelector('.newrow')).toBeNull()
+
+    await act(async () => { button(host.querySelector('[data-w="author-1"]')!, '编辑').click() })
+    expect(api.create).toHaveBeenCalledTimes(1)
+    expect(topicList.querySelector('.newrow input')).toBe(input)
+    expect(host.querySelector('[data-w="author-1"] input')).toBeNull()
 
     await act(async () => { root.unmount() })
   })

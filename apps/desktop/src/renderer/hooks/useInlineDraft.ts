@@ -17,11 +17,14 @@ import { useOnLeave } from './useOnLeave.js'
  * candidate), and `attempt` follows the same contract. Until a submission settles, neither Enter,
  * `submit` nor leaving sends a second one. Once it settles, a consumed draft closes as usual and an
  * unconsumed one keeps the draft and its text, wherever focus is by then. Esc is not affected and
- * always cancels.
+ * always cancels. `leave` leaves the draft as a press outside would, for a control that counts as
+ * inside but replaces the draft (such as another draft's entry button); it resolves whether the draft
+ * closed, and while a submission is pending it resolves with that submission.
  * `row` is the element that counts as inside the draft; `triggers` are the entry buttons that can
  * reopen or focus it (except a Gantt milestone diamond). Anything in a Radix popper (calendar,
  * candidate dropdown, menu, and so on) also counts as inside, whether or not it was opened from here
- * and whether or not it is portaled to the body. Pressing `triggers` or such a popper, or moving
+ * and whether or not it is portaled to the body; in the popper `row` itself sits in, only the
+ * elements wrapping `row` do. Pressing `triggers` or such a popper, or moving
  * focus to them, does not leave the draft. While `row` is not mounted, neither the outside press
  * nor focus leaving counts. Spread the returned `inputProps` onto the draft's input.
  */
@@ -41,11 +44,13 @@ export function useInlineDraft({ row, triggers, onSubmit, onCancel, isEmpty }: {
   }
   cancel: () => void
   focus: () => void
+  leave: () => Promise<boolean>
   submit: (attempt: () => boolean | Promise<boolean>) => void
 } {
   // Writes are asynchronous and the input stays after Enter; a second Enter in the same frame must
   // already be blocked, so this is a ref rather than state.
   const busy = useRef(false)
+  const pending = useRef<Promise<boolean> | null>(null)
   // A press outside is followed by focus leaving, so a refused leave must already block the second
   // one in the same gesture; the state only renders it.
   const refused = useRef(false)
@@ -62,19 +67,29 @@ export function useInlineDraft({ row, triggers, onSubmit, onCancel, isEmpty }: {
   const submit = (attempt: () => boolean | Promise<boolean>, leaving = false) => {
     if (busy.current) return
     busy.current = true
-    void Promise.resolve(attempt()).then((consumed) => {
+    pending.current = Promise.resolve(attempt()).then((consumed) => {
       if (consumed) close()
       else if (leaving) {
         refused.current = true
         setInvalid(true)
       }
-    }).finally(() => { busy.current = false })
+      return consumed
+    }).finally(() => {
+      busy.current = false
+      pending.current = null
+    })
   }
-  useOnLeave(row, () => {
-    if (busy.current || refused.current) return
-    if (isEmpty?.() === true) close()
-    else submit(() => onSubmit(true), true)
-  }, triggers)
+  const leave = (): Promise<boolean> => {
+    if (pending.current !== null) return pending.current
+    if (refused.current) return Promise.resolve(false)
+    if (isEmpty?.() === true) {
+      close()
+      return Promise.resolve(true)
+    }
+    submit(() => onSubmit(true), true)
+    return pending.current ?? Promise.resolve(false)
+  }
+  useOnLeave(row, () => { void leave() }, triggers)
 
   return {
     inputProps: {
@@ -89,6 +104,7 @@ export function useInlineDraft({ row, triggers, onSubmit, onCancel, isEmpty }: {
     },
     cancel: close,
     focus: () => row.current?.querySelector('input')?.focus(),
+    leave,
     submit,
   }
 }

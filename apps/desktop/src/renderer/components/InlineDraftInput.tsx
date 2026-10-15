@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useRef } from 'react'
+import { forwardRef, useCallback, useLayoutEffect, useRef } from 'react'
 import type {
   ForwardedRef, InputHTMLAttributes, KeyboardEvent as ReactKeyboardEvent, RefObject,
 } from 'react'
@@ -22,6 +22,19 @@ export type InlineDraftInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 
   onCancel: () => void
   normalize?: (value: string) => string
   validate?: (value: string) => boolean
+  /** Holds, while this draft is mounted, its `leave`: see `afterLeaving`. */
+  leaveRef?: RefObject<(() => Promise<boolean>) | null>
+}
+
+/**
+ * Runs `next`, which replaces the draft whose `leaveRef` this is, once that draft has been left as a
+ * press outside would leave it: at once when no draft is mounted, and not at all when the draft
+ * stays open because its save was refused, so it keeps its text and shows the refusal.
+ */
+export function afterLeaving(leaveRef: RefObject<(() => Promise<boolean>) | null>, next: () => void): void {
+  const leave = leaveRef.current
+  if (leave === null) next()
+  else void leave().then((left) => { if (left) next() })
 }
 
 function assignRef(ref: ForwardedRef<HTMLInputElement>, node: HTMLInputElement | null): void {
@@ -39,7 +52,7 @@ function assignRef(ref: ForwardedRef<HTMLInputElement>, node: HTMLInputElement |
 export const InlineDraftInput = forwardRef<HTMLInputElement, InlineDraftInputProps>(
   function InlineDraftInput({
     scopeRef, triggers = NO_TRIGGERS, onSubmit, onCancel,
-    normalize = (value) => value.trim(), validate = (value) => value !== '',
+    normalize = (value) => value.trim(), validate = (value) => value !== '', leaveRef,
     onKeyDown, autoComplete = 'off', autoFocus = true, ...props
   }, forwardedRef) {
     const input = useRef<HTMLInputElement>(null)
@@ -56,6 +69,11 @@ export const InlineDraftInput = forwardRef<HTMLInputElement, InlineDraftInputPro
         return validate(value) ? onSubmit(value, leaving) : false
       },
       isEmpty: () => normalize(input.current?.value ?? '') === '',
+    })
+    useLayoutEffect(() => {
+      if (leaveRef === undefined) return undefined
+      leaveRef.current = draft.leave
+      return () => { leaveRef.current = null }
     })
     const handleKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
       draft.inputProps.onKeyDown(event)

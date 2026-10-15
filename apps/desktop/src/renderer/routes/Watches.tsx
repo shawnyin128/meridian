@@ -10,7 +10,7 @@ import { useMessages } from '../messages/useMessages.js'
 import { AddAction } from '../components/AddAction.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { EmptyState } from '../components/EmptyState.js'
-import { InlineDraftInput } from '../components/InlineDraftInput.js'
+import { afterLeaving, InlineDraftInput } from '../components/InlineDraftInput.js'
 import { StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { FormInput, FormSelect } from '../components/FormControls.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
@@ -187,18 +187,7 @@ export function WatchSettings() {
       note: m.watches.notices.updated, notify: toast,
     })
 
-  // The open draft row's save while it is in flight; Enter, leaving the row and opening another draft
-  // all share this one save.
-  const draftSave = useRef<Promise<boolean> | null>(null)
-  const saveDraft = (fields: WatchFields): Promise<boolean> => {
-    draftSave.current ??= persist(fields).finally(() => { draftSave.current = null })
-    return draftSave.current
-  }
-  /** Runs `next` now, or once the open draft row's save has landed; a refused save keeps that row. */
-  const afterDraft = (next: () => void) => {
-    if (draftSave.current === null) next()
-    else void draftSave.current.then((saved) => { if (saved) next() })
-  }
+  const leaveDraft = useRef<(() => Promise<boolean>) | null>(null)
 
   /**
    * Clicks a group's plus button: the draft row opens in this group once the row open elsewhere has
@@ -210,18 +199,14 @@ export function WatchSettings() {
       nameInput.current?.focus()
       return
     }
-    const typed = name.trim()
-    if (editor !== null && typed !== '' && typed !== editingWatch?.name) {
-      void saveDraft({ type: editor.type, name: typed })
-    }
-    afterDraft(() => {
+    afterLeaving(leaveDraft, () => {
       setEditor({ type })
       setName('')
       setAuthorSearchNonce(0)
     })
   }
 
-  const edit = (item: Watch) => afterDraft(() => {
+  const edit = (item: Watch) => afterLeaving(leaveDraft, () => {
     setEditor({ type: item.type, id: item.id })
     setName(item.name)
     setAuthorMatches([])
@@ -360,19 +345,19 @@ export function WatchSettings() {
   const editorInput = editor === null ? null : editor.type === 'topic'
     ? (
       <InlineDraftInput
-        ref={nameInput} className="inedit" scopeRef={row} triggers={triggers}
+        ref={nameInput} className="inedit" scopeRef={row} triggers={triggers} leaveRef={leaveDraft}
         placeholder={m.shell.watchKind.topic} onCancel={stop}
-        onSubmit={(next) => next === editingWatch?.name || saveDraft({ type: 'topic', name: next })}
+        onSubmit={(next) => next === editingWatch?.name || persist({ type: 'topic', name: next })}
         value={name} onChange={(e) => setName(e.target.value)}
       />
     )
     : (
       <div className="author-resolver">
         <InlineDraftInput
-          ref={nameInput} className="inedit" scopeRef={row} triggers={triggers}
+          ref={nameInput} className="inedit" scopeRef={row} triggers={triggers} leaveRef={leaveDraft}
           placeholder={m.watches.authorNamePlaceholder} onCancel={stop}
           onSubmit={(next, leaving) => next === editingWatch?.name
-            || (leaving && saveDraft({ type: 'author', name: next }))}
+            || (leaving && persist({ type: 'author', name: next }))}
           value={name} onChange={(e) => { setName(e.target.value); setAuthorSearchNonce(0) }}
         />
         {editingWatch?.type === 'author' && editingWatch.identity !== undefined

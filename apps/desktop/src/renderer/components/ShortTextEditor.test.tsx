@@ -188,6 +188,22 @@ describe('ShortTextEditor', () => {
     expect(input.getAttribute('aria-invalid')).toBe('true')
   })
 
+  it('in a FloatingTextEditor, focus moving to the popover around the editor does not leave it', async () => {
+    const submit = vi.fn(() => true)
+    act(() => root!.render(withMessages(
+      <FloatingTextEditor
+        open anchor={<span />} editorKey="new" title="新里程碑" placeholder="里程碑内容"
+        onSubmit={submit} onClose={() => {}}
+      />,
+    )))
+    const input = document.querySelector<HTMLInputElement>('.short-text-editor input')!
+    act(() => setValue(input, '评审'))
+    const around = input.closest<HTMLElement>('.short-text-editor')!.parentElement!.closest<HTMLElement>('[tabindex="-1"]')!
+    act(() => around.focus())
+    expect(document.activeElement).toBe(around)
+    expect(submit).not.toHaveBeenCalled()
+  })
+
   it('keeps an in-flight draft open when Escape is pressed', async () => {
     let finish: ((accepted: boolean) => void) | undefined
     const close = vi.fn()

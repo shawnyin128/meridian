@@ -11,7 +11,9 @@ export const NO_TRIGGERS: Array<RefObject<HTMLElement | null>> = []
  * count as outside.
  * Inside the draft are `row`, `triggers`, and anything with a `[data-radix-popper-content-wrapper]`
  * ancestor: Popover, DropdownMenu and other popper-positioned popovers, whether or not they are
- * portaled to the body. Dialog and AlertDialog lack that attribute and do not count. A diamond on a
+ * portaled to the body, except the popover `row` itself sits in: there only the elements wrapping
+ * `row` count, and the rest of that popover is outside. Dialog and AlertDialog lack that attribute
+ * and do not count. A diamond on a
  * Gantt milestone lane does not count as inside even though it lies within `triggers`. `triggers`
  * are the entry buttons that can reopen or focus this draft; there may be several, and pressing
  * them does not count as outside either.
@@ -27,11 +29,15 @@ export function useOnLeave(
   const latest = useRef(onLeave)
   useLayoutEffect(() => { latest.current = onLeave })
   useEffect(() => {
-    const inside = (el: Element, held: HTMLElement) => held.contains(el)
-      || el.closest('[data-radix-popper-content-wrapper]') !== null
-      // The whole milestone lane is a trigger, but a diamond on it opens that milestone's own editor
-      // rather than reopening this draft.
-      || (!el.closest('.gddl') && triggers.some((t) => t.current?.contains(el)))
+    const inside = (el: Element, held: HTMLElement) => {
+      const layer = el.closest('[data-radix-popper-content-wrapper]')
+      // In the popover the draft sits in, only the draft and the boxes wrapping it count as inside.
+      const inLayer = layer !== null && (!layer.contains(held) || el.contains(held))
+      return held.contains(el) || inLayer
+        // The whole milestone lane is a trigger, but a diamond on it opens that milestone's own editor
+        // rather than reopening this draft.
+        || (!el.closest('.gddl') && triggers.some((t) => t.current?.contains(el)))
+    }
     const press = (e: PointerEvent) => {
       const held = row.current
       const target = e.target as Element

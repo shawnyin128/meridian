@@ -1069,6 +1069,37 @@ describe('PaperTable', () => {
     expect(refused.getAttribute('aria-invalid')).toBe('true')
   })
 
+  it('列菜单改列名时点菜单里别的地方:先存下这一列;名字重了就带着字留着标红,另一列的重命名不开', async () => {
+    const host = mount()
+    columnsCall.resolve(PICK_AND_NOTE)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
+    const pencil = (at: number) => document.querySelectorAll<HTMLButtonElement>('[title="重命名列"]')[at]!
+    const renameInput = () => document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')
+    /** Presses `el` in the menu as a user would: the press, then the click. */
+    const pressInMenu = async (el: Element) => {
+      await act(async () => { el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })) })
+      await act(async () => { press(el) })
+      await flush()
+    }
+
+    await act(async () => { pencil(0).click() })
+    await act(async () => { setValue(renameInput()!, '挑选') })
+    await pressInMenu([...document.querySelectorAll('.mi.colrow')].find((row) => row.textContent === '主题')!)
+    expect(setColumnsCalls[0]?.columns.custom.map((c) => c.label)).toEqual(['挑选', '备注'])
+    expect(renameInput()).toBeNull()
+    await act(async () => { setColumnsCalls[0]!.resolve() })
+    await flush()
+
+    await act(async () => { pencil(1).click() })
+    await act(async () => { setValue(renameInput()!, '标题') })
+    await pressInMenu(pencil(0))
+    expect(renameInput()!.value).toBe('标题')
+    expect(renameInput()!.getAttribute('aria-invalid')).toBe('true')
+    expect(setColumnsCalls).toHaveLength(2)
+  })
+
   it('文本格离开时的写还在路上就点了另一格:写成了才开那一格;写被拒时原格带着字留着并标红', async () => {
     const host = mount()
     columnsCall.resolve(NOTE_COLUMNS)
