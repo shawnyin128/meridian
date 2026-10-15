@@ -1060,7 +1060,7 @@ test('属性栏焦点格:回车后写被拒,格子仍在编辑、字还在', asy
   // With the cell open, delete the project through Core, so Core really rejects the write Enter submits.
   await call(win, 'project.delete', { id: 'draft' })
   await pin.press('Enter')
-  await expect(win.locator('#toast')).toHaveText('项目不存在:draft')
+  await expect(win.locator('#toast')).toHaveText('项目不存在：draft')
   await expect(win.locator('.screenslot:not([hidden]) .ipcerror')).toHaveCount(0)
   await expect(pin).toHaveValue('项目没了这段还想留着')
 })

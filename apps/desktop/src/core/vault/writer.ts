@@ -29,7 +29,7 @@ function renameOver(staged: string, file: string): void {
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== 'EPERM') throw err
       if (tried === RENAME_TRIES) {
-        throw new Error(`别的程序开着这一页,试了 ${RENAME_TRIES} 次都没能换上去:${file}`, {
+        throw new Error(`别的程序开着这一页，试了 ${RENAME_TRIES} 次都没能换上去：${file}`, {
           cause: err,
         })
       }

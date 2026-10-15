@@ -26,7 +26,7 @@ export function placeNode(
   let x = MARGIN
   if (after !== null) {
     const from = graph.nodes.find((node) => node.id === after)
-    if (!from) throw new Error(`节点不存在:${after}`)
+    if (!from) throw new Error(`节点不存在：${after}`)
     x = from.x + from.width + GAP_X
   }
   const column = graph.nodes.filter((node) => node.x < x + width && x < node.x + node.width)

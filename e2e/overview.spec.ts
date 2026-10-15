@@ -490,7 +490,7 @@ test('总览新建里程碑:写被拒时弹层与打的字都留着,改了再回
   await input.press('Enter')
   // Wait for the error toast first: it shows the Enter really reached Core and was rejected, so the
   // popover is checked only after the write has returned.
-  await expect(win.locator('#toast')).toHaveText('项目不存在:repro')
+  await expect(win.locator('#toast')).toHaveText('项目不存在：repro')
   await expect(shown(win).locator('.ipcerror')).toHaveCount(0)
   await expect(menu).toBeVisible()
   await expect(input).toHaveValue(REJECTED_TITLE)
@@ -554,7 +554,7 @@ test('总览里程碑改名:写成了才收起;写被拒时弹层与打的字都
     .call('project.deleteMilestone', { projectId: 'repro', milestoneId: 'm2' }))
   await input.fill(REJECTED_TITLE)
   await input.press('Enter')
-  await expect(win.locator('#toast')).toHaveText('里程碑不存在:m2')
+  await expect(win.locator('#toast')).toHaveText('里程碑不存在：m2')
   await expect(shown(win).locator('.ipcerror')).toHaveCount(0)
   await expect(menu).toBeVisible()
   await expect(input).toHaveValue(REJECTED_TITLE)
@@ -585,7 +585,7 @@ test('总览新建里程碑:点外落在一次被拒的写的在途期间,弹层
     }
   })
 
-  await expect(win.locator('#toast')).toHaveText('项目不存在:repro')
+  await expect(win.locator('#toast')).toHaveText('项目不存在：repro')
   await expect(menu).toBeVisible()
   await expect(input).toHaveValue(REJECTED_TITLE)
 })

@@ -68,18 +68,18 @@ export async function checkQuotes(
   for (const source of sources) {
     const quote = normalizeQuote(source.quote)
     if (by !== HUMAN && [...quote].length < 12) {
-      return { invalid: `引句太短,至少要 12 个字符才能核对:${source.paper}`, unverifiable }
+      return { invalid: `引句太短，至少要 12 个字符才能核对：${source.paper}`, unverifiable }
     }
     const held = await pdf(source.paper, source.page)
     if (held.state === 'no-page') {
-      return { invalid: `${source.paper} 的原文只有 ${held.pages} 页,没有第 ${source.page} 页`, unverifiable }
+      return { invalid: `${source.paper} 的原文只有 ${held.pages} 页，没有第 ${source.page} 页`, unverifiable }
     }
     if (held.state !== 'text') {
       unverifiable.push(`${source.paper} p.${source.page}`)
       continue
     }
     if (!normalizeQuote(held.text).includes(quote)) {
-      return { invalid: `引句在原文第 ${source.page} 页找不到:${source.paper}`, unverifiable }
+      return { invalid: `引句在原文第 ${source.page} 页找不到：${source.paper}`, unverifiable }
     }
   }
   return { invalid: null, unverifiable }
@@ -92,10 +92,10 @@ export async function checkQuotes(
 export function parseEnvelope(raw: unknown): AgentProposal {
   const protocol = typeof raw === 'object' && raw !== null ? (raw as { protocol?: unknown }).protocol : undefined
   if (protocol !== WIKI_PROTOCOL_VERSION) {
-    throw new Error(`提案协议版本 ${String(protocol)} 不认识,Core 只认 ${WIKI_PROTOCOL_VERSION};请更新 App`)
+    throw new Error(`提案协议版本 ${String(protocol)} 不认识，Core 只认 ${WIKI_PROTOCOL_VERSION}；请更新 App`)
   }
   const parsed = AgentProposalSchema.safeParse(raw)
-  if (!parsed.success) throw new Error(`提案的格式不对:${parsed.error.message}`)
+  if (!parsed.success) throw new Error(`提案的格式不对：${parsed.error.message}`)
   return parsed.data
 }
 
@@ -105,7 +105,7 @@ type Outcome = { status: 'queued' | 'rejected'; reason: ProposalRecord['reason']
 /** The stale refusal for page `id` (write protocol §3.3). */
 const staleMessage = (id: string, base: PageVersion | null, now: PageVersion | null): string => {
   const show = (v: PageVersion | null): string => (v === null ? '不存在' : `fm ${v.fm} / body ${v.body}`)
-  return `提案过期:${id} 在提案生成之后改过(提案依据 ${show(base)},现在 ${show(now)}),没有落盘。按现在的页重新生成。`
+  return `提案过期：${id} 在提案生成之后改过（提案依据 ${show(base)}，现在 ${show(now)}），没有落盘。按现在的页重新生成。`
 }
 
 /**
@@ -206,7 +206,7 @@ export function createWikiProposals({ store, pdf, now }: {
     if (proposal.producer.kind === 'human') return reject('invalid', '人工的改动走 wiki.apply')
     if (!proposal.ops.every(isClaimOp)) return reject('invalid', 'agent 只能提交结论相关的提案')
     const uncovered = namedPages(proposal.ops).find((id) => !(id in proposal.base))
-    if (uncovered !== undefined) return reject('invalid', `提案没有给出它依据的页的版本:${uncovered}`)
+    if (uncovered !== undefined) return reject('invalid', `提案没有给出它依据的页的版本：${uncovered}`)
     const stale = staleness(proposal)
     if (stale !== null) return reject('stale', stale)
     try {
@@ -217,7 +217,7 @@ export function createWikiProposals({ store, pdf, now }: {
     }
     const quotes = await checkQuotes(proposal.ops, byOf(proposal), pdf)
     if (quotes.invalid !== null) return reject('invalid', quotes.invalid)
-    const notice = quotes.unverifiable.length === 0 ? null : `这些引句没有文字层可核对:${quotes.unverifiable.join('、')}`
+    const notice = quotes.unverifiable.length === 0 ? null : `这些引句没有文字层可核对：${quotes.unverifiable.join('、')}`
     return { status: 'queued', reason: null, notice }
   }
 
@@ -251,7 +251,7 @@ export function createWikiProposals({ store, pdf, now }: {
       && (r.proposal.producer.kind === 'ai' ? r.proposal.producer.id : HUMAN) === producer)
     if (held !== undefined) {
       if (held.digest === digest) return receiptOf(held)
-      throw new Error(`同一个 key 已经提交过内容不同的提案:${proposal.key}`)
+      throw new Error(`同一个 key 已经提交过内容不同的提案：${proposal.key}`)
     }
     const outcome = await evaluate(proposal)
     return receiptOf(push({
@@ -310,7 +310,7 @@ export function createWikiProposals({ store, pdf, now }: {
           }
         } catch (error) {
           const cause = error instanceof Error ? error.message : String(error)
-          console.error(`[wiki] 提案 ${r.id} 读不出来,其余照常列出:${cause}`)
+          console.error(`[wiki] 提案 ${r.id} 读不出来，其余照常列出：${cause}`)
           return { ...r, proposal: null, notice: cause, pages: [], staleNow: false, titles: {}, claimTexts: {} }
         }
       })
@@ -325,7 +325,7 @@ export function createWikiProposals({ store, pdf, now }: {
      */
     async decide(id: string, decision: 'apply' | 'decline', reason?: string): Promise<ProposalReceipt> {
       const record = store.proposalRecords().find((r) => r.id === id)
-      if (record === undefined) throw new Error(`没有这条提案:${id}`)
+      if (record === undefined) throw new Error(`没有这条提案：${id}`)
       if (record.status !== 'queued' || record.proposal === null) throw new Error('这条提案已经处理过了')
       const proposal = record.proposal
       const decided = { at: now(), by: '我' as const }
@@ -338,7 +338,7 @@ export function createWikiProposals({ store, pdf, now }: {
         if (outcome.status === 'rejected') {
           next = { ...record, status: 'rejected', reason: outcome.reason, decided }
         } else if (unverified.length > 0) {
-          throw new Error(`结论待验证:${unverified.join('、')}。验证之后再应用`)
+          throw new Error(`结论待验证：${unverified.join('、')}。验证之后再应用`)
         } else {
           store.applyProposal({ source: 'user', title: proposal.title, ops: proposal.ops }, {
             by: byOf(proposal), source: chipOf(proposal),

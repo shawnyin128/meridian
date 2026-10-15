@@ -35,7 +35,7 @@ describe('readWikiData', () => {
 
   it('没有 schema.yaml 的目录读不了,报出缺的那个文件', () => {
     rmSync(join(dir, 'schema.yaml'))
-    expect(() => readWikiData(dir)).toThrow(`库里没有 Wiki 结构文件:${join(dir, 'schema.yaml')}`)
+    expect(() => readWikiData(dir)).toThrow(`库里没有 Wiki 结构文件：${join(dir, 'schema.yaml')}`)
   })
 
   it('CRLF 的页读出来与 LF 的一样', () => {

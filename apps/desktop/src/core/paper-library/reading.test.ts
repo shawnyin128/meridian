@@ -67,9 +67,9 @@ describe('paper reading', () => {
     const empty = emptyPaperReading('paper-1')
     expect(() => applyReadingMutation(empty, {
       kind: 'highlight.update', id: 'missing', note: 'x',
-    }, nextId, '2026-09-14')).toThrow('高亮不存在:missing')
+    }, nextId, '2026-09-14')).toThrow('高亮不存在：missing')
     expect(() => applyReadingMutation(empty, {
       kind: 'note.delete', id: 'missing',
-    }, nextId, '2026-09-14')).toThrow('笔记不存在:missing')
+    }, nextId, '2026-09-14')).toThrow('笔记不存在：missing')
   })
 })

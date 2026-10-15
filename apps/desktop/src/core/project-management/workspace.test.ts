@@ -277,7 +277,7 @@ describe('project workspace protocol', () => {
 
     const workspace = readProjectWorkspace(held)
     expect(workspace).toMatchObject({ state: 'ready', events: [], graph: { nodes: [{ id: 'thread.A' }] } })
-    expect(workspace?.issue).toBe('科研记录读不了:格式是这个版本的 Meridian 不认识的,请更新 App')
+    expect(workspace?.issue).toBe('科研记录读不了：格式是这个版本的 Meridian 不认识的，请更新 App')
   })
 
   it('reads active_nodes directly, marking every listed id act and leaving ancestors and other repairable nodes idle', () => {

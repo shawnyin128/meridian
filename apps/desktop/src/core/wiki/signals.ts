@@ -71,10 +71,10 @@ export function wikiSignals(data: WikiData, context: SignalContext): WikiSignal[
     const children = aggregations.filter((other) => (aggregation(other).fm.parents ?? []).includes(id))
     const members = papers.filter((p) => (paper(p).fm.memberships ?? []).some((m) => m.in === id))
     if (children.length === 0 && members.length <= 1) {
-      push('thin-aggregation', id, members, `「${titleOf(data, id)}」没有细分,只有 ${members.length} 篇论文`)
+      push('thin-aggregation', id, members, `「${titleOf(data, id)}」没有细分，只有 ${members.length} 篇论文`)
     }
     if (children.length === 1 && members.length === 0) {
-      push('single-child', id, children, `「${titleOf(data, id)}」只有一个细分,也没有直接收论文`)
+      push('single-child', id, children, `「${titleOf(data, id)}」只有一个细分，也没有直接收论文`)
     }
   }
   for (const [at, id] of aggregations.entries()) {

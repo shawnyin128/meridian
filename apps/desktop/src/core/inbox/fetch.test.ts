@@ -48,8 +48,8 @@ describe('createWatchFetcher', () => {
       body: {
         kind: 'runs',
         runs: [
-          { text: '抓取:' }, { text: '2 篇新论文入队' },
-          { text: '(speculative decoding ×1 · T. Dao ×1)。' },
+          { text: '抓取：' }, { text: '2 篇新论文入队' },
+          { text: '（speculative decoding ×1 · T. Dao ×1）。' },
         ],
       },
     })

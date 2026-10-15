@@ -428,7 +428,7 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
 
   await win.locator('#rowInboxAll').click()
   await shown(win, `.pcard[data-pid="${target.id}"] [title="开始阅读"]`).click()
-  await expect(shown(win, '.pdfload')).toHaveText(`论文不存在:${target.paper}`)
+  await expect(shown(win, '.pdfload')).toHaveText(`论文不存在：${target.paper}`)
 
   // Restored from the Trash, the same paper opens without the earlier error. The global sidebar is
   // collapsed while reading, so leave through the back button.

@@ -143,7 +143,7 @@ process.parentPort.on('message', (event) => {
     const { id, method, params } = msg.data as { id: number; method: ContractMethod; params: unknown }
     void handlersReady.then(() => {
       const handler = handlers.get(method)
-      if (!handler) throw new Error(`未注册的契约方法:${method}`)
+      if (!handler) throw new Error(`未注册的契约方法：${method}`)
       return handler(params)
     }).then(
       (data) => { port.postMessage({ id, ok: true, data }) },
@@ -259,7 +259,7 @@ const INBOX_SCAN_MS = 5_000
 if (vaultRoot !== undefined) {
   const scan = (): void => {
     wikiProposals.scanInbox().catch((error: unknown) => {
-      console.error(`[wiki] 提案收件箱处理失败:${error instanceof Error ? error.message : String(error)}`)
+      console.error(`[wiki] 提案收件箱处理失败：${error instanceof Error ? error.message : String(error)}`)
     })
   }
   scan()
@@ -294,7 +294,7 @@ function openStore(
     return { store, openError: null }
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err)
-    console.error(`[core] 论文库打不开:${reason}`)
+    console.error(`[core] 论文库打不开：${reason}`)
     return { store: unopenedStore(reason), openError: reason }
   }
 }
@@ -760,7 +760,7 @@ registerHandler('idea.update', (params) => {
 registerHandler('idea.promote', (params) => {
   const { id } = ResearchIdeaPromoteParamsSchema.parse(params)
   const held = store.listIdeas().find((idea) => idea.id === id)
-  if (held === undefined) throw new Error(`想法不存在:${id}`)
+  if (held === undefined) throw new Error(`想法不存在：${id}`)
   if (held.project !== undefined) throw new Error('这个想法已经关联项目')
   const before = new Set(store.listProjects().map((project) => project.id))
   store.createProject(held.title)
@@ -796,6 +796,6 @@ registerHandler('jobs.status', (params) => {
 
 const missingHandlers = CONTRACT_METHODS.filter((method) => !handlers.has(method))
 if (missingHandlers.length > 0) {
-  throw new Error(`Core 缺少契约方法:${missingHandlers.join(',')}`)
+  throw new Error(`Core 缺少契约方法：${missingHandlers.join(',')}`)
 }
 markHandlersReady()

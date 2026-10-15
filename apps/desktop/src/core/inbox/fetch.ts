@@ -57,9 +57,9 @@ export function createWatchFetcher(deps: {
     const total = counts.reduce((sum, count) => sum + count.added, 0)
     if (total > 0) {
       const runs: FeedRun[] = [
-        { kind: 'text', text: '抓取:' },
+        { kind: 'text', text: '抓取：' },
         { kind: 'strong', text: `${total} 篇新论文入队` },
-        { kind: 'text', text: `(${counts.map((count) => `${count.name} ×${count.added}`).join(' · ')})。` },
+        { kind: 'text', text: `（${counts.map((count) => `${count.name} ×${count.added}`).join(' · ')}）。` },
       ]
       deps.store.appendFeed({ source: 'inbox', body: { kind: 'runs', runs } })
       deps.onWrite()

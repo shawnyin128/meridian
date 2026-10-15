@@ -1055,7 +1055,7 @@ describe('fixture store', () => {
     store.updatePaper(b!, { custom: { tags: ['综述'] } })
     const changes = store.listChanges().length
 
-    expect(() => store.setPaperColumnType('tags', 'select')).toThrow('列「标签」有 1 篇论文填着多个值,改不成单选列')
+    expect(() => store.setPaperColumnType('tags', 'select')).toThrow('列「标签」有 1 篇论文填着多个值，改不成单选列')
     expect(store.paperColumns().custom).toEqual([tags])
     expect(store.getPaper(a!).custom).toEqual({ tags: ['综述', '必读'] })
     expect(store.getPaper(b!).custom).toEqual({ tags: ['综述'] })
@@ -1447,7 +1447,7 @@ describe('fixture store', () => {
       if (plan.kind === 'existing') continue
       const { paper } = store.completeInboxDownload(entry.id, minimalPdf({ lines: [entry.title] }))
       if (entry.pdf === undefined) {
-        expect(() => store.paperSource(paper)).toThrow(`库里没有这一篇的原文:${paper}`)
+        expect(() => store.paperSource(paper)).toThrow(`库里没有这一篇的原文：${paper}`)
       } else {
         expect(store.paperSource(paper).length).toBeGreaterThan(0)
       }
@@ -1932,28 +1932,28 @@ describe('fixture store', () => {
 
   it('搜索一次跨四类,每一类给出它那一屏的落点', () => {
     expect(store.search('EAGLE-2')).toEqual([
-      { kind: 'project', target: 'repro', title: '项目:复现 EAGLE-2', meta: '进行中 · speculative decoding' },
+      { kind: 'project', target: 'repro', title: '项目：复现 EAGLE-2', meta: '进行中 · speculative decoding' },
       {
         kind: 'paper',
         target: 'EAGLE-2: Faster Inference of Language Models with Dynamic Draft Trees',
-        title: '论文:EAGLE-2: Faster Inference of Language Models with Dynamic Draft Trees',
+        title: '论文：EAGLE-2: Faster Inference of Language Models with Dynamic Draft Trees',
         meta: '2026 arXiv',
       },
     ])
     // Aggregations rank first; SpinQuant also matches "rotations" in its title and appears with papers after them.
     const rotation = store.search('Rotation')
-    expect(rotation[0]).toEqual({ kind: 'aggregation', target: 'methods/rotation', title: '方法:Rotation', meta: 'Wiki' })
+    expect(rotation[0]).toEqual({ kind: 'aggregation', target: 'methods/rotation', title: '方法：Rotation', meta: 'Wiki' })
     expect(rotation.slice(1).every((h) => h.kind === 'paper')).toBe(true)
     expect(store.search('Distillation-based'))
-      .toEqual([{ kind: 'aggregation', target: 'methods/distillation-qat', title: '方法:Distillation-based QAT', meta: 'Wiki' }])
+      .toEqual([{ kind: 'aggregation', target: 'methods/distillation-qat', title: '方法：Distillation-based QAT', meta: 'Wiki' }])
     expect(store.search('摊薄')).toEqual([
-      { kind: 'chat', target: 'amortize', title: '对话:摊薄的前提是共享前缀吗', meta: '对话' },
+      { kind: 'chat', target: 'amortize', title: '对话：摊薄的前提是共享前缀吗', meta: '对话' },
     ])
   })
 
   it('类别前缀也在被搜的那句话里', () => {
-    expect(store.search('对话:').map((h) => h.kind)).toEqual(['chat', 'chat'])
-    expect(store.search('主题:').map((h) => h.target)).toEqual([
+    expect(store.search('对话：').map((h) => h.kind)).toEqual(['chat', 'chat'])
+    expect(store.search('主题：').map((h) => h.target)).toEqual([
       'topics/kv-cache-quantization', 'topics/long-context-inference', 'topics/ptq',
       'topics/ptq-weight-activation', 'topics/ptq-weight-only', 'topics/qat', 'topics/quantization',
     ])

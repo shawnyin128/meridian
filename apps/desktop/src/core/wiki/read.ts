@@ -23,7 +23,7 @@ export function readWikiPage(file: string, kind: string | null): WikiPaperRecord
   const close = bare.indexOf('---', 1)
   if (bare[0] !== '---' || close < 0) throw new Error(`页面没有收口的 frontmatter:${file}`)
   const fm = (parse(bare.slice(1, close).join('\n')) ?? {}) as Record<string, unknown>
-  if (kind !== null && fm['kind'] !== kind) throw new Error(`${file} 的 kind 是 ${String(fm['kind'])},不是 ${kind}`)
+  if (kind !== null && fm['kind'] !== kind) throw new Error(`${file} 的 kind 是 ${String(fm['kind'])}，不是 ${kind}`)
   const rest = { ...fm }
   delete rest['kind']
   const last = bare.lastIndexOf('<!-- /generated -->')
@@ -41,7 +41,7 @@ export function readWikiPage(file: string, kind: string | null): WikiPaperRecord
  */
 export function readWikiData(wikiDir: string): WikiData {
   const schemaFile = join(wikiDir, 'schema.yaml')
-  if (!existsSync(schemaFile)) throw new Error(`库里没有 Wiki 结构文件:${schemaFile}`)
+  if (!existsSync(schemaFile)) throw new Error(`库里没有 Wiki 结构文件：${schemaFile}`)
   const schema = parse(readFileSync(schemaFile, 'utf8')) as Schema
   const pages: WikiData['pages'] = {}
   const scan = (dir: string, kind: string | null): void => {
@@ -52,7 +52,7 @@ export function readWikiData(wikiDir: string): WikiData {
       try {
         pages[id] = readWikiPage(join(full, name), kind)
       } catch (err) {
-        console.error(`[wiki] ${id} 这个版本读不了,没有读进来(可能要更新 App):${err instanceof Error ? err.message : String(err)}`)
+        console.error(`[wiki] ${id} 这个版本读不了，没有读进来（可能要更新 App）：${err instanceof Error ? err.message : String(err)}`)
       }
     }
   }

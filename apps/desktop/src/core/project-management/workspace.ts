@@ -727,9 +727,9 @@ function readSurface<T>(label: string, read: () => T, issues: string[]): T | und
     return read()
   } catch (error) {
     const why = error instanceof z.ZodError
-      ? '格式是这个版本的 Meridian 不认识的,请更新 App'
+      ? '格式是这个版本的 Meridian 不认识的，请更新 App'
       : error instanceof Error ? error.message : String(error)
-    issues.push(`${label}读不了:${why}`)
+    issues.push(`${label}读不了：${why}`)
     return undefined
   }
 }

@@ -147,7 +147,7 @@ export function parseAtom(xml: string): RemotePaper[] {
       return hit === null ? null : decode(hit[1]!).replace(/\s+/g, ' ').trim()
     }
     const address = field('id') ?? ''
-    if (address.includes('/api/errors')) throw new Error(`arXiv 拒绝了这次查询:${field('summary') ?? address}`)
+    if (address.includes('/api/errors')) throw new Error(`arXiv 拒绝了这次查询：${field('summary') ?? address}`)
     const id = address.replace(/^https?:\/\/arxiv\.org\/abs\//, '').replace(/v\d+$/, '')
     return {
       id,

@@ -97,7 +97,7 @@ test('改一笔再撤销:数据真的回到改之前,那一条标成已撤销,�
   // The original change stays, marked as undone, and the undo itself is a new change listed above it.
   await expect(shown(win, '.crow')).toHaveCount(seeded + 2)
   await expect(shown(win, '.crow').first().locator('.ct'))
-    .toContainText('撤销:项目「draft 效率」· 改了字段')
+    .toContainText('撤销：项目「draft 效率」· 改了字段')
   // The undone change has no undo button any more, and the gray line under its title says it was undone.
   await expect(shown(win, '.crow').nth(1).locator('.cundo')).toHaveCount(0)
   await expect(shown(win, '.crow').nth(1).locator('.cm')).toContainText('已撤销')
@@ -119,7 +119,7 @@ test('这一笔之后又改过时撤销被拒,说清还有几条更新的,数据
   await expect(shelved.locator('.cundo')).toHaveText('撤销')
   await shelved.locator('.cundo').click()
 
-  await expect(win.locator('#toast')).toHaveText('这条之后该实体又被改过 1 次,先撤销较新的那几条')
+  await expect(win.locator('#toast')).toHaveText('这条之后该实体又被改过 1 次，先撤销较新的那几条')
   expect(await statusFromCore(win, 'draft')).toBe('搁置')
   await expect(shelved.locator('.cundo')).toHaveText('撤销')
 })
@@ -202,7 +202,7 @@ test('归过档的那一条照样撤得动,撤销不动它的归档,撤销本身
   // unarchived section.
   await expect(shown(win, '.crow').last().locator('.cm')).toContainText('已撤销')
   await expect(shown(win, '.crow').first().locator('.ct'))
-    .toContainText('撤销:项目「draft 效率」· 改了字段')
+    .toContainText('撤销：项目「draft 效率」· 改了字段')
 })
 
 test('这一屏没有筛选条:来源只写在条目上,不能按它筛', async ({ win }) => {
