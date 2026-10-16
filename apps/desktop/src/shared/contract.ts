@@ -1533,7 +1533,7 @@ export const WikiRelatedSchema = z.object({
 /**
  * Aggregation page with card fields, parents, optional split basis, child cards,
  * comparison table, relations, claims in page order, and body Markdown after the final generated
- * region. `titles` maps valid body-link IDs to display text; `version` is the page version.
+ * region. `titles` maps valid body-link IDs to a link to that page; `version` is the page version.
  */
 export const WikiAggregationSchema = WikiAggregationCardSchema.extend({
   parents: z.array(WikiRefSchema),
@@ -1545,7 +1545,7 @@ export const WikiAggregationSchema = WikiAggregationCardSchema.extend({
   related: z.array(WikiRelatedSchema),
   claims: z.array(WikiClaimSchema),
   body: z.string(),
-  titles: z.record(z.string(), z.string()),
+  titles: z.record(z.string(), WikiRefSchema),
   version: PageVersionSchema,
 }).strict()
 
@@ -1561,7 +1561,7 @@ export const WikiMembershipSchema = z.object({
  * Paper wiki page. `id` combines the paper prefix and table-row ID; `short` is
  * the short title for editing and search, the full title when none is set; `pdf` is a vault-relative source path; `body`
  * is raw Markdown; `memberships` lists aggregations. Pages are created on import
- * and may have empty bodies. `titles` resolves valid body-link IDs; `version` is the page version.
+ * and may have empty bodies. `titles` resolves valid body-link IDs to links; `version` is the page version.
  */
 export const WikiPaperSchema = z.object({
   id: z.string(),
@@ -1573,7 +1573,7 @@ export const WikiPaperSchema = z.object({
   pdf: z.string(),
   updated: IsoDate,
   body: z.string(),
-  titles: z.record(z.string(), z.string()),
+  titles: z.record(z.string(), WikiRefSchema),
   memberships: z.array(WikiMembershipSchema),
   version: PageVersionSchema,
 }).strict()

@@ -7,6 +7,7 @@ import rehypeKatex from 'rehype-katex'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import 'katex/dist/katex.min.css'
+import type { WikiRef } from '../../shared/contract.js'
 import { useMessages } from '../messages/useMessages.js'
 
 /** Two kinds of marks: `[[id|Text]]` / `[[id]]` are in-page links, and `(p.N)` is a source anchor. */
@@ -19,16 +20,16 @@ const CITE = '#cite:'
 
 /**
  * Rewrites both marks into standard Markdown links: `[[id|text]]` → `[text](<#wiki:id>)`, where the
- * text of `[[id]]` is `titles[id]`, or the id when absent; `(p.N)` → `[p.N](<#cite:N>)`. When
- * `titles` is given, an id missing from it is not a page in the vault and its mark stays as
+ * text of `[[id]]` is the title of `titles[id]`, or the id when absent; `(p.N)` → `[p.N](<#cite:N>)`.
+ * When `titles` is given, an id missing from it is not a page in the vault and its mark stays as
  * written; without `titles` (a remark), every mark becomes a link.
  * The rewrite runs on the whole source before parsing, so marks in code blocks, inline code and
  * formulas are rewritten too. Marks never span lines and the rewrite adds, removes or splits no
  * line breaks, so line numbers stay the same.
  */
-const desugar = (src: string, titles: Record<string, string> | undefined): string => src
+const desugar = (src: string, titles: Record<string, WikiRef> | undefined): string => src
   .replace(WIKI_LINK, (m: string, id: string, label?: string) =>
-    (titles !== undefined && titles[id] === undefined ? m : `[${label ?? titles?.[id] ?? id}](<${WIKI}${id}>)`))
+    (titles !== undefined && titles[id] === undefined ? m : `[${label ?? titles?.[id]?.title ?? id}](<${WIKI}${id}>)`))
   .replace(CITE_MARK, (_m: string, n: string) => `[p.${n}](<${CITE}${n}>)`)
 
 /** remark plugin: gives each heading the id `h-<line number>`, as headingsOf does for the table of contents. */
@@ -51,7 +52,7 @@ function remarkHeadingIds() {
 function components(
   onOpen: ((id: string) => void) | undefined,
   citePage: (page: string) => string,
-  titles: Record<string, string> | undefined,
+  titles: Record<string, WikiRef> | undefined,
 ): Components {
   return {
     a: ({ href, children }) => {
@@ -59,7 +60,8 @@ function components(
       if (!href) return <>{children}</>
       if (href.startsWith(WIKI)) {
         const id = href.slice(WIKI.length)
-        return <span className="wl" data-wk={id} title={titles?.[id]} onClick={() => onOpen?.(id)}>{children}</span>
+        const page = titles?.[id]
+        return <span className="wl" data-wk={id} title={page?.fullTitle ?? page?.title} onClick={() => onOpen?.(id)}>{children}</span>
       }
       if (href.startsWith(CITE)) {
         return <span className="cite" title={citePage(href.slice(CITE.length))}>{children}</span>
@@ -76,14 +78,14 @@ function components(
  * Ordinary links open in a new window. `$…$` is an inline formula and a block between `$$` lines
  * is a display formula, both rendered with KaTeX; `$$...$$` within one line is inline under
  * remark-math's syntax rules, not a display formula. Each heading's id is `h-` followed by its
- * line number in `src`. `[[id]]` without an alias shows `titles[id]`, or the id when absent. When
- * `titles` is given, an id missing from it is not a page in the vault and its mark stays as
- * written; without `titles` (a remark), every mark becomes a link.
+ * line number in `src`. `[[id]]` without an alias shows the title of `titles[id]`, or the id when
+ * absent. When `titles` is given, an id missing from it is not a page in the vault and its mark
+ * stays as written; without `titles` (a remark), every mark becomes a link.
  */
 export function Markdown({ src, onOpen, titles }: {
   src: string
   onOpen?: (id: string) => void
-  titles?: Record<string, string>
+  titles?: Record<string, WikiRef>
 }) {
   const m = useMessages()
   const parts = useMemo(() => components(onOpen, m.common.markdown.citePage, titles), [onOpen, m, titles])
@@ -129,7 +131,7 @@ export function MarkdownBox({ text, editing, box, onCancel, onOpen, titles, empt
   box: RefObject<HTMLDivElement | null>
   onCancel: () => void
   onOpen?: (id: string) => void
-  titles?: Record<string, string>
+  titles?: Record<string, WikiRef>
   empty: ReactNode
   className?: string
 }) {
