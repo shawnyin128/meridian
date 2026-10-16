@@ -11,7 +11,9 @@ import {
   type JumpAnchor,
 } from '../shell/AppShell.js'
 import { IconPlus } from '../components/icons.js'
-import { mergedHighlightRects, normalizedHighlightRects } from './highlight-geometry.js'
+import {
+  highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionToolsAnchor,
+} from './highlight-geometry.js'
 import { PaperChat, type PaperChatPrompt } from '../components/chat/PaperChat.js'
 import { ReaderSidePanel, type ReaderSideTab } from '../components/reader/ReaderSidePanel.js'
 import { PageShell } from '../components/PageShell.js'
@@ -27,6 +29,7 @@ const ZOOM_MAX = 2.4
 const WHEEL_MS = 180
 const PROGRESS_MS = 800
 const DOC_CACHE = 2
+const SVG_NS = 'http://www.w3.org/2000/svg'
 
 type PendingHighlight = {
   page: number
@@ -45,20 +48,24 @@ function paintHighlights(box: ParentNode, reading: PaperReading | null): void {
   box.querySelectorAll<HTMLElement>('.paper-highlights').forEach((marks) => marks.replaceChildren())
   if (reading === null) return
   for (const highlight of reading.highlights) {
-    const marks = box.querySelector<HTMLElement>(
-      `.pdfpagebox[data-page="${highlight.page}"] .paper-highlights`,
-    )
-    if (marks === null) continue
-    for (const rect of mergedHighlightRects(highlight.rects)) {
-      const mark = document.createElement('span')
-      mark.className = `paper-highlight ${highlight.color}${highlight.note.trim() === '' ? '' : ' noted'}`
-      mark.dataset.highlight = highlight.id
-      mark.style.left = `${rect.x * 100}%`
-      mark.style.top = `${rect.y * 100}%`
-      mark.style.width = `${rect.width * 100}%`
-      mark.style.height = `${rect.height * 100}%`
-      marks.append(mark)
-    }
+    const pagebox = box.querySelector<HTMLElement>(`.pdfpagebox[data-page="${highlight.page}"]`)
+    if (pagebox === null) continue
+    const noted = highlight.note.trim() !== ''
+    const { box: bounds, path } = highlightShape(
+      highlightLines(highlight.rects, Number(pagebox.dataset.aspect)), noted)
+    const mark = document.createElementNS(SVG_NS, 'svg')
+    mark.setAttribute('class', `paper-highlight ${highlight.color}${noted ? ' noted' : ''}`)
+    mark.dataset.highlight = highlight.id
+    mark.setAttribute('viewBox', `${bounds.x} ${bounds.y} ${bounds.width} ${bounds.height}`)
+    mark.setAttribute('preserveAspectRatio', 'none')
+    mark.style.left = `${bounds.x * 100}%`
+    mark.style.top = `${bounds.y * 100}%`
+    mark.style.width = `${bounds.width * 100}%`
+    mark.style.height = `${bounds.height * 100}%`
+    const shape = document.createElementNS(SVG_NS, 'path')
+    shape.setAttribute('d', path)
+    mark.append(shape)
+    pagebox.querySelector('.paper-highlights')!.append(mark)
   }
 }
 
@@ -229,6 +236,7 @@ export function Reader() {
         pagebox.dataset.page = String(page.pageNumber)
         pagebox.style.width = `${Math.floor(viewport.width)}px`
         pagebox.style.height = `${Math.floor(viewport.height)}px`
+        pagebox.dataset.aspect = String(viewport.width / viewport.height)
         pagebox.style.setProperty('--scale-factor', String(viewport.scale))
         const canvas = document.createElement('canvas')
         canvas.width = Math.floor(viewport.width * dpr)
@@ -276,12 +284,14 @@ export function Reader() {
         await task.promise
         renderTask = null
         if (!live) return
-        const textLayer = new pdfjs.TextLayer({
-          textContentSource: await page.getTextContent(), container: pagebox.querySelector<HTMLElement>('.textLayer')!, viewport,
-        })
+        const container = pagebox.querySelector<HTMLElement>('.textLayer')!
+        const textLayer = new pdfjs.TextLayer({ textContentSource: await page.getTextContent(), container, viewport })
         textLayers.push(textLayer)
         await textLayer.render()
         if (!live) return
+        const endOfContent = document.createElement('div')
+        endOfContent.className = 'endOfContent'
+        container.append(endOfContent)
         pagebox.dataset.painted = '1'
         pending.delete(pageNumber)
         // Yield one frame between pages so scrolling and the selection toolbar stay responsive while the rest renders.
@@ -297,6 +307,35 @@ export function Reader() {
     }
   }, [doc, zoom, reportError])
 
+  // pdf.js's TextLayerBuilder selection support: a text layer is `.selecting` from a press on it, or
+  // while a selection being made covers it, until the pointer or key is released; its endOfContent
+  // then covers the whole page, so a drag across the gaps between lines and columns stays in the
+  // text. TextLayerBuilder also moves endOfContent next to the selection, but only on Chromium
+  // before 148; Electron's Chromium is newer.
+  useEffect(() => {
+    const box = sheet.current
+    if (box === null) return
+    const listening = new AbortController()
+    const { signal } = listening
+    const layers = () => box.querySelectorAll<HTMLElement>('.textLayer')
+    const reset = () => layers().forEach((layer) => layer.classList.remove('selecting'))
+    let pointerDown = false
+    box.addEventListener('mousedown', (event) => {
+      (event.target as Element).closest('.textLayer')?.classList.add('selecting')
+    }, { signal })
+    document.addEventListener('pointerdown', () => { pointerDown = true }, { signal })
+    document.addEventListener('pointerup', () => { pointerDown = false; reset() }, { signal })
+    window.addEventListener('blur', () => { pointerDown = false; reset() }, { signal })
+    document.addEventListener('keyup', () => { if (!pointerDown) reset() }, { signal })
+    document.addEventListener('selectionchange', () => {
+      const selection = document.getSelection()
+      if (selection === null || selection.rangeCount === 0) { reset(); return }
+      const range = selection.getRangeAt(0)
+      layers().forEach((layer) => layer.classList.toggle('selecting', range.intersectsNode(layer)))
+    }, { signal })
+    return () => listening.abort()
+  }, [])
+
   // Highlights are independent overlays; when you change notes or add new highlights, you only change these small rectangles and do not redraw the PDF canvas / text layer.
   useEffect(() => {
     const box = sheet.current
@@ -310,7 +349,7 @@ export function Reader() {
     if (arrival === null || painted === 0 || reading === null || view === null) return
     const mark = arrival.highlight === undefined
       ? null
-      : view.querySelector<HTMLElement>(`.paper-highlight[data-highlight="${arrival.highlight}"]`)
+      : view.querySelector(`.paper-highlight[data-highlight="${arrival.highlight}"]`)
     if (mark !== null) mark.scrollIntoView({ block: 'center' })
     else {
       const page = arrival.page ?? reading.lastPage ?? 1
@@ -405,13 +444,14 @@ export function Reader() {
     }
     const pagebox = start.closest<HTMLElement>('.pdfpagebox')
     if (pagebox === null) return
-    const rects = normalizedHighlightRects(pagebox.getBoundingClientRect(), [...range.getClientRects()])
+    const bounds = pagebox.getBoundingClientRect()
+    const rects = normalizedHighlightRects(
+      bounds, selectedTextRanges(range).flatMap((piece) => [...piece.getClientRects()]))
     const quote = selection.toString().replace(/\s+/g, ' ').trim()
-    const selectionRect = range.getBoundingClientRect()
-    const left = Math.min(window.innerWidth - 100, Math.max(100, selectionRect.left + selectionRect.width / 2))
-    const top = Math.max(12, selectionRect.top - 44)
-    setPending(quote === '' || rects.length === 0
-      ? null : { page: Number(pagebox.dataset.page), quote, rects, anchor: { left, top } })
+    setPending(quote === '' || rects.length === 0 ? null : {
+      page: Number(pagebox.dataset.page), quote, rects,
+      anchor: selectionToolsAnchor(bounds, rects, { width: window.innerWidth, height: window.innerHeight }),
+    })
   }, [])
 
   const mutateReading = useCallback(async (mutation: ReadingMutation): Promise<PaperReading | null> => {
