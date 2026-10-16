@@ -502,6 +502,23 @@ describe('PaperTable', () => {
     expect(row.getAttribute('aria-current')).toBe('true')
   })
 
+  it('详情里的标题和短标题按 LaTeX 显示，点开编辑时仍是原文', async () => {
+    const latex = { ...ROW, title: '\\textbf{F}luxBin $\\times$', shortTitle: '\\emph{Flux}' }
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [latex], total: 1 })
+    await flush()
+    await act(async () => { press(host.querySelector<HTMLElement>('.ptable tbody tr')!) })
+    getCall.resolve(latex)
+    await flush()
+
+    const [title, short] = [...host.querySelectorAll<HTMLElement>('.paper-meta-list .paper-meta-editable')]
+    expect(title!.innerHTML).toMatch(/<strong>F<\/strong>luxBin <span><span class="katex">/)
+    expect(short!.innerHTML).toContain('<em>Flux</em>')
+    await act(async () => { title!.querySelector('button')!.click() })
+    expect(title!.querySelector<HTMLInputElement>('input, textarea')!.value).toBe('\\textbf{F}luxBin $\\times$')
+  })
+
   it('详情面板收掉建列草稿之后,关面板新开的草稿不受它落地影响', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)
