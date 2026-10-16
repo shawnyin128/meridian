@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { createRef } from 'react'
+import { act, createRef } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Milestone, Task } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
@@ -131,7 +132,8 @@ function renderTaskPanel(
   return renderToStaticMarkup(
     <MessagesProvider>
       <ProjectTaskPanel
-        task={{ ...task, ...taskOverrides }} node={node} onClose={vi.fn()} onSaveNote={vi.fn()} onOpenNode={vi.fn()}
+        task={{ ...task, ...taskOverrides }} node={node} nodes={[]} handSet={false}
+        onClose={vi.fn()} onSaveNote={vi.fn()} onOpenNode={vi.fn()} onSetNode={vi.fn()}
       />
     </MessagesProvider>,
   )
@@ -153,11 +155,12 @@ describe('ProjectTaskPanel', () => {
     expect(output).toContain('还没有备注')
   })
 
-  it('显示任务挂在哪个科研节点上;还没挂时说明 agent 做它时会挂上', () => {
+  it('显示任务挂在哪个科研节点上;还没挂时只写「未关联」', () => {
     const linked = renderTaskPanel({}, { id: 'kv.n3', label: '前缀共调度', mode: 'supported' })
     expect(linked).toContain('科研节点')
     expect(linked).toMatch(/<button[^>]*class="node-tag node-tag--supported"[^>]*title="在科研图中打开「前缀共调度」"/)
-    expect(renderTaskPanel()).toContain('还没挂到科研节点上')
+    expect(renderTaskPanel()).toContain('未关联')
+    expect(renderTaskPanel()).not.toContain('agent 做这个任务')
   })
 
   it('agent 加的任务在面板和列表里都带一个安静的 agent 标记,用户加的没有', () => {
@@ -171,5 +174,79 @@ describe('ProjectTaskPanel', () => {
     const output = renderTaskPanel({ note: '先跑 A/B 两组,再看结论' })
     expect(output).toContain('先跑 A/B 两组')
     expect(output).not.toContain('还没有备注')
+  })
+
+  describe('科研节点', () => {
+    const nodes = [{ id: 'kv.n3', label: '前缀共调度' }, { id: 'kv.n4', label: '宽树' }]
+    let root: Root | null = null
+    const unmount = () => {
+      if (root !== null) act(() => root!.unmount())
+      root = null
+      document.body.innerHTML = ''
+    }
+    afterEach(unmount)
+    const mount = (props: { node?: { id: string; label: string; mode: 'supported' }; handSet?: boolean; nodes?: typeof nodes }) => {
+      globalThis.IS_REACT_ACT_ENVIRONMENT = true
+      vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+      unmount()
+      const host = document.createElement('div')
+      document.body.append(host)
+      const onSetNode = vi.fn()
+      root = createRoot(host)
+      act(() => root!.render(
+        <MessagesProvider>
+          <ProjectTaskPanel
+            task={task} node={props.node} nodes={props.nodes ?? nodes} handSet={props.handSet ?? false}
+            onClose={vi.fn()} onSaveNote={vi.fn()} onOpenNode={vi.fn()} onSetNode={onSetNode}
+          />
+        </MessagesProvider>,
+      ))
+      const button = (text: string) => [...host.querySelectorAll('button')].find((b) => b.textContent === text)
+      const pick = (text: string) => {
+        act(() => { button(text)!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+        return [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')]
+      }
+      return { button, pick, onSetNode }
+    }
+
+    it('没挂节点时从科研图的节点里挑一个挂上;图里没有节点时不给挑', () => {
+      const { pick, onSetNode } = mount({})
+      const items = pick('关联节点')
+      expect(items.map((item) => item.textContent)).toEqual(['前缀共调度', '宽树'])
+      act(() => items[1]!.click())
+      expect(onSetNode).toHaveBeenCalledWith('kv.n4')
+      expect(mount({ nodes: [] }).button('关联节点')).toBeUndefined()
+    })
+
+    it('科研节点的操作和备注的编辑一样放在小标题右侧', () => {
+      /**
+       * The section heading that starts with `label`, and the texts of its own buttons: the shared
+       * heading rule right-aligns only buttons that are its direct children.
+       */
+      const heading = (label: string) => {
+        const found = [...document.querySelectorAll<HTMLElement>('.section-heading')]
+          .find((element) => element.textContent?.startsWith(label))!
+        return { className: found.className, buttons: [...found.querySelectorAll(':scope > .btn')].map((b) => b.textContent) }
+      }
+      mount({})
+      expect(heading('科研节点').buttons).toEqual(['关联节点'])
+      expect(heading('备注').buttons).toEqual(['编辑'])
+      expect(heading('科研节点').className).toBe(heading('备注').className)
+      mount({ node: { id: 'kv.n3', label: '前缀共调度', mode: 'supported' }, handSet: true })
+      expect(heading('科研节点').buttons).toEqual(['更改', '取消关联'])
+    })
+
+    it('挂着节点时可以改;手动挂的还能取消关联,agent 连的不能', () => {
+      const node = { id: 'kv.n3', label: '前缀共调度', mode: 'supported' as const }
+      const agents = mount({ node })
+      expect(agents.button('取消关联')).toBeUndefined()
+      const items = agents.pick('更改')
+      act(() => items[1]!.click())
+      expect(agents.onSetNode).toHaveBeenCalledWith('kv.n4')
+
+      const mine = mount({ node, handSet: true })
+      act(() => mine.button('取消关联')!.click())
+      expect(mine.onSetNode).toHaveBeenCalledWith(null)
+    })
   })
 })

@@ -1,0 +1,183 @@
+import { spawnSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { dayFrom, meridian, onDay, python, readJson, writeJson } from './app.mjs'
+import { quoteOf } from './papers.mjs'
+
+const THREAD = 'spec-decoding'
+const node = (id) => `${THREAD}.${id}`
+const workspaceOf = (seed) => join(seed.out, 'workspaces', 'spec-decoding')
+
+/** Calls `fn` of the Lab's Python API, which the MCP tools wrap, with JSON `args`, and returns its result. */
+function lab(seed, module, fn, args) {
+  const code = `import json, sys
+from pathlib import Path
+from ${module} import ${fn}
+args = json.load(sys.stdin)
+result = ${fn}(Path(args.pop('root')), **args)
+print(json.dumps(result))
+sys.exit(0 if result.get('status') in ('applied', 'unchanged', 'created') else 1)`
+  return JSON.parse(python(seed.out, ['-c', code], JSON.stringify({ root: workspaceOf(seed), ...args })))
+}
+
+/** Applies a `meridian.lab.update.v1` packet on the thread, with the confirmations it needs accepted. */
+const update = (seed, changes, confirmed = []) => lab(seed, 'meridian.lab.graph', 'apply_lab_update', { packet: {
+  schema: 'meridian.lab.update.v1', intent: 'seed', target_thread: THREAD, changes,
+  user_confirmation: { required_for: confirmed, status: confirmed.length === 0 ? 'not_required' : 'accepted' },
+} })
+
+/**
+ * Creates the git-initialised research repository the speculative-decoding project binds to, with
+ * the Lab space `meridian setup init-lab` makes and the thread seed an agent writes for a new idea.
+ */
+export function prepareWorkspace(seed) {
+  const root = workspaceOf(seed)
+  mkdirSync(root, { recursive: true })
+  const git = spawnSync('git', ['init', '-q', root], { encoding: 'utf8' })
+  if (git.status !== 0) throw new Error(`git init failed: ${git.stderr}`)
+  writeFileSync(join(root, 'README.md'), '# spec-decoding\n\nExperiments on speculative decoding for 13B models.\n', 'utf8')
+  meridian(seed.out, ['setup', 'init-lab', '--lab-root', root, '--config-home', join(seed.out, 'config')])
+  const created = dayFrom(seed.today, -20)
+  writeFileSync(join(root, '.meridian', 'threads', `${THREAD}.md`), [
+    '---', 'type: research-thread', 'title: 推测解码加速', 'status: open', `created: ${created}`, `updated: ${created}`,
+    'related_threads: []', '---', '', '# Research Thread: 推测解码加速', '', '## Root Problem', '',
+    '在 13B 模型上把解码延迟降到一半以内，同时不改变输出分布。', '', '## Approach Tree', '',
+    '### Node A: 基线：独立草稿模型的投机解码', '', '- mode: `unresolved`', '', '#### Next Action', '',
+    '复现 γ=4 时的接受率和加速比。', '', '## Graph Relations', '',
+  ].join('\n'), 'utf8')
+}
+
+/**
+ * Seeds the agent side of the speculative-decoding project through the Lab and workspace API: graph
+ * nodes in every state, two of them closed with experiments and conclusions, plan tasks linked to
+ * nodes, research records, agent tasks dated 12 and 7 days ago and today, each taken into the plan
+ * on its day, and an agent idea.
+ */
+export async function seedLab(seed, call, tasks) {
+  update(seed, [
+    { op: 'set_active_thread', thread_id: THREAD },
+    { op: 'create_node', node_id: node('B'), title: '树形草稿 + 动态宽度', parent: 'A', why: '固定宽度在长回答上接受率下降。',
+      next_action: '实现按接受率调整的树宽，再跑 B=16 扫描。' },
+    { op: 'create_node', node_id: node('C'), title: '草稿头共享浅层 KV', parent: 'A', state: 'repairable',
+      why: '共享层之后位置编码错位，接受率掉到 0.3。', next_action: '修正共享层的位置编码偏移后重跑。' },
+    { op: 'create_node', node_id: node('D'), title: 'n-gram 检索草稿', parent: 'A' },
+    { op: 'create_node', node_id: node('E'), title: '按 token 难度自适应草稿长度', parent: 'B' },
+  ], ['create_node', 'set_active_thread', 'state:repairable'])
+  // A node activated in the packet that creates it is named by its id in the record the activation writes.
+  update(seed, [
+    { op: 'activate_node', node_id: node('B') },
+    { op: 'link_task', node_id: node('A'), task_id: tasks['复现独立草稿模型基线'] },
+    { op: 'link_task', node_id: node('B'), task_id: tasks['实现动态树宽度'] },
+    { op: 'link_task', node_id: node('B'), task_id: tasks['跑 B=16 宽度扫描'] },
+    { op: 'record_history', node_id: node('B'), message: '决定先做动态宽度，共享 KV 往后放。' },
+  ])
+  const result = (id, experiment, days, state, conclusion, confirmed) => {
+    lab(seed, 'meridian.lab.result', 'record_lab_result', {
+      node_id: node(id), event_id: `${experiment.id}-result`, summary: experiment.summary,
+      source: `.meridian/experiments/${experiment.id}.md`, impact: state === 'supported' ? 'supports' : 'refutes',
+      event_date: dayFrom(seed.today, days), state, next_action: experiment.next,
+      user_confirmation: confirmed ? { required_for: [`state:${state}`], status: 'accepted' } : null,
+      experiment: { title: experiment.title, validity: 'valid', question: experiment.question, command: experiment.command,
+        result: experiment.result, interpretation: experiment.interpretation },
+    })
+    update(seed, [{ op: 'record_conclusion', node_id: node(id), text: conclusion, evidence: [experiment.id], date: dayFrom(seed.today, days) }])
+  }
+  result('A', {
+    id: 'exp-baseline-13b', title: '13B 独立草稿模型基线', summary: '68M 草稿模型在 γ=4 时加速 1.9×',
+    question: '独立草稿模型在 13B 上能加速多少？', command: 'python bench.py --draft 68m --gamma 4 --model 13b',
+    result: '接受率 0.62，加速 1.9×。', interpretation: '草稿太弱，接受率是瓶颈。', next: '把这组数作为后续节点的对照。',
+  }, -10, 'supported', '独立草稿模型在 13B 上只有 1.9×，瓶颈是接受率。', false)
+  result('D', {
+    id: 'exp-ngram-draft', title: 'n-gram 检索草稿的命中率', summary: '对话任务里 n-gram 草稿命中率只有 4%',
+    question: '从上下文检索 n-gram 当草稿，在对话任务里能命中多少？', command: 'python bench.py --draft ngram --task mt-bench',
+    result: '命中率 4%，没有加速。', interpretation: '对话里重复片段太少，这条路走不通。', next: '不再推进。',
+  }, -8, 'dead', '对话任务里 n-gram 草稿几乎命中不了，放弃。', true)
+  const thread = `.meridian/threads/${THREAD}.md`
+  for (const [id, days, kind, text, detail] of [
+    ['width-start', -6, 'start', '树形草稿 + 动态宽度', undefined],
+    ['width-cap', -4, 'decision', '树宽上限定为 8', '超过 8 之后验证开销抵消收益'],
+    ['sweep-turn', -1, 'note', '转向 B=16 扫描：先确认宽度收益的拐点', undefined],
+  ]) {
+    meridian(seed.out, ['workspace', 'event-add', '--root', workspaceOf(seed), '--id', id, '--text', text, '--kind', kind,
+      '--source', thread, '--date', dayFrom(seed.today, days), '--node', node('B'), ...(detail === undefined ? [] : ['--detail', detail])])
+  }
+  for (const [id, days, title, note] of [
+    ['rerun-gamma4', -12, '补跑 γ=4 基线', '换一个随机种子再跑一遍，确认 1.9×。'],
+    ['check-kv-memory', -7, '检查草稿头共享 KV 的显存占用', '对比共享前后的峰值显存。'],
+    ['summarize-sweep', 0, '汇总今天的宽度扫描结果', '把每个宽度的接受率和加速比整理成表。'],
+  ]) {
+    await onDay(seed, days, async () => {
+      meridian(seed.out, ['workspace', 'task-add', '--root', workspaceOf(seed), '--id', id, '--title', title,
+        '--note', note, '--date', dayFrom(seed.today, days)])
+      await call('project.get', { id: seed.projects.spec.id })
+    })
+  }
+  meridian(seed.out, ['workspace', 'idea-add', '--root', workspaceOf(seed), '--id', 'acceptance-histogram',
+    '--title', '按接受率直方图决定草稿长度', '--body', '统计最近一段的接受长度分布，取分位数作为下一步的草稿长度，而不是固定 γ。',
+    '--context', '动态树宽度的实现讨论', '--node', node('B'), '--date', dayFrom(seed.today, -3)])
+}
+
+/**
+ * Seeds the Wiki review queue: an agent proposal submitted through `meridian wiki propose` and left
+ * pending, one applied after the user verified the node conclusion it cites, one declined, and one
+ * Core rejects because its quote is not in the paper.
+ */
+export async function seedProposals(seed, call, files) {
+  const project = seed.projects.spec.id
+  const experiment = { kind: 'experiment', project, node: node('A') }
+  const dir = mkdtempSync(join(tmpdir(), 'meridian-test-library-'))
+  try {
+    writeJson(join(dir, 'ops.json'), [{ op: 'addClaim', page: 'topics/speculative-decoding', claim: {
+      id: 'adaptive-width', text: '按接受率自适应树宽，比固定宽度 4 的加速比高约 15%。', evidence: [
+        experiment, { kind: 'source', paper: `papers/${seed.papers.trees}`, page: 1, quote: await quoteOf(files, 'trees') },
+      ] } }])
+    meridian(seed.out, ['wiki', 'propose', join(dir, 'ops.json'), '--library-root', join(seed.out, 'library'),
+      '--title', '把 Dynamic Draft Trees 的 \\emph{自适应}树宽写进推测解码', '--project', project, '--node', node('A')])
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+  const propose = async (key, page, claim, quote) => {
+    const { version } = await call('wiki.aggregation', { id: page })
+    return call('wiki.propose', { proposal: {
+      protocol: 1, key, producer: { kind: 'ai', id: 'skill.meridian' }, trigger: { kind: 'experiment', project, node: node('A') },
+      title: claim.title, base: { [page]: version }, ops: [{ op: 'addClaim', page, claim: { id: claim.id, text: claim.text, evidence: [
+        experiment, { kind: 'source', paper: `papers/${seed.papers[quote.paper]}`, page: 1, quote: quote.text },
+      ] } }],
+    } })
+  }
+  const eagle = { paper: 'eagle', text: await quoteOf(files, 'eagle', /latency speedup ratio/) }
+  const applied = await propose('seed-draft-heads', 'methods/draft-heads',
+    { id: 'heads-acceptance', title: '草稿头比独立草稿模型更容易提高接受率', text: '在 13B 上，草稿头的接受率明显高于 68M 的独立草稿模型。' }, eagle)
+  const declined = await propose('seed-baseline-kv', 'topics/kv-cache-compression',
+    { id: 'baseline-kv', title: '把基线实验的结论写进 KV cache 压缩', text: '独立草稿模型的 KV cache 占用可以忽略。' }, eagle)
+  await propose('seed-bad-quote', 'topics/speculative-decoding',
+    { id: 'bad-quote', title: '引句对不上原文的提案', text: '这条提案的引句不在原文里。' }, { paper: 'eagle', text: '这句话不在 EAGLE 的第一页上。' })
+  // The App takes agent proposals from its inbox every few seconds.
+  for (let waited = 0; (await call('wiki.proposals', { status: 'queued' })).length < 3; waited += 1) {
+    if (waited > 40) throw new Error('The App did not take the agent proposal from its inbox')
+    await new Promise((done) => setTimeout(done, 500))
+  }
+  const held = (await call('project.get', { id: project })).projectConclusions.find((item) => item.node === node('A'))
+  await onDay(seed, -1, async () => {
+    await call('project.verifyConclusion', { projectId: project, node: node('A'), fingerprint: held.fingerprint })
+    await call('wiki.decide', { id: applied.id, decision: 'apply' })
+    await call('wiki.decide', { id: declined.id, decision: 'decline', reason: '基线实验不涉及 KV cache，证据对不上。' })
+  })
+}
+
+/**
+ * Gives every research record the agent dated in the past a timestamp on its own day, and returns
+ * the day of each feed entry the App copied from a record, by entry id. Run with the App closed.
+ */
+export function redateEvents(seed) {
+  const file = join(workspaceOf(seed), '.meridian', 'events', 'events.json')
+  const held = readJson(file)
+  held.events = held.events.map((event) => (event.at === undefined ? event : { ...event, at: `${event.date}${event.at.slice(10)}` }))
+  writeJson(file, held)
+  const feed = readJson(join(seed.out, 'library', '.meridian', 'feed.json'))
+  for (const entry of feed.filter((item) => item.source === 'lab')) {
+    const event = held.events.find((item) => JSON.stringify(entry.body).includes(item.text))
+    if (event !== undefined) seed.days.feed.set(entry.id, Math.round((Date.parse(event.date) - Date.parse(seed.today)) / 86_400_000))
+  }
+}

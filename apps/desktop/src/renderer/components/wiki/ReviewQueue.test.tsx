@@ -43,6 +43,10 @@ const PROPOSALS: WikiProposal[] = [
   }),
   { ...proposal('p5', { status: 'rejected', reason: { kind: 'invalid', message: 'x.json:提案的格式不对' } }), proposal: null, pages: [], titles: {}, claimTexts: {} },
   proposal('p6', { unverified: ['projects/draft#wide'] }),
+  proposal('p7', { pages: ['papers/flux'], titles: { 'papers/flux': '\\textbf{F}lux' }, proposal: {
+    ...proposal('p7').proposal!, title: '收进《\\textbf{F}lux》',
+    ops: [{ op: 'addEvidence', page: 'topics/sd', claim: 'knee', evidence: [{ kind: 'source', paper: 'papers/flux', page: 2, quote: 'q' }] }],
+  } }),
 ]
 
 describe('ReviewQueue', () => {
@@ -94,6 +98,12 @@ describe('ReviewQueue', () => {
     expect(chip.textContent).toBe('Speculative decoding')
     act(() => chip.click())
     expect(onOpenPage).toHaveBeenCalledWith('topics/sd')
+  })
+
+  it('提案标题与论文页名按 LaTeX 显示，改动行里的论文名是纯文本', () => {
+    expect(row('p7').querySelector('.review-title')!.innerHTML).toBe('收进《<strong>F</strong>lux》')
+    expect(row('p7').querySelector('.wkrel .tagchip')!.innerHTML).toBe('<strong>F</strong>lux')
+    expect(row('p7').querySelector('.diff')!.textContent).toContain('证据 · Flux p.2「q」')
   })
 
   it('引用了没验证的项目结论:标出结论待验证,应用按不了,点结论去验证它', () => {

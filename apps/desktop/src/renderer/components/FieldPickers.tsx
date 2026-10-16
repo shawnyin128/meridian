@@ -45,10 +45,13 @@ export function DotsMenu({
   )
 }
 
-/** A single-value picker whose trigger appearance is supplied by the host field. */
+/**
+ * A single-value picker whose trigger appearance is supplied by the host field. The trigger shows
+ * `children` when given, and the current value's label otherwise.
+ */
 export function ChoicePicker<T extends string>({
   value, options, onPick, label = (option) => option, className = 'pv metadata-editable',
-  stopRowActivation = false,
+  stopRowActivation = false, children,
 }: {
   value: T
   options: readonly T[]
@@ -57,6 +60,7 @@ export function ChoicePicker<T extends string>({
   className?: string
   /** Pass true when the row or card itself is clickable, so the trigger swallows the click instead of bubbling it. */
   stopRowActivation?: boolean
+  children?: ReactNode
 }) {
   const m = useMessages()
   return (
@@ -66,7 +70,7 @@ export function ChoicePicker<T extends string>({
         <button
           className={className} title={m.common.field.clickToEdit}
           onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
-        >{label(value)}</button>
+        >{children ?? label(value)}</button>
       )}
     >
       <MenuRadioGroup value={value}>

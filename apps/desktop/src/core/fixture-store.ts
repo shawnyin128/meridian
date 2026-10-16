@@ -14,7 +14,7 @@ import proposalFixture from './fixtures/proposals.json' with { type: 'json' }
 import type {
   Attachment, ChangeEntry, ChatMessage, ChatSession, Conclusion, DeliverySettings, FeedEntry, InboxEntry,
   GraphNode, LaterEntry, PaperColumns, PaperImportResult, PaperReading, PaperRow, ProjectDetail, ReadingMutation, SearchHit,
-  ProposalRecord, ResearchIdea, Task, TaskFields, TrashEntry, Watch,
+  ProposalRecord, RelationFields, ResearchIdea, Task, TaskFields, TrashEntry, Watch,
 } from '../shared/contract.js'
 import { AgentProposalSchema, DEFAULT_DELIVERY_SETTINGS } from '../shared/contract.js'
 import { projectControlState } from '../shared/project-control.js'
@@ -25,7 +25,7 @@ import {
   UNREAD_PAPER,
 } from '../shared/vocabulary.js'
 import type { ChangeRecord } from './changelog.js'
-import { PROJECT_FIELDS, withChangelog } from './changelog.js'
+import { lastProgressOf, PROJECT_FIELDS, withChangelog } from './changelog.js'
 import {
   applyReadingMutation, checkColumns, checkCustom, checkGroupKey, columnCells, emptyColumns,
   emptyPaperReading, facetPapers, freePageStem, laterWithMetadata, listPapers, missingMetadata,
@@ -256,6 +256,7 @@ export function createFixtureStore(
       conclusions: conclusionCounts(conclusions),
       ...(Object.keys(claims).length === 0 ? {} : { conclusionClaims: claims }),
       projectConclusions: conclusions,
+      ...lastProgressOf(changelog, project.id, [...project.events, ...project.workspace?.events ?? []]),
     }
   }
 
@@ -317,6 +318,19 @@ export function createFixtureStore(
   let deliveryConfig: DeliverySettings = structuredClone(DEFAULT_DELIVERY_SETTINGS)
   // Fixture ids use t1/m1/r1/f1/feed-1/chg-1 shapes; new prefixes must not collide with them.
   const nextId = (prefix: string) => `${prefix}-${++seq}`
+
+  /**
+   * The text and target of a relation item. Throws when `page` names no aggregation of the
+   * fixture wiki, or both targets are given.
+   */
+  const relationFields = ({ text, page, url }: Omit<RelationFields, 'group'>) => {
+    if (page !== undefined) {
+      const target = wiki.pages[page]
+      if (target === undefined || isPaper(target)) throw new Error(`wiki 聚合不存在：${page}`)
+    }
+    if (page !== undefined && url !== undefined) throw new Error('关联不能同时指向 Wiki 页和链接')
+    return { text, ...(page === undefined ? {} : { page }), ...(url === undefined ? {} : { url }) }
+  }
 
   /** Page version of fixture page `id`, from the text its record stands for; null when there is no such page. */
   const versionOf = (id: string): ReturnType<typeof pageVersion> => {
@@ -818,6 +832,7 @@ export function createFixtureStore(
         milestones: p.milestones.map(({ date, done }) => ({ date, done })),
         recentEvents: p.events.slice(-RECENT_EVENTS)
           .map(({ date, text, origin }) => ({ date, text, ...(origin === undefined ? {} : { origin }) })),
+        ...lastProgressOf(changelog, p.id, [...p.events, ...p.workspace?.events ?? []]),
       }))
     },
 
@@ -843,6 +858,7 @@ export function createFixtureStore(
         })),
         milestones: p.milestones.map((m) => ({ ...m })),
         events: p.events.map((e) => ({ ...e })),
+        ...lastProgressOf(changelog, p.id, [...p.events, ...p.workspace?.events ?? []]),
         research: overviewResearch(p.graph),
       }))
     },
@@ -1003,6 +1019,19 @@ export function createFixtureStore(
       return detailOf(nextProject)
     },
 
+    setTaskNode(projectId, taskId, nodeId) {
+      const project = projectById.get(projectId)
+      if (!project) throw new Error(`项目不存在：${projectId}`)
+      if (!project.tasks.some((t) => t.id === taskId)) throw new Error(`任务不存在：${taskId}`)
+      if (nodeId !== null && !project.graph.nodes.some((n) => n.id === nodeId)) throw new Error(`节点不存在：${nodeId}`)
+      const taskNodes = Object.fromEntries(Object.entries(project.taskNodes ?? {}).filter(([task]) => task !== taskId))
+      if (nodeId !== null) taskNodes[taskId] = nodeId
+      const nextProject: FixtureProject = { ...project, taskNodes }
+      if (Object.keys(taskNodes).length === 0) delete nextProject.taskNodes
+      projectById.set(projectId, nextProject)
+      return detailOf(nextProject)
+    },
+
     createMilestone(projectId, milestone) {
       const project = projectById.get(projectId)
       if (!project) throw new Error(`项目不存在：${projectId}`)
@@ -1042,19 +1071,11 @@ export function createFixtureStore(
       return detailOf(nextProject)
     },
 
-    createRelation(projectId, { group, text, page, url }) {
+    createRelation(projectId, { group, ...fields }) {
       const project = projectById.get(projectId)
       if (!project) throw new Error(`项目不存在：${projectId}`)
-      if (page !== undefined) {
-        const target = wiki.pages[page]
-        if (target === undefined || isPaper(target)) throw new Error(`wiki 聚合不存在：${page}`)
-      }
-      if (page !== undefined && url !== undefined) throw new Error('关联不能同时指向 Wiki 页和链接')
-      const item = {
-        id: nextId('rel'), text,
-        ...(page === undefined ? {} : { page }),
-        ...(url === undefined ? {} : { url }),
-      }
+      const checked = relationFields(fields)
+      const item = { id: nextId('rel'), ...checked }
       const seen = project.relations.some((r) => r.group === group)
       const relations = seen
         ? project.relations.map((r) => (r.group === group ? { ...r, items: [item, ...r.items] } : r))
@@ -1073,6 +1094,21 @@ export function createFixtureStore(
       const nextProject = {
         ...project,
         relations: project.relations.map((r) => ({ ...r, items: r.items.filter((i) => i.id !== relationId) })),
+      }
+      projectById.set(projectId, nextProject)
+      return detailOf(nextProject)
+    },
+
+    updateRelation(projectId, relationId, relation) {
+      const project = projectById.get(projectId)
+      if (!project) throw new Error(`项目不存在：${projectId}`)
+      if (!project.relations.some((r) => r.items.some((i) => i.id === relationId))) {
+        throw new Error(`关联不存在：${relationId}`)
+      }
+      const item = { id: relationId, ...relationFields(relation) }
+      const nextProject = {
+        ...project,
+        relations: project.relations.map((r) => ({ ...r, items: r.items.map((i) => (i.id === relationId ? item : i)) })),
       }
       projectById.set(projectId, nextProject)
       return detailOf(nextProject)

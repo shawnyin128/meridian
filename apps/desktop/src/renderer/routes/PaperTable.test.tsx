@@ -333,6 +333,15 @@ describe('PaperTable', () => {
     expect(listParams.at(-1)).not.toHaveProperty('filter')
   })
 
+  it('论文搜索框与关注屏的一句话添加框是同一种带框的字段输入框', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    expect(host.querySelector('#libq')?.classList).toContain('form-control-field')
+  })
+
   it('随笔与自定义文本列共用整格文本编辑器', async () => {
     const host = mount()
     columnsCall.resolve(NOTE_COLUMNS)
@@ -348,6 +357,29 @@ describe('PaperTable', () => {
     await act(async () => { press(customCell) })
     expect(customCell.querySelector('input')?.classList).toContain('paper-text-cell-input')
     expect(customCell.querySelector('input')?.classList).toContain('form-control-inline')
+  })
+
+  it('放不下的自定义文本格与随笔格一样标成截断,整段字装在悬停展开的 .ci 里', async () => {
+    const scrollWidth = vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get')
+      .mockImplementation(function () { return this.classList.contains('ci') ? 200 : 0 })
+    const clientWidth = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+      .mockImplementation(function () { return this.classList.contains('ci') ? 100 : 0 })
+    try {
+      const host = mount()
+      const text = '一段比格子宽得多的文字'
+      columnsCall.resolve(NOTE_COLUMNS)
+      listCall.resolve({ rows: [{ ...ROW, remark: text, custom: { note: text } }], total: 1 })
+      await flush()
+
+      const cells = ['td.pt-remark', 'td.pt-cust'].map((selector) => {
+        const td = host.querySelector<HTMLElement>(selector)!
+        return { trunc: td.classList.contains('trunc'), ci: td.querySelector('.ci')?.textContent }
+      })
+      expect(cells).toEqual([{ trunc: true, ci: text }, { trunc: true, ci: text }])
+    } finally {
+      scrollWidth.mockRestore()
+      clientWidth.mockRestore()
+    }
   })
 
   it('默认按最近添加排序,双击论文行直接进入阅读器,格内按钮不会误触发', async () => {
@@ -500,6 +532,46 @@ describe('PaperTable', () => {
     expect(host.querySelector<HTMLButtonElement>('[title="新增列"]')!.disabled).toBe(false)
     expect(row.classList).toContain('selected')
     expect(row.getAttribute('aria-current')).toBe('true')
+  })
+
+  it('详情里的标题和短标题按 LaTeX 显示，点开编辑时仍是原文', async () => {
+    const latex = { ...ROW, title: '\\textbf{F}luxBin $\\times$', shortTitle: '\\emph{Flux}' }
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [latex], total: 1 })
+    await flush()
+    await act(async () => { press(host.querySelector<HTMLElement>('.ptable tbody tr')!) })
+    getCall.resolve(latex)
+    await flush()
+
+    const [title, short] = [...host.querySelectorAll<HTMLElement>('.paper-meta-list .paper-meta-editable')]
+    expect(title!.innerHTML).toMatch(/<strong>F<\/strong>luxBin <span><span class="katex">/)
+    expect(short!.innerHTML).toContain('<em>Flux</em>')
+    await act(async () => { title!.querySelector('button')!.click() })
+    expect(title!.querySelector<HTMLInputElement>('input, textarea')!.value).toBe('\\textbf{F}luxBin $\\times$')
+  })
+
+  it('详情的论文信息直接列出，不带「元数据」标题，并按 LaTeX 显示摘要', async () => {
+    const withAbstract = { ...ROW, abstract: '我们提出 \\textbf{FluxBin}，把误差降到 $O(n)$。' }
+    // The folded abstract measures itself, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [withAbstract], total: 1 })
+    await flush()
+    await act(async () => { press(host.querySelector<HTMLElement>('.ptable tbody tr')!) })
+    getCall.resolve(withAbstract)
+    await flush()
+
+    const panel = host.querySelector<HTMLElement>('.paper-meta')!
+    expect(panel.textContent).not.toContain('元数据')
+    expect(panel.firstElementChild!.tagName).toBe('DL')
+    const labels = [...panel.querySelectorAll('dt')].map((dt) => dt.textContent)
+    const abstract = panel.querySelectorAll('dd')[labels.indexOf('摘要')]!
+    expect(labels.indexOf('摘要')).toBe(labels.indexOf('作者') + 1)
+    expect(abstract.innerHTML).toContain('<strong>FluxBin</strong>')
+    expect(abstract.querySelector('.katex')).not.toBeNull()
+    vi.unstubAllGlobals()
   })
 
   it('详情面板收掉建列草稿之后,关面板新开的草稿不受它落地影响', async () => {
@@ -1028,6 +1100,111 @@ describe('PaperTable', () => {
     await flush()
     expect(renameOptionCalls).toEqual([['pick', 'existing', 'renamed']])
     expect(toastMessages).toEqual([])
+  })
+
+  it('列菜单里改列名、改选项名,点到菜单外都像回车一样改掉', async () => {
+    const host = mount()
+    columnsCall.resolve(SELECT_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const gear = host.querySelector<HTMLButtonElement>('[title="列设置"]')!
+    // Radix closes the menu on the click that ends the press, once the rename has been accepted.
+    const pressOutside = async () => {
+      await act(async () => { document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })) })
+      await act(async () => { press(document.body) })
+      await flush()
+    }
+
+    await act(async () => { gear.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[title="重命名列"]')!.click() })
+    await act(async () => { setValue(document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')!, '挑选') })
+    await pressOutside()
+    expect(setColumnsCalls.at(-1)?.columns.custom.map((c) => c.label)).toEqual(['挑选'])
+    expect(document.querySelector('.mi.colrow')).toBeNull()
+    await act(async () => { setColumnsCalls.at(-1)!.resolve() })
+    await flush()
+
+    await act(async () => { gear.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[title="选项"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[title="重命名选项"]')!.click() })
+    await act(async () => { setValue(document.querySelector<HTMLInputElement>('.mi.optrow input.celledit')!, 'renamed') })
+    await pressOutside()
+    expect(renameOptionCalls).toEqual([['pick', 'existing', 'renamed']])
+
+    // A name another column already has is refused: the menu, the input and its text stay.
+    await act(async () => { gear.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[title="重命名列"]')!.click() })
+    await act(async () => { setValue(document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')!, '标题') })
+    await pressOutside()
+    const refused = document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')!
+    expect(refused.value).toBe('标题')
+    expect(refused.getAttribute('aria-invalid')).toBe('true')
+  })
+
+  it('列菜单改列名时点菜单里别的地方:先存下这一列;名字重了就带着字留着标红,另一列的重命名不开', async () => {
+    const host = mount()
+    columnsCall.resolve(PICK_AND_NOTE)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
+    const pencil = (at: number) => document.querySelectorAll<HTMLButtonElement>('[title="重命名列"]')[at]!
+    const renameInput = () => document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')
+    /** Presses `el` in the menu as a user would: the press, then the click. */
+    const pressInMenu = async (el: Element) => {
+      await act(async () => { el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })) })
+      await act(async () => { press(el) })
+      await flush()
+    }
+
+    await act(async () => { pencil(0).click() })
+    await act(async () => { setValue(renameInput()!, '挑选') })
+    await pressInMenu([...document.querySelectorAll('.mi.colrow')].find((row) => row.textContent === '主题')!)
+    expect(setColumnsCalls[0]?.columns.custom.map((c) => c.label)).toEqual(['挑选', '备注'])
+    expect(renameInput()).toBeNull()
+    await act(async () => { setColumnsCalls[0]!.resolve() })
+    await flush()
+
+    await act(async () => { pencil(1).click() })
+    await act(async () => { setValue(renameInput()!, '标题') })
+    await pressInMenu(pencil(0))
+    expect(renameInput()!.value).toBe('标题')
+    expect(renameInput()!.getAttribute('aria-invalid')).toBe('true')
+    expect(setColumnsCalls).toHaveLength(2)
+  })
+
+  it('文本格离开时的写还在路上就点了另一格:写成了才开那一格;写被拒时原格带着字留着并标红', async () => {
+    const host = mount()
+    columnsCall.resolve(NOTE_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const noteCell = host.querySelector<HTMLElement>('td.pt-cust')!
+    const remarkCell = host.querySelector<HTMLElement>('td.pt-remark')!
+    /** Types `value` into the note cell, then presses on the remark cell as a user would. */
+    const typeThenOpenRemark = async (value: string) => {
+      await act(async () => { press(noteCell) })
+      await act(async () => { setValue(noteCell.querySelector<HTMLInputElement>('input')!, value) })
+      await act(async () => { remarkCell.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })) })
+      await act(async () => { press(remarkCell) })
+    }
+
+    await typeThenOpenRemark('读到一半')
+    expect(updateCalls.map((u) => u.patch)).toEqual([{ custom: { note: '读到一半' } }])
+    expect(remarkCell.querySelector('input')).toBeNull()
+    await act(async () => { updateCalls[0]!.resolve() })
+    await flush()
+    expect(noteCell.querySelector('input')).toBeNull()
+    expect(remarkCell.querySelector('input')).not.toBeNull()
+    await act(async () => {
+      remarkCell.querySelector('input')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+
+    await typeThenOpenRemark('写不进去')
+    await act(async () => { updateCalls[1]!.reject(new Error('论文不存在')) })
+    await flush()
+    const kept = noteCell.querySelector<HTMLInputElement>('input')!
+    expect(kept.value).toBe('写不进去')
+    expect(kept.getAttribute('aria-invalid')).toBe('true')
+    expect(remarkCell.querySelector('input')).toBeNull()
   })
 
   it('建列的写在路上时,格子里新建选项排在建列之后:先加选项(载荷带着新列),成了再写这一格', async () => {

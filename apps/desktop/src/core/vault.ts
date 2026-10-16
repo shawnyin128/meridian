@@ -354,6 +354,16 @@ export interface VaultStore {
   reorderTasks(projectId: string, order: readonly string[]): ProjectDetail
 
   /**
+   * Gives the task with the given taskId inside the project with the given
+   * projectId the research node nodeId by hand, ahead of the node the graph
+   * links it to, or with a null nodeId takes that away. The project's plan in
+   * its workspace carries it too. Returns the updated project. Throws if no
+   * such project or task exists, or the project's research graph has no node
+   * nodeId.
+   */
+  setTaskNode(projectId: string, taskId: string, nodeId: string | null): ProjectDetail
+
+  /**
    * Adds a milestone built from the given fields to the front of the project
    * with the given projectId's milestone list, assigning it an id unused by
    * that project, and returns the updated project. Throws if no such project
@@ -396,6 +406,17 @@ export interface VaultStore {
    * exists inside it.
    */
   deleteRelation(projectId: string, relationId: string): ProjectDetail
+
+  /**
+   * Replaces the text and target of the relation item with the given
+   * relationId inside the project with the given projectId, keeping its id,
+   * group and position, and returns the updated project. A target left out is
+   * removed from the item. Targets are checked as createRelation checks them.
+   * Throws if no such project, relation item or aggregation exists.
+   */
+  updateRelation(
+    projectId: string, relationId: string, relation: Omit<RelationFields, 'group'>,
+  ): ProjectDetail
 
   /** Links an existing paper to a project. */
   addPaper(projectId: string, paperId: string): ProjectDetail

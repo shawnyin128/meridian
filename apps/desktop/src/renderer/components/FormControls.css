@@ -42,33 +42,45 @@
 }
 .form-control-field:disabled{cursor:default;opacity:.55}
 
-/* Compact editors embedded in table cells and metadata rows share one neutral focus treatment. */
+/*
+ * Compact editors embedded in table cells and metadata rows take the box of the text they replace,
+ * so the text stays put when editing starts: no inline padding, and the block padding lies in
+ * negative margins. Editing shows the field color with an accent line along the bottom.
+ */
 .form-input.form-control-inline,
 .form-textarea.form-control-inline,
 .form-select.form-control-inline{
   display:block;
   width:100%;
-  height:24px;
-  padding:2px 8px;
+  height:auto;
+  margin:-2px 0;
+  padding:2px 0;
   border:0;
-  border-radius:var(--r-sm);
+  border-radius:var(--r-xs);
   background:var(--field);
   color:var(--ink);
-  line-height:var(--lh-ui);
+  line-height:inherit;
   outline:0;
-  transition:background-color .12s ease;
+  transition:box-shadow .12s ease;
 }
-.form-input.form-control-inline:hover,
-.form-select.form-control-inline:hover,
+/* A native select insets its text and a date input pads its fields; either would move the text. */
+.form-select.form-control-inline{appearance:none}
+.form-input.form-control-inline::-webkit-datetime-edit,
+.form-input.form-control-inline::-webkit-datetime-edit-fields-wrapper{padding:0}
 .form-input.form-control-inline:focus,
-.form-input.form-control-inline:focus-visible,
-.form-textarea.form-control-inline:hover,
 .form-textarea.form-control-inline:focus,
-.form-textarea.form-control-inline:focus-visible,
-.form-select.form-control-inline:focus,
-.form-select.form-control-inline:focus-visible{
-  background:var(--card);
+.form-select.form-control-inline:focus{
+  box-shadow:inset 0 -2px 0 var(--ring);
 }
+
+/*
+ * A save refused on leaving the field: a red frame drawn inside the box and a short shake, the frame
+ * alone with reduced motion. Each editor styles its own focus frame, so the red one must win over all
+ * of them without changing border-width or padding.
+ */
+.form-control[aria-invalid="true"]{outline:1px solid var(--bad)!important;outline-offset:-1px!important;animation:form-control-refused .32s var(--e-inout)}
+@keyframes form-control-refused{20%,60%{transform:translateX(-3px)}40%,80%{transform:translateX(3px)}}
+@media (prefers-reduced-motion:reduce){.form-control[aria-invalid="true"]{animation:none}}
 
 /* A directory path and its system chooser form a single field everywhere in the app. */
 .directory-field{position:relative;display:block;min-width:0;width:100%}

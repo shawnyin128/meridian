@@ -57,7 +57,7 @@ describe('attnItems', () => {
     expect(attnItems(project({
       conclusions: { verified: 1, pending: 0, conflicting: 2 },
       milestones: [milestone('2026-08-28')],
-      events: [{ date: '2026-08-17', text: '结论冲突:改写为条件式' }],
+      lastProgress: '2026-08-17',
     }), TODAY, sm)).toEqual([
       {
         id: 'conflict', rank: 0, kind: '结论冲突', tone: 'bad',
@@ -69,7 +69,7 @@ describe('attnItems', () => {
       },
       {
         id: 'stale', rank: 6, kind: '推进停滞', tone: 'mut',
-        reason: '已 8 天没有科研记录', action: '确认继续、搁置或调整方向',
+        reason: '已 8 天无推进', action: '确认继续、搁置或调整方向',
       },
     ])
   })
@@ -78,7 +78,7 @@ describe('attnItems', () => {
     expect(attnItems(project({
       block: '等 A100 机时(周四释放)',
       milestones: [milestone('2026-08-28')],
-      events: [{ date: '2026-08-17', text: '评测脚本跑通 MT-bench 子集' }],
+      lastProgress: '2026-08-17',
     }), TODAY, sm)).toEqual([
       {
         id: 'block', rank: 1, kind: '阻塞', tone: 'bad',
@@ -90,7 +90,7 @@ describe('attnItems', () => {
       },
       {
         id: 'stale', rank: 6, kind: '推进停滞', tone: 'mut',
-        reason: '已 8 天没有科研记录', action: '确认继续、搁置或调整方向',
+        reason: '已 8 天无推进', action: '确认继续、搁置或调整方向',
       },
     ])
   })
@@ -99,7 +99,7 @@ describe('attnItems', () => {
     const noisy = {
       conclusions: { verified: 1, pending: 0, conflicting: 2 },
       milestones: [milestone('2026-08-28')],
-      events: [{ date: '2026-08-17', text: '结论冲突:改写为条件式' }],
+      lastProgress: '2026-08-17',
     }
     expect(attnItems(project({ ...noisy, status: '搁置' }), TODAY, sm)).toEqual([])
     expect(attnItems(project({ ...noisy, status: '已完成' }), TODAY, sm)).toEqual([])
@@ -190,13 +190,19 @@ describe('attnItems', () => {
   })
 
   it('停滞超过 7 天才报,正好 7 天不报', () => {
-    expect(attnItems(project({ events: [{ date: '2026-08-17', text: '结论冲突' }] }), TODAY, sm)).toEqual([
+    expect(attnItems(project({ lastProgress: '2026-08-17' }), TODAY, sm)).toEqual([
       {
         id: 'stale', rank: 6, kind: '推进停滞', tone: 'mut',
-        reason: '已 8 天没有科研记录', action: '确认继续、搁置或调整方向',
+        reason: '已 8 天无推进', action: '确认继续、搁置或调整方向',
       },
     ])
-    expect(attnItems(project({ events: [{ date: '2026-08-18', text: '结论冲突' }] }), TODAY, sm)).toEqual([])
+    expect(attnItems(project({ lastProgress: '2026-08-18' }), TODAY, sm)).toEqual([])
+  })
+
+  it('停滞从最近推进那天算:科研记录停在很久以前,昨天改过任务就不报', () => {
+    expect(attnItems(project({
+      events: [{ date: '2026-08-01', text: '创建项目' }], lastProgress: '2026-08-24',
+    }), TODAY, sm)).toEqual([])
   })
 })
 

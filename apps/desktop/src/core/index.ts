@@ -67,6 +67,7 @@ import {
   ProjectReorderParamsSchema,
   ProjectReorderTasksParamsSchema,
   ProjectSetConclusionStateParamsSchema,
+  ProjectSetTaskNodeParamsSchema,
   ProjectUnverifyConclusionParamsSchema,
   ProjectVerifyConclusionParamsSchema,
   ResearchIdeaCreateParamsSchema,
@@ -77,6 +78,7 @@ import {
   ResearchIdeaUpdateParamsSchema,
   ProjectUpdateMilestoneParamsSchema,
   ProjectUpdateParamsSchema,
+  ProjectUpdateRelationParamsSchema,
   ProjectUpdateTaskParamsSchema,
   SearchParamsSchema,
   TrashPurgeParamsSchema,
@@ -510,6 +512,10 @@ registerHandler('project.reorderTasks', (params) => {
   const { projectId, order } = ProjectReorderTasksParamsSchema.parse(params)
   return store.reorderTasks(projectId, order)
 })
+registerHandler('project.setTaskNode', (params) => {
+  const { projectId, taskId, nodeId } = ProjectSetTaskNodeParamsSchema.parse(params)
+  return store.setTaskNode(projectId, taskId, nodeId)
+})
 registerHandler('project.createMilestone', (params) => {
   const { projectId, milestone } = ProjectCreateMilestoneParamsSchema.parse(params)
   return store.createMilestone(projectId, milestone)
@@ -529,6 +535,10 @@ registerHandler('project.createRelation', (params) => {
 registerHandler('project.deleteRelation', (params) => {
   const { projectId, relationId } = ProjectDeleteRelationParamsSchema.parse(params)
   return store.deleteRelation(projectId, relationId)
+})
+registerHandler('project.updateRelation', (params) => {
+  const { projectId, relationId, relation } = ProjectUpdateRelationParamsSchema.parse(params)
+  return store.updateRelation(projectId, relationId, relation)
 })
 registerHandler('project.addPaper', (params) => {
   const { projectId, paperId } = ProjectPaperParamsSchema.parse(params)

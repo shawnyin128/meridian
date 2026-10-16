@@ -163,6 +163,8 @@ export const project = {
     call<ProjectDetail>('project.deleteTask', { projectId, taskId }),
   reorderTasks: (projectId: string, order: string[]) =>
     call<ProjectDetail>('project.reorderTasks', { projectId, order }),
+  setTaskNode: (projectId: string, taskId: string, nodeId: string | null) =>
+    call<ProjectDetail>('project.setTaskNode', { projectId, taskId, nodeId }),
   createMilestone: (projectId: string, milestone: MilestoneFields) =>
     call<ProjectDetail>('project.createMilestone', { projectId, milestone }),
   updateMilestone: (projectId: string, milestoneId: string, patch: Partial<MilestoneFields>) =>
@@ -173,6 +175,8 @@ export const project = {
     call<ProjectDetail>('project.createRelation', { projectId, relation }),
   deleteRelation: (projectId: string, relationId: string) =>
     call<ProjectDetail>('project.deleteRelation', { projectId, relationId }),
+  updateRelation: (projectId: string, relationId: string, relation: Omit<RelationFields, 'group'>) =>
+    call<ProjectDetail>('project.updateRelation', { projectId, relationId, relation }),
   addPaper: (projectId: string, paperId: string) =>
     call<ProjectDetail>('project.addPaper', { projectId, paperId }),
   removePaper: (projectId: string, paperId: string) =>

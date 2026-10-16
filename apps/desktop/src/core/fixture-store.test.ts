@@ -440,6 +440,23 @@ describe('fixture store', () => {
     expect(() => store.deleteTask('draft', 'no-such-task')).toThrow(/no-such-task/)
   })
 
+  it('任务的科研节点可以手动设、改、清;手动设的节点优先于图里连的那个,结论里也按它算', () => {
+    const tasksOf = (node: string) => store.getProject('draft').projectConclusions!
+      .find((c) => c.node === node)!.tasks.map((t) => t.id)
+    expect(tasksOf('knee')).toEqual(['t4'])
+    expect(store.setTaskNode('draft', 't4', 'stop').taskNodes).toEqual({ t4: 'stop' })
+    expect([tasksOf('knee'), tasksOf('stop')]).toEqual([[], ['t4']])
+    expect(store.setTaskNode('draft', 't4', 'bucket').taskNodes).toEqual({ t4: 'bucket' })
+    expect([tasksOf('stop'), tasksOf('bucket')]).toEqual([[], ['t1', 't4']])
+    expect(store.setTaskNode('draft', 't4', null).taskNodes).toBeUndefined()
+    expect(tasksOf('knee')).toEqual(['t4'])
+  })
+
+  it('给不存在的任务或节点设科研节点会抛出', () => {
+    expect(() => store.setTaskNode('draft', 'no-such-task', 'knee')).toThrow(/no-such-task/)
+    expect(() => store.setTaskNode('draft', 't2', 'no-such-node')).toThrow(/no-such-node/)
+  })
+
   it('按给定顺序重排任务,并且重新读取项目也是这个顺序', () => {
     const ids = store.getProject('draft').tasks.map((t) => t.id)
     const reordered = [ids[2]!, ids[0]!, ids[1]!, ...ids.slice(3)]
@@ -534,6 +551,29 @@ describe('fixture store', () => {
     expect(() => store.deleteRelation('draft', 'no-such-relation')).toThrow(/no-such-relation/)
   })
 
+  it('改一条关联就换成给的名字和指向,id、所在组和位置都不变', () => {
+    const before = store.getProject('draft').relations
+    const target = before.find((r) => r.group === 'Wiki')!.items.at(-1)!
+    const page = store.wikiCards()[0]!
+    const after = store.updateRelation('draft', target.id, { text: page.title, page: page.id })
+    expect(after.relations).toEqual(before.map((r) => ({
+      ...r,
+      items: r.items.map((i) => (i.id === target.id ? { id: target.id, text: page.title, page: page.id } : i)),
+    })))
+    const relinked = store.updateRelation('draft', target.id, { text: '实验看板', url: 'https://wandb.ai/team/draft' })
+    expect(relinked.relations.flatMap((r) => r.items).find((i) => i.id === target.id))
+      .toEqual({ id: target.id, text: '实验看板', url: 'https://wandb.ai/team/draft' })
+  })
+
+  it('改关联和新增一样校验指向,改不存在的条目会抛出', () => {
+    const id = store.getProject('draft').relations.find((r) => r.group === 'Wiki')!.items[0]!.id
+    expect(() => store.updateRelation('draft', id, { text: 'x', page: 'topics/nope' })).toThrow(/topics\/nope/)
+    expect(() => store.updateRelation('draft', id, {
+      text: 'x', page: store.wikiCards()[0]!.id, url: 'https://example.com',
+    })).toThrow(/同时/)
+    expect(() => store.updateRelation('draft', 'no-such-relation', { text: 'x' })).toThrow(/no-such-relation/)
+  })
+
   it('新建的附件带上了 id 并进入项目', () => {
     const before = store.getProject('draft').attachments.length
     const path = resolve(VAULT, 'sweep.csv')
@@ -621,6 +661,28 @@ describe('fixture store', () => {
     expect(summary.recentEvents).toEqual(full.events.slice(-3).map(({ date, text, origin }) => ({
       date, text, ...(origin === undefined ? {} : { origin }),
     })))
+  })
+
+  it('概要、详情与总览的最近推进是同一天:改任务算进去,调任务顺序与删掉再恢复项目不算', () => {
+    let day = '2026-08-25'
+    const dated = createFixtureStore(() => day)
+    const progress = () => [
+      dated.listProjects().find((p) => p.id === 'draft')!.lastProgress,
+      dated.getProject('draft').lastProgress,
+      dated.overviewProjects().find((p) => p.id === 'draft')!.lastProgress,
+    ]
+    const latest = dated.getProject('draft').events.map((event) => event.date).sort().at(-1)!
+    expect(progress()).toEqual([latest, latest, latest])
+
+    day = '2026-08-26'
+    const ids = dated.getProject('draft').tasks.map((t) => t.id)
+    dated.reorderTasks('draft', [...ids].reverse())
+    dated.deleteProject('draft')
+    dated.restoreTrash(dated.listTrash()[0]!.id)
+    expect(progress()).toEqual([latest, latest, latest])
+
+    expect(dated.updateTask('draft', ids[0]!, { title: '改过的任务' }).lastProgress).toBe('2026-08-26')
+    expect(progress()).toEqual(['2026-08-26', '2026-08-26', '2026-08-26'])
   })
 
   it('新记一条科研记录之后,概要的末位与详情的末位都是它', () => {
@@ -1558,10 +1620,11 @@ describe('fixture store', () => {
     expect(wo.body).toContain('## 结论\n- 2026-09-09 · ')
     expect(wo.body).toMatch(/## 未解决\n- /)
     expect(wo.body).not.toContain('generated')
-    expect(wo.titles).toMatchObject(Object.fromEntries(['2210.17323', '2306.07629', '2307.13304'].map((id) => (
-      [`papers/${id}`, store.getPaper(id).title]
-    ))))
-    expect(wo.titles['papers/2210.17323']).toMatch(/^GPTQ: /)
+    expect(wo.titles).toMatchObject(Object.fromEntries(['2210.17323', '2306.07629', '2307.13304'].map((id) => {
+      const paper = store.wikiPaper(`papers/${id}`)
+      return [paper.id, { id: paper.id, title: paper.short, fullTitle: paper.title }]
+    })))
+    expect(wo.titles['papers/2210.17323']).toMatchObject({ title: 'GPTQ', fullTitle: expect.stringMatching(/^GPTQ: /) })
     expect(wo.related).toEqual([{
       label: '方法',
       links: [
@@ -2051,6 +2114,7 @@ describe('fixture store', () => {
       'project.updateTask': () => store.updateTask('draft', 't2', {}),
       'project.deleteTask': () => store.deleteTask('draft', 't2'),
       'project.reorderTasks': () => store.reorderTasks('draft', store.getProject('draft').tasks.map((t) => t.id)),
+      'project.setTaskNode': () => store.setTaskNode('draft', 't3', 'knee'),
       'project.createMilestone': () => store.createMilestone('draft', {
         date: '2026-09-01', title: '新里程碑', done: false,
       }),
@@ -2059,6 +2123,8 @@ describe('fixture store', () => {
       'project.createRelation': () => store.createRelation('draft', { group: 'Wiki', text: '新关联' }),
       'project.deleteRelation': () =>
         store.deleteRelation('draft', store.getProject('draft').relations[0]!.items[0]!.id),
+      'project.updateRelation': () =>
+        store.updateRelation('draft', store.getProject('draft').relations[0]!.items[0]!.id, { text: '改名' }),
       'project.createAttachment': () => store.createAttachment('draft', {
         name: '新附件.csv', size: '1 KB', path: resolve(VAULT, '新附件.csv'),
       }),

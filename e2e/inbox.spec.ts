@@ -570,21 +570,22 @@ test('论文表的筛选框与关注屏的一句话添加框穿同一件衣服',
   expect(filter).toEqual(twin)
 })
 
-test('关注管理:同一时间只开一个占位,点另一组的加号先收掉上一个', async ({ win }) => {
+test('关注管理:同一时间只开一个占位,点另一组的加号先存下上一个占位打的字', async ({ win }) => {
   await openDeliverySettings(win)
   const watches = await watchesFromCore(win)
   await expect(settings(win, '.wrow')).toHaveCount(watches.length)
 
   await settings(win, '.section-heading').filter({ hasText: '主题' }).locator('.btn').click()
-  await settings(win, '.wrow.newrow input').fill('还没提交的字')
+  await settings(win, '.wrow.newrow input').fill('切组前存下的主题')
   await settings(win, '.section-heading').filter({ hasText: '作者' }).locator('.btn').click()
 
-  // The author group comes after the topic group, so its placeholder is the last row; the topic
-  // group's placeholder closed together with the text typed in it.
+  // The topic typed in the first placeholder is saved as a watch before the author group's
+  // placeholder opens; the author group comes after the topic group, so its placeholder is the last row.
   await expect(settings(win, '.wrow.newrow')).toHaveCount(1)
-  await expect(settings(win, '.wrow')).toHaveCount(watches.length + 1)
+  await expect(settings(win, '.wrow')).toHaveCount(watches.length + 2)
   await expect(settings(win, '.wrow').last()).toHaveClass(/\bnewrow\b/)
   await expect(settings(win, '.wrow.newrow input')).toHaveValue('')
+  expect((await watchesFromCore(win)).map((w) => w.name)).toContain('切组前存下的主题')
 })
 
 test('关注管理:两下快回车只建出一条关注', async ({ win }) => {

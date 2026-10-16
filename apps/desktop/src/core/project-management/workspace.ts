@@ -166,7 +166,10 @@ function planBody(project: ProjectRecord): JsonObject {
       start: project.start,
       due: project.due,
     },
-    tasks: project.tasks,
+    tasks: project.tasks.map((task) => {
+      const node = project.taskNodes?.[task.id]
+      return node === undefined ? task : { ...task, node }
+    }),
     milestones: project.milestones,
     ...agentTasksOf(project),
   }

@@ -73,6 +73,7 @@ const PAGE_KEYS = {
   workspaceSsh: 'workspace_ssh',
   verifiedConclusions: 'verified_conclusions',
   agentTasks: 'agent_tasks',
+  taskNodes: 'task_nodes',
 } as const
 
 const detail = ProjectDetailSchema.shape
@@ -82,7 +83,8 @@ const detail = ProjectDetailSchema.shape
  * determines ordering between projects and is never displayed, so it stays inside Core.
  */
 export type ProjectRecord = Omit<
-  ProjectDetail, 'paperCount' | 'paperTitles' | 'conclusions' | 'conclusionClaims' | 'projectConclusions' | 'workspace'
+  ProjectDetail,
+  'paperCount' | 'paperTitles' | 'conclusions' | 'conclusionClaims' | 'projectConclusions' | 'workspace' | 'lastProgress'
 > & {
   created: string
   workspaceRoot?: string
@@ -134,6 +136,7 @@ const ProjectPageSchema = z.object({
   /** Who added a task, keyed by task id, for tasks not added by the user; kept out of task items like notes. */
   task_origins: z.record(z.string(), z.string()).optional(),
   agent_tasks: z.record(z.string(), z.string()).optional(),
+  task_nodes: detail.taskNodes,
   milestones: detail.milestones,
   relations: detail.relations,
   attachments: detail.attachments,
@@ -364,6 +367,7 @@ function frontOf(project: ProjectRecord): Record<string, Json> {
     ...(taskNotesOf(project.tasks) === undefined ? {} : { task_notes: taskNotesOf(project.tasks) }),
     ...(taskOriginsOf(project.tasks) === undefined ? {} : { task_origins: taskOriginsOf(project.tasks) }),
     ...(project.agentTasks === undefined ? {} : { agent_tasks: project.agentTasks }),
+    ...(project.taskNodes === undefined ? {} : { task_nodes: project.taskNodes }),
     milestones: project.milestones,
     relations: project.relations,
     attachments: project.attachments,
@@ -441,6 +445,7 @@ export function readProjectPage(file: string, id: string): ProjectRecord {
       ...(page.task_origins?.[task.id] === 'agent' ? { origin: 'agent' as const } : {}),
     })),
     ...(page.agent_tasks === undefined ? {} : { agentTasks: page.agent_tasks }),
+    ...(page.task_nodes === undefined ? {} : { taskNodes: page.task_nodes }),
     milestones: page.milestones,
     events: body.slice(eventsFrom, eventsTo).flatMap((row) => {
       const event = EVENT.exec(withoutCr(row))
@@ -522,6 +527,7 @@ export function writeProjectFields(
     const value = front[key]
     if (value === undefined && (
       field === 'block' || field === 'workspaceRoot' || field === 'workspaceSsh' || field === 'verifiedConclusions'
+      || field === 'taskNodes'
     )) {
       const removable = field in PAGE_KEYS ? PAGE_KEYS[field as keyof typeof PAGE_KEYS] : field
       dropProjectPageKeys(file, [removable], staging)

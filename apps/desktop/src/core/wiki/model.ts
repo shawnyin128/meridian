@@ -153,11 +153,11 @@ export function checkBody(id: string, body: string): void {
 const summaryOf = (body: string): string =>
   body.split('\n').map((line) => line.trim()).find((line) => line !== '' && !line.startsWith('#')) ?? ''
 
-/** Existing vault pages referenced by body `[[…]]` links, mapped from id to UI name. */
-function titlesOf(data: WikiData, body: string): Record<string, string> {
-  const out: Record<string, string> = {}
+/** Existing vault pages referenced by body `[[…]]` links, mapped from id to a link to the page. */
+function titlesOf(data: WikiData, body: string): Record<string, WikiRef> {
+  const out: Record<string, WikiRef> = {}
   for (const m of body.matchAll(/\[\[([^\]|\n]+)(?:\|[^\]\n]+)?\]\]/g)) {
-    if (data.pages[m[1]!] !== undefined) out[m[1]!] = titleOf(data, m[1]!)
+    if (data.pages[m[1]!] !== undefined) out[m[1]!] = ref(data, m[1]!)
   }
   return out
 }

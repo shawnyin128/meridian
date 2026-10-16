@@ -144,6 +144,28 @@ export const vaultToday = (win: Page): Promise<string> => win.evaluate(() =>
 export const fixtureDay = (today: string, days: number): string =>
   new Date(Date.parse(`${today}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10)
 
+/**
+ * The first and last ISO day of the timeline period around `today`: the day itself, its Monday to
+ * Sunday week, or its calendar month. The timeline lists only the tasks that overlap this period.
+ */
+export function timelinePeriod(today: string, scale: 'day' | 'week' | 'month'): { first: string; last: string } {
+  if (scale === 'day') return { first: today, last: today }
+  const date = new Date(`${today}T00:00:00Z`)
+  if (scale === 'week') {
+    const monday = (date.getUTCDay() + 6) % 7
+    return { first: fixtureDay(today, -monday), last: fixtureDay(today, 6 - monday) }
+  }
+  const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10)
+  return {
+    first: iso(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1)),
+    last: iso(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)),
+  }
+}
+
+/** Whether a task overlaps `period`, so the timeline lists it. */
+export const overlaps = (task: { start: string; end: string }, period: { first: string; last: string }): boolean =>
+  task.end >= period.first && task.start <= period.last
+
 /** A date as the Chinese UI writes it (month and day), like `createFormat('zh').date` in renderer/lib/format.ts. */
 export const dshort = (iso: string): string => {
   const [, month, day] = iso.match(/^(?:\d{4}-)?(\d{1,2})[-/](\d{1,2})$/) ?? []

@@ -1,5 +1,7 @@
 import type { Page } from '@playwright/test'
-import { dshort, expect, fixtureDay, test, vaultToday, type MeridianWindow } from './app.js'
+import {
+  dshort, expect, fixtureDay, overlaps, test, timelinePeriod, vaultToday, type MeridianWindow,
+} from './app.js'
 
 /** At this window content width, the Gantt viewport is only a little over 300 pixels wide. */
 const NARROW_WIDTH = 760
@@ -48,12 +50,13 @@ const overviewCounts = (win: Page) => win.evaluate(async () => {
   const w1 = w0 + 6
   const sum = (of: (p: (typeof rows)[number]) => number) => rows.reduce((n, p) => n + of(p), 0)
   // The default overview timeline leaves out finished tasks and milestones; the history view keeps them.
-  const openTasks = (p: (typeof rows)[number]) => p.tasks.filter((t) => t.state !== 'done').length
+  // Either view lists only the tasks that overlap the shown week.
+  const inWeek = (t: (typeof rows)[number]['tasks'][number]) => day(t.end) >= w0 && day(t.start) <= w1
+  const openTasks = (p: (typeof rows)[number]) => p.tasks.filter((t) => t.state !== 'done' && inWeek(t)).length
   return {
     ids: rows.map((p) => p.id),
     ganttRows: sum((p) => p.status === '进行中' ? 1 + openTasks(p) : 0),
-    allGanttRows: sum((p) => 1 + p.tasks.length),
-    allTaskRows: sum((p) => p.tasks.length),
+    allGanttRows: sum((p) => 1 + p.tasks.filter(inWeek).length),
     taskRows: sum((p) => p.status === '进行中' ? openTasks(p) : 0),
     diamonds: sum((p) => p.status === '进行中' ? p.milestones.filter((m) => {
       const d = day(m.date)
@@ -388,7 +391,7 @@ test.describe('拖总览菱形改期', () => {
   })
 })
 
-test('日周月切换只改视口,任务行不丢失且同日任务在月视图只占一格', async ({ win }) => {
+test('日周月切换时只列出和当前时间段有交集的任务,同日任务在月视图只占一格', async ({ win }) => {
   const today = await vaultToday(win)
   const taskTitle = '总览切换尺度用的同日任务'
   const made = await win.evaluate(async ({ date, title }) => (window as unknown as MeridianWindow).meridian
@@ -402,24 +405,36 @@ test('日周月切换只改视口,任务行不丢失且同日任务在月视图�
   const taskId = made.tasks.find((task) => task.title === taskTitle)!.id
   await gotoOverview(win)
   const gantt = shown(win).locator('.overview-gantt')
-  const labels = gantt.locator('.timeline-label-row')
   const bar = gantt.locator(`.gbar[data-proj="repro"][data-task="${taskId}"]`)
   await expect(bar).toBeVisible()
-  const before = await labels.evaluateAll((items) => items.map((item) => item.textContent))
-  expect(before.length).toBeGreaterThan(0)
+  // The default view lists the active projects' unfinished tasks that overlap the shown period.
+  const overview = await win.evaluate(() => (window as unknown as MeridianWindow).meridian
+    .call('project.overview', {}) as Promise<{
+      id: string; status: string; tasks: { id: string; start: string; end: string; state: string }[]
+    }[]>)
+  const listed = (scale: 'day' | 'week' | 'month') => overview
+    .filter((project) => project.status === '进行中')
+    .flatMap((project) => project.tasks
+      .filter((task) => task.state !== 'done' && overlaps(task, timelinePeriod(today, scale)))
+      .map((task) => `${project.id}/${task.id}`))
+    .sort()
+  const taskLabels = async () => (await gantt.locator('.timeline-label-row[data-task]').evaluateAll(
+    (items) => items.map((item) => `${(item as HTMLElement).dataset.proj}/${(item as HTMLElement).dataset.task}`),
+  )).sort()
+  expect(await taskLabels()).toEqual(listed('week'))
 
   await gantt.locator('.gscale button', { hasText: '月' }).click()
   await expect(bar).toBeVisible()
   expect((await bar.boundingBox())!.width).toBeLessThan(40)
-  expect(await labels.evaluateAll((items) => items.map((item) => item.textContent))).toEqual(before)
+  await expect.poll(taskLabels).toEqual(listed('month'))
 
   await gantt.locator('.gscale button', { hasText: '日' }).click()
   await expect(bar).toBeVisible()
-  expect(await labels.evaluateAll((items) => items.map((item) => item.textContent))).toEqual(before)
+  await expect.poll(taskLabels).toEqual(listed('day'))
 
   await gantt.locator('.gscale button', { hasText: '周' }).click()
   await expect(bar).toBeVisible()
-  expect(await labels.evaluateAll((items) => items.map((item) => item.textContent))).toEqual(before)
+  await expect.poll(taskLabels).toEqual(listed('week'))
 })
 
 test.describe('窗口收窄并滚动', () => {
@@ -428,11 +443,21 @@ test.describe('窗口收窄并滚动', () => {
   // multi-step settling can take several real seconds there but is immediate once the window is on screen.
   test.use({ showWindow: true })
 
-  test('窗口收窄并滚动后,每个任务行都保留横条或边缘残桩', async ({ app, win }) => {
+  test('窗口收窄并滚动后,月视图里每个任务行都保留横条或边缘残桩', async ({ app, win }) => {
+    // Day and week views fit their period to the viewport, so only month view scrolls and draws stubs.
+    // A task on the month's first day lies left of the viewport once it is scrolled to the month's end.
+    const month = timelinePeriod(await vaultToday(win), 'month')
+    await win.evaluate((day) => (window as unknown as MeridianWindow).meridian.call('project.createTask', {
+      projectId: 'repro', task: { title: '月初任务', start: day, end: day, state: 'plan', priority: 'p2' },
+    }), month.first)
     await gotoOverview(win)
-    // The history view keeps finished tasks, whose early bars are the ones left as stubs at the left edge.
+    // The history view keeps every project and finished tasks too.
     await shown(win).locator('.overview-history-toggle').click()
-    const { allTaskRows: taskRows } = await overviewCounts(win)
+    await shown(win).locator('.gantt .gscale button', { hasText: '月' }).click()
+    await expect(shown(win).locator('.gantt .gbar-label', { hasText: '月初任务' })).toHaveCount(1)
+    const taskRows = (await win.evaluate(() => (window as unknown as MeridianWindow).meridian
+      .call('project.overview', {}) as Promise<{ tasks: { start: string; end: string }[] }[]>))
+      .flatMap((project) => project.tasks).filter((task) => overlaps(task, month)).length
     // After the Gantt has drawn, wait one more frame for ResizeObserver's first callback; otherwise the
     // recalculation after the resize below lands one frame late.
     await shown(win).locator('.gantt .grow').first().waitFor()
@@ -605,84 +630,90 @@ test('总览里程碑弹层:焦点在「删除」上按 Esc 也收起,里程碑�
   expect(await milestonesOf(win, 'repro')).toEqual(before)
 })
 
-test('总览新建里程碑:写在路上时把弹层挪到另一行,第一次写成了之后挪过去的弹层与它的字都还在', async ({ win }) => {
-  await gotoOverview(win)
-  const today = await vaultToday(win)
-  const firstDay = weekStart(today)
-  const secondDay = fixtureDay(firstDay, 1)
-  const dayPx = (await shown(win).locator('.gantt .gday').first().boundingBox())!.width
-  const menu = win.locator('.ctxmenu')
-  const input = menu.locator('.mi-in input')
+// An offscreen window draws about one frame a second (see app.ts) and paints the moved popover a frame
+// late, so the cases that check a moved popover run on screen.
+test.describe(() => {
+  test.use({ showWindow: true })
 
-  await shown(win).locator('.gantt .grow[data-row="repro"]').click({ position: { x: 10, y: 22 } })
-  await input.fill(STALE_TITLE)
+  test('总览新建里程碑:写在路上时把弹层挪到另一行,第一次写成了之后挪过去的弹层与它的字都还在', async ({ win }) => {
+    await gotoOverview(win)
+    const today = await vaultToday(win)
+    const firstDay = weekStart(today)
+    const secondDay = fixtureDay(firstDay, 1)
+    const dayPx = (await shown(win).locator('.gantt .gday').first().boundingBox())!.width
+    const menu = win.locator('.ctxmenu')
+    const input = menu.locator('.mi-in input')
 
-  // All in one task: press Enter to start the write on repro, send pointerdown/mousedown/click to the
-  // next day's cell in the draft row to move the popover there, and type into the moved popover. The
-  // write crosses processes over IPC, so this whole sequence happens before it returns.
-  await win.evaluate(async ({ dayPx, typed }) => {
-    const stale = document.querySelector<HTMLInputElement>('.ctxmenu .mi-in input')!
-    stale.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
-    const row = document.querySelector<HTMLElement>('.screenslot:not([hidden]) .gantt .grow[data-row="draft"]')!
-    const box = row.getBoundingClientRect()
-    const at = { bubbles: true, button: 0, clientX: box.left + dayPx + 10, clientY: box.top + 22 }
-    for (const type of ['pointerdown', 'mousedown', 'click']) row.dispatchEvent(new MouseEvent(type, at))
-    // Yield only to microtasks: React draws the moved popover in a microtask, while the IPC reply is a
-    // separate task and cannot run in between.
-    for (let i = 0; i < 10 && document.querySelector('.ctxmenu .mi-in input') === stale; i += 1) {
-      await Promise.resolve()
-    }
-    const moved = document.querySelector<HTMLInputElement>('.ctxmenu .mi-in input')
-    if (moved === null || moved === stale) throw new Error('挪过去的弹层没有在同一个任务里画出来')
-    // The input is a controlled React value; setting .value directly does not update React's own state,
-    // so the next render reverts it. Go through the native setter and fire `input` like a real keystroke would.
-    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!
-    setter.call(moved, typed)
-    moved.dispatchEvent(new Event('input', { bubbles: true }))
-  }, { dayPx, typed: MOVED_TITLE })
+    await shown(win).locator('.gantt .grow[data-row="repro"]').click({ position: { x: 10, y: 22 } })
+    await input.fill(STALE_TITLE)
 
-  await expect(win.locator('#banner span')).toHaveText('已添加里程碑')
-  expect(await milestonesOf(win, 'repro')).toContainEqual({ date: firstDay, title: STALE_TITLE })
-  await expect(menu).toBeVisible()
-  await expect(menu.locator('.rh')).toHaveText(`新建里程碑 · ${dshort(secondDay)}`)
-  await expect(input).toHaveValue(MOVED_TITLE)
-})
+    // All in one task: press Enter to start the write on repro, send pointerdown/mousedown/click to the
+    // next day's cell in the draft row to move the popover there, and type into the moved popover. The
+    // write crosses processes over IPC, so this whole sequence happens before it returns.
+    await win.evaluate(async ({ dayPx, typed }) => {
+      const stale = document.querySelector<HTMLInputElement>('.ctxmenu .mi-in input')!
+      stale.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      const row = document.querySelector<HTMLElement>('.screenslot:not([hidden]) .gantt .grow[data-row="draft"]')!
+      const box = row.getBoundingClientRect()
+      const at = { bubbles: true, button: 0, clientX: box.left + dayPx + 10, clientY: box.top + 22 }
+      for (const type of ['pointerdown', 'mousedown', 'click']) row.dispatchEvent(new MouseEvent(type, at))
+      // Yield only to microtasks: React draws the moved popover in a microtask, while the IPC reply is a
+      // separate task and cannot run in between.
+      for (let i = 0; i < 10 && document.querySelector('.ctxmenu .mi-in input') === stale; i += 1) {
+        await Promise.resolve()
+      }
+      const moved = document.querySelector<HTMLInputElement>('.ctxmenu .mi-in input')
+      if (moved === null || moved === stale) throw new Error('挪过去的弹层没有在同一个任务里画出来')
+      // The input is a controlled React value; setting .value directly does not update React's own state,
+      // so the next render reverts it. Go through the native setter and fire `input` like a real keystroke would.
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!
+      setter.call(moved, typed)
+      moved.dispatchEvent(new Event('input', { bubbles: true }))
+    }, { dayPx, typed: MOVED_TITLE })
 
-test('总览新建里程碑:写在路上时把弹层挪到另一个项目的同一天同一处,挪过去的弹层从空的开始', async ({ win }) => {
-  await gotoOverview(win)
-  const firstDay = weekStart(await vaultToday(win))
-  const menu = win.locator('.ctxmenu')
-  const input = menu.locator('.mi-in input')
-
-  await shown(win).locator('.gantt .grow[data-row="repro"]').click({ position: { x: 10, y: 22 } })
-  await input.fill(STALE_TITLE)
-
-  // All in one task: press Enter to start the write on repro, then send pointerdown/mousedown/click to
-  // the draft row at the same x, moving the popover to the same day and spot on draft's row. The write
-  // crosses processes over IPC, so this whole sequence happens before it returns.
-  await win.evaluate(async () => {
-    document.querySelector<HTMLInputElement>('.ctxmenu .mi-in input')!
-      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
-    const gantt = '.screenslot:not([hidden]) .gantt'
-    const from = document.querySelector<HTMLElement>(`${gantt} .grow[data-row="repro"]`)!.getBoundingClientRect()
-    const row = document.querySelector<HTMLElement>(`${gantt} .grow[data-row="draft"]`)!
-    const at = { bubbles: true, button: 0, clientX: from.left + 10, clientY: row.getBoundingClientRect().top + 22 }
-    const anchor = document.querySelector<HTMLElement>(`${gantt} .ganchor`)!
-    const top = anchor.style.top
-    for (const type of ['pointerdown', 'mousedown', 'click']) row.dispatchEvent(new MouseEvent(type, at))
-    // Yield only to microtasks: React moves the anchor to the draft row in a microtask, while the IPC
-    // reply is a separate task and cannot run in between.
-    for (let i = 0; i < 10 && anchor.style.top === top; i += 1) await Promise.resolve()
-    if (anchor.style.top === top) throw new Error('弹层没有在同一个任务里挪到 draft 行')
+    await expect(win.locator('#banner span')).toHaveText('已添加里程碑')
+    expect(await milestonesOf(win, 'repro')).toContainEqual({ date: firstDay, title: STALE_TITLE })
+    await expect(menu).toBeVisible()
+    await expect(menu.locator('.rh')).toHaveText(`新建里程碑 · ${dshort(secondDay)}`)
+    await expect(input).toHaveValue(MOVED_TITLE)
   })
 
-  await expect(win.locator('#banner span')).toHaveText('已添加里程碑')
-  expect(await milestonesOf(win, 'repro')).toContainEqual({ date: firstDay, title: STALE_TITLE })
-  await expect(menu).toBeVisible()
-  await expect(menu.locator('.rh')).toHaveText(`新建里程碑 · ${dshort(firstDay)}`)
-  // A popover moved to another project must not keep the text typed for repro, or Enter would create
-  // that milestone on draft.
-  await expect(input).toHaveValue('')
+  test('总览新建里程碑:写在路上时把弹层挪到另一个项目的同一天同一处,挪过去的弹层从空的开始', async ({ win }) => {
+    await gotoOverview(win)
+    const firstDay = weekStart(await vaultToday(win))
+    const menu = win.locator('.ctxmenu')
+    const input = menu.locator('.mi-in input')
+
+    await shown(win).locator('.gantt .grow[data-row="repro"]').click({ position: { x: 10, y: 22 } })
+    await input.fill(STALE_TITLE)
+
+    // All in one task: press Enter to start the write on repro, then send pointerdown/mousedown/click to
+    // the draft row at the same x, moving the popover to the same day and spot on draft's row. The write
+    // crosses processes over IPC, so this whole sequence happens before it returns.
+    await win.evaluate(async () => {
+      document.querySelector<HTMLInputElement>('.ctxmenu .mi-in input')!
+        .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      const gantt = '.screenslot:not([hidden]) .gantt'
+      const from = document.querySelector<HTMLElement>(`${gantt} .grow[data-row="repro"]`)!.getBoundingClientRect()
+      const row = document.querySelector<HTMLElement>(`${gantt} .grow[data-row="draft"]`)!
+      const at = { bubbles: true, button: 0, clientX: from.left + 10, clientY: row.getBoundingClientRect().top + 22 }
+      const anchor = document.querySelector<HTMLElement>(`${gantt} .ganchor`)!
+      const top = anchor.style.top
+      for (const type of ['pointerdown', 'mousedown', 'click']) row.dispatchEvent(new MouseEvent(type, at))
+      // Yield only to microtasks: React moves the anchor to the draft row in a microtask, while the IPC
+      // reply is a separate task and cannot run in between.
+      for (let i = 0; i < 10 && anchor.style.top === top; i += 1) await Promise.resolve()
+      if (anchor.style.top === top) throw new Error('弹层没有在同一个任务里挪到 draft 行')
+    })
+
+    await expect(win.locator('#banner span')).toHaveText('已添加里程碑')
+    expect(await milestonesOf(win, 'repro')).toContainEqual({ date: firstDay, title: STALE_TITLE })
+    await expect(menu).toBeVisible()
+    await expect(menu.locator('.rh')).toHaveText(`新建里程碑 · ${dshort(firstDay)}`)
+    // A popover moved to another project must not keep the text typed for repro, or Enter would create
+    // that milestone on draft.
+    await expect(input).toHaveValue('')
+  })
 })
 
 test('总览里程碑弹层:点「删除」收起弹层,里程碑从 core 里删掉', async ({ win }) => {

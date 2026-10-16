@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
   MouseEvent as ReactMouseEvent, ReactNode, RefObject,
 } from 'react'
@@ -28,7 +28,7 @@ export type TimelinePoint = { left: number; top: number }
 
 type TimelineRow =
   | { kind: 'milestones'; project: TimelineProject }
-  | { kind: 'task'; project: TimelineProject; task: Task }
+  | { kind: 'task'; project: TimelineProject; task: Task; span: { left: number; right: number } }
 
 type Grab =
   | {
@@ -102,25 +102,29 @@ export function TimelineBoard({
     else next.add(projectId)
     return next
   })
-  const rows = useMemo(() => projects.flatMap((project): TimelineRow[] => [
+  // Only tasks that overlap the shown period get a row.
+  const shown = new Map(projects.map((project) => [project.id, project.tasks.flatMap((task) => {
+    const span = timelineTaskSpan(task, window, scale)
+    return span === null ? [] : [{ kind: 'task' as const, project, task, span }]
+  })]))
+  const rows = projects.flatMap((project): TimelineRow[] => [
     { kind: 'milestones', project },
-    ...(folded.has(project.id) ? [] : project.tasks.map((task) => ({ kind: 'task' as const, project, task }))),
-  ]), [folded, projects])
+    ...(folded.has(project.id) ? [] : shown.get(project.id)!),
+  ])
 
   // Scopes a dragged task label to its own project, so a drop only reorders tasks within that
   // project; `order` interleaves every project's task ids, so the project whose sub-order changed
   // is the one the user actually reordered.
-  const taskProjectId = useMemo(
-    () => new Map(rows.flatMap((row) => (row.kind === 'task' ? [[row.task.id, row.project.id] as const] : []))),
-    [rows],
-  )
+  const taskProjectId = new Map(rows.flatMap((row) => (row.kind === 'task' ? [[row.task.id, row.project.id] as const] : [])))
   const labelReorder = useDragReorder(
     [...taskProjectId.keys()], (id) => taskProjectId.get(id) ?? '',
     (order) => {
       for (const project of projects) {
         const current = project.tasks.map((task) => task.id)
-        const known = new Set(current)
-        const next = order.filter((id) => known.has(id))
+        // Tasks outside the shown period keep their places; the dragged order fills the shown ones'.
+        const moved = order.filter((id) => taskProjectId.get(id) === project.id)
+        let at = 0
+        const next = current.map((id) => (taskProjectId.has(id) ? moved[at++]! : id))
         if (next.some((id, index) => id !== current[index])) {
           onReorderTasks?.(project.id, next)
           return
@@ -218,8 +222,8 @@ export function TimelineBoard({
                   ? <span className="timeline-project-label" title={row.project.name}>{row.project.name}</span>
                   : null}
                 <span className="timeline-item-label" title={labelFor(row)}>{labelFor(row)}</span>
-                {row.kind === 'milestones' && folded.has(row.project.id) && row.project.tasks.length > 0
-                  ? <span className="timeline-folded-count">{m.timeline.fold.hidden(row.project.tasks.length)}</span>
+                {row.kind === 'milestones' && folded.has(row.project.id) && shown.get(row.project.id)!.length > 0
+                  ? <span className="timeline-folded-count">{m.timeline.fold.hidden(shown.get(row.project.id)!.length)}</span>
                   : null}
                 {row.kind === 'task'
                   ? <span className={`timeline-task-priority ${row.task.priority}`}>{row.task.priority.toUpperCase()}</span>
@@ -278,13 +282,10 @@ export function TimelineBoard({
                 )
               }
 
-              const { task } = row
+              const { task, span } = row
               const start = dnum(task.start)
               const end = dnum(task.end)
-              const span = timelineTaskSpan(task, window, scale)
-              const fallbackLeft = (start - w0) * dayWidth
-              const fallbackRight = (end - w0 + 1) * dayWidth - 6
-              const stub = drag.stubAt(span?.left ?? fallbackLeft, (span?.right ?? fallbackRight) - 6)
+              const stub = drag.stubAt(span.left, span.right - 6)
               const leftInset = start < w0 ? 0 : 3
               const rightInset = end > w1 ? 0 : 3
               const id = `${project.id}/task/${task.id}`
@@ -294,29 +295,25 @@ export function TimelineBoard({
                   className="grow" data-row={`${project.id}/${task.id}`}
                   data-proj={project.id} data-task={task.id} key={id}
                 >
-                  {span === null
-                    ? null
-                    : (
-                      <div
-                        className={`gbar${start < w0 ? ' clipl' : ''}${task.state === 'done' ? ' dim' : task.state === 'plan' ? ' plan' : ' active'}${overdue ? ' overdue' : ''} priority-${task.priority}`}
-                        data-proj={project.id} data-task={task.id}
-                        title={m.timeline.taskTitle(
-                          task.end === task.start ? fmt.date(task.start) : `${fmt.date(task.start)} – ${fmt.date(task.end)}`,
-                          task.window ? `${task.window.start}–${task.window.end}` : '',
-                          task.priority.toUpperCase(),
-                          overdue ? m.common.overdue : '',
-                        )}
-                        style={{
-                          left: span.left + leftInset + drag.dragged(id),
-                          width: Math.max(10, span.right - span.left - leftInset - rightInset),
-                        }}
-                        onMouseDown={(event: ReactMouseEvent) => drag.grab(event, {
-                          kind: 'task', projectId: project.id, taskId: task.id,
-                          start: task.start, end: task.end,
-                          ...(task.window === undefined ? {} : { window: task.window }),
-                        })}
-                      ><span className="gbar-label">{task.title}</span></div>
+                  <div
+                    className={`gbar${start < w0 ? ' clipl' : ''}${task.state === 'done' ? ' dim' : task.state === 'plan' ? ' plan' : ' active'}${overdue ? ' overdue' : ''} priority-${task.priority}`}
+                    data-proj={project.id} data-task={task.id}
+                    title={m.timeline.taskTitle(
+                      task.end === task.start ? fmt.date(task.start) : `${fmt.date(task.start)} – ${fmt.date(task.end)}`,
+                      task.window ? `${task.window.start}–${task.window.end}` : '',
+                      task.priority.toUpperCase(),
+                      overdue ? m.common.overdue : '',
                     )}
+                    style={{
+                      left: span.left + leftInset + drag.dragged(id),
+                      width: Math.max(10, span.right - span.left - leftInset - rightInset),
+                    }}
+                    onMouseDown={(event: ReactMouseEvent) => drag.grab(event, {
+                      kind: 'task', projectId: project.id, taskId: task.id,
+                      start: task.start, end: task.end,
+                      ...(task.window === undefined ? {} : { window: task.window }),
+                    })}
+                  ><span className="gbar-label">{task.title}</span></div>
                   {stub
                     ? (
                       <div

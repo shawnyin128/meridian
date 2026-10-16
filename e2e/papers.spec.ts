@@ -97,6 +97,88 @@ test('论文表每一行等高,行高是 38px', async ({ win }) => {
   expect(await uniqueHeights(win.locator('.ptable tbody tr'))).toEqual([38])
 })
 
+/** Index on the current page of the first row whose title cell is truncated. */
+const truncatedTitleRow = (win: Page) => win.locator('.ptable tbody tr')
+  .evaluateAll((rows) => rows.findIndex((tr) => tr.querySelector('td.pt-title.trunc') !== null))
+
+test('论文表每一格的内容都在行内垂直居中,悬停展开截断的标题时文字不动', async ({ win }) => {
+  await gotoPapers(win)
+  await firstPage(win)
+  await parkPointer(win)
+  const index = await truncatedTitleRow(win)
+  expect(index).toBeGreaterThanOrEqual(0)
+  const row = win.locator('.ptable tbody tr').nth(index)
+
+  // Each non-empty cell: its content's vertical centre minus the centre of the cell's padding box.
+  // The rating stars sit on the text baseline of a centred line, about 1.2px above their box's centre;
+  // top-aligned content is more than 2px above.
+  const offsets = await row.locator('td').evaluateAll((tds) => tds.flatMap((td) => {
+    const content = td.firstElementChild?.getBoundingClientRect()
+    if (content === undefined || content.height === 0) return []
+    const middle = td.getBoundingClientRect().top + td.clientTop + td.clientHeight / 2
+    return [+((content.top + content.bottom) / 2 - middle).toFixed(2)]
+  }))
+  console.log(`各格内容中线偏离格子中线 ${offsets.join(', ')}px`)
+  expect(offsets.length).toBeGreaterThan(5)
+  for (const offset of offsets) expect(Math.abs(offset)).toBeLessThanOrEqual(1.5)
+
+  const title = row.locator('td.pt-title')
+  const textTop = () => title.evaluate((td) => {
+    const range = document.createRange()
+    range.selectNodeContents(td.querySelector('.ci')!)
+    return range.getBoundingClientRect().top
+  })
+  const resting = await textTop()
+  await title.hover()
+  expect(Math.abs(await textTop() - resting)).toBeLessThanOrEqual(0.5)
+})
+
+/** Authors far wider than their column; no paper in the fixture has authors. */
+const LONG_AUTHORS = ['Ashish Vaswani', 'Noam Shazeer', 'Niki Parmar', 'Jakob Uszkoreit', 'Llion Jones', 'Aidan N. Gomez'] as const
+/** A custom text value far wider than its column. */
+const LONG_NOTE = '先读第三节的消融实验，再对照附录里的超参数表核一遍复现脚本'
+
+test('悬停截断的作者格与自定义文本格,浮框比格子宽,压到邻格上的那段字也看得见', async ({ win }) => {
+  // The papers screen fetches only on its first visit, so the values are written before it opens.
+  await win.locator('[data-desk="papers"]').waitFor()
+  // The note column comes first, so the columns its box covers are inside the viewport.
+  await call(win, 'papers.setColumns', {
+    columns: {
+      hidden: [], custom: [{ key: 'note', label: '备注', type: 'text', options: [] }],
+      groups: [...DEFAULT_PAPER_GROUPS], order: ['note'],
+    },
+  })
+  const id = await call<{ rows: { id: string }[] }>(
+    win, 'papers.list', { page: 1, size: 1, sort: 'addedAt', direction: 'desc' },
+  ).then((r) => r.rows[0]!.id)
+  await call(win, 'papers.update', { id, patch: { authors: LONG_AUTHORS, custom: { note: LONG_NOTE } } })
+  await gotoPapers(win)
+  await firstPage(win)
+  const row = win.locator('.ptable tbody tr').first()
+
+  for (const [name, cell] of [
+    ['作者', row.locator('td.pt-dim', { hasText: LONG_AUTHORS[0] })],
+    ['备注', row.locator('td.pt-cust')],
+  ] as const) {
+    await parkPointer(win)
+    await expect(cell).toHaveClass(/\btrunc\b/)
+    await cell.hover()
+    const reveal = await cell.evaluate((td) => {
+      const box = td.querySelector('.ci')!
+      const edge = td.getBoundingClientRect().right
+      const rect = box.getBoundingClientRect()
+      // A point just past the cell's right edge hits the box only when the cell does not clip it.
+      const hit = document.elementFromPoint(edge + 12, (rect.top + rect.bottom) / 2)
+      return {
+        overhangs: rect.right - edge > 12,
+        whole: box.scrollWidth <= box.clientWidth,
+        visible: hit !== null && box.contains(hit),
+      }
+    })
+    expect(reveal, name).toEqual({ overhangs: true, whole: true, visible: true })
+  }
+})
+
 test('论文工具栏的视图切换与导入操作底边对齐', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
@@ -427,32 +509,27 @@ test('标签添加框:回车提交在路上时点外,写落地前占位、打的
   await expect(newRow).toHaveCount(1)
 })
 
-test('标签添加框:没有联想层时焦点移走也收起,打的字不留', async ({ win }) => {
+test('标签添加框:空着焦点移走只收起;打了新主题再移走,像回车一样加上', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
-  const rows = await call<{ rows: { topics: string[] }[] }>(
-    win, 'papers.list', { page: 1, size: 10, sort: 'addedAt', direction: 'desc' },
-  ).then((r) => r.rows)
-  const vocab = (await call<{ value: string }[]>(win, 'papers.facets', { field: 'topics' })).map((f) => f.value)
-  // Type a topic this paper already has and no other vocabulary value contains: there is no
-  // suggestion and no "Create" row, so no popover renders and only the input's own blur and
-  // outside-click handling can close it.
-  const pick = rows.flatMap((row, at) => row.topics.map((topic) => ({ at, topic, topics: row.topics })))
-    .find(({ topic, topics }) => !vocab.some((v) => !topics.includes(v) && v.toLowerCase().includes(topic.toLowerCase())))
-  expect(pick).toBeDefined()
-  const cell = win.locator('.ptable tbody tr').nth(pick!.at).locator('td:nth-child(7)')
+  const cell = win.locator('.ptable tbody tr').first().locator('td:nth-child(7)')
+  const chips = cell.locator('.tagchip:not(.tagadd)')
+  const before = await chips.allTextContents()
   const input = win.locator('.tagin')
 
   await cell.hover()
   await cell.locator('.tagadd').click()
-  await input.fill(pick!.topic)
-  await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(0)
   await input.press('Tab')
   await expect(input).toHaveCount(0)
+  await expect(chips).toHaveText(before)
 
   await cell.hover()
   await cell.locator('.tagadd').click()
-  await expect(input).toHaveValue('')
+  // No vault topic contains this text, so no candidate is highlighted and the typed text is added.
+  await input.fill('焦点移走就加上的主题')
+  await input.press('Tab')
+  await expect(input).toHaveCount(0)
+  await expect(chips).toHaveText([...before, '焦点移走就加上的主题'])
 })
 
 test('标签添加框:点联想项写成功后,输入框与候选层都收起', async ({ win }) => {
@@ -475,7 +552,7 @@ test('标签添加框:点联想项写成功后,输入框与候选层都收起', 
   await expect(win.locator('.pickhits')).toHaveCount(0)
 })
 
-test('文本格:改完焦点移走或点到格外都算放弃,只有回车才写', async ({ win }) => {
+test('文本格:改完焦点移走或点到格外都像回车一样写,Esc 才放弃', async ({ win }) => {
   // Creates a column, then makes three edits each checked in Core; an offscreen window waits two
   // seconds per actionability check, so the default 30 s is too short.
   test.slow()
@@ -496,27 +573,28 @@ test('文本格:改完焦点移走或点到格外都算放弃,只有回车才写
     win, 'papers.list', { page: 1, size: 1, sort: 'addedAt', direction: 'desc' },
   ).then((r) => Object.values(r.rows[0]!.custom))
 
-  // Moving focus out with the keyboard closes the cell without writing the typed text.
+  // Moving focus out with the keyboard writes the typed text.
   await cell.click()
-  await input.fill('改了又不要')
+  await input.fill('焦点移走就写')
   await input.press('Tab')
   await expect(input).toHaveCount(0)
-  await expect(cell).toHaveText('')
-  expect(await saved()).toEqual([])
+  await expect(cell).toHaveText('焦点移走就写')
+  expect(await saved()).toEqual(['焦点移走就写'])
 
-  // Clicking outside the cell also closes it without writing.
+  // Clicking outside the cell writes it too.
   await cell.click()
-  await input.fill('点外面也不要')
+  await input.fill('点外面也写')
   await shown(win, '.desk-head .t').click()
   await expect(input).toHaveCount(0)
-  await expect(cell).toHaveText('')
-  expect(await saved()).toEqual([])
+  await expect(cell).toHaveText('点外面也写')
+  expect(await saved()).toEqual(['点外面也写'])
 
   await cell.click()
-  await input.fill('回车才写')
-  await input.press('Enter')
-  await expect(cell).toHaveText('回车才写')
-  expect(await saved()).toEqual(['回车才写'])
+  await input.fill('Esc 不写')
+  await input.press('Escape')
+  await expect(input).toHaveCount(0)
+  await expect(cell).toHaveText('点外面也写')
+  expect(await saved()).toEqual(['点外面也写'])
 })
 
 test('文本格开着时按住表格自己的滚动条,不算点到格外:格子与字都还在', async ({ win }) => {
@@ -1128,12 +1206,11 @@ test('建列占位:Esc 放弃,占位与类型层一起没了', async ({ win }) =
   expect(await win.locator('.ptable thead th.th-new').count()).toBe(0)
 })
 
-test('建列占位:点到占位与类型层之外,占位与类型层一起没了', async ({ win }) => {
+test('建列占位:空着点到外面,占位与类型层一起没了;打了列名点到外面就建成这一列', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [title="新增列"]').click()
-  await win.locator('.ptable thead th.th-new input').fill('放弃的草稿')
   await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(1)
 
   await shown(win, '.desk-head .t').click()
@@ -1141,6 +1218,16 @@ test('建列占位:点到占位与类型层之外,占位与类型层一起没了
   // fails its own check rather than the placeholder's.
   expect(await win.locator('[data-radix-popper-content-wrapper]').count()).toBe(0)
   expect(await win.locator('.ptable thead th.th-new').count()).toBe(0)
+
+  await win.locator('.ptable thead').hover()
+  await win.locator('.ptable thead [title="新增列"]').click()
+  await win.locator('.ptable thead th.th-new input').fill('点外面建成的列')
+  await shown(win, '.desk-head .t').click()
+  // The placeholder goes only once the column write lands.
+  await expect(win.locator('.ptable thead th.th-new')).toHaveCount(0)
+  await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(0)
+  expect((await call<PaperColumns>(win, 'papers.columns', {}))
+    .custom.find((c) => c.label === '点外面建成的列')).toMatchObject({ type: 'text' })
 })
 
 test('建列占位:点类型按钮不放弃,占位、类型层、打的字都还在', async ({ win }) => {
@@ -1335,6 +1422,74 @@ test('阅读状态菜单开着、指针挪到菜单项上之后,行留着 hover 
   await settle(tagadd)
   await expect(tagadd).toHaveCSS('opacity', '1')
   await expect(tagadd).toHaveCSS('pointer-events', 'none')
+})
+
+test('选中行的冻结标题格不透底,阅读状态菜单开着时整行仍是选中底色', async ({ win }) => {
+  await gotoPapers(win)
+  await firstPage(win)
+  const row = win.locator('.ptable tbody tr').first()
+  await row.locator('td.pt-title').click()
+  await expect(row).toHaveClass(/\bselected\b/)
+  await parkPointer(win)
+  const paint = () => row.locator('td').evaluateAll((tds) => tds.map((td) => {
+    const style = getComputedStyle(td)
+    return `${style.backgroundImage} ${style.backgroundColor}`
+  }))
+  const selected = await paint()
+  // Columns scroll sideways under the sticky title cell, so its background color must be opaque.
+  expect(await row.locator('td.pt-title').evaluate((td) => getComputedStyle(td).backgroundColor)).toMatch(/^rgb\(/)
+
+  await row.locator('.stchip').click()
+  await win.locator('[role="menu"] [role="menuitemradio"]').first().hover()
+  expect(await paint()).toEqual(selected)
+})
+
+// Pixel checks take element screenshots, which need a visible window.
+test.describe(() => {
+  test.use({ showWindow: true })
+
+  test('选中行在截断的标题上悬停时,左侧选中条与格子底色不变', async ({ win }) => {
+    await gotoPapers(win)
+    await firstPage(win)
+    const index = await truncatedTitleRow(win)
+    expect(index).toBeGreaterThanOrEqual(0)
+    const row = win.locator('.ptable tbody tr').nth(index)
+    const title = row.locator('td.pt-title')
+    await title.click()
+    await expect(row).toHaveClass(/\bselected\b/)
+    await settle(win.locator('.desk-body.libview'))
+    await parkPointer(win)
+    const resting = (await title.screenshot()).toString('base64')
+    await title.hover()
+    const hovered = (await title.screenshot()).toString('base64')
+
+    // The selected bar is the cell's left 3px and the text sits below 7px of padding, so the first two
+    // pixel columns and the first three pixel rows show only the bar and the row background. Gradients
+    // are dithered, so a repaint may move a channel by a level or two.
+    const changed = await win.evaluate(async (shots) => {
+      const [before, after] = await Promise.all(shots.map(async (b64) => {
+        const img = new Image()
+        img.src = `data:image/png;base64,${b64}`
+        await img.decode()
+        const canvas = document.createElement('canvas')
+        canvas.width = img.naturalWidth
+        canvas.height = img.naturalHeight
+        const ctx = canvas.getContext('2d')!
+        ctx.drawImage(img, 0, 0)
+        return ctx.getImageData(0, 0, canvas.width, canvas.height)
+      })) as [ImageData, ImageData]
+      let count = 0
+      for (let y = 0; y < before.height; y++) {
+        for (let x = 0; x < before.width; x++) {
+          if (x >= 2 && y >= 3) continue
+          const i = (y * before.width + x) * 4
+          if ([0, 1, 2].some((c) => Math.abs(before.data[i + c]! - after.data[i + c]!) > 4)) count += 1
+        }
+      }
+      return count
+    }, [resting, hovered])
+    expect(changed, '悬停后标题格的左侧选中条或底色变了').toBe(0)
+  })
 })
 
 // This test needs a visible window; an offscreen window cannot reproduce the behaviour.

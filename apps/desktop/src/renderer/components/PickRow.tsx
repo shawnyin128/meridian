@@ -4,10 +4,11 @@ import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { useInlineDraft } from '../hooks/useInlineDraft.js'
 import { PickerPopover } from './PickerPopover.js'
 import { FormInput, type FormControlAppearance } from './FormControls.js'
+import { PaperText } from './paper/PaperText.js'
 import './PickRow.css'
 
-/** A candidate in the drop-down: target id, display name, gray text on the right. */
-export type PickHit = { id: string; title: string; meta?: string }
+/** A candidate in the drop-down: target id, display name, gray text on the right; a `paper` name is a paper title. */
+export type PickHit = { id: string; title: string; meta?: string; paper?: boolean }
 
 /** At most this many candidates show in the drop-down. */
 const LIMIT = 8
@@ -19,18 +20,22 @@ const LIMIT = 8
  * name. Enter does nothing while the candidates have not caught up with the input, and the input
  * is `aria-busy` meanwhile. Enter, a candidate click, Esc, a press outside the draft and focus
  * leaving it go through `useInlineDraft`, which sends no second pick until the first has landed.
+ * Leaving the draft with text in it acts as Enter does; leaving it empty, with `initialText`
+ * unchanged, or at all with `cancelOnLeave`, closes it.
  * `row` is the element that counts as inside the draft, mounted on it by the caller; pressing or
  * focusing one of the `triggers`, the buttons that open this draft, does not count as outside. A
- * failed `suggest` goes to `onError`.
+ * failed `suggest` goes to `onError`. The input starts out holding `initialText`.
  */
 export function PickRow({
-  row, triggers, placeholder, suggest, allowNew, onPick, onNew, onCancel, onError,
+  row, triggers, placeholder, initialText = '', suggest, allowNew, onPick, onNew, onCancel, onError,
   inputClassName = 'inedit pickin',
   inputAppearance = 'plain',
+  cancelOnLeave = false,
 }: {
   row: RefObject<HTMLElement | null>
   triggers: Array<RefObject<HTMLElement | null>>
   placeholder: string
+  initialText?: string
   suggest: (query: string) => Promise<PickHit[]>
   allowNew: boolean
   onPick: (hit: PickHit) => boolean | Promise<boolean>
@@ -39,8 +44,9 @@ export function PickRow({
   onError: (e: Error) => void
   inputClassName?: string
   inputAppearance?: FormControlAppearance
+  cancelOnLeave?: boolean
 }) {
-  const [text, setText] = useState('')
+  const [text, setText] = useState(initialText)
   const [hits, setHits] = useState<PickHit[]>([])
   const [answered, setAnswered] = useState('')
   const seq = useRef(0)
@@ -69,7 +75,10 @@ export function PickRow({
     if (allowNew && text.trim() !== '') return onNew(text.trim())
     return false
   }
-  const draft = useInlineDraft({ row, triggers, onSubmit: pick, onCancel })
+  const draft = useInlineDraft({
+    row, triggers, onSubmit: pick, onCancel,
+    isEmpty: () => cancelOnLeave || text.trim() === '' || text.trim() === initialText.trim(),
+  })
   // A stale result set must not be selected by Enter; the input's own onSubmit (pick) re-checks
   // `stale` and takes over instead, matching the mouse-pick path's staleness rule.
   const keys = useCandidateKeys(hits.length, (i) => { if (!stale) draft.submit(() => onPick(hits[i]!)) })
@@ -96,7 +105,8 @@ export function PickRow({
                 className={i === at ? 'on' : undefined} key={h.id}
                 onMouseDown={(e) => { e.preventDefault(); draft.submit(() => onPick(h)) }}
               >
-                {h.title}{h.meta === undefined ? null : <span className="meta">{h.meta}</span>}
+                {h.paper ? <PaperText text={h.title} /> : h.title}
+                {h.meta === undefined ? null : <span className="meta">{h.meta}</span>}
               </li>
             ))}
           </ul>

@@ -350,9 +350,17 @@ export const ProjectDetailSchema = z.object({
   /** Display labels by ID for referenced papers still in the vault; `paperCount` counts these. */
   paperTitles: z.record(z.string(), z.string()),
   tasks: z.array(TaskSchema),
+  /** Research node a task was given by hand, by task id; it takes precedence over the graph's own link. */
+  taskNodes: z.record(z.string(), z.string()).optional(),
   milestones: z.array(MilestoneSchema),
   /** Research log in insertion order, newest last. `node` links a record to a graph node. */
   events: z.array(RecordEventSchema),
+  /**
+   * Newest day the project progressed: its newest research record, on the page or in the bound
+   * workspace, or its newest recorded change other than a reorder or the project's own deletion.
+   * Derived by Core, never stored; omitted when there is none.
+   */
+  lastProgress: IsoDate.optional(),
   relations: z.array(RelationGroupSchema),
   attachments: z.array(AttachmentSchema),
   graph: ResearchGraphSchema,
@@ -368,7 +376,7 @@ export const ProjectDetailSchema = z.object({
  */
 export const ProjectSummarySchema = ProjectDetailSchema.pick({
   id: true, name: true, status: true, priority: true, topic: true, focus: true, block: true,
-  conflictPage: true, conclusions: true, paperCount: true,
+  conflictPage: true, conclusions: true, paperCount: true, lastProgress: true,
 }).extend({
   /** List pages consume the shared control projection instead of reinterpreting focus, tasks, or graph state. */
   control: ProjectControlSchema,
@@ -389,7 +397,7 @@ export const ProjectSummarySchema = ProjectDetailSchema.pick({
 export const ProjectOverviewSchema = ProjectDetailSchema.pick({
   id: true, name: true, status: true, priority: true, focus: true, block: true,
   start: true, due: true, conclusions: true,
-  tasks: true, milestones: true, events: true,
+  tasks: true, milestones: true, events: true, lastProgress: true,
 }).extend({
   /**
    * Read-only graph summary for overview surfaces: nodes currently in progress, path health,
@@ -925,11 +933,11 @@ export const ProjectDeleteParamsSchema = z.object({ id: z.string() }).strict()
 
 /** Writable project fields; `block: null` clears the blocker. */
 const ProjectFieldsSchema = ProjectDetailSchema.omit({
-  id: true, tasks: true, milestones: true, events: true, relations: true, attachments: true,
+  id: true, tasks: true, taskNodes: true, milestones: true, events: true, relations: true, attachments: true,
   conclusions: true, conclusionList: true, conclusionClaims: true, projectConclusions: true, verifiedConclusions: true,
   paperCount: true, papers: true,
   paperTitles: true, graph: true, agentSessions: true, block: true,
-  conflictPage: true, workspace: true,
+  conflictPage: true, workspace: true, lastProgress: true,
 }).extend({
   block: z.string().trim().min(1).max(500).nullable(),
 })
@@ -969,6 +977,13 @@ export const ProjectReorderTasksParamsSchema = z.object({
   order: z.array(z.string()),
 }).strict()
 
+/** Gives a task a research node by hand; `nodeId: null` takes that away, leaving the graph's own link. */
+export const ProjectSetTaskNodeParamsSchema = z.object({
+  projectId: z.string(),
+  taskId: z.string(),
+  nodeId: z.string().nullable(),
+}).strict()
+
 export const ProjectCreateMilestoneParamsSchema = z.object({
   projectId: z.string(),
   milestone: MilestoneFieldsSchema,
@@ -999,6 +1014,13 @@ export const ProjectCreateRelationParamsSchema = z.object({
 export const ProjectDeleteRelationParamsSchema = z.object({
   projectId: z.string(),
   relationId: z.string(),
+}).strict()
+
+/** Replaces a relation item's name and target; the item keeps its id, group and position. */
+export const ProjectUpdateRelationParamsSchema = z.object({
+  projectId: z.string(),
+  relationId: z.string(),
+  relation: RelationFieldsSchema.omit({ group: true }),
 }).strict()
 
 /** Links or unlinks a paper from a project using the paper-page ID. */
@@ -1533,7 +1555,7 @@ export const WikiRelatedSchema = z.object({
 /**
  * Aggregation page with card fields, parents, optional split basis, child cards,
  * comparison table, relations, claims in page order, and body Markdown after the final generated
- * region. `titles` maps valid body-link IDs to display text; `version` is the page version.
+ * region. `titles` maps valid body-link IDs to a link to that page; `version` is the page version.
  */
 export const WikiAggregationSchema = WikiAggregationCardSchema.extend({
   parents: z.array(WikiRefSchema),
@@ -1545,7 +1567,7 @@ export const WikiAggregationSchema = WikiAggregationCardSchema.extend({
   related: z.array(WikiRelatedSchema),
   claims: z.array(WikiClaimSchema),
   body: z.string(),
-  titles: z.record(z.string(), z.string()),
+  titles: z.record(z.string(), WikiRefSchema),
   version: PageVersionSchema,
 }).strict()
 
@@ -1561,7 +1583,7 @@ export const WikiMembershipSchema = z.object({
  * Paper wiki page. `id` combines the paper prefix and table-row ID; `short` is
  * the short title for editing and search, the full title when none is set; `pdf` is a vault-relative source path; `body`
  * is raw Markdown; `memberships` lists aggregations. Pages are created on import
- * and may have empty bodies. `titles` resolves valid body-link IDs; `version` is the page version.
+ * and may have empty bodies. `titles` resolves valid body-link IDs to links; `version` is the page version.
  */
 export const WikiPaperSchema = z.object({
   id: z.string(),
@@ -1573,7 +1595,7 @@ export const WikiPaperSchema = z.object({
   pdf: z.string(),
   updated: IsoDate,
   body: z.string(),
-  titles: z.record(z.string(), z.string()),
+  titles: z.record(z.string(), WikiRefSchema),
   memberships: z.array(WikiMembershipSchema),
   version: PageVersionSchema,
 }).strict()
@@ -2310,11 +2332,13 @@ export const CONTRACT_METHODS = [
   'project.updateTask',
   'project.deleteTask',
   'project.reorderTasks',
+  'project.setTaskNode',
   'project.createMilestone',
   'project.updateMilestone',
   'project.deleteMilestone',
   'project.createRelation',
   'project.deleteRelation',
+  'project.updateRelation',
   'project.addPaper',
   'project.removePaper',
   'project.moveRelation',

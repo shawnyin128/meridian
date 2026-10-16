@@ -65,7 +65,7 @@ describe('change log', () => {
 
     store.undoChange(change.id)
     // Read again to confirm the vault actually returned to the pre-change state.
-    expect(store.getProject(PROJECT)).toEqual(before)
+    expect(store.getProject(PROJECT)).toEqual({ ...before, lastProgress: day })
 
     const rows = recorded()
     expect(rows).toHaveLength(2)
@@ -197,6 +197,7 @@ describe('change log', () => {
   })
 
   it('删除一条只清掉记录与撤销快照,不改被记录的知识内容', () => {
+    const { lastProgress } = store.getProject(PROJECT)
     store.updateProject(PROJECT, { focus: '删除记录也保留的改动' })
     const change = recorded()[0]!
     const project = store.getProject(PROJECT)
@@ -204,7 +205,8 @@ describe('change log', () => {
     store.deleteChange(change.id)
 
     expect(store.listChanges().some((row) => row.id === change.id)).toBe(false)
-    expect(store.getProject(PROJECT)).toEqual(project)
+    // The deleted record no longer counts as progress.
+    expect(store.getProject(PROJECT)).toEqual({ ...project, lastProgress })
     expect(() => store.undoChange(change.id)).toThrow(/最近变动里没有这一条/)
   })
 
@@ -247,7 +249,7 @@ describe('change log', () => {
     expect(store.listChanges()).toEqual(before)
   })
 
-  it('改变持久知识的那 19 个写各记一条', () => {
+  it('改变持久知识的那 20 个写各记一条', () => {
     const writes: [string, () => unknown][] = [
       ['papers.update', () => store.updatePaper('Jiang-et-al-2024-Mixtral-of-Experts', { readState: '在读' })],
       ['papers.setColumnType', () => {
@@ -277,6 +279,8 @@ describe('change log', () => {
       ['project.createRelation', () => store.createRelation(PROJECT, { group: 'Wiki', text: '新关联' })],
       ['project.deleteRelation', () =>
         store.deleteRelation(PROJECT, store.getProject(PROJECT).relations[0]!.items[0]!.id)],
+      ['project.updateRelation', () =>
+        store.updateRelation(PROJECT, store.getProject(PROJECT).relations[0]!.items[0]!.id, { text: '改名' })],
       ['project.createAttachment', () =>
         store.createAttachment(PROJECT, {
           name: '新附件.csv', size: '1 KB', path: resolve('新附件.csv'),
@@ -286,7 +290,7 @@ describe('change log', () => {
       ['project.createEvent', () => store.createEvent(PROJECT, '[对话] 来自对话的结论')],
       ['project.delete', () => store.deleteProject(PROJECT)],
     ]
-    expect(writes).toHaveLength(19)
+    expect(writes).toHaveLength(20)
 
     for (const [method, write] of writes) {
       const before = store.listChanges().length
@@ -325,6 +329,15 @@ describe('change log', () => {
     })
   })
 
+  it('改一条关联记下一条,撤销把它的名字和指向还原', () => {
+    const before = store.getProject(PROJECT).relations
+    const item = before[0]!.items[0]!
+    store.updateRelation(PROJECT, item.id, { text: '改名', url: 'https://example.com' })
+    expect(recorded()[0]).toMatchObject({ title: '项目「draft 效率」· 改了关联', undoable: true })
+    store.undoChange(recorded()[0]!.id)
+    expect(store.getProject(PROJECT).relations).toEqual(before)
+  })
+
   it('新建的东西撤销之后就不在了,删掉的东西撤销之后回来了', () => {
     store.createProject('要撤销掉的项目')
     const created = store.listProjects()[0]!.id
@@ -357,7 +370,7 @@ describe('change log', () => {
     })
     expect(store.getProject(PROJECT).tasks[0]!.title).toBe('要撤销的任务')
     store.undoChange(recorded()[0]!.id)
-    expect(store.getProject(PROJECT)).toEqual(before)
+    expect(store.getProject(PROJECT)).toEqual({ ...before, lastProgress: day })
   })
 
   it('撤销一次任务备注的编辑,项目回到写备注之前的样子', () => {
@@ -368,7 +381,7 @@ describe('change log', () => {
     expect(store.getProject(PROJECT).tasks.find((t) => t.id === 't2')!.note)
       .toBe('先确认基线,再改并发数')
     store.undoChange(recorded()[0]!.id)
-    expect(store.getProject(PROJECT)).toEqual(before)
+    expect(store.getProject(PROJECT)).toEqual({ ...before, lastProgress: day })
     expect(store.getProject(PROJECT).tasks.find((t) => t.id === 't2')!.note).toBeUndefined()
   })
 

@@ -44,12 +44,12 @@ const NO_TAIL: CrumbSeg[] = []
 
 /**
  * A project's health signals, the demo's projSig: the nearest unfinished milestone from today, the
- * days since the last progress (null when the Research log is empty), whether it has stalled, and the
+ * days since the last progress (null when the project has none), whether it has stalled, and the
  * number of milestones done.
  */
 function signals(project: ProjectSummary, todayIso: string) {
   const next = nextMilestone(project.milestones, todayIso)
-  const idle = idleDays(project.recentEvents, todayIso)
+  const idle = idleDays(project.lastProgress, todayIso)
   return {
     next,
     idle,
@@ -61,7 +61,7 @@ function signals(project: ProjectSummary, todayIso: string) {
 /**
  * The … menu at the right end of a project row, the demo's projMenu: rename, change status, delete.
  * Rename replaces the content of the same popover, matching the demo, which closed the menu and
- * opened a rename popover in the same spot.
+ * opened a rename popover in the same spot; while renaming, only the rename editor closes it.
  */
 function ProjectMenu({ project, onRename, onStatus, onDelete }: {
   project: ProjectSummary
@@ -72,14 +72,13 @@ function ProjectMenu({ project, onRename, onStatus, onDelete }: {
   const m = useMessages()
   const [open, setOpen] = useState(false)
   const [renaming, setRenaming] = useState(false)
-  const [renameBusy, setRenameBusy] = useState(false)
-  const close = () => { setOpen(false); setRenaming(false); setRenameBusy(false) }
+  const close = () => { setOpen(false); setRenaming(false) }
 
   return (
     <DotsMenu
       open={open}
       onOpenChange={(next) => {
-        if (!next && renameBusy) return
+        if (!next && renaming) return
         setOpen(next)
         if (!next) setRenaming(false)
       }}
@@ -90,7 +89,7 @@ function ProjectMenu({ project, onRename, onStatus, onDelete }: {
               <ShortTextEditor
                 title={m.research.list.renameTitle} initialValue={project.name}
                 placeholder={m.project.identity.nameFieldLabel}
-                onSubmit={onRename} onClose={close} onBusyChange={setRenameBusy}
+                onSubmit={onRename} onClose={close}
               />
             )
             : (
@@ -118,9 +117,9 @@ function ProjectMenu({ project, onRename, onStatus, onDelete }: {
 
 /**
  * The new-project row at the top of the list, the demo's projCreateRow: type the name in place and
- * press Enter to create; Escape, a click outside the row or focus leaving it cancels. A click on the
- * page header's "New project" does not count as outside. `onCreate` returns whether the row is done;
- * `onCancel` must keep the same reference across re-renders.
+ * press Enter, click outside the row or move focus out of it to create; Escape cancels, and leaving
+ * an empty row closes it. A click on the page header's "New project" does not count as outside.
+ * `onCreate` returns whether the row is done.
  */
 function ProjectCreateRow({ row, triggers, onCreate, onCancel }: {
   row: RefObject<HTMLDivElement | null>

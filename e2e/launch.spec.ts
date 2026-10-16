@@ -9,6 +9,9 @@ import { expect, openSettings, test } from './app.js'
 const APP_DIR = resolve(import.meta.dirname, '../apps/desktop')
 const FIXTURE_VAULT = resolve(APP_DIR, 'src/core/fixtures/vault')
 
+/** Launch arguments for a case that reads the UI's Chinese copy: the app must not follow the host's language. */
+const ZH_ARGS = [APP_DIR, '--lang=zh-CN']
+
 /** Whether the app's first window is on screen right now. */
 const visible = (app: ElectronApplication) =>
   app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.isVisible())
@@ -48,7 +51,7 @@ const cleanEnv = () => Object.fromEntries(Object.entries(process.env).filter(
 test('指定的库里没有论文页目录时,内容区报出缺的目录,设置仍打得开', async ({ configHome }) => {
   const bare = mkdtempSync(join(tmpdir(), 'meridian-e2e-bare-'))
   const app = await electron.launch({
-    args: [APP_DIR],
+    args: ZH_ARGS,
     env: { ...cleanEnv(), MERIDIAN_VAULT_ROOT: bare, MERIDIAN_CONFIG_HOME: configHome, MERIDIAN_SHOW_WINDOW: '0' },
   })
   try {
@@ -111,7 +114,7 @@ test('设置可重置、切换和删除论文库备份', async ({ configHome }) 
   writeFileSync(join(root, 'sources', 'papers', 'keep.pdf'), 'source bytes', 'utf8')
   writeFileSync(join(root, 'wiki', 'papers', 'keep.md'), KEEP_PAGE, 'utf8')
   const app = await electron.launch({
-    args: [APP_DIR],
+    args: ZH_ARGS,
     env: {
       ...cleanEnv(), MERIDIAN_VAULT_ROOT: root, MERIDIAN_CONFIG_HOME: configHome, MERIDIAN_CANNED_NET: '1',
       MERIDIAN_SHOW_WINDOW: '0',

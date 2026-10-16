@@ -35,6 +35,22 @@ describe('feed rows', () => {
     expect(html).toContain('<span class="ftime">3分钟前</span>')
   })
 
+  it('renders the LaTeX of a paper title in an emphasized run', () => {
+    const entry: FeedEntry = {
+      ...ENTRY,
+      body: { kind: 'runs', runs: [{ kind: 'text', text: '已入库：' }, { kind: 'strong', text: '《\\textbf{F}luxBin $\\times$》' }] },
+    }
+    const html = renderToStaticMarkup(
+      <MessagesProvider>
+        <TodayContext.Provider value="2026-09-20">
+          <FeedRows rows={[entry]} showDays={false} nowMs={Date.parse('2026-09-20T12:03:00.000Z')} onOpenConflict={() => {}} />
+        </TodayContext.Provider>
+      </MessagesProvider>,
+    )
+
+    expect(html).toMatch(/<b>《<strong>F<\/strong>luxBin <span><span class="katex">.*<\/span><\/span>》<\/b>/)
+  })
+
   it('names the day sections in the interface language and dates entries before today', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'en')
     const earlier = {

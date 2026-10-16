@@ -12,19 +12,20 @@ type Draft = ReturnType<typeof useInlineDraft>
 
 /**
  * A draft probe: an input and a button inside `row`, plus an entry button (one of the triggers) and
- * an unrelated button outside `row`. With `detached`, `row` is attached to no element; `onDraft`
- * receives the hook's return value on every render.
+ * an unrelated button outside `row`. With `detached`, `row` is attached to no element; `isEmpty` goes
+ * to the hook as is; `onDraft` receives the hook's return value on every render.
  */
-function Probe({ onSubmit, onCancel, detached = false, onDraft }: {
+function Probe({ onSubmit, onCancel, detached = false, isEmpty, onDraft }: {
   onSubmit: () => boolean | Promise<boolean>
   onCancel: () => void
   detached?: boolean
+  isEmpty?: () => boolean
   onDraft?: (draft: Draft) => void
 }) {
   const row = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
   const triggers = useMemo(() => [trigger], [])
-  const draft = useInlineDraft({ row, triggers, onSubmit, onCancel })
+  const draft = useInlineDraft({ row, triggers, onSubmit, onCancel, ...(isEmpty === undefined ? {} : { isEmpty }) })
   onDraft?.(draft)
   return (
     <>
@@ -42,7 +43,7 @@ function Probe({ onSubmit, onCancel, detached = false, onDraft }: {
 function mount(
   onSubmit: () => boolean | Promise<boolean>,
   onCancel: () => void,
-  options: { detached?: boolean; onDraft?: (draft: Draft) => void } = {},
+  options: { detached?: boolean; isEmpty?: () => boolean; onDraft?: (draft: Draft) => void } = {},
 ) {
   const host = document.createElement('div')
   document.body.appendChild(host)
@@ -295,18 +296,72 @@ describe('useInlineDraft', () => {
     document.removeEventListener('keydown', bubbled)
   })
 
-  it('鼠标按在占位外撤掉占位;按在占位里、入口按钮上、Radix 浮层里都不撤', async () => {
+  it('鼠标按在占位外像回车一样提交;按在占位里、入口按钮上、Radix 浮层里都不提交', async () => {
+    const onSubmit = vi.fn(() => true)
     const onCancel = vi.fn()
-    const { inner, trigger, outside } = mount(() => true, onCancel)
+    const { inner, trigger, outside } = mount(onSubmit, onCancel)
     const layer = portalLayer()
 
     await pressMouse(inner)
     await pressMouse(trigger)
     await pressMouse(layer)
+    expect(onSubmit).not.toHaveBeenCalled()
     expect(onCancel).not.toHaveBeenCalled()
 
     await pressMouse(outside)
+    expect(onSubmit).toHaveBeenCalledTimes(1)
     expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('离开空占位只收起,不提交', async () => {
+    const onSubmit = vi.fn(() => true)
+    const onCancel = vi.fn()
+    const { input, outside } = mount(onSubmit, onCancel, { isEmpty: () => true })
+
+    await pressMouse(outside)
+    expect(onCancel).toHaveBeenCalledTimes(1)
+    await moveFocus(input)
+    await moveFocus(outside)
+    expect(onCancel).toHaveBeenCalledTimes(2)
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('离开时提交被拒:占位与字留着并标红,不改字再离开不重发,改了字才重发;回车被拒不标红', async () => {
+    const onSubmit = vi.fn(() => false)
+    const onCancel = vi.fn()
+    const { input, outside } = mount(onSubmit, onCancel)
+
+    await press(input, 'Enter')
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    expect(input.getAttribute('aria-invalid')).toBeNull()
+
+    await pressMouse(outside)
+    expect(onSubmit).toHaveBeenCalledTimes(2)
+    expect(onCancel).not.toHaveBeenCalled()
+    expect(input.getAttribute('aria-invalid')).toBe('true')
+
+    await moveFocus(input)
+    await moveFocus(outside)
+    await pressMouse(outside)
+    expect(onSubmit).toHaveBeenCalledTimes(2)
+    expect(input.getAttribute('aria-invalid')).toBe('true')
+
+    await act(async () => { input.dispatchEvent(new Event('input', { bubbles: true })) })
+    expect(input.getAttribute('aria-invalid')).toBeNull()
+    await pressMouse(outside)
+    expect(onSubmit).toHaveBeenCalledTimes(3)
+    expect(input.getAttribute('aria-invalid')).toBe('true')
+  })
+
+  it('标红后 Esc 照样撤掉占位,红也一起清掉', async () => {
+    const onCancel = vi.fn()
+    const { input, outside } = mount(() => false, onCancel)
+
+    await pressMouse(outside)
+    expect(input.getAttribute('aria-invalid')).toBe('true')
+    await press(input, 'Escape')
+    expect(onCancel).toHaveBeenCalledTimes(1)
+    expect(input.getAttribute('aria-invalid')).toBeNull()
   })
 
   it('切到别的应用不算放弃:失焦时没有接手的元素,占位留着', async () => {
@@ -321,15 +376,15 @@ describe('useInlineDraft', () => {
     expect(onCancel).not.toHaveBeenCalled()
   })
 
-  it('焦点移到占位外的元素上,撤掉占位且不提交', async () => {
+  it('焦点移到占位外的元素上,像回车一样提交', async () => {
     const onSubmit = vi.fn(() => true)
     const onCancel = vi.fn()
     const { input, outside } = mount(onSubmit, onCancel)
     await moveFocus(input)
 
     await moveFocus(outside)
+    expect(onSubmit).toHaveBeenCalledTimes(1)
     expect(onCancel).toHaveBeenCalledTimes(1)
-    expect(onSubmit).not.toHaveBeenCalled()
   })
 
   it('焦点在占位里挪动、落到入口按钮上都不算离开', async () => {

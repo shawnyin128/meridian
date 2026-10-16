@@ -1204,6 +1204,40 @@ describe('vault store on the aggregation layout', () => {
     expect(() => store.verifyConclusion(id, 't.A', shown[0]!.fingerprint!)).toThrow(/在你打开之后又被改过/)
   })
 
+  it('手动给任务设的科研节点存在项目页顶层并写进共享计划面,重开仍在,结论按它算;清掉就回到 agent 连的节点', () => {
+    store.createProject('手动节点')
+    const id = store.listProjects().find((p) => p.name === '手动节点')!.id
+    const task = store.createTask(id, {
+      title: '跑宽度扫描', start: '2026-09-10', end: '2026-09-10', state: 'done', priority: 'p1',
+    }).tasks[0]!.id
+    const repo = join(vault, 'task-node-repo')
+    mkdirSync(join(repo, '.meridian/graph'), { recursive: true })
+    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    const conclusion = { text: '宽树净赚', date: '2026-09-09', evidence: [] }
+    writeFileSync(join(repo, '.meridian/graph/graph.json'), JSON.stringify({
+      schema: 'meridian.lab.graph.v1', edges: [],
+      nodes: [{ id: 't.A', title: '宽树', state: 'supported' }, { id: 't.B', title: '前缀', state: 'supported' }],
+      node_details: { 't.A': { tasks: [task], conclusion }, 't.B': { conclusion } },
+    }))
+    const planNode = () => (JSON.parse(readFileSync(join(repo, '.meridian/control/plan.json'), 'utf8')) as {
+      tasks: { id: string; node?: string }[]
+    }).tasks.find((t) => t.id === task)!.node
+    const tasksOf = (node: string) => store.getProject(id).projectConclusions!
+      .find((c) => c.node === node)!.tasks.map((t) => t.id)
+
+    store.setTaskNode(id, task, 't.B')
+    expect(readFileSync(join(vault, 'wiki', 'projects', `${id}.md`), 'utf8')).toContain(`task_nodes:\n  ${task}: "t.B"\n`)
+    expect(createVaultStore(vault).getProject(id).taskNodes).toEqual({ [task]: 't.B' })
+    expect(planNode()).toBe('t.B')
+    expect([tasksOf('t.A'), tasksOf('t.B')]).toEqual([[], [task]])
+
+    store.setTaskNode(id, task, null)
+    expect(readFileSync(join(vault, 'wiki', 'projects', `${id}.md`), 'utf8')).not.toContain('task_nodes:')
+    expect(planNode()).toBeUndefined()
+    expect([tasksOf('t.A'), tasksOf('t.B')]).toEqual([[task], []])
+    expect(() => store.setTaskNode(id, task, 't.missing')).toThrow(/t.missing/)
+  })
+
   it('agent 请求加的任务:进计划、标明 agent 加的、记一条能撤销的变动;每条只收一次,删掉或撤销都不回来', () => {
     store.createProject('agent 任务')
     const id = store.listProjects().find((p) => p.name === 'agent 任务')!.id
@@ -1393,6 +1427,57 @@ describe('vault store on the aggregation layout', () => {
     })
     expect(overview).not.toHaveProperty('graph')
     expect(overview).not.toHaveProperty('workspace')
+  })
+
+  it('最近推进是最新的那一天:页上的记录、工作区事件与记进最近变动的改动都算,只调顺序的不算;列表、详情与总览是同一天', () => {
+    let day = '2026-09-01'
+    const dated = createVaultStore(vault, () => day)
+    dated.createProject('推进日')
+    const id = dated.listProjects().find((project) => project.name === '推进日')!.id
+    const progress = () => [
+      dated.listProjects().find((project) => project.id === id)!.lastProgress,
+      dated.getProject(id).lastProgress,
+      dated.overviewProjects().find((project) => project.id === id)!.lastProgress,
+    ]
+    expect(progress()).toEqual(['2026-09-01', '2026-09-01', '2026-09-01'])
+
+    day = '2026-09-05'
+    for (const title of ['第一个任务', '第二个任务']) {
+      dated.createTask(id, { title, start: '2026-09-10', end: '2026-09-10', state: 'plan', priority: 'p1' })
+    }
+    for (const text of ['第一条关联', '第二条关联']) dated.createRelation(id, { group: 'Wiki', text })
+    expect(progress()).toEqual(['2026-09-05', '2026-09-05', '2026-09-05'])
+
+    day = '2026-09-07'
+    expect(dated.updateProject(id, { memo: '换用更小的草稿模型' }).lastProgress).toBe('2026-09-07')
+    expect(progress()).toEqual(['2026-09-07', '2026-09-07', '2026-09-07'])
+
+    day = '2026-09-09'
+    const [first, second] = dated.getProject(id).tasks
+    expect(dated.reorderTasks(id, [second!.id, first!.id]).lastProgress).toBe('2026-09-07')
+    const moved = dated.getProject(id).relations[0]!.items[1]!.id
+    expect(dated.moveRelation(id, moved, 0).lastProgress).toBe('2026-09-07')
+    dated.undoChange(dated.listChanges()[0]!.id)
+    expect(progress()).toEqual(['2026-09-07', '2026-09-07', '2026-09-07'])
+
+    const repo = join(vault, 'progress-repo')
+    mkdirSync(join(repo, '.meridian/events'), { recursive: true })
+    dated.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    writeFileSync(join(repo, '.meridian/events/events.json'), JSON.stringify({
+      schema_version: 'meridian.workspace-events.v1',
+      events: [
+        { id: 'late', date: '2026-09-12', text: '完成 延迟探针', source: 'src/probe.py' },
+        { id: 'early', date: '2026-09-03', text: '开始推进 延迟探针', source: 'src/probe.py' },
+      ],
+    }), 'utf8')
+    expect(progress()).toEqual(['2026-09-12', '2026-09-12', '2026-09-12'])
+
+    // The derived day is never stored, not even in an undo snapshot.
+    const stored = JSON.parse(readFileSync(join(vault, '.meridian/changelog.json'), 'utf8')) as
+      { restore: { kind: string; project?: object } | null }[]
+    const snapshots = stored.flatMap((row) => (row.restore?.kind === 'project' ? [row.restore.project!] : []))
+    expect(snapshots.length).toBeGreaterThan(0)
+    for (const snapshot of snapshots) expect(snapshot).not.toHaveProperty('lastProgress')
   })
 
   it('关联仓库里 coding agent 新写的科研记录进动态的「实验」，旧的不刷屏，同一条只进一次', () => {

@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { expect, gotoPapers, test, type MeridianWindow } from './app.js'
+import { expect, gotoPapers, settle, test, type MeridianWindow } from './app.js'
 
 /** Visited screens stay mounted, so reader selectors are scoped to the screen shown. */
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
@@ -21,6 +21,8 @@ const FIT = Math.min(830 / PAGE.width, 1.6)
  * number of pages drawn shows which one was parsed.
  */
 const READABLE = { title: 'STAR: SPECULATIVE DECODING', pages: 2 }
+/** The readable paper's full title, which the reader's head and breadcrumb show. */
+const READABLE_TITLE = 'STAR: SPECULATIVE DECODING WITH SEARCHABLE DRAFTING AND TARGET-AWARE REFINEMENT FOR MULTIMODAL GENERATION'
 /** The paper the inbox entry specdec points to, once it is downloaded into the vault. */
 const INGESTED = { entry: 'specdec', pages: 3 }
 /** The paper the Read Later entry mixtral points to, already in the vault. */
@@ -124,6 +126,46 @@ test('阅读器右栏平滑展开并在收起后只保留工具轨', async ({ wi
   await expect(side).toHaveClass(/\bcollapsed\b/)
   await expect.poll(() => side.evaluate((element) => element.getBoundingClientRect().width))
     .toBeLessThan(60)
+})
+
+test('对话栏右缘的把手悬停显形、拖动在 240–480px 间调宽、单击收起成窄边；窄边、Ctrl+B 与标题栏按钮都能再开合', async ({ win }) => {
+  await openFromPapers(win)
+  const chat = shown(win, '.paper-chat')
+  const grip = shown(win, '.paper-chat > #rrgrip')
+  const edge = win.locator('.paper-chat-edge')
+  const width = () => chat.evaluate((element) => element.getBoundingClientRect().width)
+  const opacity = () => chat.evaluate((element) => getComputedStyle(element).opacity)
+  const dragBy = async (dx: number) => {
+    const box = (await grip.boundingBox())!
+    const y = box.y + box.height / 2
+    await win.mouse.move(box.x + box.width / 2, y)
+    await win.mouse.down()
+    await win.mouse.move(box.x + box.width / 2 + dx, y, { steps: 5 })
+    await win.mouse.up()
+  }
+
+  await grip.hover()
+  await expect.poll(() => grip.evaluate((element) => getComputedStyle(element, '::after').opacity)).toBe('1')
+  await dragBy(400)
+  expect(await width()).toBe(480)
+  await dragBy(-400)
+  expect(await width()).toBe(240)
+
+  // A press without moving is a click on the grip, which collapses the chat.
+  await grip.click()
+  await expect(edge).toBeVisible()
+  await settle(chat)
+  expect(await opacity()).toBe('0')
+  await edge.click()
+  await expect(edge).toHaveCount(0)
+  await settle(chat)
+  expect(await opacity()).toBe('1')
+  expect(await width()).toBe(240)
+
+  await win.keyboard.press('Control+b')
+  await expect(edge).toBeVisible()
+  await win.locator('#sbBtn').click()
+  await expect(edge).toHaveCount(0)
 })
 
 test('先排好所有页的框,再从视口附近开始画;第一页先于其余页画完', async ({ win }) => {
@@ -359,8 +401,8 @@ test.describe(() => {
 test('阅读器顶栏与面包屑写的是这一篇,面包屑上一段回到论文屏', async ({ win }) => {
   await openFromPapers(win)
 
-  await expect(shown(win, '.paper-chat-head strong')).toHaveText('STAR · 阅读中')
-  await expect(win.locator('#crumb .cseg')).toHaveText(['我的库', '论文', 'STAR'])
+  await expect(shown(win, '.paper-chat-head strong')).toHaveText(`${READABLE_TITLE} · 阅读中`)
+  await expect(win.locator('#crumb .cseg')).toHaveText(['我的库', '论文', READABLE_TITLE])
   // Of the segments taken from the screen the reader came from, only the last is a link, back to that screen.
   await expect(win.locator('#crumb .cseg.link')).toHaveText(['论文'])
 
@@ -377,7 +419,7 @@ test('返回钮回到来路那一屏,阅读器里读到哪一篇还留着', asyn
   await expect(shown(win, '.ptable')).toHaveCount(1)
 
   await shown(win, '.pdetail [title="开始阅读"]').click()
-  await expect(shown(win, '.paper-chat-head strong')).toHaveText('STAR · 阅读中')
+  await expect(shown(win, '.paper-chat-head strong')).toHaveText(`${READABLE_TITLE} · 阅读中`)
   await expect(shown(win, '.pdfpagebox')).toHaveCount(READABLE.pages)
 })
 
@@ -387,8 +429,8 @@ test('同一篇再进来,读到哪儿、放大到几倍都留着', async ({ win 
 
   await shown(win, '.zoomctl [title="放大"]').click()
   await expect(shown(win, '.zoomctl span')).toHaveText('120%')
-  // A redraw restores the scroll to the same proportion, so wait until the whole paper is drawn at the
-  // new zoom, then two more frames, before scrolling to the position to remember.
+  // Settling the zoom moves the scroll to keep the page point at the zoom position in place, so wait
+  // until the whole paper is drawn, then two more frames, before scrolling to the position to remember.
   await expect.poll(async () => {
     const pages = await inked(win)
     return pages.length === READABLE.pages && pages.every((p) => p.untouched === 0)

@@ -24,7 +24,7 @@ import { FormInput } from '../FormControls.js'
 import { ClearableInput } from '../ClearableInput.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../PageShell.js'
 import { useCandidateKeys } from '../../hooks/useCandidateKeys.js'
-import { NO_TRIGGERS } from '../../hooks/useCancelOnOutside.js'
+import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import {
@@ -37,6 +37,8 @@ import { DetailPanel } from '../DetailPanel.js'
 import { ActionMenu, MenuRadioGroup, MenuRadioItem, MenuSeparator } from '../ActionMenu.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator } from '../ContextMenu.js'
+import { PaperText } from '../paper/PaperText.js'
+import { plainTitle } from '../paper/paper-text.js'
 import { ResearchMap } from './ResearchMap.js'
 import './PaperTable.css'
 
@@ -169,15 +171,16 @@ function SortArrow({ direction }: { direction: SortDirection }) {
 
 /**
  * The `+` at the end of a topics cell: clicking it turns it into an input. Its candidate list shows
- * the vault's values this paper does not have yet; Enter or clicking a candidate hands the value to
- * `onAdd`, which returns whether the write completed. The input closes only then; a rejected write
- * keeps the input and the typed text. Esc, a press outside the input and its candidates, or focus
- * leaving them closes it and drops the typed text; while a submission is pending, neither an outside
- * press nor focus leaving closes it, and no second add is sent before the first one lands. The `+`
- * button opens it with its own `setOpen(true)` and all closing goes through `useInlineDraft`; Radix
- * only positions and renders the popover and has no say in opening or closing. The styling follows
- * the demo's .tagadd/.tagin/tagSug. The candidates are fetched with papers.facets each time it opens,
- * so they are always the vault's current values.
+ * the vault's values this paper does not have yet; clicking a candidate hands it to `onAdd`, and
+ * Enter, a press outside the input and its candidates, or focus leaving them hands over the
+ * highlighted candidate, or the typed text when there is none. `onAdd` returns whether the write
+ * completed. The input closes only then; a rejected write keeps the input and the typed text. Esc,
+ * or leaving with nothing typed, closes it and drops the typed text; while a submission is pending,
+ * neither an outside press nor focus leaving closes it, and no second add is sent before the first
+ * one lands. The `+` button opens it with its own `setOpen(true)` and all closing goes through
+ * `useInlineDraft`; Radix only positions and renders the popover and has no say in opening or
+ * closing. The styling follows the demo's .tagadd/.tagin/tagSug. The candidates are fetched with
+ * papers.facets each time it opens, so they are always the vault's current values.
  */
 function TagAdd({ field, values, onAdd, onError }: {
   field: ChipKey
@@ -210,8 +213,8 @@ function TagAdd({ field, values, onAdd, onError }: {
 
   // While closed the input is not rendered and its ref is null, so the outside and focus paths do nothing.
   const draft = useInlineDraft({
-    row: input, triggers: NO_TRIGGERS, onCancel: close,
-    onSubmit: () => (typed === '' ? false : onAdd(typed)),
+    row: input, triggers: NO_TRIGGERS, onCancel: close, isEmpty: () => typed === '',
+    onSubmit: () => (typed === '' ? false : onAdd(hits[keys.active] ?? typed)),
   })
   const keys = useCandidateKeys(hits.length, (i) => draft.submit(() => onAdd(hits[i]!)))
 
@@ -335,8 +338,8 @@ function opensPaperFrom(target: EventTarget | null): boolean {
 }
 
 /**
- * In-place editing of a text cell: Enter hands the input's text to `onSave`; Esc, a press outside
- * `cell`, or focus leaving it calls `onCancel` without writing the typed text. `onSave` returns
+ * In-place editing of a text cell: Enter, a press outside `cell`, or focus leaving it hands the
+ * input's text to `onSave`; Esc calls `onCancel` without writing the typed text. `onSave` returns
  * whether this edit is finished.
  */
 function TextCellEdit({ cell, initial, onSave, onCancel }: {
@@ -785,6 +788,21 @@ export function PaperTable() {
     setEditingCell(null)
   }
 
+  // A text cell's save still in flight. Another cell opens only once it has landed, so a refused
+  // save keeps its editor and text instead of being replaced.
+  const cellSave = useRef<Promise<boolean> | null>(null)
+  const holdCellSave = (save: boolean | Promise<boolean>): boolean | Promise<boolean> => {
+    if (typeof save === 'boolean') return save
+    const held = save.finally(() => { if (cellSave.current === held) cellSave.current = null })
+    cellSave.current = held
+    return held
+  }
+  const openCell = (cell: { id: string; key: string }) => {
+    if (editingCell?.id === cell.id && editingCell.key === cell.key) return
+    if (cellSave.current === null) setEditingCell(cell)
+    else void cellSave.current.then((saved) => { if (saved) setEditingCell(cell) })
+  }
+
   /**
    * Enter in a text cell: an unchanged value just closes it, otherwise the value is written back to
    * the cell. Returns whether the edit is finished: true when unchanged or written, false when the
@@ -817,8 +835,9 @@ export function PaperTable() {
    * and row are refetched from Core to correct it; the unsent picks queued after it are voided too,
    * and the whole sequence shows one toast. Consecutive picks in the same cell each compute their
    * values when their turn comes and the previous pick has truly settled, not when they are submitted.
+   * Resolves whether this pick was written.
    */
-  const savePick = (p: PaperRow, column: PaperColumn, value: string, created: boolean) => {
+  const savePick = (p: PaperRow, column: PaperColumn, value: string, created: boolean): Promise<boolean> => {
     const q = queue.current?.cell.id === p.id && queue.current.cell.key === column.key
       ? queue.current
       : {
@@ -861,6 +880,7 @@ export function PaperTable() {
     }).catch((e: Error) => { clearIfLatest(); toast(e.message); return null })
     const entry = { cell: q.cell, chain }
     queue.current = entry
+    return chain.then((settled) => settled !== null)
   }
 
   /**
@@ -962,22 +982,23 @@ export function PaperTable() {
     writeColumnsAndCells(() => papers.setColumnType(key, type), m.papers.notices.columnTypeChanged)
 
   /**
-   * What a custom cell shows: when not editing, plain text for a text column and chips for single- and
-   * multi-choice columns (inside .ci, so they fold into +N like the topics cell when they do not fit);
-   * when editing, the input or picker for the column type.
+   * What a custom cell shows: when not editing, the text of a text column inside .ci, so it truncates
+   * and expands on hover like the remark cell, and chips for single- and multi-choice columns (inside
+   * .ci, so they fold into +N like the topics cell when they do not fit); when editing, the input or
+   * picker for the column type.
    */
   const customCell = (p: PaperRow, column: PaperColumn) => {
     const values = cellValues(p.custom[column.key])
     const editing = editingCell?.id === p.id && editingCell.key === column.key
     if (!editing) {
-      if (column.type === 'text') return values[0] ?? ''
+      if (column.type === 'text') return <span className="ci">{values[0] ?? ''}</span>
       return <span className="ci">{values.map((v) => <span className="tagchip" key={v}>{v}</span>)}</span>
     }
     if (column.type === 'text') {
       return (
         <TextCellEdit
           cell={editingTd} initial={values[0] ?? ''}
-          onSave={(value) => saveCell(p, column.key, value)}
+          onSave={(value) => holdCellSave(saveCell(p, column.key, value))}
           // Another cell may have been clicked before the write came back; close this cell only if it
           // is still the one being edited.
           onCancel={() => setEditingCell((cur) => (cur !== null && cur.id === p.id && cur.key === column.key ? null : cur))}
@@ -998,7 +1019,7 @@ export function PaperTable() {
       return (
         <td
           className="pt-cust" key={c.k} ref={editing ? editingTd : undefined}
-          onClick={(e) => { e.stopPropagation(); setEditingCell({ id: p.id, key: c.k }) }}
+          onClick={(e) => { e.stopPropagation(); openCell({ id: p.id, key: c.k }) }}
         >{customCell(p, c.column)}</td>
       )
     }
@@ -1015,13 +1036,13 @@ export function PaperTable() {
       return (
         <td
           className="pt-remark" key={k} ref={editing ? editingTd : undefined}
-          onClick={(event) => { event.stopPropagation(); setEditingCell({ id: p.id, key: k }) }}
+          onClick={(event) => { event.stopPropagation(); openCell({ id: p.id, key: k }) }}
         >
           {editing
             ? (
               <TextCellEdit
                 cell={editingTd} initial={p.remark ?? ''}
-                onSave={(value) => saveRemark(p, value)}
+                onSave={(value) => holdCellSave(saveRemark(p, value))}
                 onCancel={() => setEditingCell((held) => (
                   held !== null && held.id === p.id && held.key === k ? null : held
                 ))}
@@ -1164,7 +1185,7 @@ export function PaperTable() {
                 setRowMenu({ paper: p, x: bounds.left + 24, y: bounds.top + 24 })
               }}
             >
-              <td className="pt-title"><span className="ci">{p.title}</span></td>
+              <td className="pt-title"><span className="ci"><PaperText text={p.title} /></span></td>
               {cols.map((c) => cell(p, c))}
               {newCol ? <td className="pt-cust" /> : null}
               <td>
@@ -1233,7 +1254,7 @@ export function PaperTable() {
           />
           <div className="libbar">
             <ClearableInput
-              wrapperClassName="mgr-add paper-search"
+              appearance="field" wrapperClassName="paper-search"
               id="libq" placeholder={m.papers.toolbar.searchPlaceholder} autoComplete="off" value={q}
               onChange={(e) => { setQ(e.target.value); setPage(1) }}
               onClear={() => { setQ(''); setPage(1) }} clearLabel={m.papers.toolbar.clearSearch}
@@ -1282,7 +1303,7 @@ export function PaperTable() {
                       <div className="gx-t">{f.value}</div>
                       <div className="gx-m">
                         {m.papers.groupIndex.newest(
-                          `${f.newestTitle.slice(0, 44)}${f.newestTitle.length > 44 ? '…' : ''}`,
+                          `${plainTitle(f.newestTitle).slice(0, 44)}${plainTitle(f.newestTitle).length > 44 ? '…' : ''}`,
                         )}
                       </div>
                       <span className="n">{f.count}</span>
@@ -1331,7 +1352,7 @@ export function PaperTable() {
           : (
             <div className="pdetail">
               <div className="pd-h">
-                <span className="pd-t">{detail.title}</span>
+                <span className="pd-t"><PaperText text={detail.title} /></span>
                 <button className="icbtn" title={m.papers.rowActions.openReader} onClick={() => open('reader', detail.id)}>
                   <IconRead />
                 </button>
@@ -1351,7 +1372,7 @@ export function PaperTable() {
         ? null
         : (
           <ContextMenu
-            point={{ x: rowMenu.x, y: rowMenu.y }} label={m.papers.contextMenu.label(rowMenu.paper.title)}
+            point={{ x: rowMenu.x, y: rowMenu.y }} label={m.papers.contextMenu.label(plainTitle(rowMenu.paper.title))}
             className="paper-row-menu" onClose={() => setRowMenu(null)}
           >
           <ContextMenuItem

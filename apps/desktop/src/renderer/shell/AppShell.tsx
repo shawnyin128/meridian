@@ -12,6 +12,7 @@ import { ScreenBoundary } from '../components/ScreenBoundary.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import { Sidebar } from './Sidebar.js'
+import { GRIP_WIDTHS, useGrip } from './useGrip.js'
 import { JobsContext, useJobsPoll } from './useJobs.js'
 import brandmark from '../../../resources/mark-64.png'
 import './AppShell.css'
@@ -48,8 +49,6 @@ export type InboxMode = 'watch' | 'discovery'
 /** One project's share of the discovery stream, listed under Discovery in the sidebar. */
 export type DiscoveryProjectCount = { id: string; name: string; count: number }
 
-const SB_MIN = 180
-const SB_MAX = 320
 /** The demo's showGtip: the handle's tooltip appears after the pointer rests on it this many ms. */
 const GRIPTIP_DELAY = 350
 
@@ -111,6 +110,13 @@ const SettingsContext = createContext<{
   setOpen: (open: boolean) => void
   openCategory: (category: SettingsCategory) => void
 } | null>(null)
+/** The mouse handlers of a resize grip: dragging, click-to-collapse and the hover tooltip are the shell's. */
+type GripHandlers = {
+  onMouseDown: (e: ReactMouseEvent) => void
+  onMouseEnter: (e: ReactMouseEvent) => void
+  onMouseLeave: () => void
+}
+const PaperChatGripContext = createContext<GripHandlers | null>(null)
 
 /** The color of the window buttons' symbols in the current theme: `--sec`, the tone of secondary text. */
 function symbolColor(): string {
@@ -304,6 +310,17 @@ export function useChatSession(): {
   return state
 }
 
+/**
+ * Returns the handlers for the grip on the Reader paper chat's edge, which must be a direct child of
+ * the chat: dragging it resizes the chat, a click collapses it, and hovering it shows the tooltip.
+ * The returned object keeps its reference throughout the lifetime of the shell.
+ */
+export function usePaperChatGrip(): GripHandlers {
+  const grip = useContext(PaperChatGripContext)
+  if (!grip) throw new Error('usePaperChatGrip needs AppShell')
+  return grip
+}
+
 const escapeLayers: { close: () => void }[] = []
 
 /**
@@ -340,6 +357,8 @@ export function AppShell({ screens, settings }: {
   const [mounted, setMounted] = useState<ScreenKey[]>(['feed'])
   const [tails, setTails] = useState<Partial<Record<ScreenKey, Deeper>>>({})
   const [width, setWidth] = useState(232)
+  /** The paper chat's dragged width; null until the first drag, leaving the Reader's CSS default. */
+  const [chatWidth, setChatWidth] = useState<number | null>(null)
   const [hidden, setHidden] = useState(false)
   const [paperCount, setPaperCount] = useState<number | null>(null)
   const [projectCount, setProjectCount] = useState<number | null>(null)
@@ -363,7 +382,6 @@ export function AppShell({ screens, settings }: {
   const [banner, showBanner] = useFading(1600)
   const [toast, showToast] = useFading(2400)
   const [griptip, setGriptip] = useState<{ top: number; left: number } | null>(null)
-  const drag = useRef<{ x0: number; w0: number; moved: boolean } | null>(null)
   const griptipTimer = useRef(0)
   const jumpSeq = useRef(0)
   /** Focus before the app menu opened, restored on close; when null, Radix returns focus to the logo button. */
@@ -450,29 +468,10 @@ export function AppShell({ screens, settings }: {
     openCategory: openSettingsCategory,
   }), [settingsCategory, settingsOpen, openSettingsCategory])
 
-  // The demo's handle does two things: moving more than 3px is a drag, and releasing without moving
-  // is a click that collapses the sidebar.
-  useEffect(() => {
-    const move = (e: MouseEvent) => {
-      const d = drag.current
-      if (!d) return
-      const dx = e.clientX - d.x0
-      if (!d.moved && Math.abs(dx) > 3) d.moved = true
-      if (d.moved) setWidth(Math.max(SB_MIN, Math.min(SB_MAX, d.w0 + dx)))
-    }
-    const up = () => {
-      const d = drag.current
-      if (!d) return
-      drag.current = null
-      if (!d.moved) setHidden((h) => !h)
-    }
-    document.addEventListener('mousemove', move)
-    document.addEventListener('mouseup', up)
-    return () => {
-      document.removeEventListener('mousemove', move)
-      document.removeEventListener('mouseup', up)
-    }
-  }, [])
+  // Both grips toggle `hidden`: in the Reader the paper chat takes the sidebar's place and collapses with it.
+  const toggleHidden = useCallback(() => setHidden((h) => !h), [])
+  const dragSidebar = useGrip(GRIP_WIDTHS.sidebar, setWidth, toggleHidden)
+  const dragPaperChat = useGrip(GRIP_WIDTHS.paperChat, setChatWidth, toggleHidden)
 
   // Ctrl+B / Cmd+B toggles the sidebar; Escape peels the topmost dismissible layer; "/" jumps to the nearest search field.
   useEffect(() => {
@@ -522,20 +521,21 @@ export function AppShell({ screens, settings }: {
     setGriptip(null)
   }, [])
 
-  const gripEnter = (e: ReactMouseEvent) => {
+  const gripEnter = useCallback((e: ReactMouseEvent) => {
     const r = e.currentTarget.getBoundingClientRect()
     window.clearTimeout(griptipTimer.current)
     griptipTimer.current = window.setTimeout(() => setGriptip({
       top: Math.max(8, Math.min(window.innerHeight - 64, r.top + r.height / 2 - 20)),
       left: r.right + 10,
     }), GRIPTIP_DELAY)
-  }
+  }, [])
 
-  const gripDown = (e: ReactMouseEvent) => {
-    drag.current = { x0: e.clientX, w0: width, moved: false }
-    hideGriptip()
-    e.preventDefault()
-  }
+  const gripOf = useCallback((startDrag: (e: ReactMouseEvent) => void): GripHandlers => ({
+    onMouseDown: (e) => { startDrag(e); hideGriptip() },
+    onMouseEnter: gripEnter,
+    onMouseLeave: hideGriptip,
+  }), [gripEnter, hideGriptip])
+  const paperChatGrip = useMemo(() => gripOf(dragPaperChat), [gripOf, dragPaperChat])
 
   const goTo = useCallback((next: ScreenKey) => {
     setScreen(next)
@@ -717,7 +717,9 @@ export function AppShell({ screens, settings }: {
 
       <div
         className={`main${hidden ? ' sbhide' : ''}${screen === 'reader' ? ' reading' : ''}`} id="main"
-        style={{ ['--sbw']: `${width}px` } as CSSProperties}
+        style={{
+          ['--sbw']: `${width}px`, ['--rrw']: chatWidth === null ? undefined : `${chatWidth}px`,
+        } as CSSProperties}
       >
         <Sidebar
           screen={screen} onNavigate={navigate} onJump={jumps.open} paperCount={paperCount}
@@ -728,8 +730,11 @@ export function AppShell({ screens, settings }: {
           laterCount={laterCount}
           chats={chats} chatId={screen === 'chat' ? chatId : null} onOpenChat={openChat}
           onNewChat={newChat} onArchiveChat={archiveChat}
-          grip={{ onMouseDown: gripDown, onMouseEnter: gripEnter, onMouseLeave: hideGriptip }}
+          grip={gripOf(dragSidebar)}
         />
+        {screen === 'reader' && hidden ? (
+          <button className="paper-chat-edge" title={m.chat.expandPaperChat} onClick={() => setHidden(false)} />
+        ) : null}
         <BannerContext.Provider value={showBanner}>
           <JobsContext.Provider value={jobsStatus}>
           <ToastContext.Provider value={showToast}>
@@ -739,6 +744,7 @@ export function AppShell({ screens, settings }: {
                   <InboxScopeContext.Provider value={inboxScope}>
                     <InboxModeContext.Provider value={inboxMode}>
                     <ChatSessionContext.Provider value={chatSession}>
+                    <PaperChatGripContext.Provider value={paperChatGrip}>
                       <JumpContext.Provider value={jumps}>
                         {/*
                          * Every screen counts relative dates from the vault's today, so no screen mounts
@@ -772,6 +778,7 @@ export function AppShell({ screens, settings }: {
                           </SettingsContext.Provider>
                         </TodayContext.Provider>
                       </JumpContext.Provider>
+                    </PaperChatGripContext.Provider>
                     </ChatSessionContext.Provider>
                     </InboxModeContext.Provider>
                   </InboxScopeContext.Provider>

@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test'
 import { PROJECT_STATUSES } from '../apps/desktop/src/shared/vocabulary.js'
-import { dshort, expect, settle, test, vaultToday, type MeridianWindow } from './app.js'
+import {
+  dshort, expect, overlaps, settle, test, timelinePeriod, vaultToday, type MeridianWindow,
+} from './app.js'
 
 /** Visited screens stay mounted, so selectors every screen has, like the header, target the shown one. */
 const shown = (win: Page) => win.locator('.screenslot:not([hidden])')
@@ -17,7 +19,7 @@ const getProject = (win: Page, id: string) => win.evaluate(async (projectId) => 
   const project = await (window as unknown as MeridianWindow).meridian
     .call('project.get', { id: projectId }) as {
       name: string
-      tasks: { state: string }[]
+      tasks: { state: string; start: string; end: string }[]
       milestones: { done: boolean }[]
       events: unknown[]
       agentSessions: unknown[]
@@ -25,8 +27,7 @@ const getProject = (win: Page, id: string) => win.evaluate(async (projectId) => 
     }
   return {
     name: project.name,
-    // The Gantt still draws a bar for every task, done or not.
-    tasks: project.tasks.length,
+    tasks: project.tasks.map(({ start, end }) => ({ start, end })),
     // A done task or milestone starts collapsed into the plan list's archived group, so the visible
     // row count is the active-only count, not the contract's full array length.
     activeTasks: project.tasks.filter((t) => t.state !== 'done').length,
@@ -35,6 +36,13 @@ const getProject = (win: Page, id: string) => win.evaluate(async (projectId) => 
     agentSessions: project.agentSessions.length,
     graphNodes: project.graph.nodes.length,
   }
+}, id)
+
+/** Calls `project.list` directly, bypassing the UI, for the day the project last progressed. */
+const lastProgress = (win: Page, id: string) => win.evaluate(async (projectId) => {
+  const rows = await (window as unknown as MeridianWindow).meridian
+    .call('project.list', {}) as { id: string; lastProgress?: string }[]
+  return rows.find((row) => row.id === projectId)?.lastProgress
 }, id)
 
 /** Calls `project.get` directly, bypassing the UI, for the project's whole research log. */
@@ -207,7 +215,7 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   expect((await listProjects(win)).find((p) => p.id === created!.id)?.status).toBe('搁置')
 })
 
-test('面板只显示最新一条推进,细行的上次推进按最新那条算', async ({ win }) => {
+test('面板只显示最新一条推进,停滞天数与细行的上次推进按最近推进那天算', async ({ win }) => {
   await gotoList(win)
   const today = await vaultToday(win)
 
@@ -216,15 +224,17 @@ test('面板只显示最新一条推进,细行的上次推进按最新那条算'
   const recent = await shown(win).locator('[data-proj="draft"] .project-card-recent').innerText()
   expect(recent).toContain(dshort(draft.at(-1)!.date))
 
-  // draft's idle days count from its latest entry; the earliest entry is further back, so reading the
-  // wrong end of the log gives a different number.
+  // Nothing has changed draft since its latest entry; the earliest entry is further back, so reading
+  // the wrong end of the log gives a different number.
+  const draftProgress = await lastProgress(win, 'draft')
+  expect(draftProgress).toBe(draft.at(-1)!.date)
   await expect(shown(win).locator('[data-proj="draft"] .project-card-alert'))
-    .toContainText(`已 ${daysSince(today, draft.at(-1)!.date)} 天无推进`)
+    .toContainText(`已 ${daysSince(today, draftProgress!)} 天无推进`)
 
-  // moe is shelved and shows as one compact row, ending with the days since its latest log entry.
-  const moe = await getEvents(win, 'moe')
+  // moe is shelved and shows as one compact row, ending with the days since it last progressed.
+  const moeProgress = await lastProgress(win, 'moe')
   await expect(shown(win).locator('[data-proj="moe"] .m'))
-    .toContainText(`上次推进 ${daysSince(today, moe.at(-1)!.date)} 天前`)
+    .toContainText(`上次推进 ${daysSince(today, moeProgress!)} 天前`)
 })
 
 test('单日与跨天任务的日期标签、全天与时段标签在各自列里一样宽', async ({ win }) => {
@@ -265,7 +275,10 @@ test('sched / moe / fa 各打开一次,各板块条数与 project.get 一致', a
     const project = await getProject(win, id)
     await expect(shown(win).locator('.desk-head .t'), id).toHaveText(project.name)
     await expect(win.locator('#taskList .ddlrow'), id).toHaveCount(project.activeTasks)
-    await expect(win.locator('.gantt .grow:not(.msrow)'), id).toHaveCount(project.tasks)
+    // The Gantt draws a bar for every task that overlaps this week, done or not.
+    const week = timelinePeriod(await vaultToday(win), 'week')
+    await expect(win.locator('.gantt .grow:not(.msrow)'), id)
+      .toHaveCount(project.tasks.filter((task) => overlaps(task, week)).length)
     await expect(win.locator('.evlist .record-row'), id).toHaveCount(project.events)
     await expect(win.locator('.agcard'), id).toHaveCount(project.agentSessions)
 

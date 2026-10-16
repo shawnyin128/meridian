@@ -75,6 +75,7 @@ import {
   ProjectDeleteParamsSchema,
   ProjectSummarySchema,
   ProjectSetConclusionStateParamsSchema,
+  ProjectSetTaskNodeParamsSchema,
   ProjectUpdateParamsSchema,
   ProjectUpdateMilestoneParamsSchema,
   ProjectUpdateTaskParamsSchema,
@@ -468,6 +469,14 @@ describe('contract schemas', () => {
     expect(() => ConclusionSchema.parse({ ...item, state: 'done' })).toThrow()
     expect(() => ConclusionSchema.parse({ ...item, date: '09/01' })).toThrow()
     expect(() => ProjectUpdateParamsSchema.parse({ id: 'draft', patch: { conclusionList: [] } })).toThrow()
+  })
+
+  it('任务的科研节点只经 project.setTaskNode 设或清,改项目字段时不收', () => {
+    const params = { projectId: 'draft', taskId: 't2', nodeId: 'knee' }
+    expect(ProjectSetTaskNodeParamsSchema.parse(params)).toEqual(params)
+    expect(ProjectSetTaskNodeParamsSchema.parse({ ...params, nodeId: null }).nodeId).toBeNull()
+    expect(() => ProjectSetTaskNodeParamsSchema.parse({ projectId: 'draft', taskId: 't2' })).toThrow()
+    expect(() => ProjectUpdateParamsSchema.parse({ id: 'draft', patch: { taskNodes: { t2: 'knee' } } })).toThrow()
   })
 
   it('新建结论要一句不空的话,所引会话与论文可以没有;改档只收三档', () => {

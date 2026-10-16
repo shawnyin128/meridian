@@ -1,11 +1,11 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import { Markdown } from '../Markdown.js'
+import { PaperText } from './PaperText.js'
 import { useMessages } from '../../messages/useMessages.js'
 import './PaperCard.css'
 
 /**
- * The one presentation of paper abstracts. Abstracts are parsed as Markdown, so the `$…$` and
- * `$$…$$` math common on arXiv reuses the global KaTeX rendering instead of showing raw LaTeX.
+ * The one presentation of paper abstracts. Abstracts render through `PaperText` as Markdown, so the
+ * `$…$` and `$$…$$` math and the text commands common on arXiv show rendered instead of raw LaTeX.
  * With `folded`, the abstract shows its first lines fading out and offers to expand when there is more.
  */
 export function PaperAbstract({ text, folded = false }: { text: string; folded?: boolean }) {
@@ -28,7 +28,7 @@ export function PaperAbstract({ text, folded = false }: { text: string; folded?:
   return (
     <>
       <div ref={body} className={`paper-abstract pabs${clipped ? ' is-folded' : ''}${clipped && overflows ? ' is-clipped' : ''}`}>
-        <Markdown src={text} />
+        <PaperText text={text} block />
       </div>
       {folded && (overflows || expanded) ? (
         <button type="button" className="paper-abstract-toggle" onClick={() => setExpanded((open) => !open)}>

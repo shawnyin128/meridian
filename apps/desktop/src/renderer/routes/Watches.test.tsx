@@ -45,7 +45,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
 vi.mock('../hooks/useVaultWrite.js', () => ({
-  useVaultWrite: () => async (work: Promise<unknown>) => { await work; return true },
+  useVaultWrite: () => async (work: Promise<unknown>) => work.then(() => true, () => false),
 }))
 
 const { WatchSettings } = await import('./Watches.js')
@@ -111,6 +111,74 @@ describe('WatchSettings', () => {
     expect(api.update).toHaveBeenCalledWith('author-1', {
       type: 'author', name: 'Song Han Lab',
     })
+
+    await act(async () => { root.unmount() })
+  })
+
+  it('编辑中的关注没改名就点到别处，只收起，不写', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+
+    for (const id of ['topic-1', 'author-1']) {
+      await act(async () => { button(host.querySelector(`[data-w="${id}"]`)!, '编辑').click() })
+      expect(host.querySelector(`[data-w="${id}"] input`)).not.toBeNull()
+      await act(async () => { document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })) })
+      expect(host.querySelector(`[data-w="${id}"] input`)).toBeNull()
+    }
+    expect(api.update).not.toHaveBeenCalled()
+
+    await act(async () => { root.unmount() })
+  })
+
+  it('作者占位打了名字、没选身份就点到别处：按名字存成待确认的作者', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+    const authorList = host.querySelector('[data-w="author-1"]')!.closest('.wlist')!
+    await act(async () => { authorList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!.click() })
+
+    await act(async () => { enter(authorList.querySelector<HTMLInputElement>('.newrow input')!, 'Ada Lovelace') })
+    await act(async () => { document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })) })
+    expect(api.create).toHaveBeenCalledWith({ type: 'author', name: 'Ada Lovelace' })
+
+    await act(async () => { root.unmount() })
+  })
+
+  it('主题占位打了字时点作者组的加号：先存下这个主题，再开作者占位', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+    const topicList = host.querySelector('[data-w="topic-1"]')!.closest('.wlist')!
+    const authorList = host.querySelector('[data-w="author-1"]')!.closest('.wlist')!
+    await act(async () => { topicList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!.click() })
+    await act(async () => { enter(topicList.querySelector<HTMLInputElement>('.newrow input')!, 'speculative sampling') })
+
+    await act(async () => { authorList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!.click() })
+    expect(api.create).toHaveBeenCalledWith({ type: 'topic', name: 'speculative sampling' })
+    expect(topicList.querySelector('.newrow')).toBeNull()
+    expect(authorList.querySelector<HTMLInputElement>('.newrow input')!.value).toBe('')
+
+    await act(async () => { root.unmount() })
+  })
+
+  it('点作者组的加号时主题存被拒：主题占位带着字留着并标红，作者占位不开；再点别的关注的编辑也不换', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+    const topicList = host.querySelector('[data-w="topic-1"]')!.closest('.wlist')!
+    const authorList = host.querySelector('[data-w="author-1"]')!.closest('.wlist')!
+    await act(async () => { topicList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!.click() })
+    const input = topicList.querySelector<HTMLInputElement>('.newrow input')!
+    await act(async () => { enter(input, 'speculative sampling') })
+    api.create.mockRejectedValueOnce(new Error('写不进去'))
+
+    await act(async () => { authorList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!.click() })
+    expect(topicList.querySelector('.newrow input')).toBe(input)
+    expect(input.value).toBe('speculative sampling')
+    expect(input.getAttribute('aria-invalid')).toBe('true')
+    expect(authorList.querySelector('.newrow')).toBeNull()
+
+    await act(async () => { button(host.querySelector('[data-w="author-1"]')!, '编辑').click() })
+    expect(api.create).toHaveBeenCalledTimes(1)
+    expect(topicList.querySelector('.newrow input')).toBe(input)
+    expect(host.querySelector('[data-w="author-1"] input')).toBeNull()
 
     await act(async () => { root.unmount() })
   })

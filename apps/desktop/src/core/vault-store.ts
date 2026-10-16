@@ -3,8 +3,8 @@ import { basename, isAbsolute, join } from 'node:path'
 import type { z } from 'zod'
 import type {
   ChatSession, Conclusion, DeliverySettings, FeedEntry, FeedRun, GraphNode, PaperColumns, PaperImportResult, PaperReading, PaperRow, Proposal,
-  ProjectConclusion, ProjectDetail, ProjectWorkspaceBinding, ProposalRecord, ReadingMutation, ResearchGraph, ResearchIdea,
-  SearchHit, Task, TaskFields,
+  ProjectConclusion, ProjectDetail, ProjectWorkspaceBinding, ProposalRecord, ReadingMutation, RelationFields, ResearchGraph,
+  ResearchIdea, SearchHit, Task, TaskFields,
   WikiSignal,
 } from '../shared/contract.js'
 import {
@@ -17,7 +17,7 @@ import {
   TRASH_RETENTION_DAYS, UNREAD_PAPER,
 } from '../shared/vocabulary.js'
 import type { ChangeRecord } from './changelog.js'
-import { PROJECT_FIELDS, parseChangeRecords, withChangelog } from './changelog.js'
+import { lastProgressOf, PROJECT_FIELDS, parseChangeRecords, withChangelog } from './changelog.js'
 import { dayOf, feedNewestFirst, systemToday } from './dates.js'
 import {
   applyReadingMutation, checkColumns, checkCustom, checkGroupKey, columnCells, emptyColumns,
@@ -373,6 +373,8 @@ export function createVaultStore(
 
   /** Each list `load` read, by name, holding what its next `save` writes back besides the rows. */
   const lists = new Map<string, StoredList<unknown>>()
+  /** The change log's rows as last loaded or saved. */
+  let changes: ChangeRecord[] = []
 
   /**
    * Loads the record list in `.meridian/<name>.json` record by record, telling records apart by their
@@ -740,6 +742,19 @@ export function createVaultStore(
     return project
   }
 
+  /**
+   * The text and target of a relation item. Throws when `page` names no aggregation of the
+   * vault, or both targets are given.
+   */
+  const relationFields = ({ text, page, url }: Omit<RelationFields, 'group'>) => {
+    if (page !== undefined) {
+      const target = wikiData.pages[page]
+      if (target === undefined || isPaper(target)) throw new Error(`wiki 聚合不存在：${page}`)
+    }
+    if (page !== undefined && url !== undefined) throw new Error('关联不能同时指向 Wiki 页和链接')
+    return { text, ...(page === undefined ? {} : { page }), ...(url === undefined ? {} : { url }) }
+  }
+
   /** The conclusions of `project` whose research graph is `graph`, as the Conclusions view lists them. */
   const conclusionsOf = (project: ProjectRecord, graph: ResearchGraph): ProjectConclusion[] =>
     projectConclusions(project, graph, projectClaims(wikiData, project.id), projectDisputes(wikiData, project.id))
@@ -766,6 +781,7 @@ export function createVaultStore(
       ...(Object.keys(claims).length === 0 ? {} : { conclusionClaims: claims }),
       projectConclusions: conclusions,
       ...(workspace === undefined ? {} : { workspace }),
+      ...lastProgressOf(changes, project.id, [...project.events, ...workspace?.events ?? []]),
     }
   }
 
@@ -1329,6 +1345,7 @@ export function createVaultStore(
           milestones: p.milestones.map(({ date, done }) => ({ date, done })),
           recentEvents: p.events.slice(-RECENT_EVENTS)
             .map(({ date, text, origin }) => ({ date, text, ...(origin === undefined ? {} : { origin }) })),
+          ...lastProgressOf(changes, p.id, [...p.events, ...workspace?.events ?? []]),
         }
       })
     },
@@ -1361,6 +1378,7 @@ export function createVaultStore(
           })),
           milestones: p.milestones.map((m) => ({ ...m })),
           events: events.map((e) => ({ ...e })),
+          ...lastProgressOf(changes, p.id, events),
           research: overviewResearch(graph),
         }
       })
@@ -1527,6 +1545,18 @@ export function createVaultStore(
       return writeProject({ ...project, tasks: order.map((id) => byId.get(id)!) }, ['tasks'])
     },
 
+    setTaskNode(projectId, taskId, nodeId) {
+      const project = projectOf(projectId)
+      if (!project.tasks.some((t) => t.id === taskId)) throw new Error(`任务不存在：${taskId}`)
+      const graph = readProjectWorkspace(project)?.graph ?? project.graph
+      if (nodeId !== null && !graph.nodes.some((n) => n.id === nodeId)) throw new Error(`节点不存在：${nodeId}`)
+      const taskNodes = Object.fromEntries(Object.entries(project.taskNodes ?? {}).filter(([task]) => task !== taskId))
+      if (nodeId !== null) taskNodes[taskId] = nodeId
+      const next: ProjectRecord = { ...project, taskNodes }
+      if (Object.keys(taskNodes).length === 0) delete next.taskNodes
+      return writeProject(next, ['taskNodes'])
+    },
+
     createMilestone(projectId, milestone) {
       const project = projectOf(projectId)
       return writeProject(
@@ -1557,18 +1587,10 @@ export function createVaultStore(
       }, ['milestones'])
     },
 
-    createRelation(projectId, { group, text, page, url }) {
+    createRelation(projectId, { group, ...fields }) {
       const project = projectOf(projectId)
-      if (page !== undefined) {
-        const target = wikiData.pages[page]
-        if (target === undefined || isPaper(target)) throw new Error(`wiki 聚合不存在：${page}`)
-      }
-      if (page !== undefined && url !== undefined) throw new Error('关联不能同时指向 Wiki 页和链接')
-      const item = {
-        id: nextId('rel'), text,
-        ...(page === undefined ? {} : { page }),
-        ...(url === undefined ? {} : { url }),
-      }
+      const checked = relationFields(fields)
+      const item = { id: nextId('rel'), ...checked }
       const seen = project.relations.some((r) => r.group === group)
       return writeProject({
         ...project,
@@ -1587,6 +1609,19 @@ export function createVaultStore(
         ...project,
         relations: project.relations.map((r) =>
           ({ ...r, items: r.items.filter((i) => i.id !== relationId) })),
+      }, ['relations'])
+    },
+
+    updateRelation(projectId, relationId, relation) {
+      const project = projectOf(projectId)
+      if (!project.relations.some((r) => r.items.some((i) => i.id === relationId))) {
+        throw new Error(`关联不存在：${relationId}`)
+      }
+      const item = { id: relationId, ...relationFields(relation) }
+      return writeProject({
+        ...project,
+        relations: project.relations.map((r) =>
+          ({ ...r, items: r.items.map((i) => (i.id === relationId ? item : i)) })),
       }, ['relations'])
     },
 
@@ -2522,9 +2557,13 @@ export function createVaultStore(
       if (!existsSync(file)) return []
       const log = parseChangeRecords(JSON.parse(readFileSync(file, 'utf8')))
       lists.set('changelog', log)
+      changes = log.rows
       return log.rows
     },
-    save: (rows) => { save('changelog', rows) },
+    save: (rows) => {
+      changes = rows
+      save('changelog', rows)
+    },
     nextId: () => nextId('change'),
   })
 }

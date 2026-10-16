@@ -36,8 +36,9 @@ points:
 2. **Change review.** When a version's pull requests are open, check out in the
    owner's main checkout a branch that holds them: the work branch for one pull
    request, or a local-only `review/vX.Y.Z.F` branch that merges the release
-   branch and every work branch. List the files and lines to check, issue by
-   issue. The owner's OK in the conversation is the approval
+   branch and every work branch. Build it, seed a fresh test library with that
+   build (see Test Library) and open it for the owner. List the files and lines
+   to check, issue by issue. The owner's OK in the conversation is the approval
    `.github/pull-requests.md` requires; pull requests are opened from the
    owner's account, so GitHub cannot record an approving review. Then merge each
    pull request into the release branch with `gh pr merge --merge`, close its
@@ -46,7 +47,8 @@ points:
    the main checkout stays free for review: switch it only when `git status` is
    clean there and no other `review/` branch is checked out.
 3. **Build review.** Releasing step 5: nothing is tagged until the owner
-   approves the unpacked build.
+   approves the unpacked build, reviewed on a test library freshly seeded with
+   that build.
 
 Once the owner has asked for a change or a release, carry everything between
 these points forward without asking: issues, milestones, branches, pull
@@ -110,6 +112,10 @@ App, the Python package, and the agent plugins. Data formats are compatible in b
   and give each a reader for the old shape.
 - Stored data is read record by record: a record that cannot be read is reported and skipped or
   degraded, and never keeps the library from opening.
+- A change that adds or tightens a rule here audits every existing stored format against it, and
+  opens an issue for each format that breaks it.
+- A new stored kind or field ships first in a version whose readers tolerate it, and is written only
+  by a later version, once the versions that cannot read it are no longer in use.
 - Before a release, open a read-only copy of a real library written by the previous version with the
   new build and confirm its projects, overview, Wiki and feed load.
 - A change that is not purely additive bumps the schema version, and readers keep supporting the
@@ -237,6 +243,22 @@ itself, and the CLI tests need PyYAML.
   Let a started run finish, and do not re-run specs that already passed on the
   same code.
 
+## Test Library
+
+`scripts/test-library.mjs` builds a library that covers every screen and stored
+kind through the App's own Core, so a review never depends on what happens to be
+on the reviewing machine.
+
+- `node scripts/test-library.mjs seed --out <dir> [--app <build>]` writes
+  `<dir>` from scratch with its own config home and user-data folder;
+  `node scripts/test-library.mjs open --out <dir> [--app <build>]` opens it.
+  Without `--app` both use the checkout's built `apps/desktop`.
+- Test libraries live in `~/Desktop/meridian-test-library/<display version>/`
+  on macOS and `%USERPROFILE%\Desktop\meridian-test-library\<display version>\`
+  on Windows.
+- A pull request that adds a screen or a stored kind adds its scenario to the
+  seed.
+
 ## Git
 
 - Branches, versions and releases follow `.github/versioning.md`; issues follow
@@ -299,7 +321,10 @@ checks. This is the order to follow, on the version's release branch and never o
    `library.location`, `vault.today`, `project.list`, `project.get` for every
    project, `wiki.home`, `wiki.proposals`, `wiki.signals` and `feed.list` must
    all succeed. Never point a test at the original library, the App's user data
-   folder, or `~/.meridian`.
+   folder, or `~/.meridian`. Beside the real-library copy, copy the test library
+   the previous release seeded to a temporary folder and open the copy with
+   `node scripts/test-library.mjs open --out <copy> --app <build>`; the same
+   calls must succeed there.
 5. **Owner review.** Hand the owner the unpacked build with a list of what to
    check, issue by issue. Nothing is tagged until the owner approves. Any change
    after that means a new build in a new folder and another review.
@@ -312,7 +337,9 @@ checks. This is the order to follow, on the version's release branch and never o
 8. **After the release.** Move `master` as `.github/versioning.md` section 4
    says, merge a fix release branch into every feature release branch in
    progress, delete merged branches as its section 7 says, and close the
-   version's milestone.
+   version's milestone. Seed a test library with the released build into its
+   display-version folder (see Test Library) and keep it for the next release's
+   upgrade smoke.
 
 ## Mistakes Made Here Before
 

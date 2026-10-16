@@ -1,13 +1,17 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import type { ResearchIdea } from '../../shared/contract.js'
 import type { ProjectRecord } from './page.js'
 import {
   PROJECT_PLAN_SCHEMA, WORKSPACE_CHANGES_SCHEMA, WORKSPACE_SCHEMA, projectWorkspaceRoot,
   projectWorkspaceSsh, readProjectWorkspace, writeProjectWorkspace, writeProjectWorkspaceState,
 } from './workspace.js'
+
+/** Repository root, whose `src` holds the Python package an agent plugin runs. */
+const REPO = resolve(import.meta.dirname, '../../../../..')
 
 const roots: string[] = []
 
@@ -108,6 +112,28 @@ describe('project workspace protocol', () => {
       ideas: [],
       changes: [{ sequence: 1, kind: 'project.snapshot' }],
     })
+  })
+
+  it('手动设的任务节点写在计划面的那条任务上;0.0.15.3 的 App 与 0.0.4 插件的 Python 照样读这份计划', () => {
+    const root = temporary()
+    const held = { ...project(root), taskNodes: { 'task-1': 'direction.B', 'task-gone': 'direction.A' } }
+    const revision = writeProjectWorkspace(held)
+    const plan = JSON.parse(readFileSync(join(root, '.meridian/control/plan.json'), 'utf8')) as { tasks: unknown[] }
+    expect(plan.tasks).toEqual([{ ...held.tasks[0], node: 'direction.B' }])
+    expect(readProjectWorkspace(held)?.planRevision).toBe(revision)
+
+    const script = [
+      'import json, sys',
+      'from pathlib import Path',
+      'from meridian.workspace_protocol import inspect_project_workspace, read_project_plan',
+      'root = Path(sys.argv[1])',
+      'plan = read_project_plan(root)',
+      'print(json.dumps([inspect_project_workspace(root)["status"], [task["id"] for task in plan["tasks"]]]))',
+    ].join('\n')
+    const output = execFileSync('python', ['-c', script, root], {
+      env: { ...process.env, PYTHONPATH: join(REPO, 'src') }, encoding: 'utf8',
+    })
+    expect(JSON.parse(output)).toEqual(['ready', ['task-1']])
   })
 
   it('keeps current linked ideas and records only incremental association changes', () => {

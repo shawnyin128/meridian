@@ -63,10 +63,18 @@ test('四档窗口下主内容随窗口变宽,比例不低于下限,不横向溢
     expect(await ratio(win, '.wkpage'), `${w} wiki 页`).toBeGreaterThan(0.45)
     await noOverflow(win)
 
-    // Paper table: The table covers the desktop area; the table scrolls by itself, but the desktop area does not scroll.
+    // Paper table: the table fills the desktop area's content box; the table scrolls by itself, but the
+    // desktop area does not scroll.
     await win.locator('[data-desk="papers"]').click()
     await shown(win).locator('.ptable tbody tr').first().waitFor()
-    expect(await ratio(win, '.libwide'), `${w} 论文表`).toBeGreaterThan(0.9)
+    const [table, content] = await shown(win).locator('.desk-body').evaluate((body) => {
+      const style = getComputedStyle(body)
+      return [
+        body.querySelector('.libwide')!.getBoundingClientRect().width,
+        body.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
+      ]
+    })
+    expect(table, `${w} 论文表`).toBeCloseTo(content!, 0)
     await noOverflow(win)
 
     // Recent Changes: entries fill the content column at this size's --pagew, and the actions revealed on

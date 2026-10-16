@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type {
-  ProjectDetail as Project, ResearchGraph as ResearchGraphData, ResearchIdea,
+  ProjectDetail as Project, RelationGroup, ResearchGraph as ResearchGraphData, ResearchIdea,
   ResearchIdeaGraphPlacement, TaskWindow,
 } from '../../shared/contract.js'
 import { projectControlState } from '../../shared/project-control.js'
 import { researchPathState } from '../../shared/research-path.js'
+import { withTaskNodes } from '../../shared/task-nodes.js'
 import {
   FOCUS_KEY, projectDecisionItems, recordKind, recordOrigin, sortRecordsNewestFirst,
 } from '../../shared/project-signals.js'
@@ -52,6 +53,8 @@ import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
+import { plainTitle } from '../components/paper/paper-text.js'
+import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import './shell.css'
 import './ProjectDetail.css'
@@ -76,8 +79,8 @@ export function ProjectIdeaPanel({
   const fmt = useFormat()
   const m = useMessages()
   const source = idea.source.paperTitle === undefined
-    ? idea.source.chatTitle
-    : `${idea.source.paperTitle} · ${idea.source.chatTitle}`
+    ? plainTitle(idea.source.chatTitle)
+    : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
   const linkedNode = graph.nodes.find((node) => node.id === idea.node)
   return (
     <>
@@ -161,6 +164,7 @@ export function ProjectDetail({
   const [linkedIdeas, setLinkedIdeas] = useState<ResearchIdea[]>([])
   const [relAdding, setRelAdding] = useState(false)
   const [relGroup, setRelGroup] = useState<string>(PROJECT_RELATION_GROUPS[0])
+  const [relEditing, setRelEditing] = useState<RelationGroup['items'][number] | null>(null)
   const [creating, setCreating] = useState<PlanCreating | null>(null)
   // A new object on every locate: clicking the same row again changes its identity, so the effect below reruns.
   const [flash, setFlash] = useState<{ id: string } | null>(null)
@@ -188,10 +192,12 @@ export function ProjectDetail({
   const relRow = useRef<HTMLDivElement>(null)
   const relAdd = useRef<HTMLButtonElement>(null)
   const relTriggers = useMemo(() => [relAdd], [])
+  const relEditRow = useRef<HTMLDivElement>(null)
 
   const stopRel = useCallback(() => {
     setRelAdding(false)
   }, [])
+  const stopRelEdit = useCallback(() => setRelEditing(null), [])
   const banner = useBanner()
   const toast = useToast()
   const today = useToday()
@@ -222,6 +228,7 @@ export function ProjectDetail({
       .map((row) => ({
         id: row.id,
         title: row.title,
+        paper: true,
         ...(row.year === undefined ? {} : { meta: String(row.year) }),
       }))
   }, [heldPapers])
@@ -324,15 +331,16 @@ export function ProjectDetail({
   }, [flash])
 
   /**
-   * Discards the open new row, the Links add row and the Project notes editor. The demo's
+   * Discards the open new row, the Links add and edit rows and the Project notes editor. The demo's
    * renderProject rewrote the whole deskBody, losing any rows and forms inserted in it, and rebuilt
    * the notes box from the source text.
    */
   const discardOpenEdits = useCallback(() => {
     setCreating(null)
     stopRel()
+    stopRelEdit()
     setMemoEditing(false)
-  }, [stopRel])
+  }, [stopRel, stopRelEdit])
 
   /**
    * Finishes a write that returns the project: the project goes into state, then `write` bumps the
@@ -479,6 +487,7 @@ export function ProjectDetail({
 
   const workspaceGraph = project.workspace?.graph
   const displayedGraph = workspaceGraph ?? project.graph
+  const taskGraph = withTaskNodes(displayedGraph, project.taskNodes)
   const visibleEvents = [...project.events, ...(project.workspace?.events ?? [])]
   const sortedRecords = sortRecordsNewestFirst(visibleEvents)
   const goToRecordNode = (nodeId: string) => {
@@ -494,7 +503,7 @@ export function ProjectDetail({
     // Old project conclusions are kept only for data compatibility and no longer feed the project page's signals.
     conclusions: { conflicting: 0 },
     milestones: project.milestones,
-    events: visibleEvents,
+    lastProgress: project.lastProgress,
     tasks: project.tasks,
     research: { pathState: researchPathState(displayedGraph) },
     ...(project.block === undefined ? {} : { block: project.block }),
@@ -512,7 +521,7 @@ export function ProjectDetail({
         }),
       }),
   })
-  const node = displayedGraph.nodes.find((n) => n.id === selectedNode)
+  const node = taskGraph.nodes.find((n) => n.id === selectedNode)
   const selectedIdea = linkedIdeas.find((idea) => idea.id === selectedIdeaId)
   const selectedTask = project.tasks.find((t) => t.id === selectedTaskId)
   const dialogIdea = linkedIdeas.find((idea) => idea.id === ideaGraphDialog?.ideaId)
@@ -808,8 +817,8 @@ export function ProjectDetail({
                 <StructuredList className="project-ideas" variant="embedded">
                   {linkedIdeas.map((idea) => {
                     const source = idea.source.paperTitle === undefined
-                      ? idea.source.chatTitle
-                      : `${idea.source.paperTitle} · ${idea.source.chatTitle}`
+                      ? plainTitle(idea.source.chatTitle)
+                      : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
                     const ideaNode = displayedGraph.nodes.find((node) => node.id === idea.node)
                     return (
                       <StructuredRow
@@ -852,10 +861,15 @@ export function ProjectDetail({
               ? (
                 <ProjectTaskPanel
                   task={selectedTask} onClose={clearTask} onOpenNode={goToRecordNode}
-                  node={nodeLook(displayedGraph.nodes.find((candidate) => candidate.tasks?.includes(selectedTask.id))?.id)}
+                  node={nodeLook(taskGraph.nodes.find((candidate) => candidate.tasks?.includes(selectedTask.id))?.id)}
+                  nodes={displayedGraph.nodes}
+                  handSet={displayedGraph.nodes.some((candidate) => candidate.id === project.taskNodes?.[selectedTask.id])}
                   onSaveNote={(note) => writeProject(
                     projectApi.updateTask(projectId, selectedTask.id, { note }), m.project.plan.noteUpdated,
                   )}
+                  onSetNode={(nodeId) => {
+                    void writeProject(projectApi.setTaskNode(projectId, selectedTask.id, nodeId), m.project.plan.nodeUpdated)
+                  }}
                 />
               )
               : selectedIdea !== undefined
@@ -1060,7 +1074,7 @@ export function ProjectDetail({
                     onOpenPage={openWikiPage}
                     onOpenPaper={(paperId) => jumpTo('reader', paperId)}
                     onRemovePaper={(paperId, title) => applyWrite(
-                      projectApi.removePaper(projectId, paperId), m.project.links.paperRemoved(title), toast,
+                      projectApi.removePaper(projectId, paperId), m.project.links.paperRemoved(plainTitle(title)), toast,
                     )}
                     onMove={(id, index) => { void writeProject(projectApi.moveRelation(projectId, id, index)) }}
                     adding={!relAdding
@@ -1077,7 +1091,7 @@ export function ProjectDetail({
                               onNew={() => false}
                               onCancel={stopRel} onError={reportError}
                               onPick={(hit) => writeProject(
-                                projectApi.addPaper(projectId, hit.id), m.project.links.paperLinked(hit.title),
+                                projectApi.addPaper(projectId, hit.id), m.project.links.paperLinked(plainTitle(hit.title)),
                               )}
                             />
                           )
@@ -1105,6 +1119,37 @@ export function ProjectDetail({
                             />
                           ),
                       }}
+                    editing={relEditing === null
+                      ? undefined
+                      : {
+                        id: relEditing.id,
+                        row: relEditRow,
+                        input: relEditing.url !== undefined
+                          ? (
+                            <ProjectUrlDraft
+                              row={relEditRow} triggers={NO_TRIGGERS} onCancel={stopRelEdit}
+                              initial={{ url: relEditing.url, text: relEditing.text }}
+                              onInvalid={() => toast(m.project.links.urlInvalid)}
+                              onSubmit={(url, text) => writeProject(projectApi.updateRelation(
+                                projectId, relEditing.id, { text, url },
+                              ), m.project.links.updated)}
+                            />
+                          )
+                          : (
+                            <PickRow
+                              row={relEditRow} triggers={NO_TRIGGERS} allowNew initialText={relEditing.text}
+                              placeholder={m.project.links.pagePlaceholder} suggest={suggestPages}
+                              onCancel={stopRelEdit} onError={reportError}
+                              onPick={(hit) => writeProject(projectApi.updateRelation(projectId, relEditing.id, {
+                                text: hit.title, page: hit.id,
+                              }), m.project.links.updated)}
+                              onNew={(text) => writeProject(projectApi.updateRelation(projectId, relEditing.id, {
+                                text,
+                              }), m.project.links.updated)}
+                            />
+                          ),
+                      }}
+                    onEdit={setRelEditing}
                     onRemove={(relationId, text) => applyWrite(
                       projectApi.deleteRelation(projectId, relationId), m.project.links.removed(text), toast,
                     )}

@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatMessage, ChatSession, PaperRow } from '../../../shared/contract.js'
 import { chat, feed, idea as ideaApi } from '../../ipc.js'
-import { useBanner, useToast, useVaultRevision } from '../../shell/AppShell.js'
+import { useBanner, usePaperChatGrip, useToast, useVaultRevision } from '../../shell/AppShell.js'
+import { sendsMessage } from '../../lib/chat.js'
 import { ChatMessageView, plain } from './ChatMessage.js'
 import { BackButton } from '../BackButton.js'
-import { FormInput } from '../FormControls.js'
+import { FormTextarea } from '../FormControls.js'
 import { EmptyState } from '../EmptyState.js'
 import { PageError } from '../PageShell.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { IdeaEditorDialog } from '../ideas/IdeaEditorDialog.js'
 import { GenerationControl } from '../GenerationControl.js'
+import { PaperText } from '../paper/PaperText.js'
+import { plainTitle } from '../paper/paper-text.js'
 import './Chat.css'
 
 /**
@@ -30,6 +33,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const banner = useBanner()
   const toast = useToast()
   const write = useVaultWrite()
+  const grip = usePaperChatGrip()
   const [session, setSession] = useState<ChatSession | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
@@ -37,7 +41,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const stream = useRef<HTMLDivElement>(null)
-  const composer = useRef<HTMLInputElement>(null)
+  const composer = useRef<HTMLTextAreaElement>(null)
   const sendAttempt = useRef(0)
   const reportError = useCallback((cause: Error) => setError(cause.message), [])
   const paperId = paper?.id ?? null
@@ -111,12 +115,14 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     <aside className="paper-chat stream" aria-label={m.chat.paperChatLabel}>
       <header className="paper-chat-head">
         <BackButton onClick={onBack} />
-        <strong>{paper === null ? m.common.loading : m.chat.paperHeader(paper.title)}</strong>
+        <strong>
+          {paper === null ? m.common.loading : <><PaperText text={paper.title} />{m.chat.paperHeaderSuffix}</>}
+        </strong>
       </header>
       <PageError error={error} />
       <div className="msgs" ref={stream}>
         {messages.length === 0 && error === null
-          ? <EmptyState variant="page">{m.chat.paperEmpty}</EmptyState>
+          ? <div className="mwrap"><EmptyState variant="page">{m.chat.paperEmpty}</EmptyState></div>
           : messages.map((message) => (
             <ChatMessageView key={message.id} message={message} onAct={() => act(message)} />
           ))}
@@ -131,11 +137,15 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
             >{m.chat.saveIdeaLabel}</button>
           </div>
           <div className="cbox">
-            <FormInput
-              ref={composer} value={draft} autoComplete="off" disabled={session === null || sending}
+            <FormTextarea
+              ref={composer} value={draft} rows={1} autoComplete="off" disabled={session === null || sending}
               aria-label={m.chat.askAboutPaper} placeholder={m.chat.paperComposerPlaceholder}
               onChange={(event) => setDraft(event.target.value)}
-              onKeyDown={(event) => { if (event.key === 'Enter') submit() }}
+              onKeyDown={(event) => {
+                if (!sendsMessage(event.nativeEvent)) return
+                event.preventDefault()
+                submit()
+              }}
             />
             <GenerationControl
               className="send" running={sending} disabled={session === null}
@@ -144,9 +154,10 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
           </div>
         </div>
       </div>
+      <div className="grip" id="rrgrip" {...grip} />
       {session === null || paper === null ? null : (
         <IdeaEditorDialog
-          open={savingIdea} sourceLabel={`${paper.title} · ${session.title}`}
+          open={savingIdea} sourceLabel={`${plainTitle(paper.title)} · ${plainTitle(session.title)}`}
           onOpenChange={setSavingIdea}
           onSubmit={(title, body) => write(
             ideaApi.create(session.id, title, body), { note: m.chat.ideaSavedNote },

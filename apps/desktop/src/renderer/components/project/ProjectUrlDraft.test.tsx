@@ -63,6 +63,58 @@ describe('ProjectUrlDraft', () => {
     expect(onInvalid).toHaveBeenCalledTimes(1)
   })
 
+  it('starts from the address and name it is given, and submits them unchanged', async () => {
+    act(() => root.render(
+      <MessagesProvider>
+        <div ref={scope}>
+          <ProjectUrlDraft
+            key="editing" row={scope} triggers={[]} initial={{ url: 'https://wandb.ai/team/run', text: 'Run board' }}
+            onSubmit={onSubmit} onCancel={onCancel} onInvalid={onInvalid}
+          />
+        </div>
+      </MessagesProvider>,
+    ))
+    const [address, label] = inputs()
+    expect([address!.value, label!.value]).toEqual(['https://wandb.ai/team/run', 'Run board'])
+    await enter(address!)
+    expect(onSubmit).toHaveBeenCalledWith('https://wandb.ai/team/run', 'Run board')
+  })
+
+  it('closes an edit left unchanged or with its address cleared without submitting, and submits one left after a change', async () => {
+    act(() => root.render(
+      <MessagesProvider>
+        <div ref={scope}>
+          <ProjectUrlDraft
+            key="editing" row={scope} triggers={[]} initial={{ url: 'https://wandb.ai/team/run', text: 'Run board' }}
+            onSubmit={onSubmit} onCancel={onCancel} onInvalid={onInvalid}
+          />
+        </div>
+      </MessagesProvider>,
+    ))
+    const outside = document.createElement('button')
+    document.body.append(outside)
+    const leave = () => act(async () => {
+      outside.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+      await Promise.resolve()
+    })
+    const [address, label] = inputs()
+
+    await leave()
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(onCancel).toHaveBeenCalledTimes(1)
+
+    type(label!, 'Sweep board')
+    await leave()
+    expect(onSubmit).toHaveBeenCalledWith('https://wandb.ai/team/run', 'Sweep board')
+    expect(onCancel).toHaveBeenCalledTimes(2)
+
+    type(address!, '')
+    await leave()
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    expect(onCancel).toHaveBeenCalledTimes(3)
+    outside.remove()
+  })
+
   it('names an address by dropping its scheme and trailing slash', () => {
     expect(urlDisplayName('http://example.com/')).toBe('example.com')
   })

@@ -200,14 +200,20 @@ function PlanNameCell({ value, label, onSave, stopRowActivation = false }: {
 /**
  * Task detail panel: the same shared panel and open/close interaction as a research node, showing
  * the task's fields (and that an agent added it, when one did), its Markdown note, editable in
- * place, and the research node it belongs to, which opens through `onOpenNode`.
+ * place, and the research node it belongs to, which opens through `onOpenNode`. The node is picked
+ * among `nodes` through `onSetNode`, which a `handSet` node can also be taken away with.
  */
-export function ProjectTaskPanel({ task, node, onClose, onSaveNote, onOpenNode }: {
+export function ProjectTaskPanel({
+  task, node, nodes, handSet, onClose, onSaveNote, onOpenNode, onSetNode,
+}: {
   task: Task
   node: { id: string; label: string; mode: NonNullable<GraphNode['mode']> } | undefined
+  nodes: readonly { id: string; label: string }[]
+  handSet: boolean
   onClose: () => void
   onSaveNote: (note: string) => Promise<boolean>
   onOpenNode: (nodeId: string) => void
+  onSetNode: (nodeId: string | null) => void
 }) {
   const m = useMessages()
   const fmt = useFormat()
@@ -219,6 +225,12 @@ export function ProjectTaskPanel({ task, node, onClose, onSaveNote, onOpenNode }
     setEditing(false)
     void onSaveNote(next)
   }
+  const pickNode = (className: string, text: string) => (
+    <ChoicePicker
+      value={node?.id ?? ''} options={nodes.map((candidate) => candidate.id)} className={className}
+      label={(id) => nodes.find((candidate) => candidate.id === id)?.label ?? id} onPick={onSetNode}
+    >{text}</ChoicePicker>
+  )
   return (
     <>
       <SectionHeading
@@ -232,7 +244,20 @@ export function ProjectTaskPanel({ task, node, onClose, onSaveNote, onOpenNode }
         <span className="project-task-detail-state">{stateWord(m)[task.state]}</span>
         {task.origin === 'agent' ? <span className="agtag">{m.project.records.who.agent}</span> : null}
       </div>
-      <SectionHeading variant="rail">{m.project.plan.nodeHeading}</SectionHeading>
+      <SectionHeading
+        variant="rail"
+        actions={node === undefined
+          ? (nodes.length === 0 ? undefined : pickNode('btn plain', m.project.plan.linkNode))
+          : (
+            <>
+              {pickNode('btn plain', m.project.plan.changeNode)}
+              {handSet
+                ? <button className="btn plain" onClick={() => onSetNode(null)}>{m.project.plan.unlinkNode}</button>
+                : null}
+            </>
+          )}
+      >{m.project.plan.nodeHeading}
+      </SectionHeading>
       {node === undefined
         ? <EmptyState variant="section">{m.project.plan.noNode}</EmptyState>
         : (

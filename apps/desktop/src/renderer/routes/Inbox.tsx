@@ -19,6 +19,7 @@ import {
   PaperCard, PaperCardBadge, PaperCardCitations, PaperCardNotice,
 } from '../components/paper/PaperCard.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { plainTitle } from '../components/paper/paper-text.js'
 import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -252,7 +253,7 @@ export function Inbox() {
           {collided.has(p.id) ? (
             <PaperCardNotice action={(
               <button className="btn plain" onClick={() => open('reader', p.paper)}>{m.inbox.actions.open}</button>
-            )}>{m.inbox.notices.alreadyInLibrary(collided.get(p.id) ?? '')}</PaperCardNotice>
+            )}>{m.inbox.notices.alreadyInLibrary(plainTitle(collided.get(p.id) ?? ''))}</PaperCardNotice>
           ) : null}
           {failed.has(p.id) ? (
             <PaperCardNotice tone="error" action={(

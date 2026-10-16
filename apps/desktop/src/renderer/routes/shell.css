@@ -157,7 +157,6 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .metadata-editable{display:block;box-sizing:border-box;width:100%;min-width:0;margin:-2px 0;padding:2px 0;border:0;border-radius:var(--r-xs);background:transparent;color:var(--sec);font:inherit;line-height:inherit;text-align:left;overflow-wrap:anywhere;cursor:text}
 .metadata-editable:hover,.metadata-editable:focus-visible{background:var(--field);color:var(--ink);outline:0}
 .pv.metadata-editable{cursor:pointer}
-.form-control.metadata-input{margin:-4px 0}
 .form-control.metadata-input.multiline{display:block;width:100%;field-sizing:content;resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere}
 
 /*
@@ -239,10 +238,7 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .wl:hover{text-decoration:underline}
 .cnt{border:0;background:transparent;padding:0;font:inherit;color:inherit;cursor:pointer}
 .cnt:hover{color:var(--ink);text-decoration:underline}
-.nrow{padding:8px 2px;border-bottom:1px solid var(--sep2);border-radius:var(--r-md)}
-.nrow:last-child{border-bottom:0}
-.nrow.jump{cursor:pointer}
-.nrow.jump:hover{background:var(--hover)}
+.nrow{display:grid;padding:8px 2px}
 .nrow .nq{font-size:12px;color:var(--ter);font-style:italic;background:var(--field);border-radius:6px;padding:5px 8px;margin-bottom:6px}
 .nrow .nt{font-size:var(--fs-sm);color:var(--ink);overflow-wrap:anywhere}
 

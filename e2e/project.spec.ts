@@ -1,8 +1,8 @@
 import { resolve } from 'node:path'
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { ACTIVE_PROJECT, PROJECT_STATUSES, SHELVED_PROJECT } from '../apps/desktop/src/shared/vocabulary.js'
 import {
-  dshort, expect, fixtureDay, gotoProject, readDraft, test, uniqueHeights, vaultToday,
+  dshort, expect, fixtureDay, gotoProject, overlaps, readDraft, test, timelinePeriod, uniqueHeights, vaultToday,
   type MeridianWindow,
 } from './app.js'
 
@@ -40,9 +40,9 @@ const T2_START = -7
 const T2_END = 3
 const MILESTONES = { m1: -20, m2: 3, m3: 11, m4: 21 }
 
-/** At this content width the Gantt viewport is just over 300px; the last two task bars fall outside. */
+/** At this content width the Gantt viewport is just over 300px, about nine days of month view. */
 const NARROW_WIDTH = 760
-/** The number of tasks in the draft project in the fixture. The Gantt still shows every one of them. */
+/** The number of tasks in the draft project in the fixture. */
 const TASK_ROWS = 5
 /** One of the fixture's tasks (t1) is done, so the plan's task list shows this many rows by default: a
  * done task collapses into the archived group, which starts closed. */
@@ -226,8 +226,20 @@ test('任务条在时间格内上下居中', async ({ win }) => {
   expect(Math.max(...centers)).toBeLessThanOrEqual(.5)
 })
 
-test('窗口收窄后每条任务行在甘特视口里仍看得见条或残桩', async ({ app, win }) => {
+test('窗口收窄后月视图里每条任务行在甘特视口里仍看得见条或残桩', async ({ app, win }) => {
   await gotoProject(win)
+  // Day and week views fit their period to the viewport, so only month view scrolls and draws stubs.
+  // Next month opens scrolled to its first day, so a task on its last day lies right of the viewport.
+  const month = timelinePeriod(fixtureDay(timelinePeriod(await vaultToday(win), 'month').last, 1), 'month')
+  await call(win, 'project.createTask', {
+    projectId: 'draft',
+    task: { title: '月末任务', start: month.last, end: month.last, state: 'plan', priority: 'p2' },
+  })
+  const gantt = win.locator('.screenslot:not([hidden]) .gantt')
+  await gantt.locator('.gscale button', { hasText: '月' }).click()
+  await gantt.locator('.gperiodnav button').last().click()
+  await expect(gantt.locator('.gbar-label', { hasText: '月末任务' })).toHaveCount(1)
+  const taskRows = (await readDraft(win)).tasks.filter((task) => overlaps(task, month)).length
   await app.evaluate(({ BrowserWindow }, width) => {
     BrowserWindow.getAllWindows()[0]!.setContentSize(width, 900)
   }, NARROW_WIDTH)
@@ -261,7 +273,7 @@ test('窗口收窄后每条任务行在甘特视口里仍看得见条或残桩',
   console.log(`甘特收窄到 ${NARROW_WIDTH}px 后每条任务行的可见宽度 ${JSON.stringify(rows)}`)
 
   expect(rows.map((r) => Math.max(r.bar ?? 0, r.stub ?? 0) > 0))
-    .toEqual(Array<boolean>(TASK_ROWS).fill(true))
+    .toEqual(Array<boolean>(taskRows).fill(true))
   // Some bar really is pushed out of the viewport, so this test checks a stub; otherwise it is vacuous.
   expect(rows.filter((r) => (r.bar ?? 0) <= 0 && (r.stub ?? 0) > 0).length).toBeGreaterThan(0)
 })
@@ -280,7 +292,6 @@ test('各板块渲染出的条目数与 project.get 返回的条数逐对相等'
     const sum = (counted: number[]) => counted.reduce((a, b) => a + b, 0)
     return {
       任务行: project.tasks.length,
-      甘特任务行: project.tasks.length,
       科研记录: project.events.length,
       关联组: project.relations.length,
       // The paper relation group also renders the project's directly linked papers as chips, on top of any
@@ -324,7 +335,10 @@ test('各板块渲染出的条目数与 project.get 返回的条数逐对相等'
   rendered['科研图节点'] = await win.locator('.rgraph .rgn').count()
   rendered['科研图连线'] = await win.locator('.rgraph .redges path').count()
 
-  for (const [section, count] of Object.entries(contract)) {
+  // The Gantt lists only the tasks that overlap the shown week.
+  const week = timelinePeriod(await vaultToday(win), 'week')
+  const listed = { ...contract, 甘特任务行: (await readDraft(win)).tasks.filter((task) => overlaps(task, week)).length }
+  for (const [section, count] of Object.entries(listed)) {
     expect(rendered[section], section).toBe(count)
   }
 })
@@ -360,8 +374,9 @@ test('拖菱形改期后,抬手补发的那次点击不算点在空白处新建�
   const box = (await diamond.boundingBox())!
   const x0 = box.x + box.width / 2
   const y = box.y + box.height / 2
-  // Hovering enlarges the diamond and its bounding box; dragging moves its offsetLeft, so measure that.
-  const left = () => diamond.evaluate((el) => (el as HTMLElement).offsetLeft)
+  // Hovering enlarges the diamond and its bounding box, and offsetLeft rounds to whole pixels, so measure
+  // the unrounded left that dragging moves by whole day widths.
+  const left = () => diamond.evaluate((el) => parseFloat((el as HTMLElement).style.left))
   const from = await left()
 
   await win.mouse.move(x0, y)
@@ -373,7 +388,7 @@ test('拖菱形改期后,抬手补发的那次点击不算点在空白处新建�
   // While dragging, the diamond follows the pointer in whole days and drops the extra 15px. Wait for
   // it to move three days before releasing: if the press missed it or the move was not delivered, it
   // stays put and fails here, instead of a drag that never happened passing as "no milestone created".
-  await expect.poll(async () => (await left()) - from).toBe(Math.round(3 * dayWidth))
+  await expect.poll(async () => (await left()) - from).toBeCloseTo(3 * dayWidth)
   await win.mouse.up()
 
   await expect(win.locator('#toast')).toHaveText(`已改期到 ${dshort(moved)}`)
@@ -392,7 +407,7 @@ test('拖菱形改期后,抬手补发的那次点击不算点在空白处新建�
 test('拖任务条顺延后,开始与结束日期移动了相同的天数', async ({ win }) => {
   await gotoProject(win)
   const today = await vaultToday(win)
-  // t1 lies outside the Gantt window and draws only a stub; t2, the first with a bar, moves 2 days.
+  // t1 lies outside the shown week and has no row; t2, the first with a bar, moves 2 days.
   const dayWidth = await ganttDayWidth(win)
   const bar = win.locator('.gantt .gbar').first()
   const box = (await bar.boundingBox())!
@@ -419,7 +434,7 @@ test('拖任务条顺延后,开始与结束日期移动了相同的天数', asyn
 test('拖完任务条那一下不算点击,单击只定位闪烁,名称格仍可独立写回 core', async ({ win }) => {
   await gotoProject(win)
   const today = await vaultToday(win)
-  // t1 lies outside the Gantt window and draws only a stub; t2 is the first task with a bar.
+  // t1 lies outside the shown week and has no row; t2 is the first task with a bar.
   const dayWidth = await ganttDayWidth(win)
   const bar = win.locator('.gantt .gbar').first()
   const box = (await bar.boundingBox())!
@@ -523,8 +538,9 @@ test('拖完菱形那一下不算点击,单击只切到里程碑并闪烁,名称
   const dayWidth = await ganttDayWidth(win)
   const box = (await diamond.boundingBox())!
   const y = box.y + box.height / 2
-  // Hovering enlarges the diamond and its bounding box; dragging moves its offsetLeft, so measure that.
-  const left = () => diamond.evaluate((el) => (el as HTMLElement).offsetLeft)
+  // Hovering enlarges the diamond and its bounding box, and offsetLeft rounds to whole pixels, so measure
+  // the unrounded left that dragging moves by whole day widths.
+  const left = () => diamond.evaluate((el) => parseFloat((el as HTMLElement).style.left))
   const from = await left()
 
   await win.mouse.move(box.x + box.width / 2, y)
@@ -533,7 +549,7 @@ test('拖完菱形那一下不算点击,单击只切到里程碑并闪烁,名称
   // While dragging, the diamond follows the pointer in whole days. Wait for it to move three days
   // before releasing: if the press missed it or the move was not delivered, it stays put and fails
   // here, instead of after the release while waiting for a toast that never comes.
-  await expect.poll(async () => (await left()) - from).toBe(Math.round(3 * dayWidth))
+  await expect.poll(async () => (await left()) - from).toBeCloseTo(3 * dayWidth)
   await win.mouse.up()
   await expect(win.locator('#toast')).toHaveText(`已改期到 ${dshort(moved)}`)
   // Click suppression still works: the task tab stays shown, since the drag triggered no locate.
@@ -790,13 +806,15 @@ test('切换科研图节点:右栏高度不随内容变,页面不跟着跳,新�
   expect(await side.evaluate((pane) => pane.scrollTop)).toBe(0)
 })
 
-test('新任务行开着且打了字时按侧栏会话的「...」:草稿与字都放弃,菜单打开', async ({ win }) => {
+test('新任务行开着且打了字时按侧栏会话的「...」:任务照样建成,菜单打开', async ({ win }) => {
   await gotoProject(win)
-  const tasksBefore = (await call<{ tasks: unknown[] }>(win, 'project.get', { id: 'draft' })).tasks.length
+  const titles = () => call<{ tasks: { title: string }[] }>(win, 'project.get', { id: 'draft' })
+    .then((p) => p.tasks.map((task) => task.title))
+  const before = await titles()
   await win.locator('.section-heading.flexh .btn.plain', { hasText: '任务' }).click()
   const input = win.locator('#taskList .ddlrow input.min')
-  await input.fill('按菜单触发器放弃的任务')
-  await expect(input).toHaveValue('按菜单触发器放弃的任务')
+  await input.fill('按菜单触发器建成的任务')
+  await expect(input).toHaveValue('按菜单触发器建成的任务')
 
   // The DropdownMenu trigger opens on pointerdown and calls preventDefault, so no mousedown follows.
   const chat = win.locator('#chatList .chat-row').first()
@@ -804,7 +822,9 @@ test('新任务行开着且打了字时按侧栏会话的「...」:草稿与字�
   await chat.locator('.dots').click()
   await expect(win.locator('[role="menu"]')).toHaveCount(1)
   await expect(input).toHaveCount(0)
-  expect((await call<{ tasks: unknown[] }>(win, 'project.get', { id: 'draft' })).tasks).toHaveLength(tasksBefore)
+  const after = await titles()
+  expect(after).toHaveLength(before.length + 1)
+  expect(after).toContain('按菜单触发器建成的任务')
 })
 
 test('科研计划:新建任务那一行和已有行同一套样子,日期不折行、输入框没有边框', async ({ win }) => {
@@ -976,7 +996,7 @@ test('关联论文的候选行按标题任意一段命中,显示的是完整标�
     .toContainText('AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration')
 })
 
-test('关联 chip 上的 × 只移除这一条,不顺带打开它挂着的那一页', async ({ win }) => {
+test('关联 chip 上的 × 不用悬停就在,落在 chip 自己的框里;点它只移除这一条,不顺带打开它挂着的那一页', async ({ win }) => {
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
   const linked = side.locator('.wkrel .tagchip[data-wk]')
@@ -984,8 +1004,14 @@ test('关联 chip 上的 × 只移除这一条,不顺带打开它挂着的那一
   const chip = linked.first()
   const text = await chip.innerText()
 
-  // The × takes no pointer events until the chip is hovered.
-  await chip.hover()
+  // Inside its chip's own box the × cannot be clipped by the side column, even on a chip as wide as the column.
+  for (const each of await side.locator('.wkrel .tagchip').all()) {
+    const remove = each.locator('.rx')
+    await expect(remove).toHaveCSS('opacity', '1')
+    const [outer, inner] = await Promise.all([each.boundingBox(), remove.boundingBox()])
+    expect(inner!.y).toBeGreaterThanOrEqual(outer!.y)
+    expect(inner!.x + inner!.width).toBeLessThanOrEqual(outer!.x + outer!.width)
+  }
   await chip.locator('.rx').click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', 'draft 效率'])
   await expect(win.locator('.screenslot:not([hidden]) .desk-head .t')).toHaveText('draft 效率')
@@ -995,13 +1021,50 @@ test('关联 chip 上的 × 只移除这一条,不顺带打开它挂着的那一
   expect(relations.flatMap((r) => r.items.map((i) => i.text))).not.toContain(text)
 })
 
-test('属性格进入编辑时不改变右栏和值列宽度', async ({ win }) => {
+test('关联:点 chip 上的编辑就地改它,位置不变,改动写进库里', async ({ win }) => {
+  await gotoProject(win)
+  const side = win.locator('.screenslot:not([hidden]) .wkside')
+  const wikiRow = side.locator('.wkrel').filter({ has: win.locator('.rl', { hasText: 'Wiki' }) })
+  const chips = wikiRow.locator('.tagchip')
+  const before = await chips.allInnerTexts()
+  const page = (await chips.first().getAttribute('data-wk'))!
+
+  // Leaving the edit without a change closes it and leaves the item as it was, page link included.
+  await chips.first().locator('.tagchip-edit').click()
+  await win.locator('.screenslot:not([hidden]) .memo').click()
+  await expect(wikiRow.locator('.reladd')).toHaveCount(0)
+  await expect(chips).toHaveText(before)
+  await expect(chips.first()).toHaveAttribute('data-wk', page)
+
+  await chips.first().locator('.tagchip-edit').click()
+  const input = wikiRow.locator('.reladd .inedit')
+  await expect(input).toHaveValue(before[0]!)
+  await input.fill('端到端改名')
+  await expect(input).toHaveAttribute('aria-busy', 'false')
+  await input.press('Enter')
+
+  await expect(wikiRow.locator('.reladd')).toHaveCount(0)
+  await expect(chips).toHaveText(['端到端改名', ...before.slice(1)])
+  const stored = await call<{ relations: { group: string; items: { text: string }[] }[] }>(
+    win, 'project.get', { id: 'draft' },
+  )
+  expect(stored.relations.find((row) => row.group === 'Wiki')!.items.map((i) => i.text))
+    .toEqual(['端到端改名', ...before.slice(1)])
+})
+
+test('属性格进入编辑时不改变右栏和值列宽度,字也不挪位', async ({ win }) => {
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
   const props = side.locator('.wkprops')
   const field = props.locator('.pk:text-is("名称") + .metadata-field')
   const name = field.locator('.metadata-editable')
+  // Where the text starts inside its box: the same box with the same inset keeps it in place.
+  const inset = (box: Locator) => box.evaluate((el) => {
+    const style = getComputedStyle(el)
+    return [style.paddingLeft, style.paddingTop, style.borderLeftWidth, style.borderTopWidth, style.lineHeight]
+  })
   const before = await Promise.all([side.boundingBox(), props.boundingBox(), field.boundingBox(), name.boundingBox()])
+  const insetBefore = await inset(name)
   expect(before[3]?.x).toBe(before[2]?.x)
   expect(before[3]?.width).toBe(before[2]?.width)
 
@@ -1012,40 +1075,43 @@ test('属性格进入编辑时不改变右栏和值列宽度', async ({ win }) =
 
   expect(editing.map((box) => box?.width)).toEqual(before.map((box) => box?.width))
   expect(editing.map((box) => box?.x)).toEqual(before.map((box) => box?.x))
+  expect(editing.map((box) => box?.y)).toEqual(before.map((box) => box?.y))
+  expect(editing[2]?.height).toBe(before[2]?.height)
+  expect(await inset(input)).toEqual(insetBefore)
 })
 
-test('属性栏焦点格:焦点移走或点到格外都算放弃,只有回车才写回', async ({ win }) => {
+test('属性栏焦点格:焦点移走或点到格外都像回车一样写回,Esc 才放弃', async ({ win }) => {
   // Three edits, each checked in Core; an offscreen window waits two seconds per actionability
   // check, so the default 30 s is too short.
   test.slow()
   await gotoProject(win)
   const focusNow = () => call<{ focus: string }>(win, 'project.get', { id: 'draft' }).then((p) => p.focus)
-  const before = await focusNow()
   const side = win.locator('.screenslot:not([hidden]) .wkside')
-  const edit = side.locator('button.metadata-editable', { hasText: before })
+  const edit = side.locator('button.metadata-editable[title="修改当前目标"]')
   const pin = side.locator('.metadata-input')
 
-  // Moving focus out with the keyboard closes the cell without writing the typed text.
+  // Moving focus out with the keyboard writes the typed text.
   await edit.click()
-  await pin.fill('改了又不要')
+  await pin.fill('焦点移走就写回')
   await pin.press('Tab')
   await expect(pin).toHaveCount(0)
-  await expect(edit).toHaveText(before)
-  expect(await focusNow()).toBe(before)
+  await expect(edit).toHaveText('焦点移走就写回')
+  expect(await focusNow()).toBe('焦点移走就写回')
 
-  // Clicking outside the cell also closes it without writing.
+  // Clicking outside the cell writes it too.
   await edit.click()
-  await pin.fill('点外面也不要')
+  await pin.fill('点外面也写回')
   await win.locator('.screenslot:not([hidden]) .memo').click()
   await expect(pin).toHaveCount(0)
-  await expect(edit).toHaveText(before)
-  expect(await focusNow()).toBe(before)
+  await expect(edit).toHaveText('点外面也写回')
+  expect(await focusNow()).toBe('点外面也写回')
 
   await edit.click()
-  await pin.fill('回车才写回的当前目标')
-  await pin.press('Enter')
-  await expect(win.locator('#banner span')).toHaveText('已更新当前目标')
-  expect(await focusNow()).toBe('回车才写回的当前目标')
+  await pin.fill('Esc 放弃的当前目标')
+  await pin.press('Escape')
+  await expect(pin).toHaveCount(0)
+  await expect(edit).toHaveText('点外面也写回')
+  expect(await focusNow()).toBe('点外面也写回')
 })
 
 test('属性栏焦点格:回车后写被拒,格子仍在编辑、字还在', async ({ win }) => {
@@ -1230,6 +1296,26 @@ test('任务四列各自编辑,点击行本身只打开任务详情,不改变任
   await win.keyboard.press('Enter')
   await expect(win.locator('#banner span')).toHaveText('已更新优先级')
   expect((await call<{ priority: string }>(win, 'project.get', { id: 'draft' })).priority).toBe('p1')
+})
+
+test('任务详情里手动给任务挂科研节点,面板里显示挂上的节点并写进库里;手动挂的可以取消', async ({ win }) => {
+  await gotoProject(win)
+  const side = win.locator('.screenslot:not([hidden]) .wkside')
+  const linked = side.locator('.project-task-detail-node .node-tag')
+  const taskNodes = async () => (await call<{ taskNodes?: Record<string, string> }>(
+    win, 'project.get', { id: 'draft' },
+  )).taskNodes
+
+  await win.locator('#taskList .ddlrow', { hasText: '宽树实验 B≥8' }).evaluate((element) => (element as HTMLElement).click())
+  await expect(linked).toHaveCount(0)
+  await side.locator('button', { hasText: '关联节点' }).click()
+  await win.locator('[role="menuitemradio"]', { hasText: '树宽收益拐点' }).click()
+  await expect(linked).toHaveText('树宽收益拐点')
+  expect(await taskNodes()).toEqual({ t2: 'knee' })
+
+  await side.locator('button', { hasText: '取消关联' }).click()
+  await expect(linked).toHaveCount(0)
+  expect(await taskNodes()).toBeUndefined()
 })
 
 test('任务与里程碑的状态格独立修改并立即写回 core', async ({ win }) => {
