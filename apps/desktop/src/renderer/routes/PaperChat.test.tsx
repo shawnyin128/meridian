@@ -31,6 +31,7 @@ const api = vi.hoisted(() => ({
   bump: vi.fn(),
   banner: vi.fn(),
   toast: vi.fn(),
+  grip: { onMouseDown: vi.fn(), onMouseEnter: vi.fn(), onMouseLeave: vi.fn() },
 }))
 
 vi.mock('../ipc.js', () => ({
@@ -47,6 +48,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useBanner: () => api.banner,
   useToast: () => api.toast,
   useVaultRevision: () => ({ revision: 0, bump: api.bump }),
+  usePaperChatGrip: () => api.grip,
 }))
 
 vi.mock('../hooks/useVaultWrite.js', () => ({
@@ -170,5 +172,55 @@ describe('PaperChat', () => {
       'chat-paper-1', '可验证的新方向', '把讨论后的机制和实验假设明确写下来',
     )
     expect(document.body.textContent).not.toContain('存为结论')
+  })
+
+  /** Renders the paper chat for PAPER and waits for its session and messages to load. */
+  async function mountChat(): Promise<HTMLElement> {
+    const host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+    await act(async () => {
+      root!.render(withMessages(<PaperChat paper={PAPER} />))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    return host
+  }
+
+  it('空对话的提示和输入框一样留在对话栏的左右边距里', async () => {
+    const host = await mountChat()
+    const hint = host.querySelector('.msgs .empty-state')!
+    expect(hint.textContent).toContain('围绕当前论文提问')
+    expect(hint.parentElement!.className).toBe(host.querySelector('.composer > div')!.className)
+  })
+
+  it('输入框是多行文本框：回车发送，Shift+回车换行，输入法组字时的回车不发送', async () => {
+    const host = await mountChat()
+    const input = host.querySelector('[aria-label="向当前论文提问"]')
+    expect(input).toBeInstanceOf(window.HTMLTextAreaElement)
+    const composer = input as HTMLTextAreaElement
+    act(() => setValue(composer, '第一行'))
+    const press = (init: KeyboardEventInit) => {
+      const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, ...init })
+      act(() => { composer.dispatchEvent(event) })
+      return event
+    }
+
+    expect(press({ shiftKey: true }).defaultPrevented).toBe(false)
+    expect(press({ isComposing: true }).defaultPrevented).toBe(false)
+    expect(api.send).not.toHaveBeenCalled()
+
+    // The Enter that sends inserts no line break of its own.
+    expect(press({}).defaultPrevented).toBe(true)
+    expect(api.send).toHaveBeenCalledWith('chat-paper-1', '第一行')
+    await act(async () => { await Promise.resolve() })
+  })
+
+  it('对话栏右缘有调宽把手，按下交给外壳处理拖动与收起', async () => {
+    const host = await mountChat()
+    const grip = host.querySelector('.paper-chat > .grip')
+    expect(grip).not.toBeNull()
+    act(() => { grip!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })) })
+    expect(api.grip.onMouseDown).toHaveBeenCalledTimes(1)
   })
 })

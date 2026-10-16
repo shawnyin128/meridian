@@ -1581,10 +1581,11 @@ describe('fixture store', () => {
     expect(wo.body).toContain('## 结论\n- 2026-09-09 · ')
     expect(wo.body).toMatch(/## 未解决\n- /)
     expect(wo.body).not.toContain('generated')
-    expect(wo.titles).toMatchObject(Object.fromEntries(['2210.17323', '2306.07629', '2307.13304'].map((id) => (
-      [`papers/${id}`, store.getPaper(id).title]
-    ))))
-    expect(wo.titles['papers/2210.17323']).toMatch(/^GPTQ: /)
+    expect(wo.titles).toMatchObject(Object.fromEntries(['2210.17323', '2306.07629', '2307.13304'].map((id) => {
+      const paper = store.wikiPaper(`papers/${id}`)
+      return [paper.id, { id: paper.id, title: paper.short, fullTitle: paper.title }]
+    })))
+    expect(wo.titles['papers/2210.17323']).toMatchObject({ title: 'GPTQ', fullTitle: expect.stringMatching(/^GPTQ: /) })
     expect(wo.related).toEqual([{
       label: '方法',
       links: [

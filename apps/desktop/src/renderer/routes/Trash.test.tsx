@@ -14,6 +14,12 @@ const api = vi.hoisted(() => ({
   entries: [{
     id: 'trash-1', kind: 'paper', title: 'Draft trees', deletedAt: Date.parse('2026-08-25T00:00:00Z'),
     restorable: true,
+  }, {
+    id: 'trash-2', kind: 'paper', title: '\\textbf{F}luxBin -- $\\times$', deletedAt: Date.parse('2026-08-25T00:00:00Z'),
+    restorable: true,
+  }, {
+    id: 'trash-3', kind: 'attachment', title: 'notes--v2.pdf', deletedAt: Date.parse('2026-08-25T00:00:00Z'),
+    restorable: true,
   }] as TrashEntry[],
   purge: vi.fn(async () => {}),
 }))
@@ -72,6 +78,15 @@ describe('Trash', () => {
 
     await act(async () => { button(dialog, '彻底删除').click() })
     expect(api.purge).toHaveBeenCalledExactlyOnceWith('trash-1')
+  })
+
+  it('论文条目的标题按 LaTeX 显示、确认框用纯文本标题，附件条目原样显示', async () => {
+    const [, paper, attachment] = [...host.querySelectorAll('.trow .tt2')]
+    expect(paper!.innerHTML).toMatch(/^<strong>F<\/strong>luxBin – <span><span class="katex">/)
+    expect(attachment!.textContent).toBe('notes--v2.pdf')
+
+    await act(async () => { button(host.querySelectorAll('.trow')[1]!, '彻底删除').click() })
+    expect(document.querySelector('[role="alertdialog"]')!.textContent).toContain('彻底删除「FluxBin – \\times」？')
   })
 
   it('取消确认后条目不会被彻底删除', async () => {

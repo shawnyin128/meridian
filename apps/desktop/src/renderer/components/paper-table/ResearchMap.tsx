@@ -3,6 +3,7 @@ import type { PaperRow } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { EmptyState } from '../EmptyState.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { PaperText } from '../paper/PaperText.js'
 import { buildResearchMap, type ResearchMapReason } from './research-map.js'
 
 const reasonKey = (reason: ResearchMapReason): string => `${reason.kind}:${reason.label}`
@@ -88,7 +89,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper }: {
                           key={member.paper.id} className="research-map-paper"
                           onActivate={() => onOpenPaper(member.paper)}
                         >
-                          <span className="research-map-paper-title">{member.paper.title}</span>
+                          <span className="research-map-paper-title"><PaperText text={member.paper.title} /></span>
                           <span className="research-map-paper-meta">
                             {member.paper.year === undefined ? member.paper.venue : `${member.paper.year} · ${member.paper.venue}`}
                           </span>

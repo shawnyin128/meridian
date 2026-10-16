@@ -238,10 +238,7 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .wl:hover{text-decoration:underline}
 .cnt{border:0;background:transparent;padding:0;font:inherit;color:inherit;cursor:pointer}
 .cnt:hover{color:var(--ink);text-decoration:underline}
-.nrow{padding:8px 2px;border-bottom:1px solid var(--sep2);border-radius:var(--r-md)}
-.nrow:last-child{border-bottom:0}
-.nrow.jump{cursor:pointer}
-.nrow.jump:hover{background:var(--hover)}
+.nrow{display:grid;padding:8px 2px}
 .nrow .nq{font-size:12px;color:var(--ter);font-style:italic;background:var(--field);border-radius:6px;padding:5px 8px;margin-bottom:6px}
 .nrow .nt{font-size:var(--fs-sm);color:var(--ink);overflow-wrap:anywhere}
 

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useMessages } from '../../messages/useMessages.js'
 import { PaperAbstract } from './PaperAbstract.js'
+import { PaperText } from './PaperText.js'
 import './PaperCard.css'
 
 /** The paper card shared by Inbox and Read Later; pages only pass actions, notices and optional details. */
@@ -9,7 +10,7 @@ export function PaperCard({
 }: {
   paperId: string
   watchId?: string
-  title: ReactNode
+  title: string
   actions: ReactNode
   notices?: ReactNode
   metadata: ReactNode
@@ -24,7 +25,7 @@ export function PaperCard({
       data-pid={paperId} {...(watchId === undefined ? {} : { 'data-w': watchId })}
     >
       <div className="paper-card-heading ph">
-        <h3>{title}</h3>
+        <h3><PaperText text={title} /></h3>
         <div className="paper-card-actions">{actions}</div>
       </div>
       {notices}

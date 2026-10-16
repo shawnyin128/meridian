@@ -1,0 +1,57 @@
+import { describe, expect, it } from 'vitest'
+import {
+  ZOOM_MAX, ZOOM_MIN, clampZoom, keptScroll, scaledAbout, wheelZoom, type SheetTransform,
+} from './reader-zoom.js'
+
+/** Where a point of the laid-out sheet shows on screen under `transform`, relative to the sheet's laid-out corner. */
+const onScreen = (point: { x: number; y: number }, transform: SheetTransform) => ({
+  x: transform.x + point.x * transform.scale,
+  y: transform.y + point.y * transform.scale,
+})
+
+describe('reader zoom', () => {
+  it('滚轮和双指缩放按增量指数连续变化：几小步等于一大步，来回同样的增量回到原比例', () => {
+    expect(wheelZoom(1, -100)).toBeCloseTo(Math.exp(0.15), 10)
+    expect(wheelZoom(1, -3)).toBeGreaterThan(1)
+    expect(wheelZoom(1, -3)).toBeLessThan(1.01)
+    let stepped = 1.1
+    for (let step = 0; step < 20; step += 1) stepped = wheelZoom(stepped, -5)
+    expect(stepped).toBeCloseTo(wheelZoom(1.1, -100), 10)
+    expect(wheelZoom(wheelZoom(1.3, -40), 40)).toBeCloseTo(1.3, 10)
+  })
+
+  it('缩放不超出 60% 到 240%', () => {
+    expect([ZOOM_MIN, ZOOM_MAX]).toEqual([0.6, 2.4])
+    expect(wheelZoom(2.3, -1000)).toBe(ZOOM_MAX)
+    expect(wheelZoom(0.7, 1000)).toBe(ZOOM_MIN)
+    expect(clampZoom(3)).toBe(ZOOM_MAX)
+    expect(clampZoom(0.2)).toBe(ZOOM_MIN)
+    expect(clampZoom(1.37)).toBe(1.37)
+  })
+
+  it('缩放时指针下的那一点留在原处，中途换了指针位置也一样', () => {
+    const first = { x: 300, y: 200 }
+    const zoomedIn = scaledAbout({ x: 0, y: 0, scale: 1 }, 1.5, first)
+    expect(zoomedIn.scale).toBe(1.5)
+    expect(onScreen(first, zoomedIn)).toEqual(first)
+
+    const pointer = { x: 520, y: 640 }
+    const under = { x: (pointer.x - zoomedIn.x) / zoomedIn.scale, y: (pointer.y - zoomedIn.y) / zoomedIn.scale }
+    const zoomedOut = scaledAbout(zoomedIn, 0.8, pointer)
+    expect(zoomedOut.scale).toBe(0.8)
+    expect(onScreen(under, zoomedOut).x).toBeCloseTo(pointer.x, 10)
+    expect(onScreen(under, zoomedOut).y).toBeCloseTo(pointer.y, 10)
+    expect(onScreen(first, zoomedOut)).not.toEqual(first)
+  })
+
+  it('页面按新比例重新排好后，滚动把指针下的那一点放回指针下', () => {
+    const pointer = { x: 400, y: 500 }
+    // The page box while CSS scales it, then laid out at the new zoom: wider margins and a rounded size.
+    const scaled = { left: 100, top: -300, width: 1245, height: 1611 }
+    const laidOut = { left: 160, top: 40, width: 1244, height: 1610 }
+    const shift = keptScroll(scaled, laidOut, pointer)
+    const fraction = { x: (pointer.x - scaled.left) / scaled.width, y: (pointer.y - scaled.top) / scaled.height }
+    expect(laidOut.left - shift.left + fraction.x * laidOut.width).toBeCloseTo(pointer.x, 10)
+    expect(laidOut.top - shift.top + fraction.y * laidOut.height).toBeCloseTo(pointer.y, 10)
+  })
+})

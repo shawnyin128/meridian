@@ -35,7 +35,9 @@ LAB_FOCUS_GUIDANCE = (
     "activate_node it (or reopen_node if it is supported/dead) before the first real step; no need to ask. "
     "Several nodes may be active at once; starting one does not deactivate the others unless the user says "
     "they are stopping or pausing it. Record a record_history checkpoint on each design decision or finished "
-    "experiment run. When work on a node ends, record completion through lab_result or update_node."
+    "experiment run. When work on a node ends, record completion through lab_result or update_node and "
+    "decide the node's state there: supported when valid evidence supports it; when it needs repair or has "
+    "failed, ask the user, then repairable or dead with accepted user_confirmation."
 )
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 
@@ -461,7 +463,12 @@ def tool_definitions() -> list[JsonDict]:
         },
         {
             "name": "meridian.lab_result",
-            "description": "Lab: atomically attach experiment evidence to one node and publish its compact App-visible event. Pass experiment to write a new record at source in the same call.",
+            "description": (
+                "Lab: atomically attach experiment evidence to one node and publish its compact App-visible event. "
+                "Pass experiment to write a new record at source in the same call. Decide the node's state in the "
+                "same call: state supported when valid evidence supports the node; when it needs repair or has "
+                "failed, ask the user, then state repairable or dead with user_confirmation."
+            ),
             "inputSchema": _schema(
                 {
                     "workspace_root": {

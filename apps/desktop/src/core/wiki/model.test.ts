@@ -86,7 +86,10 @@ describe('wiki 视图', () => {
     ])
     expect(leaf.body).toBe(DATA.pages['topics/leaf']!.body)
     // Pages linked from the body are included; missing `nowhere` is omitted and aliased `a` still uses its display name.
-    expect(leaf.titles).toEqual({ 'papers/a': 'A: first', 'papers/b': 'B: second' })
+    expect(leaf.titles).toEqual({
+      'papers/a': { id: 'papers/a', title: 'A', fullTitle: 'A: first' },
+      'papers/b': { id: 'papers/b', title: 'B: second' },
+    })
     expect(leaf.related).toEqual([{ label: '方法', links: [{ id: 'methods/m', title: 'M' }] }])
 
     const root = wikiAggregation(DATA, 'topics/root', V, {})
@@ -111,7 +114,7 @@ describe('wiki 视图', () => {
       pdf: 'sources/a.pdf', updated: '2026-09-05',
     })
     expect(a.body).toBe(DATA.pages['papers/a']!.body)
-    expect(a.titles).toEqual({ 'papers/b': 'B: second' })
+    expect(a.titles).toEqual({ 'papers/b': { id: 'papers/b', title: 'B: second' } })
     expect(a.memberships).toEqual([
       {
         aggregation: { id: 'topics/leaf', title: 'Leaf' }, kind: 'topic', kindLabel: '问题',

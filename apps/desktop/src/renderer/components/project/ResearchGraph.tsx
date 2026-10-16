@@ -12,6 +12,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { activeRoutes } from '../../../shared/research-path.js'
 import { recordKind, recordOrigin, sortRecordsNewestFirst } from '../../../shared/project-signals.js'
 import { Markdown } from '../Markdown.js'
+import { plainTitle } from '../paper/paper-text.js'
 import { EmptyState } from '../EmptyState.js'
 import { FadeText } from '../FadeText.js'
 import { IconPlus } from '../icons.js'
@@ -474,8 +475,8 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
           <StructuredList className="node-ideas" variant="embedded">
             {ideas.map((idea) => {
               const source = idea.source.paperTitle === undefined
-                ? idea.source.chatTitle
-                : `${idea.source.paperTitle} · ${idea.source.chatTitle}`
+                ? plainTitle(idea.source.chatTitle)
+                : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
               return (
                 <StructuredRow
                   className="node-idea-row" data-idea={idea.id} key={idea.id}
