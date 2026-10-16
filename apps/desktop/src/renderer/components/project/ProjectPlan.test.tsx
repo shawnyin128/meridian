@@ -155,11 +155,12 @@ describe('ProjectTaskPanel', () => {
     expect(output).toContain('还没有备注')
   })
 
-  it('显示任务挂在哪个科研节点上;还没挂时说明 agent 做它时会挂上', () => {
+  it('显示任务挂在哪个科研节点上;还没挂时只写「未关联」', () => {
     const linked = renderTaskPanel({}, { id: 'kv.n3', label: '前缀共调度', mode: 'supported' })
     expect(linked).toContain('科研节点')
     expect(linked).toMatch(/<button[^>]*class="node-tag node-tag--supported"[^>]*title="在科研图中打开「前缀共调度」"/)
-    expect(renderTaskPanel()).toContain('还没挂到科研节点上')
+    expect(renderTaskPanel()).toContain('未关联')
+    expect(renderTaskPanel()).not.toContain('agent 做这个任务')
   })
 
   it('agent 加的任务在面板和列表里都带一个安静的 agent 标记,用户加的没有', () => {
@@ -215,6 +216,21 @@ describe('ProjectTaskPanel', () => {
       act(() => items[1]!.click())
       expect(onSetNode).toHaveBeenCalledWith('kv.n4')
       expect(mount({ nodes: [] }).button('关联节点')).toBeUndefined()
+    })
+
+    it('科研节点的操作和备注的编辑一样放在小标题右侧', () => {
+      /** The section heading that starts with `label`, and the texts of the buttons inside it. */
+      const heading = (label: string) => {
+        const found = [...document.querySelectorAll<HTMLElement>('.section-heading')]
+          .find((element) => element.textContent?.startsWith(label))!
+        return { className: found.className, buttons: [...found.querySelectorAll('button')].map((b) => b.textContent) }
+      }
+      mount({})
+      expect(heading('科研节点').buttons).toEqual(['关联节点'])
+      expect(heading('备注').buttons).toEqual(['编辑'])
+      expect(heading('科研节点').className).toBe(heading('备注').className)
+      mount({ node: { id: 'kv.n3', label: '前缀共调度', mode: 'supported' }, handSet: true })
+      expect(heading('科研节点').buttons).toEqual(['更改', '取消关联'])
     })
 
     it('挂着节点时可以改;手动挂的还能取消关联,agent 连的不能', () => {

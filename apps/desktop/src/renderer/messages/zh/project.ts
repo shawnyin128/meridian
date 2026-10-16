@@ -92,7 +92,7 @@ export const project = {
     openTask: '打开任务',
     noteHeading: '备注',
     nodeHeading: '科研节点',
-    noNode: '还没挂到科研节点上。agent 做这个任务时会把它挂到对应的节点。',
+    noNode: '未关联',
     linkNode: '关联节点',
     changeNode: '更改',
     unlinkNode: '取消关联',

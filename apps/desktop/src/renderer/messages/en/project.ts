@@ -103,7 +103,7 @@ export const project = {
     openTask: 'Open task',
     noteHeading: 'Note',
     nodeHeading: 'Research node',
-    noNode: 'Not on a research node yet. An agent working on this task links it to its node.',
+    noNode: 'Not linked',
     linkNode: 'Link node',
     changeNode: 'Change',
     unlinkNode: 'Unlink',

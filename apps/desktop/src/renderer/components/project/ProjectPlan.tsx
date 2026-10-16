@@ -244,28 +244,28 @@ export function ProjectTaskPanel({
         <span className="project-task-detail-state">{stateWord(m)[task.state]}</span>
         {task.origin === 'agent' ? <span className="agtag">{m.project.records.who.agent}</span> : null}
       </div>
-      <SectionHeading variant="rail">{m.project.plan.nodeHeading}</SectionHeading>
-      {node === undefined
-        ? (
-          <>
-            <EmptyState variant="section">{m.project.plan.noNode}</EmptyState>
-            {nodes.length === 0
-              ? null
-              : <div className="project-task-detail-node">{pickNode('btn', m.project.plan.linkNode)}</div>}
-          </>
-        )
-        : (
-          <div className="project-task-detail-node">
-            <NodeTag
-              label={node.label} mode={node.mode} hint={m.project.records.goToGraph(node.label)}
-              onOpen={() => onOpenNode(node.id)}
-            />
+      <SectionHeading
+        variant="rail"
+        actions={node === undefined
+          ? (nodes.length === 0 ? undefined : pickNode('btn plain', m.project.plan.linkNode))
+          : (
             <span className="project-task-node-actions">
               {pickNode('btn plain', m.project.plan.changeNode)}
               {handSet
                 ? <button className="btn plain" onClick={() => onSetNode(null)}>{m.project.plan.unlinkNode}</button>
                 : null}
             </span>
+          )}
+      >{m.project.plan.nodeHeading}
+      </SectionHeading>
+      {node === undefined
+        ? <EmptyState variant="section">{m.project.plan.noNode}</EmptyState>
+        : (
+          <div className="project-task-detail-node">
+            <NodeTag
+              label={node.label} mode={node.mode} hint={m.project.records.goToGraph(node.label)}
+              onOpen={() => onOpenNode(node.id)}
+            />
           </div>
         )}
       <SectionHeading variant="rail" className="flexh">{m.project.plan.noteHeading}
