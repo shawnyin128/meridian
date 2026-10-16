@@ -509,32 +509,27 @@ test('标签添加框:回车提交在路上时点外,写落地前占位、打的
   await expect(newRow).toHaveCount(1)
 })
 
-test('标签添加框:没有联想层时焦点移走也收起,打的字不留', async ({ win }) => {
+test('标签添加框:空着焦点移走只收起;打了新主题再移走,像回车一样加上', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
-  const rows = await call<{ rows: { topics: string[] }[] }>(
-    win, 'papers.list', { page: 1, size: 10, sort: 'addedAt', direction: 'desc' },
-  ).then((r) => r.rows)
-  const vocab = (await call<{ value: string }[]>(win, 'papers.facets', { field: 'topics' })).map((f) => f.value)
-  // Type a topic this paper already has and no other vocabulary value contains: there is no
-  // suggestion and no "Create" row, so no popover renders and only the input's own blur and
-  // outside-click handling can close it.
-  const pick = rows.flatMap((row, at) => row.topics.map((topic) => ({ at, topic, topics: row.topics })))
-    .find(({ topic, topics }) => !vocab.some((v) => !topics.includes(v) && v.toLowerCase().includes(topic.toLowerCase())))
-  expect(pick).toBeDefined()
-  const cell = win.locator('.ptable tbody tr').nth(pick!.at).locator('td:nth-child(7)')
+  const cell = win.locator('.ptable tbody tr').first().locator('td:nth-child(7)')
+  const chips = cell.locator('.tagchip:not(.tagadd)')
+  const before = await chips.allTextContents()
   const input = win.locator('.tagin')
 
   await cell.hover()
   await cell.locator('.tagadd').click()
-  await input.fill(pick!.topic)
-  await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(0)
   await input.press('Tab')
   await expect(input).toHaveCount(0)
+  await expect(chips).toHaveText(before)
 
   await cell.hover()
   await cell.locator('.tagadd').click()
-  await expect(input).toHaveValue('')
+  // No vault topic contains this text, so no candidate is highlighted and the typed text is added.
+  await input.fill('焦点移走就加上的主题')
+  await input.press('Tab')
+  await expect(input).toHaveCount(0)
+  await expect(chips).toHaveText([...before, '焦点移走就加上的主题'])
 })
 
 test('标签添加框:点联想项写成功后,输入框与候选层都收起', async ({ win }) => {
@@ -557,7 +552,7 @@ test('标签添加框:点联想项写成功后,输入框与候选层都收起', 
   await expect(win.locator('.pickhits')).toHaveCount(0)
 })
 
-test('文本格:改完焦点移走或点到格外都算放弃,只有回车才写', async ({ win }) => {
+test('文本格:改完焦点移走或点到格外都像回车一样写,Esc 才放弃', async ({ win }) => {
   // Creates a column, then makes three edits each checked in Core; an offscreen window waits two
   // seconds per actionability check, so the default 30 s is too short.
   test.slow()
@@ -578,27 +573,28 @@ test('文本格:改完焦点移走或点到格外都算放弃,只有回车才写
     win, 'papers.list', { page: 1, size: 1, sort: 'addedAt', direction: 'desc' },
   ).then((r) => Object.values(r.rows[0]!.custom))
 
-  // Moving focus out with the keyboard closes the cell without writing the typed text.
+  // Moving focus out with the keyboard writes the typed text.
   await cell.click()
-  await input.fill('改了又不要')
+  await input.fill('焦点移走就写')
   await input.press('Tab')
   await expect(input).toHaveCount(0)
-  await expect(cell).toHaveText('')
-  expect(await saved()).toEqual([])
+  await expect(cell).toHaveText('焦点移走就写')
+  expect(await saved()).toEqual(['焦点移走就写'])
 
-  // Clicking outside the cell also closes it without writing.
+  // Clicking outside the cell writes it too.
   await cell.click()
-  await input.fill('点外面也不要')
+  await input.fill('点外面也写')
   await shown(win, '.desk-head .t').click()
   await expect(input).toHaveCount(0)
-  await expect(cell).toHaveText('')
-  expect(await saved()).toEqual([])
+  await expect(cell).toHaveText('点外面也写')
+  expect(await saved()).toEqual(['点外面也写'])
 
   await cell.click()
-  await input.fill('回车才写')
-  await input.press('Enter')
-  await expect(cell).toHaveText('回车才写')
-  expect(await saved()).toEqual(['回车才写'])
+  await input.fill('Esc 不写')
+  await input.press('Escape')
+  await expect(input).toHaveCount(0)
+  await expect(cell).toHaveText('点外面也写')
+  expect(await saved()).toEqual(['点外面也写'])
 })
 
 test('文本格开着时按住表格自己的滚动条,不算点到格外:格子与字都还在', async ({ win }) => {
@@ -1210,12 +1206,11 @@ test('建列占位:Esc 放弃,占位与类型层一起没了', async ({ win }) =
   expect(await win.locator('.ptable thead th.th-new').count()).toBe(0)
 })
 
-test('建列占位:点到占位与类型层之外,占位与类型层一起没了', async ({ win }) => {
+test('建列占位:空着点到外面,占位与类型层一起没了;打了列名点到外面就建成这一列', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [title="新增列"]').click()
-  await win.locator('.ptable thead th.th-new input').fill('放弃的草稿')
   await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(1)
 
   await shown(win, '.desk-head .t').click()
@@ -1223,6 +1218,16 @@ test('建列占位:点到占位与类型层之外,占位与类型层一起没了
   // fails its own check rather than the placeholder's.
   expect(await win.locator('[data-radix-popper-content-wrapper]').count()).toBe(0)
   expect(await win.locator('.ptable thead th.th-new').count()).toBe(0)
+
+  await win.locator('.ptable thead').hover()
+  await win.locator('.ptable thead [title="新增列"]').click()
+  await win.locator('.ptable thead th.th-new input').fill('点外面建成的列')
+  await shown(win, '.desk-head .t').click()
+  // The placeholder goes only once the column write lands.
+  await expect(win.locator('.ptable thead th.th-new')).toHaveCount(0)
+  await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(0)
+  expect((await call<PaperColumns>(win, 'papers.columns', {}))
+    .custom.find((c) => c.label === '点外面建成的列')).toMatchObject({ type: 'text' })
 })
 
 test('建列占位:点类型按钮不放弃,占位、类型层、打的字都还在', async ({ win }) => {

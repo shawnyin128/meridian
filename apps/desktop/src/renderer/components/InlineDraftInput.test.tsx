@@ -81,9 +81,11 @@ describe('InlineDraftInput', () => {
     expect(cancel).not.toHaveBeenCalled()
   })
 
-  it('treats sibling controls and reopen triggers as inside, but cancels on an unrelated pointer', () => {
+  it('treats sibling controls and reopen triggers as inside, and closes an empty draft on an unrelated pointer', () => {
+    const submit = vi.fn(() => true)
     const cancel = vi.fn()
-    act(() => root!.render(<Probe onSubmit={() => true} onCancel={cancel} />))
+    act(() => root!.render(<Probe onSubmit={submit} onCancel={cancel} />))
+    act(() => setValue(host.querySelector<HTMLInputElement>('input')!, '   '))
     act(() => host.querySelector<HTMLButtonElement>('.inside')!
       .dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })))
     act(() => host.querySelector<HTMLButtonElement>('.reopen')!
@@ -92,5 +94,35 @@ describe('InlineDraftInput', () => {
     act(() => host.querySelector<HTMLButtonElement>('.outside')!
       .dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })))
     expect(cancel).toHaveBeenCalledTimes(1)
+    expect(submit).not.toHaveBeenCalled()
+  })
+
+  it('submits typed text on an unrelated pointer as Enter would', async () => {
+    const submit = vi.fn(() => Promise.resolve(true))
+    const cancel = vi.fn()
+    act(() => root!.render(<Probe onSubmit={submit} onCancel={cancel} />))
+    act(() => setValue(host.querySelector<HTMLInputElement>('input')!, '  新项目  '))
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>('.outside')!
+        .dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+      await Promise.resolve()
+    })
+    expect(submit).toHaveBeenCalledWith('新项目')
+    expect(cancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps a draft refused on leaving open with its text and marks it invalid', async () => {
+    const cancel = vi.fn()
+    act(() => root!.render(<Probe onSubmit={() => Promise.resolve(false)} onCancel={cancel} />))
+    const input = host.querySelector<HTMLInputElement>('input')!
+    act(() => setValue(input, '重名项目'))
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>('.outside')!
+        .dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+      await Promise.resolve()
+    })
+    expect(cancel).not.toHaveBeenCalled()
+    expect(input.value).toBe('重名项目')
+    expect(input.getAttribute('aria-invalid')).toBe('true')
   })
 })

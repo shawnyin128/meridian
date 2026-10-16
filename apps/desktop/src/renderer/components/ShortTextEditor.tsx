@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useCancelOnOutside } from '../hooks/useCancelOnOutside.js'
+import { useEffect, useRef, useState } from 'react'
+import { useOnLeave } from '../hooks/useOnLeave.js'
 import { useMessages } from '../messages/useMessages.js'
 import { FormInput } from './FormControls.js'
 import './ShortTextEditor.css'
 
 /**
- * Shared body for rename/create popovers. The host chooses DropdownMenu or Popover positioning;
- * this component owns input height, focus, Enter/Escape, async acceptance, and optional deletion.
+ * Shared body for rename/create popovers. The host chooses DropdownMenu or Popover positioning and
+ * leaves closing on an outside press or focus leaving to this component, which owns input height,
+ * focus, Enter/Escape, async acceptance, and optional deletion. Leaving saves as Enter does; an
+ * empty or unchanged draft just closes. A save made by leaving that `onSubmit` refuses keeps the
+ * editor open with its text and marks the input invalid until the text changes.
  */
 export function ShortTextEditor({
   title, initialValue = '', placeholder, submitLabel, deleteLabel, busyLabel,
@@ -28,9 +31,11 @@ export function ShortTextEditor({
   const savingLabel = busyLabel ?? m.common.saving
   const [value, setValue] = useState(initialValue)
   const [busy, setBusy] = useState(false)
+  const [invalid, setInvalid] = useState(false)
   const row = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLInputElement>(null)
   const busyRef = useRef(false)
+  const refused = useRef(false)
   const alive = useRef(true)
   const busyListener = useRef(onBusyChange)
   busyListener.current = onBusyChange
@@ -48,19 +53,25 @@ export function ShortTextEditor({
   }
 
   // Same rule as inline editing across the app: until a submit has returned, neither a press outside
-  // nor focus leaving can discard the draft.
-  const cancelUnlessBusy = useCallback(() => {
-    if (!busyRef.current) onClose()
-  }, [onClose])
-  useCancelOnOutside(row, cancelUnlessBusy)
+  // nor focus leaving sends another, and a refused leave is not retried before the text changes.
+  useOnLeave(row, () => {
+    if (busyRef.current || refused.current) return
+    if (value.trim() === '' || value.trim() === initialValue) onClose()
+    else void commit(true)
+  })
 
-  const commit = async () => {
+  const commit = async (leaving = false) => {
     const next = value.trim()
     if (next === '' || busyRef.current) return
     changeBusy(true)
     try {
+      const accepted = await onSubmit(next)
       // If this editor was replaced for another anchor meanwhile, the old write must not close the new popover.
-      if (await onSubmit(next) && alive.current) onClose()
+      if (accepted && alive.current) onClose()
+      else if (!accepted && leaving) {
+        refused.current = true
+        if (alive.current) setInvalid(true)
+      }
     } finally {
       if (alive.current) changeBusy(false)
     }
@@ -78,8 +89,12 @@ export function ShortTextEditor({
       >
         <FormInput
           ref={input} value={value} placeholder={placeholder} autoComplete="off"
-          aria-label={title} disabled={busy}
-          onChange={(event) => setValue(event.target.value)}
+          aria-label={title} aria-invalid={invalid || undefined} disabled={busy}
+          onChange={(event) => {
+            setValue(event.target.value)
+            refused.current = false
+            setInvalid(false)
+          }}
           onKeyDown={(event) => {
             if (event.key !== 'Tab') event.stopPropagation()
             if (event.key === 'Enter') { event.preventDefault(); void commit() }

@@ -29,8 +29,8 @@ export const urlDisplayName = (url: string) => url.replace(/^https?:\/\//i, '').
 
 /**
  * Two-field draft for a web-address relation: the address and an optional display name. Enter in
- * either field submits, Escape or a click outside `row` cancels. `onSubmit` receives a normalized
- * http(s) address and resolves true when the row should close.
+ * either field or leaving `row` submits, Escape cancels, and leaving both fields empty closes the
+ * row. `onSubmit` receives a normalized http(s) address and resolves true when the row should close.
  */
 export function ProjectUrlDraft({ row, triggers, onSubmit, onCancel, onInvalid }: {
   row: RefObject<HTMLElement | null>
@@ -44,6 +44,7 @@ export function ProjectUrlDraft({ row, triggers, onSubmit, onCancel, onInvalid }
   const label = useRef<HTMLInputElement>(null)
   const draft = useInlineDraft({
     row, triggers, onCancel,
+    isEmpty: () => `${address.current?.value ?? ''}${label.current?.value ?? ''}`.trim() === '',
     onSubmit: () => {
       const typed = address.current?.value.trim() ?? ''
       if (typed === '') return false
@@ -56,12 +57,11 @@ export function ProjectUrlDraft({ row, triggers, onSubmit, onCancel, onInvalid }
   return (
     <div className="urldraft">
       <FormInput
-        ref={address} className="inedit" placeholder={m.project.links.urlPlaceholder}
-        autoComplete="off" autoFocus onKeyDown={draft.inputProps.onKeyDown}
+        ref={address} className="inedit" placeholder={m.project.links.urlPlaceholder} {...draft.inputProps}
       />
       <FormInput
         ref={label} className="inedit" placeholder={m.project.links.urlNamePlaceholder}
-        autoComplete="off" onKeyDown={draft.inputProps.onKeyDown}
+        {...draft.inputProps} autoFocus={false}
       />
     </div>
   )
@@ -107,7 +107,7 @@ export function ProjectTopicField({ value, onSave, onError }: {
     <span className="metadata-field" ref={row}>
       <PickRow
         row={row} triggers={NO_TRIGGERS} allowNew placeholder={m.project.identity.topic} suggest={suggest}
-        inputClassName="metadata-input pickin" inputAppearance="inline"
+        inputClassName="metadata-input pickin" inputAppearance="inline" cancelOnLeave
         onPick={(hit) => onSave(hit.title)} onNew={onSave} onCancel={stop} onError={onError}
       />
     </span>

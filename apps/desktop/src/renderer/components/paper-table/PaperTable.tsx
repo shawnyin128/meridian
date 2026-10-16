@@ -24,7 +24,7 @@ import { FormInput } from '../FormControls.js'
 import { ClearableInput } from '../ClearableInput.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../PageShell.js'
 import { useCandidateKeys } from '../../hooks/useCandidateKeys.js'
-import { NO_TRIGGERS } from '../../hooks/useCancelOnOutside.js'
+import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import {
@@ -171,15 +171,16 @@ function SortArrow({ direction }: { direction: SortDirection }) {
 
 /**
  * The `+` at the end of a topics cell: clicking it turns it into an input. Its candidate list shows
- * the vault's values this paper does not have yet; Enter or clicking a candidate hands the value to
- * `onAdd`, which returns whether the write completed. The input closes only then; a rejected write
- * keeps the input and the typed text. Esc, a press outside the input and its candidates, or focus
- * leaving them closes it and drops the typed text; while a submission is pending, neither an outside
- * press nor focus leaving closes it, and no second add is sent before the first one lands. The `+`
- * button opens it with its own `setOpen(true)` and all closing goes through `useInlineDraft`; Radix
- * only positions and renders the popover and has no say in opening or closing. The styling follows
- * the demo's .tagadd/.tagin/tagSug. The candidates are fetched with papers.facets each time it opens,
- * so they are always the vault's current values.
+ * the vault's values this paper does not have yet; clicking a candidate hands it to `onAdd`, and
+ * Enter, a press outside the input and its candidates, or focus leaving them hands over the
+ * highlighted candidate, or the typed text when there is none. `onAdd` returns whether the write
+ * completed. The input closes only then; a rejected write keeps the input and the typed text. Esc,
+ * or leaving with nothing typed, closes it and drops the typed text; while a submission is pending,
+ * neither an outside press nor focus leaving closes it, and no second add is sent before the first
+ * one lands. The `+` button opens it with its own `setOpen(true)` and all closing goes through
+ * `useInlineDraft`; Radix only positions and renders the popover and has no say in opening or
+ * closing. The styling follows the demo's .tagadd/.tagin/tagSug. The candidates are fetched with
+ * papers.facets each time it opens, so they are always the vault's current values.
  */
 function TagAdd({ field, values, onAdd, onError }: {
   field: ChipKey
@@ -212,8 +213,8 @@ function TagAdd({ field, values, onAdd, onError }: {
 
   // While closed the input is not rendered and its ref is null, so the outside and focus paths do nothing.
   const draft = useInlineDraft({
-    row: input, triggers: NO_TRIGGERS, onCancel: close,
-    onSubmit: () => (typed === '' ? false : onAdd(typed)),
+    row: input, triggers: NO_TRIGGERS, onCancel: close, isEmpty: () => typed === '',
+    onSubmit: () => (typed === '' ? false : onAdd(hits[keys.active] ?? typed)),
   })
   const keys = useCandidateKeys(hits.length, (i) => draft.submit(() => onAdd(hits[i]!)))
 
@@ -337,8 +338,8 @@ function opensPaperFrom(target: EventTarget | null): boolean {
 }
 
 /**
- * In-place editing of a text cell: Enter hands the input's text to `onSave`; Esc, a press outside
- * `cell`, or focus leaving it calls `onCancel` without writing the typed text. `onSave` returns
+ * In-place editing of a text cell: Enter, a press outside `cell`, or focus leaving it hands the
+ * input's text to `onSave`; Esc calls `onCancel` without writing the typed text. `onSave` returns
  * whether this edit is finished.
  */
 function TextCellEdit({ cell, initial, onSave, onCancel }: {

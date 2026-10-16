@@ -342,7 +342,7 @@ export function WatchSettings() {
       <InlineDraftInput
         ref={nameInput} className="inedit" scopeRef={row} triggers={triggers}
         placeholder={m.shell.watchKind.topic} onCancel={stop}
-        onSubmit={(next) => persist({ type: 'topic', name: next })}
+        onSubmit={(next) => next === editingWatch?.name || persist({ type: 'topic', name: next })}
         value={name} onChange={(e) => setName(e.target.value)}
       />
     )
@@ -351,7 +351,7 @@ export function WatchSettings() {
         <InlineDraftInput
           ref={nameInput} className="inedit" scopeRef={row} triggers={triggers}
           placeholder={m.watches.authorNamePlaceholder} onCancel={stop}
-          onSubmit={() => false}
+          onSubmit={(next) => next === editingWatch?.name}
           value={name} onChange={(e) => { setName(e.target.value); setAuthorSearchNonce(0) }}
         />
         {editingWatch?.type === 'author' && editingWatch.identity !== undefined

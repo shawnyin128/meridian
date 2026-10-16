@@ -792,13 +792,15 @@ test('切换科研图节点:右栏高度不随内容变,页面不跟着跳,新�
   expect(await side.evaluate((pane) => pane.scrollTop)).toBe(0)
 })
 
-test('新任务行开着且打了字时按侧栏会话的「...」:草稿与字都放弃,菜单打开', async ({ win }) => {
+test('新任务行开着且打了字时按侧栏会话的「...」:任务照样建成,菜单打开', async ({ win }) => {
   await gotoProject(win)
-  const tasksBefore = (await call<{ tasks: unknown[] }>(win, 'project.get', { id: 'draft' })).tasks.length
+  const titles = () => call<{ tasks: { title: string }[] }>(win, 'project.get', { id: 'draft' })
+    .then((p) => p.tasks.map((task) => task.title))
+  const before = await titles()
   await win.locator('.section-heading.flexh .btn.plain', { hasText: '任务' }).click()
   const input = win.locator('#taskList .ddlrow input.min')
-  await input.fill('按菜单触发器放弃的任务')
-  await expect(input).toHaveValue('按菜单触发器放弃的任务')
+  await input.fill('按菜单触发器建成的任务')
+  await expect(input).toHaveValue('按菜单触发器建成的任务')
 
   // The DropdownMenu trigger opens on pointerdown and calls preventDefault, so no mousedown follows.
   const chat = win.locator('#chatList .chat-row').first()
@@ -806,7 +808,9 @@ test('新任务行开着且打了字时按侧栏会话的「...」:草稿与字�
   await chat.locator('.dots').click()
   await expect(win.locator('[role="menu"]')).toHaveCount(1)
   await expect(input).toHaveCount(0)
-  expect((await call<{ tasks: unknown[] }>(win, 'project.get', { id: 'draft' })).tasks).toHaveLength(tasksBefore)
+  const after = await titles()
+  expect(after).toHaveLength(before.length + 1)
+  expect(after).toContain('按菜单触发器建成的任务')
 })
 
 test('科研计划:新建任务那一行和已有行同一套样子,日期不折行、输入框没有边框', async ({ win }) => {
@@ -1016,38 +1020,38 @@ test('属性格进入编辑时不改变右栏和值列宽度', async ({ win }) =
   expect(editing.map((box) => box?.x)).toEqual(before.map((box) => box?.x))
 })
 
-test('属性栏焦点格:焦点移走或点到格外都算放弃,只有回车才写回', async ({ win }) => {
+test('属性栏焦点格:焦点移走或点到格外都像回车一样写回,Esc 才放弃', async ({ win }) => {
   // Three edits, each checked in Core; an offscreen window waits two seconds per actionability
   // check, so the default 30 s is too short.
   test.slow()
   await gotoProject(win)
   const focusNow = () => call<{ focus: string }>(win, 'project.get', { id: 'draft' }).then((p) => p.focus)
-  const before = await focusNow()
   const side = win.locator('.screenslot:not([hidden]) .wkside')
-  const edit = side.locator('button.metadata-editable', { hasText: before })
+  const edit = side.locator('button.metadata-editable[title="修改当前目标"]')
   const pin = side.locator('.metadata-input')
 
-  // Moving focus out with the keyboard closes the cell without writing the typed text.
+  // Moving focus out with the keyboard writes the typed text.
   await edit.click()
-  await pin.fill('改了又不要')
+  await pin.fill('焦点移走就写回')
   await pin.press('Tab')
   await expect(pin).toHaveCount(0)
-  await expect(edit).toHaveText(before)
-  expect(await focusNow()).toBe(before)
+  await expect(edit).toHaveText('焦点移走就写回')
+  expect(await focusNow()).toBe('焦点移走就写回')
 
-  // Clicking outside the cell also closes it without writing.
+  // Clicking outside the cell writes it too.
   await edit.click()
-  await pin.fill('点外面也不要')
+  await pin.fill('点外面也写回')
   await win.locator('.screenslot:not([hidden]) .memo').click()
   await expect(pin).toHaveCount(0)
-  await expect(edit).toHaveText(before)
-  expect(await focusNow()).toBe(before)
+  await expect(edit).toHaveText('点外面也写回')
+  expect(await focusNow()).toBe('点外面也写回')
 
   await edit.click()
-  await pin.fill('回车才写回的当前目标')
-  await pin.press('Enter')
-  await expect(win.locator('#banner span')).toHaveText('已更新当前目标')
-  expect(await focusNow()).toBe('回车才写回的当前目标')
+  await pin.fill('Esc 放弃的当前目标')
+  await pin.press('Escape')
+  await expect(pin).toHaveCount(0)
+  await expect(edit).toHaveText('点外面也写回')
+  expect(await focusNow()).toBe('点外面也写回')
 })
 
 test('属性栏焦点格:回车后写被拒,格子仍在编辑、字还在', async ({ win }) => {

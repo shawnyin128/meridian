@@ -11,11 +11,15 @@ declare global {
 
 const HIT: PickHit = { id: 'h1', title: '候选一' }
 
-/** Mounts a real PickRow: the outer div is the draft `row`, no triggers, and `hits` are the candidates. */
-function Probe({ onPick, onCancel, hits }: {
+/**
+ * Mounts a real PickRow: the outer div is the draft `row`, no triggers, and `hits` are the
+ * candidates; `cancelOnLeave` goes to PickRow as is.
+ */
+function Probe({ onPick, onCancel, hits, cancelOnLeave = false }: {
   onPick: (hit: PickHit) => boolean | Promise<boolean>
   onCancel: () => void
   hits: PickHit[]
+  cancelOnLeave?: boolean
 }) {
   const row = useRef<HTMLDivElement>(null)
   return (
@@ -24,6 +28,7 @@ function Probe({ onPick, onCancel, hits }: {
         row={row} triggers={[]} placeholder="挑一个"
         suggest={() => Promise.resolve(hits)} allowNew={false}
         onPick={onPick} onNew={() => false} onCancel={onCancel} onError={() => {}}
+        cancelOnLeave={cancelOnLeave}
       />
     </div>
   )
@@ -31,12 +36,31 @@ function Probe({ onPick, onCancel, hits }: {
 
 /** Mounts Probe into a real container and returns its host element. */
 function mount(
-  onPick: (hit: PickHit) => boolean | Promise<boolean>, onCancel: () => void, hits = [HIT],
+  onPick: (hit: PickHit) => boolean | Promise<boolean>, onCancel: () => void, hits = [HIT], cancelOnLeave = false,
 ): HTMLDivElement {
   const host = document.createElement('div')
   document.body.appendChild(host)
-  act(() => { createRoot(host).render(<Probe onPick={onPick} onCancel={onCancel} hits={hits} />) })
+  act(() => {
+    createRoot(host).render(<Probe onPick={onPick} onCancel={onCancel} hits={hits} cancelOnLeave={cancelOnLeave} />)
+  })
   return host
+}
+
+/** Types `value` into the draft input and lets the candidates catch up with it. */
+async function type(value: string): Promise<void> {
+  const input = document.querySelector<HTMLInputElement>('input')!
+  act(() => {
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(input, value)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await flush()
+}
+
+/** Presses the mouse on a button outside the draft. */
+async function pressOutside(): Promise<void> {
+  const outside = document.createElement('button')
+  document.body.appendChild(outside)
+  await act(async () => { outside.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
 }
 
 /** Drains this round of microtasks so the candidate promises resolve. */
@@ -63,6 +87,33 @@ describe('PickRow', () => {
     expect(onPick).toHaveBeenCalledTimes(1)
 
     await act(async () => { settle(true) })
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('打了字点到占位外,像回车一样选中高亮的候选;空着离开只收起', async () => {
+    const onPick = vi.fn(() => true)
+    const onCancel = vi.fn()
+    mount(onPick, onCancel)
+    await flush()
+
+    await pressOutside()
+    expect(onPick).not.toHaveBeenCalled()
+    expect(onCancel).toHaveBeenCalledTimes(1)
+
+    await type('候选')
+    await pressOutside()
+    expect(onPick).toHaveBeenCalledWith(HIT)
+    expect(onCancel).toHaveBeenCalledTimes(2)
+  })
+
+  it('cancelOnLeave 时打了字离开也只收起,不选', async () => {
+    const onPick = vi.fn(() => true)
+    const onCancel = vi.fn()
+    mount(onPick, onCancel, [HIT], true)
+    await type('候选')
+
+    await pressOutside()
+    expect(onPick).not.toHaveBeenCalled()
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
