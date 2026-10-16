@@ -17,7 +17,7 @@ import {
   TRASH_RETENTION_DAYS, UNREAD_PAPER,
 } from '../shared/vocabulary.js'
 import type { ChangeRecord } from './changelog.js'
-import { PROJECT_FIELDS, parseChangeRecords, withChangelog } from './changelog.js'
+import { lastProgressOf, PROJECT_FIELDS, parseChangeRecords, withChangelog } from './changelog.js'
 import { dayOf, feedNewestFirst, systemToday } from './dates.js'
 import {
   applyReadingMutation, checkColumns, checkCustom, checkGroupKey, columnCells, emptyColumns,
@@ -373,6 +373,8 @@ export function createVaultStore(
 
   /** Each list `load` read, by name, holding what its next `save` writes back besides the rows. */
   const lists = new Map<string, StoredList<unknown>>()
+  /** The change log's rows as last loaded or saved. */
+  let changes: ChangeRecord[] = []
 
   /**
    * Loads the record list in `.meridian/<name>.json` record by record, telling records apart by their
@@ -779,6 +781,7 @@ export function createVaultStore(
       ...(Object.keys(claims).length === 0 ? {} : { conclusionClaims: claims }),
       projectConclusions: conclusions,
       ...(workspace === undefined ? {} : { workspace }),
+      ...lastProgressOf(changes, project.id, [...project.events, ...workspace?.events ?? []]),
     }
   }
 
@@ -1342,6 +1345,7 @@ export function createVaultStore(
           milestones: p.milestones.map(({ date, done }) => ({ date, done })),
           recentEvents: p.events.slice(-RECENT_EVENTS)
             .map(({ date, text, origin }) => ({ date, text, ...(origin === undefined ? {} : { origin }) })),
+          ...lastProgressOf(changes, p.id, [...p.events, ...workspace?.events ?? []]),
         }
       })
     },
@@ -1374,6 +1378,7 @@ export function createVaultStore(
           })),
           milestones: p.milestones.map((m) => ({ ...m })),
           events: events.map((e) => ({ ...e })),
+          ...lastProgressOf(changes, p.id, events),
           research: overviewResearch(graph),
         }
       })
@@ -2552,9 +2557,13 @@ export function createVaultStore(
       if (!existsSync(file)) return []
       const log = parseChangeRecords(JSON.parse(readFileSync(file, 'utf8')))
       lists.set('changelog', log)
+      changes = log.rows
       return log.rows
     },
-    save: (rows) => { save('changelog', rows) },
+    save: (rows) => {
+      changes = rows
+      save('changelog', rows)
+    },
     nextId: () => nextId('change'),
   })
 }

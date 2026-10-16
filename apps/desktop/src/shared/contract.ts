@@ -355,6 +355,12 @@ export const ProjectDetailSchema = z.object({
   milestones: z.array(MilestoneSchema),
   /** Research log in insertion order, newest last. `node` links a record to a graph node. */
   events: z.array(RecordEventSchema),
+  /**
+   * Newest day the project progressed: its newest research record, on the page or in the bound
+   * workspace, or its newest recorded change other than a reorder or the project's own deletion.
+   * Derived by Core, never stored; omitted when there is none.
+   */
+  lastProgress: IsoDate.optional(),
   relations: z.array(RelationGroupSchema),
   attachments: z.array(AttachmentSchema),
   graph: ResearchGraphSchema,
@@ -370,7 +376,7 @@ export const ProjectDetailSchema = z.object({
  */
 export const ProjectSummarySchema = ProjectDetailSchema.pick({
   id: true, name: true, status: true, priority: true, topic: true, focus: true, block: true,
-  conflictPage: true, conclusions: true, paperCount: true,
+  conflictPage: true, conclusions: true, paperCount: true, lastProgress: true,
 }).extend({
   /** List pages consume the shared control projection instead of reinterpreting focus, tasks, or graph state. */
   control: ProjectControlSchema,
@@ -391,7 +397,7 @@ export const ProjectSummarySchema = ProjectDetailSchema.pick({
 export const ProjectOverviewSchema = ProjectDetailSchema.pick({
   id: true, name: true, status: true, priority: true, focus: true, block: true,
   start: true, due: true, conclusions: true,
-  tasks: true, milestones: true, events: true,
+  tasks: true, milestones: true, events: true, lastProgress: true,
 }).extend({
   /**
    * Read-only graph summary for overview surfaces: nodes currently in progress, path health,
@@ -931,7 +937,7 @@ const ProjectFieldsSchema = ProjectDetailSchema.omit({
   conclusions: true, conclusionList: true, conclusionClaims: true, projectConclusions: true, verifiedConclusions: true,
   paperCount: true, papers: true,
   paperTitles: true, graph: true, agentSessions: true, block: true,
-  conflictPage: true, workspace: true,
+  conflictPage: true, workspace: true, lastProgress: true,
 }).extend({
   block: z.string().trim().min(1).max(500).nullable(),
 })

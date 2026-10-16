@@ -503,7 +503,7 @@ export function ProjectDetail({
     // Old project conclusions are kept only for data compatibility and no longer feed the project page's signals.
     conclusions: { conflicting: 0 },
     milestones: project.milestones,
-    events: visibleEvents,
+    lastProgress: project.lastProgress,
     tasks: project.tasks,
     research: { pathState: researchPathState(displayedGraph) },
     ...(project.block === undefined ? {} : { block: project.block }),

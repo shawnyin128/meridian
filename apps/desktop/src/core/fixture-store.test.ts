@@ -663,6 +663,28 @@ describe('fixture store', () => {
     })))
   })
 
+  it('概要、详情与总览的最近推进是同一天:改任务算进去,调任务顺序与删掉再恢复项目不算', () => {
+    let day = '2026-08-25'
+    const dated = createFixtureStore(() => day)
+    const progress = () => [
+      dated.listProjects().find((p) => p.id === 'draft')!.lastProgress,
+      dated.getProject('draft').lastProgress,
+      dated.overviewProjects().find((p) => p.id === 'draft')!.lastProgress,
+    ]
+    const latest = dated.getProject('draft').events.map((event) => event.date).sort().at(-1)!
+    expect(progress()).toEqual([latest, latest, latest])
+
+    day = '2026-08-26'
+    const ids = dated.getProject('draft').tasks.map((t) => t.id)
+    dated.reorderTasks('draft', [...ids].reverse())
+    dated.deleteProject('draft')
+    dated.restoreTrash(dated.listTrash()[0]!.id)
+    expect(progress()).toEqual([latest, latest, latest])
+
+    expect(dated.updateTask('draft', ids[0]!, { title: '改过的任务' }).lastProgress).toBe('2026-08-26')
+    expect(progress()).toEqual(['2026-08-26', '2026-08-26', '2026-08-26'])
+  })
+
   it('新记一条科研记录之后,概要的末位与详情的末位都是它', () => {
     store.createEvent('draft', '[对话] 最新的一条')
     const summary = store.listProjects().find((p) => p.id === 'draft')!

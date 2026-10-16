@@ -44,12 +44,12 @@ const NO_TAIL: CrumbSeg[] = []
 
 /**
  * A project's health signals, the demo's projSig: the nearest unfinished milestone from today, the
- * days since the last progress (null when the Research log is empty), whether it has stalled, and the
+ * days since the last progress (null when the project has none), whether it has stalled, and the
  * number of milestones done.
  */
 function signals(project: ProjectSummary, todayIso: string) {
   const next = nextMilestone(project.milestones, todayIso)
-  const idle = idleDays(project.recentEvents, todayIso)
+  const idle = idleDays(project.lastProgress, todayIso)
   return {
     next,
     idle,

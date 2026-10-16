@@ -25,7 +25,7 @@ import {
   UNREAD_PAPER,
 } from '../shared/vocabulary.js'
 import type { ChangeRecord } from './changelog.js'
-import { PROJECT_FIELDS, withChangelog } from './changelog.js'
+import { lastProgressOf, PROJECT_FIELDS, withChangelog } from './changelog.js'
 import {
   applyReadingMutation, checkColumns, checkCustom, checkGroupKey, columnCells, emptyColumns,
   emptyPaperReading, facetPapers, freePageStem, laterWithMetadata, listPapers, missingMetadata,
@@ -256,6 +256,7 @@ export function createFixtureStore(
       conclusions: conclusionCounts(conclusions),
       ...(Object.keys(claims).length === 0 ? {} : { conclusionClaims: claims }),
       projectConclusions: conclusions,
+      ...lastProgressOf(changelog, project.id, [...project.events, ...project.workspace?.events ?? []]),
     }
   }
 
@@ -831,6 +832,7 @@ export function createFixtureStore(
         milestones: p.milestones.map(({ date, done }) => ({ date, done })),
         recentEvents: p.events.slice(-RECENT_EVENTS)
           .map(({ date, text, origin }) => ({ date, text, ...(origin === undefined ? {} : { origin }) })),
+        ...lastProgressOf(changelog, p.id, [...p.events, ...p.workspace?.events ?? []]),
       }))
     },
 
@@ -856,6 +858,7 @@ export function createFixtureStore(
         })),
         milestones: p.milestones.map((m) => ({ ...m })),
         events: p.events.map((e) => ({ ...e })),
+        ...lastProgressOf(changelog, p.id, [...p.events, ...p.workspace?.events ?? []]),
         research: overviewResearch(p.graph),
       }))
     },
