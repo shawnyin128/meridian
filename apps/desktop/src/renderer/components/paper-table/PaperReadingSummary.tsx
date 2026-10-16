@@ -6,6 +6,7 @@ import { useVaultRevision, type JumpAnchor } from '../../shell/AppShell.js'
 import { entryAnchor, readingEntries } from './reading-entries.js'
 import { EmptyState } from '../EmptyState.js'
 import { PageError, SectionHeading } from '../PageShell.js'
+import { StructuredList, StructuredRow } from '../StructuredList.js'
 
 const EXCERPT = 2
 
@@ -49,22 +50,25 @@ export function PaperReadingSummary({ paper, onRead, onConclusions }: {
       </dl>
       <SectionHeading variant="rail">{m.papers.reading.remarkAndNotes}</SectionHeading>
       <PageError error={error} />
-      {remark === '' ? null : <div className="nrow"><div className="nt">{remark}</div></div>}
-      {entries.slice(0, EXCERPT).map((entry) => (
-        <div className="nrow jump" key={entry.id} onClick={() => onRead(entryAnchor(entry))}>
-          {entry.quote === null ? null : <div className="nq">“{entry.quote}”</div>}
-          <div className="nt">{entry.text}</div>
-        </div>
-      ))}
+      {remark === '' && entries.length === 0
+        ? <EmptyState variant="section">{m.papers.reading.empty}</EmptyState>
+        : (
+          <StructuredList variant="embedded">
+            {remark === '' ? null : <StructuredRow className="nrow"><span className="nt">{remark}</span></StructuredRow>}
+            {entries.slice(0, EXCERPT).map((entry) => (
+              <StructuredRow className="nrow" key={entry.id} onActivate={() => onRead(entryAnchor(entry))}>
+                {entry.quote === null ? null : <span className="nq">“{entry.quote}”</span>}
+                <span className="nt">{entry.text}</span>
+              </StructuredRow>
+            ))}
+          </StructuredList>
+        )}
       {entries.length > EXCERPT
         ? (
           <button className="lm more" onClick={() => onRead({ panel: 'notes' })}>
             {m.papers.reading.viewAll(entries.length)}
           </button>
         )
-        : null}
-      {remark === '' && entries.length === 0
-        ? <EmptyState variant="section">{m.papers.reading.empty}</EmptyState>
         : null}
     </div>
   )
