@@ -30,7 +30,7 @@ export const wiki = {
     createUnder: (title: string, parent: string) => `Create ${title} under ${parent}`,
     addPaper: (paper: string, parent: string) => `Add ${paper} to ${parent}`,
     moveOutPaper: (paper: string, parent: string) => `Remove ${paper} from ${parent}`,
-    editMetadata: (title: string) => `Edit ${title}'s details`,
+    editMetadata: (title: string) => `Edit ${title}'s metadata`,
   },
   saved: 'Saved',
   title: (n: number) => `Wiki · ${n}`,

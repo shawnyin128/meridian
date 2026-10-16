@@ -24,7 +24,7 @@ export const wiki = {
     createUnder: (title: string, parent: string) => `新建 ${title},归在 ${parent} 下`,
     addPaper: (paper: string, parent: string) => `把 ${paper} 加进 ${parent}`,
     moveOutPaper: (paper: string, parent: string) => `把 ${paper} 从 ${parent} 移出`,
-    editMetadata: (title: string) => `修改 ${title} 的信息`,
+    editMetadata: (title: string) => `修改 ${title} 的元数据`,
   },
   saved: '已保存',
   title: (n: number) => `Wiki · ${n}`,

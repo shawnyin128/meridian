@@ -89,7 +89,7 @@ export const papers = {
   },
   upload: {
     tooLarge: 'PDF 不能大于 100 MB',
-    addedParsing: '已入库 · 正在解析论文信息',
+    addedParsing: '已入库 · 正在解析元数据',
     alreadyInLibrary: '这份 PDF 已在论文库中',
     dropPdfOnly: '请拖入 PDF 文件',
     dropToImport: '松开以导入 PDF',
@@ -153,12 +153,12 @@ export const papers = {
     empty: '还没有笔记。读原文时划词即可记。',
   },
   parse: {
-    addedFixable: '已入库 · 论文信息可在表格中修正',
+    addedFixable: '已入库 · 元数据可在表格中修正',
     statusAria: '论文信息处理状态',
     working: '正在完善论文信息…',
     count: (n: number) => `${n} 篇`,
     progressAria: '论文信息处理进度',
-    needsAttention: (n: number) => `${n} 篇论文已入库，论文信息暂未补全`,
+    needsAttention: (n: number) => `${n} 篇论文已入库，元数据暂未补全`,
     collapse: '收起',
   },
   understanding: {

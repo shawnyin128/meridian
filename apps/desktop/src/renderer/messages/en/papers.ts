@@ -92,7 +92,7 @@ export const papers = {
   },
   upload: {
     tooLarge: 'PDF files cannot be larger than 100 MB',
-    addedParsing: 'Added to library · reading paper details…',
+    addedParsing: 'Added to library · reading metadata…',
     alreadyInLibrary: 'This PDF is already in the library',
     dropPdfOnly: 'Drop PDF files here',
     dropToImport: 'Drop to import PDF',
@@ -156,12 +156,12 @@ export const papers = {
     empty: 'No notes yet. Highlight text while reading to add one.',
   },
   parse: {
-    addedFixable: 'Added to library · some paper details may need review',
+    addedFixable: 'Added to library · some metadata may need review',
     statusAria: 'Paper metadata processing status',
     working: 'Reading paper metadata…',
     count: (n: number) => `${n} ${pluralEn(n, { one: 'paper', other: 'papers' })}`,
     progressAria: 'Paper metadata processing progress',
-    needsAttention: (n: number) => `${n} ${pluralEn(n, { one: 'paper needs', other: 'papers need' })} a details review`,
+    needsAttention: (n: number) => `${n} ${pluralEn(n, { one: 'paper needs', other: 'papers need' })} a metadata review`,
     collapse: 'Collapse',
   },
   understanding: {
