@@ -333,6 +333,15 @@ describe('PaperTable', () => {
     expect(listParams.at(-1)).not.toHaveProperty('filter')
   })
 
+  it('论文搜索框与关注屏的一句话添加框是同一种带框的字段输入框', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    expect(host.querySelector('#libq')?.classList).toContain('form-control-field')
+  })
+
   it('随笔与自定义文本列共用整格文本编辑器', async () => {
     const host = mount()
     columnsCall.resolve(NOTE_COLUMNS)
@@ -348,6 +357,29 @@ describe('PaperTable', () => {
     await act(async () => { press(customCell) })
     expect(customCell.querySelector('input')?.classList).toContain('paper-text-cell-input')
     expect(customCell.querySelector('input')?.classList).toContain('form-control-inline')
+  })
+
+  it('放不下的自定义文本格与随笔格一样标成截断,整段字装在悬停展开的 .ci 里', async () => {
+    const scrollWidth = vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get')
+      .mockImplementation(function () { return this.classList.contains('ci') ? 200 : 0 })
+    const clientWidth = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+      .mockImplementation(function () { return this.classList.contains('ci') ? 100 : 0 })
+    try {
+      const host = mount()
+      const text = '一段比格子宽得多的文字'
+      columnsCall.resolve(NOTE_COLUMNS)
+      listCall.resolve({ rows: [{ ...ROW, remark: text, custom: { note: text } }], total: 1 })
+      await flush()
+
+      const cells = ['td.pt-remark', 'td.pt-cust'].map((selector) => {
+        const td = host.querySelector<HTMLElement>(selector)!
+        return { trunc: td.classList.contains('trunc'), ci: td.querySelector('.ci')?.textContent }
+      })
+      expect(cells).toEqual([{ trunc: true, ci: text }, { trunc: true, ci: text }])
+    } finally {
+      scrollWidth.mockRestore()
+      clientWidth.mockRestore()
+    }
   })
 
   it('默认按最近添加排序,双击论文行直接进入阅读器,格内按钮不会误触发', async () => {

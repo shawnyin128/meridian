@@ -30,9 +30,11 @@ When the repository has `.meridian/` and Meridian MCP is available:
 7. Before finishing, or before moving to another node, put the node's result
    into Lab: `meridian.lab_result` for an experiment (pass `experiment` to
    write a new record), otherwise `doing` and `next_action` through
-   `meridian.lab_update` plus a `kind: complete` event. A node that ends
-   `supported` or `dead` also gets its conclusion (Conclusion in the `lab`
-   skill).
+   `meridian.lab_update` plus a `kind: complete` event. In that call, decide
+   the node's state: `supported` when valid evidence supports it; when it
+   needs repair or has failed, ask the user, then `repairable` or `dead`. A
+   node that ends `supported` or `dead` also gets its conclusion (Conclusion
+   in the `lab` skill).
 
 Do not call `meridian.lab_graph`, reread every idea, or retrieve the whole Paper
 Wiki unless the task actually requires discovery beyond the referenced entities.

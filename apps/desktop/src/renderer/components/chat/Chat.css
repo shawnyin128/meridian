@@ -22,10 +22,16 @@
 .qa{font-size:var(--fs-sm);padding:3px 12px;border-radius:999px;border:1px solid var(--sep);background:transparent;color:var(--sec);cursor:pointer;font-family:var(--sans)}
 .qa:hover{background:var(--hover);color:var(--ink)}
 .qa:active{background-image:linear-gradient(var(--press),var(--press))}
-.cbox{display:flex;align-items:center;gap:10px;background:var(--field);border:1px solid var(--sep2);border-radius:999px;padding:4px 6px 4px 16px}
+.cbox{display:flex;align-items:flex-end;gap:10px;background:var(--field);border:1px solid var(--sep2);border-radius:22px;padding:4px 6px 4px 16px}
 .cbox:focus-within{border-color:var(--sep-strong);background:var(--card)}
-.cbox:has(input:focus-visible){outline:0;box-shadow:none}
-.cbox input{flex:1;border:0;background:transparent;color:var(--ink);font-family:var(--sans);font-size:13px;padding:7px 0}
+.cbox:has(textarea:focus-visible){outline:0;box-shadow:none}
+/*
+ * Grows with its text up to eight lines, then scrolls; the 22px radius is at least half of one
+ * line's box, so a single line is still a pill. A long placeholder stays on one line so the empty
+ * box does not grow.
+ */
+.cbox textarea{flex:1;border:0;background:transparent;color:var(--ink);font-family:var(--sans);font-size:13px;padding:7px 0;resize:none;field-sizing:content;max-height:calc(8lh + 14px);overflow-y:auto}
+.cbox textarea::placeholder{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .send{width:30px;height:30px;border-radius:50%;border:0;background:var(--accent-solid);color:var(--on-accent);cursor:pointer;flex-shrink:0;display:grid;place-items:center;padding:0}
 .send svg{width:15px;height:15px}
 

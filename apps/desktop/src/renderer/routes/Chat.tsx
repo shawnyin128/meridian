@@ -14,13 +14,13 @@ import type { Catalog } from '../messages/catalog.js'
 import { ChatMessageView, plain } from '../components/chat/ChatMessage.js'
 import { FOCUS_KEY } from '../../shared/project-signals.js'
 import { PickerPopover } from '../components/PickerPopover.js'
-import { FormInput } from '../components/FormControls.js'
+import { FormTextarea } from '../components/FormControls.js'
 import {
   PageBody, PageError, PageFooter, PageHeader, PageShell, PageTitle,
 } from '../components/PageShell.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
-import { CONFLICT_THREAD } from '../lib/chat.js'
+import { CONFLICT_THREAD, sendsMessage } from '../lib/chat.js'
 import { IdeaEditorDialog } from '../components/ideas/IdeaEditorDialog.js'
 import { GenerationControl } from '../components/GenerationControl.js'
 import './shell.css'
@@ -105,7 +105,7 @@ export function Chat() {
   const [pages, setPages] = useState<WikiAggregationCard[]>([])
   const [error, setError] = useState<string | null>(null)
   const stream = useRef<HTMLDivElement>(null)
-  const composer = useRef<HTMLInputElement>(null)
+  const composer = useRef<HTMLTextAreaElement>(null)
   const consumed = useRef(0)
   const sendAttempt = useRef(0)
   const reportError = useCallback((e: Error) => setError(e.message), [])
@@ -252,13 +252,20 @@ export function Chat() {
               contentClassName="pickhits cres" contentId="cRes" side="top" align="center" sideOffset={6}
               anchor={(
                 <div className="cbox" id="cbox">
-                  <FormInput
-                    id="composer" ref={composer} value={draft} autoComplete="off"
+                  <FormTextarea
+                    id="composer" ref={composer} value={draft} rows={1} autoComplete="off"
                     placeholder={m.chat.composerPlaceholder} disabled={sending}
                     onChange={(e) => type(e.target.value)}
                     onKeyDown={(e) => {
-                      keys.onKeyDown(e)
-                      if (e.key === 'Enter' && suggest.length === 0) submit()
+                      // Only open candidates take the arrow keys; otherwise they move the caret between lines.
+                      if (suggest.length > 0) {
+                        if (e.nativeEvent.isComposing) return
+                        keys.onKeyDown(e)
+                        if (e.key === 'Enter') e.preventDefault()
+                      } else if (sendsMessage(e.nativeEvent)) {
+                        e.preventDefault()
+                        submit()
+                      }
                     }}
                   />
                   <GenerationControl

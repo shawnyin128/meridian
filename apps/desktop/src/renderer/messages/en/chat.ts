@@ -18,6 +18,7 @@ export const chat = {
   recordedTo: (project: string) => `This conclusion was added to the research log for “${project}”.`,
   archivedSuffix: (title: string) => `${title} · Archived`,
   paperChatLabel: 'Paper chat',
+  expandPaperChat: 'Expand the paper chat',
   paperHeaderSuffix: ' · Paper chat',
   paperEmpty: 'Ask a question or capture an idea. This conversation stays linked to the paper and is saved automatically.',
   askAboutPaper: 'Ask about this paper',

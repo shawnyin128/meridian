@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { PDFDocumentProxy } from 'pdfjs-dist'
+import type { PDFDocumentProxy, PDFPageProxy, PageViewport, RenderTask, TextLayer } from 'pdfjs-dist'
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import type {
   PaperHighlightRect, PaperReading, PaperRow, ReadingMutation,
@@ -11,7 +11,10 @@ import {
   type JumpAnchor,
 } from '../shell/AppShell.js'
 import { IconPlus } from '../components/icons.js'
-import { mergedHighlightRects, normalizedHighlightRects } from './highlight-geometry.js'
+import {
+  highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionToolsAnchor,
+} from './highlight-geometry.js'
+import { clampZoom, keptScroll, scaledAbout, wheelZoom, type SheetTransform } from './reader-zoom.js'
 import { PaperChat, type PaperChatPrompt } from '../components/chat/PaperChat.js'
 import { ReaderSidePanel, type ReaderSideTab } from '../components/reader/ReaderSidePanel.js'
 import { PageShell } from '../components/PageShell.js'
@@ -23,11 +26,24 @@ const PAGE_WIDTH = 830
 const MAX_FIT = 1.6
 const MAX_DPR = 2
 const ZOOM_STEP = 0.2
-const ZOOM_MIN = 0.6
-const ZOOM_MAX = 2.4
-const WHEEL_MS = 180
+/** How long zooming and scrolling pause before the pages are laid out and drawn at the zoom shown. */
+const SETTLE_MS = 150
 const PROGRESS_MS = 800
 const DOC_CACHE = 2
+const SVG_NS = 'http://www.w3.org/2000/svg'
+const UNSCALED: SheetTransform = { x: 0, y: 0, scale: 1 }
+
+/**
+ * One PDF page on the sheet: its box, the scale its canvas holds or is being drawn at, the canvas
+ * draw in flight, and its text layer once made.
+ */
+type PageSlot = {
+  pdf: PDFPageProxy
+  box: HTMLDivElement
+  scale: number
+  task: RenderTask | null
+  text: TextLayer | null
+}
 
 type PendingHighlight = {
   page: number
@@ -38,29 +54,70 @@ type PendingHighlight = {
 
 const emptyReading = (paperId: string): PaperReading => ({ paperId, highlights: [], notes: [], remark: '' })
 
-/**
- * Redraws every highlight through one path; called when the PDF first loads, when a zoom rebuilds
- * the page boxes, and when the reading state updates.
- */
+/** Redraws every highlight through one path; called when the PDF first loads and when the reading state updates. */
 function paintHighlights(box: ParentNode, reading: PaperReading | null): void {
   box.querySelectorAll<HTMLElement>('.paper-highlights').forEach((marks) => marks.replaceChildren())
   if (reading === null) return
   for (const highlight of reading.highlights) {
-    const marks = box.querySelector<HTMLElement>(
-      `.pdfpagebox[data-page="${highlight.page}"] .paper-highlights`,
-    )
-    if (marks === null) continue
-    for (const rect of mergedHighlightRects(highlight.rects)) {
-      const mark = document.createElement('span')
-      mark.className = `paper-highlight ${highlight.color}${highlight.note.trim() === '' ? '' : ' noted'}`
-      mark.dataset.highlight = highlight.id
-      mark.style.left = `${rect.x * 100}%`
-      mark.style.top = `${rect.y * 100}%`
-      mark.style.width = `${rect.width * 100}%`
-      mark.style.height = `${rect.height * 100}%`
-      marks.append(mark)
-    }
+    const pagebox = box.querySelector<HTMLElement>(`.pdfpagebox[data-page="${highlight.page}"]`)
+    if (pagebox === null) continue
+    const noted = highlight.note.trim() !== ''
+    const { box: bounds, path } = highlightShape(
+      highlightLines(highlight.rects, Number(pagebox.dataset.aspect)), noted)
+    const mark = document.createElementNS(SVG_NS, 'svg')
+    mark.setAttribute('class', `paper-highlight ${highlight.color}${noted ? ' noted' : ''}`)
+    mark.dataset.highlight = highlight.id
+    mark.setAttribute('viewBox', `${bounds.x} ${bounds.y} ${bounds.width} ${bounds.height}`)
+    mark.setAttribute('preserveAspectRatio', 'none')
+    mark.style.left = `${bounds.x * 100}%`
+    mark.style.top = `${bounds.y * 100}%`
+    mark.style.width = `${bounds.width * 100}%`
+    mark.style.height = `${bounds.height * 100}%`
+    const shape = document.createElementNS(SVG_NS, 'path')
+    shape.setAttribute('d', path)
+    mark.append(shape)
+    pagebox.querySelector('.paper-highlights')!.append(mark)
   }
+}
+
+/** True when `cause` is pdf.js cancelling a render that a newer draw or a closed document replaced. */
+const cancelled = (cause: unknown): boolean => cause instanceof Error && cause.name === 'RenderingCancelledException'
+
+/** Sizes a page box for `zoom`; its canvas, text layer and highlights follow the box's size and `--scale-factor`. */
+function layOut(slot: PageSlot, zoom: number): void {
+  const viewport = slot.pdf.getViewport({
+    scale: Math.min(PAGE_WIDTH / slot.pdf.getViewport({ scale: 1 }).width, MAX_FIT) * zoom,
+  })
+  slot.box.style.width = `${Math.floor(viewport.width)}px`
+  slot.box.style.height = `${Math.floor(viewport.height)}px`
+  slot.box.style.setProperty('--scale-factor', String(viewport.scale))
+}
+
+/** The scale a page box is laid out at. */
+const laidOutScale = (slot: PageSlot): number => Number(slot.box.style.getPropertyValue('--scale-factor'))
+
+/**
+ * Draws a page at the scale its box is laid out at. The first drawing paints into the page's empty
+ * canvas; a redraw paints into a new canvas that replaces the old one once complete, so the old
+ * drawing stays on screen meanwhile. Cancels the page's draw in flight. Returns the viewport drawn,
+ * or rejects with pdf.js's RenderingCancelledException when cancelled.
+ */
+async function drawCanvas(slot: PageSlot): Promise<PageViewport> {
+  const viewport = slot.pdf.getViewport({ scale: laidOutScale(slot) })
+  const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR)
+  const held = slot.box.querySelector('canvas')!
+  const canvas = slot.scale === 0 ? held : document.createElement('canvas')
+  canvas.width = Math.floor(viewport.width * dpr)
+  canvas.height = Math.floor(viewport.height * dpr)
+  canvas.style.width = '100%'
+  canvas.style.height = '100%'
+  slot.task?.cancel()
+  slot.scale = viewport.scale
+  slot.task = slot.pdf.render({ canvas, viewport, transform: [dpr, 0, 0, dpr, 0, 0], intent: 'print' })
+  await slot.task.promise
+  slot.task = null
+  if (canvas !== held) held.replaceWith(canvas)
+  return viewport
 }
 
 /** Fetches the paper's source PDF bytes from the vault and hands them to the pdf.js worker to parse. */
@@ -100,6 +157,14 @@ export function Reader() {
   const sheet = useRef<HTMLDivElement>(null)
   const readingRef = useRef<PaperReading | null>(null)
   readingRef.current = reading
+  const zoomRef = useRef(zoom)
+  zoomRef.current = zoom
+  const slots = useRef(new Map<number, PageSlot>())
+  // While zooming, the sheet stays laid out at `zoom` and a CSS transform shows it at `shownZoom`.
+  const transform = useRef(UNSCALED)
+  const shownZoom = useRef(zoom)
+  const zoomPoint = useRef({ x: 0, y: 0 })
+  const settleTimer = useRef(0)
   const consumed = useRef(0)
   const zoomOf = useRef(new Map<string, number>())
   const docs = useRef(new Map<string, PDFDocumentProxy>())
@@ -199,6 +264,24 @@ export function Reader() {
     docs.current.clear()
   }, [])
 
+  /**
+   * Lays the text layer out again and redraws the canvas of each page on screen whose canvas is not
+   * at the scale its box is laid out at; pages off screen keep their stretched canvas until they
+   * come into view.
+   */
+  const redrawVisible = useCallback(() => {
+    const frame = scroller.current!.getBoundingClientRect()
+    for (const slot of slots.current.values()) {
+      if (slot.box.dataset.painted !== '1' || slot.scale === laidOutScale(slot)) continue
+      const rect = slot.box.getBoundingClientRect()
+      if (rect.bottom <= frame.top || rect.top >= frame.bottom) continue
+      slot.text!.update({ viewport: slot.pdf.getViewport({ scale: laidOutScale(slot) }) })
+      void drawCanvas(slot).catch((cause: unknown) => {
+        if (!cancelled(cause)) reportError(cause as Error)
+      })
+    }
+  }, [reportError])
+
   useEffect(() => {
     const view = scroller.current
     const box = sheet.current
@@ -210,30 +293,21 @@ export function Reader() {
       return
     }
     let live = true
-    const textLayers: { cancel(): void }[] = []
-    let renderTask: { cancel(): void } | null = null
-    const at = view.scrollTop / (view.scrollHeight || 1)
-    const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR)
+    const placed = new Map<number, PageSlot>()
     const pending = new Set<number>()
-    const boxes = new Map<number, HTMLDivElement>()
     void (async () => {
       const pdfjs = await import('pdfjs-dist')
       const pages = await Promise.all(
         Array.from({ length: doc.numPages }, (_, index) => doc.getPage(index + 1)))
       if (!live) return
       const nextSheet = document.createDocumentFragment()
-      for (const page of pages) {
-        const scale = Math.min(PAGE_WIDTH / page.getViewport({ scale: 1 }).width, MAX_FIT) * zoom
-        const viewport = page.getViewport({ scale })
+      for (const pdf of pages) {
         const pagebox = document.createElement('div')
         pagebox.className = 'pdfpagebox'
-        pagebox.dataset.page = String(page.pageNumber)
-        pagebox.style.width = `${Math.floor(viewport.width)}px`
-        pagebox.style.height = `${Math.floor(viewport.height)}px`
-        pagebox.style.setProperty('--scale-factor', String(viewport.scale))
+        pagebox.dataset.page = String(pdf.pageNumber)
+        const { width, height } = pdf.getViewport({ scale: 1 })
+        pagebox.dataset.aspect = String(width / height)
         const canvas = document.createElement('canvas')
-        canvas.width = Math.floor(viewport.width * dpr)
-        canvas.height = Math.floor(viewport.height * dpr)
         canvas.style.width = '100%'
         canvas.style.height = '100%'
         pagebox.append(canvas)
@@ -242,16 +316,18 @@ export function Reader() {
         pagebox.append(marks)
         const text = document.createElement('div')
         text.className = 'textLayer'
-        text.dataset.page = String(page.pageNumber)
+        text.dataset.page = String(pdf.pageNumber)
         pagebox.append(text)
         nextSheet.append(pagebox)
-        boxes.set(page.pageNumber, pagebox)
-        pending.add(page.pageNumber)
+        const slot: PageSlot = { pdf, box: pagebox, scale: 0, task: null, text: null }
+        layOut(slot, zoomRef.current)
+        placed.set(pdf.pageNumber, slot)
+        pending.add(pdf.pageNumber)
       }
-      // Every box has its final size now, so the sheet, the scroll position and the highlight overlays settle before any canvas is drawn.
+      // Every box has its final size now, so the sheet and the highlight overlays settle before any canvas is drawn.
       box.replaceChildren(nextSheet)
+      slots.current = placed
       paintHighlights(box, readingRef.current)
-      view.scrollTop = at * view.scrollHeight
       setPainted((count) => count + 1)
 
       // The page whose top is nearest the viewport top goes first; each loop iteration re-ranks against live layout, so a scroll mid-render is picked up without extra bookkeeping.
@@ -260,7 +336,7 @@ export function Reader() {
         let best = pending.values().next().value!
         let distance = Number.POSITIVE_INFINITY
         for (const pageNumber of pending) {
-          const delta = Math.abs(boxes.get(pageNumber)!.getBoundingClientRect().top - top)
+          const delta = Math.abs(placed.get(pageNumber)!.box.getBoundingClientRect().top - top)
           if (delta < distance) { best = pageNumber; distance = delta }
         }
         return best
@@ -268,35 +344,68 @@ export function Reader() {
 
       while (live && pending.size > 0) {
         const pageNumber = nearestPending()
-        const page = pages[pageNumber - 1]!
-        const pagebox = boxes.get(pageNumber)!
-        const canvas = pagebox.querySelector('canvas')!
-        const viewport = page.getViewport({ scale: Number(pagebox.style.getPropertyValue('--scale-factor')) })
-        const task = page.render({ canvas, viewport, transform: [dpr, 0, 0, dpr, 0, 0], intent: 'print' })
-        renderTask = task
-        await task.promise
-        renderTask = null
+        const slot = placed.get(pageNumber)!
+        const viewport = await drawCanvas(slot)
         if (!live) return
-        const textLayer = new pdfjs.TextLayer({
-          textContentSource: await page.getTextContent(), container: pagebox.querySelector<HTMLElement>('.textLayer')!, viewport,
-        })
-        textLayers.push(textLayer)
-        await textLayer.render()
+        const container = slot.box.querySelector<HTMLElement>('.textLayer')!
+        slot.text = new pdfjs.TextLayer({ textContentSource: await slot.pdf.getTextContent(), container, viewport })
+        await slot.text.render()
         if (!live) return
-        pagebox.dataset.painted = '1'
+        const endOfContent = document.createElement('div')
+        endOfContent.className = 'endOfContent'
+        container.append(endOfContent)
+        slot.box.dataset.painted = '1'
         pending.delete(pageNumber)
+        // A zoom that settled while this page was drawn the first time left it at the earlier scale.
+        redrawVisible()
         // Yield one frame between pages so scrolling and the selection toolbar stay responsive while the rest renders.
         await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
       }
     })().catch((cause: unknown) => {
-      if (live && !(cause instanceof Error && cause.name === 'RenderingCancelledException')) reportError(cause as Error)
+      if (live && !cancelled(cause)) reportError(cause as Error)
     })
     return () => {
       live = false
-      renderTask?.cancel()
-      for (const layer of textLayers) layer.cancel()
+      for (const slot of placed.values()) {
+        slot.task?.cancel()
+        slot.text?.cancel()
+      }
+      slots.current = new Map()
+      window.clearTimeout(settleTimer.current)
+      box.style.transform = ''
+      transform.current = UNSCALED
+      shownZoom.current = zoomRef.current
     }
-  }, [doc, zoom, reportError])
+  }, [doc, reportError, redrawVisible])
+
+  // pdf.js's TextLayerBuilder selection support: a text layer is `.selecting` from a press on it, or
+  // while a selection being made covers it, until the pointer or key is released; its endOfContent
+  // then covers the whole page, so a drag across the gaps between lines and columns stays in the
+  // text. TextLayerBuilder also moves endOfContent next to the selection, but only on Chromium
+  // before 148; Electron's Chromium is newer.
+  useEffect(() => {
+    const box = sheet.current
+    if (box === null) return
+    const listening = new AbortController()
+    const { signal } = listening
+    const layers = () => box.querySelectorAll<HTMLElement>('.textLayer')
+    const reset = () => layers().forEach((layer) => layer.classList.remove('selecting'))
+    let pointerDown = false
+    box.addEventListener('mousedown', (event) => {
+      (event.target as Element).closest('.textLayer')?.classList.add('selecting')
+    }, { signal })
+    document.addEventListener('pointerdown', () => { pointerDown = true }, { signal })
+    document.addEventListener('pointerup', () => { pointerDown = false; reset() }, { signal })
+    window.addEventListener('blur', () => { pointerDown = false; reset() }, { signal })
+    document.addEventListener('keyup', () => { if (!pointerDown) reset() }, { signal })
+    document.addEventListener('selectionchange', () => {
+      const selection = document.getSelection()
+      if (selection === null || selection.rangeCount === 0) { reset(); return }
+      const range = selection.getRangeAt(0)
+      layers().forEach((layer) => layer.classList.toggle('selecting', range.intersectsNode(layer)))
+    }, { signal })
+    return () => listening.abort()
+  }, [])
 
   // Highlights are independent overlays; when you change notes or add new highlights, you only change these small rectangles and do not redraw the PDF canvas / text layer.
   useEffect(() => {
@@ -311,7 +420,7 @@ export function Reader() {
     if (arrival === null || painted === 0 || reading === null || view === null) return
     const mark = arrival.highlight === undefined
       ? null
-      : view.querySelector<HTMLElement>(`.paper-highlight[data-highlight="${arrival.highlight}"]`)
+      : view.querySelector(`.paper-highlight[data-highlight="${arrival.highlight}"]`)
     if (mark !== null) mark.scrollIntoView({ block: 'center' })
     else {
       const page = arrival.page ?? reading.lastPage ?? 1
@@ -327,25 +436,91 @@ export function Reader() {
     setArrival(null)
   }, [arrival, painted, reading])
 
-  const zoomBy = useCallback((delta: number) => {
-    setZoom((held) => Math.round(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, held + delta)) * 10) / 10)
-  }, [])
+  /**
+   * Once zooming and scrolling pause, lays every page out at the zoom shown, which ends the CSS
+   * scaling with the page point under the last zoom position kept in place, then redraws the pages
+   * on screen.
+   */
+  const settle = useCallback(() => {
+    const view = scroller.current!
+    if (transform.current !== UNSCALED) {
+      const point = zoomPoint.current
+      const offset = (slot: PageSlot) => {
+        const rect = slot.box.getBoundingClientRect()
+        return Math.max(rect.top - point.y, point.y - rect.bottom, 0)
+      }
+      const nearest = [...slots.current.values()]
+        .reduce((best, slot) => (offset(slot) < offset(best) ? slot : best))
+      const before = nearest.box.getBoundingClientRect()
+      for (const slot of slots.current.values()) layOut(slot, shownZoom.current)
+      sheet.current!.style.transform = ''
+      transform.current = UNSCALED
+      // A reader hidden behind another screen lays out no boxes, so there is no point to keep.
+      if (before.width > 0) {
+        const shift = keptScroll(before, nearest.box.getBoundingClientRect(), point)
+        view.scrollLeft += shift.left
+        view.scrollTop += shift.top
+      }
+      zoomRef.current = shownZoom.current
+      setZoom(shownZoom.current)
+    }
+    redrawVisible()
+  }, [redrawVisible])
+
+  const settleLater = useCallback(() => {
+    window.clearTimeout(settleTimer.current)
+    settleTimer.current = window.setTimeout(settle, SETTLE_MS)
+  }, [settle])
+
+  /**
+   * Shows the sheet at `target` zoom, within the zoom limits, at once by scaling it with CSS about
+   * `point` in client pixels, and settles it after a pause. Before the pages are placed, `target`
+   * only becomes the zoom they are laid out at.
+   */
+  const zoomTo = useCallback((target: number, point: { x: number; y: number }) => {
+    shownZoom.current = clampZoom(target)
+    if (slots.current.size === 0) {
+      zoomRef.current = shownZoom.current
+      setZoom(shownZoom.current)
+      return
+    }
+    const box = sheet.current!
+    const held = transform.current
+    // The transformed sheet's corner is its laid-out corner moved by the held translation.
+    const corner = box.getBoundingClientRect()
+    const next = scaledAbout(held, shownZoom.current / zoomRef.current, {
+      x: point.x - corner.left + held.x, y: point.y - corner.top + held.y,
+    })
+    transform.current = next
+    zoomPoint.current = point
+    box.style.transform = `translate(${next.x}px, ${next.y}px) scale(${next.scale})`
+    settleLater()
+  }, [settleLater])
+
+  const zoomBy = (delta: number) => {
+    const frame = scroller.current!.getBoundingClientRect()
+    zoomTo(Math.round((shownZoom.current + delta) * 10) / 10, {
+      x: frame.left + frame.width / 2, y: frame.top + frame.height / 2,
+    })
+  }
 
   useEffect(() => {
     const view = scroller.current
     if (view === null) return
-    let last = 0
     const wheel = (event: WheelEvent) => {
       if (!event.ctrlKey) return
       event.preventDefault()
-      const now = Date.now()
-      if (now - last < WHEEL_MS) return
-      last = now
-      zoomBy(event.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP)
+      zoomTo(wheelZoom(shownZoom.current, event.deltaY), { x: event.clientX, y: event.clientY })
     }
     view.addEventListener('wheel', wheel, { passive: false })
-    return () => view.removeEventListener('wheel', wheel)
-  }, [zoomBy])
+    // Pages scrolled into view after a zoom are drawn at it once scrolling pauses.
+    view.addEventListener('scroll', settleLater, { passive: true })
+    return () => {
+      view.removeEventListener('wheel', wheel)
+      view.removeEventListener('scroll', settleLater)
+      window.clearTimeout(settleTimer.current)
+    }
+  }, [zoomTo, settleLater])
 
   useEffect(() => {
     if (opened !== null) zoomOf.current.set(opened, zoom)
@@ -406,13 +581,14 @@ export function Reader() {
     }
     const pagebox = start.closest<HTMLElement>('.pdfpagebox')
     if (pagebox === null) return
-    const rects = normalizedHighlightRects(pagebox.getBoundingClientRect(), [...range.getClientRects()])
+    const bounds = pagebox.getBoundingClientRect()
+    const rects = normalizedHighlightRects(
+      bounds, selectedTextRanges(range).flatMap((piece) => [...piece.getClientRects()]))
     const quote = selection.toString().replace(/\s+/g, ' ').trim()
-    const selectionRect = range.getBoundingClientRect()
-    const left = Math.min(window.innerWidth - 100, Math.max(100, selectionRect.left + selectionRect.width / 2))
-    const top = Math.max(12, selectionRect.top - 44)
-    setPending(quote === '' || rects.length === 0
-      ? null : { page: Number(pagebox.dataset.page), quote, rects, anchor: { left, top } })
+    setPending(quote === '' || rects.length === 0 ? null : {
+      page: Number(pagebox.dataset.page), quote, rects,
+      anchor: selectionToolsAnchor(bounds, rects, { width: window.innerWidth, height: window.innerHeight }),
+    })
   }, [])
 
   const mutateReading = useCallback(async (mutation: ReadingMutation): Promise<PaperReading | null> => {

@@ -1,4 +1,6 @@
 interface:
   display_name: "Meridian"
   short_description: "Check setup, migration, plugin, core, and MCP readiness."
+  icon_small: "../../assets/meridian-mark-64.png"
+  icon_large: "../../assets/meridian-mark-128.png"
   default_prompt: "Use $meridian to check my Meridian setup and repair any setup drift."

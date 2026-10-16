@@ -233,6 +233,29 @@ class MCPWorkspaceTests(unittest.TestCase):
         )
         self.assertTrue(lab_tools.issubset(names))
 
+    def test_lab_guidance_and_lab_result_tell_agents_to_decide_the_node_state(self) -> None:
+        server = MeridianMCPServer()
+        instructions = server.handle_message(
+            {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
+        )["result"]["instructions"]
+        descriptions = {
+            tool["name"]: tool["description"]
+            for tool in server.handle_message(
+                {"jsonrpc": "2.0", "id": 2, "method": "tools/list"}
+            )["result"]["tools"]
+        }
+        for label, text in (
+            ("instructions", instructions),
+            ("lab_update", descriptions["meridian.lab_update"]),
+            ("lab_result", descriptions["meridian.lab_result"]),
+        ):
+            with self.subTest(label):
+                lowered = text.lower()
+                self.assertIn("decide the node's state", lowered)
+                self.assertIn("supported when valid evidence supports", lowered)
+                self.assertIn("ask the user, then", lowered)
+                self.assertIn("repairable or dead", lowered)
+
     def test_tools_read_plan_and_append_source_backed_event_without_mutating_plan(
         self,
     ) -> None:

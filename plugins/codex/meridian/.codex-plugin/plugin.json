@@ -39,8 +39,8 @@
       "Use my Paper Wiki to ground this research question.",
       "Read Meridian project changes, then continue this coding task."
     ],
-    "brandColor": "#2563EB",
-    "composerIcon": "./assets/meridian-mark.svg",
-    "logo": "./assets/meridian-mark.svg"
+    "brandColor": "#3568FF",
+    "composerIcon": "./assets/meridian-mark-64.png",
+    "logo": "./assets/meridian-mark-128.png"
   }
 }
