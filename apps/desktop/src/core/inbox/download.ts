@@ -18,7 +18,7 @@ export function createInboxDownloads(deps: {
   const running = new Map<string, DownloadProgress>()
   return {
     async download(id) {
-      if (running.has(id)) throw new Error(`这一条正在下载:${id}`)
+      if (running.has(id)) throw new Error(`这一条正在下载：${id}`)
       const plan = deps.store.prepareInboxDownload(id)
       if (plan.kind !== 'fetch') return plan
       running.set(id, { id, received: 0, total: null })
@@ -35,7 +35,7 @@ export function createInboxDownloads(deps: {
         }
         body = response.body
       } catch (error) {
-        throw new Error(`没能下载原文:${netReason(error)}`)
+        throw new Error(`没能下载原文：${netReason(error)}`)
       } finally {
         running.delete(id)
       }
@@ -46,9 +46,9 @@ export function createInboxDownloads(deps: {
           body: {
             kind: 'runs',
             runs: [
-              { kind: 'text', text: '已入库:' },
+              { kind: 'text', text: '已入库：' },
               { kind: 'strong', text: `《${deps.store.getPaper(result.paper).title}》` },
-              { kind: 'text', text: ',元数据取自 arXiv。' },
+              { kind: 'text', text: '，元数据取自 arXiv。' },
             ],
           },
         })

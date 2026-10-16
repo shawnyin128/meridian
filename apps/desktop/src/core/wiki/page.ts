@@ -38,12 +38,12 @@ function itemsOf(
   // Items occupy indented lines below the key. A one-line key supports only the empty-list form; top-level items are not editable.
   const flat = range[1] - range[0] === 1 && page.bare[range[0]] !== `${key}: []`
   const indentless = page.bare.slice(range[0] + 1, range[1]).some((row) => row.startsWith('- '))
-  if (flat || indentless) throw new Error(`${key} 不是本模块能改的写法:${file}`)
+  if (flat || indentless) throw new Error(`${key} 不是本模块能改的写法：${file}`)
   const first = new RegExp(`^\\s*- ${head}: (["']?)([^"'\\s]+)\\1\\s*$`)
   let at = range[0] + 1
   while (at < range[1]) {
     const match = first.exec(page.bare[at]!)
-    if (!match) throw new Error(`${key} 里有一条不是 - ${head}: 开头:${file} 第 ${at + 1} 行`)
+    if (!match) throw new Error(`${key} 里有一条不是 - ${head}: 开头：${file} 第 ${at + 1} 行`)
     let to = at + 1
     while (to < range[1] && !page.bare[to]!.startsWith(`${ITEM_INDENT}- `)) to += 1
     items.set(match[2]!, [at, to])
@@ -93,7 +93,7 @@ export function setMembership(file: string, membership: WikiMembershipRecord, st
 export function removeMembership(file: string, target: string, staging: string): void {
   const { key, items } = membershipsOf(file)
   const held = items.get(target)
-  if (!held) throw new Error(`这一页不属于 ${target}:${file}`)
+  if (!held) throw new Error(`这一页不属于 ${target}：${file}`)
   if (items.size === 1) {
     const page = rowsOf(file)
     spliceLines(file, key[0], key[1], withCrOf(page.rows[key[0]]!, ['memberships: []']), staging)
@@ -138,7 +138,7 @@ export function setClaim(file: string, claim: WikiClaimRecord, staging: string):
 export function removeClaim(file: string, id: string, staging: string): void {
   const { key, items } = itemsOf(file, 'claims', 'id')
   const held = items.get(id)
-  if (!held) throw new Error(`这一页上没有结论 ${id}:${file}`)
+  if (!held) throw new Error(`这一页上没有结论 ${id}：${file}`)
   if (items.size === 1) {
     const page = rowsOf(file)
     spliceLines(file, key[0], key[1], withCrOf(page.rows[key[0]]!, ['claims: []']), staging)
@@ -158,7 +158,7 @@ export function appendEntry(file: string, section: string, line: string, staging
   const page = rowsOf(file)
   const regionsEnd = page.bare.lastIndexOf(GENERATED_CLOSE)
   const heading = page.bare.indexOf(`## ${section}`, (regionsEnd < 0 ? page.close : regionsEnd) + 1)
-  if (heading < 0) throw new Error(`页上没有「${section}」这一节:${file}`)
+  if (heading < 0) throw new Error(`页上没有「${section}」这一节：${file}`)
   let end = heading + 1
   while (end < page.bare.length && !page.bare[end]!.startsWith('## ')) end += 1
   let last = end - 1
@@ -254,7 +254,7 @@ export function setBodyAndTrust(file: string, body: string, staging: string): vo
 function generatedRange(bare: string[], name: string, file: string): [number, number] {
   const open = bare.indexOf(GENERATED_OPEN(name))
   const close = bare.indexOf(GENERATED_CLOSE, open + 1)
-  if (open < 0 || close < 0) throw new Error(`页上没有 ${name} 的生成区:${file}`)
+  if (open < 0 || close < 0) throw new Error(`页上没有 ${name} 的生成区：${file}`)
   return [open, close]
 }
 
@@ -301,7 +301,7 @@ export function generatedMissing(file: string): string[] {
  */
 export function checkGenerated(file: string): void {
   const [missing] = generatedMissing(file).filter((name) => name !== 'claims')
-  if (missing !== undefined) throw new Error(`页上没有 ${missing} 的生成区:${file}`)
+  if (missing !== undefined) throw new Error(`页上没有 ${missing} 的生成区：${file}`)
 }
 
 /**

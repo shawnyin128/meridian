@@ -71,7 +71,7 @@ describe('change log', () => {
     expect(rows).toHaveLength(2)
     expect(rows[1]).toMatchObject({ id: change.id, undone: true, undoable: false })
     expect(rows[0]).toMatchObject({
-      title: '撤销:项目「draft 效率」· 改了字段', source: '我', undone: false,
+      title: '撤销：项目「draft 效率」· 改了字段', source: '我', undone: false,
     })
     // This is history, not an undo stack; the undo action cannot itself be undone.
     expect(rows[0]!.undoable).toBe(false)
@@ -189,7 +189,7 @@ describe('change log', () => {
     store.undoChange(change.id)
     const rows = recorded()
     expect(rows[1]).toMatchObject({ id: change.id, undone: true, archived: true })
-    expect(rows[0]).toMatchObject({ title: '撤销:项目「draft 效率」· 改了字段', archived: false })
+    expect(rows[0]).toMatchObject({ title: '撤销：项目「draft 效率」· 改了字段', archived: false })
   })
 
   it('归一条库里没有的,说清是哪一条', () => {
@@ -325,7 +325,7 @@ describe('change log', () => {
     })
     store.undoChange(recorded()[0]!.id)
     expect(store.listChanges()[0]).toMatchObject({
-      title: '撤销:Wiki · 给 PTQ 记一条', diff: ['~ topics/ptq'],
+      title: '撤销：Wiki · 给 PTQ 记一条', diff: ['~ topics/ptq'],
     })
   })
 
@@ -437,7 +437,7 @@ describe('change log', () => {
       ...emptyColumns(),
       custom: [{ key: 'du-fa', label: '读法方式', type: 'select', options: ['细读'] }],
     })
-    expect(() => store.undoChange(top.id)).toThrow('这一列之后又改过,撤销会盖掉那次改动')
+    expect(() => store.undoChange(top.id)).toThrow('这一列之后又改过，撤销会盖掉那次改动')
   })
 
   it('同一列上还有更新的一条改名时,旧的那条报的是「又被改过 N 次」', () => {
@@ -450,7 +450,7 @@ describe('change log', () => {
     store.renamePaperOption('du-fa', '细读', '通读')
 
     expect(() => store.undoChange(older.id))
-      .toThrow('这条之后该实体又被改过 1 次,先撤销较新的那几条')
+      .toThrow('这条之后该实体又被改过 1 次，先撤销较新的那几条')
     expect(store.listChanges().find((c) => c.id === older.id)).toMatchObject({ undone: false })
   })
 
@@ -471,7 +471,7 @@ describe('change log', () => {
     expect(store.paperColumns()).toEqual({ hidden: [], custom: [tags], groups: ['topics', 'tags', 'readState'] })
     expect([a, b].map((id) => store.getPaper(id!).custom)).toEqual([{ tags: ['综述'] }, { tags: ['综述', '必读'] }])
     expect(store.listChanges()[0]).toMatchObject({
-      title: '撤销:论文表 · 列「标签」的类型 多选 → 文本', diff: ['- tags: "文本"', '+ tags: "多选"'],
+      title: '撤销：论文表 · 列「标签」的类型 多选 → 文本', diff: ['- tags: "文本"', '+ tags: "多选"'],
     })
   })
 
@@ -483,7 +483,7 @@ describe('change log', () => {
     const top = store.listChanges()[0]!
     store.updatePaper(b!, { custom: { note: ['读到一半'] } })
 
-    expect(() => store.undoChange(top.id)).toThrow('这一列之后又改过,撤销会盖掉那次改动')
+    expect(() => store.undoChange(top.id)).toThrow('这一列之后又改过，撤销会盖掉那次改动')
     expect(store.getPaper(b!).custom).toEqual({ note: ['读到一半'] })
     expect(store.paperColumns().custom[0]!.type).toBe('multi')
   })
@@ -493,7 +493,7 @@ describe('change log', () => {
     store.setPaperColumnType('note', 'select')
     const older = store.listChanges()[0]!
     store.setPaperColumnType('note', 'multi')
-    expect(() => store.undoChange(older.id)).toThrow('这条之后该实体又被改过 1 次,先撤销较新的那几条')
+    expect(() => store.undoChange(older.id)).toThrow('这条之后该实体又被改过 1 次，先撤销较新的那几条')
   })
 
   it('选择改多选之后自己去掉了这一列的分组:撤销改类型不把分组加回来', () => {
@@ -516,7 +516,7 @@ describe('change log', () => {
     store.setPaperColumnType('note', 'multi')
 
     expect(() => store.undoChange(cleared.id))
-      .toThrow('这篇论文的「备注」列之后改过类型或选项,撤销会写进这一列现在放不下的值')
+      .toThrow('这篇论文的「备注」列之后改过类型或选项，撤销会写进这一列现在放不下的值')
     expect(store.getPaper(a).custom).toEqual({})
     expect(() => store.setPaperColumns({ ...store.paperColumns(), hidden: ['topics'] })).not.toThrow()
   })
@@ -532,7 +532,7 @@ describe('change log', () => {
     store.renamePaperOption('du-fa', '精读', '细读')
 
     expect(() => store.undoChange(earlier.id))
-      .toThrow('这篇论文的「读法」列之后改过类型或选项,撤销会写进这一列现在放不下的值')
+      .toThrow('这篇论文的「读法」列之后改过类型或选项，撤销会写进这一列现在放不下的值')
     expect(store.getPaper(a).custom).toEqual({ 'du-fa': '略读' })
   })
 
@@ -603,13 +603,13 @@ describe('change log', () => {
     store.renamePaperOption('du-fa', '精读', '细读')
     const renamed = recorded()[0]!
     store.setPaperColumns(emptyColumns())
-    expect(() => store.undoChange(renamed.id)).toThrow('这一列之后又改过,撤销会盖掉那次改动')
+    expect(() => store.undoChange(renamed.id)).toThrow('这一列之后又改过，撤销会盖掉那次改动')
 
     store.setPaperColumns({ ...emptyColumns(), custom: [column] })
     store.setPaperColumnType('du-fa', 'multi')
     const retyped = recorded()[0]!
     store.setPaperColumns(emptyColumns())
-    expect(() => store.undoChange(retyped.id)).toThrow('这一列之后又改过,撤销会盖掉那次改动')
+    expect(() => store.undoChange(retyped.id)).toThrow('这一列之后又改过，撤销会盖掉那次改动')
   })
 
   it('项目读不出来时,撤销和改动都报出读不出来的原因,不当它已经不在', () => {

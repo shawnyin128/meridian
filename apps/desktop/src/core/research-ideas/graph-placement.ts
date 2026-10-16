@@ -13,7 +13,7 @@ export function placeResearchIdeaOnGraph(
   placement: ResearchIdeaGraphPlacement,
 ): ResearchIdeaPlaceOnGraphResult {
   const held = store.listIdeas().find((idea) => idea.id === ideaId)
-  if (held === undefined) throw new Error(`想法不存在:${ideaId}`)
+  if (held === undefined) throw new Error(`想法不存在：${ideaId}`)
   if (held.project === undefined) throw new Error('请先把想法关联到项目')
 
   let project = store.getProject(held.project)
@@ -29,7 +29,7 @@ export function placeResearchIdeaOnGraph(
   if (placement.kind === 'link') {
     const graph = project.workspace?.graph ?? project.graph
     if (!graph.nodes.some((node) => node.id === placement.nodeId)) {
-      throw new Error(`节点不存在:${placement.nodeId}`)
+      throw new Error(`节点不存在：${placement.nodeId}`)
     }
     return {
       idea: store.updateIdea(held.id, { node: placement.nodeId }),

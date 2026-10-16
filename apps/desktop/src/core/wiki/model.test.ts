@@ -131,9 +131,9 @@ describe('wiki 视图', () => {
 
   it('搜索索引:每页聚合一条,种类按 schema 次序、种类内按 id', () => {
     expect(wikiSearchIndex(DATA)).toEqual([
-      { kind: 'aggregation', target: 'topics/leaf', title: '问题:Leaf', meta: 'Wiki' },
-      { kind: 'aggregation', target: 'topics/root', title: '问题:Root', meta: 'Wiki' },
-      { kind: 'aggregation', target: 'methods/m', title: '方法:M', meta: 'Wiki' },
+      { kind: 'aggregation', target: 'topics/leaf', title: '问题：Leaf', meta: 'Wiki' },
+      { kind: 'aggregation', target: 'topics/root', title: '问题：Root', meta: 'Wiki' },
+      { kind: 'aggregation', target: 'methods/m', title: '方法：M', meta: 'Wiki' },
     ])
   })
 

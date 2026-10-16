@@ -520,7 +520,7 @@ export function writeProjectFields(
     if (field === 'name') {
       const { body, close } = splitRows(file)
       const at = body.findIndex((row) => row.startsWith('# '))
-      if (at < 0) throw new Error(`页里没有标题行:${file}`)
+      if (at < 0) throw new Error(`页里没有标题行：${file}`)
       spliceLines(file, close + 1 + at, close + 2 + at, [`# ${project.name}`], staging)
     }
     const key: string = field in PAGE_KEYS ? PAGE_KEYS[field as keyof typeof PAGE_KEYS] : field
@@ -533,7 +533,7 @@ export function writeProjectFields(
       dropProjectPageKeys(file, [removable], staging)
       continue
     }
-    if (value === undefined) throw new Error(`项目页上没有这一项:${key}`)
+    if (value === undefined) throw new Error(`项目页上没有这一项：${key}`)
     syncKey(key, value)
     // Notes and origins live in their own keys so an older App's strict per-task schema never sees them.
     if (field === 'tasks') {

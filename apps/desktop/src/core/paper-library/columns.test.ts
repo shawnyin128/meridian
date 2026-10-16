@@ -67,7 +67,7 @@ describe('paper columns', () => {
     expect(() => checkColumns({ ...emptyColumns(), hidden: ['venue'] }, [])).not.toThrow()
     expect(() => checkColumns({
       ...emptyColumns(), custom: [{ key: 'venue', label: 'x', type: 'text', options: [] }],
-    }, [])).toThrow('列的 key 与内置列重名:venue')
+    }, [])).toThrow('列的 key 与内置列重名：venue')
   })
 
   it('文本列的格子不拿选项对,填着什么都收下', () => {
@@ -108,7 +108,7 @@ describe('paper columns', () => {
     for (const key of ['none', 'constructor', 'toString']) {
       expect(() => checkColumns({
         ...emptyColumns(), custom: [{ key, label: 'x', type: 'text', options: [] }],
-      }, [])).toThrow(`列的 key 是保留字:${key}`)
+      }, [])).toThrow(`列的 key 是保留字：${key}`)
     }
     expect(() => checkColumns({
       ...emptyColumns(), custom: [{ key: 'tostring', label: 'x', type: 'text', options: [] }],
@@ -154,10 +154,10 @@ describe('paper columns', () => {
   it('格子的形状与列的类型对不上时改不了类型', () => {
     expect(() => checkColumns(columns({
       custom: [{ key: 'tags', label: '标签', type: 'select', options: ['综述'] }],
-    }), [row({ tags: ['综述'] })])).toThrow('列「标签」不是多选列,有论文填着多个值')
+    }), [row({ tags: ['综述'] })])).toThrow('列「标签」不是多选列，有论文填着多个值')
     expect(() => checkColumns(columns({
       custom: [{ key: 'du-fa', label: '读法', type: 'multi', options: ['精读'] }],
-    }), [row({ 'du-fa': '精读' })])).toThrow('列「读法」是多选列,有论文填着一段文本')
+    }), [row({ 'du-fa': '精读' })])).toThrow('列「读法」是多选列，有论文填着一段文本')
   })
 
   it('分组只收内置可分组字段与选择 / 多选列,而且不许重样', () => {
@@ -176,17 +176,17 @@ describe('paper columns', () => {
   it('删掉的列还留在分组里时,整份配置被拒', () => {
     expect(() => checkColumns(columns({ groups: ['du-fa'] }), [])).not.toThrow()
     expect(() => checkColumns(columns({ custom: [], groups: ['du-fa'] }), []))
-      .toThrow('不能按这一列分组:du-fa')
+      .toThrow('不能按这一列分组：du-fa')
   })
 
   it('写格子时,列要在、值的形状要对、选项要是这一列有的', () => {
     expect(() => checkCustom(columns(), { 'du-fa': '精读', tags: ['综述'] }, {})).not.toThrow()
     expect(() => checkCustom(columns(), { nope: 'x' }, {})).toThrow(/论文表里没有这一列/)
     expect(() => checkCustom(columns(), { 'du-fa': ['精读'] }, {}))
-      .toThrow('列「读法」不是多选列,格子只要一个值')
+      .toThrow('列「读法」不是多选列，格子只要一个值')
     expect(() => checkCustom(columns(), { tags: '综述' }, {}))
-      .toThrow('列「标签」是多选列,格子要一列取值')
-    expect(() => checkCustom(columns(), { 'du-fa': '通读' }, {})).toThrow(/没有这个选项:通读/)
+      .toThrow('列「标签」是多选列，格子要一列取值')
+    expect(() => checkCustom(columns(), { 'du-fa': '通读' }, {})).toThrow(/没有这个选项：通读/)
     expect(() => checkCustom(columns(), { tags: ['综述', '综述'] }, {})).toThrow(/重复的选项/)
   })
 
@@ -197,7 +197,7 @@ describe('paper columns', () => {
 
     const stale = { 'du-fa': '通读' }
     expect(() => checkCustom(columns(), stale, stale)).not.toThrow()
-    expect(() => checkCustom(columns(), { 'du-fa': '泛读' }, stale)).toThrow(/没有这个选项:泛读/)
+    expect(() => checkCustom(columns(), { 'du-fa': '泛读' }, stale)).toThrow(/没有这个选项：泛读/)
 
     // Multiselect cells arrive as new arrays, so compare elements to detect an unchanged value.
     expect(() => checkCustom(columns(), { tags: ['综述', '旧的'] }, { tags: ['综述', '旧的'] }))
@@ -293,7 +293,7 @@ describe('改类型', () => {
       paper('a', { tags: ['综述', '必读'] }), paper('b', { tags: ['综述', '必读'] }), paper('c', { tags: ['综述'] }),
     ]
     expect(() => retypedColumn(only(TAGS), papers, 'tags', 'select'))
-      .toThrow('列「标签」有 2 篇论文填着多个值,改不成单选列')
+      .toThrow('列「标签」有 2 篇论文填着多个值，改不成单选列')
   })
 
   it('多选 → 文本:多个值用「, 」连成一段,空列表的格子空着,清空选项,分组里摘掉这一列', () => {
@@ -313,7 +313,7 @@ describe('改类型', () => {
   })
 
   it('没有这一列、或已经是这一档,拒', () => {
-    expect(() => retypedColumn(only(NOTE), [], 'nope', 'select')).toThrow('论文表里没有这一列:nope')
+    expect(() => retypedColumn(only(NOTE), [], 'nope', 'select')).toThrow('论文表里没有这一列：nope')
     expect(() => retypedColumn(only(NOTE), [], 'note', 'text')).toThrow('列「备注」已经是文本列')
   })
 
@@ -332,7 +332,7 @@ describe('改类型', () => {
     expect([...cells]).toEqual([['a', ['综述', '必读']], ['b', []], ['c', ['必读']]])
     expect(restoredColumn(now, [], TAGS, null, {}).columns.groups).toEqual(['topics', 'readState'])
     expect(restoredColumn(only(TAGS, ['topics', 'tags']), [], TAGS, 0, {}).columns.groups).toEqual(['topics', 'tags'])
-    expect(() => restoredColumn(only(NOTE), [], TAGS, null, {})).toThrow('论文表里没有这一列:tags')
+    expect(() => restoredColumn(only(NOTE), [], TAGS, null, {})).toThrow('论文表里没有这一列：tags')
   })
 
   it('写回一列到文本:即使分组里此刻还留着它,也把它摘掉——文本列不能分组', () => {

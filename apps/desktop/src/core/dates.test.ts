@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { FeedEntry } from '../shared/contract.js'
-import { feedNewestFirst, localDayOf } from './dates.js'
+import { localDayOf } from '../shared/dates.js'
+import { feedNewestFirst } from './dates.js'
 
 const entry = (id: string, createdAt: string | undefined, day = '今天'): FeedEntry => ({
   id, source: 'steward', day, time: '刚刚',

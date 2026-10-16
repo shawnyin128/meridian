@@ -28,6 +28,7 @@ export const common = {
   archived: '已归档',
   count: (n: number) => `${n}`,
   priority: { p0: '紧急', p1: '常规', p2: '较低' },
+  daySections: { today: '今天', yesterday: '昨天', week: '本周', earlier: '更早' },
   nav: { back: '返回' },
   panel: { close: '收起详情' },
   details: { expand: '展开详情', collapse: '收起详情' },

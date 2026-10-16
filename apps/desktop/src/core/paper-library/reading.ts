@@ -34,7 +34,7 @@ export function applyReadingMutation(
   }
   if (mutation.kind === 'highlight.update') {
     if (!reading.highlights.some((item) => item.id === mutation.id)) {
-      throw new Error(`高亮不存在:${mutation.id}`)
+      throw new Error(`高亮不存在：${mutation.id}`)
     }
     return {
       ...reading,
@@ -50,7 +50,7 @@ export function applyReadingMutation(
   }
   if (mutation.kind === 'highlight.delete') {
     if (!reading.highlights.some((item) => item.id === mutation.id)) {
-      throw new Error(`高亮不存在:${mutation.id}`)
+      throw new Error(`高亮不存在：${mutation.id}`)
     }
     return { ...reading, highlights: reading.highlights.filter((item) => item.id !== mutation.id) }
   }
@@ -66,7 +66,7 @@ export function applyReadingMutation(
   }
   if (mutation.kind === 'note.update') {
     if (!reading.notes.some((item) => item.id === mutation.id)) {
-      throw new Error(`笔记不存在:${mutation.id}`)
+      throw new Error(`笔记不存在：${mutation.id}`)
     }
     return {
       ...reading,
@@ -78,7 +78,7 @@ export function applyReadingMutation(
   if (mutation.kind === 'remark.set') return { ...reading, remark: mutation.text.trim() }
   if (mutation.kind === 'progress.set') return { ...reading, lastPage: mutation.page }
   if (!reading.notes.some((item) => item.id === mutation.id)) {
-    throw new Error(`笔记不存在:${mutation.id}`)
+    throw new Error(`笔记不存在：${mutation.id}`)
   }
   return { ...reading, notes: reading.notes.filter((item) => item.id !== mutation.id) }
 }

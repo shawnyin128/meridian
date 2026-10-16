@@ -110,7 +110,7 @@ describe('review queue on the fixture library', () => {
   it('引用了没验证的项目结论:照样排队,列表标出待验证的结论,应用被拒且留在队列;验证之后能应用', async () => {
     const [valid] = queue.list('queued')
     expect(valid!.unverified).toEqual(['projects/draft#knee'])
-    await expect(queue.decide(valid!.id, 'apply')).rejects.toThrow('结论待验证:projects/draft#knee。验证之后再应用')
+    await expect(queue.decide(valid!.id, 'apply')).rejects.toThrow('结论待验证：projects/draft#knee。验证之后再应用')
     expect(queue.list().find((p) => p.id === valid!.id)!.status).toBe('queued')
     expect((await queue.propose(envelope(store, [addClaim('unverified')]))).status).toBe('queued')
     verify(store, 'draft', 'knee')
@@ -123,7 +123,7 @@ describe('review queue on the fixture library', () => {
     const before = store.wikiAggregation('topics/ptq-weight-only')
     const receipt = await queue.decide(stale!.id, 'apply')
     expect(receipt.status).toBe('rejected')
-    expect(receipt.reason).toMatchObject({ kind: 'stale', message: expect.stringContaining('提案过期:topics/ptq-weight-only') })
+    expect(receipt.reason).toMatchObject({ kind: 'stale', message: expect.stringContaining('提案过期：topics/ptq-weight-only') })
     expect(store.wikiAggregation('topics/ptq-weight-only')).toEqual(before)
     const [valid] = queue.list('queued')
     expect(await queue.decide(valid!.id, 'decline', '证据不够')).toEqual({
@@ -150,7 +150,7 @@ describe('review queue on the fixture library', () => {
     expect(await outcome(envelope(store, [addClaim('m'), { op: 'setParents', page: 'topics/qat', parents: [] }], { key: 'parents' })))
       .toEqual({ kind: 'invalid', message: 'agent 只能提交结论相关的提案' })
     expect(await outcome({ ...envelope(store, [addClaim('a')], { key: 'a' }), base: {} }))
-      .toEqual({ kind: 'invalid', message: '提案没有给出它依据的页的版本:topics/qat' })
+      .toEqual({ kind: 'invalid', message: '提案没有给出它依据的页的版本：topics/qat' })
     expect(await outcome({ ...envelope(store, [addClaim('b')], { key: 'b' }), base: { 'topics/qat': { fm: '0000000000000000', body: '0000000000000000' } } }))
       .toMatchObject({ kind: 'stale', message: expect.stringContaining('没有落盘。按现在的页重新生成。') })
     expect(await outcome({ ...envelope(store, [addClaim('c')], { key: 'c' }), producer: { kind: 'human' } }))
@@ -166,13 +166,13 @@ describe('review queue on the fixture library', () => {
     expect(await reason([{ kind: 'wiki', ref: 'topics/ptq' }])).toMatchObject({ kind: 'invalid', message: expect.stringContaining('实验证据') })
     expect(await reason([{ kind: 'experiment', project: 'draft', node: 'knee' }, { kind: 'personal', text: '我觉得' }]))
       .toEqual({ kind: 'invalid', message: '只有「我」能写个人判断' })
-    expect(await reason([{ kind: 'experiment', project: 'nope', node: 'wide' }])).toEqual({ kind: 'invalid', message: '项目不存在:nope' })
+    expect(await reason([{ kind: 'experiment', project: 'nope', node: 'wide' }])).toEqual({ kind: 'invalid', message: '项目不存在：nope' })
     expect(await reason([{ kind: 'experiment', project: 'draft', node: 'wide' }]))
-      .toEqual({ kind: 'invalid', message: '节点 wide 还没有结论:先用 record_conclusion 记下它的结论,再拿它当证据' })
+      .toEqual({ kind: 'invalid', message: '节点 wide 还没有结论：先用 record_conclusion 记下它的结论，再拿它当证据' })
   })
 
   it('提交:协议版本不对或不是信封的形状就抛错,说清原因', async () => {
-    await expect(queue.propose({ ...envelope(store, [addClaim('p')]), protocol: 2 })).rejects.toThrow('提案协议版本 2 不认识,Core 只认 1;请更新 App')
+    await expect(queue.propose({ ...envelope(store, [addClaim('p')]), protocol: 2 })).rejects.toThrow('提案协议版本 2 不认识，Core 只认 1；请更新 App')
     await expect(queue.propose({ protocol: 1, ops: [] })).rejects.toThrow(/提案的格式不对/)
   })
 
@@ -192,10 +192,10 @@ describe('review queue on the fixture library', () => {
     const op = { op: 'addClaim', page: 'topics/qat', claim: { id: 'q', text: 'x', evidence: [{ kind: 'experiment', project: 'draft', node: 'knee' }, source] } } as ProposalOp
     const receipt = await queue.propose(envelope(store, [op]))
     expect(receipt.status).toBe('queued')
-    expect(queue.list()[0]!.notice).toBe('这些引句没有文字层可核对:papers/2305.17888 p.1')
+    expect(queue.list()[0]!.notice).toBe('这些引句没有文字层可核对：papers/2305.17888 p.1')
     const strict = createWikiProposals({ store, pdf: fakePdf('Nothing about that here.'), now: () => NOW })
     expect((await strict.propose(envelope(store, [op], { key: 'strict' }))).reason)
-      .toEqual({ kind: 'invalid', message: '引句在原文第 1 页找不到:papers/2305.17888' })
+      .toEqual({ kind: 'invalid', message: '引句在原文第 1 页找不到：papers/2305.17888' })
   })
 })
 
@@ -212,10 +212,10 @@ describe('quote verification', () => {
 
   it('页码超出原文页数、找不到引句的拒收;agent 的引句太短拒收,人工的不管长短', async () => {
     expect((await checkQuotes([source('anything at all here', 12)], '我', fakePdf('x', 11))).invalid)
-      .toBe('papers/p 的原文只有 11 页,没有第 12 页')
+      .toBe('papers/p 的原文只有 11 页，没有第 12 页')
     expect((await checkQuotes([source('not in the text at all')], '我', fakePdf('other words'))).invalid)
-      .toBe('引句在原文第 1 页找不到:papers/p')
-    expect((await checkQuotes([source('short')], 'ai:x', fakePdf('short'))).invalid).toBe('引句太短,至少要 12 个字符才能核对:papers/p')
+      .toBe('引句在原文第 1 页找不到：papers/p')
+    expect((await checkQuotes([source('short')], 'ai:x', fakePdf('short'))).invalid).toBe('引句太短，至少要 12 个字符才能核对：papers/p')
     expect((await checkQuotes([source('short')], '我', fakePdf('short'))).invalid).toBeNull()
     expect(await checkQuotes([source('whatever is quoted here')], '我', fakePdf(null))).toEqual({ invalid: null, unverifiable: ['papers/p p.1'] })
   })
@@ -406,9 +406,9 @@ describe('review queue on a vault', () => {
     ] })
     expect(await checkQuotes([op('READER  fixture\npage 1')], 'ai:x', pdf)).toEqual({ invalid: null, unverifiable: [] })
     expect((await checkQuotes([op('Reader fixture page 1', 3)], 'ai:x', pdf)).invalid)
-      .toBe('papers/13979-STAR-Speculative-Decodin 的原文只有 2 页,没有第 3 页')
+      .toBe('papers/13979-STAR-Speculative-Decodin 的原文只有 2 页，没有第 3 页')
     expect((await checkQuotes([op('this sentence is certainly not on the first page')], 'ai:x', pdf)).invalid)
-      .toBe('引句在原文第 1 页找不到:papers/13979-STAR-Speculative-Decodin')
+      .toBe('引句在原文第 1 页找不到：papers/13979-STAR-Speculative-Decodin')
     expect(await pdf('papers/no-such-paper', 1)).toEqual({ state: 'no-pdf' })
     expect(existsSync(inbox())).toBe(false)
   })

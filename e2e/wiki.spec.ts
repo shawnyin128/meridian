@@ -381,17 +381,17 @@ test('细分:挂上已有的同类聚合,拿掉;新名字回车新建一页', as
   await expect(shown(win).locator('.wkside .tagchip[data-wk="topics/quantization"]')).toHaveCount(1)
   const changes = await call<{ title: string; undoable: boolean }[]>(win, 'changelog.list', {})
   expect(changes.slice(0, 3).map((c) => c.title)).toEqual([
-    'Wiki · 新建 端到端新建的主题,归在 Quantization 下',
+    'Wiki · 新建 端到端新建的主题，归在 Quantization 下',
     'Wiki · 把 KV cache quantization 从 Quantization 下移出',
     'Wiki · 把 KV cache quantization 归到 Quantization 下',
   ])
 
   const latest = await call<{ id: string; title: string; undoable: boolean }[]>(win, 'changelog.list', {})
-  expect(latest[0]).toMatchObject({ title: 'Wiki · 新建 端到端新建的主题,归在 Quantization 下', undoable: true })
+  expect(latest[0]).toMatchObject({ title: 'Wiki · 新建 端到端新建的主题，归在 Quantization 下', undoable: true })
   await call(win, 'changelog.undo', { id: latest[0]!.id })
   expect((await aggFromCore(win, 'topics/quantization')).children.map((c) => c.id)).not.toContain('topics/端到端新建的主题')
   const afterUndo = await call<{ title: string }[]>(win, 'changelog.list', {})
-  expect(afterUndo[0]!.title).toBe('撤销:Wiki · 新建 端到端新建的主题,归在 Quantization 下')
+  expect(afterUndo[0]!.title).toBe('撤销：Wiki · 新建 端到端新建的主题，归在 Quantization 下')
 })
 
 test('论文对比:加一篇论文,拿掉;改列——改名生效,删有格子的列被拒', async ({ win }) => {

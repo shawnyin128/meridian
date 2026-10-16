@@ -104,7 +104,7 @@ export function createBackground(deps: {
         if (error instanceof HttpStatusError && error.status === 429) {
           throw new Error('Semantic Scholar 正在限流，请稍后重试；也可以先按姓名保存为未确认作者')
         }
-        throw new Error(`没能搜索作者:${netReason(error)}`)
+        throw new Error(`没能搜索作者：${netReason(error)}`)
       }
     },
     async suggestWatches(input) {
@@ -114,7 +114,7 @@ export function createBackground(deps: {
         if (error instanceof HttpStatusError && error.status === 429) {
           throw new Error('论文检索正在限流，请稍后重试')
         }
-        throw new Error(`没能生成关注建议:${netReason(error)}`)
+        throw new Error(`没能生成关注建议：${netReason(error)}`)
       }
     },
     async fetchDiscoveries(projectId, force) {
@@ -125,9 +125,9 @@ export function createBackground(deps: {
           body: {
             kind: 'runs',
             runs: [
-              { kind: 'text', text: '发现:' },
+              { kind: 'text', text: '发现：' },
               { kind: 'strong', text: `${result.added} 篇新论文推荐` },
-              { kind: 'text', text: `(${result.projects} 个项目)。` },
+              { kind: 'text', text: `（${result.projects} 个项目）。` },
             ],
           },
         })

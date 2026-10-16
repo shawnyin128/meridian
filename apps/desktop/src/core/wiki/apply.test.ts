@@ -222,9 +222,9 @@ describe('applyProposal', () => {
       '+ papers/b ∈ topics/leaf(1 格)',
       '- papers/a ∈ topics/leaf',
       '+ topics/leaf § 结论:一条',
-      '~ methods/m 列:a',
-      '~ topics/leaf 元数据:Leaf',
+      '~ methods/m 列：a',
+      '~ topics/leaf 元数据：Leaf',
     ])
-    expect(describeOp({ op: 'setParents', page: 'topics/leaf', parents: ['topics/root', 'topics/x'] }, DATA)).toBe('~ topics/leaf 属于:topics/root,topics/x')
+    expect(describeOp({ op: 'setParents', page: 'topics/leaf', parents: ['topics/root', 'topics/x'] }, DATA)).toBe('~ topics/leaf 属于：topics/root,topics/x')
   })
 })

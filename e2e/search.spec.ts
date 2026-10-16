@@ -32,12 +32,12 @@ async function gotoReader(win: Page): Promise<void> {
 test('从动态屏搜:项目与论文两类各出一条,点项目那条进那个项目', async ({ win }) => {
   await search(win, 'EAGLE-2')
   await expect(rows(win)).toHaveText([
-    '项目:复现 EAGLE-2',
-    '论文:EAGLE-2: Faster Inference of Language Models with Dynamic Draft Trees',
+    '项目：复现 EAGLE-2',
+    '论文：EAGLE-2: Faster Inference of Language Models with Dynamic Draft Trees',
   ])
   await expect(win.locator('#sRes .rrow .rm')).toHaveText(['进行中 · speculative decoding', '2026 arXiv'])
 
-  await win.locator('#sRes .rrow', { hasText: '项目:' }).click()
+  await win.locator('#sRes .rrow', { hasText: '项目：' }).click()
   // As the demo's h.go() does, the panel closes before navigating.
   await expect(win.locator('#sRes')).toHaveCount(0)
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', '复现 EAGLE-2'])
@@ -47,9 +47,9 @@ test('从动态屏搜:项目与论文两类各出一条,点项目那条进那个
 test('从论文屏搜:只命中会话那一类,点它进那条会话', async ({ win }) => {
   await gotoPapers(win)
   await search(win, '摊薄')
-  await expect(rows(win)).toHaveText(['对话:摊薄的前提是共享前缀吗'])
+  await expect(rows(win)).toHaveText(['对话：摊薄的前提是共享前缀吗'])
 
-  await win.locator('#sRes .rrow', { hasText: '对话:' }).click()
+  await win.locator('#sRes .rrow', { hasText: '对话：' }).click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['对话', '摊薄的前提是共享前缀吗'])
   await expect(shown(win, '.msg')).toHaveCount(2)
   await expect(win.locator('#chatList .chat-row.on .ct-t')).toHaveText('摊薄的前提是共享前缀吗')
@@ -71,14 +71,14 @@ test('从阅读器搜:全局侧栏连同全局搜索一起收起,阅读器里搜
 test('从 wiki 屏搜聚合:点那条进聚合页,面包屑带上级', async ({ win }) => {
   await win.locator('[data-desk="wiki"]').click()
   await search(win, 'Distillation-based')
-  await expect(rows(win)).toHaveText(['方法:Distillation-based QAT'])
+  await expect(rows(win)).toHaveText(['方法：Distillation-based QAT'])
 
   await win.locator('#sRes .rrow').click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['我的库', 'Wiki', 'Distillation-based QAT'])
   await expect(shown(win, '.desk-head .t')).toHaveText('Distillation-based QAT')
 
   await search(win, 'Rotation')
-  await expect(rows(win).first()).toHaveText('方法:Rotation')
+  await expect(rows(win).first()).toHaveText('方法：Rotation')
   await win.locator('#sRes .rrow').first().click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['我的库', 'Wiki', 'Outlier suppression', 'Rotation'])
 })
@@ -105,11 +105,11 @@ test('从最近变动屏搜:命中多于上限时只出 SEARCH_LIMIT 条,点论�
 })
 
 test('只命中某几类时就只出那几类,清空与 Escape 都收起面板', async ({ win }) => {
-  await search(win, '对话:')
-  await expect(rows(win)).toHaveText(['对话:摊薄的前提是共享前缀吗', '对话:宽树在我们集群上还成立吗'])
+  await search(win, '对话：')
+  await expect(rows(win)).toHaveText(['对话：摊薄的前提是共享前缀吗', '对话：宽树在我们集群上还成立吗'])
 
   await search(win, 'Distillation-based')
-  await expect(rows(win)).toHaveText(['方法:Distillation-based QAT'])
+  await expect(rows(win)).toHaveText(['方法：Distillation-based QAT'])
 
   // Escape peels one layer, as in the demo: the panel closes and the typed text stays.
   await win.keyboard.press('Escape')
@@ -156,7 +156,7 @@ test('从对话屏搜项目:进那个项目,返回钮回到刚才那条会话', 
   await expect(win.locator('#crumb .cseg')).toHaveText(['对话', title])
 
   await search(win, 'EAGLE-2')
-  await win.locator('#sRes .rrow', { hasText: '项目:' }).click()
+  await win.locator('#sRes .rrow', { hasText: '项目：' }).click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', '复现 EAGLE-2'])
 
   // The project was opened from the chat screen, so the back button returns to that chat.

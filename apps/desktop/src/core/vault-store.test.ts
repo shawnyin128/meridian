@@ -250,7 +250,7 @@ describe('vault store', () => {
   it('库里没有 wiki/papers 时开库就报出缺的那个目录,不往库里写任何东西', () => {
     const bare = mkdtempSync(join(tmpdir(), 'meridian-bare-'))
     try {
-      expect(() => createVaultStore(bare)).toThrow(`库里没有论文页目录:${join(bare, 'wiki', 'papers')}`)
+      expect(() => createVaultStore(bare)).toThrow(`库里没有论文页目录：${join(bare, 'wiki', 'papers')}`)
       expect(readdirSync(bare)).toEqual([])
     } finally {
       rmSync(bare, { recursive: true, force: true })
@@ -262,7 +262,7 @@ describe('vault store', () => {
     try {
       cpSync(VAULT, bare, { recursive: true })
       rmSync(join(bare, 'wiki', 'schema.yaml'))
-      expect(() => createVaultStore(bare)).toThrow(`库里没有 Wiki 结构文件:${join(bare, 'wiki', 'schema.yaml')}`)
+      expect(() => createVaultStore(bare)).toThrow(`库里没有 Wiki 结构文件：${join(bare, 'wiki', 'schema.yaml')}`)
       expect(existsSync(join(bare, '.meridian'))).toBe(false)
     } finally {
       rmSync(bare, { recursive: true, force: true })
@@ -765,7 +765,7 @@ describe('vault store', () => {
     const reopened = createVaultStore(vault)
 
     expect(() => reopened.undoChange(reopened.listChanges()[0]!.id))
-      .toThrow(`科研图的边指向不存在的节点:${from} → gone`)
+      .toThrow(`科研图的边指向不存在的节点：${from} → gone`)
   })
 
   it('删掉的项目撤销删除之后原样回来', () => {
@@ -1807,8 +1807,8 @@ describe('vault store on the aggregation layout', () => {
     const add = (evidence: Evidence) => () => store.applyProposal({ source: 'user', title: '注入', ops: [{
       op: 'addClaim', page: 'topics/qat', claim: { id: 'inject', text: '正常的一句', evidence: [evidence] },
     }] })
-    expect(add({ kind: 'personal', text: attack })).toThrow('证据的 text 一行写完,不能有换行')
-    expect(add({ kind: 'source', paper: 'papers/2305.17888', page: 1, quote: attack })).toThrow('证据的 quote 一行写完,不能有换行')
+    expect(add({ kind: 'personal', text: attack })).toThrow('证据的 text 一行写完，不能有换行')
+    expect(add({ kind: 'source', paper: 'papers/2305.17888', page: 1, quote: attack })).toThrow('证据的 quote 一行写完，不能有换行')
     expect(readFileSync(page, 'utf8')).toBe(before)
   })
 

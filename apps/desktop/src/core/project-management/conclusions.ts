@@ -18,7 +18,7 @@ export type ProjectClaim = {
 export type ProjectDispute = { node?: string | undefined; conclusion?: string | undefined }
 
 /** Why a verify is refused when the conclusion changed after the user last saw it. */
-export const CONCLUSION_CHANGED = '这条结论在你打开之后又被改过:已刷新成现在的内容,看过之后再验证'
+export const CONCLUSION_CHANGED = '这条结论在你打开之后又被改过：已刷新成现在的内容，看过之后再验证'
 
 /** A research-graph node holding a recorded conclusion. */
 export type ConcludedNode = GraphNode & { conclusion: NonNullable<GraphNode['conclusion']> }

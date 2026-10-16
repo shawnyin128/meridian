@@ -100,9 +100,9 @@ export function describeOp(op: ProposalOp, data: WikiData): string {
     case 'setMembership': return `+ ${op.paper} ∈ ${op.in}(${Object.keys(op.cells).length} 格)`
     case 'removeMembership': return `- ${op.paper} ∈ ${op.in}`
     case 'appendEntry': return `+ ${op.page} § ${op.section}:${op.text}`
-    case 'setColumns': return `~ ${op.page} 列:${op.columns.map((c) => c.key).join(',')}`
-    case 'setParents': return `~ ${op.page} 属于:${op.parents.join(',')}`
-    case 'setAggregationMetadata': return `~ ${op.page} 元数据:${op.title}`
+    case 'setColumns': return `~ ${op.page} 列：${op.columns.map((c) => c.key).join(',')}`
+    case 'setParents': return `~ ${op.page} 属于：${op.parents.join(',')}`
+    case 'setAggregationMetadata': return `~ ${op.page} 元数据：${op.title}`
     case 'addClaim': return `+ ${op.page}#${op.claim.id}:${op.claim.text}`
     case 'reviseClaim': {
       const version = claimAt(data, `${op.page}#${op.claim}`)?.version
@@ -160,7 +160,7 @@ function ordered<T extends Evidence | ConflictTarget>(item: T): T {
 
 /** Throws unless the text holds no line break; `what` names it in the message. */
 function oneLine(text: string, what: string): void {
-  if (/[\r\n]/.test(text)) throw new Error(`${what}一行写完,不能有换行`)
+  if (/[\r\n]/.test(text)) throw new Error(`${what}一行写完，不能有换行`)
 }
 
 /** Throws unless no string field of an evidence item or conflict target holds a line break. */
@@ -182,20 +182,20 @@ function unknownFields(claim: WikiClaimRecord): Record<string, unknown> {
 function checkExperiment(e: Extract<Evidence, { kind: 'experiment' }>, world: ClaimWorld, asEvidence: boolean): void {
   if (e.node === undefined && e.conclusion === undefined) throw new Error('实验证据要指明节点或结论')
   const project = world.project(e.project)
-  if (project === undefined) throw new Error(`项目不存在:${e.project}`)
-  if (e.node !== undefined && !project.nodes.includes(e.node)) throw new Error(`项目 ${e.project} 里没有节点:${e.node}`)
+  if (project === undefined) throw new Error(`项目不存在：${e.project}`)
+  if (e.node !== undefined && !project.nodes.includes(e.node)) throw new Error(`项目 ${e.project} 里没有节点：${e.node}`)
   if (e.conclusion !== undefined && !project.conclusions.includes(e.conclusion)) {
-    throw new Error(`项目 ${e.project} 里没有结论:${e.conclusion}`)
+    throw new Error(`项目 ${e.project} 里没有结论：${e.conclusion}`)
   }
   if (!asEvidence) return
   if (e.node !== undefined && !project.concluded.includes(e.node)) {
-    throw new Error(`节点 ${e.node} 还没有结论:先用 record_conclusion 记下它的结论,再拿它当证据`)
+    throw new Error(`节点 ${e.node} 还没有结论：先用 record_conclusion 记下它的结论，再拿它当证据`)
   }
   if (world.requireVerified && e.node !== undefined && !project.verified.includes(e.node)) {
-    throw new Error(`节点 ${e.node} 的结论还没验证:验证之后才能写进 Wiki`)
+    throw new Error(`节点 ${e.node} 的结论还没验证：验证之后才能写进 Wiki`)
   }
   if (world.requireVerified && e.conclusion !== undefined && !project.verifiedConclusions.includes(e.conclusion)) {
-    throw new Error(`结论 ${e.conclusion} 还没验证:验证之后才能写进 Wiki`)
+    throw new Error(`结论 ${e.conclusion} 还没验证：验证之后才能写进 Wiki`)
   }
 }
 
@@ -210,15 +210,15 @@ function checkEvidence(data: WikiData, items: Evidence[], world: ClaimWorld, hel
     oneLineFields(e)
     if (e.kind === 'source') paperOf(data, e.paper)
     if (e.kind === 'wiki' && (e.ref.includes('#') ? claimAt(data, e.ref) : data.pages[e.ref]) === undefined) {
-      throw new Error(`证据指向的页或结论不存在:${e.ref}`)
+      throw new Error(`证据指向的页或结论不存在：${e.ref}`)
     }
     if (e.kind === 'experiment') checkExperiment(e, world, true)
     if (e.kind === 'note') {
       paperOf(data, e.paper)
-      if ((e.highlight === undefined) === (e.note === undefined)) throw new Error('笔记证据要指明一条高亮或一条笔记,只能指一个')
+      if ((e.highlight === undefined) === (e.note === undefined)) throw new Error('笔记证据要指明一条高亮或一条笔记，只能指一个')
       const reading = world.reading(e.paper)
       const found = e.highlight !== undefined ? reading.highlights.includes(e.highlight) : reading.notes.includes(e.note!)
-      if (!found) throw new Error(`${e.paper} 的阅读记录里没有这一条:${e.highlight ?? e.note}`)
+      if (!found) throw new Error(`${e.paper} 的阅读记录里没有这一条：${e.highlight ?? e.note}`)
     }
     if (e.kind === 'personal' && world.by !== HUMAN) throw new Error('只有「我」能写个人判断')
     const key = identity(e)
@@ -230,14 +230,14 @@ function checkEvidence(data: WikiData, items: Evidence[], world: ClaimWorld, hel
 /** Throws when a producer other than the user gives no experiment item: only a project's finding may become an agent's claim. */
 function requireExperiment(items: Evidence[], world: ClaimWorld): void {
   if (world.by !== HUMAN && !items.some((e) => e.kind === 'experiment')) {
-    throw new Error('agent 提的结论要带实验证据:只有项目实际得到的结论才能写进 Wiki')
+    throw new Error('agent 提的结论要带实验证据：只有项目实际得到的结论才能写进 Wiki')
   }
 }
 
 /** The claim `claim` on aggregation `page` (id `pageId`). Throw when it is not there. */
 function claimIn(page: WikiAggregationRecord, pageId: string, claim: string): WikiClaimRecord {
   const found = (page.fm.claims ?? []).find((c) => c.id === claim)
-  if (found === undefined) throw new Error(`结论不存在:${pageId}#${claim}`)
+  if (found === undefined) throw new Error(`结论不存在：${pageId}#${claim}`)
   return found
 }
 
@@ -267,14 +267,14 @@ function changeClaim(
 /** Aggregation page from `data`. Throw when the id is absent or identifies a paper. */
 function aggregationOf(data: WikiData, id: string): WikiAggregationRecord {
   const page = data.pages[id]
-  if (page === undefined || isPaper(page)) throw new Error(`wiki 聚合不存在:${id}`)
+  if (page === undefined || isPaper(page)) throw new Error(`wiki 聚合不存在：${id}`)
   return page
 }
 
 /** Paper page from `data`. Throw when the id is absent or is not a paper. */
 function paperOf(data: WikiData, id: string): WikiPaperRecord {
   const page = data.pages[id]
-  if (page === undefined || !isPaper(page)) throw new Error(`wiki 论文页不存在:${id}`)
+  if (page === undefined || !isPaper(page)) throw new Error(`wiki 论文页不存在：${id}`)
   return page
 }
 
@@ -292,7 +292,7 @@ function reaches(data: WikiData, from: string, target: string, seen = new Set<st
 function checkColumns(columns: { key: string }[]): void {
   const seen = new Set<string>()
   for (const { key } of columns) {
-    if (seen.has(key)) throw new Error(`列键重复:${key}`)
+    if (seen.has(key)) throw new Error(`列键重复：${key}`)
     seen.add(key)
   }
 }
@@ -323,7 +323,7 @@ function step(data: WikiData, op: ProposalOp, today: string, ops: ProposalOp[], 
     case 'reviseClaim': {
       const claim = claimIn(aggregationOf(data, op.page), op.page, op.claim)
       oneLine(op.text, '结论')
-      if (op.text === claim.text) throw new Error(`新写法与现在的一样:${op.page}#${op.claim}`)
+      if (op.text === claim.text) throw new Error(`新写法与现在的一样：${op.page}#${op.claim}`)
       const given = op.evidence ?? []
       checkEvidence(data, given, world, claim.evidence)
       requireExperiment(given, world)
@@ -350,11 +350,11 @@ function step(data: WikiData, op: ProposalOp, today: string, ops: ProposalOp[], 
       const { id, against, note } = op.conflict
       oneLine(note, '冲突说明')
       oneLineFields(against)
-      if ((claim.conflicts ?? []).some((c) => c.id === id)) throw new Error(`这条结论上已经有冲突 ${id}:${self}`)
+      if ((claim.conflicts ?? []).some((c) => c.id === id)) throw new Error(`这条结论上已经有冲突 ${id}：${self}`)
       if (against.kind === 'claim') {
-        if (against.ref === self) throw new Error(`结论不能与自己冲突:${self}`)
+        if (against.ref === self) throw new Error(`结论不能与自己冲突：${self}`)
         const other = claimAt(data, against.ref)
-        if (other === undefined) throw new Error(`冲突指向的结论不存在:${against.ref}`)
+        if (other === undefined) throw new Error(`冲突指向的结论不存在：${against.ref}`)
         if ((other.conflicts ?? []).some((c) => c.id === id)) throw new Error(`${against.ref} 上已经有冲突 ${id}`)
       } else if (against.kind === 'source') {
         paperOf(data, against.paper)
@@ -371,7 +371,7 @@ function step(data: WikiData, op: ProposalOp, today: string, ops: ProposalOp[], 
       const self = `${op.page}#${op.claim}`
       const claim = claimIn(aggregationOf(data, op.page), op.page, op.claim)
       const conflict = (claim.conflicts ?? []).find((c) => c.id === op.conflict)
-      if (conflict === undefined) throw new Error(`这条结论上没有冲突 ${op.conflict}:${self}`)
+      if (conflict === undefined) throw new Error(`这条结论上没有冲突 ${op.conflict}：${self}`)
       oneLine(op.note, '处理说明')
       const pair = [self, ...(conflict.against.kind === 'claim' ? [conflict.against.ref] : [])]
       const inPair = (o: ProposalOp): boolean => 'claim' in o && typeof o.claim === 'string' && pair.includes(`${o.page}#${o.claim}`)
@@ -379,7 +379,7 @@ function step(data: WikiData, op: ProposalOp, today: string, ops: ProposalOp[], 
         throw new Error('「已修订」要在同一个提案里修订冲突中的一条结论')
       }
       if (op.outcome === 'split' && !ops.some((o) => o.op === 'addClaim' && pair.some((ref) => pageOfRef(ref) === o.page))) {
-        throw new Error('「已拆分」要在同一个提案里,在冲突结论所在的页上新增一条结论')
+        throw new Error('「已拆分」要在同一个提案里，在冲突结论所在的页上新增一条结论')
       }
       if (op.outcome === 'retracted' && !ops.some((o) => o.op === 'retractClaim' && inPair(o))) {
         throw new Error('「已撤回」要在同一个提案里撤回冲突中的一条结论')
@@ -396,21 +396,21 @@ function step(data: WikiData, op: ProposalOp, today: string, ops: ProposalOp[], 
       const page = aggregationOf(data, op.page)
       const claim = claimIn(page, op.page, op.claim)
       oneLine(op.reason, '撤回理由')
-      if ((claim.conflicts ?? []).length > 0) throw new Error(`先处理这条结论上的冲突,再撤回:${op.page}#${op.claim}`)
+      if ((claim.conflicts ?? []).length > 0) throw new Error(`先处理这条结论上的冲突，再撤回：${op.page}#${op.claim}`)
       pages[op.page] = withClaims(page, (page.fm.claims ?? []).filter((c) => c.id !== op.claim), today)
       return { ...data, pages }
     }
     case 'createAggregation': {
       const kind = data.kinds[op.kind]
-      if (kind === undefined) throw new Error(`schema 里没有这种聚合:${op.kind}`)
-      if (!op.id.startsWith(`${kind.dir}/`)) throw new Error(`${op.kind} 的页要在 ${kind.dir}/ 下:${op.id}`)
+      if (kind === undefined) throw new Error(`schema 里没有这种聚合：${op.kind}`)
+      if (!op.id.startsWith(`${kind.dir}/`)) throw new Error(`${op.kind} 的页要在 ${kind.dir}/ 下：${op.id}`)
       const slug = op.id.slice(kind.dir.length + 1)
       if (!/^[\p{L}\p{N}._-]+$/u.test(slug) || slug === '.' || slug === '..') {
-        throw new Error(`聚合的 id 只能是目录下的一个文件名:${op.id}`)
+        throw new Error(`聚合的 id 只能是目录下的一个文件名：${op.id}`)
       }
-      if (pages[op.id] !== undefined) throw new Error(`页已经存在:${op.id}`)
+      if (pages[op.id] !== undefined) throw new Error(`页已经存在：${op.id}`)
       for (const parent of op.parents) {
-        if (aggregationOf(data, parent).kind !== op.kind) throw new Error(`父聚合不是同一种:${parent}`)
+        if (aggregationOf(data, parent).kind !== op.kind) throw new Error(`父聚合不是同一种：${parent}`)
       }
       checkColumns(op.columns)
       pages[op.id] = {
@@ -451,8 +451,8 @@ function step(data: WikiData, op: ProposalOp, today: string, ops: ProposalOp[], 
       const columns = new Set((target.fm.columns ?? []).map((c) => c.key))
       const cells: Record<string, WikiCellRecord> = {}
       for (const [key, cell] of Object.entries(op.cells)) {
-        if (!columns.has(key)) throw new Error(`格子的键不在 ${op.in} 的列里:${key}`)
-        if (data.requireQuote && cell.quote === '') throw new Error(`格子没有原文引句:${op.in}.${key}`)
+        if (!columns.has(key)) throw new Error(`格子的键不在 ${op.in} 的列里：${key}`)
+        if (data.requireQuote && cell.quote === '') throw new Error(`格子没有原文引句：${op.in}.${key}`)
         cells[key] = { value: cell.value, at: { page: cell.page, quote: cell.quote } }
       }
       const membership: WikiMembershipRecord = { in: op.in, cells }
@@ -474,12 +474,12 @@ function step(data: WikiData, op: ProposalOp, today: string, ops: ProposalOp[], 
     }
     case 'appendEntry': {
       const page = aggregationOf(data, op.page)
-      if (!data.sections.some((s) => s.label === op.section)) throw new Error(`schema 里没有这个追加区:${op.section}`)
-      if (op.text.includes('\n')) throw new Error('追加区一条占一行,正文里不能有换行')
+      if (!data.sections.some((s) => s.label === op.section)) throw new Error(`schema 里没有这个追加区：${op.section}`)
+      if (op.text.includes('\n')) throw new Error('追加区一条占一行，正文里不能有换行')
       // Match wiki/page.ts appendEntry placement: after the section's last non-empty line, or directly below an empty heading.
       const lines = page.body.split('\n')
       const heading = lines.indexOf(`## ${op.section}`)
-      if (heading < 0) throw new Error(`页上没有「${op.section}」这一节:${op.page}`)
+      if (heading < 0) throw new Error(`页上没有「${op.section}」这一节：${op.page}`)
       let end = heading + 1
       while (end < lines.length && !lines[end]!.startsWith('## ')) end += 1
       let last = end - 1
@@ -508,11 +508,11 @@ function step(data: WikiData, op: ProposalOp, today: string, ops: ProposalOp[], 
     }
     case 'setParents': {
       const page = aggregationOf(data, op.page)
-      if (new Set(op.parents).size !== op.parents.length) throw new Error(`父聚合重复:${op.page}`)
+      if (new Set(op.parents).size !== op.parents.length) throw new Error(`父聚合重复：${op.page}`)
       for (const parent of op.parents) {
-        if (parent === op.page) throw new Error(`聚合不能挂在自己下面:${op.page}`)
-        if (aggregationOf(data, parent).kind !== page.kind) throw new Error(`父聚合不是同一种:${parent}`)
-        if (reaches(data, parent, op.page)) throw new Error(`挂到 ${parent} 下会成环:${op.page}`)
+        if (parent === op.page) throw new Error(`聚合不能挂在自己下面：${op.page}`)
+        if (aggregationOf(data, parent).kind !== page.kind) throw new Error(`父聚合不是同一种：${parent}`)
+        if (reaches(data, parent, op.page)) throw new Error(`挂到 ${parent} 下会成环：${op.page}`)
       }
       pages[op.page] = { ...page, fm: { ...page.fm, updated: today, parents: [...op.parents] } }
       return { ...data, pages }

@@ -5,9 +5,16 @@ import { describe, expect, it } from 'vitest'
 
 const RENDERER = join(import.meta.dirname)
 const MAIN = join(import.meta.dirname, '..', 'main')
+const CORE = join(import.meta.dirname, '..', 'core')
 const ZH_CATALOG = join(RENDERER, 'messages', 'zh')
 
 const HAN = /[㐀-鿿]/
+
+/** A Chinese character directly followed by a half-width comma, colon or question mark. */
+const HALF_WIDTH_AFTER_HAN = /[一-龥][,:?]/
+
+/** The quoted and template string literals on one line of source; Core's Chinese lives only in these. */
+const STRING_LITERALS = /'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g
 
 /**
  * Files exempt for good, not pending migration: they branch on locale directly and always carry
@@ -55,7 +62,19 @@ describe('用户可见文案的标点', () => {
     const offenders: string[] = []
     for (const path of sources(ZH_CATALOG)) {
       readFileSync(path, 'utf8').split('\n').forEach((line, at) => {
-        if (/[一-龥][,:?]/.test(line)) offenders.push(`${path}:${at + 1}  ${line.trim()}`)
+        if (HALF_WIDTH_AFTER_HAN.test(line)) offenders.push(`${path}:${at + 1}  ${line.trim()}`)
+      })
+    }
+    expect(offenders).toEqual([])
+  })
+
+  it('Core 写给用户的中文也不出现半角逗号、冒号、问号', () => {
+    const offenders: string[] = []
+    for (const path of sources(CORE)) {
+      readFileSync(path, 'utf8').split('\n').forEach((line, at) => {
+        if ((line.match(STRING_LITERALS) ?? []).some((literal) => HALF_WIDTH_AFTER_HAN.test(literal))) {
+          offenders.push(`${path}:${at + 1}  ${line.trim()}`)
+        }
       })
     }
     expect(offenders).toEqual([])

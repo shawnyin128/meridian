@@ -87,7 +87,7 @@ describe('parseAtom', () => {
   })
 
   it('arXiv 的错误条目抛出它自己的说明', () => {
-    expect(() => parseAtom(ERROR_ATOM)).toThrow('arXiv 拒绝了这次查询:incorrect id format for 1234.12345')
+    expect(() => parseAtom(ERROR_ATOM)).toThrow('arXiv 拒绝了这次查询：incorrect id format for 1234.12345')
   })
 })
 

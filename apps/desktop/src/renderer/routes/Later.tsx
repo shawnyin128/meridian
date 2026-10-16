@@ -7,7 +7,7 @@ import { useJobs } from '../shell/useJobs.js'
 import { DownloadRing, Icon, IconCross, IconRead } from '../components/icons.js'
 import { PaperCard, PaperCardBadge, PaperCardNotice } from '../components/paper/PaperCard.js'
 import { plainTitle } from '../components/paper/paper-text.js'
-import { DayHeading } from '../components/DayHeading.js'
+import { DayHeading, daySectionName } from '../components/DayHeading.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { useFormat } from '../lib/format.js'
@@ -116,7 +116,9 @@ export function Later() {
           )
           : groups.map((g) => (
             <Fragment key={g.key}>
-              <DayHeading count={g.items.length}>{g.key}</DayHeading>
+              <DayHeading count={g.items.length}>
+                {grouping === 'time' ? daySectionName(g.key, m.common.daySections) : g.key}
+              </DayHeading>
               {g.items.map((x) => (
                 <PaperCard
                   key={x.id} paperId={x.id} title={x.title}

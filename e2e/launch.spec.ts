@@ -57,7 +57,7 @@ test('指定的库里没有论文页目录时,内容区报出缺的目录,设置
   try {
     const win = await app.firstWindow()
     await expect(win.locator('.bootfail .desk-head .t')).toHaveText('论文库打不开')
-    await expect(win.locator('.bootfail .ipcerror')).toHaveText(`库里没有论文页目录:${join(bare, 'wiki', 'papers')}`)
+    await expect(win.locator('.bootfail .ipcerror')).toHaveText(`库里没有论文页目录：${join(bare, 'wiki', 'papers')}`)
     await win.locator('.bootfail .btn', { hasText: '打开设置' }).click()
     // The button opens settings on its default category (appearance), not a contextual jump to storage.
     await win.locator('.setdlg .srow[data-setcat="storage"]').click()
@@ -78,7 +78,7 @@ test('指定的库没有 Wiki 结构文件时,内容区报出缺的那个文件'
   })
   try {
     const win = await app.firstWindow()
-    await expect(win.locator('.bootfail .ipcerror')).toHaveText(`库里没有 Wiki 结构文件:${join(legacy, 'wiki', 'schema.yaml')}`)
+    await expect(win.locator('.bootfail .ipcerror')).toHaveText(`库里没有 Wiki 结构文件：${join(legacy, 'wiki', 'schema.yaml')}`)
   } finally {
     await app.close()
     rmSync(legacy, { recursive: true, force: true })
@@ -94,7 +94,7 @@ test('用户配置登记的库打不开时报错,不悄悄换成应用自己的�
   })
   try {
     const win = await app.firstWindow()
-    await expect(win.locator('.bootfail .ipcerror')).toHaveText(`库里没有论文页目录:${join(missing, 'wiki', 'papers')}`)
+    await expect(win.locator('.bootfail .ipcerror')).toHaveText(`库里没有论文页目录：${join(missing, 'wiki', 'papers')}`)
   } finally {
     await app.close()
     rmSync(home, { recursive: true, force: true })

@@ -346,7 +346,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       if (!entry) throw new Error('这次删除之后垃圾桶里没有多出一条')
       return { kind: 'trash', entry: entry.id }
     }
-    if (before === undefined) throw new Error('改动之前库里没有这个实体,存不下快照')
+    if (before === undefined) throw new Error('改动之前库里没有这个实体，存不下快照')
     switch (before.kind) {
       case 'paper': return { kind: 'paper', snapshot: before.snapshot }
       case 'project': {
@@ -356,7 +356,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         return { kind: 'project', project }
       }
       case 'pages': return { kind: 'pages', pages: before.pages }
-      default: throw new Error('列这一类变动没有快照可存,还原要现成的那一份')
+      default: throw new Error('列这一类变动没有快照可存，还原要现成的那一份')
     }
   }
 
@@ -367,7 +367,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
   ): void => {
     const after = entityOf(target)
     const named = before ?? after
-    if (!named) throw new Error('这次写的前后库里都没有这个实体,记不下它是什么')
+    if (!named) throw new Error('这次写的前后库里都没有这个实体，记不下它是什么')
     rows = [{
       id: log.nextId(),
       title: target.kind === 'pages' || target.kind === 'columns' || target.kind === 'columnType'
@@ -425,7 +425,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
 
     renamePaperOption(key, from, to) {
       const column = ops.paperColumns().custom.find((c) => c.key === key)
-      if (!column) throw new Error(`论文表里没有这一列:${key}`)
+      if (!column) throw new Error(`论文表里没有这一列：${key}`)
       return wrote(
         { kind: 'columns', id: key },
         `论文表 · 列「${column.label}」的选项 ${from} → ${to}`,
@@ -438,7 +438,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     setPaperColumnType(key, type) {
       const target: ChangeTarget = { kind: 'columnType', id: key }
       const before = entityOf(target)
-      if (before?.kind !== 'columnType') throw new Error(`论文表里没有这一列:${key}`)
+      if (before?.kind !== 'columnType') throw new Error(`论文表里没有这一列：${key}`)
       const groupAt = ops.paperColumns().groups.indexOf(key)
       ops.setPaperColumnType(key, type)
       push(
@@ -602,12 +602,12 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       dropExpired()
       const at = rows.findIndex((row) => row.id === id)
       const row = rows[at]
-      if (!row) throw new Error(`最近变动里没有这一条:${id}`)
+      if (!row) throw new Error(`最近变动里没有这一条：${id}`)
       if (row.undone) throw new Error('这一条已经撤销过了')
       const { target, restore } = row
-      if (target === null) throw new Error('这一条撤不了:库里没有还原它所需的东西')
+      if (target === null) throw new Error('这一条撤不了：库里没有还原它所需的东西')
       if (restore === null) {
-        throw new Error(`这一条的快照已过 ${TRASH_RETENTION_DAYS} 天保留期,撤不了了`)
+        throw new Error(`这一条的快照已过 ${TRASH_RETENTION_DAYS} 天保留期，撤不了了`)
       }
 
       const before = entityOf(target)
@@ -616,10 +616,10 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         const newer = rows.slice(0, at)
           .filter((r) => !r.undone && r.target?.kind === target.kind && r.target.id === target.id)
         throw new Error(newer.length > 0
-          ? `这条之后该实体又被改过 ${newer.length} 次,先撤销较新的那几条`
+          ? `这条之后该实体又被改过 ${newer.length} 次，先撤销较新的那几条`
           : target.kind === 'columns' || target.kind === 'columnType'
-            ? '这一列之后又改过,撤销会盖掉那次改动'
-            : '这条之后该实体已经不是当时的样子,撤销会盖掉那次改动,所以拒绝')
+            ? '这一列之后又改过，撤销会盖掉那次改动'
+            : '这条之后该实体已经不是当时的样子，撤销会盖掉那次改动，所以拒绝')
       }
 
       if (restore.kind === 'paper') {
@@ -628,7 +628,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         const misfit = misfitCells(ops.paperColumns(), { ...held, custom: restore.snapshot.custom }, held.custom)[0]
         if (misfit !== undefined) {
           throw new Error(
-            `这篇论文的「${misfit.column.label}」列之后改过类型或选项,撤销会写进这一列现在放不下的值`, { cause: misfit.cause },
+            `这篇论文的「${misfit.column.label}」列之后改过类型或选项，撤销会写进这一列现在放不下的值`, { cause: misfit.cause },
           )
         }
       }
@@ -645,7 +645,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       const after = entityOf(target)
       rows = [{
         id: log.nextId(),
-        title: `撤销:${row.title}`,
+        title: `撤销：${row.title}`,
         meta: null,
         source: BY_ME,
         // Proposal targets hold full page text; a normal line diff would copy every page verbatim into the record.
@@ -670,7 +670,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
 
     archiveChange(id) {
       const row = rows.find((r) => r.id === id)
-      if (!row) throw new Error(`最近变动里没有这一条:${id}`)
+      if (!row) throw new Error(`最近变动里没有这一条：${id}`)
       if (row.archived) return
       rows = rows.map((r) => (r.id === id ? { ...r, archived: true } : r))
       log.save(rows)
@@ -683,7 +683,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     deleteChange(id) {
-      if (!rows.some((row) => row.id === id)) throw new Error(`最近变动里没有这一条:${id}`)
+      if (!rows.some((row) => row.id === id)) throw new Error(`最近变动里没有这一条：${id}`)
       rows = rows.filter((row) => row.id !== id)
       log.save(rows)
     },

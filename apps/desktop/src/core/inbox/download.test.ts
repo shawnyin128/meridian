@@ -40,14 +40,14 @@ describe('createInboxDownloads', () => {
       source: 'me',
       body: {
         runs: [
-          { text: '已入库:' },
+          { text: '已入库：' },
           { text: '《Fast Inference from Transformers via Speculative Decoding》' },
-          { text: ',元数据取自 arXiv。' },
+          { text: '，元数据取自 arXiv。' },
         ],
       },
     })
     expect(counter.writes).toBe(1)
-    await expect(downloads.download('specdec')).rejects.toThrow('这一条已经入库:specdec')
+    await expect(downloads.download('specdec')).rejects.toThrow('这一条已经入库：specdec')
   })
 
   it('主题关注归进对应主题且复用同一页;作者关注不归主题;都不进入最近变动', async () => {
@@ -86,13 +86,13 @@ describe('createInboxDownloads', () => {
       'https://arxiv.org/pdf/2608.01112': { status: 200, text: '<html>PDF is being generated</html>' },
     })
     await expect(downloads.download('sequoia2')).rejects
-      .toThrow('没能下载原文:服务器返回 503')
+      .toThrow('没能下载原文：服务器返回 503')
     await expect(downloads.download('drafterlite')).rejects
-      .toThrow('没能下载原文:取回的不是 PDF')
+      .toThrow('没能下载原文：取回的不是 PDF')
     const offline = createInboxDownloads({
       store, get: async () => { throw new TypeError('fetch failed') }, onWrite: () => {},
     })
-    await expect(offline.download('thunderkv')).rejects.toThrow('没能下载原文:网络不可用')
+    await expect(offline.download('thunderkv')).rejects.toThrow('没能下载原文：网络不可用')
     expect(store.listInbox().filter((entry) => entry.downloaded)).toEqual([])
     expect(downloads.progress()).toEqual([])
   })
@@ -105,7 +105,7 @@ describe('createInboxDownloads', () => {
     await vi.waitFor(() => expect(downloads.progress()).toEqual([
       { id: 'thunderkv', received: expect.any(Number), total: expect.any(Number) },
     ]))
-    await expect(downloads.download('thunderkv')).rejects.toThrow('这一条正在下载:thunderkv')
+    await expect(downloads.download('thunderkv')).rejects.toThrow('这一条正在下载：thunderkv')
     await pending
     expect(downloads.progress()).toEqual([])
     expect(store.listLater().find((entry) => entry.id === 'thunderkv')?.downloaded).toBe(true)

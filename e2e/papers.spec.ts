@@ -402,7 +402,7 @@ test('标签添加框:写被拒时输入框与打好的字都留着', async ({ w
   await call(win, 'papers.delete', { id: first.id })
   await input.press('Enter')
 
-  await expect(win.locator('#toast')).toContainText(`论文不存在:${first.id}`)
+  await expect(win.locator('#toast')).toContainText(`论文不存在：${first.id}`)
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(input).toHaveValue(ADDED_TOPIC)
@@ -428,7 +428,7 @@ test('标签添加框:点联想项写被拒时,候选层与打开的占位都留
   await call(win, 'papers.delete', { id: first.id })
   await hit.click()
 
-  await expect(win.locator('#toast')).toContainText(`论文不存在:${first.id}`)
+  await expect(win.locator('#toast')).toContainText(`论文不存在：${first.id}`)
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(hit).toHaveText(picked)
@@ -466,7 +466,7 @@ test('标签添加框:提交在路上时点外,写落地前候选层与占位都
     }
   })
 
-  await expect(win.locator('#toast')).toContainText(`论文不存在:${first.id}`)
+  await expect(win.locator('#toast')).toContainText(`论文不存在：${first.id}`)
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(input).toHaveValue(picked)
@@ -502,7 +502,7 @@ test('标签添加框:回车提交在路上时点外,写落地前占位、打的
     }
   })
 
-  await expect(win.locator('#toast')).toContainText(`论文不存在:${first.id}`)
+  await expect(win.locator('#toast')).toContainText(`论文不存在：${first.id}`)
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(input).toHaveValue(ADDED_TOPIC)
@@ -1143,7 +1143,7 @@ test('建列被 core 拒绝:占位格与打好的列名都留着,改了再回车
   // stays in it.
   expect(await head()).not.toContain('读法')
   await expect(newInput).toBeFocused()
-  await expect(win.locator('#toast')).toHaveText('列「读法」不是多选列,有论文填着多个值')
+  await expect(win.locator('#toast')).toHaveText('列「读法」不是多选列，有论文填着多个值')
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   // After the rejection the placeholder, type popover, typed name and chosen type (Single choice,
   // not the default Text) all remain.
@@ -1679,7 +1679,7 @@ test('改类型:多选 → 单选时有论文填着多个值,整次被拒,toast 
   await gotoPapers(win)
   await firstPage(win)
   await retype(win, '标签', '单选')
-  await expect(win.locator('#toast')).toHaveText('列「标签」有 2 篇论文填着多个值,改不成单选列')
+  await expect(win.locator('#toast')).toHaveText('列「标签」有 2 篇论文填着多个值，改不成单选列')
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   // Rejected: Multiple choice stays selected in the type row; the table cells and Core are unchanged.
   await expect(win.locator('[data-radix-popper-content-wrapper] .typerow .ctbtn[title="多选"]'))

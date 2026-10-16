@@ -98,14 +98,14 @@ const ids = (data: WikiData): string[] => Object.keys(data.pages).sort()
 /** Aggregation page from `data`. Throw when the id is absent or identifies a paper. */
 function aggregationOf(data: WikiData, id: string): WikiAggregationRecord {
   const page = data.pages[id]
-  if (page === undefined || isPaper(page)) throw new Error(`wiki 聚合不存在:${id}`)
+  if (page === undefined || isPaper(page)) throw new Error(`wiki 聚合不存在：${id}`)
   return page
 }
 
 /** Schema kind for an aggregation page. Throw when the schema does not declare it. */
 function kindOf(data: WikiData, page: WikiAggregationRecord): WikiKindRecord {
   const kind = data.kinds[page.kind]
-  if (kind === undefined) throw new Error(`schema 里没有这种聚合:${page.kind}`)
+  if (kind === undefined) throw new Error(`schema 里没有这种聚合：${page.kind}`)
   return kind
 }
 
@@ -146,7 +146,7 @@ const GENERATED_MARK = /^<!-- (?:generated:\w+|\/generated) -->$/m
 
 /** Throws if `body` holds a generated-region marker line; `id` names the page in the message. */
 export function checkBody(id: string, body: string): void {
-  if (GENERATED_MARK.test(body)) throw new Error(`正文里不能有生成区的标记:${id}`)
+  if (GENERATED_MARK.test(body)) throw new Error(`正文里不能有生成区的标记：${id}`)
 }
 
 /** First non-heading, non-empty body line used as the card summary. */
@@ -398,7 +398,7 @@ export function aggregationView(data: WikiData, id: string): Omit<WikiAggregatio
  */
 export function wikiPaper(data: WikiData, id: string, version: PageVersion): WikiPaper {
   const page = data.pages[id]
-  if (page === undefined || !isPaper(page)) throw new Error(`wiki 论文页不存在:${id}`)
+  if (page === undefined || !isPaper(page)) throw new Error(`wiki 论文页不存在：${id}`)
   const memberships = (page.fm.memberships ?? []).flatMap((m) => {
     const aggregation = data.pages[m.in]
     if (aggregation === undefined || isPaper(aggregation)) return []
@@ -437,7 +437,7 @@ export function wikiSearchIndex(data: WikiData): SearchHit[] {
     .map((id): SearchHit => ({
       kind: 'aggregation',
       target: id,
-      title: `${kind.label}:${(data.pages[id] as WikiAggregationRecord).fm.title}`,
+      title: `${kind.label}：${(data.pages[id] as WikiAggregationRecord).fm.title}`,
       meta: 'Wiki',
     })))
 }
