@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type {
-  ProjectDetail as Project, ResearchGraph as ResearchGraphData, ResearchIdea,
+  ProjectDetail as Project, RelationGroup, ResearchGraph as ResearchGraphData, ResearchIdea,
   ResearchIdeaGraphPlacement, TaskWindow,
 } from '../../shared/contract.js'
 import { projectControlState } from '../../shared/project-control.js'
@@ -53,6 +53,7 @@ import {
 } from '../components/PageShell.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
 import { plainTitle } from '../components/paper/paper-text.js'
+import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import './shell.css'
 import './ProjectDetail.css'
@@ -162,6 +163,7 @@ export function ProjectDetail({
   const [linkedIdeas, setLinkedIdeas] = useState<ResearchIdea[]>([])
   const [relAdding, setRelAdding] = useState(false)
   const [relGroup, setRelGroup] = useState<string>(PROJECT_RELATION_GROUPS[0])
+  const [relEditing, setRelEditing] = useState<RelationGroup['items'][number] | null>(null)
   const [creating, setCreating] = useState<PlanCreating | null>(null)
   // A new object on every locate: clicking the same row again changes its identity, so the effect below reruns.
   const [flash, setFlash] = useState<{ id: string } | null>(null)
@@ -189,10 +191,12 @@ export function ProjectDetail({
   const relRow = useRef<HTMLDivElement>(null)
   const relAdd = useRef<HTMLButtonElement>(null)
   const relTriggers = useMemo(() => [relAdd], [])
+  const relEditRow = useRef<HTMLDivElement>(null)
 
   const stopRel = useCallback(() => {
     setRelAdding(false)
   }, [])
+  const stopRelEdit = useCallback(() => setRelEditing(null), [])
   const banner = useBanner()
   const toast = useToast()
   const today = useToday()
@@ -326,15 +330,16 @@ export function ProjectDetail({
   }, [flash])
 
   /**
-   * Discards the open new row, the Links add row and the Project notes editor. The demo's
+   * Discards the open new row, the Links add and edit rows and the Project notes editor. The demo's
    * renderProject rewrote the whole deskBody, losing any rows and forms inserted in it, and rebuilt
    * the notes box from the source text.
    */
   const discardOpenEdits = useCallback(() => {
     setCreating(null)
     stopRel()
+    stopRelEdit()
     setMemoEditing(false)
-  }, [stopRel])
+  }, [stopRel, stopRelEdit])
 
   /**
    * Finishes a write that returns the project: the project goes into state, then `write` bumps the
@@ -1107,6 +1112,37 @@ export function ProjectDetail({
                             />
                           ),
                       }}
+                    editing={relEditing === null
+                      ? undefined
+                      : {
+                        id: relEditing.id,
+                        row: relEditRow,
+                        input: relEditing.url !== undefined
+                          ? (
+                            <ProjectUrlDraft
+                              row={relEditRow} triggers={NO_TRIGGERS} onCancel={stopRelEdit}
+                              initial={{ url: relEditing.url, text: relEditing.text }}
+                              onInvalid={() => toast(m.project.links.urlInvalid)}
+                              onSubmit={(url, text) => writeProject(projectApi.updateRelation(
+                                projectId, relEditing.id, { text, url },
+                              ), m.project.links.updated)}
+                            />
+                          )
+                          : (
+                            <PickRow
+                              row={relEditRow} triggers={NO_TRIGGERS} allowNew initialText={relEditing.text}
+                              placeholder={m.project.links.pagePlaceholder} suggest={suggestPages}
+                              onCancel={stopRelEdit} onError={reportError}
+                              onPick={(hit) => writeProject(projectApi.updateRelation(projectId, relEditing.id, {
+                                text: hit.title, page: hit.id,
+                              }), m.project.links.updated)}
+                              onNew={(text) => writeProject(projectApi.updateRelation(projectId, relEditing.id, {
+                                text,
+                              }), m.project.links.updated)}
+                            />
+                          ),
+                      }}
+                    onEdit={setRelEditing}
                     onRemove={(relationId, text) => applyWrite(
                       projectApi.deleteRelation(projectId, relationId), m.project.links.removed(text), toast,
                     )}

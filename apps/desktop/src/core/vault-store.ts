@@ -3,8 +3,8 @@ import { basename, isAbsolute, join } from 'node:path'
 import type { z } from 'zod'
 import type {
   ChatSession, Conclusion, DeliverySettings, FeedEntry, FeedRun, GraphNode, PaperColumns, PaperImportResult, PaperReading, PaperRow, Proposal,
-  ProjectConclusion, ProjectDetail, ProjectWorkspaceBinding, ProposalRecord, ReadingMutation, ResearchGraph, ResearchIdea,
-  SearchHit, Task, TaskFields,
+  ProjectConclusion, ProjectDetail, ProjectWorkspaceBinding, ProposalRecord, ReadingMutation, RelationFields, ResearchGraph,
+  ResearchIdea, SearchHit, Task, TaskFields,
   WikiSignal,
 } from '../shared/contract.js'
 import {
@@ -738,6 +738,19 @@ export function createVaultStore(
     const project = projectById.get(id)
     if (!project) throw new Error(unreadableProjects.has(id) ? `项目页这个版本读不了(可能要更新 App):${id}` : `项目不存在:${id}`)
     return project
+  }
+
+  /**
+   * The text and target of a relation item. Throws when `page` names no aggregation of the
+   * vault, or both targets are given.
+   */
+  const relationFields = ({ text, page, url }: Omit<RelationFields, 'group'>) => {
+    if (page !== undefined) {
+      const target = wikiData.pages[page]
+      if (target === undefined || isPaper(target)) throw new Error(`wiki 聚合不存在:${page}`)
+    }
+    if (page !== undefined && url !== undefined) throw new Error('关联不能同时指向 Wiki 页和链接')
+    return { text, ...(page === undefined ? {} : { page }), ...(url === undefined ? {} : { url }) }
   }
 
   /** The conclusions of `project` whose research graph is `graph`, as the Conclusions view lists them. */
@@ -1557,18 +1570,10 @@ export function createVaultStore(
       }, ['milestones'])
     },
 
-    createRelation(projectId, { group, text, page, url }) {
+    createRelation(projectId, { group, ...fields }) {
       const project = projectOf(projectId)
-      if (page !== undefined) {
-        const target = wikiData.pages[page]
-        if (target === undefined || isPaper(target)) throw new Error(`wiki 聚合不存在:${page}`)
-      }
-      if (page !== undefined && url !== undefined) throw new Error('关联不能同时指向 Wiki 页和链接')
-      const item = {
-        id: nextId('rel'), text,
-        ...(page === undefined ? {} : { page }),
-        ...(url === undefined ? {} : { url }),
-      }
+      const checked = relationFields(fields)
+      const item = { id: nextId('rel'), ...checked }
       const seen = project.relations.some((r) => r.group === group)
       return writeProject({
         ...project,
@@ -1587,6 +1592,19 @@ export function createVaultStore(
         ...project,
         relations: project.relations.map((r) =>
           ({ ...r, items: r.items.filter((i) => i.id !== relationId) })),
+      }, ['relations'])
+    },
+
+    updateRelation(projectId, relationId, relation) {
+      const project = projectOf(projectId)
+      if (!project.relations.some((r) => r.items.some((i) => i.id === relationId))) {
+        throw new Error(`关联不存在:${relationId}`)
+      }
+      const item = { id: relationId, ...relationFields(relation) }
+      return writeProject({
+        ...project,
+        relations: project.relations.map((r) =>
+          ({ ...r, items: r.items.map((i) => (i.id === relationId ? item : i)) })),
       }, ['relations'])
     },
 

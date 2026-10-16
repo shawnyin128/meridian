@@ -1001,6 +1001,13 @@ export const ProjectDeleteRelationParamsSchema = z.object({
   relationId: z.string(),
 }).strict()
 
+/** Replaces a relation item's name and target; the item keeps its id, group and position. */
+export const ProjectUpdateRelationParamsSchema = z.object({
+  projectId: z.string(),
+  relationId: z.string(),
+  relation: RelationFieldsSchema.omit({ group: true }),
+}).strict()
+
 /** Links or unlinks a paper from a project using the paper-page ID. */
 export const ProjectPaperParamsSchema = z.object({
   projectId: z.string(),
@@ -2315,6 +2322,7 @@ export const CONTRACT_METHODS = [
   'project.deleteMilestone',
   'project.createRelation',
   'project.deleteRelation',
+  'project.updateRelation',
   'project.addPaper',
   'project.removePaper',
   'project.moveRelation',

@@ -204,6 +204,8 @@ export const project = {
     urlNamePlaceholder: '显示名（可选）',
     urlInvalid: '这不是一个有效的链接地址',
     added: '已添加关联',
+    editTitle: '编辑关联',
+    updated: '已更新关联',
     paperLinked: (title: string) => `已关联论文「${title}」`,
     paperRemoved: (title: string) => `已移除关联「${title}」`,
     removed: (text: string) => `已移除关联「${text}」`,

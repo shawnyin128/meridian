@@ -982,7 +982,7 @@ test('关联论文的候选行按标题任意一段命中,显示的是完整标�
     .toContainText('AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration')
 })
 
-test('关联 chip 上的 × 只移除这一条,不顺带打开它挂着的那一页', async ({ win }) => {
+test('关联 chip 上的 × 不用悬停就在,落在 chip 自己的框里;点它只移除这一条,不顺带打开它挂着的那一页', async ({ win }) => {
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
   const linked = side.locator('.wkrel .tagchip[data-wk]')
@@ -990,8 +990,14 @@ test('关联 chip 上的 × 只移除这一条,不顺带打开它挂着的那一
   const chip = linked.first()
   const text = await chip.innerText()
 
-  // The × takes no pointer events until the chip is hovered.
-  await chip.hover()
+  // Inside its chip's own box the × cannot be clipped by the side column, even on a chip as wide as the column.
+  for (const each of await side.locator('.wkrel .tagchip').all()) {
+    const remove = each.locator('.rx')
+    await expect(remove).toHaveCSS('opacity', '1')
+    const [outer, inner] = await Promise.all([each.boundingBox(), remove.boundingBox()])
+    expect(inner!.y).toBeGreaterThanOrEqual(outer!.y)
+    expect(inner!.x + inner!.width).toBeLessThanOrEqual(outer!.x + outer!.width)
+  }
   await chip.locator('.rx').click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', 'draft 效率'])
   await expect(win.locator('.screenslot:not([hidden]) .desk-head .t')).toHaveText('draft 效率')
@@ -999,6 +1005,37 @@ test('关联 chip 上的 × 只移除这一条,不顺带打开它挂着的那一
   await expect(linked).toHaveCount(before - 1)
   const relations = (await call<{ relations: { items: { text: string }[] }[] }>(win, 'project.get', { id: 'draft' })).relations
   expect(relations.flatMap((r) => r.items.map((i) => i.text))).not.toContain(text)
+})
+
+test('关联:点 chip 上的编辑就地改它,位置不变,改动写进库里', async ({ win }) => {
+  await gotoProject(win)
+  const side = win.locator('.screenslot:not([hidden]) .wkside')
+  const wikiRow = side.locator('.wkrel').filter({ has: win.locator('.rl', { hasText: 'Wiki' }) })
+  const chips = wikiRow.locator('.tagchip')
+  const before = await chips.allInnerTexts()
+  const page = (await chips.first().getAttribute('data-wk'))!
+
+  // Leaving the edit without a change closes it and leaves the item as it was, page link included.
+  await chips.first().locator('.tagchip-edit').click()
+  await win.locator('.screenslot:not([hidden]) .memo').click()
+  await expect(wikiRow.locator('.reladd')).toHaveCount(0)
+  await expect(chips).toHaveText(before)
+  await expect(chips.first()).toHaveAttribute('data-wk', page)
+
+  await chips.first().locator('.tagchip-edit').click()
+  const input = wikiRow.locator('.reladd .inedit')
+  await expect(input).toHaveValue(before[0]!)
+  await input.fill('端到端改名')
+  await expect(input).toHaveAttribute('aria-busy', 'false')
+  await input.press('Enter')
+
+  await expect(wikiRow.locator('.reladd')).toHaveCount(0)
+  await expect(chips).toHaveText(['端到端改名', ...before.slice(1)])
+  const stored = await call<{ relations: { group: string; items: { text: string }[] }[] }>(
+    win, 'project.get', { id: 'draft' },
+  )
+  expect(stored.relations.find((row) => row.group === 'Wiki')!.items.map((i) => i.text))
+    .toEqual(['端到端改名', ...before.slice(1)])
 })
 
 test('属性格进入编辑时不改变右栏和值列宽度,字也不挪位', async ({ win }) => {

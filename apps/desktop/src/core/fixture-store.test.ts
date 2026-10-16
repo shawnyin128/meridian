@@ -534,6 +534,29 @@ describe('fixture store', () => {
     expect(() => store.deleteRelation('draft', 'no-such-relation')).toThrow(/no-such-relation/)
   })
 
+  it('改一条关联就换成给的名字和指向,id、所在组和位置都不变', () => {
+    const before = store.getProject('draft').relations
+    const target = before.find((r) => r.group === 'Wiki')!.items.at(-1)!
+    const page = store.wikiCards()[0]!
+    const after = store.updateRelation('draft', target.id, { text: page.title, page: page.id })
+    expect(after.relations).toEqual(before.map((r) => ({
+      ...r,
+      items: r.items.map((i) => (i.id === target.id ? { id: target.id, text: page.title, page: page.id } : i)),
+    })))
+    const relinked = store.updateRelation('draft', target.id, { text: '实验看板', url: 'https://wandb.ai/team/draft' })
+    expect(relinked.relations.flatMap((r) => r.items).find((i) => i.id === target.id))
+      .toEqual({ id: target.id, text: '实验看板', url: 'https://wandb.ai/team/draft' })
+  })
+
+  it('改关联和新增一样校验指向,改不存在的条目会抛出', () => {
+    const id = store.getProject('draft').relations.find((r) => r.group === 'Wiki')!.items[0]!.id
+    expect(() => store.updateRelation('draft', id, { text: 'x', page: 'topics/nope' })).toThrow(/topics\/nope/)
+    expect(() => store.updateRelation('draft', id, {
+      text: 'x', page: store.wikiCards()[0]!.id, url: 'https://example.com',
+    })).toThrow(/同时/)
+    expect(() => store.updateRelation('draft', 'no-such-relation', { text: 'x' })).toThrow(/no-such-relation/)
+  })
+
   it('新建的附件带上了 id 并进入项目', () => {
     const before = store.getProject('draft').attachments.length
     const path = resolve(VAULT, 'sweep.csv')
@@ -2060,6 +2083,8 @@ describe('fixture store', () => {
       'project.createRelation': () => store.createRelation('draft', { group: 'Wiki', text: '新关联' }),
       'project.deleteRelation': () =>
         store.deleteRelation('draft', store.getProject('draft').relations[0]!.items[0]!.id),
+      'project.updateRelation': () =>
+        store.updateRelation('draft', store.getProject('draft').relations[0]!.items[0]!.id, { text: '改名' }),
       'project.createAttachment': () => store.createAttachment('draft', {
         name: '新附件.csv', size: '1 KB', path: resolve(VAULT, '新附件.csv'),
       }),

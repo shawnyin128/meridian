@@ -492,6 +492,10 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       return onProject(projectId, '删掉关联', () => ops.deleteRelation(projectId, relationId))
     },
 
+    updateRelation(projectId, relationId, relation) {
+      return onProject(projectId, '改了关联', () => ops.updateRelation(projectId, relationId, relation))
+    },
+
     addPaper(projectId, paperId) {
       return onProject(projectId, '关联论文', () => ops.addPaper(projectId, paperId))
     },

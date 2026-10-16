@@ -247,7 +247,7 @@ describe('change log', () => {
     expect(store.listChanges()).toEqual(before)
   })
 
-  it('改变持久知识的那 19 个写各记一条', () => {
+  it('改变持久知识的那 20 个写各记一条', () => {
     const writes: [string, () => unknown][] = [
       ['papers.update', () => store.updatePaper('Jiang-et-al-2024-Mixtral-of-Experts', { readState: '在读' })],
       ['papers.setColumnType', () => {
@@ -277,6 +277,8 @@ describe('change log', () => {
       ['project.createRelation', () => store.createRelation(PROJECT, { group: 'Wiki', text: '新关联' })],
       ['project.deleteRelation', () =>
         store.deleteRelation(PROJECT, store.getProject(PROJECT).relations[0]!.items[0]!.id)],
+      ['project.updateRelation', () =>
+        store.updateRelation(PROJECT, store.getProject(PROJECT).relations[0]!.items[0]!.id, { text: '改名' })],
       ['project.createAttachment', () =>
         store.createAttachment(PROJECT, {
           name: '新附件.csv', size: '1 KB', path: resolve('新附件.csv'),
@@ -286,7 +288,7 @@ describe('change log', () => {
       ['project.createEvent', () => store.createEvent(PROJECT, '[对话] 来自对话的结论')],
       ['project.delete', () => store.deleteProject(PROJECT)],
     ]
-    expect(writes).toHaveLength(19)
+    expect(writes).toHaveLength(20)
 
     for (const [method, write] of writes) {
       const before = store.listChanges().length
@@ -323,6 +325,15 @@ describe('change log', () => {
     expect(store.listChanges()[0]).toMatchObject({
       title: '撤销:Wiki · 给 PTQ 记一条', diff: ['~ topics/ptq'],
     })
+  })
+
+  it('改一条关联记下一条,撤销把它的名字和指向还原', () => {
+    const before = store.getProject(PROJECT).relations
+    const item = before[0]!.items[0]!
+    store.updateRelation(PROJECT, item.id, { text: '改名', url: 'https://example.com' })
+    expect(recorded()[0]).toMatchObject({ title: '项目「draft 效率」· 改了关联', undoable: true })
+    store.undoChange(recorded()[0]!.id)
+    expect(store.getProject(PROJECT).relations).toEqual(before)
   })
 
   it('新建的东西撤销之后就不在了,删掉的东西撤销之后回来了', () => {

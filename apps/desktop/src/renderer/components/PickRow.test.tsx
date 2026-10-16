@@ -146,4 +146,65 @@ describe('PickRow', () => {
     expect(paper!.innerHTML).toMatch(/^<strong>F<\/strong>luxBin <span><span class="katex">/)
     expect(topic!.innerHTML).toBe('a--b \\textbf{c}')
   })
+
+  it('从给定的文字开始:输入框里就是它,候选按它来查,没有候选时回车把它当新名字交出去', async () => {
+    const suggest = vi.fn((query: string) => { void query; return Promise.resolve<PickHit[]>([]) })
+    const onNew = vi.fn(() => true)
+    function Editing() {
+      const row = useRef<HTMLDivElement>(null)
+      return (
+        <div ref={row}>
+          <PickRow
+            row={row} triggers={[]} placeholder="挑一个" initialText="树宽收益拐点"
+            suggest={suggest} allowNew onPick={() => false} onNew={onNew} onCancel={() => {}} onError={() => {}}
+          />
+        </div>
+      )
+    }
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    act(() => { createRoot(host).render(<Editing />) })
+    await flush()
+
+    const input = host.querySelector('input')!
+    expect(input.value).toBe('树宽收益拐点')
+    expect(suggest).toHaveBeenCalledWith('树宽收益拐点')
+    await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })) })
+    expect(onNew).toHaveBeenCalledWith('树宽收益拐点')
+  })
+
+  it('从给定的文字开始时,没改就离开只收起;改了再离开像回车一样交出去;清空了离开也只收起', async () => {
+    const onNew = vi.fn(() => true)
+    const onCancel = vi.fn()
+    function Editing() {
+      const row = useRef<HTMLDivElement>(null)
+      return (
+        <div ref={row}>
+          <PickRow
+            row={row} triggers={[]} placeholder="挑一个" initialText="树宽收益拐点"
+            suggest={() => Promise.resolve([])} allowNew
+            onPick={() => false} onNew={onNew} onCancel={onCancel} onError={() => {}}
+          />
+        </div>
+      )
+    }
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    act(() => { createRoot(host).render(<Editing />) })
+    await flush()
+
+    await pressOutside()
+    expect(onNew).not.toHaveBeenCalled()
+    expect(onCancel).toHaveBeenCalledTimes(1)
+
+    await type('树宽收益拐点 v2')
+    await pressOutside()
+    expect(onNew).toHaveBeenCalledWith('树宽收益拐点 v2')
+    expect(onCancel).toHaveBeenCalledTimes(2)
+
+    await type('')
+    await pressOutside()
+    expect(onNew).toHaveBeenCalledTimes(1)
+    expect(onCancel).toHaveBeenCalledTimes(3)
+  })
 })

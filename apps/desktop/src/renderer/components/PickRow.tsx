@@ -20,14 +20,14 @@ const LIMIT = 8
  * name. Enter does nothing while the candidates have not caught up with the input, and the input
  * is `aria-busy` meanwhile. Enter, a candidate click, Esc, a press outside the draft and focus
  * leaving it go through `useInlineDraft`, which sends no second pick until the first has landed.
- * Leaving the draft with text in it acts as Enter does; leaving it empty, or at all with
- * `cancelOnLeave`, closes it.
+ * Leaving the draft with text in it acts as Enter does; leaving it empty, with `initialText`
+ * unchanged, or at all with `cancelOnLeave`, closes it.
  * `row` is the element that counts as inside the draft, mounted on it by the caller; pressing or
  * focusing one of the `triggers`, the buttons that open this draft, does not count as outside. A
- * failed `suggest` goes to `onError`.
+ * failed `suggest` goes to `onError`. The input starts out holding `initialText`.
  */
 export function PickRow({
-  row, triggers, placeholder, suggest, allowNew, onPick, onNew, onCancel, onError,
+  row, triggers, placeholder, initialText = '', suggest, allowNew, onPick, onNew, onCancel, onError,
   inputClassName = 'inedit pickin',
   inputAppearance = 'plain',
   cancelOnLeave = false,
@@ -35,6 +35,7 @@ export function PickRow({
   row: RefObject<HTMLElement | null>
   triggers: Array<RefObject<HTMLElement | null>>
   placeholder: string
+  initialText?: string
   suggest: (query: string) => Promise<PickHit[]>
   allowNew: boolean
   onPick: (hit: PickHit) => boolean | Promise<boolean>
@@ -45,7 +46,7 @@ export function PickRow({
   inputAppearance?: FormControlAppearance
   cancelOnLeave?: boolean
 }) {
-  const [text, setText] = useState('')
+  const [text, setText] = useState(initialText)
   const [hits, setHits] = useState<PickHit[]>([])
   const [answered, setAnswered] = useState('')
   const seq = useRef(0)
@@ -75,7 +76,8 @@ export function PickRow({
     return false
   }
   const draft = useInlineDraft({
-    row, triggers, onSubmit: pick, onCancel, isEmpty: () => cancelOnLeave || text.trim() === '',
+    row, triggers, onSubmit: pick, onCancel,
+    isEmpty: () => cancelOnLeave || text.trim() === '' || text.trim() === initialText.trim(),
   })
   // A stale result set must not be selected by Enter; the input's own onSubmit (pick) re-checks
   // `stale` and takes over instead, matching the mouse-pick path's staleness rule.
