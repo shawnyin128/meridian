@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import type { PaperFields, PaperRow, ReadState } from '../../shared/contract.js'
 import { READ_STATES } from '../../shared/vocabulary.js'
 import { papers } from '../ipc.js'
@@ -6,6 +6,7 @@ import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useToast } from '../shell/AppShell.js'
 import { InlineMetadataField } from './InlineField.js'
+import { PaperText } from './paper/PaperText.js'
 import { ProjectChips } from './ProjectChips.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import './PaperMetadata.css'
@@ -104,7 +105,7 @@ export function PaperMetadata({ paper, onSaved }: {
     return ok
   }
 
-  const editableRow = (field: EditableField, display: string) => (
+  const editableRow = (field: EditableField, display: ReactNode) => (
     <>
       <dt>{labels[field]}</dt>
       <dd className="paper-meta-editable">
@@ -127,8 +128,8 @@ export function PaperMetadata({ paper, onSaved }: {
     <div className="paper-meta" aria-busy={ratingSaving}>
       <div className="paper-meta-toolbar"><strong>{m.papers.metadata.heading}</strong></div>
       <dl className="paper-meta-list">
-        {editableRow('title', paper.title)}
-        {editableRow('shortTitle', paper.shortTitle ?? '')}
+        {editableRow('title', <PaperText text={paper.title} />)}
+        {editableRow('shortTitle', paper.shortTitle ? <PaperText text={paper.shortTitle} /> : '')}
         {editableRow('authors', paper.authors?.join(', ') ?? '')}
         {editableRow('venue', paper.venue)}
         {editableRow('year', paper.year?.toString() ?? '')}

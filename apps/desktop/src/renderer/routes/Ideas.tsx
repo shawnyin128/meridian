@@ -20,11 +20,12 @@ import { useDragReorder, type DragCardProps } from '../hooks/useDragReorder.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import type { Catalog } from '../messages/catalog.js'
+import { plainTitle } from '../components/paper/paper-text.js'
 import './Ideas.css'
 
 const sourceLabel = (idea: ResearchIdea) => idea.source.paperTitle === undefined
-  ? idea.source.chatTitle
-  : `${idea.source.paperTitle} · ${idea.source.chatTitle}`
+  ? plainTitle(idea.source.chatTitle)
+  : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
 
 const sourceKind = (idea: ResearchIdea, m: Catalog) => idea.source.agent === true
   ? m.ideas.sourceKind.agent

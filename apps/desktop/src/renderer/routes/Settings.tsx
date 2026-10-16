@@ -27,6 +27,8 @@ import { StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { WatchSettings } from './Watches.js'
+import { PaperText } from '../components/paper/PaperText.js'
+import { plainTitle } from '../components/paper/paper-text.js'
 import './shell.css'
 import './Settings.css'
 
@@ -115,7 +117,7 @@ export function Settings() {
 
   const unarchive = (session: ChatSession) => {
     void write(chat.setArchived(session.id, false),
-      { note: m.settings.archived.unarchived(session.title) })
+      { note: m.settings.archived.unarchived(plainTitle(session.title)) })
   }
 
   const openChat = (session: ChatSession) => {
@@ -398,7 +400,7 @@ export function Settings() {
             <StructuredList className="wlist">
               {archived.map((s) => (
                 <StructuredRow className="wrow" data-chat={s.id} key={s.id}>
-                  <span className="nm">{s.title}</span>
+                  <span className="nm"><PaperText text={s.title} /></span>
                   <button className="btn" onClick={() => openChat(s)}>{m.settings.archived.open}</button>
                   <button className="btn" onClick={() => unarchive(s)}>{m.settings.archived.unarchive}</button>
                 </StructuredRow>

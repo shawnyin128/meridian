@@ -7,6 +7,8 @@ import { useToast, useToday, useVaultRevision } from '../shell/AppShell.js'
 import { Icon } from '../components/icons.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { PaperText } from '../components/paper/PaperText.js'
+import { plainTitle } from '../components/paper/paper-text.js'
 import { StructuredList, StructuredRow } from '../components/StructuredList.js'
 import {
   PageBody, PageError, PageFooter, PageHeader, PageShell, PageTitle, SectionHeading,
@@ -21,6 +23,9 @@ import './Trash.css'
  * outside it, after the ordered kinds; ideas follow projects, and attachments stay last.
  */
 const KINDS: TrashEntry['kind'][] = ['inbox', 'paper', 'project', 'idea', 'attachment']
+/** The kinds whose title is a paper title. */
+const PAPER_KINDS: ReadonlySet<TrashEntry['kind']> = new Set(['inbox', 'paper'])
+const plainOf = (entry: TrashEntry): string => (PAPER_KINDS.has(entry.kind) ? plainTitle(entry.title) : entry.title)
 
 /** The title in the recovery banner is cut to this length, the same as the demo. */
 const TITLE_IN_BANNER = 18
@@ -68,7 +73,7 @@ export function Trash() {
 
   const restore = (entry: TrashEntry) => {
     void write(trash.restore(entry.id),
-      { note: m.trash.restored(entry.title.slice(0, TITLE_IN_BANNER)) })
+      { note: m.trash.restored(plainOf(entry).slice(0, TITLE_IN_BANNER)) })
   }
 
   const purge = (id: string) => {
@@ -113,7 +118,7 @@ export function Trash() {
               <StructuredList className="tgroup">
                 {g.items.map((entry) => (
                   <StructuredRow className="trow" key={entry.id}>
-                    <span className="tt2">{entry.title}</span>
+                    <span className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</span>
                     <span className="tm2">{m.trash.autoClear(daysLeft(entry.deletedAt, today))}</span>
                     <button
                       className="btn" disabled={!entry.restorable}
@@ -121,7 +126,7 @@ export function Trash() {
                     >{m.common.restore}</button>
                     <ConfirmDialog
                       trigger={<button className="btn tdel">{m.common.deletePermanently}</button>}
-                      title={m.trash.confirmPurge(entry.title)}
+                      title={m.trash.confirmPurge(plainOf(entry))}
                       confirmLabel={m.trash.confirmPurgeLabel} onConfirm={() => purge(entry.id)}
                     />
                   </StructuredRow>

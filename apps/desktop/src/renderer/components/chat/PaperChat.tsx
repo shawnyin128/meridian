@@ -13,6 +13,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { IdeaEditorDialog } from '../ideas/IdeaEditorDialog.js'
 import { GenerationControl } from '../GenerationControl.js'
 import { PaperText } from '../paper/PaperText.js'
+import { plainTitle } from '../paper/paper-text.js'
 import './Chat.css'
 
 /**
@@ -156,7 +157,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
       <div className="grip" id="rrgrip" {...grip} />
       {session === null || paper === null ? null : (
         <IdeaEditorDialog
-          open={savingIdea} sourceLabel={`${paper.title} · ${session.title}`}
+          open={savingIdea} sourceLabel={`${plainTitle(paper.title)} · ${plainTitle(session.title)}`}
           onOpenChange={setSavingIdea}
           onSubmit={(title, body) => write(
             ideaApi.create(session.id, title, body), { note: m.chat.ideaSavedNote },

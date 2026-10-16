@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ConflictTarget, Evidence, ProposalOp, WikiProposal } from '../../../shared/contract.js'
+import { PAPER_PAGE } from '../../../shared/vocabulary.js'
 import { useFormat } from '../../lib/format.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
@@ -9,6 +10,8 @@ import { EmptyState } from '../EmptyState.js'
 import { FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { PaperText } from '../paper/PaperText.js'
+import { plainTitle } from '../paper/paper-text.js'
 import './ReviewQueue.css'
 
 /** The button that opens the review queue, with the number of proposals waiting. */
@@ -36,7 +39,7 @@ function linesOf(op: ProposalOp, p: WikiProposal, w: Catalog['wiki']): string[] 
   const text = (ref: string): string => p.claimTexts[ref] ?? ref.split('#')[1]!
   const side = (item: Evidence | ConflictTarget): [string, string] => {
     switch (item.kind) {
-      case 'source': return [w.claims.evidence, c.quote(title(item.paper), item.page, item.quote)]
+      case 'source': return [w.claims.evidence, c.quote(plainTitle(title(item.paper)), item.page, item.quote)]
       case 'experiment': {
         const point = item.node ?? item.conclusion
         const name = [title(`projects/${item.project}`), ...(point === undefined ? [] : [title(`projects/${item.project}#${point}`)])]
@@ -44,7 +47,7 @@ function linesOf(op: ProposalOp, p: WikiProposal, w: Catalog['wiki']): string[] 
       }
       case 'wiki': return [w.claims.evidence, item.ref.includes('#') ? text(item.ref) : title(item.ref)]
       case 'claim': return [w.claims.conflict, text(item.ref)]
-      case 'note': return [w.claims.note, title(item.paper)]
+      case 'note': return [w.claims.note, plainTitle(title(item.paper))]
       case 'personal': return [w.claims.personal, item.text]
     }
   }
@@ -110,7 +113,7 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
             {queued.map((p) => (
               <StructuredRow key={p.id} className="review-row" data-proposal={p.id}>
                 <div className="review-head">
-                  <span className="review-title">{p.proposal?.title ?? r.unreadable}</span>
+                  <span className="review-title">{p.proposal ? <PaperText text={p.proposal.title} /> : r.unreadable}</span>
                   {p.staleNow ? <span className="stag pend">{r.stale}</span> : null}
                   {(p.unverified ?? []).length > 0 ? <span className="stag pend">{r.unverified}</span> : null}
                 </div>
@@ -136,7 +139,9 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                 <div className="wkrel">
                   <span className="rl">{r.pages}</span>
                   {p.pages.map((id) => (
-                    <span className="tagchip" data-wk={id} key={id} onClick={() => onOpenPage(id)}>{p.titles[id] ?? id}</span>
+                    <span className="tagchip" data-wk={id} key={id} onClick={() => onOpenPage(id)}>
+                      {id.startsWith(PAPER_PAGE) ? <PaperText text={p.titles[id] ?? id} /> : p.titles[id] ?? id}
+                    </span>
                   ))}
                 </div>
                 <div className="review-actions">
@@ -177,7 +182,7 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
               {decided.map((p) => (
                 <StructuredRow key={p.id} className="review-row" data-proposal={p.id}>
                   <div className="review-head">
-                    <span className="review-title">{p.proposal?.title ?? r.unreadable}</span>
+                    <span className="review-title">{p.proposal ? <PaperText text={p.proposal.title} /> : r.unreadable}</span>
                     <span className={`stag ${p.status === 'applied' ? 'ok' : 'mut'}`}>
                       {p.status === 'applied' ? r.applied
                         : p.reason?.kind === 'declined' ? r.rejected : `${r.rejected} · ${r.reasonKind[p.reason?.kind ?? 'invalid']}`}

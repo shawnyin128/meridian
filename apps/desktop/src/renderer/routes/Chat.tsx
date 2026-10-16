@@ -23,6 +23,8 @@ import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { CONFLICT_THREAD, sendsMessage } from '../lib/chat.js'
 import { IdeaEditorDialog } from '../components/ideas/IdeaEditorDialog.js'
 import { GenerationControl } from '../components/GenerationControl.js'
+import { PaperText } from '../components/paper/PaperText.js'
+import { plainTitle } from '../components/paper/paper-text.js'
 import './shell.css'
 import '../components/chat/Chat.css'
 
@@ -60,7 +62,7 @@ function mentionsOf(
     })),
     ...rows.map((p): Mention => ({
       kind: 'paper',
-      title: p.title,
+      title: plainTitle(p.title),
       meta: p.year === undefined ? p.readState : `${p.year} · ${p.readState}`,
       entity: p,
     })),
@@ -203,13 +205,13 @@ export function Chat() {
   // An archived chat is not listed in the sidebar. Once opened it looks like any other chat; only
   // the breadcrumb marks it as archived.
   const tail = useMemo<CrumbSeg[]>(
-    () => (title === null ? [] : [{ text: archived ? m.chat.archivedSuffix(title) : title }]),
+    () => (title === null ? [] : [{ text: archived ? m.chat.archivedSuffix(plainTitle(title)) : plainTitle(title) }]),
     [title, archived, m])
   useCrumbTail(tail)
 
   return (
     <PageShell className="chatcol">
-      <PageHeader><PageTitle>{title ?? m.chat.newChat}</PageTitle></PageHeader>
+      <PageHeader><PageTitle>{title === null ? m.chat.newChat : <PaperText text={title} />}</PageTitle></PageHeader>
 
       <PageBody>
         <div className="stream">
@@ -242,7 +244,7 @@ export function Chat() {
                     className="qa" key={mention.title}
                     title={m.chat.quickMentionTitle(m.chat.mentionGroup[mention.kind], mention.meta)}
                     onClick={() => quick(mention.title)}
-                  >@{mention.title}</button>
+                  >@{mention.kind === 'paper' ? <PaperText text={mention.entity.title} /> : mention.title}</button>
                 ))}
               </span>
             </div>
@@ -282,7 +284,7 @@ export function Chat() {
                         ? null
                         : <div className="rg">{m.chat.mentionGroup[hit.kind]}</div>}
                       <div className={at === keys.active ? 'rrow on' : 'rrow'} onClick={() => pick(hit.title)}>
-                        <div className="rt">@{hit.title}</div>
+                        <div className="rt">@{hit.kind === 'paper' ? <PaperText text={hit.entity.title} /> : hit.title}</div>
                         <div className="rm">{hit.meta}</div>
                       </div>
                     </Fragment>
@@ -296,7 +298,7 @@ export function Chat() {
 
       {id === null ? null : (
         <IdeaEditorDialog
-          open={savingIdea} sourceLabel={title ?? m.chat.currentChat} onOpenChange={setSavingIdea}
+          open={savingIdea} sourceLabel={title === null ? m.chat.currentChat : plainTitle(title)} onOpenChange={setSavingIdea}
           onSubmit={(ideaTitle, body) => write(
             ideaApi.create(id, ideaTitle, body), { note: m.chat.ideaSavedNote },
           )}
