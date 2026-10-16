@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useState } from 'react'
 import type { DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile } from '../../../shared/contract.js'
 import { discovery } from '../../ipc.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { useToast, useVaultRevision } from '../../shell/AppShell.js'
 import { SectionHeading } from '../PageShell.js'
+import { PaperText } from '../paper/PaperText.js'
 
 function resultNote(result: DiscoveryFetchResult, m: Catalog): string {
   const parts = [
@@ -85,7 +86,11 @@ export function DiscoverySettings() {
                     {intent.core ? <span className="direction-core">{m.settings.discovery.core}</span> : null}
                     <span>{intent.label}</span>
                   </div>
-                  <div className="direction-seeds">{intent.seeds.map((seed) => seed.title).join(' · ')}</div>
+                  <div className="direction-seeds">
+                    {intent.seeds.map((seed, at) => (
+                      <Fragment key={seed.id}>{at === 0 ? null : ' · '}<PaperText text={seed.title} /></Fragment>
+                    ))}
+                  </div>
                 </div>
                 <div className="direction-actions">
                   {!intent.core && intent.enabled ? (

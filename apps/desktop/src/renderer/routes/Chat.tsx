@@ -14,15 +14,17 @@ import type { Catalog } from '../messages/catalog.js'
 import { ChatMessageView, plain } from '../components/chat/ChatMessage.js'
 import { FOCUS_KEY } from '../../shared/project-signals.js'
 import { PickerPopover } from '../components/PickerPopover.js'
-import { FormInput } from '../components/FormControls.js'
+import { FormTextarea } from '../components/FormControls.js'
 import {
   PageBody, PageError, PageFooter, PageHeader, PageShell, PageTitle,
 } from '../components/PageShell.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
-import { CONFLICT_THREAD } from '../lib/chat.js'
+import { CONFLICT_THREAD, sendsMessage } from '../lib/chat.js'
 import { IdeaEditorDialog } from '../components/ideas/IdeaEditorDialog.js'
 import { GenerationControl } from '../components/GenerationControl.js'
+import { PaperText } from '../components/paper/PaperText.js'
+import { plainTitle } from '../components/paper/paper-text.js'
 import './shell.css'
 import '../components/chat/Chat.css'
 
@@ -60,7 +62,7 @@ function mentionsOf(
     })),
     ...rows.map((p): Mention => ({
       kind: 'paper',
-      title: p.title,
+      title: plainTitle(p.title),
       meta: p.year === undefined ? p.readState : `${p.year} · ${p.readState}`,
       entity: p,
     })),
@@ -105,7 +107,7 @@ export function Chat() {
   const [pages, setPages] = useState<WikiAggregationCard[]>([])
   const [error, setError] = useState<string | null>(null)
   const stream = useRef<HTMLDivElement>(null)
-  const composer = useRef<HTMLInputElement>(null)
+  const composer = useRef<HTMLTextAreaElement>(null)
   const consumed = useRef(0)
   const sendAttempt = useRef(0)
   const reportError = useCallback((e: Error) => setError(e.message), [])
@@ -203,13 +205,13 @@ export function Chat() {
   // An archived chat is not listed in the sidebar. Once opened it looks like any other chat; only
   // the breadcrumb marks it as archived.
   const tail = useMemo<CrumbSeg[]>(
-    () => (title === null ? [] : [{ text: archived ? m.chat.archivedSuffix(title) : title }]),
+    () => (title === null ? [] : [{ text: archived ? m.chat.archivedSuffix(plainTitle(title)) : plainTitle(title) }]),
     [title, archived, m])
   useCrumbTail(tail)
 
   return (
     <PageShell className="chatcol">
-      <PageHeader><PageTitle>{title ?? m.chat.newChat}</PageTitle></PageHeader>
+      <PageHeader><PageTitle>{title === null ? m.chat.newChat : <PaperText text={title} />}</PageTitle></PageHeader>
 
       <PageBody>
         <div className="stream">
@@ -242,7 +244,7 @@ export function Chat() {
                     className="qa" key={mention.title}
                     title={m.chat.quickMentionTitle(m.chat.mentionGroup[mention.kind], mention.meta)}
                     onClick={() => quick(mention.title)}
-                  >@{mention.title}</button>
+                  >@{mention.kind === 'paper' ? <PaperText text={mention.entity.title} /> : mention.title}</button>
                 ))}
               </span>
             </div>
@@ -252,13 +254,20 @@ export function Chat() {
               contentClassName="pickhits cres" contentId="cRes" side="top" align="center" sideOffset={6}
               anchor={(
                 <div className="cbox" id="cbox">
-                  <FormInput
-                    id="composer" ref={composer} value={draft} autoComplete="off"
+                  <FormTextarea
+                    id="composer" ref={composer} value={draft} rows={1} autoComplete="off"
                     placeholder={m.chat.composerPlaceholder} disabled={sending}
                     onChange={(e) => type(e.target.value)}
                     onKeyDown={(e) => {
-                      keys.onKeyDown(e)
-                      if (e.key === 'Enter' && suggest.length === 0) submit()
+                      // Only open candidates take the arrow keys; otherwise they move the caret between lines.
+                      if (suggest.length > 0) {
+                        if (e.nativeEvent.isComposing) return
+                        keys.onKeyDown(e)
+                        if (e.key === 'Enter') e.preventDefault()
+                      } else if (sendsMessage(e.nativeEvent)) {
+                        e.preventDefault()
+                        submit()
+                      }
                     }}
                   />
                   <GenerationControl
@@ -275,7 +284,7 @@ export function Chat() {
                         ? null
                         : <div className="rg">{m.chat.mentionGroup[hit.kind]}</div>}
                       <div className={at === keys.active ? 'rrow on' : 'rrow'} onClick={() => pick(hit.title)}>
-                        <div className="rt">@{hit.title}</div>
+                        <div className="rt">@{hit.kind === 'paper' ? <PaperText text={hit.entity.title} /> : hit.title}</div>
                         <div className="rm">{hit.meta}</div>
                       </div>
                     </Fragment>
@@ -289,7 +298,7 @@ export function Chat() {
 
       {id === null ? null : (
         <IdeaEditorDialog
-          open={savingIdea} sourceLabel={title ?? m.chat.currentChat} onOpenChange={setSavingIdea}
+          open={savingIdea} sourceLabel={title === null ? m.chat.currentChat : plainTitle(title)} onOpenChange={setSavingIdea}
           onSubmit={(ideaTitle, body) => write(
             ideaApi.create(id, ideaTitle, body), { note: m.chat.ideaSavedNote },
           )}

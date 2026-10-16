@@ -165,8 +165,8 @@ test('对照表的行是成员论文,格子按契约的列排,悬停看原文;�
   // Open the paper page.
   await table.locator(`[data-wk="${first.paper.id}"]`).click()
   const paper = await paperFromCore(win, first.paper.id)
-  await expect(crumbs(win)).toHaveText(['我的库', 'Wiki', paper.short])
-  await expect(shown(win).locator('.desk-head .t')).toHaveText(paper.short)
+  await expect(crumbs(win)).toHaveText(['我的库', 'Wiki', paper.title])
+  await expect(shown(win).locator('.desk-head .t')).toHaveText(paper.title)
   expect(await shown(win).locator('.wkside .section-heading').allTextContents()).toEqual(['属性', '归属', '目录'])
   // Side panel headers have their own style, one size smaller than the main area and without a rule:
   // 14px, no top border.
@@ -183,7 +183,7 @@ test('对照表的行是成员论文,格子按契约的列排,悬停看原文;�
   await shown(win).locator(`.memb [data-wk="${back.id}"]`).click()
   await expect(shown(win).locator('.desk-head .t')).toHaveText(back.title)
   await shown(win).locator('.desk-head .back').click()
-  await expect(shown(win).locator('.desk-head .t')).toHaveText(paper.short)
+  await expect(shown(win).locator('.desk-head .t')).toHaveText(paper.title)
 })
 
 test('首页论文卡进论文页;个人理解与 Wiki 内容分层,没内化的正文仍能直接编辑', async ({ win }) => {
@@ -226,11 +226,11 @@ test('论文页的属性里年份与发表分两行,各写各的', async ({ win 
   // arXiv-numbered papers come from fixtures with a year and venue, so both rows have a value to compare.
   const id = ids.find((wk) => /^\d{4}\.\d{5}$/.test(wk.slice(PAPER_PAGE.length)))!
   expect(id).toBeDefined()
-  const paper = await call<{ short: string; year?: number; venue: string }>(win, 'wiki.paper', { id })
+  const paper = await call<{ title: string; year?: number; venue: string }>(win, 'wiki.paper', { id })
   expect(paper.year).toBeDefined()
   expect(paper.venue).not.toBe('')
   await shown(win).locator(`.wkgrid [data-wk="${id}"]`).click()
-  await expect(shown(win).locator('.desk-head .t')).toHaveText(paper.short)
+  await expect(shown(win).locator('.desk-head .t')).toHaveText(paper.title)
   const props = shown(win).locator('.wkside .wkprops')
   // Year and publication use InlineMetadataField (InlineField.tsx): the value button (.metadata-editable)
   // sits inside a wrapping .metadata-field span, which is the actual sibling right after .pk.

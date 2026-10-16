@@ -222,7 +222,11 @@ concerns a Lab node, including inside a coding task.
   call `meridian.lab_result` with the experiment record (passing `experiment`
   when the record is new) and the new `next_action`. When the work produced no
   experiment, update `doing` and `next_action` through `meridian.lab_update`
-  and add the `完成` event from Keeping the App informed. Marking a node
+  and add the `完成` event from Keeping the App informed. In that
+  `lab_result` or `lab_update` call, decide the node's state: set `state` to
+  `supported` when valid evidence supports the node; when it needs repair or
+  has failed, ask the user, then set `repairable` or `dead` with the accepted
+  `user_confirmation`. Otherwise it stays `unresolved`. Marking a node
   `supported` or `dead` removes it from `active_nodes` automatically, in the
   same write.
 - **Tasks.** When the user asks to work on a planned task, read it with

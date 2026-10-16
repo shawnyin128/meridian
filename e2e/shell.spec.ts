@@ -18,7 +18,9 @@ test('窗口没有系统标题栏与菜单栏,整个外框都归页面', async (
   const inner = await win.evaluate(() => ({ w: window.innerWidth, h: window.innerHeight }))
 
   console.log(`外框 ${size.outer.width}×${size.outer.height},内容 ${size.content.width}×${size.content.height},页面 ${inner.w}×${inner.h}`)
-  expect(menuShown, '菜单栏不该画出来').toBe(false)
+  // macOS draws the menu bar at the top of the screen, outside the window, and Electron always reports it
+  // visible there.
+  if (process.platform !== 'darwin') expect(menuShown, '菜单栏不该画出来').toBe(false)
   expect(inner.h, '页面拿到整个外框的高度:系统既不画标题栏也不画菜单栏').toBe(size.outer.height)
   expect(inner.w).toBe(size.outer.width)
 

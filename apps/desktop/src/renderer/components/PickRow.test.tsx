@@ -12,12 +12,13 @@ declare global {
 const HIT: PickHit = { id: 'h1', title: '候选一' }
 
 /**
- * Mounts a real PickRow: the outer div is the draft `row`, no triggers, and `HIT` is the only
- * candidate; `cancelOnLeave` goes to PickRow as is.
+ * Mounts a real PickRow: the outer div is the draft `row`, no triggers, and `hits` are the
+ * candidates; `cancelOnLeave` goes to PickRow as is.
  */
-function Probe({ onPick, onCancel, cancelOnLeave = false }: {
+function Probe({ onPick, onCancel, hits, cancelOnLeave = false }: {
   onPick: (hit: PickHit) => boolean | Promise<boolean>
   onCancel: () => void
+  hits: PickHit[]
   cancelOnLeave?: boolean
 }) {
   const row = useRef<HTMLDivElement>(null)
@@ -25,7 +26,7 @@ function Probe({ onPick, onCancel, cancelOnLeave = false }: {
     <div ref={row}>
       <PickRow
         row={row} triggers={[]} placeholder="挑一个"
-        suggest={() => Promise.resolve([HIT])} allowNew={false}
+        suggest={() => Promise.resolve(hits)} allowNew={false}
         onPick={onPick} onNew={() => false} onCancel={onCancel} onError={() => {}}
         cancelOnLeave={cancelOnLeave}
       />
@@ -35,11 +36,13 @@ function Probe({ onPick, onCancel, cancelOnLeave = false }: {
 
 /** Mounts Probe into a real container and returns its host element. */
 function mount(
-  onPick: (hit: PickHit) => boolean | Promise<boolean>, onCancel: () => void, cancelOnLeave = false,
+  onPick: (hit: PickHit) => boolean | Promise<boolean>, onCancel: () => void, hits = [HIT], cancelOnLeave = false,
 ): HTMLDivElement {
   const host = document.createElement('div')
   document.body.appendChild(host)
-  act(() => { createRoot(host).render(<Probe onPick={onPick} onCancel={onCancel} cancelOnLeave={cancelOnLeave} />) })
+  act(() => {
+    createRoot(host).render(<Probe onPick={onPick} onCancel={onCancel} hits={hits} cancelOnLeave={cancelOnLeave} />)
+  })
   return host
 }
 
@@ -106,7 +109,7 @@ describe('PickRow', () => {
   it('cancelOnLeave 时打了字离开也只收起,不选', async () => {
     const onPick = vi.fn(() => true)
     const onCancel = vi.fn()
-    mount(onPick, onCancel, true)
+    mount(onPick, onCancel, [HIT], true)
     await type('候选')
 
     await pressOutside()
@@ -131,5 +134,16 @@ describe('PickRow', () => {
 
     await act(async () => { settle(true) })
     expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('论文候选的标题按 LaTeX 显示，其他候选原样显示', async () => {
+    mount(vi.fn(), vi.fn(), [
+      { id: 'p1', title: '\\textbf{F}luxBin $\\times$', paper: true }, { id: 't1', title: 'a--b \\textbf{c}' },
+    ])
+    await flush()
+
+    const [paper, topic] = [...document.querySelectorAll('.pickhits li')]
+    expect(paper!.innerHTML).toMatch(/^<strong>F<\/strong>luxBin <span><span class="katex">/)
+    expect(topic!.innerHTML).toBe('a--b \\textbf{c}')
   })
 })

@@ -6,6 +6,7 @@ import { useJump, useToast, useVaultRevision } from '../shell/AppShell.js'
 import { useJobs } from '../shell/useJobs.js'
 import { DownloadRing, Icon, IconCross, IconRead } from '../components/icons.js'
 import { PaperCard, PaperCardBadge, PaperCardNotice } from '../components/paper/PaperCard.js'
+import { plainTitle } from '../components/paper/paper-text.js'
 import { DayHeading } from '../components/DayHeading.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
@@ -75,7 +76,7 @@ export function Later() {
 
   const remove = (entry: LaterEntry) => {
     void write(later.remove(entry.id),
-      { note: m.later.removed(entry.title.slice(0, TITLE_IN_TOAST)), notify: toast })
+      { note: m.later.removed(plainTitle(entry.title).slice(0, TITLE_IN_TOAST)), notify: toast })
   }
 
   // Entries arrive newest first by the day they were queued; groups follow the order keys first appear in.

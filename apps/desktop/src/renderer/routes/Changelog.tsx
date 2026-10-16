@@ -10,6 +10,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { DayHeading } from '../components/DayHeading.js'
 import { DiffLines } from '../components/DiffLines.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { PaperText } from '../components/paper/PaperText.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
@@ -134,7 +135,7 @@ export function Changelog() {
       <div className="chead">
         {/* Its click bubbles to the row, which owns the toggle; this button is the keyboard path to it. */}
         <button className="cbody" type="button" aria-expanded={open.has(c.id)}>
-          <span className="ct">{c.title}<span className="src">{c.source}</span></span>
+          <span className="ct"><PaperText text={c.title} /><span className="src">{c.source}</span></span>
           <span className="cm">{[metaBelowHeading(c.meta), hint(c, m.changelog.state)].filter((s) => s !== '').join(SEP)}</span>
         </button>
         <div className="cact">

@@ -4,10 +4,11 @@ import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { useInlineDraft } from '../hooks/useInlineDraft.js'
 import { PickerPopover } from './PickerPopover.js'
 import { FormInput, type FormControlAppearance } from './FormControls.js'
+import { PaperText } from './paper/PaperText.js'
 import './PickRow.css'
 
-/** A candidate in the drop-down: target id, display name, gray text on the right. */
-export type PickHit = { id: string; title: string; meta?: string }
+/** A candidate in the drop-down: target id, display name, gray text on the right; a `paper` name is a paper title. */
+export type PickHit = { id: string; title: string; meta?: string; paper?: boolean }
 
 /** At most this many candidates show in the drop-down. */
 const LIMIT = 8
@@ -102,7 +103,8 @@ export function PickRow({
                 className={i === at ? 'on' : undefined} key={h.id}
                 onMouseDown={(e) => { e.preventDefault(); draft.submit(() => onPick(h)) }}
               >
-                {h.title}{h.meta === undefined ? null : <span className="meta">{h.meta}</span>}
+                {h.paper ? <PaperText text={h.title} /> : h.title}
+                {h.meta === undefined ? null : <span className="meta">{h.meta}</span>}
               </li>
             ))}
           </ul>

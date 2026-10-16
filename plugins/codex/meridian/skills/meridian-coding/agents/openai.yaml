@@ -1,4 +1,6 @@
 interface:
   display_name: "Meridian Coding"
   short_description: "Read Meridian changes before project-connected coding."
+  icon_small: "../../assets/meridian-mark-64.png"
+  icon_large: "../../assets/meridian-mark-128.png"
   default_prompt: "Use $meridian-coding to sync project changes, then implement this coding task."

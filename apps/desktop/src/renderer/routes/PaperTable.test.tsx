@@ -333,6 +333,15 @@ describe('PaperTable', () => {
     expect(listParams.at(-1)).not.toHaveProperty('filter')
   })
 
+  it('论文搜索框与关注屏的一句话添加框是同一种带框的字段输入框', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    expect(host.querySelector('#libq')?.classList).toContain('form-control-field')
+  })
+
   it('随笔与自定义文本列共用整格文本编辑器', async () => {
     const host = mount()
     columnsCall.resolve(NOTE_COLUMNS)
@@ -348,6 +357,29 @@ describe('PaperTable', () => {
     await act(async () => { press(customCell) })
     expect(customCell.querySelector('input')?.classList).toContain('paper-text-cell-input')
     expect(customCell.querySelector('input')?.classList).toContain('form-control-inline')
+  })
+
+  it('放不下的自定义文本格与随笔格一样标成截断,整段字装在悬停展开的 .ci 里', async () => {
+    const scrollWidth = vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get')
+      .mockImplementation(function () { return this.classList.contains('ci') ? 200 : 0 })
+    const clientWidth = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+      .mockImplementation(function () { return this.classList.contains('ci') ? 100 : 0 })
+    try {
+      const host = mount()
+      const text = '一段比格子宽得多的文字'
+      columnsCall.resolve(NOTE_COLUMNS)
+      listCall.resolve({ rows: [{ ...ROW, remark: text, custom: { note: text } }], total: 1 })
+      await flush()
+
+      const cells = ['td.pt-remark', 'td.pt-cust'].map((selector) => {
+        const td = host.querySelector<HTMLElement>(selector)!
+        return { trunc: td.classList.contains('trunc'), ci: td.querySelector('.ci')?.textContent }
+      })
+      expect(cells).toEqual([{ trunc: true, ci: text }, { trunc: true, ci: text }])
+    } finally {
+      scrollWidth.mockRestore()
+      clientWidth.mockRestore()
+    }
   })
 
   it('默认按最近添加排序,双击论文行直接进入阅读器,格内按钮不会误触发', async () => {
@@ -500,6 +532,46 @@ describe('PaperTable', () => {
     expect(host.querySelector<HTMLButtonElement>('[title="新增列"]')!.disabled).toBe(false)
     expect(row.classList).toContain('selected')
     expect(row.getAttribute('aria-current')).toBe('true')
+  })
+
+  it('详情里的标题和短标题按 LaTeX 显示，点开编辑时仍是原文', async () => {
+    const latex = { ...ROW, title: '\\textbf{F}luxBin $\\times$', shortTitle: '\\emph{Flux}' }
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [latex], total: 1 })
+    await flush()
+    await act(async () => { press(host.querySelector<HTMLElement>('.ptable tbody tr')!) })
+    getCall.resolve(latex)
+    await flush()
+
+    const [title, short] = [...host.querySelectorAll<HTMLElement>('.paper-meta-list .paper-meta-editable')]
+    expect(title!.innerHTML).toMatch(/<strong>F<\/strong>luxBin <span><span class="katex">/)
+    expect(short!.innerHTML).toContain('<em>Flux</em>')
+    await act(async () => { title!.querySelector('button')!.click() })
+    expect(title!.querySelector<HTMLInputElement>('input, textarea')!.value).toBe('\\textbf{F}luxBin $\\times$')
+  })
+
+  it('详情的论文信息直接列出，不带「元数据」标题，并按 LaTeX 显示摘要', async () => {
+    const withAbstract = { ...ROW, abstract: '我们提出 \\textbf{FluxBin}，把误差降到 $O(n)$。' }
+    // The folded abstract measures itself, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [withAbstract], total: 1 })
+    await flush()
+    await act(async () => { press(host.querySelector<HTMLElement>('.ptable tbody tr')!) })
+    getCall.resolve(withAbstract)
+    await flush()
+
+    const panel = host.querySelector<HTMLElement>('.paper-meta')!
+    expect(panel.textContent).not.toContain('元数据')
+    expect(panel.firstElementChild!.tagName).toBe('DL')
+    const labels = [...panel.querySelectorAll('dt')].map((dt) => dt.textContent)
+    const abstract = panel.querySelectorAll('dd')[labels.indexOf('摘要')]!
+    expect(labels.indexOf('摘要')).toBe(labels.indexOf('作者') + 1)
+    expect(abstract.innerHTML).toContain('<strong>FluxBin</strong>')
+    expect(abstract.querySelector('.katex')).not.toBeNull()
+    vi.unstubAllGlobals()
   })
 
   it('详情面板收掉建列草稿之后,关面板新开的草稿不受它落地影响', async () => {

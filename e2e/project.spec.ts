@@ -360,8 +360,9 @@ test('拖菱形改期后,抬手补发的那次点击不算点在空白处新建�
   const box = (await diamond.boundingBox())!
   const x0 = box.x + box.width / 2
   const y = box.y + box.height / 2
-  // Hovering enlarges the diamond and its bounding box; dragging moves its offsetLeft, so measure that.
-  const left = () => diamond.evaluate((el) => (el as HTMLElement).offsetLeft)
+  // Hovering enlarges the diamond and its bounding box, and offsetLeft rounds to whole pixels, so measure
+  // the unrounded left that dragging moves by whole day widths.
+  const left = () => diamond.evaluate((el) => parseFloat((el as HTMLElement).style.left))
   const from = await left()
 
   await win.mouse.move(x0, y)
@@ -373,7 +374,7 @@ test('拖菱形改期后,抬手补发的那次点击不算点在空白处新建�
   // While dragging, the diamond follows the pointer in whole days and drops the extra 15px. Wait for
   // it to move three days before releasing: if the press missed it or the move was not delivered, it
   // stays put and fails here, instead of a drag that never happened passing as "no milestone created".
-  await expect.poll(async () => (await left()) - from).toBe(Math.round(3 * dayWidth))
+  await expect.poll(async () => (await left()) - from).toBeCloseTo(3 * dayWidth)
   await win.mouse.up()
 
   await expect(win.locator('#toast')).toHaveText(`已改期到 ${dshort(moved)}`)
@@ -523,8 +524,9 @@ test('拖完菱形那一下不算点击,单击只切到里程碑并闪烁,名称
   const dayWidth = await ganttDayWidth(win)
   const box = (await diamond.boundingBox())!
   const y = box.y + box.height / 2
-  // Hovering enlarges the diamond and its bounding box; dragging moves its offsetLeft, so measure that.
-  const left = () => diamond.evaluate((el) => (el as HTMLElement).offsetLeft)
+  // Hovering enlarges the diamond and its bounding box, and offsetLeft rounds to whole pixels, so measure
+  // the unrounded left that dragging moves by whole day widths.
+  const left = () => diamond.evaluate((el) => parseFloat((el as HTMLElement).style.left))
   const from = await left()
 
   await win.mouse.move(box.x + box.width / 2, y)
@@ -533,7 +535,7 @@ test('拖完菱形那一下不算点击,单击只切到里程碑并闪烁,名称
   // While dragging, the diamond follows the pointer in whole days. Wait for it to move three days
   // before releasing: if the press missed it or the move was not delivered, it stays put and fails
   // here, instead of after the release while waiting for a toast that never comes.
-  await expect.poll(async () => (await left()) - from).toBe(Math.round(3 * dayWidth))
+  await expect.poll(async () => (await left()) - from).toBeCloseTo(3 * dayWidth)
   await win.mouse.up()
   await expect(win.locator('#toast')).toHaveText(`已改期到 ${dshort(moved)}`)
   // Click suppression still works: the task tab stays shown, since the drag triggered no locate.

@@ -37,6 +37,8 @@ import { DetailPanel } from '../DetailPanel.js'
 import { ActionMenu, MenuRadioGroup, MenuRadioItem, MenuSeparator } from '../ActionMenu.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator } from '../ContextMenu.js'
+import { PaperText } from '../paper/PaperText.js'
+import { plainTitle } from '../paper/paper-text.js'
 import { ResearchMap } from './ResearchMap.js'
 import './PaperTable.css'
 
@@ -963,15 +965,16 @@ export function PaperTable() {
     writeColumnsAndCells(() => papers.setColumnType(key, type), m.papers.notices.columnTypeChanged)
 
   /**
-   * What a custom cell shows: when not editing, plain text for a text column and chips for single- and
-   * multi-choice columns (inside .ci, so they fold into +N like the topics cell when they do not fit);
-   * when editing, the input or picker for the column type.
+   * What a custom cell shows: when not editing, the text of a text column inside .ci, so it truncates
+   * and expands on hover like the remark cell, and chips for single- and multi-choice columns (inside
+   * .ci, so they fold into +N like the topics cell when they do not fit); when editing, the input or
+   * picker for the column type.
    */
   const customCell = (p: PaperRow, column: PaperColumn) => {
     const values = cellValues(p.custom[column.key])
     const editing = editingCell?.id === p.id && editingCell.key === column.key
     if (!editing) {
-      if (column.type === 'text') return values[0] ?? ''
+      if (column.type === 'text') return <span className="ci">{values[0] ?? ''}</span>
       return <span className="ci">{values.map((v) => <span className="tagchip" key={v}>{v}</span>)}</span>
     }
     if (column.type === 'text') {
@@ -1165,7 +1168,7 @@ export function PaperTable() {
                 setRowMenu({ paper: p, x: bounds.left + 24, y: bounds.top + 24 })
               }}
             >
-              <td className="pt-title"><span className="ci">{p.title}</span></td>
+              <td className="pt-title"><span className="ci"><PaperText text={p.title} /></span></td>
               {cols.map((c) => cell(p, c))}
               {newCol ? <td className="pt-cust" /> : null}
               <td>
@@ -1234,7 +1237,7 @@ export function PaperTable() {
           />
           <div className="libbar">
             <ClearableInput
-              wrapperClassName="mgr-add paper-search"
+              appearance="field" wrapperClassName="paper-search"
               id="libq" placeholder={m.papers.toolbar.searchPlaceholder} autoComplete="off" value={q}
               onChange={(e) => { setQ(e.target.value); setPage(1) }}
               onClear={() => { setQ(''); setPage(1) }} clearLabel={m.papers.toolbar.clearSearch}
@@ -1283,7 +1286,7 @@ export function PaperTable() {
                       <div className="gx-t">{f.value}</div>
                       <div className="gx-m">
                         {m.papers.groupIndex.newest(
-                          `${f.newestTitle.slice(0, 44)}${f.newestTitle.length > 44 ? '…' : ''}`,
+                          `${plainTitle(f.newestTitle).slice(0, 44)}${plainTitle(f.newestTitle).length > 44 ? '…' : ''}`,
                         )}
                       </div>
                       <span className="n">{f.count}</span>
@@ -1332,7 +1335,7 @@ export function PaperTable() {
           : (
             <div className="pdetail">
               <div className="pd-h">
-                <span className="pd-t">{detail.title}</span>
+                <span className="pd-t"><PaperText text={detail.title} /></span>
                 <button className="icbtn" title={m.papers.rowActions.openReader} onClick={() => open('reader', detail.id)}>
                   <IconRead />
                 </button>
@@ -1352,7 +1355,7 @@ export function PaperTable() {
         ? null
         : (
           <ContextMenu
-            point={{ x: rowMenu.x, y: rowMenu.y }} label={m.papers.contextMenu.label(rowMenu.paper.title)}
+            point={{ x: rowMenu.x, y: rowMenu.y }} label={m.papers.contextMenu.label(plainTitle(rowMenu.paper.title))}
             className="paper-row-menu" onClose={() => setRowMenu(null)}
           >
           <ContextMenuItem

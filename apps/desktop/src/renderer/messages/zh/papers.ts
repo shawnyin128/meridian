@@ -121,7 +121,6 @@ export const papers = {
     stars: (n: number) => `${n} 星`,
   },
   metadata: {
-    heading: '元数据',
     fields: {
       title: '标题',
       shortTitle: '短标题',
@@ -140,6 +139,7 @@ export const papers = {
       readStateInvalid: '阅读状态无效',
     },
     updated: (label: string) => `已更新${label} · 可在最近变动中撤销`,
+    abstractLabel: '摘要',
     projectsLabel: '项目',
     wikiLabel: 'Wiki',
     fileLabel: '文件',

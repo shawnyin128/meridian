@@ -1,12 +1,13 @@
 import { forwardRef, useRef, type InputHTMLAttributes, type ReactNode } from 'react'
 import { useMessages } from '../messages/useMessages.js'
-import { FormInput } from './FormControls.js'
+import { FormInput, type FormControlAppearance } from './FormControls.js'
 import { IconCross } from './icons.js'
 import './ClearableInput.css'
 
 type ClearableInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value'> & {
   value: string
   onClear: () => void
+  appearance?: FormControlAppearance
   wrapperClassName?: string
   wrapperId?: string
   leading?: ReactNode

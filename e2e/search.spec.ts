@@ -57,7 +57,9 @@ test('从论文屏搜:只命中会话那一类,点它进那条会话', async ({ 
 
 test('从阅读器搜:全局侧栏连同全局搜索一起收起,阅读器里搜不了', async ({ win }) => {
   await gotoReader(win)
-  await expect(win.locator('#crumb .cseg')).toHaveText(['我的库', '论文', 'STAR'])
+  await expect(win.locator('#crumb .cseg')).toHaveText([
+    '我的库', '论文', 'STAR: SPECULATIVE DECODING WITH SEARCHABLE DRAFTING AND TARGET-AWARE REFINEMENT FOR MULTIMODAL GENERATION',
+  ])
 
   // While reading, the whole global sidebar is hidden (.main.reading>.sidebar{display:none}), taking
   // the global search with it. This matches .main.reading .sidebar in
