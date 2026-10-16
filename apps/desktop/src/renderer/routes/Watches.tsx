@@ -10,7 +10,7 @@ import { useMessages } from '../messages/useMessages.js'
 import { AddAction } from '../components/AddAction.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { EmptyState } from '../components/EmptyState.js'
-import { InlineDraftInput } from '../components/InlineDraftInput.js'
+import { afterLeaving, InlineDraftInput } from '../components/InlineDraftInput.js'
 import { StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { FormInput, FormSelect } from '../components/FormControls.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
@@ -187,27 +187,32 @@ export function WatchSettings() {
       note: m.watches.notices.updated, notify: toast,
     })
 
+  const leaveDraft = useRef<(() => Promise<boolean>) | null>(null)
+
   /**
-   * Clicks a group's plus button: the draft row opens in this group, and one open in the other group
-   * closes with its text; if this group's draft is already open, only its input gets focus back.
+   * Clicks a group's plus button: the draft row opens in this group once the row open elsewhere has
+   * saved the text typed in it, and a refused save keeps that row instead; if this group's draft is
+   * already open, only its input gets focus back.
    */
   const open = (type: Watch['type']) => {
     if (editor?.type === type && editor.id === undefined) {
       nameInput.current?.focus()
       return
     }
-    setEditor({ type })
-    setName('')
-    setAuthorSearchNonce(0)
+    afterLeaving(leaveDraft, () => {
+      setEditor({ type })
+      setName('')
+      setAuthorSearchNonce(0)
+    })
   }
 
-  const edit = (item: Watch) => {
+  const edit = (item: Watch) => afterLeaving(leaveDraft, () => {
     setEditor({ type: item.type, id: item.id })
     setName(item.name)
     setAuthorMatches([])
     setAuthorSearchError(null)
     setAuthorSearchNonce(0)
-  }
+  })
 
   const chooseAuthor = (candidate: AuthorCandidate) => {
     void persist({
@@ -340,7 +345,7 @@ export function WatchSettings() {
   const editorInput = editor === null ? null : editor.type === 'topic'
     ? (
       <InlineDraftInput
-        ref={nameInput} className="inedit" scopeRef={row} triggers={triggers}
+        ref={nameInput} className="inedit" scopeRef={row} triggers={triggers} leaveRef={leaveDraft}
         placeholder={m.shell.watchKind.topic} onCancel={stop}
         onSubmit={(next) => next === editingWatch?.name || persist({ type: 'topic', name: next })}
         value={name} onChange={(e) => setName(e.target.value)}
@@ -349,9 +354,10 @@ export function WatchSettings() {
     : (
       <div className="author-resolver">
         <InlineDraftInput
-          ref={nameInput} className="inedit" scopeRef={row} triggers={triggers}
+          ref={nameInput} className="inedit" scopeRef={row} triggers={triggers} leaveRef={leaveDraft}
           placeholder={m.watches.authorNamePlaceholder} onCancel={stop}
-          onSubmit={(next) => next === editingWatch?.name}
+          onSubmit={(next, leaving) => next === editingWatch?.name
+            || (leaving && persist({ type: 'author', name: next }))}
           value={name} onChange={(e) => { setName(e.target.value); setAuthorSearchNonce(0) }}
         />
         {editingWatch?.type === 'author' && editingWatch.identity !== undefined
