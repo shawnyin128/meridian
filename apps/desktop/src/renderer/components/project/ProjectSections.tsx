@@ -230,10 +230,13 @@ export function ProjectRelations({
     ...(linked.length > 0 ? [PROJECT_PAPER_GROUP] : []),
     ...(adding === undefined ? [] : [adding.group]),
   ]
+  // A stored group with no items shows only while it holds linked papers or is being added to.
+  const held = groups.filter((row) => row.items.length > 0
+    || (isPaperRow(row.group) && linked.length > 0) || (adding !== undefined && sameRow(adding.group, row.group)))
   const rows = [
-    ...groups,
+    ...held,
     ...wanted
-      .filter((group, at) => wanted.indexOf(group) === at && !groups.some((row) =>
+      .filter((group, at) => wanted.indexOf(group) === at && !held.some((row) =>
         row.group === group || (isPaperRow(group) && isPaperRow(row.group))))
       .map((group) => ({ group, items: [] })),
   ]

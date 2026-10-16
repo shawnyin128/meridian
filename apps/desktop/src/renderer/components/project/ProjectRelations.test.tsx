@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RelationGroup } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
-import { ProjectRelations } from './ProjectSections.js'
+import { PROJECT_PAPER_GROUP, PROJECT_URL_GROUP, ProjectRelations } from './ProjectSections.js'
 
 describe('ProjectRelations', () => {
   let host: HTMLDivElement
@@ -62,5 +62,33 @@ describe('ProjectRelations', () => {
     expect(row.current).toBe(wiki.lastElementChild)
     expect(row.current?.querySelector('.probe')).not.toBeNull()
     open.mockRestore()
+  })
+
+  /** Renders the relations with stored groups that hold no items, and returns each row's label. */
+  const rowsFor = (papers: { id: string; title: string }[], adding?: string) => {
+    act(() => {
+      root.render(
+        <MessagesProvider>
+          <ProjectRelations
+            groups={[{ group: 'Wiki', items: [] }, { group: PROJECT_URL_GROUP, items: [] }, { group: PROJECT_PAPER_GROUP, items: [] }]}
+            papers={papers}
+            adding={adding === undefined
+              ? undefined
+              : { group: adding, row: createRef<HTMLDivElement>(), input: <input />, onGroup: vi.fn() }}
+            onEdit={onEdit} onRemove={vi.fn()} onOpenPage={vi.fn()} onOpenPaper={vi.fn()}
+            onRemovePaper={vi.fn()} onMove={vi.fn()}
+          />
+        </MessagesProvider>,
+      )
+    })
+    return [...host.querySelectorAll('.wkrel > .rl')].map((label) => label.textContent)
+  }
+
+  it('shows no row for a stored group whose last item was removed', () => {
+    expect(rowsFor([])).toEqual([])
+  })
+
+  it('keeps the papers row while papers are linked and the row an item is being added to', () => {
+    expect(rowsFor([{ id: 'p1', title: 'EAGLE-2' }], PROJECT_URL_GROUP)).toEqual(['URLs', 'Papers'])
   })
 })
