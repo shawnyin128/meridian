@@ -226,11 +226,11 @@ test('论文页的属性里年份与发表分两行,各写各的', async ({ win 
   // arXiv-numbered papers come from fixtures with a year and venue, so both rows have a value to compare.
   const id = ids.find((wk) => /^\d{4}\.\d{5}$/.test(wk.slice(PAPER_PAGE.length)))!
   expect(id).toBeDefined()
-  const paper = await call<{ short: string; year?: number; venue: string }>(win, 'wiki.paper', { id })
+  const paper = await call<{ title: string; year?: number; venue: string }>(win, 'wiki.paper', { id })
   expect(paper.year).toBeDefined()
   expect(paper.venue).not.toBe('')
   await shown(win).locator(`.wkgrid [data-wk="${id}"]`).click()
-  await expect(shown(win).locator('.desk-head .t')).toHaveText(paper.short)
+  await expect(shown(win).locator('.desk-head .t')).toHaveText(paper.title)
   const props = shown(win).locator('.wkside .wkprops')
   // Year and publication use InlineMetadataField (InlineField.tsx): the value button (.metadata-editable)
   // sits inside a wrapping .metadata-field span, which is the actual sibling right after .pk.

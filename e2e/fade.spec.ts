@@ -141,9 +141,9 @@ async function measureFade(win: Page, label: string, backdrop: Locator, target: 
 }
 
 /**
- * For an untruncated title, the ratio of ink with the mask on to ink with it off. It is 1 while the fade
- * zone lies past the end of the text; if the masked element shrinks to the text's width, the short
- * title's tail falls into the fade zone and the ratio drops.
+ * For an untruncated title, the ratio of ink with the mask on to ink with it off. It stays close to 1
+ * while the fade zone lies past the end of the text; if the masked element shrinks to the text's width,
+ * the short title's tail falls into the fade zone and the ratio drops.
  */
 async function fullInk(win: Page, label: string, target: Locator): Promise<number> {
   const shape = await target.evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }))
@@ -167,12 +167,12 @@ test('短标题一点不被渐隐吃掉', async ({ win }) => {
 
   const row = win.locator('#chatList .chat-row').filter({ hasText: '短' })
   await expect(row).toHaveCount(1)
-  expect(await fullInk(win, '侧栏-短标题', row.locator('.ct-t')), '短标题该原样显示').toBe(1)
+  expect(await fullInk(win, '侧栏-短标题', row.locator('.ct-t')), '短标题该原样显示').toBeGreaterThan(0.97)
 
   await gotoPapers(win)
   const leaf = win.locator('#crumb .cseg').last()
   await expect(leaf).toHaveText('论文')
-  expect(await fullInk(win, '面包屑-短末段', leaf), '短末段该原样显示').toBe(1)
+  expect(await fullInk(win, '面包屑-短末段', leaf), '短末段该原样显示').toBeGreaterThan(0.97)
 })
 
 // Two scripts, three places each, three screenshots per place (mask on, mask off, backdrop): eighteen

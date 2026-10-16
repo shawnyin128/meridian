@@ -1,4 +1,4 @@
-import type { ElectronApplication, Page } from '@playwright/test'
+import type { CDPSession, ElectronApplication, Page } from '@playwright/test'
 import { expect, openSettings, test, type MeridianWindow } from './app.js'
 
 /** Tab presses in the focus walk: enough to pass every focusable element in Settings and wrap around. */
@@ -25,20 +25,30 @@ const core = <T>(win: Page, method: string, params: unknown) =>
   win.evaluate(([m, p]) => (window as unknown as MeridianWindow).meridian.call(m as string, p),
     [method, params] as const) as Promise<T>
 
+/** The macOS virtual key codes (Carbon's `kVK_ANSI_Comma` and `kVK_ANSI_Period`) of the keys `press` takes. */
+const MAC_KEY_CODES = { ',': 0x2b, '.': 0x2f } as const
+
 /**
- * Presses `CmdOrCtrl` plus `key`. The main process injects the event into the window, and a key the
- * page does not handle goes on to the menu accelerators: the same path as a real keystroke, out of
- * reach of the page's keydown handlers. Playwright's own `keyboard.press` reaches only the renderer
- * and never the menu.
+ * Presses `CmdOrCtrl` plus `key`. A key the page does not handle goes on to the menu accelerators: the
+ * same path as a real keystroke, out of reach of the page's keydown handlers. Playwright's own
+ * `keyboard.press` reaches only the renderer and never the menu. On Windows and Linux the main process
+ * injects the event with `sendInputEvent`. Electron hands the macOS menu only a key event that carries
+ * a native NSEvent, which `sendInputEvent` does not build; there the key goes through the DevTools
+ * protocol of `cdp` with its macOS key code, from which Chromium builds that NSEvent.
  */
-const press = (app: ElectronApplication, key: string) =>
-  app.evaluate(({ BrowserWindow }, pressed) => {
-    BrowserWindow.getAllWindows()[0]!.webContents.sendInputEvent({
-      type: 'keyDown',
-      keyCode: pressed,
-      modifiers: [process.platform === 'darwin' ? 'meta' : 'control'],
+const press = (app: ElectronApplication, cdp: CDPSession, key: keyof typeof MAC_KEY_CODES) =>
+  process.platform === 'darwin'
+    ? cdp.send('Input.dispatchKeyEvent', {
+      // 4 is Command in the protocol's modifier bit field.
+      type: 'rawKeyDown', modifiers: 4, text: key, unmodifiedText: key, nativeVirtualKeyCode: MAC_KEY_CODES[key],
     })
-  }, key)
+    : app.evaluate(({ BrowserWindow }, pressed) => {
+      BrowserWindow.getAllWindows()[0]!.webContents.sendInputEvent({
+        type: 'keyDown',
+        keyCode: pressed,
+        modifiers: ['control'],
+      })
+    }, key)
 
 test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', async ({ app, win }) => {
   // The menu is set in whenReady, so it is fully installed once the first window is up.
@@ -57,12 +67,13 @@ test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', 
   console.log(`菜单 ${JSON.stringify(menu)}`)
 
   const mac = process.platform === 'darwin'
-  // Only "Settings…" and the File menu are built by hand; the rest are still roles, so copy and paste,
-  // zoom and the developer tools remain. On macOS "Settings…" sits in the app-name menu and File is
-  // still a role; Windows and Linux add a Tools menu without a role, between View and Window.
+  // Only "Settings…", the File menu and the Help menu are built by hand; the rest are still roles, so
+  // copy and paste, zoom and the developer tools remain. On macOS "Settings…" sits in the app-name menu
+  // and File is still a role; Windows and Linux add a Tools menu without a role, between View and
+  // Window. Every platform ends with the Help menu, which has no role.
   expect(menu.map((top) => top.role)).toEqual(mac
-    ? ['appmenu', 'filemenu', 'editmenu', 'viewmenu', 'windowmenu']
-    : [null, 'editmenu', 'viewmenu', null, 'windowmenu'])
+    ? ['appmenu', 'filemenu', 'editmenu', 'viewmenu', 'windowmenu', null]
+    : [null, 'editmenu', 'viewmenu', null, 'windowmenu', null])
 
   const settings = menu.flatMap((top) => top.items).filter((item) => item.id === 'settings')
   expect(settings).toHaveLength(1)
@@ -100,13 +111,13 @@ test.describe(() => {
       message: '窗口没有真的拿到系统焦点,原生菜单的快捷键到不了',
     }).toBe(true)
 
-    await press(app, ',')
+    await press(app, cdp, ',')
     await expect(win.locator('.setdlg')).toBeVisible()
     await win.keyboard.press('Escape')
     await expect(win.locator('.setdlg')).toHaveCount(0)
 
     // Negative check: Settings opens on the shortcut registered for "Settings…", not on any key.
-    await press(app, '.')
+    await press(app, cdp, '.')
     await expect(win.locator('.setdlg')).toHaveCount(0)
   })
 })
