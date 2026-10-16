@@ -3,7 +3,9 @@ import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { DESKTOP, openApp, redate, session, writeJson } from './test-library/app.mjs'
 import { redateLater, seedInbox, seedWatches, writeInbox } from './test-library/feed.mjs'
+import { importPapers, paperFiles, redatePapers, seedPapers } from './test-library/papers.mjs'
 import { checkOut, MARKER, protectedRoots } from './test-library/safety.mjs'
+import { seedWiki } from './test-library/wiki.mjs'
 
 const USAGE = `Builds a Meridian test library that covers every screen, or opens one for review.
 
@@ -12,8 +14,9 @@ const USAGE = `Builds a Meridian test library that covers every screen, or opens
 
 <app> is a Meridian.app, a Meridian.exe, or a folder such as apps/desktop (the default, built
 with npm --prefix apps/desktop run build). seed writes <dir>/library, config and user-data from
-scratch through the App's Core. --today is the day the seeded dates count from; it defaults to
-the system date, which Core still uses to stamp the records the seed does not redate.`
+scratch through the App's Core and keeps the arXiv PDFs it downloads in <dir>/cache. --today is
+the day the seeded dates count from; it defaults to the system date, which Core still uses to
+stamp the records the seed does not redate.`
 
 /** The folders a seed writes and therefore deletes before writing them again. */
 const SEEDED = ['library', 'config', 'user-data']
@@ -24,19 +27,32 @@ const systemToday = () => {
 }
 
 /**
- * Builds the test library in `out` from scratch with `app`. Each App launch below is one stage that
- * writes through Core off the network; stored files change between launches only while the App is
- * closed.
+ * Builds the test library in `out` from scratch with `app`. Each App launch below is one stage:
+ * the first imports the papers over the network, the others write through Core off the network,
+ * and stored files change between launches only while the App is closed.
  */
 async function seed(out, app, today) {
   checkOut(out, protectedRoots())
   for (const name of SEEDED) rmSync(join(out, name), { recursive: true, force: true })
   mkdirSync(join(out, 'config'), { recursive: true })
   writeJson(join(out, MARKER), { root: out, app, today, seededAt: new Date().toISOString() })
-  const state = { out, today, days: { feed: new Map(), changelog: new Map(), later: new Map() } }
-  await session(out, app, { bootstrap: true }, (call) => seedWatches(state, call))
+  // A fresh check time keeps the App's plugin-version check off GitHub while the seed runs.
+  writeJson(join(out, 'config', 'plugin-latest.json'), { version: '0.0.0', checkedAt: new Date().toISOString() })
+  const state = { out, today, papers: {}, days: { feed: new Map(), changelog: new Map(), later: new Map() } }
+  const files = await paperFiles(out)
+  const titles = await session(out, app, { network: true, bootstrap: true }, async (call, win) => {
+    await importPapers(state, call, win, files)
+    const rows = (await call('papers.list', { page: 1, size: 200 })).rows
+    return Object.fromEntries(Object.entries(state.papers).map(([key, id]) => [key, rows.find((row) => row.id === id).title]))
+  })
+  await session(out, app, {}, async (call) => {
+    await seedPapers(state, call, files)
+    await seedWiki(state, call, files)
+    await seedWatches(state, call)
+  })
   writeInbox(state)
   await session(out, app, {}, (call) => seedInbox(state, call))
+  redatePapers(state, titles)
   redate(state)
   redateLater(state)
   console.log(`Seeded ${out}`)
