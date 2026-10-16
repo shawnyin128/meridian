@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Task } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { TodayContext } from '../../shell/AppShell.js'
+import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 import { TimelineBoard, type TimelineProject } from './TimelineBoard.js'
 
 declare global {
@@ -127,5 +128,87 @@ describe('TimelineBoard 点击打开任务详情', () => {
     const msLabel = host.querySelector('.glrow.msl.timeline-label-row')!
     mouse(msLabel, 'click')
     expect(onLabelClick).toHaveBeenCalledWith('proj-1', 'milestones', undefined)
+  })
+})
+
+describe('TimelineBoard 只显示当前时间段里的任务', () => {
+  let host: HTMLDivElement
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    host = document.createElement('div')
+    document.body.append(host)
+  })
+
+  // Today is Wednesday 2026-09-16: its week is 09-14 to 09-20, its month is September.
+  const spanning = (id: string, start: string, end: string): Task => ({
+    id, title: id, start, end, state: 'act', priority: 'p1',
+  })
+  const periods: TimelineProject = {
+    id: 'proj-2', name: '时间段项目', milestones: [],
+    tasks: [
+      spanning('today', '2026-09-16', '2026-09-16'),
+      spanning('week', '2026-09-10', '2026-09-15'),
+      spanning('month', '2026-09-03', '2026-09-08'),
+      spanning('before', '2026-08-20', '2026-08-25'),
+    ],
+  }
+
+  const mountPeriods = (project: TimelineProject, onReorderTasks?: (projectId: string, order: string[]) => void) => {
+    act(() => createRoot(host).render(
+      <MessagesProvider>
+        <TodayContext.Provider value="2026-09-16">
+          <TimelineBoard
+            projects={[project]}
+            onTaskClick={vi.fn()} onMilestoneClick={vi.fn()} onMilestoneLaneClick={vi.fn()}
+            onMoveTask={vi.fn()} onMoveTaskWindow={vi.fn()} onMoveMilestone={vi.fn()}
+            {...(onReorderTasks ? { onReorderTasks } : {})}
+          />
+        </TodayContext.Provider>
+      </MessagesProvider>,
+    ))
+  }
+  /** The task ids that have a label row and the task ids that have a canvas row, in order. */
+  const shownTasks = () => ({
+    labels: [...host.querySelectorAll<HTMLElement>('.glrow[data-task]')].map((row) => row.dataset.task),
+    lanes: [...host.querySelectorAll<HTMLElement>('.grow[data-task]')].map((row) => row.dataset.task),
+  })
+  const pickScale = (label: string) => {
+    const button = [...host.querySelectorAll<HTMLButtonElement>('.gscale button')].find((b) => b.textContent === label)!
+    act(() => { button.click() })
+  }
+
+  it('周视图只列出和这一周有交集的任务,完全在这一周之外的任务没有标签行、任务条或边缘标记', () => {
+    mountPeriods(periods)
+    expect(shownTasks()).toEqual({ labels: ['today', 'week'], lanes: ['today', 'week'] })
+  })
+
+  it('日视图和月视图同样只列出和当前这一天、这个月有交集的任务', () => {
+    mountPeriods(periods)
+    pickScale('日')
+    expect(shownTasks()).toEqual({ labels: ['today'], lanes: ['today'] })
+    pickScale('月')
+    expect(shownTasks()).toEqual({ labels: ['today', 'week', 'month'], lanes: ['today', 'week', 'month'] })
+  })
+
+  it('拖动标签行排序时,不在这一周的任务留在原来的位置', () => {
+    const onReorderTasks = vi.fn()
+    mountPeriods({ ...periods, tasks: [periods.tasks[0]!, periods.tasks[3]!, periods.tasks[1]!] }, onReorderTasks)
+    /** Fires a drag event carrying the dataTransfer and clientY that useDragReorder reads. */
+    const drag = (type: string, target: Element, clientY = 0) => act(() => {
+      const event = new Event(type, { bubbles: true, cancelable: true })
+      Object.defineProperties(event, {
+        dataTransfer: { value: { effectAllowed: '', setData: vi.fn() } },
+        clientY: { value: clientY },
+      })
+      target.dispatchEvent(event)
+    })
+    const row = (id: string) => host.querySelector(`.glrow[data-task="${id}"]`)!
+    drag('dragstart', row('week'))
+    // jsdom gives every row a zero-height box, so any negative clientY lands in its top half.
+    drag('dragover', row('today'), -1)
+    drag('drop', row('today'))
+    expect(onReorderTasks).toHaveBeenCalledWith('proj-2', ['week', 'before', 'today'])
   })
 })

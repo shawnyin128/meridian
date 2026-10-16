@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test'
 import { PROJECT_STATUSES } from '../apps/desktop/src/shared/vocabulary.js'
-import { dshort, expect, settle, test, vaultToday, type MeridianWindow } from './app.js'
+import {
+  dshort, expect, overlaps, settle, test, timelinePeriod, vaultToday, type MeridianWindow,
+} from './app.js'
 
 /** Visited screens stay mounted, so selectors every screen has, like the header, target the shown one. */
 const shown = (win: Page) => win.locator('.screenslot:not([hidden])')
@@ -17,7 +19,7 @@ const getProject = (win: Page, id: string) => win.evaluate(async (projectId) => 
   const project = await (window as unknown as MeridianWindow).meridian
     .call('project.get', { id: projectId }) as {
       name: string
-      tasks: { state: string }[]
+      tasks: { state: string; start: string; end: string }[]
       milestones: { done: boolean }[]
       events: unknown[]
       agentSessions: unknown[]
@@ -25,8 +27,7 @@ const getProject = (win: Page, id: string) => win.evaluate(async (projectId) => 
     }
   return {
     name: project.name,
-    // The Gantt still draws a bar for every task, done or not.
-    tasks: project.tasks.length,
+    tasks: project.tasks.map(({ start, end }) => ({ start, end })),
     // A done task or milestone starts collapsed into the plan list's archived group, so the visible
     // row count is the active-only count, not the contract's full array length.
     activeTasks: project.tasks.filter((t) => t.state !== 'done').length,
@@ -274,7 +275,10 @@ test('sched / moe / fa 各打开一次,各板块条数与 project.get 一致', a
     const project = await getProject(win, id)
     await expect(shown(win).locator('.desk-head .t'), id).toHaveText(project.name)
     await expect(win.locator('#taskList .ddlrow'), id).toHaveCount(project.activeTasks)
-    await expect(win.locator('.gantt .grow:not(.msrow)'), id).toHaveCount(project.tasks)
+    // The Gantt draws a bar for every task that overlaps this week, done or not.
+    const week = timelinePeriod(await vaultToday(win), 'week')
+    await expect(win.locator('.gantt .grow:not(.msrow)'), id)
+      .toHaveCount(project.tasks.filter((task) => overlaps(task, week)).length)
     await expect(win.locator('.evlist .record-row'), id).toHaveCount(project.events)
     await expect(win.locator('.agcard'), id).toHaveCount(project.agentSessions)
 

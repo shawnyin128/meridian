@@ -2,7 +2,7 @@ import { resolve } from 'node:path'
 import type { Locator, Page } from '@playwright/test'
 import { ACTIVE_PROJECT, PROJECT_STATUSES, SHELVED_PROJECT } from '../apps/desktop/src/shared/vocabulary.js'
 import {
-  dshort, expect, fixtureDay, gotoProject, readDraft, test, uniqueHeights, vaultToday,
+  dshort, expect, fixtureDay, gotoProject, overlaps, readDraft, test, timelinePeriod, uniqueHeights, vaultToday,
   type MeridianWindow,
 } from './app.js'
 
@@ -40,9 +40,9 @@ const T2_START = -7
 const T2_END = 3
 const MILESTONES = { m1: -20, m2: 3, m3: 11, m4: 21 }
 
-/** At this content width the Gantt viewport is just over 300px; the last two task bars fall outside. */
+/** At this content width the Gantt viewport is just over 300px, about nine days of month view. */
 const NARROW_WIDTH = 760
-/** The number of tasks in the draft project in the fixture. The Gantt still shows every one of them. */
+/** The number of tasks in the draft project in the fixture. */
 const TASK_ROWS = 5
 /** One of the fixture's tasks (t1) is done, so the plan's task list shows this many rows by default: a
  * done task collapses into the archived group, which starts closed. */
@@ -226,8 +226,20 @@ test('任务条在时间格内上下居中', async ({ win }) => {
   expect(Math.max(...centers)).toBeLessThanOrEqual(.5)
 })
 
-test('窗口收窄后每条任务行在甘特视口里仍看得见条或残桩', async ({ app, win }) => {
+test('窗口收窄后月视图里每条任务行在甘特视口里仍看得见条或残桩', async ({ app, win }) => {
   await gotoProject(win)
+  // Day and week views fit their period to the viewport, so only month view scrolls and draws stubs.
+  // Next month opens scrolled to its first day, so a task on its last day lies right of the viewport.
+  const month = timelinePeriod(fixtureDay(timelinePeriod(await vaultToday(win), 'month').last, 1), 'month')
+  await call(win, 'project.createTask', {
+    projectId: 'draft',
+    task: { title: '月末任务', start: month.last, end: month.last, state: 'plan', priority: 'p2' },
+  })
+  const gantt = win.locator('.screenslot:not([hidden]) .gantt')
+  await gantt.locator('.gscale button', { hasText: '月' }).click()
+  await gantt.locator('.gperiodnav button').last().click()
+  await expect(gantt.locator('.gbar-label', { hasText: '月末任务' })).toHaveCount(1)
+  const taskRows = (await readDraft(win)).tasks.filter((task) => overlaps(task, month)).length
   await app.evaluate(({ BrowserWindow }, width) => {
     BrowserWindow.getAllWindows()[0]!.setContentSize(width, 900)
   }, NARROW_WIDTH)
@@ -261,7 +273,7 @@ test('窗口收窄后每条任务行在甘特视口里仍看得见条或残桩',
   console.log(`甘特收窄到 ${NARROW_WIDTH}px 后每条任务行的可见宽度 ${JSON.stringify(rows)}`)
 
   expect(rows.map((r) => Math.max(r.bar ?? 0, r.stub ?? 0) > 0))
-    .toEqual(Array<boolean>(TASK_ROWS).fill(true))
+    .toEqual(Array<boolean>(taskRows).fill(true))
   // Some bar really is pushed out of the viewport, so this test checks a stub; otherwise it is vacuous.
   expect(rows.filter((r) => (r.bar ?? 0) <= 0 && (r.stub ?? 0) > 0).length).toBeGreaterThan(0)
 })
@@ -280,7 +292,6 @@ test('各板块渲染出的条目数与 project.get 返回的条数逐对相等'
     const sum = (counted: number[]) => counted.reduce((a, b) => a + b, 0)
     return {
       任务行: project.tasks.length,
-      甘特任务行: project.tasks.length,
       科研记录: project.events.length,
       关联组: project.relations.length,
       // The paper relation group also renders the project's directly linked papers as chips, on top of any
@@ -324,7 +335,10 @@ test('各板块渲染出的条目数与 project.get 返回的条数逐对相等'
   rendered['科研图节点'] = await win.locator('.rgraph .rgn').count()
   rendered['科研图连线'] = await win.locator('.rgraph .redges path').count()
 
-  for (const [section, count] of Object.entries(contract)) {
+  // The Gantt lists only the tasks that overlap the shown week.
+  const week = timelinePeriod(await vaultToday(win), 'week')
+  const listed = { ...contract, 甘特任务行: (await readDraft(win)).tasks.filter((task) => overlaps(task, week)).length }
+  for (const [section, count] of Object.entries(listed)) {
     expect(rendered[section], section).toBe(count)
   }
 })
@@ -393,7 +407,7 @@ test('拖菱形改期后,抬手补发的那次点击不算点在空白处新建�
 test('拖任务条顺延后,开始与结束日期移动了相同的天数', async ({ win }) => {
   await gotoProject(win)
   const today = await vaultToday(win)
-  // t1 lies outside the Gantt window and draws only a stub; t2, the first with a bar, moves 2 days.
+  // t1 lies outside the shown week and has no row; t2, the first with a bar, moves 2 days.
   const dayWidth = await ganttDayWidth(win)
   const bar = win.locator('.gantt .gbar').first()
   const box = (await bar.boundingBox())!
@@ -420,7 +434,7 @@ test('拖任务条顺延后,开始与结束日期移动了相同的天数', asyn
 test('拖完任务条那一下不算点击,单击只定位闪烁,名称格仍可独立写回 core', async ({ win }) => {
   await gotoProject(win)
   const today = await vaultToday(win)
-  // t1 lies outside the Gantt window and draws only a stub; t2 is the first task with a bar.
+  // t1 lies outside the shown week and has no row; t2 is the first task with a bar.
   const dayWidth = await ganttDayWidth(win)
   const bar = win.locator('.gantt .gbar').first()
   const box = (await bar.boundingBox())!
