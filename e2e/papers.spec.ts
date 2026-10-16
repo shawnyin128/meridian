@@ -133,6 +133,52 @@ test('论文表每一格的内容都在行内垂直居中,悬停展开截断的�
   expect(Math.abs(await textTop() - resting)).toBeLessThanOrEqual(0.5)
 })
 
+/** Authors far wider than their column; no paper in the fixture has authors. */
+const LONG_AUTHORS = ['Ashish Vaswani', 'Noam Shazeer', 'Niki Parmar', 'Jakob Uszkoreit', 'Llion Jones', 'Aidan N. Gomez'] as const
+/** A custom text value far wider than its column. */
+const LONG_NOTE = '先读第三节的消融实验，再对照附录里的超参数表核一遍复现脚本'
+
+test('悬停截断的作者格与自定义文本格,浮框比格子宽,压到邻格上的那段字也看得见', async ({ win }) => {
+  // The papers screen fetches only on its first visit, so the values are written before it opens.
+  await win.locator('[data-desk="papers"]').waitFor()
+  // The note column comes first, so the columns its box covers are inside the viewport.
+  await call(win, 'papers.setColumns', {
+    columns: {
+      hidden: [], custom: [{ key: 'note', label: '备注', type: 'text', options: [] }],
+      groups: [...DEFAULT_PAPER_GROUPS], order: ['note'],
+    },
+  })
+  const id = await call<{ rows: { id: string }[] }>(
+    win, 'papers.list', { page: 1, size: 1, sort: 'addedAt', direction: 'desc' },
+  ).then((r) => r.rows[0]!.id)
+  await call(win, 'papers.update', { id, patch: { authors: LONG_AUTHORS, custom: { note: LONG_NOTE } } })
+  await gotoPapers(win)
+  await firstPage(win)
+  const row = win.locator('.ptable tbody tr').first()
+
+  for (const [name, cell] of [
+    ['作者', row.locator('td.pt-dim', { hasText: LONG_AUTHORS[0] })],
+    ['备注', row.locator('td.pt-cust')],
+  ] as const) {
+    await parkPointer(win)
+    await expect(cell).toHaveClass(/\btrunc\b/)
+    await cell.hover()
+    const reveal = await cell.evaluate((td) => {
+      const box = td.querySelector('.ci')!
+      const edge = td.getBoundingClientRect().right
+      const rect = box.getBoundingClientRect()
+      // A point just past the cell's right edge hits the box only when the cell does not clip it.
+      const hit = document.elementFromPoint(edge + 12, (rect.top + rect.bottom) / 2)
+      return {
+        overhangs: rect.right - edge > 12,
+        whole: box.scrollWidth <= box.clientWidth,
+        visible: hit !== null && box.contains(hit),
+      }
+    })
+    expect(reveal, name).toEqual({ overhangs: true, whole: true, visible: true })
+  }
+})
+
 test('论文工具栏的视图切换与导入操作底边对齐', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
