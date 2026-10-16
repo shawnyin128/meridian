@@ -23,11 +23,9 @@
 .paper-drop{position:absolute;inset:46px 0 0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;background:color-mix(in srgb,var(--content) 88%,transparent);border:2px dashed var(--accent);color:var(--ink);backdrop-filter:blur(8px);pointer-events:none}
 .paper-drop strong{font-size:var(--fs-read)}
 .paper-drop span{font-size:var(--fs-sm);color:var(--ter)}
-/* Filter input. The class name is left over from the one-line add box of the Watches screen and is now used only here; values match .af-in input. */
-.mgr-add{display:flex;gap:8px;margin:10px 0 20px}
-.mgr-add input{flex:1;border:1px solid var(--sep2);background:var(--field);border-radius:var(--r-md);padding:6px 12px;font-size:var(--fs-sm);color:var(--ink);font-family:var(--sans)}
-.mgr-add input:focus{outline:0;border-color:var(--sep-strong);box-shadow:none}
-.paper-search{flex:1;margin:0}
+/* Filter input: the shared field input at the size of the Watches screen's one-line add box (.af-in). */
+.paper-search{flex:1}
+.paper-search>.form-input{width:100%;font-size:var(--fs-sm)}
 
 /* Group index level: pick a value first, then see the papers under it */
 .gxrow{display:flex;align-items:center;gap:12px;padding:12px 10px;border-bottom:1px solid var(--sep2);border-radius:var(--r-md);cursor:pointer}

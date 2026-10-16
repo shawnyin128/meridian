@@ -1233,7 +1233,7 @@ export function PaperTable() {
           />
           <div className="libbar">
             <ClearableInput
-              wrapperClassName="mgr-add paper-search"
+              appearance="field" wrapperClassName="paper-search"
               id="libq" placeholder={m.papers.toolbar.searchPlaceholder} autoComplete="off" value={q}
               onChange={(e) => { setQ(e.target.value); setPage(1) }}
               onClear={() => { setQ(''); setPage(1) }} clearLabel={m.papers.toolbar.clearSearch}
