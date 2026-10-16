@@ -19,6 +19,16 @@ describe('PaperAbstract', () => {
     expect(out).not.toContain('$\\times$')
   })
 
+  it('把摘要里的 \\textbf 等文本命令渲染成格式，不显示命令本身', () => {
+    const out = renderToStaticMarkup(
+      <MessagesProvider>
+        <PaperAbstract text={'we propose FluxBin (\\textbf{F}lexible \\textbf{L}UT-based \\textbf{U}ltra-low-bit e\\textbf{X}ecution with \\textbf{Bin}ary bases)'} />
+      </MessagesProvider>,
+    )
+    expect(out).toContain('(<strong>F</strong>lexible <strong>L</strong>UT-based <strong>U</strong>ltra-low-bit e<strong>X</strong>ecution with <strong>Bin</strong>ary bases)')
+    expect(out).not.toContain('\\textbf')
+  })
+
   it('普通摘要仍保持一个无额外外边距的段落', () => {
     const out = renderToStaticMarkup(
       <MessagesProvider><PaperAbstract text="A plain abstract." /></MessagesProvider>,

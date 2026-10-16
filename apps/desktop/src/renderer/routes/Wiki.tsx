@@ -28,6 +28,8 @@ import { PickRow, type PickHit } from '../components/PickRow.js'
 import { nextKey, slugOf } from '../lib/slug.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { PaperUnderstanding } from '../components/paper/PaperUnderstanding.js'
+import { PaperText } from '../components/paper/PaperText.js'
+import { plainTitle } from '../components/paper/paper-text.js'
 import { ReviewEntry, ReviewQueue } from '../components/wiki/ReviewQueue.js'
 import { WikiClaims } from '../components/wiki/WikiClaims.js'
 import './shell.css'
@@ -89,10 +91,10 @@ function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
   const line = [`${paper.year ?? ''} ${paper.venue}`.trim(), paper.topics.join(' / ')]
     .filter((part) => part !== '').join(' · ')
   return (
-    <div className="wkcard" data-wk={`${PAPER_PAGE}${paper.id}`} title={paper.title} onClick={onOpen}>
+    <div className="wkcard" data-wk={`${PAPER_PAGE}${paper.id}`} title={plainTitle(paper.title)} onClick={onOpen}>
       <div className="wt">
         <span className="wkind k-paper">{m.wiki.paperKind}</span>
-        <span className="tt">{paper.title}</span><span className="sp" />
+        <span className="tt"><PaperText text={paper.title} /></span><span className="sp" />
       </div>
       <div className="wm">{line}</div>
       <div className="wf">{m.wiki.paperCardFooter(paper.noteCount, paper.conclusionCount)}</div>
@@ -162,8 +164,11 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
           {agg.rows.map((row) => (
             <tr key={row.paper.id}>
               <td className="rh">
-                <span className="wl" data-wk={row.paper.id} title={row.paper.fullTitle} onClick={() => onOpen(row.paper.id)}>
-                  {row.paper.title}
+                <span
+                  className="wl" data-wk={row.paper.id} onClick={() => onOpen(row.paper.id)}
+                  title={row.paper.fullTitle === undefined ? undefined : plainTitle(row.paper.fullTitle)}
+                >
+                  <PaperText text={row.paper.title} />
                 </span>
               </td>
               {agg.columns.map((c) => {
@@ -534,14 +539,14 @@ export function Wiki() {
         { text: shownAgg.title },
       ]
     }
-    if (shownPaper !== null) return [{ text: shownPaper.title }]
+    if (shownPaper !== null) return [{ text: plainTitle(shownPaper.title) }]
     if (place === REVIEW) return [{ text: m.wiki.queue.entry }]
     return []
   }, [shownAgg, shownPaper, go, place, m])
   useCrumbTail(tail, place === null ? undefined : goHome)
 
   const queued = proposals.filter((p) => p.status === 'queued').length
-  const title = shownAgg?.title ?? shownPaper?.title
+  const title = shownAgg?.title ?? (shownPaper === null ? null : <PaperText text={shownPaper.title} />)
     ?? (place === REVIEW ? m.wiki.queue.title(queued) : null)
     ?? (home === null ? 'Wiki' : m.wiki.title(home.aggregationCount))
 

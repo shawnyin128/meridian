@@ -37,6 +37,8 @@ import { DetailPanel } from '../DetailPanel.js'
 import { ActionMenu, MenuRadioGroup, MenuRadioItem, MenuSeparator } from '../ActionMenu.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator } from '../ContextMenu.js'
+import { PaperText } from '../paper/PaperText.js'
+import { plainTitle } from '../paper/paper-text.js'
 import { ResearchMap } from './ResearchMap.js'
 import './PaperTable.css'
 
@@ -1165,7 +1167,7 @@ export function PaperTable() {
                 setRowMenu({ paper: p, x: bounds.left + 24, y: bounds.top + 24 })
               }}
             >
-              <td className="pt-title"><span className="ci">{p.title}</span></td>
+              <td className="pt-title"><span className="ci"><PaperText text={p.title} /></span></td>
               {cols.map((c) => cell(p, c))}
               {newCol ? <td className="pt-cust" /> : null}
               <td>
@@ -1332,7 +1334,7 @@ export function PaperTable() {
           : (
             <div className="pdetail">
               <div className="pd-h">
-                <span className="pd-t">{detail.title}</span>
+                <span className="pd-t"><PaperText text={detail.title} /></span>
                 <button className="icbtn" title={m.papers.rowActions.openReader} onClick={() => open('reader', detail.id)}>
                   <IconRead />
                 </button>
@@ -1352,7 +1354,7 @@ export function PaperTable() {
         ? null
         : (
           <ContextMenu
-            point={{ x: rowMenu.x, y: rowMenu.y }} label={m.papers.contextMenu.label(rowMenu.paper.title)}
+            point={{ x: rowMenu.x, y: rowMenu.y }} label={m.papers.contextMenu.label(plainTitle(rowMenu.paper.title))}
             className="paper-row-menu" onClose={() => setRowMenu(null)}
           >
           <ContextMenuItem

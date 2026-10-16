@@ -17,7 +17,7 @@ export const chat = {
   archivedSuffix: (title: string) => `${title} · 已归档`,
   paperChatLabel: '当前论文对话',
   expandPaperChat: '展开论文对话',
-  paperHeader: (title: string) => `${title} · 阅读中`,
+  paperHeaderSuffix: ' · 阅读中',
   paperEmpty: '围绕当前论文提问或记录想法。讨论会绑定到这篇论文并保存。',
   askAboutPaper: '向当前论文提问',
   paperComposerPlaceholder: '问这篇论文，或记录相关想法…',

@@ -19,7 +19,7 @@ export const chat = {
   archivedSuffix: (title: string) => `${title} · Archived`,
   paperChatLabel: 'Paper chat',
   expandPaperChat: 'Expand the paper chat',
-  paperHeader: (title: string) => `${title} · Paper chat`,
+  paperHeaderSuffix: ' · Paper chat',
   paperEmpty: 'Ask a question or capture an idea. This conversation stays linked to the paper and is saved automatically.',
   askAboutPaper: 'Ask about this paper',
   paperComposerPlaceholder: 'Ask about this paper, or note a related idea…',

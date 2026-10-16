@@ -18,6 +18,7 @@ import { clampZoom, keptScroll, scaledAbout, wheelZoom, type SheetTransform } fr
 import { PaperChat, type PaperChatPrompt } from '../components/chat/PaperChat.js'
 import { ReaderSidePanel, type ReaderSideTab } from '../components/reader/ReaderSidePanel.js'
 import { PageShell } from '../components/PageShell.js'
+import { plainTitle } from '../components/paper/paper-text.js'
 import './shell.css'
 import './Reader.css'
 
@@ -646,7 +647,7 @@ export function Reader() {
   }
 
   const tail = useMemo<CrumbSeg[]>(
-    () => (paper === null ? [] : [{ text: paper.title }]), [paper])
+    () => (paper === null ? [] : [{ text: plainTitle(paper.title) }]), [paper])
   useCrumbTail(tail)
 
   const status = error ?? (opened !== null && (doc === null || reading === null) ? m.reader.loadingPdf : null)

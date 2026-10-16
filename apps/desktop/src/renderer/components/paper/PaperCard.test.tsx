@@ -28,6 +28,15 @@ describe('PaperCard', () => {
     expect(out).toContain('推荐理由')
   })
 
+  it('标题里的公式与文本命令按 LaTeX 渲染', () => {
+    const out = renderToStaticMarkup(
+      <MessagesProvider>
+        <PaperCard paperId="paper-3" title={'$\\alpha$-\\textbf{Net}: 50\\% Faster'} actions={null} metadata="Ada" />
+      </MessagesProvider>,
+    )
+    expect(out).toMatch(/<h3><span><span class="katex">.*<\/span><\/span>-<strong>Net<\/strong>: 50% Faster<\/h3>/)
+  })
+
   it('关闭可选能力时不产生空摘要或推荐区', () => {
     const out = renderToStaticMarkup(
       <MessagesProvider><PaperCard paperId="paper-2" title="Plain" actions={null} metadata="Ada" /></MessagesProvider>,
