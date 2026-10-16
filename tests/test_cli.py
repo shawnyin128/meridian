@@ -1547,6 +1547,20 @@ class CliTests(unittest.TestCase):
             self.assertIn("deterministic Meridian helper", text)
             self.assertIn("guarded Meridian research-agent contract block", text)
 
+    def test_lab_and_coding_skills_decide_the_node_state_on_completion(self) -> None:
+        for root in (AGENT_PLUGIN_SKILL_ROOT, CODEX_PLUGIN_SKILL_ROOT, CLAUDE_PLUGIN_SKILL_ROOT):
+            lab = (root / "lab/SKILL.md").read_text(encoding="utf-8")
+            coding = (root / "meridian-coding/SKILL.md").read_text(encoding="utf-8")
+            completion = lab.split("- **Completion.**", 1)[1].split("\n- **", 1)[0]
+            finishing = coding.split("\n7. ", 1)[1].split("\n\n", 1)[0]
+            for name, step in (("lab", completion), ("meridian-coding", finishing)):
+                with self.subTest(root=str(root), skill=name):
+                    text = " ".join(step.replace("`", "").split()).lower()
+                    self.assertIn("decide the node's state", text)
+                    self.assertIn("supported when valid evidence supports", text)
+                    self.assertIn("ask the user, then", text)
+                    self.assertIn("repairable or dead", text)
+
     def test_lab_skill_path_diagnostics_reports_readable_source_and_caches(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "project"
@@ -2150,6 +2164,16 @@ class CliTests(unittest.TestCase):
         self.assertIn("load the Meridian Lab skill", block)
         self.assertIn("Research Grounding Injection", block)
         self.assertIn("Pure mechanical engineering may skip Lab", block)
+
+    def test_meridian_agents_contract_decides_the_node_state_when_recording_its_result(self) -> None:
+        from meridian.lab import meridian_agents_contract_block
+
+        bullet = meridian_agents_contract_block().split("- When the user asks to work on a Lab node,", 1)[1]
+        text = " ".join(bullet.split("\n\n", 1)[0].replace("`", "").split()).lower()
+
+        self.assertIn("meridian.lab_result when its work ends. in that call, decide the node's state", text)
+        self.assertIn("supported when valid evidence supports it", text)
+        self.assertIn("repairable or dead only after asking the user", text)
 
     def test_meridian_agents_contract_replacement_preserves_surrounding_text_exactly(self) -> None:
         from meridian.lab import (
