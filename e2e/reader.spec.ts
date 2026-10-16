@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { expect, gotoPapers, test, type MeridianWindow } from './app.js'
+import { expect, gotoPapers, settle, test, type MeridianWindow } from './app.js'
 
 /** Visited screens stay mounted, so reader selectors are scoped to the screen shown. */
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
@@ -126,6 +126,46 @@ test('阅读器右栏平滑展开并在收起后只保留工具轨', async ({ wi
   await expect(side).toHaveClass(/\bcollapsed\b/)
   await expect.poll(() => side.evaluate((element) => element.getBoundingClientRect().width))
     .toBeLessThan(60)
+})
+
+test('对话栏右缘的把手悬停显形、拖动在 240–480px 间调宽、单击收起成窄边；窄边、Ctrl+B 与标题栏按钮都能再开合', async ({ win }) => {
+  await openFromPapers(win)
+  const chat = shown(win, '.paper-chat')
+  const grip = shown(win, '.paper-chat > #rrgrip')
+  const edge = win.locator('.paper-chat-edge')
+  const width = () => chat.evaluate((element) => element.getBoundingClientRect().width)
+  const opacity = () => chat.evaluate((element) => getComputedStyle(element).opacity)
+  const dragBy = async (dx: number) => {
+    const box = (await grip.boundingBox())!
+    const y = box.y + box.height / 2
+    await win.mouse.move(box.x + box.width / 2, y)
+    await win.mouse.down()
+    await win.mouse.move(box.x + box.width / 2 + dx, y, { steps: 5 })
+    await win.mouse.up()
+  }
+
+  await grip.hover()
+  await expect.poll(() => grip.evaluate((element) => getComputedStyle(element, '::after').opacity)).toBe('1')
+  await dragBy(400)
+  expect(await width()).toBe(480)
+  await dragBy(-400)
+  expect(await width()).toBe(240)
+
+  // A press without moving is a click on the grip, which collapses the chat.
+  await grip.click()
+  await expect(edge).toBeVisible()
+  await settle(chat)
+  expect(await opacity()).toBe('0')
+  await edge.click()
+  await expect(edge).toHaveCount(0)
+  await settle(chat)
+  expect(await opacity()).toBe('1')
+  expect(await width()).toBe(240)
+
+  await win.keyboard.press('Control+b')
+  await expect(edge).toBeVisible()
+  await win.locator('#sbBtn').click()
+  await expect(edge).toHaveCount(0)
 })
 
 test('先排好所有页的框,再从视口附近开始画;第一页先于其余页画完', async ({ win }) => {

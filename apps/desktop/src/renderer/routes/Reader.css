@@ -15,7 +15,6 @@
 .paper-chat .bubble,.paper-chat .event{font-size:var(--fs-sm);line-height:1.5}
 .paper-chat .composer{padding:10px 0 12px}
 .paper-chat .cbox{padding-left:12px}
-.paper-chat .cbox input{min-width:0}
 .paper-chat .send:disabled{opacity:.45;cursor:default}
 .note-compose .btn:disabled,.reading-actions .btn:disabled{opacity:.45;cursor:default}
 .yellow{--mark:#f8d84a}.green{--mark:#87d99a}.blue{--mark:#82c7f2}.pink{--mark:#f0a0be}
