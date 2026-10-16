@@ -429,8 +429,8 @@ test('同一篇再进来,读到哪儿、放大到几倍都留着', async ({ win 
 
   await shown(win, '.zoomctl [title="放大"]').click()
   await expect(shown(win, '.zoomctl span')).toHaveText('120%')
-  // A redraw restores the scroll to the same proportion, so wait until the whole paper is drawn at the
-  // new zoom, then two more frames, before scrolling to the position to remember.
+  // Settling the zoom moves the scroll to keep the page point at the zoom position in place, so wait
+  // until the whole paper is drawn, then two more frames, before scrolling to the position to remember.
   await expect.poll(async () => {
     const pages = await inked(win)
     return pages.length === READABLE.pages && pages.every((p) => p.untouched === 0)
