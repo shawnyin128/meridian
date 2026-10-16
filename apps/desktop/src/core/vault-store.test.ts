@@ -1204,6 +1204,40 @@ describe('vault store on the aggregation layout', () => {
     expect(() => store.verifyConclusion(id, 't.A', shown[0]!.fingerprint!)).toThrow(/在你打开之后又被改过/)
   })
 
+  it('手动给任务设的科研节点存在项目页顶层并写进共享计划面,重开仍在,结论按它算;清掉就回到 agent 连的节点', () => {
+    store.createProject('手动节点')
+    const id = store.listProjects().find((p) => p.name === '手动节点')!.id
+    const task = store.createTask(id, {
+      title: '跑宽度扫描', start: '2026-09-10', end: '2026-09-10', state: 'done', priority: 'p1',
+    }).tasks[0]!.id
+    const repo = join(vault, 'task-node-repo')
+    mkdirSync(join(repo, '.meridian/graph'), { recursive: true })
+    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    const conclusion = { text: '宽树净赚', date: '2026-09-09', evidence: [] }
+    writeFileSync(join(repo, '.meridian/graph/graph.json'), JSON.stringify({
+      schema: 'meridian.lab.graph.v1', edges: [],
+      nodes: [{ id: 't.A', title: '宽树', state: 'supported' }, { id: 't.B', title: '前缀', state: 'supported' }],
+      node_details: { 't.A': { tasks: [task], conclusion }, 't.B': { conclusion } },
+    }))
+    const planNode = () => (JSON.parse(readFileSync(join(repo, '.meridian/control/plan.json'), 'utf8')) as {
+      tasks: { id: string; node?: string }[]
+    }).tasks.find((t) => t.id === task)!.node
+    const tasksOf = (node: string) => store.getProject(id).projectConclusions!
+      .find((c) => c.node === node)!.tasks.map((t) => t.id)
+
+    store.setTaskNode(id, task, 't.B')
+    expect(readFileSync(join(vault, 'wiki', 'projects', `${id}.md`), 'utf8')).toContain(`task_nodes:\n  ${task}: "t.B"\n`)
+    expect(createVaultStore(vault).getProject(id).taskNodes).toEqual({ [task]: 't.B' })
+    expect(planNode()).toBe('t.B')
+    expect([tasksOf('t.A'), tasksOf('t.B')]).toEqual([[], [task]])
+
+    store.setTaskNode(id, task, null)
+    expect(readFileSync(join(vault, 'wiki', 'projects', `${id}.md`), 'utf8')).not.toContain('task_nodes:')
+    expect(planNode()).toBeUndefined()
+    expect([tasksOf('t.A'), tasksOf('t.B')]).toEqual([[task], []])
+    expect(() => store.setTaskNode(id, task, 't.missing')).toThrow(/t.missing/)
+  })
+
   it('agent 请求加的任务:进计划、标明 agent 加的、记一条能撤销的变动;每条只收一次,删掉或撤销都不回来', () => {
     store.createProject('agent 任务')
     const id = store.listProjects().find((p) => p.name === 'agent 任务')!.id

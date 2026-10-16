@@ -163,6 +163,8 @@ export const project = {
     call<ProjectDetail>('project.deleteTask', { projectId, taskId }),
   reorderTasks: (projectId: string, order: string[]) =>
     call<ProjectDetail>('project.reorderTasks', { projectId, order }),
+  setTaskNode: (projectId: string, taskId: string, nodeId: string | null) =>
+    call<ProjectDetail>('project.setTaskNode', { projectId, taskId, nodeId }),
   createMilestone: (projectId: string, milestone: MilestoneFields) =>
     call<ProjectDetail>('project.createMilestone', { projectId, milestone }),
   updateMilestone: (projectId: string, milestoneId: string, patch: Partial<MilestoneFields>) =>

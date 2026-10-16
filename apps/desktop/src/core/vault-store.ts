@@ -1540,6 +1540,18 @@ export function createVaultStore(
       return writeProject({ ...project, tasks: order.map((id) => byId.get(id)!) }, ['tasks'])
     },
 
+    setTaskNode(projectId, taskId, nodeId) {
+      const project = projectOf(projectId)
+      if (!project.tasks.some((t) => t.id === taskId)) throw new Error(`任务不存在:${taskId}`)
+      const graph = readProjectWorkspace(project)?.graph ?? project.graph
+      if (nodeId !== null && !graph.nodes.some((n) => n.id === nodeId)) throw new Error(`节点不存在:${nodeId}`)
+      const taskNodes = Object.fromEntries(Object.entries(project.taskNodes ?? {}).filter(([task]) => task !== taskId))
+      if (nodeId !== null) taskNodes[taskId] = nodeId
+      const next: ProjectRecord = { ...project, taskNodes }
+      if (Object.keys(taskNodes).length === 0) delete next.taskNodes
+      return writeProject(next, ['taskNodes'])
+    },
+
     createMilestone(projectId, milestone) {
       const project = projectOf(projectId)
       return writeProject(

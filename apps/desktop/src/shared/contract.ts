@@ -350,6 +350,8 @@ export const ProjectDetailSchema = z.object({
   /** Display labels by ID for referenced papers still in the vault; `paperCount` counts these. */
   paperTitles: z.record(z.string(), z.string()),
   tasks: z.array(TaskSchema),
+  /** Research node a task was given by hand, by task id; it takes precedence over the graph's own link. */
+  taskNodes: z.record(z.string(), z.string()).optional(),
   milestones: z.array(MilestoneSchema),
   /** Research log in insertion order, newest last. `node` links a record to a graph node. */
   events: z.array(RecordEventSchema),
@@ -925,7 +927,7 @@ export const ProjectDeleteParamsSchema = z.object({ id: z.string() }).strict()
 
 /** Writable project fields; `block: null` clears the blocker. */
 const ProjectFieldsSchema = ProjectDetailSchema.omit({
-  id: true, tasks: true, milestones: true, events: true, relations: true, attachments: true,
+  id: true, tasks: true, taskNodes: true, milestones: true, events: true, relations: true, attachments: true,
   conclusions: true, conclusionList: true, conclusionClaims: true, projectConclusions: true, verifiedConclusions: true,
   paperCount: true, papers: true,
   paperTitles: true, graph: true, agentSessions: true, block: true,
@@ -967,6 +969,13 @@ export const ProjectDeleteTaskParamsSchema = z.object({
 export const ProjectReorderTasksParamsSchema = z.object({
   projectId: z.string(),
   order: z.array(z.string()),
+}).strict()
+
+/** Gives a task a research node by hand; `nodeId: null` takes that away, leaving the graph's own link. */
+export const ProjectSetTaskNodeParamsSchema = z.object({
+  projectId: z.string(),
+  taskId: z.string(),
+  nodeId: z.string().nullable(),
 }).strict()
 
 export const ProjectCreateMilestoneParamsSchema = z.object({
@@ -2317,6 +2326,7 @@ export const CONTRACT_METHODS = [
   'project.updateTask',
   'project.deleteTask',
   'project.reorderTasks',
+  'project.setTaskNode',
   'project.createMilestone',
   'project.updateMilestone',
   'project.deleteMilestone',

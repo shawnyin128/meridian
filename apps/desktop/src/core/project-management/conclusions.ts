@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import type { GraphNode, ProjectConclusion, ResearchGraph } from '../../shared/contract.js'
+import { withTaskNodes } from '../../shared/task-nodes.js'
 import type { ProjectRecord } from './page.js'
 
 /** A Wiki claim whose experiment evidence cites one of a project's nodes or legacy conclusions. */
@@ -55,10 +56,11 @@ export function verifiedNodes(
  * `graph` and one per legacy `conclusionList` entry. A node conclusion is verified when the user
  * verified its current fingerprint, and pending otherwise; a legacy entry keeps its stored state.
  * Either is conflicting while one of `claims` citing it has an open conflict or one of `disputes` is
- * raised against it. Task ids the plan no longer holds are left out.
+ * raised against it. A node's tasks are those `project.taskNodes` gives it by hand and those the
+ * graph links to it otherwise; task ids the plan no longer holds are left out.
  */
 export function projectConclusions(
-  project: Pick<ProjectRecord, 'tasks' | 'conclusionList' | 'verifiedConclusions'>,
+  project: Pick<ProjectRecord, 'tasks' | 'taskNodes' | 'conclusionList' | 'verifiedConclusions'>,
   graph: ResearchGraph,
   claims: readonly ProjectClaim[],
   disputes: readonly ProjectDispute[],
@@ -68,7 +70,7 @@ export function projectConclusions(
   const wiki = (cited: readonly ProjectClaim[]) => cited.map(({ page, title, claim, version }) => ({
     page, title, claim, version,
   }))
-  const fromNodes = concludedNodes(graph).map((node): ProjectConclusion => {
+  const fromNodes = concludedNodes(withTaskNodes(graph, project.taskNodes)).map((node): ProjectConclusion => {
     const cited = claims.filter((c) => c.node === node.id)
     const verifiedOn = verified.get(node.id)
     return {

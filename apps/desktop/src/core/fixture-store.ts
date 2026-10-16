@@ -1016,6 +1016,19 @@ export function createFixtureStore(
       return detailOf(nextProject)
     },
 
+    setTaskNode(projectId, taskId, nodeId) {
+      const project = projectById.get(projectId)
+      if (!project) throw new Error(`项目不存在:${projectId}`)
+      if (!project.tasks.some((t) => t.id === taskId)) throw new Error(`任务不存在:${taskId}`)
+      if (nodeId !== null && !project.graph.nodes.some((n) => n.id === nodeId)) throw new Error(`节点不存在:${nodeId}`)
+      const taskNodes = Object.fromEntries(Object.entries(project.taskNodes ?? {}).filter(([task]) => task !== taskId))
+      if (nodeId !== null) taskNodes[taskId] = nodeId
+      const nextProject: FixtureProject = { ...project, taskNodes }
+      if (Object.keys(taskNodes).length === 0) delete nextProject.taskNodes
+      projectById.set(projectId, nextProject)
+      return detailOf(nextProject)
+    },
+
     createMilestone(projectId, milestone) {
       const project = projectById.get(projectId)
       if (!project) throw new Error(`项目不存在:${projectId}`)
