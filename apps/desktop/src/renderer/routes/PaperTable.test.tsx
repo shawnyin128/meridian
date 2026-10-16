@@ -519,6 +519,29 @@ describe('PaperTable', () => {
     expect(title!.querySelector<HTMLInputElement>('input, textarea')!.value).toBe('\\textbf{F}luxBin $\\times$')
   })
 
+  it('详情的论文信息直接列出，不带「元数据」标题，并按 LaTeX 显示摘要', async () => {
+    const withAbstract = { ...ROW, abstract: '我们提出 \\textbf{FluxBin}，把误差降到 $O(n)$。' }
+    // The folded abstract measures itself, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [withAbstract], total: 1 })
+    await flush()
+    await act(async () => { press(host.querySelector<HTMLElement>('.ptable tbody tr')!) })
+    getCall.resolve(withAbstract)
+    await flush()
+
+    const panel = host.querySelector<HTMLElement>('.paper-meta')!
+    expect(panel.textContent).not.toContain('元数据')
+    expect(panel.firstElementChild!.tagName).toBe('DL')
+    const labels = [...panel.querySelectorAll('dt')].map((dt) => dt.textContent)
+    const abstract = panel.querySelectorAll('dd')[labels.indexOf('摘要')]!
+    expect(labels.indexOf('摘要')).toBe(labels.indexOf('作者') + 1)
+    expect(abstract.innerHTML).toContain('<strong>FluxBin</strong>')
+    expect(abstract.querySelector('.katex')).not.toBeNull()
+    vi.unstubAllGlobals()
+  })
+
   it('详情面板收掉建列草稿之后,关面板新开的草稿不受它落地影响', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)

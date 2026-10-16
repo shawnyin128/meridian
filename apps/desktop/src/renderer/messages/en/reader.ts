@@ -5,7 +5,7 @@ export const reader = {
   rail: {
     label: 'Paper tools',
     tabs: {
-      metadata: 'Metadata',
+      metadata: 'Info',
       highlights: 'Highlights',
       notes: 'Reading notes',
       remark: 'Thoughts',

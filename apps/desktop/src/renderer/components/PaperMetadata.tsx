@@ -6,6 +6,7 @@ import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useToast } from '../shell/AppShell.js'
 import { InlineMetadataField } from './InlineField.js'
+import { PaperAbstract } from './paper/PaperAbstract.js'
 import { PaperText } from './paper/PaperText.js'
 import { ProjectChips } from './ProjectChips.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -126,11 +127,12 @@ export function PaperMetadata({ paper, onSaved }: {
 
   return (
     <div className="paper-meta" aria-busy={ratingSaving}>
-      <div className="paper-meta-toolbar"><strong>{m.papers.metadata.heading}</strong></div>
       <dl className="paper-meta-list">
         {editableRow('title', <PaperText text={paper.title} />)}
         {editableRow('shortTitle', paper.shortTitle ? <PaperText text={paper.shortTitle} /> : '')}
         {editableRow('authors', paper.authors?.join(', ') ?? '')}
+        <dt>{m.papers.metadata.abstractLabel}</dt>
+        <dd>{paper.abstract ? <PaperAbstract text={paper.abstract} folded /> : '—'}</dd>
         {editableRow('venue', paper.venue)}
         {editableRow('year', paper.year?.toString() ?? '')}
         <dt>{labels.rating}</dt>

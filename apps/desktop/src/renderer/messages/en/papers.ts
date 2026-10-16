@@ -124,7 +124,6 @@ export const papers = {
     stars: (n: number) => `${n} ${pluralEn(n, { one: 'star', other: 'stars' })}`,
   },
   metadata: {
-    heading: 'Metadata',
     fields: {
       title: 'Title',
       shortTitle: 'Short title',
@@ -143,6 +142,7 @@ export const papers = {
       readStateInvalid: 'Invalid read state',
     },
     updated: (label: string) => `${label} updated · you can undo this in Recent Changes`,
+    abstractLabel: 'Abstract',
     projectsLabel: 'Projects',
     wikiLabel: 'Wiki',
     fileLabel: 'File',

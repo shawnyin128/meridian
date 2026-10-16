@@ -113,14 +113,14 @@ test('阅读器右栏平滑展开并在收起后只保留工具轨', async ({ wi
   expect(await side.evaluate((element) => getComputedStyle(element).transitionProperty))
     .toContain('flex-basis')
 
-  await shown(win, '.reader-rail [title="元数据"]').click()
+  await shown(win, '.reader-rail [title="信息"]').click()
   await expect(side).not.toHaveClass(/\bcollapsed\b/)
   await expect.poll(() => side.evaluate((element) => element.getBoundingClientRect().width))
     .toBeGreaterThan(300)
   expect(await side.locator('.paper-meta').evaluate((element) => getComputedStyle(element).animationName))
     .toContain('detail-panel-content-in')
 
-  await shown(win, '.reader-rail [title="元数据"]').click()
+  await shown(win, '.reader-rail [title="信息"]').click()
   await expect(side).toHaveClass(/\bcollapsed\b/)
   await expect.poll(() => side.evaluate((element) => element.getBoundingClientRect().width))
     .toBeLessThan(60)

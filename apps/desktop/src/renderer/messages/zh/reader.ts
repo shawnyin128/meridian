@@ -3,7 +3,7 @@ export const reader = {
   rail: {
     label: '论文工具',
     tabs: {
-      metadata: '元数据',
+      metadata: '信息',
       highlights: '高亮与批注',
       notes: '阅读笔记',
       remark: '随笔',
