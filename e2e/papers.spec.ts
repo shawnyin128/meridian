@@ -1758,7 +1758,7 @@ test('改类型:列菜单里只用键盘把文本列改成单选', async ({ win 
   await expect(selectBtn).toBeFocused()
 })
 
-test('详情里点一项元数据,原位输入框没有边框、浅灰实底、没有外圈', async ({ win }) => {
+test('详情里点一项元数据,原位输入框没有边框、浅灰实底,只在底部有一条强调线、没有外圈', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
@@ -1766,6 +1766,8 @@ test('详情里点一项元数据,原位输入框没有边框、浅灰实底、�
 
   const input = win.locator('.pdetail .metadata-input')
   await expect(input).toBeFocused()
+  // The editing line fades in over the focus transition; read the field once it has settled.
+  await expect.poll(() => input.evaluate((el) => getComputedStyle(el).boxShadow)).toMatch(/ 0px -2px 0px 0px inset$/)
   const style = await input.evaluate((el) => {
     // Resolve the field token next to the input so the comparison holds in either theme.
     const probe = document.createElement('span')
@@ -1782,6 +1784,8 @@ test('详情里点一项元数据,原位输入框没有边框、浅灰实底、�
   expect(style.borders).toEqual(['0px', '0px', '0px', '0px'])
   expect(style.background).toBe(style.field)
   expect(style.background).not.toBe('rgba(0, 0, 0, 0)')
-  expect(style.shadow).toBe('none')
+  // One inset line along the bottom edge and nothing around the field.
+  expect(style.shadow.split(/,(?![^(]*\))/)).toHaveLength(1)
+  expect(style.shadow).toMatch(/ 0px -2px 0px 0px inset$/)
   expect(style.outline).toBe('none')
 })
