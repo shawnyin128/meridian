@@ -5,7 +5,8 @@
 
 The source dir must hold meridian-app-icon-4096.png (the opaque square) and
 meridian-logo-mark-4096.png (the mark on transparent background). Everything
-lands in apps/desktop/resources/ and is a pure function of those two files:
+lands in apps/desktop/resources/, except where noted, and is a pure function of
+those two files:
 
 - icon.png   1024x1024, the square as supplied. Window and taskbar icon on
              win32/linux.
@@ -19,14 +20,19 @@ lands in apps/desktop/resources/ and is a pure function of those two files:
              32px rendition there.
 - mark-64.png, mark-128.png
              the transparent mark, cropped to its alpha bounds and centred on a
-             square canvas with a 4% margin on every side.
+             square canvas with a 4% margin on every side. The same renditions
+             are written to plugins/codex/meridian/assets/ as
+             meridian-mark-64.png and meridian-mark-128.png, the Codex plugin's
+             and its skills' icons.
 """
 import pathlib
 import sys
 
 from PIL import Image, ImageDraw
 
-OUT = pathlib.Path(__file__).resolve().parent.parent / "apps/desktop/resources"
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+OUT = ROOT / "apps/desktop/resources"
+PLUGIN_ASSETS = ROOT / "plugins/codex/meridian/assets"
 
 ICO_SIZES = [16, 24, 32, 48, 64, 128, 256]
 # Pillow writes ic07/ic08/ic09/ic10/ic11/ic12/ic13/ic14, which is these pixel sizes.
@@ -73,9 +79,12 @@ side = round(max(trimmed.size) / (1 - 2 * MARGIN))
 centred = Image.new("RGBA", (side, side), (0, 0, 0, 0))
 centred.paste(trimmed, ((side - trimmed.width) // 2, (side - trimmed.height) // 2))
 for size in MARK_SIZES:
-    lanczos(centred, size).save(OUT / f"mark-{size}.png")
+    rendition = lanczos(centred, size)
+    rendition.save(OUT / f"mark-{size}.png")
+    rendition.save(PLUGIN_ASSETS / f"meridian-mark-{size}.png")
 
 print(
     f"wrote icon.png/ico/icns, icon-macos.png and "
-    f"mark-{'/'.join(str(s) for s in MARK_SIZES)} -> {OUT}"
+    f"mark-{'/'.join(str(s) for s in MARK_SIZES)} -> {OUT}, "
+    f"meridian-mark-{'/'.join(str(s) for s in MARK_SIZES)} -> {PLUGIN_ASSETS}"
 )

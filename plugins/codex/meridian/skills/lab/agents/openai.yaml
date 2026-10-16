@@ -1,4 +1,6 @@
 interface:
   display_name: "Lab"
   short_description: "Route research-development work through Lab preflight."
+  icon_small: "../../assets/meridian-mark-64.png"
+  icon_large: "../../assets/meridian-mark-128.png"
   default_prompt: "Use $lab to place this research idea and prepare the next evidence step."
