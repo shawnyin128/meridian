@@ -227,14 +227,15 @@ test('任务条在时间格内上下居中', async ({ win }) => {
 })
 
 test('窗口收窄后月视图里每条任务行在甘特视口里仍看得见条或残桩', async ({ app, win }) => {
-  await gotoProject(win)
   // Day and week views fit their period to the viewport, so only month view scrolls and draws stubs.
   // Next month opens scrolled to its first day, so a task on its last day lies right of the viewport.
+  // A write through Core directly does not refresh an open project page, so the task goes in first.
   const month = timelinePeriod(fixtureDay(timelinePeriod(await vaultToday(win), 'month').last, 1), 'month')
   await call(win, 'project.createTask', {
     projectId: 'draft',
     task: { title: '月末任务', start: month.last, end: month.last, state: 'plan', priority: 'p2' },
   })
+  await gotoProject(win)
   const gantt = win.locator('.screenslot:not([hidden]) .gantt')
   await gantt.locator('.gscale button', { hasText: '月' }).click()
   await gantt.locator('.gperiodnav button').last().click()

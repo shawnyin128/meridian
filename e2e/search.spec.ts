@@ -91,7 +91,7 @@ test('从最近变动屏搜:命中多于上限时只出 SEARCH_LIMIT 条,点论�
   expect(listed).toHaveLength(SEARCH_LIMIT)
   // Groups come in the order aggregation page, project, chat, paper, and later groups are cut first; no
   // aggregation page has draft in its title.
-  expect(listed.map((t) => t.split(':')[0])).toEqual([
+  expect(listed.map((t) => t.split('：')[0])).toEqual([
     '项目', '论文', '论文', '论文', '论文', '论文', '论文', '论文',
   ])
 
