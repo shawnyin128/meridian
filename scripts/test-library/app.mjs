@@ -1,7 +1,7 @@
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { join, resolve } from 'node:path'
+import { delimiter, join, resolve } from 'node:path'
 import { _electron as electron } from '@playwright/test'
 
 const REPO = resolve(import.meta.dirname, '../..')
@@ -69,6 +69,29 @@ export function openApp(out, app) {
     env: appEnv(out, { show: true, network: true }), detached: true, stdio: 'ignore',
   }).unref()
 }
+
+/**
+ * Runs Python (`$PYTHON`, else `python` on PATH) with `args` and stdin `input`, with this checkout's
+ * `src` first on its path and config home `<out>/config`, the way a coding agent's plugin runs, and
+ * returns its stdout. Throws with its output when it fails.
+ */
+export function python(out, args, input) {
+  const run = spawnSync(process.env.PYTHON ?? 'python', args, {
+    encoding: 'utf8',
+    input,
+    env: {
+      ...process.env,
+      MERIDIAN_CONFIG_HOME: join(out, 'config'),
+      PYTHONPATH: [join(REPO, 'src'), process.env.PYTHONPATH].filter(Boolean).join(delimiter),
+    },
+  })
+  if (run.error) throw run.error
+  if (run.status !== 0) throw new Error(`python ${args.join(' ')} failed:\n${run.stdout}${run.stderr}`)
+  return run.stdout
+}
+
+/** Runs the `meridian` CLI with `args` through `python` and returns its stdout. */
+export const meridian = (out, args) => python(out, ['-m', 'meridian', ...args])
 
 /** The ISO date `days` after `today`, before it when negative. */
 export const dayFrom = (today, days) =>
