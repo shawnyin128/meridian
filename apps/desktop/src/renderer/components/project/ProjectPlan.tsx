@@ -249,12 +249,12 @@ export function ProjectTaskPanel({
         actions={node === undefined
           ? (nodes.length === 0 ? undefined : pickNode('btn plain', m.project.plan.linkNode))
           : (
-            <span className="project-task-node-actions">
+            <>
               {pickNode('btn plain', m.project.plan.changeNode)}
               {handSet
                 ? <button className="btn plain" onClick={() => onSetNode(null)}>{m.project.plan.unlinkNode}</button>
                 : null}
-            </span>
+            </>
           )}
       >{m.project.plan.nodeHeading}
       </SectionHeading>

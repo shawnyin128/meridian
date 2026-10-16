@@ -219,11 +219,14 @@ describe('ProjectTaskPanel', () => {
     })
 
     it('科研节点的操作和备注的编辑一样放在小标题右侧', () => {
-      /** The section heading that starts with `label`, and the texts of the buttons inside it. */
+      /**
+       * The section heading that starts with `label`, and the texts of its own buttons: the shared
+       * heading rule right-aligns only buttons that are its direct children.
+       */
       const heading = (label: string) => {
         const found = [...document.querySelectorAll<HTMLElement>('.section-heading')]
           .find((element) => element.textContent?.startsWith(label))!
-        return { className: found.className, buttons: [...found.querySelectorAll('button')].map((b) => b.textContent) }
+        return { className: found.className, buttons: [...found.querySelectorAll(':scope > .btn')].map((b) => b.textContent) }
       }
       mount({})
       expect(heading('科研节点').buttons).toEqual(['关联节点'])
