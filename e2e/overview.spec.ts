@@ -276,7 +276,8 @@ test('总览横条是真实任务:拖动改任务日期,单击进所属项目', 
   const box = (await bar.boundingBox())!
   const x0 = box.x + box.width / 2
   const y = box.y + box.height / 2
-  const left = () => bar.evaluate((el) => (el as HTMLElement).offsetLeft)
+  // The unrounded inline left: offsetLeft rounds to whole pixels, and the fitted day width has a fraction.
+  const left = () => bar.evaluate((el) => parseFloat((el as HTMLElement).style.left))
   const from = await left()
 
   await win.mouse.move(x0, y)
@@ -285,7 +286,7 @@ test('总览横条是真实任务:拖动改任务日期,单击进所属项目', 
   // While dragging, the bar follows the pointer in whole days. Wait until it has really moved two days
   // before releasing: if the press missed the bar or the move has not happened yet, the bar stays put
   // and this check fails.
-  await expect.poll(async () => Math.round((await left()) - from)).toBe(Math.round(2 * dayPx))
+  await expect.poll(async () => (await left()) - from).toBeCloseTo(2 * dayPx, 0)
   await win.mouse.up()
 
   await expect(win.locator('#toast')).toHaveText('任务顺延 2 天')
