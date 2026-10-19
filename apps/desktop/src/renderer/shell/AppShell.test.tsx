@@ -17,6 +17,7 @@ const fixture = vi.hoisted(() => ({
   chats: [{ id: 'c1', title: '讨论', archived: false, messageCount: 1 }],
   back: vi.fn(),
   platform: 'darwin',
+  fullScreen: [] as ((on: boolean) => void)[],
 }))
 
 const none = () => Promise.resolve([])
@@ -24,6 +25,10 @@ const none = () => Promise.resolve([])
 vi.mock('../ipc.js', () => ({
   appMenu: {
     onOpenSettings: () => () => {}, onOpenAgentTutorial: () => () => {}, platform: () => fixture.platform,
+    onFullScreen: (handler: (on: boolean) => void) => {
+      fixture.fullScreen.push(handler)
+      return () => { fixture.fullScreen.splice(fixture.fullScreen.indexOf(handler), 1) }
+    },
     setTitleBarTheme: vi.fn(), toggleMaximize: vi.fn(),
   },
   appUpdates: { check: vi.fn(), status: () => new Promise(() => {}), onChange: () => () => {}, install: vi.fn() },
@@ -194,6 +199,95 @@ describe('AppShell sidebar collapse', () => {
   })
 })
 
+describe('AppShell title bar', () => {
+  it('marks the document while the window is full screen, where macOS hides the traffic lights', async () => {
+    await mount()
+    const root = document.documentElement
+    expect(root.hasAttribute('data-fullscreen')).toBe(false)
+    act(() => fixture.fullScreen.forEach((handler) => handler(true)))
+    expect(root.hasAttribute('data-fullscreen')).toBe(true)
+    act(() => fixture.fullScreen.forEach((handler) => handler(false)))
+    expect(root.hasAttribute('data-fullscreen')).toBe(false)
+  })
+})
+
+describe('AppShell sidebar grip', () => {
+  let grip: HTMLElement
+  const width = () => (document.querySelector<HTMLElement>('#main')!.style.getPropertyValue('--sbw'))
+  const mouse = (target: EventTarget, type: string, clientX = 0) => act(() => {
+    target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX }))
+  })
+  const key = (target: HTMLElement, name: string, init: KeyboardEventInit = {}) => act(() => {
+    target.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true, cancelable: true, ...init }))
+  })
+
+  /** Mounts the shell with `feed` as its first screen, its sidebar laid out at the default 232px. */
+  const setUp = async (feed?: ReactNode) => {
+    await mount(feed)
+    document.querySelector<HTMLElement>('#sidebar')!.getBoundingClientRect = () => ({ width: 232 }) as DOMRect
+    grip = document.querySelector<HTMLElement>('#sbgrip')!
+  }
+
+  it('is a focusable separator that states the sidebar width and its limits', async () => {
+    await setUp()
+    expect(grip.getAttribute('role')).toBe('separator')
+    expect(grip.getAttribute('aria-orientation')).toBe('vertical')
+    expect(grip.tabIndex).toBe(0)
+    expect(grip.getAttribute('aria-label')).toBe('侧栏宽度')
+    expect([grip.getAttribute('aria-valuenow'), grip.getAttribute('aria-valuemin'), grip.getAttribute('aria-valuemax')])
+      .toEqual(['232', '180', '320'])
+  })
+
+  it('leaves the sidebar open and its width unchanged after a press without moving', async () => {
+    await setUp()
+    mouse(grip, 'mousedown', 100)
+    mouse(document, 'mousemove', 102)
+    mouse(document, 'mouseup', 102)
+    expect(document.querySelector('#main')!.classList.contains('sbhide')).toBe(false)
+    expect(width()).toBe('232px')
+  })
+
+  it('puts the width back when Escape ends a drag, and that Escape closes no other layer', async () => {
+    const close = vi.fn()
+    await setUp(<Panel onClose={close} />)
+    mouse(grip, 'mousedown', 100)
+    mouse(document, 'mousemove', 160)
+    expect(width()).toBe('292px')
+    key(document.body, 'Escape')
+    expect(width()).toBe('232px')
+    expect(close).not.toHaveBeenCalled()
+    mouse(document, 'mousemove', 200)
+    mouse(document, 'mouseup', 200)
+    expect(width()).toBe('232px')
+  })
+
+  it('steps the width with the arrow keys within its limits and resets it on a double-click', async () => {
+    await setUp()
+    key(grip, 'ArrowRight')
+    expect(width()).toBe('242px')
+    document.querySelector<HTMLElement>('#sidebar')!.getBoundingClientRect = () => ({ width: 242 }) as DOMRect
+    key(grip, 'ArrowLeft', { shiftKey: true })
+    expect(width()).toBe('192px')
+    key(grip, 'End')
+    expect(width()).toBe('320px')
+    mouse(grip, 'dblclick')
+    expect(width()).toBe('232px')
+  })
+
+  it('leaves an expand control with a visible glyph at the edge of the collapsed sidebar', async () => {
+    await setUp()
+    expect(document.querySelector('.grip-edge')).toBeNull()
+    press('b', { metaKey: true })
+    const edge = document.querySelector<HTMLButtonElement>('.grip-edge')!
+    expect(edge.tagName).toBe('BUTTON')
+    expect(edge.getAttribute('aria-label')).toBe('展开侧栏')
+    expect(edge.getAttribute('aria-expanded')).toBe('false')
+    act(() => edge.click())
+    expect(document.querySelector('#main')!.classList.contains('sbhide')).toBe(false)
+    expect(document.querySelector('.grip-edge')).toBeNull()
+  })
+})
+
 describe('AppShell keyboard navigation', () => {
   beforeEach(() => mount())
 
@@ -275,6 +369,45 @@ describe('AppShell notice', () => {
     expect(host.querySelectorAll('#notice')).toHaveLength(1)
     expect(notice.textContent).toBe('项目不存在：repro')
     expect(notice.dataset['tone']).toBe('refusal')
+  })
+})
+
+describe('AppShell sidebar rows', () => {
+  beforeEach(() => mount())
+
+  it('names a watch, a discovery project and a chat in full on hover, where the row fades them out', () => {
+    expect(document.querySelector('[data-watchrow="w-topic"] .watch-name')!.getAttribute('title')).toBe('推测解码')
+    expect(document.querySelector('[data-discovery-project="p1"] .watch-name')!.getAttribute('title')).toBe('推理项目')
+    expect(document.querySelector('[data-chat="c1"] .ct-t')!.getAttribute('title')).toBe('讨论')
+  })
+
+  it('folds the delivery groups from inline icon buttons that state whether they are open', () => {
+    for (const selector of ['#rowInboxAll .sh-caret', '[data-inbox="discovery"] .sh-caret']) {
+      const toggle = document.querySelector<HTMLElement>(selector)!
+      expect(toggle.classList.contains('icbtn'), selector).toBe(true)
+      expect(toggle.classList.contains('xs'), selector).toBe(true)
+      expect(toggle.getAttribute('aria-expanded'), selector).toBe('true')
+    }
+  })
+
+  it('fades the sidebar\'s scroll area only toward the edge whose rows are hidden', () => {
+    const top = document.querySelector<HTMLElement>('.sb-top')!
+    let offset = 0
+    Object.defineProperty(top, 'clientHeight', { configurable: true, get: () => 500 })
+    Object.defineProperty(top, 'scrollHeight', { configurable: true, get: () => 700 })
+    Object.defineProperty(top, 'scrollTop', { configurable: true, get: () => offset })
+    act(() => { top.dispatchEvent(new Event('scroll')) })
+    expect(top.dataset.fade).toBe('bottom')
+    act(() => { offset = 200; top.dispatchEvent(new Event('scroll')) })
+    expect(top.dataset.fade).toBe('top')
+  })
+
+  it('shows "/" as a keycap on the empty search field and names the shortcut on the field', () => {
+    const search = document.querySelector<HTMLInputElement>('#sSearch')!
+    const keycap = document.querySelector<HTMLElement>('#searchBox kbd')!
+    expect(keycap.textContent).toBe('/')
+    expect(keycap.getAttribute('aria-hidden')).toBe('true')
+    expect(search.getAttribute('aria-keyshortcuts')).toBe('/')
   })
 })
 

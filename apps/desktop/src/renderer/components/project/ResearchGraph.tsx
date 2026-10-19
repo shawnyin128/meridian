@@ -66,6 +66,29 @@ const GRAPH_MAX_ZOOM = 1.8
 
 const clampGraphZoom = (zoom: number) =>
   Math.min(GRAPH_MAX_ZOOM, Math.max(GRAPH_MIN_ZOOM, zoom))
+/** The room, in px, kept between the graph and the viewport's edge. */
+const GRAPH_MARGIN = 24
+
+/** Where content `size` px long rests along an axis `room` px long: centred when it fits, else 24px in. */
+const restingStart = (size: number, room: number) => (size < room ? (room - size) / 2 : GRAPH_MARGIN)
+
+/** The view of an untouched graph at 100%. */
+const UNMOVED = { x: 0, y: 0, zoom: 1 }
+
+/**
+ * The view a graph `content` px large opens with in a viewport `width` px wide: at 100% when it
+ * fits, otherwise zoomed out until it fits, but not below the minimum zoom, and centred along each
+ * axis it then fits. `x` and `y` offset the graph from where it rests at 100%. A viewport with no
+ * width yet keeps the graph at 100%.
+ */
+export function fittedView(content: { width: number; height: number }, width: number) {
+  if (width <= 0) return UNMOVED
+  const zoom = clampGraphZoom(Math.min(
+    1, (width - 2 * GRAPH_MARGIN) / content.width, (GRAPH_VIEW_HEIGHT - 2 * GRAPH_MARGIN) / content.height,
+  ))
+  const offset = (size: number, room: number) => restingStart(size * zoom, room) - restingStart(size, room)
+  return { x: offset(content.width, width), y: offset(content.height, GRAPH_VIEW_HEIGHT), zoom }
+}
 
 /** A node's research state, the one the graph colours its dot by. */
 export const nodeMode = (node: GraphNode): NonNullable<GraphNode['mode']> =>
@@ -175,10 +198,15 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
     pointerId: number; clientX: number; clientY: number; x: number; y: number
   } | null>(null)
   const [viewportWidth, setViewportWidth] = useState(780)
-  const [view, setView] = useState({ x: 0, y: 0, zoom: 1 })
+  const [view, setView] = useState(UNMOVED)
   const [panning, setPanning] = useState(false)
+  // Until the user zooms or pans, the view follows the fitted one as the viewport's width settles.
+  const moved = useRef(false)
   const layout = layoutResearchTree(graph)
   const graphKey = `${layout.nodes.map((node) => `${node.id}:${node.width}`).join('|')}::${layout.edges.join('|')}`
+  const contentWidth = Math.max(0, ...layout.nodes.map((node) => node.x + node.width))
+  const contentHeight = Math.max(0, ...layout.nodes.map((node) => node.y + GRAPH_NODE_HEIGHT))
+  const fitted = fittedView({ width: contentWidth, height: contentHeight }, viewportWidth)
 
   useEffect(() => {
     const element = viewport.current
@@ -189,7 +217,11 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
     resize.observe(element)
     return () => resize.disconnect()
   }, [graph.nodes.length])
-  useEffect(() => setView({ x: 0, y: 0, zoom: 1 }), [graphKey])
+  useEffect(() => {
+    moved.current = false
+    setView(fitted)
+  }, [graphKey])
+  useEffect(() => { if (!moved.current) setView(fitted) }, [viewportWidth])
 
   if (graph.nodes.length === 0) {
     return <EmptyState variant="section">{m.project.graph.empty}</EmptyState>
@@ -200,10 +232,8 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
   const routes = activeRoutes(graph, graph.activeNodes ?? [])
   const ideaNodes = new Set(ideaNodeIds.filter((id) => byId.has(id)))
   const routeEdges = layout.edges.filter(([from, to]) => routes.edges.has(`${from}\u0000${to}`))
-  const contentWidth = Math.max(...nodes.map((node) => node.x + node.width))
-  const contentHeight = Math.max(...nodes.map((node) => node.y + GRAPH_NODE_HEIGHT))
-  const baseX = contentWidth < viewportWidth ? (viewportWidth - contentWidth) / 2 : 24
-  const baseY = contentHeight < GRAPH_VIEW_HEIGHT ? (GRAPH_VIEW_HEIGHT - contentHeight) / 2 : 24
+  const baseX = restingStart(contentWidth, viewportWidth)
+  const baseY = restingStart(contentHeight, GRAPH_VIEW_HEIGHT)
   const edgePath = (from: string, to: string) => {
     const a = byId.get(from)!
     const b = byId.get(to)!
@@ -214,6 +244,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
   }
 
   const zoomAt = (requested: number, atX = viewportWidth / 2, atY = GRAPH_VIEW_HEIGHT / 2) => {
+    moved.current = true
     setView((current) => {
       const zoom = clampGraphZoom(requested)
       if (zoom === current.zoom) return current
@@ -228,6 +259,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
   }
   /** Pans the view just enough to bring `node` inside the viewport, with a small margin. */
   const reveal = (node: { x: number; y: number; width: number }) => setView((current) => {
+    moved.current = true
     const margin = 12
     const left = baseX + current.x + node.x * current.zoom
     const top = baseY + current.y + node.y * current.zoom
@@ -267,6 +299,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
       y: view.y,
     }
     event.currentTarget.setPointerCapture(event.pointerId)
+    moved.current = true
     setPanning(true)
   }
   const movePan = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -301,12 +334,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
               patternTransform="rotate(32)"
             >
               <rect className="idea-node-pattern-base" width="12" height="12" />
-              <path className="idea-node-pattern-stripe" d="M-12 0V12 M0 0V12 M12 0V12">
-                <animateTransform
-                  attributeName="transform" type="translate" from="-12 0" to="0 0"
-                  dur="720ms" repeatCount="indefinite"
-                />
-              </path>
+              <path className="idea-node-pattern-stripe" d="M-12 0V12 M0 0V12 M12 0V12" />
             </pattern>
           </defs>
           <g transform={`translate(${baseX + view.x},${baseY + view.y}) scale(${view.zoom})`}>
@@ -319,12 +347,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
               ))}
             </g>
             <g className="active-edge-flows" aria-hidden="true">
-              {routeEdges.map(([from, to], index) => (
-                <path
-                  key={`${from} ${to}`} d={edgePath(from, to)}
-                  style={{ animationDelay: `${index * 110}ms` }}
-                />
-              ))}
+              {routeEdges.map(([from, to]) => <path key={`${from} ${to}`} d={edgePath(from, to)} />)}
             </g>
             {nodes.map((node) => {
               const ideaRelated = ideaNodes.has(node.id)
@@ -364,7 +387,11 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
           </IconButton>
           <Tooltip label={m.project.graph.resetView}>
             <button
-              type="button" className="btn ghost sm graph-zoom-reset" onClick={() => setView({ x: 0, y: 0, zoom: 1 })}
+              type="button" className="btn ghost sm graph-zoom-reset"
+              onClick={() => {
+                moved.current = false
+                setView(fitted)
+              }}
             >{Math.round(view.zoom * 100)}%</button>
           </Tooltip>
           <IconButton label={m.project.graph.zoomIn} size="nested" onClick={() => zoomAt(view.zoom * 1.2)}>

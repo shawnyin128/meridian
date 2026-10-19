@@ -18,7 +18,7 @@ import {
   highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionBox,
 } from './highlight-geometry.js'
 import {
-  ZOOM_MAX, ZOOM_MIN, clampZoom, keptScroll, scaledAbout, wheelZoom, type SheetTransform,
+  ZOOM_MAX, ZOOM_MIN, clampZoom, keptScroll, pageScale, scaledAbout, wheelZoom, type SheetTransform,
 } from './reader-zoom.js'
 import { PaperChat, type PaperChatPrompt } from '../components/chat/PaperChat.js'
 import { ReaderSidePanel, type ReaderSideTab } from '../components/reader/ReaderSidePanel.js'
@@ -27,8 +27,6 @@ import { plainTitle } from '../components/paper/paper-text.js'
 import './shell.css'
 import './Reader.css'
 
-const PAGE_WIDTH = 830
-const MAX_FIT = 1.6
 const MAX_DPR = 2
 const ZOOM_STEP = 0.2
 /** How long zooming and scrolling pause before the pages are laid out and drawn at the zoom shown. */
@@ -89,14 +87,32 @@ function paintHighlights(box: ParentNode, reading: PaperReading | null): void {
 /** True when `cause` is pdf.js cancelling a render that a newer draw or a closed document replaced. */
 const cancelled = (cause: unknown): boolean => cause instanceof Error && cause.name === 'RenderingCancelledException'
 
-/** Sizes a page box for `zoom`; its canvas, text layer and highlights follow the box's size and `--scale-factor`. */
-function layOut(slot: PageSlot, zoom: number): void {
+/**
+ * Sizes a page box for `zoom` in a scroll area `room` px wide; its canvas, text layer and highlights
+ * follow the box's size and `--scale-factor`.
+ */
+function layOut(slot: PageSlot, zoom: number, room: number): void {
   const viewport = slot.pdf.getViewport({
-    scale: Math.min(PAGE_WIDTH / slot.pdf.getViewport({ scale: 1 }).width, MAX_FIT) * zoom,
+    scale: pageScale(slot.pdf.getViewport({ scale: 1 }).width, room, zoom),
   })
   slot.box.style.width = `${Math.floor(viewport.width)}px`
   slot.box.style.height = `${Math.floor(viewport.height)}px`
   slot.box.style.setProperty('--scale-factor', String(viewport.scale))
+}
+
+/** The content width of the pages' scroll area, in px: its width inside the padding and the scrollbar. */
+function roomOf(view: HTMLElement): number {
+  const style = getComputedStyle(view)
+  return view.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+}
+
+/** The page whose box is nearest the client point `point`, measured vertically. */
+function slotNearest(slots: Iterable<PageSlot>, point: { y: number }): PageSlot {
+  const offset = (slot: PageSlot) => {
+    const rect = slot.box.getBoundingClientRect()
+    return Math.max(rect.top - point.y, point.y - rect.bottom, 0)
+  }
+  return [...slots].reduce((best, slot) => (offset(slot) < offset(best) ? slot : best))
 }
 
 /** The scale a page box is laid out at. */
@@ -166,6 +182,8 @@ export function Reader() {
   readingRef.current = reading
   const zoomRef = useRef(zoom)
   zoomRef.current = zoom
+  // The scroll area's content width the pages are laid out to fit; unbounded until it is first measured.
+  const room = useRef(Number.POSITIVE_INFINITY)
   const slots = useRef(new Map<number, PageSlot>())
   // While zooming, the sheet stays laid out at `zoom` and a CSS transform shows it at `shownZoom`.
   const transform = useRef(UNSCALED)
@@ -308,6 +326,8 @@ export function Reader() {
         Array.from({ length: doc.numPages }, (_, index) => doc.getPage(index + 1)))
       if (!live) return
       const nextSheet = document.createDocumentFragment()
+      const measured = roomOf(view)
+      if (measured > 0) room.current = measured
       for (const pdf of pages) {
         const pagebox = document.createElement('div')
         pagebox.className = 'pdfpagebox'
@@ -327,7 +347,7 @@ export function Reader() {
         pagebox.append(text)
         nextSheet.append(pagebox)
         const slot: PageSlot = { pdf, box: pagebox, scale: 0, task: null, text: null }
-        layOut(slot, zoomRef.current)
+        layOut(slot, zoomRef.current, room.current)
         placed.set(pdf.pageNumber, slot)
         pending.add(pdf.pageNumber)
       }
@@ -452,14 +472,9 @@ export function Reader() {
     const view = scroller.current!
     if (transform.current !== UNSCALED) {
       const point = zoomPoint.current
-      const offset = (slot: PageSlot) => {
-        const rect = slot.box.getBoundingClientRect()
-        return Math.max(rect.top - point.y, point.y - rect.bottom, 0)
-      }
-      const nearest = [...slots.current.values()]
-        .reduce((best, slot) => (offset(slot) < offset(best) ? slot : best))
+      const nearest = slotNearest(slots.current.values(), point)
       const before = nearest.box.getBoundingClientRect()
-      for (const slot of slots.current.values()) layOut(slot, shownZoom.current)
+      for (const slot of slots.current.values()) layOut(slot, shownZoom.current, room.current)
       sheet.current!.style.transform = ''
       transform.current = UNSCALED
       // A reader hidden behind another screen lays out no boxes, so there is no point to keep.
@@ -529,6 +544,28 @@ export function Reader() {
       window.clearTimeout(settleTimer.current)
     }
   }, [zoomTo, settleLater])
+
+  // Opening or closing the paper chat or a rail tab, or resizing the window, changes the room the
+  // pages fit; they are laid out again with the page at the top of the view kept in place.
+  useEffect(() => {
+    const view = scroller.current!
+    const observer = new ResizeObserver(() => {
+      const measured = roomOf(view)
+      // A reader hidden behind another screen measures nothing, and its pages keep their layout.
+      if (measured <= 0 || measured === room.current) return
+      room.current = measured
+      if (slots.current.size === 0) return
+      const frame = view.getBoundingClientRect()
+      const point = { x: frame.left, y: frame.top }
+      const nearest = slotNearest(slots.current.values(), point)
+      const before = nearest.box.getBoundingClientRect()
+      for (const slot of slots.current.values()) layOut(slot, zoomRef.current, measured)
+      view.scrollTop += keptScroll(before, nearest.box.getBoundingClientRect(), point).top
+      settleLater()
+    })
+    observer.observe(view)
+    return () => observer.disconnect()
+  }, [settleLater])
 
   useEffect(() => {
     if (opened !== null) zoomOf.current.set(opened, zoom)

@@ -13,7 +13,7 @@
 .glrow .gln{flex:1;min-width:0;overflow:hidden;mask-image:var(--clipfade)}
 .timeline-item-label{flex:1;min-width:0;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade);color:var(--ink)}
 .timeline-label-row.msl .timeline-item-label{color:var(--sec);font-weight:600}
-.gwrap{overflow-x:scroll;flex:1;min-width:0}
+.gwrap{overflow-x:auto;flex:1;min-width:0}
 .gcanvas{position:relative;border-bottom:1px solid var(--sep2)}
 .glabels .glrow:last-child{border-bottom:1px solid var(--sep2)}
 .glrow.dragging{opacity:.4}
@@ -35,7 +35,7 @@
 .gdatecell.first{border-left:0}
 .gstripe{position:absolute;top:0;bottom:0;background:var(--hover);z-index:0}
 .grow{position:relative;height:44px;border-top:1px solid var(--sep2);z-index:2}
-.gbar{position:absolute;top:50%;transform:translateY(-50%);height:27px;box-sizing:border-box;background-color:var(--field);border:1px solid var(--sep);border-radius:var(--r-md);font-size:12px;color:var(--ink);display:flex;align-items:center;padding:0 10px;white-space:nowrap;overflow:hidden;cursor:pointer;transition:opacity var(--t) var(--e-out)}
+.gbar{position:absolute;top:50%;transform:translateY(-50%);height:27px;box-sizing:border-box;background-color:var(--field);border:1px solid var(--sep);border-radius:var(--r-md);font-size:12px;color:var(--ink);display:flex;align-items:center;padding:0 10px;white-space:nowrap;overflow:hidden;cursor:grab;transition:opacity var(--t) var(--e-out)}
 .gbar-label{flex:1;min-width:0;overflow:hidden;mask-image:var(--clipfade)}
 /* The one hover of bars and stubs lies over them as an image, which no state rule sets; a done item is dimmed only at rest. */
 :where(.gbar,.gstub):hover{background-image:linear-gradient(var(--hover),var(--hover))}
@@ -48,6 +48,8 @@
 .gddl{position:absolute;top:18px;width:8px;height:8px;background:var(--warn);transform:rotate(45deg);border-radius:2px;z-index:3;cursor:grab}
 .gddl.overdue{background:var(--bad)}
 .gddl.done{background:var(--ter)}
+/* A bar or diamond being dragged lifts above its row. */
+.gbar.dragging,.gddl.dragging{cursor:grabbing;box-shadow:var(--sh-2);z-index:4}
 .glrow.msl,.grow.msrow{height:44px;background:var(--mslane)}
 .gstub{position:absolute;top:50%;transform:translateY(-50%);height:27px;width:20px;box-sizing:border-box;background-color:var(--field);border:1px solid var(--sep);border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--sec);cursor:pointer;z-index:2;user-select:none;transition:opacity var(--t) var(--e-out)}
 .gstub.done:not(:hover){opacity:.45}

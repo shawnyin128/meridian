@@ -168,7 +168,61 @@ describe('idea and graph association', () => {
     host.remove()
   })
 
-  it('adds an animated hatch only to nodes linked to the open idea', () => {
+  describe('opening the graph', () => {
+    const chain: Graph = {
+      nodes: ['甲', '乙', '丙'].map((label, at) => ({
+        id: `n${at}`, label, state: 'done' as const, x: 0, y: 0, width: 180, writebacks: [],
+      })),
+      edges: [['n0', 'n1'], ['n1', 'n2']],
+    }
+    /** Renders `graph` in a viewport `width` px wide and returns the view's translation and zoom. */
+    const open = (graph: Graph, width: number) => {
+      globalThis.IS_REACT_ACT_ENVIRONMENT = true
+      vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(width)
+      const host = document.createElement('div')
+      document.body.append(host)
+      const root = createRoot(host)
+      act(() => root.render(withMessages(<ResearchGraph graph={graph} selected={null} onSelect={vi.fn()} />)))
+      const view = () => {
+        const [, x, y, zoom] = /translate\((-?[\d.]+),(-?[\d.]+)\) scale\(([\d.]+)\)/
+          .exec(host.querySelector('svg > g')!.getAttribute('transform')!)!
+        return { x: Number(x), y: Number(y), zoom: Number(zoom) }
+      }
+      const shown = () => host.querySelector('.graph-zoom-reset')!.textContent
+      return { host, root, view, shown }
+    }
+    afterEach(() => { vi.restoreAllMocks() })
+
+    it('zooms a graph wider than its view out until every node shows, and centres it', () => {
+      const { root, view, shown } = open(chain, 600)
+      const right = Math.max(...layoutResearchTree(chain).nodes.map((node) => node.x + node.width))
+      const { x, zoom } = view()
+      expect(zoom).toBeLessThan(1)
+      expect(x).toBeGreaterThanOrEqual(0)
+      expect(x + right * zoom).toBeLessThanOrEqual(600)
+      expect(Math.abs(x - (600 - (x + right * zoom)))).toBeLessThanOrEqual(1)
+      expect(shown()).toBe(`${Math.round(zoom * 100)}%`)
+      act(() => root.unmount())
+    })
+
+    it('opens a graph that fits at 100%', () => {
+      const { root, view } = open(chain, 1200)
+      expect(view().zoom).toBe(1)
+      act(() => root.unmount())
+    })
+
+    it('puts the view it opened with back when the view is reset', () => {
+      const { host, root, view } = open(chain, 600)
+      const opened = view()
+      act(() => host.querySelector<HTMLButtonElement>('[aria-label="放大科研图"]')!.click())
+      expect(view().zoom).toBeGreaterThan(opened.zoom)
+      act(() => host.querySelector<HTMLButtonElement>('.graph-zoom-reset')!.click())
+      expect(view()).toEqual(opened)
+      act(() => root.unmount())
+    })
+  })
+
+  it('adds a still hatch only to nodes linked to the open idea', () => {
     const markup = renderToStaticMarkup(withMessages(
       <ResearchGraph graph={GRAPH} selected={null} ideaNodeIds={['root']} onSelect={vi.fn()} />,
     ))
@@ -177,7 +231,7 @@ describe('idea and graph association', () => {
 
     expect(host.querySelector('[data-node="root"]')?.classList.contains('idea-related')).toBe(true)
     expect(host.querySelector('[data-node="probe"]')?.classList.contains('idea-related')).toBe(false)
-    expect(markup).toContain('<animateTransform')
+    expect(markup).not.toContain('<animate')
     expect(host.querySelector('[data-node="root"] rect')?.getAttribute('style')).toContain('url(#idea-node-hatch-')
     expect(host.querySelector('.glegend')?.textContent).toContain('当前想法关联')
     expect(host.querySelector('.legend-node.idea')).not.toBeNull()

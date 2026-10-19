@@ -703,7 +703,7 @@ test('科研图节点上下居中且可缩放平移,分支和科研记录在正�
   ])
   expect(branchBox!.y).toBeLessThan(recordBox!.y)
   expect(recordBox!.y).toBeLessThan(markdownBox!.y)
-  // The panel widens over a transition; the main column has shrunk once that settles.
+  // The panel takes its width at once; the poll waits for the render that opens it.
   await expect.poll(async () => (await detail.locator('.wkmain').boundingBox())!.width).toBeLessThan(mainWidth)
   expect(Math.round((await detail.boundingBox())!.width)).toBe(Math.round(ganttBefore!.width))
 })
@@ -722,7 +722,7 @@ test('节点阅读态保留科研图并扩宽右栏,可直接切换节点', asyn
   await expect(side).toHaveClass(/\bnode-document-pane\b/)
   await expect(side).toHaveClass(/\bdetail-panel--resize\b/)
   expect(await side.evaluate((element) => getComputedStyle(element).transitionProperty))
-    .toContain('flex-basis')
+    .not.toContain('flex-basis')
   await expect(side.locator('.node-document-title')).toHaveText('树宽收益拐点')
   await expect.poll(() => side.evaluate((element) => element.getBoundingClientRect().width))
     .toBeGreaterThan(propertyWidth + 120)

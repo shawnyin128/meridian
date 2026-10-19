@@ -52,7 +52,7 @@ export const papers = {
     allStates: '全部状态',
   },
   columnHeader: {
-    resizeHint: '拖动调整列宽',
+    resize: (column: string) => `「${column}」列宽`,
     addColumn: '新增列',
   },
   rowActions: { delete: '删除', openReader: '开始阅读' },

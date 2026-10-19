@@ -1,5 +1,6 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, HTMLAttributes, MouseEvent as ReactMouseEvent, ReactNode, Ref } from 'react'
+import { useScrollFade } from '../hooks/useScrollFade.js'
 import './StructuredList.css'
 
 export const EMBEDDED_LIST_ROW_LIMIT = 5
@@ -37,11 +38,16 @@ export function StructuredList({
   maxVisibleRows?: number | 'all'
   style?: CSSProperties
 } & Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'className' | 'style'>) {
+  const fade = useScrollFade('y')
   const rowLimit = maxVisibleRows === 'all'
     ? undefined
     : maxVisibleRows ?? (variant === 'embedded' ? EMBEDDED_LIST_ROW_LIMIT : undefined)
-  const list = useRef<HTMLDivElement>(null)
+  const list = useRef<HTMLDivElement | null>(null)
   const [cap, setCap] = useState<number | null>(null)
+  const listRef = useCallback((node: HTMLDivElement | null) => {
+    list.current = node
+    fade(node)
+  }, [fade])
 
   // Runs after every render: rows come and go with the children, and the observer follows the
   // rows' own size changes, such as text wrapping at a new window width.
@@ -65,7 +71,7 @@ export function StructuredList({
   const listStyle = cap === null ? style : { ...style, maxHeight: cap }
   return (
     <div
-      ref={list} className={`structured-list${variantClass}${scrollClass}${className ? ` ${className}` : ''}`}
+      ref={listRef} className={`structured-list${variantClass}${scrollClass}${className ? ` ${className}` : ''}`}
       style={listStyle} {...props}
     >
       {children}

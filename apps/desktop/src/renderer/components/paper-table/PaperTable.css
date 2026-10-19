@@ -13,6 +13,13 @@
 .desk-body.libview #libList{flex:1;min-height:0;display:flex;flex-direction:column}
 .desk-body.libview .tblwrap{flex:1;min-height:0}
 .tblwrap{overflow:auto;scrollbar-gutter:stable}
+/*
+ * Columns hidden past the right edge fade into it. The sticky title column covers the left edge, so
+ * that edge never fades; the mask leaves out the scrollbars' column and row.
+ */
+.tblwrap[data-fade~="right"]{
+  mask:linear-gradient(to right,#000 calc(100% - var(--sp-24)),transparent) left top/calc(100% - var(--scrollbar-size)) calc(100% - var(--scrollbar-size)) no-repeat,
+    linear-gradient(#000,#000) right top/var(--scrollbar-size) 100% no-repeat,linear-gradient(#000,#000) left bottom/100% var(--scrollbar-size) no-repeat}
 
 /* Top bar of the paper list: filter input + group switch */
 .libbar{display:flex;align-items:center;gap:12px;margin-bottom:16px}
@@ -34,9 +41,8 @@
 .ptable{width:100%;min-width:0;border-collapse:collapse;font-size:var(--fs-base);margin-bottom:16px;table-layout:fixed}
 .ptable th{position:relative}
 .thsort{padding:0;border:0;background:none;color:inherit;font:inherit;cursor:inherit}
-.thgrip{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:col-resize;z-index:3}
-.thgrip::after{content:'';position:absolute;left:3px;top:22%;bottom:22%;width:2px;border-radius:2px;background:transparent;transition:background var(--t-fast) var(--e-out)}
-.thgrip:hover::after{background:var(--sec)}
+/* A column's grip straddles the border with the next header cell. */
+.ptable th>.thgrip{right:-5px}
 .thmove{display:inline-flex;width:13px;height:17px;align-items:center;justify-content:center;margin:0 4px 0 -5px;color:var(--ter);opacity:0;cursor:grab;vertical-align:-4px;border-radius:3px}
 .ptable th:hover .thmove,.thmove:focus-visible{opacity:1}
 .thmove:active{cursor:grabbing;color:var(--ink)}
@@ -54,9 +60,6 @@
 .ptable td .ci .hid{display:none}
 .ptable td .ci.chip-expanded{display:flex;align-items:center;flex-wrap:wrap;gap:2px;overflow:visible;white-space:normal;text-overflow:clip}
 .ptable td .ci.chip-expanded .hid{display:inline-block;animation:chip-row-reveal var(--t) var(--e-out) both}
-.ptable td .ci.chip-expanded .hid:nth-child(3){animation-delay:30ms}
-.ptable td .ci.chip-expanded .hid:nth-child(4){animation-delay:60ms}
-.ptable td .ci.chip-expanded .hid:nth-child(n+5){animation-delay:90ms}
 .morebadge{min-width:28px;margin-left:2px}
 @keyframes chip-row-reveal{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:translateX(0)}}
 @media (prefers-reduced-motion:reduce){.ptable td .ci.chip-expanded .hid{animation:none}}
@@ -149,7 +152,6 @@
 .paper-detail-slot{--detail-panel-width:360px;top:46px;right:0;bottom:0;border-left:1px solid var(--sep);
   background:var(--content);z-index:5}
 .pdetail{height:100%;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:16px}
-.desk-body.libview,.desk-foot{transition:margin-right var(--t-slow) var(--e-inout)}
 .desk-body.withdetail,.desk-foot.withdetail{margin-right:360px}
 .pd-h{display:flex;align-items:flex-start;gap:8px;margin-bottom:12px}
 .pd-t{font-size:var(--fs-read);font-weight:700;line-height:var(--lh-ui);flex:1;min-width:0}

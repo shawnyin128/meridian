@@ -4,8 +4,9 @@
  * The reading view has three columns: paper chat, PDF and reading notes; AppShell collapses the
  * global navigation in this view.
  */
-.paper-chat{flex:0 0 var(--rrw,300px);min-width:0;border-right:1px solid var(--sep);transition:opacity var(--t-slow) var(--e-inout),margin-left var(--t-slow) var(--e-inout)}
-.main.sbhide .paper-chat{margin-left:calc(var(--rrw,300px) * -1);opacity:0;pointer-events:none}
+.paper-chat{flex:0 0 var(--rrw,300px);min-width:0;border-right:1px solid var(--sep);transition:transform var(--t-slow) var(--e-inout),opacity var(--t-slow) var(--e-inout)}
+/* The paper chat collapses as the sidebar does: out of the layout at once, then sliding away. */
+.main.sbhide .paper-chat{position:absolute;top:0;bottom:0;left:0;width:var(--rrw,300px);z-index:8;transform:translateX(-100%);opacity:0;pointer-events:none}
 .paper-chat-head{height:46px;box-sizing:border-box;padding:0 10px;border-bottom:1px solid var(--sep);display:flex;align-items:center;gap:8px;min-width:0;background:var(--sidebar)}
 .paper-chat-head strong{font-size:var(--fs-sm);color:var(--sec);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .paper-chat .msgs{padding:16px 0;gap:14px}
@@ -19,9 +20,10 @@
 .reader{flex:1;display:flex;overflow:hidden;min-width:0;background:var(--desktop);position:relative}
 .pdfwrap{flex:1;overflow:auto;padding:24px;min-width:0;overscroll-behavior:contain}
 /*
- * Page width comes only from the one pdf.js viewport. A narrow window scrolls horizontally; never
- * shrink the width while keeping the original height, or the canvas, text selection layer and
- * highlight layer end up with three different geometries.
+ * Page width comes only from the one pdf.js viewport, which fits the page to this area's width; a
+ * page zoomed wider than the area scrolls horizontally. Never shrink the width while keeping the
+ * original height, or the canvas, text selection layer and highlight layer end up with three
+ * different geometries.
  */
 .pdfsheet{width:max-content;min-width:100%;transform-origin:0 0}
 .pdfpagebox{--user-unit:1;--total-scale-factor:calc(var(--scale-factor) * var(--user-unit));--scale-round-x:1px;--scale-round-y:1px;direction:ltr;position:relative;margin:0 auto 24px;background:var(--paper);box-shadow:var(--sh-paper);border-radius:2px}
@@ -82,8 +84,7 @@
 .remark-compose{padding:12px;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
 .remark-compose .form-textarea{width:100%;min-height:120px}
 
-.reader-side{display:flex;flex:0 0 362px;min-width:0;height:100%;overflow:hidden;background:var(--content);
-  transition:flex-basis var(--t-slow) var(--e-inout)}
+.reader-side{display:flex;flex:0 0 362px;min-width:0;height:100%;overflow:hidden;background:var(--content)}
 .reader-side.collapsed{flex-basis:42px}
 .reader-side:not(.collapsed)>:not(.reader-rail){animation:detail-panel-content-in var(--t-slow) var(--e-out) both}
 .reader-side>.reader-meta,.reader-side>.reading-notes,.reader-side>.reading-remark,.reader-side>.wiki-ingest{width:320px;min-width:320px;border-left:1px solid var(--sep)}

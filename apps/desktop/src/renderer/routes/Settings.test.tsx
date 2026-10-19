@@ -235,6 +235,19 @@ describe('Settings', () => {
     expect(slot(row)).toEqual([['打开', '', true, false], ['取消归档', '', true, false]])
   })
 
+  it('设置右栏放不下时，只在藏着内容的那一边淡出', async () => {
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const pane = document.querySelector<HTMLElement>('.setdlg .set-main')!
+    let offset = 0
+    Object.defineProperty(pane, 'clientHeight', { configurable: true, get: () => 400 })
+    Object.defineProperty(pane, 'scrollHeight', { configurable: true, get: () => 900 })
+    Object.defineProperty(pane, 'scrollTop', { configurable: true, get: () => offset })
+    act(() => { pane.dispatchEvent(new Event('scroll')) })
+    expect(pane.dataset.fade).toBe('bottom')
+    act(() => { offset = 200; pane.dispatchEvent(new Event('scroll')) })
+    expect(pane.dataset.fade).toBe('top bottom')
+  })
+
   it('每个设置分类都是按钮，键盘能聚焦和打开', async () => {
     api.requestedCategory = null
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })

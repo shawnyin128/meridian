@@ -9,6 +9,7 @@ import { sendsMessage } from '../../lib/chat.js'
 import { ChatMessageView, plain } from './ChatMessage.js'
 import { BackButton } from '../BackButton.js'
 import { FormTextarea } from '../FormControls.js'
+import { Grip } from '../Grip.js'
 import { EmptyState } from '../EmptyState.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError } from '../PageShell.js'
@@ -161,7 +162,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
           </div>
         </div>
       </div>
-      <GripTooltip><div className="grip" id="rrgrip" {...grip} /></GripTooltip>
+      <GripTooltip><Grip {...grip} /></GripTooltip>
       {session === null || paper === null ? null : (
         <IdeaEditorDialog
           open={savingIdea} sourceLabel={`${plainTitle(paper.title)} · ${plainTitle(session.title)}`}

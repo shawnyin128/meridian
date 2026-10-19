@@ -46,7 +46,9 @@ export const shell = {
   watchKind: { topic: 'Topic', author: 'Author' },
   sidebar: {
     toggle: 'Collapse or expand the sidebar',
-    collapseHint: 'Click to collapse',
+    expand: 'Expand the sidebar',
+    resize: 'Sidebar width',
+    collapseHint: 'Collapse',
     toggleGroup: (name: string) => `Collapse or expand ${name}`,
     dragHint: 'Drag to resize',
     manageChat: (title: string) => `Manage chat: ${title}`,

@@ -264,7 +264,8 @@ export function TimelineBoard({
                           label={m.timeline.milestoneTitle(fmt.date(milestone.date), milestone.title, overdue ? m.common.overdue : '')}
                         >
                           <span
-                            className={`gddl${milestone.done ? ' done' : ''}${overdue ? ' overdue' : ''}${hoverMilestoneId === milestone.id ? ' hl' : ''}`}
+                            className={`gddl${milestone.done ? ' done' : ''}${overdue ? ' overdue' : ''}${hoverMilestoneId === milestone.id ? ' hl' : ''}${
+                              drag.dragging(`${project.id}/milestone/${milestone.id}`) ? ' dragging' : ''}`}
                             data-proj={project.id} data-milestone={key}
                             style={{
                               left: (day - w0) * dayWidth + dayWidth / 2 - 4
@@ -306,7 +307,7 @@ export function TimelineBoard({
                 >
                   <Tooltip label={name}>
                     <div
-                      className={`gbar${start < w0 ? ' clipl' : ''}${task.state === 'done' ? ' dim' : task.state === 'plan' ? ' plan' : ' active'}${overdue ? ' overdue' : ''} priority-${task.priority}`}
+                      className={`gbar${start < w0 ? ' clipl' : ''}${task.state === 'done' ? ' dim' : task.state === 'plan' ? ' plan' : ' active'}${overdue ? ' overdue' : ''} priority-${task.priority}${drag.dragging(id) ? ' dragging' : ''}`}
                       data-proj={project.id} data-task={task.id}
                       style={{
                         left: span.left + leftInset + drag.dragged(id),

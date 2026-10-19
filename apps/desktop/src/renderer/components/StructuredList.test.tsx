@@ -51,6 +51,32 @@ describe('StructuredList', () => {
     expect(html).toContain('class="structured-row"')
   })
 
+  it('fades a list that scrolls inside itself toward the edge whose rows are hidden', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    // Every row draws a 38px box, stacked from the top of its list, so the list caps itself at five rows.
+    vi.spyOn(HTMLElement.prototype, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList)
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const rows = [...this.closest('.structured-list')!.querySelectorAll('.structured-row')]
+      return { top: 0, bottom: 38 * (rows.indexOf(this) + 1) } as DOMRect
+    })
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    const rows = Array.from({ length: EMBEDDED_LIST_ROW_LIMIT + 2 }, (_, at) => <StructuredRow key={at}>{at}</StructuredRow>)
+    act(() => root.render(<StructuredList variant="embedded">{rows}</StructuredList>))
+    const list = host.querySelector<HTMLElement>('.structured-list--scrollable')!
+    Object.defineProperty(list, 'clientHeight', { configurable: true, get: () => 190 })
+    Object.defineProperty(list, 'scrollHeight', { configurable: true, get: () => 266 })
+    Object.defineProperty(list, 'scrollTop', { configurable: true, get: () => 0 })
+    act(() => { list.dispatchEvent(new Event('scroll')) })
+    expect(list.dataset.fade).toBe('bottom')
+    act(() => root.unmount())
+    host.remove()
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
   it('marks an embedded list so only its adjacent rows receive separators', () => {
     const html = renderToStaticMarkup(
       <StructuredList variant="embedded">

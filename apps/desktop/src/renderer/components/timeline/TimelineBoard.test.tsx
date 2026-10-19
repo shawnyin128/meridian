@@ -118,6 +118,28 @@ describe('TimelineBoard 点击打开任务详情', () => {
     expect(onMoveTask).toHaveBeenCalled()
   })
 
+  it('拖动中的任务条带 dragging 类,拖动时按 Esc 条回到原处,松手既不改日期也不算点击', () => {
+    const onTaskClick = vi.fn()
+    const onMoveTask = vi.fn()
+    mountBoard(host, { onTaskClick, onMoveTask })
+    const bar = () => host.querySelector<HTMLElement>('.gbar[data-task="t1"]')!
+    const left = bar().style.left
+    mouse(bar(), 'mousedown', 100)
+    mouse(document, 'mousemove', 100 + 200)
+    expect(bar().classList.contains('dragging')).toBe(true)
+    expect(bar().style.left).not.toBe(left)
+    const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+    act(() => { document.body.dispatchEvent(escape) })
+    expect(escape.defaultPrevented).toBe(true)
+    expect(bar().classList.contains('dragging')).toBe(false)
+    expect(bar().style.left).toBe(left)
+    mouse(document, 'mousemove', 100 + 300)
+    mouse(document, 'mouseup', 100 + 300)
+    expect(bar().style.left).toBe(left)
+    expect(onMoveTask).not.toHaveBeenCalled()
+    expect(onTaskClick).not.toHaveBeenCalled()
+  })
+
   it('点击任务的标签行会触发 onLabelClick,里程碑标签行不会', () => {
     const onLabelClick = vi.fn()
     mountBoard(host, { onLabelClick })

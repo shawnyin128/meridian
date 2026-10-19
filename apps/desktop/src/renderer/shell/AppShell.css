@@ -15,9 +15,12 @@
  */
 .titlebar{display:flex;align-items:center;gap:8px;height:50px;padding:12px 16px;background:var(--sidebar);backdrop-filter:blur(20px);border-bottom:1px solid var(--sep);z-index:5;-webkit-app-region:drag}
 .titlebar .tbtn,.titlebar .cseg.link,.titlebar .appbtn{-webkit-app-region:no-drag}
-/* Make way for window buttons: the three buttons of win32/linux are on the upper right, and the traffic light of darwin is on the upper left. */
+/*
+ * Make way for window buttons: the three buttons of win32/linux are on the upper right, and the
+ * traffic light of darwin is on the upper left, except in full screen, where macOS hides it.
+ */
 :root[data-os="win32"] .titlebar,:root[data-os="linux"] .titlebar{padding-right:154px}
-:root[data-os="darwin"] .titlebar{padding-left:78px}
+:root[data-os="darwin"]:not([data-fullscreen]) .titlebar{padding-left:78px}
 
 /* The bar's content is only 26px tall, so its icon buttons take the nested size, not the 30px one. */
 .titlebar .brandmark{width:18px;height:18px;display:block}
@@ -54,11 +57,14 @@
  * override flex-basis, so a long unwrapped chat title would make the sidebar wider than --sbw. The
  * width comes only from --sbw, which the resize handle sets.
  */
-.sidebar{flex:0 0 var(--sbw,232px);min-width:0;background:var(--sidebar);backdrop-filter:blur(20px);border-right:1px solid var(--sep);padding:12px 10px;overflow:visible;position:relative;display:flex;flex-direction:column;user-select:none;transition:transform var(--t-slow) var(--e-inout),opacity var(--t-slow) var(--e-inout),margin-left var(--t-slow) var(--e-inout)}
+.sidebar{flex:0 0 var(--sbw,232px);min-width:0;background:var(--sidebar);backdrop-filter:blur(20px);border-right:1px solid var(--sep);padding:12px 10px;overflow:visible;position:relative;display:flex;flex-direction:column;user-select:none;transition:transform var(--t-slow) var(--e-inout),opacity var(--t-slow) var(--e-inout)}
 .sidebar :is(input,textarea,[contenteditable="true"]){user-select:text}
 .sb-top{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden}
-/* Sidebar collapses */
-.main.sbhide .sidebar{margin-left:calc(var(--sbw,232px) * -1);opacity:0;pointer-events:none}
+/*
+ * Sidebar collapses: it leaves the layout at once, so the content takes the full width in one step,
+ * and slides away over the content it uncovers.
+ */
+.main.sbhide .sidebar{position:absolute;top:0;bottom:0;left:0;width:var(--sbw,232px);z-index:8;transform:translateX(-100%);opacity:0;pointer-events:none}
 /*
  * In the Reader the paper's context bar takes the place of the global navigation; leaving the Reader
  * brings the sidebar back expanded or collapsed as it was.
@@ -81,11 +87,11 @@
 .sb-h{display:flex;align-items:center;gap:4px;font-size:var(--fs-cap);font-weight:600;color:var(--ter);text-transform:uppercase;letter-spacing:.04em;padding:0 8px;margin:12px 0 4px}
 .sb-h.chats-h{display:flex;align-items:center}
 .sect-h{cursor:pointer;user-select:none}
-.sh-caret{display:grid;place-items:center;padding:0;border:0;background:transparent;color:inherit;cursor:pointer;opacity:0;transition:opacity var(--t-fast) var(--e-out),transform var(--t-fast) var(--e-out)}
-.sh-caret:focus-visible{opacity:1}
-.sect-h:hover .sh-caret{opacity:1}
-.sect-h.closed .sh-caret{opacity:1;transform:rotate(-90deg)}
-.sh-caret svg{width:9px;height:9px}
+/* A fold caret always shows, in a row in the tone of the row's caret buttons; a closed group's caret turns to point at its title. */
+span.sh-caret{display:grid;place-items:center;transition:transform var(--t-fast) var(--e-out)}
+.srow span.sh-caret{color:var(--sec)}
+span.sh-caret svg{width:9px;height:9px}
+.sect-h.closed .sh-caret{transform:rotate(-90deg)}
 .sect.closed{display:none}
 
 .sb-add{margin-left:auto}
@@ -125,22 +131,13 @@
 /* A sub-row's dot: filled when there are new papers (it has a badge), hollow otherwise */
 .srow.sub .ic:empty::before{content:"";width:7px;height:7px;border-radius:50%;box-sizing:border-box;border:1px solid var(--ter);background:transparent}
 .srow.sub:has(.n) .ic:empty::before{background:var(--sec);border-color:var(--sec)}
-/* A group's collapse caret sits right of its title, shown on hover or while collapsed, like a section's */
-.disc .sh-caret{opacity:0}
-.disc:hover .sh-caret{opacity:1}
-.disc.closed .sh-caret{opacity:1;transform:rotate(-90deg)}
+/* A group's collapse caret sits right of its title, like a section's */
+.disc.closed .sh-caret{transform:rotate(-90deg)}
 /* .dim is a content state (a watch with no new papers), not an "unimplemented" mark */
 .srow.dim{color:var(--ter)}
-/* Inmail: its caret shows on hover and collapses the Discovery, topic and author groups under it. */
-#rowInboxAll:hover .sh-caret{opacity:1}
-#rowInboxAll.closed .sh-caret{opacity:1;transform:rotate(-90deg)}
+/* Inmail: its caret collapses the Discovery, topic and author groups under it. */
+.srow.closed>.sh-caret{transform:rotate(-90deg)}
 .wgroup.closed{display:none}
 
-/* The shared resize handle: hovering shows the pill, a click collapses, dragging resizes */
-.grip{position:absolute;top:0;bottom:0;width:10px;cursor:col-resize;z-index:6;display:none;align-items:center;justify-content:center}
-.grip::after{content:"";width:4px;height:36px;border-radius:999px;background:var(--ter);opacity:0;transition:opacity var(--t-fast) var(--e-out)}
-.grip:hover::after{opacity:1}
-#sbgrip,#rrgrip{right:-5px;display:flex}
-/* In the Reader a collapsed paper chat leaves this slim edge; clicking it opens the chat again. */
-.paper-chat-edge{flex:0 0 12px;padding:0;border:0;border-right:1px solid var(--sep);background:var(--sidebar);cursor:pointer}
-.paper-chat-edge:hover{background-image:linear-gradient(var(--hover),var(--hover))}
+/* The sidebar's and the paper chat's grips straddle the pane's right border. */
+#sbgrip,#rrgrip{right:-5px}

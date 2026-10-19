@@ -44,7 +44,9 @@ export const shell = {
   watchKind: { topic: '主题', author: '作者' },
   sidebar: {
     toggle: '收起/展开侧栏',
-    collapseHint: '点击收起',
+    expand: '展开侧栏',
+    resize: '侧栏宽度',
+    collapseHint: '收起',
     toggleGroup: (name: string) => `收起/展开「${name}」`,
     dragHint: '拖动调整宽度',
     manageChat: (title: string) => `管理对话：${title}`,

@@ -38,7 +38,8 @@ test('不传 MERIDIAN_SHOW_WINDOW 时窗口上屏', async ({ configHome }) => {
   try {
     const win = await app.firstWindow()
     await win.locator('.sidebar').waitFor()
-    expect(await visible(app)).toBe(true)
+    // The window shows once the renderer has painted its first frame, which may land just after this.
+    await expect.poll(() => visible(app)).toBe(true)
   } finally {
     await app.close()
   }

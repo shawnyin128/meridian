@@ -681,6 +681,103 @@ describe('PaperTable', () => {
     expect(column('rating').style.width).toBe('100px')
   })
 
+  /**
+   * Mounts a one-row table whose columns are laid out at `ACTUAL` px, the header cells as wide as
+   * their columns, and returns the title column's grip with a reader for each column's written width.
+   */
+  async function laidOutTable() {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const actual: Record<string, number> = {
+      t: 400, short: 180, rating: 100, authors: 170, y: 110, venue: 130, topics: 220, st: 90, remark: 220, x: 52,
+    }
+    const column = (key: string) => host.querySelector<HTMLElement>(`col[data-cw="${key}"]`)!
+    for (const [key, width] of Object.entries(actual)) {
+      Object.defineProperty(column(key), 'getBoundingClientRect', { configurable: true, value: () => ({ width }) })
+    }
+    const titleHead = host.querySelector<HTMLElement>('th:first-child')!
+    Object.defineProperty(titleHead, 'getBoundingClientRect', { configurable: true, value: () => ({ width: 400 }) })
+    const grip = titleHead.querySelector<HTMLElement>('.thgrip')!
+    return { host, grip, width: (key: string) => column(key).style.width }
+  }
+  const mouseAt = (target: EventTarget, type: string, clientX = 0) => act(() => {
+    target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX }))
+  })
+  const keyOn = (target: HTMLElement, key: string) => act(() => {
+    target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+  })
+
+  it('列宽把手是键盘可达的分隔条,方向键让左右两列等量变化', async () => {
+    const { grip, width } = await laidOutTable()
+    expect(grip.getAttribute('role')).toBe('separator')
+    expect(grip.tabIndex).toBe(0)
+    expect(grip.getAttribute('aria-label')).toBe('「标题」列宽')
+    expect(grip.hasAttribute('title')).toBe(false)
+    keyOn(grip, 'ArrowRight')
+    expect([width('t'), width('short')]).toEqual(['410px', '170px'])
+  })
+
+  it('拖动列宽时按 Esc,两列回到按下时的宽度,之后移动鼠标不再调宽', async () => {
+    const { grip, width } = await laidOutTable()
+    mouseAt(grip, 'mousedown', 400)
+    mouseAt(document, 'mousemove', 460)
+    expect([width('t'), width('short')]).toEqual(['460px', '120px'])
+    keyOn(document.body, 'Escape')
+    expect([width('t'), width('short')]).toEqual(['400px', '180px'])
+    mouseAt(document, 'mousemove', 300)
+    mouseAt(document, 'mouseup', 300)
+    expect([width('t'), width('short')]).toEqual(['400px', '180px'])
+  })
+
+  it('拖完列宽在标题格上松手,随后那次 click 不排序', async () => {
+    const { host, grip, width } = await laidOutTable()
+    const head = host.querySelector<HTMLElement>('th[data-k="title"]')!
+    mouseAt(grip, 'mousedown', 400)
+    mouseAt(document, 'mousemove', 380)
+    mouseAt(document, 'mouseup', 380)
+    mouseAt(head, 'click', 380)
+    await flush()
+    expect(width('t')).toBe('380px')
+    expect(head.getAttribute('aria-sort')).toBeNull()
+  })
+
+  it('双击列宽把手,该列回到默认宽度,右邻列补上差额', async () => {
+    const { grip, width } = await laidOutTable()
+    mouseAt(grip, 'dblclick', 400)
+    expect([width('t'), width('short')]).toEqual(['300px', '280px'])
+  })
+
+  it('按下列宽把手不移动就松开,列宽不变,也不排序', async () => {
+    const { host, grip, width } = await laidOutTable()
+    const listed = listCallCount
+    mouseAt(grip, 'mousedown', 400)
+    mouseAt(document, 'mousemove', 402)
+    mouseAt(document, 'mouseup', 402)
+    mouseAt(grip, 'click', 402)
+    await flush()
+    expect([width('t'), width('short')]).toEqual(['300px', '150px'])
+    expect(host.querySelector('th[data-k="title"]')!.getAttribute('aria-sort')).toBeNull()
+    expect(listCallCount).toBe(listed)
+  })
+
+  it('表格右边还有没露出来的列时,只在右缘淡出', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const wrap = host.querySelector<HTMLElement>('.tblwrap')!
+    let offset = 0
+    Object.defineProperty(wrap, 'clientWidth', { configurable: true, get: () => 900 })
+    Object.defineProperty(wrap, 'scrollWidth', { configurable: true, get: () => 1500 })
+    Object.defineProperty(wrap, 'scrollLeft', { configurable: true, get: () => offset })
+    act(() => { wrap.dispatchEvent(new Event('scroll')) })
+    expect(wrap.dataset.fade).toBe('right')
+    act(() => { offset = 600; wrap.dispatchEvent(new Event('scroll')) })
+    expect(wrap.dataset.fade).toBe('left')
+  })
+
   it('阅读状态可在顶栏直接筛选,不必先进入分组索引', async () => {
     const host = mount()
     columnsCall.resolve({ hidden: [], custom: [], groups: ['readState'] })

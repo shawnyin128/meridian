@@ -14,6 +14,7 @@ export const chat = {
   archivedSuffix: (title: string) => `${title} · 已归档`,
   paperChatLabel: '当前论文对话',
   expandPaperChat: '展开论文对话',
+  paperChatWidth: '论文对话宽度',
   paperHeaderSuffix: ' · 阅读中',
   empty: '还没有对话',
   askAboutPaper: '向当前论文提问',

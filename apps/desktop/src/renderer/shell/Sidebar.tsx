@@ -1,15 +1,17 @@
 import { useState } from 'react'
-import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { ChatSession, Watch } from '../../shared/contract.js'
 import { MenuItem } from '../components/ActionMenu.js'
 import { DotsMenu } from '../components/FieldPickers.js'
 import { RowActions } from '../components/StructuredList.js'
+import { Grip, type GripProps } from '../components/Grip.js'
 import { IconButton } from '../components/IconButton.js'
 import { Icon, IconNorthStar, IconPlus } from '../components/icons.js'
 import { NavRow } from '../components/NavRow.js'
 import { CountBadge } from '../components/Tag.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useAppUpdate } from '../hooks/useAppUpdate.js'
+import { useScrollFade } from '../hooks/useScrollFade.js'
 import { appUpdates } from '../ipc.js'
 import { ALL_WATCHES, type DiscoveryProjectCount, type InboxMode, type ScreenKey } from './AppShell.js'
 import { GripTooltip } from './GripTooltip.js'
@@ -19,16 +21,17 @@ import { plainTitle } from '../components/paper/paper-text.js'
 
 const CARET = <Icon sw={2.4}><path d="M6 9l6 6 6-6" /></Icon>
 
-const Caret = () => <span className="sh-caret">{CARET}</span>
+/** The caret of a row that folds its group itself; the row's button carries the state. */
+const Caret = () => <span className="sh-caret" aria-hidden="true">{CARET}</span>
 
 /** The caret that folds the groups under a row; its click never reaches the row. */
 function CaretToggle({ label, open, onToggle }: { label: string; open: boolean; onToggle: () => void }) {
   const m = useMessages()
   return (
-    <button
-      type="button" className="sh-caret" aria-label={m.shell.sidebar.toggleGroup(label)} aria-expanded={open}
+    <IconButton
+      label={m.shell.sidebar.toggleGroup(label)} size="inline" className="sh-caret" aria-expanded={open}
       onClick={(e) => { e.stopPropagation(); onToggle() }}
-    >{CARET}</button>
+    >{CARET}</IconButton>
   )
 }
 
@@ -46,7 +49,7 @@ function WatchRow({ watch, count, on, onOpen }: {
       onActivate={onOpen}
     >
       <span className="ic" />
-      <span className="watch-name">{watch.name}</span>
+      <span className="watch-name" title={watch.name}>{watch.name}</span>
       {watch.active && count > 0 ? <CountBadge className="n" count={count} strong /> : null}
     </NavRow>
   )
@@ -69,7 +72,7 @@ function ChatRow({ session, on, onOpen, onArchive }: {
           <span className="ic">
             <Icon><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></Icon>
           </span>
-          <span className="ct-t"><PaperText text={session.title} /></span>
+          <span className="ct-t" title={plainTitle(session.title)}><PaperText text={session.title} /></span>
         </>
       )}
     >
@@ -138,8 +141,8 @@ function UpdateRow() {
  * it; together they decide which row is selected.
  * `chats` fills the list under Chats; archived chats are not here but in Settings. `chatId` is the
  * chat the Chats screen shows; null means none is selected.
- * `grip` holds the resize handle's mouse handler; dragging and click-to-collapse are implemented by
- * the shell. A `collapsed` sidebar is inert: nothing in it takes focus.
+ * `grip` is the props of the grip on the sidebar's edge: the shell owns the sidebar's width. A
+ * `collapsed` sidebar is inert: nothing in it takes focus.
  */
 export function Sidebar({
   screen, onNavigate, onJump, paperCount, changeCount, projectCount, trashCount, wikiCount, ideaCount,
@@ -168,10 +171,11 @@ export function Sidebar({
   onOpenChat: (id: string) => void
   onNewChat: () => void
   onArchiveChat: (id: string) => void
-  grip: { onMouseDown: (e: ReactMouseEvent) => void }
+  grip: GripProps
   collapsed: boolean
 }) {
   const m = useMessages()
+  const navFade = useScrollFade('y')
   const [closed, setClosed] = useState<Record<string, boolean>>({})
   const toggle = (name: string) => setClosed((c) => ({ ...c, [name]: !c[name] }))
   const sect = (name: string) => (closed[name] ? 'sect closed' : 'sect')
@@ -189,7 +193,7 @@ export function Sidebar({
     <div className="sidebar" id="sidebar" inert={collapsed}>
       <SearchBox onJump={onJump} />
 
-      <div className="sb-top">
+      <div className="sb-top" ref={navFade}>
         <NavRow
           className="srow" selected={screen === 'feed'} id="rowFeed" data-desk="feed"
           style={{ marginTop: 8 }} onActivate={() => onNavigate('feed')}
@@ -238,7 +242,7 @@ export function Sidebar({
                   data-discovery-project={held.id} onActivate={() => onOpenInbox(held.id, 'discovery')}
                 >
                   <span className="ic" />
-                  <span className="watch-name">{held.name}</span>
+                  <span className="watch-name" title={held.name}>{held.name}</span>
                   <CountBadge className="n" count={held.count} strong />
                 </NavRow>
               ))}
@@ -386,7 +390,7 @@ export function Sidebar({
           </Icon>
         </span>{m.shell.nav.trash}{trashCount > 0 ? <CountBadge className="n" count={trashCount} /> : null}
       </NavRow>
-      <GripTooltip><div className="grip" id="sbgrip" {...grip} /></GripTooltip>
+      <GripTooltip><Grip {...grip} /></GripTooltip>
     </div>
   )
 }

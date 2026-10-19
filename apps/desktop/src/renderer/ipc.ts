@@ -41,6 +41,11 @@ export const appMenu = {
   restartApp: () => { window.meridian.restartApp() },
   /** The self-drawn title bar switches between maximized and restored when double-clicked. */
   toggleMaximize: () => { window.meridian.toggleMaximize() },
+  /**
+   * Calls `handler` with whether the window is full screen, once now and on every change, and
+   * returns its unsubscribe function.
+   */
+  onFullScreen: (handler: (on: boolean) => void) => window.meridian.onFullScreen(handler),
   /** The platform; it sets the title bar's room for window buttons and whether shortcuts use ⌘ or Ctrl. */
   platform: (): string => window.meridian.platform,
   /**

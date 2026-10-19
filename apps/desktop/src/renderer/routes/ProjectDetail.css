@@ -15,7 +15,6 @@
 
 /* The project timeline and the details below share one content width; an open node's panel only narrows the left column. */
 .desk .desk-body>.wkpage.project-detail-page{max-width:var(--pagew)}
-.project-detail-page{transition:gap var(--t-slow) var(--e-inout)}
 .project-detail-panel>.detail-panel__content{min-width:0}
 /* Node panel: the Markdown document, branch results and progress records an agent maintains; the App only reads them. */
 .wkpage.node-reading{gap:28px}

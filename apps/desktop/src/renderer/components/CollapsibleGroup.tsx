@@ -7,7 +7,8 @@ import './CollapsibleGroup.css'
  * A titled group in a long list whose heading stays pinned while its items scroll past and folds the
  * group away when clicked. `count` is shown beside the title when given; `actions` sit at the
  * heading's end and never toggle the group. `variant: 'quiet'` drops the sticky pinning and shrinks
- * the heading for a small group embedded inside another list, such as an archived section.
+ * the heading for a small group embedded inside another list, such as an archived section. An
+ * opening group grows to its height; a closing one folds at once.
  */
 export function CollapsibleGroup({
   title, count, open, onToggle, actions, children, variant = 'section', ...data
@@ -35,7 +36,9 @@ export function CollapsibleGroup({
         </button>
         {actions === undefined ? null : <div className="collapsible-group-actions">{actions}</div>}
       </div>
-      {open ? <div className="collapsible-group-body">{children}</div> : null}
+      {open ? (
+        <div className="collapsible-group-body"><div className="collapsible-group-content">{children}</div></div>
+      ) : null}
     </section>
   )
 }
