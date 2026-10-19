@@ -27,9 +27,9 @@ export type ActionMenuProps = {
 /**
  * The app-wide action menu skeleton. Callers provide the trigger button, the items and when it opens
  * and closes; Root, the asChild trigger, Portal, surface style, positioning, the gap from the window
- * edge and inline click isolation are implemented only here. A menu that switches to an editor in the same popover is
- * controlled through `open`/`onOpenChange`; `contentProps` only carries advanced Radix options such
- * as focus and Escape handling. An Escape pressed while an input method is composing neither closes
+ * edge and inline click isolation are implemented only here. A menu that switches to an editor in
+ * the same popover is controlled through `open`/`onOpenChange`; `contentProps` only carries advanced
+ * Radix options such as focus and Escape handling. An Escape pressed while an input method is composing neither closes
  * the menu nor reaches `contentProps.onEscapeKeyDown`.
  */
 export function ActionMenu({
