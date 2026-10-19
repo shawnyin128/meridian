@@ -107,10 +107,17 @@ describe('project conclusions', () => {
     act(() => button('取消验证').click())
     expect(handlers.onUnverify).toHaveBeenCalledWith('t.wide')
     await act(async () => { button('写入 Wiki').click(); await flush() })
-    const select = document.querySelector<HTMLSelectElement>('.wiki-form select')!
+    expect(document.querySelector('.wiki-form select')).toBeNull()
     await act(async () => {
-      Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value')!.set!.call(select, 'topics/sd')
-      select.dispatchEvent(new Event('change', { bubbles: true }))
+      document.querySelector('.wiki-form .choice-picker')!
+        .dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+      await flush()
+    })
+    const page = [...document.querySelectorAll<HTMLElement>('.choice-picker-menu [role="menuitemradio"]')]
+      .find((item) => item.textContent === 'Speculative decoding')!
+    await act(async () => {
+      page.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+      page.dispatchEvent(new MouseEvent('click', { bubbles: true }))
       await flush()
     })
     expect(document.querySelector<HTMLTextAreaElement>('.wiki-form textarea')!.value).toBe('Wide trees win at B8')

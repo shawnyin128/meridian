@@ -1,4 +1,4 @@
-import { FormSelect } from '../FormControls.js'
+import { ChoicePicker } from '../FieldPickers.js'
 import { useLocale, useMessages } from '../../messages/useMessages.js'
 import { setLanguagePreference, type Locale } from '../../shell/language.js'
 
@@ -11,12 +11,11 @@ export function LanguageSettings() {
 
   return (
     <div className="language-settings-card">
-      <FormSelect
+      <ChoicePicker
         appearance="field" className="language-select" aria-label={m.settings.language.group}
-        value={locale} onChange={(event) => setLanguagePreference(event.target.value as Locale)}
-      >
-        {LANGUAGES.map((value) => <option key={value} value={value}>{m.settings.language[value]}</option>)}
-      </FormSelect>
+        value={locale} options={LANGUAGES} label={(value) => m.settings.language[value]}
+        onPick={setLanguagePreference}
+      />
       <p className="language-note">{m.settings.language.note}</p>
     </div>
   )

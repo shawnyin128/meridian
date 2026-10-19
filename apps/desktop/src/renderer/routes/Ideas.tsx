@@ -5,8 +5,8 @@ import { FINISHED_PROJECT } from '../../shared/vocabulary.js'
 import { idea as ideaApi, project as projectApi } from '../ipc.js'
 import { MenuItem, MenuSeparator } from '../components/ActionMenu.js'
 import { SortMenu } from '../components/SortMenu.js'
-import { FormInput, FormSelect, FormTextarea } from '../components/FormControls.js'
-import { DotsMenu } from '../components/FieldPickers.js'
+import { FormInput, FormTextarea } from '../components/FormControls.js'
+import { ChoicePicker, DotsMenu } from '../components/FieldPickers.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { PanelClose } from '../components/PanelClose.js'
 import { DetailPanel } from '../components/DetailPanel.js'
@@ -190,18 +190,20 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
 
       <section className="idea-detail-section">
         <h3>{m.ideas.link.heading}</h3>
-        <FormSelect
-          aria-label={m.ideas.link.selectAriaLabel(idea.title)} value={idea.project ?? ''}
-          onChange={(event) => onProject(event.target.value || null)}
-        >
-          <option value="">{m.ideas.link.none}</option>
-          {idea.project !== undefined && linked === undefined
-            ? <option value={idea.project}>{m.ideas.link.originalUnavailable}</option>
-            : null}
-          {projects.map((project) => (
-            <option value={project.id} key={project.id}>{project.name} · {project.status}</option>
-          ))}
-        </FormSelect>
+        <ChoicePicker
+          appearance="field" aria-label={m.ideas.link.selectAriaLabel(idea.title)} value={idea.project ?? ''}
+          options={[
+            '',
+            ...(idea.project !== undefined && linked === undefined ? [idea.project] : []),
+            ...projects.map((project) => project.id),
+          ]}
+          label={(id) => {
+            if (id === '') return m.ideas.link.none
+            const project = projects.find((candidate) => candidate.id === id)
+            return project === undefined ? m.ideas.link.originalUnavailable : `${project.name} · ${project.status}`
+          }}
+          onPick={(id) => onProject(id || null)}
+        />
         <div className="idea-detail-actions">
           {idea.project === undefined
             ? <button className="btn" onClick={onPromote}>{m.ideas.promote.action}</button>

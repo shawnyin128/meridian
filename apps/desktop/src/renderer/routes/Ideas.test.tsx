@@ -111,10 +111,16 @@ describe('Ideas', () => {
       .find((item) => item.textContent === '取消')!
     await act(async () => { cancel.click() })
 
-    const select = detail.querySelector<HTMLSelectElement>('select')!
+    expect(detail.querySelector('select')).toBeNull()
     await act(async () => {
-      select.value = ''
-      select.dispatchEvent(new Event('change', { bubbles: true }))
+      detail.querySelector('.idea-detail-section .choice-picker')!
+        .dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+    })
+    const none = [...document.querySelectorAll<HTMLElement>('.choice-picker-menu [role="menuitemradio"]')]
+      .find((item) => item.textContent === '未关联项目')!
+    await act(async () => {
+      none.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+      none.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
     expect(api.update).toHaveBeenCalledWith('idea-linked', { project: null })
 

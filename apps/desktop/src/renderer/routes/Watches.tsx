@@ -13,7 +13,8 @@ import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { afterLeaving, InlineDraftInput } from '../components/InlineDraftInput.js'
 import { StructuredList, StructuredRow } from '../components/StructuredList.js'
-import { FormInput, FormSelect } from '../components/FormControls.js'
+import { FormInput } from '../components/FormControls.js'
+import { ChoicePicker } from '../components/FieldPickers.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -470,16 +471,15 @@ export function WatchSettings() {
               />
             )
             : (
-              <FormSelect
-                appearance="field" aria-label={m.watches.projectLabel}
-                value={projectId} onChange={(event) => {
-                  setProjectId(event.target.value)
+              <ChoicePicker
+                appearance="field" aria-label={m.watches.projectLabel} placeholder={m.watches.noProjects}
+                value={projectId} options={projects.map((item) => item.id)} disabled={projects.length === 0}
+                label={(id) => projects.find((item) => item.id === id)?.name ?? id}
+                onPick={(id) => {
+                  setProjectId(id)
                   clearSuggestionResults()
                 }}
-              >
-                {projects.length === 0 ? <option value="">{m.watches.noProjects}</option> : null}
-                {projects.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}
-              </FormSelect>
+              />
             )}
           <button
             className="btn pri" disabled={suggesting || addingSuggestion !== null

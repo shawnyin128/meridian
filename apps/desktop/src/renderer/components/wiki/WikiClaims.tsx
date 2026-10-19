@@ -12,8 +12,8 @@ import { AddAction } from '../AddAction.js'
 import { MenuItem } from '../ActionMenu.js'
 import { DiffLines } from '../DiffLines.js'
 import { EmptyState } from '../EmptyState.js'
-import { DotsMenu } from '../FieldPickers.js'
-import { FormInput, FormSelect, FormTextarea } from '../FormControls.js'
+import { ChoicePicker, DotsMenu } from '../FieldPickers.js'
+import { FormInput, FormTextarea } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
@@ -22,6 +22,7 @@ import { PaperText } from '../paper/PaperText.js'
 import './WikiClaims.css'
 
 type Outcome = 'revised' | 'split' | 'retracted' | 'dismissed'
+const OUTCOMES: readonly Outcome[] = ['dismissed', 'revised', 'split', 'retracted']
 
 /** The form open over the claims area, if any. */
 type Form =
@@ -323,10 +324,12 @@ export function WikiClaims({ page, pending, links, onApply }: {
                 : (
                   <>
                     <WikiFormField label={f.project}>
-                      <FormSelect appearance="field" value={projectId} onChange={(e) => { setProjectId(e.target.value); setConclusionId('') }}>
-                        <option value="" disabled>{f.projectPick}</option>
-                        {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                      </FormSelect>
+                      <ChoicePicker
+                        appearance="field" aria-label={f.project} placeholder={f.projectPick} value={projectId}
+                        options={projects.map((p) => p.id)}
+                        label={(id) => projects.find((p) => p.id === id)?.name ?? id}
+                        onPick={(id) => { setProjectId(id); setConclusionId('') }}
+                      />
                     </WikiFormField>
                     {projectId === ''
                       ? null
@@ -334,17 +337,16 @@ export function WikiClaims({ page, pending, links, onApply }: {
                         ? <p className="wiki-form-hint">{f.noConclusions}</p>
                         : (
                           <WikiFormField label={f.conclusion}>
-                            <FormSelect
-                              appearance="field" value={conclusionId}
-                              onChange={(e) => {
-                                setConclusionId(e.target.value)
-                                const picked = conclusions.find((x) => x.id === e.target.value)
+                            <ChoicePicker
+                              appearance="field" aria-label={f.conclusion} placeholder={f.conclusionPick}
+                              value={conclusionId} options={conclusions.map((x) => x.id)}
+                              label={(id) => conclusions.find((x) => x.id === id)?.text ?? id}
+                              onPick={(id) => {
+                                setConclusionId(id)
+                                const picked = conclusions.find((x) => x.id === id)
                                 if (picked !== undefined && text.trim() === '') setText(picked.text)
                               }}
-                            >
-                              <option value="" disabled>{f.conclusionPick}</option>
-                              {conclusions.map((x) => <option key={x.id} value={x.id}>{x.text}</option>)}
-                            </FormSelect>
+                            />
                           </WikiFormField>
                         )}
                   </>
@@ -359,10 +361,11 @@ export function WikiClaims({ page, pending, links, onApply }: {
                 ? <p className="wiki-form-hint">{f.noOthers}</p>
                 : (
                   <WikiFormField label={f.other}>
-                    <FormSelect appearance="field" value={other} onChange={(e) => setOther(e.target.value)}>
-                      <option value="" disabled>{f.other}</option>
-                      {others.map((x) => <option key={x.id} value={x.id}>{x.text}</option>)}
-                    </FormSelect>
+                    <ChoicePicker
+                      appearance="field" aria-label={f.other} placeholder={f.other} value={other}
+                      options={others.map((x) => x.id)} label={(id) => others.find((x) => x.id === id)?.text ?? id}
+                      onPick={setOther}
+                    />
                   </WikiFormField>
                 )}
               <WikiFormField label={f.note}>
@@ -375,16 +378,14 @@ export function WikiClaims({ page, pending, links, onApply }: {
           ? (
             <>
               <WikiFormField label={f.outcome}>
-                <FormSelect
-                  appearance="field" value={outcome}
-                  onChange={(e) => {
-                    const next = e.target.value as Outcome
+                <ChoicePicker
+                  appearance="field" aria-label={f.outcome} value={outcome}
+                  options={OUTCOMES} label={(o) => f.outcomes[o]}
+                  onPick={(next) => {
                     setOutcome(next)
                     setText(next === 'revised' ? form.claim.text : '')
                   }}
-                >
-                  {(['dismissed', 'revised', 'split', 'retracted'] as const).map((o) => <option key={o} value={o}>{f.outcomes[o]}</option>)}
-                </FormSelect>
+                />
               </WikiFormField>
               {outcome === 'revised' || outcome === 'split'
                 ? (

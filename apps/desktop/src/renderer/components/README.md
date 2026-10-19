@@ -93,7 +93,8 @@ Current shared contracts:
   relations, attachments, Agent sessions, and timeline feature sections. The route coordinates data
   and persistence instead of implementing their internal UI.
 - `FieldPickers`: shared choice, priority, date, and overflow-menu controls. Screens supply trigger
-  presentation and callbacks rather than rebuilding popovers and keyboard behavior. `DotsMenu` is the one
+  presentation and callbacks rather than rebuilding popovers and keyboard behavior. `ChoicePicker` is the one
+  single-value picker: `appearance="field"` makes it the boxed field of a form in place of a native select. `DotsMenu` is the one
   overflow-menu trigger: `label` names it, `stopRowActivation` keeps a click from activating the row it
   sits in, and `open` with `onOpenChange` lets a host control it. The host owns the rule that reveals it.
 
