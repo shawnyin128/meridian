@@ -47,9 +47,11 @@ Current shared contracts:
 - `ResearchObjectCard`: one list-card shell for first-class research objects such as projects and ideas;
   routes provide their domain-specific identity and metadata without redefining width, spacing, borders,
   selection, management-menu visibility, or keyboard activation.
-- `FormInput`, `FormTextarea`, and `FormSelect`: the native form-control baseline for stable geometry,
-  inherited typography, and focus without browser-specific rings. Feature components still own their
-  layout, validation, suggestions, and persistence.
+- `FormInput`, `FormTextarea`, and `FormSelect`: the one field, in two appearances: `field`, the boxed field
+  of forms, dialogs, popovers and filters (the default), and `inline`, which edits a value in the place of its
+  text in a row, cell or property list. Both share one edge, fill, radius and the one focus rule in
+  `shell/tokens.css`; no other stylesheet draws a field's box. Feature components still own their layout,
+  validation, suggestions, and persistence.
 - `ClearableInput`: the shared controlled single-line field with one trailing clear action. Global and
   library search configure the same focus restoration, icon geometry, and accessible naming.
 - `GenerationControl`: the shared idle, spinning, and hover-to-stop button contract for model-backed

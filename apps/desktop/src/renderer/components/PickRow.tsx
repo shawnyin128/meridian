@@ -28,8 +28,8 @@ const LIMIT = 8
  */
 export function PickRow({
   row, triggers, placeholder, initialText = '', suggest, allowNew, onPick, onNew, onCancel, onError,
-  inputClassName = 'inedit pickin',
-  inputAppearance = 'plain',
+  inputClassName = 'inedit',
+  inputAppearance = 'inline',
   cancelOnLeave = false,
 }: {
   row: RefObject<HTMLElement | null>

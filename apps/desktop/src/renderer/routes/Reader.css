@@ -71,9 +71,8 @@
 .reading-notes>header strong{font-size:var(--fs-sm)}
 .reading-notes>header span,.reading-page{font-size:var(--fs-cap);color:var(--ter)}
 .note-compose{padding:12px;border-bottom:1px solid var(--sep);display:flex;flex-direction:column;gap:8px;align-items:flex-end}
-.note-compose textarea,.reading-card textarea{width:100%;box-sizing:border-box;border:1px solid var(--sep2);background:var(--field);color:var(--ink);border-radius:var(--r-md);padding:8px;font:inherit;line-height:1.45;resize:vertical}
-.note-compose textarea{min-height:86px}.reading-card textarea{min-height:64px}
-.note-compose textarea:focus,.reading-card textarea:focus{border-color:var(--sep-strong);outline:0;box-shadow:none}
+.note-compose .form-textarea,.reading-card .form-textarea{width:100%}
+.note-compose .form-textarea{min-height:86px}.reading-card .form-textarea{min-height:64px}
 .reading-list{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
 .reading-card{border:1px solid var(--sep2);border-radius:var(--r-lg);padding:10px;background:var(--card);display:flex;flex-direction:column;gap:8px}
 .highlight-card{border-left:3px solid var(--mark)}
@@ -87,7 +86,7 @@
 .reading-remark>header{height:46px;box-sizing:border-box;padding:0 14px;display:flex;align-items:center;border-bottom:1px solid var(--sep)}
 .reading-remark>header strong{font-size:var(--fs-sm)}
 .remark-compose{padding:12px;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
-.remark-compose textarea{width:100%;box-sizing:border-box;min-height:120px;border:1px solid var(--sep-strong);background:transparent;color:var(--ink);border-radius:var(--r-md);padding:8px;font:inherit;line-height:1.45;resize:vertical;outline:0}
+.remark-compose .form-textarea{width:100%;min-height:120px}
 .remark-compose .btn{font-size:var(--fs-cap);padding:3px 9px}
 .remark-compose .btn:disabled{opacity:.45;cursor:default}
 

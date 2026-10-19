@@ -133,4 +133,9 @@ describe('CellPicker', () => {
     })
     expect(onRowContextMenu).not.toHaveBeenCalled()
   })
+
+  it('edits in the inline field, the one in-place editor look of the table', async () => {
+    const host = await mount(() => {})
+    expect(host.querySelector('input')!.classList).toContain('form-control-inline')
+  })
 })

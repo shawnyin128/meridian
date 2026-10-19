@@ -1,5 +1,8 @@
 .clearable-input{position:relative;min-width:0}
 .clearable-input>.form-input{padding-right:32px}
+.clearable-input-leading{position:absolute;left:var(--sp-10);top:50%;transform:translateY(-50%);display:flex;color:var(--ter);pointer-events:none}
+.clearable-input-leading svg{width:13px;height:13px}
+.clearable-input-leading~.form-input{padding-left:30px}
 .clearable-input-action{position:absolute;right:6px;top:50%;width:22px;height:22px;transform:translateY(-50%);display:grid;place-items:center;padding:0;border:0;border-radius:50%;background:transparent;color:var(--ter);cursor:pointer}
 .clearable-input-action:hover,.clearable-input-action:focus-visible{background:var(--hover);color:var(--ink);outline:0}
 .clearable-input-action svg{width:12px;height:12px}

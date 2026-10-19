@@ -72,7 +72,8 @@ export function ProjectChips({ paper, onError }: {
         anchor={open
           ? (
             <FormInput
-              className="tagin" ref={input} value={query} placeholder={m.project.identity.nameFieldLabel}
+              appearance="inline" className="tagin" ref={input} value={query}
+              placeholder={m.project.identity.nameFieldLabel}
               {...draft.inputProps} onClick={(event) => event.stopPropagation()}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => { keys.onKeyDown(event); draft.inputProps.onKeyDown(event) }}

@@ -102,7 +102,7 @@
 .delivery-setting-copy strong{font-size:var(--fs-base);font-weight:600;color:var(--ink)}
 .delivery-setting-copy p{margin:5px 0 0;color:var(--ter);font-size:var(--fs-sm);line-height:var(--lh-ui)}
 .delivery-setting-control{display:flex;align-items:center;gap:7px;color:var(--sec);font-size:var(--fs-sm)}
-.delivery-setting-control .form-input{width:76px;height:30px;text-align:right}
+.delivery-setting-control .form-input{width:76px;text-align:right}
 .delivery-setting-control .btn{height:30px;margin-left:3px}
 .delivery-setting-error{grid-column:1/-1;margin:0;color:var(--bad);font-size:var(--fs-cap)}
 .set-main .watch-settings>.section-heading:first-of-type{margin-top:0}

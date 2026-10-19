@@ -65,7 +65,6 @@
 .workspace-form label{display:grid;grid-template-columns:66px minmax(0,1fr);align-items:center;gap:12px;
   color:var(--ter);font-size:var(--fs-sm)}
 .workspace-form .form-control{width:100%;font-size:var(--fs-base)}
-.workspace-form .form-input::placeholder{color:var(--ter)}
 .workspace-form .form-input[type="number"]{-moz-appearance:textfield}
 .workspace-form .form-input[type="number"]::-webkit-inner-spin-button{appearance:none;margin:0}
 .workspace-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}

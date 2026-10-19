@@ -80,11 +80,8 @@
  */
 .main.reading>.sidebar{display:none}
 
-.sfield{display:flex;align-items:center;gap:6px;background:var(--field);border:1px solid var(--sep2);border-radius:var(--r-md);padding:5px 10px;margin-bottom:6px}
-.sfield input{flex:1;border:0;background:transparent;color:var(--ink);font-family:var(--sans);font-size:12px}
-.sfield:has(input:focus-visible){outline:0;border-color:var(--sep-strong);background:var(--card)}
-.sfield .ic{color:var(--ter);display:flex;align-items:center}
-.sfield .ic svg{width:13px;height:13px}
+.sfield{margin-bottom:6px}
+.sfield>.form-input{width:100%}
 
 /*
  * Live results of the global search: Radix positions, opens and closes them; the look is copied rule

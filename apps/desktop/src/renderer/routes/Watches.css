@@ -7,17 +7,10 @@
  * dropped.
  */
 
-/*
- * Placeholder row: every watch row is at least 40px tall (`.wrow` in shell.css). The placeholder's
- * input stays 22px, the height of a row's name line, so it does not change the row's height.
- */
-.wrow.newrow .inedit{height:22px;padding:0 9px}
 .wrow.editrow{align-items:flex-start;min-height:30px;padding-block:4px}
-.wrow.editrow .inedit{height:22px;padding:0 9px}
 .author-id-state{display:inline-flex;align-items:center;height:22px;line-height:22px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ter);font-size:12px}
 .author-id-state.unconfirmed{color:var(--warn)}
 .author-resolver{flex:1;min-width:0}
-.author-resolver>.inedit{display:block;width:100%}
 .author-search-note{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 4px 3px;color:var(--ter);font-size:12px}
 .author-search-note.error{color:var(--bad)}
 .author-matches{margin-top:7px}

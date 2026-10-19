@@ -82,7 +82,8 @@ export const InlineDraftInput = forwardRef<HTMLInputElement, InlineDraftInputPro
 
     return (
       <FormInput
-        {...props} ref={holdInput} data-inline-draft="" autoComplete={autoComplete} autoFocus={autoFocus}
+        {...props} appearance="inline" ref={holdInput} data-inline-draft="" autoComplete={autoComplete}
+        autoFocus={autoFocus}
         aria-invalid={draft.inputProps['aria-invalid']} onInput={draft.inputProps.onInput}
         onKeyDown={handleKeyDown}
       />

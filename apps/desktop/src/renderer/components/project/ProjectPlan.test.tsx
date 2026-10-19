@@ -90,6 +90,7 @@ describe('ProjectPlan', () => {
     const output = renderPlan('task', { creating: { kind: 'task', date: '2026-09-16', window: null } })
     expect(output.indexOf('task-create-row')).toBeGreaterThan(-1)
     expect(output.indexOf('task-create-row')).toBeLessThan(output.indexOf('data-row="task-1"'))
+    expect(output).toMatch(/task-create-row[\s\S]*<input[^>]*class="form-control form-input form-control-inline/)
   })
 
   it('已完成的任务默认折叠进已归档分组,活动列表里看不到它', () => {

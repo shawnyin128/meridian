@@ -14,7 +14,7 @@ type ClearableInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value'> 
   clearLabel?: string
 }
 
-/** A controlled single-line field with one stable trailing clear action. */
+/** A controlled single-line field with one stable trailing clear action and an optional leading icon inside the field. */
 export const ClearableInput = forwardRef<HTMLInputElement, ClearableInputProps>(
   function ClearableInput({
     value, onClear, wrapperClassName = '', wrapperId, leading,
@@ -31,7 +31,7 @@ export const ClearableInput = forwardRef<HTMLInputElement, ClearableInputProps>(
 
     return (
       <div id={wrapperId} className={`clearable-input${wrapperClassName ? ` ${wrapperClassName}` : ''}`}>
-        {leading}
+        {leading === undefined ? null : <span className="clearable-input-leading">{leading}</span>}
         <FormInput ref={setRef} className={className} value={value} {...props} />
         {value === '' ? null : (
           <button

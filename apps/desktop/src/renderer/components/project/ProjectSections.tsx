@@ -66,11 +66,13 @@ export function ProjectUrlDraft({ row, triggers, initial, onSubmit, onCancel, on
   return (
     <div className="urldraft">
       <FormInput
-        ref={address} className="inedit" placeholder={m.project.links.urlPlaceholder} defaultValue={initial?.url}
+        ref={address} appearance="inline" className="inedit" placeholder={m.project.links.urlPlaceholder}
+        defaultValue={initial?.url}
         {...draft.inputProps}
       />
       <FormInput
-        ref={label} className="inedit" placeholder={m.project.links.urlNamePlaceholder} defaultValue={initial?.text}
+        ref={label} appearance="inline" className="inedit" placeholder={m.project.links.urlNamePlaceholder}
+        defaultValue={initial?.text}
         {...draft.inputProps} autoFocus={false}
       />
     </div>
@@ -117,7 +119,7 @@ export function ProjectTopicField({ value, onSave, onError }: {
     <span className="metadata-field" ref={row}>
       <PickRow
         row={row} triggers={NO_TRIGGERS} allowNew placeholder={m.project.identity.topic} suggest={suggest}
-        inputClassName="metadata-input pickin" inputAppearance="inline" cancelOnLeave
+        inputClassName="metadata-input" cancelOnLeave
         onPick={(hit) => onSave(hit.title)} onNew={onSave} onCancel={stop} onError={onError}
       />
     </span>

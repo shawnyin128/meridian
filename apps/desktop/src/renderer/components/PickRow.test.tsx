@@ -207,4 +207,9 @@ describe('PickRow', () => {
     expect(onNew).toHaveBeenCalledTimes(1)
     expect(onCancel).toHaveBeenCalledTimes(3)
   })
+
+  it('is the inline field, the one in-place editor look of rows and cells', () => {
+    const host = mount(() => true, () => {})
+    expect(host.querySelector('input')!.classList).toContain('form-control-inline')
+  })
 })

@@ -73,7 +73,7 @@ export function CellPicker({ column, values, onCommit, onClose }: {
       open anchorRef={anchor} stopClickPropagation
       anchor={(
         <FormInput
-          className="celledit" autoComplete="off" autoFocus value={q} ref={anchor}
+          appearance="inline" className="celledit" autoComplete="off" autoFocus value={q} ref={anchor}
           placeholder={m.papers.cellPicker.placeholder}
           aria-invalid={draft.inputProps['aria-invalid']} onInput={draft.inputProps.onInput}
           onClick={(e) => e.stopPropagation()}

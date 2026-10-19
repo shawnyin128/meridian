@@ -105,8 +105,7 @@
 .ptable tr:has(.stchip[data-state="open"]) .tagadd{opacity:1}
 .tagadd:hover{color:var(--ink);border-color:var(--sec)}
 .paper-meta-projects .tagchip.tagadd{opacity:1;pointer-events:auto}
-.tagin{border:1px solid var(--sep-strong);background:transparent;border-radius:999px;padding:1px 8px;font-size:var(--fs-sm);color:var(--ink);width:110px;font-family:var(--sans)}
-.tagin:focus-visible{outline:0}
+.form-input.form-control-inline.tagin{display:inline-block;width:110px;vertical-align:middle}
 .stchip{font-size:var(--fs-sm);line-height:var(--lh-ui);padding:1px 10px;border:0;border-radius:999px;background:var(--field);color:var(--sec);font-family:var(--sans);cursor:pointer;white-space:nowrap}
 
 /* Custom columns: the header's last cell holds the + and the column gear; clicking a cell edits it in place */

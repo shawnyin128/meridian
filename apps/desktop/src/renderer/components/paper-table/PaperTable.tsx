@@ -224,7 +224,7 @@ function TagAdd({ field, values, onAdd, onError }: {
       anchor={open
         ? (
           <FormInput
-            className="tagin" ref={input} value={q} {...draft.inputProps}
+            appearance="inline" className="tagin" ref={input} value={q} {...draft.inputProps}
             onClick={(e) => e.stopPropagation()}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => { keys.onKeyDown(e); draft.inputProps.onKeyDown(e) }}
