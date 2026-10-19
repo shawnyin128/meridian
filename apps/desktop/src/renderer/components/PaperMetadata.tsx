@@ -1,20 +1,23 @@
 import { useRef, useState, type ReactNode } from 'react'
 import type { PaperFields, PaperRow, ReadState } from '../../shared/contract.js'
-import { READ_STATES } from '../../shared/vocabulary.js'
+import { READ_STATES, READING_PAPER } from '../../shared/vocabulary.js'
 import { papers } from '../ipc.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useToast } from '../shell/AppShell.js'
+import { ChoicePicker } from './FieldPickers.js'
 import { InlineMetadataField } from './InlineField.js'
 import { PaperAbstract } from './paper/PaperAbstract.js'
 import { PaperText } from './paper/PaperText.js'
+import { PaperTopics } from './PaperTopics.js'
 import { ProjectChips } from './ProjectChips.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import './PaperMetadata.css'
 
+/** A paper's rating, the same in the paper table and the detail panel: a star sets it, the current star clears it. */
 export function RatingStars({ value, onChange, disabled = false }: {
   value: number | undefined
-  onChange: (value: number) => void
+  onChange: (value: number | null) => void
   disabled?: boolean
 }) {
   const m = useMessages()
@@ -24,22 +27,33 @@ export function RatingStars({ value, onChange, disabled = false }: {
         <button
           key={star} type="button" disabled={disabled} aria-label={m.papers.rating.stars(star)}
           className={star <= (value ?? 0) ? 'rated' : ''}
-          onClick={(event) => { event.stopPropagation(); onChange(star) }}
+          onClick={(event) => { event.stopPropagation(); onChange(star === value ? null : star) }}
         >★</button>
       ))}
     </span>
   )
 }
 
-type EditableField = 'title' | 'shortTitle' | 'authors' | 'venue' | 'year'
-  | 'identifier' | 'submitted' | 'readState' | 'topics'
+/** A paper's reading status, the same in the paper table and the detail panel; Reading is highlighted. */
+export function ReadStatePicker({ value, onPick }: {
+  value: ReadState
+  onPick: (readState: ReadState) => void
+}) {
+  return (
+    <ChoicePicker
+      value={value} options={READ_STATES} onPick={onPick} stopRowActivation
+      className={value === READING_PAPER ? 'stchip on' : 'stchip'}
+    />
+  )
+}
+
+type EditableField = 'title' | 'shortTitle' | 'authors' | 'venue' | 'year' | 'identifier' | 'submitted'
 
 const splitList = (value: string): string[] => value
   .split(/[,，;；\n]/).map((item) => item.trim()).filter(Boolean)
 
 function draftOf(paper: PaperRow, field: EditableField): string {
   if (field === 'authors') return (paper.authors ?? []).join(', ')
-  if (field === 'topics') return paper.topics.join(', ')
   if (field === 'year') return paper.year?.toString() ?? ''
   if (field === 'shortTitle') return paper.shortTitle ?? ''
   if (field === 'identifier') return paper.identifier ?? ''
@@ -62,13 +76,10 @@ function parsedPatch(
       ? { year } : new Error(validation.yearRange)
   }
   if (field === 'identifier') return { identifier: trimmed || null }
-  if (field === 'submitted') return { submitted: trimmed || null }
-  if (field === 'topics') return { topics: splitList(value) }
-  return READ_STATES.includes(value as ReadState)
-    ? { readState: value as ReadState } : new Error(validation.readStateInvalid)
+  return { submitted: trimmed || null }
 }
 
-function currentValue(paper: PaperRow, field: EditableField | 'rating'): unknown {
+function currentValue(paper: PaperRow, field: EditableField | 'rating' | 'readState' | 'topics'): unknown {
   if (field === 'authors') return paper.authors ?? []
   if (field === 'shortTitle') return paper.shortTitle ?? null
   if (field === 'year') return paper.year ?? null
@@ -95,7 +106,7 @@ export function PaperMetadata({ paper, onSaved }: {
   const ratingBusy = useRef(false)
 
   const savePatch = async (
-    field: EditableField | 'rating', patch: Partial<PaperFields>,
+    field: EditableField | 'rating' | 'readState' | 'topics', patch: Partial<PaperFields>,
   ): Promise<boolean> => {
     if (JSON.stringify(currentValue(paper, field)) === JSON.stringify(patchValue(patch))) return true
     let fresh: PaperRow | null = null
@@ -114,7 +125,6 @@ export function PaperMetadata({ paper, onSaved }: {
           key={`${paper.id}:${field}`} label={labels[field]} value={draftOf(paper, field)} display={display || '—'}
           type={field === 'submitted' ? 'date' : 'text'}
           inputMode={field === 'year' ? 'numeric' : 'text'}
-          {...(field === 'readState' ? { options: READ_STATES } : {})}
           onSave={(value) => {
             const parsed = parsedPatch(field, value, m.papers.metadata.validation)
             if (parsed instanceof Error) { toast(parsed.message); return false }
@@ -143,15 +153,25 @@ export function PaperMetadata({ paper, onSaved }: {
               if (ratingBusy.current) return
               ratingBusy.current = true
               setRatingSaving(true)
-              void savePatch('rating', { rating: rating === paper.rating ? null : rating })
+              void savePatch('rating', { rating })
                 .finally(() => { ratingBusy.current = false; setRatingSaving(false) })
             }}
           />
         </dd>
         {editableRow('identifier', paper.identifier ?? '')}
         {editableRow('submitted', paper.submitted ?? '')}
-        {editableRow('readState', paper.readState)}
-        {editableRow('topics', paper.topics.join('、'))}
+        <dt>{labels.readState}</dt>
+        <dd>
+          <ReadStatePicker value={paper.readState} onPick={(readState) => { void savePatch('readState', { readState }) }} />
+        </dd>
+        <dt>{labels.topics}</dt>
+        <dd className="paper-meta-topics">
+          <PaperTopics
+            topics={paper.topics} onError={(error) => toast(error.message)}
+            onAdd={(topic) => savePatch('topics', { topics: [...paper.topics, topic] })}
+            onRemove={(topic) => savePatch('topics', { topics: paper.topics.filter((held) => held !== topic) })}
+          />
+        </dd>
         <dt>{m.papers.metadata.projectsLabel}</dt>
         <dd className="paper-meta-projects">
           <ProjectChips paper={paper} onError={(error) => toast(error.message)} />

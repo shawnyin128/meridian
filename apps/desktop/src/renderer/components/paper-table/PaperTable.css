@@ -104,7 +104,7 @@
 .ptable tr:hover .tagadd,.tagchip.tagadd:focus-visible{opacity:1;pointer-events:auto}
 .ptable tr:has(.stchip[data-state="open"]) .tagadd{opacity:1}
 .tagadd:hover{color:var(--ink);border-color:var(--sec)}
-.paper-meta-projects .tagchip.tagadd{opacity:1;pointer-events:auto}
+.paper-meta-projects .tagchip.tagadd,.paper-meta-topics .tagchip.tagadd{opacity:1;pointer-events:auto}
 .form-input.form-control-inline.tagin{display:inline-block;width:110px;vertical-align:middle}
 .stchip{font-size:var(--fs-sm);line-height:var(--lh-ui);padding:1px 10px;border:0;border-radius:999px;background:var(--field);color:var(--sec);font-family:var(--sans);cursor:pointer;white-space:nowrap}
 

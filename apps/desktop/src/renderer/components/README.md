@@ -63,6 +63,8 @@ Current shared contracts:
   and actions rather than copying the desktop shell structure. `SectionHeading` is the one section heading:
   its `variant` is `page`, `content`, `group` or `rail`, and `actions` is the only right-hand slot.
 - `PickRow`, `Pager`, `Markdown`, `PaperMetadata`, `ParseProgress`, `AddAction`: shared feature widgets.
+- `RatingStars`, `ReadStatePicker` (in `PaperMetadata`) and `PaperTopics`: the one rating, reading-status and
+  topic editor of a paper, used by both the paper table and the detail panel.
 - `paper/PaperCard`: discovery-card composition, actions/notices slots, metadata badges, recommendations,
   and the shared LaTeX-capable `PaperAbstract`. Inbox and read-later configure the same card.
 - `paper/PaperText`: every display of a paper title (inline) or abstract (block, through `Markdown`) with

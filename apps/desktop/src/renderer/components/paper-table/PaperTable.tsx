@@ -5,11 +5,11 @@ import type {
   SortKey,
 } from '../../../shared/contract.js'
 import { MAX_PDF_UPLOAD_BYTES } from '../../../shared/contract.js'
-import { DEFAULT_PAPER_GROUPS, PAPER_PAGE, READ_STATES, READING_PAPER } from '../../../shared/vocabulary.js'
+import { DEFAULT_PAPER_GROUPS, PAPER_PAGE, READ_STATES } from '../../../shared/vocabulary.js'
 import { papers } from '../../ipc.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { IconCheck, IconCross, IconGrip, IconPlus, IconRead } from '../icons.js'
+import { IconCheck, IconCross, IconGrip, IconRead } from '../icons.js'
 import { CellPicker } from './CellPicker.js'
 import { NewColumnHead } from './ColumnAdd.js'
 import { columnKey, takenLabel } from './column-key.js'
@@ -17,13 +17,12 @@ import { ColumnMenu } from './ColumnMenu.js'
 import { GroupMenu, groupRows } from './GroupMenu.js'
 import { ParseProgress } from '../ParseProgress.js'
 import { Pager } from '../Pager.js'
-import { PaperMetadata, RatingStars } from '../PaperMetadata.js'
+import { PaperMetadata, RatingStars, ReadStatePicker } from '../PaperMetadata.js'
+import { PaperTopics } from '../PaperTopics.js'
 import { PaperReadingSummary } from './PaperReadingSummary.js'
-import { PickerPopover } from '../PickerPopover.js'
 import { FormInput } from '../FormControls.js'
 import { ClearableInput } from '../ClearableInput.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../PageShell.js'
-import { useCandidateKeys } from '../../hooks/useCandidateKeys.js'
 import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
@@ -166,129 +165,6 @@ function SortArrow({ direction }: { direction: SortDirection }) {
     >
       <path d={ARROW_PATH[direction]} />
     </svg>
-  )
-}
-
-/**
- * The `+` at the end of a topics cell: clicking it turns it into an input. Its candidate list shows
- * the vault's values this paper does not have yet; clicking a candidate hands it to `onAdd`, and
- * Enter, a press outside the input and its candidates, or focus leaving them hands over the
- * highlighted candidate, or the typed text when there is none. `onAdd` returns whether the write
- * completed. The input closes only then; a rejected write keeps the input and the typed text. Esc,
- * or leaving with nothing typed, closes it and drops the typed text; while a submission is pending,
- * neither an outside press nor focus leaving closes it, and no second add is sent before the first
- * one lands. The `+` button opens it with its own `setOpen(true)` and all closing goes through
- * `useInlineDraft`; Radix only positions and renders the popover and has no say in opening or
- * closing. The styling follows the demo's .tagadd/.tagin/tagSug. The candidates are fetched with
- * papers.facets each time it opens, so they are always the vault's current values.
- */
-function TagAdd({ field, values, onAdd, onError }: {
-  field: ChipKey
-  /** Values this paper already has. */
-  values: string[]
-  onAdd: (value: string) => Promise<boolean>
-  onError: (e: Error) => void
-}) {
-  const m = useMessages()
-  const [open, setOpen] = useState(false)
-  const [q, setQ] = useState('')
-  const [vocab, setVocab] = useState<string[]>([])
-  const input = useRef<HTMLInputElement>(null)
-  const close = useCallback(() => {
-    setOpen(false)
-    setQ('')
-  }, [])
-
-  useEffect(() => {
-    if (!open) return
-    void papers.facets(field).then((fs) => setVocab(fs.map((f) => f.value))).catch(onError)
-  }, [open, field, onError])
-
-  const typed = q.trim()
-  const needle = typed.toLowerCase()
-  const hits = open
-    ? vocab.filter((v) => !values.includes(v) && (!needle || v.toLowerCase().includes(needle)))
-    : []
-  const isNew = typed !== '' && !values.includes(typed) && !hits.some((v) => v.toLowerCase() === needle)
-
-  // While closed the input is not rendered and its ref is null, so the outside and focus paths do nothing.
-  const draft = useInlineDraft({
-    row: input, triggers: NO_TRIGGERS, onCancel: close, isEmpty: () => typed === '',
-    onSubmit: () => (typed === '' ? false : onAdd(hits[keys.active] ?? typed)),
-  })
-  const keys = useCandidateKeys(hits.length, (i) => draft.submit(() => onAdd(hits[i]!)))
-
-  return (
-    <PickerPopover
-      open={open} anchorRef={input} stopClickPropagation
-      anchor={open
-        ? (
-          <FormInput
-            appearance="inline" className="tagin" ref={input} value={q} {...draft.inputProps}
-            onClick={(e) => e.stopPropagation()}
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => { keys.onKeyDown(e); draft.inputProps.onKeyDown(e) }}
-          />
-        )
-        : (
-          <AddAction
-            variant="icon" className="tagchip tagadd" title={m.papers.tags.add}
-            onClick={(e) => { e.stopPropagation(); setOpen(true) }}
-          />
-        )}
-      content={hits.length > 0 || isNew
-        ? (
-          <>
-              {hits.length > 0 ? <div className="rh">{m.papers.tags.existingTopics}</div> : null}
-              {hits.map((v, i) => (
-                <div
-                  className={i === keys.active ? 'rrow on' : 'rrow'} key={v}
-                  onClick={() => draft.submit(() => onAdd(v))}
-                >{v}</div>
-              ))}
-              {isNew
-                ? (
-                  <div className="rrow mk" onClick={() => draft.submit(() => onAdd(typed))}>
-                    <IconPlus />
-                    <span className="tagchip">{typed}</span>
-                  </div>
-                )
-                : null}
-          </>
-        )
-        : null}
-    />
-  )
-}
-
-/**
- * The reading status in a Status cell: clicking it opens the four statuses, and picking one writes it
- * back to this paper. The styling is the demo's .stchip and the popover it opens; Radix owns opening
- * and closing. The "Reading" status is highlighted in the table, as in the demo.
- */
-function ReadStateChip({ current, onPick }: {
-  current: ReadState
-  onPick: (readState: ReadState) => void
-}) {
-  return (
-    <ActionMenu
-      trigger={(
-        <button
-          type="button" className={current === READING_PAPER ? 'stchip on' : 'stchip'}
-          onClick={(e) => e.stopPropagation()}
-        >{current}</button>
-      )}
-      align="start" stopContentClickPropagation
-    >
-      <MenuRadioGroup value={current}>
-        {READ_STATES.map((s) => (
-          <MenuRadioItem key={s} value={s} onSelect={() => onPick(s)}>
-            <span className="ck">{s === current ? <IconCheck /> : null}</span>
-            {s}
-          </MenuRadioItem>
-        ))}
-      </MenuRadioGroup>
-    </ActionMenu>
   )
 }
 
@@ -721,8 +597,13 @@ export function PaperTable() {
     void write(papers.update(p.id, { readState }), { note: m.papers.notices.readStateUpdated })
   }
 
-  const setRating = (p: PaperRow, rating: number) => {
-    void write(papers.update(p.id, { rating }), { note: m.papers.notices.rated(rating) })
+  const removeTopic = (p: PaperRow, value: string): Promise<boolean> =>
+    write(papers.update(p.id, { topics: p.topics.filter((held) => held !== value) }), { note: m.papers.notices.updated })
+
+  const setRating = (p: PaperRow, rating: number | null) => {
+    void write(papers.update(p.id, { rating }), {
+      note: rating === null ? m.papers.notices.updated : m.papers.notices.rated(rating),
+    })
   }
 
   const remove = (id: string) => {
@@ -1067,18 +948,16 @@ export function PaperTable() {
     if (k === 'st') {
       return (
         <td key={k}>
-          <ReadStateChip
-            current={p.readState}
-            onPick={(readState) => setReadState(p, readState)}
-          />
+          <ReadStatePicker value={p.readState} onPick={(readState) => setReadState(p, readState)} />
         </td>
       )
     }
     return (
       <td key={k}>
         <span className="ci">
-          {p.topics.map((v) => <span className="tagchip" key={v}>{v}</span>)}
-          <TagAdd field={k} values={p.topics} onError={reportError} onAdd={(v) => addTopic(p, v)} />
+          <PaperTopics
+            topics={p.topics} onError={reportError} onAdd={(v) => addTopic(p, v)} onRemove={(v) => removeTopic(p, v)}
+          />
         </span>
       </td>
     )

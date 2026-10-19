@@ -89,7 +89,7 @@ export function ChoicePicker<T extends string>({
     )
   return (
     <ActionMenu
-      align="start" trigger={trigger}
+      align="start" trigger={trigger} stopContentClickPropagation={stopRowActivation}
       {...(appearance === 'field' ? { contentClassName: 'ctxmenu choice-picker-menu' } : {})}
     >
       <MenuRadioGroup value={value}>
