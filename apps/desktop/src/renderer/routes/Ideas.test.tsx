@@ -35,11 +35,13 @@ const api = vi.hoisted(() => ({
   promote: vi.fn(async () => ({ idea: {}, project: {} })),
   remove: vi.fn(async () => {}),
   open: vi.fn(),
+  /** While true the idea list never arrives. */
+  loading: false,
 }))
 
 vi.mock('../ipc.js', () => ({
   idea: {
-    list: async () => structuredClone(api.ideas),
+    list: () => (api.loading ? new Promise(() => {}) : Promise.resolve(structuredClone(api.ideas))),
     update: api.update,
     promote: api.promote,
     delete: api.remove,
@@ -74,7 +76,17 @@ describe('Ideas', () => {
     api.open.mockClear()
   })
 
-  afterEach(() => { act(() => root.unmount()) })
+  afterEach(() => {
+    act(() => root.unmount())
+    api.loading = false
+  })
+
+  it('列表还没到时显示载入占位，不说还没有想法', async () => {
+    api.loading = true
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    expect(host.querySelector('.ideas-list .empty-state')).toBeNull()
+    expect(host.querySelector('.ideas-list .loading-placeholder')).not.toBeNull()
+  })
 
   it('来源标签跟在来源后面：对话和论文阅读写来源的种类，agent 记下的只写 agent', async () => {
     api.ideas.push({

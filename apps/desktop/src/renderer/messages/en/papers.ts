@@ -35,7 +35,6 @@ export const papers = {
     covered: (total: number) => `/ ${total} papers covered`,
     overlapping: 'papers in multiple groups',
     limit: (shown: number, total: number) => `For a responsive preview, this map analyzes the latest ${shown} of ${total} papers.`,
-    loading: 'Building your Research Map…',
     empty: 'There are not enough repeated signals to form a group yet. Import more papers or link them to projects, then try again.',
     groupListAria: 'Automatic research groups',
     kind: { signal: 'Topic or method signal', project: 'Project connection', phrase: 'Shared title phrase' },
@@ -168,7 +167,6 @@ export const papers = {
   understanding: {
     ariaLabel: 'Your notes',
     heading: 'Your notes',
-    loading: 'Loading your thoughts and notes…',
     empty: 'No notes yet. Highlights, page notes, and overall thoughts will appear here.',
     goRead: 'Open reader',
     remarkLabel: 'Thoughts',

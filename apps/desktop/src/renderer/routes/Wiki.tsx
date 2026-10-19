@@ -23,6 +23,7 @@ import { IconCross, IconGear, IconTrash } from '../components/icons.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import { InlineMetadataField } from '../components/InlineField.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { NewColumnHead } from '../components/paper-table/ColumnAdd.js'
 import { headingsOf, MarkdownBox } from '../components/Markdown.js'
 import { Pager } from '../components/Pager.js'
@@ -334,7 +335,7 @@ export function Wiki() {
   const [agg, setAgg] = useState<WikiAggregation | null>(null)
   const [paper, setPaper] = useState<WikiPaper | null>(null)
   const [reading, setReading] = useState<PaperReading | null>(null)
-  const [proposals, setProposals] = useState<WikiProposal[]>([])
+  const [proposals, setProposals] = useState<WikiProposal[] | null>(null)
   const [tip, setTip] = useState<Tip | null>(null)
   const [error, setError] = useState<string | null>(null)
   const consumed = useRef(0)
@@ -553,7 +554,7 @@ export function Wiki() {
   }, [shownAgg, shownPaper, go, place, m])
   useCrumbTail(tail, place === null ? undefined : goHome)
 
-  const queued = proposals.filter((p) => p.status === 'queued').length
+  const queued = (proposals ?? []).filter((p) => p.status === 'queued').length
   const title = shownAgg?.title ?? (shownPaper === null ? null : <PaperText text={shownPaper.title} />)
     ?? (place === REVIEW ? m.wiki.queue.title(queued) : null)
     ?? (home === null ? 'Wiki' : m.wiki.title(home.aggregationCount))
@@ -614,6 +615,9 @@ export function Wiki() {
       <PageError error={error} />
 
       <PageBody>
+        {error === null && (place === null ? home === null : place !== REVIEW && shownAgg === null && shownPaper === null)
+          ? <LoadingPlaceholder shape="cards" />
+          : null}
         {shownAgg !== null
           ? (
             <div className="wkpage">

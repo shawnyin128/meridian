@@ -11,6 +11,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { DayHeading } from '../components/DayHeading.js'
 import { DiffLines } from '../components/DiffLines.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { AgentLabel } from '../components/SourceLabel.js'
 import {
@@ -89,7 +90,7 @@ function ClearArchivedButton({ count, onClear }: { count: number; onClear: () =>
  */
 export function Changelog() {
   const m = useMessages()
-  const [entries, setEntries] = useState<ChangeEntry[]>([])
+  const [entries, setEntries] = useState<ChangeEntry[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set())
 
@@ -136,8 +137,8 @@ export function Changelog() {
     void write(changelog.clearArchived(), { note: m.changelog.clearedArchivedNote(count) })
   }
 
-  const fresh = entries.filter((c) => !c.archived)
-  const filed = entries.filter((c) => c.archived)
+  const fresh = (entries ?? []).filter((c) => !c.archived)
+  const filed = (entries ?? []).filter((c) => c.archived)
   // The screen title and "Archive all" count only the unarchived entries.
   const unread = fresh.length
 
@@ -206,7 +207,9 @@ export function Changelog() {
             onClick={() => archiveAll(unread)}
           >{m.changelog.archiveAll}</button>
         </SectionHeading>
-        {fresh.length === 0 ? <EmptyState variant="section">{m.changelog.empty}</EmptyState> : section(fresh)}
+        {entries === null
+          ? (error === null ? <LoadingPlaceholder shape="rows" /> : null)
+          : fresh.length === 0 ? <EmptyState variant="section">{m.changelog.empty}</EmptyState> : section(fresh)}
 
         {filed.length === 0 ? null : (
           <>

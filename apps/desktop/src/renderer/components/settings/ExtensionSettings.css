@@ -1,5 +1,4 @@
 .extension-settings-card{border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);padding:0 16px}
-.extension-settings-loading{padding:24px 16px;color:var(--ter);font-size:var(--fs-sm)}
 .extension-entry{padding:16px 0}
 .extension-entry+.extension-entry{border-top:1px solid var(--sep2)}
 .extension-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}

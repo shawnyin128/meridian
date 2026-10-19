@@ -32,7 +32,6 @@ export const papers = {
     covered: (total: number) => `/ ${total} 篇已覆盖`,
     overlapping: '篇跨组',
     limit: (shown: number, total: number) => `为了保持预览流畅，当前分析最近 ${shown} / ${total} 篇论文。`,
-    loading: '正在整理研究地图…',
     empty: '还没有足够的重复信号形成分组。导入更多论文或关联项目后再看看。',
     groupListAria: '自动研究分组',
     kind: { signal: '主题或方法信号', project: '项目关联', phrase: '标题中的共同短语' },
@@ -165,7 +164,6 @@ export const papers = {
   understanding: {
     ariaLabel: '个人理解',
     heading: '个人理解',
-    loading: '正在读取随笔与笔记…',
     empty: '还没有随笔或笔记。阅读论文时记录的内容会汇总在这里。',
     goRead: '去阅读论文',
     remarkLabel: '随笔',

@@ -20,12 +20,14 @@ const api = vi.hoisted(() => ({
   feedback: vi.fn(async () => {}),
   setIntent: vi.fn(async () => {}),
   openCategory: vi.fn(),
+  /** While true the inbox list never arrives. */
+  loading: false,
 }))
 
 vi.mock('../ipc.js', () => ({
   inbox: {
-    list: async (params: { kind?: InboxEntry['kind'] }) => api.entries
-      .filter((entry) => params.kind === undefined || entry.kind === params.kind),
+    list: (params: { kind?: InboxEntry['kind'] }) => (api.loading ? new Promise(() => {}) : Promise.resolve(api.entries
+      .filter((entry) => params.kind === undefined || entry.kind === params.kind))),
     dismiss: api.dismiss, readLater: async () => false,
     download: async (id: string) => api.downloads[id] ?? { kind: 'added', paper: 'p1' },
     fetch: async () => {},
@@ -74,7 +76,16 @@ describe('Inbox', () => {
     api.setIntent.mockClear()
     api.openCategory.mockClear()
   })
-  afterEach(() => { host.remove(); status = null; vi.unstubAllGlobals() })
+  afterEach(() => { host.remove(); status = null; api.loading = false; vi.unstubAllGlobals() })
+
+  it('推送还没读到时显示载入占位，不说暂时没有新的推送', async () => {
+    api.loading = true
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(host.querySelector('.empty-state')).toBeNull()
+    expect(host.querySelector('.desk-body .loading-placeholder')).not.toBeNull()
+    await act(async () => { root.unmount() })
+  })
 
   it('后台进程还没重启、状态缺少新字段时仍能正常渲染', async () => {
     status = { writes: 0, uploads: [] } as unknown as JobsStatus

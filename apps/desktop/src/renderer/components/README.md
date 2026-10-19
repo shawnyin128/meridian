@@ -60,6 +60,9 @@ Current shared contracts:
   - A form's save button that stays on screen shows its success in place (Saved) until the form changes
     again and sends no notice. An error that belongs to a pane or card on screen stays with that pane or
     card instead of becoming a notice.
+- `LoadingPlaceholder`: the one loading state, grey blocks in the shape of the result (`rows`, `cards`,
+  `lines`, `sheet`). Data that has not arrived is `null`, and a screen shows this placeholder for it, never
+  an empty state and never a loading sentence.
 - `EmptyState`: the two ways a list says it is empty. `page` is a centred sentence with an optional icon
   for a whole screen; `section` is one line of small grey text under a section heading.
 - `Tag`: every tag, chip and status pill. `tone` picks the fill and text colour (`neutral`, `accent`, `good`,

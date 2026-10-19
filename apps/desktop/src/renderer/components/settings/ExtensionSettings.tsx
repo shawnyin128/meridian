@@ -1,6 +1,7 @@
 import type { ExtensionStatus } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { CardTray } from '../CardTray.js'
+import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { Tag, type TagTone } from '../Tag.js'
 import { PluginVersionEntry, type PluginVersionEntryProps } from './PluginVersionEntry.js'
 import './ExtensionSettings.css'
@@ -21,7 +22,7 @@ interface ExtensionSettingsProps {
 export function ExtensionSettings({ statuses, plugin, onCopy, onCopyPrompt }: ExtensionSettingsProps) {
   const m = useMessages()
   if (statuses === null) {
-    return <div className="extension-settings-card extension-settings-loading">{m.settings.extensions.loading}</div>
+    return <LoadingPlaceholder shape="cards" count={1} />
   }
 
   return (

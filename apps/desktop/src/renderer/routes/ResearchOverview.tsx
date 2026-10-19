@@ -10,6 +10,7 @@ import { ACTIVE_PROJECT, FINISHED_PROJECT, SHELVED_PROJECT } from '../../shared/
 import { useJump, useToday, useVaultRevision } from '../shell/AppShell.js'
 import { Icon } from '../components/icons.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { AgentLabel } from '../components/SourceLabel.js'
 import { StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { Tag, type TagTone } from '../components/Tag.js'
@@ -452,7 +453,7 @@ export function ResearchOverview() {
       <PageError error={error} />
 
       {rows === null
-        ? null
+        ? <PageBody>{error === null ? <LoadingPlaceholder shape="cards" /> : null}</PageBody>
         : (
           <PageBody>
             <SectionHeading>{m.research.overview.timelineHeading}</SectionHeading>

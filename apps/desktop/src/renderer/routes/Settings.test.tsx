@@ -58,13 +58,14 @@ const api = vi.hoisted(() => ({
   deleteBackup: vi.fn(async () => null),
   restartApp: vi.fn(),
   success: vi.fn(),
+  chatList: vi.fn(async () => [] as unknown[]),
 }))
 
 vi.mock('../ipc.js', () => ({
   appMenu: {
     chooseLibraryRoot: vi.fn(async () => null), restartApp: api.restartApp,
   },
-  chat: { list: vi.fn(async () => []), setArchived: vi.fn(async () => {}) },
+  chat: { list: api.chatList, setArchived: vi.fn(async () => {}) },
   library: {
     location: api.libraryLocation,
     backups: api.libraryBackups,
@@ -436,6 +437,23 @@ describe('Settings', () => {
     expect(directory.querySelector('svg path')?.getAttribute('d')).toBe('M3 6h6l2 2h10v10H3z')
     expect(dialog.querySelector('.storage-root code')).toBeNull()
     expect(dialog.textContent).not.toContain('选择根目录…')
+  })
+
+  it('库位置、备份和归档的对话还没读到时都显示同一种载入占位，不写读取中的句子，也不说没有', async () => {
+    const never = () => new Promise<never>(() => {})
+    api.libraryLocation.mockImplementation(never)
+    api.libraryBackups.mockImplementation(never)
+    api.chatList.mockImplementationOnce(never)
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
+    expect(dialog.querySelectorAll('.set-main .loading-placeholder')).toHaveLength(2)
+    expect(dialog.querySelector('.set-main .empty-state')).toBeNull()
+    expect(dialog.querySelector('.set-main')!.textContent).not.toMatch(/正在读取/)
+
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="archived"]')!.click() })
+    expect(dialog.querySelector('.set-main .loading-placeholder')).not.toBeNull()
+    expect(dialog.querySelector('.set-main .empty-state')).toBeNull()
   })
 
   it('库打不开时显示路径与原因，切换和重置仍然可用', async () => {

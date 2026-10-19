@@ -31,7 +31,6 @@ export const reader = {
     heading: '随笔 · 本篇',
     placeholder: '对整篇论文的随想',
   },
-  loadingPdf: '正在加载 PDF…',
   selection: {
     highlight: '高亮',
     note: '笔记',

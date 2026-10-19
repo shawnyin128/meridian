@@ -44,7 +44,6 @@ export const settings = {
       fixture: 'Test data',
       fallback: 'App default',
     },
-    readingLocation: 'Reading the library location…',
     rootLabel: 'Root folder',
     checkingDirectory: 'Checking the library folder…',
     chooseAction: 'Choose a library folder',
@@ -60,7 +59,6 @@ export const settings = {
     resetConfirm: 'Reset and restart',
     backupsHeading: (count: number) => `Library backups · ${count}`,
     backupsIntro: 'Meridian creates a backup before resetting a library. Switching keeps the current library as another backup, then restarts the app.',
-    backupsLoading: 'Loading backups…',
     backupsEmpty: 'No library backups yet.',
     backupSwitch: 'Switch',
     backupSwitching: 'Switching…',
@@ -177,7 +175,6 @@ export const settings = {
     clearKey: 'Clear saved key',
     save: 'Save configuration',
     saving: 'Saving…',
-    loading: 'Reading the model configuration…',
     errorHint: (error: string) => `${error}. Check it and save again.`,
     connection: {
       action: 'Test connection',
@@ -201,7 +198,6 @@ export const settings = {
   },
   extensions: {
     heading: 'Extensions',
-    loading: 'Checking extensions…',
     description: 'Connect Meridian to coding agents with MCP and install optional research, Wiki, Lab, and coding skills.',
     state: {
       installed: 'Installed',

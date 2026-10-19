@@ -5,6 +5,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { SectionHeading } from '../PageShell.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { EmptyState } from '../EmptyState.js'
+import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { entryAnchor, readingEntries } from '../paper-table/reading-entries.js'
 import './PaperUnderstanding.css'
 
@@ -19,7 +20,7 @@ export function PaperUnderstanding({ reading, onRead }: {
     return (
       <section className="paper-understanding" aria-label={m.papers.understanding.ariaLabel}>
         <SectionHeading variant="content">{m.papers.understanding.heading}</SectionHeading>
-        <p className="lm">{m.papers.understanding.loading}</p>
+        <LoadingPlaceholder shape="lines" count={2} />
       </section>
     )
   }

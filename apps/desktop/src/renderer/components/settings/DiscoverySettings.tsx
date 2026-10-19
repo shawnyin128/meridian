@@ -4,6 +4,7 @@ import { discovery } from '../../ipc.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { useNotice, useVaultRevision } from '../../shell/AppShell.js'
+import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { SectionHeading } from '../PageShell.js'
 import { PaperText } from '../paper/PaperText.js'
 import { Switch } from '../Switch.js'
@@ -23,7 +24,7 @@ function resultNote(result: DiscoveryFetchResult, m: Catalog): string {
 /** The only editor of research directions; the gear on the Discovery page just opens these settings. */
 export function DiscoverySettings() {
   const m = useMessages()
-  const [profiles, setProfiles] = useState<DiscoveryProfile[]>([])
+  const [profiles, setProfiles] = useState<DiscoveryProfile[] | null>(null)
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set())
   const [refreshing, setRefreshing] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -58,7 +59,7 @@ export function DiscoverySettings() {
     }).catch((caught: Error) => setError(caught.message)).finally(() => setRefreshing(null))
   }
 
-  const enabled = profiles.reduce((total, profile) => total + profile.intentCount, 0)
+  const enabled = (profiles ?? []).reduce((total, profile) => total + profile.intentCount, 0)
   return (
     <section className="delivery-directions">
       <SectionHeading variant="group">
@@ -67,8 +68,9 @@ export function DiscoverySettings() {
       <p className="settings-explain">{m.settings.discovery.explain}</p>
       {error === null ? null : <div className="err">{error}</div>}
       <div className="direction-panel">
-        {profiles.length === 0 ? <p className="direction-empty">{m.settings.discovery.noDirections}</p> : null}
-        {profiles.map((profile) => (
+        {profiles === null && error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null}
+        {profiles?.length === 0 ? <p className="direction-empty">{m.settings.discovery.noDirections}</p> : null}
+        {(profiles ?? []).map((profile) => (
           <section className="direction-project" key={profile.id}>
             <header>
               <strong>{profile.name}</strong>

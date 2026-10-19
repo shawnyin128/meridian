@@ -33,7 +33,6 @@ export const reader = {
     heading: 'Thoughts on this paper',
     placeholder: 'Write your overall thoughts on this paper…',
   },
-  loadingPdf: 'Loading PDF…',
   selection: {
     highlight: 'Highlight',
     note: 'Note',

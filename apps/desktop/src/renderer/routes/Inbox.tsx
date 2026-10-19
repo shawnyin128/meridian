@@ -20,6 +20,7 @@ import {
   PaperCard, PaperCardBadge, PaperCardCitations, PaperCardNotice,
 } from '../components/paper/PaperCard.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
@@ -72,7 +73,7 @@ export function Inbox() {
   const fmt = useFormat()
   const scope = useInboxScope()
   const stream = useInboxMode()
-  const [entries, setEntries] = useState<InboxEntry[]>([])
+  const [entries, setEntries] = useState<InboxEntry[] | null>(null)
   const [watches, setWatches] = useState<Watch[]>([])
   const [profiles, setProfiles] = useState<DiscoveryProfile[]>([])
   const [leaving, setLeaving] = useState<ReadonlySet<string>>(new Set())
@@ -110,7 +111,7 @@ export function Inbox() {
   // Discovery is scoped by project and paper delivery by watch; the sidebar sets the scope for either stream.
   const groupOf = useCallback((entry: InboxEntry) => (stream === 'discovery' ? entry.project : entry.watch), [stream])
   const rows = useMemo(() => (
-    scope === ALL_WATCHES ? entries : entries.filter((e) => groupOf(e) === scope)
+    scope === ALL_WATCHES ? entries ?? [] : (entries ?? []).filter((e) => groupOf(e) === scope)
   ), [entries, groupOf, scope])
   const groups = useMemo(() => {
     const byKey = new Map<string, { key: string; title: string; rows: InboxEntry[] }>()
@@ -327,7 +328,9 @@ export function Inbox() {
             </p>
           </div>
         ) : null}
-        {rows.length === 0
+        {entries === null
+          ? (error === null ? <LoadingPlaceholder shape="cards" /> : null)
+          : rows.length === 0
           ? (
             <EmptyState
               variant="page"

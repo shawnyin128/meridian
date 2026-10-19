@@ -18,6 +18,7 @@ import {
 import { AddAction } from '../components/AddAction.js'
 import { MenuItem } from '../components/ActionMenu.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DetailPanel } from '../components/DetailPanel.js'
 import { PanelClose } from '../components/PanelClose.js'
 import { ChoicePicker, DateButton, DotsMenu, PriorityPicker } from '../components/FieldPickers.js'
@@ -185,7 +186,7 @@ export function ProjectDetail({
   const fmt = useFormat()
   const m = useMessages()
   const [project, setProject] = useState<Project | null>(null)
-  const [linkedIdeas, setLinkedIdeas] = useState<ResearchIdea[]>([])
+  const [linkedIdeas, setLinkedIdeas] = useState<ResearchIdea[] | null>(null)
   const [relAdding, setRelAdding] = useState(false)
   const [relGroup, setRelGroup] = useState<string>(PROJECT_RELATION_GROUPS[0])
   const [relEditing, setRelEditing] = useState<RelationGroup['items'][number] | null>(null)
@@ -301,7 +302,7 @@ export function ProjectDetail({
   }, [projectId])
 
   useEffect(() => {
-    if (selectedIdeaId !== null && !linkedIdeas.some((idea) => idea.id === selectedIdeaId)) {
+    if (selectedIdeaId !== null && linkedIdeas !== null && !linkedIdeas.some((idea) => idea.id === selectedIdeaId)) {
       setSelectedIdeaId(null)
     }
   }, [linkedIdeas, selectedIdeaId])
@@ -456,7 +457,7 @@ export function ProjectDetail({
           <PageTitle>{m.project.loadingTitle}</PageTitle>
         </PageHeader>
         <PageError error={error} />
-        <PageBody />
+        <PageBody>{error === null ? <LoadingPlaceholder shape="lines" count={6} /> : null}</PageBody>
       </PageShell>
     )
   }
@@ -538,9 +539,9 @@ export function ProjectDetail({
       }),
   })
   const node = taskGraph.nodes.find((n) => n.id === selectedNode)
-  const selectedIdea = linkedIdeas.find((idea) => idea.id === selectedIdeaId)
+  const selectedIdea = linkedIdeas?.find((idea) => idea.id === selectedIdeaId)
   const selectedTask = project.tasks.find((t) => t.id === selectedTaskId)
-  const dialogIdea = linkedIdeas.find((idea) => idea.id === ideaGraphDialog?.ideaId)
+  const dialogIdea = linkedIdeas?.find((idea) => idea.id === ideaGraphDialog?.ideaId)
   const conclusions = project.projectConclusions ?? []
   const conclusion = conclusions.find((candidate) => candidate.id === selectedConclusion)
   const nodeLook = (nodeId: string | undefined) => {
@@ -567,9 +568,9 @@ export function ProjectDetail({
       ideaApi.placeOnGraph(idea.id, placement).then((result) => {
         nodeId = result.nodeId
         setProject(result.project)
-        setLinkedIdeas((held) => held.map((candidate) => (
+        setLinkedIdeas((held) => held?.map((candidate) => (
           candidate.id === result.idea.id ? result.idea : candidate
-        )))
+        )) ?? null)
       }),
       { note },
     )
@@ -833,8 +834,10 @@ export function ProjectDetail({
               )}
             </div>
 
-            <SectionHeading variant="content">{m.project.linkedIdeas(linkedIdeas.length)}</SectionHeading>
-            {linkedIdeas.length === 0
+            <SectionHeading variant="content">{m.project.linkedIdeas(linkedIdeas?.length ?? 0)}</SectionHeading>
+            {linkedIdeas === null
+              ? <LoadingPlaceholder shape="rows" count={2} />
+              : linkedIdeas.length === 0
               ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
               : (
                 <StructuredList className="project-ideas" variant="embedded">
@@ -1197,7 +1200,7 @@ export function ProjectDetail({
               : (
                 <ResearchNodePanel
                   graph={displayedGraph} events={visibleEvents}
-                  ideas={linkedIdeas.filter((idea) => idea.node === node.id)} node={node}
+                  ideas={(linkedIdeas ?? []).filter((idea) => idea.node === node.id)} node={node}
                   tasks={project.tasks.filter((task) => node.tasks?.includes(task.id))}
                   onSelectTask={openTask}
                   onClose={clearNode}

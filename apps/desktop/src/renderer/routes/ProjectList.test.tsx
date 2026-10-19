@@ -10,11 +10,14 @@ declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
-const api = vi.hoisted(() => ({ projects: [] as ProjectSummary[] }))
+const api = vi.hoisted(() => ({ projects: [] as ProjectSummary[], loading: false }))
 
 vi.mock('../ipc.js', () => ({
   feed: { append: vi.fn() },
-  project: { list: async () => structuredClone(api.projects), reorder: vi.fn() },
+  project: {
+    list: () => (api.loading ? new Promise(() => {}) : Promise.resolve(structuredClone(api.projects))),
+    reorder: vi.fn(),
+  },
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
@@ -56,6 +59,15 @@ afterEach(() => {
   act(() => root.unmount())
   host.remove()
   vi.unstubAllGlobals()
+  api.loading = false
+})
+
+describe('项目列表在载入时', () => {
+  it('列表还没读到时页面里是载入占位，不是一片空白', async () => {
+    api.loading = true
+    await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
+    expect(host.querySelector('.desk-body .loading-placeholder')).not.toBeNull()
+  })
 })
 
 describe('项目列表的卡片', () => {

@@ -12,6 +12,7 @@ import {
 } from '../shell/AppShell.js'
 import { Icon } from '../components/icons.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DirectoryField } from '../components/FormControls.js'
 import { AppearanceSettings } from '../components/settings/AppearanceSettings.js'
 import { LanguageSettings } from '../components/settings/LanguageSettings.js'
@@ -80,7 +81,7 @@ export function Settings() {
   const m = useMessages()
   const { open, requestedCategory, setOpen } = useSettingsOpen()
   const [current, setCurrent] = useState<CategoryKey>(CATEGORIES[0])
-  const [chats, setChats] = useState<ChatSession[]>([])
+  const [chats, setChats] = useState<ChatSession[] | null>(null)
   const [location, setLocation] = useState<LibraryLocation | null>(null)
   const [backups, setBackups] = useState<LibraryBackup[] | null>(null)
   const [extensionStatus, setExtensionStatus] = useState<ExtensionStatus[] | null>(null)
@@ -116,7 +117,7 @@ export function Settings() {
     if (open && requestedCategory !== null) setCurrent(requestedCategory)
   }, [open, requestedCategory])
 
-  const archived = chats.filter((s) => s.archived)
+  const archived = (chats ?? []).filter((s) => s.archived)
 
   const unarchive = (session: ChatSession) => {
     void write(chat.setArchived(session.id, false),
@@ -196,10 +197,6 @@ export function Settings() {
     )
   }
 
-  const sourceLabel = location === null
-    ? m.common.reading
-    : m.settings.storage.source[location.source]
-
   const panes: Record<CategoryKey, ReactNode> = {
     appearance: (
       <>
@@ -218,10 +215,10 @@ export function Settings() {
               <h3>{m.settings.storage.libraryTitle}</h3>
               <p>{m.settings.storage.libraryNote}</p>
             </div>
-            <Tag>{sourceLabel}</Tag>
+            {location === null ? null : <Tag>{m.settings.storage.source[location.source]}</Tag>}
           </div>
           {location === null
-            ? <div className="storage-loading">{m.settings.storage.readingLocation}</div>
+            ? <LoadingPlaceholder shape="lines" count={2} />
             : (
               <>
                 <PageError variant="section" error={location.openError} />
@@ -272,7 +269,7 @@ export function Settings() {
         </SectionHeading>
         <p className="settings-intro">{m.settings.storage.backupsIntro}</p>
         {backups === null
-          ? <div className="storage-backups-loading">{m.settings.storage.backupsLoading}</div>
+          ? <LoadingPlaceholder shape="rows" count={2} />
           : backups.length === 0
             ? <EmptyState variant="section">{m.settings.storage.backupsEmpty}</EmptyState>
             : (
@@ -386,7 +383,9 @@ export function Settings() {
     archived: (
       <>
         <SectionHeading>{m.settings.archived.heading(archived.length)}</SectionHeading>
-        {archived.length === 0
+        {chats === null
+          ? <LoadingPlaceholder shape="rows" count={2} />
+          : archived.length === 0
           ? (
             <EmptyState
               variant="page"

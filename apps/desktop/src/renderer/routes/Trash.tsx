@@ -7,6 +7,7 @@ import { useToday, useVaultRevision } from '../shell/AppShell.js'
 import { Icon } from '../components/icons.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { StructuredList, StructuredRow } from '../components/StructuredList.js'
@@ -56,7 +57,7 @@ function ClearButton({ count, onClear }: { count: number; onClear: () => void })
  */
 export function Trash() {
   const m = useMessages()
-  const [entries, setEntries] = useState<TrashEntry[]>([])
+  const [entries, setEntries] = useState<TrashEntry[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const today = useToday()
@@ -81,18 +82,21 @@ export function Trash() {
     void write(trash.clear(), { note: m.trash.cleared })
   }
 
+  const held = entries ?? []
   const groups = KINDS
-    .map((kind) => ({ kind, items: entries.filter((e) => e.kind === kind) }))
+    .map((kind) => ({ kind, items: held.filter((e) => e.kind === kind) }))
     .filter((g) => g.items.length > 0)
 
   return (
     <PageShell>
-      <PageHeader><PageTitle>{m.trash.title(entries.length)}</PageTitle></PageHeader>
+      <PageHeader><PageTitle>{m.trash.title(held.length)}</PageTitle></PageHeader>
 
       <PageError error={error} />
 
       <PageBody>
-        {groups.length === 0
+        {entries === null
+          ? (error === null ? <LoadingPlaceholder shape="rows" /> : null)
+          : groups.length === 0
           ? (
             <EmptyState
               variant="page"
@@ -110,7 +114,7 @@ export function Trash() {
               <SectionHeading className={i === 0 ? 'flexh' : undefined}>
                 {m.trash.kinds[g.kind]} · {g.items.length}
                 {/* The demo only places the clear button on the title of the first group */}
-                {i === 0 ? <ClearButton count={entries.length} onClear={clear} /> : null}
+                {i === 0 ? <ClearButton count={held.length} onClear={clear} /> : null}
               </SectionHeading>
               <StructuredList className="tgroup">
                 {g.items.map((entry) => (
@@ -134,7 +138,7 @@ export function Trash() {
       </PageBody>
 
       {/* As in the demo, the retention note stays at the bottom of the view; an empty trash shows no bar. */}
-      {entries.length > 0
+      {held.length > 0
         ? (
           <PageFooter bare>
             <div className="thint">{m.trash.retentionNote(TRASH_RETENTION_DAYS)}</div>

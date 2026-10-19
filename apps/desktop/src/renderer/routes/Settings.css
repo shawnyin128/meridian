@@ -59,7 +59,6 @@
 .storage-head>div{flex:1;min-width:0}
 .storage-head h3{margin:0;font-size:var(--fs-title);line-height:var(--lh-tight)}
 .storage-head p{margin:5px 0 0;color:var(--sec);font-size:var(--fs-sm);line-height:var(--lh-ui)}
-.storage-loading{padding:24px 0;color:var(--ter);font-size:var(--fs-sm)}
 .storage-root{display:grid;grid-template-columns:64px minmax(0,1fr);gap:12px;margin-top:16px;
   padding:10px 0;border-top:1px solid var(--sep2);border-bottom:1px solid var(--sep2);align-items:center}
 .storage-root span{color:var(--ter);font-size:var(--fs-sm)}
@@ -69,7 +68,6 @@
 .storage-note.pending .btn{flex-shrink:0}
 .storage-reset{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;
   padding-top:14px;border-top:1px solid var(--sep2);color:var(--sec);font-size:var(--fs-sm)}
-.storage-backups-loading{padding:8px 2px;color:var(--ter);font-size:var(--fs-sm)}
 .storage-backup-list{--structured-list-row-height:58px}
 .storage-backup-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;
   min-height:58px;padding:9px 12px}

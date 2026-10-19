@@ -11,6 +11,7 @@ import { useMessages } from '../messages/useMessages.js'
 import { AddAction } from '../components/AddAction.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { afterLeaving, InlineDraftInput } from '../components/InlineDraftInput.js'
 import { StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { FormInput } from '../components/FormControls.js'
@@ -35,12 +36,12 @@ const suggestedAuthorKey = (item: WatchAuthorSuggestion): string => (
 
 /**
  * One group of watches, with a plus button at the right of its heading that opens a new row at the
- * top of the group's list. `editor` is the row being filled in: the draft row wears the `.wrow`
- * styles, and the caller renders and submits the input inside it.
+ * top of the group's list. `watches` is null while it loads. `editor` is the row being filled in: the
+ * draft row wears the `.wrow` styles, and the caller renders and submits the input inside it.
  */
 function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, onRemove }: {
   type: Watch['type']
-  watches: Watch[]
+  watches: Watch[] | null
   add: RefObject<HTMLButtonElement | null>
   editor?: { id?: string; row: RefObject<HTMLDivElement | null>; input: ReactNode } | undefined
   onOpen: () => void
@@ -54,7 +55,9 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
       <SectionHeading variant="group" className="flexh">{m.shell.watchKind[type]}
         <AddAction variant="section" ref={add} title={m.watches.add(m.shell.watchKind[type])} onClick={onOpen}>{m.shell.watchKind[type]}</AddAction>
       </SectionHeading>
-      {watches.length === 0 && editor === undefined
+      {watches === null
+        ? <LoadingPlaceholder shape="rows" count={2} />
+        : watches.length === 0 && editor === undefined
         ? <EmptyState variant="section">{m.watches.empty(m.shell.watchKind[type])}</EmptyState>
         : (
           <StructuredList className="wlist">
@@ -100,7 +103,8 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
  */
 export function WatchSettings() {
   const m = useMessages()
-  const [watches, setWatches] = useState<Watch[]>([])
+  const [listed, setListed] = useState<Watch[] | null>(null)
+  const watches = useMemo(() => listed ?? [], [listed])
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [suggestionSource, setSuggestionSource] = useState<SuggestionSource>('focus')
   const [focus, setFocus] = useState('')
@@ -143,7 +147,7 @@ export function WatchSettings() {
     setAuthorSearchError(null)
   }, [])
   useEffect(() => {
-    void watch.list().then(setWatches).catch(reportError)
+    void watch.list().then(setListed).catch(reportError)
     void project.list().then((items) => {
       setProjects(items)
       setProjectId((current) => current || items[0]?.id || '')
@@ -437,7 +441,7 @@ export function WatchSettings() {
       <PageError error={error} />
       {GROUPS.map((type) => (
         <WatchGroup
-          key={type} type={type} watches={watches.filter((w) => w.type === type)}
+          key={type} type={type} watches={listed === null ? null : watches.filter((w) => w.type === type)}
           add={type === 'topic' ? addTopic : addAuthor} onOpen={() => open(type)} onEdit={edit}
           editor={editor?.type !== type || editorInput === null
             ? undefined : { ...(editor.id === undefined ? {} : { id: editor.id }), row, input: editorInput }}

@@ -3,6 +3,7 @@ import type { PaperRow } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ContextMenu, ContextMenuItem } from '../ContextMenu.js'
 import { EmptyState } from '../EmptyState.js'
+import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { CountBadge, Tag } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
@@ -51,7 +52,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper }: 
         : null}
 
       {loading && rows.length === 0
-        ? <EmptyState variant="page">{m.papers.researchMap.loading}</EmptyState>
+        ? <LoadingPlaceholder shape="rows" />
         : map.groups.length === 0
           ? <EmptyState variant="page">{m.papers.researchMap.empty}</EmptyState>
           : (

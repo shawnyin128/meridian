@@ -7,6 +7,7 @@ import { harness } from '../../ipc.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ChoicePicker } from '../FieldPickers.js'
 import { FormInput } from '../FormControls.js'
+import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import {
   ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError, ServiceField,
   ServiceFoot, ServiceSavedKey, ServiceStatus,
@@ -247,7 +248,7 @@ export function ModelSettings() {
     }
   }
 
-  if (settings === null) return <div className="storage-loading">{m.settings.model.loading}</div>
+  if (settings === null) return <LoadingPlaceholder shape="cards" count={1} />
 
   const selected = { ...PROVIDERS[provider], ...m.settings.model.providers[provider] }
   const selectedCompatibleTemplate = compatibleTemplate !== 'choose' && compatibleTemplate !== 'custom'

@@ -18,6 +18,7 @@ import {
 } from '../components/ActionMenu.js'
 import { DotsMenu } from '../components/FieldPickers.js'
 import { InlineDraftInput } from '../components/InlineDraftInput.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { ShortTextEditor } from '../components/ShortTextEditor.js'
 import { ProjectBlockerView, ProjectNextActionView } from '../components/project/ProjectControl.js'
 import { ProjectIdentity } from '../components/project/ProjectIdentity.js'
@@ -308,6 +309,7 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
       <PageShell>
         <PageHeader><PageTitle>{m.project.loadingTitle}</PageTitle></PageHeader>
         <PageError error={error} />
+        <PageBody>{error === null ? <LoadingPlaceholder shape="cards" /> : null}</PageBody>
       </PageShell>
     )
   }

@@ -11,6 +11,7 @@ import {
 } from '../shell/AppShell.js'
 import { IconButton } from '../components/IconButton.js'
 import { IconMinus, IconPlus } from '../components/icons.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { PickerPopover, type AnchorBox } from '../components/PickerPopover.js'
 import {
   highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionBox,
@@ -665,7 +666,7 @@ export function Reader() {
     () => (paper === null ? [] : [{ text: plainTitle(paper.title) }]), [paper])
   useCrumbTail(tail)
 
-  const status = error ?? (opened !== null && (doc === null || reading === null) ? m.reader.loadingPdf : null)
+  const loading = error === null && opened !== null && (doc === null || reading === null)
   const heldReading = reading ?? (opened === null ? null : emptyReading(opened))
 
   return (
@@ -678,7 +679,8 @@ export function Reader() {
         <div className="reader">
           <div className="pdfwrap" ref={scroller} onMouseUp={captureSelection}>
             <div ref={sheet} className="pdfsheet" />
-            {status === null ? null : <div className="pdfload">{status}</div>}
+            {error === null ? null : <div className="pdfload">{error}</div>}
+            {loading ? <LoadingPlaceholder shape="sheet" /> : null}
           </div>
 
           <PickerPopover

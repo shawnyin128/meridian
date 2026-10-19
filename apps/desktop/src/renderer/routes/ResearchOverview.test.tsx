@@ -10,10 +10,10 @@ declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
-const api = vi.hoisted(() => ({ rows: [] as ProjectOverview[] }))
+const api = vi.hoisted(() => ({ rows: [] as ProjectOverview[], loading: false }))
 
 vi.mock('../ipc.js', () => ({
-  project: { overview: async () => structuredClone(api.rows) },
+  project: { overview: () => (api.loading ? new Promise(() => {}) : Promise.resolve(structuredClone(api.rows))) },
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
@@ -52,6 +52,13 @@ describe('研究总览的项目进展', () => {
   afterEach(() => {
     act(() => root.unmount())
     host.remove()
+    api.loading = false
+  })
+
+  it('总览还没读到时页面里是载入占位，不是一片空白', async () => {
+    api.loading = true
+    await act(async () => { root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>) })
+    expect(host.querySelector('.desk-body .loading-placeholder')).not.toBeNull()
   })
 
   it('同一天有几条科研记录时写最后写下的那条,和项目列表卡片取的是同一条', async () => {
