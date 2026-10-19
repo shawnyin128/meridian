@@ -15,7 +15,9 @@ import { IconMinus, IconPlus } from '../components/icons.js'
 import {
   highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionToolsAnchor,
 } from './highlight-geometry.js'
-import { clampZoom, keptScroll, scaledAbout, wheelZoom, type SheetTransform } from './reader-zoom.js'
+import {
+  ZOOM_MAX, ZOOM_MIN, clampZoom, keptScroll, scaledAbout, wheelZoom, type SheetTransform,
+} from './reader-zoom.js'
 import { PaperChat, type PaperChatPrompt } from '../components/chat/PaperChat.js'
 import { ReaderSidePanel, type ReaderSideTab } from '../components/reader/ReaderSidePanel.js'
 import { PageShell } from '../components/PageShell.js'
@@ -683,9 +685,15 @@ export function Reader() {
           />
 
           <div className="zoomctl">
-            <IconButton label={m.reader.zoom.out} size="nested" onClick={() => zoomBy(-ZOOM_STEP)}><IconMinus /></IconButton>
-            <span>{Math.round(zoom * 100)}%</span>
-            <IconButton label={m.reader.zoom.in} size="nested" onClick={() => zoomBy(ZOOM_STEP)}><IconPlus /></IconButton>
+            <IconButton label={m.reader.zoom.out} size="nested" disabled={zoom <= ZOOM_MIN} onClick={() => zoomBy(-ZOOM_STEP)}>
+              <IconMinus />
+            </IconButton>
+            <button type="button" className="btn ghost sm zoom-reset" title={m.reader.zoom.reset} onClick={() => zoomBy(1 - shownZoom.current)}>
+              {Math.round(zoom * 100)}%
+            </button>
+            <IconButton label={m.reader.zoom.in} size="nested" disabled={zoom >= ZOOM_MAX} onClick={() => zoomBy(ZOOM_STEP)}>
+              <IconPlus />
+            </IconButton>
           </div>
         </div>
       </PageShell>

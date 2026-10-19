@@ -70,6 +70,21 @@ describe('Reader', () => {
     host.remove()
   })
 
+  it('缩放到上限或下限时那一侧的按钮变淡，点百分比回到 100%', async () => {
+    await render()
+    const button = (title: string) => host.querySelector<HTMLButtonElement>(`.zoomctl [title="${title}"]`)!
+    const shown = () => button('Reset zoom').textContent
+    const press = async (title: string, times: number) => {
+      for (let n = 0; n < times; n += 1) await act(async () => { button(title).click() })
+    }
+    await press('Zoom in', 7)
+    expect([shown(), button('Zoom in').disabled, button('Zoom out').disabled]).toEqual(['240%', true, false])
+    await press('Reset zoom', 1)
+    expect(shown()).toBe('100%')
+    await press('Zoom out', 2)
+    expect([shown(), button('Zoom in').disabled, button('Zoom out').disabled]).toEqual(['60%', false, true])
+  })
+
   it('别处的写(在最近变动里撤销一条)之后重取阅读记录,放回来的笔记出现在侧栏', async () => {
     await render()
     expect(notes()).toEqual(['留着的'])

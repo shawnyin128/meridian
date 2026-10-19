@@ -65,7 +65,7 @@ export function PaperReadingSummary({ paper, onRead, onConclusions }: {
         )}
       {entries.length > EXCERPT
         ? (
-          <button className="lm more" onClick={() => onRead({ panel: 'notes' })}>
+          <button type="button" className="btn ghost sm reading-summary-all" onClick={() => onRead({ panel: 'notes' })}>
             {m.papers.reading.viewAll(entries.length)}
           </button>
         )

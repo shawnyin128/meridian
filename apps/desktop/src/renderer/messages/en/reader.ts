@@ -43,5 +43,6 @@ export const reader = {
   zoom: {
     out: 'Zoom out',
     in: 'Zoom in',
+    reset: 'Reset zoom',
   },
 } satisfies typeof zh

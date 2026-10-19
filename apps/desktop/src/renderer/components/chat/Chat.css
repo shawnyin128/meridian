@@ -32,7 +32,8 @@
  */
 .cbox textarea{flex:1;border:0;background:transparent;color:var(--ink);font-family:var(--sans);font-size:13px;padding:7px 0;resize:none;field-sizing:content;max-height:calc(8lh + 14px);overflow-y:auto}
 .cbox textarea::placeholder{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.send{width:30px;height:30px;border-radius:50%;border:0;background:var(--accent-solid);color:var(--on-accent);cursor:pointer;flex-shrink:0;display:grid;place-items:center;padding:0}
+.send{width:30px;height:30px;border-radius:50%;border:0;background:var(--accent-solid);color:var(--on-accent);cursor:pointer;flex-shrink:0;display:grid;place-items:center;padding:0;transition:box-shadow var(--t-fast) var(--e-out)}
+.send:enabled:hover{box-shadow:inset 0 0 0 100vmax var(--hover-solid)}
 .send svg{width:15px;height:15px}
 
 /* Compounded with .pickhits so this taller, horizontally-clipped shape wins over the shared shell's, regardless of CSS load order. */

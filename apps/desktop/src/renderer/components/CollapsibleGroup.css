@@ -7,7 +7,8 @@
   color:var(--ink);font:inherit;font-size:var(--fs-title);font-weight:700;text-align:left;cursor:pointer}
 .collapsible-group-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--r-sm)}
 .collapsible-group-caret{display:grid;place-items:center;flex:none;width:16px;height:16px;color:var(--ter);
-  transition:transform var(--t-fast) var(--e-out)}
+  transition:transform var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out)}
+.collapsible-group-toggle:hover .collapsible-group-caret{color:var(--ink)}
 .collapsible-group-caret svg{width:12px;height:12px}
 .collapsible-group.is-closed .collapsible-group-caret{transform:rotate(-90deg)}
 .collapsible-group-title{min-width:0;overflow-wrap:anywhere}
