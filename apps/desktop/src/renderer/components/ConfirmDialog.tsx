@@ -37,7 +37,7 @@ export function ConfirmDialog({
             <div className="dlg-a">
               <AlertDialog.Cancel className="btn">{cancel}</AlertDialog.Cancel>
               <AlertDialog.Action
-                className={confirmTone === 'danger' ? 'btn tdel' : 'btn pri'}
+                className={confirmTone === 'danger' ? 'btn pri danger' : 'btn pri'}
                 disabled={confirmDisabled} onClick={onConfirm}
               >{confirm}</AlertDialog.Action>
             </div>

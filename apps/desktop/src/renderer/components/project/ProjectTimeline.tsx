@@ -45,7 +45,7 @@ export function ProjectTimeline({
       onReorderTasks={(_projectId, order) => onReorderTasks(order)}
       headerAction={({ scale, firstDay, today }) => (
         <ActionMenu trigger={(
-          <AddAction variant="section" ref={newActionRef} title={m.project.plan.addTaskOrMilestone}>
+          <AddAction variant="section" className="ghost" ref={newActionRef} title={m.project.plan.addTaskOrMilestone}>
             {m.project.plan.newAction}
           </AddAction>
         )}

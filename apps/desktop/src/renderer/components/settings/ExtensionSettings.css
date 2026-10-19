@@ -16,7 +16,6 @@
 .extension-command-summary>span{flex:0 0 auto;color:var(--ter)}
 .extension-command-summary code{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--sec);
   font-family:var(--mono)}
-.extension-command .card-tray-action .btn{height:24px;padding:0 8px;font-size:var(--fs-cap)}
 .extension-command-code{margin:0;padding:10px 11px;overflow:auto;color:var(--sec);font-family:var(--mono);
   font-size:var(--fs-cap);line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
 .extension-command-code code{font:inherit}
@@ -37,6 +36,6 @@
 .extension-prompt-list{border-top:1px solid var(--sep2);border-bottom:1px solid var(--sep2)}
 .extension-prompt{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;padding:10px 0}
 .extension-prompt+.extension-prompt{border-top:1px solid var(--sep2)}
-.extension-prompt .btn{flex-shrink:0;height:28px;padding:0 9px;font-size:var(--fs-cap)}
+.extension-prompt .btn{flex-shrink:0}
 .extension-healthy-list{margin:0;padding-left:18px;color:var(--ter);font-size:var(--fs-cap);line-height:1.65}
 @media (max-width:760px){.extension-tutorial-steps{grid-template-columns:1fr}}

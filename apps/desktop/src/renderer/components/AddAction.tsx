@@ -17,7 +17,7 @@ type AddActionProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> 
 export const AddAction = forwardRef<HTMLButtonElement, AddActionProps>(function AddAction({
   variant = 'section', className, children, title, 'aria-label': ariaLabel, ...props
 }, ref) {
-  const visual = variant === 'page' ? 'btn pri' : variant === 'section' ? 'btn plain' : ''
+  const visual = variant === 'page' ? 'btn pri' : variant === 'section' ? 'btn sm' : ''
   const classes = [visual, 'add-action', `add-action-${variant}`, className].filter(Boolean).join(' ')
   return (
     <button

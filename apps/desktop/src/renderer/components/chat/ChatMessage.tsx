@@ -50,7 +50,7 @@ export function ChatMessageView({ message, onAct }: {
               <div className="macts">
                 {message.actions.map((action) => (
                   <button
-                    className={action.done === true ? 'btn' : 'btn pri'}
+                    className={action.done === true ? 'btn sm' : 'btn pri sm'}
                     key={action.kind} disabled={action.done === true}
                     onClick={() => onAct(action)}
                   >

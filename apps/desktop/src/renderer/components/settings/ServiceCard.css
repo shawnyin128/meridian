@@ -20,6 +20,4 @@
   font-size:var(--fs-cap);line-height:var(--lh-ui)}
 .service-connection-status.failed{color:var(--bad)}
 .service-connection-detail{max-width:360px;color:var(--sec);overflow-wrap:anywhere}
-.service-clear-key{color:var(--sec);font-size:var(--fs-cap)}
-.service-clear-key.on{color:var(--bad);background:var(--tint-bad)}
 .service-error{margin:10px 0 0;color:var(--bad);font-size:var(--fs-cap)}

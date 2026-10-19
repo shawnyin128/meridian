@@ -143,7 +143,7 @@ export function ProjectMemo({ text, editing, onEditing, onSave, onOpen }: {
   return (
     <>
       <SectionHeading variant="content" className="flexh">{m.project.sections.remark}
-        <button className="btn plain" onClick={toggle}>{editing ? m.common.save : m.common.edit}</button>
+        <button className="btn sm" onClick={toggle}>{editing ? m.common.save : m.common.edit}</button>
       </SectionHeading>
       <MarkdownBox
         className="memo" text={text} editing={editing} box={box}

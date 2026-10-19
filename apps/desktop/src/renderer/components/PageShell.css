@@ -22,7 +22,8 @@
 .section-heading--rail:first-child{margin-top:0}
 .section-heading.flexh{display:flex;align-items:center;gap:10px}
 .section-heading.flexh>.btn,.section-heading.flexh>.segmented-control,
-.section-heading.flexh>.add-action,.section-heading.flexh>.panel-close{margin-left:auto;font-weight:400}
+.section-heading.flexh>.add-action,.section-heading.flexh>.panel-close{margin-left:auto}
+.section-heading.flexh>.segmented-control{font-weight:400}
 .section-heading.flexh>.btn~*{margin-left:8px}
 .section-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
 

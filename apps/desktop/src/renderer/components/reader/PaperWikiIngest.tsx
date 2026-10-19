@@ -288,7 +288,7 @@ export function PaperWikiIngest({ paper, reading }: {
                 <div className="wiki-ingest-actions">
                   <button type="button" className="btn" disabled={rejecting}
                     onClick={() => setRejectionOpen(false)}>{m.wiki.ingest.backToReview}</button>
-                  <button type="button" className="btn tdel" disabled={rejecting}
+                  <button type="button" className="btn danger" disabled={rejecting}
                     onClick={submitRejection}>
                     {rejecting
                       ? m.wiki.ingest.discarding

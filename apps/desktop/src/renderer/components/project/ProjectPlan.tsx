@@ -270,12 +270,12 @@ export function ProjectTaskPanel({
       <SectionHeading
         variant="rail"
         actions={node === undefined
-          ? (nodes.length === 0 ? undefined : pickNode('btn plain', m.project.plan.linkNode))
+          ? (nodes.length === 0 ? undefined : pickNode('btn sm', m.project.plan.linkNode))
           : (
             <>
-              {pickNode('btn plain', m.project.plan.changeNode)}
+              {pickNode('btn sm', m.project.plan.changeNode)}
               {handSet
-                ? <button className="btn plain" onClick={() => onSetNode(null)}>{m.project.plan.unlinkNode}</button>
+                ? <button className="btn sm" onClick={() => onSetNode(null)}>{m.project.plan.unlinkNode}</button>
                 : null}
             </>
           )}
@@ -292,7 +292,7 @@ export function ProjectTaskPanel({
           </div>
         )}
       <SectionHeading variant="rail" className="flexh">{m.project.plan.noteHeading}
-        <button className="btn plain" onClick={toggle}>{editing ? m.common.save : m.common.edit}</button>
+        <button className="btn sm" onClick={toggle}>{editing ? m.common.save : m.common.edit}</button>
       </SectionHeading>
       <MarkdownBox
         className="task-note" text={task.note ?? ''} editing={editing} box={box}

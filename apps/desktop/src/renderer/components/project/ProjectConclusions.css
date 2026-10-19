@@ -5,7 +5,6 @@
 .conclusion-detail-meta{display:flex;align-items:center;gap:8px;margin-top:12px}
 .conclusion-detail-date{color:var(--ter);font-size:var(--fs-cap)}
 .conclusion-detail-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
-.conclusion-detail-actions .btn{font-size:var(--fs-sm)}
 .conclusion-detail-source{margin:0;color:var(--sec);font-size:var(--fs-sm)}
 .conclusion-detail-node{display:flex;min-width:0}
 .conclusion-chain-row{display:flex;align-items:center;gap:8px;min-height:34px;padding:6px 2px;font-size:var(--fs-sm)}

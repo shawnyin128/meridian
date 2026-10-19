@@ -39,7 +39,7 @@ export function ApiOverview({ onOpen }: { onOpen: (category: 'model' | 'research
           <StructuredRow composite className="wrow" data-api={row.key} key={row.key} onActivate={() => onOpen(row.key)}>
             <span className="nm">{row.name}</span>
             <span className="api-state">{row.state}</span>
-            <button className="btn" onClick={(event) => { event.stopPropagation(); onOpen(row.key) }}>{copy.open}</button>
+            <button className="btn ghost sm" onClick={(event) => { event.stopPropagation(); onOpen(row.key) }}>{copy.open}</button>
           </StructuredRow>
         ))}
       </StructuredList>

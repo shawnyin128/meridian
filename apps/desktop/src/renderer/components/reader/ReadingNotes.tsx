@@ -21,9 +21,9 @@ function NoteCard({ note, edits, onSave, onDelete, onJump }: {
       <button className="reading-page" onClick={onJump}>{m.reader.page.at(note.page)}</button>
       <FormTextarea aria-label={m.reader.notes.pageAria(note.page)} {...edit.fieldProps} />
       <div className="reading-actions">
-        <button className="reading-delete" onClick={() => { void onDelete() }}>{m.common.delete}</button>
+        <button className="btn ghost danger sm reading-delete" onClick={() => { void onDelete() }}>{m.common.delete}</button>
         <button
-          className="btn pri" disabled={!changed || text.trim() === ''}
+          className="btn pri sm" disabled={!changed || text.trim() === ''}
           onClick={() => { if (!edit.stale) void onSave(text.trim()).then((saved) => { if (saved) edit.drop() }) }}
         >{m.common.save}</button>
       </div>
@@ -54,9 +54,9 @@ function HighlightCard({ highlight, edits, onSave, onDelete, onJump, focus }: {
         {...edit.fieldProps}
       />
       <div className="reading-actions">
-        <button className="reading-delete" onClick={() => { void onDelete() }}>{m.common.delete}</button>
+        <button className="btn ghost danger sm reading-delete" onClick={() => { void onDelete() }}>{m.common.delete}</button>
         <button
-          className="btn pri" disabled={note === highlight.note}
+          className="btn pri sm" disabled={note === highlight.note}
           onClick={() => { if (!edit.stale) void onSave(note).then((saved) => { if (saved) edit.drop() }) }}
         >{m.common.save}</button>
       </div>
@@ -103,7 +103,7 @@ export function ReadingNotes({
           value={draft} onChange={(event) => drafts.set(compose, event.target.value)}
         />
         <button
-          className="btn pri" disabled={draft.trim() === '' || saving}
+          className="btn pri sm" disabled={draft.trim() === '' || saving}
           onClick={() => { void addNote() }}
         >{m.reader.notes.add}</button>
       </div>}

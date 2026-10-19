@@ -42,7 +42,7 @@ function ClearButton({ count, onClear }: { count: number; onClear: () => void })
   const m = useMessages()
   return (
     <ConfirmDialog
-      trigger={<button className="btn plain tdel">{m.trash.clear}</button>}
+      trigger={<button className="btn danger sm">{m.trash.clear}</button>}
       title={m.trash.confirmClear(count)}
       confirmLabel={m.trash.confirmClearLabel} onConfirm={onClear}
     />
@@ -119,11 +119,11 @@ export function Trash() {
                     <span className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</span>
                     <span className="tm2">{m.trash.autoClear(daysLeft(entry.deletedAt, today))}</span>
                     <button
-                      className="btn" disabled={!entry.restorable}
+                      className="btn ghost sm" disabled={!entry.restorable}
                       onClick={() => restore(entry)}
                     >{m.common.restore}</button>
                     <ConfirmDialog
-                      trigger={<button className="btn tdel">{m.common.deletePermanently}</button>}
+                      trigger={<button className="btn danger sm">{m.common.deletePermanently}</button>}
                       title={m.trash.confirmPurge(plainOf(entry))}
                       confirmLabel={m.trash.confirmPurgeLabel} onConfirm={() => purge(entry.id)}
                     />

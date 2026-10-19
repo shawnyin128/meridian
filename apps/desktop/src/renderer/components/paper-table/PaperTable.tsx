@@ -306,7 +306,7 @@ function ReadStateFilter({ current, onPick }: {
       trigger={(
         <button
           type="button"
-          className={current === null ? 'btn plain read-state-filter' : 'btn plain read-state-filter on'}
+          className={current === null ? 'btn sm read-state-filter' : 'btn sm read-state-filter on'}
           aria-label={m.papers.readState.filterAria}
         >{current ?? m.papers.readState.filterLabel}</button>
       )}
@@ -1266,7 +1266,7 @@ export function PaperTable() {
               }}
             />
             <AddAction
-              variant="page" className="pdfupload" disabled={uploading}
+              variant="page" className="sm pdfupload" disabled={uploading}
               onClick={() => uploadInput.current?.click()}
             >
               {uploading ? m.papers.upload.importing : m.papers.upload.importAction}
@@ -1342,7 +1342,7 @@ export function PaperTable() {
                   {group !== 'none'
                     ? (
                       <div className="gnav">
-                        <button className="btn plain" id="gxBack" onClick={backToValues}>
+                        <button className="btn sm" id="gxBack" onClick={backToValues}>
                           ‹ {labelOf(group)}
                         </button>
                         <SegmentedControl

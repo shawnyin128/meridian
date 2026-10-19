@@ -203,7 +203,7 @@ export function TimelineControls({ scale, onScaleChange, onStep, onToday }: {
         </button>
       </div>
       <TimelineScalePicker value={scale} onChange={onScaleChange} />
-      <button type="button" className="btn plain" onClick={onToday}>{m.timeline.today}</button>
+      <button type="button" className="btn ghost sm" onClick={onToday}>{m.timeline.today}</button>
     </>
   )
 }

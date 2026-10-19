@@ -119,13 +119,13 @@ export function ProjectConclusionPanel({
         {conclusion.date === undefined ? null : <span className="conclusion-detail-date">{fmt.date(conclusion.date)}</span>}
         <span className="conclusion-detail-actions">
           {conclusion.node !== undefined && conclusion.fingerprint !== undefined && conclusion.state === 'pending'
-            ? <button className="btn pri" onClick={() => onVerify(conclusion.node!, conclusion.fingerprint!)}>{c.verify}</button>
+            ? <button className="btn pri sm" onClick={() => onVerify(conclusion.node!, conclusion.fingerprint!)}>{c.verify}</button>
             : null}
           {conclusion.node !== undefined && conclusion.verifiedOn !== undefined
-            ? <button className="btn" onClick={() => onUnverify(conclusion.node!)}>{c.unverify}</button>
+            ? <button className="btn ghost sm" onClick={() => onUnverify(conclusion.node!)}>{c.unverify}</button>
             : null}
           <button
-            className="btn" disabled={conclusion.state !== 'verified'}
+            className="btn ghost sm" disabled={conclusion.state !== 'verified'}
             title={conclusion.state === 'verified' ? undefined : c.verifyFirst}
             onClick={() => setWriting(true)}
           >{c.write}</button>

@@ -132,6 +132,13 @@ describe('ReviewQueue', () => {
     expect(onDecline).toHaveBeenCalledWith(PROPOSALS[1], '证据不够')
   })
 
+  it('应用是主按钮，拒绝是红色的幽灵按钮，确认拒绝是浅红按钮', () => {
+    const actions = [...row('p2').querySelectorAll<HTMLButtonElement>('.review-actions button')]
+    expect(actions.map((b) => `${b.textContent} ${b.className}`)).toEqual(['应用 btn pri', '拒绝 btn ghost danger'])
+    act(() => actions[1]!.dispatchEvent(new MouseEvent('click', { bubbles: true })))
+    expect(document.querySelector<HTMLButtonElement>('.review-decline button')!.className).toBe('btn danger')
+  })
+
   it('拒绝的原因框从拒绝钮的左缘往右展开在它下方,不往左盖到侧栏上', async () => {
     // jsdom lays nothing out: give it the 1280×800 window, where the reject button spans x 318–370,
     // right of the 232px sidebar, and the 320px reason box.

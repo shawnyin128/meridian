@@ -90,7 +90,7 @@ export function ServiceClearKeyButton({ pending, label, pendingLabel, onClick }:
 }) {
   return (
     <button
-      className={pending ? 'btn service-clear-key on' : 'btn service-clear-key'}
+      className={pending ? 'btn danger service-clear-key' : 'btn service-clear-key'}
       aria-pressed={pending}
       onClick={onClick}
     >

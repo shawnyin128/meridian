@@ -241,13 +241,13 @@ function ColumnsEditor({ columns, onSave, onCancel }: {
             onChange={(e) => setRows(rows.map((r, j) => (j === i ? { ...r, label: e.target.value } : r)))}
           />
           <button
-            className="btn plain" title={m.wiki.aggregation.deleteColumn}
+            className="btn sm" title={m.wiki.aggregation.deleteColumn}
             onClick={() => setRows(rows.filter((_, j) => j !== i))}
           ><IconCross sw={2.5} /></button>
         </div>
       ))}
       <div className="acts">
-        <button className="btn plain" onClick={onCancel}>{m.common.cancel}</button>
+        <button className="btn" onClick={onCancel}>{m.common.cancel}</button>
         <button
           className="btn pri" disabled={rows.some((c) => c.label.trim() === '')}
           onClick={() => onSave(rows.map((c) => ({ key: c.key, label: c.label.trim() })))}
@@ -586,7 +586,7 @@ export function Wiki() {
   /** The body's section heading: the page name on the left, "Edit"/"Save" on the right, like Project notes. */
   const bodyHead = (name: string) => (
     <SectionHeading variant="content" className="flexh">{name}
-      <button className="btn plain acts" disabled={saving} onClick={toggleEdit}>
+      <button className="btn sm acts" disabled={saving} onClick={toggleEdit}>
         {editing ? m.common.save : m.common.edit}
       </button>
     </SectionHeading>
@@ -892,7 +892,7 @@ export function Wiki() {
                 </div>
                 {/* Papers filters its table down to this paper by title; the user continues from that row's details. */}
                 <div className="macts">
-                  <button className="btn pri" onClick={() => jumpTo('papers', shownPaper.title)}>
+                  <button className="btn" onClick={() => jumpTo('papers', shownPaper.title)}>
                     {m.wiki.viewInPaperList}
                   </button>
                 </div>

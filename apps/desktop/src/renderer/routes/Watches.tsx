@@ -77,10 +77,10 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
                     )
                     : null}
                   {w.active ? null : <span className="src">{m.watches.paused}</span>}
-                  <button className="btn" onClick={() => onEdit(w)}>{m.common.edit}</button>
-                  <button className="btn" onClick={() => onSetActive(w)}>{w.active ? m.watches.pause : m.watches.resume}</button>
+                  <button className="btn ghost sm" onClick={() => onEdit(w)}>{m.common.edit}</button>
+                  <button className="btn ghost sm" onClick={() => onSetActive(w)}>{w.active ? m.watches.pause : m.watches.resume}</button>
                   <ConfirmDialog
-                    trigger={<button className="btn">{m.common.remove}</button>}
+                    trigger={<button className="btn ghost sm">{m.common.remove}</button>}
                     title={m.watches.confirmRemove(w.name)}
                     confirmLabel={m.watches.confirmRemoveLabel} onConfirm={() => onRemove(w.id)}
                   />
@@ -377,7 +377,7 @@ export function WatchSettings() {
               <span>
                 {m.watches.currentIdentity(editingWatch.identity.affiliations.join(' · ') || m.watches.noAffiliation)}
               </span>
-              <button className="btn plain" onClick={() => setAuthorSearchNonce((value) => value + 1)}>
+              <button className="btn ghost sm" onClick={() => setAuthorSearchNonce((value) => value + 1)}>
                 {m.watches.reconfirm}
               </button>
             </div>
@@ -392,7 +392,7 @@ export function WatchSettings() {
                     <span>{typeof authorSearchError === 'string'
                       ? authorSearchError
                       : failureLabel(m, m.watches.authorSearchFailed, authorSearchError.reason)}</span>
-                    <button className="btn plain" onClick={() => setAuthorSearchNonce((value) => value + 1)}>
+                    <button className="btn ghost sm" onClick={() => setAuthorSearchNonce((value) => value + 1)}>
                       {m.common.retry}
                     </button>
                   </div>
@@ -410,7 +410,7 @@ export function WatchSettings() {
                               {m.watches.candidateInfo(candidate.paperCount, candidate.citationCount, candidate.hIndex)}
                             </small>
                           </div>
-                          <button className="btn" onClick={() => chooseAuthor(candidate)}>
+                          <button className="btn ghost sm" onClick={() => chooseAuthor(candidate)}>
                             {editor.id === undefined ? m.watches.follow : m.watches.choose}
                           </button>
                         </div>
@@ -506,7 +506,7 @@ export function WatchSettings() {
                         {suggestions.topics.length > 1
                           ? (
                             <button
-                              className="btn plain" disabled={addingSuggestion !== null}
+                              className="btn ghost sm" disabled={addingSuggestion !== null}
                               onClick={() => { void addAllSuggestedTopics() }}
                             >{m.watches.addAllTopics}</button>
                           )
@@ -520,7 +520,7 @@ export function WatchSettings() {
                               <span>{m.watches.relatedPapers(item.relatedPapers)}</span>
                             </div>
                             <button
-                              className="btn" disabled={addingSuggestion !== null}
+                              className="btn ghost sm" disabled={addingSuggestion !== null}
                               onClick={() => { void addSuggestedTopic(item.name) }}
                             >{m.watches.addAction}</button>
                           </StructuredRow>
@@ -543,7 +543,7 @@ export function WatchSettings() {
                                 : m.watches.relatedPapers(item.relatedPapers)}</span>
                             </div>
                             <button
-                              className="btn" disabled={addingSuggestion !== null}
+                              className="btn ghost sm" disabled={addingSuggestion !== null}
                               onClick={() => { void addSuggestedAuthor(item) }}
                             >{m.watches.addAction}</button>
                           </StructuredRow>

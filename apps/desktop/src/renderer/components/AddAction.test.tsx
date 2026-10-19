@@ -10,7 +10,7 @@ describe('AddAction', () => {
     const icon = renderToStaticMarkup(<AddAction variant="icon" title="关联项目" />)
 
     expect(page).toContain('class="btn pri add-action add-action-page"')
-    expect(section).toContain('class="btn plain add-action add-action-section"')
+    expect(section).toContain('class="btn sm add-action add-action-section"')
     expect(icon).toContain('class="add-action add-action-icon"')
     expect([page, section, icon].every((markup) => markup.includes('<svg'))).toBe(true)
     expect(icon).toContain('aria-label="关联项目"')

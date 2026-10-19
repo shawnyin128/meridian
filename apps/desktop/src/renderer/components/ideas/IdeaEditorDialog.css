@@ -9,4 +9,3 @@
 .idea-dialog-field .form-input:focus,.idea-dialog-field .form-textarea:focus{border-color:var(--sep-strong);background:var(--card)}
 .idea-dialog-note{margin:10px 0 0;color:var(--ter);font-size:var(--fs-cap);line-height:1.5}
 .idea-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
-.idea-dialog-actions .btn:disabled{opacity:.45;cursor:default}

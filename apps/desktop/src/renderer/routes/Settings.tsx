@@ -255,7 +255,7 @@ export function Settings() {
             <ConfirmDialog
               trigger={(
                 <button
-                  className="btn tdel" disabled={location === null || location.source === 'fixture'
+                  className="btn danger" disabled={location === null || location.source === 'fixture'
                     || location.restartRequired || resetting}
                 >{m.settings.storage.resetAction}</button>
               )}
@@ -287,7 +287,7 @@ export function Settings() {
                       </div>
                       <div className="storage-backup-actions">
                         <button
-                          className="btn" disabled={busy || location?.restartRequired === true}
+                          className="btn ghost sm" disabled={busy || location?.restartRequired === true}
                           onClick={() => { void switchBackup(backup) }}
                         >
                           {switchingBackup === backup.id
@@ -297,7 +297,7 @@ export function Settings() {
                         <ConfirmDialog
                           trigger={(
                             <button
-                              className="btn tdel"
+                              className="btn danger sm"
                               disabled={busy || location?.restartRequired === true}
                             >{m.settings.storage.backupDelete}</button>
                           )}
@@ -403,8 +403,8 @@ export function Settings() {
               {archived.map((s) => (
                 <StructuredRow className="wrow" data-chat={s.id} key={s.id}>
                   <span className="nm"><PaperText text={s.title} /></span>
-                  <button className="btn" onClick={() => openChat(s)}>{m.settings.archived.open}</button>
-                  <button className="btn" onClick={() => unarchive(s)}>{m.settings.archived.unarchive}</button>
+                  <button className="btn ghost sm" onClick={() => openChat(s)}>{m.settings.archived.open}</button>
+                  <button className="btn ghost sm" onClick={() => unarchive(s)}>{m.settings.archived.unarchive}</button>
                 </StructuredRow>
               ))}
             </StructuredList>

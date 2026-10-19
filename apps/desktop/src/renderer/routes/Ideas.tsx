@@ -145,7 +145,7 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
     <aside className="idea-detail-panel" aria-label={m.ideas.detailHeading}>
       <header className="idea-detail-head">
         <span>{m.ideas.detailHeading}</span>
-        {editing ? null : <button className="btn plain" onClick={startEditing}>{m.common.edit}</button>}
+        {editing ? null : <button className="btn ghost sm" onClick={startEditing}>{m.common.edit}</button>}
         <PanelClose onClose={onClose} />
       </header>
 
@@ -204,10 +204,10 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
         </FormSelect>
         <div className="idea-detail-actions">
           {idea.project === undefined
-            ? <button className="btn" onClick={onPromote}>{m.ideas.promote.action}</button>
+            ? <button className="btn sm" onClick={onPromote}>{m.ideas.promote.action}</button>
             : linked === undefined
               ? <span className="idea-missing-project">{m.ideas.link.originalUnavailable}</span>
-              : <button className="btn" onClick={() => onOpen('project', linked.id)}>{m.ideas.promote.openProject}</button>}
+              : <button className="btn sm" onClick={() => onOpen('project', linked.id)}>{m.ideas.promote.openProject}</button>}
         </div>
       </section>
 
@@ -217,7 +217,7 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
         <div className="idea-detail-meta">{m.common.updatedOn(fmt.date(idea.updated))}</div>
         {idea.source.chatId === undefined
           ? null
-          : <button className="btn" onClick={() => onOpen('chat', idea.source.chatId!)}>{m.ideas.openSourceChat}</button>}
+          : <button className="btn sm" onClick={() => onOpen('chat', idea.source.chatId!)}>{m.ideas.openSourceChat}</button>}
       </section>
     </aside>
   )

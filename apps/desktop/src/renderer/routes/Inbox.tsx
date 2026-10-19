@@ -253,12 +253,12 @@ export function Inbox() {
         <>
           {collided.has(p.id) ? (
             <PaperCardNotice action={(
-              <button className="btn plain" onClick={() => open('reader', p.paper)}>{m.inbox.actions.open}</button>
+              <button className="btn ghost sm" onClick={() => open('reader', p.paper)}>{m.inbox.actions.open}</button>
             )}>{m.inbox.notices.alreadyInLibrary(plainTitle(collided.get(p.id) ?? ''))}</PaperCardNotice>
           ) : null}
           {failed.has(p.id) ? (
             <PaperCardNotice tone="error" action={(
-              <button className="btn plain" onClick={() => ingest(p.id)}>{m.common.retry}</button>
+              <button className="btn ghost sm" onClick={() => ingest(p.id)}>{m.common.retry}</button>
             )}>{failureLabel(m, m.inbox.notices.downloadFailed, failed.get(p.id)!)}</PaperCardNotice>
           ) : null}
         </>
@@ -357,7 +357,7 @@ export function Inbox() {
                   open={!folded.has(group.key)} onToggle={() => toggleGroup(group.key)}
                   actions={stream === 'watch' ? (
                     <button
-                      className="btn plain"
+                      className="btn sm"
                       onClick={() => dismiss(group.rows.map((r) => r.id), m.inbox.notices.dismissedAll)}
                     >{m.inbox.dismissAll}</button>
                   ) : undefined}

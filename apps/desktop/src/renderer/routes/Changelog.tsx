@@ -44,7 +44,7 @@ function DeleteChangeButton({ entry, onDelete }: {
   return (
     <ConfirmDialog
       trigger={(
-        <button className="btn plain tdel" onClick={(event) => event.stopPropagation()}>
+        <button className="btn danger sm" onClick={(event) => event.stopPropagation()}>
           {m.common.delete}
         </button>
       )}
@@ -58,7 +58,7 @@ function ClearArchivedButton({ count, onClear }: { count: number; onClear: () =>
   const m = useMessages()
   return (
     <ConfirmDialog
-      trigger={<button className="btn plain tdel">{m.changelog.clearArchived}</button>}
+      trigger={<button className="btn danger sm">{m.changelog.clearArchived}</button>}
       title={m.changelog.confirmClearArchived(count)}
       confirmLabel={m.changelog.confirmClearArchivedLabel} onConfirm={onClear}
     />
@@ -142,13 +142,13 @@ export function Changelog() {
           <DeleteChangeButton entry={c} onDelete={deleteChange} />
           {c.archived ? null : (
             <button
-              className="btn plain carch"
+              className="btn ghost sm carch"
               onClick={(e) => { e.stopPropagation(); archive(c.id) }}
             >{m.common.archive}</button>
           )}
           {c.undoable ? (
             <button
-              className="btn plain cundo"
+              className="btn ghost sm cundo"
               onClick={(e) => { e.stopPropagation(); undo(c.id) }}
             >{m.common.undo}</button>
           ) : null}
@@ -189,7 +189,7 @@ export function Changelog() {
       <PageBody>
         <SectionHeading className="flexh">{m.changelog.unarchivedHeading}
           <button
-            className="btn plain archall" disabled={unread === 0}
+            className="btn sm archall" disabled={unread === 0}
             onClick={() => archiveAll(unread)}
           >{m.changelog.archiveAll}</button>
         </SectionHeading>

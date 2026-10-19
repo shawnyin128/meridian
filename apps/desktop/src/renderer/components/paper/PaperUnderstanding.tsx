@@ -32,7 +32,7 @@ export function PaperUnderstanding({ reading, onRead }: {
       {!hasRemark && entries.length === 0 ? (
         <div className="paper-understanding-empty">
           <EmptyState variant="section">{m.papers.understanding.empty}</EmptyState>
-          <button type="button" className="btn plain" onClick={() => onRead()}>{m.papers.understanding.goRead}</button>
+          <button type="button" className="btn sm" onClick={() => onRead()}>{m.papers.understanding.goRead}</button>
         </div>
       ) : (
         <>
