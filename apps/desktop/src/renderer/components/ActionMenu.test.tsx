@@ -39,4 +39,19 @@ describe('ActionMenu', () => {
     act(() => document.querySelector<HTMLElement>('[role="menuitem"]')!.click())
     expect(choose).toHaveBeenCalledTimes(1)
   })
+
+  it('stays open on an Escape that ends an input method composition and closes on the next one', () => {
+    const change = vi.fn()
+    act(() => root!.render(
+      <ActionMenu open onOpenChange={change} trigger={<button type="button">更多</button>}>
+        <input aria-label="新名称" />
+      </ActionMenu>,
+    ))
+    const input = document.querySelector<HTMLInputElement>('[role="menu"] input')!
+    act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true, cancelable: true })))
+    expect(change).not.toHaveBeenCalled()
+
+    act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+    expect(change).toHaveBeenCalledExactlyOnceWith(false)
+  })
 })

@@ -9,6 +9,7 @@ import { ActionMenu, MenuItem } from '../components/ActionMenu.js'
 import { AboutDialog } from '../components/AboutDialog.js'
 import { PageFailure } from '../components/PageShell.js'
 import { ScreenBoundary } from '../components/ScreenBoundary.js'
+import { composing } from '../lib/keyboard.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import { Sidebar } from './Sidebar.js'
@@ -325,7 +326,8 @@ const escapeLayers: { close: () => void }[] = []
 
 /**
  * Register one dismissible layer. Escape peels the most recently registered active layer and stops;
- * Radix surfaces handle their own Escape before this handler sees it.
+ * Radix surfaces handle their own Escape before this handler sees it. An Escape pressed while an
+ * input method is composing peels nothing.
  */
 export function useEscapeLayer(active: boolean, close: () => void): void {
   useEffect(() => {
@@ -481,7 +483,7 @@ export function AppShell({ screens, settings }: {
         setHidden((h) => !h)
         return
       }
-      if (e.key === 'Escape' && !e.defaultPrevented) {
+      if (e.key === 'Escape' && !e.defaultPrevented && !composing(e)) {
         const top = escapeLayers.at(-1)
         if (top) { e.preventDefault(); top.close() }
         return
