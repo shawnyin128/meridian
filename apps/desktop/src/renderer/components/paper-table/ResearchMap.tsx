@@ -3,7 +3,7 @@ import type { PaperRow } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { EmptyState } from '../EmptyState.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
-import { CountBadge } from '../Tag.js'
+import { CountBadge, Tag } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { buildResearchMap, type ResearchMapReason } from './research-map.js'
 
@@ -32,7 +32,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper }: {
         <div className="research-map-copy">
           <div className="research-map-title">
             <strong>{m.papers.researchMap.title}</strong>
-            <span className="tagchip">{m.papers.researchMap.preview}</span>
+            <Tag>{m.papers.researchMap.preview}</Tag>
           </div>
           <p>{m.papers.researchMap.description}</p>
         </div>
@@ -96,7 +96,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper }: {
                           </span>
                           <span className="research-map-why">
                             <span>{m.papers.researchMap.whyHere}</span>
-                            {member.reasons.map((item) => <span className="tagchip" key={reasonKey(item)}>{reason(item)}</span>)}
+                            {member.reasons.map((item) => <Tag shape="chip" className="tagchip" key={reasonKey(item)}>{reason(item)}</Tag>)}
                           </span>
                         </StructuredRow>
                       ))}

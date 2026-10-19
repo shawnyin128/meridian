@@ -52,7 +52,6 @@
 .direction-row.disabled{opacity:.52}
 .direction-main{min-width:0;flex:1}
 .direction-name{display:flex;align-items:center;gap:7px;color:var(--ink);font-size:var(--fs-base)}
-.direction-core{padding:1px 6px;border-radius:999px;background:var(--accent-soft);color:var(--accent-solid);font-size:var(--fs-cap);font-weight:600}
 .direction-seeds{margin-top:3px;color:var(--ter);font-size:var(--fs-cap);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .direction-actions{display:flex;align-items:center;gap:6px;flex:none}
 .direction-empty{margin:0;padding:12px;color:var(--ter);font-size:var(--fs-sm);border-top:1px solid var(--sep2)}
@@ -119,10 +118,8 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 /* Second popover form, for rename/edit (FloatingTextEditor, project rename): the demo's .ctxmenu.drop. */
 .ctxmenu.drop{padding:0;border-radius:var(--r-lg);overflow:hidden;min-width:190px}
 
-/* Chip shared by the paper table's tag cells and the project's links section */
-.tagchip{display:inline-block;font-size:var(--fs-sm);background:var(--field);color:var(--sec);border-radius:var(--r-full);padding:1px 8px;margin:1px 4px 1px 0;white-space:nowrap}
-.tagchip.add-action-icon{display:inline-flex;align-items:center;justify-content:center}
-:where(button.tagchip){border:0;font:inherit}
+/* A chip tag in a row of them: the paper table's tag cells and the project's links section */
+.tagchip{margin:1px 4px 1px 0}
 
 .wkprops{display:grid;grid-template-columns:44px minmax(0,1fr);width:100%;max-width:100%;min-width:0;row-gap:6px;column-gap:12px;font-size:var(--fs-sm);line-height:var(--lh-ui)}
 .wkprops>*{min-width:0}
@@ -156,9 +153,8 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
   position:sticky;top:0;max-height:calc(100vh - 190px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
 .wkrel{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0}
 .wkrel .rl{font-size:12px;color:var(--ter);width:28px;flex-shrink:0}
-.wkrel .tagchip{cursor:default;font-size:var(--fs-sm);padding:2px 10px;margin:0;position:relative}
+.wkrel .tagchip{cursor:default;margin:0;position:relative}
 .wkrel .tagchip[data-wk]{cursor:pointer}
-.wkrel .tagchip[data-wk]:hover{color:var(--ink)}
 
 /* Back button on a page one level down inside a screen, same as the demo's #deskBack */
 .desk-head .back{border:0;background:var(--field);color:var(--ink);border-radius:8px;width:28px;height:26px;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center}

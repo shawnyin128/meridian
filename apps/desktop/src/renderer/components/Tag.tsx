@@ -1,8 +1,11 @@
 import type { ComponentPropsWithoutRef, ReactNode } from 'react'
 import './Tag.css'
 
-/** A tag's fill and text colour: neutral, the accent, a semantic state, or an entity type. */
-export type TagTone = 'neutral' | 'accent' | 'good' | 'warn' | 'bad' | 'info' | 'paper' | 'wiki'
+/**
+ * A tag's fill and text colour: neutral, the accent, a semantic state, or an entity type. `ghost` is
+ * the dashed empty slot at the end of a row of tags that adds one.
+ */
+export type TagTone = 'neutral' | 'accent' | 'good' | 'warn' | 'bad' | 'info' | 'paper' | 'wiki' | 'ghost'
 
 /**
  * A tag's box. `label` is a short status, kind, priority or source word in caption type; `chip` is a

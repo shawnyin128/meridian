@@ -16,9 +16,11 @@
 .tag--info{background:var(--tint-info);color:var(--ink)}
 .tag--paper{background:var(--tint-paper);color:var(--sec)}
 .tag--wiki{background:var(--tint-wiki);color:var(--sec)}
+.tag--ghost{padding:calc(var(--sp-2) - 1px) calc(var(--sp-8) - 1px);border:1px dashed var(--sep-strong);background:transparent;color:var(--ter)}
 button.tag{cursor:pointer;transition:color var(--t-fast) var(--e-out)}
 button.tag:hover{color:var(--ink);background-image:linear-gradient(var(--hover),var(--hover))}
 button.tag:active{background-image:linear-gradient(var(--press),var(--press))}
+button.tag--ghost:hover{border-color:var(--sec);background-image:none}
 button.tag:disabled{cursor:default;opacity:.45;background-image:none}
 
 .count-badge{display:inline-flex;align-items:center;justify-content:center;flex:none;box-sizing:border-box;

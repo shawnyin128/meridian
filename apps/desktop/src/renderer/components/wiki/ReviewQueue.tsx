@@ -11,7 +11,7 @@ import { EmptyState } from '../EmptyState.js'
 import { FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
-import { CountBadge, Tag } from '../Tag.js'
+import { CountBadge, Tag, TagButton } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
 import './ReviewQueue.css'
@@ -130,9 +130,9 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                     {p.unverified!.map((ref) => {
                       const [project, conclusion] = ref.slice('projects/'.length).split('#') as [string, string]
                       return (
-                        <button type="button" className="tagchip" key={ref} onClick={() => onOpenConclusion(project, conclusion)}>
+                        <TagButton shape="chip" className="tagchip" key={ref} onClick={() => onOpenConclusion(project, conclusion)}>
                           {p.titles[ref] ?? conclusion}
-                        </button>
+                        </TagButton>
                       )
                     })}
                   </div>
@@ -141,9 +141,9 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                 <div className="wkrel">
                   <span className="rl">{r.pages}</span>
                   {p.pages.map((id) => (
-                    <button type="button" className="tagchip" data-wk={id} key={id} onClick={() => onOpenPage(id)}>
+                    <TagButton shape="chip" className="tagchip" data-wk={id} key={id} onClick={() => onOpenPage(id)}>
                       {id.startsWith(PAPER_PAGE) ? <PaperText text={p.titles[id] ?? id} /> : p.titles[id] ?? id}
-                    </button>
+                    </TagButton>
                   ))}
                 </div>
                 <div className="review-actions">

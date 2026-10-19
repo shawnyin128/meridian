@@ -8,7 +8,7 @@
 .crow:hover .cact,.crow .cact:focus-within{opacity:1}
 .crow .ct{display:block;font-size:var(--fs-base);font-weight:500}
 .crow .cm{display:block;font-size:var(--fs-sm);color:var(--ter);margin-top:1px}
-.crow .src{font-size:var(--fs-cap);padding:1px 8px;border-radius:999px;background:var(--field);color:var(--sec);margin-left:6px}
+.crow .src{margin-left:var(--sp-6)}
 .crow .diff{display:none}
 .crow.open .diff{display:block}
 /* "Archive all" sits at the right of the Current heading, placed there by .section-heading.flexh in PageShell.css. */

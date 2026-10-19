@@ -21,9 +21,6 @@
 .wkcard .wm{font-size:var(--card-fs);color:var(--ter);margin-top:4px;line-height:1.5;height:calc(1.5em * var(--card-lines));
   overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--card-lines)}
 .wkcard .wf{font-size:var(--fs-sm);color:var(--ter);margin-top:8px;white-space:nowrap;overflow:hidden;mask-image:var(--clipfade);display:flex;align-items:center;gap:6px}
-.wkind{font-size:var(--fs-cap);color:var(--ter);border:1px solid var(--sep2);border-radius:var(--r-xs);padding:0 6px;flex-shrink:0}
-.wkind.k-paper{background:var(--tint-paper);border-color:transparent;color:var(--sec)}
-.wkind.k-wiki{background:var(--tint-wiki);border-color:transparent;color:var(--sec)}
 
 /* Body paragraphs and empty-state lines share one paragraph spacing */
 .wkpage p{margin:4px 0 8px}
@@ -41,7 +38,7 @@
 .cmp td.rh{white-space:nowrap;font-weight:600}
 .cmp td.na{color:var(--ter);text-align:center}
 .cmp th.dv,.cmp td.dv{background:var(--hover)}
-.cmp th .wkind{margin-left:6px;font-weight:400}
+.cmp th .wkind{margin-left:6px}
 .anc{border-bottom:1px dotted var(--ter);cursor:help}
 .anc sup{font-size:.78em;color:var(--ter);margin-left:2px}
 #wktip{position:fixed;z-index:60;max-width:min(44ch,60vw);padding:8px 12px;background:var(--raised);color:var(--ink);border-radius:var(--r-lg);box-shadow:var(--sh-2);font-size:12px;line-height:var(--lh-ui);pointer-events:none}

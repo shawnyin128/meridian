@@ -17,6 +17,7 @@
 .wkrel .tagchip{margin-right:0}
 /* A chip's name is its button; the chip forwards a click anywhere else on it. */
 .tagchip-open{display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;cursor:inherit}
+.tagchip-open:hover{color:var(--ink)}
 .wkrel .tagchip .tagchip-edit:hover{color:var(--ink)}
 .wkrel .tagchip .tagchip-edit svg{width:9px;height:9px}
 .wkrel .reladd{display:flex;align-items:center;gap:6px;flex:1 1 auto;min-width:190px}

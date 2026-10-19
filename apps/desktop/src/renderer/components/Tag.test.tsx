@@ -22,6 +22,7 @@ describe('Tag', () => {
   it('gives an element another component renders the same classes', () => {
     expect(tagClass('bad')).toBe('tag tag--label tag--bad')
     expect(tagClass('neutral', 'chip', 'stchip on')).toBe('tag tag--chip tag--neutral stchip on')
+    expect(tagClass('ghost', 'chip')).toBe('tag tag--chip tag--ghost')
   })
 
   it('renders a clickable tag as a plain button with the same classes', () => {

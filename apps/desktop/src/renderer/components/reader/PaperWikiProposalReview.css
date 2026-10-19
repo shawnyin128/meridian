@@ -21,12 +21,6 @@
 .paper-wiki-review-group{display:block;padding:9px 0}
 .paper-wiki-review-group-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px}
 .paper-wiki-review-group-head>strong{min-width:0;font-size:var(--fs-sm);line-height:1.45}
-.paper-wiki-provenance{flex:0 0 auto;padding:1px 7px;border-radius:var(--r-full);font-size:var(--fs-cap);font-weight:600;
-  background:var(--field);color:var(--ter)}
-.paper-wiki-provenance.paper-source{background:var(--tint-good);color:var(--good)}
-.paper-wiki-provenance.wiki-synthesis{background:var(--accent-soft);color:var(--accent)}
-.paper-wiki-provenance.user-insight{background:var(--tint-warn);color:var(--warn)}
-.paper-wiki-provenance.open-question{background:var(--tint-mut);color:var(--sec)}
 .paper-wiki-review-fields{display:flex;flex-direction:column;gap:5px}
 .paper-wiki-review-field{display:grid;grid-template-columns:56px minmax(0,1fr);gap:7px;align-items:start}
 .paper-wiki-review-field>span{color:var(--ter);font-size:var(--fs-cap);line-height:1.5}

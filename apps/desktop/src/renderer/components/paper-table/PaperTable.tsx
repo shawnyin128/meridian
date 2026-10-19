@@ -33,7 +33,7 @@ import {
 } from '../../shell/AppShell.js'
 import { AddAction } from '../AddAction.js'
 import { PanelClose } from '../PanelClose.js'
-import { CountBadge, tagClass } from '../Tag.js'
+import { CountBadge, Tag, tagClass } from '../Tag.js'
 import { DetailPanel } from '../DetailPanel.js'
 import { ActionMenu, MenuRadioGroup, MenuRadioItem, MenuSeparator } from '../ActionMenu.js'
 import { SegmentedControl } from '../SegmentedControl.js'
@@ -233,7 +233,7 @@ function TagAdd({ field, values, onAdd, onError }: {
         )
         : (
           <AddAction
-            variant="icon" className="tagchip tagadd" title={m.papers.tags.add}
+            variant="icon" className={tagClass('ghost', 'chip', 'tagchip tagadd')} title={m.papers.tags.add}
             onClick={(e) => { e.stopPropagation(); setOpen(true) }}
           />
         )}
@@ -251,7 +251,7 @@ function TagAdd({ field, values, onAdd, onError }: {
                 ? (
                   <div className="rrow mk" onClick={() => draft.submit(() => onAdd(typed))}>
                     <IconPlus />
-                    <span className="tagchip">{typed}</span>
+                    <Tag shape="chip" className="tagchip">{typed}</Tag>
                   </div>
                 )
                 : null}
@@ -649,7 +649,7 @@ export function PaperTable() {
       if (real > 0) {
         const badge = document.createElement('button')
         badge.type = 'button'
-        badge.className = 'morebadge'
+        badge.className = tagClass('neutral', 'label', 'morebadge')
         const setExpanded = (expanded: boolean) => {
           ci.dataset['expanded'] = String(expanded)
           ci.classList.toggle('chip-expanded', expanded)
@@ -1003,7 +1003,7 @@ export function PaperTable() {
     const editing = editingCell?.id === p.id && editingCell.key === column.key
     if (!editing) {
       if (column.type === 'text') return <span className="ci">{values[0] ?? ''}</span>
-      return <span className="ci">{values.map((v) => <span className="tagchip" key={v}>{v}</span>)}</span>
+      return <span className="ci">{values.map((v) => <Tag shape="chip" className="tagchip" key={v}>{v}</Tag>)}</span>
     }
     if (column.type === 'text') {
       return (
@@ -1078,7 +1078,7 @@ export function PaperTable() {
     return (
       <td key={k}>
         <span className="ci">
-          {p.topics.map((v) => <span className="tagchip" key={v}>{v}</span>)}
+          {p.topics.map((v) => <Tag shape="chip" className="tagchip" key={v}>{v}</Tag>)}
           <TagAdd field={k} values={p.topics} onError={reportError} onAdd={(v) => addTopic(p, v)} />
         </span>
       </td>

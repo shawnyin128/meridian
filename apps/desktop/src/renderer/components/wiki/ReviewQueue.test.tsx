@@ -89,7 +89,7 @@ describe('ReviewQueue', () => {
       '~ 「拐点在宽度 6」与「x」冲突：批量下不同',
     ])
     expect([...row('p2').querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual(['+ 新增结论：新结论', '+ 　实验 · draft 效率 · 加宽实验'])
-    expect(row('p1').querySelector('.tag')).toBeNull()
+    expect(row('p1').querySelector('.review-head .tag')).toBeNull()
     expect(row('p2').querySelector('.tag--warn')!.textContent).toBe('已过期')
     expect(row('p2').textContent).toContain('这些引句没有文字层可核对')
     expect(row('p1').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(false)
@@ -103,7 +103,7 @@ describe('ReviewQueue', () => {
 
   it('提案标题与论文页名按 LaTeX 显示，改动行里的论文名是纯文本', () => {
     expect(row('p7').querySelector('.review-title')!.innerHTML).toBe('收进《<strong>F</strong>lux》')
-    expect(row('p7').querySelector('.wkrel .tagchip')!.innerHTML).toBe('<strong>F</strong>lux')
+    expect(row('p7').querySelector('.wkrel .tagchip .tag-text')!.innerHTML).toBe('<strong>F</strong>lux')
     expect(row('p7').querySelector('.diff')!.textContent).toContain('证据 · Flux p.2「q」')
   })
 

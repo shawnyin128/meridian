@@ -32,6 +32,7 @@ import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { ReviewEntry, ReviewQueue } from '../components/wiki/ReviewQueue.js'
 import { WikiClaims } from '../components/wiki/WikiClaims.js'
+import { Tag, TagButton } from '../components/Tag.js'
 import './shell.css'
 import './Wiki.css'
 
@@ -63,9 +64,9 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
   return (
     <div className="wkcard" data-wk={card.id} title={card.summary} onClick={onOpen}>
       <div className="wt">
-        <span className="wkind k-wiki">{card.kindLabel}</span>
+        <Tag tone="wiki" className="wkind">{card.kindLabel}</Tag>
         <button type="button" className="tt">{card.title}</button>
-        {card.parentCount > 1 ? <span className="wkind">{m.wiki.aggregation.parentCount(card.parentCount)}</span> : null}
+        {card.parentCount > 1 ? <Tag className="wkind">{m.wiki.aggregation.parentCount(card.parentCount)}</Tag> : null}
         <span className="sp" />
       </div>
       <div className="wm">{card.summary}</div>
@@ -94,7 +95,7 @@ function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
   return (
     <div className="wkcard" data-wk={`${PAPER_PAGE}${paper.id}`} title={plainTitle(paper.title)} onClick={onOpen}>
       <div className="wt">
-        <span className="wkind k-paper">{m.wiki.paperKind}</span>
+        <Tag tone="paper" className="wkind">{m.wiki.paperKind}</Tag>
         <button type="button" className="tt"><PaperText text={paper.title} /></button><span className="sp" />
       </div>
       <div className="wm">{line}</div>
@@ -154,7 +155,7 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
             <th>{m.wiki.paperKind}</th>
             {agg.columns.map((c) => <th key={c.key}>{c.label}</th>)}
             {agg.derivedColumns.map((d) => (
-              <th className="dv" key={d.key}>{d.label}<span className="wkind">{m.wiki.autoColumn}</span></th>
+              <th className="dv" key={d.key}>{d.label}<Tag className="wkind">{m.wiki.autoColumn}</Tag></th>
             ))}
             {head?.newColumn}
             {onRemove === undefined ? null : <th className="rx" />}
@@ -183,10 +184,10 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
                 return (
                   <td className="dv" key={d.key}>
                     {links.length === 0 ? '—' : links.map((l) => (
-                      <button
-                        type="button" className="tagchip" data-wk={l.id} key={l.id} title={l.fullTitle}
+                      <TagButton
+                        shape="chip" className="tagchip" data-wk={l.id} key={l.id} title={l.fullTitle}
                         onClick={() => onOpen(l.id)}
-                      >{l.title}</button>
+                      >{l.title}</TagButton>
                     ))}
                   </td>
                 )
@@ -640,7 +641,7 @@ export function Wiki() {
                         ? (
                           <div className="wkcard newcard" ref={addRow}>
                             <div className="wt">
-                              <span className="wkind k-wiki">{shownAgg.kindLabel}</span>
+                              <Tag tone="wiki" className="wkind">{shownAgg.kindLabel}</Tag>
                               <PickRow
                                 row={addRow} triggers={[childBtn, paperBtn, colBtn]} allowNew
                                 placeholder={m.wiki.kindNamePlaceholder(shownAgg.kindLabel)}
@@ -792,10 +793,10 @@ export function Wiki() {
                     <div className="wkrel">
                       <span className="rl">{m.wiki.belongsTo}</span>
                       {shownAgg.parents.map((p) => (
-                        <button
-                          type="button" className="tagchip" data-wk={p.id} key={p.id} title={p.fullTitle}
+                        <TagButton
+                          shape="chip" className="tagchip" data-wk={p.id} key={p.id} title={p.fullTitle}
                           onClick={() => go(p.id)}
-                        >{p.title}</button>
+                        >{p.title}</TagButton>
                       ))}
                     </div>
                   )
@@ -804,10 +805,10 @@ export function Wiki() {
                   <div className="wkrel" key={r.label}>
                     <span className="rl">{r.label}</span>
                     {r.links.map((l) => (
-                      <button
-                        type="button" className="tagchip" data-wk={l.id} key={l.id} title={l.fullTitle}
+                      <TagButton
+                        shape="chip" className="tagchip" data-wk={l.id} key={l.id} title={l.fullTitle}
                         onClick={() => go(l.id)}
-                      >{l.title}</button>
+                      >{l.title}</TagButton>
                     ))}
                   </div>
                 ))}
@@ -902,11 +903,11 @@ export function Wiki() {
                   : shownPaper.memberships.map((ms) => (
                     <div className="memb" key={ms.aggregation.id}>
                       <div className="wkrel">
-                        <span className="wkind k-wiki">{ms.kindLabel}</span>
-                        <button
-                          type="button" className="tagchip" data-wk={ms.aggregation.id}
+                        <Tag tone="wiki" className="wkind">{ms.kindLabel}</Tag>
+                        <TagButton
+                          shape="chip" className="tagchip" data-wk={ms.aggregation.id}
                           onClick={() => go(ms.aggregation.id)}
-                        >{ms.aggregation.title}</button>
+                        >{ms.aggregation.title}</TagButton>
                       </div>
                       <div className="wkprops">
                         {ms.cells.map((c) => (

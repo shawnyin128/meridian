@@ -60,7 +60,7 @@ describe('ProjectRelations', () => {
     const row = createRef<HTMLDivElement>()
     render({ id: 'rel-2', row, input: <input className="probe" /> })
     const wiki = host.querySelector('.wkrel')!
-    expect([...wiki.children].map((child) => child.className)).toEqual(['rl', 'tagchip', 'reladd'])
+    expect([...wiki.children].map((child) => child.className)).toEqual(['rl', 'tag tag--chip tag--neutral tagchip', 'reladd'])
     expect(row.current).toBe(wiki.lastElementChild)
     expect(row.current?.querySelector('.probe')).not.toBeNull()
     open.mockRestore()

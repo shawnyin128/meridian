@@ -23,6 +23,8 @@ const RETIRED: { cls: string; scope?: string }[] = [
   { cls: 'node-branch' }, { cls: 'date-chip' }, { cls: 'dchip' },
   { cls: 'gdot' }, { cls: 'ld' }, { cls: 'node-tag-dot' }, { cls: 'node-branch-dot' }, { cls: 'project-identity-dot' },
   { cls: 'workspace-root::before' },
+  { cls: 'wkind' }, { cls: 'wkclaim-kind' }, { cls: 'src', scope: 'crow' }, { cls: 'direction-core' },
+  { cls: 'tagchip' }, { cls: 'morebadge' }, { cls: 'paper-wiki-provenance' }, { cls: 'tag', scope: 'brief' },
 ]
 
 /** Properties that draw a tag: its fill, text colour, border, radius, padding and type. */
