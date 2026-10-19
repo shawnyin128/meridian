@@ -51,6 +51,16 @@ const sharedMarkupSyntax = [
     message: '原生 select 统一经 components/FormControls 的 FormSelect',
   },
 ]
+const nativeTitleSyntax = [
+  {
+    selector: "JSXOpeningElement[name.name=/^[a-z]/] > JSXAttribute[name.name='title']",
+    message: '悬停提示统一经 components/Tooltip，不用原生 title',
+  },
+  {
+    selector: "JSXOpeningElement[name.name='title']",
+    message: 'SVG 的 <title> 也是原生悬停提示：名字放 aria-label，提示经 components/Tooltip',
+  },
+]
 const pageShellSyntax = [
   'desk', 'desk-head', 'desk-body', 'desk-foot', 'ipcerror', 'wk-sec', 'wksec', 'sechead',
 ].map((className) => ({
@@ -87,7 +97,16 @@ export default tseslint.config(
       'apps/desktop/src/renderer/**/*.test.tsx',
     ],
     rules: {
-      'no-restricted-syntax': ['error', ...sharedMarkupSyntax, ...pageShellSyntax],
+      'no-restricted-syntax': ['error', ...sharedMarkupSyntax, ...pageShellSyntax, ...nativeTitleSyntax],
+    },
+  },
+  {
+    files: [
+      'apps/desktop/src/renderer/components/FormControls.tsx',
+      'apps/desktop/src/renderer/components/PageShell.tsx',
+    ],
+    rules: {
+      'no-restricted-syntax': ['error', ...nativeTitleSyntax],
     },
   },
   {
