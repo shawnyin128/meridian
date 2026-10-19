@@ -735,6 +735,22 @@ describe('PaperTable', () => {
     expect(listCallCount).toBe(listed)
   })
 
+  it('表格右边还有没露出来的列时,只在右缘淡出', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const wrap = host.querySelector<HTMLElement>('.tblwrap')!
+    let offset = 0
+    Object.defineProperty(wrap, 'clientWidth', { configurable: true, get: () => 900 })
+    Object.defineProperty(wrap, 'scrollWidth', { configurable: true, get: () => 1500 })
+    Object.defineProperty(wrap, 'scrollLeft', { configurable: true, get: () => offset })
+    act(() => { wrap.dispatchEvent(new Event('scroll')) })
+    expect(wrap.dataset.fade).toBe('right')
+    act(() => { offset = 600; wrap.dispatchEvent(new Event('scroll')) })
+    expect(wrap.dataset.fade).toBe('left')
+  })
+
   it('阅读状态可在顶栏直接筛选,不必先进入分组索引', async () => {
     const host = mount()
     columnsCall.resolve({ hidden: [], custom: [], groups: ['readState'] })

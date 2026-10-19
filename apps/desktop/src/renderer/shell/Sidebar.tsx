@@ -10,6 +10,7 @@ import { NavRow } from '../components/NavRow.js'
 import { CountBadge } from '../components/Tag.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useAppUpdate } from '../hooks/useAppUpdate.js'
+import { useScrollFade } from '../hooks/useScrollFade.js'
 import { appUpdates } from '../ipc.js'
 import { ALL_WATCHES, type DiscoveryProjectCount, type InboxMode, type ScreenKey } from './AppShell.js'
 import { SearchBox } from './SearchBox.js'
@@ -170,6 +171,7 @@ export function Sidebar({
   collapsed: boolean
 }) {
   const m = useMessages()
+  const navFade = useScrollFade('y')
   const [closed, setClosed] = useState<Record<string, boolean>>({})
   const toggle = (name: string) => setClosed((c) => ({ ...c, [name]: !c[name] }))
   const sect = (name: string) => (closed[name] ? 'sect closed' : 'sect')
@@ -187,7 +189,7 @@ export function Sidebar({
     <div className="sidebar" id="sidebar" inert={collapsed}>
       <SearchBox onJump={onJump} />
 
-      <div className="sb-top">
+      <div className="sb-top" ref={navFade}>
         <NavRow
           className="srow" selected={screen === 'feed'} id="rowFeed" data-desk="feed"
           style={{ marginTop: 8 }} onActivate={() => onNavigate('feed')}

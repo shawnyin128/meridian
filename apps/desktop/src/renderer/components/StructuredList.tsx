@@ -1,5 +1,6 @@
 import { Children } from 'react'
 import type { CSSProperties, HTMLAttributes, ReactNode, Ref } from 'react'
+import { useScrollFade } from '../hooks/useScrollFade.js'
 import './StructuredList.css'
 
 export const EMBEDDED_LIST_ROW_LIMIT = 5
@@ -24,6 +25,7 @@ export function StructuredList({
 } & Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'className' | 'style'> & {
   style?: StructuredListStyle
 }) {
+  const fade = useScrollFade('y')
   const rowLimit = maxVisibleRows === 'all'
     ? undefined
     : maxVisibleRows ?? (variant === 'embedded' ? EMBEDDED_LIST_ROW_LIMIT : undefined)
@@ -36,7 +38,7 @@ export function StructuredList({
   return (
     <div
       className={`structured-list${variantClass}${scrollClass}${className ? ` ${className}` : ''}`}
-      style={listStyle} {...props}
+      style={listStyle} ref={scrollable ? fade : undefined} {...props}
     >
       {children}
     </div>

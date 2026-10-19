@@ -334,6 +334,18 @@ describe('AppShell sidebar rows', () => {
     }
   })
 
+  it('fades the sidebar\'s scroll area only toward the edge whose rows are hidden', () => {
+    const top = document.querySelector<HTMLElement>('.sb-top')!
+    let offset = 0
+    Object.defineProperty(top, 'clientHeight', { configurable: true, get: () => 500 })
+    Object.defineProperty(top, 'scrollHeight', { configurable: true, get: () => 700 })
+    Object.defineProperty(top, 'scrollTop', { configurable: true, get: () => offset })
+    act(() => { top.dispatchEvent(new Event('scroll')) })
+    expect(top.dataset.fade).toBe('bottom')
+    act(() => { offset = 200; top.dispatchEvent(new Event('scroll')) })
+    expect(top.dataset.fade).toBe('top')
+  })
+
   it('shows "/" as a keycap on the empty search field and names the shortcut on the field', () => {
     const search = document.querySelector<HTMLInputElement>('#sSearch')!
     const keycap = document.querySelector<HTMLElement>('#searchBox kbd')!

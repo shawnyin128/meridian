@@ -1,4 +1,6 @@
-import { createRef } from 'react'
+// @vitest-environment jsdom
+import { act, createRef } from 'react'
+import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { EMBEDDED_LIST_ROW_LIMIT, StructuredList, StructuredRow } from './StructuredList.js'
@@ -42,6 +44,23 @@ describe('StructuredList', () => {
     const row = createRef<HTMLDivElement>()
     const html = renderToStaticMarkup(<StructuredRow rowRef={row}>项目</StructuredRow>)
     expect(html).toContain('class="structured-row"')
+  })
+
+  it('fades a list that scrolls inside itself toward the edge whose rows are hidden', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    const rows = Array.from({ length: EMBEDDED_LIST_ROW_LIMIT + 2 }, (_, at) => <StructuredRow key={at}>{at}</StructuredRow>)
+    act(() => root.render(<StructuredList variant="embedded">{rows}</StructuredList>))
+    const list = host.querySelector<HTMLElement>('.structured-list--scrollable')!
+    Object.defineProperty(list, 'clientHeight', { configurable: true, get: () => 190 })
+    Object.defineProperty(list, 'scrollHeight', { configurable: true, get: () => 266 })
+    Object.defineProperty(list, 'scrollTop', { configurable: true, get: () => 0 })
+    act(() => { list.dispatchEvent(new Event('scroll')) })
+    expect(list.dataset.fade).toBe('bottom')
+    act(() => root.unmount())
+    host.remove()
   })
 
   it('marks an embedded list so only its adjacent rows receive separators', () => {

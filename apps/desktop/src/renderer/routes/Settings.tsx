@@ -27,6 +27,7 @@ import { NavRow } from '../components/NavRow.js'
 import { StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { TitleNote } from '../components/TitleNote.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
+import { useScrollFade } from '../hooks/useScrollFade.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { WatchSettings } from './Watches.js'
 import { PaperText } from '../components/paper/PaperText.js'
@@ -79,6 +80,7 @@ type CategoryKey = SettingsCategory
 export function Settings() {
   const m = useMessages()
   const { open, requestedCategory, setOpen } = useSettingsOpen()
+  const paneFade = useScrollFade('y')
   const [current, setCurrent] = useState<CategoryKey>(CATEGORIES[0])
   const [chats, setChats] = useState<ChatSession[]>([])
   const [location, setLocation] = useState<LibraryLocation | null>(null)
@@ -429,7 +431,7 @@ export function Settings() {
         ))}
       </div>
 
-      <div className="set-main">
+      <div className="set-main" ref={paneFade}>
         <PageError error={error} />
         {panes[current]}
       </div>

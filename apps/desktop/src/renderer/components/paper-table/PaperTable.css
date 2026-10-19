@@ -13,6 +13,13 @@
 .desk-body.libview #libList{flex:1;min-height:0;display:flex;flex-direction:column}
 .desk-body.libview .tblwrap{flex:1;min-height:0}
 .tblwrap{overflow:auto;scrollbar-gutter:stable}
+/*
+ * Columns hidden past the right edge fade into it. The sticky title column covers the left edge, so
+ * that edge never fades; the mask leaves out the scrollbars' column and row.
+ */
+.tblwrap[data-fade~="right"]{
+  mask:linear-gradient(to right,#000 calc(100% - var(--sp-24)),transparent) left top/calc(100% - var(--scrollbar-size)) calc(100% - var(--scrollbar-size)) no-repeat,
+    linear-gradient(#000,#000) right top/var(--scrollbar-size) 100% no-repeat,linear-gradient(#000,#000) left bottom/100% var(--scrollbar-size) no-repeat}
 
 /* Top bar of the paper list: filter input + group switch */
 .libbar{display:flex;align-items:center;gap:12px;margin-bottom:16px}

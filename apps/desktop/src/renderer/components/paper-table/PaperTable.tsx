@@ -25,6 +25,7 @@ import { ClearableInput } from '../ClearableInput.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../PageShell.js'
 import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
+import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import {
   useBanner, useCrumbTail, useEscapeLayer, useJump, usePaperCount, useScreen, useScreenReentry, useToast,
@@ -323,6 +324,7 @@ export function PaperTable() {
   const [columnDrop, setColumnDrop] = useState<{ key: string; after: boolean } | null>(null)
   const drag = useRef<WidthDrag | null>(null)
   const table = useRef<HTMLTableElement>(null)
+  const tableFade = useScrollFade('x')
   const consumed = useRef(0)
   // Write queue of the cell being edited: each link resolves to the values the previous step settled
   // on, or to null when a step failed, which voids this pick so it is not sent.
@@ -1036,7 +1038,7 @@ export function PaperTable() {
     }))
   }
   const paperTable = (
-    <div className="tblwrap">
+    <div className="tblwrap" ref={tableFade}>
       <table ref={table} className="ptable">
         <colgroup>
           <col data-cw="t" style={{ width: `${widthOf('t')}px` }} />
