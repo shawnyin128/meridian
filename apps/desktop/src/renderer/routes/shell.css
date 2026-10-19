@@ -152,6 +152,8 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .wkpage .lm{font-size:12px}
 .wkside{box-sizing:border-box;flex:0 0 260px;width:260px;max-width:260px;min-width:0;font-size:var(--fs-sm);line-height:var(--lh-ui);border-left:1px solid var(--sep2);padding-left:24px;
   position:sticky;top:0;max-height:calc(100vh - 190px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
+/* In a window too short for the column to stay pinned with room to read, it scrolls with the page. */
+@media (max-height:860px){.wkside:not(.node-document-pane){position:static;max-height:none}}
 .wkrel{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0}
 .wkrel .rl{font-size:12px;color:var(--ter);width:28px;flex-shrink:0}
 .wkrel .tagchip{cursor:default;margin:0;position:relative}
