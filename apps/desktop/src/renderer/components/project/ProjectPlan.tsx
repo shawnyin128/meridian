@@ -27,7 +27,6 @@ import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
 import { useDragReorder, type Reorderable } from '../../hooks/useDragReorder.js'
-import { DragHandle } from '../DragHandle.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
@@ -314,7 +313,11 @@ function TaskRow({ task, flash, selected, reorder, dropClass = '', onSave, onDel
   flash: boolean
   /** Whether this task's detail panel is the one currently open. */
   selected: boolean
-  /** Omitted for an archived row: it does not move, since its position among other done tasks does not matter. */
+  /**
+   * The whole row is its drag handle: a task's name is a control, not prose, and a grip would take a
+   * column from the narrow plan list. Omitted for an archived row: it does not move, since its
+   * position among other done tasks does not matter.
+   */
   reorder?: Reorderable
   dropClass?: string
   onSave: (patch: TaskPatch) => Promise<boolean>
@@ -325,7 +328,7 @@ function TaskRow({ task, flash, selected, reorder, dropClass = '', onSave, onDel
   const m = useMessages()
   return (
     <StructuredRow
-      composite selected={selected} data-row={task.id} {...reorder?.item} onActivate={onOpen}
+      composite selected={selected} data-row={task.id} {...reorder?.item} {...reorder?.handle} onActivate={onOpen}
       title={m.project.plan.openTask}
       className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}${
         dropClass ? ` ${dropClass}` : ''}`}
@@ -351,7 +354,6 @@ function TaskRow({ task, flash, selected, reorder, dropClass = '', onSave, onDel
         )
         : <TaskNameCell task={task} onSave={onSave} />}
       <RowActions>
-        {reorder === undefined ? null : <DragHandle {...reorder.handle} />}
         <IconButton
           label={m.project.plan.deleteTaskFor(task.title)} title={m.project.plan.deleteTask} size="nested" tone="danger"
           className="row-delete" onClick={(event) => { event.stopPropagation(); onDelete() }}
