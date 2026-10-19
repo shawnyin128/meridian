@@ -231,7 +231,7 @@ function ProjectRow({ project, onOpen, menu, dragProps, dropClassName }: {
   return (
     <div
       className={`prow${dropClassName ? ` ${dropClassName}` : ''}`}
-      data-proj={project.id} onClick={onOpen} {...dragProps}
+      data-proj={project.id} data-dots-row="" onClick={onOpen} {...dragProps}
     >
       <ProjectIdentity project={project} variant="row" showPriority={false} />
       <span className="m">

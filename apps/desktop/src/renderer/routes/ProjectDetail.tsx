@@ -1031,7 +1031,7 @@ export function ProjectDetail({
                         </button>
                       )
                       : (
-                        <div className="pv workspace-field" title={project.workspace.issue ?? project.workspace.root}>
+                        <div className="pv workspace-field" data-dots-row="" title={project.workspace.issue ?? project.workspace.root}>
                           <button
                             className={`workspace-root ${project.workspace.state}`}
                             onClick={openWorkspace}
