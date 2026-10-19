@@ -60,6 +60,10 @@ Current shared contracts:
   `CountBadge` is the one count beside a label. A host places and sizes these through `className` but never
   sets their fill, colour, border, radius or padding.
 - `StatusDot`: the one state dot, in two sizes. A dot whose state no nearby text names carries a `label`.
+- `Tooltip`: the one tooltip, under the one `TooltipProvider` at the renderer root. Its text is the element's
+  name plus the platform's shortcut (`commandShortcut`); it opens after one delay on hover and at once on
+  keyboard focus, and with `whenClipped` only while a cut-off text needs showing whole. `IconButton`'s `label`
+  is its tooltip.
 - `PanelClose`: the close button of a detail panel, with one label and one glyph everywhere.
 - `DetailPanel`: the shared open/closed state and motion contract for right-side details. Its `inline`,
   `overlay`, and `resize` modes cover panels that join layout, slide over it, or widen an existing rail;
