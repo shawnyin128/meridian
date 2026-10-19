@@ -376,7 +376,7 @@ test('项目菜单开着、指针挪到菜单项上之后,悬停才露出的 ...
   // sticks and the bug cannot show.
   await win.locator('[role="menu"] [role="menuitem"]').first().hover()
   await settle(dots)
-  await expect(dots).toHaveCSS('opacity', '1')
+  await expect(card.locator('.row-actions')).toHaveCSS('opacity', '1')
   await settle(card)
   expect(await card.evaluate((el) => getComputedStyle(el).borderColor)).toBe(hoverBorderColor)
 })

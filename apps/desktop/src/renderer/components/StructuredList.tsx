@@ -1,12 +1,25 @@
-import { Children } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, HTMLAttributes, ReactNode, Ref } from 'react'
 import './StructuredList.css'
 
 export const EMBEDDED_LIST_ROW_LIMIT = 5
 
-type StructuredListStyle = CSSProperties & {
-  '--structured-list-row-height'?: string
-  '--structured-list-visible-rows'?: number
+/**
+ * The rendered rows that belong to `list`, in document order: rows of a nested list and rows that
+ * draw no box, such as those of a folded group, do not count.
+ */
+const ownRows = (list: HTMLElement) => [...list.querySelectorAll<HTMLElement>('.structured-row')]
+  .filter((row) => row.closest('.structured-list') === list && row.getClientRects().length > 0)
+
+/**
+ * The height that shows exactly the first `limit` rendered rows of `list`, or null when the list
+ * has no more rows than that.
+ */
+function measureCap(list: HTMLElement, limit: number): number | null {
+  const rows = ownRows(list)
+  if (rows.length <= limit) return null
+  const top = list.getBoundingClientRect().top - list.scrollTop
+  return Math.ceil(rows[limit - 1]!.getBoundingClientRect().bottom - top)
 }
 
 export function StructuredList({
@@ -18,29 +31,56 @@ export function StructuredList({
   variant?: 'card' | 'embedded'
   /**
    * Embedded lists show five rows by default, then keep the surrounding page stable with internal
-   * scrolling. `'all'` is for a list that is the page's own content and scrolls with the page.
+   * scrolling; the cap is the height of the first five rows as rendered. `'all'` is for a list that
+   * is the page's own content and scrolls with the page.
    */
   maxVisibleRows?: number | 'all'
-} & Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'className' | 'style'> & {
-  style?: StructuredListStyle
-}) {
+  style?: CSSProperties
+} & Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'className' | 'style'>) {
   const rowLimit = maxVisibleRows === 'all'
     ? undefined
     : maxVisibleRows ?? (variant === 'embedded' ? EMBEDDED_LIST_ROW_LIMIT : undefined)
-  const scrollable = rowLimit !== undefined && Children.toArray(children).length > rowLimit
+  const list = useRef<HTMLDivElement>(null)
+  const [cap, setCap] = useState<number | null>(null)
+
+  // Runs after every render: rows come and go with the children, and the observer follows the
+  // rows' own size changes, such as text wrapping at a new window width.
+  useLayoutEffect(() => {
+    const node = list.current
+    if (node === null || rowLimit === undefined) {
+      setCap(null)
+      return undefined
+    }
+    const measure = () => setCap(measureCap(node, rowLimit))
+    measure()
+    const rows = ownRows(node)
+    if (rows.length <= rowLimit) return undefined
+    const observer = new ResizeObserver(measure)
+    for (const row of rows.slice(0, rowLimit)) observer.observe(row)
+    return () => observer.disconnect()
+  })
+
   const variantClass = variant === 'embedded' ? ' structured-list--embedded' : ''
-  const scrollClass = scrollable ? ' structured-list--scrollable' : ''
-  const listStyle: StructuredListStyle | undefined = scrollable
-    ? { ...style, '--structured-list-visible-rows': rowLimit }
-    : style
+  const scrollClass = cap === null ? '' : ' structured-list--scrollable'
+  const listStyle = cap === null ? style : { ...style, maxHeight: cap }
   return (
     <div
-      className={`structured-list${variantClass}${scrollClass}${className ? ` ${className}` : ''}`}
+      ref={list} className={`structured-list${variantClass}${scrollClass}${className ? ` ${className}` : ''}`}
       style={listStyle} {...props}
     >
       {children}
     </div>
   )
+}
+
+/**
+ * The slot at a row's end for the actions on that row: neutral ghost glyphs (`IconButton`s, a
+ * destructive one with `tone="danger"`, and `DotsMenu`) that show only while the row is hovered or
+ * holds focus, or while one of their menus or dialogs is open. Any element marked `data-row-actions`
+ * hosts the slot; `StructuredRow` and `ResearchObjectCard` mark themselves.
+ */
+export function RowActions({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return <span className={`row-actions${className ? ` ${className}` : ''}`}>{children}</span>
 }
 
 /**
@@ -68,7 +108,10 @@ export function StructuredRow({
   const rowClass = `structured-row${composite ? ' structured-row--composite' : ''}${selected ? ' structured-row--selected' : ''}${className ? ` ${className}` : ''}`
   if (onActivate && composite) {
     return (
-      <div className={rowClass} style={rowStyle} onClick={onActivate} {...props as HTMLAttributes<HTMLDivElement>}>
+      <div
+        className={rowClass} style={rowStyle} data-row-actions="" onClick={onActivate}
+        {...props as HTMLAttributes<HTMLDivElement>}
+      >
         {children}
       </div>
     )
@@ -82,7 +125,10 @@ export function StructuredRow({
     )
   }
   return (
-    <div ref={rowRef} className={rowClass} style={rowStyle} {...props as HTMLAttributes<HTMLDivElement>}>
+    <div
+      ref={rowRef} className={rowClass} style={rowStyle} data-row-actions=""
+      {...props as HTMLAttributes<HTMLDivElement>}
+    >
       {children}
     </div>
   )

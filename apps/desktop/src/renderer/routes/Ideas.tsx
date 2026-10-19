@@ -12,6 +12,7 @@ import { EmptyState } from '../components/EmptyState.js'
 import { PanelClose } from '../components/PanelClose.js'
 import { DetailPanel } from '../components/DetailPanel.js'
 import { ResearchObjectCard } from '../components/ResearchObjectCard.js'
+import { RowActions } from '../components/StructuredList.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
@@ -99,7 +100,7 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, dragProps, dropClassNa
           <span className="idea-card-updated">{m.ideas.updated(fmt.date(idea.updated))}</span>
         </div>
       </div>
-      {menu}
+      <RowActions>{menu}</RowActions>
     </ResearchObjectCard>
   )
 }

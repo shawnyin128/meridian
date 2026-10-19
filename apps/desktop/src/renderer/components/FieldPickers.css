@@ -14,15 +14,3 @@ button.pv{border:0;background:transparent;font-family:var(--sans);font-size:var(
 .cd.off:hover{background:transparent}
 .cd.today{color:var(--bad);font-weight:700}
 .cd.sel{background:var(--accent-solid);color:var(--on-accent)}
-
-/*
- * "More" button: the sidebar's chat rows and the rows on every screen share it. The row it belongs
- * to carries data-dots-row, and the button shows only while that row is hovered or holds focus, or
- * while its menu is open. It is a real button, so at rest pointer-events:none goes with opacity:0,
- * otherwise it would be invisible but clickable, and the one rule below restores both; rows do not
- * write their own. The [data-state="open"] half covers a modal menu: while it is open,
- * disableOutsidePointerEvents blocks hover on the rest of the page, and the trigger would otherwise
- * disappear along with its row's hover.
- */
-.dots{opacity:0;pointer-events:none}
-[data-dots-row]:hover .dots,[data-dots-row]:focus-within .dots,.dots:focus-visible,.dots[data-state="open"]{opacity:1;pointer-events:auto}

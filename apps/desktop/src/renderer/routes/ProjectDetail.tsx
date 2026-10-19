@@ -22,7 +22,7 @@ import { DetailPanel } from '../components/DetailPanel.js'
 import { PanelClose } from '../components/PanelClose.js'
 import { ChoicePicker, DateButton, DotsMenu, PriorityPicker } from '../components/FieldPickers.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
-import { StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { TitleNote } from '../components/TitleNote.js'
 import {
   ProjectEventRow, ProjectSignalDate, ProjectSignalKind,
@@ -1060,24 +1060,26 @@ export function ProjectDetail({
                         </button>
                       )
                       : (
-                        <div className="pv workspace-field" data-dots-row="" title={project.workspace.issue ?? project.workspace.root}>
+                        <div className="pv workspace-field" data-row-actions="" title={project.workspace.issue ?? project.workspace.root}>
                           <WorkspaceRoot
                             state={project.workspace.state} name={workspaceName ?? project.workspace.root}
                             onOpen={openWorkspace}
                           />
-                          <DotsMenu>
-                            <MenuItem onSelect={refreshWorkspace}>{m.project.identity.refreshWorkspace}</MenuItem>
-                            <MenuItem onSelect={openWorkspace}>
-                              {m.project.identity.changeWorkspace}
-                            </MenuItem>
-                            <MenuItem
-                              className="mi danger"
-                              onSelect={() => applyWrite(
-                                projectApi.bindWorkspace(projectId, null),
-                                m.project.identity.workspaceDisconnected, toast,
-                              )}
-                            >{m.project.identity.disconnectWorkspace}</MenuItem>
-                          </DotsMenu>
+                          <RowActions>
+                            <DotsMenu>
+                              <MenuItem onSelect={refreshWorkspace}>{m.project.identity.refreshWorkspace}</MenuItem>
+                              <MenuItem onSelect={openWorkspace}>
+                                {m.project.identity.changeWorkspace}
+                              </MenuItem>
+                              <MenuItem
+                                className="mi danger"
+                                onSelect={() => applyWrite(
+                                  projectApi.bindWorkspace(projectId, null),
+                                  m.project.identity.workspaceDisconnected, toast,
+                                )}
+                              >{m.project.identity.disconnectWorkspace}</MenuItem>
+                            </DotsMenu>
+                          </RowActions>
                         </div>
                       )}
                   </div>

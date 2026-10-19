@@ -104,7 +104,7 @@
  * for a menu item. :has() takes its argument's specificity, higher than .srow.on; :where() zeroes it,
  * so this rule does not override the selected row.
  */
-.srow:hover,.srow:where(:has(.dots[data-state="open"])){background:var(--hover)}
+.srow:hover,.srow:where(:has(.row-actions [data-state="open"])){background:var(--hover)}
 .srow.on{background:var(--accent-soft);color:var(--ink)}
 .srow.on .ic{color:var(--accent)}
 .update-row{display:flex;flex-shrink:0;align-items:center;gap:8px;margin-top:6px;padding:7px 8px;border-radius:var(--r-md);

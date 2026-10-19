@@ -17,7 +17,7 @@ import { FormInput, FormTextarea } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { AgentLabel } from '../SourceLabel.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
 import { Tag } from '../Tag.js'
 import { WikiFormDialog, WikiFormField } from './WikiFormDialog.js'
 import { PaperText } from '../paper/PaperText.js'
@@ -236,17 +236,19 @@ export function WikiClaims({ page, pending, links, onApply }: {
           <StructuredList variant="embedded" maxVisibleRows="all" className="wkclaims">
             {page.claims.map((claim) => (
               <StructuredRow
-                key={claim.id} data-claim={claim.id} data-dots-row=""
+                key={claim.id} data-claim={claim.id}
                 className={`wkclaim${claim.conflicts.length > 0 ? ' wkclaim--conflict' : ''}`}
               >
                 <div className="wkclaim-head">
                   <span className="wkclaim-text">{claim.text}</span>
                   {claim.by === HUMAN_PRODUCER ? null : <AgentLabel />}
-                  <DotsMenu label={c.actionsLabel(claim.text)}>
-                    <MenuItem disabled={pending} onSelect={() => open({ kind: 'revise', claim })}>{c.revise}</MenuItem>
-                    <MenuItem disabled={pending} onSelect={() => open({ kind: 'conflict', claim })}>{c.markConflict}</MenuItem>
-                    <MenuItem disabled={pending} onSelect={() => open({ kind: 'retract', claim })}>{c.retract}</MenuItem>
-                  </DotsMenu>
+                  <RowActions>
+                    <DotsMenu label={c.actionsLabel(claim.text)}>
+                      <MenuItem disabled={pending} onSelect={() => open({ kind: 'revise', claim })}>{c.revise}</MenuItem>
+                      <MenuItem disabled={pending} onSelect={() => open({ kind: 'conflict', claim })}>{c.markConflict}</MenuItem>
+                      <MenuItem disabled={pending} onSelect={() => open({ kind: 'retract', claim })}>{c.retract}</MenuItem>
+                    </DotsMenu>
+                  </RowActions>
                 </div>
                 <div className="wkclaim-meta">
                   <span className="wkclaim-version">v{claim.version}</span>

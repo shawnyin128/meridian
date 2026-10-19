@@ -195,7 +195,7 @@
 .research-map-detail-head strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-read)}
 .research-map-detail-head>div>span,.research-map-readonly{color:var(--ter);font-size:var(--fs-cap)}
 .research-map-readonly{flex:0 0 auto;padding-top:2px}
-.research-map-papers{padding:0 16px;--structured-list-row-height:78px}
+.research-map-papers{padding:0 16px}
 .research-map-paper{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px;min-height:78px;padding:10px 0}
 .research-map-paper-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
 .research-map-paper-meta{color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}

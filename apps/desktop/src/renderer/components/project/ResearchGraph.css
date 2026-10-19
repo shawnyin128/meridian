@@ -56,10 +56,9 @@
 .node-branch-group{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:start;gap:8px}
 .node-branch-label{padding-top:var(--sp-2);color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
 .node-branch-list{display:flex;flex-wrap:wrap;gap:6px}
-.node-tasks{--structured-list-row-height:38px}
 .node-task-row{display:flex;align-items:center;gap:8px;min-height:38px;padding:8px 2px}
 .node-task-row>.fade-text{flex:1;min-width:0}
-.node-ideas{display:grid;--structured-list-row-height:54px}
+.node-ideas{display:grid}
 .node-ideas>.lm{padding:8px 2px}
 .node-idea-row{display:grid;gap:3px;min-height:54px;padding:8px 2px}
 .node-idea-title,.node-idea-source{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

@@ -70,7 +70,6 @@
 .storage-reset{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;
   padding-top:14px;border-top:1px solid var(--sep2);color:var(--sec);font-size:var(--fs-sm)}
 .storage-backups-loading{padding:8px 2px;color:var(--ter);font-size:var(--fs-sm)}
-.storage-backup-list{--structured-list-row-height:58px}
 .storage-backup-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;
   min-height:58px;padding:9px 12px}
 .storage-backup-copy{min-width:0;display:flex;flex-direction:column;gap:3px}

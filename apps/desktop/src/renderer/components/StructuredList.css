@@ -1,8 +1,7 @@
-.structured-list{overflow:hidden;background:var(--card);border:1px solid var(--sep);border-radius:var(--r-xl)}
+.structured-list{overflow:hidden;background:var(--card);border:1px solid var(--sep);border-radius:var(--r-card)}
 .structured-list--embedded{overflow:visible;background:transparent;border:0;border-radius:0}
-.structured-list--embedded.structured-list--scrollable{overflow-x:hidden;overflow-y:auto;
-  max-height:calc(var(--structured-list-row-height,38px)*var(--structured-list-visible-rows));
-  overscroll-behavior:contain;scrollbar-gutter:stable}
+/* StructuredList sets the height from the first five rendered rows. */
+.structured-list--scrollable{overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
 .structured-row{box-sizing:border-box;width:100%;border:0;border-top:1px solid var(--sep2);background:transparent;color:var(--ink);font:inherit;text-align:left}
 .structured-row:first-child{border-top:0}
 .structured-list--embedded>.structured-row{border-top:0}
@@ -10,3 +9,13 @@
 button.structured-row,.structured-row--composite{cursor:pointer;transition:background var(--t-fast) var(--e-out)}
 button.structured-row:hover,button.structured-row:focus-visible,.structured-row--composite:hover{background:var(--hover);outline:0}
 .structured-row--selected{background:var(--hover)}
+
+/*
+ * The row-actions slot: hidden and not clickable at rest, shown while its host (an element marked
+ * data-row-actions) is hovered or holds focus, or while one of its menus or dialogs is open. Hosts
+ * do not write their own reveal.
+ */
+.row-actions{display:inline-flex;flex:none;align-items:center;gap:var(--sp-2);opacity:0;pointer-events:none;
+  transition:opacity var(--t-fast) var(--e-out)}
+[data-row-actions]:hover .row-actions,[data-row-actions]:focus-within .row-actions,
+.row-actions:has([data-state="open"]){opacity:1;pointer-events:auto}

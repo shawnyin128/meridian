@@ -23,6 +23,7 @@ import { ProjectBlockerView, ProjectNextActionView } from '../components/project
 import { ProjectIdentity } from '../components/project/ProjectIdentity.js'
 import { EventText } from '../components/project/ProjectSignals.js'
 import { ResearchObjectCard } from '../components/ResearchObjectCard.js'
+import { RowActions } from '../components/StructuredList.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -171,7 +172,7 @@ function ProjectPanel({ project, onOpen, menu, dragProps, dropClassName }: {
             )
             : m.research.panel.noUpcomingMilestone}
         </span>
-        {menu}
+        <RowActions>{menu}</RowActions>
       </div>
       <div className="project-card-decisions">
         <div className="project-card-decision">
@@ -231,7 +232,7 @@ function ProjectRow({ project, onOpen, menu, dragProps, dropClassName }: {
   return (
     <div
       className={`prow${dropClassName ? ` ${dropClassName}` : ''}`}
-      data-proj={project.id} data-dots-row="" onClick={onOpen} {...dragProps}
+      data-proj={project.id} data-row-actions="" onClick={onOpen} {...dragProps}
     >
       <button type="button" className="prow-open">
         <ProjectIdentity project={project} variant="row" showPriority={false} />
@@ -241,7 +242,7 @@ function ProjectRow({ project, onOpen, menu, dragProps, dropClassName }: {
         {idleNote(idle, m.project.signals.idle)}
       </span>
       <span className="tp">{project.topic}</span>
-      {menu}
+      <RowActions>{menu}</RowActions>
     </div>
   )
 }

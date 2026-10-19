@@ -174,11 +174,11 @@ test('四处「更多」菜单同一个触发器:tooltip 一样、悬停显形�
   await card.hover()
   const dots = card.locator('.dots')
   await expect(dots).toHaveAttribute('title', '更多')
-  await expect(dots).toHaveCSS('opacity', '1')
+  await expect(card.locator('.row-actions')).toHaveCSS('opacity', '1')
   await dots.click()
   // Move off the card: only the open state, not hover, should be keeping the trigger visible now.
   await parkPointer(win)
-  await expect(dots).toHaveCSS('opacity', '1') // the trigger stays put while its own menu is open
+  await expect(card.locator('.row-actions')).toHaveCSS('opacity', '1') // the trigger stays put while its own menu is open
   await win.keyboard.press('Escape')
 })
 
