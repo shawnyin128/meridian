@@ -1,11 +1,14 @@
 import { useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, RefObject } from 'react'
+import { composing } from '../lib/keyboard.js'
 import { useOnLeave } from './useOnLeave.js'
 
 /**
  * Keyboard and leave handling for an inline draft: Enter calls `onSubmit`, and so does leaving the
  * draft, by a mouse press outside it or focus moving from inside it to an element outside it; Esc
- * calls `onCancel`. Leaving a draft for which `isEmpty` returns true calls `onCancel` instead of
+ * calls `onCancel` and never propagates. While an input method is composing, Enter and Esc belong
+ * to it: they neither submit nor cancel.
+ * Leaving a draft for which `isEmpty` returns true calls `onCancel` instead of
  * submitting; without `isEmpty`, leaving always submits. The window losing focus (switching to
  * another app) does not count as leaving. `onSubmit` receives whether the draft is being left, and
  * returns whether it consumed the draft: true closes the draft from here, false keeps the draft and
@@ -98,8 +101,10 @@ export function useInlineDraft({ row, triggers, onSubmit, onCancel, isEmpty }: {
       'aria-invalid': invalid || undefined,
       onInput: clearInvalid,
       onKeyDown: (e) => {
+        if (e.key === 'Escape') e.stopPropagation()
+        if (composing(e.nativeEvent)) return
         if (e.key === 'Enter') submit(() => onSubmit(false))
-        if (e.key === 'Escape') { e.stopPropagation(); close() }
+        if (e.key === 'Escape') close()
       },
     },
     cancel: close,
