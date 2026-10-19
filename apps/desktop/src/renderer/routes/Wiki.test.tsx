@@ -92,6 +92,7 @@ describe('Wiki keyboard reach', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     fixture.aggregation.mockReset().mockResolvedValue(AGG)
     fixture.paper.mockReset().mockResolvedValue(PAPER)
+    fixture.open.mockReset()
     document.body.innerHTML = ''
     host = document.createElement('div')
     document.body.append(host)
@@ -148,6 +149,16 @@ describe('Wiki keyboard reach', () => {
     expect(host.querySelector('.source-anchor-quote')!.textContent).toBe('p.3 · 原文“four bits”')
     await press(anchor)
     expect(fixture.open).toHaveBeenCalledWith('reader', 'p1', { page: 3 })
+  })
+
+  it('论文页的「去论文列表查看」是整页的操作,在屏头右端,点它到论文表里找到这篇', async () => {
+    expect(host.querySelector('.desk-head .page-actions')).toBeNull()
+    await press(host.querySelector<HTMLElement>('[data-wk="papers/p1"] .tt')!)
+    const go = host.querySelector<HTMLButtonElement>('.desk-head > .page-actions > .btn')!
+    expect(go.textContent).toBe('去论文列表查看')
+    expect(host.querySelector('.wkside .btn')).toBeNull()
+    await press(go)
+    expect(fixture.open).toHaveBeenCalledWith('papers', 'EAGLE-2')
   })
 
   it('opens a paper page membership from a button', async () => {

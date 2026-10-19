@@ -180,7 +180,7 @@ test('忽略一条:它进垃圾桶,恢复后回到推送屏原来的位置', asy
   expect(await inboxFromCore(win)).toHaveLength(order.length - 1)
 
   await win.locator('[data-desk="trash"]').click()
-  await expect(shown(win, '.section-heading')).toHaveText('论文推送 · 1清空垃圾桶')
+  await expect(shown(win, '.section-heading')).toHaveText('论文推送 · 1')
   await expect(win.locator('.tgroup .trow .tt2')).toHaveText([dropped])
   await win.locator('.tgroup .trow .btn', { hasText: '恢复' }).click()
 

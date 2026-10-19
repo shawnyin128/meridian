@@ -36,7 +36,7 @@
 .add-action{display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap}
 .add-action>svg{width:12px;height:12px;flex:none}
 
-/* Filter bar buttons: the paper table's group bar .filters shares them with the feed's .feedbar */
+/* The paper table's group bar */
 .filters{display:flex;gap:6px;margin-bottom:12px}
 
 /*
@@ -47,7 +47,6 @@
 .wrow{display:flex;align-items:center;gap:8px;min-height:40px;padding:8px 12px;font-size:13px}
 .wrow .nm{display:flex;align-items:center;flex:1;min-width:0;min-height:22px;line-height:22px}
 
-.inbox-toolbar{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:0 0 14px}
 .discovery-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-4px 0 16px}
 .discovery-note{margin:0;color:var(--ter);font-size:var(--fs-sm)}
 .direction-panel{margin:0 0 18px;border:1px solid var(--sep);border-radius:var(--r-lg);overflow:hidden;background:var(--card)}
@@ -155,8 +154,7 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .wkrel .tagchip{cursor:default;margin:0;position:relative}
 .wkrel .tagchip[data-wk]{cursor:pointer}
 
-.desk-head .fetchnote{margin-left:auto;font-size:var(--fs-sm);color:var(--ter);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.desk-head .fetchnote+.btn{margin-left:2px;flex-shrink:0}
+.desk-head .fetchnote{font-size:var(--fs-sm);color:var(--ter);white-space:nowrap}
 
 /* "Needs attention" block and its dated rows, shared by the project and wiki screens */
 .attn{padding:0;margin-bottom:0}

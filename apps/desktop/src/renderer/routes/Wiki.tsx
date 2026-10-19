@@ -599,7 +599,12 @@ export function Wiki() {
 
   return (
     <PageShell>
-      <PageHeader>
+      <PageHeader
+        actions={shownPaper === null
+          ? undefined
+          // Papers filters its table down to this paper by title; the user continues from that row's details.
+          : <button className="btn" onClick={() => jumpTo('papers', shownPaper.title)}>{m.wiki.viewInPaperList}</button>}
+      >
         {place === null ? null : <BackButton onClick={back} />}
         <PageTitle>{title}</PageTitle>
       </PageHeader>
@@ -888,12 +893,6 @@ export function Wiki() {
                       </>
                     )}
                   <div className="pk">{m.wiki.updatedLabel}</div><div className="pv">{fmt.date(shownPaper.updated)}</div>
-                </div>
-                {/* Papers filters its table down to this paper by title; the user continues from that row's details. */}
-                <div className="macts">
-                  <button className="btn" onClick={() => jumpTo('papers', shownPaper.title)}>
-                    {m.wiki.viewInPaperList}
-                  </button>
                 </div>
                 <SectionHeading variant="rail">{m.wiki.membershipHeading}</SectionHeading>
                 {shownPaper.memberships.length === 0

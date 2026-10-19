@@ -288,10 +288,11 @@ describe('PaperTable', () => {
     listCall.resolve({ rows: mappedRows, total: 2 })
     await flush()
 
-    expect(host.querySelector('.desk-head')?.children).toHaveLength(1)
+    expect([...host.querySelector('.desk-head')!.children].map((child) => child.className)).toEqual(['t', 'page-actions'])
     const mapSwitch = [...host.querySelectorAll<HTMLButtonElement>('.paper-view-toolbar .segmented-control button')]
       .find((button) => button.textContent === '研究地图')!
-    expect(host.querySelector('.paper-view-toolbar .pdfupload')).not.toBeNull()
+    expect(host.querySelector('.desk-head .page-actions .pdfupload')).not.toBeNull()
+    expect(host.querySelector('.paper-view-toolbar .pdfupload')).toBeNull()
     await act(async () => { mapSwitch.click() })
     await flush()
 

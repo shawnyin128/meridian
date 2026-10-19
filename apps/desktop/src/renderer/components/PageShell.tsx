@@ -15,14 +15,23 @@ export const PageShell = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElemen
   },
 )
 
-/** Fixed-height page identity bar. Page actions belong in `PageToolbar`, not beside the title. */
-export const PageHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  function PageHeader({ className, ...props }, ref) {
-    return <div ref={ref} className={classes('desk-head', className)} {...props} />
+/**
+ * Fixed-height page identity bar: the back button when the page has one and the title, as children,
+ * and `actions`, everything that acts on the whole page, at its right end. Page actions are default-size
+ * buttons, the primary one last.
+ */
+export const PageHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { actions?: ReactNode }>(
+  function PageHeader({ className, children, actions, ...props }, ref) {
+    return (
+      <div ref={ref} className={classes('desk-head', className)} {...props}>
+        {children}
+        {actions === undefined ? null : <div className="page-actions">{actions}</div>}
+      </div>
+    )
   },
 )
 
-/** Shared in-content row for page actions and peer-view switches. */
+/** The one place for switching between peer views of the page, with the filters that go with them, at the body's start. */
 export const PageToolbar = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   function PageToolbar({ className, ...props }, ref) {
     return <div ref={ref} className={classes('page-toolbar', className)} {...props} />

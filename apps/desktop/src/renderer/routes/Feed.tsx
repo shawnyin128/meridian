@@ -7,7 +7,7 @@ import { useJump, useToday, useVaultRevision } from '../shell/AppShell.js'
 import { CONFLICT_THREAD } from '../lib/chat.js'
 import { DayHeading, daySectionName } from '../components/DayHeading.js'
 import {
-  PageBody, PageError, PageHeader, PageShell, PageTitle,
+  PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar,
 } from '../components/PageShell.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { PaperText } from '../components/paper/PaperText.js'
@@ -170,16 +170,16 @@ export function Feed() {
       <PageHeader><PageTitle>{m.feed.title}</PageTitle></PageHeader>
       <PageError error={error} />
       <PageBody>
-        <div className="feedbar">
-          <SegmentedControl
-            label={m.feed.sourceFieldLabel}
-            value={source ?? 'all'}
-            options={FILTERS.map((f) => ({ value: f ?? 'all', label: f === null ? m.feed.filters.all : m.feed.sources[f] }))}
-            onChange={(value) => setSource(value === 'all' ? null : value as FeedSource)}
-          />
-        </div>
-
         <div className="msgs">
+          {/* The switch sits in the stream, so it lines up with the entries' column. */}
+          <PageToolbar className="mwrap">
+            <SegmentedControl
+              label={m.feed.sourceFieldLabel}
+              value={source ?? 'all'}
+              options={FILTERS.map((f) => ({ value: f ?? 'all', label: f === null ? m.feed.filters.all : m.feed.sources[f] }))}
+              onChange={(value) => setSource(value === 'all' ? null : value as FeedSource)}
+            />
+          </PageToolbar>
           {/* A source-filtered stream omits date headings because the heading itself has no source. */}
           <FeedRows
             rows={rows} showDays={source === null} nowMs={nowMs}

@@ -333,7 +333,28 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
 
   return (
     <PageShell>
-      <PageHeader>
+      <PageHeader
+        actions={(
+          <>
+            <SortMenu
+              variant="page" label={m.research.list.sort}
+              options={[
+                { label: m.research.list.sortPriority, onSelect: () => sortBy('priority') },
+                { label: m.research.list.sortMilestone, onSelect: () => sortBy('milestone') },
+              ]}
+            />
+            <AddAction
+              variant="page" id="projNew" ref={projNew}
+              onClick={() => {
+                // An open row is only refocused, keeping the half-typed name, so this click does not
+                // count as outside the row.
+                if (creating) createRow.current?.querySelector('input')?.focus()
+                else setCreating(true)
+              }}
+            >{m.research.list.create}</AddAction>
+          </>
+        )}
+      >
         <PageTitle>{m.research.list.title(projects.length)}</PageTitle>
       </PageHeader>
       <PageError error={error} />
@@ -341,27 +362,7 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
       <PageBody>
         {groups.map((g, i) => (
           <Fragment key={g.status}>
-            <SectionHeading actions={i === 0
-              ? (
-                <>
-                  <SortMenu label={m.research.list.sort} options={[
-                    { label: m.research.list.sortPriority, onSelect: () => sortBy('priority') },
-                    { label: m.research.list.sortMilestone, onSelect: () => sortBy('milestone') },
-                  ]}
-                  />
-                  <AddAction
-                    variant="page" id="projNew" ref={projNew}
-                    onClick={() => {
-                      // An open row is only refocused, keeping the half-typed name, so this click does not
-                      // count as outside the row.
-                      if (creating) createRow.current?.querySelector('input')?.focus()
-                      else setCreating(true)
-                    }}
-                  >{m.research.list.create}</AddAction>
-                </>
-              )
-              : undefined}
-            >{m.research.list.groupHeading(g.status, g.items.length)}</SectionHeading>
+            <SectionHeading>{m.research.list.groupHeading(g.status, g.items.length)}</SectionHeading>
             {i === 0 && creating
               ? (
                 <ProjectCreateRow

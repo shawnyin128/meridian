@@ -208,7 +208,7 @@ test('首页论文卡进论文页;个人理解与 Wiki 内容分层,没内化的
   // "View in the paper list" goes to Papers with the title in the filter box. In the fixture, QuaRot and
   // SpinQuant each have a same-named paper page copied from an old vault, so the filtered row count can
   // only be asserted non-zero.
-  await shown(win).locator('.macts .btn').click()
+  await shown(win).locator('.desk-head .page-actions .btn', { hasText: '去论文列表查看' }).click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['我的库', '论文'])
   await expect(win.locator('#libq')).toHaveValue(paper.title)
   // The filter box fills at once, but rows wait for papers.list to return, so poll the row count rather

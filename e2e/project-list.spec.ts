@@ -204,7 +204,7 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   expect((await listProjects(win)).map((p) => p.id)).not.toContain(created!.id)
 
   await win.locator('[data-desk="trash"]').click()
-  await expect(shown(win).locator('.section-heading')).toHaveText('项目 · 1清空垃圾桶')
+  await expect(shown(win).locator('.section-heading')).toHaveText('项目 · 1')
   await expect(win.locator('.tgroup .trow .tt2')).toHaveText([RENAMED_PROJECT])
   await win.locator('.tgroup .trow .btn', { hasText: '恢复' }).click()
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
@@ -470,7 +470,7 @@ test('排序按钮:按优先级重排后写进库里,与算出来的顺序一致
     .sort((a, b) => a.priority.localeCompare(b.priority) || a.i - b.i)
     .map((p) => p.id)
 
-  const sortTrigger = win.locator('.section-heading-actions .sort-menu', { hasText: '排序' })
+  const sortTrigger = win.locator('.desk-head .page-actions .sort-menu', { hasText: '排序' })
   const sortBox = await sortTrigger.boundingBox()
   const addBox = await win.locator('#projNew').boundingBox()
   // The sort entry sits beside the page's add action and must share its height and baseline.

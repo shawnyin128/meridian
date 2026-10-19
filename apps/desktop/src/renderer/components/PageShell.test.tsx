@@ -42,20 +42,24 @@ describe('PageShell', () => {
     expect(renderToStaticMarkup(<PageError error={null} />)).toBe('')
   })
 
-  it('keeps peer-view switches and page actions in the shared content toolbar', () => {
+  it('puts page actions in their own slot at the header\'s right end, after the title', () => {
+    const html = renderToStaticMarkup(
+      <PageHeader actions={<AddAction variant="page">Import</AddAction>}><PageTitle>Papers</PageTitle></PageHeader>,
+    )
+    expect(html).toMatch(/^<div class="desk-head"><span class="t">Papers<\/span><div class="page-actions"><button class="btn pri add-action add-action-page">/)
+  })
+
+  it('keeps peer-view switches in the shared content toolbar', () => {
     const html = renderToStaticMarkup(
       <PageToolbar>
         <SegmentedControl
-          size="sm" label="View" value="list"
+          label="View" value="list"
           options={[{ value: 'list', label: 'List' }, { value: 'map', label: 'Map' }]}
           onChange={() => undefined}
         />
-        <AddAction variant="page">Import</AddAction>
       </PageToolbar>,
     )
-    expect(html).toContain('class="page-toolbar"')
-    expect(html).toContain('class="segmented-control segmented-control--sm"')
-    expect(html).toContain('class="btn pri add-action add-action-page"')
+    expect(html).toMatch(/^<div class="page-toolbar"><div [^>]*class="segmented-control segmented-control--md"/)
   })
 
   it('gives the rail variant its own class and keeps actions in the shared slot', () => {

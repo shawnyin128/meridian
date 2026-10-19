@@ -1,13 +1,13 @@
 /*
- * Feed filter bar, source cards and briefing block, copied rule by rule from
+ * Feed source cards and briefing block, copied rule by rule from
  * e2e/fixtures/platform-shell-demo.html. In the demo this screen is in its feed-only state
  * (.main.feedmain); the values below are the ones from that state.
  */
 
 .feedcol{background:var(--content)}
-.feedbar{display:flex;gap:6px;padding:10px 8px 2px;justify-content:center;flex-wrap:wrap;flex-shrink:0;position:relative}
 /* A full-screen feed has a wider text column than chat, as in the demo's .main.feedmain .feedcol .mwrap */
 .feedcol .mwrap{width:min(var(--pagew),92%)}
+.feedcol .msgs>.page-toolbar{margin:0 auto}
 .feed-day{box-sizing:border-box}
 
 .fitem{background:var(--card);border:1px solid var(--sep2);border-radius:var(--r-lg);padding:12px 16px}

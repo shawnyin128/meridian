@@ -42,7 +42,7 @@ function ClearButton({ count, onClear }: { count: number; onClear: () => void })
   const m = useMessages()
   return (
     <ConfirmDialog
-      trigger={<button className="btn danger sm">{m.trash.clear}</button>}
+      trigger={<button className="btn danger">{m.trash.clear}</button>}
       title={m.trash.confirmClear} description={m.trash.confirmClearDescription(count)}
       confirmLabel={m.trash.confirmClearLabel} onConfirm={onClear}
     />
@@ -51,7 +51,7 @@ function ClearButton({ count, onClear }: { count: number; onClear: () => void })
 
 /**
  * Trash: the safety net for every deletion in the app. Entries are grouped by kind, and each can be
- * restored to where it was or deleted permanently; the first group's heading holds "Empty trash".
+ * restored to where it was or deleted permanently; the page header holds "Empty trash".
  * Entries come from trash.list; this screen does not hold the deleted content itself.
  */
 export function Trash() {
@@ -88,7 +88,9 @@ export function Trash() {
 
   return (
     <PageShell>
-      <PageHeader><PageTitle>{m.trash.title(entries.length)}</PageTitle></PageHeader>
+      <PageHeader actions={groups.length === 0 ? undefined : <ClearButton count={entries.length} onClear={clear} />}>
+        <PageTitle>{m.trash.title(entries.length)}</PageTitle>
+      </PageHeader>
 
       <PageError error={error} />
 
@@ -106,13 +108,9 @@ export function Trash() {
               {m.trash.empty}
             </EmptyState>
           )
-          : groups.map((g, i) => (
+          : groups.map((g) => (
             <Fragment key={g.kind}>
-              <SectionHeading
-                // The demo only places the clear button on the title of the first group
-                actions={i === 0 ? <ClearButton count={entries.length} onClear={clear} /> : undefined}
-              >{m.trash.kinds[g.kind]} · {g.items.length}
-              </SectionHeading>
+              <SectionHeading>{m.trash.kinds[g.kind]} · {g.items.length}</SectionHeading>
               <StructuredList className="tgroup">
                 {g.items.map((entry) => (
                   <StructuredRow className="trow" key={entry.id}>
