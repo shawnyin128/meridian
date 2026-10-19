@@ -382,7 +382,10 @@ export const ProjectSummarySchema = ProjectDetailSchema.pick({
   control: ProjectControlSchema,
   /** One completion value per milestone; the earliest unfinished item is next, with titles kept in details. */
   milestones: z.array(z.object({ date: IsoDate, done: z.boolean() }).strict()),
-  /** Last three research-log entries in event order, newest last. */
+  /**
+   * The three newest research records on the page or in the bound workspace, in
+   * `sortRecordsNewestFirst` order reversed: newest last.
+   */
   recentEvents: z.array(z.object({
     date: IsoDate, text: z.string(), origin: z.enum(['agent', 'user']).optional(),
   }).strict()),

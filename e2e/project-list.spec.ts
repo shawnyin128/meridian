@@ -215,18 +215,18 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   expect((await listProjects(win)).find((p) => p.id === created!.id)?.status).toBe('搁置')
 })
 
-test('面板只显示最新一条推进,停滞天数与细行的上次推进按最近推进那天算', async ({ win }) => {
+test('面板的最近推进、停滞天数与细行的上次推进都按最近推进那天算', async ({ win }) => {
   await gotoList(win)
   const today = await vaultToday(win)
 
   const draft = await getEvents(win, 'draft')
   expect(draft.length).toBeGreaterThan(3)
+  const draftProgress = await lastProgress(win, 'draft')
   const recent = await shown(win).locator('[data-proj="draft"] .project-card-recent').innerText()
-  expect(recent).toContain(dshort(draft.at(-1)!.date))
+  expect(recent).toContain(dshort(draftProgress!))
 
   // Nothing has changed draft since its latest entry; the earliest entry is further back, so reading
   // the wrong end of the log gives a different number.
-  const draftProgress = await lastProgress(win, 'draft')
   expect(draftProgress).toBe(draft.at(-1)!.date)
   await expect(shown(win).locator('[data-proj="draft"] .project-card-alert'))
     .toContainText(`已 ${daysSince(today, draftProgress!)} 天无推进`)
