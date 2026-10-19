@@ -210,10 +210,10 @@ function ProjectPanel({ project, onOpen, menu, dragProps, dropClassName }: {
           {project.lastProgress === undefined
             ? <span className="project-card-empty">{m.research.panel.noRecords}</span>
             : (
-              <span title={record?.text}>
-                {fmt.date(project.lastProgress)}
-                {record === undefined ? null : <> <EventText text={record.text} origin={record.origin} /></>}
-              </span>
+              <>
+                <span>{fmt.date(project.lastProgress)}</span>
+                {record === undefined ? null : <EventText text={record.text} origin={record.origin} />}
+              </>
             )}
         </span>
       </div>

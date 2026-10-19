@@ -35,6 +35,24 @@ describe('feed rows', () => {
     expect(html).toContain('<span class="ftime">3分钟前</span>')
   })
 
+  it('heads each card with its source as a neutral label, the icon in the label colour rather than a tone of its own', () => {
+    const html = renderToStaticMarkup(
+      <MessagesProvider>
+        <TodayContext.Provider value="2026-09-20">
+          <FeedRows
+            rows={[{ ...ENTRY, source: 'me' }, { ...ENTRY, id: 'entry-2', source: 'lab' }]} showDays={false}
+            nowMs={Date.parse('2026-09-20T12:03:00.000Z')} onOpenConflict={() => {}}
+          />
+        </TodayContext.Provider>
+      </MessagesProvider>,
+    )
+
+    expect(html).not.toContain('style="color')
+    expect(html.match(/<div class="fsrc"><span class="tag tag--label tag--neutral source-label"><span class="fic">/g)).toHaveLength(2)
+    expect(html).toContain('<span class="tag-text">我</span>')
+    expect(html).toContain('<span class="tag-text">实验</span>')
+  })
+
   it('renders the LaTeX of a paper title in an emphasized run', () => {
     const entry: FeedEntry = {
       ...ENTRY,

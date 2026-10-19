@@ -79,7 +79,7 @@ test('论文详情开着时再点侧栏「论文」,详情收起回到表格', a
   await expect(shown(win).locator('.pdetail')).toHaveCount(0)
 })
 
-test('coding agent 在项目工作区记下的想法出现在想法页,标着来自 coding agent,没有「打开来源对话」', async ({ win }) => {
+test('coding agent 在项目工作区记下的想法出现在想法页,标着 agent,没有「打开来源对话」', async ({ win }) => {
   const repo = mkdtempSync(join(tmpdir(), 'meridian-agent-ideas-'))
   const ideaCount = win.locator('[data-desk="ideas"] .n')
   const before = Number(await ideaCount.textContent())
@@ -99,7 +99,7 @@ test('coding agent 在项目工作区记下的想法出现在想法页,标着来
     await gotoIdeas(win)
     const card = shown(win).locator('.idea-card', { hasText: 'agent 记下的想法' })
     await expect(card).toHaveCount(1)
-    await expect(card.locator('.idea-source-kind')).toHaveText('coding agent')
+    await expect(card.locator('.idea-source-kind')).toHaveText('agent')
     await expect(ideaCount).toHaveText(String(before + 1))
     await expect(card.locator('.idea-project-tag')).toHaveText('项目 · draft 效率')
     await card.click()

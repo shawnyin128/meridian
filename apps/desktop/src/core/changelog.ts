@@ -592,7 +592,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         const target: ChangeTarget = { kind: 'project', id: project }
         const before = entityOf(target)
         ops.addAgentTask(project, request)
-        push(target, 'agent 新增任务', 'snapshot', before, undefined, 'Meridian')
+        push(target, '新增任务', 'snapshot', before, undefined, 'Meridian')
       }
     },
 

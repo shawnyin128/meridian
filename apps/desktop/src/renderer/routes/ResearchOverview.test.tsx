@@ -63,7 +63,21 @@ describe('研究总览的项目进展', () => {
     ])]
     await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))
     const cells = host.querySelectorAll('.ovpulse-row[data-proj="spec"] .ovpulse-cell')
-    expect(cells[1]!.querySelector('b')!.textContent).toBe('后写的记录')
+    expect(cells[1]!.querySelector('.ovpulse-latest')!.textContent).toBe('后写的记录')
+  })
+
+  it('最近进展和项目进展里 agent 写的记录都在那一行的末尾带 agent 标签,我写的不带', async () => {
+    api.rows = [row([
+      { date: '2026-10-15', text: '我记的', kind: 'note' },
+      { date: '2026-10-16', text: 'agent 记的', kind: 'result', origin: 'agent' },
+    ])]
+    await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))
+    const recent = [...host.querySelectorAll('.ovcols .ovlist-row')]
+      .map((line) => `${line.querySelector('.ovlist-main')!.textContent} ${line.querySelector('.ovlist-meta .source-label')?.textContent ?? '-'}`)
+    expect(recent).toEqual(['agent 记的 agent', '我记的 -'])
+    const latest = host.querySelectorAll('.ovpulse-row[data-proj="spec"] .ovpulse-cell')[1]!.firstElementChild!
+    expect(latest.lastElementChild!.classList.contains('source-label')).toBe(true)
+    expect(latest.textContent).toBe('agent 记的agent')
   })
 
   it('最近进展给每条记录标上项目页科研记录的类型名和色调,没有类型的旧记录标成记录', async () => {

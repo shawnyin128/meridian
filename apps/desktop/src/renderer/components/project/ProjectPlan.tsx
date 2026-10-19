@@ -28,7 +28,8 @@ import { useDragReorder, type DragCardProps } from '../../hooks/useDragReorder.j
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
-import { Tag, TagButton, tagClass } from '../Tag.js'
+import { AgentLabel } from '../SourceLabel.js'
+import { TagButton, tagClass } from '../Tag.js'
 import { NodeTag } from './NodeTag.js'
 import { PRIORITY_TONE, ProjectPriorityTag } from './ProjectIdentity.js'
 import './ProjectPlan.css'
@@ -267,7 +268,7 @@ export function ProjectTaskPanel({
         <DateChip>{fmt.dateRange(task.start, task.end)}</DateChip>
         <ProjectPriorityTag priority={task.priority} />
         <span className="project-task-detail-state">{stateWord(m)[task.state]}</span>
-        {task.origin === 'agent' ? <Tag>{m.project.records.who.agent}</Tag> : null}
+        {task.origin === 'agent' ? <AgentLabel /> : null}
       </div>
       <SectionHeading
         variant="rail"
@@ -342,7 +343,7 @@ function TaskRow({ task, flash, selected, dragProps, dropClass = '', onSave, onD
         ? (
           <span className="task-name-with-origin">
             <TaskNameCell task={task} onSave={onSave} />
-            <Tag>{m.project.records.who.agent}</Tag>
+            <AgentLabel />
           </span>
         )
         : <TaskNameCell task={task} onSave={onSave} />}

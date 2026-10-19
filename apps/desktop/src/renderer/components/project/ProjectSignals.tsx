@@ -4,6 +4,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { DateChip } from '../DateTimeDisplay.js'
 import { StructuredRow } from '../StructuredList.js'
 import { FadeText } from '../FadeText.js'
+import { AgentLabel } from '../SourceLabel.js'
 import { Tag, type TagTone } from '../Tag.js'
 import { NodeTag } from './NodeTag.js'
 import './ProjectSignals.css'
@@ -29,9 +30,21 @@ export function ProjectSignalDate({ date }: { date: string | undefined }) {
   )
 }
 
-/** Inline `agent` tag before a compact one-line record, used where a full row would not fit. */
-export function EventText({ text, origin }: { text: string; origin?: 'agent' | 'user' | undefined }) {
-  return origin === 'agent' ? <><Tag className="event-origin">agent</Tag>{text}</> : <>{text}</>
+/**
+ * A compact one-line record, used where a full row would not fit: its text, fading when it does not
+ * fit, then the agent label when an agent wrote it. `className` places and sizes the line.
+ */
+export function EventText({ text, origin, className }: {
+  text: string
+  origin?: 'agent' | 'user' | undefined
+  className?: string
+}) {
+  return (
+    <span className={`event-text${className ? ` ${className}` : ''}`} title={text}>
+      <FadeText>{text}</FadeText>
+      {origin === 'agent' ? <AgentLabel /> : null}
+    </span>
+  )
 }
 
 /** The tag tone of each research-record kind. */
@@ -77,7 +90,7 @@ export function ProjectEventRow({
           {detail === undefined ? null : <span className="record-detail"> · {detail}</span>}
         </FadeText>
       </span>
-      <span className="record-who">{m.project.records.who[origin]}</span>
+      <span className="record-who">{origin === 'agent' ? <AgentLabel /> : null}</span>
     </StructuredRow>
   )
 }

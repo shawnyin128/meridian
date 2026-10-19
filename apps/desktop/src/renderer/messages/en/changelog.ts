@@ -13,6 +13,7 @@ export const changelog = {
     `Clear ${count} archived ${pluralEn(count, { one: 'record', other: 'records' })}? This also deletes their undo history. Your Wiki content will not change.`,
   confirmClearArchivedLabel: 'Clear archived',
   state: { undone: 'Undone', openToSee: 'Open to review changes', notUndoable: 'Cannot be undone' },
+  proposalSource: { notes: 'Notes', lab: 'Lab' },
   confirmDelete: 'Delete this change record? This also removes its undo history. Your Wiki content will not change.',
   confirmDeleteLabel: 'Delete',
   undoneNote: 'Undone · restored the previous version',

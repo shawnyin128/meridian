@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import type { ChangeEntry } from '../../shared/contract.js'
+import { HUMAN_PRODUCER, NOTES_PROPOSAL } from '../../shared/vocabulary.js'
 import { changelog } from '../ipc.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -11,7 +12,7 @@ import { DayHeading } from '../components/DayHeading.js'
 import { DiffLines } from '../components/DiffLines.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { PaperText } from '../components/paper/PaperText.js'
-import { Tag } from '../components/Tag.js'
+import { AgentLabel } from '../components/SourceLabel.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
@@ -35,6 +36,18 @@ export function metaBelowHeading(meta: string): string {
 const hint = (entry: ChangeEntry, state: Catalog['changelog']['state']): string => {
   if (entry.undone) return state.undone
   return entry.undoable ? state.openToSee : state.notUndoable
+}
+
+/**
+ * Who made a change: nothing for the user's own, otherwise the agent label, naming the notes or the
+ * experiment an agent's proposal came from.
+ */
+function ChangeSource({ source }: { source: ChangeEntry['source'] }) {
+  const m = useMessages()
+  if (source === HUMAN_PRODUCER) return null
+  if (source === 'Meridian') return <AgentLabel className="src" />
+  const from = m.changelog.proposalSource
+  return <AgentLabel className="src" source={source === NOTES_PROPOSAL ? from.notes : from.lab} />
 }
 
 function DeleteChangeButton({ entry, onDelete }: {
@@ -136,7 +149,7 @@ export function Changelog() {
       <div className="chead">
         {/* Its click bubbles to the row, which owns the toggle; this button is the keyboard path to it. */}
         <button className="cbody" type="button" aria-expanded={open.has(c.id)}>
-          <span className="ct"><PaperText text={c.title} /><Tag className="src">{c.source}</Tag></span>
+          <span className="ct"><PaperText text={c.title} /><ChangeSource source={c.source} /></span>
           <span className="cm">{[metaBelowHeading(c.meta), hint(c, m.changelog.state)].filter((s) => s !== '').join(SEP)}</span>
         </button>
         <div className="cact">

@@ -15,6 +15,7 @@ import { TitleNote } from '../components/TitleNote.js'
 import { useFormat } from '../lib/format.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle } from '../components/PageShell.js'
+import { SourceLabel } from '../components/SourceLabel.js'
 import './shell.css'
 
 /** How entries are grouped: by the day they joined the queue, or by where they came from. */
@@ -149,9 +150,9 @@ export function Later() {
                   metadata={(
                     <>
                     {x.authors}{x.venue ? <PaperCardBadge>{x.venue}</PaperCardBadge> : null}
-                    <PaperCardBadge>
-                      {grouping === 'time' ? x.source : m.common.addedOn(fmt.date(x.added))}
-                    </PaperCardBadge>
+                    {grouping === 'time'
+                      ? <SourceLabel>{x.source}</SourceLabel>
+                      : <PaperCardBadge>{m.common.addedOn(fmt.date(x.added))}</PaperCardBadge>}
                     </>
                   )}
                   {...(x.abstract ? { abstract: x.abstract } : {})}

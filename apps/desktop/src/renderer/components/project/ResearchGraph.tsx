@@ -20,7 +20,8 @@ import { PanelClose } from '../PanelClose.js'
 import { SectionHeading } from '../PageShell.js'
 import { StatusDot, type StatusDotTone } from '../StatusDot.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
-import { Tag, TagButton } from '../Tag.js'
+import { AgentLabel } from '../SourceLabel.js'
+import { TagButton } from '../Tag.js'
 import { ProjectEventRow } from './ProjectSignals.js'
 import './ResearchGraph.css'
 
@@ -490,7 +491,7 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
             {tasks.map((task) => (
               <StructuredRow className="node-task-row" data-task={task.id} key={task.id} onActivate={() => onSelectTask(task.id)}>
                 <FadeText>{task.title}</FadeText>
-                {task.origin === 'agent' ? <Tag>{m.project.records.who.agent}</Tag> : null}
+                {task.origin === 'agent' ? <AgentLabel /> : null}
               </StructuredRow>
             ))}
           </StructuredList>

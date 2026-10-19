@@ -11,6 +11,7 @@ import { useBanner, useJump, useToast, useToday, useVaultRevision } from '../she
 import { FloatingTextEditor } from '../components/FloatingTextEditor.js'
 import { Icon } from '../components/icons.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { AgentLabel } from '../components/SourceLabel.js'
 import { StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { Tag, type TagTone } from '../components/Tag.js'
 import { dnum } from '../../shared/dates.js'
@@ -221,9 +222,9 @@ function ProjectProgress({ rows, onOpen }: {
                     </span>
                   </span>
                   <span className="ovpulse-cell">
-                    <b title={latest?.text}>
-                      {latest ? <EventText text={latest.text} /> : m.research.overview.noRecentRecord}
-                    </b>
+                    {latest
+                      ? <EventText className="ovpulse-latest" text={latest.text} origin={latest.origin} />
+                      : <b>{m.research.overview.noRecentRecord}</b>}
                     <span className="ovpulse-sub">
                       {latest ? fmt.date(latest.date) : m.research.overview.waitingForAgent}
                     </span>
@@ -266,7 +267,8 @@ function Recent({ rows, onOpen }: { rows: ProjectOverview[]; onOpen: (projectId:
                   {m.project.records.kind[e.kind ?? 'note']}
                 </ProjectSignalKind>
               )}
-              main={<EventText text={e.text} />}
+              main={e.text}
+              meta={e.origin === 'agent' ? <AgentLabel /> : undefined}
               project={e.name}
               projectId={e.projectId}
               onOpen={() => onOpen(e.projectId)}

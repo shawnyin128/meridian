@@ -76,6 +76,24 @@ describe('Ideas', () => {
 
   afterEach(() => { act(() => root.unmount()) })
 
+  it('来源标签跟在来源后面：对话和论文阅读写来源的种类，agent 记下的只写 agent', async () => {
+    api.ideas.push({
+      id: 'idea-agent', title: 'agent 记下的想法', body: '按接受率调宽度。',
+      source: { chatId: 'agent-1', chatTitle: '动态树宽度的实现讨论', agent: true },
+      archived: false, created: '2026-09-17', updated: '2026-09-17',
+    })
+    try {
+      await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+      const meta = (id: string) => [...host.querySelector(`[data-idea="${id}"] .idea-card-meta`)!.children]
+        .map((child) => (child.classList.contains('source-label') ? `[${child.textContent}]` : child.className))
+      expect(meta('idea-linked')).toEqual(['idea-card-source', '[对话]', 'idea-card-updated'])
+      expect(meta('idea-independent')).toEqual(['idea-card-source', '[论文阅读]', 'idea-card-updated'])
+      expect(meta('idea-agent')).toEqual(['idea-card-source', '[agent]', 'idea-card-updated'])
+    } finally {
+      api.ideas.pop()
+    }
+  })
+
   it('卡片展示判断所需的摘要、项目、来源和时间，点击后在右侧编辑', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     expect(host.querySelector('.idea-detail-slot')?.getAttribute('data-panel-state')).toBe('closed')

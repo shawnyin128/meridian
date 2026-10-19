@@ -46,6 +46,7 @@
 .ovlist-row.ovpulse-row{grid-template-columns:170px minmax(0,1.05fr) minmax(0,1.3fr) minmax(0,1.05fr) 140px;column-gap:18px;min-height:68px;padding:10px 0}
 .ovpulse-cell{display:flex;min-width:0;flex-direction:column;justify-content:center;gap:5px}
 .ovpulse-cell b{display:block;min-width:0;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade);font-size:var(--fs-base);font-weight:600}
+.ovpulse-latest{font-size:var(--fs-base);font-weight:600}
 .ovpulse-sub{display:block;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:var(--ter);font-size:var(--fs-sm);font-weight:400}
 .ovpulse-cell.signal{align-items:flex-start}
 

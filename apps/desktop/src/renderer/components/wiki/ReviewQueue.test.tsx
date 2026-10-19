@@ -81,7 +81,8 @@ describe('ReviewQueue', () => {
 
   it('排队的一条一行:标题、提出者与触发的项目节点名、理由、按结论原文写的改动行、涉及的页名;过期与无法核对的引句标出来', () => {
     expect(row('p1').querySelector('.review-title')!.textContent).toBe('提案 p1')
-    expect(row('p1').querySelector('.review-meta')!.textContent).toBe('skill.meridian · 项目 draft 效率 · 节点 加宽实验 · 9月22日')
+    expect(row('p1').querySelector('.review-meta')!.textContent).toBe('项目 draft 效率 · 节点 加宽实验 · 9月22日')
+    expect(row('p1').querySelector('.review-head .source-label')!.textContent).toBe('agent')
     expect(row('p1').textContent).toContain('重跑了一遍')
     expect([...row('p1').querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual([
       '- 原来：拐点在宽度 6', '+ 改为：拐点在宽度 8',
@@ -89,7 +90,7 @@ describe('ReviewQueue', () => {
       '~ 「拐点在宽度 6」与「x」冲突：批量下不同',
     ])
     expect([...row('p2').querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual(['+ 新增结论：新结论', '+ 　实验 · draft 效率 · 加宽实验'])
-    expect(row('p1').querySelector('.review-head .tag')).toBeNull()
+    expect(row('p1').querySelector('.review-head .tag:not(.source-label)')).toBeNull()
     expect(row('p2').querySelector('.tag--warn')!.textContent).toBe('已过期')
     expect(row('p2').textContent).toContain('这些引句没有文字层可核对')
     expect(row('p1').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(false)
@@ -177,8 +178,9 @@ describe('ReviewQueue', () => {
         />
       </MessagesProvider>,
     ))
-    expect(row('q1').querySelector('.review-meta')!.textContent).toBe('skill.meridian · 项目 draft 效率 · 节点 加宽实验 · 10月16日')
-    expect(row('d1').querySelector('.review-meta')!.textContent).toBe('skill.meridian · 项目 draft 效率 · 节点 加宽实验 · 10月16日 → 10月16日')
+    expect(row('q1').querySelector('.review-meta')!.textContent).toBe('项目 draft 效率 · 节点 加宽实验 · 10月16日')
+    expect(row('d1').querySelector('.review-meta')!.textContent).toBe('项目 draft 效率 · 节点 加宽实验 · 10月16日 → 10月16日')
+    expect(row('d1').querySelector('.review-head .source-label')!.textContent).toBe('agent')
   })
 
   it('没有排队的提案时说一句;入口上的数是排队的条数', () => {

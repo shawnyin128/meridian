@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
-import { ProjectEventRow, ProjectSignalDate, ProjectSignalKind } from './ProjectSignals.js'
+import { EventText, ProjectEventRow, ProjectSignalDate, ProjectSignalKind } from './ProjectSignals.js'
 
 describe('ProjectSignals', () => {
   beforeEach(() => { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh') })
@@ -24,6 +24,12 @@ describe('ProjectSignals', () => {
     expect(date).toContain('class="project-signal-date"')
     expect(date).toContain('class="tag tag--chip tag--neutral date-chip"')
     expect(emptyDate).toBe('<span class="project-signal-date"></span>')
+  })
+
+  it('一行的记录正文在前,agent 写的在末尾跟 agent 标签,我写的不带', () => {
+    const agent = renderToStaticMarkup(<MessagesProvider><EventText text="跑完基线" origin="agent" /></MessagesProvider>)
+    expect(agent).toMatch(/跑完基线.*<span class="tag tag--label tag--neutral source-label"><span class="tag-text">agent<\/span><\/span><\/span>$/)
+    expect(renderToStaticMarkup(<MessagesProvider><EventText text="我记的" /></MessagesProvider>)).not.toContain('source-label')
   })
 })
 
@@ -52,7 +58,7 @@ describe('ProjectEventRow', () => {
     expect(host.querySelector('.project-signal-kind .tag--good')?.textContent).toBe('实验结果')
     expect(host.querySelector('.project-signal-date .date-chip')).not.toBeNull()
     expect(host.querySelector('.record-line')?.textContent).toBe('第一个探针支持假设 · p99 从 80ms 降到 62ms')
-    expect(host.querySelector('.record-who')?.textContent).toBe('agent')
+    expect(host.querySelector('.record-who .source-label')?.textContent).toBe('agent')
     expect(row?.className).toContain('with-node')
     const tag = host.querySelector('.record-node button.node-tag--fill')
     expect(tag?.textContent).toBe('延迟探针')
@@ -77,7 +83,7 @@ describe('ProjectEventRow', () => {
     expect(host.querySelector('.node-tag')).toBeNull()
     expect(host.querySelector('.record-line')?.textContent).toBe('搭好评测环境')
     expect(host.querySelector('.project-signal-kind .tag--neutral')?.textContent).toBe('记录')
-    expect(host.querySelector('.record-who')?.textContent).toBe('你')
+    expect(host.querySelector('.record-who')?.childElementCount).toBe(0)
     act(() => root.unmount())
   })
 })

@@ -47,6 +47,7 @@ let root: Root
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
   window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
   host = document.createElement('div')
   document.body.append(host)
   root = createRoot(host)
@@ -55,6 +56,7 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount())
   host.remove()
+  vi.unstubAllGlobals()
 })
 
 describe('项目列表的卡片', () => {
@@ -78,7 +80,16 @@ describe('项目列表的卡片', () => {
       lastProgress: '2026-10-16',
       recentEvents: [{ date: '2026-09-26', text: '创建项目' }, { date: '2026-10-16', text: '开始推进 树形草稿' }],
     }))
-    expect(text).toBe('最近推进10月16日 开始推进 树形草稿')
+    expect(text).toBe('最近推进10月16日开始推进 树形草稿')
+  })
+
+  it('那天最新的一条是 agent 写的时,它后面跟 agent 标签', async () => {
+    await recentProgress(summary({
+      lastProgress: '2026-10-16', recentEvents: [{ date: '2026-10-16', text: '跑完基线', origin: 'agent' }],
+    }))
+    const recent = host.querySelector('[data-proj="spec"] .project-card-recent')!
+    expect(recent.lastElementChild!.textContent).toBe('跑完基线agent')
+    expect(recent.lastElementChild!.lastElementChild!.classList.contains('source-label')).toBe(true)
   })
 
   it('还没有推进时写还没有记录', async () => {

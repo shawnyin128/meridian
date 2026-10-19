@@ -21,6 +21,7 @@ import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import type { Catalog } from '../messages/catalog.js'
 import { plainTitle } from '../components/paper/paper-text.js'
+import { AgentLabel, SourceLabel } from '../components/SourceLabel.js'
 import { Tag } from '../components/Tag.js'
 import './Ideas.css'
 
@@ -28,9 +29,6 @@ const sourceLabel = (idea: ResearchIdea) => idea.source.paperTitle === undefined
   ? plainTitle(idea.source.chatTitle)
   : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
 
-const sourceKind = (idea: ResearchIdea, m: Catalog) => idea.source.agent === true
-  ? m.ideas.sourceKind.agent
-  : idea.source.paperTitle === undefined ? m.ideas.sourceKind.chat : m.ideas.sourceKind.paperReading
 
 function linkedProjectLabel(idea: ResearchIdea, linked: ProjectSummary | undefined, m: Catalog): string {
   if (idea.project === undefined) return m.ideas.link.none
@@ -88,8 +86,14 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, dragProps, dropClassNa
         </div>
         <p className="idea-card-summary">{idea.body}</p>
         <div className="idea-card-meta">
-          <Tag className="idea-source-kind">{sourceKind(idea, m)}</Tag>
           <span className="idea-card-source" title={sourceLabel(idea)}>{m.project.idea.sourceTag(sourceLabel(idea))}</span>
+          {idea.source.agent === true
+            ? <AgentLabel className="idea-source-kind" />
+            : (
+              <SourceLabel className="idea-source-kind">
+                {idea.source.paperTitle === undefined ? m.ideas.sourceKind.chat : m.ideas.sourceKind.paperReading}
+              </SourceLabel>
+            )}
           <span className="idea-card-updated">{m.ideas.updated(fmt.date(idea.updated))}</span>
         </div>
       </div>

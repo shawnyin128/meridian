@@ -29,7 +29,6 @@ export const project = {
       note: 'Note',
       project: 'Project',
     },
-    who: { agent: 'agent', user: 'you' },
     goToGraph: (label: string) => `Open "${label}" in the research graph`,
   },
   conclusions: {

@@ -26,7 +26,6 @@ export const project = {
       note: '记录',
       project: '项目',
     },
-    who: { agent: 'agent', user: '你' },
     goToGraph: (label: string) => `在科研图中打开「${label}」`,
   },
   conclusions: {

@@ -1,4 +1,4 @@
-.event-origin{margin-right:var(--sp-6)}
+.event-text{display:flex;align-items:center;gap:var(--sp-6);min-width:0}
 .project-signal-columns{--project-signal-kind-width:78px;--project-signal-date-width:74px;--project-signal-gap:10px}
 .project-signal-kind,.project-signal-date{display:flex;align-items:center;min-width:0}
 .project-signal-kind{width:var(--project-signal-kind-width)}
@@ -11,4 +11,4 @@
 .record-text{display:flex;align-items:center;gap:6px;text-overflow:clip}
 .record-line{flex:1}
 .record-detail{color:var(--ter)}
-.record-who{white-space:nowrap;color:var(--ter);font-size:var(--fs-cap)}
+.record-who{display:flex}

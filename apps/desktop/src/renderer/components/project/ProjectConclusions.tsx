@@ -11,6 +11,7 @@ import { FadeText } from '../FadeText.js'
 import { FormSelect, FormTextarea } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { PanelClose } from '../PanelClose.js'
+import { AgentLabel } from '../SourceLabel.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { WikiFormDialog, WikiFormField } from '../wiki/WikiFormDialog.js'
 import { NodeTag } from './NodeTag.js'
@@ -25,7 +26,8 @@ type NodeLook = { label: string; mode: NonNullable<GraphNode['mode']> }
 
 /**
  * One conclusion row on the research-record columns: the state chip, the date, the source node (left
- * empty for a legacy conclusion), the conclusion in one line, and where it stands in the Wiki.
+ * empty for a legacy conclusion), the conclusion and where it stands in the Wiki in one line, and the
+ * agent label of a node's conclusion, which an agent wrote.
  */
 export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
   conclusion: ProjectConclusion
@@ -36,6 +38,7 @@ export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
   const m = useMessages()
   const c = m.project.conclusions
   const written = conclusion.wiki[0]
+  const wikiState = written === undefined ? c.notWritten : c.writtenTo(written.title, written.version)
   return (
     <StructuredRow
       className="attnrow project-signal-columns record-row with-node conclusion-row" selected={selected}
@@ -46,12 +49,12 @@ export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
       <span className="record-node">
         {node === undefined ? null : <NodeTag label={node.label} mode={node.mode} fill />}
       </span>
-      <span className="attn-text record-text" title={conclusion.text}>
-        <FadeText className="record-line">{conclusion.text}</FadeText>
+      <span className="attn-text record-text" title={`${conclusion.text} · ${wikiState}`}>
+        <FadeText className="record-line">
+          {conclusion.text}<span className="record-detail"> · {wikiState}</span>
+        </FadeText>
       </span>
-      <span className="record-who conclusion-wiki" title={written === undefined ? undefined : written.title}>
-        {written === undefined ? c.notWritten : c.writtenTo(written.title, written.version)}
-      </span>
+      <span className="record-who">{conclusion.node === undefined ? null : <AgentLabel />}</span>
     </StructuredRow>
   )
 }

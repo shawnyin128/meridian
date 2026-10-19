@@ -30,6 +30,7 @@ export const common = {
   archived: 'Archived',
   count: (n: number) => `${n}`,
   priority: { p0: 'Urgent', p1: 'Normal', p2: 'Low' },
+  attribution: { agent: 'Agent', withSource: (who: string, source: string) => `${who} · ${source}` },
   daySections: { today: 'Today', yesterday: 'Yesterday', week: 'This week', earlier: 'Earlier' },
   nav: { back: 'Back' },
   panel: { close: 'Collapse details' },
