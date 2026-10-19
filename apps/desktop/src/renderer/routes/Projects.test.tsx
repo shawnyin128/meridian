@@ -7,6 +7,7 @@ import { zh } from '../messages/zh/index.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import type { PlanTab } from '../components/project/ProjectPlan.js'
+import type { RecordTab } from './ProjectDetail.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -38,11 +39,13 @@ vi.mock('../hooks/useVaultWrite.js', () => ({
 }))
 
 vi.mock('./ProjectDetail.js', () => ({
-  ProjectDetail: ({ projectId, tab, onTab, onBack }: {
-    projectId: string; tab: PlanTab; onTab: (tab: PlanTab) => void; onBack: () => void
+  ProjectDetail: ({ projectId, tab, onTab, record, onRecord, onBack }: {
+    projectId: string; tab: PlanTab; onTab: (tab: PlanTab) => void
+    record: RecordTab; onRecord: (record: RecordTab) => void; onBack: () => void
   }) => (
-    <div className="detail" data-project={projectId} data-tab={tab}>
+    <div className="detail" data-project={projectId} data-tab={tab} data-record={record}>
       <button className="to-ms" onClick={() => onTab('ms')} />
+      <button className="to-graph" onClick={() => onRecord('graph')} />
       <button className="to-list" onClick={onBack} />
     </div>
   ),
@@ -82,6 +85,7 @@ describe('Projects', () => {
     await act(async () => host.querySelector<HTMLElement>(selector)!.click())
   }
   const shownTab = () => host.querySelector<HTMLElement>('.detail')!.dataset.tab
+  const shownRecord = () => host.querySelector<HTMLElement>('.detail')!.dataset.record
 
   it('科研计划的标签页按项目各自记住:一个项目切到里程碑,另一个项目仍从任务打开', async () => {
     await click('[data-proj="a"]')
@@ -96,5 +100,20 @@ describe('Projects', () => {
 
     await click('[data-proj="a"]')
     expect(shownTab()).toBe('ms')
+  })
+
+  it('科研记录的标签页也按项目各自记住:一个项目切到科研图,另一个项目仍从时间线打开', async () => {
+    await click('[data-proj="a"]')
+    expect(shownRecord()).toBe('tl')
+    await click('.to-graph')
+    expect(shownRecord()).toBe('graph')
+    await click('.to-list')
+
+    await click('[data-proj="b"]')
+    expect(shownRecord()).toBe('tl')
+    await click('.to-list')
+
+    await click('[data-proj="a"]')
+    expect(shownRecord()).toBe('graph')
   })
 })

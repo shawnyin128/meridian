@@ -397,8 +397,8 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
  * the overview, while the breadcrumbs still return to the list, like the demo's resFrom. Opened from
  * the list, there is no origin and Back returns to the project list. Both tab groups of the details
  * are kept here, so leaving the project and coming back lands on the last tab, like the demo's
- * module-level projPlanTab / projTab; the plan tab is kept per project, and a project not opened yet
- * starts on its tasks.
+ * module-level projPlanTab / projTab; both are kept per project, and a project not opened yet starts
+ * on its tasks and its timeline.
  */
 export function Projects() {
   const [openId, setOpenId] = useState<string | null>(null)
@@ -406,10 +406,13 @@ export function Projects() {
   const [arrivalConclusion, setArrivalConclusion] = useState<string | null>(null)
   const [origin, setOrigin] = useState<ScreenKey | null>(null)
   const [planTabs, setPlanTabs] = useState<Record<string, PlanTab>>({})
-  const [recordTab, setRecordTab] = useState<RecordTab>('tl')
+  const [recordTabs, setRecordTabs] = useState<Record<string, RecordTab>>({})
   const close = useCallback(() => { setOpenId(null); setOrigin(null) }, [])
   const setPlanTab = useCallback((tab: PlanTab) => {
     if (openId !== null) setPlanTabs((tabs) => ({ ...tabs, [openId]: tab }))
+  }, [openId])
+  const setRecordTab = useCallback((tab: RecordTab) => {
+    if (openId !== null) setRecordTabs((tabs) => ({ ...tabs, [openId]: tab }))
   }, [openId])
   const entry = useScreenEntry()
   const { jump, returnTo } = useJump()
@@ -432,7 +435,7 @@ export function Projects() {
     setOrigin(jump.from)
     setArrivalTask(jump.anchor?.task ?? null)
     setArrivalConclusion(jump.anchor?.conclusion ?? null)
-    if (jump.anchor?.conclusion !== undefined) setRecordTab('concl')
+    if (jump.anchor?.conclusion !== undefined) setRecordTabs((tabs) => ({ ...tabs, [jump.target]: 'concl' }))
   }, [jump])
 
   return openId === null
@@ -440,7 +443,8 @@ export function Projects() {
     : (
       <ProjectDetail
         projectId={openId} onBack={close} onReturn={back}
-        tab={planTabs[openId] ?? 'task'} onTab={setPlanTab} record={recordTab} onRecord={setRecordTab}
+        tab={planTabs[openId] ?? 'task'} onTab={setPlanTab}
+        record={recordTabs[openId] ?? 'tl'} onRecord={setRecordTab}
         arrivalTask={arrivalTask} arrivalConclusion={arrivalConclusion}
         onArrived={() => { setArrivalTask(null); setArrivalConclusion(null) }}
       />
