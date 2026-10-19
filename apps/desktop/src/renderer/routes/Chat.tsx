@@ -21,6 +21,7 @@ import {
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { CONFLICT_THREAD, sendsMessage } from '../lib/chat.js'
+import { composing } from '../lib/keyboard.js'
 import { IdeaEditorDialog } from '../components/ideas/IdeaEditorDialog.js'
 import { GenerationControl } from '../components/GenerationControl.js'
 import { PaperText } from '../components/paper/PaperText.js'
@@ -261,7 +262,7 @@ export function Chat() {
                     onKeyDown={(e) => {
                       // Only open candidates take the arrow keys; otherwise they move the caret between lines.
                       if (suggest.length > 0) {
-                        if (e.nativeEvent.isComposing) return
+                        if (composing(e.nativeEvent)) return
                         keys.onKeyDown(e)
                         if (e.key === 'Enter') e.preventDefault()
                       } else if (sendsMessage(e.nativeEvent)) {

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import type { Key, ReactElement } from 'react'
-import { composing } from '../lib/keyboard.js'
 import { ActionPopover } from './ActionPopover.js'
 import type { ActionPopoverAlign, ActionPopoverSide } from './ActionPopover.js'
 import { ShortTextEditor } from './ShortTextEditor.js'
@@ -44,7 +43,7 @@ export function FloatingTextEditor({
             // This popover alone decides whether to close, so Radix's open change and the editor's own
             // Escape do not each call onClose; while a write is unfinished, popover and draft stay intact.
           event.preventDefault()
-          if (!busy && !composing(event)) onClose()
+          if (!busy) onClose()
         },
       }}
     >

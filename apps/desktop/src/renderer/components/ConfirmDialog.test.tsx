@@ -46,4 +46,19 @@ describe('ConfirmDialog', () => {
       .find((button) => button.textContent === '确认删除')!.click())
     expect(confirm).toHaveBeenCalledTimes(1)
   })
+
+  it('stays open on an Escape that ends an input method composition and closes on the next one', () => {
+    act(() => root!.render(
+      <MessagesProvider>
+        <ConfirmDialog trigger={<button>删除记录</button>} title="删除这条记录？" onConfirm={vi.fn()} />
+      </MessagesProvider>,
+    ))
+    act(() => host.querySelector<HTMLButtonElement>('button')!.click())
+    const focused = document.activeElement!
+    act(() => focused.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true, cancelable: true })))
+    expect(document.querySelector('[role="alertdialog"]')).not.toBeNull()
+
+    act(() => focused.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull()
+  })
 })

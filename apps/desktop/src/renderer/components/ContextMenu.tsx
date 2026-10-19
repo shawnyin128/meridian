@@ -1,14 +1,16 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import { composing } from '../lib/keyboard.js'
 import './ContextMenu.css'
 
 export type ContextMenuPoint = { x: number; y: number }
 
 /**
  * The point-positioned menu shared by right-click and the keyboard ContextMenu key. It owns the
- * portal, clamping to the viewport, closing on click/Escape, the first focus and returning focus
- * after closing; callers only provide the raw coordinates, the label and the actions.
+ * portal, clamping to the viewport, closing on click/Escape (not on an Escape pressed while an input
+ * method is composing), the first focus and returning focus after closing; callers only provide the
+ * raw coordinates, the label and the actions.
  */
 export function ContextMenu({ point, label, onClose, className = '', children }: {
   point: ContextMenuPoint
@@ -37,7 +39,7 @@ export function ContextMenu({ point, label, onClose, className = '', children }:
       if (!(event.target instanceof Node) || !surface.current?.contains(event.target)) onClose()
     }
     const key = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
+      if (event.key !== 'Escape' || composing(event)) return
       event.preventDefault()
       onClose()
     }

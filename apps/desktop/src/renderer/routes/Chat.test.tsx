@@ -95,6 +95,15 @@ describe('Chat composer', () => {
     expect(api.send).toHaveBeenCalledWith('chat-1', '为什么')
   })
 
+  it('@ 候选开着时输入法组字的 Esc 不收起候选，组完字后的 Esc 才收起', () => {
+    act(() => setValue(composer, '@'))
+    expect(document.querySelector('#cRes')).not.toBeNull()
+    press('Escape', { isComposing: true })
+    expect(document.querySelector('#cRes')).not.toBeNull()
+    press('Escape')
+    expect(document.querySelector('#cRes')).toBeNull()
+  })
+
   it('有 @ 候选时回车填入候选而不发送；没有候选时上下键留给光标在行间移动', () => {
     act(() => setValue(composer, '@'))
     expect(document.querySelector('#cRes')).not.toBeNull()

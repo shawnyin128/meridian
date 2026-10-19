@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react'
 import type { PaperColumn, PaperColumns } from '../../../shared/contract.js'
 import { LOCKED_PAPER_COLUMNS } from '../../../shared/vocabulary.js'
-import { composing } from '../../lib/keyboard.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ActionPopover } from '../ActionPopover.js'
 import { IconCheck, IconChevron, IconCross, IconGear, IconPencil } from '../icons.js'
@@ -15,8 +14,7 @@ import { afterLeaving, InlineDraftInput } from '../InlineDraftInput.js'
  * row each, and clicking a row shows or hides the column; locked columns are grayed out and inert.
  * Custom columns take one row each, with rename and delete at the end of the row. Adding a column
  * is not here but the + at the end of the header. Styled as the demo's colMenu, opened and closed
- * by Radix; while a rename input is open, Esc cancels only the rename and keeps the menu (an Esc
- * pressed while an input method is composing cancels nothing), and a
+ * by Radix; while a rename input is open, Esc cancels only the rename and keeps the menu, and a
  * press anywhere else, inside the menu or outside it, or focus leaving the input renames as Enter
  * does. The menu closes, and another rename opens, only once the rename is accepted.
  * Each change goes to `onChange` as a function that takes the last confirmed column configuration
@@ -97,7 +95,6 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
           // Radix takes Esc in the document's capture phase, so the input cannot stop it; during a
           // rename, keep the popover open here and only cancel the rename.
           onEscapeKeyDown: (e) => {
-            if (composing(e)) return
             if (renamingOption !== null) { e.preventDefault(); setRenamingOption(null); return }
             if (renaming !== null) { e.preventDefault(); setRenaming(null) }
           },
