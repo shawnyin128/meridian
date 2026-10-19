@@ -8,6 +8,7 @@ import { BackButton } from '../BackButton.js'
 import { FormTextarea } from '../FormControls.js'
 import { EmptyState } from '../EmptyState.js'
 import { PageError } from '../PageShell.js'
+import { TitleNote } from '../TitleNote.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { IdeaEditorDialog } from '../ideas/IdeaEditorDialog.js'
@@ -101,7 +102,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const act = (message: ChatMessage) => {
     if (session === null) return
     void chat.recordAction(session.id, message.id).then(async (held) => {
-      banner(m.chat.recordedNote(held.name))
+      banner(<TitleNote message={m.chat.recordedNote} title={held.name} />)
       await feed.append({ source: 'me', body: { kind: 'runs', runs: [
         plain(m.chat.recordedTo(held.name)),
       ] } })

@@ -20,8 +20,12 @@ const api = vi.hoisted(() => ({
   }, {
     id: 'trash-3', kind: 'attachment', title: 'notes--v2.pdf', deletedAt: Date.parse('2026-08-25T00:00:00Z'),
     restorable: true,
+  }, {
+    id: 'trash-4', kind: 'attachment', title: 'MoE 路由用熵正则代替负载均衡 load balancing.pdf',
+    deletedAt: Date.parse('2026-08-25T00:00:00Z'), restorable: true,
   }] as TrashEntry[],
   purge: vi.fn(async () => {}),
+  notes: [] as unknown[],
 }))
 
 vi.mock('../ipc.js', () => ({
@@ -38,7 +42,11 @@ vi.mock('../shell/AppShell.js', () => ({
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
 vi.mock('../hooks/useVaultWrite.js', () => ({
-  useVaultWrite: () => async (work: Promise<unknown>) => { await work; return true },
+  useVaultWrite: () => async (work: Promise<unknown>, opts: { note?: unknown } = {}) => {
+    await work
+    api.notes.push(opts.note)
+    return true
+  },
 }))
 
 const { Trash } = await import('./Trash.js')
@@ -61,6 +69,7 @@ describe('Trash', () => {
     host = document.createElement('div')
     document.body.append(host)
     api.purge.mockClear()
+    api.notes.length = 0
     root = createRoot(host)
     await act(async () => { root!.render(<MessagesProvider><Trash /></MessagesProvider>) })
   })
@@ -68,6 +77,7 @@ describe('Trash', () => {
   afterEach(() => {
     if (root !== null) act(() => root!.unmount())
     root = null
+    vi.unstubAllGlobals()
   })
 
   it('彻底删除一条要先确认,确认后才清除', async () => {
@@ -97,5 +107,17 @@ describe('Trash', () => {
     await act(async () => { button(dialog!, '取消').click() })
     expect(document.querySelector('[role="alertdialog"]')).toBeNull()
     expect(api.purge).not.toHaveBeenCalled()
+  })
+
+  it('恢复长标题的条目后，横幅写出完整标题，标题放不下时淡出而不是截断', async () => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    await act(async () => { button(host.querySelectorAll('.trow')[3]!, '恢复').click() })
+    const banner = document.createElement('div')
+    const shown = createRoot(banner)
+    act(() => shown.render(<>{api.notes[0]}</>))
+    const title = 'MoE 路由用熵正则代替负载均衡 load balancing.pdf'
+    expect(banner.textContent).toBe(`已恢复「${title}」`)
+    expect(banner.querySelector('.fade-text')!.textContent).toBe(title)
+    act(() => shown.unmount())
   })
 })

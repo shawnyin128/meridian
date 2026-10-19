@@ -81,8 +81,8 @@ export type ScreenJump = {
 }
 
 const CrumbTailContext = createContext<((tail: CrumbSeg[], onLeafClick: (() => void) | null) => void) | null>(null)
-const BannerContext = createContext<((text: string) => void) | null>(null)
-const ToastContext = createContext<((text: string) => void) | null>(null)
+const BannerContext = createContext<((text: ReactNode) => void) | null>(null)
+const ToastContext = createContext<((text: ReactNode) => void) | null>(null)
 const PaperCountContext = createContext<{ count: number | null } | null>(null)
 const ScreenContext = createContext<{ screen: ScreenKey; entry: number; reentry: number } | null>(null)
 const InboxScopeContext = createContext<string | null>(null)
@@ -124,10 +124,10 @@ function symbolColor(): string {
 }
 
 /** The demo's banner() and toast(): a new message replaces the shown one, which hides after `ms` ms. */
-function useFading(ms: number): [{ text: string; show: boolean }, (text: string) => void] {
-  const [state, setState] = useState({ text: '', show: false })
+function useFading(ms: number): [{ text: ReactNode; show: boolean }, (text: ReactNode) => void] {
+  const [state, setState] = useState<{ text: ReactNode; show: boolean }>({ text: '', show: false })
   const timer = useRef(0)
-  const show = useCallback((text: string) => {
+  const show = useCallback((text: ReactNode) => {
     setState({ text, show: true })
     window.clearTimeout(timer.current)
     timer.current = window.setTimeout(() => setState((s) => ({ ...s, show: false })), ms)
@@ -153,7 +153,7 @@ export function useCrumbTail(tail: CrumbSeg[], onLeafClick?: () => void): void {
  * message replaces the shown one, which hides after 1.6 seconds.
  * The returned function retains the same reference throughout the lifetime of the shell.
  */
-export function useBanner(): (text: string) => void {
+export function useBanner(): (text: ReactNode) => void {
   const show = useContext(BannerContext)
   if (!show) throw new Error('useBanner needs AppShell')
   return show
@@ -164,7 +164,7 @@ export function useBanner(): (text: string) => void {
  * replaces the shown one, which hides after 2.4 seconds.
  * The returned function retains the same reference throughout the lifetime of the shell.
  */
-export function useToast(): (text: string) => void {
+export function useToast(): (text: ReactNode) => void {
   const show = useContext(ToastContext)
   if (!show) throw new Error('useToast needs AppShell')
   return show
