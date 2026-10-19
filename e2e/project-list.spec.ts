@@ -284,8 +284,7 @@ test('sched / moe / fa 各打开一次,各板块条数与 project.get 一致', a
 
     await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '里程碑' }).click()
     await expect(win.locator('#msList .ddlrow'), id).toHaveCount(project.activeMilestones)
-    // The selected tab carries over between projects; switch back to Task for the next one.
-    await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '任务' }).click()
+    // Leaving on Milestones does not carry over: the next project opens on its own tasks.
     await win.locator('#crumb .cseg.link', { hasText: '项目' }).click()
   }
 })

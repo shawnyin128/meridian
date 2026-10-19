@@ -397,16 +397,20 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
  * the overview, while the breadcrumbs still return to the list, like the demo's resFrom. Opened from
  * the list, there is no origin and Back returns to the project list. Both tab groups of the details
  * are kept here, so leaving the project and coming back lands on the last tab, like the demo's
- * module-level projPlanTab / projTab.
+ * module-level projPlanTab / projTab; the plan tab is kept per project, and a project not opened yet
+ * starts on its tasks.
  */
 export function Projects() {
   const [openId, setOpenId] = useState<string | null>(null)
   const [arrivalTask, setArrivalTask] = useState<string | null>(null)
   const [arrivalConclusion, setArrivalConclusion] = useState<string | null>(null)
   const [origin, setOrigin] = useState<ScreenKey | null>(null)
-  const [planTab, setPlanTab] = useState<PlanTab>('task')
+  const [planTabs, setPlanTabs] = useState<Record<string, PlanTab>>({})
   const [recordTab, setRecordTab] = useState<RecordTab>('tl')
   const close = useCallback(() => { setOpenId(null); setOrigin(null) }, [])
+  const setPlanTab = useCallback((tab: PlanTab) => {
+    if (openId !== null) setPlanTabs((tabs) => ({ ...tabs, [openId]: tab }))
+  }, [openId])
   const entry = useScreenEntry()
   const { jump, returnTo } = useJump()
   const consumed = useRef(0)
@@ -436,7 +440,7 @@ export function Projects() {
     : (
       <ProjectDetail
         projectId={openId} onBack={close} onReturn={back}
-        tab={planTab} onTab={setPlanTab} record={recordTab} onRecord={setRecordTab}
+        tab={planTabs[openId] ?? 'task'} onTab={setPlanTab} record={recordTab} onRecord={setRecordTab}
         arrivalTask={arrivalTask} arrivalConclusion={arrivalConclusion}
         onArrived={() => { setArrivalTask(null); setArrivalConclusion(null) }}
       />
