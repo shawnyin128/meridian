@@ -381,6 +381,8 @@ export function PaperTable() {
   const [mapRows, setMapRows] = useState<PaperRow[]>([])
   const [mapTotal, setMapTotal] = useState(0)
   const [mapLoading, setMapLoading] = useState(false)
+  // How many papers the search matches; null while the search is empty and until its first count arrives.
+  const [matched, setMatched] = useState<number | null>(null)
   const [facets, setFacets] = useState<Facet[]>([])
   const [q, setQ] = useState('')
   const [group, setGroup] = useState('none')
@@ -501,6 +503,14 @@ export function PaperTable() {
       setTotal(r.total)
     }).catch(reportError)
   }, [view, listed, shownPage, size, sort, direction, filter, group, sel, revision, reportError])
+
+  useEffect(() => {
+    if (filter === '') {
+      setMatched(null)
+      return
+    }
+    void papers.list({ page: 1, size: 1, filter }).then((r) => setMatched(r.total)).catch(reportError)
+  }, [filter, revision, reportError])
 
   useEffect(() => {
     if (view !== 'research-map') return
@@ -1219,7 +1229,7 @@ export function PaperTable() {
       {dropActive ? <div className="paper-drop"><strong>{m.papers.upload.dropToImport}</strong></div> : null}
       {/* As in the demo the title carries a count; until it arrives, the "·" and space after it are hidden. */}
       <PageHeader>
-        <PageTitle>{m.papers.title(paperCount)}</PageTitle>
+        <PageTitle>{m.papers.title(filter === '' ? paperCount : matched)}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />

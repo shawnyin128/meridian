@@ -76,6 +76,8 @@ let throwOnNextUpdate: Error | null
 let columnsCallCount: number
 let listCallCount: number
 let listParams: ListParams[]
+/** What usePaperCount returns: the vault's paper count, or null before it has been fetched. */
+let vaultPaperCount: number | null
 let openedScreens: [screen: string, id?: string][]
 
 vi.mock('../ipc.js', () => ({
@@ -130,7 +132,7 @@ vi.mock('../shell/AppShell.js', () => ({
     open: (screen: string, id?: string) => { openedScreens.push([screen, id]) },
     returnTo: vi.fn(),
   }),
-  usePaperCount: () => null,
+  usePaperCount: () => vaultPaperCount,
   useScreen: () => 'papers',
   useToast: () => (message: string) => { toastMessages.push(message) },
   // Only real revision state makes bump re-run the effects that fetch on revision, as in the app.
@@ -249,6 +251,7 @@ describe('PaperTable', () => {
     columnsCallCount = 0
     listCallCount = 0
     listParams = []
+    vaultPaperCount = null
     openedScreens = []
   })
 
@@ -331,6 +334,30 @@ describe('PaperTable', () => {
     expect(input.value).toBe('')
     expect(document.activeElement).toBe(input)
     expect(listParams.at(-1)).not.toHaveProperty('filter')
+  })
+
+  it('搜索时标题的篇数是搜索命中的篇数，清空搜索后回到论文库的总数', async () => {
+    vaultPaperCount = 10
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 10 })
+    await flush()
+    const title = () => host.querySelector('.desk-head .t')?.textContent
+    expect(host.querySelectorAll('.ptable tbody tr .pt-title')).toHaveLength(1)
+    expect(title()).toBe('论文 · 10')
+
+    listCall = controlled()
+    const input = host.querySelector<HTMLInputElement>('#libq')!
+    act(() => setValue(input, 'note phrase'))
+    listCall.resolve({ rows: [], total: 0 })
+    await flush()
+    expect(host.querySelectorAll('.ptable tbody tr .pt-title')).toHaveLength(0)
+    expect(listParams).toContainEqual({ page: 1, size: 1, filter: 'note phrase' })
+    expect(title()).toBe('论文 · 0')
+
+    act(() => host.querySelector<HTMLButtonElement>('[aria-label="清除论文搜索"]')!.click())
+    await flush()
+    expect(title()).toBe('论文 · 10')
   })
 
   it('论文搜索框与关注屏的一句话添加框是同一种带框的字段输入框', async () => {
