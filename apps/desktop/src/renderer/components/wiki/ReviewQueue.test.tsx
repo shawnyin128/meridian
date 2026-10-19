@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import type { WikiProposal } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
@@ -128,6 +128,26 @@ describe('ReviewQueue', () => {
     })
     act(() => pop.querySelector<HTMLButtonElement>('button')!.click())
     expect(onDecline).toHaveBeenCalledWith(PROPOSALS[1], '证据不够')
+  })
+
+  it('拒绝的原因框从拒绝钮的左缘往右展开在它下方,不往左盖到侧栏上', async () => {
+    // jsdom lays nothing out: give it the 1280×800 window, where the reject button spans x 318–370,
+    // right of the 232px sidebar, and the 320px reason box.
+    const html = document.documentElement
+    const size = (prop: 'clientWidth' | 'clientHeight' | 'offsetWidth' | 'offsetHeight', of: (el: HTMLElement) => number) => {
+      const spy = vi.spyOn(HTMLElement.prototype, prop, 'get').mockImplementation(function (this: HTMLElement) { return of(this) })
+      onTestFinished(() => spy.mockRestore())
+    }
+    const isPopover = (el: HTMLElement) => el.hasAttribute('data-radix-popper-content-wrapper')
+    size('clientWidth', (el) => (el === html ? 1280 : 0))
+    size('clientHeight', (el) => (el === html ? 800 : 0))
+    size('offsetWidth', (el) => (isPopover(el) ? 320 : 0))
+    size('offsetHeight', (el) => (isPopover(el) ? 52 : 0))
+    const decline = [...row('p1').querySelectorAll<HTMLButtonElement>('.review-actions button')].find((b) => b.textContent === '拒绝')!
+    decline.getBoundingClientRect = () => ({ x: 318, y: 305, left: 318, top: 305, right: 370, bottom: 335, width: 52, height: 30, toJSON: () => ({}) })
+    await act(async () => { decline.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)) })
+    expect(document.querySelector<HTMLElement>('[data-radix-popper-content-wrapper]')!.style.transform).toBe('translate(318px, 339px)')
   })
 
   it('已处理的在自己的小标题下列出,各带结果', () => {
