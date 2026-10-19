@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 /** The parts of the jsdom window this test reads; the tsconfig of shared code carries no DOM types. */
 type Node = { dispatchEvent(event: object): boolean; querySelector(selector: string): Node }
-type Style = { boxShadow: string; color: string; transition: string }
+type Style = { backgroundImage: string; boxShadow: string; color: string; transition: string }
 type Window = {
   document: {
     head: { innerHTML: string }
@@ -18,7 +18,7 @@ type Window = {
 const { document, MouseEvent, getComputedStyle } = globalThis as unknown as Window
 
 const STYLES = [
-  'shell/tokens.css', 'routes/shell.css', 'components/paper-table/PaperTable.css', 'components/PaperMetadata.css',
+  'shell/tokens.css', 'components/Tag.css', 'routes/shell.css', 'components/paper-table/PaperTable.css', 'components/PaperMetadata.css',
   'components/CollapsibleGroup.css', 'components/chat/Chat.css',
 ].map((path) => readFileSync(join(import.meta.dirname, '..', 'renderer', path), 'utf8'))
 
@@ -41,9 +41,9 @@ describe('没有悬停反馈的控件', () => {
   })
 
   it('阅读状态 chip 悬停时盖上和按钮一样的悬停色', () => {
-    const chip = '<table class="ptable"><tbody><tr><td><button type="button" class="stchip">在读</button></td></tr></tbody></table>'
-    expect(restAndHover(chip, '.stchip', '.stchip', (style) => style.boxShadow))
-      .toEqual(['', 'inset 0 0 0 100vmax var(--hover)'])
+    const chip = '<table class="ptable"><tbody><tr><td><button type="button" class="tag tag--chip tag--neutral stchip">在读</button></td></tr></tbody></table>'
+    expect(restAndHover(chip, '.stchip', '.stchip', (style) => style.backgroundImage))
+      .toEqual(['none', 'linear-gradient(var(--hover),var(--hover))'])
   })
 
   it('没评上的星悬停时变深，评上的保持原色', () => {
