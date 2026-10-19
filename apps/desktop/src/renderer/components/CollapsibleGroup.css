@@ -13,6 +13,14 @@
 .collapsible-group.is-closed .collapsible-group-caret{transform:rotate(-90deg)}
 .collapsible-group-title{min-width:0;overflow-wrap:anywhere}
 .collapsible-group-actions{display:flex;flex:none;align-items:center;gap:8px}
+/*
+ * An opening group grows through its one grid row from 0fr, as CardTray does, and clips its content
+ * only while it grows, so the content's own shadows and overflow show once it is open.
+ */
+.collapsible-group-body{display:grid;grid-template-rows:1fr;animation:collapsible-group-open var(--t-slow) var(--e-out)}
+.collapsible-group-content{min-height:0;animation:collapsible-group-clip var(--t-slow)}
+@keyframes collapsible-group-open{from{grid-template-rows:0fr}to{grid-template-rows:1fr}}
+@keyframes collapsible-group-clip{from,to{overflow:hidden}}
 
 /* A small group embedded inside another list (e.g. an archived section): no sticky pinning, no
    page-heading weight, tight enough to sit quietly at the bottom of the list it belongs to. */

@@ -108,12 +108,13 @@ test('论文详情面板的「开始阅读」进阅读器,vault 里的 PDF 真�
   console.log(`阅读器画出的页 ${JSON.stringify(await expectPainted(win, READABLE.pages))}`)
 })
 
-test('阅读器右栏平滑展开并在收起后只保留工具轨', async ({ win }) => {
+test('阅读器右栏一下子定好宽度、内容淡入,收起后只保留工具轨', async ({ win }) => {
   await openFromPapers(win)
   const side = shown(win, '.reader-side')
   await expect(side).toHaveClass(/\bcollapsed\b/)
+  // The rail takes its width at once, so the pages beside it are laid out once instead of every frame.
   expect(await side.evaluate((element) => getComputedStyle(element).transitionProperty))
-    .toContain('flex-basis')
+    .not.toContain('flex-basis')
 
   await shown(win, '.reader-rail [title="元数据"]').click()
   await expect(side).not.toHaveClass(/\bcollapsed\b/)

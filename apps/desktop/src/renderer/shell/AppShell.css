@@ -66,11 +66,14 @@
  * override flex-basis, so a long unwrapped chat title would make the sidebar wider than --sbw. The
  * width comes only from --sbw, which the resize handle sets.
  */
-.sidebar{flex:0 0 var(--sbw,232px);min-width:0;background:var(--sidebar);backdrop-filter:blur(20px);border-right:1px solid var(--sep);padding:12px 10px;overflow:visible;position:relative;display:flex;flex-direction:column;user-select:none;transition:transform var(--t-slow) var(--e-inout),opacity var(--t-slow) var(--e-inout),margin-left var(--t-slow) var(--e-inout)}
+.sidebar{flex:0 0 var(--sbw,232px);min-width:0;background:var(--sidebar);backdrop-filter:blur(20px);border-right:1px solid var(--sep);padding:12px 10px;overflow:visible;position:relative;display:flex;flex-direction:column;user-select:none;transition:transform var(--t-slow) var(--e-inout),opacity var(--t-slow) var(--e-inout)}
 .sidebar :is(input,textarea,[contenteditable="true"]){user-select:text}
 .sb-top{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden}
-/* Sidebar collapses */
-.main.sbhide .sidebar{margin-left:calc(var(--sbw,232px) * -1);opacity:0;pointer-events:none}
+/*
+ * Sidebar collapses: it leaves the layout at once, so the content takes the full width in one step,
+ * and slides away over the content it uncovers.
+ */
+.main.sbhide .sidebar{position:absolute;top:0;bottom:0;left:0;width:var(--sbw,232px);z-index:8;transform:translateX(-100%);opacity:0;pointer-events:none}
 /*
  * In the Reader the paper's context bar takes the place of the global navigation; leaving the Reader
  * brings the sidebar back expanded or collapsed as it was.

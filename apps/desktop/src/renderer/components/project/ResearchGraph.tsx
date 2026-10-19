@@ -338,12 +338,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
               patternTransform="rotate(32)"
             >
               <rect className="idea-node-pattern-base" width="12" height="12" />
-              <path className="idea-node-pattern-stripe" d="M-12 0V12 M0 0V12 M12 0V12">
-                <animateTransform
-                  attributeName="transform" type="translate" from="-12 0" to="0 0"
-                  dur="720ms" repeatCount="indefinite"
-                />
-              </path>
+              <path className="idea-node-pattern-stripe" d="M-12 0V12 M0 0V12 M12 0V12" />
             </pattern>
           </defs>
           <g transform={`translate(${baseX + view.x},${baseY + view.y}) scale(${view.zoom})`}>
@@ -356,12 +351,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
               ))}
             </g>
             <g className="active-edge-flows" aria-hidden="true">
-              {routeEdges.map(([from, to], index) => (
-                <path
-                  key={`${from} ${to}`} d={edgePath(from, to)}
-                  style={{ animationDelay: `${index * 110}ms` }}
-                />
-              ))}
+              {routeEdges.map(([from, to]) => <path key={`${from} ${to}`} d={edgePath(from, to)} />)}
             </g>
             {nodes.map((node) => {
               const ideaRelated = ideaNodes.has(node.id)

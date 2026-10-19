@@ -222,7 +222,7 @@ describe('idea and graph association', () => {
     })
   })
 
-  it('adds an animated hatch only to nodes linked to the open idea', () => {
+  it('adds a still hatch only to nodes linked to the open idea', () => {
     const markup = renderToStaticMarkup(withMessages(
       <ResearchGraph graph={GRAPH} selected={null} ideaNodeIds={['root']} onSelect={vi.fn()} />,
     ))
@@ -231,7 +231,7 @@ describe('idea and graph association', () => {
 
     expect(host.querySelector('[data-node="root"]')?.classList.contains('idea-related')).toBe(true)
     expect(host.querySelector('[data-node="probe"]')?.classList.contains('idea-related')).toBe(false)
-    expect(markup).toContain('<animateTransform')
+    expect(markup).not.toContain('<animate')
     expect(host.querySelector('[data-node="root"] rect')?.getAttribute('style')).toContain('url(#idea-node-hatch-')
     expect(host.querySelector('.glegend')?.textContent).toContain('当前想法关联')
     expect(host.querySelector('.legend-node.idea')).not.toBeNull()

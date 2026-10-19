@@ -61,9 +61,6 @@
 .ptable td .ci .hid{display:none}
 .ptable td .ci.chip-expanded{display:flex;align-items:center;flex-wrap:wrap;gap:2px;overflow:visible;white-space:normal;text-overflow:clip}
 .ptable td .ci.chip-expanded .hid{display:inline-block;animation:chip-row-reveal var(--t) var(--e-out) both}
-.ptable td .ci.chip-expanded .hid:nth-child(3){animation-delay:30ms}
-.ptable td .ci.chip-expanded .hid:nth-child(4){animation-delay:60ms}
-.ptable td .ci.chip-expanded .hid:nth-child(n+5){animation-delay:90ms}
 .morebadge{min-width:28px;margin-left:2px}
 @keyframes chip-row-reveal{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:translateX(0)}}
 @media (prefers-reduced-motion:reduce){.ptable td .ci.chip-expanded .hid{animation:none}}
@@ -152,7 +149,6 @@
 .paper-detail-slot{--detail-panel-width:360px;top:46px;right:0;bottom:0;border-left:1px solid var(--sep);
   background:var(--content);z-index:5}
 .pdetail{height:100%;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:16px}
-.desk-body.libview,.desk-foot{transition:margin-right var(--t-slow) var(--e-inout)}
 .desk-body.withdetail,.desk-foot.withdetail{margin-right:360px}
 .pd-h{display:flex;align-items:flex-start;gap:8px;margin-bottom:12px}
 .pd-t{font-size:var(--fs-read);font-weight:700;line-height:var(--lh-ui);flex:1;min-width:0}

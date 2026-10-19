@@ -8,7 +8,9 @@ import type { MouseEvent as ReactMouseEvent, RefObject } from 'react'
  * receives that `G` and the units moved; otherwise it is a click and goes to `onClick`. A unit is
  * one day (`dayWidth` pixels) unless `unitWidthOf` gives an element a finer one (timed tasks in
  * the project day view snap to two hours). `idOf` names a `G`: while it is dragged, `dragged`
- * returns its snapped pixel offset, and 0 for every other id.
+ * returns its snapped pixel offset, and 0 for every other id, and once it has moved past the 4px,
+ * `dragging` is true for it. Escape during a drag puts the element back where it was and ends the
+ * drag: the release that follows moves nothing and is no click.
  * `wrap` is the Gantt's `.gwrap`. Put the returned `onClickCapture` on the Gantt's root element: it
  * swallows the click the browser fires after mouseup. `stubAt` takes a bar's left and right ends on
  * the canvas and, when less than 4px of the bar shows in the `wrap` viewport, returns the side its
@@ -28,6 +30,7 @@ export function useGanttDrag<G>({ wrap, dayWidth, unitWidthOf, idOf, onMove, onC
 }): {
   grab: (e: ReactMouseEvent, grab: G) => void
   dragged: (id: string) => number
+  dragging: (id: string) => boolean
   onClickCapture: (e: ReactMouseEvent) => void
   stubAt: (barLeft: number, barRight: number) => { side: 'l' | 'r'; left: number } | null
 } {
@@ -39,7 +42,7 @@ export function useGanttDrag<G>({ wrap, dayWidth, unitWidthOf, idOf, onMove, onC
   // Gantt, no Gantt handler consumes the click, so the next mousedown clears the flag; otherwise it
   // would stay set until it swallowed some unrelated Gantt click.
   const suppress = useRef(false)
-  const [shift, setShift] = useState<{ id: string; dx: number } | null>(null)
+  const [shift, setShift] = useState<{ id: string; dx: number; moved: boolean } | null>(null)
   const [view, setView] = useState({ left: 0, width: 0 })
 
   useLayoutEffect(() => {
@@ -64,7 +67,7 @@ export function useGanttDrag<G>({ wrap, dayWidth, unitWidthOf, idOf, onMove, onC
       if (!d) return
       d.dx = Math.round((e.clientX - d.x0) / d.unitWidth)
       if (Math.abs(e.clientX - d.x0) > 4) d.moved = true
-      setShift({ id: d.id, dx: d.dx })
+      setShift({ id: d.id, dx: d.dx, moved: d.moved })
     }
     const up = () => {
       const d = drag.current
@@ -76,13 +79,24 @@ export function useGanttDrag<G>({ wrap, dayWidth, unitWidthOf, idOf, onMove, onC
       else onClick(d.grab)
     }
     const down = () => { suppress.current = false }
+    // Capture, so the Escape that cancels a drag is handled before the shell peels a layer with it.
+    const cancel = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || !drag.current) return
+      e.preventDefault()
+      e.stopPropagation()
+      drag.current = null
+      setShift(null)
+      suppress.current = true
+    }
     document.addEventListener('mousedown', down)
     document.addEventListener('mousemove', move)
     document.addEventListener('mouseup', up)
+    document.addEventListener('keydown', cancel, true)
     return () => {
       document.removeEventListener('mousedown', down)
       document.removeEventListener('mousemove', move)
       document.removeEventListener('mouseup', up)
+      document.removeEventListener('keydown', cancel, true)
     }
   }, [onMove, onClick])
 
@@ -98,6 +112,7 @@ export function useGanttDrag<G>({ wrap, dayWidth, unitWidthOf, idOf, onMove, onC
       const held = drag.current
       return shift?.id === id ? shift.dx * (held?.unitWidth ?? dayWidth) : 0
     },
+    dragging: (id) => shift?.id === id && shift.moved,
     onClickCapture: (e) => { if (suppress.current) { suppress.current = false; e.stopPropagation() } },
     stubAt: (barLeft, barRight) => {
       if (barRight < view.left + 4) return { side: 'l', left: view.left + 6 }

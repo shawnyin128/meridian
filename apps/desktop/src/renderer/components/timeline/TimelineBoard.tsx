@@ -258,7 +258,8 @@ export function TimelineBoard({
                       const overdue = !milestone.done && day < today
                       return (
                         <span
-                          className={`gddl${milestone.done ? ' done' : ''}${overdue ? ' overdue' : ''}${hoverMilestoneId === milestone.id ? ' hl' : ''}`}
+                          className={`gddl${milestone.done ? ' done' : ''}${overdue ? ' overdue' : ''}${hoverMilestoneId === milestone.id ? ' hl' : ''}${
+                            drag.dragging(`${project.id}/milestone/${milestone.id}`) ? ' dragging' : ''}`}
                           data-proj={project.id} data-milestone={key} key={milestone.id}
                           title={m.timeline.milestoneTitle(
                             fmt.date(milestone.date), milestone.title, overdue ? m.common.overdue : '',
@@ -294,7 +295,7 @@ export function TimelineBoard({
                   data-proj={project.id} data-task={task.id} key={id}
                 >
                   <div
-                    className={`gbar${start < w0 ? ' clipl' : ''}${task.state === 'done' ? ' dim' : task.state === 'plan' ? ' plan' : ' active'}${overdue ? ' overdue' : ''} priority-${task.priority}`}
+                    className={`gbar${start < w0 ? ' clipl' : ''}${task.state === 'done' ? ' dim' : task.state === 'plan' ? ' plan' : ' active'}${overdue ? ' overdue' : ''} priority-${task.priority}${drag.dragging(id) ? ' dragging' : ''}`}
                     data-proj={project.id} data-task={task.id}
                     title={m.timeline.taskTitle(
                       task.end === task.start ? fmt.date(task.start) : `${fmt.date(task.start)} – ${fmt.date(task.end)}`,
