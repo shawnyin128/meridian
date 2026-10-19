@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useOnLeave } from '../hooks/useOnLeave.js'
+import { composing } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import { FormInput } from './FormControls.js'
 import './ShortTextEditor.css'
@@ -9,7 +10,8 @@ import './ShortTextEditor.css'
  * leaves closing on an outside press or focus leaving to this component, which owns input height,
  * focus, Enter/Escape, async acceptance, and optional deletion. Leaving saves as Enter does; an
  * empty or unchanged draft just closes. A save made by leaving that `onSubmit` refuses keeps the
- * editor open with its text and marks the input invalid until the text changes.
+ * editor open with its text and marks the input invalid until the text changes. Enter and Escape
+ * pressed while an input method is composing belong to it and neither save nor close.
  */
 export function ShortTextEditor({
   title, initialValue = '', placeholder, submitLabel, deleteLabel, busyLabel,
@@ -97,6 +99,7 @@ export function ShortTextEditor({
           }}
           onKeyDown={(event) => {
             if (event.key !== 'Tab') event.stopPropagation()
+            if (composing(event.nativeEvent)) return
             if (event.key === 'Enter') { event.preventDefault(); void commit() }
             if (event.key === 'Escape') {
               event.preventDefault()

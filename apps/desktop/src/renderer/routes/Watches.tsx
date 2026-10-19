@@ -16,6 +16,7 @@ import { FormInput, FormSelect } from '../components/FormControls.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
+import { composing } from '../lib/keyboard.js'
 import './shell.css'
 import './Watches.css'
 
@@ -452,7 +453,9 @@ export function WatchSettings() {
                   setFocus(event.target.value)
                   clearSuggestionResults()
                 }}
-                onKeyDown={(event) => { if (event.key === 'Enter') void suggest() }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !composing(event.nativeEvent)) void suggest()
+                }}
               />
             )
             : (

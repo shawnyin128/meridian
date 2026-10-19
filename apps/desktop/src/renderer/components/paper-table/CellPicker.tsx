@@ -3,6 +3,7 @@ import type { PaperColumn } from '../../../shared/contract.js'
 import { useCandidateKeys } from '../../hooks/useCandidateKeys.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
+import { composing } from '../../lib/keyboard.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { IconCheck, IconPlus } from '../icons.js'
 import { PickerPopover } from '../PickerPopover.js'
@@ -29,7 +30,8 @@ export function optionRows(
  * a popover lists the column's existing options, filtered by the typed text. When the typed text
  * equals no option, an extra "Create "X"" row appears. Clicking a row reports that row's option;
  * Enter reports the highlighted option, or the typed text as a new one when nothing matches; Esc
- * writes nothing. A press outside the input and its popover, or focus leaving them, reports what
+ * writes nothing. Enter and Esc pressed while an input method is composing belong to it and do
+ * neither. A press outside the input and its popover, or focus leaving them, reports what
  * Enter would, except that a highlighted option the cell already holds is left as it is, and closes
  * the picker once `onCommit` resolves true; with nothing typed it just closes. A refused report
  * keeps the picker and its text and marks the input invalid. Styled as the demo's `.ctxmenu.drop`
@@ -81,8 +83,10 @@ export function CellPicker({ column, values, onCommit, onClose }: {
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
             keys.onKeyDown(e)
+            if (e.key === 'Escape') e.stopPropagation()
+            if (composing(e.nativeEvent)) return
             if (e.key === 'Enter' && typed && hits.length === 0 && isNew) create()
-            if (e.key === 'Escape') { e.stopPropagation(); onClose() }
+            if (e.key === 'Escape') onClose()
           }}
         />
       )}

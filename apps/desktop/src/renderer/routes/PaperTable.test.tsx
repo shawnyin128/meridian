@@ -1141,6 +1141,26 @@ describe('PaperTable', () => {
     expect(refused.getAttribute('aria-invalid')).toBe('true')
   })
 
+  it('列菜单改列名时输入法组字的 Esc 与回车归输入法:重命名不撤也不提交;组完字后 Esc 只撤重命名', async () => {
+    const host = mount()
+    columnsCall.resolve(SELECT_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[title="重命名列"]')!.click() })
+    const input = document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')!
+    await act(async () => { setValue(input, '挑选') })
+    for (const key of ['Escape', 'Enter']) {
+      await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { key, isComposing: true, bubbles: true })) })
+    }
+    expect(document.querySelector('.mi.colrow input.celledit')).toBe(input)
+    expect(setColumnsCalls).toEqual([])
+
+    await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+    expect(document.querySelector('.mi.colrow input.celledit')).toBeNull()
+    expect(document.querySelector('[title="重命名列"]')).not.toBeNull()
+  })
+
   it('列菜单改列名时点菜单里别的地方:先存下这一列;名字重了就带着字留着标红,另一列的重命名不开', async () => {
     const host = mount()
     columnsCall.resolve(PICK_AND_NOTE)
