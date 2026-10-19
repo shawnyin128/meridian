@@ -9,6 +9,7 @@ import { ActionPopover } from '../ActionPopover.js'
 import { DiffLines } from '../DiffLines.js'
 import { EmptyState } from '../EmptyState.js'
 import { FormInput } from '../FormControls.js'
+import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { SectionHeading } from '../PageShell.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { AgentLabel } from '../SourceLabel.js'
@@ -77,10 +78,10 @@ function linesOf(op: ProposalOp, p: WikiProposal, w: Catalog['wiki']): string[] 
  * and the pages it would change, flagged when a page it rests on changed since or when it cites a
  * project conclusion the user has not verified (each opens through `onOpenConclusion`); the user
  * applies it or declines it with an optional reason. Decided proposals follow under their own heading,
- * each with its outcome.
+ * each with its outcome. `proposals` is null while they load.
  */
 export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage, onOpenConclusion }: {
-  proposals: WikiProposal[]
+  proposals: WikiProposal[] | null
   pending: boolean
   onApply: (proposal: WikiProposal) => void
   onDecline: (proposal: WikiProposal, reason: string) => void
@@ -92,8 +93,8 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
   const fmt = useFormat()
   const [declining, setDeclining] = useState<string | null>(null)
   const [reason, setReason] = useState('')
-  const queued = proposals.filter((p) => p.status === 'queued')
-  const decided = proposals.filter((p) => p.status !== 'queued')
+  const queued = (proposals ?? []).filter((p) => p.status === 'queued')
+  const decided = (proposals ?? []).filter((p) => p.status !== 'queued')
 
   const source = (p: WikiProposal): string => {
     if (p.proposal === null) return fmt.date(dayOf(p.received))
@@ -108,7 +109,9 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
 
   return (
     <>
-      {queued.length === 0
+      {proposals === null
+        ? <LoadingPlaceholder shape="rows" />
+        : queued.length === 0
         ? <EmptyState variant="section">{r.empty}</EmptyState>
         : (
           <StructuredList variant="embedded" maxVisibleRows="all" className="review-list">
@@ -196,7 +199,7 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                     {[source(p), p.decided === null ? null : fmt.date(dayOf(p.decided.at))].filter((part) => part !== null).join(' → ')}
                   </div>
                   {p.reason === null || p.reason.message === '' ? null : <p className="review-note">{p.reason.message}</p>}
-                  {p.proposal === null ? null : <DiffLines lines={lines(p)} />}
+                  {p.proposal === null ? null : <DiffLines lines={lines(p)} declined={p.status !== 'applied'} />}
                 </StructuredRow>
               ))}
             </StructuredList>

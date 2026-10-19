@@ -5,8 +5,7 @@ import type {
 } from '../../shared/contract.js'
 import { discovery, inbox, watch } from '../ipc.js'
 import {
-  ALL_WATCHES, useCrumbTail, useInboxMode, useInboxScope, useJump, useToast, useVaultRevision,
-  useSettingsOpen,
+  ALL_WATCHES, useCrumbTail, useInboxMode, useInboxScope, useJump, useNotice, useSettingsOpen, useVaultRevision,
 } from '../shell/AppShell.js'
 import { useJobs } from '../shell/useJobs.js'
 import { failureLabel } from '../lib/failure-label.js'
@@ -21,9 +20,11 @@ import {
   PaperCard, PaperCardBadge, PaperCardCitations, PaperCardNotice,
 } from '../components/paper/PaperCard.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
+import { Tag } from '../components/Tag.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar,
@@ -73,7 +74,7 @@ export function Inbox() {
   const fmt = useFormat()
   const scope = useInboxScope()
   const stream = useInboxMode()
-  const [entries, setEntries] = useState<InboxEntry[]>([])
+  const [entries, setEntries] = useState<InboxEntry[] | null>(null)
   const [watches, setWatches] = useState<Watch[]>([])
   const [profiles, setProfiles] = useState<DiscoveryProfile[]>([])
   const [leaving, setLeaving] = useState<ReadonlySet<string>>(new Set())
@@ -82,7 +83,7 @@ export function Inbox() {
   // link to open it.
   const [collided, setCollided] = useState<ReadonlyMap<string, string>>(new Map())
 
-  const toast = useToast()
+  const notice = useNotice()
   const { openCategory } = useSettingsOpen()
   const { open } = useJump()
   const { revision, bump } = useVaultRevision()
@@ -111,7 +112,7 @@ export function Inbox() {
   // Discovery is scoped by project and paper delivery by watch; the sidebar sets the scope for either stream.
   const groupOf = useCallback((entry: InboxEntry) => (stream === 'discovery' ? entry.project : entry.watch), [stream])
   const rows = useMemo(() => (
-    scope === ALL_WATCHES ? entries : entries.filter((e) => groupOf(e) === scope)
+    scope === ALL_WATCHES ? entries ?? [] : (entries ?? []).filter((e) => groupOf(e) === scope)
   ), [entries, groupOf, scope])
   const groups = useMemo(() => {
     const byKey = new Map<string, { key: string; title: string; rows: InboxEntry[] }>()
@@ -146,16 +147,16 @@ export function Inbox() {
 
   const dismiss = (ids: string[], text: string) => {
     leave(ids)
-    toast(text)
+    notice.success(text)
     window.setTimeout(() => { void write(Promise.all(ids.map((id) => inbox.dismiss(id)))) }, LEAVE_MS)
   }
 
   const queue = (id: string) => {
     leave([id])
     void inbox.readLater(id).then((queued) => {
-      toast(queued ? m.inbox.notices.queued : m.inbox.notices.alreadyQueued)
+      notice.success(queued ? m.inbox.notices.queued : m.inbox.notices.alreadyQueued)
       window.setTimeout(bump, LEAVE_MS)
-    }).catch((e: Error) => toast(e.message))
+    }).catch((e: Error) => notice.refusal(e.message))
   }
 
   const ingest = (id: string) => {
@@ -172,12 +173,12 @@ export function Inbox() {
       }
       if (result.kind === 'existing') {
         setCollided((seen) => new Map(seen).set(id, result.title))
-        toast(m.inbox.notices.duplicateToast)
+        notice.success(m.inbox.notices.duplicateToast)
         return
       }
       bump()
-      toast(m.inbox.notices.downloaded)
-    }).catch((e: Error) => toast(e.message)).finally(() => {
+      notice.success(m.inbox.notices.downloaded)
+    }).catch((e: Error) => notice.refusal(e.message)).finally(() => {
       setBusy((held) => {
         const next = new Set(held)
         next.delete(id)
@@ -189,18 +190,18 @@ export function Inbox() {
   const refreshDiscovery = () => {
     setDiscovering(true)
     void discovery.fetch().then((result) => {
-      toast(discoveryResultNote(result, m))
+      notice.success(discoveryResultNote(result, m))
       bump()
-    }).catch((e: Error) => toast(e.message)).finally(() => setDiscovering(false))
+    }).catch((e: Error) => notice.refusal(e.message)).finally(() => setDiscovering(false))
   }
 
   const feedback = (id: string, value: 'more' | 'less' | 'known') => {
     if (value !== 'more') leave([id])
     void discovery.feedback(id, value).then(() => {
-      toast(value === 'more' ? m.inbox.notices.moreLike
+      notice.success(value === 'more' ? m.inbox.notices.moreLike
         : value === 'less' ? m.inbox.notices.lessLike : m.inbox.notices.known)
       window.setTimeout(bump, value === 'more' ? 0 : LEAVE_MS)
-    }).catch((e: Error) => toast(e.message))
+    }).catch((e: Error) => notice.refusal(e.message))
   }
 
   const card = (p: InboxEntry) => (
@@ -286,6 +287,15 @@ export function Inbox() {
       <PageHeader
         actions={(
           <>
+            {stream === 'watch' && watched !== undefined && !watched.active ? (
+              <>
+                <Tag>{m.watches.paused}</Tag>
+                <button
+                  className="btn"
+                  onClick={() => { void write(watch.setActive(watched.id, true), { note: m.watches.notices.resumed }) }}
+                >{m.watches.resume}</button>
+              </>
+            ) : null}
             <span className="fetchnote">{stream === 'watch' ? fetchNote(jobs?.fetch ?? null, m, fmt) : ''}</span>
             <IconButton
               label={stream === 'discovery' ? m.inbox.discoverySettings : m.inbox.watchSettings}
@@ -294,7 +304,7 @@ export function Inbox() {
             {stream === 'watch' ? (
               <button
                 className="btn" disabled={jobs?.fetch?.state === 'checking'}
-                onClick={() => { void inbox.fetch().catch((e: Error) => toast(e.message)) }}
+                onClick={() => { void inbox.fetch().catch((e: Error) => notice.refusal(e.message)) }}
               >{jobs?.fetch?.state === 'failed' ? m.common.retry : m.inbox.checkNewPapers}</button>
             ) : (
               <button className="btn" disabled={discovering} onClick={refreshDiscovery}>
@@ -310,19 +320,21 @@ export function Inbox() {
       <PageError error={error} />
 
       <PageBody>
-        <PageToolbar>
-          <SegmentedControl
-            label={m.inbox.sortLabel}
-            value={sort}
-            options={[
-              { value: 'recommended', label: m.inbox.sort.recommended },
-              { value: 'latest', label: m.inbox.sort.latest },
-              { value: 'published', label: m.inbox.sort.published },
-              { value: 'impact', label: m.inbox.sort.impact },
-            ]}
-            onChange={setSort}
-          />
-        </PageToolbar>
+        {rows.length === 0 ? null : (
+          <PageToolbar>
+            <SegmentedControl
+              label={m.inbox.sortLabel}
+              value={sort}
+              options={[
+                { value: 'recommended', label: m.inbox.sort.recommended },
+                { value: 'latest', label: m.inbox.sort.latest },
+                { value: 'published', label: m.inbox.sort.published },
+                { value: 'impact', label: m.inbox.sort.impact },
+              ]}
+              onChange={setSort}
+            />
+          </PageToolbar>
+        )}
         {stream === 'discovery' ? (
           <div className="discovery-summary">
             <p className="discovery-note">
@@ -333,7 +345,9 @@ export function Inbox() {
             </p>
           </div>
         ) : null}
-        {rows.length === 0
+        {entries === null
+          ? (error === null ? <LoadingPlaceholder shape="cards" /> : null)
+          : rows.length === 0
           ? (
             <EmptyState
               variant="page"

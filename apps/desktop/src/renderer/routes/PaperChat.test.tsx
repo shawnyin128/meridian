@@ -29,8 +29,7 @@ const api = vi.hoisted(() => ({
   createConclusion: vi.fn(() => Promise.resolve({})),
   feedAppend: vi.fn(() => Promise.resolve()),
   bump: vi.fn(),
-  banner: vi.fn(),
-  toast: vi.fn(),
+  notice: { success: vi.fn(), refusal: vi.fn() },
   grip: { onMouseDown: vi.fn(), onMouseEnter: vi.fn(), onMouseLeave: vi.fn() },
   collapsed: false,
 }))
@@ -46,8 +45,7 @@ vi.mock('../ipc.js', () => ({
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
-  useBanner: () => api.banner,
-  useToast: () => api.toast,
+  useNotice: () => api.notice,
   useVaultRevision: () => ({ revision: 0, bump: api.bump }),
   usePaperChatGrip: () => api.grip,
   usePaperChatCollapsed: () => api.collapsed,
@@ -137,7 +135,7 @@ describe('PaperChat', () => {
     act(() => host.querySelector<HTMLButtonElement>('.paper-chat .send')!.click())
     const control = host.querySelector<HTMLButtonElement>('.paper-chat .send')!
     expect(control.getAttribute('aria-label')).toBe('正在生成，点击停止')
-    expect(control.querySelector('.generation-spinner')).not.toBeNull()
+    expect(control.querySelector('.ring.spin')).not.toBeNull()
     expect(control.querySelector('.generation-stop')).not.toBeNull()
 
     act(() => control.click())
@@ -217,7 +215,7 @@ describe('PaperChat', () => {
   it('空对话的提示和输入框一样留在对话栏的左右边距里', async () => {
     const host = await mountChat()
     const hint = host.querySelector('.msgs .empty-state')!
-    expect(hint.textContent).toContain('围绕当前论文提问')
+    expect(hint.textContent).toBe('还没有对话')
     expect(hint.parentElement!.className).toBe(host.querySelector('.composer > div')!.className)
   })
 

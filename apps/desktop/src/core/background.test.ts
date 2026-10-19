@@ -192,18 +192,18 @@ describe('createBackground', () => {
       .toEqual({ kind: 'failed', reason: 'unavailable' })
   })
 
-  it('没存 key 时作者搜索不发请求，直接说明要填 key 或按姓名保存', async () => {
+  it('没存 key 时作者搜索不发请求，回一个缺 key 的失败原因，不带 Core 的句子', async () => {
     const store = createFixtureStore(() => '2026-08-25')
     let requests = 0
     const background = createBackground({
       store, get: async () => { requests += 1; return { status: 200, body: new Uint8Array() } },
       probe: probePdf, arxivIntervalMs: 0, sleep: async () => {}, now: () => 0,
     })
-    await expect(background.searchAuthors('Song Han')).rejects.toThrow('填入 Semantic Scholar key 后才能区分同名作者')
+    expect(await background.searchAuthors('Song Han')).toEqual({ kind: 'failed', reason: 'no-key' })
     expect(requests).toBe(0)
   })
 
-  it('作者服务持续限流时给可恢复的说明,不把裸 429 暴露给界面', async () => {
+  it('作者服务和论文检索持续限流时回限流这个失败原因,不把裸 429 也不把 Core 的句子交给界面', async () => {
     const store = createFixtureStore(() => '2026-08-25')
     const background = createBackground({
       store,
@@ -215,8 +215,8 @@ describe('createBackground', () => {
       semanticScholarApiKey: () => 'saved-key',
     })
 
-    await expect(background.searchAuthors('Song Han')).rejects.toThrow(
-      'Semantic Scholar 正在限流，请稍后重试；也可以先按姓名保存为未确认作者',
-    )
+    expect(await background.searchAuthors('Song Han')).toEqual({ kind: 'failed', reason: 'rate-limit' })
+    expect(await background.suggestWatches({ focus: 'speculative decoding' }))
+      .toEqual({ kind: 'failed', reason: 'rate-limit' })
   })
 })

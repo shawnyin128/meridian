@@ -7,7 +7,7 @@ import type {
 import { PAPER_PAGE } from '../../shared/vocabulary.js'
 import { papers, wiki } from '../ipc.js'
 import {
-  useBanner, useCrumbTail, useJump, useScreenEntry, useToast, useVaultRevision, type CrumbSeg, type ScreenKey,
+  useCrumbTail, useJump, useNotice, useScreenEntry, useVaultRevision, type CrumbSeg, type ScreenKey,
 } from '../shell/AppShell.js'
 import { AddAction } from '../components/AddAction.js'
 import { ActionPopover } from '../components/ActionPopover.js'
@@ -24,6 +24,7 @@ import { IconCross, IconGear, IconTrash } from '../components/icons.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import { InlineMetadataField } from '../components/InlineField.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { NewColumnHead } from '../components/paper-table/ColumnAdd.js'
 import { headingsOf, MarkdownBox } from '../components/Markdown.js'
 import { Pager } from '../components/Pager.js'
@@ -141,7 +142,7 @@ function Table({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: {
   const m = useMessages()
   if (adding === undefined) {
     if (agg.columns.length === 0 && agg.rows.length === 0) {
-      return <p className="lm">{m.wiki.noDirectPapers}</p>
+      return <EmptyState variant="section">{m.wiki.noDirectPapers}</EmptyState>
     }
     if (agg.rows.length === 0) return <EmptyState variant="section">{m.wiki.noPapers}</EmptyState>
   }
@@ -333,13 +334,12 @@ export function Wiki() {
   const [agg, setAgg] = useState<WikiAggregation | null>(null)
   const [paper, setPaper] = useState<WikiPaper | null>(null)
   const [reading, setReading] = useState<PaperReading | null>(null)
-  const [proposals, setProposals] = useState<WikiProposal[]>([])
+  const [proposals, setProposals] = useState<WikiProposal[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const consumed = useRef(0)
   const main = useRef<HTMLDivElement>(null)
   const reportError = useCallback((e: Error) => setError(e.message), [])
-  const toast = useToast()
-  const banner = useBanner()
+  const notice = useNotice()
   const write = useVaultWrite()
   const box = useRef<HTMLDivElement>(null)
   const [editing, setEditing] = useState(false)
@@ -367,8 +367,8 @@ export function Wiki() {
 
   /**
    * A management operation is a proposal: once it is written, close the input row, bump the vault
-   * revision, show `title` in the banner, and return whether it was written. `pending` is true while
-   * the proposal is in flight. `note` replaces `title` in the banner.
+   * revision, show `title` as a success notice, and return whether it was written. `pending` is true
+   * while the proposal is in flight. `note` replaces `title` in the notice.
    */
   const propose = (title: string, ops: Proposal['ops'], note = title): Promise<boolean> => {
     setPending(true)
@@ -529,7 +529,7 @@ export function Wiki() {
     if (shownAgg === null) return false
     const slug = slugOf(title)
     if (slug === '') {
-      toast(m.wiki.nameNeedsChar)
+      notice.refusal(m.wiki.nameNeedsChar)
       return false
     }
     return propose(m.wiki.proposals.createUnder(title, shownAgg.title), [{
@@ -554,7 +554,7 @@ export function Wiki() {
   }, [shownAgg, shownPaper, go, place, m])
   useCrumbTail(tail, place === null ? undefined : goHome)
 
-  const queued = proposals.filter((p) => p.status === 'queued').length
+  const queued = (proposals ?? []).filter((p) => p.status === 'queued').length
   const title = shownAgg?.title ?? (shownPaper === null ? null : <PaperText text={shownPaper.title} />)
     ?? (place === REVIEW ? m.wiki.queue.title(queued) : null)
     ?? (home === null ? 'Wiki' : m.wiki.title(home.aggregationCount))
@@ -563,9 +563,9 @@ export function Wiki() {
   const decide = (proposal: WikiProposal, decision: 'apply' | 'decline', reason?: string) => {
     setPending(true)
     void write(wiki.decide(proposal.id, decision, reason).then((receipt) => {
-      if (decision === 'decline') banner(m.wiki.queue.declinedNote)
-      else if (receipt.status === 'applied') banner(m.wiki.queue.appliedNote)
-      else toast(m.wiki.queue.rejectedNote(receipt.reason?.message ?? ''))
+      if (decision === 'decline') notice.success(m.wiki.queue.declinedNote)
+      else if (receipt.status === 'applied') notice.success(m.wiki.queue.appliedNote)
+      else notice.refusal(m.wiki.queue.rejectedNote(receipt.reason?.message ?? ''))
     })).finally(() => setPending(false))
   }
 
@@ -623,6 +623,9 @@ export function Wiki() {
       <PageError error={error} />
 
       <PageBody>
+        {error === null && (place === null ? home === null : place !== REVIEW && shownAgg === null && shownPaper === null)
+          ? <LoadingPlaceholder shape="cards" />
+          : null}
         {shownAgg !== null
           ? (
             <div className="wkpage">
@@ -777,7 +780,7 @@ export function Wiki() {
                     label={m.wiki.nameFieldLabel} value={shownAgg.title}
                     onSave={(title) => {
                       const next = title.trim()
-                      if (next === '') { toast(m.wiki.nameRequired); return false }
+                      if (next === '') { notice.refusal(m.wiki.nameRequired); return false }
                       return propose(m.wiki.proposals.editMetadata(shownAgg.title), [{
                         op: 'setAggregationMetadata', page: shownAgg.id, title: next,
                         splitOn: shownAgg.splitOn ?? null,
@@ -858,7 +861,7 @@ export function Wiki() {
                     label={m.wiki.titleLabel} value={shownPaper.title}
                     onSave={(title) => {
                       const next = title.trim()
-                      if (next === '') { toast(m.wiki.titleRequired); return false }
+                      if (next === '') { notice.refusal(m.wiki.titleRequired); return false }
                       return updateWikiPaper({ title: next }, m.wiki.titleLabel)
                     }}
                   />
@@ -884,7 +887,7 @@ export function Wiki() {
                       if (text === '') return updateWikiPaper({ year: null }, m.wiki.yearLabel)
                       const next = Number(text)
                       if (!Number.isInteger(next) || next < 1000 || next > 3000) {
-                        toast(m.wiki.yearRange)
+                        notice.refusal(m.wiki.yearRange)
                         return false
                       }
                       return updateWikiPaper({ year: next }, m.wiki.yearLabel)

@@ -8,12 +8,11 @@ declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
-const { toast } = vi.hoisted(() => ({ toast: vi.fn() }))
+const { notice, bump } = vi.hoisted(() => ({ notice: { success: vi.fn(), refusal: vi.fn() }, bump: vi.fn() }))
 
 vi.mock('../shell/AppShell.js', () => ({
-  useBanner: () => vi.fn(),
-  useToast: () => toast,
-  useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
+  useNotice: () => notice,
+  useVaultRevision: () => ({ revision: 0, bump }),
 }))
 
 type Write = ReturnType<typeof useVaultWrite>
@@ -37,25 +36,29 @@ describe('useVaultWrite', () => {
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     document.body.innerHTML = ''
-    toast.mockClear()
+    notice.success.mockClear()
+    notice.refusal.mockClear()
+    bump.mockReset()
   })
 
-  it('写成功且 notify 没抛时,收尾返回 true,不报 toast', async () => {
+  it('写成功时,说明报成成功提示,收尾返回 true', async () => {
     const write = mount()
-    await expect(write(Promise.resolve(), { note: '已保存', notify: vi.fn() })).resolves.toBe(true)
-    expect(toast).not.toHaveBeenCalled()
+    await expect(write(Promise.resolve(), { note: '已保存' })).resolves.toBe(true)
+    expect(notice.success).toHaveBeenCalledWith('已保存')
+    expect(notice.refusal).not.toHaveBeenCalled()
   })
 
-  it('写被拒时,core 的原话报成 toast 并返回 false', async () => {
+  it('写被拒时,core 的原话报成拒绝提示并返回 false', async () => {
     const write = mount()
     await expect(write(Promise.reject(new Error('列名重复:备注')))).resolves.toBe(false)
-    expect(toast).toHaveBeenCalledWith('列名重复:备注')
+    expect(notice.refusal).toHaveBeenCalledWith('列名重复:备注')
+    expect(notice.success).not.toHaveBeenCalled()
   })
 
-  it('写成功但 notify 自己抛出时,抛出的话报成 toast 并返回 false', async () => {
+  it('写成功但刷新抛出时,抛出的话报成拒绝提示并返回 false', async () => {
+    bump.mockImplementation(() => { throw new Error('刷新炸了') })
     const write = mount()
-    await expect(write(Promise.resolve(), { note: '已保存', notify: () => { throw new Error('notify 炸了') } }))
-      .resolves.toBe(false)
-    expect(toast).toHaveBeenCalledWith('notify 炸了')
+    await expect(write(Promise.resolve(), { note: '已保存' })).resolves.toBe(false)
+    expect(notice.refusal).toHaveBeenCalledWith('刷新炸了')
   })
 })

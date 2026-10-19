@@ -13,6 +13,7 @@ import { dnum, isoOf } from '../../../shared/dates.js'
 import { AddAction } from '../AddAction.js'
 import { CollapsibleGroup } from '../CollapsibleGroup.js'
 import { DateChip } from '../DateTimeDisplay.js'
+import { EmptyState } from '../EmptyState.js'
 import { ChoicePicker, DateButton, PriorityPicker } from '../FieldPickers.js'
 import { InlineDraftInput } from '../InlineDraftInput.js'
 import { InlineField, type InlineFieldProps } from '../InlineField.js'
@@ -276,7 +277,7 @@ export function ProjectTaskPanel({
       <MarkdownBox
         className="task-note" text={task.note ?? ''} editing={editing} box={box}
         onCancel={() => setEditing(false)} onSave={save}
-        empty={<span className="lm">{m.project.plan.noteEmpty}</span>}
+        empty={<EmptyState variant="section">{m.project.plan.noteEmpty}</EmptyState>}
       />
     </>
   )
@@ -492,7 +493,7 @@ export function ProjectPlan({
                 />
               ))}
               {project.tasks.length === 0 && creating?.kind !== 'task'
-                ? <div className="lm">{m.project.plan.noTasks}</div>
+                ? <EmptyState variant="section">{m.project.plan.noTasks}</EmptyState>
                 : null}
               {archivedTasks.length === 0
                 ? null
@@ -532,6 +533,9 @@ export function ProjectPlan({
                     onCancel={onCancelCreate} onSave={onCreateMilestone}
                   />
                 )
+                : null}
+              {project.milestones.length === 0 && creating?.kind !== 'ms'
+                ? <EmptyState variant="section">{m.project.plan.noMilestones}</EmptyState>
                 : null}
               {archivedMilestones.length === 0
                 ? null

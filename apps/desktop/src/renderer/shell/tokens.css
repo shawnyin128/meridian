@@ -17,7 +17,7 @@
 :root{
   /*
    * The surface ladder, bottom to top: --window (sidebar, title bar, page heads), --content (the
-   * canvas), --card, then --raised (menus, popovers, tooltips, the banner). In this theme the canvas
+   * canvas), --card, then --raised (menus, popovers, tooltips, the notice). In this theme the canvas
    * is white and cards are a tint off it; --window and --sidebar follow the canvas a rung lower.
    */
   --desktop:#e6eaf2; --content:#ffffff;

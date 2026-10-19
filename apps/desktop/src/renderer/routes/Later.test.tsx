@@ -25,7 +25,7 @@ vi.mock('../ipc.js', () => ({
 }))
 vi.mock('../shell/AppShell.js', () => ({
   useJump: () => ({ open: vi.fn() }),
-  useToast: () => vi.fn(),
+  useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
 vi.mock('../shell/useJobs.js', () => ({ useJobs: () => null }))

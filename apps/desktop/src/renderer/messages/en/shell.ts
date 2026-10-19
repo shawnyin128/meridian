@@ -63,5 +63,6 @@ export const shell = {
     placeholder: 'Search everything',
     clear: 'Clear search',
     results: 'Search results',
+    noHits: 'No matches found',
   },
 } satisfies typeof zh

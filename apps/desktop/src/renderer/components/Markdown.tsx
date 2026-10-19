@@ -138,9 +138,9 @@ export function headingsOf(src: string): Heading[] {
 
 /**
  * One container that switches between the rendered result and the Markdown source: with `editing`
- * false it renders `text` as Markdown (`empty` when the string is empty); with it true it is a
- * contentEditable holding the source, focused on entry, where Esc calls `onCancel` and ⌘Enter or
- * Ctrl+Enter calls `onSave`, unless an input method is composing.
+ * false it renders `text` as Markdown, or `empty` alone, outside the container, when the string is
+ * empty; with it true it is a contentEditable holding the source, focused on entry, where Esc calls
+ * `onCancel` and ⌘Enter or Ctrl+Enter calls `onSave`, unless an input method is composing.
  * The caller places EditActions and reads `box`'s `innerText` on save. `className` is appended to the
  * container.
  */
@@ -176,16 +176,14 @@ export function MarkdownBox({ text, editing, box, onCancel, onSave, onOpen, onAn
       >{text}</div>
     )
     // Under exactOptionalPropertyTypes an absent onOpen cannot be passed as undefined; it must be left out.
-    : (
-      <div className={classes}>
-        {text === ''
-          ? empty
-          : (
-            <Markdown
-              src={text} {...(onOpen === undefined ? {} : { onOpen })} {...(onAnchor === undefined ? {} : { onAnchor })}
-              {...(titles === undefined ? {} : { titles })}
-            />
-          )}
-      </div>
-    )
+    : text === ''
+      ? empty
+      : (
+        <div className={classes}>
+          <Markdown
+            src={text} {...(onOpen === undefined ? {} : { onOpen })} {...(onAnchor === undefined ? {} : { onAnchor })}
+            {...(titles === undefined ? {} : { titles })}
+          />
+        </div>
+      )
 }

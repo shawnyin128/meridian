@@ -18,9 +18,9 @@ export const inbox = {
   discoverySummary: (projects: number, intents: number) =>
     `按项目拆分研究方向 · ${projects} 个项目 · ${intents} 个启用方向`,
   empty: {
-    discoveryNone: '暂时没有新发现。',
-    discoveryNoSeeds: '先在项目中关联一篇带 arXiv 编号的论文。',
-    watch: '暂时没有新的推送。',
+    discoveryNone: '还没有新的发现',
+    discoveryNoSeeds: '还没有带 arXiv 编号的项目论文',
+    watch: '还没有新的推送',
   },
   dismissAll: '全部忽略',
   actions: {

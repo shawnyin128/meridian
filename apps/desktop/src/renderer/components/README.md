@@ -51,8 +51,26 @@ Current shared contracts:
   stop and arrow keys. A choice among many values is a menu picker, not a segment per value.
 - `Switch`: a binary setting that takes effect as soon as it flips. Its name stays the same in both states;
   a button whose label flips between two actions is not used for a setting.
-- `EmptyState`: the two ways a list says it is empty. `page` is a centred sentence with an optional icon
-  for a whole screen; `section` is one line of small grey text under a section heading.
+- `Notice`: the app's one notice. AppShell places it on the canvas and screens show it through
+  `useNotice()`. It is a live region (`role="status"`), stays `NOTICE_MS`, pauses while the pointer or the
+  focus is on it, and offers at most one action. Which tone an action uses:
+  - `success`: the action took effect, or what it asked for already held (the paper is already in the vault).
+  - `refusal`: the action did not take effect, because Core refused it, the input was invalid or the call
+    failed, and nothing was written.
+  - A form's save button that stays on screen shows its success in place (Saved) until the form changes
+    again and sends no notice. An error that belongs to a pane or card on screen stays with that pane or
+    card instead of becoming a notice.
+- `LoadingPlaceholder`: the one loading state, grey blocks in the shape of the result (`rows`, `cards`,
+  `lines`, `sheet`). Data that has not arrived is `null`, and a screen shows this placeholder for it, never
+  an empty state and never a loading sentence.
+- `EmptyState`: the two ways a list says it is empty. `page` is a centred line with an optional icon for a
+  whole screen; `section` is one line of small grey text under a section heading, flush with it and one list
+  row high, so tabs that share a slot keep one height. The words follow one pattern: 还没有… (No … yet), or
+  没有找到… (No … found) for a search, without a full stop. A section the user fills (tasks, milestones,
+  attachments, links, linked ideas) keeps its heading and a section empty state; a derived section (signals,
+  recent progress, upcoming milestones, backups, a node's branches, records and document) is hidden while it
+  has nothing to show. A control that orders or groups a list is hidden while the list is empty; adding,
+  filtering and settings stay.
 - `Tag`: every tag, chip and status pill. `tone` picks the fill and text colour (`neutral`, `accent`, `good`,
   `warn`, `bad`, `info`, `paper`, `wiki`, and `ghost` for the slot that adds a tag to a row) and `shape` the
   box (`label` for a status, kind, priority or source word; `chip` for a name, topic, date or value).
@@ -79,6 +97,9 @@ Current shared contracts:
   library search configure the same focus restoration, icon geometry, and accessible naming.
 - `GenerationControl`: the shared idle, spinning, and hover-to-stop button contract for model-backed
   actions. Chat composers and Wiki Harness generation do not define independent running animations.
+- `RunningRing` (in `icons`): the one running indicator, `DownloadRing` without a total, turning once per
+  `--t-spin` in the colour of the text around it. GenerationControl and About use it; a running job is
+  never drawn in a danger tone.
 - `CardTray`: progressive disclosure for secondary card details. It keeps a one-line summary visible,
   expands details below the host without moving its primary identity, and owns the shared animation,
   keyboard semantics, and reduced-motion behavior.
@@ -91,7 +112,7 @@ Current shared contracts:
 - `paper/PaperCard`: discovery-card composition, actions/notices slots, metadata badges, recommendations,
   and the shared LaTeX-capable `PaperAbstract`. Inbox and read-later configure the same card.
 - `paper/PaperText`: every display of a paper title (inline) or abstract (block, through `Markdown`) with
-  the LaTeX of arXiv metadata; `plainTitle` is the same title for tooltips, aria labels, breadcrumbs and toasts.
+  the LaTeX of arXiv metadata; `plainTitle` is the same title for tooltips, aria labels, breadcrumbs and notices.
 - `paper/PaperUnderstanding`: the reader-facing whole-paper remark and page-linked note summary. It
   keeps personal reading state visually and structurally separate from canonical Wiki Markdown.
 - `chat/PaperChat` and `chat/ChatMessage`: paper-context composition, shared conversation rendering,

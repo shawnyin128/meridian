@@ -6,6 +6,7 @@ import { useMessages } from '../messages/useMessages.js'
 import { useJump, useToday, useVaultRevision } from '../shell/AppShell.js'
 import { CONFLICT_THREAD } from '../lib/chat.js'
 import { DayHeading, daySectionName } from '../components/DayHeading.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar,
 } from '../components/PageShell.js'
@@ -145,7 +146,7 @@ export function Feed() {
   const m = useMessages()
   const { revision } = useVaultRevision()
   const { open } = useJump()
-  const [entries, setEntries] = useState<FeedEntry[]>([])
+  const [entries, setEntries] = useState<FeedEntry[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [source, setSource] = useState<FeedSource | null>(null)
   const [nowMs, setNowMs] = useState(Date.now)
@@ -163,7 +164,7 @@ export function Feed() {
     return () => window.clearInterval(timer)
   }, [])
 
-  const rows = source === null ? entries : entries.filter((e) => e.source === source)
+  const rows = source === null ? entries ?? [] : (entries ?? []).filter((e) => e.source === source)
 
   return (
     <PageShell className="feedcol">
@@ -181,6 +182,7 @@ export function Feed() {
             />
           </PageToolbar>
           {/* A source-filtered stream omits date headings because the heading itself has no source. */}
+          {entries === null && error === null ? <LoadingPlaceholder shape="cards" /> : null}
           <FeedRows
             rows={rows} showDays={source === null} nowMs={nowMs}
             onOpenConflict={() => open('chat', CONFLICT_THREAD)}

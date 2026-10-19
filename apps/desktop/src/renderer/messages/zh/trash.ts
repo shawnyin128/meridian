@@ -1,7 +1,7 @@
 /** Trash screen copy. */
 export const trash = {
   title: (count: number) => `垃圾桶 · ${count}`,
-  empty: '垃圾桶是空的。',
+  empty: '还没有移入垃圾桶的内容',
   kinds: {
     inbox: '论文推送', paper: '论文', project: '项目', idea: '想法', attachment: '附件',
   },

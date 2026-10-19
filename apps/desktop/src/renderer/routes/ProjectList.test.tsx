@@ -10,19 +10,21 @@ declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
-const api = vi.hoisted(() => ({ projects: [] as ProjectSummary[] }))
+const api = vi.hoisted(() => ({ projects: [] as ProjectSummary[], loading: false }))
 
 vi.mock('../ipc.js', () => ({
   feed: { append: vi.fn() },
-  project: { list: async () => structuredClone(api.projects), reorder: vi.fn() },
+  project: {
+    list: () => (api.loading ? new Promise(() => {}) : Promise.resolve(structuredClone(api.projects))),
+    reorder: vi.fn(),
+  },
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
-  useBanner: () => vi.fn(),
+  useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useCrumbTail: () => {},
   useJump: () => ({ jump: null, open: vi.fn(), returnTo: vi.fn() }),
   useScreenEntry: () => 0,
-  useToast: () => vi.fn(),
   useToday: () => '2026-10-16',
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
@@ -57,6 +59,26 @@ afterEach(() => {
   act(() => root.unmount())
   host.remove()
   vi.unstubAllGlobals()
+  api.loading = false
+})
+
+describe('项目列表空着时', () => {
+  it('进行中留着标题和新建，下面是一行分节空态，不摆排序', async () => {
+    api.projects = []
+    await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
+    expect(host.querySelector('.section-heading')?.textContent).toContain('进行中')
+    expect(host.querySelector('.empty-state--section')?.textContent).toBe('还没有进行中的项目')
+    expect(host.querySelector('.section-heading .sort-menu')).toBeNull()
+    expect(host.querySelector('#projNew')).not.toBeNull()
+  })
+})
+
+describe('项目列表在载入时', () => {
+  it('列表还没读到时页面里是载入占位，不是一片空白', async () => {
+    api.loading = true
+    await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
+    expect(host.querySelector('.desk-body .loading-placeholder')).not.toBeNull()
+  })
 })
 
 describe('项目列表的卡片', () => {

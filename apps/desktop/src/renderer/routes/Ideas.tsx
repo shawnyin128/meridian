@@ -11,6 +11,7 @@ import { EditActions } from '../components/EditActions.js'
 import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { IdeaPanel, ideaSourceLabel } from '../components/ideas/IdeaPanel.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DetailPanel } from '../components/DetailPanel.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
 import { RowActions } from '../components/StructuredList.js'
@@ -226,7 +227,7 @@ export function Ideas() {
   const { jump, open } = useJump()
   const write = useVaultWrite()
   const consumedJump = useRef(0)
-  const [rows, setRows] = useState<ResearchIdea[]>([])
+  const [rows, setRows] = useState<ResearchIdea[] | null>(null)
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [archiveOpen, setArchiveOpen] = useState(false)
@@ -256,18 +257,19 @@ export function Ideas() {
     () => new Map(projects.map((project) => [project.id, project])),
     [projects],
   )
-  const selected = selectedId === null ? undefined : rows.find((idea) => idea.id === selectedId)
-  const active = rows.filter((idea) => !idea.archived)
-  const archived = rows.filter((idea) => idea.archived)
+  const listed = useMemo(() => rows ?? [], [rows])
+  const selected = selectedId === null ? undefined : listed.find((idea) => idea.id === selectedId)
+  const active = listed.filter((idea) => !idea.archived)
+  const archived = listed.filter((idea) => idea.archived)
 
-  const ids = useMemo(() => rows.map((idea) => idea.id), [rows])
-  const archivedOf = useMemo(() => new Map(rows.map((idea) => [idea.id, idea.archived])), [rows])
+  const ids = useMemo(() => listed.map((idea) => idea.id), [listed])
+  const archivedOf = useMemo(() => new Map(listed.map((idea) => [idea.id, idea.archived])), [listed])
   const reorder = useDragReorder(
     ids, (id) => (archivedOf.get(id) ? 'archived' : 'active'),
     (order) => { void write(ideaApi.reorder(order)) },
   )
   const sortByUpdated = () => {
-    const order = [...rows].sort((a, b) => b.updated.localeCompare(a.updated)).map((idea) => idea.id)
+    const order = [...listed].sort((a, b) => b.updated.localeCompare(a.updated)).map((idea) => idea.id)
     void write(ideaApi.reorder(order))
   }
 
@@ -312,11 +314,11 @@ export function Ideas() {
               <SortMenu label={m.ideas.sort} options={[{ label: m.ideas.sortUpdated, onSelect: sortByUpdated }]} />
             )}
             >{m.ideas.activeHeading(active.length)}</SectionHeading>
-            {active.length === 0 ? (
-              <EmptyState variant="page">
-                {m.ideas.empty}
-              </EmptyState>
-            ) : active.map(card)}
+            {rows === null ? (
+              error === null ? <LoadingPlaceholder shape="cards" /> : null
+            ) : active.length === 0
+              ? <EmptyState variant="section">{m.ideas.empty}</EmptyState>
+              : active.map(card)}
             {archived.length === 0 ? null : (
               <CollapsibleGroup
                 variant="quiet" title={m.common.archived} count={archived.length}

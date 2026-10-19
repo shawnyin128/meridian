@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
-  DiscoveryProfile, InboxDownloadResult, InboxEntry, JobsStatus,
+  DiscoveryProfile, InboxDownloadResult, InboxEntry, JobsStatus, Watch,
 } from '../../shared/contract.js'
 import { IconCheck, IconSeen, IconTrash } from '../components/icons.js'
 import { MessagesProvider } from '../messages/useMessages.js'
@@ -20,12 +20,17 @@ const api = vi.hoisted(() => ({
   feedback: vi.fn(async () => {}),
   setIntent: vi.fn(async () => {}),
   openCategory: vi.fn(),
+  /** While true the inbox list never arrives. */
+  loading: false,
+  scope: 'all',
+  watches: [] as Watch[],
+  setActive: vi.fn(async () => {}),
 }))
 
 vi.mock('../ipc.js', () => ({
   inbox: {
-    list: async (params: { kind?: InboxEntry['kind'] }) => api.entries
-      .filter((entry) => params.kind === undefined || entry.kind === params.kind),
+    list: (params: { kind?: InboxEntry['kind'] }) => (api.loading ? new Promise(() => {}) : Promise.resolve(api.entries
+      .filter((entry) => params.kind === undefined || entry.kind === params.kind))),
     dismiss: api.dismiss, readLater: async () => false,
     download: async (id: string) => api.downloads[id] ?? { kind: 'added', paper: 'p1' },
     fetch: async () => {},
@@ -39,18 +44,18 @@ vi.mock('../ipc.js', () => ({
     setIntent: api.setIntent,
     feedback: api.feedback,
   },
-  watch: { list: async () => [] },
+  watch: { list: async () => api.watches, setActive: api.setActive },
 }))
 vi.mock('../shell/AppShell.js', () => ({
   ALL_WATCHES: 'all',
   useCrumbTail: () => {},
   useInboxMode: () => api.mode,
-  useInboxScope: () => 'all',
+  useInboxScope: () => api.scope,
   useJump: () => ({ open: vi.fn() }),
   useSettingsOpen: () => ({
     open: false, requestedCategory: null, setOpen: vi.fn(), openCategory: api.openCategory,
   }),
-  useToast: () => vi.fn(),
+  useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
 vi.mock('../shell/useJobs.js', () => ({ useJobs: () => status }))
@@ -74,7 +79,45 @@ describe('Inbox', () => {
     api.setIntent.mockClear()
     api.openCategory.mockClear()
   })
-  afterEach(() => { host.remove(); status = null; vi.unstubAllGlobals() })
+  afterEach(() => {
+    host.remove()
+    status = null
+    api.loading = false
+    api.scope = 'all'
+    api.watches = []
+    vi.unstubAllGlobals()
+  })
+
+  it('暂停的关注在它自己的页上写着已暂停，旁边就能恢复', async () => {
+    api.scope = 'w-paused'
+    api.watches = [{ id: 'w-paused', type: 'topic', name: 'speculative decoding', active: false }]
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    const head = host.querySelector('.desk-head')!
+    expect(head.querySelector('.tag.tag--label')?.textContent).toBe('已暂停')
+    const resume = [...head.querySelectorAll('button')].find((button) => button.textContent === '恢复')!
+    await act(async () => { resume.click() })
+    expect(api.setActive).toHaveBeenCalledWith('w-paused', true)
+    await act(async () => { root.unmount() })
+  })
+
+  it('列表空着时不摆排序，设置的齿轮还在', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(host.querySelector('.empty-state')).not.toBeNull()
+    expect(host.querySelector('[role="radiogroup"][aria-label="排序"]')).toBeNull()
+    expect(host.querySelector('.desk-head > .page-actions [aria-label="关注设置"]')).not.toBeNull()
+    await act(async () => { root.unmount() })
+  })
+
+  it('推送还没读到时显示载入占位，不说暂时没有新的推送', async () => {
+    api.loading = true
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(host.querySelector('.empty-state')).toBeNull()
+    expect(host.querySelector('.desk-body .loading-placeholder')).not.toBeNull()
+    await act(async () => { root.unmount() })
+  })
 
   it('后台进程还没重启、状态缺少新字段时仍能正常渲染', async () => {
     status = { writes: 0, uploads: [] } as unknown as JobsStatus
@@ -86,6 +129,11 @@ describe('Inbox', () => {
   })
 
   it('检查新论文和推送设置是整页的操作,在屏头右端,检查在最后;排序是视图切换,在工具栏', async () => {
+    api.entries = [{
+      id: 'a1', kind: 'watch', watch: 'w1', project: '', source: '主题 · w1',
+      title: 'Paper a1', authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
+      reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
+    }]
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     const actions = [...host.querySelector('.desk-head > .page-actions')!.children]
@@ -225,19 +273,21 @@ describe('Inbox', () => {
       title: `Paper ${id}`, authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
       reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
     })
-    api.entries = [entry('a1'), entry('a2')]
+    api.entries = [entry('a1'), entry('a2'), entry('a3')]
     api.downloads = {
       a1: { kind: 'failed', reason: 'unknown' },
       a2: { kind: 'failed', reason: 'server' },
+      a3: { kind: 'failed', reason: 'write' },
     }
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     const card = (id: string) => host.querySelector<HTMLElement>(`.paper-card[data-pid="${id}"]`)!
-    for (const id of ['a1', 'a2']) {
+    for (const id of ['a1', 'a2', 'a3']) {
       await act(async () => { card(id).querySelector<HTMLButtonElement>('[title="下载并入库"]')!.click() })
     }
     expect(card('a1').querySelector('.pfail span')?.textContent).toBe('下载失败')
     expect(card('a2').querySelector('.pfail span')?.textContent).toBe('下载失败 · 服务器出错')
+    expect(card('a3').querySelector('.pfail span')?.textContent).toBe('下载失败 · 没能写入论文库')
     expect(card('a1').querySelector('.pfail .btn')?.textContent).toBe('重试')
     await act(async () => { root.unmount() })
   })

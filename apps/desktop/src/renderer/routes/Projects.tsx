@@ -9,7 +9,7 @@ import { ACTIVE_PROJECT, PROJECT_STATUSES } from '../../shared/vocabulary.js'
 import type { CrumbSeg, ScreenKey } from '../shell/AppShell.js'
 import { feed, project as projectApi } from '../ipc.js'
 import {
-  useBanner, useCrumbTail, useJump, useScreenEntry, useToast, useToday, useVaultRevision,
+  useCrumbTail, useJump, useScreenEntry, useToday, useVaultRevision,
 } from '../shell/AppShell.js'
 import { AddAction } from '../components/AddAction.js'
 import { SortMenu } from '../components/SortMenu.js'
@@ -17,7 +17,9 @@ import {
   MenuItem, MenuRadioGroup, MenuRadioItem, MenuSeparator,
 } from '../components/ActionMenu.js'
 import { DotsMenu } from '../components/FieldPickers.js'
+import { EmptyState } from '../components/EmptyState.js'
 import { InlineDraftInput } from '../components/InlineDraftInput.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { ShortTextEditor } from '../components/ShortTextEditor.js'
 import { ProjectBlockerView, ProjectNextActionView } from '../components/project/ProjectControl.js'
 import { ProjectIdentity } from '../components/project/ProjectIdentity.js'
@@ -264,8 +266,6 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const banner = useBanner()
-  const toast = useToast()
   const today = useToday()
   const { revision } = useVaultRevision()
   const reportError = useCallback((e: Error) => setError(e.message), [])
@@ -296,9 +296,9 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
    * Finishes a write: closes the new-project row, then lets `write` finish. Creating from the row does
    * not come here: whether the row stays depends on that write's result.
    */
-  const applyWrite = (op: Promise<unknown>, note: string, notify: (text: ReactNode) => void = banner) => {
+  const applyWrite = (op: Promise<unknown>, note: string) => {
     setCreating(false)
-    void write(op, { note, notify })
+    void write(op, { note })
   }
 
   /**
@@ -316,6 +316,7 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
       <PageShell>
         <PageHeader><PageTitle>{m.project.loadingTitle}</PageTitle></PageHeader>
         <PageError error={error} />
+        <PageBody>{error === null ? <LoadingPlaceholder shape="cards" /> : null}</PageBody>
       </PageShell>
     )
   }
@@ -332,7 +333,7 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
       onRename={(name) => write(projectApi.update(p.id, { name }), { note: m.research.list.renamed })}
       onMove={(by) => reorder.move(p.id, by)} canMove={(by) => reorder.canMove(p.id, by)}
       onStatus={(status) => applyWrite(
-        projectApi.update(p.id, { status }), m.research.list.statusChangedTo(status), toast,
+        projectApi.update(p.id, { status }), m.research.list.statusChangedTo(status),
       )}
       onDelete={() => applyWrite(projectApi.delete(p.id), m.common.trashed)}
     />
@@ -343,13 +344,15 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
       <PageHeader
         actions={(
           <>
-            <SortMenu
-              variant="page" label={m.research.list.sort}
-              options={[
-                { label: m.research.list.sortPriority, onSelect: () => sortBy('priority') },
-                { label: m.research.list.sortMilestone, onSelect: () => sortBy('milestone') },
-              ]}
-            />
+            {projects.length === 0 ? null : (
+              <SortMenu
+                variant="page" label={m.research.list.sort}
+                options={[
+                  { label: m.research.list.sortPriority, onSelect: () => sortBy('priority') },
+                  { label: m.research.list.sortMilestone, onSelect: () => sortBy('milestone') },
+                ]}
+              />
+            )}
             <AddAction
               variant="page" id="projNew" ref={projNew}
               onClick={() => {
@@ -377,7 +380,7 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
                   onCancel={stopCreating} onCreate={createProject}
                 />
               )
-              : null}
+              : g.items.length === 0 ? <EmptyState variant="section">{m.research.list.empty}</EmptyState> : null}
             {g.status === ACTIVE_PROJECT
               ? g.items.map((p) => (
                 <ProjectPanel

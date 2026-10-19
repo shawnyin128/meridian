@@ -173,7 +173,7 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   await shown(win).locator('.projpanel .inedit').fill(NEW_PROJECT)
   await shown(win).locator('.projpanel .inedit').press('Enter')
 
-  await expect(win.locator('#banner span')).toHaveText('已创建项目 · 已加入研究总览')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已创建项目 · 已加入研究总览')
   await expect(rows).toHaveCount(before.length + 1)
   const created = (await listProjects(win)).find((p) => p.name === NEW_PROJECT)
   expect(created?.status).toBe(ACTIVE)
@@ -185,13 +185,13 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   await win.locator('.ctxmenu .mi', { hasText: '重命名' }).click()
   await win.locator('.ctxmenu .mi-in input').fill(RENAMED_PROJECT)
   await win.locator('.ctxmenu .mi-in input').press('Enter')
-  await expect(win.locator('#banner span')).toHaveText('已重命名')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已重命名')
   await expect(card.locator('.project-identity-name')).toHaveText(RENAMED_PROJECT)
 
   await card.hover()
   await card.locator('.dots').click()
   await win.locator('.ctxmenu .mi', { hasText: '搁置' }).click()
-  await expect(win.locator('#toast')).toHaveText('已标记为 搁置')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已标记为 搁置')
   // It moves to another group: the panel becomes a compact row, and project.list has the new status.
   await expect(card).toHaveClass(/prow/)
   expect((await listProjects(win)).find((p) => p.id === created!.id)?.status).toBe('搁置')
@@ -199,7 +199,7 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   await card.hover()
   await card.locator('.dots').click()
   await win.locator('.ctxmenu .mi.danger').click()
-  await expect(win.locator('#banner span')).toHaveText('已移入垃圾桶 · 7 天内可恢复')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已移入垃圾桶 · 7 天内可恢复')
   await expect(rows).toHaveCount(before.length)
   expect((await listProjects(win)).map((p) => p.id)).not.toContain(created!.id)
 
@@ -255,7 +255,7 @@ test('没有图数据的项目出的是一行占位,不是空画布加图例', a
   expect((await getProject(win, 'sched')).graphNodes).toBe(0)
 
   await win.locator('.section-heading-actions .segmented-control>button', { hasText: '科研图' }).click()
-  await expect(win.locator('.rgempty')).toHaveText('暂无科研图')
+  await expect(win.locator('.screenslot:not([hidden]) .record-view .empty-state--section')).toHaveText('还没有科研图')
   await expect(win.locator('.rgraph')).toHaveCount(0)
   await expect(win.locator('.glegend')).toHaveCount(0)
 
@@ -359,7 +359,7 @@ test('项目菜单是真菜单;重命名框里打菜单项首字、方向键、H
   await menu.locator('[role="menuitem"]', { hasText: '重命名' }).click()
   await input.fill(RENAMED_PROJECT)
   await input.press('Enter')
-  await expect(win.locator('#banner span')).toHaveText('已重命名')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已重命名')
   await expect(card.locator('.project-identity-name')).toHaveText(RENAMED_PROJECT)
 })
 
@@ -428,7 +428,7 @@ test('库里一个项目都没有时,「＋ 新建项目」仍在,建得出第�
   await shown(win).locator('.projpanel .inedit').fill(NEW_PROJECT)
   await shown(win).locator('.projpanel .inedit').press('Enter')
 
-  await expect(win.locator('#banner span')).toHaveText('已创建项目 · 已加入研究总览')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已创建项目 · 已加入研究总览')
   expect((await listProjects(win)).map((p) => p.name)).toEqual([NEW_PROJECT])
   await expect(shown(win).locator('.projpanel .project-identity-name')).toHaveText([NEW_PROJECT])
 })

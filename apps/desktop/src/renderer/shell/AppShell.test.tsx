@@ -45,7 +45,7 @@ vi.mock('../ipc.js', () => ({
 }))
 vi.mock('../components/AboutDialog.js', () => ({ AboutDialog: () => null }))
 
-const { AppShell, useCrumbTail, useEscapeLayer, usePaperChatCollapsed } = await import('./AppShell.js')
+const { AppShell, useCrumbTail, useEscapeLayer, useNotice, usePaperChatCollapsed } = await import('./AppShell.js')
 
 const TAIL = [{ text: '深层' }]
 
@@ -219,6 +219,33 @@ describe('AppShell keyboard navigation', () => {
     expect(link.tagName).toBe('BUTTON')
     act(() => link.click())
     expect(fixture.back).toHaveBeenCalledOnce()
+  })
+})
+
+/** Sends a success, then a refusal, through the shell's one notice. */
+function Notifier() {
+  const notice = useNotice()
+  return (
+    <>
+      <button type="button" id="ok" onClick={() => notice.success('已保存')}>ok</button>
+      <button type="button" id="no" onClick={() => notice.refusal('项目不存在：repro')}>no</button>
+    </>
+  )
+}
+
+describe('AppShell notice', () => {
+  it('成功和拒绝都报在画布里同一个提示上，并被读出来', async () => {
+    await mount(<Notifier />)
+    act(() => host.querySelector<HTMLButtonElement>('#ok')!.click())
+    const notice = host.querySelector<HTMLElement>('#notice')!
+    expect(notice.closest('#main')).not.toBeNull()
+    expect(notice.closest('[role="status"]')?.textContent).toBe('已保存')
+    expect(notice.dataset['tone']).toBe('success')
+
+    act(() => host.querySelector<HTMLButtonElement>('#no')!.click())
+    expect(host.querySelectorAll('#notice')).toHaveLength(1)
+    expect(notice.textContent).toBe('项目不存在：repro')
+    expect(notice.dataset['tone']).toBe('refusal')
   })
 })
 

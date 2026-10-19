@@ -6,7 +6,7 @@ export const changelog = {
   title: (count: number) => `Recent Changes · ${count}`,
   unarchivedHeading: 'Current',
   archivedHeading: 'Archived',
-  empty: 'All caught up.',
+  empty: 'No new changes yet',
   archiveAll: 'Archive all',
   clearArchived: 'Clear archived',
   confirmClearArchived: (count: number) =>

@@ -15,7 +15,9 @@ export const reader = {
   page: {
     at: (n: number) => `Page ${n}`,
   },
-  emptyReading: 'Highlight a passage or add a note about this page.',
+  emptyReading: 'No highlights or notes yet',
+  emptyHighlights: 'No highlights yet',
+  emptyNotes: 'No notes yet',
   notes: {
     ariaLabel: 'Reading notes',
     heading: (count: number) => `Reading notes · ${count}`,
@@ -32,7 +34,6 @@ export const reader = {
     heading: 'Thoughts on this paper',
     placeholder: 'Write your overall thoughts on this paper…',
   },
-  loadingPdf: 'Loading PDF…',
   selection: {
     highlight: 'Highlight',
     note: 'Note',

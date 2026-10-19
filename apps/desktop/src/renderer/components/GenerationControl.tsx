@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { useMessages } from '../messages/useMessages.js'
+import { RunningRing } from './icons.js'
 import './GenerationControl.css'
 
 const Arrow = () => (
@@ -13,9 +14,7 @@ const Arrow = () => (
 
 const RunningGlyph = () => (
   <span className="generation-running-glyph" aria-hidden="true">
-    <svg className="generation-spinner" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="8.5" />
-    </svg>
+    <RunningRing />
     <svg className="generation-stop" viewBox="0 0 24 24">
       <rect x="7" y="7" width="10" height="10" rx="1.5" />
     </svg>

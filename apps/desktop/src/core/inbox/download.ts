@@ -3,6 +3,7 @@ import {
 } from '../../shared/contract.js'
 import { HttpStatusError, netFailure, type HttpGet } from '../net/http.js'
 import type { VaultStore } from '../vault.js'
+import { isWriteFailure } from '../vault/writer.js'
 
 const DOWNLOAD_TIMEOUT_MS = 120_000
 
@@ -39,7 +40,13 @@ export function createInboxDownloads(deps: {
       if (!Buffer.from(body.subarray(0, 1024)).toString('latin1').includes('%PDF-')) {
         return { kind: 'failed', reason: 'not-pdf' }
       }
-      const result = deps.store.completeInboxDownload(id, body)
+      let result: InboxDownloadResult
+      try {
+        result = deps.store.completeInboxDownload(id, body)
+      } catch (error) {
+        if (!isWriteFailure(error)) throw error
+        return { kind: 'failed', reason: 'write' }
+      }
       if (result.kind === 'added') {
         deps.store.appendFeed({
           source: 'me',

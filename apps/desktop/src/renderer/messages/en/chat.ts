@@ -20,7 +20,7 @@ export const chat = {
   paperChatLabel: 'Paper chat',
   expandPaperChat: 'Expand the paper chat',
   paperHeaderSuffix: ' · Paper chat',
-  paperEmpty: 'Ask a question or capture an idea. This conversation stays linked to the paper and is saved automatically.',
+  empty: 'No conversation yet',
   askAboutPaper: 'Ask about this paper',
   paperComposerPlaceholder: 'Ask about this paper, or note a related idea…',
   actionDone: 'Added to the research log',

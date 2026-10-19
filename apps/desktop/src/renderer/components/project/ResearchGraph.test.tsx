@@ -197,7 +197,7 @@ describe('idea and graph association', () => {
     )))
 
     const headings = [...host.querySelectorAll('.section-heading')].map((heading) => heading.textContent)
-    expect(headings.slice(1, 5)).toEqual(['分支 · 1', '任务 · 1', '关联想法 · 1', '科研记录 · 0'])
+    expect(headings.slice(1)).toEqual(['分支 · 1', '任务 · 1', '关联想法 · 1'])
     expect(host.querySelector('.node-task-row')?.textContent).toBe('重跑延迟矩阵agent')
     act(() => (host.querySelector('.node-task-row') as HTMLButtonElement).click())
     expect(onSelectTask).toHaveBeenCalledWith('task-7')
@@ -225,6 +225,22 @@ describe('idea and graph association', () => {
     expect(branch.querySelector('.status-dot')).not.toBeNull()
     act(() => branch.click())
     expect(onSelect).toHaveBeenCalledWith(GRAPH.nodes[1]!.id)
+    act(() => root.unmount())
+  })
+
+  it('分支、科研记录和节点文档由 agent 写出，空着时整节不显示；任务和关联想法留着标题和空态', () => {
+    const host = document.createElement('div')
+    const root = createRoot(host)
+    const leaf = { ...GRAPH.nodes[1]!, markdown: '' }
+    act(() => root.render(withMessages(
+      <ResearchNodePanel
+        graph={{ ...GRAPH, nodes: [GRAPH.nodes[0]!, leaf] }} events={[]} ideas={[]} tasks={[]} node={leaf}
+        onClose={vi.fn()} onSelect={vi.fn()} onSelectIdea={vi.fn()} onSelectTask={vi.fn()}
+      />,
+    )))
+    const headings = [...host.querySelectorAll('.section-heading')].map((heading) => heading.textContent)
+    expect(headings.slice(1)).toEqual(['任务 · 0', '关联想法 · 0'])
+    expect([...host.querySelectorAll('.empty-state')].map((node) => node.textContent)).toEqual(['还没有任务', '还没有关联想法'])
     act(() => root.unmount())
   })
 

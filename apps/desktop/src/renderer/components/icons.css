@@ -1,0 +1,3 @@
+/* The one running indicator: DownloadRing without a total turns once per --t-spin. */
+.ring.spin{animation:ringspin var(--t-spin) linear infinite}
+@keyframes ringspin{to{transform:rotate(360deg)}}

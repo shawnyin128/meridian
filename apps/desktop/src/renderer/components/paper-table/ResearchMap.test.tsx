@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PaperRow } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
@@ -15,6 +16,16 @@ const paper = (id: string, title: string, patch: Partial<PaperRow> = {}): PaperR
 
 describe('ResearchMap', () => {
   beforeEach(() => window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh'))
+
+  it('还在整理时显示载入占位，不借空状态写一句正在整理', () => {
+    const html = renderToStaticMarkup(
+      <MessagesProvider>
+        <ResearchMap rows={[]} total={0} loading onOpenPaper={() => {}} onReadPaper={() => {}} />
+      </MessagesProvider>,
+    )
+    expect(html).not.toContain('empty-state')
+    expect(html).toContain('loading-placeholder')
+  })
 
   it('scrolls the selected group\'s papers inside the list after the fifth row', async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true

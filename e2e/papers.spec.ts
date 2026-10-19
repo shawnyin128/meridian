@@ -398,7 +398,7 @@ test('标签添加框:写被拒时输入框与打好的字都留着', async ({ w
   await call(win, 'papers.delete', { id: first.id })
   await input.press('Enter')
 
-  await expect(win.locator('#toast')).toContainText(`论文不存在：${first.id}`)
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toContainText(`论文不存在：${first.id}`)
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(input).toHaveValue(ADDED_TOPIC)
@@ -424,7 +424,7 @@ test('标签添加框:点联想项写被拒时,候选层与打开的占位都留
   await call(win, 'papers.delete', { id: first.id })
   await hit.click()
 
-  await expect(win.locator('#toast')).toContainText(`论文不存在：${first.id}`)
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toContainText(`论文不存在：${first.id}`)
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(hit).toHaveText(picked)
@@ -462,7 +462,7 @@ test('标签添加框:提交在路上时点外,写落地前候选层与占位都
     }
   })
 
-  await expect(win.locator('#toast')).toContainText(`论文不存在：${first.id}`)
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toContainText(`论文不存在：${first.id}`)
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(input).toHaveValue(picked)
@@ -498,7 +498,7 @@ test('标签添加框:回车提交在路上时点外,写落地前占位、打的
     }
   })
 
-  await expect(win.locator('#toast')).toContainText(`论文不存在：${first.id}`)
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toContainText(`论文不存在：${first.id}`)
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(input).toHaveValue(ADDED_TOPIC)
@@ -803,7 +803,7 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   await win.locator('.ptable thead th.th-new input').fill('读法')
   await win.locator('.ptable thead th.th-new input').press('Enter')
   await expect.poll(head).toContain('读法')
-  await expect(win.locator('#banner span')).toHaveText('已新建列 · 全库可用')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已新建列 · 全库可用')
   expect((await call<{ custom: { label: string; type: string }[] }>(win, 'papers.columns', {}))
     .custom[0]).toMatchObject({ label: '读法', type: 'select' })
 
@@ -864,7 +864,7 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   expect((await call<{ custom: { options: string[] }[] }>(win, 'papers.columns', {}))
     .custom[0]!.options).toEqual(['精读', '略读'])
 
-  // An option a paper still uses cannot be deleted: the toast shows Core's own message and the
+  // An option a paper still uses cannot be deleted: the refusal notice shows Core's own message and the
   // header is unchanged.
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [title="列设置"]').click()
@@ -872,7 +872,7 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   const still = win.locator('[data-radix-popper-content-wrapper] .mi.optrow', { hasText: '略读' })
   await still.hover()
   await still.locator('.cmx.danger').click()
-  await expect(win.locator('#toast')).toContainText('还有论文在用')
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toContainText('还有论文在用')
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   await expect.poll(head).toContain('读法')
 
@@ -1142,7 +1142,7 @@ test('建列被 core 拒绝:占位格与打好的列名都留着,改了再回车
   // stays in it.
   expect(await head()).not.toContain('读法')
   await expect(newInput).toBeFocused()
-  await expect(win.locator('#toast')).toHaveText('列「读法」不是多选列，有论文填着多个值')
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('列「读法」不是多选列，有论文填着多个值')
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   // After the rejection the placeholder, type popover, typed name and chosen type (Single choice,
   // not the default Text) all remain.
@@ -1608,7 +1608,7 @@ test('改类型:文本 → 单选,现有的不同值收成选项,格子画成选
   await expect(cells.nth(0).locator('.tagchip')).toHaveText('精读')
   await expect(cells.nth(1).locator('.tagchip')).toHaveText('略读')
   await expect(cells.nth(2).locator('.tagchip')).toHaveText('精读')
-  await expect(win.locator('#banner span')).toHaveText('已改列类型 · 记入最近变动，可撤销')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已改列类型 · 记入最近变动，可撤销')
   const column = (await call<PaperColumns>(win, 'papers.columns', {})).custom[0]!
   expect(column.type).toBe('select')
   // Options are collected in vault order, which differs from table order; Core's unit tests pin the
@@ -1685,13 +1685,13 @@ test('改类型:多选 → 单选,只有一个值的直接转,空着的格子仍
   expect(await cellsOf(win, ids)).toEqual([{ tags: '综述' }, {}, { tags: '必读' }])
 })
 
-test('改类型:多选 → 单选时有论文填着多个值,整次被拒,toast 说清几篇,列与格子都不变', async ({ win }) => {
+test('改类型:多选 → 单选时有论文填着多个值,整次被拒,拒绝提示说清几篇,列与格子都不变', async ({ win }) => {
   const ids = await seed(win, [{ key: 'tags', label: '标签', type: 'multi', options: ['综述', '必读'] }],
     [{ tags: ['综述', '必读'] }, { tags: ['综述', '必读'] }, { tags: ['综述'] }])
   await gotoPapers(win)
   await firstPage(win)
   await retype(win, '标签', '单选')
-  await expect(win.locator('#toast')).toHaveText('列「标签」有 2 篇论文填着多个值，改不成单选列')
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('列「标签」有 2 篇论文填着多个值，改不成单选列')
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   // Rejected: Multiple choice stays selected in the type row; the table cells and Core are unchanged.
   await expect(win.locator('[data-radix-popper-content-wrapper] .typerow .ctbtn[title="多选"]'))

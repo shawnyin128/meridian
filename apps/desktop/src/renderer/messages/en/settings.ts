@@ -44,7 +44,6 @@ export const settings = {
       fixture: 'Test data',
       fallback: 'App default',
     },
-    readingLocation: 'Reading the library location…',
     rootLabel: 'Root folder',
     checkingDirectory: 'Checking the library folder…',
     chooseAction: 'Choose a library folder',
@@ -60,8 +59,6 @@ export const settings = {
     resetConfirm: 'Reset and restart',
     backupsHeading: (count: number) => `Library backups · ${count}`,
     backupsIntro: 'Meridian creates a backup before resetting a library. Switching keeps the current library as another backup, then restarts the app.',
-    backupsLoading: 'Loading backups…',
-    backupsEmpty: 'No library backups yet.',
     backupSwitch: 'Switch',
     backupSwitching: 'Switching…',
     backupDelete: 'Delete',
@@ -177,7 +174,6 @@ export const settings = {
     clearKey: 'Clear saved key',
     save: 'Save configuration',
     saving: 'Saving…',
-    loading: 'Reading the model configuration…',
     errorHint: (error: string) => `${error}. Check it and save again.`,
     connection: {
       action: 'Test connection',
@@ -201,7 +197,6 @@ export const settings = {
   },
   extensions: {
     heading: 'Extensions',
-    loading: 'Checking extensions…',
     description: 'Connect Meridian to coding agents with MCP and install optional research, Wiki, Lab, and coding skills.',
     state: {
       installed: 'Installed',
@@ -328,7 +323,6 @@ export const settings = {
     unit: 'papers',
     saving: 'Saving…',
     rangeError: (min: number, max: number) => `Enter an integer between ${min} and ${max}`,
-    saved: 'Inmail settings saved',
   },
   discovery: {
     heading: 'Discovery',
@@ -339,7 +333,7 @@ export const settings = {
     seeds: (n: number) => `${n} ${pluralEn(n, { one: 'seed paper', other: 'seed papers' })}`,
     refreshing: 'Refreshing…',
     refreshProject: 'Refresh this project',
-    needsArxiv: 'Link an arXiv paper to generate research directions',
+    needsArxiv: 'No directions yet',
     core: 'Priority',
     setCoreAction: 'Mark as priority',
     noNewPapers: 'No new papers found',
@@ -354,7 +348,7 @@ export const settings = {
   },
   archived: {
     heading: (count: number) => `Archived chats · ${count}`,
-    empty: 'No archived chats yet.',
+    empty: 'No archived chats yet',
     open: 'Open',
     unarchive: 'Unarchive',
     unarchived: (title: string) => `Unarchived “${title}” · back in the chat list`,

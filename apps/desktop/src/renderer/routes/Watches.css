@@ -9,7 +9,6 @@
 
 .wrow.editrow{align-items:flex-start;min-height:30px;padding-block:4px}
 .author-id-state{display:inline-flex;align-items:center;height:22px;line-height:22px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ter);font-size:12px}
-.author-id-state.unconfirmed{color:var(--warn)}
 .author-resolver{flex:1;min-width:0}
 .author-search-note{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 4px 3px;color:var(--ter);font-size:12px}
 .author-search-note.error{color:var(--bad)}

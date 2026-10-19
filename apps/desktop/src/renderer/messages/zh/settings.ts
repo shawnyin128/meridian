@@ -37,7 +37,6 @@ export const settings = {
       fixture: '测试数据',
       fallback: '应用默认',
     },
-    readingLocation: '正在读取库位置…',
     rootLabel: '根目录',
     checkingDirectory: '正在检查论文库目录…',
     chooseAction: '选择论文库根目录',
@@ -53,8 +52,6 @@ export const settings = {
     resetConfirm: '重置并重启',
     backupsHeading: (count: number) => `论文库备份 · ${count}`,
     backupsIntro: 'Meridian 会在重置论文库前创建备份。切换时会先将当前库保存为新备份，然后重启应用。',
-    backupsLoading: '正在读取备份…',
-    backupsEmpty: '暂无论文库备份。',
     backupSwitch: '切换',
     backupSwitching: '正在切换…',
     backupDelete: '删除',
@@ -170,7 +167,6 @@ export const settings = {
     clearKey: '清除已保存的 Key',
     save: '保存配置',
     saving: '正在保存…',
-    loading: '正在读取模型配置…',
     errorHint: (error: string) => `${error}。请检查后重新保存。`,
     connection: {
       action: '测试连接',
@@ -194,7 +190,6 @@ export const settings = {
   },
   extensions: {
     heading: '扩展',
-    loading: '正在检查扩展…',
     description: 'Meridian MCP 与按需加载的研究、Wiki、Lab、coding skills。',
     state: {
       installed: '已安装',
@@ -321,7 +316,6 @@ export const settings = {
     unit: '篇',
     saving: '保存中…',
     rangeError: (min: number, max: number) => `请输入 ${min}–${max} 之间的整数`,
-    saved: '论文推送设置已保存',
   },
   discovery: {
     heading: '发现',
@@ -332,7 +326,7 @@ export const settings = {
     seeds: (n: number) => `${n} 篇种子`,
     refreshing: '正在刷新…',
     refreshProject: '刷新本项目',
-    needsArxiv: '关联带 arXiv 编号的论文后生成方向',
+    needsArxiv: '还没有方向',
     core: '核心',
     setCoreAction: '设为核心',
     noNewPapers: '没有发现新的论文',
@@ -347,7 +341,7 @@ export const settings = {
   },
   archived: {
     heading: (count: number) => `归档的对话 · ${count}`,
-    empty: '还没有归档的对话。',
+    empty: '还没有归档的对话',
     open: '打开',
     unarchive: '取消归档',
     unarchived: (title: string) => `已取消归档「${title}」· 回到对话列表`,

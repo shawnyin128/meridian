@@ -13,6 +13,7 @@ const api = vi.hoisted(() => ({
       id: 'author-1', type: 'author', name: 'Song Han', active: true,
       identity: { source: 'semantic-scholar', id: '144128680', affiliations: ['MIT'] },
     },
+    { id: 'author-2', type: 'author', name: 'Lee Chen', active: true },
   ] as Watch[],
   create: vi.fn(async () => {}),
   search: vi.fn(async (): Promise<unknown> => []),
@@ -43,7 +44,7 @@ vi.mock('../ipc.js', () => ({
   },
 }))
 vi.mock('../shell/AppShell.js', () => ({
-  useToast: () => vi.fn(),
+  useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
 vi.mock('../hooks/useVaultWrite.js', () => ({
@@ -118,6 +119,18 @@ describe('WatchSettings', () => {
     ])).toEqual([['编辑', '', true, false], ['移除', '', true, true]])
     expect(row.querySelector('.row-actions [role="switch"]')).toBeNull()
     expect(row.querySelector('[role="switch"]')).not.toBeNull()
+
+    await act(async () => { root.unmount() })
+  })
+
+  it('已暂停和未确认是同一种状态标签，暂停用中性色，未确认用提醒色', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+
+    const label = (id: string) => host.querySelector<HTMLElement>(`[data-w="${id}"] .tag.tag--label`)
+    expect([label('topic-1')?.textContent, label('topic-1')?.classList.contains('tag--neutral')]).toEqual(['已暂停', true])
+    expect([label('author-2')?.textContent, label('author-2')?.classList.contains('tag--warn')]).toEqual(['未确认', true])
+    expect(label('author-1')).toBeNull()
 
     await act(async () => { root.unmount() })
   })
@@ -289,6 +302,25 @@ describe('WatchSettings', () => {
     await act(async () => { enter(section.querySelector<HTMLInputElement>('input')!, '我想关注批量推理中的动态验证策略') })
     await act(async () => { button(section, '查找建议').click() })
     expect(section.querySelector('.watch-suggestion-error')?.textContent).toBe('生成关注建议失败')
+    await act(async () => { root.unmount() })
+  })
+
+  it('没有 key 或被限流时作者搜索写 App 的标签，关注建议被限流也一样', async () => {
+    api.search.mockResolvedValueOnce({ kind: 'failed', reason: 'no-key' })
+    api.suggest.mockResolvedValueOnce({ kind: 'failed', reason: 'rate-limit' })
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+    const authorList = host.querySelector('[data-w="author-1"]')!.closest('.wlist')!
+    await act(async () => { authorList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!.click() })
+    await act(async () => { enter(authorList.querySelector<HTMLInputElement>('.newrow input')!, 'Ada Lovelace') })
+    await act(async () => { await new Promise((done) => { setTimeout(done, 750) }) })
+    expect(host.querySelector('.author-search-note.error span')?.textContent)
+      .toBe('搜索作者失败 · 没有 Semantic Scholar key')
+
+    const section = host.querySelector('.watch-suggestions')!
+    await act(async () => { enter(section.querySelector<HTMLInputElement>('input')!, '我想关注批量推理中的动态验证策略') })
+    await act(async () => { button(section, '查找建议').click() })
+    expect(section.querySelector('.watch-suggestion-error')?.textContent).toBe('生成关注建议失败 · 正在限流')
     await act(async () => { root.unmount() })
   })
 

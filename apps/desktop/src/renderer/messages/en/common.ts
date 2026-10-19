@@ -5,6 +5,7 @@ import { common as zh } from '../zh/common.js'
 /** English counterpart of `zh/common`. `satisfies` makes a missing, extra or re-parameterised key a compile error. */
 export const common = {
   save: 'Save',
+  saved: 'Saved',
   cancel: 'Cancel',
   edit: 'Edit',
   confirm: 'Confirm',
@@ -67,7 +68,7 @@ export const common = {
     label: (what: string, why: string) => `${what} · ${why}`,
     reasons: {
       unavailable: 'No network', timeout: 'Timed out', 'rate-limit': 'Rate limited', server: 'Server error',
-      'not-pdf': 'Not a PDF',
+      'not-pdf': 'Not a PDF', write: 'Could not write to the library', 'no-key': 'No Semantic Scholar key',
     },
   },
 } satisfies typeof zh

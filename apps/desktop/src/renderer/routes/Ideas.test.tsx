@@ -36,11 +36,13 @@ const api = vi.hoisted(() => ({
   remove: vi.fn(async () => {}),
   reorder: vi.fn(async () => {}),
   open: vi.fn(),
+  /** While true the idea list never arrives. */
+  loading: false,
 }))
 
 vi.mock('../ipc.js', () => ({
   idea: {
-    list: async () => structuredClone(api.ideas),
+    list: () => (api.loading ? new Promise(() => {}) : Promise.resolve(structuredClone(api.ideas))),
     update: api.update,
     promote: api.promote,
     delete: api.remove,
@@ -76,7 +78,26 @@ describe('Ideas', () => {
     api.open.mockClear()
   })
 
-  afterEach(() => { act(() => root.unmount()) })
+  afterEach(() => {
+    act(() => root.unmount())
+    api.loading = false
+  })
+
+  it('没有进行中的想法时，进行中留着标题，下面是一行分节空态，不是整页的', async () => {
+    const held = api.ideas
+    api.ideas = held.filter((idea) => idea.archived)
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    api.ideas = held
+    expect(host.querySelector('.ideas-list .section-heading')?.textContent).toBe('进行中 · 0')
+    expect(host.querySelector('.ideas-list .empty-state')?.className).toBe('empty-state empty-state--section')
+  })
+
+  it('列表还没到时显示载入占位，不说还没有想法', async () => {
+    api.loading = true
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    expect(host.querySelector('.ideas-list .empty-state')).toBeNull()
+    expect(host.querySelector('.ideas-list .loading-placeholder')).not.toBeNull()
+  })
 
   it('想法卡片从操作槽里的把手拖，卡片本身不能拖；更多菜单和 Alt+↑ 也能挪，只在同一组里挪', async () => {
     api.reorder.mockClear()

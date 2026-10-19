@@ -60,7 +60,7 @@ describe('PaperUnderstanding', () => {
     const html = renderToStaticMarkup(
       <MessagesProvider><PaperUnderstanding reading={empty} onRead={() => undefined} /></MessagesProvider>,
     )
-    expect(html).toContain('还没有随笔或笔记')
+    expect(html).toContain('还没有随笔和笔记')
     expect(html).toMatch(/<div class="section-heading section-heading--page">个人理解<div class="section-heading-actions"><button[^>]*>去阅读论文<\/button><\/div><\/div>/)
   })
 })

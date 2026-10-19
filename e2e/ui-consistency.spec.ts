@@ -9,7 +9,7 @@ test('空态只有两档:整屏的带图标居中,分节的是一行灰字', asy
   await win.locator('[data-desk="trash"]').click()
   const page = shown(win, '.empty-state')
   await expect(page).toHaveClass(/empty-state--page/)
-  await expect(page).toHaveText('垃圾桶是空的。')
+  await expect(page).toHaveText('还没有移入垃圾桶的内容')
   await expect(page.locator('svg')).toHaveCount(1)
 
   // A leaf aggregation page has no children, so that section states it inline without an icon.
@@ -18,7 +18,7 @@ test('空态只有两档:整屏的带图标居中,分节的是一行灰字', asy
   await shown(win, '[data-wk="topics/ptq"]').click()
   await shown(win, '[data-wk="topics/ptq-weight-only"]').click()
   const section = shown(win, '.empty-state--section').first()
-  await expect(section).toHaveText('还没有细分。')
+  await expect(section).toHaveText('还没有细分')
   await expect(section.locator('svg')).toHaveCount(0)
 
   // No screen keeps a hand-rolled empty-state class any more.

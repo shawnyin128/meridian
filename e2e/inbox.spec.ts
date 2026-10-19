@@ -230,7 +230,7 @@ test('入库:论文进库,按钮就地变开始阅读', async ({ win }) => {
   const card = shown(win, '.pcard').first()
   await card.locator('[title="下载并入库"]').click()
   await expect(card.locator('[title="开始阅读"]')).toHaveCount(1)
-  await expect(win.locator('#toast')).toHaveText('已下载入库 · 可阅读')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已下载入库 · 可阅读')
   await expect(card.locator('[title="下载并入库"]')).toHaveCount(0)
 
   expect(await paperTotal(win)).toBe(before + 1)
@@ -255,7 +255,7 @@ test('入库撞上库里已有的那一篇:不重复入库,就地给出打开那
   const card = shown(win, `.pcard[data-pid="${dup.id}"]`)
   await card.locator('[title="下载并入库"]').click()
 
-  await expect(win.locator('#toast')).toHaveText('库里已经有这一篇 · 没有重复入库')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('库里已经有这一篇 · 没有重复入库')
   await expect(card.locator('.pdup span')).toHaveText(`库里已经有这一篇：「${known.title}」`)
   // The vault has no extra paper, and the entry is not marked as added.
   expect(await paperTotal(win)).toBe(before)
@@ -272,7 +272,7 @@ test.describe('这一条推送已经在别处入过库', () => {
   // once per second, so the click racing the stale card can lose to the poll there but not on screen.
   test.use({ showWindow: true })
 
-  test('界面上还没刷新时再点「入库」:报进 toast 而不是 .ipcerror', async ({ win }) => {
+  test('界面上还没刷新时再点「入库」:报进拒绝提示而不是 .ipcerror', async ({ win }) => {
     const entries = await inboxFromCore(win)
     const fresh = (await Promise.all(entries.filter((e) => !e.downloaded).map(async (e) =>
       ({ e, known: await inLibrary(win, e.paper) })))).find((x) => !x.known)!.e
@@ -286,7 +286,7 @@ test.describe('这一条推送已经在别处入过库', () => {
     await call(win, 'inbox.download', { id: fresh.id })
 
     await card.locator('[title="下载并入库"]').click()
-    await expect(win.locator('#toast')).toHaveText(`这一条已经入库：${fresh.id}`)
+    await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText(`这一条已经入库：${fresh.id}`)
     await expect(shown(win, '.ipcerror')).toHaveCount(0)
   })
 })
@@ -415,7 +415,7 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   await expect(spec.locator('[role="switch"]')).toHaveAttribute('aria-checked', 'true')
   await spec.locator('[role="switch"]').click()
   await expect(spec.locator('[role="switch"]')).toHaveAttribute('aria-checked', 'false')
-  await expect(spec.locator('.src')).toHaveText('已暂停')
+  await expect(spec.locator('.watch-paused')).toHaveText('已暂停')
   await expect(win.locator('[data-watchrow="spec"]')).toHaveClass(/\bdim\b/)
   await expect(win.locator('[data-watchrow="spec"] .n')).toHaveCount(0)
   expect((await inboxFromCore(win)).filter((e) => e.watch === 'spec')).toHaveLength(kept)
@@ -470,11 +470,11 @@ test('关注管理:占位行按 Esc 撤掉,屏上没有旧的圆角添加框', a
   await expect(settings(win, '.mgr-add')).toHaveCount(0)
 })
 
-test('没填 Semantic Scholar key 时作者搜索直接说明，填了之后先用机构消歧,确认后保存稳定作者身份', async ({ win }) => {
+test('没填 Semantic Scholar key 时作者搜索写出缺 key，填了之后先用机构消歧,确认后保存稳定作者身份', async ({ win }) => {
   await openDeliverySettings(win)
   await settings(win, '.section-heading').filter({ hasText: '作者' }).locator('.btn').click()
   await settings(win, '.wrow.newrow input').fill('Alex Kim')
-  await expect(settings(win, '.author-search-note.error')).toContainText('填入 Semantic Scholar key')
+  await expect(settings(win, '.author-search-note.error span')).toHaveText('搜索作者失败 · 没有 Semantic Scholar key')
 
   await call(win, 'delivery.setSemanticKey', { apiKey: 'fixture-key' })
   await settings(win, '.wrow.newrow input').fill('')

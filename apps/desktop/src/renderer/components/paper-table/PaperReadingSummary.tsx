@@ -5,6 +5,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { useVaultRevision, type JumpAnchor } from '../../shell/AppShell.js'
 import { entryAnchor, readingEntries } from './reading-entries.js'
 import { EmptyState } from '../EmptyState.js'
+import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError, SectionHeading } from '../PageShell.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 
@@ -50,7 +51,9 @@ export function PaperReadingSummary({ paper, onRead, onConclusions }: {
       </dl>
       <SectionHeading variant="rail">{m.papers.reading.remarkAndNotes}</SectionHeading>
       <PageError error={error} />
-      {remark === '' && entries.length === 0
+      {held === null
+        ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null)
+        : remark === '' && entries.length === 0
         ? <EmptyState variant="section">{m.papers.reading.empty}</EmptyState>
         : (
           <StructuredList variant="embedded">

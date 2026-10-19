@@ -18,5 +18,3 @@
 .icbtn.busy{cursor:default;box-shadow:none}
 .icbtn .ring{width:18px;height:18px}
 .icbtn .ring .arc{transition:stroke-dashoffset var(--t) var(--e-out)}
-.icbtn .ring.spin{animation:ringspin var(--t-spin) linear infinite}
-@keyframes ringspin{to{transform:rotate(360deg)}}

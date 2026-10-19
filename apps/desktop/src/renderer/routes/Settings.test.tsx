@@ -57,14 +57,15 @@ const api = vi.hoisted(() => ({
   })),
   deleteBackup: vi.fn(async () => null),
   restartApp: vi.fn(),
-  banner: vi.fn(),
+  success: vi.fn(),
+  chatList: vi.fn(async () => [] as unknown[]),
 }))
 
 vi.mock('../ipc.js', () => ({
   appMenu: {
     chooseLibraryRoot: vi.fn(async () => null), restartApp: api.restartApp,
   },
-  chat: { list: vi.fn(async () => []), setArchived: vi.fn(async () => {}) },
+  chat: { list: api.chatList, setArchived: vi.fn(async () => {}) },
   library: {
     location: api.libraryLocation,
     backups: api.libraryBackups,
@@ -87,7 +88,7 @@ vi.mock('../ipc.js', () => ({
   extensions: { status: api.extensionStatus, pluginVersion: api.pluginVersion, checkLatest: api.checkLatest },
 }))
 vi.mock('../shell/AppShell.js', () => ({
-  useBanner: () => api.banner,
+  useNotice: () => ({ success: api.success, refusal: vi.fn() }),
   useJump: () => ({ open: vi.fn() }),
   useSettingsOpen: () => ({
     open: true, requestedCategory: api.requestedCategory, setOpen: api.setOpen, openCategory: vi.fn(),
@@ -167,7 +168,7 @@ describe('Settings', () => {
     api.switchBackup.mockClear()
     api.deleteBackup.mockClear()
     api.restartApp.mockClear()
-    api.banner.mockClear()
+    api.success.mockClear()
   })
   afterEach(() => { act(() => root.unmount()) })
 
@@ -401,14 +402,14 @@ describe('Settings', () => {
       dialog.querySelector<HTMLButtonElement>('[aria-label="复制 Claude Code 安装命令"]')!.click()
     })
     expect(writeText).toHaveBeenCalledWith('claude install command')
-    expect(api.banner).toHaveBeenCalledWith('Claude Code 命令已复制')
+    expect(api.success).toHaveBeenCalledWith('Claude Code 命令已复制')
 
     const firstPrompt = dialog.querySelector('.extension-prompt p')?.textContent ?? ''
     await act(async () => {
       dialog.querySelector<HTMLButtonElement>('.extension-prompt button')!.click()
     })
     expect(writeText).toHaveBeenLastCalledWith(firstPrompt)
-    expect(api.banner).toHaveBeenLastCalledWith('提示词已复制')
+    expect(api.success).toHaveBeenLastCalledWith('提示词已复制')
   })
 
   it('外观设置用三张预览卡选择浅色、深色或跟随系统', async () => {
@@ -449,6 +450,43 @@ describe('Settings', () => {
     expect(directory.querySelector('svg path')?.getAttribute('d')).toBe('M3 6h6l2 2h10v10H3z')
     expect(dialog.querySelector('.storage-root code')).toBeNull()
     expect(dialog.textContent).not.toContain('选择根目录…')
+  })
+
+  it('库位置和归档的对话还没读到时都显示同一种载入占位，不写读取中的句子，也不说没有', async () => {
+    const never = () => new Promise<never>(() => {})
+    api.libraryLocation.mockImplementation(never)
+    api.libraryBackups.mockImplementation(never)
+    api.chatList.mockImplementationOnce(never)
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
+    expect(dialog.querySelectorAll('.set-main .loading-placeholder')).toHaveLength(1)
+    expect(dialog.querySelector('.set-main .empty-state')).toBeNull()
+    expect(dialog.querySelector('.set-main')!.textContent).not.toMatch(/正在读取/)
+
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="archived"]')!.click() })
+    expect(dialog.querySelector('.set-main .loading-placeholder')).not.toBeNull()
+    expect(dialog.querySelector('.set-main .empty-state')).toBeNull()
+  })
+
+  it('每个设置页只显示自己那次读取的错误：对话列表读不到时，存储页不报，归档的对话页报', async () => {
+    api.chatList.mockImplementationOnce(async () => { throw new Error('对话列表读不到') })
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
+    expect(dialog.querySelector('.set-main [role="alert"]')).toBeNull()
+
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="archived"]')!.click() })
+    expect(dialog.querySelector('.set-main [role="alert"]')?.textContent).toBe('对话列表读不到')
+  })
+
+  it('还没有备份时备份这一节整节不显示', async () => {
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
+    expect([...dialog.querySelectorAll('.section-heading')].map((node) => node.textContent))
+      .not.toContain('论文库备份 · 0')
+    expect(dialog.querySelector('.set-main .empty-state')).toBeNull()
   })
 
   it('库打不开时显示路径与原因，切换和重置仍然可用', async () => {
@@ -523,8 +561,8 @@ describe('Settings', () => {
     await act(async () => { confirm.click() })
     expect(api.deleteBackup).toHaveBeenCalledWith('meridian-backup-20260915-182838Z')
     expect(dialog.querySelector('.storage-backup-list')).toBeNull()
-    expect(dialog.textContent).toContain('暂无论文库备份')
-    expect(api.banner).toHaveBeenCalledWith('备份已删除')
+    expect(dialog.textContent).not.toContain('论文库备份 ·')
+    expect(api.success).toHaveBeenCalledWith('备份已删除')
   })
 
   // With every dialog layer at one z-index (shared/dialog-surface.test.ts), document order decides

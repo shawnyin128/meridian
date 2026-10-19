@@ -2,13 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatMessage, ChatSession, PaperRow } from '../../../shared/contract.js'
 import { chat, feed, idea as ideaApi } from '../../ipc.js'
 import {
-  useBanner, usePaperChatCollapsed, usePaperChatGrip, useToast, useVaultRevision,
+  useNotice, usePaperChatCollapsed, usePaperChatGrip, useVaultRevision,
 } from '../../shell/AppShell.js'
 import { sendsMessage } from '../../lib/chat.js'
 import { ChatMessageView, plain } from './ChatMessage.js'
 import { BackButton } from '../BackButton.js'
 import { FormTextarea } from '../FormControls.js'
 import { EmptyState } from '../EmptyState.js'
+import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError } from '../PageShell.js'
 import { useDrafts } from '../../hooks/useDrafts.js'
 import { TitleNote } from '../TitleNote.js'
@@ -34,13 +35,12 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
 }) {
   const m = useMessages()
   const { revision, bump } = useVaultRevision()
-  const banner = useBanner()
-  const toast = useToast()
+  const notice = useNotice()
   const write = useVaultWrite()
   const grip = usePaperChatGrip()
   const collapsed = usePaperChatCollapsed()
   const [session, setSession] = useState<ChatSession | null>(null)
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messages, setMessages] = useState<ChatMessage[] | null>(null)
   const drafts = useDrafts()
   const [savingIdea, setSavingIdea] = useState(false)
   const [sending, setSending] = useState(false)
@@ -55,7 +55,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
 
   useEffect(() => {
     setSession(null)
-    setMessages([])
+    setMessages(null)
     setSavingIdea(false)
     setError(null)
     if (paperId === null) return
@@ -106,15 +106,15 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const act = (message: ChatMessage) => {
     if (session === null) return
     void chat.recordAction(session.id, message.id).then(async (held) => {
-      banner(<TitleNote message={m.chat.recordedNote} title={held.name} />)
+      notice.success(<TitleNote message={m.chat.recordedNote} title={held.name} />)
       await feed.append({ source: 'me', body: { kind: 'runs', runs: [
         plain(m.chat.recordedTo(held.name)),
       ] } })
       bump()
-    }).catch((cause: Error) => toast(cause.message))
+    }).catch((cause: Error) => notice.refusal(cause.message))
   }
 
-  const hasDiscussion = messages.some((message) => message.role === 'you')
+  const hasDiscussion = (messages ?? []).some((message) => message.role === 'you')
 
   return (
     <aside className="paper-chat stream" aria-label={m.chat.paperChatLabel} inert={collapsed}>
@@ -126,8 +126,10 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
       </header>
       <PageError error={error} />
       <div className="msgs" ref={stream}>
-        {messages.length === 0 && error === null
-          ? <div className="mwrap"><EmptyState variant="page">{m.chat.paperEmpty}</EmptyState></div>
+        {messages === null
+          ? (error === null ? <div className="mwrap"><LoadingPlaceholder shape="lines" /></div> : null)
+          : messages.length === 0 && error === null
+          ? <div className="mwrap"><EmptyState variant="page">{m.chat.empty}</EmptyState></div>
           : messages.map((message) => (
             <ChatMessageView key={message.id} message={message} onAct={() => act(message)} />
           ))}

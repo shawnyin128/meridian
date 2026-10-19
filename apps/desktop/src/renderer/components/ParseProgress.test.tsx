@@ -7,8 +7,8 @@ import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
 let status: JobsStatus | null = null
-const banner = vi.fn()
-vi.mock('../shell/AppShell.js', () => ({ useBanner: () => banner }))
+const notice = { success: vi.fn(), refusal: vi.fn() }
+vi.mock('../shell/AppShell.js', () => ({ useNotice: () => notice }))
 vi.mock('../shell/useJobs.js', () => ({ useJobs: () => status }))
 const { ParseProgress } = await import('./ParseProgress.js')
 
@@ -26,7 +26,7 @@ describe('ParseProgress', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     host = document.createElement('div')
     document.body.append(host)
-    banner.mockClear()
+    notice.success.mockClear()
   })
   afterEach(() => { host.remove(); status = null })
 
@@ -41,7 +41,7 @@ describe('ParseProgress', () => {
     status = state([job({ step: 'done', found: 'arxiv', title: 'Parsed Paper' })], 1)
     await act(async () => { root.render(<MessagesProvider><ParseProgress onParsed={parsed} /></MessagesProvider>) })
     expect(parsed).toHaveBeenCalledWith(expect.objectContaining({ title: 'Parsed Paper' }))
-    expect(banner).toHaveBeenCalledWith('已入库 · 元数据可在表格中修正')
+    expect(notice.success).toHaveBeenCalledWith('已入库 · 元数据可在表格中修正')
     expect(document.body.querySelector('.parse-float')).toBeNull()
     await act(async () => { root.unmount() })
   })

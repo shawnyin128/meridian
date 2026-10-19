@@ -37,7 +37,7 @@ vi.mock('../ipc.js', () => ({
   },
 }))
 vi.mock('../shell/AppShell.js', () => ({
-  useToast: () => vi.fn(),
+  useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useToday: () => '2026-08-25',
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))

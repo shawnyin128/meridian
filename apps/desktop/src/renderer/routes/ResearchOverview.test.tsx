@@ -10,16 +10,15 @@ declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
-const api = vi.hoisted(() => ({ rows: [] as ProjectOverview[], open: vi.fn() }))
+const api = vi.hoisted(() => ({ rows: [] as ProjectOverview[], open: vi.fn(), loading: false }))
 
 vi.mock('../ipc.js', () => ({
-  project: { overview: async () => structuredClone(api.rows) },
+  project: { overview: () => (api.loading ? new Promise(() => {}) : Promise.resolve(structuredClone(api.rows))) },
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
-  useBanner: () => vi.fn(),
+  useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useJump: () => ({ jump: null, open: api.open }),
-  useToast: () => vi.fn(),
   useToday: () => '2026-10-16',
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
@@ -53,6 +52,23 @@ describe('研究总览的项目进展', () => {
   afterEach(() => {
     act(() => root.unmount())
     host.remove()
+    api.loading = false
+  })
+
+  it('项目进展、最近进展和接下来的里程碑是汇总出来的，没有内容时整节不显示', async () => {
+    api.rows = [{ ...row([]), status: '已完成' }]
+    await act(async () => { root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>) })
+    const headings = [...host.querySelectorAll('.section-heading')].map((node) => node.textContent)
+    expect(headings).not.toContain('项目进展')
+    expect(headings).not.toContain('最近进展')
+    expect(headings).not.toContain('接下来的里程碑')
+    expect(host.querySelector('.empty-state')).toBeNull()
+  })
+
+  it('总览还没读到时页面里是载入占位，不是一片空白', async () => {
+    api.loading = true
+    await act(async () => { root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>) })
+    expect(host.querySelector('.desk-body .loading-placeholder')).not.toBeNull()
   })
 
   it('同一天有几条科研记录时写最后写下的那条,和项目列表卡片取的是同一条', async () => {

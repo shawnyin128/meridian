@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useState } from 'react'
 import type { InboxDownloadFailure, LaterEntry } from '../../shared/contract.js'
 import { inbox, later } from '../ipc.js'
 import { useMessages } from '../messages/useMessages.js'
-import { useJump, useToast, useVaultRevision } from '../shell/AppShell.js'
+import { useJump, useNotice, useVaultRevision } from '../shell/AppShell.js'
 import { useJobs } from '../shell/useJobs.js'
 import { DownloadRing, Icon, IconCross, IconRead } from '../components/icons.js'
 import { IconButton } from '../components/IconButton.js'
@@ -10,6 +10,7 @@ import { PaperCard, PaperCardBadge, PaperCardNotice } from '../components/paper/
 import { plainTitle } from '../components/paper/paper-text.js'
 import { DayHeading, daySectionName } from '../components/DayHeading.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { failureLabel } from '../lib/failure-label.js'
 import { TitleNote } from '../components/TitleNote.js'
@@ -31,11 +32,11 @@ const MODES: Grouping[] = ['time', 'src']
 export function Later() {
   const m = useMessages()
   const fmt = useFormat()
-  const [entries, setEntries] = useState<LaterEntry[]>([])
+  const [entries, setEntries] = useState<LaterEntry[] | null>(null)
   const [grouping, setGrouping] = useState<Grouping>('time')
   const [error, setError] = useState<string | null>(null)
 
-  const toast = useToast()
+  const notice = useNotice()
   const { open } = useJump()
   const { revision, bump } = useVaultRevision()
   const reportError = useCallback((e: Error) => setError(e.message), [])
@@ -62,7 +63,7 @@ export function Later() {
       }
       bump()
       open('reader', result.paper)
-    }).catch((e: Error) => toast(e.message)).finally(() => {
+    }).catch((e: Error) => notice.refusal(e.message)).finally(() => {
       setBusy((held) => {
         const next = new Set(held)
         next.delete(entry.id)
@@ -77,12 +78,12 @@ export function Later() {
 
   const remove = (entry: LaterEntry) => {
     void write(later.remove(entry.id),
-      { note: <TitleNote message={m.later.removed} title={plainTitle(entry.title)} />, notify: toast })
+      { note: <TitleNote message={m.later.removed} title={plainTitle(entry.title)} /> })
   }
 
   // Entries arrive newest first by the day they were queued; groups follow the order keys first appear in.
   const key = (e: LaterEntry) => (grouping === 'time' ? e.day : e.source)
-  const groups = entries.reduce<{ key: string; items: LaterEntry[] }[]>((made, entry) => {
+  const groups = (entries ?? []).reduce<{ key: string; items: LaterEntry[] }[]>((made, entry) => {
     const seen = made.find((g) => g.key === key(entry))
     if (seen) seen.items.push(entry)
     else made.push({ key: key(entry), items: [entry] })
@@ -92,7 +93,7 @@ export function Later() {
   return (
     <PageShell>
       <PageHeader>
-        <PageTitle>{m.later.title(entries.length)}</PageTitle>
+        <PageTitle>{m.later.title(entries?.length ?? 0)}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />
@@ -108,7 +109,9 @@ export function Later() {
             />
           </PageToolbar>
         )}
-        {groups.length === 0
+        {entries === null
+          ? (error === null ? <LoadingPlaceholder shape="cards" /> : null)
+          : groups.length === 0
           ? (
             <EmptyState
               variant="page"

@@ -5,7 +5,7 @@ import './TitleNote.css'
 const SLOT = '\u0000'
 
 /**
- * A banner or toast note that names an entity: `message` is the catalog entry that places `title` in
+ * A notice that names an entity: `message` is the catalog entry that places `title` in
  * its sentence. The title stays on one line and fades out at its end when it is longer than a note
  * allows; the words around it are always shown whole.
  */

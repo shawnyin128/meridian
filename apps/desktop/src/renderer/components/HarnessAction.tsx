@@ -18,7 +18,7 @@ export function HarnessAction({ plan, running, onStart, onCancel }: {
   if (running) {
     return (
       <GenerationControl
-        className="btn danger harness-trigger" running onStop={onCancel} showStatusText
+        className="btn harness-trigger" running onStop={onCancel} showStatusText
       />
     )
   }

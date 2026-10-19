@@ -61,7 +61,6 @@
 .direction-name{display:flex;align-items:center;gap:7px;color:var(--ink);font-size:var(--fs-base)}
 .direction-seeds{margin-top:3px;color:var(--ter);font-size:var(--fs-cap);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .direction-actions{display:flex;align-items:center;gap:6px;flex:none}
-.direction-empty{margin:0;padding:12px;color:var(--ter);font-size:var(--fs-sm);border-top:1px solid var(--sep2)}
 
 /*
  * Menus (.ctxmenu) and candidate lists (.pickhits) share one surface and one item anatomy; Radix owns

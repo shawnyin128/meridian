@@ -8,11 +8,12 @@ import { useFormat } from '../lib/format.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import {
-  useBanner, useJump, useSettingsOpen, useVaultRevision, type SettingsCategory,
+  useJump, useNotice, useSettingsOpen, useVaultRevision, type SettingsCategory,
 } from '../shell/AppShell.js'
-import { Icon, IconOpen, IconRestore } from '../components/icons.js'
+import { IconOpen, IconRestore } from '../components/icons.js'
 import { IconButton } from '../components/IconButton.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DirectoryField } from '../components/FormControls.js'
 import { AppearanceSettings } from '../components/settings/AppearanceSettings.js'
 import { LanguageSettings } from '../components/settings/LanguageSettings.js'
@@ -82,7 +83,7 @@ export function Settings() {
   const m = useMessages()
   const { open, requestedCategory, setOpen } = useSettingsOpen()
   const [current, setCurrent] = useState<CategoryKey>(CATEGORIES[0])
-  const [chats, setChats] = useState<ChatSession[]>([])
+  const [chats, setChats] = useState<ChatSession[] | null>(null)
   const [location, setLocation] = useState<LibraryLocation | null>(null)
   const [backups, setBackups] = useState<LibraryBackup[] | null>(null)
   const [extensionStatus, setExtensionStatus] = useState<ExtensionStatus[] | null>(null)
@@ -92,33 +93,42 @@ export function Settings() {
   const [resetting, setResetting] = useState(false)
   const [switchingBackup, setSwitchingBackup] = useState<string | null>(null)
   const [deletingBackup, setDeletingBackup] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // Each fetch and action reports into the pane it belongs to, so an error shows only on its own pane.
+  const [errors, setErrors] = useState<Partial<Record<CategoryKey, string>>>({})
 
   const { open: jumpTo } = useJump()
   const { revision } = useVaultRevision()
-  const banner = useBanner()
+  const notice = useNotice()
   const format = useFormat()
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const setError = useCallback((pane: CategoryKey, message: string | null) => setErrors((held) => {
+    const next = { ...held }
+    if (message === null) delete next[pane]
+    else next[pane] = message
+    return next
+  }), [])
+  const reportTo = useCallback((pane: CategoryKey) => (e: unknown) => {
+    setError(pane, e instanceof Error ? e.message : String(e))
+  }, [setError])
   const write = useVaultWrite()
 
   // Fetch nothing while closed: this dialog stays mounted, so without this check every vault write
   // would fetch the chat list again.
   useEffect(() => {
     if (!open) return
-    setError(null)
+    setErrors({})
     setBackups(null)
-    void chat.list().then(setChats).catch(reportError)
-    void library.location().then(setLocation).catch(reportError)
-    void library.backups().then(setBackups).catch(reportError)
-    void extensions.status().then(setExtensionStatus).catch(reportError)
-    void extensions.pluginVersion().then(setPluginVersion).catch(reportError)
-  }, [open, revision, reportError])
+    void chat.list().then(setChats).catch(reportTo('archived'))
+    void library.location().then(setLocation).catch(reportTo('storage'))
+    void library.backups().then(setBackups).catch(reportTo('storage'))
+    void extensions.status().then(setExtensionStatus).catch(reportTo('extensions'))
+    void extensions.pluginVersion().then(setPluginVersion).catch(reportTo('extensions'))
+  }, [open, revision, reportTo])
 
   useEffect(() => {
     if (open && requestedCategory !== null) setCurrent(requestedCategory)
   }, [open, requestedCategory])
 
-  const archived = chats.filter((s) => s.archived)
+  const archived = (chats ?? []).filter((s) => s.archived)
 
   const unarchive = (session: ChatSession) => {
     void write(chat.setArchived(session.id, false),
@@ -132,15 +142,15 @@ export function Settings() {
 
   const chooseLibrary = async () => {
     setChoosing(true)
-    setError(null)
+    setError('storage', null)
     try {
       const root = await appMenu.chooseLibraryRoot()
       if (root === null) return
       const next = await library.configure(root)
       setLocation(next)
-      banner(next.restartRequired ? m.settings.storage.savedRestartRequired : m.settings.storage.saved)
+      notice.success(next.restartRequired ? m.settings.storage.savedRestartRequired : m.settings.storage.saved)
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught))
+      reportTo('storage')(caught)
     } finally {
       setChoosing(false)
     }
@@ -148,37 +158,37 @@ export function Settings() {
 
   const resetLibrary = async () => {
     setResetting(true)
-    setError(null)
+    setError('storage', null)
     try {
       await library.reset()
       appMenu.restartApp()
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught))
+      reportTo('storage')(caught)
       setResetting(false)
     }
   }
 
   const switchBackup = async (backup: LibraryBackup) => {
     setSwitchingBackup(backup.id)
-    setError(null)
+    setError('storage', null)
     try {
       await library.switchBackup(backup.id)
       appMenu.restartApp()
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught))
+      reportTo('storage')(caught)
       setSwitchingBackup(null)
     }
   }
 
   const deleteBackup = async (backup: LibraryBackup) => {
     setDeletingBackup(backup.id)
-    setError(null)
+    setError('storage', null)
     try {
       await library.deleteBackup(backup.id)
       setBackups((currentBackups) => currentBackups?.filter((item) => item.id !== backup.id) ?? [])
-      banner(m.settings.storage.backupDeleted)
+      notice.success(m.settings.storage.backupDeleted)
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught))
+      reportTo('storage')(caught)
     } finally {
       setDeletingBackup(null)
     }
@@ -186,21 +196,17 @@ export function Settings() {
 
   const copyExtensionCommand = (name: string, command: string) => {
     void navigator.clipboard.writeText(command).then(
-      () => banner(m.settings.extensions.copied(name)),
-      (caught: unknown) => reportError(caught instanceof Error ? caught : new Error(String(caught))),
+      () => notice.success(m.settings.extensions.copied(name)),
+      reportTo('extensions'),
     )
   }
 
   const copyAgentPrompt = (prompt: string) => {
     void navigator.clipboard.writeText(prompt).then(
-      () => banner(m.settings.extensions.tutorial.promptCopied),
-      (caught: unknown) => reportError(caught instanceof Error ? caught : new Error(String(caught))),
+      () => notice.success(m.settings.extensions.tutorial.promptCopied),
+      reportTo('extensions'),
     )
   }
-
-  const sourceLabel = location === null
-    ? m.common.reading
-    : m.settings.storage.source[location.source]
 
   const panes: Record<CategoryKey, ReactNode> = {
     appearance: (
@@ -220,10 +226,10 @@ export function Settings() {
               <SectionHeading variant="group">{m.settings.storage.libraryTitle}</SectionHeading>
               <p>{m.settings.storage.libraryNote}</p>
             </div>
-            <Tag>{sourceLabel}</Tag>
+            {location === null ? null : <Tag>{m.settings.storage.source[location.source]}</Tag>}
           </div>
           {location === null
-            ? <div className="storage-loading">{m.settings.storage.readingLocation}</div>
+            ? <LoadingPlaceholder shape="lines" count={2} />
             : (
               <>
                 <PageError variant="section" error={location.openError} />
@@ -269,15 +275,12 @@ export function Settings() {
             />
           </div>
         </Card>
-        <SectionHeading>
-          {m.settings.storage.backupsHeading(backups?.length ?? 0)}
-        </SectionHeading>
-        <p className="settings-intro">{m.settings.storage.backupsIntro}</p>
-        {backups === null
-          ? <div className="storage-backups-loading">{m.settings.storage.backupsLoading}</div>
-          : backups.length === 0
-            ? <EmptyState variant="section">{m.settings.storage.backupsEmpty}</EmptyState>
-            : (
+        {backups === null || backups.length === 0
+          ? null
+          : (
+            <>
+              <SectionHeading>{m.settings.storage.backupsHeading(backups.length)}</SectionHeading>
+              <p className="settings-intro">{m.settings.storage.backupsIntro}</p>
               <StructuredList className="storage-backup-list">
                 {backups.map((backup) => {
                   const label = format.dateTime(backup.createdAt)
@@ -317,7 +320,8 @@ export function Settings() {
                   )
                 })}
               </StructuredList>
-            )}
+            </>
+          )}
       </>
     ),
     api: (
@@ -357,7 +361,7 @@ export function Settings() {
                   return extensions.pluginVersion()
                 })
                 .then(setPluginVersion)
-                .catch(reportError)
+                .catch(reportTo('extensions'))
                 .finally(() => setCheckingPlugin(false))
             },
           }}
@@ -388,19 +392,10 @@ export function Settings() {
     archived: (
       <>
         <SectionHeading>{m.settings.archived.heading(archived.length)}</SectionHeading>
-        {archived.length === 0
-          ? (
-            <EmptyState
-              variant="page"
-              icon={(
-                <Icon sw={1.4}>
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </Icon>
-              )}
-            >
-              {m.settings.archived.empty}
-            </EmptyState>
-          )
+        {chats === null
+          ? <LoadingPlaceholder shape="rows" count={2} />
+          : archived.length === 0
+          ? <EmptyState variant="section">{m.settings.archived.empty}</EmptyState>
           : (
             <StructuredList className="wlist">
               {archived.map((s) => (
@@ -438,7 +433,7 @@ export function Settings() {
       </div>
 
       <div className="set-main">
-        <PageError error={error} />
+        <PageError error={errors[current]} />
         {panes[current]}
       </div>
     </ModalDialog>

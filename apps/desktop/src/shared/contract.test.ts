@@ -14,6 +14,7 @@ import {
   wikiAggregation, wikiPaper, wikiSearchIndex, type WikiData,
 } from '../core/wiki/index.js'
 import {
+  AuthorSearchFailedSchema,
   ChangeEntrySchema,
   ChangelogDeleteParamsSchema,
   ChatActionSchema,
@@ -1039,6 +1040,8 @@ describe('contract schemas', () => {
   it('没取回原文的结果只带一个封闭的失败原因，不带原始错误', () => {
     expect(InboxDownloadResultSchema.parse({ kind: 'failed', reason: 'not-pdf' }))
       .toEqual({ kind: 'failed', reason: 'not-pdf' })
+    expect(InboxDownloadResultSchema.parse({ kind: 'failed', reason: 'write' }))
+      .toEqual({ kind: 'failed', reason: 'write' })
     expect(() => InboxDownloadResultSchema.parse({ kind: 'failed', reason: 'ENOENT' })).toThrow()
     expect(() => InboxDownloadResultSchema.parse({ kind: 'failed', reason: 'server', error: 'x' })).toThrow()
   })
@@ -1047,6 +1050,9 @@ describe('contract schemas', () => {
     expect(NetFailedSchema.parse({ kind: 'failed', reason: 'rate-limit' })).toEqual({ kind: 'failed', reason: 'rate-limit' })
     expect(() => NetFailedSchema.parse({ kind: 'failed', reason: 'not-pdf' })).toThrow()
     expect(() => NetFailedSchema.parse({ kind: 'failed', reason: 'unknown', error: 'x' })).toThrow()
+    expect(AuthorSearchFailedSchema.parse({ kind: 'failed', reason: 'no-key' })).toEqual({ kind: 'failed', reason: 'no-key' })
+    expect(() => NetFailedSchema.parse({ kind: 'failed', reason: 'no-key' })).toThrow()
+    expect(() => AuthorSearchFailedSchema.parse({ kind: 'failed', reason: 'no-key', error: 'x' })).toThrow()
   })
 
   it('收件的三个写入口各只收一个条目 id', () => {

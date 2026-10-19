@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { MetadataJob } from '../../shared/contract.js'
 import { useMessages } from '../messages/useMessages.js'
-import { useBanner } from '../shell/AppShell.js'
+import { useNotice } from '../shell/AppShell.js'
 import { useJobs } from '../shell/useJobs.js'
 import { IconButton } from './IconButton.js'
 import { IconCross } from './icons.js'
@@ -18,7 +18,7 @@ const PROGRESS: Record<MetadataJob['step'], number> = {
 export function ParseProgress({ onParsed }: { onParsed: (job: MetadataJob) => void }) {
   const m = useMessages()
   const status = useJobs()
-  const banner = useBanner()
+  const notice = useNotice()
   const [closed, setClosed] = useState<ReadonlySet<string>>(new Set())
   const reported = useRef(new Set<string>())
 
@@ -29,10 +29,10 @@ export function ParseProgress({ onParsed }: { onParsed: (job: MetadataJob) => vo
       reported.current.add(job.id)
       if (job.step === 'done' && job.found !== 'none') {
         onParsed(job)
-        banner(m.papers.parse.addedFixable)
+        notice.success(m.papers.parse.addedFixable)
       }
     }
-  }, [status, banner, onParsed, m])
+  }, [status, notice, onParsed, m])
 
   const uploads = status?.uploads ?? []
   const shown = uploads.filter((job) => !closed.has(job.id))

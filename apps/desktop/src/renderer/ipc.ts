@@ -1,6 +1,6 @@
 import type { AppUpdateStatus } from '../shared/app-update.js'
 import type {
-  AttachmentFields, AuthorCandidate, ChangeEntry, ChatCancelResult, ChatMessage, ChatMessageFields,
+  AttachmentFields, AuthorCandidate, AuthorSearchFailed, ChangeEntry, ChatCancelResult, ChatMessage, ChatMessageFields,
   ChatSendResult, ChatSession, ConclusionState,
   ContractMethod, Facet, PluginVersion, SemanticKeyCheckResult, SemanticKeyStatus,
   DeliverySettings, DiscoveryFeedback, DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile,
@@ -300,7 +300,7 @@ export const watch = {
 }
 
 export const author = {
-  search: (query: string) => call<AuthorCandidate[] | NetFailed>('author.search', { query }),
+  search: (query: string) => call<AuthorCandidate[] | AuthorSearchFailed>('author.search', { query }),
 }
 
 export const wiki = {

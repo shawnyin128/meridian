@@ -4,7 +4,7 @@ import { HUMAN_PRODUCER, NOTES_PROPOSAL } from '../../shared/vocabulary.js'
 import { changelog } from '../ipc.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
-import { useBanner, useToast, useToday, useVaultRevision } from '../shell/AppShell.js'
+import { useNotice, useToday, useVaultRevision } from '../shell/AppShell.js'
 import { useFormat } from '../lib/format.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { CardTray } from '../components/CardTray.js'
@@ -12,6 +12,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { DayHeading } from '../components/DayHeading.js'
 import { DiffLines } from '../components/DiffLines.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { AgentLabel } from '../components/SourceLabel.js'
 import {
@@ -92,13 +93,12 @@ function ClearArchivedButton({ count, onClear }: { count: number; onClear: () =>
  */
 export function Changelog() {
   const m = useMessages()
-  const [entries, setEntries] = useState<ChangeEntry[]>([])
+  const [entries, setEntries] = useState<ChangeEntry[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const today = useToday()
   const fmt = useFormat()
-  const banner = useBanner()
-  const toast = useToast()
+  const notice = useNotice()
   const { revision, bump } = useVaultRevision()
   const reportError = useCallback((e: Error) => setError(e.message), [])
   const write = useVaultWrite()
@@ -108,33 +108,33 @@ export function Changelog() {
   }, [revision, reportError])
 
   // An undo is often rejected (the entity changed again after this change), so the reason shows as a
-  // toast instead of becoming a page-wide error.
+  // refusal notice instead of becoming a page-wide error.
   const undo = (id: string) => {
     void changelog.undo(id).then(() => {
       bump()
-      banner(m.changelog.undoneNote)
-    }).catch((e: Error) => toast(e.message))
+      notice.success(m.changelog.undoneNote)
+    }).catch((e: Error) => notice.refusal(e.message))
   }
 
-  // Archiving one entry shows no banner: the entry moving down into the Archived section is the feedback.
+  // Archiving one entry shows no notice: the entry moving down into the Archived section is the feedback.
   const archive = (id: string) => {
     void write(changelog.archive(id))
   }
 
   const archiveAll = (count: number) => {
-    void write(changelog.archiveAll(), { note: m.changelog.archivedNote(count), notify: toast })
+    void write(changelog.archiveAll(), { note: m.changelog.archivedNote(count) })
   }
 
   const deleteChange = (id: string) => {
-    void write(changelog.delete(id), { note: m.changelog.deletedNote, notify: toast })
+    void write(changelog.delete(id), { note: m.changelog.deletedNote })
   }
 
   const clearArchived = (count: number) => {
-    void write(changelog.clearArchived(), { note: m.changelog.clearedArchivedNote(count), notify: toast })
+    void write(changelog.clearArchived(), { note: m.changelog.clearedArchivedNote(count) })
   }
 
-  const fresh = entries.filter((c) => !c.archived)
-  const filed = entries.filter((c) => c.archived)
+  const fresh = (entries ?? []).filter((c) => !c.archived)
+  const filed = (entries ?? []).filter((c) => c.archived)
   // The screen title and "Archive all" count only the unarchived entries.
   const unread = fresh.length
 
@@ -209,7 +209,9 @@ export function Changelog() {
           )}
         >{m.changelog.unarchivedHeading}
         </SectionHeading>
-        {fresh.length === 0 ? <EmptyState variant="section">{m.changelog.empty}</EmptyState> : section(fresh)}
+        {entries === null
+          ? (error === null ? <LoadingPlaceholder shape="rows" /> : null)
+          : fresh.length === 0 ? <EmptyState variant="section">{m.changelog.empty}</EmptyState> : section(fresh)}
 
         {filed.length === 0 ? null : (
           <>

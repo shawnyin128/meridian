@@ -9,6 +9,7 @@ import { IconButton } from '../IconButton.js'
 import { IconCross, IconPencil, IconTrash } from '../icons.js'
 import { EditActions } from '../EditActions.js'
 import { ExternalMark } from '../EntityLink.js'
+import { EmptyState } from '../EmptyState.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PaperText } from '../paper/PaperText.js'
 import { PickRow, type PickHit } from '../PickRow.js'
@@ -158,7 +159,7 @@ export function ProjectMemo({ text, editing, onEditing, onSave, onOpen }: {
       <MarkdownBox
         className="memo" text={text} editing={editing} box={box}
         onCancel={() => onEditing(false)} onSave={save} onOpen={onOpen}
-        empty={<span className="lm">{m.project.remarkEmpty}</span>}
+        empty={<EmptyState variant="section">{m.project.remarkEmpty}</EmptyState>}
       />
     </>
   )
@@ -261,6 +262,7 @@ export function ProjectRelations({
   ]
   return (
     <>
+      {rows.length === 0 ? <EmptyState variant="section">{m.project.links.empty}</EmptyState> : null}
       {rows.map((row) => (
         <div
           className="wkrel" key={row.group}
@@ -377,7 +379,7 @@ export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
             if (picked.length) onAdd(picked)
           }}
         />
-        {attachments.length === 0 ? <div className="lm">{m.project.attachments.empty}</div> : null}
+        {attachments.length === 0 ? <EmptyState variant="section">{m.project.attachments.empty}</EmptyState> : null}
         {attachments.length === 0
           ? null
           : (

@@ -48,6 +48,20 @@ describe('ProjectRelations', () => {
     vi.unstubAllGlobals()
   })
 
+  it('没有任何关联时，标题下是一行分节空态，和附件、任务一样', () => {
+    act(() => {
+      root.render(
+        <MessagesProvider>
+          <ProjectRelations
+            groups={[]} papers={[]} onEdit={onEdit} onRemove={vi.fn()} onOpenPage={onOpenPage}
+            onOpenPaper={onOpenPaper} onRemovePaper={vi.fn()} onMove={vi.fn()}
+          />
+        </MessagesProvider>,
+      )
+    })
+    expect(host.querySelector('.empty-state--section')?.textContent).toBe('No links yet')
+  })
+
   it('offers editing on relation items only and puts the host editor in place of the item being edited', () => {
     const open = vi.spyOn(window, 'open').mockImplementation(() => null)
     render()

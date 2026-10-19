@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import type {
-  AuthorCandidate, NetFailed, ProjectSummary, Watch, WatchAuthorSuggestion, WatchFields,
+  AuthorCandidate, AuthorSearchFailed, ProjectSummary, Watch, WatchAuthorSuggestion, WatchFields,
   WatchSuggestionResult,
 } from '../../shared/contract.js'
 import { author, project, watch } from '../ipc.js'
 import { failureLabel } from '../lib/failure-label.js'
-import { useToast, useVaultRevision } from '../shell/AppShell.js'
+import { useVaultRevision } from '../shell/AppShell.js'
 import { useMessages } from '../messages/useMessages.js'
 import { AddAction } from '../components/AddAction.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { afterLeaving, InlineDraftInput } from '../components/InlineDraftInput.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { IconButton } from '../components/IconButton.js'
@@ -20,6 +21,7 @@ import { ChoicePicker } from '../components/FieldPickers.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { Switch } from '../components/Switch.js'
+import { Tag } from '../components/Tag.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { composing } from '../lib/keyboard.js'
 import './shell.css'
@@ -37,12 +39,12 @@ const suggestedAuthorKey = (item: WatchAuthorSuggestion): string => (
 
 /**
  * One group of watches, with a plus button at the right of its heading that opens a new row at the
- * top of the group's list. `editor` is the row being filled in: the draft row wears the `.wrow`
- * styles, and the caller renders and submits the input inside it.
+ * top of the group's list. `watches` is null while it loads. `editor` is the row being filled in: the
+ * draft row wears the `.wrow` styles, and the caller renders and submits the input inside it.
  */
 function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, onRemove }: {
   type: Watch['type']
-  watches: Watch[]
+  watches: Watch[] | null
   add: RefObject<HTMLButtonElement | null>
   editor?: { id?: string; row: RefObject<HTMLDivElement | null>; input: ReactNode } | undefined
   onOpen: () => void
@@ -58,7 +60,9 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
         actions={<AddAction variant="section" ref={add} title={m.watches.add(m.shell.watchKind[type])} onClick={onOpen}>{m.shell.watchKind[type]}</AddAction>}
       >{m.shell.watchKind[type]}
       </SectionHeading>
-      {watches.length === 0 && editor === undefined
+      {watches === null
+        ? <LoadingPlaceholder shape="rows" count={2} />
+        : watches.length === 0 && editor === undefined
         ? <EmptyState variant="section">{m.watches.empty(m.shell.watchKind[type])}</EmptyState>
         : (
           <StructuredList className="wlist">
@@ -74,15 +78,14 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
               : (
                 <StructuredRow className="wrow" data-w={w.id} key={w.id}>
                   <span className="nm">{w.name}</span>
-                  {w.type === 'author'
-                    ? (
-                      <span
-                        className={`author-id-state${w.identity === undefined ? ' unconfirmed' : ''}`}
-                        title={w.identity?.affiliations.join(' · ') || m.watches.identityUnknown}
-                      >{w.identity?.affiliations[0] || m.watches.identityUnconfirmed}</span>
-                    )
-                    : null}
-                  {w.active ? null : <span className="src">{m.watches.paused}</span>}
+                  {w.type !== 'author' ? null : w.identity === undefined
+                    ? <Tag tone="warn" title={m.watches.identityUnknown}>{m.watches.identityUnconfirmed}</Tag>
+                    : (
+                      <span className="author-id-state" title={w.identity.affiliations.join(' · ') || m.watches.identityUnknown}>
+                        {w.identity.affiliations[0] || m.watches.identityUnconfirmed}
+                      </span>
+                    )}
+                  {w.active ? null : <Tag className="watch-paused">{m.watches.paused}</Tag>}
                   <Switch label={w.name} checked={w.active} onChange={() => onSetActive(w)} />
                   <RowActions>
                     <IconButton label={m.common.edit} size="nested" onClick={() => onEdit(w)}><IconPencil /></IconButton>
@@ -106,7 +109,8 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
  */
 export function WatchSettings() {
   const m = useMessages()
-  const [watches, setWatches] = useState<Watch[]>([])
+  const [listed, setListed] = useState<Watch[] | null>(null)
+  const watches = useMemo(() => listed ?? [], [listed])
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [suggestionSource, setSuggestionSource] = useState<SuggestionSource>('focus')
   const [focus, setFocus] = useState('')
@@ -123,7 +127,7 @@ export function WatchSettings() {
   const [name, setName] = useState('')
   const [authorMatches, setAuthorMatches] = useState<AuthorCandidate[]>([])
   const [authorSearching, setAuthorSearching] = useState(false)
-  const [authorSearchError, setAuthorSearchError] = useState<string | NetFailed | null>(null)
+  const [authorSearchError, setAuthorSearchError] = useState<string | AuthorSearchFailed | null>(null)
   const [authorSearchNonce, setAuthorSearchNonce] = useState(0)
   const authorSearchRevision = useRef(0)
   const row = useRef<HTMLDivElement>(null)
@@ -136,7 +140,6 @@ export function WatchSettings() {
   // nothing: the old draft gone and the new group's not opened.
   const triggers = useMemo(() => [addTopic, addAuthor], [])
 
-  const toast = useToast()
   const { revision } = useVaultRevision()
   const reportError = useCallback((e: Error) => setError(e.message), [])
   const write = useVaultWrite()
@@ -150,7 +153,7 @@ export function WatchSettings() {
     setAuthorSearchError(null)
   }, [])
   useEffect(() => {
-    void watch.list().then(setWatches).catch(reportError)
+    void watch.list().then(setListed).catch(reportError)
     void project.list().then((items) => {
       setProjects(items)
       setProjectId((current) => current || items[0]?.id || '')
@@ -192,13 +195,13 @@ export function WatchSettings() {
 
   /** Creates a watch. Returns true when the write succeeds; on failure it reports the error and returns false. */
   const create = (fields: WatchFields): Promise<boolean> => write(watch.create(fields),
-    { note: m.watches.notices.added, notify: toast })
+    { note: m.watches.notices.added })
 
   /** Saves the draft row: an edit updates the watch in place, keeping its delivered papers; a new row adds one. */
   const persist = (fields: WatchFields): Promise<boolean> => editor?.id === undefined
     ? create(fields)
     : write(watch.update(editor.id, fields), {
-      note: m.watches.notices.updated, notify: toast,
+      note: m.watches.notices.updated,
     })
 
   const leaveDraft = useRef<(() => Promise<boolean>) | null>(null)
@@ -244,12 +247,11 @@ export function WatchSettings() {
       note: active
         ? m.watches.notices.resumed
         : m.watches.notices.pausedNote,
-      notify: toast,
     })
   }
 
   const remove = (id: string) => {
-    void write(watch.delete(id), { note: m.watches.notices.removed, notify: toast })
+    void write(watch.delete(id), { note: m.watches.notices.removed })
   }
 
   const clearSuggestionResults = () => {
@@ -406,7 +408,7 @@ export function WatchSettings() {
                   </div>
                 )
                 : authorMatches.length === 0
-                  ? <div className="author-search-note">{m.watches.noMatches}</div>
+                  ? <EmptyState variant="section">{m.watches.noMatches}</EmptyState>
                   : (
                     <div className="author-matches">
                       {authorMatches.map((candidate) => (
@@ -445,7 +447,7 @@ export function WatchSettings() {
       <PageError error={error} />
       {GROUPS.map((type) => (
         <WatchGroup
-          key={type} type={type} watches={watches.filter((w) => w.type === type)}
+          key={type} type={type} watches={listed === null ? null : watches.filter((w) => w.type === type)}
           add={type === 'topic' ? addTopic : addAuthor} onOpen={() => open(type)} onEdit={edit}
           editor={editor?.type !== type || editorInput === null
             ? undefined : { ...(editor.id === undefined ? {} : { id: editor.id }), row, input: editorInput }}
@@ -499,7 +501,7 @@ export function WatchSettings() {
         {suggestions === null || suggesting ? null : (
           <div className="watch-suggestion-results">
             {suggestions.topics.length + suggestions.authors.length === 0
-              ? <div className="ph2">{hadSuggestions ? m.watches.allAdded : m.watches.noneSuggested}</div>
+              ? <EmptyState variant="section">{hadSuggestions ? m.watches.allAdded : m.watches.noneSuggested}</EmptyState>
               : (
                 <>
                   <div className="ph2">

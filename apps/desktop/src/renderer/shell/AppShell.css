@@ -41,15 +41,6 @@
 /* The demo takes this background from .window; the window frame is not copied, so it moves here. */
 .main{flex:1;display:flex;min-height:0;position:relative;background:var(--window)}
 
-/* The toast pill at the bottom: says why an action was rejected; nothing was saved */
-.toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:var(--ink);color:var(--window);font-size:var(--fs-sm);padding:8px 20px;border-radius:var(--r-full);opacity:0;transition:opacity var(--t-slow) var(--e-out);pointer-events:none;z-index:91;box-shadow:var(--sh-2)}
-.toast.show{opacity:1}
-
-/* The banner at the top: confirms that something was saved, shows briefly and hides by itself */
-.banner{position:fixed;top:62px;left:50%;transform:translate(-50%,-14px);display:flex;align-items:center;gap:8px;background:var(--raised);border-radius:var(--r-xl);box-shadow:var(--sh-3);padding:8px 16px;font-size:var(--fs-sm);color:var(--ink);z-index:91;opacity:0;pointer-events:none;transition:opacity var(--t-slow) var(--e-inout),transform var(--t-slow) var(--e-inout)}
-.banner.show{opacity:1;transform:translate(-50%,0)}
-.banner svg{width:14px;height:14px;color:var(--good);flex-shrink:0}
-
 /*
  * Keeps a screen alive: the demo holds view state in global variables; here it lives in DOM that
  * stays mounted. display:contents keeps this wrapper out of layout, so the screen's root is still a
@@ -84,6 +75,8 @@
  */
 /* Compounded with .pickhits so this wider, unclipped shape and lower stacking layer win over the shared shell's, regardless of CSS load order. */
 .pickhits.sres{width:calc(var(--radix-popover-trigger-width) + 270px);max-height:none;overflow:hidden;z-index:40}
+/* A search with no hits keeps the panel open; its empty state sits on the rows' inline padding. */
+.pickhits.sres .sres-empty{padding:0 var(--row-menu-pad)}
 
 .sb-h{display:flex;align-items:center;gap:4px;font-size:var(--fs-cap);font-weight:600;color:var(--ter);text-transform:uppercase;letter-spacing:.04em;padding:0 8px;margin:12px 0 4px}
 .sb-h.chats-h{display:flex;align-items:center}

@@ -3,6 +3,7 @@ import type {
 } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
+import { EmptyState } from '../EmptyState.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { Tag, type TagTone } from '../Tag.js'
 import './PaperWikiProposalReview.css'
@@ -104,7 +105,7 @@ export function PaperWikiProposalReview({ review, quality }: {
             <span>{section.groups.length}</span>
           </div>
           {section.groups.length === 0 ? (
-            <p className="paper-wiki-review-empty">{section.emptyLabel}</p>
+            <EmptyState variant="section">{section.emptyLabel}</EmptyState>
           ) : (
             <StructuredList
               variant="embedded"
