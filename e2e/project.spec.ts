@@ -988,7 +988,7 @@ test('关联论文的候选行按标题任意一段命中,显示的是完整标�
   const paperRow = side.locator('.wkrel').filter({ has: win.locator('.rl', { hasText: '论文' }) })
   // "Activation-aware Weight" only occurs after the colon; a short-title-only search or display would miss it.
   await paperRow.locator('.inedit').fill('Activation-aware Weight')
-  const hit = win.locator('.pickhits li', { hasText: 'AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration' })
+  const hit = win.locator('.pickhits .rrow', { hasText: 'AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration' })
   await expect(hit).toHaveCount(1)
   await hit.click()
   // This row also merges in a free-text relation item ("LongSpec") after the linked papers,

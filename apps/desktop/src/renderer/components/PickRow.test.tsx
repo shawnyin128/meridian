@@ -81,7 +81,7 @@ describe('PickRow', () => {
     mount(onPick, onCancel)
     await flush() // The candidate arrives right after mounting, without typing
 
-    const hit = document.querySelector<HTMLLIElement>('.pickhits li')!
+    const hit = document.querySelector<HTMLElement>('.pickhits .rrow')!
     await act(async () => { hit.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })) })
     await act(async () => { hit.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })) })
     expect(onPick).toHaveBeenCalledTimes(1)
@@ -124,7 +124,7 @@ describe('PickRow', () => {
     mount(onPick, onCancel)
     await flush()
 
-    const hit = document.querySelector<HTMLLIElement>('.pickhits li')!
+    const hit = document.querySelector<HTMLElement>('.pickhits .rrow')!
     await act(async () => { hit.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })) })
 
     const outside = document.createElement('button')
@@ -136,13 +136,31 @@ describe('PickRow', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
+  it('指针移到哪一行,哪一行就是唯一高亮的当前行,方向键从它起步,回车选它', async () => {
+    const hits = [HIT, { id: 'h2', title: '候选二' }, { id: 'h3', title: '候选三' }]
+    const onPick = vi.fn(() => true)
+    mount(onPick, vi.fn(), hits)
+    await flush()
+
+    const rows = () => [...document.querySelectorAll<HTMLElement>('.pickhits .rrow')]
+    const lit = () => rows().map((row) => row.classList.contains('on'))
+    await act(async () => { rows()[2]!.dispatchEvent(new MouseEvent('mousemove', { bubbles: true })) })
+    expect(lit()).toEqual([false, false, true])
+
+    const input = document.querySelector<HTMLInputElement>('input')!
+    await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true })) })
+    expect(lit()).toEqual([false, true, false])
+    await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })) })
+    expect(onPick).toHaveBeenCalledExactlyOnceWith(hits[1])
+  })
+
   it('论文候选的标题按 LaTeX 显示，其他候选原样显示', async () => {
     mount(vi.fn(), vi.fn(), [
       { id: 'p1', title: '\\textbf{F}luxBin $\\times$', paper: true }, { id: 't1', title: 'a--b \\textbf{c}' },
     ])
     await flush()
 
-    const [paper, topic] = [...document.querySelectorAll('.pickhits li')]
+    const [paper, topic] = [...document.querySelectorAll('.pickhits .rrow')]
     expect(paper!.innerHTML).toMatch(/^<strong>F<\/strong>luxBin <span><span class="katex">/)
     expect(topic!.innerHTML).toBe('a--b \\textbf{c}')
   })

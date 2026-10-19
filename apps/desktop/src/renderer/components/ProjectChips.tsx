@@ -3,7 +3,7 @@ import type { PaperRow, ProjectSummary } from '../../shared/contract.js'
 import { project } from '../ipc.js'
 import { AddAction } from './AddAction.js'
 import { IconCross } from './icons.js'
-import { PickerPopover } from './PickerPopover.js'
+import { PickerPopover, PickOption } from './PickerPopover.js'
 import { TitleNote } from './TitleNote.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
@@ -89,10 +89,9 @@ export function ProjectChips({ paper, onError }: {
             <>
               <div className="rh">{m.research.chips.pickerHeading}</div>
               {hits.map((held, i) => (
-                <div
-                  className={i === keys.active ? 'rrow on' : 'rrow'} key={held.id}
-                  onClick={() => draft.submit(() => add(held))}
-                >{held.name}</div>
+                <PickOption keys={keys} index={i} key={held.id} onClick={() => draft.submit(() => add(held))}>
+                  {held.name}
+                </PickOption>
               ))}
             </>
           )

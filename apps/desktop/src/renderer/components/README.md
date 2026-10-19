@@ -14,10 +14,13 @@ Current shared contracts:
   outside cancellation, and async submission locking are implemented once.
 - `PickerPopover`: the shared anchored surface for input suggestions and compact pickers. It owns
   portal positioning, focus retention, anchor-aware outside interaction, spacing, and optional event
-  isolation; picker contents and domain selection policy stay configurable.
+  isolation; picker contents and domain selection policy stay configurable. `PickOption` is the one
+  candidate row: menu item anatomy, lit only as the active row, and the row under the pointer is it.
 - `ActionMenu` and `ActionPopover`: the two shared interactive-surface shells. Menus own action and
-  radio-item semantics; popovers retain normal focus for calendars and configuration forms. Routes
-  provide triggers, contents, and capability flags instead of assembling Radix roots and portals.
+  radio-item semantics, and radio and checkbox items draw the one checked mark themselves; popovers
+  retain normal focus for calendars and configuration forms. Routes provide triggers, contents, and
+  capability flags instead of assembling Radix roots and portals. Every menu and popover keeps
+  `COLLISION_PADDING` from the window edge.
 - `ContextMenu`: the shared coordinate-menu shell for mouse and keyboard context actions. It owns
   portal placement, viewport clamping, focus, outside/Escape dismissal, and focus return.
 - `FloatingTextEditor`: positioned short-text create/rename behavior, including async-dismiss locking
@@ -42,7 +45,7 @@ Current shared contracts:
   `overlay`, and `resize` modes cover panels that join layout, slide over it, or widen an existing rail;
   routes provide only final geometry and domain content.
 - `DayHeading`: the small heading that opens one day in a list grouped by day, with an optional count.
-- `hooks/useCandidateKeys`: arrow-key, Enter and Escape handling for a candidate list, shared by every
+- `hooks/useCandidateKeys`: arrow-key, pointer and Enter handling for a candidate list, shared by every
   suggestion and picker dropdown.
 - `ResearchObjectCard`: one list-card shell for first-class research objects such as projects and ideas;
   routes provide their domain-specific identity and metadata without redefining width, spacing, borders,

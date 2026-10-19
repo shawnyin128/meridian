@@ -6,7 +6,7 @@ import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
 import { composing } from '../../lib/keyboard.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { IconCheck, IconPlus } from '../icons.js'
-import { PickerPopover } from '../PickerPopover.js'
+import { PickerPopover, PickOption } from '../PickerPopover.js'
 import { FormInput } from '../FormControls.js'
 
 /**
@@ -28,14 +28,13 @@ export function optionRows(
 /**
  * Cell editor for select and multi-select columns: an input in the cell is the anchor, and below it
  * a popover lists the column's existing options, filtered by the typed text. When the typed text
- * equals no option, an extra "Create "X"" row appears. Clicking a row reports that row's option;
- * Enter reports the highlighted option, or the typed text as a new one when nothing matches; Esc
- * writes nothing. Enter and Esc pressed while an input method is composing belong to it and do
+ * equals no option, an extra "Create "X"" row appears after them. Clicking a row reports that row's
+ * option; Enter reports the highlighted row's, which the arrow keys or the pointer move; Esc writes
+ * nothing. Enter and Esc pressed while an input method is composing belong to it and do
  * neither. A press outside the input and its popover, or focus leaving them, reports what
  * Enter would, except that a highlighted option the cell already holds is left as it is, and closes
  * the picker once `onCommit` resolves true; with nothing typed it just closes. A refused report
- * keeps the picker and its text and marks the input invalid. Styled as the demo's `.ctxmenu.drop`
- * and `.rrow` / `.mk`.
+ * keeps the picker and its text and marks the input invalid.
  * `onCommit` receives the option chosen now and whether it must first be added to this column, and
  * returns whether it was written; otherwise when this cell closes is decided by the caller. After a
  * create, the input is cleared and the popover stays open.
@@ -53,7 +52,16 @@ export function CellPicker({ column, values, onCommit, onClose }: {
 
   const typed = q.trim()
   const { hits, isNew } = optionRows(column.options, typed)
-  const keys = useCandidateKeys(hits.length, (i) => { void onCommit(hits[i]!, false) })
+  const create = () => {
+    setQ('')
+    void onCommit(typed, true)
+  }
+
+  // The create row, when there is one, is the last row the keys and the pointer move through.
+  const keys = useCandidateKeys(hits.length + (isNew ? 1 : 0), (i) => {
+    if (i < hits.length) void onCommit(hits[i]!, false)
+    else create()
+  })
   const draft = useInlineDraft({
     row: anchor, triggers: NO_TRIGGERS, onCancel: onClose, isEmpty: () => typed === '',
     onSubmit: () => {
@@ -62,11 +70,6 @@ export function CellPicker({ column, values, onCommit, onClose }: {
       return values.includes(hit) || onCommit(hit, false)
     },
   })
-
-  const create = () => {
-    setQ('')
-    void onCommit(typed, true)
-  }
 
   return (
     <PickerPopover
@@ -85,7 +88,6 @@ export function CellPicker({ column, values, onCommit, onClose }: {
             keys.onKeyDown(e)
             if (e.key === 'Escape') e.stopPropagation()
             if (composing(e.nativeEvent)) return
-            if (e.key === 'Enter' && typed && hits.length === 0 && isNew) create()
             if (e.key === 'Escape') onClose()
           }}
         />
@@ -96,17 +98,17 @@ export function CellPicker({ column, values, onCommit, onClose }: {
             ? <div className="rh optnone">{m.papers.columnMenu.noOptionsHint}</div>
             : null}
           {hits.map((o, i) => (
-            <div className={i === keys.active ? 'rrow opt on' : 'rrow opt'} key={o} onClick={() => onCommit(o, false)}>
+            <PickOption keys={keys} index={i} className="opt" key={o} onClick={() => onCommit(o, false)}>
               <span className="ck">{values.includes(o) ? <IconCheck /> : null}</span>
               <span className="tagchip">{o}</span>
-            </div>
+            </PickOption>
           ))}
           {isNew
             ? (
-              <div className="rrow mk" onClick={create}>
+              <PickOption keys={keys} index={hits.length} className="mk" onClick={create}>
                 <IconPlus />
                 <span>{m.papers.cellPicker.createNew(typed)}</span>
-              </div>
+              </PickOption>
             )
             : null}
         </>

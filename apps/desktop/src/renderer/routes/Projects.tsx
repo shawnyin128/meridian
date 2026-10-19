@@ -19,7 +19,6 @@ import {
 import { DotsMenu } from '../components/FieldPickers.js'
 import { InlineDraftInput } from '../components/InlineDraftInput.js'
 import { ShortTextEditor } from '../components/ShortTextEditor.js'
-import { IconCheck } from '../components/icons.js'
 import { ProjectBlockerView, ProjectNextActionView } from '../components/project/ProjectControl.js'
 import { ProjectIdentity } from '../components/project/ProjectIdentity.js'
 import { EventText } from '../components/project/ProjectSignals.js'
@@ -101,10 +100,7 @@ function ProjectMenu({ project, onRename, onStatus, onDelete }: {
                 <MenuSeparator />
                 <MenuRadioGroup value={project.status}>
                   {PROJECT_STATUSES.map((s) => (
-                    <MenuRadioItem key={s} value={s} onSelect={() => onStatus(s)}>
-                      <span className="ck">{s === project.status ? <IconCheck /> : null}</span>
-                      {s}
-                    </MenuRadioItem>
+                    <MenuRadioItem key={s} value={s} onSelect={() => onStatus(s)}>{s}</MenuRadioItem>
                   ))}
                 </MenuRadioGroup>
                 <MenuSeparator />

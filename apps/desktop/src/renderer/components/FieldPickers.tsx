@@ -76,10 +76,7 @@ export function ChoicePicker<T extends string>({
     >
       <MenuRadioGroup value={value}>
         {options.map((option) => (
-          <MenuRadioItem
-            className={option === value ? 'mi on' : 'mi'} key={option} value={option}
-            onSelect={() => onPick(option)}
-          >
+          <MenuRadioItem key={option} value={option} onSelect={() => onPick(option)}>
             {label(option)}
           </MenuRadioItem>
         ))}
@@ -112,10 +109,7 @@ export function PriorityPicker({ value, className, title, onPick, children, stop
     >
       <MenuRadioGroup value={value}>
         {PRIORITIES.map((priority) => (
-          <MenuRadioItem
-            className={priority === value ? 'mi on' : 'mi'} key={priority} value={priority}
-            onSelect={() => onPick(priority)}
-          >
+          <MenuRadioItem key={priority} value={priority} onSelect={() => onPick(priority)}>
             {priority.toUpperCase()}{priorityNote(priority)}
           </MenuRadioItem>
         ))}

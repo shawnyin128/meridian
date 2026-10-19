@@ -9,7 +9,7 @@ import { DEFAULT_PAPER_GROUPS, PAPER_PAGE, READ_STATES, READING_PAPER } from '..
 import { papers } from '../../ipc.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { IconCheck, IconCross, IconGrip, IconPlus, IconRead } from '../icons.js'
+import { IconCross, IconGrip, IconPlus, IconRead } from '../icons.js'
 import { CellPicker } from './CellPicker.js'
 import { NewColumnHead } from './ColumnAdd.js'
 import { columnKey, takenLabel } from './column-key.js'
@@ -19,7 +19,7 @@ import { ParseProgress } from '../ParseProgress.js'
 import { Pager } from '../Pager.js'
 import { PaperMetadata, RatingStars } from '../PaperMetadata.js'
 import { PaperReadingSummary } from './PaperReadingSummary.js'
-import { PickerPopover } from '../PickerPopover.js'
+import { PickerPopover, PickOption } from '../PickerPopover.js'
 import { FormInput } from '../FormControls.js'
 import { ClearableInput } from '../ClearableInput.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../PageShell.js'
@@ -216,7 +216,8 @@ function TagAdd({ field, values, onAdd, onError }: {
     row: input, triggers: NO_TRIGGERS, onCancel: close, isEmpty: () => typed === '',
     onSubmit: () => (typed === '' ? false : onAdd(hits[keys.active] ?? typed)),
   })
-  const keys = useCandidateKeys(hits.length, (i) => draft.submit(() => onAdd(hits[i]!)))
+  // The create row, when there is one, is the last row the keys and the pointer move through.
+  const keys = useCandidateKeys(hits.length + (isNew ? 1 : 0), (i) => draft.submit(() => onAdd(hits[i] ?? typed)))
 
   return (
     <PickerPopover
@@ -241,17 +242,16 @@ function TagAdd({ field, values, onAdd, onError }: {
           <>
               {hits.length > 0 ? <div className="rh">{m.papers.tags.existingTopics}</div> : null}
               {hits.map((v, i) => (
-                <div
-                  className={i === keys.active ? 'rrow on' : 'rrow'} key={v}
-                  onClick={() => draft.submit(() => onAdd(v))}
-                >{v}</div>
+                <PickOption keys={keys} index={i} key={v} onClick={() => draft.submit(() => onAdd(v))}>{v}</PickOption>
               ))}
               {isNew
                 ? (
-                  <div className="rrow mk" onClick={() => draft.submit(() => onAdd(typed))}>
+                  <PickOption
+                    keys={keys} index={hits.length} className="mk" onClick={() => draft.submit(() => onAdd(typed))}
+                  >
                     <IconPlus />
                     <span className="tagchip">{typed}</span>
-                  </div>
+                  </PickOption>
                 )
                 : null}
           </>
@@ -282,10 +282,7 @@ function ReadStateChip({ current, onPick }: {
     >
       <MenuRadioGroup value={current}>
         {READ_STATES.map((s) => (
-          <MenuRadioItem key={s} value={s} onSelect={() => onPick(s)}>
-            <span className="ck">{s === current ? <IconCheck /> : null}</span>
-            {s}
-          </MenuRadioItem>
+          <MenuRadioItem key={s} value={s} onSelect={() => onPick(s)}>{s}</MenuRadioItem>
         ))}
       </MenuRadioGroup>
     </ActionMenu>
@@ -312,16 +309,10 @@ function ReadStateFilter({ current, onPick }: {
       )}
     >
       <MenuRadioGroup value={current ?? 'all'}>
-        <MenuRadioItem value="all" onSelect={() => onPick(null)}>
-          <span className="ck">{current === null ? <IconCheck /> : null}</span>
-          {m.papers.readState.allStates}
-        </MenuRadioItem>
+        <MenuRadioItem value="all" onSelect={() => onPick(null)}>{m.papers.readState.allStates}</MenuRadioItem>
         <MenuSeparator />
         {READ_STATES.map((state) => (
-          <MenuRadioItem key={state} value={state} onSelect={() => onPick(state)}>
-            <span className="ck">{state === current ? <IconCheck /> : null}</span>
-            {state}
-          </MenuRadioItem>
+          <MenuRadioItem key={state} value={state} onSelect={() => onPick(state)}>{state}</MenuRadioItem>
         ))}
       </MenuRadioGroup>
     </ActionMenu>

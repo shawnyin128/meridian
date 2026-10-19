@@ -351,7 +351,7 @@ test('细分:挂上已有的同类聚合,拿掉;新名字回车新建一页', as
     .toBe((await cards.nth(n - 1).locator('.wf').boundingBox())!.height)
   const row = shown(win).locator('.pickin')
   await row.pressSequentially('KV cache')
-  await expect(win.locator('.pickhits li')).toHaveCount(1)
+  await expect(win.locator('.pickhits .rrow')).toHaveCount(1)
   await expect(row).toHaveAttribute('aria-busy', 'false')
   await row.press('Enter')
   await expect(cards).toHaveCount(n + 1)
@@ -372,7 +372,7 @@ test('细分:挂上已有的同类聚合,拿掉;新名字回车新建一页', as
 
   await shown(win).locator('.wkmain .section-heading', { hasText: '细分主题' }).locator('.btn').click()
   await shown(win).locator('.pickin').pressSequentially('端到端新建的主题')
-  await expect(win.locator('.pickhits li')).toHaveCount(0)
+  await expect(win.locator('.pickhits .rrow')).toHaveCount(0)
   await expect(shown(win).locator('.pickin')).toHaveAttribute('aria-busy', 'false')
   await shown(win).locator('.pickin').press('Enter')
   await expect(cards).toHaveCount(n + 1)
@@ -416,7 +416,7 @@ test('论文对比:加一篇论文,拿掉;改列——改名生效,删有格子�
   const holder = (await rows.last().boundingBox())!
   expect(Math.abs(holder.height - real.height)).toBeLessThan(0.5)
   await shown(win).locator('.pickin').pressSequentially('QuaRot')
-  await expect(win.locator('.pickhits li').first()).toContainText('QuaRot')
+  await expect(win.locator('.pickhits .rrow').first()).toContainText('QuaRot')
   await expect(shown(win).locator('.pickin')).toHaveAttribute('aria-busy', 'false')
   await shown(win).locator('.pickin').press('Enter')
   await expect(rows).toHaveCount(n + 1)

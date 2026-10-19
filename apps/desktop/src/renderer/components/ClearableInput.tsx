@@ -1,4 +1,4 @@
-import { forwardRef, useRef, type InputHTMLAttributes, type ReactNode } from 'react'
+import { forwardRef, useRef, type InputHTMLAttributes, type ReactNode, type Ref } from 'react'
 import { useMessages } from '../messages/useMessages.js'
 import { FormInput, type FormControlAppearance } from './FormControls.js'
 import { IconCross } from './icons.js'
@@ -10,6 +10,7 @@ type ClearableInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value'> 
   appearance?: FormControlAppearance
   wrapperClassName?: string
   wrapperId?: string
+  wrapperRef?: Ref<HTMLDivElement>
   leading?: ReactNode
   clearLabel?: string
 }
@@ -17,7 +18,7 @@ type ClearableInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value'> 
 /** A controlled single-line field with one stable trailing clear action. */
 export const ClearableInput = forwardRef<HTMLInputElement, ClearableInputProps>(
   function ClearableInput({
-    value, onClear, wrapperClassName = '', wrapperId, leading,
+    value, onClear, wrapperClassName = '', wrapperId, wrapperRef, leading,
     clearLabel, className, ...props
   }, forwardedRef) {
     const m = useMessages()
@@ -30,7 +31,7 @@ export const ClearableInput = forwardRef<HTMLInputElement, ClearableInputProps>(
     }
 
     return (
-      <div id={wrapperId} className={`clearable-input${wrapperClassName ? ` ${wrapperClassName}` : ''}`}>
+      <div id={wrapperId} ref={wrapperRef} className={`clearable-input${wrapperClassName ? ` ${wrapperClassName}` : ''}`}>
         {leading}
         <FormInput ref={setRef} className={className} value={value} {...props} />
         {value === '' ? null : (

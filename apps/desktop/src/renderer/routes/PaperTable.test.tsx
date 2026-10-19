@@ -529,6 +529,18 @@ describe('PaperTable', () => {
     expect(row('作者').tagName).toBe('DIV')
   })
 
+  it('列设置只在能点着显隐的行上打勾，自定义列的行不打勾', async () => {
+    const host = mount()
+    columnsCall.resolve({ ...SELECT_COLUMNS, hidden: ['venue'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
+    const checked = (label: string) => [...document.querySelectorAll<HTMLElement>('.mi.colrow')]
+      .find((el) => el.textContent === label)!.querySelector('.ck svg') !== null
+    expect([checked('主题'), checked('发表'), checked('选择')]).toEqual([true, false, false])
+  })
+
   it('主题超出一行时用 +N 收起,点击后展开且不会误开论文详情', async () => {
     const scrollWidth = vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get')
       .mockImplementation(function () { return this.classList.contains('ci') ? 200 : 0 })
