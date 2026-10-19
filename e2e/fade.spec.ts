@@ -18,12 +18,14 @@ type Shot = { bg: number; tail: number; ink: number[] }
 
 /**
  * Screenshots the element, decodes the image in the page, and measures its background and per-column
- * ink. The background is the most frequent color in the image. A column's ink is the largest channel
- * difference between any of its pixels and the background: 0 for bare background, about 200 for solid text.
+ * ink over the pixels the element paints. The background is the most frequent color in the image. A
+ * column's ink is the largest channel difference between any of its pixels and the background: 0 for
+ * bare background, about 200 for solid text.
  */
 async function shoot(win: Page, target: Locator): Promise<Shot> {
   const png = (await target.screenshot()).toString('base64')
-  return win.evaluate(async (b64) => {
+  const box = (await target.boundingBox())!
+  return win.evaluate(async ([b64, rect]) => {
     const img = new Image()
     img.src = `data:image/png;base64,${b64}`
     await img.decode()
@@ -32,7 +34,15 @@ async function shoot(win: Page, target: Locator): Promise<Shot> {
     canvas.height = img.naturalHeight
     const ctx = canvas.getContext('2d')!
     ctx.drawImage(img, 0, 0)
-    const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    // Playwright clips the screenshot to the box's enclosing whole CSS pixels, while Chromium paints
+    // the box from its edges rounded to the nearest device pixel: at a fractional edge the image has
+    // a row or column outside the element.
+    const dpr = devicePixelRatio
+    const painted = (from: number, size: number) =>
+      [from, from + size].map((edge) => Math.round(edge * dpr) - Math.floor(from) * dpr) as [number, number]
+    const [x0, x1] = painted(rect.x, rect.width)
+    const [y0, y1] = painted(rect.y, rect.height)
+    const { data, width, height } = ctx.getImageData(x0, y0, x1 - x0, y1 - y0)
 
     const rgb = (x: number, y: number): number => {
       const i = (y * width + x) * 4
@@ -65,7 +75,7 @@ async function shoot(win: Page, target: Locator): Promise<Shot> {
       ink.push(d)
     }
     return { bg, tail: mode(last), ink }
-  }, png)
+  }, [png, box] as const)
 }
 
 const hex = (color: number): string => `#${color.toString(16).padStart(6, '0')}`
