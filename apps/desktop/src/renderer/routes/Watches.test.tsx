@@ -25,6 +25,7 @@ const api = vi.hoisted(() => ({
     paperCount: 8,
   })),
   update: vi.fn(async () => {}),
+  setActive: vi.fn(async () => {}),
 }))
 
 vi.mock('../ipc.js', () => ({
@@ -37,7 +38,7 @@ vi.mock('../ipc.js', () => ({
     suggest: api.suggest,
     create: api.create,
     update: api.update,
-    setActive: vi.fn(async () => {}),
+    setActive: api.setActive,
     delete: vi.fn(async () => {}),
   },
 }))
@@ -85,6 +86,22 @@ describe('WatchSettings', () => {
     const add = topicList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!
     await act(async () => { add.click() })
     expect(topicList.firstElementChild!.classList.contains('newrow')).toBe(true)
+
+    await act(async () => { root.unmount() })
+  })
+
+  it('暂停与恢复是一个以关注名命名的开关，开着表示在抓取，名字不随状态翻转', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+
+    const row = host.querySelector('[data-w="topic-1"]')!
+    expect([...row.querySelectorAll('button')].map((item) => item.textContent)).not.toContain('恢复')
+    const toggle = row.querySelector<HTMLButtonElement>('[role="switch"]')!
+    expect([toggle.getAttribute('aria-label'), toggle.getAttribute('aria-checked')])
+      .toEqual(['speculative decoding', 'false'])
+    expect(host.querySelector('[data-w="author-1"] [role="switch"]')!.getAttribute('aria-checked')).toBe('true')
+    await act(async () => { toggle.click() })
+    expect(api.setActive).toHaveBeenCalledWith('topic-1', true)
 
     await act(async () => { root.unmount() })
   })
@@ -278,7 +295,7 @@ describe('WatchSettings', () => {
     const section = host.querySelector('.watch-suggestions')!
     const sources = section.querySelector('.segmented-control[aria-label="建议来源"]')
     expect(sources).not.toBeNull()
-    expect(button(sources!, '描述关注方向').getAttribute('aria-pressed')).toBe('true')
+    expect(button(sources!, '描述关注方向').getAttribute('aria-checked')).toBe('true')
 
     const input = section.querySelector<HTMLInputElement>(
       'input[placeholder="用一句话描述想持续关注的研究方向"]',
@@ -288,8 +305,8 @@ describe('WatchSettings', () => {
     expect(section.textContent).toContain('batch aware verification')
 
     await act(async () => { button(sources!, '从项目生成').click() })
-    expect(button(sources!, '从项目生成').getAttribute('aria-pressed')).toBe('true')
-    expect(button(sources!, '描述关注方向').getAttribute('aria-pressed')).toBe('false')
+    expect(button(sources!, '从项目生成').getAttribute('aria-checked')).toBe('true')
+    expect(button(sources!, '描述关注方向').getAttribute('aria-checked')).toBe('false')
     expect(section.textContent).not.toContain('batch aware verification')
 
     api.suggest.mockResolvedValueOnce({

@@ -5,6 +5,7 @@ import { PaperMetadata } from '../PaperMetadata.js'
 import { ReadingNotes } from './ReadingNotes.js'
 import { ReadingRemark } from './ReadingRemark.js'
 import { PaperWikiIngest } from './PaperWikiIngest.js'
+import { ReaderPanelHeader } from './ReaderPanelHeader.js'
 import '../DetailPanel.css'
 
 export type ReaderSideTab = 'metadata' | 'highlights' | 'notes' | 'remark' | 'wiki'
@@ -43,7 +44,14 @@ export function ReaderSidePanel({
   const edits = useDrafts<EditDraft>()
   return (
     <aside className={tab === null ? 'reader-side collapsed' : 'reader-side'}>
-      {tab === 'metadata' && paper !== null ? <PaperMetadata paper={paper} onSaved={onPaper} /> : null}
+      {tab === 'metadata' && paper !== null
+        ? (
+          <aside className="reader-meta" aria-label={m.reader.rail.tabs.metadata}>
+            <ReaderPanelHeader title={m.reader.rail.tabs.metadata} />
+            <PaperMetadata paper={paper} onSaved={onPaper} />
+          </aside>
+        )
+        : null}
       {(tab === 'highlights' || tab === 'notes') && reading !== null
         ? (
           <ReadingNotes

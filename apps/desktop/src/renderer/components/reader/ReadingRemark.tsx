@@ -2,6 +2,7 @@ import type { PaperReading } from '../../../shared/contract.js'
 import { editField, type Drafts, type EditDraft } from '../../hooks/useDrafts.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { FormTextarea } from '../FormControls.js'
+import { ReaderPanelHeader } from './ReaderPanelHeader.js'
 
 /**
  * The remark in the reader's right rail: a free thought about the whole paper, tied to no page. The
@@ -19,7 +20,7 @@ export function ReadingRemark({ reading, saving, onSave, edits }: {
   const text = edit.text
   return (
     <aside className="reading-remark" aria-label={m.reader.rail.tabs.remark}>
-      <header><strong>{m.reader.remark.heading}</strong></header>
+      <ReaderPanelHeader title={m.reader.remark.heading} />
       <div className="remark-compose">
         <FormTextarea
           aria-label={m.reader.rail.tabs.remark} placeholder={m.reader.remark.placeholder}

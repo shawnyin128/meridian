@@ -237,7 +237,7 @@ test('窗口收窄后月视图里每条任务行在甘特视口里仍看得见�
   })
   await gotoProject(win)
   const gantt = win.locator('.screenslot:not([hidden]) .gantt')
-  await gantt.locator('.gscale button', { hasText: '月' }).click()
+  await gantt.locator('.segmented-control>button', { hasText: '月' }).click()
   await gantt.locator('.gperiodnav button').last().click()
   await expect(gantt.locator('.gbar-label', { hasText: '月末任务' })).toHaveCount(1)
   const taskRows = (await readDraft(win)).tasks.filter((task) => overlaps(task, month)).length

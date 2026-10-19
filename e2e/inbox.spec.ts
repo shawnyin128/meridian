@@ -341,7 +341,7 @@ test('存入稍后阅读:离开推送屏,排到队首,再移出', async ({ win }
     .map((k) => `${k} · ${queued.filter((e) => e[key] === k).length}`)
   expect(await shown(win, '.day-heading').allTextContents()).toEqual(heads('day'))
   await shown(win, '.segmented-control>button').filter({ hasText: '按来源' }).click()
-  await expect(shown(win, '.segmented-control>button').filter({ hasText: '按来源' })).toHaveClass(/\bon\b/)
+  await expect(shown(win, '.segmented-control>button').filter({ hasText: '按来源' })).toHaveAttribute('aria-checked', 'true')
   expect(await shown(win, '.day-heading').allTextContents()).toEqual(heads('source'))
 
   await openInbox(win, 'all')
@@ -412,12 +412,14 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   const entriesBefore = await inboxFromCore(win)
   const kept = entriesBefore.filter((e) => e.watch === 'spec').length
   const spec = settings(win, '.wrow').filter({ hasText: 'speculative decoding' })
-  await spec.locator('.btn', { hasText: '暂停' }).click()
+  await expect(spec.locator('[role="switch"]')).toHaveAttribute('aria-checked', 'true')
+  await spec.locator('[role="switch"]').click()
+  await expect(spec.locator('[role="switch"]')).toHaveAttribute('aria-checked', 'false')
   await expect(spec.locator('.src')).toHaveText('已暂停')
   await expect(win.locator('[data-watchrow="spec"]')).toHaveClass(/\bdim\b/)
   await expect(win.locator('[data-watchrow="spec"] .n')).toHaveCount(0)
   expect((await inboxFromCore(win)).filter((e) => e.watch === 'spec')).toHaveLength(kept)
-  await spec.locator('.btn', { hasText: '恢复' }).click()
+  await spec.locator('[role="switch"]').click()
   await expect(win.locator('[data-watchrow="spec"]')).not.toHaveClass(/\bdim\b/)
 
   // Add: the sidebar's topic group gains a row, and its count goes up by one.
@@ -525,7 +527,7 @@ test('没填 key 时关注建议从 arXiv 生成主题与按姓名的作者,添�
   expect(projectResult.authors[0]?.name).toBeTruthy()
   expect(projectResult.authors[0]?.id).toBeUndefined()
 
-  await section.locator('.watch-suggestion-source').getByRole('button', { name: '从项目生成' }).click()
+  await section.locator('.watch-suggestion-source').getByRole('radio', { name: '从项目生成' }).click()
   await section.locator('.btn.pri').click()
   await expect(section.locator('.watch-suggestion-row').first()).toBeVisible()
 })

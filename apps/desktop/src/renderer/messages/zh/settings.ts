@@ -335,8 +335,6 @@ export const settings = {
     needsArxiv: '关联带 arXiv 编号的论文后生成方向',
     core: '核心',
     setCoreAction: '设为核心',
-    close: '关闭',
-    enable: '启用',
     noNewPapers: '没有发现新的论文',
     newFound: (n: number) => `新发现 ${n} 篇论文`,
     requested: (n: number) => `请求 ${n} 个方向`,

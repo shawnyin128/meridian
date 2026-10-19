@@ -1,0 +1,7 @@
+/* A chip that is off keeps a hairline, so it still shows on a container filled with the chip's own colour. */
+.chip-toggles{display:flex;flex-wrap:wrap;gap:var(--sp-6)}
+.chip-toggle{margin:0;box-shadow:inset 0 0 0 1px var(--sep);cursor:pointer;
+  transition:background-color var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out)}
+.chip-toggle:not(:disabled):hover{color:var(--ink)}
+.chip-toggle[data-state="on"]{background:var(--accent-soft);box-shadow:none;color:var(--link)}
+.chip-toggle:disabled{cursor:default;opacity:.5}

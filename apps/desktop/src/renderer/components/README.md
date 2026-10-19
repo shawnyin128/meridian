@@ -42,8 +42,13 @@ Current shared contracts:
   its children carry the keyboard-accessible control, so a button is never nested inside a button.
 - `NavRow`: the one row of a navigation list, the sidebar's and the Settings categories'. It is a button,
   or, when it holds controls of its own, a div whose label is the button; the row's class gives the look.
-- `SegmentedControl`: the only switch between peer views in the app, with shared geometry, selected state,
-  keyboard focus, and pressed-button semantics. The `.fchip` and `.segbtn` pill rows are retired.
+- `SegmentedControl`: the only switch between peer views in the app, including the timeline scale: a track of
+  equal segments with a raised thumb that slides to the picked one, radio-group semantics, and one Tab stop
+  with arrow keys inside. The `.fchip` and `.segbtn` pill rows are retired.
+- `ChipToggles`: a multi-select of short values as chips that each turn on or off, with the same one Tab
+  stop and arrow keys. A choice among many values is a menu picker, not a segment per value.
+- `Switch`: a binary setting that takes effect as soon as it flips. Its name stays the same in both states;
+  a button whose label flips between two actions is not used for a setting.
 - `EmptyState`: the two ways a list says it is empty. `page` is a centred sentence with an optional icon
   for a whole screen; `section` is one line of small grey text under a section heading.
 - `Tag`: every tag, chip and status pill. `tone` picks the fill and text colour (`neutral`, `accent`, `good`,
@@ -87,7 +92,8 @@ Current shared contracts:
   explicit project-record actions, and chat-owned styling. Conversation text is not promoted to an
   idea or project conclusion by a generic last-message shortcut.
 - `reader/ReaderSidePanel`: the configurable metadata/highlights/notes/remark tool rail; its note and
-  remark editors are feature components rather than hidden route implementations.
+  remark editors are feature components rather than hidden route implementations. Every panel opens with
+  `reader/ReaderPanelHeader`.
 - `paper-table/PaperTable`: the complete library table, including configurable columns, grouping,
   cell pickers, column type editors, reading summaries, and table-owned styling. The route is only
   a page-shell adapter, while Wiki reuses the same column-creation control directly.

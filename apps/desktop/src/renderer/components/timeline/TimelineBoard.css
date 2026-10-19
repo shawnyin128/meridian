@@ -4,10 +4,6 @@
 .gantt+.wkpage{margin-top:24px}
 .ghead{display:flex;align-items:center;gap:12px;padding:8px 16px;border-bottom:1px solid var(--sep2)}
 .ghead .gm{font-size:12px;color:var(--ter);margin-right:auto}
-.gscale{display:flex;align-items:center;padding:2px;background:var(--field);border:1px solid var(--sep2);border-radius:var(--r-md);user-select:none}
-.gscale button{min-width:28px;height:22px;padding:0 7px;border:0;border-radius:var(--r-sm);background:transparent;color:var(--ter);font:inherit;font-size:12px;cursor:pointer}
-.gscale button:hover{color:var(--ink);background:var(--hover)}
-.gscale button.on{color:var(--ink);background:var(--card);box-shadow:var(--sh-1)}
 .gperiodnav{display:flex;align-items:center;gap:2px;height:28px}
 .gsplit{display:flex}
 .glabels{flex:0 0 148px;min-width:0;border-right:1px solid var(--sep2)}

@@ -7,6 +7,7 @@ import { IconButton } from '../IconButton.js'
 import { IconNext, IconPrevious } from '../icons.js'
 import { zh } from '../../messages/zh/index.js'
 import type { Catalog } from '../../messages/catalog.js'
+import { SegmentedControl } from '../SegmentedControl.js'
 
 export type TimelineScale = 'day' | 'week' | 'month'
 
@@ -170,14 +171,10 @@ export function TimelineScalePicker({ value, onChange }: {
 }) {
   const m = useMessages()
   return (
-    <div className="gscale" role="group" aria-label={m.timeline.scaleGroup}>
-      {SCALES.map((scale) => (
-        <button
-          type="button" className={value === scale ? 'on' : ''} aria-pressed={value === scale}
-          key={scale} onClick={() => onChange(scale)}
-        >{m.timeline.scale[scale]}</button>
-      ))}
-    </div>
+    <SegmentedControl
+      label={m.timeline.scaleGroup} value={value} onChange={onChange}
+      options={SCALES.map((scale) => ({ value: scale, label: m.timeline.scale[scale] }))}
+    />
   )
 }
 

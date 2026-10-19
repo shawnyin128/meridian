@@ -527,6 +527,36 @@ describe('PaperTable', () => {
     expect(listParams.at(-1)?.facet).toEqual({ field: 'topics', value: '推理' })
   })
 
+  it('选定分组取值后，取值换成一个选择器：按钮显示当前值，从菜单里换一个值就列出那一组', async () => {
+    facetRows = [
+      { value: '推理', count: 2, newestTitle: '一篇论文' },
+      { value: '检索', count: 1, newestTitle: '一篇论文' },
+    ]
+    const host = mount()
+    columnsCall.resolve({ hidden: [], custom: [], groups: ['topics'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const topics = [...host.querySelectorAll<HTMLElement>('.filters .segmented-control > button')]
+      .find((button) => button.textContent === '主题')!
+    await act(async () => { topics.click() })
+    await flush()
+    await act(async () => { host.querySelector<HTMLElement>('.gxrow')!.click() })
+    await flush()
+
+    expect(host.querySelector('.gnav .segmented-control')).toBeNull()
+    const picker = host.querySelector<HTMLButtonElement>('.gnav button[aria-label="分组取值"]')!
+    expect(picker.textContent).toBe('推理(2)')
+    await act(async () => { picker.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+    await flush()
+    const items = [...document.querySelectorAll<HTMLElement>('.ctxmenu [role="menuitemradio"]')]
+    expect(items.map((item) => [item.textContent, item.getAttribute('aria-checked')]))
+      .toEqual([['推理2', 'true'], ['检索1', 'false']])
+    await act(async () => { press(items[1]!) })
+    await flush()
+    expect(listParams.at(-1)?.facet).toEqual({ field: 'topics', value: '检索' })
+    expect(host.querySelector('.gnav button[aria-label="分组取值"]')!.textContent).toBe('检索(1)')
+  })
+
   it('列设置里能显隐的内置列是按钮并报出是否显示，锁定的列不是按钮', async () => {
     const host = mount()
     columnsCall.resolve({ hidden: ['venue'], custom: [], groups: [] })
