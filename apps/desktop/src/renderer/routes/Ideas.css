@@ -6,7 +6,7 @@
 .idea-card{display:flex;align-items:flex-start;gap:12px}
 .idea-card-content{flex:1;min-width:0}
 .idea-card-title-row{display:flex;align-items:center;gap:8px;min-width:0}
-.idea-card-title-row strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);font-size:var(--fs-base)}
+.idea-card-title-row strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-base)}
 .idea-project-tag{max-width:220px}
 .idea-card-summary{display:-webkit-box;margin:9px 0 0;overflow:hidden;color:var(--sec);font-size:var(--fs-sm);line-height:1.55;
   -webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere}
