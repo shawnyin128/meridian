@@ -47,6 +47,24 @@ describe('ConfirmDialog', () => {
     expect(confirm).toHaveBeenCalledTimes(1)
   })
 
+  it('confirms an irreversible loss with the solid danger button and anything else with the primary button', () => {
+    const confirmOf = (tone: 'danger' | 'primary') => {
+      act(() => root!.render(
+        <MessagesProvider>
+          <ConfirmDialog
+            trigger={<button>打开</button>} title="确认？" confirmLabel="确认" confirmTone={tone} onConfirm={vi.fn()}
+          />
+        </MessagesProvider>,
+      ))
+      act(() => host.querySelector<HTMLButtonElement>('button')!.click())
+      const classes = [...document.querySelectorAll<HTMLButtonElement>('.dlg-a button')].map((button) => button.className)
+      act(() => document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+      return classes
+    }
+    expect(confirmOf('danger')).toEqual(['btn', 'btn pri danger'])
+    expect(confirmOf('primary')).toEqual(['btn', 'btn pri'])
+  })
+
   it('stays open on an Escape that ends an input method composition and closes on the next one', () => {
     act(() => root!.render(
       <MessagesProvider>

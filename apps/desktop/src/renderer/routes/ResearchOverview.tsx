@@ -379,8 +379,7 @@ function OverviewGantt({
       onPeriodChange={closePop}
       headerAction={() => (
         <button
-          className={`overview-history-toggle${showInactive ? ' on' : ''}`}
-          type="button" aria-pressed={showInactive}
+          className="btn ghost sm overview-history-toggle" type="button" aria-pressed={showInactive}
           title={showInactive ? m.research.overview.hideHistory : m.research.overview.showHistory}
           onClick={() => { setPop(null); setShowInactive((shown) => !shown) }}
         >{m.research.overview.historyProjects}</button>

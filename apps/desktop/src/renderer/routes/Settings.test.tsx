@@ -433,7 +433,7 @@ describe('Settings', () => {
       .toBe('/tmp/broken-library')
     expect(dialog.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录"]')?.disabled)
       .toBe(false)
-    expect(dialog.querySelector<HTMLButtonElement>('.storage-reset .btn.tdel')?.disabled).toBe(false)
+    expect(dialog.querySelector<HTMLButtonElement>('.storage-reset .btn.danger')?.disabled).toBe(false)
   })
 
   it('备份可直接切换，当前库会由 Core 保存后重启', async () => {

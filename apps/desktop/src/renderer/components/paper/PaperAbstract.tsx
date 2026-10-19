@@ -31,7 +31,7 @@ export function PaperAbstract({ text, folded = false }: { text: string; folded?:
         <PaperText text={text} block />
       </div>
       {folded && (overflows || expanded) ? (
-        <button type="button" className="paper-abstract-toggle" onClick={() => setExpanded((open) => !open)}>
+        <button type="button" className="btn ghost sm paper-abstract-toggle" onClick={() => setExpanded((open) => !open)}>
           {expanded ? m.papers.card.collapseAbstract : m.papers.card.expandAbstract}
         </button>
       ) : null}

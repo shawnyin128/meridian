@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LaterEntry } from '../../shared/contract.js'
+import { IconCross } from '../components/icons.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
@@ -48,6 +50,13 @@ describe('Later', () => {
     api.notes.length = 0
   })
   afterEach(() => { host.remove(); vi.unstubAllGlobals() })
+
+  it('移出只是从队列里拿走，用表示移开的叉，不用进垃圾桶的图标', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Later /></MessagesProvider>) })
+    expect(host.querySelector('button[title="移出"] svg')!.outerHTML).toBe(renderToStaticMarkup(<IconCross />))
+    await act(async () => { root.unmount() })
+  })
 
   it('移出长标题的论文后，提示写出完整标题，标题放不下时淡出而不是截断', async () => {
     const root = createRoot(host)

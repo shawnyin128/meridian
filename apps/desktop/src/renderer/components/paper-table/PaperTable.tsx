@@ -9,7 +9,7 @@ import { DEFAULT_PAPER_GROUPS, PAPER_PAGE, READ_STATES, READING_PAPER } from '..
 import { papers } from '../../ipc.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { IconCheck, IconCross, IconGrip, IconPlus, IconRead } from '../icons.js'
+import { IconCheck, IconGrip, IconPlus, IconRead, IconTrash } from '../icons.js'
 import { CellPicker } from './CellPicker.js'
 import { NewColumnHead } from './ColumnAdd.js'
 import { columnKey, takenLabel } from './column-key.js'
@@ -32,6 +32,7 @@ import {
   useVaultRevision,
 } from '../../shell/AppShell.js'
 import { AddAction } from '../AddAction.js'
+import { IconButton } from '../IconButton.js'
 import { PanelClose } from '../PanelClose.js'
 import { DetailPanel } from '../DetailPanel.js'
 import { ActionMenu, MenuRadioGroup, MenuRadioItem, MenuSeparator } from '../ActionMenu.js'
@@ -232,7 +233,7 @@ function TagAdd({ field, values, onAdd, onError }: {
         )
         : (
           <AddAction
-            variant="icon" className="tagchip tagadd" title={m.papers.tags.add}
+            variant="chip" className="tagchip tagadd" title={m.papers.tags.add}
             onClick={(e) => { e.stopPropagation(); setOpen(true) }}
           />
         )}
@@ -306,7 +307,7 @@ function ReadStateFilter({ current, onPick }: {
       trigger={(
         <button
           type="button"
-          className={current === null ? 'btn plain read-state-filter' : 'btn plain read-state-filter on'}
+          className={current === null ? 'btn sm read-state-filter' : 'btn sm read-state-filter on'}
           aria-label={m.papers.readState.filterAria}
         >{current ?? m.papers.readState.filterLabel}</button>
       )}
@@ -1212,12 +1213,10 @@ export function PaperTable() {
               {cols.map((c) => cell(p, c))}
               {newCol ? <td className="pt-cust" /> : null}
               <td>
-                <button
-                  className="rowx" title={m.papers.rowActions.delete}
+                <IconButton
+                  label={m.papers.rowActions.delete} size="nested" tone="danger" className="rowx"
                   onClick={(e) => { e.stopPropagation(); remove(p.id) }}
-                >
-                  <IconCross />
-                </button>
+                ><IconTrash /></IconButton>
               </td>
             </tr>
           ))}
@@ -1266,7 +1265,7 @@ export function PaperTable() {
               }}
             />
             <AddAction
-              variant="page" className="pdfupload" disabled={uploading}
+              variant="page" className="sm pdfupload" disabled={uploading}
               onClick={() => uploadInput.current?.click()}
             >
               {uploading ? m.papers.upload.importing : m.papers.upload.importAction}
@@ -1342,7 +1341,7 @@ export function PaperTable() {
                   {group !== 'none'
                     ? (
                       <div className="gnav">
-                        <button className="btn plain" id="gxBack" onClick={backToValues}>
+                        <button className="btn sm" id="gxBack" onClick={backToValues}>
                           ‹ {labelOf(group)}
                         </button>
                         <SegmentedControl
@@ -1378,9 +1377,9 @@ export function PaperTable() {
             <div className="pdetail">
               <div className="pd-h">
                 <span className="pd-t"><PaperText text={detail.title} /></span>
-                <button className="icbtn" title={m.papers.rowActions.openReader} onClick={() => open('reader', detail.id)}>
+                <IconButton label={m.papers.rowActions.openReader} onClick={() => open('reader', detail.id)}>
                   <IconRead />
-                </button>
+                </IconButton>
                 <PanelClose onClose={closeDetail} />
               </div>
               <PaperMetadata paper={detail} onSaved={setDetail} />

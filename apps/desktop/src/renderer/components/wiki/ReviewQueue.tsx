@@ -154,14 +154,14 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                       setReason('')
                     }}
                     contentClassName="ctxmenu review-decline" align="start"
-                    trigger={<button type="button" className="btn" disabled={pending}>{r.decline}</button>}
+                    trigger={<button type="button" className="btn ghost danger" disabled={pending}>{r.decline}</button>}
                   >
                     <FormInput
                       appearance="field" autoFocus value={reason} placeholder={r.reasonPlaceholder}
                       onChange={(e) => setReason(e.target.value)}
                     />
                     <button
-                      type="button" className="btn pri" disabled={pending}
+                      type="button" className="btn danger" disabled={pending}
                       onClick={() => {
                         setDeclining(null)
                         onDecline(p, reason.trim())

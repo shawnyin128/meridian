@@ -16,6 +16,6 @@
 .wkclaim-note{color:var(--sec);overflow-wrap:anywhere}
 .wkclaim--conflict{box-shadow:inset 3px 0 0 var(--bad);padding-left:12px}
 .wkclaim-conflict{background:var(--tint-bad);border-radius:var(--r-md);padding:4px 8px}
-.wkclaim-resolve{margin-left:auto;font-size:var(--fs-sm)}
+.wkclaim-resolve{margin-left:auto}
 .wkclaim-history{margin-top:6px;border:0;background:none;padding:0;font:inherit;font-size:var(--fs-sm);color:var(--ter);cursor:pointer}
 .wkclaim-history:hover,.wkclaim-history[aria-expanded='true']{color:var(--ink)}

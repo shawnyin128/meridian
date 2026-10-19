@@ -8,15 +8,12 @@
 .main.sbhide .paper-chat{margin-left:calc(var(--rrw,300px) * -1);opacity:0;pointer-events:none}
 .paper-chat-head{height:46px;box-sizing:border-box;padding:0 10px;border-bottom:1px solid var(--sep);display:flex;align-items:center;gap:8px;min-width:0;background:var(--sidebar)}
 .paper-chat-head strong{font-size:var(--fs-sm);color:var(--sec);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.paper-chat-head .back{border:0;background:var(--field);color:var(--ink);border-radius:var(--r-md);width:28px;height:26px;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
-.paper-chat-head .back svg{width:13px;height:13px}
 .paper-chat .msgs{padding:16px 0;gap:14px}
 .paper-chat .mwrap{width:calc(100% - 24px)}
 .paper-chat .bubble,.paper-chat .event{font-size:var(--fs-sm);line-height:1.5}
 .paper-chat .composer{padding:10px 0 12px}
 .paper-chat .cbox{padding-left:12px}
 .paper-chat .send:disabled{opacity:.45;cursor:default}
-.note-compose .btn:disabled,.reading-actions .btn:disabled{opacity:.45;cursor:default}
 .yellow{--mark:#f8d84a}.green{--mark:#87d99a}.blue{--mark:#82c7f2}.pink{--mark:#f0a0be}
 
 .reader{flex:1;display:flex;overflow:hidden;min-width:0;background:var(--desktop);position:relative}
@@ -77,19 +74,15 @@
 .reading-list{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
 .reading-card{border:1px solid var(--sep2);border-radius:var(--r-lg);padding:10px;background:var(--card);display:flex;flex-direction:column;gap:8px}
 .highlight-card{border-left:3px solid var(--mark)}
-.reading-page,.reading-delete{border:0;background:transparent;padding:0;cursor:pointer;font-family:var(--sans);width:max-content}
+.reading-page{border:0;background:transparent;padding:0;cursor:pointer;font-family:var(--sans);width:max-content}
 .reading-page:hover{color:var(--accent)}
-.reading-delete{color:var(--bad);font-size:var(--fs-cap)}
 .reading-actions{display:flex;align-items:center;justify-content:space-between}
-.reading-actions .btn,.note-compose .btn{font-size:var(--fs-cap);padding:3px 9px}
 .highlight-card blockquote{margin:0;color:var(--sec);font-size:var(--fs-sm);line-height:1.45;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .reading-remark{width:320px;min-width:320px;box-sizing:border-box;border-left:1px solid var(--sep);background:var(--content);display:flex;flex-direction:column;overflow:hidden}
 .reading-remark>header{height:46px;box-sizing:border-box;padding:0 14px;display:flex;align-items:center;border-bottom:1px solid var(--sep)}
 .reading-remark>header strong{font-size:var(--fs-sm)}
 .remark-compose{padding:12px;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
 .remark-compose textarea{width:100%;box-sizing:border-box;min-height:120px;border:1px solid var(--sep-strong);background:transparent;color:var(--ink);border-radius:var(--r-md);padding:8px;font:inherit;line-height:1.45;resize:vertical;outline:0}
-.remark-compose .btn{font-size:var(--fs-cap);padding:3px 9px}
-.remark-compose .btn:disabled{opacity:.45;cursor:default}
 
 .reader-side{display:flex;flex:0 0 362px;min-width:0;height:100%;overflow:hidden;background:var(--content);
   transition:flex-basis var(--t-slow) var(--e-inout)}
@@ -102,11 +95,8 @@
 .reader-rail button.on{background:var(--accent-soft);color:var(--accent)}
 .reader-rail svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 
-.zoomctl{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:2px;background:var(--card);border-radius:999px;padding:4px 8px;box-shadow:var(--sh-2);z-index:22}
-.zoomctl button{border:0;background:transparent;color:var(--ter);cursor:pointer;border-radius:var(--r-full);width:22px;height:22px;display:grid;place-items:center;padding:0;transition:background var(--t-fast) var(--e-out)}
-.zoomctl button:hover{background:var(--hover);color:var(--ink)}
-.zoomctl svg{width:12px;height:12px}
-.zoomctl span{font-size:var(--fs-sm);color:var(--sec);min-width:38px;text-align:center;font-family:var(--mono)}
+.zoomctl{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:2px;background:var(--card);border-radius:999px;padding:3px 6px;box-shadow:var(--sh-2);z-index:22}
+.zoomctl .zoom-reset{min-width:52px}
 
 @media (max-width:1100px){.main.reading{--rrw:260px}}
 @media (max-width:900px){.reader-side{flex-basis:322px}.reader-side.collapsed{flex-basis:42px}.reader-side>.paper-meta,.reader-side>.reading-notes,.reader-side>.reading-remark,.reader-side>.wiki-ingest{width:280px;min-width:280px}}

@@ -10,15 +10,10 @@
 
 .memo{font-size:13px}
 
-.tagchip :is(.rx,.tagchip-edit){flex-shrink:0;width:14px;height:14px;border:0;border-radius:50%;background:transparent;color:var(--ter);display:grid;place-items:center;cursor:pointer;padding:0}
-.tagchip .rx:hover{color:var(--bad)}
-.tagchip .rx svg{width:8px;height:8px}
 .wkrel .tagchip,.tagchip:has(.rx){display:inline-flex;align-items:center;gap:3px;max-width:100%;box-sizing:border-box}
 .wkrel .tagchip{margin-right:0}
 /* A chip's name is its button; the chip forwards a click anywhere else on it. */
 .tagchip-open{display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;cursor:inherit}
-.wkrel .tagchip .tagchip-edit:hover{color:var(--ink)}
-.wkrel .tagchip .tagchip-edit svg{width:9px;height:9px}
 .wkrel .reladd{display:flex;align-items:center;gap:6px;flex:1 1 auto;min-width:190px}
 .wkrel .reladd .segmented-control{flex-shrink:0}
 .wkrel .reladd .inedit{flex:1;min-width:0}
@@ -37,9 +32,7 @@
 /* The name's fade mask hides its own focus ring, so the row draws it. */
 .attrow:has(.an:focus-visible){outline:2px solid var(--ring);outline-offset:2px}
 .attrow .as{font-size:var(--fs-sm);color:var(--ter);flex-shrink:0}
-.attrow .ax{border:0;background:transparent;color:var(--ter);cursor:pointer;padding:2px;border-radius:var(--r-sm);display:grid;place-items:center;opacity:0;pointer-events:none}
+.attrow .ax{margin:-4px 0;opacity:0;pointer-events:none}
 .attrow:hover .ax,.attrow .ax:focus-visible{opacity:1;pointer-events:auto}
-.attrow .ax:hover{background:var(--hover);color:var(--bad)}
-.attrow .ax svg{width:11px;height:11px}
 .attachments{min-width:0;border-radius:var(--r-md);transition:background-color var(--t) var(--e-out),outline-color var(--t) var(--e-out);outline:1px solid transparent}
 .attachments.drag{background:var(--tint-good);outline-color:var(--good)}

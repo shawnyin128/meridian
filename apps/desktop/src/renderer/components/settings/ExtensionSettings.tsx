@@ -55,7 +55,7 @@ export function ExtensionSettings({ statuses, plugin, onCopy, onCopyPrompt }: Ex
                 )}
                 action={(
                   <button
-                    className="btn" aria-label={copyLabel}
+                    className="btn ghost sm" aria-label={copyLabel}
                     onClick={() => onCopy(extension.name, command)}
                   >{m.settings.extensions.copy}</button>
                 )}
@@ -93,7 +93,7 @@ export function ExtensionSettings({ statuses, plugin, onCopy, onCopyPrompt }: Ex
                       <strong>{example.label}</strong>
                       <p>{example.prompt}</p>
                     </div>
-                    <button className="btn" onClick={() => onCopyPrompt(example.prompt)}>
+                    <button className="btn ghost sm" onClick={() => onCopyPrompt(example.prompt)}>
                       {m.settings.extensions.tutorial.copyPrompt}
                     </button>
                   </div>

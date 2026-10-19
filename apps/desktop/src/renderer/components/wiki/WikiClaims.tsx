@@ -260,7 +260,7 @@ export function WikiClaims({ page, pending, links, onApply }: {
                       <Side item={x.against} title={x.title} links={links} />
                       <span className="wkclaim-note">{x.note}</span>
                       <button
-                        type="button" className="btn plain wkclaim-resolve" disabled={pending}
+                        type="button" className="btn ghost sm wkclaim-resolve" disabled={pending}
                         onClick={() => open({ kind: 'resolve', claim, conflict: x })}
                       >{c.resolve}</button>
                     </li>

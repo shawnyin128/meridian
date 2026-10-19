@@ -1,5 +1,3 @@
-.harness-trigger{display:inline-flex;align-items:center;justify-content:center;gap:6px}
-.harness-trigger span{font-size:13px;line-height:1;color:currentColor}
 .harness-cost-plan{min-width:360px;color:var(--sec);font-size:var(--fs-sm)}
 .harness-cost-plan>p{margin:0 0 12px;padding:9px 10px;border-radius:var(--r-md);line-height:1.45}
 .harness-cost-plan .cost-warning{background:var(--tint-warn);color:var(--warn)}

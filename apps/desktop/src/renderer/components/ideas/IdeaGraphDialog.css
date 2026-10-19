@@ -5,4 +5,3 @@
 .idea-graph-dialog-field{display:grid;grid-template-columns:116px minmax(0,1fr);align-items:center;gap:12px;margin-top:10px;color:var(--sec);font-size:var(--fs-sm)}
 .idea-graph-dialog-field .form-control{width:100%}
 .idea-graph-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
-.idea-graph-dialog-actions .btn:disabled{opacity:.45;cursor:default}

@@ -68,6 +68,7 @@ describe('PaperAbstract', () => {
       expect(body.classList.contains('is-clipped')).toBe(true)
       const toggle = host.querySelector<HTMLButtonElement>('.paper-abstract-toggle')!
       expect(toggle.textContent).toBe('展开摘要')
+      expect(toggle.classList.contains('btn')).toBe(true)
       await act(async () => { toggle.click() })
       expect(body.classList.contains('is-folded')).toBe(false)
       expect(host.querySelector('.paper-abstract-toggle')?.textContent).toBe('收起摘要')

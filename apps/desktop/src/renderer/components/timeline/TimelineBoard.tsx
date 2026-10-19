@@ -7,7 +7,8 @@ import { useToday } from '../../shell/AppShell.js'
 import { dnum, isoOf } from '../../../shared/dates.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { Icon } from '../icons.js'
+import { IconButton } from '../IconButton.js'
+import { IconChevron } from '../icons.js'
 import {
   DAY_SLOT_HOURS, shiftTaskWindow, timelineDayAt, TimelineControls, TimelineGrid,
   TimelineNowMarker, timelineTaskSpan, useFittedTimelineWindow, useTimelinePeriod,
@@ -211,12 +212,12 @@ export function TimelineBoard({
                 )}
               >
                 {foldable && row.kind === 'milestones' ? (
-                  <button
-                    type="button" className="timeline-fold" aria-expanded={!folded.has(row.project.id)}
-                    title={folded.has(row.project.id)
+                  <IconButton
+                    label={folded.has(row.project.id)
                       ? m.timeline.fold.expand(row.project.name) : m.timeline.fold.collapse(row.project.name)}
+                    size="nested" className="timeline-fold" aria-expanded={!folded.has(row.project.id)}
                     onClick={(event) => { event.stopPropagation(); toggleFold(row.project.id) }}
-                  ><Icon sw={2.4}><path d="M6 9l6 6 6-6" /></Icon></button>
+                  ><IconChevron /></IconButton>
                 ) : null}
                 {showProjectNames
                   ? <span className="timeline-project-label" title={row.project.name}>{row.project.name}</span>

@@ -3,6 +3,7 @@ import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import type { ChatSession, Watch } from '../../shared/contract.js'
 import { MenuItem } from '../components/ActionMenu.js'
 import { DotsMenu } from '../components/FieldPickers.js'
+import { IconButton } from '../components/IconButton.js'
 import { Icon, IconNorthStar, IconPlus } from '../components/icons.js'
 import { NavRow } from '../components/NavRow.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -113,7 +114,7 @@ function UpdateRow() {
         {ready ? m.shell.update.ready(update.version) : m.shell.update.available(update.version)}
       </span>
       <button
-        type="button" className="btn pri update-row-action"
+        type="button" className="btn pri sm update-row-action"
         onClick={() => { if (ready) appUpdates.install(); else window.open(update.url) }}
       >{ready ? m.shell.update.relaunch : m.shell.update.download}</button>
     </div>
@@ -290,12 +291,10 @@ export function Sidebar({
         <SectHead
           sect="chats" label={m.shell.nav.chats} closed={!!closed['chats']} onToggle={() => toggle('chats')}
           extra={(
-            <button
-              className="sb-add" title={m.shell.nav.newChat}
+            <IconButton
+              label={m.shell.nav.newChat} size="inline" className="sb-add"
               onClick={(e) => { e.stopPropagation(); onNewChat() }}
-            >
-              <IconPlus />
-            </button>
+            ><IconPlus /></IconButton>
           )}
         />
         <div className={sect('chats')} id="sect-chats">

@@ -88,10 +88,10 @@ describe('ReadingNotes', () => {
 
     const highlightNote = host.querySelector<HTMLTextAreaElement>('[aria-label="第 2 页高亮笔记"]')!
     act(() => setValue(highlightNote, '高亮判断'))
-    await act(async () => { highlightNote.closest('article')!.querySelector<HTMLButtonElement>('.btn')!.click() })
+    await act(async () => { highlightNote.closest('article')!.querySelector<HTMLButtonElement>('.btn.pri')!.click() })
     const note = host.querySelector<HTMLTextAreaElement>('[aria-label="第 3 页笔记"]')!
     act(() => setValue(note, '修订笔记'))
-    await act(async () => { note.closest('article')!.querySelector<HTMLButtonElement>('.btn')!.click() })
+    await act(async () => { note.closest('article')!.querySelector<HTMLButtonElement>('.btn.pri')!.click() })
     await act(async () => { note.closest('article')!.querySelector<HTMLButtonElement>('.reading-delete')!.click() })
     act(() => { host.querySelector<HTMLButtonElement>('.highlight-card .reading-page')!.click() })
 

@@ -8,6 +8,5 @@
 .review-note{margin:6px 0 0;color:var(--sec);font-size:var(--fs-sm);line-height:1.5}
 .review-note--warn{color:var(--warn)}
 .review-actions{display:flex;gap:8px;margin-top:10px}
-.review-actions .btn:disabled{opacity:.45;cursor:default}
 .review-decline{display:flex;gap:8px;align-items:center;padding:8px;width:320px}
 .review-decline .form-input{flex:1}

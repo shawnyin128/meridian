@@ -81,7 +81,7 @@ function Body({ body, onOpenConflict }: {
             <span className="t">{item.text}</span>
             {/* The demo's briefConf: this button opens a chat about the conflicting conclusions. */}
             <span className="go">
-              <button className="btn" onClick={onOpenConflict}>{item.action}</button>
+              <button className="btn ghost sm" onClick={onOpenConflict}>{item.action}</button>
             </span>
           </div>
         ))}

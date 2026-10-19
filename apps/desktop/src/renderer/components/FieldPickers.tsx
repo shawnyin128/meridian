@@ -6,7 +6,8 @@ import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import { ActionMenu, MenuRadioGroup, MenuRadioItem } from './ActionMenu.js'
 import { ActionPopover, PopoverClose } from './ActionPopover.js'
-import { IconDots } from './icons.js'
+import { IconButton } from './IconButton.js'
+import { IconDots, IconNext, IconPrevious } from './icons.js'
 import './FieldPickers.css'
 
 const PRIORITIES: Task['priority'][] = ['p0', 'p1', 'p2']
@@ -37,10 +38,10 @@ export function DotsMenu({
       {...(contentClassName === undefined ? {} : { contentClassName })}
       stopContentClickPropagation
       trigger={(
-        <button
-          type="button" className="dots" title={m.common.menu.more} aria-label={label}
+        <IconButton
+          label={label ?? m.common.menu.more} title={m.common.menu.more} size="nested" className="dots"
           onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
-        ><IconDots /></button>
+        ><IconDots /></IconButton>
       )}
     >{children}</ActionMenu>
   )
@@ -125,6 +126,7 @@ export function PriorityPicker({ value, className, title, onPick, children, stop
 }
 
 function Calendar({ selected, onPick }: { selected: string; onPick: (iso: string) => void }) {
+  const m = useMessages()
   const today = useToday()
   const fmt = useFormat()
   const [ym, setYm] = useState({ y: Number(selected.slice(0, 4)), m: Number(selected.slice(5, 7)) })
@@ -141,9 +143,9 @@ function Calendar({ selected, onPick }: { selected: string; onPick: (iso: string
   return (
     <>
       <div className="calh">
-        <button className="cnav" onClick={() => shift(-1)}>‹</button>
+        <IconButton label={m.common.calendar.previous} size="nested" onClick={() => shift(-1)}><IconPrevious /></IconButton>
         <b>{fmt.monthYear(`${ym.y}-${String(ym.m).padStart(2, '0')}-01`)}</b>
-        <button className="cnav" onClick={() => shift(1)}>›</button>
+        <IconButton label={m.common.calendar.next} size="nested" onClick={() => shift(1)}><IconNext /></IconButton>
       </div>
       <div className="calg">
         {[...Array(7)].map((_, weekday) => (

@@ -26,7 +26,7 @@ export function ReadingRemark({ reading, saving, onSave, edits }: {
           {...edit.fieldProps}
         />
         <button
-          className="btn pri" disabled={saving || text.trim() === held}
+          className="btn pri sm" disabled={saving || text.trim() === held}
           onClick={() => { if (!edit.stale) void onSave(text.trim()).then((saved) => { if (saved) edit.drop() }) }}
         >{m.reader.remark.save}</button>
       </div>

@@ -94,7 +94,7 @@ export function ProjectIdeaPanel({
       <div className="project-idea-detail-meta">
         <span className="project-idea-detail-kind">{m.project.idea.kind}</span>
         {idea.archived ? <span className="project-idea-state">{m.common.archived}</span> : null}
-        <button className="btn project-idea-open-idea" onClick={onOpenIdea}>{m.project.idea.openIdea}</button>
+        <button className="btn sm project-idea-open-idea" onClick={onOpenIdea}>{m.project.idea.openIdea}</button>
       </div>
       <SectionHeading variant="rail">{m.project.sections.content}</SectionHeading>
       <p className="project-idea-detail-body">{idea.body}</p>
@@ -112,8 +112,8 @@ export function ProjectIdeaPanel({
               {linkedNode.label}
             </button>
             <span className="project-idea-node-actions">
-              <button className="btn plain" onClick={onLinkNode}>{m.project.idea.changeNode}</button>
-              <button className="btn plain" onClick={onUnlinkNode}>{m.project.idea.unlinkNode}</button>
+              <button className="btn ghost sm" onClick={onLinkNode}>{m.project.idea.changeNode}</button>
+              <button className="btn ghost sm" onClick={onUnlinkNode}>{m.project.idea.unlinkNode}</button>
             </span>
           </div>
         )

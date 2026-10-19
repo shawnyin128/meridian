@@ -14,6 +14,6 @@ describe('DotsMenu', () => {
     )
     expect(html).toContain('title="更多"')
     expect(html).toContain('aria-label="管理想法：蒸馏预算"')
-    expect(html).toContain('class="dots"')
+    expect(html).toContain('class="icbtn sm dots"')
   })
 })

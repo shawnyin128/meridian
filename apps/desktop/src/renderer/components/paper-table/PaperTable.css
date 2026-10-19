@@ -17,9 +17,6 @@
 /* Top bar of the paper list: filter input + group switch */
 .libbar{display:flex;align-items:center;gap:12px;margin-bottom:16px}
 .pdfupload-input{display:none}
-.pdfupload{display:flex;align-items:center;gap:5px;font-size:var(--fs-sm);padding:4px 10px}
-.pdfupload svg{width:12px;height:12px}
-.pdfupload:disabled{cursor:wait;opacity:.65}
 .paper-drop{position:absolute;inset:46px 0 0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;background:color-mix(in srgb,var(--content) 88%,transparent);border:2px dashed var(--accent);color:var(--ink);backdrop-filter:blur(8px);pointer-events:none}
 .paper-drop strong{font-size:var(--fs-read)}
 .paper-drop span{font-size:var(--fs-sm);color:var(--ter)}
@@ -66,15 +63,17 @@
 .morebadge:hover{background:var(--hover);color:var(--ink)}
 @keyframes chip-row-reveal{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:translateX(0)}}
 @media (prefers-reduced-motion:reduce){.ptable td .ci.chip-expanded .hid{animation:none}}
-.ptable th{text-align:left;font-size:var(--fs-sm);color:var(--sec);font-weight:600;padding:6px 10px;border-bottom:1px solid var(--sep);cursor:pointer;white-space:nowrap;user-select:none;transition:color var(--t-fast) var(--e-out)}
-.ptable th:hover{color:var(--ink)}
+/* Only a sortable header, the one that carries aria-sort, shows a pointer and darkens on hover. */
+.ptable th{text-align:left;font-size:var(--fs-sm);color:var(--sec);font-weight:600;padding:6px 10px;border-bottom:1px solid var(--sep);cursor:default;white-space:nowrap;user-select:none;transition:color var(--t-fast) var(--e-out)}
+.ptable th[aria-sort]{cursor:pointer}
+.ptable th[aria-sort]:hover{color:var(--ink)}
 .ptable th.column-moving{opacity:.45;background:var(--tint-mut)}
 .ptable th.column-drop-before::before,.ptable th.column-drop-after::after{content:'';position:absolute;top:3px;bottom:3px;width:2px;border-radius:2px;background:var(--accent);z-index:5}
 .ptable th.column-drop-before::before{left:-1px}.ptable th.column-drop-after::after{right:-1px}
 .ptable td{padding:7px 10px;height:38px;box-sizing:border-box;border-bottom:1px solid var(--sep2);vertical-align:middle;line-height:var(--lh-ui);overflow:hidden;white-space:nowrap;position:relative}
 /* An embedded table draws a rule only between adjacent rows, never under the last one. */
 .ptable tbody tr:last-child td{border-bottom:0}
-.ptable td:last-child{padding-top:0;padding-bottom:0}
+.ptable td:last-child{padding-top:0;padding-bottom:0;text-align:center}
 /*
  * One background per row, painted by every cell and by a truncated cell's hover box. The sticky title
  * cell and the hover box lay it over --content, so cells scrolling under them never show through.
@@ -107,14 +106,10 @@
 .paper-meta-projects .tagchip.tagadd{opacity:1;pointer-events:auto}
 .tagin{border:1px solid var(--sep-strong);background:transparent;border-radius:999px;padding:1px 8px;font-size:var(--fs-sm);color:var(--ink);width:110px;font-family:var(--sans)}
 .tagin:focus-visible{outline:0}
-.stchip{font-size:var(--fs-sm);line-height:var(--lh-ui);padding:1px 10px;border:0;border-radius:999px;background:var(--field);color:var(--sec);font-family:var(--sans);cursor:pointer;white-space:nowrap}
+.stchip{font-size:var(--fs-sm);line-height:var(--lh-ui);padding:1px 10px;border:0;border-radius:999px;background:var(--field);color:var(--sec);font-family:var(--sans);cursor:pointer;white-space:nowrap;transition:box-shadow var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out)}
+.stchip:hover{color:var(--ink);box-shadow:inset 0 0 0 100vmax var(--hover)}
 
-/* Custom columns: the header's last cell holds the + and the column gear; clicking a cell edits it in place */
-.th-add{width:28px}
-.colbtn{border:0;background:transparent;color:var(--ter);cursor:pointer;padding:3px;border-radius:var(--r-sm);display:flex;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
-.ptable thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events:auto}
-.colbtn:hover{background:var(--hover);color:var(--ink)}
-.colbtn svg{width:12px;height:12px}
+/* Custom columns: clicking a cell edits it in place */
 .pt-cust,.pt-remark{color:var(--sec);font-size:var(--fs-sm);cursor:text;min-width:70px}
 /* Text values use the shared inline editor; compact column-menu and picker inputs retain their own width. */
 .ptable td .paper-text-cell-input{display:block}
@@ -122,11 +117,9 @@
 /* Column menu: locked built-in columns are grayed out, and custom columns have rename/delete at the end of their rows. */
 .mi.colrow .cl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .mi.locked{cursor:default;opacity:.45}
-.cmx{border:0;background:transparent;color:var(--ter);cursor:pointer;padding:2px;border-radius:var(--r-sm);display:grid;place-items:center;opacity:0;pointer-events:none;flex-shrink:0}
+/* The 24px buttons reach into the menu row's padding, so custom-column rows stay as tall as the others. */
+.cmx{margin:-3px 0;opacity:0;pointer-events:none}
 .mi.colrow:hover .cmx,.cmx:focus-visible{opacity:1;pointer-events:auto}
-.cmx:hover{background:var(--hover);color:var(--ink)}
-.cmx.del:hover{color:var(--bad)}
-.cmx svg{width:12px;height:12px}
 
 /* The type options below the new-column draft: text/select/multi-select icons side by side, the selected one has .on */
 .mi-in.ctrow{display:flex;gap:6px;padding-bottom:0}
@@ -143,17 +136,15 @@
 .mi.optrow.optnone{color:var(--ter);cursor:default}
 /* Change type: the type options expand under the column row, in line with option text; while open, the row's type button stays visible */
 .typerow{padding-left:45px}
-.cmx.typex.on{opacity:1;pointer-events:auto;color:var(--ink)}
+.cmx.typex.on{opacity:1;pointer-events:auto}
 /* Cell picker: one option per row, with a slot for the check mark at the start of the row */
 .ctxmenu.drop .rrow.opt{display:flex;align-items:center;gap:8px}
 .ctxmenu.drop .rrow.opt .ck{width:13px;display:flex;align-items:center;flex-shrink:0}
 
 /* The delete button at the end of a row: hidden at rest, shown only while the row is hovered */
-.rowx{border:0;background:transparent;color:var(--ter);cursor:pointer;padding:2px;border-radius:var(--r-sm);display:grid;place-items:center;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out);margin:0 auto}
+.rowx{opacity:0;pointer-events:none}
 .ptable tbody tr:hover .rowx,.rowx:focus-visible{opacity:1;pointer-events:auto}
 .ptable tbody tr:has(.stchip[data-state="open"]) .rowx{opacity:1}
-.rowx:hover{background:var(--hover);color:var(--bad)}
-.rowx svg{width:13px;height:13px}
 
 /* The paper row's right-click menu uses the shared ContextMenu; only this menu's width is set here. */
 .paper-row-menu{min-width:168px}
@@ -172,7 +163,7 @@
 .paper-reading-summary{margin-top:16px}
 .paper-reading-summary .paper-meta-list{padding:0}
 .paper-reading-summary .lm{font-size:12px;color:var(--ter)}
-.paper-reading-summary button.lm{border:0;background:transparent;padding:6px 0;cursor:pointer}
+.paper-reading-summary .reading-summary-all{margin:6px 0 0 -10px}
 
 /*
  * The gear at the end of the group bar: the same button as the header's column gear, but always

@@ -8,4 +8,3 @@
 .wiki-form-field .segmented-control{align-self:flex-start}
 .wiki-form-hint{margin:6px 0 0;color:var(--ter);font-size:var(--fs-cap)}
 .wiki-form-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
-.wiki-form-actions .btn:disabled{opacity:.45;cursor:default}

@@ -18,10 +18,6 @@
 .overview-gantt .timeline-label-row{gap:7px;cursor:pointer;font-weight:400}
 .overview-gantt .timeline-project-label{max-width:82px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   padding:1px 7px;border-radius:var(--r-full);background:var(--tint-mut);color:var(--sec);font-size:var(--fs-sm)}
-.overview-history-toggle{height:26px;padding:0 9px;border:1px solid var(--sep2);border-radius:var(--r-md);
-  background:var(--field);color:var(--ter);font:inherit;font-size:var(--fs-sm);cursor:pointer}
-.overview-history-toggle:hover,.overview-history-toggle:focus-visible{color:var(--ink);border-color:var(--sep-strong);outline:0}
-.overview-history-toggle.on{background:var(--card);color:var(--ink);box-shadow:var(--sh-1)}
 
 /*
  * Overview rows share one list layout and reading order: project / date / kind / content / extra

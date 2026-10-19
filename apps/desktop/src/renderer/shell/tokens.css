@@ -3,14 +3,15 @@
  * 1. Color values match the demo: both moved to the brand palette together. The accent is Primary
  *    blue, and the dark theme has a full gray scale; both derive from a hue of about 220°. The light
  *    surface ladder (--card / --window / --sidebar) is the exception: the demo's cards are white.
- * 2. The tokens added beyond the demo (--accent-solid / --press / --press-solid / --ring* / --sel /
- *    --link / --tint-* / --on-tint / --paper / --scrim / --raised / --r-* / --pad-* / --sp-* / --row-* /
- *    --fs-* / --lh-* / --t-* / --e-*)
+ * 2. The tokens added beyond the demo (--accent-solid / --press / --press-solid / --hover-solid /
+ *    --bad-solid / --bad-text / --ring* / --sel / --link / --tint-* / --on-tint / --paper / --scrim /
+ *    --raised / --r-* / --pad-* / --sp-* / --row-* / --fs-* / --lh-* / --t-* / --e-*)
  *    and the split into --sh-1 / --sh-2 / --sh-3 / --sh-paper are not in the demo: the demo is the
  *    reference for layout and behavior, not for the finished look, so the two differ on these.
- * 3. --accent-solid / --press-solid / --ring / --paper / --on-tint have the same value in both
- *    themes and do not flip (the first three are written only in :root; the last two are repeated
- *    with the same values next to their neighbours in the dark block). No dark value is missing.
+ * 3. --accent-solid / --bad-solid / --press-solid / --hover-solid / --bad-text / --ring / --paper /
+ *    --on-tint have the same value in both themes and do not flip (all but the last two are written
+ *    only in :root; the last two are repeated with the same values next to their neighbours in the
+ *    dark block). No dark value is missing.
  */
 :root{
   /*
@@ -57,10 +58,15 @@
    */
   --sep-strong:#c7d0dd;
   /*
-   * Pressed-state overlays. --press-solid darkens in both themes: lightening a solid accent surface
-   * would drop its white text to 3.78:1.
+   * Pressed-state overlays, and the hover overlay of a solid surface. --press-solid and --hover-solid
+   * darken in both themes: lightening a solid accent surface would drop its white text to 3.78:1.
    */
-  --press:rgba(10,16,32,.06); --press-solid:rgba(0,0,0,.18);
+  --press:rgba(10,16,32,.06); --press-solid:rgba(0,0,0,.18); --hover-solid:rgba(0,0,0,.08);
+  /*
+   * The solid danger surface, darker than --bad so white text on it passes 4.5:1, and danger text on
+   * a soft red tint or a card, darker in light and lighter in dark for the same reason.
+   */
+  --bad-solid:#d1372c; --bad-text:color-mix(in srgb,var(--bad) 80%,var(--ink));
   --ring:var(--accent); --ring-width:2px; --ring-offset:2px;
   /* Links darken the accent toward --ink: the plain accent falls below 4.5:1 on a tinted card */
   --sel:rgba(53,104,255,.22); --link:color-mix(in srgb,var(--accent) 90%,var(--ink));
@@ -148,11 +154,12 @@ b,strong{font-weight:600}
  * icon button. Solid accent surfaces take a black overlay, not white: white would drop the white text
  * on them to 3.78:1.
  * The two rules below set the same background-image as each route's hover rules, and at equal
- * specificity the bundle order would pick the winner. The six hovers are therefore written as
- * :where(.btn):hover, one class lighter than the pressed rules, which win on specificity.
+ * specificity the bundle order would pick the winner. Those hovers are therefore written as
+ * :where(.cd):hover, one class lighter than the pressed rules, which win on specificity. The
+ * button set in routes/shell.css and the icon button press the same way.
  */
-.btn:active,.icbtn:active,.tbtn:active,.cd:active,.pgbtn:active{background-image:linear-gradient(var(--press),var(--press))}
-.btn.pri:active,.send:active,.pgbtn.on:active,.cd.sel:active{background-image:linear-gradient(var(--press-solid),var(--press-solid))}
+.cd:active,.pgbtn:active{background-image:linear-gradient(var(--press),var(--press))}
+.send:active,.pgbtn.on:active,.cd.sel:active{background-image:linear-gradient(var(--press-solid),var(--press-solid))}
 html,body{height:100%}
 body{margin:0;background:var(--desktop);color:var(--ink);font-family:var(--sans);font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased}
 #root{height:100%;display:flex;flex-direction:column}

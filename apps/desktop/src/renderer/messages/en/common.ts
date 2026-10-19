@@ -48,6 +48,7 @@ export const common = {
     perPageOption: (n: number) => `${n} / page`,
   },
   menu: { more: 'More' },
+  calendar: { previous: 'Previous month', next: 'Next month' },
   generation: {
     start: 'Send',
     stop: 'Stop generating',

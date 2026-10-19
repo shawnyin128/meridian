@@ -85,6 +85,12 @@ export const IconChevron = () => (
   </svg>
 )
 
+/** Steps to the previous month or period. */
+export const IconPrevious = () => <Icon sw={2.2}><path d="M15 18l-6-6 6-6" /></Icon>
+
+/** Steps to the next month or period. */
+export const IconNext = () => <Icon sw={2.2}><path d="M9 18l6-6-6-6" /></Icon>
+
 /** The rename pencil at the end of a row, the same as in the demo's column menu. */
 export const IconPencil = () => (
   <svg
@@ -130,14 +136,24 @@ export const IconNorthStar = () => (
 /** The plus sign's path, shared by the bare IconPlus and anything drawing it in the generic Icon shell. */
 export const PLUS_PATH = 'M12 5v14M5 12h14'
 
-/** The in-place add +: table header end, tag cell end, a picker's "Create" row, and the reader's zoom in. */
+/** Zooms out, in the reader and on the project graph. */
+export const IconMinus = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+    <path d="M5 12h14" />
+  </svg>
+)
+
+/** The in-place add +: table header end, tag cell end, a picker's "Create" row, and the zoom in. */
 export const IconPlus = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
     <path d={PLUS_PATH} />
   </svg>
 )
 
-/** The close/remove ×. `sw` is the stroke width: 2 for inline actions, 2.2 column menu, 2.5 chip badge. */
+/**
+ * The ×: closes a panel or takes something out of a place without deleting it, such as a link or a
+ * paper in the read-later queue. `sw` is the stroke width.
+ */
 export const IconCross = ({ sw = 2 }: { sw?: number }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round">
     <path d="M18 6L6 18M6 6l12 12" />
@@ -151,7 +167,14 @@ export const IconDots = () => (
   </svg>
 )
 
-/** Small trash can for delete actions. */
+/** An open eye: "already known", the discovery feedback that hides a paper the reader has seen. */
+export const IconSeen = () => (
+  <Icon sw={2}>
+    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />
+  </Icon>
+)
+
+/** Small trash can for every action that moves something to the trash or deletes it. */
 export const IconTrash = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 7h16M9 3h6l1 4H8zM6 7l1 14h10l1-14M10 11v6M14 11v6" />

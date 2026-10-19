@@ -46,6 +46,7 @@ export const common = {
     perPageOption: (n: number) => `${n} / 页`,
   },
   menu: { more: '更多' },
+  calendar: { previous: '上个月', next: '下个月' },
   generation: {
     start: '发送',
     stop: '停止生成',

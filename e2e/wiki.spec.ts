@@ -441,7 +441,7 @@ test('论文对比:加一篇论文,拿掉;改列——改名生效,删有格子�
   // the editor stays open.
   await shown(win).locator('table.cmp thead').hover()
   await shown(win).locator('table.cmp thead [title="列设置"]').click()
-  await editor.locator('.row .btn').first().click()
+  await editor.locator('.row .icbtn').first().click()
   await editor.locator('.btn.pri').click()
   await expect(win.locator('#toast')).toContainText('不在新的列里')
   await expect(shown(win).locator('.ipcerror')).toHaveCount(0)

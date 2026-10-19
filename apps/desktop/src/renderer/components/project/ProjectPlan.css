@@ -32,10 +32,8 @@
 .plan-name.plan-open{flex:1;width:auto}
 .plan-name.plan-open:hover{background:transparent}
 .plan-name.plan-open:focus-visible{background:var(--field)}
-.project-plan .plan-rename{display:grid;place-items:center;width:20px;height:20px;margin-left:2px;padding:0;flex:0 0 auto;border:0;border-radius:var(--r-sm);background:transparent;color:var(--ter);cursor:pointer;opacity:0}
+.project-plan .plan-rename{margin:-2px 0 -2px 2px;opacity:0}
 .project-plan .task-row:hover .plan-rename,.project-plan .plan-rename:focus-visible{opacity:1}
-.project-plan .plan-rename:hover,.project-plan .plan-rename:focus-visible{background:var(--field);color:var(--ink);outline:0}
-.project-plan .plan-rename svg{width:12px;height:12px}
 .project-plan .ddlrow .dsep{color:var(--ter);font-size:12px;margin:0 -3px;flex-shrink:0}
 .project-plan .ddlrow .din{font-family:var(--mono);font-size:var(--fs-sm);border:0;border-radius:var(--r-sm);padding:2px 8px;flex-shrink:0;cursor:pointer;text-align:center;white-space:nowrap}
 .project-plan .ddlrow .din:not(.prtag):not(.state-edit){background:var(--field);color:var(--sec)}
@@ -50,6 +48,4 @@
 .project-plan .task-row.dragging{opacity:.4}
 .project-plan .task-row.drag-over-before{box-shadow:0 -2px 0 0 var(--accent)}
 .project-plan .task-row.drag-over-after{box-shadow:0 2px 0 0 var(--accent)}
-.project-plan .row-delete{display:grid;place-items:center;width:24px;height:24px;margin-left:2px;padding:0;flex:0 0 auto;border:0;border-radius:var(--r-sm);background:transparent;color:var(--bad);cursor:pointer;opacity:.72}
-.project-plan .row-delete:hover,.project-plan .row-delete:focus-visible{background:var(--tint-bad);opacity:1;outline:0}
-.project-plan .row-delete svg{width:13px;height:13px}
+.project-plan .row-delete{margin-left:2px}

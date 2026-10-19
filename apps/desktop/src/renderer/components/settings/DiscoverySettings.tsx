@@ -72,7 +72,7 @@ export function DiscoverySettings() {
               <strong>{profile.name}</strong>
               <span>{m.settings.discovery.seeds(profile.seedCount + profile.positiveCount)}</span>
               <button
-                className="btn plain" disabled={refreshing !== null || profile.intentCount === 0}
+                className="btn ghost sm" disabled={refreshing !== null || profile.intentCount === 0}
                 onClick={() => refresh(profile.id)}
               >{refreshing === profile.id
                 ? m.settings.discovery.refreshing : m.settings.discovery.refreshProject}</button>
@@ -95,12 +95,12 @@ export function DiscoverySettings() {
                 <div className="direction-actions">
                   {!intent.core && intent.enabled ? (
                     <button
-                      className="btn plain" disabled={busy.has(intent.id)}
+                      className="btn ghost sm" disabled={busy.has(intent.id)}
                       onClick={() => update(profile.id, intent.id, 'set-core')}
                     >{m.settings.discovery.setCoreAction}</button>
                   ) : null}
                   <button
-                    className="btn plain" disabled={busy.has(intent.id)}
+                    className="btn ghost sm" disabled={busy.has(intent.id)}
                     onClick={() => update(profile.id, intent.id, intent.enabled ? 'disable' : 'enable')}
                   >{intent.enabled ? m.settings.discovery.close : m.settings.discovery.enable}</button>
                 </div>

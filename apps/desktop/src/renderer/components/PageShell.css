@@ -10,8 +10,6 @@
 .desk-head>.add-action,.desk-head>.segmented-control{margin-left:auto}
 .page-toolbar{display:flex;align-items:flex-end;gap:8px;min-height:28px;margin:0 0 14px}
 .page-toolbar>.add-action:last-child{margin-left:auto}
-.page-toolbar .back{border:0;background:var(--field);color:var(--ink);border-radius:8px;width:28px;height:26px;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
-.page-toolbar .back svg{width:13px;height:13px}
 .page-toolbar+.section-heading{margin-top:0;padding-top:0;border-top:0}
 
 .section-heading{font-size:var(--fs-title);font-weight:700;color:var(--ink);
@@ -22,7 +20,8 @@
 .section-heading--rail:first-child{margin-top:0}
 .section-heading.flexh{display:flex;align-items:center;gap:10px}
 .section-heading.flexh>.btn,.section-heading.flexh>.segmented-control,
-.section-heading.flexh>.add-action,.section-heading.flexh>.panel-close{margin-left:auto;font-weight:400}
+.section-heading.flexh>.add-action,.section-heading.flexh>.panel-close{margin-left:auto}
+.section-heading.flexh>.segmented-control{font-weight:400}
 .section-heading.flexh>.btn~*{margin-left:8px}
 .section-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
 

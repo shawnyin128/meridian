@@ -10,11 +10,14 @@ import {
   useBanner, useCrumbTail, useJump, useToast, useVaultRevision, type CrumbSeg, type ScreenKey,
   type JumpAnchor,
 } from '../shell/AppShell.js'
-import { IconPlus } from '../components/icons.js'
+import { IconButton } from '../components/IconButton.js'
+import { IconMinus, IconPlus } from '../components/icons.js'
 import {
   highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionToolsAnchor,
 } from './highlight-geometry.js'
-import { clampZoom, keptScroll, scaledAbout, wheelZoom, type SheetTransform } from './reader-zoom.js'
+import {
+  ZOOM_MAX, ZOOM_MIN, clampZoom, keptScroll, scaledAbout, wheelZoom, type SheetTransform,
+} from './reader-zoom.js'
 import { PaperChat, type PaperChatPrompt } from '../components/chat/PaperChat.js'
 import { ReaderSidePanel, type ReaderSideTab } from '../components/reader/ReaderSidePanel.js'
 import { PageShell } from '../components/PageShell.js'
@@ -682,13 +685,15 @@ export function Reader() {
           />
 
           <div className="zoomctl">
-            <button title={m.reader.zoom.out} onClick={() => zoomBy(-ZOOM_STEP)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                <path d="M5 12h14" />
-              </svg>
+            <IconButton label={m.reader.zoom.out} size="nested" disabled={zoom <= ZOOM_MIN} onClick={() => zoomBy(-ZOOM_STEP)}>
+              <IconMinus />
+            </IconButton>
+            <button type="button" className="btn ghost sm zoom-reset" title={m.reader.zoom.reset} onClick={() => zoomBy(1 - shownZoom.current)}>
+              {Math.round(zoom * 100)}%
             </button>
-            <span>{Math.round(zoom * 100)}%</span>
-            <button title={m.reader.zoom.in} onClick={() => zoomBy(ZOOM_STEP)}><IconPlus /></button>
+            <IconButton label={m.reader.zoom.in} size="nested" disabled={zoom >= ZOOM_MAX} onClick={() => zoomBy(ZOOM_STEP)}>
+              <IconPlus />
+            </IconButton>
           </div>
         </div>
       </PageShell>

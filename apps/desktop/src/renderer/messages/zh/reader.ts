@@ -41,5 +41,6 @@ export const reader = {
   zoom: {
     out: '缩小',
     in: '放大',
+    reset: '重置缩放',
   },
 } satisfies Record<string, unknown>

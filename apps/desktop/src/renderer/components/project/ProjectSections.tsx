@@ -5,7 +5,8 @@ import { papers } from '../../ipc.js'
 import { AddAction } from '../AddAction.js'
 import { CardTray } from '../CardTray.js'
 import { FadeText } from '../FadeText.js'
-import { IconCross, IconPencil } from '../icons.js'
+import { IconButton } from '../IconButton.js'
+import { IconCross, IconPencil, IconTrash } from '../icons.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PaperText } from '../paper/PaperText.js'
 import { PickRow, type PickHit } from '../PickRow.js'
@@ -143,7 +144,7 @@ export function ProjectMemo({ text, editing, onEditing, onSave, onOpen }: {
   return (
     <>
       <SectionHeading variant="content" className="flexh">{m.project.sections.remark}
-        <button className="btn plain" onClick={toggle}>{editing ? m.common.save : m.common.edit}</button>
+        <button className="btn sm" onClick={toggle}>{editing ? m.common.save : m.common.edit}</button>
       </SectionHeading>
       <MarkdownBox
         className="memo" text={text} editing={editing} box={box}
@@ -270,10 +271,10 @@ export function ProjectRelations({
                 <button type="button" className="tagchip-open">
                   <FadeText className="tagchip-text"><PaperText text={paper.title} /></FadeText>
                 </button>
-                <button
-                  className="rx" title={m.common.removeLink}
+                <IconButton
+                  label={m.common.removeLink} size="inline" className="rx"
                   onClick={(event) => { event.stopPropagation(); onRemovePaper(paper.id, paper.title) }}
-                ><IconCross sw={2.5} /></button>
+                ><IconCross /></IconButton>
               </span>
             ))
             : null}
@@ -294,14 +295,14 @@ export function ProjectRelations({
                       <FadeText className="tagchip-text">{item.text}</FadeText>
                     </button>
                   )}
-                <button
-                  className="tagchip-edit" title={m.project.links.editTitle}
+                <IconButton
+                  label={m.project.links.editTitle} size="inline" className="tagchip-edit"
                   onClick={(event) => { event.stopPropagation(); onEdit(item) }}
-                ><IconPencil /></button>
-                <button
-                  className="rx" title={m.common.removeLink}
+                ><IconPencil /></IconButton>
+                <IconButton
+                  label={m.common.removeLink} size="inline" className="rx"
                   onClick={(event) => { event.stopPropagation(); onRemove(item.id, item.text) }}
-                ><IconCross sw={2.5} /></button>
+                ><IconCross /></IconButton>
               </span>
             )))}
         </div>
@@ -367,9 +368,10 @@ export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
                     type="button" className="an" title={m.project.attachments.reveal} onClick={() => onReveal(attachment)}
                   >{attachment.name}</button>
                   <span className="as">{attachment.size}</span>
-                  <button
-                    className="ax" title={m.project.attachments.delete} onClick={() => onRemove(attachment.id)}
-                  ><IconCross /></button>
+                  <IconButton
+                    label={m.project.attachments.delete} size="nested" tone="danger" className="ax"
+                    onClick={() => onRemove(attachment.id)}
+                  ><IconTrash /></IconButton>
                 </StructuredRow>
               ))}
             </StructuredList>
