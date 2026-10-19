@@ -33,10 +33,15 @@ vi.mock('../ipc.js', () => ({
   wiki: { home: () => Promise.resolve({ aggregationCount: 0 }) },
 }))
 
-const { AppShell } = await import('./AppShell.js')
+const { AppShell, usePaperChatCollapsed } = await import('./AppShell.js')
+
+/** Shows whether the shell reports the Reader's paper chat as collapsed. */
+function PaperChatState() {
+  return <p id="paperChatCollapsed">{String(usePaperChatCollapsed())}</p>
+}
 
 const SCREENS = {
-  feed: <p>feed</p>, inbox: null, later: null, papers: null, wiki: null, changelog: null, ideas: null,
+  feed: <PaperChatState />, inbox: null, later: null, papers: null, wiki: null, changelog: null, ideas: null,
   overview: null, project: null, trash: null, chat: null, reader: null,
 }
 
@@ -76,6 +81,15 @@ describe('AppShell sidebar collapse', () => {
     expect(sidebar.hasAttribute('inert')).toBe(true)
     press('b', { metaKey: true })
     expect(sidebar.hasAttribute('inert')).toBe(false)
+  })
+
+  it('reports the paper chat as collapsed while the sidebar is collapsed', () => {
+    const state = () => document.querySelector('#paperChatCollapsed')!.textContent
+    expect(state()).toBe('false')
+    press('b', { metaKey: true })
+    expect(state()).toBe('true')
+    press('b', { metaKey: true })
+    expect(state()).toBe('false')
   })
 
   it('focuses the sidebar search with "/" only while the sidebar is shown', () => {
