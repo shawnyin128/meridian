@@ -119,6 +119,17 @@ describe('Wiki keyboard reach', () => {
     expect(fixture.aggregation).toHaveBeenCalledWith('topics/sd')
   })
 
+  it('home, subpage and paper cards are the shared research object card in its grid variant', async () => {
+    expect(all('.wkcard').map((el) => el.className)).toEqual([
+      'research-object-card research-object-card--grid wkcard', 'research-object-card research-object-card--grid wkcard',
+    ])
+    expect(all('.wkcard .tt').map((el) => el.classList.contains('research-object-card-open'))).toEqual([true, true])
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    const child = host.querySelector('.wkmain .wkcard')!
+    expect(child.classList.contains('research-object-card--grid')).toBe(true)
+    expect([...child.querySelectorAll('.row-actions button')].map((b) => b.getAttribute('aria-label'))).toEqual(['从这一页移出'])
+  })
+
   it('reaches every link, chip, contents entry and remove control of an aggregation page by keyboard', async () => {
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
     expect(tags('.wkmain .wkcard .tt')).toEqual(['BUTTON'])

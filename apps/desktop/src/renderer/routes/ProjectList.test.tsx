@@ -98,6 +98,18 @@ describe('项目列表的卡片', () => {
 })
 
 describe('Project list', () => {
+  it('opens an ongoing project from the button that holds its name; the card itself is no button', async () => {
+    api.projects = [summary({ id: 'moe', name: 'MoE 路由分析', status: '进行中', priority: 'p2', topic: '混合专家' })]
+    await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
+    const card = host.querySelector<HTMLElement>('.research-object-card[data-proj="moe"]')!
+    expect(card.getAttribute('role')).toBeNull()
+    const open = card.querySelector<HTMLElement>('.research-object-card-open')!
+    expect(open.tagName).toBe('BUTTON')
+    expect(open.textContent).toContain('MoE 路由分析')
+    act(() => open.click())
+    expect(host.querySelector('[data-open="moe"]')).not.toBeNull()
+  })
+
   it('opens a shelved project from the button that holds its name', async () => {
     api.projects = [summary({
       id: 'draft', name: 'draft 效率', status: '搁置', priority: 'p1', topic: '推理', focus: '等算力',

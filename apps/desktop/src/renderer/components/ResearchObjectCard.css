@@ -1,9 +1,14 @@
 .research-object-card{box-sizing:border-box;width:100%;min-height:68px;margin-bottom:12px;padding:12px 16px;
-  border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);
+  border:1px solid var(--sep);border-radius:var(--r-card);background:var(--card);
   transition:border-color var(--t) var(--e-out),background-color var(--t-fast) var(--e-out)}
+/* Grid cards sit in a grid that spaces them, and carry less padding. */
+.research-object-card--grid{min-height:0;margin-bottom:0;padding:12px;line-height:1.5}
 .research-object-card[data-actionable]{cursor:pointer}
-.research-object-card[data-actionable]:hover,.research-object-card[data-actionable]:focus-visible,
-.research-object-card:has(.row-actions [data-state="open"]){border-color:var(--sep-strong);outline:0}
+.research-object-card[data-actionable]:hover,.research-object-card:has(.research-object-card-open:focus-visible),
+.research-object-card:has(.row-actions [data-state="open"]){border-color:var(--sep-strong)}
+/* The card's name button draws nothing of its own; its click reaches the card. */
+:where(.research-object-card-open){display:inline-flex;align-items:center;min-width:0;padding:0;border:0;background:none;
+  color:inherit;font:inherit;text-align:left;cursor:inherit}
 /* The selected look of rows, cards and graph nodes; see StructuredList.css. */
 .research-object-card.selected{background-color:var(--selected);color:var(--on-selected)}
 .research-object-card.muted{background:var(--content)}

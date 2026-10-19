@@ -22,7 +22,7 @@ import { ShortTextEditor } from '../components/ShortTextEditor.js'
 import { ProjectBlockerView, ProjectNextActionView } from '../components/project/ProjectControl.js'
 import { ProjectIdentity } from '../components/project/ProjectIdentity.js'
 import { EventText } from '../components/project/ProjectSignals.js'
-import { ResearchObjectCard } from '../components/ResearchObjectCard.js'
+import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
 import { RowActions } from '../components/StructuredList.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
@@ -161,7 +161,7 @@ function ProjectPanel({ project, onOpen, menu, dragProps, dropClassName }: {
       data-proj={project.id} onActivate={onOpen} {...dragProps}
     >
       <div className="pp-h">
-        <ProjectIdentity project={project} showTopic />
+        <CardOpen><ProjectIdentity project={project} showTopic /></CardOpen>
         <span className="dd">
           {next && left !== null
             ? (

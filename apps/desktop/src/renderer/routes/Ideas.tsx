@@ -11,7 +11,7 @@ import { EditActions } from '../components/EditActions.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { PanelClose } from '../components/PanelClose.js'
 import { DetailPanel } from '../components/DetailPanel.js'
-import { ResearchObjectCard } from '../components/ResearchObjectCard.js'
+import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
 import { RowActions } from '../components/StructuredList.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
@@ -77,11 +77,11 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, dragProps, dropClassNa
   return (
     <ResearchObjectCard
       className={`idea-card${dropClassName ? ` ${dropClassName}` : ''}`} selected={selected} muted={idea.archived}
-      data-idea={idea.id} aria-label={m.ideas.view(idea.title)} onActivate={onOpen} {...dragProps}
+      data-idea={idea.id} onActivate={onOpen} {...dragProps}
     >
       <div className="idea-card-content">
         <div className="idea-card-title-row">
-          <strong>{idea.title}</strong>
+          <CardOpen><strong>{idea.title}</strong></CardOpen>
           <Tag
             tone={linked !== undefined ? 'accent' : idea.project === undefined ? 'neutral' : 'bad'}
             className="idea-project-tag"

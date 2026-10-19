@@ -4,17 +4,14 @@
  * names so the two can be compared side by side.
  */
 
-/* Cards: aggregation and paper cards in a grid. The demo's .wkcard always shows the pointer cursor */
-.wkgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--cardw),1fr));gap:10px;margin:6px 0 6px}
 /*
- * The 1.5 line-height pairs with .wkcard .wm's height:calc(1.5em * var(--card-lines)): together they
- * fix the summary's height, which keeps every card in the grid the same height. Change both together.
+ * Cards: aggregation and paper cards, the grid variant of ResearchObjectCard, which draws them. The
+ * grid card's 1.5 line-height pairs with .wkcard .wm's height:calc(1.5em * var(--card-lines)):
+ * together they fix the summary's height, which keeps every card in the grid the same height.
  */
-.wkcard{flex:1;min-width:200px;background:var(--card);border:1px solid var(--sep);border-radius:var(--r-lg);padding:12px;cursor:pointer;transition:border-color var(--t) var(--e-out),box-shadow var(--t) var(--e-out);line-height:1.5}
-.wkcard:hover{border-color:var(--sep-strong);box-shadow:var(--sh-1)}
+.wkgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--cardw),1fr));gap:10px;margin:6px 0 6px}
 .wkcard .wt{font-size:var(--card-tt);display:flex;align-items:center;gap:6px}
-.wkcard .tt{flex:1;min-width:0;font-weight:600;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade)}
-:where(.wkcard button.tt){padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
+.wkcard .tt{display:block;flex:1;min-width:0;font-weight:600;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade)}
 /* The title's fade mask hides its own focus ring, so the card draws it. */
 .wkcard:has(button.tt:focus-visible){outline:2px solid var(--ring);outline-offset:2px}
 .wkcard .sp{margin-left:auto;display:flex;align-items:center;flex-shrink:0}
@@ -71,10 +68,9 @@
 .wktoc li.l3{padding-left:36px;font-size:var(--fs-sm);color:var(--ter)}
 .wktoc li.l3.on{color:var(--ink)}
 
-/* Management controls: the × that cards and table rows show on hover, and the column editor */
+/* Management controls: a card's row-actions slot in its corner, the × table rows show on hover, and the column editor */
 .wkcard{position:relative}
-.wkcard .rx{position:absolute;top:8px;right:8px;opacity:0;pointer-events:none}
-.wkcard:hover .rx,.wkcard .rx:focus-visible{opacity:1;pointer-events:auto}
+.wkcard .row-actions{position:absolute;top:8px;right:8px}
 .cmp th.rx,.cmp td.rx{width:22px;padding-left:3px;padding-right:3px}
 /* The cell holds the × button and shows while its row is hovered or the button has keyboard focus. */
 .cmp td.rx{opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
