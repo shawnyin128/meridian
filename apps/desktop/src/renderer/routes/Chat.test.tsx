@@ -19,6 +19,8 @@ const api = vi.hoisted(() => ({
   listPapers: vi.fn(() => Promise.resolve({ rows: [], total: 0 })),
 }))
 
+const session = vi.hoisted(() => ({ id: 'chat-1' }))
+
 vi.mock('../ipc.js', () => ({
   chat: { send: api.send, messages: () => Promise.resolve([]), cancel: vi.fn(), create: vi.fn() },
   feed: { append: vi.fn() },
@@ -33,7 +35,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useToast: () => vi.fn(),
   useCrumbTail: () => {},
   useJump: () => ({ jump: null, open: vi.fn(), returnTo: vi.fn() }),
-  useChatSession: () => ({ id: 'chat-1', title: '讨论', archived: false, select: vi.fn() }),
+  useChatSession: () => ({ id: session.id, title: '讨论', archived: false, select: vi.fn() }),
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
 
@@ -60,6 +62,7 @@ describe('Chat composer', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
     vi.clearAllMocks()
+    session.id = 'chat-1'
     const host = document.createElement('div')
     document.body.append(host)
     root = createRoot(host)
@@ -82,6 +85,15 @@ describe('Chat composer', () => {
     const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init })
     act(() => { composer.dispatchEvent(event) })
     return event
+  }
+
+  /** Opens chat `id` from the sidebar: the Chat screen stays mounted and shows another session. */
+  const openChat = async (id: string) => {
+    session.id = id
+    await act(async () => {
+      root!.render(<MessagesProvider><Chat /></MessagesProvider>)
+      await Promise.resolve()
+    })
   }
 
   it('回车发送，Shift+回车换行，输入法组字时的回车不发送', async () => {
@@ -114,5 +126,24 @@ describe('Chat composer', () => {
     act(() => setValue(composer, '第一行\n第二行'))
     expect(press('ArrowUp').defaultPrevented).toBe(false)
     expect(press('ArrowDown').defaultPrevented).toBe(false)
+  })
+
+  it('草稿属于它的对话：换到另一条对话后回车不把它发过去，输入框是空的，切回来草稿还在', async () => {
+    act(() => setValue(composer, '只问第一条'))
+    await openChat('chat-2')
+    press('Enter')
+    await act(async () => { await Promise.resolve() })
+    expect(api.send).not.toHaveBeenCalled()
+    expect(composer.value).toBe('')
+
+    await openChat('chat-1')
+    expect(composer.value).toBe('只问第一条')
+  })
+
+  it('@ 候选只留在打开它的那条对话里', async () => {
+    act(() => setValue(composer, '@'))
+    expect(document.querySelector('#cRes')).not.toBeNull()
+    await openChat('chat-2')
+    expect(document.querySelector('#cRes')).toBeNull()
   })
 })
