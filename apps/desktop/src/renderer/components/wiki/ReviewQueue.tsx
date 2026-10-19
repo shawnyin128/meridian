@@ -128,9 +128,9 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                     {p.unverified!.map((ref) => {
                       const [project, conclusion] = ref.slice('projects/'.length).split('#') as [string, string]
                       return (
-                        <span className="tagchip" key={ref} onClick={() => onOpenConclusion(project, conclusion)}>
+                        <button type="button" className="tagchip" key={ref} onClick={() => onOpenConclusion(project, conclusion)}>
                           {p.titles[ref] ?? conclusion}
-                        </span>
+                        </button>
                       )
                     })}
                   </div>
@@ -139,9 +139,9 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                 <div className="wkrel">
                   <span className="rl">{r.pages}</span>
                   {p.pages.map((id) => (
-                    <span className="tagchip" data-wk={id} key={id} onClick={() => onOpenPage(id)}>
+                    <button type="button" className="tagchip" data-wk={id} key={id} onClick={() => onOpenPage(id)}>
                       {id.startsWith(PAPER_PAGE) ? <PaperText text={p.titles[id] ?? id} /> : p.titles[id] ?? id}
-                    </span>
+                    </button>
                   ))}
                 </div>
                 <div className="review-actions">

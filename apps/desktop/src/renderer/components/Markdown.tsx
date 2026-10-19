@@ -47,8 +47,9 @@ function remarkHeadingIds() {
 }
 
 /**
- * Links render three ways: an in-page link is a clickable `.wl` that shows the page's full title
- * from `titles` on hover, a source anchor is a `.cite`, and any other link opens in a new window.
+ * Links render three ways: an in-page link is a `.wl` that shows the page's full title from `titles`
+ * on hover and, given `onOpen`, is a link that opens the page; a source anchor is a `.cite`, and any
+ * other link opens in a new window.
  */
 function components(
   onOpen: ((id: string) => void) | undefined,
@@ -62,7 +63,14 @@ function components(
       if (href.startsWith(WIKI)) {
         const id = href.slice(WIKI.length)
         const page = titles?.[id]
-        return <span className="wl" data-wk={id} title={page?.fullTitle ?? page?.title} onClick={() => onOpen?.(id)}>{children}</span>
+        const title = page?.fullTitle ?? page?.title
+        if (onOpen === undefined) return <span className="wl" data-wk={id} title={title}>{children}</span>
+        return (
+          <a
+            className="wl" href={href} data-wk={id} title={title}
+            onClick={(event) => { event.preventDefault(); onOpen(id) }}
+          >{children}</a>
+        )
       }
       if (href.startsWith(CITE)) {
         return <span className="cite" title={citePage(href.slice(CITE.length))}>{children}</span>

@@ -53,6 +53,7 @@ type Tip = { page: number; quote: string; left: number; top: number }
 /**
  * The demo's aggCard: kind tag, title, an "N parents" tag when the aggregation has several parents,
  * the first line of its summary, and a last line with its subpage count, paper count and update date.
+ * The title is the card's button; a click anywhere else on the card opens it too.
  */
 function AggregationCard({ card, onOpen, onRemove, pending }: {
   card: WikiAggregationCard; onOpen: () => void; onRemove?: () => void; pending?: boolean
@@ -61,17 +62,9 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
   const m = useMessages()
   return (
     <div className="wkcard" data-wk={card.id} title={card.summary} onClick={onOpen}>
-      {onRemove === undefined
-        ? null
-        : (
-          <button
-            className="rx" title={m.wiki.removeFromPage} aria-disabled={pending}
-            onClick={(e) => { e.stopPropagation(); onRemove() }}
-          ><IconCross sw={2.5} /></button>
-        )}
       <div className="wt">
         <span className="wkind k-wiki">{card.kindLabel}</span>
-        <span className="tt">{card.title}</span>
+        <button type="button" className="tt">{card.title}</button>
         {card.parentCount > 1 ? <span className="wkind">{m.wiki.aggregation.parentCount(card.parentCount)}</span> : null}
         <span className="sp" />
       </div>
@@ -81,11 +74,19 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
           card.childCount > 0 ? card.childCount : null, card.memberCount, fmt.date(card.updated),
         )}
       </div>
+      {onRemove === undefined
+        ? null
+        : (
+          <button
+            className="rx" title={m.wiki.removeFromPage} aria-disabled={pending}
+            onClick={(e) => { e.stopPropagation(); onRemove() }}
+          ><IconCross sw={2.5} /></button>
+        )}
     </div>
   )
 }
 
-/** The demo's paperCard; a click opens this paper's page. */
+/** The demo's paperCard; a click opens this paper's page, and its title is the card's button. */
 function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
   const m = useMessages()
   const line = [`${paper.year ?? ''} ${paper.venue}`.trim(), paper.topics.join(' / ')]
@@ -94,7 +95,7 @@ function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
     <div className="wkcard" data-wk={`${PAPER_PAGE}${paper.id}`} title={plainTitle(paper.title)} onClick={onOpen}>
       <div className="wt">
         <span className="wkind k-paper">{m.wiki.paperKind}</span>
-        <span className="tt"><PaperText text={paper.title} /></span><span className="sp" />
+        <button type="button" className="tt"><PaperText text={paper.title} /></button><span className="sp" />
       </div>
       <div className="wm">{line}</div>
       <div className="wf">{m.wiki.paperCardFooter(paper.noteCount, paper.conclusionCount)}</div>
@@ -164,12 +165,12 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
           {agg.rows.map((row) => (
             <tr key={row.paper.id}>
               <td className="rh">
-                <span
-                  className="wl" data-wk={row.paper.id} onClick={() => onOpen(row.paper.id)}
+                <button
+                  type="button" className="wl" data-wk={row.paper.id} onClick={() => onOpen(row.paper.id)}
                   title={row.paper.fullTitle === undefined ? undefined : plainTitle(row.paper.fullTitle)}
                 >
                   <PaperText text={row.paper.title} />
-                </span>
+                </button>
               </td>
               {agg.columns.map((c) => {
                 const cell = row.cells[c.key]
@@ -182,9 +183,10 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
                 return (
                   <td className="dv" key={d.key}>
                     {links.length === 0 ? '—' : links.map((l) => (
-                      <span className="tagchip" data-wk={l.id} key={l.id} title={l.fullTitle} onClick={() => onOpen(l.id)}>
-                        {l.title}
-                      </span>
+                      <button
+                        type="button" className="tagchip" data-wk={l.id} key={l.id} title={l.fullTitle}
+                        onClick={() => onOpen(l.id)}
+                      >{l.title}</button>
                     ))}
                   </td>
                 )
@@ -193,10 +195,12 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
               {onRemove === undefined
                 ? null
                 : (
-                  <td
-                    className="rx" title={m.wiki.removeFromPage} aria-disabled={pending}
-                    onClick={() => onRemove(row.paper.id)}
-                  ><IconCross sw={2.5} /></td>
+                  <td className="rx">
+                    <button
+                      type="button" title={m.wiki.removeFromPage} aria-disabled={pending}
+                      onClick={() => onRemove(row.paper.id)}
+                    ><IconCross sw={2.5} /></button>
+                  </td>
                 )}
             </tr>
           ))}
@@ -288,10 +292,12 @@ function Toc({ body, main }: { body: string; main: RefObject<HTMLDivElement | nu
       <SectionHeading variant="rail">{m.wiki.toc}</SectionHeading>
       <ul className="wktoc">
         {headings.map((h) => (
-          <li
-            className={`l${h.depth - base + 1}${h.id === active ? ' on' : ''}`} key={h.id}
-            onClick={() => main.current?.querySelector<HTMLElement>(`#${h.id}`)?.scrollIntoView({ block: 'start' })}
-          >{h.text}</li>
+          <li className={`l${h.depth - base + 1}${h.id === active ? ' on' : ''}`} key={h.id}>
+            <button
+              type="button"
+              onClick={() => main.current?.querySelector<HTMLElement>(`#${h.id}`)?.scrollIntoView({ block: 'start' })}
+            >{h.text}</button>
+          </li>
         ))}
       </ul>
     </>
@@ -786,7 +792,10 @@ export function Wiki() {
                     <div className="wkrel">
                       <span className="rl">{m.wiki.belongsTo}</span>
                       {shownAgg.parents.map((p) => (
-                        <span className="tagchip" data-wk={p.id} key={p.id} title={p.fullTitle} onClick={() => go(p.id)}>{p.title}</span>
+                        <button
+                          type="button" className="tagchip" data-wk={p.id} key={p.id} title={p.fullTitle}
+                          onClick={() => go(p.id)}
+                        >{p.title}</button>
                       ))}
                     </div>
                   )
@@ -795,7 +804,10 @@ export function Wiki() {
                   <div className="wkrel" key={r.label}>
                     <span className="rl">{r.label}</span>
                     {r.links.map((l) => (
-                      <span className="tagchip" data-wk={l.id} key={l.id} title={l.fullTitle} onClick={() => go(l.id)}>{l.title}</span>
+                      <button
+                        type="button" className="tagchip" data-wk={l.id} key={l.id} title={l.fullTitle}
+                        onClick={() => go(l.id)}
+                      >{l.title}</button>
                     ))}
                   </div>
                 ))}
@@ -891,10 +903,10 @@ export function Wiki() {
                     <div className="memb" key={ms.aggregation.id}>
                       <div className="wkrel">
                         <span className="wkind k-wiki">{ms.kindLabel}</span>
-                        <span
-                          className="tagchip" data-wk={ms.aggregation.id}
+                        <button
+                          type="button" className="tagchip" data-wk={ms.aggregation.id}
                           onClick={() => go(ms.aggregation.id)}
-                        >{ms.aggregation.title}</span>
+                        >{ms.aggregation.title}</button>
                       </div>
                       <div className="wkprops">
                         {ms.cells.map((c) => (

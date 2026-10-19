@@ -17,13 +17,15 @@ describe('ProjectRelations', () => {
     ],
   }]
   const onEdit = vi.fn()
+  const onOpenPage = vi.fn()
+  const onOpenPaper = vi.fn()
 
   const render = (editing?: { id: string; row: RefObject<HTMLDivElement | null>; input: ReactNode }) => act(() => {
     root.render(
       <MessagesProvider>
         <ProjectRelations
           groups={groups} papers={[{ id: 'p1', title: 'EAGLE-2' }]} editing={editing}
-          onEdit={onEdit} onRemove={vi.fn()} onOpenPage={vi.fn()} onOpenPaper={vi.fn()}
+          onEdit={onEdit} onRemove={vi.fn()} onOpenPage={onOpenPage} onOpenPaper={onOpenPaper}
           onRemovePaper={vi.fn()} onMove={vi.fn()}
         />
       </MessagesProvider>,
@@ -61,6 +63,23 @@ describe('ProjectRelations', () => {
     expect([...wiki.children].map((child) => child.className)).toEqual(['rl', 'tagchip', 'reladd'])
     expect(row.current).toBe(wiki.lastElementChild)
     expect(row.current?.querySelector('.probe')).not.toBeNull()
+    open.mockRestore()
+  })
+
+  it('opens a paper, a Wiki page and a URL from the button that holds each chip\'s name', () => {
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    render()
+    const name = (selector: string) => {
+      const button = host.querySelector<HTMLElement>(selector)!.firstElementChild as HTMLElement
+      expect(button.tagName, selector).toBe('BUTTON')
+      return button
+    }
+    act(() => name('[data-paper="p1"]').click())
+    expect(onOpenPaper).toHaveBeenCalledWith('p1')
+    act(() => name('[data-wk="topics/knee"]').click())
+    expect(onOpenPage).toHaveBeenCalledWith('topics/knee')
+    act(() => name('[data-url="https://wandb.ai/team/draft"]').click())
+    expect(open).toHaveBeenCalledWith('https://wandb.ai/team/draft', '_blank')
     open.mockRestore()
   })
 
