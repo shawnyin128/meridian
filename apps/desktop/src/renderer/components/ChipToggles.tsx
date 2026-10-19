@@ -1,5 +1,6 @@
 import * as ToggleGroup from '@radix-ui/react-toggle-group'
 import type { ReactElement, ReactNode } from 'react'
+import { tagClass } from './Tag.js'
 import './ChipToggles.css'
 
 /**
@@ -24,7 +25,7 @@ export function ChipToggles<Value extends string>({
       onValueChange={(next) => onChange(next as Value[])}
     >
       {options.map((option) => (
-        <ToggleGroup.Item key={option.value} value={option.value} className="tagchip chip-toggle">
+        <ToggleGroup.Item key={option.value} value={option.value} className={tagClass('neutral', 'chip', 'tagchip chip-toggle')}>
           {option.label}
         </ToggleGroup.Item>
       ))}
