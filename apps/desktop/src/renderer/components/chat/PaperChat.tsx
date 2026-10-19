@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatMessage, ChatSession, PaperRow } from '../../../shared/contract.js'
 import { chat, feed, idea as ideaApi } from '../../ipc.js'
-import { useBanner, usePaperChatGrip, useToast, useVaultRevision } from '../../shell/AppShell.js'
+import {
+  useBanner, usePaperChatCollapsed, usePaperChatGrip, useToast, useVaultRevision,
+} from '../../shell/AppShell.js'
 import { sendsMessage } from '../../lib/chat.js'
 import { ChatMessageView, plain } from './ChatMessage.js'
 import { BackButton } from '../BackButton.js'
@@ -36,6 +38,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const toast = useToast()
   const write = useVaultWrite()
   const grip = usePaperChatGrip()
+  const collapsed = usePaperChatCollapsed()
   const [session, setSession] = useState<ChatSession | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const drafts = useDrafts()
@@ -114,7 +117,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const hasDiscussion = messages.some((message) => message.role === 'you')
 
   return (
-    <aside className="paper-chat stream" aria-label={m.chat.paperChatLabel}>
+    <aside className="paper-chat stream" aria-label={m.chat.paperChatLabel} inert={collapsed}>
       <header className="paper-chat-head">
         <BackButton onClick={onBack} />
         <strong>

@@ -117,7 +117,7 @@ type GripHandlers = {
   onMouseEnter: (e: ReactMouseEvent) => void
   onMouseLeave: () => void
 }
-const PaperChatGripContext = createContext<GripHandlers | null>(null)
+const PaperChatGripContext = createContext<{ grip: GripHandlers; collapsed: boolean } | null>(null)
 
 /** The color of the window buttons' symbols in the current theme: `--sec`, the tone of secondary text. */
 function symbolColor(): string {
@@ -317,9 +317,19 @@ export function useChatSession(): {
  * The returned object keeps its reference throughout the lifetime of the shell.
  */
 export function usePaperChatGrip(): GripHandlers {
-  const grip = useContext(PaperChatGripContext)
-  if (!grip) throw new Error('usePaperChatGrip needs AppShell')
-  return grip
+  const state = useContext(PaperChatGripContext)
+  if (!state) throw new Error('usePaperChatGrip needs AppShell')
+  return state.grip
+}
+
+/**
+ * Returns whether the Reader's paper chat is collapsed: it collapses with the sidebar, and a
+ * collapsed chat must be inert.
+ */
+export function usePaperChatCollapsed(): boolean {
+  const state = useContext(PaperChatGripContext)
+  if (!state) throw new Error('usePaperChatCollapsed needs AppShell')
+  return state.collapsed
 }
 
 const escapeLayers: { close: () => void }[] = []
@@ -494,10 +504,11 @@ export function AppShell({ screens, settings }: {
       if (e.key === '/' && !editable) {
         e.preventDefault()
         // The active screen's own field wins over the always-mounted sidebar search, which sits
-        // earlier in the DOM and would otherwise match first in a single combined selector.
+        // earlier in the DOM and would otherwise match first in a single combined selector. A
+        // collapsed sidebar is inert, and its search is no fallback.
         const field = document.querySelector<HTMLElement>(
           '.screenslot:not([hidden]) #composer, .screenslot:not([hidden]) #libq',
-        ) ?? document.querySelector<HTMLElement>('#sSearch')
+        ) ?? document.querySelector<HTMLElement>('#sidebar:not([inert]) #sSearch')
         field?.focus()
       }
     }
@@ -541,6 +552,7 @@ export function AppShell({ screens, settings }: {
     onMouseLeave: hideGriptip,
   }), [gripEnter, hideGriptip])
   const paperChatGrip = useMemo(() => gripOf(dragPaperChat), [gripOf, dragPaperChat])
+  const paperChat = useMemo(() => ({ grip: paperChatGrip, collapsed: hidden }), [paperChatGrip, hidden])
 
   const goTo = useCallback((next: ScreenKey) => {
     setScreen(next)
@@ -735,7 +747,7 @@ export function AppShell({ screens, settings }: {
           laterCount={laterCount}
           chats={chats} chatId={screen === 'chat' ? chatId : null} onOpenChat={openChat}
           onNewChat={newChat} onArchiveChat={archiveChat}
-          grip={gripOf(dragSidebar)}
+          grip={gripOf(dragSidebar)} collapsed={hidden}
         />
         {screen === 'reader' && hidden ? (
           <button className="paper-chat-edge" title={m.chat.expandPaperChat} onClick={() => setHidden(false)} />
@@ -749,7 +761,7 @@ export function AppShell({ screens, settings }: {
                   <InboxScopeContext.Provider value={inboxScope}>
                     <InboxModeContext.Provider value={inboxMode}>
                     <ChatSessionContext.Provider value={chatSession}>
-                    <PaperChatGripContext.Provider value={paperChatGrip}>
+                    <PaperChatGripContext.Provider value={paperChat}>
                       <JumpContext.Provider value={jumps}>
                         {/*
                          * Every screen counts relative dates from the vault's today, so no screen mounts

@@ -32,6 +32,7 @@ const api = vi.hoisted(() => ({
   banner: vi.fn(),
   toast: vi.fn(),
   grip: { onMouseDown: vi.fn(), onMouseEnter: vi.fn(), onMouseLeave: vi.fn() },
+  collapsed: false,
 }))
 
 vi.mock('../ipc.js', () => ({
@@ -49,6 +50,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useToast: () => api.toast,
   useVaultRevision: () => ({ revision: 0, bump: api.bump }),
   usePaperChatGrip: () => api.grip,
+  usePaperChatCollapsed: () => api.collapsed,
 }))
 
 vi.mock('../hooks/useVaultWrite.js', () => ({
@@ -86,6 +88,7 @@ describe('PaperChat', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
     vi.clearAllMocks()
+    api.collapsed = false
   })
 
   afterEach(() => {
@@ -238,6 +241,15 @@ describe('PaperChat', () => {
     expect(press({}).defaultPrevented).toBe(true)
     expect(api.send).toHaveBeenCalledWith('chat-paper-1', '第一行')
     await act(async () => { await Promise.resolve() })
+  })
+
+  it('收起的对话栏整个不可聚焦，展开后恢复', async () => {
+    api.collapsed = true
+    const host = await mountChat()
+    expect(host.querySelector('.paper-chat')!.hasAttribute('inert')).toBe(true)
+    api.collapsed = false
+    await act(async () => { root!.render(withMessages(<PaperChat paper={PAPER} />)) })
+    expect(host.querySelector('.paper-chat')!.hasAttribute('inert')).toBe(false)
   })
 
   it('对话栏右缘有调宽把手，按下交给外壳处理拖动与收起', async () => {

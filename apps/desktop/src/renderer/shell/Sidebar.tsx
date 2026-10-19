@@ -113,12 +113,12 @@ function UpdateRow() {
  * `chats` fills the list under Chats; archived chats are not here but in Settings. `chatId` is the
  * chat the Chats screen shows; null means none is selected.
  * `grip` holds the resize handle's three mouse handlers; dragging, click-to-collapse and the hover
- * tooltip are all implemented by the shell.
+ * tooltip are all implemented by the shell. A `collapsed` sidebar is inert: nothing in it takes focus.
  */
 export function Sidebar({
   screen, onNavigate, onJump, paperCount, changeCount, projectCount, trashCount, wikiCount, ideaCount,
   inboxScope, inboxMode, onOpenInbox, watches, inboxCounts, discoveryCount, discoveryProjects, laterCount,
-  chats, chatId, onOpenChat, onNewChat, onArchiveChat, grip,
+  chats, chatId, onOpenChat, onNewChat, onArchiveChat, grip, collapsed,
 }: {
   screen: ScreenKey
   onNavigate: (next: ScreenKey) => void
@@ -147,6 +147,7 @@ export function Sidebar({
     onMouseEnter: (e: ReactMouseEvent) => void
     onMouseLeave: () => void
   }
+  collapsed: boolean
 }) {
   const m = useMessages()
   const [closed, setClosed] = useState<Record<string, boolean>>({})
@@ -167,7 +168,7 @@ export function Sidebar({
   ]
 
   return (
-    <div className="sidebar" id="sidebar">
+    <div className="sidebar" id="sidebar" inert={collapsed}>
       <SearchBox onJump={onJump} />
 
       <div className="sb-top">
