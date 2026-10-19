@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from 'react'
 import * as AlertDialog from '@radix-ui/react-alert-dialog'
+import { ignoreComposingEscape } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 
 /** One destructive/confirming action shell with shared focus, wording order, and buttons. */
@@ -25,7 +26,7 @@ export function ConfirmDialog({
       <AlertDialog.Portal>
         <AlertDialog.Overlay className="scrim" />
         <AlertDialog.Content
-          className="ctxmenu cfpop"
+          className="ctxmenu cfpop" onEscapeKeyDown={ignoreComposingEscape()}
           {...(description === undefined ? { 'aria-describedby': undefined } : {})}
         >
           <div className="dlg">

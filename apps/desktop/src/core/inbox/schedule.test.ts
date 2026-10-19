@@ -36,19 +36,19 @@ describe('armFetchSchedule', () => {
 
   it('开库十五秒后抓;失败半小时后重试;成功六小时后再抓;停下后不再抓', async () => {
     vi.useFakeTimers({ now: 0 })
-    const { runs, held, fetcher } = fakeFetcher({ state: 'idle', checkedAt: null, error: null })
+    const { runs, held, fetcher } = fakeFetcher({ state: 'idle', checkedAt: null, reason: null })
     const stop = armFetchSchedule(fetcher, () => Date.now())
 
     await vi.advanceTimersByTimeAsync(FIRST_TICK_MS)
     expect(runs).toEqual([FIRST_TICK_MS])
 
-    held.status = { state: 'failed', checkedAt: null, error: '网络不可用' }
+    held.status = { state: 'failed', checkedAt: null, reason: 'unavailable' }
     await vi.advanceTimersByTimeAsync(3 * TICK_MS - FIRST_TICK_MS)
     expect(runs).toHaveLength(1)
     await vi.advanceTimersByTimeAsync(TICK_MS)
     expect(runs).toEqual([FIRST_TICK_MS, 4 * TICK_MS])
 
-    held.status = { state: 'idle', checkedAt: 4 * TICK_MS, error: null }
+    held.status = { state: 'idle', checkedAt: 4 * TICK_MS, reason: null }
     await vi.advanceTimersByTimeAsync(FETCH_EVERY_MS - TICK_MS)
     expect(runs).toHaveLength(2)
     await vi.advanceTimersByTimeAsync(TICK_MS)
@@ -61,7 +61,7 @@ describe('armFetchSchedule', () => {
 
   it('正在抓时到了点也不另起一轮', async () => {
     vi.useFakeTimers({ now: 0 })
-    const { runs, fetcher } = fakeFetcher({ state: 'checking', checkedAt: null, error: null })
+    const { runs, fetcher } = fakeFetcher({ state: 'checking', checkedAt: null, reason: null })
     const stop = armFetchSchedule(fetcher, () => Date.now())
     await vi.advanceTimersByTimeAsync(FIRST_TICK_MS + TICK_MS)
     expect(runs).toEqual([])

@@ -181,6 +181,23 @@ describe('Settings', () => {
     expect(api.updateDeliverySettings).toHaveBeenCalledWith({ maxItemsPerRun: 12 })
   })
 
+  it('单次推送上限里输入法组字的回车不保存，组完字后的回车才保存', async () => {
+    api.requestedCategory = 'delivery'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const limit = document.querySelector<HTMLInputElement>('[aria-label="单次推送上限"]')!
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(limit, '12')
+      limit.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    const pressEnter = (init: KeyboardEventInit) => act(async () => {
+      limit.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, ...init }))
+    })
+    await pressEnter({ isComposing: true })
+    expect(api.updateDeliverySettings).not.toHaveBeenCalled()
+    await pressEnter({})
+    expect(api.updateDeliverySettings).toHaveBeenCalledExactlyOnceWith({ maxItemsPerRun: 12 })
+  })
+
   it('每个设置分类都是按钮，键盘能聚焦和打开', async () => {
     api.requestedCategory = null
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })

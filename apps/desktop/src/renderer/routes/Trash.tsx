@@ -10,6 +10,7 @@ import { EmptyState } from '../components/EmptyState.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { TitleNote } from '../components/TitleNote.js'
 import {
   PageBody, PageError, PageFooter, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
@@ -26,9 +27,6 @@ const KINDS: TrashEntry['kind'][] = ['inbox', 'paper', 'project', 'idea', 'attac
 /** The kinds whose title is a paper title. */
 const PAPER_KINDS: ReadonlySet<TrashEntry['kind']> = new Set(['inbox', 'paper'])
 const plainOf = (entry: TrashEntry): string => (PAPER_KINDS.has(entry.kind) ? plainTitle(entry.title) : entry.title)
-
-/** The title in the recovery banner is cut to this length, the same as the demo. */
-const TITLE_IN_BANNER = 18
 
 /**
  * Days left before an entry is cleared automatically. `deletedAt` is the deletion time in epoch
@@ -73,7 +71,7 @@ export function Trash() {
 
   const restore = (entry: TrashEntry) => {
     void write(trash.restore(entry.id),
-      { note: m.trash.restored(plainOf(entry).slice(0, TITLE_IN_BANNER)) })
+      { note: <TitleNote message={m.trash.restored} title={plainOf(entry)} /> })
   }
 
   const purge = (id: string) => {

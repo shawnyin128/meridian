@@ -1,5 +1,5 @@
 import type { AuthorCandidate, SemanticKeyCheckResult } from '../../shared/contract.js'
-import { getWithRetry, HttpStatusError, netReason, requestWithRetry, type HttpGet } from './http.js'
+import { getWithRetry, HttpStatusError, netFailure, netReason, requestWithRetry, type HttpGet } from './http.js'
 import type { AuthorSearchSource, ScholarSource, SearchPaper } from './scholar-sources.js'
 
 const API = 'https://api.semanticscholar.org/graph/v1'
@@ -99,14 +99,11 @@ export async function checkSemanticKey(get: HttpGet): Promise<SemanticKeyCheckRe
     return { state: 'connected' }
   } catch (error) {
     const detail = netReason(error)
-    if (error instanceof HttpStatusError) {
-      if (error.status === 401 || error.status === 403) return { state: 'failed', reason: 'authentication', detail }
-      if (error.status === 429) return { state: 'failed', reason: 'rate-limit', detail }
-      return { state: 'failed', reason: 'unavailable', detail }
+    if (error instanceof HttpStatusError && (error.status === 401 || error.status === 403)) {
+      return { state: 'failed', reason: 'authentication', detail }
     }
-    if (detail === '连接超时') return { state: 'failed', reason: 'timeout', detail }
-    if (detail === '网络不可用') return { state: 'failed', reason: 'unavailable', detail }
-    return { state: 'failed', reason: 'unknown', detail }
+    const failure = netFailure(error)
+    return { state: 'failed', reason: failure === 'server' ? 'unavailable' : failure, detail }
   }
 }
 

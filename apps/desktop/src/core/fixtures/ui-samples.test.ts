@@ -9,7 +9,7 @@ const status: JobsStatus = {
     step: 'detect', found: null, error: null,
   }],
   downloads: [],
-  fetch: { state: 'idle', checkedAt: null, error: null },
+  fetch: { state: 'idle', checkedAt: null, reason: null },
 }
 
 describe('withUiSampleUpload', () => {

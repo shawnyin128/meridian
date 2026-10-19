@@ -1,3 +1,5 @@
+import type { NetFailure } from '../../shared/contract.js'
+
 /** Result of one GET request: status code and complete response body. */
 export type HttpResponse = { status: number; body: Uint8Array; retryAfterMs?: number }
 
@@ -129,12 +131,20 @@ export function getWithRetry(get: HttpGet, url: string, policy: RetryPolicy): Pr
   return requestWithRetry(get, url, {}, policy)
 }
 
+/** Returns which kind of failure a network call hit: a 429, another non-200 status, a timeout, no network, or anything else. */
+export function netFailure(error: unknown): NetFailure {
+  if (error instanceof HttpStatusError) return error.status === 429 ? 'rate-limit' : 'server'
+  if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) return 'timeout'
+  if (error instanceof TypeError || (error instanceof Error && error.message.includes('net::ERR_'))) {
+    return 'unavailable'
+  }
+  return 'unknown'
+}
+
 /** Returns why a network call failed, as a short phrase for the screen. */
 export function netReason(error: unknown): string {
-  if (error instanceof HttpStatusError) return error.message
-  if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) return '连接超时'
-  if (error instanceof TypeError || (error instanceof Error && error.message.includes('net::ERR_'))) {
-    return '网络不可用'
-  }
+  const failure = netFailure(error)
+  if (failure === 'timeout') return '连接超时'
+  if (failure === 'unavailable') return '网络不可用'
   return error instanceof Error ? error.message : String(error)
 }

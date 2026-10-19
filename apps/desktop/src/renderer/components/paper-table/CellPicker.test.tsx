@@ -55,6 +55,12 @@ async function type(host: HTMLElement, value: string): Promise<void> {
   })
 }
 
+/** Presses `key` in the picker's input. */
+async function keydown(host: HTMLElement, key: string, init: KeyboardEventInit = {}): Promise<void> {
+  const input = host.querySelector<HTMLInputElement>('input.celledit')!
+  await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...init })) })
+}
+
 /** Presses the mouse outside the picker and its popover. */
 async function pressOutside(): Promise<void> {
   await act(async () => { document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })) })
@@ -102,6 +108,20 @@ describe('CellPicker', () => {
     expect(onClose).not.toHaveBeenCalled()
     expect(input.value).toBe('深度')
     expect(input.getAttribute('aria-invalid')).toBe('true')
+  })
+
+  it('输入法组字时的回车与 Esc 归输入法:不新建也不收起;组完字后回车照常新建', async () => {
+    const onCommit = vi.fn(() => true)
+    const onClose = vi.fn()
+    const host = await mount(() => {}, { onCommit, onClose })
+    await type(host, '深度')
+    await keydown(host, 'Enter', { isComposing: true })
+    await keydown(host, 'Escape', { isComposing: true })
+    expect(onCommit).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+
+    await keydown(host, 'Enter')
+    expect(onCommit).toHaveBeenCalledExactlyOnceWith('深度', true)
   })
 
   it('右键点在输入框本身上,不冒泡给行本身的右键菜单', async () => {

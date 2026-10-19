@@ -59,7 +59,7 @@ function ChatRow({ session, on, onOpen, onArchive }: {
   const m = useMessages()
   return (
     <NavRow
-      className="srow chat-row" selected={on} data-chat={session.id} onActivate={onOpen}
+      className="srow chat-row" selected={on} data-chat={session.id} data-dots-row="" onActivate={onOpen}
       label={(
         <>
           <span className="ic">

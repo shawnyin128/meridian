@@ -278,7 +278,8 @@ class CliTests(unittest.TestCase):
         self.assertIn("Entry Boundary", meridian)
         self.assertIn("Framework Check", meridian)
         self.assertIn("python -m meridian framework-check", meridian)
-        self.assertIn("If the user asks to ingest, retrieve, answer from papers", meridian)
+        self.assertNotIn("ingest", meridian)
+        self.assertIn("If the user asks to retrieve, answer from papers", meridian)
         self.assertIn("Do not continue the normal work", meridian)
         self.assertIn("inside this setup skill after the setup issue is resolved", meridian)
         self.assertIn("Report Paper Wiki/plugin state", meridian)
@@ -321,6 +322,7 @@ class CliTests(unittest.TestCase):
         self.assertIn("record_user_level_principle", lab)
         self.assertIn("ask_whether_to_record", lab)
         self.assertIn("Do not use for code implementation", lab)
+        self.assertNotIn("publishing to Paper Wiki", lab)
 
     def test_meridian_plugin_skill_copies_match_repo_skills(self) -> None:
         for skill_name in PRODUCT_SKILL_NAMES:
