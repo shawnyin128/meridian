@@ -100,6 +100,12 @@ describe('ProjectPlan', () => {
     expect(output).toContain('已归档')
   })
 
+  it('已归档分组和想法页的一样,标题后带条数', () => {
+    const count = (html: string) => /collapsible-group-title">已归档<\/span><span class="count-badge[^"]*">(\d+)</.exec(html)?.[1]
+    expect(count(renderPlan('task', { tasks: [task, doneTask] }))).toBe('1')
+    expect(count(renderPlan('ms', { milestones: [milestone, doneMilestone] }))).toBe('1')
+  })
+
   it('flashId 指向已归档任务时,归档分组自动展开显示它', () => {
     const output = renderPlan('task', { tasks: [task, doneTask], flashId: doneTask.id })
     expect(output).toContain('已完成的任务')

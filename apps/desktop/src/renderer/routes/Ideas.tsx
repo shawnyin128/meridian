@@ -8,6 +8,7 @@ import { SortMenu } from '../components/SortMenu.js'
 import { FormInput, FormTextarea } from '../components/FormControls.js'
 import { ChoicePicker, DotsMenu } from '../components/FieldPickers.js'
 import { EditActions } from '../components/EditActions.js'
+import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { PanelClose } from '../components/PanelClose.js'
 import { DetailPanel } from '../components/DetailPanel.js'
@@ -251,6 +252,7 @@ export function Ideas() {
   const [rows, setRows] = useState<ResearchIdea[]>([])
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [archiveOpen, setArchiveOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const closeDetail = useCallback(() => setSelectedId(null), [])
 
@@ -333,10 +335,13 @@ export function Ideas() {
               </EmptyState>
             ) : active.map(card)}
             {archived.length === 0 ? null : (
-              <>
-                <SectionHeading>{m.ideas.archivedHeading(archived.length)}</SectionHeading>
+              <CollapsibleGroup
+                variant="quiet" title={m.common.archived} count={archived.length}
+                open={archiveOpen || archived.some((idea) => idea.id === selectedId)}
+                onToggle={() => setArchiveOpen((open) => !open)}
+              >
                 {archived.map(card)}
-              </>
+              </CollapsibleGroup>
             )}
           </main>
 

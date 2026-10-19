@@ -489,7 +489,7 @@ export function ProjectPlan({
                 ? null
                 : (
                   <CollapsibleGroup
-                    variant="quiet" title={m.common.archived}
+                    variant="quiet" title={m.common.archived} count={archivedTasks.length}
                     open={taskArchiveShown} onToggle={() => setTaskArchiveOpen((open) => !open)}
                   >
                     {archivedTasks.map((task) => (
@@ -528,7 +528,7 @@ export function ProjectPlan({
                 ? null
                 : (
                   <CollapsibleGroup
-                    variant="quiet" title={m.common.archived}
+                    variant="quiet" title={m.common.archived} count={archivedMilestones.length}
                     open={msArchiveShown} onToggle={() => setMsArchiveOpen((open) => !open)}
                   >
                     {archivedMilestones.map((milestone) => (

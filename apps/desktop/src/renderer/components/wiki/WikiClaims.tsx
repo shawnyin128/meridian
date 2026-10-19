@@ -9,6 +9,7 @@ import { claimId } from '../../lib/slug.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { JumpAnchor } from '../../shell/AppShell.js'
 import { AddAction } from '../AddAction.js'
+import { CardTray } from '../CardTray.js'
 import { MenuItem } from '../ActionMenu.js'
 import { DiffLines } from '../DiffLines.js'
 import { EmptyState } from '../EmptyState.js'
@@ -123,7 +124,6 @@ export function WikiClaims({ page, pending, links, onApply }: {
   const f = c.form
   const fmt = useFormat()
   const [form, setForm] = useState<Form | null>(null)
-  const [history, setHistory] = useState<ReadonlySet<string>>(new Set())
   const [text, setText] = useState('')
   const [note, setNote] = useState('')
   const [basis, setBasis] = useState<'personal' | 'conclusion'>('personal')
@@ -219,11 +219,6 @@ export function WikiClaims({ page, pending, links, onApply }: {
   }
 
   const ready = submission()
-  const toggleHistory = (id: string) => setHistory((shown) => {
-    const next = new Set(shown)
-    if (!next.delete(id)) next.add(id)
-    return next
-  })
 
   return (
     <>
@@ -272,21 +267,13 @@ export function WikiClaims({ page, pending, links, onApply }: {
                 {claim.history.length === 0
                   ? null
                   : (
-                    <>
-                      <button
-                        type="button" className="wkclaim-history" aria-expanded={history.has(claim.id)}
-                        onClick={() => toggleHistory(claim.id)}
-                      >{c.history(claim.history.length)}</button>
-                      {history.has(claim.id)
-                        ? (
-                          <DiffLines lines={[
-                            ...claim.history.map((h) => `- v${h.version} · ${fmt.date(h.since)} · ${h.text}`),
-                            `+ v${claim.version} · ${fmt.date(claim.since)} · ${claim.text}`,
-                          ]}
-                          />
-                        )
-                        : null}
-                    </>
+                    <CardTray variant="row" className="wkclaim-history" summary={c.history(claim.history.length)}>
+                      <DiffLines lines={[
+                        ...claim.history.map((h) => `- v${h.version} · ${fmt.date(h.since)} · ${h.text}`),
+                        `+ v${claim.version} · ${fmt.date(claim.since)} · ${claim.text}`,
+                      ]}
+                      />
+                    </CardTray>
                   )}
               </StructuredRow>
             ))}

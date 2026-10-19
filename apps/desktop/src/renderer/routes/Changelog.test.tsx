@@ -61,4 +61,19 @@ describe('最近变动的来源标签', () => {
     const labels = [...host.querySelectorAll('.crow')].map((row) => row.querySelector('.ct .source-label')?.textContent ?? null)
     expect(labels).toEqual([null, 'agent', 'agent · 笔记', 'agent · 实验'])
   })
+
+  it('一条变动用共享的展开控件展开它的差异:带箭头,按钮以这条变动命名,点一下展开、再点收起', async () => {
+    api.entries = [{ ...entry('c1', '项目「draft 效率」· 改了字段', '我'), diff: ['- 旧', '+ 新'] }]
+    await act(async () => root.render(<MessagesProvider><Changelog /></MessagesProvider>))
+    const toggle = host.querySelector<HTMLButtonElement>('.crow .card-tray-toggle')!
+    expect(toggle.querySelector('.card-tray-chevron svg')).not.toBeNull()
+    expect(toggle.getAttribute('aria-label')).toBeNull()
+    expect(toggle.textContent).toContain('项目「draft 效率」· 改了字段')
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    act(() => toggle.click())
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
+    expect(host.querySelector('.crow .card-tray')!.classList.contains('is-open')).toBe(true)
+    act(() => toggle.click())
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+  })
 })

@@ -7,6 +7,7 @@ import { useMessages } from '../messages/useMessages.js'
 import { useBanner, useToast, useToday, useVaultRevision } from '../shell/AppShell.js'
 import { useFormat } from '../lib/format.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
+import { CardTray } from '../components/CardTray.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { DayHeading } from '../components/DayHeading.js'
 import { DiffLines } from '../components/DiffLines.js'
@@ -91,7 +92,6 @@ export function Changelog() {
   const m = useMessages()
   const [entries, setEntries] = useState<ChangeEntry[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [open, setOpen] = useState<ReadonlySet<string>>(new Set())
 
   const today = useToday()
   const fmt = useFormat()
@@ -104,12 +104,6 @@ export function Changelog() {
   useEffect(() => {
     void changelog.list().then(setEntries).catch(reportError)
   }, [revision, reportError])
-
-  const toggle = (id: string) => setOpen((shown) => {
-    const next = new Set(shown)
-    if (!next.delete(id)) next.add(id)
-    return next
-  })
 
   // An undo is often rejected (the entity changed again after this change), so the reason shows as a
   // toast instead of becoming a page-wide error.
@@ -143,32 +137,35 @@ export function Changelog() {
   const unread = fresh.length
 
   const row = (c: ChangeEntry) => (
-    <StructuredRow
-      composite className={open.has(c.id) ? 'crow open' : 'crow'} key={c.id} onActivate={() => toggle(c.id)}
-    >
-      <div className="chead">
-        {/* Its click bubbles to the row, which owns the toggle; this button is the keyboard path to it. */}
-        <button className="cbody" type="button" aria-expanded={open.has(c.id)}>
-          <span className="ct"><PaperText text={c.title} /><ChangeSource source={c.source} /></span>
-          <span className="cm">{[metaBelowHeading(c.meta), hint(c, m.changelog.state)].filter((s) => s !== '').join(SEP)}</span>
-        </button>
-        <div className="cact">
-          <DeleteChangeButton entry={c} onDelete={deleteChange} />
-          {c.archived ? null : (
-            <button
-              className="btn ghost sm carch"
-              onClick={(e) => { e.stopPropagation(); archive(c.id) }}
-            >{m.common.archive}</button>
-          )}
-          {c.undoable ? (
-            <button
-              className="btn ghost sm cundo"
-              onClick={(e) => { e.stopPropagation(); undo(c.id) }}
-            >{m.common.undo}</button>
-          ) : null}
-        </div>
-      </div>
-      <DiffLines lines={c.diff} />
+    <StructuredRow className="crow" key={c.id}>
+      <CardTray
+        variant="row"
+        summary={(
+          <>
+            <span className="ct"><PaperText text={c.title} /><ChangeSource source={c.source} /></span>
+            <span className="cm">{[metaBelowHeading(c.meta), hint(c, m.changelog.state)].filter((s) => s !== '').join(SEP)}</span>
+          </>
+        )}
+        action={(
+          <div className="cact">
+            <DeleteChangeButton entry={c} onDelete={deleteChange} />
+            {c.archived ? null : (
+              <button
+                className="btn ghost sm carch"
+                onClick={(e) => { e.stopPropagation(); archive(c.id) }}
+              >{m.common.archive}</button>
+            )}
+            {c.undoable ? (
+              <button
+                className="btn ghost sm cundo"
+                onClick={(e) => { e.stopPropagation(); undo(c.id) }}
+              >{m.common.undo}</button>
+            ) : null}
+          </div>
+        )}
+      >
+        <DiffLines lines={c.diff} />
+      </CardTray>
     </StructuredRow>
   )
 

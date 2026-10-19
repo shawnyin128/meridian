@@ -100,7 +100,6 @@ describe('Ideas', () => {
 
     expect(host.textContent).toContain('用可学习性信号动态分配 draft model 的蒸馏预算')
     expect(host.textContent).toContain('进行中 · 2')
-    expect(host.textContent).toContain('已归档 · 1')
 
     const linked = host.querySelector('[data-idea="idea-linked"]')!
     expect(linked.classList.contains('research-object-card')).toBe(true)
@@ -178,6 +177,16 @@ describe('Ideas', () => {
     })
     expect(host.querySelector('.idea-detail-slot')?.getAttribute('data-panel-state')).toBe('closed')
     expect(host.querySelector('.idea-detail-panel')).toBeNull()
+  })
+
+  it('已归档的想法收进一个带条数的折叠分组,和项目计划里的已归档一样默认收起', async () => {
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    const group = host.querySelector<HTMLElement>('.collapsible-group.collapsible-group--quiet')!
+    expect(group.querySelector('.collapsible-group-title')!.textContent).toBe('已归档')
+    expect(group.querySelector('.collapsible-group-count')!.textContent).toBe('1')
+    expect(host.querySelector('[data-idea="idea-completed"]')).toBeNull()
+    await act(async () => { group.querySelector<HTMLButtonElement>('.collapsible-group-toggle')!.click() })
+    expect(group.querySelector('[data-idea="idea-completed"]')).not.toBeNull()
   })
 
   it('想法详情里每一节的操作放在那一节小标题的右端', async () => {

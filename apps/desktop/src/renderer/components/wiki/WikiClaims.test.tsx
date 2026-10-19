@@ -123,9 +123,12 @@ describe('WikiClaims', () => {
     expect(host.querySelector('[data-claim="plain"]')!.classList.contains('wkclaim--conflict')).toBe(false)
     expect(knee.querySelector('.wkclaim-conflict')!.textContent).toBe('冲突批量场景仍净赚批量下拐点后移处理冲突')
     expect(host.querySelector('[data-claim="plain"] .wkclaim-evidence')!.textContent).toBe('实验draft 效率exp2批量实测')
-    expect(knee.querySelector('.diff')).toBeNull()
-    act(() => knee.querySelector<HTMLButtonElement>('.wkclaim-history')!.click())
-    expect([...knee.querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual(['- v1 · 5月2日 · 树宽收益递减', '+ v2 · 6月9日 · 拐点在宽度 6'])
+    const history = knee.querySelector<HTMLButtonElement>('.wkclaim-history .card-tray-toggle')!
+    expect(history.querySelector('.card-tray-chevron svg')).not.toBeNull()
+    expect(history.getAttribute('aria-expanded')).toBe('false')
+    act(() => history.click())
+    expect(history.getAttribute('aria-expanded')).toBe('true')
+    expect([...knee.querySelectorAll('.card-tray-reveal .diff div')].map((d) => d.textContent)).toEqual(['- v1 · 5月2日 · 树宽收益递减', '+ v2 · 6月9日 · 拐点在宽度 6'])
   })
 
   it('整条结论是它那个 … 所属的行:悬停或聚焦结论的任何一处都露出 …', () => {
