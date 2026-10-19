@@ -13,7 +13,9 @@ import type { Catalog } from '../messages/catalog.js'
 import { ChatMessageView, plain } from '../components/chat/ChatMessage.js'
 import { FOCUS_KEY } from '../../shared/project-signals.js'
 import { PickerPopover, PickOption } from '../components/PickerPopover.js'
+import { EmptyState } from '../components/EmptyState.js'
 import { FormTextarea } from '../components/FormControls.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import {
   PageBody, PageError, PageFooter, PageHeader, PageShell, PageTitle,
 } from '../components/PageShell.js'
@@ -98,7 +100,7 @@ export function Chat() {
   const { jump } = useJump()
   const { revision, bump } = useVaultRevision()
   const notice = useNotice()
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messages, setMessages] = useState<ChatMessage[] | null>(null)
   const drafts = useDrafts()
   // The `@` picker, like the draft, belongs to the chat it was opened in.
   const [mentionIn, setMentionIn] = useState<string | null>(null)
@@ -123,6 +125,7 @@ export function Chat() {
     void wiki.cards().then(setPages).catch(reportError)
   }, [revision, reportError])
 
+  useEffect(() => { setMessages(null) }, [id])
   useEffect(() => {
     if (id === null) return
     void chat.messages(id).then(setMessages).catch(reportError)
@@ -207,7 +210,7 @@ export function Chat() {
       bump()
     }).catch((e: Error) => notice.refusal(e.message))
   }
-  const hasDiscussion = messages.some((message) => message.role === 'you')
+  const hasDiscussion = (messages ?? []).some((message) => message.role === 'you')
 
   // An archived chat is not listed in the sidebar. Once opened it looks like any other chat; only
   // the breadcrumb marks it as archived.
@@ -225,9 +228,13 @@ export function Chat() {
           <PageError error={error} />
 
           <div className="msgs" ref={stream}>
-            {messages.map((msg) => (
-              <ChatMessageView key={msg.id} message={msg} onAct={() => act(msg)} />
-            ))}
+            {messages === null
+              ? (id !== null && error === null ? <div className="mwrap"><LoadingPlaceholder shape="lines" /></div> : null)
+              : messages.length === 0
+                ? <div className="mwrap"><EmptyState variant="page">{m.chat.empty}</EmptyState></div>
+                : messages.map((msg) => (
+                  <ChatMessageView key={msg.id} message={msg} onAct={() => act(msg)} />
+                ))}
           </div>
         </div>
       </PageBody>

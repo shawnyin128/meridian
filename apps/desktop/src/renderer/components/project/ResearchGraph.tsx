@@ -196,7 +196,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
   useEffect(() => setView({ x: 0, y: 0, zoom: 1 }), [graphKey])
 
   if (graph.nodes.length === 0) {
-    return <div className="lm rgempty">{m.project.graph.empty}</div>
+    return <EmptyState variant="section">{m.project.graph.empty}</EmptyState>
   }
   const nodes = layout.nodes
   const byId = new Map(nodes.map((node) => [node.id, node]))
@@ -538,7 +538,7 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
 
       <div className="node-markdown">
         {document.body === ''
-          ? <p className="lm">{m.project.graph.noDocument}</p>
+          ? <EmptyState variant="section">{m.project.graph.noDocument}</EmptyState>
           : <div className="md"><Markdown src={document.body} titles={{}} /></div>}
       </div>
 

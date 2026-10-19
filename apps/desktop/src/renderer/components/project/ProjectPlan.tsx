@@ -302,7 +302,7 @@ export function ProjectTaskPanel({
       <MarkdownBox
         className="task-note" text={task.note ?? ''} editing={editing} box={box}
         onCancel={() => setEditing(false)} onSave={save}
-        empty={<span className="lm">{m.project.plan.noteEmpty}</span>}
+        empty={<EmptyState variant="section">{m.project.plan.noteEmpty}</EmptyState>}
       />
     </>
   )
@@ -506,7 +506,7 @@ export function ProjectPlan({
                 />
               ))}
               {project.tasks.length === 0 && creating?.kind !== 'task'
-                ? <div className="lm">{m.project.plan.noTasks}</div>
+                ? <EmptyState variant="section">{m.project.plan.noTasks}</EmptyState>
                 : null}
               {archivedTasks.length === 0
                 ? null
@@ -546,6 +546,9 @@ export function ProjectPlan({
                     onCancel={onCancelCreate} onSave={onCreateMilestone}
                   />
                 )
+                : null}
+              {project.milestones.length === 0 && creating?.kind !== 'ms'
+                ? <EmptyState variant="section">{m.project.plan.noMilestones}</EmptyState>
                 : null}
               {archivedMilestones.length === 0
                 ? null

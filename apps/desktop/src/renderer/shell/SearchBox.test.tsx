@@ -16,7 +16,7 @@ const HITS: SearchHit[] = [
   { kind: 'chat', title: '对话：草稿', meta: '1 条', target: 'c1' },
 ]
 
-vi.mock('../ipc.js', () => ({ search: { query: () => Promise.resolve(HITS) } }))
+vi.mock('../ipc.js', () => ({ search: { query: (q: string) => Promise.resolve(q === '无此词' ? [] : HITS) } }))
 
 const { SearchBox } = await import('./SearchBox.js')
 
@@ -52,6 +52,15 @@ describe('SearchBox', () => {
     if (root !== null) act(() => root!.unmount())
     root = null
     vi.restoreAllMocks()
+  })
+
+  it('搜不到时面板仍开着,写没有找到;清空搜索词后才收起', async () => {
+    await type('无此词')
+    const panel = document.querySelector<HTMLElement>('#sRes')
+    expect(panel?.querySelector('.empty-state')?.textContent).toBe('没有找到匹配的内容')
+    expect(panel?.querySelectorAll('[role="option"], .mi')).toHaveLength(0)
+    await type('')
+    expect(document.querySelector('#sRes')).toBeNull()
   })
 
   it('结果面板按整个搜索框对齐,不按框里那段输入', async () => {

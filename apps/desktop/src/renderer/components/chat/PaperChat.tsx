@@ -129,7 +129,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
         {messages === null
           ? (error === null ? <div className="mwrap"><LoadingPlaceholder shape="lines" /></div> : null)
           : messages.length === 0 && error === null
-          ? <div className="mwrap"><EmptyState variant="page">{m.chat.paperEmpty}</EmptyState></div>
+          ? <div className="mwrap"><EmptyState variant="page">{m.chat.empty}</EmptyState></div>
           : messages.map((message) => (
             <ChatMessageView key={message.id} message={message} onAct={() => act(message)} />
           ))}

@@ -35,7 +35,7 @@ export const papers = {
     covered: (total: number) => `/ ${total} papers covered`,
     overlapping: 'papers in multiple groups',
     limit: (shown: number, total: number) => `For a responsive preview, this map analyzes the latest ${shown} of ${total} papers.`,
-    empty: 'There are not enough repeated signals to form a group yet. Import more papers or link them to projects, then try again.',
+    empty: 'No papers to group yet',
     groupListAria: 'Automatic research groups',
     kind: { signal: 'Topic or method signal', project: 'Project connection', phrase: 'Shared title phrase' },
     paperCount: (count: number) => `${count} ${pluralEn(count, { one: 'paper', other: 'papers' })}`,
@@ -153,7 +153,7 @@ export const papers = {
     conclusions: 'Conclusions',
     remarkAndNotes: 'Thoughts and notes',
     viewAll: (count: number) => `${count} ${pluralEn(count, { one: 'entry', other: 'entries' })} · View all in the reader`,
-    empty: 'No notes yet. Highlight text while reading to add one.',
+    empty: 'No thoughts or notes yet',
   },
   parse: {
     addedFixable: 'Added to library · some metadata may need review',
@@ -167,7 +167,7 @@ export const papers = {
   understanding: {
     ariaLabel: 'Your notes',
     heading: 'Your notes',
-    empty: 'No notes yet. Highlights, page notes, and overall thoughts will appear here.',
+    empty: 'No thoughts or notes yet',
     goRead: 'Open reader',
     remarkLabel: 'Thoughts',
     notesLabel: (n: number) => `Notes · ${n}`,

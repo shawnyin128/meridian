@@ -7,7 +7,7 @@ export const ideas = {
   archivedHeading: (n: number) => `Archived · ${n}`,
   sort: 'Sort',
   sortUpdated: 'By updated',
-  empty: 'No active ideas yet. Save a promising direction while reading a paper or chatting with AI.',
+  empty: 'No active ideas yet',
   sourceKind: { chat: 'Chat', paperReading: 'Paper notes' },
   link: {
     none: 'No linked project',

@@ -200,9 +200,9 @@ test('首页论文卡进论文页;个人理解与 Wiki 内容分层,没内化的
   expect(paper.body).toBe('')
   await expect(shown(win).locator('.paper-understanding')).toBeVisible()
   await expect(shown(win).locator('.wkmain .section-heading')).toHaveText(['个人理解', 'Wiki 内化内容编辑'])
-  await expect(shown(win).locator('.wkmain .md .empty-state')).toHaveText('还没有生成 Wiki 内化内容。')
+  await expect(shown(win).locator('.wkmain .md .empty-state')).toHaveText('还没有 Wiki 内化内容')
   await expect(shown(win).locator('.wkmain .section-heading > .btn:not(.add-action)', { hasText: '编辑' })).toHaveCount(1)
-  await expect(shown(win).locator('.wkside .empty-state')).toHaveText('还没有归到任何一页下。')
+  await expect(shown(win).locator('.wkside .empty-state')).toHaveText('还没有归到任何一页')
   // "View in the paper list" goes to Papers with the title in the filter box. In the fixture, QuaRot and
   // SpinQuant each have a same-named paper page copied from an old vault, so the filtered row count can
   // only be asserted non-zero.

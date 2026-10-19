@@ -75,6 +75,8 @@
  */
 /* Compounded with .pickhits so this wider, unclipped shape and lower stacking layer win over the shared shell's, regardless of CSS load order. */
 .pickhits.sres{width:calc(var(--radix-popover-trigger-width) + 270px);max-height:none;overflow:hidden;z-index:40}
+/* A search with no hits keeps the panel open; its empty state sits on the rows' inline padding. */
+.pickhits.sres .sres-empty{padding:0 var(--row-menu-pad)}
 
 .sb-h{display:flex;align-items:center;gap:4px;font-size:var(--fs-cap);font-weight:600;color:var(--ter);text-transform:uppercase;letter-spacing:.04em;padding:0 8px;margin:12px 0 4px}
 .sb-h.chats-h{display:flex;align-items:center}

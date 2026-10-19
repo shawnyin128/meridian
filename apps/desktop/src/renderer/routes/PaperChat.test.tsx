@@ -215,7 +215,7 @@ describe('PaperChat', () => {
   it('空对话的提示和输入框一样留在对话栏的左右边距里', async () => {
     const host = await mountChat()
     const hint = host.querySelector('.msgs .empty-state')!
-    expect(hint.textContent).toContain('围绕当前论文提问')
+    expect(hint.textContent).toBe('还没有对话')
     expect(hint.parentElement!.className).toBe(host.querySelector('.composer > div')!.className)
   })
 

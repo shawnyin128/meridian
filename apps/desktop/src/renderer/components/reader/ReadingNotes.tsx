@@ -122,10 +122,12 @@ export function ReadingNotes({
             onDelete={() => onMutate({ kind: 'note.delete', id: note.id })}
           />
         ))}
-        {(mode === 'notes' ? reading.notes.length === 0 : mode === 'highlights'
-          ? reading.highlights.length === 0 : reading.highlights.length === 0 && reading.notes.length === 0)
-          ? <EmptyState variant="section">{m.reader.emptyReading}</EmptyState>
-          : null}
+        {mode === 'notes'
+          ? (reading.notes.length === 0 ? <EmptyState variant="section">{m.reader.emptyNotes}</EmptyState> : null)
+          : mode === 'highlights'
+            ? (reading.highlights.length === 0 ? <EmptyState variant="section">{m.reader.emptyHighlights}</EmptyState> : null)
+            : (reading.highlights.length === 0 && reading.notes.length === 0
+              ? <EmptyState variant="section">{m.reader.emptyReading}</EmptyState> : null)}
       </div>
     </aside>
   )

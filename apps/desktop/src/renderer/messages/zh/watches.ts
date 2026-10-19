@@ -1,7 +1,7 @@
 /** Watch settings (topics and authors) screen copy. */
 export const watches = {
   add: (kind: string) => `添加${kind}`,
-  empty: (kind: string) => `还没有${kind}关注。`,
+  empty: (kind: string) => `还没有${kind}关注`,
   identityUnknown: '尚未确认作者身份',
   identityUnconfirmed: '未确认',
   paused: '已暂停',
@@ -14,7 +14,7 @@ export const watches = {
   noAffiliation: '机构信息未收录',
   reconfirm: '重新确认',
   searching: '正在查找同名作者…',
-  noMatches: '没有找到可确认的作者。',
+  noMatches: '没有找到可确认的作者',
   authorSearchFailed: '搜索作者失败',
   candidateInfo: (papers: number, citations: number, hIndex: number) =>
     `${papers} 篇论文 · ${citations} 次引用 · h-index ${hIndex}`,
@@ -32,8 +32,8 @@ export const watches = {
   suggestAction: '查找建议',
   suggesting: '查找中…',
   suggestionFailed: '生成关注建议失败',
-  allAdded: '建议已全部添加。',
-  noneSuggested: '没有新的主题或作者建议，试试更具体的方向。',
+  allAdded: '建议已全部添加',
+  noneSuggested: '没有找到新的主题或作者',
   suggestionBasis: (n: number) => `基于 ${n} 篇相关论文`,
   suggestionStale: '数据源暂时连不上，显示的是上次的建议',
   topicSuggestions: '值得关注的主题',

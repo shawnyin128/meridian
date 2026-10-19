@@ -61,5 +61,6 @@ export const shell = {
     placeholder: '全局搜索',
     clear: '清除全局搜索',
     results: '搜索结果',
+    noHits: '没有找到匹配的内容',
   },
 } satisfies Record<string, unknown>

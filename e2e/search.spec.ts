@@ -104,7 +104,7 @@ test('从最近变动屏搜:命中多于上限时只出 SEARCH_LIMIT 条,点论�
   await expect(shown(win, '.ptable tbody tr td.pt-title')).toHaveText(title)
 })
 
-test('只命中某几类时就只出那几类,清空与 Escape 都收起面板', async ({ win }) => {
+test('只命中某几类时就只出那几类,搜不到时写没有找到,清空与 Escape 都收起面板', async ({ win }) => {
   await search(win, '对话：')
   await expect(rows(win)).toHaveText(['对话：摊薄的前提是共享前缀吗', '对话：宽树在我们集群上还成立吗'])
 
@@ -116,9 +116,10 @@ test('只命中某几类时就只出那几类,清空与 Escape 都收起面板',
   await expect(win.locator('#sRes')).toHaveCount(0)
   await expect(win.locator('#sSearch')).toHaveValue('Distillation-based')
 
-  // A query with no hits does not open the panel, and neither does clearing it.
+  // A query with no hits keeps the panel open with an empty state; clearing the query closes it.
   await win.locator('#sSearch').fill('这几个字库里没有')
-  await expect(win.locator('#sRes')).toHaveCount(0)
+  await expect(win.locator('#sRes .empty-state')).toHaveText('没有找到匹配的内容')
+  await expect(win.locator('#sRes .rrow')).toHaveCount(0)
   await win.locator('#sSearch').fill('')
   await expect(win.locator('#sRes')).toHaveCount(0)
 })

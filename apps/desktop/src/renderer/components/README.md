@@ -63,8 +63,10 @@ Current shared contracts:
 - `LoadingPlaceholder`: the one loading state, grey blocks in the shape of the result (`rows`, `cards`,
   `lines`, `sheet`). Data that has not arrived is `null`, and a screen shows this placeholder for it, never
   an empty state and never a loading sentence.
-- `EmptyState`: the two ways a list says it is empty. `page` is a centred sentence with an optional icon
-  for a whole screen; `section` is one line of small grey text under a section heading.
+- `EmptyState`: the two ways a list says it is empty. `page` is a centred line with an optional icon for a
+  whole screen; `section` is one line of small grey text under a section heading, flush with it and one list
+  row high, so tabs that share a slot keep one height. The words follow one pattern: 还没有… (No … yet), or
+  没有找到… (No … found) for a search, without a full stop.
 - `Tag`: every tag, chip and status pill. `tone` picks the fill and text colour (`neutral`, `accent`, `good`,
   `warn`, `bad`, `info`, `paper`, `wiki`, and `ghost` for the slot that adds a tag to a row) and `shape` the
   box (`label` for a status, kind, priority or source word; `chip` for a name, topic, date or value).

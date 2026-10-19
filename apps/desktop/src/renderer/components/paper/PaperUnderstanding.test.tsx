@@ -42,7 +42,7 @@ describe('PaperUnderstanding', () => {
     const html = renderToStaticMarkup(
       <MessagesProvider><PaperUnderstanding reading={empty} onRead={() => undefined} /></MessagesProvider>,
     )
-    expect(html).toContain('还没有随笔或笔记')
+    expect(html).toContain('还没有随笔和笔记')
     expect(html).toContain('去阅读论文')
   })
 })

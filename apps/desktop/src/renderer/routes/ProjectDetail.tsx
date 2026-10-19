@@ -779,7 +779,9 @@ export function ProjectDetail({
             <div className="record-view">
             <PageError error={project.workspace?.issue} variant="section" />
             {record === 'tl'
-              ? (
+              ? (sortedRecords.length === 0
+                ? <EmptyState variant="section">{m.project.graph.noRecords}</EmptyState>
+                : (
                 <StructuredList className="evlist" variant="embedded">
                   {sortedRecords.map((ev, index) => {
                     const graphNode = ev.node === undefined
@@ -798,7 +800,7 @@ export function ProjectDetail({
                     )
                   })}
                 </StructuredList>
-              )
+                ))
               : record === 'concl'
               ? (conclusions.length === 0
                 ? <EmptyState variant="section">{m.project.conclusions.empty}</EmptyState>

@@ -3,7 +3,7 @@ import { later as zh } from '../zh/later.js'
 /** English counterpart of `zh/later`. `satisfies` makes a missing, extra or re-parameterised key a compile error. */
 export const later = {
   title: (count: number) => `Read Later · ${count}`,
-  empty: 'Nothing saved for later.',
+  empty: 'No papers saved for later yet',
   groupBy: 'Group by',
   modes: { time: 'Date added', src: 'Source' },
   actions: {

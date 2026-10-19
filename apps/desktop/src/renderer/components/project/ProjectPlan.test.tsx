@@ -52,6 +52,16 @@ function renderPlan(tab: 'task' | 'ms', options: {
 describe('ProjectPlan', () => {
   beforeEach(() => { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh') })
 
+  it('任务和里程碑共用一个位置，都空着时是同一种分节空态', () => {
+    const empty = (tab: 'task' | 'ms') => {
+      const host = document.createElement('div')
+      host.innerHTML = renderPlan(tab, { tasks: [], milestones: [] })
+      return [...host.querySelectorAll('.empty-state')].map((node) => [node.className, node.textContent])
+    }
+    expect(empty('task')).toEqual([['empty-state empty-state--section', '还没有任务']])
+    expect(empty('ms')).toEqual([['empty-state empty-state--section', '还没有里程碑']])
+  })
+
   it('任务模式把日期和时间保留为两个独立编辑入口', () => {
     const output = renderPlan('task')
     expect(output).toContain('structured-list--embedded')

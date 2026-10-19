@@ -402,7 +402,7 @@ export function WatchSettings() {
                   </div>
                 )
                 : authorMatches.length === 0
-                  ? <div className="author-search-note">{m.watches.noMatches}</div>
+                  ? <EmptyState variant="section">{m.watches.noMatches}</EmptyState>
                   : (
                     <div className="author-matches">
                       {authorMatches.map((candidate) => (
@@ -495,7 +495,7 @@ export function WatchSettings() {
         {suggestions === null || suggesting ? null : (
           <div className="watch-suggestion-results">
             {suggestions.topics.length + suggestions.authors.length === 0
-              ? <div className="ph2">{hadSuggestions ? m.watches.allAdded : m.watches.noneSuggested}</div>
+              ? <EmptyState variant="section">{hadSuggestions ? m.watches.allAdded : m.watches.noneSuggested}</EmptyState>
               : (
                 <>
                   <div className="ph2">

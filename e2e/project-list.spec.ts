@@ -255,7 +255,7 @@ test('没有图数据的项目出的是一行占位,不是空画布加图例', a
   expect((await getProject(win, 'sched')).graphNodes).toBe(0)
 
   await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '科研图' }).click()
-  await expect(win.locator('.rgempty')).toHaveText('暂无科研图')
+  await expect(win.locator('.screenslot:not([hidden]) .record-view .empty-state--section')).toHaveText('还没有科研图')
   await expect(win.locator('.rgraph')).toHaveCount(0)
   await expect(win.locator('.glegend')).toHaveCount(0)
 

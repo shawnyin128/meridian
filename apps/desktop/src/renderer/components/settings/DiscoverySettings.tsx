@@ -4,6 +4,7 @@ import { discovery } from '../../ipc.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { useNotice, useVaultRevision } from '../../shell/AppShell.js'
+import { EmptyState } from '../EmptyState.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { SectionHeading } from '../PageShell.js'
 import { PaperText } from '../paper/PaperText.js'
@@ -69,7 +70,7 @@ export function DiscoverySettings() {
       {error === null ? null : <div className="err">{error}</div>}
       <div className="direction-panel">
         {profiles === null && error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null}
-        {profiles?.length === 0 ? <p className="direction-empty">{m.settings.discovery.noDirections}</p> : null}
+        {profiles?.length === 0 ? <EmptyState variant="section">{m.settings.discovery.noDirections}</EmptyState> : null}
         {(profiles ?? []).map((profile) => (
           <section className="direction-project" key={profile.id}>
             <header>
@@ -82,7 +83,7 @@ export function DiscoverySettings() {
                 ? m.settings.discovery.refreshing : m.settings.discovery.refreshProject}</button>
             </header>
             {profile.intents.length === 0 ? (
-              <p className="direction-empty">{m.settings.discovery.needsArxiv}</p>
+              <EmptyState variant="section">{m.settings.discovery.needsArxiv}</EmptyState>
             ) : profile.intents.map((intent) => (
               <div className={`direction-row${intent.enabled ? '' : ' disabled'}`} key={intent.id}>
                 <div className="direction-main">

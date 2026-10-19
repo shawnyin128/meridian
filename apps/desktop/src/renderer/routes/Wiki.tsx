@@ -146,7 +146,7 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
   const m = useMessages()
   if (adding === undefined) {
     if (agg.columns.length === 0 && agg.rows.length === 0) {
-      return <p className="lm">{m.wiki.noDirectPapers}</p>
+      return <EmptyState variant="section">{m.wiki.noDirectPapers}</EmptyState>
     }
     if (agg.rows.length === 0) return <EmptyState variant="section">{m.wiki.noPapers}</EmptyState>
   }

@@ -13,7 +13,9 @@ export const reader = {
   page: {
     at: (n: number) => `第 ${n} 页`,
   },
-  emptyReading: '选中文字可以高亮，也可以直接记录当前页的想法。',
+  emptyReading: '还没有高亮和笔记',
+  emptyHighlights: '还没有高亮',
+  emptyNotes: '还没有笔记',
   notes: {
     ariaLabel: '阅读笔记',
     heading: (count: number) => `阅读笔记 · ${count}`,

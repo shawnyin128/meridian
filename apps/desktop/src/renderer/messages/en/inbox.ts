@@ -21,9 +21,9 @@ export const inbox = {
   discoverySummary: (projects: number, intents: number) =>
     `${projects} ${pluralEn(projects, { one: 'project', other: 'projects' })} · ${intents} active research ${pluralEn(intents, { one: 'direction', other: 'directions' })}`,
   empty: {
-    discoveryNone: 'No new discoveries yet.',
-    discoveryNoSeeds: 'Link an arXiv paper to a project to get recommendations.',
-    watch: 'No new papers from your watches.',
+    discoveryNone: 'No new discoveries yet',
+    discoveryNoSeeds: 'No project papers with an arXiv ID yet',
+    watch: 'No new papers yet',
   },
   dismissAll: 'Dismiss all',
   actions: {

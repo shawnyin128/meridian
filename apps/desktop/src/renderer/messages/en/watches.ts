@@ -4,7 +4,7 @@ import { watches as zh } from '../zh/watches.js'
 /** English counterpart of `zh/watches`. `satisfies` makes a missing, extra or re-parameterised key a compile error. */
 export const watches = {
   add: (kind: string) => `Add ${kind.charAt(0).toLowerCase()}${kind.slice(1)}`,
-  empty: (kind: string) => `No ${kind.charAt(0).toLowerCase()}${kind.slice(1)} added yet.`,
+  empty: (kind: string) => `No ${kind.charAt(0).toLowerCase()}${kind.slice(1)} added yet`,
   identityUnknown: 'Author not verified',
   identityUnconfirmed: 'Unconfirmed',
   paused: 'Paused',
@@ -17,7 +17,7 @@ export const watches = {
   noAffiliation: 'No affiliation on record',
   reconfirm: 'Verify again',
   searching: 'Looking for authors with this name…',
-  noMatches: 'No confirmable authors found.',
+  noMatches: 'No confirmable authors found',
   authorSearchFailed: 'Author search failed',
   candidateInfo: (papers: number, citations: number, hIndex: number) =>
     `${papers} ${pluralEn(papers, { one: 'paper', other: 'papers' })} · ${citations} ${pluralEn(citations, { one: 'citation', other: 'citations' })} · h-index ${hIndex}`,
@@ -35,8 +35,8 @@ export const watches = {
   suggestAction: 'Find suggestions',
   suggesting: 'Finding…',
   suggestionFailed: 'Watch suggestions failed',
-  allAdded: 'All suggestions added.',
-  noneSuggested: 'No new topics or authors found. Try a more specific focus.',
+  allAdded: 'All suggestions added',
+  noneSuggested: 'No new topics or authors found',
   suggestionBasis: (n: number) => `Based on ${n} relevant ${pluralEn(n, { one: 'paper', other: 'papers' })}`,
   suggestionStale: 'the source is unreachable, so these are the last suggestions',
   topicSuggestions: 'Topics worth watching',

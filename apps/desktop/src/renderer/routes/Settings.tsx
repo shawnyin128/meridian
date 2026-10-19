@@ -10,7 +10,6 @@ import { useMessages } from '../messages/useMessages.js'
 import {
   useJump, useNotice, useSettingsOpen, useVaultRevision, type SettingsCategory,
 } from '../shell/AppShell.js'
-import { Icon } from '../components/icons.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DirectoryField } from '../components/FormControls.js'
@@ -395,18 +394,7 @@ export function Settings() {
         {chats === null
           ? <LoadingPlaceholder shape="rows" count={2} />
           : archived.length === 0
-          ? (
-            <EmptyState
-              variant="page"
-              icon={(
-                <Icon sw={1.4}>
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </Icon>
-              )}
-            >
-              {m.settings.archived.empty}
-            </EmptyState>
-          )
+          ? <EmptyState variant="section">{m.settings.archived.empty}</EmptyState>
           : (
             <StructuredList className="wlist">
               {archived.map((s) => (

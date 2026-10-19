@@ -215,7 +215,7 @@ describe('ReviewQueue', () => {
         <ReviewQueue proposals={PROPOSALS.filter((p) => p.status !== 'queued')} pending={false} onApply={onApply} onDecline={onDecline} onOpenPage={onOpenPage} onOpenConclusion={onOpenConclusion} />
       </MessagesProvider>,
     ))
-    expect(host.textContent).toContain('没有等你审阅的提案。')
+    expect(host.textContent).toContain('还没有待审阅的提案')
     expect(host.querySelector('.review-entry')!.textContent).toBe('待审阅2')
   })
 })

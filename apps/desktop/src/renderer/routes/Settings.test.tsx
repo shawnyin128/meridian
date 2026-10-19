@@ -539,7 +539,7 @@ describe('Settings', () => {
     await act(async () => { confirm.click() })
     expect(api.deleteBackup).toHaveBeenCalledWith('meridian-backup-20260915-182838Z')
     expect(dialog.querySelector('.storage-backup-list')).toBeNull()
-    expect(dialog.textContent).toContain('暂无论文库备份')
+    expect(dialog.textContent).toContain('还没有论文库备份')
     expect(api.success).toHaveBeenCalledWith('备份已删除')
   })
 
