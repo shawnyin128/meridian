@@ -11,6 +11,7 @@ import { ChipToggles } from '../ChipToggles.js'
 import { FormTextarea } from '../FormControls.js'
 import { HarnessAction } from '../HarnessAction.js'
 import { SegmentedControl } from '../SegmentedControl.js'
+import { ReaderPanelHeader } from './ReaderPanelHeader.js'
 import { PaperWikiProposalReview } from './PaperWikiProposalReview.js'
 
 type ReviewMode = 'structured' | 'markdown'
@@ -172,7 +173,7 @@ export function PaperWikiIngest({ paper, reading }: {
 
   return (
     <section className="wiki-ingest" aria-label={m.wiki.addToWiki}>
-      <header><strong>{m.wiki.addToWiki}</strong></header>
+      <ReaderPanelHeader title={m.wiki.addToWiki} />
       <div className="wiki-ingest-body">
         <p className="wiki-ingest-intro">
           {m.wiki.ingest.intro}

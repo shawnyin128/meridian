@@ -4,6 +4,7 @@ import { editField, type Drafts, type EditDraft } from '../../hooks/useDrafts.js
 import { useMessages } from '../../messages/useMessages.js'
 import { FormTextarea } from '../FormControls.js'
 import { EmptyState } from '../EmptyState.js'
+import { ReaderPanelHeader } from './ReaderPanelHeader.js'
 
 function NoteCard({ note, edits, onSave, onDelete, onJump }: {
   note: PaperNote
@@ -91,12 +92,10 @@ export function ReadingNotes({
   }
   return (
     <aside className="reading-notes" aria-label={m.reader.notes.ariaLabel}>
-      <header>
-        <strong>
-          {mode === 'highlights' ? m.reader.rail.tabs.highlights : m.reader.notes.heading(reading.notes.length)}
-        </strong>
-        <span>{m.reader.page.at(currentPage)}</span>
-      </header>
+      <ReaderPanelHeader
+        title={mode === 'highlights' ? m.reader.rail.tabs.highlights : m.reader.notes.heading(reading.notes.length)}
+        note={m.reader.page.at(currentPage)}
+      />
       {mode === 'highlights' ? null : <div className="note-compose">
         <FormTextarea
           aria-label={m.reader.notes.newAria} placeholder={m.reader.notes.placeholder(currentPage)}

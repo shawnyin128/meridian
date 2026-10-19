@@ -76,7 +76,8 @@ Current shared contracts:
   explicit project-record actions, and chat-owned styling. Conversation text is not promoted to an
   idea or project conclusion by a generic last-message shortcut.
 - `reader/ReaderSidePanel`: the configurable metadata/highlights/notes/remark tool rail; its note and
-  remark editors are feature components rather than hidden route implementations.
+  remark editors are feature components rather than hidden route implementations. Every panel opens with
+  `reader/ReaderPanelHeader`.
 - `paper-table/PaperTable`: the complete library table, including configurable columns, grouping,
   cell pickers, column type editors, reading summaries, and table-owned styling. The route is only
   a page-shell adapter, while Wiki reuses the same column-creation control directly.

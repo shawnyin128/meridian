@@ -67,9 +67,10 @@
 .selection-tools button:hover{background:rgb(255 255 255/.12)}
 
 .reading-notes{width:320px;min-width:320px;box-sizing:border-box;border-left:1px solid var(--sep);background:var(--content);display:flex;flex-direction:column;overflow:hidden}
-.reading-notes>header{height:46px;box-sizing:border-box;padding:0 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--sep)}
-.reading-notes>header strong{font-size:var(--fs-sm)}
-.reading-notes>header span,.reading-page{font-size:var(--fs-cap);color:var(--ter)}
+/* The heading bar of every reader rail panel */
+.reader-panel-head{flex:none;height:46px;box-sizing:border-box;padding:0 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--sep)}
+.reader-panel-head strong{font-size:var(--fs-sm)}
+.reader-panel-head span,.reading-page{font-size:var(--fs-cap);color:var(--ter)}
 .note-compose{padding:12px;border-bottom:1px solid var(--sep);display:flex;flex-direction:column;gap:8px;align-items:flex-end}
 .note-compose textarea,.reading-card textarea{width:100%;box-sizing:border-box;border:1px solid var(--sep2);background:var(--field);color:var(--ink);border-radius:var(--r-md);padding:8px;font:inherit;line-height:1.45;resize:vertical}
 .note-compose textarea{min-height:86px}.reading-card textarea{min-height:64px}
@@ -84,8 +85,6 @@
 .reading-actions .btn,.note-compose .btn{font-size:var(--fs-cap);padding:3px 9px}
 .highlight-card blockquote{margin:0;color:var(--sec);font-size:var(--fs-sm);line-height:1.45;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .reading-remark{width:320px;min-width:320px;box-sizing:border-box;border-left:1px solid var(--sep);background:var(--content);display:flex;flex-direction:column;overflow:hidden}
-.reading-remark>header{height:46px;box-sizing:border-box;padding:0 14px;display:flex;align-items:center;border-bottom:1px solid var(--sep)}
-.reading-remark>header strong{font-size:var(--fs-sm)}
 .remark-compose{padding:12px;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
 .remark-compose textarea{width:100%;box-sizing:border-box;min-height:120px;border:1px solid var(--sep-strong);background:transparent;color:var(--ink);border-radius:var(--r-md);padding:8px;font:inherit;line-height:1.45;resize:vertical;outline:0}
 .remark-compose .btn{font-size:var(--fs-cap);padding:3px 9px}
@@ -95,7 +94,9 @@
   transition:flex-basis var(--t-slow) var(--e-inout)}
 .reader-side.collapsed{flex-basis:42px}
 .reader-side:not(.collapsed)>:not(.reader-rail){animation:detail-panel-content-in var(--t-slow) var(--e-out) both}
-.reader-side>.paper-meta,.reader-side>.reading-notes,.reader-side>.reading-remark,.reader-side>.wiki-ingest{width:320px;min-width:320px;border-left:1px solid var(--sep)}
+.reader-side>.reader-meta,.reader-side>.reading-notes,.reader-side>.reading-remark,.reader-side>.wiki-ingest{width:320px;min-width:320px;border-left:1px solid var(--sep)}
+.reader-meta{display:flex;flex-direction:column;overflow:hidden;background:var(--content)}
+.reader-meta>.paper-meta{flex:1;height:auto}
 .reader-rail{width:42px;min-width:42px;border-left:1px solid var(--sep);background:var(--sidebar);display:flex;flex-direction:column;align-items:center;padding-top:9px;box-sizing:border-box;gap:4px;order:2}
 .reader-rail button{width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--ter);display:grid;place-items:center;cursor:pointer}
 .reader-rail button:hover{background:var(--hover);color:var(--ink)}
@@ -109,11 +110,9 @@
 .zoomctl span{font-size:var(--fs-sm);color:var(--sec);min-width:38px;text-align:center;font-family:var(--mono)}
 
 @media (max-width:1100px){.main.reading{--rrw:260px}}
-@media (max-width:900px){.reader-side{flex-basis:322px}.reader-side.collapsed{flex-basis:42px}.reader-side>.paper-meta,.reader-side>.reading-notes,.reader-side>.reading-remark,.reader-side>.wiki-ingest{width:280px;min-width:280px}}
+@media (max-width:900px){.reader-side{flex-basis:322px}.reader-side.collapsed{flex-basis:42px}.reader-side>.reader-meta,.reader-side>.reading-notes,.reader-side>.reading-remark,.reader-side>.wiki-ingest{width:280px;min-width:280px}}
 
 .wiki-ingest{box-sizing:border-box;background:var(--content);display:flex;flex-direction:column;overflow:auto}
-.wiki-ingest>header{height:46px;min-height:46px;padding:0 14px;display:flex;align-items:center;border-bottom:1px solid var(--sep)}
-.wiki-ingest>header strong{font-size:var(--fs-sm)}
 .wiki-ingest-body{padding:12px;display:flex;flex-direction:column;align-items:stretch}
 .wiki-ingest-body>p{font-size:var(--fs-sm);line-height:1.55;color:var(--sec);margin:0}
 .wiki-ingest .wiki-ingest-intro{color:var(--sec);padding:0 2px}
