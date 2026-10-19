@@ -13,13 +13,18 @@ type ClearableInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value'> 
   wrapperRef?: Ref<HTMLDivElement>
   leading?: ReactNode
   clearLabel?: string
+  /** The key that focuses the field from anywhere, shown at its end while it is empty and unfocused. */
+  keycap?: string
 }
 
-/** A controlled single-line field with one stable trailing clear action and an optional leading icon inside the field. */
+/**
+ * A controlled single-line field with one stable trailing clear action, an optional leading icon
+ * inside the field, and an optional keycap at its end while it is empty.
+ */
 export const ClearableInput = forwardRef<HTMLInputElement, ClearableInputProps>(
   function ClearableInput({
     value, onClear, wrapperClassName = '', wrapperId, wrapperRef, leading,
-    clearLabel, className, ...props
+    clearLabel, keycap, className, ...props
   }, forwardedRef) {
     const m = useMessages()
     const clear = clearLabel ?? m.common.field.clear
@@ -34,6 +39,9 @@ export const ClearableInput = forwardRef<HTMLInputElement, ClearableInputProps>(
       <div id={wrapperId} ref={wrapperRef} className={`clearable-input${wrapperClassName ? ` ${wrapperClassName}` : ''}`}>
         {leading === undefined ? null : <span className="clearable-input-leading">{leading}</span>}
         <FormInput ref={setRef} className={className} value={value} {...props} />
+        {value === '' && keycap !== undefined
+          ? <kbd className="clearable-input-key" aria-hidden="true">{keycap}</kbd>
+          : null}
         {value === '' ? null : (
           <button
             className="clearable-input-action" type="button" aria-label={clear} title={clear}

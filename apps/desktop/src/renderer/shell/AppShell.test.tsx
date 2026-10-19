@@ -316,6 +316,33 @@ describe('AppShell keyboard navigation', () => {
   })
 })
 
+describe('AppShell sidebar rows', () => {
+  beforeEach(() => mount())
+
+  it('names a watch, a discovery project and a chat in full on hover, where the row fades them out', () => {
+    expect(document.querySelector('[data-watchrow="w-topic"] .watch-name')!.getAttribute('title')).toBe('推测解码')
+    expect(document.querySelector('[data-discovery-project="p1"] .watch-name')!.getAttribute('title')).toBe('推理项目')
+    expect(document.querySelector('[data-chat="c1"] .ct-t')!.getAttribute('title')).toBe('讨论')
+  })
+
+  it('folds the delivery groups from inline icon buttons that state whether they are open', () => {
+    for (const selector of ['#rowInboxAll .sh-caret', '[data-inbox="discovery"] .sh-caret']) {
+      const toggle = document.querySelector<HTMLElement>(selector)!
+      expect(toggle.classList.contains('icbtn'), selector).toBe(true)
+      expect(toggle.classList.contains('xs'), selector).toBe(true)
+      expect(toggle.getAttribute('aria-expanded'), selector).toBe('true')
+    }
+  })
+
+  it('shows "/" as a keycap on the empty search field and names the shortcut on the field', () => {
+    const search = document.querySelector<HTMLInputElement>('#sSearch')!
+    const keycap = document.querySelector<HTMLElement>('#searchBox kbd')!
+    expect(keycap.textContent).toBe('/')
+    expect(keycap.getAttribute('aria-hidden')).toBe('true')
+    expect(search.getAttribute('aria-keyshortcuts')).toBe('/')
+  })
+})
+
 describe('AppShell Escape', () => {
   it('输入法组字时的 Esc 不收起最上层的面板，组完字后的 Esc 才收起', async () => {
     const close = vi.fn()

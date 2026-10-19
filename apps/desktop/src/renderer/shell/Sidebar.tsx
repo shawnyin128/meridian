@@ -18,16 +18,17 @@ import { plainTitle } from '../components/paper/paper-text.js'
 
 const CARET = <Icon sw={2.4}><path d="M6 9l6 6 6-6" /></Icon>
 
-const Caret = () => <span className="sh-caret">{CARET}</span>
+/** The caret of a row that folds its group itself; the row's button carries the state. */
+const Caret = () => <span className="sh-caret" aria-hidden="true">{CARET}</span>
 
 /** The caret that folds the groups under a row; its click never reaches the row. */
 function CaretToggle({ label, open, onToggle }: { label: string; open: boolean; onToggle: () => void }) {
   const m = useMessages()
   return (
-    <button
-      type="button" className="sh-caret" aria-label={m.shell.sidebar.toggleGroup(label)} aria-expanded={open}
+    <IconButton
+      label={m.shell.sidebar.toggleGroup(label)} size="inline" className="sh-caret" aria-expanded={open}
       onClick={(e) => { e.stopPropagation(); onToggle() }}
-    >{CARET}</button>
+    >{CARET}</IconButton>
   )
 }
 
@@ -45,7 +46,7 @@ function WatchRow({ watch, count, on, onOpen }: {
       onActivate={onOpen}
     >
       <span className="ic" />
-      <span className="watch-name">{watch.name}</span>
+      <span className="watch-name" title={watch.name}>{watch.name}</span>
       {watch.active && count > 0 ? <CountBadge className="n" count={count} strong /> : null}
     </NavRow>
   )
@@ -68,7 +69,7 @@ function ChatRow({ session, on, onOpen, onArchive }: {
           <span className="ic">
             <Icon><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></Icon>
           </span>
-          <span className="ct-t"><PaperText text={session.title} /></span>
+          <span className="ct-t" title={plainTitle(session.title)}><PaperText text={session.title} /></span>
         </>
       )}
     >
@@ -235,7 +236,7 @@ export function Sidebar({
                   data-discovery-project={held.id} onActivate={() => onOpenInbox(held.id, 'discovery')}
                 >
                   <span className="ic" />
-                  <span className="watch-name">{held.name}</span>
+                  <span className="watch-name" title={held.name}>{held.name}</span>
                   <CountBadge className="n" count={held.count} strong />
                 </NavRow>
               ))}

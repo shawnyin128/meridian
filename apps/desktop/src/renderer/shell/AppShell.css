@@ -91,11 +91,11 @@
 .sb-h{display:flex;align-items:center;gap:4px;font-size:var(--fs-cap);font-weight:600;color:var(--ter);text-transform:uppercase;letter-spacing:.04em;padding:0 8px;margin:12px 0 4px}
 .sb-h.chats-h{display:flex;align-items:center}
 .sect-h{cursor:pointer;user-select:none}
-.sh-caret{display:grid;place-items:center;padding:0;border:0;background:transparent;color:inherit;cursor:pointer;opacity:0;transition:opacity var(--t-fast) var(--e-out),transform var(--t-fast) var(--e-out)}
-.sh-caret:focus-visible{opacity:1}
-.sect-h:hover .sh-caret{opacity:1}
-.sect-h.closed .sh-caret{opacity:1;transform:rotate(-90deg)}
-.sh-caret svg{width:9px;height:9px}
+/* A fold caret always shows, in a row in the tone of the row's caret buttons; a closed group's caret turns to point at its title. */
+span.sh-caret{display:grid;place-items:center;transition:transform var(--t-fast) var(--e-out)}
+.srow span.sh-caret{color:var(--sec)}
+span.sh-caret svg{width:9px;height:9px}
+.sect-h.closed .sh-caret{transform:rotate(-90deg)}
 .sect.closed{display:none}
 
 .sb-add{margin-left:auto}
@@ -135,15 +135,12 @@
 /* A sub-row's dot: filled when there are new papers (it has a badge), hollow otherwise */
 .srow.sub .ic:empty::before{content:"";width:7px;height:7px;border-radius:50%;box-sizing:border-box;border:1px solid var(--ter);background:transparent}
 .srow.sub:has(.n) .ic:empty::before{background:var(--sec);border-color:var(--sec)}
-/* A group's collapse caret sits right of its title, shown on hover or while collapsed, like a section's */
-.disc .sh-caret{opacity:0}
-.disc:hover .sh-caret{opacity:1}
-.disc.closed .sh-caret{opacity:1;transform:rotate(-90deg)}
+/* A group's collapse caret sits right of its title, like a section's */
+.disc.closed .sh-caret{transform:rotate(-90deg)}
 /* .dim is a content state (a watch with no new papers), not an "unimplemented" mark */
 .srow.dim{color:var(--ter)}
-/* Inmail: its caret shows on hover and collapses the Discovery, topic and author groups under it. */
-#rowInboxAll:hover .sh-caret{opacity:1}
-#rowInboxAll.closed .sh-caret{opacity:1;transform:rotate(-90deg)}
+/* Inmail: its caret collapses the Discovery, topic and author groups under it. */
+.srow.closed>.sh-caret{transform:rotate(-90deg)}
 .wgroup.closed{display:none}
 
 /* The sidebar's and the paper chat's grips straddle the pane's right border. */
