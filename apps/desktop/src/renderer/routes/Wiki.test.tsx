@@ -172,8 +172,11 @@ describe('Wiki keyboard reach', () => {
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
     const anchor = host.querySelector<HTMLButtonElement>('.cmp td .source-anchor')!
     expect([anchor.tagName, anchor.textContent, anchor.getAttribute('aria-label')]).toEqual(['BUTTON', 'p.3', '原文第 3 页'])
-    act(() => anchor.focus())
-    expect(host.querySelector('.source-anchor-quote')!.textContent).toBe('p.3 · 原文“four bits”')
+    act(() => {
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
+      anchor.focus()
+    })
+    expect(document.querySelector('[role="tooltip"]')?.textContent).toBe('“four bits”')
     await press(anchor)
     expect(fixture.open).toHaveBeenCalledWith('reader', 'p1', { page: 3 })
   })
@@ -190,8 +193,8 @@ describe('Wiki keyboard reach', () => {
 
   it('比较表格子里的锚点能用 Tab 停上去，悬停或聚焦都在共享 tooltip 里显示原文', async () => {
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
-    const anchor = host.querySelector<HTMLElement>('.cmp .anc')!
-    expect([anchor.tabIndex, anchor.textContent]).toEqual([0, 'W4p3'])
+    const anchor = host.querySelector<HTMLElement>('.cmp .source-anchor')!
+    expect([anchor.tabIndex, anchor.parentElement!.textContent]).toEqual([0, 'W4 p.3'])
     act(() => {
       document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
       anchor.focus()

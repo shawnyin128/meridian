@@ -61,7 +61,6 @@ export const common = {
   anchor: {
     label: (page: number) => `p.${page}`,
     name: (page: number) => `Source · page ${page}`,
-    quoteHeading: (page: number) => `p.${page} · Source`,
   },
   failure: {
     label: (what: string, why: string) => `${what} · ${why}`,

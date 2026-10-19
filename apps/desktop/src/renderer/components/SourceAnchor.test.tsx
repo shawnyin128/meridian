@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { SourceAnchor } from './SourceAnchor.js'
+import { TOOLTIP_DELAY } from './Tooltip.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -34,23 +35,34 @@ describe('SourceAnchor', () => {
     done()
   })
 
-  it('悬停和聚焦都显示它锚定的原文,离开或失焦就收起;没有原文时什么也不弹', () => {
+  it('悬停和键盘聚焦都在共享 tooltip 里显示它锚定的原文,离开或失焦就收起;没有原文时什么也不弹', () => {
+    const tip = () => document.querySelector('[role="tooltip"]')
+    const keyboardFocus = (anchor: HTMLElement) => act(() => {
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
+      anchor.focus()
+    })
     const quoted = mount('wide trees amortize')
-    act(() => { quoted.anchor.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })) })
-    const tip = document.querySelector('.source-anchor-quote')!
-    expect(tip.textContent).toBe('p.7 · 原文“wide trees amortize”')
-    expect(quoted.anchor.getAttribute('aria-describedby')).toBe(tip.id)
-    act(() => { quoted.anchor.dispatchEvent(new MouseEvent('mouseout', { bubbles: true })) })
-    expect(document.querySelector('.source-anchor-quote')).toBeNull()
-    act(() => quoted.anchor.focus())
-    expect(document.querySelector('.source-anchor-quote')).not.toBeNull()
+    vi.useFakeTimers()
+    act(() => { quoted.anchor.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
+    act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+    vi.useRealTimers()
+    expect(tip()!.textContent).toBe('“wide trees amortize”')
+    expect(quoted.anchor.getAttribute('aria-describedby')).toBe(tip()!.id)
+    act(() => {
+      quoted.anchor.dispatchEvent(new PointerEvent('pointerout', { bubbles: true, pointerType: 'mouse', relatedTarget: document.body }))
+      quoted.anchor.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }))
+    })
+    act(() => { document.dispatchEvent(new PointerEvent('pointermove', { clientX: 400, clientY: 400, pointerType: 'mouse' })) })
+    expect(tip()).toBeNull()
+    keyboardFocus(quoted.anchor)
+    expect(tip()!.textContent).toBe('“wide trees amortize”')
     act(() => quoted.anchor.blur())
-    expect(document.querySelector('.source-anchor-quote')).toBeNull()
+    expect(tip()).toBeNull()
     quoted.done()
 
     const bare = mount()
-    act(() => bare.anchor.focus())
-    expect(document.querySelector('.source-anchor-quote')).toBeNull()
+    keyboardFocus(bare.anchor)
+    expect(tip()).toBeNull()
     bare.done()
   })
 })

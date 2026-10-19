@@ -60,7 +60,6 @@ export const common = {
   anchor: {
     label: (page: number) => `p.${page}`,
     name: (page: number) => `原文第 ${page} 页`,
-    quoteHeading: (page: number) => `p.${page} · 原文`,
   },
   failure: {
     label: (what: string, why: string) => `${what} · ${why}`,

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ProposalOp, WikiAggregation } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
+import { TOOLTIP_DELAY } from '../Tooltip.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -148,14 +149,21 @@ describe('WikiClaims', () => {
     expect(links.openPage).toHaveBeenCalledWith('topics/batch')
   })
 
-  it('原文证据的锚点悬停或聚焦时显示它锚定的原文', () => {
+  it('原文证据的锚点悬停或聚焦时在共享 tooltip 里显示它锚定的原文', () => {
     const anchor = host.querySelector<HTMLButtonElement>('[data-claim="knee"] .source-anchor')!
-    act(() => anchor.focus())
-    expect(document.querySelector('.source-anchor-quote')!.textContent).toBe('p.7 · 原文“wide trees amortize”')
+    const tip = () => document.querySelector('[role="tooltip"]')?.textContent ?? null
+    act(() => {
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
+      anchor.focus()
+    })
+    expect(tip()).toBe('“wide trees amortize”')
     act(() => anchor.blur())
-    expect(document.querySelector('.source-anchor-quote')).toBeNull()
-    act(() => { anchor.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })) })
-    expect(document.querySelector('.source-anchor-quote')).not.toBeNull()
+    expect(tip()).toBeNull()
+    vi.useFakeTimers()
+    act(() => { anchor.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
+    act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+    vi.useRealTimers()
+    expect(tip()).toBe('“wide trees amortize”')
   })
 
   it('添加结论:个人判断作依据,id 由正文算出', async () => {
