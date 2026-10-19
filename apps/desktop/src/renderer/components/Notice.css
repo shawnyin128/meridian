@@ -7,7 +7,7 @@
   padding:0 var(--sp-24);pointer-events:none;z-index:91}
 .main.sbhide>.notice-host{left:0}
 .main.reading>.notice-host{left:var(--rrw,300px)}
-.main.reading.sbhide>.notice-host{left:12px}
+.main.reading.sbhide>.notice-host{left:0}
 .notice{display:flex;align-items:center;gap:var(--sp-8);max-width:560px;min-height:36px;padding:var(--sp-6) var(--sp-16);
   background:var(--raised);border-radius:var(--r-card);box-shadow:var(--sh-3);color:var(--ink);font-size:var(--fs-sm);
   opacity:0;transform:translateY(-8px);transition:opacity var(--t-slow) var(--e-inout),transform var(--t-slow) var(--e-inout)}
