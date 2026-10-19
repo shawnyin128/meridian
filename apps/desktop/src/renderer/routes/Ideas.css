@@ -21,30 +21,19 @@
  */
 .idea-detail-slot{--detail-panel-width:min(420px,42vw);--detail-panel-gap:28px;position:sticky;top:0;align-self:flex-start;
   max-height:calc(100vh - 108px)}
+/* The idea itself is the shared IdeaPanel, with the document panes' padding; see ResearchGraph.css. */
 .idea-detail-panel{width:100%;max-height:calc(100vh - 108px);
-  box-sizing:border-box;padding:18px 20px;border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);
+  box-sizing:border-box;padding:18px 22px;border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);
   box-shadow:var(--sh-1);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
-.idea-detail-head{display:flex;align-items:center;margin:-18px -20px 0;padding:16px 20px 12px;border-bottom:1px solid var(--sep2);
-  color:var(--ink);font-size:var(--fs-title);font-weight:700}
-.idea-detail-head span+.btn,.idea-detail-head span+.panel-close{margin-left:auto}
-.idea-detail-head .btn+.btn,.idea-detail-head .btn+.panel-close{margin-left:4px}
-.idea-detail-title-row{display:flex;align-items:flex-start;gap:8px;margin-top:18px}
-.idea-detail-title-row h2{flex:1;min-width:0;margin:0;color:var(--ink);font-size:var(--fs-title);line-height:1.45;overflow-wrap:anywhere}
 .idea-detail-editor{display:grid;gap:13px;margin-top:18px}
 .idea-detail-editor label{display:grid;gap:6px;color:var(--ter);font-size:var(--fs-sm)}
 .idea-detail-editor .form-control{width:100%}
 .idea-detail-editor .form-textarea{min-height:150px}
-.idea-detail-section{margin-top:24px;padding-top:18px;border-top:1px solid var(--sep2)}
-.idea-detail-section h3{margin:0 0 9px;color:var(--ink);font-size:var(--fs-base)}
-.idea-detail-body{margin:0;color:var(--sec);font-size:var(--fs-base);line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
-.idea-detail-section .choice-picker{width:100%}
+.idea-detail-panel .idea-link-picker{width:100%}
 .idea-detail-actions{display:flex;align-items:center;min-height:28px;margin-top:8px}
 .idea-missing-project{color:var(--warn);font-size:var(--fs-cap)}
-.idea-detail-source p{margin:0;color:var(--sec);font-size:var(--fs-sm);line-height:1.55;overflow-wrap:anywhere}
-.idea-detail-meta{margin:7px 0 10px;color:var(--ter);font-size:var(--fs-cap)}
 
 @media (max-width:1150px){
   .idea-detail-slot{--detail-panel-width:38%;--detail-panel-gap:20px}
   .idea-detail-panel{padding:16px 18px}
-  .idea-detail-head{margin:-16px -18px 0;padding:14px 18px 11px}
 }

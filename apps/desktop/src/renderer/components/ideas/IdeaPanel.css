@@ -1,0 +1,7 @@
+/* An idea's detail panel; its head and title take the document panes' rules in ResearchGraph.css. */
+.idea-panel-meta{display:flex;align-items:center;gap:8px}
+.idea-panel-body,.idea-panel-source{margin:0;color:var(--sec);font-size:var(--fs-base);line-height:1.65;
+  white-space:pre-wrap;overflow-wrap:anywhere}
+.idea-panel-source{font-size:var(--fs-sm)}
+.idea-panel-updated{margin-top:7px;color:var(--ter);font-size:var(--fs-cap)}
+.idea-panel-open-chat{margin-top:10px}

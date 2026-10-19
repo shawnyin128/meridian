@@ -254,6 +254,9 @@ describe('project idea panel', () => {
       />,
     )))
 
+    expect([...host.querySelectorAll('.section-heading--rail')].map((heading) => heading.textContent))
+      .toEqual(['用动态预算控制校准成本跳转到想法', '内容', '科研图', '来源'])
+    expect(host.querySelector('.idea-panel-head .project-idea-open-idea')).not.toBeNull()
     const buttons = [...host.querySelectorAll('button')]
     const button = (label: string) => buttons.find((candidate) => candidate.textContent === label)
     expect(button('跳转到想法')).toBeDefined()

@@ -122,13 +122,17 @@ describe('Ideas', () => {
     await act(async () => { (linked as HTMLElement).click() })
     expect(host.querySelector('.idea-detail-slot')?.getAttribute('data-panel-state')).toBe('open')
     const detail = host.querySelector('.idea-detail-panel')!
+    expect(detail.querySelector('.idea-panel-head .node-document-title')!.textContent)
+      .toBe('用可学习性信号动态分配 draft model 的蒸馏预算')
+    expect([...detail.querySelectorAll('.section-heading--rail')].map((heading) => heading.textContent))
+      .toEqual(['用可学习性信号动态分配 draft model 的蒸馏预算编辑', '内容', '关联项目', '来源'])
     expect(detail.textContent).toContain('只对 disagreement 高且可学习的 token 加大蒸馏权重。')
     const edit = [...detail.querySelectorAll<HTMLButtonElement>('button')]
       .find((item) => item.textContent === '编辑')!
     await act(async () => { edit.click() })
     expect(detail.querySelector('.idea-detail-editor')).not.toBeNull()
     expect(document.querySelector('.idea-dialog')).toBeNull()
-    const headButtons = () => [...detail.querySelectorAll<HTMLButtonElement>('.idea-detail-head .btn')]
+    const headButtons = () => [...detail.querySelectorAll<HTMLButtonElement>('.idea-panel-head .btn')]
       .map((item) => item.textContent)
     expect(headButtons()).toEqual(['取消', '保存'])
     expect(detail.querySelector('.idea-detail-editor button')).toBeNull()
@@ -139,7 +143,7 @@ describe('Ideas', () => {
     expect(detail.querySelector('.idea-detail-editor')).toBeNull()
     expect(api.update).not.toHaveBeenCalled()
     await act(async () => {
-      [...detail.querySelectorAll<HTMLButtonElement>('.idea-detail-head .btn')].find((item) => item.textContent === '编辑')!.click()
+      [...detail.querySelectorAll<HTMLButtonElement>('.idea-panel-head .btn')].find((item) => item.textContent === '编辑')!.click()
     })
     await act(async () => {
       detail.querySelector('.idea-detail-editor input')!
@@ -152,7 +156,7 @@ describe('Ideas', () => {
 
     expect(detail.querySelector('select')).toBeNull()
     await act(async () => {
-      detail.querySelector('.idea-detail-section .choice-picker')!
+      detail.querySelector('.idea-link-picker')!
         .dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
     })
     const none = [...document.querySelectorAll<HTMLElement>('.choice-picker-menu [role="menuitemradio"]')]

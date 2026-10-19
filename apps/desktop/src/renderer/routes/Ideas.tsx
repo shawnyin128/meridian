@@ -9,7 +9,7 @@ import { FormInput, FormTextarea } from '../components/FormControls.js'
 import { ChoicePicker, DotsMenu } from '../components/FieldPickers.js'
 import { EditActions } from '../components/EditActions.js'
 import { EmptyState } from '../components/EmptyState.js'
-import { PanelClose } from '../components/PanelClose.js'
+import { IdeaPanel, ideaSourceLabel } from '../components/ideas/IdeaPanel.js'
 import { DetailPanel } from '../components/DetailPanel.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
 import { RowActions } from '../components/StructuredList.js'
@@ -23,14 +23,9 @@ import { useFormat } from '../lib/format.js'
 import { commitsMultiline, composing } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import type { Catalog } from '../messages/catalog.js'
-import { plainTitle } from '../components/paper/paper-text.js'
 import { AgentLabel, SourceLabel } from '../components/SourceLabel.js'
 import { Tag } from '../components/Tag.js'
 import './Ideas.css'
-
-const sourceLabel = (idea: ResearchIdea) => idea.source.paperTitle === undefined
-  ? plainTitle(idea.source.chatTitle)
-  : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
 
 
 function linkedProjectLabel(idea: ResearchIdea, linked: ProjectSummary | undefined, m: Catalog): string {
@@ -89,7 +84,7 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, dragProps, dropClassNa
         </div>
         <p className="idea-card-summary">{idea.body}</p>
         <div className="idea-card-meta">
-          <span className="idea-card-source" title={sourceLabel(idea)}>{m.project.idea.sourceTag(sourceLabel(idea))}</span>
+          <span className="idea-card-source" title={ideaSourceLabel(idea)}>{m.project.idea.sourceTag(ideaSourceLabel(idea))}</span>
           {idea.source.agent === true
             ? <AgentLabel className="idea-source-kind" />
             : (
@@ -115,7 +110,6 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
   onPromote: () => void
   onOpen: (screen: 'project' | 'chat', id: string) => void
 }) {
-  const fmt = useFormat()
   const m = useMessages()
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(idea.title)
@@ -157,52 +151,40 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
   }
 
   return (
-    <aside className="idea-detail-panel" aria-label={m.ideas.detailHeading}>
-      <header className="idea-detail-head">
-        <span>{m.ideas.detailHeading}</span>
-        <EditActions
-          editing={editing} saving={busy} canSave={title.trim() !== '' && body.trim() !== ''}
-          onEdit={startEditing} onCancel={cancelEditing} onSave={save}
-        />
-        <PanelClose onClose={onClose} />
-      </header>
-
-      {editing
-        ? (
-          <section className="idea-detail-editor">
-            <label>
-              <span>{m.ideas.editor.titleLabel}</span>
-              <FormInput
-                autoFocus value={title} maxLength={160}
-                onChange={(event) => setTitle(event.target.value)} onKeyDown={commitOrCancel(false)}
-              />
-            </label>
-            <label>
-              <span>{m.ideas.bodyLabel}</span>
-              <FormTextarea
-                value={body} maxLength={20_000}
-                onChange={(event) => setBody(event.target.value)} onKeyDown={commitOrCancel(true)}
-              />
-            </label>
-          </section>
-        )
-        : (
-          <>
-            <div className="idea-detail-title-row">
-              <h2>{idea.title}</h2>
-              {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
-            </div>
-            <section className="idea-detail-section">
-              <h3>{m.ideas.bodyLabel}</h3>
-              <p className="idea-detail-body">{idea.body}</p>
-            </section>
-          </>
+    <aside className="idea-detail-panel node-document-pane" aria-label={m.ideas.detailHeading}>
+      <IdeaPanel
+        idea={idea} onClose={onClose} onOpenSourceChat={(chatId) => onOpen('chat', chatId)}
+        actions={(
+          <EditActions
+            editing={editing} saving={busy} canSave={title.trim() !== '' && body.trim() !== ''}
+            onEdit={startEditing} onCancel={cancelEditing} onSave={save}
+          />
         )}
-
-      <section className="idea-detail-section">
-        <h3>{m.ideas.link.heading}</h3>
+        editor={editing
+          ? (
+            <section className="idea-detail-editor">
+              <label>
+                <span>{m.ideas.editor.titleLabel}</span>
+                <FormInput
+                  autoFocus value={title} maxLength={160}
+                  onChange={(event) => setTitle(event.target.value)} onKeyDown={commitOrCancel(false)}
+                />
+              </label>
+              <label>
+                <span>{m.ideas.bodyLabel}</span>
+                <FormTextarea
+                  value={body} maxLength={20_000}
+                  onChange={(event) => setBody(event.target.value)} onKeyDown={commitOrCancel(true)}
+                />
+              </label>
+            </section>
+          )
+          : undefined}
+      >
+        <SectionHeading variant="rail">{m.ideas.link.heading}</SectionHeading>
         <ChoicePicker
-          appearance="field" aria-label={m.ideas.link.selectAriaLabel(idea.title)} value={idea.project ?? ''}
+          appearance="field" className="idea-link-picker" aria-label={m.ideas.link.selectAriaLabel(idea.title)}
+          value={idea.project ?? ''}
           options={[
             '',
             ...(idea.project !== undefined && linked === undefined ? [idea.project] : []),
@@ -222,16 +204,7 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
               ? <span className="idea-missing-project">{m.ideas.link.originalUnavailable}</span>
               : <button className="btn sm" onClick={() => onOpen('project', linked.id)}>{m.ideas.promote.openProject}</button>}
         </div>
-      </section>
-
-      <section className="idea-detail-section idea-detail-source">
-        <h3>{m.project.sections.source}</h3>
-        <p>{sourceLabel(idea)}</p>
-        <div className="idea-detail-meta">{m.common.updatedOn(fmt.date(idea.updated))}</div>
-        {idea.source.chatId === undefined
-          ? null
-          : <button className="btn sm" onClick={() => onOpen('chat', idea.source.chatId!)}>{m.ideas.openSourceChat}</button>}
-      </section>
+      </IdeaPanel>
     </aside>
   )
 }
