@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import type {
-  AuthorCandidate, ProjectSummary, Watch, WatchAuthorSuggestion, WatchFields,
+  AuthorCandidate, NetFailed, ProjectSummary, Watch, WatchAuthorSuggestion, WatchFields,
   WatchSuggestionResult,
 } from '../../shared/contract.js'
 import { author, project, watch } from '../ipc.js'
+import { failureLabel } from '../lib/failure-label.js'
 import { useToast, useVaultRevision } from '../shell/AppShell.js'
 import { useMessages } from '../messages/useMessages.js'
 import { AddAction } from '../components/AddAction.js'
@@ -114,7 +115,7 @@ export function WatchSettings() {
   const [name, setName] = useState('')
   const [authorMatches, setAuthorMatches] = useState<AuthorCandidate[]>([])
   const [authorSearching, setAuthorSearching] = useState(false)
-  const [authorSearchError, setAuthorSearchError] = useState<string | null>(null)
+  const [authorSearchError, setAuthorSearchError] = useState<string | NetFailed | null>(null)
   const [authorSearchNonce, setAuthorSearchNonce] = useState(0)
   const authorSearchRevision = useRef(0)
   const row = useRef<HTMLDivElement>(null)
@@ -165,7 +166,11 @@ export function WatchSettings() {
     const timer = window.setTimeout(() => {
       void author.search(query).then((matches) => {
         if (request !== authorSearchRevision.current) return
-        setAuthorMatches(matches)
+        if (Array.isArray(matches)) setAuthorMatches(matches)
+        else {
+          setAuthorMatches([])
+          setAuthorSearchError(matches)
+        }
         setAuthorSearching(false)
       }).catch((caught: Error) => {
         if (request !== authorSearchRevision.current) return
@@ -265,6 +270,10 @@ export function WatchSettings() {
     try {
       const found = await watch.suggest(input)
       if (request !== suggestionRequest.current) return
+      if ('kind' in found) {
+        setSuggestionError(failureLabel(m, m.watches.suggestionFailed, found.reason))
+        return
+      }
       const watchedTopics = new Set(watches.filter((item) => item.type === 'topic')
         .map((item) => item.name.trim().toLocaleLowerCase()))
       const watchedAuthorIds = new Set(watches.flatMap((item) => (
@@ -380,7 +389,9 @@ export function WatchSettings() {
               : authorSearchError !== null
                 ? (
                   <div className="author-search-note error">
-                    <span>{authorSearchError}</span>
+                    <span>{typeof authorSearchError === 'string'
+                      ? authorSearchError
+                      : failureLabel(m, m.watches.authorSearchFailed, authorSearchError.reason)}</span>
                     <button className="btn plain" onClick={() => setAuthorSearchNonce((value) => value + 1)}>
                       {m.common.retry}
                     </button>

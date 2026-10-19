@@ -15,6 +15,7 @@ export const watches = {
   reconfirm: '重新确认',
   searching: '正在查找同名作者…',
   noMatches: '没有找到可确认的作者。',
+  authorSearchFailed: '搜索作者失败',
   candidateInfo: (papers: number, citations: number, hIndex: number) =>
     `${papers} 篇论文 · ${citations} 次引用 · h-index ${hIndex}`,
   follow: '关注',
@@ -30,6 +31,7 @@ export const watches = {
   noProjects: '暂无可用项目',
   suggestAction: '查找建议',
   suggesting: '查找中…',
+  suggestionFailed: '生成关注建议失败',
   allAdded: '建议已全部添加。',
   noneSuggested: '没有新的主题或作者建议，试试更具体的方向。',
   suggestionBasis: (n: number) => `基于 ${n} 篇相关论文`,

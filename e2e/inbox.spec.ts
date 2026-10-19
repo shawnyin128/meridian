@@ -305,11 +305,11 @@ test('下载失败在卡片内给原因和重试,不占用全页错误', async (
   await openInbox(win, 'all')
   const card = shown(win, '.pcard[data-pid="sequoia2"]')
   await card.locator('[title="下载并入库"]').click()
-  await expect(card.locator('.pfail span')).toHaveText('没能下载原文：服务器返回 503')
+  await expect(card.locator('.pfail span')).toHaveText('下载失败 · 服务器出错')
   await expect(card.locator('[title="下载并入库"]')).toHaveCount(1)
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   await card.locator('.pfail .btn', { hasText: '重试' }).click()
-  await expect(card.locator('.pfail span')).toHaveText('没能下载原文：服务器返回 503')
+  await expect(card.locator('.pfail span')).toHaveText('下载失败 · 服务器出错')
 })
 
 test('检查新论文按关注抓取一次,新论文进入相应分组且标题栏记下时间', async ({ win }) => {

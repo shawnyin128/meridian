@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type {
-  DiscoveryFetchResult, DiscoveryProfile, FetchStatus, InboxEntry,
+  DiscoveryFetchResult, DiscoveryProfile, FetchStatus, InboxDownloadFailure, InboxEntry,
   InboxListParams, Watch,
 } from '../../shared/contract.js'
 import { discovery, inbox, watch } from '../ipc.js'
@@ -9,6 +9,7 @@ import {
   useSettingsOpen,
 } from '../shell/AppShell.js'
 import { useJobs } from '../shell/useJobs.js'
+import { failureLabel } from '../lib/failure-label.js'
 import { useFormat } from '../lib/format.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -41,7 +42,7 @@ const streamLabel = (m: Catalog, stream: 'watch' | 'discovery'): string =>
 function fetchNote(status: FetchStatus | null, m: Catalog, fmt: ReturnType<typeof useFormat>): string {
   if (status === null) return ''
   if (status.state === 'checking') return m.inbox.check.checking
-  if (status.state === 'failed') return m.inbox.check.failed(status.error ?? '')
+  if (status.state === 'failed') return failureLabel(m, m.inbox.check.failed, status.reason ?? 'unknown')
   if (status.checkedAt === null) return ''
   const at = new Date(status.checkedAt)
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -88,7 +89,7 @@ export function Inbox() {
   const write = useVaultWrite()
   const jobs = useJobs()
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set())
-  const [failed, setFailed] = useState<ReadonlyMap<string, string>>(new Map())
+  const [failed, setFailed] = useState<ReadonlyMap<string, InboxDownloadFailure>>(new Map())
   const [sort, setSort] = useState<NonNullable<InboxListParams['sort']>>('recommended')
   const [discovering, setDiscovering] = useState(false)
 
@@ -164,6 +165,10 @@ export function Inbox() {
       return next
     })
     void inbox.download(id).then((result) => {
+      if (result.kind === 'failed') {
+        setFailed((held) => new Map(held).set(id, result.reason))
+        return
+      }
       if (result.kind === 'existing') {
         setCollided((seen) => new Map(seen).set(id, result.title))
         toast(m.inbox.notices.duplicateToast)
@@ -171,11 +176,7 @@ export function Inbox() {
       }
       bump()
       toast(m.inbox.notices.downloaded)
-    }).catch((e: Error) => {
-      if (e.message.startsWith('没能下载原文')) {
-        setFailed((held) => new Map(held).set(id, e.message))
-      } else toast(e.message)
-    }).finally(() => {
+    }).catch((e: Error) => toast(e.message)).finally(() => {
       setBusy((held) => {
         const next = new Set(held)
         next.delete(id)
@@ -258,7 +259,7 @@ export function Inbox() {
           {failed.has(p.id) ? (
             <PaperCardNotice tone="error" action={(
               <button className="btn plain" onClick={() => ingest(p.id)}>{m.common.retry}</button>
-            )}>{failed.get(p.id)}</PaperCardNotice>
+            )}>{failureLabel(m, m.inbox.notices.downloadFailed, failed.get(p.id)!)}</PaperCardNotice>
           ) : null}
         </>
       )}

@@ -67,7 +67,7 @@ describe('createBackground', () => {
     expect(store.listInbox().map((entry) => entry.title)).toEqual(expect.arrayContaining([
       'Tree Width in Batched Serving', 'Attention Kernels for Shared Prefixes',
     ]))
-    expect(background.status().fetch).toEqual({ state: 'idle', checkedAt: 0, error: null })
+    expect(background.status().fetch).toEqual({ state: 'idle', checkedAt: 0, reason: null })
     expect(background.status().writes).toBeGreaterThan(0)
   })
 
@@ -142,6 +142,7 @@ describe('createBackground', () => {
       focus: 'efficient inference with speculative decoding',
       seedTopics: ['batch-aware verification'],
     })
+    if ('kind' in result) throw new Error(`没有建议：${result.reason}`)
     expect(result.paperCount).toBe(3)
     expect(result.topics).toEqual(expect.arrayContaining([
       { name: 'batch-aware verification', relatedPapers: 0 },
@@ -165,14 +166,30 @@ describe('createBackground', () => {
       semanticScholarApiKey: () => 'saved-key',
     })
     const result = await background.suggestWatches({ focus: 'speculative decoding' })
+    if ('kind' in result) throw new Error(`没有建议：${result.reason}`)
     expect(hosts[0]).toBe('api.semanticscholar.org')
     expect(hosts).toContain('export.arxiv.org')
     expect(result.authors[0]).toEqual({ name: 'Mei Lin', relatedPapers: 2 })
 
     hosts.length = 0
     const authors = await background.searchAuthors('Alex Kim')
+    if (!Array.isArray(authors)) throw new Error(`没有作者：${authors.reason}`)
     expect(new Set(hosts)).toEqual(new Set(['api.semanticscholar.org']))
     expect(authors[0]).toMatchObject({ source: 'semantic-scholar', affiliations: ['Massachusetts Institute of Technology'] })
+  })
+
+  it('作者搜索与关注建议取不到结果时只报失败原因，不带原始错误与路径', async () => {
+    const failing = (error: Error) => createBackground({
+      store: createFixtureStore(() => '2026-08-25'), get: async () => { throw error },
+      probe: probePdf, arxivIntervalMs: 0, sleep: async () => {}, now: () => 0,
+      semanticScholarApiKey: () => 'saved-key',
+    })
+    const missing = new Error("ENOENT: no such file or directory, open '/tmp/vault/net.json'")
+    expect(await failing(missing).searchAuthors('Song Han')).toEqual({ kind: 'failed', reason: 'unknown' })
+    expect(await failing(missing).suggestWatches({ focus: 'speculative decoding' }))
+      .toEqual({ kind: 'failed', reason: 'unknown' })
+    expect(await failing(new TypeError('fetch failed')).suggestWatches({ focus: 'speculative decoding' }))
+      .toEqual({ kind: 'failed', reason: 'unavailable' })
   })
 
   it('没存 key 时作者搜索不发请求，直接说明要填 key 或按姓名保存', async () => {
