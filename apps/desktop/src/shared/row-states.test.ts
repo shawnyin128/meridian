@@ -23,7 +23,7 @@ const { document, MouseEvent, getComputedStyle } = globalThis as unknown as Wind
 const STYLES = [
   'shell/tokens.css', 'components/StructuredList.css', 'shell/AppShell.css', 'components/paper-table/PaperTable.css',
   'components/ResearchObjectCard.css', 'components/project/ResearchGraph.css', 'routes/Settings.css',
-  'components/timeline/TimelineBoard.css',
+  'components/timeline/TimelineBoard.css', 'routes/Ideas.css',
 ].map((path) => readFileSync(join(import.meta.dirname, '..', 'renderer', path), 'utf8'))
 
 /** The style of `shown` inside fresh `markup`, after the pointer entered `hovered` when one is given. */
@@ -56,6 +56,11 @@ describe('选中的样子只有一种', () => {
         card: ['var(--selected)', 'var(--on-selected)', ''],
       })
     expect(looks.card.borderColor).not.toBe('var(--accent)')
+  })
+
+  it('选中的想法卡片，标题也用选中色上的强调色', () => {
+    const card = '<article class="research-object-card selected idea-card"><div class="idea-card-title-row"><strong>草稿头共享浅层 KV</strong></div></article>'
+    expect(styleOf(card, 'strong').color).toBe('var(--on-selected)')
   })
 
   it('选中的侧栏行图标跟着字用同一个颜色', () => {
