@@ -221,6 +221,25 @@ describe('WatchSettings', () => {
     await act(async () => { root.unmount() })
   })
 
+  it('描述关注方向时输入法组字的回车不查找，组完字后的回车才查找', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+
+    const input = host.querySelector<HTMLInputElement>(
+      'input[placeholder="用一句话描述想持续关注的研究方向"]',
+    )!
+    await act(async () => { enter(input, '批量推理的动态验证') })
+    const pressEnter = (init: KeyboardEventInit) => act(async () => {
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, ...init }))
+    })
+    await pressEnter({ isComposing: true })
+    expect(api.suggest).not.toHaveBeenCalled()
+    await pressEnter({})
+    expect(api.suggest).toHaveBeenCalledExactlyOnceWith({ source: 'focus', focus: '批量推理的动态验证' })
+
+    await act(async () => { root.unmount() })
+  })
+
   it('作者搜索与关注建议失败时只显示失败原因', async () => {
     api.search.mockResolvedValueOnce({ kind: 'failed', reason: 'unavailable' })
     api.suggest.mockResolvedValueOnce({ kind: 'failed', reason: 'unknown' })

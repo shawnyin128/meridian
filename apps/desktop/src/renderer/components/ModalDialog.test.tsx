@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ModalDialog, ModalTitle } from './ModalDialog.js'
 
 declare global {
@@ -53,5 +53,21 @@ describe('ModalDialog', () => {
     })
     expect(document.querySelector('[role="dialog"]')).toBeNull()
     expect(document.activeElement).toBe(opener)
+  })
+
+  it('stays open on an Escape that ends an input method composition and closes on the next one', () => {
+    const change = vi.fn()
+    act(() => root!.render(
+      <ModalDialog open onOpenChange={change} contentClassName="settings-modal">
+        <ModalTitle>设置</ModalTitle>
+        <input aria-label="名称" />
+      </ModalDialog>,
+    ))
+    const input = document.querySelector<HTMLInputElement>('[role="dialog"] input')!
+    act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true, cancelable: true })))
+    expect(change).not.toHaveBeenCalled()
+
+    act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+    expect(change).toHaveBeenCalledExactlyOnceWith(false)
   })
 })

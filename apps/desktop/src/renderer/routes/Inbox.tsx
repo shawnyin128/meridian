@@ -351,14 +351,14 @@ export function Inbox() {
           )
           : (
             <>
-              {groups.map((group, index) => (
+              {groups.map((group) => (
                 <CollapsibleGroup
                   key={group.key} data-group={group.key} title={group.title} count={group.rows.length}
                   open={!folded.has(group.key)} onToggle={() => toggleGroup(group.key)}
-                  actions={index === 0 ? (
+                  actions={stream === 'watch' ? (
                     <button
                       className="btn plain"
-                      onClick={() => dismiss(rows.map((r) => r.id), m.inbox.notices.dismissedAll)}
+                      onClick={() => dismiss(group.rows.map((r) => r.id), m.inbox.notices.dismissedAll)}
                     >{m.inbox.dismissAll}</button>
                   ) : undefined}
                 >
