@@ -247,6 +247,7 @@ describe('change log', () => {
     store.setChatArchived(chat.id, true)
     store.appendFeed({ source: 'me', body: { kind: 'runs', runs: [{ kind: 'text', text: '记一笔' }] } })
     store.mutatePaperReading(READ, { kind: 'progress.set', page: 4 })
+    store.setPaperColumns({ ...store.paperColumns(), hidden: ['topics'], order: ['y'] })
     store.mutatePaperReading(READ, { kind: 'note.add', page: 1, text: '新加的笔记' })
     store.mutatePaperReading(READ, { kind: 'highlight.add', page: 1, quote: '新加的高亮', rects: RECTS, color: 'yellow' })
     // Trash is already a restoration mechanism; logging it again would create an "undo restore" entry.
@@ -521,39 +522,44 @@ describe('change log', () => {
       .toEqual(['archived', 'date', 'diff', 'id', 'meta', 'source', 'title', 'undoable', 'undone'])
   })
 
-  it('删掉一列记一条,撤销把列连同分组与顺序放回,论文里那一格又看得见', () => {
+  it('删掉一列记一条,撤销把列放回,之后改过的显隐、分组与顺序留着,论文里那一格又看得见', () => {
     const column = { key: 'du-fa', label: '读法', type: 'select' as const, options: ['精读'] }
     store.setPaperColumns({ hidden: [], custom: [column], groups: ['topics', 'du-fa'], order: ['du-fa', 'y'] })
     store.updatePaper(READ, { custom: { 'du-fa': '精读' } })
-    const held = store.paperColumns()
     store.setPaperColumns({ hidden: [], custom: [], groups: ['topics'], order: ['y'] })
     const change = recorded()[0]!
     expect(change).toMatchObject({
       title: '论文表 · 删掉列「读法」',
-      diff: [
-        '- custom: {"key":"du-fa","label":"读法","options":["精读"],"type":"select"}', '- groups: "du-fa"', '- order: "du-fa"',
-      ],
+      diff: ['- custom: {"key":"du-fa","label":"读法","options":["精读"],"type":"select"}'],
       undoable: true,
     })
+    store.setPaperColumns({ hidden: ['topics'], custom: [], groups: ['topics'], order: ['y'] })
 
     store.undoChange(change.id)
-    expect(store.paperColumns()).toEqual(held)
+    expect(store.paperColumns()).toEqual({ hidden: ['topics'], custom: [column], groups: ['topics'], order: ['y'] })
     expect(store.getPaper(READ).custom).toEqual({ 'du-fa': '精读' })
     expect(store.listChanges()[0]).toMatchObject({ title: '撤销：论文表 · 删掉列「读法」', undoable: false })
   })
 
-  it('新建列、调列顺序、改别的列设置各记一条,标题说的是改了什么;较早的一条要先撤较新的', () => {
-    store.setPaperColumns({ ...emptyColumns(), custom: [{ key: 'pi-zhu', label: '批注', type: 'text', options: [] }] })
+  it('新建列、改列名、删选项各记一条,标题说的是改了什么;显隐、分组与列顺序不记;较早的一条要先撤较新的', () => {
+    const column = { key: 'du-fa', label: '读法', type: 'select' as const, options: ['精读', '略读'] }
+    store.setPaperColumns({ ...emptyColumns(), custom: [column] })
     const created = recorded()[0]!
-    expect(created).toMatchObject({ title: '论文表 · 新增列「批注」', undoable: true })
-    store.setPaperColumns({ ...store.paperColumns(), order: ['pi-zhu', 'y'] })
-    expect(recorded()[0]).toMatchObject({ title: '论文表 · 调整列顺序', undoable: true })
+    expect(created).toMatchObject({ title: '论文表 · 新增列「读法」', undoable: true })
+    const count = store.listChanges().length
     store.setPaperColumns({ ...store.paperColumns(), hidden: ['topics'] })
-    expect(recorded()[0]).toMatchObject({ title: '论文表 · 改了列设置', diff: ['+ hidden: "topics"'], undoable: true })
+    store.setPaperColumns({ ...store.paperColumns(), groups: ['topics', 'du-fa'] })
+    store.setPaperColumns({ ...store.paperColumns(), order: ['du-fa', 'y'] })
+    expect(store.listChanges()).toHaveLength(count)
+
+    store.setPaperColumns({ ...store.paperColumns(), custom: [{ ...column, label: '读的方式' }] })
+    expect(recorded()[0]).toMatchObject({ title: '论文表 · 列「读法」改名为「读的方式」', undoable: true })
+    store.setPaperColumns({ ...store.paperColumns(), custom: [{ ...column, label: '读的方式', options: ['精读'] }] })
+    expect(recorded()[0]).toMatchObject({ title: '论文表 · 列「读的方式」删掉选项「略读」', undoable: true })
 
     expect(() => store.undoChange(created.id)).toThrow('这条之后该实体又被改过 2 次，先撤销较新的那几条')
     for (const change of recorded().slice(0, 3)) store.undoChange(change.id)
-    expect(store.paperColumns()).toEqual(emptyColumns())
+    expect(store.paperColumns()).toEqual({ hidden: ['topics'], custom: [], groups: ['topics'], order: ['y'] })
   })
 
   it('撤销给列加的选项被拒:还有论文填着它,列设置一个字没动', () => {
