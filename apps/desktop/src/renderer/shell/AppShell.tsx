@@ -172,7 +172,7 @@ export function useToast(): (text: string) => void {
 
 /**
  * Returns the number of papers in the vault. The sidebar badge reads it, and so does the Papers screen
- * title while its search is empty. null means it has not been fetched yet.
+ * title while no filter narrows its list. null means it has not been fetched yet.
  */
 export function usePaperCount(): number | null {
   const state = useContext(PaperCountContext)
