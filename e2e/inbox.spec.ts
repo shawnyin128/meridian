@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { Locator, Page } from '@playwright/test'
-import { expect, gotoPapers, test, uniqueHeights, type MeridianWindow } from './app.js'
+import { expect, gotoPapers, test, type MeridianWindow } from './app.js'
 
 /** Screens stay mounted once visited, so selectors every screen has, such as cards, are scoped to the visible one. */
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
@@ -302,7 +302,7 @@ test('检查新论文按关注抓取一次,新论文进入相应分组且标题�
   const before = await inboxFromCore(win)
   await shown(win, '.desk-head .btn').filter({ hasText: '检查新论文' }).click()
   await expect(shown(win, '.pcard')).toHaveCount(before.length + 2)
-  await expect(shown(win, '.desk-head .fetchnote')).toHaveText(/^上次检查 \d+\/\d+ \d{2}:\d{2}$/)
+  await expect(shown(win, '.desk-head .fetchnote')).toHaveText(/^上次检查 \d+月\d+日 \d{2}:\d{2}$/)
   expect((await cardTitles(win))[0]).toBe('Tree Width in Batched Serving')
   const fresh = shown(win, '.pcard').filter({ hasText: 'Tree Width in Batched Serving' })
   await expect(fresh.locator('.plabel')).toHaveText(['Abstract'])
@@ -443,7 +443,10 @@ test('关注管理:占位行按 Esc 撤掉,屏上没有旧的圆角添加框', a
   await settings(win, '.section-heading').filter({ hasText: '作者' }).locator('.btn').click()
   await expect(settings(win, '.wrow')).toHaveCount(watches.length + 1)
   // The placeholder is styled as a .wrow: while it is open, every watch row here still has one height.
-  expect(await uniqueHeights(settings(win, '.wrow'))).toHaveLength(1)
+  // The divider between rows is the lower row's top border, which the first row of a list lacks, so
+  // rows are compared without their borders.
+  expect(await settings(win, '.wrow').evaluateAll((rows) => [...new Set(rows.map((r) => r.clientHeight))]))
+    .toHaveLength(1)
   await settings(win, '.wrow.newrow input').press('Escape')
   await expect(settings(win, '.wrow.newrow')).toHaveCount(0)
   await expect(settings(win, '.wrow')).toHaveCount(watches.length)
@@ -574,16 +577,18 @@ test('关注管理:同一时间只开一个占位,点另一组的加号先存下
   await openDeliverySettings(win)
   const watches = await watchesFromCore(win)
   await expect(settings(win, '.wrow')).toHaveCount(watches.length)
+  const topics = watches.filter((w) => w.type === 'topic').length
 
   await settings(win, '.section-heading').filter({ hasText: '主题' }).locator('.btn').click()
   await settings(win, '.wrow.newrow input').fill('切组前存下的主题')
   await settings(win, '.section-heading').filter({ hasText: '作者' }).locator('.btn').click()
 
   // The topic typed in the first placeholder is saved as a watch before the author group's
-  // placeholder opens; the author group comes after the topic group, so its placeholder is the last row.
+  // placeholder opens. A new watch lands first in its group, so the author group's placeholder comes
+  // right after the topic group's rows, the saved topic now among them.
   await expect(settings(win, '.wrow.newrow')).toHaveCount(1)
   await expect(settings(win, '.wrow')).toHaveCount(watches.length + 2)
-  await expect(settings(win, '.wrow').last()).toHaveClass(/\bnewrow\b/)
+  await expect(settings(win, '.wrow').nth(topics + 1)).toHaveClass(/\bnewrow\b/)
   await expect(settings(win, '.wrow.newrow input')).toHaveValue('')
   expect((await watchesFromCore(win)).map((w) => w.name)).toContain('切组前存下的主题')
 })
