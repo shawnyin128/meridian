@@ -267,7 +267,9 @@ export function ProjectRelations({
                 className={chipClass(row, paper.id)} key={paper.id} data-paper={paper.id}
                 onClick={() => onOpenPaper(paper.id)} {...dragProps(row, paper.id)}
               >
-                <FadeText className="tagchip-text"><PaperText text={paper.title} /></FadeText>
+                <button type="button" className="tagchip-open">
+                  <FadeText className="tagchip-text"><PaperText text={paper.title} /></FadeText>
+                </button>
                 <button
                   className="rx" title={m.common.removeLink}
                   onClick={(event) => { event.stopPropagation(); onRemovePaper(paper.id, paper.title) }}
@@ -284,7 +286,14 @@ export function ProjectRelations({
                 onClick={item.url !== undefined
                   ? () => { window.open(item.url, '_blank') }
                   : item.page === undefined ? undefined : () => onOpenPage(item.page!)}
-              ><FadeText className="tagchip-text">{item.text}</FadeText>
+              >
+                {item.url === undefined && item.page === undefined
+                  ? <FadeText className="tagchip-text">{item.text}</FadeText>
+                  : (
+                    <button type="button" className="tagchip-open">
+                      <FadeText className="tagchip-text">{item.text}</FadeText>
+                    </button>
+                  )}
                 <button
                   className="tagchip-edit" title={m.project.links.editTitle}
                   onClick={(event) => { event.stopPropagation(); onEdit(item) }}
@@ -354,9 +363,9 @@ export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <path d={CLIP_PATH} />
                   </svg>
-                  <span
-                    className="an" title={m.project.attachments.reveal} onClick={() => onReveal(attachment)}
-                  >{attachment.name}</span>
+                  <button
+                    type="button" className="an" title={m.project.attachments.reveal} onClick={() => onReveal(attachment)}
+                  >{attachment.name}</button>
                   <span className="as">{attachment.size}</span>
                   <button
                     className="ax" title={m.project.attachments.delete} onClick={() => onRemove(attachment.id)}

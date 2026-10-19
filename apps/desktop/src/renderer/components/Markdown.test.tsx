@@ -32,6 +32,22 @@ describe('Markdown', () => {
     expect(out).toContain('<span class="cite" title="原文第 3 页">p.3</span>')
   })
 
+  it('能打开页面时页内链接是键盘能到的链接，点它打开页面而不改地址', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    const onOpen = vi.fn()
+    const host = document.createElement('div')
+    const root = createRoot(host)
+    act(() => root.render(<MessagesProvider><Markdown src="见 [[topics/ptq|PTQ]]。" onOpen={onOpen} /></MessagesProvider>))
+    const link = host.querySelector<HTMLElement>('.wl')!
+    expect(link.tagName).toBe('A')
+    expect(link.getAttribute('href')).toBe('#wiki:topics/ptq')
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true })
+    act(() => { link.dispatchEvent(click) })
+    expect(click.defaultPrevented).toBe(true)
+    expect(onOpen).toHaveBeenCalledWith('topics/ptq')
+    act(() => root.unmount())
+  })
+
   it('[[id]] 没写别名时文字取 titles 里的短名,写了别名以别名为准,悬停都显示完整标题,titles 里没有的按原文', () => {
     const titles = {
       'papers/a': { id: 'papers/a', title: 'GPTQ', fullTitle: 'GPTQ: Accurate Post-Training Quantization' },

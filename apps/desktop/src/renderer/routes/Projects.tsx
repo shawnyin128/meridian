@@ -224,7 +224,10 @@ function ProjectPanel({ project, onOpen, menu, dragProps, dropClassName }: {
   )
 }
 
-/** Shelved and completed projects: one row with status, name, focus and time since the last progress. */
+/**
+ * Shelved and completed projects: one row with status, name, focus and time since the last progress.
+ * The name is the row's button; a click anywhere else on the row opens it too.
+ */
 function ProjectRow({ project, onOpen, menu, dragProps, dropClassName }: {
   project: ProjectSummary; onOpen: () => void; menu: ReactNode
   dragProps: DragCardProps; dropClassName: string
@@ -236,7 +239,9 @@ function ProjectRow({ project, onOpen, menu, dragProps, dropClassName }: {
       className={`prow${dropClassName ? ` ${dropClassName}` : ''}`}
       data-proj={project.id} data-dots-row="" onClick={onOpen} {...dragProps}
     >
-      <ProjectIdentity project={project} variant="row" showPriority={false} />
+      <button type="button" className="prow-open">
+        <ProjectIdentity project={project} variant="row" showPriority={false} />
+      </button>
       <span className="m">
         {m.project.identity.focusLabel[FOCUS_KEY[project.status]]}:{project.focus} ·{' '}
         {idleNote(idle, m.project.signals.idle)}

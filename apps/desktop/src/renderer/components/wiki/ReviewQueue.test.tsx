@@ -96,6 +96,7 @@ describe('ReviewQueue', () => {
     expect(row('p2').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(true)
     const chip = row('p1').querySelector<HTMLElement>('.wkrel .tagchip')!
     expect(chip.textContent).toBe('Speculative decoding')
+    expect(chip.tagName).toBe('BUTTON')
     act(() => chip.click())
     expect(onOpenPage).toHaveBeenCalledWith('topics/sd')
   })
@@ -111,6 +112,7 @@ describe('ReviewQueue', () => {
     expect(row('p6').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(true)
     const chip = row('p6').querySelector<HTMLElement>('.review-unverified .tagchip')!
     expect(chip.textContent).toBe('加宽实验')
+    expect(chip.tagName).toBe('BUTTON')
     act(() => chip.click())
     expect(onOpenConclusion).toHaveBeenCalledWith('draft', 'wide')
   })

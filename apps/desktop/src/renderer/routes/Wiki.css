@@ -14,6 +14,9 @@
 .wkcard:hover{border-color:var(--sep-strong);box-shadow:var(--sh-1)}
 .wkcard .wt{font-size:var(--card-tt);display:flex;align-items:center;gap:6px}
 .wkcard .tt{flex:1;min-width:0;font-weight:600;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade)}
+:where(.wkcard button.tt){padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
+/* The title's fade mask hides its own focus ring, so the card draws it. */
+.wkcard:has(button.tt:focus-visible){outline:2px solid var(--ring);outline-offset:2px}
 .wkcard .sp{margin-left:auto;display:flex;align-items:center;flex-shrink:0}
 .wkcard .wm{font-size:var(--card-fs);color:var(--ter);margin-top:4px;line-height:1.5;height:calc(1.5em * var(--card-lines));
   overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--card-lines)}
@@ -63,6 +66,8 @@
  */
 .wktoc{list-style:none;margin:2px 0 0;padding:0;border-left:1px solid var(--sep)}
 .wktoc li{font-size:var(--fs-base);line-height:var(--lh-ui);color:var(--sec);cursor:pointer;padding:4px 0 4px 12px;margin-left:-1px;border-left:1px solid transparent;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+/* The entry's button fills it and truncates itself, since an ellipsis never cuts into a button. */
+.wktoc li button{display:block;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit;overflow:hidden;text-overflow:ellipsis}
 .wktoc li:hover{color:var(--ink)}
 .wktoc li.on{color:var(--ink);font-weight:600;border-left-color:var(--accent)}
 .wktoc li.l2{padding-left:24px;font-size:var(--fs-sm)}
@@ -72,14 +77,15 @@
 /* Management controls: the × that cards and table rows show on hover, and the column editor */
 .wkcard{position:relative}
 .wkcard .rx{position:absolute;top:8px;right:8px;width:16px;height:16px;border-radius:50%;background:var(--field);border:1px solid var(--sep);box-shadow:var(--sh-1);color:var(--ter);display:grid;place-items:center;padding:0;cursor:pointer;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
-.wkcard:hover .rx{opacity:1;pointer-events:auto}
+.wkcard:hover .rx,.wkcard .rx:focus-visible{opacity:1;pointer-events:auto}
 .wkcard .rx:hover{color:var(--bad);border-color:var(--bad)}
 .wkcard .rx svg{width:8px;height:8px}
 .cmp th.rx,.cmp td.rx{width:22px;padding-left:4px;padding-right:4px}
-/* This cell is a td without tabIndex, outside the Tab order, so it gets pointer-events but no focus state. */
+/* The cell holds the × button and shows while its row is hovered or the button has keyboard focus. */
 .cmp td.rx{color:var(--ter);cursor:pointer;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
+.cmp td.rx button{display:block;width:100%;padding:0;border:0;background:none;color:inherit;cursor:inherit}
 .cmp td.rx svg{display:block;width:10px;height:10px;margin:0 auto}
-.cmp tbody tr:hover td.rx{opacity:1;pointer-events:auto}
+.cmp tbody tr:hover td.rx,.cmp td.rx:has(:focus-visible){opacity:1;pointer-events:auto}
 .cmp td.rx:hover{color:var(--bad)}
 .coledit{margin:6px 0 12px;display:grid;gap:6px;max-width:420px}
 .coledit .row{display:flex;gap:8px;align-items:center}
