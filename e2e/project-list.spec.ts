@@ -259,10 +259,13 @@ test('没有图数据的项目出的是一行占位,不是空画布加图例', a
   await expect(win.locator('.rgraph')).toHaveCount(0)
   await expect(win.locator('.glegend')).toHaveCount(0)
 
-  // A project with graph data still shows the canvas and legend; the selected tab carries over between
-  // projects, so there is no need to switch again.
+  // A project with graph data still shows the canvas and legend. It opens on its own timeline, not on
+  // the graph tab sched was left on.
   await win.locator('#crumb .cseg.link', { hasText: '项目' }).click()
   await win.locator('[data-proj="draft"]').click()
+  const graphTab = win.locator('.section-heading.flexh .segmented-control>button', { hasText: '科研图' })
+  await expect(graphTab).toHaveAttribute('aria-pressed', 'false')
+  await graphTab.click()
   await expect(win.locator('.rgraph .rgn')).toHaveCount((await getProject(win, 'draft')).graphNodes)
   await expect(win.locator('.glegend')).toHaveCount(1)
   await expect(win.locator('.rgempty')).toHaveCount(0)
@@ -284,8 +287,7 @@ test('sched / moe / fa 各打开一次,各板块条数与 project.get 一致', a
 
     await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '里程碑' }).click()
     await expect(win.locator('#msList .ddlrow'), id).toHaveCount(project.activeMilestones)
-    // The selected tab carries over between projects; switch back to Task for the next one.
-    await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '任务' }).click()
+    // Leaving on Milestones does not carry over: the next project opens on its own tasks.
     await win.locator('#crumb .cseg.link', { hasText: '项目' }).click()
   }
 })
