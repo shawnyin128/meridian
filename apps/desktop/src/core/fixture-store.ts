@@ -18,6 +18,7 @@ import type {
 } from '../shared/contract.js'
 import { AgentProposalSchema, DEFAULT_DELIVERY_SETTINGS } from '../shared/contract.js'
 import { projectControlState } from '../shared/project-control.js'
+import { sortRecordsNewestFirst } from '../shared/project-signals.js'
 import { topicDir, topicProposal } from '../shared/topic-proposal.js'
 import {
   ACTIVE_PROJECT, CHAT_EVENT_PREFIX, FINISHED_PROJECT, PAPER_PAGE, PROJECTS_DIR, SEARCH_LIMIT,
@@ -830,7 +831,8 @@ export function createFixtureStore(
         conclusions: conclusionCounts(conclusionsOf(p)),
         paperCount: p.papers.filter((id) => byId.has(id)).length,
         milestones: p.milestones.map(({ date, done }) => ({ date, done })),
-        recentEvents: p.events.slice(-RECENT_EVENTS)
+        recentEvents: sortRecordsNewestFirst([...p.events, ...p.workspace?.events ?? []])
+          .slice(0, RECENT_EVENTS).reverse()
           .map(({ date, text, origin }) => ({ date, text, ...(origin === undefined ? {} : { origin }) })),
         ...lastProgressOf(changelog, p.id, [...p.events, ...p.workspace?.events ?? []]),
       }))

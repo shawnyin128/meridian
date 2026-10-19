@@ -154,7 +154,9 @@ function ProjectPanel({ project, onOpen, menu, dragProps, dropClassName }: {
   const m = useMessages()
   const { next, idle, stale, milestonesDone } = signals(project, today)
   const left = next ? dnum(next.date) - dnum(today) : null
-  const latest = project.recentEvents.at(-1)
+  const newest = project.recentEvents.at(-1)
+  // The newest research record goes with the day of last progress only when it was written that day.
+  const record = newest?.date === project.lastProgress ? newest : undefined
 
   return (
     <ResearchObjectCard
@@ -207,11 +209,12 @@ function ProjectPanel({ project, onOpen, menu, dragProps, dropClassName }: {
         </span>
         <span className="project-card-fact project-card-recent">
           <span className="project-card-label">{m.research.panel.recentProgressLabel}</span>
-          {latest === undefined
+          {project.lastProgress === undefined
             ? <span className="project-card-empty">{m.research.panel.noRecords}</span>
             : (
-              <span title={latest.text}>
-                {fmt.date(latest.date)} <EventText text={latest.text} origin={latest.origin} />
+              <span title={record?.text}>
+                {fmt.date(project.lastProgress)}
+                {record === undefined ? null : <> <EventText text={record.text} origin={record.origin} /></>}
               </span>
             )}
         </span>

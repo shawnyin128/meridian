@@ -11,6 +11,7 @@ import {
   DEFAULT_DELIVERY_SETTINGS, FeedEntrySchema, ProposalRecordSchema, ResearchIdeaSchema, WatchSchema,
 } from '../shared/contract.js'
 import { projectControlState } from '../shared/project-control.js'
+import { sortRecordsNewestFirst } from '../shared/project-signals.js'
 import { topicDir, topicProposal } from '../shared/topic-proposal.js'
 import {
   ACTIVE_PROJECT, CHAT_EVENT_PREFIX, FINISHED_PROJECT, PAPER_PAGE, PROJECTS_DIR, READ_STATES, SEARCH_LIMIT,
@@ -1326,6 +1327,7 @@ export function createVaultStore(
       return applyOrder(projects(), state.projectOrder, (p) => p.id).map((p) => {
         const workspace = p.workspaceRoot === undefined ? undefined : readProjectWorkspace(p)
         const graph = workspace?.graph ?? p.graph
+        const records = [...p.events, ...workspace?.events ?? []]
         return {
           id: p.id,
           name: p.name,
@@ -1343,9 +1345,9 @@ export function createVaultStore(
           conclusions: conclusionCounts(conclusionsOf(p, graph)),
           paperCount: p.papers.filter((id) => papers.has(id)).length,
           milestones: p.milestones.map(({ date, done }) => ({ date, done })),
-          recentEvents: p.events.slice(-RECENT_EVENTS)
+          recentEvents: sortRecordsNewestFirst(records).slice(0, RECENT_EVENTS).reverse()
             .map(({ date, text, origin }) => ({ date, text, ...(origin === undefined ? {} : { origin }) })),
-          ...lastProgressOf(changes, p.id, [...p.events, ...workspace?.events ?? []]),
+          ...lastProgressOf(changes, p.id, records),
         }
       })
     },
