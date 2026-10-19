@@ -7,6 +7,7 @@ import { EmptyState } from '../EmptyState.js'
 import { IconButton } from '../IconButton.js'
 import { IconTrash } from '../icons.js'
 import { RowActions } from '../StructuredList.js'
+import { SourceAnchor } from '../SourceAnchor.js'
 import { ReaderPanelHeader } from './ReaderPanelHeader.js'
 
 /** A note or highlight card's delete, in the row-actions slot at the end of the card's top line. */
@@ -35,7 +36,7 @@ function NoteCard({ note, edits, onSave, onDelete, onJump }: {
   return (
     <article className="reading-card" data-row-actions="">
       <div className="reading-card-head">
-        <button className="reading-page" onClick={onJump}>{m.reader.page.at(note.page)}</button>
+        <span className="reading-page"><SourceAnchor page={note.page} onOpen={onJump} /></span>
         <ReadingDelete onDelete={onDelete} />
       </div>
       <FormTextarea aria-label={m.reader.notes.pageAria(note.page)} {...edit.fieldProps} />
@@ -65,7 +66,7 @@ function HighlightCard({ highlight, edits, onSave, onDelete, onJump, focus }: {
   return (
     <article className={`reading-card highlight-card ${highlight.color}`} data-row-actions="">
       <div className="reading-card-head">
-        <button className="reading-page" onClick={onJump}>{m.reader.highlights.jumpToPage(highlight.page)}</button>
+        <span className="reading-page"><SourceAnchor page={highlight.page} quote={highlight.quote} onOpen={onJump} /></span>
         <ReadingDelete onDelete={onDelete} />
       </div>
       <blockquote>{highlight.quote}</blockquote>

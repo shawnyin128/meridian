@@ -149,6 +149,12 @@ describe('ProjectPlan', () => {
     expect(output).toContain('已归档')
   })
 
+  it('已归档分组和想法页的一样,标题后带条数', () => {
+    const count = (html: string) => /collapsible-group-title">已归档<\/span><span class="count-badge[^"]*">(\d+)</.exec(html)?.[1]
+    expect(count(renderPlan('task', { tasks: [task, doneTask] }))).toBe('1')
+    expect(count(renderPlan('ms', { milestones: [milestone, doneMilestone] }))).toBe('1')
+  })
+
   it('flashId 指向已归档任务时,归档分组自动展开显示它', () => {
     const output = renderPlan('task', { tasks: [task, doneTask], flashId: doneTask.id })
     expect(output).toContain('已完成的任务')
@@ -279,7 +285,7 @@ describe('ProjectTaskPanel', () => {
   it('显示任务挂在哪个科研节点上;还没挂时只写「未关联」', () => {
     const linked = renderTaskPanel({}, { id: 'kv.n3', label: '前缀共调度', mode: 'supported' })
     expect(linked).toContain('科研节点')
-    expect(linked).toMatch(/<button[^>]*class="node-tag"[^>]*title="在科研图中打开「前缀共调度」"><span class="status-dot status-dot--sm status-dot--good"/)
+    expect(linked).toMatch(/<button[^>]*class="entity-link entity-link--node"[^>]*title="在科研图中打开「前缀共调度」"><span class="status-dot status-dot--sm status-dot--good"/)
     expect(renderTaskPanel()).toContain('未关联')
     expect(renderTaskPanel()).not.toContain('agent 做这个任务')
   })
@@ -315,7 +321,7 @@ describe('ProjectTaskPanel', () => {
     ))
     const heading = () => [...host.querySelectorAll<HTMLElement>('.section-heading')]
       .find((element) => element.textContent?.startsWith('备注'))!
-    const buttons = () => [...heading().querySelectorAll<HTMLButtonElement>(':scope > .btn')]
+    const buttons = () => [...heading().querySelectorAll<HTMLButtonElement>('.section-heading-actions > .btn')]
     const press = (text: string) => act(() => buttons().find((button) => button.textContent === text)!.click())
     const type = (text: string) => {
       Object.defineProperty(host.querySelector('.md.src')!, 'innerText', { value: text, configurable: true })
@@ -390,14 +396,14 @@ describe('ProjectTaskPanel', () => {
     })
 
     it('科研节点的操作和备注的编辑一样放在小标题右侧', () => {
-      /**
-       * The section heading that starts with `label`, and the texts of its own buttons: the shared
-       * heading rule right-aligns only buttons that are its direct children.
-       */
+      /** The section heading that starts with `label`, and the texts of the buttons in its actions slot. */
       const heading = (label: string) => {
         const found = [...document.querySelectorAll<HTMLElement>('.section-heading')]
           .find((element) => element.textContent?.startsWith(label))!
-        return { className: found.className, buttons: [...found.querySelectorAll(':scope > .btn')].map((b) => b.textContent) }
+        return {
+          className: found.className,
+          buttons: [...found.querySelectorAll(':scope > .section-heading-actions > .btn')].map((b) => b.textContent),
+        }
       }
       mount({})
       expect(heading('科研节点').buttons).toEqual(['关联节点'])

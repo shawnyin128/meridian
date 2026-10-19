@@ -1,12 +1,6 @@
 /* Recent Changes' day headings, entries and diffs, copied rule by rule from e2e/fixtures/platform-shell-demo.html. */
 
-.crow{padding:10px 2px;cursor:pointer}
-.crow .chead{display:flex;align-items:flex-start;gap:10px}
-.crow .cbody{flex:1;min-width:0;border:0;background:transparent;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
-.crow .cact{align-self:center}
+.crow{padding:10px 2px}
 .crow .ct{display:block;font-size:var(--fs-base);font-weight:500}
 .crow .cm{display:block;font-size:var(--fs-sm);color:var(--ter);margin-top:1px}
 .crow .src{margin-left:var(--sp-6)}
-.crow .diff{display:none}
-.crow.open .diff{display:block}
-/* "Archive all" sits at the right of the Current heading, placed there by .section-heading.flexh in PageShell.css. */

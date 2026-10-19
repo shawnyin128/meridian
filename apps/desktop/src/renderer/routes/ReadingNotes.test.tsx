@@ -113,7 +113,7 @@ describe('ReadingNotes', () => {
     act(() => setValue(note, '修订笔记'))
     await act(async () => { note.closest('article')!.querySelector<HTMLButtonElement>('.btn.pri')!.click() })
     await act(async () => { note.closest('article')!.querySelector<HTMLButtonElement>('.reading-delete')!.click() })
-    act(() => { host.querySelector<HTMLButtonElement>('.highlight-card .reading-page')!.click() })
+    act(() => { host.querySelector<HTMLButtonElement>('.highlight-card .reading-page .source-anchor')!.click() })
 
     expect(mutations).toEqual([
       { kind: 'highlight.update', id: 'highlight-1', note: '高亮判断' },

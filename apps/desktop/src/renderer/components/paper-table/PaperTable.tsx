@@ -1151,7 +1151,25 @@ export function PaperTable() {
     >
       {dropActive ? <div className="paper-drop"><strong>{m.papers.upload.dropToImport}</strong></div> : null}
       {/* As in the demo the title carries a count; until it arrives, the "·" and space after it are hidden. */}
-      <PageHeader>
+      <PageHeader
+        actions={(
+          <>
+            <FormInput
+              ref={uploadInput} className="pdfupload-input" type="file" accept="application/pdf,.pdf" multiple
+              onChange={(event) => {
+                const files = [...(event.currentTarget.files ?? [])]
+                if (files.length > 0) void uploadFiles(files)
+              }}
+            />
+            <AddAction
+              variant="page" className="pdfupload" disabled={uploading}
+              onClick={() => uploadInput.current?.click()}
+            >
+              {uploading ? m.papers.upload.importing : m.papers.upload.importAction}
+            </AddAction>
+          </>
+        )}
+      >
         <PageTitle>{m.papers.title(titleCount)}</PageTitle>
       </PageHeader>
 
@@ -1161,26 +1179,13 @@ export function PaperTable() {
         <div className="libwide">
           <PageToolbar className="paper-view-toolbar">
             <SegmentedControl
-              size="sm" label={m.papers.views.aria} value={view}
+              label={m.papers.views.aria} value={view}
               options={[
                 { value: 'table', label: m.papers.views.table },
                 { value: 'research-map', label: m.papers.views.researchMap },
               ]}
               onChange={(next) => { setView(next); setDetail(null) }}
             />
-            <FormInput
-              ref={uploadInput} className="pdfupload-input" type="file" accept="application/pdf,.pdf" multiple
-              onChange={(event) => {
-                const files = [...(event.currentTarget.files ?? [])]
-                if (files.length > 0) void uploadFiles(files)
-              }}
-            />
-            <AddAction
-              variant="page" className="sm pdfupload" disabled={uploading}
-              onClick={() => uploadInput.current?.click()}
-            >
-              {uploading ? m.papers.upload.importing : m.papers.upload.importAction}
-            </AddAction>
           </PageToolbar>
           <ParseProgress
             onParsed={() => bump()}

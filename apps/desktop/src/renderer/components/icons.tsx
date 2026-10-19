@@ -174,6 +174,11 @@ export const IconSeen = () => (
   </Icon>
 )
 
+/** The mark at the end of a link that leaves the App for the browser. */
+export const IconExternal = () => (
+  <Icon sw={2.2}><path d="M7 17L17 7" /><path d="M9 7h8v8" /></Icon>
+)
+
 /** Small trash can for every action that moves something to the trash or deletes it. */
 export const IconTrash = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">

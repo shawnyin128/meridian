@@ -9,13 +9,16 @@ import { claimId } from '../../lib/slug.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { JumpAnchor } from '../../shell/AppShell.js'
 import { AddAction } from '../AddAction.js'
+import { CardTray } from '../CardTray.js'
 import { MenuItem } from '../ActionMenu.js'
 import { DiffLines } from '../DiffLines.js'
 import { EmptyState } from '../EmptyState.js'
+import { EntityLink } from '../EntityLink.js'
 import { ChoicePicker, DotsMenu } from '../FieldPickers.js'
 import { FormInput, FormTextarea } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
+import { SourceAnchor } from '../SourceAnchor.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
 import { Tag } from '../Tag.js'
@@ -59,7 +62,7 @@ function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: 
       return (
         <>
           <Tag>{c.experiment}</Tag>
-          <button type="button" className="wkclaim-link" onClick={() => links.openProject(item.project)}>{title}</button>
+          <EntityLink kind="project" label={title} onOpen={() => links.openProject(item.project)} />
           <span className="wkclaim-point">{item.node ?? item.conclusion}</span>
           {item.text ? <span className="wkclaim-note">{item.text}</span> : null}
         </>
@@ -68,10 +71,10 @@ function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: 
       return (
         <>
           <Tag>{c.evidence}</Tag>
-          <button
-            type="button" className="wkclaim-link"
-            onClick={() => links.openReader(item.paper, { page: item.page, ...(item.highlight === undefined ? {} : { highlight: item.highlight }) })}
-          >{paper} {c.page(item.page)}</button>
+          <span>{paper} <SourceAnchor
+            page={item.page} quote={item.quote}
+            onOpen={() => links.openReader(item.paper, { page: item.page, ...(item.highlight === undefined ? {} : { highlight: item.highlight }) })}
+          /></span>
           <q className="wkclaim-quote">{item.quote}</q>
         </>
       )
@@ -79,10 +82,10 @@ function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: 
       return (
         <>
           <Tag>{c.note}</Tag>
-          <button
-            type="button" className="wkclaim-link"
-            onClick={() => links.openReader(item.paper, item.highlight === undefined ? { panel: 'notes', note: item.note! } : { highlight: item.highlight })}
-          >{paper}</button>
+          <EntityLink
+            kind="paper" label={paper}
+            onOpen={() => links.openReader(item.paper, item.highlight === undefined ? { panel: 'notes', note: item.note! } : { highlight: item.highlight })}
+          />
         </>
       )
     case 'wiki':
@@ -90,9 +93,9 @@ function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: 
       return (
         <>
           {item.kind === 'wiki' ? <Tag>{c.evidence}</Tag> : null}
-          <button type="button" className="wkclaim-link" data-wk={item.ref.split('#')[0]} onClick={() => links.openPage(item.ref.split('#')[0]!)}>
-            {title}
-          </button>
+          <EntityLink
+            kind="page" label={title} data-wk={item.ref.split('#')[0]} onOpen={() => links.openPage(item.ref.split('#')[0]!)}
+          />
         </>
       )
     case 'personal':
@@ -123,7 +126,6 @@ export function WikiClaims({ page, pending, links, onApply }: {
   const f = c.form
   const fmt = useFormat()
   const [form, setForm] = useState<Form | null>(null)
-  const [history, setHistory] = useState<ReadonlySet<string>>(new Set())
   const [text, setText] = useState('')
   const [note, setNote] = useState('')
   const [basis, setBasis] = useState<'personal' | 'conclusion'>('personal')
@@ -219,16 +221,12 @@ export function WikiClaims({ page, pending, links, onApply }: {
   }
 
   const ready = submission()
-  const toggleHistory = (id: string) => setHistory((shown) => {
-    const next = new Set(shown)
-    if (!next.delete(id)) next.add(id)
-    return next
-  })
 
   return (
     <>
-      <SectionHeading variant="content" className="flexh">{c.heading}
-        <AddAction variant="section" disabled={pending} title={c.add} onClick={() => open({ kind: 'add' })}>{c.addShort}</AddAction>
+      <SectionHeading
+        actions={<AddAction variant="section" disabled={pending} title={c.add} onClick={() => open({ kind: 'add' })}>{c.addShort}</AddAction>}
+      >{c.heading}
       </SectionHeading>
       {page.claims.length === 0
         ? <EmptyState variant="section">{c.empty}</EmptyState>
@@ -273,21 +271,13 @@ export function WikiClaims({ page, pending, links, onApply }: {
                 {claim.history.length === 0
                   ? null
                   : (
-                    <>
-                      <button
-                        type="button" className="wkclaim-history" aria-expanded={history.has(claim.id)}
-                        onClick={() => toggleHistory(claim.id)}
-                      >{c.history(claim.history.length)}</button>
-                      {history.has(claim.id)
-                        ? (
-                          <DiffLines lines={[
-                            ...claim.history.map((h) => `- v${h.version} · ${fmt.date(h.since)} · ${h.text}`),
-                            `+ v${claim.version} · ${fmt.date(claim.since)} · ${claim.text}`,
-                          ]}
-                          />
-                        )
-                        : null}
-                    </>
+                    <CardTray variant="row" className="wkclaim-history" summary={c.history(claim.history.length)}>
+                      <DiffLines lines={[
+                        ...claim.history.map((h) => `- v${h.version} · ${fmt.date(h.since)} · ${h.text}`),
+                        `+ v${claim.version} · ${fmt.date(claim.since)} · ${claim.text}`,
+                      ]}
+                      />
+                    </CardTray>
                   )}
               </StructuredRow>
             ))}

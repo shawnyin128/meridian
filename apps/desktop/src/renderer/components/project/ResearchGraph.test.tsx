@@ -210,6 +210,24 @@ describe('idea and graph association', () => {
     act(() => root.unmount())
   })
 
+  it('names each branch with the same node link as every other screen and opens it on click', () => {
+    const host = document.createElement('div')
+    const root = createRoot(host)
+    const onSelect = vi.fn()
+    act(() => root.render(withMessages(
+      <ResearchNodePanel
+        graph={GRAPH} events={[]} ideas={[]} tasks={[]} node={GRAPH.nodes[0]!}
+        onClose={vi.fn()} onSelect={onSelect} onSelectIdea={vi.fn()} onSelectTask={vi.fn()}
+      />,
+    )))
+    const branch = host.querySelector<HTMLButtonElement>('.node-branch-list > *')!
+    expect(branch.className).toBe('entity-link entity-link--node')
+    expect(branch.querySelector('.status-dot')).not.toBeNull()
+    act(() => branch.click())
+    expect(onSelect).toHaveBeenCalledWith(GRAPH.nodes[1]!.id)
+    act(() => root.unmount())
+  })
+
   it('uses the shared Markdown surface for node tables', () => {
     const host = document.createElement('div')
     const root = createRoot(host)
@@ -248,7 +266,7 @@ describe('idea and graph association', () => {
     expect(row?.querySelector('.record-line')?.textContent).toBe('跑通延迟测量')
     expect(row?.querySelector('.project-signal-kind')?.textContent).toBe('实验结果')
     expect(row?.querySelector('.record-who')?.textContent).toBe('agent')
-    expect(row?.querySelector('.node-tag')).toBeNull()
+    expect(row?.querySelector('.entity-link--node')).toBeNull()
     act(() => root.unmount())
   })
 })

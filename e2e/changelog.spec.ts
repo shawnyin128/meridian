@@ -69,17 +69,19 @@ test('点开一条才看得见它的 diff,加行删行分开着色', async ({ wi
   await gotoChangelog(win)
   // The change with one deleted and one added line: the user's conclusion "branch waste", v2 to v3.
   const row = shown(win, '.crow').filter({ hasText: '分支浪费' })
-  await expect(row.locator('.diff')).toBeHidden()
+  const toggle = row.locator('.card-tray-toggle')
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
 
-  await row.click()
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
   await expect(row.locator('.diff')).toBeVisible()
   await expect(row.locator('.diff .del')).toHaveCount(1)
   await expect(row.locator('.diff .add')).toHaveCount(1)
   // Each row expands on its own: opening one leaves the others closed.
-  await expect(shown(win, '.crow').first().locator('.diff')).toBeHidden()
+  await expect(shown(win, '.crow').first().locator('.card-tray-toggle')).toHaveAttribute('aria-expanded', 'false')
 
-  await row.click()
-  await expect(row.locator('.diff')).toBeHidden()
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
 })
 
 test('改一笔再撤销:数据真的回到改之前,那一条标成已撤销,并多出一条撤销记录', async ({ win }) => {

@@ -9,8 +9,9 @@ import remarkMath from 'remark-math'
 import 'katex/dist/katex.min.css'
 import type { WikiRef } from '../../shared/contract.js'
 import { commitsMultiline, composing } from '../lib/keyboard.js'
-import { useMessages } from '../messages/useMessages.js'
+import { EntityLink } from './EntityLink.js'
 import { remarkPaperText } from './paper/paper-text.js'
+import { SourceAnchor } from './SourceAnchor.js'
 
 /** Two kinds of marks: `[[id|Text]]` / `[[id]]` are in-page links, and `(p.N)` is a source anchor. */
 const WIKI_LINK = /\[\[([^\]|\n]+)(?:\|([^\]\n]+))?\]\]/g
@@ -48,13 +49,13 @@ function remarkHeadingIds() {
 }
 
 /**
- * Links render three ways: an in-page link is a `.wl` that shows the page's full title from `titles`
- * on hover and, given `onOpen`, is a link that opens the page; a source anchor is a `.cite`, and any
- * other link opens in a new window.
+ * Links render three ways, all as entity links: an in-page link shows the page's full title from
+ * `titles` on hover and, given `onOpen`, opens the page; a source anchor is the anchor control when
+ * `onAnchor` opens the source at a page, and plain text otherwise; any other link opens in the browser.
  */
 function components(
   onOpen: ((id: string) => void) | undefined,
-  citePage: (page: string) => string,
+  onAnchor: ((page: number) => void) | undefined,
   titles: Record<string, WikiRef> | undefined,
 ): Components {
   return {
@@ -64,19 +65,18 @@ function components(
       if (href.startsWith(WIKI)) {
         const id = href.slice(WIKI.length)
         const page = titles?.[id]
-        const title = page?.fullTitle ?? page?.title
-        if (onOpen === undefined) return <span className="wl" data-wk={id} title={title}>{children}</span>
         return (
-          <a
-            className="wl" href={href} data-wk={id} title={title}
-            onClick={(event) => { event.preventDefault(); onOpen(id) }}
-          >{children}</a>
+          <EntityLink
+            kind="page" label={children} title={page?.fullTitle ?? page?.title} data-wk={id}
+            {...(onOpen === undefined ? {} : { href, onOpen: () => onOpen(id) })}
+          />
         )
       }
       if (href.startsWith(CITE)) {
-        return <span className="cite" title={citePage(href.slice(CITE.length))}>{children}</span>
+        const page = Number(href.slice(CITE.length))
+        return onAnchor === undefined ? <>{children}</> : <SourceAnchor page={page} onOpen={() => onAnchor(page)} />
       }
-      return <a href={href} target="_blank" rel="noreferrer">{children}</a>
+      return <EntityLink kind="external" label={children} href={href} />
     },
   }
 }
@@ -84,8 +84,8 @@ function components(
 /**
  * Renders a piece of Markdown: GFM (tables and so on) renders as GFM, and raw HTML is escaped as
  * text. `[[id|text]]`, `[[id]]` and `(p.N)` are recognized anywhere in the text, code included. The
- * first two are in-page links that call `onOpen(id)` on click; the last is a source anchor.
- * Ordinary links open in a new window. `$…$` is an inline formula and a block between `$$` lines
+ * first two are in-page links that call `onOpen(id)` on click; the last is a source anchor, which
+ * calls `onAnchor(N)` when given and is plain text otherwise. Ordinary links open in the browser. `$…$` is an inline formula and a block between `$$` lines
  * is a display formula, both rendered with KaTeX; `$$...$$` within one line is inline under
  * remark-math's syntax rules, not a display formula. Each heading's id is `h-` followed by its
  * line number in `src`. `[[id]]` without an alias shows the title of `titles[id]`, or the id when
@@ -94,14 +94,14 @@ function components(
  * text outside code and formulas renders LaTeX text commands as `PaperText` does, and a single `~`
  * is a no-break space rather than strikethrough.
  */
-export function Markdown({ src, onOpen, titles, latexText = false }: {
+export function Markdown({ src, onOpen, onAnchor, titles, latexText = false }: {
   src: string
   onOpen?: (id: string) => void
+  onAnchor?: (page: number) => void
   titles?: Record<string, WikiRef>
   latexText?: boolean
 }) {
-  const m = useMessages()
-  const parts = useMemo(() => components(onOpen, m.common.markdown.citePage, titles), [onOpen, m, titles])
+  const parts = useMemo(() => components(onOpen, onAnchor, titles), [onOpen, onAnchor, titles])
   return (
     <ReactMarkdown
       remarkPlugins={latexText
@@ -144,7 +144,7 @@ export function headingsOf(src: string): Heading[] {
  * The caller places EditActions and reads `box`'s `innerText` on save. `className` is appended to the
  * container.
  */
-export function MarkdownBox({ text, editing, box, onCancel, onSave, onOpen, titles, empty, className }: {
+export function MarkdownBox({ text, editing, box, onCancel, onSave, onOpen, onAnchor, titles, empty, className }: {
   text: string
   editing: boolean
   box: RefObject<HTMLDivElement | null>
@@ -152,6 +152,7 @@ export function MarkdownBox({ text, editing, box, onCancel, onSave, onOpen, titl
   /** Called on ⌘Enter or Ctrl+Enter while editing. */
   onSave: () => void
   onOpen?: (id: string) => void
+  onAnchor?: (page: number) => void
   titles?: Record<string, WikiRef>
   empty: ReactNode
   className?: string
@@ -181,7 +182,8 @@ export function MarkdownBox({ text, editing, box, onCancel, onSave, onOpen, titl
           ? empty
           : (
             <Markdown
-              src={text} {...(onOpen === undefined ? {} : { onOpen })} {...(titles === undefined ? {} : { titles })}
+              src={text} {...(onOpen === undefined ? {} : { onOpen })} {...(onAnchor === undefined ? {} : { onAnchor })}
+              {...(titles === undefined ? {} : { titles })}
             />
           )}
       </div>

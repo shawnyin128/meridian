@@ -1,6 +1,7 @@
 import type { ExtensionStatus } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { CardTray } from '../CardTray.js'
+import { SectionHeading } from '../PageShell.js'
 import { Tag, type TagTone } from '../Tag.js'
 import { Card } from '../Card.js'
 import { PluginVersionEntry, type PluginVersionEntryProps } from './PluginVersionEntry.js'
@@ -42,7 +43,7 @@ export function ExtensionSettings({ statuses, plugin, onCopy, onCopyPrompt }: Ex
             <section className="extension-entry" key={extension.id} data-extension={extension.id}>
               <div className="extension-head">
                 <div>
-                  <h3>{extension.name}</h3>
+                  <SectionHeading variant="group">{extension.name}</SectionHeading>
                   <p>{m.settings.extensions.description}</p>
                 </div>
                 <Tag tone={STATE_TONE[extension.state]} className="extension-state">
@@ -75,7 +76,7 @@ export function ExtensionSettings({ statuses, plugin, onCopy, onCopyPrompt }: Ex
 
       <Card as="section" className="extension-tutorial" data-extension-tutorial="">
         <div className="extension-tutorial-head">
-          <h3>{m.settings.extensions.tutorial.heading}</h3>
+          <SectionHeading variant="group">{m.settings.extensions.tutorial.heading}</SectionHeading>
           <p>{m.settings.extensions.tutorial.intro}</p>
         </div>
         <ol className="extension-tutorial-steps">

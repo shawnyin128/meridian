@@ -204,7 +204,7 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   expect((await listProjects(win)).map((p) => p.id)).not.toContain(created!.id)
 
   await win.locator('[data-desk="trash"]').click()
-  await expect(shown(win).locator('.section-heading')).toHaveText('项目 · 1清空垃圾桶')
+  await expect(shown(win).locator('.section-heading')).toHaveText('项目 · 1')
   await expect(win.locator('.tgroup .trow .tt2')).toHaveText([RENAMED_PROJECT])
   await win.locator('.tgroup .trow .row-actions [aria-label="恢复"]').click()
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
@@ -254,7 +254,7 @@ test('没有图数据的项目出的是一行占位,不是空画布加图例', a
   await win.locator('[data-proj="sched"]').click()
   expect((await getProject(win, 'sched')).graphNodes).toBe(0)
 
-  await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '科研图' }).click()
+  await win.locator('.section-heading-actions .segmented-control>button', { hasText: '科研图' }).click()
   await expect(win.locator('.rgempty')).toHaveText('暂无科研图')
   await expect(win.locator('.rgraph')).toHaveCount(0)
   await expect(win.locator('.glegend')).toHaveCount(0)
@@ -263,7 +263,7 @@ test('没有图数据的项目出的是一行占位,不是空画布加图例', a
   // the graph tab sched was left on.
   await win.locator('#crumb .cseg.link', { hasText: '项目' }).click()
   await win.locator('[data-proj="draft"]').click()
-  const graphTab = win.locator('.section-heading.flexh .segmented-control>button', { hasText: '科研图' })
+  const graphTab = win.locator('.section-heading-actions .segmented-control>button', { hasText: '科研图' })
   await expect(graphTab).toHaveAttribute('aria-checked', 'false')
   await graphTab.click()
   await expect(win.locator('.rgraph .rgn')).toHaveCount((await getProject(win, 'draft')).graphNodes)
@@ -285,7 +285,7 @@ test('sched / moe / fa 各打开一次,各板块条数与 project.get 一致', a
     await expect(win.locator('.evlist .record-row'), id).toHaveCount(project.events)
     await expect(win.locator('.agcard'), id).toHaveCount(project.agentSessions)
 
-    await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '里程碑' }).click()
+    await win.locator('.section-heading-actions .segmented-control>button', { hasText: '里程碑' }).click()
     await expect(win.locator('#msList .ddlrow'), id).toHaveCount(project.activeMilestones)
     // Leaving on Milestones does not carry over: the next project opens on its own tasks.
     await win.locator('#crumb .cseg.link', { hasText: '项目' }).click()
@@ -473,7 +473,7 @@ test('排序按钮:按优先级重排后写进库里,与算出来的顺序一致
     .sort((a, b) => a.priority.localeCompare(b.priority) || a.i - b.i)
     .map((p) => p.id)
 
-  const sortTrigger = win.locator('.section-heading.flexh .sort-menu', { hasText: '排序' })
+  const sortTrigger = win.locator('.desk-head .page-actions .sort-menu', { hasText: '排序' })
   const sortBox = await sortTrigger.boundingBox()
   const addBox = await win.locator('#projNew').boundingBox()
   // The sort entry sits beside the page's add action and must share its height and baseline.

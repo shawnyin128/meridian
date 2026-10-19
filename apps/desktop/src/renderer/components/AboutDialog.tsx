@@ -1,6 +1,7 @@
 import { appUpdates, extensions } from '../ipc.js'
 import { useAppUpdate } from '../hooks/useAppUpdate.js'
 import { useMessages } from '../messages/useMessages.js'
+import { EntityLink } from './EntityLink.js'
 import { DownloadRing, IconCheck } from './icons.js'
 import { ModalDialog, ModalTitle } from './ModalDialog.js'
 import { ProgressFill } from './ProgressFill.js'
@@ -37,9 +38,7 @@ function AboutBody({ status }: { status: AppUpdateStatus }) {
         <span>{updateLine(status, m)}</span>
       </p>
       <div className="about-actions">
-        <button type="button" className="about-link" onClick={() => { window.open(RELEASES) }}>
-          {m.shell.about.releases}
-        </button>
+        <span className="about-link"><EntityLink kind="external" label={m.shell.about.releases} href={RELEASES} /></span>
         <UpdateAction
           status={status}
           onCheck={() => {

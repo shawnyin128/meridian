@@ -217,7 +217,7 @@ export function Settings() {
         <Card className="storage-card">
           <div className="storage-head">
             <div>
-              <h3>{m.settings.storage.libraryTitle}</h3>
+              <SectionHeading variant="group">{m.settings.storage.libraryTitle}</SectionHeading>
               <p>{m.settings.storage.libraryNote}</p>
             </div>
             <Tag>{sourceLabel}</Tag>
@@ -269,7 +269,7 @@ export function Settings() {
             />
           </div>
         </Card>
-        <SectionHeading variant="content">
+        <SectionHeading>
           {m.settings.storage.backupsHeading(backups?.length ?? 0)}
         </SectionHeading>
         <p className="settings-intro">{m.settings.storage.backupsIntro}</p>

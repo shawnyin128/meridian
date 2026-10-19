@@ -135,6 +135,17 @@ describe('Project list', () => {
     act(() => open.click())
     expect(host.querySelector('[data-open="draft"]')).not.toBeNull()
   })
+
+  it('排序和新建项目作用于整页,放在屏头右端,一种尺寸,新建在最后;分组标题不再带按钮', async () => {
+    api.projects = [summary({})]
+    await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
+    const actions = [...host.querySelectorAll<HTMLButtonElement>('.desk-head > .page-actions > button')]
+    expect(actions.map((b) => [b.textContent, b.className.split(' ').slice(0, 2).join(' ')]))
+      .toEqual([['排序', 'btn sort-menu'], ['新建项目', 'btn pri']])
+    expect(host.querySelector('.section-heading .section-heading-actions')).toBeNull()
+    act(() => actions[1]!.click())
+    expect(host.querySelector('.desk-body input')).not.toBeNull()
+  })
 })
 
 describe('项目的排序', () => {

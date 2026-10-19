@@ -32,14 +32,10 @@
 .cmp th{text-align:left;font-size:var(--fs-sm);color:var(--ter);font-weight:600;padding:6px 10px;border-bottom:1px solid var(--sep);white-space:nowrap;position:sticky;top:0;background:var(--content)}
 .cmp td{padding:7px 10px;border-bottom:1px solid var(--sep2);vertical-align:top;max-width:26ch}
 .cmp tbody tr:last-child td{border-bottom:0}
-.cmp td.rh{white-space:nowrap;font-weight:600}
+.cmp td.rh{white-space:nowrap}
 .cmp td.na{color:var(--ter)}
 /* A derived column is marked by the tag in its header. */
 .cmp th .wkind{margin-left:6px}
-.anc{border-bottom:1px dotted var(--ter);cursor:help}
-.anc sup{font-size:.78em;color:var(--ter);margin-left:2px}
-#wktip{position:fixed;z-index:60;max-width:min(44ch,60vw);padding:8px 12px;background:var(--raised);color:var(--ink);border-radius:var(--r-lg);box-shadow:var(--sh-2);font-size:12px;line-height:var(--lh-ui);pointer-events:none}
-#wktip b{display:block;font-size:11px;color:var(--ter);margin-bottom:2px}
 
 /* The paper page's "Location in Wiki" blocks in the right rail */
 .memb{margin:4px 0 12px}
@@ -83,9 +79,6 @@
  */
 .wkcard.newcard{cursor:default;border-style:dashed}
 .wkcard.newcard .wf{height:1.5em}
-
-/* The paper comparison's placeholder row: as tall as a real row, an input in its first cell, a dash in the rest. */
-.cmp tr.newrow td.rh{font-weight:400}
 
 /*
  * The new-column cell at the end of the comparison table's header row: its width and the rules for the

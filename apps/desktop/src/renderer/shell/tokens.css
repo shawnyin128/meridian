@@ -4,8 +4,8 @@
  *    blue, and the dark theme has a full gray scale; both derive from a hue of about 220°. The light
  *    surface ladder (--card / --window / --sidebar) is the exception: the demo's cards are white.
  * 2. The tokens added beyond the demo (--accent-solid / --press / --press-solid / --hover-solid /
- *    --bad-solid / --bad-text / --ring* / --sel / --link / --selected / --on-selected / --tint-* /
- *    --on-tint / --paper / --scrim /
+ *    --bad-solid / --bad-text / --ring* / --sel / --accent-text / --selected / --on-selected /
+ *    --tint-* / --on-tint / --paper / --scrim /
  *    --raised / --chip / --r-* / --pad-* / --sp-* / --row-* / --fs-* / --lh-* / --t-* / --e-*)
  *    and the split into --sh-1 / --sh-2 / --sh-3 / --sh-paper are not in the demo: the demo is the
  *    reference for layout and behavior, not for the finished look, so the two differ on these.
@@ -71,11 +71,11 @@
    */
   --bad-solid:#d1372c; --bad-text:color-mix(in srgb,var(--bad) 80%,var(--ink));
   --ring:var(--accent); --ring-width:2px; --ring-offset:2px;
-  /* Links darken the accent toward --ink: the plain accent falls below 4.5:1 on a tinted card */
-  --sel:rgba(53,104,255,.22); --link:color-mix(in srgb,var(--accent) 90%,var(--ink));
+  /* Accent text, for a picked option on an accent tint, darkens the accent toward --ink: the plain accent falls below 4.5:1 */
+  --sel:rgba(53,104,255,.22); --accent-text:color-mix(in srgb,var(--accent) 90%,var(--ink));
   /*
    * The one selected look of rows, cards and graph nodes: the accent tint, and text the accent moved
-   * 20% toward --ink, which keeps 4.5:1 on the tint over a card in both themes; --link does not.
+   * 20% toward --ink, which keeps 4.5:1 on the tint over a card in both themes; --accent-text does not.
    */
   --selected:var(--accent-soft); --on-selected:color-mix(in srgb,var(--accent) 80%,var(--ink));
   --tint-good:rgba(48,209,88,.14); --tint-warn:rgba(255,214,10,.14);
@@ -126,7 +126,7 @@
   --q-bg:rgba(4,11,20,.4);
   --sep-strong:#394a62;
   --press:rgba(245,247,251,.09);
-  --sel:rgba(85,140,255,.22); --link:var(--accent);
+  --sel:rgba(85,140,255,.22); --accent-text:var(--accent);
   --tint-good:rgba(48,209,88,.20); --tint-warn:rgba(255,214,10,.20);
   /* #ff453a on an 18% red tint over #0d1b2d is 4.26:1, short of body text's 4.5:1; 10% gives 4.68:1 */
   --tint-bad:rgba(255,69,58,.10); --tint-info:rgba(46,196,214,.20);

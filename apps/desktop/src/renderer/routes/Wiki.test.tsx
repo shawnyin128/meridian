@@ -20,10 +20,13 @@ const card = (id: string, title: string): WikiAggregationCard => ({
 const fixture = vi.hoisted(() => ({
   aggregation: vi.fn(),
   paper: vi.fn(),
+  open: vi.fn(),
 }))
 
 const HOME: WikiHome = {
-  aggregationCount: 2, kinds: [{ key: 'topic', label: '主题', dir: 'topics', count: 2 }], roots: [card('topics/sd', '推测解码')],
+  aggregationCount: 2,
+  kinds: [{ key: 'topic', label: '主题', dir: 'topics', count: 2 }, { key: 'method', label: '方法', dir: 'methods', count: 0 }],
+  roots: [card('topics/sd', '推测解码')],
 }
 
 const AGG: WikiAggregation = {
@@ -70,7 +73,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useBanner: () => vi.fn(),
   useToast: () => vi.fn(),
   useCrumbTail: () => {},
-  useJump: () => ({ jump: null, open: vi.fn(), returnTo: vi.fn() }),
+  useJump: () => ({ jump: null, open: fixture.open, returnTo: vi.fn() }),
   useScreenEntry: () => 0,
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
@@ -89,6 +92,7 @@ describe('Wiki keyboard reach', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     fixture.aggregation.mockReset().mockResolvedValue(AGG)
     fixture.paper.mockReset().mockResolvedValue(PAPER)
+    fixture.open.mockReset()
     document.body.innerHTML = ''
     host = document.createElement('div')
     document.body.append(host)
@@ -112,6 +116,10 @@ describe('Wiki keyboard reach', () => {
       await Promise.resolve()
     })
   }
+
+  it('首页不给没有卡片的种类留一个空标题', () => {
+    expect(all('.section-heading').map((heading) => heading.textContent)).toEqual(['主题', '论文'])
+  })
 
   it('opens each home card from the button that holds its title', async () => {
     expect(tags('.wkcard .tt')).toEqual(['BUTTON', 'BUTTON'])
@@ -149,15 +157,35 @@ describe('Wiki keyboard reach', () => {
   it('reaches every link, chip, contents entry and remove control of an aggregation page by keyboard', async () => {
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
     expect(tags('.wkmain .wkcard .tt')).toEqual(['BUTTON'])
-    expect(tags('.cmp td.rh .wl')).toEqual(['BUTTON'])
+    expect(tags('.cmp td.rh .entity-link')).toEqual(['BUTTON'])
     expect(tags('.cmp td.dv .tagchip')).toEqual(['BUTTON'])
     expect(tags('.cmp td.rx .row-actions > *')).toEqual(['BUTTON'])
     expect(tags('.wkside .wkrel .tagchip')).toEqual(['BUTTON', 'BUTTON'])
     expect(all('.wktoc li > button').map((b) => b.textContent)).toEqual(['背景', '结果'])
-    expect(tags('.wkmain .md .wl')).toEqual(['A'])
+    expect(tags('.wkmain .md .entity-link')).toEqual(['A'])
 
     await press(host.querySelector<HTMLElement>('.cmp td.dv .tagchip')!)
     expect(fixture.aggregation).toHaveBeenLastCalledWith('methods/tree')
+  })
+
+  it('比较表里的锚点是一个按钮:聚焦时显示原文,点它在阅读器里打开那篇论文的那一页', async () => {
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    const anchor = host.querySelector<HTMLButtonElement>('.cmp td .source-anchor')!
+    expect([anchor.tagName, anchor.textContent, anchor.getAttribute('aria-label')]).toEqual(['BUTTON', 'p.3', '原文第 3 页'])
+    act(() => anchor.focus())
+    expect(host.querySelector('.source-anchor-quote')!.textContent).toBe('p.3 · 原文“four bits”')
+    await press(anchor)
+    expect(fixture.open).toHaveBeenCalledWith('reader', 'p1', { page: 3 })
+  })
+
+  it('论文页的「去论文列表查看」是整页的操作,在屏头右端,点它到论文表里找到这篇', async () => {
+    expect(host.querySelector('.desk-head .page-actions')).toBeNull()
+    await press(host.querySelector<HTMLElement>('[data-wk="papers/p1"] .tt')!)
+    const go = host.querySelector<HTMLButtonElement>('.desk-head > .page-actions > .btn')!
+    expect(go.textContent).toBe('去论文列表查看')
+    expect(host.querySelector('.wkside .btn')).toBeNull()
+    await press(go)
+    expect(fixture.open).toHaveBeenCalledWith('papers', 'EAGLE-2')
   })
 
   it('opens a paper page membership from a button', async () => {

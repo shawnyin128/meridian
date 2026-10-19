@@ -103,7 +103,7 @@ test('五个筛选档各自的条数与按来源分档的计数一致', async ({
 
   for (const [label, expected] of chips) {
     expect(expected).toBeGreaterThan(0)
-    await shown(win, '.feedbar .segmented-control>button').filter({ hasText: label }).first().click()
+    await shown(win, '.page-toolbar .segmented-control>button').filter({ hasText: label }).first().click()
     await expect(shown(win, '.fitem')).toHaveCount(expected)
     // As in the demo, a filter matches each item's source; day headings have no source, so any filter hides them.
     await expect(shown(win, '.day-heading')).toHaveCount(label === '全部' ? 2 : 0)

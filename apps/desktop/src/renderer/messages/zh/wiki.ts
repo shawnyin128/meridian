@@ -55,7 +55,6 @@ export const wiki = {
   viewInPaperList: '去论文列表查看',
   membershipHeading: '归属',
   noMembership: '还没有归到任何一页下。',
-  tipSource: (page: number) => `p.${page} · 原文`,
   scope: {
     source: '原文',
     currentPaper: '当前论文',
@@ -164,9 +163,6 @@ export const wiki = {
       },
     },
   },
-  anchors: {
-    page: (n: string) => `第 ${n} 页`,
-  },
   groundsLabel: '依据',
   review: {
     legend: '按来源检查各章节；这里不修改内容，需要调整时请切换到 Markdown 编辑。',
@@ -197,7 +193,6 @@ export const wiki = {
     note: '你的笔记',
     experiment: '实验',
     conflict: '冲突',
-    page: (n: number) => `p.${n}`,
     actionsLabel: (text: string) => `结论「${text}」的操作`,
     revise: '修订',
     markConflict: '标记冲突',

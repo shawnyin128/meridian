@@ -10,8 +10,6 @@
 .about-status.is-ready svg,.about-status.is-checking svg,.about-status.is-downloading svg{color:var(--accent)}
 .about-status.is-error{color:var(--bad)}
 .about-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px}
-.about-link{padding:0;border:0;background:none;color:var(--accent);font:inherit;font-size:var(--fs-sm);cursor:pointer}
-.about-link:hover{text-decoration:underline}
-.about-link:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--r-sm)}
+.about-link{font-size:var(--fs-sm)}
 
 @media (prefers-reduced-motion:reduce){.about-status .ring.spin{animation:none}}

@@ -96,7 +96,7 @@ describe('ProjectEventRow', () => {
     expect(host.querySelector('.record-line')?.textContent).toBe('第一个探针支持假设 · p99 从 80ms 降到 62ms')
     expect(host.querySelector('.record-who .source-label')?.textContent).toBe('agent')
     expect(row?.className).toContain('with-node')
-    const tag = host.querySelector('.record-node button.node-tag--fill')
+    const tag = host.querySelector('.record-node button.entity-link--node.entity-link--fill')
     expect(tag?.textContent).toBe('延迟探针')
     expect(tag?.querySelector('.status-dot--warn')?.getAttribute('aria-label')).toBe('待修复')
     act(() => { tag!.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
@@ -116,7 +116,7 @@ describe('ProjectEventRow', () => {
       </MessagesProvider>,
     ))
 
-    expect(host.querySelector('.node-tag')).toBeNull()
+    expect(host.querySelector('.entity-link--node')).toBeNull()
     expect(host.querySelector('.record-line')?.textContent).toBe('搭好评测环境')
     expect(host.querySelector('.project-signal-kind .tag--neutral')?.textContent).toBe('记录')
     expect(host.querySelector('.record-who')?.childElementCount).toBe(0)

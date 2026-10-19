@@ -26,7 +26,7 @@ import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import {
-  PageBody, PageError, PageHeader, PageShell, PageTitle,
+  PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar,
 } from '../components/PageShell.js'
 import './shell.css'
 
@@ -283,25 +283,34 @@ export function Inbox() {
 
   return (
     <PageShell>
-      <PageHeader>
-        <PageTitle>{head}</PageTitle>
-        <span className="fetchnote">{stream === 'watch' ? fetchNote(jobs?.fetch ?? null, m, fmt) : ''}</span>
-        {stream === 'watch' ? (
-          <button
-            className="btn" disabled={jobs?.fetch?.state === 'checking'}
-            onClick={() => { void inbox.fetch().catch((e: Error) => toast(e.message)) }}
-          >{jobs?.fetch?.state === 'failed' ? m.common.retry : m.inbox.checkNewPapers}</button>
-        ) : (
-          <button className="btn" disabled={discovering} onClick={refreshDiscovery}>
-            {discovering ? m.inbox.discovering : m.inbox.refreshDiscovery}
-          </button>
+      <PageHeader
+        actions={(
+          <>
+            <span className="fetchnote">{stream === 'watch' ? fetchNote(jobs?.fetch ?? null, m, fmt) : ''}</span>
+            <IconButton
+              label={stream === 'discovery' ? m.inbox.discoverySettings : m.inbox.watchSettings}
+              onClick={() => openCategory(stream === 'discovery' ? 'delivery-discovery' : 'delivery-watch')}
+            ><IconGear /></IconButton>
+            {stream === 'watch' ? (
+              <button
+                className="btn" disabled={jobs?.fetch?.state === 'checking'}
+                onClick={() => { void inbox.fetch().catch((e: Error) => toast(e.message)) }}
+              >{jobs?.fetch?.state === 'failed' ? m.common.retry : m.inbox.checkNewPapers}</button>
+            ) : (
+              <button className="btn" disabled={discovering} onClick={refreshDiscovery}>
+                {discovering ? m.inbox.discovering : m.inbox.refreshDiscovery}
+              </button>
+            )}
+          </>
         )}
+      >
+        <PageTitle>{head}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />
 
       <PageBody>
-        <div className="inbox-toolbar">
+        <PageToolbar>
           <SegmentedControl
             label={m.inbox.sortLabel}
             value={sort}
@@ -313,11 +322,7 @@ export function Inbox() {
             ]}
             onChange={setSort}
           />
-          <IconButton
-            label={stream === 'discovery' ? m.inbox.discoverySettings : m.inbox.watchSettings} size="nested"
-            onClick={() => openCategory(stream === 'discovery' ? 'delivery-discovery' : 'delivery-watch')}
-          ><IconGear /></IconButton>
-        </div>
+        </PageToolbar>
         {stream === 'discovery' ? (
           <div className="discovery-summary">
             <p className="discovery-note">

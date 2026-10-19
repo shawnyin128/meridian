@@ -125,11 +125,12 @@ describe('Ideas', () => {
 
     expect(host.textContent).toContain('用可学习性信号动态分配 draft model 的蒸馏预算')
     expect(host.textContent).toContain('进行中 · 2')
-    expect(host.textContent).toContain('已归档 · 1')
 
     const linked = host.querySelector('[data-idea="idea-linked"]')!
     expect(linked.classList.contains('research-object-card')).toBe(true)
     expect(linked.textContent).toContain('项目 · 推测解码')
+    // The project tag names the project inside a card that opens the idea, so it is a label, not a link.
+    expect(linked.querySelector('.idea-project-tag')!.className).toContain('tag--neutral')
     expect(linked.textContent).toContain('只对 disagreement 高且可学习的 token 加大蒸馏权重。')
     expect(linked.textContent).toContain('对话')
     expect(linked.textContent).toContain('来源 · 摊薄的前提是共享前缀吗')
@@ -150,7 +151,7 @@ describe('Ideas', () => {
     expect(detail.querySelector('.idea-panel-head .node-document-title')!.textContent)
       .toBe('用可学习性信号动态分配 draft model 的蒸馏预算')
     expect([...detail.querySelectorAll('.section-heading--rail')].map((heading) => heading.textContent))
-      .toEqual(['用可学习性信号动态分配 draft model 的蒸馏预算编辑', '内容', '关联项目', '来源'])
+      .toEqual(['用可学习性信号动态分配 draft model 的蒸馏预算编辑', '内容', '关联项目打开项目', '来源打开来源对话'])
     expect(detail.textContent).toContain('只对 disagreement 高且可学习的 token 加大蒸馏权重。')
     const edit = [...detail.querySelectorAll<HTMLButtonElement>('button')]
       .find((item) => item.textContent === '编辑')!
@@ -210,5 +211,28 @@ describe('Ideas', () => {
     })
     expect(host.querySelector('.idea-detail-slot')?.getAttribute('data-panel-state')).toBe('closed')
     expect(host.querySelector('.idea-detail-panel')).toBeNull()
+  })
+
+  it('已归档的想法收进一个带条数的折叠分组,和项目计划里的已归档一样默认收起', async () => {
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    const group = host.querySelector<HTMLElement>('.collapsible-group.collapsible-group--quiet')!
+    expect(group.querySelector('.collapsible-group-title')!.textContent).toBe('已归档')
+    expect(group.querySelector('.collapsible-group-count')!.textContent).toBe('1')
+    expect(host.querySelector('[data-idea="idea-completed"]')).toBeNull()
+    await act(async () => { group.querySelector<HTMLButtonElement>('.collapsible-group-toggle')!.click() })
+    expect(group.querySelector('[data-idea="idea-completed"]')).not.toBeNull()
+  })
+
+  it('想法详情里每一节的操作放在那一节小标题的右端', async () => {
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    const headings = async (id: string) => {
+      await act(async () => { host.querySelector<HTMLElement>(`[data-idea="${id}"]`)!.click() })
+      return [...host.querySelectorAll<HTMLElement>('.idea-detail-panel > .section-heading:not(.idea-panel-head)')].map((heading) => [
+        heading.firstChild!.textContent,
+        [...heading.querySelectorAll(':scope > .section-heading-actions > .btn')].map((button) => button.textContent),
+      ])
+    }
+    expect(await headings('idea-linked')).toEqual([['内容', []], ['关联项目', ['打开项目']], ['来源', ['打开来源对话']]])
+    expect(await headings('idea-independent')).toEqual([['内容', []], ['关联项目', ['转为项目']], ['来源', ['打开来源对话']]])
   })
 })

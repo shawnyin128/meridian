@@ -4,33 +4,39 @@ import { IconChevron } from './icons.js'
 import './CardTray.css'
 
 /**
- * Progressive-disclosure surface for secondary card details. The summary stays one line high while
- * the detail area expands below it, so the host card never shifts its identity or primary actions.
+ * Progressive-disclosure surface for secondary details. The summary stays in place while the detail
+ * area expands below it, so the host never shifts its identity or primary actions. `tray` is a filled
+ * one-line tray inside a card, its toggle named by `expandLabel` and `collapseLabel`; `row` draws no
+ * surface of its own and leads with the caret, for a list row whose summary is the row itself and
+ * names the toggle.
  */
 export function CardTray({
-  summary, children, action, expandLabel, collapseLabel, defaultOpen = false, className = '',
+  summary, children, action, variant = 'tray', expandLabel, collapseLabel, defaultOpen = false, className = '',
 }: {
   summary: ReactNode
   children: ReactNode
   action?: ReactNode
-  expandLabel: string
-  collapseLabel: string
   defaultOpen?: boolean
   className?: string
-}) {
+} & (
+  | { variant?: 'tray'; expandLabel: string; collapseLabel: string }
+  | { variant: 'row'; expandLabel?: never; collapseLabel?: never }
+)) {
   const [open, setOpen] = useState(defaultOpen)
   const detailId = useId()
-  const label = open ? collapseLabel : expandLabel
+  const label = variant === 'row' ? undefined : open ? collapseLabel : expandLabel
+  const chevron = <span className="card-tray-chevron" aria-hidden="true"><IconChevron /></span>
   return (
-    <div className={`card-tray${open ? ' is-open' : ''}${className ? ` ${className}` : ''}`}>
+    <div className={`card-tray card-tray--${variant}${open ? ' is-open' : ''}${className ? ` ${className}` : ''}`}>
       <div className="card-tray-head">
         <button
           className="card-tray-toggle" type="button" aria-expanded={open}
           aria-controls={detailId} aria-label={label} title={label}
           onClick={() => setOpen((held) => !held)}
         >
+          {variant === 'row' ? chevron : null}
           <span className="card-tray-summary">{summary}</span>
-          <span className="card-tray-chevron" aria-hidden="true"><IconChevron /></span>
+          {variant === 'row' ? null : chevron}
         </button>
         {action === undefined ? null : <div className="card-tray-action">{action}</div>}
       </div>

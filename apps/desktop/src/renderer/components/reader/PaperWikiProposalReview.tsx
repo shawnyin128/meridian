@@ -12,7 +12,7 @@ const PROVENANCE_TONE: Record<HarnessPaperWikiReviewGroup['provenance'], TagTone
 }
 
 function anchorLabel(anchor: string, m: Catalog): string {
-  if (anchor.startsWith('page:')) return m.wiki.anchors.page(anchor.slice('page:'.length))
+  if (anchor.startsWith('page:')) return m.common.anchor.label(Number(anchor.slice('page:'.length)))
   if (anchor.startsWith('highlight:')) return m.wiki.scope.highlights
   if (anchor.startsWith('note:')) return m.wiki.scope.notes
   if (anchor === 'remark') return m.wiki.scope.remark

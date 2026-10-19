@@ -8,13 +8,6 @@
 .project-idea-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
 .project-idea-flags{display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0}
 .project-idea-source{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ter);font-size:var(--fs-sm);text-align:right}
-.project-idea-graph-actions,.project-idea-node-link{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.project-idea-node{min-width:0;max-width:100%;padding:5px 9px;border:1px solid var(--sep2);border-radius:var(--r-md);
-  background:var(--field);color:var(--ink);font:inherit;font-size:var(--fs-sm);overflow:hidden;text-overflow:ellipsis;
-  white-space:nowrap;cursor:pointer}
-.project-idea-node:hover{border-color:var(--sep-strong);background:var(--hover)}
-.project-idea-node:focus-visible{outline:0;border-color:var(--accent)}
-.project-idea-node-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
 @media (max-width:900px){
   .project-idea-row{grid-template-columns:minmax(0,1fr) auto}
   .project-idea-flags{grid-column:2;grid-row:1}

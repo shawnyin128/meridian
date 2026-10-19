@@ -85,6 +85,16 @@ describe('Inbox', () => {
     await act(async () => { root.unmount() })
   })
 
+  it('检查新论文和推送设置是整页的操作,在屏头右端,检查在最后;排序是视图切换,在工具栏', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    const actions = [...host.querySelector('.desk-head > .page-actions')!.children]
+    expect(actions.map((child) => child.getAttribute('aria-label') ?? child.textContent)).toEqual(['', '关注设置', '检查新论文'])
+    expect(actions[1]!.className).toBe('icbtn')
+    expect(host.querySelector('.desk-body > .page-toolbar .segmented-control')!.getAttribute('aria-label')).toBe('排序')
+    await act(async () => { root.unmount() })
+  })
+
   it('把确定性关注与项目发现分开,并显示 Core 给出的推荐依据', async () => {
     api.profiles = [{
       id: 'p1', name: '项目一', seedCount: 2, positiveCount: 0, negativeCount: 0,

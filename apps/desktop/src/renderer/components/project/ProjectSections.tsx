@@ -8,6 +8,7 @@ import { FadeText } from '../FadeText.js'
 import { IconButton } from '../IconButton.js'
 import { IconCross, IconPencil, IconTrash } from '../icons.js'
 import { EditActions } from '../EditActions.js'
+import { ExternalMark } from '../EntityLink.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PaperText } from '../paper/PaperText.js'
 import { PickRow, type PickHit } from '../PickRow.js'
@@ -146,10 +147,13 @@ export function ProjectMemo({ text, editing, onEditing, onSave, onOpen }: {
   }
   return (
     <>
-      <SectionHeading variant="content" className="flexh">{m.project.sections.remark}
-        <EditActions
-          editing={editing} onEdit={() => onEditing(true)} onCancel={() => onEditing(false)} onSave={save}
-        />
+      <SectionHeading
+        actions={(
+          <EditActions
+            editing={editing} onEdit={() => onEditing(true)} onCancel={() => onEditing(false)} onSave={save}
+          />
+        )}
+      >{m.project.sections.remark}
       </SectionHeading>
       <MarkdownBox
         className="memo" text={text} editing={editing} box={box}
@@ -309,6 +313,7 @@ export function ProjectRelations({
                   : (
                     <button type="button" className="tagchip-open">
                       <FadeText className="tagchip-text">{item.text}</FadeText>
+                      {item.url === undefined ? null : <ExternalMark />}
                     </button>
                   )}
                 <RowActions>
@@ -407,7 +412,7 @@ export function ProjectAgentSessions({ sessions }: { sessions: AgentSession[] })
   const m = useMessages()
   return (
     <>
-      <SectionHeading variant="content">{m.project.agentSessions.heading(sessions.length)}</SectionHeading>
+      <SectionHeading>{m.project.agentSessions.heading(sessions.length)}</SectionHeading>
       {sessions.map((session) => (
         <div className="agcard" key={session.id}>
           <div className="agh">

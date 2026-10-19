@@ -33,7 +33,6 @@
 .ovlist-kind{grid-column:3;display:flex;align-items:center;gap:6px;min-width:0;height:22px}
 .ovlist-main{grid-column:4;display:block;min-width:0;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade)}
 .ovlist-meta{grid-column:5;color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
-.ovdecision-action{color:var(--accent);font-weight:600}
 .ovlist-prefix{color:var(--ter);margin-right:3px}
 .ovlist-row.progress .ovlist-kind{display:grid;grid-template-columns:7px 32px;justify-content:start}
 

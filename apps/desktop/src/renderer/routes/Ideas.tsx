@@ -8,6 +8,7 @@ import { SortMenu } from '../components/SortMenu.js'
 import { FormInput, FormTextarea } from '../components/FormControls.js'
 import { ChoicePicker, DotsMenu } from '../components/FieldPickers.js'
 import { EditActions } from '../components/EditActions.js'
+import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { IdeaPanel, ideaSourceLabel } from '../components/ideas/IdeaPanel.js'
 import { DetailPanel } from '../components/DetailPanel.js'
@@ -84,7 +85,7 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, reorder, dropClassName
         <div className="idea-card-title-row">
           <CardOpen><strong>{idea.title}</strong></CardOpen>
           <Tag
-            tone={linked !== undefined ? 'accent' : idea.project === undefined ? 'neutral' : 'bad'}
+            tone={linked === undefined && idea.project !== undefined ? 'bad' : 'neutral'}
             className="idea-project-tag"
           >{linkedProjectLabel(idea, linked, m)}</Tag>
         </div>
@@ -187,7 +188,15 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
           )
           : undefined}
       >
-        <SectionHeading variant="rail">{m.ideas.link.heading}</SectionHeading>
+        <SectionHeading
+          variant="rail"
+          actions={idea.project === undefined
+            ? <button className="btn sm" onClick={onPromote}>{m.ideas.promote.action}</button>
+            : linked === undefined
+              ? undefined
+              : <button className="btn sm" onClick={() => onOpen('project', linked.id)}>{m.ideas.promote.openProject}</button>}
+        >{m.ideas.link.heading}
+        </SectionHeading>
         <ChoicePicker
           appearance="field" className="idea-link-picker" aria-label={m.ideas.link.selectAriaLabel(idea.title)}
           value={idea.project ?? ''}
@@ -203,13 +212,9 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
           }}
           onPick={(id) => onProject(id || null)}
         />
-        <div className="idea-detail-actions">
-          {idea.project === undefined
-            ? <button className="btn sm" onClick={onPromote}>{m.ideas.promote.action}</button>
-            : linked === undefined
-              ? <span className="idea-missing-project">{m.ideas.link.originalUnavailable}</span>
-              : <button className="btn sm" onClick={() => onOpen('project', linked.id)}>{m.ideas.promote.openProject}</button>}
-        </div>
+        {idea.project !== undefined && linked === undefined
+          ? <div className="idea-missing-project">{m.ideas.link.originalUnavailable}</div>
+          : null}
       </IdeaPanel>
     </aside>
   )
@@ -224,6 +229,7 @@ export function Ideas() {
   const [rows, setRows] = useState<ResearchIdea[]>([])
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [archiveOpen, setArchiveOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const closeDetail = useCallback(() => setSelectedId(null), [])
 
@@ -312,10 +318,13 @@ export function Ideas() {
               </EmptyState>
             ) : active.map(card)}
             {archived.length === 0 ? null : (
-              <>
-                <SectionHeading>{m.ideas.archivedHeading(archived.length)}</SectionHeading>
+              <CollapsibleGroup
+                variant="quiet" title={m.common.archived} count={archived.length}
+                open={archiveOpen || archived.some((idea) => idea.id === selectedId)}
+                onToggle={() => setArchiveOpen((open) => !open)}
+              >
                 {archived.map(card)}
-              </>
+              </CollapsibleGroup>
             )}
           </main>
 

@@ -13,6 +13,7 @@ import { en } from '../messages/en/index.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { zh } from '../messages/zh/index.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
+import { ProjectTaskPanel } from '../components/project/ProjectPlan.js'
 import { ProjectIdeaPanel, WorkspaceRoot } from './ProjectDetail.js'
 
 const sm = zh.project.signals
@@ -241,64 +242,86 @@ describe('project idea panel', () => {
     edges: [],
   }
 
-  it('keeps workspace node association in place and sends source navigation through Ideas', () => {
+  const mount = (panel: ReactNode) => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    document.body.innerHTML = ''
     const host = document.createElement('div')
+    document.body.append(host)
     const root = createRoot(host)
-    const onOpenIdea = vi.fn()
-    const onLinkNode = vi.fn()
-    act(() => root.render(withMessages(
-      <ProjectIdeaPanel
-        idea={idea} graph={graph} workspaceManaged
-        onClose={vi.fn()} onOpenIdea={onOpenIdea} onCreateNode={vi.fn()}
-        onLinkNode={onLinkNode} onOpenNode={vi.fn()} onUnlinkNode={vi.fn()}
-      />,
-    )))
-
-    expect([...host.querySelectorAll('.section-heading--rail')].map((heading) => heading.textContent))
-      .toEqual(['用动态预算控制校准成本跳转到想法', '内容', '科研图', '来源'])
-    expect(host.querySelector('.idea-panel-head .project-idea-open-idea')).not.toBeNull()
-    const buttons = [...host.querySelectorAll('button')]
-    const button = (label: string) => buttons.find((candidate) => candidate.textContent === label)
-    expect(button('跳转到想法')).toBeDefined()
-    expect(button('打开来源对话')).toBeUndefined()
-    expect(button('关联已有节点')).toBeDefined()
-    expect(button('关联已有节点')!.disabled).toBe(false)
-    expect(host.textContent).not.toContain('工作区科研图只读')
-
-    act(() => button('跳转到想法')!.click())
-    act(() => button('关联已有节点')!.click())
-    expect(onOpenIdea).toHaveBeenCalledOnce()
-    expect(onLinkNode).toHaveBeenCalledOnce()
-    act(() => root.unmount())
+    act(() => root.render(withMessages(panel)))
+    const button = (label: string) => [...host.querySelectorAll('button')].find((candidate) => candidate.textContent === label)
+    /** The texts of the buttons in the actions slot of the heading that starts with `label`. */
+    const headingActions = (label: string) => [...host.querySelectorAll<HTMLElement>('.section-heading')]
+      .filter((heading) => heading.textContent?.startsWith(label))
+      .map((heading) => [...heading.querySelectorAll(':scope > .section-heading-actions > button')].map((b) => b.textContent))
+    const pick = (label: string) => {
+      act(() => { button(label)!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+      return [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')]
+    }
+    return { host, button, headingActions, pick, unmount: () => { act(() => root.unmount()); vi.unstubAllGlobals() } }
+  }
+  const handlers = () => ({
+    onClose: vi.fn(), onOpenIdea: vi.fn(), onCreateNode: vi.fn(), onOpenNode: vi.fn(), onSetNode: vi.fn(),
   })
 
-  it('lets a linked workspace idea open, change, or remove its current node', () => {
-    const host = document.createElement('div')
-    const root = createRoot(host)
-    const onOpenNode = vi.fn()
-    const onLinkNode = vi.fn()
-    const onUnlinkNode = vi.fn()
-    act(() => root.render(withMessages(
-      <ProjectIdeaPanel
-        idea={{ ...idea, node: 'thread.probe' }} graph={graph} workspaceManaged
-        onClose={vi.fn()} onOpenIdea={vi.fn()} onCreateNode={vi.fn()}
-        onLinkNode={onLinkNode} onOpenNode={onOpenNode} onUnlinkNode={onUnlinkNode}
-      />,
-    )))
+  it('shows the shared idea panel: the head, the content, the research node, then the source', () => {
+    const panel = mount(<ProjectIdeaPanel idea={idea} graph={graph} workspaceManaged {...handlers()} />)
+    expect([...panel.host.querySelectorAll('.section-heading--rail')].map((heading) => heading.textContent))
+      .toEqual(['用动态预算控制校准成本跳转到想法', '内容', '科研节点关联节点', '来源'])
+    expect(panel.host.querySelector('.idea-panel-head .project-idea-open-idea')).not.toBeNull()
+    expect(panel.host.textContent).not.toContain('工作区科研图只读')
+    panel.unmount()
+  })
 
-    const buttons = [...host.querySelectorAll('button')]
-    const button = (label: string) => buttons.find((candidate) => candidate.textContent === label)!
-    expect(button('动态预算探针').disabled).toBe(false)
-    const actions = host.querySelector('.project-idea-node-actions')
-    expect(actions?.textContent).toBe('更改取消关联')
-    expect(actions?.parentElement?.firstElementChild?.textContent).toBe('动态预算探针')
-    act(() => button('动态预算探针').click())
-    act(() => button('更改').click())
-    act(() => button('取消关联').click())
-    expect(onOpenNode).toHaveBeenCalledWith('thread.probe')
-    expect(onLinkNode).toHaveBeenCalledOnce()
-    expect(onUnlinkNode).toHaveBeenCalledOnce()
-    act(() => root.unmount())
+  it('opens the idea in Ideas from the panel head, beside the close button', () => {
+    const on = handlers()
+    const panel = mount(<ProjectIdeaPanel idea={idea} graph={graph} workspaceManaged {...on} />)
+    expect(panel.host.querySelector('.node-document-head > .section-heading-actions')!.textContent).toBe('跳转到想法')
+    expect(panel.host.querySelector('.node-document-head > .section-heading-actions > .panel-close')).not.toBeNull()
+    expect(panel.button('打开来源对话')).toBeUndefined()
+    act(() => panel.button('跳转到想法')!.click())
+    expect(on.onOpenIdea).toHaveBeenCalledOnce()
+    panel.unmount()
+  })
+
+  it('assigns the research node through the same heading control as a task, with the same words', () => {
+    const on = handlers()
+    const task = mount(
+      <ProjectTaskPanel
+        task={{ id: 't1', title: '宽树实验', start: '2026-09-16', end: '2026-09-16', priority: 'p1', state: 'act' }}
+        node={undefined} nodes={graph.nodes} handSet={false}
+        onClose={vi.fn()} onSaveNote={vi.fn()} onOpenNode={vi.fn()} onSetNode={vi.fn()}
+      />,
+    )
+    const taskUnlinked = task.headingActions('科研节点')
+    task.unmount()
+    const unlinked = mount(<ProjectIdeaPanel idea={idea} graph={graph} workspaceManaged {...on} />)
+    expect(unlinked.headingActions('科研节点')).toEqual(taskUnlinked)
+    expect(taskUnlinked).toEqual([['关联节点']])
+    expect(unlinked.host.textContent).toContain('未关联')
+    const items = unlinked.pick('关联节点')
+    expect(items.map((item) => item.textContent)).toEqual(['动态预算探针'])
+    act(() => items[0]!.click())
+    expect(on.onSetNode).toHaveBeenCalledWith('thread.probe')
+    unlinked.unmount()
+
+    const own = mount(<ProjectIdeaPanel idea={idea} graph={graph} workspaceManaged={false} {...on} />)
+    expect(own.headingActions('科研节点')).toEqual([['转为新节点', '关联节点']])
+    act(() => own.button('转为新节点')!.click())
+    expect(on.onCreateNode).toHaveBeenCalledOnce()
+    own.unmount()
+  })
+
+  it('lets a linked idea open, change, or remove its current node from the heading', () => {
+    const on = handlers()
+    const panel = mount(<ProjectIdeaPanel idea={{ ...idea, node: 'thread.probe' }} graph={graph} workspaceManaged {...on} />)
+    expect(panel.headingActions('科研节点')).toEqual([['更改', '取消关联']])
+    act(() => panel.host.querySelector<HTMLButtonElement>('.node-assignment .entity-link--node')!.click())
+    expect(on.onOpenNode).toHaveBeenCalledWith('thread.probe')
+    act(() => panel.button('取消关联')!.click())
+    expect(on.onSetNode).toHaveBeenCalledWith(null)
+    panel.unmount()
   })
 })
 

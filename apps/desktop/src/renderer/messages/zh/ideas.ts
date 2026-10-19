@@ -2,7 +2,6 @@
 export const ideas = {
   title: (n: number) => `想法 · ${n}`,
   activeHeading: (n: number) => `进行中 · ${n}`,
-  archivedHeading: (n: number) => `已归档 · ${n}`,
   sort: '排序',
   sortUpdated: '按更新时间',
   empty: '还没有进行中的想法。在论文阅读或对话中，把你明确整理过的研究方向存到这里。',
@@ -47,8 +46,6 @@ export const ideas = {
     nodeTitleLabel: '节点标题',
     afterLabel: '接在哪个节点后',
     newRootOption: '作为新的根节点',
-    nodeLabel: '科研图节点',
     createAndLink: '创建并关联',
-    confirmLink: '确认关联',
   },
 } satisfies Record<string, unknown>

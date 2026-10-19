@@ -142,7 +142,7 @@ function DecisionQueue({ rows, onOpen }: {
             when={<OverviewDate date={x.date} />}
             kind={<ProjectSignalKind tone={x.tone}>{x.kind}</ProjectSignalKind>}
             main={x.reason}
-            meta={<span className="ovdecision-action">{x.action} →</span>}
+            meta={`${x.action} →`}
             project={x.name}
             projectId={x.projectId}
             onOpen={() => onOpen(x.projectId, x.task !== undefined ? { task: x.task }

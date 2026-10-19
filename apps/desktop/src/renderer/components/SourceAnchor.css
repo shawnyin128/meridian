@@ -1,0 +1,4 @@
+.source-anchor{font-variant-numeric:tabular-nums;white-space:nowrap}
+.source-anchor-quote{position:fixed;z-index:60;max-width:min(44ch,60vw);padding:8px 12px;background:var(--raised);color:var(--ink);
+  border-radius:var(--r-lg);box-shadow:var(--sh-2);font-size:var(--fs-sm);line-height:var(--lh-ui);pointer-events:none}
+.source-anchor-quote b{display:block;font-size:var(--fs-cap);color:var(--ter);margin-bottom:2px}

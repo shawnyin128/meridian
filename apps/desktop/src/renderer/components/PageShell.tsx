@@ -15,14 +15,23 @@ export const PageShell = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElemen
   },
 )
 
-/** Fixed-height page identity bar. Page actions belong in `PageToolbar`, not beside the title. */
-export const PageHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  function PageHeader({ className, ...props }, ref) {
-    return <div ref={ref} className={classes('desk-head', className)} {...props} />
+/**
+ * Fixed-height page identity bar: the back button when the page has one and the title, as children,
+ * and `actions`, everything that acts on the whole page, at its right end. Page actions are default-size
+ * buttons, the primary one last.
+ */
+export const PageHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { actions?: ReactNode }>(
+  function PageHeader({ className, children, actions, ...props }, ref) {
+    return (
+      <div ref={ref} className={classes('desk-head', className)} {...props}>
+        {children}
+        {actions === undefined ? null : <div className="page-actions">{actions}</div>}
+      </div>
+    )
   },
 )
 
-/** Shared in-content row for page actions and peer-view switches. */
+/** The one place for switching between peer views of the page, with the filters that go with them, at the body's start. */
 export const PageToolbar = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   function PageToolbar({ className, ...props }, ref) {
     return <div ref={ref} className={classes('page-toolbar', className)} {...props} />
@@ -61,18 +70,21 @@ export function PageError({ error, variant = 'page' }: {
   return error ? <div className={`ipcerror ipcerror--${variant}`} role="alert">{error}</div> : null
 }
 
-/** The one section heading in the app. `variant` picks the weight; `actions` is the only right-hand slot. */
+/**
+ * The one section heading in the app. `variant` is its role: `page` heads a section of a page's body,
+ * `group` heads a group inside a section or a card, and `rail` heads a section of a side rail or a
+ * detail panel. `actions` holds everything that acts on the section and sits at the heading's end.
+ */
 export const SectionHeading = forwardRef<HTMLDivElement, {
   children: ReactNode
   actions?: ReactNode
-  variant?: 'page' | 'content' | 'group' | 'rail'
+  variant?: 'page' | 'group' | 'rail'
 } & HTMLAttributes<HTMLDivElement>>(
   function SectionHeading({ children, actions, className, variant = 'page', ...rest }, ref) {
-    const own = `section-heading section-heading--${variant}${actions === undefined ? '' : ' flexh'}`
     return (
-      <div ref={ref} className={classes(own, className)} {...rest}>
+      <div ref={ref} className={classes(`section-heading section-heading--${variant}`, className)} {...rest}>
         {children}
-        {actions}
+        {actions === undefined ? null : <div className="section-heading-actions">{actions}</div>}
       </div>
     )
   },

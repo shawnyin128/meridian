@@ -54,11 +54,13 @@ test('侧栏「Wiki」进 wiki 屏:标题与角标都是聚合总数,分节只�
   await expect(shown(win).locator('.desk-head .t')).toHaveText(`Wiki · ${home.aggregationCount}`)
   await expect(win.locator('[data-desk="wiki"] .n')).toHaveText(String(home.aggregationCount))
   await expect(shown(win).locator('.desk-head .back')).toHaveCount(0)
+  // A kind with no root page shows no heading of its own.
+  const kinds = home.kinds.filter((k) => home.roots.some((c) => c.kind === k.key))
   expect(await shown(win).locator('.section-heading').allTextContents())
-    .toEqual([...home.kinds.map((k) => k.label), '论文'])
+    .toEqual([...kinds.map((k) => k.label), '论文'])
 
   // One grid per aggregation kind, holding only its root pages, with footer counts from the contract.
-  for (const [at, kind] of home.kinds.entries()) {
+  for (const [at, kind] of kinds.entries()) {
     const cards = shown(win).locator('.wkgrid').nth(at).locator('.wkcard')
     const roots = home.roots.filter((c) => c.kind === kind.key)
     expect(await cards.locator('.tt').allTextContents()).toEqual(roots.map((c) => c.title))
@@ -146,21 +148,21 @@ test('对照表的行是成员论文,格子按契约的列排,悬停看原文;�
   expect(await table.locator('thead th:not(.rx):not(.th-add)').allTextContents())
     .toEqual(['论文', ...agg.columns.map((c) => c.label)])
   expect(await table.locator('tbody tr td.rh').allTextContents()).toEqual(agg.rows.map((r) => r.paper.title))
-  // An empty cell shows a dash, and a filled cell carries a page-number superscript.
+  // An empty cell shows a dash, and a filled cell ends with its anchor, p.N.
   const first = agg.rows[0]!
   expect(await table.locator('tbody tr').first().locator('td:not(.rh):not(.rx)').allTextContents()).toEqual(
     agg.columns.map((c) => {
       const cell = first.cells[c.key]
-      return cell === undefined ? '—' : `${cell.value}p${cell.page}`
+      return cell === undefined ? '—' : `${cell.value} p.${cell.page}`
     }),
   )
   // Hovering a cell's anchor shows the source text it quotes.
   const filled = agg.columns.find((c) => first.cells[c.key] !== undefined)!
-  await table.locator('tbody tr').first().locator('.anc').first().hover()
-  await expect(win.locator('#wktip')).toContainText(first.cells[filled.key]!.quote)
+  await table.locator('tbody tr').first().locator('.source-anchor').first().hover()
+  await expect(win.locator('.source-anchor-quote')).toContainText(first.cells[filled.key]!.quote)
 
   // An [[id]] link without an alias in the body shows that page's display name.
-  expect(await shown(win).locator('.wkmain .md .wl').allTextContents()).toContain('GPTQ')
+  expect(await shown(win).locator('.wkmain .md .entity-link--page').allTextContents()).toContain('GPTQ')
 
   // Open the paper page.
   await table.locator(`[data-wk="${first.paper.id}"]`).click()
@@ -201,12 +203,12 @@ test('首页论文卡进论文页;个人理解与 Wiki 内容分层,没内化的
   await expect(shown(win).locator('.paper-understanding')).toBeVisible()
   await expect(shown(win).locator('.wkmain .section-heading')).toHaveText(['个人理解', 'Wiki 内化内容编辑'])
   await expect(shown(win).locator('.wkmain .md .empty-state')).toHaveText('还没有生成 Wiki 内化内容。')
-  await expect(shown(win).locator('.wkmain .section-heading > .btn:not(.add-action)', { hasText: '编辑' })).toHaveCount(1)
+  await expect(shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '编辑' })).toHaveCount(1)
   await expect(shown(win).locator('.wkside .empty-state')).toHaveText('还没有归到任何一页下。')
   // "View in the paper list" goes to Papers with the title in the filter box. In the fixture, QuaRot and
   // SpinQuant each have a same-named paper page copied from an old vault, so the filtered row count can
   // only be asserted non-zero.
-  await shown(win).locator('.macts .btn').click()
+  await shown(win).locator('.desk-head .page-actions .btn', { hasText: '去论文列表查看' }).click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['我的库', '论文'])
   await expect(win.locator('#libq')).toHaveValue(paper.title)
   // The filter box fills at once, but rows wait for papers.list to return, so poll the row count rather
@@ -290,13 +292,13 @@ test('正文抬头的「编辑」把正文换成原文,「保存」后按 markdo
   await gotoWiki(win)
   await shown(win).locator('[data-wk="topics/quantization"]').click()
   const before = (await aggFromCore(win, 'topics/quantization')).body
-  await shown(win).locator('.wkmain .section-heading > .btn:not(.add-action)', { hasText: '编辑' }).click()
+  await shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '编辑' }).click()
   const box = shown(win).locator('.md.src')
   await expect(box).toBeFocused()
   await expect(box).toHaveText(before)
   await box.press('Control+End')
   await box.pressSequentially('\n\n## 端到端加的一节\n\n一句 **加粗** 的话,公式 $x^2$。')
-  await shown(win).locator('.wkmain .section-heading > .btn:not(.add-action)', { hasText: '保存' }).click()
+  await shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '保存' }).click()
 
   await expect(shown(win).locator('.wkmain .md h2', { hasText: '端到端加的一节' })).toHaveCount(1)
   await expect(shown(win).locator('.wkmain .md strong')).toHaveText('加粗')
@@ -320,11 +322,11 @@ test('Esc 放弃这一次编辑,正文照旧', async ({ win }) => {
   await gotoWiki(win)
   await shown(win).locator('[data-wk="topics/quantization"]').click()
   const before = (await aggFromCore(win, 'topics/quantization')).body
-  await shown(win).locator('.wkmain .section-heading > .btn:not(.add-action)', { hasText: '编辑' }).click()
+  await shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '编辑' }).click()
   await shown(win).locator('.md.src').pressSequentially('改了又不要')
   await win.keyboard.press('Escape')
   await expect(shown(win).locator('.md.src')).toHaveCount(0)
-  await expect(shown(win).locator('.wkmain .section-heading > .btn:not(.add-action)', { hasText: '编辑' })).toHaveCount(1)
+  await expect(shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '编辑' })).toHaveCount(1)
   expect((await aggFromCore(win, 'topics/quantization')).body).toBe(before)
 })
 

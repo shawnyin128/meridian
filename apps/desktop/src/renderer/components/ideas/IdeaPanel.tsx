@@ -17,7 +17,8 @@ export const ideaSourceLabel = (idea: ResearchIdea) => idea.source.paperTitle ==
  * The one detail panel of an idea, on the Ideas screen and on the project page: the title with the
  * host's `actions` and the close button, the kind and archived tags, the content, the host's own
  * sections (`children`), then the source and the last update. `editor`, when given, takes the
- * content's place. `onOpenSourceChat` adds the button that opens the conversation the idea came from.
+ * content's place. `onOpenSourceChat` adds, to the source heading, the button that opens the
+ * conversation the idea came from.
  */
 export function IdeaPanel({ idea, actions, editor, onClose, onOpenSourceChat, children }: {
   idea: ResearchIdea
@@ -48,12 +49,15 @@ export function IdeaPanel({ idea, actions, editor, onClose, onOpenSourceChat, ch
         </>
       )}
       {children}
-      <SectionHeading variant="rail">{m.project.sections.source}</SectionHeading>
+      <SectionHeading
+        variant="rail"
+        actions={onOpenSourceChat === undefined || chatId === undefined
+          ? undefined
+          : <button className="btn sm idea-panel-open-chat" onClick={() => onOpenSourceChat(chatId)}>{m.ideas.openSourceChat}</button>}
+      >{m.project.sections.source}
+      </SectionHeading>
       <p className="idea-panel-source">{ideaSourceLabel(idea)}</p>
       <div className="idea-panel-updated">{m.common.updatedOn(fmt.date(idea.updated))}</div>
-      {onOpenSourceChat === undefined || chatId === undefined
-        ? null
-        : <button className="btn sm idea-panel-open-chat" onClick={() => onOpenSourceChat(chatId)}>{m.ideas.openSourceChat}</button>}
     </>
   )
 }

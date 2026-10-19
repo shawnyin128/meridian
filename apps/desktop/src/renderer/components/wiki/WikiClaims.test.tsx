@@ -123,9 +123,12 @@ describe('WikiClaims', () => {
     expect(host.querySelector('[data-claim="plain"]')!.classList.contains('wkclaim--conflict')).toBe(false)
     expect(knee.querySelector('.wkclaim-conflict')!.textContent).toBe('冲突批量场景仍净赚批量下拐点后移处理冲突')
     expect(host.querySelector('[data-claim="plain"] .wkclaim-evidence')!.textContent).toBe('实验draft 效率exp2批量实测')
-    expect(knee.querySelector('.diff')).toBeNull()
-    act(() => knee.querySelector<HTMLButtonElement>('.wkclaim-history')!.click())
-    expect([...knee.querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual(['- v1 · 5月2日 · 树宽收益递减', '+ v2 · 6月9日 · 拐点在宽度 6'])
+    const history = knee.querySelector<HTMLButtonElement>('.wkclaim-history .card-tray-toggle')!
+    expect(history.querySelector('.card-tray-chevron svg')).not.toBeNull()
+    expect(history.getAttribute('aria-expanded')).toBe('false')
+    act(() => history.click())
+    expect(history.getAttribute('aria-expanded')).toBe('true')
+    expect([...knee.querySelectorAll('.card-tray-reveal .diff div')].map((d) => d.textContent)).toEqual(['- v1 · 5月2日 · 树宽收益递减', '+ v2 · 6月9日 · 拐点在宽度 6'])
   })
 
   it('整条结论是它那个 … 所属的行:悬停或聚焦结论的任何一处都露出 …', () => {
@@ -133,14 +136,26 @@ describe('WikiClaims', () => {
       .toEqual([['knee', true], ['plain', true]])
   })
 
-  it('实验证据打开项目,原文证据打开阅读器到那一页与高亮,冲突的另一边打开它所在的页', () => {
-    const [experiment, source] = [...host.querySelectorAll<HTMLButtonElement>('[data-claim="knee"] .wkclaim-evidence .wkclaim-link')]
+  it('实验证据打开项目,原文证据的锚点打开阅读器到那一页与高亮,冲突的另一边打开它所在的页', () => {
+    const [experiment, source] = [...host.querySelectorAll<HTMLButtonElement>('[data-claim="knee"] .wkclaim-evidence button')]
+    expect([experiment!.className, source!.className]).toEqual(['entity-link entity-link--project', 'entity-link source-anchor'])
+    expect(source!.textContent).toBe('p.7')
     act(() => experiment!.click())
     expect(links.openProject).toHaveBeenCalledWith('draft')
     act(() => source!.click())
     expect(links.openReader).toHaveBeenCalledWith('papers/eagle', { page: 7, highlight: 'h-3' })
-    act(() => host.querySelector<HTMLButtonElement>('[data-claim="knee"] .wkclaim-conflict .wkclaim-link')!.click())
+    act(() => host.querySelector<HTMLButtonElement>('[data-claim="knee"] .wkclaim-conflict .entity-link--page')!.click())
     expect(links.openPage).toHaveBeenCalledWith('topics/batch')
+  })
+
+  it('原文证据的锚点悬停或聚焦时显示它锚定的原文', () => {
+    const anchor = host.querySelector<HTMLButtonElement>('[data-claim="knee"] .source-anchor')!
+    act(() => anchor.focus())
+    expect(document.querySelector('.source-anchor-quote')!.textContent).toBe('p.7 · 原文“wide trees amortize”')
+    act(() => anchor.blur())
+    expect(document.querySelector('.source-anchor-quote')).toBeNull()
+    act(() => { anchor.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })) })
+    expect(document.querySelector('.source-anchor-quote')).not.toBeNull()
   })
 
   it('添加结论:个人判断作依据,id 由正文算出', async () => {

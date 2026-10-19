@@ -13,7 +13,6 @@ import { dnum, isoOf } from '../../../shared/dates.js'
 import { AddAction } from '../AddAction.js'
 import { CollapsibleGroup } from '../CollapsibleGroup.js'
 import { DateChip } from '../DateTimeDisplay.js'
-import { EmptyState } from '../EmptyState.js'
 import { ChoicePicker, DateButton, PriorityPicker } from '../FieldPickers.js'
 import { InlineDraftInput } from '../InlineDraftInput.js'
 import { InlineField, type InlineFieldProps } from '../InlineField.js'
@@ -32,7 +31,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { TagButton, tagClass } from '../Tag.js'
-import { NodeTag } from './NodeTag.js'
+import { NodeAssignment } from './NodeAssignment.js'
 import { PRIORITY_TONE, ProjectPriorityTag } from './ProjectIdentity.js'
 import './ProjectPlan.css'
 
@@ -251,12 +250,6 @@ export function ProjectTaskPanel({
     setEditing(false)
     void onSaveNote(next)
   }
-  const pickNode = (className: string, text: string) => (
-    <ChoicePicker
-      value={node?.id ?? ''} options={nodes.map((candidate) => candidate.id)} className={className}
-      label={(id) => nodes.find((candidate) => candidate.id === id)?.label ?? id} onPick={onSetNode}
-    >{text}</ChoicePicker>
-  )
   return (
     <>
       <SectionHeading
@@ -270,34 +263,15 @@ export function ProjectTaskPanel({
         <span className="project-task-detail-state">{stateWord(m)[task.state]}</span>
         {task.origin === 'agent' ? <AgentLabel /> : null}
       </div>
+      <NodeAssignment node={node} nodes={nodes} canUnlink={handSet} onOpen={onOpenNode} onSet={onSetNode} />
       <SectionHeading
         variant="rail"
-        actions={node === undefined
-          ? (nodes.length === 0 ? undefined : pickNode('btn sm', m.project.plan.linkNode))
-          : (
-            <>
-              {pickNode('btn sm', m.project.plan.changeNode)}
-              {handSet
-                ? <button className="btn sm" onClick={() => onSetNode(null)}>{m.project.plan.unlinkNode}</button>
-                : null}
-            </>
-          )}
-      >{m.project.plan.nodeHeading}
-      </SectionHeading>
-      {node === undefined
-        ? <EmptyState variant="section">{m.project.plan.noNode}</EmptyState>
-        : (
-          <div className="project-task-detail-node">
-            <NodeTag
-              label={node.label} mode={node.mode} hint={m.project.records.goToGraph(node.label)}
-              onOpen={() => onOpenNode(node.id)}
-            />
-          </div>
+        actions={(
+          <EditActions
+            editing={editing} onEdit={() => setEditing(true)} onCancel={() => setEditing(false)} onSave={save}
+          />
         )}
-      <SectionHeading variant="rail" className="flexh">{m.project.plan.noteHeading}
-        <EditActions
-          editing={editing} onEdit={() => setEditing(true)} onCancel={() => setEditing(false)} onSave={save}
-        />
+      >{m.project.plan.noteHeading}
       </SectionHeading>
       <MarkdownBox
         className="task-note" text={task.note ?? ''} editing={editing} box={box}
@@ -465,23 +439,26 @@ export function ProjectPlan({
   const msArchiveShown = msArchiveOpen || archivedMilestones.some((milestone) => milestone.id === flashId)
   return (
     <section className="project-plan">
-      <SectionHeading variant="content" className="flexh">{m.project.sections.plan}
-        <div className="section-actions">
-          <SegmentedControl
-            label={m.project.plan.viewLabel}
-            value={tab}
-            options={[
-              { value: 'task', label: m.project.plan.taskMode },
-              { value: 'ms', label: m.project.plan.milestoneMode },
-            ]}
-            onChange={(value) => { onTab(value); onDiscardOpenEdits() }}
-          />
-          <AddAction
-            variant="section" ref={addRef}
-            title={tab === 'ms' ? m.project.plan.addMilestone : m.project.plan.addTask}
-            onClick={() => (tab === 'ms' ? onStartMilestone(today) : onStartTask())}
-          >{tab === 'ms' ? m.project.plan.milestoneMode : m.project.plan.taskMode}</AddAction>
-        </div>
+      <SectionHeading
+        actions={(
+          <>
+            <SegmentedControl
+              size="sm" label={m.project.plan.viewLabel}
+              value={tab}
+              options={[
+                { value: 'task', label: m.project.plan.taskMode },
+                { value: 'ms', label: m.project.plan.milestoneMode },
+              ]}
+              onChange={(value) => { onTab(value); onDiscardOpenEdits() }}
+            />
+            <AddAction
+              variant="section" ref={addRef}
+              title={tab === 'ms' ? m.project.plan.addMilestone : m.project.plan.addTask}
+              onClick={() => (tab === 'ms' ? onStartMilestone(today) : onStartTask())}
+            >{tab === 'ms' ? m.project.plan.milestoneMode : m.project.plan.taskMode}</AddAction>
+          </>
+        )}
+      >{m.project.sections.plan}
       </SectionHeading>
 
       <div ref={listRef}>
@@ -521,7 +498,7 @@ export function ProjectPlan({
                 ? null
                 : (
                   <CollapsibleGroup
-                    variant="quiet" title={m.common.archived}
+                    variant="quiet" title={m.common.archived} count={archivedTasks.length}
                     open={taskArchiveShown} onToggle={() => setTaskArchiveOpen((open) => !open)}
                   >
                     {archivedTasks.map((task) => (
@@ -560,7 +537,7 @@ export function ProjectPlan({
                 ? null
                 : (
                   <CollapsibleGroup
-                    variant="quiet" title={m.common.archived}
+                    variant="quiet" title={m.common.archived} count={archivedMilestones.length}
                     open={msArchiveShown} onToggle={() => setMsArchiveOpen((open) => !open)}
                   >
                     {archivedMilestones.map((milestone) => (

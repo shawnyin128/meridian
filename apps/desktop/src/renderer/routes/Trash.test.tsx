@@ -94,6 +94,14 @@ describe('Trash', () => {
     ])).toEqual([['恢复', '', true, false], ['彻底删除', '', true, true]])
   })
 
+  it('清空垃圾桶是整页的操作,放在屏头右端;分组标题只有名字和条数', async () => {
+    const actions = host.querySelector('.desk-head > .page-actions')!
+    expect([...actions.querySelectorAll('button')].map((b) => [b.textContent, b.className])).toEqual([['清空垃圾桶', 'btn danger']])
+    expect([...host.querySelectorAll('.section-heading')].map((h) => h.textContent)).toEqual(['论文 · 2', '附件 · 2'])
+    await act(async () => { button(actions, '清空垃圾桶').click() })
+    expect(document.querySelector('[role="alertdialog"] .modal-title')!.textContent).toBe('清空垃圾桶？')
+  })
+
   it('彻底删除一条要先确认,确认后才清除', async () => {
     await act(async () => { button(host.querySelector('.trow')!, '彻底删除').click() })
     expect(api.purge).not.toHaveBeenCalled()

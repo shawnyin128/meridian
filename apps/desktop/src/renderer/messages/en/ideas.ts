@@ -4,7 +4,6 @@ import { ideas as zh } from '../zh/ideas.js'
 export const ideas = {
   title: (n: number) => `Ideas · ${n}`,
   activeHeading: (n: number) => `Active · ${n}`,
-  archivedHeading: (n: number) => `Archived · ${n}`,
   sort: 'Sort',
   sortUpdated: 'By updated',
   empty: 'No active ideas yet. Save a promising direction while reading a paper or chatting with AI.',
@@ -49,8 +48,6 @@ export const ideas = {
     nodeTitleLabel: 'Node title',
     afterLabel: 'Place after',
     newRootOption: 'Create as a root node',
-    nodeLabel: 'Research graph node',
     createAndLink: 'Create and link',
-    confirmLink: 'Confirm link',
   },
 } satisfies typeof zh

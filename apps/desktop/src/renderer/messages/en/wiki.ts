@@ -62,7 +62,6 @@ export const wiki = {
   viewInPaperList: 'View in the paper list',
   membershipHeading: 'Location in Wiki',
   noMembership: 'This page is not under another Wiki page.',
-  tipSource: (page: number) => `p.${page} · Source`,
   scope: {
     source: 'Source text',
     currentPaper: 'Current paper',
@@ -202,9 +201,6 @@ export const wiki = {
       },
     },
   },
-  anchors: {
-    page: (n: string) => `page ${n}`,
-  },
   groundsLabel: 'Sources',
   review: {
     legend: 'Check each section against its source; this view never edits content — switch to the Markdown editor'
@@ -236,7 +232,6 @@ export const wiki = {
     note: 'Your note',
     experiment: 'Experiment',
     conflict: 'Conflict',
-    page: (n: number) => `p.${n}`,
     actionsLabel: (text: string) => `Actions for the finding “${text}”`,
     revise: 'Revise',
     markConflict: 'Mark conflict',

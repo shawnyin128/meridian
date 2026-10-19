@@ -53,7 +53,7 @@ describe('IdeaGraphDialog', () => {
     await act(async () => {
       root.render(withMessages(
         <IdeaGraphDialog
-          open mode="create" idea={IDEA} graph={GRAPH}
+          open idea={IDEA} graph={GRAPH}
           onOpenChange={() => {}}
           onSubmit={submit}
         />,
@@ -68,24 +68,5 @@ describe('IdeaGraphDialog', () => {
     expect(submit).toHaveBeenCalledWith({
       kind: 'create', label: IDEA.title, after: null,
     })
-  })
-
-  it('links an existing node through the same explicit confirmation surface', async () => {
-    const submit = vi.fn(async () => true)
-    await act(async () => {
-      root.render(withMessages(
-        <IdeaGraphDialog
-          open mode="link" idea={IDEA} graph={GRAPH}
-          onOpenChange={() => {}}
-          onSubmit={submit}
-        />,
-      ))
-    })
-    await act(async () => {
-      Array.from(document.querySelectorAll('button'))
-        .find((button) => button.textContent === '确认关联')!.click()
-      await Promise.resolve()
-    })
-    expect(submit).toHaveBeenCalledWith({ kind: 'link', nodeId: 'node-1' })
   })
 })

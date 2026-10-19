@@ -51,6 +51,14 @@ describe('Later', () => {
   })
   afterEach(() => { host.remove(); vi.unstubAllGlobals() })
 
+  it('按时间/按来源是视图切换，放在正文开头的工具栏，屏头只有标题', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Later /></MessagesProvider>) })
+    expect([...host.querySelector('.desk-head')!.children].map((child) => child.className)).toEqual(['t'])
+    expect(host.querySelector('.desk-body > .page-toolbar .segmented-control')).not.toBeNull()
+    await act(async () => { root.unmount() })
+  })
+
   it('移出只是从队列里拿走，用表示移开的叉，不用进垃圾桶的图标', async () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Later /></MessagesProvider>) })

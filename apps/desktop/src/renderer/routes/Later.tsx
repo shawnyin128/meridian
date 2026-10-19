@@ -15,7 +15,7 @@ import { failureLabel } from '../lib/failure-label.js'
 import { TitleNote } from '../components/TitleNote.js'
 import { useFormat } from '../lib/format.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
-import { PageBody, PageError, PageHeader, PageShell, PageTitle } from '../components/PageShell.js'
+import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../components/PageShell.js'
 import { SourceLabel } from '../components/SourceLabel.js'
 import './shell.css'
 
@@ -93,19 +93,21 @@ export function Later() {
     <PageShell>
       <PageHeader>
         <PageTitle>{m.later.title(entries.length)}</PageTitle>
-        {groups.length === 0 ? null : (
-          <SegmentedControl
-            label={m.later.groupBy}
-            value={grouping}
-            options={MODES.map((mode) => ({ value: mode, label: m.later.modes[mode] }))}
-            onChange={setGrouping}
-          />
-        )}
       </PageHeader>
 
       <PageError error={error} />
 
       <PageBody>
+        {groups.length === 0 ? null : (
+          <PageToolbar>
+            <SegmentedControl
+              label={m.later.groupBy}
+              value={grouping}
+              options={MODES.map((mode) => ({ value: mode, label: m.later.modes[mode] }))}
+              onChange={setGrouping}
+            />
+          </PageToolbar>
+        )}
         {groups.length === 0
           ? (
             <EmptyState

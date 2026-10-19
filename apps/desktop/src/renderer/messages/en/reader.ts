@@ -25,7 +25,6 @@ export const reader = {
     pageAria: (page: number) => `Page ${page} note`,
   },
   highlights: {
-    jumpToPage: (page: number) => `Go to highlight on page ${page}`,
     noteAria: (page: number) => `Page ${page} highlight note`,
     annotate: 'Note for this highlight',
   },
