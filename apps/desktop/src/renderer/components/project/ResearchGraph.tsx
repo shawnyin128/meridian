@@ -221,6 +221,19 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
       }
     })
   }
+  /** Pans the view just enough to bring `node` inside the viewport, with a small margin. */
+  const reveal = (node: { x: number; y: number; width: number }) => setView((current) => {
+    const margin = 12
+    const left = baseX + current.x + node.x * current.zoom
+    const top = baseY + current.y + node.y * current.zoom
+    const right = left + node.width * current.zoom
+    const bottom = top + GRAPH_NODE_HEIGHT * current.zoom
+    const dx = left < margin ? margin - left : right > viewportWidth - margin ? viewportWidth - margin - right : 0
+    const dy = top < margin
+      ? margin - top
+      : bottom > GRAPH_VIEW_HEIGHT - margin ? GRAPH_VIEW_HEIGHT - margin - bottom : 0
+    return dx === 0 && dy === 0 ? current : { ...current, x: current.x + dx, y: current.y + dy }
+  })
   const wheelZoom = useRef<(event: WheelEvent) => void>(() => {})
   wheelZoom.current = (event) => {
     event.preventDefault()
@@ -314,9 +327,16 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
               return (
                 <g
                   className={`rgn ${node.state} ${nodeMode(node)}${onRoute ? ' active-path-node-graph' : ''}${activeNodeIds.has(node.id) ? ' active-leaf' : ''}${ideaRelated ? ' idea-related' : ''}${node.id === selected ? ' sel' : ''}`}
-                  data-node={node.id}
+                  data-node={node.id} role="button" tabIndex={0}
                   key={node.id} transform={`translate(${node.x},${node.y})`}
                   onClick={() => onSelect(node.id)}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return
+                    event.preventDefault()
+                    onSelect(node.id)
+                  }}
+                  // A node that the keyboard focuses may lie outside the view; one under the pointer is in it.
+                  onFocus={(event) => { if (event.currentTarget.matches(':focus-visible')) reveal(node) }}
                 >
                   <rect
                     width={node.width} height={GRAPH_NODE_HEIGHT} rx="11"

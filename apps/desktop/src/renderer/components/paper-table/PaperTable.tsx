@@ -712,6 +712,7 @@ export function PaperTable() {
       setDirection(key === 'year' ? 'desc' : 'asc')
     }
   }
+  const ariaSort = (key: SortKey) => (sort !== key ? undefined : direction === 'asc' ? 'ascending' : 'descending')
 
   const addTopic = (p: PaperRow, value: string): Promise<boolean> =>
     write(papers.update(p.id, { topics: [...p.topics, value] }), { note: m.papers.notices.topicAdded })
@@ -1117,13 +1118,16 @@ export function PaperTable() {
         </colgroup>
         <thead>
           <tr>
-            <th data-k="title" onClick={(e) => clickHeader(e, 'title')}>
-              {m.papers.columns.title}{sort === 'title' ? <> <SortArrow direction={direction} /></> : null}
+            {/* A sortable header sorts on click; its button is the keyboard's way to that click. */}
+            <th data-k="title" aria-sort={ariaSort('title')} onClick={(e) => clickHeader(e, 'title')}>
+              <button type="button" className="thsort">
+                {m.papers.columns.title}{sort === 'title' ? <> <SortArrow direction={direction} /></> : null}
+              </button>
               <span className="thgrip" title={m.papers.columnHeader.resizeHint} onMouseDown={(e) => startDrag(e, 't')} />
             </th>
             {cols.map((c) => (
               <th
-                key={c.k} data-k={c.sort}
+                key={c.k} data-k={c.sort} aria-sort={c.sort ? ariaSort(c.sort) : undefined}
                 className={[
                   movingColumn === c.k ? 'column-moving' : '',
                   columnDrop?.key === c.k ? `column-drop-${columnDrop.after ? 'after' : 'before'}` : '',
@@ -1146,7 +1150,13 @@ export function PaperTable() {
                   onDragStart={(event) => startColumnMove(event, c.k)}
                   onDragEnd={() => { setMovingColumn(null); setColumnDrop(null) }}
                 ><IconGrip /></span>
-                {shownLabel(m, c)}{c.sort && sort === c.sort ? <> <SortArrow direction={direction} /></> : null}
+                {c.sort
+                  ? (
+                    <button type="button" className="thsort">
+                      {shownLabel(m, c)}{sort === c.sort ? <> <SortArrow direction={direction} /></> : null}
+                    </button>
+                  )
+                  : shownLabel(m, c)}
                 <span className="thgrip" title={m.papers.columnHeader.resizeHint} onMouseDown={(e) => startDrag(e, c.k)} />
               </th>
             ))}
@@ -1188,6 +1198,10 @@ export function PaperTable() {
                 setRowMenu({ paper: p, x: event.clientX, y: event.clientY })
               }}
               onKeyDown={(event) => {
+                if (event.key === 'Enter' && event.target === event.currentTarget) {
+                  void papers.get(p.id).then(setDetail).catch(reportError)
+                  return
+                }
                 if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
                 event.preventDefault()
                 const bounds = event.currentTarget.getBoundingClientRect()
@@ -1308,15 +1322,17 @@ export function PaperTable() {
               ? (
                 <>
                   {facets.map((f) => (
-                    <div className="gxrow" key={f.value} onClick={() => { setSel(f.value); setPage(1) }}>
-                      <div className="gx-t">{f.value}</div>
-                      <div className="gx-m">
+                    <button
+                      type="button" className="gxrow" key={f.value} onClick={() => { setSel(f.value); setPage(1) }}
+                    >
+                      <span className="gx-t">{f.value}</span>
+                      <span className="gx-m">
                         {m.papers.groupIndex.newest(
                           `${plainTitle(f.newestTitle).slice(0, 44)}${plainTitle(f.newestTitle).length > 44 ? '…' : ''}`,
                         )}
-                      </div>
+                      </span>
                       <span className="n">{f.count}</span>
-                    </div>
+                    </button>
                   ))}
                   <div className="lmore">{m.papers.groupIndex.pickToView(labelOf(group))}</div>
                 </>

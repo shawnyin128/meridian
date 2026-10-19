@@ -124,6 +124,50 @@ describe('idea and graph association', () => {
     expect(host.querySelectorAll('.active-edge-flows path')).toHaveLength(2)
   })
 
+  it('lets the keyboard reach every node and select it with Enter or Space', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    const onSelect = vi.fn()
+    const host = document.createElement('div')
+    const root = createRoot(host)
+    act(() => root.render(withMessages(<ResearchGraph graph={GRAPH} selected={null} onSelect={onSelect} />)))
+    const nodes = [...host.querySelectorAll<SVGGElement>('.rgn')]
+    expect(nodes.map((node) => [node.getAttribute('role'), node.getAttribute('tabindex')]))
+      .toEqual([['button', '0'], ['button', '0']])
+    act(() => { nodes[1]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })) })
+    act(() => { nodes[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true })) })
+    act(() => { nodes[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true })) })
+    expect(onSelect.mock.calls).toEqual([['probe'], ['root']])
+    act(() => root.unmount())
+  })
+
+  it('pans a node that takes keyboard focus outside the view into it, and leaves the view alone for a pointer', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    const wide: Graph = {
+      nodes: Array.from({ length: 8 }, (_, at) => ({
+        id: `n${at}`, label: `节点 ${at}`, state: 'done' as const, x: 0, y: 0, width: 180, writebacks: [],
+      })),
+      edges: Array.from({ length: 7 }, (_, at) => [`n${at}`, `n${at + 1}`] as [string, string]),
+    }
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    act(() => root.render(withMessages(<ResearchGraph graph={wide} selected={null} onSelect={vi.fn()} />)))
+    const view = () => host.querySelector('svg > g')!.getAttribute('transform')
+    const last = host.querySelector<SVGGElement>('[data-node="n7"]')!
+    const start = view()
+    const keyboard = vi.spyOn(Element.prototype, 'matches').mockReturnValue(false)
+    act(() => last.focus())
+    expect(view()).toBe(start)
+    last.blur()
+    keyboard.mockImplementation((selector) => selector === ':focus-visible')
+    act(() => last.focus())
+    keyboard.mockRestore()
+    const [, x] = /translate\((-?[\d.]+),/.exec(view()!)!
+    expect(Number(x)).toBeLessThan(0)
+    act(() => root.unmount())
+    host.remove()
+  })
+
   it('adds an animated hatch only to nodes linked to the open idea', () => {
     const markup = renderToStaticMarkup(withMessages(
       <ResearchGraph graph={GRAPH} selected={null} ideaNodeIds={['root']} onSelect={vi.fn()} />,
