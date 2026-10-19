@@ -40,6 +40,13 @@ export const inbox = {
     duplicateToast: '库里已经有这一篇 · 没有重复入库',
     alreadyInLibrary: (title: string) => `库里已经有这一篇：「${title}」`,
     downloaded: '已下载入库 · 可阅读',
+    downloadFailed: {
+      unavailable: '下载失败 · 网络不可用',
+      timeout: '下载失败 · 连接超时',
+      server: '下载失败 · 服务器出错',
+      'not-pdf': '下载失败 · 不是 PDF',
+      unknown: '下载失败',
+    },
     moreLike: '已记住 · 后续会推荐更多类似论文',
     lessLike: '已记住 · 后续会减少类似论文',
     known: '已标记为已经了解',

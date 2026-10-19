@@ -2,7 +2,9 @@
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { DiscoveryProfile, InboxEntry, JobsStatus } from '../../shared/contract.js'
+import type {
+  DiscoveryProfile, InboxDownloadResult, InboxEntry, JobsStatus,
+} from '../../shared/contract.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
@@ -11,6 +13,7 @@ const api = vi.hoisted(() => ({
   entries: [] as InboxEntry[],
   profiles: [] as DiscoveryProfile[],
   mode: 'watch' as 'watch' | 'discovery',
+  downloads: {} as Record<string, InboxDownloadResult>,
   feedback: vi.fn(async () => {}),
   setIntent: vi.fn(async () => {}),
   openCategory: vi.fn(),
@@ -21,7 +24,8 @@ vi.mock('../ipc.js', () => ({
     list: async (params: { kind?: InboxEntry['kind'] }) => api.entries
       .filter((entry) => params.kind === undefined || entry.kind === params.kind),
     dismiss: async () => {}, readLater: async () => false,
-    download: async () => ({ kind: 'added', paper: 'p1' }), fetch: async () => {},
+    download: async (id: string) => api.downloads[id] ?? { kind: 'added', paper: 'p1' },
+    fetch: async () => {},
   },
   discovery: {
     profiles: async () => api.profiles,
@@ -61,6 +65,7 @@ describe('Inbox', () => {
     api.entries = []
     api.profiles = []
     api.mode = 'watch'
+    api.downloads = {}
     api.feedback.mockClear()
     api.setIntent.mockClear()
     api.openCategory.mockClear()
@@ -126,6 +131,29 @@ describe('Inbox', () => {
     expect(groups[0]!.querySelector('.collapsible-group-toggle')?.getAttribute('aria-expanded')).toBe('false')
     expect(groups[0]!.querySelectorAll('.paper-card')).toHaveLength(0)
     expect(groups[1]!.querySelectorAll('.paper-card')).toHaveLength(1)
+    await act(async () => { root.unmount() })
+  })
+
+  it('下载失败时卡片上只显示失败原因与重试', async () => {
+    const entry = (id: string): InboxEntry => ({
+      id, kind: 'watch', watch: 'w1', project: '', source: '主题 · w1',
+      title: `Paper ${id}`, authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
+      reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
+    })
+    api.entries = [entry('a1'), entry('a2')]
+    api.downloads = {
+      a1: { kind: 'failed', reason: 'unknown' },
+      a2: { kind: 'failed', reason: 'server' },
+    }
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    const card = (id: string) => host.querySelector<HTMLElement>(`.paper-card[data-pid="${id}"]`)!
+    for (const id of ['a1', 'a2']) {
+      await act(async () => { card(id).querySelector<HTMLButtonElement>('[title="下载并入库"]')!.click() })
+    }
+    expect(card('a1').querySelector('.pfail span')?.textContent).toBe('下载失败')
+    expect(card('a2').querySelector('.pfail span')?.textContent).toBe('下载失败 · 服务器出错')
+    expect(card('a1').querySelector('.pfail .btn')?.textContent).toBe('重试')
     await act(async () => { root.unmount() })
   })
 

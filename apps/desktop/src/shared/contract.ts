@@ -1253,14 +1253,19 @@ export const InboxReadLaterParamsSchema = z.object({ id: z.string() }).strict()
 
 export const InboxDownloadParamsSchema = z.object({ id: z.string() }).strict()
 
+/** Why the PDF of an inbox entry could not be fetched. */
+export const InboxDownloadFailureSchema = z.enum(['unavailable', 'timeout', 'server', 'not-pdf', 'unknown'])
+
 /**
  * Import result. `added` means a new page was written; `existing` means a page
  * already referenced the source and no write occurred. Both return the page ID;
  * `existing` also returns the authoritative vault title for user messaging.
+ * `failed` means the PDF could not be fetched and nothing was written.
  */
 export const InboxDownloadResultSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('added'), paper: z.string() }).strict(),
   z.object({ kind: z.literal('existing'), paper: z.string(), title: z.string() }).strict(),
+  z.object({ kind: z.literal('failed'), reason: InboxDownloadFailureSchema }).strict(),
 ])
 
 export const LaterRemoveParamsSchema = z.object({ id: z.string() }).strict()
@@ -2209,6 +2214,7 @@ export type WatchSuggestionResult = z.infer<typeof WatchSuggestionResultSchema>
 export type WatchSuggestionParams = z.infer<typeof WatchSuggestionParamsSchema>
 export type InboxEntry = z.infer<typeof InboxEntrySchema>
 export type InboxListParams = z.infer<typeof InboxListParamsSchema>
+export type InboxDownloadFailure = z.infer<typeof InboxDownloadFailureSchema>
 export type InboxDownloadResult = z.infer<typeof InboxDownloadResultSchema>
 export type DiscoveryIntent = z.infer<typeof DiscoveryIntentSchema>
 export type DiscoveryProfile = z.infer<typeof DiscoveryProfileSchema>

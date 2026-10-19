@@ -1035,6 +1035,13 @@ describe('contract schemas', () => {
     expect(() => InboxDownloadResultSchema.parse({ kind: '已入库', paper: 'p1' })).toThrow()
   })
 
+  it('没取回原文的结果只带一个封闭的失败原因，不带原始错误', () => {
+    expect(InboxDownloadResultSchema.parse({ kind: 'failed', reason: 'not-pdf' }))
+      .toEqual({ kind: 'failed', reason: 'not-pdf' })
+    expect(() => InboxDownloadResultSchema.parse({ kind: 'failed', reason: 'ENOENT' })).toThrow()
+    expect(() => InboxDownloadResultSchema.parse({ kind: 'failed', reason: 'server', error: 'x' })).toThrow()
+  })
+
   it('收件的三个写入口各只收一个条目 id', () => {
     expect(InboxDismissParamsSchema.parse({ id: 'specdec' }).id).toBe('specdec')
     expect(InboxReadLaterParamsSchema.parse({ id: 'specdec' }).id).toBe('specdec')

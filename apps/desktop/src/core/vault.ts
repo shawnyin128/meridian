@@ -529,10 +529,10 @@ export interface VaultStore {
   readLater(id: string): boolean
 
   /** Returns whether an inbox entry needs its PDF fetched or already exists in the library. */
-  prepareInboxDownload(id: string): { kind: 'fetch'; url: string } | InboxDownloadResult
+  prepareInboxDownload(id: string): { kind: 'fetch'; url: string } | Exclude<InboxDownloadResult, { kind: 'failed' }>
 
   /** Stores a fetched inbox PDF through the immutable import path and applies its saved metadata. */
-  completeInboxDownload(id: string, bytes: Uint8Array): InboxDownloadResult
+  completeInboxDownload(id: string, bytes: Uint8Array): Exclude<InboxDownloadResult, { kind: 'failed' }>
 
   /**
    * Returns the later queue, the most recently added entry first; entries

@@ -43,6 +43,13 @@ export const inbox = {
     duplicateToast: 'Already in the library · not added again',
     alreadyInLibrary: (title: string) => `Already in the library: "${title}"`,
     downloaded: 'Downloaded and added to library · ready to read',
+    downloadFailed: {
+      unavailable: 'Download failed · No network',
+      timeout: 'Download failed · Timed out',
+      server: 'Download failed · Server error',
+      'not-pdf': 'Download failed · Not a PDF',
+      unknown: 'Download failed',
+    },
     moreLike: 'Got it · showing you more papers like this',
     lessLike: 'Got it · showing you fewer papers like this',
     known: 'Marked as familiar',

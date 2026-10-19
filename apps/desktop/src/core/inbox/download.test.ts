@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { createFixtureStore } from '../fixture-store.js'
 import { createCannedGet, type CannedTable } from '../net/canned-http.js'
-import { createInboxDownloads } from './download.js'
+import { createInboxDownloads, type InboxDownloads } from './download.js'
 
 const VAULT = resolve(import.meta.dirname, '../fixtures/vault')
 const FAST_INFERENCE = 'sources/papers/paper-pdf-e0b2ea3a1a54-Fast-Inference-from-Transformers-via-Speculative-Decoding.pdf'
@@ -17,13 +17,20 @@ function setup(table: CannedTable) {
   return { store, downloads, counter }
 }
 
+/** Downloads `id` and returns what it imported; a fetch failure fails the test. */
+async function imported(downloads: InboxDownloads, id: string) {
+  const result = await downloads.download(id)
+  if (result.kind === 'failed') throw new Error(`没取回原文：${result.reason}`)
+  return result
+}
+
 describe('createInboxDownloads', () => {
   it('原文取回来按上传同一条路进库,论文页一次带上 arXiv 元数据', async () => {
     const { store, downloads, counter } = setup({
       'https://arxiv.org/pdf/2211.17192': { status: 200, file: FAST_INFERENCE },
     })
     const before = store.listPapers({ page: 1, size: 1 }).total
-    const result = await downloads.download('specdec')
+    const result = await imported(downloads, 'specdec')
     expect(result).toEqual({ kind: 'added', paper: 'Fast-Inference-from-Transformers-via-Speculative-Decoding' })
     expect(store.listPapers({ page: 1, size: 1 }).total).toBe(before + 1)
     expect(store.getPaper(result.paper)).toMatchObject({
@@ -57,9 +64,9 @@ describe('createInboxDownloads', () => {
       'https://arxiv.org/pdf/2608.02233': { status: 200, pdf: { lines: ['ThunderKV'] } },
     })
     const changes = store.listChanges().length
-    const first = await downloads.download('specdec')
-    const second = await downloads.download('drafterlite')
-    const author = await downloads.download('thunderkv')
+    const first = await imported(downloads, 'specdec')
+    const second = await imported(downloads, 'drafterlite')
+    const author = await imported(downloads, 'thunderkv')
     expect(store.wikiCards().filter((card) =>
       card.kind === 'topic' && card.title === 'speculative decoding')).toHaveLength(1)
     expect(store.getPaper(first.paper).topics).toEqual(['speculative decoding'])
@@ -80,19 +87,22 @@ describe('createInboxDownloads', () => {
       .toEqual({ kind: 'existing', paper: target.id, title: target.title })
   })
 
-  it('服务器异常、非 PDF 与断网都给出短错误且不改变收件', async () => {
+  it('取不回原文时只报失败原因，不带原始错误与路径，也不改变收件', async () => {
     const { store, downloads } = setup({
+      'https://arxiv.org/pdf/2608.02233': { status: 200, file: 'sources/papers/missing.pdf' },
       'https://arxiv.org/pdf/2608.00417': { status: 503 },
       'https://arxiv.org/pdf/2608.01112': { status: 200, text: '<html>PDF is being generated</html>' },
     })
-    await expect(downloads.download('sequoia2')).rejects
-      .toThrow('没能下载原文：服务器返回 503')
-    await expect(downloads.download('drafterlite')).rejects
-      .toThrow('没能下载原文：取回的不是 PDF')
-    const offline = createInboxDownloads({
-      store, get: async () => { throw new TypeError('fetch failed') }, onWrite: () => {},
+    expect(await downloads.download('thunderkv')).toEqual({ kind: 'failed', reason: 'unknown' })
+    expect(await downloads.download('sequoia2')).toEqual({ kind: 'failed', reason: 'server' })
+    expect(await downloads.download('drafterlite')).toEqual({ kind: 'failed', reason: 'not-pdf' })
+    const failing = (error: Error) => createInboxDownloads({
+      store, get: async () => { throw error }, onWrite: () => {},
     })
-    await expect(offline.download('thunderkv')).rejects.toThrow('没能下载原文：网络不可用')
+    expect(await failing(new TypeError('fetch failed')).download('thunderkv'))
+      .toEqual({ kind: 'failed', reason: 'unavailable' })
+    expect(await failing(new DOMException('t', 'TimeoutError')).download('thunderkv'))
+      .toEqual({ kind: 'failed', reason: 'timeout' })
     expect(store.listInbox().filter((entry) => entry.downloaded)).toEqual([])
     expect(downloads.progress()).toEqual([])
   })
