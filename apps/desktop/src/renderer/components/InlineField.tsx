@@ -35,7 +35,8 @@ export type InlineFieldProps = {
  * anywhere else saves, and Esc cancels; the window losing focus (switching to another app) does not
  * count as leaving. An unchanged value closes without calling `onSave`. `onSave` returns whether
  * the new value is accepted; when a write fails the editor stays open, so the three pages that use
- * it do not each implement their own async duplicate-submit guard.
+ * it do not each implement their own async duplicate-submit guard. A click inside the open editor
+ * stays there, so it never activates the row or card around the field.
  */
 export function InlineField({
   label, value, display, type = 'text', inputMode, options, onSave,
@@ -122,7 +123,9 @@ export function InlineField({
   return (
     // The wrapper keeps the same node in both states, so Grid/Flex always measures the same value
     // cell and a native input/select's min-content width does not widen the property column on click.
-    <span className={wrapperClassName}>{field}</span>
+    <span className={wrapperClassName} onClick={editing ? (event) => event.stopPropagation() : undefined}>
+      {field}
+    </span>
   )
 }
 

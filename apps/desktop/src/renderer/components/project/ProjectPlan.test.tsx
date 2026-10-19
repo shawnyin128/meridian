@@ -184,6 +184,14 @@ describe('ProjectPlan', () => {
       expect(onUpdateTask).toHaveBeenCalledWith('task-1', { title: '复核批次' })
       expect(onOpenTask).not.toHaveBeenCalled()
     })
+
+    it('改名时点进输入框只是在编辑,不打开任务详情', () => {
+      const { host, onOpenTask } = mount()
+      act(() => host.querySelector<HTMLButtonElement>('.task-row .plan-rename')!.click())
+      act(() => host.querySelector<HTMLInputElement>('.task-row .plan-name-input')!.click())
+      expect(onOpenTask).not.toHaveBeenCalled()
+      expect(host.querySelector('.task-row .plan-name-input')).not.toBeNull()
+    })
   })
 })
 
