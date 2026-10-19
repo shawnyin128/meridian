@@ -1,10 +1,12 @@
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import type {
-  ChangeEntry, ChangeSource, PaperCell, PaperColumn, PaperFields, PaperRow, ProjectDetail,
+  ChangeEntry, ChangeSource, PaperCell, PaperColumn, PaperFields, PaperHighlight, PaperNote, PaperRow,
+  ProjectDetail, ReadingMutation,
 } from '../shared/contract.js'
 import {
-  ChangeEntrySchema, PaperColumnsSchema, PaperRowSchema, ProjectDetailSchema,
+  ChangeEntrySchema, PaperColumnsSchema, PaperHighlightSchema, PaperNoteSchema, PaperRowSchema,
+  ProjectDetailSchema,
 } from '../shared/contract.js'
 import { COLUMN_TYPE_LABEL, PAPER_PAGE, TRASH_RETENTION_DAYS } from '../shared/vocabulary.js'
 import { dayOf } from './dates.js'
@@ -51,7 +53,8 @@ const LATER_PROJECT_FIELDS: ReadonlySet<string> = new Set(['verifiedConclusions'
  * Entity changed by one record. Before undo, resolve its current shape and compare it with the stored
  * fingerprint. `pages` covers pages touched by one proposal: `id` joins their paths and `paths` lists
  * each page. `columns` targets one paper-table column whose key is `id`. `columnType` also targets one
- * column, but includes every populated cell in that column across the library.
+ * column, but includes every populated cell in that column across the library. `note` and `highlight`
+ * target the reading note or highlight `id` of paper `paper`, and `remark` the remark of paper `id`.
  */
 const ChangeTargetSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('paper'), id: z.string() }).strict(),
@@ -59,6 +62,9 @@ const ChangeTargetSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('pages'), id: z.string(), paths: z.array(z.string()) }).strict(),
   z.object({ kind: z.literal('columns'), id: z.string() }).strict(),
   z.object({ kind: z.literal('columnType'), id: z.string() }).strict(),
+  z.object({ kind: z.literal('note'), id: z.string(), paper: z.string() }).strict(),
+  z.object({ kind: z.literal('highlight'), id: z.string(), paper: z.string() }).strict(),
+  z.object({ kind: z.literal('remark'), id: z.string() }).strict(),
 ])
 
 /**
@@ -68,7 +74,10 @@ const ChangeTargetSchema = z.discriminatedUnion('kind', [
  * `pages` stores the previous full text of touched pages; restore rewrites them and deletes pages that
  * were previously absent. `option` reverses a column option rename from `from` to `to`. `columnType`
  * restores the previous column and every cell in it, then reinserts a group removed when converting
- * to text at `groupAt` (null means it was not grouped or the conversion was unrelated).
+ * to text at `groupAt` (null means it was not grouped or the conversion was unrelated). `note` and
+ * `highlight` put one back as it stood before the write among paper `paper`'s: in place of the one
+ * holding its id, or at position `at` when it was deleted. `remark` sets that paper's remark back to
+ * `text`. Both leave the rest of the paper's reading state as it stands.
  */
 const RestoreSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('paper'), snapshot: PaperSnapshotSchema }).strict(),
@@ -83,6 +92,11 @@ const RestoreSchema = z.discriminatedUnion('kind', [
     groupAt: z.number().int().nullable(),
     cells: PaperRowSchema.shape.custom,
   }).strict(),
+  z.object({ kind: z.literal('note'), paper: z.string(), at: z.number().int(), note: PaperNoteSchema }).strict(),
+  z.object({
+    kind: z.literal('highlight'), paper: z.string(), at: z.number().int(), highlight: PaperHighlightSchema,
+  }).strict(),
+  z.object({ kind: z.literal('remark'), paper: z.string(), text: z.string() }).strict(),
 ])
 
 /**
@@ -189,7 +203,8 @@ type Keep = 'snapshot' | 'trash' | 'created' | Restore
  * Current entity shape. Naming and diffing distinguish entity kinds. Papers also carry a page snapshot
  * for undo because the cross-boundary row cannot distinguish an absent read state from an explicit
  * unread value. Column entities contain only that column for fingerprinting, while column-type entities
- * additionally contain every cell in the column across the library.
+ * additionally contain every cell in the column across the library. Reading entities name paper
+ * `paper` titled `title`; a note or highlight also carries its position `at` among the paper's.
  */
 type Entity =
   | { kind: 'paper'; paper: PaperRow; snapshot: PaperSnapshot }
@@ -197,12 +212,34 @@ type Entity =
   | { kind: 'pages'; pages: PageText[] }
   | { kind: 'columns'; column: PaperColumn }
   | { kind: 'columnType'; column: PaperColumn; cells: Record<string, PaperCell> }
+  | { kind: 'note'; paper: string; title: string; at: number; note: PaperNote }
+  | { kind: 'highlight'; paper: string; title: string; at: number; highlight: PaperHighlight }
+  | { kind: 'remark'; paper: string; title: string; remark: string }
 
 /** Change-log storage: `.meridian` for real vaults and memory for fixtures. */
 export type ChangeLogStore = {
   load(): ChangeRecord[]
   save(rows: ChangeRecord[]): void
   nextId(): string
+}
+
+/** Target and title tail of a reading command recorded as a change, undefined for a command that is not recorded. */
+function readingChange(paper: string, mutation: ReadingMutation): [ChangeTarget, string] | undefined {
+  switch (mutation.kind) {
+    case 'note.update': return [{ kind: 'note', id: mutation.id, paper }, '改了笔记']
+    case 'note.delete': return [{ kind: 'note', id: mutation.id, paper }, '删掉笔记']
+    case 'highlight.update': return [{ kind: 'highlight', id: mutation.id, paper }, '改了高亮批注']
+    case 'highlight.delete': return [{ kind: 'highlight', id: mutation.id, paper }, '删掉高亮']
+    case 'remark.set': return [{ kind: 'remark', id: paper }, '改了随笔']
+    default: return undefined
+  }
+}
+
+/** `list` with `item` in place of the element holding its id, or inserted at `at` when none does. */
+function putBack<T extends { id: string }>(list: readonly T[], at: number, item: T): T[] {
+  return list.some((held) => held.id === item.id)
+    ? list.map((held) => (held.id === item.id ? item : held))
+    : list.toSpliced(at, 0, item)
 }
 
 /** Entity value without its kind, used for diffs and fingerprints. */
@@ -214,6 +251,9 @@ function valueOf(entity: Entity): Record<string, unknown> {
     )))
     case 'columns': return entity.column
     case 'columnType': return { ...entity.column, cells: entity.cells }
+    case 'note': return { page: entity.note.page, text: entity.note.text }
+    case 'highlight': return { page: entity.highlight.page, quote: entity.highlight.quote, note: entity.highlight.note }
+    case 'remark': return entity.remark === '' ? {} : { remark: entity.remark }
     default: return Object.fromEntries(entity.pages.map((p) => [p.path, p.text]))
   }
 }
@@ -271,9 +311,10 @@ function diffLines(before: Entity | undefined, after: Entity | undefined): strin
 
 /**
  * Wraps the given operations so that every write that changes the vault's
- * lasting knowledge — the paper writes and the project writes, and a
- * proposal's writes, and none of the inbox, later-queue, watch, chat, feed or
- * trash writes — is recorded, and adds
+ * lasting knowledge — the paper writes, editing or deleting a reading note or
+ * highlight, setting a remark, the project writes, and a proposal's writes,
+ * and none of the inbox, later-queue, watch, chat, feed, trash or other
+ * reading writes — is recorded, and adds
  * the changelog reads and the undo the contract carries. Records are kept in
  * `log`, newest first, and a record is written after its write, by core, so no
  * caller has to say what it changed. Undo writes back the entity as it stood
@@ -311,6 +352,24 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         const column = ops.paperColumns().custom.find((c) => c.key === target.id)
         return column === undefined ? undefined : { kind: 'columnType', column, cells: ops.paperCells(target.id) }
       }
+      case 'note': {
+        const notes = ops.hasPaper(target.paper) ? ops.paperReading(target.paper).notes : []
+        const at = notes.findIndex((note) => note.id === target.id)
+        return at < 0
+          ? undefined
+          : { kind: 'note', paper: target.paper, title: ops.getPaper(target.paper).title, at, note: notes[at]! }
+      }
+      case 'highlight': {
+        const highlights = ops.hasPaper(target.paper) ? ops.paperReading(target.paper).highlights : []
+        const at = highlights.findIndex((highlight) => highlight.id === target.id)
+        return at < 0
+          ? undefined
+          : { kind: 'highlight', paper: target.paper, title: ops.getPaper(target.paper).title, at, highlight: highlights[at]! }
+      }
+      case 'remark':
+        return ops.hasPaper(target.id)
+          ? { kind: 'remark', paper: target.id, title: ops.getPaper(target.id).title, remark: ops.paperReading(target.id).remark }
+          : undefined
       default: {
         const column = ops.paperColumns().custom.find((c) => c.key === target.id)
         return column === undefined ? undefined : { kind: 'columns', column }
@@ -325,6 +384,9 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       case 'project': return entity.project.name
       case 'columns':
       case 'columnType': return entity.column.label
+      case 'note':
+      case 'highlight':
+      case 'remark': return entity.title
       default: return entity.pages.map((p) => p.path).join('、')
     }
   }
@@ -356,6 +418,9 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         return { kind: 'project', project }
       }
       case 'pages': return { kind: 'pages', pages: before.pages }
+      case 'note': return { kind: 'note', paper: before.paper, at: before.at, note: before.note }
+      case 'highlight': return { kind: 'highlight', paper: before.paper, at: before.at, highlight: before.highlight }
+      case 'remark': return { kind: 'remark', paper: before.paper, text: before.remark }
       default: throw new Error('列这一类变动没有快照可存，还原要现成的那一份')
     }
   }
@@ -372,7 +437,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       id: log.nextId(),
       title: target.kind === 'pages' || target.kind === 'columns' || target.kind === 'columnType'
         ? what
-        : `${target.kind === 'paper' ? '论文' : '项目'}「${nameOf(named)}」· ${what}`,
+        : `${target.kind === 'project' ? '项目' : '论文'}「${nameOf(named)}」· ${what}`,
       meta: null,
       source,
       diff: diff ?? diffLines(before, after),
@@ -452,6 +517,13 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
 
     deletePaper(id) {
       return wrote({ kind: 'paper', id }, '删掉', 'trash', () => ops.deletePaper(id))
+    },
+
+    mutatePaperReading(id, mutation) {
+      const change = readingChange(id, mutation)
+      return change === undefined
+        ? ops.mutatePaperReading(id, mutation)
+        : wrote(change[0], change[1], 'snapshot', () => ops.mutatePaperReading(id, mutation))
     },
 
     restoreTrash(id) {
@@ -639,7 +711,15 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       else if (restore.kind === 'option') ops.renamePaperOption(restore.key, restore.from, restore.to)
       else if (restore.kind === 'columnType') ops.putPaperColumn(restore.column, restore.groupAt, restore.cells)
       else if (restore.kind === 'pages') ops.putPages(restore.pages)
-      else ops.putProject(restore.project)
+      else if (restore.kind === 'note') {
+        const held = ops.paperReading(restore.paper)
+        ops.putPaperReading(restore.paper, { ...held, notes: putBack(held.notes, restore.at, restore.note) })
+      } else if (restore.kind === 'highlight') {
+        const held = ops.paperReading(restore.paper)
+        ops.putPaperReading(restore.paper, { ...held, highlights: putBack(held.highlights, restore.at, restore.highlight) })
+      } else if (restore.kind === 'remark') {
+        ops.putPaperReading(restore.paper, { ...ops.paperReading(restore.paper), remark: restore.text })
+      } else ops.putProject(restore.project)
 
       rows = rows.map((r) => (r.id === id ? { ...r, undone: true } : r))
       const after = entityOf(target)

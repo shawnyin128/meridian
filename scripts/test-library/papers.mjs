@@ -175,7 +175,7 @@ export async function quoteOf(files, key, pattern) {
 /**
  * Seeds the paper table and the reader: one custom column of each type, every reading state, short
  * titles, LaTeX titles, ratings and cells; highlights, notes, a remark and the reading position;
- * an undone and an archived change; one paper deleted into Trash.
+ * a deleted note and highlight; an undone and an archived change; one paper deleted into Trash.
  */
 export async function seedPapers(seed, call, files) {
   const columns = await call('papers.columns')
@@ -200,6 +200,10 @@ export async function seedPapers(seed, call, files) {
   await reading(seed.papers.kivi, { kind: 'highlight.update', id: kivi.highlights[0].id, note: 'K 按通道、V 按 token 量化，是这篇的关键。' })
   await reading(seed.papers.kivi, { kind: 'note.add', page: 1, text: '2bit 下 Llama-2-7B 精度几乎不掉。' })
   await reading(seed.papers.h2o, { kind: 'note.add', page: 1, text: '重击者 token 留 20% 就够，和我们的 KV 预算估计一致。' })
+  const dropped = await reading(seed.papers.h2o, { kind: 'note.add', page: 2, text: '这条记错了，删掉。' })
+  await reading(seed.papers.h2o, { kind: 'note.delete', id: dropped.notes.at(-1).id })
+  const misplaced = await highlight('kivi', /value cache should/, 1, 'pink')
+  await reading(seed.papers.kivi, { kind: 'highlight.delete', id: misplaced.highlights.at(-1).id })
 
   await call('papers.update', { id: seed.papers.switch, patch: { rating: 1 } })
   await call('changelog.undo', { id: (await call('changelog.list'))[0].id })

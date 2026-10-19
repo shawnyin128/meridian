@@ -234,6 +234,17 @@ export function createFixtureStore(
   const importedSources = new Map<string, Uint8Array>()
   const readings = new Map<string, PaperReading>()
   const canonicalNoteCount = new Map([...byId].map(([id, paper]) => [id, paper.noteCount]))
+  /** Holds `next` as paper `id`'s reading state and projects its note count and remark onto the paper's row. */
+  const storeReading = (id: string, next: PaperReading): void => {
+    readings.set(id, next)
+    const row: PaperRow = {
+      ...byId.get(id)!,
+      noteCount: (canonicalNoteCount.get(id) ?? 0) + readingNoteCount(next),
+    }
+    if (next.remark === '') delete row.remark
+    else row.remark = next.remark
+    byId.set(id, row)
+  }
   const projectById = new Map((projects as FixtureProject[])
     .map((p) => [p.id, atToday(structuredClone(p), builtOn)]))
 
@@ -750,20 +761,17 @@ export function createFixtureStore(
     },
 
     mutatePaperReading(id, mutation: ReadingMutation) {
-      const paper = byId.get(id)
-      if (!paper) throw new Error(`论文不存在：${id}`)
+      if (!byId.has(id)) throw new Error(`论文不存在：${id}`)
       const next = applyReadingMutation(
         readings.get(id) ?? emptyPaperReading(id), mutation, nextId, today(),
       )
-      readings.set(id, next)
-      const row: PaperRow = {
-        ...paper,
-        noteCount: (canonicalNoteCount.get(id) ?? 0) + readingNoteCount(next),
-      }
-      if (next.remark === '') delete row.remark
-      else row.remark = next.remark
-      byId.set(id, row)
+      storeReading(id, next)
       return structuredClone(next)
+    },
+
+    putPaperReading(id, reading) {
+      if (!byId.has(id)) throw new Error(`论文不存在：${id}`)
+      storeReading(id, structuredClone(reading))
     },
 
     paperColumns() {

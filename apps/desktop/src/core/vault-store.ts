@@ -503,6 +503,19 @@ export function createVaultStore(
     readings.find((reading) => reading.paperId === id) ?? emptyPaperReading(id),
   )
 
+  /** Persists `next` as paper `id`'s reading state and projects its note count and remark onto the paper's row. */
+  const storeReading = (id: string, next: PaperReading): void => {
+    readings = [...readings.filter((reading) => reading.paperId !== id), next]
+    save('paper-readings', readings)
+    const row: PaperRow = {
+      ...papers.get(id)!,
+      noteCount: readingNoteCount(next),
+    }
+    if (next.remark === '') delete row.remark
+    else row.remark = next.remark
+    papers.set(id, row)
+  }
+
   /** Projects sidecar note counts and remarks onto the paper table without changing source metadata. */
   const withReadingCount = (row: PaperRow): PaperRow => {
     const reading = readingOf(row.id)
@@ -1252,17 +1265,13 @@ export function createVaultStore(
     mutatePaperReading(id, mutation: ReadingMutation) {
       if (!papers.has(id)) throw new Error(`论文不存在：${id}`)
       const next = applyReadingMutation(readingOf(id), mutation, nextId, today())
-      readings = [...readings.filter((reading) => reading.paperId !== id), next]
-      save('paper-readings', readings)
-      const paper = papers.get(id)!
-      const row: PaperRow = {
-        ...paper,
-        noteCount: readingNoteCount(next),
-      }
-      if (next.remark === '') delete row.remark
-      else row.remark = next.remark
-      papers.set(id, row)
+      storeReading(id, next)
       return structuredClone(next)
+    },
+
+    putPaperReading(id, reading) {
+      if (!papers.has(id)) throw new Error(`论文不存在：${id}`)
+      storeReading(id, structuredClone(reading))
     },
 
     paperColumns() {
