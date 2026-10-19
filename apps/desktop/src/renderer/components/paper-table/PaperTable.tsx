@@ -32,7 +32,7 @@ import {
 } from '../../shell/AppShell.js'
 import { AddAction } from '../AddAction.js'
 import { IconButton } from '../IconButton.js'
-import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
+import { holdRepeatSelection, RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
 import { PanelClose } from '../PanelClose.js'
 import { CountBadge, Tag, tagClass } from '../Tag.js'
 import { DetailPanel } from '../DetailPanel.js'
@@ -1097,6 +1097,7 @@ export function PaperTable() {
                   tabIndex={0} className={detail?.id === p.id ? 'selected' : undefined} data-row-actions=""
                   aria-current={detail?.id === p.id ? 'true' : undefined}
                   onClick={() => { void papers.get(p.id).then(setDetail).catch(reportError) }}
+                  onMouseDown={holdRepeatSelection}
                   onDoubleClick={(event) => {
                     if (opensPaperFrom(event.target)) open('reader', p.id)
                   }}

@@ -154,3 +154,49 @@ describe('嵌入列表的五行上限', () => {
     expect(folded.classList.contains('structured-list--scrollable')).toBe(false)
   })
 })
+
+describe('双击行', () => {
+  let root: Root
+  let host: HTMLDivElement
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+  })
+
+  afterEach(() => {
+    act(() => root.unmount())
+    host.remove()
+  })
+
+  /** Whether the press number `detail` on `target` had its default, the text selection, prevented. */
+  const pressed = (target: Element, detail: number) => {
+    const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true, detail })
+    target.dispatchEvent(event)
+    return event.defaultPrevented
+  }
+
+  it('能打开东西的行，双击的第二下按下不选中字；第一下照常，拖选也照常', () => {
+    act(() => root.render(
+      <StructuredList>
+        <StructuredRow onActivate={() => undefined}><span className="probe">打开</span></StructuredRow>
+        <StructuredRow composite onActivate={() => undefined}><span className="probe">打开</span></StructuredRow>
+      </StructuredList>,
+    ))
+    const [button, composite] = [...host.querySelectorAll('.probe')]
+    expect([pressed(button!, 1), pressed(button!, 2), pressed(composite!, 1), pressed(composite!, 2)])
+      .toEqual([false, true, false, true])
+  })
+
+  it('不能打开的行和行里的输入框，双击照常选中字', () => {
+    act(() => root.render(
+      <StructuredList>
+        <StructuredRow><span className="probe">一段结论</span></StructuredRow>
+        <StructuredRow composite onActivate={() => undefined}><input className="field" /></StructuredRow>
+      </StructuredList>,
+    ))
+    expect([pressed(host.querySelector('.probe')!, 2), pressed(host.querySelector('.field')!, 2)]).toEqual([false, false])
+  })
+})

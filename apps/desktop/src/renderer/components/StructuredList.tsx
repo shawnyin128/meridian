@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import type { CSSProperties, HTMLAttributes, ReactNode, Ref } from 'react'
+import type { CSSProperties, HTMLAttributes, MouseEvent as ReactMouseEvent, ReactNode, Ref } from 'react'
 import './StructuredList.css'
 
 export const EMBEDDED_LIST_ROW_LIMIT = 5
@@ -74,6 +74,17 @@ export function StructuredList({
 }
 
 /**
+ * Keeps the second press of a double-click on a row that opens something from selecting a word: the
+ * row is a control, not prose. A first press, and so a drag, still selects; a field or an editor in
+ * the row keeps its own selection.
+ */
+export function holdRepeatSelection(event: ReactMouseEvent) {
+  if (event.detail < 2) return
+  if (event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable="true"]') !== null) return
+  event.preventDefault()
+}
+
+/**
  * The slot at a row's end for the actions on that row: neutral ghost glyphs (`IconButton`s, a
  * destructive one with `tone="danger"`, and `DotsMenu`) that show only while the row is hovered or
  * holds focus, or while one of their menus or dialogs is open. Any element marked `data-row-actions`
@@ -89,7 +100,8 @@ export function RowActions({ children, className = '' }: { children: ReactNode; 
  * hover, focus and row clicks are implemented only here.
  * A `composite` row holds controls of its own, so it stays a div that forwards pointer clicks to `onActivate`;
  * its children must include the keyboard-accessible control for the same action. A `selected` row is
- * the one whose detail is open beside the list.
+ * the one whose detail is open beside the list. A double-click on a row with `onActivate` selects no
+ * text (`holdRepeatSelection`).
  */
 export function StructuredRow({
   children, className = '', columns, composite = false, selected = false, onActivate, rowRef, style, ...props
@@ -109,7 +121,7 @@ export function StructuredRow({
   if (onActivate && composite) {
     return (
       <div
-        className={rowClass} style={rowStyle} data-row-actions="" onClick={onActivate}
+        className={rowClass} style={rowStyle} data-row-actions="" onClick={onActivate} onMouseDown={holdRepeatSelection}
         {...props as HTMLAttributes<HTMLDivElement>}
       >
         {children}
@@ -119,7 +131,7 @@ export function StructuredRow({
   if (onActivate) {
     return (
       <button
-        className={rowClass} style={rowStyle} type="button" onClick={onActivate}
+        className={rowClass} style={rowStyle} type="button" onClick={onActivate} onMouseDown={holdRepeatSelection}
         {...props as HTMLAttributes<HTMLButtonElement>}
       >{children}</button>
     )
