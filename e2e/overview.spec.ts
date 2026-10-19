@@ -83,7 +83,7 @@ const overviewCounts = (win: Page) => win.evaluate(async () => {
  * renders, so the check is deterministic regardless of which day of the month the suite runs on.
  */
 async function revealMilestone(win: Page, dataMilestone: string) {
-  await shown(win).locator('.gantt .gscale button', { hasText: '月' }).click()
+  await shown(win).locator('.gantt .segmented-control>button', { hasText: '月' }).click()
   const diamond = shown(win).locator(`.gantt .gddl[data-milestone="${dataMilestone}"]`)
   for (let step = 0; step < 3 && await diamond.count() === 0; step += 1) {
     await shown(win).locator('.gantt .gperiodnav button[title="下一个周期"]').click()
@@ -424,16 +424,16 @@ test('日周月切换时只列出和当前时间段有交集的任务,同日任�
   )).sort()
   expect(await taskLabels()).toEqual(listed('week'))
 
-  await gantt.locator('.gscale button', { hasText: '月' }).click()
+  await gantt.locator('.segmented-control>button', { hasText: '月' }).click()
   await expect(bar).toBeVisible()
   expect((await bar.boundingBox())!.width).toBeLessThan(40)
   await expect.poll(taskLabels).toEqual(listed('month'))
 
-  await gantt.locator('.gscale button', { hasText: '日' }).click()
+  await gantt.locator('.segmented-control>button', { hasText: '日' }).click()
   await expect(bar).toBeVisible()
   await expect.poll(taskLabels).toEqual(listed('day'))
 
-  await gantt.locator('.gscale button', { hasText: '周' }).click()
+  await gantt.locator('.segmented-control>button', { hasText: '周' }).click()
   await expect(bar).toBeVisible()
   await expect.poll(taskLabels).toEqual(listed('week'))
 })
@@ -454,7 +454,7 @@ test.describe('窗口收窄并滚动', () => {
     await gotoOverview(win)
     // The history view keeps every project and finished tasks too.
     await shown(win).locator('.overview-history-toggle').click()
-    await shown(win).locator('.gantt .gscale button', { hasText: '月' }).click()
+    await shown(win).locator('.gantt .segmented-control>button', { hasText: '月' }).click()
     await expect(shown(win).locator('.gantt .gbar-label', { hasText: '月初任务' })).toHaveCount(1)
     const taskRows = (await win.evaluate(() => (window as unknown as MeridianWindow).meridian
       .call('project.overview', {}) as Promise<{ tasks: { start: string; end: string }[] }[]>))

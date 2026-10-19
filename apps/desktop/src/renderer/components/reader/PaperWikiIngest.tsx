@@ -7,6 +7,7 @@ import { harness } from '../../ipc.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
+import { ChipToggles } from '../ChipToggles.js'
 import { FormTextarea } from '../FormControls.js'
 import { HarnessAction } from '../HarnessAction.js'
 import { SegmentedControl } from '../SegmentedControl.js'
@@ -154,12 +155,6 @@ export function PaperWikiIngest({ paper, reading }: {
     }
   }
 
-  const toggleRejectionReason = (reason: HarnessPaperWikiRejectionReason) => {
-    setRejectionReasons((current) => current.includes(reason)
-      ? current.filter((candidate) => candidate !== reason)
-      : [...current, reason])
-  }
-
   const submitRejection = () => {
     const note = rejectionNote.trim()
     const reasons = rejectionReasons.length > 0
@@ -265,22 +260,11 @@ export function PaperWikiIngest({ paper, reading }: {
                   <strong>{m.wiki.ingest.rejectionPrompt}</strong>
                   <span>{m.wiki.ingest.rejectionPrivacyNote}</span>
                 </div>
-                <div
-                  className="wiki-ingest-rejection-reasons segmented-control segmented-control--md"
-                  role="group" aria-label={m.wiki.ingest.rejectReasonsLabel}
-                >
-                  {rejectReasonOptions(m).map((reason) => {
-                    const selected = rejectionReasons.includes(reason.value)
-                    return (
-                      <button key={reason.value} type="button"
-                        className={selected ? 'on' : ''} aria-pressed={selected}
-                        disabled={rejecting}
-                        onClick={() => toggleRejectionReason(reason.value)}>
-                        {reason.label}
-                      </button>
-                    )
-                  })}
-                </div>
+                <ChipToggles
+                  className="wiki-ingest-rejection-reasons" label={m.wiki.ingest.rejectReasonsLabel}
+                  value={rejectionReasons} options={rejectReasonOptions(m)} disabled={rejecting}
+                  onChange={setRejectionReasons}
+                />
                 <FormTextarea appearance="field" rows={2} maxLength={500}
                   aria-label={m.wiki.ingest.rejectionNoteLabel} placeholder={m.wiki.ingest.rejectionNotePlaceholder}
                   disabled={rejecting}

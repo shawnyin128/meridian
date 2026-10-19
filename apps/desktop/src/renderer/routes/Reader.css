@@ -132,16 +132,13 @@
 .wiki-ingest-review-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
 .wiki-ingest-review-head strong{font-size:var(--fs-sm)}
 .wiki-ingest-review-head span{color:var(--ter);font-size:var(--fs-cap)}
-.wiki-ingest-review-mode{display:flex;width:100%;margin-bottom:12px}
-.wiki-ingest-review-mode>button{flex:1 1 50%}
+.wiki-ingest-review-mode{margin-bottom:12px}
 .wiki-ingest-review .form-textarea{width:100%;min-height:360px;font-family:var(--mono);font-size:var(--fs-cap);line-height:1.55}
 .wiki-ingest-edit-note{margin:0 0 10px;color:var(--warn);font-size:var(--fs-cap);line-height:1.5}
 .wiki-ingest-rejection{margin-top:14px;padding:12px;background:var(--field);border-radius:var(--r-lg)}
 .wiki-ingest-rejection-head{display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
 .wiki-ingest-rejection-head strong{font-size:var(--fs-sm)}
 .wiki-ingest-rejection-head span{color:var(--ter);font-size:var(--fs-cap);line-height:1.45}
-.wiki-ingest-rejection-reasons{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
-.wiki-ingest-rejection-reasons.segmented-control>button{background:var(--card)}
-.wiki-ingest-rejection-reasons.segmented-control>button.on{background:var(--accent-soft)}
+.wiki-ingest-rejection-reasons{margin-bottom:9px}
 .wiki-ingest-rejection>.form-textarea{min-height:62px;font-family:var(--sans);font-size:var(--fs-sm)}
 .wiki-ingest-rejection .wiki-ingest-actions{margin-top:10px}

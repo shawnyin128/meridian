@@ -175,7 +175,7 @@ describe('TimelineBoard 只显示当前时间段里的任务', () => {
     lanes: [...host.querySelectorAll<HTMLElement>('.grow[data-task]')].map((row) => row.dataset.task),
   })
   const pickScale = (label: string) => {
-    const button = [...host.querySelectorAll<HTMLButtonElement>('.gscale button')].find((b) => b.textContent === label)!
+    const button = [...host.querySelectorAll<HTMLButtonElement>('.ghead .segmented-control>button')].find((b) => b.textContent === label)!
     act(() => { button.click() })
   }
 

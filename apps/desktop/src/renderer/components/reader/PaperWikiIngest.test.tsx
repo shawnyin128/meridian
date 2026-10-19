@@ -230,7 +230,9 @@ describe('PaperWikiIngest', () => {
     await act(async () => {
       [...host.querySelectorAll<HTMLButtonElement>('button')]
         .find((button) => button.textContent === '论文事实不准确')!.click()
-      ;[...host.querySelectorAll<HTMLButtonElement>('button')]
+    })
+    await act(async () => {
+      [...host.querySelectorAll<HTMLButtonElement>('button')]
         .find((button) => button.textContent === '遗漏重要内容')!.click()
     })
     const note = host.querySelector<HTMLTextAreaElement>('[aria-label="丢弃提案的补充说明"]')!
@@ -249,6 +251,26 @@ describe('PaperWikiIngest', () => {
       note: '第 4 页的限制条件被遗漏。',
     })
     expect(host.textContent).toContain('提案已丢弃，未修改 Wiki')
+  })
+
+  it('offers the rejection reasons as chips that each toggle on their own, not as segments', async () => {
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
+    })
+    await act(async () => {
+      [...host.querySelectorAll<HTMLButtonElement>('button')]
+        .find((button) => button.textContent === '丢弃提案')!.click()
+    })
+
+    const reasons = host.querySelector('[aria-label="丢弃原因"]')!
+    expect(reasons.classList.contains('chip-toggles')).toBe(true)
+    expect(reasons.classList.contains('segmented-control')).toBe(false)
+    const chip = [...reasons.querySelectorAll<HTMLButtonElement>('button')]
+      .find((button) => button.textContent === '遗漏重要内容')!
+    expect(chip.classList.contains('tagchip')).toBe(true)
+    await act(async () => { chip.click() })
+    expect(chip.getAttribute('aria-pressed')).toBe('true')
   })
 
   it('allows rejecting without providing feedback', async () => {

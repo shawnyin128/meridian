@@ -328,6 +328,36 @@ function ReadStateFilter({ current, onPick }: {
   )
 }
 
+/** The picked group value with its paper count; its menu switches to another value of the same group. */
+function GroupValuePicker({ current, facets, onPick }: {
+  current: string | null
+  facets: Facet[]
+  onPick: (value: string) => void
+}) {
+  const m = useMessages()
+  const count = facets.find((facet) => facet.value === current)?.count
+  return (
+    <ActionMenu
+      align="start"
+      trigger={(
+        <button type="button" className="btn plain" aria-label={m.papers.toolbar.groupValueAria}>
+          {count === undefined ? current : `${current}(${count})`}
+        </button>
+      )}
+    >
+      <MenuRadioGroup value={current ?? ''}>
+        {facets.map((facet) => (
+          <MenuRadioItem key={facet.value} value={facet.value} onSelect={() => onPick(facet.value)}>
+            <span className="ck">{facet.value === current ? <IconCheck /> : null}</span>
+            {facet.value}
+            <span className="mi-key">{facet.count}</span>
+          </MenuRadioItem>
+        ))}
+      </MenuRadioGroup>
+    </ActionMenu>
+  )
+}
+
 /**
  * Double-clicking a row's blank space or text opens the reader; buttons and editors inside a cell
  * keep their own double-click behaviour.
@@ -1345,11 +1375,8 @@ export function PaperTable() {
                         <button className="btn plain" id="gxBack" onClick={backToValues}>
                           ‹ {labelOf(group)}
                         </button>
-                        <SegmentedControl
-                          label={m.papers.toolbar.groupValueAria}
-                          value={sel ?? ''}
-                          options={facets.map((f) => ({ value: f.value, label: `${f.value}(${f.count})` }))}
-                          onChange={(value) => { setSel(value); setPage(1) }}
+                        <GroupValuePicker
+                          current={sel} facets={facets} onPick={(value) => { setSel(value); setPage(1) }}
                         />
                       </div>
                     )

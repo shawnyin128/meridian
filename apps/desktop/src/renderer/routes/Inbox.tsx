@@ -304,7 +304,6 @@ export function Inbox() {
       <PageBody>
         <div className="inbox-toolbar">
           <SegmentedControl
-            className="inbox-sort"
             label={m.inbox.sortLabel}
             value={sort}
             options={[

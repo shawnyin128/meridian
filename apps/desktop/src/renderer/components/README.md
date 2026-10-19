@@ -33,8 +33,11 @@ Current shared contracts:
   its children carry the keyboard-accessible control, so a button is never nested inside a button.
 - `NavRow`: the one row of a navigation list, the sidebar's and the Settings categories'. It is a button,
   or, when it holds controls of its own, a div whose label is the button; the row's class gives the look.
-- `SegmentedControl`: the only switch between peer views in the app, with shared geometry, selected state,
-  keyboard focus, and pressed-button semantics. The `.fchip` and `.segbtn` pill rows are retired.
+- `SegmentedControl`: the only switch between peer views in the app, including the timeline scale: a track of
+  equal segments with a raised thumb that slides to the picked one, radio-group semantics, and one Tab stop
+  with arrow keys inside. The `.fchip` and `.segbtn` pill rows are retired.
+- `ChipToggles`: a multi-select of short values as chips that each turn on or off, with the same one Tab
+  stop and arrow keys. A choice among many values is a menu picker, not a segment per value.
 - `EmptyState`: the two ways a list says it is empty. `page` is a centred sentence with an optional icon
   for a whole screen; `section` is one line of small grey text under a section heading.
 - `PanelClose`: the close button of a detail panel, with one label and one glyph everywhere.

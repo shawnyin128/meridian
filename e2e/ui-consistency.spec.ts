@@ -27,26 +27,37 @@ test('空态只有两档:整屏的带图标居中,分节的是一行灰字', asy
   }
 })
 
-test('平级视图切换全应用一个组件:药丸排,选中的那颗是实心', async ({ win }) => {
+test('平级视图切换全应用一个组件:轨道里等宽分段,选中项由一颗凸起的滑块托着,不是实心强调色', async ({ win }) => {
   test.slow()
-  const accent = await win.evaluate(() =>
-    getComputedStyle(document.documentElement).getPropertyValue('--accent-solid').trim())
+  const color = (raw: string) => win.evaluate((value) => {
+    const probe = document.createElement('span')
+    probe.style.backgroundColor = value
+    document.body.append(probe)
+    const computed = getComputedStyle(probe).backgroundColor
+    probe.remove()
+    return computed
+  }, raw)
+  const token = (name: string) => win.evaluate((n) =>
+    getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name)
+  const raised = await color(await token('--raised'))
+  const accent = await color(await token('--accent-solid'))
 
   for (const [desk, label] of [['papers', '分组字段'], ['later', '分组方式']] as const) {
     await win.locator(`[data-desk="${desk}"]`).click()
-    const group = shown(win, `[role="group"][aria-label="${label}"]`)
+    const group = shown(win, `[role="radiogroup"][aria-label="${label}"]`)
     await expect(group).toHaveCount(1)
-    const on = group.locator('button.on')
+    const on = group.locator('button[aria-checked="true"]')
     await expect(on).toHaveCount(1)
-    await expect(on).toHaveAttribute('aria-pressed', 'true')
-    await expect(on).toHaveCSS('background-color', await win.evaluate((raw) => {
-      const probe = document.createElement('span')
-      probe.style.backgroundColor = raw
-      document.body.append(probe)
-      const value = getComputedStyle(probe).backgroundColor
-      probe.remove()
-      return value
-    }, accent))
+    await expect(on).not.toHaveCSS('background-color', accent)
+    const thumb = group.locator('.segmented-thumb')
+    await expect(thumb).toHaveCSS('background-color', raised)
+    const boxes = await group.evaluate((track) => [...track.querySelectorAll('button')]
+      .map((button) => button.getBoundingClientRect().width))
+    expect(Math.max(...boxes) - Math.min(...boxes), `${label} 的分段等宽`).toBeLessThan(1)
+    await expect.poll(async () => {
+      const [a, b] = await Promise.all([thumb.boundingBox(), on.boundingBox()])
+      return Math.abs(a!.x - b!.x) + Math.abs(a!.width - b!.width)
+    }, { message: `${label} 的滑块停在选中项下面` }).toBeLessThan(1)
   }
 
   // No screen keeps a second pill vocabulary.

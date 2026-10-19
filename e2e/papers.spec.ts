@@ -207,7 +207,7 @@ test('论文内容与分页栏遵循全局页面宽度', async ({ win }) => {
 test('研究地图从真实论文元数据形成可切换、可解释的重叠分组', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
-  await win.getByRole('button', { name: '研究地图', exact: true }).click()
+  await win.getByRole('radio', { name: '研究地图', exact: true }).click()
 
   await expect(win.locator('.research-map-title')).toContainText('自适应研究地图')
   await expect(win.locator('.research-map-group')).not.toHaveCount(0)
@@ -278,7 +278,7 @@ test('分组加筛选后,索引层计数、值 chip 计数与分页总数三者�
   const indexCount = await indexRow.locator('.n').innerText()
   await indexRow.click()
 
-  await expect(win.locator('.gnav .segmented-control>button.on')).toHaveText(`${TOPIC}(${indexCount})`)
+  await expect(win.locator('.gnav button[aria-label="分组取值"]')).toHaveText(`${TOPIC}(${indexCount})`)
   await expect(win.locator('.pginfo')).toHaveText(`共 ${indexCount} 条`)
 })
 
@@ -837,7 +837,7 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   await win.locator('[data-radix-popper-content-wrapper] .mi', { hasText: '读法' }).click()
   await win.keyboard.press('Escape')
   await expect(win.locator('.filters .segmented-control>button', { hasText: '读法' })).toHaveCount(0)
-  await expect(win.locator('.filters .segmented-control>button.on')).toHaveText('无')
+  await expect(win.locator('.filters .segmented-control>button[aria-checked="true"]')).toHaveText('无')
 
   // Rename an option: the cell follows, and refetching through Core rules out an optimistic state.
   await firstPage(win)
@@ -888,14 +888,14 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   await win.keyboard.press('Escape')
   await shown(win, '.filters .segmented-control>button').filter({ hasText: '读法' }).click()
   await win.locator('.gxrow').first().click()
-  await expect(shown(win, '.filters .segmented-control>button.on')).toHaveText('读法')
+  await expect(shown(win, '.filters .segmented-control>button[aria-checked="true"]')).toHaveText('读法')
 
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [title="列设置"]').click()
   await menu.filter({ hasText: '读法' }).hover()
   await menu.filter({ hasText: '读法' }).locator('.cmx.del').click()
   await expect(shown(win, '.filters .segmented-control>button').filter({ hasText: '读法' })).toHaveCount(0)
-  await expect(shown(win, '.filters .segmented-control>button.on')).toHaveText('无')
+  await expect(shown(win, '.filters .segmented-control>button[aria-checked="true"]')).toHaveText('无')
   await expect.poll(head).not.toContain('读法')
   // Had the column been deleted without leaving the groups, Core would reject the write and the
   // column would return; the assertions above see only the optimistic state.
@@ -1657,11 +1657,11 @@ test('改类型:单选 → 文本,字留着、选项清空;正按它分组时当
   await firstPage(win)
   await shown(win, '.filters .segmented-control>button').filter({ hasText: '读法' }).click()
   await win.locator('.gxrow').first().click()
-  await expect(shown(win, '.filters .segmented-control>button.on')).toHaveText('读法')
+  await expect(shown(win, '.filters .segmented-control>button[aria-checked="true"]')).toHaveText('读法')
 
   await retype(win, '读法', '文本')
   await expect(shown(win, '.filters .segmented-control>button').filter({ hasText: '读法' })).toHaveCount(0)
-  await expect(shown(win, '.filters .segmented-control>button.on')).toHaveText('无')
+  await expect(shown(win, '.filters .segmented-control>button[aria-checked="true"]')).toHaveText('无')
   await win.keyboard.press('Escape')
   await firstPage(win)
   const cells = win.locator('.ptable tbody tr td.pt-cust')

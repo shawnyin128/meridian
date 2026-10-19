@@ -131,11 +131,11 @@ test('从别的屏再进「项目」落在列表,已经在项目屏时再点侧�
   await win.locator('[data-desk="papers"]').click()
   await expect(win.locator('.pager .pgbtn.on')).toHaveText('2')
   await win.locator('.filters .segmented-control>button', { hasText: '主题' }).click()
-  await expect(win.locator('.filters .segmented-control>button.on')).toHaveText('主题')
+  await expect(win.locator('.filters .segmented-control>button[aria-checked="true"]')).toHaveText('主题')
 
   await gotoList(win)
   await win.locator('[data-desk="papers"]').click()
-  await expect(win.locator('.filters .segmented-control>button.on')).toHaveText('主题')
+  await expect(win.locator('.filters .segmented-control>button[aria-checked="true"]')).toHaveText('主题')
   await expect(win.locator('.gxrow').first()).toBeVisible()
 })
 
@@ -264,7 +264,7 @@ test('没有图数据的项目出的是一行占位,不是空画布加图例', a
   await win.locator('#crumb .cseg.link', { hasText: '项目' }).click()
   await win.locator('[data-proj="draft"]').click()
   const graphTab = win.locator('.section-heading.flexh .segmented-control>button', { hasText: '科研图' })
-  await expect(graphTab).toHaveAttribute('aria-pressed', 'false')
+  await expect(graphTab).toHaveAttribute('aria-checked', 'false')
   await graphTab.click()
   await expect(win.locator('.rgraph .rgn')).toHaveCount((await getProject(win, 'draft')).graphNodes)
   await expect(win.locator('.glegend')).toHaveCount(1)

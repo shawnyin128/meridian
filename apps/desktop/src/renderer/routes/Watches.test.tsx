@@ -278,7 +278,7 @@ describe('WatchSettings', () => {
     const section = host.querySelector('.watch-suggestions')!
     const sources = section.querySelector('.segmented-control[aria-label="建议来源"]')
     expect(sources).not.toBeNull()
-    expect(button(sources!, '描述关注方向').getAttribute('aria-pressed')).toBe('true')
+    expect(button(sources!, '描述关注方向').getAttribute('aria-checked')).toBe('true')
 
     const input = section.querySelector<HTMLInputElement>(
       'input[placeholder="用一句话描述想持续关注的研究方向"]',
@@ -288,8 +288,8 @@ describe('WatchSettings', () => {
     expect(section.textContent).toContain('batch aware verification')
 
     await act(async () => { button(sources!, '从项目生成').click() })
-    expect(button(sources!, '从项目生成').getAttribute('aria-pressed')).toBe('true')
-    expect(button(sources!, '描述关注方向').getAttribute('aria-pressed')).toBe('false')
+    expect(button(sources!, '从项目生成').getAttribute('aria-checked')).toBe('true')
+    expect(button(sources!, '描述关注方向').getAttribute('aria-checked')).toBe('false')
     expect(section.textContent).not.toContain('batch aware verification')
 
     api.suggest.mockResolvedValueOnce({
