@@ -29,9 +29,9 @@ export function ProjectPriorityTag({ priority, className }: {
   return <Tag tone={PRIORITY_TONE[priority]} className={className}>{priority.toUpperCase()}</Tag>
 }
 
-/** The one project-name label for lists that tag a row with its project; `className` places it. */
+/** The one project-name label for lists that tag a row with its project; it yields width before its neighbours. */
 export function ProjectLabel({ name, className }: { name: string; className?: string }) {
-  return <Tag shape="chip" className={className} title={name}>{name}</Tag>
+  return <Tag shape="chip" className={`project-label${className ? ` ${className}` : ''}`} title={name}>{name}</Tag>
 }
 
 /**
@@ -55,7 +55,7 @@ export function ProjectIdentity({
             tone={STATUS_TONE[project.status]} size="md"
             {...(showStatus ? {} : { label: project.status, labelHidden: true })}
           />
-          <ProjectLabel name={project.name} className="project-label" />
+          <ProjectLabel name={project.name} />
           {showPriority ? <ProjectPriorityTag priority={project.priority} /> : null}
           {showTopic && project.topic
             ? <span className="project-identity-topic">{project.topic}</span>
