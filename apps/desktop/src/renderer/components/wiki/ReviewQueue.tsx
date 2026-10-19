@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ConflictTarget, Evidence, ProposalOp, WikiProposal } from '../../../shared/contract.js'
+import { localDayOf } from '../../../shared/dates.js'
 import { PAPER_PAGE } from '../../../shared/vocabulary.js'
 import { useFormat } from '../../lib/format.js'
 import type { Catalog } from '../../messages/catalog.js'
@@ -25,8 +26,8 @@ export function ReviewEntry({ count, onOpen }: { count: number; onOpen: () => vo
   )
 }
 
-/** Day a proposal arrived or was decided, from epoch ms. */
-const dayOf = (ms: number): string => new Date(ms).toISOString().slice(0, 10)
+/** Local calendar day, the vault's day, a proposal arrived or was decided, from epoch ms. */
+const dayOf = (ms: number): string => localDayOf(new Date(ms).toISOString())
 
 /**
  * The change lines of `op` in `p`: everything applying it would write, with claims by their current text
