@@ -2,7 +2,7 @@
 import { act, Profiler, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ListParams, PaperColumns, PaperImportResult, PaperRow } from '../../shared/contract.js'
+import type { Facet, ListParams, PaperColumns, PaperImportResult, PaperRow } from '../../shared/contract.js'
 import { PAPER_COLUMNS } from '../../shared/vocabulary.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { papers as papersZh } from '../messages/zh/papers.js'
@@ -77,11 +77,13 @@ let columnsCallCount: number
 let listCallCount: number
 let listParams: ListParams[]
 let openedScreens: [screen: string, id?: string][]
+/** The values papers.facets answers with for any grouping field. */
+let facetRows: Facet[]
 
 vi.mock('../ipc.js', () => ({
   papers: {
     list: (params: ListParams) => { listCallCount += 1; listParams.push(params); return listCall.promise },
-    facets: () => Promise.resolve([]),
+    facets: () => Promise.resolve(facetRows),
     get: () => getCall.promise,
     update: (id: string, patch: Record<string, unknown>) => {
       if (throwOnNextUpdate) { const e = throwOnNextUpdate; throwOnNextUpdate = null; throw e }
@@ -250,6 +252,7 @@ describe('PaperTable', () => {
     listCallCount = 0
     listParams = []
     openedScreens = []
+    facetRows = []
   })
 
   it('defaults to 20 papers and offers only the 20, 30, and 50 page sizes', async () => {
@@ -396,6 +399,73 @@ describe('PaperTable', () => {
     const removeButton = row.querySelector<HTMLButtonElement>('.rowx')!
     await act(async () => { removeButton.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })) })
     expect(openedScreens).toEqual([['reader', ROW.id]])
+  })
+
+  it('能排序的表头里各有一个排序按钮，按它排序，表头报出排序方向', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    const header = (key: string) => host.querySelector<HTMLElement>(`.ptable th[data-k="${key}"]`)!
+    expect(['title', 'authors', 'year'].map((key) => header(key).querySelector(':scope > button')?.tagName))
+      .toEqual(['BUTTON', 'BUTTON', 'BUTTON'])
+    expect(header('year').getAttribute('aria-sort')).toBeNull()
+    await act(async () => { header('year').querySelector<HTMLElement>(':scope > button')!.click() })
+    await flush()
+    expect(listParams.at(-1)).toMatchObject({ sort: 'year', direction: 'desc' })
+    expect(header('year').getAttribute('aria-sort')).toBe('descending')
+  })
+
+  it('聚焦的论文行按回车打开详情，行里按钮上的回车不算', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    const row = host.querySelector<HTMLElement>('.ptable tbody tr')!
+    const enter = (target: Element) => act(async () => {
+      target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    })
+    getCall.resolve(ROW)
+    await enter(row.querySelector('.rowx')!)
+    await flush()
+    expect(row.classList).not.toContain('selected')
+    await enter(row)
+    await flush()
+    expect(row.classList).toContain('selected')
+  })
+
+  it('分组索引里的每个值都是按钮，按它列出这一组的论文', async () => {
+    facetRows = [{ value: '推理', count: 2, newestTitle: '一篇论文' }]
+    const host = mount()
+    columnsCall.resolve({ hidden: [], custom: [], groups: ['topics'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    const topics = [...host.querySelectorAll<HTMLElement>('.filters .segmented-control > button')]
+      .find((button) => button.textContent === '主题')!
+    await act(async () => { topics.click() })
+    await flush()
+    const value = host.querySelector<HTMLElement>('.gxrow')!
+    expect(value.tagName).toBe('BUTTON')
+    await act(async () => { value.click() })
+    await flush()
+    expect(listParams.at(-1)?.facet).toEqual({ field: 'topics', value: '推理' })
+  })
+
+  it('列设置里能显隐的内置列是按钮并报出是否显示，锁定的列不是按钮', async () => {
+    const host = mount()
+    columnsCall.resolve({ hidden: ['venue'], custom: [], groups: [] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
+    const row = (label: string) => [...document.querySelectorAll<HTMLElement>('.mi.colrow')]
+      .find((el) => el.textContent === label)!
+    expect([row('主题').tagName, row('主题').getAttribute('aria-pressed')]).toEqual(['BUTTON', 'true'])
+    expect([row('发表').tagName, row('发表').getAttribute('aria-pressed')]).toEqual(['BUTTON', 'false'])
+    expect(row('作者').tagName).toBe('DIV')
   })
 
   it('主题超出一行时用 +N 收起,点击后展开且不会误开论文详情', async () => {

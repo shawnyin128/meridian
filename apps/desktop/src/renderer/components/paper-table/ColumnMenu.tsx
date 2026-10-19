@@ -104,15 +104,20 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
               view; the menu still stays in the window, like the demo's clamping when it opens a popover */}
           {COLUMNS.map((c) => {
             const locked = (LOCKED_PAPER_COLUMNS as readonly string[]).includes(c.k)
-            return (
-              <div
-                key={c.k} className={locked ? 'mi colrow locked' : 'mi colrow'}
-                {...(locked ? { title: m.papers.columnMenu.locked } : { onClick: () => toggle(c.k) })}
-              >
-                <span className="ck">{columns.hidden.includes(c.k) ? null : <IconCheck />}</span>
+            const shown = !columns.hidden.includes(c.k)
+            const body = (
+              <>
+                <span className="ck">{shown ? <IconCheck /> : null}</span>
                 <span className="cl">{m.papers.columns[c.k]}</span>
-              </div>
+              </>
             )
+            return locked
+              ? <div key={c.k} className="mi colrow locked" title={m.papers.columnMenu.locked}>{body}</div>
+              : (
+                <button
+                  type="button" key={c.k} className="mi colrow" aria-pressed={shown} onClick={() => toggle(c.k)}
+                >{body}</button>
+              )
           })}
           {columns.custom.map((c) => (
             <div key={c.key}>
