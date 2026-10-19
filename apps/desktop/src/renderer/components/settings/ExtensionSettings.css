@@ -1,4 +1,4 @@
-.extension-settings-card{border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);padding:0 16px}
+.extension-settings-card{padding-block:0}
 .extension-settings-loading{padding:24px 16px;color:var(--ter);font-size:var(--fs-sm)}
 .extension-entry{padding:16px 0}
 .extension-entry+.extension-entry{border-top:1px solid var(--sep2)}
@@ -15,8 +15,7 @@
 .extension-command-code{margin:0;padding:10px 11px;overflow:auto;color:var(--sec);font-family:var(--mono);
   font-size:var(--fs-cap);line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
 .extension-command-code code{font:inherit}
-.extension-tutorial{margin-top:20px;border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);
-  padding:16px;color:var(--sec)}
+.extension-tutorial{margin-top:20px;color:var(--sec)}
 .extension-tutorial-head h3{margin:0;color:var(--ink);font-size:var(--fs-title);line-height:var(--lh-tight)}
 .extension-tutorial-head p{margin:5px 0 0;color:var(--ter);font-size:var(--fs-sm);line-height:var(--lh-ui)}
 .extension-tutorial-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0 0;padding:0;

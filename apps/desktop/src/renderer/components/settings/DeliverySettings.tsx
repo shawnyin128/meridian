@@ -6,6 +6,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { composing } from '../../lib/keyboard.js'
 import { FormInput } from '../FormControls.js'
+import { Card } from '../Card.js'
 
 const MIN_ITEMS = 1
 const MAX_ITEMS = 100
@@ -46,7 +47,7 @@ export function DeliverySettings() {
   }
 
   return (
-    <div className="delivery-settings-card">
+    <Card className="delivery-settings-card">
       <div className="delivery-setting-copy">
         <strong>{m.settings.delivery.limitHeading}</strong>
         <p>{m.settings.delivery.limitNote}</p>
@@ -70,6 +71,6 @@ export function DeliverySettings() {
         ? <p className="delivery-setting-error">{m.settings.delivery.rangeError(MIN_ITEMS, MAX_ITEMS)}</p>
         : null}
       {loadingError === null ? null : <p className="delivery-setting-error">{loadingError}</p>}
-    </div>
+    </Card>
   )
 }

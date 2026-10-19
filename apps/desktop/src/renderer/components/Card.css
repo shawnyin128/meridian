@@ -1,0 +1,4 @@
+.card-surface{box-sizing:border-box;border-style:solid;border-width:1px;border-color:var(--sep);border-radius:var(--r-card);background-color:var(--card);
+  padding:var(--sp-16)}
+.card-surface--flush{padding:0;overflow:hidden}
+.card-surface--floating{border-width:0;background-color:var(--raised);box-shadow:var(--sh-3)}

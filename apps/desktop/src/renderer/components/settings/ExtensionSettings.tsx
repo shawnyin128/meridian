@@ -2,6 +2,7 @@ import type { ExtensionStatus } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { CardTray } from '../CardTray.js'
 import { Tag, type TagTone } from '../Tag.js'
+import { Card } from '../Card.js'
 import { PluginVersionEntry, type PluginVersionEntryProps } from './PluginVersionEntry.js'
 import './ExtensionSettings.css'
 
@@ -21,12 +22,12 @@ interface ExtensionSettingsProps {
 export function ExtensionSettings({ statuses, plugin, onCopy, onCopyPrompt }: ExtensionSettingsProps) {
   const m = useMessages()
   if (statuses === null) {
-    return <div className="extension-settings-card extension-settings-loading">{m.settings.extensions.loading}</div>
+    return <Card className="extension-settings-card extension-settings-loading">{m.settings.extensions.loading}</Card>
   }
 
   return (
     <>
-      <div className="extension-settings-card">
+      <Card className="extension-settings-card">
         {plugin === undefined ? null : <PluginVersionEntry {...plugin} />}
         {statuses.map((extension) => {
           // An installed extension, current or not, is kept up to date rather than installed again.
@@ -70,9 +71,9 @@ export function ExtensionSettings({ statuses, plugin, onCopy, onCopyPrompt }: Ex
             </section>
           )
         })}
-      </div>
+      </Card>
 
-      <section className="extension-tutorial" data-extension-tutorial>
+      <Card as="section" className="extension-tutorial" data-extension-tutorial="">
         <div className="extension-tutorial-head">
           <h3>{m.settings.extensions.tutorial.heading}</h3>
           <p>{m.settings.extensions.tutorial.intro}</p>
@@ -112,7 +113,7 @@ export function ExtensionSettings({ statuses, plugin, onCopy, onCopyPrompt }: Ex
         <ul className="extension-healthy-list">
           {m.settings.extensions.tutorial.healthy.map((item) => <li key={item}>{item}</li>)}
         </ul>
-      </section>
+      </Card>
     </>
   )
 }

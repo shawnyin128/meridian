@@ -7,6 +7,7 @@ import {
   setAppearancePreference,
   type AppearancePreference,
 } from '../../shell/appearance.js'
+import { Card } from '../Card.js'
 
 const OPTIONS: readonly AppearancePreference[] = ['light', 'dark', 'system']
 const OPTION_LABEL: Record<AppearancePreference, keyof Catalog['settings']['appearance']> = {
@@ -53,7 +54,7 @@ export function AppearanceSettings() {
   }, [])
 
   return (
-    <div className="appearance-settings-card">
+    <Card className="appearance-settings-card">
       <div className="appearance-options" role="radiogroup" aria-label={m.settings.appearance.group}>
         {OPTIONS.map((option) => (
           <button
@@ -66,6 +67,6 @@ export function AppearanceSettings() {
           </button>
         ))}
       </div>
-    </div>
+    </Card>
   )
 }

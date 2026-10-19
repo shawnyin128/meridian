@@ -15,7 +15,6 @@
 /* Right column of content, matching a screen's main content area */
 .set-main{flex:1;min-width:0;overflow:auto;padding:20px 24px}
 
-.appearance-settings-card{border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);padding:16px}
 .appearance-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .appearance-choice{min-width:0;border:0;background:transparent;color:var(--sec);padding:0;cursor:pointer;
   font:inherit;text-align:center}
@@ -50,11 +49,9 @@
 .appearance-mini-content i:nth-child(2){width:76%}
 .appearance-mini-content i:nth-child(3){width:52%;background:var(--ap-field)}
 
-.language-settings-card{border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);padding:16px}
 .language-select{width:220px}
 .language-note{margin:12px 0 0;color:var(--ter);font-size:var(--fs-cap);line-height:var(--lh-ui)}
 
-.storage-card{border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);padding:16px}
 .storage-head{display:flex;align-items:flex-start;gap:16px}
 .storage-head>div{flex:1;min-width:0}
 .storage-head h3{margin:0;font-size:var(--fs-title);line-height:var(--lh-tight)}
@@ -89,8 +86,7 @@
 
 .settings-intro,.settings-explain{margin:0 0 12px;color:var(--ter);font-size:var(--fs-sm);line-height:var(--lh-ui)}
 .settings-count{color:var(--ter);font-weight:500}
-.delivery-settings-card{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;
-  gap:8px 24px;border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);padding:14px 16px}
+.delivery-settings-card{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px 24px}
 .delivery-setting-copy strong{font-size:var(--fs-base);font-weight:600;color:var(--ink)}
 .delivery-setting-copy p{margin:5px 0 0;color:var(--ter);font-size:var(--fs-sm);line-height:var(--lh-ui)}
 .delivery-setting-control{display:flex;align-items:center;gap:7px;color:var(--sec);font-size:var(--fs-sm)}

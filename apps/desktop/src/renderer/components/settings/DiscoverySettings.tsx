@@ -8,6 +8,7 @@ import { SectionHeading } from '../PageShell.js'
 import { PaperText } from '../paper/PaperText.js'
 import { Switch } from '../Switch.js'
 import { Tag } from '../Tag.js'
+import { Card } from '../Card.js'
 
 function resultNote(result: DiscoveryFetchResult, m: Catalog): string {
   const parts = [
@@ -66,7 +67,7 @@ export function DiscoverySettings() {
       </SectionHeading>
       <p className="settings-explain">{m.settings.discovery.explain}</p>
       {error === null ? null : <div className="err">{error}</div>}
-      <div className="direction-panel">
+      <Card flush className="direction-panel">
         {profiles.length === 0 ? <p className="direction-empty">{m.settings.discovery.noDirections}</p> : null}
         {profiles.map((profile) => (
           <section className="direction-project" key={profile.id}>
@@ -110,7 +111,7 @@ export function DiscoverySettings() {
             ))}
           </section>
         ))}
-      </div>
+      </Card>
     </section>
   )
 }

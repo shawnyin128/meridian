@@ -33,6 +33,7 @@ import { WatchSettings } from './Watches.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { Tag } from '../components/Tag.js'
+import { Card } from '../components/Card.js'
 import './shell.css'
 import './Settings.css'
 
@@ -213,7 +214,7 @@ export function Settings() {
     storage: (
       <>
         <SectionHeading>{m.settings.storage.heading}</SectionHeading>
-        <div className="storage-card">
+        <Card className="storage-card">
           <div className="storage-head">
             <div>
               <h3>{m.settings.storage.libraryTitle}</h3>
@@ -267,7 +268,7 @@ export function Settings() {
               onConfirm={() => { void resetLibrary() }}
             />
           </div>
-        </div>
+        </Card>
         <SectionHeading variant="content">
           {m.settings.storage.backupsHeading(backups?.length ?? 0)}
         </SectionHeading>

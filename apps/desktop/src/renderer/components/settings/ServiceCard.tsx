@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react'
+import { Card } from '../Card.js'
 import { FormButton } from '../FormControls.js'
 import { Tag } from '../Tag.js'
 import './ServiceCard.css'
 
 /** Card container for one external service's settings: a status head, field rows, and a foot with actions. */
 export function ServiceCard({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={className === undefined ? 'service-card' : `service-card ${className}`}>{children}</div>
+  return <Card className={className === undefined ? 'service-card' : `service-card ${className}`}>{children}</Card>
 }
 
 /** Status head: the service's name and one-line description on the left, a configured/not-configured pill on the right. */
