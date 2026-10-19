@@ -175,11 +175,15 @@ export async function quoteOf(files, key, pattern) {
 /**
  * Seeds the paper table and the reader: one custom column of each type, every reading state, short
  * titles, LaTeX titles, ratings and cells; highlights, notes, a remark and the reading position;
- * a deleted note and highlight; an undone and an archived change; one paper deleted into Trash.
+ * a deleted note and highlight; a deleted column; an undone and an archived change; one paper deleted
+ * into Trash.
  */
 export async function seedPapers(seed, call, files) {
   const columns = await call('papers.columns')
   await call('papers.setColumns', { columns: { ...columns, custom: COLUMNS, groups: [...columns.groups, 'weight'] } })
+  const seeded = await call('papers.columns')
+  await call('papers.setColumns', { columns: { ...seeded, custom: [...seeded.custom, { key: 'scratch', label: '草稿列', type: 'text', options: [] }] } })
+  await call('papers.setColumns', { columns: seeded })
   // Papers older than three days were edited nine days ago, past the seven days undo is kept.
   for (const paper of PAPERS) {
     await onDay(seed, paper.days >= -3 ? 0 : -9, () => call('papers.update', { id: seed.papers[paper.key], patch: paper.fields }))
