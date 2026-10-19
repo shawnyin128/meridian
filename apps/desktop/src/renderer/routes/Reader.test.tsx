@@ -58,6 +58,8 @@ describe('Reader', () => {
 
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    // jsdom has no ResizeObserver; the reader watches its scroll area's width with one.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     shell.revision = 0
     shell.reading = { paperId: 'paper-1', highlights: [], notes: [note('note-1', '留着的')], remark: '' }
     host = document.createElement('div')
@@ -68,6 +70,7 @@ describe('Reader', () => {
   afterEach(() => {
     act(() => root.unmount())
     host.remove()
+    vi.unstubAllGlobals()
   })
 
   it('缩放到上限或下限时那一侧的按钮变淡，点百分比回到 100%', async () => {
