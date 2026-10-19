@@ -35,13 +35,12 @@ import {
   attachmentSizeText, PROJECT_PAPER_GROUP, PROJECT_RELATION_GROUPS, PROJECT_URL_GROUP, ProjectAgentSessions,
   ProjectAttachments, ProjectMemo, ProjectRelations, ProjectTopicField, ProjectUrlDraft,
 } from '../components/project/ProjectSections.js'
+import { NodeAssignment } from '../components/project/NodeAssignment.js'
 import { NodeTag } from '../components/project/NodeTag.js'
 import { ProjectConclusionPanel, ProjectConclusionRow } from '../components/project/ProjectConclusions.js'
 import { ProjectTimeline } from '../components/project/ProjectTimeline.js'
 import { nodeMode, ResearchGraph, ResearchNodePanel } from '../components/project/ResearchGraph.js'
-import {
-  IdeaGraphDialog, type IdeaGraphDialogMode,
-} from '../components/ideas/IdeaGraphDialog.js'
+import { IdeaGraphDialog } from '../components/ideas/IdeaGraphDialog.js'
 import { ProjectPlan, ProjectTaskPanel } from '../components/project/ProjectPlan.js'
 import type { PlanCreating, PlanTab } from '../components/project/ProjectPlan.js'
 import { BackButton } from '../components/BackButton.js'
@@ -87,8 +86,7 @@ export function WorkspaceRoot({ state, name, onOpen }: {
 }
 
 export function ProjectIdeaPanel({
-  idea, graph, workspaceManaged, onClose, onOpenIdea, onCreateNode, onLinkNode,
-  onOpenNode, onUnlinkNode,
+  idea, graph, workspaceManaged, onClose, onOpenIdea, onCreateNode, onOpenNode, onSetNode,
 }: {
   idea: ResearchIdea
   graph: ResearchGraphData
@@ -96,9 +94,8 @@ export function ProjectIdeaPanel({
   onClose: () => void
   onOpenIdea: () => void
   onCreateNode: () => void
-  onLinkNode: () => void
   onOpenNode: (nodeId: string) => void
-  onUnlinkNode: () => void
+  onSetNode: (nodeId: string | null) => void
 }) {
   const fmt = useFormat()
   const m = useMessages()
@@ -127,32 +124,11 @@ export function ProjectIdeaPanel({
       <SectionHeading variant="rail">{m.project.sections.source}</SectionHeading>
       <p className="project-idea-detail-source">{source}</p>
       <div className="project-idea-detail-updated">{m.common.updatedOn(fmt.date(idea.updated))}</div>
-      <SectionHeading variant="rail">{m.project.sections.graph}</SectionHeading>
-      {idea.node !== undefined && linkedNode !== undefined
-        ? (
-          <div className="project-idea-node-link">
-            <button
-              className="project-idea-node"
-              onClick={() => onOpenNode(linkedNode.id)}
-            >
-              {linkedNode.label}
-            </button>
-            <span className="project-idea-node-actions">
-              <button className="btn ghost sm" onClick={onLinkNode}>{m.project.idea.changeNode}</button>
-              <button className="btn ghost sm" onClick={onUnlinkNode}>{m.project.idea.unlinkNode}</button>
-            </span>
-          </div>
-        )
-        : (
-          <div className="project-idea-graph-actions">
-            {!workspaceManaged
-              ? <button className="btn pri" onClick={onCreateNode}>{m.project.idea.createNode}</button>
-              : null}
-            <button className="btn" disabled={graph.nodes.length === 0} onClick={onLinkNode}>
-              {m.project.idea.linkExistingNode}
-            </button>
-          </div>
-        )}
+      <NodeAssignment
+        node={linkedNode === undefined ? undefined : { id: linkedNode.id, label: linkedNode.label, mode: nodeMode(linkedNode) }}
+        nodes={graph.nodes} canUnlink onOpen={onOpenNode} onSet={onSetNode}
+        create={workspaceManaged ? undefined : <button className="btn sm" onClick={onCreateNode}>{m.project.idea.createNode}</button>}
+      />
     </>
   )
 }
@@ -202,10 +178,7 @@ export function ProjectDetail({
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedConclusion, setSelectedConclusion] = useState<string | null>(null)
-  const [ideaGraphDialog, setIdeaGraphDialog] = useState<{
-    ideaId: string
-    mode: IdeaGraphDialogMode
-  } | null>(null)
+  const [ideaGraphDialog, setIdeaGraphDialog] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
   const [workspaceMode, setWorkspaceMode] = useState<'local' | 'ssh'>('local')
@@ -548,7 +521,7 @@ export function ProjectDetail({
   const node = taskGraph.nodes.find((n) => n.id === selectedNode)
   const selectedIdea = linkedIdeas.find((idea) => idea.id === selectedIdeaId)
   const selectedTask = project.tasks.find((t) => t.id === selectedTaskId)
-  const dialogIdea = linkedIdeas.find((idea) => idea.id === ideaGraphDialog?.ideaId)
+  const dialogIdea = linkedIdeas.find((idea) => idea.id === ideaGraphDialog)
   const conclusions = project.projectConclusions ?? []
   const conclusion = conclusions.find((candidate) => candidate.id === selectedConclusion)
   const nodeLook = (nodeId: string | undefined) => {
@@ -667,7 +640,7 @@ export function ProjectDetail({
       {dialogIdea !== undefined && ideaGraphDialog !== null
         ? (
           <IdeaGraphDialog
-            open mode={ideaGraphDialog.mode} idea={dialogIdea} graph={displayedGraph}
+            open idea={dialogIdea} graph={displayedGraph}
             onOpenChange={(open) => { if (!open) setIdeaGraphDialog(null) }}
             onSubmit={(placement) => placeIdeaOnGraph(dialogIdea, placement)}
           />
@@ -915,19 +888,14 @@ export function ProjectDetail({
                   workspaceManaged={project.workspace !== undefined}
                   onClose={clearIdea}
                   onOpenIdea={() => jumpTo('ideas', selectedIdea.id)}
-                  onCreateNode={() => setIdeaGraphDialog({
-                    ideaId: selectedIdea.id, mode: 'create',
-                  })}
-                  onLinkNode={() => setIdeaGraphDialog({
-                    ideaId: selectedIdea.id, mode: 'link',
-                  })}
+                  onCreateNode={() => setIdeaGraphDialog(selectedIdea.id)}
                   onOpenNode={(nodeId) => {
                     onRecord('graph')
                     setSelectedIdeaId(null)
                     setSelectedNode(nodeId)
                   }}
-                  onUnlinkNode={() => {
-                    void placeIdeaOnGraph(selectedIdea, { kind: 'unlink' })
+                  onSetNode={(nodeId) => {
+                    void placeIdeaOnGraph(selectedIdea, nodeId === null ? { kind: 'unlink' } : { kind: 'link', nodeId })
                   }}
                 />
               )

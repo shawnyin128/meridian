@@ -233,10 +233,7 @@ export const project = {
   idea: {
     kind: '想法',
     openIdea: '跳转到想法',
-    changeNode: '更改',
-    unlinkNode: '取消关联',
     createNode: '转为新节点',
-    linkExistingNode: '关联已有节点',
     sourceTag: (source: string) => `来源 · ${source}`,
     placedCreated: '已创建科研图节点并关联想法',
     placedLinked: '已关联科研图节点',

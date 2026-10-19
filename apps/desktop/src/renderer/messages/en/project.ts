@@ -244,10 +244,7 @@ export const project = {
   idea: {
     kind: 'Idea',
     openIdea: 'View idea',
-    changeNode: 'Change',
-    unlinkNode: 'Unlink',
     createNode: 'Create node',
-    linkExistingNode: 'Link existing node',
     sourceTag: (source: string) => `Source · ${source}`,
     placedCreated: 'Research graph node created and linked',
     placedLinked: 'Linked to research graph node',

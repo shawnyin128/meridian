@@ -122,7 +122,7 @@ test('想法在科研图中动态标出关联节点，节点详情反向展示�
   const page = win.locator('.screenslot:not([hidden])')
   await page.locator(`.project-idea-row[data-idea="${idea!.id}"]`).click()
   const side = page.locator('.node-document-pane')
-  const actions = side.locator('.project-idea-node-actions')
+  const actions = side.locator('.section-heading', { hasText: '科研节点' }).locator('.section-heading-actions')
   await expect.poll(() => side.evaluate((element) => element.getBoundingClientRect().width))
     .toBeGreaterThan(400)
   const sideBox = await side.boundingBox()
@@ -1310,7 +1310,7 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
 test('任务详情里手动给任务挂科研节点,面板里显示挂上的节点并写进库里;手动挂的可以取消', async ({ win }) => {
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
-  const linked = side.locator('.project-task-detail-node .node-tag')
+  const linked = side.locator('.node-assignment .node-tag')
   const taskNodes = async () => (await call<{ taskNodes?: Record<string, string> }>(
     win, 'project.get', { id: 'draft' },
   )).taskNodes

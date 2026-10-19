@@ -13,7 +13,6 @@ import { dnum, isoOf } from '../../../shared/dates.js'
 import { AddAction } from '../AddAction.js'
 import { CollapsibleGroup } from '../CollapsibleGroup.js'
 import { DateChip } from '../DateTimeDisplay.js'
-import { EmptyState } from '../EmptyState.js'
 import { ChoicePicker, DateButton, PriorityPicker } from '../FieldPickers.js'
 import { InlineDraftInput } from '../InlineDraftInput.js'
 import { InlineField, type InlineFieldProps } from '../InlineField.js'
@@ -32,7 +31,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { TagButton, tagClass } from '../Tag.js'
-import { NodeTag } from './NodeTag.js'
+import { NodeAssignment } from './NodeAssignment.js'
 import { PRIORITY_TONE, ProjectPriorityTag } from './ProjectIdentity.js'
 import './ProjectPlan.css'
 
@@ -251,12 +250,6 @@ export function ProjectTaskPanel({
     setEditing(false)
     void onSaveNote(next)
   }
-  const pickNode = (className: string, text: string) => (
-    <ChoicePicker
-      value={node?.id ?? ''} options={nodes.map((candidate) => candidate.id)} className={className}
-      label={(id) => nodes.find((candidate) => candidate.id === id)?.label ?? id} onPick={onSetNode}
-    >{text}</ChoicePicker>
-  )
   return (
     <>
       <SectionHeading
@@ -270,30 +263,7 @@ export function ProjectTaskPanel({
         <span className="project-task-detail-state">{stateWord(m)[task.state]}</span>
         {task.origin === 'agent' ? <AgentLabel /> : null}
       </div>
-      <SectionHeading
-        variant="rail"
-        actions={node === undefined
-          ? (nodes.length === 0 ? undefined : pickNode('btn sm', m.project.plan.linkNode))
-          : (
-            <>
-              {pickNode('btn sm', m.project.plan.changeNode)}
-              {handSet
-                ? <button className="btn sm" onClick={() => onSetNode(null)}>{m.project.plan.unlinkNode}</button>
-                : null}
-            </>
-          )}
-      >{m.project.plan.nodeHeading}
-      </SectionHeading>
-      {node === undefined
-        ? <EmptyState variant="section">{m.project.plan.noNode}</EmptyState>
-        : (
-          <div className="project-task-detail-node">
-            <NodeTag
-              label={node.label} mode={node.mode} hint={m.project.records.goToGraph(node.label)}
-              onOpen={() => onOpenNode(node.id)}
-            />
-          </div>
-        )}
+      <NodeAssignment node={node} nodes={nodes} canUnlink={handSet} onOpen={onOpenNode} onSet={onSetNode} />
       <SectionHeading
         variant="rail"
         actions={(

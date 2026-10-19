@@ -48,8 +48,6 @@ export const ideas = {
     nodeTitleLabel: '节点标题',
     afterLabel: '接在哪个节点后',
     newRootOption: '作为新的根节点',
-    nodeLabel: '科研图节点',
     createAndLink: '创建并关联',
-    confirmLink: '确认关联',
   },
 } satisfies Record<string, unknown>

@@ -50,8 +50,6 @@ export const ideas = {
     nodeTitleLabel: 'Node title',
     afterLabel: 'Place after',
     newRootOption: 'Create as a root node',
-    nodeLabel: 'Research graph node',
     createAndLink: 'Create and link',
-    confirmLink: 'Confirm link',
   },
 } satisfies typeof zh
