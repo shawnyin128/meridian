@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import type {
-  ChangeEntry, ChangeSource, PaperCell, PaperColumn, PaperFields, PaperHighlight, PaperNote, PaperRow,
-  ProjectDetail, ReadingMutation,
+  ChangeEntry, ChangeSource, PaperCell, PaperColumn, PaperColumns, PaperFields, PaperHighlight, PaperNote,
+  PaperRow, ProjectDetail, ReadingMutation,
 } from '../shared/contract.js'
 import {
   ChangeEntrySchema, PaperColumnsSchema, PaperHighlightSchema, PaperNoteSchema, PaperRowSchema,
@@ -53,8 +53,9 @@ const LATER_PROJECT_FIELDS: ReadonlySet<string> = new Set(['verifiedConclusions'
  * Entity changed by one record. Before undo, resolve its current shape and compare it with the stored
  * fingerprint. `pages` covers pages touched by one proposal: `id` joins their paths and `paths` lists
  * each page. `columns` targets one paper-table column whose key is `id`. `columnType` also targets one
- * column, but includes every populated cell in that column across the library. `note` and `highlight`
- * target the reading note or highlight `id` of paper `paper`, and `remark` the remark of paper `id`.
+ * column, but includes every populated cell in that column across the library. `columnSet` targets the
+ * paper table's whole column configuration and has an empty `id`. `note` and `highlight` target the
+ * reading note or highlight `id` of paper `paper`, and `remark` the remark of paper `id`.
  */
 const ChangeTargetSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('paper'), id: z.string() }).strict(),
@@ -62,6 +63,7 @@ const ChangeTargetSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('pages'), id: z.string(), paths: z.array(z.string()) }).strict(),
   z.object({ kind: z.literal('columns'), id: z.string() }).strict(),
   z.object({ kind: z.literal('columnType'), id: z.string() }).strict(),
+  z.object({ kind: z.literal('columnSet'), id: z.string() }).strict(),
   z.object({ kind: z.literal('note'), id: z.string(), paper: z.string() }).strict(),
   z.object({ kind: z.literal('highlight'), id: z.string(), paper: z.string() }).strict(),
   z.object({ kind: z.literal('remark'), id: z.string() }).strict(),
@@ -74,9 +76,10 @@ const ChangeTargetSchema = z.discriminatedUnion('kind', [
  * `pages` stores the previous full text of touched pages; restore rewrites them and deletes pages that
  * were previously absent. `option` reverses a column option rename from `from` to `to`. `columnType`
  * restores the previous column and every cell in it, then reinserts a group removed when converting
- * to text at `groupAt` (null means it was not grouped or the conversion was unrelated). `note` and
- * `highlight` put a deleted one back among paper `paper`'s at position `at`, and `remark` sets that
- * paper's remark back to `text`, leaving the rest of its reading state as it stands.
+ * to text at `groupAt` (null means it was not grouped or the conversion was unrelated). `columnSet`
+ * holds the previous column configuration, which restore sets again. `note` and `highlight` put a
+ * deleted one back among paper `paper`'s at position `at`, and `remark` sets that paper's remark back
+ * to `text`, leaving the rest of its reading state as it stands.
  */
 const RestoreSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('paper'), snapshot: PaperSnapshotSchema }).strict(),
@@ -91,6 +94,7 @@ const RestoreSchema = z.discriminatedUnion('kind', [
     groupAt: z.number().int().nullable(),
     cells: PaperRowSchema.shape.custom,
   }).strict(),
+  z.object({ kind: z.literal('columnSet'), columns: PaperColumnsSchema }).strict(),
   z.object({ kind: z.literal('note'), paper: z.string(), at: z.number().int(), note: PaperNoteSchema }).strict(),
   z.object({
     kind: z.literal('highlight'), paper: z.string(), at: z.number().int(), highlight: PaperHighlightSchema,
@@ -202,7 +206,8 @@ type Keep = 'snapshot' | 'trash' | 'created' | Restore
  * Current entity shape. Naming and diffing distinguish entity kinds. Papers also carry a page snapshot
  * for undo because the cross-boundary row cannot distinguish an absent read state from an explicit
  * unread value. Column entities contain only that column for fingerprinting, while column-type entities
- * additionally contain every cell in the column across the library. Reading entities name paper
+ * additionally contain every cell in the column across the library, and the column-set entity holds the
+ * whole column configuration. Reading entities name paper
  * `paper` titled `title`; a note or highlight also carries its position `at` among the paper's.
  */
 type Entity =
@@ -211,6 +216,7 @@ type Entity =
   | { kind: 'pages'; pages: PageText[] }
   | { kind: 'columns'; column: PaperColumn }
   | { kind: 'columnType'; column: PaperColumn; cells: Record<string, PaperCell> }
+  | { kind: 'columnSet'; columns: PaperColumns }
   | { kind: 'note'; paper: string; title: string; at: number; note: PaperNote }
   | { kind: 'highlight'; paper: string; title: string; at: number; highlight: PaperHighlight }
   | { kind: 'remark'; paper: string; title: string; remark: string }
@@ -232,6 +238,18 @@ function readingChange(paper: string, mutation: ReadingMutation): [ChangeTarget,
   }
 }
 
+/**
+ * Change title of a column-set write from `from` to `to`: the custom column it deletes or creates, a new
+ * column order, or else the column settings in general.
+ */
+function columnSetTitle(from: PaperColumns, to: PaperColumns): string {
+  const deleted = from.custom.find((c) => !to.custom.some((n) => n.key === c.key))
+  if (deleted) return `论文表 · 删掉列「${deleted.label}」`
+  const created = to.custom.find((c) => !from.custom.some((p) => p.key === c.key))
+  if (created) return `论文表 · 新增列「${created.label}」`
+  return stableJson(from.order) === stableJson(to.order) ? '论文表 · 改了列设置' : '论文表 · 调整列顺序'
+}
+
 /** Entity value without its kind, used for diffs and fingerprints. */
 function valueOf(entity: Entity): Record<string, unknown> {
   switch (entity.kind) {
@@ -241,6 +259,7 @@ function valueOf(entity: Entity): Record<string, unknown> {
     )))
     case 'columns': return entity.column
     case 'columnType': return { ...entity.column, cells: entity.cells }
+    case 'columnSet': return entity.columns
     case 'note': return { page: entity.note.page, text: entity.note.text }
     case 'highlight': return { page: entity.highlight.page, quote: entity.highlight.quote, note: entity.highlight.note }
     case 'remark': return entity.remark === '' ? {} : { remark: entity.remark }
@@ -301,10 +320,10 @@ function diffLines(before: Entity | undefined, after: Entity | undefined): strin
 
 /**
  * Wraps the given operations so that every write that changes the vault's
- * lasting knowledge — the paper writes, deleting a reading note or highlight,
- * setting a remark, the project writes, and a proposal's writes, and none of
- * the inbox, later-queue, watch, chat, feed, trash or other reading writes —
- * is recorded, and adds
+ * lasting knowledge — the paper and paper-column writes, deleting a reading
+ * note or highlight, setting a remark, the project writes, and a proposal's
+ * writes, and none of the inbox, later-queue, watch, chat, feed, trash or
+ * other reading writes — is recorded, and adds
  * the changelog reads and the undo the contract carries. Records are kept in
  * `log`, newest first, and a record is written after its write, by core, so no
  * caller has to say what it changed. Undo writes back the entity as it stood
@@ -342,6 +361,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         const column = ops.paperColumns().custom.find((c) => c.key === target.id)
         return column === undefined ? undefined : { kind: 'columnType', column, cells: ops.paperCells(target.id) }
       }
+      case 'columnSet': return { kind: 'columnSet', columns: ops.paperColumns() }
       case 'note': {
         const notes = ops.hasPaper(target.paper) ? ops.paperReading(target.paper).notes : []
         const at = notes.findIndex((note) => note.id === target.id)
@@ -374,6 +394,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       case 'project': return entity.project.name
       case 'columns':
       case 'columnType': return entity.column.label
+      case 'columnSet': return '论文表'
       case 'note':
       case 'highlight':
       case 'remark': return entity.title
@@ -408,6 +429,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         return { kind: 'project', project }
       }
       case 'pages': return { kind: 'pages', pages: before.pages }
+      case 'columnSet': return { kind: 'columnSet', columns: before.columns }
       case 'note': return { kind: 'note', paper: before.paper, at: before.at, note: before.note }
       case 'highlight': return { kind: 'highlight', paper: before.paper, at: before.at, highlight: before.highlight }
       case 'remark': return { kind: 'remark', paper: before.paper, text: before.remark }
@@ -426,6 +448,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     rows = [{
       id: log.nextId(),
       title: target.kind === 'pages' || target.kind === 'columns' || target.kind === 'columnType'
+        || target.kind === 'columnSet'
         ? what
         : `${target.kind === 'project' ? '项目' : '论文'}「${nameOf(named)}」· ${what}`,
       meta: null,
@@ -477,6 +500,13 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     ...ops,
 
     updatePaper,
+
+    setPaperColumns(columns) {
+      return wrote(
+        { kind: 'columnSet', id: '' }, columnSetTitle(ops.paperColumns(), columns), 'snapshot',
+        () => ops.setPaperColumns(columns),
+      )
+    },
 
     renamePaperOption(key, from, to) {
       const column = ops.paperColumns().custom.find((c) => c.key === key)
@@ -701,6 +731,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       else if (restore.kind === 'option') ops.renamePaperOption(restore.key, restore.from, restore.to)
       else if (restore.kind === 'columnType') ops.putPaperColumn(restore.column, restore.groupAt, restore.cells)
       else if (restore.kind === 'pages') ops.putPages(restore.pages)
+      else if (restore.kind === 'columnSet') ops.setPaperColumns(restore.columns)
       else if (restore.kind === 'note') {
         const held = ops.paperReading(restore.paper)
         ops.putPaperReading(restore.paper, { ...held, notes: held.notes.toSpliced(restore.at, 0, restore.note) })

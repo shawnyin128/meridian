@@ -569,6 +569,19 @@ describe('vault store', () => {
     })).toThrow(/列名重复/)
   })
 
+  it('删掉一列记一条,撤销把列写回 state.json,重开还在,论文里那一格也回到表上', () => {
+    store.setPaperColumns({ ...emptyColumns(), custom: [NOTE_COLUMN] })
+    store.updatePaper(WITH_SOURCE, { custom: { note: '读到一半' } })
+    const held = store.paperColumns()
+    store.setPaperColumns({ ...held, custom: [] })
+    expect(createVaultStore(vault).paperColumns().custom).toEqual([])
+
+    store.undoChange(store.listChanges()[0]!.id)
+    const reopened = createVaultStore(vault)
+    expect(reopened.paperColumns()).toEqual(held)
+    expect(reopened.getPaper(WITH_SOURCE).custom).toEqual({ note: '读到一半' })
+  })
+
   it('新项目排最前;手动设的项目顺序存进 state.json 且新项目也排在它最前,重开还在;坏 id 被丢弃', () => {
     store.createProject('顺序甲')
     store.createProject('顺序乙')

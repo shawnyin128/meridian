@@ -917,14 +917,16 @@ export function PaperTable() {
   /**
    * A column configuration change, queued on the column chain: when its turn comes, `update` computes
    * the new configuration from the last confirmed column set and it is handed to Core. It takes effect
-   * only once written (`onApplied` is called synchronously at that moment), shows its banner, and
-   * drops a deleted column's width along with the column. Returns whether it was written.
+   * only once written (`onApplied` is called synchronously at that moment), bumps the vault revision,
+   * shows its banner, and drops a deleted column's width along with the column. Returns whether it was
+   * written.
    */
   const changeColumns = (
     update: (base: PaperColumns) => PaperColumns, onApplied?: () => void,
   ): Promise<boolean> => writeColumns(async (base) => {
     const next = update(base)
     await papers.setColumns(next)
+    bump()
     const gone = base.custom.find((c) => !next.custom.some((n) => n.key === c.key))
     if (gone) {
       setWidths((w) => {

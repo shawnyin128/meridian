@@ -77,6 +77,8 @@ let columnsCallCount: number
 let listCallCount: number
 let listParams: ListParams[]
 let openedScreens: [screen: string, id?: string][]
+/** How many times the table bumped the vault revision. */
+let bumps: number
 
 vi.mock('../ipc.js', () => ({
   papers: {
@@ -101,7 +103,11 @@ vi.mock('../ipc.js', () => ({
     setColumns: (columns: PaperColumns) => {
       const c = controlled<void>()
       setColumnsCalls.push({ ...c, columns })
-      return c.promise
+      // As in Core, the columns a landed write sent are what papers.columns answers from then on.
+      return c.promise.then(() => {
+        columnsCall = controlled()
+        columnsCall.resolve(columns)
+      })
     },
     renameOption: (key: string, from: string, to: string) => {
       renameOptionCalls.push([key, from, to])
@@ -136,7 +142,7 @@ vi.mock('../shell/AppShell.js', () => ({
   // Only real revision state makes bump re-run the effects that fetch on revision, as in the app.
   useVaultRevision: () => {
     const [revision, setRevision] = useState(0)
-    return { revision, bump: () => { setRevision((r) => r + 1) } }
+    return { revision, bump: () => { bumps += 1; setRevision((r) => r + 1) } }
   },
 }))
 
@@ -250,6 +256,7 @@ describe('PaperTable', () => {
     listCallCount = 0
     listParams = []
     openedScreens = []
+    bumps = 0
   })
 
   it('defaults to 20 papers and offers only the 20, 30, and 50 page sizes', async () => {
@@ -1100,6 +1107,22 @@ describe('PaperTable', () => {
     await flush()
     expect(renameOptionCalls).toEqual([['pick', 'existing', 'renamed']])
     expect(toastMessages).toEqual([])
+  })
+
+  it('删一列的写落地之后推一次库的版本,侧栏的数与最近变动跟着重取', async () => {
+    const host = mount()
+    columnsCall.resolve(NOTE_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[title="删除列"]')!.click() })
+    expect(setColumnsCalls.map((c) => c.columns.custom)).toEqual([[]])
+
+    const before = bumps
+    await act(async () => { setColumnsCalls[0]!.resolve() })
+    await flush()
+    expect(bumps).toBe(before + 1)
+    expect(headTexts(host)).not.toContain('备注')
   })
 
   it('列菜单里改列名、改选项名,点到菜单外都像回车一样改掉', async () => {
