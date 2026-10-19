@@ -38,6 +38,8 @@ Current shared contracts:
   with arrow keys inside. The `.fchip` and `.segbtn` pill rows are retired.
 - `ChipToggles`: a multi-select of short values as chips that each turn on or off, with the same one Tab
   stop and arrow keys. A choice among many values is a menu picker, not a segment per value.
+- `Switch`: a binary setting that takes effect as soon as it flips. Its name stays the same in both states;
+  a button whose label flips between two actions is not used for a setting.
 - `EmptyState`: the two ways a list says it is empty. `page` is a centred sentence with an optional icon
   for a whole screen; `section` is one line of small grey text under a section heading.
 - `PanelClose`: the close button of a detail panel, with one label and one glyph everywhere.

@@ -119,7 +119,7 @@ test('阅读器右栏平滑展开并在收起后只保留工具轨', async ({ wi
   await expect(side).not.toHaveClass(/\bcollapsed\b/)
   await expect.poll(() => side.evaluate((element) => element.getBoundingClientRect().width))
     .toBeGreaterThan(300)
-  expect(await side.locator('.paper-meta').evaluate((element) => getComputedStyle(element).animationName))
+  expect(await side.locator('.reader-meta').evaluate((element) => getComputedStyle(element).animationName))
     .toContain('detail-panel-content-in')
 
   await shown(win, '.reader-rail [title="元数据"]').click()
@@ -254,7 +254,8 @@ test('别处写库不会把原文重解析一遍', async ({ win }) => {
   const watched = win.locator('.setdlg .wrow').first()
   for (let n = 0; n < VAULT_WRITES; n += 1) {
     const pausing = n % 2 === 0
-    await watched.locator('.btn', { hasText: pausing ? '暂停' : '恢复' }).click()
+    await expect(watched.locator('[role="switch"]')).toHaveAttribute('aria-checked', pausing ? 'true' : 'false')
+    await watched.locator('[role="switch"]').click()
     await expect(watched.locator('.src')).toHaveCount(pausing ? 1 : 0)
   }
 

@@ -412,12 +412,14 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   const entriesBefore = await inboxFromCore(win)
   const kept = entriesBefore.filter((e) => e.watch === 'spec').length
   const spec = settings(win, '.wrow').filter({ hasText: 'speculative decoding' })
-  await spec.locator('.btn', { hasText: '暂停' }).click()
+  await expect(spec.locator('[role="switch"]')).toHaveAttribute('aria-checked', 'true')
+  await spec.locator('[role="switch"]').click()
+  await expect(spec.locator('[role="switch"]')).toHaveAttribute('aria-checked', 'false')
   await expect(spec.locator('.src')).toHaveText('已暂停')
   await expect(win.locator('[data-watchrow="spec"]')).toHaveClass(/\bdim\b/)
   await expect(win.locator('[data-watchrow="spec"] .n')).toHaveCount(0)
   expect((await inboxFromCore(win)).filter((e) => e.watch === 'spec')).toHaveLength(kept)
-  await spec.locator('.btn', { hasText: '恢复' }).click()
+  await spec.locator('[role="switch"]').click()
   await expect(win.locator('[data-watchrow="spec"]')).not.toHaveClass(/\bdim\b/)
 
   // Add: the sidebar's topic group gains a row, and its count goes up by one.

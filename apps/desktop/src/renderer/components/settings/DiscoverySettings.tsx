@@ -6,6 +6,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { useToast, useVaultRevision } from '../../shell/AppShell.js'
 import { SectionHeading } from '../PageShell.js'
 import { PaperText } from '../paper/PaperText.js'
+import { Switch } from '../Switch.js'
 
 function resultNote(result: DiscoveryFetchResult, m: Catalog): string {
   const parts = [
@@ -99,10 +100,10 @@ export function DiscoverySettings() {
                       onClick={() => update(profile.id, intent.id, 'set-core')}
                     >{m.settings.discovery.setCoreAction}</button>
                   ) : null}
-                  <button
-                    className="btn plain" disabled={busy.has(intent.id)}
-                    onClick={() => update(profile.id, intent.id, intent.enabled ? 'disable' : 'enable')}
-                  >{intent.enabled ? m.settings.discovery.close : m.settings.discovery.enable}</button>
+                  <Switch
+                    label={intent.label} checked={intent.enabled} disabled={busy.has(intent.id)}
+                    onChange={(on) => update(profile.id, intent.id, on ? 'enable' : 'disable')}
+                  />
                 </div>
               </div>
             ))}

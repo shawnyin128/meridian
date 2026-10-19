@@ -341,8 +341,6 @@ export const settings = {
     needsArxiv: 'Link an arXiv paper to generate research directions',
     core: 'Priority',
     setCoreAction: 'Mark as priority',
-    close: 'Close',
-    enable: 'Enable',
     noNewPapers: 'No new papers found',
     newFound: (n: number) => `${n} new ${pluralEn(n, { one: 'paper', other: 'papers' })} found`,
     requested: (n: number) => `Checked ${n} ${pluralEn(n, { one: 'direction', other: 'directions' })}`,

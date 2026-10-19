@@ -16,6 +16,7 @@ import { StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { FormInput, FormSelect } from '../components/FormControls.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
+import { Switch } from '../components/Switch.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { composing } from '../lib/keyboard.js'
 import './shell.css'
@@ -78,7 +79,7 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
                     : null}
                   {w.active ? null : <span className="src">{m.watches.paused}</span>}
                   <button className="btn" onClick={() => onEdit(w)}>{m.common.edit}</button>
-                  <button className="btn" onClick={() => onSetActive(w)}>{w.active ? m.watches.pause : m.watches.resume}</button>
+                  <Switch label={w.name} checked={w.active} onChange={() => onSetActive(w)} />
                   <ConfirmDialog
                     trigger={<button className="btn">{m.common.remove}</button>}
                     title={m.watches.confirmRemove(w.name)}

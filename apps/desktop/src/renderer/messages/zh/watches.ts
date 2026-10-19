@@ -5,8 +5,6 @@ export const watches = {
   identityUnknown: '尚未确认作者身份',
   identityUnconfirmed: '未确认',
   paused: '已暂停',
-  pause: '暂停',
-  resume: '恢复',
   confirmRemove: (name: string) => `移除「${name}」？它带来的推送会一起清掉，且不能撤销。`,
   confirmRemoveLabel: '确认移除',
   authorNamePlaceholder: '作者姓名',
