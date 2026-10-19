@@ -66,6 +66,5 @@ export const research = {
     modeLabel: '档期方式',
     startSlot: '开始时段',
     endSlot: '结束时段',
-    editTime: '修改时间',
   },
 } satisfies Record<string, unknown>

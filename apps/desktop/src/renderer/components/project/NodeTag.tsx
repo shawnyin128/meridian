@@ -2,6 +2,7 @@ import type { GraphNode } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { FadeText } from '../FadeText.js'
 import { StatusDot } from '../StatusDot.js'
+import { Tooltip } from '../Tooltip.js'
 import './NodeTag.css'
 
 type Mode = NonNullable<GraphNode['mode']>
@@ -15,15 +16,13 @@ const MODE_LEGEND = {
 /**
  * The one way a row names a research node: the node's state dot, coloured as in the research graph and
  * named by the graph legend's word for that state, and its label in quiet text that fades only when it
- * does not fit. With `onOpen` it is a button that
- * opens the node; `hint` is its hover text. `fill` stretches it over its grid cell so a column of
- * nodes lines up; otherwise it sizes to its text.
+ * does not fit, when the tooltip shows it whole. With `onOpen` it is a button that opens the node.
+ * `fill` stretches it over its grid cell so a column of nodes lines up; otherwise it sizes to its text.
  */
-export function NodeTag({ label, mode, onOpen, hint, fill = false }: {
+export function NodeTag({ label, mode, onOpen, fill = false }: {
   label: string
   mode: Mode
   onOpen?: () => void
-  hint?: string
   fill?: boolean
 }) {
   const m = useMessages()
@@ -31,15 +30,14 @@ export function NodeTag({ label, mode, onOpen, hint, fill = false }: {
   const body = (
     <>
       <StatusDot tone={MODE_TONE[mode]} label={m.project.graph.legend[MODE_LEGEND[mode]]} labelHidden />
-      <FadeText>{label}</FadeText>
+      <Tooltip label={label} whenClipped><FadeText>{label}</FadeText></Tooltip>
     </>
   )
   return onOpen === undefined
-    ? <span className={className} title={hint ?? label}>{body}</span>
+    ? <span className={className}>{body}</span>
     : (
-      <button
-        type="button" className={className} title={hint ?? label}
-        onClick={(event) => { event.stopPropagation(); onOpen() }}
-      >{body}</button>
+      <button type="button" className={className} onClick={(event) => { event.stopPropagation(); onOpen() }}>
+        {body}
+      </button>
     )
 }

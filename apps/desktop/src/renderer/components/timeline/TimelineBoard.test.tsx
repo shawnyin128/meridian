@@ -7,6 +7,7 @@ import type { Task } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { TodayContext } from '../../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
+import { TOOLTIP_DELAY } from '../Tooltip.js'
 import { TimelineBoard, type TimelineProject } from './TimelineBoard.js'
 
 declare global {
@@ -210,5 +211,42 @@ describe('TimelineBoard 只显示当前时间段里的任务', () => {
     drag('dragover', row('today'), -1)
     drag('drop', row('today'))
     expect(onReorderTasks).toHaveBeenCalledWith('proj-2', ['week', 'before', 'today'])
+  })
+})
+
+describe('TimelineBoard 的提示', () => {
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    document.body.innerHTML = ''
+  })
+
+  it('任务条的 tooltip 说出这项任务，不再教人拖动或点击；里程碑那一行不带说明', () => {
+    vi.useFakeTimers()
+    const host = document.createElement('div')
+    document.body.append(host)
+    const withMilestone = { ...project, milestones: [{ id: 'm1', date: '2026-09-17', title: '阶段汇报', done: false }] }
+    act(() => createRoot(host).render(
+      <MessagesProvider>
+        <TodayContext.Provider value="2026-09-16">
+          <TimelineBoard
+            projects={[withMilestone]}
+            onTaskClick={vi.fn()} onMilestoneClick={vi.fn()} onMilestoneLaneClick={vi.fn()}
+            onMoveTask={vi.fn()} onMoveTaskWindow={vi.fn()} onMoveMilestone={vi.fn()}
+          />
+        </TodayContext.Provider>
+      </MessagesProvider>,
+    ))
+    const tip = (selector: string) => {
+      const target = host.querySelector(selector)!
+      act(() => { target.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
+      act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+      const text = document.querySelector('[role="tooltip"]')?.textContent
+      act(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+      return text
+    }
+    expect([tip('.gbar[data-task="t1"]'), tip('.gddl')]).toEqual(['第一个任务 · 9月16日 – 9月18日 · P1', '9月17日 阶段汇报'])
+    expect(host.querySelectorAll('[title]')).toHaveLength(0)
+    vi.useRealTimers()
   })
 })

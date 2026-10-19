@@ -302,7 +302,9 @@ describe('project idea panel', () => {
 describe('the workspace field', () => {
   const field = (state: 'ready' | 'missing' | 'invalid') => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
-    return renderToStaticMarkup(<MessagesProvider><WorkspaceRoot state={state} name="spec-decoding" onOpen={vi.fn()} /></MessagesProvider>)
+    return renderToStaticMarkup(
+      <MessagesProvider><WorkspaceRoot state={state} name="spec-decoding" root="/work/spec-decoding" onOpen={vi.fn()} /></MessagesProvider>,
+    )
   }
 
   it('names a workspace it cannot reach in words beside the red dot, so the state does not rest on colour alone', () => {

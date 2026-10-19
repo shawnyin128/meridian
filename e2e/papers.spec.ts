@@ -1778,7 +1778,7 @@ test('详情里点一项元数据,原位输入框没有边框、浅灰实底,只
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
-  await win.locator('.pdetail .metadata-editable[title="修改年份"]').click()
+  await win.locator('.pdetail .paper-meta-list dt:text-is("年份") + dd .metadata-editable').click()
 
   const input = win.locator('.pdetail .metadata-input')
   await expect(input).toBeFocused()

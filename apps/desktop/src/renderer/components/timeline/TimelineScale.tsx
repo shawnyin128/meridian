@@ -298,7 +298,6 @@ export function TimelineGrid({ window, scale, today }: {
                 <div
                   className={`${day === today ? 'gday today' : 'gday'} ${scale}`}
                   key={day} style={{ flexBasis: window.dayWidth }}
-                  title={`${date.getUTCFullYear()}-${date.getUTCMonth() + 1}-${date.getUTCDate()}`}
                 >
                   <span>
                     {scale === 'week'

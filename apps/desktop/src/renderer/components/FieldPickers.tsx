@@ -104,10 +104,9 @@ export function ChoicePicker<T extends string>({
 }
 
 /** Priority picker shared by plan rows and project metadata. */
-export function PriorityPicker({ value, className, title, onPick, children, stopRowActivation = false }: {
+export function PriorityPicker({ value, className, onPick, children, stopRowActivation = false }: {
   value: Task['priority']
   className: string
-  title: string
   onPick: (next: Task['priority']) => void
   children: ReactNode
   /** Pass true when the row or card itself is clickable, so the trigger swallows the click instead of bubbling it. */
@@ -119,10 +118,9 @@ export function PriorityPicker({ value, className, title, onPick, children, stop
     <ActionMenu
       align="start"
       trigger={(
-        <button
-          className={className} title={title}
-          onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
-        >{children}</button>
+        <button className={className} onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}>
+          {children}
+        </button>
       )}
     >
       <MenuRadioGroup value={value}>
@@ -178,10 +176,9 @@ function Calendar({ selected, onPick }: { selected: string; onPick: (iso: string
 }
 
 /** Shared calendar trigger. Consumers control only the trigger presentation and selected ISO date. */
-export function DateButton({ iso, className, title, onPick, children }: {
+export function DateButton({ iso, className, onPick, children }: {
   iso: string
   className: string
-  title: string
   onPick: (next: string) => void
   children?: ReactNode
 }) {
@@ -189,7 +186,7 @@ export function DateButton({ iso, className, title, onPick, children }: {
   return (
     <ActionPopover
       align="start"
-      trigger={<button className={className} title={title}>{children ?? fmt.date(iso)}</button>}
+      trigger={<button className={className}>{children ?? fmt.date(iso)}</button>}
     >
       <Calendar selected={iso} onPick={onPick} />
     </ActionPopover>

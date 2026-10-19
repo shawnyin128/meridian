@@ -37,9 +37,7 @@ export const common = {
   details: { expand: '展开详情', collapse: '收起详情' },
   field: {
     clear: '清除输入',
-    clickToEdit: '点击修改',
     emptyValue: '—',
-    change: (label: string) => `修改${label}`,
     edit: (label: string) => `编辑${label}`,
     chooseDirectory: '选择目录',
   },

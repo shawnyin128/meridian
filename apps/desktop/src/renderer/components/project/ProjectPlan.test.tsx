@@ -55,8 +55,8 @@ describe('ProjectPlan', () => {
   it('任务模式把日期和时间保留为两个独立编辑入口', () => {
     const output = renderPlan('task')
     expect(output).toContain('structured-list--embedded')
-    expect(output).toContain('title="修改日期"')
-    expect(output).toContain('title="修改时间"')
+    expect(output).toMatch(/<button type="button" class="schedule-trigger task-date-part"/)
+    expect(output).toMatch(/<button type="button" class="schedule-trigger task-clock-part"/)
     expect(output).toContain('9月16日')
     expect(output).toContain('08:00–10:00')
     expect(output).toContain('校准批次')
@@ -121,11 +121,6 @@ describe('ProjectPlan', () => {
     expect(open).toContain('已完成的里程碑')
   })
 
-  it('任务行整行可点开任务详情,不止是拖拽把手', () => {
-    const output = renderPlan('task')
-    expect(output).toContain('title="打开任务"')
-  })
-
   describe('任务名', () => {
     let root: Root | null = null
     afterEach(() => {
@@ -165,6 +160,12 @@ describe('ProjectPlan', () => {
       act(() => title.click())
       expect(onOpenTask).toHaveBeenCalledWith('task-1')
       expect(host.querySelector('.plan-name-input')).toBeNull()
+    })
+
+    it('任务行整行可点开任务详情,不止是拖拽把手', () => {
+      const { host, onOpenTask } = mount()
+      act(() => host.querySelector<HTMLElement>('.task-row')!.click())
+      expect(onOpenTask).toHaveBeenCalledWith('task-1')
     })
 
     it('改名从任务名旁的铅笔进入,在行内写回,不打开任务详情', async () => {
@@ -228,7 +229,8 @@ describe('ProjectTaskPanel', () => {
   it('显示任务挂在哪个科研节点上;还没挂时只写「未关联」', () => {
     const linked = renderTaskPanel({}, { id: 'kv.n3', label: '前缀共调度', mode: 'supported' })
     expect(linked).toContain('科研节点')
-    expect(linked).toMatch(/<button[^>]*class="node-tag"[^>]*title="在科研图中打开「前缀共调度」"><span class="status-dot status-dot--sm status-dot--good"/)
+    expect(linked).toMatch(/<button type="button" class="node-tag"><span class="status-dot status-dot--sm status-dot--good"/)
+    expect(linked).not.toContain('title=')
     expect(renderTaskPanel()).toContain('未关联')
     expect(renderTaskPanel()).not.toContain('agent 做这个任务')
   })

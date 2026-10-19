@@ -38,9 +38,7 @@ export const common = {
   details: { expand: 'Show details', collapse: 'Hide details' },
   field: {
     clear: 'Clear input',
-    clickToEdit: 'Click to edit',
     emptyValue: '—',
-    change: (label: string) => `Edit ${label}`,
     edit: (label: string) => `Edit ${label}`,
     chooseDirectory: 'Choose folder',
   },

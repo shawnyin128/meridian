@@ -37,7 +37,10 @@ describe('Tooltip', () => {
     target.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' }))
   })
   const leave = (target: Element) => {
-    act(() => { target.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' })) })
+    act(() => {
+      target.dispatchEvent(new PointerEvent('pointerout', { bubbles: true, pointerType: 'mouse', relatedTarget: document.body }))
+      target.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }))
+    })
     act(() => { document.dispatchEvent(new PointerEvent('pointermove', { clientX: 400, clientY: 400, pointerType: 'mouse' })) })
   }
   const wait = (ms: number) => act(() => { vi.advanceTimersByTime(ms) })
@@ -96,6 +99,30 @@ describe('Tooltip', () => {
     expect(document.querySelector('[role="menu"]')).not.toBeNull()
     expect(shown()).toBeNull()
     expect(trigger.getAttribute('data-state')).toBe('open')
+  })
+
+  it('names text cut off by its box with the whole text, and stays closed while the text fits', () => {
+    act(() => root!.render(
+      <Tooltip label="跑 Llama-2-7B 的 2bit KV 基线" whenClipped>
+        <span tabIndex={0} aria-label="label" style={{ overflowX: 'hidden' }}>跑 Llama-2-7B 的 2bit KV 基线</span>
+      </Tooltip>,
+    ))
+    const label = button('label')
+    const fits = vi.spyOn(label, 'scrollWidth', 'get').mockReturnValue(120)
+    vi.spyOn(label, 'clientWidth', 'get').mockReturnValue(120)
+    hover(label)
+    wait(TOOLTIP_DELAY)
+    expect(shown()).toBeNull()
+    leave(label)
+    fits.mockReturnValue(180)
+    hover(label)
+    wait(TOOLTIP_DELAY)
+    expect(shown()).toBe('跑 Llama-2-7B 的 2bit KV 基线')
+  })
+
+  it('without a label leaves its element as it is', () => {
+    act(() => root!.render(<Tooltip label={undefined}><span id="plain">EAGLE</span></Tooltip>))
+    expect(host.innerHTML).toBe('<span id="plain">EAGLE</span>')
   })
 
   it('shows the shortcut after the name and a note on a line of its own', () => {

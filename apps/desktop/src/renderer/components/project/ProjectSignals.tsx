@@ -6,6 +6,7 @@ import { StructuredRow } from '../StructuredList.js'
 import { FadeText } from '../FadeText.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { Tag, type TagTone } from '../Tag.js'
+import { Tooltip } from '../Tooltip.js'
 import { NodeTag } from './NodeTag.js'
 import './ProjectSignals.css'
 
@@ -40,8 +41,8 @@ export function EventText({ text, origin, className }: {
   className?: string
 }) {
   return (
-    <span className={`event-text${className ? ` ${className}` : ''}`} title={text}>
-      <FadeText>{text}</FadeText>
+    <span className={`event-text${className ? ` ${className}` : ''}`}>
+      <Tooltip label={text} whenClipped><FadeText>{text}</FadeText></Tooltip>
       {origin === 'agent' ? <AgentLabel /> : null}
     </span>
   )
@@ -77,18 +78,17 @@ export function ProjectEventRow({
       {onSelectNode === undefined ? null : (
         <span className="record-node">
           {node === undefined ? null : (
-            <NodeTag
-              label={node.label} mode={node.mode} hint={m.project.records.goToGraph(node.label)} fill
-              onOpen={() => onSelectNode(node.id)}
-            />
+            <NodeTag label={node.label} mode={node.mode} fill onOpen={() => onSelectNode(node.id)} />
           )}
         </span>
       )}
-      <span className="attn-text record-text" title={detail === undefined ? title : `${title} · ${detail}`}>
-        <FadeText className="record-line">
-          {title}
-          {detail === undefined ? null : <span className="record-detail"> · {detail}</span>}
-        </FadeText>
+      <span className="attn-text record-text">
+        <Tooltip label={detail === undefined ? title : `${title} · ${detail}`} whenClipped>
+          <FadeText className="record-line">
+            {title}
+            {detail === undefined ? null : <span className="record-detail"> · {detail}</span>}
+          </FadeText>
+        </Tooltip>
       </span>
       <span className="record-who">{origin === 'agent' ? <AgentLabel /> : null}</span>
     </StructuredRow>

@@ -3,6 +3,7 @@ import type { ProjectStatus } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { StatusDot } from '../StatusDot.js'
 import { Tag } from '../Tag.js'
+import { Tooltip } from '../Tooltip.js'
 import './ProjectIdentity.css'
 
 const STATUS_TONE = { 进行中: 'good', 搁置: 'warn', 已完成: 'neutral' } as const satisfies Record<ProjectStatus, string>
@@ -31,7 +32,11 @@ export function ProjectPriorityTag({ priority, className }: {
 
 /** The one project-name label for lists that tag a row with its project; it yields width before its neighbours. */
 export function ProjectLabel({ name, className }: { name: string; className?: string }) {
-  return <Tag shape="chip" className={`project-label${className ? ` ${className}` : ''}`} title={name}>{name}</Tag>
+  return (
+    <Tooltip label={name} whenClipped>
+      <Tag shape="chip" className={`project-label${className ? ` ${className}` : ''}`}>{name}</Tag>
+    </Tooltip>
+  )
 }
 
 /**
@@ -67,7 +72,7 @@ export function ProjectIdentity({
   }
   return (
     <span className={`project-identity ${variant}`}>
-      <span className="project-identity-name" title={project.name}>{project.name}</span>
+      <Tooltip label={project.name} whenClipped><span className="project-identity-name">{project.name}</span></Tooltip>
       {showStatus ? <ProjectStatusTag status={project.status} /> : null}
       {showPriority ? <ProjectPriorityTag priority={project.priority} /> : null}
       {showTopic && project.topic

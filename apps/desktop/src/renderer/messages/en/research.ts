@@ -71,6 +71,5 @@ export const research = {
     modeLabel: 'Schedule mode',
     startSlot: 'Start slot',
     endSlot: 'End slot',
-    editTime: 'Edit time',
   },
 } satisfies typeof zh

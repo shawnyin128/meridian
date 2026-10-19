@@ -113,11 +113,11 @@ function TaskCreateRow({ initial, triggers, onSave, onCancel }: {
   }
   return (
     <StructuredRow className="ddlrow task-create-row" rowRef={row}>
-      <DateButton iso={start} className="din" title={m.project.plan.pickStart} onPick={pickStart} />
+      <DateButton iso={start} className="din" onPick={pickStart} />
       <span className="dsep">–</span>
-      <DateButton iso={end} className="din" title={m.project.plan.pickEnd} onPick={pickEnd} />
+      <DateButton iso={end} className="din" onPick={pickEnd} />
       <button
-        className="din twmode" type="button" title={m.project.plan.toggleWindowMode}
+        className="din twmode" type="button"
         onClick={() => setTaskWindow((current) => current ? null : { start: '10:00', end: '12:00' })}
       >{taskWindow ? m.project.plan.windowMode.timed : m.project.plan.windowMode.allDay}</button>
       {taskWindow
@@ -136,13 +136,13 @@ function TaskCreateRow({ initial, triggers, onSave, onCancel }: {
         )
         : null}
       <TagButton
-        tone={PRIORITY_TONE[priority]} title={m.project.plan.cyclePriority}
+        tone={PRIORITY_TONE[priority]}
         onClick={() => setPriority(NEXT_PRIORITY[priority])}
       >
         {priority.toUpperCase()}
       </TagButton>
       <button
-        className="din state-edit" type="button" title={m.project.plan.cycleState}
+        className="din state-edit" type="button"
         onClick={() => setState(NEXT_TASK_STATE[state])}
       >{stateWord(m)[state]}</button>
       <InlineDraftInput
@@ -172,9 +172,9 @@ function MilestoneCreateRow({ initial, triggers, onSave, onCancel }: {
 
   return (
     <StructuredRow className="ddlrow milestone-create-row" rowRef={row}>
-      <DateButton iso={date} className="din" title={m.project.plan.pickDate} onPick={setDate} />
+      <DateButton iso={date} className="din" onPick={setDate} />
       <button
-        className="din state-edit" type="button" title={m.project.plan.cycleState}
+        className="din state-edit" type="button"
         onClick={() => setDone((current) => !current)}
       >{done ? m.project.plan.milestoneState.done : m.project.plan.milestoneState.open}</button>
       <InlineDraftInput
@@ -288,10 +288,7 @@ export function ProjectTaskPanel({
         ? <EmptyState variant="section">{m.project.plan.noNode}</EmptyState>
         : (
           <div className="project-task-detail-node">
-            <NodeTag
-              label={node.label} mode={node.mode} hint={m.project.records.goToGraph(node.label)}
-              onOpen={() => onOpenNode(node.id)}
-            />
+            <NodeTag label={node.label} mode={node.mode} onOpen={() => onOpenNode(node.id)} />
           </div>
         )}
       <SectionHeading variant="rail" className="flexh">{m.project.plan.noteHeading}
@@ -325,7 +322,6 @@ function TaskRow({ task, flash, selected, dragProps, dropClass = '', onSave, onD
   return (
     <StructuredRow
       composite selected={selected} data-row={task.id} {...dragProps} onActivate={onOpen}
-      title={m.project.plan.openTask}
       className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}${
         dropClass ? ` ${dropClass}` : ''}`}
     >
@@ -333,7 +329,7 @@ function TaskRow({ task, flash, selected, dragProps, dropClass = '', onSave, onD
       <TaskScheduleField mode="time" task={task} onSave={onSave} className="task-clock-part" stopRowActivation />
       <PriorityPicker
         value={task.priority} className={tagClass(PRIORITY_TONE[task.priority], 'label', 'plan-priority')}
-        title={m.project.plan.editPriority} stopRowActivation
+        stopRowActivation
         onPick={(priority) => { void onSave({ priority }) }}
       >{task.priority.toUpperCase()}</PriorityPicker>
       <ChoicePicker
@@ -374,7 +370,7 @@ function MilestoneRow({ milestone, flash, onHover, onSave, onDelete }: {
     >
       <DateButton
         iso={milestone.date} className="plan-cell plan-date-button"
-        title={m.project.plan.editDate} onPick={(date) => { void onSave({ date }) }}
+        onPick={(date) => { void onSave({ date }) }}
       >
         <DateChip date={milestone.date} className="plan-date" />
       </DateButton>

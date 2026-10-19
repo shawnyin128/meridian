@@ -120,7 +120,6 @@ export function TaskScheduleField({ mode, task, onSave, className = '', stopRowA
   const label = mode === 'date'
     ? fmt.dateRange(task.start, task.end)
     : task.window ? `${task.window.start}–${task.window.end}` : m.project.plan.windowMode.allDay
-  const title = mode === 'date' ? m.project.plan.editDate : m.research.schedule.editTime
 
   const save = async (patch: TaskPatch) => {
     setSaving(true)
@@ -137,7 +136,6 @@ export function TaskScheduleField({ mode, task, onSave, className = '', stopRowA
       trigger={(
         <button
           type="button" className={`schedule-trigger${className ? ` ${className}` : ''}`}
-          title={title}
           onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
         ><DateChip>{label}</DateChip></button>
       )}

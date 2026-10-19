@@ -8,6 +8,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { IconButton } from '../IconButton.js'
 import { IconChevron } from '../icons.js'
 import { ProjectLabel, ProjectPriorityTag } from '../project/ProjectIdentity.js'
+import { Tooltip } from '../Tooltip.js'
 import {
   DAY_SLOT_HOURS, shiftTaskWindow, timelineDayAt, TimelineControls, TimelineGrid,
   TimelineNowMarker, timelineTaskSpan, useFittedTimelineWindow, useTimelinePeriod,
@@ -220,7 +221,7 @@ export function TimelineBoard({
                 {showProjectNames
                   ? <ProjectLabel name={row.project.name} className="timeline-project-label" />
                   : null}
-                <span className="timeline-item-label" title={labelFor(row)}>{labelFor(row)}</span>
+                <Tooltip label={labelFor(row)} whenClipped><span className="timeline-item-label">{labelFor(row)}</span></Tooltip>
                 {row.kind === 'milestones' && folded.has(row.project.id) && shown.get(row.project.id)!.length > 0
                   ? <span className="timeline-folded-count">{m.timeline.fold.hidden(shown.get(row.project.id)!.length)}</span>
                   : null}
@@ -241,7 +242,6 @@ export function TimelineBoard({
                   <div
                     className="grow msrow" data-row={project.id} data-proj={project.id}
                     key={`${project.id}/milestones`}
-                    title={m.timeline.bar.clickHint}
                     onClick={(event) => {
                       if ((event.target as HTMLElement).closest('.gddl')) return
                       onMilestoneLaneClick(
@@ -257,23 +257,25 @@ export function TimelineBoard({
                       const key = `${project.id}/${milestone.id}`
                       const overdue = !milestone.done && day < today
                       return (
-                        <span
-                          className={`gddl${milestone.done ? ' done' : ''}${overdue ? ' overdue' : ''}${hoverMilestoneId === milestone.id ? ' hl' : ''}`}
-                          data-proj={project.id} data-milestone={key} key={milestone.id}
-                          title={m.timeline.milestoneTitle(
-                            fmt.date(milestone.date), milestone.title, overdue ? m.common.overdue : '',
-                          )}
-                          style={{
-                            left: (day - w0) * dayWidth + dayWidth / 2 - 4
-                              + drag.dragged(`${project.id}/milestone/${milestone.id}`),
-                          }}
-                          onMouseDown={(event) => drag.grab(event, {
-                            kind: 'milestone', projectId: project.id,
-                            milestoneId: milestone.id, date: milestone.date,
-                          })}
-                          onMouseEnter={() => onHoverMilestone?.(project.id, milestone.id)}
-                          onMouseLeave={() => onHoverMilestone?.(project.id, null)}
-                        />
+                        <Tooltip
+                          key={milestone.id}
+                          label={m.timeline.milestoneTitle(fmt.date(milestone.date), milestone.title, overdue ? m.common.overdue : '')}
+                        >
+                          <span
+                            className={`gddl${milestone.done ? ' done' : ''}${overdue ? ' overdue' : ''}${hoverMilestoneId === milestone.id ? ' hl' : ''}`}
+                            data-proj={project.id} data-milestone={key}
+                            style={{
+                              left: (day - w0) * dayWidth + dayWidth / 2 - 4
+                                + drag.dragged(`${project.id}/milestone/${milestone.id}`),
+                            }}
+                            onMouseDown={(event) => drag.grab(event, {
+                              kind: 'milestone', projectId: project.id,
+                              milestoneId: milestone.id, date: milestone.date,
+                            })}
+                            onMouseEnter={() => onHoverMilestone?.(project.id, milestone.id)}
+                            onMouseLeave={() => onHoverMilestone?.(project.id, null)}
+                          />
+                        </Tooltip>
                       )
                     })}
                   </div>
@@ -288,40 +290,41 @@ export function TimelineBoard({
               const rightInset = end > w1 ? 0 : 3
               const id = `${project.id}/task/${task.id}`
               const overdue = task.state !== 'done' && end < today
+              const name = m.timeline.taskTitle(
+                task.title,
+                task.end === task.start ? fmt.date(task.start) : `${fmt.date(task.start)} – ${fmt.date(task.end)}`,
+                task.window ? `${task.window.start}–${task.window.end}` : '',
+                task.priority.toUpperCase(),
+                overdue ? m.common.overdue : '',
+              )
               return (
                 <div
                   className="grow" data-row={`${project.id}/${task.id}`}
                   data-proj={project.id} data-task={task.id} key={id}
                 >
-                  <div
-                    className={`gbar${start < w0 ? ' clipl' : ''}${task.state === 'done' ? ' dim' : task.state === 'plan' ? ' plan' : ' active'}${overdue ? ' overdue' : ''} priority-${task.priority}`}
-                    data-proj={project.id} data-task={task.id}
-                    title={m.timeline.taskTitle(
-                      task.end === task.start ? fmt.date(task.start) : `${fmt.date(task.start)} – ${fmt.date(task.end)}`,
-                      task.window ? `${task.window.start}–${task.window.end}` : '',
-                      task.priority.toUpperCase(),
-                      overdue ? m.common.overdue : '',
-                    )}
-                    style={{
-                      left: span.left + leftInset + drag.dragged(id),
-                      width: Math.max(10, span.right - span.left - leftInset - rightInset),
-                    }}
-                    onMouseDown={(event: ReactMouseEvent) => drag.grab(event, {
-                      kind: 'task', projectId: project.id, taskId: task.id,
-                      start: task.start, end: task.end,
-                      ...(task.window === undefined ? {} : { window: task.window }),
-                    })}
-                  ><span className="gbar-label">{task.title}</span></div>
+                  <Tooltip label={name}>
+                    <div
+                      className={`gbar${start < w0 ? ' clipl' : ''}${task.state === 'done' ? ' dim' : task.state === 'plan' ? ' plan' : ' active'}${overdue ? ' overdue' : ''} priority-${task.priority}`}
+                      data-proj={project.id} data-task={task.id}
+                      style={{
+                        left: span.left + leftInset + drag.dragged(id),
+                        width: Math.max(10, span.right - span.left - leftInset - rightInset),
+                      }}
+                      onMouseDown={(event: ReactMouseEvent) => drag.grab(event, {
+                        kind: 'task', projectId: project.id, taskId: task.id,
+                        start: task.start, end: task.end,
+                        ...(task.window === undefined ? {} : { window: task.window }),
+                      })}
+                    ><span className="gbar-label">{task.title}</span></div>
+                  </Tooltip>
                   {stub
                     ? (
-                      <div
-                        className={task.state === 'done' ? 'gstub done' : 'gstub'}
-                        title={m.timeline.stub.clickToLocate(
-                          `${fmt.date(task.start)} – ${fmt.date(task.end)}`, task.title,
-                          stub.side === 'l' ? m.timeline.stub.left : m.timeline.stub.right,
-                        )}
-                        style={{ left: stub.left }} onClick={() => onTaskClick(project.id, task.id)}
-                      >{stub.side === 'l' ? '‹' : '›'}</div>
+                      <Tooltip label={name}>
+                        <div
+                          className={task.state === 'done' ? 'gstub done' : 'gstub'}
+                          style={{ left: stub.left }} onClick={() => onTaskClick(project.id, task.id)}
+                        >{stub.side === 'l' ? '‹' : '›'}</div>
+                      </Tooltip>
                     )
                     : null}
                 </div>

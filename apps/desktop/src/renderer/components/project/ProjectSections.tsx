@@ -109,12 +109,7 @@ export function ProjectTopicField({ value, onSave, onError }: {
   if (!editing) {
     return (
       <span className="metadata-field">
-        <button
-          className="pv metadata-editable" title={m.common.field.clickToEdit}
-          onClick={() => setEditing(true)}
-        >
-          {value}
-        </button>
+        <button className="pv metadata-editable" onClick={() => setEditing(true)}>{value}</button>
       </span>
     )
   }
@@ -288,7 +283,7 @@ export function ProjectRelations({
             : (
               <span
                 className={chipClass(row, item.id)} key={item.id} data-wk={item.page} data-url={item.url}
-                title={item.url} {...dragProps(row, item.id)}
+                {...dragProps(row, item.id)}
                 onClick={item.url !== undefined
                   ? () => { window.open(item.url, '_blank') }
                   : item.page === undefined ? undefined : () => onOpenPage(item.page!)}
@@ -369,9 +364,7 @@ export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <path d={CLIP_PATH} />
                   </svg>
-                  <button
-                    type="button" className="an" title={m.project.attachments.reveal} onClick={() => onReveal(attachment)}
-                  >{attachment.name}</button>
+                  <button type="button" className="an" onClick={() => onReveal(attachment)}>{attachment.name}</button>
                   <span className="as">{attachment.size}</span>
                   <IconButton
                     label={m.project.attachments.delete} size="nested" tone="danger" className="ax"
