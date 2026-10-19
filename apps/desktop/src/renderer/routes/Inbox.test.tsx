@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   DiscoveryProfile, InboxDownloadResult, InboxEntry, JobsStatus,
 } from '../../shared/contract.js'
+import { IconCheck, IconSeen, IconTrash } from '../components/icons.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
@@ -157,6 +159,29 @@ describe('Inbox', () => {
     expect(groups[1]!.querySelectorAll('.paper-card.is-leaving')).toHaveLength(0)
     expect(dismissAll(groups[1]!)).toHaveLength(1)
     await act(async () => { root.unmount() })
+  })
+
+  it('一个图标只表示一种操作：忽略进垃圾桶画垃圾桶，已经了解不用选中的勾，更多类似按下后报出按下', async () => {
+    const card = (kind: InboxEntry['kind']): InboxEntry => ({
+      id: kind, kind, watch: kind === 'watch' ? 'w1' : '', project: kind === 'watch' ? '' : 'p1', source: '主题 · w1',
+      title: `Paper ${kind}`, authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '', feedback: 'more',
+      reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
+    })
+    const glyph = (title: string) => host.querySelector(`[title="${title}"] svg`)!.outerHTML
+    api.entries = [card('watch')]
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(glyph('忽略')).toBe(renderToStaticMarkup(<IconTrash />))
+    await act(async () => { root.unmount() })
+
+    api.entries = [card('discovery')]
+    api.mode = 'discovery'
+    const again = createRoot(host)
+    await act(async () => { again.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(glyph('已经了解')).toBe(renderToStaticMarkup(<IconSeen />))
+    expect(glyph('已经了解')).not.toBe(renderToStaticMarkup(<IconCheck />))
+    expect(host.querySelector('[title="更多类似"]')!.getAttribute('aria-pressed')).toBe('true')
+    await act(async () => { again.unmount() })
   })
 
   it('发现的卡片不能忽略，分组标题上也没有「全部忽略」', async () => {

@@ -8,8 +8,6 @@
 .main.sbhide .paper-chat{margin-left:calc(var(--rrw,300px) * -1);opacity:0;pointer-events:none}
 .paper-chat-head{height:46px;box-sizing:border-box;padding:0 10px;border-bottom:1px solid var(--sep);display:flex;align-items:center;gap:8px;min-width:0;background:var(--sidebar)}
 .paper-chat-head strong{font-size:var(--fs-sm);color:var(--sec);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.paper-chat-head .back{border:0;background:var(--field);color:var(--ink);border-radius:var(--r-md);width:28px;height:26px;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
-.paper-chat-head .back svg{width:13px;height:13px}
 .paper-chat .msgs{padding:16px 0;gap:14px}
 .paper-chat .mwrap{width:calc(100% - 24px)}
 .paper-chat .bubble,.paper-chat .event{font-size:var(--fs-sm);line-height:1.5}

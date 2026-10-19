@@ -9,7 +9,7 @@ import { DEFAULT_PAPER_GROUPS, PAPER_PAGE, READ_STATES, READING_PAPER } from '..
 import { papers } from '../../ipc.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { IconCheck, IconCross, IconGrip, IconPlus, IconRead } from '../icons.js'
+import { IconCheck, IconGrip, IconPlus, IconRead, IconTrash } from '../icons.js'
 import { CellPicker } from './CellPicker.js'
 import { NewColumnHead } from './ColumnAdd.js'
 import { columnKey, takenLabel } from './column-key.js'
@@ -32,6 +32,7 @@ import {
   useVaultRevision,
 } from '../../shell/AppShell.js'
 import { AddAction } from '../AddAction.js'
+import { IconButton } from '../IconButton.js'
 import { PanelClose } from '../PanelClose.js'
 import { DetailPanel } from '../DetailPanel.js'
 import { ActionMenu, MenuRadioGroup, MenuRadioItem, MenuSeparator } from '../ActionMenu.js'
@@ -1212,12 +1213,10 @@ export function PaperTable() {
               {cols.map((c) => cell(p, c))}
               {newCol ? <td className="pt-cust" /> : null}
               <td>
-                <button
-                  className="rowx" title={m.papers.rowActions.delete}
+                <IconButton
+                  label={m.papers.rowActions.delete} size="nested" tone="danger" className="rowx"
                   onClick={(e) => { e.stopPropagation(); remove(p.id) }}
-                >
-                  <IconCross />
-                </button>
+                ><IconTrash /></IconButton>
               </td>
             </tr>
           ))}
@@ -1378,9 +1377,9 @@ export function PaperTable() {
             <div className="pdetail">
               <div className="pd-h">
                 <span className="pd-t"><PaperText text={detail.title} /></span>
-                <button className="icbtn" title={m.papers.rowActions.openReader} onClick={() => open('reader', detail.id)}>
+                <IconButton label={m.papers.rowActions.openReader} onClick={() => open('reader', detail.id)}>
                   <IconRead />
-                </button>
+                </IconButton>
                 <PanelClose onClose={closeDetail} />
               </div>
               <PaperMetadata paper={detail} onSaved={setDetail} />

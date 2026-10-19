@@ -14,8 +14,9 @@ import { useFormat } from '../lib/format.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import {
-  DownloadRing, Icon, IconCheck, IconCross, IconDownload, IconGear, IconLater, IconRead,
+  DownloadRing, Icon, IconDownload, IconGear, IconLater, IconRead, IconSeen, IconTrash,
 } from '../components/icons.js'
+import { IconButton } from '../components/IconButton.js'
 import {
   PaperCard, PaperCardBadge, PaperCardCitations, PaperCardNotice,
 } from '../components/paper/PaperCard.js'
@@ -209,43 +210,41 @@ export function Inbox() {
         <>
         {stream === 'discovery' ? (
           <>
-            <button
-              className={`icbtn${p.feedback === 'more' ? ' on' : ''}`}
-              title={m.inbox.actions.more} onClick={() => feedback(p.id, 'more')}
-            ><Icon><path d="M7 10v11H3V10h4zM7 19l4 2h6.5a2 2 0 0 0 2-1.7l1.2-7A2 2 0 0 0 18.7 10H14l1-4.2A2.3 2.3 0 0 0 12.8 3L7 10z" /></Icon></button>
-            <button className="icbtn" title={m.inbox.actions.less} onClick={() => feedback(p.id, 'less')}>
+            <IconButton
+              label={m.inbox.actions.more} pressed={p.feedback === 'more'} onClick={() => feedback(p.id, 'more')}
+            ><Icon><path d="M7 10v11H3V10h4zM7 19l4 2h6.5a2 2 0 0 0 2-1.7l1.2-7A2 2 0 0 0 18.7 10H14l1-4.2A2.3 2.3 0 0 0 12.8 3L7 10z" /></Icon></IconButton>
+            <IconButton label={m.inbox.actions.less} onClick={() => feedback(p.id, 'less')}>
               <Icon><path d="M7 14V3H3v11h4zM7 5l4-2h6.5a2 2 0 0 1 2 1.7l1.2 7a2 2 0 0 1-2 2.3H14l1 4.2a2.3 2.3 0 0 1-2.2 2.8L7 14z" /></Icon>
-            </button>
-            <button className="icbtn" title={m.inbox.actions.known} onClick={() => feedback(p.id, 'known')}>
-              <IconCheck />
-            </button>
+            </IconButton>
+            <IconButton label={m.inbox.actions.known} onClick={() => feedback(p.id, 'known')}>
+              <IconSeen />
+            </IconButton>
           </>
         ) : null}
         {p.downloaded
           ? (
-            <button
-              className="icbtn" title={m.papers.rowActions.openReader} onClick={() => open('reader', p.paper)}
-            ><IconRead /></button>
+            <IconButton label={m.papers.rowActions.openReader} onClick={() => open('reader', p.paper)}>
+              <IconRead />
+            </IconButton>
           )
           : busy.has(p.id)
             ? (
-              <button className="icbtn busy" title={m.later.actions.downloading} disabled>
+              <IconButton label={m.later.actions.downloading} className="busy" disabled>
                 <DownloadRing progress={jobs?.downloads?.find((item) => item.id === p.id) ?? null} />
-              </button>
+              </IconButton>
             )
             : (
-              <button className="icbtn" title={m.inbox.actions.download} onClick={() => ingest(p.id)}>
+              <IconButton label={m.inbox.actions.download} onClick={() => ingest(p.id)}>
                 <IconDownload />
-              </button>
+              </IconButton>
             )}
-        <button className="icbtn" title={m.inbox.actions.readLater} onClick={() => queue(p.id)}>
+        <IconButton label={m.inbox.actions.readLater} onClick={() => queue(p.id)}>
           <IconLater />
-        </button>
+        </IconButton>
         {stream === 'watch' ? (
-          <button
-            className="icbtn" title={m.inbox.actions.dismiss}
-            onClick={() => dismiss([p.id], m.inbox.notices.dismissed)}
-          ><IconCross /></button>
+          <IconButton label={m.inbox.actions.dismiss} onClick={() => dismiss([p.id], m.inbox.notices.dismissed)}>
+            <IconTrash />
+          </IconButton>
         ) : null}
         </>
       )}
@@ -315,12 +314,10 @@ export function Inbox() {
             ]}
             onChange={setSort}
           />
-          <button
-            className="inbox-settings"
-            title={stream === 'discovery' ? m.inbox.discoverySettings : m.inbox.watchSettings}
-            aria-label={stream === 'discovery' ? m.inbox.discoverySettings : m.inbox.watchSettings}
+          <IconButton
+            label={stream === 'discovery' ? m.inbox.discoverySettings : m.inbox.watchSettings} size="nested"
             onClick={() => openCategory(stream === 'discovery' ? 'delivery-discovery' : 'delivery-watch')}
-          ><IconGear /></button>
+          ><IconGear /></IconButton>
         </div>
         {stream === 'discovery' ? (
           <div className="discovery-summary">

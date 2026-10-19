@@ -137,7 +137,10 @@ export const IconPlus = () => (
   </svg>
 )
 
-/** The close/remove ×. `sw` is the stroke width: 2 for inline actions, 2.2 column menu, 2.5 chip badge. */
+/**
+ * The ×: closes a panel or takes something out of a place without deleting it, such as a link or a
+ * paper in the read-later queue. `sw` is the stroke width.
+ */
 export const IconCross = ({ sw = 2 }: { sw?: number }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round">
     <path d="M18 6L6 18M6 6l12 12" />
@@ -151,7 +154,14 @@ export const IconDots = () => (
   </svg>
 )
 
-/** Small trash can for delete actions. */
+/** An open eye: "already known", the discovery feedback that hides a paper the reader has seen. */
+export const IconSeen = () => (
+  <Icon sw={2}>
+    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />
+  </Icon>
+)
+
+/** Small trash can for every action that moves something to the trash or deletes it. */
 export const IconTrash = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 7h16M9 3h6l1 4H8zM6 7l1 14h10l1-14M10 11v6M14 11v6" />

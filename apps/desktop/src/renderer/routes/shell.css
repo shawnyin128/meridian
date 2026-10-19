@@ -50,10 +50,6 @@
 .wrow{display:flex;align-items:center;gap:8px;min-height:40px;padding:8px 12px;font-size:13px}
 .wrow .nm{display:flex;align-items:center;flex:1;min-width:0;min-height:22px;line-height:22px}
 
-.icbtn{flex-shrink:0;width:30px;height:30px;border-radius:var(--r-md);border:1px solid var(--sep);background:var(--field);color:var(--sec);cursor:pointer;display:grid;place-items:center;padding:0;transition:border-color var(--t) var(--e-out),color var(--t) var(--e-out)}
-.icbtn:hover{color:var(--ink);border-color:var(--sep-strong)}
-.icbtn svg{width:15px;height:15px}
-
 .inbox-toolbar{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:0 0 14px}
 .inbox-sort{display:flex;gap:6px}
 .inbox-sort{justify-content:flex-end}
@@ -74,11 +70,6 @@
 .direction-seeds{margin-top:3px;color:var(--ter);font-size:var(--fs-cap);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .direction-actions{display:flex;align-items:center;gap:6px;flex:none}
 .direction-empty{margin:0;padding:12px;color:var(--ter);font-size:var(--fs-sm);border-top:1px solid var(--sep2)}
-.inbox-settings{display:grid;place-items:center;width:26px;height:26px;padding:5px;border:0;border-radius:var(--r-md);background:transparent;color:var(--ter);cursor:pointer}
-.inbox-settings:hover{background:var(--field);color:var(--ink)}
-.inbox-settings:focus-visible{outline:1px solid var(--sep-strong);outline-offset:1px}
-.inbox-settings svg{width:16px;height:16px}
-.icbtn.on{color:var(--accent-solid);background:var(--accent-soft)}
 
 /* Modal backdrop, from the demo's .scrim. Shared by the Trash confirmation and the Settings modal */
 .scrim{position:fixed;inset:0;background:var(--scrim);backdrop-filter:blur(2px);z-index:89}
@@ -193,14 +184,6 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .wkrel .tagchip[data-wk]{cursor:pointer}
 .wkrel .tagchip[data-wk]:hover{color:var(--ink)}
 
-/* Back button on a page one level down inside a screen, same as the demo's #deskBack */
-.desk-head .back{border:0;background:var(--field);color:var(--ink);border-radius:8px;width:28px;height:26px;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center}
-.desk-head .back svg{width:13px;height:13px}
-.icbtn.busy{cursor:default}
-.icbtn .ring{width:18px;height:18px}
-.icbtn .ring .arc{transition:stroke-dashoffset var(--t) var(--e-out)}
-.icbtn .ring.spin{animation:ringspin 1s linear infinite}
-@keyframes ringspin{to{transform:rotate(360deg)}}
 .desk-head .fetchnote{margin-left:auto;font-size:var(--fs-sm);color:var(--ter);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .desk-head .fetchnote+.btn{margin-left:2px;flex-shrink:0}
 

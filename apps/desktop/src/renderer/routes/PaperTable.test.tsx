@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import { act, Profiler, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Facet, ListParams, PaperColumns, PaperImportResult, PaperRow } from '../../shared/contract.js'
 import { PAPER_COLUMNS } from '../../shared/vocabulary.js'
+import { IconTrash } from '../components/icons.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { papers as papersZh } from '../messages/zh/papers.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
@@ -460,6 +462,16 @@ describe('PaperTable', () => {
     const removeButton = row.querySelector<HTMLButtonElement>('.rowx')!
     await act(async () => { removeButton.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })) })
     expect(openedScreens).toEqual([['reader', ROW.id]])
+  })
+
+  it('行尾的删除把论文移到垃圾桶，画的是垃圾桶而不是关闭用的叉', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const remove = host.querySelector<HTMLButtonElement>('.ptable tbody tr .rowx')!
+    expect(remove.getAttribute('aria-label')).toBe('删除')
+    expect(remove.querySelector('svg')!.outerHTML).toBe(renderToStaticMarkup(<IconTrash />))
   })
 
   it('能排序的表头里各有一个排序按钮，按它排序，表头报出排序方向', async () => {
