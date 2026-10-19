@@ -269,11 +269,11 @@ export const settings = {
             },
             {
               label: 'Update the Wiki',
-              prompt: 'Add this PDF to my Meridian Paper Wiki. Tell me whether it was published, remains a draft, or was blocked by a quality check. Do not present a draft as canonical.',
+              prompt: 'Propose this project\'s settled finding as a conclusion in my Meridian Paper Wiki. Find the topic or method page it belongs on, check whether it revises, conflicts with, or duplicates an existing conclusion, and attach the experiment evidence that shows it. Give me the proposal key; it reaches the Wiki only after I review it in the App.',
             },
             {
-              label: 'Manage Wiki health',
-              prompt: 'Check the health of my Meridian Paper Wiki. Find stale, conflicting, orphaned, or low-trust knowledge, prioritize the repairs, and create proposals instead of silently rewriting canonical pages.',
+              label: 'Check Wiki health',
+              prompt: 'Check what needs attention in my Meridian Paper Wiki. Read the App\'s checks of the Wiki, list each problem and the pages it affects in priority order, and leave the decision to me; do not repair or restructure the Wiki yourself.',
             },
           ],
         },
