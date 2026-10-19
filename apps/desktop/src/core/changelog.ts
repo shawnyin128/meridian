@@ -77,9 +77,10 @@ const ChangeTargetSchema = z.discriminatedUnion('kind', [
  * were previously absent. `option` reverses a column option rename from `from` to `to`. `columnType`
  * restores the previous column and every cell in it, then reinserts a group removed when converting
  * to text at `groupAt` (null means it was not grouped or the conversion was unrelated). `columnSet`
- * holds the previous column configuration, which restore sets again. `note` and `highlight` put a
- * deleted one back among paper `paper`'s at position `at`, and `remark` sets that paper's remark back
- * to `text`, leaving the rest of its reading state as it stands.
+ * holds the previous column configuration, which restore sets again. `note` and `highlight` put one
+ * back as it stood before the write among paper `paper`'s: in place of the one holding its id, or at
+ * position `at` when it was deleted. `remark` sets that paper's remark back to `text`. Both leave the
+ * rest of the paper's reading state as it stands.
  */
 const RestoreSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('paper'), snapshot: PaperSnapshotSchema }).strict(),
@@ -231,7 +232,9 @@ export type ChangeLogStore = {
 /** Target and title tail of a reading command recorded as a change, undefined for a command that is not recorded. */
 function readingChange(paper: string, mutation: ReadingMutation): [ChangeTarget, string] | undefined {
   switch (mutation.kind) {
+    case 'note.update': return [{ kind: 'note', id: mutation.id, paper }, '改了笔记']
     case 'note.delete': return [{ kind: 'note', id: mutation.id, paper }, '删掉笔记']
+    case 'highlight.update': return [{ kind: 'highlight', id: mutation.id, paper }, '改了高亮批注']
     case 'highlight.delete': return [{ kind: 'highlight', id: mutation.id, paper }, '删掉高亮']
     case 'remark.set': return [{ kind: 'remark', id: paper }, '改了随笔']
     default: return undefined
@@ -248,6 +251,13 @@ function columnSetTitle(from: PaperColumns, to: PaperColumns): string {
   const created = to.custom.find((c) => !from.custom.some((p) => p.key === c.key))
   if (created) return `论文表 · 新增列「${created.label}」`
   return stableJson(from.order) === stableJson(to.order) ? '论文表 · 改了列设置' : '论文表 · 调整列顺序'
+}
+
+/** `list` with `item` in place of the element holding its id, or inserted at `at` when none does. */
+function putBack<T extends { id: string }>(list: readonly T[], at: number, item: T): T[] {
+  return list.some((held) => held.id === item.id)
+    ? list.map((held) => (held.id === item.id ? item : held))
+    : list.toSpliced(at, 0, item)
 }
 
 /** Entity value without its kind, used for diffs and fingerprints. */
@@ -320,10 +330,10 @@ function diffLines(before: Entity | undefined, after: Entity | undefined): strin
 
 /**
  * Wraps the given operations so that every write that changes the vault's
- * lasting knowledge — the paper and paper-column writes, deleting a reading
- * note or highlight, setting a remark, the project writes, and a proposal's
- * writes, and none of the inbox, later-queue, watch, chat, feed, trash or
- * other reading writes — is recorded, and adds
+ * lasting knowledge — the paper and paper-column writes, editing or deleting a
+ * reading note or highlight, setting a remark, the project writes, and a
+ * proposal's writes, and none of the inbox, later-queue, watch, chat, feed,
+ * trash or other reading writes — is recorded, and adds
  * the changelog reads and the undo the contract carries. Records are kept in
  * `log`, newest first, and a record is written after its write, by core, so no
  * caller has to say what it changed. Undo writes back the entity as it stood
@@ -734,10 +744,10 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       else if (restore.kind === 'columnSet') ops.setPaperColumns(restore.columns)
       else if (restore.kind === 'note') {
         const held = ops.paperReading(restore.paper)
-        ops.putPaperReading(restore.paper, { ...held, notes: held.notes.toSpliced(restore.at, 0, restore.note) })
+        ops.putPaperReading(restore.paper, { ...held, notes: putBack(held.notes, restore.at, restore.note) })
       } else if (restore.kind === 'highlight') {
         const held = ops.paperReading(restore.paper)
-        ops.putPaperReading(restore.paper, { ...held, highlights: held.highlights.toSpliced(restore.at, 0, restore.highlight) })
+        ops.putPaperReading(restore.paper, { ...held, highlights: putBack(held.highlights, restore.at, restore.highlight) })
       } else if (restore.kind === 'remark') {
         ops.putPaperReading(restore.paper, { ...ops.paperReading(restore.paper), remark: restore.text })
       } else ops.putProject(restore.project)

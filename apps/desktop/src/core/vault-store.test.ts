@@ -516,19 +516,20 @@ describe('vault store', () => {
       .not.toContain('撤销也回来')
   })
 
-  it('撤销删掉的笔记、高亮与改过的随笔,写回阅读记录,论文行跟着变,重开库还在', () => {
+  it('撤销改过的批注、删掉的笔记与高亮、改过的随笔,写回阅读记录,论文行跟着变,重开库还在', () => {
     store.mutatePaperReading(WITH_SOURCE, { kind: 'note.add', page: 1, text: '删了又回来' })
     store.mutatePaperReading(WITH_SOURCE, {
       kind: 'highlight.add', page: 2, quote: '删了又回来的那句', color: 'yellow',
       rects: [{ x: 0.1, y: 0.2, width: 0.3, height: 0.02 }],
     })
     const before = store.mutatePaperReading(WITH_SOURCE, { kind: 'remark.set', text: '原来的随笔' })
+    store.mutatePaperReading(WITH_SOURCE, { kind: 'highlight.update', id: before.highlights[0]!.id, note: '后来写的批注' })
     store.mutatePaperReading(WITH_SOURCE, { kind: 'note.delete', id: before.notes[0]!.id })
     store.mutatePaperReading(WITH_SOURCE, { kind: 'highlight.delete', id: before.highlights[0]!.id })
     store.mutatePaperReading(WITH_SOURCE, { kind: 'remark.set', text: '' })
     expect(store.getPaper(WITH_SOURCE)).toMatchObject({ noteCount: 0 })
 
-    for (const change of store.listChanges().slice(0, 3)) store.undoChange(change.id)
+    for (const change of store.listChanges().slice(0, 4)) store.undoChange(change.id)
     expect(store.paperReading(WITH_SOURCE)).toEqual(before)
     expect(store.getPaper(WITH_SOURCE)).toMatchObject({ remark: '原来的随笔', noteCount: 1 })
     expect(createVaultStore(vault).paperReading(WITH_SOURCE)).toEqual(before)
