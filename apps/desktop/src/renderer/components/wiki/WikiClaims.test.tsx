@@ -107,6 +107,11 @@ describe('WikiClaims', () => {
     expect([...knee.querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual(['- v1 · 5月2日 · 树宽收益递减', '+ v2 · 6月9日 · 拐点在宽度 6'])
   })
 
+  it('整条结论是它那个 … 所属的行:悬停或聚焦结论的任何一处都露出 …', () => {
+    expect([...host.querySelectorAll('[data-claim]')].map((row) => [row.getAttribute('data-claim'), row.hasAttribute('data-dots-row')]))
+      .toEqual([['knee', true], ['plain', true]])
+  })
+
   it('实验证据打开项目,原文证据打开阅读器到那一页与高亮,冲突的另一边打开它所在的页', () => {
     const [experiment, source] = [...host.querySelectorAll<HTMLButtonElement>('[data-claim="knee"] .wkclaim-evidence .wkclaim-link')]
     act(() => experiment!.click())

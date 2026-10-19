@@ -81,6 +81,8 @@ export const project = {
     milestoneState: { done: 'Done', open: 'Open' },
     deleteTask: 'Delete task',
     deleteTaskFor: (title: string) => `Delete task: ${title}`,
+    renameTask: 'Rename task',
+    renameTaskFor: (title: string) => `Rename task: ${title}`,
     deleteMilestone: 'Delete milestone',
     deleteMilestoneFor: (title: string) => `Delete milestone: ${title}`,
     taskCreated: 'Task created',

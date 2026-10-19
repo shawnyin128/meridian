@@ -17,7 +17,7 @@ const job = (over: Partial<MetadataJob> = {}): MetadataJob => ({
   step: 'lookup', found: null, error: null, ...over,
 })
 const state = (uploads: MetadataJob[], writes = 0): JobsStatus => ({
-  writes, uploads, downloads: [], fetch: { state: 'idle', checkedAt: null, error: null },
+  writes, uploads, downloads: [], fetch: { state: 'idle', checkedAt: null, reason: null },
 })
 
 describe('ParseProgress', () => {

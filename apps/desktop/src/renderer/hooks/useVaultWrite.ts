@@ -1,7 +1,8 @@
 import { useCallback } from 'react'
+import type { ReactNode } from 'react'
 import { useBanner, useToast, useVaultRevision } from '../shell/AppShell.js'
 
-type WriteOpts = { note?: string | undefined; notify?: ((text: string) => void) | undefined }
+type WriteOpts = { note?: ReactNode; notify?: ((text: ReactNode) => void) | undefined }
 
 /**
  * Finishes a vault write: once `op` resolves, bumps the vault revision, reports `note` through

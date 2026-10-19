@@ -238,7 +238,7 @@ export const settings = {
       steps: [
         { title: '确认已连接', body: '先确认上方扩展显示“已安装”。首次使用时，让 agent 检查 Meridian readiness。' },
         { title: '说明目标与范围', body: '说清楚要查询、更新、研究还是编码，并指出项目、论文或想法。' },
-        { title: '保留关键决策', body: '发布 Wiki、切换研究路径等边界变更应在明确确认后执行。' },
+        { title: '保留关键决策', body: '写入 Wiki 的结论只作为提案，等你在 App 中审阅；切换研究路径等边界变更应在明确确认后执行。' },
       ],
       examplesHeading: '可直接使用的提示词',
       groups: [
@@ -262,11 +262,11 @@ export const settings = {
             },
             {
               label: '更新 Wiki',
-              prompt: '把这篇 PDF 加入 Meridian Paper Wiki。告诉我它是已发布、仍是草稿，还是因质量问题被阻止；不要把草稿当作正式页面。',
+              prompt: '把这个项目已经确定的结论提议写入 Meridian Paper Wiki。找到它所属的主题或方法页，检查它是否修订、冲突或重复已有结论，并附上证明它的实验证据；告诉我提案的 key，它要等我在 App 中审阅后才会进入 Wiki。',
             },
             {
-              label: '管理 Wiki 健康状态',
-              prompt: '检查我的 Meridian Paper Wiki 健康状态。找出过时、冲突、孤立或低可信的知识，确定修复优先级，并创建修复提案，不要静默改写正式页面。',
+              label: '检查 Wiki 健康状态',
+              prompt: '检查我的 Meridian Paper Wiki 有哪些需要处理的问题。读取 App 对 Wiki 的检查结果，按优先级列出每个问题和它涉及的页面，由我决定如何处理；不要自行修复或重组 Wiki。',
             },
           ],
         },

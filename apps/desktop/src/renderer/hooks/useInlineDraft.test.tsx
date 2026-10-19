@@ -67,9 +67,9 @@ function portalLayer(): HTMLButtonElement {
 }
 
 /** Dispatch a keystroke on the input box and finish this round of microtasks. */
-async function press(input: HTMLInputElement, key: string): Promise<void> {
+async function press(input: HTMLInputElement, key: string, init: KeyboardEventInit = {}): Promise<void> {
   await act(async () => {
-    input.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }))
+    input.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...init }))
   })
 }
 
@@ -294,6 +294,28 @@ describe('useInlineDraft', () => {
     expect(bubbled).not.toHaveBeenCalled()
 
     document.removeEventListener('keydown', bubbled)
+  })
+
+  it('输入法组字时的回车与 Esc 归输入法:不提交也不撤掉,Esc 也不往上冒;组完字后照常', async () => {
+    const onSubmit = vi.fn(() => false)
+    const onCancel = vi.fn()
+    const { input } = mount(onSubmit, onCancel)
+    const bubbled: string[] = []
+    const listen = (event: KeyboardEvent) => { bubbled.push(event.key) }
+    document.addEventListener('keydown', listen)
+
+    await press(input, 'Enter', { isComposing: true })
+    await press(input, 'Escape', { isComposing: true })
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(onCancel).not.toHaveBeenCalled()
+    expect(bubbled).toEqual(['Enter'])
+
+    await press(input, 'Enter')
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    await press(input, 'Escape')
+    expect(onCancel).toHaveBeenCalledTimes(1)
+
+    document.removeEventListener('keydown', listen)
   })
 
   it('鼠标按在占位外像回车一样提交;按在占位里、入口按钮上、Radix 浮层里都不提交', async () => {

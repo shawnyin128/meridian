@@ -8,6 +8,8 @@ import { BackButton } from '../BackButton.js'
 import { FormTextarea } from '../FormControls.js'
 import { EmptyState } from '../EmptyState.js'
 import { PageError } from '../PageShell.js'
+import { useDrafts } from '../../hooks/useDrafts.js'
+import { TitleNote } from '../TitleNote.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { IdeaEditorDialog } from '../ideas/IdeaEditorDialog.js'
@@ -36,7 +38,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const grip = usePaperChatGrip()
   const [session, setSession] = useState<ChatSession | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [draft, setDraft] = useState('')
+  const drafts = useDrafts()
   const [savingIdea, setSavingIdea] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -46,11 +48,11 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const reportError = useCallback((cause: Error) => setError(cause.message), [])
   const paperId = paper?.id ?? null
   const sessionId = session?.id ?? null
+  const draft = paperId === null ? '' : drafts.get(paperId) ?? ''
 
   useEffect(() => {
     setSession(null)
     setMessages([])
-    setDraft('')
     setSavingIdea(false)
     setError(null)
     if (paperId === null) return
@@ -77,16 +79,16 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   }, [messages])
 
   useEffect(() => {
-    if (prompt === null) return
-    setDraft(m.chat.quotePrefix(prompt.quote))
+    if (prompt === null || paperId === null) return
+    drafts.set(paperId, m.chat.quotePrefix(prompt.quote))
     requestAnimationFrame(() => composer.current?.focus())
   }, [prompt, m])
 
   const submit = () => {
     const text = draft.trim()
-    if (text === '' || session === null || sending) return
+    if (text === '' || paperId === null || session === null || sending) return
     const attempt = ++sendAttempt.current
-    setDraft('')
+    drafts.drop(paperId)
     setSending(true)
     void write(chat.send(session.id, text))
       .finally(() => { if (sendAttempt.current === attempt) setSending(false) })
@@ -101,7 +103,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const act = (message: ChatMessage) => {
     if (session === null) return
     void chat.recordAction(session.id, message.id).then(async (held) => {
-      banner(m.chat.recordedNote(held.name))
+      banner(<TitleNote message={m.chat.recordedNote} title={held.name} />)
       await feed.append({ source: 'me', body: { kind: 'runs', runs: [
         plain(m.chat.recordedTo(held.name)),
       ] } })
@@ -140,7 +142,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
             <FormTextarea
               ref={composer} value={draft} rows={1} autoComplete="off" disabled={session === null || sending}
               aria-label={m.chat.askAboutPaper} placeholder={m.chat.paperComposerPlaceholder}
-              onChange={(event) => setDraft(event.target.value)}
+              onChange={(event) => { if (paperId !== null) drafts.set(paperId, event.target.value) }}
               onKeyDown={(event) => {
                 if (!sendsMessage(event.nativeEvent)) return
                 event.preventDefault()

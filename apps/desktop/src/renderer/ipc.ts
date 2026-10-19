@@ -11,7 +11,7 @@ import type {
   HarnessPaperWikiRejectionFeedback, HarnessPendingPaperWikiResult, HarnessPlan,
   HarnessRejectPaperWikiResult, HarnessRunReceipt,
   LibraryBackup, LibraryLocation, LibraryResetResult, ListResult,
-  MilestoneFields, PaperColumn, PaperColumns, PaperFields, PaperImportResult, PaperReading, PaperRow,
+  MilestoneFields, NetFailed, PaperColumn, PaperColumns, PaperFields, PaperImportResult, PaperReading, PaperRow,
   Proposal, ProjectDetail, ProjectFields, ProjectWorkspaceBinding, ReadingMutation, ResearchIdea,
   ResearchIdeaGraphPlacement, ResearchIdeaPatch, ResearchIdeaPlaceOnGraphResult,
   ResearchIdeaPromoteResult,
@@ -292,7 +292,7 @@ export const later = {
 
 export const watch = {
   list: () => call<Watch[]>('watch.list', {}),
-  suggest: (input: WatchSuggestionParams) => call<WatchSuggestionResult>('watch.suggest', input),
+  suggest: (input: WatchSuggestionParams) => call<WatchSuggestionResult | NetFailed>('watch.suggest', input),
   create: (fields: WatchFields) => call<void>('watch.create', { watch: fields }),
   update: (id: string, fields: WatchFields) => call<void>('watch.update', { id, watch: fields }),
   setActive: (id: string, active: boolean) => call<void>('watch.setActive', { id, active }),
@@ -300,7 +300,7 @@ export const watch = {
 }
 
 export const author = {
-  search: (query: string) => call<AuthorCandidate[]>('author.search', { query }),
+  search: (query: string) => call<AuthorCandidate[] | NetFailed>('author.search', { query }),
 }
 
 export const wiki = {

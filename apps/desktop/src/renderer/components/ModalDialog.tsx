@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
+import { ignoreComposingEscape } from '../lib/keyboard.js'
 
 type ContentProps = Omit<Dialog.DialogContentProps,
   'children' | 'className' | 'aria-describedby' | 'onCloseAutoFocus'
@@ -13,8 +14,9 @@ export function ModalTitle({ className, children }: { className?: string; childr
 /**
  * The app-wide modal skeleton without a trigger. It owns the overlay, the portal, the accessibility
  * declaration for a dialog without a description, and returning focus on close whether the dialog
- * was opened from the app menu, programmatically or by a page button. Pages only provide the
- * content layout and the open state.
+ * was opened from the app menu, programmatically or by a page button. An Escape pressed while an
+ * input method is composing does not close it. Pages only provide the content layout and the open
+ * state.
  */
 export function ModalDialog({
   open, onOpenChange, contentClassName, overlayClassName = 'scrim', children,
@@ -74,12 +76,12 @@ export function ModalDialog({
           {...(ariaDescribedBy === undefined
             ? { 'aria-describedby': undefined }
             : { 'aria-describedby': ariaDescribedBy })}
-          onEscapeKeyDown={(event) => {
+          onEscapeKeyDown={ignoreComposingEscape((event) => {
             contentProps?.onEscapeKeyDown?.(event)
             // Radix takes Esc in the document's capture phase, before the focused input sees it; an
             // inline draft cancels itself on Esc, so Esc from one leaves the dialog open.
             if (event.target instanceof Element && event.target.matches('[data-inline-draft]')) event.preventDefault()
-          }}
+          })}
           onCloseAutoFocus={(event) => {
             if (!restoreFocus || opener.current === null) return
             event.preventDefault()

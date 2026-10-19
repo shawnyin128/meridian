@@ -19,10 +19,13 @@ import {
   PageBody, PageError, PageFooter, PageHeader, PageShell, PageTitle,
 } from '../components/PageShell.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
+import { useDrafts } from '../hooks/useDrafts.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { CONFLICT_THREAD, sendsMessage } from '../lib/chat.js'
+import { composing } from '../lib/keyboard.js'
 import { IdeaEditorDialog } from '../components/ideas/IdeaEditorDialog.js'
 import { GenerationControl } from '../components/GenerationControl.js'
+import { TitleNote } from '../components/TitleNote.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import './shell.css'
@@ -98,8 +101,9 @@ export function Chat() {
   const banner = useBanner()
   const toast = useToast()
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [draft, setDraft] = useState('')
-  const [mentioning, setMentioning] = useState(false)
+  const drafts = useDrafts()
+  // The `@` picker, like the draft, belongs to the chat it was opened in.
+  const [mentionIn, setMentionIn] = useState<string | null>(null)
   const [savingIdea, setSavingIdea] = useState(false)
   const [sending, setSending] = useState(false)
   const [projects, setProjects] = useState<ProjectSummary[]>([])
@@ -112,6 +116,8 @@ export function Chat() {
   const sendAttempt = useRef(0)
   const reportError = useCallback((e: Error) => setError(e.message), [])
   const write = useVaultWrite()
+  const draft = id === null ? '' : drafts.get(id) ?? ''
+  const mentioning = id !== null && mentionIn === id
 
   useEffect(() => {
     void project.list().then(setProjects).catch(reportError)
@@ -160,6 +166,9 @@ export function Chat() {
     }).catch((e: Error) => toast(e.message))
   }, [jump, select, send, toast, m])
 
+  const setDraft = (text: string) => { if (id !== null) drafts.set(id, text) }
+  const setMentioning = (on: boolean) => setMentionIn(on ? id : null)
+
   const type = (value: string) => {
     setDraft(value)
     setMentioning(value.trim().startsWith('@'))
@@ -193,7 +202,7 @@ export function Chat() {
   const act = (message: ChatMessage) => {
     if (id === null) return
     void chat.recordAction(id, message.id).then(async (p) => {
-      banner(m.chat.recordedNote(p.name))
+      banner(<TitleNote message={m.chat.recordedNote} title={p.name} />)
       await feed.append({ source: 'me', body: { kind: 'runs', runs: [
         plain(m.chat.recordedTo(p.name)),
       ] } })
@@ -256,12 +265,12 @@ export function Chat() {
                 <div className="cbox" id="cbox">
                   <FormTextarea
                     id="composer" ref={composer} value={draft} rows={1} autoComplete="off"
-                    placeholder={m.chat.composerPlaceholder} disabled={sending}
+                    placeholder={m.chat.composerPlaceholder} disabled={sending || id === null}
                     onChange={(e) => type(e.target.value)}
                     onKeyDown={(e) => {
                       // Only open candidates take the arrow keys; otherwise they move the caret between lines.
                       if (suggest.length > 0) {
-                        if (e.nativeEvent.isComposing) return
+                        if (composing(e.nativeEvent)) return
                         keys.onKeyDown(e)
                         if (e.key === 'Enter') e.preventDefault()
                       } else if (sendsMessage(e.nativeEvent)) {
