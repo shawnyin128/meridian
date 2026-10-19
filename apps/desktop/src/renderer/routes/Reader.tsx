@@ -210,7 +210,7 @@ export function Reader() {
       .then((value) => { if (live) setReading(value) })
       .catch(reportError)
     return () => { live = false }
-  }, [opened, reportError])
+  }, [opened, revision, reportError])
 
   useEffect(() => {
     if (opened === null) return

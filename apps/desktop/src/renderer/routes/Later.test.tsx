@@ -1,0 +1,64 @@
+// @vitest-environment jsdom
+import { act } from 'react'
+import { createRoot } from 'react-dom/client'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { LaterEntry } from '../../shared/contract.js'
+import { MessagesProvider } from '../messages/useMessages.js'
+import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
+
+declare global {
+  var IS_REACT_ACT_ENVIRONMENT: boolean
+}
+
+const api = vi.hoisted(() => ({ notes: [] as unknown[] }))
+
+const ENTRY: LaterEntry = {
+  id: 'later-1', title: 'MoE 路由用熵正则代替负载均衡 load balancing', source: 'arXiv', added: '2026-08-25',
+  day: 'today', authors: 'Lin', venue: '', abstract: '', downloaded: true, paper: 'moe-entropy',
+}
+
+vi.mock('../ipc.js', () => ({
+  inbox: { download: async () => ({ kind: 'added', paper: ENTRY.paper }) },
+  later: { list: async () => [ENTRY], remove: async () => {} },
+}))
+vi.mock('../shell/AppShell.js', () => ({
+  useJump: () => ({ open: vi.fn() }),
+  useToast: () => vi.fn(),
+  useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
+}))
+vi.mock('../shell/useJobs.js', () => ({ useJobs: () => null }))
+vi.mock('../hooks/useVaultWrite.js', () => ({
+  useVaultWrite: () => async (work: Promise<unknown>, opts: { note?: unknown } = {}) => {
+    await work
+    api.notes.push(opts.note)
+    return true
+  },
+}))
+
+const { Later } = await import('./Later.js')
+
+describe('Later', () => {
+  let host: HTMLDivElement
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    host = document.createElement('div')
+    document.body.append(host)
+    api.notes.length = 0
+  })
+  afterEach(() => { host.remove(); vi.unstubAllGlobals() })
+
+  it('移出长标题的论文后，提示写出完整标题，标题放不下时淡出而不是截断', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Later /></MessagesProvider>) })
+    await act(async () => { host.querySelector<HTMLButtonElement>('button[title="移出"]')!.click() })
+    const toast = document.createElement('div')
+    const shown = createRoot(toast)
+    act(() => shown.render(<>{api.notes[0]}</>))
+    expect(toast.textContent).toBe('已移出稍后阅读「MoE 路由用熵正则代替负载均衡 load balancing」')
+    expect(toast.querySelector('.fade-text')!.textContent).toBe('MoE 路由用熵正则代替负载均衡 load balancing')
+    act(() => shown.unmount())
+    await act(async () => { root.unmount() })
+  })
+})

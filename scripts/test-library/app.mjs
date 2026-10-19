@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { delimiter, join, resolve } from 'node:path'
+import { delimiter, dirname, join, resolve } from 'node:path'
 import { _electron as electron } from '@playwright/test'
 
 const REPO = resolve(import.meta.dirname, '../..')
@@ -22,12 +22,30 @@ function appTarget(app) {
 }
 
 /**
- * The environment an App on test library `out` runs with. `network: false` keeps Core off the
- * network, `bootstrap` lets Core initialize an empty library, `show` puts the window on screen.
+ * Whether the Core of `app` answers from the canned responses in MERIDIAN_CANNED_NET_FILE, that is,
+ * whether its built code names that variable: the `.js` files under a folder's `out`, else the
+ * `app.asar` in the resources of a macOS `Meridian.app` or beside an executable, which holds the
+ * scripts as plain text. Throws when that code is missing.
  */
-function appEnv(out, { show = false, network = false, bootstrap = false }) {
+export function readsCannedNetFile(app) {
+  const path = resolve(app)
+  const code = path.endsWith('.app') ? [join(path, 'Contents', 'Resources', 'app.asar')]
+    : statSync(path).isDirectory()
+      ? readdirSync(join(path, 'out'), { recursive: true }).filter((name) => name.endsWith('.js')).map((name) => join(path, 'out', name))
+      : [join(dirname(path), 'resources', 'app.asar')]
+  return code.some((file) => readFileSync(file).includes('MERIDIAN_CANNED_NET_FILE'))
+}
+
+/**
+ * The environment an App on test library `out` runs with. `network: false` keeps Core off the
+ * network, answering from its canned responses and those in the file `canned`, `bootstrap` lets
+ * Core initialize an empty library, `show` puts the window on screen.
+ */
+function appEnv(out, { show = false, network = false, bootstrap = false, canned }) {
   const env = { ...process.env }
-  for (const key of ['ELECTRON_RUN_AS_NODE', 'MERIDIAN_LIBRARY_ROOT', 'MERIDIAN_CANNED_NET', 'MERIDIAN_BOOTSTRAP_VAULT']) {
+  for (const key of [
+    'ELECTRON_RUN_AS_NODE', 'MERIDIAN_LIBRARY_ROOT', 'MERIDIAN_CANNED_NET', 'MERIDIAN_CANNED_NET_FILE', 'MERIDIAN_BOOTSTRAP_VAULT',
+  ]) {
     delete env[key]
   }
   return {
@@ -36,6 +54,7 @@ function appEnv(out, { show = false, network = false, bootstrap = false }) {
     MERIDIAN_CONFIG_HOME: join(out, 'config'),
     MERIDIAN_SHOW_WINDOW: show ? '1' : '0',
     ...(network ? {} : { MERIDIAN_CANNED_NET: '1' }),
+    ...(canned === undefined ? {} : { MERIDIAN_CANNED_NET_FILE: canned }),
     ...(bootstrap ? { MERIDIAN_BOOTSTRAP_VAULT: '1' } : {}),
   }
 }

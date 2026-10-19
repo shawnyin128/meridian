@@ -4,6 +4,7 @@ import { DEFAULT_DELIVERY_SETTINGS } from '../../../shared/contract.js'
 import { delivery } from '../../ipc.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
+import { composing } from '../../lib/keyboard.js'
 import { FormInput } from '../FormControls.js'
 
 const MIN_ITEMS = 1
@@ -57,7 +58,7 @@ export function DeliverySettings() {
           value={draft} disabled={saved === null || saving}
           onChange={(event) => setDraft(event.currentTarget.value)}
           onKeyDown={(event) => {
-            if (event.key === 'Enter') void save()
+            if (event.key === 'Enter' && !composing(event.nativeEvent)) void save()
           }}
         />
         <span>{m.settings.delivery.unit}</span>

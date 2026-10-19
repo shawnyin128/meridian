@@ -51,6 +51,12 @@ describe('ContextMenu', () => {
     expect(document.querySelector('[role="menu"]')).toBeNull()
   })
 
+  it('stays open on an Escape that ends an input method composition', () => {
+    act(() => root!.render(<Example choose={vi.fn()} />))
+    act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true })))
+    expect(document.querySelector('[role="menu"]')).not.toBeNull()
+  })
+
   it('leaves inside presses alone and closes on an outside press', () => {
     act(() => root!.render(<Example choose={vi.fn()} />))
     const item = document.querySelector<HTMLElement>('[role="menuitem"]')!

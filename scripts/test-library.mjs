@@ -1,12 +1,13 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
-import { DESKTOP, openApp, readJson, redate, session, writeJson } from './test-library/app.mjs'
+import { DESKTOP, openApp, readJson, readsCannedNetFile, redate, session, writeJson } from './test-library/app.mjs'
 import { seedConversations } from './test-library/conversations.mjs'
 import { redateLater, seedInbox, seedWatches, writeInbox } from './test-library/feed.mjs'
 import { prepareWorkspace, redateEvents, seedLab, seedProposals } from './test-library/lab.mjs'
-import { importPapers, paperFiles, redatePapers, seedPapers } from './test-library/papers.mjs'
+import { arxivMetadata, importPapers, paperFiles, redatePapers, seedPapers } from './test-library/papers.mjs'
 import { discoveryRecords, redateProjects, seedProjects } from './test-library/projects.mjs'
+import { relocate } from './test-library/relocate.mjs'
 import { checkOut, MARKER, protectedRoots } from './test-library/safety.mjs'
 import { seedWiki } from './test-library/wiki.mjs'
 
@@ -17,10 +18,11 @@ const USAGE = `Builds a Meridian test library that covers every screen, or opens
 
 <app> is a Meridian.app, a Meridian.exe, or a folder such as apps/desktop (the default, built
 with npm --prefix apps/desktop run build). seed writes <dir>/library, config, user-data,
-workspaces and files from scratch through the App's Core and keeps the arXiv PDFs it downloads
-in <dir>/cache. --today is the day the seeded dates count from; it defaults to the system date,
-which Core still uses to stamp the records the seed does not redate. open on a copy of a test
-library first points the paths it stores at the copy.`
+workspaces and files from scratch through the App's Core and keeps the PDFs and metadata it
+downloads from arXiv in <dir>/cache, so a later seed into <dir> runs off the network unless the
+App predates 0.0.16.0. --today is the day the seeded dates count from; it defaults to the system
+date, which Core still uses to stamp the records the seed does not redate. open on a copy of a
+test library first points the paths it stores at the copy.`
 
 /** The folders a seed writes and therefore deletes before writing them again. */
 const SEEDED = ['library', 'config', 'user-data', 'workspaces', 'files']
@@ -31,9 +33,10 @@ const systemToday = () => {
 }
 
 /**
- * Builds the test library in `out` from scratch with `app`. Each App launch below is one stage:
- * the first imports the papers over the network, the others write through Core off the network,
- * and stored files change between launches only while the App is closed.
+ * Builds the test library in `out` from scratch with `app`. Each App launch below is one stage: the
+ * first imports the papers with the App's arXiv lookups answered from `<out>/cache`, or over the
+ * network by an App whose Core cannot read them from there, the others write through Core off the
+ * network, and stored files change between launches only while the App is closed.
  */
 async function seed(out, app, today) {
   checkOut(out, protectedRoots())
@@ -45,7 +48,9 @@ async function seed(out, app, today) {
   const state = { out, today, papers: {}, projects: {}, days: { feed: new Map(), changelog: new Map(), later: new Map() } }
   const stamped = systemToday()
   const files = await paperFiles(out)
-  const titles = await session(out, app, { network: true, bootstrap: true }, async (call, win) => {
+  const metadata = await arxivMetadata(out)
+  const lookups = readsCannedNetFile(app) ? { canned: metadata } : { network: true }
+  const titles = await session(out, app, { bootstrap: true, ...lookups }, async (call, win) => {
     await importPapers(state, call, win, files)
     const rows = (await call('papers.list', { page: 1, size: 200 })).rows
     return Object.fromEntries(Object.entries(state.papers).map(([key, id]) => [key, rows.find((row) => row.id === id).title]))
@@ -71,26 +76,6 @@ async function seed(out, app, today) {
   redate(state)
   redateLater(state)
   console.log(`Seeded ${out}`)
-}
-
-/**
- * Rewrites the absolute paths that a test library seeded at `from` stores, now that it lives at
- * `out`: the library's own paths in `meridian-wiki.json`, and the workspace and attachment paths on
- * project pages, in Trash and in the change log.
- */
-function relocate(out, from) {
-  const library = join(out, 'library')
-  const files = [
-    join(library, 'meridian-wiki.json'),
-    ...readdirSync(join(library, 'wiki', 'projects')).map((name) => join(library, 'wiki', 'projects', name)),
-    ...readdirSync(join(library, '.meridian')).filter((name) => name.endsWith('.json')).map((name) => join(library, '.meridian', name)),
-  ]
-  const forms = new Map([[from, out], [JSON.stringify(from).slice(1, -1), JSON.stringify(out).slice(1, -1)]])
-  for (const file of files) {
-    let text = readFileSync(file, 'utf8')
-    for (const [old, next] of forms) text = text.replaceAll(old, next)
-    writeFileSync(file, text, 'utf8')
-  }
 }
 
 const { positionals: [command], values } = parseArgs({

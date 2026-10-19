@@ -4,6 +4,7 @@ import { project } from '../ipc.js'
 import { AddAction } from './AddAction.js'
 import { IconCross } from './icons.js'
 import { PickerPopover } from './PickerPopover.js'
+import { TitleNote } from './TitleNote.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useInlineDraft } from '../hooks/useInlineDraft.js'
@@ -42,7 +43,8 @@ export function ProjectChips({ paper, onError }: {
       && (!needle || held.name.toLowerCase().includes(needle)))
     : []
   const add = (target: ProjectSummary) => write(
-    project.addPaper(target.id, paper.id), { note: m.research.chips.linked(target.name) },
+    project.addPaper(target.id, paper.id),
+    { note: <TitleNote message={m.research.chips.linked} title={target.name} /> },
   )
   const draft = useInlineDraft({
     row: input, triggers: NO_TRIGGERS, onCancel: close, isEmpty: () => needle === '',

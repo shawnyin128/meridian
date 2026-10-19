@@ -23,8 +23,8 @@ function mount(count: number, onChoose: (index: number) => void): HTMLInputEleme
 }
 
 /** Dispatch a keystroke on the input box. */
-function press(input: HTMLInputElement, key: string): void {
-  act(() => { input.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })) })
+function press(input: HTMLInputElement, key: string, init: KeyboardEventInit = {}): void {
+  act(() => { input.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...init })) })
 }
 
 describe('useCandidateKeys', () => {
@@ -59,6 +59,18 @@ describe('useCandidateKeys', () => {
     press(input, 'ArrowDown')
     press(input, 'Enter')
     expect(onChoose).toHaveBeenCalledExactlyOnceWith(1)
+  })
+
+  it('输入法组字时上下键和回车都归输入法:高亮不动,也不选', () => {
+    const onChoose = vi.fn()
+    const input = mount(3, onChoose)
+    press(input, 'ArrowDown', { isComposing: true })
+    press(input, 'Enter', { isComposing: true })
+    expect(input.dataset['active']).toBe('0')
+    expect(onChoose).not.toHaveBeenCalled()
+
+    press(input, 'Enter')
+    expect(onChoose).toHaveBeenCalledExactlyOnceWith(0)
   })
 
   it('count 变了 active 回到 0', () => {

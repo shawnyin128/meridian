@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useState } from 'react'
-import type { LaterEntry } from '../../shared/contract.js'
+import type { InboxDownloadFailure, LaterEntry } from '../../shared/contract.js'
 import { inbox, later } from '../ipc.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useJump, useToast, useVaultRevision } from '../shell/AppShell.js'
@@ -10,6 +10,8 @@ import { plainTitle } from '../components/paper/paper-text.js'
 import { DayHeading, daySectionName } from '../components/DayHeading.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
+import { failureLabel } from '../lib/failure-label.js'
+import { TitleNote } from '../components/TitleNote.js'
 import { useFormat } from '../lib/format.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle } from '../components/PageShell.js'
@@ -19,9 +21,6 @@ import './shell.css'
 type Grouping = 'time' | 'src'
 
 const MODES: Grouping[] = ['time', 'src']
-
-/** The title in the removal prompt is cut to this length, the same as the demo. */
-const TITLE_IN_TOAST = 18
 
 /**
  * Read Later: a paper already in the vault opens straight in the reader; one with only its source
@@ -41,7 +40,7 @@ export function Later() {
   const write = useVaultWrite()
   const jobs = useJobs()
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set())
-  const [failed, setFailed] = useState<ReadonlyMap<string, string>>(new Map())
+  const [failed, setFailed] = useState<ReadonlyMap<string, InboxDownloadFailure>>(new Map())
 
   const read = (entry: LaterEntry) => {
     if (entry.downloaded) {
@@ -55,13 +54,13 @@ export function Later() {
       return next
     })
     void inbox.download(entry.id).then((result) => {
+      if (result.kind === 'failed') {
+        setFailed((held) => new Map(held).set(entry.id, result.reason))
+        return
+      }
       bump()
       open('reader', result.paper)
-    }).catch((e: Error) => {
-      if (e.message.startsWith('没能下载原文')) {
-        setFailed((held) => new Map(held).set(entry.id, e.message))
-      } else toast(e.message)
-    }).finally(() => {
+    }).catch((e: Error) => toast(e.message)).finally(() => {
       setBusy((held) => {
         const next = new Set(held)
         next.delete(entry.id)
@@ -76,7 +75,7 @@ export function Later() {
 
   const remove = (entry: LaterEntry) => {
     void write(later.remove(entry.id),
-      { note: m.later.removed(plainTitle(entry.title).slice(0, TITLE_IN_TOAST)), notify: toast })
+      { note: <TitleNote message={m.later.removed} title={plainTitle(entry.title)} />, notify: toast })
   }
 
   // Entries arrive newest first by the day they were queued; groups follow the order keys first appear in.
@@ -145,7 +144,7 @@ export function Later() {
                   notices={failed.has(x.id) ? (
                     <PaperCardNotice tone="error" action={(
                       <button className="btn plain" onClick={() => read(x)}>{m.common.retry}</button>
-                    )}>{failed.get(x.id)}</PaperCardNotice>
+                    )}>{failureLabel(m, m.inbox.notices.downloadFailed, failed.get(x.id)!)}</PaperCardNotice>
                   ) : null}
                   metadata={(
                     <>

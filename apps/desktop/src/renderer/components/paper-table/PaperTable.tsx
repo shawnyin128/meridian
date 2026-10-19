@@ -467,6 +467,13 @@ export function PaperTable() {
   // draws an empty table instead of the group index.
   const listed = group === 'none'
     || (sel !== null && (group === 'readState' || facets.some((f) => f.value === sel)))
+  // The title counts the rows the list shows under the search, the read-state filter and a picked group
+  // value; with none of them active it counts the vault. The group index lists no rows, so a search
+  // there leaves the title without a count.
+  const filtered = filter !== '' || (view === 'table' && sel !== null)
+  const titleCount = !filtered ? paperCount
+    : view === 'research-map' ? (mapLoading ? null : mapTotal)
+      : listed ? total : null
 
   useEffect(() => {
     // Fetching the column configuration also queues on the column chain, so it waits for a write in
@@ -816,7 +823,7 @@ export function PaperTable() {
 
   /**
    * Edits the remark: writes it to the reading record, the same text as in the reader's side panel,
-   * without an entry in Recent Changes.
+   * as an entry in Recent Changes.
    */
   const saveRemark = (p: PaperRow, value: string): boolean | Promise<boolean> => {
     if (value.trim() === (p.remark ?? '').replace(/[\r\n]/g, '').trim()) return true
@@ -917,14 +924,16 @@ export function PaperTable() {
   /**
    * A column configuration change, queued on the column chain: when its turn comes, `update` computes
    * the new configuration from the last confirmed column set and it is handed to Core. It takes effect
-   * only once written (`onApplied` is called synchronously at that moment), shows its banner, and
-   * drops a deleted column's width along with the column. Returns whether it was written.
+   * only once written (`onApplied` is called synchronously at that moment), bumps the vault revision,
+   * shows its banner, and drops a deleted column's width along with the column. Returns whether it was
+   * written.
    */
   const changeColumns = (
     update: (base: PaperColumns) => PaperColumns, onApplied?: () => void,
   ): Promise<boolean> => writeColumns(async (base) => {
     const next = update(base)
     await papers.setColumns(next)
+    bump()
     const gone = base.custom.find((c) => !next.custom.some((n) => n.key === c.key))
     if (gone) {
       setWidths((w) => {
@@ -1219,7 +1228,7 @@ export function PaperTable() {
       {dropActive ? <div className="paper-drop"><strong>{m.papers.upload.dropToImport}</strong></div> : null}
       {/* As in the demo the title carries a count; until it arrives, the "·" and space after it are hidden. */}
       <PageHeader>
-        <PageTitle>{m.papers.title(paperCount)}</PageTitle>
+        <PageTitle>{m.papers.title(titleCount)}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />

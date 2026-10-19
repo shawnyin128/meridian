@@ -1,6 +1,6 @@
-import type { AuthorIdentity, FeedRun, FetchStatus } from '../../shared/contract.js'
+import type { AuthorIdentity, FeedRun, FetchStatus, NetFailure } from '../../shared/contract.js'
 import { watchQuery, type Arxiv } from '../net/arxiv.js'
-import { netReason } from '../net/http.js'
+import { netFailure } from '../net/http.js'
 import type { RemotePaper } from '../net/arxiv.js'
 import type { VaultStore } from '../vault.js'
 import { rankedPaper, type ScholarlyMetadata } from '../recommendation/index.js'
@@ -16,14 +16,14 @@ export function createWatchFetcher(deps: {
 }): WatchFetcher {
   let tail: Promise<void> = Promise.resolve()
   let pending = 0
-  let error: string | null = null
+  let reason: NetFailure | null = null
 
   const fetchWatches = async (watchIds: string[] | undefined): Promise<void> => {
     const watches = deps.store.listWatches()
       .filter((watch) => watch.active && (watchIds === undefined || watchIds.includes(watch.id)))
     const batches: { watch: (typeof watches)[number]; found: Awaited<ReturnType<Arxiv['search']>> }[] = []
     const counts: { name: string; added: number }[] = []
-    let failure: string | null = null
+    let failure: NetFailure | null = null
     let remaining = deps.store.deliverySettings().maxItemsPerRun
     for (const watch of watches) {
       if (remaining === 0) break
@@ -42,7 +42,7 @@ export function createWatchFetcher(deps: {
           deps.onWrite()
         }
       } catch (caught) {
-        failure ??= netReason(caught)
+        failure ??= netFailure(caught)
       }
     }
     const arxivIds = [...new Set(batches.flatMap((batch) => batch.found.map((paper) => paper.id)))]
@@ -53,7 +53,7 @@ export function createWatchFetcher(deps: {
       const ranked = found.map((paper) => rankedPaper(watch, paper, impact?.get(paper.id)))
       if (deps.store.updateInboxEntries(watch.id, ranked) > 0) deps.onWrite()
     }
-    error = failure
+    reason = failure
     const total = counts.reduce((sum, count) => sum + count.added, 0)
     if (total > 0) {
       const runs: FeedRun[] = [
@@ -78,9 +78,9 @@ export function createWatchFetcher(deps: {
       return next
     },
     status: () => ({
-      state: pending > 0 ? 'checking' : error !== null ? 'failed' : 'idle',
+      state: pending > 0 ? 'checking' : reason !== null ? 'failed' : 'idle',
       checkedAt: deps.store.lastFetch(),
-      error,
+      reason,
     }),
   }
 }

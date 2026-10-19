@@ -21,8 +21,11 @@ export type InlineFieldProps = {
   validate?: (value: string) => boolean
   /** Edits in a wrapping field that grows with its text, for values whose display wraps; Enter still saves. */
   multiline?: boolean
-  /** Pass true when the row or card itself is clickable, so the trigger swallows the click instead of bubbling it. */
-  stopRowActivation?: boolean
+  /**
+   * Replaces the button the value rests in, for a value whose click belongs to the row or card around
+   * it: renders the value at rest, given `edit`, which opens the editor from an explicit control.
+   */
+  rest?: (edit: () => void) => ReactNode
 }
 
 /**
@@ -32,13 +35,14 @@ export type InlineFieldProps = {
  * anywhere else saves, and Esc cancels; the window losing focus (switching to another app) does not
  * count as leaving. An unchanged value closes without calling `onSave`. `onSave` returns whether
  * the new value is accepted; when a write fails the editor stays open, so the three pages that use
- * it do not each implement their own async duplicate-submit guard.
+ * it do not each implement their own async duplicate-submit guard. A click inside the open editor
+ * stays there, so it never activates the row or card around the field.
  */
 export function InlineField({
   label, value, display, type = 'text', inputMode, options, onSave,
   wrapperClassName = 'metadata-field', buttonClassName = 'metadata-editable',
   inputClassName = 'metadata-input', inputAppearance = 'plain', emptyText, normalize = (next) => next,
-  validate = () => true, multiline = false, stopRowActivation = false,
+  validate = () => true, multiline = false, rest,
 }: InlineFieldProps) {
   const m = useMessages()
   const empty = emptyText ?? m.common.field.emptyValue
@@ -68,18 +72,20 @@ export function InlineField({
     control.current = element
   }
 
+  const edit = () => {
+    setDraft(value)
+    setEditing(true)
+  }
+
   let field: ReactNode
   if (!editing) {
-    field = (
-      <button
-        type="button" className={buttonClassName} title={m.common.field.change(label)}
-        onClick={(event) => {
-          if (stopRowActivation) event.stopPropagation()
-          setDraft(value)
-          setEditing(true)
-        }}
-      >{(display ?? value) || empty}</button>
-    )
+    field = rest === undefined
+      ? (
+        <button
+          type="button" className={buttonClassName} title={m.common.field.change(label)} onClick={edit}
+        >{(display ?? value) || empty}</button>
+      )
+      : rest(edit)
   } else if (options !== undefined) {
     field = (
       <FormSelect
@@ -117,7 +123,9 @@ export function InlineField({
   return (
     // The wrapper keeps the same node in both states, so Grid/Flex always measures the same value
     // cell and a native input/select's min-content width does not widen the property column on click.
-    <span className={wrapperClassName}>{field}</span>
+    <span className={wrapperClassName} onClick={editing ? (event) => event.stopPropagation() : undefined}>
+      {field}
+    </span>
   )
 }
 
