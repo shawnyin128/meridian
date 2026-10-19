@@ -238,7 +238,7 @@ export const settings = {
       steps: [
         { title: '确认已连接', body: '先确认上方扩展显示“已安装”。首次使用时，让 agent 检查 Meridian readiness。' },
         { title: '说明目标与范围', body: '说清楚要查询、更新、研究还是编码，并指出项目、论文或想法。' },
-        { title: '保留关键决策', body: '发布 Wiki、切换研究路径等边界变更应在明确确认后执行。' },
+        { title: '保留关键决策', body: '写入 Wiki 的结论只作为提案，等你在 App 中审阅；切换研究路径等边界变更应在明确确认后执行。' },
       ],
       examplesHeading: '可直接使用的提示词',
       groups: [

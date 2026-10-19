@@ -19,8 +19,10 @@ Meridian has four user-facing skills:
   experiments, research grounding injections, and local findings.
 - `meridian-coding`: incremental App/Lab context before project-connected code work.
 
-If the user asks to ingest, retrieve, answer from papers, add insight, check wiki
-health, or write synthesis, hand off to `wiki`. Do not continue the normal work
+If the user asks to retrieve, answer from papers, check wiki health, or propose
+a project's settled finding as a conclusion, hand off to `wiki`; a conclusion is
+a proposal that waits for the user's review in the App. A paper, a note, or a
+body edit is the user's to make in the App. Do not continue the normal work
 inside this setup skill after the setup issue is resolved.
 
 If the user asks to place an idea, review feasibility, manage an approach tree,
@@ -55,7 +57,7 @@ python -m meridian framework-check --project-root <meridian-repo>
 - Report the categories as `pass`, `warn`, or `fail`; preserve the finding's
   severity, fixability, and next action.
 - Do not turn this into normal Paper Wiki, Lab, or development work. If the
-  check passes and the user wants to ingest or retrieve, hand off to `wiki`; if
+  check passes and the user wants retrieval or a proposal, hand off to `wiki`; if
   they want idea placement or research evidence management, hand off to `lab`;
   if they want code implementation, debugging, tests, commits, release, or
   convergence, hand off to the normal coding workflow.
@@ -248,8 +250,8 @@ python -c "from pathlib import Path; from meridian.lab import initialize_lab_spa
 
 ## Delegation
 
-- Use `wiki` for ingest, retrieval, health checks, insights, synthesis, and
-  Paper Wiki maintenance.
+- Use `wiki` for retrieval, health checks, insights, synthesis, and conclusion
+  proposals that wait for the user's review in the App.
 - Use `lab` by default for research and research-development requests in repos
   with `.meridian/`; Lab handles preflight, idea placement, approach trees,
   experiment evidence, Wiki grounding for ideas, Research Grounding Injections,
@@ -274,6 +276,8 @@ Do not defer this to `lab`.
 ```
 
 ```text
-The user says to ingest a PDF. If setup is ready, switch to `wiki` instead of
-performing the ingest here.
+The user asks to add a PDF to the Paper Wiki. Tell them to add it in the
+Meridian App; no agent imports a paper. A project's settled finding goes to
+`wiki`, which submits it as a proposal that waits for the user's review in the
+App.
 ```

@@ -245,7 +245,7 @@ export const settings = {
       steps: [
         { title: 'Confirm the connection', body: 'Make sure the extension above says Installed. On the first run, ask the agent to check Meridian readiness.' },
         { title: 'State the outcome and scope', body: 'Say whether you want to search, update, research, or code, and name the relevant project, paper, or idea.' },
-        { title: 'Keep decisions explicit', body: 'Publishing Wiki content or switching a research path should happen only after clear confirmation.' },
+        { title: 'Keep decisions explicit', body: 'Wiki conclusions arrive only as proposals that wait for your review in the App; switching a research path or another boundary change should happen only after clear confirmation.' },
       ],
       examplesHeading: 'Prompts you can use',
       groups: [
