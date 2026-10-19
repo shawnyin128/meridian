@@ -1,4 +1,5 @@
-import type { HTMLAttributes, ReactNode, Ref } from 'react'
+import { forwardRef } from 'react'
+import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode, Ref } from 'react'
 import './ResearchObjectCard.css'
 
 /**
@@ -35,9 +36,17 @@ export function ResearchObjectCard({
   )
 }
 
-/** The button around a card's name: the card's keyboard control, whose click reaches the card. */
-export function CardOpen({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return (
-    <button type="button" className={`research-object-card-open${className ? ` ${className}` : ''}`}>{children}</button>
-  )
-}
+/**
+ * The button around a card's name: the card's keyboard control, whose click reaches the card. Other
+ * props and the ref go to the button, so a tooltip can name it.
+ */
+export const CardOpen = forwardRef<HTMLButtonElement, { children: ReactNode; className?: string }
+  & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'className' | 'type'>>(
+  function CardOpen({ children, className = '', ...props }, ref) {
+    return (
+      <button
+        {...props} ref={ref} type="button" className={`research-object-card-open${className ? ` ${className}` : ''}`}
+      >{children}</button>
+    )
+  },
+)

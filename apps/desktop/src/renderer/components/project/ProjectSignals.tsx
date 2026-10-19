@@ -7,6 +7,7 @@ import { FadeText } from '../FadeText.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { Tag, type TagTone } from '../Tag.js'
 import { EntityLink } from '../EntityLink.js'
+import { Tooltip } from '../Tooltip.js'
 import './ProjectSignals.css'
 
 /** Stable type column shared by project and overview decision rows and research records; `mut` is neutral. */
@@ -74,8 +75,8 @@ export function EventText({ text, origin, className }: {
   className?: string
 }) {
   return (
-    <span className={`event-text${className ? ` ${className}` : ''}`} title={text}>
-      <FadeText>{text}</FadeText>
+    <span className={`event-text${className ? ` ${className}` : ''}`}>
+      <Tooltip label={text} whenClipped><FadeText>{text}</FadeText></Tooltip>
       {origin === 'agent' ? <AgentLabel /> : null}
     </span>
   )
@@ -111,18 +112,17 @@ export function ProjectEventRow({
       {onSelectNode === undefined ? null : (
         <span className="record-node">
           {node === undefined ? null : (
-            <EntityLink
-              kind="node" label={node.label} mode={node.mode} title={m.project.records.goToGraph(node.label)} fill
-              onOpen={() => onSelectNode(node.id)}
-            />
+            <EntityLink kind="node" label={node.label} mode={node.mode} fill onOpen={() => onSelectNode(node.id)} />
           )}
         </span>
       )}
-      <span className="attn-text record-text" title={detail === undefined ? title : `${title} · ${detail}`}>
-        <FadeText className="record-line">
-          {title}
-          {detail === undefined ? null : <span className="record-detail"> · {detail}</span>}
-        </FadeText>
+      <span className="attn-text record-text">
+        <Tooltip label={detail === undefined ? title : `${title} · ${detail}`} whenClipped>
+          <FadeText className="record-line">
+            {title}
+            {detail === undefined ? null : <span className="record-detail"> · {detail}</span>}
+          </FadeText>
+        </Tooltip>
       </span>
       <span className="record-who">{origin === 'agent' ? <AgentLabel /> : null}</span>
     </StructuredRow>

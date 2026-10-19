@@ -12,7 +12,7 @@ describe('PanelClose', () => {
     const html = renderToStaticMarkup(
       <MessagesProvider><PanelClose onClose={() => undefined} /></MessagesProvider>,
     )
-    expect(html).toContain('title="收起详情"')
+    expect(html).not.toContain('title=')
     expect(html).toContain('aria-label="收起详情"')
     expect(html).toContain('class="icbtn panel-close"')
     expect(html).toContain('<svg')

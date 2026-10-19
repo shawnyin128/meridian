@@ -1,3 +1,4 @@
+import { forwardRef } from 'react'
 import type { ComponentPropsWithoutRef, ReactNode } from 'react'
 import './Tag.css'
 
@@ -32,26 +33,26 @@ type TagOwnProps = {
 }
 
 /** The one tag: fully rounded, its box from `shape` and its colours from `tone`; long text ends in an ellipsis. */
-export function Tag({
-  tone, shape, lead, className = '', children, ...rest
-}: TagOwnProps & Omit<ComponentPropsWithoutRef<'span'>, keyof TagOwnProps>) {
-  return (
-    <span className={tagClass(tone, shape, className)} {...rest}>
-      {lead}<span className="tag-text">{children}</span>
-    </span>
-  )
-}
+export const Tag = forwardRef<HTMLSpanElement, TagOwnProps & Omit<ComponentPropsWithoutRef<'span'>, keyof TagOwnProps>>(
+  function Tag({ tone, shape, lead, className = '', children, ...rest }, ref) {
+    return (
+      <span ref={ref} className={tagClass(tone, shape, className)} {...rest}>
+        {lead}<span className="tag-text">{children}</span>
+      </span>
+    )
+  },
+)
 
 /** A tag that is a button, such as a link to a page; it darkens on hover and press. */
-export function TagButton({
-  tone, shape, lead, className = '', children, ...rest
-}: TagOwnProps & Omit<ComponentPropsWithoutRef<'button'>, keyof TagOwnProps | 'type'>) {
-  return (
-    <button type="button" className={tagClass(tone, shape, className)} {...rest}>
-      {lead}<span className="tag-text">{children}</span>
-    </button>
-  )
-}
+export const TagButton = forwardRef<HTMLButtonElement, TagOwnProps & Omit<ComponentPropsWithoutRef<'button'>, keyof TagOwnProps | 'type'>>(
+  function TagButton({ tone, shape, lead, className = '', children, ...rest }, ref) {
+    return (
+      <button ref={ref} type="button" className={tagClass(tone, shape, className)} {...rest}>
+        {lead}<span className="tag-text">{children}</span>
+      </button>
+    )
+  },
+)
 
 /** A number beside a label: quiet, or `strong` when it counts items waiting for the user. Zero is shown as 0. */
 export function CountBadge({ count, strong = false, className = '' }: {

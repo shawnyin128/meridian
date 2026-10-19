@@ -113,11 +113,11 @@ function TaskCreateRow({ initial, triggers, onSave, onCancel }: {
   }
   return (
     <StructuredRow className="ddlrow task-create-row" rowRef={row}>
-      <DateButton iso={start} className="din" title={m.project.plan.pickStart} onPick={pickStart} />
+      <DateButton iso={start} className="din" onPick={pickStart} />
       <span className="dsep">–</span>
-      <DateButton iso={end} className="din" title={m.project.plan.pickEnd} onPick={pickEnd} />
+      <DateButton iso={end} className="din" onPick={pickEnd} />
       <button
-        className="din twmode" type="button" title={m.project.plan.toggleWindowMode}
+        className="din twmode" type="button"
         onClick={() => setTaskWindow((current) => current ? null : { start: '10:00', end: '12:00' })}
       >{taskWindow ? m.project.plan.windowMode.timed : m.project.plan.windowMode.allDay}</button>
       {taskWindow
@@ -136,13 +136,13 @@ function TaskCreateRow({ initial, triggers, onSave, onCancel }: {
         )
         : null}
       <TagButton
-        tone={PRIORITY_TONE[priority]} title={m.project.plan.cyclePriority}
+        tone={PRIORITY_TONE[priority]}
         onClick={() => setPriority(NEXT_PRIORITY[priority])}
       >
         {priority.toUpperCase()}
       </TagButton>
       <button
-        className="din state-edit" type="button" title={m.project.plan.cycleState}
+        className="din state-edit" type="button"
         onClick={() => setState(NEXT_TASK_STATE[state])}
       >{stateWord(m)[state]}</button>
       <InlineDraftInput
@@ -172,9 +172,9 @@ function MilestoneCreateRow({ initial, triggers, onSave, onCancel }: {
 
   return (
     <StructuredRow className="ddlrow milestone-create-row" rowRef={row}>
-      <DateButton iso={date} className="din" title={m.project.plan.pickDate} onPick={setDate} />
+      <DateButton iso={date} className="din" onPick={setDate} />
       <button
-        className="din state-edit" type="button" title={m.project.plan.cycleState}
+        className="din state-edit" type="button"
         onClick={() => setDone((current) => !current)}
       >{done ? m.project.plan.milestoneState.done : m.project.plan.milestoneState.open}</button>
       <InlineDraftInput
@@ -215,7 +215,7 @@ function TaskNameCell({ task, onSave }: { task: Task; onSave: (patch: TaskPatch)
         <>
           <button type="button" className="plan-cell plan-name plan-open">{task.title}</button>
           <IconButton
-            label={m.project.plan.renameTaskFor(task.title)} title={m.project.plan.renameTask} size="nested"
+            label={m.project.plan.renameTaskFor(task.title)} size="nested"
             className="plan-rename" onClick={(event) => { event.stopPropagation(); edit() }}
           ><IconPencil /></IconButton>
         </>
@@ -304,7 +304,6 @@ function TaskRow({ task, flash, selected, reorder, dropClass = '', onSave, onDel
   return (
     <StructuredRow
       composite selected={selected} data-row={task.id} {...reorder?.item} {...reorder?.handle} onActivate={onOpen}
-      title={m.project.plan.openTask}
       className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}${
         dropClass ? ` ${dropClass}` : ''}`}
     >
@@ -312,7 +311,7 @@ function TaskRow({ task, flash, selected, reorder, dropClass = '', onSave, onDel
       <TaskScheduleField mode="time" task={task} onSave={onSave} className="task-clock-part" stopRowActivation />
       <PriorityPicker
         value={task.priority} className={tagClass(PRIORITY_TONE[task.priority], 'label', 'plan-priority')}
-        title={m.project.plan.editPriority} stopRowActivation
+        stopRowActivation
         onPick={(priority) => { void onSave({ priority }) }}
       >{task.priority.toUpperCase()}</PriorityPicker>
       <ChoicePicker
@@ -330,7 +329,7 @@ function TaskRow({ task, flash, selected, reorder, dropClass = '', onSave, onDel
         : <TaskNameCell task={task} onSave={onSave} />}
       <RowActions>
         <IconButton
-          label={m.project.plan.deleteTaskFor(task.title)} title={m.project.plan.deleteTask} size="nested" tone="danger"
+          label={m.project.plan.deleteTaskFor(task.title)} size="nested" tone="danger"
           className="row-delete" onClick={(event) => { event.stopPropagation(); onDelete() }}
         ><IconTrash /></IconButton>
       </RowActions>
@@ -355,7 +354,7 @@ function MilestoneRow({ milestone, flash, onHover, onSave, onDelete }: {
     >
       <DateButton
         iso={milestone.date} className="plan-cell plan-date-button"
-        title={m.project.plan.editDate} onPick={(date) => { void onSave({ date }) }}
+        onPick={(date) => { void onSave({ date }) }}
       >
         <DateChip date={milestone.date} className="plan-date" />
       </DateButton>
@@ -371,7 +370,7 @@ function MilestoneRow({ milestone, flash, onHover, onSave, onDelete }: {
       />
       <RowActions>
         <IconButton
-          label={m.project.plan.deleteMilestoneFor(milestone.title)} title={m.project.plan.deleteMilestone} size="nested"
+          label={m.project.plan.deleteMilestoneFor(milestone.title)} size="nested"
           tone="danger" className="row-delete" onClick={onDelete}
         ><IconTrash /></IconButton>
       </RowActions>
@@ -454,7 +453,7 @@ export function ProjectPlan({
             />
             <AddAction
               variant="section" ref={addRef}
-              title={tab === 'ms' ? m.project.plan.addMilestone : m.project.plan.addTask}
+              label={tab === 'ms' ? m.project.plan.addMilestone : m.project.plan.addTask}
               onClick={() => (tab === 'ms' ? onStartMilestone(today) : onStartTask())}
             >{tab === 'ms' ? m.project.plan.milestoneMode : m.project.plan.taskMode}</AddAction>
           </>

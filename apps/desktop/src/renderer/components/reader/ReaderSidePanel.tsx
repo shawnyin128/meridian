@@ -6,6 +6,7 @@ import { ReadingNotes } from './ReadingNotes.js'
 import { ReadingRemark } from './ReadingRemark.js'
 import { PaperWikiIngest } from './PaperWikiIngest.js'
 import { ReaderPanelHeader } from './ReaderPanelHeader.js'
+import { Tooltip } from '../Tooltip.js'
 import '../DetailPanel.css'
 
 export type ReaderSideTab = 'metadata' | 'highlights' | 'notes' | 'remark' | 'wiki'
@@ -68,11 +69,12 @@ export function ReaderSidePanel({
         : null}
       <nav className="reader-rail" aria-label={m.reader.rail.label}>
         {TABS.map((key) => (
-          <button
-            key={key} title={m.reader.rail.tabs[key]} aria-label={m.reader.rail.tabs[key]}
-            className={tab === key ? 'on' : ''}
-            onClick={() => onTab(tab === key ? null : key)}
-          ><RailIcon tab={key} /></button>
+          <Tooltip key={key} label={m.reader.rail.tabs[key]} side="left">
+            <button
+              aria-label={m.reader.rail.tabs[key]} className={tab === key ? 'on' : ''}
+              onClick={() => onTab(tab === key ? null : key)}
+            ><RailIcon tab={key} /></button>
+          </Tooltip>
         ))}
       </nav>
     </aside>

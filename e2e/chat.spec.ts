@@ -56,7 +56,7 @@ async function say(win: Page, value: string): Promise<void> {
 
 /** Starts a new chat with the + on the sidebar's Chats heading. */
 async function newChat(win: Page): Promise<void> {
-  await win.locator('.sidebar .sb-add[title="新对话"]').click()
+  await win.locator('.sidebar .sb-add[aria-label="新对话"]').click()
   await shown(win, '#composer').waitFor()
 }
 

@@ -5,11 +5,9 @@ import { IconButton } from './IconButton.js'
 import { IconCross } from './icons.js'
 
 describe('IconButton', () => {
-  it('is named by its label, which is also its native tooltip unless a title is given', () => {
+  it('is named by its label, which the shared tooltip shows, and has no native title', () => {
     expect(renderToStaticMarkup(<IconButton label="收起详情"><IconCross /></IconButton>))
-      .toBe(`<button type="button" class="icbtn" aria-label="收起详情" title="收起详情">${renderToStaticMarkup(<IconCross />)}</button>`)
-    expect(renderToStaticMarkup(<IconButton label="管理想法「A」" title="更多"><IconCross /></IconButton>))
-      .toContain('aria-label="管理想法「A」" title="更多"')
+      .toBe(`<button type="button" class="icbtn" aria-label="收起详情" data-state="closed">${renderToStaticMarkup(<IconCross />)}</button>`)
   })
 
   it('takes one size class, a danger tone and the classes that place it', () => {

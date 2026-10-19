@@ -80,9 +80,7 @@ export function InlineField({
   if (!editing) {
     field = rest === undefined
       ? (
-        <button
-          type="button" className={buttonClassName} title={m.common.field.change(label)} onClick={edit}
-        >{(display ?? value) || empty}</button>
+        <button type="button" className={buttonClassName} onClick={edit}>{(display ?? value) || empty}</button>
       )
       : rest(edit)
   } else if (multiline) {

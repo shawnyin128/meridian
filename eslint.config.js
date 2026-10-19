@@ -32,6 +32,7 @@ const pageSurfaceBoundaries = [
       '@radix-ui/react-dialog',
       '@radix-ui/react-dropdown-menu',
       '@radix-ui/react-popover',
+      '@radix-ui/react-tooltip',
     ],
     message: '页面与应用外壳使用 components 下的共享模态、菜单或浮层组件，不直接重建 Radix 骨架',
   },
@@ -137,6 +138,7 @@ export default tseslint.config(
       'apps/desktop/src/renderer/components/ActionPopover.tsx',
       'apps/desktop/src/renderer/components/PickerPopover.tsx',
       'apps/desktop/src/renderer/components/ModalDialog.tsx',
+      'apps/desktop/src/renderer/components/Tooltip.tsx',
     ],
     rules: {
       'no-restricted-imports': forbid([

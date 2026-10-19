@@ -58,6 +58,7 @@ import { PickRow, type PickHit } from '../components/PickRow.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { StatusDot } from '../components/StatusDot.js'
 import { Tag } from '../components/Tag.js'
+import { Tooltip } from '../components/Tooltip.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import './shell.css'
@@ -69,10 +70,12 @@ export type RecordTab = 'tl' | 'concl' | 'graph'
 /**
  * The bound workspace's name as the button that changes the connection, after a dot that names the
  * connection's state: in words when the workspace cannot be reached, as its tooltip when it is connected.
+ * The name's tooltip is the workspace's `root`.
  */
-export function WorkspaceRoot({ state, name, onOpen }: {
+export function WorkspaceRoot({ state, name, root, onOpen }: {
   state: ProjectWorkspace['state']
   name: string
+  root: string
   onOpen: () => void
 }) {
   const m = useMessages()
@@ -81,7 +84,7 @@ export function WorkspaceRoot({ state, name, onOpen }: {
       <StatusDot
         tone={state === 'ready' ? 'good' : 'bad'} label={m.project.workspace.state[state]} labelHidden={state === 'ready'}
       />
-      <span className="workspace-name">{name}</span>
+      <Tooltip label={root} whenClipped={name === root}><span className="workspace-name">{name}</span></Tooltip>
     </button>
   )
 }
@@ -826,7 +829,9 @@ export function ProjectDetail({
                             )}
                           {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
                         </span>
-                        <span className="project-idea-source" title={source}>{m.project.idea.sourceTag(source)}</span>
+                        <Tooltip label={m.project.idea.sourceTag(source)} whenClipped>
+                          <span className="project-idea-source">{m.project.idea.sourceTag(source)}</span>
+                        </Tooltip>
                       </StructuredRow>
                     )
                   })}
@@ -933,7 +938,6 @@ export function ProjectDetail({
                         priority: (
                           <PriorityPicker
                             value={project.priority} className="pv metadata-editable"
-                            title={m.common.field.clickToEdit}
                             onPick={(priority) => applyWrite(
                               projectApi.update(projectId, { priority }), m.project.identity.priorityUpdated,
                             )}
@@ -980,7 +984,7 @@ export function ProjectDetail({
                     />
                     <div className="pk">{m.project.identity.startLabel}</div>
                     <DateButton
-                      iso={project.start} className="pv metadata-editable" title={m.common.field.clickToEdit}
+                      iso={project.start} className="pv metadata-editable"
                       onPick={(start) => {
                         if (dnum(start) > dnum(project.due)) {
                           notice.refusal(m.project.identity.startAfterDue)
@@ -991,7 +995,7 @@ export function ProjectDetail({
                     />
                     <div className="pk">{m.project.identity.dueLabel}</div>
                     <DateButton
-                      iso={project.due} className="pv metadata-editable" title={m.common.field.clickToEdit}
+                      iso={project.due} className="pv metadata-editable"
                       onPick={(due) => {
                         if (dnum(due) < dnum(project.start)) {
                           notice.refusal(m.project.identity.dueBeforeStart)
@@ -1001,7 +1005,7 @@ export function ProjectDetail({
                       }}
                     />
                     <div className="pk">{m.project.sections.papers}</div>
-                    <div className="pv" title={m.project.identity.paperCountHint}>
+                    <div className="pv">
                       {m.project.identity.paperCount(project.paperCount)}
                     </div>
                     <div className="pk">{m.project.identity.workspaceLabel}</div>
@@ -1012,10 +1016,10 @@ export function ProjectDetail({
                         </button>
                       )
                       : (
-                        <div className="pv workspace-field" data-row-actions="" title={project.workspace.issue ?? project.workspace.root}>
+                        <div className="pv workspace-field" data-row-actions="">
                           <WorkspaceRoot
                             state={project.workspace.state} name={workspaceName ?? project.workspace.root}
-                            onOpen={openWorkspace}
+                            root={project.workspace.root} onOpen={openWorkspace}
                           />
                           <RowActions>
                             <DotsMenu>
@@ -1041,7 +1045,7 @@ export function ProjectDetail({
                     actions={(
                       // The demo's relAdd guard: an open placeholder is only refocused, keeping what was typed.
                       <AddAction
-                        variant="section" ref={relAdd} title={m.project.links.addTitle}
+                        variant="section" ref={relAdd} label={m.project.links.addTitle}
                         onClick={() => {
                           if (relAdding) relRow.current?.querySelector('input')?.focus()
                           else setRelAdding(true)

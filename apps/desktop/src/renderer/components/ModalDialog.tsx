@@ -2,7 +2,9 @@ import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { ignoreComposingEscape } from '../lib/keyboard.js'
-import { PanelClose } from './PanelClose.js'
+import { useMessages } from '../messages/useMessages.js'
+import { IconButton } from './IconButton.js'
+import { IconCross } from './icons.js'
 import './ModalDialog.css'
 
 type ContentProps = Omit<Dialog.DialogContentProps,
@@ -22,6 +24,12 @@ export function ModalTitle({ className, children }: { className?: string; childr
   return <Dialog.Title className={`modal-title${className === undefined ? '' : ` ${className}`}`}>{children}</Dialog.Title>
 }
 
+/** The close control in a closable dialog's top-right corner. */
+function DialogClose({ onClose }: { onClose: () => void }) {
+  const m = useMessages()
+  return <IconButton label={m.common.dialog.close} className="modal-close" onClick={onClose}><IconCross /></IconButton>
+}
+
 /**
  * The app-wide modal skeleton without a trigger. It owns the overlay, the portal, the dialog surface
  * of `size` (centred, capped in height, stacked above whatever opened it), the accessibility
@@ -30,7 +38,7 @@ export function ModalTitle({ className, children }: { className?: string; childr
  * input method is composing does not close it. `title` heads the surface; a dialog that places its
  * title itself omits it and uses `ModalTitle` in `children`. `children` is the body, which scrolls
  * when it is taller than the window allows, and `actions` stay pinned below it. `closable` puts the
- * shared close control in the surface's top-right corner. `className` names the layout inside.
+ * dialog's close control in the surface's top-right corner. `className` names the layout inside.
  */
 export function ModalDialog({
   open, onOpenChange, size, title, actions, closable = false, className, overlayClassName = 'scrim', children,
@@ -106,7 +114,7 @@ export function ModalDialog({
             opener.current.focus()
           }}
         >
-          {closable ? <PanelClose onClose={() => onOpenChange(false)} className="modal-close" /> : null}
+          {closable ? <DialogClose onClose={() => onOpenChange(false)} /> : null}
           {title === undefined ? null : <ModalTitle>{title}</ModalTitle>}
           <div className="modal-body">{children}</div>
           {actions === undefined ? null : <div className="modal-actions">{actions}</div>}

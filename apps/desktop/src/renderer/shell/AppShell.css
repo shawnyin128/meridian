@@ -144,8 +144,3 @@
 /* In the Reader a collapsed paper chat leaves this slim edge; clicking it opens the chat again. */
 .paper-chat-edge{flex:0 0 12px;padding:0;border:0;border-right:1px solid var(--sep);background:var(--sidebar);cursor:pointer}
 .paper-chat-edge:hover{background-image:linear-gradient(var(--hover),var(--hover))}
-.griptip{position:fixed;background:var(--raised);border-radius:var(--r-lg);box-shadow:var(--sh-2);padding:8px 12px;font-size:var(--fs-sm);z-index:95;pointer-events:none;opacity:0;transition:opacity var(--t-fast) var(--e-out);white-space:nowrap}
-.griptip.show{opacity:1}
-.griptip .t1{font-weight:600;color:var(--ink);display:flex;gap:10px;align-items:baseline}
-.griptip .t1 .k{color:var(--ter);font-weight:400;font-family:var(--mono);font-size:var(--fs-sm)}
-.griptip .t2{color:var(--ter);font-size:var(--fs-sm);margin-top:1px}

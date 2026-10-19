@@ -89,14 +89,15 @@ describe('ModalDialog', () => {
     expect(surface.querySelector('.modal-actions')!.textContent).toBe('保存')
   })
 
-  it('puts the shared close control in the surface when closable, and it closes the dialog', () => {
+  it('puts a close control named Close, not a panel\'s Collapse details, in the surface when closable, and it closes the dialog', () => {
     const change = vi.fn()
     act(() => root!.render(
       <MessagesProvider>
         <ModalDialog open onOpenChange={change} size="wide" closable><ModalTitle>设置</ModalTitle></ModalDialog>
       </MessagesProvider>,
     ))
-    const close = document.querySelector<HTMLButtonElement>('[role="dialog"] > .panel-close.modal-close')!
+    const close = document.querySelector<HTMLButtonElement>('[role="dialog"] > .icbtn.modal-close')!
+    expect(close.getAttribute('aria-label')).toBe('Close')
     act(() => close.click())
     expect(change).toHaveBeenCalledExactlyOnceWith(false)
   })

@@ -393,9 +393,6 @@ export function ModelSettings() {
           ) : null}
           <button
             className="btn" disabled={!canTestConnection || saving || connectionCheck.state === 'testing'}
-            title={canTestConnection
-              ? m.settings.model.connection.cost
-              : m.settings.model.connection.saveFirst}
             onClick={() => { void testConnection() }}
           >
             {connectionCheck.state === 'testing'

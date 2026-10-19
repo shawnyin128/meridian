@@ -39,7 +39,7 @@ function ReviewGroup({ group }: { group: HarnessPaperWikiReviewGroup }) {
       {group.anchors.length === 0 ? null : (
         <div className="paper-wiki-review-anchors" aria-label={m.wiki.groundsLabel}>
           {group.anchors.map((anchor) => (
-            <span key={anchor} title={anchor}>{anchorLabel(anchor, m)}</span>
+            <span key={anchor}>{anchorLabel(anchor, m)}</span>
           ))}
         </div>
       )}

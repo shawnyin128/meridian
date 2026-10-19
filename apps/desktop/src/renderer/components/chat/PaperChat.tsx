@@ -4,6 +4,7 @@ import { chat, feed, idea as ideaApi } from '../../ipc.js'
 import {
   useNotice, usePaperChatCollapsed, usePaperChatGrip, useVaultRevision,
 } from '../../shell/AppShell.js'
+import { GripTooltip } from '../../shell/GripTooltip.js'
 import { sendsMessage } from '../../lib/chat.js'
 import { ChatMessageView, plain } from './ChatMessage.js'
 import { BackButton } from '../BackButton.js'
@@ -139,7 +140,6 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
           <div className="qacts">
             <button
               className="qa" disabled={session === null || !hasDiscussion}
-              title={hasDiscussion ? m.chat.saveIdea : m.chat.saveIdeaDisabled}
               onClick={() => setSavingIdea(true)}
             >{m.chat.saveIdeaLabel}</button>
           </div>
@@ -161,7 +161,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
           </div>
         </div>
       </div>
-      <div className="grip" id="rrgrip" {...grip} />
+      <GripTooltip><div className="grip" id="rrgrip" {...grip} /></GripTooltip>
       {session === null || paper === null ? null : (
         <IdeaEditorDialog
           open={savingIdea} sourceLabel={`${plainTitle(paper.title)} · ${plainTitle(session.title)}`}

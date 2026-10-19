@@ -157,8 +157,8 @@ describe('Ideas', () => {
     expect(linked.textContent).toContain('来源 · 摊薄的前提是共享前缀吗')
     expect(linked.textContent).toContain('9月17日 更新')
     expect(linked.getAttribute('role')).toBeNull()
-    expect([...linked.querySelectorAll('button')].map((item) => item.title || item.textContent))
-      .toEqual(['用可学习性信号动态分配 draft model 的蒸馏预算', '更多'])
+    expect([...linked.querySelectorAll('button')].map((item) => item.getAttribute('aria-label') ?? item.textContent))
+      .toEqual(['用可学习性信号动态分配 draft model 的蒸馏预算', '管理想法：用可学习性信号动态分配 draft model 的蒸馏预算'])
     expect(linked.querySelector('.research-object-card-open')!.textContent).toBe('用可学习性信号动态分配 draft model 的蒸馏预算')
 
     const independent = host.querySelector('[data-idea="idea-independent"]')!

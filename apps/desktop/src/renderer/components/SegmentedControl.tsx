@@ -5,7 +5,6 @@ import './SegmentedControl.css'
 export type SegmentedControlOption<Value extends string> = {
   value: Value
   label: ReactNode
-  title?: string
   disabled?: boolean
 }
 
@@ -43,7 +42,7 @@ export function SegmentedControl<Value extends string>({
       {picked < 0 ? null : <span className="segmented-thumb" aria-hidden="true" />}
       {options.map((option) => (
         <ToggleGroup.Item
-          key={option.value} value={option.value} title={option.title} disabled={option.disabled}
+          key={option.value} value={option.value} disabled={option.disabled}
         >
           {option.label}
         </ToggleGroup.Item>

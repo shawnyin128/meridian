@@ -2,12 +2,9 @@
 export const chat = {
   newChat: '新对话',
   saveIdeaLabel: '存为想法',
-  saveIdea: '整理并保存一条研究想法',
-  saveIdeaDisabled: '先进行一段讨论',
   mentionGroup: { project: '项目', paper: '论文', page: 'Wiki' },
   conflictQuestion: '为什么说这两条结论冲突？',
   quotePrefix: (quote: string) => `关于这段原文：“${quote}” `,
-  quickMentionTitle: (group: string, meta: string) => `引用${group}:${meta}`,
   composerPlaceholder: '问题或想法',
   mentionPickerHeading: '引用项目、论文或 Wiki',
   currentChat: '当前对话',

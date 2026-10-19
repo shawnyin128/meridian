@@ -328,7 +328,9 @@ describe('project idea panel', () => {
 describe('the workspace field', () => {
   const field = (state: 'ready' | 'missing' | 'invalid') => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
-    return renderToStaticMarkup(<MessagesProvider><WorkspaceRoot state={state} name="spec-decoding" onOpen={vi.fn()} /></MessagesProvider>)
+    return renderToStaticMarkup(
+      <MessagesProvider><WorkspaceRoot state={state} name="spec-decoding" root="/work/spec-decoding" onOpen={vi.fn()} /></MessagesProvider>,
+    )
   }
 
   it('names a workspace it cannot reach in words beside the red dot, so the state does not rest on colour alone', () => {
@@ -337,7 +339,7 @@ describe('the workspace field', () => {
   })
 
   it('keeps a connected workspace quiet: the green dot carries its state as its name and tooltip', () => {
-    expect(field('ready')).toContain('class="status-dot status-dot--sm status-dot--good" role="img" aria-label="已连接" title="已连接"')
+    expect(field('ready')).toContain('class="status-dot status-dot--sm status-dot--good" role="img" aria-label="已连接" data-state="closed"')
     expect(field('ready')).not.toContain('status-dot-label')
   })
 })

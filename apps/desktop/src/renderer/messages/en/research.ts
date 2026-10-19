@@ -25,8 +25,6 @@ export const research = {
     waitingForAgent: 'Waiting for an agent update',
     recentHeading: 'Recent progress',
     upcomingHeading: 'Upcoming milestones',
-    hideHistory: 'Hide finished and shelved projects',
-    showHistory: 'Show finished and shelved projects',
     historyProjects: 'History',
     milestonePopTitle: (isNew: boolean, date: string) => `${isNew ? 'New milestone' : 'Edit milestone'} · ${date}`,
     taskWindowMovedHours: (slots: number, hours: number) =>
@@ -71,6 +69,5 @@ export const research = {
     modeLabel: 'Schedule mode',
     startSlot: 'Start slot',
     endSlot: 'End slot',
-    editTime: 'Edit time',
   },
 } satisfies typeof zh

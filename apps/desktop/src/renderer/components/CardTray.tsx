@@ -1,6 +1,7 @@
 import { useId, useState } from 'react'
 import type { ReactNode } from 'react'
 import { IconChevron } from './icons.js'
+import { Tooltip } from './Tooltip.js'
 import './CardTray.css'
 
 /**
@@ -29,15 +30,17 @@ export function CardTray({
   return (
     <div className={`card-tray card-tray--${variant}${open ? ' is-open' : ''}${className ? ` ${className}` : ''}`}>
       <div className="card-tray-head">
-        <button
-          className="card-tray-toggle" type="button" aria-expanded={open}
-          aria-controls={detailId} aria-label={label} title={label}
-          onClick={() => setOpen((held) => !held)}
-        >
-          {variant === 'row' ? chevron : null}
-          <span className="card-tray-summary">{summary}</span>
-          {variant === 'row' ? null : chevron}
-        </button>
+        <Tooltip label={label}>
+          <button
+            className="card-tray-toggle" type="button" aria-expanded={open}
+            aria-controls={detailId} aria-label={label}
+            onClick={() => setOpen((held) => !held)}
+          >
+            {variant === 'row' ? chevron : null}
+            <span className="card-tray-summary">{summary}</span>
+            {variant === 'row' ? null : chevron}
+          </button>
+        </Tooltip>
         {action === undefined ? null : <div className="card-tray-action">{action}</div>}
       </div>
       <div className="card-tray-reveal" id={detailId} aria-hidden={!open}>

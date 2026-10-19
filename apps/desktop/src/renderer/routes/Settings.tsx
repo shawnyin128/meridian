@@ -35,6 +35,7 @@ import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { Tag } from '../components/Tag.js'
 import { Card } from '../components/Card.js'
+import { Tooltip } from '../components/Tooltip.js'
 import './shell.css'
 import './Settings.css'
 
@@ -289,7 +290,7 @@ export function Settings() {
                     <StructuredRow composite className="storage-backup-row" key={backup.id}>
                       <div className="storage-backup-copy">
                         <strong>{label}</strong>
-                        <span title={backup.path}>{backup.path}</span>
+                        <Tooltip label={backup.path} whenClipped><span>{backup.path}</span></Tooltip>
                       </div>
                       <div className="storage-backup-actions">
                         <button

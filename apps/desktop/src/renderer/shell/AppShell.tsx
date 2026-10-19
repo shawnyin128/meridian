@@ -11,7 +11,8 @@ import { IconButton } from '../components/IconButton.js'
 import { Notice, type NoticeAction, type NoticeContent, type NoticeTone } from '../components/Notice.js'
 import { PageFailure } from '../components/PageShell.js'
 import { ScreenBoundary } from '../components/ScreenBoundary.js'
-import { composing } from '../lib/keyboard.js'
+import { Tooltip } from '../components/Tooltip.js'
+import { commandShortcut, composing } from '../lib/keyboard.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import { Sidebar } from './Sidebar.js'
@@ -51,9 +52,6 @@ export type InboxMode = 'watch' | 'discovery'
 
 /** One project's share of the discovery stream, listed under Discovery in the sidebar. */
 export type DiscoveryProjectCount = { id: string; name: string; count: number }
-
-/** The demo's showGtip: the handle's tooltip appears after the pointer rests on it this many ms. */
-const GRIPTIP_DELAY = 350
 
 /** A screen's additions to its base breadcrumbs: deeper segments and the last base segment's back action. */
 type Deeper = { tail: CrumbSeg[]; onLeafClick: (() => void) | null }
@@ -116,11 +114,9 @@ const SettingsContext = createContext<{
   setOpen: (open: boolean) => void
   openCategory: (category: SettingsCategory) => void
 } | null>(null)
-/** The mouse handlers of a resize grip: dragging, click-to-collapse and the hover tooltip are the shell's. */
+/** The mouse handler of a resize grip: dragging and click-to-collapse are the shell's. */
 type GripHandlers = {
   onMouseDown: (e: ReactMouseEvent) => void
-  onMouseEnter: (e: ReactMouseEvent) => void
-  onMouseLeave: () => void
 }
 const PaperChatGripContext = createContext<{ grip: GripHandlers; collapsed: boolean } | null>(null)
 
@@ -295,8 +291,8 @@ export function useChatSession(): {
 
 /**
  * Returns the handlers for the grip on the Reader paper chat's edge, which must be a direct child of
- * the chat: dragging it resizes the chat, a click collapses it, and hovering it shows the tooltip.
- * The returned object keeps its reference throughout the lifetime of the shell.
+ * the chat: dragging it resizes the chat and a click collapses it. The returned object keeps its
+ * reference throughout the lifetime of the shell.
  */
 export function usePaperChatGrip(): GripHandlers {
   const state = useContext(PaperChatGripContext)
@@ -375,8 +371,6 @@ export function AppShell({ screens, settings }: {
   const [bootError, setBootError] = useState<string | null>(null)
   const [notice, setNotice] = useState<NoticeContent | null>(null)
   const noticeSeq = useRef(0)
-  const [griptip, setGriptip] = useState<{ top: number; left: number } | null>(null)
-  const griptipTimer = useRef(0)
   const jumpSeq = useRef(0)
   /** Focus before the app menu opened, restored on close; when null, Radix returns focus to the logo button. */
   const appMenuOpener = useRef<HTMLElement | null>(null)
@@ -521,26 +515,8 @@ export function AppShell({ screens, settings }: {
     }
   }, [])
 
-  const hideGriptip = useCallback(() => {
-    window.clearTimeout(griptipTimer.current)
-    setGriptip(null)
-  }, [])
-
-  const gripEnter = useCallback((e: ReactMouseEvent) => {
-    const r = e.currentTarget.getBoundingClientRect()
-    window.clearTimeout(griptipTimer.current)
-    griptipTimer.current = window.setTimeout(() => setGriptip({
-      top: Math.max(8, Math.min(window.innerHeight - 64, r.top + r.height / 2 - 20)),
-      left: r.right + 10,
-    }), GRIPTIP_DELAY)
-  }, [])
-
-  const gripOf = useCallback((startDrag: (e: ReactMouseEvent) => void): GripHandlers => ({
-    onMouseDown: (e) => { startDrag(e); hideGriptip() },
-    onMouseEnter: gripEnter,
-    onMouseLeave: hideGriptip,
-  }), [gripEnter, hideGriptip])
-  const paperChatGrip = useMemo(() => gripOf(dragPaperChat), [gripOf, dragPaperChat])
+  const sidebarGrip = useMemo((): GripHandlers => ({ onMouseDown: dragSidebar }), [dragSidebar])
+  const paperChatGrip = useMemo((): GripHandlers => ({ onMouseDown: dragPaperChat }), [dragPaperChat])
   const paperChat = useMemo(() => ({ grip: paperChatGrip, collapsed: hidden }), [paperChatGrip, hidden])
 
   const goTo = useCallback((next: ScreenKey) => {
@@ -649,7 +625,10 @@ export function AppShell({ screens, settings }: {
           appMenu.toggleMaximize()
         }}
       >
-        <IconButton label={m.shell.sidebar.toggle} size="nested" className="tbtn" id="sbBtn" onClick={() => setHidden((h) => !h)}>
+        <IconButton
+          label={m.shell.sidebar.toggle} shortcut={commandShortcut(appMenu.platform(), 'B')} size="nested"
+          className="tbtn" id="sbBtn" onClick={() => setHidden((h) => !h)}
+        >
           <svg
             viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
             strokeLinecap="round" strokeLinejoin="round"
@@ -693,7 +672,7 @@ export function AppShell({ screens, settings }: {
           }}
         >
           <MenuItem onSelect={() => { wantDialog.current = 'settings' }}>
-            {m.shell.titlebar.settings}<span className="mi-key">{appMenu.platform() === 'darwin' ? '⌘,' : 'Ctrl+,'}</span>
+            {m.shell.titlebar.settings}<span className="mi-key">{commandShortcut(appMenu.platform(), ',')}</span>
           </MenuItem>
           <MenuItem onSelect={() => {
             void appUpdates.check()
@@ -736,10 +715,12 @@ export function AppShell({ screens, settings }: {
           laterCount={laterCount}
           chats={chats} chatId={screen === 'chat' ? chatId : null} onOpenChat={openChat}
           onNewChat={newChat} onArchiveChat={archiveChat}
-          grip={gripOf(dragSidebar)} collapsed={hidden}
+          grip={sidebarGrip} collapsed={hidden}
         />
         {screen === 'reader' && hidden ? (
-          <button className="paper-chat-edge" title={m.chat.expandPaperChat} onClick={() => setHidden(false)} />
+          <Tooltip label={m.chat.expandPaperChat} shortcut={commandShortcut(appMenu.platform(), 'B')} side="right">
+            <button className="paper-chat-edge" aria-label={m.chat.expandPaperChat} onClick={() => setHidden(false)} />
+          </Tooltip>
         ) : null}
         <NoticeContext.Provider value={notify}>
           <JobsContext.Provider value={jobsStatus}>
@@ -795,14 +776,6 @@ export function AppShell({ screens, settings }: {
         <Notice notice={notice} />
       </div>
 
-      {/* The demo's griptip: the tooltip shown after hovering the handle, parked off screen while hidden. */}
-      <div
-        className={griptip ? 'griptip show' : 'griptip'} id="griptip"
-        style={{ top: griptip?.top ?? 0, left: griptip?.left ?? -9999 }}
-      >
-        <div className="t1">{m.shell.sidebar.collapseHint}<span className="k">Ctrl+B</span></div>
-        <div className="t2">{m.shell.sidebar.dragHint}</div>
-      </div>
     </>
   )
 }

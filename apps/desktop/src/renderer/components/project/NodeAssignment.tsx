@@ -43,10 +43,7 @@ export function NodeAssignment({ node, nodes, canUnlink, create, onOpen, onSet }
         ? <EmptyState variant="section">{m.project.plan.noNode}</EmptyState>
         : (
           <div className="node-assignment">
-            <EntityLink
-              kind="node" label={node.label} mode={node.mode} title={m.project.records.goToGraph(node.label)}
-              onOpen={() => onOpen(node.id)}
-            />
+            <EntityLink kind="node" label={node.label} mode={node.mode} onOpen={() => onOpen(node.id)} />
           </div>
         )}
     </>

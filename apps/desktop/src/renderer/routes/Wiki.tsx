@@ -40,6 +40,7 @@ import { SourceAnchor } from '../components/SourceAnchor.js'
 import { Tag, TagButton } from '../components/Tag.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
 import { RowActions } from '../components/StructuredList.js'
+import { Tooltip } from '../components/Tooltip.js'
 import './shell.css'
 import './Wiki.css'
 
@@ -66,7 +67,7 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
   const fmt = useFormat()
   const m = useMessages()
   return (
-    <ResearchObjectCard variant="grid" className="wkcard" data-wk={card.id} title={card.summary} onActivate={onOpen}>
+    <ResearchObjectCard variant="grid" className="wkcard" data-wk={card.id} onActivate={onOpen}>
       <div className="wt">
         <Tag tone="wiki" className="wkind">{card.kindLabel}</Tag>
         <CardOpen className="tt">{card.title}</CardOpen>
@@ -99,13 +100,13 @@ function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
   const line = [`${paper.year ?? ''} ${paper.venue}`.trim(), paper.topics.join(' / ')]
     .filter((part) => part !== '').join(' · ')
   return (
-    <ResearchObjectCard
-      variant="grid" className="wkcard" data-wk={`${PAPER_PAGE}${paper.id}`} title={plainTitle(paper.title)}
-      onActivate={onOpen}
-    >
+    <ResearchObjectCard variant="grid" className="wkcard" data-wk={`${PAPER_PAGE}${paper.id}`} onActivate={onOpen}>
       <div className="wt">
         <Tag tone="paper" className="wkind">{m.wiki.paperKind}</Tag>
-        <CardOpen className="tt"><PaperText text={paper.title} /></CardOpen><span className="sp" />
+        <Tooltip label={plainTitle(paper.title)} whenClipped>
+          <CardOpen className="tt"><PaperText text={paper.title} /></CardOpen>
+        </Tooltip>
+        <span className="sp" />
       </div>
       <div className="wm">{line}</div>
       <div className="wf">{m.wiki.paperCardFooter(paper.noteCount, paper.conclusionCount)}</div>
@@ -182,10 +183,11 @@ function Table({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: {
                 return (
                   <td className="dv" key={d.key}>
                     {links.length === 0 ? '—' : links.map((l) => (
-                      <TagButton
-                        shape="chip" className="tagchip" data-wk={l.id} key={l.id} title={l.fullTitle}
-                        onClick={() => onOpen(l.id)}
-                      >{l.title}</TagButton>
+                      <Tooltip key={l.id} label={l.fullTitle}>
+                        <TagButton shape="chip" className="tagchip" data-wk={l.id} onClick={() => onOpen(l.id)}>
+                          {l.title}
+                        </TagButton>
+                      </Tooltip>
                     ))}
                   </td>
                 )
@@ -634,7 +636,7 @@ export function Wiki() {
                   actions={(
                     <AddAction
                       variant="section" ref={childBtn} disabled={pending}
-                      title={m.wiki.addKind(shownAgg.kindLabel)} onClick={() => open('child')}
+                      label={m.wiki.addKind(shownAgg.kindLabel)} onClick={() => open('child')}
                     >{shownAgg.kindLabel}</AddAction>
                   )}
                 >{m.wiki.subdivisionsHeading(shownAgg.kindLabel)}
@@ -671,7 +673,7 @@ export function Wiki() {
                   actions={(
                     <AddAction
                       variant="section" ref={paperBtn} disabled={pending}
-                      title={m.wiki.addPaperTitle} onClick={() => open('paper')}
+                      label={m.wiki.addPaperTitle} onClick={() => open('paper')}
                     >{m.wiki.paperKind}</AddAction>
                   )}
                 >{m.wiki.paperComparisonHeading}
@@ -702,7 +704,7 @@ export function Wiki() {
                           {/* If the placeholder column is already open, only refocus it, keeping the half-typed name. */}
                           <AddAction
                             variant="icon" className="colbtn" ref={colAdd} disabled={pending}
-                            title={m.wiki.aggregation.addColumn}
+                            label={m.wiki.aggregation.addColumn}
                             onClick={() => {
                               if (newCol) { newColCell.current?.querySelector('input')?.focus(); return }
                               setAdding(null)
@@ -809,10 +811,11 @@ export function Wiki() {
                     <div className="wkrel">
                       <span className="rl">{m.wiki.belongsTo}</span>
                       {shownAgg.parents.map((p) => (
-                        <TagButton
-                          shape="chip" className="tagchip" data-wk={p.id} key={p.id} title={p.fullTitle}
-                          onClick={() => go(p.id)}
-                        >{p.title}</TagButton>
+                        <Tooltip key={p.id} label={p.fullTitle}>
+                          <TagButton shape="chip" className="tagchip" data-wk={p.id} onClick={() => go(p.id)}>
+                            {p.title}
+                          </TagButton>
+                        </Tooltip>
                       ))}
                     </div>
                   )
@@ -821,10 +824,11 @@ export function Wiki() {
                   <div className="wkrel" key={r.label}>
                     <span className="rl">{r.label}</span>
                     {r.links.map((l) => (
-                      <TagButton
-                        shape="chip" className="tagchip" data-wk={l.id} key={l.id} title={l.fullTitle}
-                        onClick={() => go(l.id)}
-                      >{l.title}</TagButton>
+                      <Tooltip key={l.id} label={l.fullTitle}>
+                        <TagButton shape="chip" className="tagchip" data-wk={l.id} onClick={() => go(l.id)}>
+                          {l.title}
+                        </TagButton>
+                      </Tooltip>
                     ))}
                   </div>
                 ))}

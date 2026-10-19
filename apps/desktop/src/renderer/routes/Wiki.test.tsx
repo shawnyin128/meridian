@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { WikiAggregation, WikiAggregationCard, WikiHome, WikiPaper } from '../../shared/contract.js'
 import { IconTrash } from '../components/icons.js'
+import { TOOLTIP_DELAY } from '../components/Tooltip.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
@@ -187,6 +188,25 @@ describe('Wiki keyboard reach', () => {
     expect(fixture.open).toHaveBeenCalledWith('papers', 'EAGLE-2')
   })
 
+  it('比较表格子里的锚点能用 Tab 停上去，悬停或聚焦都在共享 tooltip 里显示原文', async () => {
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    const anchor = host.querySelector<HTMLElement>('.cmp .anc')!
+    expect([anchor.tabIndex, anchor.textContent]).toEqual([0, 'W4p3'])
+    act(() => {
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
+      anchor.focus()
+    })
+    expect(document.querySelector('[role="tooltip"]')?.textContent).toBe('“four bits”')
+    act(() => anchor.blur())
+    expect(document.querySelector('[role="tooltip"]')).toBeNull()
+    vi.useFakeTimers()
+    act(() => { anchor.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
+    act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+    vi.useRealTimers()
+    expect(document.querySelector('[role="tooltip"]')?.textContent).toBe('“four bits”')
+    expect(document.querySelector('#wktip')).toBeNull()
+  })
+
   it('opens a paper page membership from a button', async () => {
     await press(host.querySelector<HTMLElement>('[data-wk="papers/p1"] .tt')!)
     expect(fixture.paper).toHaveBeenCalledWith('papers/p1')
@@ -199,7 +219,7 @@ describe('Wiki keyboard reach', () => {
   it('列设置里删除一列的是共享的图标按钮，图标有尺寸，不再是一个空方块', async () => {
     vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
-    await press(host.querySelector<HTMLElement>('.cmp thead [title="列设置"]')!)
+    await press(host.querySelector<HTMLElement>('.cmp thead [aria-label="列设置"]')!)
     const remove = document.querySelector<HTMLButtonElement>('.coledit .row button')!
     expect([remove.className, remove.getAttribute('aria-label')]).toEqual(['icbtn sm danger', '删除列'])
     expect(remove.querySelector('svg')!.outerHTML).toBe(renderToStaticMarkup(<IconTrash />))

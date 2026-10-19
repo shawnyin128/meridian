@@ -25,7 +25,7 @@ async function gotoReader(win: Page): Promise<void> {
   await win.locator('#libq').fill(READABLE)
   await expect(win.locator('.ptable tbody tr')).toHaveCount(1)
   await win.locator('.ptable tbody tr').click()
-  await shown(win, '.pdetail [title="开始阅读"]').click()
+  await shown(win, '.pdetail [aria-label="开始阅读"]').click()
   await shown(win, '.pdfpagebox').first().waitFor()
 }
 

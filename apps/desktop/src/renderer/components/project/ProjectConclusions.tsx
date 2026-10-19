@@ -14,6 +14,7 @@ import { SectionHeading } from '../PageShell.js'
 import { PanelClose } from '../PanelClose.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Tooltip } from '../Tooltip.js'
 import { WikiFormDialog, WikiFormField } from '../wiki/WikiFormDialog.js'
 import { EntityLink } from '../EntityLink.js'
 import { ProjectSignalDate, ProjectSignalKind } from './ProjectSignals.js'
@@ -50,10 +51,12 @@ export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
       <span className="record-node">
         {node === undefined ? null : <EntityLink kind="node" label={node.label} mode={node.mode} fill />}
       </span>
-      <span className="attn-text record-text" title={`${conclusion.text} · ${wikiState}`}>
-        <FadeText className="record-line">
-          {conclusion.text}<span className="record-detail"> · {wikiState}</span>
-        </FadeText>
+      <span className="attn-text record-text">
+        <Tooltip label={`${conclusion.text} · ${wikiState}`} whenClipped>
+          <FadeText className="record-line">
+            {conclusion.text}<span className="record-detail"> · {wikiState}</span>
+          </FadeText>
+        </Tooltip>
       </span>
       <span className="record-who">{conclusion.node === undefined ? null : <AgentLabel />}</span>
     </StructuredRow>
@@ -123,9 +126,7 @@ export function ProjectConclusionPanel({
               ? <button className="btn ghost sm" onClick={() => onUnverify(conclusion.node!)}>{c.unverify}</button>
               : null}
             <button
-              className="btn ghost sm" disabled={conclusion.state !== 'verified'}
-              title={conclusion.state === 'verified' ? undefined : c.verifyFirst}
-              onClick={() => setWriting(true)}
+              className="btn ghost sm" disabled={conclusion.state !== 'verified'} onClick={() => setWriting(true)}
             >{c.write}</button>
             <PanelClose onClose={onClose} />
           </>
@@ -164,10 +165,7 @@ export function ProjectConclusionPanel({
               ? null
               : (
                 <div className="conclusion-detail-node">
-                  <EntityLink
-                    kind="node" label={node.label} mode={node.mode} title={m.project.records.goToGraph(node.label)}
-                    onOpen={() => onOpenNode(conclusion.node!)}
-                  />
+                  <EntityLink kind="node" label={node.label} mode={node.mode} onOpen={() => onOpenNode(conclusion.node!)} />
                 </div>
               )}
             <SectionHeading variant="rail">{c.experiments(conclusion.experiments.length)}</SectionHeading>

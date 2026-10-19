@@ -57,7 +57,7 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
     <>
       <SectionHeading
         variant="group"
-        actions={<AddAction variant="section" ref={add} title={m.watches.add(m.shell.watchKind[type])} onClick={onOpen}>{m.shell.watchKind[type]}</AddAction>}
+        actions={<AddAction variant="section" ref={add} label={m.watches.add(m.shell.watchKind[type])} onClick={onOpen}>{m.shell.watchKind[type]}</AddAction>}
       >{m.shell.watchKind[type]}
       </SectionHeading>
       {watches === null
@@ -79,12 +79,8 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
                 <StructuredRow className="wrow" data-w={w.id} key={w.id}>
                   <span className="nm">{w.name}</span>
                   {w.type !== 'author' ? null : w.identity === undefined
-                    ? <Tag tone="warn" title={m.watches.identityUnknown}>{m.watches.identityUnconfirmed}</Tag>
-                    : (
-                      <span className="author-id-state" title={w.identity.affiliations.join(' · ') || m.watches.identityUnknown}>
-                        {w.identity.affiliations[0] || m.watches.identityUnconfirmed}
-                      </span>
-                    )}
+                    ? <Tag tone="warn">{m.watches.identityUnconfirmed}</Tag>
+                    : <span className="author-id-state">{w.identity.affiliations[0] || m.watches.identityUnconfirmed}</span>}
                   {w.active ? null : <Tag className="watch-paused">{m.watches.paused}</Tag>}
                   <Switch label={w.name} checked={w.active} onChange={() => onSetActive(w)} />
                   <RowActions>

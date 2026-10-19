@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test'
 import { PAPER_PAGE } from '../apps/desktop/src/shared/vocabulary.js'
-import { dshort, expect, test, type MeridianWindow } from './app.js'
+import { dshort, expect, parkPointer, test, type MeridianWindow } from './app.js'
 
 /** Visited screens stay mounted, so selectors every screen has, like the header, target the shown one. */
 const shown = (win: Page) => win.locator('.screenslot:not([hidden])')
@@ -156,10 +156,15 @@ test('对照表的行是成员论文,格子按契约的列排,悬停看原文;�
       return cell === undefined ? '—' : `${cell.value} p.${cell.page}`
     }),
   )
-  // Hovering a cell's anchor shows the source text it quotes.
+  // Hovering a cell's anchor, or focusing it, shows the source text it quotes in the shared tooltip.
   const filled = agg.columns.find((c) => first.cells[c.key] !== undefined)!
-  await table.locator('tbody tr').first().locator('.source-anchor').first().hover()
-  await expect(win.locator('.source-anchor-quote')).toContainText(first.cells[filled.key]!.quote)
+  const anchor = table.locator('tbody tr').first().locator('.source-anchor').first()
+  await anchor.hover()
+  await expect(win.locator('[role="tooltip"]')).toContainText(first.cells[filled.key]!.quote)
+  await parkPointer(win)
+  await win.keyboard.press('Shift')
+  await anchor.focus()
+  await expect(win.locator('[role="tooltip"]')).toContainText(first.cells[filled.key]!.quote)
 
   // An [[id]] link without an alias in the body shows that page's display name.
   expect(await shown(win).locator('.wkmain .md .entity-link--page').allTextContents()).toContain('GPTQ')
@@ -407,7 +412,7 @@ test('论文对比:加一篇论文,拿掉;改列——改名生效,删有格子�
   const n = agg.rows.length
 
   // Clicking + adds a row at the end of the table body: its header cell is the input, the other cells dashes.
-  await shown(win).locator('.wkmain .section-heading', { hasText: '论文对比' }).locator('[title="添加论文"]').click()
+  await shown(win).locator('.wkmain .section-heading', { hasText: '论文对比' }).locator('[aria-label="添加论文"]').click()
   await expect(rows).toHaveCount(n + 1)
   await expect(rows.last()).toHaveClass(/\bnewrow\b/)
   expect(await rows.last().locator('td:not(.rh):not(.rx)').allTextContents()).toEqual(agg.columns.map(() => '—'))
@@ -431,7 +436,7 @@ test('论文对比:加一篇论文,拿掉;改列——改名生效,删有格子�
   await expect(rows).toHaveCount(n)
 
   await shown(win).locator('table.cmp thead').hover()
-  await shown(win).locator('table.cmp thead [title="列设置"]').click()
+  await shown(win).locator('table.cmp thead [aria-label="列设置"]').click()
   const editor = win.locator('[data-radix-popper-content-wrapper] .coledit')
   // The gear has no label, so the opened editor must say what it changes.
   await expect(editor.locator('.ch')).toHaveText('列设置')
@@ -442,7 +447,7 @@ test('论文对比:加一篇论文,拿掉;改列——改名生效,删有格子�
   // The first column has cells filled for member papers: Core rejects deleting it, the header stays, and
   // the editor stays open.
   await shown(win).locator('table.cmp thead').hover()
-  await shown(win).locator('table.cmp thead [title="列设置"]').click()
+  await shown(win).locator('table.cmp thead [aria-label="列设置"]').click()
   await editor.locator('.row .icbtn').first().click()
   await editor.locator('.btn.pri').click()
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toContainText('不在新的列里')
@@ -532,7 +537,7 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
   const before = await heads()
 
   await table.locator('thead').hover()
-  await table.locator('thead [title="新增列"]').click()
+  await table.locator('thead [aria-label="新增列"]').click()
   await expect(table.locator('thead th.th-new')).toHaveCount(1)
   // The placeholder column adds a blank cell to each body row too, or the body's cells would not line up.
   expect(await table.locator('tbody tr').first().locator('td').count())
@@ -546,7 +551,7 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
 
   // Renaming and deleting go through the gear's Column settings, the same as for other columns.
   await table.locator('thead').hover()
-  await table.locator('thead [title="列设置"]').click()
+  await table.locator('thead [aria-label="列设置"]').click()
   const editor = win.locator('[data-radix-popper-content-wrapper] .coledit')
   // The editor has a row per column but none for the Paper heading; before includes Paper but not the new
   // column, so the two counts are exactly equal.
@@ -557,7 +562,7 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
 
   // A column name that duplicates an existing one is not submitted: the placeholder and typed text stay.
   await table.locator('thead').hover()
-  await table.locator('thead [title="新增列"]').click()
+  await table.locator('thead [aria-label="新增列"]').click()
   await table.locator('thead th.th-new input').fill('新列 2')
   await table.locator('thead th.th-new input').press('Enter')
   await expect(table.locator('thead th.th-new')).toHaveCount(1)
@@ -570,7 +575,7 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
 
   // Open the placeholder again and press Esc. The number of columns remains unchanged.
   await table.locator('thead').hover()
-  await table.locator('thead [title="新增列"]').click()
+  await table.locator('thead [aria-label="新增列"]').click()
   await table.locator('thead th.th-new input').press('Escape')
   await expect(table.locator('thead th.th-new')).toHaveCount(0)
   await expect.poll(heads).toEqual([...before, '新列 2'])
@@ -578,10 +583,10 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
   // Pressing Paper comparison's + from the keyboard sends no pointerdown, so the placeholder column cannot
   // rely on an outside click to close; the two placeholders must still never be open at once.
   await table.locator('thead').hover()
-  await table.locator('thead [title="新增列"]').click()
+  await table.locator('thead [aria-label="新增列"]').click()
   await expect(table.locator('thead th.th-new')).toHaveCount(1)
   await shown(win).locator('.wkmain .section-heading', { hasText: '论文对比' })
-    .locator('[title="添加论文"]').press('Enter')
+    .locator('[aria-label="添加论文"]').press('Enter')
   await expect(table.locator('tbody tr.newrow')).toHaveCount(1)
   await expect(table.locator('thead th.th-new')).toHaveCount(0)
   // The number of cells in the placeholder row is consistent with the real row

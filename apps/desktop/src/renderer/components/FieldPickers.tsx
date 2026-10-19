@@ -14,16 +14,15 @@ import './FieldPickers.css'
 const PRIORITIES: Task['priority'][] = ['p0', 'p1', 'p2']
 
 /**
- * The one overflow-menu trigger. The tooltip is always the shared "more actions" label; `label`
- * adds the screen-reader name for rows that need to say which object the menu belongs to.
- * `stopRowActivation` keeps the click off a clickable row or card underneath. It goes in its row's
- * `RowActions` slot, which shows it.
+ * The one overflow-menu trigger, named and tooltipped by `label`, which says which object the menu
+ * belongs to, or by the shared "more actions" label without one. `stopRowActivation` keeps the click
+ * off a clickable row or card underneath. It goes in its row's `RowActions` slot, which shows it.
  */
 export function DotsMenu({
   children, label, stopRowActivation = false, open, onOpenChange, contentClassName,
 }: {
   children: ReactNode
-  /** The screen-reader name, e.g. naming which idea or chat the menu manages. Falls back to the bare tooltip when omitted. */
+  /** The name, e.g. naming which idea or chat the menu manages. Falls back to the shared "more actions" label when omitted. */
   label?: string
   /** Pass true when the row or card itself is clickable, so the trigger swallows the click instead of bubbling it. */
   stopRowActivation?: boolean
@@ -40,7 +39,7 @@ export function DotsMenu({
       stopContentClickPropagation
       trigger={(
         <IconButton
-          label={label ?? m.common.menu.more} title={m.common.menu.more} size="nested" className="dots"
+          label={label ?? m.common.menu.more} size="nested" className="dots"
           onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
         ><IconDots /></IconButton>
       )}
@@ -71,7 +70,6 @@ export function ChoicePicker<T extends string>({
   stopRowActivation?: boolean
   children?: ReactNode
 }) {
-  const m = useMessages()
   const picked = options.includes(value) ? label(value) : placeholder
   const trigger = appearance === 'field'
     ? (
@@ -84,7 +82,7 @@ export function ChoicePicker<T extends string>({
     )
     : (
       <button
-        className={className ?? 'pv metadata-editable'} title={m.common.field.clickToEdit} aria-label={ariaLabel}
+        className={className ?? 'pv metadata-editable'} aria-label={ariaLabel}
         disabled={disabled} onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
       >{children ?? label(value)}</button>
     )
@@ -105,10 +103,9 @@ export function ChoicePicker<T extends string>({
 }
 
 /** Priority picker shared by plan rows and project metadata. */
-export function PriorityPicker({ value, className, title, onPick, children, stopRowActivation = false }: {
+export function PriorityPicker({ value, className, onPick, children, stopRowActivation = false }: {
   value: Task['priority']
   className: string
-  title: string
   onPick: (next: Task['priority']) => void
   children: ReactNode
   /** Pass true when the row or card itself is clickable, so the trigger swallows the click instead of bubbling it. */
@@ -120,10 +117,9 @@ export function PriorityPicker({ value, className, title, onPick, children, stop
     <ActionMenu
       align="start"
       trigger={(
-        <button
-          className={className} title={title}
-          onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
-        >{children}</button>
+        <button className={className} onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}>
+          {children}
+        </button>
       )}
     >
       <MenuRadioGroup value={value}>
@@ -179,10 +175,9 @@ function Calendar({ selected, onPick }: { selected: string; onPick: (iso: string
 }
 
 /** Shared calendar trigger. Consumers control only the trigger presentation and selected ISO date. */
-export function DateButton({ iso, className, title, onPick, children }: {
+export function DateButton({ iso, className, onPick, children }: {
   iso: string
   className: string
-  title: string
   onPick: (next: string) => void
   children?: ReactNode
 }) {
@@ -190,7 +185,7 @@ export function DateButton({ iso, className, title, onPick, children }: {
   return (
     <ActionPopover
       align="start"
-      trigger={<button className={className} title={title}>{children ?? fmt.date(iso)}</button>}
+      trigger={<button className={className}>{children ?? fmt.date(iso)}</button>}
     >
       <Calendar selected={iso} onPick={onPick} />
     </ActionPopover>

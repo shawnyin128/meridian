@@ -63,7 +63,7 @@ const ganttDayWidth = (win: Page): Promise<number> => win.locator('.gantt .gdate
 async function revealMilestone(win: Page, dataMilestone: string) {
   const diamond = win.locator(`.gantt .gddl[data-milestone="${dataMilestone}"]`)
   for (let step = 0; step < 3 && await diamond.count() === 0; step += 1) {
-    await win.locator('.gantt .gperiodnav button[title="下一个周期"]').click()
+    await win.locator('.gantt .gperiodnav button[aria-label="下一个周期"]').click()
   }
   await expect(diamond).toBeVisible()
   return diamond
@@ -732,7 +732,7 @@ test('节点阅读态保留科研图并扩宽右栏,可直接切换节点', asyn
   await expect(side.locator('.node-document-title')).toHaveText('draft 提前停止策略')
   await expect(page.locator('.rgraph .rgn[data-node="stop"]')).toHaveClass(/\bsel\b/)
 
-  await side.locator('button[title="收起详情"]').click()
+  await side.locator('button[aria-label="收起详情"]').click()
   await expect(page).not.toHaveClass(/\bnode-reading\b/)
   await expect(side.locator('.section-heading').first()).toHaveText('属性')
 })
@@ -827,7 +827,7 @@ test('新任务行开着且打了字时按侧栏会话的「...」:任务照样�
 test('科研计划:新建任务那一行和已有行同一套样子,日期不折行、输入框没有边框', async ({ win }) => {
   await gotoProject(win)
   const plan = win.locator('.screenslot:not([hidden]) .project-plan')
-  await plan.locator('[title="添加任务"]').first().click()
+  await plan.locator('[aria-label="添加任务"]').first().click()
   const draft = plan.locator('.task-create-row')
   await expect(draft).toHaveCount(1)
 
@@ -883,7 +883,7 @@ test('关联:可以加一个链接并给它起显示名,点 chip 交给系统浏
   const side = win.locator('.screenslot:not([hidden]) .wkside')
   const linkRow = side.locator('.wkrel').filter({ has: win.locator('.rl', { hasText: '链接' }) })
 
-  await side.locator('[title="添加关联"]').click()
+  await side.locator('[aria-label="添加关联"]').click()
   await side.locator('.wkrel .segmented-control>button', { hasText: '链接' }).click()
   const fields = linkRow.locator('.urldraft input')
   await expect(fields).toHaveCount(2)
@@ -933,7 +933,7 @@ test('关联:占位 chip 长在它将来待的那一组行首,切组跟着搬', 
   const paperRow = group('论文')
   const pageChips = await pageRow.locator('.tagchip').count()
 
-  await side.locator('[title="添加关联"]').click()
+  await side.locator('[aria-label="添加关联"]').click()
   await expect(pageRow.locator('.inedit')).toHaveCount(1)
   await expect(pageRow.locator('.tagchip')).toHaveCount(pageChips)
   // A new link lands first in its group, so the placeholder opens right after the group name.
@@ -963,13 +963,13 @@ test('关联:占位 chip 长在它将来待的那一组行首,切组跟着搬', 
   await expect(pageRow.locator('.tagchip').first()).toContainText('端到端关联')
 
   // Esc removes the placeholder, the number of chips in both groups remains unchanged.
-  await side.locator('[title="添加关联"]').click()
+  await side.locator('[aria-label="添加关联"]').click()
   await side.locator('.wkrel .inedit').press('Escape')
   await expect(side.locator('.wkrel .inedit')).toHaveCount(0)
   await expect(pageRow.locator('.tagchip')).toHaveCount(pageChips + 1)
 
   // Click outside the placeholder and remove it
-  await side.locator('[title="添加关联"]').click()
+  await side.locator('[aria-label="添加关联"]').click()
   await expect(side.locator('.wkrel .inedit')).toHaveCount(1)
   await win.locator('.screenslot:not([hidden]) .memo').click()
   await expect(side.locator('.wkrel .inedit')).toHaveCount(0)
@@ -979,7 +979,7 @@ test('关联:占位 chip 长在它将来待的那一组行首,切组跟着搬', 
 test('关联论文的候选行按标题任意一段命中,显示的是完整标题不是缩短过的', async ({ win }) => {
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
-  await side.locator('[title="添加关联"]').click()
+  await side.locator('[aria-label="添加关联"]').click()
   await side.locator('.wkrel .segmented-control>button', { hasText: '论文' }).click()
   const paperRow = side.locator('.wkrel').filter({ has: win.locator('.rl', { hasText: '论文' }) })
   // "Activation-aware Weight" only occurs after the colon; a short-title-only search or display would miss it.
@@ -1084,7 +1084,7 @@ test('属性栏焦点格:焦点移走或点到格外都像回车一样写回,Esc
   await gotoProject(win)
   const focusNow = () => call<{ focus: string }>(win, 'project.get', { id: 'draft' }).then((p) => p.focus)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
-  const edit = side.locator('button.metadata-editable[title="修改当前目标"]')
+  const edit = side.locator('.pk:text-is("当前目标") + .metadata-field button.metadata-editable')
   const pin = side.locator('.metadata-input')
 
   // Moving focus out with the keyboard writes the typed text.
@@ -1137,7 +1137,7 @@ test('就地输入框:关联占位是样式 C,属性栏焦点格没有边框浅�
   // The + that adds a link is a plain, still unclicked button; check its focus ring the keyboard way.
   // A prior Tab keypress puts Chromium's input-modality tracking into "keyboard" so the following
   // scripted focus() still counts as keyboard-driven, matching :focus-visible like a real Tab would.
-  const relAdd = side.locator('.section-heading-actions [title="添加关联"]')
+  const relAdd = side.locator('.section-heading-actions [aria-label="添加关联"]')
   await win.keyboard.press('Tab')
   await relAdd.evaluate((el) => el.focus())
   await expect(relAdd).toHaveCSS('outline-style', 'solid')
@@ -1247,7 +1247,7 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
   // Clicking the blank space of the row opens the task panel and no editor; each of the four columns only opens its own control.
   const row = win.locator('#taskList .ddlrow').first()
   await expect(row.locator('.dots')).toHaveCount(0)
-  await expect(row.locator('.row-delete')).toHaveAttribute('title', '删除任务')
+  await expect(row.locator('.row-delete')).toHaveAttribute('aria-label', /^删除任务：/)
   const title = await row.locator('.plan-name').textContent()
   await row.evaluate((element) => (element as HTMLElement).click())
   await expect(side.locator('.node-document-title')).toHaveText(title!)

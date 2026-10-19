@@ -23,6 +23,7 @@ import { ProjectIdentity, ProjectLabel } from '../components/project/ProjectIden
 import { DAY_SLOT_HOURS } from '../components/timeline/TimelineScale.js'
 import { TimelineBoard } from '../components/timeline/TimelineBoard.js'
 import { useMilestoneEditor } from '../components/timeline/MilestoneEditor.js'
+import { Tooltip } from '../components/Tooltip.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
@@ -189,6 +190,8 @@ function ProjectProgress({ rows, onOpen }: {
               ? firstActive.label
               : `${firstActive.label} ${m.research.overview.activeNodesMore(moreActive.length)}`
           const activeTitle = project.research.activeNodes.map((n) => n.label).join(', ')
+          const shown = activeLabel ?? project.focus
+          const named = activeLabel === undefined ? project.focus : activeTitle
           return (
             <StructuredRow
               className="ovlist-row progress ovpulse-row" data-proj={project.id}
@@ -196,9 +199,7 @@ function ProjectProgress({ rows, onOpen }: {
             >
               <ProjectIdentity project={project} variant="progress" />
               <span className="ovpulse-cell">
-                <b title={activeLabel === undefined ? project.focus : activeTitle}>
-                  {activeLabel ?? project.focus}
-                </b>
+                <Tooltip label={named} whenClipped={named === shown}><b>{shown}</b></Tooltip>
                 <span className="ovpulse-sub">
                   {firstActive
                     ? m.research.overview.activePathNote(active ? control.next.text : undefined)
@@ -223,7 +224,7 @@ function ProjectProgress({ rows, onOpen }: {
               </span>
               <span className="ovpulse-cell signal">
                 <Tag tone={PULSE_TONE[signal.tone]}>{signal.label}</Tag>
-                <span className="ovpulse-sub" title={signal.detail}>{signal.detail}</span>
+                <Tooltip label={signal.detail} whenClipped><span className="ovpulse-sub">{signal.detail}</span></Tooltip>
               </span>
             </StructuredRow>
           )
@@ -356,7 +357,6 @@ function OverviewGantt({
       headerAction={() => (
         <button
           className="btn ghost sm overview-history-toggle" type="button" aria-pressed={showInactive}
-          title={showInactive ? m.research.overview.hideHistory : m.research.overview.showHistory}
           onClick={() => { editor.close(); setShowInactive((shown) => !shown) }}
         >{m.research.overview.historyProjects}</button>
       )}

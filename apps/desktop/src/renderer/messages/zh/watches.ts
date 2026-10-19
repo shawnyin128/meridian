@@ -2,7 +2,6 @@
 export const watches = {
   add: (kind: string) => `添加${kind}`,
   empty: (kind: string) => `还没有${kind}关注`,
-  identityUnknown: '尚未确认作者身份',
   identityUnconfirmed: '未确认',
   paused: '已暂停',
   resume: '恢复',

@@ -23,6 +23,7 @@ import { SectionHeading } from '../PageShell.js'
 import { StatusDot } from '../StatusDot.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { AgentLabel } from '../SourceLabel.js'
+import { Tooltip } from '../Tooltip.js'
 import { ProjectEventRow } from './ProjectSignals.js'
 import './ResearchGraph.css'
 
@@ -328,29 +329,31 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
             {nodes.map((node) => {
               const ideaRelated = ideaNodes.has(node.id)
               const onRoute = routes.nodes.has(node.id) && !activeNodeIds.has(node.id)
+              const shown = graphNodeLabel(node.label)
               return (
-                <g
-                  className={`rgn ${node.state} ${nodeMode(node)}${onRoute ? ' active-path-node-graph' : ''}${activeNodeIds.has(node.id) ? ' active-leaf' : ''}${ideaRelated ? ' idea-related' : ''}${node.id === selected ? ' sel' : ''}`}
-                  data-node={node.id} role="button" tabIndex={0}
-                  key={node.id} transform={`translate(${node.x},${node.y})`}
-                  onClick={() => onSelect(node.id)}
-                  onKeyDown={(event) => {
-                    if (event.key !== 'Enter' && event.key !== ' ') return
-                    event.preventDefault()
-                    onSelect(node.id)
-                  }}
-                  // A node that the keyboard focuses may lie outside the view; one under the pointer is in it.
-                  onFocus={(event) => { if (event.currentTarget.matches(':focus-visible')) reveal(node) }}
-                >
-                  <rect
-                    className="rgn-box" width={node.width} height={GRAPH_NODE_HEIGHT} rx="11"
-                    style={ideaRelated ? { fill: `url(#${ideaPatternId})` } : undefined}
-                  />
-                  <rect className="rgn-hover" width={node.width} height={GRAPH_NODE_HEIGHT} rx="11" />
-                  <circle cx="18" cy={GRAPH_NODE_HEIGHT / 2} r="4" className="nd" />
-                  <title>{node.label}</title>
-                  <text x={GRAPH_LABEL_LEFT} y="29">{graphNodeLabel(node.label)}</text>
-                </g>
+                <Tooltip key={node.id} label={shown === node.label ? undefined : node.label}>
+                  <g
+                    className={`rgn ${node.state} ${nodeMode(node)}${onRoute ? ' active-path-node-graph' : ''}${activeNodeIds.has(node.id) ? ' active-leaf' : ''}${ideaRelated ? ' idea-related' : ''}${node.id === selected ? ' sel' : ''}`}
+                    data-node={node.id} role="button" tabIndex={0} aria-label={node.label}
+                    transform={`translate(${node.x},${node.y})`}
+                    onClick={() => onSelect(node.id)}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Enter' && event.key !== ' ') return
+                      event.preventDefault()
+                      onSelect(node.id)
+                    }}
+                    // A node that the keyboard focuses may lie outside the view; one under the pointer is in it.
+                    onFocus={(event) => { if (event.currentTarget.matches(':focus-visible')) reveal(node) }}
+                  >
+                    <rect
+                      className="rgn-box" width={node.width} height={GRAPH_NODE_HEIGHT} rx="11"
+                      style={ideaRelated ? { fill: `url(#${ideaPatternId})` } : undefined}
+                    />
+                    <rect className="rgn-hover" width={node.width} height={GRAPH_NODE_HEIGHT} rx="11" />
+                    <circle cx="18" cy={GRAPH_NODE_HEIGHT / 2} r="4" className="nd" />
+                    <text x={GRAPH_LABEL_LEFT} y="29">{shown}</text>
+                  </g>
+                </Tooltip>
               )
             })}
           </g>
@@ -359,10 +362,11 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
           <IconButton label={m.project.graph.zoomOut} size="nested" onClick={() => zoomAt(view.zoom / 1.2)}>
             <IconMinus />
           </IconButton>
-          <button
-            type="button" className="btn ghost sm graph-zoom-reset" title={m.project.graph.resetView}
-            onClick={() => setView({ x: 0, y: 0, zoom: 1 })}
-          >{Math.round(view.zoom * 100)}%</button>
+          <Tooltip label={m.project.graph.resetView}>
+            <button
+              type="button" className="btn ghost sm graph-zoom-reset" onClick={() => setView({ x: 0, y: 0, zoom: 1 })}
+            >{Math.round(view.zoom * 100)}%</button>
+          </Tooltip>
           <IconButton label={m.project.graph.zoomIn} size="nested" onClick={() => zoomAt(view.zoom * 1.2)}>
             <IconPlus />
           </IconButton>
@@ -510,7 +514,9 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
                   onActivate={() => onSelectIdea(idea.id)}
                 >
                   <span className="node-idea-title">{idea.title}</span>
-                  <span className="node-idea-source" title={source}>{m.project.idea.sourceTag(source)}</span>
+                  <Tooltip label={m.project.idea.sourceTag(source)} whenClipped>
+                    <span className="node-idea-source">{m.project.idea.sourceTag(source)}</span>
+                  </Tooltip>
                 </StructuredRow>
               )
             })}
@@ -538,9 +544,11 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
       {node.markdownPath === undefined
         ? null
         : (
-          <div className="node-document-source" title={node.markdownPath}>
-            {node.markdownPath}{node.markdownAnchor === undefined ? '' : `#${node.markdownAnchor}`}
-          </div>
+          <Tooltip label={`${node.markdownPath}${node.markdownAnchor === undefined ? '' : `#${node.markdownAnchor}`}`} whenClipped>
+            <div className="node-document-source">
+              {node.markdownPath}{node.markdownAnchor === undefined ? '' : `#${node.markdownAnchor}`}
+            </div>
+          </Tooltip>
         )}
     </>
   )

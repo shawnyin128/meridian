@@ -16,13 +16,14 @@ const fixture = vi.hoisted(() => ({
   discovery: [{ id: 'e1', kind: 'discovery', watch: '', project: 'p1', source: '推理项目' }],
   chats: [{ id: 'c1', title: '讨论', archived: false, messageCount: 1 }],
   back: vi.fn(),
+  platform: 'darwin',
 }))
 
 const none = () => Promise.resolve([])
 
 vi.mock('../ipc.js', () => ({
   appMenu: {
-    onOpenSettings: () => () => {}, onOpenAgentTutorial: () => () => {}, platform: () => 'darwin',
+    onOpenSettings: () => () => {}, onOpenAgentTutorial: () => () => {}, platform: () => fixture.platform,
     setTitleBarTheme: vi.fn(), toggleMaximize: vi.fn(),
   },
   appUpdates: { check: vi.fn(), status: () => new Promise(() => {}), onChange: () => () => {}, install: vi.fn() },
@@ -46,6 +47,7 @@ vi.mock('../ipc.js', () => ({
 vi.mock('../components/AboutDialog.js', () => ({ AboutDialog: () => null }))
 
 const { AppShell, useCrumbTail, useEscapeLayer, useNotice, usePaperChatCollapsed } = await import('./AppShell.js')
+const { TOOLTIP_DELAY } = await import('../components/Tooltip.js')
 
 const TAIL = [{ text: '深层' }]
 
@@ -118,6 +120,18 @@ const press = (key: string, init: KeyboardEventInit = {}) => act(() => {
 
 const crumbs = () => [...document.querySelectorAll('#crumb .cseg')].map((seg) => seg.textContent)
 
+/** Rests the pointer on `selector` past the shared tooltip delay; returns the tooltip's name and shortcut. */
+function hoverTip(selector: string): [string | undefined, string | undefined] {
+  vi.useFakeTimers()
+  act(() => {
+    document.querySelector(selector)!.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' }))
+  })
+  act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+  vi.useRealTimers()
+  const tip = document.querySelector('[role="tooltip"]')
+  return [tip?.firstChild?.textContent ?? undefined, tip?.querySelector('.tooltip-key')?.textContent ?? undefined]
+}
+
 /** The button that activates a row: the row itself, or the first child of a row that holds other controls. */
 function controlOf(selector: string): HTMLElement {
   const row = document.querySelector<HTMLElement>(selector)!
@@ -143,6 +157,21 @@ describe('AppShell sidebar collapse', () => {
     expect(sidebar.hasAttribute('inert')).toBe(true)
     press('b', { metaKey: true })
     expect(sidebar.hasAttribute('inert')).toBe(false)
+  })
+
+  it('names the sidebar toggle in the shared tooltip with the platform\'s shortcut', async () => {
+    expect(hoverTip('#sbBtn')).toEqual(['收起/展开侧栏', '⌘B'])
+    act(() => root!.unmount())
+    fixture.platform = 'win32'
+    await mount()
+    expect(hoverTip('#sbBtn')).toEqual(['收起/展开侧栏', 'Ctrl+B'])
+    fixture.platform = 'darwin'
+  })
+
+  it('names the sidebar grip in the shared tooltip with ⌘B on macOS, and draws no tooltip of its own', () => {
+    expect(hoverTip('#sbgrip')).toEqual(['点击收起', '⌘B'])
+    expect(document.querySelector('[role="tooltip"] .tooltip-note')?.textContent).toBe('拖动调整宽度')
+    expect(document.querySelector('#griptip')).toBeNull()
   })
 
   it('reports the paper chat as collapsed while the sidebar is collapsed', () => {

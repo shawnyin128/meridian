@@ -245,7 +245,6 @@ export function Chat() {
             <div className="qacts">
               <button
                 className="qa" id="qaIdea" disabled={id === null || !hasDiscussion}
-                title={hasDiscussion ? m.chat.saveIdea : m.chat.saveIdeaDisabled}
                 onClick={() => setSavingIdea(true)}
               >{m.chat.saveIdeaLabel}</button>
               <span className="qsep" />
@@ -254,11 +253,7 @@ export function Chat() {
                   ...mentions.filter((mention) => mention.kind === 'project').slice(0, QUICK_MENTIONS),
                   ...mentions.filter((mention) => mention.kind === 'paper').slice(0, QUICK_MENTIONS),
                 ].map((mention) => (
-                  <button
-                    className="qa" key={mention.title}
-                    title={m.chat.quickMentionTitle(m.chat.mentionGroup[mention.kind], mention.meta)}
-                    onClick={() => quick(mention.title)}
-                  >@{mention.kind === 'paper' ? <PaperText text={mention.entity.title} /> : mention.title}</button>
+                  <button className="qa" key={mention.title} onClick={() => quick(mention.title)}>@{mention.kind === 'paper' ? <PaperText text={mention.entity.title} /> : mention.title}</button>
                 ))}
               </span>
             </div>

@@ -1,6 +1,14 @@
+// @vitest-environment jsdom
+import { act } from 'react'
+import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { StatusDot } from './StatusDot.js'
+import { TOOLTIP_DELAY } from './Tooltip.js'
+
+declare global {
+  var IS_REACT_ACT_ENVIRONMENT: boolean
+}
 
 describe('StatusDot', () => {
   it('without a label is a decorative small dot, hidden from assistive technology', () => {
@@ -19,8 +27,19 @@ describe('StatusDot', () => {
     )
   })
 
-  it('in a dense row keeps the label as the dot\'s name and tooltip instead of visible text', () => {
-    expect(renderToStaticMarkup(<StatusDot tone="neutral" label="候选 / 搁置" labelHidden />))
-      .toBe('<span class="status-dot status-dot--sm status-dot--neutral" role="img" aria-label="候选 / 搁置" title="候选 / 搁置"></span>')
+  it('in a dense row keeps the label as the dot\'s name and shows it in the shared tooltip, not a native title', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.useFakeTimers()
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    act(() => root.render(<StatusDot tone="neutral" label="候选 / 搁置" labelHidden />))
+    const dot = host.querySelector('.status-dot')!
+    expect([dot.getAttribute('role'), dot.getAttribute('aria-label'), dot.getAttribute('title')]).toEqual(['img', '候选 / 搁置', null])
+    act(() => { dot.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
+    act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+    expect(document.querySelector('[role="tooltip"]')?.textContent).toBe('候选 / 搁置')
+    act(() => root.unmount())
+    vi.useRealTimers()
   })
 })

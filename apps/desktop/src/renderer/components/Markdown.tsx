@@ -65,9 +65,12 @@ function components(
       if (href.startsWith(WIKI)) {
         const id = href.slice(WIKI.length)
         const page = titles?.[id]
+        const name = page?.fullTitle ?? page?.title
+        // The page's full name, when the link's own text says something else.
+        const label = [children].flat().join('') === name ? undefined : name
         return (
           <EntityLink
-            kind="page" label={children} title={page?.fullTitle ?? page?.title} data-wk={id}
+            kind="page" label={children} title={label} data-wk={id}
             {...(onOpen === undefined ? {} : { href, onOpen: () => onOpen(id) })}
           />
         )
