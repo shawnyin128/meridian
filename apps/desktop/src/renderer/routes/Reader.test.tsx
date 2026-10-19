@@ -136,5 +136,13 @@ describe('Reader', () => {
       await act(async () => { document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
       expect(tools()).toBeNull()
     })
+
+    it('缩放页面时收起', async () => {
+      await render()
+      await select()
+      expect(tools()).not.toBeNull()
+      await act(async () => { host.querySelector<HTMLButtonElement>('.zoomctl button:last-child')!.click() })
+      expect(tools()).toBeNull()
+    })
   })
 })
