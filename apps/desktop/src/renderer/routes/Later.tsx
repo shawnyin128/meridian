@@ -11,6 +11,7 @@ import { DayHeading, daySectionName } from '../components/DayHeading.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { failureLabel } from '../lib/failure-label.js'
+import { TitleNote } from '../components/TitleNote.js'
 import { useFormat } from '../lib/format.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle } from '../components/PageShell.js'
@@ -20,9 +21,6 @@ import './shell.css'
 type Grouping = 'time' | 'src'
 
 const MODES: Grouping[] = ['time', 'src']
-
-/** The title in the removal prompt is cut to this length, the same as the demo. */
-const TITLE_IN_TOAST = 18
 
 /**
  * Read Later: a paper already in the vault opens straight in the reader; one with only its source
@@ -77,7 +75,7 @@ export function Later() {
 
   const remove = (entry: LaterEntry) => {
     void write(later.remove(entry.id),
-      { note: m.later.removed(plainTitle(entry.title).slice(0, TITLE_IN_TOAST)), notify: toast })
+      { note: <TitleNote message={m.later.removed} title={plainTitle(entry.title)} />, notify: toast })
   }
 
   // Entries arrive newest first by the day they were queued; groups follow the order keys first appear in.

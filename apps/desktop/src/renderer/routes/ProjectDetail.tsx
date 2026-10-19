@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import type {
   ProjectDetail as Project, RelationGroup, ResearchGraph as ResearchGraphData, ResearchIdea,
   ResearchIdeaGraphPlacement, TaskWindow,
@@ -22,6 +23,7 @@ import { PanelClose } from '../components/PanelClose.js'
 import { ChoicePicker, DateButton, DotsMenu, PriorityPicker } from '../components/FieldPickers.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { TitleNote } from '../components/TitleNote.js'
 import {
   ProjectEventRow, ProjectSignalDate, ProjectSignalKind,
 } from '../components/project/ProjectSignals.js'
@@ -349,7 +351,7 @@ export function ProjectDetail({
    * here: the placeholder closes or stays open by itself depending on the result, so nothing is lost.
    */
   const writeProject = (
-    op: Promise<Project>, note?: string, notify: (text: string) => void = banner,
+    op: Promise<Project>, note?: ReactNode, notify: (text: ReactNode) => void = banner,
   ): Promise<boolean> => write(op.then((p) => setProject(p)), { note, notify })
 
   /**
@@ -357,7 +359,7 @@ export function ProjectDetail({
    * rewrote the whole deskBody.
    */
   const applyWrite = (
-    op: Promise<Project>, note?: string, notify: (text: string) => void = banner,
+    op: Promise<Project>, note?: ReactNode, notify: (text: ReactNode) => void = banner,
   ) => {
     discardOpenEdits()
     void writeProject(op, note, notify)
@@ -1074,7 +1076,8 @@ export function ProjectDetail({
                     onOpenPage={openWikiPage}
                     onOpenPaper={(paperId) => jumpTo('reader', paperId)}
                     onRemovePaper={(paperId, title) => applyWrite(
-                      projectApi.removePaper(projectId, paperId), m.project.links.paperRemoved(plainTitle(title)), toast,
+                      projectApi.removePaper(projectId, paperId),
+                      <TitleNote message={m.project.links.paperRemoved} title={plainTitle(title)} />, toast,
                     )}
                     onMove={(id, index) => { void writeProject(projectApi.moveRelation(projectId, id, index)) }}
                     adding={!relAdding
@@ -1091,7 +1094,8 @@ export function ProjectDetail({
                               onNew={() => false}
                               onCancel={stopRel} onError={reportError}
                               onPick={(hit) => writeProject(
-                                projectApi.addPaper(projectId, hit.id), m.project.links.paperLinked(plainTitle(hit.title)),
+                                projectApi.addPaper(projectId, hit.id),
+                                <TitleNote message={m.project.links.paperLinked} title={plainTitle(hit.title)} />,
                               )}
                             />
                           )
@@ -1151,7 +1155,8 @@ export function ProjectDetail({
                       }}
                     onEdit={setRelEditing}
                     onRemove={(relationId, text) => applyWrite(
-                      projectApi.deleteRelation(projectId, relationId), m.project.links.removed(text), toast,
+                      projectApi.deleteRelation(projectId, relationId),
+                      <TitleNote message={m.project.links.removed} title={text} />, toast,
                     )}
                   />
 

@@ -291,7 +291,7 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
    * Finishes a write: closes the new-project row, then lets `write` finish. Creating from the row does
    * not come here: whether the row stays depends on that write's result.
    */
-  const applyWrite = (op: Promise<unknown>, note: string, notify: (text: string) => void = banner) => {
+  const applyWrite = (op: Promise<unknown>, note: string, notify: (text: ReactNode) => void = banner) => {
     setCreating(false)
     void write(op, { note, notify })
   }
