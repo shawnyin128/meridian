@@ -79,4 +79,62 @@ describe('Reader', () => {
     await render()
     expect(notes()).toEqual(['撤销放回来的', '留着的'])
   })
+
+  describe('选中文字后的工具条', () => {
+    const SELECTED = DOMRect.fromRect({ x: 160, y: 250, width: 120, height: 14 })
+
+    beforeEach(() => {
+      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+        return this.classList.contains('pdfpagebox')
+          ? DOMRect.fromRect({ x: 100, y: 50, width: 600, height: 800 })
+          : DOMRect.fromRect()
+      })
+      // jsdom does not lay text out, so a selected range reports the box of the selected words here.
+      Range.prototype.getClientRects = () => [SELECTED] as unknown as DOMRectList
+    })
+
+    afterEach(() => {
+      vi.restoreAllMocks()
+      delete (Range.prototype as Partial<Range>).getClientRects
+    })
+
+    /** Puts one page with a text layer on the sheet, selects its words and releases the mouse. */
+    const select = async () => {
+      const sheet = host.querySelector('.pdfsheet')!
+      sheet.innerHTML = '<div class="pdfpagebox" data-page="1"><div class="textLayer"><span>Speculative decoding</span></div></div>'
+      const range = document.createRange()
+      range.selectNodeContents(sheet.querySelector('.textLayer span')!)
+      window.getSelection()!.removeAllRanges()
+      window.getSelection()!.addRange(range)
+      await act(async () => { host.querySelector('.pdfwrap')!.dispatchEvent(new MouseEvent('mouseup', { bubbles: true })) })
+      await act(async () => { await new Promise((done) => setTimeout(done, 20)) })
+    }
+    const tools = () => document.querySelector<HTMLElement>('.selection-tools')
+
+    it('用共享的浮层面,贴着选中的文字放', async () => {
+      await render()
+      await select()
+      expect(tools()!.classList.contains('ctxmenu')).toBe(true)
+      const wrapper = tools()!.closest<HTMLElement>('[data-radix-popper-content-wrapper]')!
+      const anchor = (side: string) => parseFloat(wrapper.style.getPropertyValue(`--radix-popper-anchor-${side}`))
+      expect(anchor('width')).toBeCloseTo(SELECTED.width, 6)
+      expect(anchor('height')).toBeCloseTo(SELECTED.height, 6)
+    })
+
+    it('页面一滚动就收起', async () => {
+      await render()
+      await select()
+      expect(tools()).not.toBeNull()
+      await act(async () => { host.querySelector('.pdfwrap')!.dispatchEvent(new Event('scroll')) })
+      expect(tools()).toBeNull()
+    })
+
+    it('按 Esc 收起', async () => {
+      await render()
+      await select()
+      expect(tools()).not.toBeNull()
+      await act(async () => { document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+      expect(tools()).toBeNull()
+    })
+  })
 })

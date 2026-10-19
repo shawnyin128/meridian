@@ -62,9 +62,9 @@
 .paper-highlight{position:absolute;overflow:visible}
 .paper-highlight path{fill:color-mix(in srgb,var(--mark) 30%,transparent)}
 .paper-highlight.noted path{fill:none;stroke:#eb9d2a;stroke-width:2.5px;vector-effect:non-scaling-stroke}
-.selection-tools{position:fixed;transform:translateX(-50%);display:flex;align-items:center;background:#20242d;color:#fff;border-radius:7px;padding:3px;box-shadow:0 6px 20px rgb(0 0 0/.24);z-index:40}
-.selection-tools button{border:0;background:transparent;color:inherit;font:inherit;font-size:var(--fs-sm);padding:6px 9px;border-radius:5px;cursor:pointer;white-space:nowrap}
-.selection-tools button:hover{background:rgb(255 255 255/.12)}
+/* The selection toolbar: the shared menu surface and items, laid out in one row. */
+.ctxmenu.selection-tools{display:flex;min-width:0}
+.selection-tools .mi{width:auto;white-space:nowrap}
 
 .reading-notes{width:320px;min-width:320px;box-sizing:border-box;border-left:1px solid var(--sep);background:var(--content);display:flex;flex-direction:column;overflow:hidden}
 .reading-notes>header{height:46px;box-sizing:border-box;padding:0 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--sep)}

@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import type { PaperHighlightRect } from '../../shared/contract.js'
 import {
-  highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionToolsAnchor,
+  highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionBox,
 } from './highlight-geometry.js'
 
 /** A US Letter page at the reader's fit scale (830 / 612), as the page box's client rectangle. */
@@ -136,13 +136,15 @@ describe('highlight geometry', () => {
     expect(noted.box).toEqual(filled.box)
   })
 
-  it('选区工具条放在选中文字下方，下方放不下才放到上方，横向居中且不出窗口', () => {
+  it('选区工具条贴着的框是选中各行在屏幕上的外接矩形，页面挪了框跟着挪', () => {
     const lines = normalizedHighlightRects(PAGE, TWO_COLUMNS)
-    expect(selectionToolsAnchor(PAGE, lines, { width: 1400, height: 1100 }))
-      .toEqual({ left: expect.closeTo(535.5, 5), top: expect.closeTo(955, 5) })
-    expect(selectionToolsAnchor(PAGE, lines, { width: 1400, height: 1000 }))
-      .toEqual({ left: expect.closeTo(535.5, 5), top: expect.closeTo(847.7, 5) })
-    expect(selectionToolsAnchor(PAGE, lines.slice(1, 2), { width: 750, height: 1100 }).left).toBe(650)
+    const box = selectionBox(PAGE, lines)
+    const union = highlightShape(lines, false).box
+    expect(box.left).toBeCloseTo(PAGE.left + union.x * PAGE.width, 5)
+    expect(box.top).toBeCloseTo(PAGE.top + union.y * PAGE.height, 5)
+    expect(box.width).toBeCloseTo(union.width * PAGE.width, 5)
+    expect(box.height).toBeCloseTo(union.height * PAGE.height, 5)
+    expect(selectionBox({ ...PAGE, left: PAGE.left + 40 }, lines).left).toBeCloseTo(box.left + 40, 5)
   })
 
   it('选区只按选中的文字节点量，去掉首尾空白，不量元素、<br> 和 endOfContent', () => {
