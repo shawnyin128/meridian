@@ -48,6 +48,19 @@ describe('ContextMenu', () => {
     expect(menu()).toBeNull()
   })
 
+  it('opens from the keyboard inside the part of the trigger on screen, as a scrolled table row is', async () => {
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(800)
+    vi.spyOn(document.documentElement, 'clientHeight', 'get').mockReturnValue(600)
+    act(() => root!.render(<Example choose={vi.fn()} />))
+    vi.spyOn(trigger(), 'getBoundingClientRect').mockReturnValue(DOMRect.fromRect({ x: -400, y: 100, width: 2000, height: 30 }))
+    trigger().focus()
+    await act(async () => { trigger().dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true })) })
+    await act(async () => { await new Promise((done) => setTimeout(done, 20)) })
+    const wrapper = menu()!.closest<HTMLElement>('[data-radix-popper-content-wrapper]')!
+    expect(wrapper.style.transform).toMatch(/^translate\(26px, 124px\)$/)
+    vi.restoreAllMocks()
+  })
+
   it('opens from Shift+F10 too', async () => {
     act(() => root!.render(<Example choose={vi.fn()} />))
     trigger().focus()
