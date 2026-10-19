@@ -152,7 +152,7 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                       setDeclining(next ? p.id : null)
                       setReason('')
                     }}
-                    contentClassName="ctxmenu review-decline"
+                    contentClassName="ctxmenu review-decline" align="start"
                     trigger={<button type="button" className="btn" disabled={pending}>{r.decline}</button>}
                   >
                     <FormInput
