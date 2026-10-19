@@ -8,7 +8,7 @@ export const inbox = {
   headWatch: (label: string, count: number) => `${label} · ${count} ${pluralEn(count, { one: 'paper', other: 'papers' })}`,
   check: {
     checking: 'Checking for new papers…',
-    failed: (reason: string) => `Check failed: ${reason}`,
+    failed: 'Check failed',
     lastChecked: (when: string) => `Last checked ${when}`,
   },
   checkNewPapers: 'Check for new papers',
@@ -43,6 +43,7 @@ export const inbox = {
     duplicateToast: 'Already in the library · not added again',
     alreadyInLibrary: (title: string) => `Already in the library: "${title}"`,
     downloaded: 'Downloaded and added to library · ready to read',
+    downloadFailed: 'Download failed',
     moreLike: 'Got it · showing you more papers like this',
     lessLike: 'Got it · showing you fewer papers like this',
     known: 'Marked as familiar',

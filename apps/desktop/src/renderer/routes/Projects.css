@@ -38,6 +38,5 @@
 .prow .m{color:var(--ter);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .prow .tp{margin-left:auto;font-size:var(--fs-sm);color:var(--ter);flex-shrink:0}
 
-/* A row's management menu shows while the row is hovered; .dots itself is in components/FieldPickers.css */
+/* .dots itself and its reveal rule are in components/FieldPickers.css */
 .projpanel .dots{margin-left:2px}
-.prow:hover .dots{opacity:1;pointer-events:auto}

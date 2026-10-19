@@ -25,6 +25,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { ModalDialog, ModalTitle } from '../components/ModalDialog.js'
 import { NavRow } from '../components/NavRow.js'
 import { StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { TitleNote } from '../components/TitleNote.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { WatchSettings } from './Watches.js'
@@ -118,7 +119,7 @@ export function Settings() {
 
   const unarchive = (session: ChatSession) => {
     void write(chat.setArchived(session.id, false),
-      { note: m.settings.archived.unarchived(plainTitle(session.title)) })
+      { note: <TitleNote message={m.settings.archived.unarchived} title={plainTitle(session.title)} /> })
   }
 
   const openChat = (session: ChatSession) => {

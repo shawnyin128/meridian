@@ -15,7 +15,8 @@ const api = vi.hoisted(() => ({
     },
   ] as Watch[],
   create: vi.fn(async () => {}),
-  suggest: vi.fn(async () => ({
+  search: vi.fn(async (): Promise<unknown> => []),
+  suggest: vi.fn(async (): Promise<unknown> => ({
     topics: [{ name: 'batch aware verification', relatedPapers: 3 }],
     authors: [{
       source: 'openalex', id: 'author-new', name: 'Ada Expert', affiliations: ['MIT'], relatedPapers: 2,
@@ -27,7 +28,7 @@ const api = vi.hoisted(() => ({
 }))
 
 vi.mock('../ipc.js', () => ({
-  author: { search: vi.fn(async () => []) },
+  author: { search: api.search },
   project: {
     list: vi.fn(async () => [{ id: 'project-1', name: 'Draft-tree serving' }]),
   },
@@ -70,6 +71,7 @@ describe('WatchSettings', () => {
     host = document.createElement('div')
     document.body.append(host)
     api.create.mockClear()
+    api.search.mockClear()
     api.suggest.mockClear()
     api.update.mockClear()
   })
@@ -216,6 +218,44 @@ describe('WatchSettings', () => {
       identity: { source: 'openalex', id: 'author-new', affiliations: ['MIT'] },
     })
 
+    await act(async () => { root.unmount() })
+  })
+
+  it('描述关注方向时输入法组字的回车不查找，组完字后的回车才查找', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+
+    const input = host.querySelector<HTMLInputElement>(
+      'input[placeholder="用一句话描述想持续关注的研究方向"]',
+    )!
+    await act(async () => { enter(input, '批量推理的动态验证') })
+    const pressEnter = (init: KeyboardEventInit) => act(async () => {
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, ...init }))
+    })
+    await pressEnter({ isComposing: true })
+    expect(api.suggest).not.toHaveBeenCalled()
+    await pressEnter({})
+    expect(api.suggest).toHaveBeenCalledExactlyOnceWith({ source: 'focus', focus: '批量推理的动态验证' })
+
+    await act(async () => { root.unmount() })
+  })
+
+  it('作者搜索与关注建议失败时只显示失败原因', async () => {
+    api.search.mockResolvedValueOnce({ kind: 'failed', reason: 'unavailable' })
+    api.suggest.mockResolvedValueOnce({ kind: 'failed', reason: 'unknown' })
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+    const authorList = host.querySelector('[data-w="author-1"]')!.closest('.wlist')!
+    await act(async () => { authorList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!.click() })
+    await act(async () => { enter(authorList.querySelector<HTMLInputElement>('.newrow input')!, 'Ada Lovelace') })
+    await act(async () => { await new Promise((done) => { setTimeout(done, 750) }) })
+    expect(api.search).toHaveBeenCalledWith('Ada Lovelace')
+    expect(host.querySelector('.author-search-note.error span')?.textContent).toBe('搜索作者失败 · 网络不可用')
+
+    const section = host.querySelector('.watch-suggestions')!
+    await act(async () => { enter(section.querySelector<HTMLInputElement>('input')!, '我想关注批量推理中的动态验证策略') })
+    await act(async () => { button(section, '查找建议').click() })
+    expect(section.querySelector('.watch-suggestion-error')?.textContent).toBe('生成关注建议失败')
     await act(async () => { root.unmount() })
   })
 

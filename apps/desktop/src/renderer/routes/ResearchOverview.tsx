@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { ProjectOverview, Task } from '../../shared/contract.js'
 import { projectControlState } from '../../shared/project-control.js'
-import { FOCUS_KEY, projectDecisionItems, projectPulseSignal } from '../../shared/project-signals.js'
+import {
+  FOCUS_KEY, projectDecisionItems, projectPulseSignal, sortRecordsNewestFirst,
+} from '../../shared/project-signals.js'
 import { project as projectApi } from '../ipc.js'
 import { ACTIVE_PROJECT, FINISHED_PROJECT, SHELVED_PROJECT } from '../../shared/vocabulary.js'
 import { useBanner, useJump, useToast, useToday, useVaultRevision } from '../shell/AppShell.js'
@@ -180,7 +182,7 @@ function ProjectProgress({ rows, onOpen }: {
                 ? control.next.task
                 : undefined
               const activeCount = project.tasks.filter((task) => task.state === 'act').length
-              const latest = [...project.events].sort((a, b) => dnum(b.date) - dnum(a.date))[0]
+              const latest = sortRecordsNewestFirst(project.events)[0]
               const signal = projectPulseSignal({
                 ...project, conclusions: { conflicting: 0 },
               }, today, m.project.signals)

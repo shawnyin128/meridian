@@ -1,11 +1,15 @@
 // @vitest-environment jsdom
-import { act } from 'react'
+import { act, useRef } from 'react'
 import { createRoot } from 'react-dom/client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
-import { headingsOf, Markdown } from './Markdown.js'
+import { headingsOf, Markdown, MarkdownBox } from './Markdown.js'
+
+declare global {
+  var IS_REACT_ACT_ENVIRONMENT: boolean
+}
 
 const html = (src: string) => renderToStaticMarkup(<MessagesProvider><Markdown src={src} /></MessagesProvider>)
 
@@ -107,6 +111,28 @@ describe('Markdown', () => {
     const out = html('[x](javascript:alert(1))')
     expect(out).not.toContain('<a')
     expect(out).toContain('x')
+  })
+})
+
+describe('MarkdownBox', () => {
+  it('编辑时输入法组字的 Esc 不撤掉编辑,组完字后的 Esc 才撤', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    const cancel = vi.fn()
+    function Probe() {
+      const box = useRef<HTMLDivElement>(null)
+      return <MarkdownBox text="a/b" editing box={box} onCancel={cancel} empty={null} />
+    }
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    act(() => root.render(<Probe />))
+    const box = host.querySelector<HTMLElement>('.md.src')!
+    act(() => box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true })))
+    expect(cancel).not.toHaveBeenCalled()
+
+    act(() => box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+    expect(cancel).toHaveBeenCalledTimes(1)
+    act(() => root.unmount())
   })
 })
 

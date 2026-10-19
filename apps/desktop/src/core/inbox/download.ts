@@ -1,7 +1,7 @@
 import {
   MAX_PDF_UPLOAD_BYTES, type DownloadProgress, type InboxDownloadResult,
 } from '../../shared/contract.js'
-import { HttpStatusError, netReason, type HttpGet } from '../net/http.js'
+import { HttpStatusError, netFailure, type HttpGet } from '../net/http.js'
 import type { VaultStore } from '../vault.js'
 
 const DOWNLOAD_TIMEOUT_MS = 120_000
@@ -30,14 +30,14 @@ export function createInboxDownloads(deps: {
           onProgress: (received, total) => { running.set(id, { id, received, total }) },
         })
         if (response.status !== 200) throw new HttpStatusError(response.status)
-        if (!Buffer.from(response.body.subarray(0, 1024)).toString('latin1').includes('%PDF-')) {
-          throw new Error('取回的不是 PDF')
-        }
         body = response.body
       } catch (error) {
-        throw new Error(`没能下载原文：${netReason(error)}`)
+        return { kind: 'failed', reason: netFailure(error) }
       } finally {
         running.delete(id)
+      }
+      if (!Buffer.from(body.subarray(0, 1024)).toString('latin1').includes('%PDF-')) {
+        return { kind: 'failed', reason: 'not-pdf' }
       }
       const result = deps.store.completeInboxDownload(id, body)
       if (result.kind === 'added') {

@@ -1,13 +1,16 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import tls from 'node:tls'
-import { dayFrom, onDay } from './app.mjs'
+import { dayFrom, onDay, writeJson } from './app.mjs'
 import { stubPdf, textLines } from './pdf.mjs'
+
+// Trust the system's certificates as the App does, so a TLS-inspecting proxy does not break the downloads.
+tls.setDefaultCACertificates([...tls.getCACertificates('default'), ...tls.getCACertificates('system')])
 
 /**
  * The papers of the test library, by scenario key. `arxiv` papers with `download` are real
  * two-column PDFs fetched once into `<out>/cache`; the others get a one-page stand-in PDF, and the
- * arXiv id in its file name still makes the App's import fetch the real metadata. `days` is the day
+ * arXiv id in its file name still makes the App's import look up the real metadata. `days` is the day
  * of the import relative to the seed's today; `fields` are set afterwards with `papers.update`.
  */
 export const PAPERS = [
@@ -53,8 +56,6 @@ const COLUMNS = [
  * download fails or is not a PDF.
  */
 export async function paperFiles(out) {
-  // Trust the system's certificates as the App does, so a TLS-inspecting proxy does not break the download.
-  tls.setDefaultCACertificates([...tls.getCACertificates('default'), ...tls.getCACertificates('system')])
   const files = {}
   for (const paper of PAPERS) {
     if (!paper.download) {
@@ -78,6 +79,46 @@ export async function paperFiles(out) {
     files[paper.key] = readFileSync(file)
   }
   return files
+}
+
+const abs = (id) => `https://arxiv.org/abs/${id}`
+/** The canned-response key under which every batch lookup of the App finds the Atom answer. */
+const BATCH = 'https://export.arxiv.org/api/query?id_list=*'
+
+/**
+ * Returns the file `<out>/cache/arxiv.json`, which holds what arXiv answers for every arXiv paper as
+ * a table of Core's canned network responses: each paper's abstract page, which the App reads to
+ * look up one paper, and the API's Atom answer for all of them, which it reads for any batch of
+ * them. Asks arXiv with `get` only for what the file lacks, at most once every `intervalMs`, and
+ * keeps each answer as it arrives. Throws when an answer is not a 200 naming its papers.
+ */
+export async function arxivMetadata(out, { get = fetch, intervalMs = 3_200 } = {}) {
+  const file = join(out, 'cache', 'arxiv.json')
+  const table = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {}
+  const ids = PAPERS.flatMap((paper) => paper.arxiv === undefined ? [] : [paper.arxiv])
+  const fresh = ids.filter((id) => table[abs(id)] === undefined)
+  if (fresh.length === 0 && table[BATCH] !== undefined) return file
+  mkdirSync(join(out, 'cache'), { recursive: true })
+  let asked = Number.NEGATIVE_INFINITY
+  const answer = async (url, named) => {
+    await new Promise((done) => setTimeout(done, Math.max(0, asked + intervalMs - Date.now())))
+    asked = Date.now()
+    const response = await get(url)
+    const text = await response.text()
+    const lacking = named.filter((id) => !text.includes(`arxiv.org/abs/${id}`))
+    if (!response.ok || lacking.length > 0) {
+      throw new Error(`Asking arXiv for ${url} failed: ${response.ok ? `no answer for ${lacking.join(', ')}` : `HTTP ${response.status}`}`)
+    }
+    return text
+  }
+  for (const id of fresh) {
+    table[abs(id)] = { status: 200, text: await answer(abs(id), [id]) }
+    writeJson(file, table)
+  }
+  const query = new URLSearchParams({ id_list: ids.join(','), max_results: String(ids.length) })
+  table[BATCH] = { status: 200, atom: await answer(`https://export.arxiv.org/api/query?${query}`, ids) }
+  writeJson(file, table)
+  return file
 }
 
 /**
@@ -134,11 +175,15 @@ export async function quoteOf(files, key, pattern) {
 /**
  * Seeds the paper table and the reader: one custom column of each type, every reading state, short
  * titles, LaTeX titles, ratings and cells; highlights, notes, a remark and the reading position;
- * an undone and an archived change; one paper deleted into Trash.
+ * a deleted note and highlight; a deleted column; an undone and an archived change; one paper deleted
+ * into Trash.
  */
 export async function seedPapers(seed, call, files) {
   const columns = await call('papers.columns')
   await call('papers.setColumns', { columns: { ...columns, custom: COLUMNS, groups: [...columns.groups, 'weight'] } })
+  const seeded = await call('papers.columns')
+  await call('papers.setColumns', { columns: { ...seeded, custom: [...seeded.custom, { key: 'scratch', label: '草稿列', type: 'text', options: [] }] } })
+  await call('papers.setColumns', { columns: seeded })
   // Papers older than three days were edited nine days ago, past the seven days undo is kept.
   for (const paper of PAPERS) {
     await onDay(seed, paper.days >= -3 ? 0 : -9, () => call('papers.update', { id: seed.papers[paper.key], patch: paper.fields }))
@@ -159,6 +204,10 @@ export async function seedPapers(seed, call, files) {
   await reading(seed.papers.kivi, { kind: 'highlight.update', id: kivi.highlights[0].id, note: 'K 按通道、V 按 token 量化，是这篇的关键。' })
   await reading(seed.papers.kivi, { kind: 'note.add', page: 1, text: '2bit 下 Llama-2-7B 精度几乎不掉。' })
   await reading(seed.papers.h2o, { kind: 'note.add', page: 1, text: '重击者 token 留 20% 就够，和我们的 KV 预算估计一致。' })
+  const dropped = await reading(seed.papers.h2o, { kind: 'note.add', page: 2, text: '这条记错了，删掉。' })
+  await reading(seed.papers.h2o, { kind: 'note.delete', id: dropped.notes.at(-1).id })
+  const misplaced = await highlight('kivi', /value cache should/, 1, 'pink')
+  await reading(seed.papers.kivi, { kind: 'highlight.delete', id: misplaced.highlights.at(-1).id })
 
   await call('papers.update', { id: seed.papers.switch, patch: { rating: 1 } })
   await call('changelog.undo', { id: (await call('changelog.list'))[0].id })

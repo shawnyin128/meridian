@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { Locator, Page } from '@playwright/test'
-import { expect, gotoPapers, test, uniqueHeights, type MeridianWindow } from './app.js'
+import { expect, gotoPapers, test, type MeridianWindow } from './app.js'
 
 /** Screens stay mounted once visited, so selectors every screen has, such as cards, are scoped to the visible one. */
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
@@ -92,14 +92,14 @@ test('侧栏「论文推送」进推送屏,条目、分组与正文都照 demo',
   await expect(shown(win, '.pcard')).toHaveCount(demo.length)
   expect(await cardTitles(win)).toEqual(demo.map((d) => d.title))
 
-  // One group per watch, and "Dismiss all" appears only on the first group.
+  // One group per watch, each with its own "Dismiss all".
   const watches = await watchesFromCore(win)
   const heads = [...new Set(demo.map((d) => d.watch))].map((id) => {
     const w = watches.find((x) => x.id === id)!
     return `${KIND[w.type]} · ${w.name}`
   })
   expect(await groupTitles(win)).toEqual(heads)
-  await expect(shown(win, '.collapsible-group-actions .btn')).toHaveCount(1)
+  await expect(shown(win, '.collapsible-group-actions .btn')).toHaveCount(heads.length)
 
   // Every part of the first card matches the demo's text exactly.
   const card = shown(win, '.pcard').first()
@@ -190,12 +190,27 @@ test('忽略一条:它进垃圾桶,恢复后回到推送屏原来的位置', asy
   expect(await trashFromCore(win)).toHaveLength(0)
 })
 
-test('「全部忽略」清空这一档,清完出空态,忽略的都在垃圾桶里', async ({ win }) => {
+test('「全部忽略」只清空自己这一组,逐组清完出空态,忽略的都在垃圾桶里', async ({ win }) => {
   await openInbox(win, 'all')
   await expect(shown(win, '.pcard')).toHaveCount((await inboxFromCore(win)).length)
   const titles = await cardTitles(win)
+  const groups = shown(win, '.collapsible-group')
+  const dismissGroup = (group: Locator) =>
+    group.locator('.collapsible-group-actions .btn').filter({ hasText: '全部忽略' }).click()
+  const first = await groups.first().locator('.pcard h3').allTextContents()
+  // The first group must leave other cards behind, or this test could not tell a group from the whole list.
+  expect(first.length).toBeGreaterThan(0)
+  expect(first.length).toBeLessThan(titles.length)
 
-  await shown(win, '.collapsible-group-actions .btn').filter({ hasText: '全部忽略' }).click()
+  await dismissGroup(groups.first())
+  await expect(shown(win, '.pcard')).toHaveCount(titles.length - first.length)
+  expect(await cardTitles(win)).toEqual(titles.filter((t) => !first.includes(t)))
+  expect((await trashFromCore(win)).map((t) => t.title).sort()).toEqual([...first].sort())
+
+  for (let left = await groups.count(); left > 0; left -= 1) {
+    await dismissGroup(groups.first())
+    await expect(groups).toHaveCount(left - 1)
+  }
   await expect(shown(win, '.pcard')).toHaveCount(0)
   await expect(shown(win, '.empty-state')).toHaveCount(1)
   await expect(shown(win, '.desk-head .t')).toHaveText('论文推送 · 0')
@@ -290,11 +305,11 @@ test('下载失败在卡片内给原因和重试,不占用全页错误', async (
   await openInbox(win, 'all')
   const card = shown(win, '.pcard[data-pid="sequoia2"]')
   await card.locator('[title="下载并入库"]').click()
-  await expect(card.locator('.pfail span')).toHaveText('没能下载原文：服务器返回 503')
+  await expect(card.locator('.pfail span')).toHaveText('下载失败 · 服务器出错')
   await expect(card.locator('[title="下载并入库"]')).toHaveCount(1)
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   await card.locator('.pfail .btn', { hasText: '重试' }).click()
-  await expect(card.locator('.pfail span')).toHaveText('没能下载原文：服务器返回 503')
+  await expect(card.locator('.pfail span')).toHaveText('下载失败 · 服务器出错')
 })
 
 test('检查新论文按关注抓取一次,新论文进入相应分组且标题栏记下时间', async ({ win }) => {
@@ -302,7 +317,7 @@ test('检查新论文按关注抓取一次,新论文进入相应分组且标题�
   const before = await inboxFromCore(win)
   await shown(win, '.desk-head .btn').filter({ hasText: '检查新论文' }).click()
   await expect(shown(win, '.pcard')).toHaveCount(before.length + 2)
-  await expect(shown(win, '.desk-head .fetchnote')).toHaveText(/^上次检查 \d+\/\d+ \d{2}:\d{2}$/)
+  await expect(shown(win, '.desk-head .fetchnote')).toHaveText(/^上次检查 \d+月\d+日 \d{2}:\d{2}$/)
   expect((await cardTitles(win))[0]).toBe('Tree Width in Batched Serving')
   const fresh = shown(win, '.pcard').filter({ hasText: 'Tree Width in Batched Serving' })
   await expect(fresh.locator('.plabel')).toHaveText(['Abstract'])
@@ -443,7 +458,10 @@ test('关注管理:占位行按 Esc 撤掉,屏上没有旧的圆角添加框', a
   await settings(win, '.section-heading').filter({ hasText: '作者' }).locator('.btn').click()
   await expect(settings(win, '.wrow')).toHaveCount(watches.length + 1)
   // The placeholder is styled as a .wrow: while it is open, every watch row here still has one height.
-  expect(await uniqueHeights(settings(win, '.wrow'))).toHaveLength(1)
+  // The divider between rows is the lower row's top border, which the first row of a list lacks, so
+  // rows are compared without their borders.
+  expect(await settings(win, '.wrow').evaluateAll((rows) => [...new Set(rows.map((r) => r.clientHeight))]))
+    .toHaveLength(1)
   await settings(win, '.wrow.newrow input').press('Escape')
   await expect(settings(win, '.wrow.newrow')).toHaveCount(0)
   await expect(settings(win, '.wrow')).toHaveCount(watches.length)
@@ -574,16 +592,18 @@ test('关注管理:同一时间只开一个占位,点另一组的加号先存下
   await openDeliverySettings(win)
   const watches = await watchesFromCore(win)
   await expect(settings(win, '.wrow')).toHaveCount(watches.length)
+  const topics = watches.filter((w) => w.type === 'topic').length
 
   await settings(win, '.section-heading').filter({ hasText: '主题' }).locator('.btn').click()
   await settings(win, '.wrow.newrow input').fill('切组前存下的主题')
   await settings(win, '.section-heading').filter({ hasText: '作者' }).locator('.btn').click()
 
   // The topic typed in the first placeholder is saved as a watch before the author group's
-  // placeholder opens; the author group comes after the topic group, so its placeholder is the last row.
+  // placeholder opens. A new watch lands first in its group, so the author group's placeholder comes
+  // right after the topic group's rows, the saved topic now among them.
   await expect(settings(win, '.wrow.newrow')).toHaveCount(1)
   await expect(settings(win, '.wrow')).toHaveCount(watches.length + 2)
-  await expect(settings(win, '.wrow').last()).toHaveClass(/\bnewrow\b/)
+  await expect(settings(win, '.wrow').nth(topics + 1)).toHaveClass(/\bnewrow\b/)
   await expect(settings(win, '.wrow.newrow input')).toHaveValue('')
   expect((await watchesFromCore(win)).map((w) => w.name)).toContain('切组前存下的主题')
 })

@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-import { act } from 'react'
+import { act, type ComponentProps } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PaperReading } from '../../shared/contract.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { ReadingRemark } from '../components/reader/ReadingRemark.js'
+import { useDrafts, type EditDraft } from '../hooks/useDrafts.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -13,6 +14,11 @@ declare global {
 
 const READING: PaperReading = {
   paperId: 'paper-1', highlights: [], notes: [], remark: '原来的随想',
+}
+
+/** The remark panel with the drafts the reader rail holds for it. */
+function Remark(props: Omit<ComponentProps<typeof ReadingRemark>, 'edits'>) {
+  return <ReadingRemark {...props} edits={useDrafts<EditDraft>()} />
 }
 
 function setValue(input: HTMLTextAreaElement, value: string): void {
@@ -41,7 +47,7 @@ describe('ReadingRemark', () => {
     roots.push(root)
     const onSave = vi.fn(async () => true)
     act(() => root.render(
-      <MessagesProvider><ReadingRemark reading={READING} saving={false} onSave={onSave} /></MessagesProvider>,
+      <MessagesProvider><Remark reading={READING} saving={false} onSave={onSave} /></MessagesProvider>,
     ))
     const textarea = host.querySelector('textarea')!
     const button = host.querySelector('button')!

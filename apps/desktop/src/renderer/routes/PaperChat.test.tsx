@@ -15,8 +15,8 @@ const withMessages = (node: ReactNode) => <MessagesProvider>{node}</MessagesProv
 const api = vi.hoisted(() => ({
   send: vi.fn(() => Promise.resolve({ id: 'chat-paper-1', state: 'complete' })),
   cancel: vi.fn(() => Promise.resolve({ id: 'chat-paper-1', cancelled: true })),
-  forPaper: vi.fn(() => Promise.resolve({
-    id: 'chat-paper-1', title: 'Paper One', archived: false, messageCount: 0, paperId: 'paper-1',
+  forPaper: vi.fn((paperId: string) => Promise.resolve({
+    id: `chat-${paperId}`, title: 'Paper One', archived: false, messageCount: 0, paperId,
   })),
   messages: vi.fn<() => Promise<ChatMessage[]>>(() => Promise.resolve([])),
   createIdea: vi.fn(() => Promise.resolve({ id: 'idea-1' })),
@@ -69,6 +69,7 @@ const PAPER: PaperRow = {
   pageCount: 8, noteCount: 0, conclusionCount: 0,
   updated: '2026-09-14', custom: {},
 }
+const PAPER_TWO: PaperRow = { ...PAPER, id: 'paper-2', title: 'Paper Two' }
 
 function setValue(input: HTMLInputElement | HTMLTextAreaElement, value: string): void {
   const prototype = input instanceof window.HTMLTextAreaElement
@@ -189,6 +190,29 @@ describe('PaperChat', () => {
     })
     return host
   }
+
+  /** Shows `paper` in the mounted chat, as the reader does when it opens another paper. */
+  async function showPaper(paper: PaperRow | null): Promise<void> {
+    await act(async () => {
+      root!.render(withMessages(<PaperChat paper={paper} />))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+  }
+
+  it('问题草稿留在它的论文上：换一篇时输入框是空的，回到原篇问题还在', async () => {
+    const host = await mountChat()
+    const input = host.querySelector<HTMLTextAreaElement>('[aria-label="向当前论文提问"]')!
+    act(() => setValue(input, '这篇的关键假设是什么？'))
+    // While the next paper loads, the reader passes no paper.
+    await showPaper(null)
+    await showPaper(PAPER_TWO)
+    expect(input.value).toBe('')
+
+    await showPaper(null)
+    await showPaper(PAPER)
+    expect(input.value).toBe('这篇的关键假设是什么？')
+  })
 
   it('空对话的提示和输入框一样留在对话栏的左右边距里', async () => {
     const host = await mountChat()

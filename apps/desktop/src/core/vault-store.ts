@@ -11,6 +11,7 @@ import {
   DEFAULT_DELIVERY_SETTINGS, FeedEntrySchema, ProposalRecordSchema, ResearchIdeaSchema, WatchSchema,
 } from '../shared/contract.js'
 import { projectControlState } from '../shared/project-control.js'
+import { sortRecordsNewestFirst } from '../shared/project-signals.js'
 import { topicDir, topicProposal } from '../shared/topic-proposal.js'
 import {
   ACTIVE_PROJECT, CHAT_EVENT_PREFIX, FINISHED_PROJECT, PAPER_PAGE, PROJECTS_DIR, READ_STATES, SEARCH_LIMIT,
@@ -501,6 +502,19 @@ export function createVaultStore(
   const readingOf = (id: string): PaperReading => structuredClone(
     readings.find((reading) => reading.paperId === id) ?? emptyPaperReading(id),
   )
+
+  /** Persists `next` as paper `id`'s reading state and projects its note count and remark onto the paper's row. */
+  const storeReading = (id: string, next: PaperReading): void => {
+    readings = [...readings.filter((reading) => reading.paperId !== id), next]
+    save('paper-readings', readings)
+    const row: PaperRow = {
+      ...papers.get(id)!,
+      noteCount: readingNoteCount(next),
+    }
+    if (next.remark === '') delete row.remark
+    else row.remark = next.remark
+    papers.set(id, row)
+  }
 
   /** Projects sidecar note counts and remarks onto the paper table without changing source metadata. */
   const withReadingCount = (row: PaperRow): PaperRow => {
@@ -1251,17 +1265,13 @@ export function createVaultStore(
     mutatePaperReading(id, mutation: ReadingMutation) {
       if (!papers.has(id)) throw new Error(`论文不存在：${id}`)
       const next = applyReadingMutation(readingOf(id), mutation, nextId, today())
-      readings = [...readings.filter((reading) => reading.paperId !== id), next]
-      save('paper-readings', readings)
-      const paper = papers.get(id)!
-      const row: PaperRow = {
-        ...paper,
-        noteCount: readingNoteCount(next),
-      }
-      if (next.remark === '') delete row.remark
-      else row.remark = next.remark
-      papers.set(id, row)
+      storeReading(id, next)
       return structuredClone(next)
+    },
+
+    putPaperReading(id, reading) {
+      if (!papers.has(id)) throw new Error(`论文不存在：${id}`)
+      storeReading(id, structuredClone(reading))
     },
 
     paperColumns() {
@@ -1326,6 +1336,7 @@ export function createVaultStore(
       return applyOrder(projects(), state.projectOrder, (p) => p.id).map((p) => {
         const workspace = p.workspaceRoot === undefined ? undefined : readProjectWorkspace(p)
         const graph = workspace?.graph ?? p.graph
+        const records = [...p.events, ...workspace?.events ?? []]
         return {
           id: p.id,
           name: p.name,
@@ -1343,9 +1354,9 @@ export function createVaultStore(
           conclusions: conclusionCounts(conclusionsOf(p, graph)),
           paperCount: p.papers.filter((id) => papers.has(id)).length,
           milestones: p.milestones.map(({ date, done }) => ({ date, done })),
-          recentEvents: p.events.slice(-RECENT_EVENTS)
+          recentEvents: sortRecordsNewestFirst(records).slice(0, RECENT_EVENTS).reverse()
             .map(({ date, text, origin }) => ({ date, text, ...(origin === undefined ? {} : { origin }) })),
-          ...lastProgressOf(changes, p.id, [...p.events, ...workspace?.events ?? []]),
+          ...lastProgressOf(changes, p.id, records),
         }
       })
     },

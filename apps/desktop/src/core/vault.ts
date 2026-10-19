@@ -27,8 +27,8 @@ export type ProposalProducer = { by: string; source: ChangeSource }
 /**
  * The vault-backed data operations Core exposes over the contract, plus the
  * primitives undo and restoring from the trash need — hasPaper, paperSnapshot,
- * putPaper, hasProject, putProject, readPages, putPages, paperCells,
- * putPaperColumn and trashedPaper —
+ * putPaper, putPaperReading, hasProject, putProject, readPages, putPages,
+ * paperCells, putPaperColumn and trashedPaper —
  * which no contract method reaches. A fixture implementation backs tests and
  * early UI work; a disk-backed implementation replaces it without changing
  * callers.
@@ -174,9 +174,18 @@ export interface VaultStore {
    * persists the resulting state atomically, and returns its new snapshot. A
    * remark.set replaces the paper's one remark (an empty text clears it); a
    * progress.set records the last page read. The paper's row carries a
-   * non-empty remark as `remark`.
+   * non-empty remark as `remark`. A note.update, note.delete, highlight.update,
+   * highlight.delete or remark.set is recorded as a change; the other commands
+   * are not.
    */
   mutatePaperReading(id: string, mutation: ReadingMutation): PaperReading
+
+  /**
+   * Replaces the paper's reading state with `reading`, persisting it and updating the paper's row
+   * the way mutatePaperReading does. Undo writes a reading back through it, and no contract method
+   * reaches it. Throws if no such paper exists.
+   */
+  putPaperReading(id: string, reading: PaperReading): void
 
   /** Returns the paper table's column configuration: hidden built-in columns and custom columns. */
   paperColumns(): PaperColumns
@@ -529,10 +538,10 @@ export interface VaultStore {
   readLater(id: string): boolean
 
   /** Returns whether an inbox entry needs its PDF fetched or already exists in the library. */
-  prepareInboxDownload(id: string): { kind: 'fetch'; url: string } | InboxDownloadResult
+  prepareInboxDownload(id: string): { kind: 'fetch'; url: string } | Exclude<InboxDownloadResult, { kind: 'failed' }>
 
   /** Stores a fetched inbox PDF through the immutable import path and applies its saved metadata. */
-  completeInboxDownload(id: string, bytes: Uint8Array): InboxDownloadResult
+  completeInboxDownload(id: string, bytes: Uint8Array): Exclude<InboxDownloadResult, { kind: 'failed' }>
 
   /**
    * Returns the later queue, the most recently added entry first; entries

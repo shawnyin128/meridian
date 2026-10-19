@@ -1,5 +1,6 @@
 import * as Popover from '@radix-ui/react-popover'
 import type { ReactElement, ReactNode } from 'react'
+import { ignoreComposingEscape } from '../lib/keyboard.js'
 
 type ContentProps = Omit<Popover.PopoverContentProps,
   'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'sticky'
@@ -12,7 +13,8 @@ export type ActionPopoverAlign = Popover.PopoverContentProps['align']
  * The shared skeleton for interactive configuration popovers. Unlike `PickerPopover`, which serves
  * input suggestions, it keeps the native focus flow inside the popover, which suits calendars,
  * column settings and multi-control forms; callers only provide the trigger, the content and the
- * controlled open/close policy.
+ * controlled open/close policy. An Escape pressed while an input method is composing neither closes
+ * the popover nor reaches `contentProps.onEscapeKeyDown`.
  */
 type ActionPopoverBaseProps = {
   children: ReactNode
@@ -48,7 +50,8 @@ export function ActionPopover(props: ActionPopoverProps) {
         : <Popover.Anchor asChild>{props.anchor}</Popover.Anchor>}
       <Popover.Portal>
         <Popover.Content
-          {...contentProps} className={contentClassName} side={side} align={align}
+          {...contentProps} onEscapeKeyDown={ignoreComposingEscape(contentProps?.onEscapeKeyDown)}
+          className={contentClassName} side={side} align={align}
           sideOffset={sideOffset} {...(sticky === undefined ? {} : { sticky })}
         >
           {children}

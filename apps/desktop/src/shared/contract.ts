@@ -382,7 +382,10 @@ export const ProjectSummarySchema = ProjectDetailSchema.pick({
   control: ProjectControlSchema,
   /** One completion value per milestone; the earliest unfinished item is next, with titles kept in details. */
   milestones: z.array(z.object({ date: IsoDate, done: z.boolean() }).strict()),
-  /** Last three research-log entries in event order, newest last. */
+  /**
+   * The three newest research records on the page or in the bound workspace, in
+   * `sortRecordsNewestFirst` order reversed: newest last.
+   */
   recentEvents: z.array(z.object({
     date: IsoDate, text: z.string(), origin: z.enum(['agent', 'user']).optional(),
   }).strict()),
@@ -1100,6 +1103,12 @@ const WatchFieldsSchema = z.discriminatedUnion('type', [
   }).strict(),
 ])
 
+/** Why a network call failed: no network, a timeout, a rate limit, another error status, or anything else. */
+export const NetFailureSchema = z.enum(['unavailable', 'timeout', 'rate-limit', 'server', 'unknown'])
+
+/** A network call that failed, with its reason; author search and watch suggestions answer with it. */
+export const NetFailedSchema = z.object({ kind: z.literal('failed'), reason: NetFailureSchema }).strict()
+
 /** An author search result, projected to the fields needed for disambiguation and selection. */
 export const AuthorCandidateSchema = z.object({
   source: AuthorSourceSchema,
@@ -1253,14 +1262,19 @@ export const InboxReadLaterParamsSchema = z.object({ id: z.string() }).strict()
 
 export const InboxDownloadParamsSchema = z.object({ id: z.string() }).strict()
 
+/** Why the PDF of an inbox entry could not be fetched. */
+export const InboxDownloadFailureSchema = z.enum([...NetFailureSchema.options, 'not-pdf'])
+
 /**
  * Import result. `added` means a new page was written; `existing` means a page
  * already referenced the source and no write occurred. Both return the page ID;
  * `existing` also returns the authoritative vault title for user messaging.
+ * `failed` means the PDF could not be fetched and nothing was written.
  */
 export const InboxDownloadResultSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('added'), paper: z.string() }).strict(),
   z.object({ kind: z.literal('existing'), paper: z.string(), title: z.string() }).strict(),
+  z.object({ kind: z.literal('failed'), reason: InboxDownloadFailureSchema }).strict(),
 ])
 
 export const LaterRemoveParamsSchema = z.object({ id: z.string() }).strict()
@@ -2039,11 +2053,11 @@ export const MetadataJobSchema = z.object({
   error: z.string().nullable(),
 }).strict()
 
-/** Current state of a watch-driven fetch. */
+/** Current state of a watch-driven fetch; `reason` says why the last fetch failed. */
 export const FetchStatusSchema = z.object({
   state: z.enum(['idle', 'checking', 'failed']),
   checkedAt: z.number().int().nullable(),
-  error: z.string().nullable(),
+  reason: NetFailureSchema.nullable(),
 }).strict()
 
 /** Source currently downloading with byte progress. */
@@ -2202,6 +2216,8 @@ export type TrashEntry = z.infer<typeof TrashEntrySchema>
 export type Watch = z.infer<typeof WatchSchema>
 export type WatchFields = z.infer<typeof WatchFieldsSchema>
 export type AuthorIdentity = z.infer<typeof AuthorIdentitySchema>
+export type NetFailure = z.infer<typeof NetFailureSchema>
+export type NetFailed = z.infer<typeof NetFailedSchema>
 export type AuthorCandidate = z.infer<typeof AuthorCandidateSchema>
 export type WatchTopicSuggestion = z.infer<typeof WatchTopicSuggestionSchema>
 export type WatchAuthorSuggestion = z.infer<typeof WatchAuthorSuggestionSchema>
@@ -2209,6 +2225,7 @@ export type WatchSuggestionResult = z.infer<typeof WatchSuggestionResultSchema>
 export type WatchSuggestionParams = z.infer<typeof WatchSuggestionParamsSchema>
 export type InboxEntry = z.infer<typeof InboxEntrySchema>
 export type InboxListParams = z.infer<typeof InboxListParamsSchema>
+export type InboxDownloadFailure = z.infer<typeof InboxDownloadFailureSchema>
 export type InboxDownloadResult = z.infer<typeof InboxDownloadResultSchema>
 export type DiscoveryIntent = z.infer<typeof DiscoveryIntentSchema>
 export type DiscoveryProfile = z.infer<typeof DiscoveryProfileSchema>
