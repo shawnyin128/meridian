@@ -93,10 +93,9 @@
 .mi .ck>span{display:flex}
 .cki{width:13px;height:13px;vertical-align:-2px}
 .mi-key{margin-left:auto;color:var(--ter);font-size:var(--fs-cap)}
-/* Input row in a popover: transparent background, thin light-gray border, no color change on focus */
+/* Input row in a popover */
 .mi-in{padding:6px 8px}
-.mi-in input{width:100%;border:1px solid var(--sep-strong);background:transparent;border-radius:var(--r-sm);padding:4px 10px;font-size:var(--fs-sm);color:var(--ink);font-family:var(--sans)}
-.mi-in input:focus-visible{outline:0}
+.mi-in .form-input{width:100%}
 
 /*
  * Last header cell of both tables: the add-column + and the column-settings gear, nested icon
@@ -113,10 +112,6 @@
 .colbtn{opacity:0;pointer-events:none;vertical-align:middle}
 thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events:auto}
 
-/* In-place input in a table cell and in the placeholder header cell of a new column */
-.celledit{border:1px solid var(--sep-strong);background:transparent;border-radius:var(--r-sm);padding:2px 8px;font-size:var(--fs-sm);color:var(--ink);width:92px;font-family:var(--sans)}
-.celledit:focus-visible{outline:0}
-.th-new .celledit{width:100%}
 /* The demo's items are unfocusable divs without this rule; here they are buttons, so focus must show */
 .ctxmenu:focus-visible{outline:0}
 .mi:focus-visible{outline:none;background:var(--hover)}
@@ -215,6 +210,5 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .nrow .nq{font-size:12px;color:var(--ter);font-style:italic;background:var(--field);border-radius:6px;padding:5px 8px;margin-bottom:6px}
 .nrow .nt{font-size:var(--fs-sm);color:var(--ink);overflow-wrap:anywhere}
 
-/* In-place edit input of inline drafts and forms: project links, the new-project row, Wiki column settings, pick rows */
-.inedit{border:1px solid var(--sep-strong);background:transparent;border-radius:var(--r-sm);padding:3px 10px;font-size:var(--fs-base);color:var(--ink);font-family:var(--sans);flex:1;min-width:0}
-.inedit:focus-visible{outline:0}
+/* In-place draft inputs and pick rows fill the rest of their row */
+.inedit{flex:1;min-width:0}

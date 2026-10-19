@@ -11,6 +11,8 @@ Current shared contracts:
 - `timeline/MilestoneEditor`: the one milestone editor of both boards. The milestone lane opens it to
   name a new milestone and a diamond to rename or delete one, at the click.
 - `InlineField`: one-field-at-a-time editing, validation, cancel/save behavior, and presentation hooks.
+- `EditActions`: the one edit contract of a long text: Edit in the heading's action slot, then Cancel and
+  Save in that same place. Save or ⌘Enter commits (Enter in a one-line field), Cancel or Escape restores.
 - `InlineDraftInput`: the shared input and lifecycle for placeholder/create rows. Hosts provide row
   layout, sibling controls, trigger refs, and persistence; trimming, validation, focus, Enter/Escape,
   outside cancellation, and async submission locking are implemented once.
@@ -68,9 +70,11 @@ Current shared contracts:
 - `ResearchObjectCard`: one list-card shell for first-class research objects such as projects and ideas;
   routes provide their domain-specific identity and metadata without redefining width, spacing, borders,
   selection, management-menu visibility, or keyboard activation.
-- `FormInput`, `FormTextarea`, and `FormSelect`: the native form-control baseline for stable geometry,
-  inherited typography, and focus without browser-specific rings. Feature components still own their
-  layout, validation, suggestions, and persistence.
+- `FormInput`, `FormTextarea`, and `FormSelect`: the one field, in two appearances: `field`, the boxed field
+  of forms, dialogs, popovers and filters (the default), and `inline`, which edits a value in the place of its
+  text in a row, cell or property list. Both share one edge, fill, radius and the one focus rule in
+  `shell/tokens.css`; no other stylesheet draws a field's box. Feature components still own their layout,
+  validation, suggestions, and persistence.
 - `ClearableInput`: the shared controlled single-line field with one trailing clear action. Global and
   library search configure the same focus restoration, icon geometry, and accessible naming.
 - `GenerationControl`: the shared idle, spinning, and hover-to-stop button contract for model-backed
@@ -82,6 +86,8 @@ Current shared contracts:
   and actions rather than copying the desktop shell structure. `SectionHeading` is the one section heading:
   its `variant` is `page`, `content`, `group` or `rail`, and `actions` is the only right-hand slot.
 - `PickRow`, `Pager`, `Markdown`, `PaperMetadata`, `ParseProgress`, `AddAction`: shared feature widgets.
+- `RatingStars`, `ReadStatePicker` (in `PaperMetadata`) and `PaperTopics`: the one rating, reading-status and
+  topic editor of a paper, used by both the paper table and the detail panel.
 - `paper/PaperCard`: discovery-card composition, actions/notices slots, metadata badges, recommendations,
   and the shared LaTeX-capable `PaperAbstract`. Inbox and read-later configure the same card.
 - `paper/PaperText`: every display of a paper title (inline) or abstract (block, through `Markdown`) with
@@ -113,7 +119,8 @@ Current shared contracts:
   relations, attachments, Agent sessions, and timeline feature sections. The route coordinates data
   and persistence instead of implementing their internal UI.
 - `FieldPickers`: shared choice, priority, date, and overflow-menu controls. Screens supply trigger
-  presentation and callbacks rather than rebuilding popovers and keyboard behavior. `DotsMenu` is the one
+  presentation and callbacks rather than rebuilding popovers and keyboard behavior. `ChoicePicker` is the one
+  single-value picker: `appearance="field"` makes it the boxed field of a form in place of a native select. `DotsMenu` is the one
   overflow-menu trigger: `label` names it, `stopRowActivation` keeps a click from activating the row it
   sits in, and `open` with `onOpenChange` lets a host control it. The host owns the rule that reveals it.
 

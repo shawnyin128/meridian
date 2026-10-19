@@ -53,6 +53,11 @@ describe('InlineDraftInput', () => {
     root = null
   })
 
+  it('is the inline field, the one in-place editor look of rows and cells', () => {
+    act(() => root!.render(<Probe onSubmit={vi.fn()} onCancel={vi.fn()} />))
+    expect(host.querySelector('input')!.classList).toContain('form-control-inline')
+  })
+
   it('normalizes non-empty text and closes only after the host accepts it', async () => {
     const submit = vi.fn(() => Promise.resolve(true))
     const cancel = vi.fn()

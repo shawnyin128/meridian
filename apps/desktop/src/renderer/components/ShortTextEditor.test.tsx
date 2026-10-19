@@ -37,6 +37,13 @@ describe('ShortTextEditor', () => {
     root = null
   })
 
+  it('names the value in the boxed field', () => {
+    act(() => root!.render(withMessages(
+      <ShortTextEditor title="重命名" initialValue="旧名" placeholder="名称" onSubmit={vi.fn()} onClose={vi.fn()} />,
+    )))
+    expect(host.querySelector('input')!.classList).toContain('form-control-field')
+  })
+
   it('trims and submits with Enter, closing only after acceptance', async () => {
     const submit = vi.fn(() => Promise.resolve(true))
     const close = vi.fn()

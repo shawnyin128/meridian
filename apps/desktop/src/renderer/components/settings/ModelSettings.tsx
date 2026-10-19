@@ -5,7 +5,8 @@ import type {
 } from '../../../shared/contract.js'
 import { harness } from '../../ipc.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { FormInput, FormSelect } from '../FormControls.js'
+import { ChoicePicker } from '../FieldPickers.js'
+import { FormInput } from '../FormControls.js'
 import {
   ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError, ServiceField,
   ServiceFoot, ServiceSavedKey, ServiceStatus,
@@ -45,6 +46,14 @@ const PROVIDERS: Record<HarnessModelProvider, {
 }
 
 type CompatibleTemplateId = 'choose' | 'deepseek' | 'openrouter' | 'ollama' | 'lm-studio' | 'custom'
+const TEMPLATE_CHOICES: readonly CompatibleTemplateId[] = ['choose', 'deepseek', 'openrouter', 'ollama', 'lm-studio', 'custom']
+const PROVIDER_CHOICES: readonly HarnessModelProvider[] = ['openai', 'anthropic', 'google-gemini', 'openai-compatible']
+const PROVIDER_NAMES: Record<Exclude<HarnessModelProvider, 'openai-compatible'>, string> = {
+  openai: 'OpenAI', anthropic: 'Anthropic', 'google-gemini': 'Google Gemini',
+}
+/** The protocols an OpenAI-compatible service may speak, by their API names. */
+const COMPATIBLE_PROTOCOLS: readonly HarnessModelProtocol[] = ['responses', 'chat-completions']
+const AUTHENTICATIONS = ['api-key', 'none'] as const
 
 /** Structural, language-neutral data for each template. Copy comes from the catalog by template id. */
 const COMPATIBLE_TEMPLATES: Record<Exclude<CompatibleTemplateId, 'choose' | 'custom'>, {
@@ -276,35 +285,30 @@ export function ModelSettings() {
         notConfiguredLabel={m.settings.model.notConfigured}
       />
       <ServiceField label={m.settings.model.fields.providerLabel}>
-        <FormSelect appearance="field" aria-label={m.settings.model.fields.providerLabel} value={provider}
-          onChange={(event) => selectProvider(event.target.value as HarnessModelProvider)}>
-          <option value="openai">OpenAI</option>
-          <option value="anthropic">Anthropic</option>
-          <option value="google-gemini">Google Gemini</option>
-          <option value="openai-compatible">{m.settings.model.providers['openai-compatible'].label}</option>
-        </FormSelect>
+        <ChoicePicker
+          appearance="field" aria-label={m.settings.model.fields.providerLabel} value={provider}
+          options={PROVIDER_CHOICES} onPick={selectProvider}
+          label={(option) => (option === 'openai-compatible' ? m.settings.model.providers[option].label : PROVIDER_NAMES[option])}
+        />
       </ServiceField>
       {provider === 'openai-compatible' ? (
         <>
           <ServiceField label={m.settings.model.templates.chooseLabel}>
-            <FormSelect appearance="field" aria-label={m.settings.model.templates.chooseAria} value={compatibleTemplate}
-              onChange={(event) => selectCompatibleTemplate(event.target.value as CompatibleTemplateId)}>
-              <option value="choose">{m.settings.model.templates.choosePlaceholder}</option>
-              <option value="deepseek">{m.settings.model.templates.deepseek.label}</option>
-              <option value="openrouter">{m.settings.model.templates.openrouter.label}</option>
-              <option value="ollama">{m.settings.model.templates.ollama.label}</option>
-              <option value="lm-studio">{m.settings.model.templates['lm-studio'].label}</option>
-              <option value="custom">{m.settings.model.templates.custom}</option>
-            </FormSelect>
+            <ChoicePicker
+              appearance="field" aria-label={m.settings.model.templates.chooseAria} value={compatibleTemplate}
+              options={TEMPLATE_CHOICES} onPick={selectCompatibleTemplate}
+              label={(option) => (option === 'choose' ? m.settings.model.templates.choosePlaceholder
+                : option === 'custom' ? m.settings.model.templates.custom : m.settings.model.templates[option].label)}
+            />
           </ServiceField>
           {compatibleTemplate === 'custom' ? (
             <>
               <ServiceField label={m.settings.model.fields.protocolLabel}>
-                <FormSelect appearance="field" aria-label={m.settings.model.fields.protocolAria} value={protocol}
-                  onChange={(event) => setProtocol(event.target.value as HarnessModelProtocol)}>
-                  <option value="responses">Responses API</option>
-                  <option value="chat-completions">Chat Completions API</option>
-                </FormSelect>
+                <ChoicePicker
+                  appearance="field" aria-label={m.settings.model.fields.protocolAria} value={protocol}
+                  options={COMPATIBLE_PROTOCOLS} onPick={setProtocol}
+                  label={(option) => (option === 'responses' ? 'Responses API' : 'Chat Completions API')}
+                />
               </ServiceField>
               <ServiceField label={m.settings.model.fields.baseUrlLabel}>
                 <FormInput appearance="field" aria-label={m.settings.model.fields.baseUrlAria} value={baseUrl}
@@ -312,11 +316,12 @@ export function ModelSettings() {
                   onChange={(event) => setBaseUrl(event.target.value)} />
               </ServiceField>
               <ServiceField label={m.settings.model.fields.authLabel}>
-                <FormSelect appearance="field" aria-label={m.settings.model.fields.authAria} value={authentication}
-                  onChange={(event) => setAuthentication(event.target.value as 'api-key' | 'none')}>
-                  <option value="api-key">{m.settings.model.fields.apiKeyLabel}</option>
-                  <option value="none">{m.settings.model.fields.authNoneOption}</option>
-                </FormSelect>
+                <ChoicePicker
+                  appearance="field" aria-label={m.settings.model.fields.authAria} value={authentication}
+                  options={AUTHENTICATIONS} onPick={setAuthentication}
+                  label={(option) => (option === 'api-key'
+                    ? m.settings.model.fields.apiKeyLabel : m.settings.model.fields.authNoneOption)}
+                />
               </ServiceField>
             </>
           ) : selectedCompatibleTemplate === null ? (

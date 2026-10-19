@@ -308,6 +308,8 @@ describe('WatchSettings', () => {
     expect(button(sources!, '从项目生成').getAttribute('aria-checked')).toBe('true')
     expect(button(sources!, '描述关注方向').getAttribute('aria-checked')).toBe('false')
     expect(section.textContent).not.toContain('batch aware verification')
+    expect(section.querySelector('select')).toBeNull()
+    expect(section.querySelector('button[aria-label="用于生成建议的项目"]')!.textContent).toBe('Draft-tree serving')
 
     api.suggest.mockResolvedValueOnce({
       topics: [{ name: 'tree attention kernels', relatedPapers: 2 }], authors: [], paperCount: 4,

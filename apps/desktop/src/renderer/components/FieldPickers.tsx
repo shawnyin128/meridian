@@ -6,8 +6,9 @@ import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import { ActionMenu, MenuRadioGroup, MenuRadioItem } from './ActionMenu.js'
 import { ActionPopover, PopoverClose } from './ActionPopover.js'
+import { FormButton } from './FormControls.js'
 import { IconButton } from './IconButton.js'
-import { IconDots, IconNext, IconPrevious } from './icons.js'
+import { IconChevron, IconDots, IconNext, IconPrevious } from './icons.js'
 import './FieldPickers.css'
 
 const PRIORITIES: Task['priority'][] = ['p0', 'p1', 'p2']
@@ -48,32 +49,49 @@ export function DotsMenu({
 }
 
 /**
- * A single-value picker whose trigger appearance is supplied by the host field. The trigger shows
- * `children` when given, and the current value's label otherwise.
+ * The one single-value picker: a menu of `options` with the picked one marked. With
+ * `appearance="field"` it is the boxed field of a form, showing the picked option's label, or
+ * `placeholder` while `value` matches no option. Otherwise the host field supplies the trigger's
+ * class, and its content as `children`, which defaults to the picked option's label.
  */
 export function ChoicePicker<T extends string>({
-  value, options, onPick, label = (option) => option, className = 'pv metadata-editable',
-  stopRowActivation = false, children,
+  value, options, onPick, label = (option) => option, className, appearance, placeholder = '',
+  disabled = false, 'aria-label': ariaLabel, stopRowActivation = false, children,
 }: {
   value: T
   options: readonly T[]
   onPick: (next: T) => void
   label?: (option: T) => string
   className?: string
+  appearance?: 'field'
+  placeholder?: string
+  disabled?: boolean
+  'aria-label'?: string
   /** Pass true when the row or card itself is clickable, so the trigger swallows the click instead of bubbling it. */
   stopRowActivation?: boolean
   children?: ReactNode
 }) {
   const m = useMessages()
+  const picked = options.includes(value) ? label(value) : placeholder
+  const trigger = appearance === 'field'
+    ? (
+      <FormButton
+        className={`choice-picker${className ? ` ${className}` : ''}`} aria-label={ariaLabel} disabled={disabled}
+      >
+        <span className="choice-picker-value">{picked}</span>
+        <IconChevron />
+      </FormButton>
+    )
+    : (
+      <button
+        className={className ?? 'pv metadata-editable'} title={m.common.field.clickToEdit} aria-label={ariaLabel}
+        disabled={disabled} onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
+      >{children ?? label(value)}</button>
+    )
   return (
     <ActionMenu
-      align="start"
-      trigger={(
-        <button
-          className={className} title={m.common.field.clickToEdit}
-          onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
-        >{children ?? label(value)}</button>
-      )}
+      align="start" trigger={trigger} stopContentClickPropagation={stopRowActivation}
+      {...(appearance === 'field' ? { contentClassName: 'ctxmenu choice-picker-menu' } : {})}
     >
       <MenuRadioGroup value={value}>
         {options.map((option) => (

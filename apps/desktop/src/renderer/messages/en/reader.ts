@@ -32,7 +32,6 @@ export const reader = {
   remark: {
     heading: 'Thoughts on this paper',
     placeholder: 'Write your overall thoughts on this paper…',
-    save: 'Save thoughts',
   },
   loadingPdf: 'Loading PDF…',
   selection: {

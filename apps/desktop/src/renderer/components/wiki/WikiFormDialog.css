@@ -1,5 +1,5 @@
 .wiki-form-field{display:flex;flex-direction:column;gap:6px;margin-top:12px;color:var(--sec);font-size:var(--fs-sm)}
-.wiki-form-field .form-input,.wiki-form-field .form-select{width:100%}
-.wiki-form-field .form-textarea{width:100%;min-height:72px;padding:8px 10px;line-height:1.55;resize:vertical}
+.wiki-form-field .form-input,.wiki-form-field .choice-picker{width:100%}
+.wiki-form-field .form-textarea{width:100%;min-height:72px}
 .wiki-form-field .segmented-control{align-self:flex-start}
 .wiki-form-hint{margin:6px 0 0;color:var(--ter);font-size:var(--fs-cap)}

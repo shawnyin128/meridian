@@ -90,6 +90,7 @@ describe('ProjectPlan', () => {
     const output = renderPlan('task', { creating: { kind: 'task', date: '2026-09-16', window: null } })
     expect(output.indexOf('task-create-row')).toBeGreaterThan(-1)
     expect(output.indexOf('task-create-row')).toBeLessThan(output.indexOf('data-row="task-1"'))
+    expect(output).toMatch(/task-create-row[\s\S]*<input[^>]*class="form-control form-input form-control-inline/)
   })
 
   it('已完成的任务默认折叠进已归档分组,活动列表里看不到它', () => {
@@ -244,6 +245,55 @@ describe('ProjectTaskPanel', () => {
     const output = renderTaskPanel({ note: '先跑 A/B 两组,再看结论' })
     expect(output).toContain('先跑 A/B 两组')
     expect(output).not.toContain('还没有备注')
+  })
+
+  it('备注按长文本的同一套约定编辑:编辑的位置换成取消和保存,取消或 Esc 还原不写,保存或 ⌘回车写回', async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    const host = document.createElement('div')
+    document.body.append(host)
+    const onSaveNote = vi.fn(async () => true)
+    const root = createRoot(host)
+    act(() => root.render(
+      <MessagesProvider>
+        <ProjectTaskPanel
+          task={{ ...task, note: '原备注' }} node={undefined} nodes={[]} handSet={false}
+          onClose={vi.fn()} onSaveNote={onSaveNote} onOpenNode={vi.fn()} onSetNode={vi.fn()}
+        />
+      </MessagesProvider>,
+    ))
+    const heading = () => [...host.querySelectorAll<HTMLElement>('.section-heading')]
+      .find((element) => element.textContent?.startsWith('备注'))!
+    const buttons = () => [...heading().querySelectorAll<HTMLButtonElement>(':scope > .btn')]
+    const press = (text: string) => act(() => buttons().find((button) => button.textContent === text)!.click())
+    const type = (text: string) => {
+      Object.defineProperty(host.querySelector('.md.src')!, 'innerText', { value: text, configurable: true })
+    }
+
+    press('编辑')
+    expect(buttons().map((button) => button.textContent)).toEqual(['取消', '保存'])
+    type('改过的备注')
+    press('取消')
+    expect(buttons().map((button) => button.textContent)).toEqual(['编辑'])
+    press('编辑')
+    type('改过的备注')
+    act(() => {
+      host.querySelector('.md.src')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+    expect(onSaveNote).not.toHaveBeenCalled()
+    press('编辑')
+    type('改过的备注')
+    await act(async () => {
+      host.querySelector('.md.src')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }))
+    })
+    expect(onSaveNote).toHaveBeenCalledWith('改过的备注')
+    press('编辑')
+    type('再改一次')
+    press('保存')
+    expect(onSaveNote).toHaveBeenLastCalledWith('再改一次')
+    act(() => root.unmount())
+    host.remove()
+    vi.unstubAllGlobals()
   })
 
   describe('科研节点', () => {

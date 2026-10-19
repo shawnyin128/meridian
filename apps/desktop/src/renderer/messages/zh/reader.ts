@@ -30,7 +30,6 @@ export const reader = {
   remark: {
     heading: '随笔 · 本篇',
     placeholder: '对整篇论文的随想',
-    save: '存随笔',
   },
   loadingPdf: '正在加载 PDF…',
   selection: {

@@ -125,14 +125,38 @@ describe('Ideas', () => {
     await act(async () => { edit.click() })
     expect(detail.querySelector('.idea-detail-editor')).not.toBeNull()
     expect(document.querySelector('.idea-dialog')).toBeNull()
-    const cancel = [...detail.querySelectorAll<HTMLButtonElement>('button')]
-      .find((item) => item.textContent === '取消')!
-    await act(async () => { cancel.click() })
-
-    const select = detail.querySelector<HTMLSelectElement>('select')!
+    const headButtons = () => [...detail.querySelectorAll<HTMLButtonElement>('.idea-detail-head .btn')]
+      .map((item) => item.textContent)
+    expect(headButtons()).toEqual(['取消', '保存'])
+    expect(detail.querySelector('.idea-detail-editor button')).toBeNull()
+    const titleField = detail.querySelector<HTMLInputElement>('.idea-detail-editor input')!
     await act(async () => {
-      select.value = ''
-      select.dispatchEvent(new Event('change', { bubbles: true }))
+      titleField.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+    expect(detail.querySelector('.idea-detail-editor')).toBeNull()
+    expect(api.update).not.toHaveBeenCalled()
+    await act(async () => {
+      [...detail.querySelectorAll<HTMLButtonElement>('.idea-detail-head .btn')].find((item) => item.textContent === '编辑')!.click()
+    })
+    await act(async () => {
+      detail.querySelector('.idea-detail-editor input')!
+        .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    })
+    expect(api.update).toHaveBeenCalledWith('idea-linked', {
+      title: '用可学习性信号动态分配 draft model 的蒸馏预算', body: '只对 disagreement 高且可学习的 token 加大蒸馏权重。',
+    })
+    api.update.mockClear()
+
+    expect(detail.querySelector('select')).toBeNull()
+    await act(async () => {
+      detail.querySelector('.idea-detail-section .choice-picker')!
+        .dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+    })
+    const none = [...document.querySelectorAll<HTMLElement>('.choice-picker-menu [role="menuitemradio"]')]
+      .find((item) => item.textContent === '未关联项目')!
+    await act(async () => {
+      none.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+      none.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
     expect(api.update).toHaveBeenCalledWith('idea-linked', { project: null })
 

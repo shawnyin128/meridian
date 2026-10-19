@@ -764,6 +764,36 @@ describe('PaperTable', () => {
     expect(row.getAttribute('aria-current')).toBe('true')
   })
 
+  it('表格和详情用同一组评分、阅读状态与主题编辑：点当前那颗星清空评分，状态是同一个选择器，主题是带 × 的标签加 +', async () => {
+    const rated = { ...ROW, rating: 4, topics: ['推理', '检索'] }
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [rated], total: 1 })
+    await flush()
+
+    const row = host.querySelector<HTMLElement>('.ptable tbody tr')!
+    await act(async () => { row.querySelector<HTMLButtonElement>('.rating-stars [aria-label="4 星"]')!.click() })
+    expect(updateCalls.at(-1)!.patch).toEqual({ rating: null })
+    await act(async () => {
+      [...row.querySelectorAll<HTMLElement>('.tagchip')].find((chip) => chip.textContent === '检索')!
+        .querySelector<HTMLButtonElement>('button')!.click()
+    })
+    expect(updateCalls.at(-1)!.patch).toEqual({ topics: ['推理'] })
+
+    await act(async () => { press(row.querySelector<HTMLElement>('td')!) })
+    getCall.resolve(rated)
+    await flush()
+    const panel = host.querySelector<HTMLElement>('.pdetail .paper-meta')!
+    expect(panel.querySelector('select')).toBeNull()
+    const tableStatus = row.querySelector('.stchip')!
+    const panelStatus = panel.querySelector('.stchip')!
+    expect([panelStatus.tagName, panelStatus.getAttribute('aria-haspopup'), panelStatus.textContent])
+      .toEqual([tableStatus.tagName, tableStatus.getAttribute('aria-haspopup'), tableStatus.textContent])
+    expect([...panel.querySelectorAll('.tagchip:not(.tagadd)')].map((chip) => chip.textContent))
+      .toEqual(expect.arrayContaining(['推理', '检索']))
+    expect(panel.querySelector('.tagadd')).not.toBeNull()
+  })
+
   it('详情里的标题和短标题按 LaTeX 显示，点开编辑时仍是原文', async () => {
     const latex = { ...ROW, title: '\\textbf{F}luxBin $\\times$', shortTitle: '\\emph{Flux}' }
     const host = mount()

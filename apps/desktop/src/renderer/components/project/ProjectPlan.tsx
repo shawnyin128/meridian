@@ -17,6 +17,7 @@ import { EmptyState } from '../EmptyState.js'
 import { ChoicePicker, DateButton, PriorityPicker } from '../FieldPickers.js'
 import { InlineDraftInput } from '../InlineDraftInput.js'
 import { InlineField, type InlineFieldProps } from '../InlineField.js'
+import { EditActions } from '../EditActions.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PanelClose } from '../PanelClose.js'
 import { TaskScheduleField } from '../TaskScheduleField.js'
@@ -245,8 +246,7 @@ export function ProjectTaskPanel({
   const fmt = useFormat()
   const [editing, setEditing] = useState(false)
   const box = useRef<HTMLDivElement>(null)
-  const toggle = () => {
-    if (!editing) { setEditing(true); return }
+  const save = () => {
     const next = box.current?.innerText.trim() ?? ''
     setEditing(false)
     void onSaveNote(next)
@@ -295,11 +295,13 @@ export function ProjectTaskPanel({
           </div>
         )}
       <SectionHeading variant="rail" className="flexh">{m.project.plan.noteHeading}
-        <button className="btn sm" onClick={toggle}>{editing ? m.common.save : m.common.edit}</button>
+        <EditActions
+          editing={editing} onEdit={() => setEditing(true)} onCancel={() => setEditing(false)} onSave={save}
+        />
       </SectionHeading>
       <MarkdownBox
         className="task-note" text={task.note ?? ''} editing={editing} box={box}
-        onCancel={() => setEditing(false)}
+        onCancel={() => setEditing(false)} onSave={save}
         empty={<span className="lm">{m.project.plan.noteEmpty}</span>}
       />
     </>

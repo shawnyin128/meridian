@@ -104,6 +104,29 @@ vi.mock('../components/settings/DiscoverySettings.js', () => ({
 
 const { Settings } = await import('./Settings.js')
 
+/** Opens the picker named `label` in `dialog` and returns its menu items. */
+async function openPicker(dialog: Element, label: string): Promise<HTMLElement[]> {
+  const trigger = dialog.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!
+  await act(async () => { trigger.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+  return [...document.querySelectorAll<HTMLElement>('.choice-picker-menu [role="menuitemradio"]')]
+}
+
+/** Closes the open picker menu without picking. */
+async function closePicker(): Promise<void> {
+  await act(async () => {
+    document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  })
+}
+
+/** Picks the option shown as `text` in the picker named `label`. */
+async function pick(dialog: Element, label: string, text: string): Promise<void> {
+  const item = (await openPicker(dialog, label)).find((candidate) => candidate.textContent === text)!
+  await act(async () => {
+    item.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    item.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+  })
+}
+
 describe('Settings', () => {
   let root: Root
   let host: HTMLDivElement
@@ -532,20 +555,16 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
 
-    const provider = dialog.querySelector<HTMLSelectElement>('[aria-label="模型服务"]')!
-    expect([...provider.options].map((option) => option.textContent))
+    expect(dialog.querySelector('select')).toBeNull()
+    expect((await openPicker(dialog, '模型服务')).map((item) => item.textContent))
       .toEqual(['OpenAI', 'Anthropic', 'Google Gemini', 'OpenAI 兼容 API'])
+    await closePicker()
     expect(dialog.querySelector('[aria-label="模型协议"]')?.textContent).toContain('Responses API')
     expect(dialog.querySelectorAll('.model-settings-card .form-control-field').length).toBe(3)
     expect(dialog.querySelector('[aria-label="模型接口地址"]')).toBeNull()
 
-    await act(async () => {
-      const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!
-      setter.call(provider, 'openai-compatible')
-      provider.dispatchEvent(new Event('change', { bubbles: true }))
-    })
-    const templates = dialog.querySelector<HTMLSelectElement>('[aria-label="兼容服务模板"]')!
-    expect([...templates.options].map((option) => option.textContent)).toEqual([
+    await pick(dialog, '模型服务', 'OpenAI 兼容 API')
+    expect((await openPicker(dialog, '兼容服务模板')).map((item) => item.textContent)).toEqual([
       '选择常用服务…',
       'DeepSeek（云端）',
       'OpenRouter（云端聚合）',
@@ -553,20 +572,17 @@ describe('Settings', () => {
       'LM Studio（本地）',
       '其他兼容服务（手动配置）',
     ])
+    await closePicker()
     expect(dialog.querySelector('[aria-label="模型协议"]')).toBeNull()
     expect(dialog.querySelector('[aria-label="模型接口地址"]')).toBeNull()
     expect(dialog.querySelector('[aria-label="模型认证方式"]')).toBeNull()
     expect(dialog.querySelector('[aria-label="模型名称"]')).toBeNull()
 
-    await act(async () => {
-      const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!
-      setter.call(templates, 'custom')
-      templates.dispatchEvent(new Event('change', { bubbles: true }))
-    })
+    await pick(dialog, '兼容服务模板', '其他兼容服务（手动配置）')
 
-    const protocol = dialog.querySelector<HTMLSelectElement>('[aria-label="模型协议"]')!
-    expect([...protocol.options].map((option) => option.textContent))
+    expect((await openPicker(dialog, '模型协议')).map((item) => item.textContent))
       .toEqual(['Responses API', 'Chat Completions API'])
+    await closePicker()
     expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型接口地址"]')?.placeholder)
       .toBe('例如 https://api.example.com/v1')
   })
@@ -683,23 +699,14 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
 
-    const provider = dialog.querySelector<HTMLSelectElement>('[aria-label="模型服务"]')!
-    await act(async () => {
-      const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!
-      setter.call(provider, 'anthropic')
-      provider.dispatchEvent(new Event('change', { bubbles: true }))
-    })
+    await pick(dialog, '模型服务', 'Anthropic')
     expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型名称"]')?.value)
       .toBe('claude-saved')
     expect(dialog.querySelector<HTMLButtonElement>(
       '[aria-label="模型 API Key 已保存，末四位 2222"]',
     )?.textContent).toBe('••••••••2222')
 
-    await act(async () => {
-      const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!
-      setter.call(provider, 'openai')
-      provider.dispatchEvent(new Event('change', { bubbles: true }))
-    })
+    await pick(dialog, '模型服务', 'OpenAI')
     expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型名称"]')?.value)
       .toBe('gpt-saved')
     expect(dialog.querySelector<HTMLButtonElement>(
@@ -713,14 +720,6 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
 
-    const select = async (label: string, value: string) => {
-      const field = dialog.querySelector<HTMLSelectElement>(`[aria-label="${label}"]`)!
-      await act(async () => {
-        const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!
-        setter.call(field, value)
-        field.dispatchEvent(new Event('change', { bubbles: true }))
-      })
-    }
     const fill = async (label: string, value: string) => {
       const field = dialog.querySelector<HTMLInputElement>(`[aria-label="${label}"]`)!
       await act(async () => {
@@ -730,9 +729,9 @@ describe('Settings', () => {
       })
     }
 
-    await select('模型服务', 'openai-compatible')
-    await select('兼容服务模板', 'custom')
-    await select('模型协议', 'chat-completions')
+    await pick(dialog, '模型服务', 'OpenAI 兼容 API')
+    await pick(dialog, '兼容服务模板', '其他兼容服务（手动配置）')
+    await pick(dialog, '模型协议', 'Chat Completions API')
     await fill('模型接口地址', 'https://third-party.example/v1')
     await fill('模型名称', 'third-party-model')
     await fill('模型 API Key', 'third-party-secret')
@@ -754,17 +753,9 @@ describe('Settings', () => {
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
-    const setSelect = async (label: string, value: string) => {
-      const field = dialog.querySelector<HTMLSelectElement>(`[aria-label="${label}"]`)!
-      await act(async () => {
-        const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!
-        setter.call(field, value)
-        field.dispatchEvent(new Event('change', { bubbles: true }))
-      })
-    }
 
-    await setSelect('模型服务', 'openai-compatible')
-    await setSelect('兼容服务模板', 'deepseek')
+    await pick(dialog, '模型服务', 'OpenAI 兼容 API')
+    await pick(dialog, '兼容服务模板', 'DeepSeek（云端）')
 
     expect(dialog.querySelector('[aria-label="模板连接信息"]')?.textContent)
       .toContain('Chat Completions API · API Key')
@@ -777,7 +768,7 @@ describe('Settings', () => {
       .toBe('输入 DeepSeek 模型 ID')
     expect(dialog.querySelector('[aria-label="模型 API Key"]')).not.toBeNull()
 
-    await setSelect('兼容服务模板', 'ollama')
+    await pick(dialog, '兼容服务模板', 'Ollama（本地）')
     expect(dialog.querySelector('[aria-label="模板连接信息"]')?.textContent)
       .toContain('Responses API · 无需认证')
     expect(dialog.querySelector('[aria-label="模型 API Key"]')).toBeNull()

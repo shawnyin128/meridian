@@ -69,9 +69,8 @@
 .reader-panel-head strong{font-size:var(--fs-sm)}
 .reader-panel-head span,.reading-page{font-size:var(--fs-cap);color:var(--ter)}
 .note-compose{padding:12px;border-bottom:1px solid var(--sep);display:flex;flex-direction:column;gap:8px;align-items:flex-end}
-.note-compose textarea,.reading-card textarea{width:100%;box-sizing:border-box;border:1px solid var(--sep2);background:var(--field);color:var(--ink);border-radius:var(--r-md);padding:8px;font:inherit;line-height:1.45;resize:vertical}
-.note-compose textarea{min-height:86px}.reading-card textarea{min-height:64px}
-.note-compose textarea:focus,.reading-card textarea:focus{border-color:var(--sep-strong);outline:0;box-shadow:none}
+.note-compose .form-textarea,.reading-card .form-textarea{width:100%}
+.note-compose .form-textarea{min-height:86px}.reading-card .form-textarea{min-height:64px}
 .reading-list{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
 .reading-card{border:1px solid var(--sep2);border-radius:var(--r-lg);padding:10px;background:var(--card);display:flex;flex-direction:column;gap:8px}
 .highlight-card{border-left:3px solid var(--mark)}
@@ -81,7 +80,7 @@
 .highlight-card blockquote{margin:0;color:var(--sec);font-size:var(--fs-sm);line-height:1.45;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .reading-remark{width:320px;min-width:320px;box-sizing:border-box;border-left:1px solid var(--sep);background:var(--content);display:flex;flex-direction:column;overflow:hidden}
 .remark-compose{padding:12px;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
-.remark-compose textarea{width:100%;box-sizing:border-box;min-height:120px;border:1px solid var(--sep-strong);background:transparent;color:var(--ink);border-radius:var(--r-md);padding:8px;font:inherit;line-height:1.45;resize:vertical;outline:0}
+.remark-compose .form-textarea{width:100%;min-height:120px}
 
 .reader-side{display:flex;flex:0 0 362px;min-width:0;height:100%;overflow:hidden;background:var(--content);
   transition:flex-basis var(--t-slow) var(--e-inout)}

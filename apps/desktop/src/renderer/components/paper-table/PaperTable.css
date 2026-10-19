@@ -97,10 +97,12 @@
  */
 .tagchip.tagadd{opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
 .ptable tr:hover .tagadd,.tagchip.tagadd:focus-visible{opacity:1;pointer-events:auto}
+/* A topic chip's × in the table shows with the row's +, so a resting table reads as plain tags. */
+.ptable .tagchip .rx{opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
+.ptable tr:hover .tagchip .rx,.ptable .tagchip .rx:focus-visible{opacity:1;pointer-events:auto}
 .ptable tr:has(.stchip[data-state="open"]) .tagadd{opacity:1}
-.paper-meta-projects .tagchip.tagadd{opacity:1;pointer-events:auto}
-.tagin{border:1px solid var(--sep-strong);background:transparent;border-radius:999px;padding:1px 8px;font-size:var(--fs-sm);color:var(--ink);width:110px;font-family:var(--sans)}
-.tagin:focus-visible{outline:0}
+.paper-meta-projects .tagchip.tagadd,.paper-meta-topics .tagchip.tagadd{opacity:1;pointer-events:auto}
+.form-input.form-control-inline.tagin{display:inline-block;width:110px;vertical-align:middle}
 
 /* Custom columns: clicking a cell edits it in place */
 .pt-cust,.pt-remark{color:var(--sec);font-size:var(--fs-sm);cursor:text;min-width:70px}

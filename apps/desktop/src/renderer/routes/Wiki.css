@@ -85,17 +85,14 @@
 
 /*
  * The placeholder card for a new subpage: as wide and tall as the cards beside it, except that its
- * title line is an input and its last line is empty, only holding the height. The input must be as
- * tall as a real card's title line, or its border and padding make the whole card taller.
+ * title line is an input and its last line is empty, only holding the height.
  */
 .wkcard.newcard{cursor:default;border-style:dashed}
 .wkcard.newcard:hover{border-color:var(--sep)}
-.wkcard.newcard .wt .inedit{font-size:var(--card-tt);height:1.5em;padding:0 8px}
 .wkcard.newcard .wf{height:1.5em}
 
 /* The paper comparison's placeholder row: as tall as a real row, an input in its first cell, a dash in the rest. */
 .cmp tr.newrow td.rh{font-weight:400}
-.cmp tr.newrow .inedit{width:100%;height:1.667em;padding:0 9px}
 
 /*
  * The new-column cell at the end of the comparison table's header row: its width and the rules for the

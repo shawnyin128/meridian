@@ -120,7 +120,7 @@ describe('MarkdownBox', () => {
     const cancel = vi.fn()
     function Probe() {
       const box = useRef<HTMLDivElement>(null)
-      return <MarkdownBox text="a/b" editing box={box} onCancel={cancel} empty={null} />
+      return <MarkdownBox text="a/b" editing box={box} onCancel={cancel} onSave={vi.fn()} empty={null} />
     }
     const host = document.createElement('div')
     document.body.append(host)

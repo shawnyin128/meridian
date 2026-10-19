@@ -1,7 +1,5 @@
 .idea-dialog-source{margin:0 0 18px;color:var(--ter);font-size:var(--fs-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .idea-dialog-field{display:flex;flex-direction:column;gap:6px;margin-top:12px;color:var(--sec);font-size:var(--fs-sm)}
-.idea-dialog-field .form-input,.idea-dialog-field .form-textarea{width:100%;border:1px solid var(--sep2);border-radius:var(--r-md);background:var(--field);color:var(--ink);padding:8px 10px}
-.idea-dialog-field .form-input{height:34px}
-.idea-dialog-field .form-textarea{min-height:132px;line-height:1.55;resize:vertical}
-.idea-dialog-field .form-input:focus,.idea-dialog-field .form-textarea:focus{border-color:var(--sep-strong);background:var(--card)}
+.idea-dialog-field .form-control{width:100%}
+.idea-dialog-field .form-textarea{min-height:132px}
 .idea-dialog-note{margin:10px 0 0;color:var(--ter);font-size:var(--fs-cap);line-height:1.5}

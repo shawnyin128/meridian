@@ -264,7 +264,7 @@ export function Chat() {
               anchor={(
                 <div className="cbox" id="cbox">
                   <FormTextarea
-                    id="composer" ref={composer} value={draft} rows={1} autoComplete="off"
+                    appearance="plain" id="composer" ref={composer} value={draft} rows={1} autoComplete="off"
                     placeholder={m.chat.composerPlaceholder} disabled={sending || id === null}
                     onChange={(e) => type(e.target.value)}
                     onKeyDown={(e) => {

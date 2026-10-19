@@ -38,8 +38,7 @@
 .project-plan .ddlrow .din:hover,.project-plan .ddlrow .din:focus-visible{box-shadow:0 0 0 1px var(--sep-strong);outline:0}
 .project-plan .ddlrow .din.state-edit{padding:2px 4px;background:transparent;color:var(--ter);font-family:var(--sans);font-size:12px}
 .project-plan .ddlrow .twinputs{display:flex;align-items:center;gap:4px;flex-shrink:0}
-.project-plan .ddlrow .min{flex:1;min-width:0;box-sizing:border-box;height:20px;border:0;background:var(--field);border-radius:var(--r-sm);padding:0 5px;font:inherit;line-height:20px;color:var(--ink);box-shadow:none}
-.project-plan .ddlrow .min:focus-visible{outline:0}
+.project-plan .ddlrow .min{flex:1;min-width:0}
 @keyframes plan-row-flash{0%,100%{background:transparent}50%{background:var(--tint-warn)}}
 .project-plan .ddlrow.flash{animation:plan-row-flash .5s ease-in-out 2}
 .project-plan .task-row.dragging{opacity:.4}

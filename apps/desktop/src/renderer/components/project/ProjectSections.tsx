@@ -7,6 +7,7 @@ import { CardTray } from '../CardTray.js'
 import { FadeText } from '../FadeText.js'
 import { IconButton } from '../IconButton.js'
 import { IconCross, IconPencil, IconTrash } from '../icons.js'
+import { EditActions } from '../EditActions.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PaperText } from '../paper/PaperText.js'
 import { PickRow, type PickHit } from '../PickRow.js'
@@ -68,11 +69,13 @@ export function ProjectUrlDraft({ row, triggers, initial, onSubmit, onCancel, on
   return (
     <div className="urldraft">
       <FormInput
-        ref={address} className="inedit" placeholder={m.project.links.urlPlaceholder} defaultValue={initial?.url}
+        ref={address} appearance="inline" className="inedit" placeholder={m.project.links.urlPlaceholder}
+        defaultValue={initial?.url}
         {...draft.inputProps}
       />
       <FormInput
-        ref={label} className="inedit" placeholder={m.project.links.urlNamePlaceholder} defaultValue={initial?.text}
+        ref={label} appearance="inline" className="inedit" placeholder={m.project.links.urlNamePlaceholder}
+        defaultValue={initial?.text}
         {...draft.inputProps} autoFocus={false}
       />
     </div>
@@ -119,7 +122,7 @@ export function ProjectTopicField({ value, onSave, onError }: {
     <span className="metadata-field" ref={row}>
       <PickRow
         row={row} triggers={NO_TRIGGERS} allowNew placeholder={m.project.identity.topic} suggest={suggest}
-        inputClassName="metadata-input pickin" inputAppearance="inline" cancelOnLeave
+        inputClassName="metadata-input" cancelOnLeave
         onPick={(hit) => onSave(hit.title)} onNew={onSave} onCancel={stop} onError={onError}
       />
     </span>
@@ -136,8 +139,7 @@ export function ProjectMemo({ text, editing, onEditing, onSave, onOpen }: {
 }) {
   const m = useMessages()
   const box = useRef<HTMLDivElement>(null)
-  const toggle = () => {
-    if (!editing) { onEditing(true); return }
+  const save = () => {
     const next = box.current?.innerText.trim() ?? ''
     onEditing(false)
     onSave(next)
@@ -145,11 +147,13 @@ export function ProjectMemo({ text, editing, onEditing, onSave, onOpen }: {
   return (
     <>
       <SectionHeading variant="content" className="flexh">{m.project.sections.remark}
-        <button className="btn sm" onClick={toggle}>{editing ? m.common.save : m.common.edit}</button>
+        <EditActions
+          editing={editing} onEdit={() => onEditing(true)} onCancel={() => onEditing(false)} onSave={save}
+        />
       </SectionHeading>
       <MarkdownBox
         className="memo" text={text} editing={editing} box={box}
-        onCancel={() => onEditing(false)} onOpen={onOpen}
+        onCancel={() => onEditing(false)} onSave={save} onOpen={onOpen}
         empty={<span className="lm">{m.project.remarkEmpty}</span>}
       />
     </>

@@ -32,17 +32,12 @@
 .idea-detail-title-row h2{flex:1;min-width:0;margin:0;color:var(--ink);font-size:var(--fs-title);line-height:1.45;overflow-wrap:anywhere}
 .idea-detail-editor{display:grid;gap:13px;margin-top:18px}
 .idea-detail-editor label{display:grid;gap:6px;color:var(--ter);font-size:var(--fs-sm)}
-.idea-detail-editor .form-input,.idea-detail-editor .form-textarea{width:100%;border:1px solid var(--sep2);border-radius:var(--r-md);
-  background:var(--field);color:var(--ink);padding:8px 10px}
-.idea-detail-editor .form-input{height:34px}
-.idea-detail-editor .form-textarea{min-height:150px;line-height:1.55;resize:vertical}
-.idea-detail-editor .form-input:focus,.idea-detail-editor .form-textarea:focus{border-color:var(--sep-strong);background:var(--card)}
-.idea-detail-editor-actions{display:flex;justify-content:flex-end;gap:8px}
+.idea-detail-editor .form-control{width:100%}
+.idea-detail-editor .form-textarea{min-height:150px}
 .idea-detail-section{margin-top:24px;padding-top:18px;border-top:1px solid var(--sep2)}
 .idea-detail-section h3{margin:0 0 9px;color:var(--ink);font-size:var(--fs-base)}
 .idea-detail-body{margin:0;color:var(--sec);font-size:var(--fs-base);line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
-.idea-detail-section .form-select{box-sizing:border-box;width:100%;height:32px;padding:0 30px 0 10px;border:1px solid var(--sep2);
-  border-radius:var(--r-md);background-color:var(--field);color:var(--sec)}
+.idea-detail-section .choice-picker{width:100%}
 .idea-detail-actions{display:flex;align-items:center;min-height:28px;margin-top:8px}
 .idea-missing-project{color:var(--warn);font-size:var(--fs-cap)}
 .idea-detail-source p{margin:0;color:var(--sec);font-size:var(--fs-sm);line-height:1.55;overflow-wrap:anywhere}

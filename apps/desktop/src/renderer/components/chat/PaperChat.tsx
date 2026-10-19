@@ -143,7 +143,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
           </div>
           <div className="cbox">
             <FormTextarea
-              ref={composer} value={draft} rows={1} autoComplete="off" disabled={session === null || sending}
+              appearance="plain" ref={composer} value={draft} rows={1} autoComplete="off" disabled={session === null || sending}
               aria-label={m.chat.askAboutPaper} placeholder={m.chat.paperComposerPlaceholder}
               onChange={(event) => { if (paperId !== null) drafts.set(paperId, event.target.value) }}
               onKeyDown={(event) => {

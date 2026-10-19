@@ -72,6 +72,7 @@ export const papers = {
     add: '添加主题',
     existingTopics: '已有主题',
     showMore: (n: number) => `展开其余 ${n} 项`,
+    remove: (topic: string) => `移除主题「${topic}」`,
   },
   notices: {
     columnDeleted: (label: string) => `已删除列「${label}」`,
@@ -137,7 +138,6 @@ export const papers = {
     validation: {
       titleRequired: '标题不能为空',
       yearRange: '年份需要是 1000–3000 之间的整数',
-      readStateInvalid: '阅读状态无效',
     },
     updated: (label: string) => `已更新${label} · 可在最近变动中撤销`,
     abstractLabel: '摘要',

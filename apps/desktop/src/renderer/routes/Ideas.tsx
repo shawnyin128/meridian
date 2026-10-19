@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
 import type { ProjectSummary, ResearchIdea } from '../../shared/contract.js'
 import { FINISHED_PROJECT } from '../../shared/vocabulary.js'
 import { idea as ideaApi, project as projectApi } from '../ipc.js'
 import { MenuItem, MenuSeparator } from '../components/ActionMenu.js'
 import { SortMenu } from '../components/SortMenu.js'
-import { FormInput, FormSelect, FormTextarea } from '../components/FormControls.js'
-import { DotsMenu } from '../components/FieldPickers.js'
+import { FormInput, FormTextarea } from '../components/FormControls.js'
+import { ChoicePicker, DotsMenu } from '../components/FieldPickers.js'
+import { EditActions } from '../components/EditActions.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { PanelClose } from '../components/PanelClose.js'
 import { DetailPanel } from '../components/DetailPanel.js'
@@ -18,6 +19,7 @@ import { useEscapeLayer, useJump, useScreenReentry, useVaultRevision } from '../
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useDragReorder, type DragCardProps } from '../hooks/useDragReorder.js'
 import { useFormat } from '../lib/format.js'
+import { commitsMultiline, composing } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import type { Catalog } from '../messages/catalog.js'
 import { plainTitle } from '../components/paper/paper-text.js'
@@ -146,12 +148,21 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
       if (saved) setEditing(false)
     })
   }
+  /** Enter commits the title, ⌘Enter or Ctrl+Enter the body, and Escape restores both. */
+  const commitOrCancel = (multiline: boolean) => (event: KeyboardEvent<HTMLElement>) => {
+    if (composing(event.nativeEvent)) return
+    if (event.key === 'Escape') { event.stopPropagation(); cancelEditing(); return }
+    if (multiline ? commitsMultiline(event.nativeEvent) : event.key === 'Enter') { event.preventDefault(); save() }
+  }
 
   return (
     <aside className="idea-detail-panel" aria-label={m.ideas.detailHeading}>
       <header className="idea-detail-head">
         <span>{m.ideas.detailHeading}</span>
-        {editing ? null : <button className="btn ghost sm" onClick={startEditing}>{m.common.edit}</button>}
+        <EditActions
+          editing={editing} saving={busy} canSave={title.trim() !== '' && body.trim() !== ''}
+          onEdit={startEditing} onCancel={cancelEditing} onSave={save}
+        />
         <PanelClose onClose={onClose} />
       </header>
 
@@ -162,23 +173,16 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
               <span>{m.ideas.editor.titleLabel}</span>
               <FormInput
                 autoFocus value={title} maxLength={160}
-                onChange={(event) => setTitle(event.target.value)}
+                onChange={(event) => setTitle(event.target.value)} onKeyDown={commitOrCancel(false)}
               />
             </label>
             <label>
               <span>{m.ideas.bodyLabel}</span>
               <FormTextarea
                 value={body} maxLength={20_000}
-                onChange={(event) => setBody(event.target.value)}
+                onChange={(event) => setBody(event.target.value)} onKeyDown={commitOrCancel(true)}
               />
             </label>
-            <div className="idea-detail-editor-actions">
-              <button className="btn" disabled={busy} onClick={cancelEditing}>{m.common.cancel}</button>
-              <button
-                className="btn pri" disabled={busy || title.trim() === '' || body.trim() === ''}
-                onClick={save}
-              >{busy ? m.ideas.saving : m.common.save}</button>
-            </div>
           </section>
         )
         : (
@@ -196,18 +200,20 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
 
       <section className="idea-detail-section">
         <h3>{m.ideas.link.heading}</h3>
-        <FormSelect
-          aria-label={m.ideas.link.selectAriaLabel(idea.title)} value={idea.project ?? ''}
-          onChange={(event) => onProject(event.target.value || null)}
-        >
-          <option value="">{m.ideas.link.none}</option>
-          {idea.project !== undefined && linked === undefined
-            ? <option value={idea.project}>{m.ideas.link.originalUnavailable}</option>
-            : null}
-          {projects.map((project) => (
-            <option value={project.id} key={project.id}>{project.name} · {project.status}</option>
-          ))}
-        </FormSelect>
+        <ChoicePicker
+          appearance="field" aria-label={m.ideas.link.selectAriaLabel(idea.title)} value={idea.project ?? ''}
+          options={[
+            '',
+            ...(idea.project !== undefined && linked === undefined ? [idea.project] : []),
+            ...projects.map((project) => project.id),
+          ]}
+          label={(id) => {
+            if (id === '') return m.ideas.link.none
+            const project = projects.find((candidate) => candidate.id === id)
+            return project === undefined ? m.ideas.link.originalUnavailable : `${project.name} · ${project.status}`
+          }}
+          onPick={(id) => onProject(id || null)}
+        />
         <div className="idea-detail-actions">
           {idea.project === undefined
             ? <button className="btn sm" onClick={onPromote}>{m.ideas.promote.action}</button>

@@ -93,7 +93,7 @@ function Editors() {
   const box = useRef<HTMLDivElement>(null)
   return (
     <>
-      <MarkdownBox text="a" editing box={box} onCancel={() => {}} empty={null} />
+      <MarkdownBox text="a" editing box={box} onCancel={() => {}} onSave={() => {}} empty={null} />
       <select><option>a</option></select>
       <button type="button">b</button>
     </>

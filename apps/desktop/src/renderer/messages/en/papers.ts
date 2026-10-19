@@ -75,6 +75,7 @@ export const papers = {
     add: 'Add topic',
     existingTopics: 'Existing topics',
     showMore: (n: number) => `Show ${n} more`,
+    remove: (topic: string) => `Remove topic "${topic}"`,
   },
   notices: {
     columnDeleted: (label: string) => `Deleted column "${label}"`,
@@ -140,7 +141,6 @@ export const papers = {
     validation: {
       titleRequired: 'Title cannot be empty',
       yearRange: 'Year must be an integer between 1000 and 3000',
-      readStateInvalid: 'Invalid read state',
     },
     updated: (label: string) => `${label} updated · you can undo this in Recent Changes`,
     abstractLabel: 'Abstract',

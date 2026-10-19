@@ -12,6 +12,7 @@ import {
 import { AddAction } from '../components/AddAction.js'
 import { ActionPopover } from '../components/ActionPopover.js'
 import { BackButton } from '../components/BackButton.js'
+import { EditActions } from '../components/EditActions.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { FormInput } from '../components/FormControls.js'
 import {
@@ -569,14 +570,10 @@ export function Wiki() {
   }
 
   /**
-   * "Edit" switches to editing the source; "Save" reads the source back and writes it, and the vault
-   * revision bump after the write makes this page fetch again.
+   * Reads the edited source back and writes it; the vault revision bump after the write makes this
+   * page fetch again.
    */
-  const toggleEdit = () => {
-    if (!editing) {
-      setEditing(true)
-      return
-    }
+  const saveBody = () => {
     if (saving) return
     const next = box.current?.innerText.trim() ?? ''
     setSaving(true)
@@ -585,12 +582,13 @@ export function Wiki() {
     }), { note: m.wiki.saved }).finally(() => setSaving(false))
   }
 
-  /** The body's section heading: the page name on the left, "Edit"/"Save" on the right, like Project notes. */
+  /** The body's section heading: the page name on the left, its EditActions on the right, like Project notes. */
   const bodyHead = (name: string) => (
     <SectionHeading variant="content" className="flexh">{name}
-      <button className="btn sm acts" disabled={saving} onClick={toggleEdit}>
-        {editing ? m.common.save : m.common.edit}
-      </button>
+      <EditActions
+        editing={editing} saving={saving} onEdit={() => setEditing(true)} onCancel={() => setEditing(false)}
+        onSave={saveBody}
+      />
     </SectionHeading>
   )
 
@@ -752,7 +750,8 @@ export function Wiki() {
                 />
                 {bodyHead(shownAgg.title)}
                 <MarkdownBox
-                  text={shownAgg.body} editing={editing} box={box} onCancel={() => setEditing(false)} onOpen={go}
+                  text={shownAgg.body} editing={editing} box={box} onCancel={() => setEditing(false)} onSave={saveBody}
+                  onOpen={go}
                   titles={shownAgg.titles} empty={<EmptyState variant="section">{m.wiki.noBody}</EmptyState>}
                 />
               </div>
@@ -831,7 +830,8 @@ export function Wiki() {
                 />
                 {bodyHead(m.wiki.internalizedContent)}
                 <MarkdownBox
-                  text={shownPaper.body} editing={editing} box={box} onCancel={() => setEditing(false)} onOpen={go}
+                  text={shownPaper.body} editing={editing} box={box} onCancel={() => setEditing(false)} onSave={saveBody}
+                  onOpen={go}
                   titles={shownPaper.titles}
                   empty={<EmptyState variant="section">{m.wiki.noInternalizedContent}</EmptyState>}
                 />

@@ -9,6 +9,11 @@ import { useMessages } from '../messages/useMessages.js'
 import { IconFolder } from './icons.js'
 import './FormControls.css'
 
+/**
+ * `field` is the boxed field of forms, dialogs, popovers and filters; `inline` edits a value in the
+ * place of its text in a row, cell or property list. `plain` draws no field, for a control inside a
+ * host that draws one around it, such as the chat composer.
+ */
 export type FormControlAppearance = 'plain' | 'field' | 'inline'
 
 type ControlAppearanceProps = {
@@ -22,15 +27,15 @@ const classes = (
 ) => `form-control ${kind} form-control-${appearance}${className ? ` ${className}` : ''}`
 
 /**
- * The stable base for every single-line native input. Components keep their own layout and
- * appearance classes; this sets only the box model, font and focus behavior, so entering edit mode
- * never makes the field taller, shifts it down, or shows the browser's own blue frame.
+ * The one single-line field, boxed by default. Components keep their own layout classes; the
+ * appearance sets the box, font and focus, so entering edit mode never makes the field taller,
+ * shifts it down, or shows the browser's own blue frame.
  */
 export const FormInput = forwardRef<
   HTMLInputElement,
   InputHTMLAttributes<HTMLInputElement> & ControlAppearanceProps
 >(
-  function FormInput({ appearance = 'plain', className, ...props }, ref) {
+  function FormInput({ appearance = 'field', className, ...props }, ref) {
     return <input ref={ref} className={classes('form-input', className, appearance)} {...props} />
   },
 )
@@ -56,7 +61,7 @@ export const DirectoryField = forwardRef<HTMLInputElement, DirectoryFieldProps>(
     const choose = chooseLabel ?? m.common.field.chooseDirectory
     return (
       <span className="directory-field" aria-busy={choosing || undefined}>
-        <FormInput ref={ref} appearance="field" disabled={disabled} {...props} />
+        <FormInput ref={ref} disabled={disabled} {...props} />
         <button
           type="button"
           className="directory-field-action"
@@ -77,7 +82,7 @@ export const FormButton = forwardRef<
   HTMLButtonElement,
   ButtonHTMLAttributes<HTMLButtonElement> & ControlAppearanceProps
 >(
-  function FormButton({ appearance = 'plain', className, type = 'button', ...props }, ref) {
+  function FormButton({ appearance = 'field', className, type = 'button', ...props }, ref) {
     return <button ref={ref} type={type} className={classes('form-button', className, appearance)} {...props} />
   },
 )
@@ -87,7 +92,7 @@ export const FormTextarea = forwardRef<
   HTMLTextAreaElement,
   TextareaHTMLAttributes<HTMLTextAreaElement> & ControlAppearanceProps
 >(
-  function FormTextarea({ appearance = 'plain', className, ...props }, ref) {
+  function FormTextarea({ appearance = 'field', className, ...props }, ref) {
     return <textarea ref={ref} className={classes('form-textarea', className, appearance)} {...props} />
   },
 )
@@ -97,7 +102,7 @@ export const FormSelect = forwardRef<
   HTMLSelectElement,
   SelectHTMLAttributes<HTMLSelectElement> & ControlAppearanceProps
 >(
-  function FormSelect({ appearance = 'plain', className, ...props }, ref) {
+  function FormSelect({ appearance = 'field', className, ...props }, ref) {
     return <select ref={ref} className={classes('form-select', className, appearance)} {...props} />
   },
 )

@@ -22,6 +22,7 @@ describe('TaskScheduleEditor', () => {
     )
     expect(html.match(/type="date"/g)).toHaveLength(2)
     expect(html).not.toContain('开始时段')
+    expect(html.match(/class="form-control form-input form-control-field/g)).toHaveLength(2)
   })
 
   it('time mode exposes only time controls', () => {

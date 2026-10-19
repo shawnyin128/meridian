@@ -4,7 +4,8 @@ import type { Task, TaskPatch, TaskWindow } from '../../shared/contract.js'
 import { TASK_SLOT_ENDS, TASK_SLOT_STARTS } from '../../shared/contract.js'
 import { ActionPopover } from './ActionPopover.js'
 import { DateChip } from './DateTimeDisplay.js'
-import { FormInput, FormSelect } from './FormControls.js'
+import { ChoicePicker } from './FieldPickers.js'
+import { FormInput } from './FormControls.js'
 import { SegmentedControl } from './SegmentedControl.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
@@ -80,19 +81,17 @@ export function TaskScheduleEditor({ mode, task, saving, onSave, onCancel }: {
               ? null
               : (
                 <div className="schedule-window">
-                  <FormSelect
-                    className="schedule-input" aria-label={m.research.schedule.startSlot} value={window.start}
-                    onChange={(event) => setWindow((current) => current && ({
-                      ...current, start: event.target.value as TaskWindow['start'],
-                    }))}
-                  >{TASK_SLOT_STARTS.map((time) => <option key={time}>{time}</option>)}</FormSelect>
+                  <ChoicePicker
+                    appearance="field" className="schedule-input" aria-label={m.research.schedule.startSlot}
+                    value={window.start} options={TASK_SLOT_STARTS}
+                    onPick={(start) => setWindow((current) => current && ({ ...current, start }))}
+                  />
                   <span>–</span>
-                  <FormSelect
-                    className="schedule-input" aria-label={m.research.schedule.endSlot} value={window.end}
-                    onChange={(event) => setWindow((current) => current && ({
-                      ...current, end: event.target.value as TaskWindow['end'],
-                    }))}
-                  >{TASK_SLOT_ENDS.map((time) => <option key={time}>{time}</option>)}</FormSelect>
+                  <ChoicePicker
+                    appearance="field" className="schedule-input" aria-label={m.research.schedule.endSlot}
+                    value={window.end} options={TASK_SLOT_ENDS}
+                    onPick={(end) => setWindow((current) => current && ({ ...current, end }))}
+                  />
                 </div>
               )}
           </>

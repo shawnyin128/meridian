@@ -8,7 +8,8 @@ import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { EmptyState } from '../EmptyState.js'
 import { FadeText } from '../FadeText.js'
-import { FormSelect, FormTextarea } from '../FormControls.js'
+import { ChoicePicker } from '../FieldPickers.js'
+import { FormTextarea } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { PanelClose } from '../PanelClose.js'
 import { AgentLabel } from '../SourceLabel.js'
@@ -205,10 +206,11 @@ export function ProjectConclusionPanel({
         onOpenChange={setWriting} onSubmit={submit}
       >
         <WikiFormField label={c.page}>
-          <FormSelect appearance="field" value={page} onChange={(event) => setPage(event.target.value)}>
-            <option value="" disabled>{c.pagePick}</option>
-            {pages.map((card) => <option key={card.id} value={card.id}>{card.title}</option>)}
-          </FormSelect>
+          <ChoicePicker
+            appearance="field" aria-label={c.page} placeholder={c.pagePick} value={page}
+            options={pages.map((card) => card.id)} onPick={setPage}
+            label={(id) => pages.find((card) => card.id === id)?.title ?? id}
+          />
         </WikiFormField>
         <WikiFormField label={c.text}>
           <FormTextarea appearance="field" value={text} onChange={(event) => setText(event.target.value)} />

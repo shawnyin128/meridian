@@ -49,11 +49,11 @@ const PAGE = {
   ],
 } as WikiAggregation
 
-function setValue(input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, value: string): void {
+function setValue(input: HTMLInputElement | HTMLTextAreaElement, value: string): void {
   const prototype = input instanceof window.HTMLTextAreaElement ? window.HTMLTextAreaElement.prototype
-    : input instanceof window.HTMLSelectElement ? window.HTMLSelectElement.prototype : window.HTMLInputElement.prototype
+    : window.HTMLInputElement.prototype
   Object.getOwnPropertyDescriptor(prototype, 'value')!.set!.call(input, value)
-  input.dispatchEvent(new Event(input instanceof window.HTMLSelectElement ? 'change' : 'input', { bubbles: true }))
+  input.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
 const flush = async () => {
@@ -90,6 +90,26 @@ describe('WikiClaims', () => {
   const menuItem = (text: string) => [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((el) => el.textContent === text)!
   const dialog = () => document.querySelector<HTMLElement>('.wiki-form')!
   const save = () => [...dialog().querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === '保存')!
+  /** Opens the dialog's `nth` picker and returns the labels of its options. */
+  const openPicker = async (nth: number) => {
+    await act(async () => {
+      dialog().querySelectorAll('.choice-picker')[nth]!
+        .dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+      await flush()
+    })
+    return [...document.querySelectorAll<HTMLElement>('.choice-picker-menu [role="menuitemradio"]')]
+  }
+  const choose = async (item: HTMLElement) => {
+    await act(async () => {
+      item.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+      item.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await flush()
+    })
+  }
+  /** Picks the option shown as `label` in the dialog's `nth` picker. */
+  const pick = async (nth: number, label: string) => {
+    await choose((await openPicker(nth)).find((candidate) => candidate.textContent === label)!)
+  }
 
   it('每条结论:正文、版本、日期,agent 写的跟一个 agent 标签;证据一行一条;冲突高亮并链到另一边;版本史默认收起', () => {
     const knee = host.querySelector<HTMLElement>('[data-claim="knee"]')!
@@ -139,10 +159,11 @@ describe('WikiClaims', () => {
   it('添加结论:只能选已验证的项目结论作依据,节点结论引用节点,旧版结论引用结论 id', async () => {
     act(() => host.querySelector<HTMLButtonElement>('.add-action')!.click())
     await act(async () => { [...dialog().querySelectorAll<HTMLButtonElement>('.segmented-control button')][1]!.click(); await flush() })
-    await act(async () => { setValue(dialog().querySelector('select')!, 'draft'); await flush() })
-    const options = [...dialog().querySelectorAll('select')[1]!.querySelectorAll('option')].map((o) => o.value)
-    expect(options).toEqual(['', 't.wide', 'c1'])
-    act(() => setValue(dialog().querySelectorAll('select')[1]!, 't.wide'))
+    expect(dialog().querySelector('select')).toBeNull()
+    await pick(0, 'draft 效率')
+    const verified = await openPicker(1)
+    expect(verified.map((item) => item.textContent)).toEqual(['宽树在 B≥8 时净赚', '拐点是 batch size 的函数'])
+    await choose(verified[0]!)
     await act(async () => { save().click(); await flush() })
     expect(onApply.mock.calls[0]![1]).toEqual([{
       op: 'addClaim', page: 'topics/sd',
@@ -153,8 +174,8 @@ describe('WikiClaims', () => {
   it('添加结论:选一条旧版项目结论作依据,正文先填成那条结论', async () => {
     act(() => host.querySelector<HTMLButtonElement>('.add-action')!.click())
     await act(async () => { [...dialog().querySelectorAll<HTMLButtonElement>('.segmented-control button')][1]!.click(); await flush() })
-    await act(async () => { setValue(dialog().querySelector('select')!, 'draft'); await flush() })
-    act(() => setValue(dialog().querySelectorAll('select')[1]!, 'c1'))
+    await pick(0, 'draft 效率')
+    await pick(1, '拐点是 batch size 的函数')
     expect(dialog().querySelector('textarea')!.value).toBe('拐点是 batch size 的函数')
     await act(async () => { save().click(); await flush() })
     expect(onApply.mock.calls[0]![1]).toEqual([{
@@ -172,7 +193,7 @@ describe('WikiClaims', () => {
 
     openMenu('plain')
     act(() => menuItem('标记冲突').click())
-    act(() => setValue(dialog().querySelector('select')!, 'knee'))
+    await pick(0, '拐点在宽度 6')
     act(() => setValue(dialog().querySelector('input')!, '说法相反'))
     await act(async () => { save().click(); await flush() })
     expect(onApply.mock.calls.at(-1)![1]).toEqual([{
@@ -196,7 +217,7 @@ describe('WikiClaims', () => {
     expect(onApply.mock.calls.at(-1)![1]).toEqual([{ ...done, outcome: 'dismissed' }])
 
     resolve()
-    act(() => setValue(dialog().querySelector('select')!, 'revised'))
+    await pick(0, '修订这一条')
     act(() => setValue(dialog().querySelector('textarea')!, '单请求下拐点在宽度 6'))
     act(() => setValue(dialog().querySelector('input')!, '场景不同'))
     await act(async () => { save().click(); await flush() })
@@ -205,7 +226,7 @@ describe('WikiClaims', () => {
     ])
 
     resolve()
-    act(() => setValue(dialog().querySelector('select')!, 'retracted'))
+    await pick(0, '撤回这一条')
     act(() => setValue(dialog().querySelector('input')!, '场景不同'))
     await act(async () => { save().click(); await flush() })
     expect(onApply.mock.calls.at(-1)![1]).toEqual([
