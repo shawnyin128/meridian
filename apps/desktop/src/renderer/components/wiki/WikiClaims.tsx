@@ -234,7 +234,7 @@ export function WikiClaims({ page, pending, links, onApply }: {
           <StructuredList variant="embedded" maxVisibleRows="all" className="wkclaims">
             {page.claims.map((claim) => (
               <StructuredRow
-                key={claim.id} data-claim={claim.id}
+                key={claim.id} data-claim={claim.id} data-dots-row=""
                 className={`wkclaim${claim.conflicts.length > 0 ? ' wkclaim--conflict' : ''}`}
               >
                 <div className="wkclaim-head">

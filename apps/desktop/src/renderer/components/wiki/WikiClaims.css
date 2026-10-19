@@ -1,8 +1,7 @@
 .wkclaim{padding:10px 2px}
 .wkclaim-head{display:flex;align-items:flex-start;gap:8px}
 .wkclaim-text{flex:1;min-width:0;font-size:var(--fs-base);font-weight:500;line-height:1.5;overflow-wrap:anywhere}
-.wkclaim-head .dots{flex:none;opacity:0;transition:opacity var(--t-fast) var(--e-out)}
-.wkclaim:hover .wkclaim-head .dots,.wkclaim-head .dots:focus-visible,.wkclaim-head .dots[data-state='open']{opacity:1}
+.wkclaim-head .dots{flex:none}
 .wkclaim-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px;color:var(--ter);font-size:var(--fs-sm)}
 .wkclaim-version{font-variant-numeric:tabular-nums;color:var(--sec);font-weight:600}
 .wkclaim-by--agent{color:var(--info)}
