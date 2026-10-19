@@ -23,6 +23,7 @@ import { ApiOverview } from '../components/settings/ApiOverview.js'
 import { ExtensionSettings } from '../components/settings/ExtensionSettings.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { ModalDialog, ModalTitle } from '../components/ModalDialog.js'
+import { NavRow } from '../components/NavRow.js'
 import { StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { TitleNote } from '../components/TitleNote.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
@@ -420,11 +421,10 @@ export function Settings() {
       <div className="set-side">
         <ModalTitle className="set-t">{m.settings.title}</ModalTitle>
         {visibleCategories.map((c) => (
-          <div
-            key={c}
-            className={`${c === current ? 'srow on' : 'srow'}${SUB_CATEGORIES.has(c) ? ' set-sub' : ''}`}
-            data-setcat={c} onClick={() => setCurrent(c)}
-          >{m.settings.categories[CATEGORY_LABEL[c]]}</div>
+          <NavRow
+            key={c} className={SUB_CATEGORIES.has(c) ? 'srow set-sub' : 'srow'} selected={c === current}
+            data-setcat={c} onActivate={() => setCurrent(c)}
+          >{m.settings.categories[CATEGORY_LABEL[c]]}</NavRow>
         ))}
       </div>
 

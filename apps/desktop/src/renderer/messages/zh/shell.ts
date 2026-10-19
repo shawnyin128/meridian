@@ -45,6 +45,7 @@ export const shell = {
   sidebar: {
     toggle: '收起/展开侧栏',
     collapseHint: '点击收起',
+    toggleGroup: (name: string) => `收起/展开「${name}」`,
     dragHint: '拖动调整宽度',
     manageChat: (title: string) => `管理对话：${title}`,
     archive: '归档',
