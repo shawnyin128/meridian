@@ -76,7 +76,7 @@ describe('FormControls', () => {
       </MessagesProvider>,
     )
     expect(choosing).toContain('aria-busy="true"')
-    expect(choosing).toContain('title="正在检查论文库目录"')
+    expect(choosing).not.toContain('title=')
     expect(choosing).toContain('aria-label="正在检查论文库目录"')
     expect(choosing).toMatch(/directory-field-action[^>]*disabled=""/)
     expect(choosing).not.toMatch(/form-input[^>]*disabled=""/)

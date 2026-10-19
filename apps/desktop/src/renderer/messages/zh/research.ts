@@ -22,8 +22,6 @@ export const research = {
     waitingForAgent: '等待 Agent 回传',
     recentHeading: '最近进展',
     upcomingHeading: '接下来的里程碑',
-    hideHistory: '隐藏已完成和搁置项目',
-    showHistory: '显示已完成和搁置项目',
     historyProjects: '历史项目',
     milestonePopTitle: (isNew: boolean, date: string) => `${isNew ? '新建里程碑' : '里程碑'} · ${date}`,
     taskWindowMovedHours: (slots: number, hours: number) =>

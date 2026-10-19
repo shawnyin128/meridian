@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { headingsOf, Markdown, MarkdownBox } from './Markdown.js'
+import { TOOLTIP_DELAY } from './Tooltip.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -29,7 +30,7 @@ describe('Markdown', () => {
     const out = html('见 [[topics/ptq|PTQ]] 与 [[papers/a]](p.3)。')
     expect(out).toContain('<span class="wl" data-wk="topics/ptq">PTQ</span>')
     expect(out).toContain('<span class="wl" data-wk="papers/a">papers/a</span>')
-    expect(out).toContain('<span class="cite" title="原文第 3 页">p.3</span>')
+    expect(out).toContain('<span class="cite">p.3</span>')
   })
 
   it('能打开页面时页内链接是键盘能到的链接，点它打开页面而不改地址', () => {
@@ -48,18 +49,35 @@ describe('Markdown', () => {
     act(() => root.unmount())
   })
 
-  it('[[id]] 没写别名时文字取 titles 里的短名,写了别名以别名为准,悬停都显示完整标题,titles 里没有的按原文', () => {
+  it('[[id]] 没写别名时文字取 titles 里的短名,写了别名以别名为准,titles 里没有的按原文', () => {
     const titles = {
       'papers/a': { id: 'papers/a', title: 'GPTQ', fullTitle: 'GPTQ: Accurate Post-Training Quantization' },
       'topics/ptq': { id: 'topics/ptq', title: 'PTQ' },
     }
     const out = renderToStaticMarkup(
-      <MessagesProvider><Markdown src="[[papers/a]] [[topics/ptq|训练后量化]] [[papers/z]]" titles={titles} /></MessagesProvider>,
+      <MessagesProvider><Markdown src="[[papers/a]] [[topics/ptq|训练后量化]] [[topics/ptq]] [[papers/z]]" titles={titles} /></MessagesProvider>,
     )
-    expect(out).toContain('<span class="wl" data-wk="papers/a" title="GPTQ: Accurate Post-Training Quantization">GPTQ</span>')
-    expect(out).toContain('<span class="wl" data-wk="topics/ptq" title="PTQ">训练后量化</span>')
+    expect(out).toContain('<span class="wl" data-wk="papers/a" data-state="closed">GPTQ</span>')
+    expect(out).toContain('<span class="wl" data-wk="topics/ptq" data-state="closed">训练后量化</span>')
+    expect(out).toContain('<span class="wl" data-wk="topics/ptq">PTQ</span>')
     expect(out).toContain('[[papers/z]]')
     expect(out).not.toContain('data-wk="papers/z"')
+    expect(out).not.toContain('title=')
+  })
+
+  it('页内链接的文字不是页的全名时，悬停用共享 tooltip 显示全名', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.useFakeTimers()
+    const titles = { 'papers/a': { id: 'papers/a', title: 'GPTQ', fullTitle: 'GPTQ: Accurate Post-Training Quantization' } }
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    act(() => root.render(<MessagesProvider><Markdown src="[[papers/a]]" titles={titles} /></MessagesProvider>))
+    act(() => { host.querySelector('.wl')!.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
+    act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+    expect(document.querySelector('[role="tooltip"]')?.textContent).toBe('GPTQ: Accurate Post-Training Quantization')
+    act(() => root.unmount())
+    vi.useRealTimers()
   })
 
   it('没给 titles 的随笔一律当链接;给了 titles 的页上,原文标记后面的 (p.N) 仍是锚点', () => {
@@ -68,7 +86,7 @@ describe('Markdown', () => {
       <MessagesProvider><Markdown src="见 [[papers/z]](p.3)。" titles={{}} /></MessagesProvider>,
     )
     expect(out).toContain('[[papers/z]]')
-    expect(out).toContain('<span class="cite" title="原文第 3 页">p.3</span>')
+    expect(out).toContain('<span class="cite">p.3</span>')
   })
 
   it('行内与行间公式渲染成 KaTeX,套在粗体里也是', () => {

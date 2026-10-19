@@ -3,6 +3,7 @@ import { useFormat, type Format } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { Tag } from '../Tag.js'
+import { Tooltip } from '../Tooltip.js'
 import './ProjectControl.css'
 
 export type ProjectControlVariant = 'detail' | 'summary' | 'inline'
@@ -38,22 +39,21 @@ export function ProjectNextActionView({ action, variant = 'detail', className = 
   }
   const meta = actionMeta(action, fmt, m)
   return (
-    <span
-      className={`project-control-value ${variant} ${className}`.trim()}
-      title={`${action.text} · ${meta}`}
-    >
-      <span className="project-control-main">
-        {variant === 'summary'
-          ? null
-          : (
-            <Tag tone={action.source === 'task' ? 'accent' : 'good'}>
-              {action.source === 'task' ? m.project.plan.taskMode : m.project.sections.graph}
-            </Tag>
-          )}
-        <span className="project-control-text">{action.text}</span>
+    <Tooltip label={variant === 'inline' ? action.text : `${action.text} · ${meta}`} whenClipped>
+      <span className={`project-control-value ${variant} ${className}`.trim()}>
+        <span className="project-control-main">
+          {variant === 'summary'
+            ? null
+            : (
+              <Tag tone={action.source === 'task' ? 'accent' : 'good'}>
+                {action.source === 'task' ? m.project.plan.taskMode : m.project.sections.graph}
+              </Tag>
+            )}
+          <span className="project-control-text">{action.text}</span>
+        </span>
+        {variant === 'inline' ? null : <span className="project-control-meta">{meta}</span>}
       </span>
-      {variant === 'inline' ? null : <span className="project-control-meta">{meta}</span>}
-    </span>
+    </Tooltip>
   )
 }
 
@@ -74,11 +74,13 @@ export function ProjectBlockerView({ blocker, variant = 'detail', className = ''
       )
   }
   return (
-    <span className={`project-control-value ${variant} blocker ${className}`.trim()} title={blocker.text}>
-      <span className="project-control-main">
-        <Tag>{m.project.control.manualSource}</Tag>
-        <span className="project-control-text">{blocker.text}</span>
+    <Tooltip label={blocker.text} whenClipped>
+      <span className={`project-control-value ${variant} blocker ${className}`.trim()}>
+        <span className="project-control-main">
+          <Tag>{m.project.control.manualSource}</Tag>
+          <span className="project-control-text">{blocker.text}</span>
+        </span>
       </span>
-    </span>
+    </Tooltip>
   )
 }

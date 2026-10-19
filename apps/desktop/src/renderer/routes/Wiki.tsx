@@ -35,6 +35,7 @@ import { plainTitle } from '../components/paper/paper-text.js'
 import { ReviewEntry, ReviewQueue } from '../components/wiki/ReviewQueue.js'
 import { WikiClaims } from '../components/wiki/WikiClaims.js'
 import { Tag, TagButton } from '../components/Tag.js'
+import { Tooltip } from '../components/Tooltip.js'
 import './shell.css'
 import './Wiki.css'
 
@@ -50,9 +51,6 @@ const REVIEW = 'review'
 /** One entry of the Back stack: the previous Wiki page, or the screen that jumped here. */
 type Step = { place: Place } | { origin: ScreenKey }
 
-/** The source quote of the hovered cell and where its tooltip goes. */
-type Tip = { page: number; quote: string; left: number; top: number }
-
 /**
  * The demo's aggCard: kind tag, title, an "N parents" tag when the aggregation has several parents,
  * the first line of its summary, and a last line with its subpage count, paper count and update date.
@@ -64,7 +62,7 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
   const fmt = useFormat()
   const m = useMessages()
   return (
-    <div className="wkcard" data-wk={card.id} title={card.summary} onClick={onOpen}>
+    <div className="wkcard" data-wk={card.id} onClick={onOpen}>
       <div className="wt">
         <Tag tone="wiki" className="wkind">{card.kindLabel}</Tag>
         <button type="button" className="tt">{card.title}</button>
@@ -95,10 +93,13 @@ function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
   const line = [`${paper.year ?? ''} ${paper.venue}`.trim(), paper.topics.join(' / ')]
     .filter((part) => part !== '').join(' · ')
   return (
-    <div className="wkcard" data-wk={`${PAPER_PAGE}${paper.id}`} title={plainTitle(paper.title)} onClick={onOpen}>
+    <div className="wkcard" data-wk={`${PAPER_PAGE}${paper.id}`} onClick={onOpen}>
       <div className="wt">
         <Tag tone="paper" className="wkind">{m.wiki.paperKind}</Tag>
-        <button type="button" className="tt"><PaperText text={paper.title} /></button><span className="sp" />
+        <Tooltip label={plainTitle(paper.title)} whenClipped>
+          <button type="button" className="tt"><PaperText text={paper.title} /></button>
+        </Tooltip>
+        <span className="sp" />
       </div>
       <div className="wm">{line}</div>
       <div className="wf">{m.wiki.paperCardFooter(paper.noteCount, paper.conclusionCount)}</div>
@@ -106,19 +107,15 @@ function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
   )
 }
 
-/** A cell with an anchor: its value carries the page number in superscript; hovering shows the quote. */
-function Cell({ cell, onTip }: { cell: WikiCell; onTip: (tip: Tip | null) => void }) {
+/**
+ * A cell with an anchor: its value carries the page number in superscript, and the anchor takes
+ * focus; the tooltip shows the quote on hover and on focus.
+ */
+function Cell({ cell }: { cell: WikiCell }) {
   return (
-    <span
-      className="anc"
-      onMouseEnter={(e) => {
-        const r = e.currentTarget.getBoundingClientRect()
-        onTip({ page: cell.page, quote: cell.quote, left: r.left, top: r.bottom + 8 })
-      }}
-      onMouseLeave={() => onTip(null)}
-    >
-      {cell.value}<sup>p{cell.page}</sup>
-    </span>
+    <Tooltip label={`“${cell.quote}”`}>
+      <span className="anc" tabIndex={0}>{cell.value}<sup>p{cell.page}</sup></span>
+    </Tooltip>
   )
 }
 
@@ -127,10 +124,9 @@ function Cell({ cell, onTip }: { cell: WikiCell; onTip: (tip: Tip | null) => voi
  * cells show a dash, and derived columns show chips. An inner node with no columns and no rows takes
  * no papers directly.
  */
-function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
+function Table({ agg, onOpen, onRemove, pending, adding, head }: {
   agg: WikiAggregation
   onOpen: (id: string) => void
-  onTip: (tip: Tip | null) => void
   onRemove?: (paperId: string) => void
   pending?: boolean
   /** The placeholder row for adding a paper: `row` goes on its `<tr>`, `input` sits in its first cell. */
@@ -168,28 +164,28 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
           {agg.rows.map((row) => (
             <tr key={row.paper.id}>
               <td className="rh">
-                <button
-                  type="button" className="wl" data-wk={row.paper.id} onClick={() => onOpen(row.paper.id)}
-                  title={row.paper.fullTitle === undefined ? undefined : plainTitle(row.paper.fullTitle)}
-                >
-                  <PaperText text={row.paper.title} />
-                </button>
+                <Tooltip label={row.paper.fullTitle === undefined ? undefined : plainTitle(row.paper.fullTitle)}>
+                  <button type="button" className="wl" data-wk={row.paper.id} onClick={() => onOpen(row.paper.id)}>
+                    <PaperText text={row.paper.title} />
+                  </button>
+                </Tooltip>
               </td>
               {agg.columns.map((c) => {
                 const cell = row.cells[c.key]
                 return cell === undefined
                   ? <td className="na" key={c.key}>—</td>
-                  : <td key={c.key}><Cell cell={cell} onTip={onTip} /></td>
+                  : <td key={c.key}><Cell cell={cell} /></td>
               })}
               {agg.derivedColumns.map((d) => {
                 const links = row.derived[d.key] ?? []
                 return (
                   <td className="dv" key={d.key}>
                     {links.length === 0 ? '—' : links.map((l) => (
-                      <TagButton
-                        shape="chip" className="tagchip" data-wk={l.id} key={l.id} title={l.fullTitle}
-                        onClick={() => onOpen(l.id)}
-                      >{l.title}</TagButton>
+                      <Tooltip key={l.id} label={l.fullTitle}>
+                        <TagButton shape="chip" className="tagchip" data-wk={l.id} onClick={() => onOpen(l.id)}>
+                          {l.title}
+                        </TagButton>
+                      </Tooltip>
                     ))}
                   </td>
                 )
@@ -335,7 +331,6 @@ export function Wiki() {
   const [paper, setPaper] = useState<WikiPaper | null>(null)
   const [reading, setReading] = useState<PaperReading | null>(null)
   const [proposals, setProposals] = useState<WikiProposal[]>([])
-  const [tip, setTip] = useState<Tip | null>(null)
   const [error, setError] = useState<string | null>(null)
   const consumed = useRef(0)
   const main = useRef<HTMLDivElement>(null)
@@ -423,7 +418,6 @@ export function Wiki() {
   useEffect(() => {
     setError(null)
     if (place === null || place === REVIEW) return
-    setTip(null)
     if (place.startsWith(PAPER_PAGE)) void wiki.paper(place).then(setPaper).catch(reportError)
     else void wiki.aggregation(place).then(setAgg).catch(reportError)
   }, [place, revision, reportError])
@@ -661,7 +655,7 @@ export function Wiki() {
                   >{m.wiki.paperKind}</AddAction>
                 </SectionHeading>
                 <Table
-                  agg={shownAgg} onOpen={go} onTip={setTip} pending={pending}
+                  agg={shownAgg} onOpen={go} pending={pending}
                   adding={adding !== 'paper'
                     ? undefined
                     : {
@@ -793,10 +787,11 @@ export function Wiki() {
                     <div className="wkrel">
                       <span className="rl">{m.wiki.belongsTo}</span>
                       {shownAgg.parents.map((p) => (
-                        <TagButton
-                          shape="chip" className="tagchip" data-wk={p.id} key={p.id} title={p.fullTitle}
-                          onClick={() => go(p.id)}
-                        >{p.title}</TagButton>
+                        <Tooltip key={p.id} label={p.fullTitle}>
+                          <TagButton shape="chip" className="tagchip" data-wk={p.id} onClick={() => go(p.id)}>
+                            {p.title}
+                          </TagButton>
+                        </Tooltip>
                       ))}
                     </div>
                   )
@@ -805,10 +800,11 @@ export function Wiki() {
                   <div className="wkrel" key={r.label}>
                     <span className="rl">{r.label}</span>
                     {r.links.map((l) => (
-                      <TagButton
-                        shape="chip" className="tagchip" data-wk={l.id} key={l.id} title={l.fullTitle}
-                        onClick={() => go(l.id)}
-                      >{l.title}</TagButton>
+                      <Tooltip key={l.id} label={l.fullTitle}>
+                        <TagButton shape="chip" className="tagchip" data-wk={l.id} onClick={() => go(l.id)}>
+                          {l.title}
+                        </TagButton>
+                      </Tooltip>
                     ))}
                   </div>
                 ))}
@@ -914,7 +910,7 @@ export function Wiki() {
                         {ms.cells.map((c) => (
                           <Fragment key={c.label}>
                             <div className="pk">{c.label}</div>
-                            <div className="pv"><Cell cell={c.cell} onTip={setTip} /></div>
+                            <div className="pv"><Cell cell={c.cell} /></div>
                           </Fragment>
                         ))}
                       </div>
@@ -972,13 +968,6 @@ export function Wiki() {
         )
         : null}
 
-      {tip === null
-        ? null
-        : (
-          <div id="wktip" style={{ left: tip.left, top: tip.top }}>
-            <b>{m.wiki.tipSource(tip.page)}</b>“{tip.quote}”
-          </div>
-        )}
     </PageShell>
   )
 }

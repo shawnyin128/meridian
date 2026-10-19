@@ -25,6 +25,7 @@ import type { Catalog } from '../messages/catalog.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { AgentLabel, SourceLabel } from '../components/SourceLabel.js'
 import { Tag } from '../components/Tag.js'
+import { Tooltip } from '../components/Tooltip.js'
 import './Ideas.css'
 
 const sourceLabel = (idea: ResearchIdea) => idea.source.paperTitle === undefined
@@ -51,11 +52,7 @@ function IdeaMenu({ idea, linked, onArchive, onDelete }: {
   const locked = idea.archived && linked?.status === FINISHED_PROJECT
   return (
     <DotsMenu label={m.ideas.manage(idea.title)} stopRowActivation>
-      <MenuItem
-        disabled={locked}
-        title={locked ? m.ideas.archiveLockedHint : undefined}
-        onSelect={onArchive}
-      >{idea.archived ? m.common.unarchive : m.common.archive}</MenuItem>
+      <MenuItem disabled={locked} onSelect={onArchive}>{idea.archived ? m.common.unarchive : m.common.archive}</MenuItem>
       <MenuSeparator />
       <MenuItem className="mi danger" onSelect={onDelete}>{m.common.delete}</MenuItem>
     </DotsMenu>
@@ -88,7 +85,9 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, dragProps, dropClassNa
         </div>
         <p className="idea-card-summary">{idea.body}</p>
         <div className="idea-card-meta">
-          <span className="idea-card-source" title={sourceLabel(idea)}>{m.project.idea.sourceTag(sourceLabel(idea))}</span>
+          <Tooltip label={m.project.idea.sourceTag(sourceLabel(idea))} whenClipped>
+            <span className="idea-card-source">{m.project.idea.sourceTag(sourceLabel(idea))}</span>
+          </Tooltip>
           {idea.source.agent === true
             ? <AgentLabel className="idea-source-kind" />
             : (

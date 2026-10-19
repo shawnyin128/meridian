@@ -4,12 +4,9 @@ import { chat as zh } from '../zh/chat.js'
 export const chat = {
   newChat: 'New chat',
   saveIdeaLabel: 'Save as idea',
-  saveIdea: 'Turn this discussion into a research idea',
-  saveIdeaDisabled: 'Start a discussion first',
   mentionGroup: { project: 'Projects', paper: 'Papers', page: 'Wiki' },
   conflictQuestion: 'Why do these two conclusions conflict?',
   quotePrefix: (quote: string) => `About this passage: “${quote}” `,
-  quickMentionTitle: (group: string, meta: string) => `Add ${group} context: ${meta}`,
   composerPlaceholder: 'A question or an idea',
   mentionPickerHeading: 'Add context from a project, paper, or Wiki page',
   currentChat: 'This chat',

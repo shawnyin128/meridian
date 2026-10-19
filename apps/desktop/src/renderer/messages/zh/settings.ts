@@ -87,7 +87,6 @@ export const settings = {
       stored: (lastFour: string) => `已保存的 Semantic Scholar API Key，末四位 ${lastFour}`,
       connection: {
         connected: '连接成功',
-        saveFirst: '请先保存 Key，再测试连接。',
         unexpectedDetail: '没有返回诊断信息。',
         failures: {
           authentication: '认证失败，请检查 API Key。',
@@ -175,8 +174,6 @@ export const settings = {
     connection: {
       action: '测试连接',
       testing: '正在测试…',
-      cost: '发送 1 次请求，最多生成 1 个输出 token。',
-      saveFirst: '请先保存并启用这项配置，再测试连接。',
       connected: '连接成功 · 最多 1 个输出 token',
       detailLabel: '详情',
       unexpectedDetail: '本地 Harness 没有返回诊断信息。',

@@ -62,7 +62,6 @@ export const wiki = {
   viewInPaperList: 'View in the paper list',
   membershipHeading: 'Location in Wiki',
   noMembership: 'This page is not under another Wiki page.',
-  tipSource: (page: number) => `p.${page} · Source`,
   scope: {
     source: 'Source text',
     currentPaper: 'Current paper',

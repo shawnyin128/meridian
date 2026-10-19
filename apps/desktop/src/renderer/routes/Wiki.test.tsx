@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { WikiAggregation, WikiAggregationCard, WikiHome, WikiPaper } from '../../shared/contract.js'
 import { IconTrash } from '../components/icons.js'
+import { TOOLTIP_DELAY } from '../components/Tooltip.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
@@ -131,6 +132,25 @@ describe('Wiki keyboard reach', () => {
 
     await press(host.querySelector<HTMLElement>('.cmp td.dv .tagchip')!)
     expect(fixture.aggregation).toHaveBeenLastCalledWith('methods/tree')
+  })
+
+  it('比较表格子里的锚点能用 Tab 停上去，悬停或聚焦都在共享 tooltip 里显示原文', async () => {
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    const anchor = host.querySelector<HTMLElement>('.cmp .anc')!
+    expect([anchor.tabIndex, anchor.textContent]).toEqual([0, 'W4p3'])
+    act(() => {
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
+      anchor.focus()
+    })
+    expect(document.querySelector('[role="tooltip"]')?.textContent).toBe('“four bits”')
+    act(() => anchor.blur())
+    expect(document.querySelector('[role="tooltip"]')).toBeNull()
+    vi.useFakeTimers()
+    act(() => { anchor.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
+    act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+    vi.useRealTimers()
+    expect(document.querySelector('[role="tooltip"]')?.textContent).toBe('“four bits”')
+    expect(document.querySelector('#wktip')).toBeNull()
   })
 
   it('opens a paper page membership from a button', async () => {

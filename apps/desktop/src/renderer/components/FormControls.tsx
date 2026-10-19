@@ -7,6 +7,7 @@ import {
 } from 'react'
 import { useMessages } from '../messages/useMessages.js'
 import { IconFolder } from './icons.js'
+import { Tooltip } from './Tooltip.js'
 import './FormControls.css'
 
 /**
@@ -62,16 +63,17 @@ export const DirectoryField = forwardRef<HTMLInputElement, DirectoryFieldProps>(
     return (
       <span className="directory-field" aria-busy={choosing || undefined}>
         <FormInput ref={ref} disabled={disabled} {...props} />
-        <button
-          type="button"
-          className="directory-field-action"
-          title={choose}
-          aria-label={choose}
-          disabled={disabled || chooseDisabled || choosing}
-          onClick={onChoose}
-        >
-          <IconFolder />
-        </button>
+        <Tooltip label={choose}>
+          <button
+            type="button"
+            className="directory-field-action"
+            aria-label={choose}
+            disabled={disabled || chooseDisabled || choosing}
+            onClick={onChoose}
+          >
+            <IconFolder />
+          </button>
+        </Tooltip>
       </span>
     )
   },

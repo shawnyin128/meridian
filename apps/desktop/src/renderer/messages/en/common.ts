@@ -55,7 +55,6 @@ export const common = {
     running: 'Generating',
     runningHint: 'Generating — click to stop',
   },
-  markdown: { citePage: (page: string) => `Source · page ${page}` },
   failure: {
     label: (what: string, why: string) => `${what} · ${why}`,
     reasons: {

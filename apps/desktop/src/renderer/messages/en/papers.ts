@@ -57,7 +57,6 @@ export const papers = {
   },
   columnHeader: {
     resizeHint: 'Drag to resize column',
-    reorderHint: 'Drag to reorder column',
     addColumn: 'Add column',
   },
   rowActions: { delete: 'Delete', openReader: 'Start reading' },
@@ -103,7 +102,6 @@ export const papers = {
   },
   columnMenu: {
     settings: 'Column settings',
-    locked: 'Locked column, cannot be hidden',
     options: 'Options',
     changeType: 'Change type',
     rename: 'Rename column',

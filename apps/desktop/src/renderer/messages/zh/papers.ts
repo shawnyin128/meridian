@@ -54,7 +54,6 @@ export const papers = {
   },
   columnHeader: {
     resizeHint: '拖动调整列宽',
-    reorderHint: '拖动调整列顺序',
     addColumn: '新增列',
   },
   rowActions: { delete: '删除', openReader: '开始阅读' },
@@ -100,7 +99,6 @@ export const papers = {
   },
   columnMenu: {
     settings: '列设置',
-    locked: '固定列，不可隐藏',
     options: '选项',
     changeType: '改类型',
     rename: '重命名列',

@@ -94,7 +94,6 @@ export const settings = {
       stored: (lastFour: string) => `Saved Semantic Scholar API key ending in ${lastFour}`,
       connection: {
         connected: 'Connected',
-        saveFirst: 'Save a key before testing the connection.',
         unexpectedDetail: 'No diagnostic message was returned.',
         failures: {
           authentication: 'Authentication failed. Check the API key.',
@@ -182,8 +181,6 @@ export const settings = {
     connection: {
       action: 'Test connection',
       testing: 'Testing…',
-      cost: 'Sends one request with at most 1 output token.',
-      saveFirst: 'Save and activate this configuration before testing it.',
       connected: 'Connected · at most 1 output token',
       detailLabel: 'Details',
       unexpectedDetail: 'The local Harness did not return a diagnostic message.',

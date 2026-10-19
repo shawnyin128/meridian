@@ -94,15 +94,15 @@ describe('SegmentedControl', () => {
     expect(segments()[1]!.getAttribute('aria-checked')).toBe('true')
   })
 
-  it('keeps its size class and passes a per-option tooltip through', () => {
+  it('keeps its size class, and its segments carry no native title', () => {
     const html = renderToStaticMarkup(
       <SegmentedControl
         label="每页条数" size="sm" value="10"
-        options={[{ value: '10', label: '10 / 页', title: '每页 10 条' }, { value: '20', label: '20 / 页' }]}
+        options={[{ value: '10', label: '10 / 页' }, { value: '20', label: '20 / 页' }]}
         onChange={() => undefined}
       />,
     )
     expect(html).toContain('class="segmented-control segmented-control--sm"')
-    expect(html).toContain('title="每页 10 条"')
+    expect(html).not.toContain('title=')
   })
 })

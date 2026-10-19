@@ -5,7 +5,6 @@ import { watches as zh } from '../zh/watches.js'
 export const watches = {
   add: (kind: string) => `Add ${kind.charAt(0).toLowerCase()}${kind.slice(1)}`,
   empty: (kind: string) => `No ${kind.charAt(0).toLowerCase()}${kind.slice(1)} added yet.`,
-  identityUnknown: 'Author not verified',
   identityUnconfirmed: 'Unconfirmed',
   paused: 'Paused',
   confirmRemove: (name: string) => `Remove “${name}”?`,

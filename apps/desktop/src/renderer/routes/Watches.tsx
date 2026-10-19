@@ -72,10 +72,9 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
                   <span className="nm">{w.name}</span>
                   {w.type === 'author'
                     ? (
-                      <span
-                        className={`author-id-state${w.identity === undefined ? ' unconfirmed' : ''}`}
-                        title={w.identity?.affiliations.join(' · ') || m.watches.identityUnknown}
-                      >{w.identity?.affiliations[0] || m.watches.identityUnconfirmed}</span>
+                      <span className={`author-id-state${w.identity === undefined ? ' unconfirmed' : ''}`}>
+                        {w.identity?.affiliations[0] || m.watches.identityUnconfirmed}
+                      </span>
                     )
                     : null}
                   {w.active ? null : <span className="src">{m.watches.paused}</span>}

@@ -123,7 +123,6 @@ export function SemanticKeySettings() {
           ) : null}
           <button
             className="btn" disabled={!canTestConnection || saving || connectionCheck.state === 'testing'}
-            title={canTestConnection ? undefined : copy.connection.saveFirst}
             onClick={() => { void testConnection() }}
           >
             {connectionCheck.state === 'testing' ? m.settings.model.connection.testing : m.settings.model.connection.action}

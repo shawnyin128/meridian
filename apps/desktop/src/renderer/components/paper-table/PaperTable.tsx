@@ -553,8 +553,7 @@ export function PaperTable() {
           ci.dataset['expanded'] = String(expanded)
           ci.classList.toggle('chip-expanded', expanded)
           badge.textContent = expanded ? '−' : `+${real}`
-          badge.title = expanded ? m.common.details.collapse : m.papers.tags.showMore(real)
-          badge.setAttribute('aria-label', badge.title)
+          badge.setAttribute('aria-label', expanded ? m.common.details.collapse : m.papers.tags.showMore(real))
           badge.setAttribute('aria-expanded', String(expanded))
         }
         setExpanded(wasExpanded)
@@ -1047,7 +1046,7 @@ export function PaperTable() {
                 onClick={(e) => { if (c.sort) clickHeader(e, c.sort) }}
               >
                 <span
-                  className="thmove" draggable title={m.papers.columnHeader.reorderHint}
+                  className="thmove" draggable
                   onMouseDown={(event) => event.stopPropagation()}
                   onClick={(event) => event.stopPropagation()}
                   onDragStart={(event) => startColumnMove(event, c.k)}

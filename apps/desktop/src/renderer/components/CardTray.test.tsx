@@ -36,7 +36,7 @@ describe('CardTray', () => {
     expect(detail.getAttribute('aria-hidden')).toBe('true')
     act(() => toggle.click())
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
-    expect(toggle.title).toBe('Hide details')
+    expect([toggle.getAttribute('aria-label'), toggle.getAttribute('title')]).toEqual(['Hide details', null])
     expect(detail.getAttribute('aria-hidden')).toBe('false')
     expect(host.querySelector('.card-tray')?.classList.contains('is-open')).toBe(true)
   })

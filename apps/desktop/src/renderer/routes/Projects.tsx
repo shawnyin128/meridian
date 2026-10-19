@@ -30,6 +30,7 @@ import type { Catalog } from '../messages/catalog.js'
 import { ProjectDetail } from './ProjectDetail.js'
 import type { RecordTab } from './ProjectDetail.js'
 import type { PlanTab } from '../components/project/ProjectPlan.js'
+import { Tooltip } from '../components/Tooltip.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useDragReorder, type DragCardProps } from '../hooks/useDragReorder.js'
 import {
@@ -176,9 +177,9 @@ function ProjectPanel({ project, onOpen, menu, dragProps, dropClassName }: {
       <div className="project-card-decisions">
         <div className="project-card-decision">
           <span className="project-card-label">{m.project.identity.focusLabel.currentGoal}</span>
-          <span className="project-card-value" title={project.focus}>
-            {project.focus || m.research.panel.focusUndefined}
-          </span>
+          <Tooltip label={project.focus || m.research.panel.focusUndefined} whenClipped>
+            <span className="project-card-value">{project.focus || m.research.panel.focusUndefined}</span>
+          </Tooltip>
         </div>
         <div className="project-card-decision">
           <span className="project-card-label">{m.project.control.nextAction}</span>

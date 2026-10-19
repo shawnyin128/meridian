@@ -20,7 +20,6 @@ export const ideas = {
     linked: 'Linked to project',
   },
   manage: (title: string) => `Manage idea: ${title}`,
-  archiveLockedHint: 'Ideas linked to a finished project stay archived. Unlink the project to restore them.',
   view: (title: string) => `View idea: ${title}`,
   updated: (date: string) => `Updated ${date}`,
   detailHeading: 'Idea details',

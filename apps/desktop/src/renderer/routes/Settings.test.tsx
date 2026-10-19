@@ -633,7 +633,6 @@ describe('Settings', () => {
     const test = [...dialog.querySelectorAll<HTMLButtonElement>('button')]
       .find((button) => button.textContent === '测试连接')!
     expect(test.disabled).toBe(false)
-    expect(test.title).toBe('发送 1 次请求，最多生成 1 个输出 token。')
     await act(async () => { test.click() })
 
     expect(api.checkModelConnection).toHaveBeenCalledOnce()

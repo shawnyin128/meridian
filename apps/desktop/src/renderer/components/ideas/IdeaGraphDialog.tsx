@@ -5,6 +5,7 @@ import type {
 import { useMessages } from '../../messages/useMessages.js'
 import { FormInput, FormSelect } from '../FormControls.js'
 import { ModalDialog } from '../ModalDialog.js'
+import { Tooltip } from '../Tooltip.js'
 import './IdeaGraphDialog.css'
 
 export type IdeaGraphDialogMode = 'create' | 'link'
@@ -65,7 +66,7 @@ export function IdeaGraphDialog({
         </>
       )}
     >
-      <p className="idea-graph-dialog-idea" title={idea.title}>{idea.title}</p>
+      <Tooltip label={idea.title} whenClipped><p className="idea-graph-dialog-idea">{idea.title}</p></Tooltip>
       {mode === 'create'
         ? (
           <>

@@ -55,7 +55,6 @@ export const wiki = {
   viewInPaperList: '去论文列表查看',
   membershipHeading: '归属',
   noMembership: '还没有归到任何一页下。',
-  tipSource: (page: number) => `p.${page} · 原文`,
   scope: {
     source: '原文',
     currentPaper: '当前论文',

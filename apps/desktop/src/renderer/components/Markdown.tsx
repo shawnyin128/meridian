@@ -9,8 +9,8 @@ import remarkMath from 'remark-math'
 import 'katex/dist/katex.min.css'
 import type { WikiRef } from '../../shared/contract.js'
 import { commitsMultiline, composing } from '../lib/keyboard.js'
-import { useMessages } from '../messages/useMessages.js'
 import { remarkPaperText } from './paper/paper-text.js'
+import { Tooltip } from './Tooltip.js'
 
 /** Two kinds of marks: `[[id|Text]]` / `[[id]]` are in-page links, and `(p.N)` is a source anchor. */
 const WIKI_LINK = /\[\[([^\]|\n]+)(?:\|([^\]\n]+))?\]\]/g
@@ -54,7 +54,6 @@ function remarkHeadingIds() {
  */
 function components(
   onOpen: ((id: string) => void) | undefined,
-  citePage: (page: string) => string,
   titles: Record<string, WikiRef> | undefined,
 ): Components {
   return {
@@ -64,18 +63,19 @@ function components(
       if (href.startsWith(WIKI)) {
         const id = href.slice(WIKI.length)
         const page = titles?.[id]
-        const title = page?.fullTitle ?? page?.title
-        if (onOpen === undefined) return <span className="wl" data-wk={id} title={title}>{children}</span>
+        const name = page?.fullTitle ?? page?.title
+        // The page's full name, when the link's own text says something else.
+        const label = [children].flat().join('') === name ? undefined : name
+        if (onOpen === undefined) return <Tooltip label={label}><span className="wl" data-wk={id}>{children}</span></Tooltip>
         return (
-          <a
-            className="wl" href={href} data-wk={id} title={title}
-            onClick={(event) => { event.preventDefault(); onOpen(id) }}
-          >{children}</a>
+          <Tooltip label={label}>
+            <a className="wl" href={href} data-wk={id} onClick={(event) => { event.preventDefault(); onOpen(id) }}>
+              {children}
+            </a>
+          </Tooltip>
         )
       }
-      if (href.startsWith(CITE)) {
-        return <span className="cite" title={citePage(href.slice(CITE.length))}>{children}</span>
-      }
+      if (href.startsWith(CITE)) return <span className="cite">{children}</span>
       return <a href={href} target="_blank" rel="noreferrer">{children}</a>
     },
   }
@@ -100,8 +100,7 @@ export function Markdown({ src, onOpen, titles, latexText = false }: {
   titles?: Record<string, WikiRef>
   latexText?: boolean
 }) {
-  const m = useMessages()
-  const parts = useMemo(() => components(onOpen, m.common.markdown.citePage, titles), [onOpen, m, titles])
+  const parts = useMemo(() => components(onOpen, titles), [onOpen, titles])
   return (
     <ReactMarkdown
       remarkPlugins={latexText

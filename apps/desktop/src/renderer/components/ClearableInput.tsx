@@ -2,6 +2,7 @@ import { forwardRef, useRef, type InputHTMLAttributes, type ReactNode, type Ref 
 import { useMessages } from '../messages/useMessages.js'
 import { FormInput, type FormControlAppearance } from './FormControls.js'
 import { IconCross } from './icons.js'
+import { Tooltip } from './Tooltip.js'
 import './ClearableInput.css'
 
 type ClearableInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value'> & {
@@ -35,15 +36,17 @@ export const ClearableInput = forwardRef<HTMLInputElement, ClearableInputProps>(
         {leading === undefined ? null : <span className="clearable-input-leading">{leading}</span>}
         <FormInput ref={setRef} className={className} value={value} {...props} />
         {value === '' ? null : (
-          <button
-            className="clearable-input-action" type="button" aria-label={clear} title={clear}
-            onClick={() => {
-              onClear()
-              input.current?.focus()
-            }}
-          >
-            <IconCross sw={2.2} />
-          </button>
+          <Tooltip label={clear}>
+            <button
+              className="clearable-input-action" type="button" aria-label={clear}
+              onClick={() => {
+                onClear()
+                input.current?.focus()
+              }}
+            >
+              <IconCross sw={2.2} />
+            </button>
+          </Tooltip>
         )}
       </div>
     )

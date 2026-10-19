@@ -138,7 +138,6 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
           <div className="qacts">
             <button
               className="qa" disabled={session === null || !hasDiscussion}
-              title={hasDiscussion ? m.chat.saveIdea : m.chat.saveIdeaDisabled}
               onClick={() => setSavingIdea(true)}
             >{m.chat.saveIdeaLabel}</button>
           </div>

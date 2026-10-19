@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test'
 import { PAPER_PAGE } from '../apps/desktop/src/shared/vocabulary.js'
-import { dshort, expect, test, type MeridianWindow } from './app.js'
+import { dshort, expect, parkPointer, test, type MeridianWindow } from './app.js'
 
 /** Visited screens stay mounted, so selectors every screen has, like the header, target the shown one. */
 const shown = (win: Page) => win.locator('.screenslot:not([hidden])')
@@ -154,10 +154,15 @@ test('对照表的行是成员论文,格子按契约的列排,悬停看原文;�
       return cell === undefined ? '—' : `${cell.value}p${cell.page}`
     }),
   )
-  // Hovering a cell's anchor shows the source text it quotes.
+  // Hovering a cell's anchor, or focusing it, shows the source text it quotes in the shared tooltip.
   const filled = agg.columns.find((c) => first.cells[c.key] !== undefined)!
-  await table.locator('tbody tr').first().locator('.anc').first().hover()
-  await expect(win.locator('#wktip')).toContainText(first.cells[filled.key]!.quote)
+  const anchor = table.locator('tbody tr').first().locator('.anc').first()
+  await anchor.hover()
+  await expect(win.locator('[role="tooltip"]')).toContainText(first.cells[filled.key]!.quote)
+  await parkPointer(win)
+  await win.keyboard.press('Shift')
+  await anchor.focus()
+  await expect(win.locator('[role="tooltip"]')).toContainText(first.cells[filled.key]!.quote)
 
   // An [[id]] link without an alias in the body shows that page's display name.
   expect(await shown(win).locator('.wkmain .md .wl').allTextContents()).toContain('GPTQ')

@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { useMessages } from '../messages/useMessages.js'
+import { Tooltip } from './Tooltip.js'
 import './GenerationControl.css'
 
 const Arrow = () => (
@@ -39,23 +40,24 @@ export function GenerationControl({
   const idle = idleLabel ?? m.common.generation.start
   const runningHint = runningLabel ?? m.common.generation.runningHint
   return (
-    <button
-      {...props}
-      type="button"
-      className={`generation-control${running ? ' is-running' : ''}${className ? ` ${className}` : ''}`}
-      aria-label={running ? runningHint : idle}
-      title={running ? runningHint : idle}
-      disabled={disabled}
-      onClick={running ? onStop : onStart}
-    >
-      {running ? <RunningGlyph /> : idleContent ?? <Arrow />}
-      {running && showStatusText ? (
-        <span className="generation-status-copy">
-          {/* No trailing ellipsis: this button-label pairs with the spinning RunningGlyph icon, which already reads as in-progress. */}
-          <span className="generation-running-copy">{m.common.generation.running}</span>
-          <span className="generation-stop-copy">{m.common.generation.stop}</span>
-        </span>
-      ) : null}
-    </button>
+    <Tooltip label={running ? runningHint : idle}>
+      <button
+        {...props}
+        type="button"
+        className={`generation-control${running ? ' is-running' : ''}${className ? ` ${className}` : ''}`}
+        aria-label={running ? runningHint : idle}
+        disabled={disabled}
+        onClick={running ? onStop : onStart}
+      >
+        {running ? <RunningGlyph /> : idleContent ?? <Arrow />}
+        {running && showStatusText ? (
+          <span className="generation-status-copy">
+            {/* No trailing ellipsis: this button-label pairs with the spinning RunningGlyph icon, which already reads as in-progress. */}
+            <span className="generation-running-copy">{m.common.generation.running}</span>
+            <span className="generation-stop-copy">{m.common.generation.stop}</span>
+          </span>
+        ) : null}
+      </button>
+    </Tooltip>
   )
 }
