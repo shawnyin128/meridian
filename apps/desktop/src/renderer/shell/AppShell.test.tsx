@@ -376,10 +376,32 @@ describe('AppShell notice', () => {
 describe('AppShell sidebar rows', () => {
   beforeEach(() => mount())
 
-  it('names a watch, a discovery project and a chat in full on hover, where the row fades them out', () => {
-    expect(document.querySelector('[data-watchrow="w-topic"] .watch-name')!.getAttribute('title')).toBe('推测解码')
-    expect(document.querySelector('[data-discovery-project="p1"] .watch-name')!.getAttribute('title')).toBe('推理项目')
-    expect(document.querySelector('[data-chat="c1"] .ct-t')!.getAttribute('title')).toBe('讨论')
+  it('names a watch, a discovery project and a chat in full in the shared tooltip, only while the row fades them out', () => {
+    const names = {
+      '[data-watchrow="w-topic"] .watch-name': '推测解码',
+      '[data-discovery-project="p1"] .watch-name': '推理项目',
+      '[data-chat="c1"] .ct-t': '讨论',
+    }
+    for (const [selector, name] of Object.entries(names)) {
+      const text = document.querySelector<HTMLElement>(selector)!
+      expect(text.hasAttribute('title'), selector).toBe(false)
+      text.style.overflowX = 'hidden'
+      const width = vi.spyOn(text, 'scrollWidth', 'get').mockReturnValue(100)
+      vi.spyOn(text, 'clientWidth', 'get').mockReturnValue(100)
+      expect(hoverTip(selector), selector).toEqual([undefined, undefined])
+      act(() => {
+        text.dispatchEvent(new PointerEvent('pointerout', { bubbles: true, pointerType: 'mouse', relatedTarget: document.body }))
+        text.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }))
+      })
+      act(() => { document.dispatchEvent(new PointerEvent('pointermove', { clientX: 400, clientY: 400, pointerType: 'mouse' })) })
+      width.mockReturnValue(160)
+      expect(hoverTip(selector), selector).toEqual([name, undefined])
+      act(() => {
+        text.dispatchEvent(new PointerEvent('pointerout', { bubbles: true, pointerType: 'mouse', relatedTarget: document.body }))
+        text.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }))
+      })
+      act(() => { document.dispatchEvent(new PointerEvent('pointermove', { clientX: 400, clientY: 400, pointerType: 'mouse' })) })
+    }
   })
 
   it('folds the delivery groups from inline icon buttons that state whether they are open', () => {
