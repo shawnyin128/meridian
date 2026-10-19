@@ -15,7 +15,7 @@ type Window = {
 const { document, getComputedStyle } = globalThis as unknown as Window
 
 /** The stylesheets a removable chip is styled by, in the order the renderer bundle loads them. */
-const STYLES = ['../renderer/components/Tag.css', '../renderer/routes/shell.css', '../renderer/components/IconButton.css', '../renderer/components/project/ProjectSections.css']
+const STYLES = ['../renderer/components/IconButton.css', '../renderer/components/Tag.css', '../renderer/routes/shell.css', '../renderer/components/project/ProjectSections.css']
   .map((path) => readFileSync(join(import.meta.dirname, path), 'utf8'))
 
 // The markup of a relation item and a linked paper in ProjectRelations, and of a project in ProjectChips.
