@@ -125,6 +125,10 @@ export type ProjectDecisionItem = {
   action: string
   date?: string
   page?: string
+  /** The task the item is about: for overdue tasks of one date, the first of them in plan order. */
+  task?: string
+  /** The milestone the item is about. */
+  milestone?: string
 }
 
 export type ProjectSignalSource = {
@@ -132,7 +136,7 @@ export type ProjectSignalSource = {
   conclusions: { conflicting: number }
   milestones: ReadonlyArray<{ id?: string; date: string; title: string; done: boolean }>
   lastProgress?: string | undefined
-  tasks?: ReadonlyArray<Pick<Task, 'state' | 'end'>> | undefined
+  tasks?: ReadonlyArray<Pick<Task, 'id' | 'state' | 'end'>> | undefined
   block?: string | undefined
   conflictPage?: string | undefined
   research?: { pathState: ProjectOverview['research']['pathState'] } | undefined
@@ -173,30 +177,32 @@ export function projectDecisionItems(
     .sort((a, b) => dnum(a.date) - dnum(b.date))[0]
   if (milestone) {
     const left = dnum(milestone.date) - today
+    const about = milestone.id === undefined ? {} : { milestone: milestone.id }
     if (left < 0) {
       items.push({
-        id: `milestone-${milestone.id ?? milestone.date}`, rank: 3,
+        id: `milestone-${milestone.id ?? milestone.date}`, ...about, rank: 3,
         kind: m.kind.milestoneOverdue, tone: 'bad', reason: milestone.title,
         action: m.action.rescheduleOrFinish, date: milestone.date,
       })
     } else if (left <= NEAR_DAYS) {
       items.push({
-        id: `milestone-${milestone.id ?? milestone.date}`, rank: 5,
+        id: `milestone-${milestone.id ?? milestone.date}`, ...about, rank: 5,
         kind: m.kind.milestoneNear, tone: 'warn', reason: milestone.title,
         action: m.action.confirmDelivery, date: milestone.date,
       })
     }
   }
-  const overdueTasksByDate = new Map<string, number>()
+  const overdueTasksByDate = new Map<string, { first: string; count: number }>()
   for (const task of project.tasks ?? []) {
     if (task.state === 'done' || dnum(task.end) >= today) continue
-    overdueTasksByDate.set(task.end, (overdueTasksByDate.get(task.end) ?? 0) + 1)
+    const held = overdueTasksByDate.get(task.end)
+    overdueTasksByDate.set(task.end, { first: held?.first ?? task.id, count: (held?.count ?? 0) + 1 })
   }
-  for (const [date, count] of [...overdueTasksByDate].sort(
+  for (const [date, { first, count }] of [...overdueTasksByDate].sort(
     ([left], [right]) => dnum(left) - dnum(right),
   )) {
     items.push({
-      id: `overdue-tasks-${date}`, rank: 4, kind: m.kind.tasksOverdue, tone: 'bad', date,
+      id: `overdue-tasks-${date}`, task: first, rank: 4, kind: m.kind.tasksOverdue, tone: 'bad', date,
       reason: m.reason.overdueTasks(count), action: m.action.rescheduleOrFinish,
     })
   }

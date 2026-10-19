@@ -65,7 +65,7 @@ describe('attnItems', () => {
         reason: '2 条证据结论互相冲突', action: '检查证据并裁决',
       },
       {
-        id: 'milestone-m2026-08-28', rank: 5, kind: '临近里程碑', tone: 'warn',
+        id: 'milestone-m2026-08-28', milestone: 'm2026-08-28', rank: 5, kind: '临近里程碑', tone: 'warn',
         date: '2026-08-28', reason: '宽树实验补 B≥8', action: '确认交付准备',
       },
       {
@@ -86,7 +86,7 @@ describe('attnItems', () => {
         reason: '等 A100 机时(周四释放)', action: '确认如何解除阻塞',
       },
       {
-        id: 'milestone-m2026-08-28', rank: 5, kind: '临近里程碑', tone: 'warn',
+        id: 'milestone-m2026-08-28', milestone: 'm2026-08-28', rank: 5, kind: '临近里程碑', tone: 'warn',
         date: '2026-08-28', reason: '宽树实验补 B≥8', action: '确认交付准备',
       },
       {
@@ -125,11 +125,11 @@ describe('attnItems', () => {
     }), TODAY, sm)
     expect(items).toEqual([
       {
-        id: 'overdue-tasks-2026-08-23', rank: 4, kind: '任务逾期', tone: 'bad',
+        id: 'overdue-tasks-2026-08-23', task: 'late-a', rank: 4, kind: '任务逾期', tone: 'bad',
         date: '2026-08-23', reason: '1 条任务已过计划时间', action: '完成或重新排期',
       },
       {
-        id: 'overdue-tasks-2026-08-24', rank: 4, kind: '任务逾期', tone: 'bad',
+        id: 'overdue-tasks-2026-08-24', task: 'late-b', rank: 4, kind: '任务逾期', tone: 'bad',
         date: '2026-08-24', reason: '2 条任务已过计划时间', action: '完成或重新排期',
       },
     ])
@@ -163,7 +163,7 @@ describe('attnItems', () => {
   it('里程碑正好 3 天后要报,4 天后不报', () => {
     expect(attnItems(project({ milestones: [milestone('2026-08-28')] }), TODAY, sm)).toEqual([
       {
-        id: 'milestone-m2026-08-28', rank: 5, kind: '临近里程碑', tone: 'warn',
+        id: 'milestone-m2026-08-28', milestone: 'm2026-08-28', rank: 5, kind: '临近里程碑', tone: 'warn',
         date: '2026-08-28', reason: '宽树实验补 B≥8', action: '确认交付准备',
       },
     ])
@@ -173,7 +173,7 @@ describe('attnItems', () => {
   it('里程碑就在今天时仍只返回统一日期字段,不拼接相对日期', () => {
     expect(attnItems(project({ milestones: [milestone('2026-08-25')] }), TODAY, sm)).toEqual([
       {
-        id: 'milestone-m2026-08-25', rank: 5, kind: '临近里程碑', tone: 'warn',
+        id: 'milestone-m2026-08-25', milestone: 'm2026-08-25', rank: 5, kind: '临近里程碑', tone: 'warn',
         date: '2026-08-25', reason: '宽树实验补 B≥8', action: '确认交付准备',
       },
     ])
@@ -184,7 +184,7 @@ describe('attnItems', () => {
       milestones: [milestone('2026-08-24'), milestone('2026-08-28')],
     }), TODAY, sm)).toEqual([
       {
-        id: 'milestone-m2026-08-24', rank: 3, kind: '里程碑逾期', tone: 'bad',
+        id: 'milestone-m2026-08-24', milestone: 'm2026-08-24', rank: 3, kind: '里程碑逾期', tone: 'bad',
         date: '2026-08-24', reason: '宽树实验补 B≥8', action: '完成或重新排期',
       },
     ])

@@ -2,7 +2,7 @@ import type { EventKind, GraphNode } from '../../../shared/contract.js'
 import type { ProjectDecisionItem } from '../../../shared/project-signals.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { DateChip } from '../DateTimeDisplay.js'
-import { StructuredRow } from '../StructuredList.js'
+import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { FadeText } from '../FadeText.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { Tag, type TagTone } from '../Tag.js'
@@ -18,6 +18,40 @@ export function ProjectSignalKind({ tone, children }: {
     <span className="project-signal-kind">
       <Tag tone={tone === 'mut' ? 'neutral' : tone}>{children}</Tag>
     </span>
+  )
+}
+
+/**
+ * A project's "needs attention" list: a task or milestone signal locates its item, a signal with a
+ * page opens that page, and the others are plain rows.
+ */
+export function ProjectAttention({ items, onOpenPage, onLocateTask, onLocateMilestone }: {
+  items: ProjectDecisionItem[]
+  onOpenPage: (page: string) => void
+  onLocateTask: (taskId: string) => void
+  onLocateMilestone: (milestoneId: string) => void
+}) {
+  const target = (item: ProjectDecisionItem) => {
+    if (item.task !== undefined) return () => onLocateTask(item.task!)
+    if (item.milestone !== undefined) return () => onLocateMilestone(item.milestone!)
+    return item.page === undefined ? undefined : () => onOpenPage(item.page!)
+  }
+  return (
+    <StructuredList className="attn" variant="embedded">
+      {items.map((item) => {
+        const open = target(item)
+        return (
+          <StructuredRow
+            className="attnrow project-signal-columns" key={item.id} data-wk={item.page}
+            {...(open === undefined ? {} : { onActivate: open })}
+          >
+            <ProjectSignalKind tone={item.tone}>{item.kind}</ProjectSignalKind>
+            <ProjectSignalDate date={item.date} />
+            <span className="attn-text">{item.reason}</span>
+          </StructuredRow>
+        )
+      })}
+    </StructuredList>
   )
 }
 

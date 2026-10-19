@@ -24,7 +24,7 @@ import { SegmentedControl } from '../components/SegmentedControl.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { TitleNote } from '../components/TitleNote.js'
 import {
-  ProjectEventRow, ProjectSignalDate, ProjectSignalKind,
+  ProjectAttention, ProjectEventRow,
 } from '../components/project/ProjectSignals.js'
 import {
   ProjectBlockerView, ProjectNextActionView,
@@ -150,7 +150,8 @@ export function ProjectIdeaPanel({
  * `onRecord` must keep the same reference too.
  */
 export function ProjectDetail({
-  projectId, onBack, onReturn, tab, onTab, record, onRecord, arrivalTask = null, arrivalConclusion = null, onArrived,
+  projectId, onBack, onReturn, tab, onTab, record, onRecord, arrivalTask = null, arrivalMilestone = null,
+  arrivalConclusion = null, onArrived,
 }: {
   projectId: string
   onBack: () => void
@@ -162,6 +163,8 @@ export function ProjectDetail({
   onRecord: (record: RecordTab) => void
   /** A task to locate once the project has loaded, as when the overview timeline opens it. */
   arrivalTask?: string | null
+  /** A milestone to locate once the project has loaded, as when an overview decision opens it. */
+  arrivalMilestone?: string | null
   /** A conclusion to open once the project has loaded, as when the Wiki review queue asks to verify it. */
   arrivalConclusion?: string | null
   onArrived?: () => void
@@ -429,6 +432,12 @@ export function ProjectDetail({
   }, [arrivalTask, project, projectId, locateTask, onArrived])
 
   useEffect(() => {
+    if (arrivalMilestone === null || project?.id !== projectId) return
+    locatePlanRow('ms', arrivalMilestone)
+    onArrived?.()
+  }, [arrivalMilestone, project, projectId, locatePlanRow, onArrived])
+
+  useEffect(() => {
     if (arrivalConclusion === null || project?.id !== projectId) return
     setSelectedNode(null)
     setSelectedIdeaId(null)
@@ -691,18 +700,10 @@ export function ProjectDetail({
           ? (
             <>
               <SectionHeading>{m.project.signals.heading(attn.length)}</SectionHeading>
-              <StructuredList className="attn" variant="embedded">
-                {attn.map((a) => (
-                  <StructuredRow
-                    className="attnrow project-signal-columns" key={a.id} data-wk={a.page}
-                    {...(a.page === undefined ? {} : { onActivate: () => openWikiPage(a.page!) })}
-                  >
-                    <ProjectSignalKind tone={a.tone}>{a.kind}</ProjectSignalKind>
-                    <ProjectSignalDate date={a.date} />
-                    <span className="attn-text">{a.reason}</span>
-                  </StructuredRow>
-                ))}
-              </StructuredList>
+              <ProjectAttention
+                items={attn} onOpenPage={openWikiPage} onLocateTask={locateTask}
+                onLocateMilestone={(milestoneId) => locatePlanRow('ms', milestoneId)}
+              />
             </>
           )
           : null}
