@@ -130,9 +130,6 @@
 /* Change type: the type options expand under the column row, in line with option text; while open, the row's type button stays visible */
 .typerow{padding-left:45px}
 .cmx.typex.on{opacity:1;pointer-events:auto}
-/* Cell picker: one option per row, with a slot for the check mark at the start of the row */
-.ctxmenu.drop .rrow.opt{display:flex;align-items:center;gap:8px}
-.ctxmenu.drop .rrow.opt .ck{width:13px;display:flex;align-items:center;flex-shrink:0}
 
 /* The delete button at the end of a row: hidden at rest, shown only while the row is hovered */
 .rowx{opacity:0;pointer-events:none}

@@ -76,13 +76,13 @@ test('撤不回来的动作才弹确认,弹出来的都是同一个对话框', a
   await win.locator('.setdlg .wrow').first().waitFor()
   await win.locator('.setdlg .wrow').first().locator('.btn', { hasText: '移除' }).click()
 
-  const dialog = win.locator('.cfpop')
+  const dialog = win.locator('.modal.confirm')
   await expect(dialog).toBeVisible()
-  await expect(dialog.locator('.dlg-t'))
-    .toHaveText('移除「speculative decoding」？它带来的推送会一起清掉，且不能撤销。')
+  await expect(dialog.locator('.modal-title')).toHaveText('移除「speculative decoding」？')
+  await expect(dialog.locator('.modal-detail')).toHaveText('它带来的推送会一起清掉，且不能撤销。')
   // Cancel is always the left button and the destructive one is always on the right.
-  await expect(dialog.locator('.dlg-a>*').first()).toHaveText('取消')
-  await expect(dialog.locator('.dlg-a>*').last()).toHaveText('确认移除')
+  await expect(dialog.locator('.modal-actions>*').first()).toHaveText('取消')
+  await expect(dialog.locator('.modal-actions>*').last()).toHaveText('确认移除')
 })
 
 const TITLES: [string, string][] = [

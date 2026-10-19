@@ -35,3 +35,25 @@ describe('两个语言的消息目录', () => {
     }
   })
 })
+
+describe('确认框的文案', () => {
+  // The title and the consequence line of every ConfirmDialog in the App, as each screen passes them.
+  const confirmations = (m: typeof zh) => [
+    [m.trash.confirmClear, m.trash.confirmClearDescription(2)],
+    [m.trash.confirmPurge('Draft trees'), m.trash.confirmPurgeDescription],
+    [m.changelog.confirmDelete, m.changelog.confirmDeleteDescription],
+    [m.changelog.confirmClearArchived(2), m.changelog.confirmClearArchivedDescription],
+    [m.watches.confirmRemove('speculative decoding'), m.watches.confirmRemoveDescription],
+    [m.settings.storage.resetTitle, m.settings.storage.resetDescription],
+    [m.settings.storage.backupDeleteTitle('9月15日 18:28'), m.settings.storage.backupDeleteDescription],
+  ] as const
+
+  for (const [language, catalog] of [['zh', zh], ['en', en]] as const) {
+    it(`${language}:标题只问一句,后果写在自己那一行`, () => {
+      for (const [title, consequence] of confirmations(catalog)) {
+        expect(title, title).toMatch(/^[^。.？?!！]+[？?]$/)
+        expect(consequence.trim(), title).not.toBe('')
+      }
+    })
+  }
+})

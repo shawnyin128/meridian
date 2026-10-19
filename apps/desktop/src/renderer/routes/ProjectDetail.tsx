@@ -49,7 +49,7 @@ import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import { InlineMetadataField } from '../components/InlineField.js'
-import { ModalDialog, ModalTitle } from '../components/ModalDialog.js'
+import { ModalDialog } from '../components/ModalDialog.js'
 import { DirectoryField, FormInput } from '../components/FormControls.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
@@ -212,7 +212,6 @@ export function ProjectDetail({
   const planList = useRef<HTMLDivElement>(null)
   const planAdd = useRef<HTMLButtonElement>(null)
   const ganttAdd = useRef<HTMLButtonElement>(null)
-  const msLane = useRef<HTMLDivElement>(null)
   const relRow = useRef<HTMLDivElement>(null)
   const relAdd = useRef<HTMLButtonElement>(null)
   const relTriggers = useMemo(() => [relAdd], [])
@@ -452,9 +451,6 @@ export function ProjectDetail({
     setSelectedConclusion(arrivalConclusion)
     onArrived?.()
   }, [arrivalConclusion, project, projectId, onArrived])
-  const locateMilestone = useCallback(
-    (milestoneId: string) => locatePlanRow('ms', milestoneId), [locatePlanRow],
-  )
 
   if (!project) {
     return (
@@ -598,9 +594,17 @@ export function ProjectDetail({
       <PageError error={error} />
 
       <ModalDialog
-        open={workspaceOpen} onOpenChange={setWorkspaceOpen} contentClassName="workspace-dialog"
+        open={workspaceOpen} onOpenChange={setWorkspaceOpen} size="form" className="workspace-dialog"
+        title={m.project.workspace.dialogTitle}
+        actions={(
+          <>
+            <button type="button" className="btn" onClick={() => setWorkspaceOpen(false)}>{m.common.cancel}</button>
+            {workspaceMode === 'local'
+              ? <button type="submit" form="workspaceLocal" className="workspace-local btn pri">{m.project.workspace.add}</button>
+              : <button type="submit" form="workspaceSsh" className="btn pri">{m.project.workspace.connect}</button>}
+          </>
+        )}
       >
-            <ModalTitle className="workspace-dialog-title">{m.project.workspace.dialogTitle}</ModalTitle>
             <SegmentedControl
               className="workspace-kinds"
               label={m.project.workspace.kindLabel}
@@ -614,7 +618,7 @@ export function ProjectDetail({
             {workspaceMode === 'local'
               ? (
                 <form
-                  className="workspace-form"
+                  id="workspaceLocal" className="workspace-form"
                   onSubmit={(event) => { event.preventDefault(); void connectLocalWorkspace() }}
                 >
                   <label>{m.project.workspace.pathLabel}
@@ -625,15 +629,11 @@ export function ProjectDetail({
                       onChange={(event) => setLocalPath(event.target.value)}
                     />
                   </label>
-                  <div className="workspace-dialog-actions">
-                    <button type="button" className="btn" onClick={() => setWorkspaceOpen(false)}>{m.common.cancel}</button>
-                    <button type="submit" className="workspace-local btn pri">{m.project.workspace.add}</button>
-                  </div>
                 </form>
               )
               : (
                 <form
-                  className="workspace-form"
+                  id="workspaceSsh" className="workspace-form"
                   onSubmit={(event) => { event.preventDefault(); void connectSshWorkspace() }}
                 >
                   <label>{m.project.workspace.hostLabel}
@@ -656,10 +656,6 @@ export function ProjectDetail({
                       onChange={(event) => setSshPort(event.target.value)}
                     />
                   </label>
-                  <div className="workspace-dialog-actions">
-                    <button type="button" className="btn" onClick={() => setWorkspaceOpen(false)}>{m.common.cancel}</button>
-                    <button type="submit" className="btn pri">{m.project.workspace.connect}</button>
-                  </div>
                 </form>
               )}
       </ModalDialog>
@@ -678,7 +674,7 @@ export function ProjectDetail({
         <SectionHeading>{m.project.sections.timeline}</SectionHeading>
         <ProjectTimeline
           project={project} hoverMilestone={hoverMilestone} onHoverMilestone={setHoverMilestone}
-          onLocateTask={locateTask} onLocateMilestone={locateMilestone}
+          onLocateTask={locateTask}
           onMoveTask={(taskId, start, end, days) => applyWrite(
             projectApi.updateTask(projectId, taskId, { start, end }),
             m.project.plan.taskMoved(days),
@@ -695,7 +691,16 @@ export function ProjectDetail({
           )}
           onReorderTasks={reorderTasks}
           onNewTask={startTask} onNewMilestone={startMilestone}
-          newActionRef={ganttAdd} milestoneLaneRef={msLane}
+          onCreateMilestone={(date, title) => writeProject(
+            projectApi.createMilestone(projectId, { date, title, done: false }), m.project.plan.milestoneCreated,
+          )}
+          onRenameMilestone={(milestoneId, title) => writeProject(
+            projectApi.updateMilestone(projectId, milestoneId, { title }), m.project.plan.milestoneUpdated,
+          )}
+          onDeleteMilestone={(milestoneId) => applyWrite(
+            projectApi.deleteMilestone(projectId, milestoneId), m.project.plan.milestoneDeleted,
+          )}
+          newActionRef={ganttAdd}
         />
 
         {attn.length > 0
@@ -727,7 +732,7 @@ export function ProjectDetail({
             <ProjectPlan
               project={project} tab={tab} today={today} creating={creating}
               flashId={flash?.id ?? null} selectedTaskId={selectedTaskId}
-              listRef={planList} addRef={planAdd} timelineAddRef={ganttAdd} milestoneLaneRef={msLane}
+              listRef={planList} addRef={planAdd} timelineAddRef={ganttAdd}
               onTab={onTab} onDiscardOpenEdits={discardOpenEdits}
               onStartTask={() => startTask()} onStartMilestone={startMilestone}
               onCancelCreate={() => setCreating(null)} onHoverMilestone={setHoverMilestone}

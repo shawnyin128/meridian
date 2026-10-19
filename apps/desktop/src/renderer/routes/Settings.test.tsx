@@ -480,15 +480,51 @@ describe('Settings', () => {
       .find((button) => button.textContent === '删除')!
     await act(async () => { deleteButton.click() })
     expect(api.deleteBackup).not.toHaveBeenCalled()
-    expect(document.querySelector('.cfpop')?.textContent).toContain('永久删除')
+    expect(document.querySelector('.modal.confirm')?.textContent).toContain('永久删除')
 
-    const confirm = [...document.querySelectorAll<HTMLButtonElement>('.cfpop .btn')]
+    const confirm = [...document.querySelectorAll<HTMLButtonElement>('.modal.confirm .btn')]
       .find((button) => button.textContent === '删除')!
     await act(async () => { confirm.click() })
     expect(api.deleteBackup).toHaveBeenCalledWith('meridian-backup-20260915-182838Z')
     expect(dialog.querySelector('.storage-backup-list')).toBeNull()
     expect(dialog.textContent).toContain('暂无论文库备份')
     expect(api.banner).toHaveBeenCalledWith('备份已删除')
+  })
+
+  // With every dialog layer at one z-index (shared/dialog-surface.test.ts), document order decides
+  // which paints on top.
+  it('设置里弹出的确认框与它的遮罩都排在设置之后,用对话框的面', async () => {
+    api.libraryLocation.mockResolvedValueOnce({
+      root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: false, openError: null,
+    })
+    api.libraryBackups.mockResolvedValueOnce([{
+      id: 'meridian-backup-20260915-182838Z',
+      path: '/tmp/meridian-backup-20260915-182838Z',
+      createdAt: '2026-09-15T18:28:38.000Z',
+    }])
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const settings = document.querySelector<HTMLElement>('[role="dialog"]')!
+    await act(async () => { settings.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
+    const deleteButton = [...settings.querySelectorAll<HTMLButtonElement>('.storage-backup-actions .btn')]
+      .find((button) => button.textContent === '删除')!
+    await act(async () => { deleteButton.click() })
+
+    const confirm = document.querySelector<HTMLElement>('[role="alertdialog"]')!
+    const scrims = [...document.querySelectorAll<HTMLElement>('.scrim')]
+    expect(scrims).toHaveLength(2)
+    const after = (later: Node, earlier: Node) => (earlier.compareDocumentPosition(later) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+    expect([after(scrims[1]!, settings), after(confirm, scrims[1]!)]).toEqual([true, true])
+    expect([...confirm.classList]).toEqual(['modal', 'confirm'])
+  })
+
+  it('设置用对话框统一的宽面,右上角有关闭按钮,点它关掉设置', async () => {
+    api.setOpen.mockClear()
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const settings = document.querySelector<HTMLElement>('[role="dialog"]')!
+    expect([settings.classList.contains('modal'), settings.classList.contains('wide')]).toEqual([true, true])
+    const close = settings.querySelector<HTMLButtonElement>(':scope > .panel-close')!
+    await act(async () => { close.click() })
+    expect(api.setOpen).toHaveBeenCalledExactlyOnceWith(false)
   })
 
   it('模型设置明确区分服务商和协议，并使用共享字段外观', async () => {

@@ -9,7 +9,7 @@ import { DEFAULT_PAPER_GROUPS, PAPER_PAGE, READ_STATES, READING_PAPER } from '..
 import { papers } from '../../ipc.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { IconCheck, IconGrip, IconPlus, IconRead, IconTrash } from '../icons.js'
+import { IconGrip, IconPlus, IconRead, IconTrash } from '../icons.js'
 import { CellPicker } from './CellPicker.js'
 import { NewColumnHead } from './ColumnAdd.js'
 import { columnKey, takenLabel } from './column-key.js'
@@ -19,7 +19,7 @@ import { ParseProgress } from '../ParseProgress.js'
 import { Pager } from '../Pager.js'
 import { PaperMetadata, RatingStars } from '../PaperMetadata.js'
 import { PaperReadingSummary } from './PaperReadingSummary.js'
-import { PickerPopover } from '../PickerPopover.js'
+import { PickerPopover, PickOption } from '../PickerPopover.js'
 import { FormInput } from '../FormControls.js'
 import { ClearableInput } from '../ClearableInput.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../PageShell.js'
@@ -218,7 +218,8 @@ function TagAdd({ field, values, onAdd, onError }: {
     row: input, triggers: NO_TRIGGERS, onCancel: close, isEmpty: () => typed === '',
     onSubmit: () => (typed === '' ? false : onAdd(hits[keys.active] ?? typed)),
   })
-  const keys = useCandidateKeys(hits.length, (i) => draft.submit(() => onAdd(hits[i]!)))
+  // The create row, when there is one, is the last row the keys and the pointer move through.
+  const keys = useCandidateKeys(hits.length + (isNew ? 1 : 0), (i) => draft.submit(() => onAdd(hits[i] ?? typed)))
 
   return (
     <PickerPopover
@@ -243,17 +244,16 @@ function TagAdd({ field, values, onAdd, onError }: {
           <>
               {hits.length > 0 ? <div className="rh">{m.papers.tags.existingTopics}</div> : null}
               {hits.map((v, i) => (
-                <div
-                  className={i === keys.active ? 'rrow on' : 'rrow'} key={v}
-                  onClick={() => draft.submit(() => onAdd(v))}
-                >{v}</div>
+                <PickOption keys={keys} index={i} key={v} onClick={() => draft.submit(() => onAdd(v))}>{v}</PickOption>
               ))}
               {isNew
                 ? (
-                  <div className="rrow mk" onClick={() => draft.submit(() => onAdd(typed))}>
+                  <PickOption
+                    keys={keys} index={hits.length} className="mk" onClick={() => draft.submit(() => onAdd(typed))}
+                  >
                     <IconPlus />
                     <Tag shape="chip" className="tagchip">{typed}</Tag>
-                  </div>
+                  </PickOption>
                 )
                 : null}
           </>
@@ -284,10 +284,7 @@ function ReadStateChip({ current, onPick }: {
     >
       <MenuRadioGroup value={current}>
         {READ_STATES.map((s) => (
-          <MenuRadioItem key={s} value={s} onSelect={() => onPick(s)}>
-            <span className="ck">{s === current ? <IconCheck /> : null}</span>
-            {s}
-          </MenuRadioItem>
+          <MenuRadioItem key={s} value={s} onSelect={() => onPick(s)}>{s}</MenuRadioItem>
         ))}
       </MenuRadioGroup>
     </ActionMenu>
@@ -314,16 +311,10 @@ function ReadStateFilter({ current, onPick }: {
       )}
     >
       <MenuRadioGroup value={current ?? 'all'}>
-        <MenuRadioItem value="all" onSelect={() => onPick(null)}>
-          <span className="ck">{current === null ? <IconCheck /> : null}</span>
-          {m.papers.readState.allStates}
-        </MenuRadioItem>
+        <MenuRadioItem value="all" onSelect={() => onPick(null)}>{m.papers.readState.allStates}</MenuRadioItem>
         <MenuSeparator />
         {READ_STATES.map((state) => (
-          <MenuRadioItem key={state} value={state} onSelect={() => onPick(state)}>
-            <span className="ck">{state === current ? <IconCheck /> : null}</span>
-            {state}
-          </MenuRadioItem>
+          <MenuRadioItem key={state} value={state} onSelect={() => onPick(state)}>{state}</MenuRadioItem>
         ))}
       </MenuRadioGroup>
     </ActionMenu>
@@ -417,7 +408,6 @@ export function PaperTable() {
   const dropDepth = useRef(0)
   const [movingColumn, setMovingColumn] = useState<string | null>(null)
   const [columnDrop, setColumnDrop] = useState<{ key: string; after: boolean } | null>(null)
-  const [rowMenu, setRowMenu] = useState<{ paper: PaperRow; x: number; y: number } | null>(null)
   const drag = useRef<WidthDrag | null>(null)
   const dragged = useRef(false)
   const table = useRef<HTMLTableElement>(null)
@@ -1188,38 +1178,43 @@ export function PaperTable() {
         </thead>
         <tbody>
           {rows.map((p) => (
-            <tr
-              key={p.id} tabIndex={0} className={detail?.id === p.id ? 'selected' : undefined}
-              aria-current={detail?.id === p.id ? 'true' : undefined}
-              onClick={() => { void papers.get(p.id).then(setDetail).catch(reportError) }}
-              onDoubleClick={(event) => {
-                if (opensPaperFrom(event.target)) open('reader', p.id)
-              }}
-              onContextMenu={(event) => {
-                event.preventDefault()
-                setRowMenu({ paper: p, x: event.clientX, y: event.clientY })
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && event.target === event.currentTarget) {
-                  void papers.get(p.id).then(setDetail).catch(reportError)
-                  return
-                }
-                if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
-                event.preventDefault()
-                const bounds = event.currentTarget.getBoundingClientRect()
-                setRowMenu({ paper: p, x: bounds.left + 24, y: bounds.top + 24 })
-              }}
+            <ContextMenu
+              key={p.id} label={m.papers.contextMenu.label(plainTitle(p.title))} className="paper-row-menu"
+              trigger={(
+                <tr
+                  tabIndex={0} className={detail?.id === p.id ? 'selected' : undefined}
+                  aria-current={detail?.id === p.id ? 'true' : undefined}
+                  onClick={() => { void papers.get(p.id).then(setDetail).catch(reportError) }}
+                  onDoubleClick={(event) => {
+                    if (opensPaperFrom(event.target)) open('reader', p.id)
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && event.target === event.currentTarget) {
+                      void papers.get(p.id).then(setDetail).catch(reportError)
+                    }
+                  }}
+                >
+                  <td className="pt-title"><span className="ci"><PaperText text={p.title} /></span></td>
+                  {cols.map((c) => cell(p, c))}
+                  {newCol ? <td className="pt-cust" /> : null}
+                  <td>
+                    <IconButton
+                      label={m.papers.rowActions.delete} size="nested" tone="danger" className="rowx"
+                      onClick={(e) => { e.stopPropagation(); remove(p.id) }}
+                    ><IconTrash /></IconButton>
+                  </td>
+                </tr>
+              )}
             >
-              <td className="pt-title"><span className="ci"><PaperText text={p.title} /></span></td>
-              {cols.map((c) => cell(p, c))}
-              {newCol ? <td className="pt-cust" /> : null}
-              <td>
-                <IconButton
-                  label={m.papers.rowActions.delete} size="nested" tone="danger" className="rowx"
-                  onClick={(e) => { e.stopPropagation(); remove(p.id) }}
-                ><IconTrash /></IconButton>
-              </td>
-            </tr>
+              <ContextMenuItem onSelect={() => { void papers.get(p.id).then(setDetail).catch(reportError) }}>
+                {m.papers.contextMenu.openDetail}
+              </ContextMenuItem>
+              <ContextMenuItem onSelect={() => open('reader', p.id)}>{m.papers.contextMenu.openReader}</ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem className="mi danger" onSelect={() => remove(p.id)}>
+                {m.papers.contextMenu.moveToTrash}
+              </ContextMenuItem>
+            </ContextMenu>
           ))}
         </tbody>
       </table>
@@ -1316,6 +1311,7 @@ export function PaperTable() {
                 <ResearchMap
                   rows={mapRows} total={mapTotal} loading={mapLoading}
                   onOpenPaper={(paper) => { void papers.get(paper.id).then(setDetail).catch(reportError) }}
+                  onReadPaper={(paper) => open('reader', paper.id)}
                 />
               )
               : !listed
@@ -1393,27 +1389,6 @@ export function PaperTable() {
           )}
       </DetailPanel>
 
-      {rowMenu === null
-        ? null
-        : (
-          <ContextMenu
-            point={{ x: rowMenu.x, y: rowMenu.y }} label={m.papers.contextMenu.label(plainTitle(rowMenu.paper.title))}
-            className="paper-row-menu" onClose={() => setRowMenu(null)}
-          >
-          <ContextMenuItem
-            onClick={() => {
-              const id = rowMenu.paper.id
-              setRowMenu(null)
-              void papers.get(id).then(setDetail).catch(reportError)
-            }}
-          >{m.papers.contextMenu.openDetail}</ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem
-            className="danger"
-            onClick={() => { const id = rowMenu.paper.id; setRowMenu(null); remove(id) }}
-          >{m.papers.contextMenu.moveToTrash}</ContextMenuItem>
-          </ContextMenu>
-        )}
     </PageShell>
   )
 }

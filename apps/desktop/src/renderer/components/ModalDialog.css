@@ -1,0 +1,22 @@
+/*
+ * The one dialog surface, used by ModalDialog and ConfirmDialog. Every scrim and every surface share
+ * one z-index: a dialog opened from another one is portaled after it, so its scrim dims the dialog
+ * that opened it. The surface is centred in the window and capped in height; the body between the
+ * title and the actions scrolls, and the actions stay pinned below it.
+ */
+.scrim{position:fixed;inset:0;background:var(--scrim);backdrop-filter:blur(2px);z-index:90}
+.modal{position:fixed;inset:0;margin:auto;z-index:90;box-sizing:border-box;display:flex;flex-direction:column;
+  width:min(var(--modal-w),calc(100vw - 2 * var(--sp-24)));height:fit-content;max-height:calc(100vh - 2 * var(--sp-24));
+  padding:var(--sp-20) 0;background:var(--raised);border-radius:var(--r-dialog);box-shadow:var(--sh-3);color:var(--ink)}
+.modal:focus-visible{outline:0}
+.modal.confirm{--modal-w:420px}
+.modal.form{--modal-w:520px}
+.modal.wide{--modal-w:820px}
+.modal-title{margin:0;font-size:var(--fs-dialog-title);font-weight:600;line-height:var(--lh-tight);color:var(--ink)}
+.modal>.modal-title{padding:0 var(--sp-20) var(--sp-8)}
+/* The side padding lives inside the scrolling body, so focus rings next to its edges are not clipped. */
+.modal-body{flex:1 1 auto;min-height:0;overflow:auto;padding:var(--sp-4) var(--sp-20)}
+.modal-detail{margin:0;color:var(--sec);font-size:var(--fs-base);line-height:var(--lh-ui)}
+.modal-actions{flex:none;display:flex;justify-content:flex-end;gap:var(--sp-8);padding:var(--sp-16) var(--sp-20) 0}
+.modal-actions .btn:disabled{opacity:.45;cursor:default}
+.modal-close{position:absolute;top:var(--sp-12);right:var(--sp-12)}

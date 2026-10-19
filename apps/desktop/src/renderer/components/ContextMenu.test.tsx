@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, useState } from 'react'
+import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ContextMenu, ContextMenuItem } from './ContextMenu.js'
@@ -9,18 +9,11 @@ declare global {
 }
 
 function Example({ choose }: { choose: () => void }) {
-  const [open, setOpen] = useState(true)
   return (
-    <>
-      <button type="button">原条目</button>
-      {open
-        ? (
-          <ContextMenu point={{ x: 20, y: 30 }} label="条目操作" onClose={() => setOpen(false)}>
-            <ContextMenuItem onClick={choose}>打开</ContextMenuItem>
-          </ContextMenu>
-        )
-        : null}
-    </>
+    <ContextMenu label="条目操作" trigger={<button type="button">原条目</button>}>
+      <ContextMenuItem onSelect={choose}>打开</ContextMenuItem>
+      <ContextMenuItem>删除</ContextMenuItem>
+    </ContextMenu>
   )
 }
 
@@ -41,28 +34,57 @@ describe('ContextMenu', () => {
     root = null
   })
 
-  it('portals and focuses the first action, then closes on Escape', () => {
+  const trigger = () => host.querySelector<HTMLButtonElement>('button')!
+  const menu = () => document.querySelector<HTMLElement>('[role="menu"]')
+
+  it('opens from the ContextMenu key on the focused trigger with the first action focused, and closes on Escape', async () => {
     act(() => root!.render(<Example choose={vi.fn()} />))
-    const menu = document.querySelector<HTMLElement>('[role="menu"]')!
-    const item = document.querySelector<HTMLElement>('[role="menuitem"]')!
-    expect(menu.parentElement).toBe(document.body)
-    expect(document.activeElement).toBe(item)
-    act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
-    expect(document.querySelector('[role="menu"]')).toBeNull()
+    trigger().focus()
+    await act(async () => { trigger().dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true })) })
+    expect(menu()!.getAttribute('aria-label')).toBe('条目操作')
+    expect(host.contains(menu())).toBe(false)
+    expect(document.activeElement).toBe(document.querySelector('[role="menuitem"]'))
+    await act(async () => { document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+    expect(menu()).toBeNull()
   })
 
-  it('stays open on an Escape that ends an input method composition', () => {
+  it('opens from the keyboard inside the part of the trigger on screen, as a scrolled table row is', async () => {
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(800)
+    vi.spyOn(document.documentElement, 'clientHeight', 'get').mockReturnValue(600)
     act(() => root!.render(<Example choose={vi.fn()} />))
-    act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true })))
-    expect(document.querySelector('[role="menu"]')).not.toBeNull()
+    vi.spyOn(trigger(), 'getBoundingClientRect').mockReturnValue(DOMRect.fromRect({ x: -400, y: 100, width: 2000, height: 30 }))
+    trigger().focus()
+    await act(async () => { trigger().dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true })) })
+    await act(async () => { await new Promise((done) => setTimeout(done, 20)) })
+    const wrapper = menu()!.closest<HTMLElement>('[data-radix-popper-content-wrapper]')!
+    expect(wrapper.style.transform).toMatch(/^translate\(26px, 124px\)$/)
+    vi.restoreAllMocks()
   })
 
-  it('leaves inside presses alone and closes on an outside press', () => {
+  it('opens from Shift+F10 too', async () => {
     act(() => root!.render(<Example choose={vi.fn()} />))
-    const item = document.querySelector<HTMLElement>('[role="menuitem"]')!
-    act(() => item.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })))
-    expect(document.querySelector('[role="menu"]')).not.toBeNull()
-    act(() => document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })))
-    expect(document.querySelector('[role="menu"]')).toBeNull()
+    trigger().focus()
+    await act(async () => {
+      trigger().dispatchEvent(new KeyboardEvent('keydown', { key: 'F10', shiftKey: true, bubbles: true }))
+    })
+    expect(menu()).not.toBeNull()
+  })
+
+  it('stays open on an Escape that ends an input method composition', async () => {
+    act(() => root!.render(<Example choose={vi.fn()} />))
+    await act(async () => { trigger().dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 20, clientY: 30 })) })
+    await act(async () => {
+      menu()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true, cancelable: true }))
+    })
+    expect(menu()).not.toBeNull()
+  })
+
+  it('runs the chosen action and closes', async () => {
+    const choose = vi.fn()
+    act(() => root!.render(<Example choose={choose} />))
+    await act(async () => { trigger().dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 20, clientY: 30 })) })
+    await act(async () => { document.querySelector<HTMLElement>('[role="menuitem"]')!.click() })
+    expect(choose).toHaveBeenCalledTimes(1)
+    expect(menu()).toBeNull()
   })
 })

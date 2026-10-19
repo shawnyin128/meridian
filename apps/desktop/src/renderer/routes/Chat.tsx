@@ -13,7 +13,7 @@ import { useMessages } from '../messages/useMessages.js'
 import type { Catalog } from '../messages/catalog.js'
 import { ChatMessageView, plain } from '../components/chat/ChatMessage.js'
 import { FOCUS_KEY } from '../../shared/project-signals.js'
-import { PickerPopover } from '../components/PickerPopover.js'
+import { PickerPopover, PickOption } from '../components/PickerPopover.js'
 import { FormTextarea } from '../components/FormControls.js'
 import {
   PageBody, PageError, PageFooter, PageHeader, PageShell, PageTitle,
@@ -292,10 +292,10 @@ export function Chat() {
                       {suggest[at - 1]?.kind === hit.kind
                         ? null
                         : <div className="rg">{m.chat.mentionGroup[hit.kind]}</div>}
-                      <div className={at === keys.active ? 'rrow on' : 'rrow'} onClick={() => pick(hit.title)}>
+                      <PickOption keys={keys} index={at} className="two-line" onClick={() => pick(hit.title)}>
                         <div className="rt">@{hit.kind === 'paper' ? <PaperText text={hit.entity.title} /> : hit.title}</div>
                         <div className="rm">{hit.meta}</div>
-                      </div>
+                      </PickOption>
                     </Fragment>
                   ))}
                 </>

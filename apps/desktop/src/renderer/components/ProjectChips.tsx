@@ -4,7 +4,7 @@ import { project } from '../ipc.js'
 import { AddAction } from './AddAction.js'
 import { IconButton } from './IconButton.js'
 import { IconCross } from './icons.js'
-import { PickerPopover } from './PickerPopover.js'
+import { PickerPopover, PickOption } from './PickerPopover.js'
 import { tagClass } from './Tag.js'
 import { TitleNote } from './TitleNote.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
@@ -91,10 +91,9 @@ export function ProjectChips({ paper, onError }: {
             <>
               <div className="rh">{m.research.chips.pickerHeading}</div>
               {hits.map((held, i) => (
-                <div
-                  className={i === keys.active ? 'rrow on' : 'rrow'} key={held.id}
-                  onClick={() => draft.submit(() => add(held))}
-                >{held.name}</div>
+                <PickOption keys={keys} index={i} key={held.id} onClick={() => draft.submit(() => add(held))}>
+                  {held.name}
+                </PickOption>
               ))}
             </>
           )

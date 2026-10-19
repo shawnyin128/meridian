@@ -260,7 +260,7 @@ export function Settings() {
                     || location.restartRequired || resetting}
                 >{m.settings.storage.resetAction}</button>
               )}
-              title={m.settings.storage.resetTitle}
+              title={m.settings.storage.resetTitle} description={m.settings.storage.resetDescription}
               confirmLabel={resetting ? m.settings.storage.resetting : m.settings.storage.resetConfirm}
               confirmDisabled={resetting}
               onConfirm={() => { void resetLibrary() }}
@@ -418,7 +418,7 @@ export function Settings() {
   const visibleCategories = CATEGORIES.filter((c) => !SUB_CATEGORIES.has(c) || SUB_PARENT[c] === expandedParent)
 
   return (
-    <ModalDialog open={open} onOpenChange={setOpen} contentClassName="setdlg">
+    <ModalDialog open={open} onOpenChange={setOpen} size="wide" closable className="setdlg">
       <div className="set-side">
         <ModalTitle className="set-t">{m.settings.title}</ModalTitle>
         {visibleCategories.map((c) => (

@@ -4,7 +4,7 @@ import type {
 } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { FormInput, FormSelect } from '../FormControls.js'
-import { ModalDialog, ModalTitle } from '../ModalDialog.js'
+import { ModalDialog } from '../ModalDialog.js'
 import './IdeaGraphDialog.css'
 
 export type IdeaGraphDialogMode = 'create' | 'link'
@@ -49,10 +49,22 @@ export function IdeaGraphDialog({
   }
 
   return (
-    <ModalDialog open={open} onOpenChange={onOpenChange} contentClassName="idea-graph-dialog">
-      <ModalTitle className="idea-graph-dialog-title">
-        {mode === 'create' ? m.ideas.graphDialog.createTitle : m.project.idea.linkExistingNode}
-      </ModalTitle>
+    <ModalDialog
+      open={open} onOpenChange={onOpenChange} size="form" className="idea-graph-dialog"
+      title={mode === 'create' ? m.ideas.graphDialog.createTitle : m.project.idea.linkExistingNode}
+      actions={(
+        <>
+          <button className="btn" disabled={busy} onClick={() => onOpenChange(false)}>{m.common.cancel}</button>
+          <button
+            className="btn pri"
+            disabled={busy || (mode === 'create' ? label.trim() === '' : nodeId === '')}
+            onClick={submit}
+          >{busy
+            ? m.ideas.saving
+            : mode === 'create' ? m.ideas.graphDialog.createAndLink : m.ideas.graphDialog.confirmLink}</button>
+        </>
+      )}
+    >
       <p className="idea-graph-dialog-idea" title={idea.title}>{idea.title}</p>
       {mode === 'create'
         ? (
@@ -91,16 +103,6 @@ export function IdeaGraphDialog({
             </FormSelect>
           </label>
         )}
-      <div className="idea-graph-dialog-actions">
-        <button className="btn" disabled={busy} onClick={() => onOpenChange(false)}>{m.common.cancel}</button>
-        <button
-          className="btn pri"
-          disabled={busy || (mode === 'create' ? label.trim() === '' : nodeId === '')}
-          onClick={submit}
-        >{busy
-          ? m.ideas.saving
-          : mode === 'create' ? m.ideas.graphDialog.createAndLink : m.ideas.graphDialog.confirmLink}</button>
-      </div>
     </ModalDialog>
   )
 }

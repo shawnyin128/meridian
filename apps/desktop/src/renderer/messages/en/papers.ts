@@ -64,6 +64,7 @@ export const papers = {
   contextMenu: {
     label: (title: string) => `${title} actions`,
     openDetail: 'Open details',
+    openReader: 'Open in reader',
     moveToTrash: 'Move to trash',
   },
   groupIndex: {

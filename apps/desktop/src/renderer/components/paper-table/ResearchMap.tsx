@@ -1,19 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { PaperRow } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
+import { ContextMenu, ContextMenuItem } from '../ContextMenu.js'
 import { EmptyState } from '../EmptyState.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { CountBadge, Tag } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
+import { plainTitle } from '../paper/paper-text.js'
 import { buildResearchMap, type ResearchMapReason } from './research-map.js'
 
 const reasonKey = (reason: ResearchMapReason): string => `${reason.kind}:${reason.label}`
 
-export function ResearchMap({ rows, total, loading, onOpenPaper }: {
+export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper }: {
   rows: PaperRow[]
   total: number
   loading: boolean
   onOpenPaper: (paper: PaperRow) => void
+  onReadPaper: (paper: PaperRow) => void
 }) {
   const m = useMessages()
   const map = useMemo(() => buildResearchMap(rows), [rows])
@@ -86,19 +89,24 @@ export function ResearchMap({ rows, total, loading, onOpenPaper }: {
                       aria-label={m.papers.researchMap.paperListAria(selected.label)}
                     >
                       {selected.members.map((member) => (
-                        <StructuredRow
-                          key={member.paper.id} className="research-map-paper"
-                          onActivate={() => onOpenPaper(member.paper)}
+                        <ContextMenu
+                          key={member.paper.id} label={m.papers.contextMenu.label(plainTitle(member.paper.title))}
+                          trigger={(
+                            <StructuredRow className="research-map-paper" onActivate={() => onOpenPaper(member.paper)}>
+                              <span className="research-map-paper-title"><PaperText text={member.paper.title} /></span>
+                              <span className="research-map-paper-meta">
+                                {member.paper.year === undefined ? member.paper.venue : `${member.paper.year} · ${member.paper.venue}`}
+                              </span>
+                              <span className="research-map-why">
+                                <span>{m.papers.researchMap.whyHere}</span>
+                                {member.reasons.map((item) => <Tag shape="chip" className="tagchip" key={reasonKey(item)}>{reason(item)}</Tag>)}
+                              </span>
+                            </StructuredRow>
+                          )}
                         >
-                          <span className="research-map-paper-title"><PaperText text={member.paper.title} /></span>
-                          <span className="research-map-paper-meta">
-                            {member.paper.year === undefined ? member.paper.venue : `${member.paper.year} · ${member.paper.venue}`}
-                          </span>
-                          <span className="research-map-why">
-                            <span>{m.papers.researchMap.whyHere}</span>
-                            {member.reasons.map((item) => <Tag shape="chip" className="tagchip" key={reasonKey(item)}>{reason(item)}</Tag>)}
-                          </span>
-                        </StructuredRow>
+                          <ContextMenuItem onSelect={() => onOpenPaper(member.paper)}>{m.papers.contextMenu.openDetail}</ContextMenuItem>
+                          <ContextMenuItem onSelect={() => onReadPaper(member.paper)}>{m.papers.contextMenu.openReader}</ContextMenuItem>
+                        </ContextMenu>
                       ))}
                     </StructuredList>
                   </div>

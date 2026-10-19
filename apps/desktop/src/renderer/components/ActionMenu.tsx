@@ -1,6 +1,8 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import type { MouseEvent as ReactMouseEvent, MouseEventHandler, ReactElement, ReactNode } from 'react'
 import { ignoreComposingEscape } from '../lib/keyboard.js'
+import { COLLISION_PADDING } from './floating-layer.js'
+import { IconCheck } from './icons.js'
 
 type ContentProps = Omit<DropdownMenu.DropdownMenuContentProps,
   'children' | 'className' | 'side' | 'align' | 'sideOffset'
@@ -24,10 +26,10 @@ export type ActionMenuProps = {
 
 /**
  * The app-wide action menu skeleton. Callers provide the trigger button, the items and when it opens
- * and closes; Root, the asChild trigger, Portal, surface style, positioning and inline click
- * isolation are implemented only here. A menu that switches to an editor in the same popover is
- * controlled through `open`/`onOpenChange`; `contentProps` only carries advanced Radix options such
- * as focus and Escape handling. An Escape pressed while an input method is composing neither closes
+ * and closes; Root, the asChild trigger, Portal, surface style, positioning, the gap from the window
+ * edge and inline click isolation are implemented only here. A menu that switches to an editor in
+ * the same popover is controlled through `open`/`onOpenChange`; `contentProps` only carries advanced
+ * Radix options such as focus and Escape handling. An Escape pressed while an input method is composing neither closes
  * the menu nor reaches `contentProps.onEscapeKeyDown`.
  */
 export function ActionMenu({
@@ -52,7 +54,7 @@ export function ActionMenu({
       <DropdownMenu.Trigger asChild>{trigger}</DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
-          {...contentProps} {...contentData}
+          collisionPadding={COLLISION_PADDING} {...contentProps} {...contentData}
           onEscapeKeyDown={ignoreComposingEscape(contentProps?.onEscapeKeyDown)}
           className={contentClassName} side={side} align={align} sideOffset={sideOffset}
           {...(contentClick === undefined ? {} : { onClick: contentClick })}
@@ -76,10 +78,15 @@ export function MenuRadioGroup(props: DropdownMenu.DropdownMenuRadioGroupProps) 
   return <DropdownMenu.RadioGroup {...props} />
 }
 
-export function MenuRadioItem({ className = 'mi', ...props }: DropdownMenu.DropdownMenuRadioItemProps) {
-  return <DropdownMenu.RadioItem className={className} {...props} />
+/** The slot before an item's label; it holds the one checked mark while the item is checked. */
+function CheckSlot() {
+  return <span className="ck"><DropdownMenu.ItemIndicator><IconCheck /></DropdownMenu.ItemIndicator></span>
 }
 
-export function MenuCheckboxItem({ className = 'mi', ...props }: DropdownMenu.DropdownMenuCheckboxItemProps) {
-  return <DropdownMenu.CheckboxItem className={className} {...props} />
+export function MenuRadioItem({ className = 'mi', children, ...props }: DropdownMenu.DropdownMenuRadioItemProps) {
+  return <DropdownMenu.RadioItem className={className} {...props}><CheckSlot />{children}</DropdownMenu.RadioItem>
+}
+
+export function MenuCheckboxItem({ className = 'mi', children, ...props }: DropdownMenu.DropdownMenuCheckboxItemProps) {
+  return <DropdownMenu.CheckboxItem className={className} {...props}><CheckSlot />{children}</DropdownMenu.CheckboxItem>
 }

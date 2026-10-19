@@ -69,26 +69,31 @@
 .direction-actions{display:flex;align-items:center;gap:6px;flex:none}
 .direction-empty{margin:0;padding:12px;color:var(--ter);font-size:var(--fs-sm);border-top:1px solid var(--sep2)}
 
-/* Modal backdrop, from the demo's .scrim. Shared by the Trash confirmation and the Settings modal */
-.scrim{position:fixed;inset:0;background:var(--scrim);backdrop-filter:blur(2px);z-index:89}
-
-/* Every action that permanently loses data or history uses this one confirmation dialog. */
-.ctxmenu.cfpop{position:fixed;left:calc(50% - 190px);top:calc(50% - 80px)}
-.dlg{min-width:340px;max-width:460px;padding:10px 10px 12px}
-.dlg-t{font-size:var(--fs-base);font-weight:600;line-height:var(--lh-ui);padding:8px 8px 20px;color:var(--ink)}
-.dlg-d{margin:0;padding:0 8px 8px;font-size:var(--fs-base);line-height:var(--lh-ui);color:var(--sec)}
-.dlg-d:last-of-type{padding-bottom:16px}
-.dlg-a{display:flex;justify-content:flex-end;gap:10px;padding:0 4px}
-
-/* Menu popover: Radix owns position and open/close; the look is copied from the demo's .ctxmenu / .mi. */
-.ctxmenu{min-width:158px;background:var(--raised);border-radius:var(--r-lg);box-shadow:var(--sh-2);padding:6px;z-index:90}
-.mi{display:flex;align-items:center;gap:10px;width:100%;padding:6px 10px;border:0;border-radius:var(--r-sm);background:transparent;font-family:var(--sans);font-size:var(--fs-base);line-height:var(--lh-ui);text-align:left;color:var(--ink);cursor:pointer;user-select:none;transition:background var(--t-fast) var(--e-out)}
-.mi:hover,.mi[data-highlighted]{background:var(--hover)}
-.mi.on{font-weight:700}
+/*
+ * Menus (.ctxmenu) and candidate lists (.pickhits) share one surface and one item anatomy; Radix owns
+ * position and open/close. An item's highlight is inset inside the surface's padding. A Radix item
+ * lights up while [data-highlighted] and a candidate row (.rrow) while it is the active row (.on);
+ * neither lights up on :hover, which would paint a second row while the keyboard moves. Only a
+ * button row outside a Radix menu, as in the column settings, lights up on hover and focus.
+ */
+.ctxmenu,.pickhits{background:var(--raised);border-radius:var(--r-menu);box-shadow:var(--sh-2);padding:var(--pad-menu);z-index:90}
+.ctxmenu{min-width:158px}
+.mi{display:flex;align-items:center;gap:var(--sp-10);width:100%;min-height:var(--row-menu-h);padding:0 var(--row-menu-pad);border:0;border-radius:var(--r-menu-item);background:transparent;font-family:var(--sans);font-size:var(--fs-base);line-height:var(--lh-ui);text-align:left;color:var(--ink);cursor:pointer;user-select:none;transition:background var(--t-fast) var(--e-out)}
+.mi[data-highlighted],.mi.rrow.on,button.mi:hover{background:var(--hover)}
 .mi.danger{color:var(--bad)}
-.msep{height:1px;background:var(--sep2);margin:4px 6px}
-/* Check mark in the slot on the left of a menu item, from the demo's .ck / .cki */
+/* A candidate with a grey second line under its title, and a row that creates what was typed */
+.mi.two-line{flex-direction:column;align-items:stretch;gap:0;padding-block:var(--sp-4)}
+.mi .rt{font-weight:500}
+.mi .rm{font-size:var(--fs-sm);color:var(--ter)}
+.mi.mk{color:var(--ter)}
+.mi.mk svg{width:11px;height:11px;flex-shrink:0}
+/* The divider between groups of items, and the label that heads a candidate list or a group in it */
+.msep{height:1px;background:var(--sep2);margin:var(--sp-4) var(--sp-6)}
+.pickhits .rh,.pickhits .rg{padding:var(--sp-6) var(--row-menu-pad) var(--sp-4);font-size:var(--fs-cap);color:var(--ter)}
+.pickhits .rg{font-weight:600}
+/* The one checked mark, in the slot before an item's label */
 .mi .ck{width:13px;display:flex;align-items:center;flex-shrink:0}
+.mi .ck>span{display:flex}
 .cki{width:13px;height:13px;vertical-align:-2px}
 .mi-key{margin-left:auto;color:var(--ter);font-size:var(--fs-cap)}
 /* Input row in a popover: transparent background, thin light-gray border, no color change on focus */

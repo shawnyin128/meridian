@@ -541,6 +541,18 @@ describe('PaperTable', () => {
     expect(row('作者').tagName).toBe('DIV')
   })
 
+  it('列设置只在能点着显隐的行上打勾，自定义列的行不打勾', async () => {
+    const host = mount()
+    columnsCall.resolve({ ...SELECT_COLUMNS, hidden: ['venue'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
+    const checked = (label: string) => [...document.querySelectorAll<HTMLElement>('.mi.colrow')]
+      .find((el) => el.textContent === label)!.querySelector('.ck svg') !== null
+    expect([checked('主题'), checked('发表'), checked('选择')]).toEqual([true, false, false])
+  })
+
   it('主题超出一行时用 +N 收起,点击后展开且不会误开论文详情', async () => {
     const scrollWidth = vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get')
       .mockImplementation(function () { return this.classList.contains('ci') ? 200 : 0 })
@@ -648,6 +660,50 @@ describe('PaperTable', () => {
     await act(async () => { press([...menu.querySelectorAll('[role="menuitem"]')].at(-1)!) })
     await flush()
     expect(deletedPapers).toEqual([ROW.id])
+    expect(document.body.querySelector('.paper-row-menu')).toBeNull()
+  })
+
+  it('论文行的右键菜单用方向键在条目间移动,Home 与 End 到两头,只有当前条目是 Tab 停靠点', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    const row = host.querySelector<HTMLElement>('.ptable tbody tr')!
+    row.focus()
+    await act(async () => { row.dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true })) })
+    const items = [...document.body.querySelectorAll<HTMLElement>('.paper-row-menu [role="menuitem"]')]
+    // Radix moves the roving focus on the next task, not inside the keydown.
+    const key = async (name: string) => {
+      await act(async () => {
+        document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true }))
+        await new Promise((done) => setTimeout(done, 0))
+      })
+    }
+    expect(document.activeElement).toBe(items[0])
+    await key('ArrowDown')
+    expect(document.activeElement).toBe(items[1])
+    expect(items.filter((item) => item.tabIndex === 0)).toEqual([items[1]])
+    await key('End')
+    expect(document.activeElement).toBe(items.at(-1))
+    await key('Home')
+    expect(document.activeElement).toBe(items[0])
+  })
+
+  it('论文行的右键菜单可以直接在阅读器中打开这篇论文', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    const row = host.querySelector<HTMLElement>('.ptable tbody tr')!
+    await act(async () => {
+      row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 120, clientY: 80 }))
+    })
+    const items = [...document.body.querySelectorAll<HTMLElement>('.paper-row-menu [role="menuitem"]')]
+    expect(items.map((item) => item.textContent)).toEqual(['打开详情', '在阅读器中打开', '移到垃圾桶'])
+    await act(async () => { press(items[1]!) })
+    expect(openedScreens).toEqual([['reader', ROW.id]])
     expect(document.body.querySelector('.paper-row-menu')).toBeNull()
   })
 

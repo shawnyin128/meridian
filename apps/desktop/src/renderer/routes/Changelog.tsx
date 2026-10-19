@@ -62,7 +62,7 @@ function DeleteChangeButton({ entry, onDelete }: {
           {m.common.delete}
         </button>
       )}
-      title={m.changelog.confirmDelete}
+      title={m.changelog.confirmDelete} description={m.changelog.confirmDeleteDescription}
       confirmLabel={m.changelog.confirmDeleteLabel} onConfirm={() => onDelete(entry.id)}
     />
   )
@@ -73,7 +73,7 @@ function ClearArchivedButton({ count, onClear }: { count: number; onClear: () =>
   return (
     <ConfirmDialog
       trigger={<button className="btn danger sm">{m.changelog.clearArchived}</button>}
-      title={m.changelog.confirmClearArchived(count)}
+      title={m.changelog.confirmClearArchived(count)} description={m.changelog.confirmClearArchivedDescription}
       confirmLabel={m.changelog.confirmClearArchivedLabel} onConfirm={onClear}
     />
   )

@@ -12,8 +12,9 @@ import {
 } from '../shell/AppShell.js'
 import { IconButton } from '../components/IconButton.js'
 import { IconMinus, IconPlus } from '../components/icons.js'
+import { PickerPopover, type AnchorBox } from '../components/PickerPopover.js'
 import {
-  highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionToolsAnchor,
+  highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionBox,
 } from './highlight-geometry.js'
 import {
   ZOOM_MAX, ZOOM_MIN, clampZoom, keptScroll, scaledAbout, wheelZoom, type SheetTransform,
@@ -52,7 +53,8 @@ type PendingHighlight = {
   page: number
   quote: string
   rects: PaperHighlightRect[]
-  anchor: { left: number; top: number }
+  /** The selected text's box on screen, measured from its page each time it is read. */
+  box: AnchorBox
 }
 
 const emptyReading = (paperId: string): PaperReading => ({ paperId, highlights: [], notes: [], remark: '' })
@@ -157,6 +159,8 @@ export function Reader() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const scroller = useRef<HTMLDivElement>(null)
+  const selectionAnchor = useRef<AnchorBox | null>(null)
+  selectionAnchor.current = pending?.box ?? null
   const sheet = useRef<HTMLDivElement>(null)
   const readingRef = useRef<PaperReading | null>(null)
   readingRef.current = reading
@@ -481,6 +485,7 @@ export function Reader() {
    * only becomes the zoom they are laid out at.
    */
   const zoomTo = useCallback((target: number, point: { x: number; y: number }) => {
+    setPending(null)
     shownZoom.current = clampZoom(target)
     if (slots.current.size === 0) {
       zoomRef.current = shownZoom.current
@@ -590,9 +595,18 @@ export function Reader() {
     const quote = selection.toString().replace(/\s+/g, ' ').trim()
     setPending(quote === '' || rects.length === 0 ? null : {
       page: Number(pagebox.dataset.page), quote, rects,
-      anchor: selectionToolsAnchor(bounds, rects, { width: window.innerWidth, height: window.innerHeight }),
+      box: { getBoundingClientRect: () => selectionBox(pagebox.getBoundingClientRect(), rects) },
     })
   }, [])
+
+  // The toolbar is placed against the selection when it opens, so it closes once the pages scroll.
+  useEffect(() => {
+    const view = scroller.current
+    if (pending === null || view === null) return
+    const close = () => setPending(null)
+    view.addEventListener('scroll', close, { passive: true })
+    return () => view.removeEventListener('scroll', close)
+  }, [pending])
 
   const mutateReading = useCallback(async (mutation: ReadingMutation): Promise<PaperReading | null> => {
     if (opened === null || saving) return null
@@ -669,13 +683,18 @@ export function Reader() {
             {status === null ? null : <div className="pdfload">{status}</div>}
           </div>
 
-          {pending === null ? null : (
-            <div className="selection-tools" style={{ left: pending.anchor.left, top: pending.anchor.top }}>
-              <button onMouseDown={(event) => event.preventDefault()} onClick={() => { void addHighlight(false) }}>{m.reader.selection.highlight}</button>
-              <button onMouseDown={(event) => event.preventDefault()} onClick={() => { void addHighlight(true) }}>{m.reader.selection.note}</button>
-              <button onMouseDown={(event) => event.preventDefault()} onClick={askAi}>{m.reader.selection.askAi}</button>
-            </div>
-          )}
+          <PickerPopover
+            open={pending !== null} anchorBox={selectionAnchor}
+            onOpenChange={(open) => { if (!open) setPending(null) }}
+            contentClassName="ctxmenu selection-tools" side="bottom" align="center" sideOffset={10}
+            content={pending === null ? null : (
+              <>
+                <button type="button" className="mi" onClick={() => { void addHighlight(false) }}>{m.reader.selection.highlight}</button>
+                <button type="button" className="mi" onClick={() => { void addHighlight(true) }}>{m.reader.selection.note}</button>
+                <button type="button" className="mi" onClick={askAi}>{m.reader.selection.askAi}</button>
+              </>
+            )}
+          />
 
           <ReaderSidePanel
             tab={sideTab} onTab={(tab) => { setSideTab(tab); setFocusHighlightId(null) }}

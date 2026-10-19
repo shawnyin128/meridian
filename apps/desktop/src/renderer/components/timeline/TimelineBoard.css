@@ -65,3 +65,6 @@
 .timeline-fold svg{transition:transform var(--t-fast) var(--e-out)}
 .timeline-fold[aria-expanded="false"] svg{transform:rotate(-90deg)}
 .timeline-folded-count{flex:none;color:var(--ter);font-weight:400}
+
+/* Anchor of the milestone editor: a zero-size point placed inside the timeline canvas. */
+.ganchor{position:absolute;width:0;height:0}

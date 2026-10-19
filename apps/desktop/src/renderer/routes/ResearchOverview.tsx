@@ -8,7 +8,6 @@ import {
 import { project as projectApi } from '../ipc.js'
 import { ACTIVE_PROJECT, FINISHED_PROJECT, SHELVED_PROJECT } from '../../shared/vocabulary.js'
 import { useBanner, useJump, useToast, useToday, useVaultRevision } from '../shell/AppShell.js'
-import { FloatingTextEditor } from '../components/FloatingTextEditor.js'
 import { Icon } from '../components/icons.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { AgentLabel } from '../components/SourceLabel.js'
@@ -24,7 +23,7 @@ import { ProjectNextActionView } from '../components/project/ProjectControl.js'
 import { ProjectIdentity, ProjectLabel } from '../components/project/ProjectIdentity.js'
 import { DAY_SLOT_HOURS } from '../components/timeline/TimelineScale.js'
 import { TimelineBoard } from '../components/timeline/TimelineBoard.js'
-import type { TimelinePoint } from '../components/timeline/TimelineBoard.js'
+import { useMilestoneEditor } from '../components/timeline/MilestoneEditor.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
@@ -45,13 +44,6 @@ const PULSE_TONE: Record<ProjectPulseSignal['tone'], TagTone> = {
  * The milestone popover opened on the Gantt chart: a new milestone on a given day, or an edit of
  * an existing one. `left`/`top` are coordinates within the canvas.
  */
-type MilestonePop =
-  | { kind: 'new'; projectId: string; date: string; left: number; top: number }
-  | {
-    kind: 'edit'; projectId: string; milestoneId: string; date: string; title: string
-    left: number; top: number
-  }
-
 /** Stats: the size and health of all projects at a glance, as in the demo's statHTML. */
 function Stats({ rows }: { rows: ProjectOverview[] }) {
   const today = dnum(useToday())
@@ -314,12 +306,9 @@ function Upcoming({ rows, onOpen }: { rows: ProjectOverview[]; onOpen: (projectI
  * Timeline of all projects: each project draws its milestone lane first, then one row per task.
  * A bar is the task's real date or time window; the project's start and due date are not drawn as
  * a fake task. Dragging a bar moves the task and dragging a diamond moves the milestone; a click
- * without a drag opens the task in its project, and a click on a diamond opens the edit popover.
- * Switching between day, week and month keeps every task row; a task outside the current window
- * shrinks to a stub at the edge instead of its row disappearing.
- * Enter in the popover saves and then closes it. A rejected write keeps the popover and the typed
- * text; if the popover moves to another milestone while a write is in flight, that write finishing
- * does not close the one it moved to. Esc closes it from whichever element inside has focus.
+ * without a drag opens the task in its project, and a click on a diamond or the milestone lane opens
+ * the shared milestone editor. Switching between day, week and month keeps every task row; a task
+ * outside the current window shrinks to a stub at the edge instead of its row disappearing.
  * `onRenameMilestone` and `onNewMilestone` return whether that write succeeded.
  */
 function OverviewGantt({
@@ -341,9 +330,7 @@ function OverviewGantt({
   onDeleteMilestone: (projectId: string, milestoneId: string) => void
   onNewMilestone: (projectId: string, date: string, title: string) => Promise<boolean>
 }) {
-  const fmt = useFormat()
   const m = useMessages()
-  const [pop, setPop] = useState<MilestonePop | null>(null)
   const [showInactive, setShowInactive] = useState(false)
   // The overview answers what is still left to do, so finished tasks and milestones stay on the project page;
   // the history view shows everything, finished work included.
@@ -357,30 +344,9 @@ function OverviewGantt({
       })),
     [rows, showInactive],
   )
-  const closePop = useCallback(() => setPop(null), [])
-
-  const milestonePopover = (
-    <FloatingTextEditor
-      open={pop !== null}
-      anchor={<span className="ganchor" style={{ left: pop?.left ?? 0, top: pop?.top ?? 0 }} />}
-      editorKey={pop === null
-        ? 'closed'
-        : `${pop.kind}/${pop.projectId}/${pop.kind === 'edit' ? pop.milestoneId : ''}/${pop.date}/${pop.left}`}
-      title={pop === null
-        ? m.project.plan.milestoneMode
-        : m.research.overview.milestonePopTitle(pop.kind !== 'edit', fmt.date(pop.date))}
-      initialValue={pop?.kind === 'edit' ? pop.title : ''} placeholder={m.project.plan.milestoneNamePlaceholder}
-      onSubmit={(title) => pop === null
-        ? false
-        : pop.kind === 'edit'
-          ? onRenameMilestone(pop.projectId, pop.milestoneId, title)
-          : onNewMilestone(pop.projectId, pop.date, title)}
-      onClose={closePop}
-      {...(pop?.kind === 'edit'
-        ? { onDelete: () => onDeleteMilestone(pop.projectId, pop.milestoneId) }
-        : {})}
-    />
-  )
+  const editor = useMilestoneEditor({
+    projects: rows, onCreate: onNewMilestone, onRename: onRenameMilestone, onDelete: onDeleteMilestone,
+  })
 
   return (
     <TimelineBoard
@@ -388,33 +354,20 @@ function OverviewGantt({
       className="overview-gantt"
       showProjectNames
       foldable
-      onPeriodChange={closePop}
+      {...editor.board}
       headerAction={() => (
         <button
           className="btn ghost sm overview-history-toggle" type="button" aria-pressed={showInactive}
           title={showInactive ? m.research.overview.hideHistory : m.research.overview.showHistory}
-          onClick={() => { setPop(null); setShowInactive((shown) => !shown) }}
+          onClick={() => { editor.close(); setShowInactive((shown) => !shown) }}
         >{m.research.overview.historyProjects}</button>
       )}
       onLabelClick={(projectId, kind, itemId) => (kind === 'task' && itemId !== undefined
         ? onOpenTask(projectId, itemId) : onOpenProject(projectId))}
       onTaskClick={onOpenTask}
-      onMilestoneClick={(projectId, milestoneId, point: TimelinePoint) => {
-        const milestone = rows.find((project) => project.id === projectId)
-          ?.milestones.find((item) => item.id === milestoneId)
-        if (!milestone) return
-        setPop({
-          kind: 'edit', projectId, milestoneId,
-          date: milestone.date, title: milestone.title, ...point,
-        })
-      }}
-      onMilestoneLaneClick={(projectId, date, point) => {
-        setPop({ kind: 'new', projectId, date, ...point })
-      }}
       onMoveTask={onMoveTask}
       onMoveTaskWindow={onMoveTaskWindow}
       onMoveMilestone={onMoveMilestone}
-      canvasOverlay={milestonePopover}
     />
   )
 }

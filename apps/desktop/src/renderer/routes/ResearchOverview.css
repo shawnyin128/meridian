@@ -56,5 +56,3 @@
   .ovlist-row.ovpulse-row{grid-template-columns:140px minmax(0,1fr) minmax(0,1.1fr) minmax(0,1fr) 108px;column-gap:10px}
 }
 
-/* Anchor of the milestone popover: a zero-size point placed inside the timeline canvas. */
-.ganchor{position:absolute;width:0;height:0}

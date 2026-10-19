@@ -8,24 +8,33 @@ Current shared contracts:
 
 - `timeline/TimelineBoard`: scale, grid, rows, task bars, milestones, dragging, labels, priority, and
   history visibility hooks. Overview and project detail configure the same board.
+- `timeline/MilestoneEditor`: the one milestone editor of both boards. The milestone lane opens it to
+  name a new milestone and a diamond to rename or delete one, at the click.
 - `InlineField`: one-field-at-a-time editing, validation, cancel/save behavior, and presentation hooks.
 - `InlineDraftInput`: the shared input and lifecycle for placeholder/create rows. Hosts provide row
   layout, sibling controls, trigger refs, and persistence; trimming, validation, focus, Enter/Escape,
   outside cancellation, and async submission locking are implemented once.
 - `PickerPopover`: the shared anchored surface for input suggestions and compact pickers. It owns
   portal positioning, focus retention, anchor-aware outside interaction, spacing, and optional event
-  isolation; picker contents and domain selection policy stay configurable.
+  isolation; picker contents and domain selection policy stay configurable. `PickOption` is the one
+  candidate row: menu item anatomy, lit only as the active row, and the row under the pointer is it.
 - `ActionMenu` and `ActionPopover`: the two shared interactive-surface shells. Menus own action and
-  radio-item semantics; popovers retain normal focus for calendars and configuration forms. Routes
-  provide triggers, contents, and capability flags instead of assembling Radix roots and portals.
-- `ContextMenu`: the shared coordinate-menu shell for mouse and keyboard context actions. It owns
-  portal placement, viewport clamping, focus, outside/Escape dismissal, and focus return.
+  radio-item semantics, and radio and checkbox items draw the one checked mark themselves; popovers
+  retain normal focus for calendars and configuration forms. Routes provide triggers, contents, and
+  capability flags instead of assembling Radix roots and portals. Every menu and popover keeps
+  `COLLISION_PADDING` from the window edge.
+- `ContextMenu`: the shared right-click menu of one element, opened by the pointer or by the
+  ContextMenu key and Shift+F10. Radix owns placement at the point, roving focus with the arrow, Home
+  and End keys, outside/Escape dismissal, and focus return.
 - `FloatingTextEditor`: positioned short-text create/rename behavior, including async-dismiss locking
   and editor identity when the anchor changes.
 - `ModalDialog`: the shared triggerless modal shell, overlay, accessibility defaults, and focus return.
+  It owns the one dialog surface: the `confirm`, `form` and `wide` size steps on `--raised`, centring,
+  a height cap with a scrolling body and pinned `actions`, the title role (`title` or `ModalTitle`),
+  the shared close control (`closable`), and stacking above the dialog that opened it.
 - `DateTimeDisplay`: the app-wide `M月D日` date and optional time pair.
 - `ConfirmDialog`: one confirmation/destructive-action contract for wording order, focus, and button
-  presentation. Routes provide the consequence and callback only.
+  presentation, on the dialog surface's `confirm` step. Routes provide the consequence and callback only.
 - `ShortTextEditor`: the shared create/rename popover body, including fixed input geometry, focus,
   Enter/Escape, async acceptance, and optional deletion.
 - `StructuredList`: list shell and actionable/static row semantics; routes only supply columns and cells.
@@ -49,7 +58,7 @@ Current shared contracts:
   `overlay`, and `resize` modes cover panels that join layout, slide over it, or widen an existing rail;
   routes provide only final geometry and domain content.
 - `DayHeading`: the small heading that opens one day in a list grouped by day, with an optional count.
-- `hooks/useCandidateKeys`: arrow-key, Enter and Escape handling for a candidate list, shared by every
+- `hooks/useCandidateKeys`: arrow-key, pointer and Enter handling for a candidate list, shared by every
   suggestion and picker dropdown.
 - `ResearchObjectCard`: one list-card shell for first-class research objects such as projects and ideas;
   routes provide their domain-specific identity and metadata without redefining width, spacing, borders,

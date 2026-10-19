@@ -48,11 +48,6 @@
 .workspace-root{display:flex;align-items:center;gap:var(--sp-6);min-width:0;flex:1;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:0}
 .workspace-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .workspace-field .dots{flex:0 0 auto}
-.workspace-dialog{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:90;
-  width:min(420px,calc(100vw - 40px));box-sizing:border-box;background:var(--card);
-  border-radius:var(--r-xl);box-shadow:var(--sh-3);padding:18px}
-.workspace-dialog:focus-visible{outline:0}
-.workspace-dialog-title{font-size:var(--fs-title);font-weight:700;margin:0 0 14px;color:var(--ink)}
 .workspace-kinds{margin-bottom:16px}
 .workspace-kinds>button{min-width:78px;text-align:center}
 .workspace-local{min-width:90px}
@@ -63,4 +58,4 @@
 .workspace-form .form-input::placeholder{color:var(--ter)}
 .workspace-form .form-input[type="number"]{-moz-appearance:textfield}
 .workspace-form .form-input[type="number"]::-webkit-inner-spin-button{appearance:none;margin:0}
-.workspace-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+

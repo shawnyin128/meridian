@@ -125,7 +125,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
           {columns.custom.map((c) => (
             <div key={c.key}>
               <div className="mi colrow">
-                <span className="ck"><IconCheck /></span>
+                <span className="ck" />
                 {renaming === c.key
                   ? (
                     <InlineDraftInput
