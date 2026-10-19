@@ -18,8 +18,8 @@ const USAGE = `Builds a Meridian test library that covers every screen, or opens
 <app> is a Meridian.app, a Meridian.exe, or a folder such as apps/desktop (the default, built
 with npm --prefix apps/desktop run build). seed writes <dir>/library, config, user-data,
 workspaces and files from scratch through the App's Core and keeps the PDFs and metadata it
-downloads from arXiv in <dir>/cache, so a later seed into <dir> with an App of 0.0.16.0 or later
-runs off the network. --today is the day the seeded dates count from; it defaults to the system
+downloads from arXiv in <dir>/cache, so a later seed into <dir> runs off the network unless the
+App predates 0.0.16.0. --today is the day the seeded dates count from; it defaults to the system
 date, which Core still uses to stamp the records the seed does not redate. open on a copy of a
 test library first points the paths it stores at the copy.`
 
@@ -34,8 +34,8 @@ const systemToday = () => {
 /**
  * Builds the test library in `out` from scratch with `app`. Each App launch below is one stage: the
  * first imports the papers with the App's arXiv lookups answered from `<out>/cache`, or over the
- * network by an App older than 0.0.16.0, the others write through Core off the network, and stored
- * files change between launches only while the App is closed.
+ * network by an App whose Core cannot read them from there, the others write through Core off the
+ * network, and stored files change between launches only while the App is closed.
  */
 async function seed(out, app, today) {
   checkOut(out, protectedRoots())

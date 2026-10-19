@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { delimiter, dirname, join, resolve } from 'node:path'
 import { _electron as electron } from '@playwright/test'
@@ -21,37 +21,19 @@ function appTarget(app) {
   return { executable: createRequire(import.meta.url)('electron'), args: [path] }
 }
 
-/** The first stored App version whose Core reads canned responses from MERIDIAN_CANNED_NET_FILE. */
-const CANNED_NET_FILE_SINCE = '0.0.16000'
-
 /**
- * The stored version of `app`: CFBundleShortVersionString in a macOS `Meridian.app`'s Info.plist,
- * `version` in a folder's package.json, and for any other path, an executable, `version` in the
- * package.json packed in `resources/app.asar` beside it. Throws when it cannot be read.
+ * Whether the Core of `app` answers from the canned responses in MERIDIAN_CANNED_NET_FILE, that is,
+ * whether its built code names that variable: the `.js` files under a folder's `out`, else the
+ * `app.asar` in the resources of a macOS `Meridian.app` or beside an executable, which holds the
+ * scripts as plain text. Throws when that code is missing.
  */
-function appVersion(app) {
-  const path = resolve(app)
-  if (path.endsWith('.app')) {
-    const plist = readFileSync(join(path, 'Contents', 'Info.plist'), 'utf8')
-    const version = /<key>CFBundleShortVersionString<\/key>\s*<string>([^<]+)<\/string>/.exec(plist)?.[1]
-    if (version === undefined) throw new Error(`No version in ${join(path, 'Contents', 'Info.plist')}`)
-    return version
-  }
-  if (statSync(path).isDirectory()) return readJson(join(path, 'package.json')).version
-  const asar = createRequire(import.meta.url)('@electron/asar')
-  return JSON.parse(asar.extractFile(join(dirname(path), 'resources', 'app.asar'), 'package.json').toString('utf8')).version
-}
-
-/** Whether the Core of `app` answers from the canned responses in MERIDIAN_CANNED_NET_FILE. Throws when `app` has no version. */
 export function readsCannedNetFile(app) {
-  const parts = (version) => {
-    const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version ?? '')
-    if (match === null) throw new Error(`${app} has no stored version: ${version}`)
-    return match.slice(1).map(Number)
-  }
-  const [have, since] = [parts(appVersion(app)), parts(CANNED_NET_FILE_SINCE)]
-  const differs = have.findIndex((part, at) => part !== since[at])
-  return differs < 0 || have[differs] > since[differs]
+  const path = resolve(app)
+  const code = path.endsWith('.app') ? [join(path, 'Contents', 'Resources', 'app.asar')]
+    : statSync(path).isDirectory()
+      ? readdirSync(join(path, 'out'), { recursive: true }).filter((name) => name.endsWith('.js')).map((name) => join(path, 'out', name))
+      : [join(dirname(path), 'resources', 'app.asar')]
+  return code.some((file) => readFileSync(file).includes('MERIDIAN_CANNED_NET_FILE'))
 }
 
 /**
