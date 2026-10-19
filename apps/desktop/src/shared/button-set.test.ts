@@ -28,7 +28,7 @@ const STYLESHEETS = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
 
 /**
  * Classes written next to `btn` that the set does not judge: its own variant, size and state
- * classes, and the read-state filter, whose selected look is the segmented controls' selected look.
+ * classes, and the read-state filter, a menu trigger whose applied state takes the selected tint.
  */
 const SET_CLASSES = new Set(['btn', 'pri', 'ghost', 'danger', 'sm', 'on', 'read-state-filter'])
 
