@@ -58,7 +58,7 @@
 .node-markdown .md table{font-size:var(--fs-sm)}
 .node-branch-groups{display:grid;gap:10px;margin-top:10px}
 .node-branch-group{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:start;gap:8px}
-.node-branch-label{padding-top:5px;color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
+.node-branch-label{padding-top:var(--sp-2);color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
 .node-branch-list{display:flex;flex-wrap:wrap;gap:6px}
 .node-tasks{--structured-list-row-height:38px}
 .node-task-row{display:flex;align-items:center;gap:8px;min-height:38px;padding:8px 2px}
