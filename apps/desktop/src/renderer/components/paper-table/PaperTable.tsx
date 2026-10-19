@@ -816,7 +816,7 @@ export function PaperTable() {
 
   /**
    * Edits the remark: writes it to the reading record, the same text as in the reader's side panel,
-   * without an entry in Recent Changes.
+   * as an entry in Recent Changes.
    */
   const saveRemark = (p: PaperRow, value: string): boolean | Promise<boolean> => {
     if (value.trim() === (p.remark ?? '').replace(/[\r\n]/g, '').trim()) return true
