@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { DragEvent as ReactDragEvent, ReactNode, RefObject } from 'react'
+import type { DragEvent as ReactDragEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode, RefObject } from 'react'
 import type { AgentSession, Attachment, RelationGroup } from '../../../shared/contract.js'
 import { papers } from '../../ipc.js'
 import { AddAction } from '../AddAction.js'
@@ -182,7 +182,7 @@ export function ProjectRelations({
   onOpenPage: (page: string) => void
   onOpenPaper: (paperId: string) => void
   onRemovePaper: (paperId: string, title: string) => void
-  /** Drops the chip `id` at `index` among the chips of the same row. */
+  /** Puts the chip `id` at `index` among the chips of the same row, from a drop or Alt+← / Alt+→. */
   onMove: (id: string, index: number) => void
 }) {
   const m = useMessages()
@@ -217,6 +217,15 @@ export function ProjectRelations({
       setDragging(null)
       setDropAt(null)
       if (to !== from) onMove(dragging.id, to)
+    },
+    // The keyboard path of a drag: Alt+← / Alt+→ move the chip one place along its row.
+    onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => {
+      const by = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0
+      if (by === 0 || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+      event.preventDefault()
+      const ids = rowChipIds(row)
+      const to = ids.indexOf(id) + by
+      if (to >= 0 && to < ids.length) onMove(id, to)
     },
   })
   const chipClass = (row: RelationGroup, id: string) => {

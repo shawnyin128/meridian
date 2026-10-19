@@ -26,7 +26,8 @@ const dragCard = async (win: Page, draggedId: string, targetId: string) => {
   const dragged = shown(win).locator(`[data-idea="${draggedId}"]`)
   const target = shown(win).locator(`[data-idea="${targetId}"]`)
   const targetBox = (await target.boundingBox())!
-  await dragged.dispatchEvent('dragstart', { dataTransfer: await win.evaluateHandle(() => new DataTransfer()) })
+  // A card is dragged by the grip in its row-actions slot.
+  await dragged.locator('.drag-handle').dispatchEvent('dragstart', { dataTransfer: await win.evaluateHandle(() => new DataTransfer()) })
   await target.dispatchEvent('dragover', {
     clientY: targetBox.y + 2, // top of the target's box: insert before it.
     dataTransfer: await win.evaluateHandle(() => new DataTransfer()),

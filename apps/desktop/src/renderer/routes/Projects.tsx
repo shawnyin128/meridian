@@ -32,7 +32,8 @@ import { ProjectDetail } from './ProjectDetail.js'
 import type { RecordTab } from './ProjectDetail.js'
 import type { PlanTab } from '../components/project/ProjectPlan.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
-import { useDragReorder, type DragCardProps } from '../hooks/useDragReorder.js'
+import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
+import { DragHandle } from '../components/DragHandle.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
@@ -63,9 +64,11 @@ function signals(project: ProjectSummary, todayIso: string) {
  * Rename replaces the content of the same popover, matching the demo, which closed the menu and
  * opened a rename popover in the same spot; while renaming, only the rename editor closes it.
  */
-function ProjectMenu({ project, onRename, onStatus, onDelete }: {
+function ProjectMenu({ project, onRename, onMove, canMove, onStatus, onDelete }: {
   project: ProjectSummary
   onRename: (name: string) => boolean | Promise<boolean>
+  onMove: (by: -1 | 1) => void
+  canMove: (by: -1 | 1) => boolean
   onStatus: (status: ProjectStatus) => void
   onDelete: () => void
 }) {
@@ -98,6 +101,8 @@ function ProjectMenu({ project, onRename, onStatus, onDelete }: {
                 <MenuItem onSelect={(e) => { e.preventDefault(); setRenaming(true) }}>
                   {m.research.list.rename}
                 </MenuItem>
+                <MenuItem disabled={!canMove(-1)} onSelect={() => onMove(-1)}>{m.common.moveUp}</MenuItem>
+                <MenuItem disabled={!canMove(1)} onSelect={() => onMove(1)}>{m.common.moveDown}</MenuItem>
                 <MenuSeparator />
                 <MenuRadioGroup value={project.status}>
                   {PROJECT_STATUSES.map((s) => (
@@ -142,9 +147,9 @@ export function projectPaperCountLabel(count: number, m: Catalog): string {
 }
 
 /** Ongoing projects expose the decisions a researcher needs before secondary counts and history. */
-function ProjectPanel({ project, onOpen, menu, dragProps, dropClassName }: {
+function ProjectPanel({ project, onOpen, menu, reorder, dropClassName }: {
   project: ProjectSummary; onOpen: () => void; menu: ReactNode
-  dragProps: DragCardProps; dropClassName: string
+  reorder: Reorderable; dropClassName: string
 }) {
   const today = useToday()
   const fmt = useFormat()
@@ -158,7 +163,7 @@ function ProjectPanel({ project, onOpen, menu, dragProps, dropClassName }: {
   return (
     <ResearchObjectCard
       className={`projpanel${dropClassName ? ` ${dropClassName}` : ''}`}
-      data-proj={project.id} onActivate={onOpen} {...dragProps}
+      data-proj={project.id} onActivate={onOpen} {...reorder.item}
     >
       <div className="pp-h">
         <CardOpen><ProjectIdentity project={project} showTopic /></CardOpen>
@@ -172,7 +177,7 @@ function ProjectPanel({ project, onOpen, menu, dragProps, dropClassName }: {
             )
             : m.research.panel.noUpcomingMilestone}
         </span>
-        <RowActions>{menu}</RowActions>
+        <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
       </div>
       <div className="project-card-decisions">
         <div className="project-card-decision">
@@ -223,16 +228,16 @@ function ProjectPanel({ project, onOpen, menu, dragProps, dropClassName }: {
  * Shelved and completed projects: one row with status, name, focus and time since the last progress.
  * The name is the row's button; a click anywhere else on the row opens it too.
  */
-function ProjectRow({ project, onOpen, menu, dragProps, dropClassName }: {
+function ProjectRow({ project, onOpen, menu, reorder, dropClassName }: {
   project: ProjectSummary; onOpen: () => void; menu: ReactNode
-  dragProps: DragCardProps; dropClassName: string
+  reorder: Reorderable; dropClassName: string
 }) {
   const { idle } = signals(project, useToday())
   const m = useMessages()
   return (
     <div
       className={`prow${dropClassName ? ` ${dropClassName}` : ''}`}
-      data-proj={project.id} data-row-actions="" onClick={onOpen} {...dragProps}
+      data-proj={project.id} data-row-actions="" onClick={onOpen} {...reorder.item}
     >
       <button type="button" className="prow-open">
         <ProjectIdentity project={project} variant="row" showPriority={false} />
@@ -242,7 +247,7 @@ function ProjectRow({ project, onOpen, menu, dragProps, dropClassName }: {
         {idleNote(idle, m.project.signals.idle)}
       </span>
       <span className="tp">{project.topic}</span>
-      <RowActions>{menu}</RowActions>
+      <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
     </div>
   )
 }
@@ -325,6 +330,7 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
     <ProjectMenu
       project={p}
       onRename={(name) => write(projectApi.update(p.id, { name }), { note: m.research.list.renamed })}
+      onMove={(by) => reorder.move(p.id, by)} canMove={(by) => reorder.canMove(p.id, by)}
       onStatus={(status) => applyWrite(
         projectApi.update(p.id, { status }), m.research.list.statusChangedTo(status), toast,
       )}
@@ -375,13 +381,15 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
               ? (
                 <ProjectPanel
                   project={p} onOpen={() => onOpen(p.id)} menu={menuOf(p)} key={p.id}
-                  dragProps={reorder.cardProps(p.id)} dropClassName={reorder.dropClass(p.id)}
+                  reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
+                  dropClassName={reorder.dropClass(p.id)}
                 />
               )
               : (
                 <ProjectRow
                   project={p} onOpen={() => onOpen(p.id)} menu={menuOf(p)} key={p.id}
-                  dragProps={reorder.cardProps(p.id)} dropClassName={reorder.dropClass(p.id)}
+                  reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
+                  dropClassName={reorder.dropClass(p.id)}
                 />
               )))}
           </Fragment>

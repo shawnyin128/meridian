@@ -31,7 +31,6 @@
 .prow{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--r-lg);cursor:pointer;font-size:var(--fs-base);transition:background var(--t-fast) var(--e-out)}
 .prow:hover,.prow:has(.row-actions [data-state="open"]){background:var(--hover)}
 .prow-open{display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
-.prow[draggable]{cursor:grab}
 .prow.dragging{opacity:.4}
 .prow.drag-over-before{box-shadow:0 -2px 0 0 var(--accent)}
 .prow.drag-over-after{box-shadow:0 2px 0 0 var(--accent)}

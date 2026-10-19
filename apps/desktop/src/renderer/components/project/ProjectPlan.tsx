@@ -26,7 +26,8 @@ import { IconPencil, IconTrash } from '../icons.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
-import { useDragReorder, type DragCardProps } from '../../hooks/useDragReorder.js'
+import { useDragReorder, type Reorderable } from '../../hooks/useDragReorder.js'
+import { DragHandle } from '../DragHandle.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
@@ -308,13 +309,13 @@ export function ProjectTaskPanel({
   )
 }
 
-function TaskRow({ task, flash, selected, dragProps, dropClass = '', onSave, onDelete, onOpen }: {
+function TaskRow({ task, flash, selected, reorder, dropClass = '', onSave, onDelete, onOpen }: {
   task: Task
   flash: boolean
   /** Whether this task's detail panel is the one currently open. */
   selected: boolean
-  /** Omitted for an archived row: it is not draggable, since its position among other done tasks does not matter. */
-  dragProps?: DragCardProps
+  /** Omitted for an archived row: it does not move, since its position among other done tasks does not matter. */
+  reorder?: Reorderable
   dropClass?: string
   onSave: (patch: TaskPatch) => Promise<boolean>
   onDelete: () => void
@@ -324,7 +325,7 @@ function TaskRow({ task, flash, selected, dragProps, dropClass = '', onSave, onD
   const m = useMessages()
   return (
     <StructuredRow
-      composite selected={selected} data-row={task.id} {...dragProps} onActivate={onOpen}
+      composite selected={selected} data-row={task.id} {...reorder?.item} onActivate={onOpen}
       title={m.project.plan.openTask}
       className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}${
         dropClass ? ` ${dropClass}` : ''}`}
@@ -350,6 +351,7 @@ function TaskRow({ task, flash, selected, dragProps, dropClass = '', onSave, onD
         )
         : <TaskNameCell task={task} onSave={onSave} />}
       <RowActions>
+        {reorder === undefined ? null : <DragHandle {...reorder.handle} />}
         <IconButton
           label={m.project.plan.deleteTaskFor(task.title)} title={m.project.plan.deleteTask} size="nested" tone="danger"
           className="row-delete" onClick={(event) => { event.stopPropagation(); onDelete() }}
@@ -430,7 +432,7 @@ export function ProjectPlan({
   onCreateMilestone: (draft: MilestoneDraft) => Promise<boolean>
   onUpdateTask: (taskId: string, patch: TaskPatch) => Promise<boolean>
   onDeleteTask: (taskId: string) => void
-  /** Persists a full drag-reordering of the task list: `order` is a permutation of the project's task ids. */
+  /** Persists a reordering of the task list, by drag or keyboard: `order` is a permutation of the project's task ids. */
   onReorderTasks: (order: string[]) => void
   /** Opens the task's detail panel; fired by clicking its row here or its bar/label in the Gantt. */
   onOpenTask: (taskId: string) => void
@@ -503,7 +505,8 @@ export function ProjectPlan({
               {activeTasks.map((task) => (
                 <TaskRow
                   key={task.id} task={task} flash={flashId === task.id} selected={selectedTaskId === task.id}
-                  dragProps={taskOrder.cardProps(task.id)} dropClass={taskOrder.dropClass(task.id)}
+                  reorder={{ item: taskOrder.itemProps(task.id), handle: taskOrder.handleProps(task.id) }}
+                  dropClass={taskOrder.dropClass(task.id)}
                   onSave={(patch) => onUpdateTask(task.id, patch)}
                   onDelete={() => onDeleteTask(task.id)}
                   onOpen={() => onOpenTask(task.id)}

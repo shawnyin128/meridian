@@ -74,9 +74,47 @@ describe('ProjectPlan', () => {
     expect(slot(host.querySelector('.milestone-row')!)).toEqual([['删除里程碑：完成首轮校准', '', true, true]])
   })
 
-  it('任务行可以拖拽排序', () => {
-    const output = renderPlan('task')
-    expect(output).toContain('data-row="task-1" draggable="true"')
+  it('任务行从操作槽里的把手拖拽排序，行本身不能拖', () => {
+    const host = document.createElement('div')
+    host.innerHTML = renderPlan('task')
+    const row = host.querySelector('[data-row="task-1"]')!
+    expect(row.hasAttribute('draggable')).toBe(false)
+    expect(row.getAttribute('data-reorder-item')).toBe('task-1')
+    expect(row.querySelector('.row-actions .drag-handle')!.getAttribute('draggable')).toBe('true')
+  })
+
+  it('Alt+↓ 在任务行里把任务往下挪一格，已归档的任务不参与', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    const host = document.createElement('div')
+    document.body.append(host)
+    const onReorderTasks = vi.fn()
+    const root = createRoot(host)
+    act(() => root.render(
+      <MessagesProvider>
+        <ProjectPlan
+          project={{ tasks: [task, rangeTask, doneTask], milestones: [] }} tab="task" today="2026-09-16"
+          creating={null} flashId={null} selectedTaskId={null}
+          listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
+          onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
+          onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
+          onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={onReorderTasks} onOpenTask={vi.fn()}
+          onUpdateMilestone={vi.fn()} onDeleteMilestone={vi.fn()} onHoverMilestone={vi.fn()}
+        />
+      </MessagesProvider>,
+    ))
+    const altDown = (id: string) => act(() => {
+      host.querySelector(`[data-row="${id}"] .plan-open`)!
+        .dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true, bubbles: true }))
+    })
+    altDown('task-1')
+    expect(onReorderTasks).toHaveBeenCalledWith(['task-2', 'task-1', 'task-3'])
+    onReorderTasks.mockClear()
+    altDown('task-2')
+    expect(onReorderTasks).not.toHaveBeenCalled()
+    act(() => root.unmount())
+    host.remove()
+    vi.unstubAllGlobals()
   })
 
   it('单日和跨天任务的日期栏共用同一个网格列,不再包在同一个容器里', () => {
@@ -117,9 +155,11 @@ describe('ProjectPlan', () => {
   })
 
   it('归档任务不参与拖拽排序', () => {
-    const output = renderPlan('task', { tasks: [task, doneTask], flashId: doneTask.id })
-    expect(output).toContain('data-row="task-1" draggable="true"')
-    expect(output).not.toContain('data-row="task-3" draggable="true"')
+    const host = document.createElement('div')
+    host.innerHTML = renderPlan('task', { tasks: [task, doneTask], flashId: doneTask.id })
+    expect(host.querySelector('[data-row="task-1"] .drag-handle')).not.toBeNull()
+    expect(host.querySelector('[data-row="task-3"] .drag-handle')).toBeNull()
+    expect(host.querySelector('[data-row="task-3"]')!.hasAttribute('data-reorder-item')).toBe(false)
   })
 
   it('已完成的里程碑默认折叠进已归档分组,展开后可见', () => {

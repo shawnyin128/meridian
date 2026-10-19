@@ -441,7 +441,8 @@ test('拖一张进行中的卡片到另一张前面,顺序写进库里;别的分
   const dragged = shown(win).locator(`[data-proj="${activeIds.at(-1)}"]`)
   const target = shown(win).locator(`[data-proj="${activeIds[0]}"]`)
   const targetBox = (await target.boundingBox())!
-  await dragged.dispatchEvent('dragstart', { dataTransfer: await win.evaluateHandle(() => new DataTransfer()) })
+  // A card is dragged by the grip in its row-actions slot.
+  await dragged.locator('.drag-handle').dispatchEvent('dragstart', { dataTransfer: await win.evaluateHandle(() => new DataTransfer()) })
   await target.dispatchEvent('dragover', {
     clientY: targetBox.y + 2, // top of the target's box: insert before it.
     dataTransfer: await win.evaluateHandle(() => new DataTransfer()),

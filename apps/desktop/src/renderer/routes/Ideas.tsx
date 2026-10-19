@@ -18,7 +18,8 @@ import {
 } from '../components/PageShell.js'
 import { useEscapeLayer, useJump, useScreenReentry, useVaultRevision } from '../shell/AppShell.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
-import { useDragReorder, type DragCardProps } from '../hooks/useDragReorder.js'
+import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
+import { DragHandle } from '../components/DragHandle.js'
 import { useFormat } from '../lib/format.js'
 import { commitsMultiline, composing } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -37,9 +38,11 @@ function linkedProjectLabel(idea: ResearchIdea, linked: ProjectSummary | undefin
  * Idea cards share the project cards' row-end pattern: clicking the card opens its details, and
  * management actions sit in the "More" menu.
  */
-function IdeaMenu({ idea, linked, onArchive, onDelete }: {
+function IdeaMenu({ idea, linked, onMove, canMove, onArchive, onDelete }: {
   idea: ResearchIdea
   linked: ProjectSummary | undefined
+  onMove: (by: -1 | 1) => void
+  canMove: (by: -1 | 1) => boolean
   onArchive: () => void
   onDelete: () => void
 }) {
@@ -47,6 +50,9 @@ function IdeaMenu({ idea, linked, onArchive, onDelete }: {
   const locked = idea.archived && linked?.status === FINISHED_PROJECT
   return (
     <DotsMenu label={m.ideas.manage(idea.title)} stopRowActivation>
+      <MenuItem disabled={!canMove(-1)} onSelect={() => onMove(-1)}>{m.common.moveUp}</MenuItem>
+      <MenuItem disabled={!canMove(1)} onSelect={() => onMove(1)}>{m.common.moveDown}</MenuItem>
+      <MenuSeparator />
       <MenuItem
         disabled={locked}
         title={locked ? m.ideas.archiveLockedHint : undefined}
@@ -58,13 +64,13 @@ function IdeaMenu({ idea, linked, onArchive, onDelete }: {
   )
 }
 
-function IdeaCard({ idea, linked, selected, menu, onOpen, dragProps, dropClassName }: {
+function IdeaCard({ idea, linked, selected, menu, onOpen, reorder, dropClassName }: {
   idea: ResearchIdea
   linked: ProjectSummary | undefined
   selected: boolean
   menu: ReactNode
   onOpen: () => void
-  dragProps: DragCardProps
+  reorder: Reorderable
   dropClassName: string
 }) {
   const fmt = useFormat()
@@ -72,7 +78,7 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, dragProps, dropClassNa
   return (
     <ResearchObjectCard
       className={`idea-card${dropClassName ? ` ${dropClassName}` : ''}`} selected={selected} muted={idea.archived}
-      data-idea={idea.id} onActivate={onOpen} {...dragProps}
+      data-idea={idea.id} onActivate={onOpen} {...reorder.item}
     >
       <div className="idea-card-content">
         <div className="idea-card-title-row">
@@ -95,7 +101,7 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, dragProps, dropClassNa
           <span className="idea-card-updated">{m.ideas.updated(fmt.date(idea.updated))}</span>
         </div>
       </div>
-      <RowActions>{menu}</RowActions>
+      <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
     </ResearchObjectCard>
   )
 }
@@ -277,8 +283,14 @@ export function Ideas() {
       <IdeaCard
         idea={idea} linked={linked} selected={selectedId === idea.id} key={idea.id}
         onOpen={() => setSelectedId(idea.id)}
-        menu={<IdeaMenu idea={idea} linked={linked} onArchive={() => archive(idea)} onDelete={() => remove(idea)} />}
-        dragProps={reorder.cardProps(idea.id)} dropClassName={reorder.dropClass(idea.id)}
+        menu={(
+          <IdeaMenu
+            idea={idea} linked={linked} onArchive={() => archive(idea)} onDelete={() => remove(idea)}
+            onMove={(by) => reorder.move(idea.id, by)} canMove={(by) => reorder.canMove(idea.id, by)}
+          />
+        )}
+        reorder={{ item: reorder.itemProps(idea.id), handle: reorder.handleProps(idea.id) }}
+        dropClassName={reorder.dropClass(idea.id)}
       />
     )
   }

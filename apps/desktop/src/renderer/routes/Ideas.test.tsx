@@ -34,6 +34,7 @@ const api = vi.hoisted(() => ({
   update: vi.fn(async () => {}),
   promote: vi.fn(async () => ({ idea: {}, project: {} })),
   remove: vi.fn(async () => {}),
+  reorder: vi.fn(async () => {}),
   open: vi.fn(),
 }))
 
@@ -43,6 +44,7 @@ vi.mock('../ipc.js', () => ({
     update: api.update,
     promote: api.promote,
     delete: api.remove,
+    reorder: api.reorder,
   },
   project: { list: async () => structuredClone(api.projects) },
 }))
@@ -75,6 +77,29 @@ describe('Ideas', () => {
   })
 
   afterEach(() => { act(() => root.unmount()) })
+
+  it('想法卡片从操作槽里的把手拖，卡片本身不能拖；更多菜单和 Alt+↑ 也能挪，只在同一组里挪', async () => {
+    api.reorder.mockClear()
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    const card = (id: string) => host.querySelector<HTMLElement>(`[data-idea="${id}"]`)!
+    expect(card('idea-linked').hasAttribute('draggable')).toBe(false)
+    expect(card('idea-linked').querySelector('.row-actions .drag-handle')!.getAttribute('draggable')).toBe('true')
+
+    await act(async () => {
+      card('idea-independent').querySelector('.research-object-card-open')!
+        .dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', altKey: true, bubbles: true }))
+    })
+    expect(api.reorder).toHaveBeenLastCalledWith(['idea-independent', 'idea-linked', 'idea-completed'])
+
+    await act(async () => {
+      card('idea-independent').querySelector('.dots')!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+    })
+    const items = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
+    expect(items.map((item) => [item.textContent, item.hasAttribute('data-disabled')]).slice(0, 2))
+      .toEqual([['上移', false], ['下移', true]])
+    await act(async () => { items[0]!.click() })
+    expect(api.reorder).toHaveBeenLastCalledWith(['idea-independent', 'idea-linked', 'idea-completed'])
+  })
 
   it('来源标签跟在来源后面：对话和论文阅读写来源的种类，agent 记下的只写 agent', async () => {
     api.ideas.push({

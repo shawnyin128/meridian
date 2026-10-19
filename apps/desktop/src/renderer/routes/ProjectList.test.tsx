@@ -122,3 +122,49 @@ describe('Project list', () => {
     expect(host.querySelector('[data-open="draft"]')).not.toBeNull()
   })
 })
+
+describe('项目的排序', () => {
+  const ongoing = [
+    summary({ id: 'a', name: '甲', status: '进行中' }),
+    summary({ id: 'b', name: '乙', status: '进行中' }),
+    summary({ id: 'c', name: '丙', status: '搁置', focus: '等算力' }),
+  ]
+  const mount = async () => {
+    api.projects = ongoing
+    await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
+  }
+  const reorder = async () => vi.mocked((await import('../ipc.js')).project.reorder)
+
+  it('卡片和搁置的行从操作槽里的把手拖，卡片和行本身不能拖，里面的字可以选', async () => {
+    await mount()
+    for (const id of ['a', 'c']) {
+      const item = host.querySelector(`[data-proj="${id}"]`)!
+      expect(item.hasAttribute('draggable'), id).toBe(false)
+      expect(item.getAttribute('data-reorder-item'), id).toBe(id)
+      expect(item.querySelector('.row-actions .drag-handle')!.getAttribute('draggable'), id).toBe('true')
+    }
+  })
+
+  it('「更多」菜单里有上移和下移，到了头那一项不能点；下移把项目往下挪一格', async () => {
+    await mount()
+    ;(await reorder()).mockClear()
+    const dots = host.querySelector<HTMLElement>('[data-proj="a"] .dots')!
+    await act(async () => { dots.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+    const items = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
+    expect(items.map((item) => [item.textContent, item.hasAttribute('data-disabled')]).slice(0, 3))
+      .toEqual([['重命名', false], ['上移', true], ['下移', false]])
+    await act(async () => { items[2]!.click() })
+    expect(await reorder()).toHaveBeenCalledWith(['b', 'a', 'c'])
+  })
+
+  it('Alt+↓ 在卡片里把项目往下挪一格，只在同一状态里挪', async () => {
+    await mount()
+    ;(await reorder()).mockClear()
+    const open = (id: string) => host.querySelector<HTMLElement>(`[data-proj="${id}"] button`)!
+    await act(async () => { open('a').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true, bubbles: true })) })
+    expect(await reorder()).toHaveBeenCalledWith(['b', 'a', 'c'])
+    ;(await reorder()).mockClear()
+    await act(async () => { open('b').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true, bubbles: true })) })
+    expect(await reorder()).not.toHaveBeenCalled()
+  })
+})

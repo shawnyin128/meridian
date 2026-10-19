@@ -12,7 +12,6 @@
 /* The selected look of rows, cards and graph nodes; see StructuredList.css. */
 .research-object-card.selected{background-color:var(--selected);color:var(--on-selected)}
 .research-object-card.muted{background:var(--content)}
-.research-object-card[draggable]{cursor:grab}
 .research-object-card.dragging{opacity:.4}
 .research-object-card.drag-over-before{box-shadow:0 -3px 0 0 var(--accent)}
 .research-object-card.drag-over-after{box-shadow:0 3px 0 0 var(--accent)}
