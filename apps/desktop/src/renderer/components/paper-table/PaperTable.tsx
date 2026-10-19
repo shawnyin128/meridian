@@ -467,6 +467,13 @@ export function PaperTable() {
   // draws an empty table instead of the group index.
   const listed = group === 'none'
     || (sel !== null && (group === 'readState' || facets.some((f) => f.value === sel)))
+  // The title counts the rows the list shows under the search, the read-state filter and a picked group
+  // value; with none of them active it counts the vault. The group index lists no rows, so a search
+  // there leaves the title without a count.
+  const filtered = filter !== '' || (view === 'table' && sel !== null)
+  const titleCount = !filtered ? paperCount
+    : view === 'research-map' ? (mapLoading ? null : mapTotal)
+      : listed ? total : null
 
   useEffect(() => {
     // Fetching the column configuration also queues on the column chain, so it waits for a write in
@@ -1219,7 +1226,7 @@ export function PaperTable() {
       {dropActive ? <div className="paper-drop"><strong>{m.papers.upload.dropToImport}</strong></div> : null}
       {/* As in the demo the title carries a count; until it arrives, the "·" and space after it are hidden. */}
       <PageHeader>
-        <PageTitle>{m.papers.title(paperCount)}</PageTitle>
+        <PageTitle>{m.papers.title(titleCount)}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />

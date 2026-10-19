@@ -1,5 +1,6 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import type { MouseEvent as ReactMouseEvent, MouseEventHandler, ReactElement, ReactNode } from 'react'
+import { ignoreComposingEscape } from '../lib/keyboard.js'
 
 type ContentProps = Omit<DropdownMenu.DropdownMenuContentProps,
   'children' | 'className' | 'side' | 'align' | 'sideOffset'
@@ -26,7 +27,8 @@ export type ActionMenuProps = {
  * and closes; Root, the asChild trigger, Portal, surface style, positioning and inline click
  * isolation are implemented only here. A menu that switches to an editor in the same popover is
  * controlled through `open`/`onOpenChange`; `contentProps` only carries advanced Radix options such
- * as focus and Escape handling.
+ * as focus and Escape handling. An Escape pressed while an input method is composing neither closes
+ * the menu nor reaches `contentProps.onEscapeKeyDown`.
  */
 export function ActionMenu({
   trigger, children, open, onOpenChange, modal,
@@ -51,6 +53,7 @@ export function ActionMenu({
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           {...contentProps} {...contentData}
+          onEscapeKeyDown={ignoreComposingEscape(contentProps?.onEscapeKeyDown)}
           className={contentClassName} side={side} align={align} sideOffset={sideOffset}
           {...(contentClick === undefined ? {} : { onClick: contentClick })}
         >

@@ -142,8 +142,6 @@
 .watch-row .watch-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;mask-image:var(--clipfade)}
 .watch-row .n{margin-left:0}
 .chat-row .ct-t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;mask-image:var(--clipfade)}
-/* This row's own reveal-on-hover rule; the shared .dots geometry, focus, and open-state rules live in FieldPickers.css. */
-.chat-row:hover .dots{opacity:1;pointer-events:auto}
 /* A sub-row whose icon slot is marked .blank (an archived row) draws no dot. */
 .srow.sub .ic.blank::before{content:none}
 /* Inbox levels: Inmail; Discovery and the watch groups (first indent); single watches (second indent) */

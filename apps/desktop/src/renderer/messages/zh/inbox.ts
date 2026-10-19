@@ -5,7 +5,7 @@ export const inbox = {
   headWatch: (label: string, count: number) => `${label} · ${count} 篇`,
   check: {
     checking: '正在检查新论文…',
-    failed: (reason: string) => `检查没成功：${reason}`,
+    failed: '检查失败',
     lastChecked: (when: string) => `上次检查 ${when}`,
   },
   checkNewPapers: '检查新论文',
@@ -40,6 +40,7 @@ export const inbox = {
     duplicateToast: '库里已经有这一篇 · 没有重复入库',
     alreadyInLibrary: (title: string) => `库里已经有这一篇：「${title}」`,
     downloaded: '已下载入库 · 可阅读',
+    downloadFailed: '下载失败',
     moreLike: '已记住 · 后续会推荐更多类似论文',
     lessLike: '已记住 · 后续会减少类似论文',
     known: '已标记为已经了解',

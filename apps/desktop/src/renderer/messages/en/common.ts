@@ -55,4 +55,11 @@ export const common = {
     runningHint: 'Generating — click to stop',
   },
   markdown: { citePage: (page: string) => `Source · page ${page}` },
+  failure: {
+    label: (what: string, why: string) => `${what} · ${why}`,
+    reasons: {
+      unavailable: 'No network', timeout: 'Timed out', 'rate-limit': 'Rate limited', server: 'Server error',
+      'not-pdf': 'Not a PDF',
+    },
+  },
 } satisfies typeof zh

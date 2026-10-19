@@ -25,6 +25,7 @@ export function ResearchObjectCard({
       ref={cardRef}
       className={`research-object-card${stateClass}${className ? ` ${className}` : ''}`}
       data-actionable={onActivate === undefined ? undefined : ''}
+      data-dots-row=""
       role={onActivate === undefined ? undefined : 'button'}
       tabIndex={onActivate === undefined ? undefined : 0}
       onClick={onActivate}

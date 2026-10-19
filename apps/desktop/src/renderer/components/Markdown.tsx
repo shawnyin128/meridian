@@ -8,6 +8,7 @@ import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import 'katex/dist/katex.min.css'
 import type { WikiRef } from '../../shared/contract.js'
+import { composing } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import { remarkPaperText } from './paper/paper-text.js'
 
@@ -130,7 +131,8 @@ export function headingsOf(src: string): Heading[] {
 /**
  * One container that switches between the rendered result and the Markdown source: with `editing`
  * false it renders `text` as Markdown (`empty` when the string is empty); with it true it is a
- * contentEditable holding the source, focused on entry, where Esc calls `onCancel`.
+ * contentEditable holding the source, focused on entry, where Esc calls `onCancel` unless an input
+ * method is composing.
  * The caller places the "Edit"/"Save" buttons and reads `box`'s `innerText` on save. `className` is
  * appended to the container.
  */
@@ -150,7 +152,11 @@ export function MarkdownBox({ text, editing, box, onCancel, onOpen, titles, empt
     ? (
       <div
         className={classes} contentEditable suppressContentEditableWarning ref={box}
-        onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); onCancel() } }}
+        onKeyDown={(e) => {
+          if (e.key !== 'Escape') return
+          e.stopPropagation()
+          if (!composing(e.nativeEvent)) onCancel()
+        }}
       >{text}</div>
     )
     // Under exactOptionalPropertyTypes an absent onOpen cannot be passed as undefined; it must be left out.

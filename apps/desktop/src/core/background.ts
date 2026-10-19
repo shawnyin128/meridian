@@ -1,5 +1,5 @@
 import type {
-  AuthorCandidate, DiscoveryFetchResult, InboxDownloadResult, JobsStatus, PaperImportResult,
+  AuthorCandidate, DiscoveryFetchResult, InboxDownloadResult, JobsStatus, NetFailed, PaperImportResult,
   SemanticKeyCheckResult, WatchSuggestionResult,
 } from '../shared/contract.js'
 import { createInboxDownloads } from './inbox/download.js'
@@ -7,7 +7,7 @@ import { createWatchFetcher } from './inbox/fetch.js'
 import { armFetchSchedule } from './inbox/schedule.js'
 import { createArxiv } from './net/arxiv.js'
 import type { HttpGet } from './net/http.js'
-import { createRateLimitedGet, HttpStatusError, netReason } from './net/http.js'
+import { createRateLimitedGet, HttpStatusError, netFailure } from './net/http.js'
 import { createSemanticAuthors } from './net/semantic-authors.js'
 import { createArxivSuggestionSource, createWatchSuggestions } from './net/watch-suggestions.js'
 import { createAuthorSearch, type ScholarSource } from './net/scholar-sources.js'
@@ -23,8 +23,8 @@ export type Background = {
   importPaper(filename: string, bytes: Uint8Array): PaperImportResult
   downloadInbox(id: string): Promise<InboxDownloadResult>
   fetchWatches(watchIds?: string[]): Promise<void>
-  searchAuthors(query: string): Promise<AuthorCandidate[]>
-  suggestWatches(input: { focus: string; seedTopics?: string[] }): Promise<WatchSuggestionResult>
+  searchAuthors(query: string): Promise<AuthorCandidate[] | NetFailed>
+  suggestWatches(input: { focus: string; seedTopics?: string[] }): Promise<WatchSuggestionResult | NetFailed>
   fetchDiscoveries(projectId?: string, force?: boolean): Promise<DiscoveryFetchResult>
   /** One Semantic Scholar request with the saved key; fails as authentication when no key is saved. */
   checkSemanticKey(): Promise<SemanticKeyCheckResult>
@@ -104,7 +104,7 @@ export function createBackground(deps: {
         if (error instanceof HttpStatusError && error.status === 429) {
           throw new Error('Semantic Scholar 正在限流，请稍后重试；也可以先按姓名保存为未确认作者')
         }
-        throw new Error(`没能搜索作者：${netReason(error)}`)
+        return { kind: 'failed', reason: netFailure(error) }
       }
     },
     async suggestWatches(input) {
@@ -114,7 +114,7 @@ export function createBackground(deps: {
         if (error instanceof HttpStatusError && error.status === 429) {
           throw new Error('论文检索正在限流，请稍后重试')
         }
-        throw new Error(`没能生成关注建议：${netReason(error)}`)
+        return { kind: 'failed', reason: netFailure(error) }
       }
     },
     async fetchDiscoveries(projectId, force) {

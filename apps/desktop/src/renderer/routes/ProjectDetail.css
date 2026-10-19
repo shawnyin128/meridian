@@ -53,7 +53,6 @@
 .workspace-root::before{content:'';position:absolute;left:0;top:50%;width:5px;height:5px;border-radius:50%;background:var(--good);transform:translateY(-50%)}
 .workspace-root.missing::before,.workspace-root.invalid::before{background:var(--bad)}
 .workspace-field .dots{flex:0 0 auto}
-.workspace-field:hover .dots,.workspace-field:focus-within .dots{opacity:1;pointer-events:auto}
 .workspace-dialog{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:90;
   width:min(420px,calc(100vw - 40px));box-sizing:border-box;background:var(--card);border:1px solid var(--sep);
   border-radius:var(--r-xl);box-shadow:var(--sh-3);padding:18px}

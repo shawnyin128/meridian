@@ -7,7 +7,6 @@
 .research-object-card.selected{border-color:var(--accent);background:color-mix(in srgb,var(--accent-soft) 30%,var(--card))}
 .research-object-card.muted{background:var(--content)}
 .research-object-card .dots{flex:0 0 auto}
-.research-object-card:hover .dots,.research-object-card:focus-within .dots{opacity:1;pointer-events:auto}
 .research-object-card[draggable]{cursor:grab}
 .research-object-card.dragging{opacity:.4}
 .research-object-card.drag-over-before{box-shadow:0 -3px 0 0 var(--accent)}

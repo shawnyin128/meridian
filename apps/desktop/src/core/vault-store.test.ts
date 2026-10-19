@@ -1480,6 +1480,26 @@ describe('vault store on the aggregation layout', () => {
     for (const snapshot of snapshots) expect(snapshot).not.toHaveProperty('lastProgress')
   })
 
+  it('项目列表的最近记录把关联工作区的事件也算进去:取页上与工作区里最新的三条,最新的在最后', () => {
+    store.createProject('最近记录')
+    const id = store.listProjects().find((project) => project.name === '最近记录')!.id
+    const repo = join(vault, 'recent-repo')
+    mkdirSync(join(repo, '.meridian/events'), { recursive: true })
+    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    writeFileSync(join(repo, '.meridian/events/events.json'), JSON.stringify({
+      schema_version: 'meridian.workspace-events.v1',
+      events: [
+        { id: 'newest', date: '2026-09-12', text: '完成 延迟探针', source: 'src/probe.py' },
+        { id: 'older', date: '2026-09-11', text: '开始推进 延迟探针', source: 'src/probe.py' },
+        { id: 'oldest', date: '2026-09-09', text: '复现基线', source: 'src/probe.py' },
+      ],
+    }), 'utf8')
+    const recent = store.listProjects().find((project) => project.id === id)!.recentEvents
+    expect(recent.map(({ date, text }) => `${date} ${text}`)).toEqual([
+      '2026-09-10 创建项目', '2026-09-11 开始推进 延迟探针', '2026-09-12 完成 延迟探针',
+    ])
+  })
+
   it('关联仓库里 coding agent 新写的科研记录进动态的「实验」，旧的不刷屏，同一条只进一次', () => {
     let clock = new Date('2026-09-22T10:00:00.000Z')
     const timed = createVaultStore(vault, () => '2026-09-22', () => clock)
