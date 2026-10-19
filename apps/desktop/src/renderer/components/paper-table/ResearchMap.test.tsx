@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
+import { act } from 'react'
+import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PaperRow } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
@@ -22,7 +24,7 @@ describe('ResearchMap', () => {
     const host = document.createElement('div')
     host.innerHTML = renderToStaticMarkup(
       <MessagesProvider>
-        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} />
+        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} />
       </MessagesProvider>,
     )
 
@@ -30,5 +32,31 @@ describe('ResearchMap', () => {
     expect(list.querySelectorAll('.research-map-paper')).toHaveLength(grouped.length)
     expect(list.classList.contains('structured-list--scrollable')).toBe(true)
     expect(list.getAttribute('style')).toBe('--structured-list-visible-rows:5')
+  })
+
+  it('论文行的右键菜单可以打开详情,也可以直接在阅读器中打开', async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    const rows = [paper('a', 'Alpha', { topics: ['Speculative decoding'] }), paper('b', 'Bravo', { topics: ['Speculative decoding'] })]
+    const onOpenPaper = vi.fn()
+    const onReadPaper = vi.fn()
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => root.render(
+      <MessagesProvider>
+        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={onOpenPaper} onReadPaper={onReadPaper} />
+      </MessagesProvider>,
+    ))
+
+    const row = [...host.querySelectorAll<HTMLElement>('.research-map-paper')].find((el) => el.textContent?.includes('Bravo'))!
+    await act(async () => {
+      row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 40, clientY: 40 }))
+    })
+    const items = () => [...document.body.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
+    expect(items().map((item) => item.textContent)).toEqual(['打开详情', '在阅读器中打开'])
+    await act(async () => { items()[1]!.click() })
+    expect(onReadPaper).toHaveBeenCalledExactlyOnceWith(rows[1])
+    expect(onOpenPaper).not.toHaveBeenCalled()
+    act(() => root.unmount())
   })
 })

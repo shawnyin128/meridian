@@ -21,8 +21,9 @@ Current shared contracts:
   retain normal focus for calendars and configuration forms. Routes provide triggers, contents, and
   capability flags instead of assembling Radix roots and portals. Every menu and popover keeps
   `COLLISION_PADDING` from the window edge.
-- `ContextMenu`: the shared coordinate-menu shell for mouse and keyboard context actions. It owns
-  portal placement, viewport clamping, focus, outside/Escape dismissal, and focus return.
+- `ContextMenu`: the shared right-click menu of one element, opened by the pointer or by the
+  ContextMenu key and Shift+F10. Radix owns placement at the point, roving focus with the arrow, Home
+  and End keys, outside/Escape dismissal, and focus return.
 - `FloatingTextEditor`: positioned short-text create/rename behavior, including async-dismiss locking
   and editor identity when the anchor changes.
 - `ModalDialog`: the shared triggerless modal shell, overlay, accessibility defaults, and focus return.

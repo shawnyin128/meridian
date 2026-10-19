@@ -61,6 +61,7 @@ export const papers = {
   contextMenu: {
     label: (title: string) => `${title} 操作`,
     openDetail: '打开详情',
+    openReader: '在阅读器中打开',
     moveToTrash: '移到垃圾桶',
   },
   groupIndex: {

@@ -1,72 +1,53 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
-import { composing } from '../lib/keyboard.js'
-import './ContextMenu.css'
+import * as Radix from '@radix-ui/react-context-menu'
+import type { KeyboardEvent as ReactKeyboardEvent, ReactElement, ReactNode } from 'react'
+import { ignoreComposingEscape } from '../lib/keyboard.js'
+import { COLLISION_PADDING } from './floating-layer.js'
 
-export type ContextMenuPoint = { x: number; y: number }
+/** How far inside the trigger's top-left corner a menu opened from the keyboard appears. */
+const KEYBOARD_INSET = 24
+
+/** Opens the trigger's menu at a point inside it, as a right-click there would. */
+function openFromKeyboard(event: ReactKeyboardEvent<HTMLElement>) {
+  if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
+  event.preventDefault()
+  const bounds = event.currentTarget.getBoundingClientRect()
+  event.currentTarget.dispatchEvent(new MouseEvent('contextmenu', {
+    bubbles: true, cancelable: true, clientX: bounds.left + KEYBOARD_INSET, clientY: bounds.top + KEYBOARD_INSET,
+  }))
+}
 
 /**
- * The point-positioned menu shared by right-click and the keyboard ContextMenu key. It owns the
- * portal, clamping to the viewport, closing on click/Escape (not on an Escape pressed while an input
- * method is composing), the first focus and returning focus after closing; callers only provide the
- * raw coordinates, the label and the actions.
+ * The right-click menu of `trigger`, also opened by the ContextMenu key or Shift+F10 while the
+ * trigger holds focus. Radix owns opening at the pointer, the portal, the arrow, Home and End keys
+ * with one Tab stop, closing on a press outside or on Escape (not on an Escape pressed while an input
+ * method is composing) and returning focus; the menu keeps the shared gap from the window edge.
+ * Callers provide the trigger, the label and the items.
  */
-export function ContextMenu({ point, label, onClose, className = '', children }: {
-  point: ContextMenuPoint
+export function ContextMenu({ trigger, label, className = '', children }: {
+  trigger: ReactElement
   label: string
-  onClose: () => void
   className?: string
   children: ReactNode
 }) {
-  const surface = useRef<HTMLDivElement>(null)
-  const opener = useRef(document.activeElement instanceof HTMLElement ? document.activeElement : null)
-  const [placed, setPlaced] = useState(point)
-
-  useLayoutEffect(() => {
-    const held = surface.current
-    if (held === null) return
-    const padding = 8
-    setPlaced({
-      x: Math.max(padding, Math.min(point.x, window.innerWidth - held.offsetWidth - padding)),
-      y: Math.max(padding, Math.min(point.y, window.innerHeight - held.offsetHeight - padding)),
-    })
-    held.querySelector<HTMLElement>('[role="menuitem"]')?.focus()
-  }, [point])
-
-  useEffect(() => {
-    const pointer = (event: PointerEvent) => {
-      if (!(event.target instanceof Node) || !surface.current?.contains(event.target)) onClose()
-    }
-    const key = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || composing(event)) return
-      event.preventDefault()
-      onClose()
-    }
-    document.addEventListener('pointerdown', pointer, true)
-    document.addEventListener('keydown', key, true)
-    return () => {
-      document.removeEventListener('pointerdown', pointer, true)
-      document.removeEventListener('keydown', key, true)
-      if (opener.current?.isConnected) opener.current.focus()
-    }
-  }, [onClose])
-
-  return createPortal(
-    <div
-      ref={surface} className={`ctxmenu context-menu${className ? ` ${className}` : ''}`}
-      role="menu" aria-label={label} style={{ left: placed.x, top: placed.y }}
-    >
-      {children}
-    </div>,
-    document.body,
+  return (
+    <Radix.Root>
+      <Radix.Trigger asChild onKeyDown={openFromKeyboard}>{trigger}</Radix.Trigger>
+      <Radix.Portal>
+        <Radix.Content
+          className={`ctxmenu${className ? ` ${className}` : ''}`} aria-label={label}
+          collisionPadding={COLLISION_PADDING} onEscapeKeyDown={ignoreComposingEscape()}
+        >
+          {children}
+        </Radix.Content>
+      </Radix.Portal>
+    </Radix.Root>
   )
 }
 
-export function ContextMenuItem({ className = '', ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
-  return <button type="button" className={`mi${className ? ` ${className}` : ''}`} role="menuitem" {...props} />
+export function ContextMenuItem({ className = 'mi', ...props }: Radix.ContextMenuItemProps) {
+  return <Radix.Item className={className} {...props} />
 }
 
 export function ContextMenuSeparator() {
-  return <div className="msep" role="separator" />
+  return <Radix.Separator className="msep" />
 }

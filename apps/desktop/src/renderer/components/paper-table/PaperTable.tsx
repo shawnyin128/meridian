@@ -406,7 +406,6 @@ export function PaperTable() {
   const dropDepth = useRef(0)
   const [movingColumn, setMovingColumn] = useState<string | null>(null)
   const [columnDrop, setColumnDrop] = useState<{ key: string; after: boolean } | null>(null)
-  const [rowMenu, setRowMenu] = useState<{ paper: PaperRow; x: number; y: number } | null>(null)
   const drag = useRef<WidthDrag | null>(null)
   const dragged = useRef(false)
   const table = useRef<HTMLTableElement>(null)
@@ -1177,40 +1176,45 @@ export function PaperTable() {
         </thead>
         <tbody>
           {rows.map((p) => (
-            <tr
-              key={p.id} tabIndex={0} className={detail?.id === p.id ? 'selected' : undefined}
-              aria-current={detail?.id === p.id ? 'true' : undefined}
-              onClick={() => { void papers.get(p.id).then(setDetail).catch(reportError) }}
-              onDoubleClick={(event) => {
-                if (opensPaperFrom(event.target)) open('reader', p.id)
-              }}
-              onContextMenu={(event) => {
-                event.preventDefault()
-                setRowMenu({ paper: p, x: event.clientX, y: event.clientY })
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && event.target === event.currentTarget) {
-                  void papers.get(p.id).then(setDetail).catch(reportError)
-                  return
-                }
-                if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
-                event.preventDefault()
-                const bounds = event.currentTarget.getBoundingClientRect()
-                setRowMenu({ paper: p, x: bounds.left + 24, y: bounds.top + 24 })
-              }}
-            >
-              <td className="pt-title"><span className="ci"><PaperText text={p.title} /></span></td>
-              {cols.map((c) => cell(p, c))}
-              {newCol ? <td className="pt-cust" /> : null}
-              <td>
-                <button
-                  className="rowx" title={m.papers.rowActions.delete}
-                  onClick={(e) => { e.stopPropagation(); remove(p.id) }}
+            <ContextMenu
+              key={p.id} label={m.papers.contextMenu.label(plainTitle(p.title))} className="paper-row-menu"
+              trigger={(
+                <tr
+                  tabIndex={0} className={detail?.id === p.id ? 'selected' : undefined}
+                  aria-current={detail?.id === p.id ? 'true' : undefined}
+                  onClick={() => { void papers.get(p.id).then(setDetail).catch(reportError) }}
+                  onDoubleClick={(event) => {
+                    if (opensPaperFrom(event.target)) open('reader', p.id)
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && event.target === event.currentTarget) {
+                      void papers.get(p.id).then(setDetail).catch(reportError)
+                    }
+                  }}
                 >
-                  <IconCross />
-                </button>
-              </td>
-            </tr>
+                  <td className="pt-title"><span className="ci"><PaperText text={p.title} /></span></td>
+                  {cols.map((c) => cell(p, c))}
+                  {newCol ? <td className="pt-cust" /> : null}
+                  <td>
+                    <button
+                      className="rowx" title={m.papers.rowActions.delete}
+                      onClick={(e) => { e.stopPropagation(); remove(p.id) }}
+                    >
+                      <IconCross />
+                    </button>
+                  </td>
+                </tr>
+              )}
+            >
+              <ContextMenuItem onSelect={() => { void papers.get(p.id).then(setDetail).catch(reportError) }}>
+                {m.papers.contextMenu.openDetail}
+              </ContextMenuItem>
+              <ContextMenuItem onSelect={() => open('reader', p.id)}>{m.papers.contextMenu.openReader}</ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem className="mi danger" onSelect={() => remove(p.id)}>
+                {m.papers.contextMenu.moveToTrash}
+              </ContextMenuItem>
+            </ContextMenu>
           ))}
         </tbody>
       </table>
@@ -1307,6 +1311,7 @@ export function PaperTable() {
                 <ResearchMap
                   rows={mapRows} total={mapTotal} loading={mapLoading}
                   onOpenPaper={(paper) => { void papers.get(paper.id).then(setDetail).catch(reportError) }}
+                  onReadPaper={(paper) => open('reader', paper.id)}
                 />
               )
               : !listed
@@ -1384,27 +1389,6 @@ export function PaperTable() {
           )}
       </DetailPanel>
 
-      {rowMenu === null
-        ? null
-        : (
-          <ContextMenu
-            point={{ x: rowMenu.x, y: rowMenu.y }} label={m.papers.contextMenu.label(plainTitle(rowMenu.paper.title))}
-            className="paper-row-menu" onClose={() => setRowMenu(null)}
-          >
-          <ContextMenuItem
-            onClick={() => {
-              const id = rowMenu.paper.id
-              setRowMenu(null)
-              void papers.get(id).then(setDetail).catch(reportError)
-            }}
-          >{m.papers.contextMenu.openDetail}</ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem
-            className="danger"
-            onClick={() => { const id = rowMenu.paper.id; setRowMenu(null); remove(id) }}
-          >{m.papers.contextMenu.moveToTrash}</ContextMenuItem>
-          </ContextMenu>
-        )}
     </PageShell>
   )
 }
