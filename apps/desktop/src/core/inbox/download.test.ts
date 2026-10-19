@@ -92,8 +92,10 @@ describe('createInboxDownloads', () => {
       'https://arxiv.org/pdf/2608.02233': { status: 200, file: 'sources/papers/missing.pdf' },
       'https://arxiv.org/pdf/2608.00417': { status: 503 },
       'https://arxiv.org/pdf/2608.01112': { status: 200, text: '<html>PDF is being generated</html>' },
+      'https://arxiv.org/pdf/2211.17192': { status: 429 },
     })
     expect(await downloads.download('thunderkv')).toEqual({ kind: 'failed', reason: 'unknown' })
+    expect(await downloads.download('specdec')).toEqual({ kind: 'failed', reason: 'rate-limit' })
     expect(await downloads.download('sequoia2')).toEqual({ kind: 'failed', reason: 'server' })
     expect(await downloads.download('drafterlite')).toEqual({ kind: 'failed', reason: 'not-pdf' })
     const failing = (error: Error) => createInboxDownloads({

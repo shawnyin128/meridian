@@ -134,6 +134,16 @@ describe('Inbox', () => {
     await act(async () => { root.unmount() })
   })
 
+  it('检查新论文失败时状态行只显示失败原因', async () => {
+    status = {
+      writes: 0, uploads: [], downloads: [], fetch: { state: 'failed', checkedAt: null, reason: 'unavailable' },
+    }
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(host.querySelector('.fetchnote')?.textContent).toBe('检查失败 · 网络不可用')
+    await act(async () => { root.unmount() })
+  })
+
   it('下载失败时卡片上只显示失败原因与重试', async () => {
     const entry = (id: string): InboxEntry => ({
       id, kind: 'watch', watch: 'w1', project: '', source: '主题 · w1',

@@ -9,6 +9,7 @@ import {
   useSettingsOpen,
 } from '../shell/AppShell.js'
 import { useJobs } from '../shell/useJobs.js'
+import { failureLabel } from '../lib/failure-label.js'
 import { useFormat } from '../lib/format.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -41,7 +42,7 @@ const streamLabel = (m: Catalog, stream: 'watch' | 'discovery'): string =>
 function fetchNote(status: FetchStatus | null, m: Catalog, fmt: ReturnType<typeof useFormat>): string {
   if (status === null) return ''
   if (status.state === 'checking') return m.inbox.check.checking
-  if (status.state === 'failed') return m.inbox.check.failed(status.error ?? '')
+  if (status.state === 'failed') return failureLabel(m, m.inbox.check.failed, status.reason ?? 'unknown')
   if (status.checkedAt === null) return ''
   const at = new Date(status.checkedAt)
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -258,7 +259,7 @@ export function Inbox() {
           {failed.has(p.id) ? (
             <PaperCardNotice tone="error" action={(
               <button className="btn plain" onClick={() => ingest(p.id)}>{m.common.retry}</button>
-            )}>{m.inbox.notices.downloadFailed[failed.get(p.id)!]}</PaperCardNotice>
+            )}>{failureLabel(m, m.inbox.notices.downloadFailed, failed.get(p.id)!)}</PaperCardNotice>
           ) : null}
         </>
       )}

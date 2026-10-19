@@ -1100,6 +1100,12 @@ const WatchFieldsSchema = z.discriminatedUnion('type', [
   }).strict(),
 ])
 
+/** Why a network call failed: no network, a timeout, a rate limit, another error status, or anything else. */
+export const NetFailureSchema = z.enum(['unavailable', 'timeout', 'rate-limit', 'server', 'unknown'])
+
+/** A network call that failed, with its reason; author search and watch suggestions answer with it. */
+export const NetFailedSchema = z.object({ kind: z.literal('failed'), reason: NetFailureSchema }).strict()
+
 /** An author search result, projected to the fields needed for disambiguation and selection. */
 export const AuthorCandidateSchema = z.object({
   source: AuthorSourceSchema,
@@ -1254,7 +1260,7 @@ export const InboxReadLaterParamsSchema = z.object({ id: z.string() }).strict()
 export const InboxDownloadParamsSchema = z.object({ id: z.string() }).strict()
 
 /** Why the PDF of an inbox entry could not be fetched. */
-export const InboxDownloadFailureSchema = z.enum(['unavailable', 'timeout', 'server', 'not-pdf', 'unknown'])
+export const InboxDownloadFailureSchema = z.enum([...NetFailureSchema.options, 'not-pdf'])
 
 /**
  * Import result. `added` means a new page was written; `existing` means a page
@@ -2044,11 +2050,11 @@ export const MetadataJobSchema = z.object({
   error: z.string().nullable(),
 }).strict()
 
-/** Current state of a watch-driven fetch. */
+/** Current state of a watch-driven fetch; `reason` says why the last fetch failed. */
 export const FetchStatusSchema = z.object({
   state: z.enum(['idle', 'checking', 'failed']),
   checkedAt: z.number().int().nullable(),
-  error: z.string().nullable(),
+  reason: NetFailureSchema.nullable(),
 }).strict()
 
 /** Source currently downloading with byte progress. */
@@ -2207,6 +2213,8 @@ export type TrashEntry = z.infer<typeof TrashEntrySchema>
 export type Watch = z.infer<typeof WatchSchema>
 export type WatchFields = z.infer<typeof WatchFieldsSchema>
 export type AuthorIdentity = z.infer<typeof AuthorIdentitySchema>
+export type NetFailure = z.infer<typeof NetFailureSchema>
+export type NetFailed = z.infer<typeof NetFailedSchema>
 export type AuthorCandidate = z.infer<typeof AuthorCandidateSchema>
 export type WatchTopicSuggestion = z.infer<typeof WatchTopicSuggestionSchema>
 export type WatchAuthorSuggestion = z.infer<typeof WatchAuthorSuggestionSchema>

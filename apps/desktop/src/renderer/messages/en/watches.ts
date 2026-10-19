@@ -18,6 +18,7 @@ export const watches = {
   reconfirm: 'Verify again',
   searching: 'Looking for authors with this name…',
   noMatches: 'No confirmable authors found.',
+  authorSearchFailed: 'Author search failed',
   candidateInfo: (papers: number, citations: number, hIndex: number) =>
     `${papers} ${pluralEn(papers, { one: 'paper', other: 'papers' })} · ${citations} ${pluralEn(citations, { one: 'citation', other: 'citations' })} · h-index ${hIndex}`,
   follow: 'Watch',
@@ -33,6 +34,7 @@ export const watches = {
   noProjects: 'No projects available',
   suggestAction: 'Find suggestions',
   suggesting: 'Finding…',
+  suggestionFailed: 'Watch suggestions failed',
   allAdded: 'All suggestions added.',
   noneSuggested: 'No new topics or authors found. Try a more specific focus.',
   suggestionBasis: (n: number) => `Based on ${n} relevant ${pluralEn(n, { one: 'paper', other: 'papers' })}`,

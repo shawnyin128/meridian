@@ -53,4 +53,10 @@ export const common = {
     runningHint: '正在生成，点击停止',
   },
   markdown: { citePage: (page: string) => `原文第 ${page} 页` },
+  failure: {
+    label: (what: string, why: string) => `${what} · ${why}`,
+    reasons: {
+      unavailable: '网络不可用', timeout: '连接超时', 'rate-limit': '正在限流', server: '服务器出错', 'not-pdf': '不是 PDF',
+    },
+  },
 } satisfies Record<string, unknown>

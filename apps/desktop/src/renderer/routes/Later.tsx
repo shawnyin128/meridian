@@ -10,6 +10,7 @@ import { plainTitle } from '../components/paper/paper-text.js'
 import { DayHeading, daySectionName } from '../components/DayHeading.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
+import { failureLabel } from '../lib/failure-label.js'
 import { useFormat } from '../lib/format.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle } from '../components/PageShell.js'
@@ -145,7 +146,7 @@ export function Later() {
                   notices={failed.has(x.id) ? (
                     <PaperCardNotice tone="error" action={(
                       <button className="btn plain" onClick={() => read(x)}>{m.common.retry}</button>
-                    )}>{m.inbox.notices.downloadFailed[failed.get(x.id)!]}</PaperCardNotice>
+                    )}>{failureLabel(m, m.inbox.notices.downloadFailed, failed.get(x.id)!)}</PaperCardNotice>
                   ) : null}
                   metadata={(
                     <>

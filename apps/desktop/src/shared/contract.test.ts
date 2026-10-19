@@ -52,6 +52,7 @@ import {
   LibraryLocationSchema,
   LibraryResetResultSchema,
   ListParamsSchema,
+  NetFailedSchema,
   PaperColumnsSchema,
   PaperImportResultSchema,
   PaperReadingSchema,
@@ -1040,6 +1041,12 @@ describe('contract schemas', () => {
       .toEqual({ kind: 'failed', reason: 'not-pdf' })
     expect(() => InboxDownloadResultSchema.parse({ kind: 'failed', reason: 'ENOENT' })).toThrow()
     expect(() => InboxDownloadResultSchema.parse({ kind: 'failed', reason: 'server', error: 'x' })).toThrow()
+  })
+
+  it('作者搜索与关注建议的网络失败只带一个封闭的原因', () => {
+    expect(NetFailedSchema.parse({ kind: 'failed', reason: 'rate-limit' })).toEqual({ kind: 'failed', reason: 'rate-limit' })
+    expect(() => NetFailedSchema.parse({ kind: 'failed', reason: 'not-pdf' })).toThrow()
+    expect(() => NetFailedSchema.parse({ kind: 'failed', reason: 'unknown', error: 'x' })).toThrow()
   })
 
   it('收件的三个写入口各只收一个条目 id', () => {
