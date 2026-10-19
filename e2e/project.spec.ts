@@ -491,7 +491,7 @@ test('任务时间列单独编辑时,名称、优先级与状态保持静息', a
   const form = win.locator('.schedule-form')
   await expect(form).toBeVisible()
   await expect(row.locator('.plan-name-input')).toHaveCount(0)
-  await expect(row.locator('.prtag')).toHaveCount(1)
+  await expect(row.locator('.plan-priority')).toHaveCount(1)
   await expect(row.locator('.state-cell')).toHaveCount(1)
   await form.locator('input[type="date"]').first().fill(fixtureDay(today, T2_START + 1))
   await form.locator('button', { hasText: '保存' }).click()
@@ -507,7 +507,7 @@ test('任务四列逐行对齐,任务与里程碑日期使用同一底色', asyn
   // The fixture's one done task (t1) starts collapsed into the archived group; only the active rows
   // are visible and need to line up.
   await expect(rows).toHaveCount(ACTIVE_TASK_ROWS)
-  for (const selector of ['.task-date-part', '.task-clock-part', '.prtag', '.state-cell', '.plan-name']) {
+  for (const selector of ['.task-date-part', '.task-clock-part', '.plan-priority', '.state-cell', '.plan-name']) {
     const x = await rows.evaluateAll((items, cell) => items.map((row) =>
       Math.round(row.querySelector(cell as string)!.getBoundingClientRect().x)), selector)
     expect(new Set(x).size, `${selector} 应落在同一列`).toBe(1)
@@ -516,7 +516,7 @@ test('任务四列逐行对齐,任务与里程碑日期使用同一底色', asyn
     .evaluate((element) => getComputedStyle(element).backgroundColor)
 
   await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '里程碑' }).click()
-  const milestoneDate = win.locator('#msList .milestone-row>.dchip').first()
+  const milestoneDate = win.locator('#msList .milestone-row>.plan-date-button').first()
   await expect(milestoneDate).toBeVisible()
   expect(await milestoneDate.locator('.date-chip').evaluate((element) => getComputedStyle(element).backgroundColor))
     .toBe(taskDateColor)
@@ -1284,7 +1284,7 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
   await expect(row.locator('.plan-name-input')).toHaveCount(0)
   await win.keyboard.press('Escape')
 
-  await row.locator('.prtag').click()
+  await row.locator('.plan-priority').click()
   await expect(radios).toHaveText(['P0 · 紧急', 'P1 · 常规', 'P2 · 较低'])
   await win.keyboard.press('Escape')
   await row.locator('.state-cell').click()

@@ -330,7 +330,7 @@ function TaskRow({ task, flash, selected, dragProps, dropClass = '', onSave, onD
       <TaskScheduleField mode="date" task={task} onSave={onSave} className="task-date-part" stopRowActivation />
       <TaskScheduleField mode="time" task={task} onSave={onSave} className="task-clock-part" stopRowActivation />
       <PriorityPicker
-        value={task.priority} className={tagClass(PRIORITY_TONE[task.priority])}
+        value={task.priority} className={tagClass(PRIORITY_TONE[task.priority], 'label', 'plan-priority')}
         title={m.project.plan.editPriority} stopRowActivation
         onPick={(priority) => { void onSave({ priority }) }}
       >{task.priority.toUpperCase()}</PriorityPicker>
