@@ -92,14 +92,14 @@ test('侧栏「论文推送」进推送屏,条目、分组与正文都照 demo',
   await expect(shown(win, '.pcard')).toHaveCount(demo.length)
   expect(await cardTitles(win)).toEqual(demo.map((d) => d.title))
 
-  // One group per watch, and "Dismiss all" appears only on the first group.
+  // One group per watch, each with its own "Dismiss all".
   const watches = await watchesFromCore(win)
   const heads = [...new Set(demo.map((d) => d.watch))].map((id) => {
     const w = watches.find((x) => x.id === id)!
     return `${KIND[w.type]} · ${w.name}`
   })
   expect(await groupTitles(win)).toEqual(heads)
-  await expect(shown(win, '.collapsible-group-actions .btn')).toHaveCount(1)
+  await expect(shown(win, '.collapsible-group-actions .btn')).toHaveCount(heads.length)
 
   // Every part of the first card matches the demo's text exactly.
   const card = shown(win, '.pcard').first()
@@ -190,12 +190,27 @@ test('忽略一条:它进垃圾桶,恢复后回到推送屏原来的位置', asy
   expect(await trashFromCore(win)).toHaveLength(0)
 })
 
-test('「全部忽略」清空这一档,清完出空态,忽略的都在垃圾桶里', async ({ win }) => {
+test('「全部忽略」只清空自己这一组,逐组清完出空态,忽略的都在垃圾桶里', async ({ win }) => {
   await openInbox(win, 'all')
   await expect(shown(win, '.pcard')).toHaveCount((await inboxFromCore(win)).length)
   const titles = await cardTitles(win)
+  const groups = shown(win, '.collapsible-group')
+  const dismissGroup = (group: Locator) =>
+    group.locator('.collapsible-group-actions .btn').filter({ hasText: '全部忽略' }).click()
+  const first = await groups.first().locator('.pcard h3').allTextContents()
+  // The first group must leave other cards behind, or this test could not tell a group from the whole list.
+  expect(first.length).toBeGreaterThan(0)
+  expect(first.length).toBeLessThan(titles.length)
 
-  await shown(win, '.collapsible-group-actions .btn').filter({ hasText: '全部忽略' }).click()
+  await dismissGroup(groups.first())
+  await expect(shown(win, '.pcard')).toHaveCount(titles.length - first.length)
+  expect(await cardTitles(win)).toEqual(titles.filter((t) => !first.includes(t)))
+  expect((await trashFromCore(win)).map((t) => t.title).sort()).toEqual([...first].sort())
+
+  for (let left = await groups.count(); left > 0; left -= 1) {
+    await dismissGroup(groups.first())
+    await expect(groups).toHaveCount(left - 1)
+  }
   await expect(shown(win, '.pcard')).toHaveCount(0)
   await expect(shown(win, '.empty-state')).toHaveCount(1)
   await expect(shown(win, '.desk-head .t')).toHaveText('论文推送 · 0')
