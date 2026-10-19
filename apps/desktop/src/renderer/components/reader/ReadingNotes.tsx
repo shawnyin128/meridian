@@ -1,47 +1,47 @@
 import { useEffect, useRef } from 'react'
 import type { PaperHighlight, PaperNote, PaperReading, ReadingMutation } from '../../../shared/contract.js'
-import type { Drafts } from '../../hooks/useDrafts.js'
+import { editField, type Drafts, type EditDraft } from '../../hooks/useDrafts.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { FormTextarea } from '../FormControls.js'
 import { EmptyState } from '../EmptyState.js'
 
-function NoteCard({ note, drafts, onSave, onDelete, onJump }: {
+function NoteCard({ note, edits, onSave, onDelete, onJump }: {
   note: PaperNote
-  drafts: Drafts
+  edits: Drafts<EditDraft>
   onSave: (text: string) => Promise<boolean>
   onDelete: () => Promise<boolean>
   onJump: () => void
 }) {
   const m = useMessages()
-  const target = `note:${note.id}`
-  const text = drafts.get(target) ?? note.text
+  const edit = editField(edits, `note:${note.id}`, note.text)
+  const text = edit.text
   const changed = text.trim() !== note.text
   return (
     <article className="reading-card">
       <button className="reading-page" onClick={onJump}>{m.reader.page.at(note.page)}</button>
-      <FormTextarea aria-label={m.reader.notes.pageAria(note.page)} value={text} onChange={(event) => drafts.set(target, event.target.value)} />
+      <FormTextarea aria-label={m.reader.notes.pageAria(note.page)} {...edit.fieldProps} />
       <div className="reading-actions">
         <button className="reading-delete" onClick={() => { void onDelete() }}>{m.common.delete}</button>
         <button
           className="btn pri" disabled={!changed || text.trim() === ''}
-          onClick={() => { void onSave(text.trim()).then((saved) => { if (saved) drafts.drop(target) }) }}
+          onClick={() => { if (!edit.stale) void onSave(text.trim()).then((saved) => { if (saved) edit.drop() }) }}
         >{m.common.save}</button>
       </div>
     </article>
   )
 }
 
-function HighlightCard({ highlight, drafts, onSave, onDelete, onJump, focus }: {
+function HighlightCard({ highlight, edits, onSave, onDelete, onJump, focus }: {
   highlight: PaperHighlight
-  drafts: Drafts
+  edits: Drafts<EditDraft>
   onSave: (note: string) => Promise<boolean>
   onDelete: () => Promise<boolean>
   onJump: () => void
   focus: boolean
 }) {
   const m = useMessages()
-  const target = `highlight:${highlight.id}`
-  const note = drafts.get(target) ?? highlight.note
+  const edit = editField(edits, `highlight:${highlight.id}`, highlight.note)
+  const note = edit.text
   const input = useRef<HTMLTextAreaElement>(null)
   useEffect(() => { if (focus) input.current?.focus() }, [focus])
   return (
@@ -51,13 +51,13 @@ function HighlightCard({ highlight, drafts, onSave, onDelete, onJump, focus }: {
       <FormTextarea
         ref={input}
         aria-label={m.reader.highlights.noteAria(highlight.page)} placeholder={m.reader.highlights.annotate}
-        value={note} onChange={(event) => drafts.set(target, event.target.value)}
+        {...edit.fieldProps}
       />
       <div className="reading-actions">
         <button className="reading-delete" onClick={() => { void onDelete() }}>{m.common.delete}</button>
         <button
           className="btn pri" disabled={note === highlight.note}
-          onClick={() => { void onSave(note).then((saved) => { if (saved) drafts.drop(target) }) }}
+          onClick={() => { if (!edit.stale) void onSave(note).then((saved) => { if (saved) edit.drop() }) }}
         >{m.common.save}</button>
       </div>
     </article>
@@ -69,7 +69,7 @@ function HighlightCard({ highlight, drafts, onSave, onDelete, onJump, focus }: {
  * mutations and knows nothing of how the PDF or Core stores them.
  */
 export function ReadingNotes({
-  reading, currentPage, saving, onMutate, onJump, mode = 'all', focusHighlightId = null, drafts,
+  reading, currentPage, saving, onMutate, onJump, mode = 'all', focusHighlightId = null, drafts, edits,
 }: {
   reading: PaperReading
   currentPage: number
@@ -79,6 +79,7 @@ export function ReadingNotes({
   mode?: 'all' | 'highlights' | 'notes'
   focusHighlightId?: string | null
   drafts: Drafts
+  edits: Drafts<EditDraft>
 }) {
   const m = useMessages()
   const compose = `new-note:${reading.paperId}`
@@ -109,7 +110,7 @@ export function ReadingNotes({
       <div className="reading-list">
         {mode === 'notes' ? null : reading.highlights.map((highlight) => (
           <HighlightCard
-            key={highlight.id} highlight={highlight} drafts={drafts} onJump={() => onJump(highlight.page)}
+            key={highlight.id} highlight={highlight} edits={edits} onJump={() => onJump(highlight.page)}
             focus={focusHighlightId === highlight.id}
             onSave={(note) => onMutate({ kind: 'highlight.update', id: highlight.id, note })}
             onDelete={() => onMutate({ kind: 'highlight.delete', id: highlight.id })}
@@ -117,7 +118,7 @@ export function ReadingNotes({
         ))}
         {mode === 'highlights' ? null : reading.notes.map((note) => (
           <NoteCard
-            key={note.id} note={note} drafts={drafts} onJump={() => onJump(note.page)}
+            key={note.id} note={note} edits={edits} onJump={() => onJump(note.page)}
             onSave={(text) => onMutate({ kind: 'note.update', id: note.id, text })}
             onDelete={() => onMutate({ kind: 'note.delete', id: note.id })}
           />

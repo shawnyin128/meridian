@@ -1,5 +1,5 @@
 import type { PaperReading, PaperRow, ReadingMutation } from '../../../shared/contract.js'
-import { useDrafts } from '../../hooks/useDrafts.js'
+import { useDrafts, type EditDraft } from '../../hooks/useDrafts.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { PaperMetadata } from '../PaperMetadata.js'
 import { ReadingNotes } from './ReadingNotes.js'
@@ -40,6 +40,7 @@ export function ReaderSidePanel({
 }) {
   const m = useMessages()
   const drafts = useDrafts()
+  const edits = useDrafts<EditDraft>()
   return (
     <aside className={tab === null ? 'reader-side collapsed' : 'reader-side'}>
       {tab === 'metadata' && paper !== null ? <PaperMetadata paper={paper} onSaved={onPaper} /> : null}
@@ -47,12 +48,12 @@ export function ReaderSidePanel({
         ? (
           <ReadingNotes
             reading={reading} currentPage={currentPage} saving={saving} onMutate={onMutate}
-            onJump={onJump} mode={tab} focusHighlightId={focusHighlightId} drafts={drafts}
+            onJump={onJump} mode={tab} focusHighlightId={focusHighlightId} drafts={drafts} edits={edits}
           />
         )
         : null}
       {tab === 'remark' && reading !== null
-        ? <ReadingRemark reading={reading} saving={saving} onSave={onSaveRemark} drafts={drafts} />
+        ? <ReadingRemark reading={reading} saving={saving} onSave={onSaveRemark} edits={edits} />
         : null}
       {tab === 'wiki' && paper !== null && reading !== null
         ? <PaperWikiIngest paper={paper} reading={reading} />

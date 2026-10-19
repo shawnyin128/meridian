@@ -6,7 +6,7 @@ import type { PaperReading } from '../../shared/contract.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { ReadingRemark } from '../components/reader/ReadingRemark.js'
-import { useDrafts } from '../hooks/useDrafts.js'
+import { useDrafts, type EditDraft } from '../hooks/useDrafts.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -17,8 +17,8 @@ const READING: PaperReading = {
 }
 
 /** The remark panel with the drafts the reader rail holds for it. */
-function Remark(props: Omit<ComponentProps<typeof ReadingRemark>, 'drafts'>) {
-  return <ReadingRemark {...props} drafts={useDrafts()} />
+function Remark(props: Omit<ComponentProps<typeof ReadingRemark>, 'edits'>) {
+  return <ReadingRemark {...props} edits={useDrafts<EditDraft>()} />
 }
 
 function setValue(input: HTMLTextAreaElement, value: string): void {

@@ -67,6 +67,10 @@ describe('ReaderSidePanel', () => {
   ))
   const field = (selector: string) => host.querySelector<HTMLTextAreaElement>(selector)!
   const type = (selector: string, value: string) => act(() => setValue(field(selector), value))
+  const saveButton = (selector: string) => field(selector).closest('article, .remark-compose')!.querySelector<HTMLButtonElement>('.btn')!
+  const escape = (selector: string) => act(() => {
+    field(selector).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+  })
 
   it('没保存的新笔记、笔记修改、高亮笔记和随笔留在各自的论文上：切右栏、收起右栏、换一篇再回来都还在，也不出现在另一篇', () => {
     show('notes', PAPER_ONE)
@@ -108,5 +112,44 @@ describe('ReaderSidePanel', () => {
     await act(async () => { host.querySelector<HTMLButtonElement>('.remark-compose .btn')!.click() })
     show('remark', { ...saved, remark: '整篇的随想' })
     expect(field(REMARK).value).toBe('整篇的随想')
+  })
+
+  it('回来时库里的文字已被改过：草稿照旧显示但标为保存被拒，接着打字也一样，保存不写入，Esc 丢掉草稿露出库里的文字', async () => {
+    show('notes', PAPER_ONE)
+    type(NOTE, '我改的笔记')
+    show('highlights', PAPER_ONE)
+    type(HIGHLIGHT_NOTE, '我写的高亮笔记')
+    show('remark', PAPER_ONE)
+    type(REMARK, '我写的随笔')
+    show(null, PAPER_ONE)
+
+    // Meanwhile an agent plugin rewrote all three in the vault.
+    const changed: PaperReading = {
+      ...PAPER_ONE, remark: '插件写的随笔',
+      highlights: [{ ...PAPER_ONE.highlights[0]!, note: '插件写的高亮笔记' }],
+      notes: [{ ...PAPER_ONE.notes[0]!, text: '插件改的笔记' }],
+    }
+    const save = vi.fn(async () => true)
+    for (const [tab, selector, typed, stored] of [
+      ['notes', NOTE, '我改的笔记', '插件改的笔记'],
+      ['highlights', HIGHLIGHT_NOTE, '我写的高亮笔记', '插件写的高亮笔记'],
+      ['remark', REMARK, '我写的随笔', '插件写的随笔'],
+    ] as const) {
+      show(tab, changed, save)
+      expect(field(selector).value).toBe(typed)
+      expect(field(selector).getAttribute('aria-invalid')).toBe('true')
+      await act(async () => { saveButton(selector).click() })
+      expect(save).not.toHaveBeenCalled()
+      expect(field(selector).value).toBe(typed)
+      // Typing on does not make the draft an edit of the newer text.
+      type(selector, `${typed}，再补一句`)
+      expect(field(selector).getAttribute('aria-invalid')).toBe('true')
+      await act(async () => { saveButton(selector).click() })
+      expect(save).not.toHaveBeenCalled()
+
+      escape(selector)
+      expect(field(selector).value).toBe(stored)
+      expect(field(selector).getAttribute('aria-invalid')).toBeNull()
+    }
   })
 })
