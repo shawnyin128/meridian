@@ -7,14 +7,10 @@
 .idea-card-content{flex:1;min-width:0}
 .idea-card-title-row{display:flex;align-items:center;gap:8px;min-width:0}
 .idea-card-title-row strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);font-size:var(--fs-base)}
-.idea-project-tag,.idea-archive-tag{flex:0 0 auto;max-width:220px;padding:2px 8px;border-radius:var(--r-full);background:var(--accent-soft);
-  color:var(--accent);font-size:var(--fs-cap);line-height:var(--lh-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.idea-project-tag.unlinked{background:var(--field);color:var(--ter)}
-.idea-project-tag.missing{background:var(--tint-bad);color:var(--bad)}
+.idea-project-tag{max-width:220px}
 .idea-card-summary{display:-webkit-box;margin:9px 0 0;overflow:hidden;color:var(--sec);font-size:var(--fs-sm);line-height:1.55;
   -webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere}
 .idea-card-meta{display:flex;min-width:0;align-items:center;gap:8px;margin-top:10px;padding-top:8px;border-top:1px solid var(--sep)}
-.idea-source-kind{flex:none;padding:1px 6px;border-radius:var(--r-xs);background:var(--tint-mut);color:var(--sec);font-size:var(--fs-cap);font-weight:600}
 .idea-card-source{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ter);font-size:var(--fs-cap)}
 .idea-card-updated{flex:none;margin-left:auto;color:var(--ter);font-size:var(--fs-cap)}
 .idea-card>.dots{margin-top:-3px}
@@ -34,7 +30,6 @@
 .idea-detail-head .btn+.btn,.idea-detail-head .btn+.panel-close{margin-left:4px}
 .idea-detail-title-row{display:flex;align-items:flex-start;gap:8px;margin-top:18px}
 .idea-detail-title-row h2{flex:1;min-width:0;margin:0;color:var(--ink);font-size:var(--fs-title);line-height:1.45;overflow-wrap:anywhere}
-.idea-archive-tag{margin-top:1px;background:var(--field);color:var(--ter)}
 .idea-detail-editor{display:grid;gap:13px;margin-top:18px}
 .idea-detail-editor label{display:grid;gap:6px;color:var(--ter);font-size:var(--fs-sm)}
 .idea-detail-editor .form-input,.idea-detail-editor .form-textarea{width:100%;border:1px solid var(--sep2);border-radius:var(--r-md);

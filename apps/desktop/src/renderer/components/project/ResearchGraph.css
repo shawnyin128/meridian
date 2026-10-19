@@ -35,9 +35,6 @@
 .glegend{display:flex;align-items:center;flex-wrap:wrap;gap:7px 16px;font-size:var(--fs-sm);color:var(--ter);margin-top:8px}
 .legend-item{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .legend-divider{width:1px;height:12px;background:var(--sep2)}
-.ld{display:inline-block;width:8px;height:8px;border-radius:50%}
-.ld.progress{background:var(--warn)}.ld.verified{background:var(--good)}
-.ld.failed{background:var(--bad)}.ld.candidate{background:var(--ter)}
 .legend-path{width:20px;height:2px;border-radius:999px;background:repeating-linear-gradient(90deg,var(--accent-solid) 0 5px,transparent 5px 9px)}
 .legend-node{width:18px;height:10px;box-sizing:border-box;border-radius:3px}
 .legend-node.current{border:1px solid var(--accent);background:var(--accent-soft)}
@@ -57,15 +54,8 @@
 .node-markdown .md table{font-size:var(--fs-sm)}
 .node-branch-groups{display:grid;gap:10px;margin-top:10px}
 .node-branch-group{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:start;gap:8px}
-.node-branch-label{padding-top:5px;color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
+.node-branch-label{padding-top:var(--sp-2);color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
 .node-branch-list{display:flex;flex-wrap:wrap;gap:6px}
-.node-branch{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%;border:1px solid var(--sep2);
-  border-radius:999px;background:var(--field);color:var(--sec);font:inherit;font-size:var(--fs-sm);padding:4px 9px;cursor:pointer}
-.node-branch:hover{border-color:var(--sep-strong);color:var(--ink);background:var(--hover)}
-.node-branch-dot{width:6px;height:6px;border-radius:50%;background:var(--warn);flex:0 0 auto}
-.node-branch-group.useful .node-branch-dot{background:var(--good)}
-.node-branch-group.dead .node-branch-dot{background:var(--bad)}
-.node-branch-group.candidate .node-branch-dot{background:var(--ter)}
 .node-tasks{--structured-list-row-height:38px}
 .node-task-row{display:flex;align-items:center;gap:8px;min-height:38px;padding:8px 2px}
 .node-task-row>.fade-text{flex:1;min-width:0}

@@ -34,6 +34,7 @@ import {
 import { AddAction } from '../AddAction.js'
 import { IconButton } from '../IconButton.js'
 import { PanelClose } from '../PanelClose.js'
+import { CountBadge, Tag, tagClass } from '../Tag.js'
 import { DetailPanel } from '../DetailPanel.js'
 import { ActionMenu, MenuRadioGroup, MenuRadioItem, MenuSeparator } from '../ActionMenu.js'
 import { SegmentedControl } from '../SegmentedControl.js'
@@ -233,7 +234,7 @@ function TagAdd({ field, values, onAdd, onError }: {
         )
         : (
           <AddAction
-            variant="chip" className="tagchip tagadd" title={m.papers.tags.add}
+            variant="chip" className={tagClass('ghost', 'chip', 'tagchip tagadd')} title={m.papers.tags.add}
             onClick={(e) => { e.stopPropagation(); setOpen(true) }}
           />
         )}
@@ -251,7 +252,7 @@ function TagAdd({ field, values, onAdd, onError }: {
                 ? (
                   <div className="rrow mk" onClick={() => draft.submit(() => onAdd(typed))}>
                     <IconPlus />
-                    <span className="tagchip">{typed}</span>
+                    <Tag shape="chip" className="tagchip">{typed}</Tag>
                   </div>
                 )
                 : null}
@@ -264,7 +265,7 @@ function TagAdd({ field, values, onAdd, onError }: {
 
 /**
  * The reading status in a Status cell: clicking it opens the four statuses, and picking one writes it
- * back to this paper. The styling is the demo's .stchip and the popover it opens; Radix owns opening
+ * back to this paper. The status is a neutral chip tag and the popover is the demo's; Radix owns opening
  * and closing. The "Reading" status is highlighted in the table, as in the demo.
  */
 function ReadStateChip({ current, onPick }: {
@@ -275,7 +276,7 @@ function ReadStateChip({ current, onPick }: {
     <ActionMenu
       trigger={(
         <button
-          type="button" className={current === READING_PAPER ? 'stchip on' : 'stchip'}
+          type="button" className={tagClass('neutral', 'chip', current === READING_PAPER ? 'stchip on' : 'stchip')}
           onClick={(e) => e.stopPropagation()}
         >{current}</button>
       )}
@@ -649,7 +650,7 @@ export function PaperTable() {
       if (real > 0) {
         const badge = document.createElement('button')
         badge.type = 'button'
-        badge.className = 'morebadge'
+        badge.className = tagClass('neutral', 'label', 'morebadge')
         const setExpanded = (expanded: boolean) => {
           ci.dataset['expanded'] = String(expanded)
           ci.classList.toggle('chip-expanded', expanded)
@@ -1003,7 +1004,7 @@ export function PaperTable() {
     const editing = editingCell?.id === p.id && editingCell.key === column.key
     if (!editing) {
       if (column.type === 'text') return <span className="ci">{values[0] ?? ''}</span>
-      return <span className="ci">{values.map((v) => <span className="tagchip" key={v}>{v}</span>)}</span>
+      return <span className="ci">{values.map((v) => <Tag shape="chip" className="tagchip" key={v}>{v}</Tag>)}</span>
     }
     if (column.type === 'text') {
       return (
@@ -1078,7 +1079,7 @@ export function PaperTable() {
     return (
       <td key={k}>
         <span className="ci">
-          {p.topics.map((v) => <span className="tagchip" key={v}>{v}</span>)}
+          {p.topics.map((v) => <Tag shape="chip" className="tagchip" key={v}>{v}</Tag>)}
           <TagAdd field={k} values={p.topics} onError={reportError} onAdd={(v) => addTopic(p, v)} />
         </span>
       </td>
@@ -1330,7 +1331,7 @@ export function PaperTable() {
                           `${plainTitle(f.newestTitle).slice(0, 44)}${plainTitle(f.newestTitle).length > 44 ? '…' : ''}`,
                         )}
                       </span>
-                      <span className="n">{f.count}</span>
+                      <CountBadge className="n" count={f.count} />
                     </button>
                   ))}
                   <div className="lmore">{m.papers.groupIndex.pickToView(labelOf(group))}</div>

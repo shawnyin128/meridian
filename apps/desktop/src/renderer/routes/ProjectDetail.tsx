@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type {
-  ProjectDetail as Project, RelationGroup, ResearchGraph as ResearchGraphData, ResearchIdea,
+  ProjectDetail as Project, ProjectWorkspace, RelationGroup, ResearchGraph as ResearchGraphData, ResearchIdea,
   ResearchIdeaGraphPlacement, TaskWindow,
 } from '../../shared/contract.js'
 import { projectControlState } from '../../shared/project-control.js'
@@ -56,6 +56,8 @@ import {
 } from '../components/PageShell.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
 import { plainTitle } from '../components/paper/paper-text.js'
+import { StatusDot } from '../components/StatusDot.js'
+import { Tag } from '../components/Tag.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import './shell.css'
@@ -63,6 +65,26 @@ import './ProjectDetail.css'
 
 /** The Research log's three views: activity, conclusions, and the research graph. */
 export type RecordTab = 'tl' | 'concl' | 'graph'
+
+/**
+ * The bound workspace's name as the button that changes the connection, after a dot that names the
+ * connection's state: in words when the workspace cannot be reached, as its tooltip when it is connected.
+ */
+export function WorkspaceRoot({ state, name, onOpen }: {
+  state: ProjectWorkspace['state']
+  name: string
+  onOpen: () => void
+}) {
+  const m = useMessages()
+  return (
+    <button className="workspace-root" onClick={onOpen}>
+      <StatusDot
+        tone={state === 'ready' ? 'good' : 'bad'} label={m.project.workspace.state[state]} labelHidden={state === 'ready'}
+      />
+      <span className="workspace-name">{name}</span>
+    </button>
+  )
+}
 
 export function ProjectIdeaPanel({
   idea, graph, workspaceManaged, onClose, onOpenIdea, onCreateNode, onLinkNode,
@@ -92,8 +114,8 @@ export function ProjectIdeaPanel({
       ><span className="node-document-title">{idea.title}</span>
       </SectionHeading>
       <div className="project-idea-detail-meta">
-        <span className="project-idea-detail-kind">{m.project.idea.kind}</span>
-        {idea.archived ? <span className="project-idea-state">{m.common.archived}</span> : null}
+        <Tag tone="accent">{m.project.idea.kind}</Tag>
+        {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
         <button className="btn sm project-idea-open-idea" onClick={onOpenIdea}>{m.project.idea.openIdea}</button>
       </div>
       <SectionHeading variant="rail">{m.project.sections.content}</SectionHeading>
@@ -840,7 +862,7 @@ export function ProjectDetail({
                             : (
                               <NodeTag label={ideaNode.label} mode={nodeMode(ideaNode)} />
                             )}
-                          {idea.archived ? <span className="project-idea-state">{m.common.archived}</span> : null}
+                          {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
                         </span>
                         <span className="project-idea-source" title={source}>{m.project.idea.sourceTag(source)}</span>
                       </StructuredRow>
@@ -1034,10 +1056,10 @@ export function ProjectDetail({
                       )
                       : (
                         <div className="pv workspace-field" data-dots-row="" title={project.workspace.issue ?? project.workspace.root}>
-                          <button
-                            className={`workspace-root ${project.workspace.state}`}
-                            onClick={openWorkspace}
-                          >{workspaceName ?? project.workspace.root}</button>
+                          <WorkspaceRoot
+                            state={project.workspace.state} name={workspaceName ?? project.workspace.root}
+                            onOpen={openWorkspace}
+                          />
                           <DotsMenu>
                             <MenuItem onSelect={refreshWorkspace}>{m.project.identity.refreshWorkspace}</MenuItem>
                             <MenuItem onSelect={openWorkspace}>

@@ -29,7 +29,6 @@ export const project = {
       note: 'Note',
       project: 'Project',
     },
-    who: { agent: 'agent', user: 'you' },
     goToGraph: (label: string) => `Open "${label}" in the research graph`,
   },
   conclusions: {
@@ -200,6 +199,7 @@ export const project = {
     connect: 'Connect',
     connected: 'Project workspace connected',
     sshConnected: 'SSH workspace connected',
+    state: { ready: 'Connected', missing: 'Not found', invalid: 'Invalid' },
   },
   control: {
     researchNode: (label: string) => `Research node · ${label}`,

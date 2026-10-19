@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
 import { useFormat } from '../lib/format.js'
+import { Tag } from './Tag.js'
 import './DateTimeDisplay.css'
 
+/** A date, or `children` such as a range or a time, as a neutral chip tag; `className` places it. */
 export function DateChip({ date, children, className = '' }: {
   date?: string
   children?: ReactNode
@@ -9,9 +11,9 @@ export function DateChip({ date, children, className = '' }: {
 }) {
   const fmt = useFormat()
   return (
-    <span className={`date-chip${className ? ` ${className}` : ''}`}>
+    <Tag shape="chip" className={`date-chip${className ? ` ${className}` : ''}`}>
       {children ?? (date ? fmt.date(date) : '')}
-    </span>
+    </Tag>
   )
 }
 

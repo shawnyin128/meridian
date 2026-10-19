@@ -1299,7 +1299,7 @@ describe('vault store on the aggregation layout', () => {
     expect(plan.tasks.map((task) => task.origin)).toEqual(['agent', 'agent'])
     const changes = store.listChanges().slice(0, 2)
     expect(changes.map((c) => [c.title, c.source, c.undoable])).toEqual([
-      ['项目「agent 任务」· agent 新增任务', 'Meridian', true], ['项目「agent 任务」· agent 新增任务', 'Meridian', true],
+      ['项目「agent 任务」· 新增任务', 'Meridian', true], ['项目「agent 任务」· 新增任务', 'Meridian', true],
     ])
 
     store.absorbAgentTasks(id)

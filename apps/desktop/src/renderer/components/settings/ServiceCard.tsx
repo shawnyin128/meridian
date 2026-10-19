@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { FormButton } from '../FormControls.js'
+import { Tag } from '../Tag.js'
 import './ServiceCard.css'
 
 /** Card container for one external service's settings: a status head, field rows, and a foot with actions. */
@@ -23,9 +24,9 @@ export function ServiceStatus({
         <strong>{title}</strong>
         <p>{description}</p>
       </div>
-      <span className={configured ? 'service-status-pill ready' : 'service-status-pill'}>
+      <Tag tone={configured ? 'good' : 'neutral'} className="service-status-pill">
         {configured ? configuredLabel : notConfiguredLabel}
-      </span>
+      </Tag>
     </div>
   )
 }

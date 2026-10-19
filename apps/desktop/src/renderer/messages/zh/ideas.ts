@@ -6,7 +6,7 @@ export const ideas = {
   sort: '排序',
   sortUpdated: '按更新时间',
   empty: '还没有进行中的想法。在论文阅读或对话中，把你明确整理过的研究方向存到这里。',
-  sourceKind: { chat: '对话', paperReading: '论文阅读', agent: 'coding agent' },
+  sourceKind: { chat: '对话', paperReading: '论文阅读' },
   link: {
     none: '未关联项目',
     unavailable: '关联项目不可用',

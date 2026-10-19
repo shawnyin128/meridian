@@ -16,7 +16,9 @@ import { DotsMenu } from '../FieldPickers.js'
 import { FormInput, FormSelect, FormTextarea } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
+import { AgentLabel } from '../SourceLabel.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Tag } from '../Tag.js'
 import { WikiFormDialog, WikiFormField } from './WikiFormDialog.js'
 import { PaperText } from '../paper/PaperText.js'
 import './WikiClaims.css'
@@ -55,7 +57,7 @@ function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: 
     case 'experiment':
       return (
         <>
-          <span className="wkclaim-kind">{c.experiment}</span>
+          <Tag>{c.experiment}</Tag>
           <button type="button" className="wkclaim-link" onClick={() => links.openProject(item.project)}>{title}</button>
           <span className="wkclaim-point">{item.node ?? item.conclusion}</span>
           {item.text ? <span className="wkclaim-note">{item.text}</span> : null}
@@ -64,7 +66,7 @@ function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: 
     case 'source':
       return (
         <>
-          <span className="wkclaim-kind">{c.evidence}</span>
+          <Tag>{c.evidence}</Tag>
           <button
             type="button" className="wkclaim-link"
             onClick={() => links.openReader(item.paper, { page: item.page, ...(item.highlight === undefined ? {} : { highlight: item.highlight }) })}
@@ -75,7 +77,7 @@ function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: 
     case 'note':
       return (
         <>
-          <span className="wkclaim-kind">{c.note}</span>
+          <Tag>{c.note}</Tag>
           <button
             type="button" className="wkclaim-link"
             onClick={() => links.openReader(item.paper, item.highlight === undefined ? { panel: 'notes', note: item.note! } : { highlight: item.highlight })}
@@ -86,7 +88,7 @@ function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: 
     case 'claim':
       return (
         <>
-          {item.kind === 'wiki' ? <span className="wkclaim-kind">{c.evidence}</span> : null}
+          {item.kind === 'wiki' ? <Tag>{c.evidence}</Tag> : null}
           <button type="button" className="wkclaim-link" data-wk={item.ref.split('#')[0]} onClick={() => links.openPage(item.ref.split('#')[0]!)}>
             {title}
           </button>
@@ -95,7 +97,7 @@ function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: 
     case 'personal':
       return (
         <>
-          <span className="wkclaim-kind">{c.personal}</span>
+          <Tag>{c.personal}</Tag>
           {item.text === '' ? null : <span className="wkclaim-note">{item.text}</span>}
         </>
       )
@@ -103,11 +105,11 @@ function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: 
 }
 
 /**
- * The claims area of an aggregation page: each claim with its version, date and author, its evidence
- * (experiments open the project, source quotes open the reader at their page), its open conflicts with
- * the other side linked, and its earlier versions folded away. The user adds, revises, marks and
- * resolves conflicts on, and retracts claims through `onApply`, which submits one titled list of ops
- * and resolves whether it was written.
+ * The claims area of an aggregation page: each claim with its version and date, the agent label when an
+ * agent wrote it, its evidence (experiments open the project, source quotes open the reader at their
+ * page), its open conflicts with the other side linked, and its earlier versions folded away. The user
+ * adds, revises, marks and resolves conflicts on, and retracts claims through `onApply`, which submits
+ * one titled list of ops and resolves whether it was written.
  */
 export function WikiClaims({ page, pending, links, onApply }: {
   page: WikiAggregation
@@ -216,7 +218,6 @@ export function WikiClaims({ page, pending, links, onApply }: {
   }
 
   const ready = submission()
-  const who = (by: string): string => (by === HUMAN_PRODUCER ? c.me : c.agent)
   const toggleHistory = (id: string) => setHistory((shown) => {
     const next = new Set(shown)
     if (!next.delete(id)) next.add(id)
@@ -239,6 +240,7 @@ export function WikiClaims({ page, pending, links, onApply }: {
               >
                 <div className="wkclaim-head">
                   <span className="wkclaim-text">{claim.text}</span>
+                  {claim.by === HUMAN_PRODUCER ? null : <AgentLabel />}
                   <DotsMenu label={c.actionsLabel(claim.text)}>
                     <MenuItem disabled={pending} onSelect={() => open({ kind: 'revise', claim })}>{c.revise}</MenuItem>
                     <MenuItem disabled={pending} onSelect={() => open({ kind: 'conflict', claim })}>{c.markConflict}</MenuItem>
@@ -248,7 +250,6 @@ export function WikiClaims({ page, pending, links, onApply }: {
                 <div className="wkclaim-meta">
                   <span className="wkclaim-version">v{claim.version}</span>
                   <span>{fmt.date(claim.since)}</span>
-                  <span className={claim.by === HUMAN_PRODUCER ? 'wkclaim-by' : 'wkclaim-by wkclaim-by--agent'}>{who(claim.by)}</span>
                 </div>
                 <ul className="wkclaim-lines">
                   {claim.evidence.map((e, at) => (
@@ -256,7 +257,7 @@ export function WikiClaims({ page, pending, links, onApply }: {
                   ))}
                   {claim.conflicts.map((x) => (
                     <li key={`conflict ${x.id}`} className="wkclaim-conflict">
-                      <span className="wkclaim-kind wkclaim-kind--conflict">{c.conflict}</span>
+                      <Tag tone="bad">{c.conflict}</Tag>
                       <Side item={x.against} title={x.title} links={links} />
                       <span className="wkclaim-note">{x.note}</span>
                       <button

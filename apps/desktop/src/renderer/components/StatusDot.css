@@ -1,0 +1,9 @@
+.status-dot{display:inline-block;flex:none;border-radius:var(--r-full)}
+.status-dot--sm{width:var(--sp-6);height:var(--sp-6)}
+.status-dot--md{width:var(--sp-8);height:var(--sp-8)}
+.status-dot--good{background:var(--good)}
+.status-dot--warn{background:var(--warn)}
+.status-dot--bad{background:var(--bad)}
+.status-dot--neutral{background:var(--ter)}
+.status-dot-labelled{display:inline-flex;align-items:center;gap:var(--sp-6);min-width:0}
+.status-dot-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

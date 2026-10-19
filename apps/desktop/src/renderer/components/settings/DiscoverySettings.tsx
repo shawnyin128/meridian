@@ -6,6 +6,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { useToast, useVaultRevision } from '../../shell/AppShell.js'
 import { SectionHeading } from '../PageShell.js'
 import { PaperText } from '../paper/PaperText.js'
+import { Tag } from '../Tag.js'
 
 function resultNote(result: DiscoveryFetchResult, m: Catalog): string {
   const parts = [
@@ -83,7 +84,7 @@ export function DiscoverySettings() {
               <div className={`direction-row${intent.enabled ? '' : ' disabled'}`} key={intent.id}>
                 <div className="direction-main">
                   <div className="direction-name">
-                    {intent.core ? <span className="direction-core">{m.settings.discovery.core}</span> : null}
+                    {intent.core ? <Tag tone="accent">{m.settings.discovery.core}</Tag> : null}
                     <span>{intent.label}</span>
                   </div>
                   <div className="direction-seeds">

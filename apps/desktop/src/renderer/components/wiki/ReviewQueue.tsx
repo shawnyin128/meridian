@@ -11,6 +11,8 @@ import { EmptyState } from '../EmptyState.js'
 import { FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { AgentLabel } from '../SourceLabel.js'
+import { CountBadge, Tag, TagButton } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
 import './ReviewQueue.css'
@@ -21,7 +23,7 @@ export function ReviewEntry({ count, onOpen }: { count: number; onOpen: () => vo
   return (
     <button type="button" className="btn review-entry" onClick={onOpen}>
       {m.wiki.queue.entry}
-      {count > 0 ? <span className="review-entry-count">{count}</span> : null}
+      {count > 0 ? <CountBadge count={count} strong /> : null}
     </button>
   )
 }
@@ -71,7 +73,7 @@ function linesOf(op: ProposalOp, p: WikiProposal, w: Catalog['wiki']): string[] 
 }
 
 /**
- * The review queue: every queued agent proposal with who made it, what prompted it, its change lines
+ * The review queue: every queued agent proposal with the agent label, what prompted it, its change lines
  * and the pages it would change, flagged when a page it rests on changed since or when it cites a
  * project conclusion the user has not verified (each opens through `onOpenConclusion`); the user
  * applies it or declines it with an optional reason. Decided proposals follow under their own heading,
@@ -95,13 +97,12 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
 
   const source = (p: WikiProposal): string => {
     if (p.proposal === null) return fmt.date(dayOf(p.received))
-    const { producer, trigger } = p.proposal
-    const by = producer.kind === 'ai' ? producer.id : m.wiki.claims.me
+    const { trigger } = p.proposal
     const why = trigger.kind !== 'experiment' ? null : r.trigger(
       p.titles[`projects/${trigger.project}`] ?? trigger.project,
       trigger.node === undefined ? null : p.titles[`projects/${trigger.project}#${trigger.node}`] ?? trigger.node,
     )
-    return [by, why, fmt.date(dayOf(p.received))].filter((part) => part !== null).join(' · ')
+    return [why, fmt.date(dayOf(p.received))].filter((part) => part !== null).join(' · ')
   }
   const lines = (p: WikiProposal): string[] => (p.proposal?.ops ?? []).flatMap((op) => linesOf(op, p, m.wiki))
 
@@ -115,8 +116,9 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
               <StructuredRow key={p.id} className="review-row" data-proposal={p.id}>
                 <div className="review-head">
                   <span className="review-title">{p.proposal ? <PaperText text={p.proposal.title} /> : r.unreadable}</span>
-                  {p.staleNow ? <span className="stag pend">{r.stale}</span> : null}
-                  {(p.unverified ?? []).length > 0 ? <span className="stag pend">{r.unverified}</span> : null}
+                  {p.staleNow ? <Tag tone="warn">{r.stale}</Tag> : null}
+                  {(p.unverified ?? []).length > 0 ? <Tag tone="warn">{r.unverified}</Tag> : null}
+                  {p.proposal?.producer.kind === 'ai' ? <AgentLabel /> : null}
                 </div>
                 <div className="review-meta">{source(p)}</div>
                 {p.proposal?.rationale ? <p className="review-note">{p.proposal.rationale}</p> : null}
@@ -129,9 +131,9 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                     {p.unverified!.map((ref) => {
                       const [project, conclusion] = ref.slice('projects/'.length).split('#') as [string, string]
                       return (
-                        <button type="button" className="tagchip" key={ref} onClick={() => onOpenConclusion(project, conclusion)}>
+                        <TagButton shape="chip" className="tagchip" key={ref} onClick={() => onOpenConclusion(project, conclusion)}>
                           {p.titles[ref] ?? conclusion}
-                        </button>
+                        </TagButton>
                       )
                     })}
                   </div>
@@ -140,9 +142,9 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                 <div className="wkrel">
                   <span className="rl">{r.pages}</span>
                   {p.pages.map((id) => (
-                    <button type="button" className="tagchip" data-wk={id} key={id} onClick={() => onOpenPage(id)}>
+                    <TagButton shape="chip" className="tagchip" data-wk={id} key={id} onClick={() => onOpenPage(id)}>
                       {id.startsWith(PAPER_PAGE) ? <PaperText text={p.titles[id] ?? id} /> : p.titles[id] ?? id}
-                    </button>
+                    </TagButton>
                   ))}
                 </div>
                 <div className="review-actions">
@@ -184,10 +186,11 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                 <StructuredRow key={p.id} className="review-row" data-proposal={p.id}>
                   <div className="review-head">
                     <span className="review-title">{p.proposal ? <PaperText text={p.proposal.title} /> : r.unreadable}</span>
-                    <span className={`stag ${p.status === 'applied' ? 'ok' : 'mut'}`}>
+                    <Tag tone={p.status === 'applied' ? 'good' : 'neutral'}>
                       {p.status === 'applied' ? r.applied
                         : p.reason?.kind === 'declined' ? r.rejected : `${r.rejected} · ${r.reasonKind[p.reason?.kind ?? 'invalid']}`}
-                    </span>
+                    </Tag>
+                    {p.proposal?.producer.kind === 'ai' ? <AgentLabel /> : null}
                   </div>
                   <div className="review-meta">
                     {[source(p), p.decided === null ? null : fmt.date(dayOf(p.decided.at))].filter((part) => part !== null).join(' → ')}

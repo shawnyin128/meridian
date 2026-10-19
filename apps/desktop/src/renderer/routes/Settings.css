@@ -62,8 +62,6 @@
 .storage-head>div{flex:1;min-width:0}
 .storage-head h3{margin:0;font-size:var(--fs-title);line-height:var(--lh-tight)}
 .storage-head p{margin:5px 0 0;color:var(--sec);font-size:var(--fs-sm);line-height:var(--lh-ui)}
-.storage-source{flex-shrink:0;border-radius:var(--r-full);padding:2px 8px;background:var(--field);
-  color:var(--ter);font-size:var(--fs-cap)}
 .storage-loading{padding:24px 0;color:var(--ter);font-size:var(--fs-sm)}
 .storage-root{display:grid;grid-template-columns:64px minmax(0,1fr);gap:12px;margin-top:16px;
   padding:10px 0;border-top:1px solid var(--sep2);border-bottom:1px solid var(--sep2);align-items:center}

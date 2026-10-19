@@ -5,6 +5,7 @@ import { AddAction } from './AddAction.js'
 import { IconButton } from './IconButton.js'
 import { IconCross } from './icons.js'
 import { PickerPopover } from './PickerPopover.js'
+import { tagClass } from './Tag.js'
 import { TitleNote } from './TitleNote.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
@@ -56,7 +57,7 @@ export function ProjectChips({ paper, onError }: {
   return (
     <>
       {paper.projects.map((linked) => (
-        <span className="tagchip" key={linked.id} data-project={linked.id}>{linked.name}
+        <span className={tagClass('neutral', 'chip', 'tagchip')} key={linked.id} data-project={linked.id}>{linked.name}
           <IconButton
             label={m.common.removeLink} size="inline" className="rx"
             onClick={(event) => {
@@ -81,7 +82,7 @@ export function ProjectChips({ paper, onError }: {
           )
           : (
             <AddAction
-              variant="chip" className="tagchip tagadd" title={m.research.chips.addProject}
+              variant="chip" className={tagClass('ghost', 'chip', 'tagchip tagadd')} title={m.research.chips.addProject}
               onClick={(event) => { event.stopPropagation(); setOpen(true) }}
             />
           )}

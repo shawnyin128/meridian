@@ -11,17 +11,18 @@ import {
 } from '../components/PageShell.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { PaperText } from '../components/paper/PaperText.js'
+import { SourceLabel } from '../components/SourceLabel.js'
+import { Tag } from '../components/Tag.js'
 import { useFormat } from '../lib/format.js'
 import './shell.css'
 import './Feed.css'
 
 /**
- * Feed sources: the icon identifies the source, and only the icon is colored. Copied entry by
- * entry from the demo's FSRC; names come from the catalog.
+ * Feed source icons, drawn in the source label's colour. Copied entry by entry from the demo's FSRC;
+ * names come from the catalog.
  */
-const FSRC: Record<FeedSource, { color: string; icon: ReactNode }> = {
+const FSRC: Record<FeedSource, { icon: ReactNode }> = {
   steward: {
-    color: 'var(--sec)',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
         <path d="M12 3l1.8 4.6 4.6 1.8-4.6 1.8L12 16l-1.8-4.8L5.6 9.4l4.6-1.8z" />
@@ -30,7 +31,6 @@ const FSRC: Record<FeedSource, { color: string; icon: ReactNode }> = {
     ),
   },
   me: {
-    color: 'var(--warn)',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
         <circle cx="12" cy="8" r="4" />
@@ -39,7 +39,6 @@ const FSRC: Record<FeedSource, { color: string; icon: ReactNode }> = {
     ),
   },
   lab: {
-    color: 'var(--good)',
     icon: (
       <svg
         viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
@@ -51,7 +50,6 @@ const FSRC: Record<FeedSource, { color: string; icon: ReactNode }> = {
     ),
   },
   inbox: {
-    color: 'var(--ter)',
     icon: (
       <svg
         viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
@@ -77,7 +75,7 @@ function Body({ body, onOpenConflict }: {
         <div className="bh">{body.heading}</div>
         {body.items.map((item) => (
           <div className="bitem" key={item.id}>
-            <span className="tag conf">{item.tag}</span>
+            <Tag tone="bad">{item.tag}</Tag>
             <span className="t">{item.text}</span>
             {/* The demo's briefConf: this button opens a chat about the conflicting conclusions. */}
             <span className="go">
@@ -99,22 +97,21 @@ function Body({ body, onOpenConflict }: {
   )
 }
 
-/** One feed entry: the source icon and name, the time at the top right, and the body. */
+/** One feed entry: its source label with the source icon, the time at the top right, and the body. */
 function Item({ entry, nowMs, onOpenConflict }: {
   entry: FeedEntry; nowMs: number; onOpenConflict: () => void
 }) {
   const m = useMessages()
   const fmt = useFormat()
   const today = useToday()
-  const src = FSRC[entry.source]
   const time = entry.createdAt === undefined ? entry.time : fmt.activityTime(entry.createdAt, today, nowMs)
   return (
     <div className="mwrap">
       <div className="msg">
         <div className="fitem" data-src={entry.source}>
           <div className="fsrc">
-            <span className="fic" style={{ color: src.color }}>{src.icon}</span>
-            {m.feed.sources[entry.source]}<span className="ftime">{time}</span>
+            <SourceLabel lead={<span className="fic">{FSRC[entry.source].icon}</span>}>{m.feed.sources[entry.source]}</SourceLabel>
+            <span className="ftime">{time}</span>
           </div>
           <div className="fbody"><Body body={entry.body} onOpenConflict={onOpenConflict} /></div>
         </div>

@@ -21,15 +21,14 @@ import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import type { Catalog } from '../messages/catalog.js'
 import { plainTitle } from '../components/paper/paper-text.js'
+import { AgentLabel, SourceLabel } from '../components/SourceLabel.js'
+import { Tag } from '../components/Tag.js'
 import './Ideas.css'
 
 const sourceLabel = (idea: ResearchIdea) => idea.source.paperTitle === undefined
   ? plainTitle(idea.source.chatTitle)
   : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
 
-const sourceKind = (idea: ResearchIdea, m: Catalog) => idea.source.agent === true
-  ? m.ideas.sourceKind.agent
-  : idea.source.paperTitle === undefined ? m.ideas.sourceKind.chat : m.ideas.sourceKind.paperReading
 
 function linkedProjectLabel(idea: ResearchIdea, linked: ProjectSummary | undefined, m: Catalog): string {
   if (idea.project === undefined) return m.ideas.link.none
@@ -80,14 +79,21 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, dragProps, dropClassNa
       <div className="idea-card-content">
         <div className="idea-card-title-row">
           <strong>{idea.title}</strong>
-          <span className={`idea-project-tag${linked === undefined ? ' unlinked' : ''}${idea.project !== undefined && linked === undefined ? ' missing' : ''}`}>
-            {linkedProjectLabel(idea, linked, m)}
-          </span>
+          <Tag
+            tone={linked !== undefined ? 'accent' : idea.project === undefined ? 'neutral' : 'bad'}
+            className="idea-project-tag"
+          >{linkedProjectLabel(idea, linked, m)}</Tag>
         </div>
         <p className="idea-card-summary">{idea.body}</p>
         <div className="idea-card-meta">
-          <span className="idea-source-kind">{sourceKind(idea, m)}</span>
           <span className="idea-card-source" title={sourceLabel(idea)}>{m.project.idea.sourceTag(sourceLabel(idea))}</span>
+          {idea.source.agent === true
+            ? <AgentLabel className="idea-source-kind" />
+            : (
+              <SourceLabel className="idea-source-kind">
+                {idea.source.paperTitle === undefined ? m.ideas.sourceKind.chat : m.ideas.sourceKind.paperReading}
+              </SourceLabel>
+            )}
           <span className="idea-card-updated">{m.ideas.updated(fmt.date(idea.updated))}</span>
         </div>
       </div>
@@ -179,7 +185,7 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
           <>
             <div className="idea-detail-title-row">
               <h2>{idea.title}</h2>
-              {idea.archived ? <span className="idea-archive-tag">{m.common.archived}</span> : null}
+              {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
             </div>
             <section className="idea-detail-section">
               <h3>{m.ideas.bodyLabel}</h3>

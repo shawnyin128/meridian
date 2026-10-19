@@ -39,6 +39,12 @@ export const SEARCH_LIMIT = 8
 /** The `by` a claim, evidence item or conflict carries when the user wrote it in the app. */
 export const HUMAN_PRODUCER = '我'
 
+/** The change-log source of an agent's Wiki proposal that reading notes prompted. */
+export const NOTES_PROPOSAL = '笔记'
+
+/** The change-log source of an agent's Wiki proposal that an experiment prompted. */
+export const LAB_PROPOSAL = '实验'
+
 /** Wiki paper-page ID prefix followed by the paper-table row ID. */
 export const PAPER_PAGE = 'papers/'
 

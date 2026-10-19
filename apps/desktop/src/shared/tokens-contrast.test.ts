@@ -170,6 +170,8 @@ const PAIRS: Pair[] = [
   { theme: 'dark', label: '文本选中底上的正文', fg: '--ink', ground: ['--content', '--sel'], min: TEXT },
   { theme: 'light', label: '中性标签的字', fg: '--sec', ground: ['--content', '--tint-mut'], min: TEXT },
   { theme: 'dark', label: '中性标签的字', fg: '--sec', ground: ['--content', '--tint-mut'], min: TEXT },
+  { theme: 'light', label: '中性标签的字在悬停的卡片行上', fg: '--sec', ground: ['--card', '--hover', '--chip'], min: TEXT },
+  { theme: 'dark', label: '中性标签的字在悬停的卡片行上', fg: '--sec', ground: ['--card', '--hover', '--chip'], min: TEXT },
   // Indicators.
   { theme: 'light', label: '焦点环在内容面', fg: '--ring', ground: ['--content'], min: MARK },
   { theme: 'light', label: '焦点环在窗口底', fg: '--ring', ground: ['--window'], min: MARK },
@@ -242,6 +244,21 @@ describe('tokens.css 的决定值', () => {
     const rules = tokens.replace(/\/\*[\s\S]*?\*\//g, '')
     const reduced = rules.slice(rules.indexOf('@media (prefers-reduced-motion:reduce){'))
     expect(reduced.slice(0, reduced.indexOf('\n}'))).toContain(':not(.ring.spin),::before,::after{animation:none!important}')
+  })
+
+  it('中性标签的底在悬停的行上仍高出一级:亮色更深、暗色更亮,对比至少 1.1:1', () => {
+    const CHIP = '--chip'
+    const grounds = [['--content'], ['--card'], ['--window', '--sidebar']]
+    for (const theme of ['light', 'dark'] as const) {
+      for (const ground of grounds) {
+        const row = flatten(theme, [...ground, '--hover'])
+        const chip = flatten(theme, [...ground, '--hover', CHIP])
+        const away = theme === 'light' ? luminance(chip) < luminance(row) : luminance(chip) > luminance(row)
+        const label = `${theme} ${ground.join(' + ')} 悬停行上的 ${CHIP}`
+        expect(away, `${label} 朝错了方向`).toBe(true)
+        expect(contrast(chip, row), label).toBeGreaterThanOrEqual(1.1)
+      }
+    }
   })
 
   it('亮色的 --info / --tint-info 是青色,且与 --link 解出来的颜色分开', () => {

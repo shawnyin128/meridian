@@ -4,17 +4,19 @@ import { useMessages } from '../../messages/useMessages.js'
 import { DateChip } from '../DateTimeDisplay.js'
 import { StructuredRow } from '../StructuredList.js'
 import { FadeText } from '../FadeText.js'
+import { AgentLabel } from '../SourceLabel.js'
+import { Tag, type TagTone } from '../Tag.js'
 import { NodeTag } from './NodeTag.js'
 import './ProjectSignals.css'
 
-/** Stable type column shared by project and overview decision rows and research records. */
+/** Stable type column shared by project and overview decision rows and research records; `mut` is neutral. */
 export function ProjectSignalKind({ tone, children }: {
-  tone: ProjectDecisionItem['tone'] | 'info' | 'good' | 'accent'
+  tone: ProjectDecisionItem['tone'] | TagTone
   children: string
 }) {
   return (
     <span className="project-signal-kind">
-      <span className={`ak ${tone}`}>{children}</span>
+      <Tag tone={tone === 'mut' ? 'neutral' : tone}>{children}</Tag>
     </span>
   )
 }
@@ -28,14 +30,26 @@ export function ProjectSignalDate({ date }: { date: string | undefined }) {
   )
 }
 
-/** Inline `agent` tag before a compact one-line record, used where a full row would not fit. */
-export function EventText({ text, origin }: { text: string; origin?: 'agent' | 'user' | undefined }) {
-  return origin === 'agent' ? <><span className="agtag">agent</span>{text}</> : <>{text}</>
+/**
+ * A compact one-line record, used where a full row would not fit: its text, fading when it does not
+ * fit, then the agent label when an agent wrote it. `className` places and sizes the line.
+ */
+export function EventText({ text, origin, className }: {
+  text: string
+  origin?: 'agent' | 'user' | undefined
+  className?: string
+}) {
+  return (
+    <span className={`event-text${className ? ` ${className}` : ''}`} title={text}>
+      <FadeText>{text}</FadeText>
+      {origin === 'agent' ? <AgentLabel /> : null}
+    </span>
+  )
 }
 
-/** The chip tone of each research-record kind. */
-const RECORD_TONE: Record<EventKind, 'info' | 'warn' | 'good' | 'accent' | 'mut'> = {
-  start: 'info', reopen: 'warn', result: 'good', decision: 'accent', complete: 'good', note: 'mut', project: 'mut',
+/** The tag tone of each research-record kind. */
+export const RECORD_TONE: Record<EventKind, TagTone> = {
+  start: 'info', reopen: 'warn', result: 'good', decision: 'accent', complete: 'good', note: 'neutral', project: 'neutral',
 }
 
 /**
@@ -76,7 +90,7 @@ export function ProjectEventRow({
           {detail === undefined ? null : <span className="record-detail"> · {detail}</span>}
         </FadeText>
       </span>
-      <span className="record-who">{m.project.records.who[origin]}</span>
+      <span className="record-who">{origin === 'agent' ? <AgentLabel /> : null}</span>
     </StructuredRow>
   )
 }

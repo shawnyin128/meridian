@@ -8,7 +8,7 @@ export const ideas = {
   sort: 'Sort',
   sortUpdated: 'By updated',
   empty: 'No active ideas yet. Save a promising direction while reading a paper or chatting with AI.',
-  sourceKind: { chat: 'Chat', paperReading: 'Paper notes', agent: 'Coding agent' },
+  sourceKind: { chat: 'Chat', paperReading: 'Paper notes' },
   link: {
     none: 'No linked project',
     unavailable: 'Linked project unavailable',

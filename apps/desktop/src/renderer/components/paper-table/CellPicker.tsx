@@ -8,6 +8,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { IconCheck, IconPlus } from '../icons.js'
 import { PickerPopover } from '../PickerPopover.js'
 import { FormInput } from '../FormControls.js'
+import { Tag } from '../Tag.js'
 
 /**
  * The rows the popover shows now: `hits` are the `options` that contain `typed` (as a lowercase
@@ -98,7 +99,7 @@ export function CellPicker({ column, values, onCommit, onClose }: {
           {hits.map((o, i) => (
             <div className={i === keys.active ? 'rrow opt on' : 'rrow opt'} key={o} onClick={() => onCommit(o, false)}>
               <span className="ck">{values.includes(o) ? <IconCheck /> : null}</span>
-              <span className="tagchip">{o}</span>
+              <Tag shape="chip" className="tagchip">{o}</Tag>
             </div>
           ))}
           {isNew

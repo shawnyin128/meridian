@@ -29,7 +29,10 @@ import { useDragReorder, type DragCardProps } from '../../hooks/useDragReorder.j
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
+import { AgentLabel } from '../SourceLabel.js'
+import { TagButton, tagClass } from '../Tag.js'
 import { NodeTag } from './NodeTag.js'
+import { PRIORITY_TONE, ProjectPriorityTag } from './ProjectIdentity.js'
 import './ProjectPlan.css'
 
 const stateWord = (m: Catalog): Record<Task['state'], string> => m.project.plan.state
@@ -131,12 +134,12 @@ function TaskCreateRow({ initial, triggers, onSave, onCancel }: {
           </span>
         )
         : null}
-      <button
-        className={`din prw prtag ${priority}`} title={m.project.plan.cyclePriority}
+      <TagButton
+        tone={PRIORITY_TONE[priority]} title={m.project.plan.cyclePriority}
         onClick={() => setPriority(NEXT_PRIORITY[priority])}
       >
         {priority.toUpperCase()}
-      </button>
+      </TagButton>
       <button
         className="din state-edit" type="button" title={m.project.plan.cycleState}
         onClick={() => setState(NEXT_TASK_STATE[state])}
@@ -263,9 +266,9 @@ export function ProjectTaskPanel({
       </SectionHeading>
       <div className="project-task-detail-meta">
         <DateChip>{fmt.dateRange(task.start, task.end)}</DateChip>
-        <span className={`prtag ${task.priority}`}>{task.priority.toUpperCase()}</span>
+        <ProjectPriorityTag priority={task.priority} />
         <span className="project-task-detail-state">{stateWord(m)[task.state]}</span>
-        {task.origin === 'agent' ? <span className="agtag">{m.project.records.who.agent}</span> : null}
+        {task.origin === 'agent' ? <AgentLabel /> : null}
       </div>
       <SectionHeading
         variant="rail"
@@ -327,7 +330,7 @@ function TaskRow({ task, flash, selected, dragProps, dropClass = '', onSave, onD
       <TaskScheduleField mode="date" task={task} onSave={onSave} className="task-date-part" stopRowActivation />
       <TaskScheduleField mode="time" task={task} onSave={onSave} className="task-clock-part" stopRowActivation />
       <PriorityPicker
-        value={task.priority} className={`prtag ${task.priority} plan-cell`}
+        value={task.priority} className={tagClass(PRIORITY_TONE[task.priority])}
         title={m.project.plan.editPriority} stopRowActivation
         onPick={(priority) => { void onSave({ priority }) }}
       >{task.priority.toUpperCase()}</PriorityPicker>
@@ -340,7 +343,7 @@ function TaskRow({ task, flash, selected, dragProps, dropClass = '', onSave, onD
         ? (
           <span className="task-name-with-origin">
             <TaskNameCell task={task} onSave={onSave} />
-            <span className="agtag">{m.project.records.who.agent}</span>
+            <AgentLabel />
           </span>
         )
         : <TaskNameCell task={task} onSave={onSave} />}
@@ -368,7 +371,7 @@ function MilestoneRow({ milestone, flash, onHover, onSave, onDelete }: {
       onMouseEnter={() => onHover(milestone.id)} onMouseLeave={() => onHover(null)}
     >
       <DateButton
-        iso={milestone.date} className="dchip plan-cell plan-date-button"
+        iso={milestone.date} className="plan-cell plan-date-button"
         title={m.project.plan.editDate} onPick={(date) => { void onSave({ date }) }}
       >
         <DateChip date={milestone.date} className="plan-date" />

@@ -63,7 +63,7 @@ test('删掉的论文进垃圾桶,恢复后回到列表且总数复原', async (
 
   await win.locator('.tgroup .trow .btn', { hasText: '恢复' }).click()
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
-  await expect(win.locator('[data-desk="trash"] .n')).toHaveText('')
+  await expect(win.locator('[data-desk="trash"] .n')).toHaveCount(0)
   await expect(win.locator('[data-desk="papers"] .n')).toHaveText(String(total))
   expect(await paperTotal(win)).toBe(total)
 
@@ -224,7 +224,7 @@ test('清空垃圾桶要过二次确认,清掉的东西恢复不回来', async (
   await dialog.locator('.btn', { hasText: '确认清空' }).click()
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
   await expect(win.locator('.empty-state')).toHaveCount(1)
-  await expect(win.locator('[data-desk="trash"] .n')).toHaveText('')
+  await expect(win.locator('[data-desk="trash"] .n')).toHaveCount(0)
 
   expect(ids).toHaveLength(2)
   for (const id of ids) expect(await restoreRefused(win, id)).toContain(id)

@@ -26,7 +26,6 @@ export const project = {
       note: '记录',
       project: '项目',
     },
-    who: { agent: 'agent', user: '你' },
     goToGraph: (label: string) => `在科研图中打开「${label}」`,
   },
   conclusions: {
@@ -189,6 +188,7 @@ export const project = {
     connect: '连接',
     connected: '已连接项目目录',
     sshConnected: '已连接 SSH 工作区',
+    state: { ready: '已连接', missing: '未找到', invalid: '无效' },
   },
   control: {
     researchNode: (label: string) => `科研节点 · ${label}`,

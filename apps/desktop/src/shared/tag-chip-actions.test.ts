@@ -15,14 +15,14 @@ type Window = {
 const { document, getComputedStyle } = globalThis as unknown as Window
 
 /** The stylesheets a removable chip is styled by, in the order the renderer bundle loads them. */
-const STYLES = ['../renderer/routes/shell.css', '../renderer/components/IconButton.css', '../renderer/components/project/ProjectSections.css']
+const STYLES = ['../renderer/components/Tag.css', '../renderer/routes/shell.css', '../renderer/components/IconButton.css', '../renderer/components/project/ProjectSections.css']
   .map((path) => readFileSync(join(import.meta.dirname, path), 'utf8'))
 
 // The markup of a relation item and a linked paper in ProjectRelations, and of a project in ProjectChips.
 const CHIPS = `
-  <div class="wkrel"><span class="rl">Wiki</span><span class="tagchip" data-wk="topics/knee" draggable="true"><span class="fade-text tagchip-text">树宽收益拐点</span><button class="icbtn xs tagchip-edit"></button><button class="icbtn xs rx"></button></span></div>
-  <div class="wkrel"><span class="rl">论文</span><span class="tagchip" data-paper="p1" draggable="true"><span class="fade-text tagchip-text">EAGLE-2</span><button class="icbtn xs rx"></button></span></div>
-  <dl><dd class="paper-meta-projects"><span class="tagchip" data-project="draft">draft 效率<button class="icbtn xs rx"></button></span></dd></dl>`
+  <div class="wkrel"><span class="rl">Wiki</span><span class="tag tag--chip tag--neutral tagchip" data-wk="topics/knee" draggable="true"><span class="fade-text tagchip-text">树宽收益拐点</span><button class="icbtn xs tagchip-edit"></button><button class="icbtn xs rx"></button></span></div>
+  <div class="wkrel"><span class="rl">论文</span><span class="tag tag--chip tag--neutral tagchip" data-paper="p1" draggable="true"><span class="fade-text tagchip-text">EAGLE-2</span><button class="icbtn xs rx"></button></span></div>
+  <dl><dd class="paper-meta-projects"><span class="tag tag--chip tag--neutral tagchip" data-project="draft">draft 效率<button class="icbtn xs rx"></button></span></dd></dl>`
 
 describe('chip 上的移除按钮', () => {
   beforeEach(() => {

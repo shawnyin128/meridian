@@ -13,6 +13,13 @@ const sourcesFromCore = (win: Page) => win.evaluate(async () => {
   return entries.map((e) => e.source)
 })
 
+/**
+ * The attribution labels the screen shows for these change sources, top to bottom: a change the user
+ * made has none, and an agent's carries the agent label, with the notes or experiment it came from.
+ */
+const labelsOf = (sources: string[]) => sources.filter((source) => source !== '我')
+  .map((source) => (source === 'Meridian' ? 'agent' : `agent · ${source}`))
+
 /** Calls `changelog.list` directly, bypassing the UI, and returns whether each change in the vault is archived. */
 const archivedFromCore = (win: Page) => win.evaluate(async () => {
   const entries = await (window as unknown as MeridianWindow).meridian
@@ -53,7 +60,7 @@ test('侧栏「最近变动」进的是变动屏,面包屑、屏头的数与角�
   await expect(win.locator('#crumb .cseg')).toHaveText(['我的库', '最近变动'])
   await expect(shown(win, '.desk-head .t')).toHaveText(`最近变动 · ${sources.length}`)
   await expect(shown(win, '.crow')).toHaveCount(sources.length)
-  await expect(shown(win, '.crow .src')).toHaveText(sources)
+  await expect(shown(win, '.crow .src')).toHaveText(labelsOf(sources))
   // No fixture change is archived, so only the unarchived section shows.
   await expect(shown(win, '.section-heading')).toContainText(['未归档'])
 })
@@ -85,7 +92,7 @@ test('改一笔再撤销:数据真的回到改之前,那一条标成已撤销,�
   await expect(shown(win, '.crow')).toHaveCount(seeded + 1)
   const top = shown(win, '.crow').first()
   await expect(top.locator('.ct')).toContainText('项目「draft 效率」· 改了字段')
-  await expect(top.locator('.src')).toHaveText('我')
+  await expect(top.locator('.src')).toHaveCount(0)
   await top.hover()
   await expect(top.locator('.cundo')).toHaveText('撤销')
 
@@ -210,7 +217,7 @@ test('这一屏没有筛选条:来源只写在条目上,不能按它筛', async 
   await gotoChangelog(win)
   await expect(shown(win, '.crow')).toHaveCount(sources.length)
   await expect(shown(win, '.segmented-control')).toHaveCount(0)
-  await expect(shown(win, '.crow .src')).toHaveText(sources)
+  await expect(shown(win, '.crow .src')).toHaveText(labelsOf(sources))
 })
 
 test('两节内部各自按天分段,同一天连成一段,段首一行日期', async ({ win }) => {

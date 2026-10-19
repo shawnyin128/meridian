@@ -1,8 +1,13 @@
 import type { ExtensionStatus } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { CardTray } from '../CardTray.js'
+import { Tag, type TagTone } from '../Tag.js'
 import { PluginVersionEntry, type PluginVersionEntryProps } from './PluginVersionEntry.js'
 import './ExtensionSettings.css'
+
+const STATE_TONE: Record<ExtensionStatus['state'], TagTone> = {
+  installed: 'good', 'update-required': 'warn', 'not-installed': 'neutral',
+}
 
 interface ExtensionSettingsProps {
   statuses: ExtensionStatus[] | null
@@ -39,10 +44,10 @@ export function ExtensionSettings({ statuses, plugin, onCopy, onCopyPrompt }: Ex
                   <h3>{extension.name}</h3>
                   <p>{m.settings.extensions.description}</p>
                 </div>
-                <span className={`extension-state ${extension.state}`}>
+                <Tag tone={STATE_TONE[extension.state]} className="extension-state">
                   {m.settings.extensions.state[extension.state]}
                   {extension.version === undefined ? '' : ` · ${extension.version}`}
-                </span>
+                </Tag>
               </div>
               <CardTray
                 className="extension-command"

@@ -29,7 +29,6 @@
 .gxrow:hover{background:var(--hover)}
 .gxrow .gx-t{font-size:13px;font-weight:600;min-width:150px}
 .gxrow .gx-m{flex:1;font-size:12px;color:var(--ter);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gxrow .n{font-size:12px;color:var(--ter);background:var(--hover);border-radius:999px;padding:1px 8px;flex-shrink:0}
 .gnav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
 .lmore{font-size:var(--fs-sm);color:var(--ter);padding:12px 2px}
 
@@ -59,8 +58,7 @@
 .ptable td .ci.chip-expanded .hid:nth-child(3){animation-delay:30ms}
 .ptable td .ci.chip-expanded .hid:nth-child(4){animation-delay:60ms}
 .ptable td .ci.chip-expanded .hid:nth-child(n+5){animation-delay:90ms}
-.morebadge{display:inline-flex;align-items:center;justify-content:center;min-width:28px;border:0;background:var(--tint-mut);color:var(--sec);border-radius:999px;padding:1px 8px;margin-left:2px;font:inherit;font-size:var(--fs-cap);cursor:pointer}
-.morebadge:hover{background:var(--hover);color:var(--ink)}
+.morebadge{min-width:28px;margin-left:2px}
 @keyframes chip-row-reveal{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:translateX(0)}}
 @media (prefers-reduced-motion:reduce){.ptable td .ci.chip-expanded .hid{animation:none}}
 /* Only a sortable header, the one that carries aria-sort, shows a pointer and darkens on hover. */
@@ -93,21 +91,16 @@
 .ptable tbody tr{cursor:pointer}
 .pt-dim{color:var(--ter);white-space:nowrap}
 /*
- * The + at the end of a tag cell: a transparent placeholder at rest, visible only while the row is
- * hovered or it has keyboard focus. The demo uses a span; this is a button, so font and line height
- * are added. Its background and text color must beat .tagchip in shell.css, hence .tagchip.tagadd,
- * relying on specificity rather than module bundling order. The focus state needs both classes too,
- * or it ties with the resting state and only source order decides.
+ * The + at the end of a tag cell: a ghost tag, hidden at rest and shown only while the row is hovered
+ * or it has keyboard focus. The focus state names both classes, or it ties with the resting state and
+ * only source order decides.
  */
-.tagchip.tagadd{background:transparent;border:1px dashed var(--sep-strong);color:var(--ter);cursor:pointer;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out);font-family:var(--sans);line-height:var(--lh-ui)}
+.tagchip.tagadd{opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
 .ptable tr:hover .tagadd,.tagchip.tagadd:focus-visible{opacity:1;pointer-events:auto}
 .ptable tr:has(.stchip[data-state="open"]) .tagadd{opacity:1}
-.tagadd:hover{color:var(--ink);border-color:var(--sec)}
 .paper-meta-projects .tagchip.tagadd{opacity:1;pointer-events:auto}
 .tagin{border:1px solid var(--sep-strong);background:transparent;border-radius:999px;padding:1px 8px;font-size:var(--fs-sm);color:var(--ink);width:110px;font-family:var(--sans)}
 .tagin:focus-visible{outline:0}
-.stchip{font-size:var(--fs-sm);line-height:var(--lh-ui);padding:1px 10px;border:0;border-radius:999px;background:var(--field);color:var(--sec);font-family:var(--sans);cursor:pointer;white-space:nowrap;transition:box-shadow var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out)}
-.stchip:hover{color:var(--ink);box-shadow:inset 0 0 0 100vmax var(--hover)}
 
 /* Custom columns: clicking a cell edits it in place */
 .pt-cust,.pt-remark{color:var(--sec);font-size:var(--fs-sm);cursor:text;min-width:70px}
@@ -185,7 +178,6 @@
 .research-map-intro{display:flex;align-items:flex-start;gap:24px;padding:16px 18px;border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card)}
 .research-map-copy{min-width:0;flex:1}
 .research-map-title{display:flex;align-items:center;gap:8px;font-size:var(--fs-read)}
-.research-map-title .tagchip{margin:0;font-weight:400}
 .research-map-copy p{max-width:720px;margin:6px 0 0;color:var(--sec);font-size:var(--fs-sm);line-height:var(--lh-read)}
 .research-map-stats{display:flex;flex:0 0 auto;align-items:stretch;gap:8px}
 .research-map-stats>span{display:flex;min-width:72px;flex-direction:column;gap:2px;padding:7px 10px;border-radius:var(--r-md);background:var(--field);color:var(--ter);font-size:var(--fs-cap)}
@@ -198,7 +190,6 @@
 .research-map-group-copy{display:flex;min-width:0;flex-direction:column;gap:3px}
 .research-map-group-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-base)}
 .research-map-group-copy>span{color:var(--ter);font-size:var(--fs-cap)}
-.research-map-count{min-width:28px;padding:2px 7px;border-radius:var(--r-full);background:var(--field);color:var(--sec);font-size:var(--fs-sm);text-align:center}
 .research-map-detail{min-width:0;border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);overflow:hidden}
 .research-map-detail-head{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-bottom:1px solid var(--sep2)}
 .research-map-detail-head>div{display:flex;min-width:0;flex:1;flex-direction:column;gap:3px}
@@ -210,7 +201,7 @@
 .research-map-paper-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
 .research-map-paper-meta{color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
 .research-map-why{display:flex;grid-column:1/-1;align-items:center;gap:4px;min-width:0;color:var(--ter);font-size:var(--fs-cap);overflow:hidden;white-space:nowrap;mask-image:var(--clipfade)}
-.research-map-why>.tagchip{margin:0;font-size:var(--fs-cap)}
+.research-map-why>.tagchip{margin:0}
 
 @media (max-width:900px){
   .research-map-intro{flex-direction:column}.research-map-stats{width:100%}.research-map-stats>span{flex:1}

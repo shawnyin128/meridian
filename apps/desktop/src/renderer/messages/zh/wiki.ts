@@ -191,8 +191,6 @@ export const wiki = {
     add: '添加结论',
     addShort: '结论',
     empty: '还没有结论。',
-    me: '我',
-    agent: 'agent',
     history: (n: number) => `版本史 · ${n}`,
     evidence: '证据',
     personal: '个人判断',

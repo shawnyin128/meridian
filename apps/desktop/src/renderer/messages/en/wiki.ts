@@ -230,8 +230,6 @@ export const wiki = {
     add: 'Add finding',
     addShort: 'Finding',
     empty: 'No findings yet.',
-    me: 'Me',
-    agent: 'agent',
     history: (n: number) => `Earlier versions · ${n}`,
     evidence: 'Evidence',
     personal: 'My judgment',

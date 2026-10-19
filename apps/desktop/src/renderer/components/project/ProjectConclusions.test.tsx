@@ -61,7 +61,7 @@ describe('project conclusions', () => {
   }
   const button = (text: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === text)!
 
-  it('一行与动态同一套列:状态、日期、节点、结论、Wiki 状态;点一下打开', () => {
+  it('一行与动态同一套列:状态、日期、节点、结论连同 Wiki 状态、末尾是 agent 标签;点一下打开', () => {
     const onOpen = vi.fn()
     const written = { ...PENDING, state: 'verified' as const, verifiedOn: '2026-09-21', wiki: [{ page: 'topics/sd', title: 'Speculative decoding', claim: 'wide-b8', version: 2 }] }
     act(() => root!.render(
@@ -73,13 +73,14 @@ describe('project conclusions', () => {
     const [pending, verified] = [...host.querySelectorAll<HTMLElement>('.record-row')]
     expect(pending!.className).toContain('project-signal-columns record-row with-node')
     expect([...pending!.children].map((cell) => cell.className)).toEqual([
-      'project-signal-kind', 'project-signal-date', 'record-node', 'attn-text record-text', 'record-who conclusion-wiki',
+      'project-signal-kind', 'project-signal-date', 'record-node', 'attn-text record-text', 'record-who',
     ])
-    expect(pending!.querySelector('.ak')!.textContent).toBe('待验证')
+    expect(pending!.querySelector('.tag--warn')!.textContent).toBe('待验证')
     expect(pending!.querySelector('.node-tag')!.textContent).toBe('宽树')
-    expect(pending!.querySelector('.conclusion-wiki')!.textContent).toBe('未写入 Wiki')
-    expect(verified!.querySelector('.ak')!.textContent).toBe('已验证')
-    expect(verified!.querySelector('.conclusion-wiki')!.textContent).toBe('Speculative decoding v2')
+    expect(pending!.querySelector('.record-line')!.textContent).toBe('Wide trees win at B8 · 未写入 Wiki')
+    expect(pending!.querySelector('.record-who .source-label')!.textContent).toBe('agent')
+    expect(verified!.querySelector('.tag--good')!.textContent).toBe('已验证')
+    expect(verified!.querySelector('.record-line')!.textContent).toBe('Wide trees win at B8 · Speculative decoding v2')
     expect(verified!.classList.contains('structured-row--selected')).toBe(true)
     expect(pending!.classList.contains('structured-row--selected')).toBe(false)
     act(() => pending!.click())

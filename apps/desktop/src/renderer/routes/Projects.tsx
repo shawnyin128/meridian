@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import type { ReactNode, RefObject } from 'react'
 import type { ProjectStatus, ProjectSummary } from '../../shared/contract.js'
 import {
-  FOCUS_KEY, idleDays, idleNote, NEAR_DAYS, nextMilestone, projectSortOrder, STALE_DAYS,
+  FOCUS_KEY, idleDays, idleNote, nextMilestone, projectSortOrder, STALE_DAYS,
 } from '../../shared/project-signals.js'
 import type { ProjectSortKey } from '../../shared/project-signals.js'
 import { ACTIVE_PROJECT, PROJECT_STATUSES } from '../../shared/vocabulary.js'
@@ -169,9 +169,7 @@ function ProjectPanel({ project, onOpen, menu, dragProps, dropClassName }: {
           {next && left !== null
             ? (
               <>
-                <span className={left <= NEAR_DAYS ? 'dchip near' : 'dchip'}>
-                  {m.research.panel.milestoneOn(fmt.date(next.date))}
-                </span>
+                <span>{m.research.panel.milestoneOn(fmt.date(next.date))}</span>
                 {left === 0 ? m.research.panel.dueToday : m.research.panel.dueInDays(left)}
               </>
             )
@@ -212,10 +210,10 @@ function ProjectPanel({ project, onOpen, menu, dragProps, dropClassName }: {
           {project.lastProgress === undefined
             ? <span className="project-card-empty">{m.research.panel.noRecords}</span>
             : (
-              <span title={record?.text}>
-                {fmt.date(project.lastProgress)}
-                {record === undefined ? null : <> <EventText text={record.text} origin={record.origin} /></>}
-              </span>
+              <>
+                <span>{fmt.date(project.lastProgress)}</span>
+                {record === undefined ? null : <EventText text={record.text} origin={record.origin} />}
+              </>
             )}
         </span>
       </div>

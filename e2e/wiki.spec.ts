@@ -80,8 +80,8 @@ test('实体类型标签按类型上底色:聚合一种,论文另一种', async 
 
   const aggKind = shown(win).locator('.wkgrid').first().locator('.wkcard .wkind').first()
   const paperKind = shown(win).locator('.wkgrid').nth(home.kinds.length).locator('.wkcard .wkind').first()
-  await expect(aggKind).toHaveClass(/\bk-wiki\b/)
-  await expect(paperKind).toHaveClass(/\bk-paper\b/)
+  await expect(aggKind).toHaveClass(/\btag--wiki\b/)
+  await expect(paperKind).toHaveClass(/\btag--paper\b/)
 
   const ground = (l: Locator) => l.evaluate((el) => getComputedStyle(el).backgroundColor)
   const [agg, paper] = [await ground(aggKind), await ground(paperKind)]
@@ -176,7 +176,7 @@ test('对照表的行是成员论文,格子按契约的列排,悬停看原文;�
   await expect(shown(win).locator('.memb')).toHaveCount(paper.memberships.length)
   expect(await shown(win).locator('.memb .tagchip').allTextContents())
     .toEqual(paper.memberships.map((m) => m.aggregation.title))
-  await expect(shown(win).locator('.memb .wkind').first()).toHaveClass(/\bk-wiki\b/)
+  await expect(shown(win).locator('.memb .wkind').first()).toHaveClass(/\btag--wiki\b/)
 
   // An aggregation chip under Location in Wiki opens that page's table; back returns to the paper page.
   const back = paper.memberships[0]!.aggregation
@@ -340,7 +340,7 @@ test('细分:挂上已有的同类聚合,拿掉;新名字回车新建一页', as
   await expect(cards).toHaveCount(n + 1)
   await expect(cards.last()).toHaveClass(/\bnewcard\b/)
   await expect(cards.last().locator('.pickin')).toHaveCount(1)
-  await expect(cards.last().locator('.wkind')).toHaveClass(/\bk-wiki\b/)
+  await expect(cards.last().locator('.wkind')).toHaveClass(/\btag--wiki\b/)
   // The placeholder is a card: as wide and tall as the real card beside it, not a separate search box.
   const real = (await cards.nth(n - 1).boundingBox())!
   const holder = (await cards.last().boundingBox())!

@@ -31,6 +31,7 @@ import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { WatchSettings } from './Watches.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
+import { Tag } from '../components/Tag.js'
 import './shell.css'
 import './Settings.css'
 
@@ -217,7 +218,7 @@ export function Settings() {
               <h3>{m.settings.storage.libraryTitle}</h3>
               <p>{m.settings.storage.libraryNote}</p>
             </div>
-            <span className="storage-source">{sourceLabel}</span>
+            <Tag>{sourceLabel}</Tag>
           </div>
           {location === null
             ? <div className="storage-loading">{m.settings.storage.readingLocation}</div>

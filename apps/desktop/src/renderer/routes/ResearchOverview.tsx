@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import type { ProjectOverview, Task } from '../../shared/contract.js'
 import { projectControlState } from '../../shared/project-control.js'
 import {
-  FOCUS_KEY, projectDecisionItems, projectPulseSignal, sortRecordsNewestFirst,
+  FOCUS_KEY, projectDecisionItems, projectPulseSignal, sortRecordsNewestFirst, type ProjectPulseSignal,
 } from '../../shared/project-signals.js'
 import { project as projectApi } from '../ipc.js'
 import { ACTIVE_PROJECT, FINISHED_PROJECT, SHELVED_PROJECT } from '../../shared/vocabulary.js'
@@ -11,15 +11,17 @@ import { useBanner, useJump, useToast, useToday, useVaultRevision } from '../she
 import { FloatingTextEditor } from '../components/FloatingTextEditor.js'
 import { Icon } from '../components/icons.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { AgentLabel } from '../components/SourceLabel.js'
 import { StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { Tag, type TagTone } from '../components/Tag.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import {
-  EventText, ProjectSignalDate, ProjectSignalKind,
+  EventText, ProjectSignalDate, ProjectSignalKind, RECORD_TONE,
 } from '../components/project/ProjectSignals.js'
 import { ProjectNextActionView } from '../components/project/ProjectControl.js'
-import { ProjectIdentity } from '../components/project/ProjectIdentity.js'
+import { ProjectIdentity, ProjectLabel } from '../components/project/ProjectIdentity.js'
 import { DAY_SLOT_HOURS } from '../components/timeline/TimelineScale.js'
 import { TimelineBoard } from '../components/timeline/TimelineBoard.js'
 import type { TimelinePoint } from '../components/timeline/TimelineBoard.js'
@@ -34,6 +36,10 @@ import './ResearchOverview.css'
 const RECENT_EVENTS = 6
 /** Research records dated within this many days count toward "Progress over the last 7 days". */
 const WEEK_DAYS = 7
+
+const PULSE_TONE: Record<ProjectPulseSignal['tone'], TagTone> = {
+  healthy: 'good', warn: 'warn', risk: 'bad', blocked: 'bad', quiet: 'neutral',
+}
 
 /**
  * The milestone popover opened on the Gantt chart: a new milestone on a given day, or an edit of
@@ -104,7 +110,7 @@ function OverviewRow({ when, kind, main, meta, project, projectId, variant, onOp
 }) {
   return (
     <StructuredRow className={`ovlist-row ${variant}`} data-proj={projectId} onActivate={onOpen}>
-      <span className="ovlist-project" title={project}>{project}</span>
+      <ProjectLabel name={project} className="ovlist-project" />
       <span className="ovlist-when">{when}</span>
       <span className="ovlist-kind">{kind}</span>
       <span className="ovlist-main">{main}</span>
@@ -159,6 +165,7 @@ function ProjectProgress({ rows, onOpen }: {
   rows: ProjectOverview[]; onOpen: (projectId: string) => void
 }) {
   const today = useToday()
+  const fmt = useFormat()
   const m = useMessages()
   const current = rows.filter((project) => project.status !== FINISHED_PROJECT)
   return (
@@ -215,18 +222,18 @@ function ProjectProgress({ rows, onOpen }: {
                     </span>
                   </span>
                   <span className="ovpulse-cell">
-                    <b title={latest?.text}>
-                      {latest ? <EventText text={latest.text} /> : m.research.overview.noRecentRecord}
-                    </b>
+                    {latest
+                      ? <EventText className="ovpulse-latest" text={latest.text} origin={latest.origin} />
+                      : <b>{m.research.overview.noRecentRecord}</b>}
                     <span className="ovpulse-sub">
-                      {latest ? <OverviewDate date={latest.date} /> : m.research.overview.waitingForAgent}
+                      {latest ? fmt.date(latest.date) : m.research.overview.waitingForAgent}
                     </span>
                   </span>
                   <span className="ovpulse-cell">
                     <ProjectNextActionView action={control.next} variant="summary" />
                   </span>
                   <span className="ovpulse-cell signal">
-                    <span className={`ovpulse-signal ${signal.tone}`}>{signal.label}</span>
+                    <Tag tone={PULSE_TONE[signal.tone]}>{signal.label}</Tag>
                     <span className="ovpulse-sub" title={signal.detail}>{signal.detail}</span>
                   </span>
                 </StructuredRow>
@@ -255,8 +262,13 @@ function Recent({ rows, onOpen }: { rows: ProjectOverview[]; onOpen: (projectId:
               key={`${e.projectId}${e.date}${e.text}`}
               variant="dated"
               when={<OverviewDate date={e.date} />}
-              kind={<ProjectSignalKind tone="mut">{m.research.overview.eventKind}</ProjectSignalKind>}
-              main={<EventText text={e.text} />}
+              kind={(
+                <ProjectSignalKind tone={RECORD_TONE[e.kind ?? 'note']}>
+                  {m.project.records.kind[e.kind ?? 'note']}
+                </ProjectSignalKind>
+              )}
+              main={e.text}
+              meta={e.origin === 'agent' ? <AgentLabel /> : undefined}
               project={e.name}
               projectId={e.projectId}
               onOpen={() => onOpen(e.projectId)}

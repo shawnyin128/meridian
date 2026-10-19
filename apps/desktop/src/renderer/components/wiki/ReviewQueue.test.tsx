@@ -81,7 +81,8 @@ describe('ReviewQueue', () => {
 
   it('排队的一条一行:标题、提出者与触发的项目节点名、理由、按结论原文写的改动行、涉及的页名;过期与无法核对的引句标出来', () => {
     expect(row('p1').querySelector('.review-title')!.textContent).toBe('提案 p1')
-    expect(row('p1').querySelector('.review-meta')!.textContent).toBe('skill.meridian · 项目 draft 效率 · 节点 加宽实验 · 9月22日')
+    expect(row('p1').querySelector('.review-meta')!.textContent).toBe('项目 draft 效率 · 节点 加宽实验 · 9月22日')
+    expect(row('p1').querySelector('.review-head .source-label')!.textContent).toBe('agent')
     expect(row('p1').textContent).toContain('重跑了一遍')
     expect([...row('p1').querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual([
       '- 原来：拐点在宽度 6', '+ 改为：拐点在宽度 8',
@@ -89,8 +90,8 @@ describe('ReviewQueue', () => {
       '~ 「拐点在宽度 6」与「x」冲突：批量下不同',
     ])
     expect([...row('p2').querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual(['+ 新增结论：新结论', '+ 　实验 · draft 效率 · 加宽实验'])
-    expect(row('p1').querySelector('.stag')).toBeNull()
-    expect(row('p2').querySelector('.stag.pend')!.textContent).toBe('已过期')
+    expect(row('p1').querySelector('.review-head .tag:not(.source-label)')).toBeNull()
+    expect(row('p2').querySelector('.tag--warn')!.textContent).toBe('已过期')
     expect(row('p2').textContent).toContain('这些引句没有文字层可核对')
     expect(row('p1').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(false)
     expect(row('p2').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(true)
@@ -103,12 +104,12 @@ describe('ReviewQueue', () => {
 
   it('提案标题与论文页名按 LaTeX 显示，改动行里的论文名是纯文本', () => {
     expect(row('p7').querySelector('.review-title')!.innerHTML).toBe('收进《<strong>F</strong>lux》')
-    expect(row('p7').querySelector('.wkrel .tagchip')!.innerHTML).toBe('<strong>F</strong>lux')
+    expect(row('p7').querySelector('.wkrel .tagchip .tag-text')!.innerHTML).toBe('<strong>F</strong>lux')
     expect(row('p7').querySelector('.diff')!.textContent).toContain('证据 · Flux p.2「q」')
   })
 
   it('引用了没验证的项目结论:标出结论待验证,应用按不了,点结论去验证它', () => {
-    expect(row('p6').querySelector('.stag.pend')!.textContent).toBe('结论待验证')
+    expect(row('p6').querySelector('.tag--warn')!.textContent).toBe('结论待验证')
     expect(row('p6').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(true)
     const chip = row('p6').querySelector<HTMLElement>('.review-unverified .tagchip')!
     expect(chip.textContent).toBe('加宽实验')
@@ -161,14 +162,14 @@ describe('ReviewQueue', () => {
 
   it('已处理的在自己的小标题下列出,各带结果', () => {
     expect(host.querySelector('.section-heading')!.textContent).toBe('已处理 · 3')
-    expect(row('p3').querySelector('.stag.ok')!.textContent).toBe('已应用')
-    expect(row('p4').querySelector('.stag.mut')!.textContent).toBe('已拒绝 · 过期')
+    expect(row('p3').querySelector('.tag--good')!.textContent).toBe('已应用')
+    expect(row('p4').querySelector('.tag--neutral')!.textContent).toBe('已拒绝 · 过期')
     expect(row('p4').textContent).toContain('提案过期:topics/sd')
     expect([...row('p4').querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual([
       '~ 「拐点在宽度 6」的冲突：不算冲突（场景不同）', '- 撤回「拐点在宽度 6」：重跑后不成立',
     ])
     expect(row('p5').querySelector('.review-title')!.textContent).toBe('读不了的提案')
-    expect(row('p5').querySelector('.stag')!.textContent).toBe('已拒绝 · 无效')
+    expect(row('p5').querySelector('.tag')!.textContent).toBe('已拒绝 · 无效')
     expect(row('p5').querySelector('.diff')).toBeNull()
   })
 
@@ -184,8 +185,9 @@ describe('ReviewQueue', () => {
         />
       </MessagesProvider>,
     ))
-    expect(row('q1').querySelector('.review-meta')!.textContent).toBe('skill.meridian · 项目 draft 效率 · 节点 加宽实验 · 10月16日')
-    expect(row('d1').querySelector('.review-meta')!.textContent).toBe('skill.meridian · 项目 draft 效率 · 节点 加宽实验 · 10月16日 → 10月16日')
+    expect(row('q1').querySelector('.review-meta')!.textContent).toBe('项目 draft 效率 · 节点 加宽实验 · 10月16日')
+    expect(row('d1').querySelector('.review-meta')!.textContent).toBe('项目 draft 效率 · 节点 加宽实验 · 10月16日 → 10月16日')
+    expect(row('d1').querySelector('.review-head .source-label')!.textContent).toBe('agent')
   })
 
   it('没有排队的提案时说一句;入口上的数是排队的条数', () => {

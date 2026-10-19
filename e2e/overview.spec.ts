@@ -235,7 +235,7 @@ test('新建的项目在总览里看得见,横幅那句话才算数', async ({ w
   const created = after.ids.find((id) => !before.ids.includes(id))!
   expect(created).toBeDefined()
 
-  await expect(shown(win).locator(`.ovlist-row.progress[data-proj="${created}"] .project-identity-name`))
+  await expect(shown(win).locator(`.ovlist-row.progress[data-proj="${created}"] .project-label`))
     .toHaveText(NEW_PROJECT)
   await expect(shown(win).locator(`.gantt .glrow[data-proj="${created}"] .timeline-project-label`))
     .toHaveText(NEW_PROJECT)
