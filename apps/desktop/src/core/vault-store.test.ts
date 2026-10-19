@@ -516,6 +516,25 @@ describe('vault store', () => {
       .not.toContain('撤销也回来')
   })
 
+  it('撤销改过的批注、删掉的笔记与高亮、改过的随笔,写回阅读记录,论文行跟着变,重开库还在', () => {
+    store.mutatePaperReading(WITH_SOURCE, { kind: 'note.add', page: 1, text: '删了又回来' })
+    store.mutatePaperReading(WITH_SOURCE, {
+      kind: 'highlight.add', page: 2, quote: '删了又回来的那句', color: 'yellow',
+      rects: [{ x: 0.1, y: 0.2, width: 0.3, height: 0.02 }],
+    })
+    const before = store.mutatePaperReading(WITH_SOURCE, { kind: 'remark.set', text: '原来的随笔' })
+    store.mutatePaperReading(WITH_SOURCE, { kind: 'highlight.update', id: before.highlights[0]!.id, note: '后来写的批注' })
+    store.mutatePaperReading(WITH_SOURCE, { kind: 'note.delete', id: before.notes[0]!.id })
+    store.mutatePaperReading(WITH_SOURCE, { kind: 'highlight.delete', id: before.highlights[0]!.id })
+    store.mutatePaperReading(WITH_SOURCE, { kind: 'remark.set', text: '' })
+    expect(store.getPaper(WITH_SOURCE)).toMatchObject({ noteCount: 0 })
+
+    for (const change of store.listChanges().slice(0, 4)) store.undoChange(change.id)
+    expect(store.paperReading(WITH_SOURCE)).toEqual(before)
+    expect(store.getPaper(WITH_SOURCE)).toMatchObject({ remark: '原来的随笔', noteCount: 1 })
+    expect(createVaultStore(vault).paperReading(WITH_SOURCE)).toEqual(before)
+  })
+
   it('改论文写的是库里那一页,重开之后读到的还是新值', () => {
     store.updatePaper(WITH_SOURCE, { venue: 'ICLR 2026', readState: '在读' })
     expect(store.getPaper(WITH_SOURCE)).toMatchObject({ venue: 'ICLR 2026', readState: '在读' })
@@ -549,6 +568,19 @@ describe('vault store', () => {
         { key: 'b', label: 'x', type: 'text', options: [] },
       ],
     })).toThrow(/列名重复/)
+  })
+
+  it('删掉一列记一条,撤销把列写回 state.json,重开还在,论文里那一格也回到表上', () => {
+    store.setPaperColumns({ ...emptyColumns(), custom: [NOTE_COLUMN] })
+    store.updatePaper(WITH_SOURCE, { custom: { note: '读到一半' } })
+    const held = store.paperColumns()
+    store.setPaperColumns({ ...held, custom: [] })
+    expect(createVaultStore(vault).paperColumns().custom).toEqual([])
+
+    store.undoChange(store.listChanges()[0]!.id)
+    const reopened = createVaultStore(vault)
+    expect(reopened.paperColumns()).toEqual(held)
+    expect(reopened.getPaper(WITH_SOURCE).custom).toEqual({ note: '读到一半' })
   })
 
   it('新项目排最前;手动设的项目顺序存进 state.json 且新项目也排在它最前,重开还在;坏 id 被丢弃', () => {
@@ -1478,6 +1510,26 @@ describe('vault store on the aggregation layout', () => {
     const snapshots = stored.flatMap((row) => (row.restore?.kind === 'project' ? [row.restore.project!] : []))
     expect(snapshots.length).toBeGreaterThan(0)
     for (const snapshot of snapshots) expect(snapshot).not.toHaveProperty('lastProgress')
+  })
+
+  it('项目列表的最近记录把关联工作区的事件也算进去:取页上与工作区里最新的三条,最新的在最后', () => {
+    store.createProject('最近记录')
+    const id = store.listProjects().find((project) => project.name === '最近记录')!.id
+    const repo = join(vault, 'recent-repo')
+    mkdirSync(join(repo, '.meridian/events'), { recursive: true })
+    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    writeFileSync(join(repo, '.meridian/events/events.json'), JSON.stringify({
+      schema_version: 'meridian.workspace-events.v1',
+      events: [
+        { id: 'newest', date: '2026-09-12', text: '完成 延迟探针', source: 'src/probe.py' },
+        { id: 'older', date: '2026-09-11', text: '开始推进 延迟探针', source: 'src/probe.py' },
+        { id: 'oldest', date: '2026-09-09', text: '复现基线', source: 'src/probe.py' },
+      ],
+    }), 'utf8')
+    const recent = store.listProjects().find((project) => project.id === id)!.recentEvents
+    expect(recent.map(({ date, text }) => `${date} ${text}`)).toEqual([
+      '2026-09-10 创建项目', '2026-09-11 开始推进 延迟探针', '2026-09-12 完成 延迟探针',
+    ])
   })
 
   it('关联仓库里 coding agent 新写的科研记录进动态的「实验」，旧的不刷屏，同一条只进一次', () => {

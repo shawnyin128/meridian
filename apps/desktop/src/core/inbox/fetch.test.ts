@@ -53,7 +53,7 @@ describe('createWatchFetcher', () => {
         ],
       },
     })
-    expect(fetcher.status()).toEqual({ state: 'idle', checkedAt: 1_000, error: null })
+    expect(fetcher.status()).toEqual({ state: 'idle', checkedAt: 1_000, reason: null })
     expect(counter.writes).toBeGreaterThan(0)
   })
 
@@ -79,7 +79,7 @@ describe('createWatchFetcher', () => {
       return [paper('2609.00003', 'Topic Paper')]
     })
     await fetcher.run()
-    expect(fetcher.status()).toEqual({ state: 'failed', checkedAt: null, error: '网络不可用' })
+    expect(fetcher.status()).toEqual({ state: 'failed', checkedAt: null, reason: 'unavailable' })
     expect(store.listInbox().filter((entry) => entry.title === 'Topic Paper')).toHaveLength(1)
   })
 

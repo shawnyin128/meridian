@@ -25,9 +25,6 @@ const STRING_LITERALS = /'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)
  * is a fixed value in the English catalog too, not untranslated copy. `routes/Watches.tsx` keeps
  * two regexes of Chinese sentence separators and lead-in verbs used to split a typed line into
  * watch candidates: that is language data for the input affordance, not display copy.
- * `routes/Inbox.tsx` and `routes/Later.tsx` match a Chinese prefix Core throws from
- * `core/inbox/download.ts` to tell a download failure apart from other errors; Core is not
- * localized yet, so this is parsing input, not renderer-authored copy.
  * `components/project/ProjectIdentity.tsx`'s `STATUS_CLASS` keys are the contract's Chinese
  * `ProjectStatus` enum values; its values are CSS state classes, not copy, so there is nothing to
  * move into the zh catalog.
@@ -36,8 +33,6 @@ const EXEMPT = [
   /renderer[\\/]lib[\\/]format\.ts$/,
   /renderer[\\/]messages[\\/]en[\\/]settings\.ts$/,
   /renderer[\\/]routes[\\/]Watches\.tsx$/,
-  /renderer[\\/]routes[\\/]Inbox\.tsx$/,
-  /renderer[\\/]routes[\\/]Later\.tsx$/,
   /renderer[\\/]components[\\/]project[\\/]ProjectIdentity\.tsx$/,
 ]
 

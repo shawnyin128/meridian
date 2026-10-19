@@ -14,6 +14,12 @@ const SEEDED = 4
 /** Fixture project and one of its papers. */
 const PROJECT = 'draft'
 
+/** Fixture paper whose reading state the reading cases write. */
+const READ = 'Jiang-et-al-2024-Mixtral-of-Experts'
+
+/** A highlight's one rectangle. */
+const RECTS = [{ x: 0.1, y: 0.2, width: 0.3, height: 0.02 }]
+
 describe('change log', () => {
   let store: VaultStore
   let day: string
@@ -240,6 +246,10 @@ describe('change log', () => {
     store.appendChatMessages(chat.id, [{ role: 'you', runs: [{ kind: 'text', text: '问一句' }], actions: [] }])
     store.setChatArchived(chat.id, true)
     store.appendFeed({ source: 'me', body: { kind: 'runs', runs: [{ kind: 'text', text: '记一笔' }] } })
+    store.mutatePaperReading(READ, { kind: 'progress.set', page: 4 })
+    store.setPaperColumns({ ...store.paperColumns(), hidden: ['topics'], order: ['y'] })
+    store.mutatePaperReading(READ, { kind: 'note.add', page: 1, text: '新加的笔记' })
+    store.mutatePaperReading(READ, { kind: 'highlight.add', page: 1, quote: '新加的高亮', rects: RECTS, color: 'yellow' })
     // Trash is already a restoration mechanism; logging it again would create an "undo restore" entry.
     store.restoreTrash(store.listTrash().find((t) => t.kind === 'inbox')!.id)
     store.dismissInbox('drafterlite')
@@ -249,15 +259,32 @@ describe('change log', () => {
     expect(store.listChanges()).toEqual(before)
   })
 
-  it('改变持久知识的那 20 个写各记一条', () => {
+  it('改变持久知识的那 26 个写各记一条', () => {
     const writes: [string, () => unknown][] = [
       ['papers.update', () => store.updatePaper('Jiang-et-al-2024-Mixtral-of-Experts', { readState: '在读' })],
-      ['papers.setColumnType', () => {
-        store.setPaperColumns({
-          ...emptyColumns(), custom: [{ key: 'note', label: '备注', type: 'text', options: [] }],
-        })
-        store.setPaperColumnType('note', 'select')
-      }],
+      ['papers.mutateReading note.delete', () => store.mutatePaperReading(READ, {
+        kind: 'note.delete', id: store.mutatePaperReading(READ, { kind: 'note.add', page: 1, text: '要删的' }).notes[0]!.id,
+      })],
+      ['papers.mutateReading highlight.delete', () => store.mutatePaperReading(READ, {
+        kind: 'highlight.delete',
+        id: store.mutatePaperReading(READ, { kind: 'highlight.add', page: 1, quote: '要删的', rects: RECTS, color: 'blue' })
+          .highlights[0]!.id,
+      })],
+      ['papers.mutateReading remark.set', () => store.mutatePaperReading(READ, { kind: 'remark.set', text: '随笔' })],
+      ['papers.mutateReading note.update', () => store.mutatePaperReading(READ, {
+        kind: 'note.update', id: store.mutatePaperReading(READ, { kind: 'note.add', page: 1, text: '要改的' }).notes[0]!.id,
+        text: '改过的',
+      })],
+      ['papers.mutateReading highlight.update', () => store.mutatePaperReading(READ, {
+        kind: 'highlight.update',
+        id: store.mutatePaperReading(READ, { kind: 'highlight.add', page: 1, quote: '要改的', rects: RECTS, color: 'blue' })
+          .highlights[0]!.id,
+        note: '改过的批注',
+      })],
+      ['papers.setColumns', () => store.setPaperColumns({
+        ...emptyColumns(), custom: [{ key: 'note', label: '备注', type: 'text', options: [] }],
+      })],
+      ['papers.setColumnType', () => store.setPaperColumnType('note', 'select')],
       ['papers.delete', () => store.deletePaper('Jiang-et-al-2024-Mixtral-of-Experts')],
       ['wiki.apply', () => store.applyProposal({
         source: 'chat', title: '测试',
@@ -290,7 +317,7 @@ describe('change log', () => {
       ['project.createEvent', () => store.createEvent(PROJECT, '[对话] 来自对话的结论')],
       ['project.delete', () => store.deleteProject(PROJECT)],
     ]
-    expect(writes).toHaveLength(20)
+    expect(writes).toHaveLength(26)
 
     for (const [method, write] of writes) {
       const before = store.listChanges().length
@@ -327,6 +354,93 @@ describe('change log', () => {
     expect(store.listChanges()[0]).toMatchObject({
       title: '撤销：Wiki · 给 PTQ 记一条', diff: ['~ topics/ptq'],
     })
+  })
+
+  it('删掉一条笔记记一条,撤销把它原样放回原处;之后加的笔记与读到的页留着', () => {
+    store.mutatePaperReading(READ, { kind: 'note.add', page: 2, text: '第一条' })
+    const before = store.mutatePaperReading(READ, { kind: 'note.add', page: 5, text: '第二条' })
+    store.mutatePaperReading(READ, { kind: 'note.delete', id: before.notes[0]!.id })
+    const change = recorded()[0]!
+    expect(change).toMatchObject({
+      title: '论文「Mixtral of Experts」· 删掉笔记', diff: ['- page: 2', '- text: "第一条"'], undoable: true,
+    })
+
+    store.mutatePaperReading(READ, { kind: 'note.add', page: 7, text: '之后加的' })
+    store.mutatePaperReading(READ, { kind: 'progress.set', page: 9 })
+    store.undoChange(change.id)
+    const after = store.paperReading(READ)
+    expect(after.notes.slice(0, 2)).toEqual(before.notes)
+    expect(after.notes.map((note) => note.text)).toEqual(['第一条', '第二条', '之后加的'])
+    expect(after.lastPage).toBe(9)
+    expect(store.getPaper(READ).noteCount).toBe(3)
+    expect(store.listChanges()[0]).toMatchObject({ title: '撤销：论文「Mixtral of Experts」· 删掉笔记', undoable: false })
+  })
+
+  it('删掉一条高亮记一条,撤销把它连同批注放回原处', () => {
+    store.mutatePaperReading(READ, { kind: 'highlight.add', page: 3, quote: '要删的那句', rects: RECTS, color: 'green' })
+    const first = store.paperReading(READ).highlights[0]!
+    store.mutatePaperReading(READ, { kind: 'highlight.update', id: first.id, note: '批注' })
+    const before = store.mutatePaperReading(READ, { kind: 'highlight.add', page: 4, quote: '留着的那句', rects: RECTS, color: 'yellow' })
+    store.mutatePaperReading(READ, { kind: 'highlight.delete', id: first.id })
+    const change = recorded()[0]!
+    expect(change).toMatchObject({
+      title: '论文「Mixtral of Experts」· 删掉高亮',
+      diff: ['- page: 3', '- quote: "要删的那句"', '- note: "批注"'],
+      undoable: true,
+    })
+
+    store.undoChange(change.id)
+    expect(store.paperReading(READ).highlights).toEqual(before.highlights)
+  })
+
+  it('改随笔记一条,diff 是前后两段;撤销写回之前那段,较早的一条要先撤较新的', () => {
+    store.mutatePaperReading(READ, { kind: 'remark.set', text: '旧的想法' })
+    const first = recorded()[0]!
+    expect(first).toMatchObject({
+      title: '论文「Mixtral of Experts」· 改了随笔', diff: ['+ remark: "旧的想法"'], undoable: true,
+    })
+    store.mutatePaperReading(READ, { kind: 'remark.set', text: '新的想法' })
+    const second = recorded()[0]!
+    expect(second.diff).toEqual(['- remark: "旧的想法"', '+ remark: "新的想法"'])
+    expect(() => store.undoChange(first.id)).toThrow('这条之后该实体又被改过 1 次，先撤销较新的那几条')
+
+    store.mutatePaperReading(READ, { kind: 'note.add', page: 1, text: '不挡撤销' })
+    store.undoChange(second.id)
+    expect(store.getPaper(READ).remark).toBe('旧的想法')
+    store.undoChange(first.id)
+    expect(store.paperReading(READ)).toMatchObject({ remark: '', notes: [{ text: '不挡撤销' }] })
+    expect(store.getPaper(READ)).not.toHaveProperty('remark')
+  })
+
+  it('改一条笔记记一条,撤销把之前那段原地写回;较早的一条要先撤较新的', () => {
+    store.mutatePaperReading(READ, { kind: 'note.add', page: 2, text: '第一条' })
+    const before = store.mutatePaperReading(READ, { kind: 'note.add', page: 5, text: '第二条' })
+    const id = before.notes[0]!.id
+    day = '2026-08-26'
+    store.mutatePaperReading(READ, { kind: 'note.update', id, text: '改过一次' })
+    const first = recorded()[0]!
+    expect(first).toMatchObject({
+      title: '论文「Mixtral of Experts」· 改了笔记', diff: ['- text: "第一条"', '+ text: "改过一次"'], undoable: true,
+    })
+    store.mutatePaperReading(READ, { kind: 'note.update', id, text: '改过两次' })
+    expect(() => store.undoChange(first.id)).toThrow('这条之后该实体又被改过 1 次，先撤销较新的那几条')
+
+    store.undoChange(recorded()[0]!.id)
+    store.undoChange(first.id)
+    expect(store.paperReading(READ).notes).toEqual(before.notes)
+  })
+
+  it('改一条高亮的批注记一条,撤销把之前的批注原地写回', () => {
+    store.mutatePaperReading(READ, { kind: 'highlight.add', page: 3, quote: '第一句', rects: RECTS, color: 'green' })
+    const before = store.mutatePaperReading(READ, { kind: 'highlight.add', page: 4, quote: '第二句', rects: RECTS, color: 'yellow' })
+    store.mutatePaperReading(READ, { kind: 'highlight.update', id: before.highlights[0]!.id, note: '新批注' })
+    const change = recorded()[0]!
+    expect(change).toMatchObject({
+      title: '论文「Mixtral of Experts」· 改了高亮批注', diff: ['- note: ""', '+ note: "新批注"'], undoable: true,
+    })
+
+    store.undoChange(change.id)
+    expect(store.paperReading(READ).highlights).toEqual(before.highlights)
   })
 
   it('改一条关联记下一条,撤销把它的名字和指向还原', () => {
@@ -406,6 +520,58 @@ describe('change log', () => {
     store.updateProject(PROJECT, { focus: '改过的焦点' })
     expect(Object.keys(store.listChanges()[0]!).sort())
       .toEqual(['archived', 'date', 'diff', 'id', 'meta', 'source', 'title', 'undoable', 'undone'])
+  })
+
+  it('删掉一列记一条,撤销把列放回,之后改过的显隐、分组与顺序留着,论文里那一格又看得见', () => {
+    const column = { key: 'du-fa', label: '读法', type: 'select' as const, options: ['精读'] }
+    store.setPaperColumns({ hidden: [], custom: [column], groups: ['topics', 'du-fa'], order: ['du-fa', 'y'] })
+    store.updatePaper(READ, { custom: { 'du-fa': '精读' } })
+    store.setPaperColumns({ hidden: [], custom: [], groups: ['topics'], order: ['y'] })
+    const change = recorded()[0]!
+    expect(change).toMatchObject({
+      title: '论文表 · 删掉列「读法」',
+      diff: ['- custom: {"key":"du-fa","label":"读法","options":["精读"],"type":"select"}'],
+      undoable: true,
+    })
+    store.setPaperColumns({ hidden: ['topics'], custom: [], groups: ['topics'], order: ['y'] })
+
+    store.undoChange(change.id)
+    expect(store.paperColumns()).toEqual({ hidden: ['topics'], custom: [column], groups: ['topics'], order: ['y'] })
+    expect(store.getPaper(READ).custom).toEqual({ 'du-fa': '精读' })
+    expect(store.listChanges()[0]).toMatchObject({ title: '撤销：论文表 · 删掉列「读法」', undoable: false })
+  })
+
+  it('新建列、改列名、删选项各记一条,标题说的是改了什么;显隐、分组与列顺序不记;较早的一条要先撤较新的', () => {
+    const column = { key: 'du-fa', label: '读法', type: 'select' as const, options: ['精读', '略读'] }
+    store.setPaperColumns({ ...emptyColumns(), custom: [column] })
+    const created = recorded()[0]!
+    expect(created).toMatchObject({ title: '论文表 · 新增列「读法」', undoable: true })
+    const count = store.listChanges().length
+    store.setPaperColumns({ ...store.paperColumns(), hidden: ['topics'] })
+    store.setPaperColumns({ ...store.paperColumns(), groups: ['topics', 'du-fa'] })
+    store.setPaperColumns({ ...store.paperColumns(), order: ['du-fa', 'y'] })
+    expect(store.listChanges()).toHaveLength(count)
+
+    store.setPaperColumns({ ...store.paperColumns(), custom: [{ ...column, label: '读的方式' }] })
+    expect(recorded()[0]).toMatchObject({ title: '论文表 · 列「读法」改名为「读的方式」', undoable: true })
+    store.setPaperColumns({ ...store.paperColumns(), custom: [{ ...column, label: '读的方式', options: ['精读'] }] })
+    expect(recorded()[0]).toMatchObject({ title: '论文表 · 列「读的方式」删掉选项「略读」', undoable: true })
+
+    expect(() => store.undoChange(created.id)).toThrow('这条之后该实体又被改过 2 次，先撤销较新的那几条')
+    for (const change of recorded().slice(0, 3)) store.undoChange(change.id)
+    expect(store.paperColumns()).toEqual({ hidden: ['topics'], custom: [], groups: ['topics'], order: ['y'] })
+  })
+
+  it('撤销给列加的选项被拒:还有论文填着它,列设置一个字没动', () => {
+    store.setPaperColumns({ ...emptyColumns(), custom: [{ key: 'du-fa', label: '读法', type: 'select', options: [] }] })
+    store.setPaperColumns({ ...emptyColumns(), custom: [{ key: 'du-fa', label: '读法', type: 'select', options: ['精读'] }] })
+    const added = recorded()[0]!
+    store.updatePaper(READ, { custom: { 'du-fa': '精读' } })
+    const held = store.paperColumns()
+
+    expect(() => store.undoChange(added.id)).toThrow('列「读法」的选项「精读」还有论文在用，删不掉')
+    expect(store.paperColumns()).toEqual(held)
+    expect(store.listChanges().find((c) => c.id === added.id)).toMatchObject({ undone: false })
   })
 
   it('选项改名记一条 columns 型变动,撤销是反着再改一次', () => {

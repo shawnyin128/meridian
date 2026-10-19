@@ -77,6 +77,43 @@ describe('ShortTextEditor', () => {
     expect(submit).toHaveBeenCalledTimes(1)
   })
 
+  it('leaves Enter and Escape that end an input method composition to the input method', async () => {
+    const submit = vi.fn(() => Promise.resolve(true))
+    const close = vi.fn()
+    act(() => root!.render(withMessages(
+      <ShortTextEditor title="重命名项目" placeholder="项目名称" onSubmit={submit} onClose={close} />,
+    )))
+    const input = host.querySelector<HTMLInputElement>('input')!
+    act(() => setValue(input, '新名称'))
+    for (const key of ['Enter', 'Escape']) {
+      act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key, isComposing: true, bubbles: true })))
+    }
+    expect(submit).not.toHaveBeenCalled()
+    expect(close).not.toHaveBeenCalled()
+
+    await act(async () => {
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await Promise.resolve()
+    })
+    expect(submit).toHaveBeenCalledWith('新名称')
+  })
+
+  it('in a FloatingTextEditor, an Escape that ends an input method composition keeps the popover open', () => {
+    const close = vi.fn()
+    act(() => root!.render(withMessages(
+      <FloatingTextEditor
+        open anchor={<span />} editorKey="new" title="新里程碑" placeholder="里程碑内容"
+        onSubmit={() => true} onClose={close}
+      />,
+    )))
+    const input = document.querySelector<HTMLInputElement>('.short-text-editor input')!
+    act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true })))
+    expect(close).not.toHaveBeenCalled()
+
+    act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+    expect(close).toHaveBeenCalled()
+  })
+
   it('offers deletion only when the host enables it', () => {
     const remove = vi.fn()
     const close = vi.fn()

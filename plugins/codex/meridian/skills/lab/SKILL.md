@@ -269,11 +269,12 @@ Report graph health failures before relying on visual state.
   when available and include only relevant `User Coding Style Principles`.
 - Ask before boundary-changing state moves: creating a new node, marking
   `repairable` or `dead`, switching the active thread, closing/reopening a
-  thread, publishing to Paper Wiki, or handing off ambiguous development scope.
+  thread, or handing off ambiguous development scope.
   Naming a node to work on activates or reopens it without a separate ask (see
   Focus under Keeping the graph current).
 - Keep Lab findings local until a finding proposal is `ready`; use `wiki` for
-  Paper Wiki update/use work.
+  Paper Wiki update/use work. A Paper Wiki write-back is a proposal that waits
+  for the user's review in the App.
 
 ## Research Prior Gate
 

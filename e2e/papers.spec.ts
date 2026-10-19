@@ -969,21 +969,24 @@ test('分页条两端对齐:条数贴左缘,页码与每页档位挨着贴右缘
     const seg = bar.querySelector('.segmented-control')!.getBoundingClientRect()
     const pgbtn = bar.querySelectorAll('.pager .pgbtn')
     const tail = pgbtn[pgbtn.length - 1]!.getBoundingClientRect()
+    // Children of one line share a vertical center up to layout rounding, which can straddle a half
+    // pixel; a wrapped child sits a whole line lower.
+    const centers = [...bar.children].map((c) => {
+      const r = c.getBoundingClientRect()
+      return r.top + r.height / 2
+    })
     return {
       countInset: +(count.getBoundingClientRect().left - bx.left).toFixed(2),
       segInset: +(bx.right - seg.right).toFixed(2),
       pageToSeg: +(seg.left - tail.right).toFixed(2),
       gap: parseFloat(getComputedStyle(bar).columnGap),
-      rows: new Set([...bar.children].map((c) => {
-        const r = c.getBoundingClientRect()
-        return Math.round(r.top + r.height / 2)
-      })).size,
+      centerSpread: Math.max(...centers) - Math.min(...centers),
     }
   })
 
   console.log(`分页条版式:条数离左缘 ${laid.countInset}px,每页档位离右缘 ${laid.segInset}px,`
     + `末页码与每页档位相距 ${laid.pageToSeg}px(分页条的 gap 是 ${laid.gap}px)`)
-  expect(laid.rows, '分页条已经换行,量到的不是同一行上的版式').toBe(1)
+  expect(laid.centerSpread, '分页条已经换行,量到的不是同一行上的版式').toBeLessThan(1)
   expect(laid.countInset).toBe(0)
   expect(laid.segInset).toBe(0)
   expect(laid.pageToSeg).toBe(laid.gap)
@@ -1000,7 +1003,7 @@ test('年份与发表分两列:年份只写年份、仍按它排序,发表只写
   // After Title come Short title, Rating, Authors, Year, Venue, Topics and Status.
   expect((await head()).slice(0, 8)).toEqual(['标题', '短标题', '评分', '作者', '年份', '发表', '主题', '状态'])
   const listed = (direction: 'asc' | 'desc') => call<{ rows: { year?: number; venue: string }[] }>(
-    win, 'papers.list', { page: 1, size: 10, sort: 'year', direction },
+    win, 'papers.list', { page: 1, size: 20, sort: 'year', direction },
   ).then((r) => r.rows)
   const rows = win.locator('.ptable tbody tr')
   // The table sorts by date added by default, not year: click the year header once to make it the sort column, which defaults to descending.
@@ -1283,15 +1286,28 @@ test('建列不乐观插入:写在路上或写失败时表头不会同时有新�
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [title="新增列"]').click()
   await win.locator('.ptable thead th.th-new input').fill('建列时序')
+  // The write can land before a snapshot taken after Enter, so the header is recorded after every DOM
+  // change from before Enter until the write lands.
+  await win.evaluate(() => {
+    const states: string[] = []
+    const record = () => {
+      const column = [...document.querySelectorAll('.ptable thead th')].some((th) => th.textContent === '建列时序')
+      const placeholder = document.querySelector('.ptable thead th.th-new') !== null
+      const state = column ? (placeholder ? 'both' : 'column') : (placeholder ? 'placeholder' : 'neither')
+      if (states.at(-1) !== state) states.push(state)
+    }
+    record()
+    new MutationObserver(record).observe(document.querySelector('.ptable')!, { childList: true, subtree: true })
+    ;(window as unknown as { headStates: string[] }).headStates = states
+  })
   await win.locator('.ptable thead th.th-new input').press('Enter')
-  // Checked right after Enter: the new column is not there yet (no optimistic insert) and the
-  // placeholder still is, so the two never show at once.
-  expect(await head()).not.toContain('建列时序')
-  expect(await win.locator('.ptable thead th.th-new').count()).toBe(1)
 
   // Once the write lands the placeholder is gone and the new column is there.
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(0)
   await expect.poll(head).toContain('建列时序')
+  // Until then only the placeholder showed (no optimistic insert), and the two never showed at once.
+  expect(await win.evaluate(() => (window as unknown as { headStates: string[] }).headStates))
+    .toEqual(['placeholder', 'column'])
 })
 
 test('建列写在路上时 Esc 放弃了草稿:占位与类型层一起没了,写落地不补开任何层,列照样建成', async ({ win }) => {

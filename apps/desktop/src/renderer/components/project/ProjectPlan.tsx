@@ -16,11 +16,11 @@ import { DateChip } from '../DateTimeDisplay.js'
 import { EmptyState } from '../EmptyState.js'
 import { ChoicePicker, DateButton, PriorityPicker } from '../FieldPickers.js'
 import { InlineDraftInput } from '../InlineDraftInput.js'
-import { InlineField } from '../InlineField.js'
+import { InlineField, type InlineFieldProps } from '../InlineField.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PanelClose } from '../PanelClose.js'
 import { TaskScheduleField } from '../TaskScheduleField.js'
-import { IconTrash } from '../icons.js'
+import { IconPencil, IconTrash } from '../icons.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
@@ -181,18 +181,41 @@ function MilestoneCreateRow({ initial, triggers, onSave, onCancel }: {
   )
 }
 
-function PlanNameCell({ value, label, onSave, stopRowActivation = false }: {
+function PlanNameCell({ value, label, onSave, rest }: {
   value: string
   label: string
   onSave: (value: string) => boolean | Promise<boolean>
-  stopRowActivation?: boolean
+  rest?: InlineFieldProps['rest']
 }) {
   return (
     <InlineField
       label={label} value={value} wrapperClassName="plan-name-cell"
       buttonClassName="plan-cell plan-name" inputClassName="plan-name-input"
       normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onSave}
-      stopRowActivation={stopRowActivation}
+      {...(rest === undefined ? {} : { rest })}
+    />
+  )
+}
+
+/**
+ * A task's name cell: the name is the row's keyboard control for opening the task, so its click
+ * reaches the row, and the pencil beside it renames the task in place.
+ */
+function TaskNameCell({ task, onSave }: { task: Task; onSave: (patch: TaskPatch) => Promise<boolean> }) {
+  const m = useMessages()
+  return (
+    <PlanNameCell
+      value={task.title} label={m.project.plan.taskNamePlaceholder} onSave={(title) => onSave({ title })}
+      rest={(edit) => (
+        <>
+          <button type="button" className="plan-cell plan-name plan-open">{task.title}</button>
+          <button
+            type="button" className="plan-rename"
+            title={m.project.plan.renameTask} aria-label={m.project.plan.renameTaskFor(task.title)}
+            onClick={(event) => { event.stopPropagation(); edit() }}
+          ><IconPencil /></button>
+        </>
+      )}
     />
   )
 }
@@ -316,19 +339,11 @@ function TaskRow({ task, flash, selected, dragProps, dropClass = '', onSave, onD
       {task.origin === 'agent'
         ? (
           <span className="task-name-with-origin">
-            <PlanNameCell
-              value={task.title} label={m.project.plan.taskNamePlaceholder} onSave={(title) => onSave({ title })}
-              stopRowActivation
-            />
+            <TaskNameCell task={task} onSave={onSave} />
             <span className="agtag">{m.project.records.who.agent}</span>
           </span>
         )
-        : (
-          <PlanNameCell
-            value={task.title} label={m.project.plan.taskNamePlaceholder} onSave={(title) => onSave({ title })}
-            stopRowActivation
-          />
-        )}
+        : <TaskNameCell task={task} onSave={onSave} />}
       <button
         className="row-delete" type="button"
         title={m.project.plan.deleteTask} aria-label={m.project.plan.deleteTaskFor(task.title)}
