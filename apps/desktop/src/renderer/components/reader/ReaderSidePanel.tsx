@@ -1,4 +1,5 @@
 import type { PaperReading, PaperRow, ReadingMutation } from '../../../shared/contract.js'
+import { useDrafts } from '../../hooks/useDrafts.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { PaperMetadata } from '../PaperMetadata.js'
 import { ReadingNotes } from './ReadingNotes.js'
@@ -17,7 +18,10 @@ function RailIcon({ tab }: { tab: ReaderSideTab }) {
   return <svg viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5zM15 4v5h4M8 13h8M8 16h6" /></svg>
 }
 
-/** The collapsible reader rail reserves document width only after the user opens a panel. */
+/**
+ * The collapsible reader rail reserves document width only after the user opens a panel. It keeps
+ * the panels' unsaved text per paper, note and highlight while panels close and other papers open.
+ */
 export function ReaderSidePanel({
   tab, onTab, paper, onPaper, reading, currentPage, saving, onMutate, onSaveRemark, onJump,
   focusHighlightId,
@@ -35,19 +39,20 @@ export function ReaderSidePanel({
   focusHighlightId: string | null
 }) {
   const m = useMessages()
+  const drafts = useDrafts()
   return (
     <aside className={tab === null ? 'reader-side collapsed' : 'reader-side'}>
       {tab === 'metadata' && paper !== null ? <PaperMetadata paper={paper} onSaved={onPaper} /> : null}
-      {tab === 'highlights' || tab === 'notes'
+      {(tab === 'highlights' || tab === 'notes') && reading !== null
         ? (
           <ReadingNotes
             reading={reading} currentPage={currentPage} saving={saving} onMutate={onMutate}
-            onJump={onJump} mode={tab} focusHighlightId={focusHighlightId}
+            onJump={onJump} mode={tab} focusHighlightId={focusHighlightId} drafts={drafts}
           />
         )
         : null}
-      {tab === 'remark'
-        ? <ReadingRemark reading={reading} saving={saving} onSave={onSaveRemark} />
+      {tab === 'remark' && reading !== null
+        ? <ReadingRemark reading={reading} saving={saving} onSave={onSaveRemark} drafts={drafts} />
         : null}
       {tab === 'wiki' && paper !== null && reading !== null
         ? <PaperWikiIngest paper={paper} reading={reading} />

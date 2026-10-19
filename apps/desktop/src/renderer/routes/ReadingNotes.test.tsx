@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-import { act } from 'react'
+import { act, type ComponentProps } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PaperReading, ReadingMutation } from '../../shared/contract.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { ReadingNotes } from '../components/reader/ReadingNotes.js'
+import { useDrafts } from '../hooks/useDrafts.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -22,6 +23,11 @@ const READING: PaperReading = {
   notes: [{
     id: 'note-1', page: 3, text: '原笔记', created: '2026-09-14', updated: '2026-09-14',
   }],
+}
+
+/** The notes panel with the drafts the reader rail holds for it. */
+function Notes(props: Omit<ComponentProps<typeof ReadingNotes>, 'drafts'>) {
+  return <ReadingNotes {...props} drafts={useDrafts()} />
 }
 
 function setValue(input: HTMLTextAreaElement, value: string): void {
@@ -51,7 +57,7 @@ describe('ReadingNotes', () => {
     const mutations: ReadingMutation[] = []
     act(() => root.render(
       <MessagesProvider>
-        <ReadingNotes
+        <Notes
           reading={READING} currentPage={4} saving={false} onJump={vi.fn()}
           onMutate={async (mutation) => { mutations.push(mutation); return true }}
         />
@@ -73,7 +79,7 @@ describe('ReadingNotes', () => {
     const jump = vi.fn()
     act(() => root.render(
       <MessagesProvider>
-        <ReadingNotes
+        <Notes
           reading={READING} currentPage={1} saving={false} onJump={jump}
           onMutate={async (mutation) => { mutations.push(mutation); return true }}
         />
