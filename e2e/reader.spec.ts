@@ -56,7 +56,7 @@ async function selectReadable(win: Page): Promise<void> {
 /** Opens the readable paper's detail panel from the paper table, then clicks "Start reading". */
 async function openFromPapers(win: Page): Promise<void> {
   await selectReadable(win)
-  await shown(win, '.pdetail [title="开始阅读"]').click()
+  await shown(win, '.pdetail [aria-label="开始阅读"]').click()
 }
 
 /**
@@ -115,14 +115,14 @@ test('阅读器右栏平滑展开并在收起后只保留工具轨', async ({ wi
   expect(await side.evaluate((element) => getComputedStyle(element).transitionProperty))
     .toContain('flex-basis')
 
-  await shown(win, '.reader-rail [title="元数据"]').click()
+  await shown(win, '.reader-rail [aria-label="元数据"]').click()
   await expect(side).not.toHaveClass(/\bcollapsed\b/)
   await expect.poll(() => side.evaluate((element) => element.getBoundingClientRect().width))
     .toBeGreaterThan(300)
   expect(await side.locator('.reader-meta').evaluate((element) => getComputedStyle(element).animationName))
     .toContain('detail-panel-content-in')
 
-  await shown(win, '.reader-rail [title="元数据"]').click()
+  await shown(win, '.reader-rail [aria-label="元数据"]').click()
   await expect(side).toHaveClass(/\bcollapsed\b/)
   await expect.poll(() => side.evaluate((element) => element.getBoundingClientRect().width))
     .toBeLessThan(60)
@@ -186,7 +186,7 @@ test('先排好所有页的框,再从视口附近开始画;第一页先于其余
     ;(window as unknown as { __paintOrder: () => { order: number[]; boxesBeforeFirstPaint: number } }).__paintOrder =
       () => ({ order, boxesBeforeFirstPaint })
   })
-  await shown(win, '.pdetail [title="开始阅读"]').click()
+  await shown(win, '.pdetail [aria-label="开始阅读"]').click()
   await expectPainted(win, READABLE.pages)
   const seen = await win.evaluate(() => (window as unknown as { __paintOrder: () => { order: number[]; boxesBeforeFirstPaint: number } }).__paintOrder())
   expect(seen.boxesBeforeFirstPaint).toBe(READABLE.pages)
@@ -229,7 +229,7 @@ test('解析跑在 pdf.js 起的 Worker 里,没有退回主线程', async ({ win
   // Worker created from here on.
   await recordWorkers(win)
 
-  await shown(win, '.pdetail [title="开始阅读"]').click()
+  await shown(win, '.pdetail [aria-label="开始阅读"]').click()
   await expect(shown(win, '.pdfpagebox')).toHaveCount(READABLE.pages)
 
   const made = await pdfWorkers(win)
@@ -240,7 +240,7 @@ test('解析跑在 pdf.js 起的 Worker 里,没有退回主线程', async ({ win
 test('别处写库不会把原文重解析一遍', async ({ win }) => {
   await selectReadable(win)
   await recordWorkers(win)
-  await shown(win, '.pdetail [title="开始阅读"]').click()
+  await shown(win, '.pdetail [aria-label="开始阅读"]').click()
   await expect(shown(win, '.pdfpagebox')).toHaveCount(READABLE.pages)
   expect(await pdfWorkers(win)).toHaveLength(1)
 
@@ -250,7 +250,7 @@ test('别处写库不会把原文重解析一遍', async ({ win }) => {
   // through the reader's own back button, then open Watch settings from the Inbox screen.
   await shown(win, '.paper-chat-head .back').click()
   await win.locator('[data-inbox="all"]').click()
-  await shown(win, '[title="关注设置"]').click()
+  await shown(win, '[aria-label="关注设置"]').click()
   const watched = win.locator('.setdlg .wrow').first()
   for (let n = 0; n < VAULT_WRITES; n += 1) {
     const pausing = n % 2 === 0
@@ -262,7 +262,7 @@ test('别处写库不会把原文重解析一遍', async ({ win }) => {
   // Back in the reader: the pages are drawn as before, and the PDF is not parsed again.
   await win.keyboard.press('Escape')
   await win.locator('[data-desk="papers"]').click()
-  await shown(win, '.pdetail [title="开始阅读"]').click()
+  await shown(win, '.pdetail [aria-label="开始阅读"]').click()
   await expectPainted(win, READABLE.pages)
   const made = await pdfWorkers(win)
   console.log(`${VAULT_WRITES} 次库写之后阅读器建的 Worker ${JSON.stringify(made)}`)
@@ -272,7 +272,7 @@ test('别处写库不会把原文重解析一遍', async ({ win }) => {
 test('换一篇读,新篇解析期间屏上没有上一篇的页', async ({ win }) => {
   await gotoPapers(win)
   await selectPaper(win, READABLE.title)
-  await shown(win, '.pdetail [title="开始阅读"]').click()
+  await shown(win, '.pdetail [aria-label="开始阅读"]').click()
   await expectPainted(win, READABLE.pages)
   await shown(win, '.paper-chat-head .back').click()
   await selectPaper(win, SWITCHED[1]!.title)
@@ -291,7 +291,7 @@ test('换一篇读,新篇解析期间屏上没有上一篇的页', async ({ win 
     new MutationObserver(check).observe(document.body, { subtree: true, childList: true, characterData: true })
     ;(window as unknown as { __switchSeen: typeof seen }).__switchSeen = seen
   }, [READABLE.pages, 'Mixtral'] as const)
-  await shown(win, '.pdetail [title="开始阅读"]').click()
+  await shown(win, '.pdetail [aria-label="开始阅读"]').click()
   await expectPainted(win, SWITCHED[1]!.pages)
 
   const seen = await win.evaluate(() => (window as unknown as { __switchSeen: { stale: boolean; cleared: boolean } }).__switchSeen)
@@ -311,14 +311,14 @@ test.describe(() => {
 
     // A: open the first readable paper and leave.
     await selectPaper(win, READABLE.title)
-    await shown(win, '.pdetail [title="开始阅读"]').click()
+    await shown(win, '.pdetail [aria-label="开始阅读"]').click()
     await expectPainted(win, READABLE.pages)
     await shown(win, '.paper-chat-head .back').click()
     await expect(shown(win, '.ptable')).toHaveCount(1)
 
     // B: open a second readable paper and leave; the cache now holds A and B.
     await selectPaper(win, SWITCHED[1]!.title)
-    await shown(win, '.pdetail [title="开始阅读"]').click()
+    await shown(win, '.pdetail [aria-label="开始阅读"]').click()
     await expectPainted(win, SWITCHED[1]!.pages)
     await shown(win, '.paper-chat-head .back').click()
     await expect(shown(win, '.ptable')).toHaveCount(1)
@@ -327,15 +327,15 @@ test.describe(() => {
     const entries = await call<{ id: string; title: string; paper: string }[]>(win, 'inbox.list', {})
     const target = entries.find((e) => e.id === INGESTED.entry)!
     await win.locator('#rowInboxAll').click()
-    await shown(win, `.pcard[data-pid="${target.id}"] [title="下载并入库"]`).click()
-    await shown(win, `.pcard[data-pid="${target.id}"] [title="开始阅读"]`).click()
+    await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="下载并入库"]`).click()
+    await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="开始阅读"]`).click()
     await expectPainted(win, INGESTED.pages)
     await shown(win, '.paper-chat-head .back').click()
 
     // A again: no longer cached, so it is re-parsed and evicts B.
     await gotoPapers(win)
     await selectPaper(win, READABLE.title)
-    await shown(win, '.pdetail [title="开始阅读"]').click()
+    await shown(win, '.pdetail [aria-label="开始阅读"]').click()
     await expectPainted(win, READABLE.pages)
 
     const made = await pdfWorkers(win)
@@ -351,19 +351,19 @@ test.describe(() => {
     await recordWorkers(win)
 
     await selectPaper(win, READABLE.title)
-    await shown(win, '.pdetail [title="开始阅读"]').click()
+    await shown(win, '.pdetail [aria-label="开始阅读"]').click()
     await expectPainted(win, READABLE.pages)
     await shown(win, '.paper-chat-head .back').click()
     await expect(shown(win, '.ptable')).toHaveCount(1)
 
     await selectPaper(win, SWITCHED[1]!.title)
-    await shown(win, '.pdetail [title="开始阅读"]').click()
+    await shown(win, '.pdetail [aria-label="开始阅读"]').click()
     await expectPainted(win, SWITCHED[1]!.pages)
     await shown(win, '.paper-chat-head .back').click()
     await expect(shown(win, '.ptable')).toHaveCount(1)
 
     await selectPaper(win, READABLE.title)
-    await shown(win, '.pdetail [title="开始阅读"]').click()
+    await shown(win, '.pdetail [aria-label="开始阅读"]').click()
     await expectPainted(win, READABLE.pages)
 
     const made = await pdfWorkers(win)
@@ -377,13 +377,13 @@ test.describe(() => {
     await recordWorkers(win)
 
     await selectPaper(win, READABLE.title)
-    await shown(win, '.pdetail [title="开始阅读"]').click()
+    await shown(win, '.pdetail [aria-label="开始阅读"]').click()
     await expectPainted(win, READABLE.pages)
     await shown(win, '.paper-chat-head .back').click()
     await expect(shown(win, '.ptable')).toHaveCount(1)
 
     await selectPaper(win, SWITCHED[1]!.title)
-    await shown(win, '.pdetail [title="开始阅读"]').click()
+    await shown(win, '.pdetail [aria-label="开始阅读"]').click()
     await expectPainted(win, SWITCHED[1]!.pages)
     await shown(win, '.paper-chat-head .back').click()
     await expect(shown(win, '.ptable')).toHaveCount(1)
@@ -419,7 +419,7 @@ test('返回钮回到来路那一屏,阅读器里读到哪一篇还留着', asyn
   await shown(win, '.paper-chat-head .back').click()
   await expect(shown(win, '.ptable')).toHaveCount(1)
 
-  await shown(win, '.pdetail [title="开始阅读"]').click()
+  await shown(win, '.pdetail [aria-label="开始阅读"]').click()
   await expect(shown(win, '.paper-chat-head strong')).toHaveText(`${READABLE_TITLE} · 阅读中`)
   await expect(shown(win, '.pdfpagebox')).toHaveCount(READABLE.pages)
 })
@@ -428,7 +428,7 @@ test('同一篇再进来,读到哪儿、放大到几倍都留着', async ({ win 
   await openFromPapers(win)
   await expectPainted(win, READABLE.pages)
 
-  await shown(win, '.zoomctl [title="放大"]').click()
+  await shown(win, '.zoomctl [aria-label="放大"]').click()
   await expect(shown(win, '.zoomctl .zoom-reset')).toHaveText('120%')
   // Settling the zoom moves the scroll to keep the page point at the zoom position in place, so wait
   // until the whole paper is drawn, then two more frames, before scrolling to the position to remember.
@@ -443,7 +443,7 @@ test('同一篇再进来,读到哪儿、放大到几倍都留着', async ({ win 
 
   await shown(win, '.paper-chat-head .back').click()
   await expect(shown(win, '.ptable')).toHaveCount(1)
-  await shown(win, '.pdetail [title="开始阅读"]').click()
+  await shown(win, '.pdetail [aria-label="开始阅读"]').click()
 
   await expect(shown(win, '.zoomctl .zoom-reset')).toHaveText('120%')
   await expect(shown(win, '.pdfwrap')).toHaveJSProperty('scrollTop', SCROLLED)
@@ -456,8 +456,8 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
   const target = entries.find((e) => e.id === INGESTED.entry)!
 
   await win.locator('#rowInboxAll').click()
-  await shown(win, `.pcard[data-pid="${target.id}"] [title="下载并入库"]`).click()
-  await shown(win, `.pcard[data-pid="${target.id}"] [title="开始阅读"]`).click()
+  await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="下载并入库"]`).click()
+  await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="开始阅读"]`).click()
   await expectPainted(win, INGESTED.pages)
 
   // Delete the paper from Papers: the reader stays open on the same paper, which is no longer in the vault.
@@ -470,7 +470,7 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
   await expect(win.locator('.ptable tbody tr')).toHaveCount(0)
 
   await win.locator('#rowInboxAll').click()
-  await shown(win, `.pcard[data-pid="${target.id}"] [title="开始阅读"]`).click()
+  await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="开始阅读"]`).click()
   await expect(shown(win, '.pdfload')).toHaveText(`论文不存在：${target.paper}`)
 
   // Restored from the Trash, the same paper opens without the earlier error. The global sidebar is
@@ -479,7 +479,7 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
   await win.locator('[data-desk="trash"]').click()
   await win.locator('.tgroup .trow .btn', { hasText: '恢复' }).click()
   await win.locator('#rowInboxAll').click()
-  await shown(win, `.pcard[data-pid="${target.id}"] [title="开始阅读"]`).click()
+  await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="开始阅读"]`).click()
   await expect(shown(win, '.pdfload')).toHaveCount(0)
   await expect(shown(win, '.pdfpagebox')).toHaveCount(INGESTED.pages)
 })
@@ -489,7 +489,7 @@ test('放大一档,页面按新的比例重画,百分比跟着变', async ({ win
   await expect(shown(win, '.pdfpagebox')).toHaveCount(READABLE.pages)
   await expect(shown(win, '.zoomctl .zoom-reset')).toHaveText('100%')
 
-  await shown(win, '.zoomctl [title="放大"]').click()
+  await shown(win, '.zoomctl [aria-label="放大"]').click()
   await expect(shown(win, '.zoomctl .zoom-reset')).toHaveText('120%')
   await expect(shown(win, '.pdfpagebox').first())
     .toHaveJSProperty('clientWidth', Math.floor(PAGE.width * FIT * 1.2))
@@ -504,8 +504,8 @@ test('收件里下载入库那一条的「开始阅读」进阅读器,入库那�
   expect(target.paper).toMatch(/^paper-pdf-[0-9a-f]{12}$/)
 
   await win.locator('#rowInboxAll').click()
-  await shown(win, `.pcard[data-pid="${target.id}"] [title="下载并入库"]`).click()
-  await shown(win, `.pcard[data-pid="${target.id}"] [title="开始阅读"]`).click()
+  await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="下载并入库"]`).click()
+  await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="开始阅读"]`).click()
 
   await expect(win.locator('#crumb .cseg'))
     .toHaveText(['收件', '论文推送', target.title.split(':')[0]!])
@@ -519,8 +519,8 @@ test('从某一条关注那一档进阅读器,面包屑是那一档的三段加�
   const target = entries.find((e) => e.watch === watched.id)!
 
   await win.locator(`[data-inbox="${watched.id}"]`).click()
-  await shown(win, `.pcard[data-pid="${target.id}"] [title="下载并入库"]`).click()
-  await shown(win, `.pcard[data-pid="${target.id}"] [title="开始阅读"]`).click()
+  await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="下载并入库"]`).click()
+  await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="开始阅读"]`).click()
 
   await expect(win.locator('#crumb .cseg'))
     .toHaveText(['收件', '主题', watched.name, target.title.split(':')[0]!])
@@ -532,7 +532,7 @@ test('稍后阅读里指着库内一篇的那条,「开始阅读」把那一篇�
   const target = queued.find((e) => e.id === QUEUED.entry)!
 
   await win.locator('#rowLater').click()
-  await shown(win, `.pcard[data-pid="${target.id}"] [title="开始阅读"]`).click()
+  await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="开始阅读"]`).click()
 
   await expect(win.locator('#crumb .cseg'))
     .toHaveText(['收件', '稍后阅读', target.title.split(':')[0]!])
@@ -541,7 +541,7 @@ test('稍后阅读里指着库内一篇的那条,「开始阅读」把那一篇�
 
 test('内化到 Wiki 先展示完整费用范围,明确确认后才消费一次授权计划', async ({ win }) => {
   await openFromPapers(win)
-  await shown(win, '.reader-rail [title="内化到 Wiki"]').click()
+  await shown(win, '.reader-rail [aria-label="内化到 Wiki"]').click()
   await expect(shown(win, '.wiki-ingest')).toContainText('生成一份可审核的 Wiki 提案')
 
   await shown(win, '.wiki-ingest .harness-trigger').click()

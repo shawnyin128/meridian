@@ -86,7 +86,7 @@ async function revealMilestone(win: Page, dataMilestone: string) {
   await shown(win).locator('.gantt .segmented-control>button', { hasText: '月' }).click()
   const diamond = shown(win).locator(`.gantt .gddl[data-milestone="${dataMilestone}"]`)
   for (let step = 0; step < 3 && await diamond.count() === 0; step += 1) {
-    await shown(win).locator('.gantt .gperiodnav button[title="下一个周期"]').click()
+    await shown(win).locator('.gantt .gperiodnav button[aria-label="下一个周期"]').click()
   }
   await expect(diamond).toBeVisible()
   // Center it in the scrollable viewport instead of leaving it wherever it first became visible, so it

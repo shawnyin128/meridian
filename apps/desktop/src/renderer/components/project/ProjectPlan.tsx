@@ -215,7 +215,7 @@ function TaskNameCell({ task, onSave }: { task: Task; onSave: (patch: TaskPatch)
         <>
           <button type="button" className="plan-cell plan-name plan-open">{task.title}</button>
           <IconButton
-            label={m.project.plan.renameTaskFor(task.title)} title={m.project.plan.renameTask} size="nested"
+            label={m.project.plan.renameTaskFor(task.title)} size="nested"
             className="plan-rename" onClick={(event) => { event.stopPropagation(); edit() }}
           ><IconPencil /></IconButton>
         </>
@@ -350,7 +350,7 @@ function TaskRow({ task, flash, selected, dragProps, dropClass = '', onSave, onD
         )
         : <TaskNameCell task={task} onSave={onSave} />}
       <IconButton
-        label={m.project.plan.deleteTaskFor(task.title)} title={m.project.plan.deleteTask} size="nested" tone="danger"
+        label={m.project.plan.deleteTaskFor(task.title)} size="nested" tone="danger"
         className="row-delete" onClick={(event) => { event.stopPropagation(); onDelete() }}
       ><IconTrash /></IconButton>
     </StructuredRow>
@@ -389,7 +389,7 @@ function MilestoneRow({ milestone, flash, onHover, onSave, onDelete }: {
         onSave={(title) => onSave({ title })}
       />
       <IconButton
-        label={m.project.plan.deleteMilestoneFor(milestone.title)} title={m.project.plan.deleteMilestone} size="nested"
+        label={m.project.plan.deleteMilestoneFor(milestone.title)} size="nested"
         tone="danger" className="row-delete" onClick={onDelete}
       ><IconTrash /></IconButton>
     </StructuredRow>
@@ -470,7 +470,7 @@ export function ProjectPlan({
           />
           <AddAction
             variant="section" ref={addRef}
-            title={tab === 'ms' ? m.project.plan.addMilestone : m.project.plan.addTask}
+            label={tab === 'ms' ? m.project.plan.addMilestone : m.project.plan.addTask}
             onClick={() => (tab === 'ms' ? onStartMilestone(today) : onStartTask())}
           >{tab === 'ms' ? m.project.plan.milestoneMode : m.project.plan.taskMode}</AddAction>
         </div>

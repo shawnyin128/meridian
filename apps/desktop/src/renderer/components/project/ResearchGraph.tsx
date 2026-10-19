@@ -23,6 +23,7 @@ import { StatusDot, type StatusDotTone } from '../StatusDot.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { TagButton } from '../Tag.js'
+import { Tooltip } from '../Tooltip.js'
 import { ProjectEventRow } from './ProjectSignals.js'
 import './ResearchGraph.css'
 
@@ -363,10 +364,11 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
           <IconButton label={m.project.graph.zoomOut} size="nested" onClick={() => zoomAt(view.zoom / 1.2)}>
             <IconMinus />
           </IconButton>
-          <button
-            type="button" className="btn ghost sm graph-zoom-reset" title={m.project.graph.resetView}
-            onClick={() => setView({ x: 0, y: 0, zoom: 1 })}
-          >{Math.round(view.zoom * 100)}%</button>
+          <Tooltip label={m.project.graph.resetView}>
+            <button
+              type="button" className="btn ghost sm graph-zoom-reset" onClick={() => setView({ x: 0, y: 0, zoom: 1 })}
+            >{Math.round(view.zoom * 100)}%</button>
+          </Tooltip>
           <IconButton label={m.project.graph.zoomIn} size="nested" onClick={() => zoomAt(view.zoom * 1.2)}>
             <IconPlus />
           </IconButton>

@@ -72,14 +72,15 @@ describe('Reader', () => {
 
   it('缩放到上限或下限时那一侧的按钮变淡，点百分比回到 100%', async () => {
     await render()
-    const button = (title: string) => host.querySelector<HTMLButtonElement>(`.zoomctl [title="${title}"]`)!
-    const shown = () => button('Reset zoom').textContent
-    const press = async (title: string, times: number) => {
-      for (let n = 0; n < times; n += 1) await act(async () => { button(title).click() })
+    const button = (label: string) => host.querySelector<HTMLButtonElement>(`.zoomctl [aria-label="${label}"]`)!
+    const reset = () => host.querySelector<HTMLButtonElement>('.zoomctl .zoom-reset')!
+    const shown = () => reset().textContent
+    const press = async (label: string, times: number) => {
+      for (let n = 0; n < times; n += 1) await act(async () => { button(label).click() })
     }
     await press('Zoom in', 7)
     expect([shown(), button('Zoom in').disabled, button('Zoom out').disabled]).toEqual(['240%', true, false])
-    await press('Reset zoom', 1)
+    await act(async () => { reset().click() })
     expect(shown()).toBe('100%')
     await press('Zoom out', 2)
     expect([shown(), button('Zoom in').disabled, button('Zoom out').disabled]).toEqual(['60%', false, true])

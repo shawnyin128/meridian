@@ -228,7 +228,7 @@ export function WikiClaims({ page, pending, links, onApply }: {
   return (
     <>
       <SectionHeading variant="content" className="flexh">{c.heading}
-        <AddAction variant="section" disabled={pending} title={c.add} onClick={() => open({ kind: 'add' })}>{c.addShort}</AddAction>
+        <AddAction variant="section" disabled={pending} label={c.add} onClick={() => open({ kind: 'add' })}>{c.addShort}</AddAction>
       </SectionHeading>
       {page.claims.length === 0
         ? <EmptyState variant="section">{c.empty}</EmptyState>

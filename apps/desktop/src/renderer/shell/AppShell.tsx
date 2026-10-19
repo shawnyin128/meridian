@@ -10,7 +10,7 @@ import { AboutDialog } from '../components/AboutDialog.js'
 import { IconButton } from '../components/IconButton.js'
 import { PageFailure } from '../components/PageShell.js'
 import { ScreenBoundary } from '../components/ScreenBoundary.js'
-import { composing } from '../lib/keyboard.js'
+import { commandShortcut, composing } from '../lib/keyboard.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import { Sidebar } from './Sidebar.js'
@@ -661,7 +661,10 @@ export function AppShell({ screens, settings }: {
           appMenu.toggleMaximize()
         }}
       >
-        <IconButton label={m.shell.sidebar.toggle} size="nested" className="tbtn" id="sbBtn" onClick={() => setHidden((h) => !h)}>
+        <IconButton
+          label={m.shell.sidebar.toggle} shortcut={commandShortcut(appMenu.platform(), 'B')} size="nested"
+          className="tbtn" id="sbBtn" onClick={() => setHidden((h) => !h)}
+        >
           <svg
             viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
             strokeLinecap="round" strokeLinejoin="round"
@@ -705,7 +708,7 @@ export function AppShell({ screens, settings }: {
           }}
         >
           <MenuItem onSelect={() => { wantDialog.current = 'settings' }}>
-            {m.shell.titlebar.settings}<span className="mi-key">{appMenu.platform() === 'darwin' ? '⌘,' : 'Ctrl+,'}</span>
+            {m.shell.titlebar.settings}<span className="mi-key">{commandShortcut(appMenu.platform(), ',')}</span>
           </MenuItem>
           <MenuItem onSelect={() => {
             void appUpdates.check()

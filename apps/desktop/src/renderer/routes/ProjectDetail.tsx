@@ -1087,7 +1087,7 @@ export function ProjectDetail({
                     actions={(
                       // The demo's relAdd guard: an open placeholder is only refocused, keeping what was typed.
                       <AddAction
-                        variant="section" ref={relAdd} title={m.project.links.addTitle}
+                        variant="section" ref={relAdd} label={m.project.links.addTitle}
                         onClick={() => {
                           if (relAdding) relRow.current?.querySelector('input')?.focus()
                           else setRelAdding(true)

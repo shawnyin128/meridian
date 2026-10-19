@@ -6,21 +6,42 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { ChoicePicker, DotsMenu } from './FieldPickers.js'
+import { TOOLTIP_DELAY } from './Tooltip.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
-describe('DotsMenu', () => {
-  beforeEach(() => { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh') })
+/** Rests the pointer on `target` until the shared tooltip delay has passed; returns the tooltip's text. */
+function hoverTip(target: Element): string | null {
+  vi.useFakeTimers()
+  act(() => { target.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
+  act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+  vi.useRealTimers()
+  return document.querySelector('[role="tooltip"]')?.textContent ?? null
+}
 
-  it('always names itself 更多 and takes an extra accessible name', () => {
+describe('DotsMenu', () => {
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    document.body.innerHTML = ''
+  })
+
+  it('shows the name of the object it manages as its tooltip, not a native 更多', () => {
     const html = renderToStaticMarkup(
       <MessagesProvider><DotsMenu label="管理想法：蒸馏预算"><span>归档</span></DotsMenu></MessagesProvider>,
     )
-    expect(html).toContain('title="更多"')
+    expect(html).not.toContain('title=')
     expect(html).toContain('aria-label="管理想法：蒸馏预算"')
     expect(html).toContain('class="icbtn sm dots"')
+
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    act(() => root.render(<MessagesProvider><DotsMenu label="管理想法：蒸馏预算"><span>归档</span></DotsMenu></MessagesProvider>))
+    expect(hoverTip(host.querySelector('.dots')!)).toBe('管理想法：蒸馏预算')
+    act(() => root.unmount())
   })
 })
 

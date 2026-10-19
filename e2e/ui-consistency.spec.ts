@@ -83,7 +83,7 @@ test('内嵌列表和表格不画外框线:末行下方与首行上方都没有�
 test('撤不回来的动作才弹确认,弹出来的都是同一个对话框', async ({ win }) => {
   test.slow()
   await win.locator('[data-inbox="all"]').click()
-  await shown(win, '[title="关注设置"]').click()
+  await shown(win, '[aria-label="关注设置"]').click()
   await win.locator('.setdlg .wrow').first().waitFor()
   await win.locator('.setdlg .wrow').first().locator('.btn', { hasText: '移除' }).click()
 
@@ -145,7 +145,7 @@ test('收起钮全应用一个说法,Escape 一层一层剥,「/」跳到输入�
   await win.keyboard.press('/')
   await expect(shown(win, '#libq')).toBeFocused()
 
-  await expect(win.locator('[title="关闭"]')).toHaveCount(0)
+  await expect(win.locator('[aria-label="关闭"]')).toHaveCount(0)
 })
 
 test('按天分组的三屏用同一行小标题', async ({ win }) => {
@@ -167,14 +167,15 @@ test('按天分组的三屏用同一行小标题', async ({ win }) => {
   await expect(win.locator('.daymark, .cday')).toHaveCount(0)
 })
 
-test('四处「更多」菜单同一个触发器:tooltip 一样、悬停显形、键盘能到、开着不褪色', async ({ win }) => {
+test('四处「更多」菜单同一个触发器:tooltip 说出它的名字、悬停显形、键盘能到、开着不褪色', async ({ win }) => {
   test.slow()
   await win.locator('[data-desk="resproj"]').click()
   const card = shown(win, '.research-object-card').first()
   await card.hover()
   const dots = card.locator('.dots')
-  await expect(dots).toHaveAttribute('title', '更多')
   await expect(dots).toHaveCSS('opacity', '1')
+  await dots.hover()
+  await expect(win.locator('[role="tooltip"]')).toHaveText((await dots.getAttribute('aria-label'))!)
   await dots.click()
   // Move off the card: only the open state, not hover, should be keeping the trigger visible now.
   await parkPointer(win)
@@ -197,12 +198,12 @@ test('项目目录那一行的「更多」悬停就能点到', async ({ win }) =
   await win.keyboard.press('Escape')
 })
 
-test('分节里的添加钮都带字,tooltip 和可见文字说的是同一句', async ({ win }) => {
+test('分节里的添加钮都带字,名字是整句,可见的是其中的短词', async ({ win }) => {
   test.slow()
   await win.locator('[data-desk="wiki"]').click()
   await shown(win, '[data-wk="topics/quantization"]').click()
-  for (const [text, title] of [['主题', '添加主题'], ['论文', '添加论文']] as const) {
-    const btn = shown(win, `.section-heading .add-action[title="${title}"]`)
+  for (const [text, name] of [['主题', '添加主题'], ['论文', '添加论文']] as const) {
+    const btn = shown(win, `.section-heading .add-action[aria-label="${name}"]`)
     await expect(btn).toHaveCount(1)
     await expect(btn).toHaveText(text)
   }
@@ -240,7 +241,7 @@ test('界面上没有文字叉、没有文字加号,主按钮一律在取消右�
   await shown(win, '[data-wk="topics/ptq"]').click()
   await shown(win, '[data-wk="topics/ptq-weight-only"]').click()
   await shown(win, 'table.cmp thead').hover()
-  await shown(win, '[title="列设置"]').first().click()
+  await shown(win, '[aria-label="列设置"]').first().click()
   // The column editor is a Radix popover, portaled to <body> outside .screenslot — not wrapped in shown().
   const actions = win.locator('.coledit .acts')
   await expect(actions.locator('>button').first()).toHaveText('取消')

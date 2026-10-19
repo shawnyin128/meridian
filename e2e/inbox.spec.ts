@@ -68,7 +68,7 @@ const cardTitles = (win: Page) => shown(win, '.pcard h3').allTextContents()
 /** Inmail settings live only in Settings; the gear on the Inmail screen opens their Watches category directly. */
 async function openDeliverySettings(win: Page) {
   await openInbox(win, 'all')
-  await shown(win, '[title="关注设置"]').click()
+  await shown(win, '[aria-label="关注设置"]').click()
   await expect(win.locator('.setdlg')).toBeVisible()
   await expect(settings(win, '[data-setcat="delivery-watch"]')).toHaveClass(/\bon\b/)
 }
@@ -133,11 +133,11 @@ test('关注与项目发现是两条流,发现解释来源并接受显式反馈'
   await openInbox(win, 'discovery')
 
   const first = shown(win, '.pcard').first()
-  await first.locator('[title="更多类似"]').click()
-  await expect(first.locator('[title="更多类似"]')).toHaveClass(/\bon\b/)
+  await first.locator('[aria-label="更多类似"]').click()
+  await expect(first.locator('[aria-label="更多类似"]')).toHaveClass(/\bon\b/)
 
   const before = (await discoveryFromCore(win)).length
-  await shown(win, '.pcard').nth(1).locator('[title="减少类似"]').click()
+  await shown(win, '.pcard').nth(1).locator('[aria-label="减少类似"]').click()
   await expect.poll(async () => (await discoveryFromCore(win)).length).toBe(before - 1)
 })
 
@@ -169,7 +169,7 @@ test('忽略一条:它进垃圾桶,恢复后回到推送屏原来的位置', asy
   const order = await cardTitles(win)
   const dropped = order[1]!
 
-  await shown(win, '.pcard').nth(1).locator('[title="忽略"]').click()
+  await shown(win, '.pcard').nth(1).locator('[aria-label="忽略"]').click()
   await expect(shown(win, '.pcard')).toHaveCount(order.length - 1)
   expect(await cardTitles(win)).toEqual(order.filter((t) => t !== dropped))
 
@@ -228,10 +228,10 @@ test('入库:论文进库,按钮就地变开始阅读', async ({ win }) => {
   const title = (await cardTitles(win))[0]!
 
   const card = shown(win, '.pcard').first()
-  await card.locator('[title="下载并入库"]').click()
-  await expect(card.locator('[title="开始阅读"]')).toHaveCount(1)
+  await card.locator('[aria-label="下载并入库"]').click()
+  await expect(card.locator('[aria-label="开始阅读"]')).toHaveCount(1)
   await expect(win.locator('#toast')).toHaveText('已下载入库 · 可阅读')
-  await expect(card.locator('[title="下载并入库"]')).toHaveCount(0)
+  await expect(card.locator('[aria-label="下载并入库"]')).toHaveCount(0)
 
   expect(await paperTotal(win)).toBe(before + 1)
   expect((await inboxFromCore(win)).filter((e) => e.downloaded)).toHaveLength(1)
@@ -253,7 +253,7 @@ test('入库撞上库里已有的那一篇:不重复入库,就地给出打开那
 
   await openInbox(win, 'all')
   const card = shown(win, `.pcard[data-pid="${dup.id}"]`)
-  await card.locator('[title="下载并入库"]').click()
+  await card.locator('[aria-label="下载并入库"]').click()
 
   await expect(win.locator('#toast')).toHaveText('库里已经有这一篇 · 没有重复入库')
   await expect(card.locator('.pdup span')).toHaveText(`库里已经有这一篇：「${known.title}」`)
@@ -279,13 +279,13 @@ test.describe('这一条推送已经在别处入过库', () => {
 
     await openInbox(win, 'all')
     const card = shown(win, `.pcard[data-pid="${fresh.id}"]`)
-    await expect(card.locator('[title="下载并入库"]')).toHaveCount(1)
+    await expect(card.locator('[aria-label="下载并入库"]')).toHaveCount(1)
 
     // Add it directly, bypassing the UI: Core records the entry as added, but the UI has not
     // refetched, so the card still shows it as not added.
     await call(win, 'inbox.download', { id: fresh.id })
 
-    await card.locator('[title="下载并入库"]').click()
+    await card.locator('[aria-label="下载并入库"]').click()
     await expect(win.locator('#toast')).toHaveText(`这一条已经入库：${fresh.id}`)
     await expect(shown(win, '.ipcerror')).toHaveCount(0)
   })
@@ -294,9 +294,9 @@ test.describe('这一条推送已经在别处入过库', () => {
 test('下载并入库时显示进度环,完成后就地变成开始阅读', async ({ win }) => {
   await openInbox(win, 'all')
   const card = shown(win, '.pcard[data-pid="drafterlite"]')
-  await card.locator('[title="下载并入库"]').click()
-  await expect(card.locator('.icbtn.busy[title="从 arXiv 下载中"] .ring')).toHaveCount(1)
-  await expect(card.locator('[title="开始阅读"]')).toHaveCount(1, { timeout: 10_000 })
+  await card.locator('[aria-label="下载并入库"]').click()
+  await expect(card.locator('.icbtn.busy[aria-label="从 arXiv 下载中"] .ring')).toHaveCount(1)
+  await expect(card.locator('[aria-label="开始阅读"]')).toHaveCount(1, { timeout: 10_000 })
   await expect(card.locator('.ring')).toHaveCount(0)
   expect((await inboxFromCore(win)).find((entry) => entry.id === 'drafterlite')?.downloaded).toBe(true)
 })
@@ -304,9 +304,9 @@ test('下载并入库时显示进度环,完成后就地变成开始阅读', asyn
 test('下载失败在卡片内给原因和重试,不占用全页错误', async ({ win }) => {
   await openInbox(win, 'all')
   const card = shown(win, '.pcard[data-pid="sequoia2"]')
-  await card.locator('[title="下载并入库"]').click()
+  await card.locator('[aria-label="下载并入库"]').click()
   await expect(card.locator('.pfail span')).toHaveText('下载失败 · 服务器出错')
-  await expect(card.locator('[title="下载并入库"]')).toHaveCount(1)
+  await expect(card.locator('[aria-label="下载并入库"]')).toHaveCount(1)
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   await card.locator('.pfail .btn', { hasText: '重试' }).click()
   await expect(card.locator('.pfail span')).toHaveText('下载失败 · 服务器出错')
@@ -349,7 +349,7 @@ test('存入稍后阅读:离开推送屏,排到队首,再移出', async ({ win }
   await expect(shown(win, '.pcard')).toHaveCount(entries.length)
   const first = entries[0]!
   const title = (await cardTitles(win))[0]!
-  await shown(win, '.pcard').first().locator('[title="稍后阅读"]').click()
+  await shown(win, '.pcard').first().locator('[aria-label="稍后阅读"]').click()
   await expect(shown(win, '.pcard')).toHaveCount(entries.length - 1)
 
   await win.locator('#rowLater').click()
@@ -360,7 +360,7 @@ test('存入稍后阅读:离开推送屏,排到队首,再移出', async ({ win }
     id: first.id, day: '今天', source: `${KIND[watched.type]} · ${watched.name}`,
   })
 
-  await shown(win, '.pcard').first().locator('[title="移出"]').click()
+  await shown(win, '.pcard').first().locator('[aria-label="移出"]').click()
   await expect(shown(win, '.desk-head .t')).toHaveText(`稍后阅读 · ${queued.length}`)
   expect((await laterFromCore(win)).map((e) => e.id)).toEqual(queued.map((e) => e.id))
 })
@@ -374,23 +374,23 @@ test('稍后阅读里有原文地址的条目可以直接开始阅读并在需�
   await win.locator('#rowLater').click()
   await expect(shown(win, '.pcard')).toHaveCount(queued.length)
   for (const entry of queued) {
-    await expect(shown(win, `.pcard[data-pid="${entry.id}"] [title="开始阅读"]`))
+    await expect(shown(win, `.pcard[data-pid="${entry.id}"] [aria-label="开始阅读"]`))
       .toHaveCount(readable.has(entry.id) ? 1 : 0)
   }
   // Every queued entry can still be removed; only the entry point to the reader is missing on some.
-  await expect(shown(win, '.pcard [title="移出"]')).toHaveCount(queued.length)
+  await expect(shown(win, '.pcard [aria-label="移出"]')).toHaveCount(queued.length)
 
   // Adding the same paper from Inmail gives the queued entry pointing at it a reader entry point too.
   const shared = queued.find((e) => !e.downloaded
     && entries.some((x) => x.id === e.id && !x.downloaded))!
   const source = entries.find((x) => x.paper === shared.paper)!
   await openInbox(win, 'all')
-  await shown(win, `.pcard[data-pid="${source.id}"] [title="下载并入库"]`).click()
-  await expect(shown(win, `.pcard[data-pid="${source.id}"] [title="开始阅读"]`)).toHaveCount(1)
+  await shown(win, `.pcard[data-pid="${source.id}"] [aria-label="下载并入库"]`).click()
+  await expect(shown(win, `.pcard[data-pid="${source.id}"] [aria-label="开始阅读"]`)).toHaveCount(1)
 
   await win.locator('#rowLater').click()
-  await expect(shown(win, `.pcard[data-pid="${shared.id}"] [title="开始阅读"]`)).toHaveCount(1)
-  await expect(shown(win, '.pcard [title="开始阅读"]')).toHaveCount(readable.size)
+  await expect(shown(win, `.pcard[data-pid="${shared.id}"] [aria-label="开始阅读"]`)).toHaveCount(1)
+  await expect(shown(win, '.pcard [aria-label="开始阅读"]')).toHaveCount(readable.size)
 })
 
 test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', async ({ win }) => {

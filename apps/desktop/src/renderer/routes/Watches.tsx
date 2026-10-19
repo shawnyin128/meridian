@@ -52,7 +52,7 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
   return (
     <>
       <SectionHeading variant="group" className="flexh">{m.shell.watchKind[type]}
-        <AddAction variant="section" ref={add} title={m.watches.add(m.shell.watchKind[type])} onClick={onOpen}>{m.shell.watchKind[type]}</AddAction>
+        <AddAction variant="section" ref={add} label={m.watches.add(m.shell.watchKind[type])} onClick={onOpen}>{m.shell.watchKind[type]}</AddAction>
       </SectionHeading>
       {watches.length === 0 && editor === undefined
         ? <EmptyState variant="section">{m.watches.empty(m.shell.watchKind[type])}</EmptyState>

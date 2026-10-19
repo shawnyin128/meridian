@@ -1074,7 +1074,7 @@ export function PaperTable() {
               : null}
             <th className="th-add">
               <AddAction
-                variant="icon" className="colbtn" ref={colAdd} title={m.papers.columnHeader.addColumn}
+                variant="icon" className="colbtn" ref={colAdd} label={m.papers.columnHeader.addColumn}
                 onClick={() => {
                   if (newCol) { newColCell.current?.querySelector('input')?.focus(); return }
                   setNewCol(true)

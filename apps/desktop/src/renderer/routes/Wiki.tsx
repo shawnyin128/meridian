@@ -623,7 +623,7 @@ export function Wiki() {
                   {m.wiki.subdivisionsHeading(shownAgg.kindLabel)}
                   <AddAction
                     variant="section" ref={childBtn} disabled={pending}
-                    title={m.wiki.addKind(shownAgg.kindLabel)} onClick={() => open('child')}
+                    label={m.wiki.addKind(shownAgg.kindLabel)} onClick={() => open('child')}
                   >{shownAgg.kindLabel}</AddAction>
                 </SectionHeading>
                 {shownAgg.children.length === 0 && adding !== 'child'
@@ -657,7 +657,7 @@ export function Wiki() {
                 <SectionHeading variant="content" className="flexh">{m.wiki.paperComparisonHeading}
                   <AddAction
                     variant="section" ref={paperBtn} disabled={pending}
-                    title={m.wiki.addPaperTitle} onClick={() => open('paper')}
+                    label={m.wiki.addPaperTitle} onClick={() => open('paper')}
                   >{m.wiki.paperKind}</AddAction>
                 </SectionHeading>
                 <Table
@@ -686,7 +686,7 @@ export function Wiki() {
                           {/* If the placeholder column is already open, only refocus it, keeping the half-typed name. */}
                           <AddAction
                             variant="icon" className="colbtn" ref={colAdd} disabled={pending}
-                            title={m.wiki.aggregation.addColumn}
+                            label={m.wiki.aggregation.addColumn}
                             onClick={() => {
                               if (newCol) { newColCell.current?.querySelector('input')?.focus(); return }
                               setAdding(null)

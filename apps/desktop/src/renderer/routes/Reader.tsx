@@ -13,6 +13,7 @@ import {
 import { IconButton } from '../components/IconButton.js'
 import { IconMinus, IconPlus } from '../components/icons.js'
 import { PickerPopover, type AnchorBox } from '../components/PickerPopover.js'
+import { Tooltip } from '../components/Tooltip.js'
 import {
   highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionBox,
 } from './highlight-geometry.js'
@@ -707,9 +708,11 @@ export function Reader() {
             <IconButton label={m.reader.zoom.out} size="nested" disabled={zoom <= ZOOM_MIN} onClick={() => zoomBy(-ZOOM_STEP)}>
               <IconMinus />
             </IconButton>
-            <button type="button" className="btn ghost sm zoom-reset" title={m.reader.zoom.reset} onClick={() => zoomBy(1 - shownZoom.current)}>
-              {Math.round(zoom * 100)}%
-            </button>
+            <Tooltip label={m.reader.zoom.reset}>
+              <button type="button" className="btn ghost sm zoom-reset" onClick={() => zoomBy(1 - shownZoom.current)}>
+                {Math.round(zoom * 100)}%
+              </button>
+            </Tooltip>
             <IconButton label={m.reader.zoom.in} size="nested" disabled={zoom >= ZOOM_MAX} onClick={() => zoomBy(ZOOM_STEP)}>
               <IconPlus />
             </IconButton>

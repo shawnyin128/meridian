@@ -14,16 +14,16 @@ import './FieldPickers.css'
 const PRIORITIES: Task['priority'][] = ['p0', 'p1', 'p2']
 
 /**
- * The one overflow-menu trigger. The tooltip is always the shared "more actions" label; `label`
- * adds the screen-reader name for rows that need to say which object the menu belongs to.
- * `stopRowActivation` keeps the click off a clickable row or card underneath. The trigger shows
- * only while the element marked `data-dots-row` around it is hovered or holds focus.
+ * The one overflow-menu trigger, named and tooltipped by `label`, which says which object the menu
+ * belongs to, or by the shared "more actions" label without one. `stopRowActivation` keeps the click
+ * off a clickable row or card underneath. The trigger shows only while the element marked
+ * `data-dots-row` around it is hovered or holds focus.
  */
 export function DotsMenu({
   children, label, stopRowActivation = false, open, onOpenChange, contentClassName,
 }: {
   children: ReactNode
-  /** The screen-reader name, e.g. naming which idea or chat the menu manages. Falls back to the bare tooltip when omitted. */
+  /** The name, e.g. naming which idea or chat the menu manages. Falls back to the shared "more actions" label when omitted. */
   label?: string
   /** Pass true when the row or card itself is clickable, so the trigger swallows the click instead of bubbling it. */
   stopRowActivation?: boolean
@@ -40,7 +40,7 @@ export function DotsMenu({
       stopContentClickPropagation
       trigger={(
         <IconButton
-          label={label ?? m.common.menu.more} title={m.common.menu.more} size="nested" className="dots"
+          label={label ?? m.common.menu.more} size="nested" className="dots"
           onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
         ><IconDots /></IconButton>
       )}

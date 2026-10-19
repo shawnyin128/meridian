@@ -83,7 +83,7 @@ export function ProjectChips({ paper, onError }: {
           )
           : (
             <AddAction
-              variant="chip" className={tagClass('ghost', 'chip', 'tagchip tagadd')} title={m.research.chips.addProject}
+              variant="chip" className={tagClass('ghost', 'chip', 'tagchip tagadd')} label={m.research.chips.addProject}
               onClick={(event) => { event.stopPropagation(); setOpen(true) }}
             />
           )}

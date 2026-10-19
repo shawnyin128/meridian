@@ -101,7 +101,7 @@ function TopicAdd({ values, onAdd, onError }: {
         )
         : (
           <AddAction
-            variant="chip" className={tagClass('ghost', 'chip', 'tagchip tagadd')} title={m.papers.tags.add}
+            variant="chip" className={tagClass('ghost', 'chip', 'tagchip tagadd')} label={m.papers.tags.add}
             onClick={(e) => { e.stopPropagation(); setOpen(true) }}
           />
         )}

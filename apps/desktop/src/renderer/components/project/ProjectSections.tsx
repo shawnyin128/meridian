@@ -335,7 +335,7 @@ export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
       <SectionHeading
         variant="rail"
         actions={(
-          <AddAction variant="section" title={m.project.attachments.addTitle} onClick={() => input.current?.click()}>
+          <AddAction variant="section" label={m.project.attachments.addTitle} onClick={() => input.current?.click()}>
             {m.project.sections.attachments}
           </AddAction>
         )}

@@ -145,7 +145,7 @@ describe('Wiki keyboard reach', () => {
   it('列设置里删除一列的是共享的图标按钮，图标有尺寸，不再是一个空方块', async () => {
     vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
-    await press(host.querySelector<HTMLElement>('.cmp thead [title="列设置"]')!)
+    await press(host.querySelector<HTMLElement>('.cmp thead [aria-label="列设置"]')!)
     const remove = document.querySelector<HTMLButtonElement>('.coledit .row button')!
     expect([remove.className, remove.getAttribute('aria-label')]).toEqual(['icbtn sm danger', '删除列'])
     expect(remove.querySelector('svg')!.outerHTML).toBe(renderToStaticMarkup(<IconTrash />))

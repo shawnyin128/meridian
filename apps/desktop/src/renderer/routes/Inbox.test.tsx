@@ -109,7 +109,7 @@ describe('Inbox', () => {
     expect(host.querySelector('.desk-head .t')?.textContent).toBe('论文发现 · 1')
     expect(host.querySelector('.prec')?.textContent)
       .toContain('来自项目「项目一」 · 基于 2 篇相关论文')
-    const more = host.querySelector<HTMLButtonElement>('[title="更多类似"]')!
+    const more = host.querySelector<HTMLButtonElement>('[aria-label="更多类似"]')!
     await act(async () => { more.click() })
     expect(api.feedback).toHaveBeenCalledWith('d1', 'more')
     await act(async () => { root.unmount() })
@@ -167,7 +167,7 @@ describe('Inbox', () => {
       title: `Paper ${kind}`, authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '', feedback: 'more',
       reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
     })
-    const glyph = (title: string) => host.querySelector(`[title="${title}"] svg`)!.outerHTML
+    const glyph = (title: string) => host.querySelector(`[aria-label="${title}"] svg`)!.outerHTML
     api.entries = [card('watch')]
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
@@ -180,7 +180,7 @@ describe('Inbox', () => {
     await act(async () => { again.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     expect(glyph('已经了解')).toBe(renderToStaticMarkup(<IconSeen />))
     expect(glyph('已经了解')).not.toBe(renderToStaticMarkup(<IconCheck />))
-    expect(host.querySelector('[title="更多类似"]')!.getAttribute('aria-pressed')).toBe('true')
+    expect(host.querySelector('[aria-label="更多类似"]')!.getAttribute('aria-pressed')).toBe('true')
     await act(async () => { again.unmount() })
   })
 
@@ -194,7 +194,7 @@ describe('Inbox', () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     expect(host.querySelectorAll('.collapsible-group')).toHaveLength(1)
-    expect(host.querySelector('[title="忽略"]')).toBeNull()
+    expect(host.querySelector('[aria-label="忽略"]')).toBeNull()
     expect(host.querySelector('.collapsible-group-actions')).toBeNull()
     await act(async () => { root.unmount() })
   })
@@ -224,7 +224,7 @@ describe('Inbox', () => {
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     const card = (id: string) => host.querySelector<HTMLElement>(`.paper-card[data-pid="${id}"]`)!
     for (const id of ['a1', 'a2']) {
-      await act(async () => { card(id).querySelector<HTMLButtonElement>('[title="下载并入库"]')!.click() })
+      await act(async () => { card(id).querySelector<HTMLButtonElement>('[aria-label="下载并入库"]')!.click() })
     }
     expect(card('a1').querySelector('.pfail span')?.textContent).toBe('下载失败')
     expect(card('a2').querySelector('.pfail span')?.textContent).toBe('下载失败 · 服务器出错')
@@ -250,7 +250,7 @@ describe('Inbox', () => {
     }]
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    const gear = host.querySelector<HTMLButtonElement>('[title="发现设置"]')!
+    const gear = host.querySelector<HTMLButtonElement>('[aria-label="发现设置"]')!
     expect(gear.querySelector('svg')).not.toBeNull()
     expect(host.textContent).not.toContain('管理方向')
     expect(host.textContent).not.toContain('Draft Model')

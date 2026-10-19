@@ -206,10 +206,10 @@ const TYPE_TITLE = { select: '单选', multi: '多选' } as const
  * in the name, presses Enter, and returns the papers.setColumns call that started.
  */
 async function startCreate(host: HTMLDivElement, label: string, type?: 'select' | 'multi') {
-  const plus = host.querySelector<HTMLButtonElement>('[title="新增列"]')!
+  const plus = host.querySelector<HTMLButtonElement>('[aria-label="新增列"]')!
   await act(async () => { plus.click() })
   if (type) {
-    const typeBtn = document.querySelector<HTMLButtonElement>(`[title="${TYPE_TITLE[type]}"]`)!
+    const typeBtn = document.querySelector<HTMLButtonElement>(`[aria-label="${TYPE_TITLE[type]}"]`)!
     await act(async () => { typeBtn.click() })
   }
   const input = host.querySelector<HTMLInputElement>('th.th-new input')!
@@ -226,13 +226,13 @@ async function openNoteTypeRow(): Promise<void> {
   columnsCall.resolve(NOTE_COLUMNS)
   listCall.resolve({ rows: [ROW], total: 1 })
   await flush()
-  await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
-  await act(async () => { document.querySelector<HTMLButtonElement>('[title="改类型"]')!.click() })
+  await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+  await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="改类型"]')!.click() })
 }
 
 /** The option button titled `title` in the column menu's type row. */
 function typeButton(title: string): HTMLButtonElement {
-  return document.querySelector<HTMLButtonElement>(`.typerow [title="${title}"]`)!
+  return document.querySelector<HTMLButtonElement>(`.typerow [aria-label="${title}"]`)!
 }
 
 /** Presses `key` on the element currently holding focus. */
@@ -564,7 +564,7 @@ describe('PaperTable', () => {
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
 
-    await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
     const row = (label: string) => [...document.querySelectorAll<HTMLElement>('.mi.colrow')]
       .find((el) => el.textContent === label)!
     expect([row('主题').tagName, row('主题').getAttribute('aria-pressed')]).toEqual(['BUTTON', 'true'])
@@ -578,7 +578,7 @@ describe('PaperTable', () => {
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
 
-    await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
     const checked = (label: string) => [...document.querySelectorAll<HTMLElement>('.mi.colrow')]
       .find((el) => el.textContent === label)!.querySelector('.ck svg') !== null
     expect([checked('主题'), checked('发表'), checked('选择')]).toEqual([true, false, false])
@@ -759,7 +759,7 @@ describe('PaperTable', () => {
     expect(labels()).toEqual(before)
     expect(labels()).toContain('选择')
     expect(host.querySelectorAll('.ptable thead .thmove')).toHaveLength(COLUMNS.length + 1)
-    expect(host.querySelector<HTMLButtonElement>('[title="新增列"]')!.disabled).toBe(false)
+    expect(host.querySelector<HTMLButtonElement>('[aria-label="新增列"]')!.disabled).toBe(false)
     expect(row.classList).toContain('selected')
     expect(row.getAttribute('aria-current')).toBe('true')
   })
@@ -853,13 +853,13 @@ describe('PaperTable', () => {
     expect(host.querySelector('.paper-detail-slot')?.getAttribute('data-panel-state')).toBe('open')
 
     // Collapse details panel
-    const closeDetail = host.querySelector<HTMLButtonElement>('[title="收起详情"]')!
+    const closeDetail = host.querySelector<HTMLButtonElement>('[aria-label="收起详情"]')!
     await act(async () => { closeDetail.click() })
     expect(host.querySelector('.pdetail')).toBeNull()
     expect(host.querySelector('.paper-detail-slot')?.getAttribute('data-panel-state')).toBe('closed')
 
     // Open a new draft and type it without submitting it
-    const plus = host.querySelector<HTMLButtonElement>('[title="新增列"]')!
+    const plus = host.querySelector<HTMLButtonElement>('[aria-label="新增列"]')!
     await act(async () => { plus.click() })
     const input2 = host.querySelector<HTMLInputElement>('th.th-new input')!
     await act(async () => { setValue(input2, '第二次') })
@@ -883,7 +883,7 @@ describe('PaperTable', () => {
 
     // The write has not landed yet: the draft header, the type popover and the selected option all stay.
     expect(host.querySelector('th.th-new')).not.toBeNull()
-    const selectBtn = document.querySelector<HTMLButtonElement>('[title="单选"]')!
+    const selectBtn = document.querySelector<HTMLButtonElement>('[aria-label="单选"]')!
     expect(selectBtn.getAttribute('aria-checked')).toBe('true')
     expect(selectBtn.className).toContain('on')
 
@@ -1157,7 +1157,7 @@ describe('PaperTable', () => {
     const input = host.querySelector<HTMLInputElement>('th.th-new input')
     expect(input).not.toBeNull()
     expect(input!.value).toBe('建列时序')
-    expect(document.querySelector('[title="单选"]')!.getAttribute('aria-checked')).toBe('true')
+    expect(document.querySelector('[aria-label="单选"]')!.getAttribute('aria-checked')).toBe('true')
     expect(headTexts(host)).not.toContain('建列时序')
     // After the rejection, the table fetched the columns from Core again to correct itself.
     expect(columnsCallCount).toBeGreaterThan(columnsCallsAtMount)
@@ -1184,7 +1184,7 @@ describe('PaperTable', () => {
     })
     expect(host.querySelector('th.th-new')).toBeNull()
 
-    const plus = host.querySelector<HTMLButtonElement>('[title="新增列"]')!
+    const plus = host.querySelector<HTMLButtonElement>('[aria-label="新增列"]')!
     await act(async () => { plus.click() })
     const input2 = host.querySelector<HTMLInputElement>('th.th-new input')!
     await act(async () => { setValue(input2, '第二次') })
@@ -1322,7 +1322,7 @@ describe('PaperTable', () => {
     await flush()
 
     const create = await startCreate(host, '建列时序')
-    const gear = host.querySelector<HTMLButtonElement>('[title="列设置"]')!
+    const gear = host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!
     await act(async () => { gear.click() })
     const topicsRow = [...document.querySelectorAll<HTMLElement>('.mi.colrow')]
       .find((el) => el.textContent === '主题')!
@@ -1343,10 +1343,10 @@ describe('PaperTable', () => {
     await flush()
 
     const create = await startCreate(host, '建列时序')
-    const gear = host.querySelector<HTMLButtonElement>('[title="列设置"]')!
+    const gear = host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!
     await act(async () => { gear.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[title="选项"]')!.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[title="重命名选项"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="选项"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="重命名选项"]')!.click() })
     // Look only inside the option row: the column draft header is in the document too, with the same
     // input.celledit class.
     const input = document.querySelector<HTMLInputElement>('.mi.optrow input.celledit')!
@@ -1367,8 +1367,8 @@ describe('PaperTable', () => {
     columnsCall.resolve(NOTE_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
-    await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[title="删除列"]')!.click() })
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="删除列"]')!.click() })
     expect(setColumnsCalls.map((c) => c.columns.custom)).toEqual([[]])
 
     const before = bumps
@@ -1383,7 +1383,7 @@ describe('PaperTable', () => {
     columnsCall.resolve(SELECT_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
-    const gear = host.querySelector<HTMLButtonElement>('[title="列设置"]')!
+    const gear = host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!
     // Radix closes the menu on the click that ends the press, once the rename has been accepted.
     const pressOutside = async () => {
       await act(async () => { document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })) })
@@ -1392,7 +1392,7 @@ describe('PaperTable', () => {
     }
 
     await act(async () => { gear.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[title="重命名列"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="重命名列"]')!.click() })
     await act(async () => { setValue(document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')!, '挑选') })
     await pressOutside()
     expect(setColumnsCalls.at(-1)?.columns.custom.map((c) => c.label)).toEqual(['挑选'])
@@ -1401,15 +1401,15 @@ describe('PaperTable', () => {
     await flush()
 
     await act(async () => { gear.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[title="选项"]')!.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[title="重命名选项"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="选项"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="重命名选项"]')!.click() })
     await act(async () => { setValue(document.querySelector<HTMLInputElement>('.mi.optrow input.celledit')!, 'renamed') })
     await pressOutside()
     expect(renameOptionCalls).toEqual([['pick', 'existing', 'renamed']])
 
     // A name another column already has is refused: the menu, the input and its text stay.
     await act(async () => { gear.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[title="重命名列"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="重命名列"]')!.click() })
     await act(async () => { setValue(document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')!, '标题') })
     await pressOutside()
     const refused = document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')!
@@ -1422,8 +1422,8 @@ describe('PaperTable', () => {
     columnsCall.resolve(SELECT_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
-    await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[title="重命名列"]')!.click() })
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="重命名列"]')!.click() })
     const input = document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')!
     await act(async () => { setValue(input, '挑选') })
     for (const key of ['Escape', 'Enter']) {
@@ -1434,7 +1434,7 @@ describe('PaperTable', () => {
 
     await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
     expect(document.querySelector('.mi.colrow input.celledit')).toBeNull()
-    expect(document.querySelector('[title="重命名列"]')).not.toBeNull()
+    expect(document.querySelector('[aria-label="重命名列"]')).not.toBeNull()
   })
 
   it('列菜单改列名时点菜单里别的地方:先存下这一列;名字重了就带着字留着标红,另一列的重命名不开', async () => {
@@ -1442,8 +1442,8 @@ describe('PaperTable', () => {
     columnsCall.resolve(PICK_AND_NOTE)
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
-    await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
-    const pencil = (at: number) => document.querySelectorAll<HTMLButtonElement>('[title="重命名列"]')[at]!
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+    const pencil = (at: number) => document.querySelectorAll<HTMLButtonElement>('[aria-label="重命名列"]')[at]!
     const renameInput = () => document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')
     /** Presses `el` in the menu as a user would: the press, then the click. */
     const pressInMenu = async (el: Element) => {
@@ -1580,7 +1580,7 @@ describe('PaperTable', () => {
       input1.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     })
     expect(host.querySelector('th.th-new')).toBeNull()
-    const plus = host.querySelector<HTMLButtonElement>('[title="新增列"]')!
+    const plus = host.querySelector<HTMLButtonElement>('[aria-label="新增列"]')!
     await act(async () => { plus.click() })
     const input2 = host.querySelector<HTMLInputElement>('th.th-new input')!
     await act(async () => { setValue(input2, '第二次') })
@@ -1671,10 +1671,10 @@ describe('PaperTable', () => {
     await flush()
 
     const create = await startCreate(host, '建列时序')
-    await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[title="改类型"]')!.click() })
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="改类型"]')!.click() })
     // The column draft header's popover also has a multi-select button, so look only in the column menu's type row.
-    await act(async () => { document.querySelector<HTMLButtonElement>('.typerow [title="多选"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('.typerow [aria-label="多选"]')!.click() })
     expect(setColumnTypeCalls).toHaveLength(0)
 
     create.resolve()

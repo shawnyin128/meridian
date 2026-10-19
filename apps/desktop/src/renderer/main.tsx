@@ -13,6 +13,7 @@ import { ResearchOverview } from './routes/ResearchOverview.js'
 import { Settings } from './routes/Settings.js'
 import { Trash } from './routes/Trash.js'
 import { Wiki } from './routes/Wiki.js'
+import { TooltipProvider } from './components/Tooltip.js'
 import { MessagesProvider } from './messages/useMessages.js'
 import { AppShell } from './shell/AppShell.js'
 import { initializeAppearance } from './shell/appearance.js'
@@ -25,15 +26,17 @@ initializeLanguage()
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MessagesProvider>
-      <AppShell
-        screens={{
-          feed: <Feed />, inbox: <Inbox />, later: <Later />,
-          papers: <PaperTable />, wiki: <Wiki />, changelog: <Changelog />,
-          ideas: <Ideas />, overview: <ResearchOverview />, project: <Projects />,
-          trash: <Trash />, chat: <Chat />, reader: <Reader />,
-        }}
-        settings={<Settings />}
-      />
+      <TooltipProvider>
+        <AppShell
+          screens={{
+            feed: <Feed />, inbox: <Inbox />, later: <Later />,
+            papers: <PaperTable />, wiki: <Wiki />, changelog: <Changelog />,
+            ideas: <Ideas />, overview: <ResearchOverview />, project: <Projects />,
+            trash: <Trash />, chat: <Chat />, reader: <Reader />,
+          }}
+          settings={<Settings />}
+        />
+      </TooltipProvider>
     </MessagesProvider>
   </StrictMode>,
 )

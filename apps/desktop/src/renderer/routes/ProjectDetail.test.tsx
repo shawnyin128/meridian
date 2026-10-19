@@ -311,7 +311,7 @@ describe('the workspace field', () => {
   })
 
   it('keeps a connected workspace quiet: the green dot carries its state as its name and tooltip', () => {
-    expect(field('ready')).toContain('class="status-dot status-dot--sm status-dot--good" role="img" aria-label="已连接" title="已连接"')
+    expect(field('ready')).toContain('class="status-dot status-dot--sm status-dot--good" role="img" aria-label="已连接" data-state="closed"')
     expect(field('ready')).not.toContain('status-dot-label')
   })
 })
