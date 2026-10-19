@@ -2,7 +2,7 @@
 import { act, Profiler, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ListParams, PaperColumns, PaperImportResult, PaperRow } from '../../shared/contract.js'
+import type { Facet, ListParams, PaperColumns, PaperImportResult, PaperRow } from '../../shared/contract.js'
 import { PAPER_COLUMNS } from '../../shared/vocabulary.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { papers as papersZh } from '../messages/zh/papers.js'
@@ -76,12 +76,16 @@ let throwOnNextUpdate: Error | null
 let columnsCallCount: number
 let listCallCount: number
 let listParams: ListParams[]
+/** What usePaperCount returns: the vault's paper count, or null before it has been fetched. */
+let vaultPaperCount: number | null
+/** The group values papers.facets answers with. */
+let facetRows: Facet[]
 let openedScreens: [screen: string, id?: string][]
 
 vi.mock('../ipc.js', () => ({
   papers: {
     list: (params: ListParams) => { listCallCount += 1; listParams.push(params); return listCall.promise },
-    facets: () => Promise.resolve([]),
+    facets: () => Promise.resolve(facetRows),
     get: () => getCall.promise,
     update: (id: string, patch: Record<string, unknown>) => {
       if (throwOnNextUpdate) { const e = throwOnNextUpdate; throwOnNextUpdate = null; throw e }
@@ -130,7 +134,7 @@ vi.mock('../shell/AppShell.js', () => ({
     open: (screen: string, id?: string) => { openedScreens.push([screen, id]) },
     returnTo: vi.fn(),
   }),
-  usePaperCount: () => null,
+  usePaperCount: () => vaultPaperCount,
   useScreen: () => 'papers',
   useToast: () => (message: string) => { toastMessages.push(message) },
   // Only real revision state makes bump re-run the effects that fetch on revision, as in the app.
@@ -249,6 +253,8 @@ describe('PaperTable', () => {
     columnsCallCount = 0
     listCallCount = 0
     listParams = []
+    vaultPaperCount = null
+    facetRows = []
     openedScreens = []
   })
 
@@ -331,6 +337,57 @@ describe('PaperTable', () => {
     expect(input.value).toBe('')
     expect(document.activeElement).toBe(input)
     expect(listParams.at(-1)).not.toHaveProperty('filter')
+  })
+
+  it('标题的篇数就是表格在搜索、阅读状态筛选与分组取值之下的行数，没有筛选时是论文库的总数', async () => {
+    vaultPaperCount = 10
+    facetRows = [{ value: 'speculative decoding', count: 4, newestTitle: '一篇论文' }]
+    const host = mount()
+    columnsCall.resolve({ hidden: [], custom: [], groups: ['topics', 'readState'] })
+    listCall.resolve({ rows: [ROW], total: 10 })
+    await flush()
+    const title = () => host.querySelector('.desk-head .t')?.textContent
+    expect(host.querySelectorAll('.ptable tbody tr .pt-title')).toHaveLength(1)
+    expect(title()).toBe('论文 · 10')
+
+    listCall = controlled()
+    const input = host.querySelector<HTMLInputElement>('#libq')!
+    act(() => setValue(input, 'note phrase'))
+    listCall.resolve({ rows: [], total: 0 })
+    await flush()
+    expect(host.querySelectorAll('.ptable tbody tr .pt-title')).toHaveLength(0)
+    expect(title()).toBe('论文 · 0')
+    listCall = controlled()
+    act(() => host.querySelector<HTMLButtonElement>('[aria-label="清除论文搜索"]')!.click())
+    listCall.resolve({ rows: [ROW], total: 10 })
+    await flush()
+    expect(title()).toBe('论文 · 10')
+
+    listCall = controlled()
+    await act(async () => {
+      host.querySelector('.filters .read-state-filter')!
+        .dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+    })
+    await act(async () => {
+      press([...document.querySelectorAll('.ctxmenu .mi')].find((item) => item.textContent?.includes('未读'))!)
+    })
+    listCall.resolve({ rows: [ROW], total: 3 })
+    await flush()
+    expect(listParams.at(-1)?.facet).toEqual({ field: 'readState', value: '未读' })
+    expect(title()).toBe('论文 · 3')
+
+    listCall = controlled()
+    const groups = host.querySelector('.filters .segmented-control[aria-label="分组字段"]')!
+    await act(async () => {
+      [...groups.querySelectorAll<HTMLButtonElement>('button')].find((item) => item.textContent === '主题')!.click()
+    })
+    await flush()
+    expect(title()).toBe('论文 · 10')
+    await act(async () => { host.querySelector<HTMLElement>('.gxrow')!.click() })
+    listCall.resolve({ rows: [ROW], total: 4 })
+    await flush()
+    expect(listParams.at(-1)?.facet).toEqual({ field: 'topics', value: 'speculative decoding' })
+    expect(title()).toBe('论文 · 4')
   })
 
   it('论文搜索框与关注屏的一句话添加框是同一种带框的字段输入框', async () => {
