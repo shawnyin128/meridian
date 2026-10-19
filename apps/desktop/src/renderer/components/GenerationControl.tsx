@@ -22,7 +22,10 @@ const RunningGlyph = () => (
   </span>
 )
 
-/** One shared start, running, and stop control for user-triggered generation. */
+/**
+ * One shared start, running, and stop control for user-triggered generation. `disabled` disables the
+ * start only: a running generation can always be stopped.
+ */
 export function GenerationControl({
   running, onStart, onStop, idleContent, showStatusText = false,
   idleLabel, runningLabel, className = '', disabled, ...props
@@ -45,7 +48,7 @@ export function GenerationControl({
         type="button"
         className={`generation-control${running ? ' is-running' : ''}${className ? ` ${className}` : ''}`}
         aria-label={running ? runningHint : idle}
-        disabled={disabled}
+        disabled={!running && disabled}
         onClick={running ? onStop : onStart}
       >
         {running ? <RunningGlyph /> : idleContent ?? <Arrow />}

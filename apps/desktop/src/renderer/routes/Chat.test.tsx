@@ -11,6 +11,7 @@ declare global {
 
 const api = vi.hoisted(() => ({
   send: vi.fn(() => Promise.resolve({ id: 'chat-1', state: 'complete' })),
+  cancel: vi.fn(() => Promise.resolve({ id: 'chat-1', cancelled: true })),
   listProjects: vi.fn(() => Promise.resolve([{
     id: 'draft', name: '草稿树项目', status: '进行中', priority: 'p1', topic: '推理', focus: '验证',
     conclusions: { verified: 0, pending: 0, conflicting: 0 }, paperCount: 0,
@@ -22,7 +23,7 @@ const api = vi.hoisted(() => ({
 const session = vi.hoisted(() => ({ id: 'chat-1' }))
 
 vi.mock('../ipc.js', () => ({
-  chat: { send: api.send, messages: () => Promise.resolve([]), cancel: vi.fn(), create: vi.fn() },
+  chat: { send: api.send, messages: () => Promise.resolve([]), cancel: api.cancel, create: vi.fn() },
   feed: { append: vi.fn() },
   idea: { create: vi.fn() },
   papers: { list: api.listPapers },
@@ -58,6 +59,7 @@ describe('Chat composer', () => {
 
   beforeEach(async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
     vi.clearAllMocks()
@@ -144,5 +146,67 @@ describe('Chat composer', () => {
     expect(document.querySelector('#cRes')).not.toBeNull()
     await openChat('chat-2')
     expect(document.querySelector('#cRes')).toBeNull()
+  })
+
+  /** Sends `text` from the open chat and leaves its reply generating until the returned call. */
+  const sendPending = (text: string) => {
+    let finish = () => {}
+    api.send.mockImplementationOnce(() => new Promise((resolve) => {
+      finish = () => resolve({ id: session.id, state: 'complete' })
+    }))
+    act(() => setValue(composer, text))
+    press('Enter')
+    return async () => { await act(async () => { finish(); await Promise.resolve() }) }
+  }
+  const control = () => document.querySelector<HTMLButtonElement>('#sendBtn')!
+
+  it('一条对话还在生成时，换到另一条对话照常可以输入和发送', async () => {
+    const finish = sendPending('第一条的问题')
+    expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
+
+    await openChat('chat-2')
+    expect(composer.disabled).toBe(false)
+    expect(control().getAttribute('aria-label')).toBe('发送')
+    act(() => setValue(composer, '第二条的问题'))
+    press('Enter')
+    await act(async () => { await Promise.resolve() })
+    expect(api.send).toHaveBeenLastCalledWith('chat-2', '第二条的问题')
+    await finish()
+  })
+
+  it('停止停的是正在生成的那条对话，别的对话不显示停止', async () => {
+    const finish = sendPending('第一条的问题')
+    await openChat('chat-2')
+    expect(control().getAttribute('aria-label')).toBe('发送')
+
+    await openChat('chat-1')
+    expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
+    act(() => control().click())
+    expect(api.cancel).toHaveBeenCalledExactlyOnceWith('chat-1')
+    expect(control().getAttribute('aria-label')).toBe('发送')
+    await finish()
+  })
+
+  it('草稿去掉空白后为空时发送钮不可点，生成中的停止仍可点', async () => {
+    expect(control().disabled).toBe(true)
+    act(() => setValue(composer, ' \n '))
+    expect(control().disabled).toBe(true)
+    act(() => setValue(composer, '为什么'))
+    expect(control().disabled).toBe(false)
+
+    const finish = sendPending('为什么')
+    expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
+    expect(control().disabled).toBe(false)
+    await finish()
+  })
+
+  it('快捷引用是一行的幽灵 chip，存为想法是排在工具栏末尾的幽灵按钮', () => {
+    const chips = [...document.querySelectorAll<HTMLButtonElement>('#qmChips button')]
+    expect(chips.map((chip) => [chip.className, chip.querySelector('.fade-text')?.textContent]))
+      .toEqual([['btn ghost sm qm', '@草稿树项目']])
+    const save = document.querySelector<HTMLButtonElement>('#qaIdea')!
+    expect(save.className).toBe('btn ghost sm save-idea')
+    expect(save.parentElement!.lastElementChild).toBe(save)
+    expect(document.querySelector('.qsep')).toBeNull()
   })
 })
