@@ -456,6 +456,17 @@ describe('Settings', () => {
     expect(dialog.querySelector('.set-main .empty-state')).toBeNull()
   })
 
+  it('每个设置页只显示自己那次读取的错误：对话列表读不到时，存储页不报，归档的对话页报', async () => {
+    api.chatList.mockImplementationOnce(async () => { throw new Error('对话列表读不到') })
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
+    expect(dialog.querySelector('.set-main [role="alert"]')).toBeNull()
+
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="archived"]')!.click() })
+    expect(dialog.querySelector('.set-main [role="alert"]')?.textContent).toBe('对话列表读不到')
+  })
+
   it('库打不开时显示路径与原因，切换和重置仍然可用', async () => {
     api.libraryLocation.mockResolvedValueOnce({
       root: '/tmp/broken-library', source: 'fallback', locked: false, restartRequired: false,

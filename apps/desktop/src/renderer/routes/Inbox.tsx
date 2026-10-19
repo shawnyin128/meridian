@@ -24,6 +24,7 @@ import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
+import { Tag } from '../components/Tag.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle,
@@ -285,6 +286,15 @@ export function Inbox() {
     <PageShell>
       <PageHeader>
         <PageTitle>{head}</PageTitle>
+        {stream === 'watch' && watched !== undefined && !watched.active ? (
+          <>
+            <Tag>{m.watches.paused}</Tag>
+            <button
+              className="btn sm"
+              onClick={() => { void write(watch.setActive(watched.id, true), { note: m.watches.notices.resumed }) }}
+            >{m.watches.resume}</button>
+          </>
+        ) : null}
         <span className="fetchnote">{stream === 'watch' ? fetchNote(jobs?.fetch ?? null, m, fmt) : ''}</span>
         {stream === 'watch' ? (
           <button

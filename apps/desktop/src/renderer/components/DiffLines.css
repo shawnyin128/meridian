@@ -2,3 +2,4 @@
 .diff div{padding:4px 10px}
 .diff .del{background:var(--diff-del)}
 .diff .add{background:var(--diff-add)}
+.diff.is-declined div{color:var(--ter);text-decoration:line-through}

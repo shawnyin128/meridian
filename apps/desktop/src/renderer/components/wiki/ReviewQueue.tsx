@@ -199,7 +199,7 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                     {[source(p), p.decided === null ? null : fmt.date(dayOf(p.decided.at))].filter((part) => part !== null).join(' → ')}
                   </div>
                   {p.reason === null || p.reason.message === '' ? null : <p className="review-note">{p.reason.message}</p>}
-                  {p.proposal === null ? null : <DiffLines lines={lines(p)} />}
+                  {p.proposal === null ? null : <DiffLines lines={lines(p)} declined={p.status !== 'applied'} />}
                 </StructuredRow>
               ))}
             </StructuredList>

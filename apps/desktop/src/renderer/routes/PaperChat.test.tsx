@@ -135,7 +135,7 @@ describe('PaperChat', () => {
     act(() => host.querySelector<HTMLButtonElement>('.paper-chat .send')!.click())
     const control = host.querySelector<HTMLButtonElement>('.paper-chat .send')!
     expect(control.getAttribute('aria-label')).toBe('正在生成，点击停止')
-    expect(control.querySelector('.generation-spinner')).not.toBeNull()
+    expect(control.querySelector('.ring.spin')).not.toBeNull()
     expect(control.querySelector('.generation-stop')).not.toBeNull()
 
     act(() => control.click())

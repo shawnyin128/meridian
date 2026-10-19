@@ -30,7 +30,7 @@ describe('GenerationControl', () => {
       </MessagesProvider>,
     ))
     expect(button.getAttribute('aria-label')).toBe('正在生成，点击停止')
-    expect(button.querySelector('.generation-spinner')).not.toBeNull()
+    expect(button.querySelector('.ring.spin')).not.toBeNull()
     expect(button.querySelector('.generation-stop')).not.toBeNull()
     expect(button.textContent).toContain('正在生成')
     expect(button.textContent).toContain('停止生成')

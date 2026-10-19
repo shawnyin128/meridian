@@ -74,13 +74,14 @@ describe('HarnessAction', () => {
     expect(start).not.toHaveBeenCalled()
   })
 
-  it('replaces the start gate with one explicit stop action while running', () => {
+  it('replaces the start gate with one explicit stop action while running, in the neutral tone', () => {
     const cancel = vi.fn()
     act(() => root!.render(withMessages(<HarnessAction plan={plan()} running onStart={vi.fn()}
       onCancel={cancel} />)))
     const button = host.querySelector<HTMLButtonElement>('button')!
     expect(button.getAttribute('aria-label')).toBe('正在生成，点击停止')
-    expect(button.querySelector('.generation-spinner')).not.toBeNull()
+    expect(button.classList.contains('danger')).toBe(false)
+    expect(button.querySelector('.ring.spin')).not.toBeNull()
     expect(button.querySelector('.generation-stop')).not.toBeNull()
     act(() => button.click())
     expect(cancel).toHaveBeenCalledOnce()

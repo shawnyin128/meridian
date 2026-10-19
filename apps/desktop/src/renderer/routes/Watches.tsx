@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import type {
-  AuthorCandidate, NetFailed, ProjectSummary, Watch, WatchAuthorSuggestion, WatchFields,
+  AuthorCandidate, AuthorSearchFailed, ProjectSummary, Watch, WatchAuthorSuggestion, WatchFields,
   WatchSuggestionResult,
 } from '../../shared/contract.js'
 import { author, project, watch } from '../ipc.js'
@@ -19,6 +19,7 @@ import { ChoicePicker } from '../components/FieldPickers.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { Switch } from '../components/Switch.js'
+import { Tag } from '../components/Tag.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { composing } from '../lib/keyboard.js'
 import './shell.css'
@@ -73,15 +74,14 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
               : (
                 <StructuredRow className="wrow" data-w={w.id} key={w.id}>
                   <span className="nm">{w.name}</span>
-                  {w.type === 'author'
-                    ? (
-                      <span
-                        className={`author-id-state${w.identity === undefined ? ' unconfirmed' : ''}`}
-                        title={w.identity?.affiliations.join(' · ') || m.watches.identityUnknown}
-                      >{w.identity?.affiliations[0] || m.watches.identityUnconfirmed}</span>
-                    )
-                    : null}
-                  {w.active ? null : <span className="src">{m.watches.paused}</span>}
+                  {w.type !== 'author' ? null : w.identity === undefined
+                    ? <Tag tone="warn" title={m.watches.identityUnknown}>{m.watches.identityUnconfirmed}</Tag>
+                    : (
+                      <span className="author-id-state" title={w.identity.affiliations.join(' · ') || m.watches.identityUnknown}>
+                        {w.identity.affiliations[0] || m.watches.identityUnconfirmed}
+                      </span>
+                    )}
+                  {w.active ? null : <Tag className="watch-paused">{m.watches.paused}</Tag>}
                   <button className="btn ghost sm" onClick={() => onEdit(w)}>{m.common.edit}</button>
                   <Switch label={w.name} checked={w.active} onChange={() => onSetActive(w)} />
                   <ConfirmDialog
@@ -121,7 +121,7 @@ export function WatchSettings() {
   const [name, setName] = useState('')
   const [authorMatches, setAuthorMatches] = useState<AuthorCandidate[]>([])
   const [authorSearching, setAuthorSearching] = useState(false)
-  const [authorSearchError, setAuthorSearchError] = useState<string | NetFailed | null>(null)
+  const [authorSearchError, setAuthorSearchError] = useState<string | AuthorSearchFailed | null>(null)
   const [authorSearchNonce, setAuthorSearchNonce] = useState(0)
   const authorSearchRevision = useRef(0)
   const row = useRef<HTMLDivElement>(null)

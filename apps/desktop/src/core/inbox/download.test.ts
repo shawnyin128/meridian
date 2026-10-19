@@ -109,6 +109,21 @@ describe('createInboxDownloads', () => {
     expect(downloads.progress()).toEqual([])
   })
 
+  it('原文取回来却写不进库时报成写入失败，不带系统的原话和路径；库自己拒绝的照旧抛出', async () => {
+    const { store, downloads } = setup({
+      'https://arxiv.org/pdf/2211.17192': { status: 200, file: FAST_INFERENCE },
+    })
+    const disk = Object.assign(new Error("ENOSPC: no space left on device, write '/Users/me/vault/sources/x.pdf'"), {
+      code: 'ENOSPC', syscall: 'write', path: '/Users/me/vault/sources/x.pdf',
+    })
+    const complete = vi.spyOn(store, 'completeInboxDownload').mockImplementationOnce(() => { throw disk })
+    expect(await downloads.download('specdec')).toEqual({ kind: 'failed', reason: 'write' })
+    expect(downloads.progress()).toEqual([])
+
+    complete.mockImplementationOnce(() => { throw new Error('这一条已经入库：specdec') })
+    await expect(downloads.download('specdec')).rejects.toThrow('这一条已经入库：specdec')
+  })
+
   it('下载中暴露进度并拒绝同一条并发;完成后稍后阅读可以直接读', async () => {
     const { store, downloads } = setup({
       'https://arxiv.org/pdf/2608.02233': { status: 200, delayMs: 50, pdf: { lines: ['ThunderKV'] } },

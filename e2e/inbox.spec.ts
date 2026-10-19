@@ -415,7 +415,7 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   await expect(spec.locator('[role="switch"]')).toHaveAttribute('aria-checked', 'true')
   await spec.locator('[role="switch"]').click()
   await expect(spec.locator('[role="switch"]')).toHaveAttribute('aria-checked', 'false')
-  await expect(spec.locator('.src')).toHaveText('已暂停')
+  await expect(spec.locator('.watch-paused')).toHaveText('已暂停')
   await expect(win.locator('[data-watchrow="spec"]')).toHaveClass(/\bdim\b/)
   await expect(win.locator('[data-watchrow="spec"] .n')).toHaveCount(0)
   expect((await inboxFromCore(win)).filter((e) => e.watch === 'spec')).toHaveLength(kept)
@@ -470,11 +470,11 @@ test('关注管理:占位行按 Esc 撤掉,屏上没有旧的圆角添加框', a
   await expect(settings(win, '.mgr-add')).toHaveCount(0)
 })
 
-test('没填 Semantic Scholar key 时作者搜索直接说明，填了之后先用机构消歧,确认后保存稳定作者身份', async ({ win }) => {
+test('没填 Semantic Scholar key 时作者搜索写出缺 key，填了之后先用机构消歧,确认后保存稳定作者身份', async ({ win }) => {
   await openDeliverySettings(win)
   await settings(win, '.section-heading').filter({ hasText: '作者' }).locator('.btn').click()
   await settings(win, '.wrow.newrow input').fill('Alex Kim')
-  await expect(settings(win, '.author-search-note.error')).toContainText('填入 Semantic Scholar key')
+  await expect(settings(win, '.author-search-note.error span')).toHaveText('搜索作者失败 · 没有 Semantic Scholar key')
 
   await call(win, 'delivery.setSemanticKey', { apiKey: 'fixture-key' })
   await settings(win, '.wrow.newrow input').fill('')

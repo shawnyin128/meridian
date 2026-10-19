@@ -1,7 +1,7 @@
 import { appUpdates, extensions } from '../ipc.js'
 import { useAppUpdate } from '../hooks/useAppUpdate.js'
 import { useMessages } from '../messages/useMessages.js'
-import { DownloadRing, IconCheck } from './icons.js'
+import { IconCheck, RunningRing } from './icons.js'
 import { ModalDialog, ModalTitle } from './ModalDialog.js'
 import { ProgressFill } from './ProgressFill.js'
 import { UpdateAction, updateLine } from './settings/AppUpdateSettings.js'
@@ -13,7 +13,7 @@ const RELEASES = 'https://github.com/shawnyin128/meridian/releases'
 
 /** The small mark before the status line: a spinner while checking, a check once current or ready. */
 function StatusMark({ status }: { status: AppUpdateStatus }) {
-  if (status.phase === 'checking') return <DownloadRing progress={null} />
+  if (status.phase === 'checking') return <RunningRing />
   if (status.phase === 'latest' || status.phase === 'ready') return <IconCheck />
   return null
 }

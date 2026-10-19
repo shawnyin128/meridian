@@ -256,7 +256,7 @@ test('别处写库不会把原文重解析一遍', async ({ win }) => {
     const pausing = n % 2 === 0
     await expect(watched.locator('[role="switch"]')).toHaveAttribute('aria-checked', pausing ? 'true' : 'false')
     await watched.locator('[role="switch"]').click()
-    await expect(watched.locator('.src')).toHaveCount(pausing ? 1 : 0)
+    await expect(watched.locator('.watch-paused')).toHaveCount(pausing ? 1 : 0)
   }
 
   // Back in the reader: the pages are drawn as before, and the PDF is not parsed again.

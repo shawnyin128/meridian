@@ -91,6 +91,9 @@ Current shared contracts:
   library search configure the same focus restoration, icon geometry, and accessible naming.
 - `GenerationControl`: the shared idle, spinning, and hover-to-stop button contract for model-backed
   actions. Chat composers and Wiki Harness generation do not define independent running animations.
+- `RunningRing` (in `icons`): the one running indicator, `DownloadRing` without a total, turning once per
+  `--t-spin` in the colour of the text around it. GenerationControl and About use it; a running job is
+  never drawn in a danger tone.
 - `CardTray`: progressive disclosure for secondary card details. It keeps a one-line summary visible,
   expands details below the host without moving its primary identity, and owns the shared animation,
   keyboard semantics, and reduced-motion behavior.

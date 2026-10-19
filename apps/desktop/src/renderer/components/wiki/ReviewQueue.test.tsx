@@ -173,6 +173,24 @@ describe('ReviewQueue', () => {
     expect(row('p5').querySelector('.diff')).toBeNull()
   })
 
+  it('被拒绝的提案的改动行淡下去并划掉，不再像应用了的那样标成增删；应用了的照旧', () => {
+    const declined = proposal('p8', {
+      status: 'rejected', reason: { kind: 'declined', message: '' }, decided: { at: RECEIVED, by: '我' },
+    })
+    act(() => root!.render(
+      <MessagesProvider>
+        <ReviewQueue proposals={[...PROPOSALS, declined]} pending={false} onApply={onApply} onDecline={onDecline} onOpenPage={onOpenPage} onOpenConclusion={onOpenConclusion} />
+      </MessagesProvider>,
+    ))
+    for (const id of ['p4', 'p8']) {
+      expect(row(id).querySelector('.diff')!.classList.contains('is-declined'), id).toBe(true)
+      expect(row(id).querySelectorAll('.diff .add, .diff .del'), id).toHaveLength(0)
+    }
+    expect(row('p8').querySelector('.diff div')!.textContent).toMatch(/^\+ /)
+    expect(row('p3').querySelector('.diff')!.classList.contains('is-declined')).toBe(false)
+    expect(row('p3').querySelectorAll('.diff .add').length).toBeGreaterThan(0)
+  })
+
   it('收到和处理的日期按本地的那一天算，半夜前后的不会挪到前一天或后一天', () => {
     // Local times, so the case holds in any zone: just after midnight and just before the next one.
     const early = new Date(2026, 9, 16, 0, 30).getTime()

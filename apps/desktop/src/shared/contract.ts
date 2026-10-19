@@ -1106,8 +1106,14 @@ const WatchFieldsSchema = z.discriminatedUnion('type', [
 /** Why a network call failed: no network, a timeout, a rate limit, another error status, or anything else. */
 export const NetFailureSchema = z.enum(['unavailable', 'timeout', 'rate-limit', 'server', 'unknown'])
 
-/** A network call that failed, with its reason; author search and watch suggestions answer with it. */
+/** A network call that failed, with its reason; watch suggestions answer with it. */
 export const NetFailedSchema = z.object({ kind: z.literal('failed'), reason: NetFailureSchema }).strict()
+
+/** Why an author search failed: a network failure, or no saved Semantic Scholar key to search with. */
+export const AuthorSearchFailureSchema = z.enum([...NetFailureSchema.options, 'no-key'])
+
+/** A failed author search, with its reason. */
+export const AuthorSearchFailedSchema = z.object({ kind: z.literal('failed'), reason: AuthorSearchFailureSchema }).strict()
 
 /** An author search result, projected to the fields needed for disambiguation and selection. */
 export const AuthorCandidateSchema = z.object({
@@ -1262,14 +1268,14 @@ export const InboxReadLaterParamsSchema = z.object({ id: z.string() }).strict()
 
 export const InboxDownloadParamsSchema = z.object({ id: z.string() }).strict()
 
-/** Why the PDF of an inbox entry could not be fetched. */
-export const InboxDownloadFailureSchema = z.enum([...NetFailureSchema.options, 'not-pdf'])
+/** Why the PDF of an inbox entry could not be fetched, or, once fetched, could not be written into the vault. */
+export const InboxDownloadFailureSchema = z.enum([...NetFailureSchema.options, 'not-pdf', 'write'])
 
 /**
  * Import result. `added` means a new page was written; `existing` means a page
  * already referenced the source and no write occurred. Both return the page ID;
  * `existing` also returns the authoritative vault title for user messaging.
- * `failed` means the PDF could not be fetched and nothing was written.
+ * `failed` means the PDF could not be fetched or stored.
  */
 export const InboxDownloadResultSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('added'), paper: z.string() }).strict(),
@@ -2218,6 +2224,8 @@ export type WatchFields = z.infer<typeof WatchFieldsSchema>
 export type AuthorIdentity = z.infer<typeof AuthorIdentitySchema>
 export type NetFailure = z.infer<typeof NetFailureSchema>
 export type NetFailed = z.infer<typeof NetFailedSchema>
+export type AuthorSearchFailure = z.infer<typeof AuthorSearchFailureSchema>
+export type AuthorSearchFailed = z.infer<typeof AuthorSearchFailedSchema>
 export type AuthorCandidate = z.infer<typeof AuthorCandidateSchema>
 export type WatchTopicSuggestion = z.infer<typeof WatchTopicSuggestionSchema>
 export type WatchAuthorSuggestion = z.infer<typeof WatchAuthorSuggestionSchema>

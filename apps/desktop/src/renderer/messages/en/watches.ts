@@ -8,6 +8,7 @@ export const watches = {
   identityUnknown: 'Author not verified',
   identityUnconfirmed: 'Unconfirmed',
   paused: 'Paused',
+  resume: 'Resume',
   confirmRemove: (name: string) => `Remove “${name}”?`,
   confirmRemoveDescription: 'New papers from this watch will be removed from the inbox. This cannot be undone.',
   confirmRemoveLabel: 'Remove',

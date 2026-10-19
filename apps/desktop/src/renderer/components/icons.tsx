@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import './icons.css'
 
 /** Icons shared in many places, copied one by one from e2e/fixtures/platform-shell-demo.html. */
 
@@ -181,7 +182,10 @@ export const IconTrash = () => (
   </svg>
 )
 
-/** Download progress shown inside an icon-sized action. */
+/**
+ * Download progress shown inside an icon-sized action. Without a known total it turns instead,
+ * which makes it the app's one sign that a job is running.
+ */
 export const DownloadRing = ({ progress }: {
   progress: { received: number; total: number | null } | null
 }) => {
@@ -199,3 +203,6 @@ export const DownloadRing = ({ progress }: {
     </svg>
   )
 }
+
+/** The one running indicator: the ring that turns while a job runs, in the colour of the text around it. */
+export const RunningRing = () => <DownloadRing progress={null} />
