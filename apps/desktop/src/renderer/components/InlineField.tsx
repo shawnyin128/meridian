@@ -21,8 +21,11 @@ export type InlineFieldProps = {
   validate?: (value: string) => boolean
   /** Edits in a wrapping field that grows with its text, for values whose display wraps; Enter still saves. */
   multiline?: boolean
-  /** Pass true when the row or card itself is clickable, so the trigger swallows the click instead of bubbling it. */
-  stopRowActivation?: boolean
+  /**
+   * Replaces the button the value rests in, for a value whose click belongs to the row or card around
+   * it: renders the value at rest, given `edit`, which opens the editor from an explicit control.
+   */
+  rest?: (edit: () => void) => ReactNode
 }
 
 /**
@@ -38,7 +41,7 @@ export function InlineField({
   label, value, display, type = 'text', inputMode, options, onSave,
   wrapperClassName = 'metadata-field', buttonClassName = 'metadata-editable',
   inputClassName = 'metadata-input', inputAppearance = 'plain', emptyText, normalize = (next) => next,
-  validate = () => true, multiline = false, stopRowActivation = false,
+  validate = () => true, multiline = false, rest,
 }: InlineFieldProps) {
   const m = useMessages()
   const empty = emptyText ?? m.common.field.emptyValue
@@ -68,18 +71,20 @@ export function InlineField({
     control.current = element
   }
 
+  const edit = () => {
+    setDraft(value)
+    setEditing(true)
+  }
+
   let field: ReactNode
   if (!editing) {
-    field = (
-      <button
-        type="button" className={buttonClassName} title={m.common.field.change(label)}
-        onClick={(event) => {
-          if (stopRowActivation) event.stopPropagation()
-          setDraft(value)
-          setEditing(true)
-        }}
-      >{(display ?? value) || empty}</button>
-    )
+    field = rest === undefined
+      ? (
+        <button
+          type="button" className={buttonClassName} title={m.common.field.change(label)} onClick={edit}
+        >{(display ?? value) || empty}</button>
+      )
+      : rest(edit)
   } else if (options !== undefined) {
     field = (
       <FormSelect

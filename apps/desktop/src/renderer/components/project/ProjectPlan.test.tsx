@@ -124,6 +124,67 @@ describe('ProjectPlan', () => {
     const output = renderPlan('task')
     expect(output).toContain('title="打开任务"')
   })
+
+  describe('任务名', () => {
+    let root: Root | null = null
+    afterEach(() => {
+      if (root !== null) act(() => root!.unmount())
+      root = null
+      document.body.innerHTML = ''
+    })
+    const mount = () => {
+      globalThis.IS_REACT_ACT_ENVIRONMENT = true
+      vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+      const host = document.createElement('div')
+      document.body.append(host)
+      const onOpenTask = vi.fn()
+      const onUpdateTask = vi.fn(() => Promise.resolve(true))
+      root = createRoot(host)
+      act(() => root!.render(
+        <MessagesProvider>
+          <ProjectPlan
+            project={{ tasks: [task], milestones: [] }} tab="task" today="2026-09-16"
+            creating={null} flashId={null} selectedTaskId={null}
+            listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()} milestoneLaneRef={createRef()}
+            onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
+            onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
+            onUpdateTask={onUpdateTask} onDeleteTask={vi.fn()} onReorderTasks={vi.fn()} onOpenTask={onOpenTask}
+            onUpdateMilestone={vi.fn()} onDeleteMilestone={vi.fn()} onHoverMilestone={vi.fn()}
+          />
+        </MessagesProvider>,
+      ))
+      return { host, onOpenTask, onUpdateTask }
+    }
+
+    it('任务名是一个按钮,点它(键盘回车同样触发点击)打开任务详情,不进入改名', () => {
+      const { host, onOpenTask } = mount()
+      const title = host.querySelector<HTMLButtonElement>('.task-row .plan-name')!
+      expect(title.tagName).toBe('BUTTON')
+      expect(title.textContent).toBe('校准批次')
+      act(() => title.click())
+      expect(onOpenTask).toHaveBeenCalledWith('task-1')
+      expect(host.querySelector('.plan-name-input')).toBeNull()
+    })
+
+    it('改名从任务名旁的铅笔进入,在行内写回,不打开任务详情', async () => {
+      const { host, onOpenTask, onUpdateTask } = mount()
+      const rename = host.querySelector<HTMLButtonElement>('.task-row .plan-rename')!
+      expect(rename.getAttribute('aria-label')).toBe('重命名任务：校准批次')
+      act(() => rename.click())
+      const input = host.querySelector<HTMLInputElement>('.task-row .plan-name-input')!
+      expect(input.value).toBe('校准批次')
+      act(() => {
+        Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(input, '复核批次')
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+      await act(async () => {
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+        await Promise.resolve()
+      })
+      expect(onUpdateTask).toHaveBeenCalledWith('task-1', { title: '复核批次' })
+      expect(onOpenTask).not.toHaveBeenCalled()
+    })
+  })
 })
 
 function renderTaskPanel(
