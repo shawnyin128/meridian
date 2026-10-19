@@ -247,6 +247,8 @@ describe('change log', () => {
     store.setChatArchived(chat.id, true)
     store.appendFeed({ source: 'me', body: { kind: 'runs', runs: [{ kind: 'text', text: '记一笔' }] } })
     store.mutatePaperReading(READ, { kind: 'progress.set', page: 4 })
+    store.mutatePaperReading(READ, { kind: 'note.add', page: 1, text: '新加的笔记' })
+    store.mutatePaperReading(READ, { kind: 'highlight.add', page: 1, quote: '新加的高亮', rects: RECTS, color: 'yellow' })
     // Trash is already a restoration mechanism; logging it again would create an "undo restore" entry.
     store.restoreTrash(store.listTrash().find((t) => t.kind === 'inbox')!.id)
     store.dismissInbox('drafterlite')
@@ -256,7 +258,7 @@ describe('change log', () => {
     expect(store.listChanges()).toEqual(before)
   })
 
-  it('改变持久知识的那 23 个写各记一条', () => {
+  it('改变持久知识的那 25 个写各记一条', () => {
     const writes: [string, () => unknown][] = [
       ['papers.update', () => store.updatePaper('Jiang-et-al-2024-Mixtral-of-Experts', { readState: '在读' })],
       ['papers.mutateReading note.delete', () => store.mutatePaperReading(READ, {
@@ -268,6 +270,16 @@ describe('change log', () => {
           .highlights[0]!.id,
       })],
       ['papers.mutateReading remark.set', () => store.mutatePaperReading(READ, { kind: 'remark.set', text: '随笔' })],
+      ['papers.mutateReading note.update', () => store.mutatePaperReading(READ, {
+        kind: 'note.update', id: store.mutatePaperReading(READ, { kind: 'note.add', page: 1, text: '要改的' }).notes[0]!.id,
+        text: '改过的',
+      })],
+      ['papers.mutateReading highlight.update', () => store.mutatePaperReading(READ, {
+        kind: 'highlight.update',
+        id: store.mutatePaperReading(READ, { kind: 'highlight.add', page: 1, quote: '要改的', rects: RECTS, color: 'blue' })
+          .highlights[0]!.id,
+        note: '改过的批注',
+      })],
       ['papers.setColumnType', () => {
         store.setPaperColumns({
           ...emptyColumns(), custom: [{ key: 'note', label: '备注', type: 'text', options: [] }],
@@ -306,7 +318,7 @@ describe('change log', () => {
       ['project.createEvent', () => store.createEvent(PROJECT, '[对话] 来自对话的结论')],
       ['project.delete', () => store.deleteProject(PROJECT)],
     ]
-    expect(writes).toHaveLength(23)
+    expect(writes).toHaveLength(25)
 
     for (const [method, write] of writes) {
       const before = store.listChanges().length
@@ -399,6 +411,37 @@ describe('change log', () => {
     store.undoChange(first.id)
     expect(store.paperReading(READ)).toMatchObject({ remark: '', notes: [{ text: '不挡撤销' }] })
     expect(store.getPaper(READ)).not.toHaveProperty('remark')
+  })
+
+  it('改一条笔记记一条,撤销把之前那段原地写回;较早的一条要先撤较新的', () => {
+    store.mutatePaperReading(READ, { kind: 'note.add', page: 2, text: '第一条' })
+    const before = store.mutatePaperReading(READ, { kind: 'note.add', page: 5, text: '第二条' })
+    const id = before.notes[0]!.id
+    day = '2026-08-26'
+    store.mutatePaperReading(READ, { kind: 'note.update', id, text: '改过一次' })
+    const first = recorded()[0]!
+    expect(first).toMatchObject({
+      title: '论文「Mixtral of Experts」· 改了笔记', diff: ['- text: "第一条"', '+ text: "改过一次"'], undoable: true,
+    })
+    store.mutatePaperReading(READ, { kind: 'note.update', id, text: '改过两次' })
+    expect(() => store.undoChange(first.id)).toThrow('这条之后该实体又被改过 1 次，先撤销较新的那几条')
+
+    store.undoChange(recorded()[0]!.id)
+    store.undoChange(first.id)
+    expect(store.paperReading(READ).notes).toEqual(before.notes)
+  })
+
+  it('改一条高亮的批注记一条,撤销把之前的批注原地写回', () => {
+    store.mutatePaperReading(READ, { kind: 'highlight.add', page: 3, quote: '第一句', rects: RECTS, color: 'green' })
+    const before = store.mutatePaperReading(READ, { kind: 'highlight.add', page: 4, quote: '第二句', rects: RECTS, color: 'yellow' })
+    store.mutatePaperReading(READ, { kind: 'highlight.update', id: before.highlights[0]!.id, note: '新批注' })
+    const change = recorded()[0]!
+    expect(change).toMatchObject({
+      title: '论文「Mixtral of Experts」· 改了高亮批注', diff: ['- note: ""', '+ note: "新批注"'], undoable: true,
+    })
+
+    store.undoChange(change.id)
+    expect(store.paperReading(READ).highlights).toEqual(before.highlights)
   })
 
   it('改一条关联记下一条,撤销把它的名字和指向还原', () => {

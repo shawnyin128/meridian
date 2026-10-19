@@ -174,8 +174,9 @@ export interface VaultStore {
    * persists the resulting state atomically, and returns its new snapshot. A
    * remark.set replaces the paper's one remark (an empty text clears it); a
    * progress.set records the last page read. The paper's row carries a
-   * non-empty remark as `remark`. A note.delete, highlight.delete or remark.set
-   * is recorded as a change; the other commands are not.
+   * non-empty remark as `remark`. A note.update, note.delete, highlight.update,
+   * highlight.delete or remark.set is recorded as a change; the other commands
+   * are not.
    */
   mutatePaperReading(id: string, mutation: ReadingMutation): PaperReading
 
