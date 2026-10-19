@@ -72,8 +72,8 @@ describe('Markdown', () => {
     const out = renderToStaticMarkup(
       <MessagesProvider><Markdown src="[[papers/a]] [[topics/ptq|训练后量化]] [[topics/ptq]] [[papers/z]]" titles={titles} /></MessagesProvider>,
     )
-    expect(out).toContain('<span class="entity-link entity-link--page" title="GPTQ: Accurate Post-Training Quantization" data-wk="papers/a">GPTQ</span>')
-    expect(out).toContain('<span class="entity-link entity-link--page" title="PTQ" data-wk="topics/ptq">训练后量化</span>')
+    expect(out).toContain('<span class="entity-link entity-link--page" data-wk="papers/a" data-state="closed">GPTQ</span>')
+    expect(out).toContain('<span class="entity-link entity-link--page" data-wk="topics/ptq" data-state="closed">训练后量化</span>')
     expect(out).toContain('<span class="entity-link entity-link--page" data-wk="topics/ptq">PTQ</span>')
     expect(out).toContain('[[papers/z]]')
     expect(out).not.toContain('data-wk="papers/z"')
@@ -88,7 +88,7 @@ describe('Markdown', () => {
     document.body.append(host)
     const root = createRoot(host)
     act(() => root.render(<MessagesProvider><Markdown src="[[papers/a]]" titles={titles} /></MessagesProvider>))
-    act(() => { host.querySelector('.wl')!.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
+    act(() => { host.querySelector('.entity-link')!.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
     act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
     expect(document.querySelector('[role="tooltip"]')?.textContent).toBe('GPTQ: Accurate Post-Training Quantization')
     act(() => root.unmount())

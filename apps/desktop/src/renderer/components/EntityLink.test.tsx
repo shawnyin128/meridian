@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { EntityLink } from './EntityLink.js'
+import { TOOLTIP_DELAY } from './Tooltip.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -44,13 +45,59 @@ describe('EntityLink', () => {
 
   it('科研节点前面是它的状态点,用图例的词命名;名字太长时淡出', () => {
     const out = html({ kind: 'node', label: '树宽收益拐点', mode: 'supported', onOpen: () => undefined })
-    expect(out).toMatch(/^<button type="button" class="entity-link entity-link--node" title="树宽收益拐点">/)
-    expect(out).toContain('<span class="status-dot status-dot--sm status-dot--good" role="img" aria-label="已验证" title="已验证"></span>')
-    expect(out).toContain('<span class="fade-text">树宽收益拐点</span>')
+    expect(out).toMatch(/^<button type="button" class="entity-link entity-link--node">/)
+    expect(out).toContain('<span class="status-dot status-dot--sm status-dot--good" role="img" aria-label="已验证" data-state="closed"></span>')
+    expect(out).toContain('<span data-state="closed" class="fade-text">树宽收益拐点</span>')
+    expect(out).not.toContain('title=')
+  })
+
+  it('名字被截断时共享 tooltip 显示节点全名,放得下时不弹;给了 title 的链接悬停显示它', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    vi.useFakeTimers()
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    const tip = () => document.querySelector('[role="tooltip"]')?.textContent ?? null
+    const hover = (element: Element) => {
+      act(() => { element.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
+      act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+    }
+    const leave = (element: Element) => {
+      act(() => {
+        element.dispatchEvent(new PointerEvent('pointerout', { bubbles: true, pointerType: 'mouse', relatedTarget: document.body }))
+        element.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }))
+      })
+      act(() => { document.dispatchEvent(new PointerEvent('pointermove', { clientX: 400, clientY: 400, pointerType: 'mouse' })) })
+    }
+    act(() => root.render(
+      <MessagesProvider>
+        <EntityLink kind="node" label="树宽收益拐点" mode="supported" onOpen={() => undefined} />
+        <EntityLink kind="page" label="GPTQ" title="GPTQ: Accurate Post-Training Quantization" onOpen={() => undefined} />
+      </MessagesProvider>,
+    ))
+    const name = host.querySelector<HTMLElement>('.entity-link--node .fade-text')!
+    name.style.overflowX = 'hidden'
+    const width = vi.spyOn(name, 'scrollWidth', 'get').mockReturnValue(80)
+    vi.spyOn(name, 'clientWidth', 'get').mockReturnValue(80)
+    hover(name)
+    expect(tip()).toBeNull()
+    leave(name)
+    width.mockReturnValue(140)
+    hover(name)
+    expect(tip()).toBe('树宽收益拐点')
+    leave(name)
+    hover(host.querySelector('.entity-link--page')!)
+    expect(tip()).toBe('GPTQ: Accurate Post-Training Quantization')
+    expect(host.querySelector('[title]')).toBeNull()
+    act(() => root.unmount())
+    host.remove()
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
   })
 
   it('不能打开时只是名字,不是链接', () => {
-    expect(html({ kind: 'node', label: '宽树', mode: 'dead' })).toMatch(/^<span class="entity-link entity-link--node" title="宽树">/)
+    expect(html({ kind: 'node', label: '宽树', mode: 'dead' })).toMatch(/^<span class="entity-link entity-link--node">/)
     expect(html({ kind: 'page', label: '推测解码' })).toBe('<span class="entity-link entity-link--page">推测解码</span>')
   })
 })
