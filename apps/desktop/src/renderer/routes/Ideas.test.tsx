@@ -81,6 +81,15 @@ describe('Ideas', () => {
     api.loading = false
   })
 
+  it('没有进行中的想法时，进行中留着标题，下面是一行分节空态，不是整页的', async () => {
+    const held = api.ideas
+    api.ideas = held.filter((idea) => idea.archived)
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    api.ideas = held
+    expect(host.querySelector('.ideas-list .section-heading')?.textContent).toBe('进行中 · 0')
+    expect(host.querySelector('.ideas-list .empty-state')?.className).toBe('empty-state empty-state--section')
+  })
+
   it('列表还没到时显示载入占位，不说还没有想法', async () => {
     api.loading = true
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })

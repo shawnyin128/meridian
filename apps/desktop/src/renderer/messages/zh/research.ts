@@ -12,7 +12,6 @@ export const research = {
     },
     decisions: (n: number) => `需要决策 · ${n}`,
     progressHeading: '项目进展',
-    empty: '暂无待推进项目。',
     activePathNote: (taskText: string | undefined) =>
       `当前科研路径${taskText === undefined ? '' : ` · 任务 ${taskText}`}`,
     /** Suffix after the first in-progress node's label when several nodes are active at once. */
@@ -32,6 +31,7 @@ export const research = {
   list: {
     title: (n: number) => `项目 · ${n}`,
     create: '新建项目',
+    empty: '还没有进行中的项目',
     sort: '排序',
     sortPriority: '按优先级',
     sortMilestone: '按下一个里程碑',

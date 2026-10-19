@@ -101,6 +101,15 @@ describe('Inbox', () => {
     await act(async () => { root.unmount() })
   })
 
+  it('列表空着时不摆排序，设置的齿轮还在', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(host.querySelector('.empty-state')).not.toBeNull()
+    expect(host.querySelector('.inbox-toolbar [role="radiogroup"]')).toBeNull()
+    expect(host.querySelector('.inbox-toolbar [title="关注设置"]')).not.toBeNull()
+    await act(async () => { root.unmount() })
+  })
+
   it('推送还没读到时显示载入占位，不说暂时没有新的推送', async () => {
     api.loading = true
     const root = createRoot(host)

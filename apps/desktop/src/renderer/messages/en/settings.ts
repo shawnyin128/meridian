@@ -59,7 +59,6 @@ export const settings = {
     resetConfirm: 'Reset and restart',
     backupsHeading: (count: number) => `Library backups · ${count}`,
     backupsIntro: 'Meridian creates a backup before resetting a library. Switching keeps the current library as another backup, then restarts the app.',
-    backupsEmpty: 'No library backups yet',
     backupSwitch: 'Switch',
     backupSwitching: 'Switching…',
     backupDelete: 'Delete',

@@ -272,15 +272,12 @@ export function Settings() {
             />
           </div>
         </div>
-        <SectionHeading variant="content">
-          {m.settings.storage.backupsHeading(backups?.length ?? 0)}
-        </SectionHeading>
-        <p className="settings-intro">{m.settings.storage.backupsIntro}</p>
-        {backups === null
-          ? <LoadingPlaceholder shape="rows" count={2} />
-          : backups.length === 0
-            ? <EmptyState variant="section">{m.settings.storage.backupsEmpty}</EmptyState>
-            : (
+        {backups === null || backups.length === 0
+          ? null
+          : (
+            <>
+              <SectionHeading variant="content">{m.settings.storage.backupsHeading(backups.length)}</SectionHeading>
+              <p className="settings-intro">{m.settings.storage.backupsIntro}</p>
               <StructuredList className="storage-backup-list">
                 {backups.map((backup) => {
                   const label = format.dateTime(backup.createdAt)
@@ -320,7 +317,8 @@ export function Settings() {
                   )
                 })}
               </StructuredList>
-            )}
+            </>
+          )}
       </>
     ),
     api: (

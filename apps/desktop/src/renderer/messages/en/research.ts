@@ -15,7 +15,6 @@ export const research = {
     },
     decisions: (n: number) => `Needs a decision · ${n}`,
     progressHeading: 'Project progress',
-    empty: 'No active projects yet.',
     activePathNote: (taskText: string | undefined) =>
       `Current research path${taskText === undefined ? '' : ` · Task: ${taskText}`}`,
     /** Suffix after the first in-progress node's label when several nodes are active at once. */
@@ -36,6 +35,7 @@ export const research = {
   list: {
     title: (n: number) => `Projects · ${n}`,
     create: 'New project',
+    empty: 'No active projects yet',
     sort: 'Sort',
     sortPriority: 'By priority',
     sortMilestone: 'By next milestone',

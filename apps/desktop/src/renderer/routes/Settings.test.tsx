@@ -439,7 +439,7 @@ describe('Settings', () => {
     expect(dialog.textContent).not.toContain('选择根目录…')
   })
 
-  it('库位置、备份和归档的对话还没读到时都显示同一种载入占位，不写读取中的句子，也不说没有', async () => {
+  it('库位置和归档的对话还没读到时都显示同一种载入占位，不写读取中的句子，也不说没有', async () => {
     const never = () => new Promise<never>(() => {})
     api.libraryLocation.mockImplementation(never)
     api.libraryBackups.mockImplementation(never)
@@ -447,7 +447,7 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
-    expect(dialog.querySelectorAll('.set-main .loading-placeholder')).toHaveLength(2)
+    expect(dialog.querySelectorAll('.set-main .loading-placeholder')).toHaveLength(1)
     expect(dialog.querySelector('.set-main .empty-state')).toBeNull()
     expect(dialog.querySelector('.set-main')!.textContent).not.toMatch(/正在读取/)
 
@@ -465,6 +465,15 @@ describe('Settings', () => {
 
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="archived"]')!.click() })
     expect(dialog.querySelector('.set-main [role="alert"]')?.textContent).toBe('对话列表读不到')
+  })
+
+  it('还没有备份时备份这一节整节不显示', async () => {
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
+    expect([...dialog.querySelectorAll('.section-heading')].map((node) => node.textContent))
+      .not.toContain('论文库备份 · 0')
+    expect(dialog.querySelector('.set-main .empty-state')).toBeNull()
   })
 
   it('库打不开时显示路径与原因，切换和重置仍然可用', async () => {
@@ -539,7 +548,7 @@ describe('Settings', () => {
     await act(async () => { confirm.click() })
     expect(api.deleteBackup).toHaveBeenCalledWith('meridian-backup-20260915-182838Z')
     expect(dialog.querySelector('.storage-backup-list')).toBeNull()
-    expect(dialog.textContent).toContain('还没有论文库备份')
+    expect(dialog.textContent).not.toContain('论文库备份 ·')
     expect(api.success).toHaveBeenCalledWith('备份已删除')
   })
 

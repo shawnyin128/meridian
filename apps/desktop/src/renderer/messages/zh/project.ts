@@ -203,6 +203,7 @@ export const project = {
     blockerUpdated: '已更新阻塞',
   },
   links: {
+    empty: '还没有关联',
     addTitle: '添加关联',
     groupLabel: '关联分组',
     paperPlaceholder: '论文名称',
@@ -262,11 +263,9 @@ export const project = {
       ideaLinked: '当前想法关联',
     },
     branchSummary: (n: number) => `分支 · ${n}`,
-    noBranches: '还没有分支',
     records: (n: number) => `科研记录 · ${n}`,
     tasks: (n: number) => `任务 · ${n}`,
     noTasks: '还没有任务',
     noRecords: '还没有科研记录',
-    noDocument: '还没有节点文档',
   },
 } satisfies Record<string, unknown>

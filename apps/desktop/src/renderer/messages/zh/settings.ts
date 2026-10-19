@@ -52,7 +52,6 @@ export const settings = {
     resetConfirm: '重置并重启',
     backupsHeading: (count: number) => `论文库备份 · ${count}`,
     backupsIntro: 'Meridian 会在重置论文库前创建备份。切换时会先将当前库保存为新备份，然后重启应用。',
-    backupsEmpty: '还没有论文库备份',
     backupSwitch: '切换',
     backupSwitching: '正在切换…',
     backupDelete: '删除',

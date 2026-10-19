@@ -62,6 +62,17 @@ afterEach(() => {
   api.loading = false
 })
 
+describe('项目列表空着时', () => {
+  it('进行中留着标题和新建，下面是一行分节空态，不摆排序', async () => {
+    api.projects = []
+    await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
+    expect(host.querySelector('.section-heading')?.textContent).toContain('进行中')
+    expect(host.querySelector('.empty-state--section')?.textContent).toBe('还没有进行中的项目')
+    expect(host.querySelector('.section-heading .sort-menu')).toBeNull()
+    expect(host.querySelector('#projNew')).not.toBeNull()
+  })
+})
+
 describe('项目列表在载入时', () => {
   it('列表还没读到时页面里是载入占位，不是一片空白', async () => {
     api.loading = true

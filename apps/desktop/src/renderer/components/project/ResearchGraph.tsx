@@ -465,10 +465,9 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
         actions={<PanelClose onClose={onClose} />}
       ><span className="node-document-title">{node.label}</span>
       </SectionHeading>
-      <SectionHeading variant="rail">{m.project.graph.branchSummary(children.length)}</SectionHeading>
-      {children.length === 0
-        ? <EmptyState variant="section">{m.project.graph.noBranches}</EmptyState>
-        : (
+      {children.length === 0 ? null : (
+        <>
+          <SectionHeading variant="rail">{m.project.graph.branchSummary(children.length)}</SectionHeading>
           <div className="node-branch-groups">
             {branches.map((group) => (
               <div className={`node-branch-group ${group.key}`} key={group.key}>
@@ -484,7 +483,8 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
               </div>
             ))}
           </div>
-        )}
+        </>
+      )}
 
       <SectionHeading variant="rail">{m.project.graph.tasks(tasks.length)}</SectionHeading>
       {tasks.length === 0
@@ -522,10 +522,9 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
           </StructuredList>
         )}
 
-      <SectionHeading variant="rail">{m.project.graph.records(nodeEvents.length)}</SectionHeading>
-      {nodeEvents.length === 0
-        ? <EmptyState variant="section">{m.project.graph.noRecords}</EmptyState>
-        : (
+      {nodeEvents.length === 0 ? null : (
+        <>
+          <SectionHeading variant="rail">{m.project.graph.records(nodeEvents.length)}</SectionHeading>
           <StructuredList className="node-event-list" variant="embedded">
             {nodeEvents.map((event, index) => (
               <ProjectEventRow
@@ -534,13 +533,12 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
               />
             ))}
           </StructuredList>
-        )}
+        </>
+      )}
 
-      <div className="node-markdown">
-        {document.body === ''
-          ? <EmptyState variant="section">{m.project.graph.noDocument}</EmptyState>
-          : <div className="md"><Markdown src={document.body} titles={{}} /></div>}
-      </div>
+      {document.body === '' ? null : (
+        <div className="node-markdown"><div className="md"><Markdown src={document.body} titles={{}} /></div></div>
+      )}
 
       {node.markdownPath === undefined
         ? null

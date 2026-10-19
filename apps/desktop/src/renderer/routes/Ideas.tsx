@@ -324,11 +324,9 @@ export function Ideas() {
             >{m.ideas.activeHeading(active.length)}</SectionHeading>
             {rows === null ? (
               error === null ? <LoadingPlaceholder shape="cards" /> : null
-            ) : active.length === 0 ? (
-              <EmptyState variant="page">
-                {m.ideas.empty}
-              </EmptyState>
-            ) : active.map(card)}
+            ) : active.length === 0
+              ? <EmptyState variant="section">{m.ideas.empty}</EmptyState>
+              : active.map(card)}
             {archived.length === 0 ? null : (
               <>
                 <SectionHeading>{m.ideas.archivedHeading(archived.length)}</SectionHeading>

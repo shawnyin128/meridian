@@ -312,17 +312,19 @@ export function Inbox() {
 
       <PageBody>
         <div className="inbox-toolbar">
-          <SegmentedControl
-            label={m.inbox.sortLabel}
-            value={sort}
-            options={[
-              { value: 'recommended', label: m.inbox.sort.recommended },
-              { value: 'latest', label: m.inbox.sort.latest },
-              { value: 'published', label: m.inbox.sort.published },
-              { value: 'impact', label: m.inbox.sort.impact },
-            ]}
-            onChange={setSort}
-          />
+          {rows.length === 0 ? null : (
+            <SegmentedControl
+              label={m.inbox.sortLabel}
+              value={sort}
+              options={[
+                { value: 'recommended', label: m.inbox.sort.recommended },
+                { value: 'latest', label: m.inbox.sort.latest },
+                { value: 'published', label: m.inbox.sort.published },
+                { value: 'impact', label: m.inbox.sort.impact },
+              ]}
+              onChange={setSort}
+            />
+          )}
           <IconButton
             label={stream === 'discovery' ? m.inbox.discoverySettings : m.inbox.watchSettings} size="nested"
             onClick={() => openCategory(stream === 'discovery' ? 'delivery-discovery' : 'delivery-watch')}

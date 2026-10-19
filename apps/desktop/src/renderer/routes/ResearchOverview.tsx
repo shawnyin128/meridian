@@ -8,8 +8,6 @@ import {
 import { project as projectApi } from '../ipc.js'
 import { ACTIVE_PROJECT, FINISHED_PROJECT, SHELVED_PROJECT } from '../../shared/vocabulary.js'
 import { useJump, useToday, useVaultRevision } from '../shell/AppShell.js'
-import { Icon } from '../components/icons.js'
-import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { AgentLabel } from '../components/SourceLabel.js'
 import { StructuredList, StructuredRow } from '../components/StructuredList.js'
@@ -161,79 +159,72 @@ function ProjectProgress({ rows, onOpen }: {
   const fmt = useFormat()
   const m = useMessages()
   const current = rows.filter((project) => project.status !== FINISHED_PROJECT)
+  if (current.length === 0) return null
   return (
     <>
       <SectionHeading>{m.research.overview.progressHeading}</SectionHeading>
-      {current.length === 0
-        ? (
-          <EmptyState variant="page" icon={<Icon sw={1.4}><path d="M20 6L9 17l-5-5" /></Icon>}>
-            {m.research.overview.empty}
-          </EmptyState>
-        )
-        : (
-          <StructuredList className="ovpulse" variant="embedded">
-            {current.map((project) => {
-              const control = projectControlState({
-                tasks: project.tasks,
-                ...(project.block === undefined ? {} : { block: project.block }),
-                activeNodes: project.research.activeNodes,
-              })
-              const active = control.next.source === 'task' && control.next.task.state === 'act'
-                ? control.next.task
-                : undefined
-              const activeCount = project.tasks.filter((task) => task.state === 'act').length
-              const latest = sortRecordsNewestFirst(project.events)[0]
-              const signal = projectPulseSignal({
-                ...project, conclusions: { conflicting: 0 },
-              }, today, m.project.signals)
-              const [firstActive, ...moreActive] = project.research.activeNodes
-              const activeLabel = firstActive === undefined
-                ? undefined
-                : moreActive.length === 0
-                  ? firstActive.label
-                  : `${firstActive.label} ${m.research.overview.activeNodesMore(moreActive.length)}`
-              const activeTitle = project.research.activeNodes.map((n) => n.label).join(', ')
-              return (
-                <StructuredRow
-                  className="ovlist-row progress ovpulse-row" data-proj={project.id}
-                  key={project.id} onActivate={() => onOpen(project.id)}
-                >
-                  <ProjectIdentity project={project} variant="progress" />
-                  <span className="ovpulse-cell">
-                    <b title={activeLabel === undefined ? project.focus : activeTitle}>
-                      {activeLabel ?? project.focus}
-                    </b>
-                    <span className="ovpulse-sub">
-                      {firstActive
-                        ? m.research.overview.activePathNote(active ? control.next.text : undefined)
-                        : (() => {
-                          const label = m.project.identity.focusLabel[FOCUS_KEY[project.status]]
-                          return active
-                            ? m.research.overview.focusWithActiveTasks(label, activeCount)
-                            : label
-                        })()}
-                    </span>
-                  </span>
-                  <span className="ovpulse-cell">
-                    {latest
-                      ? <EventText className="ovpulse-latest" text={latest.text} origin={latest.origin} />
-                      : <b>{m.research.overview.noRecentRecord}</b>}
-                    <span className="ovpulse-sub">
-                      {latest ? fmt.date(latest.date) : m.research.overview.waitingForAgent}
-                    </span>
-                  </span>
-                  <span className="ovpulse-cell">
-                    <ProjectNextActionView action={control.next} variant="summary" />
-                  </span>
-                  <span className="ovpulse-cell signal">
-                    <Tag tone={PULSE_TONE[signal.tone]}>{signal.label}</Tag>
-                    <span className="ovpulse-sub" title={signal.detail}>{signal.detail}</span>
-                  </span>
-                </StructuredRow>
-              )
-            })}
-          </StructuredList>
-        )}
+      <StructuredList className="ovpulse" variant="embedded">
+        {current.map((project) => {
+          const control = projectControlState({
+            tasks: project.tasks,
+            ...(project.block === undefined ? {} : { block: project.block }),
+            activeNodes: project.research.activeNodes,
+          })
+          const active = control.next.source === 'task' && control.next.task.state === 'act'
+            ? control.next.task
+            : undefined
+          const activeCount = project.tasks.filter((task) => task.state === 'act').length
+          const latest = sortRecordsNewestFirst(project.events)[0]
+          const signal = projectPulseSignal({
+            ...project, conclusions: { conflicting: 0 },
+          }, today, m.project.signals)
+          const [firstActive, ...moreActive] = project.research.activeNodes
+          const activeLabel = firstActive === undefined
+            ? undefined
+            : moreActive.length === 0
+              ? firstActive.label
+              : `${firstActive.label} ${m.research.overview.activeNodesMore(moreActive.length)}`
+          const activeTitle = project.research.activeNodes.map((n) => n.label).join(', ')
+          return (
+            <StructuredRow
+              className="ovlist-row progress ovpulse-row" data-proj={project.id}
+              key={project.id} onActivate={() => onOpen(project.id)}
+            >
+              <ProjectIdentity project={project} variant="progress" />
+              <span className="ovpulse-cell">
+                <b title={activeLabel === undefined ? project.focus : activeTitle}>
+                  {activeLabel ?? project.focus}
+                </b>
+                <span className="ovpulse-sub">
+                  {firstActive
+                    ? m.research.overview.activePathNote(active ? control.next.text : undefined)
+                    : (() => {
+                      const label = m.project.identity.focusLabel[FOCUS_KEY[project.status]]
+                      return active
+                        ? m.research.overview.focusWithActiveTasks(label, activeCount)
+                        : label
+                    })()}
+                </span>
+              </span>
+              <span className="ovpulse-cell">
+                {latest
+                  ? <EventText className="ovpulse-latest" text={latest.text} origin={latest.origin} />
+                  : <b>{m.research.overview.noRecentRecord}</b>}
+                <span className="ovpulse-sub">
+                  {latest ? fmt.date(latest.date) : m.research.overview.waitingForAgent}
+                </span>
+              </span>
+              <span className="ovpulse-cell">
+                <ProjectNextActionView action={control.next} variant="summary" />
+              </span>
+              <span className="ovpulse-cell signal">
+                <Tag tone={PULSE_TONE[signal.tone]}>{signal.label}</Tag>
+                <span className="ovpulse-sub" title={signal.detail}>{signal.detail}</span>
+              </span>
+            </StructuredRow>
+          )
+        })}
+      </StructuredList>
     </>
   )
 }
@@ -245,6 +236,7 @@ function Recent({ rows, onOpen }: { rows: ProjectOverview[]; onOpen: (projectId:
     .flatMap((p) => p.events.map((e) => ({ ...e, projectId: p.id, name: p.name })))
     .sort((a, b) => dnum(b.date) - dnum(a.date))
     .slice(0, RECENT_EVENTS)
+  if (events.length === 0) return null
   return (
     <>
       <SectionHeading>{m.research.overview.recentHeading}</SectionHeading>
@@ -282,6 +274,7 @@ function Upcoming({ rows, onOpen }: { rows: ProjectOverview[]; onOpen: (projectI
     .flatMap((p) => p.milestones.filter((x) => !x.done).map((x) => ({ ...x, projectId: p.id, name: p.name })))
     .filter((x) => dnum(x.date) >= today)
     .sort((a, b) => dnum(a.date) - dnum(b.date))
+  if (items.length === 0) return null
   return (
     <>
       <SectionHeading>{m.research.overview.upcomingHeading}</SectionHeading>

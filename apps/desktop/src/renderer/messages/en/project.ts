@@ -214,6 +214,7 @@ export const project = {
     blockerUpdated: 'Blocker updated',
   },
   links: {
+    empty: 'No links yet',
     addTitle: 'Add link',
     groupLabel: 'Link group',
     paperPlaceholder: 'Search papers',
@@ -273,11 +274,9 @@ export const project = {
       ideaLinked: 'Linked to selected idea',
     },
     branchSummary: (n: number) => `Branches · ${n}`,
-    noBranches: 'No branches yet',
     records: (n: number) => `Research log · ${n}`,
     tasks: (n: number) => `Tasks · ${n}`,
     noTasks: 'No tasks yet',
     noRecords: 'No research log entries yet',
-    noDocument: 'No node document yet',
   },
 } satisfies typeof zh

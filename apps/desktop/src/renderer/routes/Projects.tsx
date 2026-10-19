@@ -17,6 +17,7 @@ import {
   MenuItem, MenuRadioGroup, MenuRadioItem, MenuSeparator,
 } from '../components/ActionMenu.js'
 import { DotsMenu } from '../components/FieldPickers.js'
+import { EmptyState } from '../components/EmptyState.js'
 import { InlineDraftInput } from '../components/InlineDraftInput.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { ShortTextEditor } from '../components/ShortTextEditor.js'
@@ -344,11 +345,13 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
             <SectionHeading actions={i === 0
               ? (
                 <div className="section-actions">
-                  <SortMenu label={m.research.list.sort} options={[
-                    { label: m.research.list.sortPriority, onSelect: () => sortBy('priority') },
-                    { label: m.research.list.sortMilestone, onSelect: () => sortBy('milestone') },
-                  ]}
-                  />
+                  {projects.length === 0 ? null : (
+                    <SortMenu label={m.research.list.sort} options={[
+                      { label: m.research.list.sortPriority, onSelect: () => sortBy('priority') },
+                      { label: m.research.list.sortMilestone, onSelect: () => sortBy('milestone') },
+                    ]}
+                    />
+                  )}
                   <AddAction
                     variant="page" id="projNew" ref={projNew}
                     onClick={() => {
@@ -369,7 +372,7 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
                   onCancel={stopCreating} onCreate={createProject}
                 />
               )
-              : null}
+              : g.items.length === 0 ? <EmptyState variant="section">{m.research.list.empty}</EmptyState> : null}
             {g.items.map((p) => (p.status === ACTIVE_PROJECT
               ? (
                 <ProjectPanel

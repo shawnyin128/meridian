@@ -249,6 +249,7 @@ export function ProjectRelations({
   ]
   return (
     <>
+      {rows.length === 0 ? <EmptyState variant="section">{m.project.links.empty}</EmptyState> : null}
       {rows.map((row) => (
         <div
           className="wkrel" key={row.group}

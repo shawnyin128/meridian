@@ -55,6 +55,16 @@ describe('研究总览的项目进展', () => {
     api.loading = false
   })
 
+  it('项目进展、最近进展和接下来的里程碑是汇总出来的，没有内容时整节不显示', async () => {
+    api.rows = [{ ...row([]), status: '已完成' }]
+    await act(async () => { root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>) })
+    const headings = [...host.querySelectorAll('.section-heading')].map((node) => node.textContent)
+    expect(headings).not.toContain('项目进展')
+    expect(headings).not.toContain('最近进展')
+    expect(headings).not.toContain('接下来的里程碑')
+    expect(host.querySelector('.empty-state')).toBeNull()
+  })
+
   it('总览还没读到时页面里是载入占位，不是一片空白', async () => {
     api.loading = true
     await act(async () => { root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>) })
