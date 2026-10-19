@@ -40,8 +40,9 @@ Current shared contracts:
 - `Tag`: every tag, chip and status pill. `tone` picks the fill and text colour (`neutral`, `accent`, `good`,
   `warn`, `bad`, `info`, `paper`, `wiki`, and `ghost` for the slot that adds a tag to a row) and `shape` the
   box (`label` for a status, kind, priority or source word; `chip` for a name, topic, date or value).
-  `TagButton` is the clickable tag and `tagClass` gives a trigger another component renders the same classes. `CountBadge` is the one count beside a label. A host
-  places and sizes these through `className` but never sets their fill, colour, border, radius or padding.
+  `TagButton` is the clickable tag and `tagClass` gives a trigger another component renders the same classes.
+  `CountBadge` is the one count beside a label. A host places and sizes these through `className` but never
+  sets their fill, colour, border, radius or padding.
 - `StatusDot`: the one state dot, in two sizes. A dot whose state no nearby text names carries a `label`.
 - `PanelClose`: the close button of a detail panel, with one label and one glyph everywhere.
 - `DetailPanel`: the shared open/closed state and motion contract for right-side details. Its `inline`,
