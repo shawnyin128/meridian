@@ -74,13 +74,13 @@ describe('ProjectPlan', () => {
     expect(slot(host.querySelector('.milestone-row')!)).toEqual([['删除里程碑：完成首轮校准', '', true, true]])
   })
 
-  it('任务行从操作槽里的把手拖拽排序，行本身不能拖', () => {
+  it('任务行整行就是拖拽把手，在窄的计划列表里不另占一列', () => {
     const host = document.createElement('div')
     host.innerHTML = renderPlan('task')
     const row = host.querySelector('[data-row="task-1"]')!
-    expect(row.hasAttribute('draggable')).toBe(false)
+    expect(row.getAttribute('draggable')).toBe('true')
     expect(row.getAttribute('data-reorder-item')).toBe('task-1')
-    expect(row.querySelector('.row-actions .drag-handle')!.getAttribute('draggable')).toBe('true')
+    expect(row.querySelector('.drag-handle')).toBeNull()
   })
 
   it('Alt+↓ 在任务行里把任务往下挪一格，已归档的任务不参与', () => {
@@ -157,8 +157,8 @@ describe('ProjectPlan', () => {
   it('归档任务不参与拖拽排序', () => {
     const host = document.createElement('div')
     host.innerHTML = renderPlan('task', { tasks: [task, doneTask], flashId: doneTask.id })
-    expect(host.querySelector('[data-row="task-1"] .drag-handle')).not.toBeNull()
-    expect(host.querySelector('[data-row="task-3"] .drag-handle')).toBeNull()
+    expect(host.querySelector('[data-row="task-1"]')!.getAttribute('draggable')).toBe('true')
+    expect(host.querySelector('[data-row="task-3"]')!.hasAttribute('draggable')).toBe(false)
     expect(host.querySelector('[data-row="task-3"]')!.hasAttribute('data-reorder-item')).toBe(false)
   })
 
