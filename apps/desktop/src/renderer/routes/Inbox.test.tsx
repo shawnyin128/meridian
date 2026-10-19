@@ -11,6 +11,7 @@ const api = vi.hoisted(() => ({
   entries: [] as InboxEntry[],
   profiles: [] as DiscoveryProfile[],
   mode: 'watch' as 'watch' | 'discovery',
+  dismiss: vi.fn<(id: string) => Promise<void>>(async () => {}),
   feedback: vi.fn(async () => {}),
   setIntent: vi.fn(async () => {}),
   openCategory: vi.fn(),
@@ -20,7 +21,7 @@ vi.mock('../ipc.js', () => ({
   inbox: {
     list: async (params: { kind?: InboxEntry['kind'] }) => api.entries
       .filter((entry) => params.kind === undefined || entry.kind === params.kind),
-    dismiss: async () => {}, readLater: async () => false,
+    dismiss: api.dismiss, readLater: async () => false,
     download: async () => ({ kind: 'added', paper: 'p1' }), fetch: async () => {},
   },
   discovery: {
@@ -61,6 +62,7 @@ describe('Inbox', () => {
     api.entries = []
     api.profiles = []
     api.mode = 'watch'
+    api.dismiss.mockClear()
     api.feedback.mockClear()
     api.setIntent.mockClear()
     api.openCategory.mockClear()
@@ -126,6 +128,44 @@ describe('Inbox', () => {
     expect(groups[0]!.querySelector('.collapsible-group-toggle')?.getAttribute('aria-expanded')).toBe('false')
     expect(groups[0]!.querySelectorAll('.paper-card')).toHaveLength(0)
     expect(groups[1]!.querySelectorAll('.paper-card')).toHaveLength(1)
+    await act(async () => { root.unmount() })
+  })
+
+  it('推送按关注分组：「全部忽略」只忽略自己这一组，这一组折叠着也一样', async () => {
+    const entry = (id: string, watch: string): InboxEntry => ({
+      id, kind: 'watch', watch, project: '', source: `主题 · ${watch}`,
+      title: `Paper ${id}`, authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
+      reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
+    })
+    api.entries = [entry('a1', 'w1'), entry('b1', 'w2'), entry('a2', 'w1')]
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    const groups = [...host.querySelectorAll<HTMLElement>('.collapsible-group')]
+    expect(groups.map((group) => group.dataset['group'])).toEqual(['w1', 'w2'])
+
+    await act(async () => { groups[0]!.querySelector<HTMLButtonElement>('.collapsible-group-toggle')!.click() })
+    const dismissAll = (group: HTMLElement) => [...group.querySelectorAll<HTMLButtonElement>('.collapsible-group-actions .btn')]
+      .filter((button) => button.textContent === '全部忽略')
+    await act(async () => { dismissAll(groups[0]!)[0]!.click() })
+    await act(async () => { await new Promise((done) => { setTimeout(done, 300) }) })
+    expect(api.dismiss.mock.calls.map(([id]) => id).sort()).toEqual(['a1', 'a2'])
+    expect(groups[1]!.querySelectorAll('.paper-card.is-leaving')).toHaveLength(0)
+    expect(dismissAll(groups[1]!)).toHaveLength(1)
+    await act(async () => { root.unmount() })
+  })
+
+  it('发现的卡片不能忽略，分组标题上也没有「全部忽略」', async () => {
+    api.entries = [{
+      id: 'd1', kind: 'discovery', watch: '', project: 'p1', source: '项目 · 项目一',
+      title: 'A Discovery', authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
+      reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
+    }]
+    api.mode = 'discovery'
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(host.querySelectorAll('.collapsible-group')).toHaveLength(1)
+    expect(host.querySelector('[title="忽略"]')).toBeNull()
+    expect(host.querySelector('.collapsible-group-actions')).toBeNull()
     await act(async () => { root.unmount() })
   })
 
