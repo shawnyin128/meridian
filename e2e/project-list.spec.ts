@@ -388,13 +388,15 @@ test('搁置或已完成的项目菜单开着、指针挪到菜单项上之后,�
 
   await row.hover()
   await settle(row)
-  const hoverBg = await row.evaluate((el) => getComputedStyle(el).backgroundColor)
+  // The row's hover is an overlay image over its own colour (StructuredList.css).
+  const hoverBg = await row.evaluate((el) => getComputedStyle(el).backgroundImage)
+  expect(hoverBg).not.toBe('none')
   await dots.click()
   // Moving the pointer onto a menu item really takes :hover off the row; without the move, :hover
   // sticks and the bug cannot show.
   await win.locator('[role="menu"] [role="menuitem"]').first().hover()
   await settle(row)
-  expect(await row.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(hoverBg)
+  expect(await row.evaluate((el) => getComputedStyle(el).backgroundImage)).toBe(hoverBg)
 })
 
 test('菜单开着时触发器仍然可点;再点一下菜单收起,不重新弹出也不冒给行', async ({ win }) => {

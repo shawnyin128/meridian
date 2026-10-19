@@ -32,7 +32,7 @@ import {
 } from '../../shell/AppShell.js'
 import { AddAction } from '../AddAction.js'
 import { IconButton } from '../IconButton.js'
-import { RowActions } from '../StructuredList.js'
+import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
 import { PanelClose } from '../PanelClose.js'
 import { CountBadge, Tag, tagClass } from '../Tag.js'
 import { DetailPanel } from '../DetailPanel.js'
@@ -1231,19 +1231,19 @@ export function PaperTable() {
               : !listed
               ? (
                 <>
-                  {facets.map((f) => (
-                    <button
-                      type="button" className="gxrow" key={f.value} onClick={() => { setSel(f.value); setPage(1) }}
-                    >
-                      <span className="gx-t">{f.value}</span>
-                      <span className="gx-m">
-                        {m.papers.groupIndex.newest(
-                          `${plainTitle(f.newestTitle).slice(0, 44)}${plainTitle(f.newestTitle).length > 44 ? '…' : ''}`,
-                        )}
-                      </span>
-                      <CountBadge className="n" count={f.count} />
-                    </button>
-                  ))}
+                  <StructuredList variant="embedded" maxVisibleRows="all">
+                    {facets.map((f) => (
+                      <StructuredRow className="gxrow" key={f.value} onActivate={() => { setSel(f.value); setPage(1) }}>
+                        <span className="gx-t">{f.value}</span>
+                        <span className="gx-m">
+                          {m.papers.groupIndex.newest(
+                            `${plainTitle(f.newestTitle).slice(0, 44)}${plainTitle(f.newestTitle).length > 44 ? '…' : ''}`,
+                          )}
+                        </span>
+                        <CountBadge className="n" count={f.count} />
+                      </StructuredRow>
+                    ))}
+                  </StructuredList>
                   <div className="lmore">{m.papers.groupIndex.pickToView(labelOf(group))}</div>
                 </>
               )
@@ -1252,9 +1252,6 @@ export function PaperTable() {
                   {group !== 'none'
                     ? (
                       <div className="gnav">
-                        <button className="btn sm" id="gxBack" onClick={backToValues}>
-                          ‹ {labelOf(group)}
-                        </button>
                         <GroupValuePicker
                           current={sel} facets={facets} onPick={(value) => { setSel(value); setPage(1) }}
                         />

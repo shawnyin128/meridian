@@ -81,6 +81,11 @@ describe('Trash', () => {
     vi.unstubAllGlobals()
   })
 
+  it('每一类条目是页面上的嵌入列表，不套卡片外框', () => {
+    expect([...host.querySelectorAll('.tgroup')].map((list) => list.className))
+      .toEqual(['structured-list structured-list--embedded tgroup', 'structured-list structured-list--embedded tgroup'])
+  })
+
   it('恢复和彻底删除是行尾操作槽里的图标钮，彻底删除悬停时标红', async () => {
     const row = host.querySelector('.trow')!
     expect(row.hasAttribute('data-row-actions')).toBe(true)

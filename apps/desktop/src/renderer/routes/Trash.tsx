@@ -114,7 +114,7 @@ export function Trash() {
                 {/* The demo only places the clear button on the title of the first group */}
                 {i === 0 ? <ClearButton count={entries.length} onClear={clear} /> : null}
               </SectionHeading>
-              <StructuredList className="tgroup">
+              <StructuredList variant="embedded" maxVisibleRows="all" className="tgroup">
                 {g.items.map((entry) => (
                   <StructuredRow className="trow" key={entry.id}>
                     <span className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</span>

@@ -23,7 +23,7 @@ import { ProjectBlockerView, ProjectNextActionView } from '../components/project
 import { ProjectIdentity } from '../components/project/ProjectIdentity.js'
 import { EventText } from '../components/project/ProjectSignals.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
-import { RowActions } from '../components/StructuredList.js'
+import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -225,8 +225,9 @@ function ProjectPanel({ project, onOpen, menu, reorder, dropClassName }: {
 }
 
 /**
- * Shelved and completed projects: one row with status, name, focus and time since the last progress.
- * The name is the row's button; a click anywhere else on the row opens it too.
+ * Shelved and completed projects: one composite row with the cards' identity (name, status, topic),
+ * focus and time since the last progress. The identity is the row's button; a click anywhere else on
+ * the row opens it too.
  */
 function ProjectRow({ project, onOpen, menu, reorder, dropClassName }: {
   project: ProjectSummary; onOpen: () => void; menu: ReactNode
@@ -235,20 +236,19 @@ function ProjectRow({ project, onOpen, menu, reorder, dropClassName }: {
   const { idle } = signals(project, useToday())
   const m = useMessages()
   return (
-    <div
-      className={`prow${dropClassName ? ` ${dropClassName}` : ''}`}
-      data-proj={project.id} data-row-actions="" onClick={onOpen} {...reorder.item}
+    <StructuredRow
+      composite className={`prow${dropClassName ? ` ${dropClassName}` : ''}`}
+      data-proj={project.id} onActivate={onOpen} {...reorder.item}
     >
       <button type="button" className="prow-open">
-        <ProjectIdentity project={project} variant="row" showPriority={false} />
+        <ProjectIdentity project={project} variant="row" showPriority={false} showTopic />
       </button>
       <span className="m">
         {m.project.identity.focusLabel[FOCUS_KEY[project.status]]}:{project.focus} ·{' '}
         {idleNote(idle, m.project.signals.idle)}
       </span>
-      <span className="tp">{project.topic}</span>
       <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
-    </div>
+    </StructuredRow>
   )
 }
 
@@ -377,21 +377,25 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
                 />
               )
               : null}
-            {g.items.map((p) => (p.status === ACTIVE_PROJECT
-              ? (
+            {g.status === ACTIVE_PROJECT
+              ? g.items.map((p) => (
                 <ProjectPanel
                   project={p} onOpen={() => onOpen(p.id)} menu={menuOf(p)} key={p.id}
                   reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
                   dropClassName={reorder.dropClass(p.id)}
                 />
-              )
+              ))
               : (
-                <ProjectRow
-                  project={p} onOpen={() => onOpen(p.id)} menu={menuOf(p)} key={p.id}
-                  reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
-                  dropClassName={reorder.dropClass(p.id)}
-                />
-              )))}
+                <StructuredList variant="embedded" maxVisibleRows="all">
+                  {g.items.map((p) => (
+                    <ProjectRow
+                      project={p} onOpen={() => onOpen(p.id)} menu={menuOf(p)} key={p.id}
+                      reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
+                      dropClassName={reorder.dropClass(p.id)}
+                    />
+                  ))}
+                </StructuredList>
+              )}
           </Fragment>
         ))}
       </PageBody>

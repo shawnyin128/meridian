@@ -110,6 +110,20 @@ describe('Project list', () => {
     expect(host.querySelector('[data-open="moe"]')).not.toBeNull()
   })
 
+  it('搁置和已完成的项目是嵌入列表里的结构行，主题跟在名字和状态后面，和卡片的身份顺序一样', async () => {
+    api.projects = [
+      summary({ id: 'draft', name: 'draft 效率', status: '搁置', priority: 'p1', topic: '推理', focus: '等算力' }),
+      summary({ id: 'flash', name: 'FlashAttention 复现', status: '搁置', priority: 'p2', topic: '注意力', focus: '等 H100' }),
+    ]
+    await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
+    const row = host.querySelector<HTMLElement>('[data-proj="draft"]')!
+    expect(row.classList.contains('structured-row')).toBe(true)
+    expect(row.parentElement!.className).toBe('structured-list structured-list--embedded')
+    const identity = [...row.querySelector('.project-identity')!.children].map((part) => part.textContent)
+    expect(identity).toEqual(['draft 效率', '搁置', '推理'])
+    expect(row.querySelector('.tp')).toBeNull()
+  })
+
   it('opens a shelved project from the button that holds its name', async () => {
     api.projects = [summary({
       id: 'draft', name: 'draft 效率', status: '搁置', priority: 'p1', topic: '推理', focus: '等算力',
