@@ -28,7 +28,7 @@ describe('PaperWikiProposalReview', () => {
     )
     expect(html).toContain('structured-list--embedded')
     expect(html).toContain('论文原文')
-    expect(html).toContain('<span title="page:2">p.2</span>')
+    expect(html).toContain('<span>p.2</span>')
     expect(html).toContain('原始分数')
   })
 
