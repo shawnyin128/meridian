@@ -81,7 +81,7 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
                   <button className="btn" onClick={() => onSetActive(w)}>{w.active ? m.watches.pause : m.watches.resume}</button>
                   <ConfirmDialog
                     trigger={<button className="btn">{m.common.remove}</button>}
-                    title={m.watches.confirmRemove(w.name)}
+                    title={m.watches.confirmRemove(w.name)} description={m.watches.confirmRemoveDescription}
                     confirmLabel={m.watches.confirmRemoveLabel} onConfirm={() => onRemove(w.id)}
                   />
                 </StructuredRow>

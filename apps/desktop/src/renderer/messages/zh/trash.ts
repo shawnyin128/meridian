@@ -10,9 +10,11 @@ export const trash = {
   restored: (title: string) => `已恢复「${title}」`,
   purged: '已彻底删除',
   clear: '清空垃圾桶',
-  confirmClear: (count: number) => `清空垃圾桶？${count} 项将被彻底删除，不可恢复。`,
+  confirmClear: '清空垃圾桶？',
+  confirmClearDescription: (count: number) => `${count} 项将被彻底删除，不可恢复。`,
   confirmClearLabel: '确认清空',
-  confirmPurge: (title: string) => `彻底删除「${title}」？删除后不可恢复。`,
+  confirmPurge: (title: string) => `彻底删除「${title}」？`,
+  confirmPurgeDescription: '删除后不可恢复。',
   confirmPurgeLabel: '彻底删除',
   cleared: '已清空垃圾桶',
 } satisfies Record<string, unknown>

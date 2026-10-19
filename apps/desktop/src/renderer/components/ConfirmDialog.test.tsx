@@ -39,8 +39,11 @@ describe('ConfirmDialog', () => {
       </MessagesProvider>,
     ))
     act(() => host.querySelector<HTMLButtonElement>('button')!.click())
-    expect(document.querySelector('[role="alertdialog"]')).not.toBeNull()
-    expect(document.body.textContent).toContain('删除后不能恢复。')
+    const dialog = document.querySelector<HTMLElement>('[role="alertdialog"]')!
+    expect([...dialog.classList]).toEqual(['modal', 'confirm'])
+    expect(dialog.querySelector('.modal-title')!.textContent).toBe('删除这条记录？')
+    expect(dialog.querySelector('.modal-body > .modal-detail')!.textContent).toBe('删除后不能恢复。')
+    expect(dialog.getAttribute('aria-describedby')).toBe(dialog.querySelector('.modal-detail')!.id)
     expect(confirm).not.toHaveBeenCalled()
     act(() => Array.from(document.querySelectorAll('button'))
       .find((button) => button.textContent === '确认删除')!.click())
@@ -50,7 +53,7 @@ describe('ConfirmDialog', () => {
   it('stays open on an Escape that ends an input method composition and closes on the next one', () => {
     act(() => root!.render(
       <MessagesProvider>
-        <ConfirmDialog trigger={<button>删除记录</button>} title="删除这条记录？" onConfirm={vi.fn()} />
+        <ConfirmDialog trigger={<button>删除记录</button>} title="删除这条记录？" description="删除后不能恢复。" onConfirm={vi.fn()} />
       </MessagesProvider>,
     ))
     act(() => host.querySelector<HTMLButtonElement>('button')!.click())

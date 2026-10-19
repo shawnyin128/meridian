@@ -43,7 +43,7 @@ function ClearButton({ count, onClear }: { count: number; onClear: () => void })
   return (
     <ConfirmDialog
       trigger={<button className="btn plain tdel">{m.trash.clear}</button>}
-      title={m.trash.confirmClear(count)}
+      title={m.trash.confirmClear} description={m.trash.confirmClearDescription(count)}
       confirmLabel={m.trash.confirmClearLabel} onConfirm={onClear}
     />
   )
@@ -124,7 +124,7 @@ export function Trash() {
                     >{m.common.restore}</button>
                     <ConfirmDialog
                       trigger={<button className="btn tdel">{m.common.deletePermanently}</button>}
-                      title={m.trash.confirmPurge(plainOf(entry))}
+                      title={m.trash.confirmPurge(plainOf(entry))} description={m.trash.confirmPurgeDescription}
                       confirmLabel={m.trash.confirmPurgeLabel} onConfirm={() => purge(entry.id)}
                     />
                   </StructuredRow>

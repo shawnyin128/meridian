@@ -6,7 +6,8 @@ import { modalSurface } from './ModalDialog.js'
 
 /**
  * One destructive/confirming action shell with shared focus, wording order, and buttons, on the
- * dialog surface's confirmation step.
+ * dialog surface's confirmation step. `title` is the short question; `description` is the
+ * consequence, on its own line under it.
  */
 export function ConfirmDialog({
   trigger, title, description, confirmLabel, cancelLabel,
@@ -14,7 +15,7 @@ export function ConfirmDialog({
 }: {
   trigger: ReactElement
   title: ReactNode
-  description?: ReactNode
+  description: ReactNode
   confirmLabel?: ReactNode
   cancelLabel?: ReactNode
   confirmTone?: 'danger' | 'primary'
@@ -31,16 +32,11 @@ export function ConfirmDialog({
         <AlertDialog.Overlay className="scrim" />
         <AlertDialog.Content
           className={modalSurface('confirm')} onEscapeKeyDown={ignoreComposingEscape()}
-          {...(description === undefined ? { 'aria-describedby': undefined } : {})}
         >
           <AlertDialog.Title className="modal-title">{title}</AlertDialog.Title>
-          {description === undefined
-            ? null
-            : (
-              <div className="modal-body">
-                <AlertDialog.Description className="modal-detail">{description}</AlertDialog.Description>
-              </div>
-            )}
+          <div className="modal-body">
+            <AlertDialog.Description className="modal-detail">{description}</AlertDialog.Description>
+          </div>
           <div className="modal-actions">
             <AlertDialog.Cancel className="btn">{cancel}</AlertDialog.Cancel>
             <AlertDialog.Action

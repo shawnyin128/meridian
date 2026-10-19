@@ -259,7 +259,7 @@ export function Settings() {
                     || location.restartRequired || resetting}
                 >{m.settings.storage.resetAction}</button>
               )}
-              title={m.settings.storage.resetTitle}
+              title={m.settings.storage.resetTitle} description={m.settings.storage.resetDescription}
               confirmLabel={resetting ? m.settings.storage.resetting : m.settings.storage.resetConfirm}
               confirmDisabled={resetting}
               onConfirm={() => { void resetLibrary() }}

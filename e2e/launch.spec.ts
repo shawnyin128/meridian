@@ -129,7 +129,7 @@ test('设置可重置、切换和删除论文库备份', async ({ configHome }) 
     const reset = win.locator('.storage-reset .btn', { hasText: '重置库' })
     await expect(reset).toBeEnabled()
     await reset.click()
-    await expect(win.locator('.modal-title')).toContainText('旧库会自动备份')
+    await expect(win.locator('.modal-detail')).toContainText('旧库会自动备份')
     await win.locator('.modal-actions .btn', { hasText: '取消' }).click()
     await expect(win.locator('.modal-title')).toHaveCount(0)
 

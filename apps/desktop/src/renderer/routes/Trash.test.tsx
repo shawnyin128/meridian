@@ -84,7 +84,8 @@ describe('Trash', () => {
     await act(async () => { button(host.querySelector('.trow')!, '彻底删除').click() })
     expect(api.purge).not.toHaveBeenCalled()
     const dialog = document.querySelector('[role="alertdialog"]')!
-    expect(dialog.textContent).toContain('彻底删除「Draft trees」？删除后不可恢复。')
+    expect(dialog.querySelector('.modal-title')!.textContent).toBe('彻底删除「Draft trees」？')
+    expect(dialog.querySelector('.modal-detail')!.textContent).toBe('删除后不可恢复。')
 
     await act(async () => { button(dialog, '彻底删除').click() })
     expect(api.purge).toHaveBeenCalledExactlyOnceWith('trash-1')
