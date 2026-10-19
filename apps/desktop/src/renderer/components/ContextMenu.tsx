@@ -3,16 +3,21 @@ import type { KeyboardEvent as ReactKeyboardEvent, ReactElement, ReactNode } fro
 import { ignoreComposingEscape } from '../lib/keyboard.js'
 import { COLLISION_PADDING } from './floating-layer.js'
 
-/** How far inside the trigger's top-left corner a menu opened from the keyboard appears. */
+/** How far inside the on-screen top-left corner of the trigger a menu opened from the keyboard appears. */
 const KEYBOARD_INSET = 24
 
-/** Opens the trigger's menu at a point inside it, as a right-click there would. */
+/**
+ * Opens the trigger's menu at a point inside it, as a right-click there would. A trigger wider than
+ * its scroller, such as a table row scrolled sideways, can start off screen, so the point is taken
+ * inside the part of it the window shows.
+ */
 function openFromKeyboard(event: ReactKeyboardEvent<HTMLElement>) {
   if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
   event.preventDefault()
   const bounds = event.currentTarget.getBoundingClientRect()
   event.currentTarget.dispatchEvent(new MouseEvent('contextmenu', {
-    bubbles: true, cancelable: true, clientX: bounds.left + KEYBOARD_INSET, clientY: bounds.top + KEYBOARD_INSET,
+    bubbles: true, cancelable: true,
+    clientX: Math.max(bounds.left, 0) + KEYBOARD_INSET, clientY: Math.max(bounds.top, 0) + KEYBOARD_INSET,
   }))
 }
 
