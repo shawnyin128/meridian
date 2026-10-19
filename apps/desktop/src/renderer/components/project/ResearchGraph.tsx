@@ -14,15 +14,15 @@ import { recordKind, recordOrigin, sortRecordsNewestFirst } from '../../../share
 import { Markdown } from '../Markdown.js'
 import { plainTitle } from '../paper/paper-text.js'
 import { EmptyState } from '../EmptyState.js'
+import { EntityLink } from '../EntityLink.js'
 import { FadeText } from '../FadeText.js'
 import { IconButton } from '../IconButton.js'
 import { IconMinus, IconPlus } from '../icons.js'
 import { PanelClose } from '../PanelClose.js'
 import { SectionHeading } from '../PageShell.js'
-import { StatusDot, type StatusDotTone } from '../StatusDot.js'
+import { StatusDot } from '../StatusDot.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { AgentLabel } from '../SourceLabel.js'
-import { TagButton } from '../Tag.js'
 import { ProjectEventRow } from './ProjectSignals.js'
 import './ResearchGraph.css'
 
@@ -65,11 +65,6 @@ const GRAPH_MAX_ZOOM = 1.8
 
 const clampGraphZoom = (zoom: number) =>
   Math.min(GRAPH_MAX_ZOOM, Math.max(GRAPH_MIN_ZOOM, zoom))
-
-/** The dot colour of each group of a node's branches, as the graph colours those nodes. */
-const BRANCH_TONE = {
-  active: 'warn', repairable: 'warn', useful: 'good', dead: 'bad', candidate: 'neutral',
-} as const satisfies Record<string, StatusDotTone>
 
 /** A node's research state, the one the graph colours its dot by. */
 export const nodeMode = (node: GraphNode): NonNullable<GraphNode['mode']> =>
@@ -454,7 +449,7 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
       key: 'candidate', label: m.project.graph.legend.candidate,
       nodes: children.filter((child) => !isActive(child) && nodeMode(child) === 'unresolved'),
     },
-  ] satisfies { key: keyof typeof BRANCH_TONE; label: string; nodes: GraphNode[] }[]).filter((group) => group.nodes.length > 0)
+  ] satisfies { key: string; label: string; nodes: GraphNode[] }[]).filter((group) => group.nodes.length > 0)
   const nodeEvents = sortRecordsNewestFirst(events.filter((event) => event.node === node.id))
   const document = splitNodeDocument(node.markdown)
 
@@ -475,10 +470,9 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
                 <span className="node-branch-label">{group.label}</span>
                 <div className="node-branch-list">
                   {group.nodes.map((child) => (
-                    <TagButton
-                      shape="chip" className="node-branch" key={child.id} onClick={() => onSelect(child.id)}
-                      lead={<StatusDot tone={BRANCH_TONE[group.key]} />}
-                    >{child.label}</TagButton>
+                    <EntityLink
+                      kind="node" key={child.id} label={child.label} mode={nodeMode(child)} onOpen={() => onSelect(child.id)}
+                    />
                   ))}
                 </div>
               </div>

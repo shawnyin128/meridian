@@ -234,7 +234,7 @@ describe('ProjectTaskPanel', () => {
   it('显示任务挂在哪个科研节点上;还没挂时只写「未关联」', () => {
     const linked = renderTaskPanel({}, { id: 'kv.n3', label: '前缀共调度', mode: 'supported' })
     expect(linked).toContain('科研节点')
-    expect(linked).toMatch(/<button[^>]*class="node-tag"[^>]*title="在科研图中打开「前缀共调度」"><span class="status-dot status-dot--sm status-dot--good"/)
+    expect(linked).toMatch(/<button[^>]*class="entity-link entity-link--node"[^>]*title="在科研图中打开「前缀共调度」"><span class="status-dot status-dot--sm status-dot--good"/)
     expect(renderTaskPanel()).toContain('未关联')
     expect(renderTaskPanel()).not.toContain('agent 做这个任务')
   })

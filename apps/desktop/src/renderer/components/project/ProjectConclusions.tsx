@@ -15,7 +15,7 @@ import { PanelClose } from '../PanelClose.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { WikiFormDialog, WikiFormField } from '../wiki/WikiFormDialog.js'
-import { NodeTag } from './NodeTag.js'
+import { EntityLink } from '../EntityLink.js'
 import { ProjectSignalDate, ProjectSignalKind } from './ProjectSignals.js'
 import './ProjectConclusions.css'
 
@@ -48,7 +48,7 @@ export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
       <ProjectSignalKind tone={STATE_TONE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
       <ProjectSignalDate date={conclusion.date} />
       <span className="record-node">
-        {node === undefined ? null : <NodeTag label={node.label} mode={node.mode} fill />}
+        {node === undefined ? null : <EntityLink kind="node" label={node.label} mode={node.mode} fill />}
       </span>
       <span className="attn-text record-text" title={`${conclusion.text} · ${wikiState}`}>
         <FadeText className="record-line">
@@ -164,8 +164,8 @@ export function ProjectConclusionPanel({
               ? null
               : (
                 <div className="conclusion-detail-node">
-                  <NodeTag
-                    label={node.label} mode={node.mode} hint={m.project.records.goToGraph(node.label)}
+                  <EntityLink
+                    kind="node" label={node.label} mode={node.mode} title={m.project.records.goToGraph(node.label)}
                     onOpen={() => onOpenNode(conclusion.node!)}
                   />
                 </div>

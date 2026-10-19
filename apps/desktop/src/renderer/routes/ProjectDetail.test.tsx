@@ -308,7 +308,7 @@ describe('project idea panel', () => {
     const on = handlers()
     const panel = mount(<ProjectIdeaPanel idea={{ ...idea, node: 'thread.probe' }} graph={graph} workspaceManaged {...on} />)
     expect(panel.headingActions('科研节点')).toEqual([['更改', '取消关联']])
-    act(() => panel.host.querySelector<HTMLButtonElement>('.node-assignment .node-tag')!.click())
+    act(() => panel.host.querySelector<HTMLButtonElement>('.node-assignment .entity-link--node')!.click())
     expect(on.onOpenNode).toHaveBeenCalledWith('thread.probe')
     act(() => panel.button('取消关联')!.click())
     expect(on.onSetNode).toHaveBeenCalledWith(null)

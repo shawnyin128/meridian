@@ -611,18 +611,18 @@ test('科研图展示多个活跃节点,节点以只读 Markdown、分支结果�
   await graph.locator('.rgn[data-node="root"]').click()
   const panel = win.locator('.screenslot:not([hidden]) .wkside')
   await expect(panel.locator('.node-markdown')).toContainText('核心问题是')
-  await expect(panel.locator('.node-branch-group.useful .node-branch')).toHaveText('树宽收益拐点')
-  await expect(panel.locator('.node-branch-group.dead .node-branch')).toHaveText('draft 提前停止策略')
+  await expect(panel.locator('.node-branch-group.useful .entity-link')).toHaveText('树宽收益拐点')
+  await expect(panel.locator('.node-branch-group.dead .entity-link')).toHaveText('draft 提前停止策略')
   await expect(panel.getByText('写入 Wiki')).toHaveCount(0)
   await expect(panel.locator('input')).toHaveCount(0)
 
-  await panel.locator('.node-branch', { hasText: '树宽收益拐点' }).click()
+  await panel.locator('.node-branch-list .entity-link', { hasText: '树宽收益拐点' }).click()
   await expect(panel.locator('.node-document-title')).toHaveText('树宽收益拐点')
   await expect(panel.locator('.node-markdown')).toContainText('Hypothesis')
   // wide and prefix are both in active_nodes, so both land in the in-progress group, not repairable/candidate.
-  await expect(panel.locator('.node-branch-group.active .node-branch')).toHaveCount(2)
-  await expect(panel.locator('.node-branch-group.repairable .node-branch')).toHaveCount(0)
-  await expect(panel.locator('.node-branch-group.candidate .node-branch')).toHaveCount(0)
+  await expect(panel.locator('.node-branch-group.active .entity-link')).toHaveCount(2)
+  await expect(panel.locator('.node-branch-group.repairable .entity-link')).toHaveCount(0)
+  await expect(panel.locator('.node-branch-group.candidate .entity-link')).toHaveCount(0)
 })
 
 test('科研图节点上下居中且可缩放平移,分支和科研记录在正文上方', async ({ win }) => {
@@ -1310,7 +1310,7 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
 test('任务详情里手动给任务挂科研节点,面板里显示挂上的节点并写进库里;手动挂的可以取消', async ({ win }) => {
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
-  const linked = side.locator('.node-assignment .node-tag')
+  const linked = side.locator('.node-assignment .entity-link--node')
   const taskNodes = async () => (await call<{ taskNodes?: Record<string, string> }>(
     win, 'project.get', { id: 'draft' },
   )).taskNodes

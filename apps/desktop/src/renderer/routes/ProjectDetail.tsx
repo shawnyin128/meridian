@@ -36,7 +36,7 @@ import {
   ProjectAttachments, ProjectMemo, ProjectRelations, ProjectTopicField, ProjectUrlDraft,
 } from '../components/project/ProjectSections.js'
 import { NodeAssignment } from '../components/project/NodeAssignment.js'
-import { NodeTag } from '../components/project/NodeTag.js'
+import { EntityLink } from '../components/EntityLink.js'
 import { ProjectConclusionPanel, ProjectConclusionRow } from '../components/project/ProjectConclusions.js'
 import { ProjectTimeline } from '../components/project/ProjectTimeline.js'
 import { nodeMode, ResearchGraph, ResearchNodePanel } from '../components/project/ResearchGraph.js'
@@ -844,7 +844,7 @@ export function ProjectDetail({
                           {ideaNode === undefined
                             ? null
                             : (
-                              <NodeTag label={ideaNode.label} mode={nodeMode(ideaNode)} />
+                              <EntityLink kind="node" label={ideaNode.label} mode={nodeMode(ideaNode)} />
                             )}
                           {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
                         </span>

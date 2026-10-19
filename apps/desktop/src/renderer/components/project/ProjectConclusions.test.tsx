@@ -76,7 +76,7 @@ describe('project conclusions', () => {
       'project-signal-kind', 'project-signal-date', 'record-node', 'attn-text record-text', 'record-who',
     ])
     expect(pending!.querySelector('.tag--warn')!.textContent).toBe('待验证')
-    expect(pending!.querySelector('.node-tag')!.textContent).toBe('宽树')
+    expect(pending!.querySelector('.entity-link--node')!.textContent).toBe('宽树')
     expect(pending!.querySelector('.record-line')!.textContent).toBe('Wide trees win at B8 · 未写入 Wiki')
     expect(pending!.querySelector('.record-who .source-label')!.textContent).toBe('agent')
     expect(verified!.querySelector('.tag--good')!.textContent).toBe('已验证')
@@ -94,11 +94,11 @@ describe('project conclusions', () => {
     act(() => button('验证').click())
     expect(handlers.onVerify).toHaveBeenCalledWith('t.wide', '0123456789abcdef')
     expect(button('写入 Wiki').disabled).toBe(true)
-    const chain = [...host.querySelectorAll('.conclusion-chain-row, .conclusion-detail-node .node-tag')].map((el) => el.textContent)
+    const chain = [...host.querySelectorAll('.conclusion-chain-row, .conclusion-detail-node .entity-link--node')].map((el) => el.textContent)
     expect(chain).toEqual(['跑宽度扫描', '宽树', '宽度扫描exp-1'])
     act(() => host.querySelector<HTMLButtonElement>('.conclusion-chain-row')!.click())
     expect(handlers.onOpenTask).toHaveBeenCalledWith('task-1')
-    act(() => host.querySelector<HTMLButtonElement>('.conclusion-detail-node .node-tag')!.click())
+    act(() => host.querySelector<HTMLButtonElement>('.conclusion-detail-node .entity-link--node')!.click())
     expect(handlers.onOpenNode).toHaveBeenCalledWith('t.wide')
   })
 

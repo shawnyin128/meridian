@@ -6,7 +6,7 @@ import { StructuredRow } from '../StructuredList.js'
 import { FadeText } from '../FadeText.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { Tag, type TagTone } from '../Tag.js'
-import { NodeTag } from './NodeTag.js'
+import { EntityLink } from '../EntityLink.js'
 import './ProjectSignals.css'
 
 /** Stable type column shared by project and overview decision rows and research records; `mut` is neutral. */
@@ -77,8 +77,8 @@ export function ProjectEventRow({
       {onSelectNode === undefined ? null : (
         <span className="record-node">
           {node === undefined ? null : (
-            <NodeTag
-              label={node.label} mode={node.mode} hint={m.project.records.goToGraph(node.label)} fill
+            <EntityLink
+              kind="node" label={node.label} mode={node.mode} title={m.project.records.goToGraph(node.label)} fill
               onOpen={() => onSelectNode(node.id)}
             />
           )}

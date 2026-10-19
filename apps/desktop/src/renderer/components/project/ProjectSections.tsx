@@ -8,6 +8,7 @@ import { FadeText } from '../FadeText.js'
 import { IconButton } from '../IconButton.js'
 import { IconCross, IconPencil, IconTrash } from '../icons.js'
 import { EditActions } from '../EditActions.js'
+import { ExternalMark } from '../EntityLink.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PaperText } from '../paper/PaperText.js'
 import { PickRow, type PickHit } from '../PickRow.js'
@@ -301,6 +302,7 @@ export function ProjectRelations({
                   : (
                     <button type="button" className="tagchip-open">
                       <FadeText className="tagchip-text">{item.text}</FadeText>
+                      {item.url === undefined ? null : <ExternalMark />}
                     </button>
                   )}
                 <IconButton

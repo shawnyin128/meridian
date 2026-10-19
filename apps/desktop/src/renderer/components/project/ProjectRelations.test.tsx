@@ -103,6 +103,12 @@ describe('ProjectRelations', () => {
     return [...host.querySelectorAll('.wkrel > .rl')].map((label) => label.textContent)
   }
 
+  it('marks only the chip that opens the browser with the external mark', () => {
+    render()
+    const marked = (selector: string) => host.querySelector(`${selector} .tagchip-open .entity-link-mark`) !== null
+    expect([marked('[data-url]'), marked('[data-wk="topics/knee"]'), marked('[data-paper="p1"]')]).toEqual([true, false, false])
+  })
+
   it('shows no row for a stored group whose last item was removed', () => {
     expect(rowsFor([])).toEqual([])
   })

@@ -4,7 +4,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { EmptyState } from '../EmptyState.js'
 import { ChoicePicker } from '../FieldPickers.js'
 import { SectionHeading } from '../PageShell.js'
-import { NodeTag } from './NodeTag.js'
+import { EntityLink } from '../EntityLink.js'
 import './NodeAssignment.css'
 
 /**
@@ -43,8 +43,8 @@ export function NodeAssignment({ node, nodes, canUnlink, create, onOpen, onSet }
         ? <EmptyState variant="section">{m.project.plan.noNode}</EmptyState>
         : (
           <div className="node-assignment">
-            <NodeTag
-              label={node.label} mode={node.mode} hint={m.project.records.goToGraph(node.label)}
+            <EntityLink
+              kind="node" label={node.label} mode={node.mode} title={m.project.records.goToGraph(node.label)}
               onOpen={() => onOpen(node.id)}
             />
           </div>
