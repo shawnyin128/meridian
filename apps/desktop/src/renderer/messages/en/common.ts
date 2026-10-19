@@ -5,6 +5,7 @@ import { common as zh } from '../zh/common.js'
 /** English counterpart of `zh/common`. `satisfies` makes a missing, extra or re-parameterised key a compile error. */
 export const common = {
   save: 'Save',
+  saved: 'Saved',
   cancel: 'Cancel',
   edit: 'Edit',
   confirm: 'Confirm',

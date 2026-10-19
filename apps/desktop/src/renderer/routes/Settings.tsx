@@ -8,7 +8,7 @@ import { useFormat } from '../lib/format.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import {
-  useBanner, useJump, useSettingsOpen, useVaultRevision, type SettingsCategory,
+  useJump, useNotice, useSettingsOpen, useVaultRevision, type SettingsCategory,
 } from '../shell/AppShell.js'
 import { Icon } from '../components/icons.js'
 import { EmptyState } from '../components/EmptyState.js'
@@ -94,7 +94,7 @@ export function Settings() {
 
   const { open: jumpTo } = useJump()
   const { revision } = useVaultRevision()
-  const banner = useBanner()
+  const notice = useNotice()
   const format = useFormat()
   const reportError = useCallback((e: Error) => setError(e.message), [])
   const write = useVaultWrite()
@@ -136,7 +136,7 @@ export function Settings() {
       if (root === null) return
       const next = await library.configure(root)
       setLocation(next)
-      banner(next.restartRequired ? m.settings.storage.savedRestartRequired : m.settings.storage.saved)
+      notice.success(next.restartRequired ? m.settings.storage.savedRestartRequired : m.settings.storage.saved)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught))
     } finally {
@@ -174,7 +174,7 @@ export function Settings() {
     try {
       await library.deleteBackup(backup.id)
       setBackups((currentBackups) => currentBackups?.filter((item) => item.id !== backup.id) ?? [])
-      banner(m.settings.storage.backupDeleted)
+      notice.success(m.settings.storage.backupDeleted)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught))
     } finally {
@@ -184,14 +184,14 @@ export function Settings() {
 
   const copyExtensionCommand = (name: string, command: string) => {
     void navigator.clipboard.writeText(command).then(
-      () => banner(m.settings.extensions.copied(name)),
+      () => notice.success(m.settings.extensions.copied(name)),
       (caught: unknown) => reportError(caught instanceof Error ? caught : new Error(String(caught))),
     )
   }
 
   const copyAgentPrompt = (prompt: string) => {
     void navigator.clipboard.writeText(prompt).then(
-      () => banner(m.settings.extensions.tutorial.promptCopied),
+      () => notice.success(m.settings.extensions.tutorial.promptCopied),
       (caught: unknown) => reportError(caught instanceof Error ? caught : new Error(String(caught))),
     )
   }

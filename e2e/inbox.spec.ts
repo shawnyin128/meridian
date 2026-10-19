@@ -230,7 +230,7 @@ test('入库:论文进库,按钮就地变开始阅读', async ({ win }) => {
   const card = shown(win, '.pcard').first()
   await card.locator('[title="下载并入库"]').click()
   await expect(card.locator('[title="开始阅读"]')).toHaveCount(1)
-  await expect(win.locator('#toast')).toHaveText('已下载入库 · 可阅读')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已下载入库 · 可阅读')
   await expect(card.locator('[title="下载并入库"]')).toHaveCount(0)
 
   expect(await paperTotal(win)).toBe(before + 1)
@@ -255,7 +255,7 @@ test('入库撞上库里已有的那一篇:不重复入库,就地给出打开那
   const card = shown(win, `.pcard[data-pid="${dup.id}"]`)
   await card.locator('[title="下载并入库"]').click()
 
-  await expect(win.locator('#toast')).toHaveText('库里已经有这一篇 · 没有重复入库')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('库里已经有这一篇 · 没有重复入库')
   await expect(card.locator('.pdup span')).toHaveText(`库里已经有这一篇：「${known.title}」`)
   // The vault has no extra paper, and the entry is not marked as added.
   expect(await paperTotal(win)).toBe(before)
@@ -272,7 +272,7 @@ test.describe('这一条推送已经在别处入过库', () => {
   // once per second, so the click racing the stale card can lose to the poll there but not on screen.
   test.use({ showWindow: true })
 
-  test('界面上还没刷新时再点「入库」:报进 toast 而不是 .ipcerror', async ({ win }) => {
+  test('界面上还没刷新时再点「入库」:报进拒绝提示而不是 .ipcerror', async ({ win }) => {
     const entries = await inboxFromCore(win)
     const fresh = (await Promise.all(entries.filter((e) => !e.downloaded).map(async (e) =>
       ({ e, known: await inLibrary(win, e.paper) })))).find((x) => !x.known)!.e
@@ -286,7 +286,7 @@ test.describe('这一条推送已经在别处入过库', () => {
     await call(win, 'inbox.download', { id: fresh.id })
 
     await card.locator('[title="下载并入库"]').click()
-    await expect(win.locator('#toast')).toHaveText(`这一条已经入库：${fresh.id}`)
+    await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText(`这一条已经入库：${fresh.id}`)
     await expect(shown(win, '.ipcerror')).toHaveCount(0)
   })
 })

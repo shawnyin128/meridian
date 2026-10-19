@@ -4,8 +4,7 @@ import type {
 } from '../../shared/contract.js'
 import { chat, feed, idea as ideaApi, papers, project, wiki } from '../ipc.js'
 import {
-  useBanner, useChatSession, useCrumbTail, useJump, useToast, useVaultRevision,
-  type CrumbSeg,
+  useChatSession, useCrumbTail, useJump, useNotice, useVaultRevision, type CrumbSeg,
 } from '../shell/AppShell.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat, type Format } from '../lib/format.js'
@@ -98,8 +97,7 @@ export function Chat() {
   const { id, title, archived, select } = useChatSession()
   const { jump } = useJump()
   const { revision, bump } = useVaultRevision()
-  const banner = useBanner()
-  const toast = useToast()
+  const notice = useNotice()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const drafts = useDrafts()
   // The `@` picker, like the draft, belongs to the chat it was opened in.
@@ -163,8 +161,8 @@ export function Chat() {
     void chat.create(m.project.signals.kind.conflict, true).then(async (session) => {
       select(session.id)
       await send(session.id, m.chat.conflictQuestion)
-    }).catch((e: Error) => toast(e.message))
-  }, [jump, select, send, toast, m])
+    }).catch((e: Error) => notice.refusal(e.message))
+  }, [jump, select, send, notice, m])
 
   const setDraft = (text: string) => { if (id !== null) drafts.set(id, text) }
   const setMentioning = (on: boolean) => setMentionIn(on ? id : null)
@@ -202,12 +200,12 @@ export function Chat() {
   const act = (message: ChatMessage) => {
     if (id === null) return
     void chat.recordAction(id, message.id).then(async (p) => {
-      banner(<TitleNote message={m.chat.recordedNote} title={p.name} />)
+      notice.success(<TitleNote message={m.chat.recordedNote} title={p.name} />)
       await feed.append({ source: 'me', body: { kind: 'runs', runs: [
         plain(m.chat.recordedTo(p.name)),
       ] } })
       bump()
-    }).catch((e: Error) => toast(e.message))
+    }).catch((e: Error) => notice.refusal(e.message))
   }
   const hasDiscussion = messages.some((message) => message.role === 'you')
 

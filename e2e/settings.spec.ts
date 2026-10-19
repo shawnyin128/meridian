@@ -240,7 +240,7 @@ test('一条归档都没有时,右栏给空态而不是只剩一个标题', asyn
   await expect(win.locator('.setdlg .set-main .empty-state')).toHaveCount(1)
 })
 
-test('取消归档弹出的横幅盖在设置模态之上', async ({ app, win }) => {
+test('取消归档弹出的提示盖在设置模态之上', async ({ app, win }) => {
   await win.locator('.sidebar').waitFor()
   const target = (await core<Session[]>(win, 'chat.list', {})).find((s) => !s.archived)!
   await core(win, 'chat.setArchived', { id: target.id, archived: true })
@@ -248,15 +248,15 @@ test('取消归档弹出的横幅盖在设置模态之上', async ({ app, win })
   await openSettings(app, win)
   await win.locator('.setdlg .srow[data-setcat="archived"]').click()
   await win.locator(`.setdlg .wrow[data-chat="${target.id}"] .btn`, { hasText: '取消归档' }).click()
-  await win.locator('#banner.show').waitFor()
+  await win.locator('#notice.show').waitFor()
 
   const zIndex = await win.evaluate(() => ({
-    banner: Number(getComputedStyle(document.querySelector('#banner')!).zIndex),
+    notice: Number(getComputedStyle(document.querySelector('.notice-host')!).zIndex),
     setdlg: Number(getComputedStyle(document.querySelector('.setdlg')!).zIndex),
     scrim: Number(getComputedStyle(document.querySelector('.scrim')!).zIndex),
   }))
-  expect(zIndex.banner).toBeGreaterThan(zIndex.setdlg)
-  expect(zIndex.banner).toBeGreaterThan(zIndex.scrim)
+  expect(zIndex.notice).toBeGreaterThan(zIndex.setdlg)
+  expect(zIndex.notice).toBeGreaterThan(zIndex.scrim)
 })
 
 test('设置模态:屏上其余部分隐掉,Tab 不跑到模态外,Esc 之后焦点回到打开之前那一处', async ({ app, win }) => {

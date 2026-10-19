@@ -49,7 +49,7 @@ async function shelveDraft(win: Page): Promise<void> {
   await win.locator('[data-proj="draft"]').hover()
   await win.locator('[data-proj="draft"] .dots').click()
   await win.locator('.ctxmenu .mi', { hasText: '搁置' }).click()
-  await expect(win.locator('#toast')).toHaveText('已标记为 搁置')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已标记为 搁置')
 }
 
 test('侧栏「最近变动」进的是变动屏,面包屑、屏头的数与角标都对上', async ({ win }) => {
@@ -97,7 +97,7 @@ test('改一笔再撤销:数据真的回到改之前,那一条标成已撤销,�
   await expect(top.locator('.cundo')).toHaveText('撤销')
 
   await top.locator('.cundo').click()
-  await expect(win.locator('#banner span')).toHaveText('已撤销 · 数据回到这一笔之前')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销 · 数据回到这一笔之前')
   // Read Core again: the vault really is back to its state before the change, not just the screen.
   expect(await statusFromCore(win, 'draft')).toBe('进行中')
 
@@ -117,7 +117,7 @@ test('这一笔之后又改过时撤销被拒,说清还有几条更新的,数据
   await win.locator('.ctxmenu .mi', { hasText: '重命名' }).click()
   await win.locator('.ctxmenu .mi-in input').fill('改过名字的 draft')
   await win.locator('.ctxmenu .mi-in input').press('Enter')
-  await expect(win.locator('#banner span')).toHaveText('已重命名')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已重命名')
 
   await gotoChangelog(win)
   // The status change is older than the rename, so it is listed second.
@@ -126,7 +126,7 @@ test('这一笔之后又改过时撤销被拒,说清还有几条更新的,数据
   await expect(shelved.locator('.cundo')).toHaveText('撤销')
   await shelved.locator('.cundo').click()
 
-  await expect(win.locator('#toast')).toHaveText('这条之后该实体又被改过 1 次，先撤销较新的那几条')
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这条之后该实体又被改过 1 次，先撤销较新的那几条')
   expect(await statusFromCore(win, 'draft')).toBe('搁置')
   await expect(shelved.locator('.cundo')).toHaveText('撤销')
 })
@@ -177,7 +177,7 @@ test('「全部归档」把未归档清空,写「都看过了。」,按钮跟着
   await expect(shown(win, '.section-heading').first().locator('.archall')).toHaveCount(1)
   await shown(win, '.archall').click()
 
-  await expect(win.locator('#toast')).toHaveText(`已归档 ${total} 条`)
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText(`已归档 ${total} 条`)
   await expect(shown(win, '.desk-head .t')).toHaveText('最近变动 · 0')
   await expect(win.locator('[data-desk="changelog"] .n')).toHaveText('0')
   await expect(shown(win, '.empty-state')).toHaveText('都看过了。')
@@ -201,7 +201,7 @@ test('归过档的那一条照样撤得动,撤销不动它的归档,撤销本身
   await expect(filed.locator('.ct')).toContainText('项目「draft 效率」· 改了字段')
   await filed.hover()
   await filed.locator('.cundo').click()
-  await expect(win.locator('#banner span')).toHaveText('已撤销 · 数据回到这一笔之前')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销 · 数据回到这一笔之前')
   // Read Core again: the vault really is back to its state before the change.
   expect(await statusFromCore(win, 'draft')).toBe('进行中')
 

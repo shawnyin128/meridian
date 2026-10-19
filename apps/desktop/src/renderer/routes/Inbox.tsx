@@ -5,8 +5,7 @@ import type {
 } from '../../shared/contract.js'
 import { discovery, inbox, watch } from '../ipc.js'
 import {
-  ALL_WATCHES, useCrumbTail, useInboxMode, useInboxScope, useJump, useToast, useVaultRevision,
-  useSettingsOpen,
+  ALL_WATCHES, useCrumbTail, useInboxMode, useInboxScope, useJump, useNotice, useSettingsOpen, useVaultRevision,
 } from '../shell/AppShell.js'
 import { useJobs } from '../shell/useJobs.js'
 import { failureLabel } from '../lib/failure-label.js'
@@ -82,7 +81,7 @@ export function Inbox() {
   // link to open it.
   const [collided, setCollided] = useState<ReadonlyMap<string, string>>(new Map())
 
-  const toast = useToast()
+  const notice = useNotice()
   const { openCategory } = useSettingsOpen()
   const { open } = useJump()
   const { revision, bump } = useVaultRevision()
@@ -146,16 +145,16 @@ export function Inbox() {
 
   const dismiss = (ids: string[], text: string) => {
     leave(ids)
-    toast(text)
+    notice.success(text)
     window.setTimeout(() => { void write(Promise.all(ids.map((id) => inbox.dismiss(id)))) }, LEAVE_MS)
   }
 
   const queue = (id: string) => {
     leave([id])
     void inbox.readLater(id).then((queued) => {
-      toast(queued ? m.inbox.notices.queued : m.inbox.notices.alreadyQueued)
+      notice.success(queued ? m.inbox.notices.queued : m.inbox.notices.alreadyQueued)
       window.setTimeout(bump, LEAVE_MS)
-    }).catch((e: Error) => toast(e.message))
+    }).catch((e: Error) => notice.refusal(e.message))
   }
 
   const ingest = (id: string) => {
@@ -172,12 +171,12 @@ export function Inbox() {
       }
       if (result.kind === 'existing') {
         setCollided((seen) => new Map(seen).set(id, result.title))
-        toast(m.inbox.notices.duplicateToast)
+        notice.success(m.inbox.notices.duplicateToast)
         return
       }
       bump()
-      toast(m.inbox.notices.downloaded)
-    }).catch((e: Error) => toast(e.message)).finally(() => {
+      notice.success(m.inbox.notices.downloaded)
+    }).catch((e: Error) => notice.refusal(e.message)).finally(() => {
       setBusy((held) => {
         const next = new Set(held)
         next.delete(id)
@@ -189,18 +188,18 @@ export function Inbox() {
   const refreshDiscovery = () => {
     setDiscovering(true)
     void discovery.fetch().then((result) => {
-      toast(discoveryResultNote(result, m))
+      notice.success(discoveryResultNote(result, m))
       bump()
-    }).catch((e: Error) => toast(e.message)).finally(() => setDiscovering(false))
+    }).catch((e: Error) => notice.refusal(e.message)).finally(() => setDiscovering(false))
   }
 
   const feedback = (id: string, value: 'more' | 'less' | 'known') => {
     if (value !== 'more') leave([id])
     void discovery.feedback(id, value).then(() => {
-      toast(value === 'more' ? m.inbox.notices.moreLike
+      notice.success(value === 'more' ? m.inbox.notices.moreLike
         : value === 'less' ? m.inbox.notices.lessLike : m.inbox.notices.known)
       window.setTimeout(bump, value === 'more' ? 0 : LEAVE_MS)
-    }).catch((e: Error) => toast(e.message))
+    }).catch((e: Error) => notice.refusal(e.message))
   }
 
   const card = (p: InboxEntry) => (
@@ -289,7 +288,7 @@ export function Inbox() {
         {stream === 'watch' ? (
           <button
             className="btn" disabled={jobs?.fetch?.state === 'checking'}
-            onClick={() => { void inbox.fetch().catch((e: Error) => toast(e.message)) }}
+            onClick={() => { void inbox.fetch().catch((e: Error) => notice.refusal(e.message)) }}
           >{jobs?.fetch?.state === 'failed' ? m.common.retry : m.inbox.checkNewPapers}</button>
         ) : (
           <button className="btn" disabled={discovering} onClick={refreshDiscovery}>

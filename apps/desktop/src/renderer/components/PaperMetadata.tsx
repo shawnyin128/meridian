@@ -4,7 +4,7 @@ import { READ_STATES, READING_PAPER } from '../../shared/vocabulary.js'
 import { papers } from '../ipc.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
-import { useToast } from '../shell/AppShell.js'
+import { useNotice } from '../shell/AppShell.js'
 import { ChoicePicker } from './FieldPickers.js'
 import { InlineMetadataField } from './InlineField.js'
 import { PaperAbstract } from './paper/PaperAbstract.js'
@@ -102,7 +102,7 @@ export function PaperMetadata({ paper, onSaved }: {
   const m = useMessages()
   const labels = m.papers.metadata.fields
   const write = useVaultWrite()
-  const toast = useToast()
+  const notice = useNotice()
   const [ratingSaving, setRatingSaving] = useState(false)
   const ratingBusy = useRef(false)
 
@@ -128,7 +128,7 @@ export function PaperMetadata({ paper, onSaved }: {
           inputMode={field === 'year' ? 'numeric' : 'text'}
           onSave={(value) => {
             const parsed = parsedPatch(field, value, m.papers.metadata.validation)
-            if (parsed instanceof Error) { toast(parsed.message); return false }
+            if (parsed instanceof Error) { notice.refusal(parsed.message); return false }
             return savePatch(field, parsed)
           }}
         />
@@ -168,14 +168,14 @@ export function PaperMetadata({ paper, onSaved }: {
         <dt>{labels.topics}</dt>
         <dd className="paper-meta-topics">
           <PaperTopics
-            topics={paper.topics} onError={(error) => toast(error.message)}
+            topics={paper.topics} onError={(error) => notice.refusal(error.message)}
             onAdd={(topic) => savePatch('topics', { topics: [...paper.topics, topic] })}
             onRemove={(topic) => savePatch('topics', { topics: paper.topics.filter((held) => held !== topic) })}
           />
         </dd>
         <dt>{m.papers.metadata.projectsLabel}</dt>
         <dd className="paper-meta-projects">
-          <ProjectChips paper={paper} onError={(error) => toast(error.message)} />
+          <ProjectChips paper={paper} onError={(error) => notice.refusal(error.message)} />
         </dd>
         <dt>{m.papers.metadata.wikiLabel}</dt><dd>{paper.pageState || '—'}</dd>
         <dt>{m.papers.metadata.fileLabel}</dt>

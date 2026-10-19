@@ -321,7 +321,6 @@ export const settings = {
     unit: '篇',
     saving: '保存中…',
     rangeError: (min: number, max: number) => `请输入 ${min}–${max} 之间的整数`,
-    saved: '论文推送设置已保存',
   },
   discovery: {
     heading: '发现',

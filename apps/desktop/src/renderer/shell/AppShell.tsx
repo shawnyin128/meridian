@@ -8,6 +8,7 @@ import {
 import { ActionMenu, MenuItem } from '../components/ActionMenu.js'
 import { AboutDialog } from '../components/AboutDialog.js'
 import { IconButton } from '../components/IconButton.js'
+import { Notice, type NoticeAction, type NoticeContent, type NoticeTone } from '../components/Notice.js'
 import { PageFailure } from '../components/PageShell.js'
 import { ScreenBoundary } from '../components/ScreenBoundary.js'
 import { composing } from '../lib/keyboard.js'
@@ -83,8 +84,9 @@ export type ScreenJump = {
 }
 
 const CrumbTailContext = createContext<((tail: CrumbSeg[], onLeafClick: (() => void) | null) => void) | null>(null)
-const BannerContext = createContext<((text: ReactNode) => void) | null>(null)
-const ToastContext = createContext<((text: ReactNode) => void) | null>(null)
+/** Shows a notice of one tone: `text`, and optionally the one action it offers. */
+export type Notify = (text: ReactNode, action?: NoticeAction) => void
+const NoticeContext = createContext<{ success: Notify; refusal: Notify } | null>(null)
 const PaperCountContext = createContext<{ count: number | null } | null>(null)
 const ScreenContext = createContext<{ screen: ScreenKey; entry: number; reentry: number } | null>(null)
 const InboxScopeContext = createContext<string | null>(null)
@@ -125,18 +127,6 @@ function symbolColor(): string {
   return getComputedStyle(document.documentElement).getPropertyValue('--sec').trim()
 }
 
-/** The demo's banner() and toast(): a new message replaces the shown one, which hides after `ms` ms. */
-function useFading(ms: number): [{ text: ReactNode; show: boolean }, (text: ReactNode) => void] {
-  const [state, setState] = useState<{ text: ReactNode; show: boolean }>({ text: '', show: false })
-  const timer = useRef(0)
-  const show = useCallback((text: ReactNode) => {
-    setState({ text, show: true })
-    window.clearTimeout(timer.current)
-    timer.current = window.setTimeout(() => setState((s) => ({ ...s, show: false })), ms)
-  }, [ms])
-  return [state, show]
-}
-
 /**
  * Hands the shell the current screen's deeper breadcrumb segments, shown after its base segments. An
  * empty array means the screen has no deeper level. `onLeafClick` goes on the last base segment (such
@@ -151,25 +141,14 @@ export function useCrumbTail(tail: CrumbSeg[], onLeafClick?: () => void): void {
 }
 
 /**
- * Returns the function that shows the confirmation banner after a write, the demo's banner(): a new
- * message replaces the shown one, which hides after 1.6 seconds.
- * The returned function retains the same reference throughout the lifetime of the shell.
+ * Returns the two ways to show the app's one notice: `success` for an action that took effect,
+ * `refusal` for one that was refused or failed and wrote nothing. A new notice replaces the shown one.
+ * The returned object keeps the same reference throughout the lifetime of the shell.
  */
-export function useBanner(): (text: ReactNode) => void {
-  const show = useContext(BannerContext)
-  if (!show) throw new Error('useBanner needs AppShell')
-  return show
-}
-
-/**
- * Returns the function that tells the user an action was rejected, the demo's toast(): a new message
- * replaces the shown one, which hides after 2.4 seconds.
- * The returned function retains the same reference throughout the lifetime of the shell.
- */
-export function useToast(): (text: ReactNode) => void {
-  const show = useContext(ToastContext)
-  if (!show) throw new Error('useToast needs AppShell')
-  return show
+export function useNotice(): { success: Notify; refusal: Notify } {
+  const notify = useContext(NoticeContext)
+  if (!notify) throw new Error('useNotice needs AppShell')
+  return notify
 }
 
 /**
@@ -392,8 +371,8 @@ export function AppShell({ screens, settings }: {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsCategory, setSettingsCategory] = useState<SettingsCategory | null>(null)
   const [bootError, setBootError] = useState<string | null>(null)
-  const [banner, showBanner] = useFading(1600)
-  const [toast, showToast] = useFading(2400)
+  const [notice, setNotice] = useState<NoticeContent | null>(null)
+  const noticeSeq = useRef(0)
   const [griptip, setGriptip] = useState<{ top: number; left: number } | null>(null)
   const griptipTimer = useRef(0)
   const jumpSeq = useRef(0)
@@ -466,6 +445,13 @@ export function AppShell({ screens, settings }: {
   }, [])
 
   const bump = useCallback(() => setRevision((n) => n + 1), [])
+  const notify = useMemo(() => {
+    const of = (tone: NoticeTone): Notify => (text, action) => {
+      noticeSeq.current += 1
+      setNotice({ id: noticeSeq.current, tone, text, action })
+    }
+    return { success: of('success'), refusal: of('refusal') }
+  }, [])
   const jobsStatus = useJobsPoll(bump)
   const paperCountState = useMemo(() => ({ count: paperCount }), [paperCount])
   const screenState = useMemo(() => ({ screen, entry, reentry }), [screen, entry, reentry])
@@ -585,7 +571,7 @@ export function AppShell({ screens, settings }: {
     void chat.create(m.chat.newChat, false).then((session) => {
       bump()
       openChat(session.id)
-    }).catch((e: Error) => showToast(e.message))
+    }).catch((e: Error) => notify.refusal(e.message))
   }
 
   // The demo's archive: archive a chat and, if it is the open one, go to the Feed. Unarchiving happens
@@ -596,7 +582,7 @@ export function AppShell({ screens, settings }: {
       if (id !== chatId) return
       setChatId(null)
       navigate('feed')
-    }).catch((e: Error) => showToast(e.message))
+    }).catch((e: Error) => notify.refusal(e.message))
   }
 
   const chatSession = useMemo(() => {
@@ -753,9 +739,8 @@ export function AppShell({ screens, settings }: {
         {screen === 'reader' && hidden ? (
           <button className="paper-chat-edge" title={m.chat.expandPaperChat} onClick={() => setHidden(false)} />
         ) : null}
-        <BannerContext.Provider value={showBanner}>
+        <NoticeContext.Provider value={notify}>
           <JobsContext.Provider value={jobsStatus}>
-          <ToastContext.Provider value={showToast}>
             <PaperCountContext.Provider value={paperCountState}>
               <VaultRevisionContext.Provider value={vaultRevision}>
                 <ScreenContext.Provider value={screenState}>
@@ -803,24 +788,10 @@ export function AppShell({ screens, settings }: {
                 </ScreenContext.Provider>
               </VaultRevisionContext.Provider>
             </PaperCountContext.Provider>
-          </ToastContext.Provider>
           </JobsContext.Provider>
-        </BannerContext.Provider>
+        </NoticeContext.Provider>
+        <Notice notice={notice} />
       </div>
-
-      {/* The demo's banner: the element is always present, and its text stays while it fades out. */}
-      <div className={banner.show ? 'banner show' : 'banner'} id="banner">
-        <svg
-          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"
-          strokeLinecap="round" strokeLinejoin="round"
-        >
-          <path d="M20 6L9 17l-5-5" />
-        </svg>
-        <span>{banner.text}</span>
-      </div>
-
-      {/* The demo's toast: says an action was rejected; like the banner, the element is always present. */}
-      <div className={toast.show ? 'toast show' : 'toast'} id="toast">{toast.text}</div>
 
       {/* The demo's griptip: the tooltip shown after hovering the handle, parked off screen while hidden. */}
       <div

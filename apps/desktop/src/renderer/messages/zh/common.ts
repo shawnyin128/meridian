@@ -3,6 +3,7 @@ import { TRASH_RETENTION_DAYS } from '../../../shared/vocabulary.js'
 /** Verbs, statuses and units shared by every screen. The Chinese catalog is the reference. */
 export const common = {
   save: '保存',
+  saved: '已保存',
   cancel: '取消',
   edit: '编辑',
   confirm: '确认',

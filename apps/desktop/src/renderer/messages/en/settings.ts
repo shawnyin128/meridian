@@ -328,7 +328,6 @@ export const settings = {
     unit: 'papers',
     saving: 'Saving…',
     rangeError: (min: number, max: number) => `Enter an integer between ${min} and ${max}`,
-    saved: 'Inmail settings saved',
   },
   discovery: {
     heading: 'Discovery',

@@ -51,6 +51,15 @@ Current shared contracts:
   stop and arrow keys. A choice among many values is a menu picker, not a segment per value.
 - `Switch`: a binary setting that takes effect as soon as it flips. Its name stays the same in both states;
   a button whose label flips between two actions is not used for a setting.
+- `Notice`: the app's one notice. AppShell places it on the canvas and screens show it through
+  `useNotice()`. It is a live region (`role="status"`), stays `NOTICE_MS`, pauses while the pointer or the
+  focus is on it, and offers at most one action. Which tone an action uses:
+  - `success`: the action took effect, or what it asked for already held (the paper is already in the vault).
+  - `refusal`: the action did not take effect, because Core refused it, the input was invalid or the call
+    failed, and nothing was written.
+  - A form's save button that stays on screen shows its success in place (Saved) until the form changes
+    again and sends no notice. An error that belongs to a pane or card on screen stays with that pane or
+    card instead of becoming a notice.
 - `EmptyState`: the two ways a list says it is empty. `page` is a centred sentence with an optional icon
   for a whole screen; `section` is one line of small grey text under a section heading.
 - `Tag`: every tag, chip and status pill. `tone` picks the fill and text colour (`neutral`, `accent`, `good`,
@@ -91,7 +100,7 @@ Current shared contracts:
 - `paper/PaperCard`: discovery-card composition, actions/notices slots, metadata badges, recommendations,
   and the shared LaTeX-capable `PaperAbstract`. Inbox and read-later configure the same card.
 - `paper/PaperText`: every display of a paper title (inline) or abstract (block, through `Markdown`) with
-  the LaTeX of arXiv metadata; `plainTitle` is the same title for tooltips, aria labels, breadcrumbs and toasts.
+  the LaTeX of arXiv metadata; `plainTitle` is the same title for tooltips, aria labels, breadcrumbs and notices.
 - `paper/PaperUnderstanding`: the reader-facing whole-paper remark and page-linked note summary. It
   keeps personal reading state visually and structurally separate from canonical Wiki Markdown.
 - `chat/PaperChat` and `chat/ChatMessage`: paper-context composition, shared conversation rendering,

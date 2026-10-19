@@ -3,7 +3,7 @@ import type { TrashEntry } from '../../shared/contract.js'
 import { TRASH_RETENTION_DAYS } from '../../shared/vocabulary.js'
 import { trash } from '../ipc.js'
 import { useMessages } from '../messages/useMessages.js'
-import { useToast, useToday, useVaultRevision } from '../shell/AppShell.js'
+import { useToday, useVaultRevision } from '../shell/AppShell.js'
 import { Icon } from '../components/icons.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { EmptyState } from '../components/EmptyState.js'
@@ -59,7 +59,6 @@ export function Trash() {
   const [entries, setEntries] = useState<TrashEntry[]>([])
   const [error, setError] = useState<string | null>(null)
 
-  const toast = useToast()
   const today = useToday()
   const { revision } = useVaultRevision()
   const reportError = useCallback((e: Error) => setError(e.message), [])
@@ -75,11 +74,11 @@ export function Trash() {
   }
 
   const purge = (id: string) => {
-    void write(trash.purge(id), { note: m.trash.purged, notify: toast })
+    void write(trash.purge(id), { note: m.trash.purged })
   }
 
   const clear = () => {
-    void write(trash.clear(), { note: m.trash.cleared, notify: toast })
+    void write(trash.clear(), { note: m.trash.cleared })
   }
 
   const groups = KINDS

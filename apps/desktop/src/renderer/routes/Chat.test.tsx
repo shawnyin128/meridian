@@ -31,8 +31,7 @@ vi.mock('../ipc.js', () => ({
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
-  useBanner: () => vi.fn(),
-  useToast: () => vi.fn(),
+  useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useCrumbTail: () => {},
   useJump: () => ({ jump: null, open: vi.fn(), returnTo: vi.fn() }),
   useChatSession: () => ({ id: session.id, title: '讨论', archived: false, select: vi.fn() }),

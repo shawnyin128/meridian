@@ -6,7 +6,7 @@ import type {
 } from '../../shared/contract.js'
 import { author, project, watch } from '../ipc.js'
 import { failureLabel } from '../lib/failure-label.js'
-import { useToast, useVaultRevision } from '../shell/AppShell.js'
+import { useVaultRevision } from '../shell/AppShell.js'
 import { useMessages } from '../messages/useMessages.js'
 import { AddAction } from '../components/AddAction.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
@@ -130,7 +130,6 @@ export function WatchSettings() {
   // nothing: the old draft gone and the new group's not opened.
   const triggers = useMemo(() => [addTopic, addAuthor], [])
 
-  const toast = useToast()
   const { revision } = useVaultRevision()
   const reportError = useCallback((e: Error) => setError(e.message), [])
   const write = useVaultWrite()
@@ -186,13 +185,13 @@ export function WatchSettings() {
 
   /** Creates a watch. Returns true when the write succeeds; on failure it reports the error and returns false. */
   const create = (fields: WatchFields): Promise<boolean> => write(watch.create(fields),
-    { note: m.watches.notices.added, notify: toast })
+    { note: m.watches.notices.added })
 
   /** Saves the draft row: an edit updates the watch in place, keeping its delivered papers; a new row adds one. */
   const persist = (fields: WatchFields): Promise<boolean> => editor?.id === undefined
     ? create(fields)
     : write(watch.update(editor.id, fields), {
-      note: m.watches.notices.updated, notify: toast,
+      note: m.watches.notices.updated,
     })
 
   const leaveDraft = useRef<(() => Promise<boolean>) | null>(null)
@@ -238,12 +237,11 @@ export function WatchSettings() {
       note: active
         ? m.watches.notices.resumed
         : m.watches.notices.pausedNote,
-      notify: toast,
     })
   }
 
   const remove = (id: string) => {
-    void write(watch.delete(id), { note: m.watches.notices.removed, notify: toast })
+    void write(watch.delete(id), { note: m.watches.notices.removed })
   }
 
   const clearSuggestionResults = () => {

@@ -24,7 +24,7 @@ import { afterLeaving, InlineDraftInput } from '../InlineDraftInput.js'
  * Select and multi-select columns have an extra toggle at the end of the row that expands their
  * options, one per row, with rename and delete at the end of the row. Renaming goes to
  * `onRenameOption` (the papers holding it change too); deleting goes to `onChange` as usual, and
- * while any paper in the vault still holds that option, Core rejects it and the banner shows
+ * while any paper in the vault still holds that option, Core rejects it and a refusal notice shows
  * Core's message.
  * Custom column rows also have a "Change type" button that expands the row of type options used
  * when adding a column; clicking or arrowing to another option calls `onRetype`, whose promise

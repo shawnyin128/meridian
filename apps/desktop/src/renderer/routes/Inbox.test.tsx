@@ -50,7 +50,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useSettingsOpen: () => ({
     open: false, requestedCategory: null, setOpen: vi.fn(), openCategory: api.openCategory,
   }),
-  useToast: () => vi.fn(),
+  useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
 vi.mock('../shell/useJobs.js', () => ({ useJobs: () => status }))

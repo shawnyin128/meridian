@@ -69,8 +69,8 @@ let updateCalls: (Controlled<void> & { id: string; patch: Record<string, unknown
 let renameOptionCalls: [key: string, from: string, to: string][]
 /** Each papers.setColumnType call's own controlled promise, in the order the calls were made. */
 let setColumnTypeCalls: (Controlled<void> & { key: string; type: string })[]
-/** The text of each toast, in the order shown. */
-let toastMessages: string[]
+/** The text of each refusal notice, in the order shown. */
+let refusals: string[]
 let deletedPapers: string[]
 /** An error the next papers.update throws synchronously, instead of rejecting, to simulate an unexpected throw. */
 let throwOnNextUpdate: Error | null
@@ -133,7 +133,6 @@ vi.mock('../ipc.js', () => ({
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
-  useBanner: () => vi.fn(),
   useCrumbTail: () => {},
   useEscapeLayer: () => {},
   useScreenReentry: () => 0,
@@ -144,7 +143,7 @@ vi.mock('../shell/AppShell.js', () => ({
   }),
   usePaperCount: () => vaultPaperCount,
   useScreen: () => 'papers',
-  useToast: () => (message: string) => { toastMessages.push(message) },
+  useNotice: () => ({ success: vi.fn(), refusal: (message: string) => { refusals.push(message) } }),
   // Only real revision state makes bump re-run the effects that fetch on revision, as in the app.
   useVaultRevision: () => {
     const [revision, setRevision] = useState(0)
@@ -255,7 +254,7 @@ describe('PaperTable', () => {
     updateCalls = []
     renameOptionCalls = []
     setColumnTypeCalls = []
-    toastMessages = []
+    refusals = []
     deletedPapers = []
     throwOnNextUpdate = null
     columnsCallCount = 0
@@ -1043,7 +1042,7 @@ describe('PaperTable', () => {
     await act(async () => { press(existingRow) })
     await flush()
 
-    expect(toastMessages).toEqual(['意外炸了'])
+    expect(refusals).toEqual(['意外炸了'])
     // The throw happened before any controlled promise was recorded, so this pick left no papers.update call.
     expect(updateCalls).toHaveLength(0)
 
@@ -1141,7 +1140,7 @@ describe('PaperTable', () => {
     expect(host.querySelector('th.th-new')).toBeNull()
   })
 
-  it('建列被 core 拒:占位、打的字与选中的类型都留着,只报一条 toast 是 core 的原话;改了再回车照发', async () => {
+  it('建列被 core 拒:占位、打的字与选中的类型都留着,只报一条拒绝提示,是 core 的原话;改了再回车照发', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
@@ -1153,7 +1152,7 @@ describe('PaperTable', () => {
     await flush()
     await flush()
 
-    expect(toastMessages).toEqual(['列名重复:建列时序'])
+    expect(refusals).toEqual(['列名重复:建列时序'])
     const input = host.querySelector<HTMLInputElement>('th.th-new input')
     expect(input).not.toBeNull()
     expect(input!.value).toBe('建列时序')
@@ -1215,7 +1214,7 @@ describe('PaperTable', () => {
     expect(headTexts(host)).toContain('建列时序')
   })
 
-  it('单元格里一次选择被 core 拒:同一格排在后面的选择作废不发,这一格从 core 重取,只报一条 toast', async () => {
+  it('单元格里一次选择被 core 拒:同一格排在后面的选择作废不发,这一格从 core 重取,只报一条拒绝提示', async () => {
     const host = mount()
     columnsCall.resolve(MULTI_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
@@ -1238,7 +1237,7 @@ describe('PaperTable', () => {
     await flush()
 
     expect(updateCalls).toHaveLength(1)
-    expect(toastMessages).toEqual(['论文不存在:p1'])
+    expect(refusals).toEqual(['论文不存在:p1'])
     await flush()
     expect(columnsCallCount).toBeGreaterThan(columnsCallsAtMount)
     expect(listCallCount).toBeGreaterThan(listCallsAtMount)
@@ -1259,7 +1258,7 @@ describe('PaperTable', () => {
     expect(updateCalls.slice(2).map((u) => u.patch)).toEqual([{ custom: { pick: null } }])
   })
 
-  it('格子里新建选项的加选项被 core 拒:这一次与排在后面的选择都不写格子,重取,只报一条 toast', async () => {
+  it('格子里新建选项的加选项被 core 拒:这一次与排在后面的选择都不写格子,重取,只报一条拒绝提示', async () => {
     const host = mount()
     columnsCall.resolve(MULTI_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
@@ -1287,7 +1286,7 @@ describe('PaperTable', () => {
 
     expect(updateCalls).toHaveLength(0)
     expect(setColumnsCalls).toHaveLength(1)
-    expect(toastMessages).toEqual(['列「多选」的选项重复:新选项'])
+    expect(refusals).toEqual(['列「多选」的选项重复:新选项'])
     await flush()
     expect(columnsCallCount).toBeGreaterThan(columnsCallsAtMount)
     expect(listCallCount).toBeGreaterThan(listCallsAtMount)
@@ -1359,7 +1358,7 @@ describe('PaperTable', () => {
     create.resolve()
     await flush()
     expect(renameOptionCalls).toEqual([['pick', 'existing', 'renamed']])
-    expect(toastMessages).toEqual([])
+    expect(refusals).toEqual([])
   })
 
   it('删一列的写落地之后推一次库的版本,侧栏的数与最近变动跟着重取', async () => {
@@ -1529,7 +1528,7 @@ describe('PaperTable', () => {
     setColumnsCalls[1]!.resolve()
     await flush()
     expect(updateCalls.map((u) => u.patch)).toEqual([{ custom: { pick: '新选项' } }])
-    expect(toastMessages).toEqual([])
+    expect(refusals).toEqual([])
   })
 
   it('建列的写在路上时,格子里新建选项与其后的选择都排队:建列落地后依次发出,后一次带着前一次确认的取值', async () => {
@@ -1565,7 +1564,7 @@ describe('PaperTable', () => {
     await flush()
     expect(updateCalls).toHaveLength(2)
     expect(updateCalls[1]!.patch).toEqual({ custom: { pick: ['新选项', 'existing'] } })
-    expect(toastMessages).toEqual([])
+    expect(refusals).toEqual([])
   })
 
   it('建列的写在路上时,第二次建列排在第一次之后发出:载荷带着两列,第二个占位等自己的写落地才收', async () => {
@@ -1722,7 +1721,7 @@ describe('PaperTable', () => {
 
     setColumnTypeCalls[0]!.reject(new Error('论文页写不进去'))
     for (let i = 0; i < 8; i++) await flush()
-    expect(toastMessages).toEqual(['论文页写不进去'])
+    expect(refusals).toEqual(['论文页写不进去'])
     expect(typeButton('文本').getAttribute('aria-checked')).toBe('true')
 
     await pressKey('ArrowRight')

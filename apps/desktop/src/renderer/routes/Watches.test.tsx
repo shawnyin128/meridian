@@ -43,7 +43,7 @@ vi.mock('../ipc.js', () => ({
   },
 }))
 vi.mock('../shell/AppShell.js', () => ({
-  useToast: () => vi.fn(),
+  useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
 vi.mock('../hooks/useVaultWrite.js', () => ({

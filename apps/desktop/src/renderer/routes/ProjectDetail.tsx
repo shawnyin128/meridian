@@ -13,7 +13,7 @@ import {
 import { PROJECT_STATUSES } from '../../shared/vocabulary.js'
 import { appMenu, files, idea as ideaApi, papers, project as projectApi, wiki } from '../ipc.js'
 import {
-  useBanner, useCrumbTail, useEscapeLayer, useJump, useToast, useToday, useVaultRevision,
+  useCrumbTail, useEscapeLayer, useJump, useNotice, useToday, useVaultRevision,
 } from '../shell/AppShell.js'
 import { AddAction } from '../components/AddAction.js'
 import { MenuItem } from '../components/ActionMenu.js'
@@ -221,8 +221,7 @@ export function ProjectDetail({
     setRelAdding(false)
   }, [])
   const stopRelEdit = useCallback(() => setRelEditing(null), [])
-  const banner = useBanner()
-  const toast = useToast()
+  const notice = useNotice()
   const today = useToday()
   const clearNode = useCallback(() => setSelectedNode(null), [])
   const clearIdea = useCallback(() => setSelectedIdeaId(null), [])
@@ -367,23 +366,20 @@ export function ProjectDetail({
 
   /**
    * Finishes a write that returns the project: the project goes into state, then `write` bumps the
-   * vault revision and, when `note` is given, shows it through `notify` (the confirmation banner by
-   * default). A failed write is reported and returns false. Placeholder submissions come straight
+   * vault revision and, when `note` is given, shows it as a success notice. A failed write is
+   * reported and returns false. Placeholder submissions come straight
    * here: the placeholder closes or stays open by itself depending on the result, so nothing is lost.
    */
-  const writeProject = (
-    op: Promise<Project>, note?: ReactNode, notify: (text: ReactNode) => void = banner,
-  ): Promise<boolean> => write(op.then((p) => setProject(p)), { note, notify })
+  const writeProject = (op: Promise<Project>, note?: ReactNode): Promise<boolean> =>
+    write(op.then((p) => setProject(p)), { note })
 
   /**
    * A write not made from a placeholder: first discards any open editor, as the demo's renderProject
    * rewrote the whole deskBody.
    */
-  const applyWrite = (
-    op: Promise<Project>, note?: ReactNode, notify: (text: ReactNode) => void = banner,
-  ) => {
+  const applyWrite = (op: Promise<Project>, note?: ReactNode) => {
     discardOpenEdits()
-    void writeProject(op, note, notify)
+    void writeProject(op, note)
   }
 
   /** Persists a drag-reordering of the task list, shared by the plan's task rows and the Gantt's labels. */
@@ -397,7 +393,7 @@ export function ProjectDetail({
   const connectLocalWorkspace = async () => {
     const connected = await writeProject(
       projectApi.bindWorkspace(projectId, { kind: 'local', root: localPath.trim() }),
-      m.project.workspace.connected, toast,
+      m.project.workspace.connected,
     )
     if (connected) setWorkspaceOpen(false)
   }
@@ -418,7 +414,7 @@ export function ProjectDetail({
     const connected = await writeProject(projectApi.bindWorkspace(projectId, {
       kind: 'ssh', host: sshHost.trim(), path: sshPath.trim(),
       ...(port === undefined ? {} : { port }),
-    }), m.project.workspace.sshConnected, toast)
+    }), m.project.workspace.sshConnected)
     if (connected) setWorkspaceOpen(false)
   }
 
@@ -493,7 +489,7 @@ export function ProjectDetail({
    */
   const addAttachments = (dropped: File[]) => {
     const local = dropped.filter((file) => files.pathOf(file) !== '')
-    if (local.length < dropped.length) toast(m.project.attachments.localOnly)
+    if (local.length < dropped.length) notice.refusal(m.project.attachments.localOnly)
     if (local.length === 0) return
     let chain = Promise.resolve(project)
     for (const file of local) {
@@ -678,16 +674,14 @@ export function ProjectDetail({
           onMoveTask={(taskId, start, end, days) => applyWrite(
             projectApi.updateTask(projectId, taskId, { start, end }),
             m.project.plan.taskMoved(days),
-            toast,
           )}
           onMoveTaskWindow={(taskId, patch, slots) => applyWrite(
             projectApi.updateTask(projectId, taskId, patch),
             m.project.plan.taskWindowMoved(slots),
-            toast,
           )}
           onMoveMilestone={(milestoneId, date) => applyWrite(
             projectApi.updateMilestone(projectId, milestoneId, { date }),
-            m.project.plan.rescheduledTo(fmt.date(date)), toast,
+            m.project.plan.rescheduledTo(fmt.date(date)),
           )}
           onReorderTasks={reorderTasks}
           onNewTask={startTask} onNewMilestone={startMilestone}
@@ -963,7 +957,7 @@ export function ProjectDetail({
                             label={m.project.identity.nameFieldLabel} value={project.name}
                             onSave={(name) => {
                               const next = name.trim()
-                              if (next === '') { toast(m.project.identity.nameRequired); return false }
+                              if (next === '') { notice.refusal(m.project.identity.nameRequired); return false }
                               return writeProject(
                                 projectApi.update(projectId, { name: next }), m.project.identity.nameUpdated,
                               )
@@ -1003,7 +997,7 @@ export function ProjectDetail({
                       onSave={(focus) => {
                         const next = focus.trim()
                         const label = m.project.identity.focusLabel[FOCUS_KEY[project.status]]
-                        if (next === '') { toast(m.project.identity.focusRequired(label)); return false }
+                        if (next === '') { notice.refusal(m.project.identity.focusRequired(label)); return false }
                         // On submit, close any editor open elsewhere without waiting for this write; whether
                         // this field closes is left to InlineMetadataField, which follows the write's result
                         discardOpenEdits()
@@ -1031,7 +1025,7 @@ export function ProjectDetail({
                       iso={project.start} className="pv metadata-editable" title={m.common.field.clickToEdit}
                       onPick={(start) => {
                         if (dnum(start) > dnum(project.due)) {
-                          toast(m.project.identity.startAfterDue)
+                          notice.refusal(m.project.identity.startAfterDue)
                           return
                         }
                         applyWrite(projectApi.update(projectId, { start }), m.project.identity.dateUpdated)
@@ -1042,7 +1036,7 @@ export function ProjectDetail({
                       iso={project.due} className="pv metadata-editable" title={m.common.field.clickToEdit}
                       onPick={(due) => {
                         if (dnum(due) < dnum(project.start)) {
-                          toast(m.project.identity.dueBeforeStart)
+                          notice.refusal(m.project.identity.dueBeforeStart)
                           return
                         }
                         applyWrite(projectApi.update(projectId, { due }), m.project.identity.dateUpdated)
@@ -1074,7 +1068,7 @@ export function ProjectDetail({
                               className="mi danger"
                               onSelect={() => applyWrite(
                                 projectApi.bindWorkspace(projectId, null),
-                                m.project.identity.workspaceDisconnected, toast,
+                                m.project.identity.workspaceDisconnected,
                               )}
                             >{m.project.identity.disconnectWorkspace}</MenuItem>
                           </DotsMenu>
@@ -1104,7 +1098,7 @@ export function ProjectDetail({
                     onOpenPaper={(paperId) => jumpTo('reader', paperId)}
                     onRemovePaper={(paperId, title) => applyWrite(
                       projectApi.removePaper(projectId, paperId),
-                      <TitleNote message={m.project.links.paperRemoved} title={plainTitle(title)} />, toast,
+                      <TitleNote message={m.project.links.paperRemoved} title={plainTitle(title)} />,
                     )}
                     onMove={(id, index) => { void writeProject(projectApi.moveRelation(projectId, id, index)) }}
                     adding={!relAdding
@@ -1130,7 +1124,7 @@ export function ProjectDetail({
                             ? (
                               <ProjectUrlDraft
                                 key="url" row={relRow} triggers={relTriggers} onCancel={stopRel}
-                                onInvalid={() => toast(m.project.links.urlInvalid)}
+                                onInvalid={() => notice.refusal(m.project.links.urlInvalid)}
                                 onSubmit={(url, text) => writeProject(projectApi.createRelation(projectId, {
                                   group: PROJECT_URL_GROUP, text, url,
                                 }), m.project.links.added)}
@@ -1160,7 +1154,7 @@ export function ProjectDetail({
                             <ProjectUrlDraft
                               row={relEditRow} triggers={NO_TRIGGERS} onCancel={stopRelEdit}
                               initial={{ url: relEditing.url, text: relEditing.text }}
-                              onInvalid={() => toast(m.project.links.urlInvalid)}
+                              onInvalid={() => notice.refusal(m.project.links.urlInvalid)}
                               onSubmit={(url, text) => writeProject(projectApi.updateRelation(
                                 projectId, relEditing.id, { text, url },
                               ), m.project.links.updated)}
@@ -1183,16 +1177,16 @@ export function ProjectDetail({
                     onEdit={setRelEditing}
                     onRemove={(relationId, text) => applyWrite(
                       projectApi.deleteRelation(projectId, relationId),
-                      <TitleNote message={m.project.links.removed} title={text} />, toast,
+                      <TitleNote message={m.project.links.removed} title={text} />,
                     )}
                   />
 
                   <ProjectAttachments
                     attachments={project.attachments} onAdd={addAttachments}
                     onReveal={(attachment) => (attachment.path === undefined
-                      ? toast(m.project.attachments.noPath)
+                      ? notice.refusal(m.project.attachments.noPath)
                       : void files.reveal(attachment.path).then((found) => {
-                        if (!found) toast(m.project.attachments.missing)
+                        if (!found) notice.refusal(m.project.attachments.missing)
                       }))}
                     onRemove={(attachmentId) => applyWrite(
                       projectApi.deleteAttachment(projectId, attachmentId), m.common.trashed,

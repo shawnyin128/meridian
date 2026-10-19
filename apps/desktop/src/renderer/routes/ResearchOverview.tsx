@@ -7,7 +7,7 @@ import {
 } from '../../shared/project-signals.js'
 import { project as projectApi } from '../ipc.js'
 import { ACTIVE_PROJECT, FINISHED_PROJECT, SHELVED_PROJECT } from '../../shared/vocabulary.js'
-import { useBanner, useJump, useToast, useToday, useVaultRevision } from '../shell/AppShell.js'
+import { useJump, useToday, useVaultRevision } from '../shell/AppShell.js'
 import { Icon } from '../components/icons.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { AgentLabel } from '../components/SourceLabel.js'
@@ -387,8 +387,6 @@ export function ResearchOverview() {
   const [error, setError] = useState<string | null>(null)
   const { revision } = useVaultRevision()
   const { open: jumpTo } = useJump()
-  const banner = useBanner()
-  const toast = useToast()
   const reportError = useCallback((e: Error) => setError(e.message), [])
   const write = useVaultWrite()
 
@@ -404,9 +402,9 @@ export function ResearchOverview() {
   ) => {
     void write(
       projectApi.updateTask(projectId, taskId, { start, end }),
-      { note: m.project.plan.taskMoved(days), notify: toast },
+      { note: m.project.plan.taskMoved(days) },
     )
-  }, [write, toast, m])
+  }, [write, m])
 
   const moveTaskWindow = useCallback((
     projectId: string, taskId: string,
@@ -416,34 +414,33 @@ export function ResearchOverview() {
       projectApi.updateTask(projectId, taskId, patch),
       {
         note: m.research.overview.taskWindowMovedHours(slots, Math.abs(slots) * DAY_SLOT_HOURS),
-        notify: toast,
       },
     )
-  }, [write, toast, m])
+  }, [write, m])
 
   const moveMilestone = useCallback((projectId: string, milestoneId: string, date: string) => {
     void write(
       projectApi.updateMilestone(projectId, milestoneId, { date }),
-      { note: m.project.plan.rescheduledTo(fmt.date(date)), notify: toast },
+      { note: m.project.plan.rescheduledTo(fmt.date(date)) },
     )
-  }, [write, toast, fmt, m])
+  }, [write, fmt, m])
 
   const renameMilestone = useCallback((projectId: string, milestoneId: string, title: string) => write(
     projectApi.updateMilestone(projectId, milestoneId, { title }),
-    { note: m.project.plan.milestoneUpdated, notify: banner },
-  ), [write, banner, m])
+    { note: m.project.plan.milestoneUpdated },
+  ), [write, m])
 
   const deleteMilestone = useCallback((projectId: string, milestoneId: string) => {
     void write(
       projectApi.deleteMilestone(projectId, milestoneId),
-      { note: m.project.plan.milestoneDeleted, notify: banner },
+      { note: m.project.plan.milestoneDeleted },
     )
-  }, [write, banner, m])
+  }, [write, m])
 
   const newMilestone = useCallback((projectId: string, date: string, title: string) => write(
     projectApi.createMilestone(projectId, { date, title, done: false }),
-    { note: m.project.plan.milestoneCreated, notify: banner },
-  ), [write, banner, m])
+    { note: m.project.plan.milestoneCreated },
+  ), [write, m])
 
   return (
     <PageShell>

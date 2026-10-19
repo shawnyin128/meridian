@@ -150,7 +150,7 @@ const plain = (runs: TitleRun[]): string => runs.map((run) => (
   run.kind === 'text' ? run.text : run.kind === 'atom' ? run.atom.math : plain(run.runs)
 )).join('')
 
-/** `title` as plain text for tooltips, aria labels, breadcrumbs and toasts: commands resolved, formulas as TeX. */
+/** `title` as plain text for tooltips, aria labels, breadcrumbs and notices: commands resolved, formulas as TeX. */
 export function plainTitle(title: string): string {
   return plain(paperRuns(title))
 }

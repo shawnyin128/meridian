@@ -392,7 +392,7 @@ test.describe(() => {
     await selectPaper(win, READABLE.title)
     await win.locator('.ptable tbody tr').hover()
     await win.locator('.ptable tbody tr .rowx').click()
-    await expect(win.locator('#banner span')).toHaveText('已移入垃圾桶 · 7 天内可恢复')
+    await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已移入垃圾桶 · 7 天内可恢复')
 
     await expect.poll(async () => (await pdfWorkers(win, 'killed')).length).toBe(1)
     expect(await pdfWorkers(win)).toHaveLength(2)

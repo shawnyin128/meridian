@@ -7,8 +7,7 @@ import type {
 import { papers } from '../ipc.js'
 import { useMessages } from '../messages/useMessages.js'
 import {
-  useBanner, useCrumbTail, useJump, useToast, useVaultRevision, type CrumbSeg, type ScreenKey,
-  type JumpAnchor,
+  useCrumbTail, useJump, useNotice, useVaultRevision, type CrumbSeg, type ScreenKey, type JumpAnchor,
 } from '../shell/AppShell.js'
 import { IconButton } from '../components/IconButton.js'
 import { IconMinus, IconPlus } from '../components/icons.js'
@@ -141,8 +140,7 @@ export function Reader() {
   const m = useMessages()
   const { jump, returnTo } = useJump()
   const { revision, bump } = useVaultRevision()
-  const toast = useToast()
-  const banner = useBanner()
+  const notice = useNotice()
   const [opened, setOpened] = useState<string | null>(null)
   const [origin, setOrigin] = useState<ScreenKey | null>(null)
   const [paper, setPaper] = useState<PaperRow | null>(null)
@@ -541,10 +539,10 @@ export function Reader() {
     const timer = window.setTimeout(() => {
       void papers.mutateReading(opened, { kind: 'progress.set', page: currentPage })
         .then(setReading)
-        .catch((cause: Error) => toast(cause.message))
+        .catch((cause: Error) => notice.refusal(cause.message))
     }, PROGRESS_MS)
     return () => window.clearTimeout(timer)
-  }, [opened, doc, reading, currentPage, toast])
+  }, [opened, doc, reading, currentPage, notice])
 
   useEffect(() => {
     const view = scroller.current
@@ -617,19 +615,19 @@ export function Reader() {
       bump()
       return next
     } catch (cause) {
-      toast(cause instanceof Error ? cause.message : String(cause))
+      notice.refusal(cause instanceof Error ? cause.message : String(cause))
       return null
     } finally {
       setSaving(false)
     }
-  }, [opened, saving, bump, toast])
+  }, [opened, saving, bump, notice])
 
   const mutate = useCallback(async (mutation: ReadingMutation): Promise<boolean> =>
     await mutateReading(mutation) !== null, [mutateReading])
 
   const saveRemark = async (text: string): Promise<boolean> => {
     const ok = await mutate({ kind: 'remark.set', text })
-    if (ok) banner(m.papers.notices.remarkSaved)
+    if (ok) notice.success(m.papers.notices.remarkSaved)
     return ok
   }
 

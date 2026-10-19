@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatMessage, ChatSession, PaperRow } from '../../../shared/contract.js'
 import { chat, feed, idea as ideaApi } from '../../ipc.js'
 import {
-  useBanner, usePaperChatCollapsed, usePaperChatGrip, useToast, useVaultRevision,
+  useNotice, usePaperChatCollapsed, usePaperChatGrip, useVaultRevision,
 } from '../../shell/AppShell.js'
 import { sendsMessage } from '../../lib/chat.js'
 import { ChatMessageView, plain } from './ChatMessage.js'
@@ -34,8 +34,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
 }) {
   const m = useMessages()
   const { revision, bump } = useVaultRevision()
-  const banner = useBanner()
-  const toast = useToast()
+  const notice = useNotice()
   const write = useVaultWrite()
   const grip = usePaperChatGrip()
   const collapsed = usePaperChatCollapsed()
@@ -106,12 +105,12 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const act = (message: ChatMessage) => {
     if (session === null) return
     void chat.recordAction(session.id, message.id).then(async (held) => {
-      banner(<TitleNote message={m.chat.recordedNote} title={held.name} />)
+      notice.success(<TitleNote message={m.chat.recordedNote} title={held.name} />)
       await feed.append({ source: 'me', body: { kind: 'runs', runs: [
         plain(m.chat.recordedTo(held.name)),
       ] } })
       bump()
-    }).catch((cause: Error) => toast(cause.message))
+    }).catch((cause: Error) => notice.refusal(cause.message))
   }
 
   const hasDiscussion = messages.some((message) => message.role === 'you')

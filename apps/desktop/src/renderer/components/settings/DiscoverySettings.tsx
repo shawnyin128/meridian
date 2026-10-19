@@ -3,7 +3,7 @@ import type { DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile } fr
 import { discovery } from '../../ipc.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { useToast, useVaultRevision } from '../../shell/AppShell.js'
+import { useNotice, useVaultRevision } from '../../shell/AppShell.js'
 import { SectionHeading } from '../PageShell.js'
 import { PaperText } from '../paper/PaperText.js'
 import { Switch } from '../Switch.js'
@@ -27,7 +27,7 @@ export function DiscoverySettings() {
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set())
   const [refreshing, setRefreshing] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const toast = useToast()
+  const notice = useNotice()
   const { revision, bump } = useVaultRevision()
   const load = useCallback(() => {
     void discovery.profiles().then(setProfiles).catch((caught: Error) => setError(caught.message))
@@ -39,7 +39,7 @@ export function DiscoverySettings() {
     setBusy((held) => new Set([...held, intentId]))
     void discovery.setIntent(projectId, intentId, action).then(() => {
       load()
-      toast(action === 'set-core' ? m.settings.discovery.setCore
+      notice.success(action === 'set-core' ? m.settings.discovery.setCore
         : action === 'disable' ? m.settings.discovery.disabled : m.settings.discovery.enabled)
     }).catch((caught: Error) => setError(caught.message)).finally(() => {
       setBusy((held) => {
@@ -53,7 +53,7 @@ export function DiscoverySettings() {
   const refresh = (projectId: string) => {
     setRefreshing(projectId)
     void discovery.fetch(projectId, true).then((result) => {
-      toast(resultNote(result, m))
+      notice.success(resultNote(result, m))
       bump()
     }).catch((caught: Error) => setError(caught.message)).finally(() => setRefreshing(null))
   }

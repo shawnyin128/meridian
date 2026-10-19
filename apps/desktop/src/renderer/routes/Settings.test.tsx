@@ -57,7 +57,7 @@ const api = vi.hoisted(() => ({
   })),
   deleteBackup: vi.fn(async () => null),
   restartApp: vi.fn(),
-  banner: vi.fn(),
+  success: vi.fn(),
 }))
 
 vi.mock('../ipc.js', () => ({
@@ -87,7 +87,7 @@ vi.mock('../ipc.js', () => ({
   extensions: { status: api.extensionStatus, pluginVersion: api.pluginVersion, checkLatest: api.checkLatest },
 }))
 vi.mock('../shell/AppShell.js', () => ({
-  useBanner: () => api.banner,
+  useNotice: () => ({ success: api.success, refusal: vi.fn() }),
   useJump: () => ({ open: vi.fn() }),
   useSettingsOpen: () => ({
     open: true, requestedCategory: api.requestedCategory, setOpen: api.setOpen, openCategory: vi.fn(),
@@ -167,7 +167,7 @@ describe('Settings', () => {
     api.switchBackup.mockClear()
     api.deleteBackup.mockClear()
     api.restartApp.mockClear()
-    api.banner.mockClear()
+    api.success.mockClear()
   })
   afterEach(() => { act(() => root.unmount()) })
 
@@ -388,14 +388,14 @@ describe('Settings', () => {
       dialog.querySelector<HTMLButtonElement>('[aria-label="复制 Claude Code 安装命令"]')!.click()
     })
     expect(writeText).toHaveBeenCalledWith('claude install command')
-    expect(api.banner).toHaveBeenCalledWith('Claude Code 命令已复制')
+    expect(api.success).toHaveBeenCalledWith('Claude Code 命令已复制')
 
     const firstPrompt = dialog.querySelector('.extension-prompt p')?.textContent ?? ''
     await act(async () => {
       dialog.querySelector<HTMLButtonElement>('.extension-prompt button')!.click()
     })
     expect(writeText).toHaveBeenLastCalledWith(firstPrompt)
-    expect(api.banner).toHaveBeenLastCalledWith('提示词已复制')
+    expect(api.success).toHaveBeenLastCalledWith('提示词已复制')
   })
 
   it('外观设置用三张预览卡选择浅色、深色或跟随系统', async () => {
@@ -511,7 +511,7 @@ describe('Settings', () => {
     expect(api.deleteBackup).toHaveBeenCalledWith('meridian-backup-20260915-182838Z')
     expect(dialog.querySelector('.storage-backup-list')).toBeNull()
     expect(dialog.textContent).toContain('暂无论文库备份')
-    expect(api.banner).toHaveBeenCalledWith('备份已删除')
+    expect(api.success).toHaveBeenCalledWith('备份已删除')
   })
 
   // With every dialog layer at one z-index (shared/dialog-surface.test.ts), document order decides

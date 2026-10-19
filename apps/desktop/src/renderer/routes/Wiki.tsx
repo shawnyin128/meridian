@@ -7,7 +7,7 @@ import type {
 import { PAPER_PAGE } from '../../shared/vocabulary.js'
 import { papers, wiki } from '../ipc.js'
 import {
-  useBanner, useCrumbTail, useJump, useScreenEntry, useToast, useVaultRevision, type CrumbSeg, type ScreenKey,
+  useCrumbTail, useJump, useNotice, useScreenEntry, useVaultRevision, type CrumbSeg, type ScreenKey,
 } from '../shell/AppShell.js'
 import { AddAction } from '../components/AddAction.js'
 import { ActionPopover } from '../components/ActionPopover.js'
@@ -340,8 +340,7 @@ export function Wiki() {
   const consumed = useRef(0)
   const main = useRef<HTMLDivElement>(null)
   const reportError = useCallback((e: Error) => setError(e.message), [])
-  const toast = useToast()
-  const banner = useBanner()
+  const notice = useNotice()
   const write = useVaultWrite()
   const box = useRef<HTMLDivElement>(null)
   const [editing, setEditing] = useState(false)
@@ -369,8 +368,8 @@ export function Wiki() {
 
   /**
    * A management operation is a proposal: once it is written, close the input row, bump the vault
-   * revision, show `title` in the banner, and return whether it was written. `pending` is true while
-   * the proposal is in flight. `note` replaces `title` in the banner.
+   * revision, show `title` as a success notice, and return whether it was written. `pending` is true
+   * while the proposal is in flight. `note` replaces `title` in the notice.
    */
   const propose = (title: string, ops: Proposal['ops'], note = title): Promise<boolean> => {
     setPending(true)
@@ -529,7 +528,7 @@ export function Wiki() {
     if (shownAgg === null) return false
     const slug = slugOf(title)
     if (slug === '') {
-      toast(m.wiki.nameNeedsChar)
+      notice.refusal(m.wiki.nameNeedsChar)
       return false
     }
     return propose(m.wiki.proposals.createUnder(title, shownAgg.title), [{
@@ -563,9 +562,9 @@ export function Wiki() {
   const decide = (proposal: WikiProposal, decision: 'apply' | 'decline', reason?: string) => {
     setPending(true)
     void write(wiki.decide(proposal.id, decision, reason).then((receipt) => {
-      if (decision === 'decline') banner(m.wiki.queue.declinedNote)
-      else if (receipt.status === 'applied') banner(m.wiki.queue.appliedNote)
-      else toast(m.wiki.queue.rejectedNote(receipt.reason?.message ?? ''))
+      if (decision === 'decline') notice.success(m.wiki.queue.declinedNote)
+      else if (receipt.status === 'applied') notice.success(m.wiki.queue.appliedNote)
+      else notice.refusal(m.wiki.queue.rejectedNote(receipt.reason?.message ?? ''))
     })).finally(() => setPending(false))
   }
 
@@ -764,7 +763,7 @@ export function Wiki() {
                     label={m.wiki.nameFieldLabel} value={shownAgg.title}
                     onSave={(title) => {
                       const next = title.trim()
-                      if (next === '') { toast(m.wiki.nameRequired); return false }
+                      if (next === '') { notice.refusal(m.wiki.nameRequired); return false }
                       return propose(m.wiki.proposals.editMetadata(shownAgg.title), [{
                         op: 'setAggregationMetadata', page: shownAgg.id, title: next,
                         splitOn: shownAgg.splitOn ?? null,
@@ -845,7 +844,7 @@ export function Wiki() {
                     label={m.wiki.titleLabel} value={shownPaper.title}
                     onSave={(title) => {
                       const next = title.trim()
-                      if (next === '') { toast(m.wiki.titleRequired); return false }
+                      if (next === '') { notice.refusal(m.wiki.titleRequired); return false }
                       return updateWikiPaper({ title: next }, m.wiki.titleLabel)
                     }}
                   />
@@ -871,7 +870,7 @@ export function Wiki() {
                       if (text === '') return updateWikiPaper({ year: null }, m.wiki.yearLabel)
                       const next = Number(text)
                       if (!Number.isInteger(next) || next < 1000 || next > 3000) {
-                        toast(m.wiki.yearRange)
+                        notice.refusal(m.wiki.yearRange)
                         return false
                       }
                       return updateWikiPaper({ year: next }, m.wiki.yearLabel)

@@ -18,11 +18,10 @@ vi.mock('../ipc.js', () => ({
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
-  useBanner: () => vi.fn(),
+  useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useCrumbTail: () => {},
   useJump: () => ({ jump: null, open: vi.fn(), returnTo: vi.fn() }),
   useScreenEntry: () => 0,
-  useToast: () => vi.fn(),
   useToday: () => '2026-10-16',
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))

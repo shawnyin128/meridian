@@ -27,8 +27,7 @@ import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import {
-  useBanner, useCrumbTail, useEscapeLayer, useJump, usePaperCount, useScreen, useScreenReentry, useToast,
-  useVaultRevision,
+  useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperCount, useScreen, useScreenReentry, useVaultRevision,
 } from '../../shell/AppShell.js'
 import { AddAction } from '../AddAction.js'
 import { IconButton } from '../IconButton.js'
@@ -111,7 +110,7 @@ function cellValues(held: PaperCell | undefined): string[] {
 }
 
 /**
- * The banner for this column configuration change, or undefined when there is none. The first match
+ * The success notice for this column configuration change, or undefined when there is none. The first match
  * wins, in this order: a deleted column, an added column, a renamed column, changed groups, a changed
  * column order, and otherwise changed options.
  */
@@ -327,8 +326,7 @@ export function PaperTable() {
     chain: Promise<string[] | null>
   } | null>(null)
 
-  const banner = useBanner()
-  const toast = useToast()
+  const notice = useNotice()
   const paperCount = usePaperCount()
   const screen = useScreen()
   const { jump, open } = useJump()
@@ -646,7 +644,7 @@ export function PaperTable() {
    */
   const uploadPdf = async (file: File) => {
     if (file.size > MAX_PDF_UPLOAD_BYTES) {
-      toast(m.papers.upload.tooLarge)
+      notice.refusal(m.papers.upload.tooLarge)
       if (uploadInput.current !== null) uploadInput.current.value = ''
       return
     }
@@ -660,9 +658,9 @@ export function PaperTable() {
       setGroup('none')
       setSel(null)
       setDetail(result.paper)
-      banner(result.kind === 'added' ? m.papers.upload.addedParsing : m.papers.upload.alreadyInLibrary)
+      notice.success(result.kind === 'added' ? m.papers.upload.addedParsing : m.papers.upload.alreadyInLibrary)
     } catch (cause) {
-      toast(cause instanceof Error ? cause.message : String(cause))
+      notice.refusal(cause instanceof Error ? cause.message : String(cause))
     } finally {
       setUploading(false)
       if (uploadInput.current !== null) uploadInput.current.value = ''
@@ -671,7 +669,7 @@ export function PaperTable() {
 
   const uploadFiles = async (files: File[]) => {
     const pdfs = files.filter((file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))
-    if (pdfs.length === 0) { toast(m.papers.upload.dropPdfOnly); return }
+    if (pdfs.length === 0) { notice.refusal(m.papers.upload.dropPdfOnly); return }
     for (const file of pdfs) await uploadPdf(file)
   }
 
@@ -744,9 +742,9 @@ export function PaperTable() {
    * then `papers.update` changes the cell: a single-choice column takes the option, or is cleared when
    * its current value is picked again, and a multi-choice column adds or removes it. After a
    * single-choice write the editor closes, while a multi-choice one stays open for more picks; a write
-   * shows the banner. If any step is rejected, this pick writes nothing further and the cell's column
+   * shows a success notice. If any step is rejected, this pick writes nothing further and the cell's column
    * and row are refetched from Core to correct it; the unsent picks queued after it are voided too,
-   * and the whole sequence shows one toast. Consecutive picks in the same cell each compute their
+   * and the whole sequence shows one refusal notice. Consecutive picks in the same cell each compute their
    * values when their turn comes and the previous pick has truly settled, not when they are submitted.
    * Resolves whether this pick was written.
    */
@@ -786,11 +784,11 @@ export function PaperTable() {
         return next
       }
       // Rejected: this cell's assumptions no longer match Core, so refetch it; the rejected step
-      // already showed the toast.
+      // already showed the refusal notice.
       clearIfLatest()
       bump()
       return null
-    }).catch((e: Error) => { clearIfLatest(); toast(e.message); return null })
+    }).catch((e: Error) => { clearIfLatest(); notice.refusal(e.message); return null })
     const entry = { cell: q.cell, chain }
     queue.current = entry
     return chain.then((settled) => settled !== null)
@@ -800,7 +798,7 @@ export function PaperTable() {
    * Queues a column set change at the end of the column chain. When its turn comes, `step` receives
    * Core's last confirmed column set, does its own write and returns the written column set, which
    * then takes effect; `onApplied` (if given) is called synchronously at that moment, and the result
-   * is true. When `step` throws or rejects, its original message shows as a toast, the column set is
+   * is true. When `step` throws or rejects, its original message shows as a refusal notice, the column set is
    * refetched from Core to correct it, and the result is false. Each step starts only after the
    * previous step and its correction have settled.
    */
@@ -815,7 +813,7 @@ export function PaperTable() {
         onApplied?.()
         return true
       } catch (e) {
-        toast((e as Error).message)
+        notice.refusal((e as Error).message)
         await papers.columns().then((live) => {
           confirmedColumns.current = live
           setColumns(live)
@@ -831,7 +829,7 @@ export function PaperTable() {
    * A column configuration change, queued on the column chain: when its turn comes, `update` computes
    * the new configuration from the last confirmed column set and it is handed to Core. It takes effect
    * only once written (`onApplied` is called synchronously at that moment), bumps the vault revision,
-   * shows its banner, and drops a deleted column's width along with the column. Returns whether it was
+   * shows its success notice, and drops a deleted column's width along with the column. Returns whether it was
    * written.
    */
   const changeColumns = (
@@ -849,7 +847,7 @@ export function PaperTable() {
       })
     }
     const note = columnsNote(base, next, m.papers.notices)
-    if (note !== undefined) banner(note)
+    if (note !== undefined) notice.success(note)
     return next
   }, onApplied)
 
@@ -876,7 +874,7 @@ export function PaperTable() {
   /**
    * Writes a column set change that also rewrites papers, queued on the column chain: once `op` is
    * written, refetches the column set from Core, refetches the table's rows and shows `note`. When it
-   * is rejected, Core's original message shows as a toast and the columns stay unchanged. Returns
+   * is rejected, Core's original message shows as a refusal notice and the columns stay unchanged. Returns
    * whether it was written.
    */
   const writeColumnsAndCells = (op: () => Promise<void>, note: string): Promise<boolean> =>
@@ -884,7 +882,7 @@ export function PaperTable() {
       await op()
       const live = await papers.columns()
       bump()
-      banner(note)
+      notice.success(note)
       return live
     })
 

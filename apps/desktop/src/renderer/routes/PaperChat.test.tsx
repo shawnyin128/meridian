@@ -29,8 +29,7 @@ const api = vi.hoisted(() => ({
   createConclusion: vi.fn(() => Promise.resolve({})),
   feedAppend: vi.fn(() => Promise.resolve()),
   bump: vi.fn(),
-  banner: vi.fn(),
-  toast: vi.fn(),
+  notice: { success: vi.fn(), refusal: vi.fn() },
   grip: { onMouseDown: vi.fn(), onMouseEnter: vi.fn(), onMouseLeave: vi.fn() },
   collapsed: false,
 }))
@@ -46,8 +45,7 @@ vi.mock('../ipc.js', () => ({
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
-  useBanner: () => api.banner,
-  useToast: () => api.toast,
+  useNotice: () => api.notice,
   useVaultRevision: () => ({ revision: 0, bump: api.bump }),
   usePaperChatGrip: () => api.grip,
   usePaperChatCollapsed: () => api.collapsed,

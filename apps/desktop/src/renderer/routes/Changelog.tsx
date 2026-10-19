@@ -4,7 +4,7 @@ import { HUMAN_PRODUCER, NOTES_PROPOSAL } from '../../shared/vocabulary.js'
 import { changelog } from '../ipc.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
-import { useBanner, useToast, useToday, useVaultRevision } from '../shell/AppShell.js'
+import { useNotice, useToday, useVaultRevision } from '../shell/AppShell.js'
 import { useFormat } from '../lib/format.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
@@ -95,8 +95,7 @@ export function Changelog() {
 
   const today = useToday()
   const fmt = useFormat()
-  const banner = useBanner()
-  const toast = useToast()
+  const notice = useNotice()
   const { revision, bump } = useVaultRevision()
   const reportError = useCallback((e: Error) => setError(e.message), [])
   const write = useVaultWrite()
@@ -112,29 +111,29 @@ export function Changelog() {
   })
 
   // An undo is often rejected (the entity changed again after this change), so the reason shows as a
-  // toast instead of becoming a page-wide error.
+  // refusal notice instead of becoming a page-wide error.
   const undo = (id: string) => {
     void changelog.undo(id).then(() => {
       bump()
-      banner(m.changelog.undoneNote)
-    }).catch((e: Error) => toast(e.message))
+      notice.success(m.changelog.undoneNote)
+    }).catch((e: Error) => notice.refusal(e.message))
   }
 
-  // Archiving one entry shows no banner: the entry moving down into the Archived section is the feedback.
+  // Archiving one entry shows no notice: the entry moving down into the Archived section is the feedback.
   const archive = (id: string) => {
     void write(changelog.archive(id))
   }
 
   const archiveAll = (count: number) => {
-    void write(changelog.archiveAll(), { note: m.changelog.archivedNote(count), notify: toast })
+    void write(changelog.archiveAll(), { note: m.changelog.archivedNote(count) })
   }
 
   const deleteChange = (id: string) => {
-    void write(changelog.delete(id), { note: m.changelog.deletedNote, notify: toast })
+    void write(changelog.delete(id), { note: m.changelog.deletedNote })
   }
 
   const clearArchived = (count: number) => {
-    void write(changelog.clearArchived(), { note: m.changelog.clearedArchivedNote(count), notify: toast })
+    void write(changelog.clearArchived(), { note: m.changelog.clearedArchivedNote(count) })
   }
 
   const fresh = entries.filter((c) => !c.archived)
