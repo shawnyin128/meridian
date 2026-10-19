@@ -46,7 +46,7 @@
 .ptable td .ci{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ptable td.trunc:has(.ci):not(:has(.tagchip)):hover{overflow:visible}
 /* Hover reveal: expands in place (Excel style); text stays put, no border, and the background over adjacent columns matches the row */
-.ptable td.trunc:hover .ci:not(:has(.tagchip)){position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;padding:7px 10px;width:max-content;background:linear-gradient(var(--row-bg),var(--row-bg)) var(--content);z-index:6;overflow:visible;text-overflow:clip}
+.ptable td.trunc:hover .ci:not(:has(.tagchip)){position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;padding:7px 10px;width:max-content;background:linear-gradient(var(--row-over),var(--row-over)),linear-gradient(var(--row-bg),var(--row-bg)) var(--content);z-index:6;overflow:visible;text-overflow:clip}
 .tblwrap .ptable thead th{position:sticky;top:0;z-index:3;background:var(--content)}
 .ptable th:first-child,.ptable td:first-child{position:sticky;left:0;z-index:2;background:var(--content);box-shadow:1px 0 0 var(--sep2)}
 .ptable th:first-child{top:0;z-index:4}
@@ -73,20 +73,19 @@
 .ptable tbody tr:last-child td{border-bottom:0}
 .ptable td:last-child{padding-top:0;padding-bottom:0;text-align:center}
 /*
- * One background per row, painted by every cell and by a truncated cell's hover box. The sticky title
- * cell and the hover box lay it over --content, so cells scrolling under them never show through.
- * A row keeps the hover background while its reading status menu is open and the pointer is on a
- * menu item; :where() keeps that rule below the selected state.
+ * One row colour (--row-bg, the selected look of StructuredList.css) and the hover over it
+ * (--row-over), painted by every cell and by a truncated cell's hover box. The sticky title cell and
+ * the hover box lay both over --content, so cells scrolling under them never show through. A row
+ * keeps the hover while its reading status menu is open and the pointer is on a menu item.
  */
-.ptable tbody tr{--row-bg:transparent}
-.ptable tbody tr:hover,.ptable tbody tr:where(:has(.stchip[data-state="open"])){--row-bg:var(--hover)}
-.ptable tbody tr.selected{--row-bg:var(--accent-soft)}
-.ptable tbody td{background:var(--row-bg)}
-.ptable tbody td:first-child{background:linear-gradient(var(--row-bg),var(--row-bg)) var(--content)}
-.ptable tbody tr.selected td:first-child{box-shadow:inset 3px 0 0 var(--accent),1px 0 0 var(--sep2)}
-/* The title cell's hover box covers the selected bar, so it draws the bar again. */
-.ptable tbody tr.selected td.trunc:first-child:hover .ci{box-shadow:inset 3px 0 0 var(--accent)}
+.ptable tbody tr{--row-bg:transparent;--row-over:transparent}
+.ptable tbody tr:hover,.ptable tbody tr:has(.stchip[data-state="open"]){--row-over:var(--hover)}
+.ptable tbody tr.selected{--row-bg:var(--selected)}
+.ptable tbody td{background-color:var(--row-bg);background-image:linear-gradient(var(--row-over),var(--row-over))}
+.ptable tbody td:first-child{background-color:var(--content);
+  background-image:linear-gradient(var(--row-over),var(--row-over)),linear-gradient(var(--row-bg),var(--row-bg))}
 .pt-title{font-weight:500;color:var(--ink);cursor:pointer}
+.ptable tbody tr.selected .pt-title{color:var(--on-selected)}
 .pt-title:hover{text-decoration:underline;text-underline-offset:2px}
 .ptable tbody tr{cursor:pointer}
 .pt-dim{color:var(--ter);white-space:nowrap}
@@ -185,7 +184,6 @@
 .research-map-layout{display:grid;min-height:0;grid-template-columns:minmax(220px,310px) minmax(0,1fr);gap:16px;align-items:start}
 .research-map-groups{min-width:0}
 .research-map-group{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;min-height:54px;padding:9px 12px}
-.research-map-group.is-selected{background:var(--hover);box-shadow:inset 3px 0 0 var(--accent)}
 .research-map-group-copy{display:flex;min-width:0;flex-direction:column;gap:3px}
 .research-map-group-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-base)}
 .research-map-group-copy>span{color:var(--ter);font-size:var(--fs-cap)}

@@ -4,7 +4,8 @@
  *    blue, and the dark theme has a full gray scale; both derive from a hue of about 220°. The light
  *    surface ladder (--card / --window / --sidebar) is the exception: the demo's cards are white.
  * 2. The tokens added beyond the demo (--accent-solid / --press / --press-solid / --hover-solid /
- *    --bad-solid / --bad-text / --ring* / --sel / --link / --tint-* / --on-tint / --paper / --scrim /
+ *    --bad-solid / --bad-text / --ring* / --sel / --link / --selected / --on-selected / --tint-* /
+ *    --on-tint / --paper / --scrim /
  *    --raised / --chip / --r-* / --pad-* / --sp-* / --row-* / --fs-* / --lh-* / --t-* / --e-*)
  *    and the split into --sh-1 / --sh-2 / --sh-3 / --sh-paper are not in the demo: the demo is the
  *    reference for layout and behavior, not for the finished look, so the two differ on these.
@@ -72,6 +73,11 @@
   --ring:var(--accent); --ring-width:2px; --ring-offset:2px;
   /* Links darken the accent toward --ink: the plain accent falls below 4.5:1 on a tinted card */
   --sel:rgba(53,104,255,.22); --link:color-mix(in srgb,var(--accent) 90%,var(--ink));
+  /*
+   * The one selected look of rows, cards and graph nodes: the accent tint, and text the accent moved
+   * 20% toward --ink, which keeps 4.5:1 on the tint over a card in both themes; --link does not.
+   */
+  --selected:var(--accent-soft); --on-selected:color-mix(in srgb,var(--accent) 80%,var(--ink));
   --tint-good:rgba(48,209,88,.14); --tint-warn:rgba(255,214,10,.14);
   --tint-bad:rgba(224,69,58,.12); --tint-info:rgba(14,154,167,.14);
   --tint-mut:rgba(10,16,32,.04); --on-tint:#fff;

@@ -60,7 +60,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper }: 
                 {map.groups.map((group) => (
                   <StructuredRow
                     key={group.id}
-                    className={selected?.id === group.id ? 'research-map-group is-selected' : 'research-map-group'}
+                    className="research-map-group" selected={selected?.id === group.id}
                     aria-pressed={selected?.id === group.id}
                     onActivate={() => setSelectedId(group.id)}
                   >

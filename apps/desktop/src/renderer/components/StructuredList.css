@@ -6,9 +6,15 @@
 .structured-row:first-child{border-top:0}
 .structured-list--embedded>.structured-row{border-top:0}
 .structured-list--embedded>.structured-row+.structured-row{border-top:1px solid var(--sep2)}
-button.structured-row,.structured-row--composite{cursor:pointer;transition:background var(--t-fast) var(--e-out)}
-button.structured-row:hover,button.structured-row:focus-visible,.structured-row--composite:hover{background:var(--hover);outline:0}
-.structured-row--selected{background:var(--hover)}
+button.structured-row,.structured-row--composite{cursor:pointer}
+/*
+ * The one selected look of rows, cards and graph nodes: the --selected tint with --on-selected text.
+ * Hover lies over it as an image, so no state that sets a row's colour hides the hover; a row keeps
+ * it while a menu or dialog of its row actions is open.
+ */
+.structured-row--selected{background-color:var(--selected);color:var(--on-selected)}
+button.structured-row:hover,button.structured-row:focus-visible,.structured-row--composite:hover,
+.structured-row:where(:has(.row-actions [data-state="open"])){background-image:linear-gradient(var(--hover),var(--hover));outline:0}
 
 /*
  * The row-actions slot: hidden and not clickable at rest, shown while its host (an element marked
