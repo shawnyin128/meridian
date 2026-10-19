@@ -174,7 +174,7 @@ describe('AppShell sidebar collapse', () => {
   })
 
   it('names the sidebar grip in the shared tooltip with ⌘B on macOS, and draws no tooltip of its own', () => {
-    expect(hoverTip('#sbgrip')).toEqual(['点击收起', '⌘B'])
+    expect(hoverTip('#sbgrip')).toEqual(['收起', '⌘B'])
     expect(document.querySelector('[role="tooltip"] .tooltip-note')?.textContent).toBe('拖动调整宽度')
     expect(document.querySelector('#griptip')).toBeNull()
   })
@@ -282,6 +282,7 @@ describe('AppShell sidebar grip', () => {
     expect(edge.tagName).toBe('BUTTON')
     expect(edge.getAttribute('aria-label')).toBe('展开侧栏')
     expect(edge.getAttribute('aria-expanded')).toBe('false')
+    expect(hoverTip('.grip-edge')).toEqual(['展开侧栏', '⌘B'])
     act(() => edge.click())
     expect(document.querySelector('#main')!.classList.contains('sbhide')).toBe(false)
     expect(document.querySelector('.grip-edge')).toBeNull()

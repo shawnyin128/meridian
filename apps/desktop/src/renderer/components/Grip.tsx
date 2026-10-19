@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
-import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react'
+import { forwardRef, useEffect, useRef, useState } from 'react'
+import type {
+  ButtonHTMLAttributes, HTMLAttributes, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent,
+} from 'react'
 import './Grip.css'
 
 /** How far, in px, the pointer must move after a press before the press becomes a drag. */
@@ -30,8 +32,6 @@ export type GripProps = GripLimits & {
   onReset: () => void
   id?: string
   className?: string
-  onMouseEnter?: (e: ReactMouseEvent<HTMLDivElement>) => void
-  onMouseLeave?: () => void
 }
 
 /**
@@ -39,11 +39,12 @@ export type GripProps = GripLimits & {
  * must be the grip's parent element. Dragging past a 3px dead zone resizes the pane from its laid-out
  * width at the press; a press that never leaves the dead zone does nothing. Escape during a drag puts
  * the size at the press back and ends the drag. The arrow keys step the size by 10px (50px with
- * Shift), Home and End go to the limits, and a double-click calls `onReset`.
+ * Shift), Home and End go to the limits, and a double-click calls `onReset`. Other props and the ref
+ * go to the separator, so a tooltip can name it.
  */
-export function Grip({
-  label, value, min, max, onResizeStart, onResize, onResizeEnd, onReset, id, className, onMouseEnter, onMouseLeave,
-}: GripProps) {
+export const Grip = forwardRef<HTMLDivElement, GripProps & Omit<HTMLAttributes<HTMLDivElement>, keyof GripProps | 'children'>>(function Grip({
+  label, value, min, max, onResizeStart, onResize, onResizeEnd, onReset, id, className, onClick, ...props
+}, ref) {
   const [dragging, setDragging] = useState(false)
   // Ends the press in progress: removes its document listeners.
   const release = useRef<(() => void) | null>(null)
@@ -132,19 +133,26 @@ export function Grip({
 
   return (
     <div
+      {...props} ref={ref}
       role="separator" aria-orientation="vertical" aria-label={label} tabIndex={0}
       aria-valuenow={Math.round(value)} aria-valuemin={Math.round(min)} aria-valuemax={Math.round(max)}
       id={id} className={`grip${dragging ? ' is-dragging' : ''}${className ? ` ${className}` : ''}`}
       onMouseDown={press} onKeyDown={step} onDoubleClick={onReset}
-      onClick={(e) => e.stopPropagation()} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}
+      onClick={(e) => { onClick?.(e); e.stopPropagation() }}
     />
   )
-}
+})
 
 /**
  * What a collapsed pane leaves at its edge: a slim button showing the grip's glyph, which expands
- * the pane again.
+ * the pane again. Other props and the ref go to the button, so a tooltip can name it.
  */
-export function GripEdge({ label, onExpand }: { label: string; onExpand: () => void }) {
-  return <button type="button" className="grip-edge" aria-label={label} aria-expanded={false} onClick={onExpand} />
-}
+export const GripEdge = forwardRef<HTMLButtonElement, { label: string; onExpand: () => void }
+  & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'type'>>(function GripEdge({ label, onExpand, onClick, ...props }, ref) {
+  return (
+    <button
+      {...props} ref={ref} type="button" className="grip-edge" aria-label={label} aria-expanded={false}
+      onClick={(event) => { onClick?.(event); onExpand() }}
+    />
+  )
+})
