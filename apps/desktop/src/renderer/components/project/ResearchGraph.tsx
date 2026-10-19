@@ -348,9 +348,10 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
                   onFocus={(event) => { if (event.currentTarget.matches(':focus-visible')) reveal(node) }}
                 >
                   <rect
-                    width={node.width} height={GRAPH_NODE_HEIGHT} rx="11"
+                    className="rgn-box" width={node.width} height={GRAPH_NODE_HEIGHT} rx="11"
                     style={ideaRelated ? { fill: `url(#${ideaPatternId})` } : undefined}
                   />
+                  <rect className="rgn-hover" width={node.width} height={GRAPH_NODE_HEIGHT} rx="11" />
                   <circle cx="18" cy={GRAPH_NODE_HEIGHT / 2} r="4" className="nd" />
                   <title>{node.label}</title>
                   <text x={GRAPH_LABEL_LEFT} y="29">{graphNodeLabel(node.label)}</text>

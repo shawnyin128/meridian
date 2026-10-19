@@ -16,8 +16,8 @@ const PRIORITIES: Task['priority'][] = ['p0', 'p1', 'p2']
 /**
  * The one overflow-menu trigger. The tooltip is always the shared "more actions" label; `label`
  * adds the screen-reader name for rows that need to say which object the menu belongs to.
- * `stopRowActivation` keeps the click off a clickable row or card underneath. The trigger shows
- * only while the element marked `data-dots-row` around it is hovered or holds focus.
+ * `stopRowActivation` keeps the click off a clickable row or card underneath. It goes in its row's
+ * `RowActions` slot, which shows it.
  */
 export function DotsMenu({
   children, label, stopRowActivation = false, open, onOpenChange, contentClassName,

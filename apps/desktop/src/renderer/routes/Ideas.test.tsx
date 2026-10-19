@@ -34,6 +34,7 @@ const api = vi.hoisted(() => ({
   update: vi.fn(async () => {}),
   promote: vi.fn(async () => ({ idea: {}, project: {} })),
   remove: vi.fn(async () => {}),
+  reorder: vi.fn(async () => {}),
   open: vi.fn(),
 }))
 
@@ -43,6 +44,7 @@ vi.mock('../ipc.js', () => ({
     update: api.update,
     promote: api.promote,
     delete: api.remove,
+    reorder: api.reorder,
   },
   project: { list: async () => structuredClone(api.projects) },
 }))
@@ -75,6 +77,29 @@ describe('Ideas', () => {
   })
 
   afterEach(() => { act(() => root.unmount()) })
+
+  it('想法卡片从操作槽里的把手拖，卡片本身不能拖；更多菜单和 Alt+↑ 也能挪，只在同一组里挪', async () => {
+    api.reorder.mockClear()
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    const card = (id: string) => host.querySelector<HTMLElement>(`[data-idea="${id}"]`)!
+    expect(card('idea-linked').hasAttribute('draggable')).toBe(false)
+    expect(card('idea-linked').querySelector('.row-actions .drag-handle')!.getAttribute('draggable')).toBe('true')
+
+    await act(async () => {
+      card('idea-independent').querySelector('.research-object-card-open')!
+        .dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', altKey: true, bubbles: true }))
+    })
+    expect(api.reorder).toHaveBeenLastCalledWith(['idea-independent', 'idea-linked', 'idea-completed'])
+
+    await act(async () => {
+      card('idea-independent').querySelector('.dots')!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+    })
+    const items = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
+    expect(items.map((item) => [item.textContent, item.hasAttribute('data-disabled')]).slice(0, 2))
+      .toEqual([['上移', false], ['下移', true]])
+    await act(async () => { items[0]!.click() })
+    expect(api.reorder).toHaveBeenLastCalledWith(['idea-independent', 'idea-linked', 'idea-completed'])
+  })
 
   it('来源标签跟在来源后面：对话和论文阅读写来源的种类，agent 记下的只写 agent', async () => {
     api.ideas.push({
@@ -109,7 +134,10 @@ describe('Ideas', () => {
     expect(linked.textContent).toContain('对话')
     expect(linked.textContent).toContain('来源 · 摊薄的前提是共享前缀吗')
     expect(linked.textContent).toContain('9月17日 更新')
-    expect([...linked.querySelectorAll('button')].map((item) => item.title)).toEqual(['更多'])
+    expect(linked.getAttribute('role')).toBeNull()
+    expect([...linked.querySelectorAll('button')].map((item) => item.title || item.textContent))
+      .toEqual(['用可学习性信号动态分配 draft model 的蒸馏预算', '更多'])
+    expect(linked.querySelector('.research-object-card-open')!.textContent).toBe('用可学习性信号动态分配 draft model 的蒸馏预算')
 
     const independent = host.querySelector('[data-idea="idea-independent"]')!
     expect(independent.textContent).toContain('未关联项目')
@@ -119,13 +147,17 @@ describe('Ideas', () => {
     await act(async () => { (linked as HTMLElement).click() })
     expect(host.querySelector('.idea-detail-slot')?.getAttribute('data-panel-state')).toBe('open')
     const detail = host.querySelector('.idea-detail-panel')!
+    expect(detail.querySelector('.idea-panel-head .node-document-title')!.textContent)
+      .toBe('用可学习性信号动态分配 draft model 的蒸馏预算')
+    expect([...detail.querySelectorAll('.section-heading--rail')].map((heading) => heading.textContent))
+      .toEqual(['用可学习性信号动态分配 draft model 的蒸馏预算编辑', '内容', '关联项目', '来源'])
     expect(detail.textContent).toContain('只对 disagreement 高且可学习的 token 加大蒸馏权重。')
     const edit = [...detail.querySelectorAll<HTMLButtonElement>('button')]
       .find((item) => item.textContent === '编辑')!
     await act(async () => { edit.click() })
     expect(detail.querySelector('.idea-detail-editor')).not.toBeNull()
     expect(document.querySelector('.idea-dialog')).toBeNull()
-    const headButtons = () => [...detail.querySelectorAll<HTMLButtonElement>('.idea-detail-head .btn')]
+    const headButtons = () => [...detail.querySelectorAll<HTMLButtonElement>('.idea-panel-head .btn')]
       .map((item) => item.textContent)
     expect(headButtons()).toEqual(['取消', '保存'])
     expect(detail.querySelector('.idea-detail-editor button')).toBeNull()
@@ -136,7 +168,7 @@ describe('Ideas', () => {
     expect(detail.querySelector('.idea-detail-editor')).toBeNull()
     expect(api.update).not.toHaveBeenCalled()
     await act(async () => {
-      [...detail.querySelectorAll<HTMLButtonElement>('.idea-detail-head .btn')].find((item) => item.textContent === '编辑')!.click()
+      [...detail.querySelectorAll<HTMLButtonElement>('.idea-panel-head .btn')].find((item) => item.textContent === '编辑')!.click()
     })
     await act(async () => {
       detail.querySelector('.idea-detail-editor input')!
@@ -149,7 +181,7 @@ describe('Ideas', () => {
 
     expect(detail.querySelector('select')).toBeNull()
     await act(async () => {
-      detail.querySelector('.idea-detail-section .choice-picker')!
+      detail.querySelector('.idea-link-picker')!
         .dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
     })
     const none = [...document.querySelectorAll<HTMLElement>('.choice-picker-menu [role="menuitemradio"]')]

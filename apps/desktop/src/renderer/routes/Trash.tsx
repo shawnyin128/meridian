@@ -4,12 +4,13 @@ import { TRASH_RETENTION_DAYS } from '../../shared/vocabulary.js'
 import { trash } from '../ipc.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useToast, useToday, useVaultRevision } from '../shell/AppShell.js'
-import { Icon } from '../components/icons.js'
+import { Icon, IconRestore, IconTrash } from '../components/icons.js'
+import { IconButton } from '../components/IconButton.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
-import { StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { TitleNote } from '../components/TitleNote.js'
 import {
   PageBody, PageError, PageFooter, PageHeader, PageShell, PageTitle, SectionHeading,
@@ -113,20 +114,23 @@ export function Trash() {
                 {/* The demo only places the clear button on the title of the first group */}
                 {i === 0 ? <ClearButton count={entries.length} onClear={clear} /> : null}
               </SectionHeading>
-              <StructuredList className="tgroup">
+              <StructuredList variant="embedded" maxVisibleRows="all" className="tgroup">
                 {g.items.map((entry) => (
                   <StructuredRow className="trow" key={entry.id}>
                     <span className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</span>
                     <span className="tm2">{m.trash.autoClear(daysLeft(entry.deletedAt, today))}</span>
-                    <button
-                      className="btn ghost sm" disabled={!entry.restorable}
-                      onClick={() => restore(entry)}
-                    >{m.common.restore}</button>
-                    <ConfirmDialog
-                      trigger={<button className="btn danger sm">{m.common.deletePermanently}</button>}
-                      title={m.trash.confirmPurge(plainOf(entry))} description={m.trash.confirmPurgeDescription}
-                      confirmLabel={m.trash.confirmPurgeLabel} onConfirm={() => purge(entry.id)}
-                    />
+                    <RowActions>
+                      <IconButton
+                        label={m.common.restore} size="nested" disabled={!entry.restorable} onClick={() => restore(entry)}
+                      ><IconRestore /></IconButton>
+                      <ConfirmDialog
+                        trigger={(
+                          <IconButton label={m.common.deletePermanently} size="nested" tone="danger"><IconTrash /></IconButton>
+                        )}
+                        title={m.trash.confirmPurge(plainOf(entry))} description={m.trash.confirmPurgeDescription}
+                        confirmLabel={m.trash.confirmPurgeLabel} onConfirm={() => purge(entry.id)}
+                      />
+                    </RowActions>
                   </StructuredRow>
                 ))}
               </StructuredList>

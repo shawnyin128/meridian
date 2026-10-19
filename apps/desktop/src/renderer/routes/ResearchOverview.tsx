@@ -7,7 +7,9 @@ import {
 } from '../../shared/project-signals.js'
 import { project as projectApi } from '../ipc.js'
 import { ACTIVE_PROJECT, FINISHED_PROJECT, SHELVED_PROJECT } from '../../shared/vocabulary.js'
-import { useBanner, useJump, useToast, useToday, useVaultRevision } from '../shell/AppShell.js'
+import {
+  useBanner, useJump, useToast, useToday, useVaultRevision, type JumpAnchor,
+} from '../shell/AppShell.js'
 import { Icon } from '../components/icons.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { AgentLabel } from '../components/SourceLabel.js'
@@ -111,9 +113,12 @@ function OverviewRow({ when, kind, main, meta, project, projectId, variant, onOp
   )
 }
 
-/** Needs a decision: all projects' signals, merged and sorted, each with its next action at the right. */
+/**
+ * Needs a decision: all projects' signals, merged and sorted, each with its next action at the right.
+ * A row opens its project, at the task or milestone the signal is about.
+ */
 function DecisionQueue({ rows, onOpen }: {
-  rows: ProjectOverview[]; onOpen: (projectId: string) => void
+  rows: ProjectOverview[]; onOpen: (projectId: string, anchor: JumpAnchor | undefined) => void
 }) {
   const today = useToday()
   const m = useMessages()
@@ -140,7 +145,8 @@ function DecisionQueue({ rows, onOpen }: {
             meta={<span className="ovdecision-action">{x.action} →</span>}
             project={x.name}
             projectId={x.projectId}
-            onOpen={() => onOpen(x.projectId)}
+            onOpen={() => onOpen(x.projectId, x.task !== undefined ? { task: x.task }
+              : x.milestone !== undefined ? { milestone: x.milestone } : undefined)}
           />
         ))}
       </OverviewList>
@@ -398,6 +404,9 @@ export function ResearchOverview() {
 
   const openProject = useCallback((id: string) => jumpTo('project', id), [jumpTo])
   const openTask = useCallback((id: string, task: string) => jumpTo('project', id, { task }), [jumpTo])
+  const openDecision = useCallback((id: string, anchor: JumpAnchor | undefined) => (
+    anchor === undefined ? jumpTo('project', id) : jumpTo('project', id, anchor)
+  ), [jumpTo])
 
   const moveTask = useCallback((
     projectId: string, taskId: string, start: string, end: string, days: number,
@@ -467,7 +476,7 @@ export function ResearchOverview() {
             />
             <SectionHeading>{m.research.overview.statsHeading}</SectionHeading>
             <Stats rows={rows} />
-            <DecisionQueue rows={rows} onOpen={openProject} />
+            <DecisionQueue rows={rows} onOpen={openDecision} />
             <ProjectProgress rows={rows} onOpen={openProject} />
             <div className="ovcols">
               <div><Recent rows={rows} onOpen={openProject} /></div>

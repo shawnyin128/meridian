@@ -63,9 +63,58 @@ describe('ProjectPlan', () => {
     expect(output).not.toContain('完成首轮校准')
   })
 
-  it('任务行可以拖拽排序', () => {
-    const output = renderPlan('task')
-    expect(output).toContain('data-row="task-1" draggable="true"')
+  it('任务行和里程碑行的删除是行尾操作槽里的图标钮，悬停时标红', () => {
+    const host = document.createElement('div')
+    host.innerHTML = renderPlan('task')
+    const slot = (row: Element) => [...row.querySelectorAll('.row-actions button')].map((item) => [
+      item.getAttribute('aria-label'), item.textContent, item.classList.contains('icbtn'), item.classList.contains('danger'),
+    ])
+    expect(slot(host.querySelector('.task-row')!)).toEqual([['删除任务：校准批次', '', true, true]])
+    host.innerHTML = renderPlan('ms')
+    expect(slot(host.querySelector('.milestone-row')!)).toEqual([['删除里程碑：完成首轮校准', '', true, true]])
+  })
+
+  it('任务行整行就是拖拽把手，在窄的计划列表里不另占一列', () => {
+    const host = document.createElement('div')
+    host.innerHTML = renderPlan('task')
+    const row = host.querySelector('[data-row="task-1"]')!
+    expect(row.getAttribute('draggable')).toBe('true')
+    expect(row.getAttribute('data-reorder-item')).toBe('task-1')
+    expect(row.querySelector('.drag-handle')).toBeNull()
+  })
+
+  it('Alt+↓ 在任务行里把任务往下挪一格，已归档的任务不参与', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    const host = document.createElement('div')
+    document.body.append(host)
+    const onReorderTasks = vi.fn()
+    const root = createRoot(host)
+    act(() => root.render(
+      <MessagesProvider>
+        <ProjectPlan
+          project={{ tasks: [task, rangeTask, doneTask], milestones: [] }} tab="task" today="2026-09-16"
+          creating={null} flashId={null} selectedTaskId={null}
+          listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
+          onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
+          onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
+          onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={onReorderTasks} onOpenTask={vi.fn()}
+          onUpdateMilestone={vi.fn()} onDeleteMilestone={vi.fn()} onHoverMilestone={vi.fn()}
+        />
+      </MessagesProvider>,
+    ))
+    const altDown = (id: string) => act(() => {
+      host.querySelector(`[data-row="${id}"] .plan-open`)!
+        .dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true, bubbles: true }))
+    })
+    altDown('task-1')
+    expect(onReorderTasks).toHaveBeenCalledWith(['task-2', 'task-1', 'task-3'])
+    onReorderTasks.mockClear()
+    altDown('task-2')
+    expect(onReorderTasks).not.toHaveBeenCalled()
+    act(() => root.unmount())
+    host.remove()
+    vi.unstubAllGlobals()
   })
 
   it('单日和跨天任务的日期栏共用同一个网格列,不再包在同一个容器里', () => {
@@ -106,9 +155,11 @@ describe('ProjectPlan', () => {
   })
 
   it('归档任务不参与拖拽排序', () => {
-    const output = renderPlan('task', { tasks: [task, doneTask], flashId: doneTask.id })
-    expect(output).toContain('data-row="task-1" draggable="true"')
-    expect(output).not.toContain('data-row="task-3" draggable="true"')
+    const host = document.createElement('div')
+    host.innerHTML = renderPlan('task', { tasks: [task, doneTask], flashId: doneTask.id })
+    expect(host.querySelector('[data-row="task-1"]')!.getAttribute('draggable')).toBe('true')
+    expect(host.querySelector('[data-row="task-3"]')!.hasAttribute('draggable')).toBe(false)
+    expect(host.querySelector('[data-row="task-3"]')!.hasAttribute('data-reorder-item')).toBe(false)
   })
 
   it('已完成的里程碑默认折叠进已归档分组,展开后可见', () => {

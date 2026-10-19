@@ -98,6 +98,32 @@ describe('项目列表的卡片', () => {
 })
 
 describe('Project list', () => {
+  it('opens an ongoing project from the button that holds its name; the card itself is no button', async () => {
+    api.projects = [summary({ id: 'moe', name: 'MoE 路由分析', status: '进行中', priority: 'p2', topic: '混合专家' })]
+    await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
+    const card = host.querySelector<HTMLElement>('.research-object-card[data-proj="moe"]')!
+    expect(card.getAttribute('role')).toBeNull()
+    const open = card.querySelector<HTMLElement>('.research-object-card-open')!
+    expect(open.tagName).toBe('BUTTON')
+    expect(open.textContent).toContain('MoE 路由分析')
+    act(() => open.click())
+    expect(host.querySelector('[data-open="moe"]')).not.toBeNull()
+  })
+
+  it('搁置和已完成的项目是嵌入列表里的结构行，主题跟在名字和状态后面，和卡片的身份顺序一样', async () => {
+    api.projects = [
+      summary({ id: 'draft', name: 'draft 效率', status: '搁置', priority: 'p1', topic: '推理', focus: '等算力' }),
+      summary({ id: 'flash', name: 'FlashAttention 复现', status: '搁置', priority: 'p2', topic: '注意力', focus: '等 H100' }),
+    ]
+    await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
+    const row = host.querySelector<HTMLElement>('[data-proj="draft"]')!
+    expect(row.classList.contains('structured-row')).toBe(true)
+    expect(row.parentElement!.className).toBe('structured-list structured-list--embedded')
+    const identity = [...row.querySelector('.project-identity')!.children].map((part) => part.textContent)
+    expect(identity).toEqual(['draft 效率', '搁置', '推理'])
+    expect(row.querySelector('.tp')).toBeNull()
+  })
+
   it('opens a shelved project from the button that holds its name', async () => {
     api.projects = [summary({
       id: 'draft', name: 'draft 效率', status: '搁置', priority: 'p1', topic: '推理', focus: '等算力',
@@ -108,5 +134,51 @@ describe('Project list', () => {
     expect(open.textContent).toContain('draft 效率')
     act(() => open.click())
     expect(host.querySelector('[data-open="draft"]')).not.toBeNull()
+  })
+})
+
+describe('项目的排序', () => {
+  const ongoing = [
+    summary({ id: 'a', name: '甲', status: '进行中' }),
+    summary({ id: 'b', name: '乙', status: '进行中' }),
+    summary({ id: 'c', name: '丙', status: '搁置', focus: '等算力' }),
+  ]
+  const mount = async () => {
+    api.projects = ongoing
+    await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
+  }
+  const reorder = async () => vi.mocked((await import('../ipc.js')).project.reorder)
+
+  it('卡片和搁置的行从操作槽里的把手拖，卡片和行本身不能拖，里面的字可以选', async () => {
+    await mount()
+    for (const id of ['a', 'c']) {
+      const item = host.querySelector(`[data-proj="${id}"]`)!
+      expect(item.hasAttribute('draggable'), id).toBe(false)
+      expect(item.getAttribute('data-reorder-item'), id).toBe(id)
+      expect(item.querySelector('.row-actions .drag-handle')!.getAttribute('draggable'), id).toBe('true')
+    }
+  })
+
+  it('「更多」菜单里有上移和下移，到了头那一项不能点；下移把项目往下挪一格', async () => {
+    await mount()
+    ;(await reorder()).mockClear()
+    const dots = host.querySelector<HTMLElement>('[data-proj="a"] .dots')!
+    await act(async () => { dots.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+    const items = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
+    expect(items.map((item) => [item.textContent, item.hasAttribute('data-disabled')]).slice(0, 3))
+      .toEqual([['重命名', false], ['上移', true], ['下移', false]])
+    await act(async () => { items[2]!.click() })
+    expect(await reorder()).toHaveBeenCalledWith(['b', 'a', 'c'])
+  })
+
+  it('Alt+↓ 在卡片里把项目往下挪一格，只在同一状态里挪', async () => {
+    await mount()
+    ;(await reorder()).mockClear()
+    const open = (id: string) => host.querySelector<HTMLElement>(`[data-proj="${id}"] button`)!
+    await act(async () => { open('a').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true, bubbles: true })) })
+    expect(await reorder()).toHaveBeenCalledWith(['b', 'a', 'c'])
+    ;(await reorder()).mockClear()
+    await act(async () => { open('b').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true, bubbles: true })) })
+    expect(await reorder()).not.toHaveBeenCalled()
   })
 })

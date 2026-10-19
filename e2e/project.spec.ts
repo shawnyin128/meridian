@@ -98,8 +98,8 @@ test('项目反向展示关联想法，点击后在项目右栏就地打开详�
   await row.click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', 'draft 效率'])
   await expect(page.locator('.node-document-pane')).toContainText(idea!.title)
-  await expect(page.locator('.project-idea-detail-body')).not.toBeEmpty()
-  const openIdea = page.locator('.project-idea-detail-meta > .project-idea-open-idea')
+  await expect(page.locator('.idea-panel-body')).not.toBeEmpty()
+  const openIdea = page.locator('.idea-panel-head .project-idea-open-idea')
   await expect(openIdea).toHaveText('跳转到想法')
   await expect(page.getByRole('button', { name: '打开来源对话' })).toHaveCount(0)
   await expect(row).toHaveClass(/selected/)
@@ -158,7 +158,7 @@ test('想法在科研图中动态标出关联节点，节点详情反向展示�
   const linkedIdea = side.locator(`.node-idea-row[data-idea="${idea!.id}"]`)
   await expect(linkedIdea).toContainText(idea!.title)
   await linkedIdea.click()
-  await expect(side.locator('.project-idea-detail-body')).toBeVisible()
+  await expect(side.locator('.idea-panel-body')).toBeVisible()
 })
 
 test('节点详情自己滚动;滚到底后滚轮接着滚整页', async ({ win }) => {

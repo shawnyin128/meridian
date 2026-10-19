@@ -19,13 +19,12 @@ import { AddAction } from '../components/AddAction.js'
 import { MenuItem } from '../components/ActionMenu.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { DetailPanel } from '../components/DetailPanel.js'
-import { PanelClose } from '../components/PanelClose.js'
 import { ChoicePicker, DateButton, DotsMenu, PriorityPicker } from '../components/FieldPickers.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
-import { StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { TitleNote } from '../components/TitleNote.js'
 import {
-  ProjectEventRow, ProjectSignalDate, ProjectSignalKind,
+  ProjectAttention, ProjectEventRow,
 } from '../components/project/ProjectSignals.js'
 import {
   ProjectBlockerView, ProjectNextActionView,
@@ -42,6 +41,7 @@ import { nodeMode, ResearchGraph, ResearchNodePanel } from '../components/projec
 import {
   IdeaGraphDialog, type IdeaGraphDialogMode,
 } from '../components/ideas/IdeaGraphDialog.js'
+import { IdeaPanel, ideaSourceLabel } from '../components/ideas/IdeaPanel.js'
 import { ProjectPlan, ProjectTaskPanel } from '../components/project/ProjectPlan.js'
 import type { PlanCreating, PlanTab } from '../components/project/ProjectPlan.js'
 import { BackButton } from '../components/BackButton.js'
@@ -100,29 +100,13 @@ export function ProjectIdeaPanel({
   onOpenNode: (nodeId: string) => void
   onUnlinkNode: () => void
 }) {
-  const fmt = useFormat()
   const m = useMessages()
-  const source = idea.source.paperTitle === undefined
-    ? plainTitle(idea.source.chatTitle)
-    : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
   const linkedNode = graph.nodes.find((node) => node.id === idea.node)
   return (
-    <>
-      <SectionHeading
-        variant="rail" className="node-document-head"
-        actions={<PanelClose onClose={onClose} />}
-      ><span className="node-document-title">{idea.title}</span>
-      </SectionHeading>
-      <div className="project-idea-detail-meta">
-        <Tag tone="accent">{m.project.idea.kind}</Tag>
-        {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
-        <button className="btn sm project-idea-open-idea" onClick={onOpenIdea}>{m.project.idea.openIdea}</button>
-      </div>
-      <SectionHeading variant="rail">{m.project.sections.content}</SectionHeading>
-      <p className="project-idea-detail-body">{idea.body}</p>
-      <SectionHeading variant="rail">{m.project.sections.source}</SectionHeading>
-      <p className="project-idea-detail-source">{source}</p>
-      <div className="project-idea-detail-updated">{m.common.updatedOn(fmt.date(idea.updated))}</div>
+    <IdeaPanel
+      idea={idea} onClose={onClose}
+      actions={<button className="btn sm project-idea-open-idea" onClick={onOpenIdea}>{m.project.idea.openIdea}</button>}
+    >
       <SectionHeading variant="rail">{m.project.sections.graph}</SectionHeading>
       {idea.node !== undefined && linkedNode !== undefined
         ? (
@@ -149,7 +133,7 @@ export function ProjectIdeaPanel({
             </button>
           </div>
         )}
-    </>
+    </IdeaPanel>
   )
 }
 
@@ -166,7 +150,8 @@ export function ProjectIdeaPanel({
  * `onRecord` must keep the same reference too.
  */
 export function ProjectDetail({
-  projectId, onBack, onReturn, tab, onTab, record, onRecord, arrivalTask = null, arrivalConclusion = null, onArrived,
+  projectId, onBack, onReturn, tab, onTab, record, onRecord, arrivalTask = null, arrivalMilestone = null,
+  arrivalConclusion = null, onArrived,
 }: {
   projectId: string
   onBack: () => void
@@ -178,6 +163,8 @@ export function ProjectDetail({
   onRecord: (record: RecordTab) => void
   /** A task to locate once the project has loaded, as when the overview timeline opens it. */
   arrivalTask?: string | null
+  /** A milestone to locate once the project has loaded, as when an overview decision opens it. */
+  arrivalMilestone?: string | null
   /** A conclusion to open once the project has loaded, as when the Wiki review queue asks to verify it. */
   arrivalConclusion?: string | null
   onArrived?: () => void
@@ -445,6 +432,12 @@ export function ProjectDetail({
   }, [arrivalTask, project, projectId, locateTask, onArrived])
 
   useEffect(() => {
+    if (arrivalMilestone === null || project?.id !== projectId) return
+    locatePlanRow('ms', arrivalMilestone)
+    onArrived?.()
+  }, [arrivalMilestone, project, projectId, locatePlanRow, onArrived])
+
+  useEffect(() => {
     if (arrivalConclusion === null || project?.id !== projectId) return
     setSelectedNode(null)
     setSelectedIdeaId(null)
@@ -707,18 +700,10 @@ export function ProjectDetail({
           ? (
             <>
               <SectionHeading>{m.project.signals.heading(attn.length)}</SectionHeading>
-              <StructuredList className="attn" variant="embedded">
-                {attn.map((a) => (
-                  <StructuredRow
-                    className="attnrow project-signal-columns" key={a.id} data-wk={a.page}
-                    {...(a.page === undefined ? {} : { onActivate: () => openWikiPage(a.page!) })}
-                  >
-                    <ProjectSignalKind tone={a.tone}>{a.kind}</ProjectSignalKind>
-                    <ProjectSignalDate date={a.date} />
-                    <span className="attn-text">{a.reason}</span>
-                  </StructuredRow>
-                ))}
-              </StructuredList>
+              <ProjectAttention
+                items={attn} onOpenPage={openWikiPage} onLocateTask={locateTask}
+                onLocateMilestone={(milestoneId) => locatePlanRow('ms', milestoneId)}
+              />
             </>
           )
           : null}
@@ -845,9 +830,7 @@ export function ProjectDetail({
               : (
                 <StructuredList className="project-ideas" variant="embedded">
                   {linkedIdeas.map((idea) => {
-                    const source = idea.source.paperTitle === undefined
-                      ? plainTitle(idea.source.chatTitle)
-                      : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
+                    const source = ideaSourceLabel(idea)
                     const ideaNode = displayedGraph.nodes.find((node) => node.id === idea.node)
                     return (
                       <StructuredRow
@@ -1060,24 +1043,26 @@ export function ProjectDetail({
                         </button>
                       )
                       : (
-                        <div className="pv workspace-field" data-dots-row="" title={project.workspace.issue ?? project.workspace.root}>
+                        <div className="pv workspace-field" data-row-actions="" title={project.workspace.issue ?? project.workspace.root}>
                           <WorkspaceRoot
                             state={project.workspace.state} name={workspaceName ?? project.workspace.root}
                             onOpen={openWorkspace}
                           />
-                          <DotsMenu>
-                            <MenuItem onSelect={refreshWorkspace}>{m.project.identity.refreshWorkspace}</MenuItem>
-                            <MenuItem onSelect={openWorkspace}>
-                              {m.project.identity.changeWorkspace}
-                            </MenuItem>
-                            <MenuItem
-                              className="mi danger"
-                              onSelect={() => applyWrite(
-                                projectApi.bindWorkspace(projectId, null),
-                                m.project.identity.workspaceDisconnected, toast,
-                              )}
-                            >{m.project.identity.disconnectWorkspace}</MenuItem>
-                          </DotsMenu>
+                          <RowActions>
+                            <DotsMenu>
+                              <MenuItem onSelect={refreshWorkspace}>{m.project.identity.refreshWorkspace}</MenuItem>
+                              <MenuItem onSelect={openWorkspace}>
+                                {m.project.identity.changeWorkspace}
+                              </MenuItem>
+                              <MenuItem
+                                className="mi danger"
+                                onSelect={() => applyWrite(
+                                  projectApi.bindWorkspace(projectId, null),
+                                  m.project.identity.workspaceDisconnected, toast,
+                                )}
+                              >{m.project.identity.disconnectWorkspace}</MenuItem>
+                            </DotsMenu>
+                          </RowActions>
                         </div>
                       )}
                   </div>

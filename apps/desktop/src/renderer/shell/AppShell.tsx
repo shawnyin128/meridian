@@ -71,6 +71,8 @@ export type JumpAnchor = {
   panel?: 'highlights' | 'notes'
   /** Project: the task to locate in the plan. */
   task?: string
+  /** Project: the milestone to locate in the plan. */
+  milestone?: string
   /** Project: the conclusion to open in the Conclusions view, by its id. */
   conclusion?: string
 }

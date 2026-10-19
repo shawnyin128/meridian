@@ -35,6 +35,8 @@ import { plainTitle } from '../components/paper/paper-text.js'
 import { ReviewEntry, ReviewQueue } from '../components/wiki/ReviewQueue.js'
 import { WikiClaims } from '../components/wiki/WikiClaims.js'
 import { Tag, TagButton } from '../components/Tag.js'
+import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
+import { RowActions } from '../components/StructuredList.js'
 import './shell.css'
 import './Wiki.css'
 
@@ -64,10 +66,10 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
   const fmt = useFormat()
   const m = useMessages()
   return (
-    <div className="wkcard" data-wk={card.id} title={card.summary} onClick={onOpen}>
+    <ResearchObjectCard variant="grid" className="wkcard" data-wk={card.id} title={card.summary} onActivate={onOpen}>
       <div className="wt">
         <Tag tone="wiki" className="wkind">{card.kindLabel}</Tag>
-        <button type="button" className="tt">{card.title}</button>
+        <CardOpen className="tt">{card.title}</CardOpen>
         {card.parentCount > 1 ? <Tag className="wkind">{m.wiki.aggregation.parentCount(card.parentCount)}</Tag> : null}
         <span className="sp" />
       </div>
@@ -80,12 +82,14 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
       {onRemove === undefined
         ? null
         : (
-          <IconButton
-            label={m.wiki.removeFromPage} size="inline" className="rx" aria-disabled={pending}
-            onClick={(e) => { e.stopPropagation(); onRemove() }}
-          ><IconCross /></IconButton>
+          <RowActions>
+            <IconButton
+              label={m.wiki.removeFromPage} size="inline" className="rx" aria-disabled={pending}
+              onClick={(e) => { e.stopPropagation(); onRemove() }}
+            ><IconCross /></IconButton>
+          </RowActions>
         )}
-    </div>
+    </ResearchObjectCard>
   )
 }
 
@@ -95,14 +99,17 @@ function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
   const line = [`${paper.year ?? ''} ${paper.venue}`.trim(), paper.topics.join(' / ')]
     .filter((part) => part !== '').join(' · ')
   return (
-    <div className="wkcard" data-wk={`${PAPER_PAGE}${paper.id}`} title={plainTitle(paper.title)} onClick={onOpen}>
+    <ResearchObjectCard
+      variant="grid" className="wkcard" data-wk={`${PAPER_PAGE}${paper.id}`} title={plainTitle(paper.title)}
+      onActivate={onOpen}
+    >
       <div className="wt">
         <Tag tone="paper" className="wkind">{m.wiki.paperKind}</Tag>
-        <button type="button" className="tt"><PaperText text={paper.title} /></button><span className="sp" />
+        <CardOpen className="tt"><PaperText text={paper.title} /></CardOpen><span className="sp" />
       </div>
       <div className="wm">{line}</div>
       <div className="wf">{m.wiki.paperCardFooter(paper.noteCount, paper.conclusionCount)}</div>
-    </div>
+    </ResearchObjectCard>
   )
 }
 
@@ -124,8 +131,8 @@ function Cell({ cell, onTip }: { cell: WikiCell; onTip: (tip: Tip | null) => voi
 
 /**
  * The paper comparison: rows are member papers, columns come from the aggregation's columns, empty
- * cells show a dash, and derived columns show chips. An inner node with no columns and no rows takes
- * no papers directly.
+ * cells show a dash, and derived columns show chips. Every header cell has a body cell under it in
+ * every row. An inner node with no columns and no rows takes no papers directly.
  */
 function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
   agg: WikiAggregation
@@ -166,7 +173,7 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
         </thead>
         <tbody>
           {agg.rows.map((row) => (
-            <tr key={row.paper.id}>
+            <tr key={row.paper.id} data-row-actions="">
               <td className="rh">
                 <button
                   type="button" className="wl" data-wk={row.paper.id} onClick={() => onOpen(row.paper.id)}
@@ -199,12 +206,15 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
                 ? null
                 : (
                   <td className="rx">
-                    <IconButton
-                      label={m.wiki.removeFromPage} size="inline" aria-disabled={pending}
-                      onClick={() => onRemove(row.paper.id)}
-                    ><IconCross /></IconButton>
+                    <RowActions>
+                      <IconButton
+                        label={m.wiki.removeFromPage} size="inline" aria-disabled={pending}
+                        onClick={() => onRemove(row.paper.id)}
+                      ><IconCross /></IconButton>
+                    </RowActions>
                   </td>
                 )}
+              {head === undefined ? null : <td className="td-add" />}
             </tr>
           ))}
           {adding === undefined
@@ -216,6 +226,7 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
                 {agg.derivedColumns.map((d) => <td className="na dv" key={d.key}>—</td>)}
                 {head === undefined || head.newColumn === null ? null : <td />}
                 {onRemove === undefined ? null : <td className="rx" />}
+                {head === undefined ? null : <td className="td-add" />}
               </tr>
             )}
         </tbody>
@@ -349,7 +360,7 @@ export function Wiki() {
   const [pending, setPending] = useState(false)
   const [adding, setAdding] = useState<'child' | 'paper' | 'columns' | null>(null)
   const [newCol, setNewCol] = useState(false)
-  const addRow = useRef<HTMLDivElement>(null)
+  const addRow = useRef<HTMLElement>(null)
   const newPaperRow = useRef<HTMLTableRowElement>(null)
   const newColCell = useRef<HTMLTableCellElement>(null)
   const childBtn = useRef<HTMLButtonElement>(null)
@@ -638,7 +649,7 @@ export function Wiki() {
                       ))}
                       {adding === 'child'
                         ? (
-                          <div className="wkcard newcard" ref={addRow}>
+                          <ResearchObjectCard variant="grid" className="wkcard newcard" cardRef={addRow}>
                             <div className="wt">
                               <Tag tone="wiki" className="wkind">{shownAgg.kindLabel}</Tag>
                               <PickRow
@@ -649,7 +660,7 @@ export function Wiki() {
                               />
                             </div>
                             <div className="wf" />
-                          </div>
+                          </ResearchObjectCard>
                         )
                         : null}
                     </div>

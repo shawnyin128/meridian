@@ -4,7 +4,22 @@ import { editField, type Drafts, type EditDraft } from '../../hooks/useDrafts.js
 import { useMessages } from '../../messages/useMessages.js'
 import { FormTextarea } from '../FormControls.js'
 import { EmptyState } from '../EmptyState.js'
+import { IconButton } from '../IconButton.js'
+import { IconTrash } from '../icons.js'
+import { RowActions } from '../StructuredList.js'
 import { ReaderPanelHeader } from './ReaderPanelHeader.js'
+
+/** A note or highlight card's delete, in the row-actions slot at the end of the card's top line. */
+function ReadingDelete({ onDelete }: { onDelete: () => Promise<boolean> }) {
+  const m = useMessages()
+  return (
+    <RowActions>
+      <IconButton
+        label={m.common.delete} size="nested" tone="danger" className="reading-delete" onClick={() => { void onDelete() }}
+      ><IconTrash /></IconButton>
+    </RowActions>
+  )
+}
 
 function NoteCard({ note, edits, onSave, onDelete, onJump }: {
   note: PaperNote
@@ -18,11 +33,13 @@ function NoteCard({ note, edits, onSave, onDelete, onJump }: {
   const text = edit.text
   const changed = text.trim() !== note.text
   return (
-    <article className="reading-card">
-      <button className="reading-page" onClick={onJump}>{m.reader.page.at(note.page)}</button>
+    <article className="reading-card" data-row-actions="">
+      <div className="reading-card-head">
+        <button className="reading-page" onClick={onJump}>{m.reader.page.at(note.page)}</button>
+        <ReadingDelete onDelete={onDelete} />
+      </div>
       <FormTextarea aria-label={m.reader.notes.pageAria(note.page)} {...edit.fieldProps} />
       <div className="reading-actions">
-        <button className="btn ghost danger sm reading-delete" onClick={() => { void onDelete() }}>{m.common.delete}</button>
         <button
           className="btn pri sm" disabled={!changed || text.trim() === ''}
           onClick={() => { if (!edit.stale) void onSave(text.trim()).then((saved) => { if (saved) edit.drop() }) }}
@@ -46,8 +63,11 @@ function HighlightCard({ highlight, edits, onSave, onDelete, onJump, focus }: {
   const input = useRef<HTMLTextAreaElement>(null)
   useEffect(() => { if (focus) input.current?.focus() }, [focus])
   return (
-    <article className={`reading-card highlight-card ${highlight.color}`}>
-      <button className="reading-page" onClick={onJump}>{m.reader.highlights.jumpToPage(highlight.page)}</button>
+    <article className={`reading-card highlight-card ${highlight.color}`} data-row-actions="">
+      <div className="reading-card-head">
+        <button className="reading-page" onClick={onJump}>{m.reader.highlights.jumpToPage(highlight.page)}</button>
+        <ReadingDelete onDelete={onDelete} />
+      </div>
       <blockquote>{highlight.quote}</blockquote>
       <FormTextarea
         ref={input}
@@ -55,7 +75,6 @@ function HighlightCard({ highlight, edits, onSave, onDelete, onJump, focus }: {
         {...edit.fieldProps}
       />
       <div className="reading-actions">
-        <button className="btn ghost danger sm reading-delete" onClick={() => { void onDelete() }}>{m.common.delete}</button>
         <button
           className="btn pri sm" disabled={note === highlight.note}
           onClick={() => { if (!edit.stale) void onSave(note).then((saved) => { if (saved) edit.drop() }) }}

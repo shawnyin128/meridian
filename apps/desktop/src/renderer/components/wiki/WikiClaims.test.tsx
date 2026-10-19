@@ -129,7 +129,7 @@ describe('WikiClaims', () => {
   })
 
   it('整条结论是它那个 … 所属的行:悬停或聚焦结论的任何一处都露出 …', () => {
-    expect([...host.querySelectorAll('[data-claim]')].map((row) => [row.getAttribute('data-claim'), row.hasAttribute('data-dots-row')]))
+    expect([...host.querySelectorAll('[data-claim]')].map((row) => [row.getAttribute('data-claim'), row.hasAttribute('data-row-actions')]))
       .toEqual([['knee', true], ['plain', true]])
   })
 

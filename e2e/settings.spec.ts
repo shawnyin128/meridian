@@ -247,7 +247,7 @@ test('取消归档弹出的横幅盖在设置模态之上', async ({ app, win })
 
   await openSettings(app, win)
   await win.locator('.setdlg .srow[data-setcat="archived"]').click()
-  await win.locator(`.setdlg .wrow[data-chat="${target.id}"] .btn`, { hasText: '取消归档' }).click()
+  await win.locator(`.setdlg .wrow[data-chat="${target.id}"] .row-actions [aria-label="取消归档"]`).click()
   await win.locator('#banner.show').waitFor()
 
   const zIndex = await win.evaluate(() => ({

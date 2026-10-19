@@ -27,16 +27,12 @@
   .project-card-recent{grid-column:1/-1}
 }
 
-/* Shelved and completed projects: one row each */
-.prow{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--r-lg);cursor:pointer;font-size:var(--fs-base);transition:background var(--t-fast) var(--e-out)}
-.prow:hover,.prow:has(.dots[data-state="open"]){background:var(--hover)}
+/* Shelved and completed projects: one StructuredRow each */
+.prow{display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:var(--fs-base)}
 .prow-open{display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
-.prow[draggable]{cursor:grab}
 .prow.dragging{opacity:.4}
 .prow.drag-over-before{box-shadow:0 -2px 0 0 var(--accent)}
 .prow.drag-over-after{box-shadow:0 2px 0 0 var(--accent)}
-.prow .m{color:var(--ter);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.prow .tp{margin-left:auto;font-size:var(--fs-sm);color:var(--ter);flex-shrink:0}
+.prow .m{flex:1;color:var(--ter);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 
-/* .dots itself and its reveal rule are in components/FieldPickers.css */
-.projpanel .dots{margin-left:2px}
+.projpanel .row-actions{margin-left:2px}

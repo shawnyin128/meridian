@@ -98,15 +98,15 @@
 .sb-add{margin-left:auto}
 
 /* Row height is fixed: the appearance/disappearance of the badge must not cause any layout displacement */
-.srow{display:flex;align-items:center;gap:8px;height:30px;box-sizing:border-box;padding:0 8px;border-radius:var(--r-sm);font-size:var(--fs-base);cursor:pointer;color:var(--ink);transition:background var(--t-fast) var(--e-out)}
+.srow{display:flex;align-items:center;gap:8px;height:30px;box-sizing:border-box;padding:0 8px;border-radius:var(--r-sm);font-size:var(--fs-base);cursor:pointer;color:var(--ink);transition:background-color var(--t-fast) var(--e-out)}
 /*
- * A chat row keeps this background while its … menu is open, even once the pointer has left the row
- * for a menu item. :has() takes its argument's specificity, higher than .srow.on; :where() zeroes it,
- * so this rule does not override the selected row.
+ * A chat row keeps the hover while its … menu is open, even once the pointer has left the row for a
+ * menu item. The hover lies over the selected look of StructuredList.css as an image, so a selected
+ * row shows it too.
  */
-.srow:hover,.srow:where(:has(.dots[data-state="open"])){background:var(--hover)}
-.srow.on{background:var(--accent-soft);color:var(--ink)}
-.srow.on .ic{color:var(--accent)}
+.srow:hover,.srow:has(.row-actions [data-state="open"]){background-image:linear-gradient(var(--hover),var(--hover))}
+.srow.on{background-color:var(--selected);color:var(--on-selected)}
+.srow.on .ic{color:inherit}
 .update-row{display:flex;flex-shrink:0;align-items:center;gap:8px;margin-top:6px;padding:7px 8px;border-radius:var(--r-md);
   background:var(--accent-soft);color:var(--ink);font-size:var(--fs-sm)}
 .update-row .ic{display:grid;place-items:center;color:var(--accent)}

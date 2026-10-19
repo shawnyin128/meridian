@@ -9,27 +9,24 @@ import { FormInput, FormTextarea } from '../components/FormControls.js'
 import { ChoicePicker, DotsMenu } from '../components/FieldPickers.js'
 import { EditActions } from '../components/EditActions.js'
 import { EmptyState } from '../components/EmptyState.js'
-import { PanelClose } from '../components/PanelClose.js'
+import { IdeaPanel, ideaSourceLabel } from '../components/ideas/IdeaPanel.js'
 import { DetailPanel } from '../components/DetailPanel.js'
-import { ResearchObjectCard } from '../components/ResearchObjectCard.js'
+import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
+import { RowActions } from '../components/StructuredList.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
 import { useEscapeLayer, useJump, useScreenReentry, useVaultRevision } from '../shell/AppShell.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
-import { useDragReorder, type DragCardProps } from '../hooks/useDragReorder.js'
+import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
+import { DragHandle } from '../components/DragHandle.js'
 import { useFormat } from '../lib/format.js'
 import { commitsMultiline, composing } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import type { Catalog } from '../messages/catalog.js'
-import { plainTitle } from '../components/paper/paper-text.js'
 import { AgentLabel, SourceLabel } from '../components/SourceLabel.js'
 import { Tag } from '../components/Tag.js'
 import './Ideas.css'
-
-const sourceLabel = (idea: ResearchIdea) => idea.source.paperTitle === undefined
-  ? plainTitle(idea.source.chatTitle)
-  : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
 
 
 function linkedProjectLabel(idea: ResearchIdea, linked: ProjectSummary | undefined, m: Catalog): string {
@@ -41,9 +38,11 @@ function linkedProjectLabel(idea: ResearchIdea, linked: ProjectSummary | undefin
  * Idea cards share the project cards' row-end pattern: clicking the card opens its details, and
  * management actions sit in the "More" menu.
  */
-function IdeaMenu({ idea, linked, onArchive, onDelete }: {
+function IdeaMenu({ idea, linked, onMove, canMove, onArchive, onDelete }: {
   idea: ResearchIdea
   linked: ProjectSummary | undefined
+  onMove: (by: -1 | 1) => void
+  canMove: (by: -1 | 1) => boolean
   onArchive: () => void
   onDelete: () => void
 }) {
@@ -51,6 +50,9 @@ function IdeaMenu({ idea, linked, onArchive, onDelete }: {
   const locked = idea.archived && linked?.status === FINISHED_PROJECT
   return (
     <DotsMenu label={m.ideas.manage(idea.title)} stopRowActivation>
+      <MenuItem disabled={!canMove(-1)} onSelect={() => onMove(-1)}>{m.common.moveUp}</MenuItem>
+      <MenuItem disabled={!canMove(1)} onSelect={() => onMove(1)}>{m.common.moveDown}</MenuItem>
+      <MenuSeparator />
       <MenuItem
         disabled={locked}
         title={locked ? m.ideas.archiveLockedHint : undefined}
@@ -62,13 +64,13 @@ function IdeaMenu({ idea, linked, onArchive, onDelete }: {
   )
 }
 
-function IdeaCard({ idea, linked, selected, menu, onOpen, dragProps, dropClassName }: {
+function IdeaCard({ idea, linked, selected, menu, onOpen, reorder, dropClassName }: {
   idea: ResearchIdea
   linked: ProjectSummary | undefined
   selected: boolean
   menu: ReactNode
   onOpen: () => void
-  dragProps: DragCardProps
+  reorder: Reorderable
   dropClassName: string
 }) {
   const fmt = useFormat()
@@ -76,11 +78,11 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, dragProps, dropClassNa
   return (
     <ResearchObjectCard
       className={`idea-card${dropClassName ? ` ${dropClassName}` : ''}`} selected={selected} muted={idea.archived}
-      data-idea={idea.id} aria-label={m.ideas.view(idea.title)} onActivate={onOpen} {...dragProps}
+      data-idea={idea.id} onActivate={onOpen} {...reorder.item}
     >
       <div className="idea-card-content">
         <div className="idea-card-title-row">
-          <strong>{idea.title}</strong>
+          <CardOpen><strong>{idea.title}</strong></CardOpen>
           <Tag
             tone={linked !== undefined ? 'accent' : idea.project === undefined ? 'neutral' : 'bad'}
             className="idea-project-tag"
@@ -88,7 +90,7 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, dragProps, dropClassNa
         </div>
         <p className="idea-card-summary">{idea.body}</p>
         <div className="idea-card-meta">
-          <span className="idea-card-source" title={sourceLabel(idea)}>{m.project.idea.sourceTag(sourceLabel(idea))}</span>
+          <span className="idea-card-source" title={ideaSourceLabel(idea)}>{m.project.idea.sourceTag(ideaSourceLabel(idea))}</span>
           {idea.source.agent === true
             ? <AgentLabel className="idea-source-kind" />
             : (
@@ -99,7 +101,7 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, dragProps, dropClassNa
           <span className="idea-card-updated">{m.ideas.updated(fmt.date(idea.updated))}</span>
         </div>
       </div>
-      {menu}
+      <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
     </ResearchObjectCard>
   )
 }
@@ -114,7 +116,6 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
   onPromote: () => void
   onOpen: (screen: 'project' | 'chat', id: string) => void
 }) {
-  const fmt = useFormat()
   const m = useMessages()
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(idea.title)
@@ -156,52 +157,40 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
   }
 
   return (
-    <aside className="idea-detail-panel" aria-label={m.ideas.detailHeading}>
-      <header className="idea-detail-head">
-        <span>{m.ideas.detailHeading}</span>
-        <EditActions
-          editing={editing} saving={busy} canSave={title.trim() !== '' && body.trim() !== ''}
-          onEdit={startEditing} onCancel={cancelEditing} onSave={save}
-        />
-        <PanelClose onClose={onClose} />
-      </header>
-
-      {editing
-        ? (
-          <section className="idea-detail-editor">
-            <label>
-              <span>{m.ideas.editor.titleLabel}</span>
-              <FormInput
-                autoFocus value={title} maxLength={160}
-                onChange={(event) => setTitle(event.target.value)} onKeyDown={commitOrCancel(false)}
-              />
-            </label>
-            <label>
-              <span>{m.ideas.bodyLabel}</span>
-              <FormTextarea
-                value={body} maxLength={20_000}
-                onChange={(event) => setBody(event.target.value)} onKeyDown={commitOrCancel(true)}
-              />
-            </label>
-          </section>
-        )
-        : (
-          <>
-            <div className="idea-detail-title-row">
-              <h2>{idea.title}</h2>
-              {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
-            </div>
-            <section className="idea-detail-section">
-              <h3>{m.ideas.bodyLabel}</h3>
-              <p className="idea-detail-body">{idea.body}</p>
-            </section>
-          </>
+    <aside className="idea-detail-panel node-document-pane" aria-label={m.ideas.detailHeading}>
+      <IdeaPanel
+        idea={idea} onClose={onClose} onOpenSourceChat={(chatId) => onOpen('chat', chatId)}
+        actions={(
+          <EditActions
+            editing={editing} saving={busy} canSave={title.trim() !== '' && body.trim() !== ''}
+            onEdit={startEditing} onCancel={cancelEditing} onSave={save}
+          />
         )}
-
-      <section className="idea-detail-section">
-        <h3>{m.ideas.link.heading}</h3>
+        editor={editing
+          ? (
+            <section className="idea-detail-editor">
+              <label>
+                <span>{m.ideas.editor.titleLabel}</span>
+                <FormInput
+                  autoFocus value={title} maxLength={160}
+                  onChange={(event) => setTitle(event.target.value)} onKeyDown={commitOrCancel(false)}
+                />
+              </label>
+              <label>
+                <span>{m.ideas.bodyLabel}</span>
+                <FormTextarea
+                  value={body} maxLength={20_000}
+                  onChange={(event) => setBody(event.target.value)} onKeyDown={commitOrCancel(true)}
+                />
+              </label>
+            </section>
+          )
+          : undefined}
+      >
+        <SectionHeading variant="rail">{m.ideas.link.heading}</SectionHeading>
         <ChoicePicker
-          appearance="field" aria-label={m.ideas.link.selectAriaLabel(idea.title)} value={idea.project ?? ''}
+          appearance="field" className="idea-link-picker" aria-label={m.ideas.link.selectAriaLabel(idea.title)}
+          value={idea.project ?? ''}
           options={[
             '',
             ...(idea.project !== undefined && linked === undefined ? [idea.project] : []),
@@ -221,16 +210,7 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
               ? <span className="idea-missing-project">{m.ideas.link.originalUnavailable}</span>
               : <button className="btn sm" onClick={() => onOpen('project', linked.id)}>{m.ideas.promote.openProject}</button>}
         </div>
-      </section>
-
-      <section className="idea-detail-section idea-detail-source">
-        <h3>{m.project.sections.source}</h3>
-        <p>{sourceLabel(idea)}</p>
-        <div className="idea-detail-meta">{m.common.updatedOn(fmt.date(idea.updated))}</div>
-        {idea.source.chatId === undefined
-          ? null
-          : <button className="btn sm" onClick={() => onOpen('chat', idea.source.chatId!)}>{m.ideas.openSourceChat}</button>}
-      </section>
+      </IdeaPanel>
     </aside>
   )
 }
@@ -303,8 +283,14 @@ export function Ideas() {
       <IdeaCard
         idea={idea} linked={linked} selected={selectedId === idea.id} key={idea.id}
         onOpen={() => setSelectedId(idea.id)}
-        menu={<IdeaMenu idea={idea} linked={linked} onArchive={() => archive(idea)} onDelete={() => remove(idea)} />}
-        dragProps={reorder.cardProps(idea.id)} dropClassName={reorder.dropClass(idea.id)}
+        menu={(
+          <IdeaMenu
+            idea={idea} linked={linked} onArchive={() => archive(idea)} onDelete={() => remove(idea)}
+            onMove={(by) => reorder.move(idea.id, by)} canMove={(by) => reorder.canMove(idea.id, by)}
+          />
+        )}
+        reorder={{ item: reorder.itemProps(idea.id), handle: reorder.handleProps(idea.id) }}
+        dropClassName={reorder.dropClass(idea.id)}
       />
     )
   }

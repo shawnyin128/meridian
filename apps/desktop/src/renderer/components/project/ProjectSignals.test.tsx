@@ -5,7 +5,9 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
-import { EventText, ProjectEventRow, ProjectSignalDate, ProjectSignalKind } from './ProjectSignals.js'
+import {
+  EventText, ProjectAttention, ProjectEventRow, ProjectSignalDate, ProjectSignalKind,
+} from './ProjectSignals.js'
 
 describe('ProjectSignals', () => {
   beforeEach(() => { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh') })
@@ -30,6 +32,40 @@ describe('ProjectSignals', () => {
     const agent = renderToStaticMarkup(<MessagesProvider><EventText text="跑完基线" origin="agent" /></MessagesProvider>)
     expect(agent).toMatch(/跑完基线.*<span class="tag tag--label tag--neutral source-label"><span class="tag-text">agent<\/span><\/span><\/span>$/)
     expect(renderToStaticMarkup(<MessagesProvider><EventText text="我记的" /></MessagesProvider>)).not.toContain('source-label')
+  })
+})
+
+describe('ProjectAttention', () => {
+  it('任务和里程碑的提醒定位到它的条目，冲突打开它的页，其余的不能点', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    const handlers = { onOpenPage: vi.fn(), onLocateTask: vi.fn(), onLocateMilestone: vi.fn() }
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    act(() => root.render(
+      <MessagesProvider>
+        <ProjectAttention
+          items={[
+            { id: 'block', rank: 1, kind: '阻塞', tone: 'bad', reason: '等机器', action: '' },
+            { id: 'milestone-m1', milestone: 'm1', rank: 3, kind: '里程碑逾期', tone: 'bad', reason: '初稿', action: '', date: '2026-10-13' },
+            { id: 'overdue-tasks-2026-09-28', task: 't1', rank: 4, kind: '任务逾期', tone: 'bad', reason: '1 条任务已过计划时间', action: '', date: '2026-09-28' },
+            { id: 'conflict', page: 'topics/sd', rank: 0, kind: '冲突', tone: 'bad', reason: '1 处冲突', action: '' },
+          ]}
+          {...handlers}
+        />
+      </MessagesProvider>,
+    ))
+    const rows = [...host.querySelectorAll<HTMLElement>('.attnrow')]
+    expect(rows.map((row) => row.tagName)).toEqual(['DIV', 'BUTTON', 'BUTTON', 'BUTTON'])
+    act(() => rows[1]!.click())
+    act(() => rows[2]!.click())
+    act(() => rows[3]!.click())
+    expect(handlers.onLocateMilestone).toHaveBeenCalledWith('m1')
+    expect(handlers.onLocateTask).toHaveBeenCalledWith('t1')
+    expect(handlers.onOpenPage).toHaveBeenCalledWith('topics/sd')
+    act(() => root.unmount())
+    host.remove()
   })
 })
 

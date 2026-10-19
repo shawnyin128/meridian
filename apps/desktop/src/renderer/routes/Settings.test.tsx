@@ -221,6 +221,19 @@ describe('Settings', () => {
     expect(api.updateDeliverySettings).toHaveBeenCalledExactlyOnceWith({ maxItemsPerRun: 12 })
   })
 
+  it('归档的对话那一行的打开和取消归档是行尾操作槽里的图标钮', async () => {
+    const { chat } = await import('../ipc.js')
+    vi.mocked(chat.list).mockResolvedValueOnce([{ id: 'chat-1', title: '树宽讨论', archived: true, messageCount: 2 }])
+    api.requestedCategory = 'archived'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const row = document.querySelector('.setdlg [data-chat="chat-1"]')!
+    const slot = (row: Element) => [...row.querySelectorAll('.row-actions button')].map((item) => [
+      item.getAttribute('aria-label'), item.textContent, item.classList.contains('icbtn'), item.classList.contains('danger'),
+    ])
+    expect(row.hasAttribute('data-row-actions')).toBe(true)
+    expect(slot(row)).toEqual([['打开', '', true, false], ['取消归档', '', true, false]])
+  })
+
   it('每个设置分类都是按钮，键盘能聚焦和打开', async () => {
     api.requestedCategory = null
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })

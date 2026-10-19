@@ -1,10 +1,14 @@
 import type { ReactNode } from 'react'
 import { useMessages } from '../../messages/useMessages.js'
+import { RowActions } from '../StructuredList.js'
 import { PaperAbstract } from './PaperAbstract.js'
 import { PaperText } from './PaperText.js'
 import './PaperCard.css'
 
-/** The paper card shared by Inbox and Read Later; pages only pass actions, notices and optional details. */
+/**
+ * The paper card shared by Inbox and Read Later; pages only pass actions, notices and optional
+ * details. `actions` are icon buttons; they go in the card's row-actions slot at the end of the title.
+ */
 export function PaperCard({
   paperId, watchId, title, actions, notices, metadata, abstract, recommendation, leaving = false,
 }: {
@@ -21,12 +25,12 @@ export function PaperCard({
   const m = useMessages()
   return (
     <article
-      className={`paper-card pcard${leaving ? ' is-leaving gone' : ''}`}
+      className={`paper-card pcard${leaving ? ' is-leaving gone' : ''}`} data-row-actions=""
       data-pid={paperId} {...(watchId === undefined ? {} : { 'data-w': watchId })}
     >
       <div className="paper-card-heading ph">
         <h3><PaperText text={title} /></h3>
-        <div className="paper-card-actions">{actions}</div>
+        <RowActions className="paper-card-actions">{actions}</RowActions>
       </div>
       {notices}
       <div className="paper-card-metadata pm">{metadata}</div>

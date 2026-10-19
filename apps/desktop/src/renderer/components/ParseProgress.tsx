@@ -7,6 +7,7 @@ import { useJobs } from '../shell/useJobs.js'
 import { IconButton } from './IconButton.js'
 import { IconCross } from './icons.js'
 import { ProgressFill } from './ProgressFill.js'
+import { Card } from './Card.js'
 import './ParseProgress.css'
 
 const PROGRESS: Record<MetadataJob['step'], number> = {
@@ -45,16 +46,16 @@ export function ParseProgress({ onParsed }: { onParsed: (job: MetadataJob) => vo
   return createPortal(
     <aside className="parse-float" aria-label={m.papers.parse.statusAria}>
       {active.length > 0 ? (
-        <div className="upcard compact progress-host" role="status">
+        <Card floating className="upcard compact progress-host" role="status">
           <ProgressFill percent={progress} label={m.papers.parse.progressAria} />
           <div className="upt">
             <span>{m.papers.parse.working}</span>
             <span className="upcount">{m.papers.parse.count(active.length)}</span>
           </div>
-        </div>
+        </Card>
       ) : null}
       {failed.length > 0 ? (
-        <div className="upcard compact quiet" role="status">
+        <Card floating className="upcard compact quiet" role="status">
           <div className="upt">
             <span>{m.papers.parse.needsAttention(failed.length)}</span>
             <IconButton
@@ -62,7 +63,7 @@ export function ParseProgress({ onParsed }: { onParsed: (job: MetadataJob) => vo
               onClick={() => setClosed((held) => new Set([...held, ...failed.map((job) => job.id)]))}
             ><IconCross /></IconButton>
           </div>
-        </div>
+        </Card>
       ) : null}
     </aside>,
     document.body,

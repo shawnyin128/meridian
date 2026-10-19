@@ -206,7 +206,7 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   await win.locator('[data-desk="trash"]').click()
   await expect(shown(win).locator('.section-heading')).toHaveText('项目 · 1清空垃圾桶')
   await expect(win.locator('.tgroup .trow .tt2')).toHaveText([RENAMED_PROJECT])
-  await win.locator('.tgroup .trow .btn', { hasText: '恢复' }).click()
+  await win.locator('.tgroup .trow .row-actions [aria-label="恢复"]').click()
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
 
   await gotoList(win)
@@ -376,7 +376,7 @@ test('项目菜单开着、指针挪到菜单项上之后,悬停才露出的 ...
   // sticks and the bug cannot show.
   await win.locator('[role="menu"] [role="menuitem"]').first().hover()
   await settle(dots)
-  await expect(dots).toHaveCSS('opacity', '1')
+  await expect(card.locator('.row-actions')).toHaveCSS('opacity', '1')
   await settle(card)
   expect(await card.evaluate((el) => getComputedStyle(el).borderColor)).toBe(hoverBorderColor)
 })
@@ -388,13 +388,15 @@ test('搁置或已完成的项目菜单开着、指针挪到菜单项上之后,�
 
   await row.hover()
   await settle(row)
-  const hoverBg = await row.evaluate((el) => getComputedStyle(el).backgroundColor)
+  // The row's hover is an overlay image over its own colour (StructuredList.css).
+  const hoverBg = await row.evaluate((el) => getComputedStyle(el).backgroundImage)
+  expect(hoverBg).not.toBe('none')
   await dots.click()
   // Moving the pointer onto a menu item really takes :hover off the row; without the move, :hover
   // sticks and the bug cannot show.
   await win.locator('[role="menu"] [role="menuitem"]').first().hover()
   await settle(row)
-  expect(await row.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(hoverBg)
+  expect(await row.evaluate((el) => getComputedStyle(el).backgroundImage)).toBe(hoverBg)
 })
 
 test('菜单开着时触发器仍然可点;再点一下菜单收起,不重新弹出也不冒给行', async ({ win }) => {
@@ -441,7 +443,8 @@ test('拖一张进行中的卡片到另一张前面,顺序写进库里;别的分
   const dragged = shown(win).locator(`[data-proj="${activeIds.at(-1)}"]`)
   const target = shown(win).locator(`[data-proj="${activeIds[0]}"]`)
   const targetBox = (await target.boundingBox())!
-  await dragged.dispatchEvent('dragstart', { dataTransfer: await win.evaluateHandle(() => new DataTransfer()) })
+  // A card is dragged by the grip in its row-actions slot.
+  await dragged.locator('.drag-handle').dispatchEvent('dragstart', { dataTransfer: await win.evaluateHandle(() => new DataTransfer()) })
   await target.dispatchEvent('dragover', {
     clientY: targetBox.y + 2, // top of the target's box: insert before it.
     dataTransfer: await win.evaluateHandle(() => new DataTransfer()),

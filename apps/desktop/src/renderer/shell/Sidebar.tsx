@@ -3,6 +3,7 @@ import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import type { ChatSession, Watch } from '../../shared/contract.js'
 import { MenuItem } from '../components/ActionMenu.js'
 import { DotsMenu } from '../components/FieldPickers.js'
+import { RowActions } from '../components/StructuredList.js'
 import { IconButton } from '../components/IconButton.js'
 import { Icon, IconNorthStar, IconPlus } from '../components/icons.js'
 import { NavRow } from '../components/NavRow.js'
@@ -61,7 +62,7 @@ function ChatRow({ session, on, onOpen, onArchive }: {
   const m = useMessages()
   return (
     <NavRow
-      className="srow chat-row" selected={on} data-chat={session.id} data-dots-row="" onActivate={onOpen}
+      className="srow chat-row" selected={on} data-chat={session.id} data-row-actions="" onActivate={onOpen}
       label={(
         <>
           <span className="ic">
@@ -71,9 +72,11 @@ function ChatRow({ session, on, onOpen, onArchive }: {
         </>
       )}
     >
-      <DotsMenu label={m.shell.sidebar.manageChat(plainTitle(session.title))} stopRowActivation>
-        <MenuItem onSelect={onArchive}>{m.shell.sidebar.archive}</MenuItem>
-      </DotsMenu>
+      <RowActions>
+        <DotsMenu label={m.shell.sidebar.manageChat(plainTitle(session.title))} stopRowActivation>
+          <MenuItem onSelect={onArchive}>{m.shell.sidebar.archive}</MenuItem>
+        </DotsMenu>
+      </RowActions>
     </NavRow>
   )
 }

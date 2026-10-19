@@ -70,6 +70,26 @@ describe('ReadingNotes', () => {
     expect(draft.value).toBe('')
   })
 
+  it('笔记和高亮卡片的删除是卡片顶行操作槽里的图标钮，悬停时标红；保存留在槽外', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    roots.push(root)
+    act(() => root.render(
+      <MessagesProvider>
+        <Notes reading={READING} currentPage={1} saving={false} onJump={vi.fn()} onMutate={async () => true} />
+      </MessagesProvider>,
+    ))
+    const slot = (row: Element) => [...row.querySelectorAll('.row-actions button')].map((item) => [
+      item.getAttribute('aria-label'), item.textContent, item.classList.contains('icbtn'), item.classList.contains('danger'),
+    ])
+    for (const card of host.querySelectorAll('.reading-card')) {
+      expect(card.hasAttribute('data-row-actions')).toBe(true)
+      expect(slot(card)).toEqual([['删除', '', true, true]])
+      expect(card.querySelector('.row-actions .btn.pri')).toBeNull()
+    }
+  })
+
   it('已有高亮与笔记只发精确的修改、删除命令，页码按钮负责定位', async () => {
     const host = document.createElement('div')
     document.body.append(host)

@@ -32,6 +32,7 @@ import {
 } from '../../shell/AppShell.js'
 import { AddAction } from '../AddAction.js'
 import { IconButton } from '../IconButton.js'
+import { holdRepeatSelection, RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
 import { PanelClose } from '../PanelClose.js'
 import { CountBadge, Tag, tagClass } from '../Tag.js'
 import { DetailPanel } from '../DetailPanel.js'
@@ -1093,9 +1094,10 @@ export function PaperTable() {
               key={p.id} label={m.papers.contextMenu.label(plainTitle(p.title))} className="paper-row-menu"
               trigger={(
                 <tr
-                  tabIndex={0} className={detail?.id === p.id ? 'selected' : undefined}
+                  tabIndex={0} className={detail?.id === p.id ? 'selected' : undefined} data-row-actions=""
                   aria-current={detail?.id === p.id ? 'true' : undefined}
                   onClick={() => { void papers.get(p.id).then(setDetail).catch(reportError) }}
+                  onMouseDown={holdRepeatSelection}
                   onDoubleClick={(event) => {
                     if (opensPaperFrom(event.target)) open('reader', p.id)
                   }}
@@ -1108,11 +1110,13 @@ export function PaperTable() {
                   <td className="pt-title"><span className="ci"><PaperText text={p.title} /></span></td>
                   {cols.map((c) => cell(p, c))}
                   {newCol ? <td className="pt-cust" /> : null}
-                  <td>
-                    <IconButton
-                      label={m.papers.rowActions.delete} size="nested" tone="danger" className="rowx"
-                      onClick={(e) => { e.stopPropagation(); remove(p.id) }}
-                    ><IconTrash /></IconButton>
+                  <td className="row-actions-cell">
+                    <RowActions>
+                      <IconButton
+                        label={m.papers.rowActions.delete} size="nested" tone="danger" className="rowx"
+                        onClick={(e) => { e.stopPropagation(); remove(p.id) }}
+                      ><IconTrash /></IconButton>
+                    </RowActions>
                   </td>
                 </tr>
               )}
@@ -1228,19 +1232,19 @@ export function PaperTable() {
               : !listed
               ? (
                 <>
-                  {facets.map((f) => (
-                    <button
-                      type="button" className="gxrow" key={f.value} onClick={() => { setSel(f.value); setPage(1) }}
-                    >
-                      <span className="gx-t">{f.value}</span>
-                      <span className="gx-m">
-                        {m.papers.groupIndex.newest(
-                          `${plainTitle(f.newestTitle).slice(0, 44)}${plainTitle(f.newestTitle).length > 44 ? '…' : ''}`,
-                        )}
-                      </span>
-                      <CountBadge className="n" count={f.count} />
-                    </button>
-                  ))}
+                  <StructuredList variant="embedded" maxVisibleRows="all">
+                    {facets.map((f) => (
+                      <StructuredRow className="gxrow" key={f.value} onActivate={() => { setSel(f.value); setPage(1) }}>
+                        <span className="gx-t">{f.value}</span>
+                        <span className="gx-m">
+                          {m.papers.groupIndex.newest(
+                            `${plainTitle(f.newestTitle).slice(0, 44)}${plainTitle(f.newestTitle).length > 44 ? '…' : ''}`,
+                          )}
+                        </span>
+                        <CountBadge className="n" count={f.count} />
+                      </StructuredRow>
+                    ))}
+                  </StructuredList>
                   <div className="lmore">{m.papers.groupIndex.pickToView(labelOf(group))}</div>
                 </>
               )
@@ -1249,9 +1253,6 @@ export function PaperTable() {
                   {group !== 'none'
                     ? (
                       <div className="gnav">
-                        <button className="btn sm" id="gxBack" onClick={backToValues}>
-                          ‹ {labelOf(group)}
-                        </button>
                         <GroupValuePicker
                           current={sel} facets={facets} onPick={(value) => { setSel(value); setPage(1) }}
                         />

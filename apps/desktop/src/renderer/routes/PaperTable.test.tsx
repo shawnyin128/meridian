@@ -464,6 +464,30 @@ describe('PaperTable', () => {
     expect(openedScreens).toEqual([['reader', ROW.id]])
   })
 
+  it('双击论文行打开阅读器时不选中标题里的字：第二下按下被拦住，第一下照常', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const title = host.querySelector('.ptable tbody tr .pt-title .ci')!
+    const pressed = (detail: number) => {
+      const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true, detail })
+      title.dispatchEvent(event)
+      return event.defaultPrevented
+    }
+    expect([pressed(1), pressed(2)]).toEqual([false, true])
+  })
+
+  it('论文行是操作槽的宿主，行尾的删除在槽里', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const row = host.querySelector('.ptable tbody tr')!
+    expect(row.hasAttribute('data-row-actions')).toBe(true)
+    expect([...row.querySelectorAll('.row-actions button')].map((item) => item.getAttribute('aria-label'))).toEqual(['删除'])
+  })
+
   it('行尾的删除把论文移到垃圾桶，画的是垃圾桶而不是关闭用的叉', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)
@@ -522,6 +546,8 @@ describe('PaperTable', () => {
     await flush()
     const value = host.querySelector<HTMLElement>('.gxrow')!
     expect(value.tagName).toBe('BUTTON')
+    expect(value.classList.contains('structured-row')).toBe(true)
+    expect(value.parentElement!.classList.contains('structured-list--embedded')).toBe(true)
     await act(async () => { value.click() })
     await flush()
     expect(listParams.at(-1)?.facet).toEqual({ field: 'topics', value: '推理' })
@@ -546,7 +572,8 @@ describe('PaperTable', () => {
     expect(host.querySelector('.gnav .segmented-control')).toBeNull()
     const picker = host.querySelector<HTMLButtonElement>('.gnav button[aria-label="分组取值"]')!
     expect(picker.textContent).toBe('推理(2)')
-    expect(picker.className).toBe(host.querySelector('#gxBack')!.className)
+    expect(host.querySelector('#gxBack')).toBeNull()
+    expect([...host.querySelector('.gnav')!.children]).toEqual([picker])
     await act(async () => { picker.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
     await flush()
     const items = [...document.querySelectorAll<HTMLElement>('.ctxmenu [role="menuitemradio"]')]

@@ -15,20 +15,19 @@
 /* Right column of content, matching a screen's main content area */
 .set-main{flex:1;min-width:0;overflow:auto;padding:20px 24px}
 
-.appearance-settings-card{border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);padding:16px}
 .appearance-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .appearance-choice{min-width:0;border:0;background:transparent;color:var(--sec);padding:0;cursor:pointer;
   font:inherit;text-align:center}
-.appearance-preview{height:94px;display:block;overflow:hidden;padding:5px;border:2px solid transparent;
-  border-radius:var(--r-lg);background:var(--field);box-shadow:inset 0 0 0 1px var(--sep2);
-  transition:border-color var(--t-fast) var(--e-out),box-shadow var(--t-fast) var(--e-out)}
+.appearance-preview{height:94px;display:block;overflow:hidden;padding:7px;
+  border-radius:var(--r-lg);background-color:var(--field);box-shadow:inset 0 0 0 1px var(--sep2);
+  transition:background-color var(--t-fast) var(--e-out),box-shadow var(--t-fast) var(--e-out)}
 .appearance-choice:hover .appearance-preview{box-shadow:inset 0 0 0 1px var(--sep-strong)}
-.appearance-choice[aria-checked="true"] .appearance-preview{border-color:var(--accent);
-  box-shadow:0 0 0 2px var(--accent-soft)}
+/* The selected look of rows, cards and graph nodes; see StructuredList.css. */
+.appearance-choice[aria-checked="true"] .appearance-preview{background-color:var(--selected)}
 .appearance-choice:focus-visible{outline:0}
 .appearance-choice:focus-visible .appearance-preview{box-shadow:0 0 0 2px var(--ring)}
 .appearance-label{display:block;margin-top:7px;font-size:var(--fs-sm);font-weight:500;color:var(--sec)}
-.appearance-choice[aria-checked="true"] .appearance-label{color:var(--ink)}
+.appearance-choice[aria-checked="true"] .appearance-label{color:var(--on-selected)}
 .appearance-preview.system{display:grid;grid-template-columns:1fr 1fr;gap:2px}
 .appearance-preview.system>.appearance-mini{min-width:0}
 .appearance-mini{--ap-window:#f6f8fc;--ap-sidebar:#e9eef6;--ap-content:#fff;--ap-field:#e3e9f2;
@@ -50,11 +49,9 @@
 .appearance-mini-content i:nth-child(2){width:76%}
 .appearance-mini-content i:nth-child(3){width:52%;background:var(--ap-field)}
 
-.language-settings-card{border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);padding:16px}
 .language-select{width:220px}
 .language-note{margin:12px 0 0;color:var(--ter);font-size:var(--fs-cap);line-height:var(--lh-ui)}
 
-.storage-card{border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);padding:16px}
 .storage-head{display:flex;align-items:flex-start;gap:16px}
 .storage-head>div{flex:1;min-width:0}
 .storage-head h3{margin:0;font-size:var(--fs-title);line-height:var(--lh-tight)}
@@ -70,7 +67,6 @@
 .storage-reset{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;
   padding-top:14px;border-top:1px solid var(--sep2);color:var(--sec);font-size:var(--fs-sm)}
 .storage-backups-loading{padding:8px 2px;color:var(--ter);font-size:var(--fs-sm)}
-.storage-backup-list{--structured-list-row-height:58px}
 .storage-backup-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;
   min-height:58px;padding:9px 12px}
 .storage-backup-copy{min-width:0;display:flex;flex-direction:column;gap:3px}
@@ -90,8 +86,7 @@
 
 .settings-intro,.settings-explain{margin:0 0 12px;color:var(--ter);font-size:var(--fs-sm);line-height:var(--lh-ui)}
 .settings-count{color:var(--ter);font-weight:500}
-.delivery-settings-card{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;
-  gap:8px 24px;border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);padding:14px 16px}
+.delivery-settings-card{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px 24px}
 .delivery-setting-copy strong{font-size:var(--fs-base);font-weight:600;color:var(--ink)}
 .delivery-setting-copy p{margin:5px 0 0;color:var(--ter);font-size:var(--fs-sm);line-height:var(--lh-ui)}
 .delivery-setting-control{display:flex;align-items:center;gap:7px;color:var(--sec);font-size:var(--fs-sm)}

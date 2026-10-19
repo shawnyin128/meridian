@@ -85,7 +85,7 @@ test('撤不回来的动作才弹确认,弹出来的都是同一个对话框', a
   await win.locator('[data-inbox="all"]').click()
   await shown(win, '[title="关注设置"]').click()
   await win.locator('.setdlg .wrow').first().waitFor()
-  await win.locator('.setdlg .wrow').first().locator('.btn', { hasText: '移除' }).click()
+  await win.locator('.setdlg .wrow').first().locator('.row-actions [aria-label="移除"]').click()
 
   const dialog = win.locator('.modal.confirm')
   await expect(dialog).toBeVisible()
@@ -174,11 +174,11 @@ test('四处「更多」菜单同一个触发器:tooltip 一样、悬停显形�
   await card.hover()
   const dots = card.locator('.dots')
   await expect(dots).toHaveAttribute('title', '更多')
-  await expect(dots).toHaveCSS('opacity', '1')
+  await expect(card.locator('.row-actions')).toHaveCSS('opacity', '1')
   await dots.click()
   // Move off the card: only the open state, not hover, should be keeping the trigger visible now.
   await parkPointer(win)
-  await expect(dots).toHaveCSS('opacity', '1') // the trigger stays put while its own menu is open
+  await expect(card.locator('.row-actions')).toHaveCSS('opacity', '1') // the trigger stays put while its own menu is open
   await win.keyboard.press('Escape')
 })
 

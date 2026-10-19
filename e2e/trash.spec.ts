@@ -61,7 +61,7 @@ test('删掉的论文进垃圾桶,恢复后回到列表且总数复原', async (
   await expect(win.locator('.tgroup .trow .tt2')).toHaveText([title])
   await expect(win.locator('.tgroup .trow .tm2')).toHaveText([FULL_RETENTION])
 
-  await win.locator('.tgroup .trow .btn', { hasText: '恢复' }).click()
+  await win.locator('.tgroup .trow .row-actions [aria-label="恢复"]').click()
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
   await expect(win.locator('[data-desk="trash"] .n')).toHaveCount(0)
   await expect(win.locator('[data-desk="papers"] .n')).toHaveText(String(total))
@@ -144,7 +144,7 @@ test('删掉的附件进垃圾桶,恢复后回到项目', async ({ win }) => {
   await expect(shown(win, '.section-heading')).toHaveText('附件 · 1清空垃圾桶')
   await expect(win.locator('.tgroup .trow .tt2')).toHaveText([names[0]!])
 
-  await win.locator('.tgroup .trow .btn', { hasText: '恢复' }).click()
+  await win.locator('.tgroup .trow .row-actions [aria-label="恢复"]').click()
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
 
   // Entering Projects from another screen lands on the list; the attachments are in the project detail,
@@ -180,12 +180,12 @@ test('原项目还在垃圾桶里时,那条附件恢复不回去,项目回来才
 
   // An attachment cannot go back to a project that is gone, so its Restore button is disabled rather
   // than clickable into an IPC error.
-  await expect(attachmentRow.locator('.btn', { hasText: '恢复' })).toBeDisabled()
-  await expect(projectRow.locator('.btn', { hasText: '恢复' })).toBeEnabled()
+  await expect(attachmentRow.locator('.row-actions [aria-label="恢复"]')).toBeDisabled()
+  await expect(projectRow.locator('.row-actions [aria-label="恢复"]')).toBeEnabled()
 
-  await projectRow.locator('.btn', { hasText: '恢复' }).click()
-  await expect(attachmentRow.locator('.btn', { hasText: '恢复' })).toBeEnabled()
-  await attachmentRow.locator('.btn', { hasText: '恢复' }).click()
+  await projectRow.locator('.row-actions [aria-label="恢复"]').click()
+  await expect(attachmentRow.locator('.row-actions [aria-label="恢复"]')).toBeEnabled()
+  await attachmentRow.locator('.row-actions [aria-label="恢复"]').click()
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   expect(await win.locator('#toast').textContent()).toBe('')

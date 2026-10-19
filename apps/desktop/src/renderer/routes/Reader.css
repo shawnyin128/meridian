@@ -76,7 +76,8 @@
 .highlight-card{border-left:3px solid var(--mark)}
 .reading-page{border:0;background:transparent;padding:0;cursor:pointer;font-family:var(--sans);width:max-content}
 .reading-page:hover{color:var(--accent)}
-.reading-actions{display:flex;align-items:center;justify-content:space-between}
+.reading-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.reading-actions{display:flex;align-items:center;justify-content:flex-end}
 .highlight-card blockquote{margin:0;color:var(--sec);font-size:var(--fs-sm);line-height:1.45;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .reading-remark{width:320px;min-width:320px;box-sizing:border-box;border-left:1px solid var(--sep);background:var(--content);display:flex;flex-direction:column;overflow:hidden}
 .remark-compose{padding:12px;display:flex;flex-direction:column;gap:8px;align-items:flex-end}

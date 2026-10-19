@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { DragEvent as ReactDragEvent, ReactNode, RefObject } from 'react'
+import type { DragEvent as ReactDragEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode, RefObject } from 'react'
 import type { AgentSession, Attachment, RelationGroup } from '../../../shared/contract.js'
 import { papers } from '../../ipc.js'
 import { AddAction } from '../AddAction.js'
@@ -17,7 +17,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
 import { Tag, tagClass } from '../Tag.js'
 import './ProjectSections.css'
 
@@ -182,7 +182,7 @@ export function ProjectRelations({
   onOpenPage: (page: string) => void
   onOpenPaper: (paperId: string) => void
   onRemovePaper: (paperId: string, title: string) => void
-  /** Drops the chip `id` at `index` among the chips of the same row. */
+  /** Puts the chip `id` at `index` among the chips of the same row, from a drop or Alt+← / Alt+→. */
   onMove: (id: string, index: number) => void
 }) {
   const m = useMessages()
@@ -217,6 +217,15 @@ export function ProjectRelations({
       setDragging(null)
       setDropAt(null)
       if (to !== from) onMove(dragging.id, to)
+    },
+    // The keyboard path of a drag: Alt+← / Alt+→ move the chip one place along its row.
+    onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => {
+      const by = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0
+      if (by === 0 || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+      event.preventDefault()
+      const ids = rowChipIds(row)
+      const to = ids.indexOf(id) + by
+      if (to >= 0 && to < ids.length) onMove(id, to)
     },
   })
   const chipClass = (row: RelationGroup, id: string) => {
@@ -270,16 +279,18 @@ export function ProjectRelations({
           {isPaperRow(row.group)
             ? linked.map((paper) => (
               <span
-                className={chipClass(row, paper.id)} key={paper.id} data-paper={paper.id}
+                className={chipClass(row, paper.id)} key={paper.id} data-paper={paper.id} data-row-actions=""
                 onClick={() => onOpenPaper(paper.id)} {...dragProps(row, paper.id)}
               >
                 <button type="button" className="tagchip-open">
                   <FadeText className="tagchip-text"><PaperText text={paper.title} /></FadeText>
                 </button>
-                <IconButton
-                  label={m.common.removeLink} size="inline" className="rx"
-                  onClick={(event) => { event.stopPropagation(); onRemovePaper(paper.id, paper.title) }}
-                ><IconCross /></IconButton>
+                <RowActions>
+                  <IconButton
+                    label={m.common.removeLink} size="inline" className="rx"
+                    onClick={(event) => { event.stopPropagation(); onRemovePaper(paper.id, paper.title) }}
+                  ><IconCross /></IconButton>
+                </RowActions>
               </span>
             ))
             : null}
@@ -288,7 +299,7 @@ export function ProjectRelations({
             : (
               <span
                 className={chipClass(row, item.id)} key={item.id} data-wk={item.page} data-url={item.url}
-                title={item.url} {...dragProps(row, item.id)}
+                data-row-actions="" title={item.url} {...dragProps(row, item.id)}
                 onClick={item.url !== undefined
                   ? () => { window.open(item.url, '_blank') }
                   : item.page === undefined ? undefined : () => onOpenPage(item.page!)}
@@ -300,14 +311,16 @@ export function ProjectRelations({
                       <FadeText className="tagchip-text">{item.text}</FadeText>
                     </button>
                   )}
-                <IconButton
-                  label={m.project.links.editTitle} size="inline" className="tagchip-edit"
-                  onClick={(event) => { event.stopPropagation(); onEdit(item) }}
-                ><IconPencil /></IconButton>
-                <IconButton
-                  label={m.common.removeLink} size="inline" className="rx"
-                  onClick={(event) => { event.stopPropagation(); onRemove(item.id, item.text) }}
-                ><IconCross /></IconButton>
+                <RowActions>
+                  <IconButton
+                    label={m.project.links.editTitle} size="inline" className="tagchip-edit"
+                    onClick={(event) => { event.stopPropagation(); onEdit(item) }}
+                  ><IconPencil /></IconButton>
+                  <IconButton
+                    label={m.common.removeLink} size="inline" className="rx"
+                    onClick={(event) => { event.stopPropagation(); onRemove(item.id, item.text) }}
+                  ><IconCross /></IconButton>
+                </RowActions>
               </span>
             )))}
         </div>
@@ -373,10 +386,12 @@ export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
                     type="button" className="an" title={m.project.attachments.reveal} onClick={() => onReveal(attachment)}
                   >{attachment.name}</button>
                   <span className="as">{attachment.size}</span>
-                  <IconButton
-                    label={m.project.attachments.delete} size="nested" tone="danger" className="ax"
-                    onClick={() => onRemove(attachment.id)}
-                  ><IconTrash /></IconButton>
+                  <RowActions>
+                    <IconButton
+                      label={m.project.attachments.delete} size="nested" tone="danger" className="ax"
+                      onClick={() => onRemove(attachment.id)}
+                    ><IconTrash /></IconButton>
+                  </RowActions>
                 </StructuredRow>
               ))}
             </StructuredList>

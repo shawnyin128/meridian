@@ -181,6 +181,26 @@ export const IconTrash = () => (
   </svg>
 )
 
+/** Puts something back where it was: restores a trashed item, unarchives a chat. */
+export const IconRestore = () => (
+  <Icon sw={1.9}><path d="M4 14v5h16v-5" /><path d="M12 15V4" /><path d="M7.5 8.5L12 4l4.5 4.5" /></Icon>
+)
+
+/** Files a record away into the archive. */
+export const IconArchive = () => (
+  <Icon sw={1.9}><path d="M3 4h18v4H3z" /><path d="M5 8v12h14V8" /><path d="M10 12h4" /></Icon>
+)
+
+/** Reverts a recorded change. */
+export const IconUndo = () => (
+  <Icon sw={1.9}><path d="M9 14L4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></Icon>
+)
+
+/** Opens an item on its own screen. */
+export const IconOpen = () => (
+  <Icon sw={1.9}><path d="M14 4h6v6" /><path d="M20 4l-8.5 8.5" /><path d="M18 14v6H4V6h6" /></Icon>
+)
+
 /** Download progress shown inside an icon-sized action. */
 export const DownloadRing = ({ progress }: {
   progress: { received: number; total: number | null } | null

@@ -204,7 +204,9 @@ export function TimelineBoard({
                 data-proj={row.project.id}
                 data-task={row.kind === 'task' ? row.task.id : undefined}
                 key={key}
-                {...(row.kind === 'task' && onReorderTasks !== undefined ? labelReorder.cardProps(row.task.id) : {})}
+                {...(row.kind === 'task' && onReorderTasks !== undefined
+                  ? { ...labelReorder.handleProps(row.task.id), ...labelReorder.itemProps(row.task.id) }
+                  : {})}
                 onClick={() => onLabelClick?.(
                   row.project.id, row.kind, row.kind === 'task' ? row.task.id : undefined,
                 )}

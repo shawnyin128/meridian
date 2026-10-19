@@ -1,0 +1,59 @@
+import type { ReactNode } from 'react'
+import type { ResearchIdea } from '../../../shared/contract.js'
+import { useFormat } from '../../lib/format.js'
+import { useMessages } from '../../messages/useMessages.js'
+import { SectionHeading } from '../PageShell.js'
+import { PanelClose } from '../PanelClose.js'
+import { plainTitle } from '../paper/paper-text.js'
+import { Tag } from '../Tag.js'
+import './IdeaPanel.css'
+
+/** Where an idea came from: the conversation, after the paper it was about when there is one. */
+export const ideaSourceLabel = (idea: ResearchIdea) => idea.source.paperTitle === undefined
+  ? plainTitle(idea.source.chatTitle)
+  : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
+
+/**
+ * The one detail panel of an idea, on the Ideas screen and on the project page: the title with the
+ * host's `actions` and the close button, the kind and archived tags, the content, the host's own
+ * sections (`children`), then the source and the last update. `editor`, when given, takes the
+ * content's place. `onOpenSourceChat` adds the button that opens the conversation the idea came from.
+ */
+export function IdeaPanel({ idea, actions, editor, onClose, onOpenSourceChat, children }: {
+  idea: ResearchIdea
+  actions?: ReactNode
+  editor?: ReactNode
+  onClose: () => void
+  onOpenSourceChat?: (chatId: string) => void
+  children?: ReactNode
+}) {
+  const fmt = useFormat()
+  const m = useMessages()
+  const chatId = idea.source.chatId
+  return (
+    <>
+      <SectionHeading
+        variant="rail" className="idea-panel-head node-document-head"
+        actions={<>{actions}<PanelClose onClose={onClose} /></>}
+      ><span className="node-document-title">{idea.title}</span>
+      </SectionHeading>
+      <div className="idea-panel-meta">
+        <Tag tone="accent">{m.project.idea.kind}</Tag>
+        {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
+      </div>
+      {editor ?? (
+        <>
+          <SectionHeading variant="rail">{m.project.sections.content}</SectionHeading>
+          <p className="idea-panel-body">{idea.body}</p>
+        </>
+      )}
+      {children}
+      <SectionHeading variant="rail">{m.project.sections.source}</SectionHeading>
+      <p className="idea-panel-source">{ideaSourceLabel(idea)}</p>
+      <div className="idea-panel-updated">{m.common.updatedOn(fmt.date(idea.updated))}</div>
+      {onOpenSourceChat === undefined || chatId === undefined
+        ? null
+        : <button className="btn sm idea-panel-open-chat" onClick={() => onOpenSourceChat(chatId)}>{m.ideas.openSourceChat}</button>}
+    </>
+  )
+}

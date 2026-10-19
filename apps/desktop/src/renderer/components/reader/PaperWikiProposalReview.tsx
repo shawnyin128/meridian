@@ -63,7 +63,7 @@ function QualityReport({ quality }: { quality: HarnessPaperWikiQuality }) {
       </p>
       {quality.findings.length === 0 ? null : (
         <StructuredList className="paper-wiki-quality-findings" variant="embedded"
-          aria-label={m.wiki.quality.findingsListLabel} style={{ '--structured-list-row-height': '68px' }}>
+          aria-label={m.wiki.quality.findingsListLabel}>
           {quality.findings.map((finding, index) => {
             const findingCopy: Record<string, { title: string; detail: string }> = m.wiki.quality.findings
             const copy = findingCopy[finding.code]
@@ -109,7 +109,6 @@ export function PaperWikiProposalReview({ review, quality }: {
             <StructuredList
               variant="embedded"
               aria-label={section.title}
-              style={{ '--structured-list-row-height': '128px' }}
             >
               {section.groups.map((group) => <ReviewGroup group={group} key={group.id} />)}
             </StructuredList>

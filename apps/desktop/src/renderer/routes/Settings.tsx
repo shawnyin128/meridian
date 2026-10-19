@@ -10,7 +10,8 @@ import { useMessages } from '../messages/useMessages.js'
 import {
   useBanner, useJump, useSettingsOpen, useVaultRevision, type SettingsCategory,
 } from '../shell/AppShell.js'
-import { Icon } from '../components/icons.js'
+import { Icon, IconOpen, IconRestore } from '../components/icons.js'
+import { IconButton } from '../components/IconButton.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { DirectoryField } from '../components/FormControls.js'
 import { AppearanceSettings } from '../components/settings/AppearanceSettings.js'
@@ -24,7 +25,7 @@ import { ExtensionSettings } from '../components/settings/ExtensionSettings.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { ModalDialog, ModalTitle } from '../components/ModalDialog.js'
 import { NavRow } from '../components/NavRow.js'
-import { StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { TitleNote } from '../components/TitleNote.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -32,6 +33,7 @@ import { WatchSettings } from './Watches.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { Tag } from '../components/Tag.js'
+import { Card } from '../components/Card.js'
 import './shell.css'
 import './Settings.css'
 
@@ -212,7 +214,7 @@ export function Settings() {
     storage: (
       <>
         <SectionHeading>{m.settings.storage.heading}</SectionHeading>
-        <div className="storage-card">
+        <Card className="storage-card">
           <div className="storage-head">
             <div>
               <h3>{m.settings.storage.libraryTitle}</h3>
@@ -266,7 +268,7 @@ export function Settings() {
               onConfirm={() => { void resetLibrary() }}
             />
           </div>
-        </div>
+        </Card>
         <SectionHeading variant="content">
           {m.settings.storage.backupsHeading(backups?.length ?? 0)}
         </SectionHeading>
@@ -404,8 +406,14 @@ export function Settings() {
               {archived.map((s) => (
                 <StructuredRow className="wrow" data-chat={s.id} key={s.id}>
                   <span className="nm"><PaperText text={s.title} /></span>
-                  <button className="btn ghost sm" onClick={() => openChat(s)}>{m.settings.archived.open}</button>
-                  <button className="btn ghost sm" onClick={() => unarchive(s)}>{m.settings.archived.unarchive}</button>
+                  <RowActions>
+                    <IconButton label={m.settings.archived.open} size="nested" onClick={() => openChat(s)}>
+                      <IconOpen />
+                    </IconButton>
+                    <IconButton label={m.settings.archived.unarchive} size="nested" onClick={() => unarchive(s)}>
+                      <IconRestore />
+                    </IconButton>
+                  </RowActions>
                 </StructuredRow>
               ))}
             </StructuredList>

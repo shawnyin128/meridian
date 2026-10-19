@@ -16,7 +16,9 @@ import { AgentLabel } from '../components/SourceLabel.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
-import { StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { IconButton } from '../components/IconButton.js'
+import { IconArchive, IconTrash, IconUndo } from '../components/icons.js'
 import './shell.css'
 import './Changelog.css'
 
@@ -58,9 +60,9 @@ function DeleteChangeButton({ entry, onDelete }: {
   return (
     <ConfirmDialog
       trigger={(
-        <button className="btn danger sm" onClick={(event) => event.stopPropagation()}>
-          {m.common.delete}
-        </button>
+        <IconButton label={m.common.delete} size="nested" tone="danger" onClick={(event) => event.stopPropagation()}>
+          <IconTrash />
+        </IconButton>
       )}
       title={m.changelog.confirmDelete} description={m.changelog.confirmDeleteDescription}
       confirmLabel={m.changelog.confirmDeleteLabel} onConfirm={() => onDelete(entry.id)}
@@ -152,21 +154,21 @@ export function Changelog() {
           <span className="ct"><PaperText text={c.title} /><ChangeSource source={c.source} /></span>
           <span className="cm">{[metaBelowHeading(c.meta), hint(c, m.changelog.state)].filter((s) => s !== '').join(SEP)}</span>
         </button>
-        <div className="cact">
+        <RowActions className="cact">
           <DeleteChangeButton entry={c} onDelete={deleteChange} />
           {c.archived ? null : (
-            <button
-              className="btn ghost sm carch"
+            <IconButton
+              label={m.common.archive} size="nested" className="carch"
               onClick={(e) => { e.stopPropagation(); archive(c.id) }}
-            >{m.common.archive}</button>
+            ><IconArchive /></IconButton>
           )}
           {c.undoable ? (
-            <button
-              className="btn ghost sm cundo"
+            <IconButton
+              label={m.common.undo} size="nested" className="cundo"
               onClick={(e) => { e.stopPropagation(); undo(c.id) }}
-            >{m.common.undo}</button>
+            ><IconUndo /></IconButton>
           ) : null}
-        </div>
+        </RowActions>
       </div>
       <DiffLines lines={c.diff} />
     </StructuredRow>

@@ -10,7 +10,7 @@ declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
-const api = vi.hoisted(() => ({ rows: [] as ProjectOverview[] }))
+const api = vi.hoisted(() => ({ rows: [] as ProjectOverview[], open: vi.fn() }))
 
 vi.mock('../ipc.js', () => ({
   project: { overview: async () => structuredClone(api.rows) },
@@ -18,7 +18,7 @@ vi.mock('../ipc.js', () => ({
 
 vi.mock('../shell/AppShell.js', () => ({
   useBanner: () => vi.fn(),
-  useJump: () => ({ jump: null, open: vi.fn() }),
+  useJump: () => ({ jump: null, open: api.open }),
   useToast: () => vi.fn(),
   useToday: () => '2026-10-16',
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
@@ -94,5 +94,42 @@ describe('研究总览的项目进展', () => {
       '实验结果 tag tag--label tag--good', '决定 tag tag--label tag--accent',
       '开始推进 tag tag--label tag--info', '记录 tag tag--label tag--neutral',
     ])
+  })
+})
+
+describe('研究总览的需要决策', () => {
+  let host: HTMLDivElement
+  let root: Root
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+    api.open.mockClear()
+    host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+  })
+
+  afterEach(() => {
+    act(() => root.unmount())
+    host.remove()
+  })
+
+  it('逾期的任务和里程碑那一行打开项目并定位到那一条，阻塞那一行只打开项目', async () => {
+    api.rows = [{
+      ...row([]), block: '等 8 卡机器',
+      tasks: [{ id: 't-late', title: '画路由热力图', start: '2026-09-24', end: '2026-09-28', state: 'plan', priority: 'p2' }],
+      milestones: [{ id: 'm-late', date: '2026-10-13', title: '负载分析初稿', done: false }],
+    }]
+    await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))
+    const decision = (text: string) => [...host.querySelectorAll<HTMLElement>('.ovlist-row.attention')]
+      .find((item) => item.textContent?.includes(text))!
+    await act(async () => { decision('1 条任务已过计划时间').click() })
+    expect(api.open).toHaveBeenLastCalledWith('project', 'spec', { task: 't-late' })
+    await act(async () => { decision('负载分析初稿').click() })
+    expect(api.open).toHaveBeenLastCalledWith('project', 'spec', { milestone: 'm-late' })
+    await act(async () => { decision('等 8 卡机器').click() })
+    expect(api.open).toHaveBeenLastCalledWith('project', 'spec')
   })
 })

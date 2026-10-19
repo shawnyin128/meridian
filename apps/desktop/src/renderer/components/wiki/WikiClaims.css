@@ -1,7 +1,6 @@
 .wkclaim{padding:10px 2px}
 .wkclaim-head{display:flex;align-items:flex-start;gap:8px}
 .wkclaim-text{flex:1;min-width:0;font-size:var(--fs-base);font-weight:500;line-height:1.5;overflow-wrap:anywhere}
-.wkclaim-head .dots{flex:none}
 .wkclaim-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px;color:var(--ter);font-size:var(--fs-sm)}
 .wkclaim-version{font-variant-numeric:tabular-nums;color:var(--sec);font-weight:600}
 .wkclaim-lines{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:3px}

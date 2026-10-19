@@ -17,20 +17,23 @@
 @media (prefers-reduced-motion:reduce){
   .active-edge-flows path{animation:none;stroke-dasharray:none;opacity:.9}
 }
-.rgn rect{fill:var(--card);stroke:var(--sep);stroke-width:1}
+/* A node's state rules draw its box; the hover box above it is drawn only by the one hover rule. */
+.rgn-box{fill:var(--card);stroke:var(--sep);stroke-width:1}
+.rgn-hover{fill:var(--hover);stroke:none;opacity:0;pointer-events:none}
 .rgn{cursor:pointer}
-.rgn:hover rect{stroke:var(--sep-strong)}
-.rgn.sel rect{stroke:var(--ink);stroke-width:2}
+:where(.rgn):hover .rgn-hover{opacity:1}
+.rgn.sel .rgn-box{fill:var(--selected)}
 .rgn text{font-size:13px;font-weight:500;fill:var(--ink);font-family:var(--sans)}
+.rgn.sel text{fill:var(--on-selected)}
 .rgn .nd,.rgn.unresolved .nd{fill:var(--ter)}
 .rgn.repairable .nd{fill:var(--warn)}
 .rgn.supported .nd{fill:var(--good)}
 .rgn.dead .nd{fill:var(--bad)}
-.rgn.active-path-node-graph rect{stroke:var(--accent)}
-.rgn.active-leaf rect{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2}
+.rgn.active-path-node-graph .rgn-box{stroke:var(--accent)}
+.rgn.active-leaf .rgn-box{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2}
 .idea-node-pattern-base{fill:var(--accent-soft)}
 .idea-node-pattern-stripe{fill:none;stroke:var(--accent);stroke-width:3;stroke-opacity:.28}
-.rgn.idea-related rect{stroke:var(--accent);stroke-width:2}
+.rgn.idea-related .rgn-box{stroke:var(--accent);stroke-width:2}
 .rgn.idea-related text{font-weight:650}
 .glegend{display:flex;align-items:center;flex-wrap:wrap;gap:7px 16px;font-size:var(--fs-sm);color:var(--ter);margin-top:8px}
 .legend-item{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
@@ -56,10 +59,9 @@
 .node-branch-group{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:start;gap:8px}
 .node-branch-label{padding-top:var(--sp-2);color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
 .node-branch-list{display:flex;flex-wrap:wrap;gap:6px}
-.node-tasks{--structured-list-row-height:38px}
 .node-task-row{display:flex;align-items:center;gap:8px;min-height:38px;padding:8px 2px}
 .node-task-row>.fade-text{flex:1;min-width:0}
-.node-ideas{display:grid;--structured-list-row-height:54px}
+.node-ideas{display:grid}
 .node-ideas>.lm{padding:8px 2px}
 .node-idea-row{display:grid;gap:3px;min-height:54px;padding:8px 2px}
 .node-idea-title,.node-idea-source{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

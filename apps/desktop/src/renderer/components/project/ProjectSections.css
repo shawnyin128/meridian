@@ -33,7 +33,6 @@
 /* The name's fade mask hides its own focus ring, so the row draws it. */
 .attrow:has(.an:focus-visible){outline:2px solid var(--ring);outline-offset:2px}
 .attrow .as{font-size:var(--fs-sm);color:var(--ter);flex-shrink:0}
-.attrow .ax{margin:-4px 0;opacity:0;pointer-events:none}
-.attrow:hover .ax,.attrow .ax:focus-visible{opacity:1;pointer-events:auto}
+.attrow .row-actions{margin:-4px 0}
 .attachments{min-width:0;border-radius:var(--r-md);transition:background-color var(--t) var(--e-out),outline-color var(--t) var(--e-out);outline:1px solid transparent}
 .attachments.drag{background:var(--tint-good);outline-color:var(--good)}

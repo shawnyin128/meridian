@@ -4,9 +4,8 @@
  */
 
 .tgroup{margin:6px 0 0}
-.trow{display:flex;align-items:center;gap:10px;padding:8px 16px;font-size:var(--fs-base)}
+.trow{display:flex;align-items:center;gap:10px;padding:8px 2px;font-size:var(--fs-base)}
 .trow .tt2{flex:1;min-width:0;white-space:nowrap;overflow:hidden;mask-image:var(--clipfade)}
 .trow .tm2{font-size:var(--fs-sm);color:var(--ter);flex-shrink:0;margin-right:4px}
-.trow .btn{flex-shrink:0}
 .thint{text-align:center;font-size:var(--fs-sm);color:var(--ter);margin-top:32px}
 .desk-foot .thint{margin:0}

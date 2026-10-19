@@ -19,7 +19,6 @@ export const ideas = {
   },
   manage: (title: string) => `管理想法：${title}`,
   archiveLockedHint: '已完成项目关联的想法保持归档；解除关联后可恢复',
-  view: (title: string) => `查看想法：${title}`,
   updated: (date: string) => `${date} 更新`,
   detailHeading: '想法详情',
   bodyLabel: '想法',

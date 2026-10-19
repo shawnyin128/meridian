@@ -1,5 +1,3 @@
-/* Shared card shell for a single external service's settings (model provider, Semantic Scholar, ...). */
-.service-card{border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);padding:16px}
 .service-status-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
   padding-bottom:14px;border-bottom:1px solid var(--sep2)}
 .service-status-head strong{font-size:var(--fs-base);font-weight:600;color:var(--ink)}
