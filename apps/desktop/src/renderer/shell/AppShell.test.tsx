@@ -16,6 +16,7 @@ const fixture = vi.hoisted(() => ({
   discovery: [{ id: 'e1', kind: 'discovery', watch: '', project: 'p1', source: '推理项目' }],
   chats: [{ id: 'c1', title: '讨论', archived: false, messageCount: 1 }],
   back: vi.fn(),
+  fullScreen: [] as ((on: boolean) => void)[],
 }))
 
 const none = () => Promise.resolve([])
@@ -23,6 +24,10 @@ const none = () => Promise.resolve([])
 vi.mock('../ipc.js', () => ({
   appMenu: {
     onOpenSettings: () => () => {}, onOpenAgentTutorial: () => () => {}, platform: () => 'darwin',
+    onFullScreen: (handler: (on: boolean) => void) => {
+      fixture.fullScreen.push(handler)
+      return () => { fixture.fullScreen.splice(fixture.fullScreen.indexOf(handler), 1) }
+    },
     setTitleBarTheme: vi.fn(), toggleMaximize: vi.fn(),
   },
   appUpdates: { check: vi.fn(), status: () => new Promise(() => {}), onChange: () => () => {}, install: vi.fn() },
@@ -162,6 +167,18 @@ describe('AppShell sidebar collapse', () => {
     press('b', { metaKey: true })
     press('/')
     expect(document.activeElement).not.toBe(search)
+  })
+})
+
+describe('AppShell title bar', () => {
+  it('marks the document while the window is full screen, where macOS hides the traffic lights', async () => {
+    await mount()
+    const root = document.documentElement
+    expect(root.hasAttribute('data-fullscreen')).toBe(false)
+    act(() => fixture.fullScreen.forEach((handler) => handler(true)))
+    expect(root.hasAttribute('data-fullscreen')).toBe(true)
+    act(() => fixture.fullScreen.forEach((handler) => handler(false)))
+    expect(root.hasAttribute('data-fullscreen')).toBe(false)
   })
 })
 

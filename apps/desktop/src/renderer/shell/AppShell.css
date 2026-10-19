@@ -15,9 +15,12 @@
  */
 .titlebar{display:flex;align-items:center;gap:8px;height:50px;padding:12px 16px;background:var(--sidebar);backdrop-filter:blur(20px);border-bottom:1px solid var(--sep);z-index:5;-webkit-app-region:drag}
 .titlebar .tbtn,.titlebar .cseg.link,.titlebar .appbtn{-webkit-app-region:no-drag}
-/* Make way for window buttons: the three buttons of win32/linux are on the upper right, and the traffic light of darwin is on the upper left. */
+/*
+ * Make way for window buttons: the three buttons of win32/linux are on the upper right, and the
+ * traffic light of darwin is on the upper left, except in full screen, where macOS hides it.
+ */
 :root[data-os="win32"] .titlebar,:root[data-os="linux"] .titlebar{padding-right:154px}
-:root[data-os="darwin"] .titlebar{padding-left:78px}
+:root[data-os="darwin"]:not([data-fullscreen]) .titlebar{padding-left:78px}
 
 /* The bar's content is only 26px tall, so its icon buttons take the nested size, not the 30px one. */
 .titlebar .brandmark{width:18px;height:18px;display:block}

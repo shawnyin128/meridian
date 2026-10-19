@@ -457,6 +457,10 @@ export function AppShell({ screens, settings }: {
 
   // The platform name is for CSS: the room left for the window buttons on either side depends on it.
   useEffect(() => { document.documentElement.dataset.os = appMenu.platform() }, [])
+  useEffect(() => appMenu.onFullScreen((on) => {
+    if (on) document.documentElement.dataset.fullscreen = ''
+    else delete document.documentElement.dataset.fullscreen
+  }), [])
 
   // The theme is not React state: it is written straight to documentElement's data-theme, and the
   // screenshot script and e2e write it the same way. So this watches the attribute, not the buttons,

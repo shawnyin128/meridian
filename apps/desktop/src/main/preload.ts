@@ -105,6 +105,12 @@ contextBridge.exposeInMainWorld('meridian', {
   toggleMaximize(): void {
     ipcRenderer.send('meridian:toggle-maximize')
   },
+  onFullScreen(handler: (on: boolean) => void): () => void {
+    const relay = (_event: unknown, on: boolean) => handler(on)
+    ipcRenderer.on('meridian:full-screen-changed', relay)
+    void (ipcRenderer.invoke('meridian:full-screen') as Promise<boolean>).then(handler)
+    return () => { ipcRenderer.off('meridian:full-screen-changed', relay) }
+  },
   platform: process.platform,
   setTitleBarTheme(symbolColor: string): void {
     ipcRenderer.send('meridian:title-bar-theme', symbolColor)
