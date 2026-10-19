@@ -47,7 +47,7 @@ function assignRef(ref: ForwardedRef<HTMLInputElement>, node: HTMLInputElement |
  * `useInlineDraft` lifecycle: autofocus, Enter, an outside press or focus leaving to submit, cancel
  * on Esc, and no duplicate submission while an asynchronous submission is pending. Feature
  * components handle only the sibling layout and the write, and no longer write their own keyboard,
- * focus and busy rules.
+ * focus and busy rules. The input carries `data-inline-draft`, so a modal dialog leaves Esc to it.
  */
 export const InlineDraftInput = forwardRef<HTMLInputElement, InlineDraftInputProps>(
   function InlineDraftInput({
@@ -82,7 +82,7 @@ export const InlineDraftInput = forwardRef<HTMLInputElement, InlineDraftInputPro
 
     return (
       <FormInput
-        {...props} ref={holdInput} autoComplete={autoComplete} autoFocus={autoFocus}
+        {...props} ref={holdInput} data-inline-draft="" autoComplete={autoComplete} autoFocus={autoFocus}
         aria-invalid={draft.inputProps['aria-invalid']} onInput={draft.inputProps.onInput}
         onKeyDown={handleKeyDown}
       />

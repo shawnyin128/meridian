@@ -72,11 +72,16 @@ export function ModalDialog({
         <Dialog.Overlay className={overlayClassName} />
         <Dialog.Content
           {...contentProps}
-          onEscapeKeyDown={ignoreComposingEscape(contentProps?.onEscapeKeyDown)}
           className={contentClassName}
           {...(ariaDescribedBy === undefined
             ? { 'aria-describedby': undefined }
             : { 'aria-describedby': ariaDescribedBy })}
+          onEscapeKeyDown={ignoreComposingEscape((event) => {
+            contentProps?.onEscapeKeyDown?.(event)
+            // Radix takes Esc in the document's capture phase, before the focused input sees it; an
+            // inline draft cancels itself on Esc, so Esc from one leaves the dialog open.
+            if (event.target instanceof Element && event.target.matches('[data-inline-draft]')) event.preventDefault()
+          })}
           onCloseAutoFocus={(event) => {
             if (!restoreFocus || opener.current === null) return
             event.preventDefault()
