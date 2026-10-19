@@ -475,7 +475,8 @@ export function AppShell({ screens, settings }: {
   const dragSidebar = useGrip(GRIP_WIDTHS.sidebar, setWidth, toggleHidden)
   const dragPaperChat = useGrip(GRIP_WIDTHS.paperChat, setChatWidth, toggleHidden)
 
-  // Ctrl+B / Cmd+B toggles the sidebar; Escape peels the topmost dismissible layer; "/" jumps to the nearest search field.
+  // Ctrl+B / Cmd+B toggles the sidebar; Escape peels the topmost dismissible layer; "/" outside an
+  // editable element jumps to the nearest search field.
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
@@ -488,7 +489,9 @@ export function AppShell({ screens, settings }: {
         if (top) { e.preventDefault(); top.close() }
         return
       }
-      if (e.key === '/' && !/^(input|textarea)$/i.test((e.target as HTMLElement).tagName)) {
+      const target = e.target as HTMLElement
+      const editable = target.isContentEditable || /^(input|textarea|select)$/i.test(target.tagName)
+      if (e.key === '/' && !editable) {
         e.preventDefault()
         // The active screen's own field wins over the always-mounted sidebar search, which sits
         // earlier in the DOM and would otherwise match first in a single combined selector.
