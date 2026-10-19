@@ -44,4 +44,19 @@ describe('标签、计数徽标和状态点', () => {
     })
     expect(offenders).toEqual([])
   })
+
+  it('标签、计数徽标和状态点的样子只由它们自己的样式表画,别的样式表同名的规则会在打包后盖掉它们', () => {
+    const OWN = new Set(['components/Tag.css', 'components/StatusDot.css'])
+    const offenders = STYLESHEETS.filter((path) => !OWN.has(path)).flatMap((path) => {
+      const css = readFileSync(join(RENDERER, path), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+      return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].flatMap(([, selectors, body]) => {
+        const drawn = body!.split(';').map((d) => d.slice(0, d.indexOf(':')).trim()).filter((p) => LOOK.test(p))
+        if (drawn.length === 0) return []
+        return selectors!.split(',').map((s) => s.trim())
+          .filter((s) => /\.(tag|count-badge|status-dot)(--[\w-]+)?(?![\w-])/.test(subject(s)))
+          .map((s) => `${path}  ${s}  { ${drawn.join(', ')} }`)
+      })
+    })
+    expect(offenders).toEqual([])
+  })
 })

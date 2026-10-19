@@ -11,6 +11,7 @@ import {
 } from '../components/PageShell.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { PaperText } from '../components/paper/PaperText.js'
+import { Tag } from '../components/Tag.js'
 import { useFormat } from '../lib/format.js'
 import './shell.css'
 import './Feed.css'
@@ -77,7 +78,7 @@ function Body({ body, onOpenConflict }: {
         <div className="bh">{body.heading}</div>
         {body.items.map((item) => (
           <div className="bitem" key={item.id}>
-            <span className="tag conf">{item.tag}</span>
+            <Tag tone="bad">{item.tag}</Tag>
             <span className="t">{item.text}</span>
             {/* The demo's briefConf: this button opens a chat about the conflicting conclusions. */}
             <span className="go">
