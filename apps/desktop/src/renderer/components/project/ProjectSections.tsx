@@ -17,7 +17,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
 import { Tag, tagClass } from '../Tag.js'
 import './ProjectSections.css'
 
@@ -270,16 +270,18 @@ export function ProjectRelations({
           {isPaperRow(row.group)
             ? linked.map((paper) => (
               <span
-                className={chipClass(row, paper.id)} key={paper.id} data-paper={paper.id}
+                className={chipClass(row, paper.id)} key={paper.id} data-paper={paper.id} data-row-actions=""
                 onClick={() => onOpenPaper(paper.id)} {...dragProps(row, paper.id)}
               >
                 <button type="button" className="tagchip-open">
                   <FadeText className="tagchip-text"><PaperText text={paper.title} /></FadeText>
                 </button>
-                <IconButton
-                  label={m.common.removeLink} size="inline" className="rx"
-                  onClick={(event) => { event.stopPropagation(); onRemovePaper(paper.id, paper.title) }}
-                ><IconCross /></IconButton>
+                <RowActions>
+                  <IconButton
+                    label={m.common.removeLink} size="inline" className="rx"
+                    onClick={(event) => { event.stopPropagation(); onRemovePaper(paper.id, paper.title) }}
+                  ><IconCross /></IconButton>
+                </RowActions>
               </span>
             ))
             : null}
@@ -288,7 +290,7 @@ export function ProjectRelations({
             : (
               <span
                 className={chipClass(row, item.id)} key={item.id} data-wk={item.page} data-url={item.url}
-                title={item.url} {...dragProps(row, item.id)}
+                data-row-actions="" title={item.url} {...dragProps(row, item.id)}
                 onClick={item.url !== undefined
                   ? () => { window.open(item.url, '_blank') }
                   : item.page === undefined ? undefined : () => onOpenPage(item.page!)}
@@ -300,14 +302,16 @@ export function ProjectRelations({
                       <FadeText className="tagchip-text">{item.text}</FadeText>
                     </button>
                   )}
-                <IconButton
-                  label={m.project.links.editTitle} size="inline" className="tagchip-edit"
-                  onClick={(event) => { event.stopPropagation(); onEdit(item) }}
-                ><IconPencil /></IconButton>
-                <IconButton
-                  label={m.common.removeLink} size="inline" className="rx"
-                  onClick={(event) => { event.stopPropagation(); onRemove(item.id, item.text) }}
-                ><IconCross /></IconButton>
+                <RowActions>
+                  <IconButton
+                    label={m.project.links.editTitle} size="inline" className="tagchip-edit"
+                    onClick={(event) => { event.stopPropagation(); onEdit(item) }}
+                  ><IconPencil /></IconButton>
+                  <IconButton
+                    label={m.common.removeLink} size="inline" className="rx"
+                    onClick={(event) => { event.stopPropagation(); onRemove(item.id, item.text) }}
+                  ><IconCross /></IconButton>
+                </RowActions>
               </span>
             )))}
         </div>
@@ -373,10 +377,12 @@ export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
                     type="button" className="an" title={m.project.attachments.reveal} onClick={() => onReveal(attachment)}
                   >{attachment.name}</button>
                   <span className="as">{attachment.size}</span>
-                  <IconButton
-                    label={m.project.attachments.delete} size="nested" tone="danger" className="ax"
-                    onClick={() => onRemove(attachment.id)}
-                  ><IconTrash /></IconButton>
+                  <RowActions>
+                    <IconButton
+                      label={m.project.attachments.delete} size="nested" tone="danger" className="ax"
+                      onClick={() => onRemove(attachment.id)}
+                    ><IconTrash /></IconButton>
+                  </RowActions>
                 </StructuredRow>
               ))}
             </StructuredList>

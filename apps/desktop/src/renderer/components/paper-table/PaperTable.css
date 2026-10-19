@@ -132,10 +132,15 @@
 .typerow{padding-left:45px}
 .cmx.typex.on{opacity:1;pointer-events:auto}
 
-/* The delete button at the end of a row: hidden at rest, shown only while the row is hovered */
-.rowx{opacity:0;pointer-events:none}
-.ptable tbody tr:hover .rowx,.rowx:focus-visible{opacity:1;pointer-events:auto}
-.ptable tbody tr:has(.stchip[data-state="open"]) .rowx{opacity:1}
+/*
+ * The cell of a row's actions and the header's add cell stick to the table's right edge, so the
+ * actions stay in reach while the columns scroll under them. They lie above a truncated cell's hover
+ * box (z-index 6), and the header cell above the body cells that scroll under it.
+ */
+.ptable td.row-actions-cell,.tblwrap .ptable thead th.th-add{position:sticky;right:0;box-shadow:-1px 0 0 var(--sep2)}
+.ptable td.row-actions-cell{z-index:7;background-color:var(--content);
+  background-image:linear-gradient(var(--row-over),var(--row-over)),linear-gradient(var(--row-bg),var(--row-bg))}
+.tblwrap .ptable thead th.th-add{z-index:8}
 
 /* The paper row's right-click menu uses the shared ContextMenu; only this menu's width is set here. */
 .paper-row-menu{min-width:168px}

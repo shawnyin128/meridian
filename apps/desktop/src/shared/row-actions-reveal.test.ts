@@ -12,7 +12,7 @@ type Window = {
     querySelector(selector: string): Node
   }
   MouseEvent: new (type: string, init: { bubbles: boolean }) => object
-  getComputedStyle(element: Node): { opacity: string; pointerEvents: string }
+  getComputedStyle(element: Node): { opacity: string; pointerEvents: string; position: string; right: string }
 }
 const { document, MouseEvent, getComputedStyle } = globalThis as unknown as Window
 
@@ -26,6 +26,7 @@ const STYLESHEETS = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
 const STYLES = [
   'components/StructuredList.css', 'components/FieldPickers.css', 'components/IconButton.css', 'shell/AppShell.css',
   'components/ResearchObjectCard.css', 'routes/Projects.css', 'routes/ProjectDetail.css', 'components/wiki/WikiClaims.css',
+  'components/paper-table/PaperTable.css',
 ].map((path) => readFileSync(join(RENDERER, path), 'utf8'))
 
 const SLOT = '<span class="row-actions"><button type="button" class="icbtn sm dots"></button></span>'
@@ -87,13 +88,33 @@ describe('行尾操作槽', () => {
     })
   })
 
+  it('槽里有正在下载或已按下的按钮时，槽一直显示：它显示的是状态', () => {
+    const shown = (button: string) => {
+      document.body.innerHTML = `<article class="paper-card" data-row-actions=""><span class="row-actions">${button}<button type="button" class="icbtn"></button></span></article>`
+      const style = getComputedStyle(document.querySelector('.row-actions'))
+      return `${style.opacity} ${style.pointerEvents}`
+    }
+    expect(shown('<button type="button" class="icbtn busy" disabled></button>')).toBe('1 auto')
+    expect(shown('<button type="button" class="icbtn" aria-pressed="true"></button>')).toBe('1 auto')
+    expect(shown('<button type="button" class="icbtn" aria-pressed="false"></button>')).toBe('0 none')
+  })
+
+  it('论文行尾放操作槽的那一格贴在表格右边，表格横向滚动时也看得见', () => {
+    document.body.innerHTML = '<div class="tblwrap"><table class="ptable"><thead><tr><th>标题</th><th class="th-add"></th></tr></thead><tbody><tr data-row-actions=""><td class="pt-title">EAGLE</td><td class="row-actions-cell"><span class="row-actions"></span></td></tr></tbody></table></div>'
+    for (const cell of ['td.row-actions-cell', 'th.th-add']) {
+      const style = getComputedStyle(document.querySelector(cell))
+      expect([style.position, style.right], cell).toEqual(['sticky', '0px'])
+    }
+  })
+
   it('只有 StructuredList.css 决定槽和「更多」按钮显不显、点不点得到，各行不另写一份', () => {
     const offenders = STYLESHEETS
       .filter((path) => path !== join('components', 'StructuredList.css'))
       .flatMap((path) => [...readFileSync(join(RENDERER, path), 'utf8')
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .matchAll(/([^{}]+)\{([^{}]*)\}/g)]
-        .filter(([, selector, body]) => /\.(?:dots|row-actions)(?![\w-])/.test(selector!) && /(?:^|;)\s*(?:opacity|pointer-events)\s*:/.test(body!))
+        .filter(([, selector, body]) => /\.(?:dots|row-actions)(?![\w-])/.test(selector!.replace(/:not\([^)]*\)/g, ''))
+          && /(?:^|;)\s*(?:opacity|pointer-events)\s*:/.test(body!))
         .map(([, selector]) => `${path}  ${selector!.trim()}`))
     expect(offenders).toEqual([])
   })

@@ -18,10 +18,11 @@ button.structured-row:hover,button.structured-row:focus-visible,.structured-row-
 
 /*
  * The row-actions slot: hidden and not clickable at rest, shown while its host (an element marked
- * data-row-actions) is hovered or holds focus, or while one of its menus or dialogs is open. Hosts
- * do not write their own reveal.
+ * data-row-actions) is hovered or holds focus, while one of its menus or dialogs is open, and while
+ * one of its buttons shows a state (a running download, a pressed toggle). Hosts do not write their
+ * own reveal.
  */
-.row-actions{display:inline-flex;flex:none;align-items:center;gap:var(--sp-2);opacity:0;pointer-events:none;
+.row-actions{display:inline-flex;flex:none;align-items:center;gap:var(--sp-4);opacity:0;pointer-events:none;
   transition:opacity var(--t-fast) var(--e-out)}
 [data-row-actions]:hover .row-actions,[data-row-actions]:focus-within .row-actions,
-.row-actions:has([data-state="open"]){opacity:1;pointer-events:auto}
+.row-actions:has([data-state="open"],.busy,[aria-pressed="true"]){opacity:1;pointer-events:auto}

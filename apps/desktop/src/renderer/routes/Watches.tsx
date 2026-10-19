@@ -12,7 +12,9 @@ import { AddAction } from '../components/AddAction.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { afterLeaving, InlineDraftInput } from '../components/InlineDraftInput.js'
-import { StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { IconButton } from '../components/IconButton.js'
+import { IconPencil, IconTrash } from '../components/icons.js'
 import { FormInput } from '../components/FormControls.js'
 import { ChoicePicker } from '../components/FieldPickers.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
@@ -79,13 +81,15 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
                     )
                     : null}
                   {w.active ? null : <span className="src">{m.watches.paused}</span>}
-                  <button className="btn ghost sm" onClick={() => onEdit(w)}>{m.common.edit}</button>
                   <Switch label={w.name} checked={w.active} onChange={() => onSetActive(w)} />
-                  <ConfirmDialog
-                    trigger={<button className="btn ghost sm">{m.common.remove}</button>}
-                    title={m.watches.confirmRemove(w.name)} description={m.watches.confirmRemoveDescription}
-                    confirmLabel={m.watches.confirmRemoveLabel} onConfirm={() => onRemove(w.id)}
-                  />
+                  <RowActions>
+                    <IconButton label={m.common.edit} size="nested" onClick={() => onEdit(w)}><IconPencil /></IconButton>
+                    <ConfirmDialog
+                      trigger={<IconButton label={m.common.remove} size="nested" tone="danger"><IconTrash /></IconButton>}
+                      title={m.watches.confirmRemove(w.name)} description={m.watches.confirmRemoveDescription}
+                      confirmLabel={m.watches.confirmRemoveLabel} onConfirm={() => onRemove(w.id)}
+                    />
+                  </RowActions>
                 </StructuredRow>
               ))) }
           </StructuredList>

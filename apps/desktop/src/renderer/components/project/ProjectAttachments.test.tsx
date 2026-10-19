@@ -21,6 +21,21 @@ describe('ProjectAttachments', () => {
     host.remove()
   })
 
+  it('puts the attachment\'s delete into the row-actions slot as a glyph that turns red on hover', () => {
+    act(() => root.render(
+      <MessagesProvider>
+        <ProjectAttachments
+          attachments={[{ id: 'a1', name: 'run.log', size: '2 KB', path: 'attachments/run.log' }]}
+          onAdd={vi.fn()} onReveal={vi.fn()} onRemove={vi.fn()}
+        />
+      </MessagesProvider>,
+    ))
+    const slot = (row: Element) => [...row.querySelectorAll('.row-actions button')].map((item) => [
+      item.getAttribute('aria-label'), item.textContent, item.classList.contains('icbtn'), item.classList.contains('danger'),
+    ])
+    expect(slot(host.querySelector('.attrow')!)).toEqual([['Delete attachment', '', true, true]])
+  })
+
   it('reveals an attachment from a button that holds its name', () => {
     const attachment = { id: 'a1', name: 'run.log', size: '2 KB', path: 'attachments/run.log' }
     const onReveal = vi.fn()

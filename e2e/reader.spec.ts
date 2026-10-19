@@ -477,7 +477,7 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
   // collapsed while reading, so leave through the back button.
   await shown(win, '.paper-chat-head .back').click()
   await win.locator('[data-desk="trash"]').click()
-  await win.locator('.tgroup .trow .btn', { hasText: '恢复' }).click()
+  await win.locator('.tgroup .trow .row-actions [aria-label="恢复"]').click()
   await win.locator('#rowInboxAll').click()
   await shown(win, `.pcard[data-pid="${target.id}"] [title="开始阅读"]`).click()
   await expect(shown(win, '.pdfload')).toHaveCount(0)

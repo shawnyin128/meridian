@@ -28,6 +28,18 @@ describe('PaperCard', () => {
     expect(out).toContain('推荐理由')
   })
 
+  it('卡片是操作槽的宿主，标题行尾的动作都放在槽里', () => {
+    const host = document.createElement('div')
+    host.innerHTML = renderToStaticMarkup(
+      <MessagesProvider>
+        <PaperCard paperId="paper-2" title="A paper" actions={<button>稍后阅读</button>} metadata="Ada" />
+      </MessagesProvider>,
+    )
+    const card = host.querySelector('.paper-card')!
+    expect(card.hasAttribute('data-row-actions')).toBe(true)
+    expect(card.querySelector('.paper-card-heading .row-actions')!.textContent).toBe('稍后阅读')
+  })
+
   it('标题里的公式与文本命令按 LaTeX 渲染', () => {
     const out = renderToStaticMarkup(
       <MessagesProvider>

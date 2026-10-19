@@ -66,6 +66,19 @@ describe('ProjectRelations', () => {
     open.mockRestore()
   })
 
+  it('puts a chip\'s edit and remove into the chip\'s row-actions slot; the chip hosts the slot', () => {
+    render()
+    const slot = (chip: Element) => [...chip.querySelectorAll('.row-actions button')].map((item) => [
+      item.getAttribute('aria-label'), item.textContent, item.classList.contains('icbtn'),
+    ])
+    const paper = host.querySelector('[data-paper="p1"]')!
+    expect(paper.hasAttribute('data-row-actions')).toBe(true)
+    expect(slot(paper)).toEqual([['Remove link', '', true]])
+    const item = host.querySelector('.wkrel [data-wk]')!
+    expect(item.hasAttribute('data-row-actions')).toBe(true)
+    expect(slot(item)).toEqual([['Edit link', '', true], ['Remove link', '', true]])
+  })
+
   it('opens a paper, a Wiki page and a URL from the button that holds each chip\'s name', () => {
     const open = vi.spyOn(window, 'open').mockImplementation(() => null)
     render()

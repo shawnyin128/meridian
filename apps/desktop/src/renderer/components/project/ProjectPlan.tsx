@@ -25,7 +25,7 @@ import { IconButton } from '../IconButton.js'
 import { IconPencil, IconTrash } from '../icons.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
 import { useDragReorder, type DragCardProps } from '../../hooks/useDragReorder.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
@@ -349,10 +349,12 @@ function TaskRow({ task, flash, selected, dragProps, dropClass = '', onSave, onD
           </span>
         )
         : <TaskNameCell task={task} onSave={onSave} />}
-      <IconButton
-        label={m.project.plan.deleteTaskFor(task.title)} title={m.project.plan.deleteTask} size="nested" tone="danger"
-        className="row-delete" onClick={(event) => { event.stopPropagation(); onDelete() }}
-      ><IconTrash /></IconButton>
+      <RowActions>
+        <IconButton
+          label={m.project.plan.deleteTaskFor(task.title)} title={m.project.plan.deleteTask} size="nested" tone="danger"
+          className="row-delete" onClick={(event) => { event.stopPropagation(); onDelete() }}
+        ><IconTrash /></IconButton>
+      </RowActions>
     </StructuredRow>
   )
 }
@@ -388,10 +390,12 @@ function MilestoneRow({ milestone, flash, onHover, onSave, onDelete }: {
         value={milestone.title} label={m.project.plan.milestoneNamePlaceholder}
         onSave={(title) => onSave({ title })}
       />
-      <IconButton
-        label={m.project.plan.deleteMilestoneFor(milestone.title)} title={m.project.plan.deleteMilestone} size="nested"
-        tone="danger" className="row-delete" onClick={onDelete}
-      ><IconTrash /></IconButton>
+      <RowActions>
+        <IconButton
+          label={m.project.plan.deleteMilestoneFor(milestone.title)} title={m.project.plan.deleteMilestone} size="nested"
+          tone="danger" className="row-delete" onClick={onDelete}
+        ><IconTrash /></IconButton>
+      </RowActions>
     </StructuredRow>
   )
 }

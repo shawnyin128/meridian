@@ -58,9 +58,10 @@ function enter(input: HTMLInputElement, value: string) {
   input.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
+/** The button in `row` whose visible text or, for an icon button, accessible name is `label`. */
 function button(row: Element, label: string): HTMLButtonElement {
   const found = [...row.querySelectorAll<HTMLButtonElement>('button')]
-    .find((item) => item.textContent === label)
+    .find((item) => item.textContent === label || item.getAttribute('aria-label') === label)
   if (found === undefined) throw new Error(`找不到按钮 ${label}`)
   return found
 }
@@ -102,6 +103,21 @@ describe('WatchSettings', () => {
     expect(host.querySelector('[data-w="author-1"] [role="switch"]')!.getAttribute('aria-checked')).toBe('true')
     await act(async () => { toggle.click() })
     expect(api.setActive).toHaveBeenCalledWith('topic-1', true)
+
+    await act(async () => { root.unmount() })
+  })
+
+  it('编辑和移除是行尾操作槽里的图标钮，移除悬停时标红；开关留在槽外一直看得见', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+
+    const row = host.querySelector('[data-w="topic-1"]')!
+    expect(row.hasAttribute('data-row-actions')).toBe(true)
+    expect([...row.querySelectorAll('.row-actions button')].map((item) => [
+      item.getAttribute('aria-label'), item.textContent, item.classList.contains('icbtn'), item.classList.contains('danger'),
+    ])).toEqual([['编辑', '', true, false], ['移除', '', true, true]])
+    expect(row.querySelector('.row-actions [role="switch"]')).toBeNull()
+    expect(row.querySelector('[role="switch"]')).not.toBeNull()
 
     await act(async () => { root.unmount() })
   })

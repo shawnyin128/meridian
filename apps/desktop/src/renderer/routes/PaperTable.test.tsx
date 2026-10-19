@@ -464,6 +464,16 @@ describe('PaperTable', () => {
     expect(openedScreens).toEqual([['reader', ROW.id]])
   })
 
+  it('论文行是操作槽的宿主，行尾的删除在槽里', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const row = host.querySelector('.ptable tbody tr')!
+    expect(row.hasAttribute('data-row-actions')).toBe(true)
+    expect([...row.querySelectorAll('.row-actions button')].map((item) => item.getAttribute('aria-label'))).toEqual(['删除'])
+  })
+
   it('行尾的删除把论文移到垃圾桶，画的是垃圾桶而不是关闭用的叉', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)

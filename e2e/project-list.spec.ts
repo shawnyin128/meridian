@@ -206,7 +206,7 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   await win.locator('[data-desk="trash"]').click()
   await expect(shown(win).locator('.section-heading')).toHaveText('项目 · 1清空垃圾桶')
   await expect(win.locator('.tgroup .trow .tt2')).toHaveText([RENAMED_PROJECT])
-  await win.locator('.tgroup .trow .btn', { hasText: '恢复' }).click()
+  await win.locator('.tgroup .trow .row-actions [aria-label="恢复"]').click()
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
 
   await gotoList(win)

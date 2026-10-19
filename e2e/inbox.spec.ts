@@ -182,7 +182,7 @@ test('忽略一条:它进垃圾桶,恢复后回到推送屏原来的位置', asy
   await win.locator('[data-desk="trash"]').click()
   await expect(shown(win, '.section-heading')).toHaveText('论文推送 · 1清空垃圾桶')
   await expect(win.locator('.tgroup .trow .tt2')).toHaveText([dropped])
-  await win.locator('.tgroup .trow .btn', { hasText: '恢复' }).click()
+  await win.locator('.tgroup .trow .row-actions [aria-label="恢复"]').click()
 
   await openInbox(win, 'all')
   await expect(shown(win, '.pcard')).toHaveCount(order.length)
@@ -438,7 +438,7 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   // Removed: the sidebar row disappears, and its own pushes are cleared with it (the confirm dialog's
   // own wording says so); other watches' pushes are untouched.
   expect(kept).toBeGreaterThan(0)
-  await spec.locator('.btn', { hasText: '移除' }).click()
+  await spec.locator('.row-actions [aria-label="移除"]').click()
   // Removing a watch is destructive, so it now confirms first (ConfirmDialog.tsx).
   await win.locator('.modal.confirm .modal-actions>*').last().click()
   await expect(win.locator('[data-watchrow="spec"]')).toHaveCount(0)
@@ -539,14 +539,14 @@ test('关注可原地编辑:保留原 id、暂停状态与已经收到的论文'
 
   const topic = before.find((item) => item.type === 'topic')!
   const topicRow = settings(win, `.wrow[data-w="${topic.id}"]`)
-  await topicRow.locator('.btn', { hasText: '编辑' }).click()
+  await topicRow.locator('.row-actions [aria-label="编辑"]').click()
   await settings(win, `.wrow.editrow[data-w="${topic.id}"] input`).fill(`${topic.name} updated`)
   await settings(win, `.wrow.editrow[data-w="${topic.id}"] input`).press('Enter')
   await expect(settings(win, `.wrow[data-w="${topic.id}"] .nm`)).toHaveText(`${topic.name} updated`)
 
   const authorWatch = before.find((item) => item.type === 'author')!
   const authorRow = settings(win, `.wrow[data-w="${authorWatch.id}"]`)
-  await authorRow.locator('.btn', { hasText: '编辑' }).click()
+  await authorRow.locator('.row-actions [aria-label="编辑"]').click()
   await settings(win, `.wrow.editrow[data-w="${authorWatch.id}"] input`).fill(`${authorWatch.name} Lab`)
   await settings(win, '.author-resolver-actions .btn').click()
   await expect(settings(win, `.wrow[data-w="${authorWatch.id}"] .nm`)).toHaveText(`${authorWatch.name} Lab`)

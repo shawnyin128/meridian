@@ -61,4 +61,15 @@ describe('最近变动的来源标签', () => {
     const labels = [...host.querySelectorAll('.crow')].map((row) => row.querySelector('.ct .source-label')?.textContent ?? null)
     expect(labels).toEqual([null, 'agent', 'agent · 笔记', 'agent · 实验'])
   })
+
+  it('删除、归档和撤销是行尾操作槽里的图标钮，删除悬停时标红', async () => {
+    api.entries = [{ ...entry('c1', '项目「draft 效率」· 改了字段', '我'), undoable: true }]
+    await act(async () => root.render(<MessagesProvider><Changelog /></MessagesProvider>))
+    const slot = (row: Element) => [...row.querySelectorAll('.row-actions button')].map((item) => [
+      item.getAttribute('aria-label'), item.textContent, item.classList.contains('icbtn'), item.classList.contains('danger'),
+    ])
+    expect(slot(host.querySelector('.crow')!)).toEqual([
+      ['删除', '', true, true], ['归档', '', true, false], ['撤销', '', true, false],
+    ])
+  })
 })

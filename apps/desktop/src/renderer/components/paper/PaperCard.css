@@ -2,7 +2,6 @@
 .paper-card.is-leaving{opacity:0;transform:translateX(24px)}
 .paper-card-heading{display:flex;align-items:flex-start;gap:10px}
 .paper-card-heading h3{font-size:var(--fs-title);font-weight:600;margin:0;line-height:var(--lh-tight);flex:1}
-.paper-card-actions{display:flex;align-items:center;gap:8px;flex:none}
 .paper-card-metadata{font-size:var(--fs-sm);color:var(--ter);margin:4px 0 10px}
 .paper-card-notice{display:flex;align-items:center;gap:8px;margin-top:8px;padding:6px 10px;border:1px solid var(--sep2);border-radius:var(--r-md);font-size:var(--fs-sm);color:var(--sec)}
 .paper-card-notice>span{flex:1}

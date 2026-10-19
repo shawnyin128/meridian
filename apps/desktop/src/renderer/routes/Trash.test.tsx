@@ -51,9 +51,10 @@ vi.mock('../hooks/useVaultWrite.js', () => ({
 
 const { Trash } = await import('./Trash.js')
 
+/** The button in `scope` whose visible text or, for an icon button, accessible name is `label`. */
 function button(scope: ParentNode, label: string): HTMLButtonElement {
   const found = [...scope.querySelectorAll<HTMLButtonElement>('button')]
-    .find((item) => item.textContent === label)
+    .find((item) => item.textContent === label || item.getAttribute('aria-label') === label)
   if (found === undefined) throw new Error(`找不到按钮 ${label}`)
   return found
 }
@@ -78,6 +79,14 @@ describe('Trash', () => {
     if (root !== null) act(() => root!.unmount())
     root = null
     vi.unstubAllGlobals()
+  })
+
+  it('恢复和彻底删除是行尾操作槽里的图标钮，彻底删除悬停时标红', async () => {
+    const row = host.querySelector('.trow')!
+    expect(row.hasAttribute('data-row-actions')).toBe(true)
+    expect([...row.querySelectorAll('.row-actions button')].map((item) => [
+      item.getAttribute('aria-label'), item.textContent, item.classList.contains('icbtn'), item.classList.contains('danger'),
+    ])).toEqual([['恢复', '', true, false], ['彻底删除', '', true, true]])
   })
 
   it('彻底删除一条要先确认,确认后才清除', async () => {
