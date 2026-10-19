@@ -393,9 +393,8 @@ test('拖菱形改期后,抬手补发的那次点击不算点在空白处新建�
   await win.mouse.up()
 
   await expect(win.locator('#toast')).toHaveText(`已改期到 ${dshort(moved)}`)
-  // Not mistaken for a create: the task tab still shows (a misread click would switch to the
-  // milestone tab and insert a blank row for a new milestone).
-  await expect(win.locator('#taskList')).toBeVisible()
+  // Not mistaken for a create: a misread click would open the "New milestone" editor on the lane.
+  await expect(win.locator('.ctxmenu')).toHaveCount(0)
   // The exact core data below already proves no extra milestone appeared and the other three are untouched.
   expect((await readDraft(win)).milestones).toEqual([
     { id: 'm1', date: fixtureDay(today, MILESTONES.m1) },
@@ -524,7 +523,7 @@ test('任务四列逐行对齐,任务与里程碑日期使用同一底色', asyn
   await expect(milestoneDate.locator('..')).not.toHaveClass(/\bhl\b/)
 })
 
-test('拖完菱形那一下不算点击,单击只切到里程碑并闪烁,名称格可独立写回', async ({ win }) => {
+test('拖完菱形那一下不算点击,单击打开它的改名小窗并写回', async ({ win }) => {
   await gotoProject(win)
   const today = await vaultToday(win)
   const moved = fixtureDay(today, MILESTONES.m2 + 3)
@@ -553,20 +552,17 @@ test('拖完菱形那一下不算点击,单击只切到里程碑并闪烁,名称
   await expect.poll(async () => (await left()) - from).toBeCloseTo(3 * dayWidth)
   await win.mouse.up()
   await expect(win.locator('#toast')).toHaveText(`已改期到 ${dshort(moved)}`)
-  // Click suppression still works: the task tab stays shown, since the drag triggered no locate.
-  await expect(win.locator('#taskList')).toBeVisible()
+  // Click suppression still works: the drag opened no milestone editor.
+  await expect(win.locator('.ctxmenu')).toHaveCount(0)
 
   // The reschedule may have pushed m2 into the next calendar window; find it again before clicking it.
   const movedDiamond = await revealMilestone(win, 'draft/m2')
   await movedDiamond.click()
-  const row = win.locator('#msList .ddlrow[data-row="m2"]')
-  await expect(row).toHaveClass(/\bflash\b/)
-  await expect(row.locator('.plan-name-input')).toHaveCount(0)
-
-  await row.locator('.plan-name').click()
-  await expect(row.locator('.plan-name-input')).toHaveValue(titleOfM2)
-  await row.locator('.plan-name-input').fill(EDITED_MILESTONE_TITLE)
-  await row.locator('.plan-name-input').press('Enter')
+  await expect(win.locator('.ctxmenu .rh')).toHaveText(`里程碑 · ${dshort(moved)}`)
+  const name = win.locator('.ctxmenu .mi-in input')
+  await expect(name).toHaveValue(titleOfM2)
+  await name.fill(EDITED_MILESTONE_TITLE)
+  await name.press('Enter')
   await expect(win.locator('#banner span')).toHaveText('已更新里程碑')
 
   const saved = await win.evaluate(async () => {

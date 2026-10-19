@@ -8,6 +8,8 @@ Current shared contracts:
 
 - `timeline/TimelineBoard`: scale, grid, rows, task bars, milestones, dragging, labels, priority, and
   history visibility hooks. Overview and project detail configure the same board.
+- `timeline/MilestoneEditor`: the one milestone editor of both boards. The milestone lane opens it to
+  name a new milestone and a diamond to rename or delete one, at the click.
 - `InlineField`: one-field-at-a-time editing, validation, cancel/save behavior, and presentation hooks.
 - `InlineDraftInput`: the shared input and lifecycle for placeholder/create rows. Hosts provide row
   layout, sibling controls, trigger refs, and persistence; trimming, validation, focus, Enter/Escape,

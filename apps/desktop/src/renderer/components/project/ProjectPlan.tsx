@@ -398,7 +398,7 @@ function MilestoneRow({ milestone, flash, onHover, onSave, onDelete }: {
  */
 export function ProjectPlan({
   project, tab, today, creating, flashId, selectedTaskId,
-  listRef, addRef, timelineAddRef, milestoneLaneRef,
+  listRef, addRef, timelineAddRef,
   onTab, onDiscardOpenEdits, onStartTask, onStartMilestone, onCancelCreate,
   onCreateTask, onCreateMilestone, onUpdateTask, onDeleteTask, onReorderTasks, onOpenTask,
   onUpdateMilestone, onDeleteMilestone, onHoverMilestone,
@@ -413,7 +413,6 @@ export function ProjectPlan({
   listRef: RefObject<HTMLDivElement | null>
   addRef: RefObject<HTMLButtonElement | null>
   timelineAddRef: RefObject<HTMLButtonElement | null>
-  milestoneLaneRef: RefObject<HTMLDivElement | null>
   onTab: (tab: PlanTab) => void
   onDiscardOpenEdits: () => void
   onStartTask: () => void
@@ -539,7 +538,7 @@ export function ProjectPlan({
                 ? (
                   <MilestoneCreateRow
                     initial={{ date: creating.date, title: '', done: false }}
-                    triggers={[addRef, timelineAddRef, milestoneLaneRef]}
+                    triggers={[addRef, timelineAddRef]}
                     onCancel={onCancelCreate} onSave={onCreateMilestone}
                   />
                 )

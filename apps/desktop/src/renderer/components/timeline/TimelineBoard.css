@@ -78,3 +78,6 @@
 .timeline-fold[aria-expanded="false"]{transform:rotate(-90deg)}
 .timeline-folded-count{flex:none;color:var(--ter);font-weight:400}
 @media (prefers-reduced-motion:reduce){.timeline-fold{transition:none}}
+
+/* Anchor of the milestone editor: a zero-size point placed inside the timeline canvas. */
+.ganchor{position:absolute;width:0;height:0}

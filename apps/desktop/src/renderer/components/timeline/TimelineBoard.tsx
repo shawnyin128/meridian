@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type {
-  MouseEvent as ReactMouseEvent, ReactNode, RefObject,
-} from 'react'
+import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import type { Milestone, Task, TaskWindow } from '../../../shared/contract.js'
 import { useToday } from '../../shell/AppShell.js'
 import { dnum, isoOf } from '../../../shared/dates.js'
@@ -54,7 +52,7 @@ function pointAt(canvas: HTMLElement, clientX: number, clientY: number): Timelin
  */
 export function TimelineBoard({
   projects, className = '', showProjectNames = false, foldable = false, headerAction, canvasOverlay,
-  milestoneLaneRef, hoverMilestoneId, onHoverMilestone, onLabelClick, onTaskClick,
+  hoverMilestoneId, onHoverMilestone, onLabelClick, onTaskClick,
   onMilestoneClick, onMilestoneLaneClick, onMoveTask, onMoveTaskWindow, onMoveMilestone,
   onReorderTasks, onPeriodChange,
 }: {
@@ -66,7 +64,6 @@ export function TimelineBoard({
     scale: TimelineScale; firstDay: string; today: string
   }) => ReactNode
   canvasOverlay?: ReactNode
-  milestoneLaneRef?: RefObject<HTMLDivElement | null>
   hoverMilestoneId?: string | null
   onHoverMilestone?: (projectId: string, milestoneId: string | null) => void
   onLabelClick?: (projectId: string, kind: 'milestones' | 'task', itemId?: string) => void
@@ -235,7 +232,7 @@ export function TimelineBoard({
         <div className="gwrap" ref={wrap}>
           <div className="gcanvas" ref={canvas} style={{ width: days * dayWidth }}>
             <TimelineGrid window={window} scale={scale} today={today} />
-            {rows.map((row, rowIndex) => {
+            {rows.map((row) => {
               const { project } = row
               if (row.kind === 'milestones') {
                 return (
@@ -243,7 +240,6 @@ export function TimelineBoard({
                     className="grow msrow" data-row={project.id} data-proj={project.id}
                     key={`${project.id}/milestones`}
                     title={m.timeline.bar.clickHint}
-                    ref={rowIndex === 0 ? milestoneLaneRef : undefined}
                     onClick={(event) => {
                       if ((event.target as HTMLElement).closest('.gddl')) return
                       onMilestoneLaneClick(
