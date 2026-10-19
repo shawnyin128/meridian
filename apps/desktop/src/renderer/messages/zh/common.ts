@@ -55,7 +55,11 @@ export const common = {
     running: '正在生成',
     runningHint: '正在生成，点击停止',
   },
-  markdown: { citePage: (page: string) => `原文第 ${page} 页` },
+  anchor: {
+    label: (page: number) => `p.${page}`,
+    name: (page: number) => `原文第 ${page} 页`,
+    quoteHeading: (page: number) => `p.${page} · 原文`,
+  },
   failure: {
     label: (what: string, why: string) => `${what} · ${why}`,
     reasons: {

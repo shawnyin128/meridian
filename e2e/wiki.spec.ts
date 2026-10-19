@@ -148,21 +148,21 @@ test('对照表的行是成员论文,格子按契约的列排,悬停看原文;�
   expect(await table.locator('thead th:not(.rx):not(.th-add)').allTextContents())
     .toEqual(['论文', ...agg.columns.map((c) => c.label)])
   expect(await table.locator('tbody tr td.rh').allTextContents()).toEqual(agg.rows.map((r) => r.paper.title))
-  // An empty cell shows a dash, and a filled cell carries a page-number superscript.
+  // An empty cell shows a dash, and a filled cell ends with its anchor, p.N.
   const first = agg.rows[0]!
   expect(await table.locator('tbody tr').first().locator('td:not(.rh):not(.rx)').allTextContents()).toEqual(
     agg.columns.map((c) => {
       const cell = first.cells[c.key]
-      return cell === undefined ? '—' : `${cell.value}p${cell.page}`
+      return cell === undefined ? '—' : `${cell.value} p.${cell.page}`
     }),
   )
   // Hovering a cell's anchor shows the source text it quotes.
   const filled = agg.columns.find((c) => first.cells[c.key] !== undefined)!
-  await table.locator('tbody tr').first().locator('.anc').first().hover()
-  await expect(win.locator('#wktip')).toContainText(first.cells[filled.key]!.quote)
+  await table.locator('tbody tr').first().locator('.source-anchor').first().hover()
+  await expect(win.locator('.source-anchor-quote')).toContainText(first.cells[filled.key]!.quote)
 
   // An [[id]] link without an alias in the body shows that page's display name.
-  expect(await shown(win).locator('.wkmain .md .wl').allTextContents()).toContain('GPTQ')
+  expect(await shown(win).locator('.wkmain .md .entity-link--page').allTextContents()).toContain('GPTQ')
 
   // Open the paper page.
   await table.locator(`[data-wk="${first.paper.id}"]`).click()

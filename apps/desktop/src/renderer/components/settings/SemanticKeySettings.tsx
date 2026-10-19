@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react'
 import type { SemanticKeyCheckResult, SemanticKeyStatus } from '../../../shared/contract.js'
 import { delivery } from '../../ipc.js'
 import { useMessages } from '../../messages/useMessages.js'
+import { EntityLink } from '../EntityLink.js'
 import { FormInput } from '../FormControls.js'
 import {
   ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError, ServiceField,
   ServiceFoot, ServiceSavedKey, ServiceStatus,
 } from './ServiceCard.js'
-import './SemanticKeySettings.css'
 
 const APPLY_URL = 'https://www.semanticscholar.org/product/api#api-key-form'
 
@@ -74,7 +74,7 @@ export function SemanticKeySettings() {
     <ServiceCard className="semantic-key-card">
       <ServiceStatus
         title={copy.heading}
-        description={<>{copy.description} <a href={APPLY_URL} target="_blank" rel="noreferrer">{copy.apply}</a></>}
+        description={<>{copy.description} <EntityLink kind="external" label={copy.apply} href={APPLY_URL} /></>}
         configured={status.configured}
         configuredLabel={m.settings.model.configured}
         notConfiguredLabel={m.settings.model.notConfigured}

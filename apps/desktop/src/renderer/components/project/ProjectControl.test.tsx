@@ -25,7 +25,7 @@ describe('ProjectControl', () => {
     const inline = renderToStaticMarkup(
       <MessagesProvider><ProjectNextActionView action={action} variant="inline" /></MessagesProvider>,
     )
-    expect(detail).toContain('<span class="tag tag--label tag--accent"><span class="tag-text">任务</span></span>')
+    expect(detail).toContain('<span class="tag tag--label tag--neutral"><span class="tag-text">任务</span></span>')
     expect(detail).toContain('9月16日')
     expect(summary).toContain('9月16日')
     expect(summary).not.toContain('class="tag ')

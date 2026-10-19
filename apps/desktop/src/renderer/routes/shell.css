@@ -7,8 +7,6 @@
 /* Message stream shared by the feed and chat: one item per row in a centered, fixed-width column */
 .msgs{flex:1;overflow:auto;padding:24px 0;display:flex;flex-direction:column;gap:20px}
 .mwrap{width:min(var(--chatw),92%);margin:0 auto}
-.cite{color:var(--link);cursor:pointer;font-size:13px}
-.cite:hover{text-decoration:underline}
 
 /*
  * The one button set. Fill: .pri is solid, the default is a soft fill and .ghost has none, for a
@@ -34,7 +32,7 @@
 .btn.danger:focus-visible{outline-color:var(--bad)}
 .btn:disabled{opacity:.45;cursor:default;box-shadow:none}
 /* An applied read-state filter takes the selected tint; solid accent is kept for primary actions. */
-.read-state-filter.on{background-color:var(--accent-soft);border-color:transparent;color:var(--link)}
+.read-state-filter.on{background-color:var(--accent-soft);border-color:transparent;color:var(--accent-text)}
 .add-action{display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap}
 .add-action>svg{width:12px;height:12px;flex:none}
 
@@ -199,11 +197,7 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .md th{background:var(--hover);font-weight:600}
 .md hr{border:0;border-top:1px solid var(--sep2);margin:16px 0}
 .md img{max-width:100%}
-.md a{color:var(--link)}
 .md .katex-display{margin:10px 0}
-.wl{color:var(--link);cursor:pointer;text-decoration:none}
-:where(button.wl){padding:0;border:0;background:none;font:inherit;text-align:left}
-.wl:hover{text-decoration:underline}
 .cnt{border:0;background:transparent;padding:0;font:inherit;color:inherit;cursor:pointer}
 .cnt:hover{color:var(--ink);text-decoration:underline}
 .nrow{display:grid;padding:8px 2px}

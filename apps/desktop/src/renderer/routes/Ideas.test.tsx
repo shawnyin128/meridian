@@ -104,6 +104,8 @@ describe('Ideas', () => {
     const linked = host.querySelector('[data-idea="idea-linked"]')!
     expect(linked.classList.contains('research-object-card')).toBe(true)
     expect(linked.textContent).toContain('项目 · 推测解码')
+    // The project tag names the project inside a card that opens the idea, so it is a label, not a link.
+    expect(linked.querySelector('.idea-project-tag')!.className).toContain('tag--neutral')
     expect(linked.textContent).toContain('只对 disagreement 高且可学习的 token 加大蒸馏权重。')
     expect(linked.textContent).toContain('对话')
     expect(linked.textContent).toContain('来源 · 摊薄的前提是共享前缀吗')

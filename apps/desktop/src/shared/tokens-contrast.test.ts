@@ -155,10 +155,10 @@ const PAIRS: Pair[] = [
   { theme: 'light', label: '幽灵红色按钮的字在浮层面', fg: '--bad-text', ground: ['--raised'], min: TEXT },
   { theme: 'dark', label: '幽灵红色按钮的字在卡片面', fg: '--bad-text', ground: ['--card'], min: TEXT },
   { theme: 'dark', label: '幽灵红色按钮的字在浮层面', fg: '--bad-text', ground: ['--raised'], min: TEXT },
-  // Links.
-  { theme: 'light', label: '链接在内容面', fg: '--link', ground: ['--content'], min: TEXT },
-  { theme: 'dark', label: '链接在内容面', fg: '--link', ground: ['--content'], min: TEXT },
-  { theme: 'dark', label: '链接在卡片面', fg: '--link', ground: ['--card'], min: TEXT },
+  // Accent text.
+  { theme: 'light', label: '强调色的字在内容面', fg: '--accent-text', ground: ['--content'], min: TEXT },
+  { theme: 'dark', label: '强调色的字在内容面', fg: '--accent-text', ground: ['--content'], min: TEXT },
+  { theme: 'dark', label: '强调色的字在卡片面', fg: '--accent-text', ground: ['--card'], min: TEXT },
   // Text on light accent surfaces.
   { theme: 'light', label: '选中侧栏行的字', fg: '--ink', ground: ['--window', '--sidebar', '--accent-soft'], min: TEXT },
   { theme: 'dark', label: '选中侧栏行的字', fg: '--ink', ground: ['--window', '--sidebar', '--accent-soft'], min: TEXT },
@@ -261,15 +261,15 @@ describe('tokens.css 的决定值', () => {
     }
   })
 
-  it('亮色的 --info / --tint-info 是青色,且与 --link 解出来的颜色分开', () => {
+  it('亮色的 --info / --tint-info 是青色,且与 --accent-text 解出来的颜色分开', () => {
     expect(colour('light', '--info')).toEqual({ r: 14, g: 154, b: 167, a: 1 })
     expect(colour('light', '--tint-info')).toEqual({ r: 14, g: 154, b: 167, a: .14 })
-    expect(colour('light', '--info')).not.toEqual(colour('light', '--link'))
+    expect(colour('light', '--info')).not.toEqual(colour('light', '--accent-text'))
   })
 
-  it('暗色的 --info / --tint-info 是青色,且与 --link 解出来的颜色分开', () => {
+  it('暗色的 --info / --tint-info 是青色,且与 --accent-text 解出来的颜色分开', () => {
     expect(colour('dark', '--info')).toEqual({ r: 46, g: 196, b: 214, a: 1 })
     expect(colour('dark', '--tint-info')).toEqual({ r: 46, g: 196, b: 214, a: .2 })
-    expect(colour('dark', '--info')).not.toEqual(colour('dark', '--link'))
+    expect(colour('dark', '--info')).not.toEqual(colour('dark', '--accent-text'))
   })
 })

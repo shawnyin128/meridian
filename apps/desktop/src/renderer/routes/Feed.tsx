@@ -89,9 +89,7 @@ function Body({ body, onOpenConflict }: {
   return (
     <>
       {body.runs.map((run, at) => (
-        run.kind === 'strong' ? <b key={at}><PaperText text={run.text} /></b>
-          : run.kind === 'cite' ? <span className="cite" key={at}>{run.text}</span>
-            : <Fragment key={at}>{run.text}</Fragment>
+        run.kind === 'strong' ? <b key={at}><PaperText text={run.text} /></b> : <Fragment key={at}>{run.text}</Fragment>
       ))}
     </>
   )

@@ -20,6 +20,7 @@ const card = (id: string, title: string): WikiAggregationCard => ({
 const fixture = vi.hoisted(() => ({
   aggregation: vi.fn(),
   paper: vi.fn(),
+  open: vi.fn(),
 }))
 
 const HOME: WikiHome = {
@@ -72,7 +73,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useBanner: () => vi.fn(),
   useToast: () => vi.fn(),
   useCrumbTail: () => {},
-  useJump: () => ({ jump: null, open: vi.fn(), returnTo: vi.fn() }),
+  useJump: () => ({ jump: null, open: fixture.open, returnTo: vi.fn() }),
   useScreenEntry: () => 0,
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
@@ -128,15 +129,25 @@ describe('Wiki keyboard reach', () => {
   it('reaches every link, chip, contents entry and remove control of an aggregation page by keyboard', async () => {
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
     expect(tags('.wkmain .wkcard .tt')).toEqual(['BUTTON'])
-    expect(tags('.cmp td.rh .wl')).toEqual(['BUTTON'])
+    expect(tags('.cmp td.rh .entity-link')).toEqual(['BUTTON'])
     expect(tags('.cmp td.dv .tagchip')).toEqual(['BUTTON'])
     expect(tags('.cmp td.rx > *')).toEqual(['BUTTON'])
     expect(tags('.wkside .wkrel .tagchip')).toEqual(['BUTTON', 'BUTTON'])
     expect(all('.wktoc li > button').map((b) => b.textContent)).toEqual(['背景', '结果'])
-    expect(tags('.wkmain .md .wl')).toEqual(['A'])
+    expect(tags('.wkmain .md .entity-link')).toEqual(['A'])
 
     await press(host.querySelector<HTMLElement>('.cmp td.dv .tagchip')!)
     expect(fixture.aggregation).toHaveBeenLastCalledWith('methods/tree')
+  })
+
+  it('比较表里的锚点是一个按钮:聚焦时显示原文,点它在阅读器里打开那篇论文的那一页', async () => {
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    const anchor = host.querySelector<HTMLButtonElement>('.cmp td .source-anchor')!
+    expect([anchor.tagName, anchor.textContent, anchor.getAttribute('aria-label')]).toEqual(['BUTTON', 'p.3', '原文第 3 页'])
+    act(() => anchor.focus())
+    expect(host.querySelector('.source-anchor-quote')!.textContent).toBe('p.3 · 原文“four bits”')
+    await press(anchor)
+    expect(fixture.open).toHaveBeenCalledWith('reader', 'p1', { page: 3 })
   })
 
   it('opens a paper page membership from a button', async () => {

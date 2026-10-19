@@ -23,7 +23,6 @@ export const reader = {
     pageAria: (page: number) => `第 ${page} 页笔记`,
   },
   highlights: {
-    jumpToPage: (page: number) => `第 ${page} 页 · 高亮`,
     noteAria: (page: number) => `第 ${page} 页高亮笔记`,
     annotate: '这段高亮的笔记',
   },

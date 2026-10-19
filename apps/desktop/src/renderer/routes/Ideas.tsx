@@ -83,7 +83,7 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, dragProps, dropClassNa
         <div className="idea-card-title-row">
           <strong>{idea.title}</strong>
           <Tag
-            tone={linked !== undefined ? 'accent' : idea.project === undefined ? 'neutral' : 'bad'}
+            tone={linked === undefined && idea.project !== undefined ? 'bad' : 'neutral'}
             className="idea-project-tag"
           >{linkedProjectLabel(idea, linked, m)}</Tag>
         </div>

@@ -4,6 +4,7 @@ import { editField, type Drafts, type EditDraft } from '../../hooks/useDrafts.js
 import { useMessages } from '../../messages/useMessages.js'
 import { FormTextarea } from '../FormControls.js'
 import { EmptyState } from '../EmptyState.js'
+import { SourceAnchor } from '../SourceAnchor.js'
 import { ReaderPanelHeader } from './ReaderPanelHeader.js'
 
 function NoteCard({ note, edits, onSave, onDelete, onJump }: {
@@ -19,7 +20,7 @@ function NoteCard({ note, edits, onSave, onDelete, onJump }: {
   const changed = text.trim() !== note.text
   return (
     <article className="reading-card">
-      <button className="reading-page" onClick={onJump}>{m.reader.page.at(note.page)}</button>
+      <span className="reading-page"><SourceAnchor page={note.page} onOpen={onJump} /></span>
       <FormTextarea aria-label={m.reader.notes.pageAria(note.page)} {...edit.fieldProps} />
       <div className="reading-actions">
         <button className="btn ghost danger sm reading-delete" onClick={() => { void onDelete() }}>{m.common.delete}</button>
@@ -47,7 +48,7 @@ function HighlightCard({ highlight, edits, onSave, onDelete, onJump, focus }: {
   useEffect(() => { if (focus) input.current?.focus() }, [focus])
   return (
     <article className={`reading-card highlight-card ${highlight.color}`}>
-      <button className="reading-page" onClick={onJump}>{m.reader.highlights.jumpToPage(highlight.page)}</button>
+      <span className="reading-page"><SourceAnchor page={highlight.page} quote={highlight.quote} onOpen={onJump} /></span>
       <blockquote>{highlight.quote}</blockquote>
       <FormTextarea
         ref={input}

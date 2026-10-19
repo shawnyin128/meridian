@@ -6,8 +6,6 @@
 .wkclaim-version{font-variant-numeric:tabular-nums;color:var(--sec);font-weight:600}
 .wkclaim-lines{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:3px}
 .wkclaim-lines li{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;font-size:var(--fs-sm);color:var(--sec);line-height:1.5}
-.wkclaim-link{border:0;background:none;padding:0;font:inherit;color:var(--link);cursor:pointer;text-align:left}
-.wkclaim-link:hover{text-decoration:underline}
 .wkclaim-point{color:var(--ter);font-family:var(--mono);font-size:var(--fs-cap)}
 .wkclaim-quote{color:var(--ter);overflow-wrap:anywhere}
 .wkclaim-note{color:var(--sec);overflow-wrap:anywhere}

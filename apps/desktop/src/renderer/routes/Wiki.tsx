@@ -14,6 +14,7 @@ import { ActionPopover } from '../components/ActionPopover.js'
 import { BackButton } from '../components/BackButton.js'
 import { EditActions } from '../components/EditActions.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { EntityLink } from '../components/EntityLink.js'
 import { FormInput } from '../components/FormControls.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar, SectionHeading,
@@ -34,6 +35,7 @@ import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { ReviewEntry, ReviewQueue } from '../components/wiki/ReviewQueue.js'
 import { WikiClaims } from '../components/wiki/WikiClaims.js'
+import { SourceAnchor } from '../components/SourceAnchor.js'
 import { Tag, TagButton } from '../components/Tag.js'
 import './shell.css'
 import './Wiki.css'
@@ -49,9 +51,6 @@ const REVIEW = 'review'
 
 /** One entry of the Back stack: the previous Wiki page, or the screen that jumped here. */
 type Step = { place: Place } | { origin: ScreenKey }
-
-/** The source quote of the hovered cell and where its tooltip goes. */
-type Tip = { page: number; quote: string; left: number; top: number }
 
 /**
  * The demo's aggCard: kind tag, title, an "N parents" tag when the aggregation has several parents,
@@ -106,20 +105,9 @@ function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
   )
 }
 
-/** A cell with an anchor: its value carries the page number in superscript; hovering shows the quote. */
-function Cell({ cell, onTip }: { cell: WikiCell; onTip: (tip: Tip | null) => void }) {
-  return (
-    <span
-      className="anc"
-      onMouseEnter={(e) => {
-        const r = e.currentTarget.getBoundingClientRect()
-        onTip({ page: cell.page, quote: cell.quote, left: r.left, top: r.bottom + 8 })
-      }}
-      onMouseLeave={() => onTip(null)}
-    >
-      {cell.value}<sup>p{cell.page}</sup>
-    </span>
-  )
+/** A cell with an anchor: its value, then the anchor that opens the source at its page through `onAnchor`. */
+function Cell({ cell, onAnchor }: { cell: WikiCell; onAnchor: (page: number) => void }) {
+  return <>{cell.value} <SourceAnchor page={cell.page} quote={cell.quote} onOpen={() => onAnchor(cell.page)} /></>
 }
 
 /**
@@ -127,10 +115,11 @@ function Cell({ cell, onTip }: { cell: WikiCell; onTip: (tip: Tip | null) => voi
  * cells show a dash, and derived columns show chips. An inner node with no columns and no rows takes
  * no papers directly.
  */
-function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
+function Table({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: {
   agg: WikiAggregation
   onOpen: (id: string) => void
-  onTip: (tip: Tip | null) => void
+  /** Opens the source of the paper page `paper` at `page`. */
+  onAnchor: (paper: string, page: number) => void
   onRemove?: (paperId: string) => void
   pending?: boolean
   /** The placeholder row for adding a paper: `row` goes on its `<tr>`, `input` sits in its first cell. */
@@ -168,18 +157,17 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
           {agg.rows.map((row) => (
             <tr key={row.paper.id}>
               <td className="rh">
-                <button
-                  type="button" className="wl" data-wk={row.paper.id} onClick={() => onOpen(row.paper.id)}
+                <EntityLink
+                  kind="paper" label={<PaperText text={row.paper.title} />} data-wk={row.paper.id}
                   title={row.paper.fullTitle === undefined ? undefined : plainTitle(row.paper.fullTitle)}
-                >
-                  <PaperText text={row.paper.title} />
-                </button>
+                  onOpen={() => onOpen(row.paper.id)}
+                />
               </td>
               {agg.columns.map((c) => {
                 const cell = row.cells[c.key]
                 return cell === undefined
                   ? <td className="na" key={c.key}>—</td>
-                  : <td key={c.key}><Cell cell={cell} onTip={onTip} /></td>
+                  : <td key={c.key}><Cell cell={cell} onAnchor={(page) => onAnchor(row.paper.id, page)} /></td>
               })}
               {agg.derivedColumns.map((d) => {
                 const links = row.derived[d.key] ?? []
@@ -335,7 +323,6 @@ export function Wiki() {
   const [paper, setPaper] = useState<WikiPaper | null>(null)
   const [reading, setReading] = useState<PaperReading | null>(null)
   const [proposals, setProposals] = useState<WikiProposal[]>([])
-  const [tip, setTip] = useState<Tip | null>(null)
   const [error, setError] = useState<string | null>(null)
   const consumed = useRef(0)
   const main = useRef<HTMLDivElement>(null)
@@ -423,7 +410,6 @@ export function Wiki() {
   useEffect(() => {
     setError(null)
     if (place === null || place === REVIEW) return
-    setTip(null)
     if (place.startsWith(PAPER_PAGE)) void wiki.paper(place).then(setPaper).catch(reportError)
     else void wiki.aggregation(place).then(setAgg).catch(reportError)
   }, [place, revision, reportError])
@@ -459,6 +445,9 @@ export function Wiki() {
     else if ('origin' in top) returnTo(top.origin)
     else setPlace(top.place)
   }
+
+  /** Opens the reader at `page` of the paper whose Wiki page is `paper`. */
+  const openSource = (paper: string, page: number) => jumpTo('reader', paper.slice(PAPER_PAGE.length), { page })
 
   const shownAgg = agg !== null && place === agg.id ? agg : null
   const shownPaper = paper !== null && place === paper.id ? paper : null
@@ -669,7 +658,7 @@ export function Wiki() {
                 >{m.wiki.paperComparisonHeading}
                 </SectionHeading>
                 <Table
-                  agg={shownAgg} onOpen={go} onTip={setTip} pending={pending}
+                  agg={shownAgg} onOpen={go} onAnchor={openSource} pending={pending}
                   adding={adding !== 'paper'
                     ? undefined
                     : {
@@ -839,7 +828,7 @@ export function Wiki() {
                 {bodyHead(m.wiki.internalizedContent)}
                 <MarkdownBox
                   text={shownPaper.body} editing={editing} box={box} onCancel={() => setEditing(false)} onSave={saveBody}
-                  onOpen={go}
+                  onOpen={go} onAnchor={(page) => openSource(shownPaper.id, page)}
                   titles={shownPaper.titles}
                   empty={<EmptyState variant="section">{m.wiki.noInternalizedContent}</EmptyState>}
                 />
@@ -922,7 +911,9 @@ export function Wiki() {
                         {ms.cells.map((c) => (
                           <Fragment key={c.label}>
                             <div className="pk">{c.label}</div>
-                            <div className="pv"><Cell cell={c.cell} onTip={setTip} /></div>
+                            <div className="pv">
+                              <Cell cell={c.cell} onAnchor={(page) => openSource(shownPaper.id, page)} />
+                            </div>
                           </Fragment>
                         ))}
                       </div>
@@ -981,13 +972,6 @@ export function Wiki() {
         )
         : null}
 
-      {tip === null
-        ? null
-        : (
-          <div id="wktip" style={{ left: tip.left, top: tip.top }}>
-            <b>{m.wiki.tipSource(tip.page)}</b>“{tip.quote}”
-          </div>
-        )}
     </PageShell>
   )
 }

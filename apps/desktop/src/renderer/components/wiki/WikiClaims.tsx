@@ -13,10 +13,12 @@ import { CardTray } from '../CardTray.js'
 import { MenuItem } from '../ActionMenu.js'
 import { DiffLines } from '../DiffLines.js'
 import { EmptyState } from '../EmptyState.js'
+import { EntityLink } from '../EntityLink.js'
 import { ChoicePicker, DotsMenu } from '../FieldPickers.js'
 import { FormInput, FormTextarea } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
+import { SourceAnchor } from '../SourceAnchor.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { Tag } from '../Tag.js'
@@ -60,7 +62,7 @@ function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: 
       return (
         <>
           <Tag>{c.experiment}</Tag>
-          <button type="button" className="wkclaim-link" onClick={() => links.openProject(item.project)}>{title}</button>
+          <EntityLink kind="project" label={title} onOpen={() => links.openProject(item.project)} />
           <span className="wkclaim-point">{item.node ?? item.conclusion}</span>
           {item.text ? <span className="wkclaim-note">{item.text}</span> : null}
         </>
@@ -69,10 +71,10 @@ function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: 
       return (
         <>
           <Tag>{c.evidence}</Tag>
-          <button
-            type="button" className="wkclaim-link"
-            onClick={() => links.openReader(item.paper, { page: item.page, ...(item.highlight === undefined ? {} : { highlight: item.highlight }) })}
-          >{paper} {c.page(item.page)}</button>
+          <span>{paper} <SourceAnchor
+            page={item.page} quote={item.quote}
+            onOpen={() => links.openReader(item.paper, { page: item.page, ...(item.highlight === undefined ? {} : { highlight: item.highlight }) })}
+          /></span>
           <q className="wkclaim-quote">{item.quote}</q>
         </>
       )
@@ -80,10 +82,10 @@ function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: 
       return (
         <>
           <Tag>{c.note}</Tag>
-          <button
-            type="button" className="wkclaim-link"
-            onClick={() => links.openReader(item.paper, item.highlight === undefined ? { panel: 'notes', note: item.note! } : { highlight: item.highlight })}
-          >{paper}</button>
+          <EntityLink
+            kind="paper" label={paper}
+            onOpen={() => links.openReader(item.paper, item.highlight === undefined ? { panel: 'notes', note: item.note! } : { highlight: item.highlight })}
+          />
         </>
       )
     case 'wiki':
@@ -91,9 +93,9 @@ function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: 
       return (
         <>
           {item.kind === 'wiki' ? <Tag>{c.evidence}</Tag> : null}
-          <button type="button" className="wkclaim-link" data-wk={item.ref.split('#')[0]} onClick={() => links.openPage(item.ref.split('#')[0]!)}>
-            {title}
-          </button>
+          <EntityLink
+            kind="page" label={title} data-wk={item.ref.split('#')[0]} onOpen={() => links.openPage(item.ref.split('#')[0]!)}
+          />
         </>
       )
     case 'personal':
