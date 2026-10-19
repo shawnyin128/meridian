@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent, RefObject } from 'react'
+import type { DragEvent as ReactDragEvent, RefObject } from 'react'
 import type {
   Facet, ListParams, PaperCell, PaperColumn, PaperColumns, PaperRow, ReadState, SortDirection,
   SortKey,
@@ -34,6 +34,7 @@ import { AddAction } from '../AddAction.js'
 import { IconButton } from '../IconButton.js'
 import { PanelClose } from '../PanelClose.js'
 import { CountBadge, Tag, tagClass } from '../Tag.js'
+import { Grip, type GripLimits } from '../Grip.js'
 import { DetailPanel } from '../DetailPanel.js'
 import { ActionMenu, MenuRadioGroup, MenuRadioItem, MenuSeparator } from '../ActionMenu.js'
 import { SegmentedControl } from '../SegmentedControl.js'
@@ -89,8 +90,12 @@ const MIN_COLUMN_WIDTH = 56
 /** Lower limit for a manual drag; the browser can still shrink columns further as the window narrows. */
 const minimumWidth = (key: string): number => key === 'x' ? ROWX_WIDTH : MIN_COLUMN_WIDTH
 
+/** The width a double-click on a column's grip restores. */
+const defaultWidth = (key: string): number => (DEFAULT_WIDTHS as Record<string, number>)[key] ?? CUSTOM_WIDTH
+
+/** A column resize in progress: `start` is the grip's pane width when it began. */
 type WidthDrag = {
-  x0: number
+  start: number
   widths: Record<string, number>
   left: { key: string; initial: number; width: number }
   right?: { key: string; initial: number; width: number }
@@ -317,7 +322,6 @@ export function PaperTable() {
   const [movingColumn, setMovingColumn] = useState<string | null>(null)
   const [columnDrop, setColumnDrop] = useState<{ key: string; after: boolean } | null>(null)
   const drag = useRef<WidthDrag | null>(null)
-  const dragged = useRef(false)
   const table = useRef<HTMLTableElement>(null)
   const consumed = useRef(0)
   // Write queue of the cell being edited: each link resolves to the values the previous step settled
@@ -469,48 +473,86 @@ export function PaperTable() {
 
   useEscapeLayer(detail !== null, closeDetail)
 
-  // A drag moves the boundary between two columns: the left column and its right neighbour grow and
-  // shrink by the same amount, so the total width stays fixed and columns further right do not move.
-  // A drag first freezes the widths the browser actually shows, so the slack left by width:100% is
-  // not redistributed across the table.
-  useEffect(() => {
-    const move = (e: MouseEvent) => {
-      const d = drag.current
-      if (!d) return
-      const raw = e.clientX - d.x0
-      const delta = d.right === undefined
+  // A column's grip moves the boundary between two columns: the left column and its right neighbour
+  // grow and shrink by the same amount, so the total width stays fixed and columns further right do
+  // not move. A resize first freezes the widths the browser actually shows, so the slack left by
+  // width:100% is not redistributed across the table.
+  /** The column right of column `k`, which gives or takes the width `k` gains or loses. */
+  const columnAfter = (k: string): string | undefined => {
+    const keys = ['t', ...cols.map((column) => column.k), 'x']
+    return keys[keys.indexOf(k) + 1]
+  }
+
+  /**
+   * Freezes the column widths and starts resizing column `k` from `start`, the grip's pane width,
+   * or its measured width. Returns the sizes, measured the same way, that keep both columns at least
+   * at their minimum width.
+   */
+  const beginResize = (k: string, start?: number): GripLimits => {
+    const measured = { ...widths }
+    table.current?.querySelectorAll<HTMLElement>('col[data-cw]').forEach((column) => {
+      const key = column.dataset['cw']
+      const width = column.getBoundingClientRect().width
+      if (key !== undefined && width > 0) measured[key] = width
+    })
+    for (const [key, width] of Object.entries(measured)) {
+      const column = table.current?.querySelector<HTMLElement>(`col[data-cw="${key}"]`)
+      if (column) column.style.width = `${width}px`
+    }
+    const rightKey = columnAfter(k)
+    const leftWidth = measured[k] ?? widthOf(k)
+    const rightWidth = rightKey === undefined ? undefined : measured[rightKey] ?? widthOf(rightKey)
+    const from = start ?? leftWidth
+    drag.current = {
+      start: from,
+      widths: measured,
+      left: { key: k, initial: leftWidth, width: leftWidth },
+      ...(rightKey === undefined || rightWidth === undefined
+        ? {}
+        : { right: { key: rightKey, initial: rightWidth, width: rightWidth } }),
+    }
+    return {
+      min: from + minimumWidth(k) - leftWidth,
+      max: rightKey === undefined || rightWidth === undefined
+        ? Number.POSITIVE_INFINITY
+        : from + rightWidth - minimumWidth(rightKey),
+    }
+  }
+
+  const resizeTo = (size: number) => {
+    const d = drag.current!
+    const raw = size - d.start
+    const delta = d.right === undefined
         ? Math.max(minimumWidth(d.left.key) - d.left.initial, raw)
         : Math.max(
           minimumWidth(d.left.key) - d.left.initial,
           Math.min(d.right.initial - minimumWidth(d.right.key), raw),
         )
-      d.left.width = d.left.initial + delta
-      if (d.right !== undefined) d.right.width = d.right.initial - delta
-      const left = table.current?.querySelector<HTMLElement>(`col[data-cw="${d.left.key}"]`)
-      if (left) left.style.width = `${d.left.width}px`
-      if (d.right !== undefined) {
-        const right = table.current?.querySelector<HTMLElement>(`col[data-cw="${d.right.key}"]`)
-        if (right) right.style.width = `${d.right.width}px`
-      }
+    d.left.width = d.left.initial + delta
+    if (d.right !== undefined) d.right.width = d.right.initial - delta
+    const left = table.current?.querySelector<HTMLElement>(`col[data-cw="${d.left.key}"]`)
+    if (left) left.style.width = `${d.left.width}px`
+    if (d.right !== undefined) {
+      const right = table.current?.querySelector<HTMLElement>(`col[data-cw="${d.right.key}"]`)
+      if (right) right.style.width = `${d.right.width}px`
     }
-    const up = () => {
-      const d = drag.current
-      if (!d) return
-      drag.current = null
-      dragged.current = true
-      setWidths({
-        ...d.widths,
-        [d.left.key]: d.left.width,
-        ...(d.right === undefined ? {} : { [d.right.key]: d.right.width }),
-      })
-    }
-    document.addEventListener('mousemove', move)
-    document.addEventListener('mouseup', up)
-    return () => {
-      document.removeEventListener('mousemove', move)
-      document.removeEventListener('mouseup', up)
-    }
-  }, [])
+  }
+
+  const endResize = () => {
+    const d = drag.current!
+    drag.current = null
+    setWidths({
+      ...d.widths,
+      [d.left.key]: d.left.width,
+      ...(d.right === undefined ? {} : { [d.right.key]: d.right.width }),
+    })
+  }
+
+  const resetWidth = (k: string) => {
+    beginResize(k)
+    resizeTo(defaultWidth(k))
+    endResize()
+  }
 
   // Recalculate truncation after data, columns, widths, panels, or editing state change. Text cells
   // retain their hover preview; chip cells keep the first visible row and expose hidden items through
@@ -575,37 +617,20 @@ export function PaperTable() {
    */
   const widthOf = (k: string) => widths[k] ?? CUSTOM_WIDTH
 
-  const startDrag = (e: ReactMouseEvent, k: string) => {
-    const measured = { ...widths }
-    table.current?.querySelectorAll<HTMLElement>('col[data-cw]').forEach((column) => {
-      const key = column.dataset['cw']
-      const width = column.getBoundingClientRect().width
-      if (key !== undefined && width > 0) measured[key] = width
-    })
-    for (const [key, width] of Object.entries(measured)) {
-      const column = table.current?.querySelector<HTMLElement>(`col[data-cw="${key}"]`)
-      if (column) column.style.width = `${width}px`
-    }
-    const keys = ['t', ...cols.map((column) => column.k), 'x']
-    const rightKey = keys[keys.indexOf(k) + 1]
-    const leftWidth = measured[k] ?? widthOf(k)
-    const rightWidth = rightKey === undefined ? undefined : measured[rightKey] ?? widthOf(rightKey)
-    drag.current = {
-      x0: e.clientX,
-      widths: measured,
-      left: { key: k, initial: leftWidth, width: leftWidth },
-      ...(rightKey === undefined || rightWidth === undefined
-        ? {}
-        : { right: { key: rightKey, initial: rightWidth, width: rightWidth } }),
-    }
-    e.preventDefault()
+  /** The grip on the end edge of column `k`'s header; `name` is the column's shown name. */
+  const columnGrip = (k: string, name: string) => {
+    const right = columnAfter(k)
+    return (
+      <Grip
+        className="thgrip" label={m.papers.columnHeader.resize(name)} value={widthOf(k)} min={minimumWidth(k)}
+        max={right === undefined ? widthOf(k) : widthOf(k) + widthOf(right) - minimumWidth(right)}
+        onResizeStart={(size) => beginResize(k, size)} onResize={resizeTo} onResizeEnd={endResize}
+        onReset={() => resetWidth(k)}
+      />
+    )
   }
 
-  const clickHeader = (e: ReactMouseEvent, key: SortKey) => {
-    if (dragged.current || (e.target as HTMLElement).closest('.thgrip')) {
-      dragged.current = false
-      return
-    }
+  const clickHeader = (key: SortKey) => {
     if (sort === key) setDirection((d) => (d === 'asc' ? 'desc' : 'asc'))
     else {
       setSort(key)
@@ -1022,11 +1047,11 @@ export function PaperTable() {
         <thead>
           <tr>
             {/* A sortable header sorts on click; its button is the keyboard's way to that click. */}
-            <th data-k="title" aria-sort={ariaSort('title')} onClick={(e) => clickHeader(e, 'title')}>
+            <th data-k="title" aria-sort={ariaSort('title')} onClick={() => clickHeader('title')}>
               <button type="button" className="thsort">
                 {m.papers.columns.title}{sort === 'title' ? <> <SortArrow direction={direction} /></> : null}
               </button>
-              <span className="thgrip" title={m.papers.columnHeader.resizeHint} onMouseDown={(e) => startDrag(e, 't')} />
+              {columnGrip('t', m.papers.columns.title)}
             </th>
             {cols.map((c) => (
               <th
@@ -1044,7 +1069,7 @@ export function PaperTable() {
                   }
                 }}
                 onDrop={(event) => dropColumn(event, c.k)}
-                onClick={(e) => { if (c.sort) clickHeader(e, c.sort) }}
+                onClick={() => { if (c.sort) clickHeader(c.sort) }}
               >
                 <span
                   className="thmove" draggable title={m.papers.columnHeader.reorderHint}
@@ -1060,7 +1085,7 @@ export function PaperTable() {
                     </button>
                   )
                   : shownLabel(m, c)}
-                <span className="thgrip" title={m.papers.columnHeader.resizeHint} onMouseDown={(e) => startDrag(e, c.k)} />
+                {columnGrip(c.k, shownLabel(m, c))}
               </th>
             ))}
             {newCol

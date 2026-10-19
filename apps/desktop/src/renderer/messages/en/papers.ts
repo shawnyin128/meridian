@@ -56,7 +56,7 @@ export const papers = {
     allStates: 'All statuses',
   },
   columnHeader: {
-    resizeHint: 'Drag to resize column',
+    resize: (column: string) => `${column} column width`,
     reorderHint: 'Drag to reorder column',
     addColumn: 'Add column',
   },

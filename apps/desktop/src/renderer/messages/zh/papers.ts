@@ -53,7 +53,7 @@ export const papers = {
     allStates: '全部状态',
   },
   columnHeader: {
-    resizeHint: '拖动调整列宽',
+    resize: (column: string) => `「${column}」列宽`,
     reorderHint: '拖动调整列顺序',
     addColumn: '新增列',
   },
