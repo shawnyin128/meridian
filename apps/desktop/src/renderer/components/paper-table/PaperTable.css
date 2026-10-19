@@ -102,6 +102,9 @@
  */
 .tagchip.tagadd{background:transparent;border:1px dashed var(--sep-strong);color:var(--ter);cursor:pointer;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out);font-family:var(--sans);line-height:var(--lh-ui)}
 .ptable tr:hover .tagadd,.tagchip.tagadd:focus-visible{opacity:1;pointer-events:auto}
+/* A topic chip's × in the table shows with the row's +, so a resting table reads as plain tags. */
+.ptable .tagchip .rx{opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
+.ptable tr:hover .tagchip .rx,.ptable .tagchip .rx:focus-visible{opacity:1;pointer-events:auto}
 .ptable tr:has(.stchip[data-state="open"]) .tagadd{opacity:1}
 .tagadd:hover{color:var(--ink);border-color:var(--sec)}
 .paper-meta-projects .tagchip.tagadd,.paper-meta-topics .tagchip.tagadd{opacity:1;pointer-events:auto}
