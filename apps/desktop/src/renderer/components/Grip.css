@@ -1,0 +1,15 @@
+/*
+ * The resize grip and the edge a collapsed pane leaves share one glyph: a pill centred on the grip.
+ * The pane's own stylesheet places the grip across its end edge.
+ */
+.grip{position:absolute;top:0;bottom:0;width:10px;display:flex;align-items:center;justify-content:center;cursor:col-resize;z-index:6;outline:0}
+.grip::after,.grip-edge::after{content:"";width:4px;height:min(36px,calc(100% - 12px));border-radius:var(--r-full);background:var(--ter);
+  transition:opacity var(--t-fast) var(--e-out),background-color var(--t-fast) var(--e-out)}
+.grip::after{opacity:0}
+.grip:hover::after,.grip.is-dragging::after,.grip:focus-visible::after{opacity:1}
+/* Focus colours the glyph instead of ringing the whole strip, which runs the pane's full height. */
+.grip:focus-visible::after,.grip-edge:focus-visible::after{background:var(--ring)}
+
+.grip-edge{position:absolute;top:0;bottom:0;left:0;width:12px;display:flex;align-items:center;justify-content:center;padding:0;border:0;
+  background:transparent;cursor:pointer;z-index:6;outline:0}
+.grip-edge:hover::after{background:var(--sec)}

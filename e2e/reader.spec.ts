@@ -128,11 +128,11 @@ test('阅读器右栏平滑展开并在收起后只保留工具轨', async ({ wi
     .toBeLessThan(60)
 })
 
-test('对话栏右缘的把手悬停显形、拖动在 240–480px 间调宽、单击收起成窄边；窄边、Ctrl+B 与标题栏按钮都能再开合', async ({ win }) => {
+test('对话栏右缘的把手悬停显形、拖动在 240–480px 间调宽、按住不动松开什么也不做；收起后留一条带把手的窄边，窄边、Ctrl+B 与标题栏按钮都能再开合', async ({ win }) => {
   await openFromPapers(win)
   const chat = shown(win, '.paper-chat')
   const grip = shown(win, '.paper-chat > #rrgrip')
-  const edge = win.locator('.paper-chat-edge')
+  const edge = win.locator('.grip-edge')
   const width = () => chat.evaluate((element) => element.getBoundingClientRect().width)
   const opacity = () => chat.evaluate((element) => getComputedStyle(element).opacity)
   const dragBy = async (dx: number) => {
@@ -151,16 +151,23 @@ test('对话栏右缘的把手悬停显形、拖动在 240–480px 间调宽、�
   await dragBy(-400)
   expect(await width()).toBe(240)
 
-  // A press without moving is a click on the grip, which collapses the chat.
+  // A press without moving stays inside the grip's dead zone: the chat neither resizes nor collapses.
   await grip.click()
+  await expect(edge).toHaveCount(0)
+  expect(await width()).toBe(240)
+  await grip.dblclick()
+  expect(await width()).toBe(300)
+
+  await win.keyboard.press('Control+b')
   await expect(edge).toBeVisible()
   await settle(chat)
   expect(await opacity()).toBe('0')
+  expect(await edge.evaluate((element) => getComputedStyle(element, '::after').opacity)).toBe('1')
   await edge.click()
   await expect(edge).toHaveCount(0)
   await settle(chat)
   expect(await opacity()).toBe('1')
-  expect(await width()).toBe(240)
+  expect(await width()).toBe(300)
 
   await win.keyboard.press('Control+b')
   await expect(edge).toBeVisible()

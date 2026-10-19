@@ -7,6 +7,7 @@ import {
 } from '../ipc.js'
 import { ActionMenu, MenuItem } from '../components/ActionMenu.js'
 import { AboutDialog } from '../components/AboutDialog.js'
+import { GripEdge, type GripProps } from '../components/Grip.js'
 import { IconButton } from '../components/IconButton.js'
 import { PageFailure } from '../components/PageShell.js'
 import { ScreenBoundary } from '../components/ScreenBoundary.js'
@@ -14,7 +15,6 @@ import { composing } from '../lib/keyboard.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import { Sidebar } from './Sidebar.js'
-import { GRIP_WIDTHS, useGrip } from './useGrip.js'
 import { JobsContext, useJobsPoll } from './useJobs.js'
 import brandmark from '../../../resources/mark-64.png'
 import './AppShell.css'
@@ -53,6 +53,16 @@ export type DiscoveryProjectCount = { id: string; name: string; count: number }
 
 /** The demo's showGtip: the handle's tooltip appears after the pointer rests on it this many ms. */
 const GRIPTIP_DELAY = 350
+
+/** The sidebar's default width in px, which a double-click on its grip restores. */
+const SIDEBAR_WIDTH = 232
+/** The paper chat's width in px while it has not been resized, the default of `--rrw` in Reader.css. */
+const PAPER_CHAT_WIDTH = 300
+/** The width range, in px, that each of the shell's grips keeps its pane within. */
+const GRIP_LIMITS = {
+  sidebar: { min: 180, max: 320 },
+  paperChat: { min: 240, max: 480 },
+}
 
 /** A screen's additions to its base breadcrumbs: deeper segments and the last base segment's back action. */
 type Deeper = { tail: CrumbSeg[]; onLeafClick: (() => void) | null }
@@ -112,13 +122,7 @@ const SettingsContext = createContext<{
   setOpen: (open: boolean) => void
   openCategory: (category: SettingsCategory) => void
 } | null>(null)
-/** The mouse handlers of a resize grip: dragging, click-to-collapse and the hover tooltip are the shell's. */
-type GripHandlers = {
-  onMouseDown: (e: ReactMouseEvent) => void
-  onMouseEnter: (e: ReactMouseEvent) => void
-  onMouseLeave: () => void
-}
-const PaperChatGripContext = createContext<{ grip: GripHandlers; collapsed: boolean } | null>(null)
+const PaperChatGripContext = createContext<{ grip: GripProps; collapsed: boolean } | null>(null)
 
 /** The color of the window buttons' symbols in the current theme: `--sec`, the tone of secondary text. */
 function symbolColor(): string {
@@ -313,11 +317,10 @@ export function useChatSession(): {
 }
 
 /**
- * Returns the handlers for the grip on the Reader paper chat's edge, which must be a direct child of
- * the chat: dragging it resizes the chat, a click collapses it, and hovering it shows the tooltip.
- * The returned object keeps its reference throughout the lifetime of the shell.
+ * Returns the props of the grip on the Reader paper chat's edge, which must be a direct child of the
+ * chat: the shell owns the chat's width and the grip's hover tooltip.
  */
-export function usePaperChatGrip(): GripHandlers {
+export function usePaperChatGrip(): GripProps {
   const state = useContext(PaperChatGripContext)
   if (!state) throw new Error('usePaperChatGrip needs AppShell')
   return state.grip
@@ -369,7 +372,7 @@ export function AppShell({ screens, settings }: {
   const [inboxMode, setInboxMode] = useState<InboxMode>('watch')
   const [mounted, setMounted] = useState<ScreenKey[]>(['feed'])
   const [tails, setTails] = useState<Partial<Record<ScreenKey, Deeper>>>({})
-  const [width, setWidth] = useState(232)
+  const [width, setWidth] = useState(SIDEBAR_WIDTH)
   /** The paper chat's dragged width; null until the first drag, leaving the Reader's CSS default. */
   const [chatWidth, setChatWidth] = useState<number | null>(null)
   const [hidden, setHidden] = useState(false)
@@ -481,11 +484,6 @@ export function AppShell({ screens, settings }: {
     openCategory: openSettingsCategory,
   }), [settingsCategory, settingsOpen, openSettingsCategory])
 
-  // Both grips toggle `hidden`: in the Reader the paper chat takes the sidebar's place and collapses with it.
-  const toggleHidden = useCallback(() => setHidden((h) => !h), [])
-  const dragSidebar = useGrip(GRIP_WIDTHS.sidebar, setWidth, toggleHidden)
-  const dragPaperChat = useGrip(GRIP_WIDTHS.paperChat, setChatWidth, toggleHidden)
-
   // Ctrl+B / Cmd+B toggles the sidebar; Escape peels the topmost dismissible layer; "/" outside an
   // editable element jumps to the nearest search field.
   useEffect(() => {
@@ -547,13 +545,20 @@ export function AppShell({ screens, settings }: {
     }), GRIPTIP_DELAY)
   }, [])
 
-  const gripOf = useCallback((startDrag: (e: ReactMouseEvent) => void): GripHandlers => ({
-    onMouseDown: (e) => { startDrag(e); hideGriptip() },
-    onMouseEnter: gripEnter,
-    onMouseLeave: hideGriptip,
-  }), [gripEnter, hideGriptip])
-  const paperChatGrip = useMemo(() => gripOf(dragPaperChat), [gripOf, dragPaperChat])
-  const paperChat = useMemo(() => ({ grip: paperChatGrip, collapsed: hidden }), [paperChatGrip, hidden])
+  const sidebarGrip: GripProps = {
+    id: 'sbgrip', label: m.shell.sidebar.resize, value: width, ...GRIP_LIMITS.sidebar,
+    onResizeStart: hideGriptip, onResize: setWidth, onReset: () => setWidth(SIDEBAR_WIDTH),
+    onMouseEnter: gripEnter, onMouseLeave: hideGriptip,
+  }
+  // In the Reader the paper chat takes the sidebar's place and collapses with it.
+  const paperChat = useMemo(() => ({
+    grip: {
+      id: 'rrgrip', label: m.chat.paperChatWidth, value: chatWidth ?? PAPER_CHAT_WIDTH, ...GRIP_LIMITS.paperChat,
+      onResizeStart: hideGriptip, onResize: setChatWidth, onReset: () => setChatWidth(null),
+      onMouseEnter: gripEnter, onMouseLeave: hideGriptip,
+    },
+    collapsed: hidden,
+  }), [m, chatWidth, hidden, gripEnter, hideGriptip])
 
   const goTo = useCallback((next: ScreenKey) => {
     setScreen(next)
@@ -748,10 +753,13 @@ export function AppShell({ screens, settings }: {
           laterCount={laterCount}
           chats={chats} chatId={screen === 'chat' ? chatId : null} onOpenChat={openChat}
           onNewChat={newChat} onArchiveChat={archiveChat}
-          grip={gripOf(dragSidebar)} collapsed={hidden}
+          grip={sidebarGrip} collapsed={hidden}
         />
-        {screen === 'reader' && hidden ? (
-          <button className="paper-chat-edge" title={m.chat.expandPaperChat} onClick={() => setHidden(false)} />
+        {hidden ? (
+          <GripEdge
+            label={screen === 'reader' ? m.chat.expandPaperChat : m.shell.sidebar.expand}
+            onExpand={() => setHidden(false)}
+          />
         ) : null}
         <BannerContext.Provider value={showBanner}>
           <JobsContext.Provider value={jobsStatus}>

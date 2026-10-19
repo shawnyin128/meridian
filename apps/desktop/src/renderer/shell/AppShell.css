@@ -143,14 +143,8 @@
 #rowInboxAll.closed .sh-caret{opacity:1;transform:rotate(-90deg)}
 .wgroup.closed{display:none}
 
-/* The shared resize handle: hovering shows the pill, a click collapses, dragging resizes */
-.grip{position:absolute;top:0;bottom:0;width:10px;cursor:col-resize;z-index:6;display:none;align-items:center;justify-content:center}
-.grip::after{content:"";width:4px;height:36px;border-radius:999px;background:var(--ter);opacity:0;transition:opacity var(--t-fast) var(--e-out)}
-.grip:hover::after{opacity:1}
-#sbgrip,#rrgrip{right:-5px;display:flex}
-/* In the Reader a collapsed paper chat leaves this slim edge; clicking it opens the chat again. */
-.paper-chat-edge{flex:0 0 12px;padding:0;border:0;border-right:1px solid var(--sep);background:var(--sidebar);cursor:pointer}
-.paper-chat-edge:hover{background-image:linear-gradient(var(--hover),var(--hover))}
+/* The sidebar's and the paper chat's grips straddle the pane's right border. */
+#sbgrip,#rrgrip{right:-5px}
 .griptip{position:fixed;background:var(--raised);border-radius:var(--r-lg);box-shadow:var(--sh-2);padding:8px 12px;font-size:var(--fs-sm);z-index:95;pointer-events:none;opacity:0;transition:opacity var(--t-fast) var(--e-out);white-space:nowrap}
 .griptip.show{opacity:1}
 .griptip .t1{font-weight:600;color:var(--ink);display:flex;gap:10px;align-items:baseline}

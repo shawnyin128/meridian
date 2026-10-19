@@ -31,7 +31,10 @@ const api = vi.hoisted(() => ({
   bump: vi.fn(),
   banner: vi.fn(),
   toast: vi.fn(),
-  grip: { onMouseDown: vi.fn(), onMouseEnter: vi.fn(), onMouseLeave: vi.fn() },
+  grip: {
+    id: 'rrgrip', label: '论文对话宽度', value: 300, min: 240, max: 480,
+    onResize: vi.fn(), onReset: vi.fn(), onMouseEnter: vi.fn(), onMouseLeave: vi.fn(),
+  },
   collapsed: false,
 }))
 
@@ -252,11 +255,14 @@ describe('PaperChat', () => {
     expect(host.querySelector('.paper-chat')!.hasAttribute('inert')).toBe(false)
   })
 
-  it('对话栏右缘有调宽把手，按下交给外壳处理拖动与收起', async () => {
+  it('对话栏右缘有调宽把手，拖动时把新宽度交给外壳', async () => {
     const host = await mountChat()
-    const grip = host.querySelector('.paper-chat > .grip')
-    expect(grip).not.toBeNull()
-    act(() => { grip!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })) })
-    expect(api.grip.onMouseDown).toHaveBeenCalledTimes(1)
+    host.querySelector<HTMLElement>('.paper-chat')!.getBoundingClientRect = () => ({ width: 300 }) as DOMRect
+    const grip = host.querySelector<HTMLElement>('.paper-chat > .grip')!
+    expect(grip.getAttribute('role')).toBe('separator')
+    act(() => { grip.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100 })) })
+    act(() => { document.dispatchEvent(new MouseEvent('mousemove', { clientX: 140 })) })
+    act(() => { document.dispatchEvent(new MouseEvent('mouseup')) })
+    expect(api.grip.onResize).toHaveBeenLastCalledWith(340)
   })
 })

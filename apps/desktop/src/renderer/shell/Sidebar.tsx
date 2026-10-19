@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { ChatSession, Watch } from '../../shared/contract.js'
 import { MenuItem } from '../components/ActionMenu.js'
 import { DotsMenu } from '../components/FieldPickers.js'
+import { Grip, type GripProps } from '../components/Grip.js'
 import { IconButton } from '../components/IconButton.js'
 import { Icon, IconNorthStar, IconPlus } from '../components/icons.js'
 import { NavRow } from '../components/NavRow.js'
@@ -134,8 +135,8 @@ function UpdateRow() {
  * it; together they decide which row is selected.
  * `chats` fills the list under Chats; archived chats are not here but in Settings. `chatId` is the
  * chat the Chats screen shows; null means none is selected.
- * `grip` holds the resize handle's three mouse handlers; dragging, click-to-collapse and the hover
- * tooltip are all implemented by the shell. A `collapsed` sidebar is inert: nothing in it takes focus.
+ * `grip` is the props of the grip on the sidebar's edge: the shell owns the sidebar's width and the
+ * grip's hover tooltip. A `collapsed` sidebar is inert: nothing in it takes focus.
  */
 export function Sidebar({
   screen, onNavigate, onJump, paperCount, changeCount, projectCount, trashCount, wikiCount, ideaCount,
@@ -164,11 +165,7 @@ export function Sidebar({
   onOpenChat: (id: string) => void
   onNewChat: () => void
   onArchiveChat: (id: string) => void
-  grip: {
-    onMouseDown: (e: ReactMouseEvent) => void
-    onMouseEnter: (e: ReactMouseEvent) => void
-    onMouseLeave: () => void
-  }
+  grip: GripProps
   collapsed: boolean
 }) {
   const m = useMessages()
@@ -386,7 +383,7 @@ export function Sidebar({
           </Icon>
         </span>{m.shell.nav.trash}{trashCount > 0 ? <CountBadge className="n" count={trashCount} /> : null}
       </NavRow>
-      <div className="grip" id="sbgrip" {...grip} />
+      <Grip {...grip} />
     </div>
   )
 }
