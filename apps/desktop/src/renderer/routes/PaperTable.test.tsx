@@ -546,6 +546,7 @@ describe('PaperTable', () => {
     expect(host.querySelector('.gnav .segmented-control')).toBeNull()
     const picker = host.querySelector<HTMLButtonElement>('.gnav button[aria-label="分组取值"]')!
     expect(picker.textContent).toBe('推理(2)')
+    expect(picker.className).toBe(host.querySelector('#gxBack')!.className)
     await act(async () => { picker.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
     await flush()
     const items = [...document.querySelectorAll<HTMLElement>('.ctxmenu [role="menuitemradio"]')]

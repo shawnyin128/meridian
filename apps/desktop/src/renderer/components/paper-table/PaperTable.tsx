@@ -333,7 +333,7 @@ function GroupValuePicker({ current, facets, onPick }: {
     <ActionMenu
       align="start"
       trigger={(
-        <button type="button" className="btn plain" aria-label={m.papers.toolbar.groupValueAria}>
+        <button type="button" className="btn sm" aria-label={m.papers.toolbar.groupValueAria}>
           {count === undefined ? current : `${current}(${count})`}
         </button>
       )}
