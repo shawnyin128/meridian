@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Facet, ListParams, PaperColumns, PaperImportResult, PaperRow } from '../../shared/contract.js'
 import { PAPER_COLUMNS } from '../../shared/vocabulary.js'
 import { IconTrash } from '../components/icons.js'
+import { TOOLTIP_DELAY } from '../components/Tooltip.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { papers as papersZh } from '../messages/zh/papers.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
@@ -717,6 +718,17 @@ describe('PaperTable', () => {
     expect(grip.hasAttribute('title')).toBe(false)
     keyOn(grip, 'ArrowRight')
     expect([width('t'), width('short')]).toEqual(['410px', '170px'])
+  })
+
+  it('列宽把手在共享 tooltip 里写出它调的是哪一列,下一行说可以拖动', async () => {
+    const { grip } = await laidOutTable()
+    vi.useFakeTimers()
+    act(() => { grip.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
+    act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+    vi.useRealTimers()
+    const tip = document.querySelector('[role="tooltip"]')
+    expect([tip?.firstChild?.textContent, tip?.querySelector('.tooltip-note')?.textContent]).toEqual(['「标题」列宽', '拖动调整宽度'])
+    expect(grip.hasAttribute('title')).toBe(false)
   })
 
   it('拖动列宽时按 Esc,两列回到按下时的宽度,之后移动鼠标不再调宽', async () => {

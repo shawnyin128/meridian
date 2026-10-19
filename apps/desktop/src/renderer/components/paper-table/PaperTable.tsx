@@ -36,6 +36,7 @@ import { holdRepeatSelection, RowActions, StructuredList, StructuredRow } from '
 import { PanelClose } from '../PanelClose.js'
 import { CountBadge, Tag, tagClass } from '../Tag.js'
 import { Grip, type GripLimits } from '../Grip.js'
+import { Tooltip } from '../Tooltip.js'
 import { DetailPanel } from '../DetailPanel.js'
 import { ActionMenu, MenuRadioGroup, MenuRadioItem, MenuSeparator } from '../ActionMenu.js'
 import { SegmentedControl } from '../SegmentedControl.js'
@@ -621,12 +622,14 @@ export function PaperTable() {
   const columnGrip = (k: string, name: string) => {
     const right = columnAfter(k)
     return (
-      <Grip
-        className="thgrip" label={m.papers.columnHeader.resize(name)} value={widthOf(k)} min={minimumWidth(k)}
-        max={right === undefined ? widthOf(k) : widthOf(k) + widthOf(right) - minimumWidth(right)}
-        onResizeStart={(size) => beginResize(k, size)} onResize={resizeTo} onResizeEnd={endResize}
-        onReset={() => resetWidth(k)}
-      />
+      <Tooltip label={m.papers.columnHeader.resize(name)} note={m.shell.sidebar.dragHint}>
+        <Grip
+          className="thgrip" label={m.papers.columnHeader.resize(name)} value={widthOf(k)} min={minimumWidth(k)}
+          max={right === undefined ? widthOf(k) : widthOf(k) + widthOf(right) - minimumWidth(right)}
+          onResizeStart={(size) => beginResize(k, size)} onResize={resizeTo} onResizeEnd={endResize}
+          onReset={() => resetWidth(k)}
+        />
+      </Tooltip>
     )
   }
 
