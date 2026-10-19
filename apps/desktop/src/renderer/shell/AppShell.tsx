@@ -489,10 +489,11 @@ export function AppShell({ screens, settings }: {
       if (e.key === '/' && !/^(input|textarea)$/i.test((e.target as HTMLElement).tagName)) {
         e.preventDefault()
         // The active screen's own field wins over the always-mounted sidebar search, which sits
-        // earlier in the DOM and would otherwise match first in a single combined selector.
+        // earlier in the DOM and would otherwise match first in a single combined selector. A
+        // collapsed sidebar is inert, and its search is no fallback.
         const field = document.querySelector<HTMLElement>(
           '.screenslot:not([hidden]) #composer, .screenslot:not([hidden]) #libq',
-        ) ?? document.querySelector<HTMLElement>('#sSearch')
+        ) ?? document.querySelector<HTMLElement>('#sidebar:not([inert]) #sSearch')
         field?.focus()
       }
     }
@@ -730,7 +731,7 @@ export function AppShell({ screens, settings }: {
           laterCount={laterCount}
           chats={chats} chatId={screen === 'chat' ? chatId : null} onOpenChat={openChat}
           onNewChat={newChat} onArchiveChat={archiveChat}
-          grip={gripOf(dragSidebar)}
+          grip={gripOf(dragSidebar)} collapsed={hidden}
         />
         {screen === 'reader' && hidden ? (
           <button className="paper-chat-edge" title={m.chat.expandPaperChat} onClick={() => setHidden(false)} />
