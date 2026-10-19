@@ -52,7 +52,7 @@
 .toast.show{opacity:1}
 
 /* The banner at the top: confirms that something was saved, shows briefly and hides by itself */
-.banner{position:fixed;top:62px;left:50%;transform:translate(-50%,-14px);display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--sep);border-radius:var(--r-xl);box-shadow:var(--sh-3);padding:8px 16px;font-size:var(--fs-sm);color:var(--ink);z-index:91;opacity:0;pointer-events:none;transition:opacity var(--t-slow) var(--e-inout),transform var(--t-slow) var(--e-inout)}
+.banner{position:fixed;top:62px;left:50%;transform:translate(-50%,-14px);display:flex;align-items:center;gap:8px;background:var(--raised);border-radius:var(--r-xl);box-shadow:var(--sh-3);padding:8px 16px;font-size:var(--fs-sm);color:var(--ink);z-index:91;opacity:0;pointer-events:none;transition:opacity var(--t-slow) var(--e-inout),transform var(--t-slow) var(--e-inout)}
 .banner.show{opacity:1;transform:translate(-50%,0)}
 .banner svg{width:14px;height:14px;color:var(--good);flex-shrink:0}
 
@@ -171,7 +171,7 @@
 /* In the Reader a collapsed paper chat leaves this slim edge; clicking it opens the chat again. */
 .paper-chat-edge{flex:0 0 12px;padding:0;border:0;border-right:1px solid var(--sep);background:var(--sidebar);cursor:pointer}
 .paper-chat-edge:hover{background-image:linear-gradient(var(--hover),var(--hover))}
-.griptip{position:fixed;background:var(--card);border:1px solid var(--sep);border-radius:var(--r-lg);box-shadow:var(--sh-2);padding:8px 12px;font-size:var(--fs-sm);z-index:95;pointer-events:none;opacity:0;transition:opacity var(--t-fast) var(--e-out);white-space:nowrap}
+.griptip{position:fixed;background:var(--raised);border-radius:var(--r-lg);box-shadow:var(--sh-2);padding:8px 12px;font-size:var(--fs-sm);z-index:95;pointer-events:none;opacity:0;transition:opacity var(--t-fast) var(--e-out);white-space:nowrap}
 .griptip.show{opacity:1}
 .griptip .t1{font-weight:600;color:var(--ink);display:flex;gap:10px;align-items:baseline}
 .griptip .t1 .k{color:var(--ter);font-weight:400;font-family:var(--mono);font-size:var(--fs-sm)}

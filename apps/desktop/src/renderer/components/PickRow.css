@@ -4,7 +4,7 @@
  * Radix writes the anchor width to --radix-popover-trigger-width
  */
 
-.pickhits{width:var(--radix-popover-trigger-width);min-width:190px;z-index:90;background:var(--card);border:1px solid var(--sep);border-radius:var(--r-lg);box-shadow:var(--sh-2);max-height:240px;overflow:auto}
+.pickhits{width:var(--radix-popover-trigger-width);min-width:190px;z-index:90;background:var(--raised);border-radius:var(--r-lg);box-shadow:var(--sh-2);max-height:240px;overflow:auto}
 .pickhits ul{list-style:none;margin:0;padding:4px 0}
 .pickhits li{padding:6px 12px;font-size:var(--fs-base);cursor:pointer;display:flex;gap:8px;align-items:baseline}
 .pickhits li.on,.pickhits li:hover{background:var(--hover)}

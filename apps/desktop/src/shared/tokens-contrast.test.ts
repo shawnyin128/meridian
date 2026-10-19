@@ -50,11 +50,24 @@ const resolve = (theme: 'light' | 'dark', name: string): string => {
 }
 
 /**
- * Parses a token as a color, accepting three- or six-digit hex and `rgb()` / `rgba()`.
+ * Parses a token as a color, accepting three- or six-digit hex, `rgb()` / `rgba()`, `transparent`,
+ * and `color-mix(in srgb, A P%, B)` whose parts are any of these or a `var()`.
  * @throws When the value uses an unsupported representation.
  */
-const colour = (theme: 'light' | 'dark', name: string): Colour => {
-  const value = resolve(theme, name)
+const colour = (theme: 'light' | 'dark', name: string): Colour => parse(theme, name, resolve(theme, name))
+
+const parse = (theme: 'light' | 'dark', name: string, value: string): Colour => {
+  if (value === 'transparent') return { r: 0, g: 0, b: 0, a: 0 }
+  const token = /^var\((--[\w-]+)\)$/.exec(value)
+  if (token) return colour(theme, token[1]!)
+  const mix = /^color-mix\(in srgb,(.+) (\d+)%,(.+)\)$/.exec(value)
+  if (mix) {
+    const p = Number(mix[2]) / 100
+    const [x, y] = [parse(theme, name, mix[1]!), parse(theme, name, mix[3]!)]
+    const a = x.a * p + y.a * (1 - p)
+    const mixed = (k: 'r' | 'g' | 'b'): number => (x[k] * x.a * p + y[k] * y.a * (1 - p)) / a
+    return { r: mixed('r'), g: mixed('g'), b: mixed('b'), a }
+  }
   const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value)
   if (hex) {
     const digits = hex[1]!.length === 3 ? [...hex[1]!].map((c) => c + c).join('') : hex[1]!
@@ -108,6 +121,9 @@ const PAIRS: Pair[] = [
   { theme: 'light', label: '次级文字在内容面', fg: '--sec', ground: ['--content'], min: TEXT },
   { theme: 'light', label: '次级文字在窗口底', fg: '--sec', ground: ['--window'], min: TEXT },
   { theme: 'light', label: '次级文字在输入底', fg: '--sec', ground: ['--field'], min: TEXT },
+  { theme: 'light', label: '正文在卡片面', fg: '--ink', ground: ['--card'], min: TEXT },
+  { theme: 'light', label: '次级文字在卡片面', fg: '--sec', ground: ['--card'], min: TEXT },
+  { theme: 'light', label: '次级文字在浮层面', fg: '--sec', ground: ['--raised'], min: TEXT },
   { theme: 'light', label: 'toast 的字在墨底', fg: '--window', ground: ['--ink'], min: TEXT },
   { theme: 'dark', label: '正文在内容面', fg: '--ink', ground: ['--content'], min: TEXT },
   { theme: 'dark', label: '正文在卡片面', fg: '--ink', ground: ['--card'], min: TEXT },
@@ -115,6 +131,8 @@ const PAIRS: Pair[] = [
   { theme: 'dark', label: '正文在输入底', fg: '--ink', ground: ['--field'], min: TEXT },
   { theme: 'dark', label: '次级文字在内容面', fg: '--sec', ground: ['--content'], min: TEXT },
   { theme: 'dark', label: '次级文字在窗口底', fg: '--sec', ground: ['--window'], min: TEXT },
+  { theme: 'dark', label: '正文在浮层面', fg: '--ink', ground: ['--raised'], min: TEXT },
+  { theme: 'dark', label: '次级文字在浮层面', fg: '--sec', ground: ['--raised'], min: TEXT },
   { theme: 'dark', label: '三级文字在内容面', fg: '--ter', ground: ['--content'], min: TEXT },
   { theme: 'dark', label: 'toast 的字在墨底', fg: '--window', ground: ['--ink'], min: TEXT },
   // Solid accent surfaces.
@@ -141,6 +159,7 @@ const PAIRS: Pair[] = [
   { theme: 'light', label: '焦点环在内容面', fg: '--ring', ground: ['--content'], min: MARK },
   { theme: 'light', label: '焦点环在窗口底', fg: '--ring', ground: ['--window'], min: MARK },
   { theme: 'light', label: '焦点环在输入底', fg: '--ring', ground: ['--field'], min: MARK },
+  { theme: 'light', label: '焦点环在卡片面', fg: '--ring', ground: ['--card'], min: MARK },
   { theme: 'dark', label: '焦点环在内容面', fg: '--ring', ground: ['--content'], min: MARK },
   { theme: 'dark', label: '焦点环在卡片面', fg: '--ring', ground: ['--card'], min: MARK },
   { theme: 'dark', label: '焦点环在输入底', fg: '--ring', ground: ['--field'], min: MARK },
@@ -178,6 +197,32 @@ describe('tokens.css 的决定值', () => {
     const rules = tokens.replace(/\/\*[\s\S]*?\*\//g, '')
     expect(rules).not.toMatch(/:(single|double)-button/)
     expect(rules).toMatch(/::-webkit-scrollbar-button\{display:none;width:0;height:0\}/)
+  })
+
+  it('亮色的画布与卡片落在不同的台阶上,窗口底在画布之下,浮层在最上', () => {
+    const level = (name: string): number => luminance(flatten('light', [name]))
+    expect(level('--content')).not.toBe(level('--card'))
+    expect(level('--window')).toBeLessThan(level('--content'))
+    expect(level('--raised')).toBeGreaterThanOrEqual(Math.max(level('--content'), level('--card')))
+  })
+
+  it('浮层的每档阴影在两种主题下都以一圈 1px 的边开头,浮层不必再自画边框', () => {
+    for (const theme of ['light', 'dark'] as const) {
+      for (const name of ['--sh-2', '--sh-3']) expect(resolve(theme, name), `${theme} ${name}`).toMatch(/^0 0 0 1px rgba\(/)
+    }
+  })
+
+  it('全局焦点环的颜色、粗细和间距都取自 --ring 一组变量', () => {
+    const rules = tokens.replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(rules).toContain(':focus-visible{outline:var(--ring-width) solid var(--ring);outline-offset:var(--ring-offset)}')
+    expect(resolve('light', '--ring-width')).toBe('2px')
+    expect(resolve('light', '--ring-offset')).toBe('2px')
+  })
+
+  it('减弱动态效果时停下所有关键帧动画,只留运行中的转圈', () => {
+    const rules = tokens.replace(/\/\*[\s\S]*?\*\//g, '')
+    const reduced = rules.slice(rules.indexOf('@media (prefers-reduced-motion:reduce){'))
+    expect(reduced.slice(0, reduced.indexOf('\n}'))).toContain(':not(.ring.spin),::before,::after{animation:none!important}')
   })
 
   it('亮色的 --info / --tint-info 是青色,且与 --link 解出来的颜色分开', () => {
