@@ -181,6 +181,13 @@ describe('Settings', () => {
     expect(api.updateDeliverySettings).toHaveBeenCalledWith({ maxItemsPerRun: 12 })
   })
 
+  it('每个设置分类都是按钮，键盘能聚焦和打开', async () => {
+    api.requestedCategory = null
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const rows = [...document.querySelectorAll('.setdlg [data-setcat]')]
+    expect(rows.map((row) => row.tagName)).toEqual(rows.map(() => 'BUTTON'))
+  })
+
   it('API 总览列出模型和科研的当前状态，点科研进入 Semantic Scholar 页', async () => {
     api.modelSettings.mockResolvedValueOnce({
       ...(await api.modelSettings()), model: 'gpt-test', configured: true,

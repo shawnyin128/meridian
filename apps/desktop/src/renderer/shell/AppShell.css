@@ -38,7 +38,7 @@
  */
 .crumb .cseg:last-child{flex:1;color:var(--sec);text-overflow:clip;mask-image:var(--clipfade)}
 /* Padding paired with a negative margin: the pill grows outward only, and the text does not move. */
-.crumb .cseg.link{cursor:pointer;padding:2px 6px;margin:-2px -6px;border-radius:var(--r-sm);transition:background var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out)}
+.crumb .cseg.link{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:2px 6px;margin:-2px -6px;border-radius:var(--r-sm);transition:background var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out)}
 .crumb .cseg.link:hover{background:var(--hover);color:var(--ink)}
 .tbtn{border:0;background:transparent;color:var(--sec);font-size:13px;cursor:pointer;padding:3px 8px;border-radius:var(--r-sm);transition:background var(--t-fast) var(--e-out)}
 :where(.tbtn):hover{background:var(--hover);color:var(--ink)}
@@ -104,7 +104,8 @@
 .sb-h{display:flex;align-items:center;gap:4px;font-size:var(--fs-cap);font-weight:600;color:var(--ter);text-transform:uppercase;letter-spacing:.04em;padding:0 8px;margin:12px 0 4px}
 .sb-h.chats-h{display:flex;align-items:center}
 .sect-h{cursor:pointer;user-select:none}
-.sh-caret{display:grid;place-items:center;opacity:0;transition:opacity var(--t-fast) var(--e-out),transform var(--t-fast) var(--e-out)}
+.sh-caret{display:grid;place-items:center;padding:0;border:0;background:transparent;color:inherit;cursor:pointer;opacity:0;transition:opacity var(--t-fast) var(--e-out),transform var(--t-fast) var(--e-out)}
+.sh-caret:focus-visible{opacity:1}
 .sect-h:hover .sh-caret{opacity:1}
 .sect-h.closed .sh-caret{opacity:1;transform:rotate(-90deg)}
 .sh-caret svg{width:9px;height:9px}
@@ -141,6 +142,7 @@
  */
 .watch-row .watch-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;mask-image:var(--clipfade)}
 .watch-row .n{margin-left:0}
+.chat-row .nav-row-label{flex:1}
 .chat-row .ct-t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;mask-image:var(--clipfade)}
 /* This row's own reveal-on-hover rule; the shared .dots geometry, focus, and open-state rules live in FieldPickers.css. */
 .chat-row:hover .dots{opacity:1;pointer-events:auto}

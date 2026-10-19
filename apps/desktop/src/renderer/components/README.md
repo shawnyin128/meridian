@@ -31,6 +31,8 @@ Current shared contracts:
 - `StructuredList`: list shell and actionable/static row semantics; routes only supply columns and cells.
   A row that holds controls of its own is `composite`: it stays a div that forwards pointer clicks, and
   its children carry the keyboard-accessible control, so a button is never nested inside a button.
+- `NavRow`: the one row of a navigation list, the sidebar's and the Settings categories'. It is a button,
+  or, when it holds controls of its own, a div whose label is the button; the row's class gives the look.
 - `SegmentedControl`: the only switch between peer views in the app, with shared geometry, selected state,
   keyboard focus, and pressed-button semantics. The `.fchip` and `.segbtn` pill rows are retired.
 - `EmptyState`: the two ways a list says it is empty. `page` is a centred sentence with an optional icon

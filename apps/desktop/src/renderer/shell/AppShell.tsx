@@ -707,9 +707,9 @@ export function AppShell({ screens, settings }: {
             return (
               <Fragment key={`${i}${p.text}`}>
                 {i > 0 ? <span className="csep">›</span> : null}
-                <span className={link ? 'cseg link' : 'cseg'} onClick={link ? p.onClick : undefined}>
-                  {p.text}
-                </span>
+                {link
+                  ? <button type="button" className="cseg link" onClick={p.onClick}>{p.text}</button>
+                  : <span className="cseg">{p.text}</span>}
               </Fragment>
             )
           })}
