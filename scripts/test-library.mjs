@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { DESKTOP, openApp, readJson, redate, session, writeJson } from './test-library/app.mjs'
@@ -7,6 +7,7 @@ import { redateLater, seedInbox, seedWatches, writeInbox } from './test-library/
 import { prepareWorkspace, redateEvents, seedLab, seedProposals } from './test-library/lab.mjs'
 import { importPapers, paperFiles, redatePapers, seedPapers } from './test-library/papers.mjs'
 import { discoveryRecords, redateProjects, seedProjects } from './test-library/projects.mjs'
+import { relocate } from './test-library/relocate.mjs'
 import { checkOut, MARKER, protectedRoots } from './test-library/safety.mjs'
 import { seedWiki } from './test-library/wiki.mjs'
 
@@ -71,26 +72,6 @@ async function seed(out, app, today) {
   redate(state)
   redateLater(state)
   console.log(`Seeded ${out}`)
-}
-
-/**
- * Rewrites the absolute paths that a test library seeded at `from` stores, now that it lives at
- * `out`: the library's own paths in `meridian-wiki.json`, and the workspace and attachment paths on
- * project pages, in Trash and in the change log.
- */
-function relocate(out, from) {
-  const library = join(out, 'library')
-  const files = [
-    join(library, 'meridian-wiki.json'),
-    ...readdirSync(join(library, 'wiki', 'projects')).map((name) => join(library, 'wiki', 'projects', name)),
-    ...readdirSync(join(library, '.meridian')).filter((name) => name.endsWith('.json')).map((name) => join(library, '.meridian', name)),
-  ]
-  const forms = new Map([[from, out], [JSON.stringify(from).slice(1, -1), JSON.stringify(out).slice(1, -1)]])
-  for (const file of files) {
-    let text = readFileSync(file, 'utf8')
-    for (const [old, next] of forms) text = text.replaceAll(old, next)
-    writeFileSync(file, text, 'utf8')
-  }
 }
 
 const { positionals: [command], values } = parseArgs({
