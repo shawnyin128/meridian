@@ -10,10 +10,9 @@
 .paper-chat-head strong{font-size:var(--fs-sm);color:var(--sec);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .paper-chat .msgs{padding:16px 0;gap:14px}
 .paper-chat .mwrap{width:calc(100% - 24px)}
-.paper-chat .bubble,.paper-chat .event{font-size:var(--fs-sm);line-height:1.5}
+.paper-chat .bubble,.paper-chat .answer,.paper-chat .event{font-size:var(--fs-sm);line-height:1.5}
 .paper-chat .composer{padding:10px 0 12px}
 .paper-chat .cbox{padding-left:12px}
-.paper-chat .send:disabled{opacity:.45;cursor:default}
 .yellow{--mark:#f8d84a}.green{--mark:#87d99a}.blue{--mark:#82c7f2}.pink{--mark:#f0a0be}
 
 .reader{flex:1;display:flex;overflow:hidden;min-width:0;background:var(--desktop);position:relative}

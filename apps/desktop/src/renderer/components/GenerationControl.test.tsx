@@ -38,4 +38,27 @@ describe('GenerationControl', () => {
     expect(stop).toHaveBeenCalledOnce()
     act(() => root.unmount())
   })
+
+  it('disables only the start: a running generation can still be stopped', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    const stop = vi.fn()
+
+    act(() => root.render(
+      <MessagesProvider><GenerationControl running={false} disabled onStart={vi.fn()} onStop={stop} /></MessagesProvider>,
+    ))
+    const button = host.querySelector<HTMLButtonElement>('button')!
+    expect(button.disabled).toBe(true)
+
+    act(() => root.render(
+      <MessagesProvider><GenerationControl running disabled onStart={vi.fn()} onStop={stop} /></MessagesProvider>,
+    ))
+    expect(button.disabled).toBe(false)
+    act(() => button.click())
+    expect(stop).toHaveBeenCalledOnce()
+    act(() => root.unmount())
+  })
 })

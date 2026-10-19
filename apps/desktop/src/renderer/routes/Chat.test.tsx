@@ -60,6 +60,7 @@ describe('Chat composer', () => {
 
   beforeEach(async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
     vi.clearAllMocks()
@@ -185,5 +186,28 @@ describe('Chat composer', () => {
     expect(api.cancel).toHaveBeenCalledExactlyOnceWith('chat-1')
     expect(control().getAttribute('aria-label')).toBe('发送')
     await finish()
+  })
+
+  it('草稿去掉空白后为空时发送钮不可点，生成中的停止仍可点', async () => {
+    expect(control().disabled).toBe(true)
+    act(() => setValue(composer, ' \n '))
+    expect(control().disabled).toBe(true)
+    act(() => setValue(composer, '为什么'))
+    expect(control().disabled).toBe(false)
+
+    const finish = sendPending('为什么')
+    expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
+    expect(control().disabled).toBe(false)
+    await finish()
+  })
+
+  it('快捷引用是一行的幽灵 chip，存为想法是排在工具栏末尾的幽灵按钮', () => {
+    const chips = [...document.querySelectorAll<HTMLButtonElement>('#qmChips button')]
+    expect(chips.map((chip) => [chip.className, chip.querySelector('.fade-text')?.textContent]))
+      .toEqual([['btn ghost sm qm', '@草稿树项目']])
+    const save = document.querySelector<HTMLButtonElement>('#qaIdea')!
+    expect(save.className).toBe('btn ghost sm save-idea')
+    expect(save.parentElement!.lastElementChild).toBe(save)
+    expect(document.querySelector('.qsep')).toBeNull()
   })
 })

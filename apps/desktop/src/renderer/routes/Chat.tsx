@@ -26,6 +26,7 @@ import { CONFLICT_THREAD, sendsMessage } from '../lib/chat.js'
 import { composing } from '../lib/keyboard.js'
 import { IdeaEditorDialog } from '../components/ideas/IdeaEditorDialog.js'
 import { GenerationControl } from '../components/GenerationControl.js'
+import { FadeText } from '../components/FadeText.js'
 import { TitleNote } from '../components/TitleNote.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
@@ -235,24 +236,25 @@ export function Chat() {
         <div className="composer">
           <div className="mwrap">
             <div className="qacts">
-              <button
-                className="qa" id="qaIdea" disabled={id === null || !hasDiscussion}
-                title={hasDiscussion ? m.chat.saveIdea : m.chat.saveIdeaDisabled}
-                onClick={() => setSavingIdea(true)}
-              >{m.chat.saveIdeaLabel}</button>
-              <span className="qsep" />
               <span id="qmChips">
                 {[
                   ...mentions.filter((mention) => mention.kind === 'project').slice(0, QUICK_MENTIONS),
                   ...mentions.filter((mention) => mention.kind === 'paper').slice(0, QUICK_MENTIONS),
                 ].map((mention) => (
                   <button
-                    className="qa" key={mention.title}
+                    className="btn ghost sm qm" key={mention.title}
                     title={m.chat.quickMentionTitle(m.chat.mentionGroup[mention.kind], mention.meta)}
                     onClick={() => quick(mention.title)}
-                  >@{mention.kind === 'paper' ? <PaperText text={mention.entity.title} /> : mention.title}</button>
+                  >
+                    <FadeText>@{mention.kind === 'paper' ? <PaperText text={mention.entity.title} /> : mention.title}</FadeText>
+                  </button>
                 ))}
               </span>
+              <button
+                className="btn ghost sm save-idea" id="qaIdea" disabled={id === null || !hasDiscussion}
+                title={hasDiscussion ? m.chat.saveIdea : m.chat.saveIdeaDisabled}
+                onClick={() => setSavingIdea(true)}
+              >{m.chat.saveIdeaLabel}</button>
             </div>
 
             <PickerPopover
@@ -277,7 +279,8 @@ export function Chat() {
                     }}
                   />
                   <GenerationControl
-                    className="send" id="sendBtn" running={sending} onStart={submit} onStop={stopSending}
+                    className="send" id="sendBtn" running={sending} disabled={id === null || draft.trim() === ''}
+                    onStart={submit} onStop={stopSending}
                   />
                 </div>
               )}
