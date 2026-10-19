@@ -465,7 +465,7 @@ test('拖完任务条那一下不算点击,单击只定位闪烁,名称格仍可
   await expect(row.locator('.plan-name-input')).toHaveCount(0)
   await expect(win.locator('.plan-time-pop')).toHaveCount(0)
 
-  await row.locator('.plan-name').click()
+  await row.locator('.plan-rename').click()
   await row.locator('.plan-name-input').fill(EDITED_TASK_TITLE)
   await row.locator('.plan-name-input').press('Enter')
   await expect(win.locator('#banner span')).toHaveText('已更新任务')
@@ -1241,7 +1241,7 @@ test('项目列表点进详情,内容导航行的返回钮退回列表', async (
   await expect(win.locator('.screenslot:not([hidden]) [data-proj="draft"]')).toBeVisible()
 })
 
-test('任务四列各自编辑,点击行本身只打开任务详情,不改变任何列', async ({ win }) => {
+test('任务四列各自编辑,点击行或任务名只打开任务详情,不改变任何列,改名从铅笔进入', async ({ win }) => {
   test.slow()
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
@@ -1260,7 +1260,19 @@ test('任务四列各自编辑,点击行本身只打开任务详情,不改变任
   await win.keyboard.press('Escape')
   await expect(side.locator('.node-document-title')).toHaveCount(0)
 
+  // The name opens the same panel, on a click and on Enter, and renaming starts from the pencil beside it.
   await row.locator('.plan-name').click()
+  await expect(side.locator('.node-document-title')).toHaveText(title!)
+  await expect(row.locator('.plan-name-input')).toHaveCount(0)
+  await win.keyboard.press('Escape')
+  await expect(side.locator('.node-document-title')).toHaveCount(0)
+  await row.locator('.plan-name').focus()
+  await win.keyboard.press('Enter')
+  await expect(side.locator('.node-document-title')).toHaveText(title!)
+  await win.keyboard.press('Escape')
+  await expect(side.locator('.node-document-title')).toHaveCount(0)
+
+  await row.locator('.plan-rename').click()
   await expect(row.locator('.plan-name-input')).toHaveCount(1)
   await expect(win.locator('.schedule-form')).toHaveCount(0)
   await win.keyboard.press('Escape')
@@ -1396,7 +1408,7 @@ test('节点面板由 Agent 管理:标题、状态、记录与分支都不可在
 test('节点面板开着时 Esc 先关任务名称格,再按一次才收面板', async ({ win }) => {
   const head = await openNodePanel(win)
   const row = win.locator('#taskList .ddlrow').first()
-  await row.locator('.plan-name').click()
+  await row.locator('.plan-rename').click()
   await expect(row.locator('.plan-name-input')).toHaveCount(1)
   await win.keyboard.press('Escape')
   await expect(row.locator('.plan-name-input')).toHaveCount(0)
