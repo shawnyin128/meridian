@@ -341,7 +341,6 @@ function GroupValuePicker({ current, facets, onPick }: {
       <MenuRadioGroup value={current ?? ''}>
         {facets.map((facet) => (
           <MenuRadioItem key={facet.value} value={facet.value} onSelect={() => onPick(facet.value)}>
-            <span className="ck">{facet.value === current ? <IconCheck /> : null}</span>
             {facet.value}
             <span className="mi-key">{facet.count}</span>
           </MenuRadioItem>

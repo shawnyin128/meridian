@@ -549,8 +549,8 @@ describe('PaperTable', () => {
     await act(async () => { picker.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
     await flush()
     const items = [...document.querySelectorAll<HTMLElement>('.ctxmenu [role="menuitemradio"]')]
-    expect(items.map((item) => [item.textContent, item.getAttribute('aria-checked')]))
-      .toEqual([['推理2', 'true'], ['检索1', 'false']])
+    expect(items.map((item) => [item.textContent, item.getAttribute('aria-checked'), item.querySelectorAll('svg').length]))
+      .toEqual([['推理2', 'true', 1], ['检索1', 'false', 0]])
     await act(async () => { press(items[1]!) })
     await flush()
     expect(listParams.at(-1)?.facet).toEqual({ field: 'topics', value: '检索' })
