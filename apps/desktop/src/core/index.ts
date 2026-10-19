@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { ContractMethod, LibrarySource } from '../shared/contract.js'
@@ -182,9 +183,18 @@ const appliedProposalBodies = (() => {
 const { store, openError } = openStore(vaultRoot, appliedProposalBodies)
 const appVersion = process.env['MERIDIAN_APP_VERSION']
 let libraryLocation = currentLibrary({ currentRoot: locationRoot, source: librarySource, configHome })
-/** Fixture mode and explicit canned mode never access the network. */
+/**
+ * Fixture mode and explicit canned mode never access the network. In either, the JSON file
+ * MERIDIAN_CANNED_NET_FILE names, if any, adds canned responses that win over the built-in ones.
+ */
 const canned = vaultRoot === undefined || process.env['MERIDIAN_CANNED_NET'] === '1'
-const httpGet = canned ? createCannedGet(cannedNet as CannedTable, locationRoot) : electronGet
+const cannedFile = process.env['MERIDIAN_CANNED_NET_FILE']
+const httpGet = canned
+  ? createCannedGet({
+    ...cannedNet as CannedTable,
+    ...(cannedFile === undefined ? {} : JSON.parse(readFileSync(cannedFile, 'utf8')) as CannedTable),
+  }, locationRoot)
+  : electronGet
 // A real library hears about app and plugin version changes once per machine; the fixture library
 // never does. A library that failed to open has no feed to post to, and every method of `store`
 // throws in that case, so posting here would crash Core before it registers any contract handler.

@@ -23,11 +23,14 @@ function appTarget(app) {
 
 /**
  * The environment an App on test library `out` runs with. `network: false` keeps Core off the
- * network, `bootstrap` lets Core initialize an empty library, `show` puts the window on screen.
+ * network, answering from its canned responses and those in the file `canned`, `bootstrap` lets
+ * Core initialize an empty library, `show` puts the window on screen.
  */
-function appEnv(out, { show = false, network = false, bootstrap = false }) {
+function appEnv(out, { show = false, network = false, bootstrap = false, canned }) {
   const env = { ...process.env }
-  for (const key of ['ELECTRON_RUN_AS_NODE', 'MERIDIAN_LIBRARY_ROOT', 'MERIDIAN_CANNED_NET', 'MERIDIAN_BOOTSTRAP_VAULT']) {
+  for (const key of [
+    'ELECTRON_RUN_AS_NODE', 'MERIDIAN_LIBRARY_ROOT', 'MERIDIAN_CANNED_NET', 'MERIDIAN_CANNED_NET_FILE', 'MERIDIAN_BOOTSTRAP_VAULT',
+  ]) {
     delete env[key]
   }
   return {
@@ -36,6 +39,7 @@ function appEnv(out, { show = false, network = false, bootstrap = false }) {
     MERIDIAN_CONFIG_HOME: join(out, 'config'),
     MERIDIAN_SHOW_WINDOW: show ? '1' : '0',
     ...(network ? {} : { MERIDIAN_CANNED_NET: '1' }),
+    ...(canned === undefined ? {} : { MERIDIAN_CANNED_NET_FILE: canned }),
     ...(bootstrap ? { MERIDIAN_BOOTSTRAP_VAULT: '1' } : {}),
   }
 }
