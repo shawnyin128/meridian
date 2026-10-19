@@ -8,7 +8,7 @@ import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import 'katex/dist/katex.min.css'
 import type { WikiRef } from '../../shared/contract.js'
-import { composing } from '../lib/keyboard.js'
+import { commitsMultiline, composing } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import { remarkPaperText } from './paper/paper-text.js'
 
@@ -139,16 +139,18 @@ export function headingsOf(src: string): Heading[] {
 /**
  * One container that switches between the rendered result and the Markdown source: with `editing`
  * false it renders `text` as Markdown (`empty` when the string is empty); with it true it is a
- * contentEditable holding the source, focused on entry, where Esc calls `onCancel` unless an input
- * method is composing.
- * The caller places the "Edit"/"Save" buttons and reads `box`'s `innerText` on save. `className` is
- * appended to the container.
+ * contentEditable holding the source, focused on entry, where Esc calls `onCancel` and ⌘Enter or
+ * Ctrl+Enter calls `onSave`, unless an input method is composing.
+ * The caller places EditActions and reads `box`'s `innerText` on save. `className` is appended to the
+ * container.
  */
-export function MarkdownBox({ text, editing, box, onCancel, onOpen, titles, empty, className }: {
+export function MarkdownBox({ text, editing, box, onCancel, onSave, onOpen, titles, empty, className }: {
   text: string
   editing: boolean
   box: RefObject<HTMLDivElement | null>
   onCancel: () => void
+  /** Called on ⌘Enter or Ctrl+Enter while editing. */
+  onSave: () => void
   onOpen?: (id: string) => void
   titles?: Record<string, WikiRef>
   empty: ReactNode
@@ -161,6 +163,11 @@ export function MarkdownBox({ text, editing, box, onCancel, onOpen, titles, empt
       <div
         className={classes} contentEditable suppressContentEditableWarning ref={box}
         onKeyDown={(e) => {
+          if (commitsMultiline(e.nativeEvent)) {
+            e.preventDefault()
+            onSave()
+            return
+          }
           if (e.key !== 'Escape') return
           e.stopPropagation()
           if (!composing(e.nativeEvent)) onCancel()

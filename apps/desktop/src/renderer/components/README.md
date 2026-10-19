@@ -9,6 +9,8 @@ Current shared contracts:
 - `timeline/TimelineBoard`: scale, grid, rows, task bars, milestones, dragging, labels, priority, and
   history visibility hooks. Overview and project detail configure the same board.
 - `InlineField`: one-field-at-a-time editing, validation, cancel/save behavior, and presentation hooks.
+- `EditActions`: the one edit contract of a long text: Edit in the heading's action slot, then Cancel and
+  Save in that same place. Save or ⌘Enter commits (Enter in a one-line field), Cancel or Escape restores.
 - `InlineDraftInput`: the shared input and lifecycle for placeholder/create rows. Hosts provide row
   layout, sibling controls, trigger refs, and persistence; trimming, validation, focus, Enter/Escape,
   outside cancellation, and async submission locking are implemented once.

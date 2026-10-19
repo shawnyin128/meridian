@@ -1217,16 +1217,16 @@ test('属性栏焦点格保存后,照旧收起其他正在编辑的东西(随笔
   const main = win.locator('.screenslot:not([hidden]) .wkmain')
   const edit = side.locator('button.metadata-editable', { hasText: before })
   const pin = side.locator('.metadata-input')
-  const memoToggle = main.locator('.section-heading', { hasText: '项目随笔' }).locator('button')
+  const memoActions = main.locator('.section-heading', { hasText: '项目随笔' }).locator('button')
 
-  await memoToggle.click()
-  await expect(memoToggle).toHaveText('保存')
+  await memoActions.click()
+  await expect(memoActions).toHaveText(['取消', '保存'])
 
   await edit.click()
   await pin.fill('保存焦点格顺带收起随笔')
   await pin.press('Enter')
   await expect(win.locator('#banner span')).toHaveText('已更新当前目标')
-  await expect(memoToggle).toHaveText('编辑')
+  await expect(memoActions).toHaveText(['编辑'])
 })
 
 test('项目列表点进详情,内容导航行的返回钮退回列表', async ({ win }) => {

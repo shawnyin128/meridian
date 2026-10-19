@@ -40,8 +40,6 @@
 .idea-detail-editor label{display:grid;gap:6px;color:var(--ter);font-size:var(--fs-sm)}
 .idea-detail-editor .form-control{width:100%}
 .idea-detail-editor .form-textarea{min-height:150px}
-.idea-detail-editor-actions{display:flex;justify-content:flex-end;gap:8px}
-.idea-detail-editor-actions .btn:disabled{cursor:default;opacity:.45}
 .idea-detail-section{margin-top:24px;padding-top:18px;border-top:1px solid var(--sep2)}
 .idea-detail-section h3{margin:0 0 9px;color:var(--ink);font-size:var(--fs-base)}
 .idea-detail-body{margin:0;color:var(--sec);font-size:var(--fs-base);line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}

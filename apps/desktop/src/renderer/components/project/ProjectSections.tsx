@@ -6,6 +6,7 @@ import { AddAction } from '../AddAction.js'
 import { CardTray } from '../CardTray.js'
 import { FadeText } from '../FadeText.js'
 import { IconCross, IconPencil } from '../icons.js'
+import { EditActions } from '../EditActions.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PaperText } from '../paper/PaperText.js'
 import { PickRow, type PickHit } from '../PickRow.js'
@@ -136,8 +137,7 @@ export function ProjectMemo({ text, editing, onEditing, onSave, onOpen }: {
 }) {
   const m = useMessages()
   const box = useRef<HTMLDivElement>(null)
-  const toggle = () => {
-    if (!editing) { onEditing(true); return }
+  const save = () => {
     const next = box.current?.innerText.trim() ?? ''
     onEditing(false)
     onSave(next)
@@ -145,11 +145,13 @@ export function ProjectMemo({ text, editing, onEditing, onSave, onOpen }: {
   return (
     <>
       <SectionHeading variant="content" className="flexh">{m.project.sections.remark}
-        <button className="btn plain" onClick={toggle}>{editing ? m.common.save : m.common.edit}</button>
+        <EditActions
+          editing={editing} onEdit={() => onEditing(true)} onCancel={() => onEditing(false)} onSave={save}
+        />
       </SectionHeading>
       <MarkdownBox
         className="memo" text={text} editing={editing} box={box}
-        onCancel={() => onEditing(false)} onOpen={onOpen}
+        onCancel={() => onEditing(false)} onSave={save} onOpen={onOpen}
         empty={<span className="lm">{m.project.remarkEmpty}</span>}
       />
     </>
