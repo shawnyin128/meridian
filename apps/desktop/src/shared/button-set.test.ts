@@ -45,7 +45,7 @@ const openingTag = (source: string, from: number): string => {
 
 /**
  * Every class a component writes on a set button besides the set's own: next to `btn` in one class
- * string, or on an AddAction that is not the bare icon.
+ * string, or on an AddAction of the page or section variant.
  */
 const PAIRED = new Set(readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
   .filter((path) => path.endsWith('.tsx') && !path.endsWith('.test.tsx'))
@@ -53,7 +53,7 @@ const PAIRED = new Set(readdirSync(RENDERER, { recursive: true, encoding: 'utf8'
     const source = readFileSync(join(RENDERER, path), 'utf8')
     const strings = [...source.matchAll(/['"]((?:[a-z][\w-]* )*btn(?: [a-z][\w-]*)*)['"]/g)].map(([, classes]) => classes!)
     const adds = [...source.matchAll(/<AddAction\b/g)].map(({ index }) => openingTag(source, index))
-      .filter((tag) => !tag.includes('variant="icon"'))
+      .filter((tag) => !/variant="(?:icon|chip)"/.test(tag))
       .flatMap((tag) => [.../className="([^"]+)"/.exec(tag)?.slice(1) ?? []])
     return [...strings, ...adds].flatMap((classes) => classes.split(/\s+/))
   })

@@ -3,7 +3,8 @@ import type { PaperColumn, PaperColumns } from '../../../shared/contract.js'
 import { LOCKED_PAPER_COLUMNS } from '../../../shared/vocabulary.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ActionPopover } from '../ActionPopover.js'
-import { IconCheck, IconChevron, IconCross, IconGear, IconPencil } from '../icons.js'
+import { IconButton } from '../IconButton.js'
+import { IconCheck, IconChevron, IconGear, IconPencil, IconTrash } from '../icons.js'
 import { ColumnTypeIcon, ColumnTypePicker } from './ColumnAdd.js'
 import { takenLabel } from './column-key.js'
 import { COLUMNS } from './PaperTable.js'
@@ -90,7 +91,9 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
         setOpened(null)
         setRetyping(null)
       }}
-      sticky="always" trigger={<button className="colbtn" title={m.papers.columnMenu.settings}><IconGear /></button>}
+      sticky="always" trigger={(
+        <IconButton label={m.papers.columnMenu.settings} size="nested" className="colbtn"><IconGear /></IconButton>
+      )}
       contentProps={{
           // Radix takes Esc in the document's capture phase, so the input cannot stop it; during a
           // rename, keep the popover open here and only cancel the rename.
@@ -144,29 +147,29 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                 {c.type === 'text'
                   ? null
                   : (
-                    <button
-                      className={opened === c.key ? 'cmx optx on' : 'cmx optx'} title={m.papers.columnMenu.options}
+                    <IconButton
+                      label={m.papers.columnMenu.options} size="nested" className={opened === c.key ? 'cmx optx on' : 'cmx optx'}
                       onClick={() => setOpened((k) => (k === c.key ? null : c.key))}
-                    ><IconChevron /></button>
+                    ><IconChevron /></IconButton>
                   )}
-                <button
-                  className={retyping === c.key ? 'cmx typex on' : 'cmx typex'} title={m.papers.columnMenu.changeType}
+                <IconButton
+                  label={m.papers.columnMenu.changeType} size="nested" className={retyping === c.key ? 'cmx typex on' : 'cmx typex'}
                   onClick={() => setRetyping((k) => (k === c.key ? null : c.key))}
-                ><ColumnTypeIcon type={c.type} /></button>
-                <button
-                  className="cmx" title={m.papers.columnMenu.rename}
+                ><ColumnTypeIcon type={c.type} /></IconButton>
+                <IconButton
+                  label={m.papers.columnMenu.rename} size="nested" className="cmx"
                   onClick={() => afterLeaving(leaveRename, () => setRenaming(c.key))}
-                ><IconPencil /></button>
+                ><IconPencil /></IconButton>
                 {/* Core rejects group keys with no column, so a deleted column leaves the groups too. */}
-                <button
-                  className="cmx del" title={m.papers.columnMenu.deleteColumn}
+                <IconButton
+                  label={m.papers.columnMenu.deleteColumn} size="nested" tone="danger" className="cmx"
                   onClick={() => onChange((base) => ({
                     ...base,
                     custom: base.custom.filter((x) => x.key !== c.key),
                     groups: base.groups.filter((g) => g !== c.key),
                     order: base.order?.filter((key) => key !== c.key),
                   }))}
-                ><IconCross sw={2.2} /></button>
+                ><IconTrash /></IconButton>
               </div>
               {retyping === c.key
                 ? (
@@ -197,21 +200,21 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                           />
                         )
                         : <span className="cl">{o}</span>}
-                      <button
-                        className="cmx" title={m.papers.columnMenu.renameOption}
+                      <IconButton
+                        label={m.papers.columnMenu.renameOption} size="nested" className="cmx"
                         onClick={() => afterLeaving(
                           leaveOptionRename, () => setRenamingOption({ key: c.key, from: o }),
                         )}
-                      ><IconPencil /></button>
-                      <button
-                        className="cmx del" title={m.papers.columnMenu.deleteOption}
+                      ><IconPencil /></IconButton>
+                      <IconButton
+                        label={m.papers.columnMenu.deleteOption} size="nested" tone="danger" className="cmx"
                         onClick={() => onChange((base) => ({
                           ...base,
                           custom: base.custom.map((x) => (x.key === c.key
                             ? { ...x, options: x.options.filter((v) => v !== o) }
                             : x)),
                         }))}
-                      ><IconCross sw={2.2} /></button>
+                      ><IconTrash /></IconButton>
                     </div>
                   ))}
             </div>

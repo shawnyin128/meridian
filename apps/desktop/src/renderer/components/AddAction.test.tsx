@@ -7,13 +7,16 @@ describe('AddAction', () => {
   it('页面、分节和图标入口共享加号,只改变视觉权重', () => {
     const page = renderToStaticMarkup(<AddAction variant="page">导入 PDF</AddAction>)
     const section = renderToStaticMarkup(<AddAction>任务</AddAction>)
-    const icon = renderToStaticMarkup(<AddAction variant="icon" title="关联项目" />)
+    const icon = renderToStaticMarkup(<AddAction variant="icon" title="新增列" />)
+    const chip = renderToStaticMarkup(<AddAction variant="chip" className="tagchip tagadd" title="关联项目" />)
 
     expect(page).toContain('class="btn pri add-action add-action-page"')
     expect(section).toContain('class="btn sm add-action add-action-section"')
-    expect(icon).toContain('class="add-action add-action-icon"')
-    expect([page, section, icon].every((markup) => markup.includes('<svg'))).toBe(true)
-    expect(icon).toContain('aria-label="关联项目"')
+    expect(icon).toContain('class="icbtn sm"')
+    expect(chip).toContain('class="add-action add-action-chip tagchip tagadd"')
+    expect([page, section, icon, chip].every((markup) => markup.includes('<svg'))).toBe(true)
+    expect(icon).toContain('aria-label="新增列"')
+    expect(chip).toContain('aria-label="关联项目"')
   })
 
   it('keeps the visible label and the tooltip the same sentence', () => {

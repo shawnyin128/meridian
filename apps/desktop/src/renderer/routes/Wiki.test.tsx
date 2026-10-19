@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { WikiAggregation, WikiAggregationCard, WikiHome, WikiPaper } from '../../shared/contract.js'
+import { IconTrash } from '../components/icons.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
@@ -138,5 +140,15 @@ describe('Wiki keyboard reach', () => {
     expect(chip.tagName).toBe('BUTTON')
     await press(chip)
     expect(fixture.aggregation).toHaveBeenLastCalledWith('topics/sd')
+  })
+
+  it('列设置里删除一列的是共享的图标按钮，图标有尺寸，不再是一个空方块', async () => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    await press(host.querySelector<HTMLElement>('.cmp thead [title="列设置"]')!)
+    const remove = document.querySelector<HTMLButtonElement>('.coledit .row button')!
+    expect([remove.className, remove.getAttribute('aria-label')]).toEqual(['icbtn sm danger', '删除列'])
+    expect(remove.querySelector('svg')!.outerHTML).toBe(renderToStaticMarkup(<IconTrash />))
+    vi.unstubAllGlobals()
   })
 })

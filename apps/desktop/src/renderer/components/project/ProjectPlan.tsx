@@ -20,6 +20,7 @@ import { InlineField, type InlineFieldProps } from '../InlineField.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PanelClose } from '../PanelClose.js'
 import { TaskScheduleField } from '../TaskScheduleField.js'
+import { IconButton } from '../IconButton.js'
 import { IconPencil, IconTrash } from '../icons.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
@@ -209,11 +210,10 @@ function TaskNameCell({ task, onSave }: { task: Task; onSave: (patch: TaskPatch)
       rest={(edit) => (
         <>
           <button type="button" className="plan-cell plan-name plan-open">{task.title}</button>
-          <button
-            type="button" className="plan-rename"
-            title={m.project.plan.renameTask} aria-label={m.project.plan.renameTaskFor(task.title)}
-            onClick={(event) => { event.stopPropagation(); edit() }}
-          ><IconPencil /></button>
+          <IconButton
+            label={m.project.plan.renameTaskFor(task.title)} title={m.project.plan.renameTask} size="nested"
+            className="plan-rename" onClick={(event) => { event.stopPropagation(); edit() }}
+          ><IconPencil /></IconButton>
         </>
       )}
     />
@@ -344,11 +344,10 @@ function TaskRow({ task, flash, selected, dragProps, dropClass = '', onSave, onD
           </span>
         )
         : <TaskNameCell task={task} onSave={onSave} />}
-      <button
-        className="row-delete" type="button"
-        title={m.project.plan.deleteTask} aria-label={m.project.plan.deleteTaskFor(task.title)}
-        onClick={(event) => { event.stopPropagation(); onDelete() }}
-      ><IconTrash /></button>
+      <IconButton
+        label={m.project.plan.deleteTaskFor(task.title)} title={m.project.plan.deleteTask} size="nested" tone="danger"
+        className="row-delete" onClick={(event) => { event.stopPropagation(); onDelete() }}
+      ><IconTrash /></IconButton>
     </StructuredRow>
   )
 }
@@ -384,10 +383,10 @@ function MilestoneRow({ milestone, flash, onHover, onSave, onDelete }: {
         value={milestone.title} label={m.project.plan.milestoneNamePlaceholder}
         onSave={(title) => onSave({ title })}
       />
-      <button
-        className="row-delete" type="button" title={m.project.plan.deleteMilestone}
-        aria-label={m.project.plan.deleteMilestoneFor(milestone.title)} onClick={onDelete}
-      ><IconTrash /></button>
+      <IconButton
+        label={m.project.plan.deleteMilestoneFor(milestone.title)} title={m.project.plan.deleteMilestone} size="nested"
+        tone="danger" className="row-delete" onClick={onDelete}
+      ><IconTrash /></IconButton>
     </StructuredRow>
   )
 }

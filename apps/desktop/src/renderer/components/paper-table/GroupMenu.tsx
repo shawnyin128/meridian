@@ -2,6 +2,7 @@ import type { PaperColumns } from '../../../shared/contract.js'
 import { GROUPABLE_PAPER_FIELDS } from '../../../shared/vocabulary.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ActionMenu, MenuCheckboxItem } from '../ActionMenu.js'
+import { IconButton } from '../IconButton.js'
 import { IconCheck, IconGear } from '../icons.js'
 
 /** The group fields under the gear: built-in groupable fields, then select and multi-select columns in order. */
@@ -32,7 +33,9 @@ export function GroupMenu({ columns, onChange }: {
 
   return (
     <ActionMenu
-      trigger={<button type="button" className="colbtn grpgear" title={m.papers.groupMenu.chooseFields}><IconGear /></button>}
+      trigger={(
+        <IconButton label={m.papers.groupMenu.chooseFields} size="nested" className="colbtn grpgear"><IconGear /></IconButton>
+      )}
       align="start"
     >
       {groupRows(columns, m.papers.groupNames).map((r) => (

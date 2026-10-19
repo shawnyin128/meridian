@@ -19,10 +19,7 @@
 :root[data-os="win32"] .titlebar,:root[data-os="linux"] .titlebar{padding-right:154px}
 :root[data-os="darwin"] .titlebar{padding-left:78px}
 
-/* 3px of padding, not 6px: the bar's content is only 25px tall, and a 30px button would not fit */
-.titlebar .appbtn{border:0;background:transparent;padding:3px;border-radius:var(--r-sm);cursor:pointer;display:grid;place-items:center;transition:background var(--t-fast) var(--e-out)}
-:where(.titlebar .appbtn):hover{background:var(--hover)}
-.titlebar .appbtn:active{background-image:linear-gradient(var(--press),var(--press))}
+/* The bar's content is only 26px tall, so its icon buttons take the nested size, not the 30px one. */
 .titlebar .brandmark{width:18px;height:18px;display:block}
 /* Breadcrumbs: always shown after the app button, they tell where the user is */
 .crumb{display:flex;align-items:center;gap:6px;margin-left:8px;font-size:12px;color:var(--ter);flex:1;min-width:0;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade);user-select:none}
@@ -40,9 +37,6 @@
 /* Padding paired with a negative margin: the pill grows outward only, and the text does not move. */
 .crumb .cseg.link{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:2px 6px;margin:-2px -6px;border-radius:var(--r-sm);transition:background var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out)}
 .crumb .cseg.link:hover{background:var(--hover);color:var(--ink)}
-.tbtn{border:0;background:transparent;color:var(--sec);font-size:13px;cursor:pointer;padding:3px 8px;border-radius:var(--r-sm);transition:background var(--t-fast) var(--e-out)}
-:where(.tbtn):hover{background:var(--hover);color:var(--ink)}
-.tbtn svg{width:15px;height:15px;display:block}
 
 /* The demo takes this background from .window; the window frame is not copied, so it moves here. */
 .main{flex:1;display:flex;min-height:0;position:relative;background:var(--window)}
@@ -111,9 +105,7 @@
 .sh-caret svg{width:9px;height:9px}
 .sect.closed{display:none}
 
-.sb-add{border:0;background:transparent;color:var(--ter);cursor:pointer;border-radius:var(--r-sm);width:18px;height:18px;display:grid;place-items:center;padding:0;margin-left:auto}
-.sb-add:hover{background:var(--hover);color:var(--ink)}
-.sb-add svg{width:11px;height:11px}
+.sb-add{margin-left:auto}
 
 /* Row height is fixed: the appearance/disappearance of the badge must not cause any layout displacement */
 .srow{display:flex;align-items:center;gap:8px;height:30px;box-sizing:border-box;padding:0 8px;border-radius:var(--r-sm);font-size:var(--fs-base);cursor:pointer;color:var(--ink);transition:background var(--t-fast) var(--e-out)}

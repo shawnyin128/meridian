@@ -17,7 +17,8 @@ import { FormInput } from '../components/FormControls.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar, SectionHeading,
 } from '../components/PageShell.js'
-import { IconCross, IconGear } from '../components/icons.js'
+import { IconButton } from '../components/IconButton.js'
+import { IconCross, IconGear, IconTrash } from '../components/icons.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import { InlineMetadataField } from '../components/InlineField.js'
@@ -77,10 +78,10 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
       {onRemove === undefined
         ? null
         : (
-          <button
-            className="rx" title={m.wiki.removeFromPage} aria-disabled={pending}
+          <IconButton
+            label={m.wiki.removeFromPage} size="inline" className="rx" aria-disabled={pending}
             onClick={(e) => { e.stopPropagation(); onRemove() }}
-          ><IconCross sw={2.5} /></button>
+          ><IconCross /></IconButton>
         )}
     </div>
   )
@@ -196,10 +197,10 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
                 ? null
                 : (
                   <td className="rx">
-                    <button
-                      type="button" title={m.wiki.removeFromPage} aria-disabled={pending}
+                    <IconButton
+                      label={m.wiki.removeFromPage} size="inline" aria-disabled={pending}
                       onClick={() => onRemove(row.paper.id)}
-                    ><IconCross sw={2.5} /></button>
+                    ><IconCross /></IconButton>
                   </td>
                 )}
             </tr>
@@ -240,10 +241,10 @@ function ColumnsEditor({ columns, onSave, onCancel }: {
             className="inedit" value={c.label}
             onChange={(e) => setRows(rows.map((r, j) => (j === i ? { ...r, label: e.target.value } : r)))}
           />
-          <button
-            className="btn sm" title={m.wiki.aggregation.deleteColumn}
+          <IconButton
+            label={m.wiki.aggregation.deleteColumn} size="nested" tone="danger"
             onClick={() => setRows(rows.filter((_, j) => j !== i))}
-          ><IconCross sw={2.5} /></button>
+          ><IconTrash /></IconButton>
         </div>
       ))}
       <div className="acts">
@@ -698,9 +699,9 @@ export function Wiki() {
                             onOpenChange={(next) => setAdding(next ? 'columns' : null)}
                             contentClassName="ctxmenu colpop" sticky="always"
                             trigger={(
-                              <button className="colbtn" ref={colBtn} disabled={pending} title={m.wiki.columnSettings}>
-                                <IconGear />
-                              </button>
+                              <IconButton
+                                label={m.wiki.columnSettings} size="nested" className="colbtn" ref={colBtn} disabled={pending}
+                              ><IconGear /></IconButton>
                             )}
                           >
                             {/*

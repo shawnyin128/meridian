@@ -7,6 +7,7 @@ import {
 } from '../ipc.js'
 import { ActionMenu, MenuItem } from '../components/ActionMenu.js'
 import { AboutDialog } from '../components/AboutDialog.js'
+import { IconButton } from '../components/IconButton.js'
 import { PageFailure } from '../components/PageShell.js'
 import { ScreenBoundary } from '../components/ScreenBoundary.js'
 import { composing } from '../lib/keyboard.js'
@@ -660,14 +661,14 @@ export function AppShell({ screens, settings }: {
           appMenu.toggleMaximize()
         }}
       >
-        <button className="tbtn" id="sbBtn" title={m.shell.sidebar.toggle} onClick={() => setHidden((h) => !h)}>
+        <IconButton label={m.shell.sidebar.toggle} size="nested" className="tbtn" id="sbBtn" onClick={() => setHidden((h) => !h)}>
           <svg
             viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
             strokeLinecap="round" strokeLinejoin="round"
           >
             <rect x="3" y="3" width="18" height="18" rx="2.5" /><path d="M9.5 3v18" />
           </svg>
-        </button>
+        </IconButton>
         <ActionMenu
           align="start" sideOffset={6} contentData={{ 'data-appmenu': '' }}
           onOpenChange={(open) => {
@@ -679,9 +680,9 @@ export function AppShell({ screens, settings }: {
               : null
           }}
           trigger={(
-            <button className="appbtn" title="Meridian">
-            <img className="brandmark" src={brandmark} alt="Meridian" />
-            </button>
+            <IconButton label="Meridian" size="nested" className="appbtn">
+              <img className="brandmark" src={brandmark} alt="Meridian" />
+            </IconButton>
           )}
           contentProps={{
               // The menu and the Dialog cannot both manage focus. Mounting the Dialog as soon as

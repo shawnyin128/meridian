@@ -233,7 +233,7 @@ function TagAdd({ field, values, onAdd, onError }: {
         )
         : (
           <AddAction
-            variant="icon" className="tagchip tagadd" title={m.papers.tags.add}
+            variant="chip" className="tagchip tagadd" title={m.papers.tags.add}
             onClick={(e) => { e.stopPropagation(); setOpen(true) }}
           />
         )}

@@ -4,6 +4,7 @@ import type { MetadataJob } from '../../shared/contract.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useBanner } from '../shell/AppShell.js'
 import { useJobs } from '../shell/useJobs.js'
+import { IconButton } from './IconButton.js'
 import { IconCross } from './icons.js'
 import { ProgressFill } from './ProgressFill.js'
 import './ParseProgress.css'
@@ -56,10 +57,10 @@ export function ParseProgress({ onParsed }: { onParsed: (job: MetadataJob) => vo
         <div className="upcard compact quiet" role="status">
           <div className="upt">
             <span>{m.papers.parse.needsAttention(failed.length)}</span>
-            <button
-              className="upclose" title={m.papers.parse.collapse}
+            <IconButton
+              label={m.papers.parse.collapse} size="nested" className="upclose"
               onClick={() => setClosed((held) => new Set([...held, ...failed.map((job) => job.id)]))}
-            ><IconCross /></button>
+            ><IconCross /></IconButton>
           </div>
         </div>
       ) : null}

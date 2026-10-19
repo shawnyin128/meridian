@@ -37,7 +37,6 @@
 .read-state-filter.on{background:var(--accent-solid);border-color:var(--accent-solid);color:var(--on-accent);font-weight:600}
 .add-action{display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap}
 .add-action>svg{width:12px;height:12px;flex:none}
-.add-action-icon{gap:0}
 
 /* Filter bar buttons: the paper table's group bar .filters shares them with the feed's .feedbar */
 .filters{display:flex;gap:6px;margin-bottom:12px}
@@ -99,21 +98,19 @@
 .mi-in input:focus-visible{outline:0}
 
 /*
- * Last header cell of both tables: the add-column + and the column-settings gear. Both stay hidden
- * until the pointer enters the header or the button itself.
- * Each button is 18px (12px icon + 3px padding on each side), so the cell's horizontal padding drops
- * from the 10px of .ptable th / .cmp th to 4px, leaving 44px of width to fit them.
+ * Last header cell of both tables: the add-column + and the column-settings gear, nested icon
+ * buttons that stay hidden until the pointer enters the header or the button itself. Two 24px
+ * buttons fit in 52px once the cell's padding drops from the 10px of .ptable th / .cmp th to 2px,
+ * and 3px above and below keep the header as tall as one with text only.
  */
 .th-add{width:52px;white-space:nowrap}
 /*
- * Each table's th sets padding:6px 10px with a selector more specific than .th-add, so this padding
+ * Each table's th sets its padding with a selector more specific than .th-add, so this padding
  * override has to name the table too.
  */
-.ptable th.th-add,.cmp th.th-add{padding-left:4px;padding-right:4px}
-.colbtn{border:0;background:transparent;color:var(--ter);cursor:pointer;padding:3px;border-radius:var(--r-sm);display:inline-flex;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
+.ptable th.th-add,.cmp th.th-add{padding:3px 2px}
+.colbtn{opacity:0;pointer-events:none;vertical-align:middle}
 thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events:auto}
-.colbtn:hover{background:var(--hover);color:var(--ink)}
-.colbtn svg{width:12px;height:12px}
 
 /* In-place input in a table cell and in the placeholder header cell of a new column */
 .celledit{border:1px solid var(--sep-strong);background:transparent;border-radius:var(--r-sm);padding:2px 8px;font-size:var(--fs-sm);color:var(--ink);width:92px;font-family:var(--sans)}
@@ -141,7 +138,7 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 
 /* Chip shared by the paper table's tag cells and the project's links section */
 .tagchip{display:inline-block;font-size:var(--fs-sm);background:var(--field);color:var(--sec);border-radius:var(--r-full);padding:1px 8px;margin:1px 4px 1px 0;white-space:nowrap}
-.tagchip.add-action-icon{display:inline-flex;align-items:center;justify-content:center}
+.tagchip.add-action-chip{display:inline-flex;align-items:center;justify-content:center}
 :where(button.tagchip){border:0;font:inherit}
 
 /* Conflict tag on a conclusion in the feed's briefing block */

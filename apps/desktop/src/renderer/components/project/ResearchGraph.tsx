@@ -15,7 +15,8 @@ import { Markdown } from '../Markdown.js'
 import { plainTitle } from '../paper/paper-text.js'
 import { EmptyState } from '../EmptyState.js'
 import { FadeText } from '../FadeText.js'
-import { IconPlus } from '../icons.js'
+import { IconButton } from '../IconButton.js'
+import { IconMinus, IconPlus } from '../icons.js'
 import { PanelClose } from '../PanelClose.js'
 import { SectionHeading } from '../PageShell.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
@@ -351,14 +352,16 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
           </g>
         </svg>
         <div className="graph-view-controls">
-          <button type="button" aria-label={m.project.graph.zoomOut} onClick={() => zoomAt(view.zoom / 1.2)}>−</button>
+          <IconButton label={m.project.graph.zoomOut} size="nested" onClick={() => zoomAt(view.zoom / 1.2)}>
+            <IconMinus />
+          </IconButton>
           <button
-            type="button" className="graph-zoom-reset" title={m.project.graph.resetView}
+            type="button" className="btn ghost sm graph-zoom-reset" title={m.project.graph.resetView}
             onClick={() => setView({ x: 0, y: 0, zoom: 1 })}
           >{Math.round(view.zoom * 100)}%</button>
-          <button
-            type="button" aria-label={m.project.graph.zoomIn} onClick={() => zoomAt(view.zoom * 1.2)}
-          ><IconPlus /></button>
+          <IconButton label={m.project.graph.zoomIn} size="nested" onClick={() => zoomAt(view.zoom * 1.2)}>
+            <IconPlus />
+          </IconButton>
         </div>
       </div>
       <div className="glegend">

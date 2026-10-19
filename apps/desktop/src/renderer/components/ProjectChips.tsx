@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PaperRow, ProjectSummary } from '../../shared/contract.js'
 import { project } from '../ipc.js'
 import { AddAction } from './AddAction.js'
+import { IconButton } from './IconButton.js'
 import { IconCross } from './icons.js'
 import { PickerPopover } from './PickerPopover.js'
 import { TitleNote } from './TitleNote.js'
@@ -56,15 +57,15 @@ export function ProjectChips({ paper, onError }: {
     <>
       {paper.projects.map((linked) => (
         <span className="tagchip" key={linked.id} data-project={linked.id}>{linked.name}
-          <button
-            className="rx" title={m.common.removeLink}
+          <IconButton
+            label={m.common.removeLink} size="inline" className="rx"
             onClick={(event) => {
               event.stopPropagation()
               void write(project.removePaper(linked.id, paper.id), {
                 note: m.research.chips.unlinked,
               })
             }}
-          ><IconCross sw={2.5} /></button>
+          ><IconCross /></IconButton>
         </span>
       ))}
       <PickerPopover
@@ -80,7 +81,7 @@ export function ProjectChips({ paper, onError }: {
           )
           : (
             <AddAction
-              variant="icon" className="tagchip tagadd" title={m.research.chips.addProject}
+              variant="chip" className="tagchip tagadd" title={m.research.chips.addProject}
               onClick={(event) => { event.stopPropagation(); setOpen(true) }}
             />
           )}

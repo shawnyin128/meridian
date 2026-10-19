@@ -158,7 +158,7 @@ b,strong{font-weight:600}
  * :where(.cd):hover, one class lighter than the pressed rules, which win on specificity. The
  * button set in routes/shell.css and the icon button press the same way.
  */
-.tbtn:active,.cd:active,.pgbtn:active{background-image:linear-gradient(var(--press),var(--press))}
+.cd:active,.pgbtn:active{background-image:linear-gradient(var(--press),var(--press))}
 .send:active,.pgbtn.on:active,.cd.sel:active{background-image:linear-gradient(var(--press-solid),var(--press-solid))}
 html,body{height:100%}
 body{margin:0;background:var(--desktop);color:var(--ink);font-family:var(--sans);font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased}
