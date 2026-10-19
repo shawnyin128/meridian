@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import type {
   Milestone, ProjectDetail, ResearchGraph, ResearchIdea,
@@ -12,7 +13,7 @@ import { en } from '../messages/en/index.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { zh } from '../messages/zh/index.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
-import { ProjectIdeaPanel } from './ProjectDetail.js'
+import { ProjectIdeaPanel, WorkspaceRoot } from './ProjectDetail.js'
 
 const sm = zh.project.signals
 
@@ -295,5 +296,22 @@ describe('project idea panel', () => {
     expect(onLinkNode).toHaveBeenCalledOnce()
     expect(onUnlinkNode).toHaveBeenCalledOnce()
     act(() => root.unmount())
+  })
+})
+
+describe('the workspace field', () => {
+  const field = (state: 'ready' | 'missing' | 'invalid') => {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    return renderToStaticMarkup(<MessagesProvider><WorkspaceRoot state={state} name="spec-decoding" onOpen={vi.fn()} /></MessagesProvider>)
+  }
+
+  it('names a workspace it cannot reach in words beside the red dot, so the state does not rest on colour alone', () => {
+    expect(field('missing')).toContain('status-dot--bad" aria-hidden="true"></span><span class="status-dot-label">未找到</span>')
+    expect(field('invalid')).toContain('<span class="status-dot-label">无效</span>')
+  })
+
+  it('keeps a connected workspace quiet: the green dot carries its state as its name and tooltip', () => {
+    expect(field('ready')).toContain('class="status-dot status-dot--sm status-dot--good" role="img" aria-label="已连接" title="已连接"')
+    expect(field('ready')).not.toContain('status-dot-label')
   })
 })
