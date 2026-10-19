@@ -214,6 +214,31 @@ describe('PaperChat', () => {
     expect(input.value).toBe('这篇的关键假设是什么？')
   })
 
+  it('上一篇还在生成时换一篇论文，这一篇照常可以提问，停止只停正在生成的那篇', async () => {
+    let finish = () => {}
+    api.send.mockImplementationOnce(() => new Promise((resolve) => {
+      finish = () => resolve({ id: 'chat-paper-1', state: 'complete' })
+    }))
+    const host = await mountChat()
+    const input = host.querySelector<HTMLTextAreaElement>('[aria-label="向当前论文提问"]')!
+    const control = () => host.querySelector<HTMLButtonElement>('.paper-chat .send')!
+    act(() => setValue(input, '这篇的关键假设是什么？'))
+    act(() => control().click())
+    expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
+
+    await showPaper(null)
+    await showPaper(PAPER_TWO)
+    expect(input.disabled).toBe(false)
+    expect(control().getAttribute('aria-label')).toBe('发送')
+
+    await showPaper(null)
+    await showPaper(PAPER)
+    expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
+    act(() => control().click())
+    expect(api.cancel).toHaveBeenCalledExactlyOnceWith('chat-paper-1')
+    await act(async () => { finish(); await Promise.resolve() })
+  })
+
   it('空对话的提示和输入框一样留在对话栏的左右边距里', async () => {
     const host = await mountChat()
     const hint = host.querySelector('.msgs .empty-state')!

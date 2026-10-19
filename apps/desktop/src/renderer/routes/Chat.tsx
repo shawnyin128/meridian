@@ -20,6 +20,7 @@ import {
 } from '../components/PageShell.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { useDrafts } from '../hooks/useDrafts.js'
+import { useGenerations } from '../hooks/useGenerations.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { CONFLICT_THREAD, sendsMessage } from '../lib/chat.js'
 import { composing } from '../lib/keyboard.js'
@@ -105,7 +106,7 @@ export function Chat() {
   // The `@` picker, like the draft, belongs to the chat it was opened in.
   const [mentionIn, setMentionIn] = useState<string | null>(null)
   const [savingIdea, setSavingIdea] = useState(false)
-  const [sending, setSending] = useState(false)
+  const { running, run, stop } = useGenerations()
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [rows, setRows] = useState<PaperRow[]>([])
   const [pages, setPages] = useState<WikiAggregationCard[]>([])
@@ -113,11 +114,11 @@ export function Chat() {
   const stream = useRef<HTMLDivElement>(null)
   const composer = useRef<HTMLTextAreaElement>(null)
   const consumed = useRef(0)
-  const sendAttempt = useRef(0)
   const reportError = useCallback((e: Error) => setError(e.message), [])
   const write = useVaultWrite()
   const draft = id === null ? '' : drafts.get(id) ?? ''
   const mentioning = id !== null && mentionIn === id
+  const sending = id !== null && running(id)
 
   useEffect(() => {
     void project.list().then(setProjects).catch(reportError)
@@ -138,18 +139,14 @@ export function Chat() {
   // after which the picker opens by itself.
   const suggest = useMemo(() => (mentioning ? hitsOf(draft.trim(), mentions) : []), [mentioning, draft, mentions])
 
-  const send = useCallback(async (session: string, text: string) => {
-    const attempt = ++sendAttempt.current
-    setSending(true)
-    await write(chat.send(session, text))
-    if (sendAttempt.current === attempt) setSending(false)
-  }, [write])
+  const send = useCallback(
+    (session: string, text: string) => run(session, write(chat.send(session, text))), [run, write])
 
-  const stopSending = useCallback(() => {
-    sendAttempt.current += 1
-    setSending(false)
-    if (id !== null) void chat.cancel(id)
-  }, [id])
+  const stopSending = () => {
+    if (id === null) return
+    stop(id)
+    void chat.cancel(id)
+  }
 
   // The conflict brief in the Feed starts a new chat and asks the preset question, as in the demo.
   // Any other jump target is an existing chat (e.g. a search hit), so just switch to it.

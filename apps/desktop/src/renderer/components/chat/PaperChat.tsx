@@ -11,6 +11,7 @@ import { FormTextarea } from '../FormControls.js'
 import { EmptyState } from '../EmptyState.js'
 import { PageError } from '../PageShell.js'
 import { useDrafts } from '../../hooks/useDrafts.js'
+import { useGenerations } from '../../hooks/useGenerations.js'
 import { TitleNote } from '../TitleNote.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useMessages } from '../../messages/useMessages.js'
@@ -43,15 +44,15 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const drafts = useDrafts()
   const [savingIdea, setSavingIdea] = useState(false)
-  const [sending, setSending] = useState(false)
+  const { running, run, stop } = useGenerations()
   const [error, setError] = useState<string | null>(null)
   const stream = useRef<HTMLDivElement>(null)
   const composer = useRef<HTMLTextAreaElement>(null)
-  const sendAttempt = useRef(0)
   const reportError = useCallback((cause: Error) => setError(cause.message), [])
   const paperId = paper?.id ?? null
   const sessionId = session?.id ?? null
   const draft = paperId === null ? '' : drafts.get(paperId) ?? ''
+  const sending = sessionId !== null && running(sessionId)
 
   useEffect(() => {
     setSession(null)
@@ -90,17 +91,14 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const submit = () => {
     const text = draft.trim()
     if (text === '' || paperId === null || session === null || sending) return
-    const attempt = ++sendAttempt.current
     drafts.drop(paperId)
-    setSending(true)
-    void write(chat.send(session.id, text))
-      .finally(() => { if (sendAttempt.current === attempt) setSending(false) })
+    void run(session.id, write(chat.send(session.id, text)))
   }
 
   const stopSending = () => {
-    sendAttempt.current += 1
-    setSending(false)
-    if (session !== null) void chat.cancel(session.id)
+    if (session === null) return
+    stop(session.id)
+    void chat.cancel(session.id)
   }
 
   const act = (message: ChatMessage) => {
