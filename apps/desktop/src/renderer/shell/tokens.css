@@ -2,7 +2,7 @@
  * Variable names match :root / [data-theme="dark"] of e2e/fixtures/platform-shell-demo.html.
  * 1. Color values match the demo: both moved to the brand palette together. The accent is Primary
  *    blue, and the dark theme has a full gray scale; both derive from a hue of about 220°. The light
- *    surface ladder (--content / --window / --sidebar) is the exception: the demo keeps a white canvas.
+ *    surface ladder (--card / --window / --sidebar) is the exception: the demo's cards are white.
  * 2. The tokens added beyond the demo (--accent-solid / --press / --press-solid / --ring* / --sel /
  *    --link / --tint-* / --on-tint / --paper / --scrim / --raised / --r-* / --pad-* / --sp-* / --row-* /
  *    --fs-* / --lh-* / --t-* / --e-*)
@@ -15,17 +15,17 @@
 :root{
   /*
    * The surface ladder, bottom to top: --window (sidebar, title bar, page heads), --content (the
-   * canvas), --card, then --raised (menus, popovers, tooltips, the banner). In this theme --content
-   * is the one canvas tone, and --window and --sidebar follow it a rung lower.
+   * canvas), --card, then --raised (menus, popovers, tooltips, the banner). In this theme the canvas
+   * is white and cards are a tint off it; --window and --sidebar follow the canvas a rung lower.
    */
-  --desktop:#e6eaf2; --content:#faf9f5;
+  --desktop:#e6eaf2; --content:#ffffff;
   --window:color-mix(in srgb,var(--content) 97%,var(--ink)); --sidebar:color-mix(in srgb,var(--window) 85%,transparent);
   --ink:#0a1020; --sec:#536175; --ter:#7c8798;
   --sep:#dce4ef; --sep2:rgba(220,228,239,.6);
   --accent:#3568ff; --accent-soft:rgba(53,104,255,.12); --on-accent:#ffffff;
   /* Solid accent surfaces, the same in both themes: white on the dark --accent is only 3.19:1 */
   --accent-solid:#3568ff;
-  --card:#ffffff; --raised:#ffffff; --field:#eef2f8; --hover:rgba(10,16,32,.05);
+  --card:#f7f9fd; --raised:#ffffff; --field:#eef2f8; --hover:rgba(10,16,32,.05);
   --good:#1f9d4d; --warn:#b8860b; --bad:#e0453a; --info:#0e9aa7; --hl:rgba(255,214,10,.45);
   /* Two record-kind hues beyond the semantic tones above: complete (teal) and project (violet). */
   --teal:#0f8a72; --violet:#7c4fe0;
@@ -62,7 +62,7 @@
    */
   --press:rgba(10,16,32,.06); --press-solid:rgba(0,0,0,.18);
   --ring:var(--accent); --ring-width:2px; --ring-offset:2px;
-  /* Links darken the accent toward --ink: the plain accent falls below 4.5:1 on an off-white canvas */
+  /* Links darken the accent toward --ink: the plain accent falls below 4.5:1 on a tinted card */
   --sel:rgba(53,104,255,.22); --link:color-mix(in srgb,var(--accent) 90%,var(--ink));
   --tint-good:rgba(48,209,88,.14); --tint-warn:rgba(255,214,10,.14);
   --tint-bad:rgba(224,69,58,.12); --tint-info:rgba(14,154,167,.14);
