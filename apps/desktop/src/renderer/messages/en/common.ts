@@ -33,6 +33,7 @@ export const common = {
   attribution: { agent: 'Agent', withSource: (who: string, source: string) => `${who} · ${source}` },
   daySections: { today: 'Today', yesterday: 'Yesterday', week: 'This week', earlier: 'Earlier' },
   nav: { back: 'Back' },
+  dialog: { close: 'Close' },
   panel: { close: 'Collapse details' },
   details: { expand: 'Show details', collapse: 'Hide details' },
   field: {

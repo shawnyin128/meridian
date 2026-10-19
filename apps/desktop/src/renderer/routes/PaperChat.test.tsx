@@ -31,11 +31,12 @@ const api = vi.hoisted(() => ({
   bump: vi.fn(),
   banner: vi.fn(),
   toast: vi.fn(),
-  grip: { onMouseDown: vi.fn(), onMouseEnter: vi.fn(), onMouseLeave: vi.fn() },
+  grip: { onMouseDown: vi.fn() },
   collapsed: false,
 }))
 
 vi.mock('../ipc.js', () => ({
+  appMenu: { platform: () => 'darwin' },
   chat: {
     send: api.send, cancel: api.cancel, forPaper: api.forPaper, messages: api.messages,
     recordAction: api.recordAction,

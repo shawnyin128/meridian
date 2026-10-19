@@ -32,6 +32,7 @@ export const common = {
   attribution: { agent: 'agent', withSource: (who: string, source: string) => `${who} · ${source}` },
   daySections: { today: '今天', yesterday: '昨天', week: '本周', earlier: '更早' },
   nav: { back: '返回' },
+  dialog: { close: '关闭' },
   panel: { close: '收起详情' },
   details: { expand: '展开详情', collapse: '收起详情' },
   field: {

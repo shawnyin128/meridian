@@ -71,7 +71,6 @@ export function ChoicePicker<T extends string>({
   stopRowActivation?: boolean
   children?: ReactNode
 }) {
-  const m = useMessages()
   const picked = options.includes(value) ? label(value) : placeholder
   const trigger = appearance === 'field'
     ? (
@@ -84,7 +83,7 @@ export function ChoicePicker<T extends string>({
     )
     : (
       <button
-        className={className ?? 'pv metadata-editable'} title={m.common.field.clickToEdit} aria-label={ariaLabel}
+        className={className ?? 'pv metadata-editable'} aria-label={ariaLabel}
         disabled={disabled} onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
       >{children ?? label(value)}</button>
     )

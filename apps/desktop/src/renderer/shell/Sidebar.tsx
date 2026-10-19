@@ -11,6 +11,7 @@ import { useMessages } from '../messages/useMessages.js'
 import { useAppUpdate } from '../hooks/useAppUpdate.js'
 import { appUpdates } from '../ipc.js'
 import { ALL_WATCHES, type DiscoveryProjectCount, type InboxMode, type ScreenKey } from './AppShell.js'
+import { GripTooltip } from './GripTooltip.js'
 import { SearchBox } from './SearchBox.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
@@ -134,8 +135,8 @@ function UpdateRow() {
  * it; together they decide which row is selected.
  * `chats` fills the list under Chats; archived chats are not here but in Settings. `chatId` is the
  * chat the Chats screen shows; null means none is selected.
- * `grip` holds the resize handle's three mouse handlers; dragging, click-to-collapse and the hover
- * tooltip are all implemented by the shell. A `collapsed` sidebar is inert: nothing in it takes focus.
+ * `grip` holds the resize handle's mouse handler; dragging and click-to-collapse are implemented by
+ * the shell. A `collapsed` sidebar is inert: nothing in it takes focus.
  */
 export function Sidebar({
   screen, onNavigate, onJump, paperCount, changeCount, projectCount, trashCount, wikiCount, ideaCount,
@@ -164,11 +165,7 @@ export function Sidebar({
   onOpenChat: (id: string) => void
   onNewChat: () => void
   onArchiveChat: (id: string) => void
-  grip: {
-    onMouseDown: (e: ReactMouseEvent) => void
-    onMouseEnter: (e: ReactMouseEvent) => void
-    onMouseLeave: () => void
-  }
+  grip: { onMouseDown: (e: ReactMouseEvent) => void }
   collapsed: boolean
 }) {
   const m = useMessages()
@@ -386,7 +383,7 @@ export function Sidebar({
           </Icon>
         </span>{m.shell.nav.trash}{trashCount > 0 ? <CountBadge className="n" count={trashCount} /> : null}
       </NavRow>
-      <div className="grip" id="sbgrip" {...grip} />
+      <GripTooltip><div className="grip" id="sbgrip" {...grip} /></GripTooltip>
     </div>
   )
 }

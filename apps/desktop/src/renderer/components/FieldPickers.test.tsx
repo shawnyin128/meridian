@@ -69,6 +69,18 @@ describe('ChoicePicker', () => {
     expect(items.filter((item) => item.classList.contains('on'))).toEqual([])
     act(() => root.unmount())
   })
+
+  it('in a row is named by the value it shows, with no 点击修改 tooltip', () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    act(() => root.render(
+      <MessagesProvider><ChoicePicker value="进行中" options={['计划中', '进行中', '已完成']} onPick={() => {}} /></MessagesProvider>,
+    ))
+    const trigger = host.querySelector('button')!
+    expect([trigger.getAttribute('title'), hoverTip(trigger)]).toEqual([null, null])
+    act(() => root.unmount())
+  })
 })
 
 describe('ChoicePicker', () => {

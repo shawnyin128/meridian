@@ -4,6 +4,7 @@ import { chat, feed, idea as ideaApi } from '../../ipc.js'
 import {
   useBanner, usePaperChatCollapsed, usePaperChatGrip, useToast, useVaultRevision,
 } from '../../shell/AppShell.js'
+import { GripTooltip } from '../../shell/GripTooltip.js'
 import { sendsMessage } from '../../lib/chat.js'
 import { ChatMessageView, plain } from './ChatMessage.js'
 import { BackButton } from '../BackButton.js'
@@ -159,7 +160,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
           </div>
         </div>
       </div>
-      <div className="grip" id="rrgrip" {...grip} />
+      <GripTooltip><div className="grip" id="rrgrip" {...grip} /></GripTooltip>
       {session === null || paper === null ? null : (
         <IdeaEditorDialog
           open={savingIdea} sourceLabel={`${plainTitle(paper.title)} · ${plainTitle(session.title)}`}

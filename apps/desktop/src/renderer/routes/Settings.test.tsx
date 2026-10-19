@@ -545,7 +545,7 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const settings = document.querySelector<HTMLElement>('[role="dialog"]')!
     expect([settings.classList.contains('modal'), settings.classList.contains('wide')]).toEqual([true, true])
-    const close = settings.querySelector<HTMLButtonElement>(':scope > .panel-close')!
+    const close = settings.querySelector<HTMLButtonElement>(':scope > .modal-close')!
     await act(async () => { close.click() })
     expect(api.setOpen).toHaveBeenCalledExactlyOnceWith(false)
   })
