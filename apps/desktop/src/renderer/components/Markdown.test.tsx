@@ -136,6 +136,22 @@ describe('MarkdownBox', () => {
   })
 })
 
+describe('MarkdownBox 空正文', () => {
+  it('正文空着时只放空态，不包在正文的内边距里，和别的分节空态一样齐', () => {
+    function Box() {
+      const box = useRef<HTMLDivElement>(null)
+      return (
+        <MarkdownBox
+          text="" editing={false} box={box} onCancel={vi.fn()} onSave={vi.fn()} className="memo"
+          empty={<span className="probe-empty">空</span>}
+        />
+      )
+    }
+    const out = renderToStaticMarkup(<MessagesProvider><Box /></MessagesProvider>)
+    expect(out).toBe('<span class="probe-empty">空</span>')
+  })
+})
+
 describe('headingsOf', () => {
   it('列一到三级标题,id 是 h-行号;围栏代码块里的 # 不算,四级不算,尾部的 # 去掉', () => {
     expect(headingsOf('# 一\n\n```\n# 不是\n```\n\n## 二 ##\n#### 四\n### 三')).toEqual([
