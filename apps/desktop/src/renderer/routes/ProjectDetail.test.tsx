@@ -269,6 +269,25 @@ describe('project idea panel', () => {
     act(() => root.unmount())
   })
 
+  it('opens the idea in Ideas from the panel head, beside the close button', () => {
+    const host = document.createElement('div')
+    const root = createRoot(host)
+    const onOpenIdea = vi.fn()
+    act(() => root.render(withMessages(
+      <ProjectIdeaPanel
+        idea={idea} graph={graph} workspaceManaged
+        onClose={vi.fn()} onOpenIdea={onOpenIdea} onCreateNode={vi.fn()}
+        onLinkNode={vi.fn()} onOpenNode={vi.fn()} onUnlinkNode={vi.fn()}
+      />,
+    )))
+    const head = host.querySelector('.node-document-head > .section-heading-actions')!
+    expect(head.textContent).toBe('跳转到想法')
+    expect(head.querySelector(':scope > .panel-close')).not.toBeNull()
+    act(() => head.querySelector<HTMLButtonElement>('.btn')!.click())
+    expect(onOpenIdea).toHaveBeenCalledOnce()
+    act(() => root.unmount())
+  })
+
   it('lets a linked workspace idea open, change, or remove its current node', () => {
     const host = document.createElement('div')
     const root = createRoot(host)

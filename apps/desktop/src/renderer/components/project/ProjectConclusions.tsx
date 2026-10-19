@@ -114,26 +114,28 @@ export function ProjectConclusionPanel({
     <>
       <SectionHeading
         variant="rail" className="node-document-head"
-        actions={<PanelClose onClose={onClose} />}
+        actions={(
+          <>
+            {conclusion.node !== undefined && conclusion.fingerprint !== undefined && conclusion.state === 'pending'
+              ? <button className="btn pri sm" onClick={() => onVerify(conclusion.node!, conclusion.fingerprint!)}>{c.verify}</button>
+              : null}
+            {conclusion.node !== undefined && conclusion.verifiedOn !== undefined
+              ? <button className="btn ghost sm" onClick={() => onUnverify(conclusion.node!)}>{c.unverify}</button>
+              : null}
+            <button
+              className="btn ghost sm" disabled={conclusion.state !== 'verified'}
+              title={conclusion.state === 'verified' ? undefined : c.verifyFirst}
+              onClick={() => setWriting(true)}
+            >{c.write}</button>
+            <PanelClose onClose={onClose} />
+          </>
+        )}
       ><span className="node-document-title">{c.heading}</span>
       </SectionHeading>
       <p className="conclusion-detail-text">{conclusion.text}</p>
       <div className="conclusion-detail-meta">
         <ProjectSignalKind tone={STATE_TONE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
         {conclusion.date === undefined ? null : <span className="conclusion-detail-date">{fmt.date(conclusion.date)}</span>}
-        <span className="conclusion-detail-actions">
-          {conclusion.node !== undefined && conclusion.fingerprint !== undefined && conclusion.state === 'pending'
-            ? <button className="btn pri sm" onClick={() => onVerify(conclusion.node!, conclusion.fingerprint!)}>{c.verify}</button>
-            : null}
-          {conclusion.node !== undefined && conclusion.verifiedOn !== undefined
-            ? <button className="btn ghost sm" onClick={() => onUnverify(conclusion.node!)}>{c.unverify}</button>
-            : null}
-          <button
-            className="btn ghost sm" disabled={conclusion.state !== 'verified'}
-            title={conclusion.state === 'verified' ? undefined : c.verifyFirst}
-            onClick={() => setWriting(true)}
-          >{c.write}</button>
-        </span>
       </div>
 
       {conclusion.node === undefined

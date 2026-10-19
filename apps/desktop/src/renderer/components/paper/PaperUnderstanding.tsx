@@ -18,7 +18,7 @@ export function PaperUnderstanding({ reading, onRead }: {
   if (reading === null) {
     return (
       <section className="paper-understanding" aria-label={m.papers.understanding.ariaLabel}>
-        <SectionHeading variant="content">{m.papers.understanding.heading}</SectionHeading>
+        <SectionHeading>{m.papers.understanding.heading}</SectionHeading>
         <p className="lm">{m.papers.understanding.loading}</p>
       </section>
     )
@@ -26,14 +26,17 @@ export function PaperUnderstanding({ reading, onRead }: {
 
   const entries = readingEntries(reading)
   const hasRemark = reading.remark.trim() !== ''
+  const empty = !hasRemark && entries.length === 0
   return (
     <section className="paper-understanding" aria-label={m.papers.understanding.ariaLabel}>
-      <SectionHeading variant="content">{m.papers.understanding.heading}</SectionHeading>
-      {!hasRemark && entries.length === 0 ? (
-        <div className="paper-understanding-empty">
-          <EmptyState variant="section">{m.papers.understanding.empty}</EmptyState>
-          <button type="button" className="btn sm" onClick={() => onRead()}>{m.papers.understanding.goRead}</button>
-        </div>
+      <SectionHeading
+        actions={empty
+          ? <button type="button" className="btn sm" onClick={() => onRead()}>{m.papers.understanding.goRead}</button>
+          : undefined}
+      >{m.papers.understanding.heading}
+      </SectionHeading>
+      {empty ? (
+        <EmptyState variant="section">{m.papers.understanding.empty}</EmptyState>
       ) : (
         <>
           {hasRemark ? (

@@ -110,13 +110,17 @@ export function ProjectIdeaPanel({
     <>
       <SectionHeading
         variant="rail" className="node-document-head"
-        actions={<PanelClose onClose={onClose} />}
+        actions={(
+          <>
+            <button className="btn sm" onClick={onOpenIdea}>{m.project.idea.openIdea}</button>
+            <PanelClose onClose={onClose} />
+          </>
+        )}
       ><span className="node-document-title">{idea.title}</span>
       </SectionHeading>
       <div className="project-idea-detail-meta">
         <Tag tone="accent">{m.project.idea.kind}</Tag>
         {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
-        <button className="btn sm project-idea-open-idea" onClick={onOpenIdea}>{m.project.idea.openIdea}</button>
       </div>
       <SectionHeading variant="rail">{m.project.sections.content}</SectionHeading>
       <p className="project-idea-detail-body">{idea.body}</p>
@@ -761,10 +765,11 @@ export function ProjectDetail({
               )}
             />
 
-            <SectionHeading variant="content" className="flexh" ref={recordHeading}>{m.project.sections.records}
-              <div className="section-actions">
+            <SectionHeading
+              ref={recordHeading}
+              actions={(
                 <SegmentedControl
-                  label={m.project.recordViewLabel}
+                  size="sm" label={m.project.recordViewLabel}
                   value={record}
                   options={[
                     { value: 'tl', label: m.project.recordModes.activity },
@@ -779,7 +784,8 @@ export function ProjectDetail({
                     discardOpenEdits()
                   }}
                 />
-              </div>
+              )}
+            >{m.project.sections.records}
             </SectionHeading>
             <div className="record-view">
             <PageError error={project.workspace?.issue} variant="section" />
@@ -839,7 +845,7 @@ export function ProjectDetail({
               )}
             </div>
 
-            <SectionHeading variant="content">{m.project.linkedIdeas(linkedIdeas.length)}</SectionHeading>
+            <SectionHeading>{m.project.linkedIdeas(linkedIdeas.length)}</SectionHeading>
             {linkedIdeas.length === 0
               ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
               : (

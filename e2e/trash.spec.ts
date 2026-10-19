@@ -210,7 +210,7 @@ test('清空垃圾桶要过二次确认,清掉的东西恢复不回来', async (
   await expect(win.locator('.tgroup .trow')).toHaveCount(2)
   const ids = await trashIds(win)
 
-  await shown(win, '.section-heading.flexh .btn').filter({ hasText: '清空垃圾桶' }).click()
+  await shown(win, '.section-heading-actions .btn').filter({ hasText: '清空垃圾桶' }).click()
   const dialog = win.locator('[role="alertdialog"]')
   await expect(dialog.locator('.modal-title')).toHaveText('清空垃圾桶？')
   await expect(dialog.locator('.modal-detail')).toHaveText('2 项将被彻底删除，不可恢复。')
@@ -221,7 +221,7 @@ test('清空垃圾桶要过二次确认,清掉的东西恢复不回来', async (
   await expect(dialog).toHaveCount(0)
   await expect(win.locator('.tgroup .trow')).toHaveCount(2)
 
-  await shown(win, '.section-heading.flexh .btn').filter({ hasText: '清空垃圾桶' }).click()
+  await shown(win, '.section-heading-actions .btn').filter({ hasText: '清空垃圾桶' }).click()
   await dialog.locator('.btn', { hasText: '确认清空' }).click()
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
   await expect(win.locator('.empty-state')).toHaveCount(1)

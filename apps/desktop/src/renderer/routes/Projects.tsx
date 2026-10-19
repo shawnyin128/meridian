@@ -343,7 +343,7 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
           <Fragment key={g.status}>
             <SectionHeading actions={i === 0
               ? (
-                <div className="section-actions">
+                <>
                   <SortMenu label={m.research.list.sort} options={[
                     { label: m.research.list.sortPriority, onSelect: () => sortBy('priority') },
                     { label: m.research.list.sortMilestone, onSelect: () => sortBy('milestone') },
@@ -358,7 +358,7 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
                       else setCreating(true)
                     }}
                   >{m.research.list.create}</AddAction>
-                </div>
+                </>
               )
               : undefined}
             >{m.research.list.groupHeading(g.status, g.items.length)}</SectionHeading>

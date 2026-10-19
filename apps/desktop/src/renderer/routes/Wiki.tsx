@@ -584,11 +584,14 @@ export function Wiki() {
 
   /** The body's section heading: the page name on the left, its EditActions on the right, like Project notes. */
   const bodyHead = (name: string) => (
-    <SectionHeading variant="content" className="flexh">{name}
-      <EditActions
-        editing={editing} saving={saving} onEdit={() => setEditing(true)} onCancel={() => setEditing(false)}
-        onSave={saveBody}
-      />
+    <SectionHeading
+      actions={(
+        <EditActions
+          editing={editing} saving={saving} onEdit={() => setEditing(true)} onCancel={() => setEditing(false)}
+          onSave={saveBody}
+        />
+      )}
+    >{name}
     </SectionHeading>
   )
 
@@ -619,12 +622,14 @@ export function Wiki() {
           ? (
             <div className="wkpage">
               <div className="wkmain" ref={main}>
-                <SectionHeading variant="content" className="flexh">
-                  {m.wiki.subdivisionsHeading(shownAgg.kindLabel)}
-                  <AddAction
-                    variant="section" ref={childBtn} disabled={pending}
-                    title={m.wiki.addKind(shownAgg.kindLabel)} onClick={() => open('child')}
-                  >{shownAgg.kindLabel}</AddAction>
+                <SectionHeading
+                  actions={(
+                    <AddAction
+                      variant="section" ref={childBtn} disabled={pending}
+                      title={m.wiki.addKind(shownAgg.kindLabel)} onClick={() => open('child')}
+                    >{shownAgg.kindLabel}</AddAction>
+                  )}
+                >{m.wiki.subdivisionsHeading(shownAgg.kindLabel)}
                 </SectionHeading>
                 {shownAgg.children.length === 0 && adding !== 'child'
                   ? <EmptyState variant="section">{m.wiki.noChildren}</EmptyState>
@@ -654,11 +659,14 @@ export function Wiki() {
                         : null}
                     </div>
                   )}
-                <SectionHeading variant="content" className="flexh">{m.wiki.paperComparisonHeading}
-                  <AddAction
-                    variant="section" ref={paperBtn} disabled={pending}
-                    title={m.wiki.addPaperTitle} onClick={() => open('paper')}
-                  >{m.wiki.paperKind}</AddAction>
+                <SectionHeading
+                  actions={(
+                    <AddAction
+                      variant="section" ref={paperBtn} disabled={pending}
+                      title={m.wiki.addPaperTitle} onClick={() => open('paper')}
+                    >{m.wiki.paperKind}</AddAction>
+                  )}
+                >{m.wiki.paperComparisonHeading}
                 </SectionHeading>
                 <Table
                   agg={shownAgg} onOpen={go} onTip={setTip} pending={pending}
@@ -943,16 +951,17 @@ export function Wiki() {
               <PageToolbar>
                 <ReviewEntry count={queued} onOpen={() => go(REVIEW)} />
               </PageToolbar>
-              {home.kinds.map((k) => (
-                <Fragment key={k.key}>
-                  <SectionHeading>{k.label}</SectionHeading>
-                  <div className="wkgrid">
-                    {home.roots.filter((c) => c.kind === k.key).map((c) => (
-                      <AggregationCard key={c.id} card={c} onOpen={() => go(c.id)} />
-                    ))}
-                  </div>
-                </Fragment>
-              ))}
+              {home.kinds.map((k) => {
+                const roots = home.roots.filter((c) => c.kind === k.key)
+                return roots.length === 0 ? null : (
+                  <Fragment key={k.key}>
+                    <SectionHeading>{k.label}</SectionHeading>
+                    <div className="wkgrid">
+                      {roots.map((c) => <AggregationCard key={c.id} card={c} onOpen={() => go(c.id)} />)}
+                    </div>
+                  </Fragment>
+                )
+              })}
 
               <SectionHeading>{m.project.sections.papers}</SectionHeading>
               <div className="wkgrid">

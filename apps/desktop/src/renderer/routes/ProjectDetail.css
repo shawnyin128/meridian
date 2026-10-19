@@ -13,7 +13,6 @@
   white-space:pre-wrap;overflow-wrap:anywhere}
 .project-idea-detail-source{font-size:var(--fs-sm)}
 .project-idea-detail-updated{margin-top:7px;color:var(--ter);font-size:var(--fs-cap)}
-.project-idea-open-idea{margin-left:auto}
 .project-idea-graph-actions,.project-idea-node-link{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .project-idea-node{min-width:0;max-width:100%;padding:5px 9px;border:1px solid var(--sep2);border-radius:var(--r-md);
   background:var(--field);color:var(--ink);font:inherit;font-size:var(--fs-sm);overflow:hidden;text-overflow:ellipsis;

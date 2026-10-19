@@ -294,10 +294,14 @@ export function ProjectTaskPanel({
             />
           </div>
         )}
-      <SectionHeading variant="rail" className="flexh">{m.project.plan.noteHeading}
-        <EditActions
-          editing={editing} onEdit={() => setEditing(true)} onCancel={() => setEditing(false)} onSave={save}
-        />
+      <SectionHeading
+        variant="rail"
+        actions={(
+          <EditActions
+            editing={editing} onEdit={() => setEditing(true)} onCancel={() => setEditing(false)} onSave={save}
+          />
+        )}
+      >{m.project.plan.noteHeading}
       </SectionHeading>
       <MarkdownBox
         className="task-note" text={task.note ?? ''} editing={editing} box={box}
@@ -457,23 +461,26 @@ export function ProjectPlan({
   const msArchiveShown = msArchiveOpen || archivedMilestones.some((milestone) => milestone.id === flashId)
   return (
     <section className="project-plan">
-      <SectionHeading variant="content" className="flexh">{m.project.sections.plan}
-        <div className="section-actions">
-          <SegmentedControl
-            label={m.project.plan.viewLabel}
-            value={tab}
-            options={[
-              { value: 'task', label: m.project.plan.taskMode },
-              { value: 'ms', label: m.project.plan.milestoneMode },
-            ]}
-            onChange={(value) => { onTab(value); onDiscardOpenEdits() }}
-          />
-          <AddAction
-            variant="section" ref={addRef}
-            title={tab === 'ms' ? m.project.plan.addMilestone : m.project.plan.addTask}
-            onClick={() => (tab === 'ms' ? onStartMilestone(today) : onStartTask())}
-          >{tab === 'ms' ? m.project.plan.milestoneMode : m.project.plan.taskMode}</AddAction>
-        </div>
+      <SectionHeading
+        actions={(
+          <>
+            <SegmentedControl
+              size="sm" label={m.project.plan.viewLabel}
+              value={tab}
+              options={[
+                { value: 'task', label: m.project.plan.taskMode },
+                { value: 'ms', label: m.project.plan.milestoneMode },
+              ]}
+              onChange={(value) => { onTab(value); onDiscardOpenEdits() }}
+            />
+            <AddAction
+              variant="section" ref={addRef}
+              title={tab === 'ms' ? m.project.plan.addMilestone : m.project.plan.addTask}
+              onClick={() => (tab === 'ms' ? onStartMilestone(today) : onStartTask())}
+            >{tab === 'ms' ? m.project.plan.milestoneMode : m.project.plan.taskMode}</AddAction>
+          </>
+        )}
+      >{m.project.sections.plan}
       </SectionHeading>
 
       <div ref={listRef}>

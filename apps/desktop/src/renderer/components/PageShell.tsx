@@ -61,18 +61,21 @@ export function PageError({ error, variant = 'page' }: {
   return error ? <div className={`ipcerror ipcerror--${variant}`} role="alert">{error}</div> : null
 }
 
-/** The one section heading in the app. `variant` picks the weight; `actions` is the only right-hand slot. */
+/**
+ * The one section heading in the app. `variant` is its role: `page` heads a section of a page's body,
+ * `group` heads a group inside a section or a card, and `rail` heads a section of a side rail or a
+ * detail panel. `actions` holds everything that acts on the section and sits at the heading's end.
+ */
 export const SectionHeading = forwardRef<HTMLDivElement, {
   children: ReactNode
   actions?: ReactNode
-  variant?: 'page' | 'content' | 'group' | 'rail'
+  variant?: 'page' | 'group' | 'rail'
 } & HTMLAttributes<HTMLDivElement>>(
   function SectionHeading({ children, actions, className, variant = 'page', ...rest }, ref) {
-    const own = `section-heading section-heading--${variant}${actions === undefined ? '' : ' flexh'}`
     return (
-      <div ref={ref} className={classes(own, className)} {...rest}>
+      <div ref={ref} className={classes(`section-heading section-heading--${variant}`, className)} {...rest}>
         {children}
-        {actions}
+        {actions === undefined ? null : <div className="section-heading-actions">{actions}</div>}
       </div>
     )
   },

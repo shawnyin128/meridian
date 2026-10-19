@@ -1,6 +1,7 @@
 import type { PluginVersion } from '../../../shared/contract.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
+import { SectionHeading } from '../PageShell.js'
 import { Tag } from '../Tag.js'
 
 export interface PluginVersionEntryProps {
@@ -24,7 +25,7 @@ export function PluginVersionEntry({ plugin, checking, onCheck }: PluginVersionE
     <section className="extension-entry" data-plugin-version={plugin.version}>
       <div className="extension-head">
         <div>
-          <h3>{copy.name}</h3>
+          <SectionHeading variant="group">{copy.name}</SectionHeading>
           <p>{copy.description} · {checked}</p>
         </div>
         <div className="extension-head-side">

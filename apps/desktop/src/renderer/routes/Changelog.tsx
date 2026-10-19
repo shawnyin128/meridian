@@ -201,18 +201,22 @@ export function Changelog() {
       <PageError error={error} />
 
       <PageBody>
-        <SectionHeading className="flexh">{m.changelog.unarchivedHeading}
-          <button
-            className="btn sm archall" disabled={unread === 0}
-            onClick={() => archiveAll(unread)}
-          >{m.changelog.archiveAll}</button>
+        <SectionHeading
+          actions={(
+            <button
+              className="btn sm archall" disabled={unread === 0}
+              onClick={() => archiveAll(unread)}
+            >{m.changelog.archiveAll}</button>
+          )}
+        >{m.changelog.unarchivedHeading}
         </SectionHeading>
         {fresh.length === 0 ? <EmptyState variant="section">{m.changelog.empty}</EmptyState> : section(fresh)}
 
         {filed.length === 0 ? null : (
           <>
-            <SectionHeading className="flexh">{m.changelog.archivedHeading}
-              <ClearArchivedButton count={filed.length} onClear={() => clearArchived(filed.length)} />
+            <SectionHeading
+              actions={<ClearArchivedButton count={filed.length} onClear={() => clearArchived(filed.length)} />}
+            >{m.changelog.archivedHeading}
             </SectionHeading>
             {section(filed)}
           </>

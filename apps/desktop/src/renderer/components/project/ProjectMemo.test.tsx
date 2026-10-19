@@ -19,7 +19,7 @@ describe('ProjectMemo', () => {
     document.body.append(host)
     const root = createRoot(host)
     act(() => root.render(<MessagesProvider><Memo /></MessagesProvider>))
-    const buttons = () => [...host.querySelectorAll<HTMLButtonElement>('.section-heading > .btn')]
+    const buttons = () => [...host.querySelectorAll<HTMLButtonElement>('.section-heading-actions > .btn')]
     const press = (text: string) => act(() => buttons().find((button) => button.textContent === text)!.click())
     const type = (text: string) => {
       Object.defineProperty(host.querySelector('.md.src')!, 'innerText', { value: text, configurable: true })

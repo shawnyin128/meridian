@@ -108,10 +108,10 @@ export function Trash() {
           )
           : groups.map((g, i) => (
             <Fragment key={g.kind}>
-              <SectionHeading className={i === 0 ? 'flexh' : undefined}>
-                {m.trash.kinds[g.kind]} · {g.items.length}
-                {/* The demo only places the clear button on the title of the first group */}
-                {i === 0 ? <ClearButton count={entries.length} onClear={clear} /> : null}
+              <SectionHeading
+                // The demo only places the clear button on the title of the first group
+                actions={i === 0 ? <ClearButton count={entries.length} onClear={clear} /> : undefined}
+              >{m.trash.kinds[g.kind]} · {g.items.length}
               </SectionHeading>
               <StructuredList className="tgroup">
                 {g.items.map((entry) => (

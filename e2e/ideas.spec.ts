@@ -55,7 +55,7 @@ test('排序按钮点「按更新时间」不报错,菜单收起、列表还在'
   const seeded = await seedIdea(win, '排序菜单验证')
   await gotoIdeas(win)
 
-  await win.locator('.section-heading.flexh .sort-menu', { hasText: '排序' }).click()
+  await win.locator('.section-heading-actions .sort-menu', { hasText: '排序' }).click()
   await win.locator('.ctxmenu .mi', { hasText: '按更新时间' }).click()
 
   await expect(win.locator('.ctxmenu')).toHaveCount(0)

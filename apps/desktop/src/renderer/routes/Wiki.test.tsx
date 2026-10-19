@@ -23,7 +23,9 @@ const fixture = vi.hoisted(() => ({
 }))
 
 const HOME: WikiHome = {
-  aggregationCount: 2, kinds: [{ key: 'topic', label: '主题', dir: 'topics', count: 2 }], roots: [card('topics/sd', '推测解码')],
+  aggregationCount: 2,
+  kinds: [{ key: 'topic', label: '主题', dir: 'topics', count: 2 }, { key: 'method', label: '方法', dir: 'methods', count: 0 }],
+  roots: [card('topics/sd', '推测解码')],
 }
 
 const AGG: WikiAggregation = {
@@ -112,6 +114,10 @@ describe('Wiki keyboard reach', () => {
       await Promise.resolve()
     })
   }
+
+  it('首页不给没有卡片的种类留一个空标题', () => {
+    expect(all('.section-heading').map((heading) => heading.textContent)).toEqual(['主题', '论文'])
+  })
 
   it('opens each home card from the button that holds its title', async () => {
     expect(tags('.wkcard .tt')).toEqual(['BUTTON', 'BUTTON'])

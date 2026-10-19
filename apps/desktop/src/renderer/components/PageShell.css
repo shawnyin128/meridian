@@ -12,18 +12,16 @@
 .page-toolbar>.add-action:last-child{margin-left:auto}
 .page-toolbar+.section-heading{margin-top:0;padding-top:0;border-top:0}
 
-.section-heading{font-size:var(--fs-title);font-weight:700;color:var(--ink);
+.section-heading{display:flex;align-items:center;gap:var(--sp-10);font-size:var(--fs-title);font-weight:700;color:var(--ink);
   margin:24px 0 10px;padding-top:16px;border-top:1px solid var(--sep2)}
 .section-heading:first-child{margin-top:0;padding-top:0;border-top:0}
+/* A group inside a section or a card sits under its section's rule, a step smaller and lighter. */
+.section-heading--group{font-size:var(--fs-read);font-weight:600;margin:20px 0 8px;padding-top:0;border-top:0}
+.section-heading--group:first-child{margin-top:0}
 /* The right rail is narrower: no rule above it and a smaller step. */
 .section-heading--rail{font-size:var(--fs-read);margin:20px 0 8px;padding-top:0;border-top:0}
 .section-heading--rail:first-child{margin-top:0}
-.section-heading.flexh{display:flex;align-items:center;gap:10px}
-.section-heading.flexh>.btn,.section-heading.flexh>.segmented-control,
-.section-heading.flexh>.add-action,.section-heading.flexh>.panel-close{margin-left:auto}
-.section-heading.flexh>.segmented-control{font-weight:400}
-.section-heading.flexh>.btn~*{margin-left:8px}
-.section-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
+.section-heading-actions{display:flex;flex:none;align-items:center;gap:var(--sp-8);margin-left:auto;font-weight:400}
 
 .ipcerror{padding:8px 12px;margin:0 16px 12px;border-radius:var(--r-md);background:var(--tint-bad);color:var(--bad);font-size:var(--fs-sm)}
 

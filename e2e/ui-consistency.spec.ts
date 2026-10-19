@@ -122,8 +122,8 @@ test('分节抬头全应用一个类名,右端动作只有一个槽', async ({ w
   await shown(win, '[data-proj="draft"]').click()
   await shown(win, '.section-heading').first().waitFor()
   await expect(win.locator('.sh, .shx, .wk-sec, .wksec, .sechead')).toHaveCount(0)
-  const withAction = shown(win, '.section-heading.flexh').first()
-  await expect(withAction.locator('>*').last()).toHaveCSS('margin-left', /auto|\d/)
+  const slot = shown(win, '.section-heading > .section-heading-actions').first()
+  await expect(slot).toHaveCSS('margin-left', /auto|\d/)
 })
 
 test('收起钮全应用一个说法,Escape 一层一层剥,「/」跳到输入框', async ({ win }) => {

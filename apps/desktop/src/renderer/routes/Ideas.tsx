@@ -192,14 +192,22 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
               {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
             </div>
             <section className="idea-detail-section">
-              <h3>{m.ideas.bodyLabel}</h3>
+              <SectionHeading variant="rail">{m.ideas.bodyLabel}</SectionHeading>
               <p className="idea-detail-body">{idea.body}</p>
             </section>
           </>
         )}
 
       <section className="idea-detail-section">
-        <h3>{m.ideas.link.heading}</h3>
+        <SectionHeading
+          variant="rail"
+          actions={idea.project === undefined
+            ? <button className="btn sm" onClick={onPromote}>{m.ideas.promote.action}</button>
+            : linked === undefined
+              ? undefined
+              : <button className="btn sm" onClick={() => onOpen('project', linked.id)}>{m.ideas.promote.openProject}</button>}
+        >{m.ideas.link.heading}
+        </SectionHeading>
         <ChoicePicker
           appearance="field" aria-label={m.ideas.link.selectAriaLabel(idea.title)} value={idea.project ?? ''}
           options={[
@@ -214,22 +222,21 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
           }}
           onPick={(id) => onProject(id || null)}
         />
-        <div className="idea-detail-actions">
-          {idea.project === undefined
-            ? <button className="btn sm" onClick={onPromote}>{m.ideas.promote.action}</button>
-            : linked === undefined
-              ? <span className="idea-missing-project">{m.ideas.link.originalUnavailable}</span>
-              : <button className="btn sm" onClick={() => onOpen('project', linked.id)}>{m.ideas.promote.openProject}</button>}
-        </div>
+        {idea.project !== undefined && linked === undefined
+          ? <div className="idea-missing-project">{m.ideas.link.originalUnavailable}</div>
+          : null}
       </section>
 
       <section className="idea-detail-section idea-detail-source">
-        <h3>{m.project.sections.source}</h3>
+        <SectionHeading
+          variant="rail"
+          actions={idea.source.chatId === undefined
+            ? undefined
+            : <button className="btn sm" onClick={() => onOpen('chat', idea.source.chatId!)}>{m.ideas.openSourceChat}</button>}
+        >{m.project.sections.source}
+        </SectionHeading>
         <p>{sourceLabel(idea)}</p>
         <div className="idea-detail-meta">{m.common.updatedOn(fmt.date(idea.updated))}</div>
-        {idea.source.chatId === undefined
-          ? null
-          : <button className="btn sm" onClick={() => onOpen('chat', idea.source.chatId!)}>{m.ideas.openSourceChat}</button>}
       </section>
     </aside>
   )

@@ -11,4 +11,3 @@
 .crow .src{margin-left:var(--sp-6)}
 .crow .diff{display:none}
 .crow.open .diff{display:block}
-/* "Archive all" sits at the right of the Current heading, placed there by .section-heading.flexh in PageShell.css. */

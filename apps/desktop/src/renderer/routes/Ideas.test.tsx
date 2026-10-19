@@ -179,4 +179,17 @@ describe('Ideas', () => {
     expect(host.querySelector('.idea-detail-slot')?.getAttribute('data-panel-state')).toBe('closed')
     expect(host.querySelector('.idea-detail-panel')).toBeNull()
   })
+
+  it('想法详情里每一节的操作放在那一节小标题的右端', async () => {
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    const headings = async (id: string) => {
+      await act(async () => { host.querySelector<HTMLElement>(`[data-idea="${id}"]`)!.click() })
+      return [...host.querySelectorAll<HTMLElement>('.idea-detail-section > .section-heading')].map((heading) => [
+        heading.firstChild!.textContent,
+        [...heading.querySelectorAll(':scope > .section-heading-actions > .btn')].map((button) => button.textContent),
+      ])
+    }
+    expect(await headings('idea-linked')).toEqual([['想法', []], ['关联项目', ['打开项目']], ['来源', ['打开来源对话']]])
+    expect(await headings('idea-independent')).toEqual([['想法', []], ['关联项目', ['转为项目']], ['来源', ['打开来源对话']]])
+  })
 })

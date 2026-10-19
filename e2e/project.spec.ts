@@ -99,7 +99,7 @@ test('项目反向展示关联想法，点击后在项目右栏就地打开详�
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', 'draft 效率'])
   await expect(page.locator('.node-document-pane')).toContainText(idea!.title)
   await expect(page.locator('.project-idea-detail-body')).not.toBeEmpty()
-  const openIdea = page.locator('.project-idea-detail-meta > .project-idea-open-idea')
+  const openIdea = page.locator('.node-document-head > .section-heading-actions > .btn')
   await expect(openIdea).toHaveText('跳转到想法')
   await expect(page.getByRole('button', { name: '打开来源对话' })).toHaveCount(0)
   await expect(row).toHaveClass(/selected/)
@@ -131,7 +131,7 @@ test('想法在科研图中动态标出关联节点，节点详情反向展示�
   expect(actionsBox).not.toBeNull()
   expect(sideBox!.x + sideBox!.width - actionsBox!.x - actionsBox!.width).toBeLessThan(30)
 
-  await page.locator('.section-heading.flexh .segmented-control>button', { hasText: '科研图' }).click()
+  await page.locator('.section-heading-actions .segmented-control>button', { hasText: '科研图' }).click()
   const linkedNode = page.locator('.rgn[data-node="knee"]')
   await expect(linkedNode).toHaveClass(/idea-related/)
   await expect(linkedNode.locator('rect')).toHaveAttribute('style', /idea-node-hatch-/)
@@ -164,7 +164,7 @@ test('想法在科研图中动态标出关联节点，节点详情反向展示�
 test('节点详情自己滚动;滚到底后滚轮接着滚整页', async ({ win }) => {
   await gotoProject(win)
   const page = win.locator('.screenslot:not([hidden])')
-  await page.locator('.section-heading.flexh .segmented-control>button', { hasText: '科研图' }).click()
+  await page.locator('.section-heading-actions .segmented-control>button', { hasText: '科研图' }).click()
   await page.locator('.rgn[data-node="knee"]').click()
 
   const body = page.locator('.desk-body')
@@ -327,11 +327,11 @@ test('各板块渲染出的条目数与 project.get 返回的条数逐对相等'
   }
 
   // Milestones and the research graph each sit behind another tab and render only after switching to it.
-  await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '里程碑' }).click()
+  await win.locator('.section-heading-actions .segmented-control>button', { hasText: '里程碑' }).click()
   await win.locator('#msList').waitFor()
   await openArchive('#msList')
   rendered['里程碑行'] = await win.locator('#msList .ddlrow').count()
-  await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '科研图' }).click()
+  await win.locator('.section-heading-actions .segmented-control>button', { hasText: '科研图' }).click()
   await win.locator('.rgraph').waitFor()
   rendered['科研图节点'] = await win.locator('.rgraph .rgn').count()
   rendered['科研图连线'] = await win.locator('.rgraph .redges path').count()
@@ -514,7 +514,7 @@ test('任务四列逐行对齐,任务与里程碑日期使用同一底色', asyn
   const taskDateColor = await rows.first().locator('.task-date-part .date-chip')
     .evaluate((element) => getComputedStyle(element).backgroundColor)
 
-  await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '里程碑' }).click()
+  await win.locator('.section-heading-actions .segmented-control>button', { hasText: '里程碑' }).click()
   const milestoneDate = win.locator('#msList .milestone-row>.plan-date-button').first()
   await expect(milestoneDate).toBeVisible()
   expect(await milestoneDate.locator('.date-chip').evaluate((element) => getComputedStyle(element).backgroundColor))
@@ -579,7 +579,7 @@ test('新建一个任务再删掉,任务数前后一致', async ({ win }) => {
   await gotoProject(win)
   await expect(win.locator('#taskList .ddlrow')).toHaveCount(ACTIVE_TASK_ROWS)
 
-  await win.locator('.section-heading.flexh .btn.sm', { hasText: '任务' }).click()
+  await win.locator('.section-heading-actions .btn.sm', { hasText: '任务' }).click()
   await win.locator('#taskList .min').fill(NEW_TASK_TITLE)
   await win.locator('#taskList .min').press('Enter')
 
@@ -597,7 +597,7 @@ test('新建一个任务再删掉,任务数前后一致', async ({ win }) => {
 
 test('科研图展示多个活跃节点,节点以只读 Markdown、分支结果与 Agent 记录呈现', async ({ win }) => {
   await gotoProject(win)
-  await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '科研图' }).click()
+  await win.locator('.section-heading-actions .segmented-control>button', { hasText: '科研图' }).click()
   const graph = win.locator('.rgraph')
   await expect(graph.locator('.active-path')).toHaveCount(0)
   // Fixture has two active siblings (wide, prefix) under knee: both routes (root-knee, knee-wide,
@@ -633,7 +633,7 @@ test('科研图节点上下居中且可缩放平移,分支和科研记录在正�
   expect(Math.round(detailBefore!.x)).toBe(Math.round(ganttBefore!.x))
   expect(Math.round(detailBefore!.width)).toBe(Math.round(ganttBefore!.width))
 
-  await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '科研图' }).click()
+  await win.locator('.section-heading-actions .segmented-control>button', { hasText: '科研图' }).click()
   const viewport = win.locator('.rgraph-viewport')
   const firstNode = viewport.locator('.rgn').first()
   const [rootBox, kneeBox, stopBox] = await Promise.all([
@@ -714,7 +714,7 @@ test('节点阅读态保留科研图并扩宽右栏,可直接切换节点', asyn
   const side = page.locator('.wkside')
   const propertyWidth = await side.evaluate((element) => element.getBoundingClientRect().width)
 
-  await page.locator('.section-heading.flexh .segmented-control>button', { hasText: '科研图' }).click()
+  await page.locator('.section-heading-actions .segmented-control>button', { hasText: '科研图' }).click()
   await page.locator('.rgraph .rgn[data-node="knee"]').click()
 
   await expect(page).toHaveClass(/\bnode-reading\b/)
@@ -753,7 +753,7 @@ test('在项目详情里再点侧栏的「项目」,回到项目列表;返回键
 test('科研记录在动态和科研图之间切换,标题留在原处,动态短也不留空白', async ({ win }) => {
   await gotoProject(win)
   const page = win.locator('.screenslot:not([hidden]) .wkpage')
-  const heading = page.locator('.section-heading.flexh', { hasText: '科研记录' })
+  const heading = page.locator('.section-heading', { hasText: '科研记录' })
   const toggle = (name: string) => heading.locator('.segmented-control>button', { hasText: name }).click()
   const top = () => heading.evaluate((el) => Math.round(el.getBoundingClientRect().top))
   const viewHeight = () => page.locator('.record-view').evaluate((el) => Math.round(el.getBoundingClientRect().height))
@@ -779,7 +779,7 @@ test('切换科研图节点:右栏高度不随内容变,页面不跟着跳,新�
   await gotoProject(win)
   const page = win.locator('.screenslot:not([hidden]) .wkpage')
   const side = page.locator('.wkside')
-  await page.locator('.section-heading.flexh .segmented-control>button', { hasText: '科研图' }).click()
+  await page.locator('.section-heading-actions .segmented-control>button', { hasText: '科研图' }).click()
   // Nodes are activated with a dispatched click: a pointer click would first scroll the node into
   // view, and this test measures the page's own movement.
   await page.locator('.rgraph .rgn[data-node="knee"]').dispatchEvent('click')
@@ -808,7 +808,7 @@ test('新任务行开着且打了字时按侧栏会话的「...」:任务照样�
   const titles = () => call<{ tasks: { title: string }[] }>(win, 'project.get', { id: 'draft' })
     .then((p) => p.tasks.map((task) => task.title))
   const before = await titles()
-  await win.locator('.section-heading.flexh .btn.sm', { hasText: '任务' }).click()
+  await win.locator('.section-heading-actions .btn.sm', { hasText: '任务' }).click()
   const input = win.locator('#taskList .ddlrow input.min')
   await input.fill('按菜单触发器建成的任务')
   await expect(input).toHaveValue('按菜单触发器建成的任务')
@@ -1137,7 +1137,7 @@ test('就地输入框:关联占位是样式 C,属性栏焦点格没有边框浅�
   // The + that adds a link is a plain, still unclicked button; check its focus ring the keyboard way.
   // A prior Tab keypress puts Chromium's input-modality tracking into "keyboard" so the following
   // scripted focus() still counts as keyboard-driven, matching :focus-visible like a real Tab would.
-  const relAdd = side.locator('.section-heading.flexh [title="添加关联"]')
+  const relAdd = side.locator('.section-heading-actions [title="添加关联"]')
   await win.keyboard.press('Tab')
   await relAdd.evaluate((el) => el.focus())
   await expect(relAdd).toHaveCSS('outline-style', 'solid')
@@ -1345,7 +1345,7 @@ test('任务与里程碑的状态格独立修改并立即写回 core', async ({ 
   const afterTask = await call<{ tasks: { id: string; state: string }[] }>(win, 'project.get', { id: 'draft' })
   expect(afterTask.tasks.find((task) => task.id === firstTask.id)?.state).toBe(nextState[firstTask.state])
 
-  await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '里程碑' }).click()
+  await win.locator('.section-heading-actions .segmented-control>button', { hasText: '里程碑' }).click()
   const firstMilestone = [...before.milestones].filter((milestone) => !milestone.done)
     .sort((a, b) => a.date.localeCompare(b.date))[0]!
   const milestoneRow = win.locator(`#msList .ddlrow[data-row="${firstMilestone.id}"]`)
@@ -1373,7 +1373,7 @@ test('红色垃圾桶直接删除任务,不会先把这一行切进编辑态', a
 /** Opens draft's research graph and clicks the knee node; returns the node panel header, showing it. */
 async function openNodePanel(win: Page) {
   await gotoProject(win)
-  await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '科研图' }).click()
+  await win.locator('.section-heading-actions .segmented-control>button', { hasText: '科研图' }).click()
   await win.locator('.rgraph .rgn[data-node="knee"]').click()
   const head = win.locator('.screenslot:not([hidden]) .wkside .section-heading').first()
   await expect(head).toContainText('树宽收益拐点')
@@ -1386,7 +1386,7 @@ test('科研图由 Agent 管理:空图没有 App 侧新增入口', async ({ win 
   const main = win.locator('.screenslot:not([hidden]) .wkmain')
   await main.locator('.segmented-control>button', { hasText: '科研图' }).click()
   await expect(main.locator('.rgempty')).toHaveText('暂无科研图')
-  await expect(main.locator('.section-heading.flexh .btn.sm', { hasText: '节点' })).toHaveCount(0)
+  await expect(main.locator('.section-heading-actions .btn.sm', { hasText: '节点' })).toHaveCount(0)
 })
 
 test('节点面板由 Agent 管理:标题、状态、记录与分支都不可在 App 编辑', async ({ win }) => {
@@ -1416,7 +1416,7 @@ test('节点面板开着时 Esc 先关任务名称格,再按一次才收面板',
 
 test('节点面板开着时 Esc 先关日历,再按一次才收面板', async ({ win }) => {
   const head = await openNodePanel(win)
-  await win.locator('.section-heading.flexh .btn.sm', { hasText: '任务' }).click()
+  await win.locator('.section-heading-actions .btn.sm', { hasText: '任务' }).click()
   await win.locator('#taskList .ddlrow .din').first().click()
   await expect(win.locator('.calg')).toHaveCount(1)
   await win.keyboard.press('Escape')
