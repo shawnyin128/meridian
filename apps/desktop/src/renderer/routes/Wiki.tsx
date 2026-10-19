@@ -131,8 +131,8 @@ function Cell({ cell, onTip }: { cell: WikiCell; onTip: (tip: Tip | null) => voi
 
 /**
  * The paper comparison: rows are member papers, columns come from the aggregation's columns, empty
- * cells show a dash, and derived columns show chips. An inner node with no columns and no rows takes
- * no papers directly.
+ * cells show a dash, and derived columns show chips. Every header cell has a body cell under it in
+ * every row. An inner node with no columns and no rows takes no papers directly.
  */
 function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
   agg: WikiAggregation
@@ -173,7 +173,7 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
         </thead>
         <tbody>
           {agg.rows.map((row) => (
-            <tr key={row.paper.id}>
+            <tr key={row.paper.id} data-row-actions="">
               <td className="rh">
                 <button
                   type="button" className="wl" data-wk={row.paper.id} onClick={() => onOpen(row.paper.id)}
@@ -206,12 +206,15 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
                 ? null
                 : (
                   <td className="rx">
-                    <IconButton
-                      label={m.wiki.removeFromPage} size="inline" aria-disabled={pending}
-                      onClick={() => onRemove(row.paper.id)}
-                    ><IconCross /></IconButton>
+                    <RowActions>
+                      <IconButton
+                        label={m.wiki.removeFromPage} size="inline" aria-disabled={pending}
+                        onClick={() => onRemove(row.paper.id)}
+                      ><IconCross /></IconButton>
+                    </RowActions>
                   </td>
                 )}
+              {head === undefined ? null : <td className="td-add" />}
             </tr>
           ))}
           {adding === undefined
@@ -223,6 +226,7 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
                 {agg.derivedColumns.map((d) => <td className="na dv" key={d.key}>—</td>)}
                 {head === undefined || head.newColumn === null ? null : <td />}
                 {onRemove === undefined ? null : <td className="rx" />}
+                {head === undefined ? null : <td className="td-add" />}
               </tr>
             )}
         </tbody>

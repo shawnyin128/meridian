@@ -463,7 +463,7 @@ test('论文对比:提案在路上时连着点另一行「从这一页移出」,
 
   // The two clicks are on different member rows, leaving only one microtask between them.
   await win.evaluate(async () => {
-    const cells = document.querySelectorAll('table.cmp tbody tr td.rx')
+    const cells = document.querySelectorAll('table.cmp tbody tr td.rx button')
     ;(cells[0] as HTMLElement).click()
     await Promise.resolve()
     ;(cells[1] as HTMLElement).click()

@@ -130,12 +130,28 @@ describe('Wiki keyboard reach', () => {
     expect([...child.querySelectorAll('.row-actions button')].map((b) => b.getAttribute('aria-label'))).toEqual(['从这一页移出'])
   })
 
+  it('比较表每个表头格下面都有一个单元格，自动列在表头用标签标出', async () => {
+    fixture.aggregation.mockResolvedValue({ ...AGG, columns: [...AGG.columns, { key: 'speed', label: '速度' }] })
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    const heads = all('.cmp thead th').length
+    expect(all('.cmp tbody tr').map((tr) => tr.children.length)).toEqual([heads])
+    expect(host.querySelector('.cmp td.na')!.textContent).toBe('—')
+    expect(host.querySelector('.cmp th.dv .wkind')!.textContent).toBe('自动')
+  })
+
+  it('比较表那一行的移出在行尾操作槽里，行是槽的宿主', async () => {
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    const row = host.querySelector('.cmp tbody tr')!
+    expect(row.hasAttribute('data-row-actions')).toBe(true)
+    expect([...row.querySelectorAll('.row-actions button')].map((b) => b.getAttribute('aria-label'))).toEqual(['从这一页移出'])
+  })
+
   it('reaches every link, chip, contents entry and remove control of an aggregation page by keyboard', async () => {
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
     expect(tags('.wkmain .wkcard .tt')).toEqual(['BUTTON'])
     expect(tags('.cmp td.rh .wl')).toEqual(['BUTTON'])
     expect(tags('.cmp td.dv .tagchip')).toEqual(['BUTTON'])
-    expect(tags('.cmp td.rx > *')).toEqual(['BUTTON'])
+    expect(tags('.cmp td.rx .row-actions > *')).toEqual(['BUTTON'])
     expect(tags('.wkside .wkrel .tagchip')).toEqual(['BUTTON', 'BUTTON'])
     expect(all('.wktoc li > button').map((b) => b.textContent)).toEqual(['背景', '结果'])
     expect(tags('.wkmain .md .wl')).toEqual(['A'])

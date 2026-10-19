@@ -33,8 +33,8 @@
 .cmp td{padding:7px 10px;border-bottom:1px solid var(--sep2);vertical-align:top;max-width:26ch}
 .cmp tbody tr:last-child td{border-bottom:0}
 .cmp td.rh{white-space:nowrap;font-weight:600}
-.cmp td.na{color:var(--ter);text-align:center}
-.cmp th.dv,.cmp td.dv{background:var(--hover)}
+.cmp td.na{color:var(--ter)}
+/* A derived column is marked by the tag in its header. */
 .cmp th .wkind{margin-left:6px}
 .anc{border-bottom:1px dotted var(--ter);cursor:help}
 .anc sup{font-size:.78em;color:var(--ter);margin-left:2px}
@@ -71,10 +71,8 @@
 /* Management controls: a card's row-actions slot in its corner, the × table rows show on hover, and the column editor */
 .wkcard{position:relative}
 .wkcard .row-actions{position:absolute;top:8px;right:8px}
+/* The row's × sits in its row-actions slot. */
 .cmp th.rx,.cmp td.rx{width:22px;padding-left:3px;padding-right:3px}
-/* The cell holds the × button and shows while its row is hovered or the button has keyboard focus. */
-.cmp td.rx{opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
-.cmp tbody tr:hover td.rx,.cmp td.rx:has(:focus-visible){opacity:1;pointer-events:auto}
 .coledit{margin:6px 0 12px;display:grid;gap:6px;max-width:420px}
 .coledit .row{display:flex;gap:8px;align-items:center}
 .coledit .acts{display:flex;gap:8px;margin-top:4px}
@@ -84,7 +82,6 @@
  * title line is an input and its last line is empty, only holding the height.
  */
 .wkcard.newcard{cursor:default;border-style:dashed}
-.wkcard.newcard:hover{border-color:var(--sep)}
 .wkcard.newcard .wf{height:1.5em}
 
 /* The paper comparison's placeholder row: as tall as a real row, an input in its first cell, a dash in the rest. */
