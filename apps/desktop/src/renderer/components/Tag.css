@@ -1,0 +1,27 @@
+/*
+ * The one tag and the one count badge. Every tag is fully rounded; its shape sets the padding and type,
+ * its tone the fill and text colour. Hosts place and size a tag but never restyle it.
+ */
+.tag{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-4);flex:none;min-width:0;max-width:100%;
+  box-sizing:border-box;margin:0;padding:var(--sp-2) var(--sp-8);border:0;border-radius:var(--r-chip);
+  font-family:var(--sans);font-size:var(--fs-cap);font-weight:600;line-height:var(--lh-ui);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.tag-text{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.tag--chip{font-size:var(--fs-sm);font-weight:400}
+.tag--neutral{background:var(--chip);color:var(--sec)}
+.tag--accent{background:var(--accent-soft);color:var(--accent)}
+.tag--good{background:var(--tint-good);color:var(--good)}
+.tag--warn{background:var(--tint-warn);color:var(--warn)}
+.tag--bad{background:var(--tint-bad);color:var(--bad)}
+.tag--info{background:var(--tint-info);color:var(--ink)}
+.tag--paper{background:var(--tint-paper);color:var(--sec)}
+.tag--wiki{background:var(--tint-wiki);color:var(--sec)}
+button.tag{cursor:pointer;transition:color var(--t-fast) var(--e-out)}
+button.tag:hover{color:var(--ink);background-image:linear-gradient(var(--hover),var(--hover))}
+button.tag:active{background-image:linear-gradient(var(--press),var(--press))}
+button.tag:disabled{cursor:default;opacity:.45;background-image:none}
+
+.count-badge{display:inline-flex;align-items:center;justify-content:center;flex:none;box-sizing:border-box;
+  min-width:var(--sp-20);height:var(--sp-20);padding:0 var(--sp-6);border-radius:var(--r-chip);background:var(--chip);
+  color:var(--ter);font-size:var(--fs-cap);font-weight:500;line-height:1;font-variant-numeric:tabular-nums}
+.count-badge--strong{color:var(--ink);font-weight:600}

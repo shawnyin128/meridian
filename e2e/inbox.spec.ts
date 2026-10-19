@@ -218,7 +218,7 @@ test('「全部忽略」只清空自己这一组,逐组清完出空态,忽略的
   const trash = await trashFromCore(win)
   expect(trash.map((t) => t.title).sort()).toEqual([...titles].sort())
   expect(trash.every((t) => t.kind === 'inbox')).toBe(true)
-  await expect(win.locator('#rowInboxAll .n')).toHaveText('')
+  await expect(win.locator('#rowInboxAll .n')).toHaveCount(0)
 })
 
 test('入库:论文进库,按钮就地变开始阅读', async ({ win }) => {
@@ -689,7 +689,8 @@ test('侧栏角标数的都是库里的真实数量', async ({ win }) => {
   expect(new Set(badges.map(([, n]) => n)).size).toBeGreaterThan(1)
 
   for (const [sel, n] of badges) {
-    // A zero badge has empty text and CSS hides it, matching the demo's `n||''`.
-    await expect(win.locator(sel)).toHaveText(n === 0 ? '' : String(n))
+    // A zero count shows no badge, matching the demo's `n||''`.
+    if (n === 0) await expect(win.locator(sel)).toHaveCount(0)
+    else await expect(win.locator(sel)).toHaveText(String(n))
   }
 })

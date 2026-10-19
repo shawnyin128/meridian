@@ -33,6 +33,7 @@ import {
 } from '../../shell/AppShell.js'
 import { AddAction } from '../AddAction.js'
 import { PanelClose } from '../PanelClose.js'
+import { CountBadge, tagClass } from '../Tag.js'
 import { DetailPanel } from '../DetailPanel.js'
 import { ActionMenu, MenuRadioGroup, MenuRadioItem, MenuSeparator } from '../ActionMenu.js'
 import { SegmentedControl } from '../SegmentedControl.js'
@@ -263,7 +264,7 @@ function TagAdd({ field, values, onAdd, onError }: {
 
 /**
  * The reading status in a Status cell: clicking it opens the four statuses, and picking one writes it
- * back to this paper. The styling is the demo's .stchip and the popover it opens; Radix owns opening
+ * back to this paper. The status is a neutral chip tag and the popover is the demo's; Radix owns opening
  * and closing. The "Reading" status is highlighted in the table, as in the demo.
  */
 function ReadStateChip({ current, onPick }: {
@@ -274,7 +275,7 @@ function ReadStateChip({ current, onPick }: {
     <ActionMenu
       trigger={(
         <button
-          type="button" className={current === READING_PAPER ? 'stchip on' : 'stchip'}
+          type="button" className={tagClass('neutral', 'chip', current === READING_PAPER ? 'stchip on' : 'stchip')}
           onClick={(e) => e.stopPropagation()}
         >{current}</button>
       )}
@@ -1331,7 +1332,7 @@ export function PaperTable() {
                           `${plainTitle(f.newestTitle).slice(0, 44)}${plainTitle(f.newestTitle).length > 44 ? '…' : ''}`,
                         )}
                       </span>
-                      <span className="n">{f.count}</span>
+                      <CountBadge className="n" count={f.count} />
                     </button>
                   ))}
                   <div className="lmore">{m.papers.groupIndex.pickToView(labelOf(group))}</div>

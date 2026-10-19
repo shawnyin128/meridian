@@ -7,10 +7,6 @@
 .extension-head>.extension-head-side{display:flex;flex-shrink:0;align-items:center;gap:8px}
 .extension-head h3{margin:0;color:var(--ink);font-size:var(--fs-title);line-height:var(--lh-tight)}
 .extension-head p{margin:5px 0 0;color:var(--ter);font-size:var(--fs-sm);line-height:var(--lh-ui)}
-.extension-state{flex-shrink:0;border-radius:var(--r-full);padding:2px 8px;background:var(--field);
-  color:var(--ter);font-size:var(--fs-cap)}
-.extension-state.installed{background:var(--tint-good);color:var(--good)}
-.extension-state.update-required{background:var(--tint-warn);color:var(--warn)}
 .extension-command{font-size:var(--fs-cap)}
 .extension-command-summary{display:flex;min-width:0;align-items:center;gap:8px}
 .extension-command-summary>span{flex:0 0 auto;color:var(--ter)}

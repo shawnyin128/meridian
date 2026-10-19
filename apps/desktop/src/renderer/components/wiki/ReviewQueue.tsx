@@ -11,6 +11,7 @@ import { EmptyState } from '../EmptyState.js'
 import { FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { CountBadge } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
 import './ReviewQueue.css'
@@ -21,7 +22,7 @@ export function ReviewEntry({ count, onOpen }: { count: number; onOpen: () => vo
   return (
     <button type="button" className="btn review-entry" onClick={onOpen}>
       {m.wiki.queue.entry}
-      {count > 0 ? <span className="review-entry-count">{count}</span> : null}
+      {count > 0 ? <CountBadge count={count} strong /> : null}
     </button>
   )
 }

@@ -1,0 +1,64 @@
+import type { ComponentPropsWithoutRef, ReactNode } from 'react'
+import './Tag.css'
+
+/** A tag's fill and text colour: neutral, the accent, a semantic state, or an entity type. */
+export type TagTone = 'neutral' | 'accent' | 'good' | 'warn' | 'bad' | 'info' | 'paper' | 'wiki'
+
+/**
+ * A tag's box. `label` is a short status, kind, priority or source word in caption type; `chip` is a
+ * name, topic, date or other value in small body type.
+ */
+export type TagShape = 'label' | 'chip'
+
+/**
+ * The class list of a tag of `tone` and `shape`, followed by `extra` classes, for an element another
+ * component renders, such as a menu trigger.
+ */
+export function tagClass(tone: TagTone = 'neutral', shape: TagShape = 'label', extra = ''): string {
+  return `tag tag--${shape} tag--${tone}${extra ? ` ${extra}` : ''}`
+}
+
+type TagOwnProps = {
+  tone?: TagTone
+  shape?: TagShape
+  /** A mark before the text, such as a StatusDot or an icon; it never truncates. */
+  lead?: ReactNode
+  /** Placement and identity only; the tag's radius, padding, border and fill are its own. */
+  className?: string
+  children: ReactNode
+}
+
+/** The one tag: fully rounded, its box from `shape` and its colours from `tone`; long text ends in an ellipsis. */
+export function Tag({
+  tone, shape, lead, className = '', children, ...rest
+}: TagOwnProps & Omit<ComponentPropsWithoutRef<'span'>, keyof TagOwnProps>) {
+  return (
+    <span className={tagClass(tone, shape, className)} {...rest}>
+      {lead}<span className="tag-text">{children}</span>
+    </span>
+  )
+}
+
+/** A tag that is a button, such as a link to a page; it darkens on hover and press. */
+export function TagButton({
+  tone, shape, lead, className = '', children, ...rest
+}: TagOwnProps & Omit<ComponentPropsWithoutRef<'button'>, keyof TagOwnProps | 'type'>) {
+  return (
+    <button type="button" className={tagClass(tone, shape, className)} {...rest}>
+      {lead}<span className="tag-text">{children}</span>
+    </button>
+  )
+}
+
+/** A number beside a label: quiet, or `strong` when it counts items waiting for the user. Zero is shown as 0. */
+export function CountBadge({ count, strong = false, className = '' }: {
+  count: number
+  strong?: boolean
+  className?: string
+}) {
+  return (
+    <span className={`count-badge${strong ? ' count-badge--strong' : ''}${className ? ` ${className}` : ''}`}>
+      {count}
+    </span>
+  )
+}

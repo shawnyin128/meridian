@@ -1,6 +1,7 @@
 import type { PluginVersion } from '../../../shared/contract.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
+import { Tag } from '../Tag.js'
 
 export interface PluginVersionEntryProps {
   plugin: PluginVersion
@@ -27,7 +28,7 @@ export function PluginVersionEntry({ plugin, checking, onCheck }: PluginVersionE
           <p>{copy.description} · {checked}</p>
         </div>
         <div className="extension-head-side">
-          <span className="extension-state">{copy.latest(plugin.version)}</span>
+          <Tag className="extension-state">{copy.latest(plugin.version)}</Tag>
           <button className="btn" disabled={checking} onClick={onCheck}>{checking ? copy.checking : copy.check}</button>
         </div>
       </div>

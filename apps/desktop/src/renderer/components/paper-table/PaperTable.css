@@ -32,7 +32,6 @@
 .gxrow:hover{background:var(--hover)}
 .gxrow .gx-t{font-size:13px;font-weight:600;min-width:150px}
 .gxrow .gx-m{flex:1;font-size:12px;color:var(--ter);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gxrow .n{font-size:12px;color:var(--ter);background:var(--hover);border-radius:999px;padding:1px 8px;flex-shrink:0}
 .gnav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
 .lmore{font-size:var(--fs-sm);color:var(--ter);padding:12px 2px}
 
@@ -107,7 +106,6 @@
 .paper-meta-projects .tagchip.tagadd{opacity:1;pointer-events:auto}
 .tagin{border:1px solid var(--sep-strong);background:transparent;border-radius:999px;padding:1px 8px;font-size:var(--fs-sm);color:var(--ink);width:110px;font-family:var(--sans)}
 .tagin:focus-visible{outline:0}
-.stchip{font-size:var(--fs-sm);line-height:var(--lh-ui);padding:1px 10px;border:0;border-radius:999px;background:var(--field);color:var(--sec);font-family:var(--sans);cursor:pointer;white-space:nowrap}
 
 /* Custom columns: the header's last cell holds the + and the column gear; clicking a cell edits it in place */
 .th-add{width:28px}
@@ -207,7 +205,6 @@
 .research-map-group-copy{display:flex;min-width:0;flex-direction:column;gap:3px}
 .research-map-group-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-base)}
 .research-map-group-copy>span{color:var(--ter);font-size:var(--fs-cap)}
-.research-map-count{min-width:28px;padding:2px 7px;border-radius:var(--r-full);background:var(--field);color:var(--sec);font-size:var(--fs-sm);text-align:center}
 .research-map-detail{min-width:0;border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);overflow:hidden}
 .research-map-detail-head{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-bottom:1px solid var(--sep2)}
 .research-map-detail-head>div{display:flex;min-width:0;flex:1;flex-direction:column;gap:3px}

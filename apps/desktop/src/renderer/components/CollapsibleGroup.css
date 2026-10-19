@@ -11,8 +11,6 @@
 .collapsible-group-caret svg{width:12px;height:12px}
 .collapsible-group.is-closed .collapsible-group-caret{transform:rotate(-90deg)}
 .collapsible-group-title{min-width:0;overflow-wrap:anywhere}
-.collapsible-group-count{flex:none;border-radius:var(--r-full);padding:1px 8px;background:var(--field);color:var(--sec);
-  font-size:var(--fs-cap);font-weight:600;font-variant-numeric:tabular-nums}
 .collapsible-group-actions{display:flex;flex:none;align-items:center;gap:8px}
 
 /* A small group embedded inside another list (e.g. an archived section): no sticky pinning, no

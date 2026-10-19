@@ -3,6 +3,7 @@ import type { PaperRow } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { EmptyState } from '../EmptyState.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { CountBadge } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { buildResearchMap, type ResearchMapReason } from './research-map.js'
 
@@ -64,7 +65,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper }: {
                       <strong>{group.label}</strong>
                       <span>{m.papers.researchMap.kind[group.kind]}</span>
                     </span>
-                    <span className="research-map-count">{group.members.length}</span>
+                    <CountBadge count={group.members.length} />
                   </StructuredRow>
                 ))}
               </StructuredList>

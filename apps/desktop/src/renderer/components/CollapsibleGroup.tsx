@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Icon } from './icons.js'
+import { CountBadge } from './Tag.js'
 import './CollapsibleGroup.css'
 
 /**
@@ -30,7 +31,7 @@ export function CollapsibleGroup({
         <button type="button" className="collapsible-group-toggle" aria-expanded={open} onClick={onToggle}>
           <span className="collapsible-group-caret"><Icon sw={2.4}><path d="M6 9l6 6 6-6" /></Icon></span>
           <span className="collapsible-group-title">{title}</span>
-          {count === undefined ? null : <span className="collapsible-group-count">{count}</span>}
+          {count === undefined ? null : <CountBadge count={count} className="collapsible-group-count" />}
         </button>
         {actions === undefined ? null : <div className="collapsible-group-actions">{actions}</div>}
       </div>
