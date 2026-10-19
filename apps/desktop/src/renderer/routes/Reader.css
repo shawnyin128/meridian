@@ -33,7 +33,9 @@
 
 /*
  * pdf.js's TextLayer is only for text selection: transparent text laid over the canvas. These are
- * the `.textLayer` rules of pdfjs-dist 6.3.289 web/pdf_viewer.css, unnested, without -moz- prefixes.
+ * the `.textLayer` rules of pdfjs-dist 6.3.289 web/pdf_viewer.css, unnested, without -moz- prefixes,
+ * with the forced-colors values pdf.js gives --hcm-highlight-filter and --hcm-highlight-selected-filter
+ * on .pdfViewer written in place.
  */
 .textLayer{color-scheme:only light;position:absolute;text-align:initial;inset:0;overflow:clip;opacity:1;line-height:1;letter-spacing:normal;word-spacing:normal;-webkit-text-size-adjust:none;text-size-adjust:none;forced-color-adjust:none;transform-origin:0 0;caret-color:CanvasText;z-index:0;--min-font-size:1;--text-scale-factor:calc(var(--total-scale-factor) * var(--min-font-size));--min-font-size-inv:calc(1 / var(--min-font-size))}
 .textLayer.highlighting{touch-action:none}
@@ -42,7 +44,7 @@
 .textLayer .markedContent{display:contents}
 .textLayer span[role="img"]{-webkit-user-select:none;user-select:none;cursor:default}
 .textLayer .highlight{--highlight-bg-color:rgb(180 0 170/.25);--highlight-selected-bg-color:rgb(0 100 0/.25);--highlight-backdrop-filter:none;--highlight-selected-backdrop-filter:none;margin:-1px;padding:1px;background-color:var(--highlight-bg-color);backdrop-filter:var(--highlight-backdrop-filter);border-radius:4px}
-@media screen and (forced-colors:active){.textLayer .highlight{--highlight-bg-color:transparent;--highlight-selected-bg-color:transparent;--highlight-backdrop-filter:var(--hcm-highlight-filter);--highlight-selected-backdrop-filter:var(--hcm-highlight-selected-filter)}}
+@media screen and (forced-colors:active){.textLayer .highlight{--highlight-bg-color:transparent;--highlight-selected-bg-color:transparent;--highlight-backdrop-filter:invert(100%);--highlight-selected-backdrop-filter:none}}
 .textLayer .highlight.appended{position:initial}
 .textLayer .highlight.begin{border-radius:4px 0 0 4px}
 .textLayer .highlight.end{border-radius:0 4px 4px 0}
@@ -97,7 +99,7 @@
 .reader-rail{width:42px;min-width:42px;border-left:1px solid var(--sep);background:var(--sidebar);display:flex;flex-direction:column;align-items:center;padding-top:9px;box-sizing:border-box;gap:4px;order:2}
 .reader-rail button{width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--ter);display:grid;place-items:center;cursor:pointer}
 .reader-rail button:hover{background:var(--hover);color:var(--ink)}
-.reader-rail button.on{background:var(--tint);color:var(--accent)}
+.reader-rail button.on{background:var(--accent-soft);color:var(--accent)}
 .reader-rail svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 
 .zoomctl{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:2px;background:var(--card);border:1px solid var(--sep);border-radius:999px;padding:4px 8px;box-shadow:var(--sh-2);z-index:22}
