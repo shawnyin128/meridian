@@ -145,6 +145,17 @@ describe('按钮组', () => {
     })
   })
 
+  it('默认按钮和它旁边带框的输入框、选择框一样高', () => {
+    document.head.innerHTML += `<style>${readFileSync(join(RENDERER, 'components', 'FormControls.css'), 'utf8')}</style>`
+    document.body.innerHTML = '<button type="button" class="btn">保存</button>'
+      + '<input class="form-control form-input form-control-field" />'
+      + '<select class="form-control form-select form-control-field"></select>'
+      + '<button type="button" class="form-control form-button form-control-field">选择</button>'
+    const heights = ['.btn', '.form-input', '.form-select', '.form-button']
+      .map((selector) => getComputedStyle(document.querySelector(selector)).height)
+    expect(new Set(heights)).toEqual(new Set(['30px']))
+  })
+
   it('按下的开关按钮铺一层浅 accent 底', () => {
     document.body.innerHTML = '<button type="button" class="btn ghost sm" aria-pressed="true">历史项目</button><button type="button" class="btn ghost sm" aria-pressed="false">历史项目</button>'
     const [on, off] = ['[aria-pressed="true"]', '[aria-pressed="false"]'].map((selector) => getComputedStyle(document.querySelector(selector)).backgroundColor)

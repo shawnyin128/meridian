@@ -33,7 +33,7 @@
 .form-input.form-control-field,
 .form-select.form-control-field,
 .form-button.form-control-field{
-  height:32px;
+  height:30px;
   padding:0 var(--sp-10);
 }
 .form-button.form-control-field{cursor:pointer;text-align:left}
@@ -73,7 +73,7 @@
 /* A directory path and its system chooser form a single field everywhere in the app. */
 .directory-field{position:relative;display:block;min-width:0;width:100%}
 .directory-field .form-input{width:100%;padding-right:42px}
-.directory-field-action{position:absolute;top:1px;right:1px;width:34px;height:30px;padding:0;border:0;
+.directory-field-action{position:absolute;top:1px;right:1px;width:34px;height:28px;padding:0;border:0;
   border-left:1px solid var(--sep2);border-radius:0 calc(var(--r-control) - 1px) calc(var(--r-control) - 1px) 0;
   display:grid;place-items:center;background:transparent;color:var(--ter);cursor:pointer}
 .directory-field-action:hover{background:var(--hover);color:var(--ink)}
