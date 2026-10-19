@@ -438,7 +438,7 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   expect(kept).toBeGreaterThan(0)
   await spec.locator('.btn', { hasText: '移除' }).click()
   // Removing a watch is destructive, so it now confirms first (ConfirmDialog.tsx).
-  await win.locator('.cfpop .dlg-a>*').last().click()
+  await win.locator('.modal.confirm .modal-actions>*').last().click()
   await expect(win.locator('[data-watchrow="spec"]')).toHaveCount(0)
   const survivors = entriesBefore.filter((e) => e.watch !== 'spec')
   await expect.poll(async () => (await inboxFromCore(win)).map((e) => e.id))

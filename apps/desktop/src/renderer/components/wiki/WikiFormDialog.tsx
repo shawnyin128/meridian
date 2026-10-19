@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useMessages } from '../../messages/useMessages.js'
-import { ModalDialog, ModalTitle } from '../ModalDialog.js'
+import { ModalDialog } from '../ModalDialog.js'
 import './WikiFormDialog.css'
 
 /**
@@ -33,15 +33,18 @@ export function WikiFormDialog({ open, title, canSubmit, onOpenChange, onSubmit,
   }
 
   return (
-    <ModalDialog open={open} onOpenChange={onOpenChange} contentClassName="wiki-form">
-      <ModalTitle className="wiki-form-title">{title}</ModalTitle>
+    <ModalDialog
+      open={open} onOpenChange={onOpenChange} size="form" title={title} className="wiki-form"
+      actions={(
+        <>
+          <button className="btn" disabled={busy} onClick={() => onOpenChange(false)}>{m.common.cancel}</button>
+          <button className="btn pri" disabled={busy || !canSubmit} onClick={save}>
+            {busy ? m.wiki.claims.form.saving : m.wiki.claims.form.save}
+          </button>
+        </>
+      )}
+    >
       {children}
-      <div className="wiki-form-actions">
-        <button className="btn" disabled={busy} onClick={() => onOpenChange(false)}>{m.common.cancel}</button>
-        <button className="btn pri" disabled={busy || !canSubmit} onClick={save}>
-          {busy ? m.wiki.claims.form.saving : m.wiki.claims.form.save}
-        </button>
-      </div>
     </ModalDialog>
   )
 }

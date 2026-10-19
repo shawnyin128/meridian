@@ -1,10 +1,6 @@
-.ctxmenu.cfpop.about-pop{left:calc(50% - 170px);top:calc(50% - 100px)}
 .about-pop:focus{outline:none}
-.about-dlg{position:relative;width:340px;padding:20px 20px 16px}
-.about-close{position:absolute;top:10px;right:10px}
 .about-head{display:flex;align-items:center;gap:12px}
 .about-mark{width:40px;height:40px;flex:none}
-.about-name{margin:0;color:var(--ink);font-size:var(--fs-xl);font-weight:700;line-height:var(--lh-tight)}
 .about-version{margin:2px 0 0;color:var(--ter);font-size:var(--fs-sm);font-variant-numeric:tabular-nums}
 .about-status{display:flex;align-items:center;gap:8px;margin:18px 0 0;padding:10px 12px;border-radius:var(--r-md);
   background:var(--field);color:var(--sec);font-size:var(--fs-base);line-height:var(--lh-ui)}

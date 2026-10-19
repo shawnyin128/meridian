@@ -49,7 +49,7 @@ import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import { InlineMetadataField } from '../components/InlineField.js'
-import { ModalDialog, ModalTitle } from '../components/ModalDialog.js'
+import { ModalDialog } from '../components/ModalDialog.js'
 import { DirectoryField, FormInput } from '../components/FormControls.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
@@ -572,9 +572,17 @@ export function ProjectDetail({
       <PageError error={error} />
 
       <ModalDialog
-        open={workspaceOpen} onOpenChange={setWorkspaceOpen} contentClassName="workspace-dialog"
+        open={workspaceOpen} onOpenChange={setWorkspaceOpen} size="form" className="workspace-dialog"
+        title={m.project.workspace.dialogTitle}
+        actions={(
+          <>
+            <button type="button" className="btn" onClick={() => setWorkspaceOpen(false)}>{m.common.cancel}</button>
+            {workspaceMode === 'local'
+              ? <button type="submit" form="workspaceLocal" className="workspace-local btn pri">{m.project.workspace.add}</button>
+              : <button type="submit" form="workspaceSsh" className="btn pri">{m.project.workspace.connect}</button>}
+          </>
+        )}
       >
-            <ModalTitle className="workspace-dialog-title">{m.project.workspace.dialogTitle}</ModalTitle>
             <SegmentedControl
               className="workspace-kinds"
               label={m.project.workspace.kindLabel}
@@ -588,7 +596,7 @@ export function ProjectDetail({
             {workspaceMode === 'local'
               ? (
                 <form
-                  className="workspace-form"
+                  id="workspaceLocal" className="workspace-form"
                   onSubmit={(event) => { event.preventDefault(); void connectLocalWorkspace() }}
                 >
                   <label>{m.project.workspace.pathLabel}
@@ -599,15 +607,11 @@ export function ProjectDetail({
                       onChange={(event) => setLocalPath(event.target.value)}
                     />
                   </label>
-                  <div className="workspace-dialog-actions">
-                    <button type="button" className="btn" onClick={() => setWorkspaceOpen(false)}>{m.common.cancel}</button>
-                    <button type="submit" className="workspace-local btn pri">{m.project.workspace.add}</button>
-                  </div>
                 </form>
               )
               : (
                 <form
-                  className="workspace-form"
+                  id="workspaceSsh" className="workspace-form"
                   onSubmit={(event) => { event.preventDefault(); void connectSshWorkspace() }}
                 >
                   <label>{m.project.workspace.hostLabel}
@@ -630,10 +634,6 @@ export function ProjectDetail({
                       onChange={(event) => setSshPort(event.target.value)}
                     />
                   </label>
-                  <div className="workspace-dialog-actions">
-                    <button type="button" className="btn" onClick={() => setWorkspaceOpen(false)}>{m.common.cancel}</button>
-                    <button type="submit" className="btn pri">{m.project.workspace.connect}</button>
-                  </div>
                 </form>
               )}
       </ModalDialog>

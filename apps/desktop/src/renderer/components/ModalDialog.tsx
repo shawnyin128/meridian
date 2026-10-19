@@ -2,29 +2,47 @@ import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { ignoreComposingEscape } from '../lib/keyboard.js'
+import { PanelClose } from './PanelClose.js'
+import './ModalDialog.css'
 
 type ContentProps = Omit<Dialog.DialogContentProps,
   'children' | 'className' | 'aria-describedby' | 'onCloseAutoFocus'
 >
 
+/** The width steps of the dialog surface: a confirmation, a form, and a wide two-column dialog. */
+export type ModalSize = 'confirm' | 'form' | 'wide'
+
+/** The classes of the dialog surface of `size`, with `className` for the layout inside it. */
+export function modalSurface(size: ModalSize, className?: string): string {
+  return `modal ${size}${className === undefined ? '' : ` ${className}`}`
+}
+
+/** The dialog's title, in the one dialog title role; `className` places it, it never restyles it. */
 export function ModalTitle({ className, children }: { className?: string; children: ReactNode }) {
-  return <Dialog.Title className={className}>{children}</Dialog.Title>
+  return <Dialog.Title className={`modal-title${className === undefined ? '' : ` ${className}`}`}>{children}</Dialog.Title>
 }
 
 /**
- * The app-wide modal skeleton without a trigger. It owns the overlay, the portal, the accessibility
+ * The app-wide modal skeleton without a trigger. It owns the overlay, the portal, the dialog surface
+ * of `size` (centred, capped in height, stacked above whatever opened it), the accessibility
  * declaration for a dialog without a description, and returning focus on close whether the dialog
  * was opened from the app menu, programmatically or by a page button. An Escape pressed while an
- * input method is composing does not close it. Pages only provide the content layout and the open
- * state.
+ * input method is composing does not close it. `title` heads the surface; a dialog that places its
+ * title itself omits it and uses `ModalTitle` in `children`. `children` is the body, which scrolls
+ * when it is taller than the window allows, and `actions` stay pinned below it. `closable` puts the
+ * shared close control in the surface's top-right corner. `className` names the layout inside.
  */
 export function ModalDialog({
-  open, onOpenChange, contentClassName, overlayClassName = 'scrim', children,
+  open, onOpenChange, size, title, actions, closable = false, className, overlayClassName = 'scrim', children,
   restoreFocus = true, ariaDescribedBy, contentProps,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  contentClassName: string
+  size: ModalSize
+  title?: ReactNode
+  actions?: ReactNode
+  closable?: boolean
+  className?: string
   overlayClassName?: string
   children: ReactNode
   restoreFocus?: boolean
@@ -72,7 +90,7 @@ export function ModalDialog({
         <Dialog.Overlay className={overlayClassName} />
         <Dialog.Content
           {...contentProps}
-          className={contentClassName}
+          className={modalSurface(size, className)}
           {...(ariaDescribedBy === undefined
             ? { 'aria-describedby': undefined }
             : { 'aria-describedby': ariaDescribedBy })}
@@ -88,7 +106,10 @@ export function ModalDialog({
             opener.current.focus()
           }}
         >
-          {children}
+          {closable ? <PanelClose onClose={() => onOpenChange(false)} className="modal-close" /> : null}
+          {title === undefined ? null : <ModalTitle>{title}</ModalTitle>}
+          <div className="modal-body">{children}</div>
+          {actions === undefined ? null : <div className="modal-actions">{actions}</div>}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

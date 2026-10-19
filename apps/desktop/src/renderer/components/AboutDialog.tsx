@@ -3,7 +3,6 @@ import { useAppUpdate } from '../hooks/useAppUpdate.js'
 import { useMessages } from '../messages/useMessages.js'
 import { DownloadRing, IconCheck } from './icons.js'
 import { ModalDialog, ModalTitle } from './ModalDialog.js'
-import { PanelClose } from './PanelClose.js'
 import { ProgressFill } from './ProgressFill.js'
 import { UpdateAction, updateLine } from './settings/AppUpdateSettings.js'
 import type { AppUpdateStatus } from '../../shared/app-update.js'
@@ -19,15 +18,14 @@ function StatusMark({ status }: { status: AppUpdateStatus }) {
   return null
 }
 
-function AboutBody({ status, onClose }: { status: AppUpdateStatus; onClose: () => void }) {
+function AboutBody({ status }: { status: AppUpdateStatus }) {
   const m = useMessages()
   return (
-    <div className="about-dlg">
-      <PanelClose onClose={onClose} className="about-close" />
+    <>
       <div className="about-head">
         <img className="about-mark" src={brandmark} alt="" />
         <div>
-          <ModalTitle className="about-name">Meridian</ModalTitle>
+          <ModalTitle>Meridian</ModalTitle>
           <p className="about-version">{m.shell.about.version(status.current)}</p>
         </div>
       </div>
@@ -52,7 +50,7 @@ function AboutBody({ status, onClose }: { status: AppUpdateStatus; onClose: () =
           onDownload={(url) => { window.open(url) }}
         />
       </div>
-    </div>
+    </>
   )
 }
 
@@ -61,7 +59,7 @@ export function AboutDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   const status = useAppUpdate()
   return (
     <ModalDialog
-      open={open && status !== null} onOpenChange={onOpenChange} contentClassName="ctxmenu cfpop about-pop"
+      open={open && status !== null} onOpenChange={onOpenChange} size="confirm" closable className="about-pop"
       contentProps={{
         // Focus the dialog itself so no button opens highlighted as if it were the default action.
         onOpenAutoFocus: (event) => {
@@ -70,7 +68,7 @@ export function AboutDialog({ open, onOpenChange }: { open: boolean; onOpenChang
         },
       }}
     >
-      {status === null ? null : <AboutBody status={status} onClose={() => onOpenChange(false)} />}
+      {status === null ? null : <AboutBody status={status} />}
     </ModalDialog>
   )
 }
