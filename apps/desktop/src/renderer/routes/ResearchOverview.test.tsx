@@ -65,4 +65,20 @@ describe('研究总览的项目进展', () => {
     const cells = host.querySelectorAll('.ovpulse-row[data-proj="spec"] .ovpulse-cell')
     expect(cells[1]!.querySelector('b')!.textContent).toBe('后写的记录')
   })
+
+  it('最近进展给每条记录标上项目页科研记录的类型名和色调,没有类型的旧记录标成记录', async () => {
+    api.rows = [row([
+      { date: '2026-10-13', text: '旧记录' },
+      { date: '2026-10-14', text: '开工', kind: 'start' },
+      { date: '2026-10-15', text: '换方案', kind: 'decision' },
+      { date: '2026-10-16', text: '跑出结果', kind: 'result' },
+    ])]
+    await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))
+    const kinds = [...host.querySelectorAll('.ovcols .ovlist-row .project-signal-kind .tag')]
+      .map((tag) => `${tag.textContent} ${tag.className}`)
+    expect(kinds).toEqual([
+      '实验结果 tag tag--label tag--good', '决定 tag tag--label tag--accent',
+      '开始推进 tag tag--label tag--info', '记录 tag tag--label tag--neutral',
+    ])
+  })
 })

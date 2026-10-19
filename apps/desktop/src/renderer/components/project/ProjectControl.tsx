@@ -2,6 +2,7 @@ import type { ProjectControl, ProjectNextAction } from '../../../shared/contract
 import { useFormat, type Format } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
+import { Tag } from '../Tag.js'
 import './ProjectControl.css'
 
 export type ProjectControlVariant = 'detail' | 'summary' | 'inline'
@@ -45,9 +46,9 @@ export function ProjectNextActionView({ action, variant = 'detail', className = 
         {variant === 'summary'
           ? null
           : (
-            <span className={`project-control-source ${action.source}`}>
+            <Tag tone={action.source === 'task' ? 'accent' : 'good'}>
               {action.source === 'task' ? m.project.plan.taskMode : m.project.sections.graph}
-            </span>
+            </Tag>
           )}
         <span className="project-control-text">{action.text}</span>
       </span>
@@ -75,7 +76,7 @@ export function ProjectBlockerView({ blocker, variant = 'detail', className = ''
   return (
     <span className={`project-control-value ${variant} blocker ${className}`.trim()} title={blocker.text}>
       <span className="project-control-main">
-        <span className="project-control-source manual">{m.project.control.manualSource}</span>
+        <Tag>{m.project.control.manualSource}</Tag>
         <span className="project-control-text">{blocker.text}</span>
       </span>
     </span>

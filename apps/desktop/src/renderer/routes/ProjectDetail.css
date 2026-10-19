@@ -7,11 +7,8 @@
   min-height:38px;padding:7px 2px}
 .project-idea-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
 .project-idea-flags{display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0}
-.project-idea-state{padding:1px 7px;border-radius:var(--r-full);background:var(--field);color:var(--ter);font-size:var(--fs-cap)}
 .project-idea-source{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ter);font-size:var(--fs-sm);text-align:right}
 .project-idea-detail-meta{display:flex;align-items:center;gap:8px}
-.project-idea-detail-kind{padding:2px 8px;border-radius:var(--r-full);background:var(--accent-soft);color:var(--accent);
-  font-size:var(--fs-cap);font-weight:600}
 .project-idea-detail-body,.project-idea-detail-source{margin:0;color:var(--sec);font-size:var(--fs-base);line-height:1.65;
   white-space:pre-wrap;overflow-wrap:anywhere}
 .project-idea-detail-source{font-size:var(--fs-sm)}
@@ -47,11 +44,10 @@
   .wkside.node-document-pane{flex-basis:44%;width:44%;max-width:44%;padding:16px 18px}
 }
 
-/* The Workspace is a connection, not core metadata: its path is truncated and its state shows only as a small dot. */
+/* The Workspace is a connection, not core metadata: its path is truncated, and a dot names its state, in words when it is not connected. */
 .workspace-field{display:flex;align-items:center;gap:4px;min-width:0}
-.workspace-root{position:relative;min-width:0;flex:1;border:0;background:transparent;color:inherit;font:inherit;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;padding:0 0 0 10px}
-.workspace-root::before{content:'';position:absolute;left:0;top:50%;width:5px;height:5px;border-radius:50%;background:var(--good);transform:translateY(-50%)}
-.workspace-root.missing::before,.workspace-root.invalid::before{background:var(--bad)}
+.workspace-root{display:flex;align-items:center;gap:var(--sp-6);min-width:0;flex:1;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:0}
+.workspace-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .workspace-field .dots{flex:0 0 auto}
 .workspace-dialog{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:90;
   width:min(420px,calc(100vw - 40px));box-sizing:border-box;background:var(--card);

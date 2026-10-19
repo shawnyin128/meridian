@@ -75,10 +75,10 @@ describe('project conclusions', () => {
     expect([...pending!.children].map((cell) => cell.className)).toEqual([
       'project-signal-kind', 'project-signal-date', 'record-node', 'attn-text record-text', 'record-who conclusion-wiki',
     ])
-    expect(pending!.querySelector('.ak')!.textContent).toBe('待验证')
+    expect(pending!.querySelector('.tag--warn')!.textContent).toBe('待验证')
     expect(pending!.querySelector('.node-tag')!.textContent).toBe('宽树')
     expect(pending!.querySelector('.conclusion-wiki')!.textContent).toBe('未写入 Wiki')
-    expect(verified!.querySelector('.ak')!.textContent).toBe('已验证')
+    expect(verified!.querySelector('.tag--good')!.textContent).toBe('已验证')
     expect(verified!.querySelector('.conclusion-wiki')!.textContent).toBe('Speculative decoding v2')
     expect(verified!.classList.contains('structured-row--selected')).toBe(true)
     expect(pending!.classList.contains('structured-row--selected')).toBe(false)

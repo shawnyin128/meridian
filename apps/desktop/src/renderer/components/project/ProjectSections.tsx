@@ -16,6 +16,7 @@ import { FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Tag } from '../Tag.js'
 import './ProjectSections.css'
 
 /** Local-only grouping key for linked papers inside the relations list; never sent to Core. */
@@ -390,7 +391,7 @@ export function ProjectAgentSessions({ sessions }: { sessions: AgentSession[] })
         <div className="agcard" key={session.id}>
           <div className="agh">
             <span className="agnm">{session.title}</span>
-            <span className="stag mut">{m.project.agentSessions.done}</span>
+            <Tag>{m.project.agentSessions.done}</Tag>
             <span className="agbg">{fmt.date(session.when)}</span>
           </div>
           <CardTray

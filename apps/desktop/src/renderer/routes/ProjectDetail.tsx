@@ -56,6 +56,8 @@ import {
 } from '../components/PageShell.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
 import { plainTitle } from '../components/paper/paper-text.js'
+import { StatusDot } from '../components/StatusDot.js'
+import { Tag } from '../components/Tag.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import './shell.css'
@@ -92,8 +94,8 @@ export function ProjectIdeaPanel({
       ><span className="node-document-title">{idea.title}</span>
       </SectionHeading>
       <div className="project-idea-detail-meta">
-        <span className="project-idea-detail-kind">{m.project.idea.kind}</span>
-        {idea.archived ? <span className="project-idea-state">{m.common.archived}</span> : null}
+        <Tag tone="accent">{m.project.idea.kind}</Tag>
+        {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
         <button className="btn project-idea-open-idea" onClick={onOpenIdea}>{m.project.idea.openIdea}</button>
       </div>
       <SectionHeading variant="rail">{m.project.sections.content}</SectionHeading>
@@ -840,7 +842,7 @@ export function ProjectDetail({
                             : (
                               <NodeTag label={ideaNode.label} mode={nodeMode(ideaNode)} />
                             )}
-                          {idea.archived ? <span className="project-idea-state">{m.common.archived}</span> : null}
+                          {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
                         </span>
                         <span className="project-idea-source" title={source}>{m.project.idea.sourceTag(source)}</span>
                       </StructuredRow>
@@ -1034,10 +1036,14 @@ export function ProjectDetail({
                       )
                       : (
                         <div className="pv workspace-field" data-dots-row="" title={project.workspace.issue ?? project.workspace.root}>
-                          <button
-                            className={`workspace-root ${project.workspace.state}`}
-                            onClick={openWorkspace}
-                          >{workspaceName ?? project.workspace.root}</button>
+                          <button className="workspace-root" onClick={openWorkspace}>
+                            <StatusDot
+                              tone={project.workspace.state === 'ready' ? 'good' : 'bad'}
+                              label={m.project.workspace.state[project.workspace.state]}
+                              labelHidden={project.workspace.state === 'ready'}
+                            />
+                            <span className="workspace-name">{workspaceName ?? project.workspace.root}</span>
+                          </button>
                           <DotsMenu>
                             <MenuItem onSelect={refreshWorkspace}>{m.project.identity.refreshWorkspace}</MenuItem>
                             <MenuItem onSelect={openWorkspace}>

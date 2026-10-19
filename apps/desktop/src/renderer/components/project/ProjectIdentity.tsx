@@ -1,10 +1,14 @@
 import type { ReactNode } from 'react'
 import type { ProjectStatus } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
+import { StatusDot } from '../StatusDot.js'
+import { Tag } from '../Tag.js'
 import './ProjectIdentity.css'
 
-export const STATUS_CLASS: Record<ProjectStatus, string> =
-  { 进行中: 'ok', 搁置: 'pend', 已完成: 'mut' }
+const STATUS_TONE = { 进行中: 'good', 搁置: 'warn', 已完成: 'neutral' } as const satisfies Record<ProjectStatus, string>
+
+/** The tag tone of each priority. */
+export const PRIORITY_TONE = { p0: 'bad', p1: 'warn', p2: 'neutral' } as const
 
 export type ProjectIdentitySource = {
   name: string
@@ -14,11 +18,20 @@ export type ProjectIdentitySource = {
 }
 
 export function ProjectStatusTag({ status }: { status: ProjectStatus }) {
-  return <span className={`stag ${STATUS_CLASS[status]}`}>{status}</span>
+  return <Tag tone={STATUS_TONE[status]}>{status}</Tag>
 }
 
-export function ProjectPriorityTag({ priority }: { priority: ProjectIdentitySource['priority'] }) {
-  return <span className={`prtag ${priority}`}>{priority.toUpperCase()}</span>
+/** The tag of a project's or a task's priority; `className` places it. */
+export function ProjectPriorityTag({ priority, className }: {
+  priority: ProjectIdentitySource['priority']
+  className?: string
+}) {
+  return <Tag tone={PRIORITY_TONE[priority]} className={className}>{priority.toUpperCase()}</Tag>
+}
+
+/** The one project-name label for lists that tag a row with its project; `className` places it. */
+export function ProjectLabel({ name, className }: { name: string; className?: string }) {
+  return <Tag shape="chip" className={className} title={name}>{name}</Tag>
 }
 
 /**
@@ -38,8 +51,11 @@ export function ProjectIdentity({
     return (
       <span className="project-identity progress">
         <span className="project-identity-line">
-          <span className={`project-identity-dot ${STATUS_CLASS[project.status]}`} aria-hidden="true" />
-          <span className="project-identity-name" title={project.name}>{project.name}</span>
+          <StatusDot
+            tone={STATUS_TONE[project.status]} size="md"
+            {...(showStatus ? {} : { label: project.status, labelHidden: true })}
+          />
+          <ProjectLabel name={project.name} className="project-label" />
           {showPriority ? <ProjectPriorityTag priority={project.priority} /> : null}
           {showTopic && project.topic
             ? <span className="project-identity-topic">{project.topic}</span>

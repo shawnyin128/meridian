@@ -19,12 +19,12 @@ export function tagClass(tone: TagTone = 'neutral', shape: TagShape = 'label', e
 }
 
 type TagOwnProps = {
-  tone?: TagTone
-  shape?: TagShape
+  tone?: TagTone | undefined
+  shape?: TagShape | undefined
   /** A mark before the text, such as a StatusDot or an icon; it never truncates. */
   lead?: ReactNode
   /** Placement and identity only; the tag's radius, padding, border and fill are its own. */
-  className?: string
+  className?: string | undefined
   children: ReactNode
 }
 

@@ -25,7 +25,6 @@ export const research = {
     noRecentRecord: 'No research record yet',
     waitingForAgent: 'Waiting for an agent update',
     recentHeading: 'Recent progress',
-    eventKind: 'Progress',
     upcomingHeading: 'Upcoming milestones',
     hideHistory: 'Hide finished and shelved projects',
     showHistory: 'Show finished and shelved projects',

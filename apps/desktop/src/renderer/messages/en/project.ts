@@ -200,6 +200,7 @@ export const project = {
     connect: 'Connect',
     connected: 'Project workspace connected',
     sshConnected: 'SSH workspace connected',
+    state: { ready: 'Connected', missing: 'Not found', invalid: 'Invalid' },
   },
   control: {
     researchNode: (label: string) => `Research node · ${label}`,

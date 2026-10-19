@@ -119,19 +119,6 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 /* Second popover form, for rename/edit (FloatingTextEditor, project rename): the demo's .ctxmenu.drop. */
 .ctxmenu.drop{padding:0;border-radius:var(--r-lg);overflow:hidden;min-width:190px}
 
-/* Status tags: project list status and conclusion category, and "Completed" on an agent session card */
-.stag{font-size:var(--fs-cap);font-weight:600;border-radius:var(--r-full);padding:1px 8px;margin-left:4px;vertical-align:1px}
-.stag.ok{background:var(--tint-good);color:var(--good)}
-.stag.pend{background:var(--tint-warn);color:var(--warn)}
-.stag.mut{background:var(--tint-mut);color:var(--ter)}
-.stag.bad{background:var(--tint-bad);color:var(--bad)}
-
-/* Priority: P0 Urgent / P1 Regular / P2 Lower */
-.prtag{font-size:var(--fs-cap);font-weight:700;font-family:var(--mono);border-radius:var(--r-xs);padding:1px 6px;flex-shrink:0;line-height:var(--lh-ui)}
-.prtag.p0{background:var(--tint-bad);color:var(--bad)}
-.prtag.p1{background:var(--tint-warn);color:var(--warn)}
-.prtag.p2{background:var(--tint-mut);color:var(--ter)}
-
 /* Chip shared by the paper table's tag cells and the project's links section */
 .tagchip{display:inline-block;font-size:var(--fs-sm);background:var(--field);color:var(--sec);border-radius:var(--r-full);padding:1px 8px;margin:1px 4px 1px 0;white-space:nowrap}
 .tagchip.add-action-icon{display:inline-flex;align-items:center;justify-content:center}
@@ -197,12 +184,6 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .attnrow[data-wk]{cursor:pointer}
 .attnrow[data-wk]:hover{background:var(--hover)}
 .attn-text{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.ak.bad{background:var(--tint-bad);color:var(--bad)}
-.ak.warn{background:var(--tint-warn);color:var(--warn)}
-.ak.mut{background:var(--tint-mut);color:var(--sec)}
-.ak.info{background:var(--tint-info);color:var(--ink)}
-.ak.good{background:var(--tint-good);color:var(--good)}
-.ak.accent{background:var(--accent-soft);color:var(--accent)}
 .attn+.wkpage{margin-top:24px}
 
 .tlrow{font-size:13px;padding:8px 2px}

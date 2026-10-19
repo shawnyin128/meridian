@@ -21,7 +21,6 @@ export const research = {
     noRecentRecord: '暂无科研记录',
     waitingForAgent: '等待 Agent 回传',
     recentHeading: '最近进展',
-    eventKind: '进展',
     upcomingHeading: '接下来的里程碑',
     hideHistory: '隐藏已完成和搁置项目',
     showHistory: '显示已完成和搁置项目',

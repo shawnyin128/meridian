@@ -18,7 +18,9 @@ import { FadeText } from '../FadeText.js'
 import { IconPlus } from '../icons.js'
 import { PanelClose } from '../PanelClose.js'
 import { SectionHeading } from '../PageShell.js'
+import { StatusDot, type StatusDotTone } from '../StatusDot.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Tag, TagButton } from '../Tag.js'
 import { ProjectEventRow } from './ProjectSignals.js'
 import './ResearchGraph.css'
 
@@ -61,6 +63,11 @@ const GRAPH_MAX_ZOOM = 1.8
 
 const clampGraphZoom = (zoom: number) =>
   Math.min(GRAPH_MAX_ZOOM, Math.max(GRAPH_MIN_ZOOM, zoom))
+
+/** The dot colour of each group of a node's branches, as the graph colours those nodes. */
+const BRANCH_TONE = {
+  active: 'warn', repairable: 'warn', useful: 'good', dead: 'bad', candidate: 'neutral',
+} as const satisfies Record<string, StatusDotTone>
 
 /** A node's research state, the one the graph colours its dot by. */
 export const nodeMode = (node: GraphNode): NonNullable<GraphNode['mode']> =>
@@ -362,10 +369,10 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
         </div>
       </div>
       <div className="glegend">
-        <span className="legend-item"><span className="ld progress" />{m.project.graph.legend.needsRepair}</span>
-        <span className="legend-item"><span className="ld verified" />{m.project.graph.legend.verified}</span>
-        <span className="legend-item"><span className="ld failed" />{m.project.graph.legend.failed}</span>
-        <span className="legend-item"><span className="ld candidate" />{m.project.graph.legend.candidate}</span>
+        <span className="legend-item"><StatusDot tone="warn" size="md" />{m.project.graph.legend.needsRepair}</span>
+        <span className="legend-item"><StatusDot tone="good" size="md" />{m.project.graph.legend.verified}</span>
+        <span className="legend-item"><StatusDot tone="bad" size="md" />{m.project.graph.legend.failed}</span>
+        <span className="legend-item"><StatusDot tone="neutral" size="md" />{m.project.graph.legend.candidate}</span>
         {routes.nodes.size === 0 ? null : (
           <>
             <span className="legend-divider" aria-hidden="true" />
@@ -422,7 +429,7 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
     .flatMap(([, to]) => byId.get(to) ?? [])
   const activeNodeIds = new Set(graph.activeNodes ?? [])
   const isActive = (child: GraphNode) => activeNodeIds.has(child.id)
-  const branches = [
+  const branches = ([
     {
       key: 'active', label: m.project.graph.legend.inProgress,
       nodes: children.filter(isActive),
@@ -443,7 +450,7 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
       key: 'candidate', label: m.project.graph.legend.candidate,
       nodes: children.filter((child) => !isActive(child) && nodeMode(child) === 'unresolved'),
     },
-  ].filter((group) => group.nodes.length > 0)
+  ] satisfies { key: keyof typeof BRANCH_TONE; label: string; nodes: GraphNode[] }[]).filter((group) => group.nodes.length > 0)
   const nodeEvents = sortRecordsNewestFirst(events.filter((event) => event.node === node.id))
   const document = splitNodeDocument(node.markdown)
 
@@ -464,9 +471,10 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
                 <span className="node-branch-label">{group.label}</span>
                 <div className="node-branch-list">
                   {group.nodes.map((child) => (
-                    <button className="node-branch" key={child.id} onClick={() => onSelect(child.id)}>
-                      <span className="node-branch-dot" />{child.label}
-                    </button>
+                    <TagButton
+                      shape="chip" className="node-branch" key={child.id} onClick={() => onSelect(child.id)}
+                      lead={<StatusDot tone={BRANCH_TONE[group.key]} />}
+                    >{child.label}</TagButton>
                   ))}
                 </div>
               </div>
@@ -482,7 +490,7 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
             {tasks.map((task) => (
               <StructuredRow className="node-task-row" data-task={task.id} key={task.id} onActivate={() => onSelectTask(task.id)}>
                 <FadeText>{task.title}</FadeText>
-                {task.origin === 'agent' ? <span className="agtag">{m.project.records.who.agent}</span> : null}
+                {task.origin === 'agent' ? <Tag>{m.project.records.who.agent}</Tag> : null}
               </StructuredRow>
             ))}
           </StructuredList>

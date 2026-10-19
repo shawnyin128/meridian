@@ -8,6 +8,7 @@ import { dnum, isoOf } from '../../../shared/dates.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { Icon } from '../icons.js'
+import { ProjectLabel, ProjectPriorityTag } from '../project/ProjectIdentity.js'
 import {
   DAY_SLOT_HOURS, shiftTaskWindow, timelineDayAt, TimelineControls, TimelineGrid,
   TimelineNowMarker, timelineTaskSpan, useFittedTimelineWindow, useTimelinePeriod,
@@ -219,14 +220,14 @@ export function TimelineBoard({
                   ><Icon sw={2.4}><path d="M6 9l6 6 6-6" /></Icon></button>
                 ) : null}
                 {showProjectNames
-                  ? <span className="timeline-project-label" title={row.project.name}>{row.project.name}</span>
+                  ? <ProjectLabel name={row.project.name} className="timeline-project-label" />
                   : null}
                 <span className="timeline-item-label" title={labelFor(row)}>{labelFor(row)}</span>
                 {row.kind === 'milestones' && folded.has(row.project.id) && shown.get(row.project.id)!.length > 0
                   ? <span className="timeline-folded-count">{m.timeline.fold.hidden(shown.get(row.project.id)!.length)}</span>
                   : null}
                 {row.kind === 'task'
-                  ? <span className={`timeline-task-priority ${row.task.priority}`}>{row.task.priority.toUpperCase()}</span>
+                  ? <ProjectPriorityTag priority={row.task.priority} className="timeline-task-priority" />
                   : null}
               </div>
             )

@@ -16,6 +16,13 @@ const RETIRED: { cls: string; scope?: string }[] = [
   { cls: 'storage-source' }, { cls: 'service-status-pill' }, { cls: 'extension-state' },
   { cls: 'n', scope: 'srow' }, { cls: 'n', scope: 'gxrow' }, { cls: 'review-entry-count' },
   { cls: 'collapsible-group-count' }, { cls: 'research-map-count' }, { cls: 'stchip' },
+  { cls: 'ak' }, { cls: 'stag' }, { cls: 'prtag' }, { cls: 'timeline-task-priority' }, { cls: 'agtag' },
+  { cls: 'project-control-source' }, { cls: 'idea-source-kind' }, { cls: 'idea-project-tag' }, { cls: 'idea-archive-tag' },
+  { cls: 'project-idea-state' }, { cls: 'project-idea-detail-kind' }, { cls: 'ovpulse-signal' },
+  { cls: 'timeline-project-label' }, { cls: 'ovlist-project' }, { cls: 'project-identity-name', scope: 'progress' },
+  { cls: 'node-branch' }, { cls: 'date-chip' }, { cls: 'dchip' },
+  { cls: 'gdot' }, { cls: 'ld' }, { cls: 'node-tag-dot' }, { cls: 'node-branch-dot' }, { cls: 'project-identity-dot' },
+  { cls: 'workspace-root::before' },
 ]
 
 /** Properties that draw a tag: its fill, text colour, border, radius, padding and type. */

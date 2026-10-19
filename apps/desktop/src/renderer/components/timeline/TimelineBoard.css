@@ -20,12 +20,6 @@
 .glrow .gln{flex:1;min-width:0;overflow:hidden;mask-image:var(--clipfade)}
 .timeline-item-label{flex:1;min-width:0;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade);color:var(--ink)}
 .timeline-label-row.msl .timeline-item-label{color:var(--sec);font-weight:600}
-.timeline-task-priority{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:17px;border-radius:var(--r-xs);font-size:10px;font-weight:700;flex-shrink:0}
-.timeline-task-priority.p0{background:var(--tint-bad);color:var(--bad)}
-.timeline-task-priority.p1{background:var(--tint-warn);color:var(--warn)}
-.timeline-task-priority.p2{background:var(--tint-mut);color:var(--ter)}
-.gdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.gdot.ok{background:var(--good)}.gdot.pend{background:var(--warn)}.gdot.mut{background:var(--ter)}
 .gwrap{overflow-x:scroll;flex:1;min-width:0}
 .gcanvas{position:relative;border-bottom:1px solid var(--sep2)}
 .glabels .glrow:last-child{border-bottom:1px solid var(--sep2)}

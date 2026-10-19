@@ -11,7 +11,7 @@ import { EmptyState } from '../EmptyState.js'
 import { FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
-import { CountBadge } from '../Tag.js'
+import { CountBadge, Tag } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
 import './ReviewQueue.css'
@@ -116,8 +116,8 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
               <StructuredRow key={p.id} className="review-row" data-proposal={p.id}>
                 <div className="review-head">
                   <span className="review-title">{p.proposal ? <PaperText text={p.proposal.title} /> : r.unreadable}</span>
-                  {p.staleNow ? <span className="stag pend">{r.stale}</span> : null}
-                  {(p.unverified ?? []).length > 0 ? <span className="stag pend">{r.unverified}</span> : null}
+                  {p.staleNow ? <Tag tone="warn">{r.stale}</Tag> : null}
+                  {(p.unverified ?? []).length > 0 ? <Tag tone="warn">{r.unverified}</Tag> : null}
                 </div>
                 <div className="review-meta">{source(p)}</div>
                 {p.proposal?.rationale ? <p className="review-note">{p.proposal.rationale}</p> : null}
@@ -185,10 +185,10 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                 <StructuredRow key={p.id} className="review-row" data-proposal={p.id}>
                   <div className="review-head">
                     <span className="review-title">{p.proposal ? <PaperText text={p.proposal.title} /> : r.unreadable}</span>
-                    <span className={`stag ${p.status === 'applied' ? 'ok' : 'mut'}`}>
+                    <Tag tone={p.status === 'applied' ? 'good' : 'neutral'}>
                       {p.status === 'applied' ? r.applied
                         : p.reason?.kind === 'declined' ? r.rejected : `${r.rejected} · ${r.reasonKind[p.reason?.kind ?? 'invalid']}`}
-                    </span>
+                    </Tag>
                   </div>
                   <div className="review-meta">
                     {[source(p), p.decided === null ? null : fmt.date(dayOf(p.decided.at))].filter((part) => part !== null).join(' → ')}

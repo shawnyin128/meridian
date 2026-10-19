@@ -89,8 +89,8 @@ describe('ReviewQueue', () => {
       '~ 「拐点在宽度 6」与「x」冲突：批量下不同',
     ])
     expect([...row('p2').querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual(['+ 新增结论：新结论', '+ 　实验 · draft 效率 · 加宽实验'])
-    expect(row('p1').querySelector('.stag')).toBeNull()
-    expect(row('p2').querySelector('.stag.pend')!.textContent).toBe('已过期')
+    expect(row('p1').querySelector('.tag')).toBeNull()
+    expect(row('p2').querySelector('.tag--warn')!.textContent).toBe('已过期')
     expect(row('p2').textContent).toContain('这些引句没有文字层可核对')
     expect(row('p1').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(false)
     expect(row('p2').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(true)
@@ -108,7 +108,7 @@ describe('ReviewQueue', () => {
   })
 
   it('引用了没验证的项目结论:标出结论待验证,应用按不了,点结论去验证它', () => {
-    expect(row('p6').querySelector('.stag.pend')!.textContent).toBe('结论待验证')
+    expect(row('p6').querySelector('.tag--warn')!.textContent).toBe('结论待验证')
     expect(row('p6').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(true)
     const chip = row('p6').querySelector<HTMLElement>('.review-unverified .tagchip')!
     expect(chip.textContent).toBe('加宽实验')
@@ -154,14 +154,14 @@ describe('ReviewQueue', () => {
 
   it('已处理的在自己的小标题下列出,各带结果', () => {
     expect(host.querySelector('.section-heading')!.textContent).toBe('已处理 · 3')
-    expect(row('p3').querySelector('.stag.ok')!.textContent).toBe('已应用')
-    expect(row('p4').querySelector('.stag.mut')!.textContent).toBe('已拒绝 · 过期')
+    expect(row('p3').querySelector('.tag--good')!.textContent).toBe('已应用')
+    expect(row('p4').querySelector('.tag--neutral')!.textContent).toBe('已拒绝 · 过期')
     expect(row('p4').textContent).toContain('提案过期:topics/sd')
     expect([...row('p4').querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual([
       '~ 「拐点在宽度 6」的冲突：不算冲突（场景不同）', '- 撤回「拐点在宽度 6」：重跑后不成立',
     ])
     expect(row('p5').querySelector('.review-title')!.textContent).toBe('读不了的提案')
-    expect(row('p5').querySelector('.stag')!.textContent).toBe('已拒绝 · 无效')
+    expect(row('p5').querySelector('.tag')!.textContent).toBe('已拒绝 · 无效')
     expect(row('p5').querySelector('.diff')).toBeNull()
   })
 
