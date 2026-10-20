@@ -355,7 +355,9 @@ function diffLines(before: Entity | undefined, after: Entity | undefined): strin
  * snapshot holds a cell the columns as they stand now could not take. A paper
  * put back from the trash, by restoring it or by undoing its deletion, has the
  * cells those columns could not take emptied through updatePaper, recorded as a
- * change of its own.
+ * change of its own. When the log itself cannot be written, a record of a write
+ * that landed stays in `log` and is written with the next save, while archiving,
+ * deleting or expiring records leaves `log` as it was.
  */
 export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
   let rows = log.load()
@@ -426,8 +428,9 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
   const dropExpired = (): void => {
     const cutoff = nowMs() - TRASH_RETENTION_DAYS * 86_400_000
     if (!rows.some((row) => row.restore !== null && row.at <= cutoff)) return
-    rows = rows.map((row) => (row.restore !== null && row.at <= cutoff ? { ...row, restore: null } : row))
-    log.save(rows)
+    const next = rows.map((row) => (row.restore !== null && row.at <= cutoff ? { ...row, restore: null } : row))
+    log.save(next)
+    rows = next
   }
 
   /** Restoration work for a record. Snapshot mode stores the previous entity; explicit work is used as-is. */
@@ -798,26 +801,30 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       const row = rows.find((r) => r.id === id)
       if (!row) throw new Error(`最近变动里没有这一条：${id}`)
       if (row.archived) return
-      rows = rows.map((r) => (r.id === id ? { ...r, archived: true } : r))
-      log.save(rows)
+      const next = rows.map((r) => (r.id === id ? { ...r, archived: true } : r))
+      log.save(next)
+      rows = next
     },
 
     archiveAllChanges() {
       if (rows.every((r) => r.archived)) return
-      rows = rows.map((r) => (r.archived ? r : { ...r, archived: true }))
-      log.save(rows)
+      const next = rows.map((r) => (r.archived ? r : { ...r, archived: true }))
+      log.save(next)
+      rows = next
     },
 
     deleteChange(id) {
       if (!rows.some((row) => row.id === id)) throw new Error(`最近变动里没有这一条：${id}`)
-      rows = rows.filter((row) => row.id !== id)
-      log.save(rows)
+      const next = rows.filter((row) => row.id !== id)
+      log.save(next)
+      rows = next
     },
 
     clearArchivedChanges() {
       if (!rows.some((row) => row.archived)) return
-      rows = rows.filter((row) => !row.archived)
-      log.save(rows)
+      const next = rows.filter((row) => !row.archived)
+      log.save(next)
+      rows = next
     },
   }
 }
