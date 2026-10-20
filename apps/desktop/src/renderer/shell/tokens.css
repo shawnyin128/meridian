@@ -45,7 +45,8 @@
   --good-text:color-mix(in srgb,var(--good) 60%,var(--ink)); --warn-text:color-mix(in srgb,var(--warn) 55%,var(--ink));
   /* A rated star, the same in both themes. */
   --star:#e3a520;
-  --mslane:rgba(184,134,11,.07);
+  /* The timeline's milestone lane: the muted neutral tint, a step off the rows around it. */
+  --mslane:var(--tint-mut);
   /*
    * Content columns and cards scale with the window width in three steps, not continuously: narrow
    * (default), medium (≥1600) and wide (≥2000). --pagew is the content column width of list screens;
@@ -147,7 +148,6 @@
   --chip:rgba(245,247,251,.08); --track:rgba(0,0,0,.45);
   --good:#30d158; --warn:#ffd60a; --bad:#ff453a; --hl:rgba(255,214,10,.35);
   --good-text:var(--good); --warn-text:var(--warn); --bad-text:color-mix(in srgb,var(--bad) 50%,var(--ink));
-  --mslane:rgba(255,214,10,.06);
   --diff-add:rgba(48,209,88,.14); --diff-del:rgba(255,69,58,.12);
   --sbthumb:rgba(245,247,251,.28); --sbthumb-h:rgba(245,247,251,.45);
   --q-bg:rgba(4,11,20,.4);

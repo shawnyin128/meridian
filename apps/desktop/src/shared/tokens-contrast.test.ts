@@ -340,11 +340,17 @@ describe('tokens.css 的决定值', () => {
   it('亮色的面、文字、分隔线、输入底、悬停和按下的叠层、标签底、选中、滚动条、遮罩和阴影都不带色相', () => {
     const greys = ['--desktop', '--window', '--sidebar', '--content', '--card', '--raised', '--ink', '--sec', '--ter',
       '--sep', '--sep2', '--sep-strong', '--field', '--hover', '--press', '--chip', '--track', '--tint-mut',
-      '--selected', '--sel', '--sbthumb', '--sbthumb-h', '--scrim', '--q-bg', '--hl-note']
+      '--selected', '--sel', '--sbthumb', '--sbthumb-h', '--scrim', '--q-bg', '--hl-note', '--mslane']
     const tinted = greys.filter((name) => { const { r, g, b } = colour('light', name); return r !== g || g !== b })
     const shadows = ['--sh-1', '--sh-2', '--sh-3', '--sh-paper'].filter((name) => [...resolve('light', name)
       .matchAll(/rgba\((\d+),(\d+),(\d+),/g)].some(([, r, g, b]) => r !== g || g !== b))
     expect([...tinted, ...shadows]).toEqual([])
+  })
+
+  it('暗色时间线的里程碑行和别的叠层一样是中性的,不带黄色', () => {
+    const { r, g, b } = colour('dark', '--mslane')
+    const ink = colour('dark', '--ink')
+    expect({ r, g, b }).toEqual({ r: ink.r, g: ink.g, b: ink.b })
   })
 
   it('选中是一块中性的底配 --ink 的字,在两种主题下都比悬停和输入底深一级,对比至少 1.1:1', () => {
