@@ -18,6 +18,7 @@ import {
 import type { TimelineScale } from './TimelineScale.js'
 import { useGanttDrag } from '../../hooks/useGanttDrag.js'
 import { useDragReorder } from '../../hooks/useDragReorder.js'
+import { useScrollFade } from '../../hooks/useScrollFade.js'
 import './TimelineBoard.css'
 
 export type TimelineProject = {
@@ -101,6 +102,7 @@ export function TimelineBoard({
   const fmt = useFormat()
   const m = useMessages()
   const wrap = useRef<HTMLDivElement>(null)
+  const wrapFade = useScrollFade('x', wrap)
   const canvas = useRef<HTMLDivElement>(null)
   const todayIso = useToday()
   const period = useTimelinePeriod(todayIso)
@@ -270,7 +272,7 @@ export function TimelineBoard({
             })}
           </div>
         </Toolbar>
-        <div className="gwrap" ref={wrap}>
+        <div className="gwrap" ref={wrapFade}>
           <Toolbar orientation="vertical">
             <div className="gcanvas" ref={canvas} style={{ width: days * dayWidth }}>
               <TimelineGrid window={window} scale={scale} today={today} />

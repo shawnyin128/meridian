@@ -23,6 +23,7 @@ function hoverTip(target: Element): string | null {
 }
 
 describe('DotsMenu', () => {
+  beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }) })
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
@@ -47,6 +48,7 @@ describe('DotsMenu', () => {
 })
 
 describe('ChoicePicker', () => {
+  beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }) })
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
@@ -85,6 +87,7 @@ describe('ChoicePicker', () => {
 })
 
 describe('ChoicePicker', () => {
+  beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }) })
   let host: HTMLDivElement
   let root: Root
 
@@ -144,6 +147,7 @@ describe('ChoicePicker', () => {
 })
 
 describe('DateButton', () => {
+  beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }) })
   let host: HTMLDivElement
   let root: Root
 

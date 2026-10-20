@@ -927,7 +927,7 @@ describe('PaperTable', () => {
     expect(listCallCount).toBe(listed)
   })
 
-  it('表格左缘是吸住的标题列、右缘是吸住的行操作列,横向滚到哪儿两边都不淡出', async () => {
+  it('表格的上、左、右三边由吸住的表头、标题列和操作列守着；横向滚动时只标出藏着内容的那一边，由吸住的格子去淡出', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
@@ -937,12 +937,13 @@ describe('PaperTable', () => {
     Object.defineProperty(wrap, 'clientWidth', { configurable: true, get: () => 900 })
     Object.defineProperty(wrap, 'scrollWidth', { configurable: true, get: () => 1500 })
     Object.defineProperty(wrap, 'scrollLeft', { configurable: true, get: () => offset })
+    expect(wrap.dataset.fadeHeld).toBe('left right top')
     act(() => { wrap.dispatchEvent(new Event('scroll')) })
-    expect(wrap.hasAttribute('data-fade')).toBe(false)
+    expect(wrap.dataset.fade).toBe('right')
     act(() => { offset = 300; wrap.dispatchEvent(new Event('scroll')) })
-    expect(wrap.hasAttribute('data-fade')).toBe(false)
+    expect(wrap.dataset.fade).toBe('left right')
     act(() => { offset = 600; wrap.dispatchEvent(new Event('scroll')) })
-    expect(wrap.hasAttribute('data-fade')).toBe(false)
+    expect(wrap.dataset.fade).toBe('left')
   })
 
   it('阅读状态可在顶栏直接筛选,不必先进入分组索引', async () => {

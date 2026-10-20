@@ -16,6 +16,7 @@ import { tagClass } from './Tag.js'
 import { ToggleGroup, ToggleItem } from './Toolbar.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
+import { useScrollFade } from '../hooks/useScrollFade.js'
 import './PaperMetadata.css'
 
 /**
@@ -176,6 +177,7 @@ export function PaperMetadata({ paper, readStateLabel, onSaved, titled = true }:
   titled?: boolean
 }) {
   const m = useMessages()
+  const listFade = useScrollFade('y')
   const labels = { ...m.papers.metadata.fields, readState: readStateLabel }
   const notice = useNotice()
   const savePatch = usePaperSave(paper, onSaved, labels)
@@ -193,7 +195,7 @@ export function PaperMetadata({ paper, readStateLabel, onSaved, titled = true }:
 
   return (
     <div className="paper-meta" aria-busy={ratingSaving}>
-      <dl className="paper-meta-list">
+      <dl className="paper-meta-list" ref={listFade}>
         {titled ? editableRow('title', <PaperText text={paper.title} />) : null}
         {editableRow('shortTitle', paper.shortTitle ? <PaperText text={paper.shortTitle} /> : '')}
         {editableRow('authors', paper.authors?.join(', ') ?? '')}

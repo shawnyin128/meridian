@@ -86,6 +86,7 @@ export function Settings() {
   const m = useMessages()
   const { open, requestedCategory, setOpen } = useSettingsOpen()
   const paneFade = useScrollFade('y')
+  const sideFade = useScrollFade('y')
   const [current, setCurrent] = useState<CategoryKey>(CATEGORIES[0])
   const [chats, setChats] = useState<ChatSession[] | null>(null)
   const [location, setLocation] = useState<LibraryLocation | null>(null)
@@ -419,7 +420,7 @@ export function Settings() {
 
   return (
     <ModalDialog open={open} onOpenChange={setOpen} size="wide" closable className="setdlg">
-      <div className="set-side">
+      <div className="set-side" ref={sideFade} data-fade-paint="">
         <ModalTitle className="set-t">{m.settings.title}</ModalTitle>
         {visibleCategories.map((c) => (
           <NavRow

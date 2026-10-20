@@ -63,6 +63,7 @@ import { Tooltip } from '../components/Tooltip.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
+import { useScrollFade } from '../hooks/useScrollFade.js'
 import './shell.css'
 import './ProjectDetail.css'
 
@@ -153,6 +154,7 @@ export function ProjectDetail({
 }) {
   const fmt = useFormat()
   const m = useMessages()
+  const railFade = useScrollFade('y')
   const [project, setProject] = useState<Project | null>(null)
   const [linkedIdeas, setLinkedIdeas] = useState<ResearchIdea[] | null>(null)
   const [relAdding, setRelAdding] = useState(false)
@@ -848,7 +850,7 @@ export function ProjectDetail({
           </div>
 
           <DetailPanel
-            open={detailOpen} mode="resize"
+            open={detailOpen} mode="resize" ref={railFade} data-fade-paint=""
             className={`wkside project-detail-panel${detailOpen ? ' node-document-pane' : ''}`}
           >
             {selectedTask !== undefined

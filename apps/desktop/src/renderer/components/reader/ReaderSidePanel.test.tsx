@@ -56,6 +56,7 @@ function setValue(input: HTMLTextAreaElement, value: string): void {
 }
 
 describe('ReaderSidePanel', () => {
+  beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }) })
   let root: Root | null = null
   let host: HTMLElement
 

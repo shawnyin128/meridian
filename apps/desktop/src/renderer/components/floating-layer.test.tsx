@@ -28,6 +28,7 @@ const LAYERS: Record<string, () => ReactElement> = {
 }
 
 describe('浮层与窗口边缘', () => {
+  beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }) })
   let root: Root | null = null
 
   beforeEach(() => {

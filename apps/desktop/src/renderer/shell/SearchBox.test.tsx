@@ -31,6 +31,7 @@ async function type(value: string): Promise<void> {
 }
 
 describe('SearchBox', () => {
+  beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }) })
   let root: Root | null = null
 
   beforeEach(() => {

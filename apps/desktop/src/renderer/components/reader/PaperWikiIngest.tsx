@@ -5,6 +5,7 @@ import type {
 } from '../../../shared/contract.js'
 import { harness } from '../../ipc.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
+import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { errorLabel, failureLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
@@ -41,6 +42,7 @@ export function PaperWikiIngest({ paper, reading }: {
   reading: PaperReading
 }) {
   const m = useMessages()
+  const ingestFade = useScrollFade('y')
   const [plan, setPlan] = useState<HarnessPlan | null>(null)
   const [pending, setPending] = useState<HarnessPendingPaperWikiResult>(null)
   const [receipt, setReceipt] = useState<HarnessRunReceipt | null>(null)
@@ -174,7 +176,7 @@ export function PaperWikiIngest({ paper, reading }: {
   const proposal = receipt?.proposal ?? pending?.proposal
 
   return (
-    <section className="wiki-ingest" aria-label={m.wiki.addToWiki}>
+    <section className="wiki-ingest" ref={ingestFade} aria-label={m.wiki.addToWiki}>
       <ReaderPanelHeader title={m.wiki.addToWiki} />
       <div className="wiki-ingest-body">
         <div className="wiki-ingest-scope">

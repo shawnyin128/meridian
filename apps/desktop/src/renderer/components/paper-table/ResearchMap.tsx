@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { PaperRow } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
+import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { ContextMenu, ContextMenuItem } from '../ContextMenu.js'
 import { EmptyState } from '../EmptyState.js'
 import { FadeText } from '../FadeText.js'
@@ -21,6 +22,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper }: 
   onReadPaper: (paper: PaperRow) => void
 }) {
   const m = useMessages()
+  const mapFade = useScrollFade('y')
   const map = useMemo(() => buildResearchMap(rows), [rows])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected = map.groups.find((group) => group.id === selectedId) ?? map.groups[0]
@@ -32,7 +34,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper }: 
   const reason = (item: ResearchMapReason): string => m.papers.researchMap.reason[item.kind](item.label)
 
   return (
-    <section className="research-map" aria-label={m.papers.researchMap.title}>
+    <section className="research-map" ref={mapFade} aria-label={m.papers.researchMap.title}>
       <div className="research-map-intro">
         <div className="research-map-copy">
           <div className="research-map-title">

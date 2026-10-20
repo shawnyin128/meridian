@@ -68,6 +68,7 @@ describe('WikiClaims', () => {
   const links = { openPage: vi.fn(), openProject: vi.fn(), openReader: vi.fn() }
 
   beforeEach(async () => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''

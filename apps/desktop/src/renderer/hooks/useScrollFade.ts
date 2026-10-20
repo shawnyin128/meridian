@@ -4,24 +4,31 @@ import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 const SLACK = 1
 
 /**
- * Returns the ref for a scroll area that fades toward an edge of `axis` while content is hidden past
- * it. The area's `data-fade` lists those edges, `top` and `bottom` or `left` and `right`, and is
- * absent while all of the content shows; the stylesheets fade by it. It is measured again on every
- * render of the caller, on scroll and on window resize, and dropped when the ref lets go of the area.
+ * Returns the ref for a scroll area that fades toward an edge of `axis` (`both` for the two) while
+ * content is hidden past it. The area's `data-fade` lists those edges, `top`, `bottom`, `left` and
+ * `right`, and is absent while all of the content shows; the stylesheets fade by it. It is measured
+ * again on every render of the caller, on scroll, on window resize and whenever the area or one of
+ * its children changes size, and dropped when the ref lets go of the area. `held`, when given, is
+ * kept pointing at the area too, for a caller that also needs the element.
  */
-export function useScrollFade(axis: 'x' | 'y'): (area: HTMLElement | null) => void {
+export function useScrollFade<T extends HTMLElement>(
+  axis: 'x' | 'y' | 'both', held?: { current: T | null },
+): (area: T | null) => void {
   const node = useRef<HTMLElement | null>(null)
+  const sizes = useRef<ResizeObserver | null>(null)
+  const children = useRef<MutationObserver | null>(null)
   const update = useCallback(() => {
     const area = node.current
     if (area === null) return
-    const y = axis === 'y'
-    const offset = y ? area.scrollTop : area.scrollLeft
-    const shown = y ? area.clientHeight : area.clientWidth
-    const total = y ? area.scrollHeight : area.scrollWidth
-    const edges = [
-      offset > SLACK ? (y ? 'top' : 'left') : null,
-      offset + shown < total - SLACK ? (y ? 'bottom' : 'right') : null,
-    ].filter((edge) => edge !== null)
+    const edges: string[] = []
+    if (axis !== 'x') {
+      if (area.scrollTop > SLACK) edges.push('top')
+      if (area.scrollTop + area.clientHeight < area.scrollHeight - SLACK) edges.push('bottom')
+    }
+    if (axis !== 'y') {
+      if (area.scrollLeft > SLACK) edges.push('left')
+      if (area.scrollLeft + area.clientWidth < area.scrollWidth - SLACK) edges.push('right')
+    }
     if (edges.length > 0) area.dataset.fade = edges.join(' ')
     else delete area.dataset.fade
   }, [axis])
@@ -32,13 +39,30 @@ export function useScrollFade(axis: 'x' | 'y'): (area: HTMLElement | null) => vo
     return () => window.removeEventListener('resize', update)
   }, [update])
 
-  return useCallback((area: HTMLElement | null) => {
+  return useCallback((area: T | null) => {
+    if (held !== undefined) held.current = area
     if (node.current !== null) {
       node.current.removeEventListener('scroll', update)
       delete node.current.dataset.fade
     }
+    sizes.current?.disconnect()
+    children.current?.disconnect()
     node.current = area
-    area?.addEventListener('scroll', update, { passive: true })
+    if (area !== null) {
+      area.addEventListener('scroll', update, { passive: true })
+      // The content can grow or the area shrink without a render of the caller, such as a sibling appearing.
+      const observed = new ResizeObserver(update)
+      const watch = () => {
+        observed.disconnect()
+        observed.observe(area)
+        for (const child of area.children) observed.observe(child)
+      }
+      watch()
+      const added = new MutationObserver(() => { watch(); update() })
+      added.observe(area, { childList: true })
+      sizes.current = observed
+      children.current = added
+    }
     update()
-  }, [update])
+  }, [update, held])
 }

@@ -9,7 +9,8 @@
 .setdlg>.modal-body{display:flex;padding:0;overflow:hidden}
 /* Left column of categories, matching the sidebar: same background, padding and .srow rows */
 .set-side{flex:0 0 190px;box-sizing:border-box;background:var(--sidebar);
-  border-right:1px solid var(--sep);padding:var(--sp-20) var(--sp-10);overflow-y:auto}
+  border-right:1px solid var(--sep);padding:var(--sp-20) var(--sp-10);overflow-y:auto;
+  --fade-paint:var(--sidebar);--fade-pad-top:var(--sp-20);--fade-pad-bottom:var(--sp-20)}
 .set-side .set-t{padding:0 var(--sp-8);margin:0 0 var(--sp-10)}
 .set-side .srow.set-sub{height:28px;padding-left:var(--sp-20);font-size:var(--fs-sm)}
 /* Right column of content, matching a screen's main content area */

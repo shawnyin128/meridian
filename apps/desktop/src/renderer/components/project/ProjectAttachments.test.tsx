@@ -10,6 +10,7 @@ describe('ProjectAttachments', () => {
   let root: Root
 
   beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     host = document.createElement('div')
     document.body.append(host)

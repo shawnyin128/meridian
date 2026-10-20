@@ -34,6 +34,7 @@ import { PickRow, type PickHit } from '../components/PickRow.js'
 import { nextKey, slugOf } from '../lib/slug.js'
 import { useRowCap } from '../hooks/useRowCap.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
+import { useScrollFade } from '../hooks/useScrollFade.js'
 import { PaperUnderstanding } from '../components/paper/PaperUnderstanding.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
@@ -152,6 +153,7 @@ function Table({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: {
 }) {
   const m = useMessages()
   const wrap = useRef<HTMLDivElement | null>(null)
+  const wrapFade = useScrollFade('both', wrap)
   const cap = useRowCap(wrap, comparisonRows, EMBEDDED_LIST_ROW_LIMIT)
   if (adding === undefined) {
     if (agg.columns.length === 0 && agg.rows.length === 0) {
@@ -160,7 +162,7 @@ function Table({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: {
     if (agg.rows.length === 0) return <EmptyState variant="section">{m.wiki.noPapers}</EmptyState>
   }
   return (
-    <div className="cmpwrap" ref={wrap} style={cap === null ? undefined : { maxHeight: cap }}>
+    <div className="cmpwrap" ref={wrapFade} data-fade-held="top" style={cap === null ? undefined : { maxHeight: cap }}>
       <table className="cmp">
         <thead>
           <tr>
@@ -335,6 +337,8 @@ function Toc({ body, main }: { body: string; main: RefObject<HTMLDivElement | nu
 export function Wiki() {
   const fmt = useFormat()
   const m = useMessages()
+  const railFade = useScrollFade('y')
+  const paperRailFade = useScrollFade('y')
   const entry = useScreenEntry()
   const { jump, open: jumpTo, returnTo } = useJump()
   const { revision } = useVaultRevision()
@@ -785,7 +789,7 @@ export function Wiki() {
                   titles={shownAgg.titles} empty={<EmptyState variant="section">{m.wiki.noBody}</EmptyState>}
                 />
               </div>
-              <div className="wkside">
+              <div className="wkside" ref={railFade} data-fade-paint="">
                 <SectionHeading variant="rail">{m.project.identity.heading}</SectionHeading>
                 <div className="wkprops">
                   <div className="pk">{m.project.identity.typeLabel}</div><div className="pv">{shownAgg.kindLabel}</div>
@@ -868,7 +872,7 @@ export function Wiki() {
                   empty={<EmptyState variant="section">{m.wiki.noInternalizedContent}</EmptyState>}
                 />
               </div>
-              <div className="wkside">
+              <div className="wkside" ref={paperRailFade} data-fade-paint="">
                 <SectionHeading variant="rail">{m.project.identity.heading}</SectionHeading>
                 <div className="wkprops">
                   <div className="pk">{m.project.identity.typeLabel}</div><div className="pv">{m.wiki.paperKind}</div>

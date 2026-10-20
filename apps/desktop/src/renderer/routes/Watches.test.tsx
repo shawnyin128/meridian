@@ -70,6 +70,7 @@ function button(row: Element, label: string): HTMLButtonElement {
 describe('WatchSettings', () => {
   let host: HTMLDivElement
   beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     host = document.createElement('div')
     document.body.append(host)

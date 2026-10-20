@@ -19,12 +19,13 @@
  * The detail panel follows a research graph node's layout, content on the left and its document on
  * the right, but keeps the idea itself editable.
  */
-.idea-detail-slot{--detail-panel-width:min(420px,42vw);--detail-panel-gap:var(--sp-24);position:sticky;top:0;align-self:flex-start;
+.idea-detail-slot{--detail-panel-width:min(420px,42vw);--detail-panel-gap:var(--sp-24);position:sticky;top:0;z-index:2;align-self:flex-start;
   max-height:calc(100vh - 108px)}
 /* The idea itself is the shared IdeaPanel, with the document panes' padding; see ResearchGraph.css. */
 .idea-detail-panel{width:100%;max-height:calc(100vh - 108px);
   box-sizing:border-box;padding:var(--sp-20) var(--sp-24);border:1px solid var(--sep);border-radius:var(--r-card);background:var(--card);
-  box-shadow:var(--sh-1);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
+  box-shadow:var(--sh-1);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+  --fade-paint:var(--card);--fade-pad-top:var(--sp-20);--fade-pad-bottom:var(--sp-20)}
 .idea-detail-editor{display:grid;gap:var(--sp-14);margin-top:var(--sp-20)}
 .idea-detail-editor label{display:grid;gap:var(--sp-6);color:var(--ter);font-size:var(--fs-sm)}
 .idea-detail-editor .form-control{width:100%}
@@ -34,5 +35,5 @@
 
 @media (max-width:1150px){
   .idea-detail-slot{--detail-panel-width:38%;--detail-panel-gap:var(--sp-20)}
-  .idea-detail-panel{padding:var(--sp-16) var(--sp-20)}
+  .idea-detail-panel{padding:var(--sp-16) var(--sp-20);--fade-pad-top:var(--sp-16);--fade-pad-bottom:var(--sp-16)}
 }

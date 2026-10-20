@@ -45,6 +45,7 @@ let root: Root | null = null
 
 describe('PaperReadingSummary', () => {
   beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
   })

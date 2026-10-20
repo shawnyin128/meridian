@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import type { ReactNode, RefObject } from 'react'
+import { useScrollFade } from '../hooks/useScrollFade.js'
 import type { Parent, Root } from 'mdast'
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
@@ -48,6 +49,11 @@ function remarkHeadingIds() {
   return (tree: Root) => visit(tree)
 }
 
+/** A Markdown code block or table, which scrolls sideways when it is too wide and fades the side it hides. */
+function Sideways({ as: Element, children }: { as: 'pre' | 'table'; children?: ReactNode }) {
+  return <Element ref={useScrollFade('x')}>{children}</Element>
+}
+
 /**
  * Links render three ways, all as entity links: an in-page link shows the page's full title from
  * `titles` on hover and, given `onOpen`, opens the page; a source anchor is the anchor control when
@@ -59,6 +65,8 @@ function components(
   titles: Record<string, WikiRef> | undefined,
 ): Components {
   return {
+    pre: ({ children }) => <Sideways as="pre">{children}</Sideways>,
+    table: ({ children }) => <Sideways as="table">{children}</Sideways>,
     a: ({ href, children }) => {
       // urlTransform empties URLs with protocols such as javascript:; an emptied link must not render as one
       if (!href) return <>{children}</>

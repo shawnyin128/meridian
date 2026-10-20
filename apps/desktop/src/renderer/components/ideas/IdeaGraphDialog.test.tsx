@@ -35,6 +35,7 @@ const GRAPH: ResearchGraph = {
 }
 
 describe('IdeaGraphDialog', () => {
+  beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }) })
   let host: HTMLDivElement
   let root: Root
 

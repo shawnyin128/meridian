@@ -77,6 +77,7 @@ async function flush(): Promise<void> {
 }
 
 describe('PickRow', () => {
+  beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }) })
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     document.body.innerHTML = ''

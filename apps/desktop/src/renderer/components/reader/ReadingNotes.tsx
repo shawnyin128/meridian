@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { PaperHighlight, PaperNote, PaperReading, ReadingMutation } from '../../../shared/contract.js'
 import { editField, type Drafts, type EditDraft } from '../../hooks/useDrafts.js'
 import { useMessages } from '../../messages/useMessages.js'
+import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { FormTextarea } from '../FormControls.js'
 import { EmptyState } from '../EmptyState.js'
 import { IconButton } from '../IconButton.js'
@@ -103,6 +104,7 @@ export function ReadingNotes({
   edits: Drafts<EditDraft>
 }) {
   const m = useMessages()
+  const listFade = useScrollFade('y')
   const compose = `new-note:${reading.paperId}`
   const draft = drafts.get(compose) ?? ''
   const addNote = async () => {
@@ -126,7 +128,7 @@ export function ReadingNotes({
           onClick={() => { void addNote() }}
         >{m.common.save}</button>
       </div>}
-      <div className="reading-list">
+      <div className="reading-list" ref={listFade}>
         {mode === 'notes' ? null : reading.highlights.map((highlight) => (
           <HighlightCard
             key={highlight.id} highlight={highlight} edits={edits} onJump={() => onJump(highlight.page)}

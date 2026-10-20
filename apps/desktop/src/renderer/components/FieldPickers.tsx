@@ -92,7 +92,7 @@ export function ChoicePicker<T extends string>({
   return (
     <ActionMenu
       align="start" trigger={trigger} stopContentClickPropagation={stopRowActivation}
-      {...(appearance === 'field' ? { contentClassName: 'ctxmenu choice-picker-menu' } : {})}
+      {...(appearance === 'field' ? { contentClassName: 'ctxmenu choice-picker-menu', scrolls: true } : {})}
     >
       <MenuRadioGroup value={value}>
         {options.map((option) => (

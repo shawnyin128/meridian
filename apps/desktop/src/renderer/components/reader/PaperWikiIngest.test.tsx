@@ -88,6 +88,7 @@ describe('PaperWikiIngest', () => {
   let root: Root
   const states = () => [...host.querySelectorAll('.wiki-ingest-body > .tag')].map((tag) => tag.textContent)
   beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     host = document.createElement('div')
     document.body.replaceChildren(host)

@@ -28,6 +28,7 @@ import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { useUndo } from '../../hooks/useUndo.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
+import { useScrollFade } from '../../hooks/useScrollFade.js'
 import {
   useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperCount, useScreen, useScreenReentry, useVaultRevision,
 } from '../../shell/AppShell.js'
@@ -327,6 +328,8 @@ export function PaperTable() {
   const [columnDrop, setColumnDrop] = useState<{ key: string; after: boolean } | null>(null)
   const drag = useRef<WidthDrag | null>(null)
   const table = useRef<HTMLTableElement>(null)
+  const tableFade = useScrollFade('both')
+  const detailFade = useScrollFade('y')
   const consumed = useRef(0)
   // Write queue of the cell being edited: each link resolves to the values the previous step settled
   // on, or to null when a step failed, which voids this pick so it is not sent.
@@ -1044,7 +1047,7 @@ export function PaperTable() {
     }))
   }
   const paperTable = (
-    <div className="tblwrap">
+    <div className="tblwrap" ref={tableFade} data-fade-held="left right top">
       <table ref={table} className="ptable">
         <colgroup>
           <col data-cw="t" style={{ width: `${widthOf('t')}px` }} />
@@ -1317,7 +1320,7 @@ export function PaperTable() {
         {detail === null
           ? null
           : (
-            <div className="pdetail">
+            <div className="pdetail" ref={detailFade}>
               <div className="pd-h">
                 <span className="pd-t"><PaperTitleField paper={detail} onSaved={setDetail} /></span>
                 <IconButton label={m.papers.rowActions.openReader} onClick={() => open('reader', detail.id)}>

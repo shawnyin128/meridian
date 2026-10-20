@@ -42,6 +42,7 @@ const pressEscape = (target: Element) => act(() => {
 })
 
 describe('ModalDialog', () => {
+  beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }) })
   let root: Root | null = null
   let host: HTMLDivElement
 

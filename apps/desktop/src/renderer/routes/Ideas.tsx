@@ -22,6 +22,7 @@ import { errorLabel } from '../lib/failure-label.js'
 import { useEscapeLayer, useJump, useScreenReentry, useVaultRevision } from '../shell/AppShell.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
+import { useScrollFade } from '../hooks/useScrollFade.js'
 import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
 import { DragHandle } from '../components/DragHandle.js'
 import { useFormat } from '../lib/format.js'
@@ -123,6 +124,7 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
   onOpen: (screen: 'project' | 'chat', id: string) => void
 }) {
   const m = useMessages()
+  const panelFade = useScrollFade('y')
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(idea.title)
   const [body, setBody] = useState(idea.body)
@@ -163,7 +165,7 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
   }
 
   return (
-    <aside className="idea-detail-panel node-document-pane" aria-label={m.ideas.detailHeading}>
+    <aside className="idea-detail-panel node-document-pane" ref={panelFade} data-fade-paint="" aria-label={m.ideas.detailHeading}>
       <IdeaPanel
         idea={idea} onClose={onClose} onOpenSourceChat={(chatId) => onOpen('chat', chatId)}
         actions={(

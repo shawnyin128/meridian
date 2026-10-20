@@ -1,5 +1,6 @@
 import * as Popover from '@radix-ui/react-popover'
 import type { HTMLAttributes, ReactElement, ReactNode, RefObject } from 'react'
+import { useScrollFade } from '../hooks/useScrollFade.js'
 import type { CandidateKeys } from '../hooks/useCandidateKeys.js'
 import { ignoreComposingEscape } from '../lib/keyboard.js'
 import { COLLISION_PADDING } from './floating-layer.js'
@@ -49,6 +50,7 @@ export type PickerPopoverProps = PickerPopoverBaseProps & (
  * which it renders, or against `anchorBox`, which the caller renders or measures itself.
  */
 export function PickerPopover(props: PickerPopoverProps) {
+  const listFade = useScrollFade('y')
   const {
     open, content, anchorRef, onOpenChange,
     contentId,
@@ -65,6 +67,7 @@ export function PickerPopover(props: PickerPopoverProps) {
         : (
           <Popover.Portal>
             <Popover.Content
+              ref={listFade} data-fade-paint=""
               {...(contentId === undefined ? {} : { id: contentId })}
               className={contentClassName} side={side} align={align} collisionPadding={COLLISION_PADDING}
               sideOffset={sideOffset} {...(sticky === undefined ? {} : { sticky })}

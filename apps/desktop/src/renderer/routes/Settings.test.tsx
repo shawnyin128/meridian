@@ -133,6 +133,7 @@ describe('Settings', () => {
   let root: Root
   let host: HTMLDivElement
   beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     window.localStorage.clear()
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')

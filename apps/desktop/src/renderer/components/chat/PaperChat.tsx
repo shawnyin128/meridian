@@ -18,6 +18,7 @@ import { PageError } from '../PageShell.js'
 import { useDrafts } from '../../hooks/useDrafts.js'
 import { useGenerations } from '../../hooks/useGenerations.js'
 import { useNoModelChats } from '../../hooks/useNoModelChats.js'
+import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { TitleNote } from '../TitleNote.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useMessages } from '../../messages/useMessages.js'
@@ -55,6 +56,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const { noModel, track } = useNoModelChats()
   const [error, setError] = useState<string | null>(null)
   const stream = useRef<HTMLDivElement>(null)
+  const streamFade = useScrollFade('y', stream)
   const composer = useRef<HTMLTextAreaElement>(null)
   const reportError = useCallback((cause: unknown) => setError(errorLabel(m, cause)), [m])
   const paperId = paper?.id ?? null
@@ -134,7 +136,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
         </FadeText>
       </header>
       <PageError error={error} />
-      <div className="msgs" ref={stream}>
+      <div className="msgs" ref={streamFade}>
         {messages === null
           ? (error === null ? <div className="mwrap"><LoadingPlaceholder shape="lines" /></div> : null)
           : messages.length === 0 && error === null

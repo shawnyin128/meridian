@@ -36,6 +36,7 @@ describe('ProjectSignals', () => {
 })
 
 describe('ProjectAttention', () => {
+  beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }) })
   it('任务和里程碑的提醒定位到它的条目，冲突打开它的页，其余的不能点', () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')

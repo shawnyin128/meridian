@@ -1,5 +1,6 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import type { MouseEvent as ReactMouseEvent, MouseEventHandler, ReactElement, ReactNode } from 'react'
+import { useScrollFade } from '../hooks/useScrollFade.js'
 import { ignoreComposingEscape } from '../lib/keyboard.js'
 import { COLLISION_PADDING } from './floating-layer.js'
 import { IconCheck } from './icons.js'
@@ -23,6 +24,7 @@ export type ActionMenuProps = {
   onContentClick?: MouseEventHandler<HTMLDivElement>
   contentProps?: ContentProps
   contentData?: Record<string, string>
+  scrolls?: boolean
 }
 
 /**
@@ -31,13 +33,14 @@ export type ActionMenuProps = {
  * edge and inline click isolation are implemented only here. A menu that switches to an editor in
  * the same popover is controlled through `open`/`onOpenChange`; `contentProps` only carries advanced
  * Radix options such as focus and Escape handling. An Escape pressed while an input method is composing neither closes
- * the menu nor reaches `contentProps.onEscapeKeyDown`.
+ * the menu nor reaches `contentProps.onEscapeKeyDown`. A menu that `scrolls` past its height fades the edge it hides.
  */
 export function ActionMenu({
   trigger, children, open, onOpenChange, modal,
   contentClassName = 'ctxmenu', side = 'bottom', align = 'end', sideOffset = 4,
-  stopContentClickPropagation = false, onContentClick, contentProps, contentData,
+  stopContentClickPropagation = false, onContentClick, contentProps, contentData, scrolls = false,
 }: ActionMenuProps) {
+  const fade = useScrollFade('y')
   const rootProps = {
     ...(open === undefined ? {} : { open }),
     ...(onOpenChange === undefined ? {} : { onOpenChange }),
@@ -58,6 +61,7 @@ export function ActionMenu({
           collisionPadding={COLLISION_PADDING} {...contentProps} {...contentData}
           onEscapeKeyDown={ignoreComposingEscape(contentProps?.onEscapeKeyDown)}
           className={contentClassName} side={side} align={align} sideOffset={sideOffset}
+          {...(scrolls ? { ref: fade, 'data-fade-paint': '' } : {})}
           {...(contentClick === undefined ? {} : { onClick: contentClick })}
         >
           <OutsideToolbar>{children}</OutsideToolbar>

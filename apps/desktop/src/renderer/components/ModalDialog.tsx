@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { ignoreComposingEscape } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
+import { useScrollFade } from '../hooks/useScrollFade.js'
 import { IconButton } from './IconButton.js'
 import { IconCross } from './icons.js'
 import { OutsideToolbar } from './Toolbar.js'
@@ -58,6 +59,7 @@ export function ModalDialog({
   ariaDescribedBy?: string
   contentProps?: ContentProps
 }) {
+  const bodyFade = useScrollFade('y')
   const opener = useRef<HTMLElement | null>(null)
   const lastFocused = useRef<HTMLElement | null>(null)
   const wasOpen = useRef(false)
@@ -118,7 +120,7 @@ export function ModalDialog({
           <OutsideToolbar>
             {closable ? <DialogClose onClose={() => onOpenChange(false)} /> : null}
             {title === undefined ? null : <ModalTitle>{title}</ModalTitle>}
-            <div className="modal-body">{children}</div>
+            <div className="modal-body" ref={bodyFade}>{children}</div>
             {actions === undefined ? null : <div className="modal-actions">{actions}</div>}
           </OutsideToolbar>
         </Dialog.Content>

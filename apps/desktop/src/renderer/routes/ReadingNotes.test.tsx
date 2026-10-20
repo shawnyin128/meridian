@@ -37,6 +37,7 @@ function setValue(input: HTMLTextAreaElement, value: string): void {
 }
 
 describe('ReadingNotes', () => {
+  beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }) })
   const roots: ReturnType<typeof createRoot>[] = []
 
   beforeEach(() => {
