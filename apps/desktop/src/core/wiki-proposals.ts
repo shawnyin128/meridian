@@ -5,6 +5,7 @@ import type {
 } from '../shared/contract.js'
 import { AgentProposalSchema, WIKI_PROTOCOL_VERSION } from '../shared/contract.js'
 import { PAPER_PAGE } from '../shared/vocabulary.js'
+import { CallError } from './call-error.js'
 import { stableJson } from './changelog.js'
 import { extractPdfPages } from './paper-library/index.js'
 import type { VaultStore } from './vault.js'
@@ -325,7 +326,7 @@ export function createWikiProposals({ store, pdf, now }: {
      */
     async decide(id: string, decision: 'apply' | 'decline', reason?: string): Promise<ProposalReceipt> {
       const record = store.proposalRecords().find((r) => r.id === id)
-      if (record === undefined) throw new Error(`没有这条提案：${id}`)
+      if (record === undefined) throw new CallError('not-found', `没有这条提案：${id}`)
       if (record.status !== 'queued' || record.proposal === null) throw new Error('这条提案已经处理过了')
       const proposal = record.proposal
       const decided = { at: now(), by: '我' as const }

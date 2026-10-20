@@ -2,6 +2,7 @@ import type {
   ConflictTarget, Evidence, PageVersion, SearchHit, WikiAggregation, WikiAggregationCard, WikiCell, WikiClaim,
   WikiHome, WikiPaper, WikiRef,
 } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 
 /** One entry from schema.yaml `kinds`. */
 export type WikiKindRecord = {
@@ -98,7 +99,7 @@ const ids = (data: WikiData): string[] => Object.keys(data.pages).sort()
 /** Aggregation page from `data`. Throw when the id is absent or identifies a paper. */
 function aggregationOf(data: WikiData, id: string): WikiAggregationRecord {
   const page = data.pages[id]
-  if (page === undefined || isPaper(page)) throw new Error(`wiki 聚合不存在：${id}`)
+  if (page === undefined || isPaper(page)) throw new CallError('not-found', `wiki 聚合不存在：${id}`)
   return page
 }
 
@@ -398,7 +399,7 @@ export function aggregationView(data: WikiData, id: string): Omit<WikiAggregatio
  */
 export function wikiPaper(data: WikiData, id: string, version: PageVersion): WikiPaper {
   const page = data.pages[id]
-  if (page === undefined || !isPaper(page)) throw new Error(`wiki 论文页不存在：${id}`)
+  if (page === undefined || !isPaper(page)) throw new CallError('not-found', `wiki 论文页不存在：${id}`)
   const memberships = (page.fm.memberships ?? []).flatMap((m) => {
     const aggregation = data.pages[m.in]
     if (aggregation === undefined || isPaper(aggregation)) return []

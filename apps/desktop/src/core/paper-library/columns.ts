@@ -2,6 +2,7 @@ import type { PaperCell, PaperColumn, PaperColumns, PaperRow } from '../../share
 import {
   COLUMN_TYPE_LABEL, DEFAULT_PAPER_GROUPS, GROUPABLE_PAPER_FIELDS, LOCKED_PAPER_COLUMNS, PAPER_COLUMNS,
 } from '../../shared/vocabulary.js'
+import { CallError } from '../call-error.js'
 
 const KEY = /^[A-Za-z0-9_-]+$/
 // `none` is the ungrouped sentinel, while Object.prototype names can masquerade as mapped values; neither may be a custom-column key.
@@ -146,7 +147,7 @@ export function checkCustom(
     if (cell === null) continue
     if (sameCell(cell, ownCell(held, key))) continue
     const column = columns.custom.find((c) => c.key === key)
-    if (column === undefined) throw new Error(`论文表里没有这一列：${key}`)
+    if (column === undefined) throw new CallError('not-found', `论文表里没有这一列：${key}`)
     if (column.type === 'multi' && !Array.isArray(cell)) throw new Error(`列「${column.label}」是多选列，格子要一列取值`)
     if (column.type !== 'multi' && Array.isArray(cell)) throw new Error(`列「${column.label}」不是多选列，格子只要一个值`)
     if (column.type === 'text') continue
@@ -214,7 +215,7 @@ export function retypedColumn(
   columns: PaperColumns, papers: readonly PaperRow[], key: string, type: PaperColumn['type'],
 ): { columns: PaperColumns; cells: Map<string, PaperCell | undefined> } {
   const column = columns.custom.find((c) => c.key === key)
-  if (column === undefined) throw new Error(`论文表里没有这一列：${key}`)
+  if (column === undefined) throw new CallError('not-found', `论文表里没有这一列：${key}`)
   if (column.type === type) throw new Error(`列「${column.label}」已经是${COLUMN_TYPE_LABEL[type]}列`)
   const held = papers.flatMap((row) => {
     const cell = ownCell(row.custom, key)
@@ -267,7 +268,7 @@ export function restoredColumn(
   columns: PaperColumns, papers: readonly PaperRow[], column: PaperColumn, groupAt: number | null,
   cells: Record<string, PaperCell>,
 ): { columns: PaperColumns; cells: Map<string, PaperCell | undefined> } {
-  if (!columns.custom.some((c) => c.key === column.key)) throw new Error(`论文表里没有这一列：${column.key}`)
+  if (!columns.custom.some((c) => c.key === column.key)) throw new CallError('not-found', `论文表里没有这一列：${column.key}`)
   const changed = new Map<string, PaperCell | undefined>()
   for (const row of papers) {
     const want = Object.hasOwn(cells, row.id) ? cells[row.id] : undefined

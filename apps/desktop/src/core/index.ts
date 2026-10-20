@@ -97,6 +97,7 @@ import {
   WikiProposeParamsSchema,
   WikiUpdateParamsSchema,
 } from '../shared/contract.js'
+import { CallError } from './call-error.js'
 import { createFixtureStore } from './fixture-store.js'
 import { withUiSampleUpload } from './fixtures/ui-samples.js'
 import { createBackground } from './background.js'
@@ -780,7 +781,7 @@ registerHandler('idea.update', (params) => {
 registerHandler('idea.promote', (params) => {
   const { id } = ResearchIdeaPromoteParamsSchema.parse(params)
   const held = store.listIdeas().find((idea) => idea.id === id)
-  if (held === undefined) throw new Error(`想法不存在：${id}`)
+  if (held === undefined) throw new CallError('not-found', `想法不存在：${id}`)
   if (held.project !== undefined) throw new Error('这个想法已经关联项目')
   const before = new Set(store.listProjects().map((project) => project.id))
   store.createProject(held.title)

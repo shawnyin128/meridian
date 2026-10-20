@@ -5,6 +5,7 @@ import type {
   HarnessModelSettingsUpdate,
 } from '../../shared/contract.js'
 import { HarnessModelSettingsUpdateSchema } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import { writeJson } from '../vault/writer.js'
 import type { CredentialVault } from './credential-vault.js'
 
@@ -321,7 +322,7 @@ function parseCurrentConfig(parsed: Record<string, unknown>): PrivateModelConfig
   if (new Set(keys).size !== keys.length) throw new Error('模型配置仓库包含重复项')
   const selected = parsed['activeProfile']
   if (typeof selected !== 'string' || !keys.includes(selected)) {
-    throw new Error('当前模型配置不存在')
+    throw new CallError('not-found', '当前模型配置不存在')
   }
   return { schemaVersion: CONFIG_VERSION, activeProfile: selected, profiles }
 }

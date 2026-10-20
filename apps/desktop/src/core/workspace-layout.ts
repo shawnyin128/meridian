@@ -3,6 +3,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
+import { CallError } from './call-error.js'
 
 export const WORKSPACE_CONFIG_FILENAME = 'meridian-wiki.json'
 export const WORKSPACE_SCHEMA_VERSION = 'meridian.paper_wiki_workspace.v1'
@@ -252,7 +253,7 @@ function resolveLibraryBackup(activeRoot: string, id: string): string {
   const parent = dirname(activeRoot)
   const entry = readdirSync(parent, { withFileTypes: true })
     .find((candidate) => candidate.name === id && candidate.isDirectory())
-  if (entry === undefined) throw new Error('所选备份不存在')
+  if (entry === undefined) throw new CallError('not-found', '所选备份不存在')
   const candidate = join(parent, entry.name)
   validateLibraryBackup(candidate, activeRoot)
   return candidate

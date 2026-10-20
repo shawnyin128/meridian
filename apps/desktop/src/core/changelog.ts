@@ -9,6 +9,7 @@ import {
   ProjectDetailSchema,
 } from '../shared/contract.js'
 import { COLUMN_TYPE_LABEL, PAPER_PAGE, TRASH_RETENTION_DAYS } from '../shared/vocabulary.js'
+import { CallError } from './call-error.js'
 import { dayOf } from './dates.js'
 import { liveColumns, misfitCells } from './paper-library/index.js'
 import type { ProjectRecord } from './project-management/index.js'
@@ -533,7 +534,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
 
     renamePaperOption(key, from, to) {
       const column = ops.paperColumns().custom.find((c) => c.key === key)
-      if (!column) throw new Error(`论文表里没有这一列：${key}`)
+      if (!column) throw new CallError('not-found', `论文表里没有这一列：${key}`)
       return wrote(
         { kind: 'columns', id: key },
         `论文表 · 列「${column.label}」的选项 ${from} → ${to}`,
@@ -546,7 +547,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     setPaperColumnType(key, type) {
       const target: ChangeTarget = { kind: 'columnType', id: key }
       const before = entityOf(target)
-      if (before?.kind !== 'columnType') throw new Error(`论文表里没有这一列：${key}`)
+      if (before?.kind !== 'columnType') throw new CallError('not-found', `论文表里没有这一列：${key}`)
       const groupAt = ops.paperColumns().groups.indexOf(key)
       ops.setPaperColumnType(key, type)
       push(
@@ -717,7 +718,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       dropExpired()
       const at = rows.findIndex((row) => row.id === id)
       const row = rows[at]
-      if (!row) throw new Error(`最近变动里没有这一条：${id}`)
+      if (!row) throw new CallError('not-found', `最近变动里没有这一条：${id}`)
       if (row.undone) throw new Error('这一条已经撤销过了')
       const { target, restore } = row
       if (target === null) throw new Error('这一条撤不了：库里没有还原它所需的东西')
@@ -796,7 +797,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
 
     archiveChange(id) {
       const row = rows.find((r) => r.id === id)
-      if (!row) throw new Error(`最近变动里没有这一条：${id}`)
+      if (!row) throw new CallError('not-found', `最近变动里没有这一条：${id}`)
       if (row.archived) return
       rows = rows.map((r) => (r.id === id ? { ...r, archived: true } : r))
       log.save(rows)
@@ -809,7 +810,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     deleteChange(id) {
-      if (!rows.some((row) => row.id === id)) throw new Error(`最近变动里没有这一条：${id}`)
+      if (!rows.some((row) => row.id === id)) throw new CallError('not-found', `最近变动里没有这一条：${id}`)
       rows = rows.filter((row) => row.id !== id)
       log.save(rows)
     },

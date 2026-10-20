@@ -4,6 +4,7 @@ import type {
   HarnessPaperWikiQuality, HarnessPaperWikiReview, HarnessPendingPaperWikiResult, HarnessRejectPaperWikiResult,
   HarnessRejectPaperWikiParams, HarnessStartParams, PaperReading, PaperRow, WikiPaper,
 } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import type { HarnessProposalAuditEvent, PendingHarnessProposal } from './proposal-audit.js'
 
 const PLAN_TTL_MS = 10 * 60 * 1_000
@@ -250,7 +251,7 @@ export function createHarnessCostGate(deps: Dependencies) {
 
     applyPaperWiki(params: HarnessApplyPaperWikiParams): HarnessApplyPaperWikiResult {
       const proposal = proposals.get(params.proposalId)
-      if (proposal === undefined) throw new Error('这份 Wiki 提案不存在或已经失效')
+      if (proposal === undefined) throw new CallError('not-found', '这份 Wiki 提案不存在或已经失效')
       if (proposal.used) throw new Error('这份 Wiki 提案已经写入过')
       const current = snapshot(proposal.targetId)
       if (digestOf(current) !== proposal.scopeDigest) {
@@ -276,7 +277,7 @@ export function createHarnessCostGate(deps: Dependencies) {
 
     rejectPaperWiki(params: HarnessRejectPaperWikiParams): HarnessRejectPaperWikiResult {
       const proposal = proposals.get(params.proposalId)
-      if (proposal === undefined) throw new Error('这份 Wiki 提案不存在或已经失效')
+      if (proposal === undefined) throw new CallError('not-found', '这份 Wiki 提案不存在或已经失效')
       if (proposal.used) throw new Error('这份 Wiki 提案已经处理过')
       const rejectedAt = now().toISOString()
       const result: HarnessRejectPaperWikiResult = { proposalId: params.proposalId, rejectedAt }

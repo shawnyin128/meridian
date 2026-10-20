@@ -1115,6 +1115,18 @@ export const AuthorSearchFailureSchema = z.enum([...NetFailureSchema.options, 'n
 /** A failed author search, with its reason. */
 export const AuthorSearchFailedSchema = z.object({ kind: z.literal('failed'), reason: AuthorSearchFailureSchema }).strict()
 
+/**
+ * Why Core failed a call: a network failure, a file that is not a PDF, a vault write the file
+ * system refused, an entity that no longer exists, a change the current state refuses, content that
+ * changed since it was shown, an option or column still in use, input that failed validation, a
+ * resource still busy, data a newer App wrote, a generation the user stopped, a failed model call,
+ * or anything else.
+ */
+export const CallFailureSchema = z.enum([
+  ...NetFailureSchema.options, 'not-pdf', 'write', 'not-found', 'refused', 'changed', 'in-use', 'invalid', 'busy',
+  'newer-version', 'cancelled', 'model',
+])
+
 /** An author search result, projected to the fields needed for disambiguation and selection. */
 export const AuthorCandidateSchema = z.object({
   source: AuthorSourceSchema,
@@ -2226,6 +2238,7 @@ export type NetFailure = z.infer<typeof NetFailureSchema>
 export type NetFailed = z.infer<typeof NetFailedSchema>
 export type AuthorSearchFailure = z.infer<typeof AuthorSearchFailureSchema>
 export type AuthorSearchFailed = z.infer<typeof AuthorSearchFailedSchema>
+export type CallFailure = z.infer<typeof CallFailureSchema>
 export type AuthorCandidate = z.infer<typeof AuthorCandidateSchema>
 export type WatchTopicSuggestion = z.infer<typeof WatchTopicSuggestionSchema>
 export type WatchAuthorSuggestion = z.infer<typeof WatchAuthorSuggestionSchema>

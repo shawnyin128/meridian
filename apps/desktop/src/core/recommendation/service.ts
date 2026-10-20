@@ -184,7 +184,7 @@ export function createRecommendationService(deps: {
           failedIntents: plans.reduce((total, plan) => total + plan.failed, 0),
         }
       } catch (error) {
-        throw new Error(`没能保存论文发现：${error instanceof Error ? error.message : String(error)}`)
+        throw new Error(`没能保存论文发现：${error instanceof Error ? error.message : String(error)}`, { cause: error })
       }
     },
   }

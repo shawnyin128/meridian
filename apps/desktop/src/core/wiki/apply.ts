@@ -1,6 +1,7 @@
 import type { ClaimOp, ConflictTarget, Evidence, ProposalOp } from '../../shared/contract.js'
 import { CLAIM_OPS } from '../../shared/contract.js'
 import { HUMAN_PRODUCER } from '../../shared/vocabulary.js'
+import { CallError } from '../call-error.js'
 import type {
   WikiAggregationRecord, WikiCellRecord, WikiClaimRecord, WikiConflictRecord, WikiData, WikiEvidenceRecord,
   WikiMembershipRecord, WikiPaperRecord,
@@ -182,10 +183,10 @@ function unknownFields(claim: WikiClaimRecord): Record<string, unknown> {
 function checkExperiment(e: Extract<Evidence, { kind: 'experiment' }>, world: ClaimWorld, asEvidence: boolean): void {
   if (e.node === undefined && e.conclusion === undefined) throw new Error('实验证据要指明节点或结论')
   const project = world.project(e.project)
-  if (project === undefined) throw new Error(`项目不存在：${e.project}`)
-  if (e.node !== undefined && !project.nodes.includes(e.node)) throw new Error(`项目 ${e.project} 里没有节点：${e.node}`)
+  if (project === undefined) throw new CallError('not-found', `项目不存在：${e.project}`)
+  if (e.node !== undefined && !project.nodes.includes(e.node)) throw new CallError('not-found', `项目 ${e.project} 里没有节点：${e.node}`)
   if (e.conclusion !== undefined && !project.conclusions.includes(e.conclusion)) {
-    throw new Error(`项目 ${e.project} 里没有结论：${e.conclusion}`)
+    throw new CallError('not-found', `项目 ${e.project} 里没有结论：${e.conclusion}`)
   }
   if (!asEvidence) return
   if (e.node !== undefined && !project.concluded.includes(e.node)) {
@@ -210,7 +211,7 @@ function checkEvidence(data: WikiData, items: Evidence[], world: ClaimWorld, hel
     oneLineFields(e)
     if (e.kind === 'source') paperOf(data, e.paper)
     if (e.kind === 'wiki' && (e.ref.includes('#') ? claimAt(data, e.ref) : data.pages[e.ref]) === undefined) {
-      throw new Error(`证据指向的页或结论不存在：${e.ref}`)
+      throw new CallError('not-found', `证据指向的页或结论不存在：${e.ref}`)
     }
     if (e.kind === 'experiment') checkExperiment(e, world, true)
     if (e.kind === 'note') {
@@ -218,7 +219,7 @@ function checkEvidence(data: WikiData, items: Evidence[], world: ClaimWorld, hel
       if ((e.highlight === undefined) === (e.note === undefined)) throw new Error('笔记证据要指明一条高亮或一条笔记，只能指一个')
       const reading = world.reading(e.paper)
       const found = e.highlight !== undefined ? reading.highlights.includes(e.highlight) : reading.notes.includes(e.note!)
-      if (!found) throw new Error(`${e.paper} 的阅读记录里没有这一条：${e.highlight ?? e.note}`)
+      if (!found) throw new CallError('not-found', `${e.paper} 的阅读记录里没有这一条：${e.highlight ?? e.note}`)
     }
     if (e.kind === 'personal' && world.by !== HUMAN) throw new Error('只有「我」能写个人判断')
     const key = identity(e)
@@ -237,7 +238,7 @@ function requireExperiment(items: Evidence[], world: ClaimWorld): void {
 /** The claim `claim` on aggregation `page` (id `pageId`). Throw when it is not there. */
 function claimIn(page: WikiAggregationRecord, pageId: string, claim: string): WikiClaimRecord {
   const found = (page.fm.claims ?? []).find((c) => c.id === claim)
-  if (found === undefined) throw new Error(`结论不存在：${pageId}#${claim}`)
+  if (found === undefined) throw new CallError('not-found', `结论不存在：${pageId}#${claim}`)
   return found
 }
 
@@ -267,14 +268,14 @@ function changeClaim(
 /** Aggregation page from `data`. Throw when the id is absent or identifies a paper. */
 function aggregationOf(data: WikiData, id: string): WikiAggregationRecord {
   const page = data.pages[id]
-  if (page === undefined || isPaper(page)) throw new Error(`wiki 聚合不存在：${id}`)
+  if (page === undefined || isPaper(page)) throw new CallError('not-found', `wiki 聚合不存在：${id}`)
   return page
 }
 
 /** Paper page from `data`. Throw when the id is absent or is not a paper. */
 function paperOf(data: WikiData, id: string): WikiPaperRecord {
   const page = data.pages[id]
-  if (page === undefined || !isPaper(page)) throw new Error(`wiki 论文页不存在：${id}`)
+  if (page === undefined || !isPaper(page)) throw new CallError('not-found', `wiki 论文页不存在：${id}`)
   return page
 }
 
@@ -354,7 +355,7 @@ function step(data: WikiData, op: ProposalOp, today: string, ops: ProposalOp[], 
       if (against.kind === 'claim') {
         if (against.ref === self) throw new Error(`结论不能与自己冲突：${self}`)
         const other = claimAt(data, against.ref)
-        if (other === undefined) throw new Error(`冲突指向的结论不存在：${against.ref}`)
+        if (other === undefined) throw new CallError('not-found', `冲突指向的结论不存在：${against.ref}`)
         if ((other.conflicts ?? []).some((c) => c.id === id)) throw new Error(`${against.ref} 上已经有冲突 ${id}`)
       } else if (against.kind === 'source') {
         paperOf(data, against.paper)
@@ -371,7 +372,7 @@ function step(data: WikiData, op: ProposalOp, today: string, ops: ProposalOp[], 
       const self = `${op.page}#${op.claim}`
       const claim = claimIn(aggregationOf(data, op.page), op.page, op.claim)
       const conflict = (claim.conflicts ?? []).find((c) => c.id === op.conflict)
-      if (conflict === undefined) throw new Error(`这条结论上没有冲突 ${op.conflict}：${self}`)
+      if (conflict === undefined) throw new CallError('not-found', `这条结论上没有冲突 ${op.conflict}：${self}`)
       oneLine(op.note, '处理说明')
       const pair = [self, ...(conflict.against.kind === 'claim' ? [conflict.against.ref] : [])]
       const inPair = (o: ProposalOp): boolean => 'claim' in o && typeof o.claim === 'string' && pair.includes(`${o.page}#${o.claim}`)
