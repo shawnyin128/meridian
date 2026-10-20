@@ -57,12 +57,18 @@ const ONE_LINE: Record<string, [file: string, markup: RegExp, count?: number]> =
   'direction-seeds': ['components/settings/DiscoverySettings.tsx', /<FadeText className="direction-seeds" label=/],
 }
 
-/** Every text of several lines that ended in an ellipsis: the component, and the markup that fades its last line. */
-const LINES: Record<string, [file: string, markup: RegExp]> = {
-  '.idea-card-summary': ['routes/Ideas.tsx', /className=\{`idea-card-summary fade-lines\$\{summaryCut \? ' clipped' : ''\}`\}/],
-  '.highlight-card blockquote': ['components/reader/ReadingNotes.tsx', /<blockquote ref=\{quote\} className=\{`fade-lines\$\{quoteCut \? ' clipped' : ''\}`\}>/],
-  '.wkcard .wm': ['routes/Wiki.tsx', /className=\{`wm fade-lines\$\{summaryCut \? ' clipped' : ''\}`\}/],
-  '.wkcard--paper .tt-lines': ['routes/Wiki.tsx', /className=\{`tt-lines fade-lines\$\{titleCut \? ' clipped' : ''\}`\}/],
+/**
+ * Every text of several lines that ended in an ellipsis: the component, the markup that fades its last
+ * line, and the measurement that finds where that line ends.
+ */
+const LINES: Record<string, [file: string, markup: RegExp, measure: RegExp]> = {
+  '.idea-card-summary': ['routes/Ideas.tsx', /className=\{`idea-card-summary fade-lines\$\{summaryCut \? ' clipped' : ''\}`\}/,
+    /useClipped\(summary, idea\.body, true\)/],
+  '.highlight-card blockquote': ['components/reader/ReadingNotes.tsx', /<blockquote ref=\{quote\} className=\{`fade-lines\$\{quoteCut \? ' clipped' : ''\}`\}>/,
+    /useClipped\(quote, highlight\.quote, true\)/],
+  '.wkcard .wm': ['routes/Wiki.tsx', /className=\{`wm fade-lines\$\{summaryCut \? ' clipped' : ''\}`\}/, /useClipped\(summary, card\.summary, true\)/],
+  '.wkcard--paper .tt-lines': ['routes/Wiki.tsx', /className=\{`tt-lines fade-lines\$\{titleCut \? ' clipped' : ''\}`\}/,
+    /useClipped\(title, paper\.title, true\)/],
 }
 
 describe('放不下的文字淡出,不以省略号结尾', () => {
@@ -76,11 +82,12 @@ describe('放不下的文字淡出,不以省略号结尾', () => {
     expect(missing.map(([name]) => name)).toEqual([])
   })
 
-  it('多行文字不再用 line-clamp 画省略号,而是放不下时在最后一行末尾淡出', () => {
+  it('多行文字不再用 line-clamp 画省略号,而是放不下时在最后一行文字的末尾淡出', () => {
     expect(RULES.filter(({ body }) => /line-clamp/.test(body)).map(({ path, selector }) => `${path}  ${selector}`)).toEqual([])
     const fade = RULES.find(({ path, selector }) => path === 'components/FadeText.css' && selector === '.fade-lines.clipped')
-    expect(fade?.body).toMatch(/mask:linear-gradient\(#000,#000\) 0 0\/100% calc\(100% - 1lh\) no-repeat,var\(--clipfade\) 0 100%\/100% 1lh no-repeat/)
-    const missing = Object.entries(LINES).filter(([, [file, markup]]) => !markup.test(source(file)) || !/useClipped\(/.test(source(file)))
+    expect(fade?.body.replace(/\s+/g, '')).toBe('mask:linear-gradient(#000,#000)00/100%calc(100%-1lh)no-repeat,linear-gradient(toright,#000'
+      + 'calc(var(--line-end,100%)-var(--clipfade-width)),transparentvar(--line-end,100%))0100%/100%1lhno-repeat')
+    const missing = Object.entries(LINES).filter(([, [file, markup, measure]]) => !markup.test(source(file)) || !measure.test(source(file)))
     expect(missing.map(([selector]) => selector)).toEqual([])
   })
 })

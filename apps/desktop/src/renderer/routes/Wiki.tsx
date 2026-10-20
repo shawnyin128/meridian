@@ -72,7 +72,7 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
   const fmt = useFormat()
   const m = useMessages()
   const summary = useRef<HTMLDivElement>(null)
-  const summaryCut = useClipped(summary, card.summary)
+  const summaryCut = useClipped(summary, card.summary, true)
   return (
     <ResearchObjectCard variant="grid" className="wkcard" data-wk={card.id} onActivate={onOpen}>
       <div className="wt">
@@ -108,7 +108,7 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
 function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
   const m = useMessages()
   const title = useRef<HTMLSpanElement>(null)
-  const titleCut = useClipped(title, paper.title)
+  const titleCut = useClipped(title, paper.title, true)
   const line = [`${paper.year ?? ''} ${paper.venue}`.trim(), paper.topics.join(' / ')]
     .filter((part) => part !== '').join(' · ')
   return (

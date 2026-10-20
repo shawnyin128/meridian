@@ -1,5 +1,9 @@
 .fade-text{min-width:0;overflow:hidden;white-space:nowrap}
 .fade-text.clipped{mask-image:var(--clipfade)}
-/* Text of several lines that its box cuts off fades out at the end of its last line instead. */
+/*
+ * Text of several lines that its box cuts off fades out instead where its last line ends, which
+ * useClipped measures as --line-end: a line broken before a long word ends short of the edge.
+ */
 .fade-lines{overflow:hidden}
-.fade-lines.clipped{mask:linear-gradient(#000,#000) 0 0/100% calc(100% - 1lh) no-repeat,var(--clipfade) 0 100%/100% 1lh no-repeat}
+.fade-lines.clipped{mask:linear-gradient(#000,#000) 0 0/100% calc(100% - 1lh) no-repeat,
+  linear-gradient(to right,#000 calc(var(--line-end,100%) - var(--clipfade-width)),transparent var(--line-end,100%)) 0 100%/100% 1lh no-repeat}

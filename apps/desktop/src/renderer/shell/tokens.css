@@ -75,7 +75,8 @@
    * ellipsis. Used only as a mask-image, so only the colors' alpha counts. An element using it must
    * fill the available width, or the end of a short title is faded too.
    */
-  --clipfade:linear-gradient(to right,#000 calc(100% - 28px),transparent);
+  --clipfade-width:28px;
+  --clipfade:linear-gradient(to right,#000 calc(100% - var(--clipfade-width)),transparent);
   /*
    * The stroke a border turns into on hover. For 1px strokes only: it moves 15% from --sep toward
    * --sec, which would be nearly invisible on the 4px-wide resize handle or the 2px column-width guide.

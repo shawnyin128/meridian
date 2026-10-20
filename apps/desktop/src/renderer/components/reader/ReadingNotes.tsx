@@ -65,7 +65,7 @@ function HighlightCard({ highlight, edits, onSave, onDelete, onJump, focus }: {
   const note = edit.text
   const input = useRef<HTMLTextAreaElement>(null)
   const quote = useRef<HTMLQuoteElement>(null)
-  const quoteCut = useClipped(quote, highlight.quote)
+  const quoteCut = useClipped(quote, highlight.quote, true)
   useEffect(() => { if (focus) input.current?.focus() }, [focus])
   return (
     <article className={`reading-card highlight-card ${highlight.color}`} data-row-actions="">

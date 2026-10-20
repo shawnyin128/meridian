@@ -82,7 +82,7 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, reorder, dropClassName
   const fmt = useFormat()
   const m = useMessages()
   const summary = useRef<HTMLParagraphElement>(null)
-  const summaryCut = useClipped(summary, idea.body)
+  const summaryCut = useClipped(summary, idea.body, true)
   return (
     <ResearchObjectCard
       className={`idea-card${dropClassName ? ` ${dropClassName}` : ''}`} selected={selected} muted={idea.archived}
