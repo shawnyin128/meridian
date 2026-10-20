@@ -14,7 +14,7 @@
 .paper-chat .bubble,.paper-chat .answer,.paper-chat .event{font-size:var(--fs-sm);line-height:1.5}
 .paper-chat .composer{padding:10px 0 12px}
 .paper-chat .cbox{padding-left:12px}
-.yellow{--mark:#f8d84a}.green{--mark:#87d99a}.blue{--mark:#82c7f2}.pink{--mark:#f0a0be}
+.yellow{--mark:var(--hl-yellow)}.green{--mark:var(--hl-green)}.blue{--mark:var(--hl-blue)}.pink{--mark:var(--hl-pink)}
 
 .reader{flex:1;display:flex;overflow:hidden;min-width:0;background:var(--desktop);position:relative}
 .pdfwrap{flex:1;overflow:auto;padding:24px;min-width:0;overscroll-behavior:contain}
@@ -59,7 +59,7 @@
 .paper-highlights{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
 .paper-highlight{position:absolute;overflow:visible}
 .paper-highlight path{fill:color-mix(in srgb,var(--mark) 30%,transparent)}
-.paper-highlight.noted path{fill:none;stroke:#eb9d2a;stroke-width:2.5px;vector-effect:non-scaling-stroke}
+.paper-highlight .paper-highlight-note{fill:none;stroke:var(--hl-note);stroke-width:2.5px;vector-effect:non-scaling-stroke}
 /* The selection toolbar: the shared menu surface and items, laid out in one row. */
 .ctxmenu.selection-tools{display:flex;min-width:0}
 .selection-tools-row{display:flex}

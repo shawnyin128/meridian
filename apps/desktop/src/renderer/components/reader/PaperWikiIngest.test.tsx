@@ -148,6 +148,13 @@ describe('PaperWikiIngest', () => {
     expect(host.textContent).toContain('已写入 Wiki')
   })
 
+  it('states that no model is connected in the neutral status tone, not as an error', async () => {
+    api.prepare.mockResolvedValue({ ...plan, model: { ...plan.model, configured: false } })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    const line = [...host.querySelectorAll('.wiki-ingest-status')].find((p) => p.textContent!.startsWith('AI 尚未连接'))!
+    expect(line.className).toBe('wiki-ingest-status')
+  })
+
   it('lets the user stop an in-flight run and requires a fresh confirmation afterward', async () => {
     let rejectRun: ((cause: Error) => void) | undefined
     api.start.mockImplementation(() => new Promise((_resolve, reject) => { rejectRun = reject }))

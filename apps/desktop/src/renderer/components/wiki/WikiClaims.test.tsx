@@ -112,7 +112,7 @@ describe('WikiClaims', () => {
     await choose((await openPicker(nth)).find((candidate) => candidate.textContent === label)!)
   }
 
-  it('每条结论:正文、版本、日期,agent 写的跟一个 agent 标签;证据一行一条;冲突高亮并链到另一边;版本史默认收起', () => {
+  it('每条结论:正文、版本、日期,agent 写的跟一个 agent 标签;证据一行一条;冲突只用一个警示色标签标出并链到另一边;版本史默认收起', () => {
     const knee = host.querySelector<HTMLElement>('[data-claim="knee"]')!
     expect(knee.querySelector('.wkclaim-text')!.textContent).toBe('拐点在宽度 6')
     expect(knee.querySelector('.wkclaim-meta')!.textContent).toBe('v26月9日')
@@ -120,9 +120,9 @@ describe('WikiClaims', () => {
     expect(host.querySelector('[data-claim="plain"] .wkclaim-head .source-label')!.textContent).toBe('agent')
     expect([...knee.querySelectorAll('.wkclaim-evidence')].map((li) => li.textContent))
       .toEqual(['个人判断直觉', '实验draft 效率exp1单请求实测', '证据EAGLE-2 p.7wide trees amortize'])
-    expect(knee.classList.contains('wkclaim--conflict')).toBe(true)
-    expect(host.querySelector('[data-claim="plain"]')!.classList.contains('wkclaim--conflict')).toBe(false)
+    expect(knee.className).toBe(host.querySelector('[data-claim="plain"]')!.className)
     expect(knee.querySelector('.wkclaim-conflict')!.textContent).toBe('冲突批量场景仍净赚批量下拐点后移处理冲突')
+    expect([...knee.querySelectorAll('.wkclaim-conflict .tag')].map((tag) => tag.className)).toEqual(['tag tag--label tag--warn'])
     expect(host.querySelector('[data-claim="plain"] .wkclaim-evidence')!.textContent).toBe('实验draft 效率exp2批量实测')
     const history = knee.querySelector<HTMLButtonElement>('.wkclaim-history .card-tray-toggle')!
     expect(history.querySelector('.card-tray-chevron svg')).not.toBeNull()

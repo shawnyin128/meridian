@@ -6,14 +6,14 @@
  *    light --ter is the other: it is darker, so it keeps 4.5:1 on every surface it sits on.
  * 2. The tokens added beyond the demo (--accent-solid / --press / --press-solid / --hover-solid /
  *    --bad-solid / --bad-text / --good-text / --warn-text / --accent-text / --ring* / --sel / --selected /
- *    --on-selected / --tint-* / --on-tint / --star / --paper / --scrim / --raised / --chip / --r-* /
+ *    --on-selected / --tint-* / --star / --hl-* / --paper / --scrim / --raised / --chip / --r-* /
  *    --pad-* / --sp-* / --row-* / --fs-* / --lh-* / --t-* / --e-*)
  *    and the split into --sh-1 / --sh-2 / --sh-3 / --sh-paper are not in the demo: the demo is the
  *    reference for layout and behavior, not for the finished look, so the two differ on these.
- * 3. --accent-solid / --bad-solid / --press-solid / --hover-solid / --bad-text / --ring / --star / --paper /
- *    --on-tint have the same value in both themes and do not flip (all but the last two are written
- *    only in :root; the last two are repeated with the same values next to their neighbours in the
- *    dark block). No dark value is missing.
+ * 3. --accent-solid / --bad-solid / --press-solid / --hover-solid / --bad-text / --ring / --star / --hl-* /
+ *    --paper have the same value in both themes and do not flip (all but the last are written only in
+ *    :root; the last is repeated with the same value next to its neighbours in the dark block). No dark
+ *    value is missing.
  */
 :root{
   /*
@@ -87,12 +87,13 @@
   --selected:var(--accent-soft); --on-selected:color-mix(in srgb,var(--accent) 80%,var(--ink));
   --tint-good:rgba(48,209,88,.14); --tint-warn:rgba(255,214,10,.14);
   --tint-bad:rgba(224,69,58,.12); --tint-info:rgba(14,154,167,.14);
-  --tint-mut:rgba(10,16,32,.04); --on-tint:#fff;
+  --tint-mut:rgba(10,16,32,.04);
   --tint-teal:rgba(15,138,114,.14); --tint-violet:rgba(124,79,224,.14);
   /* Entity-type tags. Only type tags use these brand tints; other tags are neutral or semantic */
   --tint-paper:rgba(91,140,255,.14); --tint-wiki:rgba(167,120,255,.14);
-  /* The paper does not flip with the theme */
+  /* The paper does not flip with the theme, nor do the reading highlights on it and the underline of a highlight with a note */
   --paper:#fff; --scrim:rgba(10,22,48,.42);
+  --hl-yellow:#f8d84a; --hl-green:#87d99a; --hl-blue:#82c7f2; --hl-pink:#f0a0be; --hl-note:rgba(10,16,32,.55);
   /* Elevation. --sh-2 (menus, popovers) and --sh-3 (dialogs) draw the layer's edge as their first ring. */
   --sh-1:0 1px 2px rgba(10,22,48,.06), 0 0 0 1px rgba(10,22,48,.04);
   --sh-2:0 0 0 1px rgba(10,22,48,.10), 0 6px 16px rgba(10,22,48,.12), 0 2px 5px rgba(10,22,48,.06);
@@ -138,7 +139,7 @@
   --tint-good:rgba(48,209,88,.20); --tint-warn:rgba(255,214,10,.20);
   /* #ff453a on an 18% red tint over #0d1b2d is 4.26:1, short of body text's 4.5:1; 10% gives 4.68:1 */
   --tint-bad:rgba(255,69,58,.10); --tint-info:rgba(46,196,214,.20);
-  --tint-mut:rgba(245,247,251,.05); --on-tint:#fff;
+  --tint-mut:rgba(245,247,251,.05);
   --tint-teal:rgba(45,212,191,.20); --tint-violet:rgba(167,139,250,.20);
   --tint-paper:rgba(91,140,255,.20); --tint-wiki:rgba(197,155,255,.20);
   --paper:#fff; --scrim:rgba(4,11,20,.55);

@@ -199,7 +199,7 @@ export function PaperWikiIngest({ paper, reading }: {
           ? <p className="wiki-ingest-status">{m.wiki.ingest.preparing}</p>
           : null}
         {plan !== null && !plan.model.configured ? (
-          <p className="wiki-ingest-status bad">{m.wiki.ingest.notConnectedNote}</p>
+          <p className="wiki-ingest-status">{m.wiki.ingest.notConnectedNote}</p>
         ) : null}
         {receipt !== null ? <p className="wiki-ingest-status done">{receipt.message}</p> : null}
         {pending !== null ? (

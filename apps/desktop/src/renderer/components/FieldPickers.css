@@ -12,5 +12,5 @@ button.pv{border:0;background:transparent;font-family:var(--sans);font-size:var(
 :where(.cd):hover{background:var(--hover)}
 .cd.off{cursor:default}
 .cd.off:hover{background:transparent}
-.cd.today{color:var(--bad);font-weight:700}
+.cd.today{color:var(--on-selected);font-weight:700}
 .cd.sel{background:var(--selected);color:var(--on-selected)}

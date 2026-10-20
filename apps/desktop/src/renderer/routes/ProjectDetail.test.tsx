@@ -83,7 +83,7 @@ describe('attnItems', () => {
       lastProgress: '2026-08-17',
     }), TODAY, sm)).toEqual([
       {
-        id: 'block', rank: 1, kind: '阻塞', tone: 'bad',
+        id: 'block', rank: 1, kind: '阻塞', tone: 'warn',
         reason: '等 A100 机时(周四释放)', action: '确认如何解除阻塞',
       },
       {

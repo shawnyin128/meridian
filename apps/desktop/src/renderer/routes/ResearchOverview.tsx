@@ -38,7 +38,7 @@ const RECENT_EVENTS = 6
 const WEEK_DAYS = 7
 
 const PULSE_TONE: Record<ProjectPulseSignal['tone'], TagTone> = {
-  healthy: 'good', warn: 'warn', risk: 'bad', blocked: 'bad', quiet: 'neutral',
+  healthy: 'good', warn: 'warn', risk: 'bad', blocked: 'warn', quiet: 'neutral',
 }
 
 /**
