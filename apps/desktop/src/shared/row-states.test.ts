@@ -8,7 +8,7 @@ type Node = { dispatchEvent(event: object): boolean }
 type Style = {
   backgroundColor: string; backgroundImage: string; borderColor: string; boxShadow: string; color: string; cursor: string
   fill: string; stroke: string; opacity: string; getPropertyValue(name: string): string
-  borderTopStyle: string; borderBottomStyle: string; borderCollapse: string; borderSpacing: string
+  borderTopStyle: string; borderBottomStyle: string; borderCollapse: string; borderSpacing: string; height: string
 }
 type Window = {
   document: {
@@ -171,5 +171,16 @@ describe('论文表行与行之间的分隔线', () => {
     expect(['thead th:first-child', 'tbody td:first-child', 'th.th-add', 'td.row-actions-cell', 'td.pt-dim'].map(edge)).toEqual([
       '1px 0 0 var(--sep)', '1px 0 0 var(--sep)', '-1px 0 0 var(--sep)', '-1px 0 0 var(--sep)', '',
     ])
+  })
+})
+
+describe('论文表的行高', () => {
+  beforeEach(() => {
+    document.head.innerHTML = STYLES.map((css) => `<style>${css}</style>`).join('')
+  })
+
+  it('论文表的格子高度取表格行高 token，这个 token 就是论文行现在显示的 38px', () => {
+    const cell = styleOf(TABLE_ROW(''), 'td.pt-dim')
+    expect([cell.height, cell.getPropertyValue('--row-table-h').trim()]).toEqual(['var(--row-table-h)', '38px'])
   })
 })

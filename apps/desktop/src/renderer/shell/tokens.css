@@ -122,7 +122,7 @@
   /* Spacing steps, then per list type a row height and the row's inline padding; a menu row also has its check slot. */
   --sp-2:2px; --sp-4:4px; --sp-6:6px; --sp-8:8px; --sp-10:10px; --sp-12:12px; --sp-14:14px; --sp-16:16px; --sp-20:20px; --sp-24:24px; --sp-32:32px;
   --row-nav-h:30px; --row-nav-pad:var(--sp-8); --row-menu-h:30px; --row-menu-pad:var(--sp-10); --row-menu-check:13px;
-  --row-list-h:38px; --row-list-pad:var(--sp-8); --row-table-h:34px; --row-table-pad:var(--sp-10);
+  --row-list-h:38px; --row-list-pad:var(--sp-8); --row-table-h:38px; --row-table-pad:var(--sp-10);
   --fs-cap:11px; --fs-sm:12px; --fs-base:13px; --fs-read:14px; --fs-title:15px; --fs-xl:17px;
   --fs-page-title:var(--fs-base); --fs-dialog-title:var(--fs-title);
   --fw-regular:400; --fw-medium:500; --fw-semibold:600; --fw-bold:700;

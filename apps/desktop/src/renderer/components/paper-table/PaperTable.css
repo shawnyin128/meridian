@@ -70,7 +70,7 @@
 .ptable th.column-moving{opacity:.45;background:var(--tint-mut)}
 .ptable th.column-drop-before::before,.ptable th.column-drop-after::after{content:'';position:absolute;top:3px;bottom:3px;width:2px;border-radius:var(--r-2xs);background:var(--accent);z-index:5}
 .ptable th.column-drop-before::before{left:-1px}.ptable th.column-drop-after::after{right:-1px}
-.ptable td{padding:var(--sp-6) var(--row-table-pad);height:38px;box-sizing:border-box;border-bottom:1px solid var(--sep2);vertical-align:middle;line-height:var(--lh-ui);overflow:hidden;white-space:nowrap;position:relative}
+.ptable td{padding:var(--sp-6) var(--row-table-pad);height:var(--row-table-h);box-sizing:border-box;border-bottom:1px solid var(--sep2);vertical-align:middle;line-height:var(--lh-ui);overflow:hidden;white-space:nowrap;position:relative}
 /* An embedded table draws a rule only between adjacent rows, never under the last one. */
 .ptable tbody tr:last-child td{border-bottom:0}
 .ptable td:last-child{padding-top:0;padding-bottom:0;text-align:center}
