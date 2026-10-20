@@ -202,8 +202,8 @@ export function Sidebar({
         <div className="sb-nav">
           <div className="sb-top" ref={navFade}>
             <NavRow
-              className="srow" selected={screen === 'feed'} id="rowFeed" data-desk="feed"
-              style={{ marginTop: 8 }} onActivate={() => onNavigate('feed')}
+              className="srow feed-row" selected={screen === 'feed'} id="rowFeed" data-desk="feed"
+              onActivate={() => onNavigate('feed')}
             >
               <span className="ic"><Icon><path d="M22 12h-4l-3 8L9 4l-3 8H2" /></Icon></span>{m.shell.nav.feed}
             </NavRow>
@@ -388,8 +388,8 @@ export function Sidebar({
           <UpdateRow />
           {/* The trash can does not belong to any content group and is pinned outside the scroll area just like demo. */}
           <NavRow
-            className="srow" selected={screen === 'trash'} data-desk="trash"
-            style={{ flexShrink: 0, marginTop: 6 }} onActivate={() => onNavigate('trash')}
+            className="srow trash-row" selected={screen === 'trash'} data-desk="trash"
+            onActivate={() => onNavigate('trash')}
           >
             <span className="ic">
               <Icon>

@@ -170,10 +170,7 @@ export function movedColumnOrder(
 
 function SortArrow({ direction }: { direction: SortDirection }) {
   return (
-    <svg
-      style={{ width: 9, height: 9, verticalAlign: 0 }} viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
       <path d={ARROW_PATH[direction]} />
     </svg>
   )
@@ -1234,8 +1231,8 @@ export function PaperTable() {
               onChange={(e) => { setQ(e.target.value); setPage(1) }}
               onClear={() => { setQ(''); setPage(1) }} clearLabel={m.papers.toolbar.clearSearch}
             />
-            {view === 'table' ? <div className="filters" style={{ margin: 0 }}>
-              <span className="pt-dim" style={{ fontSize: 12 }}>{m.papers.toolbar.group}</span>
+            {view === 'table' ? <div className="filters">
+              <span className="pt-dim">{m.papers.toolbar.group}</span>
               <SegmentedControl
                 label={m.papers.toolbar.groupFieldAria}
                 value={group}
@@ -1246,7 +1243,7 @@ export function PaperTable() {
               {columns.groups.includes('readState')
                 ? (
                   <>
-                    <span className="pt-dim" style={{ fontSize: 12 }}>{m.papers.toolbar.filter}</span>
+                    <span className="pt-dim">{m.papers.toolbar.filter}</span>
                     <ReadStateFilter
                       name={names.columns.st}
                       current={group === 'readState' ? sel as ReadState | null : null}
