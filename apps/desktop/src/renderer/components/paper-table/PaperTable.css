@@ -125,7 +125,7 @@
 .mi-in.ctrow{display:flex;gap:var(--sp-6);padding-bottom:0}
 .ctbtn{flex:1;border:1px solid var(--sep2);background:var(--field);color:var(--ter);cursor:pointer;padding:var(--sp-6) 0;border-radius:var(--r-sm);display:grid;place-items:center}
 .ctbtn:hover{color:var(--ink)}
-.ctbtn.on{background:var(--selected);border-color:transparent;color:var(--on-selected)}
+.ctbtn.on{background:var(--selected-strong);border-color:transparent;color:var(--on-selected)}
 .ctbtn svg{width:12px;height:12px}
 /* Options: expand below the column row, one level deeper; the toggle is always visible, not only on row hover, or nobody would find it */
 .cmx.optx{opacity:1;pointer-events:auto}

@@ -307,11 +307,8 @@ describe('选中、当前、已应用和按下的状态', () => {
   const STATES = [
     ['components/StructuredList.css', '.structured-row--selected'],
     ['components/ResearchObjectCard.css', '.research-object-card.selected'],
-    ['components/Pager.css', '.pgbtn.on'],
     ['components/FieldPickers.css', '.cd.sel'],
-    ['components/paper-table/PaperTable.css', '.ctbtn.on'],
     ['routes/Reader.css', '.reader-rail button.on'],
-    ['routes/shell.css', '.read-state-filter.on'],
     ['components/ChipToggles.css', '.chip-toggle[data-state="on"]'],
     ['routes/shell.css', '.btn:not(.danger)[aria-pressed="true"]'],
     ['components/IconButton.css', '.icbtn[aria-pressed="true"]'],
@@ -322,6 +319,31 @@ describe('选中、当前、已应用和按下的状态', () => {
       .toEqual(Object.fromEntries([['.srow.on', '--accent-soft --accent-text'], ...STATES.map(([, selector]) => [selector, '--selected --on-selected'])]))
     expect(lookOf('components/SegmentedControl.css', '.segmented-thumb')).toBe('--raised 无')
   })
+
+  /** The on states of controls that already have a fill at rest: the current page, the applied filter, the picked column type. */
+  const FILLED_ON = [
+    ['components/Pager.css', '.pgbtn.on'], ['routes/shell.css', '.read-state-filter.on'],
+    ['components/paper-table/PaperTable.css', '.ctbtn.on'],
+  ] as const
+
+  it('当前页、已应用的筛选和选中的列类型用深一级的中性底配 --on-selected 的字', () => {
+    expect(FILLED_ON.map(([path, selector]) => lookOf(path, selector)))
+      .toEqual(FILLED_ON.map(() => '--selected-strong --on-selected'))
+  })
+
+  for (const theme of ['light', 'dark'] as const) {
+    it(`${theme === 'dark' ? '暗色' : '亮色'}的这些开着的样子对关着的输入底至少 1.2:1,对悬停至少 1.15:1,字不低于 4.5:1`, () => {
+      const off = flatten(theme, ['--field'])
+      const hover = flatten(theme, ['--field', '--hover'])
+      for (const ground of [['--content'], ['--card'], ['--raised'], ['--window', '--sidebar']]) {
+        const on = flatten(theme, [...ground, '--selected-strong'])
+        const where = `${theme} ${ground.join(' + ')}`
+        expect(contrast(on, off), `${where} 开对关`).toBeGreaterThanOrEqual(1.2)
+        expect(contrast(on, hover), `${where} 开对悬停`).toBeGreaterThanOrEqual(1.15)
+        expect(contrast(colour(theme, '--on-selected'), on), `${where} 字`).toBeGreaterThanOrEqual(TEXT)
+      }
+    })
+  }
 })
 
 describe('tokens.css 的决定值', () => {
