@@ -163,4 +163,13 @@ describe('论文表行与行之间的分隔线', () => {
       ['none/none', 'none/none', 'none/none'],
     ])
   })
+
+  it('吸住的标题列和操作列朝滚动的那一侧各画一条 1px 的 --sep 细线，其余格子不画', () => {
+    document.body.innerHTML = '<div class="tblwrap"><table class="ptable"><thead><tr><th>标题</th><th>年份</th><th class="th-add"></th></tr></thead>'
+      + '<tbody><tr><td class="trunc">EAGLE</td><td class="pt-dim">2024</td><td class="row-actions-cell"></td></tr></tbody></table></div>'
+    const edge = (selector: string) => getComputedStyle(document.querySelector(selector)).boxShadow
+    expect(['thead th:first-child', 'tbody td:first-child', 'th.th-add', 'td.row-actions-cell', 'td.pt-dim'].map(edge)).toEqual([
+      '1px 0 0 var(--sep)', '1px 0 0 var(--sep)', '-1px 0 0 var(--sep)', '-1px 0 0 var(--sep)', '',
+    ])
+  })
 })
