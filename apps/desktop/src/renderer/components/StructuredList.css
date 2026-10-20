@@ -1,7 +1,19 @@
-.structured-list{overflow:hidden;background:var(--card);border:1px solid var(--sep);border-radius:var(--r-card)}
-.structured-list--embedded{overflow:visible;background:transparent;border:0;border-radius:0}
-/* StructuredList sets the height from the first five rendered rows. */
+/* A card list does not clip, so a focused row's ring shows whole: its end rows take its rounded corners. */
+.structured-list{background:var(--card);border:1px solid var(--sep);border-radius:var(--r-card)}
+.structured-list:not(.structured-list--embedded)>.structured-row:first-child{border-top-left-radius:calc(var(--r-card) - 1px);
+  border-top-right-radius:calc(var(--r-card) - 1px)}
+.structured-list:not(.structured-list--embedded)>.structured-row:last-child{border-bottom-left-radius:calc(var(--r-card) - 1px);
+  border-bottom-right-radius:calc(var(--r-card) - 1px)}
+.structured-list--embedded{background:transparent;border:0;border-radius:0}
+/*
+ * StructuredList sets the height from the first five rendered rows. A list that scrolls clips, so it
+ * keeps the ring room inside its edges, and reaches out by as much at the sides so its rows stay put;
+ * a list that is a page's own column centres the same way the column does.
+ */
 .structured-list--scrollable{overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.structured-list.structured-list--scrollable{padding:var(--ring-room);margin-inline:calc(-1 * var(--ring-room))}
+.desk .desk-body>.structured-list.structured-list--scrollable{max-width:none;
+  margin-inline:max(calc(-1 * var(--ring-room)),calc((100% - var(--pagew)) / 2 - var(--ring-room)))}
 .structured-row{box-sizing:border-box;width:100%;border:0;border-top:1px solid var(--sep2);background:transparent;color:var(--ink);font:inherit;text-align:left}
 .structured-row:first-child{border-top:0}
 .structured-list--embedded>.structured-row{border-top:0}
@@ -13,8 +25,8 @@ button.structured-row,.structured-row--composite{cursor:pointer}
  * it while a menu or dialog of its row actions is open.
  */
 .structured-row--selected{background-color:var(--selected);color:var(--on-selected)}
-button.structured-row:hover,button.structured-row:focus-visible,.structured-row--composite:hover,
-.structured-row:where(:has(.row-actions [data-state="open"])){background-image:linear-gradient(var(--hover),var(--hover));outline:0}
+button.structured-row:hover,.structured-row--composite:hover,
+.structured-row:where(:has(.row-actions [data-state="open"])){background-image:linear-gradient(var(--hover),var(--hover))}
 
 /*
  * The row-actions slot: hidden and not clickable at rest, shown while its host (an element marked

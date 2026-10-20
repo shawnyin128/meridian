@@ -18,7 +18,7 @@ const rules = (path: string) => [...readFileSync(join(RENDERER, path), 'utf8').r
 
 /** The states that may write text in the accent colour: a picked or current item, and a status icon. */
 const ACCENT_TEXT_STATES = new Set([
-  '.srow.on .ic', '.update-row .ic', '.directory-field-action:focus-visible', '.tag--accent',
+  '.srow.on .ic', '.update-row .ic', '.tag--accent',
   '.about-status.is-ready svg', '.about-status.is-checking svg', '.about-status.is-downloading svg', '.reader-rail button.on',
   '.icbtn[aria-pressed="true"]',
 ])

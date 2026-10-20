@@ -67,7 +67,7 @@
  * position and open/close. An item's highlight is inset inside the surface's padding. A Radix item
  * lights up while [data-highlighted] and a candidate row (.rrow) while it is the active row (.on);
  * neither lights up on :hover, which would paint a second row while the keyboard moves. Only a
- * button row outside a Radix menu, as in the column settings, lights up on hover and focus.
+ * button row outside a Radix menu, as in the column settings, lights up on hover; its focus is the ring.
  */
 .ctxmenu,.pickhits{background:var(--raised);border-radius:var(--r-menu);box-shadow:var(--sh-2);padding:var(--pad-menu);z-index:90}
 .ctxmenu{min-width:158px}
@@ -108,9 +108,8 @@
 .colbtn{opacity:0;pointer-events:none;vertical-align:middle}
 thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events:auto}
 
-/* The demo's items are unfocusable divs without this rule; here they are buttons, so focus must show */
-.ctxmenu:focus-visible{outline:0}
-.mi:focus-visible{outline:none;background:var(--hover)}
+/* A menu surface takes focus only to hand it to an item, and a Radix item's highlight is its focus. */
+.ctxmenu:focus-visible,.mi[data-highlighted]:focus-visible{outline:0}
 
 /* Second popover form, for rename/edit (FloatingTextEditor, project rename): the demo's .ctxmenu.drop. */
 .ctxmenu.drop{padding:0;border-radius:var(--r-lg);overflow:hidden;min-width:190px}
@@ -133,7 +132,7 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
  */
 .metadata-field{display:block;width:100%;max-width:100%;min-width:0}
 .metadata-editable{display:block;box-sizing:border-box;width:100%;min-width:0;margin:-2px 0;padding:2px 0;border:0;border-radius:var(--r-xs);background:transparent;color:var(--sec);font:inherit;line-height:inherit;text-align:left;overflow-wrap:anywhere;cursor:text}
-.metadata-editable:hover,.metadata-editable:focus-visible{background:var(--field);color:var(--ink);outline:0}
+.metadata-editable:hover{background:var(--field);color:var(--ink)}
 .pv.metadata-editable{cursor:pointer}
 .form-control.metadata-input.multiline{display:block;width:100%;field-sizing:content;resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere}
 
@@ -148,6 +147,10 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .wkpage .lm{font-size:12px}
 .wkside{box-sizing:border-box;flex:0 0 260px;width:260px;max-width:260px;min-width:0;font-size:var(--fs-sm);line-height:var(--lh-ui);border-left:1px solid var(--sep2);padding-left:24px;
   position:sticky;top:0;max-height:calc(100vh - 190px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
+/* The rail clips, so it keeps the ring room at its end and foot, reaching out at its end by as much: its content keeps its width. */
+.wkside:not(.node-document-pane){flex-basis:calc(260px + var(--ring-room));width:calc(260px + var(--ring-room));
+  max-width:calc(260px + var(--ring-room));margin-right:calc(-1 * var(--ring-room));padding-right:var(--ring-room);
+  padding-bottom:var(--ring-room)}
 /* In a window too short for the column to stay pinned with room to read, it scrolls with the page. */
 @media (max-height:860px){.wkside:not(.node-document-pane){position:static;max-height:none}}
 .wkrel{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0}

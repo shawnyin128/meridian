@@ -77,6 +77,5 @@
   border-left:1px solid var(--sep2);border-radius:0 calc(var(--r-control) - 1px) calc(var(--r-control) - 1px) 0;
   display:grid;place-items:center;background:transparent;color:var(--ter);cursor:pointer}
 .directory-field-action:hover{background:var(--hover);color:var(--ink)}
-.directory-field-action:focus-visible{outline:0;background:var(--hover);color:var(--accent)}
 .directory-field-action:disabled{cursor:default;opacity:.45;background:transparent;color:var(--ter)}
 .directory-field-action svg{width:16px;height:16px}

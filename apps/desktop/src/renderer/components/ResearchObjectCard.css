@@ -4,8 +4,7 @@
 /* Grid cards sit in a grid that spaces them, and carry less padding. */
 .research-object-card--grid{min-height:0;margin-bottom:0;padding:12px;line-height:1.5}
 .research-object-card[data-actionable]{cursor:pointer}
-.research-object-card[data-actionable]:hover,.research-object-card:has(.research-object-card-open:focus-visible),
-.research-object-card:has(.row-actions [data-state="open"]){border-color:var(--sep-strong)}
+.research-object-card[data-actionable]:hover,.research-object-card:has(.row-actions [data-state="open"]){border-color:var(--sep-strong)}
 /* The card's name button draws nothing of its own; its click reaches the card. */
 :where(.research-object-card-open){display:inline-flex;align-items:center;min-width:0;padding:0;border:0;background:none;
   color:inherit;font:inherit;text-align:left;cursor:inherit}

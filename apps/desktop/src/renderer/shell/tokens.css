@@ -71,6 +71,8 @@
    */
   --bad-solid:#d1372c; --bad-text:color-mix(in srgb,var(--bad) 80%,var(--ink));
   --ring:var(--accent); --ring-width:2px; --ring-offset:2px;
+  /* How far the ring reaches past a control: a container that clips keeps this much room around its controls. */
+  --ring-room:calc(var(--ring-width) + var(--ring-offset));
   --sel:rgba(53,104,255,.22);
   /*
    * The one selected look of rows, cards, graph nodes and picked options: the accent tint, and text the
@@ -194,9 +196,9 @@ body{margin:0;background:var(--desktop);color:var(--ink);font-family:var(--sans)
 /*
  * A scroll area that hides content past its top or bottom fades toward that edge; useScrollFade
  * lists those edges in data-fade. The mask leaves out the scrollbar column on the right, so the
- * scrollbar never fades.
+ * scrollbar never fades. Its scroll padding keeps a control that takes focus out of a faded edge.
  */
-[data-fade]{--fade-top:0px;--fade-bottom:0px}
+[data-fade]{--fade-top:0px;--fade-bottom:0px;scroll-padding-block:var(--sp-24)}
 [data-fade~="top"]{--fade-top:var(--sp-24)}
 [data-fade~="bottom"]{--fade-bottom:var(--sp-24)}
 :is([data-fade~="top"],[data-fade~="bottom"]){
