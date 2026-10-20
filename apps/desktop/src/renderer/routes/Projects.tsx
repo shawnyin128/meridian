@@ -366,7 +366,7 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
           </>
         )}
       >
-        <PageTitle>{m.research.list.title(projects.length)}</PageTitle>
+        <PageTitle>{m.research.list.title(projects.filter((p) => p.status === ACTIVE_PROJECT).length)}</PageTitle>
       </PageHeader>
       <PageError error={error} />
 

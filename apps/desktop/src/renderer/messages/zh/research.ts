@@ -1,7 +1,7 @@
 /** research screen copy. */
 export const research = {
   overview: {
-    title: (n: number) => `总览 · ${n}`,
+    title: '总览',
     timelineHeading: '时间线 · 项目',
     statsHeading: '概况',
     stats: {

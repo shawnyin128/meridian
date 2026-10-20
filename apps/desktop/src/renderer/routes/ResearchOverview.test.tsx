@@ -65,6 +65,12 @@ describe('研究总览的项目推进', () => {
     expect(host.querySelector('.empty-state')).toBeNull()
   })
 
+  it('屏头只写总览，不带数', async () => {
+    api.rows = [row([]), { ...row([]), id: 'other' }]
+    await act(async () => { root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>) })
+    expect(host.querySelector('.desk-head .t')!.textContent).toBe('总览')
+  })
+
   it('总览还没读到时页面里是载入占位，不是一片空白', async () => {
     api.loading = true
     await act(async () => { root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>) })

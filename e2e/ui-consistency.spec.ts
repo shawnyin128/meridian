@@ -102,13 +102,13 @@ const TITLES: [string, string][] = [
   ['papers', '论文 · 291'],
   ['wiki', 'Wiki · 13'],
   ['changelog', '最近变动 · 4'],
-  ['restl', '总览 · 4'],
-  ['resproj', '项目 · 6'],
+  ['restl', '总览'],
+  ['resproj', '项目 · 4'],
   ['ideas', '想法 · 1'],
   ['trash', '垃圾桶 · 0'],
 ]
 
-test('每一屏都有屏头,标题是「屏名 · 数字」,不带量词不带括号', async ({ win }) => {
+test('每一屏都有屏头,标题是「屏名 · 数字」,不带量词不带括号;动态与总览只写屏名', async ({ win }) => {
   test.slow()
   for (const [desk, title] of TITLES) {
     await win.locator(`[data-desk="${desk}"]`).click()

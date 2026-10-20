@@ -98,3 +98,11 @@ describe('一个概念一个词', () => {
     expect(zh.reader.rail.tabs.highlights).toContain(zh.reader.selection.note)
   })
 })
+
+describe('标签后的数', () => {
+  it('一律写成 标签 · N,不带单位', () => {
+    expect([
+      zh.inbox.headWatch('主题 · speculative decoding', 3), zh.project.conclusions.tasks(2), zh.project.conclusions.experiments(2),
+    ]).toEqual(['主题 · speculative decoding · 3', '任务 · 2', '实验记录 · 2'])
+  })
+})

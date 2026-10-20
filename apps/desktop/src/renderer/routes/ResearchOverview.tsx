@@ -447,9 +447,7 @@ export function ResearchOverview() {
   return (
     <PageShell>
       <PageHeader>
-        <PageTitle>
-          {m.research.overview.title(rows?.filter((p) => p.status === ACTIVE_PROJECT).length ?? 0)}
-        </PageTitle>
+        <PageTitle>{m.research.overview.title}</PageTitle>
       </PageHeader>
       <PageError error={error} />
 

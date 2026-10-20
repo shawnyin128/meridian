@@ -158,6 +158,14 @@ describe('Project list', () => {
     expect(host.querySelector('[data-open="draft"]')).not.toBeNull()
   })
 
+  it('屏头的数和侧栏一样只数进行中的项目', async () => {
+    api.projects = [
+      summary({ id: 'a', status: '进行中' }), summary({ id: 'b', status: '搁置' }), summary({ id: 'c', status: '已完成' }),
+    ]
+    await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
+    expect(host.querySelector('.desk-head .t')!.textContent).toBe('项目 · 1')
+  })
+
   it('搁置项目那一行的焦点用全角冒号接在它的名字后面', async () => {
     api.projects = [summary({ id: 'draft', name: 'draft 效率', status: '搁置', focus: '等算力' })]
     await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))

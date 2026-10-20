@@ -160,7 +160,7 @@ describe('ProjectPlan', () => {
   })
 
   it('已归档分组和想法页的一样,标题后带条数', () => {
-    const count = (html: string) => /collapsible-group-title">已归档<\/span><span class="count-badge[^"]*">(\d+)</.exec(html)?.[1]
+    const count = (html: string) => /collapsible-group-title">已归档<\/span><span class="collapsible-group-count">· (\d+)</.exec(html)?.[1]
     expect(count(renderPlan('task', { tasks: [task, doneTask] }))).toBe('1')
     expect(count(renderPlan('ms', { milestones: [milestone, doneMilestone] }))).toBe('1')
   })

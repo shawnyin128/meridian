@@ -120,7 +120,7 @@ test('侧栏「总览」进的是研究总览,各块条数与 project.overview �
   const counts = await overviewCounts(win)
 
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '总览'])
-  await expect(shown(win).locator('.desk-head .t')).toHaveText(`总览 · ${counts.active}`)
+  await expect(shown(win).locator('.desk-head .t')).toHaveText('总览')
   // In the demo this sidebar row has no badge; only the other rows do.
   await expect(win.locator('[data-desk="restl"] .n')).toHaveCount(0)
 
@@ -165,7 +165,6 @@ test('侧栏「总览」进的是研究总览,各块条数与 project.overview �
 
 test('总览点一个项目进它的详情,返回钮回总览,面包屑「项目」回列表,列表进来的返回钮回列表', async ({ win }) => {
   await gotoOverview(win)
-  const { active } = await overviewCounts(win)
   await shown(win).locator('.ovlist-row.progress[data-proj="draft"]').click()
 
   await expect(shown(win).locator('.desk-head .t')).toHaveText('draft 效率')
@@ -174,7 +173,7 @@ test('总览点一个项目进它的详情,返回钮回总览,面包屑「项目
   // Back follows history: the project was opened from Overview, so Back returns to Overview.
   await shown(win).locator('.desk-head .back').click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '总览'])
-  await expect(shown(win).locator('.desk-head .t')).toHaveText(`总览 · ${active}`)
+  await expect(shown(win).locator('.desk-head .t')).toHaveText('总览')
   await expect(shown(win).locator('.ovlist-row.progress[data-proj="draft"]')).toBeVisible()
 
   // The breadcrumb's Projects segment still returns to the project list, as in the demo.

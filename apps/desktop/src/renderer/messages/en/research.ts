@@ -4,7 +4,7 @@ import { research as zh } from '../zh/research.js'
 /** English counterpart of `zh/research`. */
 export const research = {
   overview: {
-    title: (n: number) => `Overview · ${n}`,
+    title: 'Overview',
     timelineHeading: 'Timeline · Projects',
     statsHeading: 'Stats',
     stats: {

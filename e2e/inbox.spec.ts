@@ -152,7 +152,7 @@ test('按主题与作者各筛一档,面包屑与条数都跟着换', async ({ w
   for (const w of counted) {
     await openInbox(win, w.id)
     await expect(win.locator('#crumb .cseg')).toHaveText(['收件', KIND[w.type], w.name])
-    await expect(shown(win, '.desk-head .t')).toHaveText(`${KIND[w.type]} · ${w.name} · ${w.n} 篇`)
+    await expect(shown(win, '.desk-head .t')).toHaveText(`${KIND[w.type]} · ${w.name} · ${w.n}`)
     await expect(shown(win, '.pcard')).toHaveCount(w.n)
     // A watch's view has one group heading, naming that watch; a watch with no entries shows only the empty state.
     await expect(shown(win, '.collapsible-group')).toHaveCount(w.n === 0 ? 0 : 1)

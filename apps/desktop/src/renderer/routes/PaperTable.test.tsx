@@ -624,7 +624,7 @@ describe('PaperTable', () => {
 
     expect(host.querySelector('.gnav .segmented-control')).toBeNull()
     const picker = host.querySelector<HTMLButtonElement>('.gnav button[aria-label="分组取值"]')!
-    expect(picker.textContent).toBe('推理(2)')
+    expect(picker.textContent).toBe('推理 · 2')
     expect(host.querySelector('#gxBack')).toBeNull()
     expect([...host.querySelector('.gnav')!.children]).toEqual([picker])
     await act(async () => { picker.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
@@ -635,7 +635,7 @@ describe('PaperTable', () => {
     await act(async () => { press(items[1]!) })
     await flush()
     expect(listParams.at(-1)?.facet).toEqual({ field: 'topics', value: '检索' })
-    expect(host.querySelector('.gnav button[aria-label="分组取值"]')!.textContent).toBe('检索(1)')
+    expect(host.querySelector('.gnav button[aria-label="分组取值"]')!.textContent).toBe('检索 · 1')
   })
 
   it('列设置里能显隐的内置列是按钮并报出是否显示，锁定的列不是按钮', async () => {

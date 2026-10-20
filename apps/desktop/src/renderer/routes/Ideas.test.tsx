@@ -238,7 +238,7 @@ describe('Ideas', () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     const group = host.querySelector<HTMLElement>('.collapsible-group.collapsible-group--quiet')!
     expect(group.querySelector('.collapsible-group-title')!.textContent).toBe('已归档')
-    expect(group.querySelector('.collapsible-group-count')!.textContent).toBe('1')
+    expect(group.querySelector('.collapsible-group-count')!.textContent).toBe('· 1')
     expect(host.querySelector('[data-idea="idea-completed"]')).toBeNull()
     await act(async () => { group.querySelector<HTMLButtonElement>('.collapsible-group-toggle')!.click() })
     expect(group.querySelector('[data-idea="idea-completed"]')).not.toBeNull()
