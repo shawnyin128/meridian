@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 type Node = { dispatchEvent(event: object): boolean }
 type Style = {
   opacity: string; cursor: string; height: string; borderTopWidth: string; borderTopStyle: string
-  boxShadow: string; transition: string; backgroundColor: string; color: string
+  boxShadow: string; transition: string; backgroundColor: string; color: string; background: string
 }
 type Window = {
   document: {
@@ -125,6 +125,22 @@ describe('按钮组', () => {
   it('禁用的按钮悬停时不再变色', () => {
     const hover = (button: Node) => { button.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })) }
     expect(new Set(Object.values(each((style) => style.boxShadow, 'disabled', hover)))).toEqual(new Set(['none']))
+  })
+
+  it('菜单里禁用的条目与禁用的按钮是同一个样子：变淡、没有手形光标，悬停也不亮', () => {
+    /** Opacity, cursor and fill of the `.mi` in `markup`, hovered first when `hover`. */
+    const look = (markup: string, hover = false) => {
+      document.body.innerHTML = markup
+      const item = document.querySelector('.mi')
+      if (hover) item.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+      const style = getComputedStyle(item)
+      return `${style.opacity} ${style.cursor} ${style.background}`
+    }
+    const [disabled] = Object.values(each((style) => `${style.opacity} ${style.cursor}`, 'disabled'))
+    expect([
+      look('<div role="menuitem" class="mi" data-disabled="">取消归档</div>'),
+      look('<button type="button" class="mi" disabled>发表</button>', true),
+    ]).toEqual([`${disabled} ${TRANSPARENT}`, `${disabled} ${TRANSPARENT}`])
   })
 
   it('按钮不画边框，次要按钮是一块浅底，幽灵按钮没有底', () => {
