@@ -222,7 +222,7 @@ function GroupValuePicker({ current, facets, onPick }: {
       align="start"
       trigger={(
         <button type="button" className="btn sm" aria-label={m.papers.toolbar.groupValueAria}>
-          {count === undefined ? current : `${current}(${count})`}
+          {count === undefined ? current : `${current} · ${count}`}
         </button>
       )}
     >

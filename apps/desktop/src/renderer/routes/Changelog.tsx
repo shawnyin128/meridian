@@ -167,7 +167,7 @@ export function Changelog() {
           </RowActions>
         )}
       >
-        <DiffLines lines={c.diff} />
+        <DiffLines lines={c.lines} />
       </CardTray>
     </StructuredRow>
   )

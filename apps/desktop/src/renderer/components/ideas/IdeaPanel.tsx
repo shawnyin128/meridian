@@ -4,14 +4,35 @@ import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { SectionHeading } from '../PageShell.js'
 import { PanelClose } from '../PanelClose.js'
+import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
+import { SLOT } from '../TitleNote.js'
 import { Tag } from '../Tag.js'
 import './IdeaPanel.css'
 
-/** Where an idea came from: the conversation, after the paper it was about when there is one. */
+/** Where an idea came from, as plain text for a tooltip: the conversation, after the paper it was about when there is one. */
 export const ideaSourceLabel = (idea: ResearchIdea) => idea.source.paperTitle === undefined
   ? plainTitle(idea.source.chatTitle)
   : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
+
+/**
+ * Where an idea came from, as ideaSourceLabel says it, its titles as paper text; `message` places it
+ * in its words.
+ */
+export function IdeaSource({ idea, message = (source) => source }: {
+  idea: ResearchIdea
+  message?: (source: string) => string
+}) {
+  const [before, after] = message(SLOT).split(SLOT)
+  return (
+    <>
+      {before}
+      {idea.source.paperTitle === undefined ? null : <><PaperText text={idea.source.paperTitle} /> · </>}
+      <PaperText text={idea.source.chatTitle} />
+      {after}
+    </>
+  )
+}
 
 /**
  * The one detail panel of an idea, on the Ideas screen and on the project page: the title with the
@@ -56,7 +77,7 @@ export function IdeaPanel({ idea, actions, editor, onClose, onOpenSourceChat, ch
           : <button className="btn sm idea-panel-open-chat" onClick={() => onOpenSourceChat(chatId)}>{m.ideas.openSourceChat}</button>}
       >{m.project.sections.source}
       </SectionHeading>
-      <p className="idea-panel-source">{ideaSourceLabel(idea)}</p>
+      <p className="idea-panel-source"><IdeaSource idea={idea} /></p>
       <div className="idea-panel-updated">{m.common.updatedOn(fmt.date(idea.updated))}</div>
     </>
   )

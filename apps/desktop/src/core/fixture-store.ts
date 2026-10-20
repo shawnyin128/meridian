@@ -51,7 +51,7 @@ import { digestOf } from './wiki-proposals.js'
 import {
   applyProposal, checkBody, conclusionClaims, describeOp, projectClaims, projectDisputes, HUMAN, isPaper, pageVersion, recordText, touchedPages,
   wikiAggregation, wikiCards, wikiHome, wikiPaper, wikiSearchIndex, wikiSignals,
-  type ClaimWorld, type WikiData, type WikiPaperRecord,
+  type ClaimWorld, type PointName, type WikiData, type WikiPaperRecord,
 } from './wiki/index.js'
 
 /** Trash entry with all content needed for restoration. `restorable` is derived from destination availability. */
@@ -354,6 +354,13 @@ export function createFixtureStore(
   /** Every project's name, by id. */
   const projectNames = (): Record<string, string> =>
     Object.fromEntries([...projectById.values()].map((p) => [p.id, p.name]))
+
+  /** The label of a project's node or the text of its legacy conclusion. */
+  const pointName: PointName = (id, point) => {
+    const project = projectById.get(id)
+    return project?.graph.nodes.find((n) => n.id === point)?.label
+      ?? project?.conclusionList.find((c) => c.id === point)?.text
+  }
 
   /** The claim-validation world for producer `by`: the fixture projects and reading records. */
   const worldOf = (by: string, requireVerified = true): ClaimWorld => ({
@@ -1636,7 +1643,7 @@ export function createFixtureStore(
     },
 
     wikiAggregation(id) {
-      return wikiAggregation(wiki, id, versionOf(id)!, projectNames())
+      return wikiAggregation(wiki, id, versionOf(id)!, projectNames(), pointName)
     },
 
     wikiPaper(id) {

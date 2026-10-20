@@ -72,7 +72,7 @@ test('侧栏「项目」进的是列表,项目条数与 project.list 一致', as
   await expect(shown(win).locator('.projpanel, .prow')).toHaveCount(projects.length)
   await expect(shown(win).locator('.projpanel')).toHaveCount(active.length)
   await expect(shown(win).locator('.desk-head .t'))
-    .toHaveText(`项目 · ${projects.length}`)
+    .toHaveText(`项目 · ${active.length}`)
   await expect(shown(win).locator('.projpanel .project-identity-name')).toHaveText(active.map((p) => p.name))
 })
 

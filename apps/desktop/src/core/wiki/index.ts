@@ -16,6 +16,7 @@ export {
   wikiSearchIndex,
 } from './model.js'
 export type {
+  PointName,
   WikiAggregationRecord,
   WikiCellRecord,
   WikiClaimRecord,

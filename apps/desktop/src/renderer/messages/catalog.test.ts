@@ -57,3 +57,59 @@ describe('确认框的文案', () => {
     })
   }
 })
+
+describe('一个概念一个词', () => {
+  /** Every text of the zh catalog by key path, a function's text written with placeholder arguments. */
+  const texts = (node: Node, prefix = ''): [string, string][] => Object.entries(node).flatMap(([key, value]) => {
+    const path = prefix === '' ? key : `${prefix}.${key}`
+    if (typeof value === 'object' && value !== null) return texts(value as Node, path)
+    if (typeof value === 'function') return [[path, String((value as (...args: unknown[]) => unknown)('X', 'X', 'X'))]]
+    return [[path, String(value)]]
+  })
+  /** The key paths of the project and research screens' texts that hold `word`. */
+  const using = (word: string): string[] => texts({ project: zh.project, research: zh.research } as unknown as Node)
+    .filter(([, text]) => text.includes(word)).map(([path]) => path)
+
+  it('当前科研路径只叫当前科研路径', () => {
+    expect([...using('active path'), ...using('研究路径')]).toEqual([])
+  })
+
+  it('项目的记录叫科研记录,不叫进展,也不叫动态屏的名字动态', () => {
+    expect([...using('进展'), ...using(zh.feed.title)]).toEqual([])
+  })
+
+  it('信号的标题只叫需要注意', () => {
+    expect(using('需要决策')).toEqual([])
+  })
+
+  it('打开一样东西只叫打开', () => {
+    expect(using('跳转')).toEqual([])
+  })
+
+  it('计划里加任务或里程碑只叫添加', () => {
+    expect([zh.project.plan.newAction, zh.project.plan.taskCreated, zh.research.overview.milestonePopTitle(true, 'X')]
+      .filter((text) => !text.includes('添加'))).toEqual([])
+  })
+
+  it('建一列只叫新建列,阅读状态只叫阅读状态', () => {
+    expect([zh.papers.columnHeader.addColumn, zh.wiki.aggregation.addColumn]).toEqual(['新建列', '新建列'])
+    expect(zh.papers.notices.columnCreated).toContain('新建列')
+    expect([zh.papers.columns.st, zh.papers.groupNames.readState, zh.papers.metadata.fields.readState])
+      .toEqual(['阅读状态', '阅读状态', '阅读状态'])
+  })
+
+  it('保存只叫保存;选中文字后加批注的那一项按它落到的高亮与批注叫批注', () => {
+    expect(Object.values(zh.reader.notes)).not.toContain('保存笔记')
+    expect(zh.chat.saveIdeaLabel).toBe('保存为想法')
+    expect(zh.reader.selection.note).toBe('批注')
+    expect(zh.reader.rail.tabs.highlights).toContain(zh.reader.selection.note)
+  })
+})
+
+describe('标签后的数', () => {
+  it('一律写成 标签 · N,不带单位', () => {
+    expect([
+      zh.inbox.headWatch('主题 · speculative decoding', 3), zh.project.conclusions.tasks(2), zh.project.conclusions.experiments(2),
+    ]).toEqual(['主题 · speculative decoding · 3', '任务 · 2', '实验记录 · 2'])
+  })
+})

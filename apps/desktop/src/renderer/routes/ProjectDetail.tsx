@@ -42,7 +42,7 @@ import { ProjectConclusionPanel, ProjectConclusionRow } from '../components/proj
 import { ProjectTimeline } from '../components/project/ProjectTimeline.js'
 import { nodeMode, ResearchGraph, ResearchNodePanel } from '../components/project/ResearchGraph.js'
 import { IdeaGraphDialog } from '../components/ideas/IdeaGraphDialog.js'
-import { IdeaPanel, ideaSourceLabel } from '../components/ideas/IdeaPanel.js'
+import { IdeaPanel, IdeaSource, ideaSourceLabel } from '../components/ideas/IdeaPanel.js'
 import { ProjectPlan, ProjectTaskPanel } from '../components/project/ProjectPlan.js'
 import type { PlanCreating, PlanTab } from '../components/project/ProjectPlan.js'
 import { BackButton } from '../components/BackButton.js'
@@ -831,7 +831,7 @@ export function ProjectDetail({
                           {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
                         </span>
                         <Tooltip label={m.project.idea.sourceTag(source)} whenClipped>
-                          <span className="project-idea-source">{m.project.idea.sourceTag(source)}</span>
+                          <span className="project-idea-source"><IdeaSource idea={idea} message={m.project.idea.sourceTag} /></span>
                         </Tooltip>
                       </StructuredRow>
                     )

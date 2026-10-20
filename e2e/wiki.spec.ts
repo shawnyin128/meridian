@@ -537,7 +537,7 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
   const before = await heads()
 
   await table.locator('thead').hover()
-  await table.locator('thead [aria-label="新增列"]').click()
+  await table.locator('thead [aria-label="新建列"]').click()
   await expect(table.locator('thead th.th-new')).toHaveCount(1)
   // The placeholder column adds a blank cell to each body row too, or the body's cells would not line up.
   expect(await table.locator('tbody tr').first().locator('td').count())
@@ -562,7 +562,7 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
 
   // A column name that duplicates an existing one is not submitted: the placeholder and typed text stay.
   await table.locator('thead').hover()
-  await table.locator('thead [aria-label="新增列"]').click()
+  await table.locator('thead [aria-label="新建列"]').click()
   await table.locator('thead th.th-new input').fill('新列 2')
   await table.locator('thead th.th-new input').press('Enter')
   await expect(table.locator('thead th.th-new')).toHaveCount(1)
@@ -575,7 +575,7 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
 
   // Open the placeholder again and press Esc. The number of columns remains unchanged.
   await table.locator('thead').hover()
-  await table.locator('thead [aria-label="新增列"]').click()
+  await table.locator('thead [aria-label="新建列"]').click()
   await table.locator('thead th.th-new input').press('Escape')
   await expect(table.locator('thead th.th-new')).toHaveCount(0)
   await expect.poll(heads).toEqual([...before, '新列 2'])
@@ -583,7 +583,7 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
   // Pressing Paper comparison's + from the keyboard sends no pointerdown, so the placeholder column cannot
   // rely on an outside click to close; the two placeholders must still never be open at once.
   await table.locator('thead').hover()
-  await table.locator('thead [aria-label="新增列"]').click()
+  await table.locator('thead [aria-label="新建列"]').click()
   await expect(table.locator('thead th.th-new')).toHaveCount(1)
   await shown(win).locator('.wkmain .section-heading', { hasText: '论文对比' })
     .locator('[aria-label="添加论文"]').press('Enter')

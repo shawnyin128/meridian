@@ -5,11 +5,11 @@ import { inbox as zh } from '../zh/inbox.js'
 export const inbox = {
   streamLabel: { watch: 'Inmail', discovery: 'Recommended papers' },
   headAll: (streamLabel: string, count: number) => `${streamLabel} · ${count}`,
-  headWatch: (label: string, count: number) => `${label} · ${count} ${pluralEn(count, { one: 'paper', other: 'papers' })}`,
+  headWatch: (label: string, count: number) => `${label} · ${count}`,
   check: {
     checking: 'Checking for new papers…',
     failed: 'Check failed',
-    lastChecked: (when: string) => `Last checked ${when}`,
+    lastChecked: 'Last checked',
   },
   checkNewPapers: 'Check for new papers',
   discovering: 'Discovering…',

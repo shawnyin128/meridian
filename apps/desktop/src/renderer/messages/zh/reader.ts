@@ -21,12 +21,11 @@ export const reader = {
     heading: (count: number) => `阅读笔记 · ${count}`,
     newAria: '新笔记',
     placeholder: (page: number) => `第 ${page} 页的笔记`,
-    add: '保存笔记',
     pageAria: (page: number) => `第 ${page} 页笔记`,
   },
   highlights: {
-    noteAria: (page: number) => `第 ${page} 页高亮笔记`,
-    annotate: '这段高亮的笔记',
+    noteAria: (page: number) => `第 ${page} 页高亮批注`,
+    annotate: '这段高亮的批注',
   },
   remark: {
     heading: '随笔 · 本篇',
@@ -34,7 +33,7 @@ export const reader = {
   },
   selection: {
     highlight: '高亮',
-    note: '笔记',
+    note: '批注',
     askAi: '问 AI',
   },
   zoom: {

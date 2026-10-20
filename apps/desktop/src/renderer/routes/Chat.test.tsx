@@ -200,7 +200,7 @@ describe('Chat composer', () => {
     await finish()
   })
 
-  it('快捷引用是一行的幽灵 chip，存为想法是排在工具栏末尾的幽灵按钮', () => {
+  it('快捷引用是一行的幽灵 chip，保存为想法是排在工具栏末尾的幽灵按钮', () => {
     const chips = [...document.querySelectorAll<HTMLButtonElement>('#qmChips button')]
     expect(chips.map((chip) => [chip.className, chip.querySelector('.fade-text')?.textContent]))
       .toEqual([['btn ghost sm qm', '@草稿树项目']])

@@ -77,7 +77,7 @@ describe('项目页时间线上的里程碑', () => {
     const lane = host.querySelector<HTMLButtonElement>('.msrow .glane-new')!
     await act(async () => { lane.focus() })
     await act(async () => { lane.click() })
-    expect(heading()).toBe('新建里程碑 · 9月16日')
+    expect(heading()).toBe('添加里程碑 · 9月16日')
     expect(document.activeElement).toBe(input())
     await act(async () => { input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })) })
     // Radix returns focus on the task after the popover unmounts.
@@ -89,7 +89,7 @@ describe('项目页时间线上的里程碑', () => {
 
   it('点里程碑行的空白处,和总览一样在点到的地方打开新建里程碑的小窗', async () => {
     await act(async () => { host.querySelector<HTMLElement>('.msrow')!.click() })
-    expect(heading()).toEqual(expect.stringMatching(/^新建里程碑 · /))
+    expect(heading()).toEqual(expect.stringMatching(/^添加里程碑 · /))
     await typeAndEnter('上线评测')
     expect(calls.onCreateMilestone).toHaveBeenCalledExactlyOnceWith(expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), '上线评测')
     expect(calls.onNewMilestone).not.toHaveBeenCalled()

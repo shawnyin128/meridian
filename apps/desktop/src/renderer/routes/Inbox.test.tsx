@@ -186,7 +186,7 @@ describe('Inbox', () => {
     const groups = [...host.querySelectorAll<HTMLElement>('.collapsible-group')]
     expect(groups.map((group) => group.dataset['group'])).toEqual(['p1', 'p2'])
     expect(groups[0]!.querySelector('.collapsible-group-title')?.textContent).toBe('项目 · 项目一')
-    expect(groups[0]!.querySelector('.collapsible-group-count')?.textContent).toBe('2')
+    expect(groups[0]!.querySelector('.collapsible-group-count')?.textContent).toBe(' · 2')
     expect(groups[0]!.querySelectorAll('.paper-card')).toHaveLength(2)
 
     await act(async () => { groups[0]!.querySelector<HTMLButtonElement>('.collapsible-group-toggle')!.click() })
@@ -254,6 +254,18 @@ describe('Inbox', () => {
     expect(host.querySelectorAll('.collapsible-group')).toHaveLength(1)
     expect(host.querySelector('[aria-label="忽略"]')).toBeNull()
     expect(host.querySelector('.collapsible-group-actions')).toBeNull()
+    await act(async () => { root.unmount() })
+  })
+
+  it('上次检查的时刻像全 App 的时间一样写成日期与时刻', async () => {
+    status = {
+      writes: 0, uploads: [], downloads: [], fetch: { state: 'idle', checkedAt: new Date(2026, 8, 20, 14, 5).getTime(), reason: null },
+    }
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    const note = host.querySelector('.fetchnote')!
+    expect(note.firstChild!.textContent).toBe('上次检查')
+    expect([...note.querySelectorAll('.date-time-display .date-chip')].map((chip) => chip.textContent)).toEqual(['9月20日', '14:05'])
     await act(async () => { root.unmount() })
   })
 

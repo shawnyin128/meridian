@@ -1,7 +1,7 @@
 /** chat screen copy. */
 export const chat = {
   newChat: '新对话',
-  saveIdeaLabel: '存为想法',
+  saveIdeaLabel: '保存为想法',
   mentionGroup: { project: '项目', paper: '论文', page: 'Wiki' },
   conflictQuestion: '为什么说这两条结论冲突？',
   quotePrefix: (quote: string) => `关于这段原文：“${quote}” `,

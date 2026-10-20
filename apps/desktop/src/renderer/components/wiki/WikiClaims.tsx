@@ -52,8 +52,13 @@ function conflictId(...claims: (WikiClaim | undefined)[]): string {
   return `k${n}`
 }
 
-/** One evidence item or conflict target as a line of links: what it is, then where it points. */
-function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: string | undefined; links: ClaimLinks }) {
+/**
+ * One evidence item or conflict target as a line of links: what it is, then where it points. `title` is
+ * its display name and `point` the name of the node or conclusion an experiment cites.
+ */
+function Side({ item, title, point, links }: {
+  item: Evidence | ConflictTarget; title: string | undefined; point: string | undefined; links: ClaimLinks
+}) {
   const m = useMessages()
   const c = m.wiki.claims
   const paper = title === undefined ? null : <PaperText text={title} />
@@ -63,7 +68,7 @@ function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: 
         <>
           <Tag>{c.experiment}</Tag>
           <EntityLink kind="project" label={title} onOpen={() => links.openProject(item.project)} />
-          <span className="wkclaim-point">{item.node ?? item.conclusion}</span>
+          <span className="wkclaim-point">{point}</span>
           {item.text ? <span className="wkclaim-note">{item.text}</span> : null}
         </>
       )
@@ -254,12 +259,12 @@ export function WikiClaims({ page, pending, links, onApply }: {
                 </div>
                 <ul className="wkclaim-lines">
                   {claim.evidence.map((e, at) => (
-                    <li key={at} className="wkclaim-evidence"><Side item={e.evidence} title={e.title} links={links} /></li>
+                    <li key={at} className="wkclaim-evidence"><Side item={e.evidence} title={e.title} point={e.point} links={links} /></li>
                   ))}
                   {claim.conflicts.map((x) => (
                     <li key={`conflict ${x.id}`} className="wkclaim-conflict">
                       <Tag tone="bad">{c.conflict}</Tag>
-                      <Side item={x.against} title={x.title} links={links} />
+                      <Side item={x.against} title={x.title} point={x.point} links={links} />
                       <span className="wkclaim-note">{x.note}</span>
                       <button
                         type="button" className="btn ghost sm wkclaim-resolve" disabled={pending}

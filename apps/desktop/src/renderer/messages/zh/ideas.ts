@@ -31,7 +31,7 @@ export const ideas = {
   },
   openSourceChat: '打开来源对话',
   editor: {
-    newTitle: '存为想法',
+    newTitle: '保存为想法',
     editTitle: '编辑想法',
     sourceLabel: (source: string) => `来源：${source}`,
     titleLabel: '标题',

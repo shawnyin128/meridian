@@ -156,10 +156,10 @@ vi.mock('../shell/AppShell.js', () => ({
 const { COLUMNS, orderedColumns, PaperTable } = await import('./PaperTable.js')
 
 describe('内置列', () => {
-  it('标题之后依次是短标题、评分、作者、年份、发表、主题、状态、随笔,与词表一一对应;能排序的只有作者与年份', () => {
+  it('标题之后依次是短标题、评分、作者、年份、发表、主题、阅读状态、随笔,与词表一一对应;能排序的只有作者与年份', () => {
     expect(COLUMNS.map((c) => c.k)).toEqual([...PAPER_COLUMNS])
     expect(COLUMNS.map((c) => papersZh.columns[c.k]))
-      .toEqual(['短标题', '评分', '作者', '年份', '发表', '主题', '状态', '随笔'])
+      .toEqual(['短标题', '评分', '作者', '年份', '发表', '主题', '阅读状态', '随笔'])
     expect(orderedColumns({ hidden: [], custom: [], groups: [] }).map((c) => c.k)).toEqual([...PAPER_COLUMNS])
     expect(COLUMNS.filter((c) => c.sort !== undefined).map((c) => [c.k, c.sort]))
       .toEqual([['authors', 'authors'], ['y', 'year']])
@@ -207,7 +207,7 @@ const TYPE_TITLE = { select: '单选', multi: '多选' } as const
  * in the name, presses Enter, and returns the papers.setColumns call that started.
  */
 async function startCreate(host: HTMLDivElement, label: string, type?: 'select' | 'multi') {
-  const plus = host.querySelector<HTMLButtonElement>('[aria-label="新增列"]')!
+  const plus = host.querySelector<HTMLButtonElement>('[aria-label="新建列"]')!
   await act(async () => { plus.click() })
   if (type) {
     const typeBtn = document.querySelector<HTMLButtonElement>(`[aria-label="${TYPE_TITLE[type]}"]`)!
@@ -625,7 +625,7 @@ describe('PaperTable', () => {
 
     expect(host.querySelector('.gnav .segmented-control')).toBeNull()
     const picker = host.querySelector<HTMLButtonElement>('.gnav button[aria-label="分组取值"]')!
-    expect(picker.textContent).toBe('推理(2)')
+    expect(picker.textContent).toBe('推理 · 2')
     expect(host.querySelector('#gxBack')).toBeNull()
     expect([...host.querySelector('.gnav')!.children]).toEqual([picker])
     await act(async () => { picker.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
@@ -636,7 +636,7 @@ describe('PaperTable', () => {
     await act(async () => { press(items[1]!) })
     await flush()
     expect(listParams.at(-1)?.facet).toEqual({ field: 'topics', value: '检索' })
-    expect(host.querySelector('.gnav button[aria-label="分组取值"]')!.textContent).toBe('检索(1)')
+    expect(host.querySelector('.gnav button[aria-label="分组取值"]')!.textContent).toBe('检索 · 1')
   })
 
   it('列设置里能显隐的内置列是按钮并报出是否显示，锁定的列不是按钮', async () => {
@@ -948,7 +948,7 @@ describe('PaperTable', () => {
     expect(labels()).toEqual(before)
     expect(labels()).toContain('选择')
     expect(host.querySelectorAll('.ptable thead .thmove')).toHaveLength(COLUMNS.length + 1)
-    expect(host.querySelector<HTMLButtonElement>('[aria-label="新增列"]')!.disabled).toBe(false)
+    expect(host.querySelector<HTMLButtonElement>('[aria-label="新建列"]')!.disabled).toBe(false)
     expect(row.classList).toContain('selected')
     expect(row.getAttribute('aria-current')).toBe('true')
   })
@@ -1048,7 +1048,7 @@ describe('PaperTable', () => {
     expect(host.querySelector('.paper-detail-slot')?.getAttribute('data-panel-state')).toBe('closed')
 
     // Open a new draft and type it without submitting it
-    const plus = host.querySelector<HTMLButtonElement>('[aria-label="新增列"]')!
+    const plus = host.querySelector<HTMLButtonElement>('[aria-label="新建列"]')!
     await act(async () => { plus.click() })
     const input2 = host.querySelector<HTMLInputElement>('th.th-new input')!
     await act(async () => { setValue(input2, '第二次') })
@@ -1373,7 +1373,7 @@ describe('PaperTable', () => {
     })
     expect(host.querySelector('th.th-new')).toBeNull()
 
-    const plus = host.querySelector<HTMLButtonElement>('[aria-label="新增列"]')!
+    const plus = host.querySelector<HTMLButtonElement>('[aria-label="新建列"]')!
     await act(async () => { plus.click() })
     const input2 = host.querySelector<HTMLInputElement>('th.th-new input')!
     await act(async () => { setValue(input2, '第二次') })
@@ -1769,7 +1769,7 @@ describe('PaperTable', () => {
       input1.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     })
     expect(host.querySelector('th.th-new')).toBeNull()
-    const plus = host.querySelector<HTMLButtonElement>('[aria-label="新增列"]')!
+    const plus = host.querySelector<HTMLButtonElement>('[aria-label="新建列"]')!
     await act(async () => { plus.click() })
     const input2 = host.querySelector<HTMLInputElement>('th.th-new input')!
     await act(async () => { setValue(input2, '第二次') })
@@ -1843,7 +1843,7 @@ describe('PaperTable', () => {
     const gear = document.querySelector<HTMLButtonElement>('.grpgear')!
     await act(async () => { gear.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
     const readState = [...document.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')]
-      .find((el) => el.textContent === '状态')!
+      .find((el) => el.textContent === '阅读状态')!
     await act(async () => { press(readState) })
 
     columnsCall.resolve(SELECT_COLUMNS)

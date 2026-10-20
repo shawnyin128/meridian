@@ -16,7 +16,7 @@ export const wiki = {
       `${children === null ? '' : `${children} ${pluralEn(children, { one: 'subpage', other: 'subpages' })} · `}`
       + `${members} ${pluralEn(members, { one: 'paper', other: 'papers' })} · Updated ${updated}`,
     deleteColumn: 'Delete column',
-    addColumn: 'Add column',
+    addColumn: 'New column',
   },
   paperCardFooter: (notes: number, conclusions: number) =>
     `${notes} ${pluralEn(notes, { one: 'note', other: 'notes' })} · `
@@ -294,13 +294,14 @@ export const wiki = {
     reasonPlaceholder: 'Reason (optional)',
     stale: 'Out of date',
     staleNote: 'A page it rests on changed after it was made; applying it will be refused.',
+    staleReason: 'A page it rests on changed after it was made',
     unverified: 'Unverified conclusion',
     unverifiedNote: 'It cites project conclusions that are not verified yet; verify them before applying.',
     unverifiedLabel: 'Verify',
     trigger: (project: string, node: string | null) => `Project ${project}${node === null ? '' : ` · node ${node}`}`,
     pages: 'Pages',
     change: {
-      add: (text: string) => `+ New finding: ${text}`,
+      add: (text: string) => `+ Add finding: ${text}`,
       before: (text: string) => `- Was: ${text}`,
       after: (text: string) => `+ Now: ${text}`,
       evidence: (claim: string) => `+ More evidence for “${claim}”`,

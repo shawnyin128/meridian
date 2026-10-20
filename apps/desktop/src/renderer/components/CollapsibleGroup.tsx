@@ -1,11 +1,10 @@
 import type { ReactNode } from 'react'
 import { Icon } from './icons.js'
-import { CountBadge } from './Tag.js'
 import './CollapsibleGroup.css'
 
 /**
  * A titled group in a long list whose heading stays pinned while its items scroll past and folds the
- * group away when clicked. `count` is shown beside the title when given; `actions` sit at the
+ * group away when clicked. `count` follows the title as `· N` when given, as a section heading's does; `actions` sit at the
  * heading's end and never toggle the group. `variant: 'quiet'` drops the sticky pinning and shrinks
  * the heading for a small group embedded inside another list, such as an archived section. An
  * opening group grows to its height; a closing one folds at once.
@@ -31,8 +30,10 @@ export function CollapsibleGroup({
       <div className="collapsible-group-head">
         <button type="button" className="collapsible-group-toggle" aria-expanded={open} onClick={onToggle}>
           <span className="collapsible-group-caret"><Icon sw={2.4}><path d="M6 9l6 6 6-6" /></Icon></span>
-          <span className="collapsible-group-title">{title}</span>
-          {count === undefined ? null : <CountBadge count={count} className="collapsible-group-count" />}
+          <span className="collapsible-group-label">
+            <span className="collapsible-group-title">{title}</span>
+            {count === undefined ? null : <span className="collapsible-group-count"> · {count}</span>}
+          </span>
         </button>
         {actions === undefined ? null : <div className="collapsible-group-actions">{actions}</div>}
       </div>

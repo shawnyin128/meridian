@@ -4,11 +4,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { CollapsibleGroup } from './CollapsibleGroup.js'
 
 describe('CollapsibleGroup', () => {
-  it('省略 count 时不渲染计数徽标,给出 count 时渲染它', () => {
+  it('省略 count 时不写条数,给出 count 时像分节标题一样在标题后写 · N,不画徽标', () => {
     const withCount = renderToStaticMarkup(
       <CollapsibleGroup title="标题" count={3} open onToggle={vi.fn()}>内容</CollapsibleGroup>,
     )
-    expect(withCount).toContain('collapsible-group-count">3<')
+    expect(withCount).toContain('<span class="collapsible-group-label"><span class="collapsible-group-title">标题</span><span class="collapsible-group-count"> · 3</span></span>')
+    expect(withCount).not.toContain('count-badge')
 
     const withoutCount = renderToStaticMarkup(
       <CollapsibleGroup title="标题" open onToggle={vi.fn()}>内容</CollapsibleGroup>,

@@ -23,12 +23,11 @@ export const reader = {
     heading: (count: number) => `Reading notes · ${count}`,
     newAria: 'New note',
     placeholder: (page: number) => `Add a note about page ${page}…`,
-    add: 'Save note',
     pageAria: (page: number) => `Page ${page} note`,
   },
   highlights: {
-    noteAria: (page: number) => `Page ${page} highlight note`,
-    annotate: 'Note for this highlight',
+    noteAria: (page: number) => `Page ${page} highlight annotation`,
+    annotate: 'Annotation for this highlight',
   },
   remark: {
     heading: 'Thoughts on this paper',
@@ -36,7 +35,7 @@ export const reader = {
   },
   selection: {
     highlight: 'Highlight',
-    note: 'Note',
+    note: 'Annotate',
     askAi: 'Ask AI',
   },
   zoom: {

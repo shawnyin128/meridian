@@ -4,8 +4,9 @@ import type { FeedEntry, FeedSource } from '../../shared/contract.js'
 import { feed } from '../ipc.js'
 import { errorLabel } from '../lib/failure-label.js'
 import { useMessages } from '../messages/useMessages.js'
-import { useJump, useToday, useVaultRevision } from '../shell/AppShell.js'
+import { useJump, useVaultRevision } from '../shell/AppShell.js'
 import { CONFLICT_THREAD } from '../lib/chat.js'
+import { DateChip, DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { DayHeading, daySectionName } from '../components/DayHeading.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import {
@@ -15,7 +16,6 @@ import { SegmentedControl } from '../components/SegmentedControl.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { SourceLabel } from '../components/SourceLabel.js'
 import { Tag } from '../components/Tag.js'
-import { useFormat } from '../lib/format.js'
 import './shell.css'
 import './Feed.css'
 
@@ -97,14 +97,13 @@ function Body({ body, onOpenConflict }: {
   )
 }
 
-/** One feed entry: its source label with the source icon, the time at the top right, and the body. */
-function Item({ entry, nowMs, onOpenConflict }: {
-  entry: FeedEntry; nowMs: number; onOpenConflict: () => void
-}) {
+/**
+ * One feed entry: its source label with the source icon, the time at the top right, and the body. An
+ * entry written before entries kept their timestamp shows the time it was stored with.
+ */
+function Item({ entry, onOpenConflict }: { entry: FeedEntry; onOpenConflict: () => void }) {
   const m = useMessages()
-  const fmt = useFormat()
-  const today = useToday()
-  const time = entry.createdAt === undefined ? entry.time : fmt.activityTime(entry.createdAt, today, nowMs)
+  const time = entry.createdAt === undefined ? <DateChip>{entry.time}</DateChip> : <DateTimeDisplay at={entry.createdAt} />
   return (
     <div className="mwrap">
       <div className="msg">
@@ -120,20 +119,15 @@ function Item({ entry, nowMs, onOpenConflict }: {
   )
 }
 
-/** Feed rows with each date heading constrained to the same centered column as its cards. */
-export function FeedRows({ rows, showDays, nowMs, onOpenConflict }: {
-  rows: FeedEntry[]
-  showDays: boolean
-  nowMs: number
-  onOpenConflict: () => void
-}) {
+/** Feed rows under their day headings, each heading constrained to the same centered column as its cards. */
+export function FeedRows({ rows, onOpenConflict }: { rows: FeedEntry[]; onOpenConflict: () => void }) {
   const m = useMessages()
   return rows.map((entry, index) => (
     <Fragment key={entry.id}>
-      {showDays && entry.day !== rows[index - 1]?.day ? (
+      {entry.day !== rows[index - 1]?.day ? (
         <div className="mwrap feed-day"><DayHeading>{daySectionName(entry.day, m.common.daySections)}</DayHeading></div>
       ) : null}
-      <Item entry={entry} nowMs={nowMs} onOpenConflict={onOpenConflict} />
+      <Item entry={entry} onOpenConflict={onOpenConflict} />
     </Fragment>
   ))
 }
@@ -150,20 +144,12 @@ export function Feed() {
   const [entries, setEntries] = useState<FeedEntry[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [source, setSource] = useState<FeedSource | null>(null)
-  const [nowMs, setNowMs] = useState(Date.now)
 
   const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
 
   useEffect(() => {
     void feed.list().then(setEntries).catch(reportError)
   }, [revision, reportError])
-
-  // Relative labels must age while the feed remains mounted; otherwise an entry written as
-  // "just now" stays frozen until a navigation or vault write happens to rerender the screen.
-  useEffect(() => {
-    const timer = window.setInterval(() => setNowMs(Date.now()), 30_000)
-    return () => window.clearInterval(timer)
-  }, [])
 
   const rows = source === null ? entries ?? [] : (entries ?? []).filter((e) => e.source === source)
 
@@ -182,12 +168,8 @@ export function Feed() {
               onChange={(value) => setSource(value === 'all' ? null : value as FeedSource)}
             />
           </PageToolbar>
-          {/* A source-filtered stream omits date headings because the heading itself has no source. */}
           {entries === null && error === null ? <LoadingPlaceholder shape="cards" /> : null}
-          <FeedRows
-            rows={rows} showDays={source === null} nowMs={nowMs}
-            onOpenConflict={() => open('chat', CONFLICT_THREAD)}
-          />
+          <FeedRows rows={rows} onOpenConflict={() => open('chat', CONFLICT_THREAD)} />
         </div>
       </PageBody>
     </PageShell>

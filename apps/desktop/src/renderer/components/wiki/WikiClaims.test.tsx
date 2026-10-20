@@ -36,7 +36,7 @@ const PAGE = {
       id: 'knee', text: '拐点在宽度 6', version: 2, since: '2026-06-09', by: '我',
       evidence: [
         { evidence: { kind: 'personal', text: '直觉' }, added: '2026-05-02', by: '我' },
-        { evidence: { kind: 'experiment', project: 'draft', node: 'exp1', text: '单请求实测' }, added: '2026-06-09', by: '我', title: 'draft 效率' },
+        { evidence: { kind: 'experiment', project: 'draft', node: 'exp1', text: '单请求实测' }, added: '2026-06-09', by: '我', title: 'draft 效率', point: '单请求实验' },
         { evidence: { kind: 'source', paper: 'papers/eagle', page: 7, quote: 'wide trees amortize', highlight: 'h-3' }, added: '2026-09-14', by: 'ai:skill.meridian', title: 'EAGLE-2' },
       ],
       conflicts: [{ id: 'batch', against: { kind: 'claim', ref: 'topics/batch#wins' }, note: '批量下拐点后移', since: '2026-09-14', by: '我', title: '批量场景仍净赚' }],
@@ -44,7 +44,7 @@ const PAGE = {
     },
     {
       id: 'plain', text: '另一条结论', version: 1, since: '2026-09-01', by: 'ai:skill.meridian',
-      evidence: [{ evidence: { kind: 'experiment', project: 'draft', node: 'exp2', text: '批量实测' }, added: '2026-09-01', by: 'ai:skill.meridian', title: 'draft 效率' }],
+      evidence: [{ evidence: { kind: 'experiment', project: 'draft', node: 'exp2', text: '批量实测' }, added: '2026-09-01', by: 'ai:skill.meridian', title: 'draft 效率', point: '批量实验' }],
       conflicts: [], history: [],
     },
   ],
@@ -112,18 +112,18 @@ describe('WikiClaims', () => {
     await choose((await openPicker(nth)).find((candidate) => candidate.textContent === label)!)
   }
 
-  it('每条结论:正文、版本、日期,agent 写的跟一个 agent 标签;证据一行一条;冲突高亮并链到另一边;版本史默认收起', () => {
+  it('每条结论:正文、版本、日期,agent 写的跟一个 agent 标签;证据一行一条,实验证据写节点的名字;冲突高亮并链到另一边;版本史默认收起', () => {
     const knee = host.querySelector<HTMLElement>('[data-claim="knee"]')!
     expect(knee.querySelector('.wkclaim-text')!.textContent).toBe('拐点在宽度 6')
     expect(knee.querySelector('.wkclaim-meta')!.textContent).toBe('v26月9日')
     expect(knee.querySelector('.source-label')).toBeNull()
     expect(host.querySelector('[data-claim="plain"] .wkclaim-head .source-label')!.textContent).toBe('agent')
     expect([...knee.querySelectorAll('.wkclaim-evidence')].map((li) => li.textContent))
-      .toEqual(['个人判断直觉', '实验draft 效率exp1单请求实测', '证据EAGLE-2 p.7wide trees amortize'])
+      .toEqual(['个人判断直觉', '实验draft 效率单请求实验单请求实测', '证据EAGLE-2 p.7wide trees amortize'])
     expect(knee.classList.contains('wkclaim--conflict')).toBe(true)
     expect(host.querySelector('[data-claim="plain"]')!.classList.contains('wkclaim--conflict')).toBe(false)
     expect(knee.querySelector('.wkclaim-conflict')!.textContent).toBe('冲突批量场景仍净赚批量下拐点后移处理冲突')
-    expect(host.querySelector('[data-claim="plain"] .wkclaim-evidence')!.textContent).toBe('实验draft 效率exp2批量实测')
+    expect(host.querySelector('[data-claim="plain"] .wkclaim-evidence')!.textContent).toBe('实验draft 效率批量实验批量实测')
     const history = knee.querySelector<HTMLButtonElement>('.wkclaim-history .card-tray-toggle')!
     expect(history.querySelector('.card-tray-chevron svg')).not.toBeNull()
     expect(history.getAttribute('aria-expanded')).toBe('false')

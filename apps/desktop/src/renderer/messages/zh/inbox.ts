@@ -2,11 +2,11 @@
 export const inbox = {
   streamLabel: { watch: '论文推送', discovery: '论文发现' },
   headAll: (streamLabel: string, count: number) => `${streamLabel} · ${count}`,
-  headWatch: (label: string, count: number) => `${label} · ${count} 篇`,
+  headWatch: (label: string, count: number) => `${label} · ${count}`,
   check: {
     checking: '正在检查新论文…',
     failed: '检查失败',
-    lastChecked: (when: string) => `上次检查 ${when}`,
+    lastChecked: '上次检查',
   },
   checkNewPapers: '检查新论文',
   discovering: '正在发现…',

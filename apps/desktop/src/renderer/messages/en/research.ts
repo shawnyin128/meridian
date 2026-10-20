@@ -4,29 +4,29 @@ import { research as zh } from '../zh/research.js'
 /** English counterpart of `zh/research`. */
 export const research = {
   overview: {
-    title: (n: number) => `Overview · ${n}`,
+    title: 'Overview',
     timelineHeading: 'Timeline · Projects',
     statsHeading: 'Stats',
     stats: {
       active: 'Active',
       shelved: 'Shelved',
       openMilestones: 'Open milestones',
-      recentProgress: 'Progress over the last 7 days',
+      recentProgress: 'Research log entries, last 7 days',
     },
-    decisions: (n: number) => `Needs a decision · ${n}`,
+    decisions: (n: number) => `Needs attention · ${n}`,
     progressHeading: 'Project progress',
     activePathNote: (taskText: string | undefined) =>
-      `Current research path${taskText === undefined ? '' : ` · Task: ${taskText}`}`,
+      `Active research path${taskText === undefined ? '' : ` · Task: ${taskText}`}`,
     /** Suffix after the first in-progress node's label when several nodes are active at once. */
     activeNodesMore: (n: number) => `+${n} more`,
     focusWithActiveTasks: (label: string, n: number) =>
       `${label} · ${n} ${pluralEn(n, { one: 'active task', other: 'active tasks' })}`,
-    noRecentRecord: 'No research record yet',
+    noRecentRecord: 'No research log entries yet',
     waitingForAgent: 'Waiting for an agent update',
-    recentHeading: 'Recent progress',
+    recentHeading: 'Recent research log',
     upcomingHeading: 'Upcoming milestones',
     historyProjects: 'History',
-    milestonePopTitle: (isNew: boolean, date: string) => `${isNew ? 'New milestone' : 'Edit milestone'} · ${date}`,
+    milestonePopTitle: (isNew: boolean, date: string) => `${isNew ? 'Add milestone' : 'Edit milestone'} · ${date}`,
     taskWindowMovedHours: (slots: number, hours: number) =>
       `Task moved ${slots > 0 ? 'later' : 'earlier'} by ${hours} ${pluralEn(hours, { one: 'hour', other: 'hours' })}`,
   },

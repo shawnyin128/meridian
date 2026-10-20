@@ -1,17 +1,17 @@
 /** research screen copy. */
 export const research = {
   overview: {
-    title: (n: number) => `总览 · ${n}`,
+    title: '总览',
     timelineHeading: '时间线 · 项目',
     statsHeading: '概况',
     stats: {
       active: '进行中',
       shelved: '搁置',
       openMilestones: '待完成里程碑',
-      recentProgress: '近 7 天推进',
+      recentProgress: '近 7 天科研记录',
     },
-    decisions: (n: number) => `需要决策 · ${n}`,
-    progressHeading: '项目进展',
+    decisions: (n: number) => `需要注意 · ${n}`,
+    progressHeading: '项目推进',
     activePathNote: (taskText: string | undefined) =>
       `当前科研路径${taskText === undefined ? '' : ` · 任务 ${taskText}`}`,
     /** Suffix after the first in-progress node's label when several nodes are active at once. */
@@ -19,10 +19,10 @@ export const research = {
     focusWithActiveTasks: (label: string, n: number) => `${label} · ${n} 条进行中任务`,
     noRecentRecord: '暂无科研记录',
     waitingForAgent: '等待 Agent 回传',
-    recentHeading: '最近进展',
+    recentHeading: '最近科研记录',
     upcomingHeading: '接下来的里程碑',
     historyProjects: '历史项目',
-    milestonePopTitle: (isNew: boolean, date: string) => `${isNew ? '新建里程碑' : '里程碑'} · ${date}`,
+    milestonePopTitle: (isNew: boolean, date: string) => `${isNew ? '添加里程碑' : '里程碑'} · ${date}`,
     taskWindowMovedHours: (slots: number, hours: number) =>
       `任务${slots > 0 ? '后移' : '前移'} ${hours} 小时`,
   },

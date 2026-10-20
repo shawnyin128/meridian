@@ -29,7 +29,7 @@ vi.mock('../hooks/useVaultWrite.js', () => ({
 const { Changelog } = await import('./Changelog.js')
 
 const entry = (id: string, title: string, source: ChangeEntry['source']): ChangeEntry => ({
-  id, title, meta: '今天', date: '2026-10-16', source, diff: [], undone: false, undoable: false, archived: false,
+  id, title, meta: '今天', date: '2026-10-16', source, diff: [], lines: [], undone: false, undoable: false, archived: false,
 })
 
 describe('最近变动的来源标签', () => {
@@ -73,7 +73,7 @@ describe('最近变动的来源标签', () => {
   })
 
   it('一条变动用共享的展开控件展开它的差异:带箭头,按钮以这条变动命名,点一下展开、再点收起', async () => {
-    api.entries = [{ ...entry('c1', '项目「draft 效率」· 改了字段', '我'), diff: ['- 旧', '+ 新'] }]
+    api.entries = [{ ...entry('c1', '项目「draft 效率」· 改了字段', '我'), diff: ['- 旧', '+ 新'], lines: [['- 旧'], ['+ 新']] }]
     await act(async () => root.render(<MessagesProvider><Changelog /></MessagesProvider>))
     const toggle = host.querySelector<HTMLButtonElement>('.crow .card-tray-toggle')!
     expect(toggle.querySelector('.card-tray-chevron svg')).not.toBeNull()
@@ -85,5 +85,19 @@ describe('最近变动的来源标签', () => {
     expect(host.querySelector('.crow .card-tray')!.classList.contains('is-open')).toBe(true)
     act(() => toggle.click())
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('展开的一条按 Core 给的显示行画:页名照写,论文名按论文文本显示,增删照旧着色', async () => {
+    api.entries = [{
+      ...entry('c1', 'Wiki · 记一条', '我'),
+      diff: ['+ papers/h2o ∈ topics/kv(1 格)'], lines: [['+ ', { paper: 'H$_2$O' }, ' ∈ KV cache(1 格)'], ['- 旧']],
+    }]
+    await act(async () => root.render(<MessagesProvider><Changelog /></MessagesProvider>))
+    act(() => host.querySelector<HTMLButtonElement>('.crow .card-tray-toggle')!.click())
+    const [added, removed] = [...host.querySelectorAll('.crow .diff div')]
+    expect(added!.className).toBe('add')
+    expect(added!.innerHTML).toMatch(/^\+ H<span><span class="katex">.*<\/span><\/span>O ∈ KV cache\(1 格\)$/)
+    expect(added!.textContent).not.toContain('papers/')
+    expect(removed!.className).toBe('del')
   })
 })

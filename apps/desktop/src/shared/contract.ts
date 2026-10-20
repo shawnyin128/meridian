@@ -1357,10 +1357,15 @@ export const TrashRestoreParamsSchema = z.object({ id: z.string() }).strict()
 
 export const TrashPurgeParamsSchema = z.object({ id: z.string() }).strict()
 
+/** A piece of a change line as it is shown: text, or a paper title, which shows as paper text. */
+export const DiffPieceSchema = z.union([z.string(), z.object({ paper: z.string() }).strict()])
+
 /**
  * Recent-change entry. `meta` is human-readable secondary text while `date`
  * drives day grouping. `source` distinguishes user and agent changes. Diff lines
- * begin with `+` or `-`. `undone` records completed undo, while `undoable`
+ * begin with `+` or `-` and are the stored ones; `lines` are the same lines as
+ * shown, in pieces, Wiki page ids named by their titles and paper titles marked.
+ * `undone` records completed undo, while `undoable`
  * reflects current snapshot availability. Snapshots and fingerprints remain in
  * Core. `archived` means acknowledged and removes the entry from active counts,
  * independently of undo state.
@@ -1372,6 +1377,7 @@ export const ChangeEntrySchema = z.object({
   date: IsoDate,
   source: z.enum(['笔记', '实验', 'Meridian', '我']),
   diff: z.array(z.string()),
+  lines: z.array(z.array(DiffPieceSchema)),
   undone: z.boolean(),
   undoable: z.boolean(),
   archived: z.boolean(),
@@ -1418,7 +1424,7 @@ export const FeedBodySchema = z.discriminatedUnion('kind', [
 /**
  * Feed entry. `source` is both provenance and filter key; `day` selects the
  * localized date section and `time` is the legacy display timestamp.
- * `createdAt` lets the renderer derive a live, locale-aware relative time.
+ * `createdAt` lets the renderer show the local date and time it happened.
  * It stays optional so vaults written before exact activity timestamps remain
  * readable and can be migrated by Core.
  */
@@ -1495,9 +1501,14 @@ export const WikiEvidenceSchema = z.object({
   by: z.string(),
   /** Paper short title, target claim text or page title, or project name; absent for personal evidence. */
   title: z.string().optional(),
+  /** Name of the project node (its label) or legacy conclusion (its text) an experiment item cites; its id when gone. */
+  point: z.string().optional(),
 }).strict()
 
-/** One open conflict on a claim; `title` is the other side's display text (claim text, paper short title, or project name). */
+/**
+ * One open conflict on a claim; `title` is the other side's display text (claim text, paper short title, or
+ * project name), and `point` names the node or conclusion an experiment side cites, as on WikiEvidence.
+ */
 export const WikiConflictSchema = z.object({
   id: z.string(),
   against: ConflictTargetSchema,
@@ -1505,6 +1516,7 @@ export const WikiConflictSchema = z.object({
   since: IsoDate,
   by: z.string(),
   title: z.string(),
+  point: z.string().optional(),
 }).strict()
 
 /**
@@ -2267,6 +2279,7 @@ export type DiscoveryFeedback = z.infer<typeof DiscoveryFeedbackParamsSchema>['f
 export type DeliverySettings = z.infer<typeof DeliverySettingsSchema>
 export type LaterEntry = z.infer<typeof LaterEntrySchema>
 export type ChangeEntry = z.infer<typeof ChangeEntrySchema>
+export type DiffPiece = z.infer<typeof DiffPieceSchema>
 export type ChangeSource = ChangeEntry['source']
 export type FeedEntry = z.infer<typeof FeedEntrySchema>
 export type FeedSource = FeedEntry['source']

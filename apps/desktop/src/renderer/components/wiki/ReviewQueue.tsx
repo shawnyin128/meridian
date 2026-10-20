@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import type { ConflictTarget, Evidence, ProposalOp, WikiProposal } from '../../../shared/contract.js'
+import type { ConflictTarget, DiffPiece, Evidence, ProposalOp, WikiProposal } from '../../../shared/contract.js'
 import { localDayOf } from '../../../shared/dates.js'
 import { PAPER_PAGE } from '../../../shared/vocabulary.js'
 import { useFormat } from '../../lib/format.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ActionPopover } from '../ActionPopover.js'
-import { DiffLines } from '../DiffLines.js'
+import { DiffLines, LinePieces, paperLine, type DiffLine } from '../DiffLines.js'
 import { EmptyState } from '../EmptyState.js'
 import { FormInput } from '../FormControls.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
@@ -15,7 +15,6 @@ import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { CountBadge, Tag, TagButton } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
-import { plainTitle } from '../paper/paper-text.js'
 import './ReviewQueue.css'
 
 /** The button that opens the review queue, with the number of proposals waiting. */
@@ -32,30 +31,67 @@ export function ReviewEntry({ count, onOpen }: { count: number; onOpen: () => vo
 /** Local calendar day, the vault's day, a proposal arrived or was decided, from epoch ms. */
 const dayOf = (ms: number): string => localDayOf(new Date(ms).toISOString())
 
+/** A line's text, or `message` placing the paper title `title` in it. */
+type Titled = string | { message: (title: string) => string; title: string }
+
+/** `text` with `wrap` around it; a paper title it names stays where it was placed. */
+const within = (text: Titled, wrap: (inner: string) => string): Titled =>
+  (typeof text === 'string' ? wrap(text) : { message: (title) => wrap(text.message(title)), title: text.title })
+
+/** A Wiki page id as Core's findings write it. */
+const PAGE_ID = /[\p{L}\p{N}._-]+\/[\p{L}\p{N}._-]+/gu
+
+/**
+ * `text`, a finding Core wrote, in pieces: each page id `titles` names reads as its title, a paper
+ * page's as paper text; everything else stays as written.
+ */
+function named(text: string, titles: Record<string, string>): DiffPiece[] {
+  const pieces: DiffPiece[] = []
+  let from = 0
+  for (const match of text.matchAll(PAGE_ID)) {
+    const title = titles[match[0]]
+    if (title === undefined) continue
+    pieces.push(text.slice(from, match.index), match[0].startsWith(PAPER_PAGE) ? { paper: title } : title)
+    from = match.index + match[0].length
+  }
+  return [...pieces, text.slice(from)]
+}
+
+/** `text` as a change line, its paper title as paper text. */
+const lineOf = (text: Titled): DiffLine => (typeof text === 'string' ? text : paperLine(text.message, text.title))
+
 /**
  * The change lines of `op` in `p`: everything applying it would write, with claims by their current text
  * and pages, papers, projects, nodes and conclusions by their titles (the id stands for one no longer in
- * the vault). A revision shows the old text and the new one; each evidence item gets a line of its own.
+ * the vault), paper titles as paper text. A revision shows the old text and the new one; each evidence
+ * item gets a line of its own.
  */
-function linesOf(op: ProposalOp, p: WikiProposal, w: Catalog['wiki']): string[] {
+function linesOf(op: ProposalOp, p: WikiProposal, w: Catalog['wiki']): Titled[] {
   const c = w.queue.change
   const title = (id: string): string => p.titles[id] ?? id
   const text = (ref: string): string => p.claimTexts[ref] ?? ref.split('#')[1]!
-  const side = (item: Evidence | ConflictTarget): [string, string] => {
+  const paper = (id: string, message: (title: string) => string = (name) => name): Titled => ({ message, title: title(id) })
+  const side = (item: Evidence | ConflictTarget): [string, Titled] => {
     switch (item.kind) {
-      case 'source': return [w.claims.evidence, c.quote(plainTitle(title(item.paper)), item.page, item.quote)]
+      case 'source': return [w.claims.evidence, paper(item.paper, (name) => c.quote(name, item.page, item.quote))]
       case 'experiment': {
         const point = item.node ?? item.conclusion
         const name = [title(`projects/${item.project}`), ...(point === undefined ? [] : [title(`projects/${item.project}#${point}`)])]
         return [w.claims.experiment, c.detail(name.join(' · '), item.text ?? '')]
       }
-      case 'wiki': return [w.claims.evidence, item.ref.includes('#') ? text(item.ref) : title(item.ref)]
+      case 'wiki': return [
+        w.claims.evidence,
+        item.ref.includes('#') ? text(item.ref) : item.ref.startsWith(PAPER_PAGE) ? paper(item.ref) : title(item.ref),
+      ]
       case 'claim': return [w.claims.conflict, text(item.ref)]
-      case 'note': return [w.claims.note, plainTitle(title(item.paper))]
+      case 'note': return [w.claims.note, paper(item.paper)]
       case 'personal': return [w.claims.personal, item.text]
     }
   }
-  const evidence = (items: Evidence[]): string[] => items.map((item) => c.evidenceLine(...side(item)))
+  const evidence = (items: Evidence[]): Titled[] => items.map((item) => {
+    const [kind, detail] = side(item)
+    return within(detail, (shown) => c.evidenceLine(kind, shown))
+  })
   switch (op.op) {
     case 'addClaim': return [c.add(op.claim.text), ...evidence(op.claim.evidence)]
     case 'reviseClaim': {
@@ -65,7 +101,7 @@ function linesOf(op: ProposalOp, p: WikiProposal, w: Catalog['wiki']): string[] 
     case 'addEvidence': return [c.evidence(text(`${op.page}#${op.claim}`)), ...evidence(op.evidence)]
     case 'markConflict': {
       const other = op.conflict.against.kind === 'claim' ? text(op.conflict.against.ref) : side(op.conflict.against)[1]
-      return [c.conflict(text(`${op.page}#${op.claim}`), other, op.conflict.note)]
+      return [within(other, (shown) => c.conflict(text(`${op.page}#${op.claim}`), shown, op.conflict.note))]
     }
     case 'resolveConflict': return [c.resolve(text(`${op.page}#${op.claim}`), c.outcomes[op.outcome], op.note)]
     case 'retractClaim': return [c.retract(text(`${op.page}#${op.claim}`), op.reason)]
@@ -105,7 +141,7 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
     )
     return [why, fmt.date(dayOf(p.received))].filter((part) => part !== null).join(' · ')
   }
-  const lines = (p: WikiProposal): string[] => (p.proposal?.ops ?? []).flatMap((op) => linesOf(op, p, m.wiki))
+  const lines = (p: WikiProposal): DiffLine[] => (p.proposal?.ops ?? []).flatMap((op) => linesOf(op, p, m.wiki)).map(lineOf)
 
   return (
     <>
@@ -126,7 +162,7 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                 <div className="review-meta">{source(p)}</div>
                 {p.proposal?.rationale ? <p className="review-note">{p.proposal.rationale}</p> : null}
                 {p.staleNow ? <p className="review-note review-note--warn">{r.staleNote}</p> : null}
-                {p.notice === null ? null : <p className="review-note review-note--warn">{p.notice}</p>}
+                {p.notice === null ? null : <p className="review-note review-note--warn"><LinePieces pieces={named(p.notice, p.titles)} /></p>}
                 {(p.unverified ?? []).length === 0 ? null : <p className="review-note review-note--warn">{r.unverifiedNote}</p>}
                 {(p.unverified ?? []).length === 0 ? null : (
                   <div className="wkrel review-unverified">
@@ -198,7 +234,13 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                   <div className="review-meta">
                     {[source(p), p.decided === null ? null : fmt.date(dayOf(p.decided.at))].filter((part) => part !== null).join(' → ')}
                   </div>
-                  {p.reason === null || p.reason.message === '' ? null : <p className="review-note">{p.reason.message}</p>}
+                  {p.reason === null || p.reason.message === '' ? null : (
+                    <p className="review-note">
+                      {p.reason.kind === 'declined' ? p.reason.message
+                        : p.reason.kind === 'stale' ? r.staleReason
+                          : <LinePieces pieces={named(p.reason.message, p.titles)} />}
+                    </p>
+                  )}
                   {p.proposal === null ? null : <DiffLines lines={lines(p)} declined={p.status !== 'applied'} />}
                 </StructuredRow>
               ))}

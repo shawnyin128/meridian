@@ -40,7 +40,7 @@ describe('IdeaPanel', () => {
     const onClose = vi.fn()
     act(() => root.render(
       <MessagesProvider>
-        <IdeaPanel idea={IDEA} actions={<button type="button" className="btn sm">跳转到想法</button>} onClose={onClose}>
+        <IdeaPanel idea={IDEA} actions={<button type="button" className="btn sm">打开想法</button>} onClose={onClose}>
           <section className="probe">关联</section>
         </IdeaPanel>
       </MessagesProvider>,
@@ -48,9 +48,9 @@ describe('IdeaPanel', () => {
     const head = host.querySelector('.idea-panel-head')!
     expect(head.querySelector('.node-document-title')!.textContent).toBe(IDEA.title)
     expect([...head.querySelectorAll('button')].map((button) => button.textContent || button.getAttribute('aria-label')))
-      .toEqual(['跳转到想法', '收起详情'])
+      .toEqual(['打开想法', '收起详情'])
     expect([...host.querySelectorAll('.idea-panel-meta .tag')].map((tag) => tag.textContent)).toEqual(['想法', '已归档'])
-    expect(headings()).toEqual([`${IDEA.title}跳转到想法`, '内容', '来源'])
+    expect(headings()).toEqual([`${IDEA.title}打开想法`, '内容', '来源'])
     expect(host.querySelector('.idea-panel-body')!.textContent).toBe('先做一个最小探针。')
     const order = [...host.querySelectorAll('.idea-panel-body, .probe, .idea-panel-source')].map((el) => el.className)
     expect(order).toEqual(['idea-panel-body', 'probe', 'idea-panel-source'])
@@ -81,5 +81,13 @@ describe('IdeaPanel', () => {
     const open = [...host.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === '打开来源对话')!
     act(() => open.click())
     expect(onOpenSourceChat).toHaveBeenCalledWith('chat-1')
+  })
+
+  it('来源里的论文名和对话名按论文文本显示，不露 LaTeX 源码', () => {
+    const latex = { ...IDEA, source: { ...IDEA.source, chatTitle: 'H$_2$O 的讨论', paperTitle: 'H$_2$O: Heavy-Hitter Oracle' } }
+    act(() => root.render(<MessagesProvider><IdeaPanel idea={latex} onClose={vi.fn()} /></MessagesProvider>))
+    const source = host.querySelector('.idea-panel-source')!
+    expect(source.querySelectorAll('.katex')).toHaveLength(2)
+    expect(source.textContent).not.toContain('$')
   })
 })

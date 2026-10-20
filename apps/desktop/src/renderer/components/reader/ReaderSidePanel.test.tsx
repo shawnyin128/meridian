@@ -46,7 +46,7 @@ const PAPER_TWO = reading('paper-2', 2)
 
 const NEW_NOTE = '[aria-label="新笔记"]'
 const NOTE = '[aria-label="第 3 页笔记"]'
-const HIGHLIGHT_NOTE = '[aria-label="第 2 页高亮笔记"]'
+const HIGHLIGHT_NOTE = '[aria-label="第 2 页高亮批注"]'
 const REMARK = 'textarea[aria-label="随笔"]'
 
 function setValue(input: HTMLTextAreaElement, value: string): void {
@@ -130,6 +130,12 @@ describe('ReaderSidePanel', () => {
       ['HEADER', 'reader-panel-head', '随笔 · 本篇'],
       ['HEADER', 'reader-panel-head', '内化到 Wiki'],
     ])
+  })
+
+  it('元数据面板的 Wiki 一行写页的状态名，不写存下的值', () => {
+    show('metadata', PAPER_ONE, undefined, PAPER)
+    const wiki = [...host.querySelectorAll('.paper-meta-list dt')].find((dt) => dt.textContent === 'Wiki')!
+    expect(wiki.nextElementSibling!.textContent).toBe('草稿')
   })
 
   it('没保存的新笔记、笔记修改、高亮笔记和随笔留在各自的论文上：切右栏、收起右栏、换一篇再回来都还在，也不出现在另一篇', () => {

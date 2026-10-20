@@ -1,8 +1,8 @@
 import { FadeText } from './FadeText.js'
 import './TitleNote.css'
 
-/** Stands in for the title while the note's own words are split around it; no copy contains it. */
-const SLOT = '\u0000'
+/** Stands in for a title while the words around it are split from it; no copy contains it. */
+export const SLOT = '\u0000'
 
 /**
  * A notice that names an entity: `message` is the catalog entry that places `title` in

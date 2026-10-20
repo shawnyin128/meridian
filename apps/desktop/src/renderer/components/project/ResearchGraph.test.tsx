@@ -93,7 +93,7 @@ describe('idea and graph association', () => {
     host.innerHTML = markup
 
     expect(host.querySelector('.glegend')?.textContent)
-      .toContain('当前研究路径推进中')
+      .toContain('当前科研路径推进中')
     expect(host.querySelector('.legend-path')).not.toBeNull()
     expect(host.querySelector('.legend-node.current')).not.toBeNull()
     expect(host.querySelector('.legend-node.idea')).toBeNull()

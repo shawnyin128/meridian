@@ -261,7 +261,7 @@ describe('TimelineBoard 的键盘', () => {
     const onMilestoneLaneClick = vi.fn()
     mountBoard(host, { onMilestoneLaneClick })
     const lane = host.querySelector<HTMLButtonElement>('.msrow .glane-new')!
-    expect(lane.getAttribute('aria-label')).toBe('新建里程碑 · 9月16日')
+    expect(lane.getAttribute('aria-label')).toBe('添加里程碑 · 9月16日')
     act(() => lane.click())
     expect(onMilestoneLaneClick.mock.calls.map(([projectId, date]) => [projectId, date])).toEqual([['proj-1', '2026-09-16']])
   })

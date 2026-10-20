@@ -61,7 +61,7 @@ import {
   readWikiData, readWikiPage, removeClaim, removeMembership, setAggregationMetadata, setBody, setBodyAndTrust,
   setClaim, setColumns, setMembership, setParents, setUpdated, touchedPages, wikiAggregation, wikiCards,
   wikiHome, wikiPaper, wikiSearchIndex, wikiSignals,
-  type ClaimWorld, type WikiAggregationRecord, type WikiData, type WikiPaperRecord,
+  type ClaimWorld, type PointName, type WikiAggregationRecord, type WikiData, type WikiPaperRecord,
 } from './wiki/index.js'
 import { prepareFallbackLibrary } from './workspace-layout.js'
 import { createResearchIdea, updateResearchIdea } from './research-ideas/index.js'
@@ -640,6 +640,14 @@ export function createVaultStore(
   /** Every project's name, by id. */
   const projectNames = (): Record<string, string> =>
     Object.fromEntries([...projectById.values()].map((p) => [p.id, p.name]))
+
+  /** The label of a project's node (workspace nodes included) or the text of its legacy conclusion. */
+  const pointName: PointName = (id, point) => {
+    const project = projectById.get(id)
+    if (project === undefined) return undefined
+    const nodes = [...project.graph.nodes, ...readProjectWorkspace(project)?.graph?.nodes ?? []]
+    return nodes.find((n) => n.id === point)?.label ?? project.conclusionList.find((c) => c.id === point)?.text
+  }
 
   /** The claim-validation world for producer `by`: the vault's projects (with workspace nodes) and reading records. */
   const worldOf = (by: string, requireVerified = true): ClaimWorld => ({
@@ -2123,7 +2131,7 @@ export function createVaultStore(
 
     wikiAggregation(id) {
       checkReadable(id)
-      return wikiAggregation(wikiData, id, versionOf(id)!, projectNames())
+      return wikiAggregation(wikiData, id, versionOf(id)!, projectNames(), pointName)
     },
 
     wikiPaper(id) {

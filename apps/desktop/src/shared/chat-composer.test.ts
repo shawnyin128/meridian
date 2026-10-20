@@ -71,7 +71,7 @@ describe('对话流和输入区', () => {
 
   it('输入框上方的工具栏只占一行，快捷引用有最大宽度', () => {
     document.body.innerHTML = '<div class="qacts"><span id="qmChips"><button type="button" class="btn ghost sm qm">@项目</button></span>'
-      + '<button type="button" class="btn ghost sm save-idea">存为想法</button></div>'
+      + '<button type="button" class="btn ghost sm save-idea">保存为想法</button></div>'
     expect(getComputedStyle(document.querySelector('.qacts')).flexWrap).toBe('nowrap')
     expect(getComputedStyle(document.querySelector('#qmChips')).flexWrap).toBe('nowrap')
     expect(getComputedStyle(document.querySelector('.qm')).maxWidth).toMatch(/^\d+px$/)
