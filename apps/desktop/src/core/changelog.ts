@@ -731,9 +731,9 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         // Newer records are at the front, so every record newer than this one precedes it.
         const newer = rows.slice(0, at)
           .filter((r) => !r.undone && r.target?.kind === target.kind && r.target.id === target.id)
-        throw new CallError('changed', newer.length > 0
-          ? `这条之后该实体又被改过 ${newer.length} 次，先撤销较新的那几条`
-          : target.kind === 'columns' || target.kind === 'columnType'
+        throw newer.length > 0
+          ? new CallError('newer-changes', `这条之后该实体又被改过 ${newer.length} 次，先撤销较新的那几条`)
+          : new CallError('changed', target.kind === 'columns' || target.kind === 'columnType'
             ? '这一列之后又改过，撤销会盖掉那次改动'
             : '这条之后该实体已经不是当时的样子，撤销会盖掉那次改动，所以拒绝')
       }

@@ -94,7 +94,7 @@ export function libraryPaths(root: string): LibraryPaths {
 export function validateLibrary(root: string): LibraryPaths {
   const paths = libraryPaths(root)
   const configFile = join(paths.root, WORKSPACE_CONFIG_FILENAME)
-  if (!existsSync(configFile)) throw new CallError('invalid', `所选目录不是 Meridian 论文库：缺少 ${WORKSPACE_CONFIG_FILENAME}`)
+  if (!existsSync(configFile)) throw new CallError('not-library', `所选目录不是 Meridian 论文库：缺少 ${WORKSPACE_CONFIG_FILENAME}`)
   let config: WorkspaceConfig
   try {
     const parsed = JSON.parse(readFileSync(configFile, 'utf8')) as Partial<WorkspaceConfig>
@@ -111,11 +111,11 @@ export function validateLibrary(root: string): LibraryPaths {
   }
   for (const directory of [paths.originals, join(paths.wiki, 'papers')]) {
     if (!existsSync(directory) || !statSync(directory).isDirectory()) {
-      throw new CallError('invalid', `论文库结构不完整：缺少 ${directory}`)
+      throw new CallError('not-library', `论文库结构不完整：缺少 ${directory}`)
     }
   }
   const schema = join(paths.wiki, 'schema.yaml')
-  if (!existsSync(schema)) throw new CallError('invalid', `论文库结构不完整：缺少 ${schema}`)
+  if (!existsSync(schema)) throw new CallError('not-library', `论文库结构不完整：缺少 ${schema}`)
   return paths
 }
 

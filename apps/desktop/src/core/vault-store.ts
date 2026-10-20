@@ -344,7 +344,7 @@ export function createVaultStore(
 ): VaultStore {
   const wiki = join(root, 'wiki')
   const paperDir = join(wiki, 'papers')
-  if (!existsSync(paperDir)) throw new CallError('invalid', `库里没有论文页目录：${paperDir}`)
+  if (!existsSync(paperDir)) throw new CallError('not-library', `库里没有论文页目录：${paperDir}`)
   /** Vault aggregation structure, reread from pages after every wiki write. */
   let wikiData = readWikiData(wiki)
   const meridian = join(root, MERIDIAN)

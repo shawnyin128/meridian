@@ -42,7 +42,7 @@ export function readWikiPage(file: string, kind: string | null): WikiPaperRecord
  */
 export function readWikiData(wikiDir: string): WikiData {
   const schemaFile = join(wikiDir, 'schema.yaml')
-  if (!existsSync(schemaFile)) throw new CallError('invalid', `库里没有 Wiki 结构文件：${schemaFile}`)
+  if (!existsSync(schemaFile)) throw new CallError('not-library', `库里没有 Wiki 结构文件：${schemaFile}`)
   const schema = parse(readFileSync(schemaFile, 'utf8')) as Schema
   const pages: WikiData['pages'] = {}
   const scan = (dir: string, kind: string | null): void => {

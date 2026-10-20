@@ -9,6 +9,7 @@ import { HttpStatusError } from './net/http.js'
 import { emptyColumns } from './paper-library/index.js'
 import type { VaultStore } from './vault.js'
 import { createVaultStore } from './vault-store.js'
+import { validateLibrary } from './workspace-layout.js'
 
 const VAULT = resolve(import.meta.dirname, 'fixtures/vault')
 
@@ -63,11 +64,15 @@ describe.each([
     expect(thrownFailure(() => store.addPaper(project, paper))).toBe('refused')
   })
 
-  it('撤销一条之后又被改过的变动:changed', () => {
+  it('撤销一条之后又被改过的变动:newer-changes', () => {
     store.updatePaper(paper, { readState: '在读' })
     store.updatePaper(paper, { readState: '已读' })
     const older = store.listChanges()[1]!
-    expect(thrownFailure(() => store.undoChange(older.id))).toBe('changed')
+    expect(thrownFailure(() => store.undoChange(older.id))).toBe('newer-changes')
+  })
+
+  it('按界面上已经过时的任务顺序重排:changed', () => {
+    expect(thrownFailure(() => store.reorderTasks(project, ['no-such-task']))).toBe('changed')
   })
 
   it('删掉还有论文在用的选项:in-use', () => {
@@ -94,6 +99,16 @@ describe('Core 按错误本身分出的原因', () => {
     const paper = store.listPapers({ page: 1, size: 1 }).rows[0]!.id
     chmodSync(join(vault, 'wiki', 'papers'), 0o555)
     expect(thrownFailure(() => store.updatePaper(paper, { readState: '在读' }))).toBe('write')
+  })
+
+  it('空目录不是 Meridian 论文库:not-library', () => {
+    const bare = mkdtempSync(join(tmpdir(), 'meridian-call-error-bare-'))
+    try {
+      expect(thrownFailure(() => createVaultStore(bare))).toBe('not-library')
+      expect(thrownFailure(() => validateLibrary(bare))).toBe('not-library')
+    } finally {
+      rmSync(bare, { recursive: true, force: true })
+    }
   })
 
   it('新版本写的 Wiki 页这个版本改不了:newer-version', () => {

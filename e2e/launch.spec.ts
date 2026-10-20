@@ -58,7 +58,7 @@ test('指定的库里没有论文页目录时,内容区报出原因的标签而�
   try {
     const win = await app.firstWindow()
     await expect(win.locator('.bootfail .desk-head .t')).toHaveText('论文库打不开')
-    await expect(win.locator('.bootfail .ipcerror')).toHaveText('内容无效')
+    await expect(win.locator('.bootfail .ipcerror')).toHaveText('不是 Meridian 论文库')
     await win.locator('.bootfail .btn', { hasText: '打开设置' }).click()
     // The button opens settings on its default category (appearance), not a contextual jump to storage.
     await win.locator('.setdlg .srow[data-setcat="storage"]').click()
@@ -79,7 +79,7 @@ test('指定的库没有 Wiki 结构文件时,内容区报出原因的标签而�
   })
   try {
     const win = await app.firstWindow()
-    await expect(win.locator('.bootfail .ipcerror')).toHaveText('内容无效')
+    await expect(win.locator('.bootfail .ipcerror')).toHaveText('不是 Meridian 论文库')
   } finally {
     await app.close()
     rmSync(legacy, { recursive: true, force: true })
@@ -95,7 +95,7 @@ test('用户配置登记的库打不开时报错,不悄悄换成应用自己的�
   })
   try {
     const win = await app.firstWindow()
-    await expect(win.locator('.bootfail .ipcerror')).toHaveText('内容无效')
+    await expect(win.locator('.bootfail .ipcerror')).toHaveText('不是 Meridian 论文库')
   } finally {
     await app.close()
     rmSync(home, { recursive: true, force: true })

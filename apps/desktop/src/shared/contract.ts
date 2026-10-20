@@ -1118,13 +1118,14 @@ export const AuthorSearchFailedSchema = z.object({ kind: z.literal('failed'), re
 /**
  * Why Core failed a call: a network failure, a file that is not a PDF, a vault write the file
  * system refused, an entity that no longer exists, a change the current state refuses, content that
- * changed since it was shown, an option or column still in use, input that failed validation, a
- * resource still busy, data a newer App wrote, a generation the user stopped, a failed model call,
- * or anything else.
+ * changed since it was shown, a change with newer changes to undo first, an option or column still
+ * in use, input that failed validation, a folder that is not a Meridian library, a resource still
+ * busy, data a newer App wrote, a key the system credential store could not save or read back, a
+ * generation the user stopped, a failed model call, or anything else.
  */
 export const CallFailureSchema = z.enum([
-  ...NetFailureSchema.options, 'not-pdf', 'write', 'not-found', 'refused', 'changed', 'in-use', 'invalid', 'busy',
-  'newer-version', 'cancelled', 'model',
+  ...NetFailureSchema.options, 'not-pdf', 'write', 'not-found', 'refused', 'changed', 'newer-changes', 'in-use',
+  'invalid', 'not-library', 'busy', 'newer-version', 'key-unsaved', 'key-unreadable', 'cancelled', 'model',
 ])
 
 /** What a rejected call carries across the process boundary instead of Core's error. */
