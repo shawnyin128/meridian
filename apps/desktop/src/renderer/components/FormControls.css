@@ -37,7 +37,7 @@
   padding:0 var(--sp-10);
 }
 .form-button.form-control-field{cursor:pointer;text-align:left}
-.form-select.form-control-field{padding-right:28px}
+.form-select.form-control-field{padding-right:var(--sp-32)}
 .form-textarea.form-control-field{padding:var(--sp-8) var(--sp-10);line-height:var(--lh-ui);resize:vertical}
 .form-control-field:hover{border-color:var(--sep-strong)}
 .form-control-field:disabled{cursor:default;opacity:.55}
@@ -71,9 +71,9 @@
 @media (prefers-reduced-motion:reduce){.form-control[aria-invalid="true"]{animation:none}}
 
 /* A directory path and its system chooser form a single field everywhere in the app. */
-.directory-field{position:relative;display:block;min-width:0;width:100%}
-.directory-field .form-input{width:100%;padding-right:42px}
-.directory-field-action{position:absolute;top:1px;right:1px;width:34px;height:28px;padding:0;border:0;
+.directory-field{--directory-action-w:34px;position:relative;display:block;min-width:0;width:100%}
+.directory-field .form-input{width:100%;padding-right:calc(var(--directory-action-w) + var(--sp-8))}
+.directory-field-action{position:absolute;top:1px;right:1px;width:var(--directory-action-w);height:28px;padding:0;border:0;
   border-left:1px solid var(--sep2);border-radius:0 calc(var(--r-control) - 1px) calc(var(--r-control) - 1px) 0;
   display:grid;place-items:center;background:transparent;color:var(--ter);cursor:pointer}
 .directory-field-action:hover{background:var(--hover);color:var(--ink)}

@@ -12,7 +12,7 @@
 .modal.confirm{--modal-w:420px}
 .modal.form{--modal-w:520px}
 .modal.wide{--modal-w:820px}
-.modal-title{margin:0;font-size:var(--fs-dialog-title);font-weight:600;line-height:var(--lh-tight);color:var(--ink)}
+.modal-title{margin:0;font-size:var(--fs-dialog-title);font-weight:var(--fw-semibold);line-height:var(--lh-tight);color:var(--ink)}
 .modal>.modal-title{padding:0 var(--sp-20) var(--sp-8)}
 /* The side padding lives inside the scrolling body, so focus rings next to its edges are not clipped. */
 .modal-body{flex:1 1 auto;min-height:0;overflow:auto;padding:var(--sp-4) var(--sp-20)}

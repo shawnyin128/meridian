@@ -1,5 +1,5 @@
-.diff{margin:8px 0 4px;border:1px solid var(--sep2);border-radius:var(--r-md);overflow:hidden;font-family:var(--mono);font-size:12px}
-.diff div{padding:4px 10px}
+.diff{margin:var(--sp-8) 0 var(--sp-4);border:1px solid var(--sep2);border-radius:var(--r-md);overflow:hidden;font-family:var(--mono);font-size:var(--fs-sm)}
+.diff div{padding:var(--sp-4) var(--sp-10)}
 .diff .del{background:var(--diff-del)}
 .diff .add{background:var(--diff-add)}
 .diff.is-declined div{color:var(--ter);text-decoration:line-through}

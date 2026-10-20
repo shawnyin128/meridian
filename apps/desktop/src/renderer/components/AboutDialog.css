@@ -1,12 +1,12 @@
 .about-pop:focus{outline:none}
-.about-head{display:flex;align-items:center;gap:12px}
+.about-head{display:flex;align-items:center;gap:var(--sp-12)}
 .about-mark{width:40px;height:40px;flex:none}
-.about-version{margin:2px 0 0;color:var(--ter);font-size:var(--fs-sm);font-variant-numeric:tabular-nums}
-.about-status{display:flex;align-items:center;gap:8px;margin:18px 0 0;padding:10px 12px;border-radius:var(--r-md);
+.about-version{margin:var(--sp-2) 0 0;color:var(--ter);font-size:var(--fs-sm);font-variant-numeric:tabular-nums}
+.about-status{display:flex;align-items:center;gap:var(--sp-8);margin:var(--sp-16) 0 0;padding:var(--sp-10) var(--sp-12);border-radius:var(--r-md);
   background:var(--field);color:var(--sec);font-size:var(--fs-base);line-height:var(--lh-ui)}
 .about-status svg{flex:none;width:16px;height:16px}
 .about-status.is-latest svg{color:var(--good)}
 .about-status.is-ready svg{color:var(--accent)}
 .about-status.is-error{color:var(--bad)}
-.about-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px}
+.about-actions{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-10);margin-top:var(--sp-16)}
 .about-link{font-size:var(--fs-sm)}

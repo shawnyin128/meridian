@@ -1,9 +1,9 @@
 .short-text-editor{min-width:210px}
-.short-text-title.rh{font-size:var(--fs-cap);color:var(--ter);padding:8px 12px;border-bottom:1px solid var(--sep2)}
-.short-text-form.mi-in{display:flex;align-items:center;gap:6px;padding:7px 8px;margin:0}
+.short-text-title.rh{font-size:var(--fs-cap);color:var(--ter);padding:var(--sp-8) var(--sp-12);border-bottom:1px solid var(--sep2)}
+.short-text-form.mi-in{display:flex;align-items:center;gap:var(--sp-6);padding:var(--sp-8);margin:0}
 .short-text-form .btn{flex-shrink:0}
 .short-text-field.mi-in{padding-top:0}
 .short-text-field>.form-button{width:100%}
-.short-text-separator{height:1px;background:var(--sep2);margin:0 6px}
+.short-text-separator{height:1px;background:var(--sep2);margin:0 var(--sp-6)}
 /* The popover does not pad its edges, so the delete row keeps the menu's padding inside them and its ring shows whole. */
-.short-text-delete.mi.danger{display:flex;width:calc(100% - 2 * var(--pad-menu));margin:0 var(--pad-menu) var(--pad-menu);align-items:center;border:0;border-radius:var(--r-sm);padding:7px 10px;color:var(--bad);font:inherit;font-size:var(--fs-base);cursor:pointer}
+.short-text-delete.mi.danger{display:flex;width:calc(100% - 2 * var(--pad-menu));margin:0 var(--pad-menu) var(--pad-menu);align-items:center;border:0;border-radius:var(--r-menu-item);padding:0 var(--row-menu-pad);color:var(--bad);font:inherit;font-size:var(--fs-base);cursor:pointer}

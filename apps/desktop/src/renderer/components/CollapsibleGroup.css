@@ -1,17 +1,17 @@
-.collapsible-group+.collapsible-group{margin-top:8px}
+.collapsible-group+.collapsible-group{margin-top:var(--sp-8)}
 /* The pinned heading covers the items scrolling under it, so it paints the page ground. */
-.collapsible-group-head{position:sticky;top:-20px;z-index:2;display:flex;align-items:center;gap:10px;
-  margin:0 -4px 12px;padding:12px 4px 10px;background:var(--content);border-bottom:1px solid var(--sep)}
+.collapsible-group-head{position:sticky;top:-20px;z-index:2;display:flex;align-items:center;gap:var(--sp-10);
+  margin:0 calc(-1 * var(--sp-4)) var(--sp-12);padding:var(--sp-12) var(--sp-4) var(--sp-10);background:var(--content);border-bottom:1px solid var(--sep)}
 .collapsible-group.is-closed .collapsible-group-head{margin-bottom:0}
-.collapsible-group-toggle{display:flex;flex:1;min-width:0;align-items:center;gap:8px;padding:0;border:0;background:none;
-  color:var(--ink);font:inherit;font-size:var(--fs-title);font-weight:700;text-align:left;cursor:pointer;border-radius:var(--r-sm)}
+.collapsible-group-toggle{display:flex;flex:1;min-width:0;align-items:center;gap:var(--sp-8);padding:0;border:0;background:none;
+  color:var(--ink);font:inherit;font-size:var(--fs-title);font-weight:var(--fw-bold);text-align:left;cursor:pointer;border-radius:var(--r-sm)}
 .collapsible-group-caret{display:grid;place-items:center;flex:none;width:16px;height:16px;color:var(--ter);
   transition:transform var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out)}
 .collapsible-group-toggle:hover .collapsible-group-caret{color:var(--ink)}
 .collapsible-group-caret svg{width:12px;height:12px}
 .collapsible-group.is-closed .collapsible-group-caret{transform:rotate(-90deg)}
 .collapsible-group-label{min-width:0;overflow-wrap:anywhere}
-.collapsible-group-actions{display:flex;flex:none;align-items:center;gap:8px}
+.collapsible-group-actions{display:flex;flex:none;align-items:center;gap:var(--sp-8)}
 /*
  * An opening group grows through its one grid row from 0fr, as CardTray does, and clips its content
  * only while it grows, so the content's own shadows and overflow show once it is open.
@@ -23,10 +23,10 @@
 
 /* A small group embedded inside another list (e.g. an archived section): no sticky pinning, no
    page-heading weight, tight enough to sit quietly at the bottom of the list it belongs to. */
-.collapsible-group--quiet .collapsible-group-head{position:static;margin:4px 0;padding:6px 0;
+.collapsible-group--quiet .collapsible-group-head{position:static;margin:var(--sp-4) 0;padding:var(--sp-6) 0;
   background:none;border-bottom:0}
-.collapsible-group--quiet.is-closed .collapsible-group-head{margin-bottom:4px}
-.collapsible-group--quiet .collapsible-group-toggle{font-size:var(--fs-sm);font-weight:600;color:var(--ter)}
+.collapsible-group--quiet.is-closed .collapsible-group-head{margin-bottom:var(--sp-4)}
+.collapsible-group--quiet .collapsible-group-toggle{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--ter)}
 .collapsible-group--quiet .collapsible-group-caret{width:12px;height:12px}
 .collapsible-group--quiet .collapsible-group-caret svg{width:10px;height:10px}
 

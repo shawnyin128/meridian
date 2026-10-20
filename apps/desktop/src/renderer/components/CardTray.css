@@ -1,6 +1,6 @@
-.card-tray{margin-top:12px;overflow:hidden;border-radius:var(--r-md);background:var(--field);color:var(--sec)}
-.card-tray-head{display:flex;min-height:34px;align-items:center;gap:6px;padding:0 7px 0 11px}
-.card-tray-toggle{display:flex;min-width:0;flex:1;align-items:center;gap:8px;padding:0;border:0;background:transparent;
+.card-tray{margin-top:var(--sp-12);overflow:hidden;border-radius:var(--r-md);background:var(--field);color:var(--sec)}
+.card-tray-head{display:flex;min-height:34px;align-items:center;gap:var(--sp-6);padding:0 var(--sp-8) 0 var(--sp-12)}
+.card-tray-toggle{display:flex;min-width:0;flex:1;align-items:center;gap:var(--sp-8);padding:0;border:0;background:transparent;
   color:inherit;font:inherit;text-align:left;cursor:pointer}
 .card-tray-summary{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .card-tray-chevron{display:grid;width:18px;height:18px;flex:0 0 auto;place-items:center;color:var(--ter);
@@ -24,7 +24,7 @@
 .card-tray--row.is-open .card-tray-chevron{transform:none}
 .card-tray--row .card-tray-toggle:hover,.card-tray--row.is-open .card-tray-toggle,
 .card-tray--row .card-tray-toggle:hover .card-tray-chevron{color:var(--ink)}
-.card-tray--row .card-tray-content{padding-left:24px}
+.card-tray--row .card-tray-content{padding-left:var(--sp-24)}
 .card-tray--row.is-open .card-tray-content{border-top-color:transparent}
 
 @media (prefers-reduced-motion:reduce){.card-tray.is-open .card-tray-content{transition-delay:0ms}}

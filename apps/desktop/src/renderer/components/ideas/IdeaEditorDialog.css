@@ -1,4 +1,4 @@
-.idea-dialog-source{margin:0 0 18px;color:var(--ter);font-size:var(--fs-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.idea-dialog-field{display:flex;flex-direction:column;gap:6px;margin-top:12px;color:var(--sec);font-size:var(--fs-sm)}
+.idea-dialog-source{margin:0 0 var(--sp-20);color:var(--ter);font-size:var(--fs-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.idea-dialog-field{display:flex;flex-direction:column;gap:var(--sp-6);margin-top:var(--sp-12);color:var(--sec);font-size:var(--fs-sm)}
 .idea-dialog-field .form-control{width:100%}
 .idea-dialog-field .form-textarea{min-height:132px}
