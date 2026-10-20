@@ -10,7 +10,7 @@ import { ChoicePicker, DotsMenu } from '../components/FieldPickers.js'
 import { EditActions } from '../components/EditActions.js'
 import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { EmptyState } from '../components/EmptyState.js'
-import { IdeaPanel, ideaSourceLabel } from '../components/ideas/IdeaPanel.js'
+import { IdeaPanel, IdeaSource, ideaSourceLabel } from '../components/ideas/IdeaPanel.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DetailPanel } from '../components/DetailPanel.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
@@ -90,7 +90,7 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, reorder, dropClassName
         <p className="idea-card-summary">{idea.body}</p>
         <div className="idea-card-meta">
           <Tooltip label={m.project.idea.sourceTag(ideaSourceLabel(idea))} whenClipped>
-            <span className="idea-card-source">{m.project.idea.sourceTag(ideaSourceLabel(idea))}</span>
+            <span className="idea-card-source"><IdeaSource idea={idea} message={m.project.idea.sourceTag} /></span>
           </Tooltip>
           {idea.source.agent === true
             ? <AgentLabel className="idea-source-kind" />

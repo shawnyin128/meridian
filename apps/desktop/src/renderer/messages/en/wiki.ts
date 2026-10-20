@@ -293,6 +293,7 @@ export const wiki = {
     reasonPlaceholder: 'Reason (optional)',
     stale: 'Out of date',
     staleNote: 'A page it rests on changed after it was made; applying it will be refused.',
+    staleReason: 'A page it rests on changed after it was made',
     unverified: 'Unverified conclusion',
     unverifiedNote: 'It cites project conclusions that are not verified yet; verify them before applying.',
     unverifiedLabel: 'Verify',

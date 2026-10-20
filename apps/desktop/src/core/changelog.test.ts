@@ -519,7 +519,7 @@ describe('change log', () => {
   it('记录不跨边界带快照与指纹:界面只看得到能不能撤、归没归档', () => {
     store.updateProject(PROJECT, { focus: '改过的焦点' })
     expect(Object.keys(store.listChanges()[0]!).sort())
-      .toEqual(['archived', 'date', 'diff', 'id', 'meta', 'source', 'title', 'undoable', 'undone'])
+      .toEqual(['archived', 'date', 'diff', 'id', 'lines', 'meta', 'source', 'title', 'undoable', 'undone'])
   })
 
   it('删掉一列记一条,撤销把列放回,之后改过的显隐、分组与顺序留着,论文里那一格又看得见', () => {
@@ -863,5 +863,41 @@ describe('change lines', () => {
     const lines = writes.flatMap(linesOf)
     expect(lines.length).toBeGreaterThan(writes.length)
     expect(lines.filter((line) => !/^[+-] [^:：{}"]+：/.test(line) || /[{}"]/.test(line))).toEqual([])
+  })
+
+  /** The display lines of the record `write` adds. */
+  const shownOf = (write: () => unknown): ChangeEntry['lines'] => {
+    write()
+    return store.listChanges()[0]!.lines
+  }
+  const GPTQ = 'GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers'
+
+  it('改动行里的论文名显示为论文文本', () => {
+    expect(shownOf(() => store.addPaper(PROJECT, '2210.17323'))).toEqual([['+ 关联论文：', { paper: GPTQ }]])
+    expect(shownOf(() => store.updatePaper(READ, { title: 'Mixtral of $2\\times$ Experts' }))).toEqual([
+      ['- 标题：', { paper: 'Mixtral of Experts' }], ['+ 标题：', { paper: 'Mixtral of $2\\times$ Experts' }],
+    ])
+    expect(shownOf(() => store.deletePaper('2210.17323'))).toEqual([['- 论文：', { paper: GPTQ }]])
+  })
+
+  it('Wiki 的提案行与正文行按页名显示,论文页名是论文文本', () => {
+    expect(shownOf(() => store.applyProposal({
+      source: 'ingest', title: '给 PTQ 记一条',
+      ops: [{ op: 'appendEntry', page: 'topics/ptq', section: '未解决', date: '2026-08-25', text: '一条' }],
+    }))).toEqual([['+ PTQ § 未解决:一条']])
+    expect(shownOf(() => store.updateWikiPage('papers/2210.17323', '## 这篇说了什么\n改过。'))).toEqual([['~ ', { paper: GPTQ }]])
+  })
+
+  it('早先记下的行同样按页名显示,结论按它所在的页;库里没有的页照写,存下的行一字不变', () => {
+    const stored = ['+ papers/2210.17323 ∈ topics/ptq(1 格)', '~ topics/ptq#gone 冲突 topics/nope#x', '~ topics/gone']
+    const rows: ChangeRecord[] = [{
+      id: 'change-1', title: 'Wiki · 早先的一条', meta: null, source: '笔记', diff: [...stored], target: null, after: '',
+      at: Date.UTC(2026, 7, 20), undone: false, archived: false, restore: null,
+    }]
+    const logged = withChangelog(store, { load: () => rows, save: () => {}, nextId: () => 'change-2' })
+    expect(logged.listChanges()[0]).toMatchObject({
+      diff: stored,
+      lines: [['+ ', { paper: GPTQ }, ' ∈ PTQ(1 格)'], ['~ PTQ 冲突 topics/nope#x'], ['~ topics/gone']],
+    })
   })
 })

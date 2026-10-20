@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type {
   ChatSession, ExtensionStatus, LibraryBackup, LibraryLocation, PluginVersion,
 } from '../../shared/contract.js'
+import { localDayOf } from '../../shared/dates.js'
 import { appMenu, chat, extensions, library } from '../ipc.js'
 import { useFormat } from '../lib/format.js'
 import type { Catalog } from '../messages/catalog.js'
@@ -24,6 +25,7 @@ import { ModelSettings } from '../components/settings/ModelSettings.js'
 import { ApiOverview } from '../components/settings/ApiOverview.js'
 import { ExtensionSettings } from '../components/settings/ExtensionSettings.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
+import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { ModalDialog, ModalTitle } from '../components/ModalDialog.js'
 import { NavRow } from '../components/NavRow.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
@@ -286,12 +288,12 @@ export function Settings() {
               <p className="settings-intro">{m.settings.storage.backupsIntro}</p>
               <StructuredList className="storage-backup-list">
                 {backups.map((backup) => {
-                  const label = format.dateTime(backup.createdAt)
+                  const label = `${format.date(localDayOf(backup.createdAt))} ${format.clock(backup.createdAt)}`
                   const busy = switchingBackup !== null || deletingBackup !== null
                   return (
                     <StructuredRow composite className="storage-backup-row" key={backup.id}>
                       <div className="storage-backup-copy">
-                        <strong>{label}</strong>
+                        <strong><DateTimeDisplay at={backup.createdAt} /></strong>
                         <Tooltip label={backup.path} whenClipped><span>{backup.path}</span></Tooltip>
                       </div>
                       <div className="storage-backup-actions">

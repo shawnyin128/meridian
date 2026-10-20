@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import type {
-  AgentSession, Attachment, ChangeEntry, ChangeSource, Milestone, PaperCell, PaperColumn, PaperFields, PaperHighlight,
-  PaperNote, PaperRow, ProjectDetail, ReadingMutation, Task,
+  AgentSession, Attachment, ChangeEntry, ChangeSource, DiffPiece, Milestone, PaperCell, PaperColumn, PaperFields,
+  PaperHighlight, PaperNote, PaperRow, ProjectDetail, ReadingMutation, Task,
 } from '../shared/contract.js'
 import {
   ChangeEntrySchema, PaperColumnsSchema, PaperHighlightSchema, PaperNoteSchema, PaperRowSchema,
@@ -111,10 +111,11 @@ const RestoreSchema = z.discriminatedUnion('kind', [
  * an empty string, and null for those fields. `at` is the recorded epoch-millisecond timestamp at the
  * vault day's UTC midnight and drives retention. Only seeded history stores `meta`; newer rows derive
  * their date bucket from `at`. `archived` defaults to false for files written before archiving existed.
- * `date` is derived from `at` at read time rather than stored twice where it could drift.
+ * `date` is derived from `at` at read time rather than stored twice where it could drift, and so are
+ * the shown `lines`, from `diff` and the vault as it stands.
  */
 export const ChangeRecordSchema = ChangeEntrySchema
-  .omit({ meta: true, undoable: true, date: true })
+  .omit({ meta: true, undoable: true, date: true, lines: true })
   .extend({
     meta: z.string().nullable(),
     target: ChangeTargetSchema.nullable(),
@@ -519,6 +520,41 @@ function changeLines(
   }
 }
 
+/** The labels changeLines writes a paper's title under; the rest of such a line is the title. */
+const PAPER_TITLE_LINE = /^([+-] (?:论文|关联论文|标题|短标题)：)(.+)$/s
+
+/** A Wiki page id, or a claim ref (`<page>#<claim>`), as a describeOp line or a body line writes it. */
+const WIKI_REF = /([\p{L}\p{N}._-]+\/[\p{L}\p{N}._-]+)(#[a-z0-9][a-z0-9-]{0,63})?/gu
+
+/**
+ * Stored change line `line` as shown, in pieces: a paper title written under one of changeLines' title
+ * labels is paper text, and each Wiki page id or claim ref names its page by `title` (paper pages as
+ * paper text, a claim by the page it is on). A ref whose page `title` does not know stays as written.
+ */
+function shownLine(line: string, title: (page: string) => string | undefined): DiffPiece[] {
+  const titled = PAPER_TITLE_LINE.exec(line)
+  if (titled !== null) return [titled[1]!, { paper: titled[2]! }]
+  const pieces: DiffPiece[] = []
+  const text = (part: string): void => {
+    if (part === '') return
+    const last = pieces.at(-1)
+    if (typeof last === 'string') pieces[pieces.length - 1] = last + part
+    else pieces.push(part)
+  }
+  let from = 0
+  for (const match of line.matchAll(WIKI_REF)) {
+    const page = match[1]!
+    const name = title(page)
+    text(line.slice(from, match.index))
+    if (name === undefined) text(match[0])
+    else if (page.startsWith(PAPER_PAGE)) pieces.push({ paper: name })
+    else text(name)
+    from = match.index + match[0].length
+  }
+  text(line.slice(from))
+  return pieces.length === 0 ? [''] : pieces
+}
+
 /**
  * Wraps the given operations so that every write that changes the vault's
  * lasting knowledge — the paper writes, the paper-table writes that change its
@@ -883,6 +919,13 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     listChanges() {
       dropExpired()
       const day = ops.today()
+      let aggregations: Map<string, string> | undefined
+      /** The title of Wiki page `id` as the vault holds it now, undefined when there is no such page. */
+      const title = (id: string): string | undefined => {
+        aggregations ??= new Map(ops.wikiCards().map((card) => [card.id, card.title]))
+        return aggregations.get(id)
+          ?? (id.startsWith(PAPER_PAGE) && ops.pageVersion(id) !== null ? ops.wikiPaper(id).title : undefined)
+      }
       return rows.map((row): ChangeEntry => {
         const date = new Date(row.at).toISOString().slice(0, 10)
         return {
@@ -892,6 +935,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
           date,
           source: row.source,
           diff: [...row.diff],
+          lines: row.diff.map((line) => shownLine(line, title)),
           undone: row.undone,
           undoable: !row.undone && row.target !== null && row.restore !== null,
           archived: row.archived,

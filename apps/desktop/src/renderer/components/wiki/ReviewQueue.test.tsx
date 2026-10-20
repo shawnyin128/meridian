@@ -110,15 +110,21 @@ describe('ReviewQueue', () => {
     ])
   })
 
-  it('Core 写的提醒与拒收原因里的论文名按 LaTeX 显示，用户自己写的拒绝原因照写', () => {
+  it('Core 写的提醒与拒收原因里的页 id 按页名显示、论文名按 LaTeX 显示，过期写成一个状态，用户自己写的拒绝原因照写', () => {
     const decided = { at: RECEIVED, by: '我' as const }
+    const titles = { 'papers/flux': '\\textbf{F}lux', 'topics/sd': 'Speculative decoding' }
     act(() => root!.render(
       <MessagesProvider>
         <ReviewQueue
           proposals={[
-            proposal('n1', { notice: '这些引句没有文字层可核对：\\textbf{F}lux p.1' }),
-            proposal('n2', { status: 'rejected', reason: { kind: 'invalid', message: '引句在原文第 2 页找不到：\\textbf{F}lux' }, decided }),
-            proposal('n3', { status: 'rejected', reason: { kind: 'declined', message: '差 ~5% 而已' }, decided }),
+            proposal('n1', { titles, notice: '这些引句没有文字层可核对：papers/flux p.1' }),
+            proposal('n2', { titles, status: 'rejected', reason: { kind: 'invalid', message: '引句在原文第 2 页找不到：papers/flux' }, decided }),
+            proposal('n3', { titles, status: 'rejected', reason: { kind: 'declined', message: '差 ~5% papers/flux' }, decided }),
+            proposal('n4', {
+              titles, status: 'rejected', decided,
+              reason: { kind: 'stale', message: '提案过期：topics/sd 在提案生成之后改过（提案依据 fm 0123456789abcdef / body 0123456789abcdef，现在 不存在），没有落盘。按现在的页重新生成。' },
+            }),
+            proposal('n5', { titles, status: 'rejected', reason: { kind: 'invalid', message: '提案没有给出它依据的页的版本：topics/sd' }, decided }),
           ]}
           pending={false} onApply={onApply} onDecline={onDecline} onOpenPage={onOpenPage} onOpenConclusion={onOpenConclusion}
         />
@@ -126,7 +132,9 @@ describe('ReviewQueue', () => {
     ))
     expect(row('n1').querySelector('.review-note--warn')!.innerHTML).toBe('这些引句没有文字层可核对：<strong>F</strong>lux p.1')
     expect(row('n2').querySelector('.review-note')!.innerHTML).toBe('引句在原文第 2 页找不到：<strong>F</strong>lux')
-    expect(row('n3').querySelector('.review-note')!.textContent).toBe('差 ~5% 而已')
+    expect(row('n3').querySelector('.review-note')!.textContent).toBe('差 ~5% papers/flux')
+    expect(row('n4').querySelector('.review-note')!.textContent).toBe('依据的页在提案生成之后改过')
+    expect(row('n5').querySelector('.review-note')!.textContent).toBe('提案没有给出它依据的页的版本：Speculative decoding')
   })
 
   it('引用了没验证的项目结论:标出结论待验证,应用按不了,点结论去验证它', () => {
@@ -185,7 +193,7 @@ describe('ReviewQueue', () => {
     expect(host.querySelector('.section-heading')!.textContent).toBe('已处理 · 3')
     expect(row('p3').querySelector('.tag--good')!.textContent).toBe('已应用')
     expect(row('p4').querySelector('.tag--neutral')!.textContent).toBe('已拒绝 · 过期')
-    expect(row('p4').textContent).toContain('提案过期:topics/sd')
+    expect(row('p4').querySelector('.review-note')!.textContent).toBe('依据的页在提案生成之后改过')
     expect([...row('p4').querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual([
       '~ 「拐点在宽度 6」的冲突：不算冲突（场景不同）', '- 撤回「拐点在宽度 6」：重跑后不成立',
     ])

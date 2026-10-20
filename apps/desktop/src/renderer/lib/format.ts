@@ -12,7 +12,6 @@ export type Format = {
   weekdayShort: (weekday: number) => string
   fullDate: (iso: string) => string
   fullDateRange: (startIso: string, endIso: string) => string
-  dateTime: (iso: string) => string
   clock: (at: string | number) => string
   number: (value: number) => string
   plural: (count: number, forms: { one: string; other: string }) => string
@@ -41,9 +40,6 @@ export function createFormat(locale: Locale): Format {
   })
   const monthYearEn = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', year: 'numeric', month: 'long' })
   const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short' })
-  const dateTime = new Intl.DateTimeFormat(locale === 'zh' ? 'zh-CN' : 'en-US', {
-    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-  })
   const clock = new Intl.DateTimeFormat(locale === 'zh' ? 'zh-CN' : 'en-US', { hour: '2-digit', minute: '2-digit' })
   const numbers = new Intl.NumberFormat(locale === 'zh' ? 'zh-CN' : 'en-US')
   const plurals = new Intl.PluralRules(locale === 'zh' ? 'zh-CN' : 'en-US')
@@ -84,7 +80,6 @@ export function createFormat(locale: Locale): Format {
         ? `${zhWithYear(from)}–${zhMonthDay(to)}`
         : `${zhWithYear(from)}–${zhWithYear(to)}`
     },
-    dateTime: (iso) => dateTime.format(new Date(iso)),
     clock: (at) => clock.format(new Date(at)),
     number: (value) => numbers.format(value),
     plural: (count, forms) => (plurals.select(count) === 'one' ? forms.one : forms.other),

@@ -192,11 +192,10 @@ describe('review queue on the fixture library', () => {
     const op = { op: 'addClaim', page: 'topics/qat', claim: { id: 'q', text: 'x', evidence: [{ kind: 'experiment', project: 'draft', node: 'knee' }, source] } } as ProposalOp
     const receipt = await queue.propose(envelope(store, [op]))
     expect(receipt.status).toBe('queued')
-    const title = 'LLM-QAT: Data-Free Quantization Aware Training for Large Language Models'
-    expect(queue.list()[0]!.notice).toBe(`这些引句没有文字层可核对：${title} p.1`)
+    expect(queue.list()[0]!.notice).toBe('这些引句没有文字层可核对：papers/2305.17888 p.1')
     const strict = createWikiProposals({ store, pdf: fakePdf('Nothing about that here.'), now: () => NOW })
     expect((await strict.propose(envelope(store, [op], { key: 'strict' }))).reason)
-      .toEqual({ kind: 'invalid', message: `引句在原文第 1 页找不到：${title}` })
+      .toEqual({ kind: 'invalid', message: '引句在原文第 1 页找不到：papers/2305.17888' })
   })
 })
 
@@ -204,22 +203,21 @@ describe('quote verification', () => {
   const source = (quote: string, page = 1): ProposalOp => ({
     op: 'addEvidence', page: 'topics/qat', claim: 'x', evidence: [{ kind: 'source', paper: 'papers/p', page, quote }],
   })
-  const title = (paper: string) => (paper === 'papers/p' ? 'Flux' : paper)
 
   it('两边都归一化后比:NFKC、软连字符、行尾连字符、空白与大小写', async () => {
     const pdf = fakePdf('The verifi­cation cost of wide draft trees is amor- tized  across the BATCH.')
-    expect(await checkQuotes([source('the verification cost of wide draft trees is amortized across the batch')], 'ai:x', pdf, title))
+    expect(await checkQuotes([source('the verification cost of wide draft trees is amortized across the batch')], 'ai:x', pdf))
       .toEqual({ invalid: null, unverifiable: [] })
   })
 
-  it('页码超出原文页数、找不到引句的拒收;agent 的引句太短拒收,人工的不管长短;都按论文的标题说是哪一篇', async () => {
-    expect((await checkQuotes([source('anything at all here', 12)], '我', fakePdf('x', 11), title)).invalid)
-      .toBe('Flux 的原文只有 11 页，没有第 12 页')
-    expect((await checkQuotes([source('not in the text at all')], '我', fakePdf('other words'), title)).invalid)
-      .toBe('引句在原文第 1 页找不到：Flux')
-    expect((await checkQuotes([source('short')], 'ai:x', fakePdf('short'), title)).invalid).toBe('引句太短，至少要 12 个字符才能核对：Flux')
-    expect((await checkQuotes([source('short')], '我', fakePdf('short'), title)).invalid).toBeNull()
-    expect(await checkQuotes([source('whatever is quoted here')], '我', fakePdf(null), title)).toEqual({ invalid: null, unverifiable: ['Flux p.1'] })
+  it('页码超出原文页数、找不到引句的拒收;agent 的引句太短拒收,人工的不管长短', async () => {
+    expect((await checkQuotes([source('anything at all here', 12)], '我', fakePdf('x', 11))).invalid)
+      .toBe('papers/p 的原文只有 11 页，没有第 12 页')
+    expect((await checkQuotes([source('not in the text at all')], '我', fakePdf('other words'))).invalid)
+      .toBe('引句在原文第 1 页找不到：papers/p')
+    expect((await checkQuotes([source('short')], 'ai:x', fakePdf('short'))).invalid).toBe('引句太短，至少要 12 个字符才能核对：papers/p')
+    expect((await checkQuotes([source('short')], '我', fakePdf('short'))).invalid).toBeNull()
+    expect(await checkQuotes([source('whatever is quoted here')], '我', fakePdf(null))).toEqual({ invalid: null, unverifiable: ['papers/p p.1'] })
   })
 })
 
@@ -406,11 +404,10 @@ describe('review queue on a vault', () => {
     const op = (q: string, page = 1): ProposalOp => ({ op: 'addEvidence', page: 'topics/speculative-decoding', claim: 'draft-knee', evidence: [
       { kind: 'source', paper: 'papers/13979-STAR-Speculative-Decodin', page, quote: q },
     ] })
-    const id = (paper: string) => paper
-    expect(await checkQuotes([op('READER  fixture\npage 1')], 'ai:x', pdf, id)).toEqual({ invalid: null, unverifiable: [] })
-    expect((await checkQuotes([op('Reader fixture page 1', 3)], 'ai:x', pdf, id)).invalid)
+    expect(await checkQuotes([op('READER  fixture\npage 1')], 'ai:x', pdf)).toEqual({ invalid: null, unverifiable: [] })
+    expect((await checkQuotes([op('Reader fixture page 1', 3)], 'ai:x', pdf)).invalid)
       .toBe('papers/13979-STAR-Speculative-Decodin 的原文只有 2 页，没有第 3 页')
-    expect((await checkQuotes([op('this sentence is certainly not on the first page')], 'ai:x', pdf, id)).invalid)
+    expect((await checkQuotes([op('this sentence is certainly not on the first page')], 'ai:x', pdf)).invalid)
       .toBe('引句在原文第 1 页找不到：papers/13979-STAR-Speculative-Decodin')
     expect(await pdf('papers/no-such-paper', 1)).toEqual({ state: 'no-pdf' })
     expect(existsSync(inbox())).toBe(false)

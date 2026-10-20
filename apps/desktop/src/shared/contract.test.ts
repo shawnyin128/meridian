@@ -844,6 +844,7 @@ describe('contract schemas', () => {
       date: '2026-08-24',
       source: '实验',
       diff: ['- v2:长上下文下效应更强(推测)', '+ v3:batch≥8 实测确认(实验 #3)'],
+      lines: [['- v2:长上下文下效应更强(推测)'], ['+ v3:', { paper: 'EAGLE-2' }]],
       undone: false,
       undoable: true,
       archived: false,
@@ -868,11 +869,11 @@ describe('contract schemas', () => {
 
   it('最近变动的 fixture 全部符合契约', () => {
     expect(changes.length).toBe(4)
-    // Legacy fixture entries predate undo and archive support; reads supply the three missing fields.
+    // Legacy fixture entries predate undo and archive support; reads supply the missing fields.
     expect(changes.every((entry) =>
       !('undone' in entry) && !('undoable' in entry) && !('archived' in entry))).toBe(true)
     for (const entry of changes) {
-      ChangeEntrySchema.parse({ ...entry, undone: false, undoable: false, archived: false })
+      ChangeEntrySchema.parse({ ...entry, lines: entry.diff.map((line) => [line]), undone: false, undoable: false, archived: false })
     }
   })
 

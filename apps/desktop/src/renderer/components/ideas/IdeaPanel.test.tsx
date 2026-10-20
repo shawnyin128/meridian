@@ -82,4 +82,12 @@ describe('IdeaPanel', () => {
     act(() => open.click())
     expect(onOpenSourceChat).toHaveBeenCalledWith('chat-1')
   })
+
+  it('来源里的论文名和对话名按论文文本显示，不露 LaTeX 源码', () => {
+    const latex = { ...IDEA, source: { ...IDEA.source, chatTitle: 'H$_2$O 的讨论', paperTitle: 'H$_2$O: Heavy-Hitter Oracle' } }
+    act(() => root.render(<MessagesProvider><IdeaPanel idea={latex} onClose={vi.fn()} /></MessagesProvider>))
+    const source = host.querySelector('.idea-panel-source')!
+    expect(source.querySelectorAll('.katex')).toHaveLength(2)
+    expect(source.textContent).not.toContain('$')
+  })
 })
