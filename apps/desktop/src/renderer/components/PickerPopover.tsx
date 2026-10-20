@@ -3,6 +3,7 @@ import type { HTMLAttributes, ReactElement, ReactNode, RefObject } from 'react'
 import type { CandidateKeys } from '../hooks/useCandidateKeys.js'
 import { ignoreComposingEscape } from '../lib/keyboard.js'
 import { COLLISION_PADDING } from './floating-layer.js'
+import { OutsideToolbar } from './Toolbar.js'
 
 /** PickerPopover's focus guard, kept beside it so pages never touch the Radix event contract. */
 function pressGuard(
@@ -70,7 +71,7 @@ export function PickerPopover(props: PickerPopoverProps) {
               {...pressGuard(anchorRef)} onEscapeKeyDown={ignoreComposingEscape()}
               onClick={stopClickPropagation ? (event) => event.stopPropagation() : undefined}
             >
-              {content}
+              <OutsideToolbar>{content}</OutsideToolbar>
             </Popover.Content>
           </Popover.Portal>
         )}

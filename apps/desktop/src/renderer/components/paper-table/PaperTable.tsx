@@ -36,6 +36,7 @@ import { holdRepeatSelection, RowActions, StructuredList, StructuredRow } from '
 import { PanelClose } from '../PanelClose.js'
 import { CountBadge, Tag, tagClass } from '../Tag.js'
 import { Grip, type GripLimits } from '../Grip.js'
+import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
 import { DetailPanel } from '../DetailPanel.js'
 import { ActionMenu, MenuRadioGroup, MenuRadioItem, MenuSeparator } from '../ActionMenu.js'
@@ -237,12 +238,12 @@ function GroupValuePicker({ current, facets, onPick }: {
 }
 
 /**
- * Double-clicking a row's blank space or text opens the reader; buttons and editors inside a cell
- * keep their own double-click behaviour.
+ * Double-clicking a row's blank space, its text or its title opens the reader; the other buttons and
+ * the editors inside a cell keep their own double-click behaviour.
  */
 function opensPaperFrom(target: EventTarget | null): boolean {
   return !(target instanceof Element)
-    || target.closest('button, input, select, textarea, [contenteditable="true"]') === null
+    || target.closest('button:not(.pt-open), input, select, textarea, [contenteditable="true"]') === null
 }
 
 /**
@@ -1120,32 +1121,35 @@ export function PaperTable() {
             <ContextMenu
               key={p.id} label={m.papers.contextMenu.label(plainTitle(p.title))} className="paper-row-menu"
               trigger={(
-                <tr
-                  tabIndex={0} className={detail?.id === p.id ? 'selected' : undefined} data-row-actions=""
-                  aria-current={detail?.id === p.id ? 'true' : undefined}
-                  onClick={() => { void papers.get(p.id).then(setDetail).catch(reportError) }}
-                  onMouseDown={holdRepeatSelection}
-                  onDoubleClick={(event) => {
-                    if (opensPaperFrom(event.target)) open('reader', p.id)
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' && event.target === event.currentTarget) {
-                      void papers.get(p.id).then(setDetail).catch(reportError)
-                    }
-                  }}
-                >
-                  <td className="pt-title"><span className="ci"><PaperText text={p.title} /></span></td>
-                  {cols.map((c) => cell(p, c))}
-                  {newCol ? <td className="pt-cust" /> : null}
-                  <td className="row-actions-cell">
-                    <RowActions>
-                      <IconButton
-                        label={m.papers.rowActions.delete} size="nested" tone="danger" className="rowx"
-                        onClick={(e) => { e.stopPropagation(); remove(p.id) }}
-                      ><IconTrash /></IconButton>
-                    </RowActions>
-                  </td>
-                </tr>
+                // The row is the toolbar of its own controls, from its title to its delete, and keeps its row role.
+                <Toolbar role="row" aria-orientation={undefined}>
+                  <tr
+                    className={detail?.id === p.id ? 'selected' : undefined} data-row-actions=""
+                    aria-current={detail?.id === p.id ? 'true' : undefined}
+                    onClick={() => { void papers.get(p.id).then(setDetail).catch(reportError) }}
+                    onMouseDown={holdRepeatSelection}
+                    onDoubleClick={(event) => {
+                      if (opensPaperFrom(event.target)) open('reader', p.id)
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' && event.target === event.currentTarget) {
+                        void papers.get(p.id).then(setDetail).catch(reportError)
+                      }
+                    }}
+                  >
+                    <td className="pt-title"><ToolbarButton className="ci pt-open"><PaperText text={p.title} /></ToolbarButton></td>
+                    {cols.map((c) => cell(p, c))}
+                    {newCol ? <td className="pt-cust" /> : null}
+                    <td className="row-actions-cell">
+                      <RowActions>
+                        <IconButton
+                          label={m.papers.rowActions.delete} size="nested" tone="danger" className="rowx"
+                          onClick={(e) => { e.stopPropagation(); remove(p.id) }}
+                        ><IconTrash /></IconButton>
+                      </RowActions>
+                    </td>
+                  </tr>
+                </Toolbar>
               )}
             >
               <ContextMenuItem onSelect={() => { void papers.get(p.id).then(setDetail).catch(reportError) }}>

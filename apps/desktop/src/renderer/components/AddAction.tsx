@@ -2,6 +2,7 @@ import { forwardRef } from 'react'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { IconButton } from './IconButton.js'
 import { IconPlus } from './icons.js'
+import { useToolbarItem } from './Toolbar.js'
 import { Tooltip } from './Tooltip.js'
 
 export type AddActionVariant = 'page' | 'section' | 'icon' | 'chip'
@@ -17,10 +18,12 @@ type AddActionProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children' |
  * button at the nested size, for a table header or a toolbar; `chip` is a bare plus whose look the
  * chip classes in `className` give. `label` names the whole action: the tooltip of the two bare
  * variants, and the spoken name of a page or section action whose visible text is a short word.
+ * Inside a toolbar it is one of the toolbar's controls.
  */
 export const AddAction = forwardRef<HTMLButtonElement, AddActionProps>(function AddAction({
   variant = 'section', className, children, label, ...props
 }, ref) {
+  const asItem = useToolbarItem()
   if (variant === 'icon') {
     return (
       <IconButton {...props} ref={ref} size="nested" label={label!} className={className}>
@@ -30,11 +33,11 @@ export const AddAction = forwardRef<HTMLButtonElement, AddActionProps>(function 
   }
   const visual = variant === 'page' ? 'btn pri' : variant === 'section' ? 'btn sm' : ''
   const classes = [visual, 'add-action', `add-action-${variant}`, className].filter(Boolean).join(' ')
-  const button = (
+  const button = asItem(
     <button {...props} ref={ref} className={classes} aria-label={label}>
       <IconPlus />
       {children === undefined ? null : <span>{children}</span>}
-    </button>
+    </button>,
   )
   return variant === 'chip' ? <Tooltip label={label!}>{button}</Tooltip> : button
 })

@@ -96,7 +96,7 @@ describe('StructuredList', () => {
       </StructuredRow>,
     )
     expect(html).toContain('data-row-actions=""')
-    expect(html).toContain('<span class="row-actions"><button type="button">删除</button></span>')
+    expect(html).toMatch(/<span [^>]*class="row-actions"[^>]*><button type="button">删除<\/button><\/span>/)
     expect(renderToStaticMarkup(<StructuredRow onActivate={() => undefined}>想法</StructuredRow>))
       .not.toContain('data-row-actions')
   })

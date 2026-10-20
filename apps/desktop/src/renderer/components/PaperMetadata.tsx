@@ -12,10 +12,14 @@ import { PaperText } from './paper/PaperText.js'
 import { PaperTopics } from './PaperTopics.js'
 import { ProjectChips } from './ProjectChips.js'
 import { tagClass } from './Tag.js'
+import { ToggleGroup, ToggleItem } from './Toolbar.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import './PaperMetadata.css'
 
-/** A paper's rating, the same in the paper table and the detail panel: a star sets it, the current star clears it. */
+/**
+ * A paper's rating, the same in the paper table and the detail panel: a star sets it, the current
+ * star clears it. The stars are one toggle group, which joins the paper row's toolbar in the table.
+ */
 export function RatingStars({ value, onChange, disabled = false }: {
   value: number | undefined
   onChange: (value: number | null) => void
@@ -23,15 +27,18 @@ export function RatingStars({ value, onChange, disabled = false }: {
 }) {
   const m = useMessages()
   return (
-    <span className="rating-stars" aria-label={value === undefined ? m.papers.rating.none : m.papers.rating.stars(value)}>
+    <ToggleGroup
+      label={value === undefined ? m.papers.rating.none : m.papers.rating.stars(value)} className="rating-stars"
+      value={value === undefined ? '' : String(value)} disabled={disabled}
+      onValueChange={(star) => onChange(star === '' ? null : Number(star))}
+    >
       {[1, 2, 3, 4, 5].map((star) => (
-        <button
-          key={star} type="button" disabled={disabled} aria-label={m.papers.rating.stars(star)}
-          className={star <= (value ?? 0) ? 'rated' : ''}
-          onClick={(event) => { event.stopPropagation(); onChange(star === value ? null : star) }}
-        >★</button>
+        <ToggleItem
+          key={star} value={String(star)} aria-label={m.papers.rating.stars(star)}
+          className={star <= (value ?? 0) ? 'rated' : ''} onClick={(event) => event.stopPropagation()}
+        >★</ToggleItem>
       ))}
-    </span>
+    </ToggleGroup>
   )
 }
 

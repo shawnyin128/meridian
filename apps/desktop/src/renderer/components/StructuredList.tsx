@@ -1,6 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, HTMLAttributes, MouseEvent as ReactMouseEvent, ReactNode, Ref } from 'react'
 import { useScrollFade } from '../hooks/useScrollFade.js'
+import { Toolbar } from './Toolbar.js'
 import './StructuredList.css'
 
 export const EMBEDDED_LIST_ROW_LIMIT = 5
@@ -94,10 +95,11 @@ export function holdRepeatSelection(event: ReactMouseEvent) {
  * The slot at a row's end for the actions on that row: neutral ghost glyphs (`IconButton`s, a
  * destructive one with `tone="danger"`, and `DotsMenu`) that show only while the row is hovered or
  * holds focus, or while one of their menus or dialogs is open. Any element marked `data-row-actions`
- * hosts the slot; `StructuredRow` and `ResearchObjectCard` mark themselves.
+ * hosts the slot; `StructuredRow` and `ResearchObjectCard` mark themselves. The slot is a toolbar:
+ * one Tab stop with the arrow keys between its actions, which join the row's own toolbar if it has one.
  */
 export function RowActions({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <span className={`row-actions${className ? ` ${className}` : ''}`}>{children}</span>
+  return <Toolbar><span className={`row-actions${className ? ` ${className}` : ''}`}>{children}</span></Toolbar>
 }
 
 /**

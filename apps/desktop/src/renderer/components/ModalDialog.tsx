@@ -5,6 +5,7 @@ import { ignoreComposingEscape } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import { IconButton } from './IconButton.js'
 import { IconCross } from './icons.js'
+import { OutsideToolbar } from './Toolbar.js'
 import './ModalDialog.css'
 
 type ContentProps = Omit<Dialog.DialogContentProps,
@@ -114,10 +115,12 @@ export function ModalDialog({
             opener.current.focus()
           }}
         >
-          {closable ? <DialogClose onClose={() => onOpenChange(false)} /> : null}
-          {title === undefined ? null : <ModalTitle>{title}</ModalTitle>}
-          <div className="modal-body">{children}</div>
-          {actions === undefined ? null : <div className="modal-actions">{actions}</div>}
+          <OutsideToolbar>
+            {closable ? <DialogClose onClose={() => onOpenChange(false)} /> : null}
+            {title === undefined ? null : <ModalTitle>{title}</ModalTitle>}
+            <div className="modal-body">{children}</div>
+            {actions === undefined ? null : <div className="modal-actions">{actions}</div>}
+          </OutsideToolbar>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

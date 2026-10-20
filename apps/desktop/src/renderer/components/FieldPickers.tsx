@@ -9,6 +9,7 @@ import { ActionPopover, PopoverClose } from './ActionPopover.js'
 import { FormButton } from './FormControls.js'
 import { IconButton } from './IconButton.js'
 import { IconChevron, IconDots, IconNext, IconPrevious } from './icons.js'
+import { useToolbarItem } from './Toolbar.js'
 import './FieldPickers.css'
 
 const PRIORITIES: Task['priority'][] = ['p0', 'p1', 'p2']
@@ -51,7 +52,8 @@ export function DotsMenu({
  * The one single-value picker: a menu of `options` with the picked one marked. With
  * `appearance="field"` it is the boxed field of a form, showing the picked option's label, or
  * `placeholder` while `value` matches no option. Otherwise the host field supplies the trigger's
- * class, and its content as `children`, which defaults to the picked option's label.
+ * class, and its content as `children`, which defaults to the picked option's label, and the trigger
+ * is one of the controls of the toolbar it renders in.
  */
 export function ChoicePicker<T extends string>({
   value, options, onPick, label = (option) => option, className, appearance, placeholder = '',
@@ -70,6 +72,7 @@ export function ChoicePicker<T extends string>({
   stopRowActivation?: boolean
   children?: ReactNode
 }) {
+  const asItem = useToolbarItem()
   const picked = options.includes(value) ? label(value) : placeholder
   const trigger = appearance === 'field'
     ? (
@@ -80,11 +83,11 @@ export function ChoicePicker<T extends string>({
         <IconChevron />
       </FormButton>
     )
-    : (
+    : asItem(
       <button
         className={className ?? 'pv metadata-editable'} aria-label={ariaLabel}
         disabled={disabled} onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
-      >{children ?? label(value)}</button>
+      >{children ?? label(value)}</button>,
     )
   return (
     <ActionMenu

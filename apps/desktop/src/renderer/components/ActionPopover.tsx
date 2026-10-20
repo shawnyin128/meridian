@@ -2,6 +2,7 @@ import * as Popover from '@radix-ui/react-popover'
 import type { ReactElement, ReactNode } from 'react'
 import { ignoreComposingEscape } from '../lib/keyboard.js'
 import { COLLISION_PADDING } from './floating-layer.js'
+import { OutsideToolbar } from './Toolbar.js'
 
 type ContentProps = Omit<Popover.PopoverContentProps,
   'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'sticky'
@@ -55,7 +56,7 @@ export function ActionPopover(props: ActionPopoverProps) {
           className={contentClassName} side={side} align={align}
           sideOffset={sideOffset} {...(sticky === undefined ? {} : { sticky })}
         >
-          {children}
+          <OutsideToolbar>{children}</OutsideToolbar>
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>

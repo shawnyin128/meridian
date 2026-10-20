@@ -3,6 +3,7 @@ import type { MouseEvent as ReactMouseEvent, MouseEventHandler, ReactElement, Re
 import { ignoreComposingEscape } from '../lib/keyboard.js'
 import { COLLISION_PADDING } from './floating-layer.js'
 import { IconCheck } from './icons.js'
+import { OutsideToolbar } from './Toolbar.js'
 
 type ContentProps = Omit<DropdownMenu.DropdownMenuContentProps,
   'children' | 'className' | 'side' | 'align' | 'sideOffset'
@@ -59,7 +60,7 @@ export function ActionMenu({
           className={contentClassName} side={side} align={align} sideOffset={sideOffset}
           {...(contentClick === undefined ? {} : { onClick: contentClick })}
         >
-          {children}
+          <OutsideToolbar>{children}</OutsideToolbar>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>

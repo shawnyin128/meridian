@@ -242,6 +242,14 @@ async function pressKey(key: string): Promise<void> {
   })
 }
 
+/** Presses an arrow `key` on the focused element and waits for Radix, which moves roving focus on the next task. */
+async function moveFocus(key: string): Promise<void> {
+  await act(async () => {
+    document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+    await new Promise((done) => setTimeout(done, 0))
+  })
+}
+
 describe('PaperTable', () => {
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -532,6 +540,50 @@ describe('PaperTable', () => {
     await enter(row)
     await flush()
     expect(row.classList).toContain('selected')
+  })
+
+  it('一行论文只占一个 Tab 停靠点：前三行一共三站，进行先到标题，方向键依次走过星级、主题、状态和删除', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({
+      rows: [{ ...ROW, id: 'p1', title: '甲', topics: ['推理'] }, { ...ROW, id: 'p2', title: '乙' }, { ...ROW, id: 'p3', title: '丙' }],
+      total: 3,
+    })
+    await flush()
+
+    const rows = [...host.querySelectorAll<HTMLElement>('.ptable tbody tr')]
+    const stops = [...host.querySelector('.ptable tbody')!.querySelectorAll<HTMLElement>('*')]
+      .filter((element) => element.tabIndex >= 0 && !(element as HTMLButtonElement).disabled)
+    expect(stops).toEqual(rows)
+
+    await act(async () => { rows[0]!.focus() })
+    const walked: string[] = []
+    for (let step = 0; step < 11; step += 1) {
+      walked.push(document.activeElement!.getAttribute('aria-label') ?? document.activeElement!.textContent ?? '')
+      await moveFocus('ArrowRight')
+    }
+    expect(walked).toEqual(['甲', '1 星', '2 星', '3 星', '4 星', '5 星', '移除主题「推理」', '添加主题', '未读', '删除', '甲'])
+    expect(rows[0]!.getAttribute('role')).toBe('row')
+  })
+
+  it('详情里的五颗星只占一个 Tab 停靠点，进来落在当前评分那颗，方向键移到别的星，按下就是新评分', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [{ ...ROW, rating: 2 }], total: 1 })
+    await flush()
+    await act(async () => { press(host.querySelector<HTMLElement>('.ptable tbody td')!) })
+    getCall.resolve({ ...ROW, rating: 2 })
+    await flush()
+
+    const group = host.querySelector<HTMLElement>('.pdetail .rating-stars')!
+    const stars = [...group.querySelectorAll<HTMLButtonElement>('button')]
+    expect([group, ...stars].filter((element) => element.tabIndex === 0)).toEqual([group])
+    await act(async () => { group.focus() })
+    expect(document.activeElement).toBe(stars[1])
+    await moveFocus('ArrowRight')
+    expect(document.activeElement).toBe(stars[2])
+    await act(async () => { stars[2]!.click() })
+    expect(updateCalls.at(-1)!.patch).toEqual({ rating: 3 })
   })
 
   it('分组索引里的每个值都是按钮，按它列出这一组的论文', async () => {

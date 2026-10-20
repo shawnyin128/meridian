@@ -2,6 +2,7 @@ import * as Radix from '@radix-ui/react-context-menu'
 import type { KeyboardEvent as ReactKeyboardEvent, ReactElement, ReactNode } from 'react'
 import { ignoreComposingEscape } from '../lib/keyboard.js'
 import { COLLISION_PADDING } from './floating-layer.js'
+import { OutsideToolbar } from './Toolbar.js'
 
 /** How far inside the on-screen top-left corner of the trigger a menu opened from the keyboard appears. */
 const KEYBOARD_INSET = 24
@@ -42,7 +43,7 @@ export function ContextMenu({ trigger, label, className = '', children }: {
           className={`ctxmenu${className ? ` ${className}` : ''}`} aria-label={label}
           collisionPadding={COLLISION_PADDING} onEscapeKeyDown={ignoreComposingEscape()}
         >
-          {children}
+          <OutsideToolbar>{children}</OutsideToolbar>
         </Radix.Content>
       </Radix.Portal>
     </Radix.Root>
