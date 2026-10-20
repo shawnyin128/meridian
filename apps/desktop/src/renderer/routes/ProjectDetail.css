@@ -20,11 +20,11 @@
 .wkpage.node-reading{gap:28px}
 /* Fixed height with its own scroll: the page keeps its height and position whichever node is open. */
 .wkside.node-document-pane{flex:0 0 520px;width:520px;max-width:min(520px,48vw);height:calc(100vh - 190px);
-  box-sizing:border-box;padding:18px 22px;border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);
+  box-sizing:border-box;padding:var(--sp-20) var(--sp-24);border:0;border-radius:var(--r-card);background:var(--card);
   box-shadow:var(--sh-1);overscroll-behavior:auto}
 @media (max-width:1150px){
   .wkpage.node-reading{gap:20px}
-  .wkside.node-document-pane{flex-basis:44%;width:44%;max-width:44%;padding:16px 18px}
+  .wkside.node-document-pane{flex-basis:44%;width:44%;max-width:44%;padding:var(--sp-16) var(--sp-20)}
 }
 
 /* The Workspace is a connection, not core metadata: its path is truncated, and a dot names its state, in words when it is not connected. */

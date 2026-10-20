@@ -16,9 +16,9 @@
 .tblwrap{overflow:auto;scrollbar-gutter:stable}
 
 /* Top bar of the paper list: filter input + group switch */
-.libbar{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.libbar{display:flex;align-items:center;gap:var(--sp-12);margin-bottom:var(--sp-16)}
 .pdfupload-input{display:none}
-.paper-drop{position:absolute;inset:46px 0 0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;background:color-mix(in srgb,var(--content) 88%,transparent);border:2px dashed var(--accent);color:var(--ink);backdrop-filter:blur(8px);pointer-events:none}
+.paper-drop{position:absolute;inset:46px 0 0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-8);background:color-mix(in srgb,var(--content) 88%,transparent);border:2px dashed var(--accent);color:var(--ink);backdrop-filter:blur(8px);pointer-events:none}
 .paper-drop strong{font-size:var(--fs-read)}
 .paper-drop span{font-size:var(--fs-sm);color:var(--ter)}
 /* Filter input: the shared field input at the size of the Watches screen's one-line add box (.af-in). */
@@ -26,21 +26,21 @@
 .paper-search>.form-input{width:100%;font-size:var(--fs-sm)}
 
 /* Group index level: pick a value first, then see the papers under it */
-.gxrow{display:flex;align-items:center;gap:12px;padding:12px 10px}
-.gxrow .gx-t{font-size:13px;font-weight:600;min-width:150px}
-.gxrow .gx-m{flex:1;font-size:12px;color:var(--ter);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gnav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.gxrow{display:flex;align-items:center;gap:var(--sp-12);padding:var(--sp-12) var(--sp-10)}
+.gxrow .gx-t{font-size:var(--fs-base);font-weight:var(--fw-semibold);min-width:150px}
+.gxrow .gx-m{flex:1;font-size:var(--fs-sm);color:var(--ter);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gnav{display:flex;align-items:center;gap:var(--sp-6);flex-wrap:wrap;margin-bottom:var(--sp-12)}
 
 /*
  * Separate borders: with collapsed ones, Chromium leaves the divider above the last row out of the
  * sticky cells' first paint, until something repaints them.
  */
-.ptable{width:100%;min-width:0;border-collapse:separate;border-spacing:0;font-size:var(--fs-base);margin-bottom:16px;table-layout:fixed}
+.ptable{width:100%;min-width:0;border-collapse:separate;border-spacing:0;font-size:var(--fs-base);margin-bottom:var(--sp-16);table-layout:fixed}
 .ptable th{position:relative}
 .thsort{padding:0;border:0;background:none;color:inherit;font:inherit;cursor:inherit}
 /* A column's grip straddles the border with the next header cell. */
 .ptable th>.thgrip{right:-5px}
-.thmove{display:inline-flex;width:13px;height:17px;align-items:center;justify-content:center;margin:0 4px 0 -5px;color:var(--ter);opacity:0;cursor:grab;vertical-align:-4px;border-radius:3px}
+.thmove{display:inline-flex;width:13px;height:17px;align-items:center;justify-content:center;margin:0 var(--sp-4) 0 calc(-1 * var(--sp-6));color:var(--ter);opacity:0;cursor:grab;vertical-align:-4px;border-radius:var(--r-xs)}
 .ptable th:hover .thmove,.thmove:focus-visible{opacity:1}
 .thmove:active{cursor:grabbing;color:var(--ink)}
 .thmove svg{width:9px;height:14px}
@@ -50,26 +50,26 @@
 .ptable td .ci:has(.tagchip){padding:var(--ring-room);margin:calc(-1 * var(--ring-room))}
 .ptable td.trunc:has(.ci):not(:has(.tagchip)):hover{overflow:visible}
 /* Hover reveal: expands in place (Excel style); text stays put, no border, and the background over adjacent columns matches the row */
-.ptable td.trunc:hover .ci:not(:has(.tagchip)){position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;padding:7px 10px;width:max-content;background:linear-gradient(var(--row-over),var(--row-over)),linear-gradient(var(--row-bg),var(--row-bg)) var(--content);z-index:6;overflow:visible;text-overflow:clip}
+.ptable td.trunc:hover .ci:not(:has(.tagchip)){position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;padding:var(--sp-6) var(--row-table-pad);width:max-content;background:linear-gradient(var(--row-over),var(--row-over)),linear-gradient(var(--row-bg),var(--row-bg)) var(--content);z-index:6;overflow:visible;text-overflow:clip}
 .tblwrap .ptable thead th{position:sticky;top:0;z-index:3;background:var(--content)}
 .ptable th:first-child,.ptable td:first-child{position:sticky;left:0;z-index:2;background:var(--content);box-shadow:1px 0 0 var(--sep)}
 .ptable th:first-child{top:0;z-index:4}
 /* The corner cell must sit above the other header cells: the "thead th" rule is more specific, so the corner cell gets its own rule. */
 .tblwrap .ptable thead th:first-child{left:0;z-index:4}
 .ptable td .ci .hid{display:none}
-.ptable td .ci.chip-expanded{display:flex;align-items:center;flex-wrap:wrap;gap:2px;overflow:visible;white-space:normal;text-overflow:clip}
+.ptable td .ci.chip-expanded{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2);overflow:visible;white-space:normal;text-overflow:clip}
 .ptable td .ci.chip-expanded .hid{display:inline-block;animation:chip-row-reveal var(--t) var(--e-out) both}
-.morebadge{min-width:28px;margin-left:2px}
+.morebadge{min-width:28px;margin-left:var(--sp-2)}
 @keyframes chip-row-reveal{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:translateX(0)}}
 @media (prefers-reduced-motion:reduce){.ptable td .ci.chip-expanded .hid{animation:none}}
 /* Only a sortable header, the one that carries aria-sort, shows a pointer and darkens on hover. */
-.ptable th{text-align:left;font-size:var(--fs-sm);color:var(--sec);font-weight:600;padding:6px 10px;border-bottom:1px solid var(--sep);cursor:default;white-space:nowrap;user-select:none;transition:color var(--t-fast) var(--e-out)}
+.ptable th{text-align:left;font-size:var(--fs-sm);color:var(--sec);font-weight:var(--fw-semibold);padding:var(--sp-6) var(--row-table-pad);border-bottom:1px solid var(--sep);cursor:default;white-space:nowrap;user-select:none;transition:color var(--t-fast) var(--e-out)}
 .ptable th[aria-sort]{cursor:pointer}
 .ptable th[aria-sort]:hover{color:var(--ink)}
 .ptable th.column-moving{opacity:.45;background:var(--tint-mut)}
-.ptable th.column-drop-before::before,.ptable th.column-drop-after::after{content:'';position:absolute;top:3px;bottom:3px;width:2px;border-radius:2px;background:var(--accent);z-index:5}
+.ptable th.column-drop-before::before,.ptable th.column-drop-after::after{content:'';position:absolute;top:3px;bottom:3px;width:2px;border-radius:var(--r-2xs);background:var(--accent);z-index:5}
 .ptable th.column-drop-before::before{left:-1px}.ptable th.column-drop-after::after{right:-1px}
-.ptable td{padding:7px 10px;height:38px;box-sizing:border-box;border-bottom:1px solid var(--sep2);vertical-align:middle;line-height:var(--lh-ui);overflow:hidden;white-space:nowrap;position:relative}
+.ptable td{padding:var(--sp-6) var(--row-table-pad);height:38px;box-sizing:border-box;border-bottom:1px solid var(--sep2);vertical-align:middle;line-height:var(--lh-ui);overflow:hidden;white-space:nowrap;position:relative}
 /* An embedded table draws a rule only between adjacent rows, never under the last one. */
 .ptable tbody tr:last-child td{border-bottom:0}
 .ptable td:last-child{padding-top:0;padding-bottom:0;text-align:center}
@@ -85,7 +85,7 @@
 .ptable tbody td{background-color:var(--row-bg);background-image:linear-gradient(var(--row-over),var(--row-over))}
 .ptable tbody td:first-child{background-color:var(--content);
   background-image:linear-gradient(var(--row-over),var(--row-over)),linear-gradient(var(--row-bg),var(--row-bg))}
-.pt-title{font-weight:500;color:var(--ink);cursor:pointer}
+.pt-title{font-weight:var(--fw-medium);color:var(--ink);cursor:pointer}
 /* The title is the row's button; it draws nothing of its own, and its click reaches the row. */
 .ptable .pt-open{width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
 .ptable tbody tr.selected .pt-title{color:var(--on-selected)}
@@ -115,24 +115,27 @@
 .mi.colrow .cl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .mi.locked{cursor:default;opacity:.45}
 /* The 24px buttons reach into the menu row's padding, so custom-column rows stay as tall as the others. */
-.cmx{margin:-3px 0;opacity:0;pointer-events:none}
+.cmx{margin:calc(-1 * var(--sp-4)) 0;opacity:0;pointer-events:none}
 .mi.colrow:hover .cmx,.cmx:focus-visible{opacity:1;pointer-events:auto}
 
 /* The type options below the new-column draft: text/select/multi-select icons side by side, the selected one has .on */
-.mi-in.ctrow{display:flex;gap:6px;padding-bottom:0}
-.ctbtn{flex:1;border:1px solid var(--sep2);background:var(--field);color:var(--ter);cursor:pointer;padding:5px 0;border-radius:var(--r-sm);display:grid;place-items:center}
+.mi-in.ctrow{display:flex;gap:var(--sp-6);padding-bottom:0}
+.ctbtn{flex:1;border:1px solid var(--sep2);background:var(--field);color:var(--ter);cursor:pointer;padding:var(--sp-6) 0;border-radius:var(--r-sm);display:grid;place-items:center}
 .ctbtn:hover{color:var(--ink)}
 .ctbtn.on{background:var(--selected);border-color:transparent;color:var(--on-selected)}
 .ctbtn svg{width:12px;height:12px}
 /* Options: expand below the column row, one level deeper; the toggle is always visible, not only on row hover, or nobody would find it */
 .cmx.optx{opacity:1;pointer-events:auto}
 /* Column row labels start from 10px padding + 13px tick + 10px spacing = 33px, and option rows are indented 20px more */
-.mi.optrow{padding-left:53px;font-size:12px;color:var(--sec)}
+.mi.optrow{padding-left:calc(var(--row-menu-pad) + var(--row-menu-check) + var(--sp-10) + var(--sp-20));font-size:var(--fs-sm);color:var(--sec)}
 .mi.optrow .cl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .mi.optrow:hover .cmx{opacity:1;pointer-events:auto}
 .mi.optrow.optnone{color:var(--ter);cursor:default}
-/* Change type: the type options expand under the column row, in line with option text; while open, the row's type button stays visible */
-.typerow{padding-left:45px}
+/*
+ * Change type: the type options expand under the column row, in line with option text once their own
+ * row's 8px inset is added; while open, the row's type button stays visible
+ */
+.typerow{padding-left:calc(var(--row-menu-pad) + var(--row-menu-check) + var(--sp-10) + var(--sp-20) - var(--sp-8))}
 .cmx.typex.on{opacity:1;pointer-events:auto}
 
 /*
@@ -150,17 +153,17 @@
 
 
 /* Paper detail: a full-height right panel; the table and the footer make room for it together. */
-.paper-detail-slot{--detail-panel-width:360px;top:46px;right:0;bottom:0;border-left:1px solid var(--sep);
+.paper-detail-slot{--detail-panel-width:var(--detailw);top:46px;right:0;bottom:0;border-left:1px solid var(--sep);
   background:var(--content);z-index:5}
-.pdetail{height:100%;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:16px}
-.desk-body.withdetail,.desk-foot.withdetail{margin-right:360px}
-.pd-h{display:flex;align-items:flex-start;gap:8px;margin-bottom:12px}
-.pd-t{font-size:var(--fs-read);font-weight:700;line-height:var(--lh-ui);flex:1;min-width:0}
-.pdetail .wkprops{grid-template-columns:52px 1fr;font-size:12px}
-.pdetail>.paper-meta{height:auto;margin:0 -16px -16px}
-.paper-reading-summary{margin-top:16px}
+.pdetail{height:100%;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:var(--sp-16)}
+.desk-body.withdetail,.desk-foot.withdetail{margin-right:var(--detailw)}
+.pd-h{display:flex;align-items:flex-start;gap:var(--sp-8);margin-bottom:var(--sp-12)}
+.pd-t{font-size:var(--fs-read);font-weight:var(--fw-bold);line-height:var(--lh-ui);flex:1;min-width:0}
+.pdetail .wkprops{grid-template-columns:52px 1fr;font-size:var(--fs-sm)}
+.pdetail>.paper-meta{height:auto;margin:0 calc(-1 * var(--sp-16)) calc(-1 * var(--sp-16))}
+.paper-reading-summary{margin-top:var(--sp-16)}
 .paper-reading-summary .paper-meta-list{padding:0}
-.paper-reading-summary .reading-summary-all{margin:6px 0 0 -10px}
+.paper-reading-summary .reading-summary-all{margin:var(--sp-6) 0 0 calc(-1 * var(--sp-10))}
 
 /*
  * The gear at the end of the group bar: the same button as the header's column gear, but always
@@ -178,30 +181,30 @@
 
 /* Research Map is a read-only peer view of the table. It composes the shared list and segmented
  * controls; these rules only define its two-column domain layout and information hierarchy. */
-.research-map{display:flex;min-height:0;flex:1;flex-direction:column;gap:14px;overflow:auto;padding:2px 2px 18px}
-.research-map-intro{display:flex;align-items:flex-start;gap:24px;padding:16px 18px;border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card)}
+.research-map{display:flex;min-height:0;flex:1;flex-direction:column;gap:var(--sp-14);overflow:auto;padding:var(--sp-2) var(--sp-2) var(--sp-20)}
+.research-map-intro{display:flex;align-items:flex-start;gap:var(--sp-24);padding:var(--sp-16) var(--sp-20);border-radius:var(--r-card);background:var(--card)}
 .research-map-copy{min-width:0;flex:1}
-.research-map-title{display:flex;align-items:center;gap:8px;font-size:var(--fs-read)}
-.research-map-stats{display:flex;flex:0 0 auto;align-items:stretch;gap:8px}
-.research-map-stats>span{display:flex;min-width:72px;flex-direction:column;gap:2px;padding:7px 10px;border-radius:var(--r-md);background:var(--field);color:var(--ter);font-size:var(--fs-cap)}
+.research-map-title{display:flex;align-items:center;gap:var(--sp-8);font-size:var(--fs-read)}
+.research-map-stats{display:flex;flex:0 0 auto;align-items:stretch;gap:var(--sp-8)}
+.research-map-stats>span{display:flex;min-width:72px;flex-direction:column;gap:var(--sp-2);padding:var(--sp-8) var(--sp-10);border-radius:var(--r-md);background:var(--field);color:var(--ter);font-size:var(--fs-cap)}
 .research-map-stats strong{color:var(--ink);font-size:var(--fs-read)}
 .research-map-limit{color:var(--ter);font-size:var(--fs-sm)}
-.research-map-layout{display:grid;min-height:0;grid-template-columns:minmax(220px,310px) minmax(0,1fr);gap:16px;align-items:start}
+.research-map-layout{display:grid;min-height:0;grid-template-columns:minmax(220px,310px) minmax(0,1fr);gap:var(--sp-16);align-items:start}
 .research-map-groups{min-width:0}
-.research-map-group{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;min-height:54px;padding:9px 12px}
-.research-map-group-copy{display:flex;min-width:0;flex-direction:column;gap:3px}
+.research-map-group{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--sp-12);min-height:54px;padding:var(--sp-8) var(--sp-12)}
+.research-map-group-copy{display:flex;min-width:0;flex-direction:column;gap:var(--sp-4)}
 .research-map-group-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-base)}
 .research-map-group-copy>span{color:var(--ter);font-size:var(--fs-cap)}
-.research-map-detail{min-width:0;border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);overflow:hidden}
-.research-map-detail-head{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-bottom:1px solid var(--sep2)}
-.research-map-detail-head>div{display:flex;min-width:0;flex:1;flex-direction:column;gap:3px}
+.research-map-detail{min-width:0;border-radius:var(--r-card);background:var(--card);overflow:hidden}
+.research-map-detail-head{display:flex;align-items:flex-start;gap:var(--sp-12);padding:var(--sp-14) var(--sp-16);border-bottom:1px solid var(--sep2)}
+.research-map-detail-head>div{display:flex;min-width:0;flex:1;flex-direction:column;gap:var(--sp-4)}
 .research-map-detail-head strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-read)}
 .research-map-detail-head>div>span{color:var(--ter);font-size:var(--fs-cap)}
-.research-map-papers{padding:0 16px}
-.research-map-paper{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px;min-height:78px;padding:10px 0}
-.research-map-paper-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.research-map-papers{padding:0 var(--sp-16)}
+.research-map-paper{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--sp-4) var(--sp-16);min-height:78px;padding:var(--sp-10) 0}
+.research-map-paper-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:var(--fw-semibold)}
 .research-map-paper-meta{color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
-.research-map-why{display:flex;grid-column:1/-1;align-items:center;gap:4px;min-width:0;color:var(--ter);font-size:var(--fs-cap);overflow:hidden;white-space:nowrap;mask-image:var(--clipfade)}
+.research-map-why{display:flex;grid-column:1/-1;align-items:center;gap:var(--sp-4);min-width:0;color:var(--ter);font-size:var(--fs-cap);overflow:hidden;white-space:nowrap;mask-image:var(--clipfade)}
 .research-map-why>.tagchip{margin:0}
 
 @media (max-width:900px){

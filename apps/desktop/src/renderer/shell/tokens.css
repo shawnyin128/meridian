@@ -59,6 +59,8 @@
    * draw them at its end, macOS its traffic lights at its start.
    */
   --window-buttons-end:154px; --window-buttons-start:78px;
+  /* A detail panel's width beside the list whose item it details. */
+  --detailw:360px;
   --cardw:230px; --card-tt:var(--fs-base); --card-fs:var(--fs-sm); --card-lines:2;
   --diff-add:rgba(40,167,69,.12); --diff-del:rgba(224,69,58,.1);
   --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
@@ -117,9 +119,9 @@
   --r-control:var(--r-md); --r-chip:var(--r-full); --r-card:var(--r-xl); --r-menu:var(--r-lg); --r-dialog:var(--r-2xl);
   --pad-menu:var(--sp-6); --r-menu-item:calc(var(--r-menu) - var(--pad-menu));
   --pad-track:var(--sp-2); --r-thumb:calc(var(--r-control) - var(--pad-track));
-  /* Spacing steps, then per list type a row height and the row's inline padding. */
+  /* Spacing steps, then per list type a row height and the row's inline padding; a menu row also has its check slot. */
   --sp-2:2px; --sp-4:4px; --sp-6:6px; --sp-8:8px; --sp-10:10px; --sp-12:12px; --sp-14:14px; --sp-16:16px; --sp-20:20px; --sp-24:24px; --sp-32:32px;
-  --row-nav-h:30px; --row-nav-pad:var(--sp-8); --row-menu-h:30px; --row-menu-pad:var(--sp-10);
+  --row-nav-h:30px; --row-nav-pad:var(--sp-8); --row-menu-h:30px; --row-menu-pad:var(--sp-10); --row-menu-check:13px;
   --row-list-h:38px; --row-list-pad:var(--sp-8); --row-table-h:34px; --row-table-pad:var(--sp-10);
   --fs-cap:11px; --fs-sm:12px; --fs-base:13px; --fs-read:14px; --fs-title:15px; --fs-xl:17px;
   --fs-page-title:var(--fs-base); --fs-dialog-title:var(--fs-title);

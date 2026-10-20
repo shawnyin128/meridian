@@ -1,4 +1,4 @@
-.detail-panel{--detail-panel-width:360px;--detail-panel-gap:0px;min-width:0}
+.detail-panel{--detail-panel-width:var(--detailw);--detail-panel-gap:0px;min-width:0}
 .detail-panel__content{width:100%;min-width:0}
 
 /* A panel takes its width at once; only its content moves in, so nothing beside it reflows frame by frame. */

@@ -1,18 +1,18 @@
 /* Shared timeline presentation. Route styles may size the board, but must not
    redefine its scale, rows, markers, bars, or interaction states. */
-.gantt{background:var(--card);border:1px solid var(--sep);border-radius:var(--r-xl);overflow:hidden;margin-bottom:0}
-.gantt+.wkpage{margin-top:24px}
-.ghead{display:flex;align-items:center;gap:12px;padding:8px 16px;border-bottom:1px solid var(--sep2)}
-.ghead .gm{font-size:12px;color:var(--ter);margin-right:auto}
-.gperiodnav{display:flex;align-items:center;gap:2px;height:28px}
+.gantt{background:var(--card);border:1px solid var(--sep);border-radius:var(--r-card);overflow:hidden;margin-bottom:0}
+.gantt+.wkpage{margin-top:var(--sp-24)}
+.ghead{display:flex;align-items:center;gap:var(--sp-12);padding:var(--sp-8) var(--sp-16);border-bottom:1px solid var(--sep2)}
+.ghead .gm{font-size:var(--fs-sm);color:var(--ter);margin-right:auto}
+.gperiodnav{display:flex;align-items:center;gap:var(--sp-2);height:28px}
 .gsplit{display:flex}
 .glabels{flex:0 0 148px;min-width:0;border-right:1px solid var(--sep2)}
 .glhead{height:30px}
-.glrow{height:44px;border-top:1px solid var(--sep2);display:flex;align-items:center;gap:8px;padding:0 12px;font-size:12px;cursor:pointer;white-space:nowrap;overflow:hidden}
+.glrow{height:44px;border-top:1px solid var(--sep2);display:flex;align-items:center;gap:var(--sp-8);padding:0 var(--sp-12);font-size:var(--fs-sm);cursor:pointer;white-space:nowrap;overflow:hidden}
 .glrow:hover{background:var(--hover)}
 .glrow .gln{flex:1;min-width:0;overflow:hidden;mask-image:var(--clipfade)}
 .timeline-item-label{flex:1;min-width:0;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade);color:var(--ink)}
-.timeline-label-row.msl .timeline-item-label{color:var(--sec);font-weight:600}
+.timeline-label-row.msl .timeline-item-label{color:var(--sec);font-weight:var(--fw-semibold)}
 /* A label that opens something is the row's button and draws nothing of its own. */
 .timeline-label-open{display:flex;flex:1;min-width:0;padding:0;border:0;border-radius:var(--r-sm);background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
 .gwrap{overflow-x:auto;flex:1;min-width:0}
@@ -22,13 +22,13 @@
 .glrow.drag-over-before{box-shadow:inset 0 2px 0 0 var(--accent)}
 .glrow.drag-over-after{box-shadow:inset 0 -2px 0 0 var(--accent)}
 .gdays{display:flex;position:relative;z-index:2}
-.gday{flex:0 0 auto;text-align:center;font-size:var(--fs-sm);color:var(--ter);padding:6px 0 4px;box-sizing:border-box;border-left:1px solid var(--sep2)}
+.gday{flex:0 0 auto;text-align:center;font-size:var(--fs-sm);color:var(--ter);font-variant-numeric:tabular-nums;padding:var(--sp-6) 0 var(--sp-4);box-sizing:border-box;border-left:1px solid var(--sep2)}
 .gday:first-child{border-left:0}
-.gday span{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:999px}
-.gday.week span{width:auto;padding:0 6px}
-.gday.today span{background:var(--selected);color:var(--on-selected);font-weight:600}
+.gday span{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:var(--r-full)}
+.gday.week span{width:auto;padding:0 var(--sp-6)}
+.gday.today span{background:var(--selected);color:var(--on-selected);font-weight:var(--fw-semibold)}
 .gdays.times{height:30px}
-.gtime{flex:0 0 auto;box-sizing:border-box;padding:7px 7px 5px;border-left:1px solid var(--sep2);font-family:var(--mono);font-size:11px;color:var(--ter)}
+.gtime{flex:0 0 auto;box-sizing:border-box;padding:var(--sp-8) var(--sp-8) var(--sp-4);border-left:1px solid var(--sep2);font-family:var(--mono);font-size:var(--fs-cap);color:var(--ter)}
 .gtime:first-child{border-left:0}
 .gtimecell{position:absolute;top:30px;bottom:0;box-sizing:border-box;border-left:1px solid var(--sep2);z-index:1;pointer-events:none}
 .gtimecell:first-of-type{border-left:0}
@@ -37,7 +37,7 @@
 .gdatecell.first{border-left:0}
 .gstripe{position:absolute;top:0;bottom:0;background:var(--hover);z-index:0}
 .grow{position:relative;height:44px;border-top:1px solid var(--sep2);z-index:2}
-.gbar{position:absolute;top:50%;transform:translateY(-50%);height:27px;box-sizing:border-box;background-color:var(--field);border:1px solid var(--sep);border-radius:var(--r-md);font-size:12px;color:var(--ink);display:flex;align-items:center;padding:0 10px;white-space:nowrap;overflow:hidden;cursor:grab;transition:opacity var(--t) var(--e-out)}
+.gbar{position:absolute;top:50%;transform:translateY(-50%);height:27px;box-sizing:border-box;background-color:var(--field);border:1px solid var(--sep);border-radius:var(--r-md);font-size:var(--fs-sm);color:var(--ink);display:flex;align-items:center;padding:0 var(--sp-10);white-space:nowrap;overflow:hidden;cursor:grab;transition:opacity var(--t) var(--e-out)}
 .gbar-label{flex:1;min-width:0;overflow:hidden;mask-image:var(--clipfade)}
 /* Bars and stubs are buttons in the board's own type. */
 .gbar,.gstub{font-family:inherit;line-height:inherit;text-align:left}
@@ -46,28 +46,28 @@
 :where(.gbar,.gstub):hover{background-image:linear-gradient(var(--hover),var(--hover))}
 .gbar.clipl{border-top-left-radius:0;border-bottom-left-radius:0;border-left:0}
 .gbar.dim:not(:hover){opacity:.45}
-.gbar.plan{background-color:transparent;border-style:dashed;color:var(--sec)}
+.gbar.plan{background-color:transparent;border-style:dashed;border-color:var(--sep-strong);color:var(--sec)}
 .gbar.active{border-color:color-mix(in srgb,var(--accent) 42%,var(--sep));background-color:var(--accent-soft)}
 .gbar.overdue{box-shadow:inset 3px 0 var(--bad)}
-.gbar.priority-p0{font-weight:600}
-.gddl{position:absolute;top:18px;width:8px;height:8px;background:var(--warn);transform:rotate(45deg);border-radius:2px;z-index:3;cursor:grab}
+.gbar.priority-p0{font-weight:var(--fw-semibold)}
+.gddl{position:absolute;top:18px;width:8px;height:8px;background:var(--warn);transform:rotate(45deg);border-radius:var(--r-2xs);z-index:3;cursor:grab}
 .gddl.overdue{background:var(--bad)}
 .gddl.done{background:var(--ter)}
 /* A bar or diamond being dragged lifts above its row. */
 .gbar.dragging,.gddl.dragging{cursor:grabbing;box-shadow:var(--sh-2);z-index:4}
 .glrow.msl,.grow.msrow{height:44px;background:var(--mslane)}
-.gstub{position:absolute;top:50%;transform:translateY(-50%);height:27px;width:20px;box-sizing:border-box;background-color:var(--field);border:1px solid var(--sep);border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--sec);cursor:pointer;z-index:2;user-select:none;transition:opacity var(--t) var(--e-out)}
+.gstub{position:absolute;top:50%;transform:translateY(-50%);height:27px;width:20px;box-sizing:border-box;background-color:var(--field);border:1px solid var(--sep);border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;font-size:var(--fs-sm);color:var(--sec);cursor:pointer;z-index:2;user-select:none;transition:opacity var(--t) var(--e-out)}
 .gstub.done:not(:hover){opacity:.45}
-.glrow.msl{font-size:12px;font-weight:700;color:var(--ink);cursor:default}
+.glrow.msl{font-size:var(--fs-sm);font-weight:var(--fw-bold);color:var(--ink);cursor:default}
 .gtoday{position:absolute;top:31px;bottom:0;width:2px;background:var(--accent);opacity:.75;z-index:1}
 .gnow{position:absolute;top:0;bottom:0;width:1px;background:var(--accent);z-index:4;pointer-events:none}
-.gnow::after{content:"";position:absolute;top:27px;left:-3px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.gnow::after{content:"";position:absolute;top:27px;left:-3px;width:7px;height:7px;border-radius:var(--r-full);background:var(--accent)}
 .gddl.hl{box-shadow:0 0 0 4px var(--tint-warn);transform:rotate(45deg) scale(1.35)}
 .gddl.overdue.hl{box-shadow:0 0 0 4px var(--tint-bad)}
-.timeline-fold{margin-left:-7px}
+.timeline-fold{margin-left:calc(-1 * var(--sp-8))}
 .timeline-fold svg{transition:transform var(--t-fast) var(--e-out)}
 .timeline-fold[aria-expanded="false"] svg{transform:rotate(-90deg)}
-.timeline-folded-count{flex:none;color:var(--ter);font-weight:400}
+.timeline-folded-count{flex:none;color:var(--ter);font-weight:var(--fw-regular)}
 
 /*
  * The milestone lane's keyboard control lies on today's day, inside it by the ring room so its ring

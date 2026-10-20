@@ -21,8 +21,9 @@ const bodyOf = (path: string, selector: string): string => {
   return rule.body
 }
 
-/** The custom properties a rule body reads, in order. */
+/** The colour tokens a rule body reads, in order: every custom property outside the size, type and motion scales. */
 const tokens = (body: string): string[] => [...body.matchAll(/var\((--[\w-]+)\)/g)].map(([, name]) => name!)
+  .filter((name) => !/^--(?:sp|r|fs|fw|lh|row|pad|t|e)-/.test(name))
 
 const RED = /^--(?:bad|tint-bad|bad-solid|bad-text|diff-del)$/
 

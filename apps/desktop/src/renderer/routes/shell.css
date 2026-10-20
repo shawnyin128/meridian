@@ -86,7 +86,7 @@
 .pickhits .rh,.pickhits .rg{padding:var(--sp-6) var(--row-menu-pad) var(--sp-4);font-size:var(--fs-cap);color:var(--ter)}
 .pickhits .rg{font-weight:var(--fw-semibold)}
 /* The one checked mark, in the slot before an item's label */
-.mi .ck{width:13px;display:flex;align-items:center;flex-shrink:0}
+.mi .ck{width:var(--row-menu-check);display:flex;align-items:center;flex-shrink:0}
 .mi .ck>span{display:flex}
 .cki{width:13px;height:13px;vertical-align:-2px}
 .mi-key{margin-left:auto;color:var(--ter);font-size:var(--fs-cap)}

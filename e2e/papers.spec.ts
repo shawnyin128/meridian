@@ -1473,7 +1473,7 @@ test.describe(() => {
     await title.hover()
     const hovered = (await title.screenshot()).toString('base64')
 
-    // The selected bar is the cell's left 3px and the text sits below 7px of padding, so the first two
+    // The selected bar is the cell's left 3px and the text sits below 6px of padding, so the first two
     // pixel columns and the first three pixel rows show only the bar and the row background. Gradients
     // are dithered, so a repaint may move a channel by a level or two.
     const changed = await win.evaluate(async (shots) => {
