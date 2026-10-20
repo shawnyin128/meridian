@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useState } from 'react'
 import type { TrashEntry } from '../../shared/contract.js'
 import { TRASH_RETENTION_DAYS } from '../../shared/vocabulary.js'
 import { trash } from '../ipc.js'
+import { errorLabel } from '../lib/failure-label.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useToday, useVaultRevision } from '../shell/AppShell.js'
 import { Icon, IconRestore, IconTrash } from '../components/icons.js'
@@ -63,7 +64,7 @@ export function Trash() {
 
   const today = useToday()
   const { revision } = useVaultRevision()
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
 
   useEffect(() => {

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { MAX_PDF_UPLOAD_BYTES, type PaperImportResult } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 
 export type ParsedPaperUpload = {
   bytes: Uint8Array
@@ -17,11 +18,11 @@ const UNSAFE_FILENAME = /[<>:"/\\|?*\u0000-\u001f]/g
  * bytes twice can return the existing paper without rewriting the source.
  */
 export function parsePaperUpload(filename: string, bytes: Uint8Array): ParsedPaperUpload {
-  if (bytes.byteLength === 0) throw new Error('PDF 是空文件')
-  if (bytes.byteLength > MAX_PDF_UPLOAD_BYTES) throw new Error('PDF 不能大于 100 MB')
+  if (bytes.byteLength === 0) throw new CallError('not-pdf', 'PDF 是空文件')
+  if (bytes.byteLength > MAX_PDF_UPLOAD_BYTES) throw new CallError('invalid', 'PDF 不能大于 100 MB')
   const header = Buffer.from(bytes.buffer, bytes.byteOffset, Math.min(bytes.byteLength, 1024))
     .toString('latin1')
-  if (!header.includes('%PDF-')) throw new Error('选择的文件不是有效的 PDF')
+  if (!header.includes('%PDF-')) throw new CallError('not-pdf', '选择的文件不是有效的 PDF')
 
   const bare = filename.replace(/\.pdf$/i, '').replace(/\s+/g, ' ').trim()
   const title = bare || '未命名论文'

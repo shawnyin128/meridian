@@ -63,8 +63,8 @@ const appArgs = (out) => [`--user-data-dir=${join(out, 'user-data')}`, '--lang=z
 
 /**
  * Launches `app` off screen on test library `out`, runs `steps` with `call(method, params)`, which
- * calls Core through `window.meridian.call`, and closes the App. Rejects with Core's error message
- * when a call fails.
+ * calls Core through `window.meridian.call`, and closes the App. Rejects with an Error naming the
+ * method and the reason Core gave when a call fails; Core logs its own text to the App's stdout.
  */
 export async function session(out, app, options, steps) {
   const target = appTarget(app)
@@ -74,7 +74,9 @@ export async function session(out, app, options, steps) {
   try {
     const win = await launched.firstWindow()
     await win.waitForFunction(() => window.meridian !== undefined)
-    const call = (method, params = {}) => win.evaluate(([m, p]) => window.meridian.call(m, p), [method, params])
+    const call = (method, params = {}) => win.evaluate(([m, p]) => window.meridian.call(m, p).catch((rejected) => {
+      throw new Error(`${m}: ${JSON.stringify(rejected)}`)
+    }), [method, params])
     return await steps(call, win)
   } finally {
     await launched.close()

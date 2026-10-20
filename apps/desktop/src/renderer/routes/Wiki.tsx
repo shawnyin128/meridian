@@ -6,6 +6,7 @@ import type {
 } from '../../shared/contract.js'
 import { PAPER_PAGE } from '../../shared/vocabulary.js'
 import { papers, wiki } from '../ipc.js'
+import { errorLabel } from '../lib/failure-label.js'
 import {
   useCrumbTail, useJump, useNotice, useScreenEntry, useVaultRevision, type CrumbSeg, type ScreenKey,
 } from '../shell/AppShell.js'
@@ -340,7 +341,7 @@ export function Wiki() {
   const [error, setError] = useState<string | null>(null)
   const consumed = useRef(0)
   const main = useRef<HTMLDivElement>(null)
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const notice = useNotice()
   const write = useVaultWrite()
   const box = useRef<HTMLDivElement>(null)

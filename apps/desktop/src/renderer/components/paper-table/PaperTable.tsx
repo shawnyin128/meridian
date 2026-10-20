@@ -7,6 +7,7 @@ import type {
 import { MAX_PDF_UPLOAD_BYTES } from '../../../shared/contract.js'
 import { DEFAULT_PAPER_GROUPS, PAPER_PAGE, READ_STATES } from '../../../shared/vocabulary.js'
 import { papers } from '../../ipc.js'
+import { errorLabel } from '../../lib/failure-label.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { IconGrip, IconRead, IconTrash } from '../icons.js'
@@ -342,7 +343,7 @@ export function PaperTable() {
   // The revision is bumped after a write so the grouping and row-fetch effects run again, like the
   // demo's renderLibRows call after a submit.
   const { revision, bump } = useVaultRevision()
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const closeDetail = useCallback(() => setDetail(null), [])
   const write = useVaultWrite()
   const detailId = detail?.id
@@ -691,7 +692,7 @@ export function PaperTable() {
       setDetail(result.paper)
       notice.success(result.kind === 'added' ? m.papers.upload.addedParsing : m.papers.upload.alreadyInLibrary)
     } catch (cause) {
-      notice.refusal(cause instanceof Error ? cause.message : String(cause))
+      notice.refusal(errorLabel(m, cause))
     } finally {
       setUploading(false)
       if (uploadInput.current !== null) uploadInput.current.value = ''
@@ -819,7 +820,7 @@ export function PaperTable() {
       clearIfLatest()
       bump()
       return null
-    }).catch((e: Error) => { clearIfLatest(); notice.refusal(e.message); return null })
+    }).catch((e: unknown) => { clearIfLatest(); notice.refusal(errorLabel(m, e)); return null })
     const entry = { cell: q.cell, chain }
     queue.current = entry
     return chain.then((settled) => settled !== null)
@@ -829,7 +830,7 @@ export function PaperTable() {
    * Queues a column set change at the end of the column chain. When its turn comes, `step` receives
    * Core's last confirmed column set, does its own write and returns the written column set, which
    * then takes effect; `onApplied` (if given) is called synchronously at that moment, and the result
-   * is true. When `step` throws or rejects, its original message shows as a refusal notice, the column set is
+   * is true. When `step` throws or rejects, the label of its reason shows as a refusal notice, the column set is
    * refetched from Core to correct it, and the result is false. Each step starts only after the
    * previous step and its correction have settled.
    */
@@ -844,7 +845,7 @@ export function PaperTable() {
         onApplied?.()
         return true
       } catch (e) {
-        notice.refusal((e as Error).message)
+        notice.refusal(errorLabel(m, e))
         await papers.columns().then((live) => {
           confirmedColumns.current = live
           setColumns(live)
@@ -905,7 +906,7 @@ export function PaperTable() {
   /**
    * Writes a column set change that also rewrites papers, queued on the column chain: once `op` is
    * written, refetches the column set from Core, refetches the table's rows and shows `note`. When it
-   * is rejected, Core's original message shows as a refusal notice and the columns stay unchanged. Returns
+   * is rejected, the label of its reason shows as a refusal notice and the columns stay unchanged. Returns
    * whether it was written.
    */
   const writeColumnsAndCells = (op: () => Promise<void>, note: string): Promise<boolean> =>

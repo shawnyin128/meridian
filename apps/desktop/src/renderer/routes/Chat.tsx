@@ -3,6 +3,7 @@ import type {
   ChatMessage, PaperRow, ProjectSummary, WikiAggregationCard,
 } from '../../shared/contract.js'
 import { chat, feed, idea as ideaApi, papers, project, wiki } from '../ipc.js'
+import { errorLabel } from '../lib/failure-label.js'
 import {
   useChatSession, useCrumbTail, useJump, useNotice, useVaultRevision, type CrumbSeg,
 } from '../shell/AppShell.js'
@@ -116,7 +117,7 @@ export function Chat() {
   const stream = useRef<HTMLDivElement>(null)
   const composer = useRef<HTMLTextAreaElement>(null)
   const consumed = useRef(0)
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
   const draft = id === null ? '' : drafts.get(id) ?? ''
   const mentioning = id !== null && mentionIn === id
@@ -163,7 +164,7 @@ export function Chat() {
     void chat.create(m.project.signals.kind.conflict, true).then(async (session) => {
       select(session.id)
       await send(session.id, m.chat.conflictQuestion)
-    }).catch((e: Error) => notice.refusal(e.message))
+    }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
   }, [jump, select, send, notice, m])
 
   const setDraft = (text: string) => { if (id !== null) drafts.set(id, text) }
@@ -207,7 +208,7 @@ export function Chat() {
         plain(m.chat.recordedTo(p.name)),
       ] } })
       bump()
-    }).catch((e: Error) => notice.refusal(e.message))
+    }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
   }
   const hasDiscussion = (messages ?? []).some((message) => message.role === 'you')
 

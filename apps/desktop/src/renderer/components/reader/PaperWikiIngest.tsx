@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import type {
-  HarnessPaperWikiRejectionFeedback, HarnessPaperWikiRejectionReason, HarnessPendingPaperWikiResult,
+  CallFailure, HarnessPaperWikiRejectionFeedback, HarnessPaperWikiRejectionReason, HarnessPendingPaperWikiResult,
   HarnessPlan, HarnessRunReceipt, PaperReading, PaperRow,
 } from '../../../shared/contract.js'
 import { harness } from '../../ipc.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
+import { errorLabel, failureLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { ChipToggles } from '../ChipToggles.js'
@@ -84,11 +85,11 @@ export function PaperWikiIngest({ paper, reading }: {
       }
       const next = await harness.preparePaperWiki(paper.id)
       if (live) setPlan(next)
-    }).catch((cause: Error) => {
-      if (live) setError(cause.message)
+    }).catch((cause: unknown) => {
+      if (live) setError(errorLabel(m, cause))
     })
     return () => { live = false }
-  }, [paper.id, readingScope])
+  }, [paper.id, readingScope, m])
 
   useEffect(prepare, [prepare])
 
@@ -101,8 +102,8 @@ export function PaperWikiIngest({ paper, reading }: {
       setPending(null)
       setDraft(next.proposal?.body ?? '')
       setReviewMode(next.proposal?.review === undefined ? 'markdown' : 'structured')
-    }).catch((cause: Error) => {
-      setError(cause.message)
+    }).catch((cause: unknown) => {
+      setError(errorLabel(m, cause))
       setPlan(null)
     }).finally(() => {
       setRunning(false)
@@ -114,8 +115,8 @@ export function PaperWikiIngest({ paper, reading }: {
     if (plan === null || !running || cancelling) return
     setCancelling(true)
     setError(null)
-    void harness.cancel(plan.id).catch((cause: Error) => {
-      setError(cause.message)
+    void harness.cancel(plan.id).catch((cause: unknown) => {
+      setError(errorLabel(m, cause))
       setCancelling(false)
     })
   }
@@ -125,7 +126,7 @@ export function PaperWikiIngest({ paper, reading }: {
     if (proposal === undefined || applying || draft.trim() === '' || pending?.stale === true) return
     setApplying(true)
     setError(null)
-    let warning: string | undefined
+    let warning: CallFailure | undefined
     const operation = harness.applyPaperWiki(proposal.id, draft).then((result) => {
       warning = result.warning
       return result
@@ -135,7 +136,7 @@ export function PaperWikiIngest({ paper, reading }: {
     })
     if (saved) {
       setApplied(true)
-      if (warning !== undefined) setError(warning)
+      if (warning !== undefined) setError(failureLabel(m, m.wiki.ingest.auditFailed, warning))
     }
     setApplying(false)
   }
@@ -148,9 +149,9 @@ export function PaperWikiIngest({ paper, reading }: {
     try {
       const result = await harness.rejectPaperWiki(proposal.id, feedback)
       setRejected(true)
-      if (result.warning !== undefined) setError(result.warning)
+      if (result.warning !== undefined) setError(failureLabel(m, m.wiki.ingest.auditFailed, result.warning))
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
+      setError(errorLabel(m, cause))
     } finally {
       setRejecting(false)
     }
@@ -213,7 +214,7 @@ export function PaperWikiIngest({ paper, reading }: {
           </p>
         ) : null}
         {receipt?.warning === undefined ? null : (
-          <p className="wiki-ingest-status bad">{receipt.warning}</p>
+          <p className="wiki-ingest-status bad">{failureLabel(m, m.wiki.ingest.auditFailed, receipt.warning)}</p>
         )}
         {error !== null ? <p className="wiki-ingest-status bad">{error}</p> : null}
 

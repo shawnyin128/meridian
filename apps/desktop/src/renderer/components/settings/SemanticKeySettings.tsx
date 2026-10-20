@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { SemanticKeyCheckResult, SemanticKeyStatus } from '../../../shared/contract.js'
 import { delivery } from '../../ipc.js'
+import { errorLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { EntityLink } from '../EntityLink.js'
 import { FormInput } from '../FormControls.js'
@@ -26,8 +27,8 @@ export function SemanticKeySettings() {
   const [connectionCheck, setConnectionCheck] = useState<ConnectionCheckState>({ state: 'idle' })
 
   useEffect(() => {
-    void delivery.semanticKey().then(setStatus).catch((e: Error) => setError(e.message))
-  }, [])
+    void delivery.semanticKey().then(setStatus).catch((e: unknown) => setError(errorLabel(m, e)))
+  }, [m])
 
   useEffect(() => {
     setConnectionCheck({ state: 'idle' })
@@ -44,7 +45,7 @@ export function SemanticKeySettings() {
       setClearPending(false)
       setConnectionCheck({ state: 'idle' })
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught))
+      setError(errorLabel(m, caught))
     } finally {
       setSaving(false)
     }

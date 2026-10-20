@@ -39,14 +39,15 @@ describe('ScreenBoundary', () => {
     vi.restoreAllMocks()
   })
 
-  it('替下崩掉的子树，把真实错误文本放进一条 alert 里', () => {
+  it('替下崩掉的子树，alert 里只有通用标签，真实错误文本只进日志', () => {
     act(() => root!.render(
       <MessagesProvider><ScreenBoundary><Unstable /></ScreenBoundary></MessagesProvider>,
     ))
 
     expect(host.textContent).not.toContain('项目详情')
-    expect(host.querySelector('[role="alert"]')?.textContent).toContain('日期格式不对')
-    expect(console.error).toHaveBeenCalled()
+    expect(host.querySelector('[role="alert"]')?.textContent).toBe('出了点问题')
+    expect(host.textContent).not.toContain('日期格式不对')
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('日期格式不对'))
   })
 
   it('重试后重新挂载子树，不再失败时就回到正常内容', () => {

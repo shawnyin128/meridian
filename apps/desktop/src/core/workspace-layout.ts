@@ -3,6 +3,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
+import { CallError } from './call-error.js'
 
 export const WORKSPACE_CONFIG_FILENAME = 'meridian-wiki.json'
 export const WORKSPACE_SCHEMA_VERSION = 'meridian.paper_wiki_workspace.v1'
@@ -93,28 +94,28 @@ export function libraryPaths(root: string): LibraryPaths {
 export function validateLibrary(root: string): LibraryPaths {
   const paths = libraryPaths(root)
   const configFile = join(paths.root, WORKSPACE_CONFIG_FILENAME)
-  if (!existsSync(configFile)) throw new Error(`所选目录不是 Meridian 论文库：缺少 ${WORKSPACE_CONFIG_FILENAME}`)
+  if (!existsSync(configFile)) throw new CallError('not-library', `所选目录不是 Meridian 论文库：缺少 ${WORKSPACE_CONFIG_FILENAME}`)
   let config: WorkspaceConfig
   try {
     const parsed = JSON.parse(readFileSync(configFile, 'utf8')) as Partial<WorkspaceConfig>
     if (typeof parsed.library_root !== 'string' || typeof parsed.source_root !== 'string'
-      || typeof parsed.wiki_root !== 'string') throw new Error('路径字段不完整')
+      || typeof parsed.wiki_root !== 'string') throw new CallError('invalid', '路径字段不完整')
     config = parsed as WorkspaceConfig
   } catch (error) {
-    throw new Error(`${WORKSPACE_CONFIG_FILENAME} 无效：${error instanceof Error ? error.message : String(error)}`)
+    throw new CallError('invalid', `${WORKSPACE_CONFIG_FILENAME} 无效：${error instanceof Error ? error.message : String(error)}`)
   }
   if (canonical(config.library_root) !== paths.root
     || canonical(config.source_root) !== join(paths.root, 'sources')
     || canonical(config.wiki_root) !== paths.wiki) {
-    throw new Error('这个库使用了自定义分散路径，当前桌面端只支持同一库根目录下的标准布局')
+    throw new CallError('invalid', '这个库使用了自定义分散路径，当前桌面端只支持同一库根目录下的标准布局')
   }
   for (const directory of [paths.originals, join(paths.wiki, 'papers')]) {
     if (!existsSync(directory) || !statSync(directory).isDirectory()) {
-      throw new Error(`论文库结构不完整：缺少 ${directory}`)
+      throw new CallError('not-library', `论文库结构不完整：缺少 ${directory}`)
     }
   }
   const schema = join(paths.wiki, 'schema.yaml')
-  if (!existsSync(schema)) throw new Error(`论文库结构不完整：缺少 ${schema}`)
+  if (!existsSync(schema)) throw new CallError('not-library', `论文库结构不完整：缺少 ${schema}`)
   return paths
 }
 
@@ -129,10 +130,10 @@ function canonical(path: string): string {
  * arbitrary user folder. New libraries include wiki/schema.yaml (WIKI_SCHEMA) for Core aggregation.
  */
 export function prepareSelectedLibrary(root: string, now = new Date()): LibraryPaths {
-  if (!isAbsolute(root)) throw new Error('论文库必须使用绝对路径')
+  if (!isAbsolute(root)) throw new CallError('invalid', '论文库必须使用绝对路径')
   const paths = libraryPaths(root)
   if (!existsSync(paths.root)) return initializeLibrary(paths, now)
-  if (!statSync(paths.root).isDirectory()) throw new Error('所选位置不是目录')
+  if (!statSync(paths.root).isDirectory()) throw new CallError('invalid', '所选位置不是目录')
   const meaningful = readdirSync(paths.root).filter((name) => !FINDER_METADATA.has(name))
   return meaningful.length === 0 ? initializeLibrary(paths, now) : validateLibrary(paths.root)
 }
@@ -232,7 +233,7 @@ export function deleteLibraryBackup(root: string, id: string): void {
 
 function nextBackupRoot(activeRoot: string, now: Date): string {
   const parent = dirname(activeRoot)
-  if (parent === activeRoot) throw new Error('不能重置文件系统根目录')
+  if (parent === activeRoot) throw new CallError('refused', '不能重置文件系统根目录')
   const stamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z').replace('T', '-')
   const stem = `${basename(activeRoot)}-backup-${stamp}`
   let candidate = join(parent, stem)
@@ -247,12 +248,12 @@ function backupNamePattern(activeRoot: string): RegExp {
 
 function resolveLibraryBackup(activeRoot: string, id: string): string {
   if (!backupNamePattern(activeRoot).test(id) || basename(id) !== id) {
-    throw new Error('所选备份名称无效')
+    throw new CallError('invalid', '所选备份名称无效')
   }
   const parent = dirname(activeRoot)
   const entry = readdirSync(parent, { withFileTypes: true })
     .find((candidate) => candidate.name === id && candidate.isDirectory())
-  if (entry === undefined) throw new Error('所选备份不存在')
+  if (entry === undefined) throw new CallError('not-found', '所选备份不存在')
   const candidate = join(parent, entry.name)
   validateLibraryBackup(candidate, activeRoot)
   return candidate
@@ -261,28 +262,28 @@ function resolveLibraryBackup(activeRoot: string, id: string): string {
 /** Backups keep the active root in their config because they are restored into that path. */
 function validateLibraryBackup(backupRoot: string, activeRoot: string): void {
   const configFile = join(backupRoot, WORKSPACE_CONFIG_FILENAME)
-  if (!existsSync(configFile)) throw new Error(`备份不完整：缺少 ${WORKSPACE_CONFIG_FILENAME}`)
+  if (!existsSync(configFile)) throw new CallError('invalid', `备份不完整：缺少 ${WORKSPACE_CONFIG_FILENAME}`)
   let config: WorkspaceConfig
   try {
     const parsed = JSON.parse(readFileSync(configFile, 'utf8')) as Partial<WorkspaceConfig>
     if (typeof parsed.library_root !== 'string' || typeof parsed.source_root !== 'string'
-      || typeof parsed.wiki_root !== 'string') throw new Error('路径字段不完整')
+      || typeof parsed.wiki_root !== 'string') throw new CallError('invalid', '路径字段不完整')
     config = parsed as WorkspaceConfig
   } catch (error) {
-    throw new Error(`备份中的 ${WORKSPACE_CONFIG_FILENAME} 无效：${error instanceof Error ? error.message : String(error)}`)
+    throw new CallError('invalid', `备份中的 ${WORKSPACE_CONFIG_FILENAME} 无效：${error instanceof Error ? error.message : String(error)}`)
   }
   if (canonical(config.library_root) !== activeRoot
     || canonical(config.source_root) !== join(activeRoot, 'sources')
     || canonical(config.wiki_root) !== join(activeRoot, 'wiki')) {
-    throw new Error('备份不属于当前论文库')
+    throw new CallError('invalid', '备份不属于当前论文库')
   }
   for (const path of [
     join(backupRoot, 'sources', 'papers'), join(backupRoot, 'wiki', 'papers'),
   ]) {
-    if (!existsSync(path) || !statSync(path).isDirectory()) throw new Error(`备份结构不完整：缺少 ${path}`)
+    if (!existsSync(path) || !statSync(path).isDirectory()) throw new CallError('invalid', `备份结构不完整：缺少 ${path}`)
   }
   const schema = join(backupRoot, 'wiki', 'schema.yaml')
-  if (!existsSync(schema)) throw new Error(`备份结构不完整：缺少 ${schema}`)
+  if (!existsSync(schema)) throw new CallError('invalid', `备份结构不完整：缺少 ${schema}`)
 }
 
 function writeMissing(path: string, text: string): void {

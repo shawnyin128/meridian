@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useState } from 'react'
 import type { ChangeEntry } from '../../shared/contract.js'
 import { HUMAN_PRODUCER, NOTES_PROPOSAL } from '../../shared/vocabulary.js'
 import { changelog } from '../ipc.js'
+import { errorLabel } from '../lib/failure-label.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useNotice, useToday, useVaultRevision } from '../shell/AppShell.js'
@@ -100,7 +101,7 @@ export function Changelog() {
   const fmt = useFormat()
   const notice = useNotice()
   const { revision, bump } = useVaultRevision()
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
 
   useEffect(() => {
@@ -113,7 +114,7 @@ export function Changelog() {
     void changelog.undo(id).then(() => {
       bump()
       notice.success(m.changelog.undoneNote)
-    }).catch((e: Error) => notice.refusal(e.message))
+    }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
   }
 
   // Archiving one entry shows no notice: the entry moving down into the Archived section is the feedback.

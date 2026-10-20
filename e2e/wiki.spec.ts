@@ -450,7 +450,7 @@ test('论文对比:加一篇论文,拿掉;改列——改名生效,删有格子�
   await shown(win).locator('table.cmp thead [aria-label="列设置"]').click()
   await editor.locator('.row .icbtn').first().click()
   await editor.locator('.btn.pri').click()
-  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toContainText('不在新的列里')
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('还有内容在用')
   await expect(shown(win).locator('.ipcerror')).toHaveCount(0)
   await expect(shown(win).locator('table.cmp thead th').nth(1)).toHaveText('比特')
   await expect(editor).toHaveCount(1)

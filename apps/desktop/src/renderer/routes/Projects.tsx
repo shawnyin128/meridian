@@ -6,6 +6,7 @@ import {
 } from '../../shared/project-signals.js'
 import type { ProjectSortKey } from '../../shared/project-signals.js'
 import { ACTIVE_PROJECT, PROJECT_STATUSES } from '../../shared/vocabulary.js'
+import { errorLabel } from '../lib/failure-label.js'
 import type { CrumbSeg, ScreenKey } from '../shell/AppShell.js'
 import { feed, project as projectApi } from '../ipc.js'
 import {
@@ -269,7 +270,7 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
   const [error, setError] = useState<string | null>(null)
   const today = useToday()
   const { revision } = useVaultRevision()
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
   const stopCreating = useCallback(() => setCreating(false), [])
   const createRow = useRef<HTMLDivElement>(null)

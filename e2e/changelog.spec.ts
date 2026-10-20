@@ -128,7 +128,7 @@ test('这一笔之后又改过时撤销被拒,说清还有几条更新的,数据
   await expect(shelved.locator('.cundo')).toHaveAttribute('aria-label', '撤销')
   await shelved.locator('.cundo').click()
 
-  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这条之后该实体又被改过 1 次，先撤销较新的那几条')
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('先撤销较新的变动')
   expect(await statusFromCore(win, 'draft')).toBe('搁置')
   await expect(shelved.locator('.cundo')).toHaveAttribute('aria-label', '撤销')
 })

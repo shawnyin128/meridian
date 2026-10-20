@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Facet, ListParams, PaperColumns, PaperImportResult, PaperRow } from '../../shared/contract.js'
 import { PAPER_COLUMNS } from '../../shared/vocabulary.js'
+import { CallError } from '../call-error.js'
 import { IconTrash } from '../components/icons.js'
 import { TOOLTIP_DELAY } from '../components/Tooltip.js'
 import { MessagesProvider } from '../messages/useMessages.js'
@@ -1231,7 +1232,7 @@ describe('PaperTable', () => {
     await act(async () => { press(existingRow) })
     await flush()
 
-    expect(refusals).toEqual(['意外炸了'])
+    expect(refusals).toEqual(['出了点问题'])
     // The throw happened before any controlled promise was recorded, so this pick left no papers.update call.
     expect(updateCalls).toHaveLength(0)
 
@@ -1329,7 +1330,7 @@ describe('PaperTable', () => {
     expect(host.querySelector('th.th-new')).toBeNull()
   })
 
-  it('建列被 core 拒:占位、打的字与选中的类型都留着,只报一条拒绝提示,是 core 的原话;改了再回车照发', async () => {
+  it('建列被 core 拒:占位、打的字与选中的类型都留着,只报一条拒绝提示,是拒绝原因的标签;改了再回车照发', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
@@ -1337,11 +1338,11 @@ describe('PaperTable', () => {
     const columnsCallsAtMount = columnsCallCount
 
     const call = await startCreate(host, '建列时序', 'select')
-    call.reject(new Error('列名重复:建列时序'))
+    call.reject(new CallError('papers.setColumns', 'invalid'))
     await flush()
     await flush()
 
-    expect(refusals).toEqual(['列名重复:建列时序'])
+    expect(refusals).toEqual(['内容无效'])
     const input = host.querySelector<HTMLInputElement>('th.th-new input')
     expect(input).not.toBeNull()
     expect(input!.value).toBe('建列时序')
@@ -1421,12 +1422,12 @@ describe('PaperTable', () => {
     await flush()
     expect(updateCalls).toHaveLength(1)
 
-    updateCalls[0]!.reject(new Error('论文不存在:p1'))
+    updateCalls[0]!.reject(new CallError('papers.update', 'not-found'))
     await flush()
     await flush()
 
     expect(updateCalls).toHaveLength(1)
-    expect(refusals).toEqual(['论文不存在:p1'])
+    expect(refusals).toEqual(['这一项已不存在'])
     await flush()
     expect(columnsCallCount).toBeGreaterThan(columnsCallsAtMount)
     expect(listCallCount).toBeGreaterThan(listCallsAtMount)
@@ -1437,7 +1438,7 @@ describe('PaperTable', () => {
     await act(async () => { press(document.querySelector<HTMLElement>('.rrow.opt')!) })
     await flush()
     expect(updateCalls).toHaveLength(2)
-    updateCalls[1]!.reject(new Error('论文不存在:p1'))
+    updateCalls[1]!.reject(new CallError('papers.update', 'not-found'))
     await flush()
     await flush()
     listCall.resolve({ rows: [{ ...ROW, custom: { pick: ['existing'] } }], total: 1 })
@@ -1469,13 +1470,13 @@ describe('PaperTable', () => {
     await act(async () => { press(document.querySelector<HTMLElement>('.rrow.opt')!) })
     await flush()
 
-    setColumnsCalls[0]!.reject(new Error('列「多选」的选项重复:新选项'))
+    setColumnsCalls[0]!.reject(new CallError('papers.setColumns', 'invalid'))
     await flush()
     await flush()
 
     expect(updateCalls).toHaveLength(0)
     expect(setColumnsCalls).toHaveLength(1)
-    expect(refusals).toEqual(['列「多选」的选项重复:新选项'])
+    expect(refusals).toEqual(['内容无效'])
     await flush()
     expect(columnsCallCount).toBeGreaterThan(columnsCallsAtMount)
     expect(listCallCount).toBeGreaterThan(listCallsAtMount)
@@ -1683,7 +1684,7 @@ describe('PaperTable', () => {
     })
 
     await typeThenOpenRemark('写不进去')
-    await act(async () => { updateCalls[1]!.reject(new Error('论文不存在')) })
+    await act(async () => { updateCalls[1]!.reject(new CallError('papers.update', 'not-found')) })
     await flush()
     const kept = noteCell.querySelector<HTMLInputElement>('input')!
     expect(kept.value).toBe('写不进去')
@@ -1806,7 +1807,7 @@ describe('PaperTable', () => {
     await act(async () => { press(host.querySelector<HTMLElement>('td.pt-cust')!) })
     await act(async () => { press(document.querySelector<HTMLElement>('.rrow.opt')!) })
     await flush()
-    updateCalls[0]!.reject(new Error('论文不存在:p1'))
+    updateCalls[0]!.reject(new CallError('papers.update', 'not-found'))
     await flush()
     await flush()
     expect(columnsCallCount).toBe(columnsAtMount + 1)
@@ -1908,9 +1909,9 @@ describe('PaperTable', () => {
     // The write is still in flight: the type row already selects the requested single-select option.
     expect(typeButton('单选').getAttribute('aria-checked')).toBe('true')
 
-    setColumnTypeCalls[0]!.reject(new Error('论文页写不进去'))
+    setColumnTypeCalls[0]!.reject(new CallError('papers.setColumnType', 'write'))
     for (let i = 0; i < 8; i++) await flush()
-    expect(refusals).toEqual(['论文页写不进去'])
+    expect(refusals).toEqual(['没能写入论文库'])
     expect(typeButton('文本').getAttribute('aria-checked')).toBe('true')
 
     await pressKey('ArrowRight')

@@ -3,6 +3,7 @@ import {
   HarnessPaperWikiQualitySchema, PapersGetParamsSchema, PapersReadingParamsSchema, PapersSourceParamsSchema,
 } from '../../shared/contract.js'
 import type { HarnessPaperWikiQuality, HarnessPaperWikiReview } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import type { VaultStore } from '../vault.js'
 import { extractPdfPages } from '../paper-library/index.js'
 import type { HarnessExecution, HarnessRunner } from './cost-gate.js'
@@ -279,13 +280,13 @@ export function validatePaperWikiDraftScope(draft: PaperWikiDraft, scope: {
   for (const statement of statements) {
     if (new Set(statement.pages).size !== statement.pages.length
       || statement.pages.some((page) => page > scope.paperPages)) {
-      throw new Error('Harness 返回的 Wiki 提案引用了范围外的论文页')
+      throw new CallError('model', 'Harness 返回的 Wiki 提案引用了范围外的论文页')
     }
   }
   for (const observation of draft.user_observations) {
     if (new Set(observation.reading_refs).size !== observation.reading_refs.length
       || observation.reading_refs.some((item) => !scope.readingRefs.has(item))) {
-      throw new Error('Harness 返回的 Wiki 提案引用了范围外的阅读记录')
+      throw new CallError('model', 'Harness 返回的 Wiki 提案引用了范围外的阅读记录')
     }
   }
 }
@@ -295,7 +296,7 @@ export function validatePaperWikiDraftSemantics(draft: PaperWikiDraft): void {
   const requireUnique = (values: readonly string[], label: string) => {
     const normalized = values.map((value) => inline(value).toLowerCase())
     if (new Set(normalized).size !== normalized.length) {
-      throw new Error(`Harness 返回的 Wiki 提案包含重复的${label}`)
+      throw new CallError('model', `Harness 返回的 Wiki 提案包含重复的${label}`)
     }
   }
   requireUnique(draft.what_to_remember.map((item) => item.text), '核心要点')
@@ -305,7 +306,7 @@ export function validatePaperWikiDraftSemantics(draft: PaperWikiDraft): void {
   requireUnique(draft.implementation_hooks.map((item) => item.task), '实现任务')
   requireUnique(draft.open_questions, '开放问题')
   if (draft.open_questions.some((item) => !/[?？]$/u.test(item.trim()))) {
-    throw new Error('Harness 返回的开放问题未使用问题形式')
+    throw new CallError('model', 'Harness 返回的开放问题未使用问题形式')
   }
 }
 
@@ -319,22 +320,22 @@ export function validatePaperWikiQuality(
   targetId: string,
 ): void {
   if (quality.caseId !== targetId) {
-    throw new Error('Harness 返回的质量检查不属于当前论文')
+    throw new CallError('model', 'Harness 返回的质量检查不属于当前论文')
   }
   const ids = quality.dimensions.map((dimension) => dimension.id)
   if (new Set(ids).size !== QUALITY_DIMENSIONS.size
     || ids.some((id) => !QUALITY_DIMENSIONS.has(id))) {
-    throw new Error('Harness 返回的质量检查维度不完整')
+    throw new CallError('model', 'Harness 返回的质量检查维度不完整')
   }
   for (const dimension of quality.dimensions) {
     const hasFinding = quality.findings.some((finding) => finding.dimension === dimension.id)
     if (dimension.passed === hasFinding) {
-      throw new Error('Harness 返回的质量检查汇总不一致')
+      throw new CallError('model', 'Harness 返回的质量检查汇总不一致')
     }
   }
   const expectedPassed = quality.findings.length === 0 && quality.dimensions.every((item) => item.passed)
   if (quality.passed !== expectedPassed) {
-    throw new Error('Harness 返回的质量检查结论不一致')
+    throw new CallError('model', 'Harness 返回的质量检查结论不一致')
   }
 }
 
@@ -344,15 +345,15 @@ export function paperWikiHarnessError(cause: unknown): Error {
     return cause instanceof Error ? cause : new Error(String(cause))
   }
   if (cause.kind === 'cancelled') {
-    return new Error('已停止生成。模型请求若已发出，服务商仍可能计费；再次生成需要重新确认。')
+    return new CallError('cancelled', '已停止生成。模型请求若已发出，服务商仍可能计费；再次生成需要重新确认。')
   }
   if (cause.kind === 'harness_gone') {
-    return new Error('AI 服务已停止，本次任务不会自动重试。请重新确认后再试。')
+    return new CallError('model', 'AI 服务已停止，本次任务不会自动重试。请重新确认后再试。')
   }
   if (cause.kind === 'bad_request') {
-    return new Error('论文内容过大或 AI 任务格式不受支持，本次未自动重试。')
+    return new CallError('model', '论文内容过大或 AI 任务格式不受支持，本次未自动重试。')
   }
-  return cause
+  return new CallError('model', cause.message, { cause })
 }
 
 /** Real Paper Wiki runner. Core supplies reads and Harness supplies only an unapplied draft. */
@@ -414,7 +415,7 @@ export function createPaperWikiHarnessRunner(options: {
     if (result.targetId !== execution.plan.targetId
       || result.scopeDigest !== execution.plan.scopeDigest
       || result.action !== execution.plan.action) {
-      throw new Error('Harness 返回的 Wiki 提案范围与确认任务不一致')
+      throw new CallError('model', 'Harness 返回的 Wiki 提案范围与确认任务不一致')
     }
     validatePaperWikiDraftScope(result.draft, {
       paperPages: execution.snapshot.paper.pageCount,

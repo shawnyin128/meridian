@@ -278,7 +278,8 @@ describe('Harness cost gate', () => {
     expect(applyWiki).not.toHaveBeenCalled()
   })
 
-  it('rejects in memory even when the optional audit record cannot be written', () => {
+  it('rejects in memory even when the optional audit record cannot be written, naming why', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     const reference = gate().costGate.prepare('p1')
     const restored = createHarnessCostGate({
       paper: () => structuredClone(paper),
@@ -287,7 +288,11 @@ describe('Harness cost gate', () => {
       model: { provider: 'Provider', name: 'model', configured: true, billable: true },
       run: vi.fn(),
       applyWiki: vi.fn(),
-      recordProposal: () => { throw new Error('disk unavailable') },
+      recordProposal: () => {
+        throw Object.assign(new Error("EACCES: permission denied, open '/vault/.meridian/harness-proposals.jsonl'"), {
+          code: 'EACCES', syscall: 'open',
+        })
+      },
       initialProposals: [{
         id: 'proposal-restored', targetId: 'p1', scopeDigest: reference.scopeDigest,
         generatedAt: '2026-09-17T11:00:00.000Z', action: 'create', body: '# Restored',
@@ -297,7 +302,8 @@ describe('Harness cost gate', () => {
 
     const result = restored.rejectPaperWiki({ proposalId: 'proposal-restored' })
 
-    expect(result.warning).toContain('审计记录写入失败')
+    expect(result.warning).toBe('write')
     expect(restored.pendingPaperWiki('p1')).toBeNull()
+    vi.restoreAllMocks()
   })
 })

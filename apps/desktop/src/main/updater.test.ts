@@ -1,7 +1,8 @@
 import { EventEmitter } from 'node:events'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
-  CHECK_EVERY_MS, createUpdater, FIRST_CHECK_MS, RETRY_AFTER_ERROR_MS, TICK_MS, type InstallRoute, type UpdateFeed,
+  CHECK_EVERY_MS, createUpdater, FIRST_CHECK_MS, RETRY_AFTER_ERROR_MS, TICK_MS, updateFailure,
+  type InstallRoute, type UpdateFeed,
 } from './updater.js'
 import type { SelfUpdate } from './mac-self-update.js'
 
@@ -18,14 +19,27 @@ function setup({ supported = true, route = { kind: 'feed' } as InstallRoute } = 
   const feed = new FakeFeed()
   let clock = Date.parse('2026-09-22T00:00:00Z')
   const changes: string[] = []
+  const logged: string[] = []
   const updater = createUpdater({
     feed: feed as unknown as UpdateFeed, current: '0.0.3', supported, route,
-    now: () => clock, onChange: (status) => changes.push(status.phase),
+    now: () => clock, onChange: (status) => changes.push(status.phase), log: (line) => logged.push(line),
   })
-  return { feed, updater, changes, advance: (ms: number) => { clock += ms } }
+  return { feed, updater, changes, logged, advance: (ms: number) => { clock += ms } }
 }
 
 afterEach(() => { vi.useRealTimers() })
+
+describe('updateFailure', () => {
+  it('names a failed check by its cause, never by its text', () => {
+    expect(updateFailure(new Error('net::ERR_INTERNET_DISCONNECTED'))).toBe('unavailable')
+    expect(updateFailure(new Error('net::ERR_TIMED_OUT'))).toBe('timeout')
+    expect(updateFailure(Object.assign(new Error('503 Service Unavailable'), { statusCode: 503 }))).toBe('server')
+    expect(updateFailure(Object.assign(new Error("EACCES: permission denied, mkdir '/Applications/.Meridian.app-update'"), {
+      code: 'EACCES', syscall: 'mkdir',
+    }))).toBe('write')
+    expect(updateFailure(new Error('codesign failed'))).toBe('unknown')
+  })
+})
 
 describe('createUpdater', () => {
   it('downloads a newer release in place and installs it silently, then reopens, only once it is ready', () => {
@@ -96,27 +110,28 @@ describe('createUpdater', () => {
       download: () => Promise.reject(new Error('Meridian-0.0.15.3-arm64.zip does not match the checksum its release lists')),
       install: () => { throw new Error('install must not run') },
     }
-    const { feed, updater } = setup({ route: { kind: 'self', self } })
+    const { feed, updater, logged } = setup({ route: { kind: 'self', self } })
     updater.check()
     feed.emit('update-available', { version: '0.0.15003', files: [] })
     await Promise.resolve()
     await Promise.resolve()
-    expect(updater.status()).toMatchObject({
-      phase: 'error', message: 'Meridian-0.0.15.3-arm64.zip does not match the checksum its release lists',
-    })
+    expect(updater.status()).toMatchObject({ phase: 'error', reason: 'unknown' })
+    expect(logged).toEqual(['[main] Update failed: Meridian-0.0.15.3-arm64.zip does not match the checksum its release lists'])
     updater.install()
     updater.check()
     expect(feed.checks).toBe(2)
   })
 
   it('records when a check finished, keeps the error, and lets the user check again', () => {
-    const { feed, updater } = setup()
+    const { feed, updater, logged } = setup()
     expect(updater.status().checkedAt).toBeUndefined()
     updater.check()
-    feed.emit('error', new Error('Cannot find latest.yml: HttpError: 404 \nHeaders: {"server": "github.com"}\n    at createHttpError'))
-    expect(updater.status()).toMatchObject({
-      phase: 'error', message: 'Cannot find latest.yml: HttpError: 404', checkedAt: '2026-09-22T00:00:00.000Z',
-    })
+    feed.emit('error', Object.assign(
+      new Error('Cannot find latest.yml: HttpError: 404 \nHeaders: {"server": "github.com"}\n    at createHttpError'),
+      { code: 'ERR_UPDATER_CHANNEL_FILE_NOT_FOUND' },
+    ))
+    expect(updater.status()).toMatchObject({ phase: 'error', reason: 'server', checkedAt: '2026-09-22T00:00:00.000Z' })
+    expect(logged).toEqual(['[main] Update failed: Cannot find latest.yml: HttpError: 404'])
     updater.check()
     feed.emit('update-not-available', { version: '0.0.3' })
     expect(feed.checks).toBe(2)

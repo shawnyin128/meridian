@@ -3,6 +3,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TrashEntry } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
@@ -26,11 +27,15 @@ const api = vi.hoisted(() => ({
   }] as TrashEntry[],
   purge: vi.fn(async () => {}),
   notes: [] as unknown[],
+  listError: null as unknown,
 }))
 
 vi.mock('../ipc.js', () => ({
   trash: {
-    list: async () => structuredClone(api.entries),
+    list: async () => {
+      if (api.listError !== null) throw api.listError
+      return structuredClone(api.entries)
+    },
     restore: vi.fn(async () => {}),
     purge: api.purge,
     clear: vi.fn(async () => {}),
@@ -71,6 +76,7 @@ describe('Trash', () => {
     document.body.append(host)
     api.purge.mockClear()
     api.notes.length = 0
+    api.listError = null
     root = createRoot(host)
     await act(async () => { root!.render(<MessagesProvider><Trash /></MessagesProvider>) })
   })
@@ -79,6 +85,23 @@ describe('Trash', () => {
     if (root !== null) act(() => root!.unmount())
     root = null
     vi.unstubAllGlobals()
+  })
+
+  it('垃圾桶读不到时页上只有原因的标签，带路径的原话不上屏', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const cases = [
+      [new CallError('trash.list', 'newer-version'), '需要更新 App'],
+      [new Error("EACCES: permission denied, open '/Users/me/vault/.meridian/trash.json'"), '出了点问题'],
+    ] as const
+    for (const [thrown, label] of cases) {
+      api.listError = thrown
+      act(() => root!.unmount())
+      root = createRoot(host)
+      await act(async () => { root!.render(<MessagesProvider><Trash /></MessagesProvider>) })
+      expect(host.querySelector('.ipcerror')?.textContent).toBe(label)
+      expect(host.textContent).not.toContain('/Users/me/vault')
+    }
+    vi.restoreAllMocks()
   })
 
   it('每一类条目是页面上的嵌入列表，不套卡片外框', () => {

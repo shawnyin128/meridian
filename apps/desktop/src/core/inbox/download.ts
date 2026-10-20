@@ -1,6 +1,7 @@
 import {
   MAX_PDF_UPLOAD_BYTES, type DownloadProgress, type InboxDownloadResult,
 } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import { HttpStatusError, netFailure, type HttpGet } from '../net/http.js'
 import type { VaultStore } from '../vault.js'
 import { isWriteFailure } from '../vault/writer.js'
@@ -19,7 +20,7 @@ export function createInboxDownloads(deps: {
   const running = new Map<string, DownloadProgress>()
   return {
     async download(id) {
-      if (running.has(id)) throw new Error(`这一条正在下载：${id}`)
+      if (running.has(id)) throw new CallError('busy', `这一条正在下载：${id}`)
       const plan = deps.store.prepareInboxDownload(id)
       if (plan.kind !== 'fetch') return plan
       running.set(id, { id, received: 0, total: null })

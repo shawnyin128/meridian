@@ -1,4 +1,5 @@
 import type { AppUpdateStatus } from '../../../shared/app-update.js'
+import { reasonLabel } from '../../lib/failure-label.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
 
@@ -20,7 +21,7 @@ export function updateLine(status: AppUpdateStatus, m: Catalog): string {
     case 'downloading': return phase.downloading(status.version, status.percent)
     case 'ready': return phase.ready(status.version)
     case 'available': return phase.available(status.version)
-    case 'error': return phase.error(status.message)
+    case 'error': return phase.error(reasonLabel(m, status.reason))
   }
 }
 

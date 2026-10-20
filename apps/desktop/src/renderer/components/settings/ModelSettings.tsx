@@ -4,6 +4,7 @@ import type {
   HarnessModelProvider, HarnessModelSettings,
 } from '../../../shared/contract.js'
 import { harness } from '../../ipc.js'
+import { errorLabel, reasonLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ChoicePicker } from '../FieldPickers.js'
 import { FormInput } from '../FormControls.js'
@@ -162,8 +163,8 @@ export function ModelSettings() {
       setCompatibleTemplate(next.provider === 'openai-compatible'
         ? compatibleTemplateFor(next.baseUrl, next.protocol, next.authentication)
         : 'choose')
-    }).catch((caught: unknown) => setError(caught instanceof Error ? caught.message : String(caught)))
-  }, [])
+    }).catch((caught: unknown) => setError(errorLabel(m, caught)))
+  }, [m])
 
   useEffect(() => {
     setConnectionCheck({ state: 'idle' })
@@ -229,7 +230,7 @@ export function ModelSettings() {
       showProfile(next)
       setConnectionCheck({ state: 'idle' })
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught))
+      setError(errorLabel(m, caught))
     } finally {
       setSaving(false)
     }
@@ -406,7 +407,7 @@ export function ModelSettings() {
         </ServiceActions>
       </ServiceFoot>
       {settings.error === undefined ? null : (
-        <ServiceError>{m.settings.model.errorHint(settings.error)}</ServiceError>
+        <ServiceError>{m.settings.model.errorHint(reasonLabel(m, settings.error))}</ServiceError>
       )}
       {error === null ? null : <ServiceError>{error}</ServiceError>}
     </ServiceCard>

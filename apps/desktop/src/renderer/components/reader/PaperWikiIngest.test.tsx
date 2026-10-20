@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   HarnessPaperWikiQuality, HarnessPlan, PaperReading, PaperRow,
 } from '../../../shared/contract.js'
+import { CallError } from '../../call-error.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 
@@ -148,8 +149,23 @@ describe('PaperWikiIngest', () => {
     expect(host.textContent).toContain('已写入 Wiki')
   })
 
+  it('names an audit record that could not be written by its reason, next to the ready proposal', async () => {
+    api.start.mockResolvedValueOnce({
+      id: 'run-1', planId: 'plan-1', workflow: 'paper-wiki', targetId: 'p1',
+      startedAt: '2026-09-17T12:00:00.000Z', state: 'proposal-ready', message: '请审核', warning: 'write',
+      proposal: { id: 'proposal-1', targetId: 'p1', action: 'create', body: '# Draft', review, quality },
+    })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
+    })
+
+    expect(host.textContent).toContain('审计记录没能保存 · 没能写入论文库')
+    expect(host.textContent).toContain('记住什么')
+  })
+
   it('lets the user stop an in-flight run and requires a fresh confirmation afterward', async () => {
-    let rejectRun: ((cause: Error) => void) | undefined
+    let rejectRun: ((cause: CallError) => void) | undefined
     api.start.mockImplementation(() => new Promise((_resolve, reject) => { rejectRun = reject }))
     await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
     act(() => host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click())
@@ -159,9 +175,9 @@ describe('PaperWikiIngest', () => {
     expect(api.cancel).toHaveBeenCalledWith('plan-1')
 
     await act(async () => {
-      rejectRun!(new Error('已停止生成。模型请求若已发出，服务商仍可能计费；再次生成需要重新确认。'))
+      rejectRun!(new CallError('harness.start', 'cancelled'))
     })
-    expect(host.textContent).toContain('仍可能计费')
+    expect(host.textContent).toContain('已停止生成')
     expect(host.querySelector('[data-testid="start-harness"]')).toBeNull()
     expect(host.textContent).toContain('重新准备')
   })

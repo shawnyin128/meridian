@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatMessage, ChatSession, PaperRow } from '../../../shared/contract.js'
 import { chat, feed, idea as ideaApi } from '../../ipc.js'
+import { errorLabel } from '../../lib/failure-label.js'
 import {
   useNotice, usePaperChatCollapsed, usePaperChatGrip, useVaultRevision,
 } from '../../shell/AppShell.js'
@@ -50,7 +51,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const [error, setError] = useState<string | null>(null)
   const stream = useRef<HTMLDivElement>(null)
   const composer = useRef<HTMLTextAreaElement>(null)
-  const reportError = useCallback((cause: Error) => setError(cause.message), [])
+  const reportError = useCallback((cause: unknown) => setError(errorLabel(m, cause)), [m])
   const paperId = paper?.id ?? null
   const sessionId = session?.id ?? null
   const draft = paperId === null ? '' : drafts.get(paperId) ?? ''
@@ -111,7 +112,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
         plain(m.chat.recordedTo(held.name)),
       ] } })
       bump()
-    }).catch((cause: Error) => notice.refusal(cause.message))
+    }).catch((cause: unknown) => notice.refusal(errorLabel(m, cause)))
   }
 
   const hasDiscussion = (messages ?? []).some((message) => message.role === 'you')

@@ -105,6 +105,7 @@ export const wiki = {
     writing: '正在写入…',
     confirm: '确认写入 Wiki',
     writeNote: 'Wiki 提案已写入论文页',
+    auditFailed: '审计记录没能保存',
     written: '已写入 Wiki。',
     discarded: '提案已丢弃，未修改 Wiki。',
     disclaimer: '确认前不会调用模型；生成结果仍需审核后才会写入 Wiki。',

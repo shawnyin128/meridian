@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   HarnessModelConnectionCheckResult, LibraryBackup, LibraryLocation, SemanticKeyCheckResult, SemanticKeyStatus,
 } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import type { SettingsCategory } from '../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
@@ -483,14 +484,14 @@ describe('Settings', () => {
   })
 
   it('每个设置页只显示自己那次读取的错误：对话列表读不到时，存储页不报，归档的对话页报', async () => {
-    api.chatList.mockImplementationOnce(async () => { throw new Error('对话列表读不到') })
+    api.chatList.mockImplementationOnce(async () => { throw new CallError('chat.list', 'newer-version') })
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
     expect(dialog.querySelector('.set-main [role="alert"]')).toBeNull()
 
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="archived"]')!.click() })
-    expect(dialog.querySelector('.set-main [role="alert"]')?.textContent).toBe('对话列表读不到')
+    expect(dialog.querySelector('.set-main [role="alert"]')?.textContent).toBe('需要更新 App')
   })
 
   it('还没有备份时备份这一节整节不显示', async () => {
@@ -502,10 +503,10 @@ describe('Settings', () => {
     expect(dialog.querySelector('.set-main .empty-state')).toBeNull()
   })
 
-  it('库打不开时显示路径与原因，切换和重置仍然可用', async () => {
+  it('库打不开时显示所选目录与原因的标签，错误里不带路径，切换和重置仍然可用', async () => {
     api.libraryLocation.mockResolvedValueOnce({
       root: '/tmp/broken-library', source: 'fallback', locked: false, restartRequired: false,
-      openError: '库里没有论文页目录:/tmp/broken-library/wiki/papers',
+      openError: 'not-library',
     })
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -514,8 +515,7 @@ describe('Settings', () => {
     })
 
     expect(dialog.textContent).not.toContain('正在读取库位置')
-    expect(dialog.querySelector('.ipcerror')?.textContent)
-      .toBe('库里没有论文页目录:/tmp/broken-library/wiki/papers')
+    expect(dialog.querySelector('.ipcerror')?.textContent).toBe('不是 Meridian 论文库')
     expect(dialog.querySelector<HTMLInputElement>('.storage-root input')?.value)
       .toBe('/tmp/broken-library')
     expect(dialog.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录"]')?.disabled)
@@ -677,6 +677,17 @@ describe('Settings', () => {
     const field = dialog.querySelector<HTMLInputElement>('[aria-label="模型 API Key"]')!
     expect(field.value).toBe('')
     expect(field.type).toBe('password')
+  })
+
+  it('已存的模型配置读不进来时只显示原因的标签', async () => {
+    const unreadable = { ...(await api.modelSettings()), error: 'key-unreadable' as const }
+    api.modelSettings.mockResolvedValueOnce(unreadable)
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+
+    expect(dialog.textContent).toContain('没能读取已存的密钥。请检查后重新保存。')
+    expect(dialog.textContent).not.toContain('key-unreadable')
   })
 
   it('用最多一个输出 token 测试当前已保存的模型连接', async () => {

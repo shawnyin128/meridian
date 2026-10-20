@@ -12,7 +12,7 @@ import { DayHeading, daySectionName } from '../components/DayHeading.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
-import { failureLabel } from '../lib/failure-label.js'
+import { errorLabel, failureLabel } from '../lib/failure-label.js'
 import { TitleNote } from '../components/TitleNote.js'
 import { useFormat } from '../lib/format.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -39,7 +39,7 @@ export function Later() {
   const notice = useNotice()
   const { open } = useJump()
   const { revision, bump } = useVaultRevision()
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
   const jobs = useJobs()
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set())
@@ -63,7 +63,7 @@ export function Later() {
       }
       bump()
       open('reader', result.paper)
-    }).catch((e: Error) => notice.refusal(e.message)).finally(() => {
+    }).catch((e: unknown) => notice.refusal(errorLabel(m, e))).finally(() => {
       setBusy((held) => {
         const next = new Set(held)
         next.delete(entry.id)

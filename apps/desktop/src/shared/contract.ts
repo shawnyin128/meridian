@@ -585,6 +585,26 @@ export const PapersMutateReadingParamsSchema = z.object({
   mutation: ReadingMutationSchema,
 }).strict()
 
+/** Why a network call failed: no network, a timeout, a rate limit, another error status, or anything else. */
+export const NetFailureSchema = z.enum(['unavailable', 'timeout', 'rate-limit', 'server', 'unknown'])
+
+/**
+ * Why Core failed a call: a network failure, a file that is not a PDF, a vault write the file
+ * system refused, an entity that no longer exists, a change the current state refuses, content that
+ * changed since it was shown, a change with newer changes to undo first, an option or column still
+ * in use, input that failed validation, a folder that is not a Meridian library, a resource still
+ * busy, data a newer App wrote, a key the system credential store could not save or read back, no
+ * model set up, a generation the user stopped, a failed model call, or anything else.
+ */
+export const CallFailureSchema = z.enum([
+  ...NetFailureSchema.options, 'not-pdf', 'write', 'not-found', 'refused', 'changed', 'newer-changes', 'in-use',
+  'invalid', 'not-library', 'busy', 'newer-version', 'key-unsaved', 'key-unreadable', 'no-model', 'cancelled',
+  'model',
+])
+
+/** What a rejected call carries across the process boundary instead of Core's error. */
+export const CallRejectionSchema = z.object({ reason: CallFailureSchema }).strict()
+
 /**
  * A cost-bearing Harness action. Core prepares this plan without a model call; the renderer must
  * show its exact scope and selected model before it can exchange the one-time plan for a run.
@@ -743,7 +763,8 @@ export const HarnessRunReceiptSchema = z.object({
   state: z.enum(['accepted', 'demo-complete', 'proposal-ready']),
   message: z.string().min(1),
   proposal: HarnessPaperWikiDraftSchema.optional(),
-  warning: z.string().min(1).optional(),
+  /** Why the proposal's audit record could not be written; the proposal itself is ready. */
+  warning: CallFailureSchema.optional(),
 }).strict()
 
 export const HarnessApplyPaperWikiParamsSchema = z.object({
@@ -755,7 +776,8 @@ export const HarnessApplyPaperWikiResultSchema = z.object({
   proposalId: z.string().min(1),
   wikiId: z.string().min(1),
   appliedAt: IsoTimestamp,
-  warning: z.string().min(1).optional(),
+  /** Why the audit record of the applied proposal could not be written; the Wiki page is written. */
+  warning: CallFailureSchema.optional(),
 }).strict()
 
 export const HarnessPaperWikiRejectionReasonSchema = z.enum([
@@ -781,7 +803,8 @@ export const HarnessRejectPaperWikiParamsSchema = z.object({
 export const HarnessRejectPaperWikiResultSchema = z.object({
   proposalId: z.string().min(1),
   rejectedAt: IsoTimestamp,
-  warning: z.string().min(1).optional(),
+  /** Why the audit record of the rejection could not be written; the proposal is discarded. */
+  warning: CallFailureSchema.optional(),
 }).strict()
 
 export const HarnessModelProviderSchema = z.enum([
@@ -811,7 +834,8 @@ export const HarnessModelProfileSchema = z.object({
 
 export const HarnessModelSettingsSchema = HarnessModelProfileSchema.extend({
   profiles: z.array(HarnessModelProfileSchema).max(100),
-  error: z.string().min(1).optional(),
+  /** Why the saved model configuration could not be loaded as it was. */
+  error: CallFailureSchema.optional(),
 }).strict()
 
 export const HarnessModelConnectionFailureSchema = z.enum([
@@ -1102,9 +1126,6 @@ const WatchFieldsSchema = z.discriminatedUnion('type', [
     identity: AuthorIdentitySchema.optional(),
   }).strict(),
 ])
-
-/** Why a network call failed: no network, a timeout, a rate limit, another error status, or anything else. */
-export const NetFailureSchema = z.enum(['unavailable', 'timeout', 'rate-limit', 'server', 'unknown'])
 
 /** A network call that failed, with its reason; watch suggestions answer with it. */
 export const NetFailedSchema = z.object({ kind: z.literal('failed'), reason: NetFailureSchema }).strict()
@@ -1931,7 +1952,8 @@ export const ChatSendParamsSchema = z.object({
 export const ChatSendResultSchema = z.object({
   id: z.string(),
   state: z.enum(['complete', 'failed', 'cancelled']),
-  message: z.string().min(1).optional(),
+  /** Why a `failed` send failed. */
+  reason: CallFailureSchema.optional(),
 }).strict()
 
 export const ChatCancelParamsSchema = z.object({ id: z.string() }).strict()
@@ -2097,7 +2119,7 @@ export const LibraryLocationSchema = z.object({
   locked: z.boolean(),
   restartRequired: z.boolean(),
   /** Why the library at `root` failed to open, or null when it opened (or has not been tried yet). */
-  openError: z.string().nullable(),
+  openError: CallFailureSchema.nullable(),
 }).strict()
 
 export const LibraryConfigureParamsSchema = z.object({ root: z.string().min(1) }).strict()
@@ -2226,6 +2248,8 @@ export type NetFailure = z.infer<typeof NetFailureSchema>
 export type NetFailed = z.infer<typeof NetFailedSchema>
 export type AuthorSearchFailure = z.infer<typeof AuthorSearchFailureSchema>
 export type AuthorSearchFailed = z.infer<typeof AuthorSearchFailedSchema>
+export type CallFailure = z.infer<typeof CallFailureSchema>
+export type CallRejection = z.infer<typeof CallRejectionSchema>
 export type AuthorCandidate = z.infer<typeof AuthorCandidateSchema>
 export type WatchTopicSuggestion = z.infer<typeof WatchTopicSuggestionSchema>
 export type WatchAuthorSuggestion = z.infer<typeof WatchAuthorSuggestionSchema>

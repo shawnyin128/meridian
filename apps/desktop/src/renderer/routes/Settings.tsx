@@ -4,6 +4,7 @@ import type {
   ChatSession, ExtensionStatus, LibraryBackup, LibraryLocation, PluginVersion,
 } from '../../shared/contract.js'
 import { appMenu, chat, extensions, library } from '../ipc.js'
+import { errorLabel, reasonLabel } from '../lib/failure-label.js'
 import { useFormat } from '../lib/format.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -110,8 +111,8 @@ export function Settings() {
     return next
   }), [])
   const reportTo = useCallback((pane: CategoryKey) => (e: unknown) => {
-    setError(pane, e instanceof Error ? e.message : String(e))
-  }, [setError])
+    setError(pane, errorLabel(m, e))
+  }, [setError, m])
   const write = useVaultWrite()
 
   // Fetch nothing while closed: this dialog stays mounted, so without this check every vault write
@@ -235,7 +236,9 @@ export function Settings() {
             ? <LoadingPlaceholder shape="lines" count={2} />
             : (
               <>
-                <PageError variant="section" error={location.openError} />
+                <PageError
+                  variant="section" error={location.openError === null ? null : reasonLabel(m, location.openError)}
+                />
                 <label className="storage-root">
                   <span>{m.settings.storage.rootLabel}</span>
                   <DirectoryField

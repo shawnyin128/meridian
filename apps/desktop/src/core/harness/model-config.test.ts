@@ -1,7 +1,8 @@
 import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { CallError } from '../call-error.js'
 import type { CredentialVault } from './credential-vault.js'
 import { createHarnessModelConfig, HARNESS_MODEL_CONFIG_FILENAME } from './model-config.js'
 
@@ -89,15 +90,26 @@ describe('Harness model configuration', () => {
   })
 
   it('surfaces malformed saved configuration without preventing settings repair', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
     writeFileSync(join(root, HARNESS_MODEL_CONFIG_FILENAME), '{bad', 'utf8')
     const config = await createHarnessModelConfig(root, credentialVault())
-    expect(config.settings()).toMatchObject({ configured: false, error: expect.stringContaining('AI 模型配置无效') })
+    expect(config.settings()).toMatchObject({ configured: false, error: 'invalid' })
     expect(await config.update({
       provider: 'openai-compatible', protocol: 'responses',
       baseUrl: 'http://127.0.0.1:8000/v1', model: 'local',
       authentication: 'none',
     })).not.toHaveProperty('error')
+    vi.restoreAllMocks()
+  })
+
+  it('names a configuration a newer App saved as newer-version', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+    writeFileSync(join(root, HARNESS_MODEL_CONFIG_FILENAME), JSON.stringify({ schemaVersion: 'meridian.harness-model.v99' }), 'utf8')
+    const config = await createHarnessModelConfig(root, credentialVault())
+    expect(config.settings().error).toBe('newer-version')
+    vi.restoreAllMocks()
   })
 
   it('keeps provider and compatible-endpoint credentials in independent profiles', async () => {
@@ -206,13 +218,16 @@ describe('Harness model configuration', () => {
       authentication: 'api-key', apiKey: 'legacy-secret',
     }), 'utf8')
     const unavailable: CredentialVault = {
-      seal: async () => { throw new Error('secure storage unavailable') },
-      open: async () => { throw new Error('secure storage unavailable') },
+      seal: async () => { throw new CallError('key-unsaved', 'secure storage unavailable') },
+      open: async () => { throw new CallError('key-unreadable', 'secure storage unavailable') },
     }
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     const config = await createHarnessModelConfig(root, unavailable)
     expect(config.settings()).toMatchObject({ configured: false, apiKeyConfigured: false })
-    expect(config.settings().error).toContain('已从明文配置移除')
+    expect(config.settings().error).toBe('key-unsaved')
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('已从明文配置移除'))
+    log.mockRestore()
     expect(readFileSync(file, 'utf8')).not.toContain('legacy-secret')
   })
 })

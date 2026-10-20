@@ -5,7 +5,7 @@ import type {
   WatchSuggestionResult,
 } from '../../shared/contract.js'
 import { author, project, watch } from '../ipc.js'
-import { failureLabel } from '../lib/failure-label.js'
+import { errorLabel, failureLabel, failureOf } from '../lib/failure-label.js'
 import { useVaultRevision } from '../shell/AppShell.js'
 import { useMessages } from '../messages/useMessages.js'
 import { AddAction } from '../components/AddAction.js'
@@ -137,7 +137,7 @@ export function WatchSettings() {
   const triggers = useMemo(() => [addTopic, addAuthor], [])
 
   const { revision } = useVaultRevision()
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
 
   const stop = useCallback(() => {
@@ -179,11 +179,11 @@ export function WatchSettings() {
           setAuthorSearchError(matches)
         }
         setAuthorSearching(false)
-      }).catch((caught: Error) => {
+      }).catch((caught: unknown) => {
         if (request !== authorSearchRevision.current) return
         setAuthorMatches([])
         setAuthorSearching(false)
-        setAuthorSearchError(caught.message)
+        setAuthorSearchError(failureLabel(m, m.watches.authorSearchFailed, failureOf(caught)))
       })
     }, 700)
     return () => { window.clearTimeout(timer) }
@@ -298,7 +298,7 @@ export function WatchSettings() {
       setHadSuggestions(next.topics.length + next.authors.length > 0)
     } catch (caught) {
       if (request === suggestionRequest.current) {
-        setSuggestionError(caught instanceof Error ? caught.message : String(caught))
+        setSuggestionError(failureLabel(m, m.watches.suggestionFailed, failureOf(caught)))
       }
     } finally {
       if (request === suggestionRequest.current) setSuggesting(false)

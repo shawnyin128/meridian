@@ -1,7 +1,7 @@
 import type { AppUpdateStatus } from '../shared/app-update.js'
 import type {
-  AttachmentFields, AuthorCandidate, AuthorSearchFailed, ChangeEntry, ChatCancelResult, ChatMessage, ChatMessageFields,
-  ChatSendResult, ChatSession, ConclusionState,
+  AttachmentFields, AuthorCandidate, AuthorSearchFailed, CallRejection, ChangeEntry, ChatCancelResult,
+  ChatMessage, ChatMessageFields, ChatSendResult, ChatSession, ConclusionState,
   ContractMethod, Facet, PluginVersion, SemanticKeyCheckResult, SemanticKeyStatus,
   DeliverySettings, DiscoveryFeedback, DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile,
   ExtensionStatus, FeedEntry, FeedFields,
@@ -21,9 +21,24 @@ import type {
   WatchSuggestionParams, WatchSuggestionResult, WikiAggregation,
   WikiAggregationCard, WikiHome, WikiPaper, ProposalReceipt, ProposalStatus, WikiProposal,
 } from '../shared/contract.js'
+import { CallError } from './call-error.js'
+
+/**
+ * The CallError for a rejected `method` call: Core rejects with a CallRejection; any other rejection,
+ * such as the preload losing its connection, is logged and becomes `unknown`.
+ */
+function callError(method: ContractMethod, rejected: unknown): CallError {
+  if (typeof rejected === 'object' && rejected !== null && !(rejected instanceof Error) && 'reason' in rejected) {
+    return new CallError(method, (rejected as CallRejection).reason)
+  }
+  console.error(`[ipc] ${method}: ${rejected instanceof Error ? rejected.message : String(rejected)}`)
+  return new CallError(method, 'unknown')
+}
 
 const call = <T>(method: ContractMethod, params: unknown): Promise<T> =>
-  window.meridian.call(method, params) as Promise<T>
+  (window.meridian.call(method, params) as Promise<T>).catch((rejected: unknown) => {
+    throw callError(method, rejected)
+  })
 
 export const appMenu = {
   /**

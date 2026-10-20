@@ -196,6 +196,7 @@ app.whenReady().then(() => {
     route,
     now: Date.now,
     onChange: (status) => { if (!win.isDestroyed()) win.webContents.send(UPDATE_CHANGED, status) },
+    log: (line) => log(`${line}\n`),
   })
   updater.arm()
   ipcMain.handle(UPDATE_STATUS, (event) => event.sender === win.webContents ? updater.status() : null)
