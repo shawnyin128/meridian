@@ -99,6 +99,16 @@ describe('滚动区和吸住的部分都淡出而不是硬切', () => {
       .map(({ path, selector }) => `${path}  ${selector}`)).toEqual([])
   })
 
+  it('想法详情面板的高度取自页面主体内的可见高度,不论窗口多高都止于页面主体之内', () => {
+    const body = (selector: string) => RULES.filter((rule) => rule.path === 'routes/Ideas.css' && rule.selector === selector)
+      .map((rule) => rule.body).join(';')
+    expect(body('.ideas-body')).toMatch(/container-type:\s*size/)
+    for (const selector of ['.idea-detail-slot', '.idea-detail-panel']) {
+      expect(body(selector), selector).toMatch(/max-height:\s*100cqh/)
+      expect(body(selector), selector).not.toMatch(/vh\b/)
+    }
+  })
+
   it('内容会滑到下面的吸住元素,吸住时在自己的边上淡出内容', () => {
     const sticky = RULES.filter(({ body }) => /position:\s*sticky/.test(body)).map(({ selector }) => selector)
     expect(sticky.filter((selector) => !(selector in STUCK) && !(selector in UNDER_NOTHING))).toEqual([])
