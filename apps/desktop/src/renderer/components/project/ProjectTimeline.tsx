@@ -1,5 +1,5 @@
 import type { RefObject } from 'react'
-import type { ProjectDetail, Task, TaskWindow } from '../../../shared/contract.js'
+import type { Milestone, ProjectDetail, Task, TaskWindow } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ActionMenu, MenuItem } from '../ActionMenu.js'
 import { AddAction } from '../AddAction.js'
@@ -10,12 +10,12 @@ import { timelineSlotWindow } from '../timeline/TimelineScale.js'
 /**
  * Project-detail configuration of the shared timeline board. The milestone lane and the diamonds
  * open the shared milestone editor; the header's new-milestone action starts `onNewMilestone`'s row
- * in the plan list. `onCreateMilestone` and `onRenameMilestone` return whether that write succeeded.
+ * in the plan list. `onCreateMilestone` and `onUpdateMilestone` return whether that write succeeded.
  */
 export function ProjectTimeline({
   project, hoverMilestone, onHoverMilestone, onLocateTask,
   onMoveTask, onMoveTaskWindow, onMoveMilestone, onReorderTasks, onNewTask, onNewMilestone,
-  onCreateMilestone, onRenameMilestone, onDeleteMilestone, newActionRef,
+  onCreateMilestone, onUpdateMilestone, onDeleteMilestone, newActionRef,
 }: {
   project: ProjectDetail
   hoverMilestone: string | null
@@ -28,7 +28,7 @@ export function ProjectTimeline({
   onNewTask: (date: string, window: TaskWindow | null) => void
   onNewMilestone: (date: string) => void
   onCreateMilestone: (date: string, title: string) => Promise<boolean>
-  onRenameMilestone: (milestoneId: string, title: string) => Promise<boolean>
+  onUpdateMilestone: (milestoneId: string, patch: Pick<Milestone, 'title' | 'date'>) => Promise<boolean>
   onDeleteMilestone: (milestoneId: string) => void
   newActionRef: RefObject<HTMLButtonElement | null>
 }) {
@@ -36,7 +36,7 @@ export function ProjectTimeline({
   const editor = useMilestoneEditor({
     projects: [project],
     onCreate: (_projectId, date, title) => onCreateMilestone(date, title),
-    onRename: (_projectId, milestoneId, title) => onRenameMilestone(milestoneId, title),
+    onUpdate: (_projectId, milestoneId, patch) => onUpdateMilestone(milestoneId, patch),
     onDelete: (_projectId, milestoneId) => onDeleteMilestone(milestoneId),
   })
   return (

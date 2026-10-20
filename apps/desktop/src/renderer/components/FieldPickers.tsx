@@ -182,18 +182,31 @@ function Calendar({ selected, onPick }: { selected: string; onPick: (iso: string
   )
 }
 
-/** Shared calendar trigger. Consumers control only the trigger presentation and selected ISO date. */
-export function DateButton({ iso, className, onPick, children }: {
+/**
+ * Shared calendar trigger for the ISO date `iso`. With `appearance="field"` it is the boxed field of a
+ * form, as ChoicePicker's is, showing the date; otherwise consumers control only the trigger's class
+ * and its content, which defaults to the date.
+ */
+export function DateButton({ iso, className, appearance, onPick, children }: {
   iso: string
-  className: string
+  className?: string
+  appearance?: 'field'
   onPick: (next: string) => void
   children?: ReactNode
 }) {
   const fmt = useFormat()
+  const shown = children ?? fmt.date(iso)
   return (
     <ActionPopover
       align="start"
-      trigger={<button className={className}>{children ?? fmt.date(iso)}</button>}
+      trigger={appearance === 'field'
+        ? (
+          <FormButton className={`choice-picker${className ? ` ${className}` : ''}`}>
+            <span className="choice-picker-value">{shown}</span>
+            <IconChevron />
+          </FormButton>
+        )
+        : <button className={className}>{shown}</button>}
     >
       <Calendar selected={iso} onPick={onPick} />
     </ActionPopover>
