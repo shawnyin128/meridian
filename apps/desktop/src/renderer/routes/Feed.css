@@ -7,7 +7,7 @@
 .feedcol{background:var(--content)}
 /* A full-screen feed has a wider text column than chat, as in the demo's .main.feedmain .feedcol .mwrap */
 .feedcol .mwrap{width:min(var(--pagew),92%)}
-.feedcol .msgs>.page-toolbar{margin:0 auto}
+.feedcol .msgs>.page-toolbar{justify-content:center;margin:0 auto}
 .feed-day{box-sizing:border-box}
 
 .fitem{background:var(--card);border-radius:var(--r-card);padding:var(--sp-12) var(--sp-16)}

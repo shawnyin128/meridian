@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FeedEntry } from '../../shared/contract.js'
+import { PageToolbar } from '../components/PageShell.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
@@ -120,6 +123,34 @@ describe('feed rows', () => {
     expect([...host.querySelectorAll('.feed-day .day-heading')].map((h) => h.textContent)).toEqual(['今天', '昨天'])
     await act(async () => { root.unmount() })
     host.remove()
+    vi.unstubAllGlobals()
+  })
+})
+
+describe('feed source switch', () => {
+  /** The stylesheets that lay out the feed's page toolbar, in bundle order. */
+  const STYLES = ['shell/tokens.css', 'components/PageShell.css', 'components/SegmentedControl.css', 'routes/shell.css', 'routes/Feed.css']
+    .map((path) => readFileSync(join(import.meta.dirname, '..', path), 'utf8'))
+
+  it('sits centred above the feed, while a page toolbar elsewhere keeps its switch at the start', async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    document.head.innerHTML = STYLES.map((css) => `<style>${css}</style>`).join('')
+    feedList.rows = [ENTRY]
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => {
+      root.render(<MessagesProvider><Feed /><div className="desk"><PageToolbar id="elsewhere">视图</PageToolbar></div></MessagesProvider>)
+    })
+    const feedToolbar = host.querySelector<HTMLElement>('.feedcol .page-toolbar')!
+    expect(feedToolbar.querySelector('.segmented-control')).not.toBeNull()
+    expect([getComputedStyle(feedToolbar).justifyContent, getComputedStyle(host.querySelector('#elsewhere')!).justifyContent])
+      .toEqual(['center', 'normal'])
+    await act(async () => { root.unmount() })
+    host.remove()
+    document.head.innerHTML = ''
     vi.unstubAllGlobals()
   })
 })
