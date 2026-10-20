@@ -30,6 +30,7 @@ import { GenerationControl } from '../components/GenerationControl.js'
 import { FadeText } from '../components/FadeText.js'
 import { Toolbar, ToolbarButton } from '../components/Toolbar.js'
 import { TitleNote } from '../components/TitleNote.js'
+import { Tooltip } from '../components/Tooltip.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import './shell.css'
@@ -248,12 +249,11 @@ export function Chat() {
                     ...mentions.filter((mention) => mention.kind === 'project').slice(0, QUICK_MENTIONS),
                     ...mentions.filter((mention) => mention.kind === 'paper').slice(0, QUICK_MENTIONS),
                   ].map((mention) => (
-                    <ToolbarButton
-                      className="btn ghost sm qm" key={mention.title}
-                      onClick={() => quick(mention.title)}
-                    >
-                      <FadeText>@{mention.kind === 'paper' ? <PaperText text={mention.entity.title} /> : mention.title}</FadeText>
-                    </ToolbarButton>
+                    <Tooltip key={mention.title} label={mention.title} whenClipped>
+                      <ToolbarButton className="btn ghost sm qm" onClick={() => quick(mention.title)}>
+                        <FadeText>@{mention.kind === 'paper' ? <PaperText text={mention.entity.title} /> : mention.title}</FadeText>
+                      </ToolbarButton>
+                    </Tooltip>
                   ))}
                 </span>
                 <ToolbarButton
