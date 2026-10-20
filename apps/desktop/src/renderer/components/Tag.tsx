@@ -3,8 +3,9 @@ import type { ComponentPropsWithoutRef, ReactNode } from 'react'
 import './Tag.css'
 
 /**
- * A tag's fill and text colour: neutral, the accent, a semantic state, or an entity type. `ghost` is
- * the dashed empty slot at the end of a row of tags that adds one.
+ * A tag's text colour on the neutral chip: `good`, `warn` and `bad` write in their state's colour, and
+ * every other tone in the neutral one. `ghost` is the dashed empty slot at the end of a row of tags
+ * that adds one.
  */
 export type TagTone = 'neutral' | 'accent' | 'good' | 'warn' | 'bad' | 'info' | 'paper' | 'wiki' | 'ghost'
 

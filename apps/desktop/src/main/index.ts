@@ -110,7 +110,7 @@ app.whenReady().then(() => {
     titleBarStyle: 'hidden',
     ...(process.platform === 'darwin'
       ? { trafficLightPosition: { x: 16, y: 17 } }
-      : { titleBarOverlay: { color: '#00000000', symbolColor: '#536175', height: 50 }, accentColor: false }),
+      : { titleBarOverlay: { color: '#00000000', symbolColor: '#555555', height: 50 }, accentColor: false }),
     webPreferences: {
       backgroundThrottling: false,
       preload: join(here, '../preload/preload.cjs'),

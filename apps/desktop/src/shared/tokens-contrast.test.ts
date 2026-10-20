@@ -114,13 +114,13 @@ const contrast = (fg: Colour, bg: Colour): number => {
 }
 
 /**
- * The light surfaces text and tags sit on, bottom-to-top: the canvas, a card, a floating layer, the
- * window, a hovered card row, and a selected card or sidebar row.
+ * The surfaces text and tags sit on in either theme, bottom-to-top: the canvas, a card, a floating
+ * layer, the window, a hovered card or sidebar row, and a selected card or sidebar row.
  */
-const LIGHT_SURFACES: [string, string[]][] = [
+const SURFACES: [string, string[]][] = [
   ['内容面', ['--content']], ['卡片面', ['--card']], ['浮层面', ['--raised']], ['窗口底', ['--window', '--sidebar']],
-  ['悬停的卡片行', ['--card', '--hover']], ['选中的卡片行', ['--card', '--selected']],
-  ['选中的侧栏行', ['--window', '--sidebar', '--selected']],
+  ['悬停的卡片行', ['--card', '--hover']], ['悬停的侧栏行', ['--window', '--sidebar', '--hover']],
+  ['选中的卡片行', ['--card', '--selected']], ['选中的侧栏行', ['--window', '--sidebar', '--selected']],
 ]
 
 const PAIRS: Pair[] = [
@@ -145,7 +145,6 @@ const PAIRS: Pair[] = [
   { theme: 'dark', label: '次级文字在浮层面', fg: '--sec', ground: ['--raised'], min: TEXT },
   { theme: 'dark', label: '三级文字在内容面', fg: '--ter', ground: ['--content'], min: TEXT },
   { theme: 'dark', label: 'toast 的字在墨底', fg: '--window', ground: ['--ink'], min: TEXT },
-  ...LIGHT_SURFACES.map(([where, ground]): Pair => ({ theme: 'light', label: `三级文字在${where}`, fg: '--ter', ground, min: TEXT })),
   // Solid accent surfaces.
   { theme: 'light', label: '白字在实心 accent', fg: '--on-accent', ground: ['--accent-solid'], min: TEXT },
   { theme: 'dark', label: '白字在实心 accent', fg: '--on-accent', ground: ['--accent-solid'], min: TEXT },
@@ -177,8 +176,6 @@ const PAIRS: Pair[] = [
   { theme: 'dark', label: '悬停的选中列表行的字', fg: '--on-selected', ground: ['--card', '--selected', '--hover'], min: TEXT },
   { theme: 'light', label: '设置里选中外观的名字', fg: '--on-selected', ground: ['--raised'], min: TEXT },
   { theme: 'dark', label: '设置里选中外观的名字', fg: '--on-selected', ground: ['--raised'], min: TEXT },
-  { theme: 'light', label: '信息标签的字', fg: '--ink', ground: ['--content', '--tint-info'], min: TEXT },
-  { theme: 'dark', label: '信息标签的字', fg: '--ink', ground: ['--content', '--tint-info'], min: TEXT },
   { theme: 'light', label: '文本选中底上的正文', fg: '--ink', ground: ['--content', '--sel'], min: TEXT },
   { theme: 'dark', label: '文本选中底上的正文', fg: '--ink', ground: ['--content', '--sel'], min: TEXT },
   { theme: 'light', label: '中性标签的字', fg: '--sec', ground: ['--content', '--tint-mut'], min: TEXT },
@@ -205,15 +202,6 @@ const PAIRS: Pair[] = [
   { theme: 'dark', label: '实心 accent 面对卡片面', fg: '--accent-solid', ground: ['--card'], min: MARK },
   { theme: 'light', label: '实心 accent 面对窗口底', fg: '--accent-solid', ground: ['--window'], min: MARK },
   { theme: 'dark', label: '实心 accent 面对窗口底', fg: '--accent-solid', ground: ['--window'], min: MARK },
-  // Recompute semantic-label contrast after changing its background.
-  { theme: 'dark', label: '成功标签的字', fg: '--good', ground: ['--content', '--tint-good'], min: TEXT },
-  { theme: 'dark', label: '警示标签的字', fg: '--warn', ground: ['--content', '--tint-warn'], min: TEXT },
-  { theme: 'dark', label: '冲突标签的字', fg: '--bad', ground: ['--content', '--tint-bad'], min: TEXT },
-  // Entity-type labels use a brand-derived light background with `--sec` text.
-  { theme: 'light', label: '论文类型标签的字', fg: '--sec', ground: ['--card', '--tint-paper'], min: TEXT },
-  { theme: 'light', label: 'wiki 类型标签的字', fg: '--sec', ground: ['--card', '--tint-wiki'], min: TEXT },
-  { theme: 'dark', label: '论文类型标签的字', fg: '--sec', ground: ['--card', '--tint-paper'], min: TEXT },
-  { theme: 'dark', label: 'wiki 类型标签的字', fg: '--sec', ground: ['--card', '--tint-wiki'], min: TEXT },
 ]
 
 describe('tokens.css 的对比度', () => {
@@ -240,15 +228,41 @@ const lookOf = (path: string, selector: string): string => {
   return `${token(/(?:^|;)background(?:-color)?:var\((--[\w-]+)\)/)} ${token(/(?:^|;)color:var\((--[\w-]+)\)/)}`
 }
 
-describe('亮色标签的字', () => {
-  for (const tone of ['good', 'warn', 'accent']) {
-    it(`亮色的 ${tone} 标签的字压在它自己的底上,铺在每种底面上都不低于 4.5:1`, () => {
-      const [fill, text] = lookOf('components/Tag.css', `.tag--${tone}`).split(' ') as [string, string]
-      for (const [where, ground] of LIGHT_SURFACES) {
-        const got = contrast(colour('light', text), flatten('light', [...ground, fill]))
-        expect(got, `${text} 压在${where}的 ${fill} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+describe('亮色的文字', () => {
+  for (const text of ['--ink', '--sec', '--ter']) {
+    it(`亮色的 ${text} 铺在每种底面上、也压在这些底面上的中性标签底上,都不低于 4.5:1`, () => {
+      for (const [where, ground] of SURFACES) {
+        for (const [on, stack] of [['', ground], ['的标签底', [...ground, '--chip']]] as [string, string[]][]) {
+          const got = contrast(colour('light', text), flatten('light', stack))
+          expect(got, `${text} 压在${where}${on}上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+        }
       }
     })
+  }
+})
+
+/** Every tone of the shared Tag but the dashed ghost slot, and the text colour each one writes in. */
+const TAG_TEXT = {
+  neutral: '--sec', accent: '--sec', info: '--sec', paper: '--sec', wiki: '--sec',
+  good: '--good-text', warn: '--warn-text', bad: '--bad-text',
+} as const
+
+describe('标签', () => {
+  it('每种标签都是中性的标签底,只有 good、warn、bad 三种需要注意的状态给字上自己的颜色', () => {
+    expect(Object.fromEntries(Object.keys(TAG_TEXT).map((tone) => [tone, lookOf('components/Tag.css', `.tag--${tone}`)])))
+      .toEqual(Object.fromEntries(Object.entries(TAG_TEXT).map(([tone, text]) => [tone, `--chip ${text}`])))
+  })
+
+  for (const theme of ['light', 'dark'] as const) {
+    for (const tone of Object.keys(TAG_TEXT)) {
+      it(`${theme === 'dark' ? '暗色' : '亮色'}的 ${tone} 标签的字压在它自己的底上,铺在每种底面上都不低于 4.5:1`, () => {
+        const [fill, text] = lookOf('components/Tag.css', `.tag--${tone}`).split(' ') as [string, string]
+        for (const [where, ground] of SURFACES) {
+          const got = contrast(colour(theme, text), flatten(theme, [...ground, fill]))
+          expect(got, `${text} 压在${where}的 ${fill} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+        }
+      })
+    }
   }
 })
 
@@ -280,10 +294,39 @@ describe('tokens.css 的决定值', () => {
     expect(rules).toMatch(/::-webkit-scrollbar-button\{display:none;width:0;height:0\}/)
   })
 
-  it('亮色的画布、卡片和浮层都是白色,窗口底和侧栏是 0.0.15.4 的颜色', () => {
-    // The owner's decision on #156 (2026-10-20): the light theme keeps its 0.0.15.4 palette.
+  it('亮色的画布、卡片和浮层都是白色,窗口底和侧栏是中性的浅灰', () => {
+    // The owner's decision on #157 (2026-10-20): a clean light theme, white canvas and a neutral light grey frame.
     expect(['--content', '--card', '--raised', '--window', '--sidebar'].map((name) => resolve('light', name)))
-      .toEqual(['#ffffff', '#ffffff', '#ffffff', '#f6f8fc', 'rgba(246,248,252,.85)'])
+      .toEqual(['#ffffff', '#ffffff', '#ffffff', '#f8f8f8', 'rgba(248,248,248,.85)'])
+  })
+
+  it('亮色的面、文字、分隔线、输入底、悬停和按下的叠层、标签底、选中、滚动条、遮罩和阴影都不带色相', () => {
+    const greys = ['--desktop', '--window', '--sidebar', '--content', '--card', '--raised', '--ink', '--sec', '--ter',
+      '--sep', '--sep2', '--sep-strong', '--field', '--hover', '--press', '--chip', '--track', '--tint-mut',
+      '--selected', '--sel', '--sbthumb', '--sbthumb-h', '--scrim', '--q-bg', '--hl-note']
+    const tinted = greys.filter((name) => { const { r, g, b } = colour('light', name); return r !== g || g !== b })
+    const shadows = ['--sh-1', '--sh-2', '--sh-3', '--sh-paper'].filter((name) => [...resolve('light', name)
+      .matchAll(/rgba\((\d+),(\d+),(\d+),/g)].some(([, r, g, b]) => r !== g || g !== b))
+    expect([...tinted, ...shadows]).toEqual([])
+  })
+
+  it('选中是一块中性的底配 --ink 的字,在两种主题下都比悬停和输入底深一级,对比至少 1.1:1', () => {
+    for (const theme of ['light', 'dark'] as const) {
+      expect(colour(theme, '--on-selected'), theme).toEqual(colour(theme, '--ink'))
+      const selected = flatten(theme, ['--card', '--selected'])
+      for (const [label, ground] of [['悬停', ['--card', '--hover']], ['输入底', ['--field']]] as const) {
+        expect(contrast(selected, flatten(theme, [...ground])), `${theme} 选中对${label}`).toBeGreaterThanOrEqual(1.1)
+      }
+    }
+  })
+
+  it('开关打开时滑块是 --on-selected,关着时是 --raised,两种主题下两颗滑块对比都不低于 3:1', () => {
+    const off = lookOf('components/Switch.css', '.switch-thumb').split(' ')[0]!
+    const on = lookOf('components/Switch.css', '.switch-thumb[data-state="checked"]').split(' ')[0]!
+    expect([off, on]).toEqual(['--raised', '--on-selected'])
+    for (const theme of ['light', 'dark'] as const) {
+      expect(contrast(colour(theme, on), colour(theme, off)), theme).toBeGreaterThanOrEqual(MARK)
+    }
   })
 
   it('浮层的每档阴影在两种主题下都以一圈 1px 的边开头,浮层不必再自画边框', () => {
@@ -340,17 +383,5 @@ describe('tokens.css 的决定值', () => {
         expect(contrast(thumb, track), `${label} 上的滑块`).toBeGreaterThanOrEqual(1.1)
       }
     }
-  })
-
-  it('亮色的 --info / --tint-info 是青色,且与 --on-selected 解出来的颜色分开', () => {
-    expect(colour('light', '--info')).toEqual({ r: 14, g: 154, b: 167, a: 1 })
-    expect(colour('light', '--tint-info')).toEqual({ r: 14, g: 154, b: 167, a: .14 })
-    expect(colour('light', '--info')).not.toEqual(colour('light', '--on-selected'))
-  })
-
-  it('暗色的 --info / --tint-info 是青色,且与 --on-selected 解出来的颜色分开', () => {
-    expect(colour('dark', '--info')).toEqual({ r: 46, g: 196, b: 214, a: 1 })
-    expect(colour('dark', '--tint-info')).toEqual({ r: 46, g: 196, b: 214, a: .2 })
-    expect(colour('dark', '--info')).not.toEqual(colour('dark', '--on-selected'))
   })
 })

@@ -76,7 +76,7 @@ test('侧栏「Wiki」进 wiki 屏:标题与角标都是聚合总数,分节只�
   await expect(shown(win).locator('.pginfo')).toHaveText(`共 ${await paperTotal(win)} 条`)
 })
 
-test('实体类型标签按类型上底色:聚合一种,论文另一种', async ({ win }) => {
+test('实体类型标签是中性的标签底:聚合和论文同一种底色', async ({ win }) => {
   const home = await homeFromCore(win)
   await gotoWiki(win)
 
@@ -90,7 +90,7 @@ test('实体类型标签按类型上底色:聚合一种,论文另一种', async 
   console.log(`类型标签底色:聚合 ${agg},论文 ${paper}`)
   expect(agg, '类型标签该有自己的浅色底').not.toBe('rgba(0, 0, 0, 0)')
   expect(paper, '类型标签该有自己的浅色底').not.toBe('rgba(0, 0, 0, 0)')
-  expect(agg, '两种实体该是两种底色').not.toBe(paper)
+  expect(agg, '两种实体都是中性的标签底').toBe(paper)
 })
 
 test('根节点卡进聚合页,子聚合再进一层带上级,返回按历史退', async ({ win }) => {
