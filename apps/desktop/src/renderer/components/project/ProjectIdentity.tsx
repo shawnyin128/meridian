@@ -7,6 +7,7 @@ import { Tag } from '../Tag.js'
 import { Tooltip } from '../Tooltip.js'
 import './ProjectIdentity.css'
 
+/** The dot tone of each project status; the status tag itself is neutral, since no status needs attention. */
 const STATUS_TONE = { 进行中: 'good', 搁置: 'warn', 已完成: 'neutral' } as const satisfies Record<ProjectStatus, string>
 
 /** The tag tone of each priority. */
@@ -20,7 +21,7 @@ export type ProjectIdentitySource = {
 }
 
 export function ProjectStatusTag({ status }: { status: ProjectStatus }) {
-  return <Tag tone={STATUS_TONE[status]}>{status}</Tag>
+  return <Tag>{status}</Tag>
 }
 
 /** The tag of a project's or a task's priority; `className` places it. */

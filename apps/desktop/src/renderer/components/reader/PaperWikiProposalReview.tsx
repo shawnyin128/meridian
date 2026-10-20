@@ -5,12 +5,8 @@ import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { EmptyState } from '../EmptyState.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
-import { Tag, type TagTone } from '../Tag.js'
+import { Tag } from '../Tag.js'
 import './PaperWikiProposalReview.css'
-
-const PROVENANCE_TONE: Record<HarnessPaperWikiReviewGroup['provenance'], TagTone> = {
-  'paper-source': 'good', 'wiki-synthesis': 'accent', 'user-insight': 'warn', 'open-question': 'neutral',
-}
 
 function anchorLabel(anchor: string, m: Catalog): string {
   if (anchor.startsWith('page:')) return m.common.anchor.label(Number(anchor.slice('page:'.length)))
@@ -26,7 +22,7 @@ function ReviewGroup({ group }: { group: HarnessPaperWikiReviewGroup }) {
     <StructuredRow className="paper-wiki-review-group">
       <div className="paper-wiki-review-group-head">
         {group.title === undefined ? null : <strong>{group.title}</strong>}
-        <Tag tone={PROVENANCE_TONE[group.provenance]}>{m.wiki.provenance[group.provenance]}</Tag>
+        <Tag>{m.wiki.provenance[group.provenance]}</Tag>
       </div>
       <div className="paper-wiki-review-fields">
         {group.rows.map((row, index) => (

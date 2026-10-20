@@ -84,7 +84,7 @@ export function EventText({ text, origin, className }: {
 
 /** The tag tone of each research-record kind. */
 export const RECORD_TONE: Record<EventKind, TagTone> = {
-  start: 'info', reopen: 'warn', result: 'good', decision: 'accent', complete: 'good', note: 'neutral', project: 'neutral',
+  start: 'info', reopen: 'neutral', result: 'good', decision: 'accent', complete: 'good', note: 'neutral', project: 'neutral',
 }
 
 /**
