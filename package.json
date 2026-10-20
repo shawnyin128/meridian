@@ -9,7 +9,7 @@
   "scripts": {
     "setup:harness": "conda run --no-capture-output -n meridian python -m pip install --upgrade --target apps/harness/.runtime -e apps/harness",
     "dev:ui-samples": "MERIDIAN_LIBRARY_ROOT=/tmp/meridian-ui-samples MERIDIAN_UI_SAMPLES=1 npm --prefix apps/desktop run dev",
-    "lint": "eslint apps e2e && node scripts/check-comment-language.mjs && node scripts/check-css-vars.mjs",
+    "lint": "eslint apps e2e && node scripts/check-comment-language.mjs && node scripts/check-css-vars.mjs && node scripts/check-css-literals.mjs",
     "typecheck": "tsc -p apps/desktop --noEmit && tsc -p apps/desktop/tsconfig.preload.json --noEmit && tsc -p apps/desktop/tsconfig.renderer.json --noEmit && tsc -p apps/desktop/tsconfig.copy-test.json --noEmit && tsc -p apps/desktop/tsconfig.boundary-test.json --noEmit && tsc -p e2e --noEmit",
     "test": "vitest run",
     "e2e": "npm --prefix apps/desktop run build && node scripts/e2e.mjs",
