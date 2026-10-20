@@ -280,11 +280,10 @@ describe('tokens.css 的决定值', () => {
     expect(rules).toMatch(/::-webkit-scrollbar-button\{display:none;width:0;height:0\}/)
   })
 
-  it('亮色的画布与卡片落在不同的台阶上,窗口底在画布之下,浮层在最上', () => {
-    const level = (name: string): number => luminance(flatten('light', [name]))
-    expect(level('--content')).not.toBe(level('--card'))
-    expect(level('--window')).toBeLessThan(level('--content'))
-    expect(level('--raised')).toBeGreaterThanOrEqual(Math.max(level('--content'), level('--card')))
+  it('亮色的画布、卡片和浮层都是白色,窗口底和侧栏是 0.0.15.4 的颜色', () => {
+    // The owner's decision on #156 (2026-10-20): the light theme keeps its 0.0.15.4 palette.
+    expect(['--content', '--card', '--raised', '--window', '--sidebar'].map((name) => resolve('light', name)))
+      .toEqual(['#ffffff', '#ffffff', '#ffffff', '#f6f8fc', 'rgba(246,248,252,.85)'])
   })
 
   it('浮层的每档阴影在两种主题下都以一圈 1px 的边开头,浮层不必再自画边框', () => {
