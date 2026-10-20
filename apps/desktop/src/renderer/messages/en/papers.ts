@@ -28,20 +28,16 @@ export const papers = {
   views: { aria: 'Paper library view', table: 'Table', researchMap: 'Research Map' },
   researchMap: {
     title: 'Adaptive Research Map',
-    preview: 'Read-only preview',
-    description: 'Overlapping groups are derived from existing titles, topics, methods, and project links. Review the organization and correct only what is wrong; this view never rewrites the Wiki or paper topics.',
     summaryAria: 'Research Map summary',
     groups: 'groups',
     covered: (total: number) => `/ ${total} papers covered`,
     overlapping: 'papers in multiple groups',
-    limit: (shown: number, total: number) => `For a responsive preview, this map analyzes the latest ${shown} of ${total} papers.`,
+    limit: (shown: number, total: number) => `${shown} / ${total} ${pluralEn(total, { one: 'paper', other: 'papers' })}`,
     empty: 'No papers to group yet',
     groupListAria: 'Automatic research groups',
-    kind: { signal: 'Topic or method signal', project: 'Project connection', phrase: 'Shared title phrase' },
+    kind: { signal: 'Topic or method signal', project: 'Project connection' },
     paperCount: (count: number) => `${count} ${pluralEn(count, { one: 'paper', other: 'papers' })}`,
-    readOnly: 'No library changes',
     paperListAria: (group: string) => `Papers in ${group}`,
-    whyHere: 'Why here',
     reason: {
       topic: (value: string) => `Topic: ${value}`,
       method: (value: string) => `Method: ${value}`,
@@ -67,7 +63,6 @@ export const papers = {
   },
   groupIndex: {
     newest: (title: string) => `Newest: ${title}`,
-    pickToView: (label: string) => `Select a ${label} to view its papers`,
   },
   tags: {
     add: 'Add topic',
@@ -105,7 +100,7 @@ export const papers = {
     changeType: 'Change type',
     rename: 'Rename column',
     deleteColumn: 'Delete column',
-    noOptionsHint: 'No options yet. Type in a cell to create one.',
+    noOptionsHint: 'No options yet',
     renameOption: 'Rename option',
     deleteOption: 'Delete option',
   },
@@ -154,7 +149,7 @@ export const papers = {
     empty: 'No thoughts or notes yet',
   },
   parse: {
-    addedFixable: 'Added to library · some metadata may need review',
+    addedFixable: 'Added to library',
     statusAria: 'Paper metadata processing status',
     working: 'Reading paper metadata…',
     count: (n: number) => `${n} ${pluralEn(n, { one: 'paper', other: 'papers' })}`,

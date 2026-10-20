@@ -307,7 +307,6 @@ describe('PaperTable', () => {
     expect(listParams.at(-1)).toMatchObject({ page: 1, size: 200, sort: 'addedAt', direction: 'desc' })
     expect(host.querySelector('.research-map-title')?.textContent).toContain('自适应研究地图')
     expect(host.querySelector('.research-map-groups')?.textContent).toContain('Speculative decoding')
-    expect(host.querySelector('.research-map-detail')?.textContent).toContain('归入依据')
     expect(host.querySelector('.research-map-detail')?.textContent).toContain('主题：Speculative decoding')
     expect(host.querySelector('.pagebar')).toBeNull()
   })
@@ -586,7 +585,7 @@ describe('PaperTable', () => {
     expect(updateCalls.at(-1)!.patch).toEqual({ rating: 3 })
   })
 
-  it('分组索引里的每个值都是按钮，按它列出这一组的论文', async () => {
+  it('分组索引里的每个值都是按钮，按它列出这一组的论文，下面不写一句该怎么选', async () => {
     facetRows = [{ value: '推理', count: 2, newestTitle: '一篇论文' }]
     const host = mount()
     columnsCall.resolve({ hidden: [], custom: [], groups: ['topics'] })
@@ -599,6 +598,7 @@ describe('PaperTable', () => {
     await flush()
     const value = host.querySelector<HTMLElement>('.gxrow')!
     expect(value.tagName).toBe('BUTTON')
+    expect(host.querySelector('.lmore')).toBeNull()
     expect(value.classList.contains('structured-row')).toBe(true)
     expect(value.parentElement!.classList.contains('structured-list--embedded')).toBe(true)
     await act(async () => { value.click() })

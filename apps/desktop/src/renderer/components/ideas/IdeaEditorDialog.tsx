@@ -63,9 +63,6 @@ export function IdeaEditorDialog({ open, idea, sourceLabel, onOpenChange, onSubm
           onChange={(event) => setBody(event.target.value)}
         />
       </label>
-      <p className="idea-dialog-note">
-        {m.ideas.editor.note}
-      </p>
     </ModalDialog>
   )
 }

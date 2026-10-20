@@ -81,6 +81,11 @@ describe('Trash', () => {
     vi.unstubAllGlobals()
   })
 
+  it('每条只写几天后自动清除，页脚不再用一句话重复保留期', () => {
+    expect(host.querySelector('.trow .tm2')!.textContent).toBe('7 天后自动清除')
+    expect(host.querySelector('.desk-foot')).toBeNull()
+  })
+
   it('每一类条目是页面上的嵌入列表，不套卡片外框', () => {
     expect([...host.querySelectorAll('.tgroup')].map((list) => list.className))
       .toEqual(['structured-list structured-list--embedded tgroup', 'structured-list structured-list--embedded tgroup'])

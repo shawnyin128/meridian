@@ -42,8 +42,8 @@ export const research = {
     renamed: 'Renamed',
     statusChangedTo: (status: string) => `Marked as ${status}`,
     groupHeading: (status: string, n: number) => `${status} · ${n}`,
-    createdNote: 'Project created · added to Overview',
-    createdFeedNote: (name: string) => `Created project “${name}” and added it to Overview.`,
+    createdNote: 'Project created',
+    createdFeedNote: (name: string) => `Created project “${name}”`,
   },
   panel: {
     milestoneOn: (date: string) => `Milestone · ${date}`,

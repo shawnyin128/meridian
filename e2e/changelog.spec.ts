@@ -99,7 +99,7 @@ test('改一笔再撤销:数据真的回到改之前,那一条标成已撤销,�
   await expect(top.locator('.cundo')).toHaveAttribute('aria-label', '撤销')
 
   await top.locator('.cundo').click()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销 · 数据回到这一笔之前')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
   // Read Core again: the vault really is back to its state before the change, not just the screen.
   expect(await statusFromCore(win, 'draft')).toBe('进行中')
 
@@ -203,7 +203,7 @@ test('归过档的那一条照样撤得动,撤销不动它的归档,撤销本身
   await expect(filed.locator('.ct')).toContainText('项目「draft 效率」· 改了字段')
   await filed.hover()
   await filed.locator('.cundo').click()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销 · 数据回到这一笔之前')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
   // Read Core again: the vault really is back to its state before the change.
   expect(await statusFromCore(win, 'draft')).toBe('进行中')
 
@@ -240,9 +240,8 @@ test('两节内部各自按天分段,同一天连成一段,段首一行日期', 
 test('日期只写在小标题上:条目的灰字不再重复一遍', async ({ win }) => {
   await shelveDraft(win)
   await gotoChangelog(win)
-  // The meta line of the user's own change was its date plus this phrase; with the date cut, only
-  // the phrase is left.
-  await expect(shown(win, '.crow').first().locator('.cm')).toHaveText('点开看改了什么')
+  // The meta line of the user's own undoable change was only its date; with the date cut, it is empty.
+  await expect(shown(win, '.crow').first().locator('.cm')).toHaveText('')
   // Fixture meta lines are hand-written in two parts; only the leading date part is cut.
   await expect(shown(win, '.crow').filter({ hasText: '分支浪费' }).locator('.cm'))
     .toHaveText('实验 #3 的结果回流 · 无法撤销')

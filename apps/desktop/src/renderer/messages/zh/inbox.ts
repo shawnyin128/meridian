@@ -15,8 +15,7 @@ export const inbox = {
   sort: { recommended: '推荐', latest: '最新', published: '已发表', impact: '影响力' },
   discoverySettings: '发现设置',
   watchSettings: '关注设置',
-  discoverySummary: (projects: number, intents: number) =>
-    `按项目拆分研究方向 · ${projects} 个项目 · ${intents} 个启用方向`,
+  discoverySummary: (projects: number, intents: number) => `${projects} 个项目 · ${intents} 个启用方向`,
   empty: {
     discoveryNone: '还没有新的发现',
     discoveryNoSeeds: '还没有带 arXiv 编号的项目论文',
@@ -37,12 +36,11 @@ export const inbox = {
     alreadyQueued: '已在稍后阅读中',
     dismissedAll: '已全部忽略 · 可在垃圾桶恢复',
     dismissed: '已忽略 · 可在垃圾桶恢复',
-    duplicateToast: '库里已经有这一篇 · 没有重复入库',
+    duplicateToast: '库里已有这一篇',
     alreadyInLibrary: (title: string) => `库里已经有这一篇：「${title}」`,
     downloaded: '已下载入库 · 可阅读',
     downloadFailed: '下载失败',
-    moreLike: '已记住 · 后续会推荐更多类似论文',
-    lessLike: '已记住 · 后续会减少类似论文',
+    remembered: '已记住',
     known: '已标记为已经了解',
   },
 } satisfies Record<string, unknown>

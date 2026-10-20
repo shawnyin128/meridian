@@ -292,7 +292,7 @@ describe('Inbox', () => {
     await act(async () => { root.unmount() })
   })
 
-  it('发现页用小齿轮直接打开发现设置，不在页面重复渲染方向编辑器', async () => {
+  it('发现页用小齿轮直接打开发现设置，不在页面重复渲染方向编辑器；概况只写数量', async () => {
     api.mode = 'discovery'
     api.profiles = [{
       id: 'p1', name: '项目一', seedCount: 2, positiveCount: 0, negativeCount: 0,
@@ -311,6 +311,7 @@ describe('Inbox', () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     const gear = host.querySelector<HTMLButtonElement>('[aria-label="发现设置"]')!
+    expect(host.querySelector('.discovery-note')?.textContent).toBe('1 个项目 · 2 个启用方向')
     expect(gear.querySelector('svg')).not.toBeNull()
     expect(host.textContent).not.toContain('管理方向')
     expect(host.textContent).not.toContain('Draft Model')

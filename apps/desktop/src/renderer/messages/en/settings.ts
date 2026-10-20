@@ -13,7 +13,6 @@ export const settings = {
     group: 'Language',
     zh: '中文',
     en: 'English',
-    note: 'Changing the language only affects the interface. Nothing in your library changes.',
   },
   categories: {
     appearance: 'Appearance',
@@ -37,7 +36,6 @@ export const settings = {
   storage: {
     heading: 'Storage',
     libraryTitle: 'Paper library',
-    libraryNote: 'Papers, Wiki pages, and reading notes are stored together in one folder so you can move or back them up easily.',
     source: {
       environment: 'Set by an environment variable',
       configured: 'Your configuration',
@@ -50,7 +48,6 @@ export const settings = {
     restartNow: 'Restart now',
     lockedNote: 'The library location is managed outside Meridian and cannot be changed here.',
     pendingNote: 'The new location is saved. Restart Meridian to open it. No files have been moved or deleted.',
-    chooseNote: 'Choose an empty folder to create a library, or choose an existing Meridian library. Meridian never moves your old library automatically.',
     resetLabel: 'Reset the library',
     resetAction: 'Reset library…',
     resetTitle: 'Reset the library?',
@@ -58,7 +55,6 @@ export const settings = {
     resetting: 'Resetting…',
     resetConfirm: 'Reset and restart',
     backupsHeading: (count: number) => `Library backups · ${count}`,
-    backupsIntro: 'Meridian creates a backup before resetting a library. Switching keeps the current library as another backup, then restarts the app.',
     backupSwitch: 'Switch',
     backupSwitching: 'Switching…',
     backupDelete: 'Delete',
@@ -71,7 +67,6 @@ export const settings = {
   },
   api: {
     heading: 'API',
-    intro: 'The models and research sources Meridian uses.',
     model: 'Models',
     research: 'Research',
     open: 'Set up',
@@ -81,10 +76,8 @@ export const settings = {
   },
   research: {
     heading: 'Research',
-    intro: 'Paper recommendations, watch suggestions and author search read these scholarly sources.',
     semanticKey: {
       heading: 'Semantic Scholar',
-      description: 'Powers watch suggestions, author search and project discovery.',
       apply: 'Get a key',
       inputLabel: 'Semantic Scholar API key',
       placeholder: 'Paste a Semantic Scholar API key',
@@ -104,26 +97,21 @@ export const settings = {
   },
   model: {
     heading: 'Models',
-    intro: 'Choose the AI service and model Meridian uses. Saving these settings does not contact the provider.',
     providers: {
       openai: {
         label: 'OpenAI',
-        description: 'Connects directly to the official OpenAI Responses API.',
         modelPlaceholder: 'OpenAI model ID',
       },
       anthropic: {
         label: 'Anthropic',
-        description: 'Connects directly to the official Anthropic Messages API.',
         modelPlaceholder: 'Claude model ID',
       },
       'google-gemini': {
         label: 'Google Gemini',
-        description: 'Connects directly to the official Google Gemini API.',
         modelPlaceholder: 'Gemini model ID',
       },
       'openai-compatible': {
         label: 'OpenAI-compatible API',
-        description: 'Connects to a third-party, local, or self-hosted service that supports the OpenAI Responses or Chat Completions format and structured output.',
         modelPlaceholder: 'Model ID provided by the service',
         baseUrlPlaceholder: 'e.g. https://api.example.com/v1',
       },
@@ -133,7 +121,6 @@ export const settings = {
       chooseAria: 'Service template',
       choosePlaceholder: 'Choose a common service…',
       custom: 'Other compatible service (manual setup)',
-      help: 'Choose the service you use, and Meridian fills in the connection details.',
       summaryAria: 'Template connection info',
       deepseek: {
         label: 'DeepSeek (cloud)', authenticationLabel: 'API key', modelPlaceholder: 'DeepSeek model ID',
@@ -194,7 +181,6 @@ export const settings = {
   },
   extensions: {
     heading: 'Extensions',
-    description: 'Connect Meridian to coding agents with MCP and install optional research, Wiki, Lab, and coding skills.',
     state: {
       installed: 'Installed',
       'update-required': 'Update needed',
@@ -202,10 +188,9 @@ export const settings = {
     },
     plugin: {
       name: 'Meridian Plugin',
-      description: 'The skills and MCP share this version',
       latest: (version: string) => `Latest ${version}`,
-      checkedAt: (date: string) => `last checked ${date}`,
-      neverChecked: 'not checked online yet',
+      checkedAt: (date: string) => `Last checked ${date}`,
+      neverChecked: 'Not checked online yet',
       check: 'Check for updates',
       checking: 'Checking…',
     },
@@ -234,11 +219,10 @@ export const settings = {
     copied: (name: string) => `${name} command copied`,
     tutorial: {
       heading: 'Use Meridian with a coding agent',
-      intro: 'Describe the research outcome and ask the agent to use Meridian. The Skill selects the workflow; MCP reads or updates local research state. You normally do not need to name tools.',
       steps: [
-        { title: 'Confirm the connection', body: 'Make sure the extension above says Installed. On the first run, ask the agent to check Meridian readiness.' },
-        { title: 'State the outcome and scope', body: 'Say whether you want to search, update, research, or code, and name the relevant project, paper, or idea.' },
-        { title: 'Keep decisions explicit', body: 'Wiki conclusions arrive only as proposals that wait for your review in the App; switching a research path or another boundary change should happen only after clear confirmation.' },
+        { title: 'Confirm the connection' },
+        { title: 'State the outcome and scope' },
+        { title: 'Keep decisions explicit' },
       ],
       examplesHeading: 'Prompts you can use',
       groups: [
@@ -313,19 +297,14 @@ export const settings = {
   },
   delivery: {
     heading: 'Inmail',
-    intro: 'Set the delivery rules used by watched topics, watched authors, and discovery.',
-    watchIntro: 'Manage the topics and authors you follow. Selecting a watch in the sidebar filters the inbox.',
     limitHeading: 'Papers per check',
-    limitNote: 'The maximum number of papers added to the inbox each time Meridian checks. Watches and discovery share this limit.',
     unit: 'papers',
     saving: 'Saving…',
     rangeError: (min: number, max: number) => `Enter an integer between ${min} and ${max}`,
   },
   discovery: {
     heading: 'Discovery',
-    intro: 'Choose what kinds of papers Meridian should look for in each project.',
     directionsHeading: 'Research directions',
-    explain: 'Meridian creates directions from papers linked to each project. Priority directions are checked first.',
     noDirections: 'No research directions yet',
     seeds: (n: number) => `${n} ${pluralEn(n, { one: 'seed paper', other: 'seed papers' })}`,
     refreshing: 'Refreshing…',
@@ -348,6 +327,6 @@ export const settings = {
     empty: 'No archived chats yet',
     open: 'Open',
     unarchive: 'Unarchive',
-    unarchived: (title: string) => `Unarchived “${title}” · back in the chat list`,
+    unarchived: 'Unarchived',
   },
 } satisfies typeof zh

@@ -204,7 +204,7 @@ export function Chat() {
     void chat.recordAction(id, message.id).then(async (p) => {
       notice.success(<TitleNote message={m.chat.recordedNote} title={p.name} />)
       await feed.append({ source: 'me', body: { kind: 'runs', runs: [
-        plain(m.chat.recordedTo(p.name)),
+        plain(m.chat.recordedNote(p.name)),
       ] } })
       bump()
     }).catch((e: Error) => notice.refusal(e.message))

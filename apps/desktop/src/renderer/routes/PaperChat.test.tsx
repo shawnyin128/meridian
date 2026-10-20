@@ -98,6 +98,26 @@ describe('PaperChat', () => {
     root = null
   })
 
+  it('记入科研记录后，动态里那一条和提示说的是同一句', async () => {
+    api.messages.mockResolvedValueOnce([{
+      id: 'm1', role: 'ai', runs: [{ kind: 'text', text: '结论' }],
+      actions: [{ kind: 'writeBack', label: '记入科研记录', project: 'draft', text: '结论' }],
+    }])
+    api.recordAction.mockResolvedValueOnce({ name: '草稿树项目' } as never)
+    const host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+    await act(async () => {
+      root!.render(withMessages(<PaperChat paper={PAPER} />))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    await act(async () => { host.querySelector<HTMLButtonElement>('.macts .btn')!.click() })
+    expect(api.feedAppend).toHaveBeenCalledWith({
+      source: 'me', body: { kind: 'runs', runs: [{ kind: 'text', text: '已记入《草稿树项目》的科研记录' }] },
+    })
+  })
+
   it('按论文取得持久会话并把输入追加到同一条会话', async () => {
     const host = document.createElement('div')
     document.body.append(host)

@@ -17,7 +17,6 @@ export function LanguageSettings() {
         value={locale} options={LANGUAGES} label={(value) => m.settings.language[value]}
         onPick={setLanguagePreference}
       />
-      <p className="language-note">{m.settings.language.note}</p>
     </Card>
   )
 }

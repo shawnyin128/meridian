@@ -38,8 +38,8 @@ export const research = {
     renamed: '已重命名',
     statusChangedTo: (status: string) => `已标记为 ${status}`,
     groupHeading: (status: string, n: number) => `${status} · ${n}`,
-    createdNote: '已创建项目 · 已加入研究总览',
-    createdFeedNote: (name: string) => `新项目《${name}》已创建，已加入研究总览。`,
+    createdNote: '已创建项目',
+    createdFeedNote: (name: string) => `新项目《${name}》已创建`,
   },
   panel: {
     milestoneOn: (date: string) => `里程碑 ${date}`,

@@ -26,7 +26,7 @@ describe('语言设置', () => {
       item.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
   }
-  const note = () => host.querySelector('.language-note')!.textContent
+  const name = () => picker().getAttribute('aria-label')
 
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -42,6 +42,7 @@ describe('语言设置', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     mount()
     expect(host.querySelector('select')).toBeNull()
+    expect(host.querySelector('p')).toBeNull()
     open()
     expect(items().map((item) => [item.textContent, item.getAttribute('aria-checked')]))
       .toEqual([['中文', 'true'], ['English', 'false']])
@@ -60,13 +61,13 @@ describe('语言设置', () => {
     choose('English')
     expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('en')
     expect(picker().textContent).toBe('English')
-    expect(note()).toContain('only affects the interface')
+    expect(name()).toBe('Language')
   })
 
   it('选回中文后界面文字回到中文', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'en')
     mount()
     choose('中文')
-    expect(note()).toContain('只影响界面文字')
+    expect(name()).toBe('语言')
   })
 })

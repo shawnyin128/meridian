@@ -115,10 +115,11 @@ describe('PaperWikiIngest', () => {
       host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
     })
     expect(api.apply).not.toHaveBeenCalled()
+    expect(host.querySelector('.wiki-ingest-intro')).toBeNull()
+    expect(host.querySelector('.wiki-ingest-body > small')).toBeNull()
     expect(host.textContent).toContain('记住什么')
     expect(host.textContent).toContain('论文原文')
     expect(host.textContent).toContain('7 项规则检查未发现问题')
-    expect(host.textContent).toContain('不代表内容正确')
     expect(host.querySelector('[aria-label="Wiki 提案内容"]')).toBeNull()
     expect(api.start).toHaveBeenCalledTimes(1)
 
@@ -226,7 +227,7 @@ describe('PaperWikiIngest', () => {
     })
 
     expect(api.reject).not.toHaveBeenCalled()
-    expect(host.textContent).toContain('只记录在本地审计中，不调用模型')
+    expect(host.querySelector('.wiki-ingest-rejection-head')!.textContent).toBe('可选：这份提案哪里不好？')
     await act(async () => {
       [...host.querySelectorAll<HTMLButtonElement>('button')]
         .find((button) => button.textContent === '论文事实不准确')!.click()
@@ -250,7 +251,7 @@ describe('PaperWikiIngest', () => {
       reasons: ['source-inaccurate', 'missing-important'],
       note: '第 4 页的限制条件被遗漏。',
     })
-    expect(host.textContent).toContain('提案已丢弃，未修改 Wiki')
+    expect([...host.querySelectorAll('.wiki-ingest-status')].map((line) => line.textContent)).toContain('提案已丢弃')
   })
 
   it('offers the rejection reasons as chips that each toggle on their own, not as segments', async () => {

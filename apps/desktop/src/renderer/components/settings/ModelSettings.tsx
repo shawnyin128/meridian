@@ -280,7 +280,6 @@ export function ModelSettings() {
     <ServiceCard className="model-settings-card">
       <ServiceStatus
         title={selected.label}
-        description={selected.description}
         configured={savedSelection && savedProfile?.configured === true}
         configuredLabel={m.settings.model.configured}
         notConfiguredLabel={m.settings.model.notConfigured}
@@ -325,9 +324,7 @@ export function ModelSettings() {
                 />
               </ServiceField>
             </>
-          ) : selectedCompatibleTemplate === null ? (
-            <p className="model-template-help">{m.settings.model.templates.help}</p>
-          ) : (
+          ) : selectedCompatibleTemplate === null ? null : (
             <div className="model-template-summary" aria-label={m.settings.model.templates.summaryAria}>
               <span>{selectedCompatibleTemplate.protocolLabel} · {selectedCompatibleTemplate.authenticationLabel}</span>
               <code>{selectedCompatibleTemplate.baseUrl}</code>

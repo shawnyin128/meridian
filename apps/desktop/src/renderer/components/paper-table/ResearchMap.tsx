@@ -36,9 +36,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper }: 
         <div className="research-map-copy">
           <div className="research-map-title">
             <strong>{m.papers.researchMap.title}</strong>
-            <Tag>{m.papers.researchMap.preview}</Tag>
           </div>
-          <p>{m.papers.researchMap.description}</p>
         </div>
         <div className="research-map-stats" aria-label={m.papers.researchMap.summaryAria}>
           <span><strong>{map.groups.length}</strong>{m.papers.researchMap.groups}</span>
@@ -67,7 +65,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper }: 
                   >
                     <span className="research-map-group-copy">
                       <strong>{group.label}</strong>
-                      <span>{m.papers.researchMap.kind[group.kind]}</span>
+                      {group.kind === 'phrase' ? null : <span>{m.papers.researchMap.kind[group.kind]}</span>}
                     </span>
                     <CountBadge count={group.members.length} />
                   </StructuredRow>
@@ -83,7 +81,6 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper }: 
                         <strong>{selected.label}</strong>
                         <span>{m.papers.researchMap.paperCount(selected.members.length)}</span>
                       </div>
-                      <span className="research-map-readonly">{m.papers.researchMap.readOnly}</span>
                     </div>
                     <StructuredList
                       variant="embedded" className="research-map-papers"
@@ -99,7 +96,6 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper }: 
                                 {member.paper.year === undefined ? member.paper.venue : `${member.paper.year} · ${member.paper.venue}`}
                               </span>
                               <span className="research-map-why">
-                                <span>{m.papers.researchMap.whyHere}</span>
                                 {member.reasons.map((item) => <Tag shape="chip" className="tagchip" key={reasonKey(item)}>{reason(item)}</Tag>)}
                               </span>
                             </StructuredRow>

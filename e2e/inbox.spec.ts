@@ -255,7 +255,7 @@ test('入库撞上库里已有的那一篇:不重复入库,就地给出打开那
   const card = shown(win, `.pcard[data-pid="${dup.id}"]`)
   await card.locator('[aria-label="下载并入库"]').click()
 
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('库里已经有这一篇 · 没有重复入库')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('库里已有这一篇')
   await expect(card.locator('.pdup span')).toHaveText(`库里已经有这一篇：「${known.title}」`)
   // The vault has no extra paper, and the entry is not marked as added.
   expect(await paperTotal(win)).toBe(before)

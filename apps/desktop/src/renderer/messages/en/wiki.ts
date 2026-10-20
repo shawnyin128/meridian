@@ -83,7 +83,6 @@ export const wiki = {
       'poor-structure': 'Structure is hard to use',
       other: 'Other',
     },
-    intro: 'Create a Wiki draft from the paper, your existing Wiki, and your reading notes. You can review it before anything is saved.',
     noPersonalRecords: 'No personal reading notes yet. A proposal can still be generated from the paper source alone.',
     personalRecordsIncluded: (n: number) =>
       `This draft will include ${n} of your reading ${pluralEn(n, { one: 'note', other: 'notes' })}.`,
@@ -101,7 +100,6 @@ export const wiki = {
     proposalContentLabel: 'Wiki draft content',
     rejectionFeedbackLabel: 'Feedback about the discarded Wiki draft',
     rejectionPrompt: "Optional: what's wrong with this proposal?",
-    rejectionPrivacyNote: 'Saved only in the local activity log. No model is called.',
     rejectReasonsLabel: 'Reasons for discarding',
     rejectionNoteLabel: 'Additional notes for discarding',
     rejectionNotePlaceholder: 'Additional notes (optional)',
@@ -114,8 +112,7 @@ export const wiki = {
     confirm: 'Save to Wiki',
     writeNote: 'Wiki draft saved to the paper page',
     written: 'Saved to Wiki.',
-    discarded: 'Draft discarded. The Wiki was not changed.',
-    disclaimer: 'The model runs only after you confirm. Review the generated draft before saving it to the Wiki.',
+    discarded: 'Draft discarded',
   },
   provenance: {
     'paper-source': 'Paper source',
@@ -136,8 +133,6 @@ export const wiki = {
     heading: 'Automatic checks',
     passedTitle: 'No formatting or citation issues found',
     findingsTitle: (n: number) => `${n} ${pluralEn(n, { one: 'item needs', other: 'items need' })} review`,
-    passedNote: 'Automatic checks found no formatting, citation-range, or repeated-phrasing issues. You still need to review the content for accuracy.',
-    needsReviewNote: 'These checks do not call the model or edit the draft. Review each item before saving.',
     findingsListLabel: 'Items to review',
     needsReviewFallback: 'Review needed',
     findings: {
@@ -202,10 +197,6 @@ export const wiki = {
     },
   },
   groundsLabel: 'Sources',
-  review: {
-    legend: 'Check each section against its source; this view never edits content — switch to the Markdown editor'
-      + ' to make changes.',
-  },
   harness: {
     confirmTitle: (label: string) => `${label}?`,
     notConnected: 'No AI model connected',

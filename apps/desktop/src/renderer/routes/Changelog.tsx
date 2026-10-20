@@ -36,10 +36,10 @@ export function metaBelowHeading(meta: string): string {
   return at < 0 ? '' : meta.slice(at + SEP.length)
 }
 
-/** The end of the grey line under the title: undone, cannot be undone, or a prompt to open the entry. */
+/** The end of the grey line under the title: undone, cannot be undone, or nothing for an entry that can be undone. */
 const hint = (entry: ChangeEntry, state: Catalog['changelog']['state']): string => {
   if (entry.undone) return state.undone
-  return entry.undoable ? state.openToSee : state.notUndoable
+  return entry.undoable ? '' : state.notUndoable
 }
 
 /**

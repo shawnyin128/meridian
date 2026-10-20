@@ -57,4 +57,11 @@ describe('DeliverySettings', () => {
     expect(button.textContent).toBe('保存')
     await act(async () => { root.unmount() })
   })
+
+  it('上限只有字段名，不写说明', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><DeliverySettings /></MessagesProvider>) })
+    expect(host.querySelector('.delivery-setting-copy')!.textContent).toBe('单次推送上限')
+    await act(async () => { root.unmount() })
+  })
 })

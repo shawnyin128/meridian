@@ -1007,12 +1007,7 @@ export function createVaultStore(
     note([
       { kind: 'text', text: '这个库' },
       { kind: 'strong', text: managed ? '在 git 管理之下' : '不在 git 管理之下' },
-      {
-        kind: 'text',
-        text: managed
-          ? '，写入都能靠版本历史撤回。'
-          : '，写入没有撤销的安全网——把它交给 git 之后再动它。',
-      },
+      { kind: 'text', text: '。' },
     ])
     state = { ...state, gitManaged: managed }
     saveState()

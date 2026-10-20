@@ -70,10 +70,10 @@ export function createMetadataQueue(deps: {
   }
 
   const finishUpload = (job: MetadataJob): void => {
-    const said = job.step === 'failed' ? '已入库，元数据暂未补全，可在论文表里填写。'
+    const said = job.step === 'failed' ? '已入库，元数据暂未补全。'
       : job.found === 'arxiv' ? '已入库，元数据取自 arXiv。'
-        : job.found === 'pdf' ? '已入库，标题取自 PDF 信息，其余元数据可在论文表里填写。'
-          : '已入库，没能识别出元数据，可在论文表里填写。'
+        : job.found === 'pdf' ? '已入库，标题取自 PDF。'
+          : '已入库，没能识别出元数据。'
     note([{ kind: 'text', text: '你上传的' }, { kind: 'strong', text: `《${job.title}》` }, { kind: 'text', text: said }])
     compactUploads()
   }

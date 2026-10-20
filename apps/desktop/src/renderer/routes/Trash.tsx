@@ -14,7 +14,7 @@ import { plainTitle } from '../components/paper/paper-text.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { TitleNote } from '../components/TitleNote.js'
 import {
-  PageBody, PageError, PageFooter, PageHeader, PageShell, PageTitle, SectionHeading,
+  PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
 import { D1, dnum } from '../../shared/dates.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -138,15 +138,6 @@ export function Trash() {
             </Fragment>
           ))}
       </PageBody>
-
-      {/* As in the demo, the retention note stays at the bottom of the view; an empty trash shows no bar. */}
-      {held.length > 0
-        ? (
-          <PageFooter bare>
-            <div className="thint">{m.trash.retentionNote(TRASH_RETENTION_DAYS)}</div>
-          </PageFooter>
-        )
-        : null}
     </PageShell>
   )
 }

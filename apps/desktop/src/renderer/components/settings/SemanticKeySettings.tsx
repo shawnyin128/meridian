@@ -74,7 +74,7 @@ export function SemanticKeySettings() {
     <ServiceCard className="semantic-key-card">
       <ServiceStatus
         title={copy.heading}
-        description={<>{copy.description} <EntityLink kind="external" label={copy.apply} href={APPLY_URL} /></>}
+        description={<EntityLink kind="external" label={copy.apply} href={APPLY_URL} />}
         configured={status.configured}
         configuredLabel={m.settings.model.configured}
         notConfiguredLabel={m.settings.model.notConfigured}

@@ -550,7 +550,7 @@ test('稍后阅读里指着库内一篇的那条,「开始阅读」把那一篇�
 test('内化到 Wiki 先展示完整费用范围,明确确认后才消费一次授权计划', async ({ win }) => {
   await openFromPapers(win)
   await shown(win, '.reader-rail [aria-label="内化到 Wiki"]').click()
-  await expect(shown(win, '.wiki-ingest')).toContainText('生成一份可审核的 Wiki 提案')
+  await expect(shown(win, '.wiki-ingest-scope')).toContainText('当前论文')
 
   await shown(win, '.wiki-ingest .harness-trigger').click()
   const dialog = win.locator('[role="alertdialog"]')

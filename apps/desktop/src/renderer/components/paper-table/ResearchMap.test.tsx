@@ -58,6 +58,32 @@ describe('ResearchMap', () => {
     vi.unstubAllGlobals()
   })
 
+  it('只写分组、数量和归入理由，不写说明句子', () => {
+    const rows = [
+      paper('a', 'Alpha', { topics: ['Speculative decoding'] }),
+      paper('b', 'Bravo', { topics: ['Speculative decoding'] }),
+      paper('c', 'Kernel fusion tricks'),
+      paper('d', 'Kernel fusion at scale'),
+      paper('e', 'Unrelated'),
+    ]
+    const host = document.createElement('div')
+    host.innerHTML = renderToStaticMarkup(
+      <MessagesProvider>
+        <ResearchMap rows={rows} total={7} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} />
+      </MessagesProvider>,
+    )
+    expect(host.querySelector('.research-map-copy p')).toBeNull()
+    expect(host.querySelector('.research-map-title .tag')).toBeNull()
+    expect(host.querySelector('.research-map-limit')?.textContent).toBe('5 / 7 篇')
+    const kinds = [...host.querySelectorAll('.research-map-group')]
+      .map((group) => [group.querySelector('strong')?.textContent, group.querySelector('.research-map-group-copy>span')?.textContent ?? null])
+    expect(kinds).toContainEqual(['Speculative decoding', '主题或方法信号'])
+    expect(kinds).toContainEqual(['Kernel fusion', null])
+    const detail = host.querySelector('.research-map-detail')!
+    expect(detail.querySelector('.research-map-readonly')).toBeNull()
+    expect(detail.querySelector('.research-map-why')!.textContent).toBe('主题：Speculative decoding')
+  })
+
   it('论文行的右键菜单可以打开详情,也可以直接在阅读器中打开', async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     const rows = [paper('a', 'Alpha', { topics: ['Speculative decoding'] }), paper('b', 'Bravo', { topics: ['Speculative decoding'] })]

@@ -50,6 +50,21 @@ describe('ExtensionSettings', () => {
     expect(host.querySelector('.extension-command-code')?.textContent).toBe(extension.installCommand)
   })
 
+  it('names each extension and the tutorial without sentences explaining them', () => {
+    act(() => root.render(
+      <MessagesProvider>
+        <ExtensionSettings
+          statuses={[extension]} onCopy={vi.fn()} onCopyPrompt={vi.fn()}
+          plugin={{ plugin: { version: '0.0.9', checkedAt: null }, checking: false, onCheck: vi.fn() }}
+        />
+      </MessagesProvider>,
+    ))
+    expect([...host.querySelectorAll('.extension-head p')].map((p) => p.textContent))
+      .toEqual(['Not checked online yet'])
+    expect(host.querySelector('[data-extension-tutorial] > .section-heading + p')).toBeNull()
+    expect(host.querySelector('.extension-tutorial-steps li p')).toBeNull()
+  })
+
   it('shows workflow guidance and copies the selected prompt without exposing tool syntax', () => {
     const copyPrompt = vi.fn()
     act(() => root.render(

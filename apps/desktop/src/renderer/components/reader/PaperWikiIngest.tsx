@@ -175,10 +175,6 @@ export function PaperWikiIngest({ paper, reading }: {
     <section className="wiki-ingest" aria-label={m.wiki.addToWiki}>
       <ReaderPanelHeader title={m.wiki.addToWiki} />
       <div className="wiki-ingest-body">
-        <p className="wiki-ingest-intro">
-          {m.wiki.ingest.intro}
-        </p>
-
         <div className="wiki-ingest-scope">
           <div><span>{m.wiki.scope.source}</span><strong>{m.wiki.scope.currentPaper}</strong></div>
           <div><span>{m.wiki.scope.highlights}</span><strong>{m.wiki.scope.count(writtenHighlights)}</strong></div>
@@ -259,7 +255,6 @@ export function PaperWikiIngest({ paper, reading }: {
               <div className="wiki-ingest-rejection" aria-label={m.wiki.ingest.rejectionFeedbackLabel}>
                 <div className="wiki-ingest-rejection-head">
                   <strong>{m.wiki.ingest.rejectionPrompt}</strong>
-                  <span>{m.wiki.ingest.rejectionPrivacyNote}</span>
                 </div>
                 <ChipToggles
                   className="wiki-ingest-rejection-reasons" label={m.wiki.ingest.rejectReasonsLabel}
@@ -300,7 +295,6 @@ export function PaperWikiIngest({ paper, reading }: {
         ) : null}
         {applied ? <p className="wiki-ingest-status done">{m.wiki.ingest.written}</p> : null}
         {rejected ? <p className="wiki-ingest-status">{m.wiki.ingest.discarded}</p> : null}
-        <small>{m.wiki.ingest.disclaimer}</small>
       </div>
     </section>
   )

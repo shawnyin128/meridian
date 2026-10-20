@@ -76,7 +76,6 @@ export const wiki = {
       'poor-structure': '结构不好用',
       other: '其他',
     },
-    intro: '基于论文原文、现有 Wiki 和你的阅读记录，生成一份可审核的 Wiki 提案。',
     noPersonalRecords: '尚无个人阅读记录。仍可只基于论文原文生成提案。',
     personalRecordsIncluded: (n: number) => `本次会包含 ${n} 条个人阅读记录。`,
     preparing: '正在准备范围…',
@@ -93,7 +92,6 @@ export const wiki = {
     proposalContentLabel: 'Wiki 提案内容',
     rejectionFeedbackLabel: 'Wiki 提案丢弃反馈',
     rejectionPrompt: '可选：这份提案哪里不好？',
-    rejectionPrivacyNote: '只记录在本地审计中，不调用模型。',
     rejectReasonsLabel: '丢弃原因',
     rejectionNoteLabel: '丢弃提案的补充说明',
     rejectionNotePlaceholder: '补充说明（可选）',
@@ -106,8 +104,7 @@ export const wiki = {
     confirm: '确认写入 Wiki',
     writeNote: 'Wiki 提案已写入论文页',
     written: '已写入 Wiki。',
-    discarded: '提案已丢弃，未修改 Wiki。',
-    disclaimer: '确认前不会调用模型；生成结果仍需审核后才会写入 Wiki。',
+    discarded: '提案已丢弃',
   },
   provenance: {
     'paper-source': '论文原文',
@@ -128,8 +125,6 @@ export const wiki = {
     heading: '生成时规则检查',
     passedTitle: '7 项规则检查未发现问题',
     findingsTitle: (n: number) => `发现 ${n} 项需要核对`,
-    passedNote: '仅表示格式、引用范围和表达重复等确定性规则未发现问题，不代表内容正确。',
-    needsReviewNote: '这些是确定性规则发现的问题；检查不会调用模型，也不会自动修改提案。',
     findingsListLabel: '需要核对的规则问题',
     needsReviewFallback: '需要核对',
     findings: {
@@ -164,9 +159,6 @@ export const wiki = {
     },
   },
   groundsLabel: '依据',
-  review: {
-    legend: '按来源检查各章节；这里不修改内容，需要调整时请切换到 Markdown 编辑。',
-  },
   harness: {
     confirmTitle: (label: string) => `${label}？`,
     notConnected: '尚未连接模型',

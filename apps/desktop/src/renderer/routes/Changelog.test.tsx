@@ -61,6 +61,16 @@ describe('最近变动的来源标签', () => {
     expect(labels).toEqual([null, 'agent', 'agent · 笔记', 'agent · 实验'])
   })
 
+  it('灰字只写撤销状态：已撤销、无法撤销，能撤销的不写一句提示', async () => {
+    api.entries = [
+      { ...entry('c1', '改了字段', '我'), undoable: true, meta: '今天 · 会议后' },
+      { ...entry('c2', '删掉笔记', '我'), undone: true },
+      entry('c3', '实验回流', '实验'),
+    ]
+    await act(async () => root.render(<MessagesProvider><Changelog /></MessagesProvider>))
+    expect([...host.querySelectorAll('.crow .cm')].map((line) => line.textContent)).toEqual(['会议后', '已撤销', '无法撤销'])
+  })
+
   it('删除、归档和撤销是行尾操作槽里的图标钮，删除悬停时标红', async () => {
     api.entries = [{ ...entry('c1', '项目「draft 效率」· 改了字段', '我'), undoable: true }]
     await act(async () => root.render(<MessagesProvider><Changelog /></MessagesProvider>))

@@ -207,8 +207,7 @@ test('研究地图从真实论文元数据形成可切换、可解释的重叠�
 
   await expect(win.locator('.research-map-title')).toContainText('自适应研究地图')
   await expect(win.locator('.research-map-group')).not.toHaveCount(0)
-  await expect(win.locator('.research-map-detail')).toContainText('归入依据')
-  await expect(win.locator('.research-map-detail')).toContainText('不会写回论文库')
+  await expect(win.locator('.research-map-detail .research-map-why .tag').first()).toBeVisible()
   await expect(win.locator('.pagebar')).toHaveCount(0)
 
   const groups = win.locator('.research-map-group')

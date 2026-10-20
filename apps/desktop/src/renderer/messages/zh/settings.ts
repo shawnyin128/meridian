@@ -6,7 +6,6 @@ export const settings = {
     group: '语言',
     zh: '中文',
     en: 'English',
-    note: '换语言只影响界面文字，不会改动库里的内容。',
   },
   categories: {
     appearance: '外观',
@@ -30,7 +29,6 @@ export const settings = {
   storage: {
     heading: '存储',
     libraryTitle: '论文库',
-    libraryNote: '原文、Wiki 与阅读笔记作为一个完整工作区保存，便于迁移与备份。',
     source: {
       environment: '环境变量指定',
       configured: '用户配置',
@@ -43,7 +41,6 @@ export const settings = {
     restartNow: '立即重启',
     lockedNote: '当前进程由外部配置固定库位置，设置页只读。',
     pendingNote: '新位置已保存。本次会话仍使用旧库，重启后打开新库；旧数据不会被移动或删除。',
-    chooseNote: '选择空目录会初始化新库；选择非空目录时必须是已有的 Meridian 论文库。不会自动搬动旧数据。',
     resetLabel: '重置论文库',
     resetAction: '重置库…',
     resetTitle: '重置论文库？',
@@ -51,7 +48,6 @@ export const settings = {
     resetting: '正在重置…',
     resetConfirm: '重置并重启',
     backupsHeading: (count: number) => `论文库备份 · ${count}`,
-    backupsIntro: 'Meridian 会在重置论文库前创建备份。切换时会先将当前库保存为新备份，然后重启应用。',
     backupSwitch: '切换',
     backupSwitching: '正在切换…',
     backupDelete: '删除',
@@ -64,7 +60,6 @@ export const settings = {
   },
   api: {
     heading: 'API',
-    intro: 'Meridian 调用的模型与科研数据源。',
     model: '模型',
     research: '科研',
     open: '设置',
@@ -74,10 +69,8 @@ export const settings = {
   },
   research: {
     heading: '科研',
-    intro: '论文推荐、关注建议和作者搜索从这里的学术数据源读取。',
     semanticKey: {
       heading: 'Semantic Scholar',
-      description: '关注建议、作者搜索和项目发现使用的学术数据源。',
       apply: '申请 key',
       inputLabel: 'Semantic Scholar API Key',
       placeholder: '粘贴 Semantic Scholar API Key',
@@ -97,26 +90,21 @@ export const settings = {
   },
   model: {
     heading: '模型',
-    intro: '选择 Harness 使用的模型服务与模型。保存配置不会调用模型。',
     providers: {
       openai: {
         label: 'OpenAI',
-        description: '直接调用 OpenAI 官方 Responses API。',
         modelPlaceholder: '输入 OpenAI 模型 ID',
       },
       anthropic: {
         label: 'Anthropic',
-        description: '直接调用 Anthropic 官方 Messages API。',
         modelPlaceholder: '输入 Claude 模型 ID',
       },
       'google-gemini': {
         label: 'Google Gemini',
-        description: '直接调用 Google Gemini 官方 generateContent API。',
         modelPlaceholder: '输入 Gemini 模型 ID',
       },
       'openai-compatible': {
         label: 'OpenAI 兼容 API',
-        description: '连接遵循 OpenAI Responses 或 Chat Completions 标准，并支持结构化输出的第三方、本地或自托管服务。',
         modelPlaceholder: '输入服务提供的模型 ID',
         baseUrlPlaceholder: '例如 https://api.example.com/v1',
       },
@@ -126,7 +114,6 @@ export const settings = {
       chooseAria: '兼容服务模板',
       choosePlaceholder: '选择常用服务…',
       custom: '其他兼容服务（手动配置）',
-      help: '选择你正在使用的服务，Meridian 会自动填写连接方式。',
       summaryAria: '模板连接信息',
       deepseek: {
         label: 'DeepSeek（云端）', authenticationLabel: 'API Key', modelPlaceholder: '输入 DeepSeek 模型 ID',
@@ -187,7 +174,6 @@ export const settings = {
   },
   extensions: {
     heading: '扩展',
-    description: 'Meridian MCP 与按需加载的研究、Wiki、Lab、coding skills。',
     state: {
       installed: '已安装',
       'update-required': '需要更新',
@@ -195,7 +181,6 @@ export const settings = {
     },
     plugin: {
       name: 'Meridian Plugin',
-      description: 'Skill 与 MCP 共用这个版本',
       latest: (version: string) => `最新 ${version}`,
       checkedAt: (date: string) => `上次检查 ${date}`,
       neverChecked: '还没联网检查过',
@@ -227,11 +212,10 @@ export const settings = {
     copied: (name: string) => `${name} 命令已复制`,
     tutorial: {
       heading: '在 Coding Agent 中使用 Meridian',
-      intro: '直接说明研究目标并要求使用 Meridian。Skill 负责选择工作流，MCP 负责读取或更新本地研究状态；通常不需要手写工具名。',
       steps: [
-        { title: '确认已连接', body: '先确认上方扩展显示“已安装”。首次使用时，让 agent 检查 Meridian readiness。' },
-        { title: '说明目标与范围', body: '说清楚要查询、更新、研究还是编码，并指出项目、论文或想法。' },
-        { title: '保留关键决策', body: '写入 Wiki 的结论只作为提案，等你在 App 中审阅；切换研究路径等边界变更应在明确确认后执行。' },
+        { title: '确认已连接' },
+        { title: '说明目标与范围' },
+        { title: '保留关键决策' },
       ],
       examplesHeading: '可直接使用的提示词',
       groups: [
@@ -306,19 +290,14 @@ export const settings = {
   },
   delivery: {
     heading: '论文推送',
-    intro: '设置关注与发现共同遵循的推送规则。',
-    watchIntro: '管理明确关注的主题与作者；侧栏中的关注项只负责筛选推送。',
     limitHeading: '单次推送上限',
-    limitNote: '每次检查最多新增到收件箱的论文数。关注与发现共用这一上限。',
     unit: '篇',
     saving: '保存中…',
     rangeError: (min: number, max: number) => `请输入 ${min}–${max} 之间的整数`,
   },
   discovery: {
     heading: '发现',
-    intro: '管理按项目生成的论文发现方向与核心方向。',
     directionsHeading: '发现方向',
-    explain: '方向由各项目关联的论文生成。核心方向优先获得发现预算。',
     noDirections: '还没有项目方向',
     seeds: (n: number) => `${n} 篇种子`,
     refreshing: '正在刷新…',
@@ -341,6 +320,6 @@ export const settings = {
     empty: '还没有归档的对话',
     open: '打开',
     unarchive: '取消归档',
-    unarchived: (title: string) => `已取消归档「${title}」· 回到对话列表`,
+    unarchived: '已取消归档',
   },
 } satisfies Record<string, unknown>

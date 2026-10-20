@@ -448,6 +448,23 @@ describe('Settings', () => {
     expect(document.documentElement.dataset.appearance).toBe('light')
   })
 
+  it('每个设置页只有标题和控件，标题下不写介绍句子', async () => {
+    api.libraryLocation.mockResolvedValue({
+      root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: false, openError: null,
+    })
+    api.libraryBackups.mockResolvedValue([{ id: 'b1', path: '/tmp/meridian-backup', createdAt: '2026-09-15T10:28:00.000Z' }])
+    const categories: SettingsCategory[] = [
+      'appearance', 'storage', 'api', 'research', 'model', 'extensions', 'delivery', 'delivery-watch', 'delivery-discovery',
+    ]
+    for (const category of categories) {
+      api.requestedCategory = category
+      await act(async () => { root.render(<MessagesProvider key={category}><Settings /></MessagesProvider>) })
+      const pane = document.querySelector('.setdlg .set-main')!
+      expect([...pane.querySelectorAll('.settings-intro, .storage-head p, .storage-note')].map((p) => p.textContent), category)
+        .toEqual([])
+    }
+  })
+
   it('存储位置使用共享目录字段，不再另放一个选择按钮', async () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -810,6 +827,22 @@ describe('Settings', () => {
       authentication: 'api-key',
       apiKey: 'third-party-secret',
     })
+  })
+
+  it('服务卡片的头部只写服务名，科研数据源旁只留申请 key 的链接', async () => {
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    for (const provider of ['OpenAI', 'Anthropic', 'Google Gemini', 'OpenAI 兼容 API']) {
+      await pick(dialog, '模型服务', provider)
+      expect([dialog.querySelector('.service-status-head strong')?.textContent, dialog.querySelector('.service-status-head p')])
+        .toEqual([provider, null])
+    }
+    expect(dialog.querySelector('.model-template-help')).toBeNull()
+
+    api.requestedCategory = 'research'
+    await act(async () => { root.render(<MessagesProvider key="research"><Settings /></MessagesProvider>) })
+    expect(document.querySelector('.setdlg .service-status-head p')?.textContent).toBe('申请 key')
   })
 
   it('常用模板只要求用户填写模型 ID 和需要的密钥', async () => {

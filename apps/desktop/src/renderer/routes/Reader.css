@@ -105,8 +105,7 @@
 .wiki-ingest{box-sizing:border-box;background:var(--content);display:flex;flex-direction:column;overflow:auto}
 .wiki-ingest-body{padding:12px;display:flex;flex-direction:column;align-items:stretch}
 .wiki-ingest-body>p{font-size:var(--fs-sm);line-height:1.55;color:var(--sec);margin:0}
-.wiki-ingest .wiki-ingest-intro{color:var(--sec);padding:0 2px}
-.wiki-ingest-scope{margin:12px 0 10px;border:1px solid var(--sep2);border-radius:var(--r-lg);overflow:hidden;background:var(--card)}
+.wiki-ingest-scope{margin:0 0 10px;border:1px solid var(--sep2);border-radius:var(--r-lg);overflow:hidden;background:var(--card)}
 .wiki-ingest-scope>div{height:35px;padding:0 10px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--sep)}
 .wiki-ingest-scope>div:first-child{border-top:0}
 .wiki-ingest-scope span{color:var(--ter);font-size:var(--fs-cap)}
@@ -116,7 +115,6 @@
 .wiki-ingest .wiki-ingest-status.bad{color:var(--bad)}
 .wiki-ingest .wiki-ingest-status.done{color:var(--good)}
 .wiki-ingest-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
-.wiki-ingest-body>small{margin-top:10px;padding:0 2px;color:var(--ter);font-size:var(--fs-cap);line-height:1.45}
 .wiki-ingest-review{margin-top:14px;padding-top:14px;border-top:1px solid var(--sep2)}
 .wiki-ingest-review-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
 .wiki-ingest-review-head strong{font-size:var(--fs-sm)}
@@ -127,7 +125,6 @@
 .wiki-ingest-rejection{margin-top:14px;padding:12px;background:var(--field);border-radius:var(--r-lg)}
 .wiki-ingest-rejection-head{display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
 .wiki-ingest-rejection-head strong{font-size:var(--fs-sm)}
-.wiki-ingest-rejection-head span{color:var(--ter);font-size:var(--fs-cap);line-height:1.45}
 .wiki-ingest-rejection-reasons{margin-bottom:9px}
 .wiki-ingest-rejection>.form-textarea{min-height:62px;font-family:var(--sans);font-size:var(--fs-sm)}
 .wiki-ingest-rejection .wiki-ingest-actions{margin-top:10px}

@@ -108,7 +108,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     void chat.recordAction(session.id, message.id).then(async (held) => {
       notice.success(<TitleNote message={m.chat.recordedNote} title={held.name} />)
       await feed.append({ source: 'me', body: { kind: 'runs', runs: [
-        plain(m.chat.recordedTo(held.name)),
+        plain(m.chat.recordedNote(held.name)),
       ] } })
       bump()
     }).catch((cause: Error) => notice.refusal(cause.message))

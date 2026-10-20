@@ -1267,22 +1267,19 @@ export function PaperTable() {
               )
               : !listed
               ? (
-                <>
-                  <StructuredList variant="embedded" maxVisibleRows="all">
-                    {facets.map((f) => (
-                      <StructuredRow className="gxrow" key={f.value} onActivate={() => { setSel(f.value); setPage(1) }}>
-                        <span className="gx-t">{f.value}</span>
-                        <span className="gx-m">
-                          {m.papers.groupIndex.newest(
-                            `${plainTitle(f.newestTitle).slice(0, 44)}${plainTitle(f.newestTitle).length > 44 ? '…' : ''}`,
-                          )}
-                        </span>
-                        <CountBadge className="n" count={f.count} />
-                      </StructuredRow>
-                    ))}
-                  </StructuredList>
-                  <div className="lmore">{m.papers.groupIndex.pickToView(labelOf(group))}</div>
-                </>
+                <StructuredList variant="embedded" maxVisibleRows="all">
+                  {facets.map((f) => (
+                    <StructuredRow className="gxrow" key={f.value} onActivate={() => { setSel(f.value); setPage(1) }}>
+                      <span className="gx-t">{f.value}</span>
+                      <span className="gx-m">
+                        {m.papers.groupIndex.newest(
+                          `${plainTitle(f.newestTitle).slice(0, 44)}${plainTitle(f.newestTitle).length > 44 ? '…' : ''}`,
+                        )}
+                      </span>
+                      <CountBadge className="n" count={f.count} />
+                    </StructuredRow>
+                  ))}
+                </StructuredList>
               )
               : (
                 <>

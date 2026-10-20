@@ -51,6 +51,7 @@ describe('DiscoverySettings', () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><DiscoverySettings /></MessagesProvider>) })
 
+    expect(host.querySelector('.delivery-directions > p')).toBeNull()
     const labels = [...host.querySelectorAll('.direction-row button')].map((button) => button.textContent)
     expect(labels).not.toContain('关闭')
     expect(labels).not.toContain('启用')

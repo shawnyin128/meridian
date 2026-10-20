@@ -39,13 +39,14 @@ describe('ScreenBoundary', () => {
     vi.restoreAllMocks()
   })
 
-  it('替下崩掉的子树，把真实错误文本放进一条 alert 里', () => {
+  it('替下崩掉的子树，把真实错误文本放进一条 alert 里，下面只有一句短话', () => {
     act(() => root!.render(
       <MessagesProvider><ScreenBoundary><Unstable /></ScreenBoundary></MessagesProvider>,
     ))
 
     expect(host.textContent).not.toContain('项目详情')
     expect(host.querySelector('[role="alert"]')?.textContent).toContain('日期格式不对')
+    expect(host.querySelector('.page-failure-note')?.textContent).not.toMatch(/[。；，]/)
     expect(console.error).toHaveBeenCalled()
   })
 

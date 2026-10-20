@@ -198,8 +198,7 @@ export function Inbox() {
   const feedback = (id: string, value: 'more' | 'less' | 'known') => {
     if (value !== 'more') leave([id])
     void discovery.feedback(id, value).then(() => {
-      notice.success(value === 'more' ? m.inbox.notices.moreLike
-        : value === 'less' ? m.inbox.notices.lessLike : m.inbox.notices.known)
+      notice.success(value === 'known' ? m.inbox.notices.known : m.inbox.notices.remembered)
       window.setTimeout(bump, value === 'more' ? 0 : LEAVE_MS)
     }).catch((e: Error) => notice.refusal(e.message))
   }

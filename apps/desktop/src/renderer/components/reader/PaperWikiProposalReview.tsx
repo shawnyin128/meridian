@@ -59,9 +59,6 @@ function QualityReport({ quality }: { quality: HarnessPaperWikiQuality }) {
         <strong>{m.wiki.quality.heading}</strong>
         <span>{title}</span>
       </div>
-      <p>
-        {quality.passed ? m.wiki.quality.passedNote : m.wiki.quality.needsReviewNote}
-      </p>
       {quality.findings.length === 0 ? null : (
         <StructuredList className="paper-wiki-quality-findings" variant="embedded"
           aria-label={m.wiki.quality.findingsListLabel}>
@@ -91,13 +88,9 @@ export function PaperWikiProposalReview({ review, quality }: {
   review: HarnessPaperWikiReview
   quality?: HarnessPaperWikiQuality
 }) {
-  const m = useMessages()
   return (
     <div className="paper-wiki-structured-review">
       {quality === undefined ? null : <QualityReport quality={quality} />}
-      <p className="paper-wiki-review-legend">
-        {m.wiki.review.legend}
-      </p>
       {review.sections.map((section) => (
         <section className="paper-wiki-review-section" key={section.id}>
           <div className="paper-wiki-review-section-head">
