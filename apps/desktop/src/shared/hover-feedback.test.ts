@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 /** The parts of the jsdom window this test reads; the tsconfig of shared code carries no DOM types. */
 type Node = { dispatchEvent(event: object): boolean; querySelector(selector: string): Node }
-type Style = { backgroundImage: string; boxShadow: string; color: string; transition: string }
+type Style = { background: string; backgroundImage: string; boxShadow: string; color: string; transition: string }
 type Window = {
   document: {
     head: { innerHTML: string }
@@ -19,7 +19,7 @@ const { document, MouseEvent, getComputedStyle } = globalThis as unknown as Wind
 
 const STYLES = [
   'shell/tokens.css', 'components/Tag.css', 'routes/shell.css', 'components/paper-table/PaperTable.css', 'components/PaperMetadata.css',
-  'components/CollapsibleGroup.css', 'components/chat/Chat.css',
+  'components/CollapsibleGroup.css', 'components/chat/Chat.css', 'components/ShortTextEditor.css',
 ].map((path) => readFileSync(join(import.meta.dirname, '..', 'renderer', path), 'utf8'))
 
 /**
@@ -57,6 +57,12 @@ describe('没有悬停反馈的控件', () => {
     const group = '<div class="collapsible-group"><div class="collapsible-group-head"><button type="button" class="collapsible-group-toggle"><span class="collapsible-group-caret"></span><span class="collapsible-group-title">主题</span></button></div></div>'
     expect(restAndHover(group, '.collapsible-group-title', '.collapsible-group-caret', (style) => style.color))
       .toEqual(['var(--ter)', 'var(--ink)'])
+  })
+
+  it('里程碑编辑框的删除行悬停时铺上菜单项的那层悬停底', () => {
+    const editor = '<div class="short-text-editor"><div class="short-text-separator"></div><button type="button" class="short-text-delete mi danger">删除</button></div>'
+    expect(restAndHover(editor, '.short-text-delete', '.short-text-delete', (style) => style.background))
+      .toEqual(['rgba(0, 0, 0, 0)', 'var(--hover)'])
   })
 
   it('发送钮悬停时盖上实心按钮的深色悬停层', () => {
