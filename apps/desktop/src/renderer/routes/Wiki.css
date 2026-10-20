@@ -40,6 +40,11 @@
   overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
 .cmp{width:100%;border-collapse:collapse;font-size:var(--fs-base);line-height:var(--lh-ui)}
 .cmp th{text-align:left;font-size:var(--fs-sm);color:var(--ter);font-weight:var(--fw-semibold);padding:var(--sp-6) var(--row-table-pad);border-bottom:1px solid var(--sep);white-space:nowrap;position:sticky;top:0;background:var(--content)}
+/* While stuck, a header cell fades the content scrolling under it, in its own paint, and covers its rule. */
+.cmp th{container-type:scroll-state}
+.cmp th::after{content:"";position:absolute;top:100%;left:0;right:0;height:var(--sp-24);background:inherit;
+  mask-image:linear-gradient(#000,transparent);opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
+@container scroll-state(stuck: top){.cmp th::after{opacity:1}}
 .cmp td{padding:var(--sp-8) var(--row-table-pad);border-bottom:1px solid var(--sep2);vertical-align:top;max-width:26ch}
 .cmp tbody tr:last-child td{border-bottom:0}
 .cmp td.rh{white-space:nowrap}

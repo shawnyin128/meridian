@@ -3,6 +3,12 @@
 .collapsible-group-head{position:sticky;top:-20px;z-index:2;display:flex;align-items:center;gap:var(--sp-10);
   margin:0 calc(-1 * var(--sp-4)) var(--sp-12);padding:var(--sp-12) var(--sp-4) var(--sp-10);background:var(--content);border-bottom:1px solid var(--sep)}
 .collapsible-group.is-closed .collapsible-group-head{margin-bottom:0}
+/* While stuck, the head fades the content scrolling under it, in its own paint, and covers its rule. */
+.collapsible-group-head{container-type:scroll-state}
+.collapsible-group-head::after{content:"";position:absolute;top:100%;left:0;right:0;height:var(--sp-24);background:inherit;
+  mask-image:linear-gradient(#000,transparent);opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
+@container scroll-state(stuck: top){.collapsible-group-head::after{opacity:1}}
+.collapsible-group--quiet .collapsible-group-head::after{content:none}
 .collapsible-group-toggle{display:flex;flex:1;min-width:0;align-items:center;gap:var(--sp-8);padding:0;border:0;background:none;
   color:var(--ink);font:inherit;font-size:var(--fs-section);font-weight:var(--fw-title);text-align:left;cursor:pointer;border-radius:var(--r-sm)}
 .collapsible-group-caret{display:grid;place-items:center;flex:none;width:16px;height:16px;color:var(--ter);

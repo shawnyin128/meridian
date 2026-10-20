@@ -164,13 +164,15 @@ describe('论文表行与行之间的分隔线', () => {
     ])
   })
 
-  it('吸住的标题列和操作列朝滚动的那一侧各画一条 1px 的 --sep 细线，其余格子不画', () => {
+  it('吸住的表头、标题列和操作列不画细线，自己也从不淡出：没有阴影、没有遮罩，也不变透明', () => {
     document.body.innerHTML = '<div class="tblwrap"><table class="ptable"><thead><tr><th>标题</th><th>年份</th><th class="th-add"></th></tr></thead>'
-      + '<tbody><tr><td class="trunc">EAGLE</td><td class="pt-dim">2024</td><td class="row-actions-cell"></td></tr></tbody></table></div>'
-    const edge = (selector: string) => getComputedStyle(document.querySelector(selector)).boxShadow
-    expect(['thead th:first-child', 'tbody td:first-child', 'th.th-add', 'td.row-actions-cell', 'td.pt-dim'].map(edge)).toEqual([
-      '1px 0 0 var(--sep)', '1px 0 0 var(--sep)', '-1px 0 0 var(--sep)', '-1px 0 0 var(--sep)', '',
-    ])
+      + '<tbody><tr class="selected"><td class="trunc">EAGLE</td><td class="pt-dim">2024</td><td class="row-actions-cell"></td></tr></tbody></table></div>'
+    const sticky = ['thead th:first-child', 'thead th:nth-child(2)', 'th.th-add', 'tbody td:first-child', 'td.row-actions-cell']
+    const look = (selector: string) => {
+      const style = getComputedStyle(document.querySelector(selector))
+      return [style.boxShadow || 'none', style.getPropertyValue('mask-image') || 'none', style.getPropertyValue('mask') || 'none', style.opacity || '1']
+    }
+    expect(sticky.map(look)).toEqual(sticky.map(() => ['none', 'none', 'none', '1']))
   })
 })
 
