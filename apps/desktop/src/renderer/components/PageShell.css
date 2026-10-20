@@ -22,7 +22,7 @@
 .section-heading--rail:first-child{margin-top:0}
 .section-heading-actions{display:flex;flex:none;align-items:center;gap:var(--sp-8);margin-left:auto;font-weight:var(--fw-regular)}
 
-.ipcerror{padding:var(--sp-8) var(--sp-12);margin:0 var(--sp-16) var(--sp-12);border-radius:var(--r-md);background:var(--tint-bad);color:var(--bad);font-size:var(--fs-sm)}
+.ipcerror{padding:var(--sp-8) var(--sp-12);margin:0 var(--sp-16) var(--sp-12);border-radius:var(--r-md);background:var(--tint-bad);color:var(--bad-text);font-size:var(--fs-sm)}
 
 .page-failure .desk-body{display:flex;flex-direction:column;align-items:flex-start;gap:var(--sp-12)}
 .page-failure .ipcerror{margin:0}

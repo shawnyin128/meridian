@@ -1,8 +1,9 @@
 /*
  * Variable names match :root / [data-theme="dark"] of e2e/fixtures/platform-shell-demo.html.
  * 1. The dark color values match the demo: the accent is Primary blue, and the dark theme has a full
- *    gray scale; both derive from a hue of about 220°. The light grays are neutral instead, and the
- *    light --sec and --ter are darker, so they keep 4.5:1 on every surface they sit on, a chip included.
+ *    gray scale; both derive from a hue of about 220°. The dark --ter is lighter, so it keeps 4.5:1 on
+ *    every surface and on a chip over a card. The light grays are neutral instead, and the light --sec
+ *    and --ter are darker, so they keep 4.5:1 on every surface they sit on, a chip included.
  *    The accent marks only what to act on, where you are and what is on or running.
  * 2. The tokens added beyond the demo (--accent-solid / --press / --press-solid / --hover-solid /
  *    --bad-solid / --bad-text / --good-text / --warn-text / --accent-text / --ring* / --sel / --selected /
@@ -143,7 +144,7 @@
 }
 [data-theme="dark"]{
   --desktop:#040b14; --window:#07111f; --content:#0d1b2d; --sidebar:rgba(9,21,38,.85);
-  --ink:#f5f7fb; --sec:#aab6c8; --ter:#7a8698;
+  --ink:#f5f7fb; --sec:#aab6c8; --ter:#94a0b2;
   --sep:#20324c; --sep2:rgba(32,50,76,.6);
   --accent:#558cff; --accent-soft:rgba(85,140,255,.12); --on-accent:#ffffff;
   --card:#12213a; --raised:#12213a; --field:#16263f; --hover:rgba(245,247,251,.05);

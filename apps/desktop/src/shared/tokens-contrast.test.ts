@@ -258,6 +258,31 @@ describe('亮色的文字', () => {
   }
 })
 
+describe('暗色的三级文字', () => {
+  it('暗色的 --ter 铺在每种底面上不低于 4.5:1,压在画布、卡片、浮层和窗口底上的标签底上也不低于 4.5:1', () => {
+    for (const [where, ground] of SURFACES) {
+      const got = contrast(colour('dark', '--ter'), flatten('dark', ground))
+      expect(got, `--ter 压在${where}上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+    }
+    for (const [where, ground] of SURFACES.slice(0, 4)) {
+      const got = contrast(colour('dark', '--ter'), flatten('dark', [...ground, '--chip']))
+      expect(got, `--ter 压在${where}的标签底上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+    }
+  })
+})
+
+describe('出错的提示框', () => {
+  for (const theme of ['light', 'dark'] as const) {
+    it(`${theme === 'dark' ? '暗色' : '亮色'}的错误提示框里的红字压在它自己的浅红底上,铺在画布和卡片上都不低于 4.5:1`, () => {
+      const [fill, text] = lookOf('components/PageShell.css', '.ipcerror').split(' ') as [string, string]
+      for (const ground of ['--content', '--card']) {
+        const got = contrast(colour(theme, text), flatten(theme, [ground, fill]))
+        expect(got, `${text} 压在 ${ground} + ${fill} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+      }
+    })
+  }
+})
+
 /** Every tone of the shared Tag but the dashed ghost slot, and the text colour each one writes in. */
 const TAG_TEXT = {
   neutral: '--sec', accent: '--sec', info: '--sec', paper: '--sec', wiki: '--sec',
