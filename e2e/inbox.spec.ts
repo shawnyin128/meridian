@@ -34,7 +34,7 @@ const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
 
 const inboxFromCore = (win: Page) =>
   call<{
-    id: string; watch: string; source: string; title: string; paper: string; downloaded: boolean; pdf: string
+    id: string; watch: string; source: string; paper: string; downloaded: boolean; pdf: string
   }[]>(win, 'inbox.list', {})
 const discoveryFromCore = (win: Page) =>
   call<{ id: string; project: string; reasons: { label: string }[] }[]>(
@@ -409,7 +409,7 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   await expect(groupHeads.nth(1)).toHaveCSS('font-size', '15px')
   await expect(groupHeads.nth(1)).toHaveCSS('border-top-width', '1px')
 
-  // Pause: the sidebar row dims, its badge goes away, and the entries already fetched stay.
+  // Pause: the sidebar row dims and keeps its count, and the entries already fetched stay.
   const entriesBefore = await inboxFromCore(win)
   const kept = entriesBefore.filter((e) => e.watch === 'spec').length
   const spec = settings(win, '.wrow').filter({ hasText: 'speculative decoding' })
@@ -418,7 +418,7 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   await expect(spec.locator('[role="switch"]')).toHaveAttribute('aria-checked', 'false')
   await expect(spec.locator('.watch-paused')).toHaveText('已暂停')
   await expect(win.locator('[data-watchrow="spec"]')).toHaveClass(/\bdim\b/)
-  await expect(win.locator('[data-watchrow="spec"] .n')).toHaveCount(0)
+  await expect(win.locator('[data-watchrow="spec"] .n')).toHaveText(String(kept))
   expect((await inboxFromCore(win)).filter((e) => e.watch === 'spec')).toHaveLength(kept)
   await spec.locator('[role="switch"]').click()
   await expect(win.locator('[data-watchrow="spec"]')).not.toHaveClass(/\bdim\b/)
@@ -426,7 +426,7 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   // Add: the sidebar's topic group gains a row; its count, the papers its watches delivered, stays.
   const topics = watches.filter((w) => w.type === 'topic').length
   const topicIds = new Set(watches.filter((w) => w.type === 'topic').map((w) => w.id))
-  const topicPapers = new Set(entriesBefore.filter((e) => topicIds.has(e.watch)).map((e) => e.title)).size
+  const topicPapers = entriesBefore.filter((e) => topicIds.has(e.watch)).length
   expect(topicPapers).toBeGreaterThan(0)
   await settings(win, '.section-heading').filter({ hasText: '主题' }).locator('.btn').click()
   await expect(settings(win, '.wrow')).toHaveCount(watches.length + 1)
@@ -683,9 +683,8 @@ test('侧栏角标数的都是库里的真实数量', async ({ win }) => {
   const watches = await watchesFromCore(win)
   const queued = await laterFromCore(win)
   const count = (id: string) => entries.filter((e) => e.watch === id).length
-  // A group counts the papers its watches delivered, a paper two of them delivered once.
-  const papers = (type: string) => new Set(entries
-    .filter((e) => watches.some((w) => w.id === e.watch && w.type === type)).map((e) => e.title)).size
+  // A group counts the papers its watches delivered.
+  const papers = (type: string) => entries.filter((e) => watches.some((w) => w.id === e.watch && w.type === type)).length
 
   const badges: [string, number][] = [
     ['#rowInboxAll .n', entries.length],

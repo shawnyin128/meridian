@@ -100,6 +100,30 @@ describe('vault store', () => {
     rmSync(vault, { recursive: true, force: true })
   })
 
+  describe('一篇论文只进收件一次', () => {
+    /** An arXiv result a watch brings in. */
+    const found = (id: string) => ({
+      id, title: `Shared ${id}`, authors: ['Li'], abstract: '……', submitted: '2026-09-01', journalRef: null,
+      pdf: `https://arxiv.org/pdf/${id}`,
+    })
+
+    for (const [name, make] of [['真实实现', () => store], ['fixture', () => createFixtureStore()]] as const) {
+      it(`${name}:别的关注再拉到推送过的论文不再添一条,这一篇被不看了也一样,一次拉到两遍也只添一条`, () => {
+        const s = make()
+        s.createWatch({ type: 'topic', name: 'shared-a' })
+        s.createWatch({ type: 'author', name: 'shared-b' })
+        const id = (watch: string) => s.listWatches().find((w) => w.name === watch)!.id
+        expect(s.addInboxEntries(id('shared-a'), [found('2609.20001'), found('2609.20002')])).toEqual(['2609.20001', '2609.20002'])
+        expect(s.addInboxEntries(id('shared-b'), [found('2609.20002'), found('2609.20003'), found('2609.20003')])).toEqual(['2609.20003'])
+        s.dismissInbox(s.listInbox().find((entry) => entry.title === 'Shared 2609.20001')!.id)
+        expect(s.addInboxEntries(id('shared-b'), [found('2609.20001')])).toEqual([])
+        expect(s.listInbox({ kind: 'watch' }).filter((entry) => entry.title.startsWith('Shared '))
+          .map((entry) => [entry.title, entry.watch === id('shared-a') ? 'a' : 'b']))
+          .toEqual(expect.arrayContaining([['Shared 2609.20002', 'a'], ['Shared 2609.20003', 'b']]))
+      })
+    }
+  })
+
   describe('形状对拍', () => {
     for (const [method, { call, schema }] of Object.entries(KNOWLEDGE)) {
       it(`${method} 在 fixture 与真实实现上给出同一个契约形状`, () => {

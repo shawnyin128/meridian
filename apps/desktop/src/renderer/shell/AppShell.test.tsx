@@ -189,7 +189,10 @@ describe('侧栏论文推送的计数', () => {
     fixture.delivered = []
   })
 
-  it('分组行数的是组里关注推来的新论文,两个关注推来的同一篇只算一篇;没有新论文的组和关注都不显示数', async () => {
+  /** The text of the count badge in each of `rows`, or null where a row has none. */
+  const counts = (rows: string[]) => Object.fromEntries(rows.map((row) => [row, document.querySelector(`${row} .count-badge`)?.textContent ?? null]))
+
+  it('分组行数的是组里各个关注推来的条数,同名的两篇不同论文各算一篇;没有条目的组和关注都不显示数', async () => {
     fixture.watches = [
       { id: 'w-topic', type: 'topic', name: '推测解码', active: true },
       { id: 'w-moe', type: 'topic', name: '专家混合', active: true },
@@ -202,9 +205,31 @@ describe('侧栏论文推送的计数', () => {
       { id: 'i4', kind: 'watch', watch: 'w-moe', title: 'Medusa' },
     ]
     await mount()
-    const rows = ['#rowInboxAll', '[data-disc="topics"]', '[data-watchrow="w-topic"]', '[data-watchrow="w-moe"]', '[data-disc="authors"]', '[data-watchrow="w-dao"]']
-    expect(Object.fromEntries(rows.map((row) => [row, document.querySelector(`${row} .count-badge`)?.textContent ?? null])))
-      .toEqual(Object.fromEntries(rows.map((row, at) => [row, ['3', '3', '3', '1', null, null][at]])))
+    expect(counts(['#rowInboxAll', '[data-disc="topics"]', '[data-watchrow="w-topic"]', '[data-watchrow="w-moe"]', '[data-disc="authors"]', '[data-watchrow="w-dao"]']))
+      .toEqual({
+        '#rowInboxAll': '4', '[data-disc="topics"]': '4', '[data-watchrow="w-topic"]': '3', '[data-watchrow="w-moe"]': '1',
+        '[data-disc="authors"]': null, '[data-watchrow="w-dao"]': null,
+      })
+  })
+
+  it('暂停的关注照样显示它推来的条数,只是变灰', async () => {
+    fixture.watches = [{ id: 'w-paused', type: 'topic', name: '已暂停的关注', active: false }]
+    fixture.delivered = [
+      { id: 'i1', kind: 'watch', watch: 'w-paused', title: 'EAGLE' },
+      { id: 'i2', kind: 'watch', watch: 'w-paused', title: 'Medusa' },
+    ]
+    await mount()
+    const row = document.querySelector('[data-watchrow="w-paused"]')!
+    expect([row.classList.contains('dim'), row.querySelector('.count-badge')?.textContent ?? null]).toEqual([true, '2'])
+  })
+
+  it('侧栏没有一行显示 0:数为 0 的行和收件、垃圾桶一样不带计数', async () => {
+    await mount()
+    expect(counts(['[data-desk="wiki"]', '[data-desk="papers"]', '[data-desk="changelog"]', '[data-desk="resproj"]', '[data-desk="ideas"]', '[data-desk="later"]', '[data-desk="trash"]']))
+      .toEqual({
+        '[data-desk="wiki"]': null, '[data-desk="papers"]': null, '[data-desk="changelog"]': null, '[data-desk="resproj"]': '1',
+        '[data-desk="ideas"]': null, '[data-desk="later"]': null, '[data-desk="trash"]': null,
+      })
   })
 })
 

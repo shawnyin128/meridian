@@ -37,18 +37,7 @@ function CaretToggle({ label, open, onToggle }: { label: string; open: boolean; 
   )
 }
 
-/**
- * The number of papers the watches `ids` delivered, by `inboxPapers`: a paper two of them delivered
- * counts once.
- */
-function papersOf(ids: string[], inboxPapers: Record<string, string[]>): number {
-  return new Set(ids.flatMap((id) => inboxPapers[id] ?? [])).size
-}
-
-/**
- * A watch's row in the sidebar. When `count` is 0 there is no badge; a paused watch is greyed out and
- * shows no badge, as in the demo's applyWatchUI.
- */
+/** A watch's row in the sidebar. When `count` is 0 there is no badge; a paused watch is greyed out and keeps its count. */
 function WatchRow({ watch, count, on, onOpen }: {
   watch: Watch; count: number; on: boolean; onOpen: () => void
 }) {
@@ -60,7 +49,7 @@ function WatchRow({ watch, count, on, onOpen }: {
     >
       <span className="ic" />
       <Tooltip label={watch.name} whenClipped><span className="watch-name">{watch.name}</span></Tooltip>
-      {watch.active && count > 0 ? <CountBadge className="n" count={count} /> : null}
+      {count > 0 ? <CountBadge className="n" count={count} /> : null}
     </NavRow>
   )
 }
@@ -145,12 +134,11 @@ function UpdateRow() {
  * The sidebar: global search, updates, Inbox, Chats, My library, Research, and Trash.
  * Clicking the Chats heading does not switch screens; every other item opens one. `onJump` goes to
  * the global search, and clicking a result opens that item on its screen.
- * While `paperCount`, `changeCount`, `projectCount` or `wikiCount` is null, its badge is not rendered;
- * when `trashCount` or `laterCount` is 0 its row has no badge, like the demo's `TRASH.length||''`.
- * `watches` fills the Watched topics and Watched authors groups under the Inbox; `inboxPapers` gives
- * the papers each watch delivered by watch id, one key per paper, and a watch missing from it delivered
- * none. Every count in the Inbox section is a number of papers: a group row's counts its watches' papers,
- * and a group or watch with none shows no badge.
+ * No row shows a 0: a row whose count is 0, or null while it loads, has no badge, like the demo's
+ * `TRASH.length||''`.
+ * `watches` fills the Watched topics and Watched authors groups under the Inbox; `inboxCounts` gives
+ * each watch's number of delivered papers by watch id, and a watch missing from it counts as 0. Core
+ * puts an arXiv paper under one watch only, so a group row counts its watches' papers by adding them.
  * `inboxMode` tells the Discovery stream from the watch stream and `inboxScope` is the scope shown in
  * it; together they decide which row is selected.
  * `chats` fills the list under Chats; archived chats are not here but in Settings. `chatId` is the
@@ -161,7 +149,7 @@ function UpdateRow() {
  */
 export function Sidebar({
   screen, onNavigate, onJump, paperCount, changeCount, projectCount, trashCount, wikiCount, ideaCount,
-  inboxScope, inboxMode, onOpenInbox, watches, inboxPapers, discoveryCount, discoveryProjects, laterCount,
+  inboxScope, inboxMode, onOpenInbox, watches, inboxCounts, discoveryCount, discoveryProjects, laterCount,
   chats, chatId, onOpenChat, onNewChat, onArchiveChat, grip, collapsed,
 }: {
   screen: ScreenKey
@@ -177,7 +165,7 @@ export function Sidebar({
   inboxMode: InboxMode
   onOpenInbox: (scope: string, mode?: InboxMode) => void
   watches: Watch[]
-  inboxPapers: Record<string, string[]>
+  inboxCounts: Record<string, number>
   discoveryCount: number
   discoveryProjects: DiscoveryProjectCount[]
   laterCount: number
@@ -200,9 +188,10 @@ export function Sidebar({
   const authors = watches.filter((w) => w.type === 'author')
   const active = chats.filter((s) => !s.archived)
   // The Inmail row counts the papers every watch delivered, the demo's allN = unread.spec + unread.dao.
-  const pushed = papersOf(Object.keys(inboxPapers), inboxPapers)
-  const topicPapers = papersOf(topics.map((w) => w.id), inboxPapers)
-  const authorPapers = papersOf(authors.map((w) => w.id), inboxPapers)
+  const pushed = Object.values(inboxCounts).reduce((sum, n) => sum + n, 0)
+  const delivered = (group: Watch[]) => group.reduce((sum, w) => sum + (inboxCounts[w.id] ?? 0), 0)
+  const topicPapers = delivered(topics)
+  const authorPapers = delivered(authors)
   const onWatch = (id: string) => screen === 'inbox' && inboxMode === 'watch' && inboxScope === id
   const onDiscovery = (id: string) => screen === 'inbox' && inboxMode === 'discovery' && inboxScope === id
 
@@ -280,7 +269,7 @@ export function Sidebar({
                 <div className={wgroup('topics')} id="g-topics">
                   {topics.map((w) => (
                     <WatchRow
-                      key={w.id} watch={w} count={papersOf([w.id], inboxPapers)} on={onWatch(w.id)}
+                      key={w.id} watch={w} count={inboxCounts[w.id] ?? 0} on={onWatch(w.id)}
                       onOpen={() => onOpenInbox(w.id)}
                     />
                   ))}
@@ -296,7 +285,7 @@ export function Sidebar({
                 <div className={wgroup('authors')} id="g-authors">
                   {authors.map((w) => (
                     <WatchRow
-                      key={w.id} watch={w} count={papersOf([w.id], inboxPapers)} on={onWatch(w.id)}
+                      key={w.id} watch={w} count={inboxCounts[w.id] ?? 0} on={onWatch(w.id)}
                       onOpen={() => onOpenInbox(w.id)}
                     />
                   ))}
@@ -341,7 +330,7 @@ export function Sidebar({
                   <Icon>
                     <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 12l10 5 10-5" /><path d="M2 17l10 5 10-5" />
                   </Icon>
-                </span>{m.shell.nav.wiki}{wikiCount === null ? null : <CountBadge className="n" count={wikiCount} />}
+                </span>{m.shell.nav.wiki}{wikiCount ? <CountBadge className="n" count={wikiCount} /> : null}
               </NavRow>
               <NavRow
                 className="srow" selected={screen === 'papers'} data-desk="papers"
@@ -352,7 +341,7 @@ export function Sidebar({
                     <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
                     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
                   </Icon>
-                </span>{m.shell.nav.papers}{paperCount === null ? null : <CountBadge className="n" count={paperCount} />}
+                </span>{m.shell.nav.papers}{paperCount ? <CountBadge className="n" count={paperCount} /> : null}
               </NavRow>
               <NavRow
                 className="srow" selected={screen === 'changelog'} data-desk="changelog"
@@ -363,7 +352,7 @@ export function Sidebar({
                     <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
                     <path d="M3 3v5h5" /><path d="M12 7v5l4 2" />
                   </Icon>
-                </span>{m.shell.nav.changelog}{changeCount === null ? null : <CountBadge className="n" count={changeCount} />}
+                </span>{m.shell.nav.changelog}{changeCount ? <CountBadge className="n" count={changeCount} /> : null}
               </NavRow>
             </div>
 
@@ -384,7 +373,7 @@ export function Sidebar({
                     <path d="M10 2v7.5L4.7 19a2 2 0 0 0 1.8 3h11a2 2 0 0 0 1.8-3L14 9.5V2" />
                     <path d="M8.5 2h7" /><path d="M7 16h10" />
                   </Icon>
-                </span>{m.shell.nav.projects}{projectCount === null ? null : <CountBadge className="n" count={projectCount} />}
+                </span>{m.shell.nav.projects}{projectCount ? <CountBadge className="n" count={projectCount} /> : null}
               </NavRow>
               <NavRow
                 className="srow" selected={screen === 'ideas'} data-desk="ideas"
@@ -392,7 +381,7 @@ export function Sidebar({
               >
                 <span className="ic">
                   <Icon><path d="M9 18h6" /><path d="M10 22h4" /><path d="M8.2 14.5A7 7 0 1 1 15.8 14.5C14.8 15.2 14.5 16 14.5 17h-5c0-1-.3-1.8-1.3-2.5z" /></Icon>
-                </span>{m.shell.nav.ideas}{ideaCount === null ? null : <CountBadge className="n" count={ideaCount} />}
+                </span>{m.shell.nav.ideas}{ideaCount ? <CountBadge className="n" count={ideaCount} /> : null}
               </NavRow>
             </div>
           </div>
