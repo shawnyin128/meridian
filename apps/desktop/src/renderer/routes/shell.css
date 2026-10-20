@@ -29,7 +29,6 @@
 :where(.btn.pri):hover{box-shadow:inset 0 0 0 100vmax var(--hover-solid)}
 .btn:enabled:active{background-image:linear-gradient(var(--press),var(--press))}
 .btn.pri:enabled:active{background-image:linear-gradient(var(--press-solid),var(--press-solid))}
-.btn.danger:focus-visible{outline-color:var(--bad)}
 .btn:disabled{opacity:.45;cursor:default;box-shadow:none}
 /* An applied read-state filter takes the selected tint; solid accent is kept for primary actions. */
 .read-state-filter.on{background-color:var(--accent-soft);border-color:transparent;color:var(--on-selected)}

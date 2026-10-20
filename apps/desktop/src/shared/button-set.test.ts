@@ -162,12 +162,6 @@ describe('按钮组', () => {
     expect([on, off]).toEqual(['var(--accent-soft)', TRANSPARENT])
   })
 
-  it('危险按钮的键盘焦点环是红色的', () => {
-    const rules = rulesOf(STYLES[1]!)
-    expect(rules.filter(([selector, body]) => /\.btn\.danger:focus-visible/.test(selector) && /outline-color:var\(--bad\)/.test(body)))
-      .toHaveLength(1)
-  })
-
   it('别的样式表和别的规则不改按钮的尺寸、字号、底色、边框、光标或禁用样式', () => {
     const names = new RegExp(`\\.(?:${['btn', ...PAIRED].join('|')})(?![\\w-])`)
     const offenders = STYLESHEETS.flatMap((path) => rulesOf(readFileSync(join(RENDERER, path), 'utf8'))

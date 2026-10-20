@@ -15,12 +15,9 @@ const HOST_RING = ['outline:var(--ring-width) solid var(--ring)', 'outline-offse
 /**
  * The rules that keep a focus look of their own: a menu or dialog surface focused only to hand focus
  * to its content, and a Radix menu item whose highlight is the menu's focus, draw no ring; the resize
- * grip's glyph takes the ring colour instead of ringing the pane's full height; a danger button's ring
- * is red.
+ * grip's glyph takes the ring colour instead of ringing the pane's full height.
  */
 const NOT_A_RING = new Set([
-  'routes/shell.css .btn.danger:focus-visible',
-  'components/IconButton.css .icbtn.danger:focus-visible',
   'components/ModalDialog.css .modal:focus-visible',
   'components/AboutDialog.css .about-pop:focus',
   'routes/shell.css .ctxmenu:focus-visible',
