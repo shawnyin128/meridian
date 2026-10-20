@@ -293,8 +293,8 @@ export function Settings() {
                   return (
                     <StructuredRow composite className="storage-backup-row" key={backup.id}>
                       <div className="storage-backup-copy">
-                        <strong><DateTimeDisplay at={backup.createdAt} /></strong>
-                        <Tooltip label={backup.path} whenClipped><span>{backup.path}</span></Tooltip>
+                        <DateTimeDisplay at={backup.createdAt} />
+                        <Tooltip label={backup.path} whenClipped><span className="storage-backup-path">{backup.path}</span></Tooltip>
                       </div>
                       <div className="storage-backup-actions">
                         <button

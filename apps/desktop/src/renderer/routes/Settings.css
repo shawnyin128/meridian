@@ -65,8 +65,7 @@
 .storage-backup-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;
   min-height:58px;padding:9px 12px}
 .storage-backup-copy{min-width:0;display:flex;flex-direction:column;gap:3px}
-.storage-backup-copy strong{font-size:var(--fs-sm);font-weight:600;color:var(--ink)}
-.storage-backup-copy span{overflow:hidden;color:var(--ter);font-family:var(--mono);font-size:var(--fs-cap);
+.storage-backup-path{overflow:hidden;color:var(--ter);font-family:var(--mono);font-size:var(--fs-cap);
   text-overflow:ellipsis;white-space:nowrap}
 .storage-backup-actions{display:flex;align-items:center;gap:8px}
 

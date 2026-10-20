@@ -542,7 +542,7 @@ describe('Settings', () => {
     const at = new Date('2026-09-15T18:28:38.000Z')
     expect([...dialog.querySelectorAll('.storage-backup-copy .date-time-display .date-chip')].map((chip) => chip.textContent))
       .toEqual([`${at.getMonth() + 1}月${at.getDate()}日`, `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`])
-    expect(dialog.querySelector('.storage-backup-copy > span')?.textContent)
+    expect(dialog.querySelector('.storage-backup-copy .storage-backup-path')?.textContent)
       .toBe('/tmp/meridian-backup-20260915-182838Z')
     const switchButton = [...dialog.querySelectorAll<HTMLButtonElement>('.storage-backup-actions .btn')]
       .find((button) => button.textContent === '切换')!
