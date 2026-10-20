@@ -48,7 +48,7 @@
 
 .discovery-summary{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-12);margin:calc(-1 * var(--sp-4)) 0 var(--sp-16)}
 .discovery-note{margin:0;color:var(--ter);font-size:var(--fs-sm)}
-.direction-panel{margin:0 0 var(--sp-16)}
+.direction-panel{margin:0 0 var(--sp-20)}
 .direction-project+.direction-project{border-top:1px solid var(--sep)}
 .direction-project>header{display:flex;align-items:center;gap:var(--sp-10);padding:var(--sp-8) var(--sp-12);background:var(--field);font-size:var(--fs-sm)}
 .direction-project>header strong{color:var(--ink)}
