@@ -330,6 +330,10 @@ const COLUMN_FIELDS: readonly Field<Omit<PaperColumn, 'key'>>[] = [
   ['列名', (c) => c.label], ['类型', (c) => COLUMN_TYPE_LABEL[c.type]], ['选项', (c) => c.options],
 ]
 
+/** The read state's label, and the earlier one it keeps while a custom column holds that label. */
+const READ_STATE = '阅读状态'
+const READ_STATE_TAKEN = '状态'
+
 /** The paper fields the user edits; ids, counts, page state and timestamps are the vault's own and not shown. */
 const PAPER_FIELDS: readonly Field<PaperRow>[] = [
   ['标题', (p) => p.title], ['短标题', (p) => p.shortTitle ?? ''], ['作者', (p) => p.authors ?? []],
@@ -337,7 +341,7 @@ const PAPER_FIELDS: readonly Field<PaperRow>[] = [
   ['评分', (p) => (p.rating === undefined ? '' : `${p.rating} 星`)], ['编号', (p) => p.identifier ?? ''],
   ['提交', (p, date) => date(p.submitted)], ['摘要', (p) => p.abstract ?? ''], ['主题', (p) => p.topics],
   ['方法', (p) => p.methods], ['数据集', (p) => p.datasets], ['指标', (p) => p.metrics],
-  ['阅读状态', (p) => p.readState], ['随笔', (p) => p.remark ?? ''],
+  [READ_STATE, (p) => p.readState], ['随笔', (p) => p.remark ?? ''],
 ]
 
 const NOTE_FIELDS: readonly Field<PaperNote>[] = [['页码', (n) => String(n.page)], ['笔记', (n) => n.text]]
@@ -458,9 +462,10 @@ function projectLines(a: ProjectDetail, b: ProjectDetail, date: DateReading): st
  * The change lines between the pre- and post-change entity of one target: one for each changed field,
  * with its label and a readable value. Dates read as month and day, with the year when it is not
  * `year`; enum values by their names; papers, tasks, milestones, relations, attachments and columns by
- * their names; custom cells under the label their column has in `columns`. A paper, project or column
- * created or deleted is one line with its name; a note or highlight lists its fields. Throws for a pages
- * entity, whose changes the proposal or the body edit describes, and when the entity changed kind.
+ * their names; custom cells under the label their column has in `columns`, and the read state under its
+ * earlier label while one of them holds its label. A paper, project or column created or deleted is one
+ * line with its name; a note or highlight lists its fields. Throws for a pages entity, whose changes the
+ * proposal or the body edit describes, and when the entity changed kind.
  */
 function changeLines(
   before: Entity | undefined, after: Entity | undefined, { year, columns }: { year: string; columns: readonly PaperColumn[] },
@@ -480,8 +485,11 @@ function changeLines(
       const [a, b] = sides('paper')
       if (a === undefined || b === undefined) return [`${sign} 论文：${one.paper.title}`]
       const label = (key: string): string => columns.find((c) => c.key === key)?.label ?? key
+      const fields = columns.some((c) => c.label === READ_STATE)
+        ? PAPER_FIELDS.map((field): Field<PaperRow> => (field[0] === READ_STATE ? [READ_STATE_TAKEN, field[1]] : field))
+        : PAPER_FIELDS
       return [
-        ...fieldLines(PAPER_FIELDS, a.paper, b.paper, date),
+        ...fieldLines(fields, a.paper, b.paper, date),
         ...[...new Set([...Object.keys(a.paper.custom), ...Object.keys(b.paper.custom)])]
           .flatMap((key) => readingLines(label(key), a.paper.custom[key] ?? '', b.paper.custom[key] ?? '')),
       ]

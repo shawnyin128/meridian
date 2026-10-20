@@ -13,7 +13,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { IconGrip, IconRead, IconTrash } from '../icons.js'
 import { CellPicker } from './CellPicker.js'
 import { NewColumnHead } from './ColumnAdd.js'
-import { columnKey, takenLabel } from './column-key.js'
+import { builtinNames, columnKey, takenLabel } from './column-key.js'
 import { ColumnMenu } from './ColumnMenu.js'
 import { GroupMenu, groupRows } from './GroupMenu.js'
 import { ParseProgress } from '../ParseProgress.js'
@@ -62,9 +62,9 @@ type ShownCol =
   | { k: BodyKey; sort?: SortKey; column?: undefined }
   | { k: string; sort?: undefined; column: PaperColumn }
 
-/** The label to show for a column of the table at this time. */
-function shownLabel(m: Catalog, col: ShownCol): string {
-  return col.column ? col.column.label : m.papers.columns[col.k]
+/** The label to show for a column of the table at this time, a built-in one named by `names`. */
+function shownLabel(names: Catalog['papers']['columns'], col: ShownCol): string {
+  return col.column ? col.column.label : names[col.k]
 }
 
 export const COLUMNS: { k: BodyKey; sort?: SortKey }[] = [
@@ -302,6 +302,7 @@ export function PaperTable() {
   const [widths, setWidths] = useState<Record<string, number>>(DEFAULT_WIDTHS)
   const [columns, setColumns] = useState<PaperColumns>(
     { hidden: [], custom: [], groups: [...DEFAULT_PAPER_GROUPS] })
+  const names = builtinNames(m, columns)
   // Core's last confirmed column set. Every step on the column chain computes its write from this,
   // not from the columns captured in a render's closure.
   const confirmedColumns = useRef(columns)
@@ -453,16 +454,16 @@ export function PaperTable() {
   // groupNames is a plain object; without the hasOwn check, keys such as toString would return
   // functions from Object.prototype.
   const labelOf = (key: string) => columns.custom.find((c) => c.key === key)?.label
-    ?? (Object.hasOwn(m.papers.groupNames, key) ? m.papers.groupNames[key as keyof typeof m.papers.groupNames] : key)
+    ?? (Object.hasOwn(names.groupNames, key) ? names.groupNames[key as keyof typeof names.groupNames] : key)
 
   useCrumbTail(useMemo(() => {
     if (view === 'research-map') return []
     if (group === 'none') return []
     // Same lookup order as labelOf. labelOf is a new function every render, and as a dependency it
     // would reset the breadcrumbs every frame.
+    const { groupNames } = builtinNames(m, columns)
     const label = columns.custom.find((c) => c.key === group)?.label
-      ?? (Object.hasOwn(m.papers.groupNames, group)
-        ? m.papers.groupNames[group as keyof typeof m.papers.groupNames] : group)
+      ?? (Object.hasOwn(groupNames, group) ? groupNames[group as keyof typeof groupNames] : group)
     return sel === null ? [{ text: label }] : [{ text: label, onClick: backToValues }, { text: sel }]
   }, [view, group, sel, columns, backToValues, m]), backToUngrouped)
 
@@ -894,7 +895,7 @@ export function PaperTable() {
    * before that.
    */
   const createColumn = (label: string, type: PaperColumn['type']): boolean | Promise<boolean> => {
-    const builtinLabels = [m.papers.columns.title, ...COLUMNS.map((c) => m.papers.columns[c.k])]
+    const builtinLabels = [names.columns.title, ...COLUMNS.map((c) => names.columns[c.k])]
     if (label === '' || takenLabel(label, columns, builtinLabels)) return false
     const token = {}
     columnDraftToken.current = token
@@ -1089,11 +1090,11 @@ export function PaperTable() {
                 {c.sort
                   ? (
                     <button type="button" className="thsort">
-                      {shownLabel(m, c)}{sort === c.sort ? <> <SortArrow direction={direction} /></> : null}
+                      {shownLabel(names.columns, c)}{sort === c.sort ? <> <SortArrow direction={direction} /></> : null}
                     </button>
                   )
-                  : shownLabel(m, c)}
-                {columnGrip(c.k, shownLabel(m, c))}
+                  : shownLabel(names.columns, c)}
+                {columnGrip(c.k, shownLabel(names.columns, c))}
               </th>
             ))}
             {newCol

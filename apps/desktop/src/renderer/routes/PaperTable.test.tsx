@@ -664,6 +664,37 @@ describe('PaperTable', () => {
     expect(row('作者').tagName).toBe('DIV')
   })
 
+  /** The texts among `texts` that name a state. */
+  const states = (texts: (string | null)[]) => texts.filter((text) => text?.includes('状态'))
+  const HELD_READ_STATE: PaperColumns = {
+    hidden: [], groups: [], custom: [{ key: 'yuedu', label: '阅读状态', type: 'select', options: ['核心'] }],
+  }
+
+  it('库里早先建的自定义列已经叫阅读状态时，内置的阅读状态在表头、列设置与分组菜单里仍叫原来的状态', async () => {
+    const host = mount()
+    columnsCall.resolve(HELD_READ_STATE)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    expect(states(headTexts(host))).toEqual(['状态', '阅读状态'])
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+    expect(states([...document.querySelectorAll('.mi.colrow')].map((row) => row.textContent))).toEqual(['状态', '阅读状态'])
+    const gear = document.querySelector<HTMLButtonElement>('.grpgear')!
+    await act(async () => { gear.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+    expect(states([...document.querySelectorAll('[role="menuitemcheckbox"]')].map((item) => item.textContent)))
+      .toEqual(['状态', '阅读状态'])
+  })
+
+  it('自定义列占着阅读状态这个名字时，内置列叫状态，新建一列也不能叫状态', async () => {
+    const host = mount()
+    columnsCall.resolve(HELD_READ_STATE)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    await startCreate(host, '状态')
+    expect(setColumnsCalls).toEqual([])
+  })
+
   it('列设置只在能点着显隐的行上打勾，自定义列的行不打勾', async () => {
     const host = mount()
     columnsCall.resolve({ ...SELECT_COLUMNS, hidden: ['venue'] })

@@ -10,6 +10,7 @@ export const papers = {
     venue: '发表',
     topics: '主题',
     st: '阅读状态',
+    stTaken: '状态',
     remark: '随笔',
   },
   columnType: { text: '文本', select: '单选', multi: '多选' },

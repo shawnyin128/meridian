@@ -13,6 +13,7 @@ export const papers = {
     venue: 'Venue',
     topics: 'Topics',
     st: 'Reading status',
+    stTaken: 'Status',
     remark: 'Thoughts',
   },
   columnType: { text: 'Text', select: 'Single choice', multi: 'Multiple choice' },

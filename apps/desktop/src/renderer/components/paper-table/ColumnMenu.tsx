@@ -6,7 +6,7 @@ import { ActionPopover } from '../ActionPopover.js'
 import { IconButton } from '../IconButton.js'
 import { IconCheck, IconChevron, IconGear, IconPencil, IconTrash } from '../icons.js'
 import { ColumnTypeIcon, ColumnTypePicker } from './ColumnAdd.js'
-import { takenLabel } from './column-key.js'
+import { builtinNames, takenLabel } from './column-key.js'
 import { COLUMNS } from './PaperTable.js'
 import { afterLeaving, InlineDraftInput } from '../InlineDraftInput.js'
 
@@ -39,6 +39,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
   onRetype: (key: string, type: PaperColumn['type']) => Promise<unknown>
 }) {
   const m = useMessages()
+  const names = builtinNames(m, columns).columns
   const [open, setOpen] = useState(false)
   // The key of the column being renamed
   const [renaming, setRenaming] = useState<string | null>(null)
@@ -111,7 +112,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
             const body = (
               <>
                 <span className="ck">{shown ? <IconCheck /> : null}</span>
-                <span className="cl">{m.papers.columns[c.k]}</span>
+                <span className="cl">{names[c.k]}</span>
               </>
             )
             return locked
@@ -133,7 +134,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                       onCancel={() => setRenaming(null)}
                       onSubmit={(label) => {
                         if (label === c.label) return true
-                        const builtinLabels = [m.papers.columns.title, ...COLUMNS.map((k) => m.papers.columns[k.k])]
+                        const builtinLabels = [names.title, ...COLUMNS.map((k) => names[k.k])]
                         if (takenLabel(label, columns, builtinLabels)) return false
                         onChange((base) => ({
                           ...base,

@@ -4,6 +4,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { ActionMenu, MenuCheckboxItem } from '../ActionMenu.js'
 import { IconButton } from '../IconButton.js'
 import { IconGear } from '../icons.js'
+import { builtinNames } from './column-key.js'
 
 /** The group fields under the gear: built-in groupable fields, then select and multi-select columns in order. */
 export function groupRows(
@@ -38,7 +39,7 @@ export function GroupMenu({ columns, onChange }: {
       )}
       align="start"
     >
-      {groupRows(columns, m.papers.groupNames).map((r) => (
+      {groupRows(columns, builtinNames(m, columns).groupNames).map((r) => (
         <MenuCheckboxItem
           key={r.key} checked={columns.groups.includes(r.key)}
           onCheckedChange={() => toggle(r.key)}

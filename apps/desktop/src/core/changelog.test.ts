@@ -822,6 +822,12 @@ describe('change lines', () => {
       .toEqual(['- 阅读状态：未读', '+ 阅读状态：在读'])
   })
 
+  it('库里早先建的自定义列已经叫阅读状态时,内置阅读状态的行写作它原来的名字状态,两列的行分得开', () => {
+    store.setPaperColumns({ ...emptyColumns(), custom: [{ key: 'yuedu', label: '阅读状态', type: 'select', options: ['核心'] }] })
+    expect(linesOf(() => store.updatePaper(READ, { readState: '在读', custom: { yuedu: '核心' } })))
+      .toEqual(['- 状态：未读', '+ 状态：在读', '+ 阅读状态：核心'])
+  })
+
   it('列表里的一项按名字记:新增、删掉一行,改了的那项每个字段一行', () => {
     expect(linesOf(() => store.createTask(PROJECT, {
       title: '新任务', start: '2026-08-25', end: '2026-08-31', state: 'act', priority: 'p1',
