@@ -26,17 +26,6 @@ const PENDING = new Set([
   'components/CardTray.css',
   'components/FormControls.css',
   'components/project/ProjectPlan.css',
-  'routes/Changelog.css',
-  'routes/Feed.css',
-  'routes/Ideas.css',
-  'routes/ProjectDetail.css',
-  'routes/Projects.css',
-  'routes/Reader.css',
-  'routes/ResearchOverview.css',
-  'routes/Settings.css',
-  'routes/Trash.css',
-  'routes/Watches.css',
-  'routes/Wiki.css',
 ].map((file) => `${RENDERER}${file}`))
 
 function lineNumber(text, offset) {

@@ -1,38 +1,38 @@
-.ideas-body{padding:20px 24px}
+.ideas-body{padding:var(--sp-20) var(--sp-24)}
 .ideas-workspace{display:flex;align-items:flex-start;gap:0;width:100%;box-sizing:border-box}
 .ideas-list{flex:1;min-width:0}
 
 /* The idea card supports triage; full content and editing remain in the detail panel. */
-.idea-card{display:flex;align-items:flex-start;gap:12px}
+.idea-card{display:flex;align-items:flex-start;gap:var(--sp-12)}
 .idea-card-content{flex:1;min-width:0}
-.idea-card-title-row{display:flex;align-items:center;gap:8px;min-width:0}
+.idea-card-title-row{display:flex;align-items:center;gap:var(--sp-8);min-width:0}
 .idea-card-title-row strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-base)}
 .idea-project-tag{max-width:220px}
-.idea-card-summary{display:-webkit-box;margin:9px 0 0;overflow:hidden;color:var(--sec);font-size:var(--fs-sm);line-height:1.55;
+.idea-card-summary{display:-webkit-box;margin:var(--sp-10) 0 0;overflow:hidden;color:var(--sec);font-size:var(--fs-sm);line-height:1.55;
   -webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere}
-.idea-card-meta{display:flex;min-width:0;align-items:center;gap:8px;margin-top:10px;padding-top:8px;border-top:1px solid var(--sep)}
+.idea-card-meta{display:flex;min-width:0;align-items:center;gap:var(--sp-8);margin-top:var(--sp-10);padding-top:var(--sp-8);border-top:1px solid var(--sep)}
 .idea-card-source{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ter);font-size:var(--fs-cap)}
-.idea-card-updated{flex:none;margin-left:auto;color:var(--ter);font-size:var(--fs-cap)}
-.idea-card>.row-actions{margin-top:-3px}
+.idea-card-updated{flex:none;margin-left:auto;color:var(--ter);font-size:var(--fs-cap);font-variant-numeric:tabular-nums}
+.idea-card>.row-actions{margin-top:calc(-1 * var(--sp-4))}
 
 /*
  * The detail panel follows a research graph node's layout, content on the left and its document on
  * the right, but keeps the idea itself editable.
  */
-.idea-detail-slot{--detail-panel-width:min(420px,42vw);--detail-panel-gap:28px;position:sticky;top:0;align-self:flex-start;
+.idea-detail-slot{--detail-panel-width:min(420px,42vw);--detail-panel-gap:var(--sp-24);position:sticky;top:0;align-self:flex-start;
   max-height:calc(100vh - 108px)}
 /* The idea itself is the shared IdeaPanel, with the document panes' padding; see ResearchGraph.css. */
 .idea-detail-panel{width:100%;max-height:calc(100vh - 108px);
   box-sizing:border-box;padding:var(--sp-20) var(--sp-24);border-radius:var(--r-card);background:var(--card);
   box-shadow:var(--sh-1);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
-.idea-detail-editor{display:grid;gap:13px;margin-top:18px}
-.idea-detail-editor label{display:grid;gap:6px;color:var(--ter);font-size:var(--fs-sm)}
+.idea-detail-editor{display:grid;gap:var(--sp-14);margin-top:var(--sp-20)}
+.idea-detail-editor label{display:grid;gap:var(--sp-6);color:var(--ter);font-size:var(--fs-sm)}
 .idea-detail-editor .form-control{width:100%}
 .idea-detail-editor .form-textarea{min-height:150px}
 .idea-detail-panel .idea-link-picker{width:100%}
-.idea-missing-project{margin-top:8px;color:var(--warn);font-size:var(--fs-cap)}
+.idea-missing-project{margin-top:var(--sp-8);color:var(--warn);font-size:var(--fs-cap)}
 
 @media (max-width:1150px){
-  .idea-detail-slot{--detail-panel-width:38%;--detail-panel-gap:20px}
+  .idea-detail-slot{--detail-panel-width:38%;--detail-panel-gap:var(--sp-20)}
   .idea-detail-panel{padding:var(--sp-16) var(--sp-20)}
 }

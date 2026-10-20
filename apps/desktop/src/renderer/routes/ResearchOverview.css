@@ -4,9 +4,9 @@
  */
 
 /* Summary counts */
-.ovstats{display:flex;gap:10px;flex-wrap:wrap}
-.ovstat{background:var(--card);border:1px solid var(--sep);border-radius:var(--r-lg);padding:8px 16px;min-width:74px}
-.ovstat b{display:block;font-size:var(--fs-xl);font-weight:700;line-height:var(--lh-tight)}
+.ovstats{display:flex;gap:var(--sp-10);flex-wrap:wrap}
+.ovstat{background:var(--card);border-radius:var(--r-card);padding:var(--sp-8) var(--sp-16);min-width:74px}
+.ovstat b{display:block;font-size:var(--fs-xl);font-weight:var(--fw-bold);line-height:var(--lh-tight);font-variant-numeric:tabular-nums}
 .ovstat span{font-size:var(--fs-sm);color:var(--ter)}
 .ovstat.bad b{color:var(--bad)}
 
@@ -15,7 +15,7 @@
  * the milestones or an actual task.
  */
 .overview-gantt .glabels{flex-basis:258px}
-.overview-gantt .timeline-label-row{gap:7px;cursor:pointer;font-weight:400}
+.overview-gantt .timeline-label-row{gap:var(--sp-8);cursor:pointer;font-weight:var(--fw-regular)}
 .overview-gantt .timeline-project-label{max-width:82px}
 
 /*
@@ -26,32 +26,32 @@
 .ovlist{display:grid;grid-template-columns:max-content var(--project-signal-date-width) var(--project-signal-kind-width) minmax(0,1fr) max-content;
   column-gap:var(--project-signal-gap)}
 .ovlist-row{grid-column:1/-1;display:grid;grid-template-columns:subgrid;
-  align-items:center;column-gap:var(--project-signal-gap);width:100%;min-height:38px;box-sizing:border-box;padding:7px 0;
+  align-items:center;column-gap:var(--project-signal-gap);width:100%;min-height:38px;box-sizing:border-box;padding:var(--sp-6) 0;
   font-size:var(--fs-base);line-height:var(--lh-ui)}
 .ovlist-project{grid-column:1;justify-self:start;max-width:120px}
 .ovlist-when{grid-column:2;display:flex;align-items:center;min-width:0;height:22px;color:var(--ter);font-size:var(--fs-sm)}
-.ovlist-kind{grid-column:3;display:flex;align-items:center;gap:6px;min-width:0;height:22px}
+.ovlist-kind{grid-column:3;display:flex;align-items:center;gap:var(--sp-6);min-width:0;height:22px}
 .ovlist-main{grid-column:4;display:block;min-width:0;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade)}
 .ovlist-meta{grid-column:5;color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
-.ovlist-prefix{color:var(--ter);margin-right:3px}
+.ovlist-prefix{color:var(--ter);margin-right:var(--sp-4)}
 .ovlist-row.progress .ovlist-kind{display:grid;grid-template-columns:7px 32px;justify-content:start}
 
 /* Project Progress: Project is the visual starting point for each row, followed by current/recent/next/risk. */
-.ovpulse-row{display:grid;grid-template-columns:170px minmax(0,1.05fr) minmax(0,1.3fr) minmax(0,1.05fr) 140px;column-gap:18px}
-.ovlist-row.ovpulse-row{grid-template-columns:170px minmax(0,1.05fr) minmax(0,1.3fr) minmax(0,1.05fr) 140px;column-gap:18px;min-height:68px;padding:10px 0}
-.ovpulse-cell{display:flex;min-width:0;flex-direction:column;justify-content:center;gap:5px}
-.ovpulse-cell b{display:block;min-width:0;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade);font-size:var(--fs-base);font-weight:600}
-.ovpulse-latest{font-size:var(--fs-base);font-weight:600}
-.ovpulse-sub{display:block;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:var(--ter);font-size:var(--fs-sm);font-weight:400}
+.ovpulse-row{display:grid;grid-template-columns:170px minmax(0,1.05fr) minmax(0,1.3fr) minmax(0,1.05fr) 140px;column-gap:var(--sp-20)}
+.ovlist-row.ovpulse-row{grid-template-columns:170px minmax(0,1.05fr) minmax(0,1.3fr) minmax(0,1.05fr) 140px;column-gap:var(--sp-20);min-height:68px;padding:var(--sp-10) 0}
+.ovpulse-cell{display:flex;min-width:0;flex-direction:column;justify-content:center;gap:var(--sp-6)}
+.ovpulse-cell b{display:block;min-width:0;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade);font-size:var(--fs-base);font-weight:var(--fw-semibold)}
+.ovpulse-latest{font-size:var(--fs-base);font-weight:var(--fw-semibold)}
+.ovpulse-sub{display:block;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:var(--ter);font-size:var(--fs-sm);font-weight:var(--fw-regular)}
 .ovpulse-cell.signal{align-items:flex-start}
 
 /* Recent progress juxtaposed with next milestones */
-.ovcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:0 32px;align-items:start;border-top:1px solid var(--sep2);margin-top:24px;padding-top:16px}
+.ovcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:0 var(--sp-32);align-items:start;border-top:1px solid var(--sep2);margin-top:var(--sp-24);padding-top:var(--sp-16)}
 @media (max-width:900px){
-  .ovcols{grid-template-columns:1fr;gap:16px}
+  .ovcols{grid-template-columns:1fr;gap:var(--sp-16)}
   .ovlist{grid-template-columns:max-content var(--project-signal-date-width) var(--project-signal-kind-width) minmax(0,1fr)}
   .ovlist-project{max-width:96px}
   .ovlist-meta{display:none}
-  .ovlist-row.ovpulse-row{grid-template-columns:140px minmax(0,1fr) minmax(0,1.1fr) minmax(0,1fr) 108px;column-gap:10px}
+  .ovlist-row.ovpulse-row{grid-template-columns:140px minmax(0,1fr) minmax(0,1.1fr) minmax(0,1fr) 108px;column-gap:var(--sp-10)}
 }
 

@@ -2,10 +2,10 @@
 
 /* Linked ideas, a reverse lookup of the ideas that name this project; StructuredList owns embedded-list dividers. */
 .project-ideas{display:grid}
-.project-idea-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(160px,34%);align-items:center;gap:10px;
-  min-height:38px;padding:7px 2px}
-.project-idea-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
-.project-idea-flags{display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0}
+.project-idea-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(160px,34%);align-items:center;gap:var(--sp-10);
+  min-height:38px;padding:var(--sp-6) var(--sp-2)}
+.project-idea-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:var(--fw-semibold)}
+.project-idea-flags{display:flex;align-items:center;justify-content:flex-end;gap:var(--sp-6);min-width:0}
 .project-idea-source{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ter);font-size:var(--fs-sm);text-align:right}
 @media (max-width:900px){
   .project-idea-row{grid-template-columns:minmax(0,1fr) auto}
@@ -17,24 +17,24 @@
 .desk .desk-body>.wkpage.project-detail-page{max-width:var(--pagew)}
 .project-detail-panel>.detail-panel__content{min-width:0}
 /* Node panel: the Markdown document, branch results and progress records an agent maintains; the App only reads them. */
-.wkpage.node-reading{gap:28px}
+.wkpage.node-reading{gap:var(--sp-24)}
 /* Fixed height with its own scroll: the page keeps its height and position whichever node is open. */
 .wkside.node-document-pane{flex:0 0 520px;width:520px;max-width:min(520px,48vw);height:calc(100vh - 190px);
   box-sizing:border-box;padding:var(--sp-20) var(--sp-24);border:0;border-radius:var(--r-card);background:var(--card);
   box-shadow:var(--sh-1);overscroll-behavior:auto}
 @media (max-width:1150px){
-  .wkpage.node-reading{gap:20px}
+  .wkpage.node-reading{gap:var(--sp-20)}
   .wkside.node-document-pane{flex-basis:44%;width:44%;max-width:44%;padding:var(--sp-16) var(--sp-20)}
 }
 
 /* The Workspace is a connection, not core metadata: its path is truncated, and a dot names its state, in words when it is not connected. */
-.workspace-field{display:flex;align-items:center;gap:4px;min-width:0}
+.workspace-field{display:flex;align-items:center;gap:var(--sp-4);min-width:0}
 .workspace-root{display:flex;align-items:center;gap:var(--sp-6);min-width:0;flex:1;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:0}
 .workspace-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.workspace-kinds{margin-bottom:16px}
+.workspace-kinds{margin-bottom:var(--sp-16)}
 .workspace-local{min-width:90px}
-.workspace-form{display:grid;gap:10px}
-.workspace-form label{display:grid;grid-template-columns:66px minmax(0,1fr);align-items:center;gap:12px;
+.workspace-form{display:grid;gap:var(--sp-10)}
+.workspace-form label{display:grid;grid-template-columns:66px minmax(0,1fr);align-items:center;gap:var(--sp-12);
   color:var(--ter);font-size:var(--fs-sm)}
 .workspace-form .form-control{width:100%;font-size:var(--fs-base)}
 .workspace-form .form-input[type="number"]{-moz-appearance:textfield}
