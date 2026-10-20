@@ -17,6 +17,7 @@ import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError } from '../PageShell.js'
 import { useDrafts } from '../../hooks/useDrafts.js'
 import { useGenerations } from '../../hooks/useGenerations.js'
+import { useFollowEnd } from '../../hooks/useFollowEnd.js'
 import { useNoModelChats } from '../../hooks/useNoModelChats.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { TitleNote } from '../TitleNote.js'
@@ -55,8 +56,12 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const { running, run, stop } = useGenerations()
   const { noModel, track } = useNoModelChats()
   const [error, setError] = useState<string | null>(null)
-  const stream = useRef<HTMLDivElement>(null)
-  const streamFade = useScrollFade('y', stream)
+  const streamFade = useScrollFade('y')
+  const { ref: followRef, follow } = useFollowEnd<HTMLDivElement>()
+  const stream = useCallback((area: HTMLDivElement | null) => {
+    streamFade(area)
+    followRef(area)
+  }, [streamFade, followRef])
   const composer = useRef<HTMLTextAreaElement>(null)
   const reportError = useCallback((cause: unknown) => setError(errorLabel(m, cause)), [m])
   const paperId = paper?.id ?? null
@@ -69,6 +74,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     setMessages(null)
     setSavingIdea(false)
     setError(null)
+    follow()
     if (paperId === null) return
     let live = true
     void chat.forPaper(paperId).then((value) => {
@@ -79,7 +85,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
       bump()
     }).catch(reportError)
     return () => { live = false }
-  }, [paperId, bump, reportError])
+  }, [paperId, bump, reportError, follow])
 
   useEffect(() => {
     if (sessionId === null) return
@@ -87,10 +93,6 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     void chat.messages(sessionId).then((value) => { if (live) setMessages(value) }).catch(reportError)
     return () => { live = false }
   }, [sessionId, revision, reportError])
-
-  useEffect(() => {
-    stream.current?.scrollTo?.({ top: stream.current.scrollHeight })
-  }, [messages])
 
   useEffect(() => {
     if (prompt === null || paperId === null) return
@@ -102,6 +104,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     const text = draft.trim()
     if (text === '' || paperId === null || session === null || sending) return
     drafts.drop(paperId)
+    follow()
     void run(session.id, write(track(session.id, chat.send(session.id, text))))
   }
 
@@ -136,7 +139,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
         </FadeText>
       </header>
       <PageError error={error} />
-      <div className="msgs" ref={streamFade}>
+      <div className="msgs" ref={stream}>
         {messages === null
           ? (error === null ? <div className="mwrap"><LoadingPlaceholder shape="lines" /></div> : null)
           : messages.length === 0 && error === null

@@ -38,6 +38,7 @@ const api = vi.hoisted(() => ({
     onResize: vi.fn(), onReset: vi.fn(),
   },
   collapsed: false,
+  revision: 0,
 }))
 
 vi.mock('../ipc.js', () => ({
@@ -54,7 +55,7 @@ vi.mock('../ipc.js', () => ({
 vi.mock('../shell/AppShell.js', () => ({
   useNotice: () => api.notice,
   useJump: () => ({ jump: null, open: api.open, returnTo: vi.fn() }),
-  useVaultRevision: () => ({ revision: 0, bump: api.bump }),
+  useVaultRevision: () => ({ revision: api.revision, bump: api.bump }),
   usePaperChatGrip: () => api.grip,
   usePaperChatCollapsed: () => api.collapsed,
 }))
@@ -98,6 +99,7 @@ describe('PaperChat', () => {
     vi.clearAllMocks()
     api.writes.length = 0
     api.collapsed = false
+    api.revision = 0
   })
 
   afterEach(() => {
@@ -362,5 +364,41 @@ describe('PaperChat', () => {
     act(() => { document.dispatchEvent(new MouseEvent('mousemove', { clientX: 140 })) })
     act(() => { document.dispatchEvent(new MouseEvent('mouseup')) })
     expect(api.grip.onResize).toHaveBeenLastCalledWith(340)
+  })
+
+  it('消息列表停在末尾时新消息滚进视野,往上翻着读时不抢,自己发出的消息总会滚进视野', async () => {
+    const host = await mountChat()
+    const stream = host.querySelector<HTMLElement>('.msgs')!
+    let top = 0
+    let length = 600
+    Object.defineProperty(stream, 'clientHeight', { configurable: true, get: () => 300 })
+    Object.defineProperty(stream, 'scrollHeight', { configurable: true, get: () => length })
+    Object.defineProperty(stream, 'scrollTop', {
+      configurable: true, get: () => top, set: (value: number) => { top = Math.min(value, Math.max(length - 300, 0)) },
+    })
+    const said: ChatMessage[] = []
+    /** An answer lands in the vault: the chat reloads and its list grows by one 200px message. */
+    const arrive = async () => {
+      said.push({ id: `m${said.length}`, role: 'ai', runs: [{ kind: 'text', text: '回答' }], actions: [] })
+      api.messages.mockResolvedValueOnce([...said])
+      api.revision += 1
+      length += 200
+      await showPaper(PAPER)
+    }
+
+    await arrive()
+    expect(stream.scrollTop).toBe(500)
+    act(() => {
+      stream.scrollTop = 100
+      stream.dispatchEvent(new Event('scroll'))
+    })
+    await arrive()
+    expect(stream.scrollTop).toBe(100)
+
+    const composer = host.querySelector<HTMLTextAreaElement>('[aria-label="向当前论文提问"]')!
+    act(() => setValue(composer, '为什么'))
+    act(() => { composer.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })) })
+    await act(async () => { await Promise.resolve() })
+    expect(stream.scrollTop).toBe(700)
   })
 })

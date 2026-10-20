@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { watchSize } from '../lib/watch-size.js'
 
 /** Within this many px of an edge, the content counts as reaching it. */
 const SLACK = 1
@@ -15,8 +16,7 @@ export function useScrollFade<T extends HTMLElement>(
   axis: 'x' | 'y' | 'both', held?: { current: T | null },
 ): (area: T | null) => void {
   const node = useRef<HTMLElement | null>(null)
-  const sizes = useRef<ResizeObserver | null>(null)
-  const children = useRef<MutationObserver | null>(null)
+  const unwatch = useRef<(() => void) | null>(null)
   const update = useCallback(() => {
     const area = node.current
     if (area === null) return
@@ -45,23 +45,13 @@ export function useScrollFade<T extends HTMLElement>(
       node.current.removeEventListener('scroll', update)
       delete node.current.dataset.fade
     }
-    sizes.current?.disconnect()
-    children.current?.disconnect()
+    unwatch.current?.()
+    unwatch.current = null
     node.current = area
     if (area !== null) {
       area.addEventListener('scroll', update, { passive: true })
       // The content can grow or the area shrink without a render of the caller, such as a sibling appearing.
-      const observed = new ResizeObserver(update)
-      const watch = () => {
-        observed.disconnect()
-        observed.observe(area)
-        for (const child of area.children) observed.observe(child)
-      }
-      watch()
-      const added = new MutationObserver(() => { watch(); update() })
-      added.observe(area, { childList: true })
-      sizes.current = observed
-      children.current = added
+      unwatch.current = watchSize(area, update)
     }
     update()
   }, [update, held])

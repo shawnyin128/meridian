@@ -22,6 +22,7 @@ import {
 } from '../components/PageShell.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { useDrafts } from '../hooks/useDrafts.js'
+import { useFollowEnd } from '../hooks/useFollowEnd.js'
 import { useGenerations } from '../hooks/useGenerations.js'
 import { useNoModelChats } from '../hooks/useNoModelChats.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -118,7 +119,8 @@ export function Chat() {
   const [rows, setRows] = useState<PaperRow[]>([])
   const [pages, setPages] = useState<WikiAggregationCard[]>([])
   const [error, setError] = useState<string | null>(null)
-  const stream = useRef<HTMLDivElement>(null)
+  // The page body, not the message list, scrolls the conversation.
+  const { ref: followRef, follow } = useFollowEnd<HTMLDivElement>()
   const composer = useRef<HTMLTextAreaElement>(null)
   const consumed = useRef(0)
   const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
@@ -133,22 +135,24 @@ export function Chat() {
     void wiki.cards().then(setPages).catch(reportError)
   }, [revision, reportError])
 
-  useEffect(() => { setMessages(null) }, [id])
+  useEffect(() => {
+    setMessages(null)
+    follow()
+  }, [id, follow])
   useEffect(() => {
     if (id === null) return
     void chat.messages(id).then(setMessages).catch(reportError)
   }, [id, revision, reportError])
-
-  // As in the demo's add(): scroll the message list to the bottom whenever a message is added.
-  useEffect(() => { stream.current?.scrollTo?.({ top: stream.current.scrollHeight }) }, [messages])
 
   const mentions = useMemo(() => mentionsOf(projects, rows, pages, fmt, m), [projects, rows, pages, fmt, m])
   // Candidates come from the current input and the loaded vault data: empty until the data arrives,
   // after which the picker opens by itself.
   const suggest = useMemo(() => (mentioning ? hitsOf(draft.trim(), mentions) : []), [mentioning, draft, mentions])
 
-  const send = useCallback(
-    (session: string, text: string) => run(session, write(track(session, chat.send(session, text)))), [run, write, track])
+  const send = useCallback((session: string, text: string) => {
+    follow()
+    return run(session, write(track(session, chat.send(session, text))))
+  }, [follow, run, write, track])
 
   const stopSending = () => {
     if (id === null) return
@@ -231,11 +235,11 @@ export function Chat() {
         </PageTitle>
       </PageHeader>
 
-      <PageBody>
+      <PageBody ref={followRef}>
         <div className="stream">
           <PageError error={error} />
 
-          <div className="msgs" ref={stream}>
+          <div className="msgs">
             {messages === null
               ? (id !== null && error === null ? <div className="mwrap"><LoadingPlaceholder shape="lines" /></div> : null)
               : messages.length === 0

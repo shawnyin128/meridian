@@ -2,7 +2,7 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ChatSendResult } from '../../shared/contract.js'
+import type { ChatMessage, ChatSendResult } from '../../shared/contract.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { TOOLTIP_DELAY } from '../components/Tooltip.js'
@@ -20,12 +20,16 @@ const api = vi.hoisted(() => ({
     milestones: [], recentEvents: [],
   }])),
   listPapers: vi.fn(() => Promise.resolve({ rows: [], total: 0 })),
+  messages: vi.fn<() => Promise<ChatMessage[]>>(() => Promise.resolve([])),
 }))
 
-const session = vi.hoisted(() => ({ id: 'chat-1' }))
+const session = vi.hoisted(() => ({ id: 'chat-1', revision: 0 }))
+
+/** The callbacks of every ResizeObserver made. */
+const resized: (() => void)[] = []
 
 vi.mock('../ipc.js', () => ({
-  chat: { send: api.send, messages: () => Promise.resolve([]), cancel: api.cancel, create: vi.fn() },
+  chat: { send: api.send, messages: api.messages, cancel: api.cancel, create: vi.fn() },
   feed: { append: vi.fn() },
   idea: { create: vi.fn() },
   papers: { list: api.listPapers },
@@ -38,7 +42,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useCrumbTail: () => {},
   useJump: () => ({ jump: null, open: vi.fn(), returnTo: vi.fn() }),
   useChatSession: () => ({ id: session.id, title: '讨论', archived: false, select: vi.fn() }),
-  useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
+  useVaultRevision: () => ({ revision: session.revision, bump: vi.fn() }),
 }))
 
 vi.mock('../hooks/useVaultWrite.js', () => ({
@@ -61,11 +65,17 @@ describe('Chat composer', () => {
 
   beforeEach(async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
-    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    resized.length = 0
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: () => void) { resized.push(callback) }
+      observe() {}
+      disconnect() {}
+    })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
     vi.clearAllMocks()
     session.id = 'chat-1'
+    session.revision = 0
     const host = document.createElement('div')
     document.body.append(host)
     root = createRoot(host)
@@ -250,5 +260,43 @@ describe('Chat composer', () => {
     width.mockReturnValue(160)
     expect(tip()).toBe('草稿树项目')
     vi.useRealTimers()
+  })
+
+  it('对话在页面主体里滚动:停在末尾时新消息滚进视野,往上翻着读时不抢,自己发出的消息总会滚进视野', async () => {
+    const body = document.querySelector<HTMLElement>('.desk-body')!
+    let top = 0
+    let length = 600
+    Object.defineProperty(body, 'clientHeight', { configurable: true, get: () => 300 })
+    Object.defineProperty(body, 'scrollHeight', { configurable: true, get: () => length })
+    Object.defineProperty(body, 'scrollTop', {
+      configurable: true, get: () => top, set: (value: number) => { top = Math.min(value, Math.max(length - 300, 0)) },
+    })
+    const said: ChatMessage[] = []
+    /** An answer lands in the vault: the chat reloads and its conversation grows by 200px. */
+    const arrive = async () => {
+      said.push({ id: `m${said.length}`, role: 'ai', runs: [{ kind: 'text', text: '回答' }], actions: [] })
+      api.messages.mockResolvedValueOnce([...said])
+      session.revision += 1
+      length += 200
+      await act(async () => {
+        root!.render(<MessagesProvider><Chat /></MessagesProvider>)
+        await Promise.resolve()
+      })
+      act(() => { for (const callback of resized) callback() })
+    }
+
+    await arrive()
+    expect(body.scrollTop).toBe(500)
+    act(() => {
+      body.scrollTop = 100
+      body.dispatchEvent(new Event('scroll'))
+    })
+    await arrive()
+    expect(body.scrollTop).toBe(100)
+
+    act(() => setValue(composer, '为什么'))
+    press('Enter')
+    await act(async () => { await Promise.resolve() })
+    expect(body.scrollTop).toBe(700)
   })
 })
