@@ -80,7 +80,7 @@ describe('ReadingNotes', () => {
         <Notes reading={READING} currentPage={1} saving={false} onJump={vi.fn()} onMutate={async () => true} />
       </MessagesProvider>,
     ))
-    const saves = [...host.querySelectorAll('.btn.pri')].map((button) => button.textContent)
+    const saves = [...host.querySelectorAll('.note-compose > .btn, .reading-actions > .btn')].map((button) => button.textContent)
     expect(saves).toHaveLength(3)
     expect(new Set(saves)).toEqual(new Set(['保存']))
   })
