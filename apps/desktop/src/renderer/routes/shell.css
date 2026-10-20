@@ -5,7 +5,7 @@
  */
 
 /* Message stream shared by the feed and chat: one item per row in a centered, fixed-width column */
-.msgs{flex:1;overflow:auto;padding:24px 0;display:flex;flex-direction:column;gap:20px}
+.msgs{flex:1;overflow:auto;padding:var(--sp-24) 0;display:flex;flex-direction:column;gap:var(--sp-20)}
 .mwrap{width:min(var(--chatw),92%);margin:0 auto}
 
 /*
@@ -16,7 +16,7 @@
  * Hover is an inset shadow and press a background image, so both lie over any fill; solid fills
  * take the dark overlays, which keep their white text above 4.5:1.
  */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-6);height:30px;padding:0 var(--sp-12);border:0;border-radius:var(--r-control);background-color:var(--field);color:var(--ink);font-family:var(--sans);font-size:var(--fs-base);font-weight:500;line-height:1;white-space:nowrap;cursor:pointer;transition:box-shadow var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-6);height:30px;padding:0 var(--sp-12);border:0;border-radius:var(--r-control);background-color:var(--field);color:var(--ink);font-family:var(--sans);font-size:var(--fs-base);font-weight:var(--fw-medium);line-height:1;white-space:nowrap;cursor:pointer;transition:box-shadow var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out)}
 .btn.sm{height:24px;padding:0 var(--sp-10);font-size:var(--fs-sm)}
 .btn.pri{background-color:var(--accent-solid);color:var(--on-accent)}
 .btn.ghost{background-color:transparent;color:var(--sec)}
@@ -32,34 +32,34 @@
 .btn:disabled{opacity:.45;cursor:default;box-shadow:none}
 /* An applied read-state filter looks pressed; solid accent is kept for primary actions. */
 .read-state-filter.on{background-color:var(--selected);border-color:transparent;color:var(--on-selected)}
-.add-action{display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap}
+.add-action{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-6);white-space:nowrap}
 .add-action>svg{width:12px;height:12px;flex:none}
 
 /* The paper table's group bar */
-.filters{display:flex;gap:6px;margin-bottom:12px}
+.filters{display:flex;gap:var(--sp-6);margin-bottom:var(--sp-12)}
 
 /*
  * Management row: a name followed by a few buttons at the end of the row. The demo uses it to manage
  * watches; the archived chats list in Settings has the same shape.
  */
-.wlist{margin-top:6px}
-.wrow{display:flex;align-items:center;gap:8px;min-height:40px;padding:8px 12px;font-size:13px}
+.wlist{margin-top:var(--sp-6)}
+.wrow{display:flex;align-items:center;gap:var(--sp-8);min-height:40px;padding:var(--sp-8) var(--sp-12);font-size:var(--fs-base)}
 .wrow .nm{display:flex;align-items:center;flex:1;min-width:0;min-height:22px;line-height:22px}
 
-.discovery-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-4px 0 16px}
+.discovery-summary{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-12);margin:calc(-1 * var(--sp-4)) 0 var(--sp-16)}
 .discovery-note{margin:0;color:var(--ter);font-size:var(--fs-sm)}
-.direction-panel{margin:0 0 18px}
+.direction-panel{margin:0 0 var(--sp-16)}
 .direction-project+.direction-project{border-top:1px solid var(--sep)}
-.direction-project>header{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--field);font-size:var(--fs-sm)}
+.direction-project>header{display:flex;align-items:center;gap:var(--sp-10);padding:var(--sp-8) var(--sp-12);background:var(--field);font-size:var(--fs-sm)}
 .direction-project>header strong{color:var(--ink)}
 .direction-project>header span{color:var(--ter)}
 .direction-project>header .btn{margin-left:auto}
-.direction-row{display:flex;align-items:center;gap:14px;min-height:46px;padding:7px 12px;border-top:1px solid var(--sep2)}
+.direction-row{display:flex;align-items:center;gap:var(--sp-14);min-height:46px;padding:var(--sp-8) var(--sp-12);border-top:1px solid var(--sep2)}
 .direction-row.disabled .direction-main{opacity:.52}
 .direction-main{min-width:0;flex:1}
-.direction-name{display:flex;align-items:center;gap:7px;color:var(--ink);font-size:var(--fs-base)}
-.direction-seeds{margin-top:3px;color:var(--ter);font-size:var(--fs-cap);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.direction-actions{display:flex;align-items:center;gap:6px;flex:none}
+.direction-name{display:flex;align-items:center;gap:var(--sp-8);color:var(--ink);font-size:var(--fs-base)}
+.direction-seeds{margin-top:var(--sp-2);color:var(--ter);font-size:var(--fs-cap);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.direction-actions{display:flex;align-items:center;gap:var(--sp-6);flex:none}
 
 /*
  * Menus (.ctxmenu) and candidate lists (.pickhits) share one surface and one item anatomy; Radix owns
@@ -77,35 +77,35 @@
 .mi[data-disabled],button.mi:disabled{opacity:.45;cursor:default}
 /* A candidate with a grey second line under its title, and a row that creates what was typed */
 .mi.two-line{flex-direction:column;align-items:stretch;gap:0;padding-block:var(--sp-4)}
-.mi .rt{font-weight:500}
+.mi .rt{font-weight:var(--fw-medium)}
 .mi .rm{font-size:var(--fs-sm);color:var(--ter)}
 .mi.mk{color:var(--ter)}
 .mi.mk svg{width:11px;height:11px;flex-shrink:0}
 /* The divider between groups of items, and the label that heads a candidate list or a group in it */
 .msep{height:1px;background:var(--sep2);margin:var(--sp-4) var(--sp-6)}
 .pickhits .rh,.pickhits .rg{padding:var(--sp-6) var(--row-menu-pad) var(--sp-4);font-size:var(--fs-cap);color:var(--ter)}
-.pickhits .rg{font-weight:600}
+.pickhits .rg{font-weight:var(--fw-semibold)}
 /* The one checked mark, in the slot before an item's label */
 .mi .ck{width:13px;display:flex;align-items:center;flex-shrink:0}
 .mi .ck>span{display:flex}
 .cki{width:13px;height:13px;vertical-align:-2px}
 .mi-key{margin-left:auto;color:var(--ter);font-size:var(--fs-cap)}
 /* Input row in a popover */
-.mi-in{padding:6px 8px}
+.mi-in{padding:var(--sp-6) var(--sp-8)}
 .mi-in .form-input{width:100%}
 
 /*
  * Last header cell of both tables: the add-column + and the column-settings gear, nested icon
  * buttons that stay hidden until the pointer enters the header or the button itself. Two 24px
  * buttons fit in 52px once the cell's padding drops from the 10px of .ptable th / .cmp th to 2px,
- * and 3px above and below keep the header as tall as one with text only.
+ * which also keeps the header no taller than one with text only.
  */
 .th-add{width:52px;white-space:nowrap}
 /*
  * Each table's th sets its padding with a selector more specific than .th-add, so this padding
  * override has to name the table too.
  */
-.ptable th.th-add,.cmp th.th-add{padding:3px 2px}
+.ptable th.th-add,.cmp th.th-add{padding:var(--sp-2)}
 .colbtn{opacity:0;pointer-events:none;vertical-align:middle}
 thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events:auto}
 
@@ -113,12 +113,12 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .ctxmenu:focus-visible,.mi[data-highlighted]:focus-visible{outline:0}
 
 /* Second popover form, for rename/edit (FloatingTextEditor, project rename): the demo's .ctxmenu.drop. */
-.ctxmenu.drop{padding:0;border-radius:var(--r-lg);overflow:hidden;min-width:190px}
+.ctxmenu.drop{padding:0;border-radius:var(--r-menu);overflow:hidden;min-width:190px}
 
 /* A chip tag in a row of them: the paper table's tag cells and the project's links section */
-.tagchip{margin:1px 4px 1px 0}
+.tagchip{margin:1px var(--sp-4) 1px 0}
 
-.wkprops{display:grid;grid-template-columns:44px minmax(0,1fr);width:100%;max-width:100%;min-width:0;row-gap:6px;column-gap:12px;font-size:var(--fs-sm);line-height:var(--lh-ui)}
+.wkprops{display:grid;grid-template-columns:44px minmax(0,1fr);width:100%;max-width:100%;min-width:0;row-gap:var(--sp-6);column-gap:var(--sp-12);font-size:var(--fs-sm);line-height:var(--lh-ui)}
 .wkprops>*{min-width:0}
 /*
  * The label column is only 44px. Labels of four Chinese characters, such as "Split on" and "Restart
@@ -132,7 +132,7 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
  * replaces just that value with an input in the same place.
  */
 .metadata-field{display:block;width:100%;max-width:100%;min-width:0}
-.metadata-editable{display:block;box-sizing:border-box;width:100%;min-width:0;margin:-2px 0;padding:2px 0;border:0;border-radius:var(--r-xs);background:transparent;color:var(--sec);font:inherit;line-height:inherit;text-align:left;overflow-wrap:anywhere;cursor:text}
+.metadata-editable{display:block;box-sizing:border-box;width:100%;min-width:0;margin:calc(-1 * var(--sp-2)) 0;padding:var(--sp-2) 0;border:0;border-radius:var(--r-xs);background:transparent;color:var(--sec);font:inherit;line-height:inherit;text-align:left;overflow-wrap:anywhere;cursor:text}
 .metadata-editable:hover{background:var(--field);color:var(--ink)}
 .pv.metadata-editable{cursor:pointer}
 .form-control.metadata-input.multiline{display:block;width:100%;field-sizing:content;resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -143,10 +143,10 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
  * The demo gives every .wkrel .tagchip the pointer cursor; here only chips with a real link target
  * get it.
  */
-.wkpage{display:flex;gap:32px;align-items:flex-start;font-size:var(--fs-read);line-height:var(--lh-read)}
+.wkpage{display:flex;gap:var(--sp-32);align-items:flex-start;font-size:var(--fs-read);line-height:var(--lh-read)}
 .wkmain{flex:1;min-width:0}
-.wkpage .lm{font-size:12px}
-.wkside{box-sizing:border-box;flex:0 0 260px;width:260px;max-width:260px;min-width:0;font-size:var(--fs-sm);line-height:var(--lh-ui);border-left:1px solid var(--sep2);padding-left:24px;
+.wkpage .lm{font-size:var(--fs-sm)}
+.wkside{box-sizing:border-box;flex:0 0 260px;width:260px;max-width:260px;min-width:0;font-size:var(--fs-sm);line-height:var(--lh-ui);border-left:1px solid var(--sep2);padding-left:var(--sp-24);
   position:sticky;top:0;max-height:calc(100vh - 190px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
 /* The rail clips, so it keeps the ring room at its end and foot, reaching out at its end by as much: its content keeps its width. */
 .wkside:not(.node-document-pane){flex-basis:calc(260px + var(--ring-room));width:calc(260px + var(--ring-room));
@@ -154,8 +154,8 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
   padding-bottom:var(--ring-room)}
 /* In a window too short for the column to stay pinned with room to read, it scrolls with the page. */
 @media (max-height:860px){.wkside:not(.node-document-pane){position:static;max-height:none}}
-.wkrel{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0}
-.wkrel .rl{font-size:12px;color:var(--ter);width:28px;flex-shrink:0}
+.wkrel{display:flex;gap:var(--sp-6);align-items:center;flex-wrap:wrap;margin:var(--sp-4) 0}
+.wkrel .rl{font-size:var(--fs-sm);color:var(--ter);width:28px;flex-shrink:0}
 .wkrel .tagchip{cursor:default;margin:0;position:relative}
 .wkrel .tagchip[data-wk]{cursor:pointer}
 
@@ -165,46 +165,46 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .attn{padding:0;margin-bottom:0}
 .attnrow{display:grid;grid-template-columns:var(--project-signal-kind-width) var(--project-signal-date-width) minmax(0,1fr);
   align-items:center;column-gap:var(--project-signal-gap);
-  padding:8px 0;font-size:var(--fs-base);cursor:default}
+  padding:var(--sp-8) 0;font-size:var(--fs-base);cursor:default}
 /* As in the demo, only rows linked to a wiki page are clickable. */
 .attnrow[data-wk]{cursor:pointer}
 .attnrow[data-wk]:hover{background:var(--hover)}
 .attn-text{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.attn+.wkpage{margin-top:24px}
+.attn+.wkpage{margin-top:var(--sp-24)}
 
-.tlrow{font-size:13px;padding:8px 2px}
-.tlrow .tm{font-size:12px;color:var(--ter)}
-.macts{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.tlrow{font-size:var(--fs-base);padding:var(--sp-8) var(--sp-2)}
+.tlrow .tm{font-size:var(--fs-sm);color:var(--ter)}
+.macts{display:flex;gap:var(--sp-8);margin-top:var(--sp-12);flex-wrap:wrap}
 
 /*
  * Markdown body: project notes and wiki pages share one rendering, and the rendered and source views
  * use the same container
  */
-.md{line-height:var(--lh-read);padding:2px}
+.md{line-height:var(--lh-read);padding:var(--sp-2)}
 .md.src{white-space:pre-wrap;outline:none;caret-color:var(--ink)}
-.md p{margin:0 0 10px}
+.md p{margin:0 0 var(--sp-10)}
 .md p:last-child,.md ul:last-child,.md ol:last-child{margin-bottom:0}
 .md h1{font-size:var(--fs-xl);line-height:var(--lh-tight)}
 .md h2{font-size:var(--fs-title);line-height:var(--lh-tight)}
 .md h3{font-size:var(--fs-read)}
 .md h4{font-size:var(--fs-base)}
-.md h1,.md h2,.md h3,.md h4{margin:16px 0 6px;font-weight:700}
-.md ul,.md ol{margin:0 0 10px;padding-left:20px}
-.md li{margin:2px 0}
-.md code{font-family:var(--mono);font-size:12px;background:var(--field);border-radius:var(--r-xs);padding:1px 6px}
-.md pre{margin:0 0 10px;padding:10px 12px;background:var(--field);border-radius:var(--r-md);overflow:auto;font-size:12px;line-height:var(--lh-ui)}
+.md h1,.md h2,.md h3,.md h4{margin:var(--sp-16) 0 var(--sp-6);font-weight:var(--fw-bold)}
+.md ul,.md ol{margin:0 0 var(--sp-10);padding-left:var(--sp-20)}
+.md li{margin:var(--sp-2) 0}
+.md code{font-family:var(--mono);font-size:var(--fs-sm);background:var(--field);border-radius:var(--r-xs);padding:1px var(--sp-6)}
+.md pre{margin:0 0 var(--sp-10);padding:var(--sp-10) var(--sp-12);background:var(--field);border-radius:var(--r-md);overflow:auto;font-size:var(--fs-sm);line-height:var(--lh-ui)}
 .md pre code{background:none;padding:0}
-.md blockquote{margin:0 0 10px;padding:2px 12px;border-left:3px solid var(--sep2);color:var(--sec)}
-.md table{border-collapse:collapse;margin:0 0 10px;font-size:var(--fs-base);display:block;max-width:100%;overflow-x:auto}
-.md th,.md td{border:1px solid var(--sep2);padding:5px 10px;text-align:left;vertical-align:top}
-.md th{background:var(--hover);font-weight:600}
-.md hr{border:0;border-top:1px solid var(--sep2);margin:16px 0}
+.md blockquote{margin:0 0 var(--sp-10);padding:var(--sp-2) var(--sp-12);border-left:3px solid var(--sep2);color:var(--sec)}
+.md table{border-collapse:collapse;margin:0 0 var(--sp-10);font-size:var(--fs-base);display:block;max-width:100%;overflow-x:auto}
+.md th,.md td{border:1px solid var(--sep2);padding:var(--sp-6) var(--sp-10);text-align:left;vertical-align:top}
+.md th{background:var(--hover);font-weight:var(--fw-semibold)}
+.md hr{border:0;border-top:1px solid var(--sep2);margin:var(--sp-16) 0}
 .md img{max-width:100%}
-.md .katex-display{margin:10px 0}
+.md .katex-display{margin:var(--sp-10) 0}
 .cnt{border:0;background:transparent;padding:0;font:inherit;color:inherit;cursor:pointer}
 .cnt:hover{color:var(--ink);text-decoration:underline}
-.nrow{display:grid;padding:8px 2px}
-.nrow .nq{font-size:12px;color:var(--ter);font-style:italic;background:var(--field);border-radius:6px;padding:5px 8px;margin-bottom:6px}
+.nrow{display:grid;padding:var(--sp-8) var(--sp-2)}
+.nrow .nq{font-size:var(--fs-sm);color:var(--ter);font-style:italic;background:var(--field);border-radius:var(--r-sm);padding:var(--sp-6) var(--sp-8);margin-bottom:var(--sp-6)}
 .nrow .nt{font-size:var(--fs-sm);color:var(--ink);overflow-wrap:anywhere}
 
 /* In-place draft inputs and pick rows fill the rest of their row */

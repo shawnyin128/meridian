@@ -78,8 +78,6 @@ const PENDING = new Set([
   'routes/Trash.css',
   'routes/Watches.css',
   'routes/Wiki.css',
-  'routes/shell.css',
-  'shell/AppShell.css',
 ].map((file) => `${RENDERER}${file}`))
 
 function lineNumber(text, offset) {
