@@ -73,6 +73,20 @@ describe('项目页时间线上的里程碑', () => {
     await act(async () => { input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })) })
   }
 
+  it('在里程碑行用键盘按下，在今天打开新建里程碑的小窗；按 Esc 关掉后焦点回到这一行', async () => {
+    const lane = host.querySelector<HTMLButtonElement>('.msrow .glane-new')!
+    await act(async () => { lane.focus() })
+    await act(async () => { lane.click() })
+    expect(heading()).toBe('新建里程碑 · 9月16日')
+    expect(document.activeElement).toBe(input())
+    await act(async () => { input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })) })
+    // Radix returns focus on the task after the popover unmounts.
+    await act(async () => { await new Promise((done) => setTimeout(done, 0)) })
+    expect(heading()).toBeUndefined()
+    expect(document.activeElement).toBe(lane)
+    expect(calls.onCreateMilestone).not.toHaveBeenCalled()
+  })
+
   it('点里程碑行的空白处,和总览一样在点到的地方打开新建里程碑的小窗', async () => {
     await act(async () => { host.querySelector<HTMLElement>('.msrow')!.click() })
     expect(heading()).toEqual(expect.stringMatching(/^新建里程碑 · /))

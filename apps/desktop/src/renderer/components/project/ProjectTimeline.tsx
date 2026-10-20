@@ -45,9 +45,7 @@ export function ProjectTimeline({
       {...editor.board}
       hoverMilestoneId={hoverMilestone}
       onHoverMilestone={(_projectId, milestoneId) => onHoverMilestone(milestoneId)}
-      onLabelClick={(_projectId, kind, itemId) => {
-        if (kind === 'task' && itemId) onLocateTask(itemId)
-      }}
+      onTaskLabelClick={(_projectId, taskId) => onLocateTask(taskId)}
       onTaskClick={(_projectId, taskId) => onLocateTask(taskId)}
       onMoveTask={(_projectId, taskId, start, end, days) => onMoveTask(taskId, start, end, days)}
       onMoveTaskWindow={(_projectId, taskId, patch, slots) => onMoveTaskWindow(taskId, patch, slots)}

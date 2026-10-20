@@ -361,8 +361,8 @@ function OverviewGantt({
           onClick={() => { editor.close(); setShowInactive((shown) => !shown) }}
         >{m.research.overview.historyProjects}</ToolbarButton>
       )}
-      onLabelClick={(projectId, kind, itemId) => (kind === 'task' && itemId !== undefined
-        ? onOpenTask(projectId, itemId) : onOpenProject(projectId))}
+      onTaskLabelClick={onOpenTask}
+      onProjectLabelClick={onOpenProject}
       onTaskClick={onOpenTask}
       onMoveTask={onMoveTask}
       onMoveTaskWindow={onMoveTaskWindow}

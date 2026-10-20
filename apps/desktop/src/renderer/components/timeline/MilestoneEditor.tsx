@@ -12,8 +12,9 @@ type MilestoneEdit =
 
 /**
  * The one milestone editor of a timeline, shared by the overview and the project page. A click on a
- * project's milestone lane opens it at the click to name a new milestone on that day; a click on a
- * diamond opens it at the diamond to rename or delete that milestone. Enter saves and then closes it.
+ * project's milestone lane opens it at the click to name a new milestone on that day, and Enter or
+ * Space on the lane opens it on today's date; a click on a diamond opens it at the diamond to rename
+ * or delete that milestone. Enter saves and then closes it.
  * A rejected write keeps the editor and the typed text; if the editor moves to another milestone
  * while a write is in flight, that write finishing does not close the one it moved to. Esc closes it
  * from whichever element inside has focus, and so does a change of the board's period.

@@ -8,7 +8,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { IconButton } from '../IconButton.js'
 import { IconChevron } from '../icons.js'
 import { ProjectLabel, ProjectPriorityTag } from '../project/ProjectIdentity.js'
-import { Toolbar } from '../Toolbar.js'
+import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
 import {
   DAY_SLOT_HOURS, shiftTaskWindow, timelineDayAt, TimelineControls, TimelineGrid,
@@ -53,10 +53,13 @@ function pointAt(canvas: HTMLElement, clientX: number, clientY: number): Timelin
  * The full timeline shared by the project page and Overview. The two callers only choose the label
  * content, the header action and what clicks do, through props; the time scale, grid, task and
  * milestone rows, drag and drop, status colors, priorities and overdue warnings live only here.
+ * The label column and the canvas are one Tab stop each, with the up and down arrow keys between
+ * their rows: a label that opens something, a task's bar or edge stub, and a project's milestone
+ * lane, where Enter or Space names a new milestone on today's date.
  */
 export function TimelineBoard({
   projects, className = '', showProjectNames = false, foldable = false, headerAction, canvasOverlay,
-  hoverMilestoneId, onHoverMilestone, onLabelClick, onTaskClick,
+  hoverMilestoneId, onHoverMilestone, onTaskLabelClick, onProjectLabelClick, onTaskClick,
   onMilestoneClick, onMilestoneLaneClick, onMoveTask, onMoveTaskWindow, onMoveMilestone,
   onReorderTasks, onPeriodChange,
 }: {
@@ -70,7 +73,10 @@ export function TimelineBoard({
   canvasOverlay?: ReactNode
   hoverMilestoneId?: string | null
   onHoverMilestone?: (projectId: string, milestoneId: string | null) => void
-  onLabelClick?: (projectId: string, kind: 'milestones' | 'task', itemId?: string) => void
+  /** Opens a task from its label; without it a task label opens nothing. */
+  onTaskLabelClick?: (projectId: string, taskId: string) => void
+  /** Opens a project from the label of its milestone row; without it that label opens nothing. */
+  onProjectLabelClick?: (projectId: string) => void
   onTaskClick: (projectId: string, taskId: string) => void
   onMilestoneClick: (projectId: string, milestoneId: string, point: TimelinePoint) => void
   onMilestoneLaneClick: (projectId: string, date: string, point: TimelinePoint) => void
@@ -178,6 +184,10 @@ export function TimelineBoard({
   }, [anchor, dayWidth, scale, today, w0, w1])
 
   const labelFor = (row: TimelineRow) => row.kind === 'milestones' ? m.project.plan.milestoneMode : row.task.title
+  const openLabel = (row: TimelineRow) => row.kind === 'task'
+    ? (onTaskLabelClick === undefined ? undefined : () => onTaskLabelClick(row.project.id, row.task.id))
+    : (onProjectLabelClick === undefined ? undefined : () => onProjectLabelClick(row.project.id))
+  const todayShown = today >= w0 && today <= w1
 
   return (
     <div className={`gantt${className ? ` ${className}` : ''}`} onClickCapture={drag.onClickCapture}>
@@ -193,152 +203,176 @@ export function TimelineBoard({
         </div>
       </Toolbar>
       <div className="gsplit">
-        <div className="glabels">
-          <div className="glhead" />
-          {rows.map((row) => {
-            const key = row.kind === 'milestones'
-              ? `${row.project.id}/milestones`
-              : `${row.project.id}/task/${row.task.id}`
-            const dropClass = row.kind === 'task' && onReorderTasks !== undefined
-              ? labelReorder.dropClass(row.task.id) : ''
-            return (
-              <div
-                className={`${row.kind === 'milestones' ? 'glrow msl timeline-label-row' : 'glrow timeline-label-row'}${
-                  dropClass ? ` ${dropClass}` : ''}`}
-                data-proj={row.project.id}
-                data-task={row.kind === 'task' ? row.task.id : undefined}
-                key={key}
-                {...(row.kind === 'task' && onReorderTasks !== undefined
-                  ? { ...labelReorder.handleProps(row.task.id), ...labelReorder.itemProps(row.task.id) }
-                  : {})}
-                onClick={() => onLabelClick?.(
-                  row.project.id, row.kind, row.kind === 'task' ? row.task.id : undefined,
-                )}
-              >
-                {foldable && row.kind === 'milestones' ? (
-                  <IconButton
-                    label={folded.has(row.project.id)
-                      ? m.timeline.fold.expand(row.project.name) : m.timeline.fold.collapse(row.project.name)}
-                    size="nested" className="timeline-fold" aria-expanded={!folded.has(row.project.id)}
-                    onClick={(event) => { event.stopPropagation(); toggleFold(row.project.id) }}
-                  ><IconChevron /></IconButton>
-                ) : null}
-                {showProjectNames
-                  ? <ProjectLabel name={row.project.name} className="timeline-project-label" />
-                  : null}
-                <Tooltip label={labelFor(row)} whenClipped><span className="timeline-item-label">{labelFor(row)}</span></Tooltip>
-                {row.kind === 'milestones' && folded.has(row.project.id) && shown.get(row.project.id)!.length > 0
-                  ? <span className="timeline-folded-count">{m.timeline.fold.hidden(shown.get(row.project.id)!.length)}</span>
-                  : null}
-                {row.kind === 'task'
-                  ? <ProjectPriorityTag priority={row.task.priority} className="timeline-task-priority" />
-                  : null}
-              </div>
-            )
-          })}
-        </div>
-        <div className="gwrap" ref={wrap}>
-          <div className="gcanvas" ref={canvas} style={{ width: days * dayWidth }}>
-            <TimelineGrid window={window} scale={scale} today={today} />
+        <Toolbar orientation="vertical">
+          <div className="glabels">
+            <div className="glhead" />
             {rows.map((row) => {
-              const { project } = row
-              if (row.kind === 'milestones') {
-                return (
-                  <div
-                    className="grow msrow" data-row={project.id} data-proj={project.id}
-                    key={`${project.id}/milestones`}
-                    onClick={(event) => {
-                      if ((event.target as HTMLElement).closest('.gddl')) return
-                      onMilestoneLaneClick(
-                        project.id,
-                        timelineDayAt(canvas.current!, event.clientX, window),
-                        pointAt(canvas.current!, event.clientX, event.clientY),
-                      )
-                    }}
-                  >
-                    {project.milestones.map((milestone) => {
-                      const day = dnum(milestone.date)
-                      if (day < w0 || day > w1) return null
-                      const key = `${project.id}/${milestone.id}`
-                      const overdue = !milestone.done && day < today
-                      return (
-                        <Tooltip
-                          key={milestone.id}
-                          label={m.timeline.milestoneTitle(fmt.date(milestone.date), milestone.title, overdue ? m.common.overdue : '')}
-                        >
-                          <span
-                            className={`gddl${milestone.done ? ' done' : ''}${overdue ? ' overdue' : ''}${hoverMilestoneId === milestone.id ? ' hl' : ''}${
-                              drag.dragging(`${project.id}/milestone/${milestone.id}`) ? ' dragging' : ''}`}
-                            data-proj={project.id} data-milestone={key}
-                            style={{
-                              left: (day - w0) * dayWidth + dayWidth / 2 - 4
-                                + drag.dragged(`${project.id}/milestone/${milestone.id}`),
-                            }}
-                            onMouseDown={(event) => drag.grab(event, {
-                              kind: 'milestone', projectId: project.id,
-                              milestoneId: milestone.id, date: milestone.date,
-                            })}
-                            onMouseEnter={() => onHoverMilestone?.(project.id, milestone.id)}
-                            onMouseLeave={() => onHoverMilestone?.(project.id, null)}
-                          />
-                        </Tooltip>
-                      )
-                    })}
-                  </div>
-                )
-              }
-
-              const { task, span } = row
-              const start = dnum(task.start)
-              const end = dnum(task.end)
-              const stub = drag.stubAt(span.left, span.right - 6)
-              const leftInset = start < w0 ? 0 : 3
-              const rightInset = end > w1 ? 0 : 3
-              const id = `${project.id}/task/${task.id}`
-              const overdue = task.state !== 'done' && end < today
-              const name = m.timeline.taskTitle(
-                task.title,
-                task.end === task.start ? fmt.date(task.start) : `${fmt.date(task.start)} – ${fmt.date(task.end)}`,
-                task.window ? `${task.window.start}–${task.window.end}` : '',
-                task.priority.toUpperCase(),
-                overdue ? m.common.overdue : '',
-              )
+              const key = row.kind === 'milestones'
+                ? `${row.project.id}/milestones`
+                : `${row.project.id}/task/${row.task.id}`
+              const dropClass = row.kind === 'task' && onReorderTasks !== undefined
+                ? labelReorder.dropClass(row.task.id) : ''
+              const open = openLabel(row)
+              const text = <span className="timeline-item-label">{labelFor(row)}</span>
               return (
                 <div
-                  className="grow" data-row={`${project.id}/${task.id}`}
-                  data-proj={project.id} data-task={task.id} key={id}
+                  className={`${row.kind === 'milestones' ? 'glrow msl timeline-label-row' : 'glrow timeline-label-row'}${
+                    dropClass ? ` ${dropClass}` : ''}`}
+                  data-proj={row.project.id}
+                  data-task={row.kind === 'task' ? row.task.id : undefined}
+                  key={key}
+                  {...(row.kind === 'task' && onReorderTasks !== undefined
+                    ? { ...labelReorder.handleProps(row.task.id), ...labelReorder.itemProps(row.task.id) }
+                    : {})}
+                  onClick={open}
                 >
-                  <Tooltip label={name}>
-                    <div
-                      className={`gbar${start < w0 ? ' clipl' : ''}${task.state === 'done' ? ' dim' : task.state === 'plan' ? ' plan' : ' active'}${overdue ? ' overdue' : ''} priority-${task.priority}${drag.dragging(id) ? ' dragging' : ''}`}
-                      data-proj={project.id} data-task={task.id}
-                      style={{
-                        left: span.left + leftInset + drag.dragged(id),
-                        width: Math.max(10, span.right - span.left - leftInset - rightInset),
-                      }}
-                      onMouseDown={(event: ReactMouseEvent) => drag.grab(event, {
-                        kind: 'task', projectId: project.id, taskId: task.id,
-                        start: task.start, end: task.end,
-                        ...(task.window === undefined ? {} : { window: task.window }),
-                      })}
-                    ><span className="gbar-label">{task.title}</span></div>
+                  {foldable && row.kind === 'milestones' ? (
+                    <IconButton
+                      label={folded.has(row.project.id)
+                        ? m.timeline.fold.expand(row.project.name) : m.timeline.fold.collapse(row.project.name)}
+                      size="nested" className="timeline-fold" aria-expanded={!folded.has(row.project.id)}
+                      onClick={(event) => { event.stopPropagation(); toggleFold(row.project.id) }}
+                    ><IconChevron /></IconButton>
+                  ) : null}
+                  {showProjectNames
+                    ? <ProjectLabel name={row.project.name} className="timeline-project-label" />
+                    : null}
+                  {/* A label that opens something is the row's button; its click reaches the row. */}
+                  <Tooltip label={labelFor(row)} whenClipped>
+                    {open === undefined ? text : <ToolbarButton className="timeline-label-open">{text}</ToolbarButton>}
                   </Tooltip>
-                  {stub
-                    ? (
-                      <Tooltip label={name}>
-                        <div
-                          className={task.state === 'done' ? 'gstub done' : 'gstub'}
-                          style={{ left: stub.left }} onClick={() => onTaskClick(project.id, task.id)}
-                        >{stub.side === 'l' ? '‹' : '›'}</div>
-                      </Tooltip>
-                    )
+                  {row.kind === 'milestones' && folded.has(row.project.id) && shown.get(row.project.id)!.length > 0
+                    ? <span className="timeline-folded-count">{m.timeline.fold.hidden(shown.get(row.project.id)!.length)}</span>
+                    : null}
+                  {row.kind === 'task'
+                    ? <ProjectPriorityTag priority={row.task.priority} className="timeline-task-priority" />
                     : null}
                 </div>
               )
             })}
-            <TimelineNowMarker window={window} scale={scale} today={today} />
-            {canvasOverlay}
           </div>
+        </Toolbar>
+        <div className="gwrap" ref={wrap}>
+          <Toolbar orientation="vertical">
+            <div className="gcanvas" ref={canvas} style={{ width: days * dayWidth }}>
+              <TimelineGrid window={window} scale={scale} today={today} />
+              {rows.map((row) => {
+                const { project } = row
+                if (row.kind === 'milestones') {
+                  return (
+                    <div
+                      className="grow msrow" data-row={project.id} data-proj={project.id}
+                      key={`${project.id}/milestones`}
+                      onClick={(event) => {
+                        if ((event.target as HTMLElement).closest('.gddl')) return
+                        onMilestoneLaneClick(
+                          project.id,
+                          timelineDayAt(canvas.current!, event.clientX, window),
+                          pointAt(canvas.current!, event.clientX, event.clientY),
+                        )
+                      }}
+                    >
+                      {/* The lane's keyboard control covers today's day; a pointer press reaches the lane through it. */}
+                      <ToolbarButton
+                        className="glane-new" aria-label={m.research.overview.milestonePopTitle(true, fmt.date(todayIso))}
+                        style={todayShown
+                        ? { left: `calc(${(today - w0) * dayWidth}px + var(--ring-room))`, width: `calc(${dayWidth}px - 2 * var(--ring-room))` }
+                        : { left: 'var(--ring-room)', right: 'var(--ring-room)' }}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          const rect = event.currentTarget.getBoundingClientRect()
+                          onMilestoneLaneClick(
+                            project.id, todayIso, pointAt(canvas.current!, rect.left + rect.width / 2, rect.top + rect.height / 2),
+                          )
+                        }}
+                      />
+                      {project.milestones.map((milestone) => {
+                        const day = dnum(milestone.date)
+                        if (day < w0 || day > w1) return null
+                        const key = `${project.id}/${milestone.id}`
+                        const overdue = !milestone.done && day < today
+                        return (
+                          <Tooltip
+                            key={milestone.id}
+                            label={m.timeline.milestoneTitle(fmt.date(milestone.date), milestone.title, overdue ? m.common.overdue : '')}
+                          >
+                            <span
+                              className={`gddl${milestone.done ? ' done' : ''}${overdue ? ' overdue' : ''}${hoverMilestoneId === milestone.id ? ' hl' : ''}${
+                                drag.dragging(`${project.id}/milestone/${milestone.id}`) ? ' dragging' : ''}`}
+                              data-proj={project.id} data-milestone={key}
+                              style={{
+                                left: (day - w0) * dayWidth + dayWidth / 2 - 4
+                                  + drag.dragged(`${project.id}/milestone/${milestone.id}`),
+                              }}
+                              onMouseDown={(event) => drag.grab(event, {
+                                kind: 'milestone', projectId: project.id,
+                                milestoneId: milestone.id, date: milestone.date,
+                              })}
+                              onMouseEnter={() => onHoverMilestone?.(project.id, milestone.id)}
+                              onMouseLeave={() => onHoverMilestone?.(project.id, null)}
+                            />
+                          </Tooltip>
+                        )
+                      })}
+                    </div>
+                  )
+                }
+
+                const { task, span } = row
+                const start = dnum(task.start)
+                const end = dnum(task.end)
+                const stub = drag.stubAt(span.left, span.right - 6)
+                const leftInset = start < w0 ? 0 : 3
+                const rightInset = end > w1 ? 0 : 3
+                const id = `${project.id}/task/${task.id}`
+                const overdue = task.state !== 'done' && end < today
+                const name = m.timeline.taskTitle(
+                  task.title,
+                  task.end === task.start ? fmt.date(task.start) : `${fmt.date(task.start)} – ${fmt.date(task.end)}`,
+                  task.window ? `${task.window.start}–${task.window.end}` : '',
+                  task.priority.toUpperCase(),
+                  overdue ? m.common.overdue : '',
+                )
+                return (
+                  <div
+                    className="grow" data-row={`${project.id}/${task.id}`}
+                    data-proj={project.id} data-task={task.id} key={id}
+                  >
+                    <Tooltip label={name}>
+                      <ToolbarButton
+                        className={`gbar${start < w0 ? ' clipl' : ''}${task.state === 'done' ? ' dim' : task.state === 'plan' ? ' plan' : ' active'}${overdue ? ' overdue' : ''} priority-${task.priority}${drag.dragging(id) ? ' dragging' : ''}`}
+                        data-proj={project.id} data-task={task.id} aria-label={name}
+                        style={{
+                          left: span.left + leftInset + drag.dragged(id),
+                          width: Math.max(10, span.right - span.left - leftInset - rightInset),
+                        }}
+                        onMouseDown={(event: ReactMouseEvent) => drag.grab(event, {
+                          kind: 'task', projectId: project.id, taskId: task.id,
+                          start: task.start, end: task.end,
+                          ...(task.window === undefined ? {} : { window: task.window }),
+                        })}
+                        // A pointer press opens the task through the drag, which swallows the click after it,
+                        // so only Enter and Space reach this click.
+                        onClick={() => onTaskClick(project.id, task.id)}
+                      ><span className="gbar-label">{task.title}</span></ToolbarButton>
+                    </Tooltip>
+                    {stub
+                      ? (
+                        <Tooltip label={name}>
+                          <ToolbarButton
+                            className={task.state === 'done' ? 'gstub done' : 'gstub'} aria-label={name}
+                            style={{ left: stub.left }} onClick={() => onTaskClick(project.id, task.id)}
+                          >{stub.side === 'l' ? '‹' : '›'}</ToolbarButton>
+                        </Tooltip>
+                      )
+                      : null}
+                  </div>
+                )
+              })}
+              <TimelineNowMarker window={window} scale={scale} today={today} />
+              {canvasOverlay}
+            </div>
+          </Toolbar>
         </div>
       </div>
     </div>

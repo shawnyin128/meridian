@@ -7,9 +7,11 @@ contract into another route.
 Current shared contracts:
 
 - `timeline/TimelineBoard`: scale, grid, rows, task bars, milestones, dragging, labels, priority, and
-  history visibility hooks. Overview and project detail configure the same board.
+  history visibility hooks. Overview and project detail configure the same board. Its label column and its
+  canvas are one Tab stop each, with the up and down arrow keys between labels, lanes, bars and stubs.
 - `timeline/MilestoneEditor`: the one milestone editor of both boards. The milestone lane opens it to
-  name a new milestone and a diamond to rename or delete one, at the click.
+  name a new milestone and a diamond to rename or delete one, at the click; Enter or Space on a lane
+  opens it on today's date.
 - `InlineField`: one-field-at-a-time editing, validation, cancel/save behavior, and presentation hooks.
 - `EditActions`: the one edit contract of a long text: Edit in the heading's action slot, then Cancel and
   Save in that same place. Save or ⌘Enter commits (Enter in a one-line field), Cancel or Escape restores.

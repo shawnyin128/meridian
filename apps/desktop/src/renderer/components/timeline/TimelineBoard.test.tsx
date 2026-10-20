@@ -51,7 +51,9 @@ function renderBoard(onReorderTasks?: (projectId: string, order: string[]) => vo
 /** Mounts an interactive TimelineBoard into `host` so real mouse events reach its handlers. */
 function mountBoard(host: HTMLDivElement, overrides: {
   onTaskClick?: (projectId: string, taskId: string) => void
-  onLabelClick?: (projectId: string, kind: 'milestones' | 'task', itemId?: string) => void
+  onTaskLabelClick?: (projectId: string, taskId: string) => void
+  onProjectLabelClick?: (projectId: string) => void
+  onMilestoneLaneClick?: (projectId: string, date: string, point: { left: number; top: number }) => void
   onMoveTask?: (projectId: string, taskId: string, start: string, end: string, days: number) => void
 }) {
   act(() => createRoot(host).render(
@@ -60,8 +62,9 @@ function mountBoard(host: HTMLDivElement, overrides: {
         <TimelineBoard
           projects={[project]}
           onTaskClick={overrides.onTaskClick ?? vi.fn()}
-          {...(overrides.onLabelClick === undefined ? {} : { onLabelClick: overrides.onLabelClick })}
-          onMilestoneClick={vi.fn()} onMilestoneLaneClick={vi.fn()}
+          {...(overrides.onTaskLabelClick === undefined ? {} : { onTaskLabelClick: overrides.onTaskLabelClick })}
+          {...(overrides.onProjectLabelClick === undefined ? {} : { onProjectLabelClick: overrides.onProjectLabelClick })}
+          onMilestoneClick={vi.fn()} onMilestoneLaneClick={overrides.onMilestoneLaneClick ?? vi.fn()}
           onMoveTask={overrides.onMoveTask ?? vi.fn()} onMoveTaskWindow={vi.fn()} onMoveMilestone={vi.fn()}
         />
       </TodayContext.Provider>
@@ -182,17 +185,90 @@ describe('TimelineBoard 点击打开任务详情', () => {
     expect(onTaskClick).not.toHaveBeenCalled()
   })
 
-  it('点击任务的标签行会触发 onLabelClick,里程碑标签行不会', () => {
-    const onLabelClick = vi.fn()
-    mountBoard(host, { onLabelClick })
-    const taskLabel = host.querySelector('.glrow.timeline-label-row[data-task="t1"]')!
-    mouse(taskLabel, 'click')
-    expect(onLabelClick).toHaveBeenCalledWith('proj-1', 'task', 't1')
+  it('点击任务的标签行打开任务，点击里程碑那一行的标签打开项目', () => {
+    const onTaskLabelClick = vi.fn()
+    const onProjectLabelClick = vi.fn()
+    mountBoard(host, { onTaskLabelClick, onProjectLabelClick })
+    mouse(host.querySelector('.glrow.timeline-label-row[data-task="t1"]')!, 'click')
+    expect(onTaskLabelClick).toHaveBeenCalledWith('proj-1', 't1')
+    mouse(host.querySelector('.glrow.msl.timeline-label-row')!, 'click')
+    expect(onProjectLabelClick).toHaveBeenCalledWith('proj-1')
+  })
+})
 
-    onLabelClick.mockClear()
-    const msLabel = host.querySelector('.glrow.msl.timeline-label-row')!
-    mouse(msLabel, 'click')
-    expect(onLabelClick).toHaveBeenCalledWith('proj-1', 'milestones', undefined)
+describe('TimelineBoard 的键盘', () => {
+  let host: HTMLDivElement
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    host = document.createElement('div')
+    document.body.append(host)
+  })
+
+  /** Presses `key` on the focused element; Radix moves the roving focus on the next task. */
+  const press = async (key: string) => {
+    await act(async () => {
+      document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+      await new Promise((done) => setTimeout(done, 0))
+    })
+  }
+
+  it('标签列和画布各是一个 Tab 停靠点，上下键在行之间走：能打开东西的标签、里程碑那一行、任务条和边缘标记', async () => {
+    mountBoard(host, { onTaskLabelClick: vi.fn() })
+    const labels = host.querySelector<HTMLElement>('.glabels')!
+    const canvas = host.querySelector<HTMLElement>('.gcanvas')!
+    expect([...host.querySelectorAll<HTMLElement>('.gsplit, .gsplit *')].filter((element) => element.tabIndex === 0))
+      .toEqual([labels, canvas])
+
+    await act(async () => { labels.focus() })
+    expect(document.activeElement!.closest('.glrow')!.getAttribute('data-task')).toBe('t1')
+    await press('ArrowDown')
+    expect(document.activeElement!.closest('.glrow')!.getAttribute('data-task')).toBe('t2')
+
+    await act(async () => { canvas.focus() })
+    const walked: string[] = []
+    for (let step = 0; step < 4; step += 1) {
+      walked.push(document.activeElement!.className.split(' ')[0]!)
+      await press('ArrowDown')
+    }
+    expect(walked).toEqual(['glane-new', 'gbar', 'gstub', 'gbar'])
+  })
+
+  it('任务的标签、任务条和边缘标记是按钮：Enter 或空格打开任务，鼠标点一下任务条只打开一次', () => {
+    const onTaskClick = vi.fn()
+    const onTaskLabelClick = vi.fn()
+    mountBoard(host, { onTaskClick, onTaskLabelClick })
+    const label = host.querySelector<HTMLButtonElement>('.glrow[data-task="t1"] .timeline-label-open')!
+    const bar = host.querySelector<HTMLButtonElement>('.gbar[data-task="t1"]')!
+    // jsdom measures the canvas viewport as 0px wide, so every bar also has its edge stub.
+    const stub = host.querySelector<HTMLButtonElement>('.grow[data-task="t1"] .gstub')!
+    expect([label.tagName, bar.tagName, stub.tagName]).toEqual(['BUTTON', 'BUTTON', 'BUTTON'])
+    act(() => label.click())
+    expect(onTaskLabelClick).toHaveBeenCalledWith('proj-1', 't1')
+    act(() => bar.click())
+    act(() => stub.click())
+    expect(onTaskClick.mock.calls).toEqual([['proj-1', 't1'], ['proj-1', 't1']])
+    onTaskClick.mockClear()
+
+    mouse(bar, 'mousedown', 100)
+    mouse(document, 'mouseup', 100)
+    mouse(bar, 'click', 100)
+    expect(onTaskClick.mock.calls).toEqual([['proj-1', 't1']])
+  })
+
+  it('里程碑那一行的键盘按钮落在今天这一格，按下在今天新建里程碑，不再按位置另建一个', () => {
+    const onMilestoneLaneClick = vi.fn()
+    mountBoard(host, { onMilestoneLaneClick })
+    const lane = host.querySelector<HTMLButtonElement>('.msrow .glane-new')!
+    expect(lane.getAttribute('aria-label')).toBe('新建里程碑 · 9月16日')
+    act(() => lane.click())
+    expect(onMilestoneLaneClick.mock.calls.map(([projectId, date]) => [projectId, date])).toEqual([['proj-1', '2026-09-16']])
+  })
+
+  it('不打开东西的标签不是按钮', () => {
+    mountBoard(host, {})
+    expect(host.querySelector('.timeline-label-open')).toBeNull()
   })
 })
 
