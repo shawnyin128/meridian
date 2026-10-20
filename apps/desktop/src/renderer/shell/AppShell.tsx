@@ -712,7 +712,8 @@ export function AppShell({ screens, settings }: {
                       <button type="button" className="cseg link" onClick={p.onClick}><FadeText>{p.text}</FadeText></button>
                     </Tooltip>
                   )
-                  : <FadeText className="cseg" label={p.text}>{p.text}</FadeText>}
+                  // A segment that is not a link drags the window, which takes its pointer, so it has no tooltip.
+                  : <FadeText className="cseg">{p.text}</FadeText>}
               </Fragment>
             )
           })}
