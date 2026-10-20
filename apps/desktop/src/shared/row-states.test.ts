@@ -6,14 +6,16 @@ import { beforeEach, describe, expect, it } from 'vitest'
 /** The parts of the jsdom window this test reads; the tsconfig of shared code carries no DOM types. */
 type Node = { dispatchEvent(event: object): boolean }
 type Style = {
-  backgroundColor: string; backgroundImage: string; borderColor: string; boxShadow: string; color: string
+  backgroundColor: string; backgroundImage: string; borderColor: string; boxShadow: string; color: string; cursor: string
   fill: string; stroke: string; opacity: string; getPropertyValue(name: string): string
+  borderTopStyle: string; borderBottomStyle: string; borderCollapse: string; borderSpacing: string
 }
 type Window = {
   document: {
     head: { innerHTML: string }
     body: { innerHTML: string }
     querySelector(selector: string): Node
+    querySelectorAll(selector: string): Node[]
   }
   MouseEvent: new (type: string, init: { bubbles: boolean }) => object
   getComputedStyle(element: Node): Style
@@ -103,6 +105,15 @@ describe('悬停的反馈不被任何状态盖掉', () => {
     expect([sidebar.backgroundColor, sidebar.backgroundImage]).toEqual(['var(--selected)', HOVER])
   })
 
+  it('最近变动的一行悬停时整行铺上列表行的悬停色，能点的仍只是它展开详情的开关；只在末尾带一段历史的论断行不铺', () => {
+    const tray = '<div class="card-tray card-tray--row"><div class="card-tray-head"><button type="button" class="card-tray-toggle"><span class="card-tray-summary">改了标题</span></button></div></div>'
+    const row = `<div class="structured-list"><div class="structured-row crow" data-row-actions="">${tray}</div></div>`
+    expect([styleOf(row, '.crow').backgroundImage, styleOf(row, '.crow', '.crow').backgroundImage]).toEqual(['none', HOVER])
+    expect(styleOf(row, '.crow', '.crow').cursor).not.toBe('pointer')
+    const claim = `<div class="structured-list"><div class="structured-row wkclaim" data-row-actions=""><div class="wkclaim-head">论断</div>${tray}</div></div>`
+    expect(styleOf(claim, '.wkclaim', '.wkclaim').backgroundImage).toBe('none')
+  })
+
   it('选中的论文行悬停时，选中色和悬停色叠在一起', () => {
     const tr = styleOf(TABLE_ROW('selected'), 'tr', 'td')
     expect([tr.getPropertyValue('--row-bg'), tr.getPropertyValue('--row-over')]).toEqual(['var(--selected)', 'var(--hover)'])
@@ -129,5 +140,27 @@ describe('悬停的反馈不被任何状态盖掉', () => {
       expect([overlay.fill, overlay.opacity], state).toEqual(['var(--hover)', '1'])
       expect(styleOf(node, '.rgn-hover').opacity, state).toBe('0')
     }
+  })
+})
+
+describe('论文表行与行之间的分隔线', () => {
+  beforeEach(() => {
+    // jsdom drops a border shorthand that holds var(), so the divider's colour is written out first.
+    document.head.innerHTML = STYLES.map((css) => `<style>${css.replaceAll('var(--sep2)', 'rgb(220, 228, 239)')}</style>`).join('')
+  })
+
+  it('论文表不合并边框，分隔线由上面一行的格子自己画，吸住的标题格和操作格也是；最后一行下面不画', () => {
+    const row = '<tr><td class="trunc"><span class="ci">EAGLE</span></td><td class="pt-dim">2024</td><td class="row-actions-cell"></td></tr>'
+    document.body.innerHTML = `<table class="ptable"><tbody>${row}${row}${row}</tbody></table>`
+    // Chromium leaves part of a collapsed border out of a sticky cell's first paint.
+    const table = getComputedStyle(document.querySelector('table'))
+    expect([table.borderCollapse, table.borderSpacing]).toEqual(['separate', '0px'])
+    const edges = [...document.querySelectorAll('tbody tr')].map((tr) => [...(tr as unknown as { children: Node[] }).children]
+      .map((td) => { const style = getComputedStyle(td); return `${style.borderTopStyle}/${style.borderBottomStyle}` }))
+    expect(edges).toEqual([
+      ['none/solid', 'none/solid', 'none/solid'],
+      ['none/solid', 'none/solid', 'none/solid'],
+      ['none/none', 'none/none', 'none/none'],
+    ])
   })
 })

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { ProjectOverview, Task } from '../../shared/contract.js'
+import type { Milestone, ProjectOverview, Task } from '../../shared/contract.js'
 import { projectControlState } from '../../shared/project-control.js'
 import {
   FOCUS_KEY, projectDecisionItems, projectPulseSignal, sortRecordsNewestFirst, type ProjectPulseSignal,
@@ -310,10 +310,10 @@ function Upcoming({ rows, onOpen }: { rows: ProjectOverview[]; onOpen: (projectI
  * without a drag opens the task in its project, and a click on a diamond or the milestone lane opens
  * the shared milestone editor. Switching between day, week and month keeps every task row; a task
  * outside the current window shrinks to a stub at the edge instead of its row disappearing.
- * `onRenameMilestone` and `onNewMilestone` return whether that write succeeded.
+ * `onUpdateMilestone` and `onNewMilestone` return whether that write succeeded.
  */
 function OverviewGantt({
-  rows, onOpenProject, onOpenTask, onMoveTask, onMoveTaskWindow, onMoveMilestone, onRenameMilestone,
+  rows, onOpenProject, onOpenTask, onMoveTask, onMoveTaskWindow, onMoveMilestone, onUpdateMilestone,
   onDeleteMilestone, onNewMilestone,
 }: {
   rows: ProjectOverview[]
@@ -327,7 +327,7 @@ function OverviewGantt({
     slots: number
   ) => void
   onMoveMilestone: (projectId: string, milestoneId: string, date: string) => void
-  onRenameMilestone: (projectId: string, milestoneId: string, title: string) => Promise<boolean>
+  onUpdateMilestone: (projectId: string, milestoneId: string, patch: Pick<Milestone, 'title' | 'date'>) => Promise<boolean>
   onDeleteMilestone: (projectId: string, milestoneId: string) => void
   onNewMilestone: (projectId: string, date: string, title: string) => Promise<boolean>
 }) {
@@ -346,7 +346,7 @@ function OverviewGantt({
     [rows, showInactive],
   )
   const editor = useMilestoneEditor({
-    projects: rows, onCreate: onNewMilestone, onRename: onRenameMilestone, onDelete: onDeleteMilestone,
+    projects: rows, onCreate: onNewMilestone, onUpdate: onUpdateMilestone, onDelete: onDeleteMilestone,
   })
 
   return (
@@ -428,8 +428,8 @@ export function ResearchOverview() {
     )
   }, [write, fmt, m])
 
-  const renameMilestone = useCallback((projectId: string, milestoneId: string, title: string) => write(
-    projectApi.updateMilestone(projectId, milestoneId, { title }),
+  const updateMilestone = useCallback((projectId: string, milestoneId: string, patch: Pick<Milestone, 'title' | 'date'>) => write(
+    projectApi.updateMilestone(projectId, milestoneId, patch),
     { note: m.project.plan.milestoneUpdated },
   ), [write, m])
 
@@ -460,7 +460,7 @@ export function ResearchOverview() {
             <OverviewGantt
               rows={rows} onOpenProject={openProject} onOpenTask={openTask} onMoveTask={moveTask}
               onMoveTaskWindow={moveTaskWindow}
-              onMoveMilestone={moveMilestone} onRenameMilestone={renameMilestone}
+              onMoveMilestone={moveMilestone} onUpdateMilestone={updateMilestone}
               onDeleteMilestone={deleteMilestone} onNewMilestone={newMilestone}
             />
             <SectionHeading>{m.research.overview.statsHeading}</SectionHeading>

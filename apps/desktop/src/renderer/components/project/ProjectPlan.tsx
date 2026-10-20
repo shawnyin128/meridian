@@ -26,6 +26,7 @@ import { IconPencil, IconTrash } from '../icons.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
+import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { useDragReorder, type Reorderable } from '../../hooks/useDragReorder.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
@@ -213,7 +214,7 @@ function TaskNameCell({ task, onSave }: { task: Task; onSave: (patch: TaskPatch)
       value={task.title} label={m.project.plan.taskNamePlaceholder} onSave={(title) => onSave({ title })}
       rest={(edit) => (
         <>
-          <button type="button" className="plan-cell plan-name plan-open">{task.title}</button>
+          <ToolbarButton className="plan-cell plan-name plan-open">{task.title}</ToolbarButton>
           <IconButton
             label={m.project.plan.renameTaskFor(task.title)} size="nested"
             className="plan-rename" onClick={(event) => { event.stopPropagation(); edit() }}
@@ -302,38 +303,41 @@ function TaskRow({ task, flash, selected, reorder, dropClass = '', onSave, onDel
 }) {
   const m = useMessages()
   return (
-    <StructuredRow
-      composite selected={selected} data-row={task.id} {...reorder?.item} {...reorder?.handle} onActivate={onOpen}
-      className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}${
-        dropClass ? ` ${dropClass}` : ''}`}
-    >
-      <TaskScheduleField mode="date" task={task} onSave={onSave} className="task-date-part" stopRowActivation />
-      <TaskScheduleField mode="time" task={task} onSave={onSave} className="task-clock-part" stopRowActivation />
-      <PriorityPicker
-        value={task.priority} className={tagClass(PRIORITY_TONE[task.priority], 'label', 'plan-priority')}
-        stopRowActivation
-        onPick={(priority) => { void onSave({ priority }) }}
-      >{task.priority.toUpperCase()}</PriorityPicker>
-      <ChoicePicker
-        value={task.state} options={TASK_STATES} label={(state) => stateWord(m)[state]}
-        className="dleft plan-cell state-cell" stopRowActivation
-        onPick={(state) => { void onSave({ state }) }}
-      />
-      {task.origin === 'agent'
-        ? (
-          <span className="task-name-with-origin">
-            <TaskNameCell task={task} onSave={onSave} />
-            <AgentLabel />
-          </span>
-        )
-        : <TaskNameCell task={task} onSave={onSave} />}
-      <RowActions>
-        <IconButton
-          label={m.project.plan.deleteTaskFor(task.title)} size="nested" tone="danger"
-          className="row-delete" onClick={(event) => { event.stopPropagation(); onDelete() }}
-        ><IconTrash /></IconButton>
-      </RowActions>
-    </StructuredRow>
+    // The row is the toolbar of its own controls, from its date to its delete.
+    <Toolbar label={task.title}>
+      <StructuredRow
+        composite selected={selected} data-row={task.id} {...reorder?.item} {...reorder?.handle} onActivate={onOpen}
+        className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}${
+          dropClass ? ` ${dropClass}` : ''}`}
+      >
+        <TaskScheduleField mode="date" task={task} onSave={onSave} className="task-date-part" stopRowActivation />
+        <TaskScheduleField mode="time" task={task} onSave={onSave} className="task-clock-part" stopRowActivation />
+        <PriorityPicker
+          value={task.priority} className={tagClass(PRIORITY_TONE[task.priority], 'label', 'plan-priority')}
+          stopRowActivation
+          onPick={(priority) => { void onSave({ priority }) }}
+        >{task.priority.toUpperCase()}</PriorityPicker>
+        <ChoicePicker
+          value={task.state} options={TASK_STATES} label={(state) => stateWord(m)[state]}
+          className="dleft plan-cell state-cell" stopRowActivation
+          onPick={(state) => { void onSave({ state }) }}
+        />
+        {task.origin === 'agent'
+          ? (
+            <span className="task-name-with-origin">
+              <TaskNameCell task={task} onSave={onSave} />
+              <AgentLabel />
+            </span>
+          )
+          : <TaskNameCell task={task} onSave={onSave} />}
+        <RowActions>
+          <IconButton
+            label={m.project.plan.deleteTaskFor(task.title)} size="nested" tone="danger"
+            className="row-delete" onClick={(event) => { event.stopPropagation(); onDelete() }}
+          ><IconTrash /></IconButton>
+        </RowActions>
+      </StructuredRow>
+    </Toolbar>
   )
 }
 

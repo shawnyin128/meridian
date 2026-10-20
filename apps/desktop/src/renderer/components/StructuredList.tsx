@@ -109,7 +109,8 @@ export function RowActions({ children, className = '' }: { children: ReactNode; 
  * A `composite` row holds controls of its own, so it stays a div that forwards pointer clicks to `onActivate`;
  * its children must include the keyboard-accessible control for the same action. A `selected` row is
  * the one whose detail is open beside the list. A double-click on a row with `onActivate` selects no
- * text (`holdRepeatSelection`).
+ * text (`holdRepeatSelection`); an `onMouseDown` given to a composite row, as a toolbar that wraps the
+ * row gives, runs after that.
  */
 export function StructuredRow({
   children, className = '', columns, composite = false, selected = false, onActivate, rowRef, style, ...props
@@ -127,10 +128,12 @@ export function StructuredRow({
   const rowStyle = columns ? { ...style, gridTemplateColumns: columns } : style
   const rowClass = `structured-row${composite ? ' structured-row--composite' : ''}${selected ? ' structured-row--selected' : ''}${className ? ` ${className}` : ''}`
   if (onActivate && composite) {
+    const { onMouseDown, ...rest } = props
     return (
       <div
-        className={rowClass} style={rowStyle} data-row-actions="" onClick={onActivate} onMouseDown={holdRepeatSelection}
-        {...props as HTMLAttributes<HTMLDivElement>}
+        className={rowClass} style={rowStyle} data-row-actions="" onClick={onActivate}
+        onMouseDown={(event) => { holdRepeatSelection(event); onMouseDown?.(event) }}
+        {...rest as HTMLAttributes<HTMLDivElement>}
       >
         {children}
       </div>

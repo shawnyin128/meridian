@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RelationGroup } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
+import { TOOLTIP_DELAY } from '../Tooltip.js'
 import { PROJECT_PAPER_GROUP, PROJECT_URL_GROUP, ProjectRelations } from './ProjectSections.js'
 
 describe('ProjectRelations', () => {
@@ -145,6 +146,22 @@ describe('ProjectRelations', () => {
     })
     return [...host.querySelectorAll('.wkrel > .rl')].map((label) => label.textContent)
   }
+
+  it('shows a web address chip\'s URL in the shared tooltip, and no tooltip on a Wiki page chip', () => {
+    vi.useFakeTimers()
+    render()
+    const tip = (selector: string) => {
+      const name = host.querySelector(`${selector} .tagchip-open`)!
+      act(() => { name.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
+      act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+      const text = document.querySelector('[role="tooltip"]')?.textContent ?? null
+      act(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+      return text
+    }
+    expect([tip('[data-url="https://wandb.ai/team/draft"]'), tip('[data-wk="topics/knee"]')])
+      .toEqual(['https://wandb.ai/team/draft', null])
+    vi.useRealTimers()
+  })
 
   it('marks only the chip that opens the browser with the external mark', () => {
     render()

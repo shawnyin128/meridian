@@ -6,7 +6,7 @@
  *    light --ter is the other: it is darker, so it keeps 4.5:1 on every surface it sits on.
  * 2. The tokens added beyond the demo (--accent-solid / --press / --press-solid / --hover-solid /
  *    --bad-solid / --bad-text / --good-text / --warn-text / --accent-text / --ring* / --sel / --selected /
- *    --on-selected / --tint-* / --star / --hl-* / --paper / --scrim / --raised / --chip / --r-* /
+ *    --on-selected / --tint-* / --star / --hl-* / --paper / --scrim / --raised / --chip / --track / --r-* /
  *    --pad-* / --sp-* / --row-* / --fs-* / --lh-* / --t-* / --e-*)
  *    and the split into --sh-1 / --sh-2 / --sh-3 / --sh-paper are not in the demo: the demo is the
  *    reference for layout and behavior, not for the finished look, so the two differ on these.
@@ -31,6 +31,11 @@
   --card:#f7f9fd; --raised:#ffffff; --field:#eef2f8; --hover:rgba(10,16,32,.05);
   /* The neutral tag and count fill: translucent, so it stays a step off any surface, a hovered row included. */
   --chip:rgba(10,16,32,.07);
+  /*
+   * The segmented control's track: translucent and darker, so it stays a step below the canvas, a
+   * card or a popover in both themes, and the --raised thumb sits a step above it.
+   */
+  --track:rgba(10,16,32,.07);
   --good:#1f9d4d; --warn:#b8860b; --bad:#e0453a; --info:#0e9aa7; --hl:rgba(255,214,10,.45);
   /* Text in a semantic tone or the accent, on its tint over any surface: darker than the tone, so it keeps 4.5:1. */
   --good-text:color-mix(in srgb,var(--good) 66%,var(--ink)); --warn-text:color-mix(in srgb,var(--warn) 66%,var(--ink));
@@ -125,7 +130,7 @@
   --sep:#20324c; --sep2:rgba(32,50,76,.6);
   --accent:#558cff; --accent-soft:rgba(85,140,255,.12); --on-accent:#ffffff;
   --card:#12213a; --raised:#12213a; --field:#16263f; --hover:rgba(245,247,251,.05);
-  --chip:rgba(245,247,251,.08);
+  --chip:rgba(245,247,251,.08); --track:rgba(0,0,0,.45);
   --good:#30d158; --warn:#ffd60a; --bad:#ff453a; --info:#2ec4d6; --hl:rgba(255,214,10,.35);
   --good-text:var(--good); --warn-text:var(--warn); --accent-text:var(--accent);
   --teal:#2dd4bf; --violet:#a78bfa;

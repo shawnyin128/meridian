@@ -392,7 +392,10 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
         </svg>
         <Toolbar>
           <div className="graph-view-controls">
-            <IconButton label={m.project.graph.zoomOut} size="nested" onClick={() => zoomAt(view.zoom / 1.2)}>
+            <IconButton
+              label={m.project.graph.zoomOut} size="nested" disabled={view.zoom <= GRAPH_MIN_ZOOM}
+              onClick={() => zoomAt(view.zoom / 1.2)}
+            >
               <IconMinus />
             </IconButton>
             <Tooltip label={m.project.graph.resetView}>
@@ -404,7 +407,10 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
                 }}
               >{Math.round(view.zoom * 100)}%</ToolbarButton>
             </Tooltip>
-            <IconButton label={m.project.graph.zoomIn} size="nested" onClick={() => zoomAt(view.zoom * 1.2)}>
+            <IconButton
+              label={m.project.graph.zoomIn} size="nested" disabled={view.zoom >= GRAPH_MAX_ZOOM}
+              onClick={() => zoomAt(view.zoom * 1.2)}
+            >
               <IconPlus />
             </IconButton>
           </div>

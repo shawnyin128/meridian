@@ -13,7 +13,7 @@ type IconButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label
   /** The keyboard shortcut of the same action, shown after the name in the tooltip. */
   shortcut?: string
   size?: IconButtonSize
-  /** `danger` turns the glyph red on hover and the focus ring red. */
+  /** `danger` turns the glyph red on hover. */
   tone?: 'neutral' | 'danger'
   /** Makes the button a toggle and shows whether it is on. */
   pressed?: boolean

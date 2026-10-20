@@ -5,21 +5,15 @@
 
 /*
  * The table itself is the scroll viewport: it scrolls both ways inside the table, with the horizontal
- * scrollbar always at the bottom of the visible area. The header row sticks to the top and the title
- * column to the left (the corner cell is fixed both ways)
+ * scrollbar always at the bottom of the visible area. The header row sticks to the top, the title
+ * column to the left (the corner cell is fixed both ways) and the actions column to the right, so
+ * neither side edge fades the way other scroll areas do.
  */
 .desk-body.libview{display:flex;flex-direction:column;overflow:hidden}
 .desk-body.libview>.libwide{display:flex;flex-direction:column;flex:1;min-height:0;width:100%}
 .desk-body.libview #libList{flex:1;min-height:0;display:flex;flex-direction:column}
 .desk-body.libview .tblwrap{flex:1;min-height:0}
 .tblwrap{overflow:auto;scrollbar-gutter:stable}
-/*
- * Columns hidden past the right edge fade into it. The sticky title column covers the left edge, so
- * that edge never fades; the mask leaves out the scrollbars' column and row.
- */
-.tblwrap[data-fade~="right"]{
-  mask:linear-gradient(to right,#000 calc(100% - var(--sp-24)),transparent) left top/calc(100% - var(--scrollbar-size)) calc(100% - var(--scrollbar-size)) no-repeat,
-    linear-gradient(#000,#000) right top/var(--scrollbar-size) 100% no-repeat,linear-gradient(#000,#000) left bottom/100% var(--scrollbar-size) no-repeat}
 
 /* Top bar of the paper list: filter input + group switch */
 .libbar{display:flex;align-items:center;gap:12px;margin-bottom:16px}
@@ -37,7 +31,11 @@
 .gxrow .gx-m{flex:1;font-size:12px;color:var(--ter);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gnav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
 
-.ptable{width:100%;min-width:0;border-collapse:collapse;font-size:var(--fs-base);margin-bottom:16px;table-layout:fixed}
+/*
+ * Separate borders: with collapsed ones, Chromium leaves the divider above the last row out of the
+ * sticky cells' first paint, until something repaints them.
+ */
+.ptable{width:100%;min-width:0;border-collapse:separate;border-spacing:0;font-size:var(--fs-base);margin-bottom:16px;table-layout:fixed}
 .ptable th{position:relative}
 .thsort{padding:0;border:0;background:none;color:inherit;font:inherit;cursor:inherit}
 /* A column's grip straddles the border with the next header cell. */
@@ -54,7 +52,7 @@
 /* Hover reveal: expands in place (Excel style); text stays put, no border, and the background over adjacent columns matches the row */
 .ptable td.trunc:hover .ci:not(:has(.tagchip)){position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;padding:7px 10px;width:max-content;background:linear-gradient(var(--row-over),var(--row-over)),linear-gradient(var(--row-bg),var(--row-bg)) var(--content);z-index:6;overflow:visible;text-overflow:clip}
 .tblwrap .ptable thead th{position:sticky;top:0;z-index:3;background:var(--content)}
-.ptable th:first-child,.ptable td:first-child{position:sticky;left:0;z-index:2;background:var(--content);box-shadow:1px 0 0 var(--sep2)}
+.ptable th:first-child,.ptable td:first-child{position:sticky;left:0;z-index:2;background:var(--content)}
 .ptable th:first-child{top:0;z-index:4}
 /* The corner cell must sit above the other header cells: the "thead th" rule is more specific, so the corner cell gets its own rule. */
 .tblwrap .ptable thead th:first-child{left:0;z-index:4}
@@ -142,7 +140,7 @@
  * actions stay in reach while the columns scroll under them. They lie above a truncated cell's hover
  * box (z-index 6), and the header cell above the body cells that scroll under it.
  */
-.ptable td.row-actions-cell,.tblwrap .ptable thead th.th-add{position:sticky;right:0;box-shadow:-1px 0 0 var(--sep2)}
+.ptable td.row-actions-cell,.tblwrap .ptable thead th.th-add{position:sticky;right:0}
 .ptable td.row-actions-cell{z-index:7;background-color:var(--content);
   background-image:linear-gradient(var(--row-over),var(--row-over)),linear-gradient(var(--row-bg),var(--row-bg))}
 .tblwrap .ptable thead th.th-add{z-index:8}

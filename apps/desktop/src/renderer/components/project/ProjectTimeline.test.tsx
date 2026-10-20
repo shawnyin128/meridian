@@ -32,7 +32,7 @@ describe('项目页时间线上的里程碑', () => {
   const calls = {
     onNewMilestone: vi.fn(),
     onCreateMilestone: vi.fn(() => Promise.resolve(true)),
-    onRenameMilestone: vi.fn(() => Promise.resolve(true)),
+    onUpdateMilestone: vi.fn(() => Promise.resolve(true)),
     onDeleteMilestone: vi.fn(),
   }
 
@@ -65,12 +65,18 @@ describe('项目页时间线上的里程碑', () => {
 
   const heading = () => document.querySelector('.ctxmenu .rh')?.textContent
   const input = () => document.querySelector<HTMLInputElement>('.ctxmenu input')!
-  const typeAndEnter = async (value: string) => {
+  const type = async (value: string) => {
     await act(async () => {
       Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(input(), value)
       input().dispatchEvent(new Event('input', { bubbles: true }))
     })
+  }
+  const enter = async () => {
     await act(async () => { input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })) })
+  }
+  const typeAndEnter = async (value: string) => {
+    await type(value)
+    await enter()
   }
 
   it('在里程碑行用键盘按下，在今天打开新建里程碑的小窗；按 Esc 关掉后焦点回到这一行', async () => {
@@ -104,6 +110,38 @@ describe('项目页时间线上的里程碑', () => {
     expect(heading()).toBe('里程碑 · 9月16日')
     expect(input().value).toBe('中期评审')
     await typeAndEnter('中期评审 v2')
-    expect(calls.onRenameMilestone).toHaveBeenCalledExactlyOnceWith('m1', '中期评审 v2')
+    expect(calls.onUpdateMilestone).toHaveBeenCalledExactlyOnceWith('m1', { title: '中期评审 v2', date: TODAY })
+  })
+
+  const dateField = () => document.querySelector<HTMLButtonElement>('.ctxmenu .short-text-field .form-button')!
+  const pickDay = async (label: string) => {
+    await act(async () => { dateField().click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>(`.calg [aria-label="${label}"]`)!.click() })
+  }
+
+  it('键盘在今天新建的里程碑，在小窗的日期栏里改到别的日子再回车，就建在那一天，打好的名字还在', async () => {
+    const lane = host.querySelector<HTMLButtonElement>('.msrow .glane-new')!
+    await act(async () => { lane.focus() })
+    await act(async () => { lane.click() })
+    expect(dateField().textContent).toBe('9月16日')
+    await type('上线评测')
+    await pickDay('9月18日')
+    expect([heading(), dateField().textContent, input().value]).toEqual(['新建里程碑 · 9月18日', '9月18日', '上线评测'])
+    await enter()
+    expect(calls.onCreateMilestone).toHaveBeenCalledExactlyOnceWith('2026-09-18', '上线评测')
+  })
+
+  it('点菱形打开的小窗里只改日期，点到小窗外面也写回新日期，名字不变', async () => {
+    const diamond = host.querySelector<HTMLElement>('.gddl[data-milestone="proj-1/m1"]')!
+    await act(async () => {
+      diamond.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 10 }))
+      document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 10 }))
+      // The click the browser fires after the press, which the board swallows.
+      diamond.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 10 }))
+    })
+    await pickDay('9月20日')
+    expect(input().value).toBe('中期评审')
+    await act(async () => { document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })) })
+    expect(calls.onUpdateMilestone).toHaveBeenCalledExactlyOnceWith('m1', { title: '中期评审', date: '2026-09-20' })
   })
 })

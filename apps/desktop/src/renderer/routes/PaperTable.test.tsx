@@ -838,7 +838,7 @@ describe('PaperTable', () => {
     expect(listCallCount).toBe(listed)
   })
 
-  it('表格右边还有没露出来的列时,只在右缘淡出', async () => {
+  it('表格左缘是吸住的标题列、右缘是吸住的行操作列,横向滚到哪儿两边都不淡出', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
@@ -849,9 +849,11 @@ describe('PaperTable', () => {
     Object.defineProperty(wrap, 'scrollWidth', { configurable: true, get: () => 1500 })
     Object.defineProperty(wrap, 'scrollLeft', { configurable: true, get: () => offset })
     act(() => { wrap.dispatchEvent(new Event('scroll')) })
-    expect(wrap.dataset.fade).toBe('right')
+    expect(wrap.hasAttribute('data-fade')).toBe(false)
+    act(() => { offset = 300; wrap.dispatchEvent(new Event('scroll')) })
+    expect(wrap.hasAttribute('data-fade')).toBe(false)
     act(() => { offset = 600; wrap.dispatchEvent(new Event('scroll')) })
-    expect(wrap.dataset.fade).toBe('left')
+    expect(wrap.hasAttribute('data-fade')).toBe(false)
   })
 
   it('阅读状态可在顶栏直接筛选,不必先进入分组索引', async () => {

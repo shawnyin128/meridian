@@ -12,7 +12,6 @@
 :where(.icbtn.danger):hover{color:var(--bad)}
 .icbtn[aria-pressed="true"]{background-color:var(--selected);color:var(--on-selected)}
 .icbtn:enabled:active{background-image:linear-gradient(var(--press),var(--press))}
-.icbtn.danger:focus-visible{outline-color:var(--bad)}
 /* A busy button shows live progress, so it keeps its full colour while it cannot be clicked. */
 .icbtn:disabled:not(.busy){opacity:.45;cursor:default;box-shadow:none}
 .icbtn.busy{cursor:default;box-shadow:none}

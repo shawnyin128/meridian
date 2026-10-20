@@ -2,11 +2,9 @@
  * The 1fr columns of an inline grid all take the widest label's width, and the thumb is one column
  * wide, so moving it by its own width per index puts it under the picked segment. The segments keep
  * one font weight, so picking one never changes a column's width.
- * The track sits between --field and --desktop: in the dark theme --field is lighter than --raised,
- * and a --field track would make the raised thumb look sunken.
  */
 .segmented-control{position:relative;display:inline-grid;grid-auto-flow:column;grid-auto-columns:1fr;min-width:0;
-  padding:var(--pad-track);border-radius:var(--r-control);background:color-mix(in srgb,var(--field),var(--desktop));
+  padding:var(--pad-track);border-radius:var(--r-control);background:var(--track);
   user-select:none}
 .segmented-thumb{position:absolute;top:var(--pad-track);bottom:var(--pad-track);left:var(--pad-track);
   width:calc((100% - 2 * var(--pad-track)) / var(--segmented-count));border-radius:var(--r-thumb);

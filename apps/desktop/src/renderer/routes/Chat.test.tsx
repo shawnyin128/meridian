@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
+import { TOOLTIP_DELAY } from '../components/Tooltip.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -209,5 +210,30 @@ describe('Chat composer', () => {
     expect(save.parentElement!.lastElementChild).toBe(save)
     expect([save.disabled, save.previousElementSibling?.textContent]).toEqual([true, '尚无讨论'])
     expect(document.querySelector('.qsep')).toBeNull()
+  })
+
+  it('快捷引用的名字被截断时，悬停在共享 tooltip 里显示全名，放得下时不弹', () => {
+    vi.useFakeTimers()
+    const chip = document.querySelector<HTMLButtonElement>('#qmChips button')!
+    const text = chip.querySelector<HTMLElement>('.fade-text')!
+    text.style.overflowX = 'hidden'
+    const width = vi.spyOn(text, 'scrollWidth', 'get').mockReturnValue(100)
+    vi.spyOn(text, 'clientWidth', 'get').mockReturnValue(100)
+    const tip = () => {
+      act(() => { chip.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
+      act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+      const shown = document.querySelector('[role="tooltip"]')?.textContent ?? null
+      act(() => {
+        chip.dispatchEvent(new PointerEvent('pointerout', { bubbles: true, pointerType: 'mouse', relatedTarget: document.body }))
+        chip.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }))
+      })
+      act(() => { document.dispatchEvent(new PointerEvent('pointermove', { clientX: 400, clientY: 400, pointerType: 'mouse' })) })
+      act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+      return shown
+    }
+    expect(tip()).toBeNull()
+    width.mockReturnValue(160)
+    expect(tip()).toBe('草稿树项目')
+    vi.useRealTimers()
   })
 })

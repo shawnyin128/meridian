@@ -661,8 +661,8 @@ export function ProjectDetail({
           onCreateMilestone={(date, title) => writeProject(
             projectApi.createMilestone(projectId, { date, title, done: false }), m.project.plan.milestoneCreated,
           )}
-          onRenameMilestone={(milestoneId, title) => writeProject(
-            projectApi.updateMilestone(projectId, milestoneId, { title }), m.project.plan.milestoneUpdated,
+          onUpdateMilestone={(milestoneId, patch) => writeProject(
+            projectApi.updateMilestone(projectId, milestoneId, patch), m.project.plan.milestoneUpdated,
           )}
           onDeleteMilestone={(milestoneId) => applyWrite(
             projectApi.deleteMilestone(projectId, milestoneId), m.project.plan.milestoneDeleted,

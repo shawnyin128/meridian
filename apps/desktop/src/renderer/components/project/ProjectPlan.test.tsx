@@ -254,6 +254,27 @@ describe('ProjectPlan', () => {
       expect(onOpenTask).not.toHaveBeenCalled()
     })
 
+    it('一行任务只占一个 Tab 停靠点，方向键依次走过日期、时间、优先级、状态、任务名、改名铅笔和删除，双击仍不选中字', async () => {
+      const { host } = mount()
+      const row = host.querySelector<HTMLElement>('.task-row')!
+      const stops = [...host.querySelectorAll<HTMLElement>('.structured-list *')]
+        .filter((element) => element.tabIndex >= 0 && !(element as HTMLButtonElement).disabled)
+      expect(stops).toEqual([row])
+      await act(async () => { row.focus() })
+      const walked: string[] = []
+      for (let step = 0; step < 8; step += 1) {
+        walked.push(document.activeElement!.getAttribute('aria-label') ?? document.activeElement!.textContent ?? '')
+        await act(async () => {
+          document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }))
+          await new Promise((done) => setTimeout(done, 0))
+        })
+      }
+      expect(walked).toEqual(['9月16日', '08:00–10:00', 'P1', '进行中', '校准批次', '重命名任务：校准批次', '删除任务：校准批次', '9月16日'])
+      const second = new MouseEvent('mousedown', { bubbles: true, cancelable: true, detail: 2 })
+      row.querySelector('.plan-name')!.dispatchEvent(second)
+      expect(second.defaultPrevented).toBe(true)
+    })
+
     it('改名时点进输入框只是在编辑,不打开任务详情', () => {
       const { host, onOpenTask } = mount()
       act(() => host.querySelector<HTMLButtonElement>('.task-row .plan-rename')!.click())

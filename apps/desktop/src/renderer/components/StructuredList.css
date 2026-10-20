@@ -22,10 +22,11 @@ button.structured-row,.structured-row--composite{cursor:pointer}
 /*
  * The one selected look of rows, cards and graph nodes: the --selected tint with --on-selected text.
  * Hover lies over it as an image, so no state that sets a row's colour hides the hover; a row keeps
- * it while a menu or dialog of its row actions is open.
+ * it while a menu or dialog of its row actions is open. A row that is all one row tray (CardTray's
+ * row look) hovers whole as well, while only the tray's toggle takes the click.
  */
 .structured-row--selected{background-color:var(--selected);color:var(--on-selected)}
-button.structured-row:hover,.structured-row--composite:hover,
+button.structured-row:hover,.structured-row--composite:hover,.structured-row:has(>.card-tray--row:only-child):hover,
 .structured-row:where(:has(.row-actions [data-state="open"])){background-image:linear-gradient(var(--hover),var(--hover))}
 
 /*
