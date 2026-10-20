@@ -91,6 +91,13 @@ describe('一个概念一个词', () => {
       .filter((text) => !text.includes('添加'))).toEqual([])
   })
 
+  it('建一列只叫新建列,阅读状态只叫阅读状态', () => {
+    expect([zh.papers.columnHeader.addColumn, zh.wiki.aggregation.addColumn]).toEqual(['新建列', '新建列'])
+    expect(zh.papers.notices.columnCreated).toContain('新建列')
+    expect([zh.papers.columns.st, zh.papers.groupNames.readState, zh.papers.metadata.fields.readState])
+      .toEqual(['阅读状态', '阅读状态', '阅读状态'])
+  })
+
   it('保存只叫保存;选中文字后加批注的那一项按它落到的高亮与批注叫批注', () => {
     expect(Object.values(zh.reader.notes)).not.toContain('保存笔记')
     expect(zh.chat.saveIdeaLabel).toBe('保存为想法')

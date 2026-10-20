@@ -89,7 +89,7 @@ describe('ReviewQueue', () => {
       '+ 给「拐点在宽度 6」补证据', '+ 　证据 · EAGLE-2 p.7「wide trees amortize」',
       '~ 「拐点在宽度 6」与「x」冲突：批量下不同',
     ])
-    expect([...row('p2').querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual(['+ 新增结论：新结论', '+ 　实验 · draft 效率 · 加宽实验'])
+    expect([...row('p2').querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual(['+ 添加结论：新结论', '+ 　实验 · draft 效率 · 加宽实验'])
     expect(row('p1').querySelector('.review-head .tag:not(.source-label)')).toBeNull()
     expect(row('p2').querySelector('.tag--warn')!.textContent).toBe('已过期')
     expect(row('p2').textContent).toContain('这些引句没有文字层可核对')

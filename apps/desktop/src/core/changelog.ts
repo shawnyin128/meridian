@@ -251,14 +251,14 @@ function customColumnsTitle(from: PaperColumn[], to: PaperColumn[]): string {
   const deleted = from.find((c) => !to.some((n) => n.key === c.key))
   if (deleted) return `论文表 · 删掉列「${deleted.label}」`
   const created = to.find((c) => !from.some((p) => p.key === c.key))
-  if (created) return `论文表 · 新增列「${created.label}」`
+  if (created) return `论文表 · 新建列「${created.label}」`
   for (const column of to) {
     const held = from.find((c) => c.key === column.key)!
     if (held.label !== column.label) return `论文表 · 列「${held.label}」改名为「${column.label}」`
     const dropped = held.options.find((option) => !column.options.includes(option))
     if (dropped !== undefined) return `论文表 · 列「${column.label}」删掉选项「${dropped}」`
     const added = column.options.find((option) => !held.options.includes(option))
-    if (added !== undefined) return `论文表 · 列「${column.label}」新增选项「${added}」`
+    if (added !== undefined) return `论文表 · 列「${column.label}」新建选项「${added}」`
   }
   return '论文表 · 改了列设置'
 }
@@ -814,7 +814,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         const target: ChangeTarget = { kind: 'project', id: project }
         const before = entityOf(target)
         ops.addAgentTask(project, request)
-        push(target, '新增任务', 'snapshot', before, undefined, 'Meridian')
+        push(target, '添加任务', 'snapshot', before, undefined, 'Meridian')
       }
     },
 
@@ -831,7 +831,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     createTask(projectId, task) {
-      return onProject(projectId, '新增任务', () => ops.createTask(projectId, task))
+      return onProject(projectId, '添加任务', () => ops.createTask(projectId, task))
     },
 
     updateTask(projectId, taskId, patch) {
@@ -847,7 +847,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     createMilestone(projectId, milestone) {
-      return onProject(projectId, '新增里程碑', () => ops.createMilestone(projectId, milestone))
+      return onProject(projectId, '添加里程碑', () => ops.createMilestone(projectId, milestone))
     },
 
     updateMilestone(projectId, milestoneId, patch) {
@@ -860,7 +860,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     createRelation(projectId, relation) {
-      return onProject(projectId, '新增关联', () => ops.createRelation(projectId, relation))
+      return onProject(projectId, '添加关联', () => ops.createRelation(projectId, relation))
     },
 
     deleteRelation(projectId, relationId) {
@@ -884,7 +884,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     createAttachment(projectId, attachment) {
-      return onProject(projectId, '新增附件', () => ops.createAttachment(projectId, attachment))
+      return onProject(projectId, '添加附件', () => ops.createAttachment(projectId, attachment))
     },
 
     deleteAttachment(projectId, attachmentId) {
@@ -892,14 +892,14 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     createEvent(projectId, text, node) {
-      return onProject(projectId, '新增科研记录', () => ops.createEvent(projectId, text, node))
+      return onProject(projectId, '记入科研记录', () => ops.createEvent(projectId, text, node))
     },
 
     recordAction(id, messageId) {
       const action = ops.chatMessages(id).find((message) => message.id === messageId)?.actions[0]
       return action === undefined
         ? ops.recordAction(id, messageId)
-        : onProject(action.project, '新增科研记录', () => ops.recordAction(id, messageId))
+        : onProject(action.project, '记入科研记录', () => ops.recordAction(id, messageId))
     },
 
     applyProposal(proposal, producer = { by: BY_ME, source: BY_ME }) {

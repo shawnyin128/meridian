@@ -9,11 +9,11 @@ export const papers = {
     y: '年份',
     venue: '发表',
     topics: '主题',
-    st: '状态',
+    st: '阅读状态',
     remark: '随笔',
   },
   columnType: { text: '文本', select: '单选', multi: '多选' },
-  groupNames: { none: '无', topics: '主题', projects: '项目', readState: '状态' },
+  groupNames: { none: '无', topics: '主题', projects: '项目', readState: '阅读状态' },
   toolbar: {
     searchPlaceholder: '标题或主题',
     clearSearch: '清除论文搜索',
@@ -53,7 +53,7 @@ export const papers = {
   },
   columnHeader: {
     resize: (column: string) => `「${column}」列宽`,
-    addColumn: '新增列',
+    addColumn: '新建列',
   },
   rowActions: { delete: '删除', openReader: '开始阅读' },
   contextMenu: {
@@ -129,7 +129,7 @@ export const papers = {
       rating: '评分',
       identifier: '编号',
       submitted: '提交',
-      readState: '阅读',
+      readState: '阅读状态',
       topics: '主题',
     },
     validation: {

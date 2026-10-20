@@ -12,11 +12,11 @@ export const papers = {
     y: 'Year',
     venue: 'Venue',
     topics: 'Topics',
-    st: 'Status',
+    st: 'Reading status',
     remark: 'Thoughts',
   },
   columnType: { text: 'Text', select: 'Single choice', multi: 'Multiple choice' },
-  groupNames: { none: 'None', topics: 'Topics', projects: 'Projects', readState: 'Status' },
+  groupNames: { none: 'None', topics: 'Topics', projects: 'Projects', readState: 'Reading status' },
   toolbar: {
     searchPlaceholder: 'Title or topic',
     clearSearch: 'Clear paper search',
@@ -56,7 +56,7 @@ export const papers = {
   },
   columnHeader: {
     resize: (column: string) => `${column} column width`,
-    addColumn: 'Add column',
+    addColumn: 'New column',
   },
   rowActions: { delete: 'Delete', openReader: 'Start reading' },
   contextMenu: {
@@ -83,7 +83,7 @@ export const papers = {
     orderUpdated: 'Column order updated',
     optionsDeleted: 'Options deleted',
     topicAdded: 'Topic added · you can undo this in Recent Changes',
-    readStateUpdated: 'Read state updated',
+    readStateUpdated: 'Reading status updated',
     rated: (stars: number) => `Rated ${stars} ${pluralEn(stars, { one: 'star', other: 'stars' })}`,
     updated: 'Updated · you can undo this in Recent Changes',
     remarkSaved: 'Thoughts saved',

@@ -1300,7 +1300,7 @@ describe('vault store on the aggregation layout', () => {
     expect(plan.tasks.map((task) => task.origin)).toEqual(['agent', 'agent'])
     const changes = store.listChanges().slice(0, 2)
     expect(changes.map((c) => [c.title, c.source, c.undoable])).toEqual([
-      ['项目「agent 任务」· 新增任务', 'Meridian', true], ['项目「agent 任务」· 新增任务', 'Meridian', true],
+      ['项目「agent 任务」· 添加任务', 'Meridian', true], ['项目「agent 任务」· 添加任务', 'Meridian', true],
     ])
 
     store.absorbAgentTasks(id)
@@ -1730,7 +1730,7 @@ describe('vault store on the aggregation layout', () => {
     const message = store.chatMessages(session.id).at(-1)!
     const after = store.recordAction(session.id, message.id)
     expect(after.events.at(-1)!.text).toBe('[对话] 拐点是 batch size 的函数')
-    expect(store.listChanges()[0]!.title).toBe('项目「记录目标」· 新增科研记录')
+    expect(store.listChanges()[0]!.title).toBe('项目「记录目标」· 记入科研记录')
     expect(createVaultStore(vault).chatMessages(session.id).at(-1)!.actions[0]!.done).toBe(true)
     expect(() => store.recordAction(session.id, message.id)).toThrow(/已经记入/)
     expect(() => store.recordAction(session.id, 'no-such-message')).toThrow(/no-such-message/)

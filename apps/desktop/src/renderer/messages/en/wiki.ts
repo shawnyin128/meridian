@@ -16,7 +16,7 @@ export const wiki = {
       `${children === null ? '' : `${children} ${pluralEn(children, { one: 'subpage', other: 'subpages' })} · `}`
       + `${members} ${pluralEn(members, { one: 'paper', other: 'papers' })} · Updated ${updated}`,
     deleteColumn: 'Delete column',
-    addColumn: 'Add column',
+    addColumn: 'New column',
   },
   paperCardFooter: (notes: number, conclusions: number) =>
     `${notes} ${pluralEn(notes, { one: 'note', other: 'notes' })} · `
@@ -300,7 +300,7 @@ export const wiki = {
     trigger: (project: string, node: string | null) => `Project ${project}${node === null ? '' : ` · node ${node}`}`,
     pages: 'Pages',
     change: {
-      add: (text: string) => `+ New finding: ${text}`,
+      add: (text: string) => `+ Add finding: ${text}`,
       before: (text: string) => `- Was: ${text}`,
       after: (text: string) => `+ Now: ${text}`,
       evidence: (claim: string) => `+ More evidence for “${claim}”`,

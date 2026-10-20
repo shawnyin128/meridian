@@ -12,7 +12,7 @@ export const wiki = {
     cardFooter: (children: number | null, members: number, updated: string) =>
       `${children === null ? '' : `${children} 细分 · `}${members} 篇 · 更新 ${updated}`,
     deleteColumn: '删除列',
-    addColumn: '新增列',
+    addColumn: '新建列',
   },
   paperCardFooter: (notes: number, conclusions: number) => `${notes} 笔记 · ${conclusions} 结论`,
   toc: '目录',
@@ -261,7 +261,7 @@ export const wiki = {
     trigger: (project: string, node: string | null) => `项目 ${project}${node === null ? '' : ` · 节点 ${node}`}`,
     pages: '涉及',
     change: {
-      add: (text: string) => `+ 新增结论：${text}`,
+      add: (text: string) => `+ 添加结论：${text}`,
       before: (text: string) => `- 原来：${text}`,
       after: (text: string) => `+ 改为：${text}`,
       evidence: (claim: string) => `+ 给「${claim}」补证据`,

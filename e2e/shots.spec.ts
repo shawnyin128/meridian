@@ -26,7 +26,7 @@ test('截下带选择列与自定义分组的一组基线图', async ({ win, app
   await gotoPapers(win)
   await win.locator('.ptable tbody tr').first().waitFor()
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [aria-label="新增列"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
   await win.locator('[data-radix-popper-content-wrapper] .ctbtn[aria-label="多选"]').click()
   await win.locator('.ptable thead th.th-new input').fill('标签')
   await win.locator('.ptable thead th.th-new input').press('Enter')
@@ -145,7 +145,7 @@ test('第 6 批:列菜单与改类型那一行,四档窗口 × 亮暗', async ({
   await gotoPapers(win)
   await win.locator('.ptable tbody tr').first().waitFor()
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [aria-label="新增列"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
   await win.locator('[data-radix-popper-content-wrapper] .ctbtn[aria-label="单选"]').click()
   await win.locator('.ptable thead th.th-new input').fill('读法')
   await win.locator('.ptable thead th.th-new input').press('Enter')
@@ -153,7 +153,7 @@ test('第 6 批:列菜单与改类型那一行,四档窗口 × 亮暗', async ({
   // Text is the default type, so no type click: create a second column to capture a text column's
   // row, which has no Options toggle.
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [aria-label="新增列"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
   await win.locator('.ptable thead th.th-new input').fill('备注')
   await win.locator('.ptable thead th.th-new input').press('Enter')
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(0)

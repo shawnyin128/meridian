@@ -545,7 +545,7 @@ describe('change log', () => {
     const column = { key: 'du-fa', label: '读法', type: 'select' as const, options: ['精读', '略读'] }
     store.setPaperColumns({ ...emptyColumns(), custom: [column] })
     const created = recorded()[0]!
-    expect(created).toMatchObject({ title: '论文表 · 新增列「读法」', undoable: true })
+    expect(created).toMatchObject({ title: '论文表 · 新建列「读法」', undoable: true })
     const count = store.listChanges().length
     store.setPaperColumns({ ...store.paperColumns(), hidden: ['topics'] })
     store.setPaperColumns({ ...store.paperColumns(), groups: ['topics', 'du-fa'] })
@@ -899,5 +899,23 @@ describe('change lines', () => {
       diff: stored,
       lines: [['+ ', { paper: GPTQ }, ' ∈ PTQ(1 格)'], ['~ PTQ 冲突 topics/nope#x'], ['~ topics/gone']],
     })
+  })
+
+  it('变动标题里的动作和界面用同一个词:添加任务、里程碑、关联与附件,记入科研记录,新建列与选项', () => {
+    const titleOf = (write: () => unknown): string => {
+      write()
+      return store.listChanges()[0]!.title
+    }
+    expect([
+      titleOf(() => store.createTask(PROJECT, { title: '新任务', start: '2026-08-25', end: '2026-08-31', state: 'act', priority: 'p1' })),
+      titleOf(() => store.createMilestone(PROJECT, { date: '2026-09-01', title: '新里程碑', done: false })),
+      titleOf(() => store.createRelation(PROJECT, { group: 'Wiki', text: '新关联' })),
+      titleOf(() => store.createAttachment(PROJECT, { name: '新附件.csv', size: '1 KB', path: resolve('新附件.csv') })),
+      titleOf(() => store.createEvent(PROJECT, '记一笔')),
+    ]).toEqual(['添加任务', '添加里程碑', '添加关联', '添加附件', '记入科研记录'].map((what) => `项目「draft 效率」· ${what}`))
+    const column = { key: 'du-fa', label: '读法', type: 'select' as const, options: [] as string[] }
+    expect(titleOf(() => store.setPaperColumns({ ...emptyColumns(), custom: [column] }))).toBe('论文表 · 新建列「读法」')
+    expect(titleOf(() => store.setPaperColumns({ ...emptyColumns(), custom: [{ ...column, options: ['精读'] }] })))
+      .toBe('论文表 · 列「读法」新建选项「精读」')
   })
 })
