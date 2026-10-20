@@ -21,6 +21,7 @@ import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
 import { Tag, tagClass } from '../Tag.js'
+import { Tooltip } from '../Tooltip.js'
 import './ProjectSections.css'
 
 /** Local-only grouping key for linked papers inside the relations list; never sent to Core. */
@@ -308,10 +309,12 @@ export function ProjectRelations({
                 {item.url === undefined && item.page === undefined
                   ? <FadeText className="tagchip-text">{item.text}</FadeText>
                   : (
-                    <button type="button" className="tagchip-open">
-                      <FadeText className="tagchip-text">{item.text}</FadeText>
-                      {item.url === undefined ? null : <ExternalMark />}
-                    </button>
+                    <Tooltip label={item.url}>
+                      <button type="button" className="tagchip-open">
+                        <FadeText className="tagchip-text">{item.text}</FadeText>
+                        {item.url === undefined ? null : <ExternalMark />}
+                      </button>
+                    </Tooltip>
                   )}
                 <RowActions>
                   <IconButton
