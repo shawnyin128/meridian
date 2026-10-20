@@ -105,7 +105,7 @@ export function ChoicePicker<T extends string>({
   )
 }
 
-/** Priority picker shared by plan rows and project metadata. */
+/** Priority picker shared by plan rows and project metadata; its trigger is one of the controls of the toolbar it renders in. */
 export function PriorityPicker({ value, className, onPick, children, stopRowActivation = false }: {
   value: Task['priority']
   className: string
@@ -115,14 +115,15 @@ export function PriorityPicker({ value, className, onPick, children, stopRowActi
   stopRowActivation?: boolean
 }) {
   const m = useMessages()
+  const asItem = useToolbarItem()
   const priorityNote = (option: Task['priority']) => ` · ${m.common.priority[option]}`
   return (
     <ActionMenu
       align="start"
-      trigger={(
+      trigger={asItem(
         <button className={className} onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}>
           {children}
-        </button>
+        </button>,
       )}
     >
       <MenuRadioGroup value={value}>

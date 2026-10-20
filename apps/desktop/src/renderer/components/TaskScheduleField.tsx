@@ -7,6 +7,7 @@ import { DateChip } from './DateTimeDisplay.js'
 import { ChoicePicker } from './FieldPickers.js'
 import { FormInput } from './FormControls.js'
 import { SegmentedControl } from './SegmentedControl.js'
+import { useToolbarItem } from './Toolbar.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -104,7 +105,10 @@ export function TaskScheduleEditor({ mode, task, saving, onSave, onCancel }: {
   )
 }
 
-/** A separate date or time-window entry; both open TaskScheduleEditor but never edit together. */
+/**
+ * A separate date or time-window entry; both open TaskScheduleEditor but never edit together. Its
+ * trigger is one of the controls of the toolbar it renders in.
+ */
 export function TaskScheduleField({ mode, task, onSave, className = '', stopRowActivation = false }: {
   mode: ScheduleEditMode
   task: Task
@@ -115,6 +119,7 @@ export function TaskScheduleField({ mode, task, onSave, className = '', stopRowA
 }) {
   const fmt = useFormat()
   const m = useMessages()
+  const asItem = useToolbarItem()
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const label = mode === 'date'
@@ -133,11 +138,11 @@ export function TaskScheduleField({ mode, task, onSave, className = '', stopRowA
   return (
     <ActionPopover
       open={open} onOpenChange={(next) => { if (!saving || next) setOpen(next) }}
-      trigger={(
+      trigger={asItem(
         <button
           type="button" className={`schedule-trigger${className ? ` ${className}` : ''}`}
           onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
-        ><DateChip>{label}</DateChip></button>
+        ><DateChip>{label}</DateChip></button>,
       )}
       contentClassName="ctxmenu schedule-pop" side="bottom" align="start" sideOffset={4}
       contentProps={{ onEscapeKeyDown: (event) => { if (saving) event.preventDefault() } }}
