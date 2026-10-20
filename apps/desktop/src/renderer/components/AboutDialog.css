@@ -6,7 +6,7 @@
   background:var(--field);color:var(--sec);font-size:var(--fs-base);line-height:var(--lh-ui)}
 .about-status svg{flex:none;width:16px;height:16px}
 .about-status.is-latest svg{color:var(--good)}
-.about-status.is-ready svg{color:var(--accent)}
+.about-status.is-ready svg{color:var(--ink)}
 .about-status.is-error{color:var(--bad)}
 .about-actions{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-10);margin-top:var(--sp-16)}
 .about-link{font-size:var(--fs-sm)}

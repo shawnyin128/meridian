@@ -27,7 +27,7 @@ test('空态只有两档:整屏的带图标居中,分节的是一行灰字', asy
   }
 })
 
-test('平级视图切换全应用一个组件:轨道里等宽分段,选中项由一颗凸起的滑块托着,不是实心强调色', async ({ win }) => {
+test('平级视图切换全应用一个组件:轨道里等宽分段,选中项由一颗凸起的滑块托着,不是墨色实心', async ({ win }) => {
   test.slow()
   const color = (raw: string) => win.evaluate((value) => {
     const probe = document.createElement('span')
@@ -40,7 +40,7 @@ test('平级视图切换全应用一个组件:轨道里等宽分段,选中项由
   const token = (name: string) => win.evaluate((n) =>
     getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name)
   const raised = await color(await token('--raised'))
-  const accent = await color(await token('--accent-solid'))
+  const primary = await color(await token('--ink'))
 
   for (const [desk, label] of [['papers', '分组字段'], ['later', '分组方式']] as const) {
     await win.locator(`[data-desk="${desk}"]`).click()
@@ -48,7 +48,7 @@ test('平级视图切换全应用一个组件:轨道里等宽分段,选中项由
     await expect(group).toHaveCount(1)
     const on = group.locator('button[aria-checked="true"]')
     await expect(on).toHaveCount(1)
-    await expect(on).not.toHaveCSS('background-color', accent)
+    await expect(on).not.toHaveCSS('background-color', primary)
     const thumb = group.locator('.segmented-thumb')
     await expect(thumb).toHaveCSS('background-color', raised)
     const boxes = await group.evaluate((track) => [...track.querySelectorAll('button')]

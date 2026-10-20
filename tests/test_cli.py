@@ -1837,7 +1837,7 @@ class CliTests(unittest.TestCase):
         self.assertIn("MCP context/read/trace", codex_interface["longDescription"])
         app_marks = {size: Path(f"apps/desktop/resources/mark-{size}.png").read_bytes() for size in (64, 128)}
         app_tokens = Path("apps/desktop/src/renderer/shell/tokens.css").read_text(encoding="utf-8")
-        self.assertEqual(codex_interface["brandColor"].lower(), app_tokens.split("--accent-solid:", 1)[1][:7])
+        self.assertEqual(codex_interface["brandColor"].lower(), app_tokens.split("--accent:", 1)[1][:7])
         self.assertEqual((codex_root / codex_interface["composerIcon"]).read_bytes(), app_marks[64])
         self.assertEqual((codex_root / codex_interface["logo"]).read_bytes(), app_marks[128])
 

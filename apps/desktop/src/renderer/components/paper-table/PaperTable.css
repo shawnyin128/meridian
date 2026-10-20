@@ -18,7 +18,7 @@
 /* Top bar of the paper list: filter input + group switch */
 .libbar{display:flex;align-items:center;gap:var(--sp-12);margin-bottom:var(--sp-16)}
 .pdfupload-input{display:none}
-.paper-drop{position:absolute;inset:46px 0 0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-8);background:color-mix(in srgb,var(--content) 88%,transparent);border:2px dashed var(--accent);color:var(--ink);backdrop-filter:blur(8px);pointer-events:none}
+.paper-drop{position:absolute;inset:46px 0 0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-8);background:color-mix(in srgb,var(--content) 88%,transparent);border:2px dashed var(--ink);color:var(--ink);backdrop-filter:blur(8px);pointer-events:none}
 .paper-drop strong{font-size:var(--fs-read)}
 .paper-drop span{font-size:var(--fs-sm);color:var(--ter)}
 /* Filter input: the shared field input at the size of the Watches screen's one-line add box (.af-in). */
@@ -70,7 +70,7 @@
 .ptable th[aria-sort]{cursor:pointer}
 .ptable th[aria-sort]:hover{color:var(--ink)}
 .ptable th.column-moving{opacity:.45;background:var(--tint-mut)}
-.ptable th.column-drop-before::before,.ptable th.column-drop-after::after{content:'';position:absolute;top:3px;bottom:3px;width:2px;border-radius:var(--r-2xs);background:var(--accent);z-index:5}
+.ptable th.column-drop-before::before,.ptable th.column-drop-after::after{content:'';position:absolute;top:3px;bottom:3px;width:2px;border-radius:var(--r-2xs);background:var(--ink);z-index:5}
 .ptable th.column-drop-before::before{left:-1px}.ptable th.column-drop-after::after{right:-1px}
 .ptable td{padding:var(--sp-6) var(--row-table-pad);height:var(--row-table-h);box-sizing:border-box;border-bottom:1px solid var(--sep2);vertical-align:middle;line-height:var(--lh-ui);overflow:hidden;white-space:nowrap;position:relative}
 /* An embedded table draws a rule only between adjacent rows, never under the last one. */

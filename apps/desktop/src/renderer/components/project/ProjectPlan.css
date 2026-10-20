@@ -43,6 +43,6 @@
 @keyframes plan-row-flash{0%,100%{background:transparent}50%{background:var(--tint-warn)}}
 .project-plan .ddlrow.flash{animation:plan-row-flash var(--t-flash) var(--e-inout) 2}
 .project-plan .task-row.dragging{opacity:.4}
-.project-plan .task-row.drag-over-before{box-shadow:0 -2px 0 0 var(--accent)}
-.project-plan .task-row.drag-over-after{box-shadow:0 2px 0 0 var(--accent)}
+.project-plan .task-row.drag-over-before{box-shadow:0 -2px 0 0 var(--ink)}
+.project-plan .task-row.drag-over-after{box-shadow:0 2px 0 0 var(--ink)}
 .project-plan .row-actions{margin-left:var(--sp-2)}

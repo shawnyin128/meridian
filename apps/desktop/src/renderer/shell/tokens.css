@@ -3,13 +3,14 @@
  * 1. The dark color values match the demo: the accent is Primary blue, and the dark theme has a full
  *    gray scale; both derive from a hue of about 220°. The light grays are neutral instead, and the
  *    light --sec and --ter are darker, so they keep 4.5:1 on every surface they sit on, a chip included.
- * 2. The tokens added beyond the demo (--accent-solid / --press / --press-solid / --hover-solid /
+ *    The accent colors only the keyboard focus ring; the primary is filled with --ink.
+ * 2. The tokens added beyond the demo (--press / --press-solid / --hover-solid /
  *    --bad-solid / --bad-text / --good-text / --warn-text / --ring* / --sel / --selected /
  *    --on-selected / --tint-* / --star / --hl-* / --paper / --scrim / --raised / --chip / --track / --r-* /
  *    --pad-* / --sp-* / --row-* / --fs-* / --fw-* / --lh-* / --t-* / --e-* / --window-buttons-*)
  *    and the split into --sh-1 / --sh-2 / --sh-3 / --sh-paper are not in the demo: the demo is the
  *    reference for layout and behavior, not for the finished look, so the two differ on these.
- * 3. --accent-solid / --bad-solid / --press-solid / --hover-solid / --ring / --star / --hl-* /
+ * 3. --bad-solid / --press-solid / --hover-solid / --ring / --star / --hl-* /
  *    --paper have the same value in both themes and do not flip (all but the last are written only in
  *    :root; the last is repeated with the same value next to its neighbours in the dark block). No dark
  *    value is missing.
@@ -23,9 +24,7 @@
   --desktop:#eaeaea; --window:#f8f8f8; --content:#ffffff; --sidebar:rgba(248,248,248,.85);
   --ink:#111111; --sec:#555555; --ter:#5b5b5b;
   --sep:#e3e3e3; --sep2:rgba(227,227,227,.6);
-  --accent:#3568ff; --accent-soft:rgba(53,104,255,.12); --on-accent:#ffffff;
-  /* Solid accent surfaces, the same in both themes: white on the dark --accent is only 3.19:1 */
-  --accent-solid:#3568ff;
+  --accent:#3568ff; --on-accent:#ffffff;
   --card:#ffffff; --raised:#ffffff; --field:#f2f2f2; --hover:rgba(17,17,17,.05);
   /* The neutral tag and count fill: translucent, so it stays a step off any surface, a hovered row included. */
   --chip:rgba(17,17,17,.07);
@@ -75,9 +74,10 @@
   --sep-strong:#cecece;
   /*
    * Pressed-state overlays, and the hover overlay of a solid surface. --press-solid and --hover-solid
-   * darken in both themes: lightening a solid accent surface would drop its white text to 3.78:1.
+   * move a solid fill toward mid grey in both themes: they lighten the light theme's ink primary,
+   * darken the dark theme's, and keep white text on the solid danger fill above 4.5:1.
    */
-  --press:rgba(17,17,17,.06); --press-solid:rgba(0,0,0,.18); --hover-solid:rgba(0,0,0,.08);
+  --press:rgba(17,17,17,.06); --press-solid:rgba(128,128,128,.3); --hover-solid:rgba(128,128,128,.16);
   /*
    * The solid danger surface, darker than --bad so white text on it passes 4.5:1, and danger text on
    * a soft red tint, the neutral chip or a card, darker in light and lighter in dark for the same reason.
@@ -136,7 +136,7 @@
   --desktop:#040b14; --window:#07111f; --content:#0d1b2d; --sidebar:rgba(9,21,38,.85);
   --ink:#f5f7fb; --sec:#aab6c8; --ter:#7a8698;
   --sep:#20324c; --sep2:rgba(32,50,76,.6);
-  --accent:#558cff; --accent-soft:rgba(85,140,255,.12); --on-accent:#ffffff;
+  --accent:#558cff; --on-accent:#ffffff;
   --card:#12213a; --raised:#12213a; --field:#16263f; --hover:rgba(245,247,251,.05);
   --chip:rgba(245,247,251,.08); --track:rgba(0,0,0,.45);
   --good:#30d158; --warn:#ffd60a; --bad:#ff453a; --hl:rgba(255,214,10,.35);
@@ -179,8 +179,8 @@
 b,strong{font-weight:var(--fw-semibold)}
 /*
  * A pressed macOS button darkens as a whole rather than shrinking; scale blurs the icon on a 30×30
- * icon button. Solid accent surfaces take a black overlay, not white: white would drop the white text
- * on them to 3.78:1.
+ * icon button. Solid surfaces take the mid-grey --press-solid instead, which shows on ink, near-white
+ * and the danger red alike.
  * The two rules below set the same background-image as each route's hover rules, and at equal
  * specificity the bundle order would pick the winner. Those hovers are therefore written as
  * :where(.cd):hover, one class lighter than the pressed rules, which win on specificity. The

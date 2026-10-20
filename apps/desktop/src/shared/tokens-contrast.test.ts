@@ -145,18 +145,13 @@ const PAIRS: Pair[] = [
   { theme: 'dark', label: '次级文字在浮层面', fg: '--sec', ground: ['--raised'], min: TEXT },
   { theme: 'dark', label: '三级文字在内容面', fg: '--ter', ground: ['--content'], min: TEXT },
   { theme: 'dark', label: 'toast 的字在墨底', fg: '--window', ground: ['--ink'], min: TEXT },
-  // Solid accent surfaces.
-  { theme: 'light', label: '白字在实心 accent', fg: '--on-accent', ground: ['--accent-solid'], min: TEXT },
-  { theme: 'dark', label: '白字在实心 accent', fg: '--on-accent', ground: ['--accent-solid'], min: TEXT },
-  { theme: 'light', label: '白字在按下的实心 accent', fg: '--on-accent', ground: ['--accent-solid', '--press-solid'], min: TEXT },
-  { theme: 'dark', label: '白字在按下的实心 accent', fg: '--on-accent', ground: ['--accent-solid', '--press-solid'], min: TEXT },
-  { theme: 'light', label: '白字在悬停的实心 accent', fg: '--on-accent', ground: ['--accent-solid', '--hover-solid'], min: TEXT },
-  { theme: 'dark', label: '白字在悬停的实心 accent', fg: '--on-accent', ground: ['--accent-solid', '--hover-solid'], min: TEXT },
   // Danger buttons: solid, soft on a red tint, and ghost on a surface.
   { theme: 'light', label: '白字在实心红色按钮', fg: '--on-accent', ground: ['--bad-solid'], min: TEXT },
   { theme: 'dark', label: '白字在实心红色按钮', fg: '--on-accent', ground: ['--bad-solid'], min: TEXT },
   { theme: 'light', label: '白字在按下的实心红色按钮', fg: '--on-accent', ground: ['--bad-solid', '--press-solid'], min: TEXT },
   { theme: 'dark', label: '白字在按下的实心红色按钮', fg: '--on-accent', ground: ['--bad-solid', '--press-solid'], min: TEXT },
+  { theme: 'light', label: '白字在悬停的实心红色按钮', fg: '--on-accent', ground: ['--bad-solid', '--hover-solid'], min: TEXT },
+  { theme: 'dark', label: '白字在悬停的实心红色按钮', fg: '--on-accent', ground: ['--bad-solid', '--hover-solid'], min: TEXT },
   { theme: 'light', label: '浅红按钮的字在内容面', fg: '--bad-text', ground: ['--content', '--tint-bad'], min: TEXT },
   { theme: 'light', label: '浅红按钮的字在卡片面', fg: '--bad-text', ground: ['--card', '--tint-bad'], min: TEXT },
   { theme: 'dark', label: '浅红按钮的字在内容面', fg: '--bad-text', ground: ['--content', '--tint-bad'], min: TEXT },
@@ -197,11 +192,6 @@ const PAIRS: Pair[] = [
   { theme: 'dark', label: '红色焦点环在卡片面', fg: '--bad', ground: ['--card'], min: MARK },
   { theme: 'light', label: '选中侧栏行的图标', fg: '--on-selected', ground: ['--window', '--sidebar', '--selected'], min: MARK },
   { theme: 'dark', label: '选中侧栏行的图标', fg: '--on-selected', ground: ['--window', '--sidebar', '--selected'], min: MARK },
-  { theme: 'light', label: '实心 accent 面对内容面', fg: '--accent-solid', ground: ['--content'], min: MARK },
-  { theme: 'dark', label: '实心 accent 面对内容面', fg: '--accent-solid', ground: ['--content'], min: MARK },
-  { theme: 'dark', label: '实心 accent 面对卡片面', fg: '--accent-solid', ground: ['--card'], min: MARK },
-  { theme: 'light', label: '实心 accent 面对窗口底', fg: '--accent-solid', ground: ['--window'], min: MARK },
-  { theme: 'dark', label: '实心 accent 面对窗口底', fg: '--accent-solid', ground: ['--window'], min: MARK },
 ]
 
 describe('tokens.css 的对比度', () => {
@@ -227,6 +217,33 @@ const lookOf = (path: string, selector: string): string => {
   const token = (property: RegExp) => property.exec(rule[2]!)?.[1] ?? '无'
   return `${token(/(?:^|;)background(?:-color)?:var\((--[\w-]+)\)/)} ${token(/(?:^|;)color:var\((--[\w-]+)\)/)}`
 }
+
+describe('主操作', () => {
+  /** The primary button and the composer's send: their fill and text tokens. */
+  const PRIMARY = [['routes/shell.css', '.btn.pri'], ['components/chat/Chat.css', '.send']] as const
+
+  it('主按钮和输入框的发送都是墨色实心配画布色的字:亮色黑底白字,暗色近白底深字', () => {
+    expect(PRIMARY.map(([path, selector]) => lookOf(path, selector))).toEqual(['--ink --content', '--ink --content'])
+  })
+
+  for (const theme of ['light', 'dark'] as const) {
+    it(`${theme === 'dark' ? '暗色' : '亮色'}的主操作静止、悬停和按下时字都不低于 4.5:1,悬停和按下让底色至少变 1.1:1`, () => {
+      for (const [path, selector] of PRIMARY) {
+        const [fill, text] = lookOf(path, selector).split(' ') as [string, string]
+        const rest = flatten(theme, [fill])
+        for (const state of [[], ['--hover-solid'], ['--press-solid']]) {
+          const ground = flatten(theme, [fill, ...state])
+          const label = `${selector} ${state.join('') || '静止'}`
+          expect(contrast(colour(theme, text), ground), label).toBeGreaterThanOrEqual(TEXT)
+          if (state.length > 0) expect(contrast(rest, ground), label).toBeGreaterThanOrEqual(1.1)
+        }
+        for (const ground of ['--content', '--card', '--window']) {
+          expect(contrast(rest, flatten(theme, [ground])), `${selector} 对 ${ground}`).toBeGreaterThanOrEqual(MARK)
+        }
+      }
+    })
+  }
+})
 
 describe('亮色的文字', () => {
   for (const text of ['--ink', '--sec', '--ter']) {

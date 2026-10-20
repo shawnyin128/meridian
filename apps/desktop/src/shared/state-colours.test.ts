@@ -48,10 +48,10 @@ describe('红色只标逾期、错误和危险', () => {
     }
   })
 
-  it('时间线上今天的日期是当前项的选中样子,今天的竖线和此刻线是强调色', () => {
+  it('时间线上今天的日期是当前项的选中样子,今天的竖线和此刻线是墨色', () => {
     expect(tokens(bodyOf('components/timeline/TimelineBoard.css', '.gday.today span'))).toEqual(['--selected', '--on-selected'])
     for (const selector of ['.gtoday', '.gnow', '.gnow::after']) {
-      expect(tokens(bodyOf('components/timeline/TimelineBoard.css', selector)), selector).toEqual(['--accent'])
+      expect(tokens(bodyOf('components/timeline/TimelineBoard.css', selector)), selector).toEqual(['--ink'])
     }
   })
 })
@@ -70,11 +70,11 @@ describe('阻塞的色调', () => {
 })
 
 describe('拖放落点', () => {
-  it('每个拖放落点的提示都用强调色画', () => {
+  it('每个拖放落点的提示都用墨色和中性的选中底画', () => {
     const drop = /(?:drag-over-(?:before|after)|drop-(?:before|after)|\.paper-drop|\.attachments\.drag)(?:::?[\w-]+)*$/
     const offenders = STYLESHEETS.flatMap((path) => rules(path).flatMap(({ selectors, body }) => {
       const painted = body.split(';').filter((d) => /^\s*(?:background|border|outline|box-shadow)[\w-]*:/.test(d)).join(';')
-      const colours = tokens(painted).filter((t) => !/^--(?:accent|accent-soft|content)$/.test(t))
+      const colours = tokens(painted).filter((t) => !/^--(?:ink|selected|content)$/.test(t))
       return colours.length === 0 ? [] : selectors.filter((s) => drop.test(s)).map((s) => `${path}  ${s}  ${colours.join(' ')}`)
     }))
     expect(offenders).toEqual([])
@@ -92,12 +92,22 @@ describe('结论冲突', () => {
   })
 })
 
-describe('实心强调色', () => {
-  it('样式表只给主按钮和输入框的发送铺实心强调色,开关和步骤序号都不用', () => {
+describe('主操作的墨色实心', () => {
+  it('样式表只给主按钮和输入框的发送铺墨色实心、配画布色的字,开关和步骤序号都不用', () => {
     const filled = STYLESHEETS.flatMap((path) => rules(path).flatMap(({ selectors, body }) => (
-      /(?:^|;)\s*background(?:-color)?:var\(--accent-solid\)/.test(body) ? selectors : []
+      /(?:^|;)\s*background(?:-color)?:var\(--ink\)/.test(body) && /(?:^|;)\s*color:var\(--content\)/.test(body) ? selectors : []
     )))
     expect(filled.sort()).toEqual(['.btn.pri', '.send'])
+  })
+})
+
+describe('强调色', () => {
+  it('强调色只留给键盘焦点环:除了 tokens.css 里的 --ring,没有样式表或组件读 --accent', () => {
+    const readers = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
+      .filter((path) => /\.(css|tsx?)$/.test(path) && !/\.test\.tsx?$/.test(path))
+      .flatMap((path) => readFileSync(join(RENDERER, path), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').split('\n')
+        .filter((line) => /var\(--accent[\w-]*\)/.test(line)).map((line) => `${path}  ${line.trim()}`))
+    expect(readers).toEqual(['shell/tokens.css  --ring:var(--accent); --ring-width:2px; --ring-offset:2px;'])
   })
 })
 

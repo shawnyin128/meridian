@@ -18,7 +18,7 @@
 .project-card-alert{margin-top:var(--sp-8);color:var(--sec);font-size:var(--fs-sm)}
 .msbar{display:inline-flex;gap:var(--sp-2);vertical-align:-1px;margin:0 var(--sp-4)}
 .msbar i{width:15px;height:5px;border-radius:var(--r-xs);background:var(--field)}
-.msbar i.done{background:var(--accent)}
+.msbar i.done{background:var(--ink)}
 
 @media(max-width:1000px){
   .project-card-decisions{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -30,8 +30,8 @@
 .prow{display:flex;align-items:center;gap:var(--sp-10);padding:var(--sp-8) var(--sp-12);font-size:var(--fs-base)}
 .prow-open{display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
 .prow.dragging{opacity:.4}
-.prow.drag-over-before{box-shadow:0 -2px 0 0 var(--accent)}
-.prow.drag-over-after{box-shadow:0 2px 0 0 var(--accent)}
+.prow.drag-over-before{box-shadow:0 -2px 0 0 var(--ink)}
+.prow.drag-over-after{box-shadow:0 2px 0 0 var(--ink)}
 .prow .m{flex:1;color:var(--ter);font-size:var(--fs-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 
 .projpanel .row-actions{margin-left:var(--sp-2)}

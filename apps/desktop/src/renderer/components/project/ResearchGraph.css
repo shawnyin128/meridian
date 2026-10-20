@@ -7,10 +7,10 @@
   border-radius:var(--r-control);background:color-mix(in srgb,var(--card) 88%,transparent);box-shadow:var(--sh-1)}
 .graph-view-controls .graph-zoom-reset{min-width:44px}
 .redges path{fill:none;stroke:var(--sep2);stroke-width:1}
-.redges path.active{stroke:var(--accent);stroke-width:2;opacity:.35}
+.redges path.active{stroke:var(--ink);stroke-width:2;opacity:.35}
 .active-edge-flows{pointer-events:none}
-.active-edge-flows path{fill:none;stroke:var(--accent-solid);stroke-width:2.5;stroke-linecap:round;
-  stroke-dasharray:5 13;filter:drop-shadow(0 0 2px var(--accent-soft))}
+.active-edge-flows path{fill:none;stroke:var(--ink);stroke-width:2.5;stroke-linecap:round;
+  stroke-dasharray:5 13;filter:drop-shadow(0 0 2px var(--selected))}
 /* A node's state rules draw its box; the hover box above it is drawn only by the one hover rule. */
 .rgn-box{rx:var(--r-card);fill:var(--card);stroke:var(--sep);stroke-width:1}
 .rgn-hover{rx:var(--r-card);fill:var(--hover);stroke:none;opacity:0;pointer-events:none}
@@ -24,19 +24,19 @@
 .rgn.repairable .nd{fill:var(--warn)}
 .rgn.supported .nd{fill:var(--good)}
 .rgn.dead .nd{fill:var(--bad)}
-.rgn.active-path-node-graph .rgn-box{stroke:var(--accent)}
-.rgn.active-leaf .rgn-box{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2}
-.idea-node-pattern-base{fill:var(--accent-soft)}
-.idea-node-pattern-stripe{fill:none;stroke:var(--accent);stroke-width:3;stroke-opacity:.28}
-.rgn.idea-related .rgn-box{stroke:var(--accent);stroke-width:2}
+.rgn.active-path-node-graph .rgn-box{stroke:var(--ink)}
+.rgn.active-leaf .rgn-box{fill:var(--selected);stroke:var(--ink);stroke-width:2}
+.idea-node-pattern-base{fill:var(--selected)}
+.idea-node-pattern-stripe{fill:none;stroke:var(--ink);stroke-width:3;stroke-opacity:.28}
+.rgn.idea-related .rgn-box{stroke:var(--ink);stroke-width:2}
 .rgn.idea-related .rgn-label{font-weight:var(--fw-semibold)}
 .glegend{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-8) var(--sp-16);font-size:var(--fs-sm);color:var(--ter);margin-top:var(--sp-8)}
 .legend-item{display:inline-flex;align-items:center;gap:var(--sp-6);white-space:nowrap}
 .legend-divider{width:1px;height:12px;background:var(--sep2)}
-.legend-path{width:20px;height:2px;border-radius:var(--r-full);background:repeating-linear-gradient(90deg,var(--accent-solid) 0 5px,transparent 5px 9px)}
+.legend-path{width:20px;height:2px;border-radius:var(--r-full);background:repeating-linear-gradient(90deg,var(--ink) 0 5px,transparent 5px 9px)}
 .legend-node{width:18px;height:10px;box-sizing:border-box;border-radius:var(--r-xs)}
-.legend-node.current{border:1px solid var(--accent);background:var(--accent-soft)}
-.legend-node.idea{border:1px solid var(--accent);background:repeating-linear-gradient(122deg,var(--accent-soft) 0 4px,color-mix(in srgb,var(--accent) 28%,var(--accent-soft)) 4px 6px)}
+.legend-node.current{border:1px solid var(--ink);background:var(--selected)}
+.legend-node.idea{border:1px solid var(--ink);background:repeating-linear-gradient(122deg,var(--selected) 0 4px,color-mix(in srgb,var(--ink) 28%,var(--selected)) 4px 6px)}
 
 /* Every panel in the shared slot starts its content the same distance below the sticky head. */
 .node-document-pane .node-document-head+*{margin-top:var(--sp-20)}

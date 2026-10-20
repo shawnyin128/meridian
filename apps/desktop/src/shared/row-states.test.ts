@@ -83,12 +83,12 @@ describe('选中的样子只有一种', () => {
     expect(styleOf(node, '.rgn-label').color).toBe('var(--on-selected)')
   })
 
-  it('选中的外观选项铺选中色，名字用选中色上的强调色，不再画强调色边框和光圈', () => {
+  it('选中的外观选项铺选中色，名字用选中的字色，不再画强调色边框和光圈', () => {
     const choice = '<button class="appearance-choice" aria-checked="true"><span class="appearance-preview"></span><span class="appearance-label">浅色</span></button>'
     const preview = styleOf(choice, '.appearance-preview')
     expect(preview.backgroundColor).toBe('var(--selected)')
     expect(preview.borderColor).not.toBe('var(--accent)')
-    expect(preview.boxShadow).not.toContain('var(--accent-soft)')
+    expect(preview.boxShadow).not.toContain('var(--accent')
     expect(styleOf(choice, '.appearance-label').color).toBe('var(--on-selected)')
   })
 })

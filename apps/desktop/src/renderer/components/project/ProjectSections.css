@@ -24,8 +24,8 @@
 .wkrel .tagchip[data-url]{cursor:pointer}
 .wkrel .tagchip[draggable]{cursor:grab}
 .wkrel .tagchip.dragging{opacity:.4}
-.wkrel .tagchip.drop-before{box-shadow:-3px 0 0 -1px var(--accent)}
-.wkrel .tagchip.drop-after{box-shadow:3px 0 0 -1px var(--accent)}
+.wkrel .tagchip.drop-before{box-shadow:-3px 0 0 -1px var(--ink)}
+.wkrel .tagchip.drop-after{box-shadow:3px 0 0 -1px var(--ink)}
 
 .attrow{display:flex;align-items:center;gap:var(--sp-8);font-size:var(--fs-sm);padding:var(--sp-6) var(--sp-2)}
 .attrow>svg{width:13px;height:13px;color:var(--ter);flex-shrink:0}
@@ -36,4 +36,4 @@
 .attrow .as{font-size:var(--fs-sm);color:var(--ter);flex-shrink:0}
 .attrow .row-actions{margin:calc(-1 * var(--sp-4)) 0}
 .attachments{min-width:0;border-radius:var(--r-md);transition:background-color var(--t) var(--e-out),outline-color var(--t) var(--e-out);outline:1px solid transparent}
-.attachments.drag{background:var(--accent-soft);outline-color:var(--accent)}
+.attachments.drag{background:var(--selected);outline-color:var(--ink)}

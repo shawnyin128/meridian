@@ -19,8 +19,8 @@
 .gcanvas{position:relative;border-bottom:1px solid var(--sep2)}
 .glabels .glrow:last-child{border-bottom:1px solid var(--sep2)}
 .glrow.dragging{opacity:.4}
-.glrow.drag-over-before{box-shadow:inset 0 2px 0 0 var(--accent)}
-.glrow.drag-over-after{box-shadow:inset 0 -2px 0 0 var(--accent)}
+.glrow.drag-over-before{box-shadow:inset 0 2px 0 0 var(--ink)}
+.glrow.drag-over-after{box-shadow:inset 0 -2px 0 0 var(--ink)}
 .gdays{display:flex;position:relative;z-index:2}
 .gday{flex:0 0 auto;text-align:center;font-size:var(--fs-sm);color:var(--ter);font-variant-numeric:tabular-nums;padding:var(--sp-6) 0 var(--sp-4);box-sizing:border-box;border-left:1px solid var(--sep2)}
 .gday:first-child{border-left:0}
@@ -47,7 +47,7 @@
 .gbar.clipl{border-top-left-radius:0;border-bottom-left-radius:0;border-left:0}
 .gbar.dim:not(:hover){opacity:.45}
 .gbar.plan{background-color:transparent;border-style:dashed;border-color:var(--sep-strong);color:var(--sec)}
-.gbar.active{border-color:color-mix(in srgb,var(--accent) 42%,var(--sep));background-color:var(--accent-soft)}
+.gbar.active{border-color:color-mix(in srgb,var(--ink) 42%,var(--sep));background-color:var(--selected)}
 .gbar.overdue{box-shadow:inset 3px 0 var(--bad)}
 .gbar.priority-p0{font-weight:var(--fw-semibold)}
 /* A one-day bar narrower than its title keeps the title's box empty and draws the title beside the bar. */
@@ -62,9 +62,9 @@
 .gstub{position:absolute;top:50%;transform:translateY(-50%);height:27px;width:20px;box-sizing:border-box;background-color:var(--field);border:1px solid var(--sep);border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;font-size:var(--fs-sm);color:var(--sec);cursor:pointer;z-index:2;user-select:none;transition:opacity var(--t) var(--e-out)}
 .gstub.done:not(:hover){opacity:.45}
 .glrow.msl{font-size:var(--fs-sm);font-weight:var(--fw-title);color:var(--ink);cursor:default}
-.gtoday{position:absolute;top:31px;bottom:0;width:2px;background:var(--accent);opacity:.75;z-index:1}
-.gnow{position:absolute;top:0;bottom:0;width:1px;background:var(--accent);z-index:4;pointer-events:none}
-.gnow::after{content:"";position:absolute;top:27px;left:-3px;width:7px;height:7px;border-radius:var(--r-full);background:var(--accent)}
+.gtoday{position:absolute;top:31px;bottom:0;width:2px;background:var(--ink);opacity:.75;z-index:1}
+.gnow{position:absolute;top:0;bottom:0;width:1px;background:var(--ink);z-index:4;pointer-events:none}
+.gnow::after{content:"";position:absolute;top:27px;left:-3px;width:7px;height:7px;border-radius:var(--r-full);background:var(--ink)}
 .gddl.hl{box-shadow:0 0 0 4px var(--tint-warn);transform:rotate(45deg) scale(1.35)}
 .gddl.overdue.hl{box-shadow:0 0 0 4px var(--tint-bad)}
 .timeline-fold{margin-left:calc(-1 * var(--sp-8))}

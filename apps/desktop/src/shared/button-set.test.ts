@@ -149,7 +149,7 @@ describe('按钮组', () => {
       solidDanger: 'none', ghostDanger: 'none', nested: 'none',
     })
     expect(each((style) => style.backgroundColor)).toEqual({
-      secondary: 'var(--field)', primary: 'var(--accent-solid)', ghost: TRANSPARENT, danger: 'var(--tint-bad)',
+      secondary: 'var(--field)', primary: 'var(--ink)', ghost: TRANSPARENT, danger: 'var(--tint-bad)',
       solidDanger: 'var(--bad-solid)', ghostDanger: TRANSPARENT, nested: 'var(--field)',
     })
   })

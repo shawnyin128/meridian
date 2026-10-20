@@ -16,12 +16,6 @@ const rules = (path: string) => [...readFileSync(join(RENDERER, path), 'utf8').r
   declarations: body!.split(';').map((d) => d.trim()).filter(Boolean),
 }))
 
-/** The rules that may write in the accent colour: the accent tag and status icons. Picked and current items use --on-selected. */
-const ACCENT_TEXT_STATES = new Set([
-  '.update-row .ic', '.tag--accent',
-  '.about-status.is-ready svg', '.about-status.is-checking svg', '.about-status.is-downloading svg',
-])
-
 describe('实体链接的样子', () => {
   it('不再有链接色:--link 既不定义也没人用', () => {
     expect(FILES.filter((path) => /--link\b/.test(readFileSync(join(RENDERER, path), 'utf8')))).toEqual([])
@@ -36,11 +30,9 @@ describe('实体链接的样子', () => {
     expect(offenders).toEqual([])
   })
 
-  it('不是链接的标签不用强调色写字,强调色的字只留给 accent 标签和状态图标', () => {
+  it('没有规则用强调色写字,标签、状态图标和选中项都不例外', () => {
     const offenders = STYLESHEETS.flatMap((path) => rules(path).flatMap(({ selectors, declarations }) => (
-      declarations.some((d) => /^color:var\(--accent(?:-text)?\)$/.test(d))
-        ? selectors.filter((s) => !ACCENT_TEXT_STATES.has(s)).map((s) => `${path}  ${s}`)
-        : []
+      declarations.some((d) => /^color:var\(--accent[\w-]*\)$/.test(d)) ? selectors.map((s) => `${path}  ${s}`) : []
     )))
     expect(offenders).toEqual([])
   })
