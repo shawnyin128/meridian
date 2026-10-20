@@ -126,7 +126,7 @@ describe('项目页时间线上的里程碑', () => {
     expect(dateField().textContent).toBe('9月16日')
     await type('上线评测')
     await pickDay('9月18日')
-    expect([heading(), dateField().textContent, input().value]).toEqual(['新建里程碑 · 9月18日', '9月18日', '上线评测'])
+    expect([heading(), dateField().textContent, input().value]).toEqual(['添加里程碑 · 9月18日', '9月18日', '上线评测'])
     await enter()
     expect(calls.onCreateMilestone).toHaveBeenCalledExactlyOnceWith('2026-09-18', '上线评测')
   })
