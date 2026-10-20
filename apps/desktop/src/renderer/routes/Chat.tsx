@@ -24,7 +24,6 @@ import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { useDrafts } from '../hooks/useDrafts.js'
 import { useGenerations } from '../hooks/useGenerations.js'
 import { useNoModelChats } from '../hooks/useNoModelChats.js'
-import { useScrollFade } from '../hooks/useScrollFade.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { CONFLICT_THREAD, sendsMessage } from '../lib/chat.js'
 import { composing } from '../lib/keyboard.js'
@@ -120,7 +119,6 @@ export function Chat() {
   const [pages, setPages] = useState<WikiAggregationCard[]>([])
   const [error, setError] = useState<string | null>(null)
   const stream = useRef<HTMLDivElement>(null)
-  const streamFade = useScrollFade('y', stream)
   const composer = useRef<HTMLTextAreaElement>(null)
   const consumed = useRef(0)
   const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
@@ -237,7 +235,7 @@ export function Chat() {
         <div className="stream">
           <PageError error={error} />
 
-          <div className="msgs" ref={streamFade}>
+          <div className="msgs" ref={stream}>
             {messages === null
               ? (id !== null && error === null ? <div className="mwrap"><LoadingPlaceholder shape="lines" /></div> : null)
               : messages.length === 0

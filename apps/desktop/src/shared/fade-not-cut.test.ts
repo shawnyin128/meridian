@@ -29,7 +29,8 @@ const FADED: Record<string, [file: string, markup: RegExp][]> = {
   '.paper-meta-list': [['components/PaperMetadata.tsx', /className="paper-meta-list" ref=\{listFade\}/]],
   '.reading-list': [['components/reader/ReadingNotes.tsx', /className="reading-list" ref=\{listFade\}/]],
   '.wiki-ingest': [['components/reader/PaperWikiIngest.tsx', /className="wiki-ingest" ref=\{ingestFade\}/]],
-  '.msgs': [['routes/Chat.tsx', /className="msgs" ref=\{streamFade\}/]],
+  // On the Chat and Feed screens the stream grows with its content inside the page body, which fades it.
+  '.msgs': [['components/chat/PaperChat.tsx', /className="msgs" ref=\{streamFade\}/]],
   '.idea-detail-panel': [['routes/Ideas.tsx', /className="idea-detail-panel node-document-pane" ref=\{panelFade\}/]],
   '.wkside': [['routes/Wiki.tsx', /className="wkside" ref=\{railFade\}/]],
   '.cmpwrap': [['routes/Wiki.tsx', /className="cmpwrap" ref=\{wrapFade\}/]],
