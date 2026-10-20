@@ -6,6 +6,7 @@ import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { Tag, type TagTone } from '../Tag.js'
 import { Card } from '../Card.js'
 import { PluginVersionEntry, type PluginVersionEntryProps } from './PluginVersionEntry.js'
+import { FadeText } from '../FadeText.js'
 import './ExtensionSettings.css'
 
 const STATE_TONE: Record<ExtensionStatus['state'], TagTone> = {
@@ -55,7 +56,7 @@ export function ExtensionSettings({ statuses, plugin, onCopy, onCopyPrompt }: Ex
                 summary={(
                   <span className="extension-command-summary">
                     <span>{commandHeading}</span>
-                    <code>{command}</code>
+                    <FadeText><code>{command}</code></FadeText>
                   </span>
                 )}
                 action={(

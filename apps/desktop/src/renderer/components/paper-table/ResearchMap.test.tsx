@@ -67,7 +67,7 @@ describe('ResearchMap', () => {
         <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} />
       </MessagesProvider>,
     )
-    const faded = (selector: string) => [...host.querySelectorAll(`${selector} .fade-text`)].map((line) => line.textContent)
+    const faded = (selector: string) => [...host.querySelectorAll(`${selector} .fade-text:not(.tag-text)`)].map((line) => line.textContent)
     expect(faded('.research-map-group-copy')).toEqual(['Speculative decoding'])
     expect(faded('.research-map-detail-head')).toEqual(['Speculative decoding'])
     expect(faded('.research-map-paper')).toEqual([title, 'Bravo'])

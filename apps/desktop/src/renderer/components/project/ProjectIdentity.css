@@ -1,6 +1,6 @@
 .project-identity{display:inline-flex;align-items:center;gap:var(--sp-8);min-width:0}
 .project-identity-name{font-size:var(--fs-card-title);font-weight:var(--fw-title)}
-.project-identity-topic{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ter);font-size:var(--fs-sm)}
+.project-identity-topic{color:var(--ter);font-size:var(--fs-sm)}
 .project-identity.progress{display:flex;min-width:0;flex-direction:column;align-items:stretch;justify-content:center;gap:var(--sp-6)}
 .project-identity-line{display:flex;min-width:0;align-items:center;gap:var(--sp-8)}
 .project-label{flex:0 1 auto}

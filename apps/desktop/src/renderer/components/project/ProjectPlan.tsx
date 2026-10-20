@@ -35,6 +35,7 @@ import { AgentLabel } from '../SourceLabel.js'
 import { TagButton, tagClass } from '../Tag.js'
 import { NodeAssignment } from './NodeAssignment.js'
 import { PRIORITY_TONE, ProjectPriorityTag } from './ProjectIdentity.js'
+import { FadeText } from '../FadeText.js'
 import './ProjectPlan.css'
 
 const stateWord = (m: Catalog): Record<Task['state'], string> => m.project.plan.state
@@ -257,7 +258,7 @@ export function ProjectTaskPanel({
       <SectionHeading
         variant="rail" className="node-document-head"
         actions={<PanelClose onClose={onClose} />}
-      ><span className="node-document-title">{task.title}</span>
+      ><FadeText className="node-document-title" label={task.title}>{task.title}</FadeText>
       </SectionHeading>
       <div className="project-task-detail-meta">
         <DateChip>{fmt.dateRange(task.start, task.end)}</DateChip>

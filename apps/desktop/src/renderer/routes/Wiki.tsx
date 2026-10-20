@@ -45,6 +45,7 @@ import { Tag, TagButton } from '../components/Tag.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
 import { EMBEDDED_LIST_ROW_LIMIT, RowActions } from '../components/StructuredList.js'
 import { Tooltip } from '../components/Tooltip.js'
+import { useClipped } from '../hooks/useClipped.js'
 import './shell.css'
 import './Wiki.css'
 
@@ -70,6 +71,8 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
 }) {
   const fmt = useFormat()
   const m = useMessages()
+  const summary = useRef<HTMLDivElement>(null)
+  const summaryCut = useClipped(summary, card.summary)
   return (
     <ResearchObjectCard variant="grid" className="wkcard" data-wk={card.id} onActivate={onOpen}>
       <div className="wt">
@@ -78,7 +81,7 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
         {card.parentCount > 1 ? <Tag className="wkind">{m.wiki.aggregation.parentCount(card.parentCount)}</Tag> : null}
         <span className="sp" />
       </div>
-      <div className="wm">{card.summary}</div>
+      <div ref={summary} className={`wm fade-lines${summaryCut ? ' clipped' : ''}`}>{card.summary}</div>
       <div className="wf">
         {m.wiki.aggregation.cardFooter(
           card.childCount > 0 ? card.childCount : null, card.memberCount, fmt.date(card.updated),
@@ -104,6 +107,8 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
  */
 function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
   const m = useMessages()
+  const title = useRef<HTMLSpanElement>(null)
+  const titleCut = useClipped(title, paper.title)
   const line = [`${paper.year ?? ''} ${paper.venue}`.trim(), paper.topics.join(' / ')]
     .filter((part) => part !== '').join(' · ')
   return (
@@ -111,7 +116,7 @@ function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
       <div className="wt">
         <Tag tone="paper" className="wkind">{m.wiki.paperKind}</Tag>
         <Tooltip label={plainTitle(paper.title)} whenClipped>
-          <CardOpen className="tt"><span className="tt-lines"><PaperText text={paper.title} /></span></CardOpen>
+          <CardOpen className="tt"><span ref={title} className={`tt-lines fade-lines${titleCut ? ' clipped' : ''}`}><PaperText text={paper.title} /></span></CardOpen>
         </Tooltip>
         <span className="sp" />
       </div>
@@ -315,7 +320,7 @@ function Toc({ body, main }: { body: string; main: RefObject<HTMLDivElement | nu
             <button
               type="button"
               onClick={() => main.current?.querySelector<HTMLElement>(`#${h.id}`)?.scrollIntoView({ block: 'start' })}
-            >{h.text}</button>
+            ><FadeText label={h.text}>{h.text}</FadeText></button>
           </li>
         ))}
       </ul>

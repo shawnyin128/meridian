@@ -10,6 +10,7 @@ import { IconTrash } from '../icons.js'
 import { RowActions } from '../StructuredList.js'
 import { SourceAnchor } from '../SourceAnchor.js'
 import { ReaderPanelHeader } from './ReaderPanelHeader.js'
+import { useClipped } from '../../hooks/useClipped.js'
 
 /** A note or highlight card's delete, in the row-actions slot at the end of the card's top line. */
 function ReadingDelete({ onDelete }: { onDelete: () => Promise<boolean> }) {
@@ -63,6 +64,8 @@ function HighlightCard({ highlight, edits, onSave, onDelete, onJump, focus }: {
   const edit = editField(edits, `highlight:${highlight.id}`, highlight.note)
   const note = edit.text
   const input = useRef<HTMLTextAreaElement>(null)
+  const quote = useRef<HTMLQuoteElement>(null)
+  const quoteCut = useClipped(quote, highlight.quote)
   useEffect(() => { if (focus) input.current?.focus() }, [focus])
   return (
     <article className={`reading-card highlight-card ${highlight.color}`} data-row-actions="">
@@ -70,7 +73,7 @@ function HighlightCard({ highlight, edits, onSave, onDelete, onJump, focus }: {
         <span className="reading-page"><SourceAnchor page={highlight.page} quote={highlight.quote} onOpen={onJump} /></span>
         <ReadingDelete onDelete={onDelete} />
       </div>
-      <blockquote>{highlight.quote}</blockquote>
+      <blockquote ref={quote} className={`fade-lines${quoteCut ? ' clipped' : ''}`}>{highlight.quote}</blockquote>
       <FormTextarea
         ref={input}
         aria-label={m.reader.highlights.noteAria(highlight.page)} placeholder={m.reader.highlights.annotate}

@@ -7,7 +7,6 @@
   box-sizing:border-box;margin:0;padding:var(--sp-2) var(--sp-8);border:0;border-radius:var(--r-chip);
   font-family:var(--sans);font-size:var(--fs-cap);font-weight:var(--fw-semibold);line-height:var(--lh-ui);
   font-variant-numeric:tabular-nums;white-space:nowrap}
-.tag-text{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .tag--chip{font-size:var(--fs-sm);font-weight:var(--fw-regular)}
 .tag--neutral,.tag--accent,.tag--info,.tag--paper,.tag--wiki{background:var(--chip);color:var(--sec)}
 .tag--good{background:var(--chip);color:var(--good-text)}

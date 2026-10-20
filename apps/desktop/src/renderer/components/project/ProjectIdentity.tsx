@@ -65,7 +65,7 @@ export function ProjectIdentity({
           <ProjectLabel name={project.name} />
           {showPriority ? <ProjectPriorityTag priority={project.priority} /> : null}
           {showTopic && project.topic
-            ? <span className="project-identity-topic">{project.topic}</span>
+            ? <FadeText className="project-identity-topic" label={project.topic}>{project.topic}</FadeText>
             : null}
         </span>
         {showStatus ? <FadeText className="project-identity-sub" label={project.status}>{project.status}</FadeText> : null}
@@ -78,7 +78,7 @@ export function ProjectIdentity({
       {showStatus ? <ProjectStatusTag status={project.status} /> : null}
       {showPriority ? <ProjectPriorityTag priority={project.priority} /> : null}
       {showTopic && project.topic
-        ? <span className="project-identity-topic">{project.topic}</span>
+        ? <FadeText className="project-identity-topic" label={project.topic}>{project.topic}</FadeText>
         : null}
     </span>
   )

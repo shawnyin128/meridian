@@ -132,7 +132,7 @@
 .ptable td .paper-text-cell-input{display:block}
 
 /* Column menu: locked built-in columns are grayed out, and custom columns have rename/delete at the end of their rows. */
-.mi.colrow .cl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.mi.colrow .cl{flex:1}
 .mi.locked{cursor:default;opacity:.45}
 /* The 24px buttons reach into the menu row's padding, so custom-column rows stay as tall as the others. */
 .cmx{margin:calc(-1 * var(--sp-4)) 0;opacity:0;pointer-events:none}
@@ -148,7 +148,7 @@
 .cmx.optx{opacity:1;pointer-events:auto}
 /* Column row labels start from 10px padding + 13px tick + 10px spacing = 33px, and option rows are indented 20px more */
 .mi.optrow{padding-left:calc(var(--row-menu-pad) + var(--row-menu-check) + var(--sp-10) + var(--sp-20));font-size:var(--fs-sm);color:var(--sec)}
-.mi.optrow .cl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.mi.optrow .cl{flex:1}
 .mi.optrow:hover .cmx{opacity:1;pointer-events:auto}
 .mi.optrow.optnone{color:var(--ter);cursor:default}
 /*
@@ -195,7 +195,7 @@
 .libbar .filters{align-items:center;flex-wrap:wrap;margin:0}
 .libbar .filters>.pt-dim{font-size:var(--fs-sm)}
 /* Fixed width, so the toolbar layout does not shift when the label changes from "Reading status" to "Unread" or another value. */
-.libbar .read-state-filter{width:78px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.libbar .read-state-filter{width:78px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
 /*
  * pointer-events is inherit rather than auto: normally that inherits the parent's default auto, and
  * when the whole page is disabled it inherits none and is disabled with it.

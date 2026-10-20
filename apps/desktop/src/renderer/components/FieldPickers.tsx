@@ -10,6 +10,7 @@ import { FormButton } from './FormControls.js'
 import { IconButton } from './IconButton.js'
 import { IconChevron, IconDots, IconNext, IconPrevious } from './icons.js'
 import { ToggleGroup, ToggleItem, useToolbarItem } from './Toolbar.js'
+import { FadeText } from './FadeText.js'
 import './FieldPickers.css'
 
 const PRIORITIES: Task['priority'][] = ['p0', 'p1', 'p2']
@@ -79,7 +80,7 @@ export function ChoicePicker<T extends string>({
       <FormButton
         className={`choice-picker${className ? ` ${className}` : ''}`} aria-label={ariaLabel} disabled={disabled}
       >
-        <span className="choice-picker-value">{picked}</span>
+        <FadeText className="choice-picker-value" label={picked}>{picked}</FadeText>
         <IconChevron />
       </FormButton>
     )
@@ -202,7 +203,7 @@ export function DateButton({ iso, className, appearance, onPick, children }: {
       trigger={appearance === 'field'
         ? (
           <FormButton className={`choice-picker${className ? ` ${className}` : ''}`}>
-            <span className="choice-picker-value">{shown}</span>
+            <FadeText className="choice-picker-value">{shown}</FadeText>
             <IconChevron />
           </FormButton>
         )

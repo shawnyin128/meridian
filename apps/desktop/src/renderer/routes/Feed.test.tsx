@@ -53,7 +53,7 @@ describe('feed rows', () => {
       </MessagesProvider>,
     )
 
-    expect(html).toMatch(/<span class="ftime"><span class="tag tag--chip tag--neutral date-chip"><span class="tag-text">昨天 21:40<\/span><\/span><\/span>/)
+    expect(html).toMatch(/<span class="ftime"><span class="tag tag--chip tag--neutral date-chip"><span class="fade-text tag-text" data-state="closed">昨天 21:40<\/span><\/span><\/span>/)
   })
 
   it('heads each card with its source as a neutral label, the icon in the label colour rather than a tone of its own', () => {
@@ -67,8 +67,8 @@ describe('feed rows', () => {
 
     expect(html).not.toContain('style="color')
     expect(html.match(/<div class="fsrc"><span class="tag tag--label tag--neutral source-label"><span class="fic">/g)).toHaveLength(2)
-    expect(html).toContain('<span class="tag-text">我</span>')
-    expect(html).toContain('<span class="tag-text">实验</span>')
+    expect(html).toContain('<span class="fade-text tag-text" data-state="closed">我</span>')
+    expect(html).toContain('<span class="fade-text tag-text" data-state="closed">实验</span>')
   })
 
   it('renders the LaTeX of a paper title in an emphasized run', () => {

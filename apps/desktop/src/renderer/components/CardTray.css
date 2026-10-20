@@ -2,7 +2,7 @@
 .card-tray-head{display:flex;min-height:34px;align-items:center;gap:var(--sp-6);padding:0 var(--sp-8) 0 var(--sp-12)}
 .card-tray-toggle{display:flex;min-width:0;flex:1;align-items:center;gap:var(--sp-8);padding:0;border:0;background:transparent;
   color:inherit;font:inherit;text-align:left;cursor:pointer}
-.card-tray-summary{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-tray-summary{flex:1}
 .card-tray-chevron{display:grid;width:18px;height:18px;flex:0 0 auto;place-items:center;color:var(--ter);
   transition:transform var(--t) var(--e-out)}
 .card-tray-chevron svg{width:12px;height:12px}

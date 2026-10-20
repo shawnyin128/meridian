@@ -500,7 +500,7 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
       <SectionHeading
         variant="rail" className="node-document-head"
         actions={<PanelClose onClose={onClose} />}
-      ><span className="node-document-title">{node.label}</span>
+      ><FadeText className="node-document-title" label={node.label}>{node.label}</FadeText>
       </SectionHeading>
       {children.length === 0 ? null : (
         <>
@@ -550,10 +550,10 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
                   className="node-idea-row" data-idea={idea.id} key={idea.id}
                   onActivate={() => onSelectIdea(idea.id)}
                 >
-                  <span className="node-idea-title">{idea.title}</span>
-                  <Tooltip label={m.project.idea.sourceTag(source)} whenClipped>
-                    <span className="node-idea-source">{m.project.idea.sourceTag(source)}</span>
-                  </Tooltip>
+                  <FadeText className="node-idea-title" label={idea.title}>{idea.title}</FadeText>
+                  <FadeText className="node-idea-source" label={m.project.idea.sourceTag(source)}>
+                    {m.project.idea.sourceTag(source)}
+                  </FadeText>
                 </StructuredRow>
               )
             })}
@@ -581,11 +581,9 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
       {node.markdownPath === undefined
         ? null
         : (
-          <Tooltip label={`${node.markdownPath}${node.markdownAnchor === undefined ? '' : `#${node.markdownAnchor}`}`} whenClipped>
-            <div className="node-document-source">
-              {node.markdownPath}{node.markdownAnchor === undefined ? '' : `#${node.markdownAnchor}`}
-            </div>
-          </Tooltip>
+          <FadeText className="node-document-source" label={`${node.markdownPath}${node.markdownAnchor === undefined ? '' : `#${node.markdownAnchor}`}`}>
+            {node.markdownPath}{node.markdownAnchor === undefined ? '' : `#${node.markdownAnchor}`}
+          </FadeText>
         )}
     </>
   )

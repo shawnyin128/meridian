@@ -4,6 +4,7 @@ import { delivery, harness } from '../../ipc.js'
 import { errorLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { FadeText } from '../FadeText.js'
 import './ApiOverview.css'
 
 /** The API category's summary: which model and which scholarly source Meridian uses now, each opening its own page. */
@@ -39,7 +40,7 @@ export function ApiOverview({ onOpen }: { onOpen: (category: 'model' | 'research
         {rows.map((row) => (
           <StructuredRow composite className="wrow" data-api={row.key} key={row.key} onActivate={() => onOpen(row.key)}>
             <span className="nm">{row.name}</span>
-            <span className="api-state">{row.state}</span>
+            <FadeText className="api-state">{row.state}</FadeText>
             <button className="btn ghost sm" onClick={(event) => { event.stopPropagation(); onOpen(row.key) }}>{copy.open}</button>
           </StructuredRow>
         ))}

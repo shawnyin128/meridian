@@ -6,5 +6,5 @@
 .paper-understanding-row{display:grid;gap:var(--sp-12);align-items:start;min-height:52px;padding:var(--sp-8) var(--sp-10)}
 .paper-understanding-page{color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
 .paper-understanding-note{display:flex;min-width:0;flex-direction:column;gap:var(--sp-4)}
-.paper-understanding-quote{color:var(--ter);font-size:var(--fs-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.paper-understanding-quote{color:var(--ter);font-size:var(--fs-sm)}
 .paper-understanding-date{color:var(--ter);font-size:var(--fs-cap);font-variant-numeric:tabular-nums}

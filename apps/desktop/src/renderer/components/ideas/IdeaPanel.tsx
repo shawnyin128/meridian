@@ -8,6 +8,7 @@ import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
 import { SLOT } from '../TitleNote.js'
 import { Tag } from '../Tag.js'
+import { FadeText } from '../FadeText.js'
 import './IdeaPanel.css'
 
 /** Where an idea came from, as plain text for a tooltip: the conversation, after the paper it was about when there is one. */
@@ -57,7 +58,7 @@ export function IdeaPanel({ idea, actions, editor, onClose, onOpenSourceChat, ch
       <SectionHeading
         variant="rail" className="idea-panel-head node-document-head"
         actions={<>{actions}<PanelClose onClose={onClose} /></>}
-      ><span className="node-document-title">{idea.title}</span>
+      ><FadeText className="node-document-title" label={idea.title}>{idea.title}</FadeText>
       </SectionHeading>
       <div className="idea-panel-meta">
         <Tag tone="accent">{m.project.idea.kind}</Tag>

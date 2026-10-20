@@ -4,9 +4,9 @@
 .project-ideas{display:grid}
 .project-idea-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(160px,34%);align-items:center;gap:var(--sp-10);
   min-height:38px;padding:var(--sp-6) var(--sp-2)}
-.project-idea-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:var(--fw-semibold)}
+.project-idea-title{font-weight:var(--fw-semibold)}
 .project-idea-flags{display:flex;align-items:center;justify-content:flex-end;gap:var(--sp-6);min-width:0}
-.project-idea-source{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ter);font-size:var(--fs-sm);text-align:right}
+.project-idea-source{color:var(--ter);font-size:var(--fs-sm);text-align:right}
 @media (max-width:900px){
   .project-idea-row{grid-template-columns:minmax(0,1fr) auto}
   .project-idea-flags{grid-column:2;grid-row:1}
@@ -30,7 +30,6 @@
 /* The Workspace is a connection, not core metadata: its path is truncated, and a dot names its state, in words when it is not connected. */
 .workspace-field{display:flex;align-items:center;gap:var(--sp-4);min-width:0}
 .workspace-root{display:flex;align-items:center;gap:var(--sp-6);min-width:0;flex:1;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:0}
-.workspace-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .workspace-kinds{margin-bottom:var(--sp-16)}
 .workspace-local{min-width:90px}
 .workspace-form{display:grid;gap:var(--sp-10)}

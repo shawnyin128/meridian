@@ -48,7 +48,7 @@ export function ProjectAttention({ items, onOpenPage, onLocateTask, onLocateMile
           >
             <ProjectSignalKind tone={item.tone}>{item.kind}</ProjectSignalKind>
             <ProjectSignalDate date={item.date} />
-            <span className="attn-text">{item.reason}</span>
+            <FadeText className="attn-text">{item.reason}</FadeText>
           </StructuredRow>
         )
       })}

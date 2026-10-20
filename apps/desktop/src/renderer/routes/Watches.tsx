@@ -24,6 +24,7 @@ import { Switch } from '../components/Switch.js'
 import { Tag } from '../components/Tag.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { composing } from '../lib/keyboard.js'
+import { FadeText } from '../components/FadeText.js'
 import './shell.css'
 import './Watches.css'
 
@@ -80,7 +81,11 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
                   <span className="nm">{w.name}</span>
                   {w.type !== 'author' ? null : w.identity === undefined
                     ? <Tag tone="warn">{m.watches.identityUnconfirmed}</Tag>
-                    : <span className="author-id-state">{w.identity.affiliations[0] || m.watches.identityUnconfirmed}</span>}
+                    : (
+                      <FadeText className="author-id-state" label={w.identity.affiliations[0] || m.watches.identityUnconfirmed}>
+                        {w.identity.affiliations[0] || m.watches.identityUnconfirmed}
+                      </FadeText>
+                    )}
                   {w.active ? null : <Tag className="watch-paused">{m.watches.paused}</Tag>}
                   <Switch label={w.name} checked={w.active} onChange={() => onSetActive(w)} />
                   <RowActions>
@@ -410,11 +415,13 @@ export function WatchSettings() {
                       {authorMatches.map((candidate) => (
                         <div className="author-match" key={candidate.id}>
                           <div className="author-match-copy">
-                            <strong>{candidate.name}</strong>
-                            <span>{candidate.affiliations.join(' · ') || m.watches.noAffiliation}</span>
-                            <small>
+                            <FadeText className="author-match-name" label={candidate.name}>{candidate.name}</FadeText>
+                            <FadeText className="author-match-affiliations">
+                              {candidate.affiliations.join(' · ') || m.watches.noAffiliation}
+                            </FadeText>
+                            <FadeText className="author-match-info">
                               {m.watches.candidateInfo(candidate.paperCount, candidate.citationCount, candidate.hIndex)}
-                            </small>
+                            </FadeText>
                           </div>
                           <button className="btn ghost sm" onClick={() => chooseAuthor(candidate)}>
                             {editor.id === undefined ? m.watches.follow : m.watches.choose}
@@ -521,8 +528,8 @@ export function WatchSettings() {
                         {suggestions.topics.map((item) => (
                           <StructuredRow className="watch-suggestion-row" key={item.name}>
                             <div className="watch-suggestion-copy">
-                              <span className="nm">{item.name}</span>
-                              <span>{m.watches.relatedPapers(item.relatedPapers)}</span>
+                              <FadeText className="nm" label={item.name}>{item.name}</FadeText>
+                              <FadeText>{m.watches.relatedPapers(item.relatedPapers)}</FadeText>
                             </div>
                             <button
                               className="btn ghost sm" disabled={addingSuggestion !== null}
@@ -542,10 +549,10 @@ export function WatchSettings() {
                         {suggestions.authors.map((item) => (
                           <StructuredRow className="watch-suggestion-row" key={suggestedAuthorKey(item)}>
                             <div className="watch-suggestion-copy">
-                              <span className="nm">{item.name}</span>
-                              <span>{'id' in item
+                              <FadeText className="nm" label={item.name}>{item.name}</FadeText>
+                              <FadeText>{'id' in item
                                 ? m.watches.suggestedAuthorInfo(item.relatedPapers, item.hIndex, item.citationCount)
-                                : m.watches.relatedPapers(item.relatedPapers)}</span>
+                                : m.watches.relatedPapers(item.relatedPapers)}</FadeText>
                             </div>
                             <button
                               className="btn ghost sm" disabled={addingSuggestion !== null}

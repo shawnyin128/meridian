@@ -20,7 +20,7 @@ describe('IdeaEditorDialog', () => {
       </MessagesProvider>,
     ))
     const dialog = document.querySelector('.idea-dialog')!
-    expect([...dialog.querySelectorAll('p')].map((p) => p.textContent)).toEqual(['来源：Draft trees · 对话'])
+    expect([...dialog.querySelectorAll('p, .idea-dialog-source')].map((line) => line.textContent)).toEqual(['来源：Draft trees · 对话'])
     expect(dialog.querySelector('textarea')!.placeholder).toBe('机制、假设或方向…')
     act(() => root.unmount())
     host.remove()

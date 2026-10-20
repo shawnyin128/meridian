@@ -23,7 +23,7 @@ describe('StatusDot', () => {
   it('writes its label after the dot, so the state does not rest on colour alone', () => {
     expect(renderToStaticMarkup(<StatusDot tone="bad" label="未找到" />)).toBe(
       '<span class="status-dot-labelled"><span class="status-dot status-dot--sm status-dot--bad" aria-hidden="true"></span>'
-      + '<span class="status-dot-label">未找到</span></span>',
+      + '<span class="fade-text status-dot-label">未找到</span></span>',
     )
   })
 

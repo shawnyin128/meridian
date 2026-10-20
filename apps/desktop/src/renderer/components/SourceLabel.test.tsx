@@ -10,7 +10,7 @@ describe('SourceLabel', () => {
 
   it('is a neutral label tag, never coloured by what it names', () => {
     expect(renderToStaticMarkup(<SourceLabel>主题 · speculative decoding</SourceLabel>))
-      .toBe('<span class="tag tag--label tag--neutral source-label"><span class="tag-text">主题 · speculative decoding</span></span>')
+      .toBe('<span class="tag tag--label tag--neutral source-label"><span class="fade-text tag-text" data-state="closed">主题 · speculative decoding</span></span>')
   })
 
   it('names any agent with one word, and adds where its work came from after a middle dot', () => {

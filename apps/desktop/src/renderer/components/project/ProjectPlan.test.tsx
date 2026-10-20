@@ -324,7 +324,7 @@ describe('ProjectTaskPanel', () => {
   })
 
   it('agent 加的任务在面板和列表里都带一个安静的 agent 标记,用户加的没有', () => {
-    const agent = '<span class="tag tag--label tag--neutral source-label"><span class="tag-text">agent</span></span>'
+    const agent = '<span class="tag tag--label tag--neutral source-label"><span class="fade-text tag-text" data-state="closed">agent</span></span>'
     expect(renderTaskPanel({ origin: 'agent' })).toContain(agent)
     expect(renderTaskPanel()).not.toContain('>agent<')
     expect(renderPlan('task', { tasks: [{ ...task, origin: 'agent' }] })).toContain(agent)

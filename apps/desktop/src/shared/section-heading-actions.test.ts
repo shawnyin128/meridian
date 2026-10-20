@@ -42,12 +42,12 @@ describe('小标题的操作', () => {
     expect(css).not.toMatch(/\.flexh|\.section-actions/)
   })
 
-  it('每个小标题的子内容只有标题文字,按钮、切换和菜单都放进 actions 槽', () => {
+  it('每个小标题的子内容只有标题文字(一个 span 或淡出的 FadeText),按钮、切换和菜单都放进 actions 槽', () => {
     const offenders = SOURCES.flatMap((path) => {
       const ast = parse(readFileSync(join(RENDERER, path), 'utf8'), { sourceType: 'module', plugins: ['typescript', 'jsx'] })
       return elements(ast.program).filter((element) => nameOf(element) === 'SectionHeading').flatMap((heading) => (
         elements(heading.children)
-          .filter((child) => nameOf(child) !== 'span')
+          .filter((child) => nameOf(child) !== 'span' && nameOf(child) !== 'FadeText')
           .map((child) => `${path}:${(child.loc as { start: { line: number } }).start.line} <${nameOf(child) || 'element'}>`)
       ))
     })

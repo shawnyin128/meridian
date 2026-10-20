@@ -20,6 +20,8 @@ describe('ExtensionSettings', () => {
   let root: Root
 
   beforeEach(() => {
+    // FadeText measures whether its text fits, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'en')
     host = document.createElement('div')

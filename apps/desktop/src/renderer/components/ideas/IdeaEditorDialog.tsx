@@ -3,6 +3,7 @@ import type { ResearchIdea } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { FormInput, FormTextarea } from '../FormControls.js'
 import { ModalDialog } from '../ModalDialog.js'
+import { FadeText } from '../FadeText.js'
 import './IdeaEditorDialog.css'
 
 export function IdeaEditorDialog({ open, idea, sourceLabel, onOpenChange, onSubmit }: {
@@ -47,7 +48,7 @@ export function IdeaEditorDialog({ open, idea, sourceLabel, onOpenChange, onSubm
         </>
       )}
     >
-      <p className="idea-dialog-source">{m.ideas.editor.sourceLabel(sourceLabel)}</p>
+      <FadeText className="idea-dialog-source" label={m.ideas.editor.sourceLabel(sourceLabel)}>{m.ideas.editor.sourceLabel(sourceLabel)}</FadeText>
       <label className="idea-dialog-field">
         <span>{m.ideas.editor.titleLabel}</span>
         <FormInput

@@ -1,5 +1,6 @@
 import { forwardRef } from 'react'
 import type { ComponentPropsWithoutRef, ReactNode } from 'react'
+import { FadeText } from './FadeText.js'
 import './Tag.css'
 
 /**
@@ -33,12 +34,15 @@ type TagOwnProps = {
   children: ReactNode
 }
 
-/** The one tag: fully rounded, its box from `shape` and its colours from `tone`; long text ends in an ellipsis. */
+/**
+ * The one tag: fully rounded, its box from `shape` and its colours from `tone`; long text fades out at
+ * its end, and text that is cut off shows whole in the shared tooltip.
+ */
 export const Tag = forwardRef<HTMLSpanElement, TagOwnProps & Omit<ComponentPropsWithoutRef<'span'>, keyof TagOwnProps>>(
   function Tag({ tone, shape, lead, className = '', children, ...rest }, ref) {
     return (
       <span ref={ref} className={tagClass(tone, shape, className)} {...rest}>
-        {lead}<span className="tag-text">{children}</span>
+        {lead}<FadeText className="tag-text" label={typeof children === 'string' ? children : undefined}>{children}</FadeText>
       </span>
     )
   },
@@ -49,7 +53,7 @@ export const TagButton = forwardRef<HTMLButtonElement, TagOwnProps & Omit<Compon
   function TagButton({ tone, shape, lead, className = '', children, ...rest }, ref) {
     return (
       <button ref={ref} type="button" className={tagClass(tone, shape, className)} {...rest}>
-        {lead}<span className="tag-text">{children}</span>
+        {lead}<FadeText className="tag-text" label={typeof children === 'string' ? children : undefined}>{children}</FadeText>
       </button>
     )
   },

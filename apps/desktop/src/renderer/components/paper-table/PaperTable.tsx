@@ -195,7 +195,7 @@ function ReadStateFilter({ name, current, onPick }: {
           type="button"
           className={current === null ? 'btn sm read-state-filter' : 'btn sm read-state-filter on'}
           aria-label={m.papers.readState.filterAria(name)}
-        >{current ?? name}</button>
+        ><FadeText>{current ?? name}</FadeText></button>
       )}
     >
       <MenuRadioGroup value={current ?? 'all'}>

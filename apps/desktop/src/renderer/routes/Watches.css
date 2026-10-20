@@ -8,7 +8,7 @@
  */
 
 .wrow.editrow{align-items:flex-start;min-height:30px;padding-block:var(--sp-4)}
-.author-id-state{display:inline-flex;align-items:center;height:22px;line-height:22px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ter);font-size:var(--fs-sm)}
+.author-id-state{display:inline-flex;align-items:center;height:22px;line-height:22px;max-width:260px;color:var(--ter);font-size:var(--fs-sm)}
 .author-resolver{flex:1;min-width:0}
 .author-search-note{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-10);padding:var(--sp-8) var(--sp-4) var(--sp-4);color:var(--ter);font-size:var(--fs-sm)}
 .author-search-note.error{color:var(--bad)}
@@ -16,10 +16,9 @@
 .author-match{display:flex;align-items:center;gap:var(--sp-12);padding:var(--sp-10) var(--sp-4);border-bottom:1px solid var(--sep2)}
 .author-match:last-child{border-bottom:0;padding-bottom:var(--sp-4)}
 .author-match-copy{display:grid;gap:var(--sp-2);min-width:0;flex:1}
-.author-match-copy strong,.author-match-copy span,.author-match-copy small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.author-match-copy strong{font-size:var(--fs-base);color:var(--ink)}
-.author-match-copy span{font-size:var(--fs-sm);color:var(--sec)}
-.author-match-copy small{font-size:var(--fs-cap);color:var(--ter)}
+.author-match-name{font-size:var(--fs-base);font-weight:var(--fw-semibold);color:var(--ink)}
+.author-match-affiliations{font-size:var(--fs-sm);color:var(--sec)}
+.author-match-info{font-size:var(--fs-cap);color:var(--ter)}
 .author-resolver-actions{display:flex;justify-content:flex-end;padding:var(--sp-8) var(--sp-4) 1px;border-top:1px solid var(--sep2)}
 
 .watch-suggestions{margin-top:var(--sp-20);padding-top:var(--sp-16);border-top:1px solid var(--sep)}
@@ -40,7 +39,6 @@
 .watch-suggestion-group-heading strong{font-weight:var(--fw-semibold);color:var(--ink)}
 .watch-suggestion-row{display:flex;align-items:center;gap:var(--sp-12);min-height:42px;padding:var(--sp-6) var(--sp-2)}
 .watch-suggestion-copy{display:grid;gap:var(--sp-2);min-width:0;flex:1}
-.watch-suggestion-copy span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .watch-suggestion-copy .nm{color:var(--ink);font-size:var(--fs-sm)}
 .watch-suggestion-copy span:last-child{color:var(--ter);font-size:var(--fs-cap)}
 .watch-suggestion-row>.btn{flex-shrink:0}

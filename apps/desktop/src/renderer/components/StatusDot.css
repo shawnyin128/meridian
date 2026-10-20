@@ -6,4 +6,3 @@
 .status-dot--bad{background:var(--bad)}
 .status-dot--neutral{background:var(--ter)}
 .status-dot-labelled{display:inline-flex;align-items:center;gap:var(--sp-6);min-width:0}
-.status-dot-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

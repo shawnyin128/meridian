@@ -30,7 +30,7 @@ const MARKUP = `<table class="ptable"><tbody><tr>
 <span class="research-map-group-copy"><span class="fade-text research-map-group-name" id="group">KV cache 量化</span><span>项目关联</span></span>
 <div class="research-map-detail-head"><div><span class="fade-text research-map-detail-name" id="detail">KV cache 量化</span><span>3 篇论文</span></div></div>
 <article class="research-object-card research-object-card--grid wkcard wkcard--paper"><div class="wt"><span class="tag">论文</span>
-  <button class="research-object-card-open tt" id="paper-title"><span class="tt-lines" id="paper-lines">EAGLE: Speculative Sampling Requires Rethinking Feature Uncertainty</span></button>
+  <button class="research-object-card-open tt" id="paper-title"><span class="tt-lines fade-lines" id="paper-lines">EAGLE: Speculative Sampling Requires Rethinking Feature Uncertainty</span></button>
 </div><span class="fade-text wm" id="paper-meta">2024 arXiv · 推测解码</span></article>`
 
 describe('标题放不下时', () => {
@@ -51,9 +51,9 @@ describe('标题放不下时', () => {
     expect([style('group').fontSize, style('detail').fontSize]).toEqual(['var(--fs-base)', 'var(--fs-group)'])
   })
 
-  it('Wiki 首页论文卡片的标题最多占两行，下面的年份、会场和主题只占一行，不再空出多行的摘要区', () => {
+  it('Wiki 首页论文卡片的标题最多占两行，不用省略号截断，下面的年份、会场和主题只占一行', () => {
     expect([style('paper-title').whiteSpace, style('paper-title').maskImage]).toEqual(['normal', 'none'])
-    expect(style('paper-lines').getPropertyValue('-webkit-line-clamp')).toBe('2')
+    expect([style('paper-lines').height, style('paper-lines').getPropertyValue('-webkit-line-clamp')]).toEqual(['48px', ''])
     expect([style('paper-meta').whiteSpace, style('paper-meta').height]).toEqual(['nowrap', 'auto'])
   })
 })

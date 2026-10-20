@@ -58,7 +58,7 @@
 .direction-row.disabled .direction-main{opacity:.52}
 .direction-main{min-width:0;flex:1}
 .direction-name{display:flex;align-items:center;gap:var(--sp-8);color:var(--ink);font-size:var(--fs-base)}
-.direction-seeds{margin-top:var(--sp-2);color:var(--ter);font-size:var(--fs-cap);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.direction-seeds{display:block;margin-top:var(--sp-2);color:var(--ter);font-size:var(--fs-cap)}
 .direction-actions{display:flex;align-items:center;gap:var(--sp-6);flex:none}
 
 /*
@@ -168,7 +168,7 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 /* As in the demo, only rows linked to a wiki page are clickable. */
 .attnrow[data-wk]{cursor:pointer}
 .attnrow[data-wk]:hover{background:var(--hover)}
-.attn-text{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.attn-text{flex:1;min-width:0;overflow:hidden;white-space:nowrap}
 .attn+.wkpage{margin-top:var(--sp-24)}
 
 .tlrow{font-size:var(--fs-base);padding:var(--sp-8) var(--sp-2)}

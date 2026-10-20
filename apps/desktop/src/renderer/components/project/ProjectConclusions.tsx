@@ -133,7 +133,7 @@ export function ProjectConclusionPanel({
             <PanelClose onClose={onClose} />
           </>
         )}
-      ><span className="node-document-title">{c.heading}</span>
+      ><FadeText className="node-document-title" label={c.heading}>{c.heading}</FadeText>
       </SectionHeading>
       <p className="conclusion-detail-text">{conclusion.text}</p>
       <div className="conclusion-detail-meta">

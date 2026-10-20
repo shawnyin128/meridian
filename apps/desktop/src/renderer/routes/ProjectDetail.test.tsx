@@ -334,8 +334,8 @@ describe('the workspace field', () => {
   }
 
   it('names a workspace it cannot reach in words beside the red dot, so the state does not rest on colour alone', () => {
-    expect(field('missing')).toContain('status-dot--bad" aria-hidden="true"></span><span class="status-dot-label">未找到</span>')
-    expect(field('invalid')).toContain('<span class="status-dot-label">无效</span>')
+    expect(field('missing')).toContain('status-dot--bad" aria-hidden="true"></span><span class="fade-text status-dot-label">未找到</span>')
+    expect(field('invalid')).toContain('<span class="fade-text status-dot-label">无效</span>')
   })
 
   it('keeps a connected workspace quiet: the green dot carries its state as its name and tooltip', () => {

@@ -1,4 +1,5 @@
 import { Tooltip } from './Tooltip.js'
+import { FadeText } from './FadeText.js'
 import './StatusDot.css'
 
 /** What a dot's colour says: a good, warning, failed or neutral state. */
@@ -21,7 +22,7 @@ export function StatusDot({ tone, size = 'sm', label, labelHidden = false }: {
   if (labelHidden) return <Tooltip label={label}><span className={className} role="img" aria-label={label} /></Tooltip>
   return (
     <span className="status-dot-labelled">
-      <span className={className} aria-hidden="true" /><span className="status-dot-label">{label}</span>
+      <span className={className} aria-hidden="true" /><FadeText className="status-dot-label">{label}</FadeText>
     </span>
   )
 }

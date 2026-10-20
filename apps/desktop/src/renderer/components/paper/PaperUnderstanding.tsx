@@ -7,6 +7,7 @@ import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { EmptyState } from '../EmptyState.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { entryAnchor, readingEntries } from '../paper-table/reading-entries.js'
+import { FadeText } from '../FadeText.js'
 import './PaperUnderstanding.css'
 
 /** Personal reading state shown beside, but never merged into, canonical Wiki content. */
@@ -57,7 +58,7 @@ export function PaperUnderstanding({ reading, onRead }: {
                   >
                     <span className="paper-understanding-page">{m.papers.understanding.page(entry.page)}</span>
                     <span className="paper-understanding-note">
-                      {entry.quote === null ? null : <span className="paper-understanding-quote">“{entry.quote}”</span>}
+                      {entry.quote === null ? null : <FadeText className="paper-understanding-quote">“{entry.quote}”</FadeText>}
                       <span>{entry.text}</span>
                       <span className="paper-understanding-date">{m.papers.understanding.updated(fmt.date(entry.updated))}</span>
                     </span>

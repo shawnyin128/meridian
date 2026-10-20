@@ -31,7 +31,8 @@ import { useMessages } from '../messages/useMessages.js'
 import type { Catalog } from '../messages/catalog.js'
 import { AgentLabel, SourceLabel } from '../components/SourceLabel.js'
 import { Tag } from '../components/Tag.js'
-import { Tooltip } from '../components/Tooltip.js'
+import { FadeText } from '../components/FadeText.js'
+import { useClipped } from '../hooks/useClipped.js'
 import './Ideas.css'
 
 
@@ -80,6 +81,8 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, reorder, dropClassName
 }) {
   const fmt = useFormat()
   const m = useMessages()
+  const summary = useRef<HTMLParagraphElement>(null)
+  const summaryCut = useClipped(summary, idea.body)
   return (
     <ResearchObjectCard
       className={`idea-card${dropClassName ? ` ${dropClassName}` : ''}`} selected={selected} muted={idea.archived}
@@ -87,17 +90,17 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, reorder, dropClassName
     >
       <div className="idea-card-content">
         <div className="idea-card-title-row">
-          <CardOpen><strong>{idea.title}</strong></CardOpen>
+          <CardOpen><FadeText className="idea-card-title" label={idea.title}>{idea.title}</FadeText></CardOpen>
           <Tag
             tone={linked === undefined && idea.project !== undefined ? 'bad' : 'neutral'}
             className="idea-project-tag"
           >{linkedProjectLabel(idea, linked, m)}</Tag>
         </div>
-        <p className="idea-card-summary">{idea.body}</p>
+        <p ref={summary} className={`idea-card-summary fade-lines${summaryCut ? ' clipped' : ''}`}>{idea.body}</p>
         <div className="idea-card-meta">
-          <Tooltip label={m.project.idea.sourceTag(ideaSourceLabel(idea))} whenClipped>
-            <span className="idea-card-source"><IdeaSource idea={idea} message={m.project.idea.sourceTag} /></span>
-          </Tooltip>
+          <FadeText className="idea-card-source" label={m.project.idea.sourceTag(ideaSourceLabel(idea))}>
+            <IdeaSource idea={idea} message={m.project.idea.sourceTag} />
+          </FadeText>
           {idea.source.agent === true
             ? <AgentLabel className="idea-source-kind" />
             : (

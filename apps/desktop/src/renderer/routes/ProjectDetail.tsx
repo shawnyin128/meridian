@@ -64,6 +64,7 @@ import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
+import { FadeText } from '../components/FadeText.js'
 import './shell.css'
 import './ProjectDetail.css'
 
@@ -87,7 +88,7 @@ export function WorkspaceRoot({ state, name, root, onOpen }: {
       <StatusDot
         tone={state === 'ready' ? 'good' : 'bad'} label={m.project.workspace.state[state]} labelHidden={state === 'ready'}
       />
-      <Tooltip label={root} whenClipped={name === root}><span className="workspace-name">{name}</span></Tooltip>
+      <Tooltip label={root} whenClipped={name === root}><FadeText className="workspace-name">{name}</FadeText></Tooltip>
     </button>
   )
 }
@@ -825,7 +826,7 @@ export function ProjectDetail({
                           discardOpenEdits()
                         }}
                       >
-                        <span className="project-idea-title">{idea.title}</span>
+                        <FadeText className="project-idea-title" label={idea.title}>{idea.title}</FadeText>
                         <span className="project-idea-flags">
                           {ideaNode === undefined
                             ? null
@@ -834,9 +835,9 @@ export function ProjectDetail({
                             )}
                           {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
                         </span>
-                        <Tooltip label={m.project.idea.sourceTag(source)} whenClipped>
-                          <span className="project-idea-source"><IdeaSource idea={idea} message={m.project.idea.sourceTag} /></span>
-                        </Tooltip>
+                        <FadeText className="project-idea-source" label={m.project.idea.sourceTag(source)}>
+                          <IdeaSource idea={idea} message={m.project.idea.sourceTag} />
+                        </FadeText>
                       </StructuredRow>
                     )
                   })}

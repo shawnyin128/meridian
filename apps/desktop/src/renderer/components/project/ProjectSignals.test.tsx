@@ -30,7 +30,7 @@ describe('ProjectSignals', () => {
 
   it('一行的记录正文在前,agent 写的在末尾跟 agent 标签,我写的不带', () => {
     const agent = renderToStaticMarkup(<MessagesProvider><EventText text="跑完基线" origin="agent" /></MessagesProvider>)
-    expect(agent).toMatch(/跑完基线.*<span class="tag tag--label tag--neutral source-label"><span class="tag-text">agent<\/span><\/span><\/span>$/)
+    expect(agent).toMatch(/跑完基线.*<span class="tag tag--label tag--neutral source-label"><span class="fade-text tag-text" data-state="closed">agent<\/span><\/span><\/span>$/)
     expect(renderToStaticMarkup(<MessagesProvider><EventText text="我记的" /></MessagesProvider>)).not.toContain('source-label')
   })
 })

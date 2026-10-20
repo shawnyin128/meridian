@@ -5,7 +5,7 @@ import type {
 import { useMessages } from '../../messages/useMessages.js'
 import { FormInput, FormSelect } from '../FormControls.js'
 import { ModalDialog } from '../ModalDialog.js'
-import { Tooltip } from '../Tooltip.js'
+import { FadeText } from '../FadeText.js'
 import './IdeaGraphDialog.css'
 
 export function IdeaGraphDialog({
@@ -54,7 +54,7 @@ export function IdeaGraphDialog({
         </>
       )}
     >
-      <Tooltip label={idea.title} whenClipped><p className="idea-graph-dialog-idea">{idea.title}</p></Tooltip>
+      <FadeText className="idea-graph-dialog-idea" label={idea.title}>{idea.title}</FadeText>
       <label className="idea-graph-dialog-field">
         <span>{m.ideas.graphDialog.nodeTitleLabel}</span>
         <FormInput

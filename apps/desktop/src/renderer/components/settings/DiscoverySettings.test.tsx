@@ -36,6 +36,8 @@ const { DiscoverySettings } = await import('./DiscoverySettings.js')
 describe('DiscoverySettings', () => {
   let host: HTMLDivElement
   beforeEach(() => {
+    // FadeText measures whether its text fits, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     host = document.createElement('div')

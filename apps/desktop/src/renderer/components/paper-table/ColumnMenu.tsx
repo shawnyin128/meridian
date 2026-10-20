@@ -9,6 +9,7 @@ import { ColumnTypeIcon, ColumnTypePicker } from './ColumnAdd.js'
 import { builtinNames, takenLabel } from './column-key.js'
 import { COLUMNS } from './PaperTable.js'
 import { afterLeaving, InlineDraftInput } from '../InlineDraftInput.js'
+import { FadeText } from '../FadeText.js'
 
 /**
  * The column menu, opened from the gear at the end of the table header. Built-in columns take one
@@ -112,7 +113,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
             const body = (
               <>
                 <span className="ck">{shown ? <IconCheck /> : null}</span>
-                <span className="cl">{names[c.k]}</span>
+                <FadeText className="cl" label={names[c.k]}>{names[c.k]}</FadeText>
               </>
             )
             return locked
@@ -144,7 +145,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                       }}
                     />
                   )
-                  : <span className="cl">{c.label}</span>}
+                  : <FadeText className="cl" label={c.label}>{c.label}</FadeText>}
                 {c.type === 'text'
                   ? null
                   : (
@@ -200,7 +201,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                             }}
                           />
                         )
-                        : <span className="cl">{o}</span>}
+                        : <FadeText className="cl" label={o}>{o}</FadeText>}
                       <IconButton
                         label={m.papers.columnMenu.renameOption} size="nested" className="cmx"
                         onClick={() => afterLeaving(

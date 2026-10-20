@@ -12,6 +12,8 @@ import { PaperText } from '../paper/PaperText.js'
 import { Switch } from '../Switch.js'
 import { Tag } from '../Tag.js'
 import { Card } from '../Card.js'
+import { FadeText } from '../FadeText.js'
+import { plainTitle } from '../paper/paper-text.js'
 
 function resultNote(result: DiscoveryFetchResult, m: Catalog): string {
   const parts = [
@@ -92,11 +94,11 @@ export function DiscoverySettings() {
                     {intent.core ? <Tag tone="accent">{m.settings.discovery.core}</Tag> : null}
                     <span>{intent.label}</span>
                   </div>
-                  <div className="direction-seeds">
+                  <FadeText className="direction-seeds" label={intent.seeds.map((seed) => plainTitle(seed.title)).join(' · ')}>
                     {intent.seeds.map((seed, at) => (
                       <Fragment key={seed.id}>{at === 0 ? null : ' · '}<PaperText text={seed.title} /></Fragment>
                     ))}
-                  </div>
+                  </FadeText>
                 </div>
                 <div className="direction-actions">
                   {!intent.core && intent.enabled ? (

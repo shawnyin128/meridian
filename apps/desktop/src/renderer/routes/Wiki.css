@@ -15,8 +15,7 @@
 /* The title's fade mask hides its own focus ring, so the card draws it. */
 .wkcard:has(button.tt:focus-visible){outline:var(--ring-width) solid var(--ring);outline-offset:var(--ring-offset)}
 .wkcard .sp{margin-left:auto;display:flex;align-items:center;flex-shrink:0}
-.wkcard .wm{font-size:var(--card-fs);color:var(--ter);margin-top:var(--sp-4);line-height:1.5;height:calc(1.5em * var(--card-lines));
-  overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--card-lines)}
+.wkcard .wm{font-size:var(--card-fs);color:var(--ter);margin-top:var(--sp-4);line-height:1.5;height:calc(1.5em * var(--card-lines))}
 .wkcard .wf{font-size:var(--fs-sm);color:var(--ter);margin-top:var(--sp-8);white-space:nowrap;overflow:hidden;mask-image:var(--clipfade);display:flex;align-items:center;gap:var(--sp-6)}
 /*
  * A paper card's title takes up to two lines, always the height of two so every card in the grid keeps
@@ -24,7 +23,7 @@
  */
 .wkcard--paper .wt{align-items:flex-start}
 .wkcard--paper .tt{white-space:normal;mask-image:none}
-.wkcard--paper .tt-lines{display:-webkit-box;height:calc(1.5em * 2);overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.wkcard--paper .tt-lines{display:block;height:calc(1.5em * 2)}
 .wkcard--paper .wm{display:block;height:auto}
 
 /* Body paragraphs and empty-state lines share one paragraph spacing */
@@ -67,7 +66,7 @@
 .wktoc{list-style:none;margin:var(--sp-2) 0 0;padding:0;border-left:1px solid var(--sep)}
 .wktoc li{font-size:var(--fs-base);line-height:var(--lh-ui);color:var(--sec);cursor:pointer;padding:var(--sp-4) 0 var(--sp-4) var(--sp-12);margin-left:-1px;border-left:1px solid transparent;white-space:nowrap}
 /* The entry's button fills it and truncates itself, since an ellipsis never cuts into a button. */
-.wktoc li button{display:block;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit;overflow:hidden;text-overflow:ellipsis}
+.wktoc li button{display:flex;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
 .wktoc li:hover{color:var(--ink)}
 .wktoc li.on{color:var(--ink);font-weight:var(--fw-semibold);border-left-color:var(--ink)}
 .wktoc li.l2{padding-left:calc(2 * var(--sp-12));font-size:var(--fs-sm)}

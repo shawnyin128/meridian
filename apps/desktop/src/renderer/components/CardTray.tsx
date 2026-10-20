@@ -2,6 +2,7 @@ import { useId, useState } from 'react'
 import type { ReactNode } from 'react'
 import { IconChevron } from './icons.js'
 import { Tooltip } from './Tooltip.js'
+import { FadeText } from './FadeText.js'
 import './CardTray.css'
 
 /**
@@ -37,7 +38,7 @@ export function CardTray({
             onClick={() => setOpen((held) => !held)}
           >
             {variant === 'row' ? chevron : null}
-            <span className="card-tray-summary">{summary}</span>
+            <FadeText className="card-tray-summary">{summary}</FadeText>
             {variant === 'row' ? null : chevron}
           </button>
         </Tooltip>

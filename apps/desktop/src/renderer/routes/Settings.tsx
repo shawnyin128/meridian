@@ -37,7 +37,7 @@ import { WatchSettings } from './Watches.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { Tag } from '../components/Tag.js'
 import { Card } from '../components/Card.js'
-import { Tooltip } from '../components/Tooltip.js'
+import { FadeText } from '../components/FadeText.js'
 import './shell.css'
 import './Settings.css'
 
@@ -293,7 +293,7 @@ export function Settings() {
                     <StructuredRow composite className="storage-backup-row" key={backup.id}>
                       <div className="storage-backup-copy">
                         <DateTimeDisplay at={backup.createdAt} />
-                        <Tooltip label={backup.path} whenClipped><span className="storage-backup-path">{backup.path}</span></Tooltip>
+                        <FadeText className="storage-backup-path" label={backup.path}>{backup.path}</FadeText>
                       </div>
                       <div className="storage-backup-actions">
                         <button

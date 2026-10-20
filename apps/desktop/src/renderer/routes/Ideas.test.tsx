@@ -138,9 +138,9 @@ describe('Ideas', () => {
       await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
       const meta = (id: string) => [...host.querySelector(`[data-idea="${id}"] .idea-card-meta`)!.children]
         .map((child) => (child.classList.contains('source-label') ? `[${child.textContent}]` : child.className))
-      expect(meta('idea-linked')).toEqual(['idea-card-source', '[对话]', 'idea-card-updated'])
-      expect(meta('idea-independent')).toEqual(['idea-card-source', '[论文阅读]', 'idea-card-updated'])
-      expect(meta('idea-agent')).toEqual(['idea-card-source', '[agent]', 'idea-card-updated'])
+      expect(meta('idea-linked')).toEqual(['fade-text idea-card-source', '[对话]', 'idea-card-updated'])
+      expect(meta('idea-independent')).toEqual(['fade-text idea-card-source', '[论文阅读]', 'idea-card-updated'])
+      expect(meta('idea-agent')).toEqual(['fade-text idea-card-source', '[agent]', 'idea-card-updated'])
     } finally {
       api.ideas.pop()
     }

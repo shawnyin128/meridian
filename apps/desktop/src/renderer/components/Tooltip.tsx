@@ -8,6 +8,12 @@ import './Tooltip.css'
 export const TOOLTIP_DELAY = 500
 
 const Provided = createContext(false)
+const Around = createContext(false)
+
+/** Whether the caller renders inside the element of a tooltip that has a label. */
+export function useInTooltip(): boolean {
+  return useContext(Around)
+}
 
 /**
  * The one tooltip provider, at the renderer's root: every tooltip under it opens after the same
@@ -54,7 +60,7 @@ export function Tooltip({ label, shortcut, note, whenClipped = false, side = 'bo
   // nothing opens while a button is held, as during a drag.
   const fits = (event: SyntheticEvent<HTMLElement>) => whenClipped && !clipped(event.currentTarget)
   const tooltip = (
-    <RadixTooltip.Root open={open} onOpenChange={setOpen}>
+    <Around.Provider value><RadixTooltip.Root open={open} onOpenChange={setOpen}>
       <RadixTooltip.Trigger
         asChild
         // A menu trigger cancels the press before Radix sees it, so the press closes the tooltip here.
@@ -70,7 +76,7 @@ export function Tooltip({ label, shortcut, note, whenClipped = false, side = 'bo
           {note === undefined ? null : <span className="tooltip-note">{note}</span>}
         </RadixTooltip.Content>
       </RadixTooltip.Portal>
-    </RadixTooltip.Root>
+    </RadixTooltip.Root></Around.Provider>
   )
   return provided ? tooltip : <TooltipProvider>{tooltip}</TooltipProvider>
 }

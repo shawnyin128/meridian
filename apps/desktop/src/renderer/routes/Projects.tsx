@@ -34,7 +34,6 @@ import type { Catalog } from '../messages/catalog.js'
 import { ProjectDetail } from './ProjectDetail.js'
 import type { RecordTab } from './ProjectDetail.js'
 import type { PlanTab } from '../components/project/ProjectPlan.js'
-import { Tooltip } from '../components/Tooltip.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import type { NoticeAction } from '../components/Notice.js'
@@ -43,6 +42,7 @@ import { DragHandle } from '../components/DragHandle.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
+import { FadeText } from '../components/FadeText.js'
 import './shell.css'
 import './Projects.css'
 
@@ -188,9 +188,9 @@ function ProjectPanel({ project, onOpen, menu, reorder, dropClassName }: {
       <div className="project-card-decisions">
         <div className="project-card-decision">
           <span className="project-card-label">{m.project.identity.focusLabel.currentGoal}</span>
-          <Tooltip label={project.focus || m.research.panel.focusUndefined} whenClipped>
-            <span className="project-card-value">{project.focus || m.research.panel.focusUndefined}</span>
-          </Tooltip>
+          <FadeText className="project-card-value" label={project.focus || m.research.panel.focusUndefined}>
+            {project.focus || m.research.panel.focusUndefined}
+          </FadeText>
         </div>
         <div className="project-card-decision">
           <span className="project-card-label">{m.project.control.nextAction}</span>
@@ -216,10 +216,10 @@ function ProjectPanel({ project, onOpen, menu, reorder, dropClassName }: {
         <span className="project-card-fact project-card-recent">
           <span className="project-card-label">{m.research.panel.recentProgressLabel}</span>
           {project.lastProgress === undefined
-            ? <span className="project-card-empty">{m.research.panel.noRecords}</span>
+            ? <FadeText className="project-card-empty">{m.research.panel.noRecords}</FadeText>
             : (
               <>
-                <span>{fmt.date(project.lastProgress)}</span>
+                <FadeText>{fmt.date(project.lastProgress)}</FadeText>
                 {record === undefined ? null : <EventText text={record.text} origin={record.origin} />}
               </>
             )}
@@ -249,10 +249,10 @@ function ProjectRow({ project, onOpen, menu, reorder, dropClassName }: {
       <button type="button" className="prow-open">
         <ProjectIdentity project={project} variant="row" showPriority={false} showTopic />
       </button>
-      <span className="m">
+      <FadeText className="m">
         {m.project.identity.focusWithLabel(m.project.identity.focusLabel[FOCUS_KEY[project.status]], project.focus)} ·{' '}
         {idleNote(idle, m.project.signals.idle)}
-      </span>
+      </FadeText>
       <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
     </StructuredRow>
   )
