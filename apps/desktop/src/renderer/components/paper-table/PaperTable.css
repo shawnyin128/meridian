@@ -53,7 +53,7 @@
 /* Hover reveal: expands in place (Excel style); text stays put, no border, and the background over adjacent columns matches the row */
 .ptable td.trunc:hover .ci:not(:has(.tagchip)){position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;padding:7px 10px;width:max-content;background:linear-gradient(var(--row-over),var(--row-over)),linear-gradient(var(--row-bg),var(--row-bg)) var(--content);z-index:6;overflow:visible;text-overflow:clip}
 .tblwrap .ptable thead th{position:sticky;top:0;z-index:3;background:var(--content)}
-.ptable th:first-child,.ptable td:first-child{position:sticky;left:0;z-index:2;background:var(--content);box-shadow:1px 0 0 var(--sep2)}
+.ptable th:first-child,.ptable td:first-child{position:sticky;left:0;z-index:2;background:var(--content)}
 .ptable th:first-child{top:0;z-index:4}
 /* The corner cell must sit above the other header cells: the "thead th" rule is more specific, so the corner cell gets its own rule. */
 .tblwrap .ptable thead th:first-child{left:0;z-index:4}
@@ -141,7 +141,7 @@
  * actions stay in reach while the columns scroll under them. They lie above a truncated cell's hover
  * box (z-index 6), and the header cell above the body cells that scroll under it.
  */
-.ptable td.row-actions-cell,.tblwrap .ptable thead th.th-add{position:sticky;right:0;box-shadow:-1px 0 0 var(--sep2)}
+.ptable td.row-actions-cell,.tblwrap .ptable thead th.th-add{position:sticky;right:0}
 .ptable td.row-actions-cell{z-index:7;background-color:var(--content);
   background-image:linear-gradient(var(--row-over),var(--row-over)),linear-gradient(var(--row-bg),var(--row-bg))}
 .tblwrap .ptable thead th.th-add{z-index:8}
