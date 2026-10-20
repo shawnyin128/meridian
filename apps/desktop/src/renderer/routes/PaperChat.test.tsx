@@ -241,7 +241,7 @@ describe('PaperChat', () => {
     await act(async () => { finish(); await Promise.resolve() })
   })
 
-  it('问题去掉空白后为空时发送钮不可点；还没讨论时存为想法是变淡的幽灵按钮', async () => {
+  it('问题去掉空白后为空时发送钮不可点；还没讨论时保存为想法是变淡的幽灵按钮', async () => {
     const host = await mountChat()
     const input = host.querySelector<HTMLTextAreaElement>('[aria-label="向当前论文提问"]')!
     const send = host.querySelector<HTMLButtonElement>('.paper-chat .send')!
