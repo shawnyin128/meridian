@@ -903,7 +903,6 @@ export function createVaultStore(
     return [...papers.values()].map((row) => withProjectLinks(row, held))
   }
 
-  /** Writes only the modified project fields to its page and returns the updated detail. */
   /** The one path that adds a task to a plan, for the user and for agents alike (see VaultOps.createTask). */
   const createTask = (projectId: string, task: TaskFields, origin?: 'agent'): ProjectDetail => {
     const project = projectOf(projectId)
@@ -912,11 +911,16 @@ export function createVaultStore(
     return writeProject({ ...project, tasks: [made, ...project.tasks] }, ['tasks'])
   }
 
+  /**
+   * Writes only the modified project fields to its page and returns the updated detail. Throws when
+   * the page cannot be written, still holding the previous record and neither archiving ideas nor
+   * syncing the workspace.
+   */
   const writeProject = (
     project: ProjectRecord, fields: (keyof ProjectRecord)[], syncWorkspace = true,
   ): ProjectDetail => {
-    projectById.set(project.id, project)
     writeProjectFields(projectFile(project.id), project, fields, staging)
+    projectById.set(project.id, project)
     if (project.status === FINISHED_PROJECT) archiveIdeasForProject(project.id)
     if (syncWorkspace) syncProjectWorkspace(project)
     return detailOf(project)
@@ -1419,8 +1423,8 @@ export function createVaultStore(
         graph: { nodes: [], edges: [] },
         agentSessions: [],
       }
-      projectById.set(project.id, project)
       writePage(projectFile(project.id), projectPageText(project), staging)
+      projectById.set(project.id, project)
       // Front of whatever order already exists, so a new project outranks the manual order too.
       state = { ...state, projectOrder: [project.id, ...(state.projectOrder ?? [])] }
       saveState()
