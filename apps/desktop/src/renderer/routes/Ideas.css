@@ -23,7 +23,7 @@
   max-height:calc(100vh - 108px)}
 /* The idea itself is the shared IdeaPanel, with the document panes' padding; see ResearchGraph.css. */
 .idea-detail-panel{width:100%;max-height:calc(100vh - 108px);
-  box-sizing:border-box;padding:var(--sp-20) var(--sp-24);border-radius:var(--r-card);background:var(--card);
+  box-sizing:border-box;padding:var(--sp-20) var(--sp-24);border:1px solid var(--sep);border-radius:var(--r-card);background:var(--card);
   box-shadow:var(--sh-1);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
 .idea-detail-editor{display:grid;gap:var(--sp-14);margin-top:var(--sp-20)}
 .idea-detail-editor label{display:grid;gap:var(--sp-6);color:var(--ter);font-size:var(--fs-sm)}

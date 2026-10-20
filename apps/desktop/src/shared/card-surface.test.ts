@@ -55,3 +55,32 @@ describe('卡片只有一种面', () => {
       .toEqual(['0px', 'var(--r-card)', 'var(--raised)', 'var(--sh-3)'])
   })
 })
+
+/** The cards and panels on --card whose separating border phase 2 dropped, each with the border 0.0.15.4 drew. */
+const SEPARATED: [file: string, selector: string, border: string][] = [
+  ['routes/Feed.css', '.fitem', '1px solid var(--sep2)'],
+  ['components/paper/PaperCard.css', '.paper-card', '1px solid var(--sep)'],
+  ['components/paper-table/PaperTable.css', '.research-map-intro', '1px solid var(--sep)'],
+  ['components/paper-table/PaperTable.css', '.research-map-detail', '1px solid var(--sep)'],
+  ['routes/ResearchOverview.css', '.ovstat', '1px solid var(--sep)'],
+  ['components/project/ProjectSections.css', '.agcard', '1px solid var(--sep)'],
+  ['components/project/ResearchGraph.css', '.rgraph-viewport', '1px solid var(--sep2)'],
+  ['routes/ProjectDetail.css', '.wkside.node-document-pane', '1px solid var(--sep)'],
+  ['routes/Ideas.css', '.idea-detail-panel', '1px solid var(--sep)'],
+  ['routes/Reader.css', '.reading-card', '1px solid var(--sep2)'],
+  ['routes/Reader.css', '.wiki-ingest-scope', '1px solid var(--sep2)'],
+]
+
+describe('卡片和画布之间的边', () => {
+  it('铺卡片底色的卡片和面板都画回 0.0.15.4 的那圈细边，在白色画布上靠它分开', () => {
+    const borders = SEPARATED.map(([file, selector]) => {
+      const css = readFileSync(join(RENDERER, file), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+      const rule = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+        .find(([, list]) => list!.split(',').some((part) => part.trim() === selector))
+      if (rule === undefined) throw new Error(`${file} 里没有 ${selector} 这条规则`)
+      const border = /(?:^|;)\s*border:([^;]+)/.exec(rule[2]!)
+      return `${selector} ${border === null ? '无' : border[1]!.trim()}`
+    })
+    expect(borders).toEqual(SEPARATED.map(([, selector, border]) => `${selector} ${border}`))
+  })
+})

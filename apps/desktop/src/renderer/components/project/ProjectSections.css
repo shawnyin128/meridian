@@ -1,5 +1,5 @@
 /* Feature-owned styles for project detail sections. Routes only place these sections. */
-.agcard{background:var(--card);border-radius:var(--r-card);padding:var(--sp-12) var(--sp-16);margin-bottom:var(--sp-10)}
+.agcard{background:var(--card);border:1px solid var(--sep);border-radius:var(--r-card);padding:var(--sp-12) var(--sp-16);margin-bottom:var(--sp-10)}
 .agh{display:flex;align-items:center;gap:var(--sp-8)}
 .agnm{font-size:var(--fs-base);font-weight:var(--fw-semibold)}
 .agbg{margin-left:auto;font-size:var(--fs-sm);color:var(--ter)}

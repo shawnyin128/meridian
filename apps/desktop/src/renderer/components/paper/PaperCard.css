@@ -1,4 +1,4 @@
-.paper-card{border-radius:var(--r-card);padding:var(--sp-12) var(--sp-16);margin-bottom:var(--sp-16);background:var(--card);transition:opacity var(--t-slow) var(--e-out),transform var(--t-slow) var(--e-out)}
+.paper-card{border:1px solid var(--sep);border-radius:var(--r-card);padding:var(--sp-12) var(--sp-16);margin-bottom:var(--sp-16);background:var(--card);transition:opacity var(--t-slow) var(--e-out),transform var(--t-slow) var(--e-out)}
 .paper-card.is-leaving{opacity:0;transform:translateX(24px)}
 .paper-card-heading{display:flex;align-items:flex-start;gap:var(--sp-10)}
 .paper-card-heading h3{font-size:var(--fs-card-title);font-weight:var(--fw-title);margin:0;line-height:var(--lh-tight);flex:1}

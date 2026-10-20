@@ -188,7 +188,7 @@
 /* Research Map is a read-only peer view of the table. It composes the shared list and segmented
  * controls; these rules only define its two-column domain layout and information hierarchy. */
 .research-map{display:flex;min-height:0;flex:1;flex-direction:column;gap:var(--sp-14);overflow:auto;padding:var(--sp-2) var(--sp-2) var(--sp-20)}
-.research-map-intro{display:flex;align-items:flex-start;gap:var(--sp-24);padding:var(--sp-16) var(--sp-20);border-radius:var(--r-card);background:var(--card)}
+.research-map-intro{display:flex;align-items:flex-start;gap:var(--sp-24);padding:var(--sp-16) var(--sp-20);border:1px solid var(--sep);border-radius:var(--r-card);background:var(--card)}
 .research-map-copy{min-width:0;flex:1}
 .research-map-title{display:flex;align-items:center;gap:var(--sp-8);font-size:var(--fs-read)}
 .research-map-stats{display:flex;flex:0 0 auto;align-items:stretch;gap:var(--sp-8)}
@@ -202,7 +202,7 @@
 /* A name is a span beside the span of its kind or count line, and keeps its own type and colour. */
 .research-map-group-copy .research-map-group-name{color:inherit;font-size:var(--fs-base);font-weight:var(--fw-title)}
 .research-map-group-copy>span{color:var(--ter);font-size:var(--fs-cap)}
-.research-map-detail{min-width:0;border-radius:var(--r-card);background:var(--card);overflow:hidden}
+.research-map-detail{min-width:0;border:1px solid var(--sep);border-radius:var(--r-card);background:var(--card);overflow:hidden}
 .research-map-detail-head{display:flex;align-items:flex-start;gap:var(--sp-12);padding:var(--sp-14) var(--sp-16);border-bottom:1px solid var(--sep2)}
 .research-map-detail-head>div{display:flex;min-width:0;flex:1;flex-direction:column;gap:var(--sp-4)}
 .research-map-detail-head .research-map-detail-name{color:inherit;font-size:var(--fs-group);font-weight:var(--fw-title)}

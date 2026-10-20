@@ -20,7 +20,7 @@
 .wkpage.node-reading{gap:var(--sp-24)}
 /* Fixed height with its own scroll: the page keeps its height and position whichever node is open. */
 .wkside.node-document-pane{flex:0 0 520px;width:520px;max-width:min(520px,48vw);height:calc(100vh - 190px);
-  box-sizing:border-box;padding:var(--sp-20) var(--sp-24);border:0;border-radius:var(--r-card);background:var(--card);
+  box-sizing:border-box;padding:var(--sp-20) var(--sp-24);border:1px solid var(--sep);border-radius:var(--r-card);background:var(--card);
   box-shadow:var(--sh-1);overscroll-behavior:auto}
 @media (max-width:1150px){
   .wkpage.node-reading{gap:var(--sp-20)}
