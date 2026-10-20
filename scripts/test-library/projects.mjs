@@ -9,7 +9,7 @@ import { dayFrom, onDay } from './app.mjs'
 async function createProject(seed, call, key, name, days) {
   return onDay(seed, days, async () => {
     await call('project.create', { name })
-    await call('feed.append', { source: 'me', body: { kind: 'runs', runs: [{ kind: 'text', text: `新项目《${name}》已创建，已加入研究总览。` }] } })
+    await call('feed.append', { source: 'me', body: { kind: 'runs', runs: [{ kind: 'text', text: `新项目《${name}》已创建` }] } })
     const { id } = (await call('project.list')).find((project) => project.name === name)
     seed.projects[key] = { id, days }
     return id

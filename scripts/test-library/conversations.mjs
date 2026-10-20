@@ -41,7 +41,7 @@ export async function seedConversations(seed, call) {
     }])
     const [, reply] = await call('chat.messages', { id: chat.id })
     const project = await call('chat.recordAction', { id: chat.id, messageId: reply.id })
-    await call('feed.append', { source: 'me', body: { kind: 'runs', runs: [text(`对话结论已记入项目《${project.name}》的科研记录。`)] } })
+    await call('feed.append', { source: 'me', body: { kind: 'runs', runs: [text(`已记入《${project.name}》的科研记录`)] } })
   })
   const old = await call('chat.create', { title: '旧的 MoE 讨论', named: true })
   await append(old.id, [say('you', 'Switch 的容量因子取多少合适？'), say('ai', '论文里 1.0 到 1.25 都试过，训练时 1.25 更稳。')])
