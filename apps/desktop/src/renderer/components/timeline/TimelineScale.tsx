@@ -173,7 +173,7 @@ export function TimelineScalePicker({ value, onChange }: {
   const m = useMessages()
   return (
     <SegmentedControl
-      label={m.timeline.scaleGroup} value={value} onChange={onChange}
+      label={m.timeline.scaleGroup} value={value} onChange={onChange} size="sm"
       options={SCALES.map((scale) => ({ value: scale, label: m.timeline.scale[scale] }))}
     />
   )

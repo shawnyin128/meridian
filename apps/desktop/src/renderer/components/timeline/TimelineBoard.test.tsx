@@ -116,6 +116,17 @@ describe('TimelineBoard 的头部', () => {
     act(() => root.unmount())
     host.remove()
   })
+
+  it('头部的控件同一个高度：时间尺度用小号轨道，和周期箭头、今天一样是嵌套那一档', () => {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    const head = document.createElement('div')
+    head.innerHTML = renderBoard()
+    const scale = head.querySelector('.ghead .segmented-control')!
+    const buttons = [...head.querySelectorAll('.ghead button')].filter((button) => !scale.contains(button))
+    expect(scale.classList.contains('segmented-control--sm')).toBe(true)
+    expect(buttons.map((button) => [button.getAttribute('aria-label') ?? button.textContent, button.classList.contains('sm')]))
+      .toEqual([['上一个周期', true], ['下一个周期', true], ['今天', true]])
+  })
 })
 
 describe('TimelineBoard 标签列拖拽排序', () => {
