@@ -44,8 +44,7 @@ export const papers = {
     },
   },
   readState: {
-    filterAria: '筛选阅读状态',
-    filterLabel: '阅读状态',
+    filterAria: (field: string) => `筛选${field}`,
     allStates: '全部状态',
   },
   columnHeader: {

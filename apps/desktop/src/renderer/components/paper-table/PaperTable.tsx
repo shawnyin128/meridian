@@ -181,9 +181,10 @@ function SortArrow({ direction }: { direction: SortDirection }) {
 
 /**
  * The reading status shortcut in the paper library toolbar. It applies the existing readState facet
- * instead of adding a second "unread" area.
+ * instead of adding a second "unread" area. `name` is the read state's name, the one its column shows.
  */
-function ReadStateFilter({ current, onPick }: {
+function ReadStateFilter({ name, current, onPick }: {
+  name: string
   current: ReadState | null
   onPick: (readState: ReadState | null) => void
 }) {
@@ -194,8 +195,8 @@ function ReadStateFilter({ current, onPick }: {
         <button
           type="button"
           className={current === null ? 'btn sm read-state-filter' : 'btn sm read-state-filter on'}
-          aria-label={m.papers.readState.filterAria}
-        >{current ?? m.papers.readState.filterLabel}</button>
+          aria-label={m.papers.readState.filterAria(name)}
+        >{current ?? name}</button>
       )}
     >
       <MenuRadioGroup value={current ?? 'all'}>
@@ -1247,6 +1248,7 @@ export function PaperTable() {
                   <>
                     <span className="pt-dim" style={{ fontSize: 12 }}>{m.papers.toolbar.filter}</span>
                     <ReadStateFilter
+                      name={names.columns.st}
                       current={group === 'readState' ? sel as ReadState | null : null}
                       onPick={(state) => {
                         setGroup(state === null ? 'none' : 'readState')
@@ -1326,7 +1328,7 @@ export function PaperTable() {
                 </IconButton>
                 <PanelClose onClose={closeDetail} />
               </div>
-              <PaperMetadata paper={detail} onSaved={setDetail} />
+              <PaperMetadata paper={detail} readStateLabel={names.columns.st} onSaved={setDetail} />
               <PaperReadingSummary
                 paper={detail}
                 onRead={(anchor) => open('reader', detail.id, anchor)}

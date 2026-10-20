@@ -50,7 +50,7 @@ export function ReaderSidePanel({
         ? (
           <aside className="reader-meta" aria-label={m.reader.rail.tabs.metadata}>
             <ReaderPanelHeader title={m.reader.rail.tabs.metadata} />
-            <PaperMetadata paper={paper} onSaved={onPaper} />
+            <PaperMetadata paper={paper} readStateLabel={m.papers.metadata.fields.readState} onSaved={onPaper} />
           </aside>
         )
         : null}

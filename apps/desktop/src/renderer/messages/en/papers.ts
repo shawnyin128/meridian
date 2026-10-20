@@ -47,8 +47,7 @@ export const papers = {
     },
   },
   readState: {
-    filterAria: 'Filter by reading status',
-    filterLabel: 'Reading status',
+    filterAria: (field: string) => `Filter by ${field.toLowerCase()}`,
     allStates: 'All statuses',
   },
   columnHeader: {

@@ -685,6 +685,20 @@ describe('PaperTable', () => {
       .toEqual(['状态', '阅读状态'])
   })
 
+  it('自定义列占着阅读状态这个名字时，顶栏的阅读状态筛选和论文详情也叫状态，与表头同名', async () => {
+    const host = mount()
+    columnsCall.resolve({ ...HELD_READ_STATE, groups: ['readState'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    const filter = host.querySelector<HTMLButtonElement>('.filters .read-state-filter')!
+    expect([filter.textContent, filter.getAttribute('aria-label')]).toEqual(['状态', '筛选状态'])
+    await act(async () => { press(host.querySelector<HTMLElement>('.ptable tbody tr')!) })
+    getCall.resolve(ROW)
+    await flush()
+    expect(states([...host.querySelectorAll('.pdetail .paper-meta-list dt')].map((dt) => dt.textContent))).toEqual(['状态'])
+  })
+
   it('自定义列占着阅读状态这个名字时，内置列叫状态，新建一列也不能叫状态', async () => {
     const host = mount()
     columnsCall.resolve(HELD_READ_STATE)

@@ -109,13 +109,17 @@ function patchValue(patch: Partial<PaperFields>): unknown {
   return Object.values(patch)[0]
 }
 
-/** The property list always remains in reading form; only the value clicked by the user is replaced with an edit control. */
-export function PaperMetadata({ paper, onSaved }: {
+/**
+ * The property list always remains in reading form; only the value clicked by the user is replaced with an edit control.
+ * `readStateLabel` names the read state's row and its update notice.
+ */
+export function PaperMetadata({ paper, readStateLabel, onSaved }: {
   paper: PaperRow
+  readStateLabel: string
   onSaved: (paper: PaperRow) => void
 }) {
   const m = useMessages()
-  const labels = m.papers.metadata.fields
+  const labels = { ...m.papers.metadata.fields, readState: readStateLabel }
   const write = useVaultWrite()
   const undo = useUndo()
   const notice = useNotice()
