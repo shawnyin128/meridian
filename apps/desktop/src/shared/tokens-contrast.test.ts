@@ -291,6 +291,23 @@ describe('tokens.css 的决定值', () => {
     }
   })
 
+  it('分段控件的轨道在两种主题下都比它所在的面深一级,滑块在轨道上浅一级,对比都至少 1.1:1', () => {
+    const segmented = readFileSync(new URL('../renderer/components/SegmentedControl.css', import.meta.url), 'utf8')
+    expect(segmented).toMatch(/\.segmented-control\{[^}]*background:var\(--track\)/)
+    for (const theme of ['light', 'dark'] as const) {
+      for (const ground of ['--content', '--card', '--raised']) {
+        const surface = flatten(theme, [ground])
+        const track = flatten(theme, [ground, '--track'])
+        const thumb = flatten(theme, ['--raised'])
+        const label = `${theme} ${ground} 上的 --track`
+        expect(luminance(track) < luminance(surface), `${label} 不比面深`).toBe(true)
+        expect(contrast(track, surface), label).toBeGreaterThanOrEqual(1.1)
+        expect(luminance(thumb) > luminance(track), `${label} 上的滑块不比轨道浅`).toBe(true)
+        expect(contrast(thumb, track), `${label} 上的滑块`).toBeGreaterThanOrEqual(1.1)
+      }
+    }
+  })
+
   it('亮色的 --info / --tint-info 是青色,且与 --on-selected 解出来的颜色分开', () => {
     expect(colour('light', '--info')).toEqual({ r: 14, g: 154, b: 167, a: 1 })
     expect(colour('light', '--tint-info')).toEqual({ r: 14, g: 154, b: 167, a: .14 })
