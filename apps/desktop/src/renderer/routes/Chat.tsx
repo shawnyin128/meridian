@@ -249,7 +249,7 @@ export function Chat() {
                     ...mentions.filter((mention) => mention.kind === 'project').slice(0, QUICK_MENTIONS),
                     ...mentions.filter((mention) => mention.kind === 'paper').slice(0, QUICK_MENTIONS),
                   ].map((mention) => (
-                    <Tooltip key={mention.title} label={mention.title} whenClipped>
+                    <Tooltip key={mention.title} label={mention.title} whenClipped side="top">
                       <ToolbarButton className="btn ghost sm qm" onClick={() => quick(mention.title)}>
                         <FadeText>@{mention.kind === 'paper' ? <PaperText text={mention.entity.title} /> : mention.title}</FadeText>
                       </ToolbarButton>
